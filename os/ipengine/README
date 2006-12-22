@@ -1,0 +1,40 @@
+The ipEngine-1 is a Motorola MPC8xx-based small computer
+made by Bright Star Engineering (www.brightstareng.com)
+which also provides Linux and their own operating system for it.
+It is an interesting hardware platform to do network-oriented Inferno
+applications.
+
+The ipEngine is unusual in including an FPGA (Altera Flex 6016).
+See fpga(3) and fpgaload(8).
+We are also working on software to help program the thing.
+
+
+Booting the ipEngine
+
+0.	serial cable (port 1, 9600 baud), ether, power etc.
+
+1.	make appropriate entries for your site in flash
+	using the BSE monitor:
+
+	set netmask 255.255.255.0
+	set nameserver 200.1.1.11
+	set server 200.1.1.11
+	set serverip 200.1.1.11
+	set gateway 200.1.1.50
+	set hostname stella
+	set domain vitanuova.com
+	set myip 200.1.1.96
+
+2.	add an entry to do the boot by tftp:
+
+	set bootcmd "load /usr/inferno/os/ipengine/iipe 3000; go 3020"
+
+	contrary to the BSE documentation this loads any
+	binary file at the given address.  the -b option
+	doesn't seem to be needed.
+
+3.	reset
+	it should load and start the kernel
+
+Vita Nuova
+16 July 2003

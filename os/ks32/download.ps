@@ -1,0 +1,1040 @@
+%!PS-Adobe-2.0
+%%Version: 0.1
+%%DocumentFonts: (atend)
+%%Pages: (atend)
+%%EndComments
+%
+% Version 3.3.2 prologue for troff files.
+%
+
+/#copies 1 store
+/aspectratio 1 def
+/formsperpage 1 def
+/landscape false def
+/linewidth .3 def
+/magnification 1 def
+/margin 0 def
+/orientation 0 def
+/resolution 720 def
+/rotation 1 def
+/xoffset 0 def
+/yoffset 0 def
+
+/roundpage true def
+/useclippath true def
+/pagebbox [0 0 612 792] def
+
+/R  /Times-Roman def
+/I  /Times-Italic def
+/B  /Times-Bold def
+/BI /Times-BoldItalic def
+/H  /Helvetica def
+/HI /Helvetica-Oblique def
+/HB /Helvetica-Bold def
+/HX /Helvetica-BoldOblique def
+/CW /Courier def
+/CO /Courier def
+/CI /Courier-Oblique def
+/CB /Courier-Bold def
+/CX /Courier-BoldOblique def
+/PA /Palatino-Roman def
+/PI /Palatino-Italic def
+/PB /Palatino-Bold def
+/PX /Palatino-BoldItalic def
+/Hr /Helvetica-Narrow def
+/Hi /Helvetica-Narrow-Oblique def
+/Hb /Helvetica-Narrow-Bold def
+/Hx /Helvetica-Narrow-BoldOblique def
+/KR /Bookman-Light def
+/KI /Bookman-LightItalic def
+/KB /Bookman-Demi def
+/KX /Bookman-DemiItalic def
+/AR /AvantGarde-Book def
+/AI /AvantGarde-BookOblique def
+/AB /AvantGarde-Demi def
+/AX /AvantGarde-DemiOblique def
+/NR /NewCenturySchlbk-Roman def
+/NI /NewCenturySchlbk-Italic def
+/NB /NewCenturySchlbk-Bold def
+/NX /NewCenturySchlbk-BoldItalic def
+/ZD /ZapfDingbats def
+/ZI /ZapfChancery-MediumItalic def
+/S  /S def
+/S1 /S1 def
+/GR /Symbol def
+
+/inch {72 mul} bind def
+/min {2 copy gt {exch} if pop} bind def
+
+/setup {
+	counttomark 2 idiv {def} repeat pop
+
+	landscape {/orientation 90 orientation add def} if
+	/scaling 72 resolution div def
+	linewidth setlinewidth
+	1 setlinecap
+
+	pagedimensions
+	xcenter ycenter translate
+	orientation rotation mul rotate
+	width 2 div neg height 2 div translate
+	xoffset inch yoffset inch neg translate
+	margin 2 div dup neg translate
+	magnification dup aspectratio mul scale
+	scaling scaling scale
+
+	addmetrics
+	0 0 moveto
+} def
+
+/pagedimensions {
+	useclippath userdict /gotpagebbox known not and {
+		/pagebbox [clippath pathbbox newpath] def
+		roundpage currentdict /roundpagebbox known and {roundpagebbox} if
+	} if
+	pagebbox aload pop
+	4 -1 roll exch 4 1 roll 4 copy
+	landscape {4 2 roll} if
+	sub /width exch def
+	sub /height exch def
+	add 2 div /xcenter exch def
+	add 2 div /ycenter exch def
+	userdict /gotpagebbox true put
+} def
+
+/addmetrics {
+	/Symbol /S null Sdefs cf
+	/Times-Roman /S1 StandardEncoding dup length array copy S1defs cf
+} def
+
+/pagesetup {
+	/page exch def
+	currentdict /pagedict known currentdict page known and {
+		page load pagedict exch get cvx exec
+	} if
+} def
+
+/decodingdefs [
+	{counttomark 2 idiv {y moveto show} repeat}
+	{neg /y exch def counttomark 2 idiv {y moveto show} repeat}
+	{neg moveto {2 index stringwidth pop sub exch div 0 32 4 -1 roll widthshow} repeat}
+	{neg moveto {spacewidth sub 0.0 32 4 -1 roll widthshow} repeat}
+	{counttomark 2 idiv {y moveto show} repeat}
+	{neg setfunnytext}
+] def
+
+/setdecoding {/t decodingdefs 3 -1 roll get bind def} bind def
+
+/w {neg moveto show} bind def
+/m {neg dup /y exch def moveto} bind def
+/done {/lastpage where {pop lastpage} if} def
+
+/f {
+	dup /font exch def findfont exch
+	dup /ptsize exch def scaling div dup /size exch def scalefont setfont
+	linewidth ptsize mul scaling 10 mul div setlinewidth
+	/spacewidth ( ) stringwidth pop def
+} bind def
+
+/changefont {
+	/fontheight exch def
+	/fontslant exch def
+	currentfont [
+		1 0
+		fontheight ptsize div fontslant sin mul fontslant cos div
+		fontheight ptsize div
+		0 0
+	] makefont setfont
+} bind def
+
+/sf {f} bind def
+
+/cf {
+	dup length 2 idiv
+	/entries exch def
+	/chtab exch def
+	/newencoding exch def
+	/newfont exch def
+
+	findfont dup length 1 add dict
+	/newdict exch def
+	{1 index /FID ne {newdict 3 1 roll put}{pop pop} ifelse} forall
+
+	newencoding type /arraytype eq {newdict /Encoding newencoding put} if
+
+	newdict /Metrics entries dict put
+	newdict /Metrics get
+	begin
+		chtab aload pop
+		1 1 entries {pop def} for
+		newfont newdict definefont pop
+	end
+} bind def
+
+%
+% A few arrays used to adjust reference points and character widths in some
+% of the printer resident fonts. If square roots are too high try changing
+% the lines describing /radical and /radicalex to,
+%
+%	/radical	[0 -75 550 0]
+%	/radicalex	[-50 -75 500 0]
+%
+% Move braceleftbt a bit - default PostScript character is off a bit.
+%
+
+/Sdefs [
+	/bracketlefttp		[201 500]
+	/bracketleftbt		[201 500]
+	/bracketrighttp		[-81 380]
+	/bracketrightbt		[-83 380]
+	/braceleftbt		[203 490]
+	/bracketrightex		[220 -125 500 0]
+	/radical		[0 0 550 0]
+	/radicalex		[-50 0 500 0]
+	/parenleftex		[-20 -170 0 0]
+	/integral		[100 -50 500 0]
+	/infinity		[10 -75 730 0]
+] def
+
+/S1defs [
+	/underscore		[0 80 500 0]
+	/endash			[7 90 650 0]
+] def
+%
+% Tries to round clipping path dimensions, as stored in array pagebbox, so they
+% match one of the known sizes in the papersizes array. Lower left coordinates
+% are always set to 0.
+%
+
+/roundpagebbox {
+    7 dict begin
+	/papersizes [8.5 inch 11 inch 14 inch 17 inch] def
+
+	/mappapersize {
+		/val exch def
+		/slop .5 inch def
+		/diff slop def
+		/j 0 def
+		0 1 papersizes length 1 sub {
+			/i exch def
+			papersizes i get val sub abs
+			dup diff le {/diff exch def /j i def} {pop} ifelse
+		} for
+		diff slop lt {papersizes j get} {val} ifelse
+	} def
+
+	pagebbox 0 0 put
+	pagebbox 1 0 put
+	pagebbox dup 2 get mappapersize 2 exch put
+	pagebbox dup 3 get mappapersize 3 exch put
+    end
+} bind def
+
+%%EndProlog
+%%BeginSetup
+mark
+%
+% Encoding vector and redefinition of findfont for the ISO Latin1 standard.
+% The 18 characters missing from ROM based fonts on older printers are noted
+% below.
+%
+
+/ISOLatin1Encoding [
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/space
+	/exclam
+	/quotedbl
+	/numbersign
+	/dollar
+	/percent
+	/ampersand
+	/quoteright
+	/parenleft
+	/parenright
+	/asterisk
+	/plus
+	/comma
+	/minus
+	/period
+	/slash
+	/zero
+	/one
+	/two
+	/three
+	/four
+	/five
+	/six
+	/seven
+	/eight
+	/nine
+	/colon
+	/semicolon
+	/less
+	/equal
+	/greater
+	/question
+	/at
+	/A
+	/B
+	/C
+	/D
+	/E
+	/F
+	/G
+	/H
+	/I
+	/J
+	/K
+	/L
+	/M
+	/N
+	/O
+	/P
+	/Q
+	/R
+	/S
+	/T
+	/U
+	/V
+	/W
+	/X
+	/Y
+	/Z
+	/bracketleft
+	/backslash
+	/bracketright
+	/asciicircum
+	/underscore
+	/quoteleft
+	/a
+	/b
+	/c
+	/d
+	/e
+	/f
+	/g
+	/h
+	/i
+	/j
+	/k
+	/l
+	/m
+	/n
+	/o
+	/p
+	/q
+	/r
+	/s
+	/t
+	/u
+	/v
+	/w
+	/x
+	/y
+	/z
+	/braceleft
+	/bar
+	/braceright
+	/asciitilde
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/.notdef
+	/dotlessi
+	/grave
+	/acute
+	/circumflex
+	/tilde
+	/macron
+	/breve
+	/dotaccent
+	/dieresis
+	/.notdef
+	/ring
+	/cedilla
+	/.notdef
+	/hungarumlaut
+	/ogonek
+	/caron
+	/space
+	/exclamdown
+	/cent
+	/sterling
+	/currency
+	/yen
+	/brokenbar		% missing
+	/section
+	/dieresis
+	/copyright
+	/ordfeminine
+	/guillemotleft
+	/logicalnot
+	/hyphen
+	/registered
+	/macron
+	/degree			% missing
+	/plusminus		% missing
+	/twosuperior		% missing
+	/threesuperior		% missing
+	/acute
+	/mu			% missing
+	/paragraph
+	/periodcentered
+	/cedilla
+	/onesuperior		% missing
+	/ordmasculine
+	/guillemotright
+	/onequarter		% missing
+	/onehalf		% missing
+	/threequarters		% missing
+	/questiondown
+	/Agrave
+	/Aacute
+	/Acircumflex
+	/Atilde
+	/Adieresis
+	/Aring
+	/AE
+	/Ccedilla
+	/Egrave
+	/Eacute
+	/Ecircumflex
+	/Edieresis
+	/Igrave
+	/Iacute
+	/Icircumflex
+	/Idieresis
+	/Eth			% missing
+	/Ntilde
+	/Ograve
+	/Oacute
+	/Ocircumflex
+	/Otilde
+	/Odieresis
+	/multiply		% missing
+	/Oslash
+	/Ugrave
+	/Uacute
+	/Ucircumflex
+	/Udieresis
+	/Yacute			% missing
+	/Thorn			% missing
+	/germandbls
+	/agrave
+	/aacute
+	/acircumflex
+	/atilde
+	/adieresis
+	/aring
+	/ae
+	/ccedilla
+	/egrave
+	/eacute
+	/ecircumflex
+	/edieresis
+	/igrave
+	/iacute
+	/icircumflex
+	/idieresis
+	/eth			% missing
+	/ntilde
+	/ograve
+	/oacute
+	/ocircumflex
+	/otilde
+	/odieresis
+	/divide			% missing
+	/oslash
+	/ugrave
+	/uacute
+	/ucircumflex
+	/udieresis
+	/yacute			% missing
+	/thorn			% missing
+	/ydieresis
+] def
+
+/NewFontDirectory FontDirectory maxlength dict def
+
+%
+% Apparently no guarantee findfont is defined in systemdict so the obvious
+%
+%	systemdict /findfont get exec
+%
+% can generate an error. So far the only exception is a VT600 (version 48.0).
+%
+
+userdict /@RealFindfont known not {
+	userdict begin
+		/@RealFindfont systemdict begin /findfont load end def
+	end
+} if
+
+/findfont {
+	dup NewFontDirectory exch known not {
+		dup
+		%dup systemdict /findfont get exec	% not always in systemdict
+		dup userdict /@RealFindfont get exec
+		dup /Encoding get StandardEncoding eq {
+			dup length dict begin
+				{1 index /FID ne {def}{pop pop} ifelse} forall
+				/Encoding ISOLatin1Encoding def
+				currentdict
+			end
+			/DummyFontName exch definefont
+		} if
+		NewFontDirectory 3 1 roll put
+	} if
+	NewFontDirectory exch get
+} bind def
+
+%%Patch from lp
+%%EndPatch from lp
+
+setup
+%%EndSetup
+%%Page: 1 1
+/saveobj save def
+mark
+1 pagesetup
+12 /Times-Bold f
+(Connecting up the) 1322 1220 w
+(Arm) 2293 1220 w
+(Evaluator) 2562 1220 w
+(7t) 3106 1220 w
+(and Downloading Code) 3236 1220 w
+10 /Times-Italic f
+(Nigel Roles) 2648 1404 w
+(Vita Nuova Holdings Limited) 2292 1556 w
+(10th November 2000) 2461 1676 w
+10 /Times-Bold f
+(Introduction) 720 1924 w
+10 /Times-Roman f
+(This is just a quick note on how to download code to the Evaluator and run it.) 970 2082 w
+10 /Times-Bold f
+(Health Warning) 720 2330 w
+10 /Times-Roman f
+(I) 970 2488 w
+10 /Times-Italic f
+(think) 1033 2488 w
+10 /Times-Roman f
+(the) 1263 2488 w
+(interrupt) 1415 2488 w
+(and) 1789 2488 w
+(exception) 1963 2488 w
+(handling) 2382 2488 w
+(is) 2763 2488 w
+(OK;) 2861 2488 w
+(it's) 3064 2488 w
+(just) 3223 2488 w
+(that) 3399 2488 w
+(I) 3580 2488 w
+(had) 3644 2488 w
+(problems) 3819 2488 w
+(with) 4222 2488 w
+(supporting) 4431 2488 w
+(two) 4890 2488 w
+(serial ports, interrupt driven at the same time. You have been warned.) 720 2608 w
+10 /Times-Bold f
+(Connecting it up) 720 2856 w
+10 /Times-Roman f
+(The) 970 3014 w
+(board) 1156 3014 w
+(has) 1414 3014 w
+(Arm's) 1578 3014 w
+(standard) 1864 3014 w
+(Angel) 2233 3014 w
+(debugger) 2508 3014 w
+(monitor) 2910 3014 w
+(on) 3258 3014 w
+(board.) 3389 3014 w
+(You) 3672 3014 w
+(can) 3875 3014 w
+(read) 4044 3014 w
+(all) 4246 3014 w
+(about) 4377 3014 w
+(this) 4631 3014 w
+(in) 4808 3014 w
+(the) 4918 3014 w
+(documentation.) 720 3134 w
+(Whether) 1365 3134 w
+(you) 1734 3134 w
+(go to the trouble of installing the Windows tools is up to you, but do read how) 1910 3134 w
+(to operate the monitor.) 720 3254 w
+(Anyhow,) 970 3412 w
+(the) 1370 3412 w
+(board) 1523 3412 w
+(has) 1781 3412 w
+(two) 1945 3412 w
+(serial) 2126 3412 w
+(ports.) 2373 3412 w
+(The) 2629 3412 w
+(one) 2815 3412 w
+(nearest) 2990 3412 w
+(the) 3304 3412 w
+(LEDs) 3458 3412 w
+(is) 3723 3412 w
+(the) 3822 3412 w
+(debug) 3976 3412 w
+(and) 4252 3412 w
+(download) 4428 3412 w
+(port.) 4854 3412 w
+(The other is the console port when running Inferno.) 720 3532 w
+(You) 970 3690 w
+(only) 1172 3690 w
+(get) 1380 3690 w
+(one) 1532 3690 w
+(cable,) 1706 3690 w
+(so) 1971 3690 w
+(beg) 2090 3690 w
+(borrow) 2264 3690 w
+(or) 2583 3690 w
+(steal) 2697 3690 w
+(another) 2911 3690 w
+(cable.) 3241 3690 w
+(These) 3507 3690 w
+(are) 3776 3690 w
+(straight\255through) 3928 3690 w
+(9) 4603 3690 w
+(way) 4684 3690 w
+(to) 4881 3690 w
+(9) 4990 3690 w
+(way male to female cables. I bought a Belkin one from Staples at some horrid price.) 720 3810 w
+(Connect) 970 3968 w
+(both) 1336 3968 w
+(up) 1547 3968 w
+(to) 1680 3968 w
+(the) 1791 3968 w
+(back) 1946 3968 w
+(of) 2168 3968 w
+(your) 2285 3968 w
+(Plan) 2502 3968 w
+(9) 2714 3968 w
+(machine,) 2798 3968 w
+(and) 3195 3968 w
+(start) 3373 3968 w
+(terminal) 3579 3968 w
+(emulators) 3946 3968 w
+(on) 4374 3968 w
+(both.) 4508 3968 w
+(For) 4745 3968 w
+(the) 4918 3968 w
+(debug) 720 4088 w
+(and) 990 4088 w
+(download) 1160 4088 w
+(you) 1580 4088 w
+(need) 1756 4088 w
+(to) 1970 4088 w
+(run) 2074 4088 w
+(a specially modified version of) 2233 4088 w
+10 /Courier f
+(vt\(1\)) 3495 4088 w
+10 /Times-Roman f
+(which responds to the peculiar) 3820 4088 w
+(answer) 720 4208 w
+(back) 1030 4208 w
+(sequence) 1246 4208 w
+(that) 1639 4208 w
+(the) 1817 4208 w
+(Arm) 1967 4208 w
+(monitor) 2179 4208 w
+(has) 2525 4208 w
+(decided) 2687 4208 w
+(is) 3026 4208 w
+(appropriate) 3122 4208 w
+(for) 3605 4208 w
+(it) 3750 4208 w
+(to) 3835 4208 w
+(sense) 3942 4208 w
+(baud) 4187 4208 w
+(rate.) 4410 4208 w
+(As) 4638 4208 w
+(it) 4778 4208 w
+(hap\255) 4863 4208 w
+(pens,) 720 4328 w
+(I) 968 4328 w
+(have) 1041 4328 w
+(modified) 1269 4328 w
+(the) 1670 4328 w
+(version) 1832 4328 w
+(on) 2166 4328 w
+10 /Courier f
+(doppio) 2306 4328 w
+10 /Times-Roman f
+(.) 2666 4328 w
+(It) 2756 4328 w
+(should) 2856 4328 w
+(be) 3162 4328 w
+(possible) 3295 4328 w
+(via) 3662 4328 w
+(monitor) 3823 4328 w
+(commands) 4179 4328 w
+(to) 4651 4328 w
+(set) 4768 4328 w
+(the) 4918 4328 w
+(default) 720 4448 w
+(baud) 1031 4448 w
+(rate) 1259 4448 w
+(of) 1442 4448 w
+(the) 1559 4448 w
+(board) 1715 4448 w
+(to) 1976 4448 w
+(whatever) 2088 4448 w
+(you) 2487 4448 w
+(like.) 2671 4448 w
+(I) 2880 4448 w
+(lost) 2947 4448 w
+(patience) 3126 4448 w
+(after) 3492 4448 w
+(about) 3708 4448 w
+(a) 3964 4448 w
+(day,) 4042 4448 w
+(and) 4245 4448 w
+(hacked) 4423 4448 w
+10 /Courier f
+(vt\(1\)) 4740 4448 w
+10 /Times-Roman f
+(instead.) 720 4568 w
+(It) 1057 4568 w
+(was) 1146 4568 w
+(easier.) 1329 4568 w
+(So,) 1614 4568 w
+(the) 1773 4568 w
+(board) 1923 4568 w
+(will) 2178 4568 w
+(auto) 2362 4568 w
+(sense) 2562 4568 w
+(baud) 2806 4568 w
+(rate.) 3028 4568 w
+(The) 3230 4568 w
+(highest) 3413 4568 w
+(baud) 3730 4568 w
+(rate) 3952 4568 w
+(which) 4129 4568 w
+(is) 4401 4568 w
+(actually) 4496 4568 w
+(valid) 4840 4568 w
+(and hence will talk to Plan 9 is 57600. So the commands to configure the download window are) 720 4688 w
+9 /Courier-Bold f
+(term%) 1008 4852 w
+9 /Courier f
+(cd /usr/inferno/os/ks32) 1332 4852 w
+9 /Courier-Bold f
+(term%) 1008 4952 w
+9 /Courier f
+(vt) 1332 4952 w
+9 /Courier-Bold f
+(term%) 1008 5052 w
+9 /Courier f
+(con \255R \255b 57600 /dev/eia0) 1332 5052 w
+10 /Times-Roman f
+(You) 720 5236 w
+(can) 926 5236 w
+(choose) 1098 5236 w
+(other) 1409 5236 w
+(speeds,) 1648 5236 w
+(but) 1973 5236 w
+(57600) 2135 5236 w
+(is) 2419 5236 w
+(the) 2520 5236 w
+(maximum.) 2676 5236 w
+(For) 3141 5236 w
+(the) 3314 5236 w
+(console) 3470 5236 w
+(port,) 3809 5236 w
+10 /Courier f
+(vt\(1\)) 4029 5236 w
+10 /Times-Roman f
+(is) 4363 5236 w
+(not) 4465 5236 w
+(necessary.) 4628 5236 w
+(The baud rate is fixed in) 720 5356 w
+10 /Courier f
+(main.c) 1718 5356 w
+10 /Times-Roman f
+(at 57600, so the same) 2103 5356 w
+10 /Courier f
+(con) 2991 5356 w
+10 /Times-Roman f
+(command is appropriate.) 3196 5356 w
+(Now) 970 5514 w
+(plug) 1195 5514 w
+(in) 1404 5514 w
+(the) 1513 5514 w
+(power) 1666 5514 w
+(to) 1946 5514 w
+(the) 2055 5514 w
+(board.) 2208 5514 w
+(You) 2491 5514 w
+(should) 2694 5514 w
+(see) 2992 5514 w
+(the) 3150 5514 w
+(LEDs) 3303 5514 w
+(flick) 3567 5514 w
+(for) 3781 5514 w
+(bit,) 3928 5514 w
+(and) 4091 5514 w
+(then) 4267 5514 w
+(the) 4471 5514 w
+(7) 4625 5514 w
+(segment) 4707 5514 w
+(one shows 11. The download window should show) 720 5634 w
+9 /Courier-Bold f
+(Arm Evaluator7T Boot Monitor PreRelease 1.00) 1008 5798 w
+(Boot:) 1008 5898 w
+10 /Times-Roman f
+(Pressing) 720 6082 w
+(the) 1088 6082 w
+(reset) 1239 6082 w
+(button) 1456 6082 w
+(\(nearer) 1741 6082 w
+(of) 2051 6082 w
+(the) 2163 6082 w
+(two) 2314 6082 w
+(buttons) 2493 6082 w
+(to) 2817 6082 w
+(the) 2924 6082 w
+(CPU\),) 3075 6082 w
+(should) 3357 6082 w
+(cause) 3653 6082 w
+(the) 3903 6082 w
+(same) 4055 6082 w
+(message) 4290 6082 w
+(to) 4658 6082 w
+(be) 4766 6082 w
+(dis\255) 4890 6082 w
+(played.) 720 6202 w
+10 /Times-Bold f
+(Building the code) 720 6450 w
+10 /Courier f
+(mk\(1\)) 970 6608 w
+10 /Times-Roman f
+(in directory) 1295 6608 w
+10 /Courier f
+(/usr/inferno/os/ks32) 1783 6608 w
+10 /Times-Roman f
+(should build the code. You may need to do) 3008 6608 w
+9 /Courier f
+(bind \255b /usr/inferno/Plan9/386/bin /bin) 1008 6772 w
+10 /Times-Roman f
+(to get access to the compilers and tools.) 720 6956 w
+(The) 2357 6956 w
+(makes) 745 7076 w
+(an) 1026 7076 w
+(executable,) 1146 7076 w
+(converts) 1623 7076 w
+(it) 1987 7076 w
+(to) 2069 7076 w
+(the) 2173 7076 w
+(right) 2321 7076 w
+(format,) 2536 7076 w
+(and) 2853 7076 w
+10 /Courier f
+(uuencode) 3024 7076 w
+10 /Times-Roman f
+('s) 3504 7076 w
+(it) 3603 7076 w
+(to) 3686 7076 w
+(create) 3791 7076 w
+10 /Courier f
+(ievaluator7t.txt) 4055 7076 w
+10 /Times-Roman f
+(.) 5015 7076 w
+(Note) 720 7196 w
+(that) 1059 7196 w
+(as) 1354 7196 w
+(shipped,) 1582 7196 w
+(the) 2063 7196 w
+(configuration) 2330 7196 w
+(file) 3013 7196 w
+(\() 3291 7196 w
+10 /Courier f
+(evaluator7t) 3324 7196 w
+10 /Times-Roman f
+(\)) 3984 7196 w
+(includes) 4162 7196 w
+(the) 4640 7196 w
+(file) 4907 7196 w
+(November 22, 1900) 2482 7560 w
+cleartomark
+showpage
+saveobj restore
+%%EndPage: 1 1
+%%Page: 2 2
+/saveobj save def
+mark
+2 pagesetup
+10 /Times-Roman f
+(\255 2 \255) 2797 480 w
+10 /Courier f
+(/usr/inferno/usr/nigel/cb.dis) 720 840 w
+10 /Times-Roman f
+(as) 2504 840 w
+(the) 2631 840 w
+(main) 2797 840 w
+(application.) 3041 840 w
+(This) 3554 840 w
+(is) 3776 840 w
+(John) 3887 840 w
+(Powers') 4121 840 w
+(Crackerbarrel) 4493 840 w
+(program which I used as a benchmark.) 720 960 w
+10 /Times-Bold f
+(Downloading the code) 720 1200 w
+10 /Times-Roman f
+(To download to the Evaluator type the command) 970 1356 w
+9 /Courier-Bold f
+(Boot:) 1008 1516 w
+9 /Courier f
+(download) 1332 1516 w
+9 /Courier-Bold f
+(Ready to download. Use 'transmit' option on terminal emulator to download file.) 1008 1616 w
+10 /Times-Roman f
+(break back to the) 720 1796 w
+10 /Courier f
+(con\(1\)) 1429 1796 w
+10 /Times-Roman f
+(command prompt with Control\255\\ and type the following command) 1814 1796 w
+9 /Courier-Bold f
+(>>>) 1008 1956 w
+9 /Courier f
+(!cat ievaluator7t.txt) 1224 1956 w
+10 /Times-Roman f
+(As a shorthand, you may instead type) 720 2136 w
+9 /Courier-Bold f
+(>>>) 1008 2296 w
+9 /Courier f
+(!squirt) 1224 2296 w
+10 /Times-Roman f
+(The) 970 2476 w
+(red) 1152 2476 w
+(LED) 1306 2476 w
+(should) 1527 2476 w
+(light) 1821 2476 w
+(indicating) 2032 2476 w
+(download.) 2459 2476 w
+(After) 2905 2476 w
+(a) 3142 2476 w
+(couple) 3214 2476 w
+(of) 3508 2476 w
+(minutes) 3644 2476 w
+(the) 3989 2476 w
+(light) 4139 2476 w
+(goes) 4351 2476 w
+(out) 4562 2476 w
+(and) 4718 2476 w
+(you) 4890 2476 w
+(see) 720 2596 w
+9 /Courier-Bold f
+(Loaded file ievaluator7t.aif at address 00008000, size=254200) 1008 2756 w
+(Boot:) 1008 2856 w
+10 /Times-Roman f
+(You will type) 720 3036 w
+9 /Courier-Bold f
+(Boot:) 1008 3196 w
+9 /Courier f
+(gos 8080) 1332 3196 w
+10 /Times-Roman f
+(to run the code at address 0x8080. This) 720 3376 w
+(should) 2316 3376 w
+(cause) 2609 3376 w
+(Inferno) 2856 3376 w
+(to) 3175 3376 w
+(boot) 3279 3376 w
+(and) 3483 3376 w
+(write) 3653 3376 w
+(stuff) 3884 3376 w
+(on) 4093 3376 w
+(the) 4219 3376 w
+(console) 4367 3376 w
+(port) 4698 3376 w
+(\(i.e.) 4885 3376 w
+(the other window\).) 720 3496 w
+10 /Times-Bold f
+(Useful Stuff) 720 3736 w
+10 /Times-Roman f
+(There is some useful debugging code in) 970 3892 w
+10 /Courier f
+(archevaluator7t.c) 2587 3892 w
+10 /Times-Roman f
+(and other places.) 3632 3892 w
+10 /Courier f
+(setled7ascii\(\)) 720 4048 w
+10 /Times-Roman f
+(This) 970 4168 w
+(function) 1177 4168 w
+(takes) 1539 4168 w
+(a) 1773 4168 w
+(single) 1846 4168 w
+(character,) 2115 4168 w
+(and) 2534 4168 w
+(attempts) 2708 4168 w
+(to) 3077 4168 w
+(put) 3185 4168 w
+(it) 3343 4168 w
+(on) 3429 4168 w
+(the) 3559 4168 w
+(LED.) 3711 4168 w
+(Clearly) 3960 4168 w
+(you) 4284 4168 w
+(won't) 4464 4168 w
+(get) 4727 4168 w
+(M's) 4879 4168 w
+(or N's. Read the source.) 970 4288 w
+10 /Courier f
+(iprint\(\)) 720 4444 w
+10 /Times-Roman f
+(Prints on the debug and download port.) 970 4564 w
+(November 22, 1900) 2482 7560 w
+cleartomark
+showpage
+saveobj restore
+%%EndPage: 2 2
+%%Trailer
+done
+%%DocumentFonts: Times-Roman Times-Italic Times-Bold Courier Courier-Bold
+%%Pages: 2

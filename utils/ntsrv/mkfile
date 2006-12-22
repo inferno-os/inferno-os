@@ -1,0 +1,25 @@
+#uncomment following line for full Microsoft debug symbols
+#LDEBUG=-debug -debugtype:cv -pdb:none
+<../../mkconfig
+SYSTARG=Nt
+SYSHOST=Nt
+OBJTYPE=386
+OBJDIR=$SYSTARG/$OBJTYPE
+<$ROOT/mkfiles/mkhost-$SYSHOST
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE
+
+TARG=ntsrv
+
+OFILES=	ntsrv.$O\
+
+HFILES=
+
+LIBS=9
+
+CFLAGS=$CFLAGS -I.
+
+BIN=$ROOT/$OBJDIR/bin
+
+SYSLIBS=	$SYSLIBS wsock32.lib user32.lib gdi32.lib advapi32.lib winmm.lib mpr.lib
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

@@ -1,0 +1,10 @@
+<../../mkconfig
+
+TARG=cat
+
+OFILES=	cat.$O\
+
+LIBS=9
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

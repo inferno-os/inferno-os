@@ -1,0 +1,33 @@
+Often the devices we use now come with some
+form of bootstrap (often annoyingly complicated,
+which gets in the way).  Older boards were sometimes
+bare, and we had to provide something (often annoyingly
+complicated...).  On the PC it's currently helpful to
+have something that can boot from disc or ether;
+since it's a thankless task to write such a thing, we
+use Plan 9's, and thank its authors.
+
+The current scheme on newer devices is to have a simple
+program that can put a stripped-down Inferno kernel into
+flash, and use that to boot from other devices (including over the net)
+as required during development.
+
+There are two distinct models for bootstrap in this directory.
+
+	Model I
+
+Each member of the first model is represented by a self-contained directory.
+They are derived from various ages of Plan 9's /sys/src/boot/pc.
+
+arm1110	arm	a prefix to a gzip'd kernel to decompress it (runs after basic bootloader)
+pc	386	pc-specific bootstrap essentially identical to current Plan 9
+		and covered by the Lucent Public License; it uses
+libflate	-	zlib-style inflate/deflate library
+mpc	power	PowerPC bootstrap for FADS board derived from an older version
+		of Plan 9 but covered by our Inferno licence (because it came with Inferno)
+puma	arm	SA110 bootstrap for Teralogics Puma, also covered by the Inferno licence
+
+	Model II
+omap	purpose-built bootstrap for the OMAP processor
+
+Not all of these are being distributed.

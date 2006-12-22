@@ -1,0 +1,14 @@
+<../../mkconfig
+
+TARG=format
+
+OFILES=	format.$O\
+		$TARGMODEL.$O\
+
+HFILES=
+
+LIBS=9		# libbio.a uses lib9.a so order matters.
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

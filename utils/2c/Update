@@ -1,0 +1,7 @@
+ 				if(n->op == ONAME) {
+< 					if(o == OSET)
+< 						gopcode(OTST, tint, D_NONE, Z, D_TREE, n);
+< 					else
+< 						gopcode(OTST, tint, D_TREE, n, D_NONE, Z);
+< 					p->as = ANOP;
+< 				}

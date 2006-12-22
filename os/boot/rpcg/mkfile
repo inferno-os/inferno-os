@@ -1,0 +1,120 @@
+objtype=power
+OBJTYPE=power	# always
+<../../../mkconfig
+SYSTARG=$OSTARG	# always
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+CONF=rpcg	# selects board dependent code
+TARG=qb$CONF
+OFILES=\
+	l.$O\
+	arch$CONF.$O\
+	devuart.$O\
+	uartboot.$O\
+	alarm.$O\
+	bootp.$O\
+	clock.$O\
+	conf.$O\
+	console.$O\
+	cpm.$O\
+	defont0.$O\
+	donprint.$O\
+	dosboot.$O\
+	devether.$O\
+	etherscc.$O\
+	fblt.$O\
+	gbitbltclip.$O\
+	flash.$O\
+	main.$O\
+	i2c.$O\
+	plan9boot.$O\
+	qio.$O\
+	rmap.$O\
+	screen.$O\
+	init$CONF.$O\
+	trap.$O\
+	zqs.$O\
+
+HFILES=\
+	boot.h\
+	dat.h\
+	fns.h\
+	io.h\
+	lib.h\
+	mem.h\
+	squeeze.h\
+	gnot.h\
+	arch$CONF.h\
+
+LIBS=\
+	kern\
+
+LIBDIRS=$LIBS
+LIBNAMES=${LIBS:%=lib%.a}
+LIBFILES=${LIBS:%=$ROOT/$TARGMODEL/$OBJTYPE/lib/lib%.a}
+
+#all:NV:	$TARG k.mx f.mx
+all:NV:	$TARG
+install:V: 	$INSTALLDIR/$TARG
+installall:V: 	$INSTALLDIR/$TARG
+
+$INSTALLDIR/%: %
+	rm -f $INSTALLDIR/$stem && cp $stem $INSTALLDIR/$stem
+
+$TARG: $OFILES $LIBNAMES
+	$LD -o $target -l  -T0x140000 -R4 $OFILES $LIBFILES
+	ls -l $target
+
+qbrom$CONF:	$OFILES $LIBNAMES
+	$LD -o $target -l -T0xFFC20100 -R0 -D0x140000 $OFILES $LIBFILES
+
+k.mx:	$TARG
+	ms2 -S 0x100 -a 0x140000 -3 -p 4 $TARG >$target
+
+f.mx:	qbrom$CONF
+	ms2 -S 0x100 -a 0xFFC20100 -3 -p 4 $prereq >$target
+
+g.mx:	qbrom$CONF
+	ms2 -S 0x100 -a 0x10000 -3 -p 4 $prereq >$target
+
+%.$O:	%.s
+	$AS -Dconf$CONF $stem.s
+
+%.$O:	%.c
+	$CC $CFLAGS $stem.c
+
+%.$O:	$HFILES
+
+lib%.a:V:	$SHELLTYPE-lib%.a
+
+rc-lib%.a nt-lib%.a:VQ:
+	echo '@{builtin cd ' $ROOT/lib$stem ';mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install}'
+	@{builtin cd  $ROOT/lib$stem ;mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install}
+
+sh-lib%.a:VQ:
+	echo "(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)"
+	(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)
+
+clock.$O floppy.$O trap.$O:	ureg.h
+conf.$O dosboot.$O main.$O:	dosfs.h
+ether.$O etherscc.$O:	etherif.h
+bootp.$O:	ip.h
+
+clean:V:
+	rm -f *.[$OS] [$OS].out y.tab.? y.debug y.output $TARG qboot k.mx f.mx romboot
+
+nuke-sh:QV:
+		for i in $LIBDIRS
+		do
+			echo "(cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke)"
+			(cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke)
+		done
+
+nuke-rc nuke-nt:QV:
+		for (i in $LIBDIRS)
+		{
+			echo '@{cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke}'
+			@{cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke}
+		}
+
+nuke:V:		clean nuke-$SHELLTYPE

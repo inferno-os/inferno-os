@@ -1,0 +1,37 @@
+BO operand encodings
+
+0+y	0000y	decrement CTR, then branch if CTR != 0 && condition is false
+2+y	0001y	decrement CTR, then branch if CTR == 0 && condition is false
+4+y	0010y	branch if condition is false
+8+y	0100y	decrement CTR, then branch if CTR != 0 && condition is true
+10+y	0101y	decrement CTR, then branch if CTR == 0 && condition is true
+12+y	0110y	branch if condition is true
+16+y	1000y	decrement CTR, then branch if CTR != 0
+18+y	1001y	decrement CTR, then branch if CTR == 0
+20	10100	branch always
+
+y=0:
+	BCx with negative displacement: branch probably taken
+	all other cases: branch not taken
+
+y=1:
+	reverse prediction
+
+predict to be taken if
+	((BO[0] & BO[2]) | sign(displacement)) xor y
+
+CR field bit:
+
+lt	0
+gt	1
+eq	2
+so	3
+un	3	(after fp comparison)
+
+CR fields:
+
+cr0	0
+cr1	4
+cr2	8
+...
+cr7	28

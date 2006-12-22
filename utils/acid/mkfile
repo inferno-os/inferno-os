@@ -1,0 +1,30 @@
+<../../mkconfig
+
+TARG=acid
+
+OFILES=	main.$O\
+	y.tab.$O\
+	lex.$O\
+	util.$O\
+	exec.$O\
+	expr.$O\
+	list.$O\
+	builtin.$O\
+	proc.$O\
+	dot.$O\
+	print.$O\
+	os-$TARGMODEL.$O\
+	rdebug.$O\
+
+YFILES=dbg.y
+HFILES=acid.h y.tab.h
+
+LIBS=mach math bio regexp 9
+
+CFLAGS=$CFLAGS -I../include
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS= $CFLAGS -I../include

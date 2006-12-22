@@ -1,0 +1,252 @@
+// ACID PCI support
+
+pciclassdb = { 
+	{0x0000, "Unclassified device", {
+		{0x0000,"Non-VGA unclassified device"},
+		{0x0001,"VGA compatible unclassified device"},
+	}},
+	{0x0001, "Mass storage controller", {
+		{0x0000,"SCSI storage controller"},
+		{0x0001,"IDE interface"},
+		{0x0002,"Floppy disk controller"},
+		{0x0003,"IPI bus controller"},
+		{0x0004,"RAID bus controller"},
+		{0x0080,"Unknown mass storage controller"},
+	}},
+	{0x0002, "Network controller", {
+		{0x0000,"Ethernet controller"},
+		{0x0001,"Token ring network controller"},
+		{0x0002,"FDDI network controller"},
+		{0x0003,"ATM network controller"},
+		{0x0080,"Network controller"},
+	}},
+	{0x0003, "Display controller", {
+		{0x0000,"VGA compatible controller"},
+		{0x0001,"XGA compatible controller"},
+		{0x0080,"Display controller"},
+	}},
+	{0x0004, "Multimedia controller", {
+		{0x0000,"Multimedia video controller"},
+		{0x0001,"Multimedia audio controller"},
+		{0x0080,"Multimedia controller"},
+	}},
+	{0x0005, "Memory controller", {
+		{0x0000,"RAM memory"},
+		{0x0001,"FLASH memory"},
+		{0x0080,"Memory"},
+	}},
+	{0x0006, "Bridge", {
+		{0x0000,"Host bridge"},
+		{0x0001,"ISA bridge"},
+		{0x0002,"EISA bridge"},
+		{0x0003,"MicroChannel bridge"},
+		{0x0004,"PCI bridge"},
+		{0x0005,"PCMCIA bridge"},
+		{0x0006,"NuBus bridge"},
+		{0x0007,"CardBus bridge"},
+		{0x0080,"Bridge"},
+	}},
+	{0x0007, "Communication controller", {
+		{0x0000,"Serial controller"},
+		{0x0001,"Parallel controller"},
+		{0x0080,"Communication controller"},
+	}},
+	{0x0008, "Generic system peripheral", {
+		{0x0000,"PIC"},
+		{0x0001,"DMA controller"},
+		{0x0002,"Timer"},
+		{0x0003,"RTC"},
+		{0x0080,"System peripheral"},
+	}},
+	{0x0009, "Input device controller", {
+		{0x0000,"Keyboard controller"},
+		{0x0001,"Digitizer Pen"},
+		{0x0002,"Mouse controller"},
+		{0x0080,"Input device controller"},
+	}},
+	{0x000A, "Docking station", {
+		{0x0000,"Generic Docking Station"},
+		{0x0080,"Docking Station"},
+	}},
+	{0x000B, "Processor", {
+		{0x0000,"386"},
+		{0x0001,"486"},
+		{0x0002,"Pentium"},
+		{0x0010,"Alpha"},
+		{0x0020,"Power PC"},
+		{0x0040,"Co-processor"},
+	}},
+	{0x000C, "Serial bus controller", {
+		{0x0000,"FireWire (IEEE 1394)"},
+		{0x0001,"ACCESS Bus"},
+		{0x0002,"SSA"},
+		{0x0003,"USB Controller"},
+		{0x0004,"Fiber Channel"},
+	}},
+};
+
+//
+// Include the vendor and device id database
+//
+
+include( "pcidb.acid" );
+
+defn test(thingy)
+{
+	return thingy;
+}
+
+defn BUSFNO(tbdf)
+{
+	return (((tbdf\X)>>8)&0x07);
+}
+
+defn BUSDNO(tbdf)
+{
+	return (((tbdf\X)>>11)&0x1F);
+}
+
+defn BUSBNO(tbdf)
+{
+	return (((tbdf\X)>>16)&0xFF);
+}
+
+defn lookup( key, dictionary )
+{
+	local d, e;
+
+	d = dictionary;
+	while(d != {}) do {
+		e = head d;
+		if e[0] == key then 
+			return e;
+		d = tail d;
+	}
+	return {};
+}
+
+defn pciclass( ccru )
+{
+	local c, sc;
+	local class, subclass;
+	c = ccru >> 8;
+	sc = ccru & 0xff;
+
+	class = lookup( c, pciclassdb );
+	subclass = lookup( sc, class[2] );
+
+	if (subclass != {}) then {
+		print(" ",subclass[1]);
+		return 1;
+	}
+	if (class != {}) then {
+		print(" ",class[1]);
+		return 1;
+	}
+
+ 	print(" type=",ccru\x);
+	return 0;
+}
+
+defn pcivendor( vid )
+{
+	local v;
+	v = lookup( vid, pcivendordb );
+	if (v != {}) then {
+		print(" ",v[1]);
+	} else {
+		print(" VendorID=",vid\x,":");
+	}
+}
+
+defn pcidev( vid, did )
+{
+	local v;
+	local d;
+	v = lookup( vid, pcivendordb );
+	if (v != {}) then {
+		d = lookup( did, v[2] );
+		if (d != {}) then {
+			print(" ",d[1]);
+			return 1;
+		}
+	}
+	print(" DeviceID=",did\x);
+	return 0;
+}
+
+//
+// Dump PCI Info (short form)
+//
+
+defn pciinfo( r ) 
+{
+	local t;
+	local pcicount;
+	t = r;
+	pcicount = 0\d;
+	while t != 0 do {
+		print(pcicount\d,":","Bus:",BUSBNO(t.tbdf)\u," dev:",BUSDNO(t.tbdf)\u," fn:",BUSFNO(t.tbdf)\u,":");
+		pciclass(t.ccru);
+		print(":");
+		pcivendor(t.vid);
+		pcidev(t.vid, t.did);
+		print("\n");
+		pcicount = pcicount+1 ;
+		t = t.link;
+	}
+	t = r;
+	while t!= 0 do {
+		if (t.bridge !=0) then
+			pciinfo(t.bridge);
+		t = t.link;
+	}
+}
+
+defn lspci()
+{
+	pciinfo( *pciroot );
+}
+
+//
+// Dump PCI Info (long form - includes interrupt lines & memory segments)
+//
+
+defn pcidumper( r )
+{
+	local t;
+	local m;
+	t = r;
+	while t != 0 do {
+		print("Bus\t",BUSBNO(t.tbdf)\u);
+		print(", device\t",BUSDNO(t.tbdf)\u);
+		print(", function\t",BUSFNO(t.tbdf)\u,":\n");
+		print("  ");
+		pciclass(t.ccru);
+		print(":");
+		pcivendor(t.vid);
+		pcidev(t.vid, t.did);
+		print("\n");
+		print("   Interrupt Line: ",t.intl\u,"\n");
+		m =0\d;
+		loop 0,5 do {
+			if t.mem[m] != 0 then
+				print("\t",(m/2)\d,":",t.mem[m]\X," ",t.mem[m+1]\X,"\n");
+			m = m + 2;
+		}
+		t = t.link;
+	}
+	t = r;
+	while t!= 0 do {
+		if (t.bridge !=0) then
+			pcidumper(t.bridge);
+		t = t.link;
+	}
+}
+
+defn pcidump()
+{
+	pcidumper( *pciroot );
+}
+
+print("/os/pc/pci");

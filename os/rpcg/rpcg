@@ -1,0 +1,122 @@
+# rpcg RPXLite
+dev
+	root
+	cons	archrpcg
+	env
+	mnt
+	pipe
+	prog
+	rtc
+	srv
+	dup
+	ssl
+	cap
+
+
+	ip	bootp ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium
+	ether netif netaux
+	uart
+	flash
+#	usb
+#	pcmcia	cis
+#	ata	inb
+
+	ftl
+#	kfs		chk kcon console dat dentry fcall fs fswren iobuf kfs sub uid
+#	kprof
+
+#	vid	i2c
+	i2c	i2c
+
+ip
+	il
+	tcp
+	udp
+	ipifc
+	icmp
+	icmp6
+	ipmux
+
+lib
+	interp
+	tk
+	draw
+	memlayer
+	memdraw
+	keyring
+	sec
+	mp
+	math
+	kern
+
+link
+	etherscc
+	ethermedium
+	flashamd29f0x0
+#	flashcfi16
+#	pppmedium ppp compress
+
+mod
+	sys
+#	draw
+#	tk
+	math
+	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+code
+	int cflag = 0;
+	int consoleprint = 1;
+	int panicreset = 0;
+	int kernel_pool_pcnt = 10;
+	int main_pool_pcnt = 40;
+	int heap_pool_pcnt = 20;
+	int image_pool_pcnt = 40;
+	void screenputs(char*, int){}
+	void screeninit(void){}	/* disabled until we've got one */
+
+init
+	rpcginit
+
+root
+	/chan
+	/dev
+	/dis
+	/env
+	/fd	/
+	/n
+	/net
+	/nvfs /
+	/prog
+	/icons
+	/osinit.dis
+	/dis/lib/auth.dis
+	/dis/lib/ssl.dis
+	/n/local /
+	/n/remote	/
+	/nvfs/default	/usr/inferno/keyring/default

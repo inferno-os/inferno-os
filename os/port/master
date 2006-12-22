@@ -1,0 +1,89 @@
+/	root
+A	audio
+A	beep
+B	boot
+B	bridge
+D	ssl
+E	mpeg
+F	flash
+F	tinyfs
+G	fpga
+G	gpio
+H	ata
+I	ip
+J	i2c
+J	isdn
+K	kprof
+L	ds1620
+L	lm78
+L	lpt
+M	mnt
+O	omap
+O	sm	# altivec soft modem
+P	prof
+P	tad
+P	telephony
+Q	ssfdc
+R	cdrom
+R	msg
+S	scsi
+T	kprof	# old letter
+T	pri
+T	touch
+U	usb
+V	tv
+V	voice
+W	flash
+X	XXX
+X	ftl
+Y	pbus
+Z	doc
+Z	sadb
+Z	test
+Z	zt5512
+a	atm
+a	beep
+b	dbg
+c	cons
+d	dup
+e	env
+f	floppy
+i	draw
+k	kprof
+k	fs
+l	ether
+l	lance
+m	midi
+m	mouse
+m	pointer
+p	prog
+r	rtc
+s	srv
+t	duart
+t	ns16552
+t	uart
+t	z8530
+v	vid
+v	vsc
+w	sd
+x	bench
+y	i82365
+y	pcmcia
+y	sapcm
+¤	cap
+Û	isp1161
+Û	usbh
+Σ	sign
+τ	tk
+↓	power
+
+α	local use
+β	local use
+γ	local use
+δ	local use
+ε	local use
+ζ	local use
+η	local use
+θ	local use
+ι	local use
+κ	local use

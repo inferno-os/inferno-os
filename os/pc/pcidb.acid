@@ -1,0 +1,2848 @@
+pcivendordb = { 
+	{0x0000, "Gammagraphx, Inc.", {
+	}},
+	{0x001a, "Ascend Communications, Inc.", {
+	}},
+	{0x003d, "Lockheed Martin-Marietta Corp", {
+	}},
+	{0x0e11, "Compaq Computer Corporation", {
+		{0x3032,"QVision 1280/p Rev 0"},
+		{0x3033,"QVision 1280/p Rev 1"},
+		{0x3034,"QVision 1280/p Rev 2"},
+		{0x4000,"4000 [Triflex]"},
+		{0xae10,"Smart-2/P RAID Controller"},
+		{0xae29,"MIS-L"},
+		{0xae2a,"MPC"},
+		{0xae2b,"MIS-E"},
+		{0xae32,"Netelligent 10/100"},
+		{0xae34,"Netelligent 10"},
+		{0xae35,"Integrated NetFlex-3/P"},
+		{0xae40,"Netelligent 10/100 Dual"},
+		{0xae43,"ProLiant Integrated Netelligent 10/100"},
+		{0xae69,"CETUS-L"},
+		{0xae6c,"Northstar"},
+		{0xb011,"Integrated Netelligent 10/100"},
+		{0xb012,"Netelligent 10 T/2"},
+		{0xf130,"NetFlex-3/P ThunderLAN 1.0"},
+		{0xf150,"NetFlex-3/P ThunderLAN 2.3"},
+	}},
+	{0x1000, "Symbios Logic Inc. (formerly NCR)", {
+		{0x0001,"53c810"},
+		{0x0002,"53c820"},
+		{0x0003,"53c825"},
+		{0x0004,"53c815"},
+		{0x0005,"53c810AP"},
+		{0x0006,"53c860"},
+		{0x000b,"53c896"},
+		{0x000c,"53c895"},
+		{0x000d,"53c885"},
+		{0x000f,"53c875"},
+		{0x008f,"53c875J"},
+		{0x0901,"61C102"},
+		{0x1000,"63C815"},
+	}},
+	{0x1002, "ATI Technologies Inc", {
+		{0x4158,"68800AX [Mach32]"},
+		{0x4354,"215CT [Mach64 CT]"},
+		{0x4358,"210888CX [Mach64 CX]"},
+		{0x4554,"210888ET [Mach64 ET]"},
+		{0x4742,"215GB [Mach64 GB]"},
+		{0x4744,"215GD [Mach64 GD]"},
+		{0x4749,"215GI [Mach64 GI]"},
+		{0x4750,"215GP [Mach64 GP]"},
+		{0x4751,"215GQ [Mach64 GQ]"},
+		{0x4754,"215GT [Mach64 GT]"},
+		{0x4755,"215GTB [Mach64 GTB]"},
+		{0x4756,"215IIC [Mach64 GT IIC]"},
+		{0x4758,"210888GX [Mach64 GX]"},
+		{0x4c47,"215LG [Mach64 LG]"},
+		{0x4c54,"264LT [Mach64 LT]"},
+		{0x5654,"264VT [Mach64 VT]"},
+		{0x5655,"264VTB [Mach64 VTB]"},
+		{0x5656,"264VT4 [Mach64 VT4]"},
+	}},
+	{0x1003, "ULSI Systems", {
+		{0x0201,"US201"},
+	}},
+	{0x1004, "VLSI Technology Inc", {
+		{0x0005,"82C592-FC1"},
+		{0x0006,"82C593-FC1"},
+		{0x0007,"82C594-AFC2"},
+		{0x0008,"82C596/7 [Wildcat]"},
+		{0x0009,"82C597-AFC2"},
+		{0x000c,"82C541 [Lynx]"},
+		{0x000d,"82C543 [Lynx]"},
+		{0x0101,"82C532"},
+		{0x0102,"82C534"},
+		{0x0103,"82C538"},
+		{0x0104,"82C535"},
+		{0x0105,"82C147"},
+		{0x0200,"82C975"},
+		{0x0280,"82C925"},
+		{0x0702,"VAS96011 [Golden Gate II]"},
+	}},
+	{0x1005, "Avance Logic, Inc.", {
+		{0x2301,"ALG2301"},
+		{0x2302,"ALG2302"},
+		{0x2364,"ALG2364"},
+	}},
+	{0x1006, "Reply Group", {
+	}},
+	{0x1007, "NetFrame Systems Inc", {
+	}},
+	{0x1008, "Epson", {
+	}},
+	{0x100a, "Phoenix Technologies", {
+	}},
+	{0x100b, "National Semiconductor Corporation", {
+		{0x0001,"DP83810"},
+		{0x0002,"87415"},
+		{0xd001,"87410"},
+	}},
+	{0x100c, "Tseng Labs Inc", {
+		{0x3202,"ET4000/W32p rev A"},
+		{0x3205,"ET4000/W32p rev B"},
+		{0x3206,"ET4000/W32p rev C"},
+		{0x3207,"ET4000/W32p rev D"},
+		{0x3208,"ET6000"},
+	}},
+	{0x100d, "AST Research Inc", {
+	}},
+	{0x100e, "Weitek", {
+		{0x9001,"P9000"},
+		{0x9100,"P9100"},
+	}},
+	{0x1010, "Video Logic, Ltd.", {
+	}},
+	{0x1011, "Digital Equipment Corporation", {
+		{0x0001,"DECchip 21050"},
+		{0x0002,"DECchip 21040 [Tulip]"},
+		{0x0004,"DECchip 21030 [TGA]"},
+		{0x0007,"NVRAM [Zephyr NVRAM]"},
+		{0x0008,"KZPSA [KZPSA]"},
+		{0x0009,"DECchip 21140 [FasterNet]"},
+		{0x000d,"PBXGB [TGA2]"},
+		{0x000f,"DEFPA"},
+		{0x0014,"DECchip 21041 [Tulip Pass 3]"},
+		{0x0016,"DGLPB [OPPO]"},
+		{0x0019,"DECchip 21142/43"},
+		{0x0021,"DECchip 21052"},
+		{0x0022,"DECchip 21150"},
+		{0x0024,"DECchip 21152"},
+	}},
+	{0x1012, "Micronics Computers Inc", {
+	}},
+	{0x1013, "Cirrus Logic", {
+		{0x0038,"GD 7548"},
+		{0x00a0,"GD 5430/40 [Alpine]"},
+		{0x00a4,"GD 5434-4 [Alpine]"},
+		{0x00a8,"GD 5434-8 [Alpine]"},
+		{0x00ac,"GD 5436 [Alpine]"},
+		{0x00b8,"GD 5446"},
+		{0x00bc,"GD 5480"},
+		{0x00d0,"GD 5462"},
+		{0x00d4,"GD 5464 [Laguna]"},
+		{0x00d6,"GD 5465 [Laguna]"},
+		{0x1100,"CL 6729"},
+		{0x1110,"PD 6832"},
+		{0x1200,"GD 7542 [Nordic]"},
+		{0x1202,"GD 7543 [Viking]"},
+		{0x1204,"GD 7541 [Nordic Light]"},
+	}},
+	{0x1014, "IBM", {
+		{0x000a,"Fire Coral"},
+		{0x0018,"TR"},
+		{0x001b,"GXT-150P"},
+		{0x001d,"82G2675"},
+		{0x0020,"MCA"},
+		{0x0022,"IBM27-82351"},
+		{0x002e,"ServeRAID controller"},
+		{0x0036,"Miami"},
+		{0x003e,"TR_Wake"},
+		{0x0046,"MPIC interrupt controller"},
+		{0x007d,"3780IDSP [MWave]"},
+		{0xffff,"MPIC-2 interrupt controller"},
+	}},
+	{0x1015, "LSI Logic Corp of Canada", {
+	}},
+	{0x1016, "ICL Personal Systems", {
+	}},
+	{0x1017, "SPEA Software AG", {
+	}},
+	{0x1018, "Unisys Systems", {
+	}},
+	{0x1019, "Elitegroup Computer Systems", {
+	}},
+	{0x101a, "AT&T GIS (NCR)", {
+	}},
+	{0x101b, "Vitesse Semiconductor", {
+	}},
+	{0x101c, "Western Digital", {
+		{0x0193,"33C193A"},
+		{0x0197,"33C197A"},
+		{0x0296,"33C296A"},
+		{0x3193,"7193"},
+		{0x3197,"WD 7197"},
+		{0x3296,"33C296A"},
+		{0x4296,"34C296"},
+		{0xc24a,"90C"},
+	}},
+	{0x101e, "American Megatrends Inc.", {
+		{0x9010,"MegaRAID"},
+	}},
+	{0x101f, "PictureTel", {
+	}},
+	{0x1020, "Hitachi Computer Products", {
+	}},
+	{0x1021, "OKI Electric Industry Co. Ltd.", {
+	}},
+	{0x1022, "Advanced Micro Devices", {
+		{0x2000,"79c970 [PCnet LANCE]"},
+		{0x2020,"53c974 [PCscsi]"},
+		{0x2040,"79c974"},
+	}},
+	{0x1023, "Trident Microsystems", {
+		{0x9320,"TGUI 9320"},
+		{0x9397,"Cyber9397"},
+		{0x9420,"TGUI 9420"},
+		{0x9430,"TGUI 9430"},
+		{0x9440,"TGUI 9440"},
+		{0x9660,"TGUI 9660/9680/9682"},
+		{0x9750,"3DIm`age 975"},
+	}},
+	{0x1024, "Zenith Data Systems", {
+	}},
+	{0x1025, "Acer Incorporated", {
+		{0x1435,"M1435"},
+		{0x1445,"M1445"},
+		{0x1449,"M1449"},
+		{0x1451,"M1451"},
+		{0x1461,"M1461"},
+		{0x3141,"M3141"},
+		{0x3143,"M3143"},
+		{0x3145,"M3145"},
+		{0x3147,"M3147"},
+		{0x3149,"M3149"},
+		{0x3151,"M3151"},
+	}},
+	{0x1028, "Dell Computer Corporation", {
+	}},
+	{0x1029, "Siemens Nixdorf IS", {
+	}},
+	{0x102a, "LSI Logic", {
+		{0x0000,"HYDRA"},
+		{0x0010,"ASPEN"},
+	}},
+	{0x102b, "Matrox Graphics, Inc.", {
+		{0x0518,"2085PX [Atlas MGA-2]"},
+		{0x0519,"MGA 2064W [Millennium]"},
+		{0x051a,"MGA 1064SG [Mystique]"},
+		{0x051b,"MGA 2164W [Millennium II]"},
+		{0x051f,"MGA 2164W AGP [Millennium II AGP]"},
+		{0x0d10,"MGA Ultima/Impression"},
+	}},
+	{0x102c, "Chips and Technologies", {
+		{0x00b8,"64310"},
+		{0x00d8,"65545"},
+		{0x00dc,"65548"},
+		{0x00e0,"65550"},
+		{0x00e4,"65554"},
+		{0x00e5,"65555"},
+	}},
+	{0x102d, "Wyse Technology Inc.", {
+	}},
+	{0x102e, "Olivetti Advanced Technology", {
+	}},
+	{0x102f, "Toshiba America", {
+	}},
+	{0x1030, "TMC Research", {
+	}},
+	{0x1031, "Miro Computer Products AG", {
+		{0x5601,"DC20 ASIC"},
+	}},
+	{0x1033, "NEC Corporation", {
+		{0x0035,"USB"},
+		{0x0046,"PowerVR PCX2 [midas]"},
+	}},
+	{0x1034, "Framatome Connectors USA Inc.", {
+	}},
+	{0x1035, "Comp. & Comm. Research Lab", {
+	}},
+	{0x1036, "Future Domain Corp.", {
+		{0x0000,"TMC-18C30 [36C70]"},
+	}},
+	{0x1037, "Hitachi Micro Systems", {
+	}},
+	{0x1038, "AMP, Inc", {
+	}},
+	{0x1039, "Silicon Integrated Systems", {
+		{0x0001,"5591/5592 AGP"},
+		{0x0002,"SG86C202"},
+		{0x0008,"85C503"},
+		{0x0009,"ACPI"},
+		{0x0200,"5597/5598 VGA"},
+		{0x0204,"82C204"},
+		{0x0205,"SG86C205"},
+		{0x0406,"85C501/2"},
+		{0x0496,"85C496"},
+		{0x0597,"5513C"},
+		{0x0601,"85C601"},
+		{0x5107,"5107"},
+		{0x5511,"5511/5512"},
+		{0x5513,"5513"},
+		{0x5571,"5571"},
+		{0x5591,"5591/5592 Host"},
+		{0x5597,"5597 [SiS5582]"},
+		{0x7001,"7001"},
+	}},
+	{0x103a, "Seiko Epson Corporation", {
+	}},
+	{0x103b, "Tatung Co. of America", {
+	}},
+	{0x103c, "Hewlett-Packard Company", {
+		{0x1030,"J2585A"},
+		{0x1031,"J2585B"},
+		{0x2910,"E2910A"},
+		{0x2925,"E2925A"},
+	}},
+	{0x103e, "Solliday Engineering", {
+	}},
+	{0x103f, "Synopsys/Logic Modeling Group", {
+	}},
+	{0x1040, "Accelgraphics Inc.", {
+	}},
+	{0x1041, "Computrend", {
+	}},
+	{0x1042, "Micron", {
+		{0x1000,"FDC 37C665"},
+		{0x1001,"37C922"},
+		{0x3000,"Samurai_0"},
+		{0x3010,"Samurai_1"},
+		{0x3020,"Samurai_IDE"},
+	}},
+	{0x1043, "Asustek Computer, Inc.", {
+	}},
+	{0x1044, "Distributed Processing Technology", {
+		{0xa400,"SmartCache/Raid III or IV"},
+	}},
+	{0x1045, "OPTi Inc.", {
+		{0xc178,"92C178"},
+		{0xc557,"82C557 [Viper-M]"},
+		{0xc558,"82C558 [Viper-M ISA+IDE]"},
+		{0xc621,"82C621"},
+		{0xc700,"82C700"},
+		{0xc701,"82C701 [FireStar Plus]"},
+		{0xc814,"82C814 [Firebridge 1]"},
+		{0xc822,"82C822"},
+		{0xc824,"82C824"},
+		{0xd568,"82C825 [Firebridge 2]"},
+	}},
+	{0x1046, "IPC Corporation, Ltd.", {
+	}},
+	{0x1047, "Genoa Systems Corp", {
+	}},
+	{0x1048, "Elsa AG", {
+	}},
+	{0x1049, "Fountain Technologies, Inc.", {
+	}},
+	{0x104a, "SGS Thomson Microelectronics", {
+		{0x0008,"STG 2000X"},
+		{0x0009,"STG 1764X"},
+	}},
+	{0x104b, "BusLogic", {
+		{0x0140,"BT-946C (old) [multimaster  01]"},
+		{0x1040,"BT-946C (BA80C30) [MultiMaster 10]"},
+		{0x8130,"Flashpoint LT"},
+	}},
+	{0x104c, "Texas Instruments", {
+		{0x3d04,"TVP4010 [Permedia]"},
+		{0x3d07,"TVP4020 [Permedia 2]"},
+		{0xa001,"TDC1570"},
+		{0xa100,"TDC1561"},
+		{0xac10,"PCI1050"},
+		{0xac11,"PCI1053"},
+		{0xac12,"PCI1130"},
+		{0xac13,"PCI1031"},
+		{0xac15,"PCI1131"},
+		{0xac16,"PCI-1250"},
+		{0xac17,"PCI-1220"},
+	}},
+	{0x104d, "Sony Corporation", {
+	}},
+	{0x104e, "Oak Technology, Inc", {
+		{0x0107,"OTI107"},
+	}},
+	{0x104f, "Co-time Computer Ltd", {
+	}},
+	{0x1050, "Winbond Electronics Corp", {
+		{0x0940,"89C940"},
+	}},
+	{0x1051, "Anigma, Inc.", {
+	}},
+	{0x1053, "Young Micro Systems", {
+	}},
+	{0x1054, "Hitachi, Ltd", {
+	}},
+	{0x1055, "EFAR Microsystems", {
+	}},
+	{0x1056, "ICL", {
+	}},
+	{0x1057, "Motorola Computer Group", {
+		{0x0001,"MPC105 [Eagle]"},
+		{0x0002,"MPC106 [Grackle]"},
+		{0x4801,"Raven"},
+	}},
+	{0x1058, "Electronics & Telecommunications RSH", {
+	}},
+	{0x1059, "Teknor Industrial Computers Inc", {
+	}},
+	{0x105a, "Promise Technology, Inc.", {
+		{0x4d33,"20246"},
+		{0x5300,"DC5300"},
+	}},
+	{0x105b, "Foxconn International, Inc.", {
+	}},
+	{0x105c, "Wipro Infotech Limited", {
+	}},
+	{0x105d, "Number 9 Computer Company", {
+		{0x2309,"Imagine 128"},
+		{0x2339,"Imagine 128-II"},
+		{0x493d,"Imagine 128 T2R [Ticket to Ride]"},
+	}},
+	{0x105e, "Vtech Computers Ltd", {
+	}},
+	{0x105f, "Infotronic America Inc", {
+	}},
+	{0x1060, "United Microelectronics", {
+		{0x0001,"UM82C881"},
+		{0x0002,"UM82C886"},
+		{0x0101,"UM8673F"},
+		{0x0881,"UM8881"},
+		{0x0886,"UM8886F"},
+		{0x0891,"UM8891A"},
+		{0x1001,"UM886A"},
+		{0x673a,"UM8886BF"},
+		{0x8710,"UM8710"},
+		{0x886a,"UM8886A"},
+		{0x8881,"UM8881F"},
+		{0x8886,"UM8886F"},
+		{0x888a,"UM8886A"},
+		{0x8891,"UM8891A"},
+		{0x9017,"UM9017F"},
+		{0xe881,"UM8881N"},
+		{0xe886,"UM8886N"},
+		{0xe891,"UM8891N"},
+	}},
+	{0x1061, "I.I.T.", {
+		{0x0001,"AGX016"},
+		{0x0002,"IIT3204/3501"},
+	}},
+	{0x1062, "Maspar Computer Corp", {
+	}},
+	{0x1063, "Ocean Office Automation", {
+	}},
+	{0x1064, "Alcatel CIT", {
+	}},
+	{0x1065, "Texas Microsystems", {
+	}},
+	{0x1066, "PicoPower Technology", {
+		{0x0000,"PT80C826"},
+		{0x0001,"PT86C52x [Vesuvius]"},
+		{0x0002,"PT80C524 [Nile]"},
+	}},
+	{0x1067, "Mitsubishi Electronics", {
+	}},
+	{0x1068, "Diversified Technology", {
+	}},
+	{0x1069, "Mylex Corporation", {
+		{0x0001,"DAC960P"},
+	}},
+	{0x106a, "Aten Research Inc", {
+	}},
+	{0x106b, "Apple Computer Inc.", {
+		{0x0001,"Bandit PowerPC host bridge"},
+		{0x0002,"Grand Central I/O"},
+		{0x000e,"Hydra Mac I/O"},
+	}},
+	{0x106c, "Hyundai Electronics America", {
+	}},
+	{0x106d, "Sequent Computer Systems", {
+	}},
+	{0x106e, "DFI, Inc", {
+	}},
+	{0x106f, "City Gate Development Ltd", {
+	}},
+	{0x1070, "Daewoo Telecom Ltd", {
+	}},
+	{0x1071, "Mitac", {
+	}},
+	{0x1072, "GIT Co Ltd", {
+	}},
+	{0x1073, "Yamaha Corporation", {
+		{0x0002,"YGV615 [RPA3 3D-Graphics Controller]"},
+	}},
+	{0x1074, "NexGen Microsystems", {
+		{0x4e78,"82c501"},
+	}},
+	{0x1075, "Advanced Integrations Research", {
+	}},
+	{0x1076, "Chaintech Computer Co. Ltd", {
+	}},
+	{0x1077, "Q Logic", {
+		{0x1020,"ISP1020"},
+		{0x1022,"ISP1022"},
+	}},
+	{0x1078, "Cyrix Corporation", {
+		{0x0000,"5510 [Grappa]"},
+		{0x0001,"PCI_Master"},
+		{0x0002,"5520 [Cognac]"},
+		{0x0100,"5530_Legacy [Kahlua]"},
+		{0x0101,"5530_SMI [Kahlua]"},
+		{0x0102,"5530_IDE [Kahlua]"},
+		{0x0103,"5530_Audio [Kahlua]"},
+		{0x0104,"5530_Video [Kahlua]"},
+	}},
+	{0x1079, "I-Bus", {
+	}},
+	{0x107a, "NetWorth", {
+	}},
+	{0x107b, "Gateway 2000", {
+	}},
+	{0x107c, "Goldstar", {
+	}},
+	{0x107d, "LeadTek Research Inc.", {
+		{0x0000,"P86C850"},
+	}},
+	{0x107e, "Interphase Corporation", {
+	}},
+	{0x107f, "Data Technology Corporation", {
+		{0x0802,"SL82C105"},
+	}},
+	{0x1080, "Contaq Microsystems", {
+		{0x0600,"82C599"},
+		{0xc693,"82c693"},
+	}},
+	{0x1081, "Supermac Technology", {
+	}},
+	{0x1082, "EFA Corporation of America", {
+	}},
+	{0x1083, "Forex Computer Corporation", {
+		{0x0001,"FR710"},
+	}},
+	{0x1084, "Parador", {
+	}},
+	{0x1085, "Tulip Computers Int.B.V.", {
+	}},
+	{0x1086, "J. Bond Computer Systems", {
+	}},
+	{0x1087, "Cache Computer", {
+	}},
+	{0x1088, "Microcomputer Systems (M) Son", {
+	}},
+	{0x1089, "Data General Corporation", {
+	}},
+	{0x108a, "Bit3 Computer Corp.", {
+	}},
+	{0x108c, "Oakleigh Systems Inc.", {
+	}},
+	{0x108d, "Olicom", {
+		{0x0001,"OC-3136/3137"},
+		{0x0011,"OC-2315"},
+		{0x0012,"OC-2325"},
+		{0x0013,"OC-2183/2185"},
+		{0x0014,"OC-2326"},
+		{0x0021,"OC-6151/6152 [RapidFire ATM PCI 155]"},
+	}},
+	{0x108e, "Sun Microsystems Computer Corp.", {
+		{0x1000,"EBUS"},
+		{0x1001,"Happy Meal"},
+		{0x5000,"Advanced PCI Bridge"},
+		{0x8000,"PCI Bus Module"},
+		{0xa000,"Ultra IIi PCI"},
+	}},
+	{0x108f, "Systemsoft", {
+	}},
+	{0x1090, "Encore Computer Corporation", {
+	}},
+	{0x1091, "Intergraph Corporation", {
+	}},
+	{0x1092, "Diamond Multimedia Systems", {
+	}},
+	{0x1093, "National Instruments", {
+		{0xc801,"PCI_GPIB"},
+	}},
+	{0x1094, "First International Computers", {
+	}},
+	{0x1095, "CMD Technology Inc", {
+		{0x0640,"PCI0640"},
+		{0x0643,"PCI0643"},
+		{0x0646,"PCI0646"},
+		{0x0650,"PBC0650A"},
+		{0x0670,"670"},
+	}},
+	{0x1096, "Alacron", {
+	}},
+	{0x1097, "Appian Technology", {
+	}},
+	{0x1098, "Quantum Designs (H.K.) Ltd", {
+		{0x0001,"QD-8500"},
+		{0x0002,"QD-8580"},
+	}},
+	{0x1099, "Samsung Electronics Co., Ltd", {
+	}},
+	{0x109a, "Packard Bell", {
+	}},
+	{0x109b, "Gemlight Computer Ltd.", {
+	}},
+	{0x109c, "Megachips Corporation", {
+	}},
+	{0x109d, "Zida Technologies Ltd.", {
+	}},
+	{0x109e, "Brooktree Corporation", {
+		{0x0350,"Bt848"},
+		{0x0351,"Bt849A"},
+		{0x8472,"Bt8472"},
+		{0x8474,"Bt8474"},
+	}},
+	{0x109f, "Trigem Computer Inc.", {
+	}},
+	{0x10a0, "Meidensha Corporation", {
+	}},
+	{0x10a1, "Juko Electronics Ind. Co. Ltd", {
+	}},
+	{0x10a2, "Quantum Corporation", {
+	}},
+	{0x10a3, "Everex Systems Inc", {
+	}},
+	{0x10a4, "Globe Manufacturing Sales", {
+	}},
+	{0x10a5, "Racal Interlan", {
+	}},
+	{0x10a6, "Informtech Industrial Ltd.", {
+	}},
+	{0x10a7, "Benchmarq Microelectronics", {
+	}},
+	{0x10a8, "Sierra Semiconductor", {
+		{0x0000,"STB Horizon 64"},
+	}},
+	{0x10a9, "Silicon Graphics", {
+	}},
+	{0x10aa, "ACC Microelectronics", {
+		{0x0000,"ACCM 2188"},
+	}},
+	{0x10ab, "Digicom", {
+	}},
+	{0x10ac, "Honeywell IAC", {
+	}},
+	{0x10ad, "Symphony Labs", {
+		{0x0001,"W83769F"},
+		{0x0103,"SL82c103"},
+		{0x0105,"SL82c105"},
+		{0x0565,"W83C553"},
+	}},
+	{0x10ae, "Cornerstone Technology", {
+	}},
+	{0x10af, "Micro Computer Systems Inc", {
+	}},
+	{0x10b0, "CardExpert Technology", {
+	}},
+	{0x10b1, "Cabletron Systems Inc", {
+	}},
+	{0x10b2, "Raytheon Company", {
+	}},
+	{0x10b3, "Databook Inc", {
+		{0x3106,"DB87144"},
+		{0xb106,"DB87144"},
+	}},
+	{0x10b4, "STB Systems Inc", {
+	}},
+	{0x10b5, "PLX Technology, Inc.", {
+		{0x9036,"9036"},
+		{0x9060,"9060"},
+		{0x906e,"9060ES"},
+		{0x9080,"9080"},
+	}},
+	{0x10b6, "Madge Networks", {
+		{0x0001,"Smart"},
+		{0x0002,"Smart 16/4 BM Mk2 PCI Ringnode"},
+		{0x1001,"Collage 155 Server"},
+	}},
+	{0x10b7, "3Com Corporation", {
+		{0x0001,"3c985 1000BaseSX"},
+		{0x3390,"Token Link Velocity"},
+		{0x5900,"3c590 10BaseT [Vortex]"},
+		{0x5950,"3c595 100BaseTX [Vortex]"},
+		{0x5951,"3c595 100BaseT4 [Vortex]"},
+		{0x5952,"3c595 100Base-MII [Vortex]"},
+		{0x9000,"3c900 10BaseT [Boomerang]"},
+		{0x9001,"3c900 Combo [Boomerang]"},
+		{0x9050,"3c905 100BaseTX [Boomerang]"},
+		{0x9051,"3c905 100BaseT4"},
+		{0x9055,"3c905B 100BaseTX [Cyclone]"},
+	}},
+	{0x10b8, "Standard Microsystems", {
+		{0x0005,"9432 TX"},
+		{0x1000,"37c665"},
+		{0x1001,"37C922"},
+	}},
+	{0x10b9, "Acer Laboratories Inc.", {
+		{0x1435,"M1435"},
+		{0x1445,"M1445"},
+		{0x1449,"M1449"},
+		{0x1451,"M1451"},
+		{0x1461,"M1461"},
+		{0x1489,"M1489"},
+		{0x1511,"M1511"},
+		{0x1513,"M1513"},
+		{0x1521,"M1521"},
+		{0x1523,"M1523"},
+		{0x1531,"M1531"},
+		{0x1533,"M1533"},
+		{0x1541,"M1541"},
+		{0x1543,"M1543"},
+		{0x3141,"M3141"},
+		{0x3143,"M3143"},
+		{0x3145,"M3145"},
+		{0x3147,"M3147"},
+		{0x3149,"M3149"},
+		{0x3151,"M3151"},
+		{0x3307,"M3307"},
+		{0x5215,"M4803"},
+		{0x5217,"m5217h"},
+		{0x5219,"M5219"},
+		{0x5229,"M5229"},
+		{0x5235,"m5225"},
+		{0x5237,"M5237"},
+		{0x7101,"M7101"},
+	}},
+	{0x10ba, "Mitsubishi Electric Corp.", {
+	}},
+	{0x10bb, "Dapha Electronics Corporation", {
+	}},
+	{0x10bc, "Advanced Logic Research", {
+	}},
+	{0x10bd, "Surecom Technology", {
+		{0x0e34,"NE-34PCI LAN"},
+	}},
+	{0x10be, "Tseng Labs International Co.", {
+	}},
+	{0x10bf, "Most Inc", {
+	}},
+	{0x10c0, "Boca Research Inc.", {
+	}},
+	{0x10c1, "ICM Co., Ltd.", {
+	}},
+	{0x10c2, "Auspex Systems Inc.", {
+	}},
+	{0x10c3, "Samsung Semiconductors, Inc.", {
+	}},
+	{0x10c4, "Award Software International Inc.", {
+	}},
+	{0x10c5, "Xerox Corporation", {
+	}},
+	{0x10c6, "Rambus Inc.", {
+	}},
+	{0x10c7, "Media Vision", {
+	}},
+	{0x10c8, "Neomagic Corporation", {
+		{0x0001,"NM2070 [MagicGraph NM2070]"},
+		{0x0002,"NM2090 [MagicGraph 128V]"},
+		{0x0003,"NM2093 [MagicGraph 128ZV]"},
+		{0x0004,"NM2160 [MagicGraph 128XD]"},
+	}},
+	{0x10c9, "Dataexpert Corporation", {
+	}},
+	{0x10ca, "Fujitsu Microelectr., Inc.", {
+	}},
+	{0x10cb, "Omron Corporation", {
+	}},
+	{0x10cc, "Mentor ARC Inc", {
+	}},
+	{0x10cd, "Advanced System Products, Inc", {
+		{0x1200,"ASC1200 [(abp940) Fast SCSI-II]"},
+		{0x1300,"ABP940-U"},
+		{0x2300,"ABP940-UW"},
+	}},
+	{0x10ce, "Radius", {
+	}},
+	{0x10cf, "Citicorp TTI", {
+		{0x2001,"mb86605"},
+	}},
+	{0x10d0, "Fujitsu Limited", {
+	}},
+	{0x10d1, "FuturePlus Systems Corp.", {
+	}},
+	{0x10d2, "Molex Incorporated", {
+	}},
+	{0x10d3, "Jabil Circuit Inc", {
+	}},
+	{0x10d4, "Hualon Microelectronics", {
+	}},
+	{0x10d5, "Autologic Inc.", {
+	}},
+	{0x10d6, "Cetia", {
+	}},
+	{0x10d7, "BCM Advanced Research", {
+	}},
+	{0x10d8, "Advanced Peripherals Labs", {
+	}},
+	{0x10d9, "Macronix, Inc.", {
+		{0x0512,"MX98713"},
+		{0x0531,"MX987x5"},
+	}},
+	{0x10da, "Compaq IPG-Austin", {
+	}},
+	{0x10db, "Rohm LSI Systems, Inc.", {
+	}},
+	{0x10dc, "CERN/ECP/EDU", {
+		{0x0001,"STAR/RD24 SCI-PCI (PMC)"},
+		{0x0002,"TAR/RD24 SCI-PCI (PMC) [ATT 2C15-3 (FPGA)  SCI bridge  on PCI 5 Volt card]"},
+		{0x0021,"HIPPI destination"},
+		{0x0022,"HIPPI source"},
+	}},
+	{0x10dd, "Evans & Sutherland", {
+	}},
+	{0x10de, "Nvidia Corporation", {
+		{0x0008,"NV1"},
+		{0x0009,"DAC64"},
+	}},
+	{0x10df, "Emulex Corporation", {
+	}},
+	{0x10e0, "Integrated Micro Solutions Inc.", {
+		{0x5026,"IMS5026/27/28"},
+		{0x8849,"8849"},
+		{0x9128,"IMS9129"},
+	}},
+	{0x10e1, "Tekram Technology Co.,Ltd.", {
+		{0x690c,"690c"},
+		{0xdc29,"DC290"},
+	}},
+	{0x10e2, "Aptix Corporation", {
+	}},
+	{0x10e3, "Tundra Semiconductor Corp.", {
+		{0x0000,"CA91C042 [Universe]"},
+		{0x0860,"CA91C860 [QSpan]"},
+	}},
+	{0x10e4, "Tandem Computers", {
+	}},
+	{0x10e5, "Micro Industries Corporation", {
+	}},
+	{0x10e6, "Gainbery Computer Products Inc.", {
+	}},
+	{0x10e7, "Vadem", {
+	}},
+	{0x10e8, "Applied Micro Circuits Corporation", {
+		{0x5920,"S5920"},
+		{0x8043,"LANai4.x [Myrinet LANai interface chip]"},
+		{0x8062,"S5933_PARASTATION"},
+		{0x807d,"S5933 [Matchmaker]"},
+		{0x809c,"S5933_HEPC3"},
+	}},
+	{0x10e9, "Alps Electric Co., Ltd.", {
+	}},
+	{0x10ea, "Intergraphics Systems", {
+		{0x1680,"IGA-1680"},
+		{0x1682,"IGA-1682"},
+	}},
+	{0x10eb, "Artists Graphics", {
+		{0x0101,"3GA"},
+	}},
+	{0x10ec, "Realtek Semiconductor Co., Ltd.", {
+		{0x8029,"8029"},
+		{0x8129,"8129"},
+		{0x8139,"8139"},
+	}},
+	{0x10ed, "Ascii Corporation", {
+		{0x7310,"V7310"},
+	}},
+	{0x10ee, "Xilinx, Inc.", {
+	}},
+	{0x10ef, "Racore Computer Products, Inc.", {
+	}},
+	{0x10f0, "Peritek Corporation", {
+	}},
+	{0x10f1, "Tyan Computer", {
+	}},
+	{0x10f2, "Achme Computer, Inc.", {
+	}},
+	{0x10f3, "Alaris, Inc.", {
+	}},
+	{0x10f4, "S-MOS Systems, Inc.", {
+	}},
+	{0x10f5, "NKK Corporation", {
+		{0xa001,"NDR4000 [NR4600 Bridge]"},
+	}},
+	{0x10f6, "Creative Electronic Systems SA", {
+	}},
+	{0x10f7, "Matsushita Electric Industrial Co., Ltd.", {
+	}},
+	{0x10f8, "Altos India Ltd", {
+	}},
+	{0x10f9, "PC Direct", {
+	}},
+	{0x10fa, "Truevision", {
+		{0x000c,"TARGA 1000"},
+	}},
+	{0x10fb, "Thesys Gesellschaft fr Mikroelektronik mbH", {
+	}},
+	{0x10fc, "I-O Data Device, Inc.", {
+	}},
+	{0x10fd, "Soyo Computer, Inc", {
+	}},
+	{0x10fe, "Fast Multimedia AG", {
+	}},
+	{0x10ff, "NCube", {
+	}},
+	{0x1100, "Jazz Multimedia", {
+	}},
+	{0x1101, "Initio Corporation", {
+		{0x9100,"320 P"},
+		{0x9500,"360P"},
+	}},
+	{0x1102, "Creative Labs", {
+	}},
+	{0x1103, "Triones Technologies, Inc.", {
+	}},
+	{0x1104, "RasterOps Corp.", {
+	}},
+	{0x1105, "Sigma Designs, Inc.", {
+	}},
+	{0x1106, "VIA Technologies, Inc.", {
+		{0x0505,"VT 82C505"},
+		{0x0561,"VT 82C561"},
+		{0x0571,"VT82C586 IDE [Apollo]"},
+		{0x0576,"VT 82C576 3V [Apollo Master]"},
+		{0x0585,"VT82C585VP [Apollo VP1/VPX]"},
+		{0x0586,"VT82C586 ISA [Apollo VP]"},
+		{0x0595,"VT82C595 [Apollo VP2]"},
+		{0x0597,"VT82C597 [Apollo VP3]"},
+		{0x0926,"VT82C926 [Amazon]"},
+		{0x1000,"82C570MV"},
+		{0x1106,"82C570MV"},
+		{0x1571,"VT 82C416MV"},
+		{0x1595,"VT82C595/97 [Apollo VP2/97]"},
+		{0x3038,"VT82C586B USB"},
+		{0x3040,"VT82C586B ACPI"},
+		{0x6100,"VT85C100A [Rhine II]"},
+		{0x8597,"VT82C597 [Apollo VP3 AGP]"},
+	}},
+	{0x1107, "Stratus Computers", {
+	}},
+	{0x1108, "Proteon, Inc.", {
+		{0x0100,"p1690plus_AA"},
+		{0x0101,"p1690plus_AB"},
+	}},
+	{0x1109, "Cogent Data Technologies, Inc.", {
+		{0x1400,"EM110TX [EX110TX PCI Fast Ethernet Adapter]"},
+	}},
+	{0x110a, "Siemens Nixdorf AG", {
+		{0x6120,"SZB6120"},
+	}},
+	{0x110b, "Chromatic Research Inc.", {
+	}},
+	{0x110c, "Mini-Max Technology, Inc.", {
+	}},
+	{0x110d, "Znyx Advanced Systems", {
+	}},
+	{0x110e, "CPU Technology", {
+	}},
+	{0x110f, "Ross Technology", {
+	}},
+	{0x1110, "Powerhouse Systems", {
+	}},
+	{0x1111, "Santa Cruz Operation", {
+	}},
+	{0x1112, "RNS - Div. of Meret Communications Inc", {
+	}},
+	{0x1113, "Accton Technology Corporation", {
+	}},
+	{0x1114, "Atmel Corporation", {
+	}},
+	{0x1115, "3D Labs", {
+	}},
+	{0x1116, "Data Translation", {
+	}},
+	{0x1117, "Datacube, Inc", {
+	}},
+	{0x1118, "Berg Electronics", {
+	}},
+	{0x1119, "ICP Vortex Computersysteme GmbH", {
+		{0x0000,"GDT6000/6020/6050"},
+		{0x0001,"GDT6000b/6010"},
+		{0x0002,"GDT6110/6510"},
+		{0x0003,"GDT6120/6520"},
+		{0x0004,"GDT6530"},
+		{0x0005,"GDT6550"},
+		{0x0006,"GDT6x17"},
+		{0x0007,"GDT6x27"},
+		{0x0008,"GDT6537"},
+		{0x0009,"GDT5557"},
+		{0x000a,"GDT6x15"},
+		{0x000b,"GDT6x25"},
+		{0x000c,"GDT6535"},
+		{0x000d,"GDT6555"},
+		{0x0100,"GDT 6117RP/6517RP"},
+		{0x0101,"GDT 6127RP/6527RP"},
+		{0x0102,"GDT 6537RP"},
+		{0x0103,"GDT 6557RP"},
+		{0x0104,"GDT 6111RP/6511RP"},
+		{0x0105,"GDT 6121RP/6521RP"},
+		{0x0110,"GDT 6117RP1/6517RP1"},
+		{0x0111,"GDT 6127RP1/6527RP1"},
+		{0x0112,"GDT 6537RP1"},
+		{0x0113,"GDT 6557RP1"},
+		{0x0114,"GDT 6111RP1/6511RP1"},
+		{0x0115,"GDT 6121RP1/6521RP1"},
+		{0x0120,"GDT 6117RP2/6517RP2"},
+		{0x0121,"GDT 6127RP2/6527RP2"},
+		{0x0122,"GDT 6537RP2"},
+		{0x0123,"GDT 6557RP2"},
+		{0x0124,"GDT 6111RP2/6511RP2"},
+		{0x0125,"GDT 6121RP2/6521RP2"},
+	}},
+	{0x111a, "Efficient Networks, Inc", {
+		{0x0000,"155P-MF1 (FPGA)"},
+		{0x0002,"155P-MF1 (ASIC)"},
+	}},
+	{0x111b, "Teledyne Electronic Systems", {
+	}},
+	{0x111c, "Tricord Systems Inc.", {
+	}},
+	{0x111d, "Integrated Device Tech", {
+	}},
+	{0x111e, "Eldec", {
+	}},
+	{0x111f, "Precision Digital Images", {
+	}},
+	{0x1120, "EMC Corporation", {
+	}},
+	{0x1121, "Zilog", {
+	}},
+	{0x1122, "Multi-tech Systems, Inc.", {
+	}},
+	{0x1123, "Excellent Design, Inc.", {
+	}},
+	{0x1124, "Leutron Vision AG", {
+	}},
+	{0x1125, "Eurocore", {
+	}},
+	{0x1127, "FORE Systems Inc", {
+		{0x0210,"PCA-200PC"},
+		{0x0300,"PCA-200E"},
+	}},
+	{0x1129, "Firmworks", {
+	}},
+	{0x112a, "Hermes Electronics Company, Ltd.", {
+	}},
+	{0x112b, "Linotype - Hell AG", {
+	}},
+	{0x112c, "Zenith Data Systems", {
+	}},
+	{0x112d, "Ravicad", {
+	}},
+	{0x112e, "Infomedia Microelectronics Inc.", {
+	}},
+	{0x112f, "Imaging Technology Inc", {
+		{0x0000,"MVC IC-PCI"},
+	}},
+	{0x1130, "Computervision", {
+	}},
+	{0x1131, "Philips Semiconductors", {
+		{0x7145,"SAA7145"},
+		{0x7146,"SAA7146"},
+	}},
+	{0x1132, "Mitel Corp.", {
+	}},
+	{0x1133, "Eicon Technology Corporation", {
+		{0xe001,"DIVA20PRO"},
+		{0xe002,"DIVA20"},
+		{0xe003,"DIVA20PRO_U"},
+		{0xe004,"DIVA20_U"},
+	}},
+	{0x1134, "Mercury Computer Systems", {
+	}},
+	{0x1135, "Fuji Xerox Co Ltd", {
+	}},
+	{0x1136, "Momentum Data Systems", {
+	}},
+	{0x1137, "Cisco Systems Inc", {
+	}},
+	{0x1138, "Ziatech Corporation", {
+		{0x8905,"8905 [STD 32 Bridge]"},
+	}},
+	{0x1139, "Dynamic Pictures, Inc", {
+	}},
+	{0x113a, "FWB Inc", {
+	}},
+	{0x113b, "Network Computing Devices", {
+	}},
+	{0x113c, "Cyclone Microsystems, Inc.", {
+		{0x0001,"PCI-SDK [PCI i960 Evaluation Platform]"},
+		{0x0911,"PCI-911 [PCI-based i960Jx Intelligent I/O Controller]"},
+		{0x0912,"PCI-912 [i960CF-based Intelligent I/O Controller]"},
+		{0x0913,"PCI-913"},
+	}},
+	{0x113d, "Leading Edge Products Inc", {
+	}},
+	{0x113e, "Sanyo Electric Co - Computer Engineering Dept", {
+	}},
+	{0x113f, "Equinox Systems, Inc.", {
+	}},
+	{0x1140, "Intervoice Inc", {
+	}},
+	{0x1141, "Crest Microsystem Inc", {
+	}},
+	{0x1142, "Alliance Semiconductor Corporation", {
+		{0x3210,"AP6410"},
+		{0x6422,"AP6422"},
+		{0x6424,"AT24"},
+		{0x643d,"AT3D"},
+	}},
+	{0x1143, "NetPower, Inc", {
+	}},
+	{0x1144, "Cincinnati Milacron", {
+	}},
+	{0x1145, "Workbit Corporation", {
+	}},
+	{0x1146, "Force Computers", {
+	}},
+	{0x1147, "Interface Corp", {
+	}},
+	{0x1148, "Schneider & Koch", {
+	}},
+	{0x1149, "Win System Corporation", {
+	}},
+	{0x114a, "VMIC", {
+		{0x7587,"VMIVME-7587"},
+	}},
+	{0x114b, "Canopus Co., Ltd", {
+	}},
+	{0x114c, "Annabooks", {
+	}},
+	{0x114d, "IC Corporation", {
+	}},
+	{0x114e, "Nikon Systems Inc", {
+	}},
+	{0x114f, "Digi International", {
+		{0x0002,"AccelePort EPC"},
+		{0x0003,"RightSwitch SE-6"},
+		{0x0004,"AccelePort Xem"},
+		{0x0006,"AccelePort Xr,C/X"},
+		{0x0009,"AccelePort Xr/J"},
+		{0x000a,"AccelePort EPC/J"},
+		{0x0027,"AccelePort Xr 920"},
+	}},
+	{0x1150, "Thinking Machines Corp", {
+	}},
+	{0x1151, "JAE Electronics Inc.", {
+	}},
+	{0x1152, "Megatek", {
+	}},
+	{0x1153, "Land Win Electronic Corp", {
+	}},
+	{0x1154, "Melco Inc", {
+	}},
+	{0x1155, "Pine Technology Ltd", {
+	}},
+	{0x1156, "Periscope Engineering", {
+	}},
+	{0x1157, "Avsys Corporation", {
+	}},
+	{0x1158, "Voarx R & D Inc", {
+	}},
+	{0x1159, "Mutech Corp", {
+		{0x0001,"MV-1000"},
+	}},
+	{0x115a, "Harlequin Ltd", {
+	}},
+	{0x115b, "Parallax Graphics", {
+	}},
+	{0x115c, "Photron Ltd.", {
+	}},
+	{0x115d, "Xircom", {
+	}},
+	{0x115e, "Peer Protocols Inc", {
+	}},
+	{0x115f, "Maxtor Corporation", {
+	}},
+	{0x1160, "Megasoft Inc", {
+	}},
+	{0x1161, "PFU Limited", {
+	}},
+	{0x1162, "OA Laboratory Co Ltd", {
+	}},
+	{0x1163, "Rendition", {
+		{0x0001,"Verite 1000 PCI"},
+		{0x2000,"Verite V2100"},
+	}},
+	{0x1164, "Advanced Peripherals Technologies", {
+	}},
+	{0x1165, "Imagraph Corporation", {
+	}},
+	{0x1166, "Pequr Technology", {
+	}},
+	{0x1167, "Mutoh Industries Inc", {
+	}},
+	{0x1168, "Thine Electronics Inc", {
+	}},
+	{0x1169, "Centre for Development of Advanced Computing", {
+	}},
+	{0x116a, "Polaris Communications", {
+	}},
+	{0x116b, "Connectware Inc", {
+	}},
+	{0x116c, "Intelligent Resources Integrated Systems", {
+	}},
+	{0x116d, "Martin-Marietta", {
+	}},
+	{0x116e, "Electronics for Imaging", {
+	}},
+	{0x116f, "Workstation Technology", {
+	}},
+	{0x1170, "Inventec Corporation", {
+	}},
+	{0x1171, "Loughborough Sound Images Plc", {
+	}},
+	{0x1172, "Altera Corporation", {
+	}},
+	{0x1173, "Adobe Systems, Inc", {
+	}},
+	{0x1174, "Bridgeport Machines", {
+	}},
+	{0x1175, "Mitron Computer Inc.", {
+	}},
+	{0x1176, "SBE Incorporated", {
+	}},
+	{0x1177, "Silicon Engineering", {
+	}},
+	{0x1178, "Alfa, Inc.", {
+	}},
+	{0x1179, "Toshiba America Info Systems", {
+		{0x0601,"601"},
+		{0x060a,"ToPIC95"},
+		{0x060f,"ToPIC97"},
+		{0x0701,"Lucent DSP1645 [Mars]"},
+	}},
+	{0x117b, "L G Electronics, Inc.", {
+	}},
+	{0x117c, "Atto Technology", {
+	}},
+	{0x117d, "Becton & Dickinson", {
+	}},
+	{0x117e, "T/R Systems", {
+	}},
+	{0x117f, "Integrated Circuit Systems", {
+	}},
+	{0x1180, "Ricoh Co Ltd", {
+		{0x0466,"RL5C466"},
+	}},
+	{0x1181, "Telmatics International", {
+	}},
+	{0x1183, "Fujikura Ltd", {
+	}},
+	{0x1184, "Forks Inc", {
+	}},
+	{0x1185, "Dataworld International Ltd", {
+	}},
+	{0x1186, "D-Link System Inc", {
+	}},
+	{0x1187, "Advanced Technology Laboratories, Inc.", {
+	}},
+	{0x1188, "Shima Seiki Manufacturing Ltd.", {
+	}},
+	{0x1189, "Matsushita Electronics Co Ltd", {
+	}},
+	{0x118a, "Hilevel Technology", {
+	}},
+	{0x118b, "Hypertec Pty Limited", {
+	}},
+	{0x118c, "Corollary, Inc", {
+		{0x0014,"PCIB [C-bus II to PCI bus host bridge chip]"},
+	}},
+	{0x118d, "BitFlow Inc", {
+		{0x0001,"n/a [Raptor-PCI framegrabber]"},
+	}},
+	{0x118e, "Hermstedt GmbH", {
+	}},
+	{0x118f, "Green Logic", {
+	}},
+	{0x1191, "Artop Electronic Corp", {
+		{0x0004,"ATP8400"},
+		{0x0005,"ATP850UF"},
+	}},
+	{0x1192, "Densan Company Ltd", {
+	}},
+	{0x1193, "Zeitnet Inc.", {
+		{0x0001,"1221"},
+		{0x0002,"1225"},
+	}},
+	{0x1194, "Toucan Technology", {
+	}},
+	{0x1195, "Ratoc System Inc", {
+	}},
+	{0x1196, "Hytec Electronics Ltd", {
+	}},
+	{0x1197, "Gage Applied Sciences, Inc.", {
+	}},
+	{0x1198, "Lambda Systems Inc", {
+	}},
+	{0x1199, "Attachmate Corporation", {
+	}},
+	{0x119a, "Mind Share, Inc.", {
+	}},
+	{0x119b, "Omega Micro Inc.", {
+		{0x1221,"82C092G"},
+	}},
+	{0x119c, "Information Technology Inst.", {
+	}},
+	{0x119d, "Bug, Inc. Sapporo Japan", {
+	}},
+	{0x119e, "Fujitsu Microelectronics Ltd.", {
+	}},
+	{0x119f, "Bull HN Information Systems", {
+	}},
+	{0x11a0, "Convex Computer Corporation", {
+	}},
+	{0x11a1, "Hamamatsu Photonics K.K.", {
+	}},
+	{0x11a2, "Sierra Research and Technology", {
+	}},
+	{0x11a3, "Deuretzbacher GmbH & Co. Eng. KG", {
+	}},
+	{0x11a4, "Barco Graphics NV", {
+	}},
+	{0x11a5, "Microunity Systems Eng. Inc", {
+	}},
+	{0x11a6, "Pure Data Ltd.", {
+	}},
+	{0x11a7, "Power Computing Corp.", {
+	}},
+	{0x11a8, "Systech Corp.", {
+	}},
+	{0x11a9, "InnoSys Inc.", {
+	}},
+	{0x11aa, "Actel", {
+	}},
+	{0x11ab, "Galileo Technology Ltd.", {
+		{0x0146,"GT-64010"},
+		{0x4801,"GT-48001"},
+	}},
+	{0x11ac, "Canon Information Systems Research Aust.", {
+	}},
+	{0x11ad, "Lite-On Communications Inc", {
+		{0x0002,"LNE100TX"},
+	}},
+	{0x11ae, "Aztech System Ltd", {
+	}},
+	{0x11af, "Avid Technology Inc.", {
+	}},
+	{0x11b0, "V3 Semiconductor Inc.", {
+		{0x0292,"V292PBC [Am29030/40 Bridge]"},
+		{0x0960,"V96xPBC"},
+		{0xc960,"V96DPC"},
+	}},
+	{0x11b1, "Apricot Computers", {
+	}},
+	{0x11b2, "Eastman Kodak", {
+	}},
+	{0x11b3, "Barr Systems Inc.", {
+	}},
+	{0x11b4, "Leitch Technology International", {
+	}},
+	{0x11b5, "Radstone Technology Plc", {
+	}},
+	{0x11b6, "United Video Corp", {
+	}},
+	{0x11b8, "XPoint Technologies, Inc", {
+	}},
+	{0x11b9, "Pathlight Technology Inc.", {
+	}},
+	{0x11ba, "Videotron Corp", {
+	}},
+	{0x11bb, "Pyramid Technology", {
+	}},
+	{0x11bc, "Network Peripherals Inc", {
+		{0x0001,"NP-PCI"},
+	}},
+	{0x11bd, "Pinnacle Systems Inc.", {
+	}},
+	{0x11be, "International Microcircuits Inc", {
+	}},
+	{0x11bf, "Astrodesign, Inc.", {
+	}},
+	{0x11c0, "Hewlett Packard", {
+	}},
+	{0x11c1, "Lucent Microelectronics", {
+		{0x0440,"L56xMF"},
+	}},
+	{0x11c2, "Sand Microelectronics", {
+	}},
+	{0x11c4, "Document Technologies, Inc", {
+	}},
+	{0x11c5, "Shiva Corporation", {
+	}},
+	{0x11c6, "Dainippon Screen Mfg. Co. Ltd", {
+	}},
+	{0x11c7, "D.C.M. Data Systems", {
+	}},
+	{0x11c8, "Dolphin Interconnect Solutions AS", {
+		{0x0658,"PSB"},
+	}},
+	{0x11c9, "Magma", {
+	}},
+	{0x11ca, "LSI Systems, Inc", {
+	}},
+	{0x11cb, "Specialix Research Ltd.", {
+		{0x2000,"PCI_9050"},
+		{0x4000,"SUPI_1"},
+		{0x8000,"T225"},
+	}},
+	{0x11cc, "Michels & Kleberhoff Computer GmbH", {
+	}},
+	{0x11cd, "HAL Computer Systems, Inc.", {
+	}},
+	{0x11ce, "Netaccess", {
+	}},
+	{0x11cf, "Pioneer Electronic Corporation", {
+	}},
+	{0x11d0, "Lockheed Martin Federal Systems-Manassas", {
+	}},
+	{0x11d1, "Auravision", {
+		{0x01f7,"VxP524"},
+	}},
+	{0x11d2, "Intercom Inc.", {
+	}},
+	{0x11d3, "Trancell Systems Inc", {
+	}},
+	{0x11d4, "Analog Devices", {
+	}},
+	{0x11d5, "Ikon Corporation", {
+		{0x0115,"10115"},
+		{0x0117,"10117"},
+	}},
+	{0x11d6, "Tekelec Telecom", {
+	}},
+	{0x11d7, "Trenton Technology, Inc.", {
+	}},
+	{0x11d8, "Image Technologies Development", {
+	}},
+	{0x11d9, "TEC Corporation", {
+	}},
+	{0x11da, "Novell", {
+	}},
+	{0x11db, "Sega Enterprises Ltd", {
+	}},
+	{0x11dc, "Questra Corporation", {
+	}},
+	{0x11dd, "Crosfield Electronics Limited", {
+	}},
+	{0x11de, "Zoran Corporation", {
+		{0x6057,"ZR36057"},
+		{0x6120,"ZR36120"},
+	}},
+	{0x11df, "New Wave PDG", {
+	}},
+	{0x11e0, "Cray Communications A/S", {
+	}},
+	{0x11e1, "GEC Plessey Semi Inc.", {
+	}},
+	{0x11e2, "Samsung Information Systems America", {
+	}},
+	{0x11e3, "Quicklogic Corporation", {
+	}},
+	{0x11e4, "Second Wave Inc", {
+	}},
+	{0x11e5, "IIX Consulting", {
+	}},
+	{0x11e6, "Mitsui-Zosen System Research", {
+	}},
+	{0x11e7, "Toshiba America, Elec. Company", {
+	}},
+	{0x11e8, "Digital Processing Systems Inc.", {
+	}},
+	{0x11e9, "Highwater Designs Ltd.", {
+	}},
+	{0x11ea, "Elsag Bailey", {
+	}},
+	{0x11eb, "Formation Inc.", {
+	}},
+	{0x11ec, "Coreco Inc", {
+	}},
+	{0x11ed, "Mediamatics", {
+	}},
+	{0x11ee, "Dome Imaging Systems Inc", {
+	}},
+	{0x11ef, "Nicolet Technologies B.V.", {
+	}},
+	{0x11f0, "Compu-Shack GmbH", {
+	}},
+	{0x11f1, "Symbios Logic Inc", {
+	}},
+	{0x11f2, "Picture Tel Japan K.K.", {
+	}},
+	{0x11f3, "Keithley Metrabyte", {
+	}},
+	{0x11f4, "Kinetic Systems Corporation", {
+		{0x2915,"CAMAC controller"},
+	}},
+	{0x11f5, "Computing Devices International", {
+	}},
+	{0x11f6, "Compex", {
+		{0x0112,"ENet100VG4"},
+		{0x1401,"ReadyLink 2000"},
+	}},
+	{0x11f7, "Scientific Atlanta", {
+	}},
+	{0x11f8, "PMC-Sierra Inc.", {
+		{0x7375,"PM7375 [LASAR-155 ATM SAR]"},
+	}},
+	{0x11f9, "I-Cube Inc", {
+	}},
+	{0x11fa, "Kasan Electronics Company, Ltd.", {
+	}},
+	{0x11fb, "Datel Inc", {
+	}},
+	{0x11fc, "Silicon Magic", {
+	}},
+	{0x11fd, "High Street Consultants", {
+	}},
+	{0x11fe, "Comtrol Corporation", {
+		{0x0001,"RocketPort 8 Oct"},
+		{0x0002,"RocketPort 8 Intf"},
+		{0x0003,"RocketPort 16 Intf"},
+		{0x0004,"RocketPort 32 Intf"},
+	}},
+	{0x11ff, "Scion Corporation", {
+	}},
+	{0x1200, "CSS Corporation", {
+	}},
+	{0x1201, "Vista Controls Corp", {
+	}},
+	{0x1202, "Network General Corp.", {
+	}},
+	{0x1203, "Bayer Corporation, Agfa Division", {
+	}},
+	{0x1204, "Lattice Semiconductor Corporation", {
+	}},
+	{0x1205, "Array Corporation", {
+	}},
+	{0x1206, "Amdahl Corporation", {
+	}},
+	{0x1208, "Parsytec GmbH", {
+	}},
+	{0x1209, "SCI Systems Inc", {
+	}},
+	{0x120a, "Synaptel", {
+	}},
+	{0x120b, "Adaptive Solutions", {
+	}},
+	{0x120c, "Technical Corp.", {
+	}},
+	{0x120d, "Compression Labs, Inc.", {
+	}},
+	{0x120e, "Cyclades Corporation", {
+		{0x0100,"Cyclom_Y"},
+		{0x0200,"Cyclom_Z"},
+	}},
+	{0x120f, "Essential Communications", {
+		{0x0001,"Roadrunner serial HIPPI"},
+	}},
+	{0x1210, "Hyperparallel Technologies", {
+	}},
+	{0x1211, "Braintech Inc", {
+	}},
+	{0x1212, "Kingston Technology Corp.", {
+	}},
+	{0x1213, "Applied Intelligent Systems, Inc.", {
+	}},
+	{0x1214, "Performance Technologies, Inc.", {
+	}},
+	{0x1215, "Interware Co., Ltd", {
+	}},
+	{0x1216, "Purup Prepress A/S", {
+	}},
+	{0x1217, "O2 Micro, Inc.", {
+		{0x6729,"6729"},
+		{0x673a,"6730"},
+		{0x6832,"6832"},
+	}},
+	{0x1218, "Hybricon Corp.", {
+	}},
+	{0x1219, "First Virtual Corporation", {
+	}},
+	{0x121a, "3Dfx Interactive, Inc.", {
+		{0x0001,"Voodoo"},
+		{0x0002,"Voodoo2"},
+	}},
+	{0x121b, "Advanced Telecommunications Modules", {
+	}},
+	{0x121c, "Nippon Texaco., Ltd", {
+	}},
+	{0x121d, "Lippert Automationstechnik GmbH", {
+	}},
+	{0x121e, "CSPI", {
+	}},
+	{0x121f, "Arcus Technology, Inc.", {
+	}},
+	{0x1220, "Ariel Corporation", {
+	}},
+	{0x1221, "Contec Co., Ltd", {
+	}},
+	{0x1222, "Ancor Communications, Inc.", {
+	}},
+	{0x1223, "Heurikon/Computer Products", {
+	}},
+	{0x1224, "Interactive Images", {
+	}},
+	{0x1225, "Power I/O, Inc.", {
+	}},
+	{0x1227, "Tech-Source", {
+	}},
+	{0x1228, "Norsk Elektro Optikk A/S", {
+	}},
+	{0x1229, "Data Kinesis Inc.", {
+	}},
+	{0x122a, "Integrated Telecom", {
+	}},
+	{0x122b, "LG Industrial Systems Co., Ltd", {
+	}},
+	{0x122c, "Sican GmbH", {
+	}},
+	{0x122d, "Aztech System Ltd", {
+	}},
+	{0x122e, "Xyratex", {
+	}},
+	{0x122f, "Andrew Corporation", {
+	}},
+	{0x1230, "Fishcamp Engineering", {
+	}},
+	{0x1231, "Woodward McCoach, Inc.", {
+	}},
+	{0x1232, "GPT Limited", {
+	}},
+	{0x1233, "Bus-Tech, Inc.", {
+	}},
+	{0x1234, "Technical Corp.", {
+	}},
+	{0x1235, "Risq Modular Systems, Inc.", {
+	}},
+	{0x1236, "Sigma Designs Corporation", {
+		{0x6401,"REALmagic 64/GX (SD 6425)"},
+	}},
+	{0x1237, "Alta Technology Corporation", {
+	}},
+	{0x1238, "Adtran", {
+	}},
+	{0x1239, "3DO Company", {
+	}},
+	{0x123a, "Visicom Laboratories, Inc.", {
+	}},
+	{0x123b, "Seeq Technology, Inc.", {
+	}},
+	{0x123c, "Century Systems, Inc.", {
+	}},
+	{0x123d, "Engineering Design Team, Inc.", {
+	}},
+	{0x123e, "Simutech, Inc.", {
+	}},
+	{0x123f, "C-Cube Microsystems", {
+		{0x00e4,"MPEG"},
+	}},
+	{0x1240, "Marathon Technologies Corp.", {
+	}},
+	{0x1241, "DSC Communications", {
+	}},
+	{0x1243, "Delphax", {
+	}},
+	{0x1244, "AVM Audiovisuelles MKTG & Computer System GmbH", {
+	}},
+	{0x1245, "A.P.D., S.A.", {
+	}},
+	{0x1246, "Dipix Technologies, Inc.", {
+	}},
+	{0x1247, "Xylon Research, Inc.", {
+	}},
+	{0x1248, "Central Data Corporation", {
+	}},
+	{0x1249, "Samsung Electronics Co., Ltd.", {
+	}},
+	{0x124a, "AEG Electrocom GmbH", {
+	}},
+	{0x124b, "SBS/Greenspring Modular I/O", {
+	}},
+	{0x124c, "Solitron Technologies, Inc.", {
+	}},
+	{0x124d, "Stallion Technologies, Inc.", {
+		{0x0000,"EasyConnection 8/32 - PCI"},
+		{0x0002,"EasyConnection 8/64 - PCI"},
+		{0x0003,"EasyIO - PCI"},
+	}},
+	{0x124e, "Cylink", {
+	}},
+	{0x124f, "Infotrend Technology, Inc.", {
+	}},
+	{0x1250, "Hitachi Microcomputer System Ltd", {
+	}},
+	{0x1251, "VLSI Solutions Oy", {
+	}},
+	{0x1253, "Guzik Technical Enterprises", {
+	}},
+	{0x1254, "Linear Systems Ltd.", {
+	}},
+	{0x1255, "Optibase Ltd", {
+		{0x1110,"MPEG Forge"},
+		{0x1210,"MPEG Fusion"},
+		{0x2110,"VideoPlex"},
+		{0x2120,"VideoPlex CC"},
+		{0x2130,"VideoQuest"},
+	}},
+	{0x1256, "Perceptive Solutions, Inc.", {
+	}},
+	{0x1257, "Vertex Networks, Inc.", {
+	}},
+	{0x1258, "Gilbarco, Inc.", {
+	}},
+	{0x1259, "Allied Telesyn International", {
+	}},
+	{0x125a, "ABB Power Systems", {
+	}},
+	{0x125b, "Asix Electronics Corporation", {
+	}},
+	{0x125c, "Aurora Technologies, Inc.", {
+	}},
+	{0x125d, "ESS Technology", {
+	}},
+	{0x125e, "Specialvideo Engineering SRL", {
+	}},
+	{0x125f, "Concurrent Technologies, Inc.", {
+	}},
+	{0x1260, "Harris Semiconductor", {
+	}},
+	{0x1261, "Matsushita-Kotobuki Electronics Industries, Ltd.", {
+	}},
+	{0x1262, "ES Computer Company, Ltd.", {
+	}},
+	{0x1263, "Sonic Solutions", {
+	}},
+	{0x1264, "Aval Nagasaki Corporation", {
+	}},
+	{0x1265, "Casio Computer Co., Ltd.", {
+	}},
+	{0x1266, "Microdyne Corporation", {
+	}},
+	{0x1267, "S. A. Telecommunications", {
+		{0x5352,"PCR2101"},
+		{0x5a4b,"Telsat Turbo"},
+	}},
+	{0x1268, "Tektronix", {
+	}},
+	{0x1269, "Thomson-CSF/TTM", {
+	}},
+	{0x126a, "Lexmark International, Inc.", {
+	}},
+	{0x126b, "Adax, Inc.", {
+	}},
+	{0x126c, "Northern Telecom", {
+	}},
+	{0x126d, "Splash Technology, Inc.", {
+	}},
+	{0x126e, "Sumitomo Metal Industries, Ltd.", {
+	}},
+	{0x126f, "Silicon Motion, Inc.", {
+	}},
+	{0x1270, "Olympus Optical Co., Ltd.", {
+	}},
+	{0x1271, "GW Instruments", {
+	}},
+	{0x1272, "Telematics International", {
+	}},
+	{0x1273, "Hughes Network Systems", {
+		{0x0002,"DirecPC"},
+	}},
+	{0x1274, "Ensoniq", {
+		{0x5000,"AudioPCI"},
+	}},
+	{0x1275, "Network Appliance Corporation", {
+	}},
+	{0x1276, "Switched Network Technologies, Inc.", {
+	}},
+	{0x1277, "Comstream", {
+	}},
+	{0x1278, "Transtech Parallel Systems Ltd.", {
+	}},
+	{0x1279, "Transmeta Corporation", {
+	}},
+	{0x127a, "Rockwell International", {
+	}},
+	{0x127b, "Pixera Corporation", {
+	}},
+	{0x127c, "Crosspoint Solutions, Inc.", {
+	}},
+	{0x127d, "Vela Research", {
+	}},
+	{0x127e, "Winnov, L.P.", {
+	}},
+	{0x127f, "Fujifilm", {
+	}},
+	{0x1280, "Photoscript Group Ltd.", {
+	}},
+	{0x1281, "Yokogawa Electric Corporation", {
+	}},
+	{0x1282, "Davicom Semiconductor, Inc.", {
+	}},
+	{0x1283, "Integrated Technology Express, Inc.", {
+	}},
+	{0x1284, "Sahara Networks, Inc.", {
+	}},
+	{0x1285, "Platform Technologies, Inc.", {
+	}},
+	{0x1286, "Mazet GmbH", {
+	}},
+	{0x1287, "M-Pact, Inc.", {
+	}},
+	{0x1288, "Timestep Corporation", {
+	}},
+	{0x1289, "AVC Technology, Inc.", {
+	}},
+	{0x128a, "Asante Technologies, Inc.", {
+	}},
+	{0x128b, "Transwitch Corporation", {
+	}},
+	{0x128c, "Retix Corporation", {
+	}},
+	{0x128d, "G2 Networks, Inc.", {
+	}},
+	{0x128e, "Samho Multi Tech Ltd.", {
+	}},
+	{0x128f, "Tateno Dennou, Inc.", {
+	}},
+	{0x1290, "Sord Computer Corporation", {
+	}},
+	{0x1291, "NCS Computer Italia", {
+	}},
+	{0x1292, "Tritech Microelectronics Inc", {
+	}},
+	{0x1293, "Media Reality Technology", {
+	}},
+	{0x1294, "Rhetorex, Inc.", {
+	}},
+	{0x1295, "Imagenation Corporation", {
+	}},
+	{0x1296, "Kofax Image Products", {
+	}},
+	{0x1297, "Holco Enterprise Co, Ltd/Shuttle Computer", {
+	}},
+	{0x1298, "Spellcaster Telecommunications Inc.", {
+	}},
+	{0x1299, "Knowledge Technology Lab.", {
+	}},
+	{0x129b, "Image Access", {
+	}},
+	{0x129c, "Jaycor", {
+	}},
+	{0x129d, "Compcore Multimedia, Inc.", {
+	}},
+	{0x129e, "Victor Company of Japan, Ltd.", {
+	}},
+	{0x129f, "OEC Medical Systems, Inc.", {
+	}},
+	{0x12a0, "Allen-Bradley Company", {
+	}},
+	{0x12a1, "Simpact Associates, Inc.", {
+	}},
+	{0x12a2, "Newgen Systems Corporation", {
+	}},
+	{0x12a3, "Lucent Technologies", {
+	}},
+	{0x12a4, "NTT Electronics Technology Company", {
+	}},
+	{0x12a5, "Vision Dynamics Ltd.", {
+	}},
+	{0x12a6, "Scalable Networks, Inc.", {
+	}},
+	{0x12a7, "AMO GmbH", {
+	}},
+	{0x12a8, "News Datacom", {
+	}},
+	{0x12a9, "Xiotech Corporation", {
+	}},
+	{0x12aa, "SDL Communications, Inc.", {
+	}},
+	{0x12ab, "Yuan Yuan Enterprise Co., Ltd.", {
+	}},
+	{0x12ac, "Measurex Corporation", {
+	}},
+	{0x12ad, "Multidata GmbH", {
+	}},
+	{0x12ae, "Alteon Networks Inc.", {
+		{0x0001,"AceNIC Gigabit Ethernet"},
+	}},
+	{0x12af, "TDK USA Corp", {
+	}},
+	{0x12b0, "Jorge Scientific Corp", {
+	}},
+	{0x12b1, "GammaLink", {
+	}},
+	{0x12b2, "General Signal Networks", {
+	}},
+	{0x12b3, "Inter-Face Co Ltd", {
+	}},
+	{0x12b4, "FutureTel Inc", {
+	}},
+	{0x12b5, "Granite Systems Inc.", {
+	}},
+	{0x12b6, "Natural Microsystems", {
+	}},
+	{0x12b7, "Cognex Modular Vision Systems Div. - Acumen Inc.", {
+	}},
+	{0x12b8, "Korg", {
+	}},
+	{0x12b9, "US Robotics", {
+	}},
+	{0x12ba, "PMC Sierra", {
+	}},
+	{0x12bb, "Nippon Unisoft Corporation", {
+	}},
+	{0x12bc, "Array Microsystems", {
+	}},
+	{0x12bd, "Computerm Corp.", {
+	}},
+	{0x12be, "Anchor Chips Inc.", {
+	}},
+	{0x12bf, "Fujifilm Microdevices", {
+	}},
+	{0x12c0, "Infimed", {
+	}},
+	{0x12c1, "GMM Research Corp", {
+	}},
+	{0x12c2, "Mentec Limited", {
+	}},
+	{0x12c3, "Holtek Microelectronics Inc", {
+	}},
+	{0x12c4, "Connect Tech Inc", {
+	}},
+	{0x12c5, "Picture Elements Incorporated", {
+		{0x0081,"PCIVST [PCI Grayscale Thresholding Engine]"},
+	}},
+	{0x12c6, "Mitani Corporation", {
+	}},
+	{0x12c7, "Dialogic Corp", {
+	}},
+	{0x12c8, "G Force Co, Ltd", {
+	}},
+	{0x12c9, "Gigi Operations", {
+	}},
+	{0x12ca, "Integrated Computing Engines", {
+	}},
+	{0x12cb, "Antex Electronics Corporation", {
+	}},
+	{0x12cc, "Pluto Technologies International", {
+	}},
+	{0x12cd, "Aims Lab", {
+	}},
+	{0x12ce, "Netspeed Inc.", {
+	}},
+	{0x12cf, "Prophet Systems, Inc.", {
+	}},
+	{0x12d0, "GDE Systems, Inc.", {
+	}},
+	{0x12d1, "PSITech", {
+	}},
+	{0x12d2, "NVidia / SGS Thomson (Joint Venture)", {
+		{0x0018,"Riva128"},
+	}},
+	{0x12d3, "Vingmed Sound A/S", {
+	}},
+	{0x12d4, "DGM&S", {
+	}},
+	{0x12d5, "Equator Technologies", {
+	}},
+	{0x12d6, "Analogic Corp", {
+	}},
+	{0x12d7, "Biotronic SRL", {
+	}},
+	{0x12d8, "Pericom Semiconductor", {
+	}},
+	{0x12d9, "Aculab PLC", {
+	}},
+	{0x12da, "True Time Inc.", {
+	}},
+	{0x12db, "Annapolis Micro Systems, Inc", {
+	}},
+	{0x12dc, "Symicron Computer Communication Ltd.", {
+	}},
+	{0x12dd, "Management Graphics", {
+	}},
+	{0x12de, "Rainbow Technologies", {
+	}},
+	{0x12df, "SBS Technologies Inc", {
+	}},
+	{0x12e0, "Chase Research", {
+	}},
+	{0x12e1, "Nintendo Co, Ltd", {
+	}},
+	{0x12e2, "Datum Inc. Bancomm-Timing Division", {
+	}},
+	{0x12e3, "Imation Corp - Medical Imaging Systems", {
+	}},
+	{0x12e4, "Brooktrout Technology Inc", {
+	}},
+	{0x12e5, "Apex Semiconductor Inc", {
+	}},
+	{0x12e6, "Cirel Systems", {
+	}},
+	{0x12e7, "Sunsgroup Corporation", {
+	}},
+	{0x12e8, "Crisc Corp", {
+	}},
+	{0x12e9, "GE Spacenet", {
+	}},
+	{0x12ea, "Zuken", {
+	}},
+	{0x12eb, "Aureal Semiconductor", {
+	}},
+	{0x12ec, "3A International, Inc.", {
+	}},
+	{0x12ed, "Optivision Inc.", {
+	}},
+	{0x12ee, "Orange Micro", {
+	}},
+	{0x12ef, "Vienna Systems", {
+	}},
+	{0x12f0, "Pentek", {
+	}},
+	{0x12f1, "Sorenson Vision Inc", {
+	}},
+	{0x12f2, "Gammagraphx, Inc.", {
+	}},
+	{0x12f3, "Radstone Technology", {
+	}},
+	{0x12f4, "Megatel", {
+	}},
+	{0x12f5, "Forks", {
+	}},
+	{0x12f6, "Dawson France", {
+	}},
+	{0x12f7, "Cognex", {
+	}},
+	{0x12f8, "Electronic Design GmbH", {
+	}},
+	{0x12f9, "Four Fold Ltd", {
+	}},
+	{0x12fb, "Spectrum Signal Processing", {
+	}},
+	{0x12fc, "Capital Equipment Corp", {
+	}},
+	{0x12fd, "I2S", {
+	}},
+	{0x12fe, "ESD Electronic System Design GmbH", {
+	}},
+	{0x12ff, "Lexicon", {
+	}},
+	{0x1300, "Harman International Industries Inc", {
+	}},
+	{0x1302, "Computer Sciences Corp", {
+	}},
+	{0x1303, "Innovative Integration", {
+	}},
+	{0x1304, "Juniper Networks", {
+	}},
+	{0x1305, "Netphone, Inc", {
+	}},
+	{0x1306, "Duet Technologies", {
+	}},
+	{0x1307, "Computer Boards", {
+		{0x0001,"DAS1602/16"},
+	}},
+	{0x1308, "Jato Technologies Inc.", {
+	}},
+	{0x1309, "AB Semiconductor Ltd", {
+	}},
+	{0x130a, "Mitsubishi Electric Microcomputer", {
+	}},
+	{0x130b, "Colorgraphic Communications Corp", {
+	}},
+	{0x130c, "Ambex Technologies, Inc", {
+	}},
+	{0x130d, "Accelerix Inc", {
+	}},
+	{0x130e, "Yamatake-Honeywell Co. Ltd", {
+	}},
+	{0x130f, "Advanet Inc", {
+	}},
+	{0x1310, "Gespac", {
+	}},
+	{0x1311, "Videoserver, Inc", {
+	}},
+	{0x1312, "Acuity Imaging, Inc", {
+	}},
+	{0x1313, "Yaskawa Electric Co.", {
+	}},
+	{0x1316, "Teradyne Inc", {
+	}},
+	{0x1317, "Bridgecom, Inc", {
+	}},
+	{0x1318, "Packet Engines Inc.", {
+	}},
+	{0x1319, "Fortemedia, Inc", {
+	}},
+	{0x131a, "Finisar Corp.", {
+	}},
+	{0x131c, "Nippon Electro-Sensory Devices Corp", {
+	}},
+	{0x131d, "Sysmic, Inc.", {
+	}},
+	{0x131e, "Xinex Networks Inc", {
+	}},
+	{0x131f, "Siig Inc", {
+	}},
+	{0x1320, "Crypto AG", {
+	}},
+	{0x1321, "Arcobel Graphics BV", {
+	}},
+	{0x1322, "MTT Co., Ltd", {
+	}},
+	{0x1323, "Dome Inc", {
+	}},
+	{0x1324, "Sphere Communications", {
+	}},
+	{0x1325, "Salix Technologies, Inc", {
+	}},
+	{0x1326, "Seachange international", {
+	}},
+	{0x1327, "Voss scientific", {
+	}},
+	{0x1328, "quadrant international", {
+	}},
+	{0x1329, "Productivity Enhancement", {
+	}},
+	{0x132a, "Microcom Inc.", {
+	}},
+	{0x132b, "Broadband Technologies", {
+	}},
+	{0x132c, "Micrel Inc", {
+	}},
+	{0x132d, "Integrated Silicon Solution, Inc.", {
+	}},
+	{0x1330, "MMC Networks", {
+	}},
+	{0x1331, "Radisys Corp.", {
+	}},
+	{0x1332, "Micro Memory", {
+	}},
+	{0x1334, "Redcreek Communications, Inc", {
+	}},
+	{0x1335, "Videomail, Inc", {
+	}},
+	{0x1337, "Third Planet Publishing", {
+	}},
+	{0x1338, "BT Electronics", {
+	}},
+	{0x133a, "Vtel Corp", {
+	}},
+	{0x133b, "Softcom Microsystems", {
+	}},
+	{0x133c, "Holontech Corp", {
+	}},
+	{0x133d, "SS Technologies", {
+	}},
+	{0x133e, "Virtual Computer Corp", {
+	}},
+	{0x133f, "SCM Microsystems", {
+	}},
+	{0x1340, "Atalla Corp", {
+	}},
+	{0x1341, "Kyoto Microcomputer Co", {
+	}},
+	{0x1342, "Promax Systems Inc", {
+	}},
+	{0x1343, "Phylon Communications Inc", {
+	}},
+	{0x1344, "Crucial Technology", {
+	}},
+	{0x1345, "Arescom Inc", {
+	}},
+	{0x1347, "Odetics", {
+	}},
+	{0x1349, "Sumitomo Electric Industries, Ltd.", {
+	}},
+	{0x134a, "DTC Technology Corp.", {
+	}},
+	{0x134b, "ARK Research Corp.", {
+	}},
+	{0x134c, "Chori Joho System Co. Ltd", {
+	}},
+	{0x134d, "PCTel Inc", {
+	}},
+	{0x134e, "CSTI", {
+	}},
+	{0x134f, "Algo System Co Ltd", {
+	}},
+	{0x1350, "Systec Co. Ltd", {
+	}},
+	{0x1351, "Sonix Inc", {
+	}},
+	{0x1353, "Dassault A.T.", {
+	}},
+	{0x1354, "Dwave System Inc", {
+	}},
+	{0x1355, "Kratos Analytical Ltd", {
+	}},
+	{0x1356, "The Logical Co", {
+	}},
+	{0x1359, "Prisa Networks", {
+	}},
+	{0x135a, "Brain Boxes", {
+	}},
+	{0x135b, "Giganet Inc", {
+	}},
+	{0x135c, "Quatech Inc", {
+	}},
+	{0x135d, "ABB Network Partner AB", {
+	}},
+	{0x135e, "Sealevel Systems Inc", {
+	}},
+	{0x135f, "I-Data International A-S", {
+	}},
+	{0x1360, "Meinberg Funkuhren", {
+	}},
+	{0x1361, "Soliton Systems K.K.", {
+	}},
+	{0x1362, "Fujifacom Corporation", {
+	}},
+	{0x1363, "Phoenix Technology Ltd", {
+	}},
+	{0x1364, "ATM Communications Inc", {
+	}},
+	{0x1365, "Hypercope GmbH", {
+	}},
+	{0x1366, "Teijin Seiki Co. Ltd", {
+	}},
+	{0x1367, "Hitachi Zosen Corporation", {
+	}},
+	{0x1368, "Skyware Corporation", {
+	}},
+	{0x1369, "Digigram", {
+	}},
+	{0x136a, "High Soft Tech", {
+	}},
+	{0x136b, "Kawasaki Steel Corporation", {
+	}},
+	{0x136c, "Adtek System Science Co Ltd", {
+	}},
+	{0x136d, "Gigalabs Inc", {
+	}},
+	{0x136f, "Applied Magic Inc", {
+	}},
+	{0x1370, "ATL Products", {
+	}},
+	{0x1371, "CNet Technology Inc", {
+	}},
+	{0x1373, "Silicon Vision Inc", {
+	}},
+	{0x1374, "Silicom Ltd", {
+	}},
+	{0x1375, "Argosystems Inc", {
+	}},
+	{0x1376, "LMC", {
+	}},
+	{0x1377, "Electronic Equipment Production & Distribution GmbH", {
+	}},
+	{0x1378, "Telemann Co. Ltd", {
+	}},
+	{0x1379, "Asahi Kasei Microsystems Co Ltd", {
+	}},
+	{0x137a, "Mark of the Unicorn Inc", {
+	}},
+	{0x137b, "PPT Vision", {
+	}},
+	{0x137c, "Iwatsu Electric Co Ltd", {
+	}},
+	{0x137d, "Dynachip Corporation", {
+	}},
+	{0x137e, "Patriot Scientific Corporation", {
+	}},
+	{0x137f, "Japan Satellite Systems Inc", {
+	}},
+	{0x1380, "Sanritz Automation Co Ltd", {
+	}},
+	{0x1381, "Brains Co. Ltd", {
+	}},
+	{0x1382, "Marian - Electronic & Software", {
+	}},
+	{0x1383, "Controlnet Inc", {
+	}},
+	{0x1384, "Reality Simulation Systems Inc", {
+	}},
+	{0x1385, "Netgear", {
+	}},
+	{0x1386, "Video Domain Technologies", {
+	}},
+	{0x1387, "Systran Corp", {
+	}},
+	{0x1388, "Hitachi Information Technology Co Ltd", {
+	}},
+	{0x1389, "Applicom International", {
+	}},
+	{0x138a, "Fusion Micromedia Corp", {
+	}},
+	{0x138b, "Tokimec Inc", {
+	}},
+	{0x138c, "Silicon Reality", {
+	}},
+	{0x138d, "Future Techno Designs pte Ltd", {
+	}},
+	{0x138e, "Basler GmbH", {
+	}},
+	{0x138f, "Patapsco Designs Inc", {
+	}},
+	{0x1390, "Concept Development Inc", {
+	}},
+	{0x1391, "Development Concepts Inc", {
+	}},
+	{0x1392, "Medialight Inc", {
+	}},
+	{0x1393, "Moxa Technologies Co Ltd", {
+	}},
+	{0x1394, "Level One Communications", {
+	}},
+	{0x1395, "Ambicom Inc", {
+	}},
+	{0x1396, "Cipher Systems Inc", {
+	}},
+	{0x1397, "Cologne Chip Designs GmbH", {
+	}},
+	{0x1398, "Clarion co. Ltd", {
+	}},
+	{0x1399, "Rios systems Co Ltd", {
+	}},
+	{0x139a, "Alacritech Inc", {
+	}},
+	{0x139b, "Mediasonic Multimedia Systems Ltd", {
+	}},
+	{0x139c, "Quantum 3d Inc", {
+	}},
+	{0x139d, "EPL limited", {
+	}},
+	{0x139e, "Media4", {
+	}},
+	{0x139f, "Aethra s.r.l.", {
+	}},
+	{0x13a0, "Crystal Group Inc", {
+	}},
+	{0x13a1, "Kawasaki Heavy Industries Ltd", {
+	}},
+	{0x13a2, "Ositech Communications Inc", {
+	}},
+	{0x13a3, "Hi-Fn", {
+	}},
+	{0x13a4, "Rascom Inc", {
+	}},
+	{0x13a5, "Audio Digital Imaging Inc", {
+	}},
+	{0x13a6, "Videonics Inc", {
+	}},
+	{0x13a7, "Teles AG", {
+	}},
+	{0x13a8, "Exar Corp.", {
+	}},
+	{0x13a9, "Siemens Medical Systems, Ultrasound Group", {
+	}},
+	{0x13aa, "Broadband Networks Inc", {
+	}},
+	{0x13ab, "Arcom Control Systems Ltd", {
+	}},
+	{0x13ac, "Motion Media Technology Ltd", {
+	}},
+	{0x13ad, "Nexus Inc", {
+	}},
+	{0x13ae, "ALD Technology Ltd", {
+	}},
+	{0x13af, "T.Sqware", {
+	}},
+	{0x13b0, "Maxspeed Corp", {
+	}},
+	{0x13b1, "Tamura corporation", {
+	}},
+	{0x13b2, "Techno Chips Co. Ltd", {
+	}},
+	{0x13b3, "Lanart Corporation", {
+	}},
+	{0x13b4, "Wellbean Co Inc", {
+	}},
+	{0x13b5, "ARM", {
+	}},
+	{0x13b6, "Dlog GmbH", {
+	}},
+	{0x13b7, "Logic Devices Inc", {
+	}},
+	{0x13b8, "Nokia Telecommunications oy", {
+	}},
+	{0x13b9, "Elecom Co Ltd", {
+	}},
+	{0x13ba, "Oxford Instruments", {
+	}},
+	{0x13bb, "Sanyo Technosound Co Ltd", {
+	}},
+	{0x13bc, "Bitran Corporation", {
+	}},
+	{0x13bd, "Sharp corporation", {
+	}},
+	{0x13be, "Miroku Jyoho Service Co. Ltd", {
+	}},
+	{0x13bf, "Sharewave Inc", {
+	}},
+	{0x13c0, "Microgate Corporation", {
+	}},
+	{0x13c1, "3ware Inc", {
+	}},
+	{0x13c2, "Technotrend Systemtechnik GmbH", {
+	}},
+	{0x13c3, "Janz Computer AG", {
+	}},
+	{0x13c4, "Phase Metrics", {
+	}},
+	{0x13c5, "Alphi Technology Corp", {
+	}},
+	{0x13c6, "Condor Engineering Inc", {
+	}},
+	{0x13c7, "Blue Chip Technology Ltd", {
+	}},
+	{0x13c8, "Apptech Inc", {
+	}},
+	{0x13c9, "Eaton Corporation", {
+	}},
+	{0x13ca, "Iomega Corporation", {
+	}},
+	{0x13cb, "Yano Electric Co Ltd", {
+	}},
+	{0x13cc, "Metheus Corporation", {
+	}},
+	{0x13cd, "Compatible Systems Corporation", {
+	}},
+	{0x13ce, "Cocom A/S", {
+	}},
+	{0x13cf, "Studio Audio & Video Ltd", {
+	}},
+	{0x13d0, "Techsan Electronics Co Ltd", {
+	}},
+	{0x13d1, "Abocom Systems Inc", {
+	}},
+	{0x13d2, "Shark Multimedia Inc", {
+	}},
+	{0x13d3, "IMC Networks", {
+	}},
+	{0x13d4, "Graphics Microsystems Inc", {
+	}},
+	{0x13d5, "Media 100 Inc", {
+	}},
+	{0x13d6, "K.I. Technology Co Ltd", {
+	}},
+	{0x13d7, "Toshiba Engineering Corporation", {
+	}},
+	{0x13d8, "Phobos corporation", {
+	}},
+	{0x13d9, "Apex PC Solutions Inc", {
+	}},
+	{0x13da, "Intresource Systems pte Ltd", {
+	}},
+	{0x13db, "Janich & Klass Computertechnik GmbH", {
+	}},
+	{0x13dc, "Netboost Corporation", {
+	}},
+	{0x13dd, "Multimedia Bundle Inc", {
+	}},
+	{0x13de, "ABB Robotics Products AB", {
+	}},
+	{0x13df, "E-Tech Inc", {
+	}},
+	{0x13e0, "GVC Corporation", {
+	}},
+	{0x13e1, "Silicom Multimedia Systems Inc", {
+	}},
+	{0x13e2, "Dynamics Research Corporation", {
+	}},
+	{0x13e3, "Nest Inc", {
+	}},
+	{0x13e4, "Calculex Inc", {
+	}},
+	{0x13e5, "Telesoft Design Ltd", {
+	}},
+	{0x13e6, "Argosy research Inc", {
+	}},
+	{0x13e7, "NAC Incorporated", {
+	}},
+	{0x13e8, "Chip Express Corporation", {
+	}},
+	{0x13e9, "Chip Express Corporation", {
+	}},
+	{0x13ea, "Dallas Semiconductor", {
+	}},
+	{0x13eb, "Hauppauge Computer Works Inc", {
+	}},
+	{0x13ec, "Zydacron Inc", {
+	}},
+	{0x13ed, "Raytheion E-Systems", {
+	}},
+	{0x13ee, "Hayes Microcomputer Products Inc", {
+	}},
+	{0x13ef, "Coppercom Inc", {
+	}},
+	{0x13f0, "Sundance technology Inc", {
+	}},
+	{0x13f1, "Oce' - Technologies B.V.", {
+	}},
+	{0x13f2, "Ford Microelectronics Inc", {
+	}},
+	{0x13f3, "Mcdata Corporation", {
+	}},
+	{0x13f4, "Troika Design Inc", {
+	}},
+	{0x13f5, "Kansai Electric Co. Ltd", {
+	}},
+	{0x13f6, "C-Media Electronics Inc", {
+	}},
+	{0x13f7, "Wildfire Communications", {
+	}},
+	{0x13f8, "Ad Lib Multimedia Inc", {
+	}},
+	{0x13f9, "NTT Advanced Technology Corp.", {
+	}},
+	{0x13fa, "Pentland Systems Ltd", {
+	}},
+	{0x13fb, "Aydin Corp", {
+	}},
+	{0x13fc, "Computer Peripherals International", {
+	}},
+	{0x13fd, "Micro Science Inc", {
+	}},
+	{0x13fe, "Advantech Co. Ltd", {
+	}},
+	{0x13ff, "Silicon Spice Inc", {
+	}},
+	{0x1400, "Artx Inc", {
+	}},
+	{0x1401, "CR-Systems A/S", {
+	}},
+	{0x1402, "Meilhaus Electronic GmbH", {
+	}},
+	{0x1403, "Ascor Inc", {
+	}},
+	{0x1404, "Fundamental Software Inc", {
+	}},
+	{0x1405, "Excalibur Systems Inc", {
+	}},
+	{0x1406, "Oce' Printing Systems GmbH", {
+	}},
+	{0x1407, "Lava Computer mfg Inc", {
+	}},
+	{0x1408, "Aloka Co. Ltd", {
+	}},
+	{0x1409, "Timedia Technology Co Ltd", {
+	}},
+	{0x140a, "DSP Research Inc", {
+	}},
+	{0x140b, "Ramix Inc", {
+	}},
+	{0x140c, "Elmic Systems Inc", {
+	}},
+	{0x140d, "Matsushita Electric Works Ltd", {
+	}},
+	{0x140e, "Goepel Electronic GmbH", {
+	}},
+	{0x140f, "Salient Systems Corp", {
+	}},
+	{0x1410, "Midas lab Inc", {
+	}},
+	{0x1411, "Ikos Systems Inc", {
+	}},
+	{0x1412, "IC Ensemble Inc", {
+	}},
+	{0x1413, "Addonics", {
+	}},
+	{0x1414, "Microsoft Corporation", {
+	}},
+	{0x1415, "Oxford Semiconductor Ltd", {
+	}},
+	{0x1416, "Multiwave Innovation pte Ltd", {
+	}},
+	{0x1417, "Convergenet Technologies Inc", {
+	}},
+	{0x1418, "Kyushu electronics systems Inc", {
+	}},
+	{0x1419, "Excel Switching Corp", {
+	}},
+	{0x141a, "Apache Micro Peripherals Inc", {
+	}},
+	{0x141b, "Zoom Telephonics Inc", {
+	}},
+	{0x141d, "Digitan Systems Inc", {
+	}},
+	{0x141e, "Fanuc Ltd", {
+	}},
+	{0x141f, "Visiontech Ltd", {
+	}},
+	{0x1420, "Psion Dacom plc", {
+	}},
+	{0x1421, "Ads Technologies Inc", {
+	}},
+	{0x1422, "Ygrec Systems Co Ltd", {
+	}},
+	{0x1423, "Custom Technology Corp.", {
+	}},
+	{0x1424, "Videoserver Connections", {
+	}},
+	{0x1425, "ASIC Designers Inc", {
+	}},
+	{0x1426, "Storage Technology Corp.", {
+	}},
+	{0x1427, "Better On-Line Solutions", {
+	}},
+	{0x1428, "Edec Co Ltd", {
+	}},
+	{0x1429, "Unex Technology Corp.", {
+	}},
+	{0x142a, "Kingmax Technology Inc", {
+	}},
+	{0x142b, "Radiolan", {
+	}},
+	{0x142c, "Minton Optic Industry Co Ltd", {
+	}},
+	{0x142d, "Pix stream Inc", {
+	}},
+	{0x142e, "Vitec Multimedia", {
+	}},
+	{0x142f, "Radicom Research Inc", {
+	}},
+	{0x1430, "ITT Aerospace/Communications Division", {
+	}},
+	{0x1431, "Gilat Satellite Networks", {
+	}},
+	{0x1432, "Edimax Computer Co.", {
+	}},
+	{0x1433, "Eltec Elektronik GmbH", {
+	}},
+	{0x1435, "Real Time Devices US Inc.", {
+	}},
+	{0x1436, "CIS Technology Inc", {
+	}},
+	{0x1668, "Action Tec Electronics Inc", {
+	}},
+	{0x1b13, "Jaton Corp", {
+	}},
+	{0x1c1c, "Symphony", {
+		{0x0001,"82C101"},
+	}},
+	{0x21c3, "21st Century Computer Corp.", {
+	}},
+	{0x270b, "Xantel Corporation", {
+	}},
+	{0x270f, "Chaintech Computer Co. Ltd", {
+	}},
+	{0x3388, "Hint Corp", {
+	}},
+	{0x3d3d, "3DLabs", {
+		{0x0001,"GLINT 300SX"},
+		{0x0002,"GLINT 500TX"},
+		{0x0003,"GLINT Delta"},
+		{0x0004,"Permedia"},
+		{0x0006,"GLINT MX"},
+	}},
+	{0x4005, "Avance Logic Inc.", {
+		{0x2064,"ALG2064i"},
+		{0x2301,"ALG2301"},
+		{0x2302,"ALG2302"},
+	}},
+	{0x4444, "Internext Compression Inc", {
+	}},
+	{0x4680, "Umax Computer Corp", {
+	}},
+	{0x4843, "Hercules Computer Technology Inc", {
+	}},
+	{0x4978, "Axil Computer Inc", {
+	}},
+	{0x4a14, "NetVin", {
+		{0x5000,"PCI NV5000SC"},
+	}},
+	{0x4ddc, "ILC Data Device Corp", {
+	}},
+	{0x5053, "Voyetra Technologies", {
+	}},
+	{0x5143, "Qualcomm Inc", {
+	}},
+	{0x5333, "S3 Inc.", {
+		{0x0551,"Plato/PX (system)"},
+		{0x5631,"86C325 [ViRGE]"},
+		{0x8810,"86C764_0 [Trio 32 vers 0]"},
+		{0x8811,"86C764_1 [Trio 32/64 vers 1]"},
+		{0x8812,"Aurora64V+"},
+		{0x8813,"86C764_3 [Trio 32/64 vers 3]"},
+		{0x8814,"Trio64UV+"},
+		{0x8815,"Aurora128"},
+		{0x883d,"ViRGE/VX"},
+		{0x8880,"Vision 868 vers 0"},
+		{0x8881,"Vision 868 vers 1"},
+		{0x8882,"Vision 868 vers 2"},
+		{0x8883,"Vision 868 vers 3"},
+		{0x88b0,"Vision 928 vers 0"},
+		{0x88b1,"Vision 928 vers 1"},
+		{0x88b2,"Vision 928 vers 2"},
+		{0x88b3,"Vision 928 vers 3"},
+		{0x88c0,"Vision 864 vers 0"},
+		{0x88c1,"Vision 864 vers 1"},
+		{0x88c2,"86C864"},
+		{0x88c3,"86C864"},
+		{0x88d0,"Vision 964 vers 0"},
+		{0x88d1,"Vision 964 vers 1"},
+		{0x88d2,"86C964"},
+		{0x88d3,"86C964"},
+		{0x88f0,"Vision 968"},
+		{0x88f1,"86C968"},
+		{0x88f2,"86C968"},
+		{0x88f3,"86C968"},
+		{0x8901,"Trio64V2/DX or /GX"},
+		{0x8902,"Plato/PX (graphics)"},
+		{0x8a01,"ViRGE/DX or /GX"},
+		{0x8a10,"ViRGE/GX2"},
+		{0x8c01,"ViRGE/MX"},
+		{0x8c02,"ViRGE/MX+"},
+		{0x8c03,"ViRGE/MX+MV"},
+		{0xca00,"SonicVibes"},
+	}},
+	{0x5555, "Genroco, Inc", {
+		{0x0003,"TURBOstor HFP-832 [HiPPI NIC]"},
+	}},
+	{0x6374, "c't Magazin fr Computertechnik", {
+		{0x6773,"GPPCI"},
+	}},
+	{0x6666, "Decision Computer International Co.", {
+	}},
+	{0x8008, "Quancm Electronic GmbH", {
+		{0x0010,"WDOG1 [PCI-Watchdog 1]"},
+		{0x0011,"PWDOG2 [Watchdog2/PCI]"},
+	}},
+	{0x8086, "Intel Corporation", {
+		{0x0482,"82375EB"},
+		{0x0483,"82424ZX [Saturn]"},
+		{0x0484,"82378IB [SIO ISA Bridge]"},
+		{0x0486,"82430ZX [Aries]"},
+		{0x04a3,"82434LX [Mercury/Neptune]"},
+		{0x0960,"80960RP [i960 RP Microprocessor/Bridge]"},
+		{0x1221,"82092AA_0"},
+		{0x1222,"82092AA_1"},
+		{0x1223,"SAA7116"},
+		{0x1226,"82596"},
+		{0x1227,"82865"},
+		{0x1228,"82556"},
+		{0x1229,"82557"},
+		{0x122d,"430FX - 82437FX TSC [Triton I]"},
+		{0x122e,"82371FB PIIX ISA [Triton I]"},
+		{0x1230,"82371FB PIIX IDE [Triton I]"},
+		{0x1234,"430MX - 82371MX MPIIX [430MX PCIset - 82371MX Mobile PCI I/O IDE Xcelerator (MPIIX)]"},
+		{0x1235,"430MX - 82437MX MTSC [430MX PCIset - 82437MX Mobile System Controller (MTSC) and 82438MX Mobile Data Path (MTDP)]"},
+		{0x1237,"440FX - 82441FX PMC [Natoma]"},
+		{0x124b,"82380FB"},
+		{0x1250,"430HX - 82439HX TXC [Triton II]"},
+		{0x1960,"80960RP [i960RP Microprocessor]"},
+		{0x7000,"82371SB PIIX3 ISA [Natoma/Triton II]"},
+		{0x7010,"82371SB PIIX3 IDE [Natoma/Triton II]"},
+		{0x7020,"82371SB PIIX3 USB [Natoma/Triton II]"},
+		{0x7030,"430VX - 82437VX TVX [Triton VX]"},
+		{0x7100,"430TX - 82439TX MTXC"},
+		{0x7110,"82371AB PIIX4 ISA"},
+		{0x7111,"82371AB PIIX4 IDE"},
+		{0x7112,"82371AB PIIX4 USB"},
+		{0x7113,"82371AB PIIX4 ACPI"},
+		{0x7180,"440LX - 82443LX PAC Host"},
+		{0x7181,"440LX - 82443LX PAC AGP"},
+		{0x7190,"440BX - 82443BX Host"},
+		{0x7191,"440BX - 82443BX AGP"},
+		{0x7192,"440BX - 82443BX (AGP disabled)"},
+		{0x7800,"i740"},
+		{0x84c4,"82450KX [Orion]"},
+		{0x84c5,"82450GX [Orion]"},
+	}},
+	{0x8800, "Trigem Computer Inc.", {
+	}},
+	{0x8888, "Silicon Magic", {
+	}},
+	{0x8e0e, "Computone Corporation", {
+	}},
+	{0x8e2e, "KTI", {
+		{0x3000,"ET32P2"},
+	}},
+	{0x9004, "Adaptec", {
+		{0x1078,"AIC-7810"},
+		{0x5078,"AIC-7850"},
+		{0x5178,"7851"},
+		{0x5278,"7852"},
+		{0x5575,"2930"},
+		{0x5578,"AIC-7855"},
+		{0x5800,"AIC-5800"},
+		{0x6075,"AIC-1480"},
+		{0x6078,"AIC-7860"},
+		{0x6178,"AIC-7861"},
+		{0x6278,"AIC-7860"},
+		{0x6378,"AIC-7860"},
+		{0x7078,"AIC-7870"},
+		{0x7178,"AIC-7871"},
+		{0x7278,"AIC-7872"},
+		{0x7378,"AIC-7873"},
+		{0x7478,"AIC-7874 [AHA-2944]"},
+		{0x7578,"7875"},
+		{0x7678,"7876"},
+		{0x7895,"AIC-7895"},
+		{0x8078,"AIC-7880U"},
+		{0x8178,"AIC-7881U"},
+		{0x8278,"AIC-7882U"},
+		{0x8378,"AIC-7883U"},
+		{0x8478,"AIC-7884U"},
+		{0x8578,"7885"},
+		{0x8678,"7886"},
+		{0x8b78,"ABA-1030"},
+	}},
+	{0x907f, "Atronics", {
+		{0x2015,"IDE-2015PL"},
+	}},
+	{0x9412, "Holtek", {
+		{0x6565,"6565"},
+	}},
+	{0xa200, "NEC Corporation", {
+	}},
+	{0xa259, "Hewlett Packard", {
+	}},
+	{0xa25b, "Hewlett Packard GmbH PL24-MKT", {
+	}},
+	{0xa304, "Sony", {
+	}},
+	{0xa727, "3Com Corporation", {
+	}},
+	{0xaa42, "Scitex Digital Video", {
+	}},
+	{0xb1b3, "Shiva Europe Limited", {
+	}},
+	{0xc001, "TSI Telsys", {
+	}},
+	{0xc0a9, "Micron/Crucial Technology", {
+	}},
+	{0xc0de, "Motorola", {
+	}},
+	{0xc0fe, "Motion Engineering, Inc.", {
+	}},
+	{0xcafe, "Chrysalis-ITS", {
+	}},
+	{0xd4d4, "Dy4 Systems Inc", {
+	}},
+	{0xe159, "Tiger Jet Network Inc.", {
+		{0x0001,"300"},
+	}},
+	{0xecc0, "Echo Corporation", {
+	}},
+	{0xedd8, "ARK Logic Inc", {
+		{0xa091,"1000PV [Stingray]"},
+		{0xa099,"2000PV [Stingray]"},
+		{0xa0a1,"2000MT"},
+		{0xa0a9,"2000MI"},
+	}},
+};
+

@@ -1,0 +1,13 @@
+# rcmain: 9pm version
+PF='Program Files'
+MVS='Microsoft Visual Studio'
+PATH=D:/Users/Inferno/Nt/386/bin
+PATH=$PATH';'D:/apps/mks/mksnt
+PATH=$PATH';'C:/WINNT/system32
+PATH=$PATH';'C:/WINNT
+PATH=$PATH';'D:/$PF/$MVS/Common/Tools/WinNT
+PATH=$PATH';'D:/$PF/$MVS/Common/MSDev98/Bin
+PATH=$PATH';'D:/$PF/$MVS/Common/Tools
+PATH=$PATH';'D:/$PF/$MVS/VC98/bin
+PATH=$PATH';'D:/MSSQL7/BINN
+PATH=$PATH';'D:/$PF/Mts

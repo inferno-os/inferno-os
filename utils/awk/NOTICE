@@ -1,0 +1,7 @@
+This is a copy of Brian Kernighan's awk from netlib,
+which can be used on systems that don't provide a reasonably
+modern version of awk.  Awk is needed for kernel builds,
+amongst other things.
+
+See the README for the terms
+under which it is distributed.

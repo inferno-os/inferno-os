@@ -1,0 +1,172 @@
+dev
+	root
+	cons archipaq	lcd l3gpio
+	env
+	gpio
+	mnt
+	pipe
+	prog
+	rtc
+	srv
+	dup
+	ssl
+	cap
+	sign
+	draw	screen
+	pointer
+	uart
+	ip	ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium netaux
+	flash
+	ftl
+	pcmcia	cis
+	ether netif netaux
+
+	audio
+	ipaq	suspend
+	kprof
+
+ip
+	il
+	tcp
+	udp
+#	rudp
+#	igmp
+	ipifc
+	icmp
+	icmp6
+#	ipmux
+
+link	
+	flashcfi16
+	etherwavelan
+	ethermedium
+
+lib
+	interp
+	tk
+	draw
+	memlayer
+	memdraw
+	keyring
+	sec
+	mp
+	math
+	kern
+
+mod
+	math
+	sys
+	draw
+	tk
+	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+code
+	int kernel_pool_pcnt = 10;
+	int main_pool_pcnt = 33;
+	int heap_pool_pcnt = 34;
+	int image_pool_pcnt = 33;
+	int cflag = 0;	/* for JIT */
+
+	int consoleprint = 1;
+	int redirectconsole = 1;
+	char debug_keys = 1;
+	int panicreset = 0;
+	char *tkfont = "/fonts/lucidasans/unicode.7.font";
+	int	tkstylus = 1;
+
+init
+	ipaqinit
+
+root
+	/chan	/
+	/dev	/
+	/dis
+	/env	/
+	/fd	/
+	/net	/
+	/net.alt	/
+	/nvfs /
+	/prog	/
+	/dis/lib
+	/dis/disk
+	/osinit.dis
+
+# initialisation
+	/dis/touchcal.dis
+
+# dos file system
+	/dis/dossrv.dis
+	/dis/disk/format.dis
+
+# kfs file system
+	/dis/disk/kfs.dis
+	/dis/disk/kfscmd.dis
+
+# used by file systems and commands
+	/dis/lib/arg.dis
+	/dis/lib/styx.dis
+	/dis/lib/string.dis
+	/dis/lib/daytime.dis
+
+# For development work:
+	/dis/sh.dis	/dis/tiny/sh.dis
+	/dis/ls.dis
+	/dis/cat.dis
+	/dis/bind.dis
+	/dis/mount.dis
+	/dis/pwd.dis
+	/dis/echo.dis
+	/dis/cd.dis
+	/dis/xd.dis
+	/dis/cp.dis
+	/dis/mkdir.dis
+	/dis/rm.dis
+	/dis/p.dis
+	/dis/ps.dis
+	/dis/lib/readdir.dis
+	/dis/lib/workdir.dis
+	/dis/lib/daytime.dis
+	/dis/lib/auth.dis
+	/dis/lib/ssl.dis
+	/dis/lib/bufio.dis
+	/dis/lib/string.dis
+#	/dis/pcmcia.dis	/dis/auxi/pcmcia.dis
+# dhcp
+	/dis/lib/dhcpclient.dis	/dis/lib/dhcpclient.dis
+	/dis/lib/ip.dis	/dis/lib/ip.dis
+
+	/n/remote
+	/n/local
+	/n/client
+	/n/rdbg
+	/n/dump
+	/n/disk
+	/n/kfs
+# Authentication
+	/nvfs/default	/usr/inferno/keyring/default

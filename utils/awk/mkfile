@@ -1,0 +1,29 @@
+<../../mkconfig
+
+TARG=awk
+
+OFILES=\
+	b.$O\
+	lex.$O\
+	lib.$O\
+	main.$O\
+	missing95.$O\
+	parse.$O\
+	proctab.$O\
+	run.$O\
+	tran.$O\
+	ytab.$O\
+
+HFILES=\
+	awk.h\
+	proto.h\
+	ytab.h\
+
+LIBS=bio			# order is important
+
+CFLAGS=$CFLAGS -QIfdiv-
+LDFLAGS=$LDFLAGS setargv.obj
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

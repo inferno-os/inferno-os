@@ -1,0 +1,86 @@
+<../../../mkconfig
+objtype=arm
+SYSTARG=$OSTARG
+OBJTYPE=arm
+BIN=$ROOT/Inferno/$OBJTYPE
+LIBDIR=$ROOT/Inferno/$OBJTYPE/lib
+LIBDIRS=../libflate $ROOT/libkern
+LIBS=\
+	libflate\
+	libkern\
+
+LIBFILES=${LIBS:%=$LIBDIR/%.a}
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE
+
+BIN=$ROOT/Inferno/$OBJTYPE
+
+TARG=\
+	inflate\
+
+INFLATE=\
+	il.$O\
+	imain.$O\
+
+CORE=\
+	uart.$O\
+	inflate.$O\
+	donprint.$O\
+	print.$O\
+
+HFILES=\
+	mem.h\
+
+CFLAGS=-FVw -I.  -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include
+
+all:V:	$TARG
+
+install:V:	$BIN/$TARG
+
+$BIN/%:	%
+	cp $stem $BIN/$stem
+
+inflate: $INFLATE $CORE $LIBFILES
+	$LD -o s$target -R4 -T0xC0200010 -l $prereq
+	$LD -o _$target -H5 -R4 -T0xC0200010 -l $prereq
+	dd -conv sync -ibs 20k -if _$target -of $target
+
+%.$O:	%.s
+	$AS $stem.s
+
+%.$O:	%.c
+	$CC $CFLAGS $stem.c
+
+%.$O:	$HFILES
+
+clean:
+	rm -f *.[$OS] [$OS].out y.tab.? y.debug y.output $TARG _$TARG s$TARG
+
+
+# added to cause libflate to be made automatically:
+
+$ROOT/Inferno/$OBJTYPE/lib/lib%.a:Q:	all-$SHELLTYPE
+	#
+
+rc-lib%.a nt-lib%.a:VQ:
+	echo '@{builtin cd ' $ROOT/lib$stem ';mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install}'
+	@{builtin cd  $ROOT/lib$stem ;mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install}
+
+sh-lib%.a:VQ:
+	echo "(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)"
+	(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)
+
+%-sh:QV:
+		for i in $LIBDIRS
+		do
+			echo "(cd $i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE $stem)"
+			(cd $i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE $stem)
+		done
+
+%-rc %-nt:QV:
+		for (i in $LIBDIRS)
+		{
+			echo '@{cd $i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE $stem}'
+			@{cd $i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE $stem}
+		}
+
+nuke:V:		clean nuke-$SHELLTYPE

@@ -1,0 +1,77 @@
+SYSTARG=Inferno
+OBJTYPE=sparc
+<../../mkconfig
+
+#Configurable parameters
+
+CONF=js			#default configuration
+CONFLIST=js
+
+SYSTARG=$OSTARG
+OBJTYPE=sparc
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+OBJ=\
+	l.$O\
+	clock.$O\
+	main.$O\
+	mmu.$O\
+	fsv.$O\
+	screen.$O\
+	trap.$O\
+	rom.$O\
+	iob.$O\
+	superio.$O\
+	kbd.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$VGAS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+#LIBDIRS=$LIBS
+
+HFILES=\
+	mem.h\
+	dat.h\
+	fns.h\
+	io.h\
+	audio.h\
+	cs4231.h\
+	ns16552.h\
+	rom.h\
+	screen.h\
+	softcursor.h\
+	ureg.h\
+
+CFLAGS=-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp
+KERNDATE=`{$NDATE}
+
+default:V: i$CONF
+
+i$CONF: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -M -o $target -H3 -T0xE0004000 -R0x4 -l $OBJ $CONF.$O $LIBFILES
+
+# "raw" version of kernel for binary comparison testing
+i$CONF.raw: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='0 $CONF.c
+	$LD -s -M -o $target -H3 -T0xE0004000 -R0x4 -l $OBJ $CONF.$O $LIBFILES
+
+install:V: $INSTALLDIR/i$CONF $INSTALLDIR/i$CONF.raw
+
+<../port/portmkfile
+
+%.$O:	io.h
+clock.$O main.$O trap.$O: $ROOT/Inferno/$OBJTYPE/include/ureg.h

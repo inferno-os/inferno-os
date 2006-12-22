@@ -1,0 +1,13 @@
+<../../mkconfig
+
+TARG=mv
+
+OFILES=	mv.$O\
+
+HFILES= 
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

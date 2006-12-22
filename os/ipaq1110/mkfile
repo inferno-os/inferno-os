@@ -1,0 +1,103 @@
+<../../mkconfig
+TKSTYLE=std
+
+#Configurable parameters
+
+CONF=ipaq				#default configuration
+CONFLIST=ipaq
+
+SYSTARG=$OSTARG
+OBJTYPE=arm
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+KTZERO=0xC0008010
+
+OBJ=\
+	l.$O\
+	clock.$O\
+	dma.$O\
+	fpi.$O\
+	fpiarm.$O\
+	fpimem.$O\
+	defont.$O\
+	main.$O\
+	mmu.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+LIBDIRS=$LIBS
+
+HFILES=\
+	mem.h\
+	dat.h\
+	fns.h\
+	io.h\
+	../sa1110/sa1110io.h\
+	../sa1110/fpi.h\
+
+CFLAGS=-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp -I../sa1110
+KERNDATE=`{$NDATE}
+
+default:V: i$CONF.gz i$CONF.p9 k.gz
+
+install:V: $INSTALLDIR/i$CONF $INSTALLDIR/i$CONF.gz $INSTALLDIR/i$CONF.p9.gz $INSTALLDIR/i$CONF.raw
+
+i$CONF: $OBJ $CONF.c $CONF.root.h $LIBNAMES i$CONF.p9
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -s -o $target -H5 -T0xC0008010 -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.p9: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T0xC0008010 -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.gz: i$CONF
+	rm -f i$CONF.gz
+	gzip -9 <i$CONF >i$CONF.gz
+
+<../port/portmkfile
+CLEANEXTRA=k.gz
+
+../init/$INIT.dis:	../init/$INIT.b
+		cd ../init; mk $INIT.dis
+
+clock.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devether.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+main.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+devether.$O $ETHERS:	../sa1110/etherif.h ../port/netif.h
+$IP devip.$O:		../ip/ip.h
+io.h:N:	../sa1110/sa1110io.h
+
+%.$O:		../sa1110/%.c
+		$CC $CFLAGS -I. ../sa1110/$stem.c
+
+%.$O:		../sa1110/%.s
+	$AS -I. -I../sa1110 ../sa1110/$stem.s
+
+dummy:V:
+
+k.gz:	i$CONF.gz
+	cat inflate i$CONF.gz >k.gz
+	echo burble burble >>k.gz
+
+devaudio.$O:	devaudio.c
+	$CC $CFLAGS devaudio.c
+
+arch$CONF.$O:	../sa1110/etherif.h
+
+devuart.$O:	../sa1110/devuart.c
+	$CC $CFLAGS ../sa1110/devuart.c

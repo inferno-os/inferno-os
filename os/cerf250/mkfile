@@ -1,0 +1,102 @@
+<../../mkconfig
+TKSTYLE=std
+
+#Configurable parameters
+
+CONF=cerf				#default configuration
+CONFLIST=cerf
+
+SYSTARG=$OSTARG
+OBJTYPE=arm
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+#KTZERO=0xA0008020
+KTZERO=0xA0020020
+
+OBJ=\
+	l.$O\
+	clock.$O\
+	fpi.$O\
+	fpiarm.$O\
+	fpimem.$O\
+	gpio.$O\
+	main.$O\
+	mmu.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+LIBDIRS=$LIBS
+
+HFILES=\
+	mem.h\
+	dat.h\
+	fns.h\
+	io.h\
+	../pxa/pxaio.h\
+	../pxa/fpi.h\
+
+CFLAGS=-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp -I../pxa
+KERNDATE=`{$NDATE}
+
+default:V: i$CONF i$CONF.p9
+
+install:V: $INSTALLDIR/i$CONF
+
+i$CONF: $OBJ $CONF.c $CONF.root.h $LIBNAMES i$CONF.p9
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -s -o $target -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.p9: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+<../port/portmkfile
+
+%.$O:		../pxa/%.c
+		$CC $CFLAGS -I. ../pxa/$stem.c
+
+%.$O:		../pxa/%.s
+	$AS -I. -I../pxa ../pxa/$stem.s
+
+../init/$INIT.dis:	../init/$INIT.b
+		cd ../init; mk $INIT.dis
+
+clock.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devether.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devsapcm.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+main.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+devether.$O $ETHERS:	../pxa/etherif.h ../port/netif.h
+$IP devip.$O:		../ip/ip.h
+io.h:N:	../pxa/pxaio.h
+
+dummy:V:
+
+# to be moved to libinterp 
+bench.h:D: ../../module/bench.m
+	rm -f $target && limbo -a -I../../module ../../module/bench.m > $target
+benchmod.h:D:  ../../module/bench.m
+	rm -f $target && limbo -t Bench -I../../module ../../module/bench.m > $target
+devbench.$O: bench.h benchmod.h
+
+devaudio.$O:	devaudio.c
+	$CC $CFLAGS devaudio.c
+
+arch$CONF.$O:	../pxa/etherif.h
+
+devuart.$O:	../pxa/devuart.c uart.h
+	$CC $CFLAGS ../pxa/devuart.c

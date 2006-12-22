@@ -1,0 +1,12 @@
+#
+#	install rule for NT & windows 95
+#
+#	since we can't reliably copy the new executable
+#	onto the already executing copy, we make the user
+#	do it manually
+
+$BIN/%:Q:	$O.out
+	echo 'mk must be installed manually on Windows systems'
+	echo use: cp $O.out $target
+	cp $O.out $target
+

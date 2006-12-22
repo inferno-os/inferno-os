@@ -1,0 +1,13 @@
+<../../mkconfig
+
+TARG=echo
+
+OFILES=	echo.$O\
+
+HFILES= 
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

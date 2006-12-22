@@ -1,0 +1,21 @@
+possible input transformations
+	adde	$-1,X	=> addme X
+	adde	$0,X	=> addze X
+	subw	$s,X	=> addw	$-s,X
+	orn	$v,X	=> or	$~v,X
+
+qa:
+	subc	r1,$s,r2 => subc $s,r1,r2
+	movw	sreg(Rn),Rm => movw sreg(NREG),Rn,Rm  [and v.v.]
+
+others?
+	andn	$m => and	$~m
+	slw	$sh,s,a => rliwnm
+	srw	$sh,s,a => rliwnm
+
+support for C_LCON needed since addresses are literals?
+
+- moves
+- branch distance
+
+- could rewrite movwu x,d(r) as movw $d,tmp; movwu x,(tmp+d) when d is large?

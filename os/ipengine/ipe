@@ -1,0 +1,109 @@
+# Bright Star Engineering ipEngine-1
+dev
+	root
+	cons	archipe
+	env
+	mnt
+	pipe
+	prog
+	rtc
+	srv
+	dup
+	ssl
+	cap
+	sign
+
+	ip	bootp ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium netaux
+	ether netif netaux ethermedium
+	uart
+	flash
+#	i2c	i2c
+
+	ftl
+
+	fpga
+
+ip
+	il
+	tcp
+	udp
+#	rudp
+#	igmp
+	ipifc
+	icmp
+	icmp6
+	ipmux
+
+lib
+	interp
+	keyring
+	sec
+	mp
+	math
+	kern
+
+link
+	etherscc
+	ethermedium
+	flash28f320b3b
+
+mod
+	math
+	sys
+	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+code
+	int cflag = 0;
+	int consoleprint = 1;
+	int panicreset = 0;
+	int main_pool_pcnt = 50;
+	int heap_pool_pcnt = 50;
+	int image_pool_pcnt = 0;
+	void	screeninit(void){}
+
+init
+	ipeinit
+
+root
+	/chan	/
+	/dev	/
+	/dis	/
+	/env	/
+	/fd	/
+	/n	/
+	/net	/
+	/nvfs /
+	/prog	/
+	/osinit.dis
+	/dis/lib/auth.dis
+	/dis/lib/ssl.dis
+	/n/local /
+	/n/remote /
+# authentication
+	/nvfs/default	/usr/inferno/keyring/default

@@ -1,0 +1,22 @@
+Booting Inferno on a Cerf cube
+
+Build the /usr/inferno/os/cerf1110 kernel into /usr/inferno/os/cerf1110/icerf:
+	mk
+It uses common SA1110 code in ../sa1110, as well as ../port etc.
+
+Make that icerf file available to the cerf cube by tftp.  How you do that depends on
+your host system.
+
+It should then be easy:
+
+1. Reset the cerf cube (power off/on), and quickly, during `Waiting for RTC to stabilize'
+	hit a key.
+
+2. type
+	tftp /usr/inferno/os/cerf1110/icerf c0008000
+    with appropriate substitution for file name.
+
+3. on success
+	boot c0008000 0 0
+
+it should run.

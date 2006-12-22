@@ -1,0 +1,24 @@
+<../../mkconfig
+
+#
+#	the rm command is only needed on Windows NT and Windows 95
+#
+
+TARG=rm
+
+OFILES=	rm-$TARGMODEL.$O\
+
+HFILES= 
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+rm-Posix.c rm-Inferno.c:QV:
+	echo 'rm is only built on Windows NT or Windows 95'
+	exit 1
+
+$BIN/rm.exe:	$O.out
+	rm -f $target && cp $prereq $target

@@ -1,0 +1,65 @@
+Installing 4th Edition Inferno on an IPAQ (21 August 2003)
+
+This Inferno kernel software is only for the iPAQ 36xx,
+colour models only.
+
+Of course, since it's Inferno, the existing
+applications, and yours, will run (give or take kernel bugs).
+Suspend/resume is implemented except for PCMCIA.
+(We are doing the work to make it more general.)
+Otherwise the system tries to conserve power in the usual
+ways by going into idle to wait for interrupts and powering
+devices up and down on open and close.
+
+The following describes loading the Inferno kernel in to the iPAQ.
+This preliminary version has some things hard-wired in to the code
+to run on our wavelan network (see the end of archipaq.c).
+
+os/init/ipaqinit.b will support a file system (currently dossrv for simplicity)
+running over a Flash Translation Layer on the iPAQ flash.
+Setting up a local file system and loading that onto the iPAQ
+is not discussed here.  A separate package will deal with that.
+
+For development, we generally take the software over the net from
+an Inferno file service (ie, svc/net) running in emu.
+We are providing this iPAQ kernel package to subscribers earlier,
+for the benefit of those subscribers that can make use of it now
+(eg, modify the networking setup to suit their own network).
+A basic local file system package should be available shortly.
+Until it is, if you are not confident you can set up the networking
+or prepare a local file system, you should wait.
+
+1. You must first prepare the iPAQ with the handhelds.org bootloader,
+version 2.18.54 (later ones probably work but we haven't yet tried them).
+Use the iPAQ H3600 Linux installation instructions:
+	ftp://ftp.handhelds.org/pub/linux/compaq/ipaq/stable/install.html
+
+Following that procedure will eliminate Windows/CE from the device: if you will need it
+in future, be sure to save the flash images as
+described in the handhelds.org instructions.
+Note that you will also be trusting that they can get you
+back to a working WinCE machine, so be sure to read the handhelds.org
+documents thoroughly in that regard.
+
+2. At the end, the instructions say ``At this point you have a working
+bootloader and you are ready to install a Linux distribution''.
+You can install Inferno instead, or several other systems, and
+you can later install them instead of Inferno, since they all use
+the same boot loader.
+
+3. A ready-made Inferno kernel is in the file k.gz in this directory
+(os/ipaq1110/k.gz in the Inferno structure).  With a 115k serial connection
+to the bootloader established, as described for loading Linux,
+when you tell the bootloader to `load kernel', send k.gz as the
+data file (using the XMODEM protocol as described by Handhelds.org).
+
+4. Once the system is running, you can update kernels using Inferno,
+when your file system is taken as `remote' over a wireless connection.
+In an Inferno shell on the device (perhaps using the console serial port
+as a keyboard):
+	bind -a '#F' /dev
+	echo erase all >/dev/flash/kernelctl
+	dd </os/ipaq1110/k.gz -conv sync >/dev/flash/kernel
+or just run
+	/os/ipaq1110/upd
+which does that.

@@ -1,0 +1,10 @@
+This port was done in a matter of days by Tad Hunt, Eric van Hensbergen
+and others when they were in the Lucent Inferno Business Unit, with a little
+bit of advice from Vita Nuova about various Sparc details (since one
+of us had done ports to micro-Sparcs).  It is included mainly to
+allow another micro-Sparc port to be developed.   Javastation-1s
+can still be found (but we haven't got one).  A good cheap reference
+board would be good to have.
+
+The Javastation running Java and JavaOS was sluggish; running Limbo
+under Inferno it was actually quite snappy!

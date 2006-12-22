@@ -1,0 +1,28 @@
+<../../mkconfig
+
+TARG=tc
+
+OFILES=	cgen.$O\
+	enam.$O\
+	list.$O\
+	mul.$O\
+	peep.$O\
+	reg.$O\
+	sgen.$O\
+	swt.$O\
+	txt.$O\
+
+HFILES=	gc.h\
+	5.out.h\
+	../cc/cc.h\
+
+LIBS=cc bio 9		# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+$ROOT/$OBJDIR/lib/libcc.a:
+	cd ../cc
+	mk $MKFLAGS install
+	mk $MKFLAGS clean

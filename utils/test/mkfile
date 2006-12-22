@@ -1,0 +1,21 @@
+<../../mkconfig
+
+#
+#	the test command is only needed on Windows NT and Windows 95
+#
+
+TARG=test
+
+OFILES=	test-$TARGMODEL.$O\
+
+HFILES= 
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+test-Posix.c test-Inferno.c:QV:
+	echo 'test is only built on Windows NT or Windows 95'
+	exit 1

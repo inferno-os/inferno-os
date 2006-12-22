@@ -1,0 +1,30 @@
+<../../mkconfig
+
+TARG=8a
+
+OFILES=\
+	y.tab.$O\
+	lex.$O\
+
+HFILES=\
+	../8c/8.out.h\
+	y.tab.h\
+	a.h\
+
+YFILES=a.y\
+
+LIBS=cc bio 9		# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+YFLAGS=-D1 -d
+CFLAGS=	$CFLAGS -I../include
+
+lex.$O:	../cc/macbody ../cc/lexbody
+
+$ROOT/$OBJDIR/lib/libcc.a:
+	cd ../cc
+	mk $MKFLAGS install
+	mk $MKFLAGS clean

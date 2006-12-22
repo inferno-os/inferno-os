@@ -1,0 +1,152 @@
+PORTHFILES=\
+	../port/error.h\
+	../port/lib.h\
+	../port/portdat.h\
+	../port/portfns.h\
+
+LIBFILES=${LIBS:%=$ROOT/Inferno/$OBJTYPE/lib/lib%.a}
+
+CLEANEXTRA=
+
+%.$O:	%.s
+	$AS $stem.s
+
+%.$O:	%.c
+	$CC $CFLAGS $stem.c
+
+%.$O:		../port/%.c
+		$CC $CFLAGS -I. ../port/$stem.c
+
+%.$O:		../ip/%.c
+		$CC $CFLAGS -I. ../ip/$stem.c
+
+%.$O:		../kfs/%.c
+		$CC $CFLAGS -I. ../kfs/$stem.c
+
+&.$O:		$HFILES $PORTHFILES
+
+$INSTALLDIR/%: %
+	cp $stem $INSTALLDIR/$stem
+
+installall:V:	install-$SHELLTYPE
+all:V:		default-$SHELLTYPE
+
+acid:V: i$CONF.acid
+i$CONF.acid:V: $SHELLTYPE-i$CONF.acid
+
+LIBHDIRS= -I$ROOT/libmp/port -I$ROOT/libsec/port
+
+
+rc-i$CONF.acid nt-i$CONF.acid:V: i$CONF
+	{
+		x=i$CONF; test -e i$CONF.p9 && x=i$CONF.p9
+		for (i in `{srclist -ec -r $ROOT/ $x}) {
+			echo '//FILE: ' $i
+			$CC -I. $CFLAGS $LIBHDIRS '-DKERNDATE='$KERNDATE -a $i
+		}
+		echo 'include ("inferno");'
+	} >i$CONF.acid
+
+sh-i$CONF.acid:V: i$CONF
+	x=i$CONF; test -e i$CONF.p9 && x=i$CONF.p9
+	for i in `srclist -ec -r $ROOT/ $x`
+	do
+		echo '//FILE: ' $i
+		$CC -I. $CFLAGS $LIBHDIRS '-DKERNDATE='$KERNDATE -a $i
+	done >i$CONF.acid
+	echo 'include ("inferno");' >> i$CONF.acid
+
+lib%.a:V:	$SHELLTYPE-lib%.a
+
+rc-lib%.a nt-lib%.a:VQ:
+		echo '@{builtin cd' $ROOT/lib$stem ';' mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install'}'
+		@{builtin cd $ROOT/lib$stem; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install}
+
+sh-lib%.a:VQ:
+		echo "(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)"
+		(cd $ROOT/lib$stem; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install)
+
+%-rc %-nt:V:
+		for(i in $CONFLIST)
+			mk 'CONF='$i $stem
+
+%-sh:V:
+		for i in $CONFLIST
+		do
+			mk 'CONF='$i $stem
+		done
+
+clean:V:	cleanconf-$SHELLTYPE
+		rm -f *.[$OS] *.root.[sh] errstr.h *.out $CLEANEXTRA
+
+cleanconf-sh:V:
+		for i in $CONFLIST $CLEANCONFLIST
+		do
+			rm -f $i.c i$i i$i.* $i.ver
+		done
+
+cleanconf-rc cleanconf-nt:V:
+		for(i in $CONFLIST $CLEANCONFLIST)
+			rm -f $i.c i$i i$i.* $i.ver
+
+nuke-sh:QV:
+		for i in $LIBDIRS
+		do
+			echo "(cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke)"
+			(cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke)
+		done
+
+nuke-rc nuke-nt:QV:
+		for (i in $LIBDIRS)
+		{
+			echo '@{cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke}'
+			@{cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke}
+		}
+
+nuke:V:		clean nuke-$SHELLTYPE
+
+$CONF.c:	../port/mkdevc $CONF
+		$SHELLNAME ../port/mkdevc $CONF > $CONF.c
+
+errstr.h:	../port/error.h
+		sed 's/extern //;s,;.*/\* , = ",;s, \*/,";,' < ../port/error.h > errstr.h
+
+../init/%.dis:	../init/%.b
+		cd ../init; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE $stem.dis
+
+$ROOT/libinterp/runt.h:
+		cd $ROOT/libinterp
+		mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE runt.h
+
+RUNT=$ROOT/libinterp/runt.h		# for culling dependencies
+INTERP=$ROOT/include/interp.h
+
+alloc.$O:	$INTERP
+devdbg.$O:	$INTERP
+
+devmnt.$O:	$ROOT/include/fcall.h
+devns16552.$O:	../port/netif.h
+devns16552.$O:	ns16552.h
+devpipe.$O:	$INTERP
+devprof.$O:	$RUNT $INTERP
+devprog.$O:	$RUNT $INTERP
+devroot.$O:	errstr.h
+devsign.$O:	$RUNT $INTERP
+devsrv.$O:	$RUNT	$INTERP
+dis.$O:	$INTERP
+discall.$O:	$INTERP
+exception.$O:	$RUNT	$INTERP
+inferno.$O:	$RUNT	$INTERP
+latin1.$O:	../port/latin1.h
+main.$O:	../port/error.h
+netif.$O:	../port/netif.h
+proc.$O:	errstr.h	$INTERP
+screen.$O:	screen.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+devroot.$O:	$CONF.root.h
+$CONF.$O:	$CONF.root.h
+$CONF.root.s $CONF.root.h: $CONF ../init/$INIT.dis ../port/mkroot $ROOTFILES
+	$SHELLNAME ../port/mkroot $CONF
+
+%.$O:	$ROOT/Inferno/$OBJTYPE/include/u.h ../port/lib.h mem.h dat.h fns.h io.h ../port/error.h ../port/portdat.h ../port/portfns.h

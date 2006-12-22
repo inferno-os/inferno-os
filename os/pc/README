@@ -1,0 +1,9 @@
+PC kernel
+
+The PC kernel is currently being updated to bring it up-to-date with
+Plan 9 support (the original Inferno PC kernel was derived from an
+extended subset of an earlier edition of Plan 9).  In particular,
+although it can be configured as a server, graphics support is
+still being provided.  (The kernel level code in vga*.c, devvga.c and screen.c
+is probably near the final version, but some Limbo code is needed to
+set the right graphics modes.)

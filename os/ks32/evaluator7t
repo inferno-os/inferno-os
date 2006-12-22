@@ -1,0 +1,110 @@
+dev
+	root
+	cons archevaluator7t noscreen not
+#	kbd
+#	gpio
+#	mnt
+#	pipe
+	prog
+#	srv
+#	draw
+	uart
+#	sapcm
+#	flash
+#	touch
+#	ip	bootp ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium
+#	ether netif netaux ethermedium
+#	ata
+
+ip
+#	il
+#	tcp
+#	udp
+#	rudp
+#	igmp
+#	ipifc
+#	icmp
+#	icmp6
+#	ipmux
+
+lib
+	interp
+#	tk
+#	image
+#	memlayer
+#	memimage
+#	keyring
+	sec
+#	mp
+	kern
+
+mod
+	sys
+#	draw
+#	tk
+#	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	noenv
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+link	
+#	lcd
+#	ether589
+#	ethertdk
+#	pppmedium ppp compress
+
+code
+	int main_pool_pcnt = 60;
+	int heap_pool_pcnt = 40;
+	int image_pool_pcnt = 0;
+	int cflag = 0;
+
+	int consoleprint = 1;
+	int redirectconsole = 1;
+	char debug_keys = 1;
+	int panicreset = 0;
+	void pseudoRandomBytes(uchar *a, int n){memset(a, 0, n);}
+	int srvf2c(){return -1;}	/* dummy */
+	Type *Trdchan;
+	Type *Twrchan;
+
+init
+	evalinit
+
+root
+	/chan
+	/dev
+	/dis
+#	/usr/jrf/limbo/cb.dis
+#	/usr/jrf/work/dl/test/test.dis
+#	/o/abc.o
+	/dis/sh.dis
+	/net
+	/prog
+	/osinit.dis
+	/n/remote
+

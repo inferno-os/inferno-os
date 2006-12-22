@@ -1,0 +1,13 @@
+<../../mkconfig
+
+TARG=mkext
+
+OFILES=	mkext.$O\
+
+HFILES= 
+
+LIBS=bio 9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

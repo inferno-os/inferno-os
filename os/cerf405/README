@@ -1,0 +1,45 @@
+Cerfcube 405EP
+
+This is the basis of a port to a range of IBM PowerPC 405 devices.
+At some point all the common code will move to ../ppc, as is done
+for SA1110, MPC8xx, and others.
+
+Currently untested:
+	- both EMAC0 and EMAC1 are initialised, but EMAC1 hasn't been tested (i need to get a cable made);
+	  the PHY for it is detected and initialised, so i think it should work
+	- pci has not been tested since i haven't yet got the mini-PCI card i need
+
+Will change:
+	- devuart.c/uart.h will be replaced by ../port/devuart.c and uart405.c eventually
+	- power control will be extended
+
+mk in this directory should produce a file `icerfhd', which is icerf parcelled as ppcboot/uboot expects it.
+put it where your tftp server can find it.
+
+on the machine to be used as file server, run inferno and start svc/net
+to serve Styx
+
+To boot Inferno:
+	1. set up a dhcp/tftp server for the EMAC0 MAC address, referring to the icerfhd file as the bootfile.
+	2. connect a b115200 l8 pn serial port to talk to the ppcboot/uboot bootstrap
+	3. reset the 405, and interrupt the automatic boot to get to the bootstrap's prompt
+	4. type
+		bootp
+	5. if dhcp is set correctly, that should load the Inferno boot image into memory at 0x300000
+	6. type
+		bootm
+	    to boot that image.
+
+To put Inferno kernel image (icerfhd) on NAND flash:
+	- the boot area is 0 to 0x100000 on NAND (perhaps a bit more, but 0x100000 is currently fine)
+	1. get to the bootstrap's prompt.
+	2. nand erase 0 0x100000
+	3. bootp		# loads the image to 0x300000 by tftp
+	4. nand write 0x300000 0 0x100000
+	5. a subsequent {nand; bootm} (as for auto boot) should run that kernel.
+
+To initialise a file system on the NAND flash:
+	1. set logfsformat=yes in the environment
+	2. boot inferno
+	3. choose remote file system or kernel file system when offered
+	4. the empty flash file system should be in /n/local

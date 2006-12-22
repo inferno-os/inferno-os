@@ -1,0 +1,32 @@
+#	a few sample native ports for different architectures
+
+cerf1110	arm	Intrinsyc SA-1110 Cerf Cube
+ipaq1110	arm	Strongarm SA1110 native kernel for Compaq iPAQ 36xx
+sa1110	arm	SA1110 code common to most/all SA1110 platforms (eg, ipaq, cerf)
+
+cerf250	arm	Intrinsyc Cerfboard250 (PXA250)
+gum	arm	Gumstix PXA255
+pxa	arm	general PXA support
+
+js	sparc	original port to Javastation-1, not recently tested
+
+ks32	arm	ARM Evaluator 7t demo
+
+manga	arm	Micrel KS8695P ARM922 core with 4-port switch and PCI support
+
+cerf405	power	Cerfcube 405EP (based on IBM 405EP processor)
+
+ipengine	power	Bright Star Engineering (www.brightstareng.com) ipEngine-1 (MPC823)
+rpcg	power	RPCG-Lite MPC823/850 board
+fads	power	MPC8xx FADS development board
+mpc	power	code common to ports to Motorola MPC8xx boards
+
+pc	386	basis for ports to various PC-based platforms
+
+#			basic Inferno native kernel components
+port	common	native operating system components
+ip	common	Internet protocol stack, Ether and PPP media
+init	common	Limbo initialisation program (run by native kernel on startup)
+
+#	sample bootstraps
+boot	-	directory of several bootstrap programs; see README there

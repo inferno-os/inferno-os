@@ -1,0 +1,53 @@
+<../../mkconfig
+
+#
+#	this directory contains a stripped-down version of rc
+#	it is only build for Windows Nt and Windows 95
+
+TARG=rcsh
+
+OFILES=	code.$O\
+	exec.$O\
+	glob.$O\
+	here.$O\
+	io.$O\
+	lex.$O\
+	main.$O\
+	$TARGMODEL.$O\
+	pcmd.$O\
+	pfnc.$O\
+	simple.$O\
+	trap.$O\
+	tree.$O\
+	var.$O\
+	word.$O\
+	y.tab.$O\
+
+HFILES=	rc.h\
+	y.tab.h\
+
+YFILES=	syn.y
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS '-DROOT="'$ROOT'"'
+
+$BIN/%:Q:	$O.out
+	echo $TARG must be installed manually on Windows systems
+	echo use: cp $O.out $target
+	cp $O.out $target
+
+install:V:	$ROOT/utils/lib/rcmain
+
+$ROOT/utils/lib/rcmain:Q:	rcmain
+	echo $prereq must be installed manually on Windows systems
+	echo use: cp $prereq $target
+	cp $prereq $target
+
+Posix.c Inferno.c:QV:
+	echo $TARG is only built on Windows NT or Windows 95
+	exit 1

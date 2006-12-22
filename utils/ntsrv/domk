@@ -1,0 +1,2 @@
+os -d $emuroot\utils\ntsrv mk | sed 's/\(([0-9]*)\)/:\1/
+s///'

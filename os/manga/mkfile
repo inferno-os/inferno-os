@@ -1,0 +1,89 @@
+<../../mkconfig
+
+#Configurable parameters
+
+CONF=manga				#default configuration
+CONFLIST=manga boot
+
+SYSTARG=$OSTARG
+OBJTYPE=arm
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE	#path of directory where kernel is installed
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+KTZERO=0xC0008010
+
+OBJ=\
+	l.$O\
+	clock.$O\
+	fpi.$O\
+	fpiarm.$O\
+	fpimem.$O\
+	gpio.$O\
+	ioring.$O\
+	main.$O\
+	mmu.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+LIBDIRS=$LIBS
+
+HFILES=\
+	mem.h\
+	dat.h\
+	io.h\
+
+CFLAGS=-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp
+KERNDATE=`{$NDATE}
+
+default:V: i$CONF i$CONF.p9 k.gz
+
+install:V: $INSTALLDIR/i$CONF $INSTALLDIR/i$CONF.gz $INSTALLDIR/i$CONF.p9.gz
+
+i$CONF: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -s -o $target -H5 -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.p9: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.gz: i$CONF
+	rm -f i$CONF.gz
+	gzip -9 <i$CONF >i$CONF.gz
+
+<../port/portmkfile
+CLEANEXTRA=k.gz
+
+../init/$INIT.dis:	../init/$INIT.b
+		cd ../init; mk $INIT.dis
+
+clock.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devether.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+main.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+$IP devip.$O:		../ip/ip.h
+
+
+devuart.$O:	../port/devuart.c ../port/uart.h
+	$CC $CFLAGS ../port/devuart.c
+
+k.gz:	i$CONF.gz pinflate
+	cat pinflate i$CONF.gz >k.gz
+	echo burble burble >>k.gz
+
+# pepinflate: /sys/src/boot/pep/pinflate
+
+dummy:V:

@@ -1,0 +1,44 @@
+Booting Inferno on a Cerfboard 250
+
+This is a preliminary version (work in progress) of Inferno
+on an Intrinsyc Cerfboard 250 (without daughterboard[s]).
+It and ../pxa were initially the results of a fairly idle `afternoon and an evening' port.
+A little work has been done on it since then.
+Updates will be available shortly to complete peripheral support
+(at least for the Cerfboard 250), and provide suspend mode.
+
+It allows Inferno to boot up and take resources from the net,
+chatting on the console.  I2C to the PCF8563 clock and EEPROMs is
+also supported.
+
+Substitute appropriate your own directory's name for /usr/inferno
+in the following.
+
+Build the /usr/inferno/os/cerf250 kernel into /usr/inferno/os/cerf250/icerf:
+	mk
+It uses common PXA25x code in ../pxa, as well as ../port etc.
+
+Make that icerf file available to the cerf cube by tftp.  How you do that depends on
+your host system.
+
+It should then be easy:
+
+1. Reset the cerf cube (power off/on), and quickly, during `hit a key ...'
+	hit a key.
+
+2. type
+	network.start()
+	download 10.0.0.1 "/usr/inferno/os/cerf250/icerf" 0xa0020000
+    with appropriate substitution for boot server and file name.
+
+3. on success
+	jump 0xa0020020
+
+it should run.
+
+once you're happy with it, the kernel image can replace the Linux one in flash.
+i plan, however, to use my sqz code to compress it by about 50% with
+fast decompression.
+
+forsyth@vitanuova.com
+Fri Mar 19 16:42:07 GMT 2004

@@ -1,0 +1,18 @@
+The following files are subject to the Lucent Public License 1.02:
+
+devbridge.c
+devds.c
+devdup.c
+devloopback.c
+devpci.c	(portions)
+devpnp.c
+devsd.c
+devuart.c
+edf.c
+edf.h
+ethermii.c
+ethermii.h
+log.c
+mul64fract.c
+rdb.c
+sd.h

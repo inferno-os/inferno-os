@@ -1,0 +1,19 @@
+<../../mkconfig
+
+#
+#	the md5sum command is needed for the test suite
+#
+
+TARG=md5sum
+
+OFILES=	md5sum.$O\
+
+
+HFILES= 
+
+LIBS=9 sec
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+

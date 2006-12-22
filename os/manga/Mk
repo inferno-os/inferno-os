@@ -1,0 +1,8 @@
+#!/bin/rc
+rfork ne
+ROOT=/usr/inferno
+fn cd
+NPROC=3
+path=(/usr/inferno/Plan9/$cputype/bin $path)
+#bind /usr/inferno/mkconfig.dist /usr/inferno/mkconfig
+exec mk $*

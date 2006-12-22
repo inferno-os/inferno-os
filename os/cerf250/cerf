@@ -1,0 +1,163 @@
+dev
+	root
+	cons archcerf
+	env
+	mnt
+	pipe
+	prog
+#	rtc
+	pcf8563	i2c
+	srv
+	dup
+	ssl
+	cap
+	sign
+
+#	draw	screen
+#	pointer
+	uart
+	ip	bootp ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium netaux
+	flash
+#	ftl
+#	pcmcia	cis
+#	ata
+	ether netif netaux
+
+#	cerf
+#	kprof
+	i2c	i2c
+
+ip
+	il
+	tcp
+	udp
+#	rudp
+#	igmp
+	ipifc
+	icmp
+	icmp6
+#	ipmux
+
+link	
+	flashcfi16
+	ether91c111	# ethermii
+	ethermedium
+
+lib
+	interp
+#	tk
+#	draw
+#	memlayer
+#	memdraw
+	keyring
+	math
+	sec
+	mp
+	kern
+
+mod
+	math
+	sys
+#	draw
+#	tk
+	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+code
+	int main_pool_pcnt = 50;
+	int heap_pool_pcnt = 50;
+	int image_pool_pcnt = 0;
+	int cflag = 0;	/* for JIT */
+
+	int consoleprint = 1;
+	char debug_keys = 1;
+	int panicreset = 0;
+	void screeninit(void){}
+
+init
+	cerfinit
+
+root
+	/chan	/
+	/dev	/
+	/env	/
+	/fd	/
+	/net	/
+	/net.alt	/
+	/nvfs /
+	/prog	/
+	/root	/
+	/nvfs	/
+	/osinit.dis
+	/tmp	/
+	/dis
+	/dis/lib
+	/dis/disk
+
+# dos file system
+	/dis/dossrv.dis
+	/dis/lib/arg.dis
+	/dis/lib/styx.dis
+	/dis/lib/string.dis
+	/dis/lib/daytime.dis
+
+	/dis/disk/format.dis
+
+# For development work:
+	/dis/sh.dis	/dis/tiny/sh.dis
+	/dis/ls.dis
+	/dis/cat.dis
+	/dis/bind.dis
+	/dis/mount.dis
+	/dis/pwd.dis
+	/dis/echo.dis
+	/dis/cd.dis
+	/dis/xd.dis
+	/dis/cp.dis
+	/dis/mkdir.dis
+	/dis/rm.dis
+	/dis/p.dis
+	/dis/ps.dis
+	/dis/lib/readdir.dis
+	/dis/lib/workdir.dis
+	/dis/lib/daytime.dis
+	/dis/lib/auth.dis
+	/dis/lib/ssl.dis
+	/dis/lib/bufio.dis
+	/dis/lib/string.dis
+#	/dis/pcmcia.dis	/usr/forsyth/pcmcia.dis
+
+	/n/remote
+	/n/local
+	/n/client
+	/n/rdbg
+	/n/dump
+	/n/disk
+	/n/kfs
+# Authentication
+	/nvfs/default	/usr/inferno/keyring/default

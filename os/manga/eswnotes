@@ -1,0 +1,41 @@
+- switch level
+	- VlanEn vlan enable
+	- disable tx/rx flow control
+	- buffer sharing control
+	- unicast port-VLAN mismatch discard
+	- fair flow control on/off
+	- priority buffer reserved
+	- high prio first, 10:1, 5:1 2:1
+	- tag mask enabled
+	- enable/disable switch?
+	- TPID mode for direct forwarding from port 5
+	- replace null VID with default port VID
+	- 802.1p base priority
+
+- port level
+	- auto negotiation
+	- spanning tree tx/rx/learn on/off
+	- priority classification on/off
+	- diffserve priority classification on/off
+	- 802.1p classification on/off
+		- some of those are possibly mutually exclusive
+	- priority function enabled
+	- default tag: userprio (3 bits), CFI (mbz), 12-bit VID
+	- VLAN related
+		- ingress filter (discard packets from port not in VLAN)
+		- discard non pvid (discard tagged packets not matching port's default VID)
+	- receive rate control
+		- high priority 8-bits, low priority 8-bits
+	- enable rate and/or flow control, high and low priority, tx/rx
+
+- FID management
+
+- static MAC management
+- VLAN table (16 entries)
+	- port membership
+	- FID
+	- 802.1Q 12-bit VID
+
+- stats
+
+- 8100 or 810x

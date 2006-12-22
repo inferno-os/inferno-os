@@ -1,0 +1,7 @@
+#
+#	install rule for Posix systems
+#
+
+$BIN/%:	$O.out
+	test -x $target && mv $target $BIN/mk.save		#because we are executing it
+	cp $O.out $target

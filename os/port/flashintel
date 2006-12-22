@@ -1,0 +1,179 @@
+
+enum {
+	DQ7 = I(0x80),
+	DQ6 = I(0x40),
+	DQ5 = I(0x20),
+	DQ4 = I(0x10),
+	DQ3 = I(0x08),
+	DQ2 = I(0x04),
+	DQ1 = I(0x02),
+	DQ0 = I(0x01),
+};
+
+/*
+ * intel algorithm
+ */
+
+enum {
+	ReadID = I(0x90),
+	ClearStatus = I(0x50),
+	ReadStatus = I(0x70),
+	Program = I(0x40),
+	BlockErase = I(0x20),
+	Confirm = I(0xD0),
+};
+
+#define	DPRINT	if(0)print
+#define	EPRINT	if(1)print
+
+static char*
+intelwait(Flash *f, void *p, ulong ticks)
+{
+	ulong csr, mask;
+
+	ticks += m->ticks+1;
+	mask = f->cmask;
+	for(;;){
+		if(f->width == 2)
+			csr = *(ushort*)p;
+		else
+			csr = *(ulong*)p;
+		if((csr & mask) == (DQ7 & mask))
+			break;
+		sched();
+		if(m->ticks >= ticks)
+			return "flash write timed out";
+	}
+	if(csr & (DQ5|DQ4|DQ3|DQ1)){
+		EPRINT("flash: error: %8.8lux %8.8lux\n", p, csr);
+		if(csr & DQ1)
+			return "flash block locked";
+		if(csr & DQ3)
+			return "low flash programming voltage";
+		return Eio;
+	}
+	return nil;
+}
+
+static int
+intelerase(Flash *f, Flashregion *r, ulong addr)
+{
+	int s;
+	char *e;
+
+	DPRINT("flash: erase zone %8.8lux\n", addr);
+	if(addr & (r->erasesize-1))
+		return -1;	/* bad zone */
+	if(f->width == 2){
+		ushort *p = (ushort*)((ulong)f->addr + addr);
+		s = splhi();
+		*p = BlockErase & f->cmask;
+		*p = Confirm & f->cmask;
+		splx(s);
+		e = intelwait(f, p, MS2TK(8*1000));
+		*p = ClearStatus & f->cmask;
+		*p = ReadArray & f->cmask;
+	}else{
+		ulong *p = (ulong*)((ulong)f->addr + addr);
+		s = splhi();
+		*p = BlockErase & f->cmask;
+		*p = Confirm & f->cmask;
+		splx(s);
+		e = intelwait(f, p, MS2TK(8*1000));
+		*p = ClearStatus & f->cmask;
+		*p = ReadArray & f->cmask;
+	}
+	if(e != nil)
+		error(e);
+	return 0;
+}
+
+static int
+intelwrite2(Flash *f, ulong offset, void *buf, long n)
+{
+	ushort *a, *v;
+	ulong w;
+	int s;
+	char *e;
+
+	if(((ulong)f->addr|offset|n)&(f->width-1))
+		return -1;
+	a = (ushort*)((ulong)f->addr + offset);
+	n /= f->width;
+	v = buf;
+	if(waserror()){
+		*a = ClearStatus & f->cmask;
+		*a = ReadArray & f->cmask;
+		nexterror();
+	}
+	for(; --n >= 0; v++, a++){
+		w = *a;
+		DPRINT("flash: write %p %#ulx -> %#lux\n", a, w, (ulong)*v);
+		if(w == *v)
+			continue;	/* already set */
+		if(~w & *v)
+			error("flash not erased");
+		s = splhi();
+		*a = Program & f->cmask;	/* program */
+		*a = *v;
+		splx(s);
+		microdelay(8);
+		e = intelwait(f, a, 5);
+		*a = ClearStatus & f->cmask;
+		*a = ReadArray & f->cmask;
+		if(e != nil)
+			error(e);
+		w = *a;
+		if(w != *v){
+			EPRINT("flash: write %p %#8.8lux -> %#8.8lux failed\n", a, w, (ulong)*v);
+			error(Eio);
+		}
+	}
+	poperror();
+	return 0;
+}
+
+static int
+intelwrite4(Flash *f, ulong offset, void *buf, long n)
+{
+	ulong *a, *v;
+	ulong w;
+	int s;
+	char *e;
+
+	if(((ulong)f->addr|offset|n)&(f->width-1))
+		return -1;
+	a = (ulong*)((ulong)f->addr + offset);
+	n /= f->width;
+	v = buf;
+	if(waserror()){
+		*a = ClearStatus & f->cmask;
+		*a = ReadArray & f->cmask;
+		nexterror();
+	}
+	for(; --n >= 0; v++, a++){
+		w = *a;
+		DPRINT("flash: write %p %#ulx -> %#lux\n", a, w, (ulong)*v);
+		if(w == *v)
+			continue;	/* already set */
+		if(~w & *v)
+			error("flash not erased");
+		s = splhi();
+		*a = Program;	/* program */
+		*a = *v;
+		splx(s);
+		microdelay(8);
+		e = intelwait(f, a, 5);
+		*a = ClearStatus & f->cmask;
+		*a = ReadArray & f->cmask;
+		if(e != nil)
+			error(e);
+		w = *a;
+		if(w != *v){
+			EPRINT("flash: write %p %#8.8lux -> %#8.8lux failed\n", a, w, *v);
+			error(Eio);
+		}
+	}
+	poperror();
+	return 0;
+}

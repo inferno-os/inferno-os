@@ -1,0 +1,23 @@
+<../../mkconfig
+
+TARG=5coff
+
+OFILES=	5coff.$O\
+		coff.$O\
+		auxi.$O\
+
+HFILES=\
+	a.out.h\
+	bio.h\
+	mach.h\
+
+LIBS=mach bio 9	# order matters.
+
+CFLAGS=$CFLAGS -I../include
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+$O.readcoff:	readcoff.$O
+	$LD $LDFLAGS -o $target readcoff.$O $libs $SYSLIBS

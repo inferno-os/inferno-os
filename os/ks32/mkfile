@@ -1,0 +1,115 @@
+<../../mkconfig
+
+#Configurable parameters
+
+CONF=evaluator7t				#default configuration
+CONFLIST=evaluator7t
+
+SYSTARG=$OSTARG
+OBJTYPE=arm
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+KTZERO=0x8080
+
+OBJ=\
+	l.$O\
+	clock.$O\
+	fpi.$O\
+	fpiarm.$O\
+	fpimem.$O\
+	main.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+LIBDIRS=$LIBS
+
+HFILES=\
+	mem.h\
+	armv7.h\
+	dat.h\
+	fns.h\
+	io.h\
+	fpi.h\
+
+CFLAGS=-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp -r
+KERNDATE=`{$NDATE}
+
+# default:V: i$CONF.gz i$CONF.p9.gz i$CONF.txt
+default:V: i$CONF.txt
+
+install:V: $INSTALLDIR/i$CONF $INSTALLDIR/i$CONF.gz $INSTALLDIR/i$CONF.p9.gz $INSTALLDIR/i$CONF.raw
+
+i$CONF.txt: i$CONF.aif
+	x=/bin/pub/uuencode
+	test -f $x || x=uuencode
+	$x i$CONF.aif i$CONF.aif >i$CONF.txt
+	mv i$CONF.txt xyz
+
+i$CONF: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+trap.t: trap.5
+	cp trap.5 trap.t
+trap.5: trap.c
+	5c $CFLAGS trap.c
+
+# old "plan9" format executables for inf2.1 styxmon/sboot
+i$CONF.p9: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T0x8020 -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.p9.gz: i$CONF.p9
+	rm -f i$CONF.p9.gz
+	gzip -9 <i$CONF.p9 >i$CONF.p9.gz
+
+# "raw" version of kernel for binary comparison testing
+i$CONF.raw: $OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='0 $CONF.c
+	$LD -s -o $target -T$KTZERO -R4 -l $OBJ $CONF.$O $LIBFILES
+
+i$CONF.aif: i$CONF
+	5cv -s -H1 -T$KTZERO $prereq $target
+
+i$CONF.gz: i$CONF.aif
+	gzip -9 <$prereq >$target
+
+<../port/portmkfile
+
+../init/$INIT.dis:	../init/$INIT.b
+		cd ../init; mk $INIT.dis
+
+clock.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devether.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devsapcm.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+fault386.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+main.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+devether.$O $ETHERS:	etherif.h ../port/netif.h
+$IP devip.$O:		../ip/ip.h
+
+dummy:V:
+
+# to be moved to port/interp 
+bench.h:D: ../../module/bench.m
+	rm -f $target && limbo -a -I../../module ../../module/bench.m > $target
+benchmod.h:D:  ../../module/bench.m
+	rm -f $target && limbo -t Bench -I../../module ../../module/bench.m > $target
+devbench.$O: bench.h benchmod.h
+
+devuart.$O:	devuart.c
+	$CC $CFLAGS devuart.c

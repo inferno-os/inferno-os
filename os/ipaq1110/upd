@@ -1,0 +1,4 @@
+#!/dis/sh
+bind -a '#F' /dev
+echo erase all >/dev/flash/kernelctl
+dd -conv sync </os/ipaq1110/k.gz >/dev/flash/kernel

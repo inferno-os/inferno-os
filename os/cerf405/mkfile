@@ -1,0 +1,104 @@
+SYSTARG=Inferno
+OBJTYPE=power
+<../../mkconfig
+
+#Configurable parameters
+
+CONF=cerf			#default configuration
+CONFLIST=cerf
+KZERO=0x20003020
+
+SYSTARG=$OSTARG
+OBJTYPE=power
+INSTALLDIR=$ROOT/Inferno/$OBJTYPE/bin	#path of directory where kernel is installed
+#INSTALLDIR=/$OBJTYPE
+
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $ETHERS, $VGAS, $PORT, $MISC, $LIBS, $OTHERS
+
+OBJ=\
+	l.$O\
+	tlb.$O\
+	nofp.$O\
+	clock.$O\
+	compile.$O\
+	fpi.$O\
+	fpimem.$O\
+	fpipower.$O\
+	gpio.$O\
+	main.$O\
+	mal.$O\
+	mmu.$O\
+	rmap.$O\
+	trap.$O\
+	$CONF.root.$O\
+	$IP\
+	$DEVS\
+	$ETHERS\
+	$LINKS\
+	$VGAS\
+	$PORT\
+	$MISC\
+	$OTHERS\
+
+LIBNAMES=${LIBS:%=lib%.a}
+
+HFILES=\
+	mem.h\
+	physmem.h\
+	dat.h\
+	fns.h\
+	io.h\
+
+CFLAGS=-wFV -I. -I../port -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp
+KERNDATE=`{$NDATE}
+
+#default:V: i$CONF.sq
+default:V:	i${CONF}hd
+
+i$CONF:	$OBJ $CONF.c $CONF.root.h $LIBNAMES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD -o $target -T$KZERO -l -R4 $OBJ $CONF.$O $LIBFILES
+	$KSIZE $target
+
+i$CONF.sq:	i$CONF
+	sqz -w i$CONF >$target
+
+out=i${CONF}hd
+
+i${CONF}hd:	i$CONF
+	mkppcimage i$CONF $out
+
+install:V: i$CONF # i$CONF.sq
+	cp i$CONF $INSTALLDIR/i$CONF
+	#cp i$CONF.sq $INSTALLDIR/i$CONF.sq
+
+uninstall:V:
+	rm -f $ROOT/$OBJDIR/bin/i$CONF
+	rm -f $ROOT/$OBJDIR/bin/i$CONF.sq
+
+<../port/portmkfile
+
+../init/$INIT.dis:	../init/$INIT.b
+		cd ../init; mk $INIT.dis
+
+clock.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+devether.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+faultpower.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+main.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+trap.$O:	$ROOT/Inferno/$OBJTYPE/include/ureg.h
+
+devether.$O $ETHERS:	etherif.h ../port/netif.h
+archipe.$O:	screen.h archipe.h
+
+#$VGAS:		screen.h vga.h
+$IP devip.$O:		../ip/ip.h
+
+devboot.$O:	devboot.c
+	$CC $CFLAGS devboot.c
+
+devuart.$O:	devuart.c
+	$CC $CFLAGS devuart.c

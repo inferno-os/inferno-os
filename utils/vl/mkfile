@@ -1,0 +1,31 @@
+<../../mkconfig
+
+TARG=vl
+
+OFILES=\
+	asm.$O\
+	list.$O\
+	noop.$O\
+	sched.$O\
+	obj.$O\
+	optab.$O\
+	pass.$O\
+	span.$O\
+	enam.$O\
+	$TARGMODEL.$O\
+
+HFILES=\
+	l.h\
+	../vc/v.out.h\
+	../include/ar.h\
+
+LIBS=bio 9			# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS -I../include
+
+enam.$O:	../vc/enam.c
+	$CC $CFLAGS ../vc/enam.c

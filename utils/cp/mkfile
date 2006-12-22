@@ -1,0 +1,22 @@
+<../../mkconfig
+
+TARG=cp
+
+OFILES=	cp.$O\
+
+HFILES= 
+
+LIBS=9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+#
+#	override install so that cp doesn't try to copy onto itself
+#
+
+$BIN/%:	$O.out
+	cp $target cpx.exe
+	./cpx $O.out $target
+	rm cpx.exe

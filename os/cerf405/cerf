@@ -1,0 +1,139 @@
+# Intrinsyc Cerf Cube 405EP
+dev
+	root
+	cons
+	env
+	mnt
+	pipe
+	prog
+	rtc	iic
+	srv
+	dup
+	ssl
+	cap
+	sign
+
+	ip	ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium netaux
+	ether netif netaux
+	uart
+	flash
+
+	logfs
+	i2c	iic
+	pci	pci inb
+
+
+ip
+	il
+	tcp
+	udp
+#	rudp
+#	igmp
+	ipifc
+	icmp
+	icmp6
+	ipmux
+
+lib
+	interp
+	keyring
+	sec
+	mp
+	math
+	kern
+	logfs
+	nandfs
+
+link
+	etheremac	ethermii
+	flashamd29f0x0
+	flashnand	nand
+	ethermedium
+
+mod
+	math
+	sys
+	keyring
+
+port
+	alarm
+	alloc
+	allocb
+	chan
+	dev
+	dial
+	dis
+	discall
+	exception
+	exportfs
+	inferno
+	latin1
+	nocache
+	nodynld
+	parse
+	pgrp
+	print
+	proc
+	qio
+	qlock
+	random
+	sysfile
+	taslock
+	xalloc
+
+code
+	int cflag = 0;
+	int consoleprint = 1;
+	int panicreset = 0;
+	int main_pool_pcnt = 50;
+	int heap_pool_pcnt = 50;
+	int image_pool_pcnt = 0;
+	void	screeninit(void){}
+
+init
+	cerf405
+
+root
+	/chan	/
+	/dev	/
+	/boot	/
+	/env	/
+	/fd	/
+	/net	/
+	/prog	/
+	/root	/
+	/nvfs	/
+	/osinit.dis
+	/tmp /
+
+# files used by osinit.dis during bootstrap
+	/boot/n	/
+	/boot/n/local	/
+	/boot/n/remote	/
+# authentication
+	/boot/nvfs/default	/usr/inferno/keyring/default
+	/boot/dis/lib/auth.dis	/dis/lib/auth.dis
+	/boot/dis/lib/ssl.dis	/dis/lib/ssl.dis
+# dhcp
+	/boot/dis/lib/dhcpclient.dis	/dis/lib/dhcpclient.dis
+	/boot/dis/lib/ip.dis	/dis/lib/ip.dis
+
+# and other files used to poke round during development
+	/boot/dis/cat.dis /dis/cat.dis
+	/boot/dis/echo.dis /dis/echo.dis
+	/boot/dis/lib/arg.dis /dis/lib/arg.dis
+
+	/boot/dis/sh.dis /dis/sh.dis
+	/boot/dis/lib/bufio.dis /dis/lib/bufio.dis
+	/boot/dis/lib/filepat.dis /dis/lib/filepat.dis
+	/boot/dis/lib/readdir.dis /dis/lib/readdir.dis
+	/boot/dis/lib/string.dis /dis/lib/string.dis
+
+	/boot/dis/cd.dis /dis/cd.dis
+	/boot/dis/bind.dis /dis/bind.dis
+	/boot/dis/dd.dis /dis/dd.dis
+	/boot/dis/p.dis /dis/p.dis
+	/boot/dis/ls.dis /dis/ls.dis
+	/boot/dis/lib/daytime.dis /dis/lib/daytime.dis
+	/boot/dis/time.dis /dis/time.dis
+	/boot/dis/xd.dis /dis/xd.dis

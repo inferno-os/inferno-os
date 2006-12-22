@@ -1,0 +1,29 @@
+<../../mkconfig
+
+TARG=8l
+
+OFILES=\
+	asm.$O\
+	obj.$O\
+	optab.$O\
+	pass.$O\
+	span.$O\
+	list.$O\
+	enam.$O\
+	$TARGMODEL.$O\
+
+HFILES=\
+	l.h\
+	../8c/8.out.h\
+	../include/ar.h\
+
+LIBS=bio 9			# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS -I../include
+
+enam.$O:	../8c/enam.c
+	$CC $CFLAGS ../8c/enam.c

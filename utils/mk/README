@@ -1,0 +1,26 @@
+Using the delivered mk to rebuild mk.
+
+You should be able to use the delivered executable of mk to
+build a new executable.  This may be of particular interest
+on Windows NT/Win95 where the path of the shell program
+can be hard-coded by changing the variable named "shell"
+near the beginning of source file Nt.c.
+
+Mk uses the regular expression library, so build
+the program as follows:
+
+1.  ensure that ../../mkconfig contains the proper system definitions
+
+2.  ensure that the system libraries lib9, libbio, and libregexp have
+	been built.  you can do this by hand by changing to ../lib9,
+	../libbio, and ../libregexp and doing "mk nuke" and a "mk install"
+	in each.
+
+3. in this directory
+	mk nuke
+	mk install
+
+4. on NT/Win95 the executable must be installed by hand because the current
+	executable is locked down while it is executing:
+
+	mv obj.out ../../Nt/386/bin/mk.exe
