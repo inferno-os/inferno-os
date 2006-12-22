@@ -1,0 +1,318 @@
+.TH BUFIO 2
+.SH NAME
+bufio, bufiofill \- buffered input/output module
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+
+bufio := load Bufio Bufio->PATH;
+Iobuf: import bufio;
+
+SEEKSTART:  con Sys->SEEKSTART;
+SEEKRELA:   con Sys->SEEKRELA;
+SEEKEND:    con Sys->SEEKEND;
+
+OREAD:      con Sys->OREAD;
+OWRITE:     con Sys->OWRITE;
+ORDWR:      con Sys->ORDWR;
+
+EOF:        con -1;
+ERROR:      con -2;
+
+Iobuf: adt {
+    seek:   fn(b: self ref Iobuf, n: big, where: int): big;
+    offset: fn(b: self ref Iobuf): big;
+
+    read:   fn(b: self ref Iobuf, a: array of byte, n: int): int;
+    write:  fn(b: self ref Iobuf, a: array of byte, n: int): int;
+
+    getb:   fn(b: self ref Iobuf): int;
+    getc:   fn(b: self ref Iobuf): int;
+    gets:   fn(b: self ref Iobuf, sepchar: int): string;
+    gett:   fn(b: self ref Iobuf, sepstring: string): string;
+
+    ungetb: fn(b: self ref Iobuf): int;
+    ungetc: fn(b: self ref Iobuf): int;
+
+    putb:   fn(b: self ref Iobuf, b: byte): int;
+    putc:   fn(b: self ref Iobuf, c: int): int;
+    puts:   fn(b: self ref Iobuf, s: string): int;
+
+    flush:  fn(b: self ref Iobuf): int;
+    close:  fn(b: self ref Iobuf);
+
+    setfill: fn(b: self ref Iobuf, f: BufioFill);
+};
+
+open:   fn(name: string, mode: int): ref Iobuf;
+create: fn(name: string, mode, perm: int): ref Iobuf;
+fopen:  fn(fd: ref Sys->FD, mode: int): ref Iobuf;
+aopen: fn(a: array of byte): ref Iobuf;
+sopen:  fn(s: string): ref Iobuf;
+
+BufioFill: module
+{
+    fill:   fn(b: ref Bufio->Iobuf): int;
+};
+.EE
+.SH DESCRIPTION
+.B Bufio
+provides an interface for buffered I/O.
+A buffer is an adt which
+is created with
+.BR open ,
+.BR fopen ,
+.BR create ,
+.B aopen
+and
+.BR sopen .
+.PP
+.B Open
+takes two parameters, a
+.I filename
+and a
+.IR mode .
+The mode must be
+one of
+.BR OREAD ,
+.BR OWRITE ,
+or
+.B ORDWR
+(also defined in the
+.B Sys
+module).
+.PP
+.B Create
+is similar, but
+creates a new file if necessary, with file permissions
+specified by
+.IR perm
+(see
+.B create
+in
+.IR sys-open (2)),
+or truncates an existing file (without changing its permissions),
+before opening it in the given
+.IR mode ,
+and returning a reference to an
+.B Iobuf
+instance.
+.PP
+Buffered I/O on an already open file is made possible using
+.BR "fopen" ,
+which takes a file descriptor
+.I fd
+and an open
+.IR mode ,
+which must be compatible with the mode of the file descriptor.
+.PP
+The file open functions return a
+.B ref
+.B Iobuf
+to be used in subsequent calls.  Thus:
+.PP
+.EX
+	lc := bufio->open("/net/tcp/0/local", bufio->OREAD);
+	addr := lc.gets('\en');
+	lc = nil;
+.EE
+.PP
+will open the file
+.B /net/tcp/0/local
+and read a line (including the terminating newline
+character) from this file to initialize the string variable
+.BR addr .
+The file is closed implicitly by discarding (assigning
+.B nil
+to) the only
+reference to its
+.BR Iobuf .
+.PP
+The function
+.B aopen
+makes the contents of an array of byte
+.I a
+readable through an Iobuf (it may not be written).
+The function
+.B sopen
+similarly makes the contents of a string
+.I s
+readable.
+.PP
+Processes can share the same instance of
+.B Bufio
+and safely open and close different files concurrently, but two processes must not access the same
+.B Iobuf
+concurrently; they must coordinate their access using some external mechanism
+(eg,
+.IR lock (2)).
+.PP
+Each output file must be flushed or closed individually (see
+.B flush
+and
+.B close
+operations below).
+.PP
+The calls implemented by
+.B Iobuf
+are:
+.PP
+.TF setfill
+.PD
+.TP
+.BR seek , \ read ", and " write
+Each has the same parameters as its complement in
+.B Sys
+(see
+.IR sys-seek (2),
+.IR sys-read (2)).
+Note that
+.BR SEEKSTART
+etc. are defined by
+.B Bufio
+as well as by
+.BR Sys ,
+for use by
+.BR seek .
+.TP
+.B offset
+Return the current file offset in bytes, taking account of buffered data.
+.TP
+.B getb
+Read a single byte from the buffered stream and return its value
+as an
+.BR int .
+.TP
+.B getc
+Read a single Unicode character, encoded in UTF
+(see
+.IR utf (6)),
+and
+return its value as an
+.BR int .
+.TP
+.B gets
+Read a line, up to and including a character specified by
+.IR sepchar ,
+typically a newline.
+If none is found, read to the end of the file.
+The returned string includes the terminating character.
+.TP
+.B gett
+Read characters until one of the characters in
+.IR sepstring .
+The returned string includes the separator.
+If none of the separator characters is found,
+read to the end of the file.
+.TP
+.BR ungetb , \ ungetc
+Undoes the effect of the last
+.B getb
+or
+.BR getc ,
+so that a subsequent read will reread the byte
+.RB ( ungetb ),
+or reread the byte(s) of a UTF-encoded character
+.RB ( ungetc )
+.TP
+.BR putb , \ putc ", and " puts
+Each
+writes its argument, a byte, a character, or
+a string, respectively.
+Text is encoded in UTF.
+.TP
+.B setfill
+Associates a
+.B BufioFill
+module instance
+.I f
+with
+.B Iobuf
+.IR b ;
+discussed below.
+.TP
+.B flush
+Flush remaining data in the buffer, if necessary.
+For files opened for writing, data is flushed to the file.
+For files opened for reading, any internally buffered data is discarded,
+and the next read will read from the file.
+.TP
+.B close
+Flush remaining data in the buffer, if necessary, close the
+associated file, and discard buffers associated with the file.
+After close, no further method calls are allowed on the
+.B iobuf
+adt.
+.PP
+The
+.B BufioFill
+module interface can be ignored by most applications.
+It allows an
+.B Iobuf
+to be used to read data from an arbitrary source.
+There is no `standard' implementation to load.
+Instead,
+an application using this interface uses a separate
+.B BufioFill
+module instance such as
+.IR bufio-chanfill (2),
+or provides one itself using
+.IR sys-self (2).
+The resulting module reference is associated,
+using
+.BR setfill ,
+with an
+.B Iobuf
+previously obtained by
+.BR sopen
+(the string parameter limits the buffer space allocated).
+It is up to the
+.B BufioFill
+module's implementation how its
+.B fill
+function replenishes the buffer;
+it should return the number of bytes now in the buffer, or
+.BR Bufio->EOF .
+.SH SOURCE
+.B /appl/lib/bufio.b
+.SH SEE ALSO
+.IR bufio-chanfill (2),
+.IR intro (2),
+.IR sys-open (2),
+.IR sys-read (2),
+.IR sys-seek (2)
+.SH DIAGNOSTICS
+Calls that return a
+.B ref
+type
+(eg.
+.RB open ,
+.BR fopen ,
+.BR gets ,
+and
+.BR gett )
+return
+.B nil
+when encountering end of file or errors.  When an error occurs, the
+error string, printable with the
+.B %r format,
+will usually be set as a consequence of an error in the underlying
+.B Sys
+module.
+The other calls return
+.B EOF
+upon encountering end of file, and
+.B ERROR
+when encountering other errors.
+.SH BUGS
+A given
+.B Iobuf
+instance may not be accessed concurrently.
+.PP
+An
+.B Iobuf
+instance must be manipulated by the same module instance that created it.
+.PP
+The
+.B BufioFill
+interface is subject to change.

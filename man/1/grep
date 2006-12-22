@@ -1,0 +1,51 @@
+.TH GREP 1
+.SH NAME
+grep \- pattern matching
+.SH SYNOPSIS
+.B grep
+[
+.B -lnviLs
+] 
+.I pattern
+[
+.IR file ...
+]
+.SH DESCRIPTION
+.B Grep
+prints lines from each
+.I file
+that match the
+.IR pattern ,
+a regular expression as defined in
+.IR regex (2).
+If no files are given, standard input is used.
+If more than one file is given, each line of output
+is preceded by the name of the file it was found in.
+The options are:
+.TP 10
+.B -l
+Print only the name of each file that contains a match.
+.TP
+.B -L
+Print the name of each file that does not contain a match.
+.TP
+.B -n
+Precede each line of output with its line number.
+.TP
+.B -v
+Print only lines that do not match
+.IR pattern .
+.TP
+.B -i
+Pattern matching is case insensitive (roman letters only).
+.TP
+.B -s
+Do not print anything; yield only the exit status.
+.SH SOURCE
+.B /appl/cmd/grep.b
+.SH SEE ALSO
+.IR regex (2)
+.SH DIAGNOSTICS
+.I Grep
+returns a non-nil exit status if no matches have been made,
+or if an error has occurred.

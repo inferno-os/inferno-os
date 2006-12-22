@@ -1,0 +1,73 @@
+.TH EBOOK 1
+.SH NAME
+ebook \- Open Ebook browser
+.SH SYNOPSIS
+.B ebook/ebook
+[
+.B -m
+]
+.I file
+.SH DESCRIPTION
+.I Ebook
+provides a graphical browser for a set of files in Open eBook (OEB) version 1.0.1
+format. It takes some care to try to ensure that memory usage does
+not grow proportionally to the size of the book that is being viewed.
+.I File
+names either an OEB package file (conventional suffix
+.BR .opf )
+or an OEB document (conventional suffix
+.B .html
+or
+.BR .xml ).
+The
+.B -m
+option causes the window to be created in ``mini'' size
+as suitable for display on a 240x320 pixel device.
+.SS "GUI controls"
+Controls at the top of the window enable the user to move
+forward and backwards by pages through the document.
+A ``Guide'' menu provides access to the guide as found in
+the ebook package (if there is one). If the links in this are
+followed, or if the reader follows links embedded within
+the document, the up and down arrows enable moving
+backwards and forwards in the ``link history''.
+Arrows on the keyboard mimic the actions of the buttons
+at the top of the window.
+.PP
+Clicking in the text allows an annotation to made on the
+text; a text window is popped up and any text typed in
+it will appear in a label attached to that text.
+Annotations are stored in persistent storage and will
+last from view to view of the document.
+.SH FILES
+.TF /lib/ebook/default.css
+.TP
+.B /lib/ebook/default.css
+Initial stylesheet settings.
+.TP
+.B \fIdocument\fP.index
+Index file for the OEB
+.IR document ,
+one display size only.
+.TP
+.B \fIdocument\fP.annot
+Annotations for the OEB
+.IR document .
+.TP
+.B /lib/ebooks
+Standard place to keep ebooks.
+.SH SOURCE
+.B /appl/ebook
+.SH SEE ALSO
+.IR xml (2),
+``The Open eBook Publication Structure 1.0.1''
+.SH BUGS
+Does not do floats.
+.br
+Does not do borders & backgrounds properly.
+.br
+Large top-level constructs are not bounded in memory usage.
+.br
+Does not do links to external documents.
+.br
+Does not do fallbacks.

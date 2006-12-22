@@ -1,0 +1,202 @@
+.TH COLLAB-CLIENTS 1
+.SH NAME
+collab: chat, poll, poller, whiteboard \- collaborative activities
+.SH SYNOPSIS
+.B collab/clients/chat
+[
+.I servicedir
+]
+.I chatroom
+.PP
+.B collab/clients/poll
+[
+.B -d
+]
+[
+.I servicedir
+]
+.I station
+.PP
+.B collab/clients/poller
+[
+.B -d
+]
+[
+.I servicedir
+]
+.I station
+.PP
+.B collab/clients/whiteboard
+[
+.I servicedir
+]
+.I id
+.SH DESCRIPTION
+These commands are
+.IR wm (1)
+programs that are clients of the services of
+.IR collabsrv (8).
+It must therefore be running in the network for any of them
+to be usable.
+Furthermore,
+.IR collabsrv 's
+service directory must appear somewhere in the client's name space,
+for instance by using
+.IR connect (1),
+although plain
+.I mount
+(see
+.IR bind (1))
+can also be used.
+In all cases,
+the optional parameter
+.I servicedir
+names the service directory
+(default:
+.BR /n/remote/services ).
+Finally,
+.I collabsrv
+must be configured to provide the service.
+.PP
+.I Chat
+is a simple multi-user chat program.
+Each user that wishes to chat starts
+.I chat
+naming the desired
+.IR chatroom ,
+which is an identifying string agreed amongst the clients.
+(It is often convenient to use the path name of a shared file.)
+.I Chat
+attempts to enter the given
+.IR chatroom .
+It announces the results of the connection, and if successful,
+displays subsequent chat room messages.
+Its window provides a scrollable text area that forms a transcript
+of the current conversation, and a single line of editable text at the bottom
+of the window for sending messages.
+Messages sent by others appear in the transcript tagged with the sender's name.
+When the user types a new line (return, enter) in the text entry area,
+.I chat
+sends the text to all the members of the chat room,
+and it subsequently appears in the user's own transcript,
+tagged with
+.B <you>
+in place of the user's name.
+.I Chat
+also notes in the transcript the arrival and departure of other users.
+.PP
+.I Poll
+and
+.I poller
+together enable simple real-time polls.
+One user runs
+.IR poller ,
+which activates the given polling
+.IR station .
+The other users can subsequently join using
+.IR poll ,
+naming the same
+.IR station ,
+and can come and go as they please as long
+as the
+.I poller
+remains.
+The polling station closes when the
+.I poller
+leaves.
+.PP
+.I Poller
+drives the interaction for a sequence of one or more real-time polls.
+It is assumed that the poller is in the same room as those polled, allowing the
+questions and answers to be read out each time, as in quiz shows and exit polls.
+Alternatively, something like
+.I chat
+could be used to pose questions to a distant audience.
+For each poll, the polling user selects, in
+.IR poller 's
+window, the number of possible answers (2, 3, or 4) using radio buttons,
+and hits the
+.B Start
+button.
+A bar chart shows results as they come in: each bar shows the percentage of those polled
+(thus far) that have selected the corresponding alternative.
+Once the polling user hits
+.BR Stop ,
+no further results are accepted, and the bar chart represents the final result.
+The
+.B \-d
+option causes
+.I poller
+to display a debugging transcript of the messages it receives.
+.PP
+Each user being polled runs
+.IR poll ,
+and initially
+sees an array of radio buttons with labels
+.BR A ,
+.BR B ,
+.BR C
+and
+.BR D .
+They remain disabled until the
+.I poller
+hits
+.BR Start ,
+at which point
+.I poll
+enables as many radio buttons as allowed by the poller for this round.
+If the user selects a button,
+.I poll
+immediately send the selection to the polling station
+(and thus to the
+.IR poller ),
+and disables all the buttons, although the user's selection remains marked.
+All buttons are also disabled when the
+.I poller
+says to stop,
+whether or not a choice has been made.
+Buttons are enabled again at the start of the next question.
+The
+.B \-d
+option causes
+.I poll
+to display a debugging transcript.
+.PP
+.I Whiteboard
+allows several users to draw on the shared canvas with the given
+.IR id ,
+which is an identifying string agreed amongst the clients.
+The whiteboard window
+contains a canvas to be drawn on with stylus, or mouse button 1.
+Strokes drawn in a given
+.I whiteboard
+appear in all others with the
+same board
+.IR id .
+There are two controls at the bottom of the window:
+the lower left-hand corner has a small pop-up menu of brush shapes,
+including one for erasing; and a long coloured button showing the current drawing colour that
+pops up a choice of drawing colour from a palette.
+Artists can come and go as they please, but
+the drawing vanishes for ever when the last artist leaves the whiteboard.
+.SH FILES
+.TF /n/remote/services
+.TP
+.B /n/remote
+default mount point of collaborative resources
+.br
+.TP
+.B /n/remote/services
+.IR collabsrv (8)
+collaborative activity services directory
+.SH SOURCE
+.B /appl/collab/clients/chat.b
+.br
+.B /appl/collab/clients/poll.b
+.br
+.B /appl/collab/clients/poller.b
+.br
+.B /appl/collab/clients/whiteboard.b
+.SH SEE ALSO
+.IR connect (1),
+.IR collabsrv (8)

@@ -1,0 +1,240 @@
+.TH ALPHABET-MAIN 1
+.SH NAME
+main \- operators on the basic Alphabet types
+.SH SYNOPSIS
+.EX
+load alphabet
+type /string
+type /fd
+type /wfd
+type /status
+type /cmd
+.br
+.SH DESCRIPTION
+.I Main
+refers to operators defined
+.IR Alphabet 's
+(see
+.IR sh-alphabet (1))
+root typeset
+.RB ( / ).
+.PP
+In the following description of the modules provided,
+an entry such as:
+.TP 10
+.B echo \fIstring\fP \fR->\fP fd
+.PP
+describes a verb
+.BR echo ,
+which takes one argument of type
+.IR string ,
+and the result of which is of type
+.BR fd .
+If the type is not one of those described above,
+it should be taken to be of type
+.IR string .
+.PP
+All types and modules names are taken to be relative to
+the typeset root,
+.BR / .
+.PP
+Modules defined within
+.I main
+include:
+.TP 10
+\f5auth\fP [\f5-v\fP] [\f5-k\fP \fIkeyfile\fP] [\f5-C\fP \fIalg\fP] \fIwfd\fP -> \fIwfd\fP
+.B Auth
+authenticates to a server connected to its argument
+.IR wfd ,
+and optionally adds encryption to the stream.
+If
+.I keyfile
+is given, it gives the filename of a key file (by default
+.BI /usr/ user /keyring/default
+is used).
+If
+.I alg
+is given, it specifies the encryption/hash algorithm to
+push (e.g.
+.BR rc4_256/md5 ).
+If the
+.B -v
+flag is given,
+.B auth
+will print the name of the authenticated user to its diagnostic stream.
+.TP
+\f5cat\fP [\fIfd\fP...] -> \fIfd\fP
+.B Cat
+reads all the data from each
+.I fd
+in sequence
+and writes it to its resulting
+.IR fd .
+.TP
+\f5create\fP \fIfd\fP \fIf\fP -> \fIstatus\fP
+.B Create
+creates a file named
+.I f
+and writes to it all the data from
+.IR fd .
+.I Status
+will be empty if the writing has completed successfully.
+.TP
+\f5dial\fP \fIaddr\fP -> \fIwfd\fP
+.B Dial
+makes a connection to network address
+.IR addr
+(see
+.IR dial (2)
+for the address format),
+and returns the resulting connection.
+.TP
+\f5echo\fP [-\fIn\fP] \fIstring\fP -> \fIfd\fP
+.B Echo
+writes its argument
+.I string
+to its resulting
+.IR fd .
+If the
+.B -n
+option is given, no newline will be appended.
+.TP
+\f5export\fP \fIdir\fP -> \fIwfd\fP
+.B Export
+exports the namespace rooted at
+.I dir
+and serves it as a styx service on
+.IR wfd .
+.TP
+\f5fd\fP \fIn\fP -> \fIwfd\fP
+.B Fd
+takes file descriptor
+.IR n ,
+and makes it available for reading and/or writing
+as
+.IR wfd .
+.TP
+\f5filter\fP \fIfd\fP \fIcmd\fP \fIarg\fP... -> \fIfd\fP
+.B Filter
+starts the shell command
+.IR cmd ,
+and pipes through this all the data from its
+argument
+.I fd
+to its resulting
+.IR fd .
+The provided
+.IR arg uments
+are accessible in the shell command as
+.BR $* .
+.TP
+\f5mount\fP [\f5-abc\fP] [\f5-x\fP \fIaname\fP] \fIwfd\fP \fIdir\fP -> \fIstatus\fP
+.B Mount
+mounts a connection to a styx server (\fIwfd\fP)
+onto
+.IR dir .
+The meaning of the
+.BR -a ,
+.BR -b ,
+and
+.B -c
+flags is the same as for
+.IR mount (1).
+.IR Aname ,
+if given, gives the attach name that will be passed with the mount request.
+'\".TP
+'\"\f5par\fP \fIstatus\fP... -> \fIstatus\fP
+'\".B Par
+'\"allows all its arguments to run in parallel.
+'\"Its exit status is that of the last argument that
+'\"returned a non-clean status.
+.TP
+\f5parse\fP \fIstring\fP -> \fIcmd\fP
+.B Parse
+parses
+.I string
+as a shell command or alphabet expression,
+and returns the result.
+.TP
+\f5print\fP \fIfd\fP \fIn\fP -> \fIstatus\fP
+.B Print
+writes all the data from
+.I fd
+to file descriptor
+.IR n .
+.TP
+\f5pretty\fP \fIcmd\fP -> \fIstring\fP
+.B Pretty
+returns a string representation of the alphabet expression
+.IR cmd
+which is intended to be easier to read.
+.TP
+\f5read\fP \fIf\fP -> \fIfd\fP
+.B Read
+reads the data from file
+.I f
+and writes it to its resulting
+.IR fd .
+.TP
+\f5rewrite\fP [\f5-d\fP \fIdsttype\fP] \fIcmd\fP \fIcmd\fP -> \fIcmd\fP
+.B Rewrite
+rewrites an alphabet expression to its canonical form,
+applying all auto-conversions, expanding all definitions,
+expanding pipe notation and checking that all types are compatible.
+The first
+.I cmd
+argument
+gives the
+.I alphabet
+expression to be rewritten;
+the second
+.I cmd
+should contain shell commands acceptable to
+.IR sh-alphabet (1),
+declaring all the modules used in the expression.
+If
+.I dsttype
+is given, it specifies the return type of the final expression;
+auto-conversions will be applied to attain this type, if possible.
+'\".TP
+'\"\f5seq\fP [\f5-ao\fP] \fIstatus\fP... -> \fIstatus\fP
+'\".B Seq
+'\"allows each of its arguments to run in sequence.
+'\"If the
+'\".B -a
+'\"flag is given, the first non-clean status it encounters
+'\"will cause it to terminate all subsequent arguments.
+'\"If the
+'\".B -o
+'\"flag is given, the first
+'\".I clean
+'\"status does the same.
+'\"Note that some commands (e.g.
+'\".BR create )
+'\"do some work regardless of sequence.
+'\"The resulting status is that of the last command
+'\"that was not terminated.
+.TP
+\f5unparse\fP \fIcmd\fP -> \fIstring\fP
+.B Unparse
+is the inverse operation to
+.BR parse :
+it converts
+.I cmd
+to a string, and returns the result.
+.TP
+\f52fd\fP \fIwfd\fP -> \fIfd\fP
+.B 2fd
+converts the read-write file
+.I wfd
+to the
+read-only
+.IR fd .
+.SH SOURCE
+.BR /appl/alphabet/alphabet.b
+.br
+.B /appl/alphabet/main/*.b
+.SH SEE ALSO
+.IR sh-alphabet (1),
+.IR alphabet-main (2),
+.IR sh (1)

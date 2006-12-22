@@ -1,0 +1,114 @@
+.TH FS 3 emu
+.SH NAME
+fs \- host file system interface
+.SH SYNOPSIS
+.EX
+bind #U\fIspec\fP /
+
+sys->bind("#U\fIspec\fP", "/", Sys->MAFTER|Sys->MCREATE);
+.EE
+.SH DESCRIPTION
+.I Fs
+provides an interface to the host file system when running
+.IR emu (1).
+The device is automatically bound to the root of the Inferno namespace when
+.I emu
+starts.
+.I Fs
+maps filenames from the Inferno namespace to the real host filesystem
+namespace. The mapping is determined by the host system directory that
+.I emu
+serves (see the description of the
+.B -r
+option in
+.IR emu (1)).
+.PP
+The plain name
+.B #U
+always refers to the root of the Inferno tree within the host file system.
+An optional
+.I spec
+string can select a different tree using conventions peculiar to the host system type.
+Currently, on Unix and Plan 9, a
+.I spec
+of
+.B *
+(ie,
+.BR #U* )
+refers to the root of the host system;
+on Windows, the
+.I spec
+can give a device letter (eg,
+.BR #Uc: )
+to refer to the Windows tree on that device.
+.PP
+When there is nothing but
+.IR root (3)
+in the name space, the device can only be bound from Limbo using
+.IR sys-bind (2)
+as shown above, since there is nothing in the name space
+to support either
+.IR bind (1)
+or
+.IR newns (2).
+It can later be rebound elsewhere in the name space using
+.IR bind (1).
+.PP
+.I Fs
+provides only an approximation to the
+file ownership and permissions checking defined in
+.IR intro (5)
+and other entries in this manual.
+.IR Emu (1)
+typically runs as the user that starts it, and that user will own all newly-created
+files and directories, and that user's host system access rights control access
+to any file.
+Other details are specific to the host system, as given below.
+.SS Unix
+When checking owner, group and other permissions, the intent in Inferno is that
+each is tried in turn, in that order.
+Unix checks just the first that applies, so that if group
+permission disallows access but other allows it, the access is still denied.
+If
+.IR emu (1)
+is run as the super-user, Inferno's rules for ownership and permission checking are enforced by
+.I fs
+itself; otherwise, Unix's permission checking prevails.
+.PP
+On MacOS X, file names might be case insensitive, depending on file system settings.
+.SS FAT file system (Windows9x and Windows/NT)
+The values of
+.B uid
+and
+.B gid
+are
+.BR Everyone .
+.PP
+Files and directories always have read and execute permission,
+which cannot be changed.
+Files without write permission cannot be removed.
+.SS NTFS file system (Windows/NT, 2000, XP)
+Permissions for read, write and execute operates as described in
+.IR sys-stat (2).
+.IR Emu (1)
+attempts to maintain a limited
+but consistent map between Inferno and NT worlds, specifically between Inferno names
+and NT security IDs.
+Special NT group
+.B Everyone
+represents `other' for file permissions.
+The Inferno
+.B uid
+is the file owner under NT;
+the Inferno
+.B gid
+reported is the first user in the file's ACL
+that is neither the owner nor
+.BR Everyone ;
+failing that, the
+.B gid
+is the file's owner.
+.SH SOURCE
+.B /emu/*/devfs.c
+.br
+.B /emu/port/devfs-posix.c

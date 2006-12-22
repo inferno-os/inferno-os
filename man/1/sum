@@ -1,0 +1,47 @@
+.TH SUM 1
+.SH NAME
+sum, md5sum, sha1sum \- calculate file's checksum
+.SH SYNOPSIS
+.B sum
+.IR file " ..."
+.PP
+.B md5sum
+[
+.I file " ..."
+]
+.SH DESCRIPTION
+.I Sum
+prints the 32-bit checksum (actually a CRC), length in bytes, and name of each
+.IR file ,
+one per line.
+It ignores directories.
+.PP
+.I Md5sum
+prints the MD5 message digest (as 32 hexadecimal digits) and the name of each
+.IR file ,
+separated by a tab,
+one per line.
+If no files are given, the standard input is read.
+.PP
+.I Sha1sum
+is similar, but uses the US National Institute of Standards and Technology's secure
+hash algorithm SHA1 instead of MD5.
+For each
+.IR file ,
+it prints its SHA1 secure hash (as 40 hexadecimal digits) and the file's name,
+separated by a tab,
+one per line.
+If no files are given,
+.I sha1sum
+reads the standard input.
+.SH SOURCE
+.B /appl/cmd/sum.b
+.br
+.B /appl/cmd/md5sum.b
+.br
+.B /appl/cmd/sha1sum.b
+.SH SEE ALSO
+.IR cmp (1),
+.IR wc (1),
+.IR crc (2),
+.IR keyring-sha (2)

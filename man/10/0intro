@@ -1,0 +1,74 @@
+.TH INTRO 10
+.SH NAME
+intro \- introduction to hosted and native implementation
+.SH DESCRIPTION
+Inferno provides a collection of compiler suites, libraries and two closely-related
+kernels to span a range of host and native platforms.
+Section 10 of this manual is divided into subsections numbered
+in the same way as the main manual: 10.1 for commands, 10.2
+for library and kernel routines, and 10.6 for file formats.
+.PP
+Section 10.1 describes the various compiler and utility commands
+provided to support compilation and cross-compilation of native
+kernels.
+These are derived from similarly named programs of the system Plan 9 from Bell Labs,
+converted to ANSI C to
+provide a consistent, portable environment for cross-compiling
+any native kernel on any host platform.
+.PP
+Section 10.2 describes the functions publicly available to the authors of
+kernel code, particularly device drivers (real and virtual).
+This section will eventually be much expanded, but this makes a start.
+See the description of the conventional header files below.
+.PP
+Section 10.6 describes include the native object file formats,
+the Inferno (Plan 9) object library (archive) format,
+and system configuration files.
+.PP
+Section 10.8 describes bootstrap programs and procedures for
+native Inferno systems.
+.SS Native kernel declarations
+The
+.SM SYNOPSIS
+subsections in section 10.2 do not show the header files needed for
+the standard kernel declarations.
+The primary combinations summarised below:
+.IP
+.RS
+.ta \w'\fL#include 'u
+.nf
+.B
+#include	"u.h"
+.B
+#include	"../port/lib.h"
+.B
+#include	"mem.h"
+.B
+#include	"dat.h"
+.B
+#include	"fns.h"
+.B
+#include	"../port/error.h"
+.PP
+.I "furthermore, added in IP code:"
+.br
+.B
+#include "../ip/ip.h"
+.PP
+.I "furthermore, in hardware device drivers:"
+.br
+.B
+#include "io.h"
+.br
+.B
+#include "ureg.h"
+.PP
+.I "furthermore, in network interfaces or ether drivers:"
+.B
+#include "../port/netif.h"
+.fi
+.RE
+.PP
+There might also be specific include files needed by
+drivers on particular platforms or to use specialised kernel interfaces.
+The easiest method is to check the source of likely-looking drivers nearby.

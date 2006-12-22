@@ -1,0 +1,89 @@
+.TH FILTER-DEFLATE 2
+.SH NAME
+deflate, inflate \- data compression filters
+.SH SYNOPSIS
+.EX
+include "filter.m";
+
+deflate := load Filter Filter->DEFLATEPATH;
+inflate := load Filter Filter->INFLATEPATH;
+
+init:  fn();
+start: fn(param: string): chan of ref Rq;
+.EE
+.SH DESCRIPTION
+These implementation modules conform to the
+.B Filter
+module interface for data-processing filters.
+For details of the interface, see
+.IR filter (2).
+.PP
+.I Deflate
+implements gzip-compatible stream compression.
+The
+.I param
+string argument to
+.B start
+can contain one or more of the following option characters:
+.RS 10
+.TP
+.RB ` d '
+Enable debugging output. Each line of debugging output
+is provided in an
+.B Rq.Info
+message.
+.TP
+.RB ` v '
+Enable verbose mode. Each line of verbose output
+is provided in an
+.B Rq.Info
+message.
+.TP
+.RB ` h '
+Add a gzip header and footer to the data. With this flag,
+the data after filtering will be in exactly the same
+format as a gzip file, with accompanying checksum.
+.TP
+.RB ` 0 '\ to\ ` 9 '
+Specifies the level of compression to be used (9 highest). See
+.IR gzip (1).
+.RE
+.PP
+.I Inflate
+performs the inverse operation to
+.BR deflate .
+If the
+.I param
+argument to
+.B start
+begins with the character
+.RB ` h '
+then the input to the filter is assumed to be in the
+standard gzip file format; the output will be checked
+for integrity. While processing, the
+.B Rq.Info
+message is used to transmit some information; the type
+of information is determined by the first word of
+.IR msg ,
+as follows:
+.RS
+.TP
+.B file
+The rest of
+.I msg
+(after a following space) is the name of the original filename
+before compression.
+.TP
+.B mtime
+The rest of
+.I msg
+(after a following space) is the modification time of the
+original file before compression.
+.RE
+.SH SOURCE
+.B /appl/lib/deflate.b
+.br
+.B /appl/lib/inflate.b
+.SH SEE ALSO
+.IR gzip (1),
+.IR filter (2)

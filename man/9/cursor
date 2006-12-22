@@ -1,0 +1,47 @@
+.TH CURSOR 9
+.SH NAME
+cursor \- change the current mouse cursor
+.SH SYNOPSIS
+.B cursor
+?\fIoptions\fP?
+.SH INTRODUCTION
+.B Cursor
+changes the image displayed at the current mouse position.
+The following options are supported:
+.TP
+\f5-image \fIimage\fR
+.I Image
+gives a name created using the
+.IR image (9)
+command; the image must conform to the rules
+given for
+.B Display.cursor
+(see
+.IR draw-display (2)).
+.TP
+\f5-bitmap \fIbitmap\fR
+Similar to
+.B -image
+but using the
+.I bitmap
+syntax (see
+.IR types (9)).
+.TP
+\f5-x \fIdist\fP
+The cursor will be drawn
+.I dist
+to the right of the actual position of the mouse.
+.TP
+\f5-y \fIdist\fP
+The cursor will be drawn
+.I dist
+below the actual position of the mouse.
+.TP
+.B -default
+Revert the cursor to its default image.
+.SH BUGS
+A cursor image should have some inherent association with
+its hot-spot offset.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

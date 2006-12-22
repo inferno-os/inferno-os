@@ -1,0 +1,68 @@
+.TH KEYRING-GETMSG 2
+.SH NAME
+keyring: getmsg, sendmsg, senderrmsg \- send and receive messages on undelimited streams
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+keyring := load Keyring Keyring->PATH;
+
+getmsg:  fn(fd: ref Sys->FD): array of byte;
+sendmsg: fn(fd: ref Sys->FD, buf: array of byte, n: int): int;
+senderrmsg: fn(fd: ref Sys->FD, s: string): int;
+.EE
+.SH DESCRIPTION
+These functions allow arbitrary data, packed into arrays of bytes, to be exchanged
+on network connections using connection-oriented transport protocols that do not preserve
+record boundaries (eg, TCP/IP without
+.IR ssl (3)).
+They are used to implement various authentication protocols, including
+.IR auth (6),
+as implemented by
+.IR keyring-auth (2).
+.PP
+Each data message is transmitted with a five-byte header containing a four-character zero-padded decimal count
+.I n
+terminated by a newline, followed by
+.I n
+bytes of message data.
+An error message has a similar structure, except that the first character
+of the count is replaced by an exclamation mark
+.RB ( ! );
+the message data following
+contains the diagnostic string in its UTF-8 encoding (see
+.IR utf (6)).
+.PP
+.B Getmsg
+reads the next message from
+.I fd
+and returns its data content.
+.PP
+.B Sendmsg
+sends the first
+.I n
+bytes of
+.I buf
+as a message on
+.IR fd ,
+and returns
+.IR n .
+.PP
+.B Senderrmsg
+sends the error message
+.IR s .
+.SH SOURCE
+.B /libinterp/keyring.c
+.SH DIAGNOSTICS
+.B Sendmsg
+and
+.B senderrmsg
+return -1 if there was an error writing to
+.IR fd ;
+they set the system error string.
+.B Getmsg
+returns nil if there was an error reading from
+.IR fd ;
+it sets the system error string to reflect the cause.
+It also returns nil
+if an error message was received instead of a data message;
+the system error string will contain the error message's diagnostic.

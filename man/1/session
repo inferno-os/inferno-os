@@ -1,0 +1,110 @@
+.TH SESSION 1
+.SH NAME
+session \- graphical interface for configuring tasks using
+.IR cpu (4)
+and
+.IR ns (1)
+resources
+.SH SYNOPSIS
+.B grid/session
+.SH DESCRIPTION
+.I Session
+allows the user to build up a single namespace from various different namespace resources and configure a set of commands to be executed within this namespace. The execution then takes place on one or more selected
+.IR cpu (4)
+resources.
+.PP
+Once started, 
+.IR session
+presents a heirarchical view of currently registered resources (such as
+.IR ns (1))
+which export a Styx (see
+.IR intro (5))
+namespace. The top level displays the type of resource e.g. 
+.BR 'CPU resource' , 
+whilst the second level shows the name of each individual resource. Descending futher down the tree will reveal the attributes of the selected resource. To mount a resource and see the namespace it exports, click mouse button 3 on the resource name. The view will switch to a split pane view displaying the resource namespace with directories listed on the left and all files in the current directory displayed on the right.
+.PP
+Clicking mouse button 3 on a file or directory will cause it to be added to the 
+.I command
+or
+.I namespace
+list at the bottom of the window. Mouse button 3 is again used on items in either of these lists to display a menu containing the name of the resource on which they are located as well as the option to remove them. The
+.B Cmd
+and
+.B Ns
+buttons located at the top of the window toggle the view between the selected commands and the selected namespace. The 
+.B Resources
+button returns to the initial view containing the currently registered resources and
+.B Refresh
+updates the list in case any resources have been added or removed.
+
+.SS The Command List
+This contains a list of all commands to be executed. Any arguments may be entered by clicking on the gap after
+.IR args :
+and typing into the box. Commands will be executed in order from top (first) to bottom (last).
+
+.SS The Namespace List
+This contains a list of all the directories to be imported in order to create the local namespace of the selected 
+.IR cpu (4)
+resource(s). By default, several directories will be imported from the local machine. To select these, click button 3 on
+.B import local namespace
+and (un)check the directories as required. To toggle this option on and off, click button 1 on
+.B import local namespace.
+These default directories are required by many commands for normal execution so it is recommended that they are not disabled unless they are definitely not needed. Importing a directory of the same name as one of the default directories will automatically overwrite the default. Therefore, it is not necessary to disable a default directory if the same name is to be imported from elsewhere.
+.PP
+A given directory can only be imported once so it is not possible, for example, to import
+.B /usr/inferno
+from two different machines.
+.I Session
+will automatically import the directories containing each of the selected commands but any others required must be explicitly imported. For example: If one of the commands is:
+.PP
+.EX
+	/usr/inferno/runme.dis -f /appl/lib
+.EE
+.PP
+.I Session
+will import
+.B /usr/inferno/
+but
+.B /appl/lib
+would have to be specified in the namespace list.
+.SS Execution
+Once the command and namespace lists have been configured, click 
+.B Ok
+on the 
+.I Session
+window. This will bring up the 
+.IR query (1)
+window containing a list of the available
+.IR cpu (4)
+resources. To select one or more of these for execution, click on the name with button 3 and it will be added to the list. If a specific
+.IR cpu (4)
+resource is not required, click button 3 on
+.B CPU resource
+and select the number you require by clicking on the number following the list entry and dragging the mouse up or down.
+.PP
+Once the required
+.IR cpu  (4)
+resources have been selected, click
+.B Ok
+and execution will commence.
+
+
+.SH SOURCE
+.B /appl/grid/session.b
+.br
+.B /appl/grid/ns.b
+.br
+.B /appl/grid/monitor.b
+.br
+.B /appl/grid/query.b
+.br
+.B /appl/grid/lib/browse.b
+.br
+.B /appl/grid/lib/srvbrowse.b
+
+.SH "SEE ALSO"
+.IR query (1),
+.IR registries (2)
+.IR ns (1),
+.IR cpu (4),
+.IR registry (4)

@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0 Package//EN" "oebpkg1.dtd">
+<package unique-identifier="oeb10devilsdictionary">
+<metadata>
+<dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/"
+    xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0">
+<dc:Title>The Devil's Dictionary</dc:Title>
+<dc:Type>Essay</dc:Type>
+<dc:Identifier scheme="none">123456789X</dc:Identifier>
+<dc:Creator role="aut" file-as="Bierce, Ambrose">Ambrose Bierce</dc:Creator>
+<dc:Subject>acidic commentary</dc:Subject>
+<dc:Publisher>PetesGuide.com</dc:Publisher>
+<dc:Contributor>Peter K. Sheerin</dc:Contributor>
+<dc:Contributor>Peter K. Sheerin</dc:Contributor>
+<dc:Date event="creation">1911</dc:Date>
+<dc:Date event="electronic publication">2000/07/21</dc:Date>
+<dc:Rights>This work is now in the public domain. This edition is based on the Project Guttenberg plain ASCII edition.</dc:Rights>
+<dc:Language>en-us</dc:Language>
+<dc:Coverage>Commentary on the use of language in the early 1900&rsquo;s</dc:Coverage>
+</dc-metadata>
+<x-metadata>
+<meta name="price" content="US $0.00" />
+</x-metadata>
+</metadata>
+<manifest>
+<item id="toc" href="index.html" media-type="text/x-oeb1-document"/>
+<item id="preface" href="preface.html" media-type="text/x-oeb1-document"/>
+<item id="foreword" href="foreword.html" media-type="text/x-oeb1-document"/>
+<item id="titlepage" href="TitlePage.html" media-type="text/x-oeb1-document"/>
+<item id="A" href="A.html" media-type="text/x-oeb1-document"/>
+<item id="B" href="B.html" media-type="text/x-oeb1-document"/>
+<item id="C" href="C.html" media-type="text/x-oeb1-document"/>
+<item id="D" href="D.html" media-type="text/x-oeb1-document"/>
+<item id="E" href="E.html" media-type="text/x-oeb1-document"/>
+<item id="F" href="F.html" media-type="text/x-oeb1-document"/>
+<item id="G" href="G.html" media-type="text/x-oeb1-document"/>
+<item id="H" href="H.html" media-type="text/x-oeb1-document"/>
+<item id="I" href="I.html" media-type="text/x-oeb1-document"/>
+<item id="J" href="J.html" media-type="text/x-oeb1-document"/>
+<item id="K" href="K.html" media-type="text/x-oeb1-document"/>
+<item id="L" href="L.html" media-type="text/x-oeb1-document"/>
+<item id="M" href="M.html" media-type="text/x-oeb1-document"/>
+<item id="N" href="N.html" media-type="text/x-oeb1-document"/>
+<item id="O" href="O.html" media-type="text/x-oeb1-document"/>
+<item id="P" href="P.html" media-type="text/x-oeb1-document"/>
+<item id="Q" href="Q.html" media-type="text/x-oeb1-document"/>
+<item id="R" href="R.html" media-type="text/x-oeb1-document"/>
+<item id="S" href="S.html" media-type="text/x-oeb1-document"/>
+<item id="T" href="T.html" media-type="text/x-oeb1-document"/>
+<item id="U" href="U.html" media-type="text/x-oeb1-document"/>
+<item id="V" href="V.html" media-type="text/x-oeb1-document"/>
+<item id="W" href="W.html" media-type="text/x-oeb1-document"/>
+<item id="X" href="X.html" media-type="text/x-oeb1-document"/>
+<item id="Y" href="Y.html" media-type="text/x-oeb1-document"/>
+<item id="Z" href="Z.html" media-type="text/x-oeb1-document"/>
+<item id="StyleSheet" href="devil.css" media-type="text/x-oeb1-css"/>
+</manifest>
+<spine>
+<itemref idref="titlepage"/>
+<itemref idref="toc"/>
+<itemref idref="foreword"/>
+<itemref idref="preface"/>
+<itemref idref="A"/>
+<itemref idref="B"/>
+<itemref idref="C"/>
+<itemref idref="D"/>
+<itemref idref="E"/>
+<itemref idref="F"/>
+<itemref idref="G"/>
+<itemref idref="H"/>
+<itemref idref="I"/>
+<itemref idref="J"/>
+<itemref idref="K"/>
+<itemref idref="L"/>
+<itemref idref="M"/>
+<itemref idref="N"/>
+<itemref idref="O"/>
+<itemref idref="P"/>
+<itemref idref="Q"/>
+<itemref idref="R"/>
+<itemref idref="S"/>
+<itemref idref="T"/>
+<itemref idref="U"/>
+<itemref idref="V"/>
+<itemref idref="W"/>
+<itemref idref="X"/>
+<itemref idref="Y"/>
+<itemref idref="Z"/>
+</spine>
+<tours>
+<tour id="poetrytour" title="Alphabetical Tour of Poetry Citations">
+<site title="Poor Isabella&rsquo;s Dead" href="A.html#abdication"/>
+<site title="Abracadabra" href="A.html#abracadabra"/>
+<site title="Spring Beckons!" href="A.html#abscond"/>
+<site title="Poor Isabella's Dead" href="A.html#absent"/>
+<site title="Poor Isabella's Dead" href="A.html#abstainer"/>
+<site title="Poor Isabella's Dead" href="A.html#accountability"/>
+<site title="Poor Isabella's Dead" href="A.html#admonition"/>
+<site title="Poor Isabella's Dead" href="A.html#advice"/>
+<site title="Poor Isabella's Dead" href="A.html#aim"/>
+<site title="Poor Isabella's Dead" href="A.html#allah"/>
+<site title="Poor Isabella's Dead" href="A.html#allegiance"/>
+<site title="Poor Isabella's Dead" href="A.html#alone"/>
+<site title="Poor Isabella's Dead" href="A.html#altar"/>
+<site title="Poor Isabella's Dead" href="A.html#anoint"/>
+<site title="Poor Isabella's Dead" href="A.html#aphorism"/>
+<site title="Poor Isabella's Dead" href="A.html#apothecary"/>
+<site title="Poor Isabella's Dead" href="A.html#archbishop"/>
+<site title="Poor Isabella's Dead" href="A.html#arsenic"/>
+<site title="Poor Isabella's Dead" href="A.html#art"/>
+</tour>
+</tours>
+<guide>
+<reference type="toc" title="Table of Contents" href="index.html"/>
+<reference type="foreword" title="Foreword" href="foreword.html"/>
+<reference type="preface" title="Preface" href="preface.html"/>
+<reference type="other.ms-firstpage" title="" href="foreword.html"/>
+</guide>
+</package>

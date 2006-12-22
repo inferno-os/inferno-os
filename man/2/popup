@@ -1,0 +1,102 @@
+.TH POPUP 2
+.SH NAME
+Popup: mkbutton, changebutton, event, add \- popup list box pseudo-widget
+.SH SYNOPSIS
+.EX
+include "popup.m";
+popup := load Popup Popup->PATH;
+
+init:         fn();
+mkbutton:     fn(win: ref Tk->Toplevel, name: string,
+                 items: array of string, n: int): chan of string;
+changebutton: fn(win: ref Tk->Toplevel, name: string,
+                 items: array of string, n: int);
+event:        fn(win: ref Tk->Toplevel, e: string,
+                 items: array of string): int;
+add:          fn(items: array of string, s: string):
+                 (array of string, int);
+.EE
+.SH DESCRIPTION
+.B Popup
+implements popup list boxes as Tk pseudo-widgets.
+This module has since been superseded by
+.IR choicebutton (2)
+in Tk itself, but remains for the moment for compatibility.
+.PP
+.B Init
+must be called once to initialise the module.
+.PP
+.B Mkbutton
+creates a new button
+.IR name ,
+in Tk toplevel
+.IR win .
+It returns a channel on which it delivers events (see
+.BR event ,
+below).
+Once created,
+.I name
+can be packed like any other Tk widget.
+When the button is pressed with button 1,
+a menu pops up offering a choice from the given
+.IR items .
+The value
+.I n
+is the index in
+.I items
+of the button's initial value.
+The current choice is always displayed in the button.
+If
+.I items
+is nil or an empty array, the string
+.RB ` ----- '
+is displayed instead.
+.PP
+Having created a popup button, the application must receive values on
+the channel returned by
+.B mkbutton
+and pass each value it receives to
+.BR event
+(as parameter
+.IR e ).
+(Typically the application will receive on the channel in an
+.B alt
+statement that watches other channels too.)
+.B Event
+returns the result of a selection, or -1 if no selection was made.
+In either case, the text of the button
+.I name
+will reflect the currently active selection
+(the application can fetch it using
+.RB ` cget\ -text ').
+The
+.I items
+parameter must match that given to
+.B mkbutton
+(or most recently given to
+.BR changebutton ).
+.PP
+.B Changebutton
+changes the list of
+.I items
+in an existing popup button
+.IR name ,
+and sets its initial selection to the item with index
+.IR n .
+.PP
+.B Add
+adds string
+.I s
+to the array
+.IR items ,
+if it is not already there,
+and in either case returns the resulting new array and
+the index of
+.I s
+therein.
+It is useful for calculating a list of items dynamically.
+.SH SOURCE
+.B /appl/lib/popup.b
+.SH SEE ALSO
+.IR tabs (2),
+.IR tk (2)

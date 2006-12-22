@@ -1,0 +1,54 @@
+.TH STREAM 1
+.SH NAME
+stream \- stream data between source and sink
+.SH SYNOPSIS
+.B stream
+.RB [ \-a ]
+.RB [ \-b
+.IR bufsize ]
+.I file1
+[
+.I file2
+]
+.SH DESCRIPTION
+.I Stream
+creates a process that uses
+.I stream
+(see
+.IR sys-read (2))
+to stream data in chunks of at most
+.I bufsize
+bytes (default:
+.LR Sys->ATOMICIO ,
+or 8192 bytes) from
+.I file1
+to the standard output.
+If
+.I file2
+is provided,
+the two files are instead cross-connected by two streaming processes:
+one process streams data from
+.I file1
+to
+.IR file2 ,
+and the other streams data from
+.I file2
+to
+.IR file1 .
+In all cases,
+.I stream
+writes data to the destination file in full buffers of
+.I bufsize
+bytes.
+.PP
+.I Stream
+waits for all streaming processes to stop before returning,
+unless the
+.B -a
+(asynchronous) option is given, which causes it to
+return after spawning the streamers.
+.SH SOURCE
+.B /appl/cmd/stream.b
+.SH SEE ALSO
+.IR cat (1),
+.IR sys-read (2)

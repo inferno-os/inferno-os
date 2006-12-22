@@ -1,0 +1,54 @@
+.TH VIRGIL 2
+.SH NAME
+virgil \- pose question to name resolver
+.SH SYNOPSIS
+.EX
+include "security.m";
+virgil := load Virgil Virgil->PATH;
+
+virgil:	fn(args: list of string): string;
+.EE
+.SH DESCRIPTION
+.B Virgil
+provides a client side interface for interactions with the
+name resolution service
+.IR virgild (8).
+.PP
+.I Args
+is a command line of the form:
+.IP
+.BR virgil " [" -v
+.IR address ]
+.RI [ name ]
+.PP
+.I Name
+is the host name to be resolved to a network address.
+Normally the request is broadcast to any and all
+.I virgild
+servers on the network, which
+.B virgil
+expects to find on UDP/IP port 2202.
+The
+.B -v
+option instead directs the request to the given numeric IP
+.IR address .
+.PP
+.B Virgil
+waits up to 5 seconds for a reply, retransmitting the request once a second.
+It accepts and returns the first answer it receives.
+.SH SOURCE
+.B /appl/lib/virgil.b
+.SH SEE ALSO
+.IR sys-dial (2),
+.IR cs (8),
+.IR register (8),
+.IR virgild (8)
+.SH DIAGNOSTICS
+.B Virgil
+returns
+.L nil
+for invalid arguments and if the name was not resolved.
+.SH BUGS
+The
+.I virgild
+port is hard coded.

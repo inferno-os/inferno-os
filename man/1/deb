@@ -1,0 +1,172 @@
+.TH DEB 1
+.SH NAME
+deb \- graphical Limbo debugger
+.SH SYNOPSIS
+.B wm/deb
+.RB [ -f
+.IR file ]
+.RB [ -p
+.IR pid ]
+.SH DESCRIPTION
+.B Wm/deb
+displays two windows, the main debugging window and
+a stack window for browsing the data values of the thread
+currently being debugged.
+.PP
+Debugging is performed using the facilities of the
+.B prog
+device bound to the local
+.B /prog
+directory (see
+.IR prog (3)).
+Debugging of code running on a remote machine can be performed by
+binding the remote
+.B /prog
+directory in place of the local one. (See
+.IR bind (1)).
+.PP
+In order to display source code and set breakpoints accurately, an up to date
+symbol file
+.RB ( .sbl )
+must be available as well as the limbo source file
+.RB ( .b ).
+.SS "Main window"
+The main window is comprised of a menu bar, an icon bar and three text panels.
+One panel, labelled
+.IR Threads ,
+lists the process IDs (PIDs) of the threads being debugged.
+Another panel, labelled
+.IR Break ,
+lists the set of breakpoints, each given a unique number.
+The third and largest panel displays the source code of the thread being debugged.
+.PP
+Breakpoint positions are shown by red text in the source code display.
+Clicking on a breakpoint number in the
+.I Break
+panel results in the source code panel being scrolled or updated to show
+the breakpoint.
+Breakpoints are toggled by clicking on the statement or sub-expression in the source
+code window and clicking the breakpoint
+button on the icon bar.
+A breakpoint can be hit by any of the threads being debugged -
+breakpoints are set on source code, not on individual threads.
+.PP
+Clicking on a PID in the
+.I Threads
+panel results in the source code panel being scrolled or updated to highlight
+where in the code the thread is blocked, broken or halted on a breakpoint.
+.PP
+A running thread can be halted by clicking the stop button on the icon bar.
+A thread will also halt when it hits a breakpoint.
+Once a thread is halted (not blocked or broken) its execution can be advanced
+a step at a time by means of the
+buttons on the icon bar.
+The thread can be stepped one operation at a time or a statement at a time.
+Normally when single stepping, function calls are stepped into.
+Stepping commands allow for stepping over function calls, whereby the function is still
+called but its whole execution is treated as a single step.
+Stepping out of a function is also provided, whereby execution continues unabated
+until returning from the function.
+Execution of the halted thread can be continued, running until it terminates, breaks
+or hits another breakpoint.
+.PP
+Any of the threads being debugged can be killed or detached from the debugger
+using buttons on the icon bar.
+Detaching a halted thread resumes its execution.
+.PP
+The main window provides a set of menus for viewing source files, attaching to
+other threads, setting debugger options and searching for text in the source code window.
+.SS "Stack Window"
+The stack window is used to inspect the values of local and global variables and function
+arguments.
+Items are displayed in a hierarchical manner.
+Any item that contains other items, such as a variable of an ADT type, can be expanded
+to show the values of the sub-items.
+The sub-items are displayed by clicking on the expand button on the left of the
+containing item, they can be hidden by pressing the button again.
+The sub-item list is displayed indented from its container as a visual cue to their
+association.
+.PP
+The stack window shows the full stack trace of the current thread.
+The stack trace is displayed as a list of frames, the current frame displayed
+at the top of the window.
+Each frame is given by the function name and source location of the code being
+executed in the frame.
+Each frame has the following sub-items:
+.TP 10
+.B locals
+Local variables declared in the function of the frame.
+.TP
+.B args
+The arguments passed to the frame function.
+.TP
+.B module
+The module global variables in the implementation module
+of the frame function.
+.PP
+Clicking on the name of a variable or function argument highlights the declaration of
+that name in the source panel of the main debug window.
+Clicking on the function name of a stack frame causes the main window source panel to
+display the current statement of the frame.
+.PP
+The debugger has a stack button which simply brings
+that window to the front of the display.
+.PP
+The options menu has a layout configuration which
+allows the user to have a horizontal scroll bar or to wrap long
+lines (the default); and an option to strip carriage return characters that precede newlines (for the benefit of those using Windows' editors).
+The state of the options is saved in the file
+.BI /usr/ username /lib/deb
+if that file can be created. The debugger attempts to read
+this file on startup to set the user's preferred options.
+.SH OPTIONS
+.TP 10
+.BI -f " file"
+Specifies a source file
+.RB ( .b )
+to load.
+The associated executable file
+.RB ( .dis )
+is not launched until the continue
+.RI ( "run to breakpoint" )
+button is pressed.
+This option takes precedence over the
+.B -p
+option.
+.TP
+.BI -p " pid"
+Attach to the already running thread given by
+.IR pid .
+.SH PLUMBING
+.B wm/deb
+plumbs the address of text selected using
+button 3 in the source display panel, as
+.B text
+of the form
+.IP
+.IB "file-name" : "line-number"
+.SH FILES
+.BI /prog/ n /*
+.br
+.BI /usr/ username /lib/deb
+.SH SOURCE
+.B /appl/wm/deb.b
+.br
+.B /appl/wm/debdata.b
+.br
+.B /appl/wm/debsrc.b
+.SH "SEE ALSO"
+.IR limbo (1),
+.IR prog (3)
+.SH BUGS
+Displaying large arrays in the Stack window can use excessive amounts of
+memory.
+.PP
+When setting breakpoints there is no visual cue for the selected statement or operation until
+the breakpoint is actually set.
+.PP
+It is only possible to debug modules executed by the interpreter.
+Code that has been JITed, the compilation execution method, yields
+stack information that does not correspond to information in the symbol
+.RB ( .sbl )
+file.

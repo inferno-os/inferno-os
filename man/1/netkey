@@ -1,0 +1,18 @@
+.TH NETKEY 1
+.SH NAME
+netkey \- calculate response to authentication challenge
+.SH SYNOPSIS
+.B netkey
+.SH DESCRIPTION
+.I Netkey
+calculates a response to a challenge made by a system to authenticate a user,
+based on a shared secret (password), using
+the same algorithm as a SecureNet device.
+It reads and writes
+.BR /dev/cons .
+It prompts once for the secret (echo is turned off).
+It then repeatedly prompts for a remote system's challenge,
+and once given it, calculates and prints the corresponding response.
+It exits on an empty challenge or end of file.
+.SH SOURCE
+.B /appl/cmd/netkey.b

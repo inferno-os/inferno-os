@@ -1,0 +1,36 @@
+.TH EXCEPTION 2
+.SH NAME
+exception \- Exception module
+.SH SYNOPSIS
+.EX
+include "exception.m";
+exc := load Exception Exception->PATH;
+
+getexc:	fn(pid: int): (int, string, string);
+setexcnotifyleader:	fn(pid: int): int;
+setexcpropagate:	fn(pid: int): int;
+.EE
+.SH DESCRIPTION
+.B Except
+provides exception-related utility routines to read or write to system
+device files.
+.PP
+.B Getexc
+returns the last exception to be raised on the process with the given process
+id. A process id of -1 is taken to mean the current process. The returned
+triple gives the pc value, the module and the exception name or 0, nil, nil
+if no exception has occurred.
+.PP
+.B Setexcnotifyleader
+and
+.B setexcpropagate
+set 'exceptions notifyleader' and 'exceptions propagate' respectively on the given
+process. 0 is returned on success,
+-1 on failure (for instance if the process is not a group leader or does not exist).
+See
+.I prog (3)
+for the actual meaning of these settings.
+.SH SOURCE
+.B /appl/lib/exception.b
+.SH SEE ALSO
+.IR prog (3)

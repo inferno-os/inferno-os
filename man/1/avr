@@ -1,0 +1,47 @@
+.TH AVR 1
+.SH NAME
+avr \- Atmel AVR support
+.SH SYNOPSIS
+.B avr/burn
+.RB [ -e ]
+.RB [ -r ]
+[
+.BI "-d " device
+]
+.I file.srec
+.SH DESCRIPTION
+Currently there is just one Inferno application to support Atmel AVRs
+but others should appear.
+.PP
+.I Burn
+initialises or verifies the contents of an Atmel ATmega128 AVR.
+The programming board must be connected to a serial port (see
+.IR eia (3)),
+.B /dev/eia0
+by default.
+.I File.srec
+is a file containing the desired flash contents in Motorola S-record format,
+as produced by
+.IR ms2 (10.1).
+By default,
+.I burn
+erases the AVR chip (both flash and EEPROM), then loads the flash with the contents of
+.IR file.srec .
+The
+.B -e
+option stops
+.I burn
+from erasing first, allowing additional code or data to be loaded (but only into an already-erased region).
+If the
+.B -r
+option is given,
+.I burn
+instead compares the contents of the AVR with the data in
+.IR file.srec .
+.I Burn
+supports the MIB510 programming board from Crossbow Technology Inc.
+.SH SOURCE
+.B /appl/cmd/avr/burn.b
+.SH "SEE ALSO"
+.IR eia (3),
+.IR ms2 (10.1)

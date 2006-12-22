@@ -1,0 +1,89 @@
+.TH BLOOMFILTER 2
+.SH NAME
+Bloomfilter \- Bloom filters
+.SH SYNOPSIS
+.EX
+include "sets.m";
+include "bloomfilter.m";
+bloomfilter := load Bloomfilter Bloomfilter->PATH;
+
+init:   fn();
+filter: fn(d: array of byte, logm, k: int): Sets->Set;
+.EE
+.SH DESCRIPTION
+A Bloom filter is a method of representing a set to support probabilistic
+membership queries. It uses independent hash functions of members
+of the set to set elements of a bit-vector.
+.I Init
+should be called first to initialise the module.
+.I Filter
+returns a Set
+.I s
+representing the Bloom filter for the single-member
+set
+.RI { d }.
+.I K
+independent hash functions are used, each of range
+.RI "[0, 2^" logm ),
+to return a Bloom filter
+.RI 2^ logm
+bits wide. It is an error if
+.I logm
+is less than 3 or greater than 30.
+.PP
+Bloom filters can be combined by set union.
+The set represented by Bloom filter
+.I a
+is not a subset of another
+.I b
+if there are any members in
+.I a
+that are not in
+.IR b .
+Together,
+.IR logm ,
+.IR k ,
+and
+.IR n
+(the number of members in the set)
+determine the
+.I "false positve" rate
+(the probability that a membership test will not eliminate
+a member that is not in fact in the set).
+The probability of a
+.I "false positive"
+is approximately (1-e^(-\fIkn\fP/(2^\fIlogm\fP))^\fIk\fP.
+For a given false positive rate,
+.IR f ,
+a useful formula to determine appropriate parameters
+is: \fIk\fP=ceil(-log₂(\fIf\fP)),
+and \fIlogm\fP=ceil(log₂(\fInk\fP)).
+.SH EXAMPLES
+Create a 128 bit-wide bloom filter
+.I f
+representing all the elements
+in the string array
+.IR elems ,
+with
+.IR k =6.
+.EX
+    A, B, None: import Sets;
+    for(i:=0; i<len elems; i++)
+        f = f.X(A|B, filter(array of byte elems[i], 7, 6));
+.EE
+Test whether the string
+.I s
+is a member of
+.IR f .
+If there were 12 elements in
+.IR elems ,
+the probability of a false positive would be
+approximately 0.0063.
+.EX
+    if(filter(array of byte s, 7, 6).X(A&~B, f).eq(None))
+        sys->print("'%s' might be a member of f\\n", s);
+.EE
+.SH SOURCE
+.B /appl/lib/bloomfilter.b
+.SH SEE ALSO
+.IR sets (2)

@@ -1,0 +1,159 @@
+.TH CFG 2
+.SH NAME
+Cfg, Record, Tuple, Attr \- configuration file parser
+.SH SYNOPSIS
+.EX
+include "cfg.m";
+cfg := load Cfg Cfg->PATH;
+
+Attr: adt {
+	name: string;
+	value: string;
+};
+
+Tuple: adt {
+	lnum: int;
+	attrs: list of Attr;
+	lookup: fn(t: self ref Tuple, name: string): string;
+};
+
+Record: adt {
+	tuples: list of ref Tuple;
+	lookup: fn(r: self ref Record, name: string)
+		: (string, ref Tuple);
+};
+
+init: fn(path: string): string;
+lookup: fn(name: string): list of (string, ref Record);
+getkeys: fn(): list of string;
+
+.EE
+.SH DESCRIPTION
+.B Cfg
+parses its configuration file format into a set of
+.BR Record s.
+.PP
+Each line of the configuration file is comprised of a tuple of attributes.
+Comments are introduced by the
+.RB ' # '
+character and run to the end of the input line.
+Empty lines and comments are ignored.
+.PP
+An attribute has a name followed by an optional value.
+The value is specified by separating the name and value
+by an
+.RB ' = '
+character.
+Attribute names and values are input
+.IR words .
+A word is delimited by spacing characters and the
+.RB ' = '
+character.
+If a word needs to include any of these characters then the word may be
+quoted using single or double quotes.
+The start and end quotes must be the same.
+The quoting character may be included in the word by appearing twice.
+.PP
+Examples:
+.EX
+	'a b c'	yields	a b c
+	"a b c"	yields	a b c
+	'a " c'	yields	a " c
+	'a '' c'	yields	a ' c
+.EE
+.PP
+The name of the first attribute of a tuple is its
+.IR key .
+The
+.I primary tuple value
+is the value of its first attribute.
+.PP
+Tuples whose first attribute name appears at the start of a line (having no
+preceeding spacing characters)
+are treated as the start of a new record.
+A record incorporates all tuples up to the start of the next record.
+The
+.I record key
+is defined to be the name of its first attribute.
+The
+.I primary record value
+is the value of the first attribute.
+.PP
+The
+.B adt
+types
+.BR Attr ,
+.B Tuple
+and
+.B Record
+are direct analogues of the constructs defined above.
+.P
+.TP
+.BI init( path )
+.B Init
+initialises the
+.B Cfg
+module, causing it to open and parse the configuration file
+given by the
+.I path
+argument.
+If an error is encountered in processing the file then
+an error string is returned.
+If there are no errors
+.B init
+returns
+.BR nil .
+.TP
+.BI lookup( name )
+.B Lookup
+returns
+the set of
+.BR Record s
+whose
+.I key
+matches the
+.I name
+argument.
+The return value is a list of
+.RI ( "primary record value" , " record" )
+pairs.
+.TP
+.B getkeys()
+.B Getkeys
+returns a list of the record keys that appear in the configuration file.
+Note that more than one record can have the same key.
+Duplicate key names are not returned by
+.BR getkeys() .
+.TP
+.IB record .lookup( name )
+Returns the first tuple in
+.I record
+whose key matches
+.IR name .
+The return value is
+.RI ( "primary tuple value" , " tuple" ).
+If no matching tuple is found then the value
+.B (nil, nil)
+is returned.
+Note that more than one tuple of the record could have a
+.I key
+that matches
+.IR name .
+Only the first matching tuple is returned.
+If an application makes use of
+multiple tuples with the same
+.I key
+then the
+.IB record .tuple
+list will have to be handled explicitly by the application.
+.TP
+.IB tuple .lookup( name )
+Returns the first attribute in
+.I tuple
+whose name matches
+.IR name .
+The return value is the value of the attribute or
+.B nil
+if no matching attribute was found.
+.SH SOURCE
+.B /appl/lib/cfg.b

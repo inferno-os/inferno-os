@@ -1,0 +1,57 @@
+.TH BUFIO-CHANFILL 2
+.SH NAME
+bufio: chanfill \- buffered I/O interface to named channel
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+chanfill := load ChanFill ChanFill->PATH;
+
+init:   fn(data: array of byte, fid: int,
+            wc: Sys->Rwrite, r: ref Sys->FileIO,
+            b: Bufio): ref Bufio->Iobuf;
+fill:   fn(b: ref Bufio->Iobuf): int;
+.EE
+.SH DESCRIPTION
+.B ChanFill
+is an implementation of
+.B BufioFill
+(see
+.IR bufio (2))
+that refills an
+.B Iobuf
+as data is written to a file created by
+.IR sys-file2chan (2),
+which is allowed only one writer.
+.B Init
+returns an
+.B Iobuf
+allocated from the
+.B Bufio
+instance
+.IR b ,
+that when read will return data written to the file by another process.
+.IR Data ,
+.IR fid
+and
+.IR wc
+are the values in the tuple presented by
+.B Sys->file2chan
+on the first write.
+.I Data
+becomes the initial data for the
+.BR Iobuf ;
+.B init
+replies to the writer on
+.IR wc .
+The other values are saved for use by
+.BR fill :
+on later calls to
+by
+.B Bufio
+to refill the buffer,
+.B fill
+waits for a new write request on
+.IB fio .write
+and either fills the buffer or signals end-of-file appropriately.
+.SH SEE ALSO
+.IR bufio (2)

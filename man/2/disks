@@ -1,0 +1,317 @@
+.TH DISKS 2
+.SH NAME
+disks: Disk, PCpart, readn, chstext \- generic disk and partition interface
+.SH SYNOPSIS
+.EX
+include "disks.m";
+
+disks := load Disks Disks->PATH;
+
+Disk: adt {
+    prefix:  string;    # prefix before partition name
+    part:    string;    # partition name (nil if not partition)
+    fd:      ref Sys->FD;
+    wfd:     ref Sys->FD;
+    ctlfd:   ref Sys->FD;
+    rdonly:  int;       # non-zero if readonly
+    dtype:   string;    # device type
+
+    secs:    big;    # number of sectors in device or partition
+    secsize: int;    # device's sector size
+    size:    big;    # size of device or partition
+    offset:  big;    # within larger disk, perhaps
+    width:   int;    # of disk size in bytes as decimal string
+    c:       int;    # geometry: cyl, head, sectors
+    h:       int;
+    s:       int;
+    chssrc:  string; # source of c/h/s values
+
+    open:    fn(f: string, mode: int, noctl: int): ref Disk;
+};
+
+PCpart: adt {
+    active: int;    # Active or 0
+    ptype:  int;
+    base:   big;    # base block address
+    offset: big;    # block offset from base to partition
+    size:   big;    # in sectors
+
+    extract: fn(a: array of byte, d: ref Disk): PCpart;
+    bytes:   fn(p: self PCpart, d: ref Disk): array of byte;
+};
+
+init:	 fn();
+readn:   fn(fd: ref Sys->FD, buf: array of byte, n: int): int;
+chstext: fn(p: array of byte): string;
+.EE
+.SH DESCRIPTION
+.B Disks
+provides a simple way to gather
+and use information about 
+.IR floppy (3)
+and
+.IR sd (3)
+disks and disk partitions,
+as well as plain files.
+.PP
+.B Init
+must be called before invoking any other operations of the module
+.PP
+.B Disk.open
+opens
+.I file
+and returns a reference to a
+.B Disk
+value to represent the disk.
+.I Mode
+should be either
+.BR Sys->OREAD
+or
+.BR Sys->ORDWR
+to establish the open mode.
+.B Open
+always opens
+.I file
+for reading and stores that file descriptor in
+the element
+.IR fd .
+If the mode is not
+.BR Sys->OREAD ,
+.I opendisk
+also opens
+.I file
+for writing and stores that file descriptor in
+.BR wfd .
+The two file descriptors are kept separate to
+help prevent accidents.
+If
+.I noctl
+is not set, 
+.B open
+looks for a
+.B ctl
+file in the same directory as the
+disk file;
+if it finds one, it declares
+the disk to be
+an
+.IR sd (3)
+device,
+setting
+.B dtype
+to
+\f5"sd"\fP.
+If the passed
+.I file
+is named
+.BI fd n disk \fR,
+it looks for a file
+.BI fd n ctl \fR,
+and if it finds that,
+declares the disk to be
+a floppy disk, of type
+\f5"floppy"\fP.
+If either control
+file is found, it is opened for reading
+and writing, and the resulting file descriptor
+is saved as 
+.BR ctlfd .
+Otherwise the returned disk
+has type
+\f5"file"\fP.
+.PP
+.B Open
+then stores the file's length
+(as given by
+.IR sys-stat (2))
+in
+.BR size .
+If the disk is an
+.IR sd (3)
+partition, 
+.B open
+reads the sector size from the control
+file and stores it in 
+.BR secsize ;
+otherwise the sector size is assumed to be 512,
+as is the case for floppy disks.
+.B Open
+stores the disk size measured in sectors in
+.BR secs .
+.PP
+If the disk is an
+.IR sd (3)
+partition, 
+.B open
+parses the
+control
+file to find the partition's offset
+within its disk;
+otherwise it sets
+.B offset
+to zero.
+If the disk is an ATA disk,
+.B open
+reads
+the disk geometry (number of cylinders, heads, and sectors)
+from the 
+.B geometry
+line in the
+.I sd
+control file;
+otherwise it sets these to zero as well.
+.B Name
+is initialized with the base name of
+the disk partition, and is useful for forming messages to the
+.I sd
+control file.
+.B Prefix
+is set to the original
+.I file
+name without the 
+.B name
+suffix.
+.PP
+The IBM PC BIOS interface allocates
+10 bits for the number of cylinders, 8 for 
+the number of heads, and 6 for the number of sectors per track.
+Disk geometries are not quite so simple
+anymore, but to keep the interface useful,
+modern disks and BIOSes present geometries
+that still fit within these constraints.
+These numbers are still used when partitioning
+and formatting disks.
+.B Open
+employs a number of heuristics to discover this
+supposed geometry and store it in the
+.BR c ,
+.BR h ,
+and
+.B s
+elements of
+.BR Disk .
+Disk offsets in partition tables and
+in FAT descriptors are stored in a form
+dependent upon these numbers, so
+.I opendisk
+works hard to report numbers that
+agree with those used by other operating
+systems; the numbers bear little or no resemblance
+to reality.
+.PP
+.B Chssrc
+names the source of the geometry values:
+.B disk
+(values returned by disk itself);
+.B part
+(values stored in PC partition table);
+or
+.B guess
+(calculated by module's heuristics).
+.PP
+.B Readn
+attempts to read exactly
+.I n
+bytes from file
+.I fd
+into
+.IR buf ,
+using as many
+.IR sys-read (2)
+calls as required.
+It helps insulate a program from any peculiar underlying IO boundaries
+of a device.
+It returns less than
+.I n
+only if end-of-file is reached.
+It returns -1 if the first read fails.
+.PP
+The PC BIOS and operating systems support an arcane system of disk partitions:
+a partition table at the end of the master boot record
+defines up to four partitions.
+One (or perhaps more) of those can be an extended partition
+that heads a chain (or perhaps roots a tree) of partition tables
+elsewhere on disk, allowing many more than four partitions in all.
+.B Disks
+represents a partition table entry by a value of type
+.BR PCpart .
+It provides the following operations and values:
+.TP
+.B active
+Has the value
+.B Disks->Active
+if it is bootable, and zero otherwise.
+.TP
+.B ptype
+Partition type;
+.B Disks->Type9
+is used by Plan 9 and Inferno (see
+.IR prep (8)).
+.TP
+.B base
+Address of the extended partition that started the chain (or rooted the tree) containing this partition.
+Zero for primary partitions defined by the master boot record.
+.TP
+.B offset
+Block address of the start of the partition relative to the
+.BR base .
+.TP
+.B size
+Size of the partition in sectors.
+.TP
+.BI extract( "a, d" )
+Extracts the relevant data from an array of bytes
+.I a
+containing a PC-format partition table entry on
+.B Disk
+.IR d ,
+and returns a
+.B PCpart
+value that represents the partition.
+.TP
+.IB pc .bytes( d )
+Return an array of bytes containing the PC-format partition
+table entry corresponding to
+.IR pc .
+It will always be
+.B TentrySize
+bytes long.
+.PP
+Several other values are defined here for convenience:
+.TP
+Active
+Value for
+.B PCpart.active
+if the partition is bootable.
+.TP
+.B Type9
+Partition type used by Plan 9 and Inferno.
+.TP
+.B Toffset
+Offset (in bytes) of the partition table in a master boot record or extended partition start sector.
+.TP
+.B TentrySize
+Size in bytes of a partition table entry.
+.TP
+.B NTentry
+Number of table entries.
+.TP
+.B Magic0
+.PD0
+.TP
+.B Magic1
+Each sector containing a partition table should end with
+these two bytes (a master boot record must end with them).
+.PP
+.B Chstext
+takes a 3-byte array containing the packed cylinder/head/sector
+representation of a disk address and returns the corresponding text
+in the form
+.BI c / h / s.
+.SH SOURCE
+.B /appl/lib/disks.b
+.SH SEE ALSO
+.IR scsiio (2),
+.IR floppy (3),
+.IR sd (3),
+.IR prep (3)

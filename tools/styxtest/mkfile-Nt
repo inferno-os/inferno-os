@@ -1,0 +1,1 @@
+SYSLIBS= wsock32.lib $SYSLIBS

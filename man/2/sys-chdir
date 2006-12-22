@@ -1,0 +1,40 @@
+.TH SYS-CHDIR 2
+.SH NAME
+chdir \- change working directory
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+chdir:  fn(path: string): int;
+.EE
+.SH DESCRIPTION
+.B Chdir
+changes the working directory
+of the invoking process and its file name space group to
+.IR path .
+.PP
+The working directory is the starting point for
+evaluating file names that do not begin with
+.B /
+or
+.BR # ,
+as explained in
+.IR sys-intro (2).
+.PP
+When Inferno boots,
+the initial process has
+.B /
+for its working directory.
+.PP
+Applications that invoke
+.B chdir
+normally use the
+.B FORKNS
+option of
+.IR sys-pctl (2)
+to prevent the change from affecting the surrounding environment.
+.SH DIAGNOSTICS
+Returns 0 on success; -1 on failure.
+.SH SEE ALSO
+.IR sys-intro (2)

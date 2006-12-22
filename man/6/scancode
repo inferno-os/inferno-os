@@ -1,0 +1,37 @@
+.TH SCANCODE 6
+.SH NAME
+scancode \- known formats of scan codes
+.SH DESCRIPTION
+The
+.B scancode
+interface of
+.IR cons (3)
+provides access to scan codes of the primary keyboard. There
+are as many scan code formats as keyboards. Here are some
+common ones.
+.SH Microsoft Windows™ Virtual Key
+.PP
+The identifier is
+.BR emu_win32vk ,
+and each scan code is encoded in the two byte format specified in
+.IR cons(3) .
+This format is used by the Microsoft Windows™ implementation of
+.IR emu (1E),
+and each scan code is a
+.IR "Virtual Key" .
+See the appropriate Microsoft documentation for the meaning of the
+codes.
+.SH X11
+.PP
+The identifier is
+.BR emu_x11 ,
+and each scan code is encoded in the single byte format specified in
+.IR cons(3) .
+This format is used by the various Unix/X11 implementations of
+.IR emu (1E),
+and each scan code is an X11
+.IR keycode .
+See the appropriate X11 documentation for the meaning of the
+codes.
+.SH "SEE ALSO"
+.IR cons (3)

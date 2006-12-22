@@ -1,0 +1,63 @@
+.TH RAMFILE 4
+.SH NAME
+ramfile \- synthesise file
+.SH SYNOPSIS
+.B ramfile
+.I file
+[
+.I data
+]
+.SH DESCRIPTION
+.I Ramfile
+puts a virtual file in the name space at
+.IR file ,
+and services file requests on it.
+Data written to the file is stored in
+.IR ramfile 's
+memory; read requests return the previously stored data.
+If the optional
+.I data
+argument is provided, the file will initially contain that text.
+The parent directory of
+.I file
+must exist;
+.I ramfile
+creates a union mount on that directory, and if
+.I file
+previously existed, the synthesised file will hide it.
+.PP
+.I Ramfile
+uses
+.IR sys-file2chan (2),
+which simplifies implementation but prevents it from knowing
+when the file has been truncated.
+Instead, it truncates the file on any write to the start of the file
+(offset 0),
+allowing
+.IR cp (1)
+to copy in new contents, and
+text editors to edit it.
+Indeed, the file will be usable by all applications that do
+not rely on updating parts of the file in place, or if they do,
+do not update the start of the file.
+.SH SOURCE
+.B /appl/cmd/ramfile.b
+.SH SEE ALSO
+.IR bind (1),
+.IR sys-file2chan (2),
+.IR srv (3),
+.IR memfs (4)
+.SH BUGS
+.I Ramfile
+cannot tell when the
+.I path
+has been unmounted;
+the only option is to
+.IR kill (1)
+it.
+.br
+The
+.I file
+always appears to have zero length to
+.IR sys-stat (2),
+which prevents loading a Dis file from it.

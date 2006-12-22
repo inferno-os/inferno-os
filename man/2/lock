@@ -1,0 +1,39 @@
+.TH LOCK 2
+.SH NAME
+lock \-
+thread locking.
+.SH SYNOPSIS
+.EX
+include "lock.m";
+lock := load Lock Lock->PATH;
+Semaphore: adt {
+	c: chan of int;
+	obtain: fn(s: self ref Semaphore);
+	release: fn(s: self ref Semaphore);
+	new: fn(): ref Semaphore;
+};
+init: fn();
+.EE
+.SH DESCRIPTION
+.B Lock
+provides semaphore-based mutual exclusion.
+.B Init
+must be called before creating any locks.
+.TP
+.B Semaphore.new()
+Creates and returns a reference to a new
+.B Semaphore
+(lock).
+.TP
+.IB s .obtain()
+Obtains exclusive access to the lock
+.IR s .
+It will block until it can do so.
+.TP
+.IB s .release()
+Releases access to the lock
+.I s
+and allows processes waiting on it to proceed.
+.SH SOURCE
+.B /appl/lib/lock.b
+

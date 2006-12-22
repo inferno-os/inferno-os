@@ -1,0 +1,24 @@
+.TH GRID-LOCALREG 1
+.SH NAME
+localreg \- starts a
+.IR registry (4)
+on the local machine
+.SH SYNOPSIS
+.B grid/localreg 
+.SH DESCRIPTION
+.I Localreg
+starts up a
+.IR registry (4),
+on the local machine and handles incoming connections to it. The registry is announced on tcp port
+.I registry
+(as defined in 
+.B /lib/ndb/services
+). 
+.SH SOURCE
+.B /appl/grid/localreg.b
+.br
+.B /appl/cmd/ndb/registry.b
+
+.SH "SEE ALSO"
+.IR registries (2),
+.IR registry (4)

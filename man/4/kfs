@@ -1,0 +1,175 @@
+.TH KFS 4
+.SH NAME
+kfs \- disk file system
+.SH SYNOPSIS
+.BI "mount {disk/kfs"
+.RB [ -r
+[
+.BI -b " bsize"
+] ]
+.RB [ -c ]
+.RB [ -A ]
+.RB [ -P ]
+.RB [ -R ]
+.RB [ -W ]
+[
+.BI -n " name"
+]
+.IB " file" "} " dir
+.SH DESCRIPTION
+.I Kfs
+implements a hierarchical Inferno file system within an existing
+.IR file ,
+which is typically a disk or flash memory partition.
+It gives access to it through the Styx protocol on its standard input,
+and the contents can be mounted directly on a given
+.I dir
+as shown above.
+The file system format is the same as that used by the
+.I kfs
+command of Plan 9, except that the modification user ID is implemented.
+.PP
+The
+.B -r
+option causes the file system to be reset to an initially empty state
+(`reamed').
+Permission checking is turned off, to allow any desired permissions and
+file ownership to be set.
+(In other words, the
+.B -W
+and
+.B -P
+options are also set by default.)
+The file system block size is set to the
+.IR bsize
+given by the
+.B -b
+option
+(default: 1024 bytes),
+which must be a multiple of 512 and not greater than 16k bytes.
+The block size is stored in the
+.I file
+and need not be given again.
+The storage representation is always little-endian.
+.PP
+Otherwise, the file system is checked if required, unless the
+.B -c
+option is given.
+.PP
+The contents of the file system can be provided by using commands
+such as
+.IR mkdir (1),
+.IR cp (1)
+and
+.IR rm (1)
+in
+.IR dir ,
+or built from a description using
+.IR mkfs (8).
+.PP
+The mapping between user names and
+internal IDs within the file system is established by the file
+.BR adm/users
+(within the file system itself)
+as described by
+.IR users (6),
+which
+.I kfs
+reads when it starts.
+If no such file exists, as for instance when the file system is initially empty,
+.I kfs
+uses a minimal set corresponding to the following
+.IR users (6)
+file:
+.IP
+.EX
+-1:adm:adm:
+0:none:adm:
+9999:noworld::
+10000:sys::
+10001:upas:upas:
+10002:bootes:bootes:
+10006:inferno::
+.EE
+.PP
+Any
+.IR users (6)
+file used with
+.I kfs
+should include entries for at least
+.BR adm ,
+.BR none ,
+and
+.BR noworld
+as above (although group membership can vary).
+.PP
+.I Kfs
+can optionally serve a control file, for use by
+.IR kfscmd (8).
+If the
+.B -n
+option is given,
+.I kfs
+creates a channel
+.BI /chan/kfs. name .cmd
+and accepts commands on it from the user that started
+.IR kfs .
+.PP
+Other options are:
+.TP
+.B -A
+do not update access times; useful when running a file system in flash over
+.IR ftl (3),
+to avoid excessive wear
+.TP
+.B -P
+suppress permission checking
+.TP
+.B -R
+file system is read only
+.TP
+.B -W
+allow
+.B wstat
+(see
+.IR sys-stat (2)
+or
+.IR stat (5))
+to make arbitrary changes to user and group fields
+.SH EXAMPLES
+Create an empty file system
+in the file
+.BR kfs.file .
+Because the file system will be no larger than the existing
+file's size, and the file is assumed not to be a device file, use
+.IR zeros (1)
+to prepare a file with 2048 blocks of 1024 bytes each:
+.IP
+.EX
+zeros 1024 2048 >kfs.file
+mount -c {disk/kfs -r kfs.file} /n/local
+.EE
+.PP
+The
+.B -c
+option to
+.I mount
+allows files to be created in
+.BR /n/local .
+.SH SOURCE
+.B /appl/cmd/disk/kfs.b
+.SH SEE ALSO
+.IR dd (1),
+.IR zeros (1),
+.IR flash (3),
+.IR ftl (3),
+.IR logfs (3),
+.IR sd (3),
+.IR users (6),
+.IR kfscmd (8),
+.IR mkfs (8)
+.SH BUGS
+Because the file system format is the same as Plan 9's
+.IR kfs ,
+this one also does not support file names longer than 27 bytes.
+It likewise cannot cope with files bigger than 2⁳ⁱ-1 bytes.

@@ -1,0 +1,26 @@
+.TH TSORT 1
+.SH NAME
+tsort \- topological sort
+.SH SYNOPSIS
+.B tsort
+.SH DESCRIPTION
+.I Tsort
+reads a set of partial order relations between labels (sequences of non-space characters)
+from its standard input,
+and lists the labels on its standard output one per line following a topological sort.
+Each input line represents a set of inequalities: the first label on the line is less than
+all the others on the same line, and should appear earlier
+in sorted order.
+(The relation might for instance represent arcs in a directed graph, from
+the first label on a line to the others, or dependency relationships.)
+Labels on a line are separated by space or tab.
+.SH DIAGNOSTICS
+If the input contains cycles,
+.I tsort
+prints a diagnostic on standard error for each cycle, listing its members.
+The members of each cycle will also appear on the standard output, in any order,
+but after any predecessors outside the cycle.
+.SH SOURCE
+.B /appl/cmd/tsort.b
+.SH SEE ALSO
+.IR sort (1)

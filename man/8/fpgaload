@@ -1,0 +1,24 @@
+.TH FPGALOAD 8
+.SH NAME
+fpgaload \- configure FPGA
+.SH SYNOPSIS
+.B auxi/fpgaload
+[
+.BI -c " clk"
+]
+.I file.rbf
+.SH DESCRIPTION
+.I Fpgaload
+configures the directly-attached Altera Flex6000 FPGA on the Bright Star Engineering ip-Engine.
+It enables the FPGA and output of the external system clocks, then loads the FPGA with the contents of
+.IR file.rbf
+which should be in the `raw binary format' produced for example by the Altera tools.
+After successful configuration, the BCLK is set to
+.I clk
+MHz;
+.I clk
+must be a divisor of the ip-Engine's system clock (currently 48 MHz).
+.SH SOURCE
+.B /appl/cmd/auxi/fpgaload.b
+.SH SEE ALSO
+.IR fpga (3)

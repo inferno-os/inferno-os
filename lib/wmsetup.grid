@@ -1,0 +1,54 @@
+# /dis/sh script
+# wm defines "menu" and "delmenu" builtins
+load std
+prompt='% ' ''
+fn % {$*}
+autoload=std
+home=/usr/^"{cat /dev/user}
+
+if {! {~ wm ${loaded}}} {
+	echo wmsetup must run under wm >[1=2]
+	raise usage
+}
+
+fn wmrun {
+	args := $*
+	{
+		pctl newpgrp
+		fn wmrun
+		$args
+	} > /chan/wmstdout >[2] /chan/wmstderr &
+}
+
+fn cd {
+	builtin cd $*;
+	rescue 'bad redir' {} {
+		echo cwd `{pwd} > /chan/shctl
+	} >[2] /dev/null
+}
+autoload=std sexprs
+run /lib/sh/sched
+bind -a /grid/scripts/Inferno /dis
+if{! ftest -f /net/cs}{
+	ndb/cs
+}
+mount -a {mntgen} /n
+
+plumber >/chan/wmstdout >[2=1]
+menu Shell			{wmrun wm/sh}
+menu Acme			{wmrun acme}
+menu Charon			{wmrun charon}
+menu Manual			{wmrun wm/man}
+menu Files			{if {ftest -d $home} {wmrun wm/ftree $home} {wmrun wm/ftree /}}
+menu ''	''
+menu Grid			'Node monitor' {wmrun nodemonitor}
+menu Grid			'Job monitor' {wmrun jobmonitor}
+menu System			'Debugger'		{wmrun wm/deb}
+menu System			'Task manager'		{wmrun wm/task}
+menu System			'Memory monitor'	{wmrun wm/memory}
+menu System			'About'			{wmrun wm/about}
+menu Games			'Tetris'			{wmrun wm/tetris}
+menu Games			'Bounce'			{wmrun wm/bounce}
+
+# anything else
+if {ftest -f $home/lib/wmsetup} {run $home/lib/wmsetup} {}

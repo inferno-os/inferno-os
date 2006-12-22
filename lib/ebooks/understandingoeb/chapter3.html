@@ -1,0 +1,230 @@
+<?xml version='1.0'?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+<?xml-stylesheet href="understandingoeb.css" type="text/x-oeb1-css"?>
+
+<html>
+<head>
+  <link rel="stylesheet" type="text/x-oeb1-css" href="understandingoeb.css" />
+<title>Understanding OEB Chapter 3</title>
+  <meta name="author" content="Garret Wilson" />
+  <meta name="copyright" content="Copyright (c) 2000-2001 Garret Wilson. All rights reserved." />
+</head>
+
+<body>
+
+<h2 id="chapter3">3. Styles and Style Sheets</h2>
+
+<p>One of the most integral parts of OEB is the concept of <dfn>style sheets</dfn>. A style sheet is a tool that helps to separate content from presentation and is used not only with OEB but with XML and (increasingly) with HTML web pages as well. You've been told that the separation of content and presentation is a "Good Thing" &mdash; after you understand style sheets, you'll begin to see why this concept is so important.</p>
+
+<p>Style sheets have a few unusual properties: you could write OEB-compliant eBooks all your life and never use a stylesheet. Stranger still, someone might create a style sheet that could be used with your work long after you've written it. That's what makes stylesheets so useful: they represent the <dfn>encapsulation</dfn> (or bundling) of the presentation part of the <em>publication=content+presentation</em> equation, and therefore help keep the two completely separate. Your OEB document, with its text and tags, is the content and holds the meaning of what you're written; the style sheet(s) hold how your work is presented to the user.</p>
+
+<p>How is this supposed to work? Imagine that you're writing a book to be published by the Happy Publishing Company. Happy has its own ideas about how your book should look &mdash; that is, which fonts it should have, how it should be spaced, etc. (Happy Publishing Company might have ideas about what your book should <em>say</em> as well, but that's another story; it should be clear to you by now that these are two separate concepts.) If you write a book and concentrate on the content, Happy Publishing Company can simply use its style sheet with your work after you're finished, and the book will look just like Happy wants it to. What happens when you change publishers? Your new publisher can simply substitute their standard style sheet and your book will suddenly take on its new look, without your having to make one single change to the actual content of the book &mdash; <em>if</em> you've correctly separated the content from the presentation.</p>
+
+<p>That's a big "if", and one that takes a little thinking on your part, at least to begin with. Since OEB comes from a legacy of HTML which didn't stress as strongly such a separation of content and presentation, OEB in some cases makes it easier for you to put style information where it doesn't belong: mixed in with the content of your work. It is hoped that you'll be able not only to overcome these temptations, but to understand why the current emphasis of information storage and retrieval formats is going in a direction that stresses that these elements be separated.</p>
+
+<p>Before going any further into the theory of style sheets, we'll examine a few examples of using styles, from the least desired to the most appropriate.</p>
+
+<h3 id="emphasisrevisited">Emphasis Revisited</h3>
+
+<p>The previous chapter hinted that OEB has a tag named <code>&lt;i&gt;</code> which causes the specified text to be rendered (or displayed) in italics. We've told you that this is not recommended.</p>
+
+<ul>
+	<li><strong>Not Recommended:</strong> <code>&lt;p&gt;</code>Being <code>&lt;i&gt;</code>extremely<code>&lt;/i&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code></li>
+</ul>
+
+<blockquote>Being <span style="font-style: italic;">extremely</span> smaller than other blovji his age...</blockquote>
+
+<p>What's the alternative? We've stressed that in many places, the <code>&lt;em&gt;</code> tag, specifying "emphasis", can be used in place of the <code>&lt;i&gt;</code> tag for the same effect. We've answered the question, "If they both have the same effect, what's the difference?" by saying that <code>&lt;em&gt;</code> specifies simply that a section of text should be emphasized, not <em>how</em> the text should be emphasized.</p>
+
+<ul>
+	<li><strong>Recommended:</strong> <code>&lt;p&gt;</code>Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code></li>
+</ul>
+
+<blockquote>Being <span style="font-style: italic;">extremely</span> smaller than other blovji his age...</blockquote>
+
+<p>The point is that, although <code>&lt;em&gt;</code> is usually rendered in italics by default, there's nothing that prevents you from changing how <code>&lt;em&gt;</code> gets displayed &mdash; nothing except a lack of knowledge, of course. We'll now address how that's done.</p>
+
+<p>OEB has specified that every element has an optional <code>style</code> attribute. As you might guess, you can use this attribute to override the style of that element. We'll explain later the specifics of the style information, but here's a quick example of how you could guarantee that <code>&lt;em&gt;</code> is displayed in italics:</p>
+
+<ul>
+	<li><strong>Not Recommended:</strong> <code>&lt;p&gt;</code>Being <code>&lt;em style="font-style: italic"&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code></li>
+</ul>
+
+<blockquote>Being <span style="font-style: italic;">extremely</span> smaller than other blovji his age...</blockquote>
+
+<p>If you wanted the emphasized text to not only be displayed in italics but also in red, you'd use the following:</p>
+
+<ul>
+	<li><strong>Not Recommended:</strong> <code>&lt;p&gt;</code>Being <code>&lt;em style="color: red"&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code></li>
+</ul>
+
+<blockquote>Being <span style="font-style: italic; color: red">extremely</span> smaller than other blovji his age...</blockquote>
+
+<p>Notice that the text is still displayed in italics, because we didn't specify that the italics should be removed (there's a way to do this, which you'll see later). Instead, we specified that the color red should be added to whatever style was there already.</p>
+
+<p>As you can see, we don't recommend this method, and it's not hard to figure out why. If you specify the style of the tag directly, you've gained nothing over just using the <code>&lt;i&gt;</code> tag and manually making changes. After all, this method still mixes our presentation information inside the content of our book.</p>
+
+<p>Let's continue with the assumption that we'd like all emphasized text to be displayed using not only italics, but also the color red. We'll also assume you've followed the recommendations here and used the <code>&lt;em&gt;</code> tag for emphasized text. The secret to style sheets is that they use the same format you just saw used inside the <code>style</code> attribute, only that they've been removed from the content and placed in a separate location. This is the first way we could do it:</p>
+
+<ul>
+	<li><strong>Recommended:</strong></li>
+</ul>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;head&gt;</code><br />
+  <code>&lt;title&gt;</code>Karl the Creature<code>&lt;/title&gt;</code><br />
+  <code>&lt;style&gt;</code>em {color: red}<code>&lt;/style&gt;</code><br />
+<code>&lt;/head&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;</code>...Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<blockquote>Being <span style="font-style: italic; color: red">extremely</span> smaller than other blovji his age...</blockquote>
+
+<p>This example correctly specifies that <em>all</em> occurrences of the <code>&lt;em&gt;</code> element should be displayed in red. Furthermore, the actual body of the document does not need to be changed; all text marked as emphasized will be shown with the new style.</p>
+
+<p>In the previous chapter we touched on the essential components of an OEB document. In the above example you'll notice several elements we didn't discuss. OEB specifies that the <code>&lt;head&gt;</code> element is optional in a document, but if included it should contain a <code>&lt;title&gt;</code> element. The element we're interested in, <code>&lt;style&gt;</code> must be inside the <code>&lt;head&gt;</code> element. This means that whenever we include a <code>&lt;style&gt;</code> element, we'll have to include both a <code>&lt;head&gt;</code> and a <code>&lt;title&gt;</code> element as well. Both of these elements will be discussed in depth later. For now, note simply that we are specifying style information outside the actual body of the document, in a separate element named <code>&lt;style&gt;</code>.</p>
+
+<p>You might wonder at this point, if we were to take our concept of separation of content and presentation to the extreme, why we place any style information at all in the same file as the document. Wouldn't it be better to store presentation information in a completely separate location? Yes, in many circumstances it would. We'll explain how a little later; for now, to make things simple, we'll keep the style information in the same file as the document.</p>
+
+<h3 id="cascadingstylesheets">Cascading Style Sheets (CSS)</h3>
+
+<p>You've seen how OEB has used XML to create a set of tags and rules to use those tags, in many instances borrowing tags from HTML. Similarly, there is a set of rules for specifying style information in an OEB document. Here, OEB borrowed the format of a specification for <dfn>Cascading Style Sheets</dfn> (CSS). Although there are a few differences between OEB's version of CSS and standard CSS, these differences are very minor; in most instances, OEB simply specifies which CSS constructs cannot be used. There's only one instance where OEB actually creates new identifiers. For the most part, then, if you're familiar with CSS at all you can apply your knowledge to OEB.</p>
+
+<p>XML, on which OEB is based, uses a set of elements, each of which have a beginning and ending tag. CSS, on the other hand, uses different constructs. In general, CSS styles consist of <dfn>selectors</dfn> and <dfn>declarations</dfn>, the latter of which contains one or more sets of a <dfn>property</dfn> and a <dfn>value</dfn>. Although this sounds complicated, it's quite simple in practice; once you understand these basic parts, there isn't much more to learn for most things you'll want to do.</p>
+
+<div class="sidebar" id="cssvsxsl">
+<h4 class="sidebarTitle">More Information: CSS vs. XSL</h4>
+
+<p>OEB uses XML to store content, but uses a separate language named CSS to store style (presentation) information. Why must one use two separate formats? Why doesn't OEB simply use XML for storing both content and presentation information, even if these things are stored separately?</p>
+
+<p>That's a legitimate and important question. It so happens that there is a method for specifying style and formatting information using XML &mdash; it's called <dfn>XML Style Language</dfn> (XSL). Since it uses XML, XSL doesn't force one to learn another format just to create style information, and XSL is even more powerful than CSS</p>
+
+<p>Why doesn't OEB use XSL instead of CSS, then? There are several reasons. When the OEB Publication Structure 1.0 specification was being written, there were not any tools available specifically for viewing OEB documents. Since an OEB document is very similar to a normal HTML document, it was possible however to view OEB documents using a web browser. The OEB Authoring Group chose to use CSS, which most browsers at the time supported, rather than to use XSL, which most browsers couldn't handle.</p>
+
+<p>More importantly, the XSL specification was not yet finalized at the time the OEB specification was being written, so any use of XSL would have had to predict the final form in which XSL would appear. OEB therefore relies primarily on CSS, although future version of OEB may well rely on XSL. It's even possible to use XSL stylesheets with OEBPS 1.0, as long as an appropriate CSS stylesheet is included for those reading systems that do not understand XSL.</p>
+
+</div>
+
+<p>The particular style we specified for <code>&lt;em&gt;</code> looks like this:</p>
+
+<blockquote><code>em {color: red}</code></blockquote>
+
+<p>This style represents how most styles you specify will appear. Each will have the same parts introduced earlier:</p>
+
+<ul>
+	<li><strong>selector</strong> - <code>em</code> - Specifies which elements will be "selected" to receive this style. In this case, we indicate that this style applies to every <code>&lt;em&gt;</code> element.</li>
+	<li><strong>declaration</strong> - <code>{color: red}</code> - Specifies the style of the selected element(s). In this case, we've specified that the color of the text should be red. As noted earlier, the declaration is divided up into one or more properties and corresponding values.</li>
+	<li><strong>property</strong> - <code>color</code> - Specifies a particular property to be modified. Here the color of the text is being modified. Each declaration could modify several properties &mdash; both the color and the size of the text could be changed, for example.</li>
+	<li><strong>value</strong> - <code>red</code> - The new value of the property. Each property will have at least one value, although more than one value can be specified in some instances in which the first value might not be available.</li>
+</ul>
+
+<p>There are, of course, a few more intricacies which we'll go into later, especially concerning the selector part of the equation. There are probably a couple of questions about exactly what's happening here that should probably be cleared up first.</p>
+
+<p><em class="rhetoricalQuestion">Why does my emphasized text show up both in red <em>and</em> italics, even though I specified just the color red?</em> If you specify no styles at all, there is a default style which will be applied to text between OEB tags. In OEB, the <code>&lt;em&gt;</code> tag is usually rendered in italics by default. In fact, the effect is exactly as if you had specified the following style in your document:</p>
+
+<blockquote><code>em {font-style: italic}</code></blockquote>
+
+<p>In other words, there's effectively a default style sheet used which specifies the standard style of OEB elements. In our example, specifying that the color red should be used did not state that the default style of italics should not be used. The color red was therefore added to the existing default style of italics, giving all text between <code>&lt;em&gt;</code> tags both the italic style and the color red.</p>
+
+<p><em class="rhetoricalQuestion">If styles can be specified in multiple places, such as on the actual tag and elsewhere in the document, what happens when I declare the same style in multiple places?</em> This question relates to the previous one. If you specify in the document's <code>&lt;style&gt;</code> tag, for example, the style <code>em {color: red}</code>, then every occurrence of the <code>&lt;em&gt;</code> tag will be rendered in red. If you specify, using the <code>style</code> attribute, that a particular <code>&lt;em&gt;</code> tag should have be underlined using <code>&lt;em style="text-decoration: underline"&gt;</code>, then that particular portion of text will be underlined. But it will also be shown in red, because you've already specified that <em>all</em> occurrences of the <code>&lt;em&gt;</code> tag should be in red.</p>
+
+<p>Each particular instance of the <code>&lt;em&gt;</code> tag, therefore, <dfn>inherits</dfn> the properties already defined for it. Since you specified a property for <em>all</em> <code>&lt;em&gt;</code> tags, this property <dfn>cascades</dfn> down to each of the individual <code>&lt;em&gt;</code> tags similar to the way water from a waterfall cascades down to each level of rocks before it reaches the pool below. In fact, that's why CSS uses the name "Cascading Style Sheets."</p>
+
+<p><em class="rhetoricalQuestion">What happens if the properties I specify in several places conflict with each other?</em> As a rule of thumb, the most specific declaration is used. If you've specified, for example, that all <code>&lt;em&gt;</code> elements should be red, but then in a particular instance specified that a particular <code>&lt;em&gt;</code> element should instead be blue, the blue wins.</p>
+
+<h4 id="cssselectors">CSS Selectors</h4>
+
+<p>A selector determines (or selects) the element(s) to which a particular style declaration applies. In our example above, <code>em {color: red}</code>, the selector is simple: this style will be applied to every <code>&lt;em&gt;</code> element. There are several other additions to the selector syntax that make it easy to select exactly which element(s) you prefer.</p>
+
+<p><strong>Select Multiple Elements:</strong> You could always duplicate a style declaration for several elements with different names, but CSS has an easier way to select several elements for the same style. Just place several element names in a row, separated by commas (,). For example, <code>em, dfn {color: red}</code> would make all emphasized text (<code>&lt;em&gt;</code>) <em>and</em> all defined words (<code>&lt;dfn&gt;</code>) appear in red.</p>
+
+<p><strong>Select Elements Only in Certain Contexts:</strong> So far, we've only seen the <code>&lt;em&gt;</code> element appear inside a paragraph (<code>&lt;p&gt;</code>). As we'll see later, emphasized text could appear in several places, such as inside a list or a heading. To specify that <em>only</em> emphasized text inside a paragraph should be red, you would list the nested elements in the correct order, separated by whitespace.: <code>p em {color: red}</code>. This would mean that emphasized text inside a paragraph (e.g. <code>&lt;p&gt;&lt;em&gt;&lt;/em&gt;&lt;/p&gt;</code>) would appear in red, but not emphasized text inside a list (e.g. <code>&lt;li&gt;&lt;em&gt;&lt;/em&gt;&lt;/li&gt;</code>). Again, we'll discuss lists later; for now, simply realize that an element can appear in different contexts, and CSS provides a way to specify these situations.</p>
+
+<p><strong>Select Elements by Class</strong> CSS allows a style to be created and given a name, and then later used with any element you decide. After specifying a name (or <dfn>class</dfn>) for a style, you can use the style with a particular element simply by specifying the style name in the <code>class</code> attribute of an element. The <code>class</code> attribute, like the <code>style</code> attribute, is an optional attribute that can be used with many elements.</p>
+
+<p>For example, instead of explicitly specifying that every <code>&lt;em&gt;</code> element should appear in red, we could create a class that would allow you to specify to which <code>&lt;em&gt;</code> element the style applied. A style class is always preceded by a period or full stop character (.), like this: <code>em.colorful {color: red}</code>. We could then specify that a particular emphasized portion of text would use this style:"this is <code>&lt;em class="colorful"&gt;</code>emphasized<code>&lt;/em&gt;</code> text".</p>
+
+<p>A style class can be made even more generic by omitting an element designation altogether. A modification of the previous example yields <code>.colorful {color: red}</code> (don't forget the '.' character), a style class which can apply to <em>any</em> element. This change still allows the <code>&lt;em&gt;</code> tag be made colorful as in the previous example: <code>&lt;em class="colorful"&gt;</code>emphasized<code>&lt;/em&gt;</code>. Furthermore, the class can be applied to other elements, such as the <code>&lt;p&gt;</code> tag: <code>&lt;p class="colorful"&gt;</code>emphasized<code>&lt;/em&gt;</code> would assure that all the text in the specified paragraph appeared in the color red. Note, however, that the text would not appear in italics, since the <code>&lt;p&gt;</code> tag does not have an italic style by default, as does the <code>&lt;em&gt;</code> tag.</p>
+
+<h3 id="linkingstylesheets">Linking to Style Sheets</h3>
+
+<p>As we've seen, there are several places where we can store style information, from the most specific to the most general:</p>
+
+<ol>
+	<li>By putting style information in an element's <code>style</code> attribute.</li>
+	<li>By specifying a style class in an element's <code>class</code> attribute.</li>
+	<li>By defining styles in a <code>&lt;style&gt;</code> element inside the document <code>&lt;head&gt;</code>.</li>
+	<li>By defining styles in separate style sheet file linked to the document.</li>
+</ol>
+
+<p>The last method, linking to an external style sheet, has only been touched upon briefly. Using this method is straightforward: simply take the style information from inside the <code>&lt;style&gt;</code> element and place it inside a separate file (preferably with a ".css" extension). The entire <code>&lt;style&gt;</code> element can then be removed, and the document can simply specify that it uses the external stylesheet.</p>
+
+<p>By placing style information in a separate file, we've arrived at our ultimate goal of separating content from presentation. If there are multiple documents in a given book, the style information does not have be be duplicated inside each document; each document can rather <dfn>link</dfn> to one style sheet, which contains all relevant presentation information. Furthermore, a book's style can be changed simply by making the document link to another style sheet. To carry on the example at the beginning of this chapter, if Happy Publishing Company decides it wants to redesign the appearance of its entire selection of books, none of the books' contents need to be changed. Instead, Happy can simply supply an updated style sheet.</p>
+
+<h4 id="linkelement">Linking Style Sheets with the <code>&lt;link&gt;</code> Element</h4>
+
+<p>There are several ways to actually link a style sheet to a document, reflecting the evolution of HTML and markup languages in general. When HTML first allowed style sheets, it specified a <code>&lt;link&gt;</code> element that appears inside the <code>&lt;head&gt;</code> element in place of <code>&lt;style&gt;</code>. After moving our style information out of our sample document, our style link information might look like this:</p>
+
+<blockquote><code>&lt;link href="karl.css" type="text/x-oeb1-css"&gt;</code></blockquote>
+
+<p>As before, the <code>href</code> attribute specifies the style sheet to which the document is linking. The <code>type</code> attribute specifies the type of the style sheet. Although normal CSS style sheets have the type <code>text/css</code>, OEB requires that your standard style sheet have the type <code>text/x-oeb1-css</code> to indicate it meets the modified requirements of OEB style information.</p>
+
+<p>Using <code>&lt;link&gt;</code> will make your document compatible with HTML and allow your style information to show up in a typical HTML browser. The <code>&lt;link&gt;</code> tag is not, however, a standard way of linking XML documents in general, which is why OEB allows (and the authors of this work recommend) another linking mechanism which is standardized for XML.</p>
+
+<h4 id="linkxml">Linking Style Sheets with XML</h4>
+
+<p>XML now defines a standard method of linking style sheets to any XML document, which includes OEB documents. This method was still being standardized while the OEB Publication Structure specification was first being written, and that's why OEBPS 1.0 does not give examples of XML style linking. However, on 29 June 1999, version 1.0 of "Associating Style Sheets with XML documents" became an official W3C recommendation, and can be found at <a href="http://www.w3.org/TR/xml-stylesheet/">http://www.w3.org/TR/xml-stylesheet/</a>. This new development was unfortunately missed as OEB was released, so the OEB specification still states that the final form of XML style association has yet to be finalized.</p>
+
+<p>With the final recommendation of XML style association by the W3C, we can recommend that all OEB books use this method for linking to style sheets. Doing so will ensure that OEB works are standard XML documents that can endure as older versions of HTML fade. Using the XML style association mechanism is very similar to the HTML method:</p>
+
+<blockquote><code>&lt;?xml-stylesheet href="karl.css" type="text/x-oeb1-css"?&gt;</code></blockquote>
+
+<p>The attributes here are identical to those in the <code>&lt;link&gt;</code> element, and have the same usage. The location in the document, however, is different: the <code>&lt;?xml-stylesheet&gt;</code> instruction appears before the <code>&lt;html&gt;</code> element.</p>
+
+<h3 id="review">Review</h3>
+
+<h4 id="summary">Summary</h4>
+<ul>
+	<li>OEB allows style sheets to be defined which specify how parts of an OEB document should be displayed or rendered.</li>
+	<li>Style sheets, when correctly used, help separate the content of a document from its presentation information.</li>
+	<li>OEB by default uses a modified form of CSS to specify style information.</li>
+	<li>A particular CSS style consists of a selector (such as <code>em</code>) and a style declaration which consists of one or more properties (e.g. <code>color:</code>) and associated values (e.g. <code>red</code>), such as <code>em {color: red}</code>.</li>
+	<li>A style can specify a style class that can be used for particular elements inside the <code>class</code> attribute. The style <code>em.colorful {color: red}</code>, for example, can be used with a particular <code>&lt;em&gt;</code> element: <code>&lt;em class="colorful"&gt;</code>...<code>&lt;/em&gt;</code>.</li>
+	<li>Although not normally recommended, style information can be specified for a particular element inside its <code>style</code> attribute, such as <code>&lt;em style="color: red"&gt;</code>...<code>&lt;/em&gt;</code>.</li>
+	<li>External style sheets can be associated with the document using the <code>&lt;link&gt;</code> element, a carryover from HTML, inside the <code>&lt;head&gt;</code> element.</li>
+	<li>The recommended standard way for associating a style sheet with a document is to instead use the <code>&lt;?xml-stylesheet&gt;</code> instruction before the <code>&lt;head&gt;</code> element.</li>
+</ul>
+
+<h4 id="cssproperties">CSS Properties</h4>
+<ul>
+	<li><code>font-style:</code> Specifies the style of the font; although several values are available, we only addressed <code>italic</code>.</li>
+	<li><code>color:</code> Specifies the color of the font; although several values are available, we only addressed <code>red</code>.</li>
+</ul>
+
+<h3 id="exampleoebdocument">Completed Example OEB Document with Styles (<code>karl.html</code>)</h3>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;?xml-stylesheet href="karl.css" type="text/x-oeb1-css"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<h3 id="examplestylesheet">Completed Example Style Sheet (<code>karl.css</code>)</h3>
+
+<blockquote>
+  em {color: red}
+</blockquote>
+
+</body>
+</html>

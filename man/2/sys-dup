@@ -1,0 +1,62 @@
+.TH SYS-DUP 2
+.SH NAME
+dup, fildes \- duplicate an open file descriptor
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+dup:    fn(oldfd, newfd: int):  int;
+fildes: fn(fd: int):            ref FD;
+.EE
+.fi
+.SH DESCRIPTION
+The Limbo programming language and its libraries
+manage I/O via references to instances of abstract data type,
+.BR FD ,
+called a
+.IR "Limbo file descriptor",
+or simply `file descriptor' when the context is understood.
+.B FD
+holds an integer-valued file descriptor, the form used
+by the operating system, in a structure that can be reference counted
+and garbage collected.
+There are occasions when a program must access the underlying
+integer file descriptor, such as when rearranging the standard input
+and output for a new subprocess.
+.PP
+The
+.B dup
+call takes a valid integer file descriptor,
+.IR oldfd ,
+referring to an open file,
+and
+returns a new integer file descriptor referring to the same file.
+If
+.I newfd
+is in the range of legal file descriptors,
+.B dup
+will use that for the new file descriptor
+(closing any old file associated with
+.IR newfd );
+if
+.I newfd
+is \-1 the system chooses the lowest available file descriptor.
+If a suitable file descriptor cannot be found,
+.B dup
+returns \-1.
+.PP
+.B Fildes
+uses the integer file descriptor
+.B fd
+to create a new Limbo
+file descriptor, suitable for other
+.B Sys
+module functions.
+It returns
+.B nil
+if it cannot convert
+.IR fd .
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-open (2)

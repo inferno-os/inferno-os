@@ -1,0 +1,121 @@
+.TH PANEL 9
+.SH NAME
+panel \- embedded graphics
+.SH SYNOPSIS
+\f5panel\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-anchor       -borderwidth  -background   -relief
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -height \fIdist\fP
+Specifies a desired height for the panel.
+If this option isn't specified, the panel's desired height is computed
+from the image and mask images. If these are replicated,
+the default is zero.
+.TP
+.B -width \fIdist\fP
+Specifies a desired width for the panel.
+If this option isn't specified, the panel's desired height is computed
+from the image and mask images. If these are replicated,
+the default is zero.
+.SH DESCRIPTION
+The \f5panel\fR command creates a new window (given by the \fIpathName\fR
+argument) and makes it into a panel widget.
+Additional options, described above, may be specified on the
+command line
+to configure aspects of the panel such as its background colour and 3-D relief.
+The \f5panel\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A panel is a widget that displays arbitrary graphics drawn outside
+of Tk. An application is free to use any image or mask that it
+chooses to create; the panel will display the contents of the image
+through the mask (see
+.IR draw (2)).
+.PP
+A panel widget will not display anything until its image has been
+set using
+.B putimage
+(see
+.IR tk (2)).
+
+.SH "WIDGET COMMAND"
+The \f5panel\fR command creates a new Tk command whose name
+is \fIpathName\fR. This command may be used to invoke various
+operations on the widget: It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for panel widgets:
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5panel\fR
+function.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5panel\fR
+function
+.TP
+\fIpathName \f5dirty\fR ?\fIminx miny maxx maxy\fR?
+Mark the area inside the given rectangle
+((\fIminx\fP, \fIminy\fP), (\fImaxx\fP, \fImaxy\fP))
+to be flushed to the screen. If the rectangle is not
+given, the whole area will be marked.
+The coordinates are relative to the image's origin.
+.TP
+\fIpathName \f5origin\fR ?\fIx y\fR?
+Set the point within the image that will be displayed
+at the top left of the panel's rectangle.
+If the area allocated to the panel is more than
+the area drawn by the image, the ``top left'' will
+positioned with respect to the value of the
+.B -anchor
+option.
+If the point is not given, the current origin
+is returned.
+.TP
+\fIpathName \f5panelx\fR ?\fIscreenx\fR?
+Given a screen x-coordinate,
+.IR screenx ,
+this command returns the image x-coordinate displayed
+at that location.
+.TP
+\fIpathName \f5panely\fR ?\fIscreeny\fR?
+Given a screen y-coordinate,
+.IR screeny ,
+this command returns the image y-coordinate displayed
+at that location.
+.TP
+\fIpathName \f5screenx\fR ?\fIpanelx\fR?
+Given an image x-coordinate,
+.IR panelx ,
+this command returns the
+equivalent screen x-coordinate.
+.TP
+\fIpathName \f5screeny\fR ?\fIpanely\fR?
+Given an image y-coordinate,
+.IR panely ,
+this command returns the
+equivalent screen y-coordinate.
+.SH BINDINGS
+When a new panel is created, it has no default event bindings.
+.SH SEE ALSO
+.IR draw (2),
+.IR tk (2),
+.IR options (9),
+.IR types (9)

@@ -1,0 +1,80 @@
+.TH STYXPERSIST 2
+.SH NAME
+styxpersist \- persistent Styx connection
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "styxpersist.m";
+styxpersist := load Styxpersist Styxpersist->PATH;
+
+init: fn(clientfd: ref Sys->FD, usefac: int, keyspec: string)
+        : (chan of chan of ref Sys->FD, string);
+.EE
+.SH DESCRIPTION
+.I Styxpersist
+tries to maintain a persistent Styx connection for its client.
+.B Init
+starts a process to serve Styx for the client on
+.IR clientfd .
+If
+.I usefac
+is non-zero,
+.I styxpersist
+will use
+.IR factotum (2)
+to do plan 9-style authentication if necessary,
+and
+.I keyspec
+gives attribute-value pairs to pass to
+.IR factotum 's
+.B proxy
+function.
+.PP
+.B Init
+returns a tuple, say
+.RI ( c ,\  err ).
+If things have started successfully,
+.I c
+holds a channel that
+.I styxpersist
+uses to request a new connection to the server.
+The caller of
+.B init
+should arrange that a process is ready to repeatedly receive on this channel,
+dial the server, and send the resulting file descriptor (or
+.B nil
+if the connection was unsuccessful)
+on the channel received, 
+.PP
+If
+.B init
+failed,
+.I c
+will be
+.B nil
+and
+.I err
+describes the error.
+.PP
+If the server goes down, it redials as above, and tries to
+re-open all the files that were open in the previous connection.
+In the meantime all client access to the namespace is blocked.
+.PP
+Note that this service should only be used on conventional
+file servers, where most reads and writes are idempotent.
+.SH SOURCE
+.B /appl/lib/styxpersist.b
+.SH BUGS
+Even on a conventional fileserver, some operations are non-idempotent;
+namely create, rename, remove, and write to an append-only file.
+If a fileserver dies while such a request is outstanding, it is unclear
+what it should do. Currently it returns an error to the client if such a sitution occurs.
+.PP
+.I Styxpersist
+is dependent on the capabilities of the local factotum to re-authenticate
+Plan 9 style. If a client uses an external factotum with different keys,
+.I styxpersist
+may be unable to re-authenticate.
+.SH "SEE ALSO"
+.IR mount (1),
+.IR sys-dial (2)

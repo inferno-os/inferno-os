@@ -1,0 +1,19 @@
+FreeBSD
+	386
+		bin
+			emu.new	0775	inferno	inf	/FreeBSD/386/bin/emu
+			asm
+			iar
+			data2c
+			data2s
+			ksize
+			kstrip
+
+			limbo
+			mk
+			ndate
+			inm
+			yacc
+		include
+			+
+		lib

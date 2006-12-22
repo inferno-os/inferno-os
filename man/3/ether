@@ -1,0 +1,134 @@
+.TH ETHER 3
+.SH NAME
+ether \- Ethernet device
+.SH SYNOPSIS
+.nf
+.BI "bind -a #l" n " /net"
+
+.BI /net/ether n /clone
+.BI /net/ether n /[0-7]
+.BI /net/ether n /[0-7]/data
+.BI /net/ether n /[0-7]/ctl
+.BI /net/ether n /[0-7]/stats
+.BI /net/ether n /[0-7]/type
+.BI /net/ether n /[0-7]/ifstats
+.fi
+.SH DESCRIPTION
+The Ethernet device
+.BI #l n
+serves a three-level directory representing a physical Ethernet interface:
+AMD LANCE, 3Com 3C509, 3Com 3C905, Intel 82557, and others.
+If
+.I n
+is not given it is taken to be 0.
+.PP
+The top level directory
+has a single directory named
+.BI ether n,
+where
+.I n
+is the interface number, starting from 0,
+assigned in some platform-dependent way.
+That directory contains a conversation directory for each of 8 Ethernet packet types,
+and a
+.B clone
+file.
+.PP
+Opening the
+.B clone
+file returns a file descriptor open on the
+.B ctl
+file of an unused conversation directory.
+Reading the
+.B ctl
+file returns a text
+string representing the number of the
+connection.
+The connection is controlled by writing textual commands to the associated
+.B ctl
+file:
+.TP
+.BI connect " type"
+Set the
+.I type
+of Ethernet packets received on the connection; the type is
+expressed
+as an integer constant
+(in hexadecimal if it has a leading
+.BR 0x ,
+octal if it has a leading
+.BR 0 ,
+and otherwise decimal).
+For instance, Ethernet packets carrying IP version 4 use type
+.BR 0x800 .
+The value
+.B \-1
+stands for all types.
+The value
+.B \-2
+causes at most the first 64 bytes of all types of packets to be copied
+to the conversation.
+If several conversations are assigned the same packet type,
+a copy of the packet is given to each.
+.TP
+.B promiscuous
+Set the interface to capture all packets regardless of destination address.
+An interface normally receives only packets whose 
+destination address is that of the interface or is the
+broadcast address,
+.BR ffffffffffff .
+The interface remains promiscuous until the control file is
+closed.
+The extra packets are received only by conversations of the same type
+as the incoming packet (or of type -1).
+.TP
+.BI addmulti " address"
+Add the given MAC multicast
+.I address
+to the set of multicast addresses accepted by the interface.
+.I Address
+is a twelve digit MAC address in hexadecimal.
+.TP
+.BI remmulti " address"
+Remove
+.I address
+from the set of multicast addresses accepted by the interface.
+.PP
+Incoming Ethernet packets are demultiplexed by destination address and
+packet type and queued
+for reading by the corresponding open connection(s).
+Each read of the
+.B data
+file returns each packet in turn, including the Ethernet header.
+A read will terminate at packet boundaries.
+Each write to the
+.B data
+file causes a packet to be sent.
+The Ethernet address of the interface is inserted into
+the packet header as the source address.
+.PP
+Reading the
+.B type
+file returns the decimal value of the assigned Ethernet packet type.
+.PP
+Reading the
+.B stats
+file returns status information, the value
+of counters, the `promiscuous' state,
+and the Ethernet MAC address of the
+interface.
+.PP
+Reading the
+.B ifstats
+file returns statistics and status information specific to a given
+hardware interface.
+.SH SOURCE
+.B /os/port/devlance.c
+.br
+.B /os/port/netif.c
+.br
+.B /os/*/devether.c
+.br
+.B /os/*/ether*.c
+.SH SEE ALSO
+.IR ip (3)

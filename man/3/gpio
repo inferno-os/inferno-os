@@ -1,0 +1,94 @@
+.TH GPIO 3 SA1100
+.SH NAME
+gpio \- access to GPIO registers
+.SH SYNOPSIS
+.B bind -a
+.B #G
+.B /dev
+.PP
+.nf
+.B /dev/gpioclear
+.B /dev/gpioctl
+.B /dev/gpioedge
+.B /dev/gpioset
+.B /dev/gpiostatus
+.fi
+.SH DESCRIPTION
+.PP
+The GPIO interface
+serves a one-level directory with five files
+that give access to the GPIO registers in the SA1100.
+See the SA1100 handbook for details of the function
+of the various registers.
+.PP
+The control file
+.B gpioctl
+accepts commands to set individual bits in the edge detect
+registers.
+Each control message has three space-separated fields:
+.IP
+.EX
+.I "reg pin value"
+.EE
+.LP
+where
+.I reg
+is a single character
+denoting a register,
+.I pin
+a bit within it, and
+.I val
+the value (0 or 1) for that bit.
+Valid choices for
+.I reg
+are:
+.B d
+(GPDR),
+.B r
+(GRER),
+.B f
+(GFER),
+and
+.B a
+(GAFR).
+For example, the control message
+.IP
+.EX
+d 10 1
+.EE
+.LP
+sets bit 10 (following the handbook's bit-numbering conventions) in the GPIO pin
+direction register GPDR.
+.PP
+The read-only file
+.B gpiostatus
+shows the names and values (in hexadecimal) of all GPIO registers.
+.PP
+The remaining data files
+allow bits to be read by
+.B Sys->read
+requests
+and set by
+.B Sys->write
+requests.
+When read, each file returns the value of a given
+register as a single 8 digit hexadecimal number:
+.B gpioset
+and
+.B gpioclear
+both give the value of the level register, GPLR;
+and
+.B gpioedge
+gives the value of the edge dectect register, GEDR.
+Each write request
+should present a single number in textual form, which
+is assumed to be hexadecimal by default.
+The value is written to a GPIO register:
+.B gpioset
+corresponds to GPSR,
+.B gpioclear
+corresponds to GPCR, and
+.B gpioedge
+corresponds to GEDR.
+.SH SOURCE
+.B /os/sa1100/devgpio.c

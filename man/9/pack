@@ -1,0 +1,227 @@
+.TH PACK 9
+.SH NAME
+pack \- Geometry manager that packs around edges of cavity
+.SH SYNOPSIS
+\f5pack \fIoption arg \fR?\fIarg ...\fR?
+
+.SH DESCRIPTION
+The \f5pack\fR command is used to communicate with the packer,
+a geometry manager that arranges the children of a parent by
+packing them in order around the edges of the parent.
+The \f5pack\fR command can have any of several forms, depending
+on the \fIoption\fR argument:
+.TP
+\f5pack \fIslave \fR?\fIslave ...\fR? ?\fIoptions\fR?
+If the first argument to \f5pack\fR is a window name (any value
+starting with ``.''), then the command is processed in the same
+way as \f5pack configure\fR.
+.TP
+\f5pack configure \fIslave \fR?\fIslave ...\fR? ?\fIoptions\fR?
+The arguments consist of the names of one or more slave windows
+followed by pairs of arguments that specify how
+to manage the slaves.
+See ``THE PACKER ALGORITHM'' below for details on how the options
+are used by the packer.
+The following options are supported:
+.RS
+.TP
+\f5-after \fIother\fR
+\fIOther\fR must be the name of another window.
+Use its master as the master for the slaves, and insert
+the slaves just after \fIother\fR in the packing order.
+.TP
+\f5-anchor \fIanchor\fR
+\fIAnchor\fR must be a valid anchor position such as \f5n\fR
+or \f5sw\fR; it specifies where to position each slave in its
+parcel.
+Defaults to \f5center\fR.
+.TP
+\f5-before \fIother\fR
+\fIOther\fR must be the name of another window.
+Use its master as the master for the slaves, and insert
+the slaves just before \fIother\fR in the packing order.
+.TP
+\f5-expand \fIboolean\fR
+Specifies whether the slaves should be expanded to consume
+extra space in their master.
+\fIBoolean\fR may have any proper boolean value, such as \f51\fR
+or \f5no\fR.
+Defaults to 0.
+.TP
+\f5-fill \fIstyle\fR
+If a slave's parcel is larger than its requested dimensions, this
+option may be used to stretch the slave.
+\fIStyle\fR must have one of the following values:
+.RS
+.TP
+\f5none\fR
+Give the slave its requested dimensions plus any internal padding
+requested with \f5-ipadx\fR or \f5-ipady\fR.  This is the default.
+.TP
+\f5x\fR
+Stretch the slave horizontally to fill the entire width of its
+parcel (except leave external padding as specified by \f5-padx\fR).
+.TP
+\f5y\fR
+Stretch the slave vertically to fill the entire height of its
+parcel (except leave external padding as specified by \f5-pady\fR).
+.TP
+\f5both\fR
+Stretch the slave both horizontally and vertically.
+.RE
+.TP
+\f5-in \fIother\fR
+Insert the slave(s) at the end of the packing order for the master
+window given by \fIother\fR.
+.TP
+\f5-ipadx \fIdist\fR
+\fIDist\fR specifies how much horizontal internal padding to
+leave on each side of the slave(s).
+\fIDist\fR must be a valid screen distance, such as \f52\fR or \f5.5c\fR.
+It defaults to 0.
+.TP
+\f5-ipady \fIdist\fR
+\fIDist\fR specifies how much vertical internal padding to
+leave on each side of the slave(s).
+\fIDist\fR  defaults to 0.
+.TP
+\f5-padx \fIdist\fR
+\fIDist\fR specifies how much horizontal external padding to
+leave on each side of the slave(s).
+\fIDist\fR defaults to 0.
+.TP
+\f5-pady \fIdist\fR
+\fIDist\fR specifies how much vertical external padding to
+leave on each side of the slave(s).
+\fIDist\fR defaults to 0.
+.TP
+\f5-side \fIside\fR
+Specifies which side of the master the slave(s) will be packed against.
+Must be \f5left\fR, \f5right\fR, \f5top\fR, or \f5bottom\fR.
+Defaults to \f5top\fR.
+.LP
+If no \f5-in\fR, \f5-after\fR or \f5-before\fR option is specified
+then each of the slaves will be inserted at the end of the packing list
+for its parent unless it is already managed by the packer (in which
+case it will be left where it is).
+If one of these options is specified then all the slaves will be
+inserted at the specified point.
+If any of the slaves are already managed by the geometry manager
+then any unspecified options for them retain their previous values rather
+than receiving default values.
+.RE
+.TP
+\f5pack forget \fIslave \fR?\fIslave ...\fR?
+Removes each of the \fIslave\fRs from the packing order for its
+master and unmaps their windows.
+The slaves will no longer be managed by the packer.
+.TP
+\f5pack propagate \fImaster\fR ?\fIboolean\fR?
+If \fIboolean\fR has a true boolean value such as \f51\fR or \f5on\fR
+then propagation is enabled for \fImaster\fR, which must be a window
+name (see ``GEOMETRY PROPAGATION'' below).
+If \fIboolean\fR has a false boolean value then propagation is
+disabled for \fImaster\fR.
+In either of these cases an empty string is returned.
+If \fIboolean\fR is omitted then the command returns \f50\fR or
+\f51\fR to indicate whether propagation is currently enabled
+for \fImaster\fR.
+Propagation is enabled by default.
+.TP
+\f5pack slaves \fImaster\fR
+Returns a list of all of the slaves in the packing order for \fImaster\fR.
+The order of the slaves in the list is the same as their order in
+the packing order.
+If \fImaster\fR has no slaves then an empty string is returned.
+
+.SH "THE PACKER ALGORITHM"
+For each master the packer maintains an ordered list of slaves
+called the \fIpacking list\fR.
+The \f5-in\fR, \f5-after\fR, and \f5-before\fR configuration
+options are used to specify the master for each slave and the slave's
+position in the packing list.
+If none of these options is given for a slave then the slave
+is added to the end of the packing list for its parent.
+.PP
+The packer arranges the slaves for a master by scanning the
+packing list in order.
+At the time it processes each slave, a rectangular area within
+the master is still unallocated.
+This area is called the \fIcavity\fR;  for the first slave it
+is the entire area of the master.
+.PP
+For each slave the packer carries out the following steps:
+.IP [1]
+The packer allocates a rectangular \fIparcel\fR for the slave
+along the side of the cavity given by the slave's \f5-side\fR option.
+If the side is top or bottom then the width of the parcel is
+the width of the cavity and its height is the requested height
+of the slave plus the \f5-ipady\fR and \f5-pady\fR options.
+For the left or right side the height of the parcel is
+the height of the cavity and the width is the requested width
+of the slave plus the \f5-ipadx\fR and \f5-padx\fR options.
+The parcel may be enlarged further because of the \f5-expand\fR
+option (see ``EXPANSION'' below)
+.IP [2]
+The packer chooses the dimensions of the slave.
+The width will normally be the slave's requested width plus
+twice its \f5-ipadx\fR option and the height will normally be
+the slave's requested height plus twice its \f5-ipady\fR
+option.
+However, if the \f5-fill\fR option is \f5x\fR or \f5both\fR
+then the width of the slave is expanded to fill the width of the parcel,
+minus twice the \f5-padx\fR option.
+If the \f5-fill\fR option is \f5y\fR or \f5both\fR
+then the height of the slave is expanded to fill the width of the parcel,
+minus twice the \f5-pady\fR option.
+.IP [3]
+The packer positions the slave over its parcel.
+If the slave is smaller than the parcel then the \f5-anchor\fR
+option determines where in the parcel the slave will be placed.
+If \f5-padx\fR or \f5-pady\fR is non-zero, then the given
+amount of external padding will always be left between the
+slave and the edges of the parcel.
+.PP
+Once a given slave has been packed, the area of its parcel
+is subtracted from the cavity, leaving a smaller rectangular
+cavity for the next slave.
+If a slave doesn't use all of its parcel, the unused space
+in the parcel will not be used by subsequent slaves.
+If the cavity should become too small to meet the needs of
+a slave then the slave will be given whatever space is
+left in the cavity.
+If the cavity shrinks to zero size, then all remaining slaves
+on the packing list will be unmapped from the screen until
+the master window becomes large enough to hold them again.
+
+.SH EXPANSION
+If a master window is so large that there will be extra space
+left over after all of its slaves have been packed, then the
+extra space is distributed uniformly among all of the slaves
+for which the \f5-expand\fR option is set.
+Extra horizontal space is distributed among the expandable
+slaves whose \f5-side\fR is \f5left\fR or \f5right\fR,
+and extra vertical space is distributed among the expandable
+slaves whose \f5-side\fR is \f5top\fR or \f5bottom\fR.
+
+.SH "GEOMETRY PROPAGATION"
+The packer normally computes how large a master must be to
+just exactly meet the needs of its slaves, and it sets the
+requested width and height of the master to these dimensions.
+This causes geometry information to propagate up through a
+window hierarchy to a top-level window so that the entire
+sub-tree sizes itself to fit the needs of the leaf windows.
+However, the \f5pack propagate\fR command may be used to
+turn off propagation for one or more masters.
+If propagation is disabled then the packer will not set
+the requested width and height of the packer.
+This may be useful if, for example, you wish for a master
+window to have a fixed size that you specify.
+
+.SH "RESTRICTIONS ON MASTER WINDOWS"
+The master for each slave must be a frame widget or the top-level window (``.'').
+Widgets of other types can be specifed as the master window
+but will give rise to unpredictable results.
+
+.SH SEE ALSO
+.IR types (9)

@@ -1,0 +1,40 @@
+.TH NEWNS 2
+.SH NAME
+newns \- build a new name space from a description file
+.SH SYNOPSIS
+.EX
+include "newns.m";
+ns := load Newns Newns->PATH;
+
+newns:  fn(user: string, nsfile: string): string;
+.EE
+.SH DESCRIPTION
+.B Newns
+reads file
+.I nsfile
+and builds a new name space based on the commands it contains.
+The file has the format defined by
+.IR namespace (6).
+If
+.I nsfile
+is
+.B nil
+or empty, then
+.B newns
+attempts to read file the file
+.BR namespace .
+.SH SOURCE
+.B /appl/lib/newns.b
+.SH SEE ALSO
+.IR sys-bind (2),
+.IR sys-chdir (2),
+.IR sys-pctl (2),
+.IR namespace (6)
+.SH BUGS
+The
+.I user
+string is currently ignored:
+use
+.B nil
+or the current user name
+.RB ( /dev/user ).

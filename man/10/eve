@@ -1,0 +1,42 @@
+.TH EVE 10.2
+.SH NAME
+eve, iseve \- privileged user
+.SH SYNOPSIS
+.ta \w'\fLchar* 'u
+.B
+char	eve[NAMELEN] = "inferno";
+.PP
+.B
+int	iseve(void)
+.SH DESCRIPTION
+.I Eve
+is a null-terminated string containing the name of the privileged user, often called
+the `host owner', in
+the Inferno system.
+The default identity in native systems is
+.LR inferno ,
+and in hosted Inferno it is the user who started
+.IR emu (1).
+The initial process created by system initialisation is given the
+.I eve
+identity.
+.PP
+.I Iseve
+returns true if the current user is
+.IR eve .
+Several drivers use
+.I iseve
+to check the caller's identity
+before granting permission to perform certain actions.
+For example, the console driver allows only the user
+.I eve
+to write a new identity into the
+.B /dev/user
+file.
+The privileges are strictly local and do not extend into the network
+(in particular, to file servers).
+.PP
+Note that the comparison performed by
+.I iseve
+is case-sensitive, even when running hosted on systems where
+usernames are case-insensitive.

@@ -1,0 +1,52 @@
+.TH FILTER-SLIP 2
+.SH NAME
+slip \- SLIP data framing protocol
+.SH SYNOPSIS
+.EX
+include "filter.m";
+
+slip := load Filter Filter->SLIPPATH;
+
+init:  fn();
+start: fn(param: string): chan of ref Rq;
+.EE
+.SH DESCRIPTION
+.I Slip
+provides the SLIP data framing protocol described by RFC1055.
+The module is an implementation of the general data-processing module type
+.BR Filter ;
+see
+.IR filter (2)
+for details of that general interface.
+.PP
+.B Init
+must be called before any other operation of the module.
+.PP
+.B Start
+begins SLIP line encoding or decoding via the channel it returns,
+following the protocol of
+.IR filter (2).
+.I Param
+is one of the two following strings:
+.TF encode
+.PD
+.TP
+.B encode
+The filter takes the block of data obtained by each
+.B Rq.Fill
+message, adds framing and escape characters as required,
+and returns the resulting data block in an
+.B Rq.Result
+message.
+.TP
+.B decode
+The filter operates on the data in
+.B Rq.Fill
+messages as a single stream of bytes, providing an
+.B Rq.Result
+message for each framed message found in the stream,
+with escape characters processed to retrieve the original data.
+.SH SOURCE
+.B /appl/lib/slip.b
+.SH SEE ALSO
+.IR filter (2)

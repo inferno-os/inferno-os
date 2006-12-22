@@ -1,0 +1,85 @@
+.TH POP3 2
+.SH NAME
+pop3 \- Post Office Protocol
+.SH SYNOPSIS
+.EX
+include "pop3.m";
+pop3 := load Pop3 Pop3->PATH;
+
+open:       fn(user, password, server: string): (int, string);
+stat:       fn(): (int, string, int, int);
+msglist:    fn(): (int, string, list of (int, int));
+msgnolist:  fn(): (int, string, list of int);
+top:        fn(m: int): (int, string, string);
+get:        fn(m: int): (int, string, string);
+delete:     fn(m: int): (int, string);
+close:      fn(): (int, string);
+.EE
+.SH DESCRIPTION
+.B Pop3
+provides an interface to the Post Office Protocol
+POP3 through a set of functions.
+.PP
+.B Open
+opens a connection to a POP3
+.IR server ,
+logging in as the specified
+.IR user
+with the given
+.IR password .
+If
+.I server
+is
+.IR nil ,
+.B open
+uses
+.BR $POPSERVER ,
+and if that is not defined, it
+uses
+.BR $MAILSERVER ,
+the default mail server, if set up in
+.LR /services/cs/db
+(see
+.IR db (6)).
+The remaining functions assume a successfully opened connection.
+.PP
+.B Stat
+returns the status of the user's mailbox.
+The third element of its return tuple is the number of
+messages and the fourth is the total number of bytes in the messages.
+.PP
+.B Msglist
+lists the user's mailbox. The third element in its return tuple gives a list of pairs of numbers
+comprising
+.RI ( "message number, bytes in message" ).
+.PP
+.B Msgnolist
+lists the user's mailbox as above but omits the bytes in each message.
+.PP
+.B Top
+returns the top of message
+.IR m .
+.PP
+.B Get
+returns the full text of message
+.IR m .
+.PP
+.B Delete
+deletes message
+.IR m .
+.PP
+.B Close
+closes the connection to the POP3 server.
+Note that subsequent reconnections to the server
+may renumber the messages in the mail box and will certainly do so if the last connection
+deleted messages.
+.PP
+Note also that a connection is static in the sense that mail messages entering the server during 
+a connection will not be accessible. A reconnection is needed to see newly arrived messages.
+.SH SOURCE
+.B /appl/lib/pop3.b
+.SH SEE ALSO
+.IR acme (1)
+.SH DIAGNOSTICS
+All these functions return -1
+and an error message on failure as the first two entries in their return tuples.

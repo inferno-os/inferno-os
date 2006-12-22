@@ -1,0 +1,116 @@
+body {
+	margin: 1em;
+	font-family: serif;
+	background: white;
+	color: black;
+}
+
+h1, h2, h3, h4, h5, h6, p, ul, ol, dir, menu, div,
+dt, dd, address, blockquote, pre, br, hr, form, dl {
+	display: block;
+}
+
+b, strong, i, em, cite, var, tt, code, kbd, samp,
+img, span {
+	display: inline;
+}
+
+li {
+	display: inline;
+}
+
+h1, h2, h3, h4 {
+	margin-top: 1em;
+	margin-bottom: 1em;
+}
+
+h5, h6 {
+	margin-top: 1em;
+}
+
+h1 {
+	text-align: center;
+}
+
+h1, h2, h4, h6 {
+	font-weight: bold;
+}
+
+h3, h5 {
+	font-style: italic;
+}
+
+h1 {
+	font-size: xx-large;
+}
+
+h2 {
+	font-size: x-large;
+}
+
+h3 {
+	font-size: large;
+}
+
+b, strong {
+	font-weight: bold
+}
+
+i, cite, em, var, address, blockquote {
+	font-style: italic
+}
+
+pre, tt, code, kbd, samp {
+	font-family: monospace
+}
+
+pre {
+	white-space: pre
+}
+
+address {
+	margin-left: 3em
+}
+
+blockquote {
+	margin-left: 2em;
+	margin-right: 2em
+}
+
+ul, dir {
+	list-style: disc
+}
+ol {
+	list-style: decimal
+}
+
+menu {
+	margin: 0
+}
+
+li {
+	margin-left: 1em
+}
+
+dt {
+	margin-bottom: 0
+}
+
+dd {
+	margin-top: 0;
+	margin-left: 1em
+}
+
+hr {
+	border-top: solid
+}
+
+a {
+	color: blue;
+	text-decoration: underline
+}
+
+p {
+	margin-top: 1em;
+	margin-bottom: 1em
+}

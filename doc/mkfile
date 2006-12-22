@@ -1,0 +1,67 @@
+<fonts.pal
+NPROC = 1
+FILES = \
+	title.ps \
+	bltj.ps \
+	styx.ps \
+	asm.ps \
+	changes.ps \
+	gridinstall.ps \
+	ebookimp.ps \
+	styx.ps \
+	mk.ps \
+	asm.ps \
+	compiler.ps \
+	sh.ps \
+	dis.ps \
+	acid.ps \
+	acidpaper.ps \
+	acidtut.ps \
+	mk.ps \
+	asm.ps \
+	compiler.ps \
+	port.ps \
+	hotchips.ps \
+	install.ps \
+
+DIRS = \
+	limbo \
+	perform \
+#	limbotk \
+
+PRE=$FONTS'.ps 9
+.nr PS 9
+.vs 11
+.nr VS 11
+.nr dP 1
+.nr dV 1p
+.nr dT 4
+.nr XT 4
+'
+
+all:V: dirs
+
+print:V: \
+	title.ps \
+
+dirs:V:	$FILES $DIRS mkfile fonts
+	for(i in $DIRS) @{
+		cd $i
+		mk
+	}
+
+%.ps:D:	%.ms
+	{ echo $PRE; cat $stem.ms } | tbl | troff -mpm | lp -dstdout > $target
+
+gridinstall.ps:D:	gridinstall.ms
+	PRE=''
+	{ echo $PRE; cat gridinstall.ms } | tbl | troff -ms | lp -dstdout > $target
+
+title.ps:D:	title
+	troff $prereq | lp -dstdout > $target
+
+changes.ps:D:	changes.ms
+	tbl changes.ms | troff -ms | lp -d stdout >$target
+
+%.pdf: %.ps
+	ps2pdf <$stem.ps >$stem.pdf

@@ -1,0 +1,30 @@
+.TH TEE 1
+.SH NAME
+tee \- pipe fitting
+.SH SYNOPSIS
+.B tee
+[
+.B \-a
+]
+[
+.I file
+\&...
+]
+.SH DESCRIPTION
+.I Tee
+reads the standard input and writes a copy of each block read
+to each
+.I file
+in turn, and then to the standard output.
+Normally
+.I tee
+rewrites each
+.IR file ;
+the
+.B \-a
+option causes data to be appended instead.
+.SH SOURCE
+.B /appl/cmd/tee.b
+.SH SEE ALSO
+.IR cat (1),
+.IR tail (1)

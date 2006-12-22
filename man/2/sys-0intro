@@ -1,0 +1,302 @@
+.TH SYS-INTRO 2
+.SH NAME
+Sys: intro \- introduction to the
+.B Sys
+module
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+.EE
+.SH DESCRIPTION
+Inferno system calls are provided by the built-in module declared by
+.BR sys.m .
+It contains the fundamental system data structures and interfaces.
+There are currently 42 calls, providing: file access; basic I/O;
+name space manipulation; formatted output
+for Limbo; and basic character and string manipulation.
+.SS "File Name Space"
+Files are collected into a hierarchical organization called a
+.I file
+.I tree
+starting in a
+.I directory
+called the
+.IR root.
+.IR Filenames ,
+also called
+.IR paths ,
+consist of a number of
+.BR / -separated
+.I "path elements
+with the slashes corresponding to directories.
+A path element must contain only printable
+characters (those outside ASCII and Latin-1 control space).
+A path element cannot contain a space, slash, or
+.BR # .
+The path element
+.B \&..
+refers to the parent directory of the directory containing that element.
+.PP
+When a process presents a file name to Inferno,
+it is
+.I evaluated
+by the following algorithm.
+.TP
+1.
+Start with a directory that depends on the first character of the path:
+.B /
+means the root of the main hierarchy,
+.B #
+means the separate root of a kernel device's file tree
+(see Section 3),
+and anything else means the process's current working directory.
+.TP
+2.
+For each path element, look up the element
+in the directory, advance to that directory,
+do a possible translation (see below).
+.TP
+3.
+Repeat.
+The last step may yield a directory or regular file.
+.PP
+The collection of files reachable from the root is called the
+.I "name space
+of a process.
+.PP
+A program can use
+.B bind
+or
+.B mount
+(see
+.IR sys-bind (2))
+to say that whenever a certain (specified) file is reached during an evaluation,
+that evaluation continues instead from some other (specified) file.
+.PP
+Also, these same calls create
+\f2union directories\fP,
+which are concatenations of ordinary directories
+that are searched sequentially until the desired element is found.
+.PP
+The result of evaluating
+.B \&..
+in a union directory is undefined.
+.PP
+Using
+.B bind
+and
+.B mount
+to do name space adjustment affects only
+the current name space group (see below, and
+.IR sys-pctl (2)).
+.PP
+Certain conventions about the layout of the name space should be preserved;
+see
+.IR namespace (4).
+.SS "File I/O"
+Files are opened for input or output
+by
+.B open
+or
+.B create
+(see
+.IR sys-open (2)).
+These calls return a reference to an object of type
+.B FD
+(file descriptor)
+that identifies the file to subsequent I/O calls,
+notably
+.B read
+and
+.B write
+(see
+.IR sys-read (2)).
+When the last reference to an
+.B FD
+disappears, the file descriptor is released\(emclosed, in Unix parlance.
+The
+.B FD
+contains an integer file descriptor, similar to those in Unix, but the
+.B FD
+type is the one passed to Limbo I/O routines.
+.PP
+Integer file descriptor values range from 0 to
+.I n
+in the current system, where the upper bound
+depends on the underlying operating system.
+The system allocates the numbers by selecting the lowest unused descriptor.
+They may be reassigned using
+.B dup
+(see
+.IR sys-dup (2)).
+Integer file descriptor values are indices into a
+kernel-resident
+.IR "file descriptor table" ,
+which is inherited from the parent when a process is created by a Limbo
+.B spawn
+operation.
+A set of processes, called a
+.IR "file descriptor group" ,
+shares that table, so files opened by one process may be
+read and written by other processes in the group.  See
+.IR sys-pctl (2)
+for more information.
+.PP
+By convention,
+file descriptor 0 is the standard input,
+1 is the standard output,
+and 2 is the standard error output.
+The operating system is unaware of these conventions;
+it is permissible to close file 0,
+or even to replace it by a file open only for writing,
+but many programs will be confused by such chicanery.
+.PP
+Files are normally read or written in sequential order.
+The I/O position in the file is called the
+.IR "file offset"
+and may be set arbitrarily using the
+.B seek
+system call
+.RI ( sys-seek (2)).
+.PP
+Directories may be opened and read
+much like regular files (see
+.IR sys-dirread (2)).
+They contain an integral number of records,
+called
+.IR "directory entries" .
+Each entry is a machine-independent representation of
+the information about an existing file in the directory,
+including the
+name,
+ownership,
+permission,
+access dates,
+and so on.
+.PP
+The entry
+corresponding to an arbitrary file can be retrieved by
+.B stat
+or
+.B fstat
+(see
+.IR sys-stat (2));
+.B wstat
+and
+.B fwstat
+write back entries, thus changing the properties of a file.
+.PP
+New files are made with
+.B create
+and deleted with
+.B remove
+(see
+.IR sys-open (2)
+and
+.IR sys-remove (2)).
+.PP
+Directories are manipulated by
+.BR create ,
+.BR remove ,
+.BR wstat ,
+and
+.BR fwstat ;
+they may not directly be written.
+.PP
+Inferno provides no guarantee of consistency should
+several processes access a file concurrently.
+Guaranteed synchronous writes are not available.
+Nor is file locking from underlying file systems supported by Inferno.
+Processes can coordinate their file operations by other mechanisms.
+.PP
+Atomicity is guaranteed for byte counts smaller than the
+.I Styx
+message size;
+see
+.IR read (5).
+.SS "Process execution and control"
+A Limbo
+.IR process ,
+also called a
+.IR thread ,
+is the basic unit of computation for Limbo application programming
+in the Inferno operating system.
+.PP
+A newly spawned thread shares the same
+.I "address space
+as that of its creator thread.
+That is, the set of global  variables that is in scope to
+one is in scope to the other.
+A change made by one can be detected by the other.
+Since they are scheduled independently,
+they should synchronize their
+actions to share this data coherently.
+.PP
+The newly created thread also shares the same set of open file descriptors
+and the current working directory.
+.PP
+Processes are also organized into
+.I "process groups
+.RB ( pgrps )
+that represent the set of threads of a single
+application and can be terminated by a single kill request; see
+.IR prog (3).
+.PP
+A newly-spawned thread automatically inherits the following attributes:
+file name space (including shared
+current directory); file descriptor group; and process group.
+A thread can subsequently
+acquire a new, independent name space, new or modified file descriptor group,
+or new process group.
+See
+.IR  sys-pctl (2).
+.SS "User/Group Identity"
+The Inferno operating system maintains user identifier
+.RB ( uid )
+and group identifier
+.RB ( gid )
+strings
+for each process.
+These values are also attributes of files and directories.
+See
+.IR sys-stat (2)
+and
+.IR stat (5).
+A comparison of process and file identities take place when a process
+attempts to open or create a file.
+.PP
+When a pathname crosses from one server to another the process identities are
+mapped by each server receiving a file request.
+.PP
+The
+.B uid
+and
+.B gid
+strings are assigned to the thread created
+when a user logs into Inferno and cannot be changed.
+.SH SOURCE
+.B /emu/port/inferno.c
+.br
+.B /os/port/inferno.c
+.SH DIAGNOSTICS
+System calls often return an integer status, or tuples containing results and
+an integer status,
+and follow the convention that a status of -1 is returned when an error occurred;
+a non-negative value (usually 0) is returned on success.
+If an error occurred, a detailed error message can be obtained for the
+most recent error, using the
+.RB ` %r '
+format of
+.IR sys-print (2).
+Exceptions to this general rule are noted in the
+`DIAGNOSTICS' sections.
+.PP
+From Limbo, system calls that return values on the heap, for instance strings in
+.B Dir
+structures returned by
+.IR sys-stat (2),
+and arrays of directory entries returned by
+.IR sys-readdir (2),
+can also raise ``out of memory: heap'' exceptions when attempting
+to create the return value.

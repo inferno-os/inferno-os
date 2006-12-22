@@ -1,0 +1,106 @@
+.TH MATH-ELEM 2
+.SH NAME
+Math: cbrt, sqrt, pow, pow10, hypot, exp, expm1, log, log10, log1p, cos, cosh, sin, sinh, tan, tanh, acos, asin, acosh, asinh, atan, atanh, atan2, lgamma, erf, erfc, j0, j1, y0, y1, jn, yn \- elementary functions of applied mathematics
+.SH SYNOPSIS
+.EX
+include "math.m";
+math := load Math Math->PATH;
+
+cbrt, sqrt: fn(x: real): real;
+pow: fn(x, y: real): real;
+pow10: fn(p: int): real;
+hypot: fn(x, y: real): real;
+exp, expm1, log, log10, log1p: fn(x: real): real;
+
+cos, cosh, sin, sinh, tan, tanh: fn(x: real): real;
+acos, asin, acosh, asinh, atan, atanh: fn(x: real): real;
+atan2: fn(y, x: real) of real;
+
+lgamma: fn(x: real): (int,real);
+erf, erfc: fn(x: real): real;
+j0, j1, y0, y1: fn(x: real): real;
+jn, yn: fn(n: int, x: real): real;
+
+.EE
+.SH DESCRIPTION
+These routines implement the basic elementary functions of applied mathematics.
+.PP
+.BI Sqrt( x )
+computes the square root of
+.IR x ,
+.BI cbrt( x )
+the cube root.
+.BI Pow( x , y )
+computes
+.I x
+raised to the exponent
+.IR y ;
+.B pow10
+raises 10 to the integer power
+.IR n .
+.BI Hypot( x , y )
+computes
+\f5sqrt(\f2x\f5*\f2x\f5+\f2y\f5*\f2y\f5)\f1.
+.PP
+.BI Exp( x )
+returns the exponential function of
+.IR x ,
+and
+.BI expm1( x )
+is
+.BI exp( x )-1.
+.PP
+.BI Log( x )
+returns the natural logarithm of
+.IR x ,
+while
+.BI log10( x )
+returns the logarithm base 10 and
+.BI log1p( x )
+returns the logarithm of
+.BI 1+ x\f1.
+.PP
+The trigonometric functions use radians.
+The ranges of the inverse functions are:
+.BI acos
+in [0,\(*p];
+.B asin
+in [-\(*p/2,\(*p/2];
+.B atan
+in [-\(*p/2,\(*p/2];
+and
+.BI atan2( y , x )
+.B =
+.BI arctan( y / x )
+in [-\(*p,\(*p];
+.PP
+The gamma function is implemented by
+.BI lgamma( x )\f1;
+the tuple it returns, say
+.BI ( s , lg )\f1,
+encodes the gamma function by
+.RI \(*G( x )
+=
+.IB s *exp( lg )\f1.
+.PP
+The hyperbolic trigonometric functions
+.B sinh
+etc. behave as expected.
+.B Erf
+is the error function and
+.BI erfc( x )
+is
+.BI 1-erf( x )\f1.
+.PP
+The Bessel functions are computed by
+.BI j0 ,
+.BI j1 ,
+.BI jn ,
+.BI y0 ,
+.BI y1 ,
+and
+.BR yn .
+.SH SOURCE
+.B /libinterp/math.c
+.SH SEE ALSO
+.IR math-intro (2)

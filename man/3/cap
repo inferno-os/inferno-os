@@ -1,0 +1,92 @@
+.TH CAP 3
+.SH NAME
+cap \- capability for changing user name
+.SH SYNOPSIS
+.BI "bind #¤ " dir
+.PP
+.IB dir /caphash
+.br
+.IB dir /capuse
+.SH DESCRIPTION
+.I Cap
+allows a process owned by the host owner (see
+.IR eve (10.2))
+to give another process on the same machine
+a capability to set its user name to a specified user.
+The capability is a string of the form:
+.IP
+[
+.IB fromuser @
+]
+.IB touser @ key
+.PP
+where
+.I fromuser
+is a process's current user name,
+.I touser
+is its new user name, and
+.I key
+is a string of random characters
+(eg, produced by
+.IR security-random (2)).
+.PP
+.B Caphash
+is a write-only file that can only be opened by the host owner.
+A process enables the use of a capability by writing the keyed hash of
+.IB fromuser @ touser
+to
+.BR caphash .
+The hash is computed using
+.B Keyring->hmac_sha1
+as follows:
+.IP
+.EX
+kr := load Keyring Keyring->PATH;
+IPint: import kr;
+users := sys->sprint("%s@%s", fromuser, touser);
+cap := sys->sprint("%s@%s", users, key);
+digest := array[Keyring->SHA1dlen] of byte;
+ausers := array of byte users;
+kr->hmac_sha1(ausers, len ausers, array of byte key, digest, nil);
+if(sys->write(caphashfd, digest, len digest) < 0)
+	error();
+.EE
+.PP
+The capability (eg,
+.B cap
+in the example)
+can then be passed to another process.
+.PP
+.B Capuse
+is a write-only file that can be opened by any process.
+It can then write a capability string to change its user name,
+provided that capability has previously been enabled by the host owner via
+.BR caphash ,
+and if the capability included a
+.IR fromuser ,
+the writing process currently has that user name.
+After a successful write, the writing process will be owned by
+.IR touser .
+Any capability can be used at most once.
+.PP
+A capability enabled by
+.B caphash
+has a limited lifetime, on the order of 30 seconds.
+.B Caphash
+can be removed by the host owner to prevent its further use.
+.SH SOURCE
+.B /emu/port/devcap.c
+.br
+.B /os/port/devcap.c
+.SH SEE ALSO
+.IR keyring-sha1 (2),
+.IR cons (3),
+.IR intro (5),
+.IR eve (10.2)
+.SH DIAGNOSTICS
+A write to
+.B capuse
+without a previous write to
+.B caphash
+sets the error string to
+.RB `` "invalid capability" ''.

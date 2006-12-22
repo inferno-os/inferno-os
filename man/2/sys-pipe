@@ -1,0 +1,45 @@
+.TH SYS-PIPE 2
+.SH NAME
+pipe \- create an interprocess channel
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+pipe: fn(fds: array of ref FD): int;
+.EE
+.SH DESCRIPTION
+.B Pipe
+creates a buffered channel for interprocess I/O via file descriptors.
+It allocates a pipe from the pipe device and returns in the array
+.B fds
+file descriptors for the two pipe ends. Both returned file descriptors are opened for both reading and writing
+.RB ( Sys->ORDWR ).
+Data written on one file descriptor can be read from the other.
+The details of flow control and buffering are given in
+.IR pipe (3).
+When no references remain to the file descriptor representing
+one end of a pipe, and all remaining data has been read at the other end,
+subsequent reads at that end will return 0 bytes.
+Writes to a pipe with no reader produce an exception.
+.PP
+The array
+.B fds
+passed to the system call must have a length of at least 2;
+only entries 0 and 1 are updated.
+.PP
+Limbo applications typically use typed Limbo channels, not pipes, for efficient
+communication by cooperating processes.
+Pipes are still useful, however,
+to connect applications that do not (or cannot) share such channels,
+or when a system interface requires a file descriptor.
+For instance, a process that serves the Styx protocol can
+pass the file descriptor for one end of a pipe to
+.B Sys->mount
+(see
+.IR sys-bind (2)),
+and read and write Styx messages on the other end of the pipe.
+.SH DIAGNOSTICS
+Returns 0 on success; -1 on failure.
+.SH "SEE ALSO"
+.IR pipe (3)

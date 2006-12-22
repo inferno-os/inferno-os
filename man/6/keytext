@@ -1,0 +1,124 @@
+.TH KEYTEXT 6
+.SH NAME
+keytext \- textual form of Inferno public/private keys
+.SH DESCRIPTION
+.IR Keyring-certtostr (2)
+defines a set of functions that convert between textual forms of the elements of the
+Inferno public-key authentication system and their internal data types.
+The textual form is used for key storage and as the transport format for the authentication protocol
+.IR auth (6).
+In storage and transport each encoded value is encapsulated by the record-oriented
+encoding defined in
+.IR keyring-getmsg (2).
+The format represents public and private keys, and signer's certificates.
+In this context a
+.I certificate
+is a time-limited cryptographically signed hash of some other value
+(usually a public key) and contains neither that value nor the signer's key, which is assumed to be
+available elsewhere.
+.PP
+All values are represented by a sequence of newline-separated text fields.
+The type of any given value is determined by its context.
+Each type of value has a common prefix that includes an algorithm identifier, followed by a sequence of algorithm-dependent fields:
+.IP
+.EX
+.ft R
+.ta \w'\f2elgamal-public-keyxx\f1'u +\w'\ ::=\ 'u
+.fi
+.IR "authinfo" "	::=	" "signer-public-key certificate !private-key big-alpha big-p"
+.br
+.IR certificate "	::=	" "sigalg hashalg signer-name exp-time *-sig"
+.br
+.IR sigalg "	::=	"
+.BR "rsa" " | "
+.BR "dsa" " | "
+.BR "elgamal"
+.br
+.IR hashalg "	::=	"
+.BR sha1 " | "
+.B md5
+.br
+.IR "*-key" "	::=	" "sigalg owner-name ..."
+.sp
+.IR "rsa-public-key" "	::=	"
+.B rsa
+.I owner-name
+.I "big-n big-ek"
+.br
+.IR "rsa-private-key" "	::=	"
+.B rsa
+.I owner-name
+.I "big-n big-ek"
+.br
+.I "		!big-dk  !big-p !big-q !big-kp !big-kq !big-c2"
+.br
+.IR "dsa-public-key" "	::=	"
+.B dsa
+.I owner-name
+.I "big-p big-q big-alpha big-key"
+.br
+.IR "dsa-private-key" "	::=	"
+.B dsa
+.I owner-name
+.I "big-p big-q big-alpha big-key !big-secret"
+.sp
+.IR rsa-sig "	::=	" "big-val"
+.br
+.IR dsa-sig "	::=	" "big-r big-s"
+.br
+.IR elgamal-sig "	::=	" "big-r big-s"
+.EE
+.PP
+Each value labelled as
+.RI ` big- '
+is an unsigned multiple-precision integer
+from
+.IR keyring-ipint (2),
+represented as a sequence of bytes with
+in big-endian order,
+as produced by
+.BR IPint->iptobytes
+with an extra leading zero byte added if the top bit of the first byte is set,
+and then encoded in base-64 (as by
+.IR encoding (2)).
+Each value labelled
+.RI ` -name '
+is
+.I utf (6)
+text not containing a newline;
+it is interpreted by an application and need not be a name.
+The expiry time
+.I exp-time
+is represented in decimal as seconds from the Epoch (1 January 1970 00:00 GMT);
+if it is zero, no expiry time is set.
+A label prefixed by
+.RB ` ! '
+marks a value that should be considered secret.
+.PP
+The hash of a key is computed over its textual encoding according to the syntax above.
+A certificate's signature value is produced by digitally signing using
+.I sigalg
+the hash (using
+.IR hashalg )
+of the concatenation of the value to be authenticated, the
+.I signer-name
+in
+.IR utf (6),
+a single space, and the
+.I exp-time
+in decimal (with no leading zeroes).
+When checking a signature, comparisons are done with values in internal multiple-precision form
+(ie, as
+.BR IPint s),
+not in base-64 form.
+.SH SEE ALSO
+.IR keyring-certtostr (2),
+.IR keyring-getmsg (2),
+.IR factotum (4),
+.IR keys (6),
+.IR getauthinfo (8)
+.SH BUGS
+The byte-array encoding of
+.B IPint
+should not require the leading zero;
+it does so for compatibility with old keys.

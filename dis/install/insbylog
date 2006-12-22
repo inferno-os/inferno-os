@@ -1,0 +1,9 @@
+#!/dis/sh.dis -n
+load std
+if {~ $emuhost Nt} {
+	# spec
+} {~ $emuhost Plan9} {
+	# different?
+} {
+	# the unix systems
+}

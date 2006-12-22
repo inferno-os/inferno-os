@@ -1,0 +1,271 @@
+.TH SYS-PRINT 2
+.SH NAME
+print, fprint, sprint \- print formatted output
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+fprint: fn(fd: ref FD, format: string, *): int;
+print:  fn(format: string, *): int;
+sprint: fn(format: string, *): string;
+.EE
+.SH DESCRIPTION
+These functions format and print their arguments as
+.SM UTF
+text.
+.B Print
+writes text to the standard output.
+.B Fprint
+writes to the named output
+file descriptor.
+.B Sprint
+places text
+in a string, which it returns.
+.B Print
+and
+.B fprint
+return the number of bytes transmitted
+or
+a negative value if an  error was encountered when writing the output.
+.PP
+Each of these functions
+converts, formats, and prints its
+trailing arguments
+under control of a
+.IR format 
+string.
+The
+format
+contains two types of objects:
+plain characters, which are simply copied to the
+output stream,
+and conversion specifications,
+each of which results in fetching of
+zero or more
+arguments.
+The Limbo compiler recognizes calls to these functions
+and checks that the arguments match the format specifications in number and type.
+.PP
+Each conversion specification has the following format:
+.IP
+.BI "%" " \fR[\fPflags\fR]\fP verb"
+.PP
+The verb is a single character and each flag is a single character or a
+(decimal) numeric string.
+Up to two numeric strings may be used;
+the first is called
+.IR f1 ,
+the second
+.IR f2 .
+They can be separated by
+.RB ` . ',
+and if one is present, then
+.I f1
+and
+.I f2
+are taken to be zero if missing, otherwise they are considered `omitted'.
+Either or both of the numbers may be replaced with the character
+.BR * ,
+meaning that the actual number will be obtained from the argument list
+as an integer.
+The flags and numbers are arguments to
+the
+.I verb
+described below.
+.PP
+.TP
+.BR d ", " o ", " x ", " X
+The numeric verbs
+.BR d ,
+.BR o ,
+and
+.B x
+format their
+.B int
+arguments in decimal, octal, and hexadecimal (with hex digits in lower-case).
+The flag
+.B b
+is required when the corresponding value is a Limbo
+.BR  big ,
+not an
+.BR int .
+Arguments are taken to be signed, unless the
+.B u
+flag is given, to force them to be treated as unsigned.
+Each interprets the flags
+.B \- ,
+.B , ,
+and
+.B #
+to mean left justified, commas every three digits, and alternative format.
+If
+.I f2
+is not omitted, the number is padded on the left with zeros
+until at least
+.I f2
+digits appear.
+Then, if alternative format is specified
+for
+.B x
+conversion, the number is preceded by
+.BR 0x .
+Finally, if
+.I f1
+is not omitted, the number is padded on the left (or right, if
+left justification is specified) with enough blanks to
+make the field at least
+.I f1
+characters long.
+The verb
+.B X
+is similar to
+.BR x ,
+except that the hexadecimal digits are displayed in upper-case,
+and in alternative format, the number is preceded by
+.BR 0X .
+.PP
+.TP
+.BR e ", " f ", " g
+The floating point verbs
+.BR e ,
+.BR f ,
+and
+.BR g
+take a
+.B real
+argument.
+Each interprets the flags
+.BR + ,
+.BR \- ,
+and
+.B #
+to mean
+always print a sign,
+left justified,
+and
+alternative format.
+.I F1
+is the minimum field width and,
+if the converted value takes up less than
+.I f1
+characters, it is padded on the left (or right, if `left justified')
+with spaces.
+.I F2
+is the number of digits that are converted after the decimal place for
+.BR e
+and
+.B f
+conversions,
+and
+.I f2
+is the maximum number of significant digits for
+.B g
+conversions.
+The 
+.B f
+verb produces output of the form
+.RB [ \- ]\c
+.IR digits [\c
+.BI \&. digits\fR].
+The
+.B e
+conversion appends an exponent
+.BR e [ \- ]\c
+.IR digits .
+The
+.B g
+verb will output the argument in either
+.B e
+or
+.B f
+with the goal of producing the smallest output.
+Also, trailing zeros are omitted from the fraction part of
+the output, and a trailing decimal point appears only if it is followed
+by a digit.
+When alternative format is specified, the result will always contain a decimal point,
+and for
+.B g
+conversions, trailing zeros are not removed.
+.TP
+.BR E ", " G
+These are the same as
+.B e
+and
+.B g
+respectively, but use
+.B E
+not
+.B e
+to specify an exponent when one appears.
+.TP
+.B c
+The
+.B c
+verb converts a single Unicode character
+from an
+.B int
+argument to a UTF encoding,
+justified within a field of
+.I f1
+characters as described above.
+.TP
+.B r
+The
+.B r
+verb takes no arguments; it prints the error string
+associated with the most recent system error.
+.TP
+.B s
+The
+.B s
+verb copies a
+.B string
+to the output.
+The number of characters copied
+.RI ( n )
+is the minimum
+of the size of the string and
+.IR f2 .
+These
+.I n
+characters are justified within a field of
+.I f1
+characters as described above.
+.TP
+.B q
+The
+.B q
+verb copies a
+.B string
+to the output as for
+.BR s ,
+but quotes the string in the style of
+.IR sh (1)
+only if necessary to avoid ambiguity (for instance
+if the string contains quotes or spaces).
+If the format string, however, includes the specifier
+.B #
+(for example
+.BR %#q ),
+the printed string will always be quoted.
+.SH SOURCE
+.B /libinterp/runt.c:/^xprint
+.br
+.B /os/port/print.c
+.br
+.B /lib9/print.c
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-open (2)
+.SH BUGS
+The
+.B x
+verb does not apply the
+.B 0x
+prefix when
+.I f2
+is present.
+The prefix should probably be
+.B 16r
+anyway.

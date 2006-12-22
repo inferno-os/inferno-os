@@ -1,0 +1,21 @@
+#
+# inferno port assignment
+#
+
+tcp=infgamelogin port=6660	# inferno games login service
+tcp=styx port=6666	# main file service
+tcp=mpeg port=6667	# mpeg stream
+tcp=rstyx port=6668	# remote invocation
+tcp=infdb port=6669	# database server
+tcp=infweb port=6670	# inferno web server
+tcp=infsigner port=6671	# inferno signing services
+tcp=infcsigner port=6672	# inferno countersigner
+tcp=inflogin port=6673	# inferno credential service
+tcp=infsds port=6674	# software download
+tcp=registry port=6675	# default registry
+tcp=internalreg port=6676	# cpupool registry
+tcp=infkey	port=6677	# key-changing service
+tcp=infsched port=6678	# grid scheduler
+
+udp=virgil port=2202	# naming service
+udp=gossip port=2666	# gossip protocol

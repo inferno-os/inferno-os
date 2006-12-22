@@ -1,0 +1,91 @@
+.TH HASH 2
+.SH NAME
+hash, HashTable \- hash table
+.SH SYNOPSIS
+.EX
+include "hash.m";
+hash := load Hash Hash->PATH;
+
+new: fn(size:int):ref HashTable;
+
+HashTable: adt{
+	insert: fn(h:self ref HashTable, key:string, val:HashVal);
+	find: fn(h:self ref HashTable, key:string):ref HashVal;
+	delete: fn(h:self ref HashTable, key:string);
+	all: fn(h:self ref HashTable): list of HashNode;
+};
+HashVal: adt{
+	i: int;
+	r: real;
+	s: string;
+};
+HashNode: adt{
+	key: string;
+	val: ref HashVal;
+};
+fun1, fun2: fn(s:string, n:int):int;
+.EE
+.SH DESCRIPTION
+The hash module provides support for arrays that are indexed by keys of type
+.BR string .
+
+The values may be any combination of
+.BR int ,
+.BR real ,
+or
+.BR string .
+.B New
+creates and returns a new
+.B HashTable
+with
+.I size
+slots. The hashing works best if
+.I size
+is a prime number. The
+.B HashVal
+adt contains the data values of the hash.
+The
+.B HashNode
+adt contains the key/value pair for each element in the table.
+.TP
+.IB ht .insert( "key, value" )
+Adds a new
+.IR key / value
+pair to the table.
+If an element with the same
+.I key
+already exists,
+it will acquire the new
+.IR value .
+.TP
+.IB ht .find( key )
+Search the table for an element with the given
+.I key
+and return the value found; return nil if none was found.
+.TP
+.IB ht .delete( key )
+Removes any element with the given
+.I key
+from the table.
+.TP
+.IB ht .all()
+Returns a list of all key/value pairs stored in the table.
+.PP
+.B Fun1
+and
+.B fun2
+provide access to two different string hashing functions.
+.B Fun1
+is the function used internally;
+.B fun2
+is the same as that used in the Limbo compiler.
+They each compute the hash value of 
+.I s
+and return a value between 0 and
+.IR n \-1.
+.SH SOURCE
+.B /appl/lib/hash.b
+.SH BUGS
+.B HashVal
+should really be a
+.BR pick .

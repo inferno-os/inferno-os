@@ -1,0 +1,67 @@
+.TH CREATESIGNERKEY 8
+.SH NAME
+createsignerkey \- create signer key on authentication server
+.SH SYNOPSIS
+.B auth/createsignerkey
+[
+.BI -a " alg"
+] [
+.BI -f " keyfile"
+] [
+.BI -e " expiry"
+] [
+.BI -b " bitsize"
+]
+.I name
+.SH DESCRIPTION
+.I Createsignerkey
+creates public and private keys that are used by a server acting as `signer' to generate certificates for users.
+.I Name
+appears as signer in each certificate.
+The
+.I expiry
+date has the form
+.IR ddmmyyyy ,
+is converted to seconds since the epoch
+(see
+.IR daytime (2))
+and stored in the
+.IR keyfile ;
+by default the server's certificate never expires.
+.PP
+The key will be
+.I bitsize
+long (default: 512 bits) with a minimum of 32 bits and a maximum of 4096 bits.
+.I Keyfile
+is the file in which the server stores its keys;
+the default is
+.BR /keydb/signerkey ,
+and many authentication programs such as
+.IR logind (8)
+by default expect to find their server key there.
+Creating a signer's default key afresh typically invalidates all certificates previously issued by that signer,
+because their signatures will not verify.
+The mode of the
+.I keyfile
+should be set to be readable only by the user running
+those programs.
+.PP
+The
+.B -a
+option specifies the signature algorithm.
+Currently
+.I alg
+can be either
+.B elgamal
+or
+.BR rsa .
+RSA keys are now used by default.
+.SH FILES
+.B /keydb/signerkey
+.SH SOURCE
+.B /appl/cmd/auth/createsignerkey.b
+.SH SEE ALSO
+.IR security-auth (2),
+.IR keyring-gensk (2),
+.IR logind (8),
+.IR signer (8)

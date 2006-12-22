@@ -1,0 +1,98 @@
+.TH RIP 8
+.SH NAME
+rip \- routing information protocol
+.SH SYNOPSIS
+.B ip/rip
+.RB [ -2 ]
+.RB [ -b ]
+.RB [ -d ]
+.RB [ -n ]
+[
+.BI -x " mntpt"
+] [
+.I net
+\&...
+]
+.B &
+.SH DESCRIPTION
+.I Rip
+implements the Internet RIP routing protocol
+described by RFC1058 and RFC2453.
+It watches the network and makes appropriate changes
+to the machine's Internet routing table
+(see
+.B iproute
+in
+.IR ip (3)),
+based on routing packets
+broadcast by gateways on the network.
+.I Rip
+is only used when a single default gateway is inadequate,
+typically because a machine sits on a network directly connected to
+several others,
+having no common gateway or router.
+On networks where there is just one gateway, it is usually simpler and more efficient
+to configure that statically using
+.IR ndb (6)
+or dynamically using DHCP/BOOTP,
+rather than running
+.IR rip .
+.PP
+.I Rip
+serves the network on
+.I mntpt
+(default:
+.BR /net ).
+When it starts,
+.I rip
+learns its own interfaces and directly attached networks by reading
+.IB mntpt /ipifc ,
+and notes any routes currently in
+.IB mntpt /iproute .
+.PP
+By default,
+.I rip
+neither broadcasts routes nor replies to requests for its route table.
+If the
+.B \-b
+option is given,
+.I rip
+periodically broadcasts changes to its routing table to each of its interfaces.
+If at least one explicit
+.I net
+address is given, the broadcasts are restricted to just the interfaces listed
+(and
+.B \-b
+is implied).
+.PP
+The
+.B \-d
+option causes
+.I routed
+to record changes it makes to the routing tables.
+This can be helpful when locating misleading announcements
+from rogue gateways.
+A second
+.B \-d
+will include detailed information about every packet.
+The
+.B \-n
+option tells
+.I rip
+not to change the local routing table, but only say what changes it would have made.
+.PP
+.I Rip
+understands both version1 and version 2 of the protocol,
+and interprets updates from gateways appropriately.
+By default, it transmits updates using version 1; if the
+.B -2
+option is given, it uses version 2 instead, which is preferable when
+the network has subnets.
+.\".SH FILES
+.\".LR /sys/log/iproute "	debugging information"
+.SH SOURCE
+.B /appl/cmd/ip/rip.b
+.SH "SEE ALSO"
+.IR ip (3),
+.IR ndb (6)
+.\" .IR ipconfig (8)

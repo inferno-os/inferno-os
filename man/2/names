@@ -1,0 +1,113 @@
+.TH NAMES 2
+.SH NAME
+Names: basename, cleanname, dirname, elements, isprefix, pathname, relative, rooted \- file name manipulation
+.SH SYNOPSIS
+.EX
+include "names.m";
+names := load Names Names->PATH;
+
+basename:  fn(name: string, suffix: string): string;
+cleanname: fn(name: string): string;
+dirname:   fn(name: string): string;
+elements:  fn(name: string): list of string;
+isprefix:  fn(a: string, b: string): int;
+pathname:  fn(els: list of string): string;
+relative:  fn(name: string, root: string): string;
+rooted:    fn(root: string, name: string): string;
+.EE
+.SH DESCRIPTION
+.B Names
+provides operations on file names (path names):
+.TF cleanname
+.PD
+.TP
+.B basename
+Return the trailing component of
+.I name
+(the text after the final
+.LR / ),
+shorn of
+.I suffix
+(which may be null).
+.TP
+.B cleanname
+Return a `cleaner' version of
+.IR name :
+there are no redundant and trailing slashes,
+and directory names
+.L .
+and
+.L ..
+have been interpreted lexically.
+If the result would otherwise be the empty string,
+the name
+.L .
+is returned instead.
+.TP
+.B dirname
+Return the directory component of
+.IR name :
+the string up to but not including the final slash(es).
+.TP
+.B elements
+Return a list of the path elements of
+.IR name :
+the words between slashes.
+If
+.I name
+starts with a
+.LR / ,
+the head of the list will be the string
+\&\f5"/"\fP
+but otherwise slashes do not appear.
+.TP
+.B pathname
+Return a path name formed from a list of elements as produced by
+.BR elements .
+.TP
+.B isprefix
+Return true iff path name
+.I a
+is a prefix of path name
+.IR b .
+.TP
+.B relative
+If
+.I name
+is
+.IB root / X
+for some
+.IR X ,
+return
+.IR X ;
+otherwise return
+.I name
+unchanged.
+.TP
+.B rooted
+Return the path name for
+.I name
+relative to a given
+.I root
+directory (either name may be nil).
+If
+.I name
+itself starts with
+.L /
+or
+.LR # ,
+the result is
+.IR name ;
+otherwise it is
+.IB root / name.
+.PP
+See
+.IR sys-intro (2)
+for details of file name syntax and its interpretation.
+.SH SOURCE
+.B /appl/lib/names.b
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-fd2path (2),
+.IR workdir (2)
+

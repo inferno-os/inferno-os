@@ -1,0 +1,296 @@
+.TH KEYRING-INTRO 2
+.SH NAME
+Keyring intro \- introduction to the
+.B Keyring
+module
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+keyring := load Keyring Keyring->PATH;
+
+SigAlg: adt
+{
+    name:   string;
+};
+
+PK: adt
+{
+    sa:     ref SigAlg;
+    owner:  string;
+};
+
+SK: adt
+{
+    sa:     ref SigAlg;
+    owner:  string;
+};
+
+Certificate: adt
+{
+    sa:     ref SigAlg;
+    ha:     string;
+    signer: string;
+    exp:    int;
+};
+
+DigestState: adt
+{
+    # hidden state
+    copy:   fn(d: self ref DigestState): ref DigestState;
+};
+
+Authinfo: adt
+{
+    mysk:   ref SK;
+    mypk:   ref PK;
+    cert:   ref Certificate;
+    spk:    ref PK;
+    alpha:  ref IPint;
+    p:      ref IPint;
+};
+.EE
+.SH DESCRIPTION
+This module contains a mixed set of functions that variously:
+.IP \(bu
+perform infinite precision modular arithmetic; see
+.IR keyring-ipint (2)
+.IP \(bu
+form cryptographically secure digests; see
+.IR keyring-sha1 (2)
+.IP \(bu
+generate public/private key pairs and transform them
+to and from textual form; see
+.IR keyring-gensk (2)
+and
+.IR keyring-certtostr (2)
+.IP \(bu
+encrypt data, using AES, DES, or IDEA; see
+.IR keyring-crypt (2)
+.IP \(bu
+create and verify cryptographic signatures using the
+public keys; see
+.IR keyring-auth (2)
+.IP \(bu
+authenticate the parties on a connection; see
+.IR keyring-auth (2)
+.IP \(bu
+read and write files containing the information
+needed to authenticate the parties on a connection; see
+.IR keyring-auth (2)
+.IP \(bu
+send Limbo byte arrays and strings across a connection; see
+.IR keyring-getstring (2)
+.PP
+Each collection is discussed in turn.
+.SS "Large Precision Arithmetic"
+The
+.B IPint
+adt
+is provided to allow some cryptographic functions to
+be implemented in Limbo.
+.B IPint
+stands for infinite precision integer, though, for
+space considerations, our
+implementation limits the maximum integer to
+2\u\s-2\&8192\s0\d-1.
+.PP
+An
+.B IPint
+can be converted into two external formats.
+The first is
+an array of bytes in which the first byte is the highest order
+byte of the integer.  This format is useful when
+communicating with the
+.IR ssl (3)
+device.
+The second is a MIME base 64 format, that
+allows
+.BR IPint s
+to be stored in files or transmitted across
+networks in a human readable form.
+.SS "Public Key Cryptography"
+Public key cryptography has many uses.
+Inferno relies on it only for digital signatures.
+Each Inferno user may generate a
+pair of matched keys, one public and
+one private.
+The private key may be used to digitally
+sign data, the public one to verify the signature.
+Public key algorithms have been chosen to
+make it difficult to spoof a signature or guess
+the private key.
+.PP
+For public keys algorithms to work, there must be a way to
+distribute the public keys:
+in order to verify that
+.B X
+signed something, we must know
+.BR X 's
+public key.
+To simplify the problem, we have instituted a
+trust hierarchy that requires people to
+know only the public keys of certifying authorities (CAs).
+After generating a public key, one can have the
+concatenation of one's name, expiration date, and key
+signed by a CA.
+The information together with the name of the CA
+and the signature is called a
+.IR certificate .
+.PP
+At the beginning of a conversation, the parties
+exchange certificates.
+They then use the CA's public key to verify each
+other's public keys.
+The CA's public key, a system wide Diffie-Hellman
+base and modulus, one's private key, one's
+public key and certificate are kept in
+a Limbo adt called
+.BR Keyring->Authinfo .
+An
+.B Authinfo
+adt can be read from from a file using
+.B readauthinfo
+or written to a file
+using
+.BR writeauthinfo ,
+both from
+.IR keyring-auth (2).
+.PP
+.B Authinfo
+adts are normally created during the login and
+registration procedures described below.
+.SS "Authentication"
+Two parties conversing on a network connection can
+authenticate each other's identity using the functions in
+.IR keyring-auth (2).
+They use the
+.B Keyring->Authinfo
+information to run the Station to Station (STS)
+authentication protocol.
+STS not only authenticates each party's identity to the other but also
+establishes a random bit string known
+only to the two parties.
+This bit string can be used
+as a key to encrypt or authenticate subsequent messages
+sent between the two parties.
+.SS "Secure Communications"
+After exchanging secrets, communicating
+parties may encode the conversation to
+guarantee varying levels of security:
+.IP •
+none
+.IP •
+messages cannot be forged
+.IP •
+messages cannot be intercepted
+.LP
+Encoding uses the line formats
+provided by the Secure Sockets Layer.
+See
+.IR security-intro (2)
+for more detail.
+.SS "Login and registration"
+The Inferno authentication procedure
+requires that both parties possess an
+.B Authinfo
+adt containing
+a locally generated public/private key pair,
+the public key of a commonly trusted CA,
+and a signed certificate from the CA that links
+the party's identity and public key.
+This
+.B Authinfo
+adt is normally kept in a file.
+At some point, however, it must be created, and later
+conveyed securely between the user's machine
+and the CA.
+There are two ways to do this, the login procedure
+and the registration procedure.
+Both require an out of band channel between the
+CA and the user.
+.PP
+The login procedures are used by typed
+commands and by programs using Tk.
+The login procedure relies on the CA and
+the user having established a common secret
+or password.
+This is done securely off line, perhaps by mail or telephone.
+This secret is then used to provide a secure
+path between CA and user machine to transfer
+the certificate and CA public key.
+See
+.IR security-intro (2)
+for more detail.
+.PP
+The registration procedure is built into the
+.IR mux (1)
+interface and is intended for the set top box
+environment.
+When the set top box is first turned on, it
+creates a public/private key pair and
+dials the service provider's CA to get a key
+signed.
+The CA returns its public key and a signed
+certificate, blinded by a random bit string
+known only to the CA.
+A hash of the information is then displayed on the
+user screen.
+The user must then telephone the CA and compare this
+hashed foot print with the one at the CA.
+If they match and the user proves that he is
+a customer, the CA makes the blinding string
+publicly known.
+.SS Data Types
+.TP
+.B SigAlg
+The
+.B SigAlg
+adt contains a single string that specifies the algorithm used for digital signatures.
+The allowable values are
+.BR md5 ,
+.BR md4
+and
+.BR sha1
+that specify which one-way hash function is used to produce a digital signature
+or message digest.
+.TP
+.BR PK " and " SK
+The
+.B PK
+adt contains the data necessary to construct a public key;
+the
+.B SK
+adt contains the data necessary to construct a secret key.
+Both keys are built from the combination of a specified signature algorithm
+and a string representing the name of the owner of the key.
+.TP
+.B Certificate
+The
+.B Certificate
+adt contains a digital signature with the certification of the trusted authority (CA).
+.TP
+.B DigestState
+The
+.B DigestState
+adt contains the hidden state of partially completed hash functions during processing.
+Its
+.B copy
+operation returns a reference to a copy of a given state.
+.TP
+.B Authinfo
+The
+.B Authinfo
+adt contains an individual user's private and public key, the signer's certificate
+and the signer's public key, and the Diffie-Hellman parameters.
+.SH SOURCE
+.B /libcrypt/*.c
+.br
+.B /libinterp/keyring.c
+.br
+.B /libkeyring/*.c
+.SH SEE ALSO
+.IR security-intro (2)
+.br
+B. Schneier,
+.IR "Applied Cryptography" ,
+1996, J. Wiley & Sons, Inc.

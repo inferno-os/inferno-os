@@ -1,0 +1,332 @@
+.TH NAMESPACE 4
+.SH NAME
+namespace \- structure of conventional Inferno name space
+.SH SYNOPSIS
+none
+.SH DESCRIPTION
+The list below gives an overview of the Inferno distribution
+file tree, organised into related categories.
+.TF /appl/cmd
+.TP
+.B /
+The root directory. To programs running outside Inferno,
+this corresponds to the directory in which Inferno has been
+installed (e.g.
+.B C:\einferno
+under Windows).
+.SS Mount points
+The following are all placeholders for filesystems
+that are mounted when Inferno is running. They
+contain no data files. Although an Inferno namespace
+is a dynamic entity, and devices can be mounted anywhere
+therein, many programs assume that devices have been
+mounted in the standard places, as suggested by the skeleton
+directories listed below.
+.TF /appl/cmd
+.TP
+.B /dev
+The standard mount point
+for devices (e.g.
+.IR cons (3))
+.TP
+.B /env
+The standard mount point for the
+.IR env (3)
+device.
+.TP
+.B /mnt
+A directory containing mount points for applications.
+.TP
+.B /chan
+An empty directory, used for holding
+files created with
+.IR sys-file2chan (2).
+.TP
+.B /net
+The standard mount point directory for network interfaces.
+.TP
+.B /n
+A directory containing mount points for file trees on local devices or imported from
+remote systems.
+.TP
+.B /prog
+An empty directory, the mount point for the
+.IR prog (3)
+device.
+.TP
+.B /nvfs
+An empty directory, the mount point for a non-volatile RAM
+filesystem on devices that have one.
+.TP
+.B /tmp
+Mount point for private
+directory of temporary files (eg,
+.BI /usr/ user /tmp\c
+).
+.TP
+.B /mail
+Conventional place to mount mailboxes.
+.SS Limbo applications
+.TF /appl/cmd
+.TP
+.B /dis
+Dis executables (commands)
+.TP
+.B /dis/lib
+Dis libraries
+.TP
+.B /dis/wm
+Dis commands that run under
+.IR wm (1).
+.TP
+.B /man
+Manual pages.
+.TP
+.B /doc
+Documentation other than manual pages.
+.TP
+.B /appl
+Source to Limbo applications.
+.TP
+.B /appl/cmd
+Source to the commands in
+.BR /dis
+(as documented in Section 1).
+.TP
+.B /appl/wm
+Source to the commands in
+.B /dis/wm
+.TP
+.B /appl/lib
+Source to the modules in
+.B /dis/lib
+(as documented in Section 2).
+.TP
+.B /module
+Limbo module declarations
+.SS Supporting data
+.TF /appl/cmd
+.TP
+.B /acme
+Programs and guide files specific to
+.IR acme (1).
+.TP
+.B /fonts
+Font definitions
+.TP
+.B /locale
+Timezone and locale information
+.TP
+.B /icons
+Contains
+.IR image (6)
+files used by programs.
+.TP
+.B /icons/tk
+Default directory searched by tk's
+.B -bitmap
+option (see
+.IR options (9)).
+.TP
+.B /lib
+Static program-specific data.
+.TP
+.B /lib/ndb
+Network configuration files
+used by
+.IR cs (8),
+.IR dns (8)
+and others.
+.SS Administration
+.TF /appl/cmd
+.TP
+.B /keydb
+Storage of secrets and certificates on signers (authentication servers).
+.TP
+.B /services
+A jungle of program-specific configuration files.
+.SS Platform specific
+.TF /appl/cmd
+.TP
+.BI / Platform
+Binaries specific to
+.IR Platform .
+Current platforms include
+.B Inferno
+(native binaries),
+.BR FreeBSD ,
+.BR Hp ,
+.BR Irix ,
+.BR Linux ,
+.BR Nt ,
+.BR Plan9 ,
+.B Solaris
+and
+.BR Unixware .
+.TP
+.BI / Platform / arch /bin
+.TP
+.BI / Platform / arch /lib
+.TP
+.BI / Platform / arch /include
+.I Platform
+specific binaries, libraries and include files
+respectively.
+.I Arch
+is the architecture type, as defined
+in
+.IR 2c (10.1)
+and held in the
+.B $objtype
+environment variable.
+.TP
+.B /usr
+A directory containing user directories.
+.SS Inferno source code
+.TF /libmemlayerxx
+.TP
+.B /emu
+Directory containing source specific to 
+.IR emu (1).
+.TP
+.B /emu/port
+Cross-platform source for
+.IR emu (1).
+.BI /emu/ Platform
+.IR Platform -specific
+source for
+.IR emu (1).
+.TP
+.B /libkfs
+The emu version of
+.IR kfs (3).
+.TP
+.B /libbio
+.TP
+.B /libregexp
+Source to libraries used by hosted commands.
+.TP
+.B /lib9
+Source to the Plan 9 emulation library, used by
+emu and the hosted commands.
+.TP
+.B /libmemdraw
+.TP
+.B /libmemlayer
+.TP
+.B /libprefab
+.TP
+.B /libkern
+.TP
+.B /libkeyring
+.TP
+.B /libdraw
+.TP
+.B /libinterp
+.TP
+.B /libtk
+Inferno source used by both native and hosted versions of
+Inferno.
+.TP
+.B /asm
+.TP
+.B /limbo
+Source to the two hosted Inferno commands of
+the same name.
+.TP
+.B /utils
+Source to hosted utilities run from
+.IR emu (1)
+via the
+.IR cmd (3)
+interface.
+.TP
+.B /tools
+A directory containing source directories
+for hosted tools used in building Inferno
+(e.g.
+.IR mk (10.1)).
+.TP
+.B /os
+A directory holding source directories for the native versions of Inferno.
+.TP
+.B /os/init
+Limbo source for platform-specific initialisation procedures.
+.TP
+.B /os/port
+Portable native kernel source.
+.TP
+.BI /os/ arch
+.IR Arch -specific
+native kernel source.
+.TP
+.B /os/kfs
+The native kernel version of
+.IR kfs (3).
+.SS "Minimal name space"
+The above is all very well on a system with lots of storage,
+but what is actually necessary for the running of Inferno?
+The following gives a quick summary of the structure that
+must be provided for Inferno to function correctly.
+.TF /appl/cmd
+.TP
+.B /dis
+This must contain Dis modules for all the applications
+you plan to run, and the modules they depend on.
+.IR Disdep (1)
+can be useful when trying to determine this set.
+.TP
+.B /dev
+.TP
+.B /env
+.TP
+.B /chan
+.TP
+.B /net
+.TP
+.B /prog
+.TP
+.B /tmp
+All empty unwritable directories, place holders for mounted services and
+applications.
+Often these are provided by the built-in
+.IR root (3).
+.TP
+.B /mnt
+A directory containing mount points for applications.
+.TP
+.B /n
+A directory containing mount points for remote file systems.
+.SS "Files needed to run as a server"
+.TF /appl/cmd
+.TP
+.B /keydb/keys
+See
+.IR keyfs (4),
+.IR logind (8)
+and
+.IR signer (8).
+.TP
+.B /keydb/signerkey
+See
+.IR createsignerkey (8)
+and
+.IR logind (8).
+.SS "Files needed to run the window manager"
+.TF /appl/cmd
+.TP
+.B /fonts
+At least one font must be provided - a default font for Tk
+to use.
+.TP
+.B /icons/tk
+This should contain icons used by applications that run within Tk.
+.TP
+.BI /user/ user
+At least one user directory must exist if
+.IR logon (1)
+is to function correctly.
+.SH SEE ALSO
+.IR intro (1),
+.IR root (3),
+.IR namespace (6)

@@ -1,0 +1,43 @@
+.TH SECURITY-RANDOM 2
+.SH NAME
+random: randomint, randombuf \-
+random number generation
+.SH SYNOPSIS
+.EX
+include "security.m";
+random := load Random Random->PATH;
+
+randomint:  fn(which: int): int;
+randombuf:  fn(which, n: int): array of byte;
+.EE
+.SH DESCRIPTION
+.B Randomint
+and
+.B randombuf
+return random or not-quite-random data
+obtained from
+.B /dev/random
+or
+.BR /dev/notquiterandom .
+.B Randomint
+returns a random integer;
+.B randombuf
+returns an array of length
+.I n
+filled with random bytes.
+In both functions,
+.I which
+may be either
+.B ReallyRandom
+or
+.B NotQuiteRandom
+to select the random data source.
+.SH FILES
+.B /dev/random
+.br
+.B /dev/notquiterandom
+.SH SOURCE
+.B /appl/lib/random.b
+.SH SEE ALSO
+.IR rand (2),
+.IR cons (3)

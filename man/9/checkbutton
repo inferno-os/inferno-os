@@ -1,0 +1,193 @@
+.TH CHECKBUTTON 9
+.SH NAME
+checkbutton \- Create and manipulate checkbutton widgets
+.SH SYNOPSIS
+\f5checkbutton\fI pathname \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -disabledcolor      -justify
+-activeforeground -font               -relief
+-anchor           -foreground         -takefocus
+-background       -highlightcolor     -text
+-bitmap           -highlightthickness -underline
+-borderwidth      -image
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -command \fIcommand\fP
+Specifies a Tk command to associate with the button.  This command
+is typically invoked when mouse button 1 is released over the button
+window.  The button's global variable (\f5-variable\fR option) will
+be updated before the command is invoked.
+.TP
+.B -height \fIdist\fP
+Specifies a desired height for the button.
+If this option isn't specified, the button's desired height is computed
+from the size of the image or bitmap or text being displayed in it.
+.TP
+.B -indicatoron \fIboolean\fP
+Specifies whether or not the indicator should be drawn.
+If false, the \f5relief\fP option is ignored and the widget's
+relief is always \f5sunken\fP if the widget is selected
+and \f5raised\fP otherwise.
+.TP
+.B -offvalue \fIstring\fP
+Specifies value to store in the button's associated variable whenever
+this button is deselected.  Defaults to ``0''.
+.TP
+.B -onvalue \fIstring\fP
+Specifies value to store in the button's associated variable whenever
+this button is selected.  Defaults to ``1''.
+.TP
+.B -selectcolor \fIcolour\fP
+Specifies a background colour to use when the button is selected.
+If \f5indicatoron\fR is true then the colour applies to the indicator.
+If \f5indicatoron\fR is false, this colour is used as the background
+for the entire widget, in place of \f5background\fR or \f5activebackground\fR,
+whenever the widget is selected.
+If specified as an empty string then no special colour is used for
+displaying when the widget is selected.
+.ig
+.TP
+.B -selectimage \fIimage\fP
+Specifies an image to display (in place of the \f5image\fR option)
+when the checkbutton is selected.
+This option is ignored unless the \f5image\fR option has been
+specified.
+..
+.TP
+.B -state \fIstate\fP
+Specifies one of three states for the checkbutton:  \f5normal\fR, \f5active\fR,
+or \f5disabled\fR.  In normal state the checkbutton is displayed using the
+\f5foreground\fR and \f5background\fR options.  The active state is
+typically used when the pointer is over the checkbutton.  In active state
+the checkbutton is displayed using the \f5activeforeground\fR and
+\f5activebackground\fR options.  Disabled state means that the checkbutton
+should be insensitive:  the default bindings will refuse to activate
+the widget and will ignore mouse button presses.
+In this state the \f5disabledcolor\fR and
+\f5background\fR options determine how the checkbutton is displayed.
+.TP
+.B -variable \fIstring\fP
+Specifies name of global variable to set whenever this button is
+selected.  Changes in this variable also cause the button to select
+or deselect itself.
+.TP
+.B -width \fIdist\fP
+Specifies a desired width for the button.
+If this option isn't specified, the button's desired width is computed
+from the size of the image or bitmap or text being displayed in it.
+.SH DESCRIPTION
+The \f5checkbutton\fR command creates a new window (given by the
+\fIpathname\fR argument) and makes it into a checkbutton widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the checkbutton such as its colours, font,
+text, and initial relief.  The \f5checkbutton\fR command returns its
+\fIpathname\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathname\fR.
+.PP
+A checkbutton is a widget
+that displays a textual string, bitmap or image
+and a square called an \fIindicator\fR.
+If text is displayed, it must all be in a single font, but it
+can occupy multiple lines on the screen (if it contains newlines) and
+one of the characters may optionally be underlined using the
+\f5underline\fR option.
+A checkbutton has
+all of the behaviour of a simple button, including the
+following: it can display itself in either of three different
+ways, according to the \f5state\fR option;
+it can be made to appear
+raised, sunken, or flat; and it invokes
+a Tk command whenever mouse button 1 is clicked over the
+checkbutton.
+.PP
+In addition, checkbuttons can be \fIselected\fR.
+If a checkbutton is selected then the indicator is normally
+drawn with a sunken relief and a special colour, and
+a Tk variable associated with the checkbutton is set to the
+.B onvalue
+(normally 1).
+If the checkbutton is not selected, then the indicator is drawn with a
+raised relief and no special colour, and the associated variable is
+set to the
+.B offvalue
+(normally 0).
+The variable name
+may be modified with options on the command line (\f5-variable\fR option).
+Configuration options may also be used to modify the way the
+indicator is displayed (or whether it is displayed at all).
+By default a checkbutton is configured to select and deselect
+itself on alternate button clicks.
+.SH "WIDGET COMMAND"
+The \f5checkbutton\fR command creates a new Tk command whose
+name is \fIpathname\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathname option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for checkbutton widgets:
+.TP
+\fIpathname \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5checkbutton\fR
+command.
+.TP
+\fIpathname \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathname\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5checkbutton\fR
+command.
+.TP
+\fIpathname \f5deselect\fR
+Deselects the checkbutton and sets the associated variable to its ``off''
+value.
+.TP
+\fIpathname \f5invoke\fR
+Does just what would have happened if the user invoked the checkbutton
+with the mouse: toggle the selection state of the button and invoke
+the Tk command associated with the checkbutton, if there is one.
+The return value is the return value from the Tk command, or an
+empty string if there is no command associated with the checkbutton.
+This command is ignored if the checkbutton's state is \f5disabled\fR.
+.TP
+\fIpathname \f5select\fR
+Selects the checkbutton and sets the associated variable to 1.
+.TP
+\fIpathname \f5toggle\fR
+Toggles the selection state of the button, redisplaying it and
+modifying its associated variable to reflect the new state.
+
+.SH BINDINGS
+Tk automatically creates bindings for checkbuttons that give them
+the following default behaviour:
+.IP [1]
+A checkbutton activates whenever the mouse passes over it and deactivates
+whenever the mouse leaves the checkbutton.
+.IP [2]
+When mouse button 1 is pressed over a checkbutton it is invoked (its
+selection state toggles and the command associated with the button is
+invoked, if there is one).
+.PP
+If the checkbutton's state is \f5disabled\fR then none of the above
+actions occur:  the checkbutton is completely non-responsive.
+.PP
+The behaviour of checkbuttons can be changed by defining new bindings for
+individual widgets.
+.SH SEE ALSO
+.IR button (9),
+.IR choicebutton (9),
+.IR options (9),
+.IR radiobutton (9),
+.IR types (9)

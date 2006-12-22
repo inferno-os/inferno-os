@@ -1,0 +1,127 @@
+.TH GETAUTHINFO 8
+.SH NAME
+getauthinfo \- obtain a certificate for authentication
+.SH SYNOPSIS
+.BI getauthinfo " keyname"
+.PP
+.B wm/getauthinfo
+.SH DESCRIPTION
+.I Getauthinfo
+makes contact with
+.IR logind (8)
+on a `signer', or certifying authority, with which the user
+has previously been registered using
+.IR changelogin (8),
+to obtain a certificate that
+can later be presented to other Inferno services to authenticate the user.
+If
+.I keyname
+starts with a `/', the certificate is stored there; otherwise, it is stored in the file
+.BI /usr/ user /keyring/ keyname,
+where
+.I user
+is the name in
+.B /dev/user
+(see
+.IR cons (3)).
+The directory
+.BI /usr/ user /keyring
+must exist.
+.PP
+The user is prompted for the following:
+.TP
+signer
+The name of the signing server, for example
+.BR signer.froop.com .
+The default is the default signer for the site:
+the value of
+.B SIGNER
+in the local network configuration database
+(see
+.IR ndb (6)).
+.TP
+remote user name
+The name of the user for whom a certificate is to be obtained. The default is the current user name in
+.BR /dev/user .
+.TP
+password
+The user's password. The password entered on the client must match the password
+previously stored on the server using
+.IR changelogin (8),
+or a certificate will be refused.
+.TP
+save in file?
+The default is `no'. If the user responds `yes', the certificate is written directly to the file.
+Otherwise,
+.I getauthinfo
+becomes a file server, serving
+a secure temporary file bound over
+the file name above (because that is where applications look for it).
+The temporary will disappear if the name is unmounted, or Inferno is rebooted.
+.PP
+Note that the certificate will expire at or before expiry of the password entry
+on the signer.
+.PP
+The signer needs its own key to endorse the certificates that it gives to clients.
+If a user requests a certificate with
+.IR getauthinfo (8)
+before the signer's key is created on the signer (eg,
+using
+.IR createsignerkey (8)),
+then the request will be rejected with a suitable diagnostic
+by
+.IR logind (8).
+.SS "File servers"
+.PP
+Machines that will be file servers must obtain a certificate and save the certificate in a key file named
+.BR default ,
+thus:
+.IP
+.B "getauthinfo default"
+.PP
+The user invoking
+.I getauthinfo
+must be the same user who later runs
+.IR svc (8)
+to start the machine's services.
+.SS "File server clients"
+Machines that wish to be authenticated clients of file servers must obtain a certificate and store the certificate in a file named
+.IB net ! machine.
+The file name must match exactly the
+server address given to
+.I mount
+(see
+.IR bind (1)).
+To set the key, use
+.IP
+.BI getauthinfo " net" ! host
+.SS Window system interface
+.I Getauthinfo
+has a visual counterpart
+.B wm/getauthinfo
+for use under
+.IR wm (1).
+It takes no arguments.
+It displays a window prompting for all the information it needs,
+and offering apparently sensible defaults.
+Apart from the different interface, its function is otherwise
+the same as the command line version.
+.SH FILES
+.TF /usr/username/keyring/net!machine
+.TP
+.BI /usr/ user /keyring/ net ! machine
+where a certificate is stored on a client machine
+.TP
+.BI /usr/ user /keyring/default
+where a certificate is stored on a file server
+.TP
+.B /lib/ndb/local
+contains the default host name of the signer
+.SH SOURCE
+.B /appl/cmd/getauthinfo.b
+.br
+.B /appl/wm/getauthinfo.b
+.SH "SEE ALSO"
+.IR bind (1),
+.IR changelogin (8),
+.IR createsignerkey (8)

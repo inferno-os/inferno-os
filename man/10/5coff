@@ -1,0 +1,82 @@
+.TH 5COFF 10.1
+.SH NAME
+5coff \- converter to coff format
+.SH SYNOPSIS
+.B 5coff
+[
+.B -T
+.I t
+]
+[
+.B -D
+.I d
+]
+[
+.B -R
+.I r
+]
+[
+.B -E
+.I e
+]
+[
+.B -d
+]
+.I ifile ofile
+.SH DESCRIPTION
+.I 5coff
+converts an executable file 
+.I ifile
+in
+.IR a.out (10.6)
+format as
+produced by
+.I 5l
+(see
+.IR 2l (10.1))
+to one in
+.SM COFF
+format, which it writes to
+.IR ofile .
+The options to
+.I 5coff
+are as follows:
+.TP
+.BI -T t
+The text segment starts at address
+.I t.
+.TP
+.BI -D d
+The data segment starts at address
+.I d.
+.TP
+.BI -R r
+The text segment is rounded up to a multiple of
+.I r
+if non-zero.
+.TP
+.BI -E e
+The entry point is at address
+.I e.
+.TP
+.B -d
+Print debugging information.
+.PP
+.SH EXAMPLE
+An executable built with the command
+.IP
+.EX
+5l -T0x04010000 -R4 -o abc ...
+.EE
+.PP
+can be converted to coff format by
+.IP
+.EX
+5coff -T0x04010000 -R4 abc abc.coff
+.EE
+.SH SOURCE
+.B /utils/5coff
+.SH SEE ALSO
+.IR 2l (10.1),
+.IR 5cv (10.1),
+.IR a.out (10.6)

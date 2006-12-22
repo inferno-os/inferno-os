@@ -1,0 +1,116 @@
+.TH SYS-EXPORT 2
+.SH NAME
+export \- export a name space
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+export:   fn(fd: ref FD, dir: string, flag: int):   int;
+.EE
+.SH DESCRIPTION
+.B Export
+receives and replies
+to Styx requests from a client on a connection represented by
+.IR fd ,
+for file operations on the part of the current file name space
+rooted at
+.IR dir ,
+which is thus exported.
+This is the server end of the client's
+.B mount
+call.
+Names presented by the client are interpreted relative to directory
+.IR dir ,
+which can be adjusted using
+.IR sys-pctl (2)
+and
+.IR sys-bind (2)
+before export.
+The file descriptor
+.I fd
+must be open for reading and writing, and neither mounted elsewhere nor already exported.
+.PP
+Commonly,
+.BR export 's
+first argument is a file descriptor open on the data file in the
+.B dir
+of a
+.B Connection
+returned by
+.B listen
+(see
+.IR sys-dial (2)).
+Before calling
+.BR export ,
+the connection on
+.I fd
+can optionally be authenticated and set for encryption or digesting using the
+functions in
+.IR security-auth (2).
+.PP
+The
+.B export
+function takes two mutually exclusive flags:
+.TP
+.B Sys->EXPWAIT
+.B Export
+blocks until all client requests are complete.
+.TP
+.B Sys->EXPASYNC
+Client requests are handled by a background (kernel) process.
+.B Export
+returns immediately.
+The serving process terminates when the client hangs up.
+.SH EXAMPLES
+.PP
+Export a given directory on
+.BR fd ,
+protecting it from subsequent changes:
+.IP
+.EX
+exportdir(fd: ref Sys->FD, dir: string, pid: chan of int)
+{
+	pid <-= sys->pctl(Sys->FORKNS|Sys->FORKENV|Sys->NEWFD, fd.fd :: nil);
+	sys->export(fd, dir, Sys->EXPWAIT);
+}
+.EE
+.PP
+The
+.B FORKNS
+given to
+.B pctl
+forks the name space, and
+prevents the
+.B sys->export
+from seeing the effects of subsequent mounts by the process
+that calls or spawns
+.BR exportdir .
+The
+.B exportdir
+function above might be called using:
+.IP
+.EX
+pid := chan of int;
+spawn export(fd, "/", pid);
+expid := <-pid;
+.EE
+.PP
+Service will stop automatically when the connection
+.B fd
+returns end-of-file (eg, when it hangs up),
+but it can also be stopped locally by killing
+.BR expid .
+.EE
+.SH SOURCE
+.B /emu/port/inferno.c
+.br
+.B /emu/port/exportfs.c
+.br
+.B /os/port/inferno.c
+.br
+.B /os/port/exportfs.c
+.SH DIAGNOSTICS
+.B Export
+returns a non-negative value on success and -1 on error;
+the system error string is set.

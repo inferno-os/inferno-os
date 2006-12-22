@@ -1,0 +1,79 @@
+.TH AUDIO 6
+.SH NAME
+audio \- Inferno audio file format
+.SH DESCRIPTION
+Inferno audio files accepted by commands such as
+.IR auplay (1)
+have a simple format.
+The file contains a header consisting of
+non-empty lines of text specifying the data format and characteristics,
+followed by an empty line,
+followed by the audio data in binary form.
+The data can be copied
+directly to a suitable audio device (see
+.IR audio (3))
+correctly configured,
+using
+.BR read ,
+.B write
+or
+.B stream
+(see
+.IR sys-read (2)).
+.PP
+Each header line corresponds to a command that can be written to
+the control file
+.B audioctl
+of the
+.IR audio (3)
+device.
+The first line of the header must be a
+.BR rate
+command;
+other commands can appear in any order.
+The commands available are:
+.TP
+.BI rate " n"
+The data was recorded at
+.I n
+Hz, typically one of
+.BR 44100 ,
+.BR 22050 ,
+.BR 11025
+or
+.BR 8000
+but other values are legal.
+.TP
+.BI chans " n"
+There are
+.I n
+channels of audio data (eg, 1 for mono and 2 for stereo).
+.TP
+.BI bits " n"
+Each sample is
+.I n
+bits (typically 8 or 16).
+.TP
+.BI enc " e"
+.br
+The string
+.I e
+gives the recording format, and
+will usually be one of the following:
+.BR ulaw ,
+.BR alaw ,
+.BR pcm
+or
+.BR adpcm .
+.PP
+The audio data is stored with a sample from each channel in turn
+(`left' sample first if stereo, regardless of encoding or data size).
+Data encoded as
+.B pcm
+is little-endian, 2's complement  if 16-bit, but unsigned if 8 bit.
+The
+.B adpcm
+encoding uses 4-bit samples (two mono samples or one stereo sample per byte, again little-endian).
+.SH SEE ALSO
+.IR auplay (1),
+.IR audio (3)

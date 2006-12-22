@@ -1,0 +1,335 @@
+.s1
+program:
+	Cimplement Iidentifier-listC ; Itop-declaration-sequence
+.s2
+.s1
+top-declaration-sequence:
+	top-declaration
+	top-declaration-sequence top-declaration
+.s2
+.s1
+top-declaration:
+	declaration
+	identifier-listC := IexpressionC ;I
+	identifier-listC = IexpressionC ;I
+	C( Iidentifier-listC ) := IexpressionC ;I
+	module-declaration
+	function-definition
+	adt-declaration
+.s2
+.s1
+declaration:
+	identifier-listC : ItypeC ;I
+	identifier-listC : ItypeC = IexpressionC ;I
+	identifier-listC : con IexpressionC ;I
+	Iidentifier-listC : import Iidentifier C;I
+	identifier-listC : typeI typeC ;I
+	identifier-listC : exceptionI tuple-typeO
+	Cinclude Istring-constantC ;I
+.s2
+.s1
+identifier-list:
+	identifier
+	identifier-listC , Iidentifier
+.s2
+.s1
+expression-list:
+	expression
+	expression-listC , Iexpression
+.s2
+.s1
+type:
+	data-type
+	function-type
+.s2
+.s1
+data-type:
+	CbyteI
+	CintI
+	CbigI
+	CrealI
+	CstringI
+	tuple-type
+	Carray of Idata-type
+	Clist of Idata-type
+	Cchan of Idata-type
+	adt-type
+	Cref Iadt-type
+	Cref Ifunction-type
+	module-type
+	module-qualified-type
+	type-name
+.s2
+.s1
+tuple-type:
+	C( Idata-type-listC )I
+.s2
+.s1
+data-type-list:
+	data-type
+	data-type-list C,I data-type
+.s2
+.s1
+adt-type:
+	identifier
+	module-qualified-type
+.s2
+.s1
+module-type:
+	identifier
+.s2
+.s1
+module-qualified-type:
+	identifier C->I identifier
+.s2
+.s1
+type-name:
+	identifier
+.s2
+.s1
+function-type:
+	Cfn Ifunction-arg-ret
+.s2
+.s1
+function-arg-ret:
+	C( Iformal-arg-listOC ) IraisesO
+	C( Iformal-arg-listOC ) : Idata-type raisesO
+.s2
+.s1
+formal-arg-list:
+	formal-arg
+	formal-arg-listC , Iformal-arg
+.s2
+.s1
+formal-arg:
+	nil-or-ID-listC : Itype
+	nil-or-IDC : self refO Iidentifier
+	nil-or-IDC : self Iidentifier
+	C*I
+.s2
+.s1
+nil-or-ID-list:
+	nil-or-ID
+	nil-or-ID-list C, Inil-or-ID
+.s2
+.s1
+nil-or-ID:
+	identifier
+	CnilI
+.s2
+.s1
+raises:
+	Craises ( Inil-or-ID-listC )I
+	CraisesI nil-or-ID
+.s2
+.s1
+module-declaration:
+	IidentifierC : module { Imod-member-listOC } ;I
+.s2
+.s1
+mod-member-list:
+	mod-member
+	mod-member-list mod-member
+.s2
+.s1
+mod-member:
+	identifier-listC : Ifunction-typeC ;I
+	identifier-listC : Idata-typeC ;I
+	adt-declarationC I
+	identifier-listC : con Iexpression C;I
+	identifier-listC : type Itype C;I
+.s2
+.s1
+adt-declaration:
+	IidentifierC : adt { Iadt-member-listOC } ;I
+.s2
+.s1
+adt-member-list:
+	adt-member
+	adt-member-list adt-member
+.s2
+.s1
+adt-member:
+	identifier-listC : cyclicO  Idata-typeC ;I
+	identifier-listC : con  IexpressionC ;I
+	identifier-listC : Ifunction-typeC ;I
+	Cpick { Ipick-member-listC }I
+.s2
+.s1
+pick-member-list:
+	pick-tag-listC =>I
+	pick-member-list pick-tag-listC =>I
+	pick-member-list identifier-listC : cyclicO  Idata-typeC ;I
+.s2
+.s1
+pick-tag-list:
+	identifier
+	pick-tag-listC or Iidentifier
+.s2
+.s1
+function-definition:
+	function-name-part function-arg-retC { IstatementsC }I
+.s2
+.s1
+function-name-part:
+	identifier
+	function-name-partC . Iidentifier
+.s2
+.s1
+statements:
+	(empty)
+	statements declaration
+	statements statement
+.s2
+.s1
+statement:
+	expressionC ;I
+	C;I
+	C{ IstatementsC }I
+	Cif ( IexpressionC ) Istatement
+	Cif ( IexpressionC ) IstatementC else Istatement
+	labelO  Cwhile ( IexpressionOC ) Istatement
+	labelO  Cdo IstatementC while ( IexpressionOC ) ;I
+	labelO  Cfor ( IexpressionOC ; IexpressionOC ; IexpressionOC ) Istatement
+	labelO  Ccase IexpressionC { Iqual-statement-sequenceC }I
+	labelO  Calt { Iqual-statement-sequenceC }I
+	labelO  Cpick IidentifierC := IexpressionC { Ipqual-statement-sequenceC }I
+	Cbreak IidentifierOC ;I
+	Ccontinue IidentifierOC ;I
+	Creturn IexpressionOC ;I
+	Cspawn ItermC ( Iexpression-listOC ) ;I
+	Cexit ;I
+	Craise IexpressionOC ;I
+	C{ IstatementsC } exceptionI identifierOC{ Iqual-statement-sequenceC }I
+.s2
+.s1
+label:
+	identifier C:I
+.s2
+.s1
+qual-statement-sequence:
+	qual-listC =>I
+	qual-statement-sequence qual-listC =>I
+	qual-statement-sequence statement
+	qual-statement-sequence declaration
+.s2
+.s1
+qual-list:
+	qualifier
+	qual-listC or Iqualifier
+.s2
+.s1
+qualifier:
+	expression
+	expressionC to Iexpression
+	C*I
+.s2
+.s1
+pqual-statement-sequence:
+	pqual-listC =>I
+	pqual-statement-sequence pqual-listC =>I
+	pqual-statement-sequence statement
+	pqual-statement-sequence declaration
+.s2
+.s1
+pqual-list:
+	pqualifier
+	pqual-listC or Ipqualifier
+.s2
+.s1
+pqualifier:
+	identifier
+	C*I
+.s2
+.s1
+expression:
+	binary-expression
+	lvalue-expression assignment-operator expression
+	C( Ilvalue-expression-listC ) = Iexpression
+	send-expression
+	declare-expression
+	load-expression
+.s2
+.s1
+binary-expression:
+	monadic-expression
+	binary-expression binary-operator binary-expression
+.s2
+.s1
+binary-operator: one of
+	C** * / % + - << >> < > <= >= == != & ^ | :: && ||I
+.s2
+.s1
+assignment-operator: one of
+	C= &= |= ^= <<= >>= += -= *= /= %=I
+.s2
+.s1
+lvalue-expression:
+	identifier
+	CnilI
+	termC [ IexpressionC ]I
+	termC [ IexpressionC : ]I
+	termC . Iidentifier
+	C( Ilvalue-expression-listC )I
+	C* Imonadic-expression
+.s2
+.s1
+lvalue-expression-list:
+	lvalue-expression
+	lvalue-expression-listC , Ilvalue-expression
+.s2
+.s1
+expression:
+	term
+	monadic-operator monadic-expression
+	Carray [ IexpressionC ] of Idata-type
+	Carray [ IexpressionOC ] of { Iinit-listC }I
+	Clist of { Iexpression-listC }I
+	Cchan of Idata-type
+	Cchan [ IexpressionOC ] of Idata-type
+	data-type monadic-expression
+.s2
+.s1
+term:
+	identifier
+	constant
+	real-constant
+	string-constant
+	CnilI
+	C( Iexpression-listC )I
+	termC . Iidentifier
+	termC -> Iterm
+	termC ( Iexpression-listOC )I
+	termC [ IexpressionC ]I
+	termC [ IexpressionC : IexpressionC ]I
+	termC [ IexpressionC : ]I
+	termC ++I
+	termC --I
+.s2
+.s1
+monadic-operator: one of
+	C+ - ! ~ ref * ++ -- <- hd tl len tagofI
+.s2
+.s1
+init-list:
+	element
+	init-listC , Ielement
+.s2
+.s1
+element:
+	expression
+	expressionC => Iexpression
+	C* => Iexpression
+.s2
+.s1
+send-expression:
+	lvalue-expressionC <- = Iexpression
+.s2
+.s1
+declare-expression:
+	lvalue-expressionC := Iexpression
+.s2
+.s1
+load-expression:
+	Cload Iidentifier expression
+.s2

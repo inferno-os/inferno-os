@@ -1,0 +1,266 @@
+.TH ODBC 10.4
+.SH NAME
+ODBC \- A Windows ODBC file server
+.SH SYNOPSIS
+.B odbc.exe
+[
+.B -d
+] [
+.BI -p " port"
+]
+.SH DESCRIPTION
+.I Odbc
+is a file server that runs under Windows and
+exports a Styx namespace
+(see
+.IR intro (5)).
+An Inferno process that mounts the namespace
+can use it to manipulate Windows ODBC databases.
+.PP
+The
+.B -d
+option causes
+.I odbc
+to print debugging information.
+.PP
+The
+.B -p
+option gives the port number to listen on for connections. The default is 6700.
+.SS Name space
+.I Odbc
+presents the following name space:
+.PP
+.nf
+.BI /nclients
+.BI /db
+.BI /db/new
+.BI /db/ n
+.BI /db/ n /cmd
+.BI /db/ n /ctl
+.BI /db/ n /data
+.BI /db/ n /error
+.BI /db/ n /format
+.BI /db/ n /sources
+.BI /db/ n /status
+.fi
+.PP
+The top level read-only file
+.B nclients
+contains the current number of active clients on the server.
+.PP
+The top level
+.B db
+directory contains a
+.B new
+file and subdirectories numbered
+.B n
+from zero to the maximum number of
+configured conversations.
+.PP
+Opening the
+.B new
+file reserves a conversation, represented
+by one of the numbered directories. The resulting file descriptor will be open
+on the control file,
+.BR ctl ,
+of the newly allocated conversation.
+Reading the
+.B ctl
+file returns a text string representing the
+number of the conversation.
+A conversation is used to converse with the server - in ODBC terms
+it is equivalent to obtaining a connection handle. This is the level at
+which ODBC transactions are managed.
+.PP
+A conversation is controlled by writing text strings to the
+associated
+.B ctl
+file. ODBC commands may be sent to the
+server by writing them, as text strings, to the
+.B cmd
+file.
+For commands that return a record set, the results may be read
+from the
+.B data
+file; each read returning a single record.
+If a command results in an error, the write to the
+.B cmd
+file
+will fail. The full ODBC error message can be obtained by reading
+the
+.B error
+file.
+A conversation remains open while at least one of the
+.BR ctl ,
+.B cmd
+or
+.B data
+files remains open.
+.PP
+The following commands can be written to the
+.B ctl
+file:
+.TP
+.B  connect " datasource" " [user!auth]"
+Connect to the ODBC datasource using the username and authentication, if given.
+.TP
+.B disconnect
+Disconnect from the datasource.
+.TP
+.B fixed
+Reads from the
+.B data
+file will return data in a fixed format. The format can
+be read from the
+.B format
+file after writing the command to the
+.B cmd
+file and before reading the data from the
+.B data
+file.
+.TP
+.B float " [fs< [rs<]]"
+Reads from the data file will return data using the character
+.B fs
+to separate fields and the character
+.B rs
+to separate records.
+The default values for
+.B fs and 
+.B rs
+are the pipe symbol '|'
+and the newline character.
+.TP
+.B trans " begin"
+Enter ODBC manual-commit mode for transactions. A transaction will
+not complete until one of
+.B trans commit
+or
+.B trans rollback
+is written to the
+.B ctl
+file.
+.TP
+.B trans " auto"
+Enter ODBC auto-commit mode for transactions (the default).
+Each database statement is wrapped by a transaction that is automatically
+commited when the statement is executed.
+.TP
+.B trans " commit"
+Commit a transaction when in manual-commit mode.
+.TP
+.B trans " rollback"
+Rollback a transation when in manual-commit mode.
+.PP
+Once a conversation has been established and transaction mode and
+output formats determined the
+.B cmd
+file is
+used to send ODBC commands to the server.
+The following commands can be written to the
+.B cmd
+file:
+.TP
+.B tables
+The result of calling the ODBC API function SQLTables is returned
+in the
+.B data
+file.
+.TP
+.B columns " tablename"
+The result of calling the ODBC API function SQLColumns with the
+given
+.B tablename
+as a parameter is returned in the
+.B data
+file.
+.TP
+.B any " ODBC" " command"
+Any ODBC command written to the
+.B cmd
+file is passed
+to the ODBC API function SQLExecDirect. This most commonly includes
+select, update, insert, and delete
+commands.
+.PP
+The
+.B format
+file is used to determine column names and how to extract
+individual columns from the record read from the
+.B data
+file when using
+fixed format output. A read of it gives
+a single record read returning one line
+for each column in the result data. Each line has three components separated
+by a single space: a number giving the character position of the start of the field
+in the result data, a number giving the character position one beyond the
+end of the field in the result data, and the field name.
+.PP
+The result of database enquiries can be read from the
+.B data
+file.
+After writing a command that returns data to the
+.B cmd
+file,
+reads from the
+.B data
+file will return the results one record at a time.
+When the last record has been read the following read will return zero
+bytes indicating the end of the data.
+.PP
+The read-only file
+.B sources
+gives a newline separated list of sources. Each line consists
+of the source name and the source type separated by a colon.
+.PP
+The read-only file
+.B status
+return the status of the current conversation.
+.SH EXAMPLE
+For example, the Inferno shell can be used to retrieve
+values from a database. The shell commands:
+.PP
+.EX
+mount -A tcp!localhost!6700 /n/remote
+{
+	d=/n/remote/db/`{cat}
+	echo -n 'float' > $d/ctl
+	echo -n 'connect cellar' > $d/ctl
+	echo -n 'select name from wine' > $d/cmd
+	cat $d/data
+} < /n/remote/db/new
+.EE
+.PP
+produces the output:
+.PP
+.EX
+Chardonnay
+Jo. Riesling
+Fume Blanc
+Wh. Burgundy
+Gewurztraminer
+Cab. Sauvignon
+Pinot Noir
+Zinfandel
+Gamay
+.EE
+.PP
+Here the server has been started on the local machine, listening on port
+6700 for network connections.
+The braced block and the redirection from
+.B /n/remote/db/new
+reserve a conversation with the server and ensures that it remains open
+for the duration of the execution of the set of commands within the block.
+The
+.B -A
+option to mount is used because this server can not
+authenticate a connection.
+.SH SOURCE
+.B /tools/odbc/odbc.c
+.SH SEE ALSO
+.IR bind (1),
+.IR sys-bind (2),
+.IR intro (5),
+.IR db (7),
+.IR dbsrv (7),
+.IR svc (8)

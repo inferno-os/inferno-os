@@ -1,0 +1,120 @@
+.TH KEYRING-CRYPT 2
+.SH NAME
+keyring: aessetup, aescbc, dessetup, descbc, desecb, ideasetup, ideacbc, ideaecb \- data encryption
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+keyring := load Keyring Keyring->PATH;
+
+Encrypt:   con 0;
+Decrypt:   con 1;
+
+AESbsize:  con 16;
+
+aessetup:  fn(key: array of byte, ivec: array of byte): ref AESstate;
+aescbc:    fn(state: ref AESstate, buf: array of byte,
+             n: int, direction: int);
+
+DESbsize:  con 8;
+
+dessetup:  fn(key: array of byte, ivec: array of byte): ref DESstate;
+descbc:    fn(state: ref DESstate, buf: array of byte,
+             n: int, direction: int);
+desecb:    fn(state: ref DESstate, buf: array of byte,
+             n: int, direction: int);
+
+IDEAbsize: con 8;
+
+ideasetup: fn(key: array of byte, ivec: array of byte): ref IDEAstate;
+ideacbc:   fn(state: ref IDEAstate, buf: array of byte,
+             n: int, direction: int);
+ideaecb:   fn(state: ref IDEAstate, buf: array of byte,
+             n: int, direction: int);
+.EE
+.SH DESCRIPTION
+These functions encrypt and decrypt blocks of data using different
+encryption algorithms.
+The interfaces are similar.
+.PP
+Each algorithm has an adt that holds the current state for a given encryption.
+It is produced by the setup function for the algorithm,
+.IB alg setup ,
+which is given a secret
+.I key
+and an initialisation vector
+.IR ivec .
+A sequence of blocks of data can then be encrypted or decrypted by repeatedly calling
+.IB alg cbc
+(for `cipher block chaining'), or
+.IB alg ebc
+(the less secure `electronic code book', if provided).
+On each call,
+.I buf
+provides
+.I n
+bytes of the data to encrypt or decrypt.
+.I N
+must be a multiple of the encryption block size
+.IB ALG bsize .
+Exceptionally,
+.B aescbc
+allows
+.I n
+to be other than a multiple of
+.B AESbsize
+in length, but then
+for successful decryption, the decryptor must use the same
+sequence of buffer sizes as the encryptor.
+.I Direction
+is the constant
+.B Encrypt
+or
+.B Decrypt
+as required.
+.I State
+maintains the encryption state, initially produced by the setup function,
+and updated as each buffer is encrypted or decrypted.
+.PP
+The algorithms currently available are:
+.TP
+.B aes
+The Advanced Encryption Standard, AES (also known as Rijndael).
+The
+.I key
+should be 16, 24 or 32 bytes long (128, 192 or 256 bits).
+.I Ivec
+should be
+.B AESbsize
+bytes of random data: random enough to be unlikely to be reused but
+not cryptographically strongly unpredictable.
+.TP
+.B des
+The older Data Encryption Standard, DES.
+.I Key
+is 8 bytes (64 bits), containing a 56-bit key
+encoded into 64 bits where every eighth bit is parity.
+.I Ivec
+is
+.B DESbsize
+bytes of random data.
+.TP
+.B idea
+The International Data Encryption Standard, IDEA™.
+The
+.I key
+is 16 bytes long (128 bits).
+.I Ivec
+is
+.B IDEAbsize
+bytes of random data.
+.SH SEE ALSO
+.IR keyring-intro (2),
+.IR keyring-rc4 (2),
+.IR security-random (2)
+.PP
+IDEA was patented by Ascom-Tech AG (EP 0 482 154 B1, US005214703),
+currently held by iT_SEC Systec Ltd.
+At time of writing, there was no licence fee required for noncommercial use
+but check
+the current licensing policy of iT_SEC Systec Ltd,
+especially for commercial use.

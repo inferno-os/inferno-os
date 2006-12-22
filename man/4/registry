@@ -1,0 +1,196 @@
+.TH REGISTRY 4
+.SH NAME
+registry, regquery \- registration of services dynamically
+.SH SYNOPSIS
+.B ndb/registry
+[
+.BI -f " dbfile"
+]
+.PP
+.B ndb/regquery
+[
+.BI -m " mntpt"
+]
+[
+.B -n
+]
+[
+.I "attr value"
+] ...
+.SH DESCRIPTION
+.I Registry
+is a file server that
+provides registration and location of services by their attributes
+where services come and go.
+It was originally intended to register Grid resources
+but has much wider use.
+.I Registry
+serves Styx on its standard input.
+That can be mounted in the local name space (see below for an example),
+or served over a connection
+(eg, via
+.IR listen (1)).
+The conventional local mount point is
+.BR /mnt/registry ,
+which is where
+.IR registries (2)
+expects to find the local registry by default.
+There can, however, be any number of registries active,
+each supporting a different group of users and services,
+in different authentication domains.
+.PP
+.I Registry
+serves a one-level directory containing a few control files
+and one file per registered service.
+All the files are text files with similar format:
+zero or more lines of one or more words, separated by white space (blank or tab).
+A word can be quoted, using single quotes in the style of
+.IR sh (1),
+allowing it to contain white space
+or represent the empty string
+.BR \&'' .
+Within a quoted word, a single quote character is represented by two adjacent ones.
+(In programs, use
+.B String->quoted
+from
+.IR string (2),
+or more simply the
+.B %q
+string format of
+.IR sys-print (2)
+to quote strings appropriately.)
+.PP
+The control files are:
+.TF index
+.PD
+.TP
+.B new
+A text file that is opened and written to register a new service.
+Opening
+.B new
+returns a file descriptor to a new but anonymous service file.
+It must be written to set its name and initial description.
+The first write contains one or more words:
+.RS
+.IP
+.IR svcname " [" " attr value " ] ..."
+.PP
+The first word,
+.IR svcname ,
+is the proposed service name.
+The write returns an error if the name duplicates any existing name.
+Otherwise, a new file
+.I svcname
+will appear in the directory.
+The optional attribute value pairs form the initial service description.
+The service is removed from the register by default when the file is closed.
+To advertise a service without having to hold open a file descriptor, include an
+.I attr
+named
+.B persist
+with non-zero
+.IR value ;
+the service will then remain registered until explicitly removed (see below).
+.RE
+.TP
+.B index
+A read-only text file containing a list of all the currently-registered services, one per line.
+Each line contains a sequence of words.
+The first word is the service name and the remaining ones are paired: attribute name then value.
+.TP
+.B find
+A text file which should be opened for reading and writing.
+Each write provides a set of attribute/value pairs that acts as a filter, selecting only those
+services that possess all the given attributes with the given values;
+the value
+.B \&"*"
+matches any value.
+Subsequent reads return a list of services, in the same format
+as
+.BR index ,
+but listing only the selected services.
+The selection is made from those available at the time of the write.
+There is a separate filter for each open instance of
+.BR find ,
+so that several processes can set different filters simultaneously.
+(Note that after the write, the file offset must be set to zero using
+.IR sys-seek (2)
+before reading.)
+.PP
+A service file created by
+.B new
+may be read by anyone, but may be written only by its owner.
+Each write must contain a set of attribute/value pairs, formatted as above, which adds new attributes to the service
+description and changes the value of
+existing attributes.
+The file remains until the service is struck off the register.
+The owner of a service can remove its registration at any time by removing the corresponding
+service file (eg, using
+.IR rm (1)
+or
+.IR sys-remove (2)).
+.PP
+Typically, most services register themselves dynamically, perhaps using their locations (eg, network address)
+as their service names.
+.RI ( Registry
+itself does not interpret the name.)
+The
+.B -f
+option causes
+.I registry
+to load initially a set of static service descriptions from
+.IR dbfile ,
+which is in
+.IR attrdb (6)
+format.
+The database entry for each service contains the pair
+.BI service= svcname,
+causing
+.I registry
+to make an entry for the given
+.I svcname
+with attribute/value pairs initialised from the rest of that database entry.
+For example:
+.IP
+.EX
+service=net!click!1234
+	description='snapshot service' auth=none
+.EE
+.PP
+Static entries are regarded as persistent but can be removed explicitly by the registry owner.
+.PP
+.I Regquery
+looks for services in the registry mounted at
+.I mntpt
+(default:
+.BR /mnt/registry )
+that match all the given attribute/value pairs.
+It prints the resulting list of services, one per line.
+If the
+.B -n
+option is given,
+.I regquery
+prints only the service name(s); otherwise it prints the service description as well.
+If no attributes are given on the command line,
+.I regquery
+prompts for successive queries, one per line, and prints each result.
+.SH EXAMPLE
+Start a registry that appears at the standard location for local registries,
+.BR /mnt/registry :
+.IP
+.EX
+mount -A ${pipe to ndb/register} /mnt/registry
+.EE
+.PP
+Make that registry available to the network on authenticated connections:
+.IP
+.EX
+listen -v 'tcp!*!registry' {export /mnt/registry&}
+.EE
+.SH SOURCE
+.B /appl/cmd/ndb/registry.b
+.SH SEE ALSO
+.IR attrdb (2),
+.IR registries (2)
+.SH BUGS
+It is not currently possible to have two values with the same attribute name in the same service description.

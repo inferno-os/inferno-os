@@ -1,0 +1,117 @@
+.TH SIGNER 8
+.SH NAME
+signer, verify, countersigner \- set-top box authentication
+.SH SYNOPSIS
+.B auth/signer
+.PP
+.BI auth/verify " set-top-box-id"
+.PP
+.B auth/countersigner
+.SH DESCRIPTION
+.I Signer
+and
+.I countersigner
+listen for requests on the service ports
+.B infsigner
+and
+.BR infcsigner ,
+respectively.
+They are typically run via
+.IR svc (8)
+on a machine acting as authentication server for a network.
+.I Verify
+is invoked on the same server, after
+.I signer
+but before
+.IR countersigner ,
+following an independent check of a caller's credentials.
+.PP
+.I Signer
+constructs an authentication certificate from the signer's key (in
+.BR /keydb/signerkey )
+and information from the requesting client, including
+the set top box ID.
+The signer's key can be created using
+.IR createsignerkey (8),
+but if the key does not yet exist,
+.I signer
+creates and initialises
+.B /keydb/signerkey
+itself, with an owner name of
+.LR * .
+.PP
+.I Signer
+`blinds'
+the certificate by XOR-ing it with a random bit mask, then sends the result to the requesting client.
+The client machine's user uses that information to establish identity with a human agent on the
+signing machine.
+.I Signer
+also saves the both the `blinded' and `unblinded' result from the input in
+.BI /keydb/signed/ set-top-box-id
+for
+.I verify
+(see below).
+.PP
+.I Verify
+is run on the signing server
+by the agency running the authentication server, in response to
+a call from a remote user who has invoked
+.IR register (8)
+or an equivalent.
+.I Verify
+checks a caller's identity using information from the file
+.BI /keydb/signed/ set-top-box-id
+created by
+.IR signer .
+The file contains the previously crafted authentication certificate and the `blinded' version of the certificate that was sent to the requesting client.
+.PP
+.I Verify
+displays the `blinded' version textually or graphically, as appropriate, so that it can be compared to that reported by the set-top-box owner over a secure independent mechanism (for example, telephone). If the operator of
+.I verify
+is convinced of the identity of the caller, the operator should accept when prompted by
+.IR verify .
+.I Verify
+then writes the authentication certificate to
+.BI /keydb/countersigned/ set-top-box-id,
+as input for
+.I countersigner
+(see
+.IR signer (8)).
+.PP
+.I Note:
+if the operator of
+.I verify
+accepts the identity, the set-top-box owner should be requested
+to answer `yes' to the prompt displayed by
+.IR register (8).
+The order of
+acceptance\-first on the signer, then on the client\-is essential,
+to produce the countersigned certificate before invoking
+.I countersigner
+to read it.
+.PP
+.I Countersigner
+sends the blinding data in
+.BI /keydb/countersigned/ set-top-box-id
+to the requesting client.
+.SH FILES
+.TF /keydb/countersigned/set-top-box-id
+.TP
+.B /keydb/signerkey
+Secret key of the `signer' host.
+.TP
+.BI /keydb/signed/ set-top-box-id
+Repository of `blinded' and clear certificates.
+.TP
+.BI /keydb/countersigned/ set-top-box-id
+Repository of `unblinded' certificates.
+.SH SOURCE
+.B /appl/cmd/auth/signer.b
+.br
+.B /appl/cmd/auth/verify.b
+.br
+.B /appl/cmd/auth/countersigner.b
+.SH SEE ALSO
+.IR createsignerkey (8),
+.IR register (8),
+.IR svc (8)

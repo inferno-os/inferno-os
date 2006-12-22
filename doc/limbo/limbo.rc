@@ -1,0 +1,20 @@
+#!/bin/rc
+cat limbo.ms synsum | awk 'BEGIN	{ inside = 0 }
+
+		{ if ($1==".s1") {
+			inside = 1;
+		  }
+		  if ($1==".s2") {
+			inside = 0;
+		  }
+		  if (inside) {
+			gsub(/C/, "\\f(CW")
+			gsub(/ID/, "@D")
+			gsub(/I/, "\\fI")
+			gsub(/@D/, "ID")
+			gsub(/O/, "\\fI\\s-3\\v''+2p''opt\\v''-2p''\\s+3")
+		  }
+		  print $0
+		}
+' 
+

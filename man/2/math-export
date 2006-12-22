@@ -1,0 +1,52 @@
+.TH MATH-EXPORT 2
+.SH NAME
+Math: export_int, export_real, export_real32, import_int, import_real, import_real32 \- conversion to and from external representation
+.SH SYNOPSIS
+.EX
+include "math.m";
+math := load Math Math->PATH;
+
+export_int:    fn(b: array of byte, x: array of int);
+export_real32: fn(b: array of byte, x: array of real);
+export_real:   fn(b: array of byte, x: array of real);
+
+import_int:    fn(b: array of byte, x: array of int);
+import_real32: fn(b: array of byte, x: array of real);
+import_real:   fn(b: array of byte, x: array of real);
+.EE
+.SH DESCRIPTION
+These routines convert between Limbo's internal representation of
+integer and floating-point values, and equivalent external representations as
+arrays of bytes, allowing efficient input/output of binary representations.
+.PP
+.BI Export_int( b , \ x )
+converts each integer element of array
+.I x
+into a sequence of 4 bytes in array
+.IR b .
+.PP
+.BI Export_real( b , \ x )
+converts each double-precision floating-point element of array
+.I x
+into a sequence of 8 bytes in array
+.IR b .
+.PP
+.BI Export_real32( b , \ x )
+converts each double-precision floating-point element of array
+.I x
+to a single-precision value, then encodes it as a sequence of 4 bytes in array
+.IR b .
+.PP
+Each
+.BI import_ T
+operation reverses the transformation of the corresponding
+.BI export_ T
+operation, converting an array of bytes containing a sequence of external representations
+into an array of values of the appropriate internal form.
+.PP
+Values are encoded in big-endian order (most significant byte first), with floating-point
+values represented in IEEE 32-bit or 64-bit form (again, most significant byte first).
+.SH SOURCE
+.B /libinterp/math.c
+.SH SEE ALSO
+.IR math-intro (2)

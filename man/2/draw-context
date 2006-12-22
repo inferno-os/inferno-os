@@ -1,0 +1,167 @@
+.TH DRAW-CONTEXT 2
+.SH NAME
+Context \-
+graphics environment
+.SH SYNOPSIS
+.EX
+include "draw.m";
+draw := load Draw Draw->PATH;
+
+Context: adt
+{
+   display: ref Display;      # frame buffer on which windows reside
+   wm:      chan of (string,
+               chan of (string, ref Wmcontext)); # wmgr connection
+};
+
+# connection to window manager for one or more windows (as Images)
+Wmcontext: adt
+{
+   kbd:     chan of int;         # incoming characters from keyboard
+   ptr:     chan of ref Pointer; # incoming stream of mouse positions
+   ctl:     chan of string;      # commands from wm to application
+   wctl:    chan of string;      # commands from application to wm
+   images:  chan of ref Image;   # exchange of images
+   connfd:  ref Sys->FD;         # connection control
+   ctxt:    ref Draw->Context;
+};
+.EE
+.SH DESCRIPTION
+The
+.B Context
+type encapsulates the data types and channels used by an interactive application,
+and establishes a context for graphics output and window management.
+A reference to the
+.B Context
+is passed as the first argument to an application when it begins execution:
+.PP
+.EX
+include "draw.m"
+
+Command: module
+{
+	init: fn(nil: ref Draw->Context; nil: list of string);
+};
+.EE
+.PP
+Most programs do not create
+.B Contexts
+but instead inherit one from their parent, typically a shell or window system.
+.PP
+.SS Context interface
+.PP
+The following elements of
+.B Context
+are used by
+.IR wm :
+.TF display
+.PD
+.TP
+.B display
+The
+.B Display
+adt to which the application is connected; may be
+.BR nil .
+See
+.IR draw-display (2).
+.TP
+.B wm
+A shared channel through which a private channel
+can be set up with a window manager.
+A client application sends a tuple containing a request string
+(of a format defined by the window manager) and a private reply channel.
+It receives a tuple in reply on that channel; the tuple contains
+a string (eg, an acknowledgement or diagnostic) and a reference to
+a
+.B Wmcontext
+value containing channels by which the application can interact with the
+window manager.
+.SS Wmcontext interface
+The
+.B Wmcontext
+provides a set of channels and file descriptors
+through which the window manager and application interact.
+The elements of the adt are used as follows:
+.PP
+.TF connfd
+.PD
+.TP
+.B kbd
+A channel of type
+.B int
+that delivers keystrokes from a keyboard.
+.TP
+.B ptr
+A channel of type
+.B ref
+.B Pointer
+that delivers events from a pointing device such as a mouse.
+See
+.IR devpointer (2).
+.TP
+.B ctl
+A channel of type
+.B string
+that delivers control messages from the
+window manager to the application.
+.TP
+.B wctl
+A channel of type
+.BR string ,
+which if initialised is
+used by the application to send control messages to the window manager.
+It is not used by the current
+.IR wm (1)
+or
+.IR tkclient (2).
+.TP
+.B images
+A channel of type
+.B ref
+.B Image
+that allows the window manager and application to exchange images
+(eg, when resizing, or to supply a cursor image).
+.TP
+.B connfd
+A file descriptor that can be used to provide per-client connection control.
+For instance, a client can store a file descriptor open on a
+.IR sys-file2chan (2)
+provided by the window manager, and the window manager will shut down
+input to the application when the connection closes (eg, if the application
+exits unexpectedly).
+.B Connfd
+is also used to write requests to the window manager.
+Conventionally a request is a list of words formatted as
+by
+.B quoted
+in
+.IR string (2).
+A request starting with an exclamation mark
+.BR "" ( ! )
+if successful will result in an image being sent down the
+.B image
+channel; the rectangle of the image indicates the rectangle
+that has been allocated on the screen. If only the origin
+is to be changed by the window manager, a nil image is
+sent first (giving the application a chance to suspend operations
+on the window), and then the original image, with its origin set
+appropriately.
+.TP
+.B image
+This is used as described above.
+.TP
+.B ctxt
+Initialised with the
+.B ctxt
+value that provided the initial connection on the
+.B wm
+channel.
+.RE
+.SH SEE ALSO
+.IR wm (1),
+.IR wmlib (2),
+.IR mux (1),
+.IR draw-intro (2),
+.IR ir (2),
+.IR prefab-intro (2),
+.IR tk (2)

@@ -1,0 +1,45 @@
+.TH SPREE-JOIN 1
+.SH NAME
+join \- join a spree clique.
+.SH SYNOPSIS
+.B spree/join
+[
+.B -d
+.I mntdir
+] [
+.B -j
+.I joinrequest
+]
+.I name
+.SH DESCRIPTION
+When a
+.IR spree (4)
+instance has been mounted from somewhere on the
+network,
+.B join
+can be used to join a clique and fire up the appropriate
+module to perform the client-side display.
+.I Mntdir
+gives the directory where the spree
+instance is mounted (default
+.BR /n/remote );
+.I joinrequest
+gives the initial join request to be passed to the clique
+(default
+.IR join ).
+.I Name
+is the name of the clique's directory within the spree
+directory.
+.SH EXAMPLE
+When spree is started, it creates a ``lobby'' engine
+that keeps a record of what cliques have been started, who
+is a member of which, etc.
+.EX
+	spree/join 0
+.EE
+will connect to this session.
+.SH SOURCE
+.B /appl/spree/join.b
+.SH "SEE ALSO"
+.IR spree (4),
+.IR spree (2)

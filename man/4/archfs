@@ -1,0 +1,64 @@
+.TH ARCHFS 4
+.SH NAME
+archfs \- mount a mkfs archive
+.SH SYNOPSIS
+.B archfs
+[
+.B -ab
+] [
+.B -s
+] [
+.B -m mountpoint
+]
+.I archfile 
+[
+.I prefix ...
+]
+.SH DESCRIPTION
+.I Archfs
+mounts at
+.IR mountpoint
+(default:
+.BR /mnt/arch ),
+a read-only file system representing the contents of 
+.IR archfile ,
+which is a file of the format produced by
+.IR mkfs (8)
+with the
+.B -a
+option.
+Typically the archive file will have been created by 
+.IR mkfs (8)
+or
+.IR create (8).
+Any
+.I prefix
+names limit the file system's contents to files and directories in the
+archive whose path names start with one of the prefixes.
+.PP
+The
+.B -a
+and
+.B -b
+options cause the archive contents to be mounted after or before the
+mount point's existing contents, in a union dirctory (see
+.IR bind (1)
+for details).
+Normally the archive contents replace the contents of
+.IR mountpoint .
+The
+.B -s
+option causes the rest of the archive to be skipped once a file is found in the archive which
+does not start with any of the given prefixes. This is useful an archive is known to start
+with a description of its contents (eg, the
+.B /wrap
+directory provided by
+.IR create (8)),
+and that is all that is needed under
+.IR mountpoint .
+.SH SOURCE
+.B /appl/cmd/archfs.b
+.SH SEE ALSO
+.IR tarfs (4),
+.IR mkfs (8),
+.IR create (8)

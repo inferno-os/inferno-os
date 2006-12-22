@@ -1,0 +1,84 @@
+.TH UTF 6
+.SH NAME
+UTF, Unicode, ASCII \- character set and format
+.SH DESCRIPTION
+The Inferno character set and representation are
+based on the Unicode Standard and on the ISO multibyte
+.SM UTF-8
+encoding (Universal Character
+Set Transformation Format, 8 bits wide).
+The Unicode Standard represents its characters in 16
+bits;
+.SM UTF-8
+represents such
+values in an 8-bit byte stream.
+Throughout this manual,
+.SM UTF-8
+is shortened to
+.SM UTF.
+.PP
+Internally, programs store individual Unicode characters as 16-bit values.
+However, any external manifestation of textual information,
+in files or at the interface between programs, uses the
+machine-independent, byte-stream encoding called
+.SM UTF.
+.PP
+.SM UTF
+is designed so the 7-bit
+.SM ASCII
+set (values hexadecimal 00 to 7F),
+appear only as themselves
+in the encoding.
+Characters with values above 7F appear as sequences of two or more
+bytes with values only from 80 to FF.
+.PP
+The
+.SM UTF
+encoding of the Unicode Standard is backward compatible with
+.SM ASCII\c
+: Inferno programs handle
+.SM ASCII
+text, as well as uninterpreted byte streams, without special arrangement.
+However, programs that perform semantic processing on
+characters must convert from
+.SM UTF
+to Unicode
+in order to work properly with non-\c
+.SM ASCII
+input.
+Normally, all necessary conversions are done by the Limbo compiler
+and execution environment, but sometimes more is necessary, such
+as when a program receives
+.SM UTF
+input one byte at a time;
+see
+.IR sys-byte2char (2)
+for routines to handle such processing.
+.PP
+Letting numbers be binary,
+a Unicode character x
+is converted to a multibyte
+.SM UTF
+sequence
+as follows:
+.EX
+01.   x in [00000000.0bbbbbbb] \(-> 0bbbbbbb
+10.   x in [00000bbb.bbbbbbbb] \(-> 110bbbbb, 10bbbbbb
+11.   x in [bbbbbbbb.bbbbbbbb] \(-> 1110bbbb, 10bbbbbb, 10bbbbbb
+.EE
+.PP
+Conversion 01 provides a one-byte sequence that spans the
+.SM ASCII
+character set in a compatible way.
+Conversions 10 and 11 represent higher-valued characters
+as sequences of two or three bytes with the high bit set.
+Inferno does not support the 4-, 5-, and 6-byte sequences proposed by X-Open.
+When there are multiple ways to encode a value, for example rune 0,
+the shortest encoding is used.
+.PP
+In the inverse mapping,
+any sequence except those described above
+is incorrect and is converted to the Unicode value of hexadecimal 0080.
+.SH "SEE ALSO"
+.IR sys-byte2char (2),
+.IR "The Unicode Standard" .

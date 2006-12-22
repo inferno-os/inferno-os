@@ -1,0 +1,92 @@
+.TH SIGN 3
+.SH NAME
+sign \- control use of signed modules
+.SH SYNOPSIS
+.B "bind -a #Σ /dev"
+.PP
+.B /dev/signerkey
+.br
+.B /dev/signctl
+.SH DESCRIPTION
+.I Sign
+is a device, still experimental, to
+control the use of signed Dis modules.
+After system initialisation, any process can load any module.
+Using
+.IR sign ,
+.B load
+operations can subsequently be restricted for a process and its descendents.
+.PP
+.B Signerkey
+is a file that can be opened for writing only  by the host owner
+(see
+.IR eve (10.2))
+(but any process holding the file descriptor can write to it).
+The data written must be the textual representation of a public key in the form produced by
+.B Keyring->pktostr
+(see
+.IR keyring-certtostr (2)).
+After a successful write, subsequent
+.B load
+operations will be limited to Dis modules in any of the following sets:
+.IP •
+built-in modules
+.IP •
+unsigned modules found in the kernel's
+.IR root (3)
+file system
+.IP •
+currently loaded unsigned modules
+.IP •
+acceptable signed modules
+.PP
+A signed Dis module contains a signature in its header, as specified by
+.IR dis (6).
+The signature contains the result of signing the
+remaining data in the file (or more precisely, a cryptographically secure hash of it), using
+a configured public key algorithm and the signer's secret key
+(for instance using
+.BR Keyring->sign ,
+see
+.IR keyring-sha1 (2)).
+.PP
+A signed module is `acceptable' if it was signed by the secret key corresponding to one
+of the public keys written to
+.BR signerkey .
+There can be up to 8 such keys.
+The set of keys and the secured status is shared across
+.BR spawn .
+.PP
+.B Signerkey
+is generally readable, and when read yields a list of the keys installed, one per line,
+showing
+.BR owner ,
+.BR alg ,
+and other attributes in
+.IB attr = value
+format, space separated.
+The actual key value is not currently shown.
+.PP
+.B Signctl
+can be read or written only by the host owner.
+Each write contains a textual control request.
+(Currently there are none such.)
+If security is not enabled, it is empty when read.
+Otherwise, it contains the number of keys loaded, as a decimal integer.
+.SH SOURCE
+.B /emu/port/devsign.c
+.br
+.B /os/port/devsign.c
+.SH SEE ALSO
+.B wm/rt
+in
+.IR wm-misc (2),
+.IR sys-pctl (2),
+.IR dis (6),
+.IR createsignerkey (8),
+.IR eve (10.2)
+.SH DIAGNOSTICS
+If the text is not a valid public key or uses an algorithm that is not configured,
+a write to
+.B signer
+fails and sets the error string.

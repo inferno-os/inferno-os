@@ -1,0 +1,182 @@
+.TH FC 1
+.SH NAME
+fc \- command-line floating point calculator
+.SH SYNOPSIS
+.B fc
+[
+.I base
+]
+.I expression
+.br
+.SH DESCRIPTION
+.B Fc
+calculates the result of its argument
+.I expression
+and prints the result in the format indicated by
+the optional base argument.
+.I Base
+can be one of:
+.TP
+.B -d
+Decimal, as produced by the
+.B %g
+format of
+.IR sys-print (2).
+.br
+.TP
+.B -x
+Hexadecimal, prefixed with
+.BR 0x .
+.TP
+.B -o
+Octal, prefixed with
+.BR 0 .
+.TP
+.B -b
+Binary, prefixed with
+.BR 0b .
+.TP
+.B -B
+As
+.BR -b ,
+but with extra lines to help bit-counting.
+.TP
+.BI -r\  radix
+In base
+.IR radix ,
+prefixed with
+.IB \fR``\fPradix r\fR'',\fP
+as understood by Limbo (e.g.
+.BR 16r3fff ).
+.TP
+.B -c
+As a unicode character, prefixed with
+.BR @ .
+.RE
+.PP
+.I Expression
+is in reverse polish notation:
+each command line argument is either an operand (number) or an operator.
+Operands are pushed on a stack; operators pop items from
+the stack (the number of items depends on the operator)
+and push their result. All operands are converted to double precision
+floating point numbers before being pushed.
+Integer operations convert their operands to big (64-bit) integers.
+When all arguments are exhausted, all the values currently
+on the stack are printed, first-pushed first, in the specified
+output format.
+.PP
+Operands can be given in any of the formats that
+.I fc
+can print, as detailed above.
+.PP
+When an operation is not commutative, the argument values
+will be taken from the stack first-pushed first.
+Most functions from from
+.IR math-elem (2),
+.IR math-fp(2)
+are provided.
+In addition, other provided operators include:
+.TP
+.B + - / x
+Representing the four rules. Note the use of
+.B x
+rather than
+.BR * ,
+to avoid clashes with shell metacharacters.
+.br
+.TP
+.B xx
+To the power. (equivelant to 'pow')
+.br
+.TP
+.B rad deg
+Convert value to or from radians.
+.br
+.TP
+!
+Factorial.
+.br
+.TP
+.B _
+Unary minus.
+.br
+.TP
+.B and or xor not
+Bitwise operations.
+.br
+.TP
+.B shl shr
+Bitwise shift left/right.
+.TP
+.B p
+Print the current top value on the stack.
+.br
+.TP
+.B sum
+Sum all the values currently pushed on the stack.
+.br
+.TP
+.B swap
+Swap the top two stack items.
+.br
+.TP
+.B dup
+Duplicate the top item on the stack.
+.br
+.TP
+.B rep
+Repeatedly execute the last operator until
+there is only only one item left on the stack.
+This is only valid for operators that take exactly two
+arguments.
+.RE
+.PP
+A few symbolic names for operands are recognised, including
+.B pi
+(or
+.BR π ),
+.BR e ,
+and
+.BR macheps .
+.SH EXAMPLES
+.PP
+fc 22 7 /
+.PP
+.nf
+	gives 3.1428571429
+.fi
+.PP
+fc -b 1 2 3 4 sum
+.PP
+.nf
+	gives 0b00001010
+.fi
+.PP
+fc 10 0b10 010 0x10 x rep 0xa00 swap -
+.PP
+.nf
+	gives 0
+.fi
+.PP
+fc -help
+.PP
+.nf
+	gives a usage summary, including a list of
+	the names of all the operators.
+.fi
+.ne 5
+.SH SEE ALSO
+.IR math-fp (2),
+.IR math-elem (2),
+.IR sh-expr (1)
+.SH DIAGNOSTICS
+An error message is displayed if
+an operator is called on a stack with
+too few elements. This also causes
+.I fc
+to yield a non-null exit status.
+.SH BUGS
+The
+.B -B
+option will only work for fixed-width fonts.

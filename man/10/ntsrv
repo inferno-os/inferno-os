@@ -1,0 +1,69 @@
+.TH NTSRV 10.1 Windows
+.SH NAME
+ntsrv \- start hosted Inferno as Windows service
+.SH SYNOPSIS
+.B ntsrv
+.B add
+.IR "svcname rootdir cmd" " [" arg " ... ]"
+.PP
+.B ntsrv
+.B del
+.I svcname
+.SH DESCRIPTION
+.I Ntsrv
+is a command (for Windows only) that allows hosted Inferno
+to run automatically as a Windows service, under Windows 2000 and XP.
+For Windows NT, use the command
+.BR ntsrv4 ,
+which otherwise has identical interface.
+.I Svcname
+is the (proposed) Windows service name;
+.I rootdir
+is the root of the Inferno directory tree,
+including the drive letter.
+Once added, a service can be controlled using the Windows service manager:
+it may be stopped, started, or have its attributes changed.
+.I Svcname
+is set to start automatically when Windows starts up.
+Services run by default under the local Windows `System' identity.
+All Windows processes and threads the service creates (eg, using
+.IR cmd (3))
+are destroyed when the service is stopped.
+There may be many different services, each with a distinct
+.IR svcname .
+.PP
+.I Ntsrv 's
+first parameter tells it what to do:
+.TP
+.B add
+Add a new service
+.I svcname
+that when started will invoke
+.IR emu (1)
+to run the Inferno command
+.I cmd
+with any additional arguments.
+.TP
+.B del
+Delete an existing service
+.IR svcname .
+.PP
+.I Ntsrv
+requires the directory
+.IR rootdir /Nt/386/bin
+to contain both
+.B emu.exe
+(ie,
+.IR emu (1))
+and
+.B ntsrv.exe
+itself.
+.SH FILES
+.TF c:/inferno/Nt/386/bin
+.TP
+.IB rootdir /Nt/386/bin
+Windows host executables
+.SH SOURCE
+.B /utils/ntsrv
+.SH SEE ALSO
+.IR emu (1)

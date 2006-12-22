@@ -1,0 +1,53 @@
+.TH ASM 1E
+.SH NAME
+asm, disdump \- Dis assembler, Dis disassembler
+.SH SYNOPSIS
+.B asm
+.RB [ -l ]
+.I file
+.br
+.B disdump
+.IR file ...
+.SH DESCRIPTION
+.I Asm
+reads one Dis assembly language
+.I file
+and translates it
+into instructions for the Dis virtual machine.
+The output is written to a file whose name is created
+by taking the last element
+of the input file, stripping any extension, and appending
+.B \&.dis
+For example, the output file for
+.B abc
+would be
+.BR abc.dis ;
+the output file for
+.BR dir/def.s ,
+would be
+.BR def.dis .
+.PP
+The assembler has one option:
+.TP
+.B -l
+Generate a listing, showing the generated object code.
+.PP
+.I Disdump
+prints to the standard output the Dis virtual machine
+instructions in each of its Dis
+.I file
+arguments.
+.SH SOURCE
+.B /asm
+.br
+.B /appl/cmd/disdump.b
+.SH "SEE ALSO"
+.IR emu (1),
+.IR limbo (1)
+.PP
+``The Dis Virtual Machine'' in Volume 2.
+.SH BUGS
+There isn't a Limbo version of
+.IR asm ,
+which is therefore available only as a host command;
+but then again it is hardly used.

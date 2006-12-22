@@ -1,0 +1,487 @@
+.TH DIS 6
+.SH NAME
+dis \- Dis object file
+.SH DESCRIPTION
+.ds Os "\v'0.2m'\s-3\|opt\s+3\^\v'-0.2m'
+A Dis object file contains the executable form of a single module,
+and conventionally uses the file suffix
+.BR .dis .
+.PP
+The following names are used in the description of the file encoding.
+.PP
+.TP 10n
+.I byte
+An unsigned 8-bit byte.
+.TP
+.I word
+A 32-bit integer value represented in exactly 4 bytes.
+.TP
+.I long
+A 64-bit integer value represented in exactly 8 bytes.
+.TP
+.I operand
+An integer stored in a compact variable-length
+encoding selected by the two most significant bits as follows:
+.IP
+.nf
+0x	signed 7 bits, 1 byte
+.br
+10	signed 14 bits, 2 bytes
+.br
+11	signed 30 bits, 4 bytes
+.fi
+.TP
+.I string
+A variable length sequence of bytes terminated by a zero byte.
+Names thus represented are in
+.IR utf (6)
+format.
+.PP
+All integers are encoded in two's complement format, most significant byte first.
+.PP
+Every object file has a header followed by five sections containing code, data, and several sorts of descriptors:
+.IP
+.I "header code-section type-section data-section module-name link-section"
+.PP
+Each section is described in turn below.
+.SS Header
+The header contains a magic number,
+a digital signature, a flag word,
+sizes of the other sections, and a description of the entry point.
+It has the following format:
+.IP
+.EX
+.ft I
+header:
+	magic signature\*(Os runflag stack-extent
+		code-size data-size type-size link-size entry-pc entry-type
+magic, runflag:
+	operand
+stack-extent, code-size, data-size, type-size, link-size:
+	operand
+entry-pc, entry-type:
+	operand
+.EE
+.PP
+The magic number is defined as 819248
+(symbolically
+.BR  XMAGIC ),
+for modules that have not been signed cryptographically, and 923426
+(symbolically
+.BR  "SMAGIC" ),
+for modules that contain a signature.
+The symbolic names
+.B  "XMAGIC"
+and
+.B  SMAGIC
+are defined by the C include file
+.B  "/include/isa.h"
+and by the Limbo module
+.IR dis (2).
+.PP
+The
+.I signature
+is present only if the magic number is
+.BR  "SMAGIC" .
+It has the form:
+.IP
+.EX
+.ft I
+signature:
+	length signature-data
+length:
+	operand
+signature-data:
+	byte ...
+.EE
+.PP
+A digital signature is defined by a length, followed by an array of bytes of that
+length that contain the signature in some unspecified format.
+Data within the signature should identify the signing authority, algorithm, and data to be signed.
+.PP
+.I Runflag
+is a bit mask that
+selects various execution options for a Dis module. The flags currently defined are:
+.IP
+.RS
+.TP
+.BR MUSTCOMPILE " (1<<0)"
+The module must be compiled into native instructions for execution (using a just-in-time compiler);
+if the implementation cannot do that,
+the
+.B load
+instruction should given an error.
+.TP
+.BR DONTCOMPILE " (1<<1)"
+The module should not be compiled into native instructions, when that is the default for the runtime environment, but
+should be interpreted.
+This flag may be set to allow debugging or to save memory.
+.TP
+.BR  SHAREMP " (1<<2)"
+Each instance of the module should use the same module data for all instances of the module. There is no implicit synchronisation between threads using the shared data.
+.TP
+.BR  HASLDT " (1<<4)"
+The dis file contains a separate import section. On older versions of the system,
+this section was within the data section.
+.TP
+.BR  HASEXCEPT " (1<<5)"
+The dis file contains an exception handler section.
+.RE
+.PP
+.IR Stack-extent ,
+if non-zero, gives the number of bytes by which the thread stack of this module should be extended in the event that procedure calls exhaust the allocated stack.
+While stack extension is transparent to programs, increasing this value may improve the efficiency of execution at the expense of using more memory.
+.PP
+.IR Code-size ,
+.I type-size
+and
+.I link-size
+give the number of entries (instructions, type descriptors, linkage directives)
+in the corresponding sections.
+.PP
+.I Data-size
+is the size in bytes of the module's global data area
+(not the number of items in
+.IR data-section ).
+.PP
+.I Entry-pc
+is an integer index into the instruction stream that is the default entry point for this module.
+It should point to the first instruction of a function.
+Instructions are numbered from a program counter value of zero.
+.PP
+.I Entry-type
+is the index of the type descriptor in the type section that corresponds to the function entry point set by
+.IR entry-pc .
+.SS Code Section
+.PP
+The code section describes a sequence of instructions for the virtual machine.
+There are
+.I code-size
+instructions.
+An instruction is encoded as follows:
+.IP
+.EX
+.ft I
+instruction:
+	opcode address-mode middle-data\*(Os source-data\*(Os dest-data\*(Os
+opcode, address-mode:
+	byte
+middle-data:
+	operand
+source-data, dest-data:
+	operand operand\*(Os
+.ft R
+.EE
+.PP
+The one byte
+.I opcode
+specifies the instruction to execute; opcodes are
+defined by the virtual machine specification.
+.PP
+The
+.I address-mode
+byte specifies the addressing mode of each of the three operands: middle, source and destination. The source and destination operands are encoded by three bits and the middle operand by two bits. The bits are packed as follows:
+.IP
+.EX
+bit  7  6  5  4  3  2  1  0
+    m1 m0 s2 s1 s0 d2 d1 d0
+.EE
+.PP
+The following definitions are used in the description of addressing modes:
+.IP
+.RS
+.TP
+.B OP
+30 bit integer operand
+.PD0
+.TP
+.B SO
+16 bit unsigned small offset from register
+.TP
+.B SI
+16 bit signed immediate value
+.TP
+.B LO
+30 bit signed large offset from register
+.PD
+.RE
+.PP
+The middle operand is encoded as follows:
+.IP
+.RS
+.TF "00    SO(MP)"
+.TP
+.BI "00    " "none"
+no middle operand	
+.TP
+.B "01    $SI"
+small immediate
+.TP
+.B "10    SO(FP)"
+small offset indirect from FP
+.TP
+.B "11    SO(MP)"
+small offset indirect from MP
+.RE
+.PD
+.PP
+The
+.I middle-data
+field is present only if the middle operand specifier of the
+.I address-mode
+is not `none'.
+If the field is present it is encoded as an 
+.IR operand .
+.PP
+The source and destination operands are encoded as follows:
+.IP
+.RS
+.TF "000  SO(SO(MP))"
+.TP
+.B "000   LO(MP)"
+offset indirect from MP
+.TP
+.B "001   LO(FP)"
+offset indirect from FP
+.TP
+.B "010   $OP"
+30 bit immediate
+.TP
+.BI "011   " "\fInone\fP"
+no operand
+.TP
+.B "100   SO(SO(MP))"
+double indirect from MP
+.TP
+.B "101   SO(SO(FP))"
+double indirect from FP
+.TP
+.B 110
+\fIreserved\fP
+.TP
+.B 111
+\fIreserved\fP
+.RE
+.PD
+.PP
+The
+.I source-data
+and
+.I dest-data
+fields are present only when the corresponding
+.I address-mode
+field is not `none'.
+For offset indirect and immediate modes the field contains a single 
+.I operand
+value.
+For double indirect modes the values are encoded as two 
+.IR operands :
+the first is the register indirect offset, and the second is the final indirect offset.
+The offsets for double indirect addressing cannot be larger than 16 bits.
+.SS Type Section
+The type section contains
+.I type-size
+type descriptors describing the layout of pointers within data types. The format of each descriptor is:
+.IP
+.EX
+.ft I
+type-descriptor:
+	desc-number memsize mapsize map
+desc-number, memsize, mapsize:
+	operand
+map:
+	byte ...
+.ft R
+.EE
+.PP
+The
+.I  desc-number
+is a small integer index used to identify the descriptor to instructions such as 
+.BR  "new" .
+.I Memsize
+is the size in bytes of the memory described by this type.
+.PP
+The
+.I  mapsize
+field gives the size in bytes of the following
+.I "map"
+array.
+.I Map
+is an array of bytes representing
+a bit map where each bit corresponds to a word in memory.
+The most significant bit corresponds to the lowest address.
+For each bit in the map,
+the word at the corresponding offset in the type is a pointer iff the bit is set to 1.
+.SS Data Section
+.PP
+The data section encodes the contents of the
+data segment for the module, addressed by
+.B MP
+at run-time.
+The section contains a sequence of items of the following form:
+.IP
+.EX
+.ft I
+data-item:
+	code count\*(Os offset data-value ...
+code:
+	byte
+count, offset:
+	operand
+.EE
+.PP
+Each item contains an
+.I offset
+into the section, followed by one or more data values in
+a machine-independent encoding.
+As each value is placed in the data segment, the offset is incremented by the size of the datum.
+.PP
+The
+.I code
+byte has two 4-bit fields.
+The bottom 4 bits of
+.I code
+gives the number of
+.I data-values
+if there are between 1 and 15;
+if there are more than 15,
+the low-order field is zero, and a following
+.I operand
+gives the count.
+.PP
+The top 4 bits of
+.I code
+encode the type of each
+.I data-value
+in the item, which determines its encoding.
+The defined values are:
+.IP
+.RS
+.TF 0000
+.TP
+.B 0001
+8 bit bytes
+.TP
+.B 0010
+32 bit integers, one
+.I word
+each
+.TP
+.B 0011
+string value encoded by
+.IR utf (6)
+in
+.I count
+bytes
+.TP
+.B 0100
+real values in IEEE754 canonical representation, 8 bytes each
+.TP
+.B 0101
+Array, represented by two
+.I words
+giving type and length
+.TP
+.B 0110
+Set base for data items: one
+.I word
+giving an array index
+.TP
+.B 0111
+Restore base for data items:
+no operands
+.TP
+.B 1000
+64 bit big, 8 bytes each
+.RE
+.PD
+.PP
+The loader maintains a current base address and a stack of addresses.
+Each item's value is stored at the address formed by adding the current offset
+to the current base address.
+That address initially is the base of the module's data segment.
+The `set base' operation immediately follows
+an `array'
+.IR data-item .
+It stacks the current base address and sets the current base address to the
+address of the array element selected by its operand.
+The `restore base' operation sets the current base address to the
+address on the top of the stack, and pops the stack.
+.SS Module name
+The module name immediately follows the data section.
+It contains the name of the module implemented by the object file,
+as a sequence of bytes in
+UTF encoding, terminated by a zero byte.
+.SS Link Section
+The link section contains an array of
+.I link-size
+external linkage items,
+listing the functions exported by this module.
+Each variable-length item contains the following:
+.IP
+.EX
+.ft I
+link-item:
+	pc desc sig fn-name
+pc, desc:
+	operand
+sig:
+	word
+fn-name:
+	string
+.ft R
+.EE
+.PP
+.I Fn-name
+is the name of an exported function.
+Adt member functions appear with their
+full names: the member name qualified by the adt name, in the form
+.IB adt-name . member-name,
+for instance
+.BR Iobuf.gets .
+.PP
+.I Pc
+is the instruction number of its entry point.
+.I Desc
+is an index value that selects a type descriptor in the type section,
+which gives the type of the function's stack frame.
+.I Sig
+is an integer hash of the type signature of the function, used in type checking.
+.SS Import Section
+The optional import section lists all those functions imported from other
+modules. This allows type checking at load time. The size of the section in
+bytes is given at the start in operand form. For each module imported there
+is a list of functions imported from that module. For each function, its type signature (a word) is followed by
+a 0 terminated list of bytes representing its name.
+.SS Handler Section
+The final optional section lists all exception handlers declared in the module. The number
+of such handlers is given at the start of the section in operand form. For each one, its format
+is:
+.IP
+.EX
+.ft 1
+handler:
+	offset pc1 pc2 desc nlab exc-tab
+offset, pc1, pc2, desc, nlab:
+	operand
+exc-tab:
+	exc-name pc ... exc-name pc pc
+exc-name:
+	string
+pc:
+	operand
+.ft R
+.EE
+.PP
+Each handler specifies the frame offset of its exception structure, the range of pc values it covers (from pc1 up to but not including pc2), the type descriptor of any
+memory that needs destroying by the handler (or -1 if none), the number of
+exceptions in the handler and then the exception table itself. The latter consists
+of a list of exception names and the corresponding pc to jump to when this
+exception is raised. This is then followed by the pc to jump to in any wildcard (*) case
+or -1 if this is not applicable.
+.SH SEE ALSO
+.IR asm (1),
+.IR dis (2),
+.IR sbl (6)
+.br
+``The Dis Virtual Machine Specification'', Volume 2

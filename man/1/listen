@@ -1,0 +1,237 @@
+.TH LISTEN 1
+.SH NAME
+listen, styxlisten, dial \- network connections
+.SH SYNOPSIS
+.B listen
+[
+.B -Ats
+] [
+.B -a
+.I alg
+]... [
+.B -k
+.I keyfile
+] [
+.B -i
+.BI { initscript }
+]
+.I addr
+.I command
+[
+.IR arg ...
+]
+.br
+.B styxlisten
+[
+.B -Ats
+] [
+.B -a
+.I alg
+]... [
+.B -k
+.I keyfile
+]
+.I addr
+.I command
+[
+.IR arg ...
+]
+.br
+.B dial
+[
+.B -A
+] [
+.B -a
+.I alg
+] [
+.B -k
+.I keyfile
+]
+.I addr
+.I command
+[
+.IR arg ...
+]
+.SH DESCRIPTION
+.I Listen
+waits for an incoming network connection on
+.IR addr ,
+(as accepted by
+.B announce
+in
+.IR sys-dial (2))
+and then invokes
+.IR sh (1)
+to run the associated
+.IR command .
+If the
+.B -A
+option is specified, no authentication or encryption will
+take place on the connection; otherwise
+.I listen
+will attempt to authenticate the party at the other
+end of the connection, allowing any given
+.I alg
+to be used to encrypt and/or digest the
+connection's data. If neither
+.B -A
+or any
+.B -a
+option is given, then
+.I listen
+will allow any algorithm allowed by the local
+.IR ssl (3)
+device.
+If
+.I keyfile
+is specified, then that will be used as the server's certificate;
+otherwise
+.BI /usr/ user /keyring/default
+will be used.
+.PP
+If an
+.I initscript
+is provided, it is executed by each listener
+after announcing its network connection,
+with the shell variable
+.B net
+set to the name of the corresponding network directory
+(see
+.IR sys-dial (2)),
+before listening for incoming calls.
+This can be used to change, or find out the characteristics
+of an announced port (for instance to find out
+the actual port number that has been announced).
+.PP
+By default,
+.I listen
+backgrounds itself (after checking that the port
+announcement proceeded ok); giving it the
+.B -s
+option causes it to run synchronously.
+.PP
+.I Listen
+currently makes available the whole of its current name space visible to the command,
+which might be undesirable, and perhaps should be optional, with a new name space
+constructed for an incoming call.
+The
+.B -t
+option declares the command to be `trusted' giving it access to
+elements of the current name space such as
+.B /mnt/keys
+on an authentication server.
+By default it has not got that access.
+.PP
+.I Styxlisten
+is similar to
+.IR listen ,
+except that it multiplexes a single
+.I styx
+(see
+.IR intro (5))
+server between multiple clients.
+.I Styxlisten
+starts its
+.I cmd
+only once; it assumes it will serve styx messages
+through file descriptor 0 when started. For each client that attaches to
+.IR address ,
+the command will see a new
+.IR attach (5)
+message indicating the new connection.
+Unless the
+.B -A
+option has been given, the
+.B uname
+field in the attach message will be the name of the
+authenticated user.
+When the command exits, the process listening
+on
+.I address
+is stopped.
+.PP
+.I Dial
+is the complement of
+.IR listen .
+It tries to make a connection to
+.IR addr .
+If the
+.B -A
+option is given, no authentication or encryption will
+take place; otherwise Inferno authentication and encryption
+will be performed as usual, using
+.I alg
+if given, or a default algorithm otherwise.
+.I Keyfile
+is used for the certificate if given, otherwise
+.BI /usr/ user /keyring/ addr\fR,\fP
+if it exists, and failing that,
+.BI /usr/ user /keyring/default\fR.\fP
+.I Alg
+is used for the encryption/digest algorithm
+on the connection.
+When the connection is made,
+.I command
+is run in the context of that connection, as described below.
+.PP
+For both
+.I dial
+and
+.IR listen ,
+when the command is run,
+.B $user
+is set to the name of the authenticated user at the other
+end of the connection (if authentication
+is being used), and
+.B $net
+is set to the
+.B /net
+directory corresponding to the connection.
+The standard input and output of the command
+is redirected to the network connection (standard
+error is unaffected).
+.SH EXAMPLES
+Run a custom login daemon and an echo server that
+logs incoming connections:
+.IP
+.EX
+listen 'tcp!*!echo' {
+	echo connection from `{cat $net/remote} >[1=2]
+	echo user is $user >[1=2]
+	cat &
+}
+.EE
+.PP
+Dial up the above echo server:
+.IP
+.EX
+dial tcp!somehost!echo {
+	echo made connection >[1=2]; echo hello; cat >[1=2]
+}
+.EE
+.PP
+Make the current name-space available to all:
+.IP
+.EX
+styxlisten 'tcp!*!styx' export /
+.EE
+.SH SOURCE
+.B /appl/cmd/dial.b
+.br
+.B /appl/cmd/listen.b
+.SH BUGS
+The way that
+.I styxlisten
+is implemented means that the
+.B aname
+from the remote
+.IR mount (2)
+request cannot be passed through to the
+attach message seen by the command that
+has been started by
+.IR styxlisten .
+.SH "SEE ALSO"
+.IR svc (8),
+.IR sys-dial (2),
+.IR auth (6),
+.IR ssl (3)

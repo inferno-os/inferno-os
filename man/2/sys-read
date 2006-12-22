@@ -1,0 +1,94 @@
+.TH SYS-READ 2
+.SH NAME
+read, write, pread, pwrite, stream \- read or write file
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+read:   fn(fd: ref FD, buf: array of byte, nbytes: int): int;
+write:  fn(fd: ref FD, buf: array of byte, nbytes: int): int;
+
+pread:  fn(fd: ref FD, buf: array of byte, nbytes: int,
+           offset: big): int;
+pwrite: fn(fd: ref FD, buf: array of byte, nbytes: int,
+           offset: big): int;
+
+stream: fn(src, dst: ref FD, bufsiz: int): int;
+.EE
+.SH DESCRIPTION
+.B Read
+reads
+.I nbytes
+bytes of data from the offset in the file
+associated with
+.I fd
+into memory at
+.IR buf .
+The file offset is advanced by the number of bytes read.
+It is not guaranteed
+that all
+.I nbytes
+bytes will be read; for example
+if the file refers to the console, at most one line
+will be returned.
+In any event the number of bytes read is returned.
+A return value of
+0 is conventionally interpreted as end of file.
+.PP
+.B Write
+writes
+.I nbytes
+bytes of data starting at
+.I buf
+to the file associated with
+.I fd
+at the file offset.
+The offset is advanced by the number of bytes written.
+The number of bytes actually written is returned.
+It should be regarded as an error
+if this is not the same as requested.
+.PP
+.B Pread
+and
+.B pwrite
+take an explicit file
+.I offset
+as a parameter, leaving
+.IR fd 's
+current offset untouched;
+they are otherwise identical in behaviour to
+.B read
+and
+.BR write .
+They are particulary useful when several processes must access the same
+.I fd
+concurrently and it is inconvenient or undesirable to synchronise their activity
+to avoid interference.
+.PP
+.B Stream
+continually reads data from
+.IR src ,
+using a buffer of
+.I bufsiz
+bytes, and writes the data to
+.IR dst .
+It copies data
+until a read fails (returning
+zero bytes or an error) or a write fails.
+.B Stream
+returns the number of bytes actually copied.
+The implementation may be more efficient than a
+.BR read / write
+loop in the application, but is otherwise
+equivalent to calling
+.B read
+and
+.B write
+directly.
+.SH SEE ALSO
+.IR bufio (2),
+.IR sys-intro (2),
+.IR sys-dup (2),
+.IR sys-open (2),
+.IR read (5)

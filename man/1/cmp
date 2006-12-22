@@ -1,0 +1,50 @@
+.TH CMP 1 
+.SH NAME
+cmp \- compare two files
+.SH SYNOPSIS
+.B cmp
+[
+.B \-lsL
+]
+.I file1 file2
+[
+.I offset1
+[
+.I offset2
+]
+]
+.SH DESCRIPTION
+The two files are
+compared.
+A diagnostic results if the contents differ, otherwise
+there is no output.
+By default,
+.B cmp
+prints the byte number of the first differing byte.
+.PP
+The options are:
+.TP
+.B -l
+Print the byte number (decimal) and the
+differing bytes (hexadecimal) for each difference.
+.TP
+.B -s
+Print nothing for differing files,
+but set the exit status.
+.TP
+.B -L
+Print the line number of the first differing byte.
+.PP
+If offsets are given,
+comparison starts at the designated byte position
+of the corresponding file.
+Offsets that begin with
+.B 0x
+are hexadecimal;
+with
+.BR 0 ,
+octal; with anything else, decimal.
+.SH SOURCE
+.B /appl/cmd/cmp.b
+.SH "SEE ALSO"
+.IR diff (1) 

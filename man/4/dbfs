@@ -1,0 +1,127 @@
+.TH DBFS 4
+.SH NAME
+dbfs, rawdbfs \- simple database file system
+.SH SYNOPSIS
+.B dbfs
+[
+.B -abcer
+]
+.I file mountpoint
+.br
+.B rawdbfs
+[
+.B -abcelrx
+]
+[
+.B -u
+.I cmd
+]
+.I file mountpoint
+.PP
+.IB mountpoint /new
+.br
+.IB mountpoint /0
+.br
+.IB mountpoint /1
+.br
+.IB mountpoint /\fR...\fP
+.SH DESCRIPTION
+.B Dbfs
+and
+.B rawdbfs
+both expose a simple, record-based filesystem stored
+in
+.IR file .
+The
+.BR -a ,
+.BR -b ,
+.BR -c ,
+and
+.B -r
+options have the same meaning as the options accepted by
+.IR bind (1).
+If the
+.B -e
+option is given, then
+.I file
+will be created if it does not already exist.
+The filesystem provided by both
+.B dbfs
+and
+.B rawdbfs
+is substantially the same:
+when started,
+.I mountpoint
+is populated with numbered files, one for each record found in
+.IR file .
+A read of one of these files yields the data in the record;
+a write stores data in the record. A new record can be created
+by opening the
+.B new
+file; writes to this file write to the new record. The name
+of the new file can be discovered by using
+.I fstat
+in
+.IR sys-stat (2).
+Records can be removed by removing the appropriate
+record file.
+.PP
+.B Rawdbfs
+has additional features for database use: 
+.BR -x
+causes two additional files ("index" and "stats") to  appear
+in the mounted directory,
+.BR -l
+specifies that a record can only be opened for writing
+by one process at once, and 
+.BR -u
+.I cmd
+specifies a 
+.IR sh (1)
+command to be run whenever the contents of the database 
+change.
+The index file is provided as a convenience for database
+client applications. Once initialised (by writing an integer value to it),
+subsequent reads return an ever-increasing integer value.
+Reading the stats file returns counts of database
+read, write, create and delete operations as a string of four
+integers.
+.PP
+.B Dbfs
+and
+.B rawdbfs
+differ in the way that they store their data.
+.B Dbfs
+stores its records in
+.I file
+in a simple text format: the end of a record is indicated
+by an empty line. The file is completely rewritten every time
+a record is written. Storing records containing blank lines
+will lead to confusion when the database is re-read.
+.B Rawdbfs
+can store arbitrary data, but the format of the data
+storage is known only to itself. It does not rewrite
+the whole file on every record change, so can be more
+suitable for flash-based storage, where it is important
+to minimise the number of writes.
+.PP
+Note that the record numbers always get their initial
+numbering from the order of the records in
+.IR file .
+You cannot assume that the filename given to a record
+will remain the same between runs of
+.BR dbfs .
+.SH SOURCE
+.B /appl/cmd/dbfs.b
+.br
+.B /appl/cmd/rawdbfs.b
+.SH SEE ALSO
+.IR memfs (4),
+.IR ramfile (4),
+.IR wm-calendar (1)
+.SH BUGS
+Write offsets are ignored, so the maximum amount of data
+that can be stored in a record is ATOMICIO bytes (i.e. 8K).
+.PP
+There is no way to compact a file maintained by
+.BR dbfs .

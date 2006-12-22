@@ -1,0 +1,256 @@
+.TH SH-TK 1
+.SH NAME
+tk, chan, send, recv, alt \- loadable tk module for sh.
+.SH SYNOPSIS
+.B load tk
+
+.B chan
+.IR name ...
+.br
+.B send
+.I chan value
+.br
+.B tk window
+.I title
+[
+.I args...
+]
+.br
+.B tk winctl
+.I winid cmd
+.br
+.B tk wintitle
+.I winid title
+.br
+.B tk namechan
+.I chan
+[
+.I name
+]
+.br
+.B tk del
+.I name
+.br
+.B tk
+.I winid tkcmd
+.br
+.B ${tk window
+.I title
+[
+.I args...
+]
+.B }
+.br
+.B ${tk
+.I winid tkcmd
+.B }
+.br
+.B ${recv
+.I chan
+.B }
+.br
+.B ${alt
+.I chan
+\& ...
+.B }
+.br
+.SH DESCRIPTION
+.B Tk
+is a loadable module for
+.IR sh (1)
+that provides access to Inferno Tk graphics
+and string channels.
+Most of the builtin commands that it defines map
+closely to primitives within
+.IR wmlib (2)
+and
+.IR tk (2).
+Unless otherwise stated, if a command requires
+a
+.I winid
+argument, if no window with that id is found, a
+.B bad win
+exception is raised. Similarly, a reference to
+an unknown channel name will raise a
+.B bad chan
+exception.
+There is no requirement that this module be used in
+a windowing context: although window creation will
+fail if there is no context, the channel communication
+primitives will work regardless.
+.TP 10
+.B chan
+For each
+.I name
+in turn,
+.B chan
+creates a new channel called
+.I name
+within the tk module. 
+.I Name
+henceforth represents a Limbo
+.B chan
+.B of
+.B string
+and can be used to send string values between
+.I sh
+processes running in parallel. A
+.I chan
+is also used to receive events arriving from the window
+manager. It is illegal to create a channel whose name
+consists entirely of numeric digits.
+.TP
+.B send
+.B Send
+sends its argument
+.I value
+down the channel
+.IR chan ,
+blocking until a corresponding receive operation
+takes place on the channel.
+.TP
+.B tk window
+.B Tk window
+creates a new top-level window with the text of
+.I title
+in the titlebar at the top. Each window created by the
+tk module is assigned a unique numeric id. This id
+is printed by this command; to get access to the value
+of the
+.I winid
+in a script, use
+.BR "${tk window}" .
+All the remaining arguments are joined together
+by spaces and passed as the tk options for the window.
+When a window is created, a corresponding
+channel of the same name is created. Events from
+the window manager arrive on this channel, and
+should be responded to appropriately using
+.BR "tk winctl" .
+.TP
+.B tk winctl
+.B Tk winctl
+is used to communicate requests to the window manager.
+(see
+.B winctl()
+in
+.IR wmlib (2)).
+If an event arriving on a window's channel is passed
+to
+.BR "tk winctl" ,
+a suitable default action will take place.
+The set of possible actions include:
+.RS
+.TP
+.B exit
+A request to close the window.
+.TP
+.B size
+A request to resize the window.
+.TP
+.B task
+A request to miniaturise the window.
+.TP
+.B move
+A request to move the window.
+.RE
+.TP
+.B tk wintitle
+.B Tk wintitle
+changes the title of the window
+.I winid
+to
+.IR title .
+.TP
+.B tk del
+.B Tk del
+deletes a channel or a window. If
+.I name
+is the
+.I winid
+of an existing window, then both the
+window and its associated channel are destroyed.
+A
+.B del
+of a non-existent channel or window is ignored.
+.TP
+.B tk namechan
+.B Tk namechan
+invokes the Tk module's
+.B namechan()
+function to give a tk name to a
+channel within the tk module.
+If
+.I name
+is omitted, then the tk name given will be
+the same as
+.IR chan .
+.TP
+.BI tk \ winid
+If
+.I winid
+is the id of an existing window, the rest of the
+arguments joined together by spaces
+and sent as a tk command to be interpreted
+in that window. If the shell is in interactive mode,
+then the string returned by tk will be printed.
+The exit status of
+.B tk
+is false if the string returned by tk begins with
+a bang
+.RB ( ! )
+character.
+.TP
+.B ${tk window}
+.B Tk window
+is the same as its command counterpart, except
+that it yields the
+.I winid
+of the newly created window rather than printing
+it.
+.TP
+.BI ${tk \ winid }
+This command is the same as its command counterpart,
+except that it yields the return value from the
+Tk command as its result.
+.TP
+.B ${recv}
+.B Recv
+receives a string value from
+.I chan
+and yields that value. It will block until a corresponding
+send operation takes place on the channel.
+.TP
+.B ${alt}
+.B Alt
+waits until a value is available on any of the
+named
+.IR chan s.
+It yields a list containing two elements,
+the name of the channel from which the value was
+received, and the actual value received.
+.SH EXAMPLE
+The following code creates a window and allows
+normal window manager operations on it. Another
+shell in a new process group is created in order to prevent
+the shell window from
+disappearing when the tk window is deleted.
+.IP
+.EX
+sh
+load std tk
+pctl newpgrp
+wid=${tk window 'My window'}
+tk $wid update
+while {} {tk winctl $wid ${recv $wid}} &
+.EE
+.SH SOURCE
+.B /appl/cmd/sh/tk.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-std (1),
+.IR sh-expr (1),
+.IR tkcmd (1),
+.IR tk (2),
+.IR wmlib (2),
+``The Tk Reference Manual''

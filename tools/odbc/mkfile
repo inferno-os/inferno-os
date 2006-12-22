@@ -1,0 +1,19 @@
+<../../mkconfig
+
+TARG=odbc
+
+OFILES=\
+	odbc.$O\
+
+HFILES=\
+	../libstyx/styxserver.h\
+
+LIBS=styx 9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<mkfile-$SYSTARG
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS -I../libstyx

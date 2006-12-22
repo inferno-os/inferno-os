@@ -1,0 +1,57 @@
+.TH DEVPOINTER 2 mux
+.SH NAME
+devpointer \- I/O interface for the pointer device
+.SH SYNOPSIS
+.EX
+include "draw.m";   # for Draw->Pointer
+include "devpointer.m";
+ptr:= load Devpointer Devpointer->PATH;
+
+init:      fn(file: string, posn: chan of ref Draw->Pointer): int;
+bytes2ptr: fn(buf: array of byte)    : ref Draw->Pointer;
+ptr2bytes: fn(ptr: ref Draw->Pointer): array of byte;
+.EE
+.SH DESCRIPTION
+.B Devpointer
+reads messages from pointer devices with the same data format as
+.BR /dev/pointer ,
+converting them to
+.B Pointer
+adts.
+.PP
+.B Init
+spawns a process to read continually the pointer device specified by
+.I file
+and send a
+.B Pointer
+adts over the channel specified by
+.IR posn .
+If
+.I file
+is
+.BR nil ,
+the default device is
+.BR /dev/pointer .
+.PP
+.B Bytes2ptr
+converts the array of bytes
+.I buf
+to a
+.B Pointer
+and returns a reference to it.
+.I Buf
+should consist of exactly
+.B Devpointer->Size
+bytes and be in the format returned by
+.BR /dev/pointer .
+.PP
+.B Ptr2bytes
+provides the inverse transformation of
+.BR bytes2ptr :
+it packs the data into an array of bytes of appropriate format,
+which it returns.
+.SH FILES
+.B /dev/pointer
+.SH "SEE ALSO"
+.IR draw-intro (2),
+.IR draw-pointer (2)

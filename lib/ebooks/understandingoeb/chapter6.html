@@ -1,0 +1,626 @@
+<?xml version='1.0'?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+<?xml-stylesheet href="understandingoeb.css" type="text/x-oeb1-css"?>
+
+<html>
+<head>
+  <link rel="stylesheet" type="text/x-oeb1-css" href="understandingoeb.css" />
+<title>Understanding OEB Chapter 6</title>
+  <meta name="author" content="Garret Wilson" />
+  <meta name="copyright" content="Copyright (c) 2000-2001 Garret Wilson. All rights reserved." />
+</head>
+
+<body>
+
+<h2 id="chapter6">6. Real-World OEB: Charter of the United Nations</h2>
+
+<p>At this point you should be able to create a fairly complex real-world OEB publication. We could demonstrate creating an OEB publication from the ground up by writing a book-length work from scratch, but it will probably be more illustrative to take a publication that already exists and convert it to OEB.</p>
+
+<p>Here, we'll take the Charter of the United Nations &mdash; available on the Internet at <a href="http://www.un.org/aboutun/charter/">http://www.un.org/aboutun/charter/</a> &mdash; and convert it into an OEB publication in the same step-by-step manner you would use with your own publication, or one you are converting. You can find the finished product at <a href="http://www.globalmentor.com/bookstore/search?text=un+charter">http://www.globalmentor.com/bookstore/search?text=un+charter</a>.</p>
+
+<p>It's best to first take a broad look of how the work is organized, so that we can correctly model its structure using OEB elements. In general, the UN Charter is organized in the following hierarchy:</p>
+
+<ul>
+	<li>Charter of the United Nations<br />
+	<ul>
+		<li>Chapters<br />
+		<ul>
+			<li>Articles</li>
+		</ul>
+		</li>
+	</ul>
+	</li>
+</ul>
+
+<p>Since OEB, being modeled so closely after HTML, has no concept of hierarchical divisions, we'll divide the UN Charter using whatever method we feel appropriate. While we could certainly put the entire Charter into one OEB document, it will probably be easier for us to keep track of things if we use several OEB document files. We'll place each chapter and all its article into a separate OEB document file, and do the same with the Introductory Note and the Preamble.</p>
+
+<p>Without specific elements to represent hierarchical divisions, we'll use own arbitrary method of representing headings within each division. There are a number of ways the division headings could be represented, none really being any better than the others, so we'll choose the following representation:</p>
+
+<ul>
+	<li><strong><code>&lt;h1&gt;</code></strong> Title of entire UN Charter.</li>
+	<li><strong><code>&lt;h2&gt;</code></strong> Title of each chapter.</li>
+	<li><strong><code>&lt;h3&gt;</code></strong> Title of each article.</li>
+</ul>
+
+<h3 id="uncharterchapter2">UN Charter Chapter 2: <code>chapter2.html</code></h3>
+
+<p>Since we're using separate document files for each chapter, this makes it easy to analyze different parts of the Charter separately. Although it might seem strange that we're not starting from the beginning, it's probably best to first jump into the midst of the document and see how the "mundane" structures will be implemented; we can look at the "Introductory Note", "Preamble", and trimmings such as a table of contents later, after you're comfortable with producing more common OEB elements.</p>
+
+<p>The second chapter of the UN charter begins with the chapter name and title, then proceeds with each separate article title and the article's contents:</p>
+
+<blockquote>
+<p>CHAPTER II</p>
+<p>MEMBERSHIP</p>
+<p>Article 3</p>
+<p>The original Members of the United Nations shall be the states which, having participated in the United Nations Conference on International Organization at San Francisco, or having previously signed the Declaration by United Nations of 1 January 1942, sign the present Charter and ratify it in accordance with Article 110.</p>
+<p>Article 4</p>
+<p>1. Membership in the United Nations is open to all other peace-loving states which accept the obligations contained in the present Charter and, in the judgment of the Organization, are able and willing to carry out these obligations.</p>
+<p>2. The admission of any such state to membership in the United Nations will be effected by a decision of the General Assembly upon the recommendation of the Security Council.</p>
+<p><em>. . .</em></p>
+</blockquote>
+
+<p>We've already decided to represent the chapter title using the <code>&lt;h2&gt;</code> element, and the title for each article using the <code>&lt;h3&gt;</code> element. After this is done, the first part of our converted text looks like this:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter II: Membership<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 3<code>&lt;/h3&gt;</code>
+</blockquote>
+
+<p>The text of "Article 3", being a simple paragraph, will simply go inside a <code>&lt;p&gt;</code> element:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter II: Membership<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 3<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The original Members of the United Nations shall be the states which, having participated in the United Nations Conference on International Organization at San Francisco, or having previously signed the Declaration by United Nations of 1 January 1942, sign the present Charter and ratify it in accordance with Article 110.<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>The title of "Article 4" can obviously be placed inside a <code>&lt;h3&gt;</code> element, as was "Article 3", but what about the article's contents? While we could simply use two <code>&lt;p&gt;</code> elements, these two paragraphs are numbered; it would be more appropriate to use an ordered list, with each paragraph appearing inside one of the items in the list:</p>
+
+<blockquote>
+<p><em>. . .</em></p>
+	<code>&lt;h3&gt;</code>Article 4<code>&lt;/h3&gt;</code><br />
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>Membership in the United Nations is open to all other peace-loving states which accept the obligations contained in the present Charter and, in the judgment of the Organization, are able and willing to carry out these obligations.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>The admission of any such state to membership in the United Nations will be effected by a decision of the General Assembly upon the recommendation of the Security Council.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ol&gt;</code>
+</blockquote>
+
+<p>Note that we remove the literal numbers in each paragraph; the <code>&lt;ol&gt;</code> element combined with the <code>&lt;li&gt;</code> elements will add the correct numbers automatically when the book is displayed.</p>
+
+<p>Markup added to articles five and six will be identical to that added to the first article. The last step is even more important than the others: add the <code>&lt;body&gt;</code> element and the other required OEB document markup. The resulting document file <code>chapter2.html</code> appears below:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;h2&gt;</code>Chapter II: Membership<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 3<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The original Members of the United Nations shall be the states which, having participated in the United Nations Conference on International Organization at San Francisco, or having previously signed the Declaration by United Nations of 1 January 1942, sign the present Charter and ratify it in accordance with Article 110.<code>&lt;/p&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 4<code>&lt;/h3&gt;</code><br />
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>Membership in the United Nations is open to all other peace-loving states which accept the obligations contained in the present Charter and, in the judgment of the Organization, are able and willing to carry out these obligations.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>The admission of any such state to membership in the United Nations will be effected by a decision of the General Assembly upon the recommendation of the Security Council.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ol&gt;</code>
+	<code>&lt;h3&gt;</code>Article 5<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>A Member of the United Nations against which preventive or enforcement action has been taken by the Security Council may be suspended from the exercise of the rights and privileges of membership by the General Assembly upon the recommendation of the Security Council. The exercise of these rights and privileges may be restored by the Security Council.<code>&lt;/p&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 6<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>A Member of the United Nations which has persistently violated the Principles contained in the present Charter may be expelled from the Organization by the General Assembly upon the recommendation of the Security Council.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>When this chapter is displayed, here's how it will appear:</p>
+
+<blockquote>
+	<h2>Chapter II: Membership</h2>
+	<h3>Article 3</h3>
+	<p>The original Members of the United Nations shall be the states which, having participated in the United Nations Conference on International Organization at San Francisco, or having previously signed the Declaration by United Nations of 1 January 1942, sign the present Charter and ratify it in accordance with Article 110.</p>
+	<h3>Article 4</h3>
+	<ol>
+	<li><p>Membership in the United Nations is open to all other peace-loving states which accept the obligations contained in the present Charter and, in the judgment of the Organization, are able and willing to carry out these obligations.</p></li>
+	<li><p>The admission of any such state to membership in the United Nations will be effected by a decision of the General Assembly upon the recommendation of the Security Council.</p></li>
+	</ol>
+	<h3>Article 5</h3>
+	<p>A Member of the United Nations against which preventive or enforcement action has been taken by the Security Council may be suspended from the exercise of the rights and privileges of membership by the General Assembly upon the recommendation of the Security Council. The exercise of these rights and privileges may be restored by the Security Council.</p>
+	<h3>Article 6</h3>
+	<p>A Member of the United Nations which has persistently violated the Principles contained in the present Charter may be expelled from the Organization by the General Assembly upon the recommendation of the Security Council.</p>
+</blockquote>
+
+<h3 id="uncharterchapter3">UN Charter Chapter 3: <code>chapter3.html</code></h3>
+
+<p>After applying markup to the second chapter of the UN Charter, doing the same for the first chapter is straightforward; we'll therefore examine the following chapter, chapter three:</p>
+
+
+<blockquote>
+<p>CHAPTER III</p>
+<p>ORGANS</p>
+<p>Article 7</p>
+<p>1. There are established as the principal organs of the United Nations:<br />
+a General Assembly<br />
+a Security Council<br />
+an Economic and Social Council<br />
+a Trusteeship Council<br />
+an International Court of Justice<br />
+and a Secretariat.
+</p>
+<p>2. Such subsidiary organs as may be found necessary may be established in accordance with the present Charter.</p>
+<p>Article 8</p>
+<p>The United Nations shall place no restrictions on the eligibility of men and women to participate in any capacity and under conditions of equality in its principal and subsidiary organs.</p>
+</blockquote>
+
+<p>Since we've already established a consistent way to use heading elements, the chapter and article titles can be converted as before:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter III: Organs<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 7<code>&lt;/h3&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>Similar to Chapter II, Article 4, the individual items in Chapter II, Article 7 are numbered (ordered) items in a list. We'll therefore begin the text as follows:</p>
+
+<blockquote>
+	<p><em>. . .</em></p>
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>There are established as the principal organs of the United Nations:<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>At this point there seems to be a problem: The first listed item, beginning with "There are established...," itself contains a list of items, including "a General Assembly," "a Security Council," etc. These items are unordered (that is, they have no number beside them), but they represent a list nonetheless. It seems as if the first list item itself contains a list.</p>
+
+<p>These <dfn>nested lists</dfn> present no problem any more than common nested elements. They do require that you take special care in making sure which list elements appear in which other elements. We should first decide which type of list element to use for the list of "principal organs." As before, we'll present each of these items using the <code>&lt;li&gt;</code> tag. Together, these tags go inside an enclosing list element, but these particular items shouldn't be listed in any particular order; more precisely, we don't want these items to be represented with numbers beside them. We'll therefore use an unordered list <code>&lt;ul&gt;</code> instead of an ordered list <code>&lt;ul&gt;</code>.</p>
+
+<p>We'll therefore put the <code>&lt;li&gt;</code> list items of the unordered list <code>&lt;ui&gt;</code> inside the first <code>&lt;li&gt;</code> list item of the ordered list <code>&lt;ol&gt;</code>. Looking at the finished product should help to understand how this works:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter III: Organs<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 7<code>&lt;/h3&gt;</code><br />
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>There are established as the principal organs of the United Nations:<code>&lt;/p&gt;</code><br />
+	<blockquote>
+	<code>&lt;ul&gt;</code><br />
+	<code>&lt;li&gt;</code>a General Assembly<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Security Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an Economic and Social Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Trusteeship Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an International Court of Justice<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>and a Secretariat.<code>&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>	
+	<code>&lt;/li&gt;</code>
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>Notice that the ending tag <code>&lt;/li&gt;</code> of the first item in the ordered list comes <em>after</em> the end of the entire unordered list <code>&lt;ul&gt;</code>. This means that the entire unordered list <code>&lt;ul&gt;</code> is actually part of one list item element: the first list item in the ordered list <code>&lt;ol&gt;</code></p>
+
+<p>We're still not finished with Article 7; we still must add the second item, beginning with, "Such subsidiary organs...:"</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter III: Organs<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 7<code>&lt;/h3&gt;</code><br />
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>There are established as the principal organs of the United Nations:<code>&lt;/p&gt;</code><br />
+	<blockquote>
+	<code>&lt;ul&gt;</code>
+	<code>&lt;li&gt;</code>a General Assembly<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Security Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an Economic and Social Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Trusteeship Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an International Court of Justice<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>and a Secretariat.<code>&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>	
+	<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>Such subsidiary organs as may be found necessary may be established in accordance with the present Charter.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ol&gt;</code>
+</blockquote>
+
+<p>The following article, Article 8, which ends this chapter of the UN Charter, is quite simple structurally. As with any OEB document file, we'll also need to add the enclosing <code>&lt;html&gt;</code> and <code>&lt;body&gt; elements:</code></p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;h2&gt;</code>Chapter III: Organs<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 7<code>&lt;/h3&gt;</code><br />
+	<code>&lt;ol&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>There are established as the principal organs of the United Nations:<code>&lt;/p&gt;</code><br />
+	<blockquote>
+	<code>&lt;ul&gt;</code>
+	<code>&lt;li&gt;</code>a General Assembly<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Security Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an Economic and Social Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>a Trusteeship Council<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>an International Court of Justice<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>and a Secretariat.<code>&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>	
+	<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;p&gt;</code>Such subsidiary organs as may be found necessary may be established in accordance with the present Charter.<code>&lt;/p&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ol&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 8<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The United Nations shall place no restrictions on the eligibility of men and women to participate in any capacity and under conditions of equality in its principal and subsidiary organs.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>The chapter will then appear like this when it's displayed:</p>
+
+<blockquote>
+	<h2>Chapter III: Organs</h2>
+	<h3>Article 7</h3>
+	<ol>
+	<li><p>There are established as the principal organs of the United Nations:</p>
+		<ul>
+		<li>a General Assembly</li>
+		<li>a Security Council</li>
+		<li>an Economic and Social Council</li>
+		<li>a Trusteeship Council</li>
+		<li>an International Court of Justice</li>
+		<li>and a Secretariat.</li>
+		</ul>
+	</li>
+	<li><p>Such subsidiary organs as may be found necessary may be established in accordance with the present Charter.</p></li>
+	</ol>
+	<h3>Article 8</h3>
+	<p>The United Nations shall place no restrictions on the eligibility of men and women to participate in any capacity and under conditions of equality in its principal and subsidiary organs.</p>
+</blockquote>
+
+<h3 id="uncharterchapter1">UN Charter Chapter 1: <code>chapter1.html</code></h3>
+
+<p>Now that we've examined chapters two and three, we can return to Chapter One. At first the structure of the content looks relatively straightforward compared to the chapters we've already examined.</p>
+
+<blockquote>
+<p>CHAPTER I</p>
+<p>PURPOSES AND PRINCIPLES</p>
+<p>Article 1</p>
+<p>The Purposes of the United Nations are:</p>
+<p><em>. . .</em></p>
+<p>Article 2</p>
+<p>The Organization and its Members, in pursuit of the Purposes stated in Article 1, shall act in accordance with the following Principles.</p>
+<p><em>. . .</em></p>
+</blockquote>
+
+<p>You should be able to easily mark up the information using the OEB publication structure, resulting in something similar to the following:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>Chapter I: Purposes and Principles<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3&gt;</code>Article 1<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The Purposes of the United Nations are:<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p><br />
+	<code>&lt;h3&gt;</code>Article 2<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The Organization and its Members, in pursuit of the Purposes stated in Article 1, shall act in accordance with the following Principles.<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>It is at this point that the power of OEB can be put to use to store information within the document. Since these are the first places that the UN <dfn>Purposes</dfn> and <dfn>Principles</dfn> are being defined, we can make good use of the <code>&lt;dfn&gt;</code> element to indicate this:</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>The <code>&lt;dfn&gt;</code>Purposes<code>&lt;/dfn&gt;</code> of the United Nations are:<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p><br />
+	<code>&lt;p&gt;</code>The Organization and its Members, in pursuit of the Purposes stated in Article 1, shall act in accordance with the following <code>&lt;dfn&gt;</code>Principles<code>&lt;/dfn&gt;</code>.<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>Adding the <code>&lt;dfn&gt;</code> tag encodes meaning into the document, explicitly stating that these two concepts are being defined for the first time. We can go one step further and mark these definitions with anchors, in case we want to refer to these specific definitions later in the document (remember that, instead of using actual <code>&lt;a&gt;</code> elements for anchors, we can simply add <code>id</code> attributes to the target elements):</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>The <code>&lt;dfn id="purposesDefinition"&gt;</code>Purposes<code>&lt;/dfn&gt;</code> of the United Nations are:<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p><br />
+	<code>&lt;p&gt;</code>The Organization and its Members, in pursuit of the Purposes stated in Article 1, shall act in accordance with the following <code>&lt;dfn id="principlesDefinition"&gt;</code>Principles<code>&lt;/dfn&gt;</code>.<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>In fact, it's a good idea if we place anchors on every heading in the document so that the respective sections can be linked to later. For example, adding anchors to the sections of this chapter results in the markup below. (If we were to use actual anchor elements for anchors, we would place the anchor element, <code>&lt;a&gt;</code>, inside the heading element, <code>&lt;h2&gt;</code>. This order cannot be reversed, for the same reason that the <code>&lt;p&gt;</code> element cannot go inside an <code>&lt;em&gt;</code> element: inline elements must go inside block elements, and not vice-versa. Here we don't even use anchor elements at all, but simply add <code>id</code> attributes to the <code>&lt;h2&gt;</code> and <code>&lt;h3&gt;</code> elements.)</p>
+
+<blockquote>
+	<code>&lt;h2 id="chapter1"&gt;</code>Chapter I: Purposes and Principles<code>&lt;/h2&gt;</code><br />
+	<code>&lt;h3 id="article1"&gt;</code>Article 1<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The Purposes of the United Nations are:<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p><br />
+	<code>&lt;h3 id="article2"&gt;</code>Article 2<code>&lt;/h3&gt;</code><br />
+	<code>&lt;p&gt;</code>The Organization and its Members, in pursuit of the Purposes stated in Article 1, shall act in accordance with the following Principles.<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p></p>
+
+<p>Assuming we add anchor elements to every division in the entire UN Charter, and assuming Chapter VII is placed in a file named <code>chapter7.html</code>, we can provide links from this chapter. The last principle in Article 2 states that "this principle shall not prejudice the application of enforcement measures under Chapter Vll."; with anchor tags appropriately placed throughout our documents, we can provide a direct hypertext link to the chapter by using the anchor element <code>&lt;a&gt;</code> like this:</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>...this principle shall not prejudice the application of enforcement measures under <code>&lt;a href="chapter7.html#chapter7"&gt;</code>Chapter Vll<code>&lt;/a&gt;</code>.<code>&lt;p&gt;</code>
+</blockquote>
+
+<p>Notice that we've not only linked to the file, <code>chapter7.html</code>, we've also provided the ID of the anchor, <code>#chapter7</code>, which marks the beginning of the actual chapter in the file. Since Chapter 7 is at the beginning of <code>chapter7.html</code>, we could have simply linked to the document file itself: <code>&lt;a href="chapter7.html"&gt;</code>. However, in many cases the target anchor within the file will be important as well when the anchor is not at the beginning of the document &mdash; in the case of articles, for instance.</p>
+
+<h3 id="uncharterintro">UN Charter Introductory Note: <code>intro.html</code></h3>
+
+<p>Moving back another step to the UN Charter's Introductory Note provides more examples of linking, provided the appropriate anchor elements have been placed at the start of every chapter and article:</p>
+
+<blockquote>
+	<code>&lt;h2 id="chapter1"&gt;</code>Introductory Note<code>&lt;/h2&gt;</code><br />
+	<code>&lt;p&gt;</code>The Charter of the United Nations was signed on 26 June 1945, in San Francisco, at the conclusion of the United Nations Conference on International Organization, and came into force on 24 October 1945. The Statute of the International Court of Justice is an integral part of the Charter.<code>&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;</code>Amendments to <code>&lt;a href="chapter5.html#article23"&gt;</code>Articles 23<code>&lt;/a&gt;</code>, <code>&lt;a href="chapter5.html#article27"&gt;</code>27<code>&lt;/a&gt;</code> and <code>&lt;a href="chapter10.html#article61"&gt;</code>61<code>&lt;/a&gt;</code> of the Charter were adopted by the General Assembly on 17 December 1963 and came into force on 31 August 1965. A further amendment to <code>&lt;a href="chapter10.html#article61"&gt;</code>Article 61<code>&lt;/a&gt;</code> was adopted by the General Assembly on 20 December 1971, and came into force on 24 September 1973. An amendment to <code>&lt;a href="chapter18.html#article109"&gt;</code>Article 109<code>&lt;/a&gt;</code>, adopted by the General Assembly on 20 December 1965, came into force on 12 June 1968.<code>&lt;/p&gt;</code><br />
+	<p><em>. . .</em></p>
+</blockquote>
+
+<p>Note that we had to first check and see in which document files the articles appear before we could link to them.</p>
+
+<h3 id="unchartertoc">Table of Contents: <code>toc.html</code></h3>
+
+<p>The first version of the Open eBook Publication Structure has no specific elements for creating a table of contents; this means that, outside of creating a new set of elements specifically for a table of contents, we'll be forced to use generic elements to do the job. Here we'll use the standard elements to create a table of contents inside a normal OEB document.</p>
+
+<p>A table of contents is usually one of the last things you'll add to your OEB publication, for good reason: not only does it provide a hierarchical view of the structure of the publication, it provides links to each one of publication sections. You may, however, elect to create a table of contents early and use it as a working design of your entire publication, if you are writing the work from scratch; you'd still have to wait until the document was finished to test all of the hyperlinks, though.</p>
+
+<p>The table of contents therefore has two elements: its reflection of the publication's structure, as well as hyperlinks to parts of the publication. Reflecting the work's structure can be accomplished in several ways; here we'll use unordered list <code>&lt;ol&gt;</code> elements. An OEB document displaying the top-level UN Charter structure (that is, the level containing the Introductory Note, Preamble, and chapters), might be marked up like this:</p>
+
+<blockquote>
+<code>&lt;ul&gt;</code><br />
+	<code>&lt;li&gt;</code>Introductory Note<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Preamble<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Chapter I: Purposes and Principles<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Chapter II: Membership<code>&lt;/li&gt;</code><br />
+	<em>. . .</em><br />
+<code>&lt;/ul&gt;</code>
+</blockquote>
+
+<p>This would appear something like this:</p>
+
+<blockquote>
+<ul>
+	<li>Introductory Note</li>
+	<li>Preamble</li>
+	<li>Chapter I: Purposes and Principles</li>
+	<li>Chapter II: Membership</li>
+	<li><em>. . .</em></li>
+</ul>
+</blockquote>
+
+<p>Displaying the second level of organization, the level containing the articles, requires a bit more concentration on details. It's evident that each list of articles that appear within a chapter will be marked up using a separate list element, but it's important to remember that all of these lists are actually sub-lists of the chapter item in which they appear. Each chapter item is enclosed within a list item <code>&lt;li&gt;</code><em>...</em><code>&lt;/li&gt;</code> beginning and ending tag pair. Each sub-list of articles must appear <em>inside</em> that list item's beginning and ending tags. OEB's content model does not allow lists to appear between list items; sub-lists must appear inside the list item to which they belong.</p>
+
+<blockquote>
+<code>&lt;ul&gt;</code><br />
+	<code>&lt;li&gt;</code>Introductory Note<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Preamble<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Chapter I: Purposes and Principles<br />
+	<blockquote>
+	<code>&lt;ul&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 1<code>&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 2<code>&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>
+	<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;</code>Chapter II: Membership<br />
+	<blockquote>
+	<code>&lt;ul&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 3<code>&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 4<code>&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 5<code>&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;</code>Article 6<code>&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>
+	<code>&lt;/li&gt;</code><br />
+	<em>. . .</em><br />
+<code>&lt;/ul&gt;</code>
+</blockquote>
+
+<p>When displayed, the table of contents would now appear like this:</p>
+
+<blockquote>
+<ul>
+	<li>Introductory Note</li>
+	<li>Preamble</li>
+	<li>Chapter I: Purposes and Principles
+	<ul>
+		<li>Article 1</li>
+		<li>Article 2</li>
+	</ul>
+	</li>
+	<li>Chapter II: Membership
+	<ul>
+		<li>Article 3</li>
+		<li>Article 4</li>
+		<li>Article 5</li>
+		<li>Article 6</li>
+	</ul>	
+	</li>
+	<li><em>. . .</em></li>
+</ul>
+</blockquote>
+
+<p>That's all we need to do regarding structure, since the UN Charter has only these levels of hierarchy. The other issue to address is hyperlinking: each item in the table of contents must link to the respective section of the publication. If that section lies somewhere in the middle of the physical document file in which it appears, we must have first provided anchors with unique IDs for the table of contents to link to.</p>
+
+<p>After adding hyperlinks, our table of contents is basically finished:</p>
+
+<blockquote>
+<code>&lt;ul&gt;</code><br />
+	<code>&lt;li&gt;&lt;a href="intro.html"&gt;</code>Introductory Note<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;a href="preamble.html"&gt;</code>Preamble<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;a href="chapter1.html"&gt;</code>Chapter I: Purposes and Principles&lt;/a&gt;<br />
+	<blockquote>
+	<code>&lt;ul&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter1.html#article1"&gt;</code>Article 1<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter1.html#article2"&gt;</code>Article 2<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>
+	<code>&lt;/li&gt;</code><br />
+	<code>&lt;li&gt;&lt;a href="chapter2.html"&gt;</code>Chapter II: Membership&lt;/a&gt;<br />
+	<blockquote>
+	<code>&lt;ul&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter2.html#article3"&gt;</code>Article 3<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter2.html#article4"&gt;</code>Article 4<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter2.html#article5"&gt;</code>Article 5<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+		<code>&lt;li&gt;&lt;a href="chapter2.html#article6"&gt;</code>Article 6<code>&lt;/a&gt;&lt;/li&gt;</code><br />
+	<code>&lt;/ul&gt;</code>
+	</blockquote>
+	<code>&lt;/li&gt;</code><br />
+	<em>. . .</em><br />
+<code>&lt;/ul&gt;</code>
+</blockquote>
+
+<h3 id="uncharterpackage">UN Charter Package File: <code>uncharter.opf</code></h3>
+
+<p>From the examples covered so far, marking up the rest of the UN Charter should be a simple task. There's still one more file we need to create, however, to tie all the pieces together and make our series of OEB documents into a complete OEB publication: the OEB package file.</p>
+
+<p>Creating the package file, as you know by now, requires less thinking and planning than cutting, pasting, and altering to match the particular publication you're working with. In this example, we'll simply start from the top of the file and work our way downwards &mdash; although we'll include ending tags when appropriate, which may occur at the end of the file. The first part should be familiar &mdash; it appears at the top of every package file:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code><br />
+<code>&lt;package unique-identifier="uncharterpackage"&gt;</code>
+
+	<blockquote>
+		<em>. . .</em>
+	</blockquote>
+
+<code>&lt;/package&gt;</code>
+</blockquote>
+
+<p>Inside the <code>&lt;package&gt;</code> element, we'll place the metadata. In particular, we'll include the title of the publication (<em>Charter of the United Nations</em>) and we'll create our own type of "charter", although this particular type of document has not been standardized.</p>
+
+<p>The <code>&lt;dc:Identifier&gt;</code> element requires particular attention. Notice that we've given the <code>id</code> attribute the value <code>"uncharterpackage"</code> to match the <code>unique-identifier</code> attribute in the earlier <code>&lt;package&gt;</code> element. Furthermore, we've used a <code>scheme</code> of <code>"url"</code>, although this value is not standard. It would be better to include a <code>scheme</code> of <code>ISBN</code> or some other similar identifier more useful to third parties such as bookstores and libraries.</p>
+
+<p>There are two <code>&lt;dc:Creator&gt;</code> elements; one specifies an author (<code>"aut"</code>) of <code>United Nations</code> and a book publisher (<code>"bkp"</code>) of <code>Mentor Publishing</code>. The <code>&lt;dc:Date</code> element contains the date this package file was created, July 11, 2001.</p>
+
+<p>Three arbitrary subjects have been added using the <code>&lt;ds:Subject&gt;</code> element: <code>United Nations</code>, <code>Historical Documents</code>, and <code>International Politics</code>. Lastly, a <code>&lt;dc:Source&gt;</code> element shows that we originally found the content at <code><a href="http://www.un.org/aboutun/charter/">http://www.un.org/aboutun/charter/</a></code>.</p>
+
+<blockquote>
+    <code>&lt;dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/"&gt;</code><br />
+      <code>&lt;dc:Title&gt;</code>Charter of the United Nations<code>&lt;/dc:Title&gt;</code><br />
+			<code>&lt;dc:Type&gt;</code>charter<code>&lt;/dc:Type&gt;</code><br />
+			<code>&lt;dc:Identifier id="uncharterpackage" scheme="url"&gt;</code>http://www.un.org/aboutun/charter/<code>&lt;/dc:Identifier&gt;</code><br />
+			<code>&lt;dc:Creator role="aut"&gt;</code>United Nations<code>&lt;/dc:Creator&gt;</code><br />
+			<code>&lt;dc:Creator role="bkp"&gt;</code>Mentor Publishing<code>&lt;/dc:Creator&gt;</code><br />
+			<code>&lt;dc:Date&gt;</code>2001-07-11<code>&lt;/dc:Date&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>United Nations<code>&lt;/dc:Subject&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>Historical Documents<code>&lt;/dc:Subject&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>International Politics<code>&lt;/dc:Subject&gt;</code><br />
+			<code>&lt;dc:Source&gt;</code>http://www.un.org/aboutun/charter/<code>&lt;/dc:Source&gt;</code><br />
+    <code>&lt;/dc-metadata&gt;</code>
+</blockquote>
+
+<p>We next need to specify the files which will be included in the publication; this information will appear inside the <code>&lt;manifest&gt;</code> element. Since our version of the the UN Charter has no images associated with it, each <code>&lt;item&gt;</code> element in the manifest will represent an OEB document file, with <code>media-type="text/x-oeb1-document"</code>. It doesn't matter what order we present the files, just so we include all the files used in the publication. This includes the table of contents, the introduction, the preamble, and all the chapters, including chapters we haven't listed here.</p>
+
+<blockquote>
+  <code>&lt;manifest&gt;</code><br />
+    <code>&lt;item id="toc" href="toc.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="intro" href="intro.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="preamble" href="preamble.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter1" href="chapter1.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter2" href="chapter2.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+	<em>. . .</em><br />
+  <code>&lt;/manifest&gt;</code>
+</blockquote>		
+
+<p>It is inside the <code>&lt;spine&gt;</code> element that we specify the reading order of the documents we listed in the <code>&lt;manifest&gt;</code> section. The order here is all that's important; having already listed the essential information about each document, we simply reference the unique ID we've assigned each item earlier:</p>
+
+<blockquote>
+  <code>&lt;spine&gt;</code><br />
+    <code>&lt;itemref idref="toc" /&gt;</code><br />
+    <code>&lt;itemref idref="intro" /&gt;</code><br />
+    <code>&lt;itemref idref="preamble" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter1" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter2" /&gt;</code><br />
+		<em>. . .</em><br />
+	<code>&lt;/spine&gt;</code>
+</blockquote>
+
+<p>That's all that OEB requires for a complete OEB publication, and we could at this point read the UN Charter on any OEB-compliant reading system. As an example of optional OEB functionality that we can add to allow future OEB reading systems to manipulate our work in various ways, we'll add a <code>&lt;guide&gt;</code> element and specify that our table of contents is one of the  <dfn>guide</dfn> types recognized by OEB; specifically, it is a <code>"toc"</code>, a table of contents. In short, we're simply identifying a particular document as a table of contents; other types of guides may be found in the <em>Open eBook Publication Structure 1.0.1 Specification</em>.</p>
+
+<p>There is currently no guarantee that a particular OEB reading system will recognize guides, but it's still a good idea to include at least the table of contents. More information on guides and a related concept, <dfn>tours</dfn>, can be found in the <em>Open eBook Publication Structure 1.0 Specification</em>, and will likely be covered in depth in a later edition of this book.</p>
+
+<blockquote>
+  <code>&lt;guide&gt;</code><br />
+    <code>&lt;reference type="toc" title="Table of Contents" href="toc.html" /&gt;</code><br />
+  <code>&lt;/guide&gt;</code>
+</blockquote>
+
+<p>At this point, we've finished the package file, completing our publication. Assuming the rest of the chapters have been marked up and included, the group of files can be presented to an OEB-compliant reading system and, based upon the function of the reading system, either be presented to a user or passed along the chain to another piece of software and/or hardware for further manipulation. The complete package file, <code>uncharter.opf</code>, is presented below:</p>
+
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code><br />
+<code>&lt;package unique-identifier="uncharterpackage"&gt;</code><br />
+
+	<blockquote>
+    <code>&lt;dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/"&gt;</code><br />
+      <code>&lt;dc:Title&gt;</code>Charter of the United Nations<code>&lt;/dc:Title&gt;</code><br />
+			<code>&lt;dc:Type&gt;</code>charter<code>&lt;/dc:Type&gt;</code><br />
+			<code>&lt;dc:Identifier id="uncharterpackage" scheme="url"&gt;</code>http://www.un.org/aboutun/charter/<code>&lt;/dc:Identifier&gt;</code><br />
+			<code>&lt;dc:Creator role="aut"&gt;</code>United Nations<code>&lt;/dc:Creator&gt;</code><br />
+			<code>&lt;dc:Creator role="bkp"&gt;</code>Mentor Publishing<code>&lt;/dc:Creator&gt;</code><br />
+			<code>&lt;dc:Date&gt;</code>2001-07-11<code>&lt;/dc:Date&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>United Nations<code>&lt;/dc:Subject&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>Historical Documents<code>&lt;/dc:Subject&gt;</code><br />
+      <code>&lt;dc:Subject&gt;</code>International Politics<code>&lt;/dc:Subject&gt;</code><br />
+			<code>&lt;dc:Source&gt;</code>http://www.un.org/aboutun/charter/<code>&lt;/dc:Source&gt;</code><br />
+    <code>&lt;/dc-metadata&gt;</code>
+	</blockquote>
+
+	<blockquote>
+  <code>&lt;manifest&gt;</code><br />
+    <code>&lt;item id="toc" href="toc.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="intro" href="intro.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="preamble" href="preamble.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter1" href="chapter1.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter2" href="chapter2.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter3" href="chapter3.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter4" href="chapter4.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter5" href="chapter5.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter6" href="chapter6.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter7" href="chapter7.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter8" href="chapter8.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter9" href="chapter9.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter10" href="chapter10.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter11" href="chapter11.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter12" href="chapter12.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter13" href="chapter13.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter14" href="chapter14.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter15" href="chapter15.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter16" href="chapter16.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter17" href="chapter17.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter18" href="chapter18.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+    <code>&lt;item id="chapter19" href="chapter19.html" media-type="text/x-oeb1-document" /&gt;</code><br />
+  <code>&lt;/manifest&gt;</code>
+	</blockquote>
+
+	<blockquote>
+  <code>&lt;spine&gt;</code><br />
+    <code>&lt;itemref idref="toc" /&gt;</code><br />
+    <code>&lt;itemref idref="intro" /&gt;</code><br />
+    <code>&lt;itemref idref="preamble" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter1" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter2" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter3" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter4" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter5" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter6" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter7" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter8" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter9" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter10" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter11" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter12" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter13" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter14" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter15" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter16" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter17" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter18" /&gt;</code><br />
+    <code>&lt;itemref idref="chapter19" /&gt;</code><br />
+	<code>&lt;/spine&gt;</code>
+	</blockquote>
+
+	<blockquote>
+  <code>&lt;guide&gt;</code><br />
+    <code>&lt;reference type="toc" title="Table of Contents" href="toc.html" /&gt;</code><br />
+  <code>&lt;/guide&gt;</code>
+	</blockquote>
+		
+<code>&lt;/package&gt;</code>
+</blockquote>
+
+</body>
+</html>

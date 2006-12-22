@@ -1,0 +1,66 @@
+.TH DU 1
+.SH NAME
+du \- disk usage
+.SH SYNOPSIS
+.RB du " [ \-anstu ]
+[
+.BI -b " blocksize"
+]
+.RI [ "file ..." ]
+.SH DESCRIPTION
+.I Du
+writes to standard output the total size of files specified as arguments.
+Directories are recursively tallied.
+A summary line is produced for each argument
+.I file
+and subdirectory.
+If no filenames are provided,
+the command operates on the current directory.
+.PP
+Output sums are rounded up to the nearest 1k unit (1024 bytes).
+By default, storage is assumed to be quantised in units of 1024 bytes.
+The
+.B -b
+option sets a different
+.I blocksize
+for quantisation,
+optionally suffixed by
+.B k
+for units of kilobytes;
+output is still in 1k units.
+.PP
+.I Du
+accepts the following options:
+.TP
+.B \-a
+Output usage information for all subordinate files,
+not just directories.
+.TP
+.B \-n
+Output just the filenames (but see the
+.B -t
+option below); implies
+.BR -a .
+.TP
+.B \-s
+Print only the summary line for each
+.IR file .
+.TP
+.B \-t
+Display the last-modified time for each file, not its size;
+when used with the
+.B \-n
+option,
+outputs the filename,
+modification time (seconds since the epoch),
+size (in bytes),
+and checksum.
+The checksum field is always 0; it is a place-holder for a value computed by another command in a pipeline.
+.TP
+.B \-u
+Display the last-accessed time for each file, not its size.
+.SH SOURCE
+.B /appl/cmd/du.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sys-stat (2)

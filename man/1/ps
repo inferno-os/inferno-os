@@ -1,0 +1,45 @@
+.TH PS 1
+.SH NAME
+ps \- process (thread) status
+.SH SYNOPSIS
+.B bind '#p' /prog
+.PP
+.B ps
+.SH DESCRIPTION
+.I Ps
+prints to the standard output information about all current Inferno processes.
+It looks in
+.B /prog
+for process status files;
+normally that requires that the
+.IR prog (3)
+device has previously been bound there (as shown above),
+but it is also possible to import
+.B /prog
+from a remote machine.
+.PP
+Each line of information printed consists of seven columns:
+the process id, the process group id, the owner of the
+process, cpu time used by the process, the run state of the process, the amount of memory used
+by the process, and the name of the module containing the
+currently running function.
+.SH FILES
+.B /prog/*/status
+.SH SOURCE
+.B /appl/cmd/ps.b
+.SH "SEE ALSO"
+.IR deb (1),
+.IR kill (1),
+.IR stack (1),
+.I wm/task
+and
+.I wm/memory
+in
+.IR wm-misc (1),
+.IR prog (3)
+.SH BUGS
+The amount reported as ``memory used'' does not accurately
+reflect the amount of memory referred to by the process,
+because the heap is shared.
+.br
+The cpu time used is currently shown as zero in most hosted implementations.

@@ -1,0 +1,23 @@
+.TH SYS-REMOVE 2
+.SH NAME
+remove \- remove a file
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+remove:	fn(file: string): int;
+.EE
+.SH DESCRIPTION
+.B Remove
+removes
+.I file
+from the directory containing it and discards the contents of the file.
+The user must have write permission in the containing directory.
+If
+.I file
+is a directory, it must be empty.
+.B Remove
+returns zero if it deletes the file, \-1 otherwise.
+.SH SEE ALSO
+.IR sys-intro (2)

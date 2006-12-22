@@ -1,0 +1,68 @@
+.TH DIVIDERS 2
+.SH NAME
+Dividers \- user-draggable tk dividing bars
+.SH SYNOPSIS
+.EX
+include "dividers.m";
+dividers := load Dividers Dividers->PATH;
+Divider: import dividers;
+
+init: fn();
+Divider: adt {
+    new: fn(win: ref Tk->Toplevel, w: string, wl: list of string, dir: int):
+        (ref Divider, chan of string);
+    event: fn(d: self ref Divider, e: string);
+};
+.EE
+.SH DESCRIPTION
+.I Dividers
+presents an interface allowing Tk widgets to
+be arranged within a window, divided by bars which
+can be dragged by the user to determine the proportion
+of the available space to allocate to each widget.
+The groups can be stacked vertically or horizontally.
+.I Divider
+widgets can be nested.
+.PP
+.B Init
+must be called before anything else, to allow
+.I Dividers
+to initialise its internal state.
+.B Divider.new
+creates a new divider widget; it will be named
+.IR w ,
+and it will divide up the widgets named in
+the list
+.IR wl .
+.I Dir
+can be
+.BR Dividers->NS ,
+to stack the widgets one on top of another,
+or
+.BR Dividers->EW
+to stack the widgets left-right.
+.B Divider.new
+returns a new
+.B Divider
+adt, and a channel through which
+.B Divider
+events will be received.
+The application should arrange that events
+received on this channel be passed to the
+.B event()
+function.
+.PP
+A
+.B Divider
+widget must be informed if its size has changed
+by configuring its width and height appropriately;
+it does the same to the items it is dividing.
+.SH SOURCE
+.B /appl/lib/dividers.b
+.SH BUGS
+It should not be necessary to inform the
+.B Divider
+widget of size changes.
+.PP
+The event-based mechanism seems somewhat
+contrary to the preferred Limbo way of doing things.

@@ -1,0 +1,49 @@
+.TH CAT 1
+.SH NAME
+cat \- concatenate files
+.SH SYNOPSIS
+.B cat
+[
+.B -
+]
+[
+.I file ...
+]
+.SH DESCRIPTION
+.I Cat
+reads each
+.I file
+in turn and writes it on the standard output.
+Thus
+.IP
+.EX
+cat file
+.EE
+.PP
+prints the file to standard output, and the following
+.IP
+.EX
+cat file1 file2 >file3
+.EE
+.PP
+concatenates two files onto a third.
+.PP
+If no
+.I file
+is given, or where
+.B \-
+is given as an argument,
+.I cat
+reads from the standard input.
+Output is buffered in blocks matching the input.
+.SH SOURCE
+.B /appl/cmd/cat.b
+.SH "SEE ALSO"
+.IR cp (1),
+.IR stream (1)
+.SH BUGS
+Beware of
+.B "cat a b >a"
+and
+.B "cat a b >b"
+which destroy input files before reading them.

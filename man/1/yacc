@@ -1,0 +1,349 @@
+.TH YACC 1
+.SH NAME
+yacc \- yet another compiler-compiler (Limbo version)
+.SH SYNOPSIS
+.B yacc
+[
+.I option ...
+]
+.I grammar
+.SH DESCRIPTION
+.I Yacc
+converts a context-free grammar and translation code
+into a set of
+tables for an LR(1) parser and translator.
+The grammar may be ambiguous;
+specified precedence rules are used to break ambiguities.
+.PP
+The output from
+.I yacc
+is a Limbo module
+.B y.tab.b
+containing the parse function
+.B yyparse
+which must be provided with a
+.B YYLEX
+adt providing the parser access to a lexical analyser
+routine
+.BR lex() ,
+an error routine
+.BR error() ,
+and any other context required.
+.PP
+The options are
+.TP "\w'\fL-o \fIoutput\fLXX'u"
+.BI -o " output
+Direct output to the specified file instead of
+.BR y.tab.b .
+.TP
+.BI -D n
+Create file
+.BR y.debug ,
+containing diagnostic messages.
+To incorporate them in the parser, give an
+.I n
+greater than zero.
+The amount of 
+diagnostic output from the parser is regulated by
+value
+.IR n :
+.RS 
+.TP
+1
+Report errors.
+.TP
+2
+Also report reductions.
+.TP
+3
+Also report the name of each token returned by
+.LR yylex .
+.RE
+.TP
+.B -v
+Create file
+.BR y.output ,
+containing a description of the parsing tables and of
+conflicts arising from ambiguities in the grammar.
+.TP
+.B -d
+Create file
+.BR y.tab.m ,
+containing the module
+declaration for the parser, along with
+definitions of the constants
+that associate
+.IR yacc -assigned
+`token codes' with user-declared `token names'.
+Include it in source files other than
+.B y.tab.b
+to give access to the token codes and the parser module.
+.TP
+.BI -s " stem
+Change the prefix
+.L y 
+of the file names
+.BR y.tab.b ,
+.BR y.tab.m ,
+.BR y.debug ,
+and
+.B y.output
+to
+.IR stem .
+.TP
+.B -m
+Normally
+.I yacc
+defines the type of the
+.B y.tab.b
+module within the text of the module according
+to the contents of the
+.B %module
+directive.
+Giving the
+.B -m
+option suppresses this behaviour, leaving the implementation
+free to define the module's type from an external
+.B .m
+file. The module's type name is still taken from the
+.B %module
+directive.
+.TP
+.BI -n " size
+Specify the initial
+.I size
+of the token stack created for the
+parser (default: 200).
+.SS Differences from C yacc
+The Limbo
+.I yacc
+is in many respects identical to the C
+.IR yacc .
+The differences are summarised below:
+.PP
+Comments follow the Limbo convention (a
+.B #
+symbol gives a comment until the end of the line).
+.PP
+A
+.B %module
+directive is required, which replaces the
+.B %union
+directive. It is of the form:
+.RS
+.IP
+.B %module
+.I modname
+.B {
+.br
+.I 	module types, functions and constants
+.br
+.B }
+.RE
+.B Modname
+will be the module's implementation type;
+the body of the directive, augmented with
+.B con
+definitions for the
+.IR yacc -assigned
+token codes, gives the type of the module,
+unless the
+.B -m
+option is given, in which case no module
+definition is emitted.
+.PP
+A type
+.B YYSTYPE
+must be defined, giving the type
+associated with
+.I yacc
+tokens. If
+the angle bracket construction is used after
+any of the
+.BR %token ,
+.BR %left ,
+.BR %right ,
+.BR %nonassoc 
+or
+.B %type
+directives in order to associate a type with a token or production,
+the word inside the angle brackets
+refers to a member of 
+an instance of
+.BR YYSTYPE ,
+which should be an adt.
+.PP
+An adt
+.B YYLEX
+must be defined, providing context to the parser.
+The definition must consist of at least the following:
+.EX
+	YYLEX: adt {
+		lval: YYSTYPE;
+		lex: fn(l: self ref YYLEX): int;
+		error: fn(l: self ref YYLEX, msg: string);
+	}
+.EE
+.B Lex
+should invoke a lexical analyser to return the
+next token for
+.I yacc
+to analyse. The value of the token should
+be left in
+.BR lval .
+.B Error
+will be called when a parse error occurs.
+.B Msg
+is a string describing the error.
+.PP
+.B Yyparse
+takes one argument, a reference to the
+.B YYLEX
+adt that will be used to provide it with tokens.
+.PP
+The parser is fully re-entrant;
+.I i.e.
+it does not
+hold any parse state in any global variables
+within the module.
+.SH EXAMPLE
+The following is a small but complete example of the
+use of Limbo
+.I yacc
+to build a simple calculator.
+.EX
+%{
+    include "sys.m";
+    sys: Sys;
+
+    include "bufio.m";
+    bufio: Bufio;
+    Iobuf: import bufio;
+
+    include "draw.m";
+
+    YYSTYPE: adt { v: real; };
+    YYLEX: adt {
+        lval:   YYSTYPE;
+        lex: fn(l: self ref YYLEX): int;
+        error: fn(l: self ref YYLEX, msg: string);
+    };
+%}
+
+%module Calc{
+    init:   fn(ctxt: ref Draw->Context, args: list of string);
+}
+
+%left   '+' '-'
+%left   '*' '/'
+
+%type   <v> exp uexp term
+%token  <v> REAL
+
+%%
+top :
+    | top '\en'
+    | top exp '\en'
+    {
+        sys->print("%g\en", $2);
+    }
+    | top error '\en'
+    ;
+
+exp : uexp
+    | exp '*' exp   { $$ = $1 * $3; }
+    | exp '/' exp   { $$ = $1 / $3; }
+    | exp '+' exp   { $$ = $1 + $3; }
+    | exp '-' exp   { $$ = $1 - $3; }
+    ;
+
+uexp    : term
+    | '+' uexp  { $$ = $2; }
+    | '-' uexp  { $$ = -$2; }
+    ;
+
+term    : REAL
+    | '(' exp ')'
+    {
+        $$ = $2;
+    }
+    ;
+
+%%
+
+in: ref Iobuf;
+stderr: ref Sys->FD;
+
+init(nil: ref Draw->Context, nil: list of string)
+{
+	sys = load Sys Sys->PATH;
+	bufio = load Bufio Bufio->PATH;
+	in = bufio->fopen(sys->fildes(0), Bufio->OREAD);
+	stderr = sys->fildes(2);
+	lex := ref YYLEX;
+	yyparse(lex);
+}
+
+YYLEX.error(nil: self ref YYLEX, err: string)
+{
+	sys->fprint(stderr, "%s\en", err);
+}
+
+YYLEX.lex(lex: self ref YYLEX): int
+{
+	for(;;){
+		c := in.getc();
+		case c{
+		' ' or '\et' =>
+			;
+		'-' or '+' or '*' or '/' or '\en' or '(' or ')' =>
+			return c;
+		'0' to '9' or '.' =>
+			s := "";
+			i := 0;
+			s[i++] = c;
+			while((c = in.getc()) >= '0' && c <= '9' ||
+			      c == '.' ||
+			      c == 'e' || c == 'E')
+				s[i++] = c;
+			in.ungetc();
+			lex.lval.v = real s;
+			return REAL;
+		* =>
+			return -1;
+		}
+	}
+}
+.EE
+.SH FILES
+.TF /lib/yaccpar
+.TP
+.B y.output
+.TP
+.B y.tab.b
+.TP
+.B y.tab.m
+.TP
+.B y.debug
+.TP
+.B /lib/yaccpar
+parser prototype
+.SH SOURCE
+.B /appl/cmd/yacc.b
+.SH "SEE ALSO"
+S. C. Johnson and R. Sethi,
+``Yacc: A parser generator'',
+.I
+Unix Research System Programmer's Manual,
+Tenth Edition, Volume 2
+.br
+B. W. Kernighan and Rob Pike,
+.I
+The UNIX Programming Environment,
+Prentice Hall, 1984
+.SH BUGS
+The parser may not have full information when it writes to
+.B y.debug
+so that the names of the tokens returned by
+.L yylex
+may be missing.

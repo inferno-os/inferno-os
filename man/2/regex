@@ -1,0 +1,108 @@
+.TH REGEX 2
+.SH NAME
+regex \- regular expression recognizer module
+.SH SYNOPSIS
+.EX
+include "regex.m";
+regex := load Regex Regex->PATH;
+
+compile:   fn(e: string, flag: int): (Re, string);
+execute:   fn(x: Re; s: string): array of (int,int);
+executese: fn(x: Re, s: string, se: (int, int), bol: int, eol: int):
+			array of (int, int);
+.EE
+.SH DESCRIPTION
+Regular expressions are defined by
+.IR regexp (6).
+.B Compile
+returns (as the first element of the result tuple)
+a compiled form of the regular expression given in string 
+.IR e .
+If
+.I e
+is not a valid regular expression,
+.B compile
+returns the tuple
+.BI "(nil" ", diag" )
+where
+.I diag
+is a diagnostic string.
+The effect of 
+.I flag
+is described below.
+.PP
+.B Execute
+matches the compiled regular expression
+.I x
+against string
+.I s.
+It returns
+.B nil
+on no match, otherwise it returns an array.
+The element with index 0 gives the character positions
+of the first character of some longest leftmost match and
+the first character beyond the match.
+If the compilation
+.I flag
+was 0, there are no more elements.
+If
+.I flag
+was 1, there is one element for each pair of
+parentheses in the regular expression, counting
+left parentheses left to right starting at 1.
+The
+.IR n th
+element gives the position of the last match to the 
+.IR n th
+parenthesized subexpression, or (\-1,\-1) if the subexpression
+does not participate in the overall match.
+.PP
+.B Executese
+is similar to
+.B execute
+but allows the start and end points in the string to be specified,
+as tuple
+.IR se :
+.BI ( "start , end" ) ,
+where
+.I start
+is the index in
+.I s
+of the initial character to be matched,
+and
+.I end
+is the index in
+.I s
+of the first character beyond the substring to be matched
+(and can be the length of
+.IR s ).
+If
+.I bol
+is non-zero, the
+initial character is at the beginning of a line,
+allowing an initial match by the regular expression operator
+.RB ` ^ ';
+if
+.I eol
+is non-zero, the
+last character is at the end of a line, allowing a match
+by the operator `\f5$\fP'.
+.SH EXAMPLES
+.EX
+(re, nil) := regex->compile("(thick )*(chocolate |raspberry )?"+
+			"(topp|fill)ing", 0);
+
+(re, nil) := regex->compile("[ABCb-z]+", 0);
+a := regex->execute(re, s:="aAbBcCdD");
+(beg, end) := a[0];
+s[beg:end] == "AbBcCd";
+
+(re, nil) := regex->compile("a*b*", 0);
+a := regex->execute(re, "bbaabb");
+(beg, end) := a[0];
+(beg, end) == (0,2);
+.EE
+.SH SOURCE
+.B /appl/lib/regex.b
+.SH SEE ALSO
+.IR regexp (6)

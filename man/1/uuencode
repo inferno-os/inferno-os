@@ -1,0 +1,79 @@
+.TH UUENCODE 1 
+.SH NAME
+uuencode, uudecode \- encode/decode a file
+.SH SYNOPSIS
+.B uuencode
+[
+.I sourcefile
+] 
+.I remotefile
+.PP
+.B uudecode
+[
+.B -p
+]
+[
+.I encodedfile ...
+]
+.SH DESCRIPTION
+.I Uuencode
+and
+.I Uudecode
+are used to transmit files over transmission mediums that do not support other than simple
+ASCII data.
+.PP
+.I Uuencode
+converts a file to a purely ASCII based representation. It encodes the contents of
+.I sourcefile
+or the standard input if no source file is given. The 
+.I remotefile
+is included in the encoded file's header  as the name of the file into which
+.I uudecode
+should place the decoded data. The header also includes the permission modes of the
+source file so that these  can be preserved on decoding. The encoded output of
+.I uuencode
+is sent to the standard output.
+.PP
+.I Uudecode
+reads a file, ignoring any leading and trailing lines that are not part of the encoding, and
+recreates the original file with the filename and mode specified in it's header. The file
+to decode is 
+.I encodedfile
+or standard input if none is given. The 
+.B -p
+flag can be used to send the decoded data to standard output rather than saving it in
+the file whose name is specified in the header.
+.SH EXAMPLES
+.PP
+Encode a dis file limbo.dis so that it can be included in a mail message:
+.IP
+.EX 
+uuencode limbo.dis limbo.dis > tmp
+<place in mail message and send to recipient>
+.EE
+.PP
+Decode the mail message(msg say):
+.IP
+.EX
+cat msg | uudecode
+.EE
+.PP
+This creates the file limbo.dis.
+.PP
+Decode the mail message into a file of your choosing(tmp.dis say):
+.IP
+.EX
+cat msg | uudecode -p > tmp.dis
+.EE
+.SH SOURCE
+.B /appl/cmd/uuencode.b
+.br
+.B /appl/cmd/uudecode.b
+.SH BUGS
+The encoded file is expanded by at least a third.
+.br
+Decoding a file may overwrite an existing file.
+.br
+Uuencode should take the remote file name to be the same as the source file if one
+is not given.
+

@@ -1,0 +1,29 @@
+.TH WC 1
+.SH NAME
+wc \- count lines, words, and characters
+.SH SYNOPSIS
+.B wc
+[
+.B -lwceb
+]
+[
+.I file ...
+]
+.SH DESCRIPTION
+.I Wc
+writes to standard output a tally of lines, words, and characters found in each
+.IR file ,
+assumed to be text in UTF format.
+If no files are named, standard input is read. One line is output per file. If several files are specified, an additional line is written giving totals.
+.PP
+`Words' are maximal sequences of characters separated by blanks, tabs and newlines.
+.PP
+Counts are output in the same order as the listing of the option letters
+.BR lwceb ;
+select lines, words, UTF characters, erroneously-encoded characters, and bytes, respectively.
+If no options are given, lines, words and characters are counted.
+.SH SOURCE
+.B /appl/cmd/wc.b
+.SH "SEE ALSO"
+.IR tr (1),
+.IR utf (6)

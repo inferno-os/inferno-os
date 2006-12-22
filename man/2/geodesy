@@ -1,0 +1,146 @@
+.TH GEODESY 2
+.SH NAME
+geodesy \- Geodesy module
+.SH SYNOPSIS
+.EX
+include "geodesy.m";
+geodesy := load Geodesy Geodesy->PATH;
+
+# easting, northing
+Eano: adt{
+	e: real;
+	n: real;
+};
+
+# latitude, longitude in radians
+Lalo: adt{
+	la: real;
+	lo: real;
+};
+
+OSGB36, Ireland65, ED50, WGS84, ITRS2000, ETRS89: con iota;
+
+Natgrid, IrishNatgrid, UTMEur, UTM: con iota;
+
+init: fn(d: int, t: int, z: int);
+format: fn(d: int, t: int, z: int);
+os2en: fn(s: string): (int, Eano);
+en2os: fn(en: Eano): string;
+str2lalo: fn(s: string): (int, Lalo);
+lalo2str: fn(lalo: Lalo): string;
+str2en: fn(s: string): (int, Eano);
+en2lalo: fn(en: Eano): Lalo;
+lalo2en: fn(lalo: Lalo): Eano;
+datum2datum: fn(lalo: Lalo, f: int, t: int): Lalo;
+.EE
+.SH DESCRIPTION
+.B Geodesy
+provides routines to deal with (some) terrestrial coordinate systems.
+.PP
+Eastings and northings are defined by the
+.B Eano
+adt and are measured in metres and latitude and longitude (which should be in radians) by the
+.B Lalo
+adt. Latitude is in the range -π/2 to π/2 radians and longitude in the 
+range -π to π radians.
+.PP
+.B OSGB36
+(Ordnance Survey Great Britain 1936),
+.B Ireland65
+(Ireland 1965),
+.B ED50
+(European Datum 1950),
+.B WGS84
+(World Geodetic System 1984),
+.B ITRS2000
+(International Terrestrial Reference System 2000), and
+.B ETRS89
+(European Terrestrial Reference System 1989) are the current datums defined. Helmert transformations are used
+to convert between them. Note that
+.B Ireland65
+and
+.B ED50
+are currently not supported and 
+.B WGS84
+and 
+.B ITRS2000
+are considered equivalent.
+.PP
+.B Natgrid
+(National Grid),
+.B IrishNatgrid
+(Irish National Grid),
+.B UTMEur
+(European Universal Transverse Mercator), and
+.B UTM
+(Universal Transverse Mercator) are the current transverse Mercator projections supported.
+.PP
+The following functions are provided
+.TP
+.B init
+The module should always be initialized first. The parameters are
+the required datum (default WGS84), transverse Mercator projection (default Natgrid) and UTM zone (default 30) if appropriate. Negative values or out of range values are
+ignored.
+.TP
+.B format
+Parameters as above. Alters the current settings at any time though care
+must be taken to ensure existing coordinates are still treated as in their
+original form.
+.TP
+.B os2en
+Converts an Ordnance Survey National Grid reference to an easting, northing.
+The formats XYen, XYeenn, XYeeennn, XYeeeennnn, XYeeeeennnnn, eenn,
+eeennn, eeeennnn, eeeeennnnn and eeeeeennnnnn are allowed. Here X and
+Y are upper case letters, e is an easting digit and n is a northing digit. The
+reference can therefore be rounded to the nearest decakilometre, kilometre,
+hectometre, decametre or metre. The first element of the returned tuple is zero
+if the string has an incorrect format.
+.TP
+.B en2os
+Converts an easting, northing to an OS reference in the form XYeeeeennnnn
+as  above.
+.TP
+.B str2lalo
+Converts a latitude/longitude string to a latitude, longitude. The string
+may have the formats deg[N|S], deg:min[N|S] or deg:min:sec[N|S] for
+latitude, deg[E|W], deg:min[E|W] or deg:min:sec[E|W] for longitude. The
+latitude must come first, then optional white space, then the longitude.
+Degrees, minutes and seconds may be integer or real. Format errors
+are indicated as in
+.B os2en.
+.TP
+.B lalo2str
+Converts a latitude, longitude to string format as above. Seconds are given
+to two decimal places.
+.TP
+.B str2en
+Converts a string in OS or latitude/longitude format as above to an easting, northing.
+Format errors indicated as in
+.B os2en.
+.TP
+.B en2lalo
+Converts an easting, northing to latitude, longitude using the current transverse
+Mercator projection.If the latter is
+.B UTM
+or
+.B UTMEur
+the current zone setting will be used.
+.TP
+.B lalo2en
+Converts latitude, longitude to an easting, northing using the current transverse
+Mercator projection.
+.TP
+datum2datum
+Approximate (Helmert) transformation of a latitude, longitude between any of
+.B OSGB36,
+.B WGS84,
+.B ITRS2000
+or
+.B ETRS89.
+The `from' datum appears first in the parameter list.
+.SH SOURCE
+.B /module/math/geodesy.m
+.br
+.B /appl/math/geodesy.b
+.SH BUGS
+The module is heavily biased towards Great Britain.

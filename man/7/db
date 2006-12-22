@@ -1,0 +1,187 @@
+.TH DB 7
+.SH NAME
+DB \- database support
+.SH SYNOPSIS
+.EX
+include "security.m";   # need Auth for algorithm names
+include "db.m";
+db := load DB DB->PATH;
+
+DB_Handle: adt {
+   SQLOpen:     fn(oldh: self ref DB_Handle): (int, ref DB_Handle);
+   SQLClose:    fn(dbh: self ref DB_Handle): int;
+   SQL:         fn(handle: self ref DB_Handle, command: string):
+                  (int, string);
+   columns:     fn(handle: self ref DB_Handle): int;
+   nextRow:     fn(handle: self ref DB_Handle): int;
+   read:        fn(handle: self ref DB_Handle, column: int):
+                  (int, array of byte);
+   write:       fn(handle: self ref DB_Handle, param: int,
+                  fld: array of byte): int
+   columnTitle: fn(handle: self ref DB_Handle,
+                    column: int): string;
+   errmsg:      fn(handle: self ref DB_Handle): string;
+
+   datafd:    ref Sys->FD;
+   sqlconn:   int;
+   sqlstream: int;
+   lock:      chan of int;
+};
+
+connect:  fn(addr, alg: string): (ref Sys->FD, string);
+dbopen:   fn(fd: ref Sys->FD, username, password, dbname: string):
+            (ref DB_Handle, list of string);
+open:     fn(addr, username, password, dbname: string):
+            (ref DB_Handle, list of string);
+.EE
+.SH DESCRIPTION
+.B DB
+allows Limbo programs to connect to data base management systems
+that support an ODBC interface.
+.PP
+.IR Dbsrv (7)
+must be running (usually in a hosted
+.IR emu (1))
+to service database requests.
+.PP
+If security features will be used in conjunction with
+.BR DB ,
+the
+.B Auth
+module definitions (see
+.IR security-auth (2))
+from
+.B security.m
+must be included.
+.PP
+If authentication is in use,
+.B DB
+will use the certificate in the file
+.IP
+.BI /usr/ user /keyring/ net ! machine
+.PP
+if that file exists. Otherwise,
+.I db
+will attempt to find a certificate in the file
+.IP
+.BI /usr/ user /keyring/default .
+.PP
+.B Connect
+establishes a connection to the
+.I dbsrv
+at
+.IR addr .
+.I Addr
+has the form
+.IB machine ! service.
+.I Machine
+is a symbolic or numeric network address, and
+.I service
+is a service or port on that machine.
+.I Dbsrv
+starts a corresponding
+.I infdb
+process. After some negotiation,
+.I infdb
+will take the appropriate authentication, digesting, and decryption actions, based on the
+.I alg
+requested by the client.
+If successful,
+.B connect
+will return a file descriptor required by
+.BR dbopen .
+.PP
+.B Dbopen
+initiates a session with a database
+.IR dbname ,
+passing
+.I username
+and
+.I password
+down the
+.I fd
+returned by
+.BR connect .
+.B Dbopen
+returns a reference to an instance of
+.B DB_Handle
+and an error string, which is nil on success.
+On error, the reference is nil, but the string contains a diagnostic.
+.B Dbopen
+implicitly opens an initial SQL stream via
+.BR SQLOpen .
+.PP
+.B Open
+returns the result of a
+.B connect
+followed (if successful) by a
+.BR dbopen .
+.TP
+.IB oh .SQLOpen
+Creates a new
+.B DB_Handle
+and opens a new SQL stream with which requests can be associated. The new handle shares the connection and transaction context with
+.IR oh .
+Other characteristics such as the current SQL command, the result set, and cursor position are independent,
+which allows the manipulation and interaction of many SQL statements within a transaction.
+It returns zero on success, non-zero on error.
+.TP
+.IB h .SQLClose
+Closes the SQL stream opened by
+.BR SQLOpen .
+Closing all SQL streams associated with a connection causes the connection to be closed.
+.TP
+.IB h .SQL( command )
+Sends the SQL statement
+.I command
+to the database. If the call fails, the first element of the returned tuple is non-zero and the second is an error message.
+.TP
+.IB h .columns()
+Returns the number of columns in the result set of the previous SQL select command sent to the database. A returned value of 0 indicates there was a problem with the previous command, or there was no previous select command.
+.TP
+.IB h .nextRow()
+Advances the current row, then returns the current row number of the selection results. A return value of 0 indicates there are no more rows; a negative value is returned in case of an error. The initial current row is 0 following a select, so
+.B nextRow
+must be called before any data is read.
+.TP
+.IB h .read( c )
+Returns the data of column
+.I c
+of the current row. If
+.I c
+is out of range, there is no current row, or some other error occurred, the first element of the returned tuple will be negative, and the byte array (sic) will contain an error message. Otherwise, it will be the number of bytes in the field requested. This could be greater than the length of the returned array, if the DB module could not allocate enough memory to contain the entire field. In this case the returned array contains the initial portion of the field.
+.TP
+.IB h .write( p , data )
+.B Write
+sends data for a binary field to the server,
+in anticipation of a subsequent SQL `update request with placeholders'.
+.I Data
+is an array of bytes containing the data for placeholder
+.I p
+(counting from 1).
+All binary fields should be set by
+.B write
+before the SQL request is sent to the server
+with
+.BR SQL .
+It returns the number of bytes saved for the field, or -1 on failure.
+.TP
+.IB h .columnTitle( n )
+.B ColumnTitle
+returns the title of column
+.IR n .
+It returns nil if
+.I n
+is out of range.
+.TP
+.IB h .errmsg()
+Returns the error message associated with the failure of a previous
+.BR columns ,
+.BR nextRow ,
+.B columnTitle
+or
+.BR read .
+.SH SOURCE
+.B /appl/lib/db.b
+.SH "SEE ALSO"
+.IR svc (8)

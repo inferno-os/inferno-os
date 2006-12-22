@@ -1,0 +1,33 @@
+.TH UNIQ 1
+.SH NAME
+uniq \- report repeated lines in a file
+.SH SYNOPSIS
+.B uniq
+[
+.B -ud
+]
+[
+.I file
+]
+.SH DESCRIPTION
+.I Uniq
+copies the input
+.IR file ,
+or the standard input, to the
+standard output, comparing adjacent lines.
+In the normal case, the second and succeeding copies
+of repeated lines are
+removed.
+Repeated lines must be adjacent
+in order to be found.
+.TP
+.B -u
+Print unique lines.
+.TP
+.B -d
+Print (one copy of) duplicated lines.
+.SH SOURCE
+.B /appl/cmd/uniq.b
+.SH "SEE ALSO"
+.IR comm (1),
+.IR sort (1) 

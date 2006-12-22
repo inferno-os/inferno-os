@@ -1,0 +1,31 @@
+.TH MANUFACTURE 8 mux
+.SH NAME
+manufacture \- command to emulate set-top-box-id in ROM
+.SH SYNOPSIS
+.BI manufacture box-id
+.SH DESCRIPTION
+.I Manufacture
+initialises the file
+.B /nvfs/ID
+with the string
+.IR box-id .
+The file emulates the serial number that the manufacturer of a real set top box would
+normally burn into ROM
+(see also
+.B rtcid
+in
+.IR rtc (3)).
+The
+.I box-id
+is used by
+.IR register (8).
+.SH FILES
+.TF /nvfs/ID
+.TP
+.B /nvfs/ID
+.TP
+.B /nvfs/default
+.SH SOURCE
+.B /appl/cmd/manufacture.b
+.SH "SEE ALSO"
+.IR register (8)

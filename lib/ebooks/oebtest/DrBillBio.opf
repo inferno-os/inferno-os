@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd">
+<package unique-identifier="DrBillBio">
+<metadata>
+<dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/"
+    xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0">
+<dc:Title>Bill Wattenburg’s Background</dc:Title>
+<dc:Type>Biography</dc:Type>
+<dc:Identifier scheme="none">DrBillBackground</dc:Identifier>
+<dc:Subject>background report</dc:Subject>
+<dc:Publisher>PetesGuide.com</dc:Publisher>
+<dc:Contributor role="edt">Peter K. Sheerin</dc:Contributor>
+<dc:Date event="creation">1992</dc:Date>
+<dc:Date event="electronic publication">2000/09</dc:Date>
+<dc:Rights>This work was provided to me by a government agency.</dc:Rights>
+<dc:Language>en-us</dc:Language>
+<dc:Coverage>Biographical background on Dr. Bill Wattenburg</dc:Coverage>
+</dc-metadata>
+<x-metadata>
+<meta name="price" content="US $0.00" />
+</x-metadata>
+</metadata>
+<manifest>
+<item id="about" href="about.html" media-type="text/x-oeb1-document" />
+<item id="copyright" href="copyright.html" media-type="text/x-oeb1-document" />
+<item id="TofC" href="toc.html" media-type="text/x-oeb1-document" />
+<item id="titlepage" href="TitlePage.html" media-type="text/x-oeb1-document" />
+<item id="foreword" href="foreword.html" media-type="text/x-oeb1-document" />
+<item id="summary" href="ExecutiveSummary.html" media-type="text/x-oeb1-document" />
+<item id="TalkRadio" href="TalkRadio.html" media-type="text/x-oeb1-document" />
+<item id="movies" href="movies.html" media-type="text/x-oeb1-document" />
+<item id="TV" href="television.html" media-type="text/x-oeb1-document" />
+<item id="publishing" href="publishing.html" media-type="text/x-oeb1-document" />
+<item id="education" href="background-education.html" media-type="text/x-oeb1-document" />
+<item id="business" href="business.html" media-type="text/x-oeb1-document" />
+<item id="patents" href="patents.html" media-type="text/x-oeb1-document" />
+<item id="awards" href="awards.html" media-type="text/x-oeb1-document" />
+<item id="hobbies" href="hobbies.html" media-type="text/x-oeb1-document" />
+<item id="covert" href="covert.html" media-type="text/x-oeb1-document" />
+<item id="colleague" href="colleague.html" media-type="text/x-oeb1-document" />
+<item id="bloodbanks" href="bloodbanks.html" media-type="text/x-oeb1-document" />
+<item id="chainmatrix" href="HelicopterMinesweeper.html" media-type="text/x-oeb1-document" />
+<item id="confrontations" href="confrontations.html" media-type="text/x-oeb1-document" />
+<item id="BART" href="BART.html" media-type="text/x-oeb1-document"  />
+<item id="creditcards" href="creditcards.html" media-type="text/x-oeb1-document" />
+<item id="carpooling" href="dial-a-ride.html" media-type="text/x-oeb1-document" />
+<item id="hiddenoil" href="MeasuringOilTanks.html" media-type="text/x-oeb1-document" />
+<item id="barrier" href="GoldenGate.html" media-type="text/x-oeb1-document" />
+<item id="bluewater" href="BlueWater.html" media-type="text/x-oeb1-document" />
+<item id="GoldMine" href="GoldMine.html" media-type="text/x-oeb1-document" />
+<item id="drillbit" href="BentSub.html" media-type="text/x-oeb1-document" />
+<item id="DrBill" href="DrBill.tif" media-type="image/tiff" fallback="DrBilljpeg" />
+<item id="DrBilljpeg" href="DrBill.jpg" media-type="image/jpeg" fallback="DrBillpng" />
+<item id="DrBillpng" href="DrBill.png" media-type="image/png" />
+<item id="raportIMG" href="raport.png" media-type="image/png" />
+<item id="QuotesFromBill" href="QuotesFromBill.html" media-type="text/x-oeb1-document" />
+<item id="QuotesAboutBill" href="QuotesAboutBill.html" media-type="text/x-oeb1-document" />
+<item id="resume" href="resume.html" media-type="text/x-oeb1-document" />
+<item id="StyleSheet" href="DrBillBio.css" media-type="text/x-oeb1-css" />
+</manifest>
+<spine>
+<itemref idref="titlepage" />
+<itemref idref="TofC" />
+<itemref idref="foreword" />
+<itemref idref="summary" />
+<itemref idref="TalkRadio" />
+<itemref idref="movies" />
+<itemref idref="TV" />
+<itemref idref="publishing" />
+<itemref idref="education" />
+<itemref idref="business" />
+<itemref idref="patents" />
+<itemref idref="awards" />
+<itemref idref="hobbies" />
+<itemref idref="covert" />
+<itemref idref="colleague" />
+<itemref idref="bloodbanks" />
+<itemref idref="chainmatrix" />
+<itemref idref="confrontations" />
+<itemref idref="BART" />
+<itemref idref="creditcards" />
+<itemref idref="carpooling" />
+<itemref idref="hiddenoil" />
+<itemref idref="barrier" />
+<itemref idref="bluewater" />
+<itemref idref="GoldMine" />
+<itemref idref="drillbit" />
+</spine>
+<tours>
+<tour id="chapterTourName" title="These are the chapters">
+<site title="TOC" href="toc.html" />
+</tour>
+</tours>
+<guide>
+<reference type="title-page" title="About This Book" href="about.html" />
+<reference type="other.ms-firstpage" title="First Page" href="TitlePage.html" />
+<reference type="foreword" title="Foreword" href="foreword.html" />
+<reference type="toc" title="Table of Contents" href="toc.html" />
+</guide>
+</package>

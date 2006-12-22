@@ -1,0 +1,77 @@
+.TH LOGON 1
+.SH NAME
+logon \- log on to Inferno
+.SH SYNOPSIS
+[
+.B wm/wm
+]
+.B wm/logon
+[
+.B -l
+] [
+.BI "-n nsfile"
+] [
+.BI "-u user"
+]
+.SH DESCRIPTION
+.I Logon
+logs a user in to the Inferno environment.
+It requires
+.I wm (1)
+to be started first.
+If no
+.I user
+name is specified by the
+.B -u
+option,
+.I logon
+displays a login panel to prompt for one.
+The user name must have a directory
+.BI /usr/ user,
+which will become the current directory.
+(Otherwise,
+.I logon
+will display a diagnostic panel and prompt again.)
+The user name is written to
+.B /dev/user
+(see
+.IR cons (3)),
+which is the name presented on subsequent attaches to file servers.
+.PP
+Normally,
+.I logon
+expects keyboard input to provide a name,
+but if the
+.B -l
+option is given,
+.I logon
+displays a list of the names in
+.BR /usr ,
+allowing one to be selected using a mouse or touch screen.
+.PP
+Once the current directory has been set,
+.I logon
+creates a new name space for the user using the contents of
+.I nsfile
+(default:
+.BR namespace ),
+as described in
+.IR namespace (6).
+It then starts
+.IR toolbar (1)
+to provide the initial application environment.
+.SH FILES
+.TF /dev/userxx
+.TP
+.B /dev/user
+Inferno user name
+.TP
+.BI /usr/ user
+.IR user 's
+home directory
+.SH SOURCE
+.B /appl/wm/logon.b
+.SH SEE ALSO
+.IR toolbar (1),
+.IR wm (1),
+.IR namespace (6)

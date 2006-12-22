@@ -1,0 +1,198 @@
+.TH SCALE 9
+.SH NAME
+scale \- Create and manipulate scale widgets
+.SH SYNOPSIS
+\f5scale\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -font               -orient
+-background       -foreground         -relief
+-borderwidth      -highlightcolor     -takefocus
+-disabledcolor    -highlightthickness
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -bigincrement \fIdist\fR
+Some interactions with the scale cause its value to change by
+``large'' increments;  this option specifies the size of the
+large increments.  If specified as 0, the large increments default
+to 1/10 the range of the scale.
+.TP
+.B -command \fIcommand\fR
+Specifies the prefix of a Tk command to invoke whenever the scale's
+value is changed via a widget command.
+The actual command consists
+of this option followed by a space and a real number indicating the
+new value of the scale.
+.TP
+.B -from \fIfrac\fR
+A real value corresponding to the left or top end of the scale.
+.TP
+.B -height \fIdist\fP
+Specifies a desired height for the scale.
+If this option isn't specified, the scale is given a default height.
+.TP
+.B -label \fIstring\fR
+A string to display as a label for the scale. If the option is specified
+as an empty string, no label is displayed.
+.TP
+.B -resolution \fIfrac\fR
+A real value specifying the resolution for the scale.
+If this value is greater than zero then the scale's value will always be
+rounded to an even multiple of this value, as will tick marks and
+the endpoints of the scale.  If the value is less than zero then no
+rounding occurs.  Defaults to 1 (i.e., the value will be integral).
+.TP
+.B -showvalue \fIboolean\fR
+Specifies a boolean value indicating whether or not the current
+value of the scale is to be displayed.
+.TP
+.B -sliderlength \fIdist\fR
+Specfies the size of the slider along the slider's
+long dimension..
+.TP
+.B -sliderrelief \fIrelief\fI
+Specifies the relief to use when drawing the slider.
+.TP
+.B -state \fIstate\fR
+Specifies one of three states for the scale:  \f5normal\fR,
+\f5active\fR, or \f5disabled\fR.
+If the scale is disabled then the value may not be changed and the scale
+won't activate.
+If the scale is active, the slider is displayed using the colour
+specified by the \f5activebackground\fR option.
+.TP
+.B -tickinterval \fIfrac\fR
+Must be a real value.
+Determines the spacing between numerical
+tick marks displayed below or to the left of the slider.
+If 0, no tick marks will be displayed.
+.TP
+.B -to \fIfrac\fR
+Specifies a real value corresponding
+to the right or bottom end of the scale.
+This value may be either less than or greater than the \f5from\fR option.
+.TP
+.B -width \fIdist\fP
+Specifies a desired width for the scale.
+If this option isn't specified, the scale is given a default width.
+.SH DESCRIPTION
+The \f5scale\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a scale widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the scale such as its colours, orientation,
+and relief.  The \f5scale\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A scale is a widget that displays a rectangular \fItrough\fR and a
+small \fIslider\fR.  The trough corresponds to a range
+of real values (determined by the \f5from\fR, \f5to\fR, and
+\f5resolution\fR options),
+and the position of the slider selects a particular real value.
+The slider's position (and hence the scale's value) may be adjusted
+with the mouse or keyboard as described in the BINDINGS
+section below.  Whenever the scale's value is changed, a Tk
+command is invoked (using the \f5command\fR option) to notify
+other interested widgets of the change.
+.PP
+Three annotations may be displayed in a scale widget:  a label
+appearing at the top right of the widget (top left for horizontal
+scales), a number displayed just to the left of the slider
+(just above the slider for horizontal scales), and a collection
+of numerical tick marks just to the right of the trough
+(just below the trough for horizontal scales).  Each of these three
+annotations may be enabled or disabled using the
+configuration options.
+
+.SH "WIDGET COMMAND"
+The \f5scale\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for scale widgets:
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5scale\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5scale\fR
+command.
+.TP
+\fIpathName \f5coords \fR?\fIvalue\fR?
+Returns a list whose elements are the x and y coordinates of
+the point along the centreline of the trough that corresponds
+to \fIvalue\fR.
+If \fIvalue\fR is omitted then the scale's current value is used.
+.TP
+\fIpathName \f5get\fR ?\fIx y\fR?
+If \fIx\fR and \fIy\fR are omitted, returns the current value
+of the scale.  If \fIx\fR and \fIy\fR are specified, they give
+pixel coordinates within the widget;  the command returns
+the scale value corresponding to the given pixel.
+Only one of \fIx\fR or \fIy\fR is used:  for horizontal scales
+\fIy\fR is ignored, and for vertical scales \fIx\fR is ignored.
+.TP
+\fIpathName \f5identify\fR \fIx y\fR
+Returns a string indicating what part of the scale lies under
+the coordinates given by \fIx\fR and \fIy\fR.
+A return value of \f5slider\fR means that the point is over
+the slider;  \f5trough1\fR means that the point is over the
+portion of the slider above  or to the left of the slider;
+and \f5trough2\fR means that the point is over the portion
+of the slider below or to the right of the slider.
+If the point isn't over one of these elements, an empty string
+is returned.
+.TP
+\fIpathName \f5set\fR \fIvalue\fR
+This command is invoked to change the current value of the scale,
+and hence the position at which the slider is displayed.  \fIValue\fR
+gives the new value for the scale.
+The command has no effect if the scale is disabled.
+.SH BINDINGS
+Tk automatically creates bindings for scales that give them
+the following default behaviour.
+Where the behaviour is different for vertical and horizontal scales,
+the horizontal behaviour is described in parentheses.
+.IP [1]
+If button 1 is pressed in the trough, the scale's value will
+be incremented or decremented by the value of the \f5bigincrement\fR
+option so that the slider moves in the direction of the cursor. 
+If the button is held down, the action auto-repeats.
+.IP [2]
+If button 1 is pressed over the slider, the slider can be dragged
+with the mouse.
+.IP [3]
+If the widget receives Up-arrow or Left-arrow key events, the scale's value
+will be incremented or decremented so as to adjust the value towards the
+.BR from value .
+.IP [4]
+If the widget receives Down-arrow or Right-arrow key events, the scale's value
+will be incremented or decremented so as to adjust the value towards the
+.BR to value .
+.PP
+If the scale is disabled using the \f5state\fR option then
+none of the above bindings have any effect.
+.PP
+The behaviour of scales can be changed by defining new bindings for
+individual widgets.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

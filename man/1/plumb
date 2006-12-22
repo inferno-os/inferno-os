@@ -1,0 +1,78 @@
+.TH PLUMB 1
+.SH NAME
+plumb \- send message to plumber
+.SH SYNOPSIS
+.B plumb
+[
+.BI -s " src"
+] [
+.BI -d " dest"
+] [
+.BI -D " dir"
+] [
+.BI -k " kind"
+] [
+.BI -a " name value"
+]
+.I data
+\&...
+.SH DESCRIPTION
+.I Plumb
+sends a message to the plumber,
+.IR plumber (8),
+which is normally started by
+.IR wm (1)'s
+start up script.
+.PP
+The options and arguments are used as components of the message.
+See
+.IR plumbing (6)
+for their interpretation.
+The options are:
+.TP
+.BI -s " src"
+Set the source to
+.I src
+(default: unspecified).
+.TP
+.BI -d " dest"
+Set the destination to
+.I dest
+(default: unspecified).
+.TP
+.BI -D " dir"
+Set the directory to
+.I dir
+(default: current directory as reported by
+.IR pwd (1)
+or
+.IR workdir (2)).
+.TP
+.BI -k " kind"
+Set the kind of data to
+.I kind
+(default:
+.BR text )
+.TP
+.BI -a " name value"
+Include an attribute
+.RI ` name = value ';
+there can be more than one.
+.PP
+The remaining arguments are sent, separated by spaces, as the
+.I data
+of the message.
+The plumber
+will apply its rules to the resulting message to decide how to route it.
+.SH FILES
+.TF /chan/plumb.input
+.TP
+.B /chan/plumb.input
+.IR plumber (8)
+input channel
+.SH SOURCE
+.B /appl/cmd/plumb.b
+.SH SEE ALSO
+.IR plumbmsg (2),
+.IR plumbing (6),
+.IR plumber (8)

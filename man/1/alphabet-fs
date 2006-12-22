@@ -1,0 +1,425 @@
+.TH ALPHABET-FS 1
+.SH NAME
+fs \- file-hierarchy traversal
+.SH SYNOPSIS
+.EX
+load alphabet
+typeset /fs
+type /fs/fs
+type /fs/entries
+type /fs/gate
+type /fs/selector
+.EE
+.SH DESCRIPTION
+.B Fs
+is a typeset for
+.I alphabet
+(see
+.IR sh-alphabet (1))
+which enables filtering of the contents of hierarchical filesystems.
+.I Fs
+defines four new types:
+.TP 10
+.B fs
+The complete contents of a filesystem.
+.TP
+.B entries
+Information about the entries in a filesystem without
+their content.
+.TP
+.B gate
+A condition that can be used with conditional verbs.
+A gate is open to entries satisfying particular
+criteria.
+.TP
+.B selector
+A comparator which compares two entries
+and selects one, both or neither of them.
+.PP
+In the following description of the verbs provided,
+an entry such as:
+.TP 10
+.B print \fIentries\fP \fR->\fP status
+.PP
+describes a verb
+.BR print ,
+which takes one argument of type
+.IR entries ,
+and the result of which is of type
+.BR status .
+If the type is not one of those described above,
+it should be taken to be of type
+.IR string .
+.PP
+All types and modules names are taken to be relative to
+the typeset root,
+.BR /fs .
+.PP
+Modules defined within
+.I fs
+include:
+.TP 10
+\f5and\fP \fIgate gate\fP [\fIgate\fP...] -> \fIgate\fP
+.B And
+is a gate that is open to an entry if all its arguments are open.
+.TP
+\f5bundle\fP \fIfs\fP -> \fIvoid\fP
+.B Bundle
+converts
+.I fs
+to an archival format and writes it to the standard output.
+.TP
+\f5compose\fP [\f5-d\fP] \fIop\fP -> \fIselector\fP
+.B Compose
+implements ``compositing''-style operators, useful when
+merging filesystems.
+.I Op
+specifies the operator, taking its name from
+the graphical Porter-Duff equivalent:
+.BR AinB ,
+.BR AinB ,
+.BR BinA ,
+.BR AoutB ,
+.BR BoutA ,
+.BR A ,
+.BR AoverB ,
+.BR AatopB ,
+.BR AxorB ,
+.BR B ,
+.BR BoverA ,
+or
+.BR BatopA.
+For instance,
+.B AinB
+gives the intersection of A and B;
+.B AatopB
+gives A whereever both A and B exist, and B otherwise.
+When used as a selector for
+.BR merge ,
+operators that exclude
+the union of A and B are not very useful, as they will
+exclude all common directories at the top level.
+Given the
+.B -d
+option, compose will allow through directories that
+would otherwise be excluded in this way, making
+operators such as
+.B AxorB
+(all that A does not hold in common with B)
+more useful, although accurate only for regular files.
+.TP
+\f5depth\fP \fIn\fP -> \fIgate\fP
+.B Depth
+is a gate open only to entries which are within
+.I n
+levels of the root of the filesystem.
+.TP
+\f5entries\fP \fIfs\fP -> \fIentries\fP
+.B Entries
+produces all the entries contained within
+.IR fs .
+.TP
+\f5filter\fP  [\f5-d\fP] \fIfs\fP\fIgate\fP -> \fIfs\fP
+The result of
+.B filter
+is a filesystem from which all entries that will
+not pass through
+.IR gate ,
+and their descendents, have been removed.
+If the
+.B -d
+flag is given, only files are filtered \- directories bypass the gate.
+.TP
+\f5ls\fP [\f5-um\fP] \fIentries\fP -> \fIvoid\fP
+Print each entry in the style of
+.B ls -l
+(see
+.IR ls (1)).
+If the
+.B -u
+flag is given, the file access time rather than the file modification time
+will be printed. If the
+.B -m
+flag is given, the name of the user that last modified the file
+is printed too.
+.TP
+\f5exec\fP [\f5-pP\fP] [\f5-t\fP \fIcmd\fP] [\f5-n\fP \fIn\fP] \fIentries cmd\fP -> \fIvoid\fP
+Run its argument
+.I cmd
+for each entry in
+.I entries .
+If the
+.B -n
+flag is specified,
+.B exec
+will try to gather
+.I n
+entries together before invoking the command (default 1).
+The environent variable
+.B $file
+is set to the names of the entries that have been gathered.
+If the
+.B -p
+flag is given, environment variables are set giving information
+about the mode, owner, modification time and size of the entry
+(they are named after the equivalent field
+names in the
+.B Dir
+structure; see
+.IR sys-stat (2)).
+This option is only valid when
+.I n
+is 1.
+The
+.B -P
+flag causes all the other fields in the Dir structure to be included too.
+Note that the command is run in the same shell context each time,
+so environment variable set on one execution can
+be retrieved on the next. The
+.B -t
+flag can be used to specify a command which will be executed
+just before termination.
+.TP
+\f5match\fP [\f5-ar\fP] \fIpattern\fP -> \fIgate\fP
+.B Match
+is a gate that is open if the entry's filename
+matches the
+.IR pattern .
+If the
+.B -a
+flag is given, the whole path will be used
+for the match.
+If
+.B -r
+is specified, the pattern is evaluated as a regular expression,
+otherwise it is a shell-style pattern in the style of
+.IR filepat (2).
+.TP
+\f5merge\fP [\f5-1\fP] [\f5-c\fP \fIselector\fP] \fIfs fs\fP [\fIfs\fP...] -> \fIfs\fP
+Recursively merge the contents of its argument
+filesystems.
+.I Selector
+is consulted to see which entries are chosen for the result;
+if not given, entries are resolved in favour of the first filesystem
+(equivalent to
+.BR "{compose AoverB}").
+If the
+.B -1
+flag is given, merging takes place only in the top-level directory.
+.TP
+\f5mode\fP \fIspec\fP -> \fIgate\fP
+.B Mode
+is a gate that lets through entries whose file permissions
+satisfy
+.IR spec ,
+which is a string in the style of
+.IR chmod (1).
+If the
+.I op
+field is
+.BR + ,
+the specified permissions must be present; if
+.BR - ,
+they must be absent, and if
+.BR = ,
+they must be exactly as given.
+The directory and auth modes are specified with
+the characters ``\f5d\fP'' and ``\f5A\fP''
+respectively.
+.TP
+\f5not\fP \fIgate\fP -> \fIgate\fP
+.B Not
+is a gate open to an entry if its argument is not.
+.TP
+\f5or\fP \fIgate gate\fP [\fIgate\fP...] -> \fIgate\fP
+.B Or
+is a gate open to an entry if any argument is open.
+.TP
+\f5path\fP [\f5-x\fP] \fIpath\fP... -> \fIgate\fP
+.B Path
+is a gate open to an entry whose full pathname
+is an ancestor or a descendent of any
+.IR path.
+If
+.B -x
+is specified, the gate is open to any path
+.I except
+descendents of the paths given.
+.TP
+\f5pipe\fP [\f5-1pP\fP] \fIfs cmd\fP -> \fIstatus\fP
+.B Pipe
+is similar to exec, except that the contents of all files
+in
+.I fs
+are piped through
+.IR cmd .
+Unless the
+.B -1
+option is given,
+.I cmd
+is started once for each file, with
+.B $file
+set to its name, and other environment variables
+set according to the
+.B -p
+or
+.B -P
+options, as for
+.BR exec .
+If the
+.B -1
+option is specified,
+.I cmd
+is started once only \- all file data is piped through that.
+.TP
+\f5print\fP \fIentries\fP -> \fIfd\fP
+Print the path name of each entry to
+.IR fd .
+.TP
+\f5proto\fP [\f5-r\fP \fIroot\fP] \fIprotofile\fP -> \fIfs\fP
+Evaluate
+.I protofile
+as a
+.IR mkfs (8)
+.I proto
+file. If
+.I root
+is specified, it will be used as the root of the resulting
+.IR fs .
+.TP
+\f5query\fP \fIcmd\fP -> \fIgate\fP
+.B Query
+is a gate that runs
+.I cmd
+to determine whether it is open: an empty
+exit status from the command yields an open gate.
+The environment variable
+.B $file
+is set for the command to the path name of the entry that is being queried for.
+.TP
+\f5run\fP \fIcmd\fP -> \fIstring\fP
+.B Run
+runs
+.I cmd
+and substitutes the value of the environment variable
+.B $s
+after its invocation.
+.B $s
+must have exactly one element.
+.TP
+\f5select\fP \fIgate entries\fP -> \fIentries\fP
+Select only those entries within
+.I entries
+that will pass through
+.IR gate .
+Descendents of elided entries are not affected.
+.TP
+\f5setroot\fP [\f5-c\fP] \fIfs\fP \fIpath\fP -> \fIfs\fP
+.B Setroot
+sets the name of the root directory of
+.IR fs .
+If the
+.B -c
+flag is given, the elements in the root directory
+will be made explicit in the hierarchy (i.e. the
+name of the top directory will not contain any
+.B /
+characters).
+.TP
+\f5size\fP \fIentries\fP -> \fIfd\fP
+Print the sum of the size of all entries, in bytes to
+.IR fd .
+.TP
+\f5unbundle\fP \fIfd\fP -> \fIfs\fP
+.B Unbundle
+reads an archive as produced by
+.B bundle
+from
+.IR fd ;
+its result is the contents of the filesystem that was
+originally bundled.
+.TP
+\f5walk\fP \fIpath\fP -> \fIfs\fP
+.B Walk
+produces a filesystem that is the result of
+traversing all the files and directories underneath
+.IR path .
+.TP
+\f5write\fP \fIfs dir\fP -> \fIvoid\fP
+Write the contents of
+.I fs
+to the filesystem rooted at
+.I dir .
+If
+.I dir
+is empty,
+.I fs
+will be written to the root directory originally associated with fs.
+.SH EXAMPLES
+The examples below assume the following
+.I alphabet
+declarations:
+.EX
+	load alphabet
+	typeset /fs
+	type /string /fd /fs/fs /fs/entries /fs/gate
+	import /fs/size /fs/walk /fs/select /fs/mode /fs/merge
+	import /fs/compose /fs/exec /fs/bundle /fs/write /fs/unbundle
+	import /fs/print /fs/depth /fs/filter /fs/query
+	autoconvert string fs walk
+	autoconvert fs entries /fs/entries
+	autoconvert string gate /fs/match
+	autoconvert entries fd /fs/print
+	autoconvert fd /status {(/fd); /print $1 1}
+.EE
+Print the size of all files below the current directory:
+.EX
+	-{size .}
+.EE
+Show the names of all files in x that aren't in y:
+.EX
+	-{walk x | merge -c {compose -d AoutB} y | select {mode -d}}
+.EE
+Remove all files from /appl ending in
+.BR .dis :
+.EX
+	-{walk /appl | select '*.dis' | exec "{rm $file}}
+.EE
+Recursively copy the current directory to
+.BR /tmp/foo .
+.EX
+	-{write . /tmp/foo}
+.EE
+Interactively remove all regular files from one level of the current directory:
+.IP
+.EX
+	-{walk . |
+		filter {depth 1} |
+		select {mode -d} |
+		select {
+			query "{echo -n $file:; ~ `{read} y yes}
+		} |
+		exec "{rm $file}
+	}
+.EE
+.PP
+Create a new archive containing those files from below the current directory
+that were held in an old archive:
+.EX
+	-{merge -c {compose AinB} . {unbundle old.bundle} |
+		bundle |
+		/create new.bundle
+	}
+.EE
+.SH SOURCE
+.BR /appl/alphabet/fs.b ,
+.BR /appl/alphabet/fstypes.b
+.BR /appl/alphabet/auxi/fsfilter.b
+.br
+.B /appl/cmd/fs/*.b
+.br
+.SH SEE ALSO
+.IR sh-alphabet (1),
+.IR alphabet-main (1),
+.IR alphabet-fs (2),
+.IR sh (1)

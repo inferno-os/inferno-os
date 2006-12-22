@@ -1,0 +1,557 @@
+.TH SH-STD 1
+.SH NAME
+std, if, while, ~, no, !, apply, getlines, status, pctl, fn, and, or, raise, rescue, hd, tl, index, split, join, pid, parse, pctl, env \- standard shell builtins module.
+.SH SYNOPSIS
+.B load std
+
+.B !
+.I command
+.br
+.B ~
+.I value
+[
+.IR pattern ...
+]
+.br
+.B no
+[
+.IR arg ...
+]
+.br
+.B and
+.IR command ...
+.br
+.B apply
+.I command
+[
+.IR arg ...
+]
+.br
+.B getlines
+[
+.I separators
+]
+.I command
+.br
+.B flag
+.I f
+[
+.B +-
+]
+.br
+.B for
+.I var
+.B in
+[
+.IR arg ...
+]
+.I command
+.br
+.B fn
+.I name command
+.br
+.B if
+.I condition action
+[
+.I condition action
+]... [
+.I elseaction
+]
+.br
+.B or
+.IR command ...
+.br
+.B pctl
+.IR flag...
+.br
+.B raise
+.I name
+.br
+.B rescue
+.I pattern rescueblock command
+.br
+.B status
+.I value
+.br
+.B subfn
+.I name command
+.br
+.B if
+[
+.I condition action
+]... [
+.I elseaction
+]
+.br
+.B while
+.I condition command
+.br
+.B ${hd
+.IB list }
+.br
+.B ${index
+.I number
+.IB list }
+.br
+.B ${pid}
+.br
+.B ${split
+[
+.I separators
+]
+.IB arg }
+.br
+.B ${join
+.I separator
+.IB list }
+.br
+.B ${tl
+.IB list }
+.br
+.B ${parse
+.IB arg ]
+.br
+.B ${pipe
+(
+.B from
+|
+.B to
+|
+.I fdnum
+)
+.IB command }
+.br
+.B ${env}
+.SH DESCRIPTION
+.B Std
+is a loadable module for
+.IR sh (1)
+that provides the equivalent of a
+``standard library'' for the shell, including
+a set of control-flow constructs and some
+other miscellaneous commands.
+In the following descriptions, if an argument is
+executed, then it should be a braced block
+suitable for executing by
+.IR sh .
+A true exit status is defined to be nil;
+any non-nil exit status is false.
+Unless otherwise stated, the return value
+of a command is that of the last command that
+it executed.
+If invalid arguments are passed to any command,
+a
+.B usage
+exception is raised, and a message printed to stderr.
+.PP
+Each of the looping commands
+.BR for ,
+.BR apply ,
+.BR while ,
+and
+.B getlines
+installs an exception handler for the duration of the
+loop to catch the exceptions
+.B break
+and
+.BR continue .
+If a
+.B break
+exception is caught, the loop is terminated; if a
+.B continue
+exception is caught, the loop will continue executing as
+usual.
+The commands are as follows:
+.TP 10
+.B !
+.B !
+inverts the exit status of a command (non-null is changed to null,
+null is changed to non-null).
+.TP
+.B ~
+.B ~
+matches
+.I value
+against each
+.I pattern
+in turn, returning true if any of them match and false otherwise.
+The patterns are of the same form as those accepted by
+the shell for filename pattern matching except that / is
+not treated specially. (see
+.IR filepat (2)).
+Patterns
+must be quoted to stop the shell from interpreting them.
+.TP
+.B no
+True if there are no arguments. Useful for testing if there are any items in a list
+without counting the items with
+.BR $# .
+.TP
+.BI and
+.B And
+evaluates each
+.I command
+in turn until one returns false.
+.TP
+.B apply
+.B Apply
+evaluates
+.I command
+once for each
+.IR arg ,
+passing it in the variable
+.BR $1 .
+.TP
+.B getlines
+.B Getlines
+reads lines from the standard input,
+executing
+.I command
+for each line, setting the environment variable
+.B $line
+to the line read, with any terminating character
+removed. If
+.I separators
+is given, a line is terminated when any character
+in
+.I separators
+is found; the default separator string
+is a single newline character.
+.TP
+.B flag
+Either set
+.RB ( + ),
+clear
+.RB ( - ),
+or test (neither
+.B +
+or
+.BR - )
+the flag
+.IR f ,
+where
+.I f
+is a single character, one of the
+command line flags to
+.I sh
+(see
+.IR sh (1)).
+.TP
+.B fn
+.B Fn
+defines a new builtin command named
+.IR name ;
+when run, this command evaluates
+.IR command .
+The command is stored in the environment
+variable
+.BI fn- name\f1;\fP
+any variables of this form found when
+when
+.B std
+is loaded will be defined in this way.
+If
+.I command
+is not given, then the builtin will be removed.
+.TP
+.B subfn
+.B Subfn
+is similar to
+.B fn
+except that it defines a new substitution builtin
+.IR name .
+When
+.I name
+is invoked, it creates a new local variable
+.B result
+and executes
+.IR command .
+The value of
+.B $result
+when
+.I command
+has terminated is the value yielded by the substitution builtin
+.IR name .
+.I Command
+is stored in and restored from the environment in a similar
+way to
+.BR fn ,
+except that
+.BI sfn- name
+is used as the name of the environment variable.
+.TP
+.B if
+.B If
+executes
+.IR condition ;
+if it returns true, then
+.I action
+is executed, otherwise each of the next
+.IR condition - action
+pairs is evaluated in the same way; if no
+.I condition
+is satisfied, then
+.I elseaction
+will be executed, if present.
+.TP
+.B for
+.B For
+is similar to
+.BR apply ;
+it runs
+.I command
+once for each
+.IR arg ,
+but it performs a local assignment of
+.I arg
+to
+.I var
+each time.
+.TP
+.B or
+.B Or
+evaluates each
+.I command
+in turn until one returns true.
+.TP
+.B pctl
+.B Pctl
+is an interface to the Inferno system call
+.IR sys-pctl (2);
+each argument specifies one bit in the bitmask
+passed to that function. The possible flags are
+.BR newfd ,
+.BR forkfd ,
+.BR newns ,
+.BR forkns ,
+.BR newpgrp
+and
+.BR nodevs .
+See
+.IR sys-pctl (2)
+for details of the meaning of these flags.
+.B Pctl
+returns true.
+.TP
+.B raise
+.B Raise
+raises the exception
+.IR name ;
+.I name
+will be truncated if it is longer than
+that allowed by
+.I raise
+(see
+.IR sys-exception (2)).
+Control will be transferred to the innermost
+rescue block in the same process that
+matches
+.IR name .
+If there is no rescue block in place,
+the current process will exit, yielding
+.I name
+as its exit status.
+If no
+.I name
+is given, the exception named in
+.B $exception
+is raised; if this is null, a
+.B bad raise context
+exception is raised.
+The default command prompt catches all
+exceptions.
+.TP
+.B rescue
+.B Rescue
+executes
+.I command
+with an exception handler installed for the duration
+of the call. It will catch all exceptions with a name
+matching
+.IR pattern ,
+where
+.I pattern
+is of the same form accepted by
+.I rescue
+(see
+.IR sys-exception (2));
+i.e. an exact match, or a prefix
+followed by an asterisk
+.RB ( * )
+which will match an exception starting with the prefix.
+If an exception is caught,
+.B rescue
+executes
+.IR rescueblock ,
+setting
+.B $exception
+to the name of the exception raised.
+.TP
+.B status
+returns its first argument word as its exit status,
+or nil if none is given.
+.TP
+.B while
+.B While
+repeatedly executes
+.I condition
+and then
+.I action
+until
+.I condition
+does not return true.
+.TP
+.B ${env}
+.B Env
+yields a list of the names of all
+currently set non-nil environment variables.
+.TP
+.B ${hd}
+.B Hd
+yields the first of its arguments, or nil if there
+are no arguments.
+.TP
+.B ${index}
+.B Index
+yields the
+.IR n 'th
+element in its argument list, indexed from 1.
+.I N
+must be a decimal integer.
+.TP
+.B ${join}
+.B Join
+yields a single element which is the concatenation of all
+the elements in
+.I list
+separated by
+.IR separator .
+If there are no elements in
+.IR list ,
+it yields an empty string.
+The shell operator
+\f5$"\f2var\f1
+is exactly equivalent to
+.BI "${join ' ' $" var }\f1.\fP
+.TP
+.B ${parse}
+.B Parse
+parses
+.I arg
+according to the usual syntax rules, raising a
+.B parse error
+exception if it fails.
+.I Arg
+must be a well-formed command block
+surrounded by braces.
+.B Parse
+yields a functionally equivalent version 
+of
+.IR arg .
+.TP
+.B ${pid}
+.B Pid
+yields the process id of the current process.
+.TP
+.B ${pipe}
+.B Pipe
+runs
+.I command
+asynchronously, with one of its file descriptors connected
+to a bidirectional pipe. The first argument to
+.B pipe
+determines which file descriptor is connected: if
+the argument is
+.BR from ,
+its standard output is connected; if the argument is
+.BR to ,
+its standard input is connected; otherwise file descriptor
+.I fdnum
+is connected.
+.B Pipe
+yields the name of a file that can be opened to access
+the other end of the pipe. This allows the construction
+of non-linear pipelines. For example, the following runs two commands
+.B old
+and
+.B new
+and uses
+.B cmp
+to compare their outputs
+.EX
+	cmp ${pipe from {old}} ${pipe from {new}}
+.EE
+.TP
+.B ${split}
+.B Split
+splits
+.I arg
+into list elements at every point where one or
+more characters in
+.I separators
+appear. If
+.I separators
+is not given, the value of
+.B $ifs
+is used.
+.TP
+.B ${tl}
+.B Tl
+yields all but the first of its arguments,
+or nil if there are no arguments.
+.SS Syntactic considerations
+It is worth being aware of a few pitfalls that await the user of
+some of these commands. Unlike other shells, the syntax of
+.I sh
+does not include the syntax of the control flow commands,
+so it is important to be aware of the rules that govern
+the gathering of the arguments for a command.
+In particular, the following code, written to print a message
+a filename ends in
+.B .b
+will not work: it will always print ``file is Limbo source''.
+.EX
+	and
+		{~ $filename '*.b'}
+		{echo file is Limbo source}
+.EE
+This is because newlines separate shell commands, so
+the above code first invokes
+.B and
+with no arguments, and then each of the braced block
+commands on each subsequent line.
+It is usual to use round brackets in order to group together arguments
+on separate lines, e.g.
+.EX
+	and (
+		{~ $filename '*.b'}
+		{echo file is Limbo source}
+	)
+.EE
+This has the originally intended meaning.
+.SH FILES
+.TF /tmp/pipes/*
+.TP
+.B /tmp/pipe.*d
+Temporary placeholder directory for named pipes.
+.TP
+.B /tmp/pipes/*
+Mount point for named pipes.
+.SH SOURCE
+.B /appl/cmd/sh/std.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-expr (1),
+.IR sh-tk (1)
+.SH BUGS
+As the shell does not know about functions,
+the
+.B whatis
+command cannot return information about
+their value. Use
+.BI "whatis fn-" name
+to find out the current definition of a function,
+or
+.BI "whatis sfn-" name
+to find out the current definition of a substitution function.
+

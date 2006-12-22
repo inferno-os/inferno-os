@@ -1,0 +1,318 @@
+.TH REGISTRIES 2
+.SH NAME
+registries \- access services registry
+.SH SYNOPSIS
+.EX
+include "registries.m";
+registries := load Registries Registries->PATH;
+
+init: fn();
+
+Attributes: adt {
+   attrs: list of (string, string);
+
+   get:   fn(a: self ref Attributes, attr: string): string;
+   set:   fn(a: self ref Attributes, attr, val: string);
+   new:   fn(attrs: list of (string, string)): ref Attributes;
+};
+
+Attached: adt {
+   fd:           ref Sys->FD;  # connection to the service
+   signerpkhash: string;     # hash of signer's key
+   localuser:    string;     # user name here
+   remoteuser:   string;     # user name there
+};
+
+Service: adt {
+   addr:    string;          # dial this to connect to the service
+   attrs:   ref Attributes;  # service description
+
+   attach:  fn(s: self ref Service, user: string,
+               keydir: string): ref Attached;
+};
+
+Registered: adt {
+   addr:    string;          # address where registered
+   reg:     ref Registry;    # registry where registered
+   fd:      ref Sys->FD;     # file representing registration entry
+};
+
+Registry: adt {
+   dir:     string;
+
+   new:        fn(dir: string): ref Registry;
+   connect:    fn(svc: ref Service, user: string, keydir: string):
+                  ref Registry;
+   services:   fn(r: self ref Registry):
+                  (list of ref Service, string);
+   find:       fn(r: self ref Registry, a: list of (string, string)):
+                  (list of ref Service, string);
+   register:   fn(r: self ref Registry, addr: string,
+                  attrs: ref Attributes, persist: int):
+                  (ref Registered, string);
+   unregister: fn(r: self ref Registry, addr: string): string;
+};
+.EE
+.SH DESCRIPTION
+.B Registries
+helps access and update the contents of one or more
+.I registry (4)
+servers.
+Each registry lists services, each described by a set of attribute/value pairs.
+The attributes need not identify the service uniquely.
+.PP
+.B Init
+must be called before any other function in the module.
+.PP
+.B Attributes
+represents a set of attribute/value pairs;
+a given attribute name cannot appear more than once.
+It provides the following members and operations:
+.TF attrs
+.PD
+.TP
+.B attrs
+The current value of the set, as a list of
+.BI ( attr , value )
+tuples.
+.TP
+.BI Attributes.new( attrs )
+Return a new
+.B Attributes
+value given
+.IR attrs ,
+a list of
+.BI ( attr , value )
+tuples.
+.TP
+.IB a .get( attr )
+Return the value of
+.I attr
+in attribute set
+.IR a .
+.TP
+.IB a .set( attr\fB,\fP\ value )
+Set the
+.I value
+of
+.I attr
+in attribute set
+.IR a .
+.PP
+A
+.B Service
+value represents a service registered in some registry.
+It has the following members and operations:
+.TF attrs
+.PD
+.TP
+.B addr
+A string that represents where the service can be reached: it is often a
+.IR sys-dial (2)
+address string, but might be a name in the name space; the interpretation is internal to
+.BR Registries .
+.TP
+.B attrs
+The service's attributes (complete service description).
+.TP
+.IB svc .attach( user , keydir )
+Attempts to attach to the service
+.IR svc ,
+and if successful returns an
+.B Attached
+value to represent the connection;
+otherwise returns nil and sets the system error string.
+.I User
+is the local name of the user making the connection; if nil, the contents of
+.B /dev/user
+are used by default.
+.I Keydir
+is the name of a directory containing the
+.IR user 's
+certified keys for authentication; if nil, the default is
+.BI /usr/ user /keyring.
+If an error occurs, the return value is nil and the system error string contains a diagnostic.
+Not all services demand authentication, and either or both values can be nil to
+select suitable defaults.
+If authentication is done, the certified data determines the remote identity, not
+.IR user ,
+which is used only to help find a suitable set of keys and has no effect on security.
+.PP
+.B Attached
+holds data about an active connection to a particular service.
+(There can be several distinct connections to the same
+.BR Service .)
+It provides the following members:
+.TF attrs
+.PD
+.TP
+.B fd
+A file descriptor that can be read and written to exchange data with the service.
+The meaning of the data depends on the service (eg, it might be a Styx connection
+or a SOAP implementation).
+Typically an attribute of the service description hints at the protocol.
+.TP
+.B signerpkhash
+A hexadecimal string giving the SHA-1 hash of the key of the signer used for
+mutual authentication (ie, its thumbprint); if no authentication was needed or
+did not use public key methods, it is nil.
+.TP
+.B localuser
+If authentication was required, the name used as the local name for authentication;
+otherwise nil.
+.TP
+.B remoteuser
+If authentication was required, the remote identity for this connection; otherwise nil.
+.PP
+A service provider registers using one of the
+.B Registry
+functions listed below.
+An active registration is represented by a value of type
+.BR Registered :
+.TF attrs
+.PD
+.TP
+.B addr
+Location of service, as registered.
+.TP
+.B reg
+The registry that registered the service.
+.TP
+.B fd
+File descriptor open for on the service file in
+.IR registry (4)
+that holds the service description.
+Unless the service has a non-zero
+.B persist
+attribute, the service registration will be removed when this file is closed
+(eg, when this
+.B Registration
+value is freed by the garbage collector if there is no other copy of
+.BR fd ).
+The file can be written as described in
+.IR registry (4)
+to change the some or all of current set of attributes and/or values
+in the service description.
+.PP
+A
+.B Registry
+represents a connection to a single
+.IR registry (4)
+instance.
+It provides the following members and operations:
+.TF attrs
+.PD
+.TP
+.B dir
+Location of the registry in the name space.
+.TP
+.BI Registry.new( dir )
+Return a new
+.B Registry
+value for the registry located at
+.I dir
+in the name space; if
+.I dir
+is nil, the default is
+.BR /mnt/registry .
+.TP
+.BI Registry.connect( svc\fB,\fP\ user\fB,\fP\ keydir )
+Connect to the registry at the location determined by the service description
+.IR svc ;
+if
+.I svc
+is nil, the default is to try
+.IR sys-dial (2)
+to
+.BR net!$registry!registry ,
+the symbolic name of the default registry for the current host.
+(The registry might or might not be local.)
+Attributes of
+.I svc
+determine the method used to connect to the registry and whether authentication is required.
+.I User
+and
+.I keydir
+provide user name and certificate directory (see
+.IR getauthinfo (8))
+if authentication is required; either or both can be nil to select the defaults for the given authentication method.
+On successful connection,
+.B connect
+returns a
+.B Registry
+value that can subsequently be used to access that registry and its services.
+It returns nil on an error and sets the system error string.
+.TP
+.IB reg ".services()"
+Returns a tuple
+.BI ( svcs , err )
+where
+.I svcs
+is a list of
+.B Service
+values, one for each service registered by
+.I reg
+at time of asking.
+If no services are registered, both values are nil.
+If an error occurred,
+.I svcs
+is nil but
+.I err
+is a diagnostic string.
+.TP
+.IB reg .find( attrs )
+Return a tuple
+.BI ( svcs , err )
+where
+.I svcs
+is a list of
+.B Service
+values, one for each service registered by
+.I reg
+that (at time of asking) matched all of the attribute/value pairs in
+.IR attrs .
+A value of
+.B \&"*"
+matches any value.
+If no services matched, both values are nil.
+If an error occurred,
+.I svcs
+is nil but
+.I err
+is a diagnostic string.
+.TP
+.IB reg .register( addr\fB,\fP\ attrs\fB,\fP\ persist )
+Attempts to register with
+.I reg
+a service named
+.I addr
+and the given attributes
+.IR attrs ,
+and returns a tuple
+.BI ( r , err )
+where
+.I r
+is a non-nil
+.B Registration
+value for the entry if successful, and
+.I err
+is a diagnostic otherwise.
+.I Persist
+is non-zero if the service registration should survive the
+.B Registration
+value (connection); normally it is zero and the registry entry vanishes when
+the service frees the
+.B Registration
+value.
+.TP
+.IB reg .unregister( addr )
+Attempt to remove the registration entry at
+.I reg
+for the service named
+.IR addr .
+Only the service owner can do so.
+Returns nil on success and a diagnostic otherwise.
+.SH SEE ALSO
+.IR attrdb (2),
+.IR registry (4),
+.IR svc (8)

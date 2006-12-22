@@ -1,0 +1,75 @@
+.TH PREFAB-INTRO 2
+.SH NAME
+Prefab: intro \- Interactive TV tookit
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "prefab.m";
+prefab := load Prefab Prefab->PATH;
+.EE
+.SH DESCRIPTION
+The
+.B Prefab
+module contains components for building graphics objects suitable for
+Interactive Television (ITV) applications using infrared remote controls.
+Using the
+.B Draw
+module's operations
+for simple text and images
+(see
+.IR draw-intro (2)),
+the toolkit can group individual items,
+treat those groups as units, and then activate the
+items on command.
+The other user interface toolkit,
+.IR tk (2),
+provides facilities for keyboard- and mouse-driven applications.
+.PP
+The objects on the screen are of type
+.BR Compound ,
+each of which occupies a unique window on the
+display and contains objects of type
+.BR Element .
+An
+.B Element
+may be a single object or a list of further
+.BR Elements ,
+to build hierarchically structured components.
+.PP
+.B Prefab
+defines
+.B Environ
+and
+.B Style
+types that specify the appearance of objects: their colours, fonts,
+backgrounds, and so on.
+A
+.B Style
+gives font and colour information, while
+an
+.B Environ
+identifies the
+.B Screen
+upon which the items will be displayed and the
+.B Style
+in which they will be drawn.
+.PP
+Applications should allocate
+.B Elements
+and
+.B Compounds
+only through the appropriate member functions, as described in the corresponding
+sections of the manual.
+Items created with regular Limbo
+definitions will not work properly.
+Moreover, except where indicated,
+applications should not modify the data members directly.
+Although the type definitions make data members visible,
+the members should usually be treated as read-only data.
+.SH SOURCE
+.B /libinterp/prefab.c
+.br
+.B /libprefab/*.c
+.SH SEE ALSO
+.IR draw-intro (2),
+.IR ir (2)

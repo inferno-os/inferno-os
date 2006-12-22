@@ -1,0 +1,237 @@
+.TH ATTRDB 2
+.SH NAME
+attrdb \- database of attribute-value pairs
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "attrdb.m";
+attrdb := load Attrdb Attrdb->PATH;
+
+Attr: adt {
+    attr:   string;
+    val:    string;
+    tag:    int;        # application-defined data, initially 0
+};
+
+Tuples: adt {
+    n:  int;
+    pairs:  list of ref Attr;
+
+    hasattr:    fn(t: self ref Tuples, attr: string): int;
+    haspair:    fn(t: self ref Tuples,
+                   attr: string, value: string): int;
+    find:       fn(t: self ref Tuples, attr: string): list of ref Attr;
+    findbyattr: fn(t: self ref Tuples,
+                   attr: string, value: string, rattr: string):
+                   list of ref Attr;
+};
+
+Dbentry: adt {
+    n:  int;
+    lines:  list of ref Tuples;
+
+    find:       fn(e: self ref Dbentry, attr: string):
+                  list of (ref Tuples, list of ref Attr);
+    findfirst:  fn(e: self ref Dbentry, attr: string): string;
+    findpair:   fn(e: self ref Dbentry,
+                  attr: string, value: string):
+                  list of ref Tuples;
+    findbyattr: fn(e: self ref Dbentry,
+                  attr: string, value: string, rattr: string):
+                  list of (ref Tuples, list of ref Attr);
+};
+
+.ig
+Dbptr: adt {
+    dbs:    list of ref Dbf;
+    index:  ref Index;
+    pick{
+    Direct =>
+        offset:   int;
+    Hash =>
+        current:  int;
+        next:     int;
+    }
+};
+
+Index: adt {
+    fd:     ref Sys->FD;
+    attr:   string;
+    mtime:  int;
+    size:   int;
+};
+
+Dbf: adt {
+    fd:      ref Bufio->Iobuf;
+    name:    string;
+    mtime:   int;
+    indices: list of ref Index;
+
+    open:    fn(path: string): ref Dbf;
+    sopen:   fn(data: string): ref Dbf;
+};
+..
+
+Db: adt {
+    open:   fn(path: string): ref Db;
+    sopen:  fn(data: string): ref Db;
+    append: fn(db1: self ref Db, db2: ref Db): ref Db;
+
+    find:       fn(db: self ref Db, start: ref Dbptr,
+                  attr: string): (ref Dbentry, ref Dbptr);
+    findpair:   fn(db: self ref Db, start: ref Dbptr,
+                  attr: string, value: string):
+                  (ref Dbentry, ref Dbptr);
+    findbyattr: fn(db: self ref Db, start: ref Dbptr,
+                  attr: string, value: string, rattr: string):
+                  (ref Dbentry, ref Dbptr);
+};
+
+init:   fn(): string;
+
+parseentry: fn(s: string, lno: int): (ref Dbentry, int, string);
+parseline:  fn(s: string, lno: int): (ref Tuples, string);
+.EE
+.SH DESCRIPTION
+.B Attrdb
+fetches data from textual databases that contain groups of attribute-value pairs.
+The format is defined by
+.IR attrdb (6).
+.PP
+.B Init
+must be called before any other function in the module.
+.PP
+Each logical database is represented by a
+.B Db
+value.
+It can span several physical files, named in the body of a
+.B database
+attribute in the primary file of the database.
+(If no such attribute appears, there is just the one physical file in the database.)
+.TP
+.BI Db.open( path )
+Opens
+.I path
+as a database, and
+returns a (reference to a)
+.B Db
+value that represents it.
+On an error, it returns nil and the system error string contains a diagnostic.
+If
+.I path
+contains a
+.B database
+attribute with associated attributes of the form
+.BI file= filename,
+the logical database is formed by (logically) concatenating the contents
+of each
+.I filename
+in the order listed.
+See
+.IR attrdb (6)
+for details.
+.TP
+.BI Db.sopen( data )
+Treat the contents of the string
+.I data
+as a database, and return a
+.B Db
+value representing it.
+.TP
+.IB db1 .append( db2 )
+Return a
+.B Db
+value that represents the result of logically appending
+the contents of database
+.I db2
+to
+.IR db1 .
+.TP
+.IB db .find( ptr , attr )
+Starting at
+.IR ptr ,
+look in
+.I db
+for the next entry that contains an attribute
+.I attr
+and return a tuple
+.BI ( e , ptr )
+where
+.I e
+is a
+.B Dbentry
+value representing the whole entry, and
+.I ptr
+is a database pointer for the next entry.
+If
+.I attr
+cannot be found,
+.I e
+is nil.
+.TP
+.IB db .findpair( ptr\fP,\fP\ attr\fP,\fP\ value\fP)
+Starting at
+.IR ptr ,
+look in
+.I db
+for the next entry that contains the pair
+.IB attr = value,
+and return a tuple
+.BI ( e , ptr )
+where
+.I e
+is a
+.B Dbentry
+value representing the whole entry, and
+.I ptr
+is a database pointer for the next entry.
+If the given pair
+cannot be found,
+.I e
+is nil.
+.TP
+.IB db .findbyattr( ptr\fP,\fP\ attr\fP,\fP\ value\fP,\fP\ rattr\fP )
+Starting at
+.I ptr
+in
+.IR db ,
+look for the next entry containing both the pair
+.IB attr = value
+and a pair with attribute
+.IR rattr ;
+return a tuple
+.BI ( e , ptr )
+where
+.I e
+is a
+.B Dbentry
+value representing the whole entry, and
+.I ptr
+is a database pointer for the next entry.
+If no such entry can be found,
+.I e
+is nil.
+.PP
+.B Parseline
+takes a line containing a set of space-separated
+.IB attribute = value
+pairs, and returns a tuple
+.BI ( ts , err ) .
+If the line's syntax is correct,
+.I ts
+is a
+.B Tuples
+value that represents the pairs as a list of
+.B Attr
+values.
+If the syntax is wrong (eg, unmatched quote),
+.I ts
+is nil and
+.I err
+contains a diagnostic.
+.SH SOURCE
+.B /appl/lib/attrdb.b
+.SH SEE ALSO
+.IR cfg (2),
+.IR attrdb (6),
+.IR ndb (6)

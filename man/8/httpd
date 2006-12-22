@@ -1,0 +1,112 @@
+.TH HTTPD 8
+.SH NAME
+httpd, echo, stats \- HTTP server
+.SH SYNOPSIS
+.B svc/httpd/httpd
+[
+.BI -c cachesize
+] [
+.B -D
+] [
+.BI -p port
+]
+.PP
+.BI svc/httpd/echo " meth vers uri search"
+.PP
+.BI svc/httpd/stats " meth vers uri search"
+.SH DESCRIPTION
+.I Httpd
+is a simple HTTP daemon, serving version 1.0 of the HTTP protocol.
+It listens for incoming calls on a given TCP/IP
+.I port
+(default: 80).
+It serves content rooted at
+.L /services/httpd/root
+in its name space.
+.PP
+The
+.I httpd
+program supports only the
+.L GET
+and
+.L HEAD
+methods of the HTTP protocol. The
+.L Content-type
+(default
+.LR application/octet-stream )
+and
+.L Content-encoding
+(default
+.LR binary )
+of a file are determined by looking for suffixes of the file name in
+.BR /services/http/http.suff .
+.PP
+If the requested URI begins with
+.BR /magic/ ,
+.I httpd
+loads the module associated with the remaining part of the URI.
+Take care to configure the name space sensibly.
+Simple servers
+.I echo
+and
+.I stats
+are provided (see below).
+.PP
+.I Httpd
+has the following options:
+.TP
+.BI -c cachesize
+Set the size of the daemon's cache to
+.I cachesize
+kilobytes. The default is a five megabyte cache.
+.TP
+.B -D
+Debugging information is written to the file
+.BR /services/httpd/httpd.debug .
+.TP
+.BI -p port
+Listen for requests on the given
+.IR port .
+.PP
+.I Echo
+is a trivial server that just returns the method, URI, any search, and the headers sent by the client.
+.PP
+.I Stats
+is an equally simple server that queries the cache and returns information to the user about pages stored in the cache.
+.PP
+More complex services can be written to
+.IR httpd 's
+private interface.
+The file
+.B httpd.m
+(in
+.BR /appl/svc/httpd )
+defines constants and adts used by
+.IR httpd .
+The file
+.B cgi.m
+defines the
+module
+.L Cgi
+which is the interface for programs called using the URI
+.BR /magic/ .
+.SH FILES
+.TF "/services/httpd/httpd.rewrite  "
+.TP
+.B /services/httpd/root
+Root of the served web content.
+.TP
+.B /services/httpd/httpd.debug
+Logfile for debugging information.
+.TP
+.B /services/httpd/httpd.log
+.I httpd
+logfile.
+.TP
+.B /services/httpd/httpd.rewrite
+File to redirect specific URI requests.
+.TP
+.B /services/httpd/httpd.suff
+File of recognizable suffixes and their content type.
+.SH SOURCE
+.B /appl/svc/httpd

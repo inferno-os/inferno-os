@@ -1,0 +1,43 @@
+.TH MV 1
+.SH NAME
+mv \- move files
+.SH SYNOPSIS
+.B mv
+.I fromfile
+.I tofile
+.br
+.B mv
+.I fromfile ...
+.I todir
+.SH DESCRIPTION
+.I Mv
+moves
+.I fromfile
+to
+.IR tofile .
+If the files are in the same directory,
+.I fromfile
+is simply renamed;
+a previously existing file named
+.I tofile
+will be (silently) removed.
+Otherwise,
+.I mv
+copies
+.I fromfile
+to
+.IR tofile ,
+then removes
+.IR fromfile .
+This requires write permission for the parent directories involved.
+.PP
+If the last argument is a directory, the earlier arguments (all files) will be moved into that directory. Any previously existing files of the same name will be overwritten.
+Directories can only be renamed:
+.I mv
+refuses to move one into another.
+.SH SOURCE
+.B /appl/cmd/mv.b
+.SH "SEE ALSO"
+.IR cp (1),
+.IR rm (1),
+.IR sys-stat (2)

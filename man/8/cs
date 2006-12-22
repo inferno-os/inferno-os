@@ -1,0 +1,242 @@
+.TH CS 8
+.SH NAME
+cs, csquery \- connection server
+.SH SYNOPSYS
+.B ndb/cs
+[
+.BI -f " database"
+] [
+.B -v
+] [
+.BI -x " net"
+]
+.PP
+.B ndb/csquery
+[
+.B -x
+.I net
+] [
+.B -s
+.I server
+] [
+.I address
+\&... ]
+.SH DESCRIPTION
+.I Cs
+spawns a process that
+serves a single file
+.BR /net/cs ,
+in the current name space,
+answering requests by client processes
+to translate symbolic network and service names into
+instructions for connecting to the given service.
+It is normally accessed indirectly by calls to
+.IR sys-dial (2).
+.PP
+The network data is taken from the network database files,
+described in
+.IR ndb (6).
+By default, it is
+.B /lib/ndb/local
+but the
+.B -f
+option can specify a different one.
+.PP
+Each write to
+.B /net/cs
+makes a query, expressed in one of two forms.
+The first form is a network address of the same form
+as the
+.I addr
+parameter to
+.IR dial :
+.IB network ! netaddr ! service
+where
+.I service
+and
+.I network
+are optional.
+The write returns an error if the address cannot be translated.
+Otherwise, the file offset should be reset to 0 using
+.IR sys-seek (2)
+and each subsequent read will return either
+end-of-file (if there are no further translations),
+or a single line containing a translation of the form:
+.IP
+.BI /net/ proto /clone " address" ! port
+.PP
+The first field is the name of the
+.I clone
+file for a network protocol or interface.
+To make a connection or announce a service, open that file, and write the
+text in the second field
+preceded by
+.B connect
+or
+.B announce
+as required.
+(All this activity is normally encapsulated in a call to
+.IR sys-dial (2)).
+.I Cs
+produces a translation for each network and for each network address on which a symbolic
+.I netaddr
+is found.
+When announcing a service,
+.I netaddr
+can be
+.B *
+to represent any local interface, and the resulting recipes read
+from
+.B /net/cs
+will not include an
+.IB address !
+part.
+.PP
+.I Cs
+interprets a
+.I netaddr
+of the form
+.BI $ server
+specially: it looks for an attribute
+.I server
+in the database in the entry for the current host, then in the entry for
+each network that contains it (if specified), and finally in a site-wide
+entry labelled with the attribute
+.BR infernosite .
+If found, the value of the attribute replaces the
+.I netaddr
+before further translation.
+.PP
+In the second form of query, the text written contains space-separated attribute/value pairs:
+.IP
+.IB attr1 = val1
+[
+.IB attr2 = val2
+\& ...
+]
+.PP
+.I Cs
+looks for an
+.IR ndb (6)
+entry that contains attribute/value pairs matching those in the query.
+Any value but
+.I val1
+may be
+.RB ` * ',
+to signify that the entry must contain the given attribute but with any value.
+As before, the write returns an error if no entry matches.
+Otherwise, each subsequent read returns the whole of the next matching entry, in
+.IR ndb (6)
+form.
+.PP
+The file
+.B /net/cs
+persists until it is removed or unmounted from
+.BR /net ,
+or the
+.I cs
+process is killed
+(see
+.IR kill (1)).
+The
+.B \-v
+option causes
+.I cs
+to print each translation request and results (if any) on standard error.
+The
+.B -x
+option gives an alternative mount point for
+.IR cs ,
+when there is more than one network stack
+(see
+.IR ip (3)).
+It causes it
+.I cs
+to serve
+.IB net /cs
+instead of
+.BR /net/cs .
+.PP
+.I Cs
+is normally started  once,
+after
+.IR dns (8)
+if used, but
+before most other applications including
+the various listeners described in
+.IR svc (8).
+If another instance of
+.IR cs (8)
+is started on the same mount point, the file it serves replaces the
+earlier one if permissions allow.
+(On Plan 9, Plan 9's native connection service will be used by default if Inferno's
+.I cs
+is not started.)
+.PP
+.I Csquery
+queries the given
+.I server
+(default:
+.BR /net/cs )
+for a translation of each
+.I address
+and prints the results, one per line.
+If no
+.I address
+is given,
+.I csquery
+prompts for address(es) to translate which it reads from the standard input,
+printing the results of each translation on the standard output.
+The
+.B -x
+option gives an alternative mount point for
+.IR cs ,
+when there is more than one network stack
+(see
+.IR ip (3)).
+.PP
+.IR Cs (8)
+uses
+.IR services (6)
+to map protocol and service names to Internet port numbers.
+Finally, if all else fails, it applies the built-in
+.IR srv (2),
+if available.
+Consequently, entries in
+.IR services (6)
+and
+.IR dns (6)
+take precedence over the host's system-wide configuration.
+(This is helpful for adding symbolic names for Inferno services
+without requiring administrative privileges on the host system.)
+.SH EXAMPLE
+Check the translation of the symbolic name
+.BR $signer :
+.IP
+.EX
+ndb/csquery
+> net!$signer!inflogin
+/net/tcp/clone 200.1.1.67!6673
+.EE
+.SH FILES
+.TF /lib/ndb/inferno
+.TP
+.B #scs*
+service directory
+.TP
+.B /net/cs
+connection service
+.TP
+.B /net/dns
+domain name service
+.TP
+.B /lib/ndb/local
+map from symbolic service names to servers
+.SH SOURCE
+.B /appl/cmd/ndb/cs.b
+.br
+.B /appl/cmd/ndb/csquery.b
+.SH "SEE ALSO"
+.IR sys-dial (2),
+.IR db (6),
+.IR dns (8)

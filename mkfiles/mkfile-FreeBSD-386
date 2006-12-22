@@ -1,0 +1,31 @@
+TARGMODEL=	Posix
+TARGSHTYPE=	sh
+CPUS=		386
+
+O=		o
+OS=		o
+
+AR=		ar
+ARFLAGS=	crvs
+
+AS=		cc -c
+ASFLAGS=
+
+CC=		cc -c
+CFLAGS=		-g\
+		-O\
+		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit\
+		-I$ROOT/FreeBSD/386/include\
+		-I$ROOT/include\
+ 		-I/usr/X11R6/include\
+		-DFREEBSD_386
+
+ANSICPP=
+LD=		cc
+LDFLAGS=	-L/usr/openwin/lib\
+		-L/usr/X11R6/lib\
+
+SYSLIBS=
+
+YACC=		yacc
+YFLAGS=		-d

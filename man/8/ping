@@ -1,0 +1,64 @@
+.TH 8 PING
+.SH NAME
+ping \- probe the Internet
+.SH SYNOPSIS
+.B ip/ping
+.RB [ -alq ]
+[
+.BI -i " interval"
+] [
+.BI -s " size"
+] [
+.BI -n " nping"
+]
+.I destination
+.SH DESCRIPTION
+.I Ping
+sends ICMP echo requests to a network
+.I destination
+(which has the syntax accepted by
+.IR sys-dial (2)).
+The target host, if up, should send a corresponding reply.
+By default, one line is printed for each reply,
+containing the sequence number (starting at 0) of the message it answers,
+the round trip time for that reply, the average round trip time so far,
+and the `time to live' value from the reply packet.
+.PP
+The options are:
+.TP
+.B -a
+include source and destination IP addresses in the output
+.TP
+.BI -i " interval"
+send requests with the given
+.I interval
+between messages,
+in milliseconds (default: 1 second)
+.TP
+.B -l
+list only lost messages
+.TP
+.BI -n " nping"
+send
+.I nping
+messages in all (default: 32)
+.TP
+.B -q
+suppress per-packet output, giving summary data only
+.TP
+.BI -s " size"
+send request packets of the given
+.I size
+in bytes
+(default: 64, minimum 32)
+.SH SOURCE
+.B /appl/cmd/ip/ping.b
+.SH SEE ALSO
+.IR sys-dial (2),
+.IR ip (3)
+.SH DIAGNOSTICS
+.I Ping
+yields an error status if any request had no corresponding reply.
+.SH BUGS
+Works only on native Inferno and when hosted on Plan 9, owing to the lack of
+access to ICMP on other hosted systems.

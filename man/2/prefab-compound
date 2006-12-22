@@ -1,0 +1,262 @@
+.TH PREFAB-COMPOUND 2
+.SH NAME
+prefab: Compound \- windows for ITV toolkit
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "prefab.m";
+prefab := load Prefab Prefab->PATH;
+
+Compound: adt
+{
+    image:     ref Draw->Image;
+    environ:   ref Environ;
+    r:         Draw->Rect;
+    title:     ref Element;
+    contents:  ref Element;
+  
+    iconbox:   fn(env: ref Environ,
+               p: Draw->Point, title: string, icon,
+               mask: ref Draw->Image):
+               ref Compound;
+    textbox:   fn(env: ref Environ,
+               r: Draw->Rect,  title, text: string):
+               ref Compound;
+    layoutbox: fn(env: ref Environ,
+               r: Draw->Rect,  title: string, lay: list of Layout):
+               ref Compound;
+    box:       fn(env: ref Environ,
+               p: Draw->Point, title, elist: ref Element):
+               ref Compound;
+    draw:      fn(comp: self ref Compound);
+    redraw:      fn(comp: self ref Compound, r: Draw->Rect);
+    scroll:    fn(comp: self ref Compound, elem: ref Element,
+			d: Draw->Point);
+    show:      fn(comp: self ref Compound, elem: ref Element): int;
+    select:    fn(comp: self ref Compound,
+               elem: ref Element, i: int, c: chan of int):
+               (int, int, ref Element);
+    tagselect: fn(comp: self ref Compound,
+               elem: ref Element, i: int, c: chan of int):
+               (int, int, ref Element);
+    highlight: fn(comp: self ref Compound,
+               elem: ref Element, on: int);
+};
+.EE
+.SH DESCRIPTION
+.B Compound
+is the data type defining boxes drawn on the screen.
+Each appears in a new window,
+.BR Compound.image ,
+and holds a (possibly
+.BR nil )
+title
+.B Element
+and contents
+.BR Element .
+It occupies the space on
+the screen defined by
+.BR Compound.r .
+Allocating a
+.B Compound
+creates
+a window but does not draw it;
+after the
+.B Compound
+is built,
+.B Compound.draw
+must be called to make it visible.
+Compounds have a border around them, drawn in
+.B Style.edgecolor
+and contain from top to bottom the title (if any),
+a horizontal line (if there is a title), and the contents.
+.PP
+.TP
+.B "Compound.iconbox(\f2env\fP, \f2p\fP, \f2title\fP, \f2icon\fP, \f2mask\fP)
+Creates a
+.B Compound
+whose contents are made by calling
+.B Element.icon
+(see
+.IR prefab-element (2))
+using the
+.I icon
+and
+.IR mask .
+The
+.BR Compound 's
+upper left corner is at
+.IR p ;
+its size is determined by the size of the
+.I icon
+and
+.IR mask .
+.TP
+.B "Compound.textbox(\f2env\fP, \f2r\fP, \f2title\fP, \f2text\fP)
+Creates a
+.B Compound
+whose contents are made by calling
+.B Element.text
+using the supplied
+.IR text .
+As with
+.BR Element.text ,
+the resulting contents
+.B Element
+will be actually a list of text
+.B Elements
+if the text occupies multiple lines on the screen.
+The rectangle behaves as in
+.BR Element.text .
+.TP
+.B "Compound.layoutbox(\f2env\fP, \f2r\fP, \f2title\fP, \f2layoutlist\fP)
+Like
+.BR Compound.textbox ,
+but based on
+.B Element.layout
+rather than
+.BR Element.text .
+.TP
+.B "Compound.box(\f2env\fP, \f2p\fP, \f2title\fP, \f2element\fP)
+Creates a
+.B Compound
+whose contents are made from an existing
+.BR Element .
+To build complex structures, use the
+.BR Element -building
+functions,
+size the
+.B Element
+appropriately,
+and use
+.BR Compound.box .
+The result is positioned with its upper left corner at
+.IR p ,
+and with size determined by that of the
+.BR Element .
+.PP
+However a
+.B Compound
+is built,
+its size computation makes allowance for the border and title.
+Moreover, if the requested size and placement makes part
+appear offscreen, the result may be moved to display it better.
+.TP
+.B Compound.draw()
+This function
+uses the description of the title and contents to paint the
+on-screen image.
+It takes no arguments;
+all the information is included in the description.
+.TP
+.BI Compound.redraw( r )
+Like
+.BR Compound.draw ,
+but restricts the drawing to the specified
+.B Rect
+.IR r .
+.PP
+.TP
+.ft 5
+Compound.select( \f2element\fP, \f2index\fP, \f2c\fP ): (int, int, Element)
+.ft 1
+The channel
+.I c
+is a
+.B chan
+of
+.B int
+connected to an IR remote control interface, typically acquired through the program's
+.B Context
+(see
+.IR draw-context (2)).
+The
+.I element
+is contained in the
+.BR Compound ,
+and may be at any level of its structure.
+It
+is most usefully a list,
+but may be a singleton, in which case it behaves like a list of one element.
+The arrow keys on the remote control scroll through the members of the list,
+using the
+.B Style.highlightcolor
+associated with each member element to indicate selection.
+A
+.B Select
+key on the remote control triggers
+.B select
+to return a tuple
+.BI ( key ,
+.IB index ,
+.IB elem )\f1;
+.I key
+is the key code of the action (here
+.BR Select ),
+.I index
+is the number of the element in the list (ignoring separators),
+and
+.I elem
+is the list member highlighted when the key was hit.
+Any other key returns the same tuple with
+.I index
+\-1 and the value of the key.
+The
+.I elem
+returned is always the most recently highlighted,
+even if the result was not a selection.
+When
+.B select
+returns, it always restores the default appearance of the list.
+.PP
+.TP
+.ft 5
+Compound.tagselect( \f2element\fP, \f2index\fP, \f2c\fP): (int, int, Element)
+.ft 1
+Like
+.BR Compound.select ,
+but rather than selecting among all the elements
+of a list, it selects among only those elements with
+defined
+tags in the
+structure contained within the specified
+.IR element .
+.TP
+\f5Compound.highlight(\fP\f2element\fP\f5,\  \fP\f2on\fP\f5)\fP
+Set the highlighting to be ``on'' or ``off''
+for the
+.I element
+within the compound.
+.TP
+\f5Compound.scroll(\fP\f2element\fP\f5,\  \fP\f2d\fP\f5)\fP
+Like
+.BR Element.scroll :
+scroll the
+.I element
+within the compound.
+The updated image is redrawn after the scrolling.
+.TP
+.ft 5
+\f5Compound.show(\fP\f2element\fP\f5,\  \fP\f2d\fP\f5)\fP
+.ft 1
+Like
+.BR Element.show :
+make sure the
+.I element
+is visible
+within the rectangle of the top-level
+.B Element
+of the
+.BR Compound ,
+that is, in effect call
+.ft 5
+Element.show(Compound.contents, \f2element\fP);
+.ft 1
+.SH SOURCE
+.B /libinterp/prefab.c
+.br
+.B /libprefab/*.c
+.SH SEE ALSO
+.IR prefab-element (2),
+.IR prefab-environ (2),
+.IR prefab-style (2)

@@ -1,0 +1,58 @@
+.TH MS2 10.1
+.SH NAME
+ms2 \- convert executable or raw file to Motorola S record format
+.SH SYNOPSIS
+.B ms2
+[
+.I option ...
+]
+.I infile
+.SH DESCRIPTION
+.IR ms2
+converts the
+.I infile
+onto the standard output in Motorola S record format. If the
+.B -b
+option is not given, the
+.I infile
+is presumed to be an executable, and the header and symbol
+table stripped. If the
+.B -b
+option is given, the file is treated as raw binary.
+The options are:
+.TP 1i
+.BI -d
+Encode the data segment only.
+.TP
+.BI -s
+Omit the end record, presumably to accomodate poorly implemented
+decoders.
+.TP
+.BI -T addr
+.TP
+.BI -A addr
+Set the address of the text segment, i.e. the first record output.
+.B -a
+is an older, deprecated option.
+.TP
+.BI -R n
+.TP
+.BI -p n
+Set the page size in use by the linker.
+.B -p
+is an older, deprecated option.
+.TP
+.BI -b
+The
+.I infile
+is binary. Ignores the
+.B -R
+and
+.B -d
+options.
+.TP
+.BI -S addr
+Sets the entry address output in the end record.
+.PP
+.SH SOURCE
+.IR 5cv (10.1)

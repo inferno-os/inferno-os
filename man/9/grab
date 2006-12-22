@@ -1,0 +1,58 @@
+.TH GRAB 9
+.SH NAME
+grab \- Confine pointer and keyboard events to a window sub-tree
+.SH SYNOPSIS
+\f5grab \fIwhat \fR?\fIarg arg \fR...?
+.SH DESCRIPTION
+This command implements simple pointer grabbing for Tk.
+When a grab is set for a particular window, Tk restricts all pointer
+events to the grab window and its descendants in Tk's window hierarchy.
+Whenever the pointer is within the grab window's subtree, the pointer
+will behave exactly the same as if there had been no grab at all
+and all events will be reported in the normal fashion.
+When the pointer is outside \fIwindow\fR's tree, button presses and
+releases and
+mouse motion events are reported to \fIwindow\fR, and window entry
+and window exit events are ignored.
+The grab subtree ``owns'' the pointer:
+windows outside the grab subtree will be visible on the screen
+but they will be insensitive until the grab is released.
+The tree of windows underneath the grab window can include top-level
+windows, in which case all of those top-level windows
+and their descendants will continue to receive mouse events
+during the grab.
+.PP
+A grab locks out all applications on the screen,
+so that only the given subtree of the grabbing application will be
+sensitive to pointer events (mouse button presses, mouse button releases,
+pointer motions, window entries, and window exits).
+During grabs the window manager will not receive pointer
+events either (which means that if the grab is not released
+the whole GUI will freeze, so be careful!).
+.PP
+The \f5grab\fR command can take any of the following forms:
+.TP
+\f5grab release \fIwindow\fR
+Releases the grab on \fIwindow\fR if there is one, otherwise does
+nothing.  Returns an empty string.
+.TP
+\f5grab set \fIwindow\fR
+If a grab was already in effect for this application on
+\fIwindow\fR's display then it is automatically released.
+If there is already a grab on \fIwindow\fR then the command
+does nothing.  Returns an empty string.
+.TP
+\f5grab ifunset \fIwindow\fR
+Same as
+.B grab set
+except that \fIwindow\fR is only grabbed if there is no
+other grab currently in effect.
+.TP
+\f5grab status \fIwindow\fR
+Returns \f5none\fR if no grab is currently set on \fIwindow\fR,
+or
+\fIwindow\fR if it has the grab.
+.SH BUGS
+The current application-exclusive nature of
+.B grab
+is a problem which will be adressed in the future.

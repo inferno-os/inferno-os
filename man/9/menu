@@ -1,0 +1,461 @@
+.TH MENU 9
+.SH NAME
+menu \- Create and manipulate menu widgets
+.SH SYNOPSIS
+\f5menu\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -borderwidth   -foreground
+-activeforeground -disabledcolor -relief
+-background       -font
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -postcommand \fIcommand\fP
+If this option is specified then it provides a Tk command to execute
+each time the menu is posted.  The command is invoked by the \f5post\fR
+widget command before posting the menu.
+.TP
+.B -selectcolor \fIcolour\fP
+For menu entries that are check buttons or radio buttons, this option
+specifies the colour to display in the indicator when the check button
+or radio button is selected.
+.SH INTRODUCTION
+The \f5menu\fR command creates a new top-level window (given
+by the \fIpathName\fR argument) and makes it into a menu widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the menu such as its colours and font.
+The \f5menu\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A menu is a widget that displays a collection of one-line entries arranged
+in a column.  There exist several different types of entries,
+each with different properties.  Entries of different types may be
+combined in a single menu.  Menu entries are not the same as
+entry widgets.  In fact, menu entries are not even distinct widgets;
+the entire menu is one widget.
+.PP
+Menu entries are displayed with up to three separate fields.
+The main field is a label in the form of a text string,
+a bitmap, or an image, controlled by the \f5-label\fR,
+\f5-bitmap\fR, and \f5-image\fR options for the entry.
+The second field is a marker for cascade entries,
+showing that the entry will post a cascade menu.
+It is displayed at the right-hand edge of the entry.
+The third field is an \fIindicator\fR.  The indicator is present only for
+checkbutton or radiobutton entries.  It indicates whether the entry
+is selected or not, and is displayed to the left of the entry's
+string.
+.PP
+In normal use, an entry becomes active (displays itself differently)
+whenever the mouse pointer is over the entry.  If a mouse
+button is released over the entry then the entry is \fIinvoked\fR.
+The effect of invocation is different for each type of entry;
+these effects are described below in the sections on individual
+entries.
+.PP
+Entries may be \fIdisabled\fR, which causes their labels
+and accelerators to be displayed
+with dimmer colours.
+The default menu bindings will not allow
+a disabled entry to be activated or invoked.
+Disabled entries may be re-enabled, at which point it becomes
+possible to activate and invoke them again.
+
+.SH "COMMAND ENTRIES"
+The most common kind of menu entry is a command entry, which
+behaves much like a button widget.  When a command entry is
+invoked, a Tk command is executed.  The Tk
+command is specified with the \f5-command\fR option.
+
+.SH "SEPARATOR ENTRIES"
+A separator is an entry that is displayed as a horizontal dividing
+line.  A separator may not be activated or invoked, and it has
+no behaviour other than its display appearance.
+
+.SH "CHECKBUTTON ENTRIES"
+A checkbutton menu entry behaves much like a checkbutton widget.
+When it is invoked it toggles back and forth between the selected
+and deselected states.  When the entry is selected, the value
+``1'' is stored in a particular global variable (as determined by
+\f5-variable\fR option for the entry);  when
+the entry is deselected the value ``0'' is stored in the global variable.
+An indicator box is displayed to the left of the label in a checkbutton
+entry.  If the entry is selected then the indicator's center is displayed
+in the colour given by the \f5-selectcolor\fR option for the entry;
+otherwise the indicator's center is displayed in the background colour for
+the menu.  If a \f5-command\fR option is specified for a checkbutton
+entry, then its value is evaluated as a Tk command each time the entry
+is invoked;  this happens after toggling the entry's
+selected state.
+
+.SH "RADIOBUTTON ENTRIES"
+A radiobutton menu entry behaves much like a radiobutton widget.
+Radiobutton entries are organized in groups of which only one
+entry may be selected at a time.  Whenever a particular entry
+becomes selected it stores a particular value into a particular
+global variable (as determined by the \f5-value\fR and
+\f5-variable\fR options for the entry).  This action
+causes any previously-selected entry in the same group
+to deselect itself.
+Once an entry has become selected, any change to the entry's
+associated variable will cause the entry to deselect itself.
+Grouping of radiobutton entries is determined by their
+associated variables:  if two entries have the same associated
+variable then they are in the same group.
+An indicator diamond is displayed to the left of the label in each
+radiobutton entry.  If the entry is selected then the indicator's
+center is displayed in the colour given by the \f5-selectcolor\fR option
+for the entry;
+otherwise the indicator's center is displayed in the background colour for
+the menu.  If a \f5-command\fR option is specified for a radiobutton
+entry, then its value is evaluated as a Tk command each time the entry
+is invoked;  this happens after selecting the entry.
+
+.SH "CASCADE ENTRIES"
+A cascade entry is one with an associated menu (determined
+by the \f5-menu\fR option).  Cascade entries allow the construction
+of cascading menus.
+The \f5postcascade\fR widget command can be used to post and unpost
+the associated menu just to the right of the cascade entry.
+The associated menu must be a child of the menu containing
+the cascade entry (this is needed in order for menu traversal to
+work correctly).
+.PP
+A cascade entry posts its associated menu by invoking a
+Tk command of the form
+.RS
+.EX
+\fImenu\f5 post \fIx y\fR
+.EE
+.RE
+where \fImenu\fR is the path name of the associated menu, and \fIx\fR
+and \fIy\fR are the screen coordinates of the upper-right
+corner of the cascade entry.
+The lower-level menu is unposted by executing a Tk command with
+the form
+.RS
+.EX
+\fImenu\f5 unpost\fR
+.EE
+.RE
+where \fImenu\fR is the name of the associated menu.
+.PP
+If a \f5-command\fR option is specified for a cascade entry then it is
+evaluated as a Tk command whenever the entry is invoked.
+
+.SH "WIDGET COMMAND"
+The \f5menu\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.
+.PP
+Many of the widget commands for a menu take as one argument an
+indicator of which entry of the menu to operate on.  These
+indicators are called \fIindex\fRes and may be specified in
+any of the following forms:
+.TP 12
+\fInumber\fR
+Specifies the entry numerically, where 0 corresponds
+to the top-most entry of the menu, 1 to the entry below it, and
+so on.
+.TP 12
+\f5active\fR
+Indicates the entry that is currently active.  If no entry is
+active then this form is equivalent to \f5none\fR.  This form may
+not be abbreviated.
+.TP 12
+\f5end\fR
+Indicates the bottommost entry in the menu.  If there are no
+entries in the menu then this form is equivalent to \f5none\fR.
+This form may not be abbreviated.
+.TP 12
+\f5none\fR
+Indicates ``no entry at all'';  this is used most commonly with
+the \f5activate\fR option to deactivate all the entries in the
+menu.  In most cases the specification of \f5none\fR causes
+nothing to happen in the widget command.
+This form may not be abbreviated.
+.TP 12
+\f5@\fInumber\fR
+In this form, \fInumber\fR is treated as a y-coordinate in the
+menu's window;  the entry closest to that y-coordinate is used.
+For example, ``\f5@0\fR'' indicates the top-most entry in the
+window.
+.PP
+The following widget commands are possible for menu widgets:
+.TP
+\fIpathName \f5activate \fIindex\fR
+Change the state of the entry indicated by \fIindex\fR to \f5active\fR
+and redisplay it using its active colours.
+Any previously-active entry is deactivated.  If \fIindex\fR
+is specified as \f5none\fR, or if the specified entry is
+disabled, then the menu ends up with no active entry.
+Returns an empty string.
+.TP
+\fIpathName \f5add \fItype \fR?\fIoption value option value ...\fR?
+Add a new entry to the bottom of the menu.  The new entry's type
+is given by \fItype\fR and must be one of \f5cascade\fR,
+\f5checkbutton\fR, \f5command\fR, \f5radiobutton\fR, or \f5separator\fR.
+If additional arguments
+are present, they specify any of the following options:
+.RS
+.TP
+\f5-activebackground \fIvalue\fR
+Specifies a background colour to use for displaying this entry when it
+is active.
+If this option is not specified then the
+\f5activebackground\fR option for the overall menu is used.
+This option is not available for separator entries.
+.TP
+\f5-activeforeground \fIvalue\fR
+Specifies a foreground colour to use for displaying this entry when it
+is active.
+If this option is not specified then the
+\f5activeforeground\fR option for the overall menu is used.
+This option is not available for separator entries.
+.TP
+\f5-background \fIvalue\fR
+Specifies a background colour to use for displaying this entry when it
+is in the normal state (neither active nor disabled).
+If this option is not specified then the
+\f5background\fR option for the overall menu is used.
+This option is not available for separator entries.
+.TP
+\f5-bitmap \fIbitmap\fR
+Specifies a bitmap to display in the menu instead of a textual
+label.
+This option overrides the \f5-label\fR option but may be reset
+to an empty string to enable a textual label to be displayed.
+If a \f5-image\fR option has been specified, it overrides
+\f5-bitmap\fR.
+This option is not available for separator entries.
+.TP
+\f5-command \fIvalue\fR
+Specifies a Tk command to execute when the menu entry is invoked.
+Not available for separator entries.
+.TP
+\f5-font \fIvalue\fR
+Specifies the font to use when drawing the label or accelerator
+string in this entry.
+If this option is not specified then
+the \f5font\fR option for the overall menu is used.
+This option is not available for separator entries.
+.TP
+\f5-foreground \fIvalue\fR
+Specifies a foreground colour to use for displaying this entry when it
+is in the normal state (neither active nor disabled).
+If this option is not specified then the
+\f5foreground\fR option for the overall menu is used.
+This option is not available for separator entries.
+.TP
+\f5-image \fIvalue\fR
+Specifies an image to display in the menu instead of a text string
+or bitmap
+The image must have been created by some previous invocation of
+\f5image create\fR.
+This option overrides the \f5-label\fR and \f5-bitmap\fR options
+but may be reset to an empty string to enable a textual or
+bitmap label to be displayed.
+This option is not available for separator entries.
+.TP
+\f5-label \fIvalue\fR
+Specifies a string to display as an identifying label in the menu
+entry.  Not available for separator entries.
+.TP
+\f5-menu \fIvalue\fR
+Available only for cascade entries.  Specifies the path name of
+the submenu associated with this entry.
+The submenu must be a child of the menu.
+.TP
+\f5-selectcolor \fIvalue\fR
+Available only for checkbutton and radiobutton entries.
+Specifies the colour to display in the indicator when the entry is
+selected.
+If this option is not specified then the \f5selectcolor\fR
+option for the menu determines the indicator colour.
+.TP
+\f5-selectimage \fIvalue\fR
+Available only for checkbutton and radiobutton entries.
+Specifies an image to display in the entry (in place of
+the \f5-image\fR option) when it is selected.
+\fIValue\fR is the name of an image, which must have been created
+by some previous invocation of \f5image create\fR.
+This option is ignored unless the \f5-image\fR option has
+been specified.
+.TP
+\f5-state \fIvalue\fR
+Specifies one of three states for the entry:  \f5normal\fR, \f5active\fR,
+or \f5disabled\fR.  In normal state the entry is displayed using the
+\f5foreground\fR and \f5background\fR
+colours.
+The active state is typically used when the pointer is over the entry.
+In active state the entry is displayed using the \f5activeforeground\fR
+and \f5activebackground\fR colours.
+Disabled state means that the entry
+should be insensitive:  the default bindings will refuse to activate
+or invoke the entry.
+In this state the entry is displayed according to the 
+\f5disabledcolor\fR and \f5background\fR colours.
+This option is not available for separator entries.
+.TP
+\f5-underline \fIvalue\fR
+Specifies the integer index of a character to underline in the entry.
+This option is also queried by the default bindings and used to
+implement keyboard traversal.
+0 corresponds to the first character of the text displayed in the entry,
+1 to the next character, and so on.
+If a bitmap or image is displayed in the entry then this option is ignored.
+This option is not available for separator entries.
+.TP
+\f5-value \fIvalue\fR
+Available only for radiobutton entries.  Specifies the value to
+store in the entry's associated variable when the entry is selected.
+If an empty string is specified, then the \f5-label\fR option
+for the entry as the value to store in the variable.
+.TP
+\f5-variable \fIvalue\fR
+Available only for checkbutton and radiobutton entries.  Specifies
+the name of a global value to set when the entry is selected.
+For checkbutton entries the variable is also set when the entry
+is deselected.  For radiobutton entries, changing the variable
+causes the currently-selected entry to deselect itself.
+.LP
+The \f5add\fR widget command returns an empty string.
+.RE
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5menu\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5menu\fR
+command.
+.TP
+\fIpathName \f5delete \fIindex1\fR ?\fIindex2\fR?
+Delete all of the menu entries between \fIindex1\fR and
+\fIindex2\fR inclusive.
+If \fIindex2\fR is omitted then it defaults to \fIindex1\fR.
+.TP
+\fIpathName \f5entrycget\fR \fIindex option\fR
+Returns the current value of a configuration option for
+the entry given by \fIindex\fR.
+\fIOption\fR may have any of the values accepted by the \f5add\fR
+widget command.
+.TP
+\fIpathName \f5entryconfigure \fIindex \fR?\fIoptions\fR?
+This command is similar to the \f5configure\fR command, except that
+it applies to the options for an individual entry, whereas \f5configure\fR
+applies to the options for the menu as a whole.
+\fIOptions\fR may have any of the values accepted by the \f5add\fR
+widget command.  If \fIoptions\fR are specified, options are modified
+as indicated
+in the command and the command returns an empty string.
+.TP
+\fIpathName \f5index \fIindex\fR
+Returns the numerical index corresponding to \fIindex\fR, or
+\f5none\fR if \fIindex\fR was specified as \f5none\fR.
+.TP
+\fIpathName \f5insert \fIindex\fR \fItype \fR?\fIoption value option value ...\fR?
+Same as the \f5add\fR widget command except that it inserts the new
+entry just before the entry given by \fIindex\fR, instead of appending
+to the end of the menu.  The \fItype\fR, \fIoption\fR, and \fIvalue\fR
+arguments have the same interpretation as for the \f5add\fR widget
+command.
+.TP
+\fIpathName \f5invoke \fIindex\fR
+Invoke the action of the menu entry.  See the sections on the
+individual entries above for details on what happens.  If the
+menu entry is disabled then nothing happens.  If the
+entry has a command associated with it then the result of that
+command is returned as the result of the \f5invoke\fR widget
+command.  Otherwise the result is an empty string.  Note:  invoking
+a menu entry does not automatically unpost the menu;  the default
+bindings normally take care of this before invoking the \f5invoke\fR
+widget command.
+.TP
+\fIpathName \f5post \fIx y\fR
+Arrange for the menu to be displayed on the screen at the screen
+coordinates given by \fIx\fR and \fIy\fR.  These coordinates are
+adjusted if necessary to guarantee that the entire menu is visible on
+the screen.  This command normally returns an empty string.
+If the \f5postcommand\fR option has been specified, then its value is
+executed as a Tk script before posting the menu and the result of
+that script is returned as the result of the \f5post\fR widget
+command.
+If an error returns while executing the command, then the error is
+returned without posting the menu.
+.TP
+\fIpathName \f5postcascade \fIindex\fR
+Posts the submenu associated with the cascade entry given by
+\fIindex\fR, and unposts any previously posted submenu.
+If \fIindex\fR doesn't correspond to a cascade entry,
+or if \fIpathName\fR isn't posted,
+the command has no effect except to unpost any currently posted
+submenu.
+.TP
+\fIpathName \f5type \fIindex\fR
+Returns the type of the menu entry given by \fIindex\fR.
+This is the \fItype\fR argument passed to the \f5add\fR widget
+command when the entry was created, such as \f5command\fR
+or \f5separator\fR.
+.TP
+\fIpathName \f5unpost\fR
+Unmap the window so that it is no longer displayed.  If a
+lower-level cascaded menu is posted, unpost that menu.  Returns an
+empty string.
+.TP
+\fIpathName \f5yposition \fIindex\fR
+Returns a decimal string giving the y-coordinate within the menu
+window of the topmost pixel in the entry specified by \fIindex\fR.
+
+.SH "DEFAULT BINDINGS"
+Tk automatically creates bindings for menus that give them
+the following default behaviour:
+.IP [1]
+When the mouse enters a menu, the entry underneath the mouse
+cursor activates;  as the mouse moves around the menu, the active
+entry changes to track the mouse.
+.IP [2]
+When the mouse leaves a menu all of the entries in the menu
+deactivate, except in the special case where the mouse moves from
+a menu to a cascaded submenu.
+.IP [3]
+When a button is released over a menu, the active entry (if any) is invoked.
+The menu also unposts unless it is a torn-off menu.
+.IP [4]
+If any of the entries in a menu have letters underlined with
+with \f5-underline\fR option, then pressing one of the underlined
+letters (or its upper-case or lower-case equivalent) invokes that
+entry and unposts the menu.
+.PP
+Disabled menu entries are non-responsive:  they don't activate and
+they ignore mouse button presses and releases.
+.PP
+The behaviour of menus can be changed by defining new bindings for
+individual widgets.
+.SH BUGS
+The first time any colour option of an entry is configured,
+all of the menu colour option values are captured and set in the entry.
+Any subsequent changes to the menu's colour options
+will not be reflected in the entry.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

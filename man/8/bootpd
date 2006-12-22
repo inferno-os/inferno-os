@@ -1,0 +1,163 @@
+.TH BOOTPD 8
+.SH NAME
+bootpd, tftpd \- Internet booting
+.SH SYNOPSIS
+.B ip/bootpd
+[
+.B -dsq
+] [
+.BI -f " dbfile"
+] [
+.BI -x " network"
+]
+.PP
+.B ip/tftpd
+.RB [ -dr ]
+[
+.BI -p " port"
+] [
+.BI -h " homedir"
+] [
+.BI -x " network"
+]
+.SH DESCRIPTION
+.I Bootpd
+listens for Internet BOOTP requests and broadcasts a suitable reply
+to each request that matches an entry
+in the network database
+.I dbfile
+(default:
+.BR /lib/ndb/local ).
+The BOOTP protocol is typically used by a remote system as it boots, to obtain its Internet address
+and other configuration data such as the addresses of servers
+(see for instance the
+.B bootp
+file in
+.IR ip (3)).
+.PP
+.I Dbfile
+is in
+.IR ndb (6)
+format, as interpreted by
+.IR attrdb (2).
+.I Bootpd
+uses the following attributes:
+.TF ipmask
+.TP
+.B auth
+authentication server name or address
+.TP
+.B bootf
+name of the client's boot file
+.TP
+.B dom
+fully-qualified domain name
+.TP
+.B ether
+hardware (MAC) address; only Ethernet is supported
+.TP
+.B fs
+file server name or address
+.TP
+.B ip
+client's Internet address
+.TP
+.B ipgw
+gateway from client's subnet (IP address)
+.TP
+.B ipmask
+subnet mask
+.TP
+.B ipnet
+network name
+.TP
+.B sys
+system name (client identifier)
+.PD
+.PP
+.I Bootpd
+replies to an incoming request only if its hardware address matches the value of the
+.B ether
+attribute of an entry in
+.I dbfile .
+If found, the reply contains all the other requested data that is contained in the entry;
+if an item is missing, it is sought in the entries for successively higher networks (described by
+.B ipnet
+entries) that contain the requesting system's address.
+The `vendor specific' part of the reply conveys the file server and authentication server addresses
+to Inferno clients.
+Before answering a request,
+.I bootpd
+rereads
+.I dbfile
+if it has changed since last read.
+.PP
+The
+.B -s
+option causes
+.I bootpd
+to sniff the network for BOOTP traffic and print it, but not reply.
+The
+.B -d
+option prints debugging information; giving it twice prints even more.
+The
+.B -x
+option tells
+.I bootpd
+to use a
+.I network
+other than
+.BR /net .
+Currently
+.I bootpd
+prints a message to standard output each time it replies; the
+.B -q
+option keeps it quiet.
+.PP
+.I Tftpd
+is mainly used to send kernels and configuration files to machines booting from the network.
+It listens for incoming TFTP file transfer requests on the given UDP
+.I port
+(default: 69) and responds by sending or receiving a file as requested.
+.I Homedir
+is the current directory for transfers,
+.B /services/tftpd
+by default,
+and requests that use a relative path name refer to files in or below that directory.
+If the
+.B -r
+option is given, absolute path names are also restricted to
+.IR homedir .
+.I Tftpd
+runs as
+.B none
+(the least privileged user) and can send only files with general read permission, or write files
+that are generally writable.
+Normally
+.I tftpd
+uses the network directory
+.BR /net ,
+but another can be specified with the
+.B -x
+option.
+The
+.B -d
+option prints a debugging trace on standard output.
+.SH FILES
+.TF /services/tftpd/xxxxx
+.TP
+.B /lib/ndb/local
+network configuration file
+.TP
+.B /services/tftpd
+default directory for relative pathnames
+.SH SOURCE
+.B /appl/cmd/ip/bootpd.b
+.br
+.B /appl/cmd/ip/tftpd.b
+.SH SEE ALSO
+.IR attrdb (2),
+.IR ip (3),
+.IR ndb (6),
+.IR cs (8),
+.IR dns (8)

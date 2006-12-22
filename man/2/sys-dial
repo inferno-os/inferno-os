@@ -1,0 +1,247 @@
+.TH SYS-DIAL 2
+.SH NAME
+announce, dial, listen \- make network connections
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+Connection: adt
+{
+    dfd:  ref FD;  # data file
+    cfd:  ref FD;  # control file
+    dir:  string;  # pathname of line directory
+};
+
+announce: fn(addr: string):           (int, Connection);
+dial:     fn(addr, local: string):    (int, Connection);
+listen:   fn(c: Connection):          (int, Connection);
+.EE
+.SH DESCRIPTION
+These routines establish network connections.
+Their description uses the following definitions:
+.TF network
+.PD
+.TP
+.I addr
+is a network address in one of the following forms:
+.br
+.IP
+.IB network ! netaddr ! service\f1
+.br
+.IB network ! netaddr\f1
+.br
+.IR netaddr
+.TP
+.I network
+Any directory listed in
+.B /net
+(eg,
+.BR tcp ),
+or the special token,
+.BR net .
+The name
+.B net
+acts as a free variable that stands for any network in common
+between the source and
+.IR netaddr .
+A network name can be preceded by the full path name of a directory
+of networks, using the form
+.I /dir/network
+(eg,
+.BR /net.alt/tcp ).
+.TP
+.I netaddr
+A host name, a domain name, a network address,
+or a meta-name of the form
+.BI $ attribute\f1,
+which
+is replaced by
+.I value
+from the corresponding attribute-value pair
+in the connection server data base (see
+.IR db (6)).
+.PP
+The functions
+.B dial
+and
+.B announce
+translate a given
+.I addr
+to an actual network address using
+the connection server
+.IR cs (8).
+If a logical name
+.I addr
+corresponds to several network addresses,
+for instance if a destination machine has several interfaces,
+.I cs
+will return them all.
+In particular, if
+.I addr
+is
+.BR net ,
+.I cs
+will return addresses on
+all networks that are common to source and destination.
+The translation procedure accesses
+.I cs
+using its interface file
+.BR cs ,
+which is sought as follows:
+first, in an explicit directory
+.BI / dir
+if one was given in
+.IR network ;
+second, in the standard directory
+.BR /net ;
+and finally in the directory
+.BR /net.alt
+.RB ( dial
+only).
+If the connection server cannot be found,
+the
+.I addr
+is used as-is.
+.PP
+If a connection attempt is successful, the
+.B dir
+member of the resulting
+.B Connection
+will be
+the path name of a
+.I line directory
+that has files for accessing the connection.
+One line directory exists for each possible connection.
+The
+.B data
+file in the line directory is opened to
+make a connection, and read and written to communicate with the destination.
+The
+.B ctl
+file in the line directory can be used to send commands to the line.
+See
+.IR ip (3)
+for messages that can be written to the
+.B ctl
+file.
+The last close of the
+.B data
+or
+.B ctl
+file will close the connection.
+The
+.B remote
+file in the line directory contains the address called; the file
+.B local
+contains the local address assigned.
+.PP
+The
+.B dial
+routine
+makes a call to destination
+.I addr
+on a multiplexed network.
+If the connection server returns several addresses,
+.B dial
+tries each in turn, until a connection is made
+or no addresses remain to be tried.
+It returns a
+.B Connection
+containing a file descriptor
+.B dfd
+open for reading and writing the
+.B data
+file in the line directory,
+and a file descriptor
+.B cfd
+open for reading and writing the
+.B ctl
+file.
+If
+.IR local
+is non-empty, and
+the network allows the local address to be set,
+as is the case with UDP and TCP port numbers,
+the local address will be set to
+.IR local .
+.PP
+.B Announce
+and
+.B listen
+are the complements of
+.BR dial .
+.B Announce
+establishes a network name to which incoming calls can be made.
+In
+.IR addr ,
+.I netaddr
+gives the name or address of one of the local host's interfaces on which to listen for
+calls to the given
+.IR service ;
+it can be
+.B *
+to listen for calls on any interface on
+.IR network .
+.B Announce
+returns a
+.B Connection
+structure in which only the
+.B cfd
+descriptor is open, on the control file representing the announcement.
+.B Listen
+takes as its only argument the
+.B Connection
+structure of a successful call to
+.BR announce .
+When a call is received,
+.B listen
+returns an open
+.B Connection
+structure as if from
+.BR dial ,
+except that only the
+.B cfd
+descriptor is open,
+.B dfd
+is nil,
+and the caller must open the data file for itself.
+.SH EXAMPLES
+.PP
+Make a call and return an open file descriptor to
+use for communications:
+.IP
+.EX
+callkremvax(): (int, Connection)
+{
+	return sys->dial("tcp!kremvax!80", nil);
+}
+.EE
+.PP
+Call the local certificate signer:
+.IP
+.EX
+dialsigner(service: string): (int, Connection)
+{
+	return sys->dial("net!$SIGNER!inflogin", nil);
+}
+.EE
+.SH SOURCE
+.B /emu/port/inferno.c
+.br
+.B /emu/port/dial.c
+.br
+.B /os/port/inferno.c
+.br
+.B /os/port/dial.c
+.SH DIAGNOSTICS
+The integer valued functions return 0 on success and -1 on error;
+the system error string is set.
+The integer component of the tuple returned by the other functions
+follows the same convention.
+.SH BUGS
+Note that
+.B listen
+does not open the
+.B data
+file.

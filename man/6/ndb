@@ -1,0 +1,219 @@
+.TH NDB 6
+.SH NAME
+ndb \- network data base
+.SH SYNOPSIS
+.B /lib/ndb/local
+.br
+.B /lib/ndb/inferno
+.br
+.B /lib/ndb/dns
+.br
+.B /lib/ndb/common
+.SH DESCRIPTION
+Network configuration data is stored in one or more files in the directory
+.BR /lib/ndb ,
+in the attribute data base format defined by
+.IR attrdb (6).
+Most applications that use it start with
+.B /lib/ndb/local
+by default.
+That can refer (using a
+.B database
+entry) to other files that form part of the same logical database.
+They are stored in distinct files to allow different configurations
+to avoid duplicating data by sharing some common content.
+For example,
+.B /lib/ndb/common
+associates service names with port numbers for Internet protocols,
+and
+.B /lib/ndb/inferno
+provides the Inferno-specific port mapping.
+A database is automatically reread if any component file has
+changed since it was last read (based on its modification time).
+.PP
+A network database gives particular meaning to the following attributes:
+.TF dnsdomainxx
+.TP
+.B auth
+name or address of authentication server
+.TP
+.B bootf
+name of the file to send to a device on request when booting
+.TP
+.B dns
+name or address of DNS resolver (see also the
+.B ns
+attribute below)
+.TP
+.B dnsdomain
+domain in which the local host lives (used to qualify unqualified names)
+.TP
+.B dom
+Internet domain name (host or DNS zone)
+.TP
+.B ether
+Ethernet address in the form accepted by
+.IR ether (2)
+.TP
+.B fs
+name or address of file server
+.TP
+.B il
+IL service name
+.TP
+.B infernosite
+empty-valued attribute that labels default site parameters
+.TP
+.B ip
+Internet address
+.TP
+.B ipgw
+name or address of Internet gateway
+.TP
+.B ipmask
+Internet network mask
+.TP
+.B ipnet
+network or subnetwork name
+.TP
+.B ipv4proto
+IPv4 protocol number (see also
+.BR protocol )
+.TP
+.B mx
+mail exchanger
+.TP
+.B ns
+name of a DNS name server for an associated
+.B dom
+.TP
+.B port
+port number for a service
+.TP
+.B protocol
+protocol name
+.TP
+.B soa
+start of area (value is empty if locally authoritative, or
+.RB ` delegated '
+if another server is authoritative)
+.TP
+.B sys
+system name (short local name for a host)
+.TP
+.B tcp
+TCP service name
+.TP
+.B udp
+UDP service name
+.PD
+.PP
+Internet addresses and masks can be written in any form
+accepted by
+.IR Ip (2).
+Network applications might use other attributes of their own,
+which they document on their own pages.
+.PP
+.I Cs (8)
+interprets a host name of the form
+.BI $ server
+as referring to the set of names and addresses that are values
+of the attribute
+.I server
+in the network data base.
+Attributes in general use include some of those above, and the following:
+.TF FILESERVER
+.TP
+.B FILESERVER
+older name for file server
+.B fs
+file server
+.TP
+.B pop3
+mail reading service using the POP3 protocol
+.TP
+.B PROXY
+firewall proxy for
+.IR ftpfs (4)
+.TP
+.B SIGNER
+Inferno authentication server running
+.IR logind (8)
+and/or
+.IR signer (8)
+.TP
+.B smtp
+mail delivery gateway using the SMTP protocol
+.PD
+.PP
+Other such symbolic server names are mentioned in the manual pages for associated applications.
+.PP
+.IR Dns (8)
+interprets
+.BR dns
+and
+.BR dnsdomain
+values in any
+.B infernosite
+entry, and
+.BR dom ,
+.BR ip ,
+and
+.BR ns
+values more generally.
+When resolving a domain name,
+.I dns
+looks first in this data base to see if there is a
+.B dom
+entry for the name, and if so, whether there is either an associated
+.B ns
+attribute giving a name server to ask, or an
+.B ip
+attribute giving the name's IP address.
+Failing that, it works up the name hierarchy looking for name servers to ask.
+Failing that, it looks for a
+.B dnsdomain
+entry with
+.B dns
+attributes listing other resolvers to ask.
+Bootstrap data is commonly stored in
+.BR /lib/ndb/dns ;
+by default it defines the root name servers:
+.IP
+.EX
+dom=    # root
+	ns=a.root-servers.net
+	ns=b.root-servers.net
+	\f1...\fP
+dom=a.root-servers.net ip=198.41.0.4
+dom=b.root-servers.net ip=128.9.0.107
+	\f1...\fP
+.EE
+.SH EXAMPLE
+Specify the site's default DNS domain name and resolvers for
+.IR dns (8),
+and a collection of symbolic service names for
+.IR cs (8):
+.IP
+.EX
+infernosite=
+	dnsdomain=vitanuova.com
+	dns=200.1.1.11
+	dns=158.152.1.58
+	dns=158.152.1.43
+	SIGNER=doppio
+	FILESERVER=doppio
+	smtp=doppio
+	pop3=doppio
+	PROXY=doppio
+	GAMES=vivido
+	IRMSERVER=vivido
+.EE
+.SH FILES
+.B /lib/ndb/*
+.SH SEE ALSO
+.IR attrdb (2),
+.IR attrdb (6),
+.IR bootpd (8),
+.IR cs (8),
+.IR dns (8)

@@ -1,0 +1,311 @@
+.TH PROG 3 
+.SH NAME
+prog \- running programs
+.SH SYNOPSIS
+.nf
+.B bind #p /prog
+
+.BI /prog/ n /ctl
+.BI /prog/ n /dbgctl
+.BI /prog/ n /exception
+.BI /prog/ n /fd
+.BI /prog/ n /heap
+.BI /prog/ n /ns
+.BI /prog/ n /nsgrp
+.BI /prog/ n /pgrp
+.BI /prog/ n /stack
+.BI /prog/ n /status
+.BI /prog/ n /text
+.BI /prog/ n /wait
+\&...
+.fi
+.SH DESCRIPTION
+The
+.B prog
+device serves a two-level directory structure.
+The first level contains numbered directories
+corresponding to pids of live Limbo processes;
+each such directory contains a set of files
+representing the corresponding process.
+All files operate on
+.I UTF
+(see
+.IR utf (6))
+strings.
+.PP
+The read-only
+.B status
+file contains seven space-separated fields.
+The fields are: the process and process group identifiers, each 8 characters right justified;
+the user name, at least 10 characters left justified;
+cpu time in minutes, seconds and tenths of seconds;
+the process state, 10 characters left justified;
+the amount of memory used by the process in units of 1024 bytes,
+at least 5 characters, right justified, followed by a
+.BR K ;
+and the name of the current program module,
+up to 28 characters, left justified.
+.PP
+The read-only
+.B pgrp
+file contains the process group identifier, in decimal.
+.PP
+The read-only
+.B nsgrp
+file contains the namespace group identifier, in decimal.
+.PP
+The read-only
+.B ns
+file contains a set of mount and bind commands
+which describe the
+.IR sys-bind (2)
+and
+.B mount
+operations used to construct the name space, in
+the format of
+.IR namespace (6).
+The last
+line of the file is a
+.B cd
+command indicating the working directory.
+.PP
+The read-only
+.B wait
+file may be read to recover
+information about the exiting children of the process.
+A read of
+.B wait
+will block until a child of the process, created after
+.B wait
+was opened, exits.
+When such a child exits, it produces a string with three fields:
+the pid of the exiting process, a space,
+module name, enclosed in
+.B
+\&"\c
+\&'s,
+and a possibly empty error message.
+The error message will contain at most 64 characters.
+.PP
+The read-only
+.B fd
+file
+describes the open file descriptors in the
+file descriptor group of the process.
+Each line describes an open file.
+The fields are: the file descriptor index, the open mode
+.RB ( r ,
+.BR w ,
+.BR rw );
+the type and number of the device;
+the path, version and type of the file's
+.I qid
+(see
+.IR intro (5));
+the file's atomic I/O unit, as defined in
+.IR sys-iounit (2));
+the file I/O offset in bytes;
+and the name with which it was opened.
+.PP
+The read-only
+.B exception
+file gives details of the last exception to occur in the process, if any. The fields
+are the program counter value when the exception occurred, the module it
+occurred in and the exception itself, each separated by a space. If none, the
+result is the empty string.
+.PP
+Messages written to the
+.B ctl
+file control the execution of the process.
+.TF killgrp
+.PD
+.TP
+.B kill
+Kill the process.
+.TP
+.B killgrp
+Kill all processes in the same group as the process.
+A process writing to its own ctl file does not kill itself.
+.TP
+.B exceptions propagate
+Applies to process group leaders only (ie any process that executes a system
+call
+.I sys->pctl(Sys->NEWPGRP, ...
+).
+If any process in the same group as the leader incurs an exception which it
+does not handle, atomically raise the exception in all processes in the group.
+In this case exceptions are generated for killed processes as well. This mechanism allows
+all processes in a process group to perfom error recovery when one of them
+faults.
+.TP
+.B exceptions notifyleader
+Applies to process group leaders only.
+If any process in the same group as the leader incurs an exception which it
+does not handle, atomically destroy all processes in the group except for the
+leader and raise the exception in the leader. This error recovery mechanism might
+be appropriate when a fault occurs amongst a group of processes and the group
+leader takes sole responsibilty for recovery.
+.TP
+.B restricted
+Mark all processes that the process spawns in future as restricted. A restricted
+process is one which can run out of memory when a configured limit has been
+reached and before total memory is exhausted. An unrestricted process can
+allocate memory until memory is truly exhausted. Typically a window manager
+or server might be unrestricted as they are processes fundamental to the
+running of a system.
+.PP
+The
+.B dbgctl
+file provides facilities for debugging a process.
+Messages written to the file control the execution of the process.
+.TP 10n
+.BI step " n"
+Step the interpreter for at most
+.I n
+instructions, or until a breakpoint is reached.
+.TP 10n
+.B toret
+Step the interpreter until a return from the current activation frame
+or a breakpoint is reached.
+.TP 10n
+.B cont
+Step the interpreter until a breakpoint is reached.
+.TP 10n
+.B stop
+Stop the process as soon as possible.
+Do not allow the process to execute again until an
+.B unstop
+message is received.
+.TP 10n
+.B unstop
+Cancel the effect of any previous
+.BR stop .
+.TP 10n
+.BI "bpt set " "path pc"
+Set a breakpoint at
+.I pc
+for the module given by
+.IR path .
+.TP 10n
+.BI "bpt del " "path pc"
+Clear a breakpoint if one exists.
+.PP
+Reading 
+.B
+dbgctl
+gives updates for some state transitions while the process is being debugged.
+Each update is terminated by a newline.
+.TP 10n
+.B exited
+The process exited without error.
+.TP 10n
+.BI broken: " error"
+The process died due to
+.IR error ,
+a string with up to 64 characters.
+.TP 10n
+.B send
+The process is blocked sending on a channel.
+.TP 10n
+.B recv
+The process is blocked receiving on a channel.
+.TP 10n
+.B alt
+The process is blocked in an
+.B alt
+statement.
+.TP 10n
+.B run
+The process is unblocked and now ready to run.
+.TP 10n
+.BI new " pid"
+The process has spawned a new process identified by
+.IR pid .
+.PP
+The read-only
+.B stack
+file contains the dynamic call stack trace.
+Each activation frame is described by one line with six fields, separated by a space:
+the frame pointer, program counter,
+module data pointer, and module code pointer,
+each 8 hexadecimal digits;
+the execution method for the module (0 means interpreted, 1 compiled);
+and the path name of the module.
+The top activation frame starts at offset 0.
+.PP
+The
+.B heap
+file may be queried to examine the state of the process.
+A data query contains an address, a period, a format character,
+and a count.
+An instruction query contains a pc, a plus, a mode address, a period,
+the format
+.BR I ,
+and a count.
+The addresses in the query may be decimal,
+hexadecimal preceded by
+.B 0x
+or
+.BR 0X ,
+or octal preceded by
+.BR 0 .
+Count gives the number of consecutive
+data items retrieved by reading
+.B heap
+starting at offset 0;
+the format varies according to the format character.
+All data items other than strings are terminated by a newline.
+.TP 10n
+.B W
+32-bit decimal ints.
+.TP 10n
+.B B
+8-bit unsigned decimal bytes.
+.TP 10n
+.B V
+64-bit decimal bytes.
+.TP 10n
+.B R
+64-bit reals.
+.TP 10n
+.B I
+Disassembled Dis instructions.
+.TP 10n
+.B P
+32-bit hexadecimal address, or
+.BR nil .
+.PP
+The following formats examine properties of specific 32-bit pointers.
+.TP 10n
+.B L
+Examine a list, yielding
+a pair of hexadecimal addresses separated by a period,
+giving the address of the head and tail of a list.
+It is an error to use
+.B L
+on
+.BR nil .
+.TP 10n
+.B A
+Examine an array, yielding
+a decimal length, a period, and the address of the 0th element of an array,
+or
+.BR nil .
+.TP 10n
+.B C
+Examine a string, yielding
+the decimal length in characters, a period, and the
+.IR utf (6)
+representation of the string.
+.TP 10n
+.B M
+Examine a module reference, yielding the address of its global data or
+.BR nil .
+.PP
+The
+.B text
+file is currently unimplemented.
+.SH SOURCE
+.B /emu/port/devprog.c
+.br
+.B /os/port/devprog.c

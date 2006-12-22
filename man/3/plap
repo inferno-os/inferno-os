@@ -1,0 +1,136 @@
+.TH PLAP 3
+.SH NAME
+plap \- USR/3Com Edgeserver packet bus link access protocol
+.SH SYNOPSIS
+.B bind -a '#X' /net
+.PP
+.nf
+.B /net/plap/clone
+.BI /net/plap/ n /ctl
+.BI /net/plap/ n /data
+.BI /net/plap/ n /local
+.BI /net/plap/ n /remote
+.BI /net/plap/ n /status
+.BI /net/plap/ n /listen
+.SH DESCRIPTION
+The
+.I plap
+driver serves a three-level directory giving access to the link level
+protocol used by an Edgeserver card to communicate with
+other cards in a USR/3Com chassis.
+On first
+.I attach
+(usually by a
+.IR bind (1)
+to
+.BR /net )
+the driver opens a connection to the packet bus device
+.B #Y
+described in
+.IR pbus (3).
+It multiplexes that connection using a specialised member of the LAP family
+of protocols.
+.PP
+The top level directory contains a single directory naming the protocol,
+.BR plap .
+It contains a
+.B clone
+file and a set of conversation directories numbered from 0 to 127;
+only active conversation directories are present.
+.PP
+Opening the
+.B clone
+file allocates a new conversation directory
+.IR n .
+The file descriptor will point to the control file,
+.BR ctl ,
+of that directory.
+Reading the file returns a text string giving the conversation number.
+.PP
+Each conversation directory contains six files.
+The connection is controlled by writing text strings to the
+.B ctl
+file.
+Once a connection has been established, data is exchanged with the
+remote peer by reading and writing the
+.B data
+file.
+.PP
+A
+.I plap
+address has the form:
+.IP
+[
+.IB slot .
+]
+.IB chan ! sap
+.PP
+where
+.I slot
+is a chassis slot number,
+.I chan
+is a logical channel (eg, a modem number),
+and
+.I sap
+is a number representing a `service access point'.
+.PP
+The following control messages are supported:
+.TP
+.BI connect " remoteaddr \fP\fR[\fP \fIlocaladdr\fP ]\fI "
+Make a connection to the given
+remote address (of the form given above).
+If a local address is not specified, the
+system will assign an unused address dynamically
+(the local chassis slot number is of course fixed).
+Connect fails if the connection is already announced or connected,
+or
+.I localaddr
+is already in use.
+.TP
+.BI announce address
+Set the local address to
+.I address
+and accept incoming calls to that address.
+If no address is specified, all incoming calls to addresses not explicitly announced
+will be accepted by this connection.
+Announce fails if the connection is already announced or connected,
+or the local
+.I address
+specified is already in use.
+.PP
+The
+.B remote
+and
+.B local
+files contain the remote and local addresses for the connection
+in the full address form
+.IB slot . chan ! sap.
+The
+.B status
+file returns a line giving the directory name, number of active opens, and the state
+of the connection.
+.PP
+A process listens for incoming calls by opening the
+.B listen
+file using
+.IR sys-open (2).
+The open will block until a call arrives, when it will return a file descriptor
+open on the
+.B ctl
+file of the newly accepted connection, which can be read to find the directory
+number and thus the other files.
+.PP
+The device follows the conventions that allow
+.BR dial ,
+.BR announce
+and
+.B listen
+of
+.IR sys-dial (2)
+to do the work needed to establish and manipulate network connections.
+.SH SOURCE
+.B /os/pc/devplap.c
+.SH SEE ALSO
+.IR pbus (3)
+.SH BUGS
+The driver cannot be included in the public distribution.

@@ -1,0 +1,2 @@
+# this file is given to the local registry(4) by svc/registry (see svc(8))
+# as its initial data.  you could put static local service descriptions here.

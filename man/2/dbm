@@ -1,0 +1,222 @@
+.TH DBM 2
+.SH NAME
+Dbm: Dbf, init \- data base with hashed indexing
+.SH SYNOPSIS
+.EX
+include "dbm.m";
+
+dbm := load Dbm Dbm->PATH;
+Datum, Dbf: import dbm;
+
+Datum:  type array of byte;
+
+Dbf: adt {
+    create: fn(file: string, perm: int): ref Dbf;
+    open:   fn(file: string, flags: int): ref Dbf;
+
+    fetch:  fn(db: self ref Dbf, key: Datum): Datum;
+    delete: fn(db: self ref Dbf, key: Datum): int;
+    store:  fn(db: self ref Dbf, key: Datum, data: Datum,
+                  replace: int): int;
+
+    firstkey: fn(db: self ref Dbf): Datum;
+    nextkey:  fn(db: self ref Dbf, key: Datum): Datum;
+
+    flush:    fn(db: self ref Dbf);
+    isrdonly: fn(db: self ref Dbf): int;
+};
+
+init:   fn();
+.EE
+.SH DESCRIPTION
+.B Dbm
+maintains
+key/content pairs in a data base.
+The functions will handle very large
+(a billion blocks)
+databases and will access a keyed item
+in one or two filesystem accesses.
+.PP
+.IR Key s
+and
+.IR content s
+are both represented by arrays of bytes
+(with the synonym
+.BR Datum ),
+allowing
+arbitrary binary values.
+.PP
+The data base is stored in two files.
+One file is a directory containing a bit map
+and has
+.L .dir
+as its suffix.
+The second file contains all data and has
+.L .pag
+as its suffix.
+An application can access several databases at once, but must avoid
+concurrent operations on any one database (eg, by using a monitor process to control access).
+.PP
+.B Init
+must be called before any other operation of the module.
+.PP
+A database is created by
+.IR Dbf.create ,
+which accepts a file permission parameter
+.IR perm ,
+as described for
+.B Sys->create
+(see
+.IR sys-open (2));
+it creates the two files
+.IB file .dir
+and
+.IB file .pag .
+If successful, it returns a
+.B Dbf
+reference describing the database, which
+is open for reading and writing.
+(It will truncate an existing database.)
+It returns nil if it cannot create the database for some reason,
+and sets the error string.
+.PP
+.B Dbf.open
+accepts a
+.I mode
+parameter as described in
+.IR sys-open (2),
+and opens the existing database in
+.IB file .dir
+and
+.IB file .pag .
+If successful, it returns a
+.B Dbf
+reference describing the database,
+which is open either for reading and writing (ie,
+.BR Sys->ORDWR ),
+or only for reading
+.RB ( Sys->OREAD )
+as determined by
+.IR mode .
+It returns nil if the database cannot be opened successfully, and sets the error string.
+.PP
+The remaining operations apply to an existing
+.B Dbf
+reference
+.IR db :
+.TP
+.IB db .fetch( key )
+Return the data stored under a
+.IR key ;
+nil is returned if the key is not in the database.
+.TP
+.IB db .store( key,\ data,\ replace )
+Store
+.I data
+under the given
+.IR key .
+If
+.I replace
+is non-zero,
+.B store
+will simply replace the existing value by the new one if the key is already
+in the database;
+if
+.I replace
+is zero
+.B store
+will return 0 if the new item was inserted, but
+1 if the key already appears in the database,
+and the new value will not be stored.
+.TP
+.IB db .delete( key )
+.I Key
+and its associated value
+is removed from the database.
+.TP
+.IB db .firstkey()
+Return the first key in the database;
+return nil if the database is empty.
+.TP
+.IB db .nextkey( key )
+Return the key following the given
+.IR key ,
+or nil if there is none.
+.TP
+.IB db .flush()
+Discard any data cached from the file.
+The cache is write-through, so it is not necessary to flush the file
+before the application exits.
+.TP
+.IB db .isrdonly()
+Return true if
+.I db
+was opened only for reading and writes are not allowed.
+.SH EXAMPLE
+.PP
+A linear pass through all keys in a database
+may be made,
+in an (apparently) random order,
+by use of
+.B Dbf.firstkey
+and
+.BR Dbf.nextkey .
+This code will traverse the data base:
+.IP
+.EX
+for(key := db.firstkey(); key != nil; key = db.nextkey(key)){
+	d := db.fetch(key);
+}
+.EE
+.PP
+The order of keys presented by
+.B Dbf.firstkey
+and
+.B Dbf.nextkey
+depends on a hashing function, not on anything
+interesting.
+.SH SOURCE
+.B /appl/lib/dbm.b
+.SH DIAGNOSTICS
+All functions that return an
+.I int
+indicate errors with negative values.
+A zero return indicates success.
+Routines that return pointers, including values of
+.BR Datum ,
+return nil values on error.
+.B Dbf.create
+and
+.B Dbf.open
+return nil on failure to access the database,
+setting the error string to a more detailed diagnostic.
+.SH BUGS
+On some systems (notably Plan 9 but also some Unix systems),
+the
+.B .pag
+file might contain holes where no data block has ever been written so
+that its apparent size is about
+four times its actual content.
+These files cannot be copied
+by normal means (cp, cat)
+without filling in the holes.
+.PP
+Except for
+.B firstkey
+and
+.BR nextkey ,
+.B Datum
+values returned
+by these functions
+point to storage
+that is changed by subsequent calls.
+.PP
+The sum of the sizes of a
+key/content pair must not exceed
+the internal block size
+(currently 512 bytes).
+Moreover all key/content pairs that hash
+together must fit on a single block.
+.B Dbf.store
+will return an error in the event that
+a block fills with inseparable data.

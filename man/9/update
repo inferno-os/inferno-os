@@ -1,0 +1,24 @@
+.TH UPDATE 9
+.SH NAME
+update \- flush graphics
+.SH SYNOPSIS
+\f5update\fP ?\fIoptions\fP?
+.SH DESCRIPTION
+Changes made via Tk commands do not become
+visible until a call to
+.BR update .
+.B Update
+flushes any pending changes to the screen.
+The following options are supported:
+.TP
+\f5-disable\fP
+If this option is given, all updates are disabled.
+This is useful to enable a program to
+stop mouse movement causing
+automatic updates while it is making changes to the window.
+.TP
+\f5-enable\fP
+This reverses a previous \f5update -enable\fP invocation.
+.PP
+.SH BUGS
+Changes that affect window sizes are visible immediately.

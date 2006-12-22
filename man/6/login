@@ -1,0 +1,109 @@
+.TH LOGIN 6
+.SH NAME
+login \- key exchange protocol
+.SH DESCRIPTION
+The following encrypted key exchange protocol is used between a client such as
+.B login
+in
+.IR security-login (2),
+and a certificate signing process such as
+.IR logind (8),
+to justify the latter's issuing a certificate that can
+later be presented to an Inferno service
+to establish credentials.
+.PP
+A shared secret must previously be agreed between
+user and certifying authority (CA).
+It is used by the protocol to establish a secure channel between user and CA.
+.PP
+In the description below:
+.TF key(m)
+.PD
+.TP
+.I ivec
+is an 8 byte random number (`initialisation vector') chosen for
+this conversation.
+.TP
+.I sha
+is the 20 byte secure hash (SHA-1) of the password
+.TP
+.I key
+is an 8 byte secret formed as follows:
+.EX
+.br
+key[0] = ivec[0]^sha[0]^sha[8]^sha[16]
+key[1] = ivec[1]^sha[1]^sha[9]^sha[17]
+.EE
+\&...
+.EX
+key[5] = ivec[5]^sha[5]^sha[13];
+key[6] = ivec[6]^sha[6]^sha[14];
+key[7] = ivec[7]^sha[7]^sha[15];
+.EE
+.TP
+.I alpha
+is a Diffie-Hellman base used system wide
+.TP
+.I p
+is a Diffie-Hellman modulus used system wide
+.TP
+.I "key(m)"
+is
+.I m
+encrypted using the RC4 algorithm with
+.IR key .
+.TP
+.I Rx
+is a random number of the same order as
+.IR p .
+.TP
+.I "secret"
+is the Diffie-Hellman secret
+.IR "alpha**(r0*r1) mod p" .
+.PP
+The protocol follows.  ``user→CA xxx'' means that the user
+sends the message ``xxx'' to the certifying authority.
+Any party can send an error instead of a message at any
+point to terminate the protocol.
+.IP
+.EX
+user→CA	name
+CA→user	ACK
+.sp 1v
+user→CA	ivec
+CA→user	key(alpha**r0 mod p), alpha, p
+.sp 1v
+user→CA	alpha**r1 mod p
+CA→user	CA's public key, SHA(CA's public key + secret)
+.sp 1v
+user→CA	user's public key, SHA(user's public key + secret)
+CA→user	user's public key certificate
+.EE
+.PP
+The complexity of this protocol is intended to shield the password.
+To start a clear text attack against the password, one
+needs to first attack the Diffie-Hellman exponential
+to determine
+.IR "alpha**r0 mod p" .
+A possible weakness is that the encrypted quantity
+is base64 encoded, constraining
+the possible values of each byte.
+This could aid a brute force attack.
+.PP
+.I Alpha
+and
+.I p
+are sent unprotected, though the user code does a few sanity checks
+on the values it receives.
+This is another likely point of attack.
+We should like to know about any.
+.PP
+The role of
+.I ivec
+is to foil any replay attacks by someone spoofing the CA
+though this is probably overkill.
+.SH SEE ALSO
+.IR security-intro (2),
+.IR security-login (2),
+.IR logind (8),
+.IR signer (8)

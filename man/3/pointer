@@ -1,0 +1,80 @@
+.TH POINTER 3
+.SH NAME
+pointer \- mouse and stylus interface
+.SH SYNOPSIS
+.B "bind -a #m /dev"
+.PP
+.B /dev/cursor
+.br
+.B /dev/pointer
+.SH DESCRIPTION
+The
+.I pointer
+device is the interface to input from a mouse, stylus, or some other device
+for pointing at positions on a display.
+On some platforms, the pointer is associated with a cursor
+on the display, that is displayed at the current pointer position.
+There often are buttons associated with the pointer, whether on
+the pointing device or elsewhere.
+For instance, some of the buttons on a PDA might be associated
+with the stylus not a keypad, to allow modification of stylus actions
+when there are are no buttons on the stylus itself.
+In the hosted environment of
+.IR emu (1),
+the pointer is associated with the host system's own pointing device.
+.PP
+Reading the
+.B pointer
+file returns the current pointer position and the state of any buttons associated with the pointer.
+The read blocks until the state has changed since the last read.
+Each read returns a 49 byte record:
+.IP
+.BI m "x y buttons msec"
+.PP
+Each record has the letter
+.B m
+immedlately followed by four 11-character decimal numbers, each number ended by a blank.
+.I X
+and
+.I y
+give the coordinates of the pointer in display coordinates;
+the value
+.I buttons
+has bit
+.RI "(1<<" b )
+set when button
+.I b
+is down; and
+.I msec
+is a time stamp in milliseconds.
+.PP
+Writing a record of the above form to
+.B pointer
+moves the displayed cursor to the given
+.I x
+and
+.I y
+position;
+.I buttons
+and
+.I msec
+are ignored.
+.PP
+Writing an
+.IR image (6)
+file to the
+.B cursor
+file sets the image of the cursor on the display.
+Reading
+.B cursor
+returns the current cursor image, again in
+.IR image (6)
+format.
+.SH SOURCE
+.B /emu/port/devpointer.c
+.br
+.B /os/port/devpointer.c
+.SH SEE ALSO
+.IR wm (1),
+.IR draw-intro (2),
+.IR image (6)

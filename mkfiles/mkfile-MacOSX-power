@@ -1,0 +1,32 @@
+TARGMODEL=	Posix
+TARGSHTYPE=	sh
+CPUS=		power
+
+O=		o
+OS=		o
+
+AR=		ar
+ARFLAGS=	crvs
+A=		a
+
+AS=		cc -c
+ASFLAGS=	
+
+CC=		cc -c
+CFLAGS=		-arch ppc\
+		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit -Wno-four-char-constants -Wno-unknown-pragmas\
+		-pipe\
+		-I$ROOT/MacOSX/power/include\
+		-I$ROOT/include\
+		-malign-natural -O2
+COPTFLAGS=	-O2
+CDEBFLAGS=	-g
+CTHREADFLAGS=
+
+LD=		cc
+LDFLAGS= -multiply_defined suppress
+
+SYSLIBS=
+
+YACC=		yacc
+YFLAGS=		-d

@@ -1,0 +1,38 @@
+.TH DRAW-POINTER 2
+.SH NAME
+Pointer \-
+state of a pointer device such as a mouse
+.SH SYNOPSIS
+.EX
+include	"draw.m";
+draw := load Draw Draw->PATH;
+
+Pointer: adt
+{
+    buttons:  int;
+    xy:       Point;
+};
+.EE
+.SH DESCRIPTION
+.TP 10
+.B buttons
+Each button on the device corresponds to a bit in
+.BR buttons ;
+zero bits indicate released (or non-existent), and one bits indicate pressed.
+The bits, from least to most significant positions,
+represent the buttons from left to right.
+.TP
+.B xy
+The pointer's screen coordinates.
+.PP
+.IR Mux (1)
+uses the
+.B cptr
+member of the
+.B Draw->Context
+adt to pass pointer events through to applications.
+.SH SEE ALSO
+.IR devpointer (2),
+.B mouse
+in
+.IR tk (2)

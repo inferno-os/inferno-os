@@ -1,0 +1,93 @@
+.TH PROF 3
+.SH NAME
+prof \- profiling device
+.SH SYNOPSIS
+.nf
+.B bind #P /prof
+
+.BI /prof/ctl
+.BI /prof/ n /name
+.BI /prof/ n /path
+.BI /prof/ n /histogram
+.BI /prof/ n /pctl
+.fi
+.SH DESCRIPTION
+The
+.B prof
+device serves a two-level directory structure. The first level contains a control file
+.B ctl
+and zero or more numbered directories each corresponding to a module being
+profiled. Inside each of these numbered directories are further files which describe
+the particular module being profiled.
+.PP
+The write-only control file
+.B ctl
+provides the facilities to profile a module. Messages written to this file initiate and
+control the profiling.
+.TP 10n
+.BI module " name"
+Add the module or the module whose path is
+.I name
+to the list of modules to be profiled.
+.TP 10n
+.B start
+Start profiling all modules in the above list or, if the list is empty, start profiling all
+modules loaded by the kernel. The profiling is done by sampling.
+.TP 10n
+.B startcp
+As above but do coverage profiling. All instructions executed in the wanted modules
+are counted.
+.TP 10n
+.B startmp
+As above but do memory profiling. All heap memory allocations are associated
+with a line of limbo source and all deallocations with the line that did the allocation.
+.TP 10n
+.B stop
+Stop all profiling.
+.TP 10n
+.B end
+Stop all profiling and free all memory associated with the modules being profiled.
+The profiler returns to it's initial state with no modules under profile.
+.TP 10n
+.BI interval " i"
+Change the sampling interval to
+.I i
+ms. The default sampling rate is 100 ms.
+.PP
+The second level directories contain information about each module under profile.
+.PP
+The read-only file 
+.B name
+contains the name of the module in the form it appears in it's module source file.
+.PP
+The read-only file
+.B path
+contains the path of the dis file that implements the module.
+.PP
+The write-only control file
+.B pctl
+allows finer control of the profiling of a module. It is not used at present.
+.PP
+The read-only file
+.B histogram
+contains statistics about the profiled module. The file contains a list of pairs
+of integers seperated by a space. The first number of the pair is a program counter
+value representing the address of a dis instruction. Addresses start from 0 and the
+list is in order of increasing address. The
+second number is the frequency with which this address was sampled. Each read
+of this file returns the next pair in the list. The frequency is guaranteed to be non-zero.
+.PP
+When coverage profiling the second number of each pair is the number of times
+that dis instruction was executed, when memory profiling it's the amount of memory in bytes.
+.SH SOURCE
+.B /emu/port/devprof.c
+.SH BUGS
+The device profiles on a global basis and therefore does not distinguish between multiple profilers running at once. 
+.PP
+The coverage profiling can only be done on dis instructions.
+.PP
+The device can do only one of time, coverage or memory profiling at once.
+
+
+
+

@@ -1,0 +1,82 @@
+.TH FTEST 1
+.SH NAME
+ftest, newer \- test file attributes
+.SH SYNOPSIS
+.B ftest
+.I test
+.I arg
+.PP
+.B newer
+.I file1
+.I file2
+.SH DESCRIPTION
+.I Ftest
+checks the specified attribute of 
+.I arg
+according to
+.I test
+and yields an exit status signifying the result.
+For all
+.IR test s
+apart from
+.BR -t ,
+.I arg
+is the name of the file to be tested;
+for
+.BR -t ,
+it is the number of a file descriptor.
+Available tests are:
+.TP
+.B -d
+True if the file exists and is a directory.
+.TP
+.B -e
+True if the file exists.
+.TP
+.B -f
+True if the file exists and is a regular file.
+.TP
+.B -r
+True if the file exists and is readable.
+.TP
+.B -s
+True if the file exists and has non-zero size.
+.TP
+.B -t
+True if the open file represented by
+the number
+.I arg
+represents the same file as
+.BR /dev/cons .
+.TP
+.B -w
+True if the file exists and is writable.
+.TP
+.B -x
+True if the file exists and is executable.
+.LP
+.I Newer
+checks whether
+.I file1
+exists and is no older than
+.IR file2 ,
+which must also exist;
+if so, it yields a true exit status.
+Otherwise, it yields an error status.
+Neither file may be a directory.
+.SH SOURCE
+.B /appl/cmd/ftest.b
+.br
+.B /appl/cmd/newer.b
+.SH SEE ALSO
+.IR sys-stat (2)
+.SH BUGS
+These commands
+work only with
+.IR sh (1)
+as none of the other Inferno shells
+can check the exit status of a command.
+.PP
+Checking for read, write and execute capabilities
+is speculative - the file server has the last say.
+Group permissions are ignored.

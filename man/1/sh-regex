@@ -1,0 +1,178 @@
+.TH SH-REGEX 1
+.SH NAME
+re, match \- shell script regular expression handling
+.SH SYNOPSIS
+.B load regex
+
+.B match
+.I regex
+[
+.IR arg ...
+]
+.br
+.B ${re
+.I op
+.IR arg...
+.B }
+.br
+.SH DESCRIPTION
+.I Regex
+is a loadable module for
+.IR sh (1)
+that provides access to regular-expression
+pattern matching and substitution.
+For details of regular expression syntax in Inferno,
+see
+.IR regexp (6).
+.I Regex
+defines one builtin command,
+.BR match ,
+and one builtin substitution operator,
+.BR re .
+.B Match
+gives a false exit status if its argument
+.I regex
+fails to match any
+.IR arg .
+.B Re
+provides several operations, detailed below:
+.TP 10
+\f5${re g\fP \fIregexp\fP \fR[\fP \fIarg\fP\fR...\fP\fR]\fP\f5}\fP
+Yields a list of each
+.I arg
+that matches
+.IR regexp .
+.TP
+\f5${re v\fP \fIregexp\fP \fR[\fP \fIarg\fP\fR...\fP\fR]\fP\f5}\fP
+Yields a list of each
+.I arg
+that does not match
+.IR regexp .
+.TP
+\f5${re m\fP \fIregexp\fP \fIarg\fP\f5}\fP
+Yields the portion of
+.I arg
+that matches
+.IR regexp ,
+or an empty list if there was no match.
+.TP
+\f5${re M\fP \fIregexp\fP \fIarg\fP\f5}\fP
+Yields a list consisting of the portion
+of 
+.I arg
+that matches
+.IR regexp ,
+followed by list elements giving the portion
+of
+.I arg
+that matched each parenthesized subexpression
+in turn.
+.TP
+\f5${re mg\fP \fIregexp\fP \fIarg\fP\f5}\fP
+Similar to
+.B re m
+except that it applies the match consecutively
+through
+.IR arg ,
+yielding a list of all the portions of
+.I arg
+that match
+.IR regexp .
+If a match is made to the null string,
+no subsequent substitutions will take place.
+.TP
+\f5${re s\fP \fIregexp\fP \fIsubs\fP [ \fIarg\fP... ]\f5}\fP
+For each
+.IR arg ,
+.B re s
+substitutes the first occurrence of
+.I regexp
+(if any) by
+.IR subs .
+If
+.I subs
+contains a sequence of the form
+.BI \e d
+where
+.I d
+is a single decimal digit,
+the
+.IR d th
+parenthesised subexpression in
+.I regexp
+will be substituted in its place.
+.B \e0
+is substituted by the entire match.
+If any other character follows a
+backslash
+.RB ( \e ),
+that character will be substituted.
+Arguments which contain no match to
+.I regexp
+will be left unchanged.
+.TP
+\f5${re sg\fP \fIregexp\fP \fIsubs\fP [ \fIarg\fP... ]\f5}\fP
+Similar to
+.B re s
+except that all matches of
+.I regexp
+within each
+.I arg
+will be substituted for, rather than just the
+first match. Only one occurrence of the null string is
+substituted.
+.PP
+.SH EXAMPLES
+List all files in the current directory that
+end in
+.B .dis
+or
+.BR .sbl :
+.EX
+	ls -l ${re g '\e.(sbl|dis)$' *}
+.EE
+.PP
+Break
+.I string
+up into its constituent characters,
+putting the result in shell variable
+.BR x :
+.EX
+	x = ${re mg '.|\en' \fIstring\fP}
+.EE
+.PP
+Quote a string
+.B s
+so that it can be used as
+a literal regular expression without worrying
+about metacharacters:
+.EX
+	s = ${re sg '[*|[\e\e+.^$()?]' '\e\e\e0' $s}
+.EE
+.PP
+Define a substitution function
+.B pat2regexp
+to convert shell-style
+patterns into equivalent regular expressions
+(e.g.
+.RB `` ?.sbl* ''
+would become
+.RB `` ^.\e.sbl.*$ ''):
+.EX
+	load std
+	subfn pat2regexp {
+		result = '^' ^ ${re sg '\e*' '.*'
+			${re sg '\?' '.'
+				${re sg '[()+\e\e.^$|]' '\e\e\e0' $*}
+			}
+		} ^ '$'
+	}
+.EE
+.SH SOURCE
+.B /appl/cmd/sh/regex.b
+.SH SEE ALSO
+.IR regexp (6),
+.IR regex (2),
+.IR sh (1),
+.IR string (2),
+.IR sh-std (1)

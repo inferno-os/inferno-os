@@ -1,0 +1,131 @@
+.TH SH-SEXPRS 1
+.SH NAME
+sexprs, islist, els, text, textels, mktext, mklist, mktextlist \- parse and generate S-expressions
+.SH SYNOPSIS
+.B load sexprs
+
+.B getsexprs
+.I command
+.br
+.B islist
+.I sexpr
+.br
+.B ${els
+.IB sexpr }
+.br
+.B ${text
+.IB sexpr }
+.br
+.B ${textels
+.IB sexpr }
+.br
+.B ${mktext
+.IB val }
+.br
+.B ${mklist
+[
+.IR val ...
+.BR "" ] }
+.br
+.B ${mktextlist
+[
+.IR val ...
+.BR "" ] }
+.br
+.SH DESCRIPTION
+.B Sexprs
+is a loadable module for
+.IR sh (1)
+that provides the facility to parse and generate
+S-expressions (see
+.IR sexprs (2)).
+The following primitives are provided:
+.TP 10
+.B getsexprs
+.B Getsexprs
+works similiarly to
+.B getlines
+in
+.IR sh-std (1).
+It reads S-expressions from the standard input, and for expression read, it
+invokes
+.I command
+with
+.B $sexp
+set to the text representation of that expression.
+.B Getsexprs
+recognises the usual loop
+.B break
+and
+.B continue
+exceptions.
+.TP
+.BI islist\  sexp
+.B Islist
+yields a nil (true) status if
+.IR sexp ,
+which must be a well-formed S-expression,
+is a list element.
+.TP
+.BI ${els\  sexp }
+If
+.I sexp
+is an S-expression containing a list,
+then
+.B els
+returns a list of the S-expressions it contains.
+It is an error if
+.I sexp
+is not a valid S-expression.
+.TP
+.BI ${text\  sexp }
+If
+.I sexp
+is an S-expression containing a simple element,
+then
+.B text
+returns the value of that element. If
+.I sexp
+is a list, the return value will be an empty string.
+Note that elements
+containing binary data will likely be corrupted
+by conversion to utf-8.
+It is an error if
+.I sexp
+is not a valid S-expression.
+.TP
+.BR ${textels\  sexp }
+If
+.I sexp
+is an S-expression containing a list, then
+.B textels
+returns a list of the text values in that S-expression,
+converted as with
+.BR ${text} .
+It is an error if
+.I sexp
+is not a valid S-expression.
+.TP
+.BR ${mktext\  val }
+.B Mktext
+returns a text representation of the S-expression
+containing the simple value
+.IR val .
+.TP
+.BR ${mklist\  \fR[\fPsexp\fR...]\fP }
+.B Mklist
+returns a text representation of the S-expression list
+containing its arguments, which must be well-format
+S-expressions.
+.TP
+.BR ${mktextlist\  \fR[\fPval\fR...]\fP }
+.B Mktextlist
+returns a text representation of the S-expression list
+containing one simple element for each
+.IR val .
+.SH SOURCE
+.B /appl/cmd/sh/sexprs.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-std (1),
+.IR sexprs (2)

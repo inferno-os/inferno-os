@@ -1,0 +1,29 @@
+.TH SYS-SLEEP 2
+.SH NAME
+sleep \- delay
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+sleep:	fn(period: int): int;
+.EE
+.SH DESCRIPTION
+.B Sleep
+suspends the current thread for
+.I period
+milliseconds.
+The actual suspension time may be a little more or less than
+the requested time.
+If
+.I period
+is 0, the process
+gives up the CPU if another process is waiting to run, returning
+immediately if not.
+.PP
+.B Sleep
+normally returns 0. In hosted Inferno it may return -1 to indicate that
+it was not possible to sleep (eg if no more threads are available).
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-millisec (2)

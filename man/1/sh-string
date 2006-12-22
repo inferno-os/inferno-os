@@ -1,0 +1,186 @@
+.TH SH-STRING 1
+.SH NAME
+prefix, in, splitl, splitr, drop, take, splitstrl, splitstrr, tolower, toupper, len, alen, slice \- shell script string manipulation
+.SH SYNOPSIS
+.B load string
+
+.B prefix
+.I pre s
+.br
+.B in
+.I c cl
+.br
+.B ${splitl
+.IB "s cl" }
+.br
+.B ${splitr
+.IB "s cl" }
+.br
+.B ${splitstrl
+.IB "s t" }
+.br
+.B ${splitstrr
+.IB "s t" }
+.br
+.B ${take
+.IB "s cl" }
+.br
+.B ${tolower
+.IB s }
+.br
+.B ${toupper
+.IB s }
+.br
+.B ${len
+.IB s }
+.br
+.B ${alen
+.IB s }
+.br
+.B ${slice
+.IB "start end s" }
+.br
+.B ${fields
+.IB "cl s" }
+.br
+.B ${padl
+.I n
+[
+.IR s ...
+.RB ] }
+.br
+.B ${padr
+.I n
+[
+.IR s ...
+.RB ] }
+.br
+.SH DESCRIPTION
+.I String
+is a loadable module for
+.IR sh (1)
+that provides a shell-script interface to the string
+manipulation commands found in
+.IR string (2),
+with a couple of other facilities thrown in for good
+measure. Each of the substitution builtins
+.BR splitl ,
+.BR splitr ,
+.BR drop ,
+.BR take ,
+.BR splitstrl ,
+.BR splitstrr ,
+.BR tolower ,
+and
+.BR toupper
+implements the same functionality as that provided by
+the function of the same name in
+.IR string (2).
+Where a function in the
+.IR string (2)
+module returns a tuple, the equivalent builtin yields
+a two-element list; the others yield a list with a single
+element.
+.PP
+In all
+.I string
+commands, the number of arguments provided must
+be exactly that required by the command so, for instance,
+giving an undefined variable (a zero element list) as
+an argument will cause a
+.B usage
+exception to be generated.
+.PP
+The two builtins
+.B prefix
+and
+.B in
+are again similar to their
+.IR string (2)
+counterparts - their return value is true (an empty string)
+if the equivalent
+.IR string (2)
+function would be non-zero.
+.PP
+.B Len
+returns the length of its argument
+.IR s .
+.B Alen
+returns the length of its argument
+.IR s
+when converted to a byte-array. (This will be
+different from the result of
+.B len
+when
+.I s
+contains non-ASCII characters).
+.B Slice
+is similar to the string-slicing operator in Limbo;
+it returns the section of
+.I s
+starting at index
+.I start
+and ending just before index
+.IR end .
+.I End
+may be the literal string
+.BR end ,
+in which
+.BI "${slice " start " end}"
+is the same as
+.BI "${slice " start " ${len " s "}}"\fR.\fP
+Unlike in Limbo, nothing untoward happens if
+an out-of-range slice is taken: any out of
+range indices are trimmed to within the bounds
+of
+.IR s .
+.PP
+.B Fields
+is similar to
+.B ${split}
+in
+.IR sh (1),
+but does not merge field separator characters.
+It splits
+.I s
+into fields separated by characters in class
+.IR cl ;
+if there are
+.I n
+characters matching
+.I cl
+inside
+.IR s ,
+.B fields
+will yield
+.IR n +1
+items in its result.
+.PP
+.B Padl
+and
+.B padr
+widen the string
+.I s
+to
+.I n
+characters, padding it with spaces on the
+right (for 
+.BR padl )
+or the left (for
+.BR padr )
+as necessary.
+If
+.I s
+is already at least
+.I n
+characters wide, it is left unchanged.
+If several arguments are given, they
+are concatenated, separated with spaces, before
+padding takes place.
+.SH SOURCE
+.B /appl/cmd/sh/string.b
+.SH SEE ALSO
+.IR string (2),
+.IR sh (1),
+.IR sh-std (1),
+.IR sh-expr (1)

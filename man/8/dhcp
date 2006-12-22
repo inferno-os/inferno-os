@@ -1,0 +1,117 @@
+.TH DHCP 8
+.SH NAME
+dhcp \- configure network interface details using DHCP
+.SH SYNOPSIS
+.B ip/dhcp
+[
+.B -bdmpr
+] [
+.BI -g " gateway"
+] [
+.BI -h " hostname"
+] [
+.BI -x " net
+]
+.I ifcdir
+[
+.I localip
+[
+.I localmask
+]]
+.SH DESCRIPTION
+.I Dhcp
+uses the Dynamic Host Configuration Protocol (DHCP) to configure the
+.IR ip (3)
+interface represented by
+.I ifcdir
+(eg,
+.BR /net/ipifc/1 ).
+The interface must have a device already bound to it.
+.I Dhcp
+uses the MAC address of that device in its requests.
+.PP
+.I Dhcp
+broadcasts a DHCP request for an address and various network parameters.
+It takes the first acceptable offer, sets the interface to that address, and writes the address and
+parameter values, in
+.IR ndb (6)
+format, to
+.BR /net/ndb ,
+where
+.IR cs (8),
+.IR dns (8)
+and others will find them.
+If the address is provided with a limited lease,
+.I dhcp
+itself returns, but it leaves
+a process in the background that periodically renews the lease (or requests a new address if the lease is not renewed).
+.PP
+If
+.I localip
+is given,
+.I dhcp
+attempts to reacquire that address.
+If successful, it configures the interface with that address (and mask if supplied),
+maintaining any lease as before.
+If it cannot reacquire the address, it broadcasts a request for a new address, as above.
+.PP
+The options are:
+.TP
+.B -b
+Use plain BOOTP without the DHCP options
+.TP
+.B -d
+Enable debugging output on standard output
+.TP
+.BI -g " gateway"
+Suggest
+.I gateway
+as the default gateway (the server might change it)
+.TP
+.BI -h " hostname"
+Use
+.I hostname
+as the current host's name in DHCP messages
+.TP
+.B -m
+Monitor the DHCP status and print a summary on standard output whenever it changes
+.TP
+.B -n
+Do not configure the interface
+.TP
+.B -p
+Print the resulting configuration on standard output
+.TP
+.B -r
+Retry DHCP periodically until it succeeds
+.TP
+.BI -x " net"
+Use mount point
+.I net
+to access the network,
+and write the results to
+.IB net /ndb
+(default:
+.BR /net )
+.PD
+.SH EXAMPLE
+Allocate a new interface, bind an ether device to it, and configure it with
+.IR dhcp :
+.IP
+.EX
+x=`{cat /net/ipifc/clone}
+echo bind ether /net/ether0 >/net/ipifc/$x/ctl &&
+ip/dhcp /net/ipifc/$x
+.EE
+.SH SOURCE
+.B /appl/cmd/ip/dhcp.b
+.SH SEE ALSO
+.IR ip (3),
+.IR ndb (6),
+.IR cs (8),
+.IR dns (8)
+.SH DIAGNOSTICS
+.I Dhcp
+returns an error status if it receives no acceptable reply, unless the
+.B -r
+option is given to force retries.

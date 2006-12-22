@@ -1,0 +1,62 @@
+.TH UNICODE 1
+.SH NAME
+unicode \- interpret Unicode characters
+.SH SYNOPSIS
+.B unicode
+[
+.B -nt
+]
+.IB hexmin - hexmax
+.PP
+.B unicode
+[
+.B -t
+]
+.I hex ...
+.PP
+.B unicode
+[
+.B -n
+]
+.I char ...
+.SH DESCRIPTION
+.I Unicode
+converts between UTF and character values from the Unicode Standard (see
+.IR utf (6)).
+.PP
+If given a range of hexadecimal numbers,
+.I unicode
+prints a table of the specified Unicode characters including their values and UTF representations.
+Otherwise, it translates from UTF to numeric value or numeric value to UTF, depending on the appearance of the supplied text.
+If converting to UTF, the characters are printed one per line.
+.PP
+The options are:
+.TP
+.B -n
+Forces numeric output to avoid ambiguity with numeric characters.
+.TP
+.B -t
+Output a single string containing the specified characters, rather than one per line.
+.PP
+The output of
+.I unicode
+might not be helpful if the characters printed are not available in the current font.
+.SH EXAMPLES
+.TP
+.B "unicode p"
+Print the hex value of
+.BR p .
+.TP
+.B "unicode 2200-22f1"
+Print a table of miscellaneous mathematical symbols.
+.SH FILES
+.TF /lib/unicode
+.TP
+.B /lib/unicode
+Table of characters and descriptions.
+.SH SOURCE
+.B /appl/cmd/unicode.b
+.SH "SEE ALSO"
+.IR tr (1),
+.IR utf (6),
+.IR font (6)

@@ -1,0 +1,283 @@
+.TH SYS-STAT 2
+.SH NAME
+fstat, fwstat, stat, wstat \- get and put file status
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+fstat:  fn(fd: ref FD): (int, Dir);
+fwstat: fn(fd: ref FD; d: Dir): int;
+stat:   fn(name: string): (int, Dir);
+wstat:  fn(name: string, d: Dir): int;
+
+nulldir: con Dir(\fIspecial don't care values\fP);
+zerodir: con Dir(\fIall elements set to zero\fP);
+.EE
+.SH DESCRIPTION
+Given a file's
+.IR name ,
+or an open file descriptor
+.IR fd ,
+these routines retrieve or modify file status information.
+.B Stat
+and
+.B fstat
+retrieve information about
+.I name
+or
+.I fd
+into the
+.B Dir
+member of the return tuple.
+The
+.B int
+member will be zero for success and \-1 for failure.
+.B wstat
+and
+.B fwstat
+write information back, thus changing file attributes according to
+.IR d .
+Both functions return zero for success and \-1 for failure.
+.PP
+File status is recorded as a
+.B Dir
+type:
+.IP
+.PP
+.EX
+Qid: adt
+{
+    path:   big;     # unique id for file on server
+    vers:   int;     # write version number
+    qtype:  int;     # file type (see below)
+};
+
+Dir: adt
+{
+    name:   string;  # last element of path
+    uid:    string;  # owner name
+    gid:    string;  # group name
+    muid:   string;  # last modifier name
+    qid:    Qid;     # unique id from server
+    mode:   int;     # permissions
+    atime:  int;     # last read time
+    mtime:  int;     # last write time
+    length: big;     # file length
+    dtype:  int;     # server type
+    dev:    int;     # server subtype
+};
+.EE
+.PP
+If the file resides on permanent storage and is not a directory,
+the
+.B length
+field returned in
+.B Dir
+by
+.B stat
+is the number of bytes in the file.
+For directories, the length returned is zero.
+Some devices, in particular files that are
+streams such as pipes and network connections,
+report a length that is the number of bytes that
+may be read from the device without blocking.
+.PP
+Each file is the responsibility of some
+.IR server :
+it could be a file server, a kernel device, or a user process.
+.B Dtype
+identifies the server type, and
+.B dev
+says which of a group of servers of the same type is the one
+responsible for this file.
+.B Qid
+is a type containing
+.BR path ,
+.B vers
+and
+.B qtype
+members, each an integer:
+.B path
+is guaranteed to be
+unique among all path names currently on the file server;
+.B vers
+changes each time the file is modified;
+and
+.B qtype
+gives the file's characteristics (eg, directory or file).
+The
+.B path
+is 64 bits
+.RB ( big ),
+and the
+.B vers
+is 32 bits
+.RB ( int ).
+Thus, if two files have the same
+.BR dtype ,
+.BR dev ,
+and
+.BR qid ,
+they are the same file.
+(Except when checking that the contents
+are the same, as in a file cache, the version is often considered irrelevant in that comparison.)
+The bits in
+.B qtype
+are defined by
+.IP
+.EX
+16r80 # directory (Sys->QTDIR)
+16r40 # append-only (Sys->QTAPPEND)
+16r20 # exclusive-use (Sys->QTEXCL)
+16r08 # authentication file (Sys->QTAUTH)
+16r00 # any other file (Sys->QTFILE)
+.EE
+.PP
+(They are the top 8 bits of
+.B Dir.mode
+for the file, as discussed below.)
+.B Sys
+defines constants for the bits:
+.BR Sys->QTDIR ,
+.BR Sys->QTAPPEND ,
+and so on, as shown above.
+The value
+.B Sys->QTFILE
+is not a particular bit; it is defined to be zero, to allow
+a symbolic name to be used when creating
+.B Qid
+values for ordinary files.
+.PP
+The bits in
+.B mode
+are defined by
+.IP
+.EX
+16r80000000 #directory (Sys->DMDIR)
+16r40000000 #append-only (Sys->DMAPPEND)
+16r20000000 #exclusive-use (Sys->DMEXCL)
+16r08000000 #authentication file (Sys->DMAUTH)
+      8r400 #read    permission by owner
+      8r200 #write   permission by owner
+      8r100 #execute permission (search on directory) by owner
+      8r070 #read, write, execute (search) by group
+      8r007 #read, write, execute (search) by others
+.EE
+.PP
+There are constants defined in
+.B Sys
+for the first four bits:
+.BR Sys\->DMDIR ,
+.B Sys\->DMAPPEND
+and
+.B Sys\->DMEXCL
+for normal files, and
+.B Sys\->DMAUTH
+only for the special authentication file opened by
+.IR sys-fauth (2).
+.PP
+The two time fields are measured in seconds since the epoch
+(Jan 1 00:00 1970 GMT).
+.B Mtime
+is the time of the last change of content.
+Similarly,
+.B atime
+is set whenever the contents are accessed;
+also, it is set whenever
+.B mtime
+is set.
+.PP
+.B Uid
+and
+.B gid
+are the names of the owner and group (of owners) of the file;
+.B muid
+is the name of the user that last modified the file (setting
+.BR mtime ).
+Groups are also users, but each server is free to associate
+a list of users with any user name
+.IR g ,
+and that list is the
+set of users in the group
+.IR g .
+When an initial attachment is made to a server,
+the user string in the process group is communicated to the server.
+Thus, the server knows, for any given file access, whether the accessing
+process is the owner of, or in the group of, the file.
+This selects which sets of three bits in
+.B mode
+is used to check permissions.
+.PP
+Only some of the fields may be changed by
+.B wstat
+calls.
+The
+.B name
+can be changed by anyone with write permission in the parent directory.
+The
+.B mode
+and
+.B mtime
+can be changed by the owner or the group leader of the file's current
+group.
+The
+.B gid
+can be changed by the owner if he or she is a member of the new group.
+The
+.B gid
+can be changed by the group leader of the file's current group
+if he or she is the leader of the new group.
+The
+.B length
+can be changed by anyone with write permission, provided the operation
+is implemented by the server.
+(See
+.IR intro (5)
+and
+.IR stat (5)
+for more information about permissions, and
+.IR users (6)
+for how to configure users and groups
+when using
+.IR kfs (4)).
+.PP
+Special values in the fields of the
+.B Dir
+passed to
+.I wstat
+indicate that the field is not intended to be changed by the call.
+The values are the maximum unsigned integer of appropriate size
+for integral values (usually
+.BR ~0 ,
+but beware of conversions and size mismatches
+when comparing values) and the empty or nil string for string values.
+The constant
+.B nulldir
+in
+.B Sys
+has all its elements initialised to these ``don't care'' values.
+Thus one may change the mode, for example, by assigning
+.B sys->nulldir
+to initialize a
+.BR Dir ,
+then setting the mode, and then doing
+.IR wstat ;
+it is not necessary to use
+.I stat
+to retrieve the initial values first.
+.PP
+The constant
+.B zerodir
+has all its elements initialised to zero.
+It can be used to initialise a
+.B Dir
+structure, for use with
+.IR styx (2)
+or
+.IR styxservers-nametree (2),
+for instance.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-dirread (2),
+.IR sys-open (2)

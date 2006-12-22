@@ -1,0 +1,174 @@
+.TH FACTOTUM 2
+.SH NAME
+Factotum: mount, proxy, rpc \- client interface to factotum
+.SH SYNOPSIS
+.EX
+include "factotum.m";
+auth := load Factotum Factotum->PATH;
+
+Authinfo: adt{
+    cuid: string;    # ID on caller
+    suid: string;    # ID on server
+    cap:  string;    # capability (only valid on server side)
+    secret: array of byte;   # key for encryption
+};
+
+AuthRpcMax: con \fR...\fP;
+
+init:          fn();
+mount:  fn(fd: ref Sys->FD, mnt: string, flags: int, aname: string):
+            (int, ref Authinfo);
+getuserpasswd:	fn(keyspec: string): (string, string);
+rpc:    fn(facfd: ref Sys->FD, verb: string, a: array of byte):
+            (string, array of byte);
+proxy:  fn(afd: ref Sys->FD, facfd: ref Sys->FD, arg: string):
+            ref Authinfo;
+.EE
+.SH DESCRIPTION
+.B Factotum
+interacts with an instance of the authentication agent
+.IR factotum (4)
+to authenticate a client to a server.
+It can also interact with Plan 9's
+.I factotum
+if that is in the name space (as well as or instead of
+.IR factotum (4)).
+.PP
+.B Init
+must be called before any other function.
+.PP
+.B Mount
+is similar to
+.B Sys->mount
+(see
+.IR sys-bind (1)),
+but uses
+.I factotum
+to authenticate,
+if the server requires it.
+.B Factotum->mount
+should be used instead of
+.B Sys->mount
+when mounting file servers that use
+.IR auth (5)
+to authenticate.
+(If the server on
+.I fd
+does not require authentication,
+.B Factotum->mount
+simply calls
+.BR Sys->mount .)
+.B Mount
+returns
+.RI ( v , ai ).
+If the integer
+.I v
+is non-negative, the mount succeeded;
+on error,
+.I v
+is negative, either the authentication or the mount failed,
+.I ai
+is nil, and the system error string contains a diagnostic.
+If the server required authentication and that was successful,
+.I ai
+is a non-nil reference to an
+.B Authinfo
+value containing the agreed user IDs, a capability for
+.IR cap (3)
+that is valid only on the server, and an array of bytes
+containing a shared secret that can be used by client
+and server to create encryption and hashing keys for the conversation.
+.PP
+.B Getuserpasswd
+returns a tuple
+.RI ( user , password )
+containing the values for the
+.B user
+and
+.B !password
+attributes of a factotum entry that has
+.B proto=pass
+and matches the given
+.IR keyspec .
+The tuple values are nil if no entry matches or the caller lacks permission to see them.
+.PP
+.B Proxy
+links an authenticating server on
+.I afd
+with the
+.I factotum
+agent on
+.IR facfd .
+Typically
+.I facfd
+is the result of
+.IP
+.EX
+sys->open("/mnt/factotum/rpc", Sys->ORDWR)
+.EE
+.PP
+.I Afd
+is typically the result of
+.IR sys-open (2),
+.IR sys-dial (2),
+or
+.IR sys-fauth (2).
+.I Params
+gives any parameters for
+.IR factotum ,
+as a string containing space-separated
+.IB attr = value
+pairs.
+.B Proxy
+ferries messages between the server and
+.I factotum
+until the end of the selected authentication protocol.
+If authentication failed,
+.B proxy
+returns nil; otherwise on success it always returns a non-nil reference to an
+.B Authinfo
+value with contents as above, but if the protocol does not
+supply that authentication data, all the values are nil.
+.PP
+.B Rpc
+does one message exchange with the
+.I factotum
+on
+.IR facfd .
+It writes a message containing the given
+.I verb
+and optional binary parameter
+.IR a ,
+and returns
+.RI ( v , a )
+where
+.I v
+is the response string from
+.I factotum
+and
+.I a
+is an optional binary parameter for that response.
+Exceptionally,
+.I v
+is the string
+\f5"rpc failure"\fP
+if communication fails or a message is garbled, or
+\f5"no key"\fP
+if
+.B rpc
+cannot find a suitable key.
+See
+.IR factotum (4)
+for details of the protocol.
+.PP
+.B AuthRpcMax
+is an integer constant giving the maximum size of a message in an
+.B rpc
+exchange.
+.SH SOURCE
+.B /appl/lib/factotum.b
+.SH SEE ALSO
+.IR sys-bind (2),
+.IR sys-fauth (2),
+.IR factotum (4),
+.IR auth (5)

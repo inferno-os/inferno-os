@@ -1,0 +1,41 @@
+.TH BOOT 3
+.SH NAME
+boot \- reboot under program control
+.SH SYNOPSIS
+.B bind -a #B /dev
+.PP
+.B /dev/boot
+.br
+.B /dev/kexec
+.br
+.B /dev/mem
+.SH DESCRIPTION
+.I Boot
+serves a directory containing three files that control a reboot of the system.
+The files can only be opened by the host owner
+(see
+.IR eve (10.2)).
+.PP
+.B Boot
+is a write-only file that accepts 4 bytes representing a kernel address, high-order byte first.
+The system will transfer control to that address, which is assumed to be the start of low-level reboot code.
+There is no return from the write on success or failure.
+.PP
+.B Kexec
+is a write-only file to which an uncompressed kernel image can be written, a chunk at a time.
+When the file is closed, the system will transfer control to the start of the image, which again
+is assumed to be low-level reboot code.
+.PP
+.B Mem
+copies data to and from kernel memory, taking the current file offset as an address therein.
+.PP
+.I Boot
+flushes caches as necessary to ensure that writes to kernel memory through any
+of these files will be visible when subsequently executed as instructions.
+.SH SOURCE
+.B /os/port/devboot.c
+.SH SEE ALSO
+.IR tftp (2),
+.IR cons (3)
+.SH DIAGNOSTICS
+Invalid addresses are diagnosed, but otherwise there is no error return.

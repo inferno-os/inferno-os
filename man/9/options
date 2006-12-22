@@ -1,0 +1,244 @@
+.TH OPTIONS 9
+.SH NAME
+options \- Standard options supported by widgets
+.SH DESCRIPTION
+This manual entry describes the common configuration options supported
+by widgets in the Tk toolkit.  Every widget does not necessarily support
+every option (see the manual entries for individual widgets for a list
+of the standard options supported by that widget), but if a widget does
+support an option with one of the names listed below, then the option
+has exactly the effect described below.
+For a description of kinds of values that can passed to the various
+options, see
+.IR types (9).
+.PP
+In the descriptions below, the name refers to the
+switch used in class commands and \f5configure\fR widget commands to
+set this value.  For example, if an option's command-line switch is set to
+\f5-foreground\fR and there exists a widget \f5.a.b.c\fR, then the
+command
+.RS
+.EX
+\&.a.b.c configure -foreground black
+.EE
+.RE
+may be used to specify the value \f5black\fR for the option in the
+the widget \f5.a.b.c\fR.
+.TP
+.BI -activebackground " colour"
+Specifies background colour to use when drawing active elements.
+An element (a widget or portion of a widget) is active if the
+mouse cursor is positioned over the element and pressing a mouse button
+will cause some action to occur.
+.TP
+.BI -activeforeground " colour"
+Specifies foreground colour to use when drawing active elements.
+See above for definition of active elements.
+.TP
+.BI -actx
+Returns the current x position of the widget in screen coordinates.
+.TP
+.BI -acty
+Returns the current y position of the widget in screen coordinates.
+.TP
+.BI -actwidth
+Returns the current allocated width of the widget.
+.TP
+.BI -actheight
+Returns the current allocated height of the widget.
+.TP
+.BI -anchor " val"
+Specifies how the information in a widget (e.g. text or a bitmap)
+is to be displayed in the widget.
+.I Val
+must be one of the values \f5n\fR, \f5ne\fR, \f5e\fR, \f5se\fR,
+\f5s\fR, \f5sw\fR, \f5w\fR, \f5nw\fR, or \f5center\fR.
+For example, \f5nw\fR means display the information such that its
+top-left corner is at the top-left corner of the widget.
+.TP
+.B -background  \fIcolour\fP \fRor\fP -bg \fIcolour\fP
+Specifies the normal background colour to use when displaying the
+widget.
+.TP
+.BI -bitmap " bitmap"
+Specifies a bitmap to display in the widget.
+The exact way in which the bitmap is displayed may be affected by
+other options such as \f5anchor\fR or \f5justify\fR.
+Typically, if this option is specified then it overrides other
+options that specify a textual value to display in the widget;
+the \f5bitmap\fR option may be reset to an empty string to re-enable
+a text display.
+In widgets that support both \f5bitmap\fR and \f5image\fR options,
+\f5image\fR will usually override \f5bitmap\fR.
+For those widgets that support the \f5foreground\fR option, if the bitmap is
+monochrome it is displayed using the foreground colour.
+.TP
+.B -borderwidth \fIdist\fP \fRor\fP -bd \fIdist\fP
+Specifies a non-negative value indicating the width
+of the 3-D border to draw around the outside of the widget (if such a
+border is being drawn;  the \f5relief\fR option typically determines
+this).  The value may also be used when drawing 3-D effects in the
+interior of the widget.
+.TP
+.B -disabledcolor  \fIcolour\fP
+Specifies the foreground colour to use when drawing disabled widgets.
+Certain widgets can be disabled by use of their
+.B -state
+option.
+.TP
+.B -font \fIfont\fP
+Specifies the font to use when drawing text inside the widget.
+.TP
+.B -foreground \fIcolour\fP or -fg \fIcolour\fP
+Specifies the normal foreground colour to use when displaying the widget.
+.TP
+.B -highlightcolor \fIcolour\fP
+Specifies the colour to use for the traversal highlight rectangle that is
+drawn around the widget when it has the input focus.
+.TP
+.B -highlightthickness \fIdist\fP
+Specifies a non-negative value indicating the width of the highlight
+rectangle to draw around the outside of the widget when it has the
+input focus.
+If the value is zero, no focus highlight is drawn around the widget.
+.TP
+.B -image \fIimage\fP
+Specifies an image to display in the widget, which must have been
+created with the \f5image create\fR command.
+Typically, if the \f5image\fR option is specified then it overrides other
+options that specify a bitmap or textual value to display in the widget;
+the \f5image\fR option may be reset to an empty string to re-enable
+a bitmap or text display.
+For those widgets that support the \f5foreground\fR option, if the image is
+monochrome it is displayed using the foreground colour.
+.TP
+.B -jump \fIboolean\fP
+For widgets with a slider that can be dragged to adjust a value,
+such as scrollbars, this option determines when
+notifications are made about changes in the value.
+If the value is false, updates are made continuously as the
+slider is dragged.
+If the value is true, updates are delayed until the mouse button
+is released to end the drag;  at that point a single notification
+is made (the value ``jumps'' rather than changing smoothly).
+.TP
+.B -justify \fIval\fP
+When there are multiple lines of text displayed in a widget, this
+option determines how the lines line up with each other.
+.I Val
+must be one of \f5left\fR, \f5center\fR, or \f5right\fR.
+\f5Left\fR means that the lines' left edges all line up, \f5center\fR
+means that the lines' centers are aligned, and \f5right\fR means
+that the lines' right edges line up.
+.TP
+.B -orient \fIorientation\fP
+For widgets that can lay themselves out with either a horizontal
+or vertical orientation, such as scrollbars, this option specifies
+which orientation should be used.
+.I Orientation
+must be either \f5horizontal\fR
+or \f5vertical\fR.
+.TP
+.B -padx \fIdist\fP
+Specifies a non-negative value indicating how much extra space
+to request for the widget in the X-direction.
+When computing how large a window it needs, the widget will
+add this amount to the width it would normally need (as determined
+by the width of the things displayed in the widget);  if the geometry
+manager can satisfy this request, the widget will end up with extra
+internal space to the left and/or right of what it displays inside.
+Most widgets only use this option for padding text:  if they are
+displaying a bitmap or image, then they usually ignore padding
+options.
+.TP
+.B -pady \fIdist\fP
+Specifies a non-negative value indicating how much extra space
+to request for the widget in the Y-direction.
+When computing how large a window it needs, the widget will add
+this amount to the height it would normally need (as determined by
+the height of the things displayed in the widget);  if the geometry
+manager can satisfy this request, the widget will end up with extra
+internal space above and/or below what it displays inside.
+Most widgets only use this option for padding text:  if they are
+displaying a bitmap or image, then they usually ignore padding
+options.
+.TP
+.B -relief \fIval\fP
+Specifies the 3-D effect desired for the widget.  Acceptable
+values for
+.I val are \f5raised\fR, \f5sunken\fR, \f5flat\fR, \f5ridge\fR,
+and \f5groove\fR.
+The value
+indicates how the interior of the widget should appear relative
+to its exterior;  for example, \f5raised\fR means the interior of
+the widget should appear to protrude from the screen, relative to
+the exterior of the widget.
+.TP
+.B -selectbackground \fIcolour\fP
+Specifies the background colour to use when displaying selected
+items.
+.TP
+.B -selectborderwidth \fIdist\fP
+Specifies a non-negative value indicating the width
+of the 3-D border to draw around selected items.
+.TP
+.B -selectforeground \fIcolour\fP
+Specifies the foreground colour to use when displaying selected
+items.
+.TP
+.B -takefocus \fIboolean\fP
+Determines whether clicking on the widget will automatically
+give it the keyboard focus, and also whether the widget
+will become part of the keyboard focus list and made accessible
+by keyboard navigation.
+.TP
+.B -text \fIval\fP
+Specifies a string,
+.IR val ,
+to be displayed inside the widget.  The way in which
+the string is displayed depends on the particular widget and may be
+determined by other options, such as \f5anchor\fR or \f5justify\fR.
+.TP
+.B -underline \fIinteger\fP
+Specifies the integer index of a character to underline in the widget.
+This option is used by the default bindings to implement keyboard
+traversal for menu buttons and menu entries.
+0 corresponds to the first character of the text displayed in the
+widget, 1 to the next character, and so on.
+.TP
+.B -xscrollcommand \fIcommand\fP
+Specifies the prefix for a command used to communicate with horizontal
+scrollbars.
+When the view in the widget's window changes (or
+whenever anything else occurs that could change the display in a
+scrollbar, such as a change in the total size of the widget's
+contents), the widget will
+generate a Tk command by concatenating
+.I command
+and
+two numbers.
+Each of the numbers is a fraction between 0 and 1, which indicates
+a position in the document.  0 indicates the beginning of the document,
+1 indicates the end, .333 indicates a position one third the way through
+the document, and so on.
+The first fraction indicates the first information in the document
+that is visible in the window, and the second fraction indicates
+the information just after the last portion that is visible.
+The command is
+then passed to the Tk interpreter for execution.  Typically the
+\f5-xscrollcommand\fR option consists of the path name of a scrollbar
+widget followed by
+.RB `` set '',
+e.g.
+.RB `` ".x.scrollbar set" '':
+this will cause
+the scrollbar to be updated whenever the view in the window changes.
+If this option is not specified, then no command will be executed.
+.TP
+.B -yscrollcommand \fIcommand\fP
+Specifies the prefix for a command used to communicate with vertical
+scrollbars.  This option is treated in the same way as the
+\f5-xscrollcommand\fR option, except that it is used for vertical
+scrollbars and is provided by widgets that support vertical scrolling.
+See the description of \f5-xscrollcommand\fR for details
+on how this option is used.

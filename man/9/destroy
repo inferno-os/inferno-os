@@ -1,0 +1,24 @@
+.TH DESTROY 9
+.SH NAME
+destroy \- Destroy one or more windows
+.SH SYNOPSIS
+\f5destroy \fR?\fIwindow window ...\fR?
+
+.SH DESCRIPTION
+This command deletes the windows given by the
+\fIwindow\fR arguments, plus all of their descendants.
+The \fIwindow\fRs are destroyed in order, and if an error occurs
+in destroying a window the command aborts without destroying the
+remaining windows.
+.PP
+The
+.B Destroy
+event is fired for each window destroyed, including descendants.
+.PP
+If the window ``.'' is specified, it is unmapped rather than destroyed
+and the
+.B Destroy
+event is not fired on it.
+However, all of its decendants are destroyed as normal.
+.SH SEE ALSO
+.IR bind (9)

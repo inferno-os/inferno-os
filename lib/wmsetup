@@ -1,0 +1,52 @@
+# /dis/sh script
+# wm defines "menu" and "delmenu" builtins
+load std
+prompt='% ' ''
+fn % {$*}
+autoload=std
+home=/usr/^"{cat /dev/user}
+
+if {! {~ wm ${loaded}}} {
+	echo wmsetup must run under wm >[1=2]
+	raise usage
+}
+
+fn wmrun {
+	args := $*
+	{
+		pctl newpgrp
+		fn wmrun
+		$args
+	} > /chan/wmstdout >[2] /chan/wmstderr &
+}
+
+fn cd {
+	builtin cd $*;
+	rescue 'bad redir' {} {
+		echo cwd `{pwd} > /chan/shctl
+	} >[2] /dev/null
+}
+
+plumber >/chan/wmstdout >[2=1]
+menu Shell			{wmrun wm/sh}
+menu Acme			{wmrun acme}
+menu Edit				{wmrun wm/edit}
+menu Charon			{wmrun charon}
+menu Manual			{wmrun wm/man}
+menu Files			{if {ftest -d $home} {wmrun wm/ftree $home} {wmrun wm/ftree /}}
+menu ''	''
+menu System			'Debugger'		{wmrun wm/deb}
+menu System			'Module manager'	{wmrun wm/rt}
+menu System			'Task manager'		{wmrun wm/task}
+menu System			'Memory monitor'	{wmrun wm/memory}
+menu System			'About'			{wmrun wm/about}
+menu Misc			'Coffee'			{wmrun wm/coffee}
+menu Misc			'Colours'			{wmrun wm/colors}
+#menu Misc			'Winctl'			{wmrun wm/winctl}
+menu Misc			'Clock'			{wmrun wm/date}
+menu Games			'Tetris'			{wmrun wm/tetris}
+menu Games			'Bounce'			{wmrun wm/bounce}
+#menu Games			'Game client'		{wmrun games/gameclient >/dev/null >[2=1]}
+#menu Games			'Game client (local)'	{wmrun games/gameclient -l > /dev/null >[2=1]}
+
+if {ftest -f $home/lib/wmsetup} {run $home/lib/wmsetup} {}

@@ -1,0 +1,249 @@
+.TH FORMAT 2
+.SH NAME
+format \- structured data interchange
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "bufio.m";
+include "sexprs.m";
+include "format.m";
+format := load Format Format->PATH;
+
+Fmtspec: adt {
+	name:   string;
+	fields: cyclic array of Fmtspec;
+};
+Fmt: adt {
+	kind:   int;
+	fields: cyclic array of Fmt;
+};
+Fmtval: adt {
+	text:   fn(v: self Fmtval): string;
+	val:    ref Sexprs->Sexp;
+	recs:   cyclic array of array of Fmtval;
+};
+Fmtfile: adt {
+	spec:   array of Fmtspec;
+	descr:  array of byte;
+
+	new:    fn(spec: array of Fmtspec): Fmtfile;
+	open:   fn(f: self Fmtfile, name: string):
+               ref Bufio->Iobuf;
+	read:   fn(f: self Fmtfile, iob: ref Bufio->Iobuf):
+               (array of Fmtval, string);
+};
+init:     fn();
+spec2se:  fn(spec: array of Fmtspec): list of ref Sexprs->Sexp;
+spec2fmt: fn(spec: array of Fmtspec): array of Fmt;
+se2fmt:   fn(spec: array of Fmtspec, se: ref Sexprs->Sexp):
+             (array of Fmt, string);
+rec2val:  fn(spec: array of Fmtspec, rec: ref Sexprs->Sexp):
+             (array of Fmtval, string);
+.EE
+.SH DESCRIPTION
+.B Format
+provides support for programs that wish to marshal and unmarshal
+structured data. It is designed to enable a client to
+request that the structure data is provided by the server in a particular
+format, and for the server to be able to check that it is capable of providing
+that format.
+.PP
+A
+.I record
+consists of a set of
+.IR fields ,
+each represented by one element in an
+.IR sexprs (2)
+list. The content of a field can be a simple value, or it can hold a list containing
+any number of sub-records, each holding a set of fields, recursively defined as above.
+.PP
+The
+.B Fmtspec
+type defines the format for a field in a record.
+.I Name
+gives the name of the field, and
+.I fields
+gives the structure of the fields in any sub-records it contains
+(for a field with a simple value, this will be nil).
+Thus an array of
+.B Fmtspec
+values can define the structure of all the fields in a record.
+Here is an example structure specification:
+.IP
+.EX
+Name, Address, Phone: con iota;
+Number, Kind: con iota;
+spec := array[] of {
+	Address => Fmtspec("address", nil),
+	Name => Fmtspec("name", nil),
+	Phone => Fmtspec("phone", array[] of {
+		Kind => Fmtspec("kind", nil),
+		Number => Fmtspec("number", nil),
+	}),
+};
+.EE
+.PP
+By placing each field in the structure specification
+at a known index, a link is made from the symbolic constants in the program
+to the textual field names.
+.PP
+A structure specification may also be represented by
+a list of S-expressions, where each member of the list
+names a field in the structure. If a member is itself
+a list, it specifies a field containing sub-records: its first member gives the name of the field, and
+subsequent members specify the fields in its sub-records.
+For example, the above specification could be written as the
+S-expression:
+.IP
+.EX
+(name address (phone number kind))
+.EE
+.PP
+The
+.B Fmt
+type also defines a record structure, but
+.I "with respect"
+to an existing
+.B Fmtspec
+structure specification.
+An
+.B Fmt
+value represents a field, and
+.I kind
+holds the index of that field in the original structure specification.
+.PP
+.I Se2fmt
+converts from an S-expression list,
+.IR se 
+(a structure specification),
+to a set of
+.B Fmt
+values.
+The specification must be a subset of
+.IR spec ;
+i.e. each field in
+.I se
+must exist in
+.IR spec .
+.I Se2fmt
+returns a tuple
+.BI ( "f, err" ) .
+If the specification is bad,
+.I f
+will be nil, and
+.I err
+describes the error.
+Otherwise, each member of
+.I f
+gives a field specified by
+.IR se .
+For example, given the above structure definition, after executing:
+.IP
+.EX
+	se := Sexp.parse("(address (phone number))").t0;
+	(f, err) := se2fmt(spec, se);
+.EE
+.PP
+.IB f [0].kind
+will hold the symbolic constant
+.BR Address ,
+and
+.IB f [1].fields[0].kind
+will hold
+.BR Number .
+.PP
+.I Spec2se
+converts from a structure representation to its S-expression
+equivalent.
+.I Spec2fmt
+converts it to an array of
+.B Fmt
+structures mirroring it (equivalent to, but more efficient than,
+.BI se2fmt(spec2se( spec )).t0\fR)
+.SS "Data representation"
+The above specifications do not define a format for the
+representation of the actual data. For convenience however,
+.B Format
+defines its own S-expression-based data format.
+In this form, the fields in a record are represented by items
+in an S-expression list. A field containing sub-records is represented as
+a (possibly empty) list containing the sub-records;
+otherwise the value of a field may be an arbitrary S-expression.
+.PP
+For example, a record corresponding to the
+structure specification
+.IP
+.EX
+(name address (phone kind number))
+.EE
+.PP
+might look like:
+.IP
+.EX
+("Jonny Dawes" "24 Crag Lane"
+	((home "+44 7924 43535") (office "034 433 645")))
+.EE
+.PP
+.I Rec2val
+cracks such a record,
+.IR rec ,
+into its component values, checking
+that it is structurally compatible with the specification,
+.IR spec ,
+and returning a tuple
+.BI ( "fields, err" ) .
+If it failed,
+.I fields
+will be nil, and
+.I err
+describes the error. Otherwise
+each member of
+.IR fields ,
+say
+.IR v ,
+holds the value of its equivalent field in
+.IR spec .
+For fields without sub-records,
+.IB v .val
+holds the field's value;
+otherwise
+.IB v .recs
+holds an array with one member for each
+sub-record, each holding an array of fields
+defined recursively as above.
+.PP
+Some file servers
+provide files to which a format specification may
+be written, and which provide a sequence of records
+in that format when read.
+The
+.B Fmtfile
+type provides support for such files.
+It provides the following operations:
+.TP
+.BI Fmtfile.new( spec )
+returns a new
+.B Fmtfile
+value
+that can be used to open files and read records
+conforming to the given
+.IR spec .
+.TP
+.IB f .open(\fIname\fP)
+opens such a file, writes the format specification to it,
+and returns an
+.B Iobuf
+(see
+.IR bufio (2))
+ready for reading the file.
+.TP
+.IB f .read
+reads a record from the file; its return is the
+same as that from
+.BR rec2val .
+.SH SOURCE
+/appl/lib/format.b
+.SH SEE ALSO
+.IR sexprs (2),
+.IR bufio (2),
+.IR sexprs (6)

@@ -1,0 +1,35 @@
+.TH SYS-IOUNIT 2
+.SH NAME
+iounit \- return size of atomic I/O unit for file descriptor
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+iounit:	fn(fd: ref FD): int;
+.EE
+.SH DESCRIPTION
+Reads and writes of files are transmitted using the Styx protocol (see
+.IR intro (5))
+and in general, operations involving large amounts of data must be
+broken into smaller pieces by the operating system.
+The `I/O unit' associated with each file descriptor records the maximum
+size, in bytes, that may be read or written without breaking up the transfer.
+.PP
+The
+.B iounit
+system call returns the I/O unit size for the open file
+.IR fd .
+Certain file descriptors, particularly those associated with devices, may
+have no specific I/O unit, in which case
+.B iounit
+will return zero.
+.SH SOURCE
+.B /emu/port/inferno.c
+.br
+.B /os/port/inferno.c
+.SH SEE ALSO
+.IR sys-dup (2),
+.IR read (5)
+.SH DIAGNOSTICS
+Returns zero if any error occurs or if the I/O unit size of the fd is unspecified or unknown.

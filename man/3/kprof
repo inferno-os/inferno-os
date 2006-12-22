@@ -1,0 +1,88 @@
+.TH KPROF 3 
+.SH NAME
+kprof \- kernel profiling
+.SH SYNOPSIS
+.nf
+.B bind -a #T /dev
+.sp
+.B /dev/kpctl
+.B /dev/kpdata
+.fi
+.SH DESCRIPTION
+The
+.I kprof
+device provides simple profiling
+data for the operating system kernel.   The data accumulates by
+recording the program counter of the kernel at each `tick' of a
+profiling clock. Often this is just the system clock, but may be an
+independent higher priority timer which allows profiling of interrupt
+handlers, dependent on implementation.
+.PP
+The file
+.B kpdata
+holds the accumulated counts in big-endian
+byte order.
+The size of the file depends on the size of kernel text, and the
+size of the individual counts.
+The first six counts are 4 bytes in size, and are special. The
+first holds the total number of ticks, the second the number of
+ticks which fell outside the kernel text, the third the number
+of microseconds per tick, the fourth the number of sample buckets,
+the fifth the size in bytes of each sample bucket, and sixth the
+log base 2 of the sample bucket size. Typically the sample size
+is 4, and the log base 2 of the bucket size 3 (8 bytes). The remainder
+of the file holds the sample buckets. The entire file has size
+.I "sample bucket size"
+times
+.IR "number of sample buckets" .
+That is, the first six sample buckets are replaced with the special
+numbers.
+.PP
+The file
+.B kpctl
+controls profiling.
+Writing the string
+.B start
+to
+.B kpctl
+begins profiling;
+.B stop
+terminates it.  The message
+.B startclr
+restarts profiling after zeroing the array of counts.
+.PP
+.IR Kprof (10.1)
+formats the data for presentation.
+.SH EXAMPLE
+The following
+.IR sh (1)
+commands define and invoke a
+function
+.B sample
+that runs a given test program with kernel profiling enabled,
+and copies the result to a server presumed to be mounted on
+.BR /n/remote .
+.sp
+.EX
+fn sample {
+	echo start >/dev/kpctl
+	$1
+	echo stop >/dev/kpctl
+	cp /dev/kpdata /n/remote/tmp/kpdata
+}
+bind -a '#T' /dev
+sample {cp sound /dev/audio}
+.EE
+.PP
+On the server, the
+.IR kprof (10.1)
+command is used to analyse the data:
+.EX
+	kprof /usr/inferno/os/mpc/impc /tmp/kpdata
+.EE
+.SH SOURCE
+.B /os/port/devkprof.c
+.SH SEE ALSO
+.IR kprof (10.1)
+.SH BUGS
+It cannot provide times for each node in the dynamic call graph (dynamic profiling).

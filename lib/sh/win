@@ -1,0 +1,42 @@
+load tk std
+
+fn x {
+	or {tk $wid $*} {
+		echo error on tk cmd $"*':' $status >[1=2]
+	}
+}
+
+subfn x {
+	result = ${tk $wid $*}
+	if {~ $result '!*'} {
+		echo error on tk cmd $"*':' $result >[1=2]
+	}
+}
+
+fn tkwin {
+	if {! ~ $#* 2} {
+		echo usage: tkwin name {command} >[1=2]
+		raise usage
+	}
+	wid := ${tk window $1}
+	while {} {
+		tk winctl $wid ${recv $wid}
+	} &
+	$2
+}
+
+# more for interactive use
+fn tkmkwin {
+	if {! ~ $#* 1} {
+		echo usage: tkmkwin name >[1=2]
+		raise usage
+	}
+	wid = ${tk window $1}
+	while {} {
+		tk winctl $wid ${recv $wid}
+	} &
+}
+
+fn onscreen {
+	tk onscreen $wid $1
+}

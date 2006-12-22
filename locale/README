@@ -1,0 +1,5 @@
+To change the default time zone you see on your local system,
+copy the appropriate file to /locale/timezone.
+
+Most of these files were provided by David Hogan.
+The Israel file was provided by Amos Shapir.

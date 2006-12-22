@@ -1,0 +1,468 @@
+.TH PREFAB-ELEMENT 2
+.SH NAME
+prefab: Element \- menu and display elements for ITV toolkit
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "prefab.m";
+prefab := load Prefab Prefab->PATH;
+
+# types of Elements
+EIcon:      con 0;
+EText:      con 1;
+ETitle:     con 2;
+EHorizontal:con 3;
+EVertical:  con 4;
+ESeparator: con 5;
+
+# first arg to Element.adjust: size of elements
+Adjpack:    con 10; # leave alone, pack tightly
+Adjequal:   con 11; # make equal
+Adjfill:    con 12; # make equal, filling available space
+
+# second arg: position of element within space
+Adjleft:    con 20;
+Adjup:      con 20;
+Adjcenter:  con 21;
+Adjright:   con 22;
+Adjdown:    con 22;
+
+Layout: adt
+{
+  font:    ref Draw->Font;
+  color:   ref Draw->Image;
+  text:    string;
+  icon:    ref Draw->Image;
+  mask:    ref Draw->Image;
+  tag:     string;
+};
+
+Element: adt
+{
+  kind:   int;
+  r:      Draw->Rect;
+  environ:ref Environ;  
+  tag:    string;       
+  
+  # different fields defined for different kinds of Elements
+  kids:   cyclic list of ref Element; # children of elists
+  str:    string;           # text in an EText element
+  mask:   ref Draw->Image;  # part of Eicon, ESeparator
+  image:  ref Draw->Image;  # part of Eicon, ESeparator, EText, Etitle
+  font:   ref Draw->Font;   # part of EText, Etitle
+  
+  icon:      fn(env: ref Environ, r: Draw->Rect,
+               icon, mask: ref Draw->Image):
+               ref Element;
+  text:      fn(env: ref Environ, text: string,
+               r: Draw->Rect, kind: int): ref Element;
+  layout:    fn(env: ref Environ, lay: list of Layout,
+               r: Draw->Rect, kind: int): ref Element;
+  elist:     fn(env: ref Environ, elem: ref Element, kind: int):
+               ref Element;
+  separator: fn(env:ref Environ, r: Draw->Rect,
+               icon, mask: ref Draw->Image): ref Element;
+
+  append:    fn(elist: self ref Element, elem: ref Element): int;
+  adjust:    fn(elem: self ref Element, equal: int, dir: int);
+  clip:      fn(elem: self ref Element, r: Draw->Rect);
+  scroll:    fn(elem:self ref Element, d: Draw->Point);
+  translate: fn(elem:self ref Element, d: Draw->Point);
+  show:      fn(elist: self ref Element, elem: ref Element): int;
+};
+.EE
+.SH DESCRIPTION
+.B Prefab
+.B Elements
+are the building blocks of the ITV toolkit.
+They represent and display text and pictures that can be grouped in
+arbitrary two-dimensional menus to be walked by the infrared remote control.
+.B Elements
+are packaged within
+.B Compounds
+(see
+.IR prefab-compound (2))
+for display.
+.TF environ
+.PD
+.TP
+.B environ
+This specifies the element's environment.
+.TP
+.B image
+If the element needs an
+.B Image
+object (see
+.B kind
+below), this member specifies it.
+.TP
+.B kind
+The
+.B Prefab
+module defines six
+.B Element
+varieties, each labelled by a defined constant in the
+.B kind
+member.
+.RS
+.TP
+.B EIcon
+An image.
+.TP
+.B EHorizontal
+A horizontal list of elements.
+.TP
+.B ESeparator
+An
+.B Image
+object, like an
+.BR EIcon ,
+but intended to fill space in a list, rather than to serve
+as an element of the list.
+Separators are ignored when selecting or highlighting list elements.
+.TP
+.B EText
+A single line of text.
+Text for this element will be drawn with
+.B Style.textfont
+and
+.BR Style.textcolor .
+.TP
+.B ETitle
+A single line of text, usually giving the title of a
+.B Compound
+object.
+Text for this element will be drawn with
+.B Style.titlefont
+and
+.BR Style.titlecolor .
+.TP
+.B EVertical
+A vertical list of elements.
+.RE
+.TP
+.B mask
+When an element contains an
+.B Image
+object, the
+.B Image.draw
+function will be used to display it on the screen.
+The
+.B mask
+image is used as an argument to
+.BR Image.draw ;
+see
+.IR draw-intro (2)
+for more information.
+.TP
+.B r
+All
+.B Elements
+are rectangular, occupying the
+position on the display specified by
+.BR r.min .
+The size of the element also depends on
+.BR r .
+During creation,
+if the rectangle is degenerate (has
+zero size), the element takes its size from the
+sizes of its components:
+the image size for icons, text width for strings, etc.
+Otherwise, the element's size matches the rectangle.
+.TP
+tag
+The
+.B tag
+of an element serves two purposes: it allows an element to be labelled
+with arbitrary invisible text, and provides a mechanism to control which
+elements of a list may be selected: see the description of
+.B Compound.tagselect
+in
+.IR prefab-compound (2).
+The
+.B tag
+field of an element may be modified freely after the element is created.
+.TP
+.BI icon( env\fP,\fP\ r\fP,\fP\ icon\fP,\fP\ mask )
+Build one
+.B EIcon
+element to be drawn with the
+.I icon
+and
+.IR mask .
+The rectangle,
+.IR r ,
+gives the element's position and size.
+.TP
+.BI text( env\fP,\fP\ text\fP,\fP\ r\fP,\fP\ kind )
+Build a textual element or a list of textual elements.
+.I Kind
+may be
+.B EText
+or
+.BR ETitle ,
+determining the style of the drawn
+.IR text .
+The resulting
+.B Element
+object may be a single element or a
+.B EVertical
+list of the appropriate kind, if the text occupies
+more than one line.
+The text is folded as necessary to
+accommodate the available horizontal space; newlines in
+the text cause line breaks.
+The width of the
+text is determined by
+.IR r ,
+but if
+.I r
+has no width, it will be
+set by the text itself.
+The height of the Element is also
+determined by
+.IR r ;
+again, if the height of
+.I r
+is zero, the Element will be made as tall as necessary (if
+.I r
+is not tall enough, the rest of the text may be made visible
+by calls to
+.BR Element.scroll ).
+Thus one may choose
+a specific size or let the
+.I text
+determine the size by setting
+.I r
+suitably.
+.TP
+.BI layout( env\fP,\fP\ lay\fP,\fP\ r\fP,\fP\ kind )
+Like
+.BR Element.text ,
+but builds a structure using the contents of the list
+.I lay
+of
+.B Layout
+structures.  The
+.B Layout
+type
+allows construction of a more general form of textual display
+by providing fine control over the font and colour in which to
+display text and the inclusion of images as textual elements.
+It also allows setting of the
+.B tag
+for each component of the resulting element or list of elements.
+If the
+.B Layout
+has a
+.RB non- nil
+.B image
+field, it is taken as a description of a
+picture to be incorporated in the text as an
+.B EIcon
+element (and the
+.B text
+field is ignored);
+otherwise the
+.B text
+field specifies the text to be drawn in the indicated
+.B font
+and
+.BR color .
+As with
+.BR Element.text ,
+.B Element.layout
+does all the geometry management, text line breaking and folding, etc.
+.TP
+.BI elist( env\fP,\fP\ elem\fP,\fP\ kind )
+Start a list of
+.B Element
+objects.
+The
+.I kind
+may be
+.B Prefab\->EHorizontal
+or
+.BR Prefab\->EVertical ,
+specifying the orientation of the list.
+.I Elem
+will be the first element of the list.
+It may be
+.BR nil ,
+which creates an empty list of the
+requested orientation.
+Subsequent
+.B Element.append
+calls build the list.
+.TP
+.BI separator( env\fP,\fP\ r\fP,\fP\ icon\fP,\fP\ mask )
+Build one
+.B ESeparator
+element to be drawn with the
+.I icon
+and
+.IR mask .
+The rectangle,
+.IR r ,
+gives the element's position and size.
+.TP
+.IB elist .append( elem )
+Append one
+.BR Element ,
+.IR elem ,
+to an existing list,
+.IR elist .
+The new element will appear after those already
+there, either to the right for
+.B EHorizontal
+or below for
+.B EVertical
+lists.
+.TP
+.IB elem .adjust( spacing\fP,\fP\ dir )
+Format the list so its elements abut.
+The list-building functions such as
+.B append
+attempt to build a sensible geometry.
+Alternatively, one can build a list using
+degenerate geometry and then let
+.B adjust
+compute the geometry for the whole list.
+For example, one could place all the elements
+at (0,\ 0) and then call
+.B adjust
+to decide where the elements belong.
+.IP ""
+.I Spacing
+specifies how the elements fit together:
+.RS
+.TP
+.B Adjequal
+Makes them all equal sized in the dimension of the list,
+but only as big as the largest element.
+For example, if the element is a horizontal list,
+all elements will be as wide as the widest item.
+If the list is too big for the allocated space,
+only some will be visible. 
+.TP
+.B Adjfill
+Makes them all equal sized in the dimension of the list,
+expanding the elements to fit the space of the list's
+.BR Element.r .
+If the list is too big for the allocated space,
+only some will be visible. 
+.TP
+.B Adjpack
+Packs elements as tightly as possible,
+using the ``natural'' size of each element
+and setting their rectangles against one another.
+.RE
+.IP ""
+.I Dir
+controls how each element is placed in its allotted space:
+.RS
+.TP
+.B Adjcenter
+Place each element in the middle of its space.
+.TP
+.B Adjdown
+In a vertical list, move each element to the bottom.
+.TP
+.B Adjleft
+In a horizontal list, move each element to the left.
+.TP
+.B Adjright
+In a horizontal list, move each element to the right.
+.TP
+.B Adjup
+In a vertical list, move each element to the top.
+.RE
+.TP
+.IB elem .clip( r )
+The drawing model for
+.B Element
+objects is that they occupy some space in 
+the plane, which may be larger or smaller than the space occupied
+by its constituent text, icons, sub-elements, etc.
+The
+.I clip
+function sets the rectangle of
+.I elem
+to
+.IR r ,
+without changing its internal geometry.
+Any space made newly visible by this
+will be filled in by the list's
+.BR Style.elemcolor .
+For example, if
+.B e
+is an icon element just large enough to display its image,
+.B e.clip(e.r.inset(-2))
+will make a two-pixel-wide border around the icon when
+it is drawn.
+As another example, lists are scrolled by leaving their clip
+rectangle intact while translating the list elements' coordinates.
+.TP
+.IB elem .scroll( d )
+.I D
+is a
+.BR Point ,
+representing a vector;
+.I elem
+is an
+.B Element
+object to be scrolled.
+The
+.B scroll
+function leaves the element's
+.B r
+alone and translates all the constituent pieces of the list by
+.IR d ,
+causing a different portion of
+.I elem
+to be visible in its rectangle.
+.TP
+.IB elem .translate( d )
+Like
+.IB elem .scroll( d ),
+but moves
+.B r
+too, thus translating the entire
+.B Element
+rather than just the visible part within a fixed rectangle.
+.TP
+.IB elist .show( elem )
+.B Show
+does nothing if
+.I elem
+is not a list.
+If it is a list, the list is scrolled
+so
+.IR elem ,
+which must be a member of the list, is visible through
+.IR elist.r .
+.PP
+The geometry of elements and the membership of lists
+may be modified only through
+the provided functions; the Limbo-visible structure is
+(intended to be) read-only.
+Tags, text, and images may be modified freely
+by the application, but at the moment there is no way to recalculate
+the geometry if the components of an
+textual or image icon change size.
+.PP
+.B Element
+objects are never drawn explicitly, nor are they drawn after any
+.B Element
+operation.
+They are made visible only by calls to
+.BR Compound.draw ,
+described by
+.IR prefab-compound (2).
+.SH SOURCE
+.B /libinterp/prefab.c
+.B /libprefab/*.c
+.SH SEE ALSO
+.IR prefab-compound (2)
+.IR prefab-environ (2)
+.IR prefab-style (2)

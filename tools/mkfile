@@ -1,0 +1,7 @@
+<../mkconfig
+
+DIRS=\
+	libstyx\
+	styxtest\
+
+<$ROOT/mkfiles/mksubdirs

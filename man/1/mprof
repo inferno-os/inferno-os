@@ -1,0 +1,173 @@
+.TH MPROF 1
+.SH NAME
+mprof, wm/mprof \- memory profiling limbo programs
+.SH SYNOPSIS
+.B mprof
+[
+.B -bcMflnve123
+] [
+.BI -m " modname"
+] ... 
+[
+.BI "cmd arg ..."
+]
+.PP
+.B wm/mprof
+[
+.B -e12
+] [
+.BI -m " modname"
+] ... 
+[
+.BI "cmd arg ..."
+]
+.PP
+.SH DESCRIPTION
+.I Mprof
+is a simple memory profiling tool which calculates the amount of main, heap and image memory
+used on a 
+particular line of limbo source or in a particular limbo function or module. The main memory
+in question covers the space taken by dis code, jit code, runtime stacks and dynamic C module text, data and relocation areas. The heap memory covers all other limbo data structures. The source in
+question should be compiled with the 
+.B -g
+flag so that the relevant symbol table files exist. In its simplest form, the memory
+profiler shows a line number, the current memory in bytes allocated
+when executing this line, the high water memory in bytes allocated when executing
+this line and the limbo source. This information is also available at the function and
+module level.
+.PP
+The tk version of the profiler
+.I wm/mprof
+shows this information in a text widget and colours the lines of source according
+to the amount of memory allocated by the line. The darker the colour, the
+more memory used.
+.PP
+The
+.B -b
+option starts profiling.
+.PP
+The
+.B -c
+option clears all profiling statistics and state in the memory profiling device. If any commands are specified to
+.B mprof
+, this is done automatically. It's specific
+use is to end the accumulation of statistics when profiling interactively. See the
+example below.
+.PP
+The
+.B -M
+option shows the memory statistics for each module
+The
+.B -f
+option shows the memory statistics for each function.
+.PP
+The
+.B -l
+option shows the memory statistics for each line. If neither this option nor the
+.B -M
+and
+.B -f
+options are given, 
+.B -M
+and
+.B -l
+are assumed.
+.PP
+The
+.B -n
+option lists the name of the file along with the line number.
+.PP
+The
+.B -v
+option outputs all functions and/or lines even when they do not involve memory
+allocating or freeing operations.
+.PP
+The
+.B -m
+option lists the module names which are to be profiled. If none are given, all the
+modules loaded by the kernel will be profiled. The name may be the actual name of
+the module or its path name.
+.PP
+The
+.B -e
+option profiles the module that is loaded first in any following command. In this case
+there is no need to give a
+.B -m
+option as this is added automatically.
+.PP
+The
+.B -1
+option profiles only main memory (pool number 1 in the kernel). The default is
+to profile main, heap and image memory.
+.PP
+The
+.B -2
+option profiles only heap memory (pool number 2 in the kernel). The default is
+to profile main, heap and image memory.
+.PP
+The
+.B -3
+option profiles only image memory (pool number 3 in the kernel). The default is
+to profile main, heap and image memory.
+.PP
+Any remaining arguments are assumed to
+specify a command and set of arguments to the command. If this is the case,
+.B mprof
+will automatically start profiling, run the command to completion and then
+stop profiling before showing the profile statistics.
+.PP
+.B Mprof
+displays the profile statistics (unless the
+.B -b
+option is being used) according to the output format required.
+.PP
+.SH EXAMPLE
+.EX
+To profile a particular command
+	mprof /dis/math/parts 10000
+	wm/mprof /dis/math/parts 10000
+To profile the same command but restrict attention to its own module (Partitions).
+	mprof -m Partitions /dis/math/parts 10000
+	wm/mprof -m Partitions /dis/math/parts 10000
+A shorter version of the above
+	mprof -e /dis/math/parts 10000
+	wm/mprof -e /dis/math/parts 10000
+To profile interactively
+	mprof -b -m Polyhedra
+	wm/polyhedra &
+	mprof -M -f -l -n
+	<interact with wm/polyhedra ...>
+	mprof -M -f -l -n
+	wm/mprof
+	mprof -c
+.EE
+.PP
+Note that the output format options (
+.B -M
+,
+.B -f
+, 
+.B -l
+, 
+.B -n
+, 
+.B -v
+) are ignored when 
+.B -b
+is present.
+.SH SOURCE
+.B /appl/cmd/mprof.b
+.PP
+.B /appl/wm/mprof.b
+.SH BUGS
+Can take quite a time to present statistics when profiling all modules in the
+system.
+.SH SEE ALSO
+.IR cprof (1),
+.IR wm-cprof (1),
+.IR prof (2),
+.IR prof (3)
+
+
+
+

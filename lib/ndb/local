@@ -1,0 +1,20 @@
+database=
+	file=/lib/ndb/local
+	file=/lib/ndb/dns
+	file=/lib/ndb/inferno
+	file=/lib/ndb/common
+
+#
+# default site-wide resources
+#
+infernosite=
+	#dnsdomain=your.domain.com
+	#dns=1.2.3.4	# resolver
+	SIGNER=your_signer_here
+	FILESERVER=your_fileserver_here
+	smtp=your_smtpserver_here
+	pop3=your_pop3server_here
+	PROXY=your_httpproxy_here
+	GAMES=your_games_server
+	registry=your_registry_server
+	gridsched=your_inferno_grid_scheduler

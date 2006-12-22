@@ -1,0 +1,335 @@
+.TH CONF 10.6
+.SH NAME
+conf \- native and hosted kernel configuration file
+.SH DESCRIPTION
+Native and hosted Inferno kernels are built for a given target
+.I platform
+in the host environment in directory
+.BI /os/ platform
+or
+.BI /emu/ platform .
+Existing
+platforms include
+.B pc
+and
+.B ipaq
+for native kernels and
+.BR Plan9 ,
+.BR Linux ,
+.B Nt
+(for all versions of Windows),
+and
+.BR Solaris ,
+amongst others.
+Each
+.I platform
+can have different kernels with different configurations.
+A given configuration is built in the platform's directory using the
+.IR mk (10.1)
+command:
+.IP
+.EX
+mk 'CONF=\fIconf\fP'
+.EE
+.PP
+where
+.I conf
+is a text file that specifies drivers, protocols and other parameters for that
+particular kernel:
+a parts list.
+The result of a successful
+.I mk
+is
+an executable or bootable file with a name determined by the
+.IR platform 's
+.BR mkfile ,
+typically
+.BI i conf
+for all native platforms,
+.BI $O. conf
+for Plan 9, Unix and clones,
+and
+.BI i conf .exe
+for Windows.
+.PP
+A kernel configuration file has several sections of the form
+.IP
+.EX
+.I "label"
+.IR "	item" " [ " "subitem ..." " ]"
+\&	...
+.EE
+.PP
+Each section begins with a
+.I label
+at the start of a line, which names a configuration
+category, followed by
+a list of each
+.I item
+to select from that category,
+one line per item, with white space (ie, blank or tab) at the start of the line.
+An
+.I item
+line can optionally list one or more
+.I subitems
+that must be included in the kernel to support it.
+A line that starts with a
+.L #
+is a comment.
+Empty lines are ignored.
+.PP
+.I Labels
+are chosen from the following set, listed in the order
+in which they conventionally appear in a configuration file:
+.TF etherxx
+.TP
+.B dev
+Device drivers
+.TP
+.B ip
+IP protocols (native kernels only) taken from
+.B ../ip
+.TP
+.B link
+Hardware-specific parts of device drivers.
+.TP
+.B misc
+Architecture-specific files; specific VGA and SCSI interfaces
+.TP
+.B lib
+Libraries to link with the kernel
+.TP
+.B mod
+Builtin Dis modules
+.TP
+.B port
+Portable components (other than drivers) from
+.B ../port
+.TP
+.B code
+C code and declarations to include as-is in the generated configuration file
+.TP
+.B init
+Dis init program
+.TP
+.B root
+List of files and directories to put in the
+.IR root (3)
+file system
+.PD
+.PP
+When an
+.I item
+is listed
+under a given
+.I label
+it causes a corresponding component to be included in the kernel.
+The details depend on the
+.IR label ,
+as discussed below.
+Each
+.I subitem
+represents a kernel subcomponent required by the corresponding
+.IR item .
+Both items and subitems can be either portable (platform-independent)
+or platform-specific.
+The source file for a given item or subitem
+is sought in the platform-directory
+(for platform-specific code), and
+in directories
+.BR ../port
+and
+.BR ../ip ,
+under control of the platform's
+.BR mkfile
+and
+.B ../port/portmkfile
+(which is included by
+.BR mkfile ).
+Resulting object files are left in the
+.I platform
+directory.
+.PP
+Outside the
+.B dev
+section,
+each item and subitem
+.I x
+causes the kernel image to include the code compiled from
+.IB x .c ,
+(or
+.IB x .s
+or
+.IB x .S
+for assembly-language support),
+or
+.IB portdir / x .c ,
+where
+.I portdir
+is one of the portable directories mentioned above.
+In the
+.B dev
+section, an item
+.I x
+corresponds instead to the driver source file
+.BI dev x .c
+in the current (platform-specific)
+directory or a portable driver
+.IB portdir /dev x .c .
+Subitems are handled as in any other section.
+Typically they are auxiliary files that are needed by the associated driver.
+.PP
+For instance, in a native kernel
+the portable driver for the
+.B draw
+device uses platform-specific code from
+.BR screen.c .
+That can be represented as follows:
+.IP
+.EX
+dev
+	draw	screen
+.EE
+.PP
+Each item
+.I x
+in the
+.B ip
+section
+corresponds to a protocol implementation compiled from
+.BI ../ip/ x .c .
+Any subitems
+are dealt with in the same way as in the
+.B dev
+section.
+.PP
+The
+.B link
+section provides a way for hardware-specific
+parts of drivers to link at runtime to the hardware-invariant part of a device
+drivers.
+For each item
+.IR x ,
+the kernel will call the function
+.IB x link
+during its initialisation.
+Typically that function makes itself known to the device driver by
+calling a function provided by that driver,
+passing the address of a interface-specific data structure or linkage table.
+For example,
+.B ethersmc
+is an interface-specific component:
+.IP
+.EX
+link
+	\fR...\fP
+	ethersmc
+.EE
+.PP
+and its source file
+.B ethersmc.c
+provides a function
+.B ethersmclink
+that
+calls
+.B addethercard
+in the interface-invariant part of the driver,
+.BR devether.c :
+.IP
+.EX
+void
+ethersmclink(void)
+{
+	addethercard("smc91cXX", reset);
+}
+.EE
+.PP
+Similarly, during kernel initialisation, for each item
+.I x
+in the
+.B mod
+section, the kernel calls the function
+.IB x init ,
+to initialise the corresponding built-in Limbo module.
+.PP
+The
+.B init
+section selects the first Dis program run by the system.
+For native kernels, a given item
+.I x
+refers to
+.BI ../init/ x .dis ,
+which is automatically built from
+.BI ../init/ x .b .
+For hosted kernels,
+.B emuinit
+is normally used, referring to
+.BR /dis/emuinit.dis .
+.PP
+The
+.B lib
+section lists the libraries to include when linking the kernel,
+in an order that satisfies any dependencies amongst them.
+Each item
+.I x
+corresponds to
+.BI /$SYSTARG/$OBJTYPE/lib x .a ,
+a target-specific library
+produced by compiling the C source code in
+.BI /lib item,
+where
+.B SYSTARG
+and
+.B OBJTYPE
+are set in
+.B mkfile
+to the target system and object types.
+.PP
+An item in the
+.B root
+section
+has one of the forms:
+.IP
+.EX
+.I name
+.I "name source"
+.EE
+.PP
+where
+.I name
+and
+.I source
+are both absolute path names rooted at the Inferno source tree.
+The kernel's initial root file system (see
+.IR root (3))
+will contain a file or directory with the given
+.IR name .
+.I Name
+must exist in the Inferno root, or an existing
+.I source
+file must be named.
+In either case,
+if the existing name refers to a file, the file in the root file system will have that file's current contents.
+If it is a directory, the root file file system will have a directory with that name,
+but the directory will contain only those names listed in
+the configuration file as belonging to that directory.
+.I Source
+is often
+.L /
+to force a target
+.I name
+to be a directory.
+.SH FILES
+.B /emu/port/mkdevc
+.br
+.B /emu/port/mkdevlist
+.br
+.B /emu/port/mkroot
+.br
+.B /os/port/mkdevc
+.br
+.B /os/port/mkdevlist
+.br
+.B /os/port/mkroot
+.SH SEE ALSO
+.IR mk (10.1)

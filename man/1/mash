@@ -1,0 +1,635 @@
+.TH MASH 1
+.SH NAME
+mash \- programmable shell
+.SH SYNOPSIS
+.B mash
+[
+.B -denx
+][
+.BI -c command
+] [
+.I file
+[
+.I arg ...
+]]
+.SH DESCRIPTION
+.I Mash
+is an older alternative to the original Inferno shell
+(now
+.IR tiny (1)).
+.I Mash
+is a programmable shell that also allows the definition of simple dependency
+rules, resembling those of Unix
+.IR make .
+It executes commands read from standard input 
+or a file or, with the
+.B -c
+flag, from
+.IR mash 's
+argument list. Its syntax and 
+semantics are similar to that of Plan 9's
+.IR rc .
+
+.SS Invocation
+If
+.I mash
+is started with no arguments it reads commands from standard 
+input. Otherwise its first non-flag argument is the name of a file from 
+which to read commands (but see
+.B -c
+below). Subsequent arguments 
+become the initial value of
+.BR $args .
+Mash accepts the following 
+command-line flags.
+.PD 0
+.TF "-c string"
+.TP
+.BI -c " string"
+Commands are read from string.
+.TP
+.B -d
+Dump parsed commands before execution.
+.TP
+.B -e
+Fail if a top level command does. 
+.TP
+.B -n 
+Parse but do not execute. 
+.TP
+.B -x 
+Print each simple command before executing it.
+.PD
+.PP
+If invoked without arguments
+.I mash
+first runs the commands found in
+.BR /lib/mashinit .
+
+.SS "Command Lines"
+Each command is terminated with an ampersand or a semicolon (& or ;). 
+When reading from
+.B /dev/cons
+a newline 
+not escaped with a backslash (\\) is treated as a semicolon.
+.I Mash
+does not 
+wait for a command followed by
+.B &
+to finish executing before starting the 
+following command. 
+.PP
+A number-sign (#) and any following characters up to (but not including) the next newline are 
+ignored, except in quotation marks. 
+
+.SS "Simple Commands"
+A simple command is a sequence of words interspersed with I/O 
+redirections. If the first word is the name of a
+.I mash
+function or of one of 
+.IR mash 's
+built-in commands, it is executed by
+.IR mash .
+Otherwise, if the name 
+starts with a slash
+.RB ( / ),
+it must be the path name of a Dis
+file to be loaded 
+and executed. Names containing no initial slash are searched for in the 
+current directory and then in
+.BR /dis .
+The
+.B .dis
+extension need not be 
+supplied. 
+.PP
+The keywords are
+.EX
+	case else fn for hd if in len rescue tl while 
+.EE
+
+.SS Words and Variables
+A number of constructions may be used where
+.IR mash 's
+syntax requires a 
+word to appear. In many cases a construction's value will be a list of 
+strings rather than a single string. 
+.PP
+The simplest kind of word is the unquoted word: a sequence of one or 
+more characters none of which is a blank, tab, newline, or any of the 
+following:
+.EX
+	# : ; ! ~ @ & | ^ $ = " ` ' { } ( ) < > 
+.EE
+An unquoted word that contains any of the characters
+.BR * ,\  ?
+or
+.B [
+is a pattern 
+for matching against file names. The character
+.B *
+matches any sequence of 
+characters,
+.B ?
+matches any single character, and
+.B [
+.I class
+.B ]
+matches any 
+character in the class. The class may also contain pairs of characters 
+separated by
+.BR \- ,
+standing for all characters lexically between the two. The 
+character
+.B /
+must appear explicitly in a pattern. A pattern is replaced by a 
+list of words, one for each path name matched, except that a pattern 
+matching no names is not replaced by the empty list, but rather stands for 
+itself. Pattern matching is done after all other operations. Thus,
+.EX
+	x=/tmp; echo $x^/*.c; 
+.EE
+matches
+.BR /tmp/*.c ,
+rather than matching
+.B /*.c
+and then prefixing
+.BR /tmp . 
+.PP
+A quoted word is a sequence of characters surrounded by single quotes 
+.RB ( ' ).
+A single quote is escaped with a backslash. 
+.PP
+Each of the following is a word.
+.PD 0
+.HP
+.BI $ identifier 
+.br
+The identifier after the
+.B $
+is the name of a variable whose value is 
+substituted. Variable values are lists of strings. It is an error if the 
+named variable has never been assigned a value.
+.HP
+.BI $ number 
+.br
+See the description of rules for the 
+.IR mash-make (1)
+builtin.
+.HP
+.B $"\c
+.I identifier
+.br
+The value is a single string containing the components of the named 
+variable separated by spaces.
+.HP
+.BI `{ commands }
+.br
+.I mash
+executes the commands and reads the standard output, splitting 
+it into a list of words, using the whitespace characters (space, tab,
+newline and carriage return) as separators.
+.HP
+.B
+"{\c
+.IB commands }
+.br
+.I mash
+executes the commands and reads the standard output, splitting 
+it into a list of words, using the whitespace characters (space, tab,
+newline and carriage return) as separators.
+.HP
+.BI <{ commands }
+.HP
+.BI >{ commands }
+.br
+The commands are executed asynchronously with their standard 
+output or standard input connected to a pipe. The value of the word 
+is the name of a file referring to the other end of the pipe. This 
+allows the construction of non-linear pipelines. For example, the 
+following runs two commands
+.B old
+and
+.B new
+and uses
+.B cmp
+to compare their outputs
+.EX
+	cmp <{old} <{new}; 
+.EE
+.TP
+.BI ( expr )
+.I mash
+evaluates
+.I expr
+as an expression. The value is a (possibly null) list of words.
+Expressions are described in detail below.
+.HP
+.IB word ^ word
+.br
+The
+.B ^
+operator concatenates its two operands. If either operand is a 
+singleton, the concatenation is distributive. Otherwise the lists are 
+concatenated pairwise.
+
+.PD
+.SS Free Carets
+In most circumstances,
+.I mash
+will insert the
+.B ^
+operator automatically 
+between words that are not separated by white space. Whenever one of
+.B $ 
+.BR ' or
+.B `
+(dollar, single quote or back quote)
+follows a quoted or unquoted word or an unquoted word follows a 
+quoted word with no intervening blanks or tabs, a
+.B ^
+is inserted between 
+the two. If an unquoted word immediately follows a
+.B $
+and contains a 
+character other than an alphanumeric, or underscore, a
+.B ^
+is inserted before 
+the first such character. Thus 
+.IP
+.B limbo -$flags $stem.b
+.LP
+is equivalent to 
+.IP
+.B limbo -^$flags $stem^.b 
+
+.SS I/O Redirections
+The sequence
+.BI > file
+redirects the standard output file (file descriptor 1, 
+normally
+.BR /dev/cons )
+to the named
+.IR file ;
+.BI >> file
+appends standard 
+output to the file. The standard input file (file descriptor 0, also normally 
+.BR /dev/cons )
+may be redirected from a file by the sequence
+.BR <file .
+The 
+sequence
+.B <>file
+opens the file for read/write and associates both file 
+descriptor 0 and 1 with it.
+
+.SH Compound Commands
+A pair of commands separated by a pipe operator
+.RB ( | )
+is a command. The 
+standard output of the left command is sent through a pipe to the 
+standard input of the right command. 
+.PP
+Each of the following is a command.
+.PD 0
+.HP
+.B if (
+.I expr
+.B )
+.I command1
+.HP
+.B if (
+.I expr
+.B )
+.I command1
+.B else
+.I command2
+.br
+The
+.I expr
+ is evaluated and if the result is not null, then 
+.I command1
+is executed. In the second form
+.I command2
+is executed if 
+the result is null.
+.HP
+.B for (
+.I name
+.B in
+.I list
+.BI ) command
+.br
+The
+.I command
+is executed once for each word in
+.I list
+with that 
+word assigned to
+.IR name .
+.HP
+.B while (
+.I expr
+.B )
+.I command
+.br
+The
+.I expr
+is evaluated repeatedly until its value is null. Each time it 
+evaluates to non-null, the command is executed.
+.HP
+.B case
+.I expr
+.B {
+.I pattern-list
+.B =>
+.I command ...
+.B }
+.br
+.HP
+.B case
+.I expr-list
+.B {
+.I pattern
+.B =>
+.I command ...
+.B }
+.br
+In the first form of the command the
+.I expr
+is matched against a series of lists of regular expressions (See
+.IR regex (2)).
+The command associated with the matching expression is executed.
+In the second form the
+.I command
+associated with the first pattern to match one of the words in
+.I expr-list
+is executed. An
+.I expr-list
+will never match a
+.IR pattern-list .
+.HP
+.BI { commands }
+.HP
+.BI @{ commands }
+.br
+Braces serve to alter the grouping of commands implied by operator 
+priorities. The body is a sequence of commands separated by
+.B &
+or
+.BR ; . 
+The second form is executed with a new scope. Either form can be 
+followed by redirections.
+.HP
+.BI fn name { list }
+.HP
+.BI fn name
+.br
+The first form defines a function with the given
+.IR name .
+Subsequently, 
+whenever a command whose first word is
+.I name
+is encountered, the 
+current value of the remainder of the command's word list will be 
+assigned to the local variable
+.BR args ,
+in a new scope, and
+.I mash
+will  execute the list. The second form removes
+.IR name 's
+function definition.
+.HP
+.IB name = list
+.HP
+.IB name := list
+.br
+The first form is an assignment to a variable. If the name is currently 
+defined as a local variable its value will be updated. Otherwise a 
+global variable with the given name will be defined or updated. The 
+second form is an explicit definition or update of a local variable.
+.HP
+.IB list : list
+.HP
+.IB list : list { commands }
+.HP
+.IB word :~ word { commands }
+.br
+These forms define dependencies and rules for the
+.I make
+loadable 
+builtin. The first form defines a simple dependency, the second a 
+dependency with an explicit rule. The third form defines an implicit 
+rule where the left-hand word is a file pattern, the right-hand word is 
+the prerequisite. The right-hand word and the commands can 
+contain references to the characters matched by the
+.B *
+meta-character 
+in the pattern
+.RB ( $1
+evaluates to the characters matched by the first
+.BR * , 
+.B $2
+the second and so on;
+.B $0
+is the entire match). 
+.PD
+
+.SS Expressions
+Expressions evaluate to possibly null lists of strings. A word is an 
+expression. An expression may take one of the following forms
+.PD 0
+.HP
+.BI ( " expr " )
+.br
+Parentheses are used for grouping.
+.HP
+.BI hd " expr"
+.HP
+.BI tl " expr"
+.HP
+.BI len " expr"
+.HP
+.BI ! " expr"
+.br
+.I hd
+is the first element of a list,
+.I tl
+the remainder.
+.I len
+is the length of 
+a list. Both evaluate to the null list if their operand is a null list.
+.B !
+is the not operator and evaluates to true for a null list or to a null list 
+otherwise.
+.HP
+.IB expr " ^ " expr
+.HP
+.IB expr " :: " expr
+.HP
+.IB expr " == " expr
+.HP
+.IB expr " != " expr
+.HP
+.IB expr " ~ " expr
+.br
+.B ^
+is concatenation (as defined above),
+.B ::
+is list concatenation,
+.B ==
+and 
+.B !=
+are the equality operators evaluating to true or the null list, 
+depending on the equality or inequality of the two operands.
+.B ~
+is the match operator, true if a singleton string matches one of a list of 
+regular expressions, or one of a list of strings matches a regular 
+expression. (If neither operand is a singleton it evaluates to the null 
+list.)
+.B ^
+has the highest precedence, followed by
+.B ::
+followed by the 
+other three. All associate to the left except
+.BR :: .
+
+.SS Built-in Commands
+
+.I Mash
+supports loadable modules of builtins. The
+.I Mashbuiltin
+module definition and description is in
+.BR mash.m .
+One such module,
+.IR builtins ,
+is loaded before
+.I mash
+begins parsing. This module defines the following commands
+.PD 0
+.HP
+.B env
+.br
+Print global and local variables. Global variables are displayed using a
+.IB name = value
+format, and local variables using a
+.IB name := value
+format.
+.HP
+.B eval
+.br
+Concatenate arguments and use as mash input.
+.HP
+.B exit
+.br
+Cause
+.I mash
+to raise an
+.B "exit"
+exception.
+.HP
+.B load
+.I file
+.br
+Load a builtin module. The
+.I file
+must be a module with type
+.BR Mashbuiltin .
+The argument
+.I file
+is assumed to contain a path to the loadable module. If no such module
+is found then the string
+.B /dis/lib/mash/
+is prepended to
+.I file
+and the load is retried.
+.HP
+.B prompt
+.HP
+.BI prompt text
+.HP
+.BI prompt "text contin"
+.br
+When called with no arguments causes the current value of the
+.I mash
+prompt to be printed to standard output. The default value is
+.BR mash% .
+The second form sets a new prompt. The final form sets a new prompt
+and additionally a continuation string. Initially the continuation
+string is set to a single tab character.
+.I Mash
+uses the continuation string in place of the prompt string to indicate that
+the preceding line has been continued by escaping with a final backslash
+.RB ( \e )
+character.
+.HP
+.BI quote args...
+.br
+Print arguments quoted as input for
+.IR mash . 
+.HP
+.BI "run -" [ denx "] file [arg...]"
+.br
+Interpret a file as input to
+.IR mash .
+.HP
+.BI time "cmd [arg...]"
+.br
+Time the execution of a command. The total execution time is reported
+in seconds and on standard error when the command completes.
+.HP
+.BI whatis name
+.br
+Print variable, function or builtin. The object given by
+.I name
+is described on standard output in a format that reflects its type.
+.PP
+The
+.I make
+loadable builtin provides `make` functionality.
+The
+.I tk
+loadable builtin provides control over some of the visual elements of a
+.I mash
+window.
+
+.SS Adding Builtins
+New builtins can be added to
+.I mash
+by creating a
+.I Dis
+module that can be loaded with a
+.B Mashbuiltin
+module interface (defined in mash.m).
+The new module is loaded with the builtin
+.B load
+command which calls its
+.B mashinit
+function to initialise it with an argument containing the
+.B load
+command line. The function should use this call to register the set of builtins
+that the module will provide using the
+.B Env.defbuiltin
+function. Thereafter, each time one of the registered builtins is invoked
+the module's
+.B mashcmd
+function is called passing as an argument a list containing the invoked
+builtin name and its arguments. See the examples in
+.BR mash/builtins.b ,
+.BR mash/make.b ", and"
+.BR mash/tk.b .
+.SH FILES
+.B /lib/mashinit
+.br
+.B /dis/lib/mash
+.SH SOURCE
+.B /appl/cmd/mash 
+.SH SEE ALSO
+.IR mash-tk (1),
+.IR mash-make (1),
+.IR regex (2)
+.PP
+Tom Duff,
+``Rc  \- The Plan 9 Shell'', in the
+.I "Plan 9 Programmer's Manual", Second Edition,
+Volume 2.

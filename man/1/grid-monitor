@@ -1,0 +1,86 @@
+.TH GRID-MONITOR 1
+.SH NAME
+monitor \- graphical display for viewing resource use.
+.SH SYNOPSIS
+.I command
+.B | grid/srv/monitor
+.I interface
+.B [
+.I wintitle
+.B ]
+.SH DESCRIPTION
+.I Monitor
+is designed to work with resources that deal with incoming connections (such as
+.IR register (1))
+to visually display the connections to a specific resource. 
+.I Interface
+sets the style of interface, this can be 1 or 2. Interface 1 is the simplest, displaying only a list of connections to the resource. Interface 2 is slightly more complex, allowing extra data to be displayed for each connection. While interface 1 shows all the connections at any one time, interface 2 displays a selection of 'slots' which have buttons that light up to signify a connection. Clicking on a lit button will display any data given about that connection in the main window.
+.I Wintitle
+optionally sets the title of the 
+.I monitor
+window.
+.I Command
+must write status messages to
+.I stdout
+which are then read and displayed (if appropriate) by
+.IR monitor .
+.I Monitor
+reads on
+.I stdin
+and accepts the following input:
+.PP
+.SS Interface 1
+.TP 30
+.BI add " addr"
+display a connection from address
+.I addr
+.TP
+.BI del " addr"
+remove a connection from address
+.I addr
+.PP
+.SS Interface 2
+.TP 30
+.BI "data set" " id" " {" " data" " }"
+set and display the string
+.I data
+in slot 
+.IR id .
+.TP
+.BI "data set" " id" " finished"
+clear slot
+.I id
+.PP
+.SS Common
+.TP 30
+.BI "setup maxusers" " n"
+set display to fit a maximum of 
+.I n
+connections. -1 signifies unlimited connections.
+.TP
+.BI starting " pid"
+add
+.I pid
+to a list of pids whose process group is to be killed if the user closes
+.I monitor.
+.TP
+.BI error " errstr"
+print out the error string 
+.I errstr
+to the console.
+.TP
+.B exit
+close down
+.I monitor
+and kill all processes in the current group.
+.PP
+.PP
+Input messages of any other form will simply be ignored.
+.SH SOURCE
+.B /appl/grid/srv/monitor.b
+.br
+
+.SH "SEE ALSO"
+.IR register (1),
+.IR ns (1),
+.IR cpu (4)

@@ -1,0 +1,177 @@
+.TH STRING 2
+.SH NAME
+string: append, drop, in, prefix, quoted, splitl, splitr, splitstrl,
+splitstrr, take, tobig, toint, tolower, toupper, unquoted \- string operations
+.SH SYNOPSIS
+.EX
+include "string.m";
+str := load String String->PATH;
+
+append:    fn(s: string, l: list of string): list of string;
+drop:      fn(s, cl: string): string;
+in:        fn(c: int, cl: string): int;
+prefix:    fn(pre, s: string): int;
+splitl:    fn(s, cl: string): (string, string);
+splitr:    fn(s, cl: string): (string, string);
+splitstrl: fn(s, t: string): (string, string);
+splitstrr: fn(s, t: string): (string, string);
+take:      fn(s, cl: string): string;
+tobig:     fn(s: string, base: int): (big, string);
+toint:     fn(s: string, base: int): (int, string);
+tolower:   fn(s: string): string;
+toupper:   fn(s: string): string;
+quoted:    fn(args: list of string): string;
+unquoted:  fn(s: string): list of string;
+.EE
+.SH DESCRIPTION
+The
+.I cl
+argument to some of these functions is a character class in which
+a
+.B -
+between any two characters indicates a range and a
+.B ^
+in the first position means
+.I not in
+the class.
+Example of classes are
+.B \&"a-zA-Z"
+and
+.B
+\&"^acg-mr"\c
+\&.
+.PP
+.B Append
+appends string
+.I s
+to the end of string list
+.IR l .
+.PP
+.B Drop
+removes the maximal prefix of string
+.I s
+that is in class
+.IR cl .
+.PP
+.B In
+returns 1 if
+character
+.I c
+is in class
+.I cl
+and 0 if it is not. 
+.PP
+.B Prefix
+returns 1 if string
+.I pre
+is a prefix of string
+.I s
+and 0 if it is not.
+.PP
+.B Splitl
+splits string
+.I s
+just before the first character in class
+.IR cl .
+.PP
+.B Splitr
+splits string
+.I s
+just after the last character in class
+.IR cl .
+.PP
+.B Splitstrl
+splits string
+.I s
+just before the leftmost segment of string
+.I s
+that consists entirely of string
+.IR t ,
+and returns a tuple with the resulting pair of strings.
+If
+.I t
+does not occur in
+.IR s ,
+the result is
+.RI ( s , nil ).
+.PP
+.B Splitstrr
+splits string
+.I s
+just after the rightmost segment of string
+.I s
+that consists entirely of string
+.IR t ,
+and returns a tuple with the resulting pair of strings.
+If
+.I t
+does not occur in
+.IR s ,
+the result is
+.RI ( nil, s ).
+.PP
+.B Take
+returns the maximal prefix of string
+.I s
+that is in class
+.IR cl .
+.PP
+.B Toint
+returns as an integer the value represented by the string
+.IR s .
+The string is scanned up to the first character inconsistent
+with
+.IR base .
+The first inconsistent character marks the beginning of the
+returned string.
+Leading white-space characters are ignored.
+The
+.I base
+can be any integer in the range 2 to 36, inclusive;
+or 0 in which case the base can be specified as part
+of the string, in Limbo style (e.g. 16rffff).
+.PP
+.B Tobig
+has the same specification as
+.B toint
+except that converts to 64-bit
+.BR big .
+.PP
+.B Tolower
+converts all upper case letters in the string
+.I s
+to lower case letters.
+.PP
+.B Toupper
+converts all lower case letters in the string
+.I s
+to upper case letters.
+.PP
+.B Quoted
+takes a list of strings,
+.IR args ,
+and returns a single string with the value of each element of
+.I args
+separated from the next by a single space.
+When forming the string, the text of any element that
+contains white space or single quotes is first quoted by
+surrounding it by single quotes
+.RB ( ' ... ' )
+within which each existing single quote is doubled
+.RB ( '' ),
+following the conventions of
+.IR sh (1).
+.PP
+.B Unquoted
+takes a string
+.IR s ,
+quoted according to the conventions of
+.BR quoted ,
+and splits it into separate strings.
+It splits the string at each maximal sequence of
+unquoted white space (blank, newline or tab),
+stripping single quotes except where paired,
+to form the corresponding list of strings,
+which it returns.
+.SH SOURCE
+.B /appl/lib/string.b

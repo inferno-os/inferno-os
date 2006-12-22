@@ -1,0 +1,53 @@
+.TH TKCMD 1
+.SH NAME
+tkcmd \- enter Tk commands interactively
+.SH SYNOPSIS
+.B tkcmd
+[
+.B -iu
+] [
+.I tkarg
+]
+.SH DESCRIPTION
+.B Tkcmd
+allows interactive entry of Tk commands; it is useful for
+testing out features of Tk prior to incorporating them in
+a Limbo program. It accepts two arguments:
+.TP
+.B -i
+Force interactive mode. In interactive mode (the default if the
+standard input is directed at
+.BR /dev/cons ),
+a prompt is printed before every tk command entered.
+.TP
+.B -u
+Suppress the automatic tk update command after
+every entered command.
+.PP
+When
+.I tkcmd
+is started, a new top level window is created;
+.I tkcmd
+creates a titlebar and handles all the normal
+window window manager interactions.
+When the window is closed,
+.I tkcmd
+terminates.
+Each line typed to
+.I tkcmd
+is passed directly to the function
+.B Tk->cmd
+(see
+.IR tk (2))
+and executed in the context of the top level window;
+a Tk ``update'' command is then issued.
+Any return value from the command is printed.
+There is one predefined Tk channel,
+named ``stdout''; anything sent down this channel will
+be printed to the standard output.
+.SH SOURCE
+.B /appl/cmd/tkcmd.b
+.SH SEE ALSO
+.IR tk (2),
+.IR intro (9),
+.IR sh-tk (1)

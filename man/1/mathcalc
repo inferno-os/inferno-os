@@ -1,0 +1,97 @@
+.TH MATHCALC 1
+.SH NAME
+mathcalc \- interface to a TclLib calculator module
+.SH SYNOPSIS
+.B mathcalc
+.SH DESCRIPTION
+.I Mathcalc
+reads simple expressions from the standard input, evaluates them,
+and prints the results on the standard output.
+It is a command line interface to a
+.L TclLib
+calculator module.
+It prompts the user
+.RL ( calc% )
+for each line, and
+exits on end-of-file or on reading a line containing
+.RB ` quit '.
+.PP
+Values are either integer or floating-point constants.
+A floating-point constant has a decimal point, an exponent, or both.
+Integer constants are taken as hexadecimal if they start
+.BR 0x ,
+octal  if they start with
+.BR 0 ,
+and otherwise decimal.
+.PP
+Expressions are formed using the following C-like operators
+and predefined functions, shown in order of decreasing priority:
+.TP
+.B - + ! ~
+unary: negate, plus (no-op); logical not and one's complement (integers only)
+.TP
+.B * / %
+multiply and divide, integer remainder
+.TP
+.B + -
+add, subtract
+.TP
+.B << >>
+left shift, right shift (integers only)
+.TP
+.B < <= >= >
+relational operators
+.TP
+.B == !=
+equality, inequality
+.TP
+.B &
+bit-wise and (integer only)
+.TP
+.B ^
+bit-wise exclusive-OR (integer only)
+.TP
+.B |
+bit-wise or (integer only)
+.TP
+.B &&
+logical and
+.TP
+.B ||
+logical or
+.TP
+.IB a ? b : c
+conditional: if
+.I a
+is non-zero, the result is
+.IR b ,
+otherwise
+.I c
+.PP
+.I Mathcalc
+provides the following mathematical functions:
+.IP
+.EX
+.ta +\w'hypot\ \ 'u
+abs    ceil   fmod   sin
+acos   cos    hypot  sinh
+asin   cosh   log    sqrt
+atan   exp    log10  tan
+atan2  floor  pow    tanh
+.EE
+.PP
+See
+.IR math-elem (2)
+for the usual definitions.
+.SH SOURCE
+.B /appl/cmd/mathcalc.b
+.br
+.B /appl/lib/tcl_calc.b
+.SH DIAGNOSTICS
+.TF ARGXXX
+.TP
+.B ARRG!
+bad constant syntax
+.TP
+.B Error!
+bad expression syntax, or any other error

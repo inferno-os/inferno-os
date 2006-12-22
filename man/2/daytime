@@ -1,0 +1,96 @@
+.TH DAYTIME 2
+.SH NAME
+daytime: text, filet, gmt, local, now, time, tm2epoch \- time conversions
+.SH SYNOPSIS
+.EX
+include "daytime.m";
+daytime := load Daytime Daytime->PATH;
+
+Tm: adt
+{
+    sec:    int;    # seconds (0 to 59)
+    min:    int;    # minutes (0 to 59)
+    hour:   int;    # hours (0 to 23)
+    mday:   int;    # day of the month (1 to 31)
+    mon:    int;    # month (0 to 11)
+    year:   int;    # year-1900; 2000AD is 100
+    wday:   int;    # day of week (0 to 6, Sunday is 0)
+    yday:   int;    # day of year (0 to 365)
+    zone:   string; # time zone name
+    tzoff:  int;    # time zone offset (seconds from GMT)
+};
+
+text:     fn(tm: ref Tm): string;
+filet:    fn(now, t: int): string;
+gmt:      fn(tim: int): ref Tm;
+local:    fn(tim: int): ref Tm;
+now:      fn(): int;
+time:     fn(): string;
+tm2epoch: fn(tm: ref Tm): int;
+.EE
+.SH DESCRIPTION
+These routines perform time conversions relative to the
+epoch 00:00:00 GMT, Jan. 1, 1970.
+Note the range of values for each member of the
+.B Tm
+adt.
+The conventions are the same as those of C's
+.IR ctime .
+.PP
+.B Text
+converts a time structure referenced by
+.I tm
+from local or GMT time to a string in the format:
+.IP
+.BR "Sat Jan  1 13:00:00 GMT 2000" .
+.PP
+.B Filet
+converts the file access or modification time
+.I t
+from seconds since the epoch to local time as a string
+in the format:
+.IP
+.B "Jan  1 13:00"
+.PP
+if the file is less than 6 months old or
+.IP
+.B "Jan  1 2000"
+.PP
+if the file is older than 6 months, compared to the time
+.IR now .
+.PP
+.B Gmt
+converts seconds since the epoch, received in
+.IR tim ,
+to a time structure in Greenwich Mean Time (GMT).
+.PP
+.B Local
+converts seconds since the epoch, received in
+.IR tim ,
+to a time structure in local time.
+.PP
+.B Now
+returns the time in seconds since the epoch, which
+it obtains by reading
+.B /dev/time
+(see
+.IR cons (3))
+to get the time in microseconds since the epoch.
+.PP
+.B Time
+converts seconds since the epoch
+to the local time as a string in the format
+.BR "Fri May 19 17:01:36 BST 2000" .
+.PP
+.B Tm2epoch
+converts a time structure referenced by
+.I tm
+from local or GMT time to seconds since the epoch.
+.SH SOURCE
+.B /appl/lib/daytime.b
+.SH SEE ALSO
+.IR cons (3),
+.IR sys-millisec (2)
+.SH BUGS
+The sign bit of a Limbo integer holding a time will turn on 68 years from the
+epoch.

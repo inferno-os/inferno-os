@@ -1,0 +1,435 @@
+.TH DEV 10.2
+.SH NAME
+Dev \- device driver interface
+.SH SYNOPSIS
+.EX
+struct Dev
+{
+    int dc;
+    char*   name;
+
+    void    (*reset)(void);        /* native only */
+    void    (*init)(void);
+    void    (*shutdown)(void);     /* native */
+    Chan*   (*attach)(char *spec);
+    Walkqid*  (*walk)(Chan *c, Chan *nc, char **name, int nname);
+    int     (*stat)(Chan *c, uchar *db, int dbsize);
+    Chan*   (*open)(Chan *c, int mode);
+    void    (*create)(Chan *c, char *name, int mode, ulong perm);
+    void    (*close)(Chan *c);
+    long    (*read)(Chan *c, void *buf, long nbytes, vlong offset);
+    Block*  (*bread)(Chan *c, long nbytes, ulong offset);
+    long    (*write)(Chan *c, void*, long, vlong offset);
+    long    (*bwrite)(Chan *c, Block *b, ulong offset);
+    void    (*remove)(Chan *c);
+    int     (*wstat)(Chan *c, uchar *db, int dbsize);
+    void    (*power)(int on);        /* native only */
+    int     (*config)(int on, char *spec, DevConf *cf); /* native */
+};
+.EE
+.SH DESCRIPTION
+Every device driver serves a unique name space that represents to the corresponding device(s).
+Applications act on the space using the operations of
+.IR sys-bind (2),
+.IR sys-open (2),
+.IR sys-read (2),
+.IR sys-stat (2),
+and other system calls.
+Within the kernel, the
+.B Dev
+structure defines the interface between the kernel and a device driver for
+all operations on that driver's name space.
+.PP
+.B Dev
+identifies the driver, and lists a set of C functions that are the driver's operations.
+Most are operations on the
+.B Chan
+type that is the kernel representation of a file or directory active in a name space.
+The kernel converts system calls acting on file descriptors into calls to a device's
+.B Dev
+operations acting on channel values.
+All channel values presented through the
+.B Dev
+interface are associated with the corresponding device driver:
+for channel
+.IR c ,
+.IB c ->type
+specifies that driver.
+Within the driver, the
+.IB c ->qid.path
+of a channel
+.I c
+identifies a file in the driver's name space, or even a client-specific instance of a file
+(eg, for multiplexors such as
+.IR ip (3)).
+The interpretation of the
+.B path
+is completely determined by the driver.
+.PP
+A device driver in the source file
+.BI dev x .c
+exports an initialised instance of
+.BI "Dev " x devtab .
+For instance,
+.B devcons.c
+contains the global initialiser:
+.IP
+.EX
+Dev consdevtab = {
+    'c',
+    "cons",
+
+    devreset,
+    consinit,
+    devshutdown,
+    consattach,
+    conswalk,
+    consstat,
+    consopen,
+    devcreate,
+    consclose,
+    consread,
+    devbread,
+    conswrite,
+    devbwrite,
+    devremove,
+    devwstat,
+};
+.EE
+.PP
+The kernel accesses the driver only through its
+.B Dev
+structure, and consequently entry points such as
+.BR consinit ,
+.BR consread ,
+etc. can (and should) be declared
+.BR static ,
+and thus local to the file.
+.PP
+The following elements of
+.B Dev
+identify the driver:
+.TP
+.B dc
+The device's type, represented by a Unicode character (`rune') that must be unique
+amongst those in a given kernel (and ideally for a given platform).
+Its value is the value of
+.B Dir.dtype
+in the result of a
+.IR sys-stat (2)
+applied to any file in the device.
+.TP
+.B name
+The name that identifies the driver in a kernel configuration file and in
+.B /dev/drivers
+(see
+.IR cons (3)).
+.PP
+All the other entries are functions.
+In many cases, the values given in a device's
+.B Dev
+will be the default operations provided by
+.IR devattach (10.2).
+.TP
+.B reset()
+Called once during system initialisation by the native
+kernel's
+.B main
+after initialising all supporting subsystems, including memory allocation, traps, screen, MMU (if used),
+but with interrupts disabled, and before any kernel process environment has been established.
+Typically used on some platforms to force some devices into a sane state
+before interrupts are enabled.
+.TP
+.B init()
+Called once during system initialisation in the context of the first kernel process,
+with interrupts enabled, before the virtual machine has been started.
+.TP
+.B shutdown()
+Called once in native kernels during system shut down.
+Used on only a few platforms to force a device into a state that will allow it
+to function correctly during and after a soft reboot (eg, without doing a full system hardware reset).
+.TP
+.BI attach( spec )
+Called on each new attach to the device (eg, a reference to
+.BI # c
+by
+.IR sys-bind (2)).
+.I Spec
+is the string following the device character and before a subsequent
+.RB ` / '
+in the bind request.
+It is the empty string for most devies.
+If the attach is successful,
+.B attach
+should return a
+.B Chan
+the refers to the root of the tree served by the device driver.
+Normally, it will suffice to return the value of
+.IR devattach (10.2).
+.TP
+.BI walk( c\fP,\fP\ nc\fP,\fP\ name\fP,\fP\ nname )
+Walks existing channel
+.I c
+from its current position in the device tree to that specified by the
+path represented by
+.BR name[0] ,
+\&...
+.BR name[nname-1] .
+The driver must interpret
+.RB ` .. '
+as a walk from the current position one level up towards the root of the device tree.
+The result is represented by a dynamically-allocated
+.B Walkqid
+value,
+with contents as described in
+.IR devattach (10.2).
+Most drivers simply pass parameters on to
+.B devwalk
+in
+.IR devattach (10.2)
+and return its result.
+.TP
+.BI stat( c\fP,\fP\ db\fP,\fP\ nbytes )
+Fill
+.I db
+with
+.IR stat (5)
+data describing the file referenced by
+.IR c .
+.I Nbytes
+gives the size of
+.IR db ;
+if the data will not fit, return the value specified for
+.B convD2M
+in
+.IR styx (10.2).
+Most drivers simply pass parameters on to
+.B devstat
+in
+.IR devattach (10.2);
+a few fill a local copy of a
+.B Dir
+structure, and call
+.B convD2M
+to store the machine-independent representation in
+.IR db .
+.TP
+.BI open( c\fP,\fP\ mode )
+Open the file represented by
+.B Chan
+.IR c ,
+in the given
+.I mode
+(see
+.IR sys-open (2)),
+and if successful, return a
+.B Chan
+value representing the result
+(usually
+.IR c ).
+Many drivers simply apply
+.B devopen
+of
+.IR devattach (10.2).
+Exclusive use drivers might check and increment a reference count.
+.TP
+.BI create( c\fP,\fP\ name\fP,\fP\ mode\fP,\fP\ perm )
+.I C
+should be a directory.
+Create a new file
+.I name
+in that directory, with permissions
+.IR perm ,
+opened with the given
+.IR mode .
+If successful, make
+.I c
+refer to the newly created file.
+Most drivers return an error on all creation attempts,
+by specifying
+.B devcreate
+of
+.IR devattach (10.2)
+in the
+.B Dev
+table.
+.TP
+.BI close( c )
+Close channel
+.IR c .
+This must be implemented by all drivers; there is no default,
+although the function often is a no-op.
+Exclusive use drivers might decrement a reference count.
+.TP
+.BI read( c\fP,\fP\ buf\fP,\fP\ nbytes\fP,\fP\ offset )
+Implement a
+.IR sys-read (2)
+of
+.I nbytes
+of data from the given
+.I offset
+in file
+.IR c ,
+and if successful, place the data in
+.IR buf ,
+and return the number of bytes read,
+which must be no greater than
+.IR nbytes .
+Devices sometimes ignore the
+.IR offset .
+All device drivers must implement
+.BR read ;
+there is no default.
+Note that if
+.I c
+is a directory, the data has an array of
+.IR stat (5)
+data listing the directory contents, in the format prescribed by
+.IR read (5).
+Most drivers have
+.B devdirread
+of
+.IR devattach (10.2)
+do the work when
+.I c
+is the root directory of the device's tree.
+.TP
+.BI bread( c\fP,\fP\ nbytes\fP,\fP\ offset )
+Implement a
+.IR sys-read (2)
+of
+.I nbytes
+of data from the given offset in file
+.IR c ,
+and if successful return the data in a
+.B Block
+(see
+.IR allocb (10.2)
+and
+.IR qio (10.2)).
+Most drivers use the default
+.B devbread
+provided by
+.IR devattach(10.2),
+and nearly all ignore the
+.I offset
+in any case.
+Drivers that manipulate Blocks internally, such as
+.IR ip (3),
+.IR ssl (3)
+and similar protocol devices,
+and drivers that are likely to provide data to those devices,
+will provide a
+.B devbread
+implementation so as to reduce the number of times the data is copied.
+.TP
+.BI write( c\fP,\fP\ buf\fP,\fP\ nbytes\fP,\fP\ offset )
+Implement a write of
+.I nbytes
+of data from
+.I buf
+to file
+.IR c ,
+which must not be a directory,
+starting at the given byte
+.IR offset .
+Return the number of bytes actually written.
+There is no default, but drivers that do not
+implement writes to any of their files can simply call
+.B error(Eperm)
+to signal an error.
+.TP
+.BI bwrite( c\fP,\fP\ b\fP,\fP\ offset )
+Similar to the
+.B write
+entry point, but the data is contained in a
+.B Block
+.I b
+(see
+.IR allocb (10.2)).
+.I B
+should be freed before return, whether the driver signals an error or not.
+Most drivers use the default
+.B devbwrite
+from
+.IR devattach (10.2),
+which calls the driver's
+.B write
+entry point using the data in
+.IR b .
+Drivers that manipulate Blocks internally, such as
+.IR ip (3),
+.IR ssl (3)
+and similar protocol devices,
+will provide a
+.B devbwrite
+implementation so as to avoid copying the data needlessly.
+.TP
+.BI remove( c )
+Remove the file referenced by
+.IR c .
+Most drivers raise an error by using the default
+.B devremove
+from
+.IR devattach (10.2).
+.TP
+.BI wstat( c\fP,\fP\ db\fP,\fP\ dbsize )
+Change the attributes of file
+.IR c ,
+using the
+.IR stat (5)
+data in buffer
+.IR db ,
+which is
+.I dbsize
+bytes long.
+Usually a driver will use
+.B convM2D
+of
+.IR styx (10.2)
+to convert the data to a
+.B Dir
+structure, then apply the rules of
+.IR stat (5)
+to decide which attributes are to be changed (and whether the change is allowed).
+Most drivers simply return an error on all
+.B wstat
+requests by using the default
+.B devwstat
+from
+.IR devattach (10.2).
+.TP
+.BI power( on )
+Reserved for use in native kernels, to allow the kernel
+to power the device on and off for power-saving;
+.I on
+is non-zero if the device is being powered up, and
+zero if it is being powered down.
+The device driver should save the device state if necessary.
+Leave the
+.B Dev
+entry null for now.
+.TP
+.BI config( on\fP,\fP\ spec\fP,\fP\ cf )
+Reserved for use in native kernels to allow a device
+to be configured on and off dynamically.
+Leave the
+.B Dev
+entry null for now.
+.PD
+.PP
+The elements
+.IR reset ,
+.IR shutdown ,
+.IR power ,
+and
+.IR config
+are currently present only in the native kernels.
+.SH SEE ALSO
+.IR intro (2),
+.IR intro (5),
+.IR allocb (10.2),
+.IR devattach (10.2),
+.IR newchan (10.2),
+.IR qio (10.2)
+

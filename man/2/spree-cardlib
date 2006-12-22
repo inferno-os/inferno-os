@@ -1,0 +1,628 @@
+.TH SPREE-CARDLIB 2
+.SH NAME
+Cardlib \- support for card games in Spree engines.
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "draw.m";
+include "sets.m";
+include "spree.m";
+include "spree/cardlib.m";
+
+Object: import Spree;
+cardlib := load Cardlib Cardlib->PATH;
+
+init:			fn(spree: Spree, clique: ref Clique, archived: int);
+selection:	fn(stack: ref Object): ref Selection;
+
+makecard:	fn(deck: ref Object, c: Card, rear: string): ref Object;
+makecards:	fn(stack: ref Object, r: Range, rear: string);
+getcard:		fn(card: ref Object): Card;
+getcards:		fn(stack: ref Object): array of Card;
+setface:		fn(card: ref Object, face: int);
+flip:			fn(stack: ref Object);
+shuffle:		fn(stack: ref Object);
+discard:		fn(stk, pile: ref Object, facedown: int);
+deal:			fn(stack: ref Object, n: int, stacks: array of ref Object, first: int);
+sort:			fn(stack: ref Object, rank, suitrank: array of int);
+
+addlayframe:	fn(name: string, parent: string, layout: ref Layout, packopts: int, facing: int);
+addlayobj:	fn(name: string, parent: string, layout: ref Layout, packopts: int, obj: ref Object);
+dellay:		fn(name: string, layout: ref Layout);
+maketable:	fn(parent: string);
+
+newstack:		fn(parent: ref Object, p: ref Member, spec: Stackspec): ref Object;
+
+archive:		fn(): ref Object;
+unarchive:	fn(): ref Object;
+setarchivename: fn(o: ref Object, name: string);
+archivearray:	fn(a: array of ref Object, name: string);
+getarchiveobj:	fn(name: string): ref Object;
+getarchivearray: fn(name: string): array of ref Object;
+
+nmembers:	fn(): int;
+
+Layout: adt {
+	lay:	ref Object;
+};
+
+Stackspec: adt {
+	style:	string;
+	maxcards:	int;
+	title:		string;
+	conceal:	int;
+};
+
+Card: adt {
+	suit:		int;
+	number:	int;
+	face:		int;
+};
+
+# a member currently playing
+Cmember: adt {
+	ord:		int;
+	id:		int;
+	p:		ref Member;
+	obj:		ref Object;
+	layout:	ref Layout;
+	sel:		ref Selection;
+
+	join:		fn(p: ref Member, ord: int): ref Cmember;
+	index:	fn(ord: int): ref Cmember;
+	find:		fn(p: ref Member): ref Cmember;
+	findid:	fn(id: int): ref Cmember;
+	leave:	fn(cp: self ref Cmember);
+	next:		fn(cp: self ref Cmember, fwd: int): ref Cmember;
+	prev:		fn(cp: self ref Cmember, fwd: int): ref Cmember;
+};
+
+Selection: adt {
+	stack:	ref Object;
+	ownerid:	int;
+	isrange:	int;
+	r:		Range;
+	idxl:		list of int;
+
+	set:		fn(sel: self ref Selection, stack: ref Object);
+	setexcl:	fn(sel: self ref Selection, stack: ref Object): int;
+	setrange:	fn(sel: self ref Selection, r: Range);
+	addindex:	fn(sel: self ref Selection, i: int);
+	delindex:	fn(sel: self ref Selection, i: int);
+	isempty:	fn(sel: self ref Selection): int;
+	isset:		fn(sel: self ref Selection, index: int): int;
+	transfer:	fn(sel: self ref Selection, dst: ref Object, index: int);
+	owner:	fn(sel: self ref Selection): ref Cmember;
+};
+.EE
+.SH DESCRIPTION
+.I Cardlib
+provides facilities to help in the implementation
+of
+.I spree (2)
+engines that implement the
+.IR spree-cards (4)
+interface.
+Facilities include the layout of clients' cards,
+support for card selections, and card manipulation.
+.PP
+.B Init
+must be called first to initialise the
+.I Cardlib
+module, giving it the
+.I spree
+module and the current clique.
+.I Archived
+should be non-zero if the card game is being restored from
+an archive.
+.SS Cards
+The value of a playing card is represented by the
+.B Card
+adt, having attributes
+.IR suit ,
+.IR number ,
+and
+.IR face .
+.I Suit
+ranges from 0 to 3 inclusive, representing clubs,
+diamonds, hearts and spades respectively;
+.I number
+ranges from 0 to 12 inclusive for the standard cards,
+with ace low and king high - a joker is represented
+by a number greater than 12;
+.I face
+represents whether the card is face up or face down
+(0 is face down).
+.PP
+A actual card is represented by an object in the object hierarchy
+of type
+.BR card ,
+with attributes
+.BR number ,
+.BR face ,
+and
+.BR rear .
+.B Number
+is the suit/number of the card (held as
+.IR n ,
+where
+.IR n %4
+gives the suit, and
+.IR n /4
+the rank).
+.B Face
+is as held in the
+.B Card
+adt, and
+.B rear
+is a number that represents the pattern on the
+back of the card (numbered from 0 upwards).
+Conventionally the
+.B number
+attribute is made invisible to all players when
+the
+.B face
+attribute is set to zero.
+.PP
+.B Makecard
+creates a new card of value
+.IR c ,
+placing the new card object at the end of
+.IR deck ,
+and setting the
+.B rear
+attribute to
+.I rear
+if it is non-nil.
+.B Makecards
+makes a set of cards, all face down,
+in all four suits, having numbers within the range
+.IR r .
+.PP
+.B Getcard
+gets the value representation of a card from object
+.IR card ;
+.B getcards
+gets the values of all the card objects within
+.IR stack .
+.B Setface
+sets of
+.I card
+to
+.IR face ;
+the visibility of the card's number is changed appropriately.
+.PP
+The following few routines operate on stacks of cards: objects
+which contain only card objects:
+.B flip
+reverses a stack of cards, reversing their faces as it does so;
+.B shuffle
+shuffles a stack of cards, and
+.B sort
+sorts a stack of cards by suit and then number, according to
+.I rank
+and
+.IR suitrank .
+.I Rank
+and
+.I suitrank
+are permutations mapping number/suit to sort precedence (0 low).
+If either of these are nil, then a default ranking scheme is chosen
+(two low, ace high for number).
+.B Discard
+moves all the cards in
+.I stk
+onto
+.IR pile ,
+turning them face down if
+.I facedown
+is non-zero.
+.B Deal
+deals out all the cards in
+.I stack
+as evenly as possible amongst
+.IR stacks ,
+dealing to
+.IB stacks [ first ]
+first.
+.SS Members and card selection
+.I Cardlib
+keeps a record of the current players of the game;
+a player is represented by a
+.B Cmember
+adt; the players are assumed to sit in a circle,
+numbered from 0 updwards;
+.B nmembers
+gives the number of current players.
+Each player has a unique integer id, and an
+associated selection
+and card layout.
+.TP 10
+.IB m .join(\fIm\fP,\ \fIord\fP)
+Join a new player to the game;
+.I m
+is the clique member that's joining, and
+.I ord
+is where to slot the player in the circle of existing players.
+If
+.I ord
+is -1, the player will be added at the end.
+.TP
+.IB m .leave()
+Remove
+.I m
+from the list of current players.
+.TP
+.IB m .index(\fIord\fP)
+.B Index
+returns the
+.IR ord th
+player around the table.
+.TP
+.IB m .find(\fIm\fP)
+Find the
+.B Cmember
+corresponding to member
+.IR m .
+.TP
+.IB m .findid(\fIid\fP)
+Find the
+.B Cmember
+with identifier
+.IR id ,
+and return it.
+.IB m .next(\fIfwd\fP)
+.B Next
+returns the next player around the table
+from
+.IR m .
+If
+.I fwd
+is non-zero, it counts upwards, otherwise it counts
+downwards.
+.IB m .prev(\fIfwd\fP)
+.B Prev
+is the opposite of
+.BR next .
+If
+.I fwd
+is non-zero, it counts downwards, otherwise it
+counts upwards.
+.SS Selection
+Each
+.B Cmember
+.I m
+has an associated selection,
+.IB m .sel\fR,
+which consists of a selection
+of some cards from a single stack of cards.
+A selection can consist of either a range of cards within
+a stack, or an arbitrary set of cards within a stack.
+A stack can only be the subject of one selection; the
+member that has that selection is known as its
+owner.
+.TP 10
+.IB sel .set(\fIstack\fP)
+.B Set
+makes
+.I stack
+(an object containing only card objects)
+the subject of
+.IR sel 's
+selection. If
+.I stack
+is nil, the selection is cleared.
+.TP
+.IB sel .setexcl(\fIstack\fP)
+.B Setexcl
+is the same as
+.B set
+except that it will fail if the stack is owned
+by a different player. It returns 0 if it fails,
+otherwise non-zero.
+.TP
+.IB sel .setrange(\fIr\fP)
+.B Setrange
+sets the selection
+.I sel
+to be a range of cards within its stack.
+If the selection had been of distinct cards (set using
+.BR addindex ),
+it is first cleared.
+.TP
+.IB sel .addindex(\fIi\fP)
+.B Addindex
+adds the card at index
+.I i
+to the selection
+.IR sel .
+If a range had previously been selected,
+it is first cleared.
+.TP
+.IB sel .delindex(\fIi\fP)
+.B Delindex
+deletes the card at index
+.I i
+from the selection.
+If the selection was previously a range,
+this is a no-op.
+.TP
+.IB sel .isempty()
+.B Isempty
+returns non-zero if
+.I sel
+holds an empty selection.
+.TP
+.IB sel .isset(\fIindex\fP)
+.B Isset
+returns non-zero if the card at index
+.I index
+is contained within the selection
+.IR sel .
+.TP
+.IB sel .transfer(\fIdst\fP,\ \fIindex\fP)
+.B Transfer
+moves all the cards in the selection
+.I sel
+to just before
+.I index
+within the stack
+.IR dst .
+.IB sel .owner()
+.B Owner
+returns the
+.B Cmember
+that owns the selection
+.IR sel .
+.SS Layout
+Creating a stack of cards does not specify how it is to be displayed
+to members of the game. Each member has a
+.I layout
+object which defines which objects are to be displayed to
+that member, and how they are to be laid out.
+Any member must see at most one layout object
+(it is conventional to make a layout object visible only to
+its owner).
+Objects are laid out using tk-like
+.IR pack (9)
+semantics:
+.I frames
+pack together display objects or other frames.
+A display object can lay out anything the card client knows
+how to display (see ``Display Objects'', below).
+.PP
+.B Addlayframe
+adds a new frame named
+.I name
+within
+a layout frame named
+.IR parent ,
+specific to
+.IR layout .
+If
+.I parent
+is nil, the frame is added to the root of the hierarchy.
+If
+.I layout
+is nil, a frame is added to
+.I parent
+for each member that has a layout frame of that name.
+.I Packopts
+specifies how the frame is to be packed within its parent:
+it is a bitmask, specifying the side of the cavity against which it is to be packed,
+the place it is to be anchored should the cavity be bigger than its requested size,
+how to fill its cavity, whether to expand its requested size to fill extra available space.
+See
+.IR pack (9)
+for details of the packing algorithm.
+The packing direction is specified with one of
+.BR dTOP ,
+.BR dLEFT ,
+.BR dBOTTOM
+or
+.BR dRIGHT .
+The anchor direction is specified with one of
+.BR aCENTRE ,
+.BR aUPPERCENTRE ,
+.BR aUPPERLEFT ,
+.BR aCENTRELEFT ,
+.BR aLOWERLEFT ,
+.BR aLOWERCENTRE ,
+.BR aLOWERRIGHT ,
+.BR aCENTRERIGHT ,
+or
+.BR aUPPERRIGHT .
+.B FILLX
+and
+.B FILLY
+specify how to fill unused space in its cavity
+(not mutually exclusive),
+and
+.B EXPAND
+requests unused space.
+.I Facing
+influences direction that objects are packed in
+underneath the frame. It should be one of the
+pack direction constants specified above
+(e.g.
+.BR dTOP ).
+For instance, if
+.B dRIGHT
+is specified, then all objects packed underneath
+have their attributes modified 90° clockwise,
+as if the player in question was sitting on the
+left of the table, looking right.
+This feature means that it is possible
+to set up a ``table'' in which layout objects
+can be added to all players at the same time, but
+which nonetheless looks different to each player
+around the table.
+.PP
+.B Maketable
+creates such a 	``table'' for between 0 and 4 players.
+It creates a frame for each player, named
+.BI p n\fR,
+where
+.I n
+is the ordinal number of the player around the table;
+and an inner space, named
+.BR public .
+The
+.I parent
+argument to
+.B maketable
+gives the frame within which the table is to be created.
+.PP
+.B Addlayobj
+adds a new display object 
+.I obj to the layout hierarchy.
+.IR Name ,
+.IR parent ,
+.IR layout ,
+and
+.I packopts
+are the same as for
+.B addlayframe
+except that
+if it is a stack object, then
+.I packopts also specifies the
+orientation of the stack, with one of the constants
+.BR oRIGHT ,
+.BR oUP ,
+.BR oLEFT ,
+or
+.BR oDOWN ,
+giving the direction in which cards are laid out
+within the stack.
+.PP
+.B Dellay
+deletes the object named
+.I name
+from the layout hierarchy. If
+.I layout
+is nil, it is deleted from all layouts,
+otherwise from
+.I layout
+only.
+.SS "Display Objects"
+Currently, two kinds of objects can be displayed: stacks and
+widgets. A stack has object type
+.BR stack ,
+and contains only cards objects.
+Attributes on the stack object define its appearance:
+.B maxcards
+gives the default size of the stack;
+.B style
+gives the style of stack layout,
+currently one of
+.B pile
+(all the cards piled directly on top of one another),
+or
+.B display
+(cards are spread out in the direction specified by
+the orientation given in the packing options, see
+Layout, above);
+.B title
+gives a title to display with the stack.
+.PP
+.B Newstack
+creates a new stack according to the specifications in
+.IR spec ,
+where
+.I spec
+is an adt that holds
+.BR style ,
+.BR maxcards ,
+and
+.BR title ,
+as described above.
+If
+.IB spec .conceal
+is non-zero, the contents of the new stack will be made
+invisible to all (except
+.IR owner ,
+if
+.I owner
+is non-nil).
+.PP
+Widgets are created by making an object
+of type
+.RB `` widget
+.IR type '',
+where
+.I type
+is one of
+.BR button ,
+.BR entry , or
+.BR menu .
+The
+.B text
+attribute controls the text that is displayed in the widget;
+.B command
+gives the text that will be sent to the engine
+when the widget is activated,
+and
+.B width
+specifies the widget of the widget, in multiples of the width
+of the ``0'' character.
+.PP
+Entries can be made in a menu widget
+by creating new objects of type
+.B menuentry
+inside a menu object. The
+.B text
+and
+.B command
+attributes have the usual meaning here.
+.SS Archival
+Engines that use
+.I cardlib
+should not use
+.IR spree-objstore (2)
+to archive their objects:
+.I cardlib
+provides an interface to do this,
+and also knows how to archive and unarchive its own
+internal state.
+.PP
+.B Archive
+commits all the internal state of
+.I cardlib
+to the object hierarchy, prior to archival.
+It returns an ``archive'' object
+that can be used as a convenient place to put
+attributes that need archiving but are not associated with
+any particular object.
+.B Setarchivename
+associates
+.I name
+with the object
+.I o
+such that it can be retrieved when
+unarchiving by calling
+.B getarchiveobj
+with the same name.
+Similarly
+.B Archivearray
+associates a name with each object in the array
+.I a
+such that the array can be retrieved when unarchiving
+by calling
+.B getarchivearray
+with the same name.
+.I Name
+should not end in a decimal digit.
+.B Unarchive
+unarchives
+.IR cardlib 's
+internal state. It returns the same archive object
+that was returned by
+.BR archive .
+.SH SOURCE
+.B /appl/spree/lib/cardlib.b
+.SH "SEE ALSO"
+.IR spree (2),
+.IR spree-allow (2),
+.IR spree-objstore (2)
+.SH BUGS
+This interface is not complete and is liable to change.

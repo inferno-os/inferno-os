@@ -1,0 +1,48 @@
+.TH SENDMAIL 1
+.SH NAME
+sendmail \- send mail messages
+.SH SYNOPSIS
+.B sendmail
+[
+.I recipient ...
+]
+.SH DESCRIPTION
+.B Sendmail
+sends mail to each
+.I recipient
+named as an argument. It reads its standard input to
+get the text of the message.
+If no
+.I recipient
+is named, the recipient(s) will be taken from the message header.
+.PP
+The mail message is scanned for lines beginning
+.RL ` From: ',
+.RL ` To: '
+and
+.RL ` Cc: '.
+.br
+If no `from'
+line is found, the sender is assumed to be the current user. The recipient(s) of the message
+can be mentioned as arguments or in a list of names in a
+.RL ` To: '
+line but not as both. 
+If the sender's name is unqualified (is just a user name),
+.I sendmail
+appends the value of the environment variable
+.LR DOMAIN .
+.PP
+.B Sendmail
+delivers the mail using the module
+.IR smtp (2),
+which
+connects to a mail server running the Simple Mail Transport Protocol (SMTP),
+using the symbolic host name
+.B $MAILSERVER
+(see
+.IR db (6)).
+.SH SOURCE
+.B /appl/cmd/sendmail.b
+.SH SEE ALSO
+.IR smtp (2),
+.IR db (6)

@@ -1,0 +1,67 @@
+.TH TCS 1
+.SH NAME
+tcs \- translate character sets
+.SH SYNOPSIS
+.B tcs
+.B -l
+.RB [ -v ]
+[
+.I csname
+]
+.PP
+.B tcs
+[
+.B -f
+.I ics
+] [
+.B -t
+.I ocs
+] [
+.I file ...
+]
+.SH DESCRIPTION
+.I Tcs
+converts its input from the
+.I ics
+character set encoding into Unicode runes and then outputs the data in the
+encoding of the
+.I ocs
+character set.
+The default values of
+.I ics
+and
+.I ocs
+are both
+.BR utf8 .
+This is the standard Inferno Unicode text encoding as described by
+.IR utf (6).
+If no files are specified
+.I tcs
+reads from its standard input.
+.PP
+The
+.B -l
+option causes
+.I tcs
+to output the list of character sets that it understands.
+The
+.B -v
+option causes a more detailed listing to be given.
+Giving a
+.I csname
+argument to the
+.B -l
+option causes
+.I tcs
+to list the known aliases for that name.
+The first name in the list is the standard (or preferred) name.
+.SH FILES
+.TF /lib/convcs/charsets
+.TP
+.B /lib/convcs/charsets
+Specifies the supported character set names, their aliases and the implementation
+of their converters.
+.SH SOURCE
+/appl/cmd/tcs.b
+.SH SEE ALSO
+.IR convcs (2)

@@ -1,0 +1,442 @@
+.TH CHARON 1
+.SH NAME
+charon \- web browser
+.SH SYNOPSIS
+.B charon
+[
+.BI - option
+.RI [ value ]
+]
+.RI [ url ]
+.SH DESCRIPTION
+.I Charon
+is the Inferno graphical web browser, supporting a variety of web standards for
+the download, viewing, automation and navigation of web based information and images.
+.PP
+The browser runs under the
+.IR wm (1)
+window manager, or directly on the
+.IR draw (3)
+and
+.IR cons (3)
+devices.
+When
+.I charon
+starts, it checks to see if
+.I wm
+is running; if it is then
+.I charon
+creates a new
+.I wm
+window for its display, otherwise it uses the whole area of the display device.
+.PP
+.I Charon
+implements an image cache to help reduce the overhead of revisiting pages.
+The image cache resides in memory for the duration of a session.
+The cache is managed by discarding least recently used images once the cache bounds
+have been reached.
+Currently,
+.I charon
+does not provide a general purpose web cache; all other resources have to be reloaded
+when needed.
+.SS Navigation
+.I Charon
+provides navigation controls familiar to any web-surfer:
+back, forward, reload, home, stop and URL entry.
+Navigation of web-based information is by means of following HTML
+.IR links,
+this is done by clicking on them using mouse button-1, or the touch-screen.
+Clicking mouse button-2 on a link causes its address to be displayed in the
+.I status
+line of
+.IR charon 's
+display.
+Navigation to other information is achieved by clicking on the URL entry
+field and typing the address of the resource, followed by the Enter key.
+.PP
+The retrieval and processing of the current page
+is immediately terminated by clicking the Stop button.
+.PP
+As resources are browsed, a history of their web addresses (URLs) is built up.
+At any time you can navigate forwards and backwards through this list using
+the Forward and Back buttons.
+Additionally, clicking the History button, displays the entire history list as a set of
+.I links
+enabling the user to quickly jump to any position in the list.
+.PP
+Sometimes, it is not possible to retrieve all of the components of a web document at the time
+that it is requested.
+Often this is because the remote server is very busy or not available.
+This can result in the presentation of the document being incomplete or even corrupted.
+Clicking the Reload button causes
+.I charon
+to attempt to retrieve the current document and all of its components again.
+.PP
+.I Charon
+displays a progress panel to indicate the download status of each of the components of the
+current document.
+The progress panel is displayed at the bottom of the
+.I charon
+window.
+Each component of the current document is represented by a rectangular block in the
+progress panel.
+As the download of a component progresses, its corresponding block is gradually filled in.
+If an error occurs while downloading or processing the component, its block is coloured red.
+The component address and amount downloaded, or reason for failure, can
+be obtained by clicking mouse button-1 on its progress block.
+.SS "Web Standards"
+Standards are the life-blood of the World-Wide-Web;
+without them, the web could not exist.
+Web standards are under constant review with revised editions and complete new standards
+being published all of the time.
+This section lists the standards supported by
+.I charon
+at the time of writing this manual entry.
+The version of the standard is given, if appropriate, alongside any comments on its
+implementation.
+.PP
+.TP 15
+Protocols
+HTTP versions 1.0 and 1.1
+.IP
+HTTPS: SSL Protocol versions 2.0 and 3.0.
+X.509.v3 server certificates.
+.IP
+FTP:
+.I charon
+supports retrieval of plain text files only, directory listings are not generated.
+.IP
+FILE:
+.I Charon
+attempts to determine the file type by a combination of the filename extension and
+examination of the first few bytes of the file.  Directory listings are not generated.
+.TP
+HTML
+It is intended that
+.I charon
+supports HTML version 3.2, but in reality there is
+no single standard!
+.I Charon
+attempts to be as close as possible to Netscape Navigator Version 3 in terms of its
+markup support.
+Obvious bugs in Navigator 3 and
+the Netscape security model have not been adopted.
+.TP
+JavaScript
+.I Charon
+implements ECMAscript-262 2nd Edition, which is roughly equivalent to JavaScript1.1.
+The ECMA-262 standard does not define the
+.I host
+objects and classes that should implemented by the browser.
+.I Charon
+implements the set of host objects and classes of Netscape Navigator version 3.
+.TP
+Encodings
+US_Ascii, ISO_8859_1, UTF_8, Unicode (big-endian)
+.TP
+Images
+GIF87a and GIF89a - animated GIFs always loop.
+.br
+JPEG, XBitmap, 
+Inferno BIT
+.IR image (6)
+format.
+.SS Configuration
+While using
+.IR charon ,
+a sub-set of the configuration options can be modified.
+Clicking the Configuration button displays a config popup window, enabling the user
+to modify the current values of the available options.
+.PP
+The full set of configuration options can be modified on the command line or in
+a configuration file.
+Comand line options are processed after the configuration file.
+The configuration file is loaded from
+.BI /usr/ user /charon/config
+where
+.I user
+is obtained by reading the file
+.BR /dev/user .
+If this file does not exist, the file
+.B /services/config/charon.cfg
+is read instead.
+Options are processed in order; some options override settings affected
+by others and so the order in which they are used is important.
+.PP
+Options are specified using a
+.IR key ,
+.I value
+pair.
+On the command line this takes the form:
+.IP
+.BI - key
+.I value
+.PP
+Where
+.BI - key
+and
+.I value
+are individual items in the argument list to
+.IR charon .
+.PP
+In the config file options take the form:
+.IP
+.IB key = value
+.PP
+Where
+.I value
+is the remainder of the input line after the
+.BR ` = '
+character.
+Any text lines in the config file that start with a
+.RB ` # '
+character are ignored as comment lines.
+.SH OPTIONS
+.TF 10
+.TP
+.B userdir
+The directory where
+.I charon
+expects to find its configuration files such as, bookmark and cookie files.
+The default value is
+.BI /usr/ user /charon/
+where
+.I user
+is obtained by reading the file
+.BR /dev/user .
+.TP
+.B starturl
+Specifies the URL of the first document to be displayed by
+.I charon
+at startup.
+The default value is
+.B file://localhost/services/webget/start.html
+.TP
+.B homeurl
+Specifies the URL of the document to retrieve when the Home button is clicked.
+The homeurl can only be changed if the
+.B change_homeurl
+option is enabled.
+Setting 
+.B homeurl
+also set the value of the
+.B starturl
+option.
+The default value is
+.B file://localhost/services/webget/start.html
+.TP
+.B change_homeurl
+Enables editing of the Home URL in the configuration popup window.
+A non-zero integer value enables this option, all other values disable it
+This option also enables the
+.B homeurl option.
+The default value is 1.
+.TP
+.B helpurl
+Specifies the URL of the document to retrieve when the Help button is clicked.
+The default value is
+.B file://localhost/services/webget/help.html
+.TP
+.B httpproxy
+Specifies the host name and port of a web proxy server.
+The address is given in the form of a URL, where the optional port number
+can be specified after the server name by separating them by a colon
+.RB ` : '.
+The default value is the empty string, specifying that no web proxy server should be used.
+.TP
+.BI noproxy " or " noproxydoms
+Specifies a list of network domains for which a web proxy should not be used.
+The domains in the list can be separated by semicolon, comma, space or tab characters.
+The default value is the empty list.
+.TP
+.B usessl
+Extends SSL support.
+Accepted values are
+.RB `` v2 ''
+and
+.RB `` v3 ''.
+Initially SSL support is configured off.
+Enabling version 1 or version 2 support restricts SSL support to that specific version.
+Specifying the option twice, once with each of the options, enables dual version
+SSL support whereby the remote server is probed to determine which version it supports.
+Some servers only support one of the versions and may not tolerate the special
+version2/3 probe.
+.TP
+.B buttons
+Specifies the set of buttons that appear on the window manager title-bar.
+The buttons are given as a list of button names separated by comma, space or tab characters.
+Valid button names are
+.BR help ,
+.B resize
+and
+.BR hide .
+The default value is for all buttons to be displayed.
+.TP
+.BI defaultwidth " or " width
+Set the initial window width.
+This option is only meaningful when running under the window manager.
+If the specified width exceeds the screen width then the screen width is used.
+The default value is 630.
+.TP
+.BI defaultheight " or " height
+Set the initial height of the main display panel, this does not include the height
+of the control and progress panels.
+This option is only meaningful when running under the window manager.
+If the total height of the
+.I charon
+window exceeds the screen height, the main display panel height will be reduced to fit.
+The default value is 450.
+.TP
+.BI x " and/or " y
+Set the initial window position.
+These options are only meaningful when running under the window manager.
+The default value for both options is 0.
+.TP
+.B imagelvl
+Specify how to handle image components of a document.
+This option takes a numeric argument.
+A value of 0 prevents images from being downloaded or displayed.
+A value of 1 will download and display images but not animate GIFS - only the first
+frame of an animated GIF will be displayed.
+A value of 2 or more enables full image processing.
+The default value enables full image processing.
+.TP
+.B imagecachenum
+Specify the maximum number of images that can remain resident in the image cache.
+The default value is 60.
+.TP
+.B imagecachemem
+Specify the maximum amount of image memory available to the image cache in bytes.
+The cache is managed such that neither the
+.B imagecachenum
+nor
+.B imagecachemem
+limits are exceeded.
+The image cache tries to ensure that no more than 80% of available system image memory
+is taken by the cache, irrespective of the value of this option.
+The default value is 80% of the system image memory that was available
+.I when charon was started.
+.TP
+.B docookies
+Enable cookie handling.
+A non-zero numeric value enables cookie handling, all other values disable it.
+The cookie cache is maintained in the
+.B cookies
+file in the
+.I userdir
+directory.
+The default value is 0, cookie handling disabled.
+.TP
+.B doscripts
+Enable JavaScript support.
+A non-zero numeric value enables JavaScript, all other values disable it.
+The default value is 0, JavaScript processing disabled.
+.TP
+.B showprogress
+A non-zero numeric value results in the progress panel being displayed.
+All other values hide the progress panel, leaving more vertical space for the main
+display area.
+The default value is 1, causing the progress panel to be displayed
+.TP
+.B http
+Set the version of HTTP to use when communicating with web servers.
+Supported versions are 1.0 and 1.1.
+Any value other than 1.1 results in HTTP1.0 being used.
+The default value is 1.0.
+.TP
+.B nthreads
+Specifies the maximum number of concurrent downloads of document components.
+Generally, if this number is higher, pages will complete faster as
+.I charon
+will not have to wait for the download of one component to complete before another
+can be started.
+The downside is that a higher number of concurrent downloads will use more memory
+during the download process.
+The default value is 4.
+.SH FILES
+.TF /services/config/charon.cfg
+.TP
+.B /services/config/charon.cfg
+The default configuration file.
+.TP
+.IB userdir /config
+The
+.I user
+specific configuration file.
+.I userdir
+is given by the value of the
+.B userdir
+option.
+.TP
+.IB userdir /cookies
+The cookie cache.
+.I userdir
+is given by the value of the
+.B userdir
+option.
+.TP
+.B /services/webget/start.html
+The default start page.
+.TP
+.B /services/webget/help.html
+The default help page.
+.SH SOURCE
+.TF /appl/lib/ecmascript/
+.TP
+.B /appl/charon/
+The main
+.I charon
+source files.
+.TP
+.B /appl/lib/ecmascript/
+Javascript (ECMA-262) implementation.
+.SH BUGS
+.I Charon
+has more than its fair share of real bugs.
+The following list documents the problems that are most likely to be
+encountered.
+.PP
+.I Charon
+implements its table layout as per the algorithm described in rfc1942.
+This sometimes results in table-based documents being laid out differently to other
+browsers.
+.PP
+JavaScript is a source of many problems.
+Many scripts do not specify the language version they employ.
+Additionally different language versions and browsers imply
+a different set of
+.I host
+objects and classes.
+Such differences often give rise to syntax or null reference errors.
+This whole situation places a great burden on the script author to write
+safe and compliant scripts; unfortunately authors
+are rarely aware of this burden!
+.PP
+The following elements of JavaScript1.1 are not fully implemented:
+.PP
+.BR Document.applets ,
+.B Document.embeds
+.I and
+.BR Document.plugins :
+Java Applets are not supported, the arrays are always empty.
+.PP
+.BR Document.onunload :
+The property exists and can be assigned to, but the event is never raised.
+.PP
+.BR Window.open() :
+A new window is never opened. If a URL is specified for the new window, the
+current document will be replaced with that of the new URL.
+.PP
+Other annoyances include:
+.PP
+Window resize forces a complete document reload.
+.PP
+Frames in a frameset are processed one at a time, not concurrently.
+.PP
+It is not possible to save downloaded data to file.  This is particularly annoying
+for MIME types that
+.I charon
+does not support.
+.PP
+The history list can get confused, especially when following links in framesets
+before the complete frameset has been downloaded.

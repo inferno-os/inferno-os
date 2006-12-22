@@ -1,0 +1,24 @@
+.TH SYS-MILLISEC 2
+.SH NAME
+millisec \- millisecond timer
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+millisec:	fn(): int;
+.EE
+.SH DESCRIPTION
+.B Millisec
+returns the value of an internal system clock, in milliseconds.
+The actual resolution of the clock is a property of the underlying
+system and may be coarser than a millisecond.
+The epoch is arbitrary, so
+.B millisec
+is useful for measuring durations but not absolute time.
+If the system operates continuously, the millisecond counter overflows
+every few months;
+a reboot resets the epoch.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-sleep (2)

@@ -1,0 +1,41 @@
+.TH SNTP 8
+.SH NAME
+sntp \- simple network time protocol client
+.SH SYNOPSIS
+.B ip/sntp
+[
+.B -di
+]
+[
+.I server
+]
+.SH DESCRIPTION
+.I Sntp
+is a simple client for the Simple Network Time Protocol (RFC1361).
+It requests the time from the SNTP service on
+.I server
+(default:
+.BR udp!$ntp!ntp ),
+and if it receives a plausible reply,
+sets the local time accordingly, in both
+.IR rtc (3)
+and
+.BR /dev/time .
+The
+.B -d
+option prints debugging text, including the time received;
+the
+.B -i
+option stops
+.I sntp
+from actually updating the local time.
+.SH FILES
+.B #r/rtc
+.br
+.B /dev/time
+.SH SOURCE
+.B /appl/cmd/ip/sntp.b
+.SH SEE ALSO
+.IR date (1),
+.IR cons (3)
+

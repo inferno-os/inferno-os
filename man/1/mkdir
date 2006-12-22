@@ -1,0 +1,49 @@
+.TH MKDIR 1
+.SH NAME
+mkdir \- make a directory
+.SH SYNOPSIS
+.B mkdir
+[
+.B -p
+]
+[
+.I dirname ...
+]
+.SH DESCRIPTION
+.I Mkdir
+creates the specified directories. It requires write permission in the parent directory.
+.PP
+The
+.B -p
+option causes
+.I mkdir
+to create the whole path
+.IR dirname ,
+including any missing parent directories; it also will not
+complain if
+.I dirname
+already exists and is a directory.
+.PP
+The new directories are created with permissions starting with
+.B 8r777
+but masked with the permissions of the parent directory according to the
+procedure followed by
+.IR sys-open (2).
+For example, if the parent directory lacks write permission for group
+and has no permissions for others,
+so will the newly created directory.
+.SH SOURCE
+.B /appl/cmd/mkdir.b
+.SH "SEE ALSO"
+.IR chmod (1),
+.IR cd (1),
+.IR rm (1),
+.IR sys-open (2)
+.SH DIAGNOSTICS
+If any directory cannot be created successfully,
+.I mkdir
+prints a warning, and continues with any remaining directories,
+but returns
+.B
+\&"error"
+exit status at the end.

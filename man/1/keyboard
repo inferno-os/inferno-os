@@ -1,0 +1,57 @@
+.TH KEYBOARD 1
+.SH NAME
+keyboard, pen \- character input for touch screen devices
+.SH SYNOPSIS
+.B wm/keyboard
+[
+.B -e
+] [
+.B -t
+]
+.br
+.PP
+.B wm/pen
+[
+.B -e
+] [
+.B -r
+] [
+.B -t
+]
+.SH DESCRIPTION
+.B Wm/keyboard
+provides a soft keyboard for touch-screen devices.
+Characters selected on the on-screen keyboard using a stylus (or mouse button 1) are passed to Tk via
+.B Tk->keyboard
+in
+.IR tk (2).
+The
+.B -t
+option causes it to put itself on the
+.IR wm (1)
+task bar from the start.
+The
+.B -e
+option causes it to treat the `exit' button on the title bar as
+a request to put itself back on the task bar.
+.PP
+.B Wm/pen
+provides character input using single-stroke gestures with the stylus
+(or mouse button 1).
+The
+.B -r
+option allows the pen window to be reshaped.
+Options are otherwise the same as for
+.BR wm/keyboard .
+.SH FILES
+.TF "/lib/strokes/*.clx"
+.TP
+.B /lib/strokes/*.cl
+Raw sample data for different stroke sets (eg, letters, digits)
+.TP
+.B /lib/strokes/*.clx
+Compact canonical versions of the stroke sets
+.SH SOURCE
+.B /appl/wm/keyboard.b
+.br
+.B /appl/wm/pen.b

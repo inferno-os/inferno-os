@@ -1,0 +1,205 @@
+// 386 support
+
+defn acidinit()			// Called after all the init modules are loaded
+{
+	bpl = {};
+	bpid = -1;
+	bpfmt = 'b';
+
+	srcpath = {
+		"./",
+	};
+
+	nopstop = 0;
+	srcfiles = {};			// list of loaded files
+	srctext = {};			// the text of the files
+	Labspoff = 4;		// adjustment to Label's sp
+	Labpcoff = 0;		// adjustment to Label's pc
+}
+
+defn linkreg(addr)
+{
+	return 0;
+}
+
+defn stk()				// trace
+{
+	_stk(*PC, *SP, 0, 0);
+}
+
+defn lstk()				// trace with locals
+{
+	_stk(*PC, *SP, 0, 1);
+}
+
+defn kstk()				// kernel stack, PC and SP point to kernel
+{
+	_stk(*PC, *SP, 0, 0);
+}
+
+defn lkstk()				// kernel stack and locals, PC and SP are kernel's
+{
+	_stk(*PC, *SP, 0, 1);
+}
+defn gpr()		// print general(hah hah!) purpose registers
+{
+	print("AX\t", *AX, " BX\t", *BX, " CX\t", *CX, " DX\t", *DX, "\n");
+	print("DI\t", *DI, " SI\t", *SI, " BP\t", *BP, "\n");
+}
+
+defn spr()				// print special processor registers
+{
+	local pc;
+	local cause;
+
+	pc = *PC;
+	print("PC\t", pc, " ", fmt(pc, 'a'), "  ");
+	pfl(pc);
+	print("SP\t", *SP, " ECODE ", *ECODE, " EFLAG ", *EFLAGS, "\n");
+	print("CS\t", *CS, " DS\t ", *DS, " SS\t", *SS, "\n");
+	print("GS\t", *GS, " FS\t ", *FS, " ES\t", *ES, "\n");
+	
+	cause = *TRAP;
+	print("TRAP\t", cause, " ", reason(cause), "\n");
+}
+
+defn regs()				// print all registers
+{
+	spr();
+	gpr();
+}
+
+defn step()
+{
+	local ur;
+	local addrs;
+	local id;
+	local l;
+	local b;
+	local bl;
+	local sl;
+	local pc;
+
+	complex Proc proc;
+	ur = proc.dbgreg;
+	if ur == 0 then
+		error("step: process not in breakpoint trap");
+	complex Ureg ur;
+
+	 //
+	 // stop all kprocs that could potentially hit this breakpoint
+	 // make a list of all the breakpoints at this address
+	 //
+	bl = {};
+	sl = {};
+	l = bpl;
+
+	while l do {
+		b = head l;
+		if ((b[2] & *PC) == b[2]) then {
+			if status(b[1]) != "Stopped" then {
+				stop(b[1]);
+				sl = append sl, b[1];
+			}
+			bl = append bl, b;
+		}
+		l = tail l;
+	}
+
+	 //
+	 // delete all the breakpoints at this address
+	 //
+	if bl then {
+		l = bl;
+		while l do {
+			b = head l;
+			_bpconddel(b[0]);
+			l = tail l;
+		}
+	}
+
+	 //
+	 // single step to the following address
+	 //
+	addrs = follow(*PC);
+	id = bpset(addrs[0]);
+	startstop(pid);
+	bpdel(id);
+
+	 //
+	 // restore all the breakpoints at this address
+	 //
+	if bl then {
+		l = bl;
+		while l do {
+			b = head l;
+			_bpcondset(b[0], b[1], b[2], b[3]);
+			l = tail l;
+		}
+	}
+
+	 //
+	 // restart all kprocs that could potentially hit this breakpoint
+	 //
+	if sl then {
+		l = sl;
+		while l do {
+			start(head l);
+			l = tail l;
+		}
+	}
+}
+
+aggr Ureg
+{
+	'X' 0 di;
+	'X' 4 si;
+	'X' 8 bp;
+	'X' 12 nsp;
+	'X' 16 bx;
+	'X' 20 dx;
+	'X' 24 cx;
+	'X' 28 ax;
+	'X' 32 gs;
+	'X' 36 fs;
+	'X' 40 es;
+	'X' 44 ds;
+	'X' 48 trap;
+	'X' 52 ecode;
+	'X' 56 pc;
+	'X' 60 cs;
+	'X' 64 flags;
+	{
+	'X' 68 usp;
+	'X' 68 sp;
+	};
+	'X' 72 ss;
+};
+
+
+defn
+Ureg(addr) {
+	complex Ureg addr;
+	print("	di	", addr.di, "\n");
+	print("	si	", addr.si, "\n");
+	print("	bp	", addr.bp, "\n");
+	print("	nsp	", addr.nsp, "\n");
+	print("	bx	", addr.bx, "\n");
+	print("	dx	", addr.dx, "\n");
+	print("	cx	", addr.cx, "\n");
+	print("	ax	", addr.ax, "\n");
+	print("	gs	", addr.gs, "\n");
+	print("	fs	", addr.fs, "\n");
+	print("	es	", addr.es, "\n");
+	print("	ds	", addr.ds, "\n");
+	print("	trap	", addr.trap, "\n");
+	print("	ecode	", addr.ecode, "\n");
+	print("	pc	", addr.pc, "\n");
+	print("	cs	", addr.cs, "\n");
+	print("	flags	", addr.flags, "\n");
+	print("	sp	", addr.sp, "\n");
+	print("}\n");
+	print("	ss	", addr.ss, "\n");
+};
+
+print("/sys/lib/acid/386");

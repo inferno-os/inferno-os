@@ -1,0 +1,189 @@
+.TH INTRO 2
+.SH NAME
+intro \- introduction to Limbo modules for the Inferno system
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+include "draw.m";
+draw := load Draw Draw->PATH;
+
+include "tk.m";
+tk := load Tk Tk->PATH;
+
+.I "... etc."
+
+.I "Generically:"
+.EE
+.EX
+include "\fImodule\fP.m";
+.EE
+.fi
+.IB module " := "
+.BI load " Module"
+.IB Module ->PATH;
+.SH DESCRIPTION
+This section introduces the Limbo modules available to the programmer;
+see the corresponding manual pages for more information.
+Each module is declared with a single Limbo
+.B include
+file.
+Before calling a module's functions, an application must
+.B load
+the module; the application stores the resulting value in a variable for later use as
+the module qualifier.
+The examples above illustrate the style.
+It will usually be necessary in some cases to qualify names with the appropriate
+module pointer or to
+.B import
+the types and functions; the manual pages assume the names are accessible
+in the current scope.
+.PP
+Although many modules are self-contained,
+dependencies may exist.
+For example, the system module,
+.BR Sys ,
+provides basic services that many other modules require.
+These are the Inferno equivalent to `system calls'.
+.PP
+In a few cases, several related modules
+share a single
+.B include
+file;
+for instance,
+.BR security.m .
+.PP
+The manual pages describe how to
+.B include
+a module definition during
+compilation and
+.B load
+an implementation during execution.
+The documentation also lists relevant functions or abstract
+data types.
+Although the
+.B include
+files declare these components, the manual pages list them explicitly.
+In all cases, the enclosing
+.B module
+declaration is assumed so that unqualified identifiers can be
+used in the text without ambiguity, reducing clutter in the text.
+In practice when programming, many consider it good style to
+use an explicit module reference for functions and constants.
+.PP
+The Limbo modules are identical on any machine that is running Inferno,
+whether native or hosted, which enables Limbo programs to be written
+and tested on any Inferno system.
+.PP
+Many modules are described in a single page, such as
+.IR regex (2).
+Several larger modules are explained in several sections, such as
+.IR math-intro (2),
+.IR math-elem (2),
+.IR math-fp (2),
+and
+.IR math-linalg (2).
+.SS Exceptions
+Exception handling is now part of the Limbo language, replacing an older
+scheme that used special system calls.
+Various exceptions can be raised by the virtual machine when run-time errors
+are detected.
+These are the common ones:
+.RS
+.TP
+.B "alt send/recv on same chan"
+It is currently illegal for a channel to appear in two
+.B alt
+statements if they either both receive or both send on it.
+(It is fine to send in one and receive in the other.)
+.TP
+.B "array bounds error"
+Array subscript out of bounds.
+.TP
+.B "dereference of nil"
+Attempt to use a
+.B "ref" 
+adt or index an array with value
+.B "nil" .
+.TP
+.B "invalid math argument"
+Inconsistent values provided to functions of
+.IR math-intro (2).
+.TP
+.B "module not loaded"
+Attempt to use an uninitialised module variable.
+.TP
+.B "negative array size"
+The limit in an array constructor was negative.
+.TP
+.BI "out of memory:" " pool"
+The given memory
+.I pool
+is exhausted.
+.I Pool
+is currently one of
+.B main
+(kernel memory including Tk allocations),
+.B heap
+(most Limbo data),
+and
+.B image
+memory for
+.IR draw (3).
+.TP
+.B "zero divide"
+Integer division (or mod) by zero.
+.RE
+.PP
+There are currently two more classes of exception string with a conventional interpretation
+imposed not by the run-time system proper, but by Limbo components:
+.RS
+.TP
+.BI "fail:" "reason"
+Commands use this exception to provide an `exit status' to a calling program,
+particularly the shell
+.IR sh (1);
+see also
+.IR sh (2).
+The status is given by the
+.I reason
+following the
+.RB ` fail: '
+prefix.
+.TP
+.BI "assertion:" "error"
+A module detected the specified internal
+.IR error .
+This is most often used for cases where a particular possibility ``cannot happen''
+and there is no other need for an error value in the interface.
+.RE
+.PP
+Otherwise, most module interfaces tend to use explicit error return values, not exceptions.
+.PP
+Note that a Limbo exception handler can do pattern matching to catch a class of exceptions:
+.IP
+.EX
+{
+	\f2body of code to protect\fP
+} exception e {
+"out of memory:*" =>
+	\f2recovery action\fP
+"assertion:*" =>
+	fatal_error(e);
+}
+.EE
+.PP
+The effect of an unhandled exception in a process that is part of an error-recovery group
+can be controlled using the mechanisms described in
+.IR prog (3)
+as accessed using
+.IR exception (2).
+.SH SEE ALSO
+.IR draw-intro (2),
+.IR exception (2),
+.IR keyring-intro (2),
+.IR math-intro (2),
+.IR prefab-intro (2),
+.IR security-intro (2),
+.IR sys-intro (2)

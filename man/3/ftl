@@ -1,0 +1,185 @@
+.TH FTL 3
+.SH NAME
+ftl \- flash translation layer
+.SH SYNOPSIS
+.EX
+.B bind -a '#X' /dev
+
+.B /dev/ftlctl
+.B /dev/ftldata
+.EE
+.SH DESCRIPTION
+.PP
+The flash translation layer device
+provides the interface for management of
+rewritable blocks on a flash memory device.
+Flash memory differs from normal disc
+or memory in that it is organised in large blocks (erase units),
+typically 64k bytes or more in size,
+and although writes can reset bits they cannot set them;
+instead an entire erase unit must be erased at once.
+These properties make it unsuitable for direct use by
+a conventional block-oriented file system.
+The flash translation layer compensates by
+implementing a logical to physical
+mapping that allows 512-byte blocks to be read or written
+in the same way as rewritable disc blocks.
+The translation layer manages the details of
+block remapping, copying erase units to reclaim obsolete physical versions
+of rewritten logical blocks, erase unit load wearing, etc.
+.PP
+The flash translation device serves a one-level directory,
+giving access to two files.
+The control file
+.B ftlctl
+receives commands to format a flash device
+or initialise access to an already formatted device.
+.B Ftldata
+is the data file, giving access to the logical blocks on the formatted flash.
+For example, it can be given to
+.IR kfs (3)
+for use as a file system.
+The length of the
+.B ftldata
+file as returned by
+.B Sys->stat
+shows the total logical (formatted) space available for
+use by the driver's clients.
+.PP
+The target flash device is identified to this driver
+by name
+(eg,
+.BR #F/flash )
+in a control message defined below.
+The flash device must have the following properties:
+.IP 1.
+It must have a corresponding control file
+.IB device ctl
+(eg,
+.BR #F/flashctl ),
+which must be writable.
+.IP 2.
+The flash control file must accept a command of the
+form
+.DS
+.BI erase " offset"
+.DE
+which must cause the flash erase unit
+starting at the given byte
+.I offset
+to be erased.
+.IP 3.
+The device
+must allow reads and writes of any number of bytes
+on arbitrary byte boundaries (file offset).
+(In other words, the flash driver must hide alignment restrictions.)
+.IP 4.
+A write request
+must allow previously-written regions to be updated provided
+the new data does not change any 0 bit to 1
+(ie, writes can clear bits to 0 but will not change any 0 bits to 1).
+.PP
+The following control messages can be written to
+.BR ftlctl :
+.TP
+.BI format " device [ offset [ n [ erasesize ] ] ]"
+.br
+Erase
+.I n
+bytes of
+the given flash
+.I device
+starting at the given byte
+.IR offset ,
+and format the erased region
+for use by the flash translation layer. Omitting the
+optional parameters is equivalent to setting them to
+.BR 0xffffffff .
+.I Erasesize
+is the number of bytes in the flash device's erase unit; setting
+to
+.B 0xffffffff
+takes the value from the underlying device.
+If
+.I offset
+is
+.BR 0xffffffff ,
+then the underlying device is searched from the
+start for an existing flash translation layer header, and the remaining
+parameters are taken from there. If
+.I n
+is
+.BR 0xffffffff ,
+then everywhere from
+.I offset
+to the end of the
+underlying device is erased. Otherwise,
+.I offset
+and
+.I n
+must be multiples of
+.IR erasesize .
+Make the newly formatted device's contents available on
+.BR ftldata .
+.TP
+.BI init " device [ offset [ n [ erasesize ] ] ]"
+.br
+Make available on
+.B ftldata
+the logical blocks (with existing content) of a previously-formatted
+.IR device .
+The parameters are as defined for the
+.B format
+command, above.
+.TP
+.BI part " name start [ limit ]"
+.br
+Add a partition. This creates a new data file
+.BI ftl name
+with similar properties to
+.BR ftldata ,
+but which constrains the range of the formatted data accessed to
+begin at
+.IR start ,
+and end at
+.IR limit-1 ,
+or the last byte of the formatted data if
+.I limit
+is omitted.
+.TP
+.BI delpart " name"
+.br
+Removes a partition. 
+.TP
+.B detach
+Stop flash translation on
+the corresponding flash device,
+and close it.
+An error results instead if
+.B ftldata
+is open.
+.TP
+.B scavenge
+Force scavenging of reusable blocks (mainly intended to be used when
+testing flash or debugging the driver).
+.TP
+.BI trace " n"
+.br
+Trace the actions of the flash translation driver.
+No tracing is done if
+.I n
+is zero.
+Larger values of
+.I n
+increase the level of detail.
+.SH SOURCE
+.B /os/*/devftl.c
+.SH SEE ALSO
+.IR flash (3)
+.SH BUGS
+Reads and writes of
+.B ftldata
+must be multiples of 512 bytes in length
+and start on a 512-byte block boundary.
+.br
+Only one flash device can be active.

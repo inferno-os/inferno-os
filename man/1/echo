@@ -1,0 +1,32 @@
+.TH ECHO 1
+.SH NAME
+echo \- print arguments
+.SH SYNOPSIS
+.B echo
+.RB [ \-n ]
+.RI [ "arg ..." ]
+.PP
+.B load echo
+.br
+.B echo
+.RB [ \-n ]
+.RI [ "arg ..." ]
+.SH DESCRIPTION
+.I Echo
+writes its arguments separated by blanks
+and terminated by a newline on the standard output.
+Option
+.B \-n
+suppresses the newline.
+.PP
+A version of
+.I echo
+can optionally be loaded into the Shell
+.IR sh (1)
+if need be, to make shell scripts a little faster.
+.SH SOURCE
+.B /appl/cmd/echo.b
+.br
+.B /appl/cmd/sh/echo.b
+.SH SEE ALSO
+.IR sh (1)

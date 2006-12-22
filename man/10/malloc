@@ -1,0 +1,81 @@
+.TH MALLOC 10.2
+.SH NAME
+malloc, mallocz, smalloc, free, realloc, calloc \- kernel memory allocators
+.SH SYNOPSIS
+.ta \w'\fLvoid* 'u
+.B
+void*	malloc(ulong size)
+.PP
+.B
+void*	mallocz(ulong size, int clr)
+.PP
+.B
+void*	smalloc(ulong size)
+.PP
+.B
+void*	realloc(void *p, ulong size)
+.PP
+.B
+void*	calloc(ulong n, ulong szelem)
+.PP
+.B
+void	free(void *p)
+.SH DESCRIPTION
+These functions allocate memory from the
+.B mainmem
+memory pool.
+All but
+.I smalloc
+(which sleeps)
+may safely be called by interrupt handlers.
+.PP
+.I Malloc
+returns a pointer to a block of at least
+.I size
+bytes, initialised to zero.
+The result is aligned on a 32-bit boundary.
+.I Mallocz
+is similar, but only clears the memory if
+.I clr
+is non-zero.
+.PP
+.I Smalloc
+returns a pointer to a block of
+.I size
+bytes, initialised to zero.
+If the memory is not immediately available,
+.I smalloc
+retries every 100 milliseconds until the memory is acquired.
+.PP
+.I Calloc
+returns a pointer to a block of memory of at least
+.I "n*szelem"
+bytes, initialised to zero.
+.PP
+.I Realloc
+changes the size of the block pointed to by
+.I p
+to
+.I size
+bytes,
+if possible without moving the data,
+and returns a pointer to the block.
+The contents are unchanged up to the lesser of old and new sizes,
+and any new space allocated is initialised to zero.
+If
+.I p
+is a null pointer,
+.I realloc
+returns the equivalent of
+.BR "malloc(size)" .
+.PP
+The argument to
+.I free
+is a pointer to a block of memory allocated by one of the routines above, which
+is returned to the allocation pool, or a null pointer, which is ignored.
+.SH DIAGNOSTICS
+All functions except
+.I smalloc
+return a null pointer if space is unavailable.
+.SH SEE ALSO
+.IR xalloc (10.2)

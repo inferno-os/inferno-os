@@ -1,0 +1,151 @@
+.TH IDA 2
+.SH NAME
+Ida: Frag, fragment, consistent, reconstruct \- information dispersal algorithm
+.SH SYNOPSIS
+.EX
+include "ida.m";
+ida := load Ida Ida->PATH;
+
+Frag: adt {
+    dlen: int;            # length of original data
+    m:    int;            # minimum pieces for reconstruction
+    a:    array of int;   # encoding array row for this fragment
+    enc:  array of int;   # encoded data
+
+    tag:  array of byte;  # user data, such as SHA1 hash
+    pack: fn(f: self ref Frag): array of byte;
+    unpack: fn(d: array of byte): ref Frag;
+};
+
+init:        fn();
+fragment:    fn(data: array of byte, m: int): ref Frag;
+consistent:  fn(frags: array of ref Frag): array of ref Frag;
+reconstruct: fn(frags: array of ref Frag): (array of byte, string);
+.EE
+.SH DESCRIPTION
+.B Ida
+implements Rabin's Information Dispersal Algorithm (IDA), an effective scheme
+for fault-tolerant storage and message routing.
+The algorithm breaks an array of bytes (for instance a file or a block of data) into
+.I n
+pieces,
+in such a way that the original data can be recovered using only
+.I m
+of them, where
+.I n
+and
+.I m
+are parameters.
+The module provides the fundamental operations.
+.PP
+.B Init
+must be called before invoking any other operation of the module.
+.PP
+.B Fragment
+takes an array of
+.IR data ,
+and
+.IR m ,
+the minimum number of pieces required for reconstruction,
+and returns a reference to a
+.B Frag
+value representing one encoded fragment of the data.
+At least
+.I m
+calls must be made to
+.B fragment
+to obtain enough such fragments to be able to rebuild the data;
+invariably more fragments are generated to provide the desired level of redundancy.
+.PP
+Each fragment
+.B Frag
+has the following components:
+.TP
+.B dlen
+The length in bytes of the
+.IR data .
+.TP
+.B m
+The minimum number of fragments for reconstruction.
+.TP
+.B a
+The row of an \fIm\fP×\fIm\fP encoding matrix that corresponds to this fragment.
+.TP
+.B enc
+The encoded data, represented by an array of integer values.
+For
+.I L
+bytes of input data, the array will have length
+.\\"$ left ceil L over 2m right ceil $.
+.rm 11 
+.ds 12 "\f2L\fP
+.ds 13 "\f12\fP\f2\^m\fP
+.nr 12 0\w'\s+0\*(12'
+.nr 13 0\w'\s+0\*(13'
+.nr 14 \n(12
+.if \n(13>\n(14 .nr 14 \n(13
+.nr 14 \n(14+0.5m
+.ds 12 \v'0.7m'\h'\n(14u-\n(13u/2u'\*(13\v'-0.7m'\
+\h'-\n(13u-\n(12u/2u'\v'-0.6m'\*(12\v'0.6m'\
+\h'-\n(14u-\n(12u/2u+0.1m'\v'-0.3m'\l'\n(14u-0.2m'\h'0.1m'\v'0.3m'
+.ds 12 \^\v'0.13m'\b'\(lc\(bv\(bv'\v'-0.13m'\*(12\v'0.13m'\b'\(rc\(bv\(bv'\v'-0.13m'
+.ds 12 \x'0-0.85m'\*(12\x'1.05m'
+.as 11 \*(12
+.lf 4
+.as 11 ".
+\*(11
+.lf 5
+.PP
+All those values must be stored or transmitted for later use, to reconstruct the data.
+The values in
+.B a
+are in the interval
+.RI "[ 1,\ 65536 ]"
+and those in
+.B enc
+are in the interval
+.RI "[ 0,\ 65536 ]."
+.PP
+.B Reconstruct
+takes an array
+.I frags
+of distinct fragments previously produced by repeated calls to
+.BI fragment( data,\ m )
+and returns a tuple
+.BI ( data,\ err ) .
+Provided at least
+.I m
+suitable fragments are found in
+.IR frags ,
+the
+.I data
+returned will be that originally provided to
+.BR fragment .
+If the parameters of the various fragments in
+.I frags
+disagree, or some other error occurs,
+.I data
+will be nil and
+.I err
+will contain a diagnostic.
+.B Reconstruct
+assumes the fragments it receives are consistent:
+they represent the same encoding parameters, including the value of
+.IR m .
+If it detects an inconsistency, it returns a diagnostic.
+.PP
+.B Consistent
+checks the consistency of a set of fragments, and returns a new subset containing
+only those fragments that agree with the majority in
+.I frags
+on each parameter.
+.SH SOURCE
+.B /appl/lib/ida/ida.b
+.br
+.B /appl/lib/ida/idatab.b
+.SH SEE ALSO
+M Rabin, ``Efficient Dispersal of Information for Security, Load Balancing, and Fault Tolerance'',
+.I JACM
+.BR 36(2) ,
+April 1989,
+pp. 335-348.

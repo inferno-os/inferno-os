@@ -1,0 +1,141 @@
+.TH ALPHABET-GRID 1
+.SH NAME
+grid \- peer-to-peer data distribution
+.SH SYNOPSIS
+.EX
+load alphabet
+typeset /grid
+type /grid/endpoint
+.EE
+.SH DESCRIPTION
+.B Grid
+is a typeset for
+.I alphabet
+(see
+.IR sh-alphabet (1))
+which enables
+allows direct interconnection of
+remote and local processing components. It defines one new type,
+.BR endpoint ,
+which represents
+a place in the network to which two parties can
+connect and exchange data.
+.PP
+In the following descriptions, if a type
+is not
+.B endpoint
+or a type defined in the root typeset (see
+.IR alphabet-main (1)),
+it is assumed to be of type
+.BR /string .
+.PP
+Modules currently provided within 
+the
+.B /grid
+typeset include:
+.TP 10
+\f5farm [\f5-lnkavA\fP] \fIendpoint\fP \fIaddr\fP \fItasktype\fP [\fIarg\fP...] -> \fIendpoint\fP
+.B Farm
+connects to a grid labour exchange (see
+.IR scheduler (4))
+at
+.IR addr ,
+starts a new job of type
+.BR workflow ,
+and passes all the data read from
+.I endpoint
+to be processed by the currently available labour.
+The data is split into records, each one of which will be
+processed on a worker node by
+.IR tasktype ,
+with its associated
+.IR arg uments.
+Other than
+.BR -A ,
+which specifies unauthenticated access to the
+scheduler,
+the various options are all passed verbatim to
+.IR workflow :
+.B -l
+causes it to split its input on newline-separated records;
+.B -n
+specifies that no record separation is necessary on output;
+.B -k
+specifies that intermediate data for failed tasks should
+be kept around;
+.B -a
+specifies that intermediate data for all tasks should
+be kept around, and
+.B -v
+specifies that
+.I workflow
+should produce a wordy description of what it is doing.
+.TP
+\f5local\fP \fIendpoint\fP -> \fI/fd\fP
+.B Local
+reads everything from 
+.IR endpoint ,
+and writes it to
+.IR fd .
+.TP
+\f5remote\fP [-a \fIaddr\fP] \fIfd\fP -> \fIendpoint\fP
+.B Remote
+is the inverse of
+.BR local :
+it reads data from
+.I fd
+and writes it to a newly created endpoint.
+If
+.B -a
+is given,
+.I addr
+specifies the network address of an endpoint server
+on which to create the new endpoint.
+.TP
+\f5rexec\fP [\f5-A\fP] \fIendpoint\fP \fIaddr\fP \fIcmd\fP -> \fIendpoint\fP
+.B Rexec
+connects to a remote execution server at
+.I addr
+(unauthenticated if
+.B -A
+is specified), and arranges to execute the
+.I alphabet
+expression
+.I cmd
+there. The expression should be compatible with usage
+.BR "fd -> fd" .
+Data from the argument
+.I endpoint
+will be piped through this expression, and
+made available as the resulting
+.I endpoint
+endpoint.
+.SH EXAMPLES
+The examples below that a local endpoint is available, and the following
+.I alphabet
+declarations:
+.EX
+	load alphabet
+	typeset /grid
+	type /string /endpoint /fd
+	import /grid/local /grid/remote
+	autoconvert fd endpoint remote
+.EE
+Set up a rendering pipeline:
+.EX
+	-{/read /tmp/somedata |
+		remote |
+		rexec tcp!node1!rexec "{(/fd); /filter $1 "{os render_stage1}} |
+		rexec tcp!node2!rexec "{(/fd); /filter $1 "{os render_stage2}} |
+		/create /tmp/somedata.result
+	}
+.EE
+.SH SOURCE
+.BR /appl/alphabet/grid.b ,
+.BR /appl/alphabet/gridtypes.b
+.br
+.B /appl/cmd/grid/*.b
+.SH SEE ALSO
+.IR sh-alphabet (1),
+.IR alphabet-main (1),
+.IR sh (1)

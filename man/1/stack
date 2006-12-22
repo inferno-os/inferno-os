@@ -1,0 +1,118 @@
+.TH STACK 1
+.SH NAME
+stack \- examine call stack
+.SH SYNOPSIS
+.B "bind '#p' /prog"
+.br
+.B stack
+[
+.B -v
+]
+[
+.B -p
+.I dispath
+.I sblpath
+]...
+.I pid
+.SH DESCRIPTION
+.I Stack
+writes to the standard output a stack trace for process
+.IR pid ,
+by
+decoding the stack traceback data contained in the file
+.BI /prog/ pid /stack .
+The
+.B -v
+option causes
+.I stack
+to print values of arguments and variables.
+The output is most useful when the Limbo program
+was compiled with the
+.B -g
+option to produce a
+.B .sbl
+symbol file.
+.PP
+.I Stack
+has a built-in list of associations between
+.B dis
+directories and their associated source directories
+(e.g. it can automatically map from
+.B /dis/ls.dis
+to
+.BR /appl/cmd/ls.sbl ).
+Giving the
+.B -p
+option adds a new association to the head of this list:
+if a module path prefix matches
+.IR dispath ,
+.I stack
+will search for a symbol file in
+.IR sblpath .
+If the environment variable
+.B $sblpath
+is set, pairs of items from it are added to the
+association list, as given as
+.B -p
+options.
+The
+.B -p
+options take precedence over
+.BR $sblpath .
+.SH EXAMPLE
+Run
+.I stack
+on process with ID 1:
+.IP
+.EX
+$ stack 1
+unknown fn() Module $Sys PC 742103
+waitfor() shnew.b:105.7, 38
+runpipeline() shnew.b:483.2, 14
+runit() shnew.b:552.3, 29
+init() shnew.b:83.3, 28
+.EE
+.PP
+The process is executing in the
+.B Sys
+module, a call to
+.B sys->read
+that originated at line 105 (characters 7 to 38) of the
+.B waitfor
+function in
+.BR shnew.b .
+.PP
+Once again, with the
+.B -v
+option to reveal more:
+.IP
+.EX
+$ stack -v 1
+unknown fn() Module $Sys PC 742103
+waitfor(pid=18) shnew.b:105.7, 38
+        status=[0] ""
+        buf=[64] @b419a4
+        n=-1
+        who=-1
+runpipeline(ctx=nil, pipeline=@b41454) shnew.b:483.2, 14
+        pid=18
+runit(ctx=nil, pipes=nil) shnew.b:552.3, 29
+        pipeline=@b41454
+init(ctxt=nil, argv=nil) shnew.b:83.3, 28
+        buf=[1024] @b40f04
+        n=4
+        arg=@b41634
+        prompt=[21] "$ "
+$
+.EE
+.SH FILES
+.BI /prog/ pid /stack
+.br
+.BI /prog/ pid /status
+.SH SOURCE
+.B /appl/cmd/stack.b
+.SH "SEE ALSO"
+.IR deb (1),
+.IR ps (1),
+.IR prog (3),
+.IR debug (2)

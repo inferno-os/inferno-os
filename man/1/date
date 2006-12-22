@@ -1,0 +1,55 @@
+.TH DATE 1
+.SH NAME
+date \- print the date
+.SH SYNOPSIS
+.B date
+[
+.B -u
+] [
+.B -n
+] [
+.I seconds
+]
+.SH DESCRIPTION
+Prints the date to standard output, in the format:
+.IP
+.EX
+Wed Jan 12 11:54:06 GMT 2002
+.EE
+.PP
+The options are
+.TP
+.B -u
+Report Greenwich Mean Time (GMT) rather than local time.
+.TP
+.B -n
+Report the date as the number of seconds since the
+epoch, 00:00:00 GMT, January 1, 1970.
+.PP
+Current time is obtained
+by reading
+.BR /dev/time .
+The conversion from Greenwich Mean Time to local time depends on the contents of
+.BR /locale/timezone .
+.PP
+If the optional argument
+.I seconds
+is present, it is used as the time to convert rather than
+the real time.
+.SH FILES
+.TF "/locale/timezone  "
+.TP
+.B /locale/timezone
+Current time zone name and adjustments
+.TP
+.B /locale
+A directory containing time zone tables
+.TP
+.B /dev/time
+microseconds since the epoch, 00:00:00 GMT, 1 January 1970
+.SH SOURCE
+.B /appl/cmd/date.b
+.SH "SEE ALSO"
+.IR time (1),
+.IR daytime (2),
+.IR cons (3)

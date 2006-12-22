@@ -1,0 +1,142 @@
+.TH KPROC 10.2
+.SH NAME
+kproc, setpri, swiproc, pexit \- kernel process creation, priority change, interrupt and termination
+.SH SYNOPSIS
+.ta \w'\fLchar* 'u
+.B
+void	kproc(char *name, void (*func)(void*), void *arg, int flags);
+.PP
+.B
+int	setpri(int pri);
+.PP
+.B
+void	swiproc(Proc *p, int interp);
+.PP
+.B
+void	pexit(char*, int);
+.SH DESCRIPTION
+.I Kproc
+creates a new Inferno kernel process
+to run the function
+.IR func ,
+which is invoked as 
+.BR "(*func)(arg)" .
+The string
+.I name
+is copied into the
+.B text
+field of the
+.B Proc
+structure of the new process; although the value is not visible to Limbo
+applications, it can appear in system messages written to the console.
+The process is made runnable; it
+will run when selected by the scheduler.
+.PP
+The new process always acquires the following attributes from the creating process:
+.IP
+owner (Inferno user name)
+.br
+host user and group IDs (in
+.I emu
+only)
+.br
+floating-point attributes
+.PP
+Several resources can be shared with the creating process on request, as determined by
+.IR flags ,
+which is the logical OR
+of a subset of the following:
+.TF KPDUPENVG
+.TP
+.B KPDUPPG
+If set, the new process shares the caller's process group,
+which includes its process group ID
+(for
+.IR killgrp ),
+name space (mounts, root and current directory),
+and PIN for
+.B /dev/pin
+(see
+.IR cons (3)).
+.TP
+.B KPDUPFDG
+If set, the new process shares the caller's file descriptor group;
+otherwise, it has no file descriptor group, and (if it intends to open files) must call
+.IR newfgrp (10.2)
+to obtain an empty file descriptor group.
+.TP
+.B KPDUPENVG
+If set, the new process shares the caller's environment group
+(currently applies in
+.I emu
+only).
+.TP
+.B KPDUP
+Equivalent to all of the above.
+.PD
+.PP
+If a particular option is not set, the new process will have a
+.B nil
+reference for the corresponding resource.
+.PP
+.I Setpri
+sets the priority of the calling process to
+.I pri
+and returns its previous priority level.
+If a (now) higher priority process is ready to run, the system will reschedule.
+The available priority levels are shown below,
+arranged from highest to lowest priority,
+with examples of the type of processes intended to use them:
+.TF PriBackground
+.TP
+.B PriLock
+The highest priority, used by
+.IR lock (10.2)
+for a process entering a critical section
+.TP
+.B PriRealtime
+Intended for processes supporting applications with real-time constraints, such as video telephony.
+.TP
+.B PriHicodec
+MPEG codec
+.TP
+.B PriLocodec
+Audio codec
+.TP
+.B PriHi
+Any task with keen time constraints.
+.TP
+.B PriNormal
+The priority of most processes in the system.
+.TP
+.B PriLo
+.TP
+.B PriBackground
+.PD
+.PP
+.I Swiproc
+sends a software interrupt to process
+.IR p ,
+causing it to wake from
+.IR sleep (10.2)
+with an
+.IR error (10.2)
+`interrupted'.
+Unless
+.I interp
+is non-zero (ie, the Dis interpreter is the caller), the process is also marked `killed'.
+.PP
+An Inferno process terminates only when it calls
+.IR pexit ,
+thereby terminating itself.
+There is no mechanism for one process to force the termination of another,
+although it can send a software interrupt using
+.IR swiproc .
+The arguments to
+.I pexit
+are ignored in Inferno, but are included for compatibility
+with kernel components of Plan 9; use
+.IP
+.EX
+pexit("", 0);
+.EE

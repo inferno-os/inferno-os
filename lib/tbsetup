@@ -1,0 +1,22 @@
+#
+# This file defines the format of the toolbar
+#
+#The entries are 2 ":" separated fields
+#<Button Label/Bitmap>:<application path>
+!EXEC=/dis/plumber.dis -w
+!EXEC=/dis/svc/cs/cs.dis
+!EXEC=/dis/dbfs.dis -e /data/vmails /mnt/vmail
+!EXEC=/dis/dbfs.dis -e /data/incalls /mnt/incall
+!EXEC=/dis/wm/sword/answerphone.dis
+!EXEC=/dis/wm/sword/vmail_led.dis /mnt/vmail /cvt/cons/0/ctl
+!NELEMS=7
+!HEIGHT=44
+phone:Virtual Phonepad:/dis/wm/sword/phonepad.dis
+www:HTML Browser:/dis/charon.dis
+mail:Mail:/dis/wm/mailtool.dis
+config:Configuration:/dis/wm/sword/config.dis
+addr:PIM:/dis/wm/sword/addrbook.dis
+shell:Shell:/dis/wm/sh.dis
+sds:SDS:/sds/dis/sdc.dis
+calls:Call History:/dis/wm/sword/callhist.dis
+vmails:Voice Mail:/dis/wm/sword/vmail.dis

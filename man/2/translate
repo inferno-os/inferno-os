@@ -1,0 +1,135 @@
+.TH TRANSLATE 2
+.SH NAME
+translate: opendict, opendicts, mkdictname \- translation dictionaries
+.SH SYNOPSIS
+.EX
+include "translate.m";
+translate := load Translate Translate->PATH;
+
+Dict: adt {
+    new:    fn(): ref Dict;
+    add:    fn(d: self ref Dict, file: string): string;
+    xlate:  fn(d: self ref Dict, s: string): string;
+    xlaten: fn(d: self ref Dict, s: string, note: string): string;
+};
+
+init:       fn();
+opendict:   fn(file: string): (ref Dict, string);
+opendicts:  fn(files: list of string): (ref Dict, string);
+mkdictname: fn(locale, app: string): string;
+.EE
+.SH DESCRIPTION
+The
+.B Translate
+module provides access to the translation dictionaries
+defined by
+.IR translate (6),
+intended for the translation of
+text from one natural language to another.
+.PP
+.B Init
+should be called before using any of these functions.
+.PP
+.B Opendict
+opens a dictionary
+.I file
+(of the format defined below) and returns a tuple:
+a reference to a
+.B Dict
+that represents it and a diagnostic string (which is nil if no error occurred).
+.B Opendicts
+is similar, but loads each of the
+.I files
+in turn into the same
+.BR Dict ,
+producing a composite dictionary in which translations in later files can override
+translations in earlier ones;
+the diagnostic string summarises all errors (if any).
+.PP
+.B Mkdictname
+returns the conventional name of a dictionary file given
+locale and application names.
+The
+.I locale
+is normally
+.B nil
+to use the current locale, which is formed by
+binding the desired locale directory (or directories) onto
+.BR /lib/locale .
+.PP
+.B Dict.new
+returns an empty dictionary.
+.B Dict.add
+loads the given dictionary
+.I file
+into an existing dictionary, returning a non-nil diagnostic string on error.
+Translations are made by
+.B Dict.xlate
+and
+.BR Dict.xlaten :
+they look for a string
+.I s
+(eg, text in one language),
+optionally qualified by a
+.IR note ,
+and return the corresponding translation text from the dictionary.
+If no such translation exists, they return the original text
+.IR s .
+.SH EXAMPLE
+The following shows one possible style of use:
+.PP
+.EX
+.ta 4n 8n 12n 16n 20n
+include "translate.m";
+	translate: Translate;
+	Dict: import translate;
+
+dict: ref Dict;
+
+X(s: string): string
+{
+	if(dict == nil)
+		return s;
+	return dict.xlate(s);
+}
+
+init(ctxt: ref Draw->Context, args: list of string)
+{
+	...
+	translate = load Translate Translate->PATH;
+	if(translate != nil){
+		translate->init();
+		(dict, nil) = translate->opendict(
+					translate->mkdictname("", "vmail"));
+	}
+	...
+	optioncfg := array [] of {
+		"frame .op -relief flat -borderwidth 8",
+		"frame .op.lbs",
+		"label .op.lbs.a -text {" +
+			X("Voice Mail Active") + ":}",
+		"label .op.lbs.g -text {" +
+			X("Answer Calls With") + ":}",
+		"label .op.lbs.r -text {" +
+			X("Rings before Answering") + ":}",
+		"label .op.lbs.l -text {" +
+			X("Length of Incoming Messages") + ":}}",
+		...
+	};
+	...
+	wmlib->tkcmds(top, optioncfg);
+}
+.EE
+.PP
+The intermediate function
+.B X
+is defined to allow the program to be used (albeit with text in English) even
+when the
+.B Translate
+module cannot be loaded.
+.SH FILES
+.BI /locale/ locale /dict/ app
+.SH SOURCE
+.B /appl/lib/translate.b
+.SH SEE ALSO
+.IR translate (6)

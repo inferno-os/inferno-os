@@ -1,0 +1,102 @@
+.TH MPEG 3
+.SH NAME
+mpeg \- Boffin mpeg decoder
+.SH SYNOPSIS
+.B
+bind -b #E /dev
+.PP
+.B /dev/mpeg
+.br
+.B /dev/mpegctl
+.SH DESCRIPTION
+The
+.I mpeg
+device serves two files giving access to a Boffin MPEG-1 decoder.
+.PP
+The control file
+.B mpegctl
+when read returns lines of text giving the device's properties.
+Each line starts
+.B video
+or
+.B audio
+followed by a list of capabilities.
+The current device returns a fixed set:
+.IP
+.EX
+video mpeg1,sif
+.br
+audio musicam,I musicam,II
+.EE
+.PP
+The control file accepts the following commands:
+.TF pause
+.PD
+.TP
+.B init
+Reinitialise the device's video and audio subsystems;
+cancel the effect of
+.B stop
+or
+.B pause
+.TP
+.B stop
+Stop the display immediately.
+.TP
+.B pause
+Suspend display.
+.TP
+.B video iso11172 mpeg1,sif
+Set the output video mode and formats; only this precise setting is valid.
+.TP
+.BI audio " format rate"
+There are two choices for
+.IR format :
+.B musicam,I
+(MPEG audio layer 1),
+with
+.I rate
+from 64000 to 448000 Hz,
+and
+.B musicam,II
+(MPEG audio layer 2)
+with
+.I rate
+from 48000 to 384000.
+.TP
+.BI window " minx miny maxx maxy"
+Sets the overlay window on the screen, in screen coordinates.
+If the window size exceeds 320x240, the image is scaled accordingly,
+separately in each dimension.
+.PP
+The data file
+.B mpeg
+is an exclusive-use device.
+Once the device has been initialised and an output window
+set using the
+.B init
+and
+.B window
+commands to the control file,
+and an audio format selected by the
+.B audio
+command,
+MPEG data can be written in the agreed format to the
+.B mpeg
+file,
+for display in the output window.
+The driver buffers the data written and implements flow control between application
+and the hardware.
+When closed, the device waits for the last block of data to display
+before returning to the application.
+.SH SOURCE
+.B /os/pc/devmpeg.c
+.SH CONFIGURATION
+.B "mpeg0=port=0x1e0 irq=15 dma=6
+.SH SEE ALSO
+.IR mpeg (2),
+.I stream
+in
+.IR sys-read (2)
+.SH DIAGNOSTICS
+An error results on a write to the device once stopped.

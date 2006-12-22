@@ -1,0 +1,97 @@
+.TH FPGA 3
+.SH NAME
+fpga \- interface to on-board FPGA
+.SH SYNOPSIS
+.B "bind -a #F /dev"
+.PP
+.B /dev/fpgaclk
+.br
+.B /dev/fpgactl
+.br
+.B /dev/fpgamemb
+.br
+.B /dev/fpgamemw
+.br
+.B /dev/fpgaprog
+.br
+.B /dev/fpgastatus
+.SH DESCRIPTION
+.I Fpga
+allows configuration of an on-board FPGA (eg, the Altera Flex6000 on the Bright Star Engineering ip-Engine),
+control of its clocks and environment, and raw access to any devices presented in the FPGA address space.
+On booting, the FPGA subsystem is normally left powered down and the system's external clocks are not directed to
+the processor's output pins, to conserve power if the subsystem is unused.
+.PP
+The control file
+.B fpgactl
+accepts the following requests:
+.TF "power off"
+.TP
+.BI bclk " n"
+Set BCLK output to
+.I n
+MHz,
+where
+.I n
+must be a divisor of the system clock frequency (eg, of 48 if the system is running at 48 MHz).
+.TP
+.BI power
+Power up the FPGA subsystem (that is automatically done when
+.B fpgaprog
+is accessed).
+.TP
+.B "power off"
+Power down the FPGA subsystem.
+.TP
+.B reset
+Reset the FPGA, forcing it into configuration mode (automatically done when
+.B fpgaprog
+is accessed).
+.TP
+.BI vclk " n m v r"
+Program the clock synthesiser with the given parameters, and enable its output as VCLK.
+.TP
+.B "vclk off"
+Disable output from the clock synthesiser.
+.PD
+.PP
+The files
+.B fpgamemb
+and
+.B fpgamemw
+give 8-bit and 16-bit access respectively to the address space interpreted by the FPGA.
+The file offset is the address read or written within that space;
+offset and count must both be even for
+.BR fpgamemw .
+The interpretation of the data, including the data format and
+whether byte or word access is required, is completely determined
+by the program configured into the FPGA.
+.PP
+The write-only file
+.B fpgaprog
+configures the device.
+A single write provides an FPGA configuration in raw binary format.
+The FPGA subsystem is given power, the processor's clocks are made visible externally, and the
+device is configured with the data written.
+The write returns an error if configuration fails.
+.PP
+The read-only file
+.B fpgastatus
+contains a single line of text giving the state of the two status bits in the FPGA interface.
+The word
+.B config
+appears if
+.B CONFIG_DONE
+is set, and
+.B !config
+otherwise; the word
+.B status
+appears if
+.B nSTATUS
+is set, and
+.B !status
+otherwise.
+.SH SOURCE
+.B /os/ipengine/devfpga.c
+.SH SEE ALSO
+.IR fpgaload (8)

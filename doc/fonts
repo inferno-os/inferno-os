@@ -1,0 +1,8 @@
+# mkfile rules to get fonts in Lucida Sans.
+# if you don't have Lucida fonts, change this next line to
+# FONTS=''
+FONTS='.fp 1 R LucidaSans
+.fp 2 I LucidaSansI
+.fp 3 B LucidaSansB
+.fp 5 CW LucidaCW
+'

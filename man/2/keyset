@@ -1,0 +1,79 @@
+.TH KEYSET 2
+.SH NAME
+keyset \- find authentication keys matching a signer
+.SH SYNOPSIS
+.EX
+include "keyset.m";
+keyset := load Keyset Keyset->PATH;
+
+init:      fn(): string;
+keysforsigner: fn(signername: string, spkthumb: string,
+                  user: string, dir: string):
+                  (list of (string, string, string), string);
+pkhash:    fn(pk: string): string;
+.EE
+.SH DESCRIPTION
+.B Keyset
+looks through a set of certified public keys
+to find one or more keys that have were certified by a given signer.
+.PP
+.B Init
+must be called before any other function in the module.
+It returns nil on success or a diagnostic string on failure.
+.PP
+.B Keysforsigner
+looks for public keys that satisfy given conditions:
+.I signername
+is either the name of a signer or nil (don't care);
+.I spkthumb
+is either a thumbprint of the signer's public key (as produced by
+.BR pkhash ,
+below), or nil (don't care).
+.I User
+is the name of the user that owns the set of keys; if it is nil,
+the user's name is read from
+.BR /dev/user .
+.I Dir
+is the name of the directory holding a collection of the
+.IR user 's
+signed keys as obtained for instance using
+.IR getauthinfo (8);
+if it is nil, the directory
+.BI /usr/ user /keyring
+is used by default.
+Only signed (certified) unexpired keys are considered.
+.B Keysforsigner
+returns a tuple
+.BI ( keys , err ).
+.I Keys
+is list of tuples
+.BI ( keyfile\fB,\fP\ owner\fB,\fP\ signername )
+where
+.I keyfile
+is the full name of a file in
+.I dir
+that holds an apparently suitable key;
+.I owner
+is the name of the key's owner; and
+.I signername
+is the name of the signer in the certificate attached to the key.
+The list is nil if no keys could be found that matched the criteria.
+On an error,
+.I err
+is non-nil and gives a diagnostic.
+.PP
+.B Pkhash
+returns the hexadecimal representation of the SHA-1 hash of public key
+.IR pk ,
+which must be in the canonical textual form produced by
+.B Keyring->pktostr
+(see
+.IR keyring-certtostr (2)).
+.SH SOURCE
+.B /appl/lib/keyset.b
+.SH SEE ALSO
+.IR bind (1),
+.IR keyring-gensk (2),
+.IR keyring-sha1 (2),
+.IR security-auth (2),
+.IR logind (8)

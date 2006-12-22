@@ -1,0 +1,12 @@
+.TH LOWER 9
+.SH NAME
+lower \- Change a window's position in the stacking order
+.SH SYNOPSIS
+\f5lower \fIwindow
+.SH DESCRIPTION
+\f5Lower\fR lowers
+\fIwindow\fR so that it is below all of its siblings in the stacking
+order (it will be obscured by any siblings that overlap it and
+will not obscure any siblings).
+.SH "SEE ALSO"
+.IR raise (9)

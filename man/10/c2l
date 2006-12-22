@@ -1,0 +1,231 @@
+.TH C2L 10.1 
+.SH NAME
+c2l \- C to Limbo translator
+.SH SYNOPSIS
+.B c2l
+[
+.I option ...
+]
+.I file
+.SH DESCRIPTION
+.I C2l
+translates the named C
+.I file
+into Limbo. The translated code should be almost always syntactically correct
+but will certainly never be semantically correct as certain constructs in C
+(strings for example) are almost impossible to convert automatically into Limbo.
+Otherwise it tries to do a good job of translating the C constructs that have some
+sort of equivalence in Limbo. The C ternary
+.B ?:
+operator is replaced where possible.
+C library calls are mapped to calls to the Limbo system module, maths module or
+the provided Limbo libc modules. Some library calls, such as malloc, are instead
+mapped directly into Limbo wherever possible.
+.PP
+Once a translation has been made, running the 
+.IR limbo (1)
+compiler on the resulting output should pick out the areas where hand
+editing is required.
+.PP
+.I C2l
+normally puts all mapped C code (plus that from included files) into a
+single .b file.
+.PP
+The options to
+.I c2l
+are:
+.TP
+.B -p
+Use an ANSI preprocessor in place of the internal one.
+.TP
+.BI -D name=def
+.br
+.ns
+.TP
+.BI -D name
+Define the
+.I name
+to the preprocessor,
+as if by
+.LR #define .
+If no definition is given, the name is defined as
+.LR 1 .
+.TP
+.BI -I dir
+An
+.L #include
+file whose name does not begin with 
+slash
+or is enclosed in double quotes
+is always
+sought first in the directory 
+of the
+.I file
+argument.  If this fails, or the name is enclosed in
+.BR <> ,
+it is then sought
+in directories named in 
+.B -I
+options,
+then in
+.BR /sys/include ,
+and finally in
+.BR /$objtype/include .
+.TP
+.B -m
+Put the mapped code of any included
+.B .h
+files into its corresponding
+.B .m
+file instead of
+the
+.B .b
+file.
+.TP
+.B -i
+Send the mapped code of any included
+.B .h
+files to
+.BR /dev/null .
+.TP
+.B -l
+Send the mapped code of any non-local included
+.B .h
+files to
+.BR /dev/null . 
+.TP
+.B -c
+Just generate code corresponding to the C code ie don't include any prologue
+or epilogue code such as an implement header, include declarations, module
+declarations or an init function.
+.TP 
+.B -v
+Outputs any warnings to standard error as well as putting them in the output source.
+.TP
+.B -s
+Map C strings to NUL-terminated arrays of bytes in Limbo. This just about preserves
+the semantics of strings and makes the process of hand editing much easier. It is
+useful as a first attempt at translation. In this case the module
+.B /module/libc0.m
+is used in place of the standard one
+.B /module/libc.m.
+.TP
+.B -S
+Map
+.B "char*"
+in C to string in Limbo. Incompatible with the
+.B -s
+option.
+.TP
+.B -M
+Indicates this file is the one containing the C main program. Used with the
+.B -q
+option below when 
+.I c2l
+does not always know this until it's too late.
+.TP
+.B -q
+This reduces the number of passes that
+.I c2l
+makes over the C code. It makes it faster but more liable to miss some
+transformations. Cyclic data structures might not be detected.
+.TP
+.B -a
+For functions which are passed the address of a scalar typed (ie not a structure
+or union) expression as a parameter, pass the expression itself and
+rewrite the function and all calls of it to return the expression. For example :-
+.PP
+.EX
+		int
+		f(int x, int *y)
+		{
+			*y = x*x*x;
+			return x*(*y);
+		}
+
+		void
+		g()
+		{
+			int p3, p4;
+
+			p4 = f(1729, &p3);
+		}
+.EE
+.PP
+		becomes
+.PP
+.EX
+		f(x: int, y: int): (int, int)
+		{
+			y = x*x*x;
+			return (x*y, y);
+		}
+
+		g()
+		{
+			p3, p4: int;
+
+			(p4, p3) = f(1729, p3);
+		}
+.EE
+.PP
+.I C2l
+runs the preprocessor on the C code before starting translation. As
+a special case it will convert definitions of constants into Limbo constant declarations.
+It makes no attempt to convert any definitions into function declarations.
+.PP
+Identifier names that clash with Limbo keywords have letter
+.B x
+appended so, for example,
+a structure member called
+.B type
+would become
+.BR typex .
+.PP
+Warning messages preceded by the acronym TBA (to be addressed) are issued for
+NUL bytes in strings, ... as an argument, array indices in declarations, use of void type, use of unions, bit fields, use of address operator, negative array
+indices, element specifiers, initial values in Limbo modules, labels, gotos and case
+statement fall through.
+.PP
+The C types
+.B char
+and
+.B "unsigned char"
+are mapped to the Limbo
+.B byte
+type.
+The C types short, unsigned short, int, unsigned int, long and unsigned long
+are mapped to the Limbo int type. The C types long long and unsigned long long
+are mapped to the Limbo big type. Finally the C types float and double are mapped
+to the Limbo real type.
+.PP
+Anonymous C structures and unions map to a name of the form <module>_adt_<num> where module is the name of the module which is, in turn, derived from the file name. Anonymous member names in strucures and unions have a
+name of the form anon_<num>. Finally,temporary variables generated by
+.I c2l
+have a name of the form tmp_<num>. In all cases <num> is a unique identifier.
+.SH SOURCE
+.TF /utils/c2l
+.TP
+.B /module/libc.m
+.TP
+.B /module/libc0.m
+.TP
+.B /appl/lib/libc.b
+.TP
+.B /appl/lib/libc0.b
+.TP
+.SH "SEE ALSO"
+.IR 2c (10.1),
+.IR limbo (1)
+.SH BUGS
+.I C2l
+is not a pretty printer. It has its own idea of how Limbo should be laid out.
+.PP
+.I C2l
+may well crash if given invalid C code.
+.PP
+.I c2l -a
+does not always do all possible conversions.
+
+
+

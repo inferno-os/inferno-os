@@ -1,0 +1,63 @@
+//
+//	experimental acid functions for Inferno (common to native and emu)
+//
+//	problems arise because of unnamed substructures having to be
+//	named in emu, for instance Ref.  We cheat by ``knowing'' that Ref
+//	is first in the structure, to keep this code portable between native
+//	and emu.
+//
+
+//
+// ps() - Process Listing
+//
+complex Ref	pidalloc;
+
+defn
+ps()
+{
+	local i;
+	local n;
+	local done;
+	local p;
+	local curpid;
+
+	i = 0;
+	done = 0;
+	n = pidalloc.ref;
+	curpid = pid;
+	p = procalloc.arena;
+
+	if n > conf.nproc then
+		n = conf.nproc;
+
+	print("PID	PC          PRI     STATE   NAME\n");
+	while n > 0 && i < conf.nproc do {
+		complex Proc p;
+		if p.state != 0 then {
+			print(p.pid, "\t", p.pc\X, "\t", p.pri, "\t", status(p.pid), "\t");
+			mem(p.text, "s");
+			n = n - 1;
+		}
+		i = i + 1;
+		p = p + sizeofProc;
+	}
+}
+
+defn labels()
+{
+	local n;
+	local l;
+	complex Proc proc;
+
+	n = proc.nerrlab;
+	l = proc.errlab;
+	while n > 0 do {
+		complex Label l;
+		print(l.pc\a, " ");
+		pfl(l.pc);
+		l = l + sizeofLabel;
+		n = n - 1;
+	}
+}
+
+print("$ROOT/lib/acid/inferno");

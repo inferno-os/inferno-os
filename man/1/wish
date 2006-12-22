@@ -1,0 +1,86 @@
+.TH WISH 1
+.SH NAME
+wish \- interface to the Tk graphics toolkit
+.SH SYNOPSIS
+.B wish
+[
+.I file ...
+]
+.PP
+.B wm/wish
+[
+.B -k
+]
+[
+.BI -f " file"
+]
+.SH DESCRIPTION
+.I Wish
+provides a Tcl
+command line interface to the Limbo/Tk graphics toolkit.
+The input should be in the format of Tcl or Tk commands
+(see
+.IR intro (9)).
+There are two variants.
+.PP
+Plain
+.B wish
+must be run from the Inferno console instead of
+.IR mux (1)
+or
+.IR wm (1).
+It takes input from each
+.I file
+in turn, then prompts for further commands from the standard input.
+Its commands operate on a Tk toplevel covering the whole screen.
+.PP
+.BR Wm/wish
+runs instead in a shell window under
+.IR wm (1).
+It reads initial input from the optional
+.IR file ,
+then prompts for further commands on its standard input unless
+the
+.B -k
+option is given.
+Its commands operate on the Tk toplevel of a new window
+created by
+.B Wmlib->titlebar
+(see
+.IR wmlib (2)),
+initially titled
+.BR WishPad .
+.PP
+The following special input sequences are recognised:
+.TP
+.B \en
+newline
+.TP
+.B \et
+tab
+.TP
+.B \eb
+backspace
+.TP
+.B \e\e
+backslash
+.SH FILES
+.B /dev/pointer
+.br
+.B /dev/keyboard
+.SH SOURCE
+.B /appl/cmd/wish.b
+.br
+.B /appl/wm/wish.b
+.SH "SEE ALSO"
+.IR sh-tk (1),
+.IR tkcmd (1),
+.IR tk (2),
+.IR intro (9)
+.SH BUGS
+Arguably this has been superseded by
+.IR sh-tk (1)
+for scripting Tk applications,
+and
+.IR tkcmd (1)
+for development and testing of Tk configurations for use by Limbo programs.

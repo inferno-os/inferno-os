@@ -1,0 +1,203 @@
+p {
+    text-align: justify
+   }
+
+p.title {
+    margin-bottom: 1em
+    }
+
+p.entry {
+    margin-top: .33em;
+    text-indent: 0em;
+    margin-bottom: 0em
+    }
+
+p.firstpara {
+    text-indent: 0pt;
+    }
+
+p.indentpara {
+    text-indent: 1em;
+    }
+
+p.poem {
+    font-size: smaller;
+    text-align: left;
+    text-indent: 0em
+    }
+
+p.po {
+    font-size: smaller;
+    text-align: left;
+    margin-bottom: 0;
+    margin-top: 0em;
+    text-indent: 0em
+    }
+
+p.poind1 {
+    font-size: smaller;
+    text-align: left;
+    margin-bottom: 0;
+    margin-top: 0em;
+    text-indent: 1em
+    }
+p.poind2 {
+    font-size: smaller;
+    text-align: left;
+    margin-bottom: 0;
+    margin-top: 0em;
+    text-indent: 2em
+    }
+p.poind3 {
+    font-size: smaller;
+    text-align: left;
+    margin-bottom: 0;
+    margin-top: 0em;
+    text-indent: 3em
+    }
+
+div.poem {
+text-align: center
+}
+
+span.stanza {
+    page-break-inside: avoid;
+    margin-bottom: 1em
+}
+div.stanza {
+    page-break-inside: avoid;
+    margin-bottom: 1em
+}
+
+blockquote.poem {
+    page-break-inside: avoid
+}
+
+table.poem {
+    float: center;
+    text-align: center
+}
+
+td.poem {
+    margin-bottom: 1em
+}
+
+p.citepoet {
+    font-style: italic;
+    font-size: smaller;
+    text-align: right;
+    margin-top: 0;
+    }
+
+p.citeauth {
+    font-style: italic;
+    font-size: smaller;
+    text-align: right;
+    margin-top: 0;
+    }
+
+p.quote {
+    text-indent: 1em;
+    margin-top: 0em;
+    margin-bottom: .5em;
+    font-size: smaller
+    }
+
+cite {
+    text-indent: 12pt;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    font-size: smaller
+    }
+
+.title {
+    text-align: center
+    }
+
+span.def {
+    font-weight: bold
+    }
+
+span.pos {
+    font-style: italic;
+    } /* part of speech formatting */
+
+/*SPAN.smallcap {
+    text-transform: small-caps;
+    }
+*/
+
+span.rj {
+    text-align: right
+    }
+
+span.ind1 {
+    margin-left: 30px
+    }
+span.ind2 {
+    margin-left: 2em
+    }
+span.ind3 {
+    margin-left: 3em
+    }
+span.ind4 {
+    margin-left: 4em
+    }
+span.ind5 {
+    margin-left: 5em
+    }
+span.ind6 {
+    margin-left: 6em
+    }
+
+a:link {
+    color: rgb(204,0,0);
+    text-decoration: none
+}
+
+a:visited {color: rgb(51,0,153)}
+
+a:active {color: rgb(255,204,51)}
+
+body {
+    color: rgb(0,0,0);
+    background-color: rgb(255,255,255);
+    font-family: 'Times New Roman', Times, Serif}
+
+h1 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 24pt;
+    text-align: center
+    }
+
+/*H1.title {
+    text-transform: capitalize
+    }
+*/
+
+h2 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 18pt}
+
+h3 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 14pt}
+
+h4 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 12pt}
+
+h5 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 10pt}
+
+h6 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 8pt
+    }

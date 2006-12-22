@@ -1,0 +1,74 @@
+.TH MPEG 2
+.SH NAME
+mpeg \- interface to the mpeg device driver
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "mpeg.m";
+mpeg:= load Mpeg Mpeg->PATH;
+
+play:     fn(d:       ref Display,
+               w:       ref Image,
+               dopaint: int,
+               r:       Rect,
+               file:    string,
+               notify:  chan of string): string;
+ctl:      fn(msg: string): int;
+keycolor: fn(d: ref Display): ref Image;
+.EE
+.SH DESCRIPTION
+.B Mpeg
+provides a primitive interface to the
+.IR mpeg (3)
+device.
+.PP
+.B Play
+plays the specified MPEG
+.I file
+in rectangle
+.I r
+within window
+.I w
+on display
+.IR d .
+The
+.I dopaint
+flag specifies whether, before playing the movie, to paint the rectangle with the chroma key colour of the device.
+.PP
+.I Notify
+is a channel upon which to receive errors and status. If
+.I notify
+is
+.BR nil ,
+.B play
+runs synchronously, returning the empty string ("") when the movie completes, or a description of any error.
+If
+.I notify
+is not
+.BR nil ,
+.B play
+spawns an asynchronous process to play the movie and returns the empty string immediately; the process returns the status on the
+.I notify
+channel when the movie completes.
+.PP
+.B Ctl
+writes
+.IR msg ,
+the string given as an argument, to the MPEG control interface
+.BR /dev/mpegctl .
+.PP
+.B Keycolor
+uses the
+.B Display
+.I d
+to create a single-pixel, replicated off screen
+.B Image
+of colour
+.B Chroma
+.RB ( 16r05 ).
+.SH FILES
+.B /dev/mpeg
+.br
+.B /dev/mpegctl
+.SH SOURCE
+.B /appl/lib/mpeg.b

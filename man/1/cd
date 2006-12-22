@@ -1,0 +1,32 @@
+.TH CD 1
+.SH NAME
+cd \- change working directory
+.SH SYNOPSIS
+.B cd
+[
+.I directory
+]
+.SH DESCRIPTION
+.I Cd
+changes the working directory for the shell and all processes in its
+name space group (see
+.IR sys-pctl (2))
+to
+.IR directory .
+If no argument is given,
+.I cd
+attempts to change to
+.BI /usr/ user
+where
+.I user
+is the name read from
+.BR /dev/user .
+.SH FILES
+.B /dev/user
+.SH SOURCE
+.B /appl/cmd/cd.b
+.SH "SEE ALSO"
+.IR pwd (1),
+.IR sys-chdir (2),
+.IR sys-pctl (2),
+.IR cons (3)

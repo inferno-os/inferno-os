@@ -1,0 +1,389 @@
+.TH DRAW-DISPLAY 2
+.SH NAME
+Display \-
+connection to draw device
+.SH SYNOPSIS
+.EX
+include	"draw.m";
+draw := load Draw Draw->PATH;
+
+Display: adt
+{
+    image:       ref Image;
+    white:       ref Image;
+    black:       ref Image;
+    opaque:      ref Image;
+    transparent: ref Image;
+
+    allocate:    fn(dev: string): ref Display;
+    startrefresh:fn(d: self ref Display);
+    publicscreen:fn(d: self ref Display, id: int):
+                 ref Screen;
+    newimage:    fn(d: self ref Display,
+                 r: Rect, chans: Chans,
+                 repl, rgba: int):
+                 ref Image;
+    color:       fn(d: self ref Display, rgba: int):
+                 ref Image;
+    colormix:    fn(d: self ref Display, one: int, three: int):
+                 ref Image;
+    rgb:         fn(d: self ref Display, red, green, blue: int):
+                 ref Image;
+    namedimage:  fn(d: self ref Display, name: string):
+                 ref Image;
+    open:        fn(d: self ref Display, name: string):
+                 ref Image;
+    readimage:   fn(d: self ref Display, fd: ref Sys->FD):
+                 ref Image;
+    writeimage:  fn(d: self ref Display, fd: ref Sys->FD,
+                 i: ref Image): int;
+    rgb2cmap:    fn(d: self ref Display, red, green, blue: int):
+                 int;
+    cmap2rgb:    fn(d: self ref Display, c: int):
+                 (int, int, int);
+    cmap2rgba:   fn(d: self ref Display, c: int):
+                 int;
+};
+
+Chans: adt
+{
+   mk:    fn(s: string): Chans;
+   text:  fn(c: self Chans): string;
+   eq:    fn(c: self Chans, d: Chans): int;
+   depth: fn(c: self Chans): int;
+};
+.EE
+.SH DESCRIPTION
+The
+.B Display
+type represents a connection to a
+.IR draw (3)
+device.
+This device is the external representation of a physical
+display, such as a CRT, and its associated memory.
+It contains the storage for all images,
+even invisible ones, so all
+.B Image
+objects must be allocated
+through
+.B Display
+member functions.
+Graphics operations that use multiple
+.B Image
+objects may not mix images from different
+.BR Displays .
+.PP
+The pixel channel structure of an
+.B Image
+is determined when the image is allocated (including the image allocated by the system
+to represent a physical display).
+This structure is described externally by a channel format string,
+described in
+.IR colour (6),
+and internally by a value of the
+.B Chans
+adt,
+which is used when allocating new images in the calls below.
+.B Draw
+defines a set of constants of type
+.B Chans
+for common channel types:
+.BR GREY1 ,
+.BR GREY2
+and
+.BR GREY8
+for greyscale (depths 1, 2 and 8);
+.BR CMAP8
+for 8-bit
+.IR rgbv (8)
+colour-mapped images;
+.BR RGB16
+for 16-bit
+.B r5g6b5
+colour images;
+.BR RGB24
+for 24-bit colour;
+and
+.BR RGBA32
+for 24-bit colour with alpha channel.
+.B Chans
+has the following operations:
+.TP 10
+.BI Chans.mk( s )
+Return the
+.B Chans
+value corresponding to the channel format string
+.I s
+(see
+.IR image (6)
+for the syntax of
+.IR s ).
+.TP 10
+.IB c .depth()
+Return the depth in bits of
+.IR c .
+The result is 0 if
+.I c
+is invalid; in particular,
+.BI Chans.mk( s ).depth()
+is zero if
+.I s
+is invalid.
+.TP
+.IB c .text()
+Return the format string corresponding to
+.IR c .
+.TP
+.IB c .eq( d )
+Return true if
+.I d
+has the same channel structure as
+.IR c ;
+return false otherwise.
+.PP
+Colours in the calls below are specified as 32-bit integers (`32-bit RGBA format') containing
+red, green, blue and alpha components as 8-bit values, in order
+from most to least significant byte.
+The 8-bit colour component values express illumination, ranging from 0 (no colour)
+to 255 (saturated).
+For the alpha component, 0 is fully transparent, and 255 is fully opaque.
+.PP
+.B Display
+itself has the following components:
+.PP
+.TP 10
+.B image
+The visible contents of the display;
+draw on
+.B image
+to change the display.
+.TP
+.BR white ", " black
+Replicated images of a single pixel,
+either all ones (white) or all zeroes (black).
+.TP
+.BR opaque ", " transparent
+Replicated images of a single pixel,
+either all ones (fully opaque) or all zeroes (fully transparent).
+Used as mattes for
+basic graphical operations.
+.TP
+.BI allocate( dev )
+Attach to a new display, represented by the
+.IR draw (3)
+device mounted in the specified
+.I dev
+directory.
+If
+.I dev
+is the empty string,
+.B /dev
+is used.
+The return value is
+.B nil
+if the allocation fails.
+.TP
+.IB d .startrefresh()
+After allocating a
+.B Display
+object, the application should spawn a process to call
+.BR startrefresh ;
+this thread will receive and process window refresh events
+from the device.
+.TP
+.IB d .publicscreen( id )
+Create a locally addressable pointer to a public
+.BR Screen ;
+see \f2display-screen\fP(2).
+.TP
+.IB d .newimage( r\fP,\fP\ chans\fP,\fP\ repl\fP,\fP\ rgba )
+Allocate an off-screen
+.BR Image .
+The arguments supply values for the
+.BR Image 's
+.BR r ,
+.BR chans ,
+and
+.BR repl ,
+and an initial pixel value
+.I rgba
+in 32-bit RGBA format,
+used to paint the image
+when created.
+It can be
+.B Draw\->Transparent
+to create a fully transparent image to draw on to form an
+arbitrarily-shaped image or matte.
+If it is
+.BR Draw\->Nofill ,
+the image is not initialised.
+The image's
+.B clipr
+is initialized to
+.BR r .
+.TP
+.IB d .color( rgba )
+Creates a single-pixel,
+replicated off-screen image of the specified colour,
+expressed in 32-bit RGBA format.
+The
+.B Draw
+module defines constants for several dozen colours:
+.RS
+.IP
+.EX
+Opaque:         con int 16rFFFFFFFF;
+Transparent:    con int 16r00000000;
+Black:          con int 16r000000FF;
+White:          con int 16rFFFFFFFF;
+Red:            con int 16rFF0000FF;
+Green:          con int 16r00FF00FF;
+Blue:           con int 16r0000FFFF;
+Cyan:           con int 16r00FFFFFF;
+Magenta:        con int 16rFF00FFFF;
+Yellow:         con int 16rFFFF00FF;
+Grey:           con int 16rEEEEEEFF;
+Paleyellow:     con int 16rFFFFAAFF;
+Darkyellow:     con int 16rEEEE9EFF;
+Darkgreen:      con int 16r448844FF;
+Palegreen:      con int 16rAAFFAAFF;
+Medgreen:       con int 16r88CC88FF;
+Darkblue:       con int 16r000055FF;
+Palebluegreen:  con int 16rAAFFFFFF;
+Paleblue:       con int 16r0000BBFF;
+Bluegreen:      con int 16r008888FF;
+Greygreen:      con int 16r55AAAAFF;
+Palegreygreen:  con int 16r9EEEEEFF;
+Yellowgreen:    con int 16r99994CFF;
+Medblue:        con int 16r000099FF;
+Greyblue:       con int 16r005DBBFF;
+Palegreyblue:   con int 16r4993DDFF;
+Purpleblue:     con int 16r8888CCFF;
+Notacolor:      con int 16rFFFFFF00;
+Nofill:         con Notacolor;
+.EE
+.PP
+The special values
+.BR Draw\->Opaque
+(fully opaque)
+and
+.BR Draw\->Transparent
+(fully transparent)
+are useful as the pixel values for
+.B Display.newimage
+when forming a matte.
+The special value
+.B Draw\->Nofill
+tells
+.B Display.newimage
+not to paint a new image with any colour, leaving it uninitialised.
+.RE
+.TP
+.IB d .colormix( one\fP,\fP\ three )
+Allocate background colours.
+On true color displays, it returns a 1×1 replicated image whose pixel is the result of mixing the two
+colours in a one to three ratio;
+both colours are expressed in 32-bit RGBA format.
+On 8-bit color-mapped displays, it returns a 2×2 replicated image
+with one pixel coloured
+.I one
+and the other three
+with
+.I three
+(after translation through the colour map).
+This simulates a wider range of tones than can
+be represented by a single pixel value on a colour-mapped display.
+.TP
+.IB d .rgb( red\fP,\fP\ green\fP,\fP\ blue )
+Uses the values of red, green, and blue to create
+a single-pixel replicated image of that colour.
+The values are intensities that range from 0 (no colour) to 255 (saturated).
+The alpha component is always 255 (fully opaque).
+.TP
+.IB d .namedimage ( name )
+Returns a reference to the image published as
+.I name
+on display
+.I d
+by
+.B Image.nameimage
+(see
+.IR draw-image (2)).
+This allows unrelated processes to share the image (eg, a window manager and client).
+.TP
+.IB d .open( name )
+Read an image
+description from the named
+file and return an
+.B Image
+holding the picture.
+See
+.IR image (6)
+for more information about image files.
+.TP
+.IB d .readimage( fd )
+Analogous to
+.BR open ,
+but from an open file descriptor rather than a named file.
+.TP
+.IB d .writeimage( fd\fP,\fP\ i )
+Complement of
+.BR readimage :
+write an image file representing
+.B i
+to the open file descriptor.
+.TP
+.IB d .rgb2cmap( red\fP,\fP\ green\fP,\fP\ blue )
+Return the
+.I rgbv
+colour map index (see
+.IR colour (6))
+of the colour that best matches
+the given colour triple.  The values of the components range from
+0 (no colour) to 255 (saturated).
+.TP
+.IB d .cmap2rgb( c )
+Return the colour triple (red, blue, green) corresponding to colour
+map index
+.IR c .
+.TP
+.IB d .cmap2rgba( c )
+Return the 32-bit RGBA representation of the colour corresponding to colour
+map index
+.IR c .
+The alpha component is always 255 (fully opaque).
+.ig
+.TP
+.IB d .cursor(\fIi\fP,\ \fIp\fP)
+Set the current cursor.
+If
+.I i
+is the image of the current display,
+then the graphics cursor will be set
+to its default value, otherwise
+.I i
+must be an image with ldepth 0
+and the following rules apply: the size of the
+cursor will be half the horizontal height of
+.I i
+(subject to system-dependent restrictions on cursor
+size). The top half and the bottom half of the image
+are treated as two independent masks. When the
+cursor is drawn, pixels congruent with non-zero bits
+in the top half are cleared
+and then pixels congruent with non-zero bits in the
+bottom half are set.
+.I P
+gives the offset added to the mouse position when drawing
+the cursor image.
+.TP
+.IB d .cursorset(\fIp\fP)
+Set the position of the mouse cursor to
+.IR p .
+.SH BUGS
+The interface to
+.B cursor
+does not allow the use of colour mouse cursors,
+even on systems that allow them. The interface is likely
+to change in this respect.
+..

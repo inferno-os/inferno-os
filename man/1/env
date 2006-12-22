@@ -1,0 +1,27 @@
+.TH ENV 1
+.SH NAME
+env \- display environment variables
+.SH SYNOPSIS
+.B env
+.SH DESCRIPTION
+.I Env
+prints on standard output the current process's environment
+(see
+.IR sh (1)
+and
+.IR env (3))
+listing each variable and its current value.
+.PP
+Individual variable values can be set by assignment in
+.IR sh (1).
+.SH SOURCE
+.B /appl/cmd/env.b
+.SH SEE ALSO
+.IR acme (1),
+.IR sh (1),
+.IR env (2)
+.SH BUGS
+.I Env
+does not understand that environment variables as stored by
+.IR sh (1)
+are lists.

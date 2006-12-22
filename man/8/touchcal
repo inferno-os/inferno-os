@@ -1,0 +1,39 @@
+.TH TOUCHCAL 8
+.SH NAME
+touchcal \- touch screen calibration
+.SH SYNOPSIS
+.B touchcal
+.SH DESCRIPTION
+.I Touchcal
+draws a cross-hair in each corner of the screen in turn (clockwise from the lower left hand corner),
+and waits each time for the user to touch the centre of the cross-hair with the stylus.
+It then prompts with a final cross-hair in the centre of the screen, and waits once
+more for the user to touch its centre with the stylus.
+The process is repeated until
+.I touchcal
+can calculate a transformation matrix that consistently maps the touch panel to screen
+coordinates.
+It then writes corresponding calibration commands for
+.IR touch (3)
+on its standard output, which
+can be saved in a file on the device, perhaps
+provided in NVRAM by
+.IR tinyfs (3)
+or a file system in
+.IR ftl (3).
+.PP
+.I Touchcal
+can be used both inside and outside the
+.IR wm (1)
+environment,
+allowing calibration when the system is initialised, and whilst
+the window system is running.
+.SH FILES
+.TF "/dev/touchctl    "
+.TP
+.B /dev/touchctl
+reset or read existing settings
+.SH SOURCE
+.B /appl/cmd/touchcal.b
+.SH SEE ALSO
+.IR touch (3)

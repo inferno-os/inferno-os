@@ -1,0 +1,13 @@
+<../../mkconfig
+
+TARG=infdb
+
+OFILES=	infdb.$O
+
+LIBS= 	9\
+
+BIN=$ROOT/$OBJDIR/bin
+
+SYSLIBS= -liodbc
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE

@@ -1,0 +1,143 @@
+.TH USB 3 MPC823
+.SH NAME
+usb \- USB device interface
+.SH SYNOPSYS
+.nf
+.B bind -a '#U' /dev
+
+.B /dev/usbctl
+.B /dev/usbdata
+.B /dev/usbstat
+.B /dev/usbaddr
+.B /dev/usbframe
+.B /dev/usbsetup
+.fi
+.SH DESCRIPTION
+.PP
+The USB device serves a one-level directory,
+giving access to six files.
+They provide an interface to the device (slave) mode of the 823/850 USB controller,
+allowing an Inferno system to provide services to the USB host.
+The controller's endpoints are configured as follows.
+Endpoint 0 is the default USB control endpoint, as required by the USB standard.
+Endpoint 1 responds to bulk output requests from the host;
+endpoint 2 responds to bulk input requests from the host;
+endpoint 3 is unused.
+.PP
+The data file
+.B usbdata
+provides read and write access to endpoints 1 and 2.
+When the file is read, it returns data written to endpoint 1 by the USB host.
+Data written to the file is provided in response to the host's read requests
+on endpoint 2.
+Output data is converted to packets limited to the maximum packet
+length for the endpoint (see the
+.B maxpkt
+control request, below), which is 1023 bytes by default.
+Note that zero length records can be transmitted and
+received on USB.
+.PP
+The file
+.B usbsetup
+provides read and write access to endpoint 0.
+When the file is read, it returns
+SETUP
+requests from the host.
+If a given request requires a reply, the reply must be written to the file
+(host requests will automatically be NAKd until then).
+Requests and replies are in binary form as defined in the USB specification,
+except for the reset message described below.
+The driver itself interprets all
+SET_ADDRESS
+requests from the host, and sets the controller's address accordingly.
+That request will therefore not be visible on the
+.B usbsetup
+file.
+.PP
+A USB bus or device reset sets the controller's USB address  to zero,
+the USB `default address' for configuration.
+It also resets all data toggles to DATA0.
+A subsequent read of
+.B usbsetup
+will return the following special 8-byte reset message:
+.IP
+.EX
+byte 16rFF, byte 16rFF, byte 'r', byte 'e',
+.br
+byte 's', byte 'e', byte 't', byte '\en'
+.EE
+.PP
+which does not resemble a normal SETUP message.
+Further reads and writes on
+.B usbdata
+will return errors until that file has been closed and reopened.
+.PP
+The control file
+.B usbctl
+receives textual commands to set device parameters and responses:
+.TP
+.BI maxpkt "n nb"
+Set the maximum packet size for endpoint
+.I n
+to
+.I nb
+bytes.
+.I Nb
+must be between 8 and 64 bytes for the control endpoint 0,
+and between 1 and 1023 bytes for the other endpoints.
+The default is 8 bytes for endpoint 0 and 1023 bytes for the others.
+.TP
+.BI rdtog "n t"
+Set the data toggle for input in endpoint
+.I n
+to
+.IR t ,
+which must be either 0 (DATA0) or 1 (DATA1).
+.TP
+.BI stall "n"
+Cause endpoint
+.I n
+to respond to host IN and OUT tokens by stalling.
+.TP
+.BI unstall "n"
+Cancel the effect of a previous
+.B stall
+request on endpoint
+.IR n .
+.TP
+.BI wrtog "n t"
+Set the data toggle for the next packet output by endpoint
+.I n
+to
+.IR t ,
+which must be either 0 (DATA0) or 1 (DATA1).
+.PP
+Stalling an endpoint causes IN and OUT
+transactions from the host to return a `stalled' error status.
+On the control endpoint (endpoint 0), however,
+SETUP transactions will still arrive on
+.BR usbsetup ,
+and the arrival of a SETUP will automatically clear the `stalled' status
+for the endpoint,
+allowing an application to reject a
+control request (by stalling the subsequent status transaction)
+without stalling the control endpoint by rejecting subsequent
+SETUP transactions.
+.PP
+The status file
+.B usbstat
+is a read-only file,
+containing one line of statistics for each endpoint, giving:
+endpoint number; data toggles; maximum packet size;
+count of input and output bytes and packets; and counts
+of various error conditions.
+.PP
+The read-only file
+.B usbaddr
+contains a single number giving the current device address.
+.PP
+The read-only file
+.B usbframe
+contains a single line giving the current USB frame number.
+.SH SOURCE
+.B /os/mpc/devusb.c

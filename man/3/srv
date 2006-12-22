@@ -1,0 +1,88 @@
+.TH SRV 3
+.SH NAME
+srv \- server registry
+.SH SYNOPSIS
+.BI "bind #s"
+[
+.I spec
+]
+.B /chan
+.PP
+.EX
+sys->bind("#s\fIspec\fP", "/chan", Sys->MREPL);
+.EE
+.SH DESCRIPTION
+.I Srv
+converts between file system operations by applications
+and messages on channels, as described in
+.IR sys-file2chan (2).
+Each attach that does not include a
+.I spec
+produces a new instance: an empty directory owned
+by the current user in which only files
+may be created, and then only by
+.IR sys-file2chan ,
+using a special internal interface.
+Each such file initially has the same owner as the
+directory, and permissions
+.B 8r600
+(read-write for the owner only),
+but the permissions can be changed by
+.BR Sys->wstat
+(see
+.IR sys-stat (2))
+and thus
+.IR chmod (1).
+If mode
+.B Sys->DMEXCL
+is thereby set, the file becomes exclusive-use and can be opened by
+only one process at a time.
+The file length and
+mode bit
+.B Sys->DMAPPEND
+may also be set by
+.B wstat
+but are not interpreted by the system.
+.PP
+Files may be removed, directly using
+.IR sys-remove (2)
+(and thus
+.IR rm (1)),
+or indirectly by opening them with mode
+.B Sys->ORCLOSE
+(see
+.IR sys-open (2)).
+.I File2chan
+also removes the corresponding file when the last references
+to the server's read and write channels have gone
+(eg, on server exit).
+.PP
+A
+.I spec
+may be given to name specific instances of
+.IR srv ,
+so that a new name space can bind in a service created in another.
+Only the owner (original creator) of the instance may attach to it,
+unless the mode of the service directory is changed
+using
+.B Sys->wstat
+(see
+.IR sys-stat (2))
+to have general access.
+.SH FILES
+.TF /chan
+.TP
+.B /chan
+directory to which
+.I srv
+is conventionally bound by various applications
+.SH SOURCE
+.B /emu/port/devsrv.c
+.br
+.B /os/port/devsrv.c
+.SH SEE ALSO
+.IR plumb (1),
+.IR wm (1),
+.IR sys-file2chan (2)
+.SH BUGS
+A client with a read or write pending can remain blocked if the server exits before reply.

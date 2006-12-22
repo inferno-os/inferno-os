@@ -1,0 +1,129 @@
+.TH SPREE-ALLOW 2
+.SH NAME
+Allow \- filter client actions
+.SH SYNOPSIS
+.EX
+include "spree.m";
+include "spree/allow.m";
+Clique, Member, Object: import Spree;
+allow := load Allow Allow->PATH;
+
+init:		fn(m: Spree, c: ref Clique);
+add:		fn(tag: int, member: ref Member, pattern: string);
+del:		fn(tag: int, member: ref Member);
+action:	fn(member: ref Member, cmd: string): (string, int, list of string);
+archive:	fn(archiveobj: ref Object);
+unarchive: fn(archiveobj: ref Object);
+.EE
+.SH DESCRIPTION
+A
+.IR spree (2)
+client can send arbitrary actions to a running
+engine.  The
+.B Allow
+module enables an engine to filter clients'
+actions, permitting only actions matching
+certain provided patterns to get through.
+.PP
+An action is conventionally formatted as
+a sequence of space-separated words.
+A
+.I pattern
+is a string consisting of a sequence of such words.
+For a pattern to match a client's action, each word in the pattern
+must match each word in the action.
+Most pattern words are not special: they must match
+literally. The exceptions are:
+.TP
+.B *
+An asterisk matches any single word.
+.TP
+.B "&"
+An ampersand matches any set of words.
+Any words in the pattern after this are ignored.
+.TP
+.B %d
+Matches a decimal integer.
+.TP
+.B %p
+Matches a valid player id (decimal integer).
+.TP
+.B %o
+Matches any valid object id (decimal integer).
+The corresponding word in the list returned by
+.B action
+will be changed to the local object id from
+the member's external representation.
+.PP
+.B Init
+must be called first with the spree module,
+.IR m ,
+and the current clique,
+.IR c ,
+to initialise the module.
+.PP
+.B Add
+adds the new
+.I pattern
+to the list of allowed actions;
+.I tag
+is an integer tag that the caller can later use to identify the
+action, and
+I member
+is the clique member that is allowed to perform the action
+(if nil, then any member will be allowed to perform the action).
+.B Del
+deletes patterns tagged with
+.I tag
+from the list of allowed actions.
+If
+.I member
+is non-nil, then only patterns specific to
+that member will be deleted.
+.PP
+.B Action
+matches
+.IR
+.IR cmd ,
+an action performed by
+.IR member ,
+against the list of all the allowed patterns.
+It returns a tuple, say
+.RI ( err\fR,\ \fItag\fR,\  \fItoks\fR).
+If
+.I cmd
+does not match any pattern, then
+.I err
+will be non-nil and holds a string describing the
+nature of the failure.
+If a match is made, then
+.I tag
+holds the matched pattern's tag, as passed to
+.BR add ,
+and
+.I toks
+holds the list of words in the action, with
+object ids matched by
+.B %o
+changed to their local representation using
+.IB member .obj\fR.
+.PP
+.B Archive
+stores all the
+.I allow
+module's internal state as attributes on
+.I archiveobj
+(for card game engines, this is usually the
+object returned from
+.B cardlib->archive
+(see
+.IR cardlib (2))).
+.B Unarchive
+reverses this, restoring the module's internal state from
+.IR archiveobj .
+.SH SOURCE
+/appl/spree/lib/allow.b
+.SH "SEE ALSO"
+.IR spree (2) ,
+.IR spree-cardlib (2) ,
+.IR spree-objstore (2)

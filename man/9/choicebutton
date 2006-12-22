@@ -1,0 +1,148 @@
+.TH CHOICEBUTTON 9
+.SH NAME
+choicebutton \- create and manipulate choicebutton widgets
+.SH SYNOPSIS
+\f5choicebutton\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -borderwidth      -relief
+-activeforeground -font             -text
+-anchor           -foreground
+-background       -image
+-bitmap           -justify
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -command \fIcommand\fP
+Specifies a Tk command to associate with the button.  This command
+is typically invoked when mouse button 1 is released over the button
+window.  The button's global variable (\f5-variable\fR option) will
+be updated before the command is invoked.
+.TP
+.B -height \fIdist\fP
+Specifies a desired height for the button.
+If this option isn't specified, the button's desired height is computed
+from the size of the highest item in the
+.B -values
+list.
+.TP
+.B -selectcolor \fIcolour\fP
+Specifies a background colour to use when the button is selected.
+If specified as an empty string, no special colour is used for
+displaying when the widget is selected.
+.TP
+.B -values \fIlist\fP
+Specifies a list of all the values the choicebutton can choose from.
+.TP
+.B -variable \fIstring\fP
+Specifies name of global variable to set whenever this button is
+selected. The variable will be set to the index of the currently
+selected item. Changes in this variable also cause the button to
+choose the appropriate item (provided it is an integer and within
+range).
+.TP
+.B -width \fIdist\fP
+Specifies a desired width for the button.
+If this option isn't specified, the button's desired width is computed
+from the size of the widest item in the
+.B -values
+list.
+.SH DESCRIPTION
+The \f5choicebutton\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a choicebutton widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the choicebutton such as its colours, font,
+text, and initial relief.  The \f5choicebutton\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A choicebutton is a widget that displays a textual string,
+one of the items given in the
+.I list
+argument to the
+.B -values
+option.
+When clicked on, the choicebutton displays a menu showing
+all the available choices, allowing the user to change
+the choice by selecting an item.
+In the description below, an
+.I index
+is a zero-based index into the set of values specified with
+the
+.B -values
+option.
+.SH "WIDGET COMMAND"
+The \f5choicebutton\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for choicebutton widgets:
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5choicebutton\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5choicebutton\fR
+command.
+.TP
+\fIpathName \f5get\fR ?\fIvalue\fR?
+Get the index of the first item with
+.IR value .
+If
+.I value
+is not given, get the index of the currently selected item.
+.TP
+\fIpathName \f5set\fR \fIindex\fR
+Sets the current item to the
+.IR index th
+value.
+.TP
+\fIpathName \f5getvalue\fR ?\fIindex\fR?
+Get the value of the
+.IR index th
+item. If
+.I index
+is not given, get the value of the currently selected item.
+.TP
+\fIpathName \f5setvalue\fR \fIvalue\fR
+Set the current item to the first item having
+.IR value .
+If no item has that value, no change is made,
+and an error is returned.
+.TP
+\fIpathName \f5invoke\fR \fIindex\fR
+Does just what would have happened if the user invoked the choicebutton
+with the mouse and selected the item at
+.IR index :
+sets the current item to
+.I index
+and runs
+its associated Tk command, if there is one.
+The return value is that from invoking the Tk command, or an
+empty string if there is no associated command.
+.TP
+\fIpathName \f5valuecount\fR
+Returns the number of values configured in the choicebutton.
+.SH SEE ALSO
+.IR button (9),
+.IR checkbutton (9),
+.IR options (9),
+.IR radiobutton (9),
+.IR types (9)

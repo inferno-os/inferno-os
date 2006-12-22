@@ -1,0 +1,80 @@
+.TH FILEPAT 2
+.SH NAME
+filepat: expand, match \- file pattern matching
+.SH SYNOPSIS
+.EX
+include "filepat.m";
+filepat := load Filepat Filepat->PATH;
+
+expand:  fn(pat: string): list of string;
+match:   fn(pat, name: string): int;
+.EE
+.SH DESCRIPTION
+.B Expand
+builds a list of file names in alphabetical order that match
+the pattern
+.IR pat .
+The pattern is tokenised using
+.B /
+as a delimiter.
+.PP
+.B Match
+returns 1 if
+.I name
+matches the pattern
+.IR pat ,
+and 0 otherwise.
+.PP
+The
+.I pat
+passed to
+.B match
+and
+.B expand
+may include combinations of the special characters
+.BR * ,
+.BR ? ,
+.BR [ ,
+and
+.BR ] .
+.PP
+The asterisk
+.B *
+matches a string of zero or more characters.
+.PP
+The query
+.B ?
+matches any single character.
+.PP
+The notation
+.BI [ s ]\f1,
+where
+.I s
+is a nonempty string, matches any
+single character in
+.IR s .
+The notation
+.BI [^ s ]\f1,
+where
+.IR s
+is a nonempty string, matches any
+single character not in
+.IR s .
+The characters
+.BR * ,
+.BR ? ,
+and
+.BR [
+have no special meaning within s.
+.PP
+If any character
+is preceded by the character
+.BR \e ,
+that character loses any special meaning
+and is interpreted literally.
+.SH SOURCE
+.B /appl/lib/filepat.b
+.SH SEE ALSO
+.IR sys-tokenize (2),
+.IR readdir (2)
+.IR regex (2)

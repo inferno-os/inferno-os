@@ -1,0 +1,621 @@
+.TH ASN1 2
+.SH NAME
+asn1: decode, encode \- ASN.1 (X.208), BER (X.209) encoding
+.SH SYNOPSIS
+.EX
+include "asn1.m";
+asn1 := load ASN1 ASN1->PATH;
+asn1->init();
+
+Elem: adt {
+    tag: Tag;
+    val: ref Value;
+
+    is_seq:         fn(e: self ref Elem): (int, list of ref Elem);
+    is_set:         fn(e: self ref Elem): (int, list of ref Elem);
+    is_int:         fn(e: self ref Elem): (int, int);
+    is_bigint:      fn(e: self ref Elem): (int, array of byte);
+    is_bitstring:   fn(e: self ref Elem): (int, int, array of byte);
+    is_octetstring: fn(e: self ref Elem): (int, array of byte);
+    is_oid:         fn(e: self ref Elem): (int, ref Oid);
+    is_string:      fn(e: self ref Elem): (int, string);
+    is_time:        fn(e: self ref Elem): (int, string);
+    tostring:       fn(e: self ref Elem): string;
+};
+
+Tag: adt {
+    class: int;
+    num: int;
+    constr: int;
+
+    tostring: fn(t: self Tag): string;
+};
+
+Value: adt {
+    pick {
+        Bool or Int =>
+            v: int;
+        Octets or BigInt or Real or Other =>
+            bytes: array of byte;
+        BitString =>
+            unusedbits: int;
+            bits: array of byte;
+        Null or EOC =>
+            ;
+        ObjId =>
+            id: ref Oid;
+        String =>
+            s: string;
+        Seq or Set =>
+            l: list of ref Elem;
+    }
+
+    tostring: fn(v: self ref Value): string;
+};
+
+Oid: adt {
+    nums: array of int;
+    tostring: fn(o: self ref Oid): string;
+};
+
+init: fn();
+decode:       fn(a: array of byte): (string, ref Elem);
+decode_seq:   fn(a: array of byte): (string, list of ref Elem);
+decode_value: fn(a: array of byte, kind, constr: int):
+              (string, ref Value);
+encode:       fn(e: ref Elem): (string, array of byte);
+oid_lookup:   fn(o: ref Oid, tab: array of Oid): int;
+print_elem:   fn(e: ref Elem);
+
+.EE
+.SH DESCRIPTION
+.B ASN1
+supports decoding and encoding of the ASN.1 Basic Encoding Rules
+(BER, ITU-T Recommendation X.209).
+Despite its name, the module is not a parser for Abstract Syntax Notation One
+(ASN.1, ITU-T Recommendation X.208).
+.PP
+.B ASN1
+handles the BER encodings of all types from the ASN.1 Universal class, and
+provides a simple OBJECT IDENTIFIER comparison facility.
+.PP
+For simplicity,
+.B ASN1
+does not take a description of the ASN.1 module of the data being
+processed.
+Consequently, the (de)composition of tagged types must be performed by the
+application.
+.B ASN1
+does not know the
+context of tagged values and so cannot determine the underlying Universal type
+to be able to encode or decode the value automatically.
+See the section on Tagging for details on how the application
+should handle both implicit and explicit tagging.
+.TP
+.B init()
+The module must be initialised by calling this function
+before any other module functions or associated adt member functions are called.
+.TP
+.BI decode( a )
+Convert the BER encoding given by the byte array
+.I a
+into an
+.B Elem
+representing the ASN.1 value.
+The byte array must contain
+the entire BER encoding of the value and any component values.
+.IP
+Item values not tagged as a Universal type are converted to an
+.B Elem
+comprised of the decoded
+.B Tag
+and a
+value given by the
+.B Value.Octets
+variant, which contains
+the original encoding of the value
+stripped of the BER tag and length header.
+.IP
+The function returns a tuple composed of an error string and
+the decoded
+.BR Elem .
+If no errors are encountered the error string is nil.
+.TP
+.BI decode_seq( a )
+Like
+.B decode
+except that the data in
+.I a
+is the encoding of an item of type SEQUENCE, SEQUENCE OF, SET or SET OF
+which has been stripped of its tag and length header.
+The function decodes all of the items in the SEQUENCE or SET.
+.IP
+The return value is a tuple composed of an error string and the list of
+.BR Elem s
+forming the SEQUENCE or SET.
+.HP
+.BI decode_value( a ,
+.IB kind ,
+.IB constr )
+.br
+Convert the encoding of a single item value to a
+.B Value
+data structure.
+.IP
+The array
+.I a
+does not include the tag and length header.
+Instead, the value's Universal type is given by the
+.I kind
+argument and length is given by that of the array.
+The
+.B constr
+argument indicates if the encoding is in the BER
+constructed form or not.
+A value of 0 indicates that the primitive encoding is used, all other values
+indicate the constructed encoding.
+.IP
+The function returns a tuple composed of an error string and a
+.B Value
+reference.
+.TP
+.BI encode( e )
+Convert the
+.B Elem
+.I e
+to a BER encoding of the element.
+If the element is of a structured type, such as SEQUENCE or SET,
+then all component values are also exhaustively encoded.
+.IP
+The encoding can fail if the
+.B Tag
+and
+.B Value
+of the element are not compatible.
+The
+.I constr
+field of the
+.B Tag
+is currently ignored.
+.IP
+The function returns a tuple comprising an error string and
+the BER encoding.  
+If no errors are encountered the error string is nil and the
+second part of the returned tuple is a byte array of the
+BER encoding.
+.TP
+.BI oid_lookup( o ", " tab )
+Lookup an OBJECT IDENTIFIER value in an array of such values.
+Returns the index of the first exact match of
+.I o
+in the
+.I tab
+array.
+Returns -1 if no match is found.
+.TP
+.BI print_elem( e )
+Print a textual representation of the element to standard output.
+The output is that given by
+.BR Elem.tostring() ,
+followed by a newline character.
+.SS "Elem adt"
+This is the principal data structure, representing the value of an ASN.1 item.
+The adt couples a data representation, the
+.BR Value ,
+with its type specifier, the
+.BR Tag .
+.TP
+.B "Elem.tag"
+Specifies the ASN.1 type of the element value.
+See the description of the
+.B Tag
+adt for more details.
+.TP
+.B "Elem.val"
+The value of the element.
+See the description of the
+.B Value
+adt for more details.
+.PP
+All of the
+.IB e .is_ Type
+member functions test whether the specific
+.B Value
+pick variant of
+.B Elem.val
+and the ASN.1 Universal type, given by
+the tag, match and are of the requested form.
+A successful match yields the type specific data from the
+.B Value
+pick variant.
+The association of Universal types to
+.B Value
+pick variants is given in the section on the 
+.B Value
+adt.
+.PP
+The function
+.IB e .is_int
+succeeds for BOOLEAN and INTEGER ASN.1 types.
+The function
+.IB e .is_string
+succeeds for all of the ASN.1 Universal string types.
+.PP
+Except for
+.BR is_bitstring ,
+each function returns a tuple of two values.
+The first tuple item is an integer, 1 for success, 0 for failure.
+The second item is the type specific data from the
+.B Value
+pick variant.
+.PP
+.TP
+.IB e ".is_bitstring()"
+Like the
+.BI is_ Type
+functions described above.
+Tests that the element is a BIT STRING and returns its data.
+.IP
+The return value is a tuple comprised of two integers and an array of bytes.
+The byte array represents the bit string.
+The first integer is 1 for success, 0 for failure.
+The second integer is the number of unused bits in the last byte of the data
+array.
+See the description of the
+.B Value.BitString
+variant for more information.
+.TP
+.IB e ".tostring()"
+returns a textual representation of the element formed by joining
+the strings returned from
+.IB e ".tag.tostring()"
+and
+.IB e ".val.tostring()" .
+.PP
+.SS "Tag adt"
+The
+.B Tag
+adt denotes the ASN.1 type of a
+.B Value
+instance.
+.TP
+.B "Tag.class"
+Specifies the class of the type and can take one of the values:
+.BR ASN1->Universal ,
+.BR ASN1->Application ,
+.B ASN1->Context
+or
+.BR ASN1->Private .
+.TP
+.B "Tag.num"
+Identifies the particular type, or tag, within the specified class.
+Tag numbers for the Universal class are given in the
+.B asn1.m
+header file.
+The inconsistent use of upper-case and mixed-case identifiers comes
+straight from the ITU-T Recommendation.
+.TP
+.B "Tag.constr"
+This flag is set by the
+.B ASN1
+decode functions to mark if the BER
+.I constructed
+encoding was used for the value.
+A zero value indicates the BER primitive encoding, non-zero indicates
+the constructed encoding.
+.TP
+.IB t ".tostring()"
+Returns a string representation of the
+.BR Tag .
+For Universal class tags the function returns
+the string
+.RB `` UNIVERSAL
+.IR "Name" '',
+where
+.I Name
+is the standard name of the specified Universal type.
+For other classes the function returns the class name, in upper-case,
+followed by the tag number.
+.SS "Value adt"
+This pick adt provides the representation for values of each of the various
+Universal class types.
+Values of all other classes are represented by the
+.B Value.Octets
+branch of the pick.
+.TP
+.IB v ".tostring()"
+Returns a string representation of the
+.BR Value .
+.PP
+The following table lists
+each variant of the pick, indicating the ASN.1 Universal type values
+it represents, followed by a brief description.
+For each variant of the pick,
+.I v
+is taken to be of that particular type.
+.TP
+.B Value.Bool
+BOOLEAN
+.IP
+.IB v .v
+equals zero for FALSE, non-zero values represent TRUE.
+.TP
+.B Value.Int
+INTEGER, ENUMERATED
+.IP
+The value is given by
+.IB v .v
+.TP
+.B Value.BigInt
+Used for INTEGER values too large to fit a Limbo int.
+.IP
+The array
+.IB v .bytes
+contains the encoding of the value.
+The array does not include the tag and length prefix.
+.TP
+.B Value.Octets
+OCTET_STRING, ObjectDescriptor
+.IP
+The octet string is given by the
+.IB v .bytes
+array.
+.TP
+.B Value.Null
+NULL
+.TP
+.B Value.ObjId
+OBJECT_ID
+.IP
+The OBJECT_ID value is represented by the
+.B Oid
+adt given by
+.IB v .id .
+.TP
+.B Value.Real
+REAL
+.IP
+.B ASN1
+does not convert the value into the Limbo
+.B real
+data type.
+The encoding of the value is given by the
+.IB v .bytes
+array, which does not include the tag and length prefix.
+.TP
+.B Value.Other
+EXTERNAL, EMBEDDED_PDV and Unknown Universal types
+.IP
+The raw bytes of the value, excluding the tag nad length header,
+are given by the
+.IB v .bytes
+array.
+.TP
+.B Value.BitString
+BIT_STRING
+.IP
+The number of bits in the BIT_STRING value does not have to be
+a multiple of 8.
+Bits are packed into bytes MSB first.
+The bytes representing the BIT_STRING value, including the potentially
+incomplete last byte, are given by the
+.IB v .bits
+array.
+The number of unused bits in the last byte of the array is given by
+.IB v .unused ,
+counting from the LSB.
+.IP
+The BER constructed encoding of values other than zero-length is not implemented.
+.TP
+.B Value.EOC
+End of Contents octets marker.
+.IP
+This value is not normally returned to the application; it is used
+privately by BER to support indefinite length value encodings.
+.TP
+.B Value.String
+NumericString, PrintableString, TeletexString,
+VideotexString, IA5String, UTCTime,
+GeneralizedTime, GraphicString, VisibleString,
+GeneralString, UniversalString or BMPString.
+.IP
+The text is given by the
+.IB v .s
+Limbo string.
+Currently no character-set conversion is performed between
+the ASN.1 string byte codes and the Unicode code-points of the Limbo string.
+.TP
+.B Value.Seq
+SEQUENCE, SEQUENCE OF
+.IP
+ASN.1 assigns both constructs the same type tag.
+The difference between them is that, within the
+ASN.1 notation, the elements
+of a SEQUENCE OF structure are constrained to be of the same type.
+BER and, consequently,
+.B ASN1
+do not directly enforce the restriction.
+.IP
+The elements of the sequence are given by the
+.IB v .l
+list.
+.TP
+.B Value.Set
+SET, SET OF
+.IP
+ASN.1 assigns both constructs the same type tag.
+The difference between them is that, within the ASN.1 notation,
+SET items are formed from an unordered list of distinct types, whereas
+SET OF items are formed from an unordered list of the same type.
+BER and
+.B ASN1
+do not enforce these constraints.
+.IP
+The elements of the set are given by the
+.IB v .l
+list.
+.SS "Oid adt"
+The
+.B Oid
+adt provides the value representation for OBJECT IDENTIFERs.
+Within the ASN.1 notation OBJECT IDENTIFIERs ultimately map
+to an ordered list of INTEGERs.
+.TP
+.B Oid.nums
+The value of the OBJECT IDENTIFIER, given as an
+.BR "array of int" .
+.TP
+.IB o .tostring()
+Returns a textual representation of the OBJECT IDENTIFIER in the
+form of a `.' separated list of numbers.
+.SS Tagging
+Tagging is an ASN.1 mechanism for disambiguating values.
+It is usually applied to component types, where several components
+of a structured type have the same underlying Universal class type.
+Tagging allows the client application to determine to which item of the
+structured type a value instance belongs.
+.PP
+There are two types of tagging, implicit and explicit, defining
+the manner in which the values are encoded.
+.PP
+Implicitly tagged values are encoded in the same way as the underlying type,
+but with the tag class and number replaced by that specified.
+.PP
+Explicitly tagged values are encoded in a nested fashion.
+The outermost item bears the specified tag and its contents is the
+full encoding of the original value using the tag of its underlying type.
+.PP
+The following examples of how to decode and encode simple tagged types
+should make the distinction clear.
+.SS "Decoding Tagged Values"
+Consider the following ASN.1 type definitions:
+.PP
+.EX
+    Type1 ::= INTEGER
+    Type2 ::= [Application 2] Type1     -- Explicitly tagged
+    Type3 ::= [3] IMPLICIT Type1        -- Implicitly tagged
+
+.EE
+For each of the types
+the value 16r55 will be decoded as follows:
+.PP
+.EX
+	(error, elem) := asn1->decode(data);
+.EE
+.TP
+.BR Type1 " (primitive type)"
+.EX
+elem.tag.class == Universal
+elem.tag.num == INTEGER
+tagof elem.val == tagof Value.Int
+elem.is_int() == (1, 16r55)
+.EE
+.TP
+.BR Type2 " (explicitly tagged)"
+.EX
+elem.tag.class == Application
+elem.tag.num == 2
+tagof elem.val == tagof Value.Octets
+
+.EE
+The
+.B bytes
+array of the
+.B Value.Octets
+value contains the complete encoding of the
+.B Type1
+value.
+The actual value can be obtained as follows:
+.IP
+.EX
+pick v := elem.val {
+Octets =>
+	(err2, e2) := asn1->decode(v.bytes);
+}
+.EE
+with
+.B e2
+having exactly the same properties as
+.B elem
+in the
+.B Type1
+case above.
+.TP
+.BR Type3 " (implicitly tagged)"
+.EX
+elem.tag.class == Context
+elem.tag.num == 3
+tagof elem.val == tagof Value.Octets
+
+.EE
+In this case the
+.B bytes
+array of the
+.B Value.Octets
+value contains the encoding of just the value part of the Type1 value,
+not the complete encoding.
+The actual value can be obtained as follows:
+.IP
+.EX
+pick v := e.val {
+Octets =>
+    constr := e.tag.constr;
+    (err, val) := asn1->decode_value(v.bytes, INTEGER, constr);
+}
+
+.EE
+Note that the application has to infer the type of the value from
+the context in which it occurs.
+The resultant
+.B val
+is of the type
+.B Value.Int
+with the value 16r55 stored in the
+.B v
+member variable.
+.SS "Encoding Tagged Values"
+To encode the value 16r55 in each of the above types, the following
+data structures are required.
+.TP
+.BR Type1 "(primitive type)"
+.EX
+tag := Tag(Universal, INTEGER, 0);
+val := Value.Int(16r55);
+elem := ref Elem(tag, val);
+(err, data) := asn1->encode(elem);
+.EE
+.TP
+.BR Type2 "(explicitly tagged)"
+.EX
+tag1          := Tag(Universal, INTEGER, 0);
+val1          := Value.Int(16r55);
+elem1         := ref Elem(tag1, val1);
+(err1, data1) := asn1->encode(elem1);
+tag2          := Tag(Application, 2, 0);
+val2          := Value.Octets(data1);
+elem2         := ref Elem(tag2, val2);
+(err, data)   := asn1->encode(elem2);
+.EE
+.TP
+.BR Type3 "(implicitly tagged)"
+.EX
+tag         := Tag(Context, 3, 0);
+val         := Value.Int(16r55);
+elem        := ref Elem(tag, val);
+(err, data) := asn1->encode(elem);
+.EE
+.SH SOURCE
+.B /appl/lib/asn1.b
+.SH BUGS
+It is irritating that REAL values are not converted by the module.
+This forces the application to do the conversion to and from the
+raw BER encoding.  Fortunately they are rarely used.
+.PP
+String encodings are converted as UTF-8 byte sequences.
+This will result in strings comprising any character codes above 127
+being incorrectly converted.
+.PP
+There is a particular form of BER encoding that the module will
+handle incorrectly, resulting in a decoding error.
+The error occurs when a tagged value is encoded using the
+indefinite length specifier and the constructed representation.

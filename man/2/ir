@@ -1,0 +1,254 @@
+.TH IR 2
+.SH NAME
+ir \- infrared remote control module
+.SH SYNOPSIS
+.EX
+include     "ir.m";
+
+ir    := load Ir Ir->PATH; # for real remotes
+simir := load Ir Ir->SIMPATH; # for keyboard simulator
+
+init:       fn(irc: chan of int, pidc: chan of int): int;
+translate:  fn(key: int): int;
+.EE
+.SH DESCRIPTION
+Programs running with the Prefab
+toolkit (see
+.IR prefab-intro (2))
+are controlled by an infrared remote
+control device.
+If such a device is not present, the system may simulate
+it from the keyboard by loading the module in file
+.BR Ir->SIMPATH .
+Although originally designed for use with Prefab,
+these modules are general enough to be used directly by non-Prefab
+applications.
+.PP
+The
+.B Ir
+module defines codes
+for representing the remote control keys.
+Whether the remote is real or simulated, the
+.B init
+function does the appropriate actions to initialize the device, and then spawns
+a process to return the codes on the
+.I irc
+channel.
+The process ID of that process
+is sent on the channel
+.I pidc
+when the process starts;
+.BR init 's
+caller must receive it.
+It can be used to kill the controlling process when the application finishes.
+.PP
+The codes are:
+.PP
+.TP
+.BR Ir\->ChanUP ", " Ir\->ChanDN
+The Channel-Up and Channel-Down buttons.
+The keyboard equivalents are
+.B r
+and
+.BR c .
+.TP
+.B Ir\->Enter
+The Enter button.
+The keyboard equivalent is the \s-1SPACE\s0 bar.
+.TP
+.B Ir\->EOF
+An end of file from the remote device.
+After sending one, no more codes will be sent on
+.IR irc .
+.TP
+.B Ir\->Error
+An unknown or invalid input from the remote device.
+.TP
+.BR Ir\->FF ", " Ir\->Rew
+The Fast-Forward and Rewind buttons.
+The keyboard equivalents are
+.B k
+and
+.BR j .
+.TP
+.B Ir\->Mute
+The Mute button.
+There is no keyboard equivalent.
+.TP
+.B Ir\->Power
+The Power button.
+The keyboard equivalent is the
+.B Delete
+key.
+.TP
+.B Ir\->Rcl
+The Recall button.
+The keyboard equivalent is
+.BR x .
+.TP
+.B Ir\->Record
+The Record button.
+There is no keyboard equivalent.
+.TP
+.B Ir\->Select
+The Select button.
+The keyboard equivalent is the
+.B Return
+or
+.B Enter
+key.
+.TP
+.BR Ir\->Up ", " Ir\->Dn
+The Up and Down buttons.
+The keyboard equivalents are
+.B i
+and
+.BR m .
+.TP
+.BR Ir\->VolUP ", " Ir\->VolDN
+The Volume-Up and Volume-Down buttons.
+The keyboard equivalents are
+.B t
+and
+.BR v .
+.TP
+.B
+Ir\->Zero\fR,\fP Ir\->One\fR,\fP Ir\->Two\fR, etc.
+.PD
+The digit buttons, 0 through 9.
+The keyboard equivalents are the corresponding numeral keys.
+.PP
+The
+.B translate
+function converts the device's raw codes into the constants defined by
+the module.
+For example, with the simulated remote control,
+.B translate('3')
+returns
+.BR Ir->Three .
+.B Translate
+is only necessary for programs that wish to manage their own simulation of the remote.
+.PP
+Programs
+that  drive the remote control directly,
+must load the appropriate Ir implementation module and initialise it.
+The following example uses the absence of a simulator module
+to infer that a real remote control is available.
+.PP
+.EX
+implement Irtest;
+
+include "sys.m";
+include "draw.m";
+include "ir.m";
+
+Irtest: module
+{
+   init:  fn(ctxt: ref Draw->Context, argv: list of string);
+};
+
+init(nil: ref Draw->Context, nil: list of string)
+{
+    sys := load Sys Sys->PATH;
+
+    # First try the keyboard Ir simulator.
+    # If that is not present, use Ir directly.
+
+    ir := load Ir Ir->SIMPATH;
+    if(ir == nil)
+        ir = load Ir Ir->PATH;
+    if(ir == nil){
+        sys->print("Ir module not loaded: %r\en");
+        return;
+    }
+    irc := chan of int;
+    pidc := chan of int;
+    if(ir->init(irc, pidc) < 0){
+        sys->print("Can't initialize Ir device: %r\en");
+        return;
+    }
+    pid := <-pidc;
+    while((irraw := <-irc) != Ir->EOF) {
+        irval := ir->translate(irraw);
+        if(irval == Ir->Power)
+            break;
+        sys->print("command %d -> %d\en", irraw, irval);
+    }
+    kill(pid);
+}
+.EE
+.PP
+.IR Mux (1)
+provides one model for the use of an infrared remote control to control
+a group of applications.
+.B Init
+is invoked once by
+.IR mux ,
+and the codes then multiplexed between its applications as follows.
+.I Mux
+creates a graphics context for each application
+(see
+.IR draw-context (2)).
+This context includes channels to the
+.B mux
+program and to the
+.B Ir
+device:
+.B Draw->Context.ctomux
+and
+.BR Draw->Context.cinput .
+Applications do not see the
+.B Ir->Rcl
+command.
+Instead,
+.I mux
+program intercepts it and reactivates its own menu.
+The following example establishes communication with
+.I mux
+and then reads
+.B Ir
+commands until it see
+.BR Ir->Enter .
+.PP
+.EX
+implement Command;
+
+include "sys.m";
+include "draw.m";
+include "ir.m";
+
+Command: module
+{
+  init: fn(ref Draw->Context; list of string);
+};
+
+init(ctxt: ref Draw->Context; argv: list of string)
+{
+  sys := load Sys Sys->PATH;
+
+  # Tell mux to start sending input.
+  ctxt.ctomux <-= Draw->AMstartinput;
+  for(;;) {
+    key := <-ctxt.cinput;
+    sys->print("command %d\en", key);
+    if(key == Ir->Enter)
+      break;
+  }
+
+  #  Tell mux this thread is going away.
+  ctxt.ctomux <-= Draw->AMexit;
+}
+.EE
+.SH SOURCE
+.B /appl/lib/ir.b
+.br
+.B /appl/lib/irmpath.b
+.br
+.B /appl/lib/irsim.b
+.SH SEE ALSO
+.IR limbo (1),
+.IR mux (1),
+.IR intro (2),
+.IR draw-intro (2),
+.IR prefab-intro (2)
+ 

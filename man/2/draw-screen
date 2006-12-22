@@ -1,0 +1,137 @@
+.TH DRAW-SCREEN 2
+.SH NAME
+Screen \-
+windows and subwindows on a display
+.SH SYNOPSIS
+.EX
+include	"draw.m";
+draw := load Draw Draw->PATH;
+
+Screen: adt
+{
+  id:        int;
+  image:     ref Image;
+  fill:      ref Image;
+  display:   ref Display;
+
+  allocate:  fn(image, fill: ref Image, public: int): ref Screen;
+  newwindow: fn(screen: self ref Screen, r: Rect,
+                backing:int, rgba: int): ref Image;
+  top:       fn(screen: self ref Screen, wins: array of ref Image);
+};
+.EE
+.SH DESCRIPTION
+A
+.B Screen
+is the data structure representing a set of windows visible on a particular
+.B Image
+such as the display or a parent window.
+.TP 10
+.B id
+When a
+.B Screen
+object is allocated (see
+.B allocate
+below), the system assigns it a unique integer,
+.BR id .
+It may be declared ``public'' and accessible to
+arbitrary processes and machines with access to the screen's
+.BR Display .
+The
+.B id
+value may be used as an argument to
+.BR Display.publicscreen ;
+see
+.IR draw-display (2).
+.TP
+.B fill
+When windows are deleted from a screen, the system uses the
+.B fill
+image to repaint the screen's base image.
+.TP
+.B image
+The image upon which the windows appear.
+.TP
+.B display
+The display upon which the screen resides.
+.TP
+.BI allocate( image\fP,\fP\ fill\fP,\fP\ public )
+.B Allocate
+makes a new
+.B Screen
+object.
+The
+.I image
+argument provides the base image on which the windows will be made.
+The
+.I fill
+argument provides the
+.B Screen.fill
+image.
+.B Allocate
+does not affect the contents of
+.IR image ;
+it may be necessary after allocation to paint the base image with
+.BR fill .
+.IP
+Using a non-zero
+.I public
+argument allocates a public screen; zero requests a private screen.
+Public screens may be attached by any process
+on any machine with access to the
+.B Display
+upon which the screen is allocated, enabling remote processes to
+create windows on the screen.
+Knowing only the
+.B id
+field of the original
+.BR Screen ,
+the remote process can call the
+.B Display.publicscreen
+function to acquire a handle to the screen.
+The
+.B image
+and
+.B fill
+fields of a
+.B Screen
+obtained this way are
+.BR nil ,
+but they are not needed for ordinary window management.
+.TP
+.IB screen .newwindow( r\fP,\fP\ backing\fP,\fP\ rgba )
+Allocates a window
+on the display at the specified rectangle with the background
+colour
+.IR rgba ,
+expressed in 32-bit RGBA format; the return value is an
+.B Image
+that may be used like any other.
+The
+.I backing
+parameter can be
+.BR Draw->Refbackup ,
+which provides backing store to store obscured parts of the window when necessary,
+and is used by the window manager and its clients; or
+.BR Draw->Refnone ,
+wihch provides no refresh, and is used for windows that are transient, or are already protected by backing
+store.
+.TP
+.IB screen .top( wins )
+.B Top
+organizes a group of windows on a screen.
+Given
+.IR wins ,
+an array of window images, it places the
+.I wins[0]
+element at the top,
+.I wins[1]
+behind that, and so on,
+with the last element of
+.I wins
+in front of the all the windows on the screen not in
+.IR wins .
+Images in the array must be on the specified
+.I screen
+.RB ( nil
+elements are ignored).

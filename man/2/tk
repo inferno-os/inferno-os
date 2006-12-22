@@ -1,0 +1,270 @@
+.TH TK 2
+.SH NAME
+Tk: toplevel, namechan, cmd, pointer, keyboard, imageget, imageput, quote \- graphics toolkit
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "tk.m";
+tk := load Tk Tk->PATH;
+Image:    import Draw;
+
+Toplevel: adt
+{
+    display:    ref Draw->Display;
+    wreq:       chan of string;
+    image:      ref Image;
+    ctxt:       ref Draw->Wmcontext;
+    screenr:    Draw->Rect;
+};
+
+toplevel: fn(display: ref Draw->Display, arg: string): ref Toplevel;
+namechan: fn(top: ref Toplevel, c: chan of string, n: string): string;
+cmd:      fn(top: ref Toplevel, arg: string): string;
+pointer:    fn(top: ref Toplevel, p: Draw->Pointer);
+keyboard: fn(top: ref Toplevel, key: int);
+getimage: fn(top: ref Toplevel, name: string):
+             (ref Image, ref Image, string);
+putimage: fn(top: ref Toplevel, name: string, i, m: ref Image): string;
+rect:     fn(top: ref Toplevel, name: string, flags: int): Draw->Rect;
+quote:    fn(s: string): string;
+color:    fn(s: string): int;
+.EE
+.SH DESCRIPTION
+The
+.B Tk
+module provides primitives for building user interfaces, based on
+Ousterhout's Tcl/TK.
+The interface to the toolkit itself is primarily the passing of strings
+to and from the elements of the toolkit using the
+.B cmd
+function; see section 9 of this manual for more information
+about the syntax of those strings.
+.IR Tkclient (2)
+is conventionally used to create tk windows
+that interact correctly with a running window manager.
+.PP
+.B Toplevel
+creates a new window
+called a
+.BR Toplevel ,
+which is under the control of the
+.B Tk
+toolkit,
+on an existing
+.IR display ,
+usually one inherited from the graphics
+.B Context
+(see
+.IR draw-context (2)).
+The
+.B Toplevel
+is passed to
+.B cmd
+and
+.B namechan
+.RI ( q.v. )
+to drive the widgets in the window.
+.I Arg
+is a string containing creation options (such as
+.BR "-borderwidth 2" )
+that are applied when creating the toplevel window.
+.PP
+.B Cmd
+passes command strings to the widgets in the
+.B Toplevel
+.I t
+and returns the string resulting from their execution.
+For example, given a canvas
+.B .c
+in the
+.B Toplevel
+.BR t ,
+.EX
+    x := int tk->cmd(t, ".c cget -actx");
+.EE
+returns the integer
+.I x
+coordinate of the canvas.
+.PP
+Bindings can be created in a
+.B Toplevel
+that trigger strings to be sent on Limbo channels.
+Such channels must be declared to the
+.B Tk
+module using
+.BR namechan .
+For example, to create a button that sends the word
+.B Ouch
+when it is pressed:
+.EX
+    hitchannel := chan of string;
+    tk->namechan(t, hitchannel, "channel");
+    tk->cmd(t,
+         "button .b.Hit -text Hit -command {send channel Ouch}");
+    expl := <-hitchannel;	# will see Ouch when button pressed
+.EE
+.PP
+.B Pointer
+and
+.B keyboard
+pass mouse and keyboard events to a
+.BR Tk
+window
+for delivery to widgets; they must be called by each application,
+which usually receives them via a
+.B Wmcontext
+structure (see
+.IR draw-context (2))
+obtained from the window manager, often via
+.IR tkclient (2).
+.PP
+.B Putimage
+passes an image and a mask into Tk.
+If
+.I name
+is the name of a Tk widget, it must be either a
+.IR panel (9)
+widget, or a top level widget (ie,
+.RB `` . '')
+.BR "" "`"` . "'')"
+or a menu widget,
+in which case the associated image
+or window image is set to
+.IR i .
+.RI ( m
+is ignored for menu and top-level widgets.)
+Otherwise,
+.I name
+must be the name of an existing
+.IR image (9)
+which has its image and mask
+set to copies of
+.I i
+and
+.I m
+respectively.
+.PP
+Initially, a Tk toplevel has no image to draw on.
+Tk uses
+.B wreq
+to request new images of an external authority, and to inform
+said authority when the images are to be deleted.
+The requests are formatted as per
+.B quoted
+in
+.IR string (2),
+and hold one of the following:
+.TP
+.B !reshape \fIname\fP \fIreqid\fP \fIminx miny maxx maxy\fP
+A new image for
+.I name
+is requested
+.RI ( name
+is either the toplevel widget or a menu).
+The desired rectangle for the new image is given
+by
+.RI [ "minx miny maxx maxy" ],
+and the application should respond by creating a new
+image and using
+.B putimage
+to pass it to Tk.
+.I Reqid
+is used by Tk to filter out responses to out-of-date
+requests; when responding to a reshape
+request, the
+.I name
+passed to
+.B putimage
+should have a space and
+.I reqid
+appended.
+.IR Tkclient (2)
+usually deals with the details of this.
+.TP
+.B delete \fIname\fP
+The image
+.I name
+has been deleted. This is generated for
+.IR menu (9)
+widgets when they are unmapped.
+.TP
+.B raise \fIname\fP
+Tk widget
+.I name
+should be raised above other windows on the same screen.
+.TP
+.B lower \fIname\fP
+Tk widget
+.I name
+should be lowered beneath other windows on the same screen.
+.PP
+.B Wreq
+may be set to nil if an application is not prepared to
+read requests sent on this channel.
+.PP
+.B Rect
+returns the bounding rectangle of
+widget
+.I name
+in
+.IR top .
+.I Flags
+determines the form of rectangle returned.
+If
+.I flags
+is zero, the actual rectangle of
+.I name
+in screen coordinates, not including its border,
+is returned. The bitmask flags that can change this are:
+.TP
+.B Border
+Include the widget's border.
+.TP
+.B Required
+Return the rectangle required by the widget, rather
+than the rectangle that has been actually allocated to it.
+.TP
+.B Local
+Return the rectangle in coordinates relative
+to the logical origin of the actual top level image.
+.PP
+.B Quote
+returns a string that is the same as its arguments, but enclosed
+in curly braces and with internal curly braces escaped.
+This can be used to make an arbitrary string into a
+.I word
+suitable as an argument to a Tk function.
+.PP
+.B Color
+returns a colour in 32-bit RGBA format corresponding to the
+tk colour name
+.IR s .
+(see
+.IR types (9)
+for details).
+.PP
+.B Screenr
+gives the rectangle of the screen containing the toplevel window.
+Tk has no
+.I "a priori"
+way of knowing what this is; it is initially set to the rectangle of the
+display image, and may be set by the application if it knows better
+(e.g. from the
+.B wmrect
+file served by
+.IR wm (1)).
+.SH SOURCE
+.B /libinterp/tk.c
+.br
+.B /libtk/*.c
+.SH SEE ALSO
+.IR intro (9),
+.IR image (9),
+.IR panel (9),
+.IR tkcmd (1),
+.IR sh-tk (1),
+.IR draw-context (2),
+.IR tkclient (2),
+.IR wmlib (2)
+.br
+`An Overview of Limbo/Tk', this manual, Volume 2.

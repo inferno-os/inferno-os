@@ -1,0 +1,385 @@
+.TH SBL 6
+.SH NAME
+sbl \- symbol table file
+.SH DESCRIPTION
+A Limbo symbol table file provides type information for the module
+in an associated Dis executable file,
+for use by debuggers and similar applications.
+They are written by the Limbo compiler
+when given the
+.B -g
+option.
+The files conventionally have a
+.B .sbl
+suffix; they need not be stored in the same directory as
+the corresponding Dis file.
+.PP
+The file consists of a header followed by five tables:
+.IP
+.I "header file-table pc-table type-table fn-table data-table"
+.PP
+Each table starts with a line containing a decimal
+count of the items in that table.
+The count can be zero. The following
+sections describe the format of table items in each table.
+In the description, the following terminals are used.
+.PP
+A
+.I "string"
+is a sequence of letters, digits, and the characters _, ., -, and >. Letters are the Unicode characters a through z and A through Z, and all Unicode characters with encoded values greater than A0 hexadecimal.
+.PP
+An
+.I int
+is an optional minus sign followed by a sequence of digits, 0 to 9.
+.PP
+In the following description,
+the presence of a space is represented by
+.B •
+and a newline by
+.BR \en .
+There are no other spaces between syntactic elements in the file format.
+Other special characters represent themselves.
+.SS Header
+.PP
+The header consists of two items.
+.ds Os "\v'0.2m'\s-3\|opt\s+3\^\v'-0.2m'
+.IP
+.EX
+.ft I
+.nf
+header:
+	magic\f5\en\fP
+	module\f5\en\fP
+magic:
+	\f5limbo .sbl 2.0\fP
+module:
+	string
+.ft R
+.EE
+.PP
+There have been two previous versions of symbol table format, distinguished
+by the number in
+.IR magic .
+Version
+.B 1.
+was the original; version
+.B 1.1
+added more references back to the source; and version
+.B 2.0
+replaced the original
+adt table by a type table and added support for Limbo's
+.B pick
+construction.
+Only version 2.0 is described here; the others are obsolete.
+.PP
+.I Module
+is the name of the module implemented in the Dis file.
+Symbol file references to identifiers declared by the implementation module are unqualified.
+A name referenced that is imported from any other module is preceded by
+.IB m ->
+where
+.I m
+is that module's identifier.
+.SS File table
+The file table is a list of file names referenced by the rest of the tables. Each file name is terminated by a newline character; within the name, any character other than a newline is valid.
+.SS PC table
+The PC table relates every instruction in the Dis file to the source from which it was compiled.
+The table is indexed by Dis PC to obtain a reference to the corresponding source.
+Each item consists of a source description
+and a statement reference:
+.IP
+.EX
+.ft I
+pc-item:
+	src stmt \f5\en\fP
+src:
+	pos\f5,\fPpos•
+pos:
+	file\f5:\fP\*(Os line\f5.\fP\*(Os char
+file, line, char, stmt:
+	int
+.ft R
+.EE
+.PP
+A source description
+.I src
+selects source text as a range of characters within lines of a source file.
+.I File
+is an index into the file table (origin 0);
+.I "line"
+and
+.I "char"
+are positions within that source file, with line numbers starting at 1 and character positions at 0. If
+.I "file"
+or
+.I "line"
+is omitted, it is assumed to have the previous value, or 0 if there is no previous value.
+.PP
+.I Stmt
+is the `statement number' of the instruction.
+Despite its name, the scope of a statement number is smaller than a Limbo statement:
+it identifies a region marked by the compiler for treatment as a unit when debugging.
+For instance,
+in a
+.B for
+statement, the initial expression, increment, test, and body all have unique
+statement numbers.
+All instructions compiled from the same region in a Limbo program have the same statement number.
+The number is that of the innermost region that contains the instruction.
+.SS Type table
+The type table describes the Limbo adts used in the Dis file,
+both locally declared and imported.
+Each entry describes a
+.IR type :
+.IP
+.EX
+.I "type:"
+.ft 5
+	@ \fItype-index\fP \en
+	a \fIadt-item\fP
+	p \fIadt-item\fP \fItag-table\fP
+	t \fIsize\fP . \fIid-table\fP
+	m \fImodule\fP \en \fIsrc\fP
+	A \fItype\fP
+	C \fItype\fP
+	L \fItype\fP
+	R \fItype\fP
+	n
+	N
+	B
+	b
+	i
+	f
+	s
+.ft I
+type-index:
+	int
+.EE
+.PP
+Each leading character specifies a different Limbo type:
+.IP
+.RS
+.TF N
+.TP 5n
+.B @
+existing type referenced by type table index (not self-referential)
+.TP
+.B A
+.B array of
+.I type
+.TP
+.B a
+.B adt
+without
+.B pick
+.TP
+.B B
+.B big
+.TP
+.B b
+.B byte
+.TP
+.B
+C
+.B chan of
+.I type
+.TP
+.B f
+.B real
+.TP
+.B i
+.B int
+.TP
+.B L
+.B list of
+.I type
+.TP
+.B m
+.B module
+.TP
+.B N
+.BR nil 's
+type
+.TP
+.B n
+no type (eg, function with no return type)
+.TP
+.B p
+.B adt
+with
+.B pick
+.TP
+.B R
+.B ref
+.I type
+.TP
+.B s
+.B string
+.TP
+.B t
+tuple
+.PD
+.RE
+.PP
+A
+.I type-index
+is an offset in the type table, representing the corresponding type.
+.I Size
+is the size in bytes of a value of the given type.
+The size of basic types is known and does not appear explicitly:
+.B big
+and
+.B real
+are 64 bits; all others including strings and reference types are 4 bytes.
+(Strings are represented internally by a pointer.)
+.PP
+Each
+.I "id-table"
+is preceded by a count of the number of entries, followed by
+an
+.I id-item
+for each entry in the table:
+.IP
+.EX
+.ft I
+id-table:
+	count \f5\en\fP id-items
+id-item:
+	id-offset \f5:\fP id-name \f5:\fP src type \f5\en\fP
+id-offset:
+	int
+id-name:
+	string
+count:
+	int
+.ft R
+.EE
+.PP
+.I Id-offset
+is the number of bytes from the start of the enclosing object to the value of the
+object identified by
+.IR "id-name" .
+.PP
+An adt without a
+.B pick
+clause is described using an
+.IR adt-item :
+.IP
+.EX
+.ft I
+adt-item:
+	adt-name • src size \f5\en\fP id-table
+adt-name:
+	string
+size:
+	int
+.ft R
+.EE
+.PP
+The
+.I id-table
+has an entry for every data element of
+.IR "adt-name" .
+.PP
+If an adt has a
+.B pick
+clause, the adt's type table entry uses the
+.B p
+type character.
+The invariant part of the adt is described by an
+.I adt-item
+(with zero
+.IR size )
+and the variant clause is described by a
+.I tag-table
+of the following form:
+.IP
+.EX
+.ft I
+tag-table:
+	count \f5\en\fP tag-items
+tag-item:
+	name \f5:\fP src size \f5\en\fP id-table
+  \f1|\fP	name \f5:\fP src \f5\en\fP
+.ft R
+.EE
+.PP
+The
+.I tag-table
+describes the variants of a Limbo adt
+that includes a
+.B pick
+clause.
+The
+.I name
+is the
+.B pick
+tag for the associated alternative.
+If the
+.I size
+and
+.I id-table
+are missing, the given variant has the same description
+as the previous one.
+.PP
+A tuple's
+.I id-table
+contains
+.I id-names
+of the form
+.BI t n,
+where
+.I n
+is the 0-origin index of the item in the tuple.
+.PP
+.I Src
+is as previously defined above in the PC table section.
+.SS Fn table
+The function table describes each function implemented by the Dis file.
+.IP
+.EX
+.ft I
+fn-item:
+	fn-pc \f5:\fP fn-name \f5\en\fP args locals return
+fn-pc:
+	int
+fn-name:
+	string
+args, locals:
+	id-table
+return:
+	type
+.ft R
+.EE
+.PP
+.I Fn-pc
+is the starting pc for the Dis instructions for
+.IR "fn-name" .
+If the function is a member of an adt,
+the member name is qualified by the adt name, so that
+.I fn-name
+has the form
+.IB `adt-name . member-name'.
+Within the
+.I id-tables
+for
+.I args
+and
+.IR locals ,
+the
+.I "id-offset"
+fields give offsets relative to the function's activation frame.
+Furthermore, no table entries are made for
+.I args
+that are declared
+.B nil
+(unused).
+.SS Data table
+The data table describes the global variables in the Dis file. It is an
+.IR "id-table" ,
+with one entry for each global variable.
+.SH SEE ALSO
+.IR limbo (1),
+.IR wm-deb (1),
+.IR debug (2),
+.IR dis (6)

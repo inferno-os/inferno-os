@@ -1,0 +1,66 @@
+.TH SH-CSV 1
+.SH NAME
+csv, getcsv \- parse ``comma-separated values''
+.SH SYNOPSIS
+.B load csv
+
+.B getcsv
+.I command
+.br
+.B ${csv
+.IB list }
+.br
+
+.SH DESCRIPTION
+.B Csv
+is a loadable module for
+.IR sh (1)
+that provides the facility to parse and generate
+``comma-separated value'' lists, a widely used
+data exchange format.
+Data in this format is usually in the form of a table,
+each row of which contains one or more items,
+each separated by a comma
+.RB ( , ).
+Items that contain
+a comma or a newline are surrounded with double-quotes
+(\f5"\fP).
+A double-quote within an item is represented by a pair
+of double-quotes.
+Two primitives are provided:
+.TP 10
+.B getcsv
+.B Getcsv
+works similiarly to
+.B getlines
+in
+.IR sh-std (1).
+It reads from the standard input, and for every line read,
+invokes
+.I command
+with
+.B $line
+set to the items found on that line (one element per item).
+.B Getcsv
+recognises the usual loop
+.B break
+and
+.B continue
+exceptions.
+.TP
+.B ${csv}
+.B Csv
+yields a single element containing all the items in
+.IR list ,
+comma-separated and quoted as necessary.
+.SH SOURCE
+.B /appl/cmd/sh/csv.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-std (1)
+.SH BUGS
+Empty lines are ambiguous:
+.B csv
+treats an empty line as containing a single,
+empty element; there is thus no way of
+representing an line containing no elements at all.

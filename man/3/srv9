@@ -1,0 +1,108 @@
+.TH SRV9 3 "Plan 9"
+.SH NAME
+srv9 \- plan 9 server registry
+.SH SYNOPSIS
+.nf
+.B bind -c #₪ /srv
+
+.BI /srv/ service1
+.BI /srv/ service2
+ ...
+.fi
+.SH DESCRIPTION
+On Inferno hosted on Plan 9,
+.I srv9
+serves a one-level directory that gives Inferno applications
+direct access to Plan 9 services posted in its
+.B #s
+server registry,
+and allows Inferno applications to post services for access by Plan 9 applications.
+A service is represented by a file descriptor, usually serving the common file service
+protocol described in
+.IR intro (5),
+allowing it to be mounted (see
+.IR bind (1)
+and
+.IR sys-bind (2))
+in the name space of an application in the other system.
+.PP
+To access a Plan 9 service in Inferno, open the desired service file;
+the resulting file descriptor is connected to the associated Plan 9 service.
+When that service is a shared Plan 9 file service,
+.I srv9
+automatically starts Plan 9's
+.I exportfs
+with appropriate options to make the service accessible from Inferno.
+It can safely be shared with Plan 9 applications, but note that any path names
+mentioned in the attach specifier (see
+.IR mount (1)
+and
+.IR attach (5))
+will be in the Plan 9 application's name space, not the Inferno application's.
+(Indeed, a similar caveat applies in Plan 9 itself.)
+.PP
+To export an Inferno service to Plan 9, create a new file such as
+.BR /srv/myserv
+using
+.B Sys->create
+with mode
+.B Sys->ORDWR
+(see
+.IR sys-open (2))
+and any desired permissions for the new service file.
+(Note that the
+.B #₪
+device must have been bound in with the
+.B -c
+option, as shown above, to allow file creation.)
+If the create is successful, Plan 9's service registry will have a new entry
+.BR myserv ,
+and the file descriptor returned from
+.B create
+acts as a pipe to any Plan 9 application
+that opens the associated service file in Plan 9.
+Typically on the Inferno side the file descriptor is passed to
+.IR sys-export (2)
+or made the standard input of an Inferno file service
+(see
+.IR intro (4)).
+The Plan 9 service file is automatically removed when the Inferno file descriptor is no longer referenced.
+.SH EXAMPLES
+To make Plan 9's factotum available in Inferno:
+.IP
+.EX
+mount -Aa /srv/factotum /mnt
+.EE
+.PP
+(Note the
+.B -A
+option to suppress Inferno authentication.)
+.PP
+To mount the Plan 9 file service from which a Plan 9 machine booted:
+.IP
+.EX
+mount -9 /srv/boot /n/local
+.EE
+.PP
+The
+.B -9
+option to
+.IR mount (1)
+requests Plan 9 authentication; that could also have been used instead of
+.B -A
+in the previous example.
+.PP
+To make the environment variables of the current Inferno name space available to Plan 9:
+.IP
+.EX
+fd := sys->create("/srv/infenv", Sys->ORDWR, 8r600);
+sys->export(fd, "/env", Sys->EXPWAIT);
+.EE
+.SH SOURCE
+.B /emu/Plan9/devsrv9.c
+.SH SEE ALSO
+.IR sys-bind (2),
+.IR sys-open (2),
+.IR sys-export (2),
+.IR import (4),
+.IR 9srvfs (4)

@@ -1,0 +1,11 @@
+<../../mkconfig
+
+LIB=libstyx.a
+
+OFILES=\
+	styxserver.$O\
+	$TARGMODEL.$O\
+
+HFILES=\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

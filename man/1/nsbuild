@@ -1,0 +1,49 @@
+.TH NSBUILD 1
+.SH NAME
+nsbuild \- build Inferno namespace 
+.SH SYNOPSIS
+.B nsbuild
+[
+.B file
+]
+.SH DESCRIPTION
+.B Nsbuild
+builds a file name space for Inferno.
+It reads a
+.I file
+(by default, a file called
+.B namespace
+in the current directory)
+and interprets the
+name space commands found in that file.
+.PP
+The commands executed by
+.B nsbuild
+include 
+.B bind
+and
+.BR mount .
+See
+.IR namespace (6)
+for details on the format of the file.
+.SH FILES
+.TP 1.5i
+.B namespace
+The default namespace file.
+.SH SOURCE
+.B /appl/cmd/nsbuild.b
+.SH "SEE ALSO"
+.IR bind (1),
+.IR cd (1),
+.IR newns (2),
+.IR namespace (6)
+.SH BUGS
+The
+.BR new
+and
+.BR fork
+operations of
+.IR namespace (6)
+are ineffective because
+.I nsbuild
+runs as a separate process.

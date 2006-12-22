@@ -1,0 +1,221 @@
+.TH CPROF 1
+.SH NAME
+cprof \- coverage profiling of limbo programs
+.SH SYNOPSIS
+.B cprof
+[
+.B -nfer
+] [
+.BI -m " modname"
+] ... [
+.I "cmd arg ..."
+]
+.PP
+.B wm/cprof
+[
+.B -efr
+] [
+.BI -m " modname"
+] ... [
+.I "cmd arg ..."
+]
+.SH DESCRIPTION
+.I Cprof
+is a coverage profiling tool which shows whether lines of limbo source have been
+executed or not. It can also show the number of times a line of code has been
+executed and can accumulate results over a series of runs if so desired. The source in
+question should be compiled with the 
+.B -g
+flag so that the relevant symbol table files exist.
+.PP
+The
+.B -n
+option lists the name of the file along with the line number.
+.PP
+The
+.B -f
+option shows the number of times source code is executed rather than simply
+indicating coverage.
+.PP
+The
+.B -r
+options indicates that the profiling results should be recorded. Any profiled dis file
+of the form <name>.dis will have the raw profiling results stored in a file named
+<name>.prf. If this file already existed before the run, the results will be added to
+this file. The profiling results are not shown when this option is given.
+.PP
+The
+.B -m
+option lists the module names which are to be profiled. If none are given, all the
+modules loaded by the kernel will be profiled. The name may be the actual name of
+the module or its path name.
+.PP
+The
+.B -e
+option profiles the module that is loaded first in any following command. In this case
+there is no need to give a
+.B -m
+option as this is added automatically.
+.PP
+Any remaining arguments are assumed to
+specify a command and set of arguments to the command. If this is the case,
+.B cprof
+will automatically start profiling, run the command to completion and then
+stop profiling before either recording the results or showing the profile statistics.
+.PP
+If no command is given to profile, then
+.B cprof
+will show the profile statistics from any existing recorded results in .prf files instead.
+.PP
+.B Cprof
+discriminates between different sections of code on the same line. A limbo
+for statement, for example, consisting of initialization, condition and step all on the same line
+of source code will be dealt with as three separate sections.
+.PP
+.B Cprof
+displays the profile statistics as a list of the limbo source preceded by a line
+number and an indication of whether the line was executed or not. For each section
+of code on each line, a plus sign indicates that it was executed, a minus sign that
+it was not and a question mark indicates that some of the dis instructions associated
+with the section of code were executed but some were not. Lines with no
+associated dis code do not have an indication. Of course, given the
+.B -f
+option, the number of times each section is executed is shown instead.
+.PP
+.I Wm/cprof
+is a graphical coverage profiling tool which shows which lines of limbo source have not been
+executed. It can accumulate results over a series of runs if so desired.
+.PP
+The
+.B -r
+options indicates that the profiling results should be recorded. Any profiled dis file
+of the form <name>.dis will have the raw profiling results stored in a file named
+<name>.prf. If this file already existed before the run, the results will be added to
+this file.
+.PP
+The
+.B -m
+option lists the module names which are to be profiled. If none are given, all the
+modules loaded by the kernel will be profiled. The name may be the actual name of
+the module or its path name.
+.PP
+The
+.B -e
+option profiles the module that is loaded first in any following command. In this case
+there is no need to give a
+.B -m
+option as this is added automatically.
+.PP
+The
+.B -f
+option allows a view of the execution profile rather than coverage profile. Each source
+line is preceded by the number of times it was executed and the text is coloured according
+to this: the darker the colour the more times the section of code was executed.
+.PP
+Any remaining arguments are assumed to
+specify a command and set of arguments to the command. If this is the case,
+.B wm/cprof
+will automatically start profiling, run the command to completion and then
+stop profiling before optionally recording the results and showing the profile statistics.
+.PP
+If no command is given to profile, then
+.B wm/cprof
+will show the profile statistics from any existing recorded results in .prf files instead.
+.PP
+.B Wm/cprof
+displays the profile statistics graphically. When the
+.B -f
+option is not present, code that has not been executed is shown
+in white against a red background. Code whose corresponding dis instructions have
+not been wholly executed are shown in red against a white background. Typically a
+line of code such as
+.EX
+	x = !x;
+.EE
+might show only partial execution if x has changed value from 1 to 0 but not
+vice-verse.
+.PP
+The top of the text window names the module along with any modules before and
+after it in the list. If a module has 100% coverage this is stated as well. To help find
+unexecuted code, use the find icon in the menu bar. To move to the next or go back to 
+any other profiled modules, use the arrow icons in the menu bar. The last icon, the reload 
+icon, pops up a menu of profiled modules to choose from.
+.PP
+.B wm/cprof
+calls
+.I cprof
+to do the actual work.
+.SH EXAMPLE
+To profile a particular command
+.IP
+.EX
+cprof /dis/math/sieve 100
+.EE
+.PP
+To profile the same command but restrict attention to its own module (Sieve).
+.IP
+.EX
+cprof -m Sieve /dis/math/sieve 100
+.EE
+.PP
+A shorter version of the above:
+.IP
+.EX
+cprof -e /dis/math/sieve 100
+.EE
+.PP
+Make 3 runs recording results as we go:
+.IP
+.EX
+cprof -e -r /dis/math/sieve 100
+cprof -e -r /dis/math/sieve 1000
+cprof -e -r /dis/math/sieve 10000
+.EE
+.PP
+Now look at the cumulative results:
+.IP
+.EX
+cprof -m /dis/math/sieve.dis
+.EE
+.PP
+To profile a particular command:
+.IP
+.EX
+wm/cprof /dis/math/sieve 100
+.EE
+.PP
+To profile the same command but restrict attention to its own module (Partitions).
+.IP
+.EX
+wm/cprof -m Sieve /dis/math/sieve 100
+.EE
+.PP
+A shorter version of the above:
+.IP
+.EX
+wm/cprof -e /dis/math/sieve 100
+.EE
+.PP
+Make 3 runs recording results as we go using cprof for simplicity:
+.IP
+.EX
+cprof -e -r /dis/math/sieve 100
+cprof -e -r /dis/math/sieve 1000
+cprof -e -r /dis/math/sieve 10000
+.EE
+.PP
+Now look at the cumulative results graphically:
+.IP
+.EX
+wm/cprof -m /dis/math/sieve.dis
+.EE
+.SH SOURCE
+.B /appl/cmd/cprof.b
+.br
+.B /appl/wm/cprof.b
+.SH SEE ALSO
+.IR prof (1),
+.IR prof (2),
+.IR prof (3)
+.SH BUGS
+Neither command can profile compiled limbo programs.

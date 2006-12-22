@@ -1,0 +1,84 @@
+// ARM support
+
+defn acidinit()			// Called after all the init modules are loaded
+{
+	bpl = {};
+	bpid = -1;
+	bpfmt = 'X';
+	nopstop = 0;
+
+	srcpath = {
+		"./",
+	};
+
+	srcfiles = {};			// list of loaded files
+	srctext = {};			// the text of the files
+}
+
+defn linkreg(addr)
+{
+	return 0;
+}
+
+defn stk()			// trace
+{
+	_stk(*PC, *SP, linkreg(0), 0);
+}
+
+defn lstk()			// trace with locals
+{
+	_stk(*PC, *SP, linkreg(0), 1);
+}
+
+defn kstk()
+{
+	local lab;
+	complex Proc proc;
+	lab = proc.sched;
+	complex Label lab;
+	_stk(lab.pc\X, lab.sp\X, linkreg(0), 0);
+}
+
+defn lkstk()
+{
+	local lab;
+	complex Proc proc;
+	lab = proc.sched;
+	complex Label lab;
+	_stk(lab.pc\X, lab.sp\X, linkreg(0), 1);
+}
+
+defn gpr()				// print general purpose registers
+{
+	print("R0\t", *R0, " R1\t", *R1, " R2\t", *R2, " R3\t", *R3, "\n");
+	print("R4\t", *R4, " R5\t", *R5, " R6\t", *R6, " R7\t", *R7, "\n");
+	print("R8\t", *R8, " R9\t", *R9, " R10\t", *R10, " R11\t", *R11, "\n");
+	print("R12\t", *R12, "\n");
+	return 0;
+}
+
+defn spr()				// print special processor registers
+{
+	local pc;
+	local cause;
+	local lr;
+
+	pc = *PC;
+	lr = *LINK;
+	print("PC\t", pc, " ", fmt(pc, 'a'), "  ");
+	pfl(pc);
+	print("LINK\t", lr, " ", fmt(lr, 'a'), "  ");
+	pfl(lr);
+	print("TYPE: ", reason(*TYPE), "\n");
+	print("SP\t", *SP, "\n");
+	
+	return 0;
+}
+
+defn regs()				// print all registers
+{
+	spr();
+	gpr();
+}
+
+print("$ROOT/lib/acid/arm");

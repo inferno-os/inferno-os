@@ -1,0 +1,49 @@
+.TH MANGALOAD 8
+.SH NAME
+mangaload \- send new kernel to MANGA bootstrap
+.SH SYNOPSIS
+.B auxi/mangaload
+[
+.B -48dr
+]
+.I host
+.I image
+.SH DESCRIPTION
+.I Mangaload
+uses an ICMP protocol unique to the Peplink MANGA™ firewall to send a new kernel
+.I image
+to the MANGA bootstrap monitor to burn into flash, replacing
+the existing kernel image.
+To start the loading process, connect to the device's console on its serial port
+(38400 baud, 8 bits, no parity, 1 stop bit, no flow control),
+power the device off then on again, and when the
+.B MANGA
+prompt appears, quickly type the letter
+.BR f .
+Then run
+.I mangaload
+to load the kernel; the device should give status updates as the kernel loads,
+and as it burns the image into flash.
+When it has finished, power the device off and on again to start the new kernel.
+.PP
+By default,
+.I mangaload
+assumes a 4 Mbyte flash on the device; the
+.B -8
+option sets it to 8 Mbytes.
+The
+.B -r
+option causes the
+.I image
+to be loaded into another, larger flash region, used by Linux for its initial root,
+which can be used by Inferno for general storage.
+The
+.B -d
+option prints a trace of the protocol, for debugging.
+.SH SOURCE
+.B /appl/cmd/auxi/mangaload.b
+.br
+.B /os/manga
+.SH SEE ALSO
+.IR bootpd (8),
+.IR tftpd (8)

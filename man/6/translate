@@ -1,0 +1,55 @@
+.TH TRANSLATE 6
+.SH NAME
+translate \- translation dictionary
+.SH SYNOPSIS
+.BI /locale/dict/ app
+.br
+.BI /locale/ locale /dict/ app
+.SH DESCRIPTION
+A dictionary file provides translation text that applications can access using
+.IR translate (2).
+Each is a Unicode file containing a set of translations, one per line,
+each line having the following syntax:
+.IP
+.EX
+"\fIsource-text\fP"\fR [\fP (\fInote-text\fP)\fR ] [ \fP="\fItarget-text\fP" \fR ] \fP
+.EE
+.PP
+which defines
+.I target-text
+as the translation for
+.I source-text .
+A missing translation clause defines the identity translation.
+The optional
+.I note-text
+qualifies the context of the
+.IR source-text ,
+when the same phrase in the source language might
+translate to different phrases in the target language,
+or to distinguish a particular context in the program (eg, particular menus):
+For example:
+.IP
+.EX
+"Times"(newspaper) = "La Republicca"
+"Times"(timetable) = "L'orario"
+"ABC"(keypad) = "abc"
+.EE
+.PP
+Empty lines and lines beginning with
+.B #
+are ignored.
+The quoted strings can contain the Limbo escape sequences
+.B "\en"
+(newline),
+.B "\et"
+(tab),
+.B "\er"
+(carriage return),
+and
+.B "\e\e"
+(backslash).
+.PP
+The default locale is set by binding one or more specific locales onto
+.BR /locale/dict .
+.SH FILES
+.B /locale/*/dict/*

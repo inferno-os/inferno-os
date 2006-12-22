@@ -1,0 +1,85 @@
+.TH OS 1 hosted
+.SH NAME
+os \- interface to host OS commands (hosted Inferno only)
+.SH SYNOPSIS
+.B bind -a '#C' /
+.br
+.B os
+[
+.B -m
+.I mountpoint
+] [
+.BI -d " dir"
+] [
+.B -n
+] [
+.BI -N " level"
+]
+.I cmd
+[
+.IR arg ...
+]
+.SH DESCRIPTION
+.I Os
+uses a
+.IR cmd (3)
+device to execute a command,
+.IR cmd ,
+on a host system.
+If the
+.B -m
+option is given,
+.I os
+uses the device at
+.IR mountpoint ,
+otherwise it is asssumed to be at
+.BR /cmd ,
+and is bound into the local namespace if necessary.
+.PP
+The
+.B -d
+option causes the command to run in directory
+.IR dir ;
+an error results and the command will not run if
+.I dir
+does not exist or is inaccessible.
+The standard output and standard error of the command are merged on the standard output.
+.I Os
+copies the standard input to the remote command's standard input; redirect
+.IR os 's
+input to
+.B /dev/null
+if there is no input to the command.
+.I Os
+terminates when
+.I cmd
+does, and its exit status reflects the status of
+.I cmd
+(if available).
+The
+.B -n
+option causes
+.I cmd
+to run with less than normal priority (`nice').
+The
+.B -N
+option sets low priority to a particular
+.I level
+from 1 to 3.
+.SH FILES
+.B /cmd/clone
+.SH SOURCE
+.B /appl/cmd/os.b
+.SH "SEE ALSO"
+.IR cpu (1),
+.IR rcmd (1),
+.IR cmd (3)
+.SH DIAGNOSTICS
+The exit status of
+.I os
+reflects any error that occurs when starting
+.I cmd
+and, if it starts successfully, the status of
+.I os
+is the exit status of
+.IR cmd .

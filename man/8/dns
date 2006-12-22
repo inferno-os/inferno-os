@@ -1,0 +1,156 @@
+.TH DNS 8
+.SH NAME
+dns, dnsquery \- domain name service
+.SH SYNOPSIS
+.B ndb/dns
+[
+.BI -f " dnsfile"
+] [
+.B -h
+] [
+.B -r
+] [
+.BI -x " net"
+]
+.PP
+.B ndb/dnsquery
+[
+.BI -x " net"
+] [
+.I "address ..."
+]
+.SH DESCRIPTION
+.I Dns
+is an Internet Domain Name Service (DNS) resolver.
+By default it serves a file
+.BR /net/dns ,
+that clients such as
+.IR cs (8)
+write and read to retrieve network data associated with domain names and Internet addresses.
+The
+.B -f
+option specifies the network database that contains the local DNS data (default:
+.BR /lib/ndb/local ).
+The
+.B -x
+option specifies an alternative mount point for the network (default:
+.BR /net ).
+When Inferno is running hosted,
+.I dns
+normally uses the host's own DNS resolver first (via
+.IR srv (2)),
+before searching the DNS itself; that way domain names can be
+used in Inferno with minimal configuration.
+The
+.B -h
+option stops
+.I dns
+from using the host data.
+In the absence of local data, by default
+.I dns
+consults the external DNS directly using some bootstrap data, but if
+.B -r
+is specified and local resolvers are given in the configuration file,
+.IR dns (6),
+.I dns
+will query them first for all addresses, before resorting to external DNS servers.
+.PP
+.I Dnsquery
+queries the given
+.I server
+(default:
+.BR /net/cs )
+for a translation of each
+.I address
+and prints the results, one per line.
+If no
+.I address
+is given,
+.I dnsquery
+prompts for something to find in the DNS, one per line on the standard input,
+of the form:
+.IP
+.EX
+.IR "name" " [" attribute "]"
+.EE
+.PP
+where
+.I name
+is the label of something in the DNS, and
+.I attribute
+is one of its attributes from the list below:
+.TF hinfox
+.TP
+.B all
+all data currently known locally for
+.I name
+.TP
+cname
+name for which
+.I name
+is an alias
+.TP
+hinfo
+host and operating system type
+.TP
+.B ip
+for an IP address when
+.I name
+is a domain name
+.TP
+.B mx
+mail exchanger
+.TP
+.B ns
+for a list of name servers
+.TP
+.B ptr
+for the domain name when
+.I name
+is an Internet address
+.TP
+.B soa
+statement-of-authority
+.PD
+.PP
+.I Dnsquery
+queries the
+.I server
+for that name/attribute combination and prints the results, one per line.
+If an
+.I attribute
+is not given,
+.I dnsquery
+uses
+.B ip
+if
+.I name
+looks like a domain name,
+and
+.B ptr
+if it looks like an Internet address.
+.SH FILES
+.TF /lib/ndb/local
+.TP
+.B #sdns*
+service directory
+.TP
+.B /net/dns
+domain name service
+.TP
+.B /lib/ndb/local
+network database
+.TP
+.B /lib/ndb/dns
+DNS bootstrap data
+.SH SOURCE
+.B /appl/cmd/ndb/dns.b
+.br
+.B /appl/cmd/ndb/dnsquery.b
+.SH "SEE ALSO"
+.IR dns (6),
+.IR cs (8)
+.SH BUGS
+.I Dns
+does not yet offer an external DNS server, mainly
+for lack of a suitable database for local zone data.

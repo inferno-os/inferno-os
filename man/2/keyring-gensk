@@ -1,0 +1,49 @@
+.TH KEYRING-GENSK 2
+.SH NAME
+keyring: genSK, genSKfromPK, sktopk, dhparams \- generate keys
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+keyring := load Keyring Keyring->PATH;
+genSK:  fn(algname, owner: string, length: int): ref SK;
+genSKfromPK:  fn(pk: ref PK, owner: string): ref SK;
+sktopk:  fn(sk: ref SK): ref PK;
+dhparams:  fn(nbits: int): (ref IPint, ref IPint);
+.EE
+.SH DESCRIPTION
+.B GenSK
+generates a public/private key pair, represented by
+.BR SK .
+(Although we call it a `private key',
+.B SK
+contains both the private and public parts of a public key.)
+.I Algname
+is the name of the algorithm to use; in the current implementation, only
+.B elgamal
+and
+.B rsa
+are possible.
+.I Owner
+is the user name to be associated with the key.
+.I Length
+gives the length of the key modulus in bits.
+.B GenSK
+returns nil if an unknown algorithm has been specified.
+.PP
+.B GenSKfromPK
+generates a private key that has the same system parameters as the public key
+.IR pk .
+It is used to generate new keys that are of the same complexity as old keys.
+.PP
+.B Sktopk
+extracts the public part of private key.
+.PP
+.B Dhparams
+creates Diffie-Hellman parameters. The second
+.B IPint
+returned is an
+.I nbits
+long prime number that serves as the modulus.
+The first
+.B IPint
+is a primitive root in the integer field defined by that modulus.

@@ -1,0 +1,211 @@
+
+YYSys: module
+{
+	FD: adt
+	{
+		fd:	int;
+	};
+	fildes:		fn(fd: int): ref FD;
+	fprint:		fn(fd: ref FD, s: string, *): int;
+};
+
+yysys: YYSys;
+yystderr: ref YYSys->FD;
+
+YYFLAG: con -1000;
+
+# parser for yacc output
+
+yytokname(yyc: int): string
+{
+	if(yyc > 0 && yyc <= len yytoknames && yytoknames[yyc-1] != nil)
+		return yytoknames[yyc-1];
+	return "<"+string yyc+">";
+}
+
+yystatname(yys: int): string
+{
+	if(yys >= 0 && yys < len yystates && yystates[yys] != nil)
+		return yystates[yys];
+	return "<"+string yys+">\n";
+}
+
+yylex1(yylex: ref YYLEX): int
+{
+	c : int;
+	yychar := yylex.lex();
+	if(yychar <= 0)
+		c = yytok1[0];
+	else if(yychar < len yytok1)
+		c = yytok1[yychar];
+	else if(yychar >= YYPRIVATE && yychar < YYPRIVATE+len yytok2)
+		c = yytok2[yychar-YYPRIVATE];
+	else{
+		n := len yytok3;
+		c = 0;
+		for(i := 0; i < n; i+=2) {
+			if(yytok3[i+0] == yychar) {
+				c = yytok3[i+1];
+				break;
+			}
+		}
+		if(c == 0)
+			c = yytok2[1];	# unknown char
+	}
+	if(yydebug >= 3)
+		yysys->fprint(yystderr, "lex %.4ux %s\n", yychar, yytokname(c));
+	return c;
+}
+
+YYS: adt
+{
+	yyv: YYSTYPE;
+	yys: int;
+};
+
+yyparse(yylex: ref YYLEX): int
+{
+	if(yydebug >= 1 && yysys == nil) {
+		yysys = load YYSys "$Sys";
+		yystderr = yysys->fildes(2);
+	}
+
+	yys := array[YYMAXDEPTH] of YYS;
+
+	yyval: YYSTYPE;
+	yystate := 0;
+	yychar := -1;
+	yynerrs := 0;		# number of errors
+	yyerrflag := 0;		# error recovery flag
+	yyp := -1;
+	yyn := 0;
+
+yystack:
+	for(;;){
+		# put a state and value onto the stack
+		if(yydebug >= 4)
+			yysys->fprint(yystderr, "char %s in %s", yytokname(yychar), yystatname(yystate));
+
+		yyp++;
+		if(yyp >= len yys)
+			yys = (array[len yys * 2] of YYS)[0:] = yys;
+		yys[yyp].yys = yystate;
+		yys[yyp].yyv = yyval;
+
+		for(;;){
+			yyn = yypact[yystate];
+			if(yyn > YYFLAG) {	# simple state
+				if(yychar < 0)
+					yychar = yylex1(yylex);
+				yyn += yychar;
+				if(yyn >= 0 && yyn < YYLAST) {
+					yyn = yyact[yyn];
+					if(yychk[yyn] == yychar) { # valid shift
+						yychar = -1;
+						yyp++;
+						if(yyp >= len yys)
+							yys = (array[len yys * 2] of YYS)[0:] = yys;
+						yystate = yyn;
+						yys[yyp].yys = yystate;
+						yys[yyp].yyv = yylex.lval;
+						if(yyerrflag > 0)
+							yyerrflag--;
+						if(yydebug >= 4)
+							yysys->fprint(yystderr, "char %s in %s", yytokname(yychar), yystatname(yystate));
+						continue;
+					}
+				}
+			}
+		
+			# default state action
+			yyn = yydef[yystate];
+			if(yyn == -2) {
+				if(yychar < 0)
+					yychar = yylex1(yylex);
+		
+				# look through exception table
+				for(yyxi:=0;; yyxi+=2)
+					if(yyexca[yyxi] == -1 && yyexca[yyxi+1] == yystate)
+						break;
+				for(yyxi += 2;; yyxi += 2) {
+					yyn = yyexca[yyxi];
+					if(yyn < 0 || yyn == yychar)
+						break;
+				}
+				yyn = yyexca[yyxi+1];
+				if(yyn < 0){
+					yyn = 0;
+					break yystack;
+				}
+			}
+
+			if(yyn != 0)
+				break;
+
+			# error ... attempt to resume parsing
+			if(yyerrflag == 0) { # brand new error
+				yylex.error("syntax error");
+				yynerrs++;
+				if(yydebug >= 1) {
+					yysys->fprint(yystderr, "%s", yystatname(yystate));
+					yysys->fprint(yystderr, "saw %s\n", yytokname(yychar));
+				}
+			}
+
+			if(yyerrflag != 3) { # incompletely recovered error ... try again
+				yyerrflag = 3;
+	
+				# find a state where "error" is a legal shift action
+				while(yyp >= 0) {
+					yyn = yypact[yys[yyp].yys] + YYERRCODE;
+					if(yyn >= 0 && yyn < YYLAST) {
+						yystate = yyact[yyn];  # simulate a shift of "error"
+						if(yychk[yystate] == YYERRCODE)
+							continue yystack;
+					}
+	
+					# the current yyp has no shift onn "error", pop stack
+					if(yydebug >= 2)
+						yysys->fprint(yystderr, "error recovery pops state %d, uncovers %d\n",
+							yys[yyp].yys, yys[yyp-1].yys );
+					yyp--;
+				}
+				# there is no state on the stack with an error shift ... abort
+				yyn = 1;
+				break yystack;
+			}
+
+			# no shift yet; clobber input char
+			if(yydebug >= 2)
+				yysys->fprint(yystderr, "error recovery discards %s\n", yytokname(yychar));
+			if(yychar == YYEOFCODE) {
+				yyn = 1;
+				break yystack;
+			}
+			yychar = -1;
+			# try again in the same state
+		}
+	
+		# reduction by production yyn
+		if(yydebug >= 2)
+			yysys->fprint(yystderr, "reduce %d in:\n\t%s", yyn, yystatname(yystate));
+	
+		yypt := yyp;
+		yyp -= yyr2[yyn];
+#		yyval = yys[yyp+1].yyv;
+		yym := yyn;
+	
+		# consult goto table to find next state
+		yyn = yyr1[yyn];
+		yyg := yypgo[yyn];
+		yyj := yyg + yys[yyp].yys + 1;
+	
+		if(yyj >= YYLAST || yychk[yystate=yyact[yyj]] != -yyn)
+			yystate = yyact[yyg];
+		case yym {
+			$A
+		}
+	}
+
+	return yyn;
+}

@@ -1,0 +1,1358 @@
+.TH CANVAS 9
+.SH NAME
+canvas \- Create and manipulate canvas widgets
+.SH SYNOPSIS
+\f5canvas\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-background        -selectbackground  -takefocus
+-borderwidth       -selectborderwidth -xscrollcommand
+-relief            -selectforeground  -yscrollcommand
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -closeenough \fIdist\fP
+Specifies a floating-point value indicating how close the mouse cursor
+must be to an item before it is considered to be ``inside'' the item.
+Defaults to 1.0.
+.TP
+.B -confine \fIboolean\fP
+Specifies a boolean value that indicates whether or not it should be
+allowable to set the canvas's view outside the region defined by the
+\f5scrollRegion\fR argument.
+Defaults to true, which means that the view will
+be constrained within the scroll region.
+.TP
+.B -height \fIdist\fP
+Specifies a desired window height that the canvas widget should request from
+its geometry manager.  The value may be specified in any
+of the forms described in the COORDINATES section below.
+.TP
+.B -scrollregion \fIlist\fP
+Specifies a list with four \fIdist\fP coordinates describing the left, top, right, and
+bottom coordinates of a rectangular region.
+This region is used for scrolling purposes and is considered to be
+the boundary of the information in the canvas.
+Each of the coordinates may be specified
+in any of the forms given in the COORDINATES section below.
+.TP
+.B -width \fIdist\fP
+Specifies a desired window width that the canvas widget should request from
+its geometry manager.  The value may be specified in any
+of the forms described in the COORDINATES section below.
+.br
+.TP
+.B -xscrollincrement \fIdist\fP
+Specifies an increment for horizontal scrolling, in any of the usual forms
+permitted for screen distances.  If the value of this option is greater
+than zero, the horizontal view in the window will be constrained so that
+the canvas x coordinate at the left edge of the window is always an even
+multiple of \f5xscrollicrement\fR;  furthermore, the units for scrolling
+(e.g., the change in view when the left and right arrows of a scrollbar
+are selected) will also be \f5xscrollicrement\fR.  If the value of
+this option is less than or equal to zero, then horizontal scrolling
+is unconstrained.
+.TP
+.B -yscrollincrement \fIdist\fP
+Specifies an increment for vertical scrolling, in any of the usual forms
+permitted for screen distances.  If the value of this option is greater
+than zero, the vertical view in the window will be constrained so that
+the canvas y coordinate at the top edge of the window is always an even
+multiple of \f5yscrollicrement\fR;  furthermore, the units for scrolling
+(e.g., the change in view when the top and bottom arrows of a scrollbar
+are selected) will also be \f5yscrollicrement\fR.  If the value of
+this option is less than or equal to zero, then vertical scrolling
+is unconstrained.
+.TP
+.B -buffer \fIwhat\fP
+Specifies how much of the canvas region will be
+backed by an offscreen bitmap buffer.
+\fIWhat\fP can be one of \f5all\fP (the entire scroll region
+will be buffered), \f5visible\fP (only the visible area), \f5none\fP
+(no buffering) or \f5auto\fP (equivalent to either \f5none\fP
+or \f5visible\fP depending on whether the canvas is packed inside
+another canvas or not).
+
+.SH INTRODUCTION
+The \f5canvas\fR command creates a new window (given
+by the \fIpathName\fR argument) and makes it into a canvas widget.
+Additional options, described above, may be specified on the
+command line
+to configure aspects of the canvas such as its colours and 3-D relief.
+The \f5canvas\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+Canvas widgets implement structured graphics.
+A canvas displays any number of \fIitems\fR, which may be things like
+rectangles, circles, lines, and text.
+Items may be manipulated (e.g. moved or re-coloured) and commands may
+be associated with items in much the same way that the \f5bind\fR
+command allows commands to be bound to widgets.  For example,
+a particular command may be associated with the <Button-1> event
+so that the command is invoked whenever button 1 is pressed with
+the mouse cursor over an item.
+This means that items in a canvas can have behaviours defined by
+the Tk scripts bound to them.
+
+.SH "DISPLAY LIST"
+The items in a canvas are ordered for purposes of display,
+with the first item in the display list being displayed
+first, followed by the next item in the list, and so on.
+Items later in the display list obscure those that are
+earlier in the display list and are sometimes referred to
+as being ``on top'' of earlier items.
+When a new item is created it is placed at the end of the
+display list, on top of everything else.
+Widget commands may be used to re-arrange the order of the
+display list.
+
+.SH "ITEM IDS AND TAGS"
+Items in a canvas widget may be named in either of two ways:
+by id or by tag.
+Each item has a unique identifying number which is assigned to
+that item when it is created.  The id of an item never changes
+and id numbers are never re-used within the lifetime of a
+canvas widget.
+.PP
+Each item may also have any number of \fItags\fR associated
+with it.  A tag is just a string of characters, and it may
+take any form except that of an integer.
+For example, ``x123'' is OK but ``123'' isn't.
+The same tag may be associated with many different items.
+This is commonly done to group items in various interesting
+ways;  for example, all selected items might be given the
+tag ``selected''.
+.PP
+The tag \f5all\fR is implicitly associated with every item
+in the canvas;  it may be used to invoke operations on
+all the items in the canvas.
+.PP
+The tag \f5current\fR is managed automatically by Tk;
+it applies to the \fIcurrent item\fR, which is the
+topmost item whose drawn area covers the position of
+the mouse cursor.
+If the mouse is not in the canvas widget or is not over
+an item, then no item has the \f5current\fR tag.
+.PP
+When specifying items in canvas widget commands, if the
+specifier is an integer then it is assumed to refer to
+the single item with that id.
+If the specifier is not an integer, then it is assumed to
+refer to all of the items in the canvas that have a tag
+matching the specifier.
+The symbol \fItagOrId\fR is used below to indicate that
+an argument specifies either an id that selects a single
+item or a tag that selects zero or more items.
+Some widget commands only operate on a single item at a
+time;  if \fItagOrId\fR is specified in a way that
+names multiple items, then the normal behaviour is for
+the command to use the first (lowest) of these items in
+the display list that is suitable for the command.
+Exceptions are noted in the widget command descriptions
+below.
+.SH COORDINATES
+All coordinates related to canvases are stored as fixed-point
+numbers.
+Coordinates and distances are specified as documented
+in the
+.I dist
+section of 
+.IR types (9).
+.SH TRANSFORMATIONS
+Normally the origin of the canvas coordinate system is at the
+upper-left corner of the window containing the canvas.
+It is possible to adjust the origin of the canvas
+coordinate system relative to the origin of the window using the
+\f5xview\fR and \f5yview\fR widget commands;  this is typically used
+for scrolling.
+Canvases do not support scaling or rotation of the canvas coordinate
+system relative to the window coordinate system.
+.PP
+Individual items may be moved or scaled using widget commands
+described below, but they may not be rotated.
+
+.SH INDICES
+Text items support the notion of an \fIindex\fR for identifying
+particular positions within the item.
+Indices are used for commands such as inserting text, deleting
+a range of characters, and setting the insertion cursor position.
+An index may be specified in any of a number of ways, and
+different types of items may support different forms for
+specifying indices.
+Text items support the following forms for an index.
+Note that it is possible to refer to the character just after
+the last one in the text item;  this is necessary for such
+tasks as inserting new text at the end of the item.
+.TP 10
+\fInumber\fR
+A decimal number giving the position of the desired character
+within the text item.
+0 refers to the first character, 1 to the next character, and
+so on.
+A number less than 0 is treated as if it were zero, and a
+number greater than the length of the text item is treated
+as if it were equal to the length of the text item.
+.TP 10
+\f5end\fR
+Refers to the character just after the last one in the item
+(same as the number of characters in the item).
+.TP 10
+\f5insert\fR
+Refers to the character just before which the insertion cursor
+is drawn in this item.
+.TP 10
+\f5sel.first\fR
+Refers to the first selected character in the item.
+If the selection isn't in this item then this form is illegal.
+.TP 10
+\f5sel.last\fR
+Refers to the last selected character in the item.
+If the selection isn't in this item then this form is illegal.
+.TP 10
+\f5@\fIx,y\fR
+Refers to the character at the point given by \fIx\fR and
+\fIy\fR, where \fIx\fR and \fIy\fR are specified in the coordinate
+system of the canvas.
+If \fIx\fR and \fIy\fR lie outside the coordinates covered by the
+text item, then they refer to the first or last character in the
+line that is closest to the given point.
+
+.SH "WIDGET COMMAND"
+The \f5canvas\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.
+The following widget commands are possible for canvas widgets:
+.TP
+\fIpathName \f5addtag \fItag searchSpec \fR?\fIarg arg ...\fR?
+For each item that meets the constraints specified by
+\fIsearchSpec\fR and the \fIarg\fRs, add
+\fItag\fR to the list of tags associated with the item if it
+isn't already present on that list.
+It is possible that no items will satisfy the constraints
+given by \fIsearchSpec and \fIarg\fRs, in which case the
+command has no effect.
+This command returns an empty string as result.
+\fISearchSpec\fR and \fIarg\fR's may take any of the following
+forms:
+.RS
+.TP
+\f5above \fItagOrId\fR
+Selects the item just after (above) the one given by \fItagOrId\fR
+in the display list.
+If \fItagOrId\fR denotes more than one item, then the last (topmost)
+of these items in the display list is used.
+.TP
+\f5all\fR
+Selects all the items in the canvas.
+.TP
+\f5below \fItagOrId\fR
+Selects the item just before (below) the one given by \fItagOrId\fR
+in the display list.
+If \fItagOrId\fR denotes more than one item, then the first (lowest)
+of these items in the display list is used.
+.TP
+\f5closest \fIx y \fR?\fIhalo\fR? ?\fIstart\fR?
+Selects the item closest to the point given by \fIx\fR and \fIy\fR.
+If more than one item is at the same closest distance (e.g. two
+items overlap the point), then the top-most of these items (the
+last one in the display list) is used.
+If \fIhalo\fR is specified, then it must be a non-negative
+value.
+Any item closer than \fIhalo\fR to the point is considered to
+overlap it.
+The \fIstart\fR argument may be used to step circularly through
+all the closest items.
+If \fIstart\fR is specified, it names an item using a tag or id
+(if by tag, it selects the first item in the display list with
+the given tag).
+Instead of selecting the topmost closest item, this form will
+select the topmost closest item that is below \fIstart\fR in
+the display list;  if no such item exists, then the selection
+behaves as if the \fIstart\fR argument had not been specified.
+.TP
+\f5enclosed\fR \fIx1\fR \fIy1\fR \fIx2\fR \fIy2\fR
+Selects all the items completely enclosed within the rectangular
+region given by \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR.
+\fIX1\fR must be no greater then \fIx2\fR and \fIy1\fR must be
+no greater than \fIy2\fR.
+.TP
+\f5overlapping\fR \fIx1\fR \fIy1\fR \fIx2\fR \fIy2\fR
+Selects all the items that overlap or are enclosed within the
+rectangular region given by \fIx1\fR, \fIy1\fR, \fIx2\fR,
+and \fIy2\fR.
+\fIX1\fR must be no greater then \fIx2\fR and \fIy1\fR must be
+no greater than \fIy2\fR.
+.TP
+\f5withtag \fItagOrId\fR
+Selects all the items given by \fItagOrId\fR.
+.RE
+.TP
+\fIpathName \f5bbox \fItagOrId\fR ?\fItagOrId tagOrId ...\fR?
+Returns a list with four elements giving an approximate bounding box
+for all the items named by the \fItagOrId\fR arguments.
+The list has the form ``\fIx1 y1 x2 y2\fR'' such that the drawn
+areas of all the named elements are within the region bounded by
+\fIx1\fR on the left, \fIx2\fR on the right, \fIy1\fR on the top,
+and \fIy2\fR on the bottom.
+The return value may overestimate the actual bounding box by
+a few pixels.
+If no items match any of the \fItagOrId\fR arguments or if the
+matching items have empty bounding boxes (i.e. they have nothing
+to display)
+then an empty string is returned.
+.TP
+\fIpathName \f5bind \fItagOrId\fR ?\fIsequence\fR? ?\fIcommand\fR?
+This command associates \fIcommand\fR with all the items given by
+\fItagOrId\fR such that whenever the event sequence given by
+\fIsequence\fR occurs for one of the items the command will
+be invoked.
+This widget command is similar to the \f5bind\fR command except that
+it operates on items in a canvas rather than entire widgets.
+See the \f5bind\fR manual entry for complete details
+on the syntax of \fIsequence\fR and the substitutions performed
+on \fIcommand\fR before invoking it.
+If all arguments are specified then a new binding is created, replacing
+any existing binding for the same \fIsequence\fR and \fItagOrId\fR
+(if the first character of \fIcommand\fR is ``+'' then \fIcommand\fR
+augments an existing binding rather than replacing it).
+In this case the return value is an empty string.
+If \fIcommand\fR is omitted then the command returns the \fIcommand\fR
+associated with \fItagOrId\fR and \fIsequence\fR (an error occurs
+if there is no such binding).
+If both \fIcommand\fR and \fIsequence\fR are omitted then the command
+returns a list of all the sequences for which bindings have been
+defined for \fItagOrId\fR.
+.RS
+.PP
+The only events for which bindings may be specified are those related
+to the mouse and keyboard, such as \f5Enter\fR, \f5Leave\fR,
+\f5ButtonPress\fR, \f5Motion\fR, and \f5KeyPress\fR.
+The handling of events in canvases uses the current item defined
+in ITEM IDS AND TAGS above.
+\f5Enter\fR and \f5Leave\fR events trigger for an item when it
+becomes the current item or ceases to be the current item;  note
+that these events are different than \f5Enter\fR and \f5Leave\fR
+events for windows.
+Mouse-related events are directed to the current item, if any.
+Keyboard-related events are directed to the focus item, if any
+(see the \f5focus\fR widget command below for more on this).
+.PP
+It is possible for multiple bindings to match a particular event.
+This could occur, for example, if one binding is associated with the
+item's id and another is associated with one of the item's tags.
+When this occurs, all of the matching bindings are invoked.
+A binding associated with the \f5all\fR tag is invoked first,
+followed by one binding for each of the item's tags (in order),
+followed by a binding associated with the item's id.
+If there are multiple matching bindings for a single tag,
+then only the most specific binding is invoked.
+A \f5continue\fR command in a binding script terminates that
+script, and a \f5break\fR command terminates that script
+and skips any remaining scripts for the event, just as for the
+\f5bind\fR command.
+.PP
+If bindings have been created for a canvas window using the \f5bind\fR
+command, then they are invoked in addition to bindings created for
+the canvas's items using the \f5bind\fR widget command.
+The bindings for items will be invoked before any of the bindings
+for the window as a whole.
+.RE
+.TP
+\fIpathName \f5canvasx \fIscreenx\fR ?\fIgridspacing\fR?
+Given a window x-coordinate in the canvas \fIscreenx\fR, this command returns
+the canvas x-coordinate that is displayed at that location.
+If \fIgridspacing\fR is specified, then the canvas coordinate is
+rounded to the nearest multiple of \fIgridspacing\fR units.
+.TP
+\fIpathName \f5canvasy \fIscreeny\fR ?\fIgridspacing\fR?
+Given a window y-coordinate in the canvas \fIscreeny\fR this command returns
+the canvas y-coordinate that is displayed at that location.
+If \fIgridspacing\fR is specified, then the canvas coordinate is
+rounded to the nearest multiple of \fIgridspacing\fR units.
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5canvas\fR
+command.
+.TP
+\fIpathName \f5configure ?\fIoption\fR? ?\fIvalue\fR? ?\fIoption value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5canvas\fR
+command.
+.TP
+\fIpathName\fR \f5coords \fItagOrId \fR?\fIx0 y0 ...\fR?
+Query or modify the coordinates that define an item.
+If no coordinates are specified, this command returns a list
+whose elements are the coordinates of the item named by
+\fItagOrId\fR.
+If coordinates are specified, then they replace the current
+coordinates for the named item.
+If \fItagOrId\fR refers to multiple items, then
+the first one in the display list is used.
+.TP
+\fIpathName \f5create \fItype x y \fR?\fIx y ...\fR? ?\fIoption value ...\fR?
+Create a new item in \fIpathName\fR of type \fItype\fR.
+The exact format of the arguments after \f5type\fR depends
+on \f5type\fR, but usually they consist of the coordinates for
+one or more points, followed by specifications for zero or
+more item options.
+See the subsections on individual item types below for more
+on the syntax of this command.
+This command returns the id for the new item.
+.TP
+\fIpathName \f5dchars \fItagOrId first \fR?\fIlast\fR?
+For each item given by \fItagOrId\fR, delete the characters
+in the range given by \fIfirst\fR and \fIlast\fR,
+inclusive.
+If some of the items given by \fItagOrId\fR don't support
+text operations, then they are ignored.
+\fIFirst\fR and \fIlast\fR are indices of characters
+within the item(s) as described in INDICES above.
+If \fIlast\fR is omitted, it defaults to \fIfirst\fR.
+This command returns an empty string.
+.TP
+\fIpathName \f5delete \fR?\fItagOrId tagOrId ...\fR?
+Delete each of the items given by each \fItagOrId\fR, and return
+an empty string.
+.TP
+\fIpathName \f5dtag \fItagOrId \fR?\fItagToDelete\fR?
+For each of the items given by \fItagOrId\fR, delete the
+tag given by \fItagToDelete\fR from the list of those
+associated with the item.
+If an item doesn't have the tag \fItagToDelete\fR then
+the item is unaffected by the command.
+If \fItagToDelete\fR is omitted then it defaults to \fItagOrId\fR.
+This command returns an empty string.
+.TP
+\fIpathName \f5find \fIsearchCommand \fR?\fIarg arg ...\fR?
+This command returns a list consisting of all the items that
+meet the constraints specified by \fIsearchCommand\fR and
+\fIarg\fR's.
+\fISearchCommand\fR and \fIargs\fR have any of the forms
+accepted by the \f5addtag\fR command.
+If \fIsearchCommand\fR is \f5enclosed\fR, \f5overlapping\fR,
+or \f5all\fR, the items are returned in display-list order,
+i.e. bottommost first.
+.TP
+\fIpathName \f5focus \fR?\fItagOrId\fR?
+Set the keyboard focus for the canvas widget to the item given by
+\fItagOrId\fR.
+If \fItagOrId\fR refers to several items, then the focus is set
+to the first such item in the display list that supports the
+insertion cursor.
+If \fItagOrId\fR doesn't refer to any items, or if none of them
+support the insertion cursor, then the focus isn't changed.
+If \fItagOrId\fR is an empty
+string, then the focus item is reset so that no item has the focus.
+If \fItagOrId\fR is not specified then the command returns the
+id for the item that currently has the focus, or an empty string
+if no item has the focus.
+.RS
+.PP
+Once the focus has been set to an item, the item will display
+the insertion cursor and all keyboard events will be directed
+to that item.
+The focus item within a canvas and the focus window on the
+screen (set with the \f5focus\fR command) are totally independent:
+a given item doesn't actually have the input focus unless (a)
+its canvas is the focus window and (b) the item is the focus item
+within the canvas.
+In most cases it is advisable to follow the \f5focus\fR widget
+command with the \f5focus\fR command to set the focus window to
+the canvas (if it wasn't there already).
+.RE
+.TP
+\fIpathName \f5gettags\fR \fItagOrId\fR
+Return a list whose elements are the tags associated with the
+item given by \fItagOrId\fR.
+If \fItagOrId\fR refers to more than one item, then the tags
+are returned from the first such item in the display list.
+If \fItagOrId\fR doesn't refer to any items, then an error is returned. If the item
+contains no tags, then an empty string is returned.
+.TP
+\fIpathName \f5grab\fR \fIwhat\fR \fItagOrId\fR
+Does for canvas widgets what \fIgrab\fR(9) does for
+normal tk widgets: mouse events will only be delivered
+to \fItagOrId\fR. If \fItagOrId\fR refers to more than one item,
+then the first such item in the display list is grabbed.
+\fIWhat\fR is as described in
+.IR grab (9).
+.PP
+Note that the canvas grab item, as set by this command,
+and the tk grab item, as set by
+.IR grab (9)
+are totally independent; a canvas item doesn't actually grab
+the mouse unless a) the canvas itself has grabbed the mouse
+or b) the mouse events are being delivered to the canvas as
+a matter of course.
+.TP
+\fIpathName \f5icursor \fItagOrId index\fR
+Set the position of the insertion cursor for the item(s)
+given by \fItagOrId\fR
+to just before the character whose position is given by \fIindex\fR.
+If some or all of the items given by \fItagOrId\fR don't support
+an insertion cursor then this command has no effect on them.
+See INDICES above for a description of the
+legal forms for \fIindex\fR.
+Note:  the insertion cursor is only displayed in an item if
+that item currently has the keyboard focus (see the widget
+command \f5focus\fR, below), but the cursor position may
+be set even when the item doesn't have the focus.
+This command returns an empty string.
+.TP
+\fIpathName \f5index \fItagOrId index\fR
+This command returns a decimal string giving the numerical index
+within \fItagOrId\fR corresponding to \fIindex\fR.
+\fIIndex\fR gives a textual description of the desired position
+as described in INDICES above.
+The return value is guaranteed to lie between 0 and the number
+of characters within the item, inclusive.
+If \fItagOrId\fR refers to multiple items, then the index
+is processed in the first of these items that supports indexing
+operations (in display list order).
+.TP
+\fIpathName \f5insert \fItagOrId beforeThis string\fR
+For each of the items given by \fItagOrId\fR, if the item supports
+text insertion then \fIstring\fR is inserted into the item's
+text just before the character whose index is \fIbeforeThis\fR.
+See INDICES above for information about the forms allowed
+for \fIbeforeThis\fR.
+This command returns an empty string.
+.TP
+\fIpathName \f5itemcget\fR \fItagOrId\fR \fIoption\fR
+Returns the current value of the configuration option for the
+item given by \fItagOrId\fR whose name is \fIoption\fR.
+This command is similar to the \f5cget\fR widget command except that
+it applies to a particular item rather than the widget as a whole.
+\fIOption\fR may have any of the values accepted by the \f5create\fR
+widget command when the item was created.
+If \fItagOrId\fR is a tag that refers to more than one item,
+the first (lowest) such item is used.
+.TP
+\fIpathName \f5itemconfigure \fItagOrId\fR ?\fIoption\fR? ?\fIvalue\fR? ?\fIoption value ...\fR?
+This command is similar to the \f5configure\fR widget command except
+that it modifies item-specific options for the items given by
+\fItagOrId\fR instead of modifying options for the overall
+canvas widget.
+If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s) in
+each of the items given by \fItagOrId\fR;  in
+this case the command returns an empty string.
+The \fIoption\fRs and \fIvalue\fRs are the same as those permissible
+in the \f5create\fR widget command when the item(s) were created;
+see the sections describing individual item types below for details
+on the legal options.
+.TP
+\fIpathName \f5lower \fItagOrId \fR?\fIbelowThis\fR?
+Move all of the items given by \fItagOrId\fR to a new position
+in the display list just before the item given by \fIbelowThis\fR.
+If \fItagOrId\fR refers to more than one item then all are moved
+but the relative order of the moved items will not be changed.
+\fIBelowThis\fR is a tag or id;  if it refers to more than one
+item then the first (lowest) of these items in the display list is used
+as the destination location for the moved items.
+This command returns an empty string.
+.TP
+\fIpathName \f5move \fItagOrId xAmount yAmount\fR
+Move each of the items given by \fItagOrId\fR in the canvas coordinate
+space by adding \fIxAmount\fR to the x-coordinate of each point
+associated with the item and \fIyAmount\fR to the y-coordinate of
+each point associated with the item.
+This command returns an empty string.
+.TP
+\fIpathName \f5raise \fItagOrId \fR?\fIaboveThis\fR?
+Move all of the items given by \fItagOrId\fR to a new position
+in the display list just after the item given by \fIaboveThis\fR.
+If \fItagOrId\fR refers to more than one item then all are moved
+but the relative order of the moved items will not be changed.
+\fIAboveThis\fR is a tag or id;  if it refers to more than one
+item then the last (topmost) of these items in the display list is used
+as the destination location for the moved items.
+This command returns an empty string.
+.TP
+\fIpathName \f5scale \fItagOrId xOrigin yOrigin xScale yScale\fR
+Rescale all of the items given by \fItagOrId\fR in canvas coordinate
+space.
+\fIXOrigin\fR and \fIyOrigin\fR identify the origin for the scaling
+operation and \fIxScale\fR and \fIyScale\fR identify the scale
+factors for x- and y-coordinates, respectively (a scale factor of
+1.0 implies no change to that coordinate).
+For each of the points defining each item, the x-coordinate is
+adjusted to change the distance from \fIxOrigin\fR by a factor
+of \fIxScale\fR.
+Similarly, each y-coordinate is adjusted to change the distance
+from \fIyOrigin\fR by a factor of \fIyScale\fR.
+This command returns an empty string.
+.TP
+\fIpathName \f5screenx \fIcanvasx\fR
+Given an x-coordinate \fIcanvasx\fR in the canvas, this command returns
+the equivalent screen x-coordinate.
+.TP
+\fIpathName \f5screeny \fIcanvasy\fR
+Given an x-coordinate \fIcanvasy\fR in the canvas, this command returns
+the equivalent screen y-coordinate.
+.TP
+\fIpathName \f5see \fIx1 y1\fR ?\fIx2 y2\fR?
+Adjusts the view in the window such that, if possible
+the point [\fIx1\fR, \fIy1\fR] (and, if given, the point
+[\fIx2\fR, \fIy2\fR]) are made visible.
+.TP
+\fIpathName \f5select \fIoption\fR ?\fItagOrId arg\fR?
+Manipulates the selection in one of several ways, depending on
+\fIoption\fR.
+The command may take any of the forms described below.
+In all of the descriptions below, \fItagOrId\fR must refer to
+an item that supports indexing and selection;  if it refers to
+multiple items then the first of
+these that supports indexing and the selection is used.
+\fIIndex\fR gives a textual description of a position
+within \fItagOrId\fR, as described in INDICES above.
+.RS
+.TP
+\fIpathName \f5select adjust \fItagOrId index\fR
+Locate the end of the selection in \fItagOrId\fR nearest
+to the character given by \fIindex\fR, and adjust that
+end of the selection to be at \fIindex\fR (i.e. including
+but not going beyond \fIindex\fR).
+The other end of the selection is made the anchor point
+for future \f5select to\fR commands.
+If the selection isn't currently in \fItagOrId\fR then
+this command behaves the same as the \f5select to\fR widget
+command.
+Returns an empty string.
+.TP
+\fIpathName \f5select clear\fR
+Clear the selection if it is in this widget.
+If the selection isn't in this widget then the command
+has no effect.
+Returns an empty string.
+.TP
+\fIpathName \f5select from \fItagOrId index\fR
+Set the selection anchor point for the widget to be just
+before the character
+given by \fIindex\fR in the item given by \fItagOrId\fR.
+This command doesn't change the selection;  it just sets
+the fixed end of the selection for future \f5select to\fR
+commands.
+Returns an empty string.
+.TP
+\fIpathName \f5select item\fR
+Returns the id of the selected item, if the selection is in an
+item in this canvas.
+If the selection is not in this canvas then an empty string
+is returned.
+.TP
+\fIpathName \f5select to \fItagOrId index\fR
+Set the selection to consist of those characters of \fItagOrId\fR
+between the selection anchor point and
+\fIindex\fR.
+The new selection will include the character given by \fIindex\fR;
+it will include the character given by the anchor point only if
+\fIindex\fR is greater than or equal to the anchor point.
+The anchor point is determined by the most recent \f5select adjust\fR
+or \f5select from\fR command for this widget.
+If the selection anchor point for the widget isn't currently in
+\fItagOrId\fR, then it is set to the same character given
+by \fIindex\fR.
+Returns an empty string.
+.RE
+.TP
+\fIpathName \f5type\fI tagOrId\fR
+Returns the type of the item given by \fItagOrId\fR, such as
+\f5rectangle\fR or \f5text\fR.
+If \fItagOrId\fR refers to more than one item, then the type
+of the first item in the display list is returned.
+If \fItagOrId\fR doesn't refer to any items at all then
+an empty string is returned.
+.TP
+\fIpathName \f5xview  \fR?\fIargs\fR?
+This command is used to query and change the horizontal position of the
+information displayed in the canvas's window.
+It can take any of the following forms:
+.RS
+.TP
+\fIpathName \f5xview\fR
+Returns a list containing two elements.
+Each element is a real fraction between 0 and 1;  together they describe
+the horizontal span that is visible in the window.
+For example, if the first element is .2 and the second element is .6,
+20% of the canvas's area (as defined by the \f5-scrollregion\fR option)
+is off-screen to the left, the middle 40% is visible
+in the window, and 40% of the canvas is off-screen to the right.
+These are the same values passed to scrollbars via the \f5-xscrollcommand\fR
+option.
+.TP
+\fIpathName \f5xview moveto\fI fraction\fR
+Adjusts the view in the window so that \fIfraction\fR of the
+total width of the canvas is off-screen to the left.
+\fIFraction\fR must be a fraction between 0 and 1.
+.TP
+\fIpathName \f5xview scroll \fInumber what\fR
+This command shifts the view in the window left or right according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts left or right in units
+of the \f5xscrollicrement\fR option, if it is greater than zero,
+or in units of one-tenth the window's width otherwise.
+If \fIwhat is \f5pages\fR then the view
+adjusts in units of nine-tenths the window's width.
+If \fInumber\fR is negative then information farther to the left
+becomes visible;  if it is positive then information farther to the right
+becomes visible.
+.RE
+.TP
+\fIpathName \f5yview \fI?args\fR?
+This command is used to query and change the vertical position of the
+information displayed in the canvas's window.
+It can take any of the following forms:
+.RS
+.TP
+\fIpathName \f5yview\fR
+Returns a list containing two elements.
+Each element is a real fraction between 0 and 1;  together they describe
+the vertical span that is visible in the window.
+For example, if the first element is .6 and the second element is 1.0,
+the lowest 40% of the canvas's area (as defined by the \f5-scrollregion\fR
+option) is visible in the window.
+These are the same values passed to scrollbars via the \f5-yscrollcommand\fR
+option.
+.TP
+\fIpathName \f5yview moveto\fI fraction\fR
+Adjusts the view in the window so that \fIfraction\fR of the canvas's
+area is off-screen to the top.
+\fIFraction\fR is a fraction between 0 and 1.
+.TP
+\fIpathName \f5yview scroll \fInumber what\fR
+This command adjusts the view in the window up or down according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts up or down in units
+of the \f5yscrollicrement\fR option, if it is greater than zero,
+or in units of one-tenth the window's height otherwise.
+If \fIwhat\fR is \f5pages\fR then
+the view adjusts in units of nine-tenths the window's height.
+If \fInumber\fR is negative then higher information becomes
+visible;  if it is positive then lower information
+becomes visible.
+.RE
+
+.SH "OVERVIEW OF ITEM TYPES"
+The sections below describe the various types of items supported
+by canvas widgets.  Each item type is characterized by two things:
+first, the form of the \f5create\fR command used to create
+instances of the type;  and second, a set of configuration options
+for items of that type, which may be used in the
+\f5create\fR and \f5itemconfigure\fR widget commands.
+Most items don't support indexing or selection or the commands
+related to them, such as \f5index\fR and \f5insert\fR.
+Where items do support these facilities, it is noted explicitly
+in the descriptions below (at present, only text items provide
+this support).
+
+.SH "ARC ITEMS"
+Items of type \f5arc\fR appear on the display as arc-shaped regions.
+An arc is a section of an oval delimited by two angles (specified
+by the \f5-start\fR and \f5-extent\fR options) and displayed in
+one of several ways (specified by the \f5-style\fR option).
+Arcs are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create arc \fIx1 y1 x2 y2 \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR give
+the coordinates of two diagonally opposite corners of a
+rectangular region enclosing the oval that defines the arc.
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for arcs:
+.TP
+\f5-extent \fIdegrees\fR
+Specifies the size of the angular range occupied by the arc.
+The arc's range extends for \fIdegrees\fR degrees counter-clockwise
+from the starting angle given by the \f5-start\fR option.
+\fIDegrees\fR may be negative.
+If it is greater than 360 or less than -360, then \fIdegrees\fR
+modulo 360 is used as the extent.
+.TP
+\f5-fill \fIcolour\fR
+Fill the region of the arc with \fIcolour\fR.
+If \fIcolour\fR is an empty string (the default), then
+the arc will not be filled.
+.TP
+\f5-outline \fIcolour\fR
+\fIColour\fR specifies a colour to use for drawing the arc's
+outline.
+This option defaults to \f5black\fR.  If \fIcolour\fR is specified
+as an empty string then no outline is drawn for the arc.
+.TP
+\f5-start \fIdegrees\fR
+Specifies the beginning of the angular range occupied by the
+arc.
+\fIDegrees\fR is given in units of degrees measured counter-clockwise
+from the 3-o'clock position;  it may be either positive or negative.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the arc should be filled in a stipple pattern;
+\fIbitmap\fR specifies the stipple pattern to use.
+If the \f5-fill\fR option hasn't been specified then this option
+has no effect.
+If \fIbitmap\fR is an empty string (the default), then filling is done
+in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-style \fItype\fR
+Specifies how to draw the arc.  If \fItype\fR is \f5pieslice\fR
+(the default) then the arc's region is defined by a section
+of the oval's perimeter plus two line segments, one between the center
+of the oval and each end of the perimeter section.
+If \fItype\fR is \f5chord\fR then the arc's region is defined
+by a section of the oval's perimeter plus a single line segment
+connecting the two end points of the perimeter section.
+This type is not implemented at the moment. It behaves as \f5arc\fR.
+If \fItype\fR is \f5arc\fR then the arc's region consists of
+a section of the perimeter alone.
+In this last case the \f5-fill\fR option is ignored.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-width \fIoutlineWidth\fR
+Specifies the width of the outline to be drawn around
+the arc's region, in any of the forms described in the COORDINATES
+section above.
+If the \f5-outline\fR option has been specified as an empty string
+then this option has no effect.
+Wide outlines will be drawn centered on the edges of the arc's region.
+This option defaults to 1.0.
+
+.SH "BITMAP ITEMS"
+Items of type \f5bitmap\fR appear on the display as images with
+two colours, foreground and background.
+Bitmaps are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create bitmap \fIx y \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx\fR and \fIy\fR specify the coordinates of a
+point used to position the bitmap on the display (see the \f5-anchor\fR
+option below for more information on how bitmaps are displayed).
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for bitmaps:
+.TP
+\f5-anchor \fIanchorPos\fR
+\fIAnchorPos\fR tells how to position the bitmap relative to the
+positioning point for the item.  For example, if \fIanchorPos\fR
+is \f5center\fR then the bitmap is centered on the point;  if
+\fIanchorPos\fR is \f5n\fR then the bitmap will be drawn so that
+its top center point is at the positioning point.
+This option defaults to \f5center\fR.
+.TP
+\f5-bitmap \fIbitmap\fR
+Specifies the bitmap to display in the item.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+
+.SH "IMAGE ITEMS"
+Items of type \f5image\fR are used to display images on a
+canvas.
+Images are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create image \fIx y \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx\fR and \fIy\fR specify the coordinates of a
+point used to position the image on the display (see the \f5-anchor\fR
+option below for more information).
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for images:
+.TP
+\f5-anchor \fIanchorPos\fR
+\fIAnchorPos\fR tells how to position the image relative to the
+positioning point for the item.  For example, if \fIanchorPos\fR
+is \f5center\fR then the image is centered on the point;  if
+\fIanchorPos\fR is \f5n\fR then the image will be drawn so that
+its top center point is at the positioning point.
+This option defaults to \f5center\fR.
+.TP
+\f5-image \fIname\fR
+Specifies the name of the image to display in the item.
+This image must have been created previously with the
+\f5image create\fR command.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item;  it may be an empty list.
+
+.SH "LINE ITEMS"
+Items of type \f5line\fR appear on the display as one or more connected
+line segments or curves.
+Lines are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create line \fIx1 y1... xn yn \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx1\fR through \fIyn\fR give
+the coordinates for a series of two or more points that describe
+a series of connected line segments.
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for lines:
+.TP
+\f5-arrow \fIwhere\fR
+Indicates whether or not arrowheads are to be drawn at one or both
+ends of the line.
+\fIWhere\fR must have one of the values \f5none\fR (for no arrowheads),
+\f5first\fR (for an arrowhead at the first point of the line),
+\f5last\fR (for an arrowhead at the last point of the line), or
+\f5both\fR (for arrowheads at both ends).
+This option defaults to \f5none\fR.
+.TP
+\f5-arrowshape \fIshape\fR
+This option indicates how to draw arrowheads.
+The \fIshape\fR argument must be a list with three elements, each
+specifying a distance in any of the forms described in
+the COORDINATES section above.
+The first element of the list gives the distance along the line
+from the neck of the arrowhead to its tip.
+The second element gives the distance along the line from the
+trailing points of the arrowhead to the tip, and the third
+element gives the distance from the outside edge of the line to the
+trailing points.
+If this option isn't specified then Tk picks a ``reasonable'' shape.
+.TP
+\f5-capstyle \fIstyle\fR
+Specifies the ways in which caps are to be drawn at the endpoints
+of the line.
+\fIStyle\fR may one of
+\f5butt\fR, \f5projecting\fR, or \f5round\fR.
+If this option isn't specified then it defaults to \f5butt\fR.
+Where arrowheads are drawn the cap style is ignored. Note that the first two options
+currently have the same effect.
+.TP
+\f5-fill \fIcolour\fR
+\fIColour\fR specifies a colour to use for drawing the line.  It may also be an
+empty string, in which case the line will be transparent.
+This option defaults to \f5black\fR.
+.TP
+\f5-smooth \fIboolean\fR
+\fIBoolean\fR indicates whether or not the line should be drawn as a curve.
+If so, the line is rendered as a set of Bezier splines: one spline
+is drawn for the first and second line segments, one for the second
+and third, and so on.  Straight-line segments can be generated within
+a curve by duplicating the end-points of the desired line segment.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the line should be filled in a stipple pattern;
+\fIbitmap\fR specifies the stipple pattern to use.
+If \fIbitmap\fR is an empty string (the default), then filling is
+done in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-width \fIlineWidth\fR
+\fILineWidth\fR specifies the width of the line, in any of the forms
+described in the COORDINATES section above.
+Wide lines will be drawn centered on the path specified by the
+points.
+If this option isn't specified then it defaults to 1.0.
+
+.SH "OVAL ITEMS"
+Items of type \f5oval\fR appear as circular or oval regions on
+the display.  Each oval may have an outline, a fill, or
+both.  Ovals are created with widget commands of the
+following form:
+.RS
+.EX
+\fIpathName \f5create oval \fIx1 y1 x2 y2 \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR give
+the coordinates of two diagonally opposite corners of a
+rectangular region enclosing the oval.
+The oval will include the top and left edges of the rectangle
+not the lower or right edges.
+If the region is square then the resulting oval is circular;
+otherwise it is elongated in shape.
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for ovals:
+.TP
+\f5-fill \fIcolour\fR
+Fill the area of the oval with \fIcolour\fR.
+If \fIcolour\fR is an empty string (the default), then
+then the oval will not be filled.
+.TP
+\f5-outline \fIcolour\fR
+\fIColour\fR specifies a colour to use for drawing the oval's
+outline.
+This option defaults to \f5black\fR.
+If \fIcolour\fR is an empty string then no outline will be
+drawn for the oval.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the oval should be filled in a stipple pattern;
+\fIbitmap\fR specifies the stipple pattern to use.
+If the \f5-fill\fR option hasn't been specified then this option
+has no effect.
+If \fIbitmap\fR is an empty string (the default), then filling is done
+in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-width \fIoutlineWidth\fR
+\fIoutlineWidth\fR specifies the width of the outline to be drawn around
+the oval, in any of the forms described in the COORDINATES section above.
+If the \f5-outline\fR option hasn't been specified then this option
+has no effect.
+Wide outlines are drawn centered on the oval path defined by
+\fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR.
+This option defaults to 1.0.
+
+.SH "POLYGON ITEMS"
+Items of type \f5polygon\fR appear as polygonal or curved filled regions
+on the display.
+Polygons are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create polygon \fIx1 y1 ... xn yn \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx1\fR through \fIyn\fR specify the coordinates for
+three or more points that define a closed polygon.
+The first and last points may be the same;  whether they are or not,
+Tk will draw the polygon as a closed polygon.
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for polygons:
+.TP
+\f5-fill \fIcolour\fR
+\fIColour\fR specifies a colour to use for filling the area of the
+polygon.
+If \fIcolour\fR is an empty string then the polygon will be
+transparent.
+This option defaults to the empty string (transparent).
+.TP
+\f5-outline \fIcolour\fR
+\fIColour\fR specifies a colour to use for drawing the polygon's
+outline.
+If \fIcolour\fR is an empty string then no outline will be
+drawn for the polygon.
+This option defaults to black.
+.TP
+\f5-smooth \fIboolean\fR
+\fIBoolean\fP indicates whether or not the polygon should be drawn with a
+curved perimeter.
+If so, the outline of the polygon becomes a set of Bezier splines,
+one spline for the first and second line segments, one for the second
+and third, and so on.  Straight-line segments can be generated in a
+smoothed polygon by duplicating the end-points of the desired line segment.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the polygon should be filled in a stipple pattern;
+\fIbitmap\fR specifies the stipple pattern to use.
+If \fIbitmap\fR is an empty string (the default), then filling is
+done in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-winding \fItype\fR
+Specifies the winding rule to use when filling the polygon.
+\fIType\fR can be either \f5nonzero\fR (the default)
+or \f5odd\fR
+See \f5fillpoly\fR in
+.IR draw-image(2)
+for an explanation.
+.TP
+\f5-width \fIoutlineWidth\fR
+\fIOutlineWidth\fR specifies the width of the outline to be drawn around
+the polygon, in any of the forms described in the COORDINATES section above.
+If the \f5-outline\fR option hasn't been specified then this option
+has no effect.  This option defaults to 1.0.
+.PP
+Polygon items are different from other items such as rectangles, ovals
+and arcs in that interior points are considered to be ``inside'' a
+polygon (e.g. for purposes of the \f5find closest\fR and
+\f5find overlapping\fR widget commands) even if it is not filled.
+For most other item types, an
+interior point is considered to be inside the item only if the item
+is filled or if it has neither a fill nor an outline.  If you would
+like an unfilled polygon whose interior points are not considered
+to be inside the polygon, use a line item instead.
+
+.SH "RECTANGLE ITEMS"
+Items of type \f5rectangle\fR appear as rectangular regions on
+the display.  Each rectangle may have an outline, a fill, or
+both.  Rectangles are created with widget commands of the
+following form:
+.RS
+.EX
+\fIpathName \f5create rectangle \fIx1 y1 x2 y2 \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR give
+the coordinates of two diagonally opposite corners of the rectangle
+(the rectangle will include its upper and left edges but not
+its lower or right edges).
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for rectangles:
+.TP
+\f5-fill \fIcolour\fR
+Fill the area of the rectangle with \fIcolour\fR.
+If \fIcolour\fR is an empty string (the default),
+then the rectangle will not be filled.
+.TP
+\f5-outline \fIcolour\fR
+Draw an outline around the edge of the rectangle in \fIcolour\fR.
+This option defaults to \f5black\fR.
+If \fIcolour\fR is an empty string then no outline will be
+drawn for the rectangle.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the rectangle should be filled in a stipple pattern;
+\fIbitmap\fR specifies the stipple pattern to use.
+If the \f5-fill\fR option hasn't been specified then this option
+has no effect.
+If \fIbitmap\fR is an empty string (the default), then filling
+is done in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-width \fIoutlineWidth\fR
+\fIOutlineWidth\fR specifies the width of the outline to be drawn around
+the rectangle, in any of the forms described in the COORDINATES section above.
+If the \f5-outline\fR option hasn't been specified then this option
+has no effect.
+Wide outlines are drawn centered on the rectangular path
+defined by \fIx1\fR, \fIy1\fR, \fIx2\fR, and \fIy2\fR.
+This option defaults to 1.0.
+
+.SH "TEXT ITEMS"
+A text item displays a string of characters on the screen in one
+or more lines.
+Text items support indexing and selection, along with the
+following text-related canvas widget commands:  \f5dchars\fR,
+\f5focus\fR, \f5icursor\fR, \f5index\fR, \f5insert\fR,
+\f5select\fR.
+Text items are created with widget commands of the following
+form:
+.RS
+.EX
+\fIpathName \f5create text \fIx y \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx\fR and \fIy\fR specify the coordinates of a
+point used to position the text on the display (see the options
+below for more information on how text is displayed).
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for text items:
+.TP
+\f5-anchor \fIanchorPos\fR
+\fIAnchorPos\fR tells how to position the text relative to the
+positioning point for the text. For example, if \fIanchorPos\fR
+is \f5center\fR then the text is centered on the point;  if
+\fIanchorPos\fR is \f5n\fR then the text will be drawn such that
+the top center point of the rectangular region occupied by the
+text will be at the positioning point.
+This option defaults to \f5center\fR.
+.TP
+\f5-fill \fIcolour\fR
+\fIColour\fR specifies a colour to use for filling the text characters.
+If this option isn't specified then it defaults to \f5black\fR.
+.TP
+\f5-font \fIfont\fR
+Specifies the font to use for the text item.
+If this option isn't specified, it defaults to a system-dependent
+font.
+.TP
+\f5-justify \fIhow\fR
+Specifies how to justify the text within its bounding region.
+\fIHow\fR must be one of the values \f5left\fR, \f5right\fR,
+or \f5center\fR.
+This option will only matter if the text is displayed as multiple
+lines.
+If the option is omitted, it defaults to \f5left\fR.
+.TP
+\f5-stipple \fIbitmap\fR
+Indicates that the text should be drawn in a stippled pattern
+rather than solid;
+\fIbitmap\fR specifies the stipple pattern to use.
+If \fIbitmap\fR is an empty string (the default) then the text
+is drawn in a solid fashion.
+The results are undefined if \fIbitmap\fR is not
+a 1-bit image.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-text \fIstring\fR
+\fIString\fR specifies the characters to be displayed in the text item.
+Newline characters cause line breaks.
+The characters in the item may also be changed with the
+\f5insert\fR and \f5delete\fR widget commands.
+This option defaults to an empty string.
+.TP
+\f5-width \fIlineLength\fR
+Specifies a maximum line length for the text, in any of the forms
+described in the COORDINATES section above.
+If this option is zero (the default) the text is broken into
+lines only at newline characters.
+However, if this option is non-zero then any line that would
+be longer than \fIlineLength\fR is broken just before a space
+character to make the line shorter than \fIlineLength\fR;  the
+space character is treated as if it were a newline
+character.
+
+.SH "WINDOW ITEMS"
+Items of type \f5window\fR cause a particular window to be displayed
+at a given position on the canvas.
+Window items are created with widget commands of the following form:
+.RS
+.EX
+\fIpathName \f5create window \fIx y \fR?\fIoption value option value ...\fR?
+.EE
+.RE
+The arguments \fIx\fR and \fIy\fR specify the coordinates of a
+point used to position the window on the display (see the \f5-anchor\fR
+option below for more information on how bitmaps are displayed).
+After the coordinates there may be any number of \fIoption\fR-\fIvalue\fR
+pairs, each of which sets one of the configuration options
+for the item.  These same \fIoption\fR-\fIvalue\fR pairs may be
+used in \f5itemconfigure\fR widget commands to change the item's
+configuration.
+The following options are supported for window items:
+.TP
+\f5-anchor \fIanchorPos\fR
+\fIAnchorPos\fR tells how to position the window relative to the
+positioning point for the item.  For example, if \fIanchorPos\fR
+is \f5center\fR then the window is centered on the point;  if
+\fIanchorPos\fR is \f5n\fR then the window will be drawn so that
+its top center point is at the positioning point.
+This option defaults to \f5center\fR.
+.TP
+\f5-height \fIdist\fR
+Specifies the height to assign to the item's window.
+\fIDist\fR may have any of the
+forms described in the COORDINATES section above.
+If this option isn't specified, or if it is specified as an empty
+string, then the window is given whatever height it requests internally.
+.TP
+\f5-tags \fItagList\fR
+Specifies a set of tags to apply to the item.
+\fITagList\fR consists of a list of tag names, which replace any
+existing tags for the item.
+\fITagList\fR may be an empty list.
+.TP
+\f5-width \fIdist\fR
+Specifies the width to assign to the item's window.
+\fIDist\fR may have any of the
+forms described in the COORDINATES section above.
+If this option isn't specified, or if it is specified as an empty
+string, then the window is given whatever width it requests internally.
+.TP
+\f5-window \fIpathName\fR
+Specifies the window to associate with this item.
+The window specified by \fIpathName\fR must either be a child of
+the canvas widget or a child of some ancestor of the canvas widget.
+\fIPathName\fR may not refer to a top-level window.
+
+.SH BINDINGS
+In the current implementation, new canvases are not given any
+default behaviour:  you'll have to execute explicit Tk commands
+to give the canvas its behaviour.
+
+.SH CREDITS
+Tk's canvas widget is a blatant ripoff of ideas from Joel Bartlett's
+\fIezd\fR program.  \fIEzd\fR provides structured graphics in a Scheme
+environment and preceded canvases by a year or two.  Its simple
+mechanisms for placing and animating graphical objects inspired the
+functions of canvases.
+
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

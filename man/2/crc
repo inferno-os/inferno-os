@@ -1,0 +1,62 @@
+.TH CRC 2
+.SH NAME
+crc \- Crc module
+.SH SYNOPSIS
+.EX
+include "crc.m";
+crc := load Crc Crc->PATH;
+
+CRCstate: adt {
+	crc: int;
+	crctab: array of int;
+	reg: int;
+};
+
+init: fn(poly: int, reg: int): ref CRCstate;
+crc: fn(state: ref CRCstate, buf: array of byte, nb: int): int;
+reset: fn(state: ref CRCstate);
+.EE
+.SH DESCRIPTION
+.B Crc
+provides the routines to calculate the CRC (cyclic redundancy
+check) over blocks of data.
+.PP
+.B Init
+initializes the module and must be called first. The parameter
+.I poly
+is the polynomial to use when calculating the CRC value. If a value of
+0 is given, the default polynomial 16redb88320 (8r035556101440) is used. The polynomial
+has its implicit top bit set. The second parameter
+.I reg
+is the number with which to initialize the CRC register. This is commonly 0 but, for example, is
+16rffffffff in the CRC32 algorithm. The final CRC value is also XORed with this number.
+The function
+returns a pointer to an adt that holds the current CRC value,
+the auxiliary table the algorithm uses and the initial register value. These fields should not be accessed
+directly - they are only for internal use.
+.PP
+.B Crc
+calculates the CRC value of the first
+.I nb
+bytes of the array
+.I buf
+given the CRC state
+.I state
+as returned by the 
+.I init 
+function. It returns the current CRC value. It may be called repeatedly
+to calculate the CRC of a series of arrays of bytes, for example, when
+calculating the CRC value for the bytes in a file.
+.PP
+.B Reset
+sets the CRC state to its initial value in readiness for a new CRC
+calculation. It avoids the need to call
+.I init
+again.
+.SH SOURCE
+.B /appl/lib/crc.b
+.SH SEE ALSO
+.IR sum (1)
+
+
+

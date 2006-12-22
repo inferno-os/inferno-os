@@ -1,0 +1,69 @@
+.TH PIPE 3
+.SH NAME
+pipe \- two-way interprocess communication
+.SH SYNOPSIS
+.nf
+.BI "bind '#|'" dir
+.IB dir /data
+.IB dir /data1
+.fi
+.SH DESCRIPTION
+A pipe provides a mechanism for interprocess I/O by
+reading and writing file descriptors (see
+.IR sys-read (2)).
+An
+.IR attach (5),
+typically via
+.IR sys-pipe (2)
+or
+.IR sys-bind (2),
+allocates two files that are cross-connected:
+data written to one can be read back from the other, in the same order.
+.PP
+Write boundaries are preserved: each read terminates when the read buffer
+is full or after reading the last byte of a write, whichever comes first.
+In particular, a write of zero bytes will result in a zero-length read,
+which is usually interpreted by readers as end-of-file, but could be used
+to delimit the data stream for other purposes.
+.PP
+Written data is buffered by the kernel and stored on internal queues
+(see
+.IR qio (10.2)).
+The maximum block size is 128k bytes;
+larger writes will be split across several blocks, which are queued separately.
+Each read will return data from at most one block.
+Concurrent writers are therefore guaranteed that their data will not be interleaved
+with data from other writers (ie, will be written atomically) only when
+each write is less than the maximum buffer size.
+Writers to pipe interfaces on remotely mounted portions of the namespace have their guarantee of atomicity lowered to
+.BR Sys->ATOMICIO
+bytes by
+.IR mnt (3).
+.PP
+The system mediates between producer and consumer.
+Writers will block when buffered data reaches a high-water mark, currently 32k bytes,
+until a reader has reduced it by half.
+The length returned by
+.IR sys-stat (2)
+on each name
+gives the number of bytes waiting to be read on the corresponding end of the pipe.
+.PP
+When all file descriptors on
+one side of the pipe have been closed, and after any remaining data has
+been read,
+a reader on the other side sees end-of-file (count of zero) on a subsequent read.
+Once both ends are closed, the pipe can be reused.
+.PP
+A pipe persists until it is unmounted and no processes have either end open.
+.SH SOURCE
+.B /emu/port/devpipe.c
+.br
+.B /os/port/devpipe.c
+.SH "SEE ALSO"
+.IR sys-file2chan (2),
+.IR sys-pipe (2)
+.SH DIAGNOSTICS
+Writes to a closed pipe generate an exception
+.RB ` "write on closed pipe" '.
+Persistently reading a closed pipe after reading end-of-file
+will result in a read error.

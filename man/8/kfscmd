@@ -1,0 +1,142 @@
+.TH KFSCMD 8
+.SH NAME
+kfscmd \- kfs administration
+.SH SYNOPSIS
+.B disk/kfscmd
+.RB [ -n
+.IR name ]
+.IR cmd " ..."
+.SH DESCRIPTION
+.I Kfscmd
+issues commands to a
+.IR kfs (4)
+server that was started with the
+.B -n
+option to create a control file.
+.IR Kfscmd 's
+own
+.B -n
+option names the file system to which the
+.I cmd
+applies; it is
+.B main
+by default.
+.PP
+The known commands are described below.
+Note that some commands are multiple words (eg,
+.B check
+and its flags) and
+should be quoted to appear as a single argument to
+.IR sh (1).
+.TP \w'\fLallowoff\ \fIn'u
+.B allow
+Turn permission checking off (to simplify administration).
+Equivalent to the
+.B -P
+and
+.B -W
+options to
+.IR kfs (4).
+.TP
+.B allowoff
+.PD 0
+.TP
+.B disallow
+Turn permission checking on (again).
+.PD
+.ig
+.TP
+.B halt
+write all changed blocks and stop the file system.
+.TP
+.B help
+print the list of commands.
+.TP
+.BI "rename " "file name"
+Change the name of
+.I file
+to
+.IR name .
+.TP
+.BI "newuser " user
+Add
+.I user
+to
+.B /adm/users
+and make the standard directories needed for booting.
+.TP
+.BI "remove " file
+Remove
+.I file
+and place its blocks on the free list.
+.TP
+.BI "clri " file
+Remove 
+.I file
+but do not place the blocks on the free list.
+This command can be used to remove files that have duplicated blocks.
+The non-duplicate blocks can be retrieved by checking the file system
+with option
+.B f
+(see below).
+.TP
+.BI create \ file\ owner\ group\ mode\  [adl]
+Create the file.  Owner and group are users in
+.B /adm/users
+and mode is an octal number.
+If present,
+.L a
+creates an append only file,
+.L d
+creates a directory, and
+.L l
+creates a file that is exclusive-use.
+..
+.TP
+.B sync
+write to disk all of the dirty blocks in the memory cache.
+.TP
+.B users
+Reinitialise authentication information by reading
+.BR /adm/users .
+.TP
+.B check [cdfpPqrtw]
+Check the file system and print summary information.
+The options are
+.PD 0
+.RS
+.TP
+.B c
+fix bad tags and clear the contents of the block.
+.TP
+.B d
+delete redundant references to a block.
+.TP
+.B f
+rebuild the list of free blocks.
+.TP
+.B p
+print the names of directories as they are checked.
+.TP
+.B P
+print the names of all files as they are checked.
+.TP
+.B q
+quiet mode: report errors, but suppress summary information.
+.TP
+.B r
+read all of the data blocks and check the tags.
+.TP
+.B t
+fix bad tags.
+.TP
+.B w
+write all of the blocks that are touched.
+.RE
+.PD
+.SH SOURCE
+.B /appl/cmd/disk/kfscmd.b
+.SH "SEE ALSO"
+.IR sd (3),
+.IR kfs (4),
+.IR mkfs (8)

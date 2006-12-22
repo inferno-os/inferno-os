@@ -1,0 +1,8 @@
+rearborder	3
+border		6
+selectborder	3
+xdelta		12
+ydelta		20
+font			/fonts/pelm/unicode.8.font
+selectcolour	yellow
+cardsize 71 96

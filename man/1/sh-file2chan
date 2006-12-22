@@ -1,0 +1,261 @@
+.TH SH-FILE2CHAN 1
+.SH NAME
+file2chan, rblock, rdata, rerror, rget, rread, rreadone, rwrite \- shell interface to file2chan
+.SH SYNOPSIS
+.B load file2chan
+
+.B file2chan
+.I filename
+.I readcmd writecmd
+[
+.I closecmd
+]
+.br
+.B rblock
+[
+.I tag
+]
+.br
+.B fetchwdata
+[
+.I tag
+]
+.br
+.B putrdata
+[
+.I tag
+]
+.br
+.B rerror
+[
+.I tag
+]
+.I errmsg
+.br
+.B rread
+[
+.I tag
+]
+.I readdata
+.br
+.B rreadone
+[
+.I tag
+]
+.I readdata
+.br
+.B rwrite
+[
+.I tag
+[
+.I count
+] ]
+.br
+.B ${rget
+.RB ( data\fP|\fPcount\fP|\fPoffset\fP|\fPfid )
+[
+.I tag
+]
+.B }
+.br
+.SH DESCRIPTION
+.I File2chan
+is a loadable module for
+.IR sh (1)
+that provides facilities to create a file in the namespace
+with properties determined by a shell script.
+.B File2chan
+creates
+.I filename
+in the namespace and spawns a new thread to serve the file.
+If the creation succeeds and the thread is spawned successfully,
+then the environment variable
+.B $apid
+is set to the process id of the new thread; otherwise an error (non-nil)
+status is returned.
+.IR Readcmd ,
+.IR writecmd
+and
+.I closecmd
+should be
+executable
+.IR sh (1)
+command blocks.
+Subsequently, whenever a process reads from
+.IR filename ,
+.I readcmd
+will be invoked; whenever a process writes
+to
+.IR filename ,
+.I writecmd
+will be invoked; whenever an open file on
+.I filename
+is closed, then
+.I closecmd
+will be invoked, if present.
+.PP
+When a read or write request arrives,
+it is added to a list of currently outstanding
+.I tags
+maintained by
+.IR file2chan .
+If the request is not replied to or acknowledged by the time
+the invoked command has finished, then a reply
+will be made automatically (the default is to accept
+all writes and to give an error on all reads).
+Each tag is assigned a unique
+.I tag id
+which is stored in the environment variable
+.B $tag
+for the duration of the invoked command.
+Most commands take an optional
+.I tag
+argument which should be the
+.I tag id
+of a currently outstanding request; if omitted,
+the value of
+.B $tag
+will be used.
+The following commands are provided to reply to requests
+and obtain information about requests:
+.TP 10
+.B rblock
+.B Rblock
+marks
+.I tag
+as a blocking request - no automatic reply will be made when
+the currently invoked command has terminated; the
+process making the request will block until a reply is made.
+.TP
+.B fetchwdata
+.B Fetchwdata
+writes the data associated with
+.I tag
+(which must be a write request) to its standard output.
+It is useful if an uncorrupted version of binary data is
+wanted, as it avoids the data being interpreted as a utf-8
+string.
+.TP
+.B putrdata
+.B Putrdata
+is the converse of
+.BR fetchwdata :
+it reads data from its standard input and replies to
+.I tag
+(which must be a read request) with the data read.
+Any data in excess of that requested will be lost.
+.TP
+.B rerror
+.B Rerror
+replies to
+.I tag
+with an error code; the remote read
+or write request will return an
+error, with the description
+.IR errmsg .
+.TP
+.B rread
+.B Rread
+replies to the read request
+.I tag
+with the data in
+.IR readdata .
+If
+.I readdata
+is longer than the number of bytes requested,
+then only the requested number of bytes of
+.I readdata
+will
+be sent. The offset of the read request is ignored.
+.TP
+.B rreadone
+.B Rreadone
+is similar to
+.B rread
+except that it honours the offset of the client's
+read request, so the client can use consecutive
+reads to retrieve all of
+.IR readdata .
+.TP
+.B rwrite
+.B Rwrite
+replies to the write request
+.IR tag .
+If
+.I count
+is given, then the client's write request will return
+that number (it is usually considered an error if the return
+from
+.I write
+(see
+.IR sys-read (2))
+is not the same as the number of bytes written).
+If
+.I count
+is omitted, all the bytes are assumed to have been written.
+.TP
+.B ${rget}
+.B Rget
+retrieves information associated with
+.IR tag .
+The information it yields depends on its first argument,
+which must be one of:
+.RS
+.TP
+.B data
+The data associated with write request
+.IR tag .
+.TP
+.B count
+The number  of bytes requested by read request
+.IR tag .
+.TP
+.B fid
+The client's file identifier associated with
+.IR tag .
+A unique
+.I fid
+is associated with all client requests emanating from
+the same open file. This is the only
+.B rget
+request valid with the
+.I tag
+associated with a close operation.
+.TP
+.B offset
+The file offset associated with the request
+.IR tag .
+.RE
+.SH EXAMPLES
+The following code creates a very simple
+memory-based file called
+.BR /tmp/memfile .
+.EX
+	file2chan /tmp/memfile {rreadone $data} {data = ${rget data}}
+.EE
+It is, however, very limited, as binary data stored in the file
+will be corrupted, and the size of the file is limited to the amount
+of data that can be transmitted in a single Styx message (8192 bytes).
+.PP
+The following code implements a single-threaded logfile
+which can support multiple concurrent writers:
+.EX
+	{file2chan /chan/log {} {fetchwdata}} >> /tmp/logfile
+.EE
+.PP
+The following code makes the command
+.B cmd
+available to external programs, and defines a shell function
+to use it. Note that there's an approximate 8K limit on the size of the argument
+list that can be passed in this way.
+.EX
+	load std
+	file2chan /chan/cmdchan {} {cmd ${unquote ${rget data}}}
+	fn runcmd {echo -n ${quote $*} > /chan/cmdchan}
+.EE
+.SH SOURCE
+.B /appl/cmd/sh/file2chan.b
+.SH SEE ALSO
+.IR sys-file2chan (2),
+.IR sh (1),
+.IR intro (5),

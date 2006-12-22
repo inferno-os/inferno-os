@@ -1,0 +1,14 @@
+vendor 0x0711
+	product 0x0230
+		load /dis/lib/usb/usbmct.dis
+class 3
+	subclass 1
+		proto 1
+			load /dis/lib/usb/usbkbd.dis
+		proto 2
+			load /dis/lib/usb/usbmouse.dis
+
+class 8
+	subclass 6
+		proto 80
+			load /dis/lib/usb/usbmass.dis

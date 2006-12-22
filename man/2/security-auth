@@ -1,0 +1,157 @@
+.TH SECURITY-AUTH 2
+.SH NAME
+Auth: init, client, server \- authenticated connections between client and server
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+include "security.m";
+auth := load Auth Auth->PATH;
+
+init:   fn(): string;
+client: fn(alg: string, ai: ref Keyring->Authinfo,
+            fd: ref Sys->FD): (ref Sys->FD, string);
+server: fn(algs: list of string, ai: ref Keyring->Authinfo,
+            fd: ref Sys->FD, setid: int): (ref Sys->FD, string);
+.EE
+.SH DESCRIPTION
+.B Auth
+establishes authenticated connections using the station to station protocol described
+in
+.IR auth (6).
+It encapsulates the use of the primitives of
+.IR keyring-auth (2)
+and
+.IR security-ssl (2)
+for the particular case where the stations
+play the rôles of `client' and `server'.
+The underlying primitives must still be accessed directly in some cases,
+for instance when completely symmetric authentication is needed between peers.
+.PP
+.B Init
+must be called before using any other functions in
+.BR Auth ;
+it returns nil if successful, and a diagnostic message otherwise.
+.PP
+.B Client
+authenticates a connection with the server on
+.I fd
+using the authentication data in
+.IR ai .
+If successful, and
+.I alg
+is neither
+.B nil
+nor the value
+.B
+"none"\c
+,
+.B client
+will set the connection to digest or encrypt the data,
+using the
+digest or encryption algorithm specified in
+.IR alg .
+It returns the file descriptor for the connection,
+and a string with information about the connection.
+If an authenticated connection cannot be established,
+.B client
+returns a nil file descriptor and an error message.
+.PP
+.B Server
+authenticates a client connection
+.IR fd ,
+as described in
+.IR keyring-auth (2),
+using the server's authentication data in
+.IR ai .
+If successful, and the client requested the use of a digest or
+encryption algorithm, and that algorithm is listed in
+.IR algs ,
+.B server
+enables the security layer
+.IR ssl (3)
+using the selected algorithm.
+Furthermore, if
+.I setid
+is non-zero, the current user name is set to the
+newly authenticated name.
+.B Server
+returns a file descriptor for the connection,
+and a string with information about the connection.
+If an authenticated connection cannot be established,
+or the client's chosen algorithm is not listed,
+.B server
+returns a nil file descriptor and an error message.
+.PP
+Any string acceptable to
+.IR ssl (3),
+including
+.B
+"clear"\c
+, can be given as an
+.I alg
+to
+.BR client ,
+or listed in
+.I algs
+for
+.BR server .
+Furthermore, the special string
+.B
+"none"
+tells both functions
+that
+.IR ssl (3)
+should not be used at all on a connection.
+.SH EXAMPLE
+This selection from
+.B /appl/cmd/mount.b
+illustrates client-side use.
+.PP
+.EX
+	au := load Auth Auth->PATH;
+	err := au->init();
+	if(err != nil){
+		sys->fprint(stderr, "mount: %s\en", err);
+		exit;
+	}
+	fd: ref Sys->FD;
+	(fd, err) = au->client("none", ai, c.dfd);
+	if(fd == nil){
+		sys->fprint(stderr, "mount: authentication failed: %s\en", err);
+		exit;
+	}
+	dir := hd argv;
+	ok = sys->mount(fd, dir, flags, "");
+	if(ok < 0)
+		sys->fprint(stderr, "mount: %r\en");
+.EE
+.PP
+The following example from
+.B /appl/lib/styxd.b
+shows server-side use;
+note that
+.B readauthinfo
+is called first to fetch the authentication data to pass to
+.BR server .
+.PP
+.EX
+	kr := load Keyring Keyring->PATH;
+	...
+	ai := kr->readauthinfo("/usr/"+user+"/keyring/default");
+	auth->init();
+	(fd, info_or_err) := auth->server(argv, ai, stdin, 1);
+	if(fd == nil){
+		sys->fprint(stderr, "styxd: %s\en", info_or_err);
+		exit;
+	}
+	sys->pctl(Sys->FORKNS, nil);
+	if(sys->export(fd, Sys->EXPASYNC) < 0)
+		sys->fprint(stderr, "styxd: file export: %r\en");
+.EE
+.SH SOURCE
+.B /appl/lib/auth.b
+.SH "SEE ALSO"
+.IR keyring-auth (2),
+.IR security-ssl (2),
+.IR ssl (3),
+.IR auth (6)

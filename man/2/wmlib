@@ -1,0 +1,90 @@
+.TH WMLIB 2
+.SH NAME
+wmlib \-
+low level access to window manager
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "draw.m";
+include "wmlib.m";
+wmlib := load Wmlib Wmlib->PATH;
+
+init:       fn();
+connect:	fn(ctxt: ref Draw->Context): ref Draw->Wmcontext;
+startinput:	fn(w: ref Draw->Wmcontext, devs: list of string): string;
+wmctl:	fn(w: ref Draw->Wmcontext, request: string): (string, ref Draw->Image, string);
+snarfput:	fn(buf: string);
+snarfget:	fn(): string;
+
+.EE
+.SH DESCRIPTION
+.B Wmlib
+provides basic routines to access the window manager,
+It is used by higher level modules such as
+.IR tkclient (2)
+and
+.IR wmclient (2)
+to provide window manager access to applications.
+.PP
+.B Init
+should be called once to initialise the internal state of
+.BR Wmlib .
+.B Connect
+makes a connection to the window manager through
+.I ctxt
+(see
+.IR draw-context (2)).
+.B Startinput
+tells the window manager to start queuing events on the input
+streams named in
+.I devs
+(e.g.
+.BR ptr ,
+.BR kbd )
+so that they can be received by the application.
+.PP
+.B Wmctl
+sends
+.I request
+to the window manager.
+It returns a tuple, say (\fIname\fP, \fIimg\fP, \fIerr\fP).
+If a request fails, then
+.I name
+and
+.I img
+will be nil and the non-empty
+.I err
+gives the reason.
+If the request has resized or created an image,
+.I name
+gives the tag name of the image and
+.I img
+holds the new image.
+.B Wmlib
+interprets the
+.B exit
+request itself, by killing all processes in the current
+process group, and exiting.
+.PP
+.B Snarfget
+and
+.B snarfput
+retrieve and replace the contents of the window
+manager's snarf buffer.
+.SH FILES
+.TF /chan/snarf
+.TP
+.B /chan/snarf
+snarf buffer maintained by
+.IR wm (1)
+.TP
+.B /chan/wm
+channel for interaction with
+.IR wm (1)
+.SH SOURCE
+.B /appl/lib/wmclient.b
+.SH SEE ALSO
+.IR wm (1),
+.IR wmclient (2),
+.IR tkclient (2),
+.IR tk (2)

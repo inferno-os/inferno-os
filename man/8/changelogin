@@ -1,0 +1,113 @@
+.TH CHANGELOGIN 8
+.SH NAME
+changelogin, convpasswd \- create/update the password file
+.SH SYNOPSIS
+.BI auth/changelogin " name"
+.PP
+.B auth/convpasswd
+[
+.B -f
+] [
+.B -v
+] [
+.BI -m " keydir"
+]
+[
+.I pwfile
+]
+.SH DESCRIPTION
+.I Changelogin
+helps to administer a password file
+.B /keydb/keys
+(see
+.IR keys (6)),
+a requirement of `signer' servers
+(see
+.IR logind (8),
+.IR signer (8),
+and
+.B svc/auth
+in
+.IR svc (8)).
+.I Changelogin
+can only be used on the signing host itself,
+after
+.IR keyfs (4)
+has been started (eg, by
+.BR svc/auth )
+to make the entries visible in the name space.
+.PP
+If a password file entry for
+.I name
+exists, it is modified; otherwise, a new entry is created.
+The user is prompted for the following items:
+.TP
+password
+A string at least 8 characters in length. The SHA-1 digest of the entered string is stored in the password file. See
+.IR keyring-sha1 (2).
+By default, the password for an existing entry is unchanged.
+.TP
+expiration date
+An expiration time in the format
+.IR DDMMYYYY .
+The user input is checked for valid day, month, and year; moreover, the new date must be later than the current time.
+By default, the current value, if any, is unchanged for an existing entry and one year from the current time for a new entry.
+.ig
+.TP
+free form info
+Arbitrary administrative information.
+..
+.PP
+Note that the
+password expiration date is also used as the default expiration date
+for any certificate later produced;
+see
+.IR getauthinfo (8).
+.PP
+.I Convpasswd
+converts a Third Edition
+password file
+to the
+.IR keys (6)
+file used by the current Edition of the system.
+It reads password entries from
+.IR pwfile ,
+.B /keydb/password
+by default,
+and writes corresponding entries into
+a name space served by
+.IR keyfs (4),
+mounted at
+.IR keydir ,
+.B /mnt/keys
+by default.
+It copies passwords and expiry times.
+The `free form' administrative data is discarded.
+If
+.I keydir
+already has got an entry for a user, it is left as-is, unless
+the
+.B -f
+option is given to force
+.I convpasswd
+to copy across the entry in
+.I pwfile .
+The
+.B -v
+option causes
+.I convpasswd
+to print each user name after it successfully installs it.
+.SH FILES
+.TF /keydb/keys
+.TP
+.B /keydb/keys
+.SH SOURCE
+.B /appl/cmd/auth/changelogin.b
+.SH "SEE ALSO"
+.IR passwd (1),
+.IR keyfs (4),
+.IR keysrv (4),
+.IR keys (6),
+.IR logind (8),
+.IR signer (8),
+.IR svc (8)

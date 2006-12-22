@@ -1,0 +1,237 @@
+.TH APPLYLOG 8
+.SH NAME
+applylog, updatelog \- log-based updates
+.SH SYNOPSIS
+.B install/applylog
+[
+.B -c
+] [
+.B -e
+] [
+.B -n
+] [
+.B -s
+] [
+.B -u
+] [
+.B -g
+] [
+.B -v
+] [
+.BI -T " timefile"
+]
+.I clientlog
+.I clientroot
+.I serverroot
+[
+.I path
+\&...
+]
+.PP
+.B install/updatelog
+[
+.BI -p " proto"
+] [
+.BI -r " root"
+] [
+.BI -t " now gen"
+] [
+.B -c
+] [
+.BI -x " path"
+]
+.I log
+[
+.I path
+\&...
+]
+.SH DESCRIPTION
+These two commands allow distribution of updates (eg, to the Inferno tree)
+based on a log of changes since a previous update.
+Notionally, one
+.I server
+system is the primary for a set of files, and one or more
+.I client
+systems maintain replicas of that set,
+although in some applications server and client might be the same machine.
+.PP
+.I Applylog
+is run on a client, to update the file tree rooted at
+.IR clientroot .
+The server's version of the tree is rooted at
+.I serverroot
+on the client,
+typically by being mounted there (see
+.IR bind (1)).
+.I Applylog
+takes the current state of the replica from the entries in
+.IR clientlog ,
+and applies a set of changes represented by log entries read from its standard input.
+Those entries are provided by the server.
+Each change is examined to see whether the file to which it applies is in the expected state.
+If so, the change is applied without comment; otherwise, there is a conflict caused by
+a local change to the replica tree independently from the primary.
+By default,
+.I applylog
+diagnoses the conflict and does not apply the change.
+It accepts the following options:
+.TP
+.B -c
+Resolve inconsistencies in favour of the client: leave the replica as is.
+.TP
+.B -e
+Exit with an error status on any error, including inconsistency between client and server.
+.TP
+.B -n
+Print on standard output a list of changes that would be made, and list any conflicts,
+but do not change the tree or update the log.
+.TP
+.B -s
+Resolve inconsistencies in favour of the server: make the replica match the server's state.
+.TP
+.B -u
+Make file ownership in the replica match that on the server.
+.TP
+.B -g
+Make group ownership in the replica match that on the server.
+.TP
+.B -v
+Print a summary of each log entry as it is examined.
+.TP
+.BI -T " timefile"
+Read a time and sequence number from
+.I timefile
+and apply only log entries with stamps greater than that.
+On successful completion, if the
+.B -n
+option is not given, update the
+.I timefile
+with the stamp of the last log entry processed successfully.
+.PP
+The scope of an update in a tree can be restricted to a particular set of
+.I paths
+listed on the command line.
+They should all be relative path names.
+.PP
+.I Updatelog
+is run on a server to produce a sequence of log entries representing changes
+to the primary tree since a previous log was produced.
+It can also be run on a client to see how its replica state differs from that recorded in a log.
+It accepts the following options:
+.TP
+.BI -p " proto"
+Use
+.I proto
+as the prototype for the file system, as described by
+.IR proto (6)
+(default:
+.BR /lib/proto/all ).
+.TP
+.BI -r " root"
+The replica is rooted at
+.I root
+(default:
+the current directory,
+.BR . ).
+.TP
+.BI -t " now gen"
+Make log entries use time
+.I now
+and initial sequence number
+.IR gen .
+The defaults are the current time and 0.
+.TP
+.B -c
+Produce output only for content and metadata changes, not additions or deletions.
+.TP
+.BI -x " path"
+Exclude
+.I path
+and its subtrees from consideration.
+.PP
+By default,
+.I updatelog
+produces log entries describing changes, additions and deletions to all files in
+.I root
+but the scope can be limited by giving a different
+.IR proto ,
+explicitly listing trees to consider as
+.I paths
+on the command line, and
+by giving one or more
+.B -x
+options to exclude particular paths,
+in any desired combination.
+.SS Log file format
+.PP
+A log file is a text file with one line representing each change to the tree.
+Each line has the form:
+.IP
+.I "time gen verb path serverpath mode uid gid mtime length"
+[
+.I sum
+\&...
+]
+.PP
+where:
+.RS
+.TP
+.I "time, gen"
+are decimal numbers that order the sequence of requests:
+.I time
+is typically the time in seconds of the epoch at which the entry was made;
+.I gen
+is a monotonically increasing sequence number
+.PD
+.TP
+.I verb
+is an action:
+.RS
+.PD0
+.TP
+.B a
+add file
+.I path
+.TP
+.B c
+change the contents of file
+.I path
+.TP
+.B d
+delete
+.I path
+.TP
+.B m
+change the metadata (permissions, ownership) for
+.I path
+.RE
+.PD
+.TP
+.I path
+the name of the file on the client
+.TP
+.I serverpath
+the name of the file on the server with the contents for
+.IR path ,
+or simply
+.L -
+when the server and client file names are the same
+.TP
+.I "mode, uid, gid, length, mtime"
+the resulting metadata (except for
+.B d
+where the metadata is that for the file to be deleted)
+.TP
+.I sum
+is the MD5 checksum of the file's contents
+.RE
+.SH SOURCE
+.B /appl/cmd/install/applylog.b
+.br
+.B /appl/cmd/install/logs.b
+.br
+.B /appl/cmd/install/updatelog.b
+.SH SEE ALSO
+.IR fs (1),
+.IR kfs (4),
+.IR proto (6)

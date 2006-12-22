@@ -1,0 +1,107 @@
+.TH VENTI 2
+.SH NAME
+Venti \- access to Venti content-addressed filestore.
+.SH SYNOPSIS
+.EX
+include "venti.m";
+venti := load Venti Venti->PATH;
+Session: import venti;
+
+init:			fn();
+unpackentry:	fn(d: array of byte): ref Entry;
+unpackroot:	fn(d: array of byte): ref Root;
+
+Session: adt {
+	new:		fn(fd: ref Sys->FD): ref Session;
+	read:		fn(s: self ref Session, score: Venti->Score, etype: int, maxn: int): array of byte;
+	write:	fn(s: self ref Session, etype: int, buf: array of byte): (int, Venti->Score);
+	sync:	fn(s: self ref Session): int;
+};
+
+Score: adt {
+	a: array of byte;
+	eq:		fn(a: self Score, b: Score): int;
+	text:		fn(a: self Score): string;
+	parse:	fn(s: string): (int, Score);
+	zero:		fn(): Score;
+};
+
+.EE
+.SH DESCRIPTION
+.I Venti
+is a block storage server intended for archival applications.
+The
+.I Venti
+module provides low-level access to a Venti server.
+The module assumes that the physical connection
+to the server has already been established
+(for example, by
+.IR dial (2)).
+On a Venti server, a block is addressed by the SHA1 hash of
+the contents of that block, known as a
+.IR score ,
+and represented as a
+.B Score
+adt.
+Blocks are additionally tagged with a
+.IR type ,
+facilitating recovery in the event of corruption.
+A
+.B Session
+represents an session with a Venti server.
+.TP
+.IB s .new(\fIfd\fP)
+.B New
+performs the initial handshake with the Venti server,
+returning established
+.BR Session .
+.TP
+.IB s .read(\fIscore\fP,\ \fIetype\fP,\ \fImaxn\fP)
+.B Read
+tries to retrieve the block
+corresponding to
+.IR score ,
+and of type
+.IR etype .
+The block must be no longer than
+.I maxn
+bytes.
+.I Etype
+is conventionally one of the constants
+.BR Roottype ,
+.BR Dirtype ,
+.BR Datatype
+or
+.BR Pointertype [0-9],
+where the different
+.BR Pointertype s
+represent different depth levels within a Venti tree.
+.TP
+.IB s .write(\fIetype\fP,\ \fIbuf\fP)
+.B Write
+writes the data in
+.I buf
+to the Venti server.
+The block will be tagged with type
+.IR etype .
+It returns a tuple, say
+.RI ( ok ,\  score );
+on error,
+.I ok
+is -1, otherwise
+.I ok
+is 0 and
+.I score
+contains the Venti score for the block that has been written.
+.TP
+.IB s .sync()
+.B Sync
+tells the Venti server to make sure that all data is committed to
+active storage.
+.SH SOURCE
+.B /appl/lib/venti.b
+.SH BUGS
+to do: 
+Score adt
+entry packing/unpacking
+other Vmsgs, Session.rpc()?

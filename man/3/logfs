@@ -1,0 +1,260 @@
+.TH LOGFS 3
+.SH NAME
+logfs \- log-structured file system for flash devices
+.SH SYNOPSIS
+.B bind -b '#ʟ' /dev
+.PP
+.B /dev/logfsctl
+.br
+.B /dev/logfsusers
+.br
+.BI /dev/logfs name
+.br
+.BI /dev/logfs name boot
+.PP
+.B echo fsys
+.I name
+.B config
+.I flash-device
+.B "> /dev/logfsctl"
+.br
+.B echo fsys
+.I name
+.B format
+.I boot-area-size
+.B "> /dev/logfsctl"
+.br
+.B echo fsys
+.I name
+.B open
+.B "> /dev/logfsctl"
+.br
+.BI "mount -Ac /dev/logfs" name
+.I dir
+.SH DESCRIPTION
+.I Logfs
+is a driver level implementation of the Inferno log structured
+filesystem, a file system designed with modern flash devices
+(such as NAND flash) in mind.
+.I Logfs
+is itself hardware independent, requiring other
+devices to provide the physical medium. Currently only
+.IR flash (3)
+devices are supported.
+.PP
+The file system maintains two storage regions on the same medium:
+a log-structured hierarchical file system that implements all the
+functionality communicable by the Styx protocol
+(see
+.IR intro (5)),
+and a boot
+partition that offers a fixed amount of flat storage suitable for
+holding such things as a kernel boot image, boot parameters etc.  The
+boot partition can be accessed and updated without understanding all
+but the simplest facts about the hierarchical file system, making it
+easy to implement boot loaders with small footprints.
+.PP
+The physical layout of the file system varies from medium to medium,
+so that the specialised features of the medium can be accounted for.
+.PP
+The user table is maintained in memory; there is one table, shared between
+all file systems supported by this driver. There is no distinction between
+users and groups: a user is a group with one member.
+The user table records a mapping
+between uids
+and
+unames,
+as well as recording the leader and members of each group. A
+.I uid
+is a string naming a user or group that is stored in the file system. A
+.I uname
+is the string naming a user or group that is used in
+file system protocol messages (see
+.IR intro (5)).
+There is a distinction so that
+unames
+can be safely reused, even though
+uids
+cannot.
+.PP
+Configuration and control of the file systems is by writing commands to
+.BR /dev/logfsctl :
+.TP
+.BI fsys " name"
+.br
+Sets the current file system to
+.IR name ,
+which must be configured. Subsequent commands, not prefixed with
+.BI fsys name\fR,
+will by applied to the name file system.
+.TP
+.BI [fsys " name\f5] config\fI flash-device"
+.br
+Configures file system
+.I name
+to be written to
+.BI flash (3)
+device
+.IR flash-device .
+This does not initialise or format the filesystem, but simply bind
+.I name
+to
+.IR flash-device .
+For each configured
+.IR name ,
+two files appear in the device name space,
+.BI /dev/logfs name
+and
+.BI /dev/logfs name\f5boot\fI.
+The former serves the Styx protocol giving access to the hierarchical file system;
+the latter is a fixed size file that represents the boot partition.
+.TP
+.BI [fsys " name\f5] format \fIbootsize"
+.br
+Formats the underlying medium as a
+.I logfs
+format file system. Sufficent storage is set aside to create a boot partition of at
+least 
+.I bootsize
+bytes. Some medium implementations (eg, for NAND flash) store file system
+parameters (eg, location, size and boot partition size) to enable automatic
+location of file systems and improve bad block detection. These must
+be part of the boot partition so that they are easily accessible to boot loaders,
+so such medium implementations may also enforce a minimum size for the
+boot partition.
+.TP
+.BI [fsys " name\f5] open [-P] [-W]"
+.br
+Initialises the specified file system, and makes it available for use. The file
+system structure is verified, bad blocks are repaired and, in the case of the
+log structured file system, and the log replayed to regenerate the directory structure.
+The
+.B -W
+option reduces the permission control on
+.IR wstat (5)
+requests. Specifically it allows the
+.BR uid ,
+.BR gid ,
+.BR mtime ,
+and
+.B perm
+to be changed by anyone.
+The
+.B -P
+option removes all file access controls, allowing anyone to open any file in
+any mode.
+.TP
+.BI [fsys " name\f5] sweep"
+.br
+Forces the log to be swept, if it has been written to since last being swept.
+The log is normally swept automatically when space is low.
+.TP
+.BI [fsys " name\f5] sync"
+.br
+Flush any buffered log or data to the underlying device.
+Use before shutting down the system if the device is not unmounted.
+(See notes below.)
+.TP
+.BI [fsys " name\f5] trace [\fIlevel\f5]"
+.br
+If
+.I
+level
+is non-zero, internal diagnostics for the log file system are enabled at the
+given level. If
+.I level
+is zero, or missing, tracing is disabled.
+.TP
+.BI [fsys " name\f5] unconfig"
+.br
+removes the configuration. The file system must not be mounted, or the
+boot partition open, before doing this.
+.TP
+.BI uname " uname uid"
+.TP
+.BI uname " uname \f5:\fPuid"
+.br
+adds the user with uname
+.I uname
+and uid
+.I uid
+to the in-memory table
+.TP
+.BI uname " uname \f5%\fPnewname"
+.br
+renames
+.I uname
+to
+.IR newname ,
+throughout the user table
+.TP
+.BI uname " uname \f5=\fPleader"
+.br
+sets the group leader to the uname
+.I leader
+.TP
+.BI uname " uname \f5="
+.br
+removes the group leader; then all members are leaders
+.TP
+.BI uname " uname \f5+\fPmember"
+.br
+add the uname
+.I
+member
+to the group
+.TP
+.BI uname " uname \f5-\fPmember"
+.br
+removes the uname
+.I
+member
+from the group
+.SS Notes
+The file system log may be subject to a small amount of buffering for efficiency
+purposes; therefore, it is necessary to unmount the file system before disconnecting
+the power to avoid losing recent updates. Failure to do this does not result in
+inconsistencies in the file system, but some recent changes will be lost.
+Equivalently, a
+.IR wstat (5)
+of any file or directory, with all fields set to
+.I no change
+(also known as a
+.I wstat
+.IR flush)
+will cause the log to be written to disk. Note that during a dismount, and also a
+.I wstat
+.IR flush ,
+a
+.I wstat
+flush
+is also applied to the underlying
+.IR flash (3)
+device. Furthermore, since some buffering is used on the log,
+needless use of
+.I wstat flush
+will consume log space more rapidly than normal, although it will be recovered during
+the next sweep.
+.PP
+The log is automatically swept when space is low, so there is not normally any
+need to use the
+.B sweep
+command. 
+.SH SOURCE
+.B /liblogfs
+.br
+.B /libnandfs
+.br
+.B /emu/port/devlogfs.c
+.br
+.B /os/port/devlogfs.c
+.SH SEE ALSO
+.IR flash (3),
+.IR ftl (3),
+.IR kfs (4)
+.SH BUGS
+The only medium currently supported is NAND flash. This is detected by
+recognising the manufacturer and device ids supplied by the status file of
+the
+.IR flash (3)
+device.

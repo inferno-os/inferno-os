@@ -1,0 +1,247 @@
+.TH WM-MISC 1
+.SH NAME
+about, clock, coffee, colors, date, edit, mand, memory, polyhedra, reversi, rt, stopwatch, sweeper, task, tetris, unibrowse, view, winctl \- miscellaneous graphical applications
+.SH SYNOPSIS
+.B wm/about
+.br
+.B wm/clock
+.br
+.B wm/coffee
+.br
+.B wm/colors
+.br
+.B wm/date
+.br
+.B wm/edit
+.RI [ file ]
+.br
+.B wm/mand
+.br
+.B wm/memory
+.br
+.B wm/polyhedra
+.br
+.B wm/reversi
+.br
+.B wm/rt
+.br
+.B wm/stopwatch
+.br
+.B wm/sweeper
+.br
+.B wm/task
+.br
+.B wm/tetris
+[
+.B -b
+.I blocksize
+]
+.br
+.B wm/unibrowse
+.br
+.B wm/view
+[
+.B -i
+]
+.RI [ file... ]
+.br
+.B wm/winctl
+.SH DESCRIPTION
+A collection of simple applications and utilities that operate under the
+Wm window manager.
+Other Wm applications exist, see their respective manual pages for
+more information.
+.PP
+.TP
+.B wm/about
+Display system version and copyright information.
+.TP
+.B wm/clock
+Display an analogue clock.
+.TP
+.B wm/coffee
+A whimsical plaything.
+.TP
+.B wm/colors
+Displays the Inferno palette.
+Clicking on a particular colour displays its RGB values.
+.TP
+.B wm/date
+Displays the current date and time in a window.
+.TP
+.B wm/edit
+A simple cut-and-paste text editor.
+Several menus provide the usual editing commands.
+Text selections are dragged out using mouse button 1.
+Mouse button-2 displays a pop-up menu of the Cut, Copy and Paste commands.
+.TP
+.B wm/mand
+A fractal browser to explore the Mandelbrot and Julia sets.
+Button 1 drags a rectangle to zoom into, button 2 shows the  Julia set at the chosen point, button 3 zooms out.
+To produce more accurate pictures, the iteration depth may be increased by altering 
+the depth scale factor. The default number of iterations per point is 253. The sets are
+plotted by filling regions of (apparently) the same colour. Deselecting the fill option
+will plot the points in the usual fashion.
+.TP
+.B wm/memory
+Displays memory usage.
+Three usage bars are displayed, one for each of the Inferno memory
+pools: main, heap and image. The current usage (in bytes) is displayed
+to the left of each bar, and the number of blocks in use appears in red.
+The maximum permitted size of each pool is given (in megabytes) to the right of its
+usage bar.
+Each bar also sports a highwater mark.
+The usage data is re-read and displayed once every second.
+.TP
+.B wm/polyhedra
+A program to display convex regular polyhedra. The menu options allow the user
+to alter the speed of rotation and the axis of rotation. To display a different
+solid, move forward or back with the prev and next boxes. Selecting the dual
+box will show the dual of a solid rather than the original solid. Finally the 
+edges, clear and faces boxes determine whether edges are shown, whether the
+screen is cleared before the next plot and whether faces are shown respectively.
+.TP
+.B wm/reversi
+An implementation of the popular game. The default set up is for black to be the
+machine and white the human player. Use the Black and White menu options to
+change this. The level of any machine player may be set using the Black level
+and White level boxes. This determines the amount of lookahead performed
+by the tree search algorithm.
+.TP
+.B wm/rt
+A Dis module inspector: it can show the Dis instructions, strings,
+types and other attributes of a module; it also allows the user
+to set some attributes stored in a module's header.
+.TP
+.B wm/stopwatch
+A simple-minded stopwatch.
+Only useful for coarse-grained timings.
+.TP
+.B wm/sweeper
+Mine sweeping game.
+.TP
+.B wm/task
+Task manager: it lists the processes running when it starts,
+and offers buttons to kill a selected process, kill its process group,
+show its open files, or debug it using
+.IR deb (1).
+A process is selected from the list using mouse button 1.
+.I Task
+does not automatically refresh the list; there is a
+.B Refresh
+button to prompt it to do so.
+.TP
+.B wm/tetris
+The ubiquitous and annoyingly addictive tile dropping game.
+The game keys are:
+.RB ` 7 '
+move left;
+.RB ` 8 '
+rotate (anti-clockwise);
+.RB ` 9 '
+move right;
+.RB ` p '
+pause;
+.RI ` space '
+drop and
+.RB ` q '
+quit.
+A mouse or stylus can also be used to guide the pieces (eg, by tapping the screen in the desired direction).
+Scores are stored in the file
+.BR /lib/scores/tetris .
+Score file updates are not interlocked \- it's only a game!
+.TP
+.B wm/unibrowse
+A handy utility for browsing the unicode character set, finding out what
+particular characters look like in different fonts, finding out exactly which
+characters a font provides, and finding the name of a character
+that you have managed to grab into the snarf buffer.
+.TP
+.B wm/view
+Image viewer.
+Displays GIF, Inferno
+.IR image (6),
+JPEG,
+PNG
+and X bitmap image files.
+The viewer creates a new window to display the contents of each
+.IR file .
+If no arguments are given, the file browser panel
+.IR filename (1)
+is displayed to prompt the user to select an image file to view.
+If the
+.B -i
+option is given,
+.I view
+continues to listen for requests from the
+.IR plumber (8);
+the
+.B -i
+option will normally appear only in rules in
+.IR plumbing (6)
+files.
+.TP
+.B wm/winctl
+Window management tool.
+Displays a set of buttons that provide for:
+raising a window to the top or lowering it to the bottom of the
+screen window stack; moving a window to a new position; iconising a window;
+deleting a window.
+.IP
+Click on the button for the required action then click on the window to apply it to.
+When moving a window, click and drag the target.
+Deleting a window is error-prone. Currently using this tool on a charon or acme
+window has strange effects.
+.SH PLUMBING
+.B wm/view
+receives
+.B view
+messages
+.SH FILES
+.TP
+.B /lib/polyhedra
+Polyhedra data base.
+.TP
+.B /lib/scores/tetris
+Tetris high score table.
+.TP
+.B /lib/unidata
+Directory holding Unicode character set information, used by
+.BR unibrowse .
+.TP
+.B /dev/memory
+Provides
+.B memory
+with memory usage statistics.
+.SH SOURCE
+.B /appl/wm/about.b
+.br
+.B /appl/wm/coffee.b
+.br
+.B /appl/wm/colors.b
+.br
+.B /appl/wm/date.b
+.br
+.B /appl/wm/edit.b
+.br
+.B /appl/wm/mand.b
+.br
+.B /appl/wm/memory.b
+.br
+.B /appl/wm/polyhedra.b
+.br
+.B /appl/wm/reversi.b
+.br
+.B /appl/wm/rt.b
+.br
+.B /appl/wm/stopwatch.b
+.br
+.B /appl/wm/task.b
+.br
+.B /appl/wm/tetris.b
+.br
+.B /appl/wm/unibrowse.b
+.br
+.B /appl/wm/view.b
+.br
+.B /appl/wm/winctl.b

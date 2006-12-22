@@ -1,0 +1,29 @@
+.TH SNARF 3 hosted
+.SH NAME
+snarf \- host window system clipboard
+.SH SYNOPSIS
+.B bind -a #^ /dev
+.br
+.B bind -b #^ /chan
+.PP
+.B /dev/snarf
+.br
+.B /chan/snarf
+.SH DESCRIPTION
+.I Snarf
+serves a single file,
+.BR snarf .
+Reading the file returns the current
+contents of the host window system's own clipboard (equivalent to
+the Inferno window system's `snarf buffer').
+If the file is opened for writing, subsequent writes append to an internal buffer;
+when the file is closed, that buffer's contents are written to the host window system's clipboard.
+.PP
+.IR Emu (1)
+automatically binds the device to both
+.B /dev
+and
+.B /chan
+when it starts up, if a window system is configured.
+.SH SEE ALSO
+.IR wm (1)

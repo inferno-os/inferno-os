@@ -1,0 +1,37 @@
+.TH CLEANNAME
+.SH NAME
+cleanname \- clean a path name
+.SH SYNOPSIS
+.B cleanname
+[
+.BI -d " dir"
+]
+.I name
+\&...
+.SH DESCRIPTION
+.I Cleanname
+tidies up each file
+.I name
+it is given and prints the result on standard output.
+It removes redundant slashes and interprets
+.L .
+and
+.L ..
+directory names lexically.
+If the
+.B -d
+option is given, each
+.I name
+that does not not start with
+.B /
+or
+.B #
+will be prefixed by
+.IB dir /
+before processing.
+.SH SOURCE
+.B /appl/cmd/cleanname.b
+.SH SEE ALSO
+.IR basename (1),
+.IR pwd (1),
+.IR names (2)

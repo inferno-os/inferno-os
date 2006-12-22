@@ -1,0 +1,84 @@
+.TH MNT 3 
+.SH NAME
+mnt \- attach to Styx servers
+.SH SYNOPSIS
+.nf
+.B #M
+.fi
+.SH DESCRIPTION
+The
+.I mount driver
+is used by
+.B Sys->mount
+(but not
+.BR Sys->bind ;
+see
+.IR sys-bind (2))
+to connect the name space of a process to
+the service provided by a Styx server over a communications channel.
+After the
+.BR mount ,
+file operations in that portion of the name space will
+be converted by the mount driver into the appropriate
+Styx messages to the server, and its Styx replies returned
+as the status of the system calls.
+.PP
+Any authentication must precede
+.IR mount ,
+which does none itself;
+see
+.IR security-intro (2)
+for a discussion of the authentication and security
+mechanisms provided `ready made' by Inferno, but
+any other scheme can be agreed between client and server.
+The
+.I mount
+system call does, however, issue an
+.IR attach (5)
+message to the server to identify the user of the connection.
+Each distinct user of a connection must mount it separately;
+the mount driver multiplexes the access of the various users and their
+processes to the service.
+.PP
+File-oriented system calls are converted by the kernel into messages in the Styx protocol.
+Within the kernel, Styx is implemented by procedure calls to the
+various kernel device drivers, as described in
+.IR intro (10)
+and
+.IR dev (10.2).
+The mount driver translates these procedure calls into remote procedure calls
+to be transmitted as messages over the communication channel to the server.
+Each message is implemented by a write
+of the corresponding protocol message to the server channel
+followed by a read on the server channel to get the reply.
+Errors in the reply message are turned into system call error returns.
+.PP
+A
+.IR sys-read (2)
+or
+.I Sys->write
+system call on a file served by the mount driver
+may be translated
+into more than one
+message,
+since there is a maximum data size for a Styx message.
+The system call
+will return when the specified number of bytes have been transferred
+or a short reply is returned.
+.PP
+The string
+.L #M
+is an illegal file name,
+so this device can be accessed directly only by the kernel.
+.SH "SEE ALSO"
+.IR bind (1),
+.IR sys-bind (2)
+.SH SOURCE
+.B /emu/port/devmnt.c
+.br
+.B /os/port/devmnt.c
+.SH BUGS
+When mounting a service through the mount driver,
+that is, when the channel being multiplexed is itself
+a file being served by the mount driver,
+large messages may be broken in two.

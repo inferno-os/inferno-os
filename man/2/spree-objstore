@@ -1,0 +1,63 @@
+.TH SPREE-OBJSTORE 2
+.SH NAME
+Objstore \- support for object archiving in Spree engines.
+.SH SYNOPSIS
+.EX
+include "spree.m";
+include "spree/objstore.m";
+Object: import Spree;
+objstore := load Objstore Objstore->PATH;
+
+init:       fn(m: Spree, c: ref Clique);
+setname:    fn(o: ref Object, name: string);
+unarchive:  fn();
+get:        fn(name: string): ref Object;
+.EE
+.SH DESCRIPTION
+The
+.IR spree (2)
+module provides an
+.B Archives
+module to allow storage of an engine's object hierarchy to a persistent
+medium. This does not store the state internal to an engine that
+is not reflected in the object hierarchy, e.g. global variables.
+In particular, if an engine holds a variable referring to an object,
+it is not able to reset that variable correctly when the archive is
+later restored.
+The
+.B Objstore
+module provides some support for the naming of objects
+before archival, and for their retrieval by name, in order to enable this.
+.PP
+.B Init
+must be called first with the spree module,
+.IR m ,
+and the current clique,
+.IR c .
+When a module is archiving itself, it should name each object
+that it wishes to retrieve, using
+.BR setname .
+It is permissible for a single object to be given multiple
+names: the object will later be retrievable under any of its given
+names.
+.PP
+When restoring from an archive, a module should call
+.BR unarchive ,
+which scans through the object hierarchy looking
+for named objects and storing their names.
+After this,
+.BI get( name )
+will return the object,
+.IR o ,
+that was named
+.IR name
+by a previous
+.BI setname( o ,\  name )\fR,
+or
+.B nil
+if there was none such.
+.PP
+The names for an object are stored in the attribute ``§'',
+which is cleared when
+.B unarchive
+is called.

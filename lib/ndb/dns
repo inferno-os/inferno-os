@@ -1,0 +1,31 @@
+#
+# optional bootstrap data for ndb/dns
+# (it has got a.root-servers.net built-in if necessary)
+#
+dom=
+	ns=m.root-servers.net
+	ns=c.root-servers.net
+	ns=d.root-servers.net
+	ns=e.root-servers.net
+	ns=l.root-servers.net
+	ns=f.root-servers.net
+	ns=a.root-servers.net
+	ns=b.root-servers.net
+	ns=g.root-servers.net
+	ns=h.root-servers.net
+	ns=i.root-servers.net
+	ns=j.root-servers.net
+	ns=k.root-servers.net
+dom=a.root-servers.net ip=198.41.0.4
+dom=b.root-servers.net ip=128.9.0.107
+dom=c.root-servers.net ip=192.33.4.12
+dom=d.root-servers.net ip=128.8.10.90
+dom=e.root-servers.net ip=192.203.230.10
+dom=f.root-servers.net ip=192.5.5.241
+dom=g.root-servers.net ip=192.112.36.4
+dom=h.root-servers.net ip=128.63.2.53
+dom=i.root-servers.net ip=192.36.148.17
+dom=j.root-servers.net ip=198.41.0.10
+dom=k.root-servers.net ip=193.0.14.129
+dom=l.root-servers.net ip=198.32.64.12
+dom=m.root-servers.net ip=202.12.27.33

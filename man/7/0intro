@@ -1,0 +1,6 @@
+.TH INTRO 7
+.SH NAME
+intro \- introduction to databases
+.SH DESCRIPTION
+This manual section describes databases available on Inferno
+and the commands and modules that access them.

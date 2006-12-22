@@ -1,0 +1,28 @@
+.TH SWITCH 3 MPC8xx
+.SH NAME
+switch \- hardware option switch
+.SH SYNOPSYS
+.nf
+.B bind -a '#r' /dev
+
+.B /dev/switch
+.fi
+.SH DESCRIPTION
+.PP
+The switch device serves a one-level directory,
+giving access to one read-only file,
+.BR switch .
+A read returns the value of the development board's
+option switch (DS1), represented as a decimal number
+from 0 to 15, representing four bits,
+each corresponding to one of the four toggles.
+Each toggle produces the value 0 when it
+is set `ON' and 1 when it is off.
+Toggle 1 corresponds to bit
+.B 1<<3
+in the number,
+toggle 2 corresponds to bit
+.BR 1<<2 ,
+and so on
+.SH SOURCE
+.B /os/mpc/devrtc.c

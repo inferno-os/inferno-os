@@ -1,0 +1,135 @@
+.TH SYS-OPEN 2
+.SH NAME
+open, create \- open a file for reading or writing, create file
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+create: fn(file: string, omode, perm: int): ref FD;
+open:   fn(file: string, omode: int):       ref FD;
+.EE
+.SH DESCRIPTION
+.B Open
+opens the
+.I file
+for I/O and returns an associated file descriptor.
+.I Omode
+is one of
+.BR Sys->OREAD ,
+.BR Sys->OWRITE ,
+or
+.BR Sys->ORDWR ,
+asking for permission to read, write, or read and write, respectively.
+There are two values that can be OR'd with those to form
+.IR omode :
+.B Sys->OTRUNC
+says to truncate the file before opening it, which requires write permission
+even if
+.I omode
+is
+.BR Sys->OREAD ;
+and
+.B Sys->ORCLOSE
+says to remove the file when it is closed (ie, when the last reference
+to this file descriptor goes away).
+.PP
+.B Open
+returns
+.B nil
+if the file does not exist, if the file name is unacceptable, if the user does not have
+permission to open it as requested
+(see
+.IR sys-stat (2)
+for a description of permissions),
+or if any other error occurs.
+.PP
+.B Create
+creates a new
+.I file
+or prepares to rewrite an existing
+.IR file ,
+opens it according to
+.I omode
+(as described for
+.BR open ),
+and returns an associated file descriptor.
+.PP
+If the file is new,
+the owner is set to the
+.I "user id
+of the creating process group,
+the group to that of the containing directory,
+and the permissions to
+.I perm
+ANDed with the permissions of the containing directory.
+The bits in 
+.I perm
+are the same as those
+in the file mode returned by 
+.IR sys-stat (2).
+.PP
+If the file already exists,
+it is truncated to 0 length,
+but the permissions, owner, and group remain unchanged.
+.PP
+The created file will be a directory if the
+.B Sys->DMDIR
+bit is set in
+.IR perm ,
+and
+.I omode
+is
+.BR Sys->OREAD .
+The file will be exclusive-use if the
+.B Sys->DMEXCL
+bit is set in
+.I perm
+and the underlying file server supports it;
+see
+.IR open (5)
+for details.
+It will be append-only if the
+.B Sys->DMAPPEND
+bit is set, and the underlying file server supports it.
+.PP
+.B Create
+returns
+.B nil
+if the path up to the last element of
+.I file
+cannot be evaluated, if the file name is unacceptable,
+if the user does not have write permission in the final directory,
+if the file already exists and does not permit the access defined by
+.IR omode,
+or if any other error occurs.
+.PP
+If the file is new and the directory in which it is created is
+a union directory (see
+.IR sys-intro (2))
+then the constituent directory where the file is created
+depends on the structure of the union: see
+.IR sys-bind (2).
+.PP
+Since create may succeed even if the file exists, a special mechanism
+is necessary for applications that require an atomic create operation.
+If the
+.B Sys->OEXCL
+bit is set in the mode for a create, the call succeeds only if
+the file does not already exist; see
+.IR open (5)
+for details.
+.PP
+There is no explicit ``close'' routine:
+when the last reference to the file descriptor is released,
+the system closes the associated file.
+For devices and network protocols where shutdown must be guaranteed,
+write a
+.B hangup
+message to the associated control file and use the return value of the
+.B write
+to verify closure.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-bind (2),
+.IR sys-stat (2)

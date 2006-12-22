@@ -1,0 +1,101 @@
+.TH READDIR 2
+.SH NAME
+readdir \- read directory and sort files
+.SH SYNOPSIS
+.EX
+include "readdir.m";
+readdir := load Readdir Readdir->PATH;
+
+NAME, ATIME, MTIME, SIZE, NONE: con iota;
+COMPACT:    con (1<<4);
+DESCENDING: con (1<<5);
+init:    fn(path: string, sortkey: int): (array of ref Sys->Dir, int);
+readall: fn(fd: ref Sys->FD, sortkey: int): (array of ref Sys->Dir, int);
+sortdir: fn(a: array of ref Sys->Dir, key: int): (array of ref Sys->Dir, int);
+.EE
+.SH DESCRIPTION
+.B Readdir
+provides functions to read and sort the contents of a directory.
+Each function
+returns its result as a tuple that represents the
+directory contents as an array of references to
+.B Sys->Dir
+values, one per file
+(see
+.IR sys-stat (2)
+for a description of
+.BR Dir ).
+The integer element of the tuple is the number of entries
+returned, or \-1 if there was an error reading the directory.
+.B Readdir
+differs from
+.I sys-dirread (2)
+in returning the contents of the whole directory, not just a chunk of it,
+and in allowing the result to be sorted.
+.PP
+.B Init
+is most often used: it
+reads the contents of the directory
+.I path
+and sorts the resulting array according to
+.IR sortkey .
+.PP
+The sorting criteria for the returned array are based on
+.I sortkey
+as follows:
+.PP
+.TF MTIME
+.PD
+.TP
+.B NAME
+Sort files alphabetically by name.
+.TP
+.B ATIME
+Sort files by access time, most recently accessed first.
+.TP
+.B MTIME
+Sort files by modification time, most recently modified first.
+.TP
+.B SIZE
+Sort files by size, largest file first.
+.TP
+.B NONE
+Files are left in directory order, unsorted.
+.PP
+If the value
+.B DESCENDING
+is or'd into any of the values above, except
+.BR NONE ,
+the order of sorting is reversed.
+.PP
+The sort used is stable, of particular importance in the presence of
+duplicate names in a union mount.
+If the value
+.B COMPACT
+is or'd into any of the values above, including
+.BR NONE ,
+only the first (outermost) entry with a given name will be returned from reading
+a union mount, if names are duplicated in the union.
+.PP
+.B Readall
+reads file descriptor
+.I fd
+which must be open on a directory,
+and returns the contents after applying
+.I sortkey
+as described above for
+.BR init .
+.PP
+.B Sortdir
+sorts the array
+.I a
+according to the given
+.IR key ,
+as defined earlier, except that
+the
+.B COMPACT
+option has no effect.
+.SH SOURCE
+.B /appl/lib/readdir.b
+.SH SEE ALSO
+.IR sys-dirread (2)

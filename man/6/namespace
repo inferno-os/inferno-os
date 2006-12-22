@@ -1,0 +1,162 @@
+.TH NAMESPACE 6
+.SH NAME
+namespace \- name space description file
+.SH DESCRIPTION
+Namespace files describe how to construct a name space from scratch,
+or add to an existing name space.
+The files are interpreted by
+.IR newns (2),
+invoked by commands such as
+.IR logon (1)
+and by other system services.
+.PP
+The name space description file contains one or more
+lines each of which specifies one name space operation.
+Empty lines and lines with
+.B #
+as the first non-space character are ignored.
+Environment variables of the form
+.BI $ name
+are expanded within arguments, where
+.I name
+is a string terminated by white space, or one of the characters
+.LR / ,
+.LR . ,
+or
+.LR $ .
+.PP
+The known operations and their arguments are:
+.TP
+.B "bind [-abci] \f2old\fP \f2new\fP"
+Use 
+.I new
+as an alias for file or directory
+.IR old .
+Options
+.BR a ,
+.BR b
+and
+.BR c
+translate to flag values
+.BR Sys\->MAFTER ,
+.B Sys\->MBEFORE
+and
+.B Sys\->MCREATE
+of
+.IR sys-bind (2).
+If neither
+.B a
+nor
+.B b
+are given, the default is
+.BR Sys\->MREPL .
+Option
+.B i
+means to ignore errors.
+.TP
+.B cd \f2directory\fP
+Change working directory to
+.IR directory .
+.TP
+.B fork
+Split the name space before modification.
+This is equivalent to passing a value of
+.B Sys->FORKNS
+to
+.IR sys-pctl (2).
+.TP
+.B "mount [-abc9i] [-k \f2keyfile\fP] [-C \f2alg\fP] [\f2net\fP!]\f2machine\fP[!\f2svc\fP] \f2dir\fP [\f2spec\fP]"
+Mount the file tree of
+.I machine
+upon directory
+.IR dir .
+The default service is
+.BR styx .
+Options
+.BR a ,
+.BR b ,
+.B c
+and
+. B i
+are the same as for
+.BR bind .
+The tokens
+.I dir
+and
+.I spec
+translate to
+.I old
+and
+.I aname
+of
+.B mount
+as described under
+.IR sys-bind (2).
+The
+.BR -k ,
+.B -C
+and
+.B -9
+options are the same as those for the
+.I mount
+command (see
+.IR bind (1)).
+.TP
+.B "import [-abc9i] [\f2net\fP!]\f2machine\fP[!\f2svc\fP] [\f2remotedir\fP] \f2dir\fP"
+Import a directory from a remote Plan 9
+.I machine
+and make it appear on directory
+.IR dir .
+Options
+.BR a ,
+.BR b ,
+.BR c
+and
+.B i
+are the same as for
+.BR mount .
+By default,
+.I remotedir
+is assumed to be the same name as
+.IR dir .
+The default service is
+.BR exportfs .
+(Currently this operation works only under native Inferno and Plan 9.)
+.TP
+.B new
+Create a new name space in which the current directory
+becomes the root directory;
+typically used after
+.BR cd .
+This is equivalent to passing a value of
+.B Sys->NEWNS
+to
+.IR sys-pctl (2).
+.TP
+.B nodev
+Disallow device attaches.
+This is equivalent to passing a value of
+.B Sys->NODEVS
+to
+.IR sys-pctl (2).
+.TP
+.B unmount [-i] [\f2name\fP] \f2from\fP
+If two arguments are given, undo a
+.B bind
+or
+.B mount
+with the same arguments.
+If only one argument is given, everything bound to or mounted on
+.I from
+is unmounted.
+The
+.B -i
+option means ignore errors.
+.TP
+.BI "\&." " path"
+Include the name space description file
+.IR path .
+.SH SEE ALSO
+.IR nsbuild (1),
+.IR wm (1),
+.IR newns (2)

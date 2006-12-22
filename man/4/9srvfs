@@ -1,0 +1,73 @@
+.TH 9SRVFS 4 "Plan 9"
+.SH NAME
+9srvfs \- add Inferno service to Plan 9 service registry
+.SH SYNOPSIS
+.B 9srvfs
+[
+.BI -p " perm"
+]
+.I srvname
+.I source
+.SH DESCRIPTION
+.I 9srvfs
+is only usable (or indeed of interest) on Inferno hosted under Plan 9.
+It uses
+.IR srv9 (3)
+to make an Inferno service
+.I source
+available to Plan 9 applications via the Plan 9 service registry.
+.I Srv9 (3)
+must previously have been bound to
+.B /srv
+in the current name space, with
+.B -c
+to allow file creation (see
+.IR bind (1)).
+.PP
+.I Source
+may be either a command or the name of a directory.
+If
+.I source
+is surrounded by braces
+.RB ( {
+and
+.BR } ),
+it is invoked as a
+.IR sh (1)
+command, and its standard input (sic) is posted as Plan 9 service
+.BI /srv/ srvname
+with permissions
+.I perm
+(default: mode 600).
+Otherwise,
+.I source
+is taken to be a directory that is the root of a name space to export to Plan 9,
+an exporting file service is started (see
+.IR sys-export (2)),
+and again posted as Plan 9 service
+.BI /srv/ srvname,
+and the export terminates when the Plan 9 service file
+has been removed and the last mounted instance goes away in Plan 9.
+.SH EXAMPLE
+Make the current Inferno environment variables available to Plan 9 applications:
+.IP
+.EX
+bind -c '#₪' /srv   # if not already done
+9srvfs infenv /env
+.EE
+.PP
+The name space can then be mounted in Plan 9,
+allowing variables to be read and written in that Inferno environment:
+.IP
+.EX
+mount -c /srv/infenv /n/ftp
+ls /n/ftp
+cat /n/ftp/emuargs
+echo masked man >/n/ftp/zorro
+.EE
+.SH SOURCE
+.B /appl/cmd/9srvfs.b
+.SH SEE ALSO
+.IR bind (1),
+.IR srv9 (3),
+.IR import (4)

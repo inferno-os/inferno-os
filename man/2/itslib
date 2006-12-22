@@ -1,0 +1,101 @@
+.TH ITSLIB 2
+itslib \- test library
+.SH SYNOPSIS
+.EX
+include "itslib.m";
+itslib := load Itslib Itslib->PATH;
+
+S_INFO: con 0;
+S_WARN: con 1;
+S_ERROR: con 2;
+S_FATAL: con 3;
+S_STIME: con 4;
+S_ETIME: con 5;
+ENV_VERBOSITY: con "ITS_VERBOSITY";
+ENV_MFD: con "ITS_MFD";
+
+Tconfig: adt {
+	verbosity: int;
+	mfd: ref Sys->FD;
+	report: fn(t: self ref Tconfig, sev: int, verb: int, msg: string);
+	done: fn(t: self ref Tconfig);
+};
+
+init: fn(): ref Tconfig;
+.EE
+.SH DESCRIPTION
+.B Itslib
+provides a simple error reporting facility for tests which can be run
+by 
+.IR itest (1) .
+.PP
+The module must first be initialised by calling
+.B init
+which returns an adt containing the verbosity setting specified
+for this test run, and the message file descriptor 
+used to pass messages back to 
+.I itest.
+These two items of information are passed to the test via the
+environment variables ITS_VERBOSITY and ITS_MFD.
+.TP
+.BI Tconf.report( severity ,  verbosity , message)
+Report a message with specified severity and verbosity.
+.I Severity
+must be one of S_INFO, S_WARN, S_ERROR or S_FATAL for Information,
+warnings, errors and fatal errors respectively.
+.I Verbosity
+is an integer between 0 and 9.
+For informatory messages (severity S_INFO), the message will only be
+displayed if the current
+verbosity level is greater than or equal to
+.I verbosity.
+.TP
+.BI Tconf.done()
+Tell the test system that all significant work has been completed. 
+This useful when for example results are displayed in an interactive
+manner following the test proper. For recording purposes the test
+will be regarded as having finished when this function is called,
+rather than when the test finally exits.
+.SH EXAMPLE
+A very simple test program.
+.EX
+
+implement T;
+include "sys.m";
+	sys: Sys;
+include "draw.m";
+	draw: Draw;
+include "itslib.m";
+	itslib: Itslib;
+	Tconfig, S_INFO, S_WARN, S_ERROR, S_FATAL: import itslib;
+
+T: module
+{
+	init:	fn(ctxt: ref Draw->Context, argv: list of string);
+};
+
+tconf: ref Tconfig;
+
+init(ctxt: ref Draw->Context, argv: list of string)
+{
+	sys = load Sys Sys->PATH;
+	itslib = load Itslib Itslib->PATH;
+	if (itslib != nil) tconf = itslib->init();
+	report(S_INFO, 5, "Testing addition of 1 + 2");
+	x := 1 + 2;
+	if (x == 3)
+		report(S_INFO, 6, "Addition of 1 + 2 OK");
+	else
+		report(S_ERROR, 5, sys->sprint("Addition of 1 + 2 gave %d", x));
+}
+
+report(sev: int, verb: int, msg: string)
+{
+	if (tconf != nil) tconf.report(sev, verb, msg);
+	else sys->print("%d:%s\n", sev, msg);
+}
+
+.EE
+.SH SEE ALSO
+.IR itest (1),
+.IR sh-test (2)

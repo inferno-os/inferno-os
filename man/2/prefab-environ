@@ -1,0 +1,54 @@
+.TH PREFAB-ENVIRON 2
+.SH NAME
+prefab: Environ \- environment for ITV toolkit
+to provide a graphics framework for a collection of items
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "prefab.m";
+prefab := load Prefab Prefab->PATH;
+
+Environ: adt
+{
+    screen: ref Draw->Screen;
+    style:  ref Style;
+
+};
+.EE
+.SH DESCRIPTION
+The
+.B Environ
+type collects the
+.B Style
+and
+.B Screen
+types necessary to specify how and where to draw
+.B Prefab
+items.
+.TP 10
+.B screen
+Specifies the
+.B Screen
+upon which items will be displayed.
+.TP
+.B style
+Specifies the
+.B Style
+for items in an environment.
+To draw various items in different fonts or colors,
+the application should associate different
+.B Environ
+objects with the various.
+(But see also the
+.B layout
+functions in
+.IR prefab-element (2)
+and
+.IR prefab-compound (2)).
+.SH SOURCE
+.B /libinterp/prefab.c
+.B /libprefab/*.c
+.SH SEE ALSO
+.IR prefab-intro (2),
+.IR draw-screen (2),
+.IR prefab-style (2)

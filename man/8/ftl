@@ -1,0 +1,63 @@
+.TH FTL 8
+.SH NAME
+ftl \- Flash Translation Layer formatter
+.SH SYNOPSIS
+.B disk/ftl
+.I flashsize
+.I secsize
+.I kfsfile
+.I output
+.SH DESCRIPTION
+.I Ftl
+reads a file system image in
+.IR kfs (3)
+format from
+.I kfsfile
+and adds the data structures needed to make it a valid image for
+the Flash Translation Layer driver
+.IR ftl (3).
+The result is written to the
+.I output
+file, which can be copied to initialise the
+flash memory of a suitable device
+(see
+.IR flash (3)).
+.PP
+The other arguments describe the characteristics of the flash memory:
+.TF \fIflashsize\fP
+.PD
+.TP
+.I flashsize
+The size in bytes of the flash memory to which
+.I output
+will be copied; exactly
+.I flashsize
+bytes will be written to
+.IR output .
+.TP
+.I secsize
+The effective erase unit (sector) size in bytes of the flash memory, as seen
+by the processor, having
+allowed for bus width.
+For example, a bank of flash
+formed from byte-wide flash chips, each with 16kbyte sectors,
+wired across a 4 byte bus, might have an effective erase unit size of
+64kbytes.
+.PP
+The
+.I kfsfile
+must not be larger than the size (length) of the
+.B ftldata
+file provided by
+.IR ftl (3)
+for the target flash device or partition.
+(That size is invariably less than the size of the raw flash,
+owing to the overhead of FTL data structures
+and a reserve pool of 5% to reduce the number of erase cycles; see
+.IR ftl (3)).
+.SH SOURCE
+.B /appl/cmd/disk/ftl.b
+.SH SEE ALSO
+.IR flash (3),
+.IR ftl (3),
+.IR kfs (3)

@@ -1,0 +1,47 @@
+.TH FMT 1
+.SH NAME
+fmt \- simple text formatter
+.SH SYNOPSIS
+.B fmt
+[
+.BI -l " n"
+] [
+.BI -i " n"
+] [
+.B -j
+]
+[
+.I file ...
+]
+.SH DESCRIPTION
+.I Fmt
+copies the given
+.I files
+(standard input by default)
+to its standard output, filling and indenting lines.
+The options are
+.TP
+.BI -l " n
+Output line length is
+.IR n ,
+including indent (default 70).
+.TP
+.BI -w " n
+A synonym for
+.BR -l .
+.TP
+.BI -i " n
+Indent
+.I n
+spaces (default 0).
+.TP
+.BI -j
+Do not join short lines: only fold long lines.
+.PP
+Empty lines and initial white space in input lines are preserved.
+Empty lines are inserted between input files.
+.PP
+.I Fmt
+is idempotent: it leaves already formatted text unchanged.
+.SH SOURCE
+.B /appl/cmd/fmt.b

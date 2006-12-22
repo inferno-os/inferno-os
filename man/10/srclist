@@ -1,0 +1,41 @@
+.TH SRCLIST 10.1
+.SH NAME
+srclist \- list source files used to build an executable
+.SH SYNOPSIS
+.B srclist
+[
+.B -ce
+] [
+.BI -r " rootdir"
+\&...
+]
+.I executable
+.SH DESCRIPTION
+.I Srclist
+prints on standard output, one per line, the names of source files used to build
+the given
+.IR executable ,
+which should be
+in
+.IR a.out (10.6)
+format.
+.PP
+By default, all source file names are listed.
+The
+.B -c
+option restricts the output to names ending
+.RB ` .c '.
+The
+.B -e
+option restricts the output to file names that currently exist.
+Each
+.B -r
+option adds a new root directory
+.I rootdir
+to an internal list.
+Only the names of source files that appear below one of the root directories
+will be printed.
+.SH SOURCE
+.B /utils/srclist
+.SH SEE ALSO
+.IR inm (10.1)

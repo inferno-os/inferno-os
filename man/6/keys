@@ -1,0 +1,52 @@
+.TH KEYS 6
+.SH NAME
+keys \- secrets shared with signer
+.SH DESCRIPTION
+The file
+.B /keydb/keys
+exists only on a host acting as a `signer' (authentication server, Certifying Authority).
+It
+holds a password entry
+for each user registered with an Inferno server.
+Each entry contains a user name, a password, the time at which the entry
+expires, and the entry's status.
+The password is the secret shared between the user
+and signer (authentication server),
+allowing the signer to sign a certificate to authenticate a
+user's public key to others, using the secret to check the user's identity.
+The actual secret is not stored, but rather its SHA-1 hash.
+.PP
+The file is encrypted with a secret provided by the signer's administrator;
+normally that secret is entered once when
+authentication services are started by
+.B svc/auth
+on the host acting as signer
+(see
+.IR svc (8)).
+The file should also be readable and writable only by the user identity
+that runs the signing service
+(ie,
+mode
+.BR 600 ,
+see
+.IR chmod (1)).
+Entries are usually accessed only through
+the name space provided by
+.IR keyfs (4),
+which decrypts the file into internal data structures given the administrative key,
+and makes each entry visible as a separate directory.
+Using that name space,
+entries are added and updated by an administrator using
+.IR changelogin (8),
+a user can change a secret using
+.IR passwd (1)
+via
+.IR keysrv (4),
+and it is accessed for signing by
+.IR logind (8)
+to obtain the secret used to verify the identity
+of a client requesting a certificate
+(typically via
+.IR security-login (2)).
+.SH FILES
+.B /keydb/keys

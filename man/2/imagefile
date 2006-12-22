@@ -1,0 +1,157 @@
+.TH IMAGEFILE 2
+.SH NAME
+imagefile: readgif, readjpg, readpicfile, readpng, readxbitmap, remap \- processing external image file formats
+.SH SYNOPSIS
+.EX
+include "imagefile.m";
+
+gifreader  := load RImagefile RImagefile->READGIFPATH;
+jpgreader  := load RImagefile RImagefile->READJPGPATH;
+xbmreader  := load RImagefile RImagefile->READXBMPATH;
+picreader  := load RImagefile RImagefile->READPICPATH;
+pngreader := load RImagefile RImagefile->READPNGPATH;
+
+imageremap := load Imageremap Imageremap->PATH;
+
+Rawimage: adt
+{
+    r:         Draw->Rect;
+    cmap:      array of byte;
+    nchans:    int;
+    chans:     array of array of byte;
+    chandesc:  int;
+
+    init:      fn(bufio: Bufio);
+    read:      fn(fd: ref Bufio->Iobuf): (ref Rawimage, string);
+    readmulti: fn(fd: ref Bufio->Iobuf):
+                (array of ref Rawimage, string);
+};
+
+init:          fn(bufio: Bufio);
+writeimage:    fn(fd: ref Bufio->Iobuf, image: ref Draw->Image)
+                                : string;
+
+remap:         fn(i: ref RImagefile->Rawimage, d: ref Draw->Display,
+                errdiff: int): (ref Draw->Image, string);
+.EE
+.SH DESCRIPTION
+The
+.B Rawimage
+.B adt
+of module
+.B RImagefile
+defines an internal representation
+and routines for reading images such as GIF and JPEG files.
+To read a set of files of a given format, load the appropriate module,
+pass its
+.B init
+function an implementation of the
+.B Bufio
+module, and pass
+.B read
+an
+.B Bufio->Iobuf
+for each file.
+.B Read
+returns a tuple: a
+.B ref
+.B Rawimage
+that holds the image and an error string.
+If the
+.B Rawimage
+is
+.BR nil ,
+the error string will report the reason.
+Files (particularly GIF files) are often incorrectly encoded but yield usable pictures,
+so even if a
+.B Rawimage
+is returned, the error string may still report problems.
+.PP
+Some image file types (eg, GIF) support having several images in a single file.
+They can be read in all at once using
+.BR readmulti ,
+which returns a tuple with the array of images, and an error string as above.
+.PP
+The
+.B Rawimage
+is always defined as one or more bytes per pixel, with
+.B nchans
+channels of data stored in the array
+.BR chans .
+The
+.B chandesc
+field, described below, specifies the contents of
+.BR chans .
+The
+rectangle
+.B r
+describes the shape of the picture.
+.PP
+The
+.B Rawimage
+type can be converted to a regular
+.B Image
+(see
+.IR draw-image (2))
+by calling module
+.BR Imageremap 's
+function
+.B remap.
+.B Remap
+is passed the
+.BR Rawimage ,
+a
+.B Display
+on which to create the image, and a flag that specifies whether to apply Floyd-Steinberg
+error diffusion code to the result, for smoother rendering of colours at the cost of
+some noise in the image.
+.PP
+How to remap is defined by the
+.B RImagefile
+itself: the field
+.B chandesc
+specifies the type of the various
+.B chans
+of data:
+.B RImagefile->CRGB
+specifies a 3-colour RGB image with no colour map;
+.B RImagefile->CY
+a monotone (luminance-only, grey-scale) image with no colour map;
+and
+.B RImagefile->CRGB1
+a single-channel image with RGB colour map in
+.BR cmap .
+The file readers set
+.B chandesc
+as appropriate for the format of the file.
+.PP
+The writing of image files is defined by the module 
+.BR WImagefile.
+To initialize the module, call its
+.B init 
+function with an instance of the
+.B Bufio
+module and pass its 
+.B writeimage
+function a
+.B Bufio->Iobuf
+representing the output stream and an image of type
+.B Draw->Image.
+.PP
+These functions are split into separate modules to give applications control over
+the memory they need to process images.
+.SH SOURCE
+.B /appl/lib/readgif.b
+.br
+.B /appl/lib/readjpg.b
+.br
+.B /appl/lib/readxbitmap.b
+.br
+.B /appl/lib/readpicfile.b
+.br
+.B /appl/lib/readpng.b
+.SH NOTES
+The JPEG reader handles only the Baseline sequential format as defined by
+the JFIF 1.02 file exchange format.
+.PP
+Functions to write these formats are as yet unimplemented.

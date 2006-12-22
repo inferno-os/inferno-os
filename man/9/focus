@@ -1,0 +1,21 @@
+.TH FOCUS 9
+.SH NAME
+focus \- change or query keyboard focus
+.SH SYNOPSIS
+\f5focus \fR?\fIwhat\fR?
+.SH DESCRIPTION
+With no arguments, \f5focus\fP returns the
+name of the widget to which keyboard events
+are currently delivered, known as the
+.IR "keyboard focus" .
+When given an argument,
+\f5focus\fP changes the keyboard focus.
+If \fIwhat\fP is the name of a widget, that
+widget will be made the keyboard focus.
+If \fIwhat\fP is \f5next\fP, the keyboard focus
+will be changed to the next item in the
+focus order for that window. If \fIwhat\fP is
+\f5previous\fP, the keyboard focus will be
+changed to the previous item in the focus order
+for that window. The focus order is determined
+automatically by Tk.

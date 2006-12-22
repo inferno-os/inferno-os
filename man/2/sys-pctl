@@ -1,0 +1,142 @@
+.TH SYS-PCTL 2
+.SH NAME
+pctl \- process control
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+pctl: fn(flags: int, movefd: list of int): int;
+.EE
+.SH DESCRIPTION
+A newly spawned Limbo process (also known as a thread)
+shares with its parent process a number of resources and properties,
+such as file name space, open file descriptors, current working directory,
+and so on.
+.B Pctl
+controls this sharing, allowing a process to gain a copy of a resource
+rather than to share it, to start with a null resource, and so on.
+.PP
+The set of processes sharing a property are called a group;
+for example the set of processes sharing a name space are called a name space group.
+Each process is a member of a
+.IR "process group" ,
+typically the set of threads functioning as a single program.
+All the members of a process group
+may be terminated at once using the
+.B killgrp
+control message in the
+.IR prog (3)
+device.
+.PP
+A call to
+.B pctl
+affects the calling process and, indirectly according to
+.IR flags ,
+any other processes sharing properties with it.
+The
+.I flags
+to
+.B pctl
+are:
+.TF FORKENV
+.PD
+.TP
+.B NEWFD
+Give the process a new file descriptor group.
+All file descriptors are closed except those listed in
+.IR movefd ,
+which are preserved in the new group.
+After this call, changes the process makes to its set of open file descriptors
+will not be visible to other processes.
+.TP
+.B FORKFD
+Place the process in a new file descriptor group
+containing a copy
+of the current set of file descriptors.
+The file descriptors listed in
+.I movefd
+are closed in the
+.I old
+group.
+After this call, changes the process makes to its set of open file descriptors
+will not be visible to other processes.
+.TP
+.B NEWNS
+Place the process in a new file name space group in which the current directory
+is made the root directory,
+.LR / ,
+of the new name space.
+The current directory is unaffected by this call.
+.TP
+.B FORKNS
+Place the process in a new file name space group
+containing a copy
+of the current name space.
+After this call, changes the process makes to its name space, including
+.B chdir
+calls,
+will not affect other processes.
+.TP
+.B NODEVS
+Set the current file name space group to prevent subsequent access to
+the roots of file trees implemented by a device driver (ie, the use of path
+names beginning with
+.BR # ,
+as described by
+.IR intro (3)).
+Even after
+.B NODEVS
+the following devices can be attached, which are either
+private or can be separately controlled:
+.IR pipe (3) ,
+.IR env (3),
+.IR srv (3)
+and
+.IR ssl (3).
+.TP 
+.B NEWENV
+Place the process in a new empty environment group containing
+no environment variables.
+After this call, changes the process makes to its environment will
+not affect other processes.
+.TP 
+.B FORKENV
+Place the process in a new environment group containing
+a copy of the current environment variables.
+After this call, changes the process makes to its environment will
+not affect other processes.
+.TP
+.B NEWPGRP
+Establish a new process group with a group id equal to that of the pid
+of the calling process.
+.PP
+The Inferno shell
+.IR sh (1)
+uses
+.B FORKFD
+when starting a command;
+its
+.I pctl
+built-in (see
+.IR sh-std (1))
+can invoke the other effects when needed.
+The window manager
+.IR wm (1)
+uses
+.B NEWPGRP|FORKFD
+when starting a window manager application.
+.IR Srv (8)
+uses
+.B NEWGRP|FORKNS|FORKFD
+to insulate itself completely from services it starts.
+.PP
+The return value of
+.B pctl
+is the numerical process id of  the calling process, which can be used for example to
+access its
+.IR prog (3)
+files.
+.SH SEE ALSO
+.IR sh-std (1),
+.IR sys-intro (2)

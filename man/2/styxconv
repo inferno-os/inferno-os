@@ -1,0 +1,77 @@
+.TH STYXCONV 2
+.SH NAME
+styxconv \- convert between old and new Styx
+.SH SYNOPSIS
+.EX
+include "styxconv.m";
+styxconv := load Styxconv Styxconv->PATH;
+
+init:     fn();
+styxconv: fn(to: ref Sys->FD, from: ref Sys->FD, pid: chan of int);
+.EE
+.SH DESCRIPTION
+.B Styxconv
+converts between the previous version of the Styx protocol,
+as used for instance in Inferno's Third Edition and earlier,
+and the current version of the protocol,
+based on 9P2000 and defined by
+.IR intro (5).
+.PP
+.B Init
+must be called before any other function in the module.
+.PP
+The function
+.B styxconv
+takes two file descriptors.
+.I From
+must be a connection to a file server that serves the original, older
+version of Styx.
+.I To
+is a connection, perhaps a pipe, to something that requires the current protocol;
+.B Sys->mount
+for instance
+(see
+.IR sys-bind (1)).
+.B Styxconv
+is spawned by the caller, to create a process that copies messages between
+.I from
+and
+.IR to ,
+converting as required as it goes.
+Its process ID is the only message sent on
+channel
+.IR pidc ;
+it must be received by
+.BR styxconv 's
+caller.
+See the example below.
+.SH EXAMPLE
+Apply
+.B styxconv
+to file descriptor
+.I fd
+connected to an old Styx server:
+.IP
+.EX
+cvstyx(fd: ref Sys->FD): ref Sys->FD
+{
+	styxconv := load Styxconv Styxconv->PATH;
+	if(styxconv == nil)
+		return nil;
+	p := array[2] of ref Sys->FD;
+	if(sys->pipe(p) < 0)
+		return nil;
+	styxconv->init();
+	pidc := chan of int;
+	spawn styxconv->styxconv(p[1], fd, pidc);
+	<-pidc;
+	return p[0];
+}
+.EE
+.SH SOURCE
+.B /appl/lib/styxconv
+.SH SEE ALSO
+.IR bind (1),
+.IR sys-bind (2),
+.IR sys-pipe (2),
+.IR intro (5)

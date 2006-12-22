@@ -1,0 +1,187 @@
+.TH COLOUR 6
+.SH NAME
+colour \- representation of pixels and colours
+.SH DESCRIPTION
+An image manipulated by
+.IR draw (2)
+(via the device
+.IR draw (3)),
+including the image corresponding to a physical display,
+contains a set of pixels.
+Each pixel has one or more components:
+colour components (red, green, blue); greyscale value; colour-map index; alpha value; and
+``don't care'' (for padding).
+Each component takes a given number of bits; the sum of the sizes of all components
+determines the size of the pixel.
+The implementation supports only pixel sizes that are either divisors or multiples of 8 bits.
+All pixels in an image have the same structure, corresponding to the
+.I channels
+of that image (see
+.IR image (6)).
+.PP
+The values of the red, green and blue components are chosen so 0 represents
+no intensity (black) and the maximum value (all ones, 255 for an 8-bit component)
+represents full intensity (eg, full red).
+Common colour physical display depths are 24 bits per pixel, with 8 bits per colour in order
+red, green, blue, and 16 bits per pixel, with 5 bits of red, 6 bits of green, and 5 bits of blue.
+.PP
+Colors may also be created with an opacity factor called
+.IR alpha ,
+which is scaled so 0 represents fully transparent and the maximum value (eg, 255 for
+an 8-bit alpha component) represents opaque colour.
+The alpha is
+.I premultiplied
+into the other channels, as described in the paper by Porter and Duff cited in
+.IR draw-image (2).
+The function
+.B Draw->setalpha
+(see
+.IR draw-intro (2))
+aids the initialisation of colour values with non-trivial alpha.
+.PP
+Because images are stored in memory managed by
+.IR draw (3)
+and operated through
+.IR draw-image (2),
+the details of pixel representation internally can be ignored by many applications.
+The representation is visible, however, when using the operations
+.B Image.readpixels
+and
+.B Image.writepixels
+(see
+.IR draw-image (2)).
+The bits representing a pixel's channel components are packed contiguously, and
+pixels are stored in contiguous bytes.
+The packing of pixels into bytes and words is odd.
+For compatibility with VGA frame buffers, the bits within a
+pixel byte are in big-endian order (leftmost pixel is most
+significant bits in byte), while bytes within a pixel are packed in little-endian order.
+This results in unintuitive pixel formats. For example, for the RGB24 format,
+the byte ordering is blue, green, red.
+.PP
+To maintain a constant external representation, the
+.IR draw (3)
+interface
+as well as the
+various graphics libraries represent colours 
+by 32-bit integers, containing red, blue, green and alpha components
+as 8-bit values, in that order from most to least significant byte.
+The color component values range from 0 (no colour) to 255 (saturated);
+alpha ranges from 0 (fully transparent) to 255 (fully opaque).
+.PP
+On displays with 8 bits per pixel or less,
+to address problems of consistency and portability amongst Inferno applications,
+Inferno uses a fixed colour map, called
+.BR rgbv .
+Although this avoids problems caused by multiplexing colour maps between
+applications, it requires that the colour map chosen be suitable for most purposes
+and usable for all.
+Other systems that use fixed colour maps tend to sample the colour cube
+uniformly, which has advantages\(emmapping from a (red, green, blue) triple
+to the colour map and back again is easy\(embut ignores an important property
+of the human visual system: eyes are
+much more sensitive to small changes in intensity than
+to changes in hue.
+Sampling the colour cube uniformly gives a colour map with many different
+hues, but only a few shades of each.
+Continuous tone images converted into such maps demonstrate conspicuous
+artifacts.
+.PP
+Rather than dice the colour cube into subregions of
+size 6\(mu6\(mu6 (as in Netscape Navigator) or 8\(mu8\(mu4
+picking 1 colour in each,
+the
+.B rgbv
+colour map uses a 4\(mu4\(mu4 subdivision, with
+4 shades in each subcube.
+The idea is to reduce the colour resolution by dicing
+the colour cube into fewer cells, and to use the extra space to increase the intensity
+resolution.
+This results in 16 grey shades (4 grey subcubes with
+4 samples in each), 13 shades of each primary and secondary colour (3 subcubes
+with 4 samples plus black) and a reasonable selection of colours covering the
+rest of the colour cube.
+The advantage is better representation of
+continuous tones.
+.PP
+The following function computes the 256 3-byte entries in the colour map:
+.IP
+.EX
+.ta 6n +6n +6n +6n
+void
+setmaprgbv(uchar cmap[256][3])
+{
+    uchar *c;
+    int r, g, b, v;
+    int num, den;
+    int i, j;
+
+    for(r=0,i=0; r!=4; r++)
+      for(v=0; v!=4; v++,i+=16)
+        for(g=0,j=v-r; g!=4; g++)
+          for(b=0; b!=4; b++,j++){
+            c = cmap[i+(j&15)];
+            den = r;
+            if(g > den)
+                den = g;
+            if(b > den)
+                den = b;
+            if(den == 0) /* would divide check; pick grey shades */
+                c[0] = c[1] = c[2] = 17*v;
+            else{
+                num = 17*(4*den+v);
+                c[0] = r*num/den;
+                c[1] = g*num/den;
+                c[2] = b*num/den;
+            }
+          }
+}
+.EE
+.PP
+There are 4 nested loops to pick the (red,green,blue) coordinates of the subcube,
+and the value (intensity) within the subcube, indexed by
+.BR r ,
+.BR g ,
+.BR b ,
+and
+.BR v ,
+whence
+the name
+.IR rgbv .
+The peculiar order in which the colour map is indexed is designed to distribute the
+grey shades uniformly through the map\(emthe
+.IR i 'th
+grey shade,
+.RI 0<= i <=15
+has index
+.IR i ×17,
+with black going to 0 and white to 255.
+Therefore, when a call to
+.B Image.draw
+(see
+.IR draw-image (2))
+converts a 1, 2 or 4 bit-per-pixel picture to 8 bits per pixel (which it does
+by replicating the pixels' bits), the converted pixel values are the appropriate
+grey shades.
+.PP
+The
+.B rgbv
+map is not gamma-corrected, for many reasons.  First, photographic
+film and television are both normally under-corrected, the former by an
+accident of physics and the latter by NTSC's design.
+Second, we require extra colour resolution at low intensities because of the
+non-linear response and adaptation of the human visual system.
+Properly
+gamma-corrected displays with adequate low-intensity resolution pack the
+high-intensity parts of the colour cube with colours whose differences are
+almost imperceptible.
+Either of these reasons suggests concentrating
+the available intensities at the low end of the range.
+Third, the compositing computations underlying the graphics operations in
+.IR draw-image (2)
+assume a linear colour space.
+Finally, the right value for gamma correction is determined in part by the
+characteristics of the physical display device, and correction should be done on output.
+.SH "SEE ALSO"
+.IR draw-intro (2),
+.IR draw-image (2)

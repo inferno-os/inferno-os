@@ -1,0 +1,137 @@
+.TH SVC 8
+.SH NAME
+svc: auth, net, registry, rstyx, styx \- start Inferno network services
+.SH SYNOPSIS
+.B svc/net
+.br
+.B svc/auth
+.br
+.B svc/registry
+.br
+.B svc/rstyx
+.br
+.B svc/styx
+.SH DESCRIPTION
+The directory
+.B /dis/svc
+contains several
+.IR sh (1)
+scripts to start network listeners (see
+.IR listen (1))
+that give remote hosts access to specific Inferno services on the current host.
+The scripts can be edited to suit (or configure themselves to suit) the
+requirements of a particular site.
+.PP
+A host that is not an authentication server and wishes to start the usual network services
+can simply invoke
+.BR svc/net ,
+which runs all the others
+.I except
+authentication.
+Authentication servers should normally run
+.B svc/auth
+instead, to start local name and authentication services, and a listener
+for each authentication service but
+.I not
+file service or remote execution.
+.PP
+.I Auth
+must be run (only) on a host that is to act as an authentication server,
+providing signing and other authentication services to itself and the network.
+The files
+.BR /keydb/signerkey ,
+created by
+.IR createsignerkey (8),
+and
+.BR /keydb/keys ,
+managed by
+.IR changelogin (8),
+must exist.
+If so,
+.I auth
+starts
+.IR keyfs (4),
+which prompts for the password that protects
+.BR /keydb/keys ,
+the file of secrets shared
+with registered users.
+If the key file is empty, the confirmed password will be used in future to encrypt and decrypt the file;
+otherwise the password must match the one used to encrypt the key file.
+If the password is valid, listeners are started for
+.IR keysrv (4),
+to allow passwords to be changed remotely,
+.IR logind (8),
+to provide signed certificates,
+and
+.IR signer (8).
+Note that although an authentication server must be present to run
+.IR getauthinfo (8)
+to obtain credentials to access another service, once those have been
+issued, the recipient can subsequently present them (if still valid) to
+access that service without further involvement by the service (ie, it
+need not then be running).
+See
+.IR changelogin (8)
+for the user registration program, which can be used once
+.I auth
+has started.
+.PP
+.I Registry
+starts the dynamic service registry (see
+.IR registry (4))
+if it is not already running,
+putting it at the conventional location for the local registry,
+.BR /mnt/registry .
+Initial (static) service descriptions are taken from
+.B /lib/ndb/registry
+if it exists.
+It then starts a listener to give other hosts access to the registry as a Styx
+service at
+.BR tcp!*!registry ,
+normally port 6675.
+.PP
+.I Rstyx
+listens for incoming calls to the
+.B rstyx
+service, and invokes
+.IR rstyxd (8)
+to deal with each one.
+.PP
+.I Styx
+listens for incoming calls to the
+.B styx
+service,
+and for each one, authenticates the caller, then calls
+.IR export (4)
+to export the current root.
+.SH FILES
+.TF /keydb/signerkey
+.TP
+.B /keydb/keys
+encrypted file containing user secrets
+.TP
+.B /keydb/signerkey
+private key of authentication server
+.SH SOURCE
+.B /appl/svc/auth.sh
+.br
+.B /appl/svc/net.sh
+.br
+.B /appl/svc/registry.sh
+.br
+.B /appl/svc/rstyx.sh
+.br
+.B /appl/svc/styx.sh
+.SH SEE ALSO
+.IR listen (1),
+.IR export (4),
+.IR keyfs (4),
+.IR keysrv (4),
+.IR registry (4),
+.IR changelogin (8),
+.IR createsignerkey (8),
+.IR cs (8),
+.IR dns (8),
+.IR logind (8),
+.IR rstyxd (8),
+.IR signer (8)

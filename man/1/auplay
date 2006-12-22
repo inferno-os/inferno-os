@@ -1,0 +1,120 @@
+.TH AUPLAY 1
+.SH NAME
+auplay, auhdr, raw2iaf, wav2iaf \- basic audio output and conversion
+.SH SYNOPSIS
+.B auplay
+.I file
+\&...
+.PP
+.B auhdr
+.I file
+\&...
+.PP
+.B raw2iaf
+[
+.I option
+\&...
+] [
+.B -o
+.I output
+]
+.I input
+.PP
+.B wav2iaf
+[
+.I input
+]
+.PP
+.B wav2iaf
+.SH DESCRIPTION
+.I Auplay
+plays each
+.I file
+in turn on the audio device
+.B /dev/audio
+(see
+.IR audio (3)),
+setting the device's characteristics in
+.B /dev/audioctl
+to match those of the
+.IR file .
+It uses
+.I stream
+(see
+.IR sys-read (2))
+to stream the data to the device at high priority.
+All files played must be in `Inferno audio format',
+as defined by
+.IR audio (6).
+.PP
+.I Auhdr
+writes the header of each Inferno audio
+.I input
+file to the standard output.
+The header describes the data in a form that can be written directly to
+.BR /dev/audioctl
+to set the device's characteristics.
+.PP
+.I Raw2iaf
+converts the
+.I input
+file, adds an appropriate header to describe the data
+in the Inferno format, and writes the result to the
+.I output
+file.
+The options tell how the bytes in the input file should be interpreted:
+.TP
+.B -8
+rate is 8000 Hz
+.TP
+.B -1
+rate is 11025 Hz
+.TP
+.B -2
+rate is 22050 Hz
+.TP
+.B -4
+rate is 44100 Hz
+.TP
+.B -m
+mono (one channel)
+.TP
+.B -s
+stereo (two channels)
+.TP
+.B -b
+each sample in each channel is one byte (unsigned)
+.TP
+.B -w
+each sample in each channel is 16-bits (little-endian)
+.TP
+.B -a
+input is a-law encoded
+.TP
+.B -u
+input is \(*m-law encoded
+.TP
+.B -p
+input is PCM encoded
+.PP
+.I Wav2iaf
+reads the
+.I input
+file, which must be in Windows WAV format and encoded using PCM,
+and converts the data to Inferno format
+on the standard output.
+.SH SOURCE
+.B /appl/cmd/auplay.b
+.br
+.B /appl/cmd/raw2iaf.b
+.br
+.B /appl/cmd/wav2iaf.b
+.SH SEE ALSO
+.IR sys-read (2),
+.IR audio (3),
+.IR audio (6)
+\" sets rate, chans, bits, enc
+.\" raw2iaf: -8 8000 -1 11025 -2 22050 -4 44100 -m [chan=1] -s [chan=2] -b [byte] -w [16-bit] -a [alaw] -u [ulaw] -p [pcm] [-o output|-] [input|-]
+.\" %s -8124 -ms -bw -aup -o out in
+.\" wav2iaf [infile]
+

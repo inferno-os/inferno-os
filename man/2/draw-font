@@ -1,0 +1,111 @@
+.TH DRAW-FONT 2
+.SH NAME
+Font \-
+character images for Unicode text
+.SH SYNOPSIS
+.EX
+include	"draw.m";
+draw := load Draw Draw->PATH;
+
+Font: adt
+{
+    name:    string;
+    height:  int;
+    ascent:  int;
+    display: ref Display;
+
+    open:    fn(d: ref Display, file:  string):        ref Font;
+    build:   fn(d: ref Display, name, desc: string):   ref Font;
+    width:   fn(f: self ref Font, str: string):        int;
+};
+.EE
+.SH DESCRIPTION
+The
+.B Font
+type defines the appearance of characters drawn with the
+.B Image.text
+primitive (see
+.IR draw-image (2)).
+.B Fonts
+are usually read from files and are selected based on their
+size, their style, the portion of Unicode space they represent,
+and so on.
+.PP
+Fonts are built from a series of subfonts that define contiguous portions
+of the Unicode character space, such as the ASCII or the
+Greek alphabet.
+Font files are textual descriptions of the allocation of characters in
+the various regions of the Unicode space; see
+.IR font (6)
+for the format.
+Subfonts are not visible from Limbo.
+.PP
+A default font, named
+.BR *default* ,
+is always available.
+.PP
+The type incorporates:
+.TP 10
+.BR ascent ", " height
+These define the vertical sizes
+of the font, in pixels.
+The
+.B ascent
+is the distance from the font baseline to the top of
+a line of text;
+.B height
+gives the interline spacing, that is, the distance from
+one baseline to the next.
+.TP
+.B name
+This field
+identifies the font, either
+the name of
+the file from which the font was read, or
+.B
+"*default*"
+for the default font.
+.TP
+.B display
+Tells on which display the font resides.
+.TP
+.BI open( d\fP,\fP\ file\fP)
+The
+.B open
+method creates a
+.B Font
+by reading the contents of the named
+.IR file .
+Fonts are cached, so an open request may return a pointer to an
+existing
+.BR Font ,
+without rereading the file.
+The name
+.B
+"*default*"
+always describes a defined font.
+Fonts are created for an instance of a
+.B Display
+object, even though the creation
+functions are in type
+.BR Font .
+.TP
+.BI build( d\fP,\fP\ name\fP,\fP\ desc )
+.B Build
+creates a
+.B Font
+object by reading the description from the string
+.B desc
+rather than a file.
+.I Name
+specifies the name of the font to be created.
+.TP
+\f2f\fP\f5.width(\fP \f2str\fP \f5)\fP
+The
+.B width
+method returns the width in pixels that
+.I str
+would occupy if drawn by
+.B Image.text
+in the Font
+.IR f .

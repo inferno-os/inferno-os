@@ -1,0 +1,67 @@
+.TH DBSRV 7 emu
+.SH NAME
+dbsrv \- ODBC database server
+.SH SYNOPSIS
+.B lib/dbsrv
+.I alg
+\&...
+.SH DESCRIPTION
+.I Dbsrv
+is normally configured to be run by
+.IR svc (8)
+on a machine that acts as database server,
+for access through the module
+.IR db (7).
+.PP
+The incoming call is authenticated by
+.IR security-auth (2).
+After successful authorisation, the client can request that a digest and/or encryption
+algorithm be applied to protect the data exchanged with the server.
+Each
+.I alg
+names a digest or encryption algorithm that the server will allow
+the client to use,
+in any form accepted by
+.IR ssl (3);
+the special name
+.B none
+means that
+.I ssl
+need not be used.
+.PP
+The implementation of
+.I dbsrv
+relies on a program external to Inferno,
+.BR infdb ,
+which translates between the
+.IR db (7)
+internal format for requests, and data base access calls on the host.
+.I Dbsrv
+invokes
+.B infdb
+using the
+.IR cmd (3)
+device.
+Currently
+.B infdb
+is implemented only under Windows/NT, giving
+access via ODBC to a Microsoft Access data base.
+.SH FILES
+.TF /usr/user/keyring/default
+.TP
+.B /cmd
+host command execution
+.TP
+.B /Nt/386/bin/infdb.exe
+Windows executable for ODBC interface
+.TP
+.BI /usr/ user /keyring/default
+server's authentication data when
+.IR svc (8)
+run as
+.I user
+.SH SOURCE
+.B /appl/lib/dbsrv.b
+.SH SEE ALSO
+.IR db (7),
+.IR svc (8)

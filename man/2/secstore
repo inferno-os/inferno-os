@@ -1,0 +1,250 @@
+.TH SECSTORE 2
+.SH NAME
+secstore \- fetch data from Plan 9's secure storage service
+.SH SYNOPSIS
+.EX
+include "secstore.m";
+secstore := load Secstore Secstore->PATH;
+
+Maxfilesize: con 128*1024;	# default
+
+init:       fn();
+privacy:    fn(): int;
+cansecstore:    fn(addr: string, user: string): int;
+mkseckey:   fn(pass: string): array of byte;
+dial:       fn(addr: string): ref Sys->Connection;
+auth:       fn(conn: ref Sys->Connection, user: string, seckey: array of byte):
+                (string, string);
+connect:    fn(addr: string, user: string, seckey: array of byte):
+                (ref Sys->Connection, string, string);
+sendpin:    fn(conn: ref Sys->Connection, pin: string): int;
+files:       fn(conn: ref Sys->Connection):
+                list of (string, int, string, string, array of byte);
+getfile:    fn(conn: ref Sys->Connection, name: string,
+                maxsize: int): array of byte;
+.\"putfile: fn(conn: ref Sys->Connection, name: string, data: array of byte,): int;
+remove:     fn(conn: ref Sys->Connection, file: string): int;
+bye:        fn(conn: ref Sys->Connection);
+
+mkfilekey:   fn(pass: string): array of byte;
+decrypt:    fn(data: array of byte, filekey: array of byte): array of byte;
+.\"encrypt: fn(data: array of byte, filekey: array of byte): array of byte;
+erasekey:   fn(key: array of byte);
+
+lines:      fn(file: array of byte): list of array of byte;
+.EE
+.SH DESCRIPTION
+.B Secstore
+establishes a secure authenticated connection with a Plan 9
+.I secstore
+service (or equivalent, such as Plan 9 from User Space),
+that can then be used to fetch and decrypt data files, such as the
+.B factotum
+file containing the initial keys for an instance of
+.IR factotum (4).
+The module's functions hold the file descriptors for the connection in a
+.BR Sys->Connection
+value,
+as returned by
+.IR sys-dial (2).
+The
+.I addr
+parameter that gives the network address of the
+.I secstore
+service is also as defined in
+.IR sys-dial (2).
+A nil value defaults to
+.BR "net!$auth!secstore" ,
+for translation in the usual way by
+.IR cs (8).
+.PP
+.B Init
+must be called before invoking any other operation of the module.
+.PP
+.B Privacy
+ensures the memory of the calling process cannot be read, for instance by
+.IR prog (3).
+It returns zero on success and a negative value on failure.
+.PP
+.B Cansecstore
+returns true if a connection can be made to a
+.I secstore
+at network address
+.IR addr ,
+and the given
+.I user
+has a
+.I secstore
+account;
+it returns false otherwise.
+.PP
+Users authenticate themselves to the service using a secret key and a special protocol that does not
+reveal the key itself to the remote service.
+The textual secret (eg, password or pass phrase) is not used directly by the following functions,
+but only after transformation by
+.BR mkseckey ,
+which hashes it into an array of bytes.
+That is the
+.I key
+parameter to the functions.
+.PP
+.B Dial
+dials the
+.I secstore
+at network address
+.I addr
+(as defined by
+.IR sys-dial (2))
+and returns a  reference to the resulting
+.BR Sys->Connection .
+It returns nil on an error and sets the error string.
+.PP
+.B Auth
+authenticates a fresh connection as belonging to a given
+.I user
+of the service.
+The parameter
+.I conn
+refers to the
+.B Sys->Connection
+value representing the connection.
+.I User
+names a user registered with the service.
+The parameter
+.I seckey
+is the result of applying
+.B mkseckey
+to the user's secret.
+.I Auth
+returns a tuple
+.BI ( srvname,\ diag ).
+.I Srvname
+is the service name configured in the remote host (often simply
+.BR secstore ).
+On an error,
+.I srvname
+is nil, and
+.I diag
+is a diagnostic.
+If the remote service
+has been configured to demand extra authentication data, then
+.I diag
+contains a demand for it.
+Currently the only such value is
+.RB ` need pin ';
+call
+.B sendpin
+to provide it to the connection.
+If
+.B sendpin
+succeeds, it returns zero, and
+.I conn
+can be used normally; on error,
+.B sendpin
+returns -1 and the connection cannot be used.
+.PP
+.B Connect
+combines the actions of
+.B dial
+and
+.BR auth :
+dials the
+.I secstore
+at
+.IR addr ,
+and mutually authenticates the server and the given
+.I user
+using the user's secret
+.I key
+for that service.
+It returns a tuple
+.BI ( conn,\ srvname,\ diag ),
+where each component is as described for
+.B dial
+and
+.B auth
+above.
+On an error,
+.I conn
+is nil, and
+.I diag
+contains a diagnostic.
+.PP
+.B Getfile
+retrieves the file
+.I name
+from the secure store, and returns its contents as an array of bytes.
+.I Maxsize
+gives the largest acceptable file size; if the value is zero or negative,
+a large value is used by default.
+The files stored on the service are separately encrypted under the user's secret key.
+.B Mkfilekey
+takes a textual secret
+.I key
+and returns a hash of it as an array of bytes,
+suitable for use as the
+.I filekey
+parameter in subsequent calls to
+.BR decrypt .
+(The
+.I filekey
+is not the same value as the
+.I seckey
+used for initial authentication, although the secret text is the same.)
+.PP
+.B Remove
+deletes the given
+.I file
+from the server.
+It returns 0 on success and a negative value on error.
+.PP
+.B Decrypt
+decrypts the
+.I data
+previously fetched from a file on the secure store.
+It uses the
+.I filekey
+produced by
+.B mkfilekey
+to decrypt the data in place (ie, modifying the contents of
+.IR data )
+and returns a slice of
+.I data
+that excludes any headers and trailers in the encoding.
+It returns nil if the file could not be decrypted (usually because the
+.I key
+value is not actually the encryption key).
+.PP
+.B Erasekey
+clears the bytes of
+.I key
+to zero; it should be called on every value produced by
+.B mkfilekey
+and
+.BR mkseckey ,
+after use,
+but can also be used on the data arrays returned by
+.B getfile
+and
+.BR decrypt .
+.PP
+.B Lines
+returns a list of slices of
+.IR file ,
+representing each line of
+.I file
+in turn (including newline).
+.IR Factotum (4)
+for instance requires keys to be written to its control file one at a time.
+.PP
+.B Bye
+closes the connection to the
+.IR secstore .
+.SH SOURCE
+.B /appl/lib/secstore.b
+.SH DIAGNOSTICS
+As well as returning the error values described above, functions set the system error string.
+.SH SEE ALSO
+.IR crypt (1),
+.IR factotum (2),
+.IR factotum (4)

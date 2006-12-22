@@ -1,0 +1,134 @@
+.TH CP 1
+.SH NAME
+cp, fcp \- copy files
+.SH SYNOPSIS
+.B cp
+[
+.B -gux
+]
+.I fromfile tofile
+.br
+.B cp
+[
+.B -gux
+]
+.I fromfile
+\&...
+.I todir
+.br
+.B cp -r
+[
+.B -gux
+]
+.I fromdir
+\&...
+.I todir
+.PP
+.B
+fcp
+[
+.BI -R " nr"
+] [
+.BI -W " nw"
+]
+.I fromfile tofile
+.br
+.B fcp
+[
+.BI -R " nr"
+] [
+.BI -W " nw"
+]
+.I fromfile
+\&...
+.I todir
+.br
+.B fcp -r
+[
+.BI -R " nr"
+] [
+.BI -W " nw"
+]
+.I fromdir
+\&...
+.I todir
+.SH DESCRIPTION
+In the first form,
+.I fromfile
+is any name and
+.I tofile
+is any name except an existing directory.
+In the second form, the commands copy one or more
+.I fromfiles
+into
+.I dir
+under their original file names, as if by a sequence of commands in the first form. For example:
+.IP
+.B "cp f1 f2 dir"
+.PP
+is equivalent to:
+.IP
+.B "cp f1 dir/f1;  cp f2 dir/f2"
+.PP
+.I Cp
+copies the contents of plain (non-directory) file
+.I fromfile
+to
+.IR tofile .
+The mode and owner of
+.I tofile
+are preserved if it already exists; the permissions of
+.I fromfile
+is used otherwise.
+The
+.B -x
+option sets the full mode and modified time of
+.I file2
+from
+.IR file1 ;
+.B -g
+sets the group id; and
+.B -u
+sets the group id and user id (which is usually only possible if the file server is in an administrative mode).
+.PP
+The
+.B -r
+option directs
+.I cp
+to copy recursively the named directories
+.I "fromdir ..."
+to the target directory
+.IR todir .
+.PP
+.I Fcp
+behaves like
+.IR cp ,
+but copies many blocks in parallel.
+It works only with files that respect read and write offsets (see
+.B pread
+and
+.B pwrite
+in
+.IR sys-read (2)),
+which usually excludes files representing devices or services.
+When it applies, however, it is often
+much faster than
+.IR cp .
+The
+.B -R
+and
+.B -W
+options set the number of readers and writers (default for each: 8).
+.SH SOURCE
+.B /appl/cmd/cp.b
+.br
+.B /appl/cmd/fcp.b
+.SH "SEE ALSO"
+.IR cat (1),
+.IR mv (1),
+.IR sys-stat (2)
+.SH DIAGNOSTICS
+.I Cp
+and
+.I fcp
+refuse to copy a file onto itself.

@@ -1,0 +1,74 @@
+.TH DIALOG 2
+.SH NAME
+dialog: prompt, getstring \-
+basic dialog boxes
+.SH SYNOPSIS
+.EX
+include "dialog.m";
+dialog := load Dialog Dialog->PATH;
+
+init:        fn();
+prompt:      fn(ctxt: ref Draw->Context, p: ref Draw->Image,
+               icon, title, msg: string,
+               dflt: int, labs: list of string): int;
+getstring:   fn(ctxt: ref Draw->Context, p: ref Draw->Image,
+               s: string): string;
+.EE
+.SH DESCRIPTION
+.B Dialog
+module provides two simple dialog boxes
+for use by
+.IR wm (1)
+applications.
+.B Init
+should be called once to initialise its internal state.
+.PP
+.B Prompt
+uses the graphics context
+.I ctxt
+to pop up a dialog box to prompt the user to choose from a set of alternatives,
+or to acknowledge a message.
+The box is created near the northwest corner of
+the parent window
+.IR p ,
+represented by the window's image.
+(If the parent window is a Tk Toplevel
+.IR t ,
+for instance, the appropriate value is
+.IB t .image \f1.)\fP
+If
+.I p
+is nil, the box is centred on the screen.
+The box
+has the given
+.I title
+and an optional
+.IR icon .
+It displays the given
+.I msg
+and a number of buttons, labelled with the strings in
+.IR labs .
+The dialog box waits for the user to push a button, and then
+returns the index of the button pushed (the first element of
+.I labs
+is index 0).
+If the user types a newline, the
+.I dflt
+value is returned.  The button with the
+.I dflt
+index is specially outlined in the dialog box.
+.PP
+.B Getstring
+pops up a dialog box near the parent window
+.IR p .
+The box contains the
+.I msg
+and an entry widget.
+It waits for the user to type a string and a newline,
+and then returns the typed string, without the newline.
+.SH SOURCE
+.B /appl/lib/dialog.b
+.SH SEE ALSO
+.IR draw-context (2),
+.IR tk (2),
+.IR wmlib (2)

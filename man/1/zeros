@@ -1,0 +1,45 @@
+.TH ZEROS 1
+.SH NAME
+zeros \- write sequence of bytes
+.SH SYNOPSIS
+.B zeros
+[
+.IR -r
+]
+[
+.IR -v value
+]
+[ [
+.IR blocksize ...
+[
+.IR numblocks
+] ]
+.SH DESCRIPTION
+.B Zeros
+writes a sequence of bytes to standard output. The arguments
+specify the nature of the bytes,
+block size in bytes, and the number of blocks to output.
+The
+.I -r
+option requests that each block be the same, but randomly
+generated. The
+.IR -v value
+option sets the value of each byte (default 0).
+Typically
+.IR zeros
+has a specialised use:
+ensuring a file has the desired number of blocks in it to hold a file system image,
+before reaming it.
+.SH EXAMPLE
+To create and initialize a file system containing 2880 1024 byte
+blocks 
+.IP
+.EX
+zeros 1024 2880 > kfs
+echo 'ream fs kfs' > '#Kcons/kfsctl'
+echo halt > '#Kcons/kfscons'
+.EE
+.SH SOURCE
+.B /appl/cmd/zeros.b
+.SH SEE ALSO
+.IR kfs (3)

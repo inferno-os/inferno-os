@@ -1,0 +1,236 @@
+.TH ALPHABET-INTRO 2
+.SH NAME
+Alphabet \- experimental typed shell
+.SH DESCRIPTION
+.SS "Values, type characters and signatures"
+Each Alphabet typeset defines one Limbo data type, conventionally
+named
+.BR Value .
+It is usually a discriminated union (pick), with each arm of the
+pick representing one of the types in the typeset.
+Each one of these types is given a character. These characters are
+used to describe all value- and module-types within alphabet.
+The set of typeset characters implemented by a typeset is
+known as its
+.IR alphabet .
+.PP
+For example, in the
+.I alphabet
+root typeset
+(see
+.IR alphabet-main (2)),
+a string is represented by
+the letter ``s'', held at the Limbo level as
+a
+.BR "ref Value.S" .
+.PP
+Each alphabet module has a
+.I "type signature"
+which describes its
+return type and the number and type of any flags or
+arguments that it allows.
+Inside an
+.I alphabet
+typeset, this signature is represented as a simple
+string where the first character (always present)
+indicates the return type of the module. Subsequent
+characters up until the first minus (``-'') sign (or the
+end of the string) indicate
+the module's required argument types.
+If the last character is an asterisk
+.RB ( * ),
+it allows an unlimited repetition of the preceding argument type.
+.PP
+These may be followed by any number of options, each indicated with a
+minus character, followed by the option character and then the type
+characters of any arguments it requires.
+.PP
+For instance, the following Alphabet declaration:
+.EX
+	/mount [-abc] [-x /string] /wfd /string -> /status
+.EE
+can be represented by the signature
+.BR `` rws-a-b-xs-c ''.
+.SS "Typesets and proxies"
+The root typeset
+(see
+.IR alphabet-main(2))
+is implemented internally to the
+.I alphabet
+module. All other types are defined by
+.I external
+typesets.
+.PP
+An external
+.I alphabet
+typeset is conventionally represented by two header files
+defining the interface to the typeset, and two modules
+giving its implementation. Suppose we are to
+create a new typeset, say
+.B /foo .
+We would create the following files:
+.TP 10
+.B /module/alphabet/foo.m
+.B Foo.m
+declares the interface used by all modules within the typeset.
+The existing typeset interface files (for instance
+.BR alphabet/grid.m ,
+documented in
+.IR alphabet-grid (2))
+provide examples of this kind of interface.
+.TP
+.B /appl/alphabet/footypes.b
+This module translates
+between
+.I "internal values"
+(each held as a
+.B Value
+as declared in
+.BR foo.m )
+and
+.I "external values"
+(each held as a
+.B Value
+as declared in the parent typeset, in this case by
+the
+.I alphabet
+module itself).
+Since Limbo does not provide a way of
+holding an arbitrary type directly, internal
+values are instead stored in a table by a local
+.IR proxy
+(see below),
+and referred to externally by their index there.
+.TP
+.B /appl/alphabet/foo.b
+.B Foo.b
+provides the basic type-manipulation
+primitives needed by the typeset, for instance
+the translation from type character to type name.
+It is also a convenient place to implement
+helper functions to make using the typeset easier.
+For instance, it is conventional for
+a typeset's
+.B Value
+adt to contain one eponymously named member function for each
+type character, making sure that the
+.B Value
+is actually of that type and returning the widened type,
+or raising an exception otherwise.
+For instance, in the root typeset,
+.IB v .s()
+returns the type
+.BR "ref Value.S" ,
+or raises an error if
+.I v
+is not of that type.
+.TP
+.B /module/alphabet/footypes.m
+.B Footypes.m
+provides an interface to the typeset proxy module,
+.BR footypes.b ,
+that allows direct
+access to values in the
+.B foo
+typeset, while still allowing
+manipulation of those values by an
+.I alphabet
+instance.
+.PP
+
+The proxy module,
+.BR footypes.b ,
+must define at least one function,
+.BR proxy ,
+which returns a channel through which
+all operations on the typeset take place.
+The
+.B Proxy
+module (see
+.IR alphabet-proxy (2))
+provides a generic implementation of such a translator;
+if
+.B footypes.b
+uses this, it needs only define the mapping
+between values in its parent typeset and its own values.
+.PP
+
+
+.SS "alphabet-main(2)"
+.TP 10
+.B types()
+.B Types
+is always the first function in a module to be called.
+It should do nothing but return the type signature string of the module.
+.TP
+.B init()
+.B Init
+is called to allow the module to initialise its global
+state. It is called once only.
+It is permissible for this function to raise a
+.RB `` fail: ''
+exception on failure. The text
+following the
+.RB `` fail: ''
+prefix should describe the reason why.
+.TP
+\f5run\fR(\fIerrorc\fP, \fIr\fP, \fIopts\fP, \fIargs\fP)
+.RS
+.B Run
+runs an actual instance of the module. It must be re-entrant.
+The signature of the
+.B run
+function varies from typeset to typeset,
+but usually includes the above arguments.
+.I Args
+holds a list of the arguments passed to the module;
+.I opts
+holds all the flags that have been specified.
+Each flag is represented with a tuple, say: (\fIc\fR, \fIoptargs\fP),
+where
+.I c
+gives the option character, and
+.I optargs
+is a list holding any arguments the flag requires.
+The arguments and options passed to the module are guaranteed
+to conform with the type signature returned from
+.BR types .
+Note that each flag may be passed multiple times to the module.
+.PP
+If the run succeeds, it should return the
+resulting value. If the module returns a value that was passed in,
+and it contains a reference-count, the count should
+be incremented before returning,
+If the module succeeds, it is responsible for the
+disposal of any arguments and option arguments that it has been given.
+Appropriate disposal depends on the type of the argument,
+but
+.IB v .free(0)
+is always sufficient to dispose of value
+.IR v .
+.PP
+If the run fails, it should return
+.BR nil ;
+its arguments will automatically be freed in this case.
+.PP
+While processing the
+.B run
+request, the module should send error and debugging diagnostics
+to the
+.I errorc
+channel (it should take care never to send an empty string).
+If it spawns any new processes, it can use the
+.BR Report ,
+.IR r ,
+(see
+.IR alphabet-reports (2))
+to create new diagnostic channels for these processes.
+When such an diagnostic channel is no longer in use,
+the module should send an empty string on it.
+It should take care that
+.B Report.start
+is called
+.I before
+.B run
+returns.
+.RE

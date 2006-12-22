@@ -1,0 +1,105 @@
+.TH CHMOD 1
+.SH NAME
+chmod \- change file mode (permissions)
+.SH SYNOPSIS
+.B chmod
+.I mode
+.I file ...
+.SH DESCRIPTION
+.I Chmod
+changes the mode (permissions) of each
+.I file
+according to
+.IR mode ,
+which may be an octal number or a symbolic change to the existing mode.
+.PP
+A
+.I mode
+can be numerically formed as the
+.SM OR
+of the following octal values (a leading
+.B 8r
+is ignored):
+.TF 0000
+.TP
+0400
+read by owner
+.TP
+0200
+write by owner
+.TP
+0100
+execute (search in directory) by owner
+.TP
+0070
+read, write, execute (search) by group
+.TP
+0007
+read, write, execute (search) by others
+.PD
+.PP
+A symbolic
+.I mode
+has the form:
+.IP
+.RI [ who ]
+.I op permission
+.PP
+The
+.I who
+part is a combination of the letters
+.B u
+(for user's permissions),
+.B g
+(group) and
+.B o
+(other).
+The letter
+.B a
+stands for
+.BR ugo .
+If
+.I who
+is omitted, the default is
+.BR a .
+.PP
+The
+.I op
+field can be:
+.B +
+to add 
+.I permission
+to the file's mode,
+.B -
+to take away
+.IR permission ,
+.B =
+to assign
+.I permission
+absolutely (all other bits being reset).
+.PP
+The
+.I permission
+field is any combination of the letters
+.B r
+(read),
+.B w
+(write),
+.B x
+(execute),
+.B a
+(append only),
+.B l
+(exclusive access), and
+.B t
+(temporary, not archived).
+.SH SOURCE
+.B /appl/cmd/chmod.b
+.PP
+.SH "SEE ALSO"
+.IR chgrp (1),
+.IR ls (1),
+.IR sys-stat (2)
+.SH BUGS
+The interpretation of the modes is limited on some host operating systems,
+particularly variants of Windows.

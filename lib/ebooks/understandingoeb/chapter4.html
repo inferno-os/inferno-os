@@ -1,0 +1,442 @@
+<?xml version='1.0'?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+<?xml-stylesheet href="understandingoeb.css" type="text/x-oeb1-css"?>
+
+<html>
+<head>
+  <link rel="stylesheet" type="text/x-oeb1-css" href="understandingoeb.css" />
+<title>Understanding OEB Chapter 4</title>
+  <meta name="author" content="Garret Wilson" />
+  <meta name="copyright" content="Copyright (c) 2000-2001 Garret Wilson. All rights reserved." />
+</head>
+
+<body>
+
+<h2 id="chapter4">4. Essential OEB Elements</h2>
+
+<p>You now know the minimum structural requirements of creating a publication in OEB format. You're beginning to understand some of the reasoning behind latest directions of information storage formats such as XML, which OEB is based on. Right now, you could place almost any work in a few OEB documents and an OEB package, and it would at least be legal OEB and work with a compliant OEB reading system. You also know how to create style sheets and associate them with your documents.</p>
+
+<p>What you've learned so far will work fine for your one-paragraph masterpiece. But once you try to use OEB to create a slightly longer sequel, you'll probably very soon run into some very real needs: "How do I display lists?" "How do I change the font?" "How so I create links from one section of my book to another?" The OEB Publication Structure has some very real answers to these questions. Even better yet, since OEB is built upon XML, the following chapters will show you how to create your own answers in areas that OEB does not yet address.</p>
+
+<p>You've had a glance at a few elements defined by OEB, such as <code>&lt;p&gt;</code>, <code>&lt;em&gt;</code> and <code>&lt;dfn&gt;</code>. OEB has a substantial number of other tags already defined for you to use; obviously, you'll need to know at least some of the others to do anything useful with OEB. We'll now look at essential elements and styles that you'll need in day-to-day use of OEB. If you've already started putting together an OEB publication, hopefully we'll answer some of the issues you've already encountered. Otherwise, we'll get a lot of common questions out of the way and prepare you for the real-world OEB creation project found in the next chapter.</p>
+
+<p>It's important to note that the OEB elements discussed here are a basic set of elements defined by OEB. OEB is flexible enough to allow extended documents that include user-defined elements, and this process is likely to be enhanced even more in future OEB versions. Creating user-defined elements is beyond the scope of this current edition, but will likely be addressed in an upcoming version of this book.</p>
+
+<h3 id="inlineelements">Inline Elements</h3>
+
+<p>Although XML allows any number of elements to be defined, OEB has defined a certain set of elements to be used in documents. You've seen and used a few of those, such as <code>&lt;p&gt;</code>, <code>&lt;em&gt;</code> and <code>&lt;dfn&gt;</code>. Besides defining which tags can be used, OEB also specifies the location and contexts in which these elements can appear. You've probably understood intuitively, for example, that emphasized text goes inside a paragraph, like this:</p>
+
+<blockquote><code>&lt;p&gt;</code>This is <code>&lt;em&gt;</code>emphasized<code>&lt;/em&gt;</code> text.<code>&lt;/p&gt;</code></blockquote>
+
+<p>You probably didn't even consider putting a paragraph inside of emphasized text:</p>
+
+<blockquote><strong>Illegal!</strong> <code>&lt;p&gt;</code>This is <code>&lt;em&gt;</code>emphasized text with a <code>&lt;p&gt;</code>paragraph<code>&lt;/p&gt;</code> inside<code>&lt;/em&gt;</code> the emphasized text.<code>&lt;/p&gt;</code></blockquote>
+
+<p>As you might have guessed, this sort of construction is not allowed. The elements <code>&lt;em&gt;</code> and <code>&lt;dfn&gt;</code> can only appear inside paragraphs (and lists and other similar elements), and are therefore considered <em>inline</em> elements. Those are the elements we'll examine here.</p>
+
+<div class="sidebar" id="xmlcontentmodels">
+<h4 class="sidebarTitle">More Information: XML Content Models</h4>
+
+<p>XML could be considered a general markup language that acts as a toolkit for creating other markup languages. OEB uses XML to create its own markup language called the OEB Publication Structure. OEB uses XML not only to create a set of elements to be used (the <dfn>tag set</dfn>), but also to specify where the elements may appear. The specification of the correct locations of elements is called a <dfn>content model</dfn>.</p>
+
+<p>HTML uses a very lenient content model; a web browser will read HTML files that have elements that appear just about anywhere. This is not only notoriously hard to process, it also results in many ambiguities in what was actually meant by the author of the document. Since we'd like to follow the trend in encoding data and meaning into documents, this ambiguity is not acceptable.</p>
+
+<p>The content model used by OEB is therefore more strict than traditional HTML, and closely follows <a href="http://www.w3.org/TR/xhtml1/">XHTML</a>, a new version of HTML created specifically to be used with XML. This means that some constructs which could be used in HTML are not allowed in OEB. For example, the inline element <code>&lt;em&gt;</code> could be used in HTML to make several paragraphs emphasized:</p>
+
+<blockquote><strong>Legal HTML, Illegal OEB:</strong><br />
+	<code>&lt;em&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 1<code>&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 2<code>&lt;/p&gt;</code><br />
+	<code>&lt;/em&gt;</code>
+</blockquote>
+
+<p>Since <code>&lt;em&gt;</code> is an inline element, this will not work in an OEB document. Fixing this problem is simple, however: just bring the <code>&lt;em&gt;</code> back inside each <code>&lt;p&gt;</code> element:</p>
+
+<blockquote><strong>Legal HTML, Legal OEB:</strong><br />
+	<code>&lt;p&gt;&lt;em&gt;</code>Paragraph 1<code>&lt;/em&gt;&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;&lt;em&gt;</code>Paragraph 2<code>&lt;/em&gt;&lt;/p&gt;</code><br />
+</blockquote>
+
+<p>The actual OEB content model is not discussed explitely in the OEB specification, but it is defined in the OEB XML Document Type Declaration (DTD), which will be discussed later. Many times, such as in the case of the <code>&lt;em&gt;</code> element, the you can probably tell intuitively where an element can appear. In all cases, OEB validation software will be able to check your document against the OEB DTD and tell you whether or not your document has all its elements in the correct places.</p>
+
+</div>
+
+<h4 id="emelement">The <code>&lt;em&gt;</code> Element</h4>
+
+<p>You've already seen the <code>&lt;em&gt;</code> element &mdash; perhaps more than you've wanted. It bears repeating that the <code>&lt;em&gt;</code> element should be used instead of the <code>&lt;i&gt;</code> (italics) element in most cases, designating that the text should be emphasized but not specifying how the emphasized text should appear. An example of how specific text could be emphasized might be this:</p>
+
+<blockquote><code>&lt;p&gt;</code>Although the venture capital company seemed <code>&lt;em&gt;</code>really<code>&lt;/em&gt;</code> interested in our project, perhaps the representative only <code>&lt;em&gt;</code>seemed<code>&lt;/em&gt;</code> really interested.<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>Although the venture capital company seemed <span style="font-style: italic">really</span> interested in our project, perhaps the representative only <span style="font-style: italic">seemed</span> really interested.</blockquote>
+
+<h4 id="strongelement">The <code>&lt;strong&gt;</code> Element</h4>
+
+<p>The <code>&lt;strong&gt;</code> element is similarly to the <code>&lt;em&gt;</code> in that it specifies that a section of text should be emphasized, but is used in most cases where bold text would be used. In fact, the default rendering of the <code>&lt;strong&gt;</code> element is using a bold font, although we've seen that any default rendering can be changed using styles.</p>
+
+<p>Also similar to the <code>&lt;em&gt;</code> tag, OEB has a carryover tag from HTML that functions similar to the <code>&lt;strong&gt;</code> tag but that specifies actual formatting: the <code>&lt;b&gt;</code> tag, representing bold text. For reasons we've explained earlier, we don't recommend using tags that specify presentation information within a document itself. Therefore, you should in most cases use <code>&lt;strong&gt;</code> rather than <code>&lt;b&gt;</code> whenever marking up text usually rendered in bold.</p>
+
+<blockquote><code>&lt;p&gt;</code>The Hindi letter "ka" is pronounced similarly to the first part of the English word, "<code>&lt;strong&gt;</code>cu<code>&lt;/strong&gt;</code>p".<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>The Hindi letter "ka" is pronounced similarly to the first part of the English word, "<span style="font-weight: bolder">cu</span>p".<code>&lt;/p&gt;</code></blockquote>
+
+<h4 id="dfnelement">The <code>&lt;dfn&gt;</code> Element</h4>
+
+<p>We've already discussed using the <code>&lt;dfn&gt;</code> element to represent a word or words that are being defined for the first time.</p>
+
+<blockquote><code>&lt;p&gt;</code>The Hindi alphabet is usually specified as being a <code>&lt;dfn&gt;</code>syllabary<code>&lt;/dfn&gt;</code>, since each letter of a word represents a syllable.<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>The Hindi alphabet is usually specified as being a <dfn>syllabary</dfn>, since each letter of a word represents a syllable.</blockquote>
+
+<h4 id="codeelement">The <code>&lt;code&gt;</code> Element</h4>
+
+<p>OEB has several inline elements, some of which you'll use and some of which you'll never need unless creating certain esoteric documents. We mention that <code>&lt;code&gt;</code> element here because, since OEB was created by the computer-using community, it's likely that the first applications of OEB (this work included) will refer to computer programs or software.</p>
+
+<p>The <code>&lt;code&gt;</code> element was created to represent a section of computer program code, or data that should be entered by the user. This element is usually rendered in a monospaced font such as Courier, but as we've repeatedly stressed, you can change this behavior using styles.</p>
+
+<blockquote><code>&lt;p&gt;</code>In many programming languages, the statement <code>&lt;code&gt;</code>variable=16<code>&lt;/code&gt;</code> represents an assignment operation, assigning the value on the right to the variable on the left of the equals sign.<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>In many programming languages, the statement <code>variable=16</code> represents an assignment operation, assigning the value on the right to the variable on the left of the equals sign.</blockquote>
+
+<h4 id="citeelement">The <code>&lt;cite&gt;</code> Element</h4>
+
+<p>Many nonfiction works include information from other sources, and when they do so it is proper to cite the source from which the material was derived. The <code>&lt;cite&gt;</code> provides a standard way to indicate a cited source.</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>"The UN, like the League of Nations before it, was designed around the concept of state sovereignty" (<code>&lt;cite&gt;</code>Calvocoressi 1996<code>&lt;/cite&gt;</code>).
+</blockquote>
+
+<blockquote>
+	"The UN, like the League of Nations before it, was designed around the concept of state sovereignty" (<cite>Calvocoressi 1996</cite>).
+</blockquote>
+
+<h4 id="spanelement">The <code>&lt;span&gt;</code> Element</h4>
+
+<p>Our discussion of inline elements has thus far assumed that, if you looked hard enough, you could find an OEB element that represented more or less the meaning of the section of text to which you're referring. We've stressed that you can always later change the style of the particular element you chose.</p>
+
+<p>What if you can't find an element that's appropriate, but still want to specify a style for a section of text? OEB provides (again borrowed from HTML) a generic element, <code>&lt;span&gt;</code>, that has no meaning other than to specify a section of text. The <code>&lt;span&gt;</code> element has the normal <code>style</code> and <code>class</code> attributes, allowing you to specify style for an arbitrary section of text. For example, imagine you want to somehow highlight the vowels in an alphabet, but don't want to use <code>&lt;em&gt;</code> because you'd like to use some separate style. You could always create a specific style class for <code>&lt;em&gt;</code>, but you might rather specify style information from scratch using <code>&lt;span&gt;</code>, like this:</p>
+
+<blockquote><code>&lt;p&gt;</code>English Alphabet: <code>&lt;span style="color: red"&gt;</code>A<code>&lt;/span&gt;</code> B C D <code>&lt;span style="color: red"&gt;</code>E<code>&lt;/span&gt;</code> F G...<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>English Alphabet: <span style="color: red">A</span> B C D  <span style="color: red">E</span> F G...</blockquote>
+
+<p>You should immediately protest that actual style information should not be included in the document itself. A slight modification resolves this problem and makes the use of <code>&lt;span&gt;</code> acceptable. First specify a style class, such as <code>.vowel {color:red}</code>, and then use this class in the <code>&lt;span&gt;</code> element:</p>
+
+<blockquote><strong>Style Sheet:</strong> <code>.vowel {color:red}</code></blockquote>
+
+<blockquote><strong>Document:</strong> <code>&lt;p&gt;</code>English Alphabet: <code>&lt;span class="vowel"&gt;</code>A<code>&lt;/span&gt;</code> B C D <code>&lt;span class="vowel"&gt;</code>E<code>&lt;/span&gt;</code> F G...<code>&lt;/p&gt;</code></blockquote>
+
+<blockquote>English Alphabet: <span style="color: red">A</span> B C D  <span style="color: red">E</span> F G...</blockquote>
+
+<div class="sidebar" id="customelements">
+<h4 class="sidebarTitle">More Information: Creating Custom Elements</h4>
+
+<p>Using the <code>&lt;span&gt;</code> element in the way we've just outlined is remarkably close to creating a new element named <code>&lt;vowel&gt;</code>; instead, we've used the <code>&lt;span&gt;</code> element with a style class named "vowel", which ends of serving the same function.</p>
+
+<p>The <code>&lt;span&gt;</code> element was introduced in HTML before XML was available, and is therefore the only way standard HTML can add what may be called pseudo-elements into an HTML document. XML, on the other hand, includes a method (which will be discussed later) for creating real custom elements from scratch. Since OEB is based on XML, it does allow one to create something called an <dfn>extended</dfn> OEB document which includes custom-built tags, meaning that the <code>&lt;span&gt;</code> element is little more than an a clumsy, inefficient way to do something that is much more elegantly done using standard XML techniques.</p>
+
+<p>Why then does OEB include the <code>&lt;span&gt;</code> element? One of the reasons should be quite familiar by now: since this tag is included in HTML, it was brought over into OEB so that standard HTML pages could be converted to OEB with minimal modification. The creation of custom elements using XML is furthermore more difficult than using the <code>&lt;span&gt;</code> element. Another reason should also be familiar: custom XML elements do not display correctly on HTML browsers.</p>
+
+<p>The majority of the OEB Authoring Group therefore felt it a higher priority to quickly release a specification that would bring about consensus in a quickly growing eBook industry than to force the adoption of barely released technologies such as custom XML elements. Happily, the OEBPS 1.0.1 still allows those who wish to follow useful standardization trends can still use XML to create custom elements. A discussion of how this is done is outside the scope of the current release of this book.</p>
+
+</div>
+
+<h4 id="brelement">The <code>&lt;br&gt;</code> Element</h4>
+
+<p>You learned in an earlier chapter that multiple adjacent whitespace characters, such as spaces and line breaks, are always replaced with a single space character before the text is displayed. This seems reasonable until you encounters a situation in which you'd like to display text on a separate line, perhaps like this:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>...Karl had three siblings:<br />
+Kris<br />
+Krista<br />
+Karla<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>As you'll soon realize, if you've forgotten our earlier discussion about whitespace, what is displayed is not exactly what was entered:</p>
+
+<blockquote>...Karl had three siblings: Kris Krista Karla</blockquote>
+
+<p>You could always put the name of each of Karl's siblings in a separate paragraph, but they aren't really separate paragraphs. Besides, you don't want to risk their being formatted like paragraphs when displayed (either indented or separated by blank lines, depending on the reading system).</p>
+
+<p>The real solution here is to use a separate list element, which you'll learn about later in this chapter. But you might insist that these items should go <em>inside</em> the paragraph, and you want to choose where the line breaks appear. A better example might be a poem, in which you'd like to guarantee that a line break appears after each line:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>There was a young creature named Karl<br />
+Whose siblings would say with a snarl<br />
+We'll share what we eat:<br />
+Just some bones from the meat<br />
+And a little of "ic" from the "garl".<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>Here again, it would be more preferable if there were a <code>&lt;poem&gt;</code> element in OEB. There isn't. Short of creating your own tag for this situation, OEB provides an element that specifies that a line break should appear: the <code>&lt;br&gt;</code> element.</p>
+
+<p>The <code>&lt;br&gt;</code> element is different than the elements examined so far in that it cannot have content; since it signifies a line break at a particular location in the text, it doesn't display text and has no need to hold text. The <code>&lt;br&gt;</code> element is therefore referred to as an <dfn>empty element</dfn>. You might expect the <code>&lt;br&gt;</code> element to simply have a beginning and ending tag with nothing in between (<code>&lt;br&gt;</code><code>&lt;/br&gt;</code>). However, XML specifies a special format for empty elements by combining the beginning and ending tags into one tag: <code>&lt;br /&gt;</code></p>
+
+<ul>
+	<li id="emptyElement"><strong>XML Rule 6:</strong> (<em>Empty Elements</em>) An element that cannot have text between its beginning and ending tags is classified as a <dfn>empty element</dfn>, and has a special form of a single tag with the element name followed by a slash (/): <code>&lt;name /&gt;</code></li>
+</ul>
+
+<p><strong>Important:</strong> While not required by XML, OEB specifies that all empty tags must have a space between the tag name and the slash character. This is to ensure that OEB documents can be displayed more or less correctly in HTML browsers.</p>
+
+<p>The <code>&lt;br&gt;</code> element might therefore be used in a re-write of Lewis Carroll's <i>Alice's Adventures in Wonderland</i>:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>Alice fell down the rabbit hole...<code>&lt;br /&gt;</code><br />
+Down...<code>&lt;br /&gt;</code><br />
+Down...<code>&lt;br /&gt;</code><br />
+Down...<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>This would be correctly displayed as expected:</p>
+
+<blockquote>
+Alice fell down the rabbit hole...<br />
+Down...<br />
+Down...<br />
+Down...
+</blockquote>
+
+<p>The <code>&lt;br&gt;</code> element, however, has the potential of being abused and overused. In most places, items might more appropriately be placed in separate paragraphs, or perhaps in a list. In keeping with our goal of using markup to encode meaning into a document, it would probably be better to place a poem inside a <code>&lt;poem&gt;</code> element or something similar, although in this case we would have to define such an element before it could be used. The use of <code>&lt;br&gt;</code> to show the plight of Alice, above, is certainly the easiest and perhaps even an appropriate way to create the desired visual effect. We'd just like to encourage you to make sure that the <code>&lt;br&gt;</code> element is appropriate for the situation before using it.</p>
+
+<h4 id="aelement">The <code>&lt;a&gt;</code> Element</h4>
+
+<p>The anchor element, <code>&lt;a&gt;</code>, was first made popular by HTML. Since the <code>&lt;a&gt;</code> element is responsible for linking documents and sections of documents, this element is responsible for the "hypertext" part of HTML. Without <code>&lt;a&gt;</code>, HTML might otherwise have only been "TML", a text markup language with no linking capabilities. The OEB Publication Structure incorporated <code>&lt;a&gt;</code> into its tag set with hardly any modifications to its fundamental form.</p>
+
+<p>With its linking capabilites, <code>&lt;a&gt;</code> is the first tag we've discussed that starts to allow static pages in a book to come to life, to allow interaction with the user. The Open eBook specification begins with the assumption that a user will be provided with a paging function that will allow traversal through the contents of a book. The most fundamental purpose for hypertext anchors might be to link to reference sections or a glossary; however, the <code>&lt;a&gt;</code> element allows the author to provide many more complex navigation capabilites, allowing readers to even choose an arbitrary path through the book as they read.</p>
+
+<p>The most important attribute of the <code>&lt;a&gt;</code> element is <code>href</code>. As you've seen in elements both in the OEB package and in OEB style sheets, the <code>href</code> attribute specifies a "hypertext reference" location. Usually, the value of this attribute refers to a file; in other instances is can refer to a specific location within a file.</p>
+
+<p>Let's revisit a section from the first work we created.</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl.<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>Now, some uninformed readers may not know what a "blovjus" is. You may wish to provide a definition a reader can read. Having a definition in the text is unacceptable; you don't want to bother your many readers who know exactly what a blovjus is and do not want to be told again. Instead, you elect to place the definition in a separate OEB document file named <code>blovjus.html</code>:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;&lt;strong&gt;</code>blovjus<code>&lt;/strong&gt;</code> A strange, mythical creature which lived many years ago; sometimes it stole supper from its siblings.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>Using the <code>&lt;a&gt;</code> tag, it's a simple job to link "blovjus" in the text to its definition:</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young <code>&lt;a href="blovjus.html"&gt;</code>blovjus<code>&lt;/a&gt;</code> named Karl.<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>Anchor elements can also be used to mark, or <dfn>anchor</dfn>, a section of text in a document (although this function is less important since each element in OEB contains an <code>id</code> attribute). This way, two <code>&lt;a&gt;</code> elements can be used together, one to mark a location and another to link to that location. This allows links not only to files, but to a specific location in a file. The tag serving as an anchor will use the <code>id</code> tag to provide a name for the anchor. The tag serving as a link will use the <code>href</code> as before to refer to a file, except that a pound sign (#) will be appended followed by the id of the anchor which serves as the link <dfn>target</dfn>.</p>
+
+<p>This is actually quite simple in practice. Assume that you have so many uninformed readers that you've created an entire glossary with many definitions. This glossary replaces the <code>blovjus.html</code> document file you created earlier, containing "blovjus" and other terms:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;&lt;a id="blovjus"&gt;&lt;strong&gt;</code>blovjus<code>&lt;/strong&gt;&lt;/a&gt;</code> A strange, mythical creature which lived many years ago; sometimes it stole supper from its siblings.<code>&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;&lt;a id="earth"&gt;&lt;strong&gt;</code>earth<code>&lt;/strong&gt;&lt;/a&gt;</code> The third planet from the sun.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>Note that we've placed an <code>&lt;a&gt;</code> element around each term to serve as an anchor to mark the link targer. We've specified a name for each target using the <code>id</code> attribute. Here, we've used names that match the terms we're defining, but we could have used any names as long as they are unique and we use the same names in the links. Here's what the links look like in our original file:</p>
+
+<blockquote>
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the <code>&lt;a href="glossary.html#earth"&gt;</code>earth<code>&lt;/a&gt;</code>, the seas were beginning to form, and humans had yet to appear, there lived a young <code>&lt;a href="glossary.html#blovjus"&gt;</code>blovjus<code>&lt;/a&gt;</code> named Karl.<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>In each link, we specify the document in which the definitions reside (<code>glossary.html</code> in this example), followed by a pound sign (#) and then the ID of the appropriate definition (here, <code>earth</code> and <code>blovjus</code>). It is here that we must always make sure the name in the <code>href</code> attribute always matches the name in the target anchor tag's <code>id</code> attribute.</p>
+
+<p>This application of the anchor tag as a true anchor is less useful since OEB provides an <code>id</code> attribute for most elements. Instead of adding an <code>&lt;a&gt;</code> element and <code>id</code> attribute to serve as an anchor, you can instead add an <code>id</code> to the element to which you want to link. The above example, then, would appear like this:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p id="blovjus"&gt;&lt;strong&gt;</code>blovjus<code>&lt;/strong&gt;</code> A strange, mythical creature which lived many years ago; sometimes it stole supper from its siblings.<code>&lt;/p&gt;</code><br />
+	<code>&lt;p id="earth"&gt;&lt;strong&gt;</code>earth<code>&lt;/strong&gt;</code> The third planet from the sun.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>This version of specifying a link target is the recommended one &mdash; there is no need to specify an anchor for the target because almost any OEB element can contain an ID attribute. The <code>&lt;a&gt;</code> element will still be needed, of course, to link <em>to</em> the referenced location.</p>
+
+<p>Anchor tags are the first step in leveraging the capabilities of electronic books which static books do not have. Hypertext linking has many uses, from creating tables of contents to providing user-initiated changes in a plot. We'll address some of these uses in the following chapters.</p>
+
+<h3 id="blockelements">Block Elements</h3>
+
+<p>Block elements could be considered the opposite of inline elements. They are the enclosing elements within which inline elements are placed. That is, inline elements have to have some element to be inside; this element is ultimately a block element (although inline elements can appear inside other inline elements). You've already seen one example of a block element, the <code>&lt;p&gt;</code> element representing a paragraph. Block elements could also be classified as elements that automatically have a line break before and after them; they might therefore also be appropriately called "out-of-line" elements.</p>
+
+<p>Traditionally, block elements in HTML also had a blank line immediately before and immediately after them, but OEB reading systems may prefer to display block elements differently, indenting the first line of text in a <code>&lt;p&gt;</code> element, for example.</p>
+
+<h4 id="pelement">The <code>&lt;p&gt;</code> Element</h4>
+
+<p>The <code>&lt;p&gt;</code> element is probably the most straightforward block-level element, and probably the most common. Every paragraph in OEB should be surrounded by <code>&lt;p&gt;</code>...<code>&lt;/p&gt;</code>. As we've certainly used plenty of paragraphs up to this point, we won't give any examples here. Instead, we'll just give one precaution: be careful not to <em>	overuse</em> the <code>&lt;p&gt;</code> tag. Make sure the block of text you're marking up is really a paragraph and not, say, a list or a heading, both of which are covered in the sections below.</p>
+
+<h4 id="headingelements">The <code>&lt;h1&gt;</code>...<code>&lt;h6&gt;</code> Heading Elements</h4>
+
+<p>Perhaps the second most common block element is actually a group of similar elements: <code>&lt;h1&gt;</code>, <code>&lt;h2&gt;</code>, <code>&lt;h3&gt;</code>, <code>&lt;h4&gt;</code>, <code>&lt;h5&gt;</code>, and <code>&lt;h6&gt;</code>. These elements represent different levels of headings in your document.</p>
+
+<p>What does "heading" mean? It represents whatever you want it to represent. You could use <code>&lt;h1&gt;</code> to represent the title of your book on the title page, and use <code>&lt;h2&gt;</code> to represent the title of each chapter. Alternatively, you could use <code>&lt;h1&gt;</code> to represent each chapter title, <code>&lt;h2&gt;</code> to represent each chapter subtitle, and use a completely separate style class (or custom XML element) to represent the book title on the title page.</p>
+
+<p>All this is at your discretion because the heading elements do not directly correspond to any particular division of a book; they do not have a particular meaning, such as "chapter title" or "subtitle". The only thing that you can be sure of is that the default rendering method for each higher-numbered heading (such as <code>&lt;h1&gt;</code>) will be larger than a lower-numbered heading (such as <code>&lt;h2&gt;</code>).</p>
+
+<p>The lack of a particular meaning for the <code>&lt;hX&gt;</code> elements makes them slightly less useful than one might expect. Some early eBook reading systems assigned meanings to the <code>&lt;hX&gt;</code> elements, allowing the reading system to automatically find and understand when chapters begin, for example. Other markup languages have specific tags that represent chapters and other divisions. OEBPS 1.0, however, has no elements that specifically indicate book structure, so you'll have to make do with the heading elements. While OEB may introduce such elements in the future, for now using the heading elements is highly preferable to specifying the styles of headings manually, of course. Just remember that the meanings assigned to the heading elements are completely up to you. You might choose, for example, to use them like this:</p>
+
+<blockquote>
+	<code>&lt;h1&gt;</code>Karl the Creature<code>&lt;/h1&gt;</code><br />
+	<code>&lt;h2&gt;</code>Chapter 1: Karl as a Kid<code>&lt;/h2&gt;</code><br />
+	<code>&lt;p&gt;</code>Years ago...<code>&lt;/p&gt;</code><br />
+</blockquote>
+
+<blockquote>
+	<h1>Karl the Creature</h1>
+	<h2>Episode 1: Karl as a Kid</h2>
+	<p>Years ago...</p>
+</blockquote>
+
+<h4 id="lists">Lists, Ordered (<code>&lt;ol&gt;</code>) and Unordered (<code>&lt;ul&gt;</code>)</h4>
+
+<p>Almost every work, especially non-fiction educational works (like this one), have instances in which a list of items must be displayed. Many times the items in these lists are shown in a particular order, each item with a particular number. These lists are called <dfn>ordered lists</dfn>:</p>
+
+<blockquote>
+The names of the first three planets from the sun, in order, are:<br />
+1. Mercury<br />
+2. Venus<br />
+3. Earth
+</blockquote>
+
+<p>Not only must the numbers of each item in the list be carefully considered, care must be taken to ensure that the list is formatted correctly. Whenever the list is modified or reordered, care must be taken in modifying the numbering involved. Furthermore, there's no indication encoded in the file that this is a list; no meaning has been added to text that a computer or data-retrieval program could extract.</p>
+
+<p>OEB provides elements that solves all of these problems. In this case, we can use markup to specify that we have an ordered list (using the <code>&lt;ul&gt;</code> element), and that each item in the list is (as you would expect) a list item (using the <code>&lt;li&gt;</code> element). Ordered lists in OEB therefore consist of two separate elements, <code>&lt;ol&gt;</code> and <code>&lt;li&gt;</code>, used in conjunction like this:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>The names of the first three planets from the sun, in order, are:<code>&lt;/p&gt;</code><br />
+<code>&lt;ol&gt;</code><br />
+<code>&lt;li&gt;</code>Mercury<code>&lt;/li&gt;</code><br />
+<code>&lt;li&gt;</code>Venus<code>&lt;/li&gt;</code><br />
+<code>&lt;li&gt;</code>Earth<code>&lt;/li&gt;</code><br />
+<code>&lt;/ol&gt;</code>
+</blockquote>
+
+<blockquote>
+<p>The names of the first three planets from the sun, in order, are:</p>
+<ol>
+<li>Mercury</li>
+<li>Venus</li>
+<li>Earth</li>
+</ol>
+</blockquote>
+
+<p>Notice two things: first, the number of each list item does not need to be specified; it is supplied automatically when the list is displayed. Second, the introductory statement, "The names of the first three planets...", is not technically part of the list, so it is not placed within the <code>&lt;ol&gt;</code>...<code>&lt;/ol&gt;</code> tags. The OEB publication structure allows you to specify the formatting, the type, and even a language-specific representation of the numbers used in a list.</p>
+
+<p>Some types of lists do not have numbers associated with them; they are <dfn>unordered lists</dfn>. If you're listing items in a grocery list, for example, you may not care about the order in which they are purchased. You would therefore use the <code>&lt;ul&gt;</code> for the unordered list, which functions exactly like the <code>&lt;ol&gt;</code> element used for ordered lists:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>Please purchase the following items:<code>&lt;/p&gt;</code><br />
+<code>&lt;ul&gt;</code><br />
+<code>&lt;li&gt;</code>Bread<code>&lt;/li&gt;</code><br />
+<code>&lt;li&gt;</code>Eggs<code>&lt;/li&gt;</code><br />
+<code>&lt;li&gt;</code>Milk<code>&lt;/li&gt;</code><br />
+<code>&lt;/ul&gt;</code>
+</blockquote>
+
+<blockquote>
+<p>Please purchase the following items:</p>
+<ul>
+<li>Bread</li>
+<li>Eggs</li>
+<li>Milk</li>
+</ul>
+</blockquote>
+
+<p>The default rendering method for unordered lists is to display a small round circle next to each item. You'll learn later how to use styles to modify this behavior. Most importantly, we've specified that the information is actually a list of items, and we can later, if we wish, arbitrarily change the way this list is displayed using styles, without changing the actual text of the document.</p>
+
+<h4 id="divelement">The <code>&lt;div&gt;</code> Element</h4>
+
+<p>The <code>&lt;span&gt;</code> element, as you saw earlier, provided a convenient way to specify style information about an arbitrary set of characters inside a block element. That last aspect somewhat limits its applicability, though: since <code>&lt;span&gt;</code> is an inline element, it can't be used to specify style information for more than one block element. That's why <code>&lt;div&gt;</code> in included in OEB.</p>
+
+<p>The <code>&lt;div&gt;</code> element is the block-level equivalent to the inline <code>&lt;span&gt;</code> span. It has no meaning in itself; its sole purpose is to group several block-level elements for the purpose of applying styles, for example. To see an example of where the <code>&lt;div&gt;</code> element could be applied, let's revisit an example of an inappropriate use of the <code>&lt;em&gt;</code> element:</p>
+
+<blockquote><strong>Illegal:</strong><br />
+	<code>&lt;em&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 1<code>&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 2<code>&lt;/p&gt;</code><br />
+	<code>&lt;/em&gt;</code>
+</blockquote>
+
+<p>As we noted when discussing the OEB content model, the <code>&lt;em&gt;</code> element, being an inline element, cannot enclose the <code>&lt;p&gt;</code> element, a block element. We explained that the <code>&lt;em&gt;</code> element could simply be moved inside the <code>&lt;p&gt;</code>, like this:</p>
+
+<blockquote><strong>Legal OEB:</strong><br />
+	<code>&lt;p&gt;&lt;em&gt;</code>Paragraph 1<code>&lt;/em&gt;&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;&lt;em&gt;</code>Paragraph 2<code>&lt;/em&gt;&lt;/p&gt;</code><br />
+</blockquote>
+
+<p>The same effect could be achieved using the <code>&lt;div&gt;</code> element in a similar manner to that used in the first example. An emphasis style class could be created and applied to a surrounding <code>&lt;div&gt;</code> element:</p>
+
+<blockquote><strong>Style Sheet:</strong> <code>.emphasis {font-style: italic}</code></blockquote>
+
+<blockquote><strong>Document:</strong><br />
+	<code>&lt;div class="emphasis"&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 1<code>&lt;/p&gt;</code><br />
+	<code>&lt;p&gt;</code>Paragraph 2<code>&lt;/p&gt;</code><br />
+	<code>&lt;/div&gt;</code>
+</blockquote>
+
+<p>As with the <code>&lt;span&gt;</code> element, the <code>&lt;div&gt;</code> element is another carryover from HTML that allows one to simulate the creation of a custom tag. Also similarly to how the <code>&lt;span&gt;</code> element is used, XML allows true custom elements to be created, making <code>&lt;div&gt;</code>, although convenient, somewhat redundant. It's this convenience that makes <code>&lt;div&gt;</code> quite attractive and perhaps acceptable in some situations. Before using it, however, make sure that a custom XML element wouldn't be more appropriate.</p>
+
+<h4 id="centerelement">The <code>&lt;center&gt;</code> Element (deprecated)</h4>
+
+<p>OEB includes <code>&lt;center&gt;</code> but marks it as <dfn>deprecated</dfn>: its use is allowed so that HTML documents will not require much modification, but its use is discouraged. In fact, the <code>&lt;center&gt;</code> element is mentioned here only because its use has become <em>very</em> popular over the years in HTML documents. We echo the exhortation of the OEBPS specification (and the latest version of HTML) that the <code>&lt;center&gt;</code> element should not be used in new OEB document; explicitly specifying that a section of text should be centered goes against the concept of separation of content and presentation.</p>
+
+<blockquote>
+	<strong>Deprecated:</strong> <code>&lt;center&gt;</code>Chapter 1: Karl as a Kid<code>&lt;/center&gt;</code>
+</blockquote>
+
+<blockquote>
+	<div style="text-align: center">Chapter 1: Karl as a Kid</div>
+</blockquote>
+
+<p>As an alternative, OEB (and HTML) allow text to be centered using styles. Specifically, the <code>text-align</code> property, which we'll discuss later in this chapter, allows a <code>"center"</code> value that gives the desired effect. Using style classes with the <code>&lt;div&gt;</code> element we just discussed might yield something like this:</p>
+
+<blockquote><strong>Style Sheet:</strong> <code>.chapterhead {text-align: center}</code></blockquote>
+
+<blockquote><strong>Document:</strong>
+	<code>&lt;div class="chapterhead"&gt;</code>Chapter 1: Karl as a Kid<code>&lt;/div&gt;</code>
+</blockquote>
+
+<p>As is usually the case with <code>&lt;div&gt;</code>, there are better ways to specify which text should be centered. If you're already using <code>&lt;h1&gt;</code> for chapter headings, for example, specifying that the chapter headings should be centered is quite easy using styles, and illustrates how convenient and appropriate style sheets can be:</p>
+
+<blockquote><strong>Style Sheet:</strong> <code>h1 {text-align: center}</code></blockquote>
+
+<blockquote><strong>Document:</strong>
+	<code>&lt;h1&gt;</code>Chapter 1: Karl as a Kid<code>&lt;/h1&gt;</code>
+</blockquote>
+
+<p>Whatever method you choose to use to center text, we encourage you that it not be the <code>&lt;center&gt;</code> element.</p>
+
+<h4 id="blockquoteelement">The <code>&lt;blockquote&gt;</code> Element</h4>
+
+<p>In contrast to the <code>&lt;center&gt;</code> element, <code>&lt;blockquote&gt;</code> is a good example of how elements should encode meaning into a document and assist in separating content from presentation. Many nonfiction works have sentences quoted from other works. If a quote is several sentences or even several paragraphs long, it is usually placed in a separate, indented paragraph or group of paragraphs. The <code>&lt;blockquote&gt;</code> element allows text to be specified as a block of quoted text without worrying how it will be formatted. Usually, the default indented style is acceptable, but this can easily be changed using styles.</p>
+
+<p>The <code>&lt;blockquote&gt;</code> element has one optional attribute, <code>cite</code>, which allows the web address location of the quote to be specified. Note that the inline element with the same name as the attribute, <code>&lt;cite&gt;</code>, is often used in conjunction with the <code>&lt;blockquote&gt;</code> element:</p>
+
+<blockquote>
+	<code>&lt;blockquote cite="http://www.un.org/Overview/rights.html"&gt;</code><br />
+	Everyone is entitled to all the rights and freedoms set forth in this Declaration, without distinction of any kind, such as race, colour, sex, language, religion, political or other opinion, national or social origin, property, birth or other status. Furthermore, no distinction shall be made on the basis of the political, jurisdictional or international status of the country or territory to which a person belongs, whether it be independent, trust, non-self-governing or under any other limitation of sovereignty.
+	(<code>&lt;cite&gt;</code>UN Declaration of Universal Human Rights, Article 2, December 10, 1948<code>&lt;/cite&gt;</code>)<br />
+	<code>&lt;/blockquote&gt;</code>
+</blockquote>
+
+<blockquote cite="http://www.un.org/Overview/rights.html">
+Everyone is entitled to all the rights and freedoms set forth in this Declaration, without distinction of any kind, such as race, colour, sex, language, religion, political or other opinion, national or social origin, property, birth or other status. Furthermore, no distinction shall be made on the basis of the political, jurisdictional or international status of the country or territory to which a person belongs, whether it be independent, trust, non-self-governing or under any other limitation of sovereignty. (<cite>UN Declaration of Universal Human Rights, Article 2, December 10, 1948</cite>)
+</blockquote>
+
+</body>
+</html>

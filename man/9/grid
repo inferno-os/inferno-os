@@ -1,0 +1,332 @@
+.TH GRID 9
+'\" Note:  do not modify the .SH NAME line immediately below!
+.SH NAME
+grid \- Geometry manager that arranges widgets in a grid
+.SH SYNOPSIS
+\f5grid \fIoption arg \fR?\fIarg ...\fR?
+
+.SH DESCRIPTION
+.PP
+The \f5grid\fR command is used to communicate with the grid
+geometry manager that arranges widgets in rows and columns inside
+of another window, called the geometry master (or master window).
+The \f5grid\fR command can have any of several forms, depending
+on the \fIoption\fR argument:
+.TP
+\f5grid bbox \fImaster\fR ?\fIcolumn row\fR? ?\fIcolumn2 row2\fR?
+With no arguments, 
+the bounding box (in pixels) of the grid is returned.
+The return value consists of 4 integers.  The first two are the pixel
+offset from the master window (x then y) of the top-left corner of the
+grid, and the second two integers are the bottom-right corner of the grid,
+also in pixels.  If a single \fIcolumn\fP and \fIrow\fP is specified on 
+the command line, then the bounding box for that cell is returned, where the
+top left cell is numbered from zero.  If both \fIcolumn\fP and \fIrow\fP
+arguments are specified, then the bounding box spanning the rows and columns
+indicated is returned.
+.TP
+\f5grid cellinfo \fImaster column row\fR
+Returns a list giving information about the slave
+currently held in the grid cell specified by
+\fIcolumn\fP and \fIrow\fP.
+The first element of the list is the name of the slave,
+and the rest have the same option-value form that
+might be specified to \f5grid configure\fR
+(the same form as returned by \f5grid info\fR).
+.TP
+\f5grid columnconfigure \fImaster index \fR?\fI-option value...\fR?
+Set the column properties of the \fIindex\fP column of the 
+geometry master, \fImaster\fP.
+The valid options are \f5-minsize\fP, \f5-weight\fP, \f5-pad\fP and \f5-name\fP.
+If one or more options are provided, then \fIindex\fP may be given as 
+a list of column indices to which the configuration options will operate on.
+The \f5-minsize\fP option sets the minimum size, in screen units,
+that will be permitted for this column.
+The \f5-weight\fP option (an integer value)
+sets the relative weight for apportioning
+any extra spaces among
+columns.
+A weight of zero (0) indicates the column will not deviate from its requested
+size.  A column whose weight is two will grow at twice the rate as a column
+of weight one when extra space is allocated to the layout.
+The \f5-pad\fP option specifies a pad distance that will be
+added either side of the column; adjacent columns merge their padding,
+creating a pad sized to the larger of the pads on either column.
+The \f5-name\fP option associates a name with the column, which can
+then be used as an index to refer to that column.
+.TP
+\f5grid \fIslave \fR?\fIslave ...\fR? ?\fIoptions\fR?
+The arguments consist of the names of one or more slave windows
+followed by pairs of arguments that specify how
+to manage the slaves.
+The characters \f5-\fP,  \f5x\fP and \f5^\fP, 
+can be specified instead of a window name to alter the default
+location of a \fIslave\fP, as described in the ``RELATIVE PLACEMENT''
+section, below.
+The following options are supported:
+.RS
+.TP
+\f5-column \fIindex\fR
+Insert the slave so that it occupies the \fIindex\fPth column in the grid.
+Column numbers start with 0.  If this option is not supplied, then the
+slave is arranged just to the right of previous slave specified on this
+call to \fIgrid\fP, or column "0" if it is the first slave.  For each
+\f5x\fP that immediately precedes the \fIslave\fP, the column position
+is incremented by one.  Thus the \f5x\fP represents a blank column
+for this row in the grid.
+.TP
+\f5-columnspan \fIn\fR
+Insert the slave so that it occupies \fIn\fP columns in the grid.
+The default is one column, unless the window name is followed by a
+\f5-\fP, in which case the columnspan is incremented once for each immediately
+following \f5-\fP.
+.TP
+\f5-in \fIother\fR
+Insert the slave(s) in the master
+window given by \fIother\fR.  The default is the first slave's
+parent window.
+.TP
+\f5-ipadx \fIamount\fR
+The \fIamount\fR specifies how much horizontal internal padding to
+leave on each side of the slave(s).  This is space is added
+inside the slave(s) border.
+The \fIamount\fR must be a valid screen distance, such as \f52\fR or \f5.5c\fR.
+It defaults to 0.
+.TP
+\f5-ipady \fIamount\fR
+The \fIamount\fR specifies how much vertical internal padding to
+leave on on the top and bottom of the slave(s).
+This space is added inside the slave(s) border.
+The \fIamount\fR  defaults to 0.
+.TP
+\f5-padx \fIamount\fR
+The \fIamount\fR specifies how much horizontal external padding to
+leave on each side of the slave(s), in screen units.
+The \fIamount\fR defaults to 0.
+This space is added outside the slave(s) border.
+.TP
+\f5-pady \fIamount\fR
+The \fIamount\fR specifies how much vertical external padding to
+leave on the top and bottom of the slave(s), in screen units.
+The \fIamount\fR defaults to 0.
+This space is added outside the slave(s) border.
+.TP
+\f5-row \fIindex\fR
+Insert the slave so that it occupies the \fIindex\fPth row in the grid.
+Row numbers start with 0.  If this option is not supplied, then the
+slave is arranged on the same row as the previous slave specified on this
+call to \f5grid\fP, or the first unoccupied row if this is the first slave.
+.TP
+\f5-rowspan \fIn\fR
+Insert the slave so that it occupies \fIn\fP rows in the grid.
+The default is one row.  If the next \f5grid\fP command contains
+\f5^\fP characters instead of \fIslaves\fP that line up with the columns
+of this \fIslave\fP, then the \f5rowspan\fP of this \fIslave\fP is
+extended by one.
+.TP
+\f5-sticky \fIstyle\fR
+If a slave's cell is larger than its requested dimensions, this
+option may be used to position (or stretch) the slave within its cell.
+\fIStyle\fR  is a string that contains zero or more of the characters
+\f5n\fP, \f5s\fP, \f5e\fP or \f5w\fP.
+The string can optionally contains spaces or
+commas, but they are ignored.  Each letter refers to a side (north, south,
+east, or west) that the slave will "stick" to.  If both \f5n\fP and \f5s\fP (or
+\f5e\fP and \f5w\fP) are specified, the slave will be stretched to fill the entire
+height (or width) of its cavity.  The \f5sticky\fP option subsumes the
+combination of \f5-anchor\fP and \f5-fill\fP that is used by \f5pack\fP.
+The default is \f5{}\fP, which causes the slave to be centered in its cavity,
+at its requested size.
+.LP
+If any of the slaves are already managed by the geometry manager
+then any unspecified options for them retain their previous values rather
+than receiving default values.
+.LP
+It is an error if any \fIslave\fP covers an area already covered by an
+existing slave of the grid.
+.RE
+.TP
+\f5grid columndelete \fImaster index0 \fR?\fIindex1\fR?
+Deletes columns from \fIindex0\fP up to but not including \fIindex1\fP,
+If \fIindex1\fP is not given, it defaults to \fIindex0\fP+1.
+The deleted columns may not contain cells spanned by
+slaves outside the deleted columns.
+.TP
+\f5grid columnindex \fImaster index\fP
+Returns \fIindex\fP as a numerical index into the column.
+.TP
+\f5grid columninsert \fImaster index \fR?\fIcount\fR?
+Inserts \fIcount\fP (default 1) new columns just before \fIindex\fP.
+The inserted rows may not split a spanning cell.
+.TP
+\f5grid forget \fIslave \fR?\fIslave ...\fR?
+Removes each of the \fIslave\fRs from grid for its
+master and unmaps their windows.
+The slaves will no longer be managed by the grid geometry manager.
+The configuration options for that window are forgotten, so that if the
+slave is managed once more by the grid geometry manager, the initial
+default settings are used.
+.TP
+\f5grid info \fIslave\fR
+Returns a list whose elements are the current configuration state of
+the slave given by \fIslave\fR in the same option-value form that
+might be specified to \f5grid configure\fR.
+The first two elements of the list are ``\f5-in \fImaster\fR'' where
+\fImaster\fR is the slave's master.
+.TP
+\f5grid location \fImaster x y\fR
+Given  \fIx\fP and \fIy\fP values in screen units relative to the master window, 
+the column and row number at that \fIx\fP and \fIy\fP location is returned.
+For locations that are above or to the left of the grid, \f5-1\fP is returned.
+.TP
+\f5grid propagate \fImaster\fR ?\fIboolean\fR?
+If \fIboolean\fR has a true boolean value such as \f51\fR or \f5on\fR
+then propagation is enabled for \fImaster\fR, which must be a window
+name (see ``GEOMETRY PROPAGATION'' below).
+If \fIboolean\fR has a false boolean value then propagation is
+disabled for \fImaster\fR.
+In either of these cases an empty string is returned.
+If \fIboolean\fR is omitted then the command returns \f50\fR or
+\f51\fR to indicate whether propagation is currently enabled
+for \fImaster\fR.
+Propagation is enabled by default.
+.TP
+\f5grid rowconfigure \fImaster index \fR?\fI-option value...\fR?
+Set the row properties of the \fIindex\fP row of the 
+geometry master, \fImaster\fP.
+The valid options are \f5-minsize\fP, \f5-weight\fP, \f5-pad\fP and \f5-name\fP.
+If one or more options are provided, then \fIindex\fP may be given as 
+a list of row indices to which the configuration options will operate on.
+The \f5-minsize\fP option sets the minimum size, in screen units,
+that will be permitted for this row.
+The \f5-weight\fP option (an integer value)
+sets the relative weight for apportioning
+any extra spaces among
+rows.
+A weight of zero (0) indicates the row will not deviate from its requested
+size.  A row whose weight is two will grow at twice the rate as a row
+of weight one when extra space is allocated to the layout.
+The \f5-pad\fP option specifies a pad distance that will be
+added either side of the row; adjacent rows merge their padding,
+creating a pad sized to the larger of the pads on either row.
+The \f5-name\fP option associates a name with the row, which can
+then be used as an index to refer to that row.
+.TP
+\f5grid rowdelete \fImaster index0 \fR?\fIindex1\fR?
+Deletes rows from \fIindex0\fP up to but not including \fIindex1\fP,
+If \fIindex1\fP is not given, it defaults to \fIindex0\fP+1.
+The deleted rows may not contain cells spanned by
+slaves outside the deleted columns.
+.TP
+\f5grid rowindex \fImaster index\fP
+Returns \fIindex\fP as a numerical index into the row.
+.TP
+\f5grid rowinsert \fImaster index \fR?\fIcount\fR?
+Inserts \fIcount\fP (default 1) new rows just before \fIindex\fP.
+The inserted rows may not split a spanning cell.
+.TP
+\f5grid size \fImaster\fR
+Returns the size of the grid (in columns then rows) for \fImaster\fP.
+The size is determined either by the largest row or column that has
+been occupied by a slave, or the largest column or row that has been explicitly
+configured.
+.TP
+\f5grid slaves \fImaster\fR ?\fI-option value\fR?
+If no options are supplied, a list of all of the slaves in \fImaster\fR
+are returned, most recently manages first.
+\fIOption\fP can be either \f5-row\fP or \f5-column\fP which
+causes only the slaves in the row (or column) specified by \fIvalue\fP
+to be returned.
+.SS INDICES
+.PP
+An index is either a non-negative integer value, the string
+\f5end\fP, (one beyond the last index in the row or column in question),
+or a name identifying a row or column previously named with
+the \f5-name\fP option to \f5rowconfigure\fP or \f5columnconfigure\fP.
+.SS "RELATIVE PLACEMENT"
+.PP
+The \f5grid\fP command contains a limited set of capabilities that
+permit layouts to be created without specifying the row and column 
+information for each slave.  This permits slaves to be rearranged, 
+added, or removed without the need to explicitly specify row and
+column information.
+When no column or row information is specified for a \fIslave\fP, 
+default values are chosen for
+\f5column\fP, \f5row\fP, \f5columnspan\fP and \f5rowspan\fP
+at the time the \fIslave\fP is managed. The values are chosen
+based upon the current layout of the grid, the position of the \fIslave\fP
+relative to other \fIslave\fPs in the same grid command, and the presence
+of the characters \f5-\fP, \f5^\fP, and \f5^\fP in \f5grid\fP
+command where \fIslave\fP names are normally expected.
+.RS
+.TP
+\f5-\fP
+This increases the columnspan of the \fIslave\fP to the left.  Several
+\f5-\fP's in a row will successively increase the columnspan. A \f5-\fP
+may not follow a \f5^\fP or a \f5x\fP.
+.TP
+\f5x\fP
+This leaves an empty column between the \fIslave\fP on the left and
+the \fIslave\fP on the right.
+.TP
+\f5^\fP
+This extends the \f5rowspan\fP of the \fIslave\fP above the \f5^\fP's
+in the grid.  The number of \f5^\fP's in a row must match the number of
+columns spanned by the \fIslave\fP above it.
+.RE
+.SS "THE GRID ALGORITHM"
+.PP
+The grid geometry manager lays out its slaves in three steps.
+In the first step, the minimum size needed to fit all of the slaves
+is computed, then (if propagation is turned on), a request is made
+of the master window to become that size.
+In the second step, the requested size is compared against the actual size
+of the master.  If the sizes are different, then spaces is added to or taken
+away from the layout as needed.
+For the final step, each slave is positioned in its row(s) and column(s)
+based on the setting of its \fIsticky\fP flag.
+.PP
+To compute the minimum size of a layout, the grid geometry manager
+first looks at all slaves whose columnspan and rowspan values are one,
+and computes the nominal size of each row or column to be either the
+\fIminsize\fP for that row or column, or the sum of the \fIpad\fPding
+plus the size of the largest slave, whichever is greater.  Then the
+slaves whose rowspans or columnspans are greater than one are
+examined.  If a group of rows or columns need to be increased in size
+in order to accommodate these slaves, then extra space is added to each
+row or column in the group according to its \fIweight\fP.  For each
+group whose weights are all zero, the additional space is apportioned
+equally.
+.PP
+For masters whose size is larger than the requested layout, the additional
+space is apportioned according to the row and column weights.  If all of
+the weights are zero, the layout is centered within its master.
+For masters whose size is smaller than the requested layout, space is taken
+away from columns and rows according to their weights.  However, once a 
+column or row shrinks to its minsize, its weight is taken to be zero.
+If more space needs to be removed from a layout than would be permitted, as
+when all the rows or columns are at their minimum sizes, the layout is
+clipped on the bottom and right.
+.SS "GEOMETRY PROPAGATION"
+.PP
+The grid geometry manager normally computes how large a master must be to
+just exactly meet the needs of its slaves, and it sets the
+requested width and height of the master to these dimensions.
+This causes geometry information to propagate up through a
+window hierarchy to a top-level window so that the entire
+sub-tree sizes itself to fit the needs of the leaf windows.
+However, the \f5grid propagate\fR command may be used to
+turn off propagation for one or more masters.
+If propagation is disabled then grid will not set
+the requested width and height of the master window.
+This may be useful if, for example, you wish for a master
+window to have a fixed size that you specify.
+.SS CREDITS
+.PP
+The \f5grid\fP command is based on ideas taken from the \fIGridBag\fP
+geometry manager written by Doug. Stein, and the \f5blt_table\fR geometry
+manager, written by George Howlett.
+.SH "SEE ALSO"
+.IR pack (9),
+.IR types (9),
+.IR options (9)

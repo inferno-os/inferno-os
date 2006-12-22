@@ -1,0 +1,24 @@
+MacOSX
+	README
+	power
+		bin
+			emu.new	0775	inferno	inf	/MacOSX/power/bin/emu
+			asm
+			iar
+			data2c
+			data2s
+			ksize
+			kstrip
+
+			limbo
+			mk
+			ms2
+			ndate
+			inm
+			sqz
+			srclist
+			yacc
+		include
+			+
+		lib
+	tcshrc

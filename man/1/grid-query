@@ -1,0 +1,46 @@
+.TH GRID-QUERY 1
+.SH NAME
+query \- graphical interface to view resources registered with a known
+.IR registry (4)
+.SH SYNOPSIS
+.B grid/query
+.SH DESCRIPTION
+.I Query
+displays the resources currently registered with a given
+.IR registry (4)
+and allows the user to mount and browse through the namespaces they provide. 
+.PP
+Resource categories are displayed in the main window, opening any of these (by clicking on the '+' next to the name) will reveal the names of the individual resources within that category. Each resource has a set of attributes which may be viewed at the lowest level of the displayed tree. Clicking on a specific resource and clicking the
+.B Mount
+button that appears will mount that resource (if possible) and display the imported namespace in a new window. From this window, the user can then browse this namespace as well as opening and running files. A shell window may also be opened to allow more complicated tasks to be performed.
+.PP
+Clicking
+.B Search
+brings up a search window. Here, the current
+.IR registry (4)
+may be searched for a resource containing the specified attribute names and values.
+.B Refresh
+updates the list of resources in the main window in case any have been added or removed.
+.PP
+
+.SH SOURCE
+.B /appl/grid/query.b
+.br
+.B /appl/grid/lib/browse.b
+.br
+.B /appl/grid/lib/srvbrowse.b
+
+.SH BUGS
+Currently, searching for a resource on a
+.IR registry (4)
+is only implemented in a very simple way. Given the attribute 
+.I (name, value)
+pairs, the search will return all resources whose attributes exactly match the specified values.
+.B *
+may be used to match any attribute value but not name.
+
+.SH "SEE ALSO"
+.IR grid-query (2),
+.IR registries (2),
+.IR registry (4),
+.IR grid-localreg (1)

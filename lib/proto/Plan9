@@ -1,0 +1,36 @@
+Plan9
+	386
+		bin
+			emu.new	775	inferno	inf	/Plan9/386/bin/emu
+			5a
+			5c
+			5l
+			asm
+			data2c
+			data2s
+			iar
+			limbo
+			inm
+		include
+			lib9.h
+			u.h
+		lib
+	mips
+		bin
+		include
+			lib9.h
+			u.h
+		lib
+	sparc
+		bin
+		include
+			lib9.h
+			os.h
+			u.h
+		lib
+	power
+		bin
+		include
+			lib9.h
+			u.h
+		lib

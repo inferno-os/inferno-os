@@ -1,0 +1,86 @@
+.TH GETTAR 1
+.SH NAME
+gettar, lstar, puttar \- tar archive utilities
+.SH SYNOPSIS
+.B gettar
+[
+.B -k
+] [
+.B -v
+] [
+.B -R
+]
+[
+.IR name " ..."
+]
+.br
+.B lstar
+.br
+.B puttar
+[
+.I file ...
+]
+.SH DESCRIPTION
+These commands manage POSIX.1 tar archives in Inferno.
+.PP
+.I Gettar
+reads a tar file from standard input and unpacks the contents into the current directory tree.
+By default,
+.I gettar
+converts absolute path names, including names starting with
+.LR  # ,
+into names relative to the current directory; the
+.B -R
+option extracts such names as-is.
+The
+.B -k
+option tells
+.I gettar
+to keep existing files rather than overwriting them with files from the archive.
+The
+.B -v
+option causes
+.I gettar
+to print on standard error the names of files extracted.
+Finally, listing one or more
+.I names
+as arguments will extract only those files.
+.PP
+.I Lstar
+reads a tar file from standard input and lists the files contained therein,
+one per line, with four space-separated fields giving the file name, modification time (in seconds since the epoch),
+size (in bytes), and a constant 0 (the place holder for a checksum).
+The format is the same as that produced by
+.BR "du -n -t" .
+.PP
+.I Puttar
+writes a tar file to standard output that contains each
+.IR file ,
+and its substructure if it is a directory.
+Given no arguments,
+.I puttar
+instead reads a list of file names from standard input and includes
+each file or directory named; it does not copy directory substructure.
+.SH EXAMPLE
+The following commands create a tar file with two files
+.B test.b
+and
+.BR srv.b :
+.IP
+.EX
+$ cat tarlist
+test.b
+srv.b
+$ puttar <tarlist >test.tar
+$ lstar <test.tar
+test.b 867178082 1104 0
+srv.b 866042662 3865 0
+.EE
+.SH SOURCE
+.B /appl/cmd/gettar.b
+.br
+.B /appl/cmd/lstar.b
+.br
+.B /appl/cmd/puttar.b
+.SH SEE ALSO
+.IR tarfs (4)

@@ -1,0 +1,75 @@
+.TH DYNLD 3
+.SH NAME
+dynld \- load kernel module dynamically
+.SH SYNOPSIS
+.B bind -a #L /dev
+.PP
+.B /dev/dynld
+.br
+.B /dev/dynsyms
+.SH DESCRIPTION
+.I Dynld
+serves a directory containing two files that control dynamic loading of modules.
+When a module is loaded,
+.IR dynld (10.2)),
+checks the module's type against a type provided by the driver;
+the types must match.
+Currently the only supported module type is that of a device driver,
+.B Dev
+defined in
+.IR dev (10.2)).
+.PP
+The control file
+.B dynld
+can only be opened by the host owner
+(see
+.IR eve (10.2)).
+It accepts the following commands:
+.TP
+.BI "load dev" " name file \fR[\fP \fR[\fP tag \fR] dep ... ]\fP"
+Load a module for device driver
+.I name
+from the given
+.IR file .
+The optional
+.I tag
+is typically the MD5 or SHA1 hash of the file's contents, to identify a particular version of the driver.
+.TP
+.BI "unload dev" " name \fR[\fP file \fR[\fP tag \fR] ]\fP"
+Unload the device driver identified by the given
+.IR name ,
+optionally qualified by the other parameters.
+.PP
+When read,
+.B dynld
+returns a list of the currently-loaded drivers, one per line, most recent first.
+Each line contain: the module's device type
+.BI # x
+used in
+.IR bind (1);
+its kernel address;
+its total text and data size in bytes;
+its
+.I name
+when loaded;
+the name of the
+.I file
+from which it was loaded;
+and its
+.IR tag .
+.PP
+.B Dynsyms
+is a read-only text file that lists, one per line,
+the symbols exported by the running kernel for use by modules it loads.
+Each line contains:
+the symbol's kernel address,
+its type signature,
+and its name.
+.SH SOURCE
+.B /os/port/devdynld.c
+.SH SEE ALSO
+.IR dynld (10.2),
+.IR a.out (10.6),
+.SH BUGS
+.I Dynld
+does not currently check that a driver is no longer in use before unloading it.

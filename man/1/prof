@@ -1,0 +1,140 @@
+.TH PROF 1
+.SH NAME
+prof, wm/prof \- profiling limbo programs
+.SH SYNOPSIS
+.B prof
+[
+.B -bflnve
+] [
+.BI -m " modname"
+] ... [
+.BI -s " rate"
+] [
+.BI "cmd arg ..."
+]
+.PP
+.B wm/prof
+[
+.B -e
+] [
+.BI -m " modname"
+] ... [
+.BI -s " rate"
+] [
+.BI "cmd arg ..."
+]
+.SH DESCRIPTION
+.I Prof
+is a simple profiling tool which calculates the percentage of time spent on a 
+particular line of limbo source or spent in a particular limbo function. It can 
+determine where a module or set of modules is spending its time. The source in
+question should be compiled with the 
+.B -g
+flag so that the relevant symbol table files exist.
+.PP
+The tk version of the profiler
+.I wm/prof
+shows this information in a text widget and colours the lines of source according
+to the amount of time spent on each line. The darker the colour, the longer
+spent.
+.PP
+The
+.B -b
+option starts profiling.
+.PP
+The
+.B -f
+option shows the function profile.
+.PP
+The
+.B -l
+option shows the line profile. If neither this option nor the
+.B -f
+option are given, 
+.B -l
+is assumed.
+.PP
+The
+.B -n
+option lists the name of the file along with the line number.
+.PP
+The
+.B -v
+option outputs all functions and/or lines even when the percentage
+of time spent in them is zero.
+.PP
+The
+.B -m
+option lists the module names which are to be profiled. If none are given, all the
+modules loaded by the kernel will be profiled. The name may be the actual name of
+the module or its path name.
+.PP
+The
+.B -e
+option profiles the module that is loaded first in any following command. In this case
+there is no need to give a
+.B -m
+option as this is added automatically.
+.PP
+The
+.B -s
+option sets the sample interval
+.I rate
+and is expressed in ms. The default is 100 ms.
+.PP
+Any remaining arguments are assumed to
+specify a command and set of arguments to the command. If this is the case,
+.B prof
+will automatically start profiling, run the command to completion and then
+stop profiling before showing the profile statistics.
+.PP
+.B Prof
+displays the profile statistics (unless the
+.B -b
+option is being used) according to the output format required.
+.PP
+.SH EXAMPLE
+.EX
+To profile a particular command
+	prof /dis/math/parts 10000
+	wm/prof /dis/math/parts 10000
+To profile the same command but restrict attention to its own module (Partitions).
+	prof -m Partitions /dis/math/parts 10000
+	wm/prof -m Partitions /dis/math/parts 10000
+A shorter version of the above
+	prof -e /dis/math/parts 10000
+	wm/prof -e /dis/math/parts 10000
+To profile interactively
+	prof -b -m Partitions -s 10
+	/dis/math/parts 10000
+	prof -f -l -n 
+.EE
+.PP
+Note that the output format options (
+.B -f
+, 
+.B -l
+, 
+.B -n
+, 
+.B -v
+) are ignored when 
+.B -b
+is present.
+.SH SOURCE
+.B /appl/cmd/prof.b
+.PP
+.B /appl/wm/prof.b
+.SH SEE ALSO
+.IR cprof (1),
+.IR mprof (1),
+.IR wm-cprof (1),
+.IR wm-mprof (1),
+.IR prof (2),
+.IR prof (3)
+.SH BUGS
+.I Prof
+cannot profile compiled limbo programs.
+
+
+

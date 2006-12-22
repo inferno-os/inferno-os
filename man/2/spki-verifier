@@ -1,0 +1,91 @@
+.TH SPKI-VERIFIER 2
+.SH NAME
+verifier: verify \- verify sequence of SPKI elements
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "sexprs.m";
+include "spki.m";
+
+sexprs := load Sexprs Sexprs->PATH;
+Sexp: import sexprs;
+
+spki := load SPKI SPKI->PATH;
+Name, Seqel, Subject, Valid: import spki;
+
+verifier := load Verifier Verifier->PATH;
+
+Speaksfor: adt {
+   subject:   ref Subject;
+   name:      ref Name;
+   regarding: ref Sexp;
+   valid:     ref Valid;
+};
+
+init:   fn();
+verify: fn(seq: list of ref Seqel):
+          (ref Speaksfor, list of ref Seqel, string);
+.EE
+.SH DESCRIPTION
+.B Verifier
+checks SPKI proof sequences.
+This initial implementation provides a single basic operation.
+Further work will allow (via channels and processes) verification
+to detect and refresh expired credentials, to support `pull' authentication,
+for instance.
+.PP
+.B Init
+must be called before any other operation of the module.
+.PP
+A
+.B Speaksfor
+value represents a claim that a given
+.I subject
+entity
+speaks for (on behalf of) a given
+.I name
+regarding a set of statements, with validity optionally limited to a given period.
+That is, when during the agreed time,
+.I subject
+makes a statement that is in the agreed sete, it is treated
+as if
+.I name
+had said it directly.
+The set of statements is defined by a SPKI `tag' expression, represented as
+an S-expression.
+In particular, the
+.B "(tag (*))"
+means that
+.I subject
+speaks for
+.I name
+about everything.
+A claim can be taken as true if supported by acceptable evidence,
+for instance a collection of signed certificates.
+.PP
+.B Verify
+does the actual verification of a sequence
+.I seq
+of SPKI certificates, signatures and operations
+that makes and supports a claim that an entity speaks for another.
+It returns a tuple
+.BI ( claim,\ badel,\ err ) .
+On success,
+.I claim
+refers to a
+.B Speaksfor
+value that summaries the statement verified by the sequence.
+On failure,
+.I claim
+is nil,
+.I badel
+is a list of sequence elements headed by the first element of
+.I seq
+that failed verification, and
+.I err
+is the reason it failed.
+.SH SOURCE
+.B /appl/lib/spki/verifier.b
+.SH SEE ALSO
+.IR sexprs (2),
+.IR spki (2)

@@ -1,0 +1,944 @@
+.TH IP 3
+.SH NAME
+ip \- network protocols over IP
+.SH SYNOPSIS
+.nf
+.B bind -a #I\f1[\f5\f2ifn\f1]\f5 /net
+
+.B /net/arp
+.B /net/bootp
+.B /net/iproute
+.B /net/ipselftab
+.B /net/iprouter
+.B /net/log
+
+.B  /net/ipifc/clone
+.B /net/ipifc/stats
+.BI /net/ipifc/ n 
+.BI /net/ipifc/ n /data
+.BI /net/ipifc/ n /ctl
+.BI /net/ipifc/ n /local
+.BI /net/ipifc/ n /status
+
+.BI  /net/ proto /clone
+.BI /net/ proto /stats
+.BI /net/ proto / n 
+.BI /net/ proto / n /ctl
+.BI /net/ proto / n /data
+.BI /net/ proto / n /err
+.BI /net/ proto / n /local
+.BI /net/ proto / n /remote
+.BI /net/ proto / n /status
+.BI /net/ proto / n /listen
+\&...
+.fi
+.SH DESCRIPTION
+The IP device serves a directory representing a self-contained
+collection of IP interfaces.
+There may be several instances, identified by the decimal interface number
+.IR ifn ,
+that follows the
+.B #I
+device name;
+.B #I0
+is assumed by default.
+Each instance
+has a disjoint collection of IP interfaces, routes and address resolution maps.
+A physical or virtual device, or
+.IR medium ,
+that produces IP packets is associated
+with a logical IP network using the mechanisms described under
+.I "Physical and logical interfaces"
+below.
+Commonly all IP media on a host are assigned to a single
+instance of
+.BR #I ,
+which is conventionally bound to
+.BR /net ,
+but other configurations are possible: interfaces might be assigned
+to different device instances forming separate
+logical IP networks
+to partition networks in firewall or
+gateway applications.
+.PP
+Hosted Inferno provides a subset of the interface described here that gives
+to  the TCP/IP and UDP/IP of the host system's own IP subsystem.
+See
+.IR "Hosted interfaces"
+below for a summary of the differences.
+.SS Protocols
+Within each instance,
+the IP device provides
+an interface to each IP protocol configured into the system, such as TCP/IP or UDP/IP.
+.PP
+Each of the protocols is served by the IP device, which represents a
+connection by a set of device files.
+The top level directory,
+.I proto
+in the
+.SM SYNOPSIS
+above,
+is named after a protocol (eg,
+.BR tcp ,
+.BR il ,
+.BR udp )
+and contains a
+.B clone
+file, a
+.B stats
+file,
+and subdirectories numbered from zero to the number of connections
+configured for this protocol.
+.PP
+The read-only
+.B stats
+file contains protocol-specific statistics as one or more lines of text.
+There is no particular format, but the values are often a superset
+of those required by the SNMP MIB.
+.PP
+Opening the
+.B clone
+file reserves a connection, represented by
+one of the numbered subdirectories.  The resulting file descriptor
+will be open on the control file,
+.BR ctl ,
+of the newly allocated connection.
+Reading the
+.B ctl
+file returns a text
+string representing the number of the
+connection.
+Connections may be used either to listen for incoming calls
+or to initiate calls to other machines.
+.PP
+A connection is controlled by writing text strings to the associated
+.B ctl
+file.
+After a connection has been established data may be read from
+and written to the data file.
+.PP
+Before sending data, remote and local addresses must be set for the connection.
+For outgoing calls the local port number will be allocated randomly if none is set.
+Addresses are set by writing control messages to the
+.B ctl
+file of the connection.
+The connection is not established until the data file is opened.
+There are two models depending on the nature of the protocol.
+For connection-oriented protocols, the process will block on open
+until the remote host has acknowledged the connection,
+either accepting it, causing a successful return from open,
+or rejecting it, causing open to return an appropriate error.
+For connectionless protocols, the open always succeeds;
+the `connect' request sets local parameters for the source and destination fields
+for use by subsequent read and write requests.
+.PP
+The following control messages are provided by this interface
+to all protocols.
+A particular protocol can provide additional commands, or
+change the interpretation or even syntax of those below,
+as described in the manual page for that protocol.
+The description below shows
+the standard commands with the default argument syntax and interpretation:
+.TP
+.BI connect\  ipaddress ! port "[!r]\ [\f2lport\f5]"
+Set the remote IP address and port number for the connection.
+If the
+.B r
+flag
+is supplied and the optional local port
+.I lport
+has not been specified the system will allocate
+a restricted port number (between 600 and 1024) for the connection to allow communication
+with Unix machines'
+.B login
+and
+.B exec
+services.
+.TP
+.BI "announce\ [" ipaddress !] port
+Set the local port
+number to
+.I port
+and accept calls to that port.
+.I Port
+is a decimal port number or
+.LR * .
+If
+.I port
+is zero, assign a port number
+(the one assigned can be read from the
+.B local
+address file).
+If
+.I port
+is
+.LR * ,
+accept
+calls for any port that no process has explicitly announced.
+If the optional
+.I ipaddress
+is given, set the local IP address for the connection
+to that address, and accept only those incoming calls to
+.I port
+that are addressed to
+.IR ipaddress .
+.B Announce
+fails if the connection is already announced or connected.
+.TP
+.BI bind\  port
+.I Port
+is a decimal port number or
+.LR * .
+Set the local port number to
+.IR port .
+This request exists to support emulation of
+of BSD sockets and is otherwise neither needed nor used in Inferno.
+.TP
+.BI tos " \f1[\f2 n \f1]\f2"
+Set the type-of-service value in outgooing packets to
+.I n
+(default: 0).
+.TP
+.BI ttl " \f1[\f2 n \f1]\f2"
+Set the time-to-live (TTL) value in packets transmitted on this conversation
+to
+.I n
+(default: 255).
+.PP
+Port numbers must be in the range 1 to 32767.
+.PP
+Several read-only files report the status of a
+connection.
+The
+.B remote
+and
+.B local
+files contain the IP address and port number for the remote and local side of the
+connection.
+The
+.B status
+file contains protocol-dependent information to help debug network connections.
+The first word on the first line gives the status of the
+connection.
+.PP
+Having announced, a process may accept incoming connections by calling
+.B open
+on the
+.B listen
+file.
+The
+.B open
+will block until a new connection request arrives;
+it will then
+return an open file descriptor that points to the control file of the
+newly accepted connection.
+Repeating this procedure will accept all calls for the
+given protocol.
+.PP
+In general it should not be necessary to use the file system interface to the
+networks.
+The
+.BR dial ,
+.BR announce ,
+and
+.BR listen
+functions described in
+.IR sys-dial (2)
+perform the necessary I/O to establish and
+manipulate network connections.
+.SS TCP protocol
+The TCP protocol is the standard Internet
+protocol for reliable stream communication; it does not preserve
+read/write
+boundaries.
+.PP
+A connection is controlled by writing text strings to the associated
+.B ctl
+file.
+After a connection has been established data may be read from
+and written to the data file.
+The TCP protocol provides a stream connection that does not preserve
+read/write
+boundaries.
+.PP
+For outgoing calls the local port number will be allocated randomly if none is set.
+Addresses are set by writing control messages to the
+.B ctl
+file of the connection.
+The connection is not established until the data file is opened.
+For TCP the
+process will block until the remote host has acknowledged the connection.
+.PP
+As well as the standard control messages above,
+TCP accepts the following:
+.TP
+.BI hangup
+Send a TCP reset (RST) to the remote side and end the conversation,
+without waiting for untransmitted data to be acknowledged,
+unlike a normal close of the device.
+.TP
+.BI keepalive\ [ "n" ]
+Enable `keep alive'
+mode:
+if no traffic crosses the link within a given period, send a
+packet to check that the remote party is still there, and remind
+it that the local connection is still live.
+The optional value
+.I n
+gives the keep-alive time in milliseconds (default: 120000).
+.PP
+The
+.B status
+file has many lines, each containing a labelled number, giving the values
+of parameters and statistics such as:
+maximum allowed connections, outgoing calls, incoming calls, established but later reset,
+active calls, input segments, output segments, retransmitted segments, retransmitted timeouts,
+input errors, transmitted reset.
+.SS UDP protocol
+.PP
+UDP provides the standard Internet
+protocol for unreliable datagram
+communication.
+.PP
+UDP opens always succeed.
+Before sending data, remote and local addresses must be set for the connection.
+Alternatively, the following special control requests can be used:
+.TP
+.B headers
+Set the connection to use an address header with IPv6 addressing
+on reads and writes of the data file,
+allowing a single connection to send datagrams to converse with
+many different destination addresses and ports.
+The 52 byte binary header appears before the data
+read or written.
+It contains: remote IP address, local IP address, interface IP address, remote port, and local port.
+The IP addresses are 16 bytes each in IPv6 format, and
+the port addresses are 2 bytes each, all written in network (big-endian) order.
+On reads, the header gives the values from the incoming datagram,
+except that if the remote used a multicast destination address, the IP address
+of the receiving interface is substituted.
+On writes, the header provides the destination for the resulting datagram,
+and if the local IP address corresponds to a valid local unicast interface,
+that address is used, otherwise the IP address of the transmitting interface
+is substituted.
+.TP
+.B oldheaders
+Set the connection to use an address header with IPv6 addressing
+on reads and writes of the data file,
+allowing a single connection to send datagrams to converse with
+many different destination addresses and ports.
+The 36 byte binary header appears before the data
+read or written.
+It contains: remote IP address, local IP address, remote port, and local port.
+The IP addresses are 16 bytes each in IPv6 format,
+the port addresses are 2 bytes each, all written in network (big-endian) order.
+On reads, the header gives the values from the incoming datagram,
+except that if the remote used a multicast destination address, the IP address
+of the receiving interface is substituted.
+On writes, the header provides the destination for the resulting datagram,
+and if the local IP address corresponds to a valid local unicast interface,
+that address is used, otherwise the IP address of the transmitting interface
+is substituted.
+.TP
+.B headers4
+Set the connection to use an address header with IPv4 addresses
+on reads and writes of the data file,
+allowing a single connection to send datagrams to converse with
+many different destination addresses and ports.
+The 12 byte binary header appears before the data
+read or written.
+It contains: remote IP address, local IP address, remote port, and local port.
+The IP addresses are 4 bytes each,
+the port addresses are 2 bytes each, all written in network (big-endian) order.
+On reads, the header gives the values from the incoming datagram.
+On writes, the header provides the destination for the resulting datagram.
+This mode is obsolete and destined for oblivion.
+.PP
+A read of less than
+the size of the datagram will cause the entire datagram to be consumed.
+Each write to the data file will send a single datagram on the network.
+.PP
+In replies, in connection-oriented mode, if the remote address
+has not been set, the first arriving packet sets the following
+based on the source of the incoming datagram:
+the remote address and port for the conversation,
+and the local address is set to the destination address in the
+datagram unless that is a multicast address, and then the address
+of the receiving interface is used.
+.PP
+If a conversation is in
+.B headers
+mode, only the local port is relevant.
+.PP
+Connection-oriented UDP is hungup if an ICMP error (eg, host or port unreachable,
+or time exceeded) arrives with matching port.
+.PP
+The
+.I udp
+.B status
+file contains four lines, each containing a labelled number counting an event:
+input datagrams, datagrams on unannounced ports, datagrams with wrong checksum, and output datagrams.
+.SS IL Protocol
+IL provides a reliable point-to-point datagram service for communication between Plan 9 and
+native Inferno machines.
+Each read and write transfers a single datagram, as for UDP.
+The datagrams are delivered reliably and in order.
+Conversations are addressed and established as for TCP.
+.SS Routing
+.PP
+The
+.B iproute
+file can be read and written.
+When read, it returns the contents of the IP routing tables,
+one line per entry,
+with six fields giving the
+destination host or network address, address mask,
+gateway address, route type, tag (see below), and the number of the
+.B ipifc
+interface owning the route
+(or
+.RB ` - '
+if none).
+The route type is up to four characters:
+.B 4
+or
+.B 6
+(IPv4 or IPv6 route);
+.B i
+(route is interface);
+one of
+.B u
+(unicast),
+.B b
+(broadcast),
+or
+.B m
+(multicast);
+and lastly
+.B p
+if the route is point-to-point.
+.PP
+Commands can also be written to control the routing:
+.TP
+.BI add " ip mask gw \f1[\f2 tag \f1]\f2"
+Add a route via the gateway identified by IP address
+.I gw
+to the address specified by
+.I ip
+and subnet mask
+.IR mask .
+Tag the resulting table entry with the
+.I tag
+provided, or the current
+.I tag
+(see
+.B tag
+below),
+or the tag
+.BR none .
+.TP
+.BI flush " \f1[\f2 tag \f1]\f2"
+Remove all routes with the given
+.I tag
+that do not correspond to a local interface.
+If
+.I tag
+is not given, flush all routes.
+.TP
+.BI remove " ip mask"
+Remove routes to the given address.
+.TP
+.BI tag " tag"
+Tag the routes generated by writes on the current file descriptor with
+the given
+.IR tag
+of up to 4 characters.
+The default is
+.BR none ,
+set when
+.B iproute
+is opened.
+.PP
+The
+.B ipselftab
+file summarises the addresses and routes that refer to the local host.
+It gives an address, the number of logical interfaces, and the interface type
+in the same form as the route type of
+.BR iproute .
+.PP
+The
+.B iprouter
+file is provided for use by a user-level application acting as an IP gateway.
+It is effective only when the kernel-level gateway is not enabled
+(see the
+.B iprouting
+interface control request below).
+Once opened, packets that are not addressed to a
+local address can be read from this device.
+The packet contents are preceded by a 16 byte binary header that
+gives the IPv6 address of the local interface that received the packet.
+.SS Bootstrap
+.PP
+The read-only
+.B bootp
+file contains the results of the last BOOTP
+request transmitted on any interface (see
+.I "Physical and logical interfaces"
+below)
+as several lines of text,
+with two fields each.
+The first field names an entity and the second field gives its value in IPv4 address format.
+The current entities are:
+.IP
+.RS
+.TF ipaddr
+.TP
+.B auip
+Authentication server address
+.TP
+.B fsip
+File server address
+.TP
+.B gwip
+Address of an IP gateway out of this (sub)net.
+.TP
+.B ipaddr
+Local IP address
+.TP
+.B ipmask
+Subnet mask for the local IP address
+.RE
+.PD
+.PP
+If any value is unknown (no reply to BOOTP, or value unspecified),
+the value will be zero, represented as
+.BR 0.0.0.0 .
+.SS Address resolution
+The
+.B arp
+file can be read and written.
+When read,
+it returns the contents of the current ARP cache as a sequence of lines,
+one per map entry, giving
+type, state, IP address and corresponding MAC address.
+Several textual commands can be written to it:
+.TP
+.BI add " \f1[\f2 medium \f1]\f2 ip mac"
+Add a mapping from IP address
+.I ip
+to the given
+.I mac
+address (a sequence of bytes in hexadecimal)
+on the given
+.IR medium .
+It must support address resolution (eg, Ethernet).
+If the
+.I medium
+is not specified, find the one associated with a route to
+.I ip
+(which must be IPv4).
+.TP
+.B flush
+Clear the cache.
+.SS Logging
+.PP
+The
+.B log
+file provides protocol tracing and debugging data.
+While the file is held open, the system
+saves, in a small circular buffer, error messages logged by selected protocols.
+When read, it returns data not previously read,
+blocking until there is data to read.
+The following commands can be written to determine what is logged:
+.TP
+.BI set " proto ..."
+Enable logging of messages from each source
+.IR proto ,
+one or more of:
+.BR ppp ,
+.BR ip ,
+.BR fs ,
+.BR tcp ,
+.BR il ,
+.BR icmp ,
+.BR udp ,
+.BR compress ,
+.BR ilmsg ,
+.BR gre ,
+.BR tcpmsg ,
+.BR udpmsg ,
+.BR ipmsg
+and
+.BR esp .
+.TP
+.BI clear " proto ..."
+Disable logging of messages from the given sources.
+.SS Physical and logical interfaces
+The configuration of the physical and logical IP interfaces
+in a given instance of
+.B #I
+uses
+a virtual protocol
+.B ipifc
+within that instance,
+that adds, controls and removes
+IP interfaces.
+It is represented by the protocol directory
+.BR ipifc .
+Each connection corresponds to an interface to a physical or virtual medium on
+which IP packets can be sent and received.
+It has a set of associated values:
+minimum and maximum transfer unit,
+MAC address, and a set of logical IP interfaces.
+Each logical IP interface has local and remote addresses and an address mask.
+.PP
+Opening the
+.B clone
+file returns a file descriptor open on the
+.B ctl
+file for a new connection.
+A medium is then attached using a
+.B bind
+request;
+logical interfaces are associated by
+.B connect
+or
+.BR add ;
+they are removed by
+.BR remove ;
+and finally
+.B unbind
+detaches the medium from the connection.
+For certain types of media, the
+.B unbind
+is automatic when the connection itself is closed.
+With most media, including Ethernet,
+the
+.B ipifc
+connection files can be closed after configuration, and later
+reopened if need be to add or remove logical interfaces,
+or set other parameters.
+.PP
+The
+.B ctl
+file responds to the following text commands, including interface-specific variants
+of standard
+IP device
+requests:
+.TP
+.BI bind " medium " "[ \f5\f2name\f5 [ \f2arg ...\f5 ]"
+Attach device
+.I medium
+to the interface, which must not already be bound to a device.
+The
+.I name
+and subsequent arguments are interpreted by the driver for the
+.IR medium .
+The device name associated with the interface is
+.IR name ,
+if given, or a generated name otherwise.
+.TP
+.BR connect " \f2ip\f5 [\f2mask \f5[\f2remote \f5[\f2mtu \f5]]]"
+Remove all existing logical interfaces and create a new one as if by
+.B add
+(see below).
+The connection must be bound to a medium.
+.TP
+.BR add " \f2ip\f5 [\f2 mask \f5[\f2 remote \f5[\f2 mtu \f5] ] ]"
+Add a logical interface with local IP address
+.IR ip .
+The default for
+.I mask
+is the mask for
+.IR ip 's
+address class;
+for the
+.IR remote
+address,
+.IR ip 's
+network; and for
+.IR mtu ,
+the largest MTU allowed by the medium.
+The new interface is registered in the IP routing tables.
+.TP
+.B bootp
+Broadcast a BOOTP packet (using
+.BR udp ).
+If a valid response is received, set the interface's IP address and mask,
+and the IP stack's default gateway to the results obtained from BOOTP.
+The results are also available to applications by reading
+the
+.B bootp
+file above.
+Note that this mechanism is now deprecated in favour of
+.IR dhcpclient (2).
+.TP
+.BI remove " ip mask"
+Remove the logical interface determined by
+.I ip
+and
+.IR mask .
+.TP
+.BI iprouting\ [ "n" ]
+Control the use of IP routing on this
+.IR ip (3)
+instance.
+If
+.I n
+is missing or non-zero, allow use as a gateway,
+rerouting via one interface packets received on another.
+By default,
+or if
+.I n
+is zero, use as a gateway is not allowed: if a packet received
+is not addressed to any local interface, either pass it to
+a gateway application if active (see
+.B iprouter
+in
+.IR ip (3)),
+and otherwise drop the packet.
+.TP
+.BI mtu " n"
+.br
+Set the maximum transmit unit (MTU) on this interface to
+.I n
+bytes, which must be valid for the medium.
+.TP
+.BI addmulti " multi"
+Add the multicast address
+.I multi
+to the interface.
+.TP
+.BI remmulti " multi"
+Remove the multicast address
+.I multi
+from the interface.
+.TP
+.BI unbind
+Remove any association between
+the current medium (device) and the connection:
+remove all routes using this interface, detach the device,
+stop packet transport, and
+remove all logical interfaces.
+The connection is ready for re-use.
+.PP
+The
+.B local
+file contains one line for each logical interface, of the form:
+.IP
+.IB local -> self ...
+.PP
+where
+.I local
+is the local address associated with the interface and each
+.I self
+is a broadcast or multicast address that can address that interface,
+including subnet addresses, if any.
+.PP
+The
+.B status
+file contains many fields:
+the first two give the device name and the value of the current MTU,
+followed by 7 fields per line for each logical interface:
+local address, address mask, remote address, packets in, packets out, input errors, and output errors.
+.PP
+The following sections describe the media drivers available.
+Each is separately configurable into a kernel.
+.SS Ethernet medium
+Ethernet devices as described in
+.IR ether (3)
+can be bound to an IP interface.
+The bind request has the form:
+.IP
+.BI "bind ether " device
+.PP
+The interface opens two conversations on the given Ethernet
+.IR device ,
+for instance
+.BR ether0 ,
+using an internal version of
+.BR dial ,
+with the addresses
+.IB device !0x800
+(IPv4)
+and
+.IB device !0x806
+(ARP).
+See
+.IR sys-dial (2)
+for the interpretation of such addresses.
+The interface runs until a process does an explicit
+.BR unbind .
+Multicast settings made on the interface are propagated to the
+.IR device .
+.SS Point-to-point medium
+An asynchronous serial device as described in
+.IR eia (3)
+can be bound to an interface as a Point-to-Point protocol (PPP) device.
+The bind request has the form:
+.IP
+.BI "bind ppp " "serial ip remote mtu framing username secret"
+.PP
+All parameters except
+.I serial
+are optional.
+The character
+.RB ` - '
+can appear as a placeholder for any parameter.
+Except for authentication data, an attempt is made to negotiate
+suitable values for any missing parameter values, including network addresses.
+The parameters are interpreted as follows:
+.IP
+.RS
+.TF username
+.TP
+.I serial
+Name of the device that will run PPP.
+.TP
+.I ip
+Local IP address for the interface.
+.TP
+.I remote
+IP address of the other end of the link.
+.TP
+.I mtu
+Initial MTU value for negotiation (default: 1450)
+.TP
+.I framing
+If
+.I framing
+is zero, do not provide asynch. framing (on by default).
+Unimplemented.
+.TP
+.I username
+Identification string used in PAP or CHAP authentication.
+.TP
+.I secret
+Secret used in authentication; with CHAP it never crosses the link.
+.PD
+.RE
+.PP
+If the name
+.I serial
+contains
+.RB ` ! '
+a connection will be opened using
+.B dial
+(see
+.IR sys-dial (2)).
+Otherwise the name will be opened as-is;
+usually it is the name of a serial device
+(eg,
+.BR "#t/eia0" ).
+In the latter case, a companion
+.B ctl
+file will also be opened if possible, to set serial characteristics for PPP
+(flow control, 64kbyte queue size, nonblocking writes).
+An attempt is made to start the PPP link immediately.
+The write of the
+.B bind
+control message returns with an error if the link cannot be started,
+or if negotiation fails.
+The PPP link is automatically unbound if the line hangs up (eg, modem drops carrier),
+or an unrecoverable error occurs when reading or writing the connection.
+.PP
+The PPP implementation can use either PAP and CHAP authentication,
+as negotiated, provided an appropriate
+.I username
+and
+.I secret
+is given in the
+.B bind
+request.
+It does not yet support the Microsoft authentication scheme.
+.SS Packet medium
+The packet medium allows an application to be source and sink
+for IP packets.
+It is bound to an interface by the simple request:
+.IP
+.B "bind pkt"
+.PP
+All other interface parameters including its IP address are
+set using the standard
+.I ipifc
+requests described above.
+Once that has been done, the application reads the
+.B data
+file of the interface to receive packets addressed to the interface,
+and it writes to the file to inject packets into the IP network.
+The interface is automatically unbound when all interface files are closed.
+.SS Hosted interfaces
+Native Inferno and Plan 9 have related IP implementations.
+Plan 9
+.I emu
+therefore simply imports Plan 9's
+.BR /net ,
+and in the absence of version-specific differences, what is described
+above still applies.
+.PP
+On all other hosted platforms,
+the IP device gives applications
+within
+.IR emu (1)
+a portable interface to TCP/IP and UDP/IP, even through it
+is ultimately using the host system's own TCP/IP and UDP/IP implementations
+(usually but not always socket based).
+The interface remains the same: for instance by
+.B /net/tcp
+and
+.BR /net/udp ,
+but is currently more limited in the set of services and control requests.
+Both IPv4 and IPv6 address syntax may be used, but the IPv6 form must
+still map to the IPv4 address space.
+Only TCP and UDP are generally available, and a limited interface to ARP on some platforms (see below).
+The set of TCP/UDP control requests is limited to:
+.BR connect ,
+.BR announce ,
+.BR bind ,
+.BR ttl ,
+.BR tos ,
+.BR ignoreadvice ,
+.BR headers4 ,
+.BR oldheaders ,
+.BR headers ,
+.BR hangup
+and
+.BR keepalive .
+.PP
+The write-only
+.B arp
+file is implemented only on some Unix systems, and
+is intended to allow the implementation of
+the BOOTP protocol
+using Inferno, on hosted systems.
+It accepts a single textual control request:
+.TP
+.BI add " ip ether"
+Add a new ARP map entry, or replace an existing one, for IP address
+.IR ip ,
+associating it with the given
+.I ether
+MAC address.
+The
+.I ip
+address is expressed in the usual dotted address notation;
+.I ether
+is a 12 digit hexadecimal number.
+.PP
+An error results if the host system does not allow the ARP map
+to be set, or the current user lacks the privileges to set it.
+.SH SOURCE
+.B /emu/port/devip.c
+.br
+.B /os/ip/devip.c
+.br
+.BI /os/ip/ proto .c
+.br
+.B /os/ip/ipifc.c
+.br
+.br
+.B /os/ip/*medium.c
+.SH "SEE ALSO"
+.IR sys-dial (2)
+.\" joinmulti and leavemulti are unimplemented
+.\" many media are only partly implemented

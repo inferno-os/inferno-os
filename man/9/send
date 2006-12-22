@@ -1,0 +1,38 @@
+.TH SEND 9
+.SH NAME
+send \- send a value down a Tk channel
+.SH SYNOPSIS
+\f5send \fIchan\fP \fIstring\fP
+.SH DESCRIPTION
+.B Send
+is the gateway from the Tk world into the Limbo world.
+It sends
+.I string
+down
+.IR chan ,
+which should previously have been named with a call to
+.B namechan
+(see
+.IR tk (2)).
+Tk channels are non blocking, so the call will return immediately,
+whether the message has been sent or not. If too many messages
+have been queued on the
+.IR chan ,
+then the message will be
+discarded, and a warning printed on the console.
+.I String
+is not subject to interpretation by the usual Tk quoting rules.
+.SH BUGS
+.I String
+is not subject to interpretation by the usual Tk quoting rules.
+This means, for example that:
+.EX
+	radiobutton .x -text X -variable x -value x
+	radiobutton .y -text Y -variable y -value y
+	button .z -text Submit {send chan submit [variable X]}
+.EE
+will not work as expected. Instead, one must interrogate values
+directly in Limbo.
+.PP
+The specialised queued channels will be replaced by buffered channels in Limbo in
+a future edition of Inferno.

@@ -1,0 +1,28 @@
+.TH RM 1
+.SH NAME
+rm \- remove file(s)
+.SH SYNOPSIS
+.B rm
+[
+.B -fr
+]
+.I file ...
+.SH DESCRIPTION
+.I Rm
+removes the specified files or directories.
+A directory is removed only if it is empty (but
+see the
+.B -r
+option).
+Removal of a file requires write permission in its directory, but requires neither read nor write permission on the file itself.  The options are:
+.TP
+.B -f
+Suppress diagnostics
+.TP
+.B -r
+Recursively remove a directory's substructure before removing the directory.
+.SH SOURCE
+.B /appl/cmd/rm.b
+.SH "SEE ALSO"
+.IR tiny (1),
+.IR sys-remove (2)

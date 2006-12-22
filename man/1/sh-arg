@@ -1,0 +1,129 @@
+.TH SH-ARG 1
+.SH NAME
+arg \- shell command-line argument parsing
+.SH SYNOPSIS
+.B load arg
+.br
+.B arg
+[
+.I opts command
+]...
+.B -
+.I args
+.SH DESCRIPTION
+.I Arg
+is a loadable module for
+.IR sh (1)
+that parses command-line arguments in the same
+form as
+.IR arg (2).
+It accepts a list of
+.RI ( opts ,\  command )
+pairs, where
+each character in
+.I opts
+is an acceptable option, and
+.I command
+is a shell command to be run if any character
+in
+.I opts
+is found.
+Any trailing plus
+.RB ( + )
+characters in
+.I opts
+cause
+.I arg
+to extract the same number of arguments associated
+with the option before running
+.IR command .
+
+For the duration of
+.IR command ,
+the environment variable
+.B $opt
+will be set to the option that has been found,
+and 
+.B $arg
+will be set to the option's arguments (if the correct number
+of arguments have been extracted;
+otherwise a message will be printed, and a
+.B usage
+exception raised).
+The option character asterisk
+.RB ( * )
+matches any option letter (this must
+be quoted, to avoid the usual special interpretation
+by the shell).
+Only one command will be run for any option found;
+if there is no matching option letter, then
+a default error message will be printed, and a
+.B usage
+exception raised.
+.PP
+The list of option specifications is terminated with a single
+minus
+.RB ( - );
+the arguments to be parsed follow this.
+When the argument parsing has finished
+the environment variable
+.B $*
+is set to the remaining list of arguments.
+.SH EXAMPLE
+The following shell script,
+.BR script ,
+takes options
+.BR b ,
+.B c
+and
+.BR f ,
+where
+.B f
+takes a file name argument.
+.EX
+#!/dis/sh
+load arg
+bflag := cflag := 0
+file  := ()
+args  := $*
+(arg 
+    bc  {$opt^flag = 1}
+    f+  {file=$arg}
+    r++++ {rect=$arg}
+    '*' {echo unknown option $opt}
+    - $args
+)
+echo $0 $bflag $cflag $file
+echo rect $rect
+echo arguments are $*
+.EE
+.PP
+When invoked as follows:
+.IP
+.B "script -bc -r 0 10 50 100 -ffile a b c"
+.PP
+the output is:
+.IP
+.EX
+\&./script 1 1 file
+rect 0 10 50 100
+arguments are a b c
+.EE
+.PP
+and when invoked by:
+.IP
+.B "script -b -f file -z -- -bc"
+.PP
+the output is:
+.IP
+.EX
+unknown option z
+\&./script 1 0 file
+arguments are -bc
+.EE
+.SH SOURCE
+.B /appl/cmd/sh/arg.b
+.SH SEE ALSO
+.IR sh (1),
+.IR arg (2),
+.IR sh-std (1)

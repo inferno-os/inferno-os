@@ -1,0 +1,236 @@
+.TH SEXPRS 6
+.SH NAME
+sexprs \- symbolic expressions
+.SH DESCRIPTION
+S-expressions (`symbolic expressions') provide a way for programs to store and
+exchange tree-structured text and binary data.
+The Limbo module
+.IR sexprs (2)
+provides the variant defined by
+Rivest in Internet Draft
+.L draft-rivest-sexp-00.txt
+(4 May 1997),
+as used for instance by the Simple Public Key Infrastructure (SPKI).
+It provides a `canonical' form of S-expression,
+and an `advanced' form for display.
+They can convey binary data directly and efficiently, unlike some
+other schemes such as XML.
+The two forms are closely related and all can be read or written by
+.IR sexprs (2),
+including a variant sometimes used for transport on links that are not 8-bit safe.
+.PP
+An S-expression is either a sequence of bytes (a byte
+.IR string ),
+or a parenthesised list of smaller S-expressions.
+All forms start with the fundamental rules below, in extended BNF:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-stringxxxxx\f1'u +\w'\ ::=\ 'u
+\f2sexpr\fP	::=	\f2string\fP | \f2list\fP
+\f2list\fP	::=	'(' \f2sexpr\fP* ')'
+.EE
+.DT
+.PD
+.PP
+They give the recursive structure.
+The various representations ultimately differ only in how the byte string is represented
+and whether white space such as blanks or newlines can appear.
+.PP
+Furthermore, the definition of
+.I string
+is also common to all forms:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-stringxxxxx\f1'u +\w'\ ::=\ 'u
+\f2string\fP	::=	\f2display\fP? \f2simple-string\fP
+\f2display\fP	::=	'[' \f2simple-string\fP ']'
+.EE
+.DT
+.PD
+.PP
+The optional bracketed
+.I display
+string provides information on how to present the associated byte string to a user.
+(``It has no other function.  Many of the MIME types work here.'')
+Although supported by
+.IR sexprs (2),
+it is largely unused by Inferno applications and is usually left out.
+The canonical and advanced forms differ in their definitions of
+.IR simple-string .
+They always denote sequences of 8-bit bytes, but with different syntax (encodings).
+Two
+.I strings
+are equal iff their
+.I simple-strings
+encode the same byte strings (for both data and
+.IR display ).
+.PP
+.I Canonical
+form must be used when exchanging S-expressions between computers,
+and when digitally signing an expression.
+It is defined by the complete set of rules below:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-stringxxxxx\f1'u +\w'\ ::=\ 'u
+\f2sexpr\fP	::=	\f2string\fP | \f2list\fP
+\f2list\fP	::=	'(' \f2sexpr\fP* ')'
+\f2string\fP	::=	\f2display\fP? \f2simple-string\fP
+\f2display\fP	::=	'[' \f2simple-string\fP ']'
+\f2simple-string\fP	::=	\f2raw\fP
+\f2raw\fP	::=	\f2nbytes\fP ':' \f2byte*\fP
+\f2nbytes\fP	::=	\f5[1-9][0-9]\fP+ |  \f50\fP
+.EE
+.DT
+.PD
+.PP
+Its
+.I simple-string
+is a raw byte string.
+The primitive
+.I byte
+represents an 8-bit byte.
+The length of every byte string is given explicitly by a preceding decimal value
+.I nbytes
+(with no leading zeroes).
+There is no white space.
+It is `canonical' because it is uniquely defined for each S-expression.
+It is efficient to parse even on small computers.
+.PP
+.I Advanced
+form is more elaborate, and has two main differences:
+not all byte strings need an explicit length, and binary
+data can be represented in printable form, either using hexadecimal or base 64 encodings,
+or using quoted strings (with escape sequences similar to those of Limbo or C).
+Unquoted text is called a
+.IR token ,
+and is restricted by the standard to a specific alphabet:
+it must contain only letters, digits, or characters from the set
+.LR "-./_:*+=" ,
+and must not start with a digit.
+The latter restriction is imposed to allow byte counts to be distinguished from tokens without
+lookahead, but has the consequence that decimal numbers must be quoted,
+as must non-ASCII characters in
+.IR utf (6)
+encoding.
+Upper- and lower-case letters are distinct.
+The advanced transport syntax is defined by the complete set of rules below:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-stringxxxxx\f1'u +\w'\ ::=\ 'u
+\f2sexpr\fP	::=	\f2string\fP | \f2list\fP
+\f2list\fP	::=	'(' ( \f2sexpr\fP | \f2whitespace\fP )* ')'
+\f2string\fP	::=	\f2display\fP? \f2simple-string\fP
+\f2display\fP	::=	'[' \f2simple-string\fP ']'
+\f2simple-string\fP	::=	\f2raw\fP | \f2token\fP | \f2base-64\fP | \f2hexadecimal\fP |  \f2quoted-string\fP
+\f2raw\fP	::=	\f2nbytes\fP ':' \f2byte*\fP
+\f2nbytes\fP	::=	\f5[1-9][0-9]\fP+ |  \f50\fP
+\f2token\fP	::=	\f2token-start\fP \f2token-char*\fP
+\f2base-64\fP	::=	\f2decimal\fP? '|' ( \f2base-64-char\fP | \f2whitespace\fP )* '|'
+\f2hexadecimal\fP	::=	'#' ( \f2hex-digit\fP | \f2whitespace\fP )* '#'
+\f2quoted-string\fP	::=	\f2nbytes\fP? \f2quoted-string-body\fP  
+\f2quoted-string-body\fP	::=	'"' \f2byte*\fP '"'
+\f2token-start\fP	::=	\f5[-./_:*+=a-zA-Z]\fP
+\f2token-char\fP	::=	\f2token-start\fP | \f5[0-9]\fP
+\f2hex-digit\fP	::=	\f5[0-9a-fA-F]\fP
+\f2base-64-char\fP	::=	\f5[a-zA-Z0-9+/=]\fP
+.EE
+.PD
+.DT
+.PP
+.I Whitespace
+is any sequence of blank, tab, newline or carriage-return characters;
+note that it can appear only at the places shown.
+The
+.I bytes
+in a
+.I quoted-string-body
+are interpreted according to the quoting rules for Limbo (or C).
+That is, the bytes are enclosed in quotes, and may contain the
+escape sequences for the following characters:
+backspace
+.RB ( \eb ),
+form-feed
+.RB ( \ef ),
+newline
+.RB ( \en ),
+carriage-return
+.RB ( \er ),
+tab
+.RB ( \et ),
+and vertical tab
+.RB ( \ev ),
+octal escape
+.BI \e ooo
+(all three digits must be given),
+hexadecimal escape
+.BI \ex hh
+(both digits must be given),
+.B \e\e
+for backslash,
+.B \e'
+for single quote, and
+and \f5\e"\fP to include a quote in a string.
+Note that a quoted string can have an optional
+.IR nbytes ,
+but it gives the length of the byte string resulting
+.I after
+interpreting character escapes.
+.PP
+Both canonical and advanced forms can contain binary data verbatim.
+Sometimes that is troublesome for storage or transport.
+At the lexical level any
+.I sexpr
+can therefore be replaced by the following:
+.IP
+.EX
+.ft R
+\&'{' ( \f2base-64-char\fP | \f2whitespace\fP )* '}'
+.EE
+.PP
+where the text between the braces is the base-64 encoding of the
+.I sexpr
+expressed in canonical or advanced form.
+The S-expression parser will replace the sequence by its decoded, and resume
+parsing at the start of that byte string.
+Note the difference in syntax and interpretation from rule
+.IR base-64
+above, which encodes a
+.IR simple-string ,
+not an
+.IR sexpr .
+.SH EXAMPLES
+The following S-expression is in canonical form:
+.IP
+.EX
+(12:hello world!(5:inner0:))
+.EE
+.PP
+It is a list of two elements: the string
+.BR "hello world!" ,
+and another list also with two elements,
+the string
+.BR inner
+and an empty string.
+All the bytes in the example are printable characters, but they could have been arbitrary binary values.
+.PP
+The following is an S-expression in advanced form:
+.IP
+.EX
+(hello-world
+    (* "3" "5.6")
+    (best-of-3 (5:inner0:)))
+.EE
+.PP
+Note that advanced form contains canonical form as a subset;
+here it is used for the innermost list.
+.SH SEE ALSO
+.IR sexprs (2)
+.PP
+R. Rivest, ``S-expressions'', Network Working Group Internet Draft
+(4 May 1997),
+reproduced in
+.BR /lib/sexp .

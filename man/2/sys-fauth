@@ -1,0 +1,61 @@
+.TH SYS-FAUTH 2
+.SH NAME
+fauth \- set up authentication on a file descriptor to a file server
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+fauth:  fn(fd: ref FD, aname: string): ref FD;
+.EE
+.SH DESCRIPTION
+.B Fauth
+provides a means for the current user to authenticate to access
+resources available through the Styx connection represented by
+.IR fd .
+The return value is a file descriptor, conventionally called
+.IR afd ,
+that is subsequently used to execute the authentication protocol
+for the server.
+After successful authentication,
+.I afd
+may be passed as the second argument to a subsequent
+.B mount
+call (see
+.IR sys-bind (2)),
+with the same
+.IR aname,
+as a ticket-of-entry for the user.
+.PP
+If
+.B fauth
+returns nil, the error case, that means the file server does not require
+authentication for the connection, and
+.I afd
+should be nil
+in the call to
+.BR mount.
+.ig
+.PP
+It is rare to use
+.IR fauth
+directly; more commonly
+.I amount
+(see
+.IR auth (2))
+is used.
+..
+.SH SEE ALSO
+.IR attach (5),
+.IR security-auth (2)
+.ig
+(particularly
+.BR amount ),
+.IR authsrv (6)
+..
+.SH DIAGNOSTICS
+The system error string is set on error,
+including the server not requiring authentication,
+and
+.B fauth
+returns nil.

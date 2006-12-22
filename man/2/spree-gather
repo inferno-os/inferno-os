@@ -1,0 +1,105 @@
+.TH SPREE-GATHER 2
+.SH NAME
+Gatherengine \- module interface for pre-assembled groups.
+.SH SYNOPSIS
+.EX
+implement Gatherengine;
+
+include "spree.m";
+include "spree/gather.m";
+Clique, Member: import Spree;
+
+init:			fn(m: Spree, c: ref Clique, argv: list of string, archived: int): string;
+clienttype:	fn(): string;
+maxmembers:	fn(): int;
+propose:		fn(members: array of string): string;
+start:			fn(members: array of ref Member, archived: int);
+command:	fn(member: ref Member, c: string): string;
+archive:		fn();
+readfile:		fn(f: int, offset: big, n: int): array of byte;
+.EE
+.SH DESCRIPTION
+When implementing a
+.IR spree (2)
+engine, it is common to have the requirement that a certain number
+of members are grouped together before actually starting the
+engine.
+.I Spree
+provides no support for this directly; instead the
+.I gather
+module acts as an intermediate layer: engines that wish
+this functionality should implement the
+.B Gatherengine
+interface.
+The
+.I gather
+module also provides facilities for the automatic suspension and resumption
+of players, clique archival, and members that watch but do not
+participate.
+.PP
+.B Init
+is called first, with
+.IR m ,
+the
+.I spree
+module, and
+.IR c ,
+the new clique.
+.I Argv
+gives a list of arguments to the engine (the first being
+the name of the engine itself);
+.I archived
+is non-zero if the engine has been restored from an archive.
+If
+.B init
+returns a non-nil string, it is taken to describe an error, and the
+engine will be discarded.
+.B Maxmembers
+should return the maximum number of members that the engine
+can accept;
+.B clienttype
+should return the kind of client that is expected by the
+engine (e.g.
+.B cards
+for a card game engine).
+.PP
+.B Propose
+proposes that a clique consisting of
+.I members
+(the names of the proposed members)
+be started. It returns an error string: if this is non-nil, then
+the clique is not started, otherwise the proposed
+members are accepted into the clique,
+and
+.B start
+is called, where
+.I members
+is the array of actual members (corresponding to the
+members passed to
+.BR propose ),
+and
+.I archived
+is non-zero if the clique is being restored from an archive
+(same as passed to
+.BR init ).
+.PP
+Once a clique has been successfully started,
+.B command
+is called when a member sends a command to the
+engine;
+.I member
+has sent the command,
+and
+.I c
+is the command itself.
+.B Command
+should return a non-nil error string if the command fails.
+.PP
+When a clique is being archived,
+.B archive
+will be called to request the engine to store all its
+internal state into the object hierarchy (this is the moment,
+for instance, to call
+.BR cardlib->archive ).
+.SH "SEE ALSO"
+.IR spree (2) ,

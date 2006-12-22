@@ -1,0 +1,50 @@
+.TH STYXMON 8
+.SH NAME
+styxmon \- monitor a Styx conversation
+.SH SYNOPSIS
+.B styxmon
+[
+.B -r
+] [
+.B -t
+]
+.I cmd
+[
+.IR arg ...
+]
+.SH DESCRIPTION
+.I Styxmon
+allows the monitoring of styx messages sent and received
+by
+.IR cmd ,
+which should serve Styx through its standard input.
+.I Styxmon
+in its turn serves Styx through its standard input,
+and writes information on the Styx messages that
+it sees to the standard error.
+The
+.B -r
+and
+.B -t
+options restrict the messages printed to R-messages
+and T-messages respectively.
+.SH EXAMPLE
+Mount an instance of
+.IR export (4)
+of the current name space through
+.I styxmon
+on
+.B /n/remote
+to monitor all access to it through that name:
+.IP
+.EX
+mount {styxmon {export /}} /n/remote
+ls /n/remote
+cp /n/remote/lib/unicode /n/remote/dev/null
+.EE
+.SH SOURCE
+.B /appl/cmd/styxmon.b
+.SH SEE ALSO
+.IR styx (2),
+.IR intro (5),
+.IR styxchat (8)

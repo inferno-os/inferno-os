@@ -1,0 +1,130 @@
+.TH WEBGRAB 1
+.SH NAME
+webgrab \- fetch web page content as files
+.SH SYNOPSIS
+.B webgrab
+[
+.B -r
+] [
+.B -v
+] [
+.BI -o " stem"
+]
+.I url
+.SH DESCRIPTION
+.I Webgrab
+connects to the web server named in the
+.IR url .
+It fetches the content of the web page also determined by the
+.IR url ,
+and stores it locally in a file.
+If the page is written in HTML,
+.I webgrab
+reads it to build a list of sub-component pages (eg, frames) and images.
+It fetches those, saving the content in separate files.
+It adds a comment to the end of each HTML file giving the time, and the file's origin.
+It automatically follows redirections offered by the server.
+.PP
+The
+.I stem
+of the names of the output files is normally derived from a component of the
+.IR url .
+If the
+.I url
+contains a path name, the
+.I stem
+is the component of that path, less any dot-separated suffix and prefix.
+For example, given
+.IP
+.BR http://www.vitanuova.com/inferno/old.index.html
+.PP
+the stem would be
+.BR index .
+If there is no path name, but the
+.I url
+contains a domain name, the
+.I stem
+is the penultimate component of the domain name (eg, excluding
+trailing
+.BR .com ,
+and initial
+.BR www ,
+etc).
+For example, given
+.IP
+.B www.innerhost.vitanuova.com
+.PP
+the stem would be
+.BR vitanuova .
+If all else fails,
+.I webgrab
+uses the
+.I stem
+.BR webgrab .
+.PP
+Given a
+.IR stem ,
+the initial page is stored in
+.IB stem . suffix
+where
+.I suffix
+is the suffix (eg,
+.BR .html )
+of the name of the original page.
+Subordinate pages are saved in a similar way in files named
+.IB stem _1. suffix1,
+.IB stem _2. suffix2,
+\&... .
+.PP
+The options are:
+.TP
+.B -r
+do not fetch subcomponents (just the `raw' source of
+.I url
+itself)
+.TP
+.B -v
+print a progress report
+.TP
+.B -vv
+print a chatty progress report
+.TP
+.BI -o " stem"
+use the
+.I stem
+as given
+.PP
+.I Webgrab
+reads the
+configuration file
+.B /services/webget/config
+(if it exists),
+to look for the address of an optional HTTP proxy
+(in the
+.L httpproxy
+entry), and list of domains for which a proxy should not be used
+(in the
+.B noproxy
+or
+.B noproxydoms
+entry). If symbolic network and service names might be involved, the
+connection server
+.B lib/cs
+needs to be already running.
+.SH FILES
+.B /services/webget/config
+.SH SOURCE
+.B /appl/cmd/webgrab.b
+.SH BUGS
+It should read the proxy name from the
+.IR charon (1)
+configuration file and not the
+.I webget
+configuration file.
+.br
+It cannot do `secure' transfers
+.RB ( https ).
+.br
+Its HTML parsing is naive, but on the other hand, it is less likely to trip over HTML novelties.
+.SH "SEE ALSO"
+.IR cs (8)

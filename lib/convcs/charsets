@@ -1,0 +1,201 @@
+iso_8859-1:1987=iso-8859-1
+iso-ir-100=iso-8859-1
+iso_8859-1=iso-8859-1
+8859_1=iso-8859-1	# botched alias
+iso8859-1=iso-8859-1		# commonly seen non IANA alias
+iso8859_1=iso-8859-1		# lookup should probably map _ to -
+latin1=iso-8859-1
+iso-latin-1=iso-8859-1
+l1=iso-8859-1
+ibm819=iso-8859-1
+cp819=iso-8859-1
+iso-8859-1=
+	desc=Latin-1
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-1.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-1.cp
+
+iso_8859-2:1987=iso-8859-2
+iso-ir-101=iso-8859-2
+iso_8859-2=iso-8859-2
+latin2=iso-8859-2
+l2=iso-8859-2
+iso-8859-2=
+	desc=Latin-2
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-2.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-2.cp
+
+iso_8859-3:1988=iso-8859-3
+iso-ir-109=iso-8859-3
+iso_8859-3=iso-8859-3
+latin3=iso-8859-3
+l3=iso-8859-3
+iso-8859-3=
+	desc=Latin-3
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-3.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-3.cp
+
+iso_8859-4:1988=iso-8859-4
+iso-ir-110=iso-8859-4
+iso_8859-4=iso-8859-4
+latin4=iso-8859-4
+l4=iso-8859-4
+iso-8859-4=
+	desc=Latin-4
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-4.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-4.cp
+
+iso_8859-5:1988=iso-8859-5
+iso-ir-144=iso-8859-5
+iso_8859-5=iso-8859-5
+cyrillic=iso-8859-5
+iso-8859-5=
+	desc='Part 5 (Cyrillic)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-5.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-5.cp
+
+iso_8859-6:1987=iso-8859-6
+iso-ir-127=iso-8859-6
+iso_8859-6=iso-8859-6
+ecma-114=iso-8859-6
+asmo-708=iso-8859-6
+arabic=iso-8859-6
+iso-8859-6=
+	desc='Part 6 (Arabic)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-6.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-6.cp
+
+iso_8859-7:1987=iso-8859-7
+iso-ir-126=iso-8859-7
+iso_8859-7=iso-8859-7
+elot_928=iso-8859-7
+ecma-118=iso-8859-7
+greek=iso-8859-7
+greek8=iso-8859-7
+iso-8859-7=
+	desc='Part 7 (Greek)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-7.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-7.cp
+
+iso_8859-8:1988=iso-8859-8
+iso-ir-138=iso-8859-8
+iso_8859-8=iso-8859-8
+hebrew=iso-8859-8
+iso-8859-8=
+	desc='Part 8 (Hebrew)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-8.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-8.cp
+
+iso_8859-9:1989=iso-8859-9
+iso-ir-148=iso-8859-9
+iso_8859-9=iso-8859-9
+latin5=iso-8859-9
+l5=iso-8859-9
+iso-8859-9=
+	desc=Latin-5
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-9.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-9.cp
+
+iso-ir-157=iso-8859-10
+l6=iso-8859-10
+iso_8859-10:1992=iso-8859-10
+latin6=iso-8859-10
+iso-8859-10=
+	# originally from dkuug.dk:i18n/charmaps/ISO_8859-10:1993
+	desc=Latin-6
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-10.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-10.cp
+
+
+# Traditional Chinese
+big5=
+	desc='Big 5 (HKU)'
+	stob=/dis/lib/convcs/big5_stob.dis
+	btos=/dis/lib/convcs/big5_btos.dis
+
+# UTF-8
+ascii=utf-8
+us-ascii=utf-8
+utf8=utf-8	# commonly seen non IANA alias
+utf-8=
+	desc='Unicode UTF-8'
+	stob=/dis/lib/convcs/utf8_stob.dis
+	btos=/dis/lib/convcs/utf8_btos.dis
+
+# UTF-7
+#utf-7=
+#	desc='Unicode UTF-7'
+#	stob=/dis/lib/convcs/utf7_stob.dis
+#	btos=/dis/lib/convcs/utf7_btos.dis
+
+
+cp437=ibm437
+437=ibm437
+ibm437=
+	# originally from jhelling@cs.ruu.nl (Jeroen Hellingman)
+	desc='IBM PC: CP 437'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/ibm437.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/ibm437.cp
+
+cp850=ibm850
+850=ibm850
+ibm850=
+	# originally from jhelling@cs.ruu.nl (Jeroen Hellingman)
+	desc='IBM PS/2: CP 850'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/ibm850.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/ibm850.cp
+
+cp866=ibm866
+866=ibm866
+ibm866=
+	desc='Russian MS-DOS CP 866'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/ibm866.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/ibm866.cp
+
+windows-1250=
+	desc='MS Windows CP 1250 (Central Europe)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/windows-1250.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/windows-1250.cp
+
+windows-1251=
+	desc='MS Windows CP 1251 (Cyrillic)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/windows-1251.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/windows-1251.cp
+
+windows-1252=
+	desc='MS Windows CP 1252 (Latin 1)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/windows-1252.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/windows-1252.cp
+
+koi8-r=
+	desc='KOI8-R (RFC1489)'
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/koi8-r.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/koi8-r.cp
+
+gb_2312-80=gb2312
+iso-ir-58=gb2312
+chinese=gb2312
+gb2312=
+	desc="Chinese mixed one byte"
+	btos=/dis/lib/convcs/gb2312_btos.dis
+
+
+x-euc-jp=euc-jp	# often seen non-IANA alias
+euc-jp=
+	desc="Japanese Extended UNIX Code"
+	btos=/dis/lib/convcs/euc-jp_btos.dis
+
+cp932=windows-31j
+windows-31j=
+	desc="MS-Windows Japanese (cp932)"
+	btos=/dis/lib/convcs/cp932_btos.dis	arg=cp932
+
+ms_kanji=shift_jis
+x-sjis=shift_jis		# often seen non-IANA alias
+shift_jis=
+	desc="Shift-JIS Japanese",
+	btos=/dis/lib/convcs/cp932_btos.dis	arg=shiftjis
+
+# special converter for raw 8bit data that has been converted to utf-8
+8bit=
+	desc="raw 8-bit data"
+	stob=/dis/lib/convcs/8bit_stob.dis

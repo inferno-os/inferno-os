@@ -1,0 +1,137 @@
+.TH SSL 3
+.SH NAME
+ssl \- secure sockets layer device
+.SH SYNOPSIS
+.B bind '#D' /n/ssl
+.PP
+.B /n/ssl/clone
+.br
+.BI /n/ssl/ n
+.br
+.BI /n/ssl/ n /data
+.br
+.BI /n/ssl/ n /ctl
+.br
+.BI /n/ssl/ n /secretin
+.br
+.BI /n/ssl/ n /secretout
+.SH DESCRIPTION
+The
+.I ssl
+device provides access to a Secure Socket Layer that implements the record layer protocol
+of SSLv2.
+The device provides encrypting and digesting for many independent connections.
+Once associated with a network connection, the
+.I ssl
+device can be thought of as a filter for the connection.
+.I Ssl
+can send data in the clear, digested or encrypted. In all cases, if
+.I ssl
+is associated with both ends of a connection, all messages are delimited.
+As long as reads always specify buffers that are of equal or greater lengths than the writes at the other end of the connection, one write will correspond to one read.
+.PP
+The top-level directory contains a
+.B clone
+file and numbered directories, each representing a connection.
+Opening the
+.B clone
+file reserves a connection; the file descriptor resulting from the
+.IR \%sys-open (2)
+will be open on the control file,
+.BR ctl ,
+in the directory that represents the new connection.
+Reading the control file will return a text string giving the connection number
+(and thus the directory name).
+.PP
+Writing to
+.B ctl
+controls the corresponding connection.
+The following control messages are possible:
+.TP
+.BI fd " n"
+Associate the network connection on file descriptor
+.I n
+with the
+.I ssl
+device.
+.TP
+.B alg clear
+Allow data to pass in the clear with only message delimiters added. The device starts in this mode.
+.TP
+.B alg sha
+Append a SHA digest to each buffer written to
+.BR data .
+The digest covers the outgoing secret (written to
+.BR secretout ),
+the message, and a message number which starts at 0 and increments by one for each message.
+Messages read have their appended digests compared to a digest computed using the incoming secret (written to
+.BR secretin ).
+If the comparison fails, so will the read.
+.TP
+.B alg md4
+Like
+.B sha
+but using the MD4 message digest algorithm.
+.TP
+.B alg md5
+Like
+.B sha
+but using the MD5 message digest algorithm.
+.TP
+.B alg rc4
+.PD0
+.TP
+.B alg rc4_40
+.TP
+.B alg rc4_128
+.TP
+.B alg rc4_256
+RC4 encrypt each message written to
+.B data
+with the key written to
+.BR secretout ,
+using the key length as indicated (40-bit keys by default).
+.PD
+.TP
+.B alg des_56_cbc
+Encrypt the stream using DES and Cipher Block Chaining (CBC)
+.TP
+.B alg des_56_ecb
+Encrypt the stream using DES and Electronic Code Book (ECB)
+.TP
+.B alg ideacbc
+Encrypt the stream using IDEA and CBC
+.TP
+.B alg ideaecb
+Encrypt the stream using IDEA and ECB
+.TP
+.BI alg " digest" / crypt
+Combine the use of the given
+.I digest
+algorithm and the stream encryption algorithm
+.IR crypt
+.PP
+Files
+.B secretin
+and
+.B secretout
+must be written before digesting or encryption is turned on. If only one is written, they are both assumed to be the same.
+.PP
+The mode may be changed at any time during a connection.
+.PP
+The list of algorithms supported by a given implementation of
+.I ssl
+may be read from the read-only text files
+.B encalgs
+(encryption algorithms)
+and
+.B hashalgs
+(hashing algorithms for digests).
+Each contains a space-separated list of algorithm names.
+.PP
+.SH "SEE ALSO"
+.IR security-ssl (2)
+.br
+B. Schneier,
+.IR "Applied Cryptography ,
+1996, J. Wiley & Sons, Inc.

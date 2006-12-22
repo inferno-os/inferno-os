@@ -1,0 +1,99 @@
+.TH INIT 8
+.SH NAME
+init: emuinit, osinit \- Inferno initialisation
+.SH SYNOPSIS
+.EX
+Init: module
+{
+	init: fn();
+};
+.EE
+.PP
+.B /dis/emuinit.dis
+.PP
+.B #/./osinit.dis
+.SH DESCRIPTION
+Both
+.IR emu (1)
+and the native kernels run a Dis program to initialise the system.
+.PP
+.I Emuinit
+is the default initialisation
+program for
+.IR emu (1).
+.I Emu
+sets the environment variable
+(see
+.IR env (3))
+.B /env/emuargs
+to the command line originally given to
+.IR emu ,
+which has the following form:
+.IP
+.B emu
+.RB [ \-d ]
+[
+.I command
+.RI [ " arg ..." ]
+]
+.PP
+.I Emuinit
+uses the value of
+.B emuargs
+to decide which command to start and its arguments.
+The default
+.I command
+is
+.BR /dis/sh.dis ,
+unless the
+.B \-d
+option is given, in which case
+.B /dis/lib/srv.dis
+is used by default instead, to cause
+.I emu
+to run on the host system as a server (`daemon' mode).
+.PP
+.I Osinit
+is built-in to the
+.IR root (3)
+of native kernels.
+Although the kernel uses the fixed name
+.B #/./osinit.dis
+the contents are taken from one of the files in
+.B /os/init
+selected by the
+.B init
+section of the kernel configuration file.
+.IR Osinit 's
+action is platform-specific in detail, but might include:
+building an initial
+.B /dev
+by mounting device drivers;
+binding the physical network driver (eg,
+.IR ether (3))
+into
+.B /net
+and initialising
+.IR ip (3),
+usually setting addresses and routes using
+.BR bootp ;
+attaching to a remote file system;
+setting up flash translation using
+.IR ftl (3);
+starting
+.I dossrv
+or
+.I 9660srv
+(see
+.IR dossrv (4)),
+or
+.IR kfs (3)
+to serve local files from disk or flash memory.
+.SH FILES
+.B /env/emuargs
+.SH SOURCE
+.B /appl/cmd/emuinit.b
+.br
+.B /os/init/*.b
+.SH SEE ALSO
+.IR emu (1)

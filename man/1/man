@@ -1,0 +1,136 @@
+.TH MAN 1
+.SH NAME
+man, wm/man, man2txt, lookman \-
+print or find manual pages
+.SH SYNOPSIS
+.B man
+[
+.I section ...
+]
+.I title ...
+.br
+.B man -f
+.I file ...
+.br
+.B wm/man
+[
+.I section ...
+]
+.I title ...
+.br
+.B wm/man -f
+.I file ...
+.br
+.B man2txt
+[
+.B -p
+.I width
+]
+[
+.I file ...
+]
+.br
+.B lookman
+.I keyword ...
+.SH DESCRIPTION
+Both
+.I man
+and
+.BI wm/ man
+locate entries in this manual and display them.
+The pages for entries named
+.I title
+within each specified
+.IR section
+are displayed.
+If no sections are specified, matching pages
+from all sections are printed.
+Sections are given by number.
+.PP
+The
+.B -f
+option to
+.I man
+and
+.I wm/man
+prevent lookup in the manual index.
+Instead, the remaining arguments are treated as
+filenames.
+.I Man
+processes each file in turn.
+.I Wm/man
+adds each file to its page history and displays the first document in the list.
+.PP
+The
+.I man
+command prints the manual pages as formatted plain text to standard output.
+Manual pages are written using Plan9
+.I "troff -man"
+macros for their markup and so
+some detail is lost in conversion to plain text.
+.BI Wm/ man
+displays the pages in a graphical Wm window, providing a more faithful
+reproduction of the intended layout.
+.PP
+.I Man2txt
+converts
+.I "troff -man"
+macro markup
+to plain text.
+Each file is processed separately.
+If no arguments are given, text from standard input is processed.
+The converted text is written to standard output.
+The
+.B -p
+option to
+.I man2txt
+specifies the page width in characters.
+.PP
+.I Lookman
+prints the file names of manual pages, from any section, that
+contain all of the
+.I keywords
+given as arguments.
+.SH FILES
+.TF /man/1/INDEX
+.TP
+.B /man/?/*
+Source files of manual pages.
+.TP
+.B /man/1/man
+The source file for this manual page.
+.TP
+.B /man/?/INDEX
+Used by
+.I man
+and
+.BI wm/ man
+to locate the source file containing a particular title.
+.TP
+.B /man/index
+The
+.I lookman
+index.
+.SH SOURCE
+.B /appl/wm/man.b
+.br
+.B /appl/cmd/man.b
+.br
+.B /appl/cmd/man2txt.b
+.br
+.B /appl/cmd/lookman.b
+.br
+.B /appl/lib/parseman.b
+.SH "SEE ALSO"
+.IR wm (1)
+.SH BUGS
+.I Man2txt
+only knows about
+.I "troff -man"
+macros.
+Other troff macro packages or output from preprocessors
+such as
+.I pic
+or
+.I tbl
+will not be presented correctly.

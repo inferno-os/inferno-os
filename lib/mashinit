@@ -1,0 +1,4 @@
+sysname = `{ cat /dev/sysname };
+user = `{ cat  /dev/user };
+home = /usr/$user;
+run - $home/lib/mashinit;

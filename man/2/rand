@@ -1,0 +1,35 @@
+.TH RAND 2
+.SH NAME
+rand \- pseudo random number generation
+.SH SYNOPSIS
+.EX
+include "rand.m";
+rand = load Rand Rand->PATH;
+
+init:    fn(seed: int);
+rand:    fn(modulus: int): int;
+bigrand: fn(modulus: big): big;
+.EE
+.SH DESCRIPTION
+.B Init
+initialises the pseudo-random number generator
+with
+.IR seed ;
+subsequent calls to 
+.B rand
+and
+.B bigrand
+return a pseudo-random sequence of integers
+or bigs respectively, between 0 and
+.IR modulus \-1.
+.I Modulus
+should be a non-negative integer;
+for
+.BR bigrand ,
+it should be less than 2^53.
+.SH SOURCE
+.B /appl/lib/rand.b
+.SH SEE ALSO
+.IR security-random (2)
+.SH BUGS
+The quality of the algorithm currently used is questionable.

@@ -1,0 +1,51 @@
+.TH LC 1
+.SH NAME
+lc \- list files in columns
+.SH SYNOPSIS
+.B lc
+[
+.B -df
+] [
+.B -c
+.I columns
+] [
+.IR file ...
+]
+.SH DESCRIPTION
+.I Lc
+lists in columns the contents of each
+.I file
+that is a directory. If there is more than
+.I file
+and neither the
+.B -d
+or 
+.B -f
+options are given, then the output for each
+directory will be indented, and preceded by the
+directory's name. After the listings for each directory,
+the rest of the
+.IR file s
+are listed. If either the
+.B -d
+or
+.B -f
+options are given, directory headings are omitted and
+each file is shown in full (with its containing directory);
+.B -d
+causes directories to be listed;
+.B -f
+causes files to be listed.
+.I Columns
+is an integer specifying the number of character widths
+into which
+.IR lc 's
+output is formatted (default 65).
+.SH SOURCE
+.B /appl/cmd/lc.b
+.SH SEE ALSO
+.IR ls (1),
+.IR readdir (2)
+.SH BUGS
+.I Lc
+assumes a fixed-width font.

@@ -1,0 +1,349 @@
+.TH W3C-CSS 2
+.SH NAME
+w3c-css \- cascading style sheet parser
+.SH SYNOPSIS
+.EX
+include "css.m";
+
+css := load CSS CSS->PATH;
+
+Stylesheet: adt {
+   charset:    string;
+   imports:    list of ref Import;
+   statements: list of ref Statement;
+};
+
+Import: adt {
+   name:   string;
+   media:  list of string;
+};
+
+Statement: adt {
+   pick{
+   Media =>
+       media:  list of string;
+       rules:  list of ref Statement.Ruleset;
+   Page =>
+       pseudo: string;
+       decls:  list of ref Decl;
+   Ruleset =>
+       selectors: list of Selector;
+       decls:     list of ref Decl;
+   }
+};
+
+Decl: adt {
+   property:   string;
+   values:     list of ref Value;
+   important:  int;
+};
+
+Selector:   type list of (int, Simplesel);   # (combinator, simplesel)
+Simplesel:  type list of ref Select;
+
+Select: adt {
+   name:   string;
+   pick{
+   Element or ID or Any or Class or Pseudo =>
+       # empty
+   Attrib =>
+       op:     string; # "=" "~=" "|="
+       value:  ref Value;  # optional Ident or String
+   Pseudofn =>
+       arg:    string;
+   }
+};
+
+Value: adt {
+   sep:    int;    # operator preceding this term
+   pick{
+   String or
+   Number or
+   Percentage or
+   Url or
+   Unicoderange =>
+       value:  string;
+   Hexcolour =>
+       value:  string;             # as given
+       rgb:    (int, int, int);    # converted
+   RGB =>
+       args:   cyclic list of ref Value;  # as given
+       rgb:    (int, int, int);           # converted
+   Ident =>
+       name:   string;
+   Unit =>
+       value:  string; # int or float
+       units:  string; # suffix giving units
+   Function =>
+       name:   string;
+       args:   cyclic list of ref Value;
+   }
+};
+
+init:       fn(diag: int);
+parse:      fn(s: string): (ref Stylesheet, string);
+parsedecl:  fn(s: string): (list of ref Decl, string);
+.EE
+.SH DESCRIPTION
+.B Css
+implements a parser for the World-Wide Web Consortium's Cascading
+Style Sheet, specification 2.1.
+.PP
+.B Init
+must be called before any other operation in the module.
+If
+.I diag
+is non-zero, the module will print diagnostics on standard output for
+malformed or unrecognised items that are ignored during parsing (as
+required by the specification).
+.PP
+.B Parse
+takes a complete stylesheet in string
+.IR s ,
+parses it, and returns a tuple
+.BI ( sheet,\ err )
+where
+.I sheet
+refers to a
+.B Stylesheet
+value containing the logical content of
+.IR s ,
+as described below.
+On a fatal error,
+.I sheet
+is nil and
+.I err
+is a diagnostic.
+Most syntactic errors are ignored, as the specification requires.
+.PP
+In some applications there can be auxiliary declarations outside a stylesheet.
+.B Parsedecl
+takes a string
+.I s
+containing a sequence of declarations, and returns a tuple
+.BI ( decls,\ err )
+where
+.I decls
+is a list of references to
+.B Decl
+values, each representing a single
+.I declaration
+in
+.IR s .
+On a fatal error,
+.I decls
+is nil, and
+.I err
+is a diagnostic.
+.PP
+The adts represent an abstract syntax of the CSS grammar.
+The concrete syntax is presented below in an extended BNF,
+derived from the reference grammar,
+with each section labelled by the name of the corresponding adts.
+(Compared to the reference grammar in the
+specification, it abstracts away from the complex rules about where whitespace can appear.)
+.TP
+.B Stylesheet
+.EX
+.ft R
+\f2stylesheet\fP ::= [ '\f5@charset\fP' STRING '\f5;\fP' ] \f2import\fP* \f2statement\fP*
+.EE
+.IP
+Limbo lists represent lists of items in the grammar.
+Nil values denote optional components that are missing.
+Upper-case names such as
+IDENT,
+STRING
+and
+NUMBER
+are terminals; see the CSS specification for their
+often subtle definitions.
+They are usually represented
+by Limbo string values in the adts.
+.TP
+.B Import
+.EX
+.ft R
+\f2import\fP ::= '\f5@import\fP' (\f2STRING\fP|\f2uri\fP) [\f2medium\fP ('\f5,\fP' \f2medium\fP)*] '\f5;\fP'
+\f2uri\fP ::= '\f5url(\fP' STRING '\f5)\fP'
+.EE
+.IP
+.B Import.name
+holds the text of the
+STRING
+or
+.IR uri .
+.TP
+.B Statement
+.EX
+.ft R
+\f2statement\fP ::= \f2ruleset\fP | \f2media\fP | \f2page\fP
+\f2media\fP ::= '\f5@media\fP' \f2medium\fP ('\f5,\fP' \f2medium\fP)* '\f5{\fP' \f2ruleset\fP* '\f5}\fP'
+\f2medium\fP ::= IDENT
+\f2page\fP ::= '\f5@page\fP' [\f2pseudo_page\fP] '\f5{\fP' \f2declaration\fP ('\f5;\fP' \f2declaration\fP)* '\f5}\fP'
+\f2pseudo_page\fP ::= '\f5:\fP' IDENT
+\f2ruleset\fP ::= \f2selector\fP ('\f5,\fP' \f2selector\fP)* '\f5{\fP' \f2declaration\fP ('\f5;\fP' \f2declaration\fP)* '\f5}\fP'
+.EE
+.IP
+.B Statement
+is not in the reference grammar, but is introduced here to give a name corresponding
+to the pick adt.
+.TP
+.B Decl
+.EX
+.ft R
+\f2declaration\fP ::= \f2property\fP '\f5:\fP' \f2expr\fP ['\f5!\fP' '\f5important\fP'] | /* \f2empty\fP */
+\f2property\fP ::= IDENT
+.EE
+.B Decl.values
+is a list representing the terms of the
+.I expr
+(see below for details).
+.BR Decl 's
+field
+.B important
+is non-zero if the optional `important' priority is given.
+.TP
+.B "list of ref Value"
+.EX
+.ft R
+\f2expr\fP ::= \f2term\fP (\f2operator\fP \f2term\fP)*
+\f2operator\fP ::= '\f5/\fP' | '\f5,\fP' | /* \f2empty\fP */
+.EE
+.IP
+An
+.I expr
+is always represented as a list of references to
+.B Value
+in some containing structure
+(where
+.B Value
+represents a
+.IR term ,
+see below).
+The
+.I operator
+preceding each
+.I term
+appears as the field
+.B sep
+of the corresponding
+.BR Value ,
+where a space character represents `empty' (concatenation).
+.TP
+.BR Selector
+.EX
+.ft R
+\f2selector\fP ::= \f2simple_selector\fP (\f2combinator\fP \f2simple_selector\fP)*
+\f2combinator\fP ::= '\f5+\fP' | '\f5>\fP' | /* \f2empty\fP */
+.EE
+.IP
+.B Selector
+is just a type synonym for a list of tuples, say
+.BI ( com,\ simplesel )
+where the
+.I simplesel
+value represents
+.I simple_selector
+(see below), and the integer
+.I com
+is one of the characters space (representing `empty'),
+.RB ` > '
+or
+.RB ` + ',
+giving the combinator that preceded the simple selector.
+(The first in the list is always space.)
+.TP
+.BR Simplesel ", " Select
+.EX
+.ft R
+\f2simple_selector\fP ::= \f2element_name\fP (\f2hash\fP | \f2class\fP | \f2attrib\fP | \f2pseudo\fP)*
+	| (\f2hash\fP | \f2class\fP | \f2attrib\fP | \f2pseudo\fP)+
+\f2hash\fP ::= '\f5#\fP' NAME
+\f2class\fP ::= '\f5.\fP' IDENT
+\f2element_name\fP ::= IDENT | '\f5*\fP'
+\f2attrib\fP ::= '\f5[\fP' IDENT [('\f5=\fP' | '\f5|=\fP' | '\f5~=\fP') (IDENT | STRING)] '\f5]\fP'
+\f2pseudo\fP ::= '\f5:\fP' ( IDENT | IDENT '\f5(\fP' [IDENT] '\f5)\fP' )
+.EE
+.IP
+A
+.I simple_selector
+is represented by
+.BR Simplesel ,
+a list of references to
+.B Select
+values, each representing one
+.I element_name
+or qualifier.
+An
+.I element_name
+is represented by
+.B Select.Element
+for an
+IDENT,
+or
+.B Select.Any
+for
+.RB ` * '.
+The qualifiers are
+.I hash
+.RB ( Select.ID ),
+.I class
+.RB ( Select.Class ),
+.I attrib
+.RB ( Select.Attrib ,
+where  the comparison operator is the string
+.BR op ),
+.I pseudo
+(either
+.B Select.Pseudo
+if a plain identifier, or
+.B Select.Pseudofn
+for a function with optional parameter).
+.TP
+.B Value
+.EX
+.ft R
+\f2term\fP ::= ['\f5+\fP' | '\f5-\fP'] (NUMBER | \f2percent\fP | \f2unit\fP) | STRING | IDENT | \f2uri\fP | \f2function\fP | \f2hexcolour\fP | \f2rgb\fP
+\f2function\fP ::= IDENT '\f5(\fP' \f2expr\fP '\f5)\fP'
+\f2hash\fP ::= '\f5#\fP' NAME
+\f2hexcolour\fP ::= '\f5#\fP' HEXDIGIT+
+\f2percent\fP ::= NUMBER '\f5%\fP'
+\f2unit\fP ::= NUMBER STRING
+\f2rgb\fP ::= '\f5rgb(\fP' \f2term\fP '\f5,\fP' \f2term\fP '\f5,\fP' \f2term\fP '\f5)\fP'
+\f2uri\fP ::= '\f5url(\fP' STRING '\f5)\fP'
+.EE
+.IP
+Any sign before a
+.BR Number ,
+.B Percentage
+or
+.B Unit
+appears as the first character of
+.BR value .
+All the dimensional units (LENGTH, EMS, EXS, ANGLE, TIME, FREQ and others)
+in the reference grammar are mapped to
+.BR Value.Unit ,
+with the field
+.B units
+containing the name of the relevant unit (eg,
+.LR cm ,
+.LR in ,
+etc.) in lower case.
+Values and names appear shorn of the surrounding punctuation.
+.B Value.Hexcolour
+includes the original sequence of hex digits as a string,
+and a decoding of it as an
+.B rgb
+triple.
+The arguments to the CSS
+.B rgb
+function are similarly presented in original and decoded forms, in
+.BR Value.RGB .
+Other function references are returned uninterpreted in
+.BR Value.Function .
+.SH SOURCE
+.B /appl/lib/w3c/css.b
+.SH SEE ALSO
+``Cascading Style Sheets, level 2 revision 1'',
+.B http://www.w3.org/TR/CSS21

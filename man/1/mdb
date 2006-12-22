@@ -1,0 +1,208 @@
+.TH MDB 1
+.SH NAME
+mdb - binary file editor
+.SH SYNOPSIS
+.B mdb
+[
+.B -w
+]
+.I file
+[
+.I command
+]
+.SH DESCRIPTION
+.I Mdb
+allows inspection of the contents
+of
+.IR file .
+If the
+.B -w
+option is given, then modification of the contents is also
+allowed.
+.I Mdb
+accepts commands of the form
+.IP
+.RI [ address ]
+.RB [ ,
+.IR count ]
+.RI [ command ]
+.PP
+If a
+.I command
+is given as an argument, then
+.I mdb
+will execute that command, otherwise
+it will read and execute commands from the standard input.
+If
+.I address
+is present then the current position, called `dot', is
+set to
+.IR address.
+Initially dot is set to 0. 
+.I Command
+is repeated
+.I count
+times with dot advancing between repetitions. The default
+count is 1.
+.I Address
+and
+.I count
+are expressions.
+.SS Expressions
+Expressions take one of the following forms:
+.TP 10
+\&.
+The value of dot.
+.TP
++
+The value of dot.
+.TP
+^
+The value of dot.
+.TP
+"
+The value of the last address typed.
+.TP
+.I integer
+A number, decimal by default. A 
+.RB ` 0 '
+prefix causes
+it to be interpreted as octal; a
+.RB ` 0x '
+prefix causes it to be interpreted as hexadecimal.
+.TP
+.BI ( expr )
+The value of the expression
+.IR expr .
+.PP
+.I Operators
+.RS
+.TP
+.IB e1 + e2
+Integer addition.
+.TP
+.IB e1 - e2
+Integer subtraction.
+.TP
+.IB e1 * e2
+Integer multiplication.
+.TP
+.IB e1 % e2
+Integer division. (N.B.
+.I not
+modulus).
+.TP
+.IB e1 | e2
+Bitwise disjunction.
+.TP
+.IB e1 & e2
+Bitwise conjunction.
+.RE
+.SS Commands
+Commands have the following syntax:
+.TP
+.BI / f
+Locations starting at
+.I address
+in
+.I file
+are printed according to the format
+.IR f .
+.TP
+.BI ? f
+Same as
+.RB ` / '.
+.TP
+.BI = f
+The value of
+.I address
+itself is printed according to the format
+.IR f .
+.PP
+A
+.I format
+consists of one or more characters that specify
+a style of printing. Each
+.I format
+fetches some data, prints it, and if the
+.I command
+is not
+.RB ` = ',
+advances dot by the amount of data fetched.
+All data is assumed to be held in little-endian
+form (least significant byte first).
+.RS
+.TP
+.PD 0
+.B o
+Print a two-byte integer in octal.
+.TP
+.B O
+Print a four-byte integer in octal.
+.TP
+.B d
+Print a two-byte integer in decimal.
+.TP
+.B D
+Print a four-byte integer in decimal.
+.TP
+.B u
+Print a two-byte integer in unsigned decimal.
+.TP
+.B U
+Print a four-byte integer in unsigned decimal.
+.TP
+.B b
+Print a single byte in hexadecimal.
+.TP
+.B x
+Print a two-byte integer in hexadecimal.
+.TP
+.B X
+Print a four-byte integer in hexadecimal.
+.TP
+.B n
+Prints a newline. No data is fetched.
+.TP
+.B +
+Increments dot by 1. No data is printed.
+.TP
+.B -
+Decrements dot by 1. No data is printed.
+.TP
+.B ^
+Increments dot by the size of the last format encountered.
+.TP
+.B c
+Prints a single byte as a character.
+.TP
+.B C
+Prints a single byte as a printable character, converting
+it to backslash escaped hex if necessary.
+.RE
+.PD
+There are two other commands:
+.TP 10
+.RB [ ?/ ] w\ \fIvalue\fP
+Write the two-byte
+.I value
+to the addressed location.
+.TP
+.RB [ ?/ ] W\ \fIvalue\fP
+Write the four-byte
+.I value
+to the addressed location.
+.SH SOURCE
+.B /appl/cmd/mdb.b
+.SH BUGS
+Most of the more useful features of
+.IR mdb 's
+antecedent
+.I db
+are unimplemented.
+.PP
+It is not possible to print strings or UTF-8 characters.
+.PP
+As there is no ``native'' word format in Inferno,
+the assumption that all words are little-endian is hard
+to justify.

@@ -1,0 +1,71 @@
+.TH 9WIN 1
+.SH NAME
+9win \- create a Plan 9 window within Inferno
+.SH SYNOPSIS
+.B 9win
+[
+-s
+]
+[
+.B -x width
+]
+[
+.B -y height
+]
+[
+.IR cmd
+[
+.I arg ...
+]
+]
+.SH DESCRIPTION
+.I 9win
+creates a window for a graphical Plan 9 command (default
+.BR rio )
+to run in. If provided,
+.I width
+and
+.I height
+give a desired width and height for the new window.
+.I Cmd
+gives the command to run,
+and
+.I arg
+its arguments.
+.PP
+The
+.B -s
+option tells
+.I 9win
+to run in server mode. Used by
+.IR 9cpu (1),
+it exports on its standard input
+a namespace
+suitable for a graphical Plan 9 program to run
+within. With this option, no command may be given.
+.SH SOURCE
+.B /appl/cmd/9win.b
+.SH SEE ALSO
+.IR 9cpu (1),
+.IR import (4)
+.SH FILES
+.B /dev/winname
+.br
+.B /dev/mouse
+.br
+.B /dev/cons
+.br
+.B /dev/consctl
+.br
+	Files served by
+.IR 9win .
+.SH BUGS
+.I 9win
+does not export a full
+.I rio
+environment, so Plan 9 programs
+that wish to create new windows will not work correctly
+(unless running inside a
+.I rio
+started by
+.IR 9win )

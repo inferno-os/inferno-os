@@ -1,0 +1,34 @@
+.TH TIME 1
+.SH NAME
+time \- time command execution
+.SH SYNOPSIS
+.B time
+.I command
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.I Time
+executes the
+.I command
+with the given arguments, and reports on standard error the command's
+load time, real time for execution, and the total, in seconds.
+The load time
+is just the time for
+.I time
+itself to load
+.IR command ;
+loads done later by the command are included in the real time.
+To time a pipeline, use the
+.B -c
+option to
+.IR sh (1):
+.IP
+.B "time sh -c 'ps | grep Sh'"
+.SH SOURCE
+.B /appl/cmd/time.b
+.SH "SEE ALSO"
+.IR sh (1),
+.IR sys-millisec (2)
+.SH BUGS
+There is no way to measure CPU time (real or virtual) used by a command.

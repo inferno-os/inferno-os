@@ -1,0 +1,45 @@
+.TH LOGFILE 4
+.SH NAME
+logfile \- memory-based append-only circular storage buffer
+.SH SYNOPSIS
+.B logfile
+.RB [ \-\fIsize\fP ]
+.I \fIfile\fP
+.SH DESCRIPTION
+.I Logfile
+creates a name at
+.I file
+(the containing directory must already exist).
+Each write to
+.I file
+appends the written data up to a maximum of
+.I size
+bytes; subsequent writes erase the existing
+data in a circular fashion. A read from
+.I file
+will return any currently stored data, if any;
+if there is none, then it will block until more
+data becomes available.
+Multiple readers will receive the data independently
+of one another. If a writing process is consistently
+producing data faster than a reading process, then
+the data read will have some bytes elided; a write
+is never blocked.
+.SH SOURCE
+.B /appl/cmd/logfile.b
+.SH SEE ALSO
+.IR wm-logwindow (1),
+.IR sys-file2chan (2)
+.SH BUGS
+Restrictions on
+.IR sys-file2chan (2)
+mean that the
+.I logfile
+process will not terminate automatically
+when its file is removed or unmounted.
+.PP
+There is no indication to a reader of any
+missing data.
+.PP
+It is not possible to do a non-blocking
+read of the log file.

@@ -1,0 +1,30 @@
+.TH MNTGEN 4
+.SH NAME
+mntgen \- dynamically generate mount points
+.SH SYNOPSIS
+.BI "mount {mntgen} " dir
+.SH DESCRIPTION
+.I Mntgen
+serves a Styx connection on its standard input, providing a name space containing a
+single directory that is initially empty, but in which a subdirectory name appears when
+is first referenced, and remains only as long as it is needed (referenced).
+.I Mntgen
+is typically mounted on a directory
+.I dir
+using
+.I mount
+(see
+.IR bind (1))
+as above.
+.I Dir
+is commonly
+.B /n
+or
+.BR /mnt ,
+to generate mount points on demand for file systems or services.
+.SH SOURCE
+.B /appl/cmd/mntgen.b
+.SH SEE ALSO
+.IR intro (1),
+.IR bind (1),
+.IR intro (5)

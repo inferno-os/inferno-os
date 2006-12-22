@@ -1,0 +1,223 @@
+.TH MATH-MISC 1
+.SH NAME
+ack, crackerbarrel, factor, fibonacci, fit, genprimes, mersenne, parts, perms, pi, powers, primes, sieve \- miscellaneous mathematical applications
+.SH SYNOPSIS
+.B math/ack
+[
+.IR m
+]
+[
+.IR n
+]
+.br
+.B math/crackerbarrel
+[
+.IR n
+]
+.br
+.B math/factor
+[
+.IR n
+]
+.br
+.B math/fibonacci
+.br
+.B math/fit
+[
+.BI -d deg
+]
+[
+.B -v
+]
+[
+.IR file
+]
+.br
+.B math/genprimes
+[
+.IR lim
+]
+.br
+.B math/mersenne
+[
+.IR num
+]
+.br
+.B math/parts
+[
+.B -a
+]
+[
+.IR num ...
+]
+.br
+.B math/perms
+[
+.IR n
+]
+.br
+.B math/pi
+[
+.IR dp
+]
+.br
+.B math/powers
+[
+.B -p num
+]
+[
+.B -n num
+]
+[
+.B -f num
+]
+[
+.B -l num
+]
+[
+.B -m num
+]
+[
+.B -v
+]
+.br
+.B math/primes
+[
+.IR m
+]
+[
+.IR n
+]
+.br
+.B math/sieve
+[
+.B -a alg
+]
+[
+.IR lim
+]
+.SH DESCRIPTION
+A collection of simple mathematical utilities.
+.PP
+.TP
+.B math/ack
+Calculates and times Ackermann's function A(m, n).
+.TP
+.B math/crackerbarrel
+Solves the crackerbarrel puzzle
+.B n
+times and outputs the time taken. See the source for details of the puzzle.
+.TP
+.B math/factor
+Factors the number n.
+.TP
+.B math/fibonacci
+Generates the first few terms of the Fibonacci series using recursion
+and user defined exceptions.
+.TP
+.B math/fit
+Fits a polynomial of degree
+.I deg
+to a set of points (x, y) where x is the independent variable, y the dependent one.
+All x and y values should be seperated by white space
+and can be real or integer. The values are read from
+.IR file
+or standard input if none is given. The
+.B -v
+option prints a table of actual and expected y values.
+.TP
+.B math/genprimes
+Generates primes numbers up to and including
+.B lim
+using spawned processes and buffered channels.
+.TP
+.B math/mersenne
+Tests the primality of the Mersenne numbers ie numbers of the form 2^n-1.
+The argument
+.IR num
+is the power of 2 in the above.
+.TP
+.B math/parts
+Calculates the number of partitions of the given number(s). The
+.B -a
+option will print out a table of the number of partitions of all numbers up to  the
+given number(s).
+.TP
+.B math/perms
+Prints out all permutations of
+.B n
+elements.
+.TP
+.B math/pi
+Calculates the value of pi to
+.B dp
+decimal places.
+.TP
+.B math/powers
+Investigates the number of representations of an integer as a sum of
+powers.
+The
+.B -p
+option denotes the power of use (default 2). The
+.B -n
+option denotes the number of powers to sum (default 2). The
+.B -f
+option denotes the minimum number of such representations found before
+reporting them (default 2). The
+.B -l
+and
+.B -m
+options denote the smallest and largest numbers to consider respectively (defaults 0 and 8192). Finally the
+.B -v
+option prints various statistics during the search.
+.TP
+.B math/primes
+Prints out all primes between
+.B m
+and
+.B n .
+.TP
+.B math/sieve
+Prints out prime numbers up to
+.B lim
+using a sieve algorithm. The
+.B -a
+option indicates the level of sophistication of the algorithm (0-4).
+.PP
+.SH EXAMPLE
+.EX
+
+	math/powers -p 3 -m 30000
+gives
+	[2] 1729 = 1**3 + 12**3 = 9**3 + 10**3
+	[2] 4104 = 2**3 + 16**3 = 9**3 + 15**3
+	[2] 20683 = 10**3 + 27**3 = 19**3 + 24**3
+The number of representations found for each integer is indicated in
+square brackets.
+.EE
+.SH SOURCE
+.B /appl/math/ack.b
+.br
+.B /appl/math/crackerbarrel.b
+.br
+.B /appl/math/factor.b
+.br
+.B /appl/math/fibonacci.b
+.br
+.B /appl/math/fit.b
+.br
+.B /appl/math/genprimes.b
+.br
+.B /appl/math/mersenne.b
+.br
+.B /appl/math/parts.b
+.br
+.B /appl/math/perms.b
+.br
+.B /appl/math/pi.b
+.br
+.B /appl/math/powers.b
+.br
+.B /appl/math/primes.b
+.br
+.B /appl/math/sieve.b

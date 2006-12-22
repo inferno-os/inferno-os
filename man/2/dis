@@ -1,0 +1,488 @@
+.TH DIS 2
+.SH NAME
+dis \- read Dis object files
+.SH SYNOPSIS
+.EX
+include "dis.m";
+dis := load Dis Dis->PATH;
+
+Inst: adt
+{
+	op:		int;
+	addr:	int;
+	mid:		int;
+	src:		int;
+	dst:		int;
+};
+
+Type: adt
+{
+	size:	int;
+	map:		array of byte;
+};
+
+Data: adt
+{
+	op:	int;		# encoded op
+	n:	int;		# number of elements
+	off:	int;		# byte offset in data space
+	pick {
+	Zero =>		# DEFZ
+	Bytes =>		# DEFB
+		bytes:	array of byte;
+	Words =>		# DEFW
+		words:	array of int;
+	String =>		# DEFS
+		str:	string;
+	Reals =>		# DEFF
+		reals:	array of real;
+	Array =>		# DEFA
+		typex:	int;
+		length:	int;
+	Aindex =>		# DIND
+		index:	int;
+	Arestore =>	# DAPOP
+	Bigs =>		# DEFL
+		bigs:		array of big;
+	}
+};
+
+Link: adt
+{
+	pc:		int;
+	desc:	int;
+	sig:		int;
+	name:	string;
+};
+
+Import: adt
+{
+	sig:	int;
+	name:	string;
+};
+
+Except: adt
+{
+	s:	string;
+	pc:	int;
+};
+
+Handler: adt
+{
+	pc1:	int;
+	pc2:	int;
+	eoff:	int;
+	ne:	int;
+	t:	ref Type;
+	etab:	array of ref Except;
+};
+
+Mod: adt
+{
+	name:	string;
+	srcpath:	string;
+
+	magic:	int;
+	rt:		int;
+	ssize:	int;
+	isize:	int;
+	dsize:	int;
+	tsize:	int;
+	lsize:	int;
+	entry:	int;
+	entryt:	int;
+
+	inst:	array of ref Inst;
+	types:	array of ref Type;
+	data:	list of ref Data;
+	links:	array of ref Link;
+	imports:	array of array of ref Import;
+	handlers:	array of ref Handler;
+
+	sign:	array of byte;
+};
+
+init:	fn();
+loadobj:	fn(file: string): (ref Mod, string);
+op2s:	fn(op: int): string;
+inst2s:	fn(i: ref Inst): string;
+.EE
+.SH DESCRIPTION
+The
+.B Dis
+module decodes the contents of a Dis object file containing a single module,
+of the format defined by
+.IR dis (6).
+The module defines many constants, giving symbolic names to
+Dis instruction codes, addressing mode masks, magic numbers, and other
+bits of the object code.
+.PP
+.B Init
+must be called before any other function, to initialise the module.
+.PP
+.B Loadobj
+reads a Dis object file from
+.IR file ,
+and returns a reference to a
+.B Mod
+adt that represents the module's contents, as the first element of the tuple;
+the string element of the tuple is nil.
+On error, the string element contains a diagnostic, and the
+reference is nil.
+.PP
+.B Op2s
+returns the assembly-language representation, as used by
+.IR asm (1),
+of the Dis operation code
+.IR op .
+It returns the string
+.IB ` OP op'
+if
+.I op
+does not correspond to a known operation code.
+.PP
+.B Inst2s
+returns a string corresponding to a disassembly of Dis instruction
+.IR i ,
+including addressing modes.
+.PP
+The module defines integer constants giving
+symbolic names to the Dis instruction codes, all of the form
+.BI I name
+where
+.I name
+is the name of the instruction, all in upper case:
+.IP
+.BR INOP ,
+.BR IALT ,
+.BR INBALT ,
+\&...
+.BR INEWZ ,
+.BR INEWAZ ,
+.BR IRAISE
+.PP
+The name
+.B MAXDIS
+is also defined; it has the value of the first unassigned Dis operation code.
+.PP
+Most of the members of the adt types have an obvious interpretation
+on reference to
+.IR dis (6).
+.PP
+The adt
+.B Mod
+represents a single module.
+It contains values extracted from the module's header,
+and references to structures representing the contents of
+the Dis file's code, data, type
+and external linkage sections:
+.TF entryt
+.PD
+.TP
+.B magic
+The constant
+.B XMAGIC
+(unsigned Dis module)
+or the constant
+.B SMAGIC
+(signed Dis module).
+.TP
+.B sign
+If
+.B magic
+is
+.BR SMAGIC ,
+the
+.B sign
+field contains the bytes in the signature section of the module header.
+Otherwise, there is no signature and
+.B sign
+is
+.BR nil .
+.TP
+.B name
+The name of the implementation module.
+.TP
+.B srcpath
+The source of the dis file relative to the inferno root.
+.TP
+.B rt
+Run-time options: a bit mask of the constants
+.BR MUSTCOMPILE ,
+.B DONTCOMPILE
+and
+.BR SHAREMP .
+.TP
+.B ssize
+Stack extent
+.TP
+.B isize
+Number of instructions
+.TP
+.B dsize
+Size in bytes of the module's global data area
+.TP
+.B tsize
+Number of type descriptors
+.TP
+.B lsize
+Number of external linkage descriptors
+.TP
+.B entry
+PC (instruction offset) of the default entry point for the module
+.TP
+.B entryt
+Index of the type descriptor for the module's entry point
+.TP
+.B inst
+Array representing the contents of the code segment;
+length
+.IB m .isize
+.TP
+.B types
+Array of the module's type descriptors;
+length
+.IB m .tsize
+.TP
+.B data
+list of data descriptors representing instructions for creating the module's data segment
+.TP
+.B links
+array of the module's external linkage descriptors (for exported functions); length
+.IB m .lsize
+.TP
+.B imports
+an array of import descriptor tables, one table for each module imported by this
+module. Each table is an array of pairs giving the signature and name of each
+function imported.
+.TP
+.B handlers
+an array of exception handlers used in this module. Each handler consists of
+the range of pc's it covers, the exception structure offset within the
+frame, the number of declared exceptions (as opposed to strings) in the handler,
+the type (if any) of any memory to clear when the exception occurs and a table
+of exceptions. The latter is an array containing pairs of exceptions and
+pc values. The final entry gives the pc to jump to
+in the '*' case or -1 if not applicable.
+.PP
+The
+.B Type
+adt represents the value of a type descriptor:
+.TF entryt
+.PD
+.TP
+.B size
+Size in bytes of the object represented by this descriptor
+.TP
+.B map
+Bitmap describing the location of pointers in the object (see
+.IR dis (6))
+.PP
+The
+.B Link
+adt represents the value of a link descriptor:
+.TF entryt
+.PD
+.TP
+.B name
+Name of the exported function
+.TP
+.B pc
+Instruction index in
+.B Mod.code
+of the function's entry point
+.TP
+.B desc
+Index in
+.B Mod.types
+of the type describing the function's stack frame
+.TP
+.B sig
+Integer hash of the function's type signature
+.PP
+The
+.B Inst
+adt represents a single Dis instruction in the instruction stream.
+The member
+.B op
+is the Dis instruction code.
+The member
+.B addr
+contains the addressing mode flags for middle, source and destination operands.
+Constants are defined to help unpack it.
+.PP
+The middle operand description is selected by the constant mask
+.BR ARM :
+.IP
+.IB i ".addr & ARM"
+.PP
+The valid results and interpretation are as follows:
+.IP
+.RS
+.TF AXNON
+.TP
+.B AXNON
+No middle operand.
+.TP
+.B AXIMM
+.BI $ n
+.TP
+.B AXINF
+.IB n (fp)
+.TP
+.B AXINM
+.IB n (mp)
+.PD
+.RE
+.PP
+The source operand's addressing mode is extracted as follows:
+.IP
+.BI ( i ".addr>>3)&AMASK"
+.PP
+The following combinations are valid, where
+.I n
+is the value in
+.IB i .src :
+.IP
+.RS
+.TF AIND|AMP
+.TP
+.B AXXX
+No operand
+.TP
+.B AFP
+The operand is
+.IB n (fp)
+.TP
+.B AMP
+The operand is
+.IB n (mp)
+.TP
+.B AIMM
+The operand is
+.BI $ n
+(ie, immediate literal
+.IR n )
+.TP
+.B AIND|AFP
+The operand is
+.IB si ( fi (fp))
+.TP
+.B AIND|AMP
+The operand is
+.IB si ( fi (mp))
+.RE
+.PD
+.PP
+where
+.I fi
+is the offset for the first indirection, extracted from
+.IR n :
+.IP
+.BI ( n ">>16)&16rFFFF)" ,
+.PP
+and
+.I si
+is the offset for the second indirection, also extracted from
+.IR n:
+.IP
+.BI ( n "&16rFFFF)" .
+.PP
+The destination addressing mode is interpreted in a similar way,
+except that the addressing mode is extracted as follows:
+.IP
+.BI ( i ".addr&AMASK)"
+.PP
+and the value of the offset
+.I n
+is found in
+.IB i .dst .
+.I Fi
+and
+.I si
+are extracted from
+.I n
+as before.
+.PP
+Finally,
+.B Data
+adt represents a data item, which tells the system's module loader
+how to initialise part of the module's global data segment.
+It has the following members:
+.TP
+.B op
+the encoded type and length; usually ignored: the
+.B pick
+tag and
+.BR n ,
+below,
+usually suffice
+.TP
+.B n
+the number of data values
+.TP
+.B off
+the byte offset of the first data value to initialise, relative to the current loading base
+.PP
+The alternatives of the
+.B pick
+select the correct variant to see the data values encoded in the
+object file as Limbo values
+of the correct type.
+The interpretation is straightforward for the tags
+.BR Bytes ,
+.BR Words ,
+.B Bigs
+and
+.BR Reals :
+the corresponding array members are arrays of
+.B n
+elements of the appropriate type.
+The remaining cases are as follows:
+.TF Arestore
+.PD
+.TP
+.B String
+The member
+.B str
+has the decoded representation of the
+corresponding
+.I n
+data bytes from the object file.
+.TP
+.B Array
+The member
+.B typex
+is the index in
+.B Mod.types
+of the array's type, and member
+.B length
+is its length.
+.TP
+.B Aindex
+This alternative can appear only following a value of
+.BR Data.Array .
+The member
+.B index
+is an index into the corresponding array as represented in the global data space,
+which determines a new loading base address for subsequent
+.B Data
+items.
+The previous base address is stacked on an internal stack.
+.TP
+.B Arestore
+Pop the address from the internal address stack and make that the current
+loading address.
+The request marks the end of a sequence of
+.B Data
+items initialising an array.
+.SH SOURCE
+.B /appl/lib/dis.b
+.SH SEE ALSO
+.IR disdep (1),
+.B wm/rt
+in
+.IR wm-misc (1),
+.IR dis (6)
+.br
+"The Dis Virtual Machine", in Volume 2.

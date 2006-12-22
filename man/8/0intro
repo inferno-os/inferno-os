@@ -1,0 +1,13 @@
+.TH INTRO 8
+.SH NAME
+intro \- introduction to system configuration and administration, and system utilities
+.SH DESCRIPTION
+This section of the manual describes commands that provide
+system configuration and support system administration.
+There are commands to start and shut down native and hosted environments,
+administer authentication,
+build file system images,
+initialise disks and flash memory, and
+configure devices.
+It also documents the commands and interfaces to service
+programs, including those providing services on the network.

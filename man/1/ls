@@ -1,0 +1,143 @@
+.TH LS 1
+.SH NAME
+ls \- list files
+.SH SYNOPSIS
+.B ls
+[
+.B -lpmnqduntscr
+] [
+.IR file ...
+]
+.SH DESCRIPTION
+.B Ls
+lists the named
+.IR file s
+in an order and format determined by its options.
+The options determining the output format are:
+.TP 10
+.B -l
+Produce output in long format. The information given in
+each column is as follows:
+.RS
+.IP 1.
+The permission mode of the file. This is formatted as 11 characters;
+the first is
+.RB ` d '
+if the file is a directory,
+.RB ` a '
+if the file is append-only,
+.RB ` A '
+if it is an authentication file,
+or
+.RB ` - '
+otherwise.
+The next character is
+.RB ` l '
+if the file is exclusive-use,
+or
+.RB ` - '
+otherwise.
+The remaining characters are in three groups
+of three, each representing one permission bit. Each character
+is either
+.RB ` r '
+(read permission),
+.RB ` w '
+(write permission),
+.RB ` x '
+(execute permission)
+or 
+.RB ` - '
+(no permission).
+The three groups represent permissions granted for that file
+to the file's owner, members of the file's group and anybody else
+respectively.
+.IP 2.
+The device type (this is the `#' device letter for local devices
+or `M' for files mounted over a Styx connection).
+.IP 3.
+The device instance number (this distinguishes between
+separately mounted instances of the same device).
+.IP 4.
+The file's owner.
+.IP 5.
+The file's group.
+.IP 7.
+The size of the file in bytes.
+.IP 8.
+The date and time the file was last modified (see also the
+.B -u
+and the
+.B -e
+options).
+.IP 9.
+The name of the file.
+.RE
+.TP
+.B -m
+Print the name of the user who most recently modified
+the file.
+.TP
+.B -q
+Print the file's
+.I qid
+(see
+.IR sys-stat (2))
+at the beginning of each line;
+the printed fields are in the order
+path, version, and type.
+.TP
+.B -u
+Applicable only to the
+.B -l
+and
+.B -t
+options: causes time-sorted listings to be listed by
+time of last access, and the access time to be printed
+in long-format listings instead of the modification time.
+.TP
+.B -e
+Applicable only to the
+.B -l
+and
+.B -u
+options: causes the time to be displayed as seconds since the epoch.
+.TP
+.B -p
+Print each filename as a bare name, without the name
+of the containing directory.
+.PP
+The other options relate to the order in which the listed files
+are printed, and which files are selected. Usually, each
+.I file
+that is a directory has its contents printed. The
+.B -d
+option causes the directory itself to be listed.
+In a union directory, it is possible for there to be
+two or more instances of a file with the same name.
+The
+.B -c
+option causes only the first one occurring to be
+listed. The options relating to ordering are:
+.TP 10
+.B -n
+Do not sort the files at all.
+.TP
+.B -t
+Sort by modification time (most recent first)
+or access time if the
+.B -u
+option is also specified.
+.TP
+.B -s
+Sort by size (smallest first).
+.TP
+.B -r
+Reverse the sort order.
+.SH SOURCE
+.B /appl/cmd/ls.b
+.SH SEE ALSO
+.IR readdir (2),
+.IR lc (1)
+
+

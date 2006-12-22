@@ -1,0 +1,69 @@
+.TH TOOLBAR 1
+.SH NAME
+toolbar \- window manager toolbar
+.SH SYNOPSIS
+.B wm/toolbar
+[
+.B -s
+]
+.SH DESCRIPTION
+.I Toolbar
+is designed to be run as the controlling application under
+an instance of
+.IR wm (1).
+It runs an initialisation shell script,
+provides a menu allowing the user to start new programs.
+and shows icons representing windows that have been hidden.
+.PP
+When
+.I toolbar
+is started, it configures itself by means of the
+.B /lib/wmsetup
+shell script.
+.I Toolbar
+loads the shell
+.IR sh (1),
+and defines the following
+shell built-in
+commands before executing the script:
+.HP
+.B menu
+.I title1
+.RI [ title2]
+.I command
+.br
+Insert an item at the top of the start menu.
+.I Title1
+is the text of the item on the main menu.
+If
+.I title2
+is given then
+.I title1
+is a sub-menu with
+.I title2
+as the menu item.
+.I Command
+is executed by the shell whenever the item is selected.
+An item with an empty command is displayed as a separator.
+.HP
+.B delmenu
+.br
+Forget all menu items.
+.PP
+The standard
+.B /lib/wmsetup
+script executes the script
+.BI /usr/ username /lib/wmsetup ,
+enabling each user to have their own window manager configuration.
+.SH FILES
+.TP
+.B /lib/wmsetup
+Initialisation shell-script.
+.SH SOURCE
+.B /appl/wm/toolbar.b
+.SH "SEE ALSO"
+.IR wm(1),
+.IR tkclient (2),
+.IR wmclient (2),
+.IR toolbar (1),
+.IR logon (1).

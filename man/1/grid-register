@@ -1,0 +1,60 @@
+.TH GRID-REGISTER 1
+.SH NAME
+register \- registers a resource with a known
+.IR registry (4)
+.SH SYNOPSIS
+.B grid/register [
+.I option ...
+.B ] {
+.I command ...
+.B }
+
+.SH DESCRIPTION
+.I Register
+takes a program which serves a Styx (see
+.IR intro (5))
+namespace on
+.I stdin
+and registers it with a known 
+.IR registry (4).
+It then marshals the service by listening for incoming connections and exporting the namespace across them.
+.I Register
+prints out various status messages to
+.I stdout
+in the form which may be read by
+.IR monitor (1).
+.SH OPTIONS
+.TP 17
+.BI -u " maxusers"
+Specifies the maximum number of connections to the resource at any one time. If not given, any number of connections are allowed.
+.TP
+.BI -e " n"
+Tells 
+.I register
+to exit after the last connection has gone away. 
+.I N
+is a threshold value, so that 
+.I register
+will not exit upon the last connection going away until the number of incoming connections has reached at least 
+.I n.
+.TP
+.BI -a " 'name=value'"
+Specifies the name and value of an attribute to be listed as belonging to the resource when registered with the
+.IR registry (4).
+.TP
+.BI -A  " address"
+Allows the user to specify the address for the service to announce on. 
+.I Address
+takes the form
+.BI tcp! machine ! port
+.TP
+.B -m
+Includes the amount of free main memory as part of the attributes list.
+
+.SH SOURCE
+.B /appl/grid/register.b
+
+.SH "SEE ALSO"
+.IR registries (2),
+.IR registry (4),
+.IR grid-localreg (1)

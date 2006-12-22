@@ -1,0 +1,67 @@
+.TH GRID-NS 1
+.SH NAME
+ns \- exports a selected namespace and serves it on
+.I stdin.
+.SH SYNOPSIS
+.BI "grid/srv/ns	[ -r " "relpath " "]" " path1 path2...path n"
+.br
+.BI "grid/runns	[ -r " "relpath " "]" " path1 path2...path n"
+.SH DESCRIPTION
+.I Ns
+exports a selected subsection of the local namespace and serves it on 
+.I stdin.
+The path arguments specify which directories are to be exported. If subdirectories are exported without their parents, 
+.I ns
+attempts to maintain the namespace structure by creating the parents but populating them only with the selected subdirectories. For example, exporting 
+.B /appl/lib
+would mean that the exported 
+.B /appl
+directory contained nothing apart from the
+.B lib
+subdirectory. If
+.I relpath
+is specified, all paths will be viewed relative to this path. For instance, if
+.I relpath
+is
+.BR /usr/inferno ,
+then
+.B /usr/inferno/bin/dis
+would be listed as
+.B /bin/dis
+and
+.B /tmp
+would not be listed at all.
+
+.IR Register (1)
+may be used in conjunction with 
+.I ns
+to register it with a 
+.IR registry (4)
+and to export and serve its namespace across
+.IR dial (2) 
+network connections. Incoming connections may also be displayed visually using
+.IR monitor (1).
+For example:
+.PP
+.BI "grid/register [" " options ..." " ] { grid/srv/ns " "paths..." " } | grid/srv/monitor 1 'NS resource'
+.PP
+This set of commands is encapsulated within the shell script
+.I runns
+which will automatically register 
+.I ns
+with a
+.IR registry (4)
+if possible and start up the graphical display to show connections to the resource. There is no need for the user to execute
+.I ns
+outside of
+.I runns
+unless the namespace it provides is required to be accessible in a different way to that provided by
+.IR register (1).
+.SH SOURCE
+.B /appl/grid/srv/ns.b
+
+.SH "SEE ALSO"
+.IR cpu (4),
+.IR grid-monitor (1),
+.IR grid-register (1),
+.IR session (1)

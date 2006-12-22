@@ -1,0 +1,304 @@
+.TH LISTBOX 9
+.SH NAME
+listbox \- Create and manipulate listbox widgets
+.SH SYNOPSIS
+\f5listbox\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-background  -highlightcolor     -selectforeground
+-borderwidth -highlightthickness -takefocus
+-font        -relief             -width
+-foreground  -selectbackground   -xscrollcommand
+-height      -selectborderwidth  -yscrollcommand
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -height \fIdist\fP
+Specifies the desired height for the window.
+.TP
+.B -selectmode \fIval\fP
+Specifies one of several styles for manipulating the selection.
+The value of the option may be arbitrary, but the default bindings
+expect it to be either \f5single\fR, \f5browse\fR, \f5multiple\fR,
+or \f5extended\fR;  the default value is \f5single\fR.
+.TP
+.B -width \fIdist\fP
+Specifies the desired width for the window.
+.SH DESCRIPTION
+The \f5listbox\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a listbox widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the listbox such as its colours, font,
+text, and relief.  The \f5listbox\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A listbox is a widget that displays a list of strings, one per line.
+When first created, a new listbox has no elements.
+Elements may be added or deleted using widget commands described
+below.  In addition, one or more elements may be selected as described
+below.
+.PP
+It is not necessary for all the elements to be
+displayed in the listbox window at once;  commands described below
+may be used to change the view in the window.  Listboxes allow
+scrolling in both directions using the standard \f5-xscrollcommand\fR
+and \f5-yscrollcommand\fR options.
+.SH INDICES
+Many of the widget commands for listboxes take one or more indices
+as arguments.
+An index specifies a particular element of the listbox, in any of
+the following ways:
+.TP 12
+\fInumber\fR
+Specifies the element as a numerical index, where 0 corresponds
+to the first element in the listbox.
+.TP 12
+\f5active\fR
+Indicates the element that has the location cursor.  This element
+will be displayed with a highlight rectangle when the listbox has the
+keyboard focus, and it is specified with the \f5activate\fR
+widget command.
+.TP 12
+\f5anchor\fR
+Indicates the anchor point for the selection, which is set with the
+\f5selection anchor\fR widget command.
+.TP 12
+\f5end\fR
+Indicates the end of the listbox.
+For some commands this means just after the last element;
+for other commands it means the last element.
+.TP 12
+\f5@\fIx\f5,\fIy\fR
+Indicates the element that covers the point in the listbox window
+specified by \fIx\fR and \fIy\fR (in pixel coordinates).  If no
+element covers that point, then the closest element to that
+point is used.
+.LP
+In the widget command descriptions below, arguments named \fIindex\fR,
+\fIfirst\fR, and \fIlast\fR always contain text indices in one of
+the above forms.
+
+.SH "WIDGET COMMAND"
+The \f5listbox\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for listbox widgets:
+.TP
+\fIpathName \f5activate\fR \fIindex\fR
+Sets the active element to the one indicated by \fIindex\fR.
+The active element is drawn with an underline when the widget
+has the input focus, and its index may be retrieved with the
+index \f5active\fR.
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5listbox\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5listbox\fR
+command.
+.TP
+\fIpathName \f5curselection\fR
+Returns a list containing the numerical indices of
+all of the elements in the listbox that are currently selected.
+If there are no elements selected in the listbox then an empty
+string is returned.
+.TP
+\fIpathName \f5delete \fIfirst \fR?\fIlast\fR?
+Deletes one or more elements of the listbox.  \fIFirst\fR and \fIlast\fR
+are indices specifying the first and last elements in the range
+to delete.  If \fIlast\fR isn't specified it defaults to
+\fIfirst\fR, i.e. a single element is deleted.
+.TP
+\fIpathName \f5get \fIfirst\fR ?\fIlast\fR?
+If \fIlast\fR is omitted, returns the contents of the listbox
+element indicated by \fIfirst\fR.
+If \fIlast\fR is specified, the command returns a list whose elements
+are all of the listbox elements between \fIfirst\fR and \fIlast\fR,
+inclusive.
+Both \fIfirst\fR and \fIlast\fR may have any of the standard
+forms for indices.
+.TP
+\fIpathName \f5index \fIindex\fR
+Returns a decimal string giving the integer index value that
+corresponds to \fIindex\fR.
+.TP
+\fIpathName \f5insert \fIindex \fR?\fIelement element ...\fR?
+Inserts zero or more new elements in the list just before the
+element given by \fIindex\fR.  If \fIindex\fR is specified as
+\f5end\fR then the new elements are added to the end of the
+list.  Returns an empty string.
+.TP
+\fIpathName \f5nearest \fIy\fR
+Given a y-coordinate within the listbox window, this command returns
+the index of the (visible) listbox element nearest to that y-coordinate.
+.TP
+\fIpathName \f5see \fIindex\fR
+Adjust the view in the listbox so that the element given by \fIindex\fR
+is visible.
+If the element is already visible then the command has no effect;
+if the element is near one edge of the window then the listbox
+scrolls to bring the element into view at the edge;  otherwise
+the listbox scrolls to center the element.
+.TP
+\fIpathName \f5selection \fIoption arg\fR
+This command is used to adjust the selection within a listbox.  It
+has several forms, depending on \fIoption\fR:
+.RS
+.TP
+\fIpathName \f5selection anchor \fIindex\fR
+Sets the selection anchor to the element given by \fIindex\fR.
+The selection anchor is the end of the selection that is fixed
+while dragging out a selection with the mouse.
+The index \f5anchor\fR may be used to refer to the anchor
+element.
+.TP
+\fIpathName \f5selection clear \fIfirst \fR?\fIlast\fR?
+If any of the elements between \fIfirst\fR and \fIlast\fR
+(inclusive) are selected, they are deselected.
+The selection state is not changed for elements outside
+this range.
+.TP
+\fIpathName \f5selection includes \fIindex\fR
+Returns 1 if the element indicated by \fIindex\fR is currently
+selected, 0 if it isn't.
+.TP
+\fIpathName \f5selection set \fIfirst \fR?\fIlast\fR?
+Selects all of the elements in the range between
+\fIfirst\fR and \fIlast\fR, inclusive, without affecting
+the selection state of elements outside that range.
+.RE
+.TP
+\fIpathName \f5size\fR
+Returns a decimal string indicating the total number of elements
+in the listbox.
+.TP
+\fIpathName \f5xview \fIargs\fR
+This command is used to query and change the horizontal position of the
+information in the widget's window.  It can take any of the following
+forms:
+.RS
+.TP
+\fIpathName \f5xview\fR
+Returns a list containing two elements.
+Each element is a real fraction between 0 and 1;  together they describe
+the horizontal span that is visible in the window.
+For example, if the first element is .2 and the second element is .6,
+20% of the listbox's text is off-screen to the left, the middle 40% is visible
+in the window, and 40% of the text is off-screen to the right.
+These are the same values passed to scrollbars via the \f5-xscrollcommand\fR
+option.
+.TP
+\fIpathName \f5xview\fR \fIindex\fR
+Adjusts the view in the window so that the character position given by
+\fIindex\fR is displayed at the left edge of the window.
+Character positions are defined by the width of the character \f50\fR.
+.TP
+\fIpathName \f5xview moveto\fI fraction\fR
+Adjusts the view in the window so that \fIfraction\fR of the
+total width of the listbox text is off-screen to the left.
+\fIfraction\fR must be a fraction between 0 and 1.
+.TP
+\fIpathName \f5xview scroll \fInumber what\fR
+This command shifts the view in the window left or right according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts left or right by
+\fInumber\fR character units (the width of the \f50\fR character)
+on the display;  if it is \f5pages\fR then the view adjusts by
+\fInumber\fR screenfuls.
+If \fInumber\fR is negative then characters farther to the left
+become visible;  if it is positive then characters farther to the right
+become visible.
+.RE
+.TP
+\fIpathName \f5yview \fI?args\fR?
+This command is used to query and change the vertical position of the
+text in the widget's window.
+It can take any of the following forms:
+.RS
+.TP
+\fIpathName \f5yview\fR
+Returns a list containing two elements, both of which are real fractions
+between 0 and 1.
+The first element gives the position of the listbox element at the
+top of the window, relative to the listbox as a whole (0.5 means
+it is halfway through the listbox, for example).
+The second element gives the position of the listbox element just after
+the last one in the window, relative to the listbox as a whole.
+These are the same values passed to scrollbars via the \f5-yscrollcommand\fR
+option.
+.TP
+\fIpathName \f5yview\fR \fIindex\fR
+Adjusts the view in the window so that the element given by
+\fIindex\fR is displayed at the top of the window.
+.TP
+\fIpathName \f5yview moveto\fI fraction\fR
+Adjusts the view in the window so that the element given by \fIfraction\fR
+appears at the top of the window.
+\fIFraction\fR is a fraction between 0 and 1;  0 indicates the first
+element in the listbox, 0.33 indicates the element one-third the
+way through the listbox, and so on.
+.TP
+\fIpathName \f5yview scroll \fInumber what\fR
+This command adjusts the view in the window up or down according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts up or down by
+\fInumber\fR lines;  if it is \f5pages\fR then
+the view adjusts by \fInumber\fR screenfuls.
+If \fInumber\fR is negative then earlier elements
+become visible;  if it is positive then later elements
+become visible.
+.RE
+.SH "DEFAULT BINDINGS"
+If the selection mode is \f5single\fR or \f5browse\fR, at most one
+element can be selected in the listbox at once.
+In both modes, clicking button 1 on an element selects
+it and deselects any other selected item.
+In \f5browse\fR mode it is also possible to drag the selection
+with button 1.
+.PP
+If the selection mode is \f5multiple\fR or \f5extended\fR,
+any number of elements may be selected at once, including discontiguous
+ranges.  In \f5multiple\fR mode, clicking button 1 on an element
+toggles its selection state without affecting any other elements.
+In \f5extended\fR mode, pressing button 1 on an element selects
+it, deselects everything else, and sets the anchor to the element
+under the mouse;  dragging the mouse with button 1
+down extends the selection to include all the elements between
+the anchor and the element under the mouse, inclusive.
+.PP
+Most people will probably want to use \f5browse\fR mode for
+single selections and \f5extended\fR mode for multiple selections;
+the other modes appear to be useful only in special situations.
+.PP
+The behaviour of listboxes can be changed by defining new bindings for
+individual widgets. The default bindings do a grab set when button 1 is pressed
+and a grab release when button 1 is released. Care must be taken when overriding
+either or both of these defaults to ensure that grabbing is consistent.
+.SH BUGS
+At least one entry is required for the widget to indicate that it has keyboard focus.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

@@ -1,0 +1,85 @@
+.TH REGISTER 8 mux
+.SH NAME
+register \- command to register set-top-box identity with signer
+.SH SYNOPSIS
+.B mux/register
+[
+.I signer
+]
+.SH DESCRIPTION
+.I Register
+is intended for use on a set top box (or similar device).
+It connects to
+.IR signer ,
+a machine configured to sign certificates,
+and obtains an authenticated certificate based on the contents of
+.L /nvfs/ID
+(the set top box ID in non-volatile memory).
+The certificate is saved in the file
+.L /nvfs/default
+for later use.
+If no
+.I signer
+is named explicitly, the
+.B $SIGNER
+named in
+.IR db (6)
+is used instead.
+.PP
+There are several phases to obtaining the certificate.
+.IP 1.
+The register command interacts with
+.IR signer (8)
+on the signing host
+to construct the certificate. This certificate is `blinded' by a random bit mask, sent back to
+.I register
+which displays it in textual or graphical form to
+the user.
+.IP 2.
+The user running
+.I register
+must use an independent,
+secure mechanism (for example, an untapped telephone call)
+to communicate with a human agent at the
+site acting as
+.IR signer .
+That agent runs
+.I verify
+(see
+.IR signer (8))
+to display the same `blinded' certificate that was
+shown to
+.IR register 's
+user at the client.
+Once the agent is convinced that the `blinded' certificate has been delivered to the correct party, the agent tells
+.I verify
+to accept the identity of the caller.
+.IP 3.
+.I Register
+then connects to the
+.I countersigner
+process (see
+.IR signer (8))
+to obtain the bitmask needed to `unblind' the previously received certificate.
+This step can only validly be performed after the successful
+completion of
+.I verify
+on the
+.I signer.
+.SH FILES
+.TF /services/cs/db
+.TP
+.B /nvfs/ID
+File emulating set top box-id in ROM.
+.TP
+.B /nvfs/default
+Repository of authenticated certificate.
+.TP
+.B /services/cs/db
+Default definition of `signer' host.
+.SH SOURCE
+.B /appl/mux/register.b
+.SH "SEE ALSO"
+.IR db (6),
+.IR manufacture (8),
+.IR signer (8)

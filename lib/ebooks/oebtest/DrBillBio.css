@@ -1,0 +1,92 @@
+P {
+    text-align: justify
+    }
+
+P.right {
+    text-align: right
+    }
+
+P.title {
+    margin-bottom: 1em
+    }
+
+P.firstpara {
+    text-indent: 0pt;
+    }
+
+P.indentpara {
+    text-indent: 1em;
+    }
+
+.pagebreak {
+    page-break-before: right
+    }
+
+CITE {
+    text-indent: 12pt;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    font-size: smaller
+    }
+
+.title {
+    text-align: center
+    }
+
+SPAN.rj {
+    text-align: right
+    }
+
+A {
+    color: blue;
+    text-decoration: none
+}
+
+DIV.image {
+    page-break-before: right;
+    page-break-after: left;
+    height: 100%
+    }
+
+BODY {
+    color: rgb(0,0,0);
+    background-color: rgb(255,255,255);
+    font-family: 'Times New Roman', Times, Serif}
+
+H1 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 24pt;
+    text-align: center;
+    }
+
+H1.title {
+    font-weight: bold
+    }
+
+H2 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 18pt}
+
+H3 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 14pt}
+
+H4 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 12pt}
+
+H5 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 10pt
+    }
+
+H6 {
+    font-weight: normal;
+    font-style:                  normal;
+    font-size: 8pt
+    }

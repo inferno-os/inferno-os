@@ -1,0 +1,157 @@
+.TH SH-EXPR 1
+.SH NAME
+expr, ntest \- shell module for simple arithmetic.
+.SH SYNOPSIS
+.B load expr
+
+.B ${expr
+[
+-r
+.I radix
+]
+[
+.I arg...
+]
+.B }
+.br
+.B ntest
+.I num
+.br
+.SH DESCRIPTION
+.B Expr
+is a loadable module for
+.IR sh (1)
+that provides support for simple integer arithmetic.
+It provides one command,
+.BR ntest ,
+which performs a simple boolean test
+on its integer argument, and the
+substitution operator
+.BR expr ,
+which takes an expression in Reverse Polish
+notation, and yields its result.
+.B Ntest
+returns true if its argument
+.I num
+is non-zero.
+.B Expr
+evaluates each
+.I arg
+in turn; if it is an integer it gets pushed onto
+the stack; otherwise it should name
+one of the operators below, whereupon
+the appropriate number of operands are
+popped off the stack, evaluated as arguments
+to the operator, and the result pushed back onto
+the stack. Arguments are passed to the operator
+first-pushed first, so, for instance,
+.B ${expr 2 1 -}
+yields 1, not -1.
+Alternative names are given for some operators;
+this is to avoid the necessity of quoting operators
+that contain
+.I sh
+metacharacters. All operations use 64-bit signed
+integers; integers are given in the same form acceptable
+to Limbo. The relational operators yield either
+1 (true) or 0 (false). If the
+.B -r
+option is given,
+.I radix
+specifies an output base for numbers yielded by
+.BR expr .
+Numbers are printed in a form suitable for re-interpretation
+by
+.BR expr .
+.PP
+When all its arguments have been evaluated,
+.B expr
+yields all the values remaining on its stack, first pushed
+first. The operators supported by expr are as follows (the number
+of operands required in is given parentheses):
+.TP 15
+.BR + \ (2)
+Addition
+.TP
+.BR - \ (2)
+Subtraction
+.TP
+.BR x ,\  * \ (2)
+Multiplication
+.TP
+.BR / \ (2)
+Division. Division by zero raises a
+.B divide by zero
+exception.
+.TP
+.BR % \ (2)
+Modulus. A zero modulus will cause a
+.B divide by zero
+exception to be raised.
+.TP
+.BR and \ (2)
+Bitwise-and.
+.TP
+.BR or \ (2)
+Bitwise-or.
+.TP
+.BR xor \ (2)
+Bitwise-xor.
+.TP
+.BR ~ \ (1)
+Bitwise-complement..
+.TP
+.BR _ \ (1)
+Unary minus.
+.TP
+.BR << ,\  shl \ (2)
+Shift left.
+.TP
+.BR >> ,\  shr \ (2)
+Shift right.
+.TP
+.BR = ", " == ", " eq " (2)"
+Equality.
+.TP
+.BR != ", " neq " (2)"
+Inequality.
+.TP
+.BR > ", " gt " (2)"
+Greater than.
+.TP
+.BR < ", " lt " (2)"
+Less than.
+.TP
+.BR <= ", " le " (2)"
+Less than or equal to.
+.TP
+.BR >= ", " ge " (2)"
+Greater than or equal to.
+.TP
+.BR ! ", " not " (1)"
+Logical negation.
+.TP 
+.BI rep \ \f1(\fPn\f1)\fP
+.B Rep
+repeats the last operation (which must
+have been a two-operand operation other
+than
+.BR seq )
+until the values in the stack are exhausted.
+.TP
+.BR seq \ (2)
+.B Seq
+pushes on the stack a sequence of numbers ranging
+numerically from its first argument up to and including
+its second argument. If its second argument is
+less than its first, the sequence will descend.
+.SH SOURCE
+.B /appl/cmd/sh/expr.b
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-std (1),
+.IR sh-tk (1)
+.SH BUGS
+Postfix notation can be confusing.
+Any operators that contain shell metacharacters (e.g. ``*'', ``>'')
+must be quoted to avoid interpretation by the shell.

@@ -1,0 +1,7 @@
+.TH INTRO 6
+.SH NAME
+intro \- introduction to file formats
+.SH DESCRIPTION
+This section describes Inferno file formats that are meant to be public
+(as opposed to formats that are for a program's internal use).
+It also describes a few system conventions.

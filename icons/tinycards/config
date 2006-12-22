@@ -1,0 +1,8 @@
+rearborder	1
+border		1
+selectborder	2
+xdelta		9
+ydelta		10
+font			/fonts/misc/latin1.6x13.font
+selectcolour	#ffff00
+cardsize 19 24

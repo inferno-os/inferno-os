@@ -1,0 +1,72 @@
+.TH RCMD 1
+.SH NAME
+rcmd \- remote command execution
+.SH SYNOPSIS
+.B rcmd
+[
+.B -C
+.I cryptoalg
+] [
+.B -e
+.I exportpath
+]
+.I host
+[
+.I cmd
+.I arg ...
+]
+.SH DESCRIPTION
+.I Rcmd
+executes
+.I cmd
+on the given
+.IR host .
+If no
+.I cmd
+is given,
+.IR sh (1)
+is assumed.
+The
+.I host
+must have enabled the
+.L rstyx
+service (typically started via
+.IR svc (8)).
+.PP
+For authentication,
+.I rcmd
+will use the certificate in the file
+.IP
+.BI /usr/ username /keyring/ net ! machine
+.PP
+if it exists, and otherwise it will use the certificate in
+.IP
+.BI /usr/ username /keyring/default .
+.PP
+The
+.B -C
+option sets the algorithm
+.I cryptoalg
+to be used following authentication for digesting or encryption.
+See 
+.IR ssl (3)
+for the supported algorithms.
+The default is
+.BR none :
+.IR ssl (3)
+is not used after authentication.
+.PP
+The
+.B -e
+option sets the path to be exported as root from the local machine (defaults to
+.B /
+if not specified).
+.SH SOURCE
+.B /appl/cmd/rcmd.b
+.SH "SEE ALSO"
+.IR security-intro (2),
+.IR security-auth (2),
+.IR security-login (2),
+.IR getauthinfo (8),
+.IR rstyxd (8),
+.IR svc (8)

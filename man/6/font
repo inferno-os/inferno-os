@@ -1,0 +1,102 @@
+.TH FONT 6
+.SH NAME
+font, subfont \- external format for character fonts and subfonts
+.SH DESCRIPTION
+Fonts are constructed as a list defining a range of Unicode characters
+and a subfont containing the character images for that range.
+Subfonts are not directly accessible from Limbo.
+.PP
+External fonts are described by a plain text file that can be read using
+.BR Font.open ;
+.B Font.build
+reads the same format from a string rather than a file.
+(see
+.IR draw-font (2)).
+.PP
+The format is a header followed by any number of
+subfont range specifications.
+The header contains two numbers: the height and the ascent, both in pixels.
+The height is the inter-line spacing and the ascent is the distance
+from the top of the line to the baseline.  These numbers should be chosen
+to display consistently all the subfonts of the font.
+A subfont range specification contains two or three numbers and a file name.
+The numbers are the inclusive range of characters covered by the subfont,
+with an optional starting position within the subfont,
+and the file name names an external file holding the subfont data.
+The minimum number of a covered range is mapped to the specified starting position
+(default zero) of the
+corresponding subfont.
+If the subfont file name does not begin with a slash, it is taken relative to the
+directory containing the font file.
+Each field must be followed by some white space.
+Each numeric field may be C-format decimal, octal, or hexadecimal.
+.PP
+External subfonts are represented in a more rigid format:
+an image containing character images,
+followed by a subfont header, followed by character information.
+The image has the format for external image files described in
+.IR image (6).
+The subfont header has 3
+decimal strings:
+.BR n ,
+.BR height ,
+and
+.BR ascent .
+Each number is right-justified and blank padded in 11 characters, followed by a blank.
+The character
+.B info
+consists of
+.BR n +1
+6-byte entries, each giving values called
+.B x
+(2 bytes, low order byte first),
+.BR top ,
+.BR bottom ,
+.BR left ,
+and
+.BR width
+for the successive characters from left to right (in increasing Unicode order) in the
+subfont.
+The rectangle holding the character is
+.B (x,
+.B top,
+.B xn,
+.BR bottom) ,
+where
+.B xn
+is the
+.B x
+field of the next character.
+When the character is to be drawn in an image at point
+.BR p ,
+the rectangle is placed at
+.B (p.x+left ,
+.B p.y)
+and the next character to be drawn is placed at
+.B (p.x+width ,
+.B p.y)
+The
+.B x
+field of the last
+entry
+is used to calculate the image width
+of the previous character; the other fields in the last
+entry
+are irrelevant.
+.PP
+Note that the convention of using the character with value zero (NUL) to represent
+characters of zero width (see the description of
+.B Image.text
+in
+.IR draw-image (2))
+means that fonts should have, as their zeroth character,
+one with non-zero width.
+.SH FILES
+.TF /fonts/*
+.TP
+.B /fonts/*
+font directories
+.SH "SEE ALSO"
+.IR draw-intro (2),
+.IR draw-font (2),
+.IR draw (3)

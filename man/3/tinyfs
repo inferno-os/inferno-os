@@ -1,0 +1,45 @@
+.TH TINYFS 3
+.SH NAME
+tinyfs \- file system for miniscule devices
+.SH SYNOPSIS
+.EX
+bind -c #F\fIname\fP /nvfs
+.EE
+.SH DESCRIPTION
+.I Tinyfs
+provides file system access to the contents of low-capacity devices,
+ranging from several hundred bytes (at least 144 bytes) to at most the order of a kilobyte.
+It is provided to support file system access to small non-volatile memories,
+as for instance are found in some real-time clock chips,
+where IDs, keys, PINs, certificates and the like might be stored by either client or server.
+.PP
+The file system has only one directory, its root, which can contain only files.
+Once created, a write can only append to a file; random updates are not allowed,
+although the file could be truncated and rewritten.
+.PP
+The device specifier following the
+.B #F
+device name is the
+.I name
+of a file in
+.B /dev
+on which the tiny file system will live.
+For instance,
+.B #Fnvram
+refers to
+.BR /dev/nvram .
+The device must allow seek and write.
+During the
+.IR attach ,
+the system scans the device, checking the file system structure
+by building a table of files, and checking a checksum stored
+in each block; inconsistent structure is reinitialised, and thus
+a previously unused device will emerge correctly formatted as an empty tiny file system.
+.SH FILES
+.TF /nvfs
+.TP
+.B /nvfs
+conventional mount point used by
+.IR init (8)
+.SH SOURCE
+.B /os/port/devtinyfs.c

@@ -1,0 +1,312 @@
+.TH CONS 3 
+.SH NAME
+cons \- console device
+.SH SYNOPSIS
+.nf
+.B bind #c /dev
+
+.B /dev/cons
+.B /dev/consctl
+.B /dev/drivers
+.B /dev/jit
+.B /dev/keyboard
+.B /dev/klog
+.B /dev/kprint
+.B /dev/memory
+.B /dev/msec
+.B /dev/null
+.B /dev/notquiterandom
+.B /dev/pin
+.B /dev/pointer
+.B /dev/random
+.B /dev/scancode
+.B /dev/sysctl
+.B /dev/sysname
+.B /dev/time
+.B /dev/user
+.fi
+.SH DESCRIPTION
+The console device serves a one-level directory
+giving access to the console and
+miscellaneous information.
+.PP
+Reading the
+.B cons
+file returns characters typed on the keyboard.
+Normally, characters are buffered to enable erase and kill processing.
+A control-U,
+.LR ^U ,
+typed at the keyboard
+.I kills
+the current input line (removes all characters
+from the buffer of characters
+not yet read via
+.BR cons ),
+and a backspace
+.I erases
+the previous non-kill, non-erase character from the input buffer.
+Killing and erasing only delete characters back to, but not including,
+the last newline.
+Typed keystrokes produce 16-bit characters
+that are translated into the variable-length
+.SM UTF
+encoding (see
+.IR utf (6))
+before putting them into the buffer.
+A
+.B read
+of length greater than zero causes the process to wait until a
+newline or a
+.L ^D
+ends the buffer, and then returns as much of the buffer as the argument
+to
+.B read
+allows, but only up to one complete line.
+A terminating
+.L ^D
+is not put into the buffer.
+If part of the line remains, the next
+.B read
+will return bytes from that remainder and not part of any new line
+that has been typed since. A single line containing a
+.L ^D
+can be used as an end of file indication to programs that take interactive input.
+.PP
+If
+the string
+.B rawon
+has been written to the
+.B consctl
+file and the file is still open,
+.B cons
+is in
+.IR "raw mode" :
+characters are not echoed as they are typed,
+backspace and
+.L ^D
+are not treated specially,
+and characters are available to
+.B read
+as soon as they are typed.
+Ordinary mode is reentered when
+.B rawoff
+is written to
+.B consctl
+or this file is closed.
+.PP
+A
+.B write
+to
+.B cons
+causes the characters to be printed on the console screen.
+.PP
+The
+.B keyboard
+file returns the underlying tokens produced by the keyboard hardware as they
+are produced; in the emulation environment, it is like an always-raw
+.B cons
+file.
+.PP
+The
+.B null
+file throws away anything written to it
+and always returns zero bytes when read.
+.PP
+The
+.B klog
+file
+returns the tail of messages written by the native kernel debugging function
+.B kprint
+(mainly used when debugging interrupt handlers in device drivers).
+It is available only in native kernel implementations.
+.PP
+The
+.B kprint
+file
+returns console output: messages written by kernel print statements and messages
+written by processes to this driver's
+.B cons
+file.
+Until
+.B kprint
+is opened, system console output is handled normally.
+Once
+.B kprint
+has been opened,
+if the machine's console is a serial line, the data is sent both to
+the serial console and to
+.BR kprint ;
+if the console is a graphics screen, the data is sent only to
+.BR kprint .
+.PP
+A read of the
+.B pointer
+file returns the status of the mouse or other pointing device:
+its position and button state.
+The read blocks until the state has changed since the last read.
+The read returns 49 bytes: the letter
+.B m
+followed by four fields containing decimal integers, each 11 characters wide followed by a blank.
+The integers are: x and y,
+coordinates of the pointer on the screen; a bit mask with the
+1, 2, and 4 bits when the pointer's left, middle, and right
+buttons, respectively, are down; and a time stamp in units of milliseconds.
+.PP
+Writing to the
+.B pointer
+file, using the same format,
+causes the pointer to move to the specified x, y position
+(the button and millisecond fields are ignored, and optional).
+If there is a visible image representing the pointer's position,
+that will move too.
+.PP
+The
+.B pin
+file, when read, returns either the string
+.B "no pin
+if no PIN has been set for authentication, or
+.B "pin set
+if one has.
+The
+.B pin
+file may be written once with a decimal representation of the PIN
+to use on this Inferno machine.
+.PP
+The
+.B random
+device returns as many bytes of random data as are requested in the
+.BR read .
+.PP
+The
+.B notquiterandom
+device returns as many bytes of pseudo-random data as are requested in the
+.BR read ;
+this is typically faster than
+.B random
+but the results are more predictable.
+.PP
+The
+.B scancode
+device provides access to the raw scan codes of the primary
+.B keyboard .
+While it is open, key strokes are diverted from
+.B cons
+and
+.B keyboard .
+The first
+.IR read (2)
+after opening returns an identifier string which defines the format of data delivered
+by subsequent
+reads. Known ones are defined in
+.IR scancode (6).
+The most common format is a single byte per scan code, where the top bit is 1 for
+up and 0 for down, and the bottom 7 bits are the scan code. Some input devices
+have a larger scan code space; in this case scan codes are often delivered as two byte
+little endian quantities, where the top bit is the up/down signifier, and the bottom
+15 bits are the scan code. In all cases the meaning of the individual scan codes is
+device specific.
+.PP
+The rest of the files contain (mostly) read-only strings.
+Each string has a fixed length: a
+.I read
+(see
+.IR sys-read (2))
+of more than that gives a result of that fixed length (the result does not
+include a terminating zero byte);
+a
+.I read
+of less than that length leaves the file offset so the
+rest of the string (but no more) will be read the next time.
+To reread the file without closing it,
+.I seek
+must be used to reset the offset.
+When the file contains numeric data, each number is formatted
+in decimal as an 11-digit number with leading blanks and
+one trailing blank: twelve bytes total.
+.PP
+The
+.B sysctl
+file can be read to return the current Inferno version. Writing the string
+.B reboot
+to it attempts to reboot the system, writing
+.B halt
+attempts to halt the system. Writing
+.B nobroken
+ensures that broken processes have all associated memory freed before
+being destroyed,
+writing
+.B broken
+ensures that they are left in this state to allow debugging (the default).
+Only the privileged user is allowed to write to this file.
+.PP
+The
+.B sysname
+file holds the textual name of the machine.
+It can only be written by the privileged user.
+.PP
+The
+.B user
+file contains the name of the user associated with the current process.
+It can only be written by the privileged user. In the emulation environment,
+writing to this file also attempts to set the user id in the host operating
+system to the specified value.
+.PP
+The
+.B memory
+file returns a formatted presentation of the state of the memory
+allocation pools in the system.
+Each line of output returned reports, for a single pool,
+the amount of memory in use,
+the upper size limit,
+the high water mark,
+the number of allocations done,
+the number of frees done,
+the number of extensions done,
+the largest chunk available
+and the name of the pool.
+.PP
+The
+.B drivers
+file returns a list of the device drivers loaded in the system.
+Each line gives the name of the device for
+.IR bind (1),
+such as
+.BR #c ,
+followed by the name of the driver as used in the system configuration file.
+.PP
+The other files served by the
+.I cons
+device are all single numbers:
+.TP
+.B jit
+non-zero if `just in time' compilation is configured (can be written to change the state). Writing 0 turns off JIT compilation, 1 turns it on and larger values give increasingly
+detailed traces of the compilation for debugging purposes.
+.TP
+.B msec
+the value of a millisecond counter
+.TP
+.B time
+number of microseconds since the epoch 00:00:00 GMT, Jan. 1, 1970.
+(Can be written once by the privileged user, to set at boot time.)
+.SH SOURCE
+.B /emu/port/devcons.c
+.br
+.B /os/port/devcons.c
+.SH SEE ALSO
+.IR draw (3),
+.IR keyboard (6),
+.IR utf (6),
+.IR eve (10.2)
+.SH BUGS
+For debugging, on native systems only,
+two control-T's followed by a letter
+generate console output:
+.L ^T^Tp
+prints data about kernel processes,
+.L ^T^Ts
+prints the kernel stack,
+.L ^T^Tx
+prints data about memory allocation.
+.PP
+The system can be rebooted by typing
+.LR ^T^Tr .

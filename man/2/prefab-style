@@ -1,0 +1,95 @@
+.TH PREFAB-STYLE 2
+.SH NAME
+prefab: Style \- fonts and colours for ITV toolkit
+.SH SYNOPSIS
+.EX
+include "draw.m";
+include "prefab.m";
+prefab := load Prefab Prefab->PATH;
+
+Style: adt
+{
+    titlefont:      ref Draw->Font;
+    textfont:       ref Draw->Font;
+    elemcolor:      ref Draw->Image;
+    edgecolor:      ref Draw->Image;
+    titlecolor:     ref Draw->Image;
+    textcolor:      ref Draw->Image;
+    highlightcolor: ref Draw->Image;
+};
+.EE
+.SH DESCRIPTION
+The
+.B Style
+type collects the font and colour information for an application or a set of
+items within an application.  Except when using the
+.B layout
+routines (see
+.IR prefab-compound (2)
+and
+.IR prefab-element (2)),
+the members of a
+.B Style
+are the only way to control the appearance of
+.B Prefab
+items.
+Note that although the
+.RB `... color'
+members of
+.B Style
+in practice often refer to a literal colour (a single replicated pixel of colour),
+they can be any image.
+.PP
+.B Styles
+are allocated by regular Limbo definitions; there is no allocation function.
+All the members of a
+.B Style
+must be defined.
+Although it will not cause errors to modify the members of a
+.B Style
+after it has been created and passed to a
+.B Prefab
+routine, the results may be unpredictable.
+.PP
+.TP 10
+.B edgecolor
+This
+.B Image
+specifies how to draw the edges, or borders, of compounds.
+.TP
+.B elemcolor
+This
+.B Image
+specifies how to draw the base, or background, of elements and compounds.
+.TP
+.B highlightcolor
+This
+.B Image
+specifies the colour to use to highlight a selected element.
+.TP
+.B textcolor
+This
+.B Image
+specifies the colour in which to draw an item's regular text.
+.TP
+.B textfont
+This
+.B Font
+specifies the font in which to draw an item's regular text.
+.TP
+.B titlecolor
+This
+.B Image
+specifies the colour in which to draw an item's title text.
+.TP
+.B titlefont
+This
+.B Font
+specifies the font in which to draw an item's title text.
+.SH SOURCE
+.B /libinterp/prefab.c
+.br
+.B /libprefab/*.c
+.SH SEE ALSO
+.IR prefab-intro (2),
+.IR prefab-environ (2)

@@ -1,0 +1,153 @@
+.TH PROTO 6
+.SH NAME
+proto \- file system prototype
+.SH DESCRIPTION
+A
+.I proto
+file defines a file system hierarchy, for
+programs that create, copy or operate on them,
+such as
+.IR fs (1)
+or
+.IR mkfs (8).
+The
+.I proto
+file defines the hierarchy as a set of names relative to an
+existing hierarchy, for instance in an existing file system or a list of path names
+in an archive.
+Files in the existing hierarchy that are not specified in the
+.I proto
+file
+are ignored.
+.IR Fsproto (2)
+provides functions to read a prototype file and enumerate the names it selects in an
+existing hierarchy.
+.PP
+Each line of the
+.I proto
+file specifies a file (where the term `file' includes directories).
+Indentation is significant,
+with each level of indentation corresponding to a level in the file tree.
+Each line contains up to five fields separated by white space:
+.IP
+.EX
+.I "name perm uid gid source"
+.EE
+.PP
+.I Name
+is the last path element in the resulting file tree.
+.I Perm
+specifies the permissions, as described below.
+.I Uid
+is the owner of the file,
+and
+.I gid
+is the group owning the file.
+.I Source
+is the name of a file in the current name space
+(not the source file tree) from which to copy
+.IR name 's
+content.
+All fields except
+.I name
+are optional.
+If a field such as
+.I perm
+or
+.I uid
+is not given, or is given as
+.LR - ,
+its value is taken from the existing file.
+.PP
+A
+.I name
+starting with
+.L $
+is taken as a reference to an environment variable (see
+.IR sh (1)
+and
+.IR env (3))
+and replaced by the value of that variable.
+If the first
+.I name
+in a directory is
+.LR + ,
+all of the files are represented, and all subdirectories recursively.
+If the first
+.I name
+is
+.LR * ,
+all of the names in the corresponding existing directory are represented,
+but only the names of subdirectories, not their content.
+If the first
+.I name
+is
+.LR % ,
+only non-directory names are represented excluding both the names and content
+of subdirectories.
+.PP
+.I Perm
+has the form:
+.IP
+.RB [ d ]
+.RB [ a ]
+.RB [ l ]
+.I oct
+.PP
+where the optional letters set file attributes
+.RL ( d
+directory,
+.L a
+append-only, and
+.L l
+exclusive-use),
+and
+.I oct
+is an octal number giving the permissions for user, group and others
+(see
+.IR chmod (1)).
+.SH EXAMPLES
+.PP
+Denote all files in a given file system:
+.IP
+.EX
++
+.EE
+.PP
+Denote all files in the current user's home directory:
+.IP
+.EX
+usr
+	$user
+.EE
+.PP
+Specify a subset of files in
+.BR /dis :
+.IP
+.EX
+dis
+	*
+	install
+		*
+	lib
+		arg.dis
+		names.dis
+.EE
+.SH FILES
+.TF /lib/proto/portproto
+.TP
+.B /lib/proto
+directory of prototype files
+.TP
+.B /lib/proto/all
+prototype for whole hierarchy (ie, line containing
+.LR + )
+.TP
+.B /lib/proto/portproto
+generic prototype file
+.SH "SEE ALSO"
+.IR fs (1),
+.IR fsproto (2),
+.IR kfs (4),
+.IR mkfs (8)
+

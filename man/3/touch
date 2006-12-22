@@ -1,0 +1,138 @@
+.TH TOUCH 3
+.SH NAME
+touch \- touch screen
+.SH SYNOPSIS
+.EX
+bind -a '#T' /dev
+
+/dev/touchcal
+/dev/touchctl
+/dev/touchstat
+/dev/touch
+.EE
+.SH DESCRIPTION
+The touch screen driver
+serves a one-level directory giving access to a touch panel.
+The driver attempts to compensate
+for the warped nature of the panels we have used:
+amongst other things,
+it repeatedly samples the panel to obtain a stable reading,
+and applies a transformation to the
+.RI ( "x, y" )
+coordinates obtained to account for the peculiar distortions of individual panels.
+A panel should be calibrated by
+.IR touchcal (8)
+before use.
+.PP
+There are two variants of the driver.
+One drives a
+DynaPro touch panel
+on a York Electronics Centre BRD/98/024 interface (Version A)
+accessed via the Motorola MPC8xx SPI interface.
+The other drives a different pressure-sensitive touch panel on a webphone reference design.
+.PP
+The driver initialisation starts a kernel process to read samples from the
+touch screen and provide them to the system through the interface used
+for mouse events.
+The events generated mark
+`mouse button' 1 as down as long as the panel is touched and up otherwise.
+Other `mouse buttons' are always up.
+This is adequate for many applications (but not
+.IR acme (1)).
+.PP
+The data file
+.B touch
+is read-only.
+Each read samples the touch panel
+and returns two decimal numbers, separated by a space,
+giving the
+.I x
+and
+.I y
+coordinates read.
+The values are both -1 if a consistent reading could not be made.
+This file is used only for debugging; the window system should not be running.
+.PP
+The control file
+.B touchctl
+accepts commands to set driver parameters:
+.TF "X a b c"
+.PD
+.TP
+.BI X " a b c"
+(MPC8xx only) Set the parameters for a transformation of the X-coordinates received from the
+panel:
+.RS
+.IP
+.IR "x' = a*x+b*y+c"
+.PP
+The values are fixed-point: 1.0 is represented by 2\u\s-216\s0\d.
+.RE
+.TP
+.BI Y " d e f"
+(MPC8xx only) Set the parameters for a similar transformation of Y-coordinates:
+.RS
+.IP
+.IR "y' = d*x+e*y+f"
+.RE
+.TP
+.BI s n
+Sample every
+.I n
+milliseconds.
+.TP
+.BI c "p sx sy"
+(SA1100) Wait for the screen to be touched and sample parameters for point
+.IR p ,
+0\(<=\fIp\fP\(<=3,
+corresponding to one of the four corners of the screen.
+Save the sample parameters for calibration.
+.TP
+.B C
+(SA1100) Compute calibration parameters based on previously stored samples.
+.TP
+.BI r n
+Sets delay between touch reads.
+.TP
+.BI R n
+Average
+.RI 2 ^n
+readings each sample.
+.TP
+.BI f n
+Set the filter level (-1024 \(<=\fIn\fP\(<=1024).
+.TP
+.BI e "x y"
+Set error term for
+.I x
+and
+.IR y ;
+normally calculated by
+.BR C .
+.TP
+.BI t "p r"
+Set pressure threshold for press and release
+.PP
+Reads of
+.B touchctl
+return all current parameters in the same form as the commands
+(allowing settings to be read from the file and later restored by simply writing them back).
+.PP
+The read-only file
+.B touchstat
+contains four decimal values separated by spaces or newlines:
+the number of raw samples, the number of valid samples,
+microseconds waiting for samples, and microseconds spent processing samples.
+.PP
+The SA1100 driver
+provides a file
+.B /dev/touchcal
+that holds the calibration results as a set of
+decimal numbers for each of the four sample points, one set per line.
+The results can be saved and written back to restore the same calibration.
+.SH SOURCE
+.B /os/mpc/devtouch.c
+.br
+.B /os/sa1100/devtouch.c
+.SH SEE ALSO
+.IR touchcal (8)

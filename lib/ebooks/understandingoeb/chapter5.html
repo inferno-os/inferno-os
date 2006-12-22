@@ -1,0 +1,156 @@
+<?xml version='1.0'?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+<?xml-stylesheet href="understandingoeb.css" type="text/x-oeb1-css"?>
+
+<html>
+<head>
+  <link rel="stylesheet" type="text/x-oeb1-css" href="understandingoeb.css" />
+<title>Understanding OEB Chapter 5</title>
+  <meta name="author" content="Garret Wilson" />
+  <meta name="copyright" content="Copyright (c) 2000-2001 Garret Wilson. All rights reserved." />
+</head>
+
+<body>
+
+<h2 id="chapter5">5. Essential OEB Styles</h2>
+
+<p>You've learned the essentials of styles in OEB, but you would be hard-pressed at this point to put this knowledge to use without knowing which styles are actually allowed. You probably have visions of how you'd like to change the appearance of your document: its fonts, its indentation, even its color. Here we'll address some of the most important style properties available for your use. Keep in mind that OEB style sheets are little more (and a little more less) than a subset of Cascading Style Sheets (CSS); what you'll learn here will in large part be transferable (although somewhat restricted) to CSS as it is used in general.</p>
+
+<h3 id="styleunits">Style Units</h3>
+
+<p>The styles you have seen so far in the examples have been qualitative, specifying whether a particular property applies to a particular section of text. We've seen how to specify italics: the <code>font-style</code> of text is either <code>italic</code> or it isn't. Similarly with color, the CSS <code>color</code> property can take color names such as <code>black</code> and <code>red</code>.</p>
+
+<p>Other style values can be quantitative, specifying numerical values for style properties. There are many cases in which you would want to specify the length, the height, or the width of something such as a font size or an indentation amount. Implicit in each of these cases is a <dfn>unit</dfn> of measurement: if you want a font of size <code>12</code>, does that "12" represent a height of 12 pixels, 12 centimeters, or 12 kilometers?</p>
+
+<p>When a <dfn>length</dfn> (the CSS term for instances of numeric value) is used, CSS requests that you specify a <dfn>unit</dfn>, unless in specific cases which we'll discuss later. A percentage, for example, does not need a unit specified, nor does a property which takes a count of something rather than a measurement. In all other cases, a unit will be used from the following list of those supported by CSS (and by OEB):</p>
+
+<ul>
+	<li><strong><code>px</code></strong> (pixels) The length represents a number of pixels.</li>
+	<li><strong><code>ex</code></strong> (x-height) The length represents multiples of the height of the lowercase letter "x" in the current font.</li>
+	<li><strong><code>em</code></strong> (m-width) The length represents the size of the font. (The name comes from its originally representing multiples of the width of the letter "M" in the current font.)</li>
+	<li><strong><code>pt</code></strong> (points) The length represents a number of points, with one point being equal to 1/72 of an inch.</li>
+	<li><strong><code>cn</code></strong> (centimeters) The length represents a number of centimeters.</li>
+	<li><strong><code>mm</code></strong> (millimeters) The length represents a number of millimeters.</li>
+	<li><strong><code>pc</code></strong> (picas) The length represents a number of picas, with one pica being equal to 12 points.</li>
+</ul>
+
+<p>This list can be used as a short reference; the units themselves will become more straightforward in their actual use.</p>
+
+<h3 id="fontproperties">Font Properties</h3>
+
+<p>CSS font-related properties specify how a portion of text looks: the size, the type family, and the style, for instance. Specifically, we'll consider <code>font-family</code>, <code>font-size</code>, <code>font-style</code>, and <code>font-weight</code>, throwing <code>text-decoration</code>, <code>color</code> and <code>background-color</code> in for good measure.</p>
+
+<h4 id="fontfamilyproperty">The <code>font-family</code> Property</h4>
+
+<p>When you think of changing a font in a word processor, you usually think of specifying its name: "Times New Roman" and "Arial" are common examples. These names do not really specify the entire font itself (remember, the font includes the size, style and everything else about the font), but instead indicates the <dfn>font family</dfn>, the group of fonts of varying styles and sizes that look similar.</p>
+
+<p>The <code>font-family</code> property allows you to specify the name of a font family in the normal CSS way, specifying the property and value in a declaration:</p>
+
+<blockquote><code>{font-family: "Times New Roman"}</code></blockquote>
+
+<p>Since this particular font family, "Times New Roman", has spaces in its name, we've placed it inside quotes. Family names without spaces do not need quotes.</p>
+
+<p>In a real style sheet, you would also need to specify one or more elements to which to apply the style, using a selector. For example, you might wish to specify the default font for the entire OEB document. Since all text in an OEB document appears inside an enclosing <code>&lt;body&gt;</code> element, you can specify a default font by using <code>body</code> as the selector:</p>
+
+<blockquote><code>body {font-family: "Times New Roman"}</code></blockquote>
+
+<p>The font family "Times New Roman" is quite popular and comes installed on many computer operating platforms. There's no way to guarantee that it will be installed on the device or software the person reading your book is using, however. You might even decide to use a font family that no one else is using (after all, style sheets are about specifying custom styles). Perhaps you've created a custom font family, and it only exists on your machine! Your book will look quite nice on your own computer or reading device, but what about on other systems?</p>
+
+<p>CSS defines several generic font families (or more accurately, generic divisions of font families), three of which OEB uses. These font familes are guaranteed to be present on any OEB compliant reading system. They are:</p>
+
+<ul>
+	<li><strong>serif</strong> A font family with serifs present (such as "Times New Roman").</li>
+	<li><strong>sans-serif</strong> A font family without serifs present (such as "Arial").</li>
+	<li><strong>monospace</strong> A font family in which each character takes up the same amount of horizontal space (such as "Courier").</li>
+</ul>
+
+<p>Using one of these three fonts will guarantee that your text will be assigned a font with the same properties you intended on every OEB compliant reading system. But what about customization? OEB does not yet specify a way to deliver custom fonts to a reading system, but there is a middle ground: CSS allows one to specify the preferred font family, yet also specify the font family to use if the preferred font is not present.</p>
+
+<p>Specify a list of preferred <code>font-family</code> values by separating them with commas (,) with the most preferred font first. If you use "Book Antiqua", a serif font family, you might specify the following as the default font:</p>
+
+<blockquote><code>body {font-family: "Book Antiqua", "Times New Roman", serif}</code></blockquote>
+
+<p>Notice that we've specified <code>serif</code>, the generic font family guaranteed to be present, as our last choice. We always want the text displayed, and even if the reading system offers no frills whatsoever, this font family is guaranteed to be present. In fact, it is recommended that you <em>always</em> provide one of the generic font families as your last choice in your fallback list.</p>
+
+<ul>
+	<li><strong>CSS Tip 1:</strong> (<em>Supplying Default Generic Font Family Names</em>) Always provide one of the generic font family names in your <code>font-family</code> fallback list.</li>
+</ul>
+
+<h4 id="fontsizeproperty">The <code>font-size</code> Property</h4>
+
+<p>CSS allows a font size to be specified absolutely, using the <code>font-size</code> property and one of the units specified earlier. (Note that there is no whitespace between the value and the unit name.) A 12 point font could be selected as the default using the following:</p>
+
+<blockquote><code>body {font-size: 12pt}</code></blockquote>
+
+<p>While it might be appropriate to specify the absolute size of the default font, which applies to everything inside the <code>&lt;body&gt;</code> tag (and thereby everything in the document), it's not wise to specify an absolute value for elements within the document. For example, to make all emphasized text a little larger than the surrounding text, an absolute value might be used like this:</p>
+
+<blockquote><strong>Not Recommended:</strong> <code>em {font-size: 14pt}</code></blockquote>
+
+<p>There are several reasons this isn't a good idea. What if you were to later change the default font for <code>&lt;body&gt;</code> to 16 points? You'd then have to make sure that every other absolute value, such as that for <code>&lt;em&gt;</code>, was changed as well, or the emphasized text would be <em>smaller</em> than the surrounding text &mdash; the 14-point emphasized text didn't change, but the surrounding text changed to 16 points. Furthermore, remember that the <code>&lt;em&gt;</code> element can appear several places, such as within an <code>&lt;h1&gt;</code> element, which traditionally is larger than the default text. You'd want the emphasized text even larger than the 14 points you specified. In short, it would be ideal to be able to specify that a particular element's size in relation to its surrounding text (or rather, relative to the size of the enclosing element's font).</p>
+
+<p>One way CSS allows this to be done is using percentages. If you want emphasized text to be slightly larger than the text that surrounds it, it would be better to use something like this:</p>
+
+<blockquote><code>em {font-size: 120%}</code></blockquote>
+
+<p>In this case, if the <code>&lt;em&gt;</code> tag appeared inside an element of 12-point text, it would be rendered in a 14.4-point font (12 multiplied by 120% is 14.4). If the <code>&lt;em&gt;</code> element were to appear inside 16-point text, it would be rendered in a 19.2-point font. The following example shows how using a percentage can make relative sizes appear correctly in several locations:</p>
+
+<p>Style Sheet:</p>
+
+<blockquote>
+	<code>body {font-size: 12pt}</code><br />
+	<code>em {font-size: 120%}</code>
+</blockquote>
+
+<p>Document Extract:</p>
+
+<blockquote>
+	<code>&lt;h2&gt;</code>The <code>&lt;em&gt;</code>Extremely<code>&lt;/em&gt;</code> Small Blovjus<code>&lt;/h2&gt;</code><br />
+	<code>&lt;p&gt;</code>...Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age...<code>&lt;/p&gt;</code><br />
+</blockquote>
+
+<blockquote>
+	<h2>The <em style="font-size: 120%">Extremely</em> Small Blovjus</h2>
+	<p>...Being <em style="font-size: 120%">extremely</em> smaller than other blovji his age...</p>
+</blockquote>
+
+<p>There are several other ways to represent relative sizes. You can use the units "em" or "ex", which specifies that the font should be so many multiples of the width of the "m" character or the height of the "ex" character, respectively, in the current font. We won't discuss these methods here.</p>
+
+<p>Just like <code>font-family</code>, which allows certain pre-defined font family names to be used, the <code>font-size</code> property has several pre-defined sizes. Some of these are relative sizes, functioning exactly as if percentages were used, and others are absolute, functioning exactly as if absolute sizes were used.</p>
+
+<p>Predefined relative <code>font-size</code> values:</p>
+
+<ul>
+	<li><strong>smaller</strong> Specifies the font size should be smaller than that of the enclosing element.</li>
+	<li><strong>larger</strong> Specifies the font size should be larger than that of the enclosing element.</li>
+</ul>
+
+<p>CSS recommends that a difference of 120% be used, which would make using <code>font-size: larger</code> equivalent to using <code>font-size: 120%</code>, for example, but this difference is not guaranteed.</p>
+
+<p>The other pre-defined <code>font-size</code> values are the following:</p>
+
+<ul>
+	<li><strong>xx-small</strong></li>
+	<li><strong>x-small</strong></li>
+	<li><strong>small</strong></li>
+	<li><strong>medium</strong></li>
+	<li><strong>large</strong></li>
+	<li><strong>x-large</strong></li>
+	<li><strong>xx-large</strong></li>
+</ul>
+
+<p>Although these are equivalent to using absolute font sizes, the actual font sizes these values stand for may very from platform to platform. CSS does say that you can expect values of <code>larger</code> and <code>smaller</code> to change between these absolute values. That is, for a current font size of <code>small</code>, an element with <code>font-size: larger</code> would give the equivalent of a font of size <code>medium</code>.</p>
+
+<h4 id="fontstyleproperty">The <code>font-style</code> Property</h4>
+
+<p>The <code>font-style</code>, as implemented by OEB, allows a font to be specified as <code>italic</code> or <code>normal</code> (that is, not italic). Although CSS allows another value, <code>oblique</code>, OEB reading systems are not required to support it, and may represent it as synonymous with <code>italic</code>.</p>
+
+<h4 id="fontweightproperty">The <code>font-weight</code> Property</h4>
+
+<p>Although CSS allows several values to be used with the <code>font-weight</code> property, OEB eliminates all but two of them, making <code>font-weight</code> simply a way to designate that text should be rendered as bold, in much the same way that <code>font-style</code> represented italics. The two values OEB allows for <code>font-weight</code> are <code>bold</code> and <code>normal</code>.</p>
+
+<h4 id="textdecorationproperty">The <code>text-decoration</code> Property</h4>
+
+<p>The <code>text-decoration</code> property allows underlining to be specified, in much the same way that previous properties allowed italics and bold to be specified. The two values allowed are <code>none</code> (the default), and <code>underline</code>.</p>
+
+</body>
+</html>

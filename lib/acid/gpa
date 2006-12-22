@@ -1,0 +1,88 @@
+//
+//	generate ``General Purpose Ascii'' file for HP logic analyser
+//
+//	usage: gpa()
+//	note: output has to be postprocessed with "sed 's/0x//g' "...
+//
+
+defn functions(start, end)
+{
+	print("[FUNCTIONS]\n");
+	pc = start;
+	while pc < end do {
+		bnd = fnbound(pc);
+		print(pc\a, "\t", bnd[0], "..", bnd[1]-1, "\n");
+		pc = bnd[1];
+	}
+	print("\n");
+}
+
+defn variables(start, end)
+{
+	print("[VARIABLES]\n");
+	// TODO: how do we get this one?
+	print("\n");
+}
+
+defn sourcelines(start, end)
+{
+	local pc, curfile, curline, newfile, newline;
+
+	print("[SOURCE LINES]\n");
+	pc = txtstart;
+	curfile = "<no-file>";
+	curline = -1;
+	while pc < txtend do {
+		newfile = pcfile(pc);
+		newline = pcline(pc);
+		if newfile != curfile then {
+			if curline != -1 then
+				print("\n");
+			print("File: ", newfile, "\n");
+			curfile = newfile;
+		}
+		if newline != curline then {
+			print(newline, "\t", pc, "\n");
+			curline = newline;
+		}
+		pc++;
+	}
+	print("\n");
+}
+
+defn gpa()
+{
+	local l, ent, txtstart, txtend, datastart, dataend, pc, bnd;
+
+	print("[SECTIONS]\n");
+	l = map();
+	while l do {
+		ent = head l;
+		if ent[0] == "text" || ent[0] == "data" then {
+			if ent[0] == "text" then {
+				txtstart = ent[1];
+				txtend = ent[2];
+			}
+			else {
+				datastart = ent[1];
+				dataend = ent[2];
+			}
+			print(ent[0], "\t", ent[1], "..", ent[2]-1, "\n");
+		}
+		l = tail l;
+	}
+	print("\n");
+
+	functions(txtstart, txtend);
+//	variables(datastart, dataend);
+	sourcelines(datastart, dataend);
+
+	print("[START ADDRESS]\n");
+	print(txtstart, "\n");
+	print("\n");
+}
+
+defn acidinit()
+{
+	gpa();
+}

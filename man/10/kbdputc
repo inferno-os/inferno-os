@@ -1,0 +1,105 @@
+.TH KBDPUTC 10.2
+.SH NAME
+kbdputc, kbdrepeat, kbdclock, kbdq \- keyboard interface to \fIcons\fP(3)
+.SH SYNOPSIS
+.ta \w'\f5extern\ \ \f1'u
+.B
+#include "keyboard.h"
+.PP
+.B
+void	kbdputc(Queue *q, int c)
+.PP
+.B
+void	kbdrepeat(int on)
+.PP
+.B
+void	kbdclock(void)
+.PP
+.B
+extern	Queue *kbdq;
+.SH DESCRIPTION
+This is the internal interface between
+.B /dev/keyboard
+of
+.IR cons (3)
+and the architecture-dependent keyboard driver.
+Before calling any of these functions,
+the global variable
+.B kbdq
+must be initialised;
+.IR cons (3)
+does not initialise it.
+This is usually done during system initialisation by the keyboard driver's
+.I kbdinit
+function ,
+as follows:
+.IP
+.EX
+kbdq = qopen(4*1024, 0, 0, 0);
+qnoblock(kbdq, 1);
+.EE
+.PP
+.I Kbdputc
+puts a 16-bit Unicode character
+.I c
+(ie, a `rune')
+on the given
+.IR q ,
+as a sequence of bytes in UTF-8 encoding
+(see
+.IR utf (6)).
+If
+.I c
+is the special value
+.B Latin
+(defined by
+.BR keyboard.h ),
+.I kbdputc
+starts collecting characters, looking for the typeable representations of
+Unicode characters defined by
+.IR keyboard (6);
+at the end of a complete such sequence,
+.I kbdputc
+queues the UTF-8 encoding of the corresponding Unicode character.
+It is up to the keyboard driver to map a suitable physical keyboard character
+(or combination of characters) to the code
+.BR Latin .
+.PP
+Drivers that need to implement repeat of keypresses in software
+should call
+.IP
+.EX
+addclock0link(kbdclock);
+.EE
+.PP
+at the end of
+.IR kbdinit ,
+to cause
+.I kbdclock
+to be called each clock tick.
+.I Kbdrepeat
+can then be called to enable
+.RI ( on
+is non-zero)
+or disable it
+.RI ( on
+is zero).
+When repeat is on,
+.I kbdclock
+(when called) will periodically call
+.BI "kbdputc(" kbdq , c )
+where
+.I c
+is the last rune given to
+.IR kbdputc .
+The driver is responsible for enabling and disabling repeat appropriately;
+for instance, function keys and certainly
+.B Latin
+should typically not be repeated.
+.SH SOURCE
+.B /os/*/kbd*.c
+.SH SEE ALSO
+.IR cons (3),
+.IR utf (6),
+.IR qio (10.2)
+

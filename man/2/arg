@@ -1,0 +1,168 @@
+.TH ARG 2
+.SH NAME
+arg \- parse program arguments
+.SH SYNOPSIS
+.EX
+include "arg.m";
+arg := load Arg Arg->PATH;
+
+init:     fn(argv: list of string);
+setusage: fn(s: string);
+usage:    fn();
+progname: fn(): string;
+opt:      fn(): int;
+arg:      fn(): string;
+earg:     fn(): string;
+argv:     fn(): list of string;
+.EE
+.SH DESCRIPTION
+.B Arg
+parses a program's argument list in a traditional form,
+as received from a shell or other program
+(see
+.IR command (2)).
+The list must be passed to
+.B init
+to set the state for the other functions.
+.PP
+.B Arg
+takes the first argument to be the program name.
+Subsequent calls to
+.B progname
+return it.
+.PP
+Options are arguments containing one or more letters preceded by
+.B \-
+(dash, hyphen, minus).
+The list of options ends
+before the first argument that does not begin with a
+.BR \- .
+Option lists also end
+after an argument
+.BR \-\- ,
+to allow programs
+to accept arguments
+that would otherwise look like options
+(eg, file names for
+.IR rm (1)
+or a pattern for
+.IR grep (1)).
+Finally, option lists end
+before an argument
+.BR \- ,
+which is traditionally interpreted by some commands as referring to the standard input or output
+(depending on context).
+.PP
+Successive calls to
+.B opt
+return option characters in turn; 0 is returned at the end of the list.
+A program might take a parameter to a given option (eg, an option of the form
+.BI -f file
+or
+.BI -f " file" \f1).\f0
+Following a call to
+.BR opt ,
+a call to
+.BR arg
+will return the rest of the current argument string if not empty,
+failing that, the next argument string if any,
+and otherwise
+.BR nil .
+.B Earg
+is like
+.B arg
+except that if there is no argument associated
+with the option, an error message is printed to
+standard error, and a "\f5fail:usage\fP"
+exception raised.
+.B Setusage
+sets the error message that will be printed in
+this case (preceded by
+.RB ` usage: '
+and followed by a newline).
+.PP
+The argument list remaining after the last call to
+.B opt
+is returned by
+.BR argv .
+.SH EXAMPLE
+The following Limbo program takes options
+.BR b ,
+.B c
+and
+.BR f ,
+where
+.B f
+takes a file name argument.
+.br
+.ne 2i
+.PP
+.EX
+.ps -1
+.vs -1
+.ta \w'12345678'u +\w'12345678'u +\w'12345678'u +\w'12345678'u +\w'12345678'u
+implement Prog;
+include "sys.m";
+    sys: Sys;
+include "draw.m";
+include "arg.m";
+    arg: Arg;
+Prog: module
+{
+    init: fn(nil: ref Draw->Context, nil: list of string);
+};
+
+init(nil: ref Draw->Context, args: list of string)
+{
+    sys = load Sys Sys->PATH;
+    arg = load Arg Arg->PATH;
+
+    bflag := cflag := 0;
+    file := "";
+    arg->init(args);
+    while((c := arg->opt()) != 0)
+        case c {
+        'b' => bflag = 1;
+        'c' => cflag = 1;
+        'f' => file = arg->arg();
+        * =>   sys->print("unknown option (%c)\en", c);
+        }
+    args = arg->argv();
+    sys->print("%s %d %d %s\en", arg->progname(), bflag, cflag, file);
+    for(; args != nil; args = tl args)
+        sys->print("%s\en", hd args);
+}
+.ps +1
+.vs +1
+.EE
+.PP
+When invoked as follows:
+.IP
+.B "prog -bc -ffile a b c"
+.PP
+the output is:
+.IP
+.EX
+prog 1 1 file
+a
+b
+c
+.EE
+.PP
+and when invoked by:
+.IP
+.B "./prog -b -f file -z -- -bc"
+.PP
+the output is:
+.IP
+.EX
+unknown option (z)
+\&./prog 1 0 file
+-bc
+.EE
+.SH SOURCE
+.B /appl/lib/arg.b
+.SH SEE ALSO
+.IR sh (1),
+.IR mash (1),
+.IR command (2)

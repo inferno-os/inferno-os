@@ -1,0 +1,235 @@
+.TH WMCLIENT 2
+.SH NAME
+wmclient: makedrawcontext, window, snarfput, snarfget \-
+window manager interface for Draw-based applications.
+.SH SYNOPSIS
+.EX
+include "tk.m";
+include "wmclient.m";
+wmclient := load Wmclient Wmclient->PATH;
+
+Resize,
+Hide,
+Help,
+OK,
+Plain:     con 1 << iota;
+
+Appl:   con Resize | Hide;
+
+init:       fn();
+makedrawcontext: fn():  ref Draw->Context;
+window:	fn(ctxt: ref Draw->Context, title: string, buts: int): ref Window;
+snarfput:   fn(buf: string);
+snarfget:   fn(): string;
+Window: adt{
+	display:	ref Draw->Display;
+	r: Draw->Rect;		# full rectangle of window, including titlebar.
+	image: ref Draw->Image;
+	screenr: Draw->Rect;
+	ctxt: ref Draw->Wmcontext;
+	focused:	int;
+	ctl:		chan of string;
+
+	startinput:	fn(w: self ref Window, devs: list of string);
+	wmctl:	fn(w: self ref Window, request: string): string;
+	settitle:	fn(w: self ref Window, name: string): string;
+	reshape:	fn(w: self ref Window, r: Draw->Rect);
+	onscreen:	fn(w: self ref Window, how: string);
+	screenr2imager:	fn(w: self ref Window, sr: Draw->Rect): Draw->Rect;
+	imager2screenr:	fn(w: self ref Window, ir: Draw->Rect): Draw->Rect;
+	pointer:	fn(w: self ref Window, p: Draw->Pointer): int;
+};
+
+.EE
+.SH DESCRIPTION
+The
+.B Wmclient
+module provides routines for making windows controlled by
+.IR wm (1)
+containing an image that can be drawn on with the
+routines described in
+.IR draw-image (2).
+.PP
+.B Init
+should be called once to initialise the internal state of
+.BR wmclient .
+.PP
+.B Makedrawcontext
+establishes an initial connection with the window manager,
+creating a new
+.B Draw
+context suitable for creating new windows. It is only
+necessary to call this if the application has not already
+been provided with a context.
+.PP
+.B Window
+creates a new window through
+.IR ctxt
+and returns it.
+.I Title
+gives a label that will be displayed in the title bar
+of the window;
+.I buts
+determines which buttons are created in the titlebar,
+a bitwise combination of the constants
+.BR Resize ,
+.BR Help ,
+.BR OK,
+and
+.BR Hide .
+If
+.B Plain
+is given, the window is given no decoration at all.
+.PP
+When a window, say
+.IR w ,
+is first created, its size has not been determined
+and its image is not yet allocated.
+.IB W .reshape
+sets the requested rectangle for the window,
+(and requests a new image for the window
+if it has already been made visible),
+where
+.I r
+gives the requested rectangle of the new
+image, excluding window decoration, such as the
+title bar and the window border.
+An application can use
+.IB w .screenr2imager
+to find out the usable rectangle within screen
+rectangle
+.I sr
+when window decorations are taken into account.
+.IB W .imager2screenr
+converts in the other direction.
+.IB W .screenr
+contains the current rectangle of the screen containing
+the window.
+.PP
+.IB W .image
+holds the window's image when it has been successfully created;
+.IB w .ctxt
+holds the window manager context for the window, from which
+keyboard and mouse events can be received.
+No such events will be received until
+.IB w .startinput
+is called, with a list of devices (e.g.
+.BR ptr ,
+.BR kbd )
+to start input for.
+.IB W .settitle
+sets the title that is shown on the window's title bar;
+it can make the window's size (and therefore the window's image)
+change.
+.PP
+.IB W .ctl
+is a channel down which requests from the titlebar are sent.
+Messages received on it should be processed by
+the application or passed to
+.IB w \.wmctl\fR.
+Requests are formatted
+as with
+.B quoted
+in
+.IR string (2).
+The messages include:
+.TP
+.B exit
+The window should be closed.
+.IB W .wmctl
+will kill all processes in the current
+process group.
+.TP
+.B !move \fIx\fP \fIy\fP
+The user has started to try to drag the window.
+.I X
+and
+.I y
+give the location of the initial pointer click.
+.TP
+.B !size \fImindx\fP \fImindy\fP
+The user wishes to resize the window.
+.I Mindx
+and
+.I mindy
+give the minimum size acceptable for the window.
+.TP
+.B help
+The help button has been clicked.
+.TP
+.B ok
+The OK  button has been clicked.
+.TP
+.B hide
+The Hide button has been clicked.
+.IB W .wmctl
+will delete the window, and an entry
+will be shown on the toolbar.
+.PP
+In order to function correctly, an application
+should process not only events from the
+title bar channel, but also events received from the window
+manager itself (via
+.IB w .ctxt.ctl\fR),\fP
+and pointer and keyboard events received from
+the window manager (via
+.IB top .ctxt.ptr
+and
+.IB top .ctxt.kbd
+respectively).
+Control events can be passed to
+.IB w .wmctl \fR;
+keyboard events can be processed by the application;
+pointer events should be passed to
+.IB w .pointer
+for processing; if this returns zero, the
+application should process the pointer event,
+otherwise the event has been consumed by the
+titlebar.
+.PP
+When created, the window is not visible;
+.IB w .onscreen
+makes it visible, and possibly chooses a
+position and a size for it.
+.I How
+specifies what sort of placement is required
+for the window; it can be one of
+.TP
+.B place
+tries to choose a suitable place on the screen
+with respect to other windows; it may size the
+window as it feels appropriate. This the default
+(if
+.I how
+is nil).
+.TP
+.B onscreen
+tries to keep the position and size the same
+as specified on the window, adjusting them only
+to bring the window fully on screen, and making sure
+that the window is no bigger than the entire display.
+.TP
+.B exact
+does not change the specified size or position
+of the window unless absolutely necessary.
+.PP
+.B Snarfget
+and
+.B snarfput
+retrieve and replace the contents of the window
+manager's snarf buffer.
+.SH FILES
+.TF /chan/snarf
+.TP
+.B /chan/snarf
+snarf buffer maintained by
+.IR wm (1)
+.TP
+.B /chan/wm
+channel for interaction with
+.IR wm (1)
+.SH SOURCE
+.B /appl/lib/wmclient.b
+.SH SEE ALSO
+.IR wm (1),
+.IR tk (2)

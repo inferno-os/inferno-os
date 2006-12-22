@@ -1,0 +1,188 @@
+.TH INTRO 1
+.SH NAME
+intro \- introduction to Inferno
+.SH DESCRIPTION
+Inferno is a virtualised operating system that can
+run natively across a wide range of processor architectures
+or hosted on a wide range of operating systems.
+The principal components of the system are:
+.IP •
+The Inferno kernel which can run both native and `hosted' on a range of platforms
+and which presents the same interface to programs in both cases.
+.IP •
+The Dis virtual machine.
+.IP •
+Styx - the tiny broad-spectrum file service protocol.
+.IP •
+Limbo - a new simple, modular, concurrent programming language.
+.IP •
+Tk and Prefab - graphical user interface (`GUI') primitives without a lot of goo.
+.IP •
+The portable cross-development suites that allow any native Inferno platform
+to be cross-compiled on any hosted system.
+.SS Manual conventions
+Throughout this volume, manual entries are cross referenced
+by a notation of the form
+.IR entry ( n ),
+where
+.I entry
+is the name of the page (in italics) and
+.I n
+is the manual section holding the page.
+The same name may be found in more than one section.
+For example, the environment variable inspection command
+documented in
+.IR env (1),
+is quite distinct from the module interface to environment variables
+which is documented in
+.IR env (2),
+which in turn is distinct from the component documented by
+.IR env (3),
+which describes the underlying device that implements environment variables.
+.PP
+Pathnames are understood to exist in the file system space visible from
+Inferno. The root of this space when viewed from the host operating
+system is the Inferno installation directory, sometimes called the
+Inferno root directory. Unless otherwise enabled, the result of
+changes made by Inferno programs to files in the file system space
+is generally restricted to this portion of the host file system.
+.SS Name spaces
+One of the great strengths of Inferno is the
+.I name space
+interface to the resources available to a process,
+a hierarchical structure
+which looks very similar to a conventional file system.
+Resources look like files and directories that can be read
+and written, created and deleted in a way familiar to
+most programmers.
+.PP
+While this interface
+.I is
+used to provide programs with access to conventional
+disk-based filestore, it is also used to control devices
+and user level programs
+.I mounted
+in a process's name space.
+Once a program or a device has been attached to a process's
+name space, the program or device interprets any access
+to the attachment point;
+it can synthesise on demand the names of new files or directories,
+create their contents on the fly as the process reads from them,
+and interpret written data as commands or data as appropriate
+(See
+.IR bind (1)
+and
+.IR sys-bind (2)).
+.PP
+Each new Inferno process inherits its parent's name space,
+but it can divorce its own name space from that of its parent (see
+.IR sys-pctl (2)),
+giving programs the capability to attach
+resources to their own name space without making them globally
+visible. This per-process name space is potent
+but potentially confusing, so, to help programs that might be
+confused,
+.IR namespace (4)
+gives some conventions that should be adhered to if programs
+are to work properly. (That page also gives a general overview
+of the Inferno source tree.)
+.SS Start up
+See ``Installation of the Inferno Software'' in Volume 2
+for details of how to start up Inferno.
+.SS Window/development environment
+Inferno provides a powerful development environment in which to write, compile,
+execute and debug programs written in the Limbo language.
+It gives the developer a clean platform from which he can utilise
+an operating system which contains
+many new and innovative ideas and some, carefully chosen,
+older concepts that have survived the test of time and are likely to be
+familiar to most Plan 9 or Unix users.
+.PP
+Superficially, the Inferno shell
+.IR sh (1)
+looks and behaves much like
+its Plan 9 or Unix contemporaries but, at heart, it is quite different.
+The shell takes advantage of the dynamic module loading
+services that Inferno provides to allow it to be dynamically extended
+in appropriate and interesting ways. For example, by loading the
+.IR sh-tk (1)
+builtin module, a shell script can provide all the programming logic
+required to manage a
+.I Tk
+window with full
+.I Tk
+functionality in, surprisingly, few lines of code; by loading the
+.IR sh-file2chan (1)
+builtin module, a shell script can create a file in the name space
+whose properties are completely under the control of the script.
+.PP
+The Inferno window
+manager
+.IR wm (1)
+allows the user to manage the order and position of a dynamic collection of application
+windows in which to perform various tasks.
+.IR Acme (1)
+is targeted at programmers. It is an editor, a shell and window system all rolled
+into one, which through thoughtful and consistent application of simple principles
+results in a rich and productive programming environment with a user interface
+that feels right.
+.I Acme
+requires a three-button mouse and
+attaches distinct functions to the three mouse buttons and, indeed, to chords of buttons to
+maximise the productivity of the programmer's mouse. For more details of the
+.I Acme
+user interface see the paper
+"Acme: A User Interface for Programmers" in Volume 2.
+.PP
+Limbo programs are compiled with
+.IR limbo (1). 
+This compiles Limbo source into a machine-independent format (Dis) for
+execution by the Inferno Dis virtual machine. The virtual machine is designed to provide 
+safe execution of programs even on machines without memory protection.
+Debugging is made straightforward by use of either
+.IR stack (1)
+, to display the execution stack of a process
+or, if a finer inspection is required,
+.IR deb (1),
+a novel window based debugger that allows the user to identify the exact location of
+problems, set break points and walk the data structures of any module loaded by the program. See "Program Development in Inferno" in Volume 2 for details on how to use the
+development tools that Inferno provides.
+.SH SEE ALSO
+.nf
+Section (1) (this section) for the commonly-used commands.
+Section (2) for Limbo modules, including Inferno's system calls.
+Section (3) for kernel devices (accessed by `bind').
+Section (4) for file services (accessed by `mount').
+Section (5) for the Styx file service protocol.
+Section (6) for file formats and system conventions.
+Section (7) for databases and database access modules.
+Section (8) for administrative modules and system services.
+Section (9) for the reference for Inferno's Tk variant, Limbo/Tk.
+Section (10) for the build environment and device driver implementation.
+.PP
+Volume 2 contains papers and other documentation about Inferno.
+.PP
+The back of this volume contains a permuted index.
+.SH DIAGNOSTICS
+Programs (modules) that wish to return error status to
+the command interpreters
+.IR sh (1)
+and
+.IR mash (1)
+do so by executing a
+.IR sys-raise
+(see
+.IR sys-exception (2))
+with an error string starting with
+.RB ` fail: '.
+On successful execution, a process can simply exit.
+.SH SEE ALSO
+.IR intro (2),
+.IR intro (3),
+.IR intro (4),
+.IR intro (5),
+.IR intro (6),
+.IR intro (7),
+.IR intro (8),
+.IR intro (9),
+.IR intro (10)

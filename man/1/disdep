@@ -1,0 +1,68 @@
+.TH DISDEP 1
+.SH NAME
+disdep \- print load dependencies for Dis file
+.SH SYNOPSIS
+.B disdep
+[
+.B -a
+]
+[
+.B -d
+]
+[
+.B -o
+]
+[
+.B -p
+]
+[
+.B -s
+]
+.I file
+\&...
+.SH DESCRIPTION
+.B Disdep
+reads each
+.IR file ,
+which must be a Dis object file,
+and finds all unique strings in it that end in
+.BR .dis .
+It takes each such string as the name of a Dis file, and
+if the file exists, it does the same for it, and so on, recursively.
+It writes each unique name to the standard output.
+The result is a list of all statically-named Dis files that might be referenced by
+an application, typically as the operand of a Limbo
+.B load
+operator.
+Several options change or extend the output:
+.TP
+.B -a
+Print all names as they are encountered in the search, including duplicates.
+.TP
+.B -d
+Indent to show the dependency structure.
+.TP
+.B -o
+Show only the immediate (outermost) dependencies of each
+.IR file .
+.TP
+.B -p
+Print the dependency relation as pairs:
+a file, a space, and the name of a file on which it depends.
+Only the the first name is printed when a file depends on no other.
+This format is useful as input to
+.IR mk (10.1)
+dependency generators, or dependency graphing programs.
+.TP
+.B -s
+Include strings of the form
+.B
+\&"$[A-Z].*"
+on the assumption
+they are the names of system modules loaded by the application.
+.SH SOURCE
+.B /appl/cmd/disdep.b
+.SH "SEE ALSO"
+.IR limbo (1)
+.SH BUGS
+It cannot see file names that the program calculates.

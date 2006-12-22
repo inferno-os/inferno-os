@@ -1,0 +1,147 @@
+.TH TYPES 9
+.SH NAME
+types \- Standard types required by widget options.
+.SH DESCRIPTION
+This manual entry describes the the standard types
+that can be given as arguments to Inferno Tk widget
+options. When an option is documented, the type
+of argument that it accepts is either documented
+there, or the name of the argument refers to one of the
+names documented below.
+.TP
+.I anchorPos
+One of the values \f5n\fR, \f5ne\fR, \f5e\fR, \f5se\fR,
+\f5s\fR, \f5sw\fR, \f5w\fR, \f5nw\fR, or \f5center\fR.
+See
+.B -anchor
+in
+.IR options (9).
+.TP
+.I boolean
+A true or false value, one of the following:
+\f50\fP, \f5no\fP, \f5off\fP, 
+\f5false\fP (false),
+\f51\fP, \f5yes\fP, \f5on\fP, 
+\f5true\fP (true).
+.TP
+.I bitmap
+Identifies an image which can be drawn, or used as a mask
+through which something else is drawn. If
+.I bitmap
+begins with a
+.RB ` @ ',
+the remaining characters must be the path name of
+an Inferno image file. If
+.I bitmap
+begins with the character
+.RB ` < ',
+the remaining characters must be a decimal integer
+giving the file descriptor number of an open file (see
+.IR sys-open (2))
+from which the bitmap can be loaded. Otherwise,
+.I bitmap
+should be the name of a bitmap file in the directory
+.BR /icons/tk .
+.TP
+.I color
+A
+.I color
+parameter can be a colour name or an RGB (red, green and blue
+luminance) value. The colour names recognized are:
+.EX
+    aqua     yellow   red      teal     white
+    fuchsia  black    blue     darkblue transparent
+    maroon   gray     green    lime
+    purple   navy     olive    orange
+.EE
+For RGB values, either
+.BI # rgb
+or
+.BI # rrggbb
+can be used, where
+.IR r ,
+.IR rr ,
+etc. are hexadecimal values for the corresponding colour
+components.
+The notation
+.BI #rrggbbaa
+can be used to describe a colour with alpha (transparency) component
+.IR aa ;
+the
+.IR rr ,
+.IR gg ,
+and
+.IR bb
+values should be pre-multiplied appropriately. This is the
+canonical form for colour values. Alternatively, transparency
+can be applied to any other colour using a suffix
+.BI * alpha
+where
+.I alpha
+is either
+.BI #aa
+(two hex digits representing an alpha value between 0 and 255)
+or
+.I f
+(a decimal fixed point number between 0 and 1).
+For example,
+.B red*0.5
+gives half transparent red;
+.B #007f007f*#7f
+gives 0.75 transparent green (canonically
+.B #003f003f).
+.TP
+.I dist
+.I Dist
+specifies a distance on the screen, in the following form:
+an optional minus sign
+.RB ( - ),
+then one or more decimal digits (with possible
+embedded decimal point), then an optional units
+specifier. The unit specifiers are the following:
+.RS
+.TP
+.B c
+centimetres
+.TP
+.B m
+millimetres
+.TP
+.B i
+inches
+.TP
+.B p
+points (1/72th inch)
+.TP
+.B h
+height of widget's font (only applicable if the widget
+has an associated font, and if the font has previously been set).
+.TP
+.B w
+width of the zero
+.RB ( 0 )
+character in widget's font. (see above).
+.TP
+Measurements are converted into pixels assuming 100 dots
+per inch on an average CRT display.
+.RE
+.TP
+.I font
+A
+.I font
+parameter gives the full path name of an Inferno font file;
+for example,
+.BR /fonts/pelm/unicode.9.font .
+.TP
+.I frac
+A numeric, possibly fractional, value.
+.TP
+.I relief
+One of \f5raised\fR, \f5sunken\fR, \f5flat\fR, \f5ridge\fR,
+or \f5groove\fR. See
+.B -relief
+in
+.IR options (9).
+.SH SEE ALSO
+.IR intro (9),
+.IR options (9)

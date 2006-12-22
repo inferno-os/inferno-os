@@ -1,0 +1,244 @@
+.TH STYXCHAT 8
+.SH NAME
+styxchat \- exchange Styx messages with a server or client
+.SH SYNOPSIS
+.B styxchat
+[
+.RI -m " messagesize"
+] [
+.B -s
+] [
+.B -v
+] [
+.B -n
+] [
+.I destination
+]
+.SH DESCRIPTION
+.I Styxchat
+exchanges messages with a Styx service.
+See
+.IR intro (5)
+for the protocol definition.
+It makes a connection to a given
+.IR destination ,
+(or waits for a connection on
+.IR destination,
+if the
+.B -s
+option is specified),
+then reads a textual representation of Styx T-messages from the standard
+input and writes them on the connection, with a copy on standard output,
+simultaneously reading Styx R-messages from the connection and printing a representation of them
+on standard output.
+Each message is represented by one line
+on the standard output in the form of a literal of either
+.B Tmsg
+or
+.B Rmsg
+types defined in
+.IR styx (2).
+The
+.B -v
+option causes a second line to be written for
+.B Rmsg.Read
+and
+.B Tmsg.Write
+that shows the data transmitted, as text or binary as appropriate;
+if
+.B -v
+appears a second time, a third line is written that
+shows the text equivalent of apparently binary data (useful to see text that is surrounded by binary data).
+.PP
+By default,
+.I destination
+is the name of a file, typically one end of a named pipe.
+The
+.B \-n
+option causes
+.I destination
+to be interpreted as a network address, as accepted by
+.IR sys-dial (2)
+(or
+.I listen
+with
+.BR -s ).
+If
+.I destination
+is not provided,
+.B styxchat
+reads and writes Styx messages on its standard input,
+using
+.B /dev/cons
+where it would usually use its standard input and output.
+.PP
+Each line of standard input has the form:
+.IP
+.br
+.BI  Tversion " messagesize version"
+.br
+.BI Tauth " afid uname aname"
+.br
+.BI Tflush " oldtag"
+.br
+.BI Tattach " fid afid uname aname"
+.br
+.BI Twalk " fid newfid \f1[\fP name \f1... ]\fP"
+.br
+.BI Topen " fid mode"
+.br
+.BI Tcreate " fid name perm mode"
+.br
+.BI Tread " fid offset count"
+.br
+.BI Twrite " fid offset data"
+.br
+.BI Tclunk " fid"
+.br
+.BI Tremove " fid"
+.br
+.BI Tstat " fid"
+.br
+.BI Twstat " fid name uid gid mode mtime length"
+.br
+.BI nexttag " \f1[\fP tag \f1]\fP"
+.br
+.B dump
+.PD
+.PP
+The input is interpreted as space-separated fields
+using the quoting conventions of
+.IR sh (1),
+allowing fields to contain spaces.
+Empty lines and lines beginning with
+.B #
+are ignored.
+The first field on each line is normally the name of a T-message.
+Subsequent fields provide parameter values for
+the corresponding message.
+Integers are given in the format accepted for integers
+by the Limbo compiler (e.g.
+.BR 16rffff ):
+a
+.I tag
+is 16 bits,
+.I offset
+and
+.I length
+are 64 bits, and all others are 32-bit integers.
+If the an integer parameter field contains
+.BR ~0 ,
+it is taken to be the `all ones' value of appropriate size for that parameter;
+this is particularly useful with
+.BR Twstat ,
+where that value represents `no change'.
+In the ``mode'' field of a qid, letters can be given, representing
+mode bits:
+.B d
+for
+.BR QTDIR ,
+.B l
+for
+.BR QTEXCL ,
+.B a
+for
+.BR QTAPPEND ,
+and
+.B u
+for
+.BR QTAUTH .
+In an
+.B Rstat
+message, the qid mode bits are copied into the
+.B Rstat
+mode field in the appropriate place.
+.PP
+Following the
+.IR sh (1)
+quoting rules,
+an empty string is represented by a field containing \f5''\f1.
+The
+.I data
+field is sent as its UTF-8 representation as an array of bytes.
+The value for
+.I fid
+can be
+.B nofid
+(or
+.BR NOFID )
+to represent the `no fid' value in the protocol.
+The
+.I tag
+for each message is automatically supplied by
+.IR styxchat ,
+starting from 1, and incremented with each successful message transmission.
+The
+.B nexttag
+command will cause subsequent tags to start from
+.IR tag ;
+if none is given, it will print the next tag value.
+The
+.I tag
+may be
+.B notag
+to represent the `no tag' value
+.RB ( 16rFFFF ).
+.PP
+The
+.B dump
+command has the same effect as a
+.B -v
+option, allowing data display to be enabled later.
+.PP
+By default,
+.I styxchat
+sends a Styx client's T-messages and prints a server's R-messages.
+The
+.B -s
+option causes it to present a server's view: it prints the T-messages from Styx clients, and sends R-messages
+as it reads a textual representation of them from standard input:
+.IP
+.br
+.BI Rversion " tag messagesize version"
+.br
+.BI Rauth " tag aqid"
+.br
+.BI Rflush " tag"
+.br
+.BI Rerror " tag ename"
+.br
+.BI Rattach " tag qid"
+.br
+.BI Rwalk " tag qid ..."
+.br
+.BI Ropen " tag qid iounit"
+.br
+.BI Rcreate " tag qid iounit"
+.br
+.BI Rread " tag data"
+.br
+.BI Rwrite " tag count"
+.br
+.BI Rclunk " tag"
+.br
+.BI Rremove " tag"
+.br
+.BI Rstat " tag qid mode atime mtime length name uid gid muid"
+.br
+.BI Rwstat " tag"
+.br
+.B dump
+.PD
+.PP
+The input conventions are as above, except that tags
+are required.
+A
+.I qid
+is a single field of the form \fIpath\f1\f5.\f1\fIvers\f1[\f5.\f1\fItype\f1],
+where the three values are decimal integers.
+.SH SOURCE
+.B /appl/cmd/styxchat.b
+.SH SEE ALSO
+.IR styx (2),
+.IR intro (5),
+.IR styxmon (8)

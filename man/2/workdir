@@ -1,0 +1,25 @@
+.TH WORKDIR 2
+.SH NAME
+workdir \- get the current working directory
+.SH SYNOPSIS
+.EX
+include "workdir.m";
+workdir := load Workdir Workdir->PATH;
+
+init:  fn(): string;
+.EE
+.SH DESCRIPTION
+.B Workdir
+returns a string representation of the working directory
+of the invoking process.
+.PP
+When Inferno boots,
+the initial process has
+.B /
+for its working directory.
+.SH SOURCE
+.B /appl/lib/workdir.b
+.SH SEE ALSO
+.IR sys-chdir (2),
+.IR sys-fd2path (2),
+.IR sys-stat (2)

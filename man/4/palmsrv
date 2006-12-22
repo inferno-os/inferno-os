@@ -1,0 +1,49 @@
+.TH PALMSRV 4
+.SH NAME
+palmsrv \- packet link to Palm device on serial connection
+.SH SYNOPSIS
+.B palm/palmsrv
+[
+.B -D
+] [
+.BI -d " device"
+] [
+.BI -s " speed"
+]
+.SH DESCRIPTION
+.I Palmsrv
+serves packet link connections to a Palm device connected on the given
+.I device
+(default:
+.BR "/dev/eia0" )
+at the given
+.I speed
+(default:
+57600 baud).
+Client applications open
+.B /chan/palmsrv
+to obtain a connection.
+Each write must contain the data portion of a single Packet Assembly-Disassembly Protocol message
+containing a Desklink protocol request.
+If the device rejects the request, the write returns a diagnostic; otherwise,
+a subsequent read will retrieve the reply.
+.PP
+The server can be shut down by writing the text
+.B exit
+to the file
+.BR /chan/palmsrv :
+.IP
+.EX
+echo -n exit >/chan/palmsrv
+.EE
+.PP
+.SH FILES
+.B /chan/palmsrv
+.SH SOURCE
+.B /appl/cmd/palm/palmsrv.b
+.SH SEE ALSO
+.IR palmfile (2)
+.SH BUGS
+It does not yet support USB.
+.br
+It does not tickle the Palm when there are long delays.

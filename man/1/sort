@@ -1,0 +1,33 @@
+.TH SORT 1
+.TH NAME
+sort \- sort file
+.SH SYNOPSIS
+.B sort
+[
+.B -nr
+] [
+.I file
+]
+.SH DESCRIPTION
+.I Sort
+sorts the lines of
+.I file
+(default: standard input)
+and writes the sorted output to
+standard output.
+.PP
+Whole lines are sorted into increasing order, using lexicographic ordering of Unicode characters
+by default.
+The sort is stable, so that lines that compare equal will appear in the output
+in the same order as in the original file.
+The sort order is affected by the following options:
+.TP
+.B -n
+Each line is assumed to have an initial numeric string representing an integer,
+with optional plus or minus sign, and the lines
+are sorted by those numeric values into increasing order.
+.TP
+.B -r
+Reverses the sense of comparisons.
+.SH BUGS
+The entire file is read into memory to be sorted.

@@ -1,0 +1,112 @@
+.TH FILTER 2
+.SH NAME
+filter \- data processing interface
+.SH SYNOPSIS
+.B
+include "filter.m";
+.br
+.BI "filter := load Filter " filterpath ";"
+
+.EX
+Rq: adt {
+	pick {
+	Start =>
+		pid: int;
+	Fill or Result =>
+		buf: array of byte;
+		reply: chan of int;
+	Finished =>
+		buf: array of byte;
+	Info =>
+		msg: string;
+	Error =>
+		e: string;
+	}
+};
+
+init:  fn();
+start: fn(param: string): chan of ref Rq;
+.EE
+.SH DESCRIPTION
+.B Filter
+defines a general module interface for byte-stream processing.
+This manual page documents how to use the interface, and
+by implication how a
+.B Filter
+module should behave.
+There is a different implementation module for each filter type
+and algorithm (eg, for compression or line encoding).
+All implementations are instances of type
+.BR Filter ,
+loaded from the Dis file
+.IR filterpath ,
+given in the manual page for each standard filter
+(or you can write your own to match this specification).
+For details of each existing filter module, see
+.IR filter-deflate (2)
+and following manual pages.
+.PP
+.B Init
+must be called before any other operation of a filter module.
+.PP
+.B Start
+sets the filter going;
+.I param
+can be used to pass any filter-specific information
+to the processor.
+.B Start
+spawns a new thread to do the processing; it returns
+a channel that is used to receive requests from the
+filter.
+The first message sent is always
+.BR Rq.Start ;
+.I pid
+is the process id of the new process spawned.
+.PP
+Subsequent messages are:
+.TF Rq.Finished
+.PD
+.TP
+.B Rq.Fill
+A request by the filter to fill
+.I buf
+with data.
+The number of bytes that have actually
+been placed in the buffer should be sent
+on
+.IR reply .
+If \-1 is sent, the filter will terminate.
+If the value is 0, the filter will terminate once it has processed
+all its input.
+.TP
+.B Rq.Result
+.I Buf
+contains data from the filter.
+Receipt of the the data must be acknowledged
+by sending a value on
+.IR reply .
+If the value is \-1, the filter will terminate.
+.TP
+.B Rq.Finished
+The filter has finished processing.
+.I Buf
+contains any data that was not consumed
+by the filter. The filter terminates after
+sending this message.
+.TP
+.B Rq.Info
+This message is used to send a string of
+arbitrary information from the filter
+during the course of its processing.
+.TP
+.B Rq.Error
+The filter has encountered an error when processing.
+.I E
+is a string describing the error. The filter terminates
+after sending this message.
+.SH SOURCE
+.B /module/filter.m
+.SH SEE ALSO
+.IR gzip (1),
+.IR filter-deflate (2),
+.IR filter-slip (2)

@@ -1,0 +1,29 @@
+.TH KSIZE 10.1
+.SH NAME
+ksize \- print size of kernel images
+.SH SYNOPSIS
+.B ksize
+[
+.I file ...
+]
+.SH DESCRIPTION
+.I Ksize
+prints the size of the segments for each of the argument executable files
+(default
+.BR 8.out ).
+The format is
+.IP
+.IB textsize t
++
+.IB datasize d
++
+.IB bsssize b
+=
+.I total
+.PP
+where the numbers are in bytes.
+.SH SOURCE
+.B /utils/ksize
+.SH "SEE ALSO
+.IR kstrip (10.1),
+.IR a.out (10.6)

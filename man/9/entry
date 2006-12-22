@@ -1,0 +1,316 @@
+.TH ENTRY 9
+.SH NAME
+entry \- Create and manipulate entry widgets
+.SH SYNOPSIS
+\f5entry\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-background  -highlightcolor     -selectbackground
+-borderwidth -highlightthickness -selectforeground
+-font        -justify            -takefocus
+-foreground  -relief             -xscrollcommand
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -show \fIstring\fP
+If this option is specified, then the true contents of the entry
+are not displayed in the window.
+Instead, each character in the entry's value will be displayed as
+the first character in the value of this option, such as ``*''.
+This is useful, for example, if the entry is to be used to enter
+a password.
+.TP
+.B -state \fIstate\fP
+Specifies one of two states for the entry:  \f5normal\fR or \f5disabled\fR.
+If the entry is disabled then the value may not be changed using widget
+commands and no insertion cursor will be displayed, even if the input focus is
+in the widget.
+.TP
+.B -width \fIdist\fP
+Specifies an integer value indicating the desired width of the entry window.
+
+.SH DESCRIPTION
+The \f5entry\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into an entry widget.
+Additional options, described above, may be specified on the
+command line
+to configure aspects of the entry such as its colours, font,
+and relief.  The \f5entry\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+An entry is a widget that displays a one-line text string and
+allows that string to be edited using widget commands described below, which
+are typically bound to keystrokes and mouse actions.
+When first created, an entry's string is empty.
+A portion of the entry may be selected as described below.
+Entries observe the standard Tk rules for dealing with the
+input focus.  When an entry has the input focus it displays an
+\fIinsertion cursor\fR to indicate where new characters will be
+inserted.
+.PP
+Entries are capable of displaying strings that are too long to
+fit entirely within the widget's window.  In this case, only a
+portion of the string will be displayed;  commands described below
+may be used to change the view in the window.  Entries use
+the standard \f5xscrollcommand\fR mechanism for interacting with
+scrollbars (see the description of the \f5xscrollcommand\fR option
+for details).
+
+.SH "WIDGET COMMAND"
+The \f5entry\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.
+.PP
+Many of the widget commands for entries take one or more indices as
+arguments.  An index specifies a particular character in the entry's
+string, in any of the following ways:
+.TP 12
+\fInumber\fR
+Specifies the character as a numerical index, where 0 corresponds
+to the first character in the string.
+.TP 12
+\f5anchor\fR
+Indicates the anchor point for the selection, which is set with the
+\f5select from\fR and \f5select adjust\fR widget commands.
+.TP 12
+\f5end\fR
+Indicates the character just after the last one in the entry's string.
+This is equivalent to specifying a numerical index equal to the length
+of the entry's string.
+.TP 12
+\f5insert\fR
+Indicates the character adjacent to and immediately following the
+insertion cursor.
+.TP 12
+\f5sel.first\fR
+Indicates the first character in the selection.  It is an error to
+use this form if the selection isn't in the entry window.
+.TP 12
+\f5sel.last\fR
+Indicates the character just after the last one in the selection.
+It is an error to use this form if the selection isn't in the
+entry window.
+.TP 12
+\f5@\fInumber\fR
+In this form, \fInumber\fR is treated as an x-coordinate in the
+entry's window;  the character spanning that x-coordinate is used.
+For example, ``\f5@0\fR'' indicates the left-most character in the
+window.
+.PP
+The following commands are possible for entry widgets:
+.TP
+\fIpathName \f5bbox \fIindex\fR
+Returns a list of four numbers describing the bounding box of the
+character given by \fIindex\fR.
+The first two elements of the list give the x and y coordinates of
+the upper-left corner of the screen area covered by the character
+(in pixels relative to the widget) and the last two elements give
+the width and height of the character, in pixels.
+The bounding box may refer to a region outside the visible area
+of the window.
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5entry\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5entry\fR
+command.
+.TP
+\fIpathName \f5delete \fIfirst \fR?\fIlast\fR?
+Delete one or more elements of the entry.
+\fIFirst\fR is the index of the first character to delete, and
+\fIlast\fR is the index of the character just after the last
+one to delete.
+If \fIlast\fR isn't specified it defaults to \fIfirst\fR+1,
+i.e. a single character is deleted.
+This command returns an empty string.
+.TP
+\fIpathName \f5get\fR
+Returns the entry's string.
+.TP
+\fIpathName \f5icursor \fIindex\fR
+Arrange for the insertion cursor to be displayed just before the character
+given by \fIindex\fR.  Returns an empty string.
+.TP
+\fIpathName \f5index\fI index\fR
+Returns the numerical index corresponding to \fIindex\fR.
+.TP
+\fIpathName \f5insert \fIindex string\fR
+Insert the characters of \fIstring\fR just before the character
+indicated by \fIindex\fR.  Returns an empty string.
+.TP
+\fIpathName \f5see \fIindex\fR
+Adjusts the view in the window so that the character given by \fIindex\fR
+is completely visible.
+.TP
+\fIpathName \f5selection \fIoption arg\fR
+This command is used to adjust the selection within an entry.  It
+has several forms, depending on \fIoption\fR:
+.RS
+.TP
+\fIpathName \f5selection adjust \fIindex\fR
+Locate the end of the selection nearest to the character given by
+\fIindex\fR, and adjust that end of the selection to be at \fIindex\fR
+(i.e including but not going beyond \fIindex\fR).  The other
+end of the selection is made the anchor point for future
+\f5select to\fR commands.  If the selection
+isn't currently in the entry, then a new selection is created to
+include the characters between \fIindex\fR and the most recent
+selection anchor point, inclusive.
+Returns an empty string.
+.TP
+\fIpathName \f5selection clear\fR
+Clear the selection if it is currently in this widget.  If the
+selection isn't in this widget then the command has no effect.
+Returns an empty string.
+.TP
+\fIpathName \f5selection from \fIindex\fR
+Set the selection anchor point to just before the character
+given by \fIindex\fR.  Doesn't change the selection.
+Returns an empty string.
+.TP
+\fIpathName \f5selection present\fR
+Returns 1 if there are characters selected in the entry,
+0 if nothing is selected.
+.TP
+\fIpathName \f5selection range \fIstart\fR \fIend\fR
+Sets the selection to include the characters starting with
+the one indexed by \fIstart\fR and ending with the one just
+before \fIend\fR.
+If \fIend\fR refers to the same character as \fIstart\fR or an
+earlier one, then the entry's selection is cleared.
+.TP
+\fIpathName \f5selection to \fIindex\fR
+If \fIindex\fR is before the anchor point, set the selection
+to the characters from \fIindex\fR up to but not including
+the anchor point.
+If \fIindex\fR is the same as the anchor point, do nothing.
+If \fIindex\fR is after the anchor point, set the selection
+to the characters from the anchor point up to but not including
+\fIindex\fR.
+The anchor point is determined by the most recent \f5select from\fR
+or \f5select adjust\fR command in this widget.
+If the selection isn't in this widget then a new selection is
+created using the most recent anchor point specified for the widget.
+Returns an empty string.
+.RE
+.TP
+\fIpathName \f5xview \fIargs\fR
+This command is used to query and change the horizontal position of the
+text in the widget's window.  It can take any of the following
+forms:
+.RS
+.TP
+\fIpathName \f5xview\fR
+Returns a list containing two elements.
+Each element is a real fraction between 0 and 1;  together they describe
+the horizontal span that is visible in the window.
+For example, if the first element is .2 and the second element is .6,
+20% of the entry's text is off-screen to the left, the middle 40% is visible
+in the window, and 40% of the text is off-screen to the right.
+These are the same values passed to scrollbars via the \f5-xscrollcommand\fR
+option.
+.TP
+\fIpathName \f5xview\fR \fIindex\fR
+Adjusts the view in the window so that the character given by \fIindex\fR
+is displayed at the left edge of the window.
+.TP
+\fIpathName \f5xview moveto\fI fraction\fR
+Adjusts the view in the window so that the character \fIfraction\fR of the
+way through the text appears at the left edge of the window.
+\fIFraction\fR must be a fraction between 0 and 1.
+.TP
+\fIpathName \f5xview scroll \fInumber what\fR
+This command shifts the view in the window left or right according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts left or right by
+\fInumber\fR average-width characters on the display;  if it is
+\f5pages\fR then the view adjusts by \fInumber\fR screenfuls.
+If \fInumber\fR is negative then characters farther to the left
+become visible;  if it is positive then characters farther to the right
+become visible.
+.RE
+
+.SH "DEFAULT BINDINGS"
+Tk automatically creates bindings for entries that give them
+the following default behaviour.
+In the descriptions below, ``word'' refers to a contiguous group
+of letters, digits, or ``_'' characters, or any single character
+other than these.
+.IP [1]
+Clicking mouse button 1 positions the insertion cursor
+just before the character underneath the mouse cursor, sets the
+input focus to this widget, and clears any selection in the widget.
+Dragging with mouse button 1 strokes out a selection between
+the insertion cursor and the character under the mouse.
+.IP [2]
+Double-clicking with mouse button 1 selects the word under the mouse
+and positions the insertion cursor at the beginning of the word.
+.IP [3]
+If any normal printing characters are typed in an entry, the current
+selection is deleted, and they are
+inserted at the point of the insertion cursor
+.IP [4]
+The view in the entry can be adjusted by dragging with mouse button 2.
+.IP [5]
+The Left and Right keys move the insertion cursor one character to the
+left or right;  they also clear any selection in the entry and set
+the selection anchor.
+Control-b and Control-f behave the same as Left and Right, respectively.
+.IP [6]
+The Home key, or Control-a, will move the insertion cursor to the
+beginning of the entry and clear any selection in the entry.
+.IP [7]
+The End key, or Control-e, will move the insertion cursor to the
+end of the entry and clear any selection in the entry.
+.IP [8]
+Control-/ selects all the text in the entry.
+.IP [9]
+Control-\e clears any selection in the entry.
+.IP [10]
+The Delete key deletes the selection, if there is one in the entry.
+If there is no selection, it deletes the character to the right of
+the insertion cursor.
+.IP [11]
+The BackSpace key and Control-h delete the selection, if there is one
+in the entry.
+If there is no selection, it deletes the character to the left of
+the insertion cursor.
+.IP [12]
+Control-d deletes the character to the right of the insertion cursor.
+.IP [13]
+Control-k deletes all the characters to the right of the insertion
+cursor.
+.IP [14]
+Control-w deletes the word to the left of the insertion cursor.
+.PP
+If the entry is disabled using the \f5-state\fR option, then the entry's
+view can still be adjusted and text in the entry can still be selected,
+but no insertion cursor will be displayed and no text modifications will
+take place.
+.PP
+The behaviour of entries can be changed by defining new bindings for
+individual widgets.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

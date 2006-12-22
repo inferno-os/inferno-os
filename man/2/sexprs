@@ -1,0 +1,362 @@
+.TH SEXPRS 2
+.SH NAME
+Sexprs: Sexp \- S-expressions
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "sexprs.m";
+sexprs := load Sexprs Sexprs->PATH;
+
+Sexp: adt {
+    pick {
+    String =>
+        s:    string;
+        hint: string;
+    Binary =>
+        data: array of byte;
+        hint: string;
+    List =>
+        l:    cyclic list of ref Sexp;
+    }
+
+    read:   fn(b: ref Bufio->Iobuf): (ref Sexp, string);
+    parse:  fn(s: string): (ref Sexp, string, string);
+    pack:   fn(e: self ref Sexp): array of byte;
+    packedsize: fn(e: self ref Sexp): int;
+    text:   fn(e: self ref Sexp): string;
+    b64text: fn(e: self ref Sexp): string;
+    unpack: fn(a: array of byte): (ref Sexp, array of byte, string);
+
+    eq:     fn(e: self ref Sexp, t: ref Sexp): int;
+    copy:   fn(e: self ref Sexp): ref Sexp;
+
+    astext: fn(e: self ref Sexp): string;
+    asdata: fn(e: self ref Sexp): array of byte;
+
+    islist: fn(e: self ref Sexp): int;
+    els:    fn(e: self ref Sexp): list of ref Sexp;
+    op:     fn(e: self ref Sexp): string;
+    args:   fn(e: self ref Sexp): list of ref Sexp;
+};
+
+init:   fn();
+.EE
+.SH DESCRIPTION
+.B Sexprs
+provides a data type and I/O for S-expressions, or `symbolic expressions',
+which represent complex data as trees.
+This implementation provides the variant defined by
+Rivest in Internet Draft
+.L draft-rivest-sexp-00.txt
+(4 May 1997),
+as used for instance by the Simple Public Key Infrastructure (SPKI).
+It offers a basic set of operations on the internal representation,
+and input and output in both canonical and advanced transport encodings.
+.I Canonical
+form conveys binary data directly and efficiently (unlike some
+other schemes such as XML).
+Canonical encoding must be used when exchanging S-expressions between computers,
+and when digitally signing an expression.
+.I Advanced
+encoding is a more elaborate
+form similar to that used by Lisp interpreters, typically using
+only printable characters: representing any binary data in hexadecimal or base 64 encodings,
+and quoting strings containing special characters, using escape sequences as required.
+Unquoted text is called a
+.IR token ,
+restricted by the standard to a specific alphabet:
+it must start with a letter or a character from the set
+.LR "-./_:*+=" ,
+and contain only letters, digits and characters from that set.
+Upper- and lower-case letters are distinct.
+See
+.IR sexprs (6)
+for a precise description.
+.PP
+.B Init
+must be called before invoking any other operation of the module.
+.PP
+.B Sexp
+is the internal representation of S-expression data, as lists and non-list values (atoms) that
+in general can form a tree structure;
+that is, a list may contain not just atoms but other lists as its elements, and so on recursively.
+The atoms are strings of text or binary.
+A well-formed S-expression might be a tree, but cannot contain cycles.
+.PP
+For convenience in processing,
+.B Sexp
+distinguishes three variants represented in a pick adt:
+.TP
+.B Sexp.String
+An atom that can be represented as a textual string
+.IR s ,
+including all tokens but also any other data that contains no characters outside the 7-bit ASCII
+set and no control-characters other than space.
+.I Hint
+is the `display hint', typically nil (see the Internet Draft for its intended use).
+.TP
+.B Sexp.Binary
+An atom that must be represented as an array of bytes
+.I data
+(typically because it is purely binary data or contains non-space control-characters).
+.I Hint
+again is the display hint.
+.TP
+.B Sexp.List
+A list of S-expression values,
+.IR l .
+.PP
+.B Sexp
+provides the following operations for input and output, using
+.IR bufio (2)'s
+buffered channels (directly or indirectly):
+.TP
+.BI read( b )
+Read one S-expression (a list or a single token) from
+.B Iobuf
+.IR b .
+Return a tuple of the form
+.RI ( e , err ),
+where
+.I e
+is the
+.B Sexp
+representing the data just read, and
+.I err
+is nil on success;
+.I b
+is positioned at the first character after the end of the S-expression.
+On an error,
+.I e
+is nil, and
+.I err
+contains the diagnostic string.
+On end-of-file, both
+.I e
+and
+.I err
+are nil.
+.TP
+.BI parse( s )
+Parse the first S-expression in string
+.IR s ,
+and return a tuple
+.RI ( e , t , err ),
+where
+.I e
+is the
+.B Sexp
+representating that expression,
+.I t
+is the unparsed tail of string
+.IR s ,
+and
+.I err
+is a diagnostic string that is nil on success.
+On an error,
+.I e
+is nil,
+.I t
+is as before, and
+.I err
+contains the diagnostic.
+.TP
+.IB e .pack()
+Return an array of byte that represents
+.B Sexp
+.I e
+as an S-expression in canonical transport form.
+.TP
+.IB e .packedsize()
+Return the size in bytes of the canonical transport representation of
+.IR e .
+.TP
+.IB e .b64text()
+Return a string that contains the base-64 representation of the canonical representation of
+.IR e ,
+surrounded by braces.
+.TP
+.IB e .text()
+Return a string that represents
+.I e
+as an S-expression in advanced (`human-readable') transport form containing no newlines.
+The result of
+.B text
+can always be interpreted by
+.B Sexp.read
+and
+.BR Sexp.parse ,
+and furthermore
+.BI "Sexp.parse(" e ".text())"
+yields the same tree value as
+.I e
+(similarly for
+.BR Sexp.read ).
+.TP
+.BI unpack( a )
+Parse the first S-expression in array of byte
+.IR a ,
+and return a tuple
+.RI ( e , r , err ),
+where
+.I e
+is the
+.B Sexp
+representing the S-expression,
+.I r
+is a slice of
+.I a
+giving the portion of
+.I a
+after the S-expression, and
+.I err
+is nil on success.
+On error,
+.I e
+is nil,
+.I r
+is as before,
+and
+.I err
+contains a diagnostic string.
+The data in
+.I a
+is typically in canonical transport form, read from a file or network connection.
+.PP
+All input functions accept S-expression in either canonical or advanced form, or
+any legal mixture of forms.
+Expressions can cross line boundaries.
+For output in canonical form, use
+.BR pack ;
+for output in advanced form (similar to Lisp's S-expressions), use
+.BR text .
+.PP
+.B Sexp
+provides a further small collection of operations:
+.TP
+.IB e1 .eq( e2 )
+Return non-zero if expression
+.I e1
+and
+.I e2
+are identical (isomorphic in tree structure and atoms in corresponding positions in
+.I e1
+and
+.I e2
+equal);
+return 0 otherwise.
+.TP
+.IB e .copy()
+Return a new
+.B Sexp
+value equal to
+.IR e ,
+but sharing no storage with it.
+(In other words, it returns a copy of the
+whole tree
+.IR e ).
+.TP
+.IB e .islist()
+Return true iff
+.I e
+is a list
+(ie, a value of type
+.BR Sexp.List ).
+.PP
+Two operations provide a shorthand for fetching the value of an atom, returning nil if
+applied to a list:
+.TP
+.IB e .astext()
+Return the value of
+.I e
+as a
+.BR string ;
+binary data is assumed to be a string in
+.IR utf (6)
+representation.
+.TP
+.IB e .asdata()
+Return the value of
+.I e
+as an array of bytes.
+A
+.B String
+value will be converted to an array of bytes giving its
+.IR utf (6).
+.PP
+The remaining operations extract values from lists,
+and return nil if applied to an atom:
+.TP
+.IB e .els()
+Return the elements of list
+.IR e ;
+return nil if
+.I e
+is not a list.
+.TP
+.IB e .op()
+Return the first token of list
+.IR e ,
+if it is a string; return nil if it is not a string or
+.I e
+is not a list.
+The first token of a list often gives an operation name.
+.TP
+.IB e .args()
+Return a list containing the second and subsequent values in list
+.IR e ;
+useful when the first value is an operation name and the rest represent parameters
+(arguments) to that operation.
+.SH EXAMPLES
+The following S-expression is in advanced transport form:
+.IP
+.EX
+(snicker "abc" (#03# |YWJj|))
+.EE
+.PP
+It represents a list of three elements: the token
+.LR snicker ,
+the token
+.LR abc ,
+and a sub-list with two elements (a hexadecimal constant
+representing the byte
+.LR 03 ,
+and a base-64 constant
+.L YWjj
+that represents the bytes
+.LR abc ).
+.PP
+Here is another in advanced form with two sublists:
+.IP
+.EX
+(certificate
+     (issuer bob)
+     (subject "alice b"))
+.EE
+.PP
+Its equivalent in canonical form (as produced by
+.BR pack )
+is shown below:
+.IP
+.EX
+(11:certificate(6:issuer3:bob)(7:subject7:alice b))
+.EE
+.PP
+Nesting parentheses
+still mark the start and end of lists, but there is no other punctuation or white space, and
+the byte sequence representing each atom
+is preceded by a decimal count, so that binary values appear unencoded,
+and for instance the space
+in the last string is not a delimiter but part of the token.
+.SH SOURCE
+.B /appl/lib/sexprs.b
+.SH SEE ALSO
+.IR bufio (2),
+.IR xml (2),
+.IR sexprs (6)
+.PP
+R. Rivest, ``S-expressions'', Network Working Group Internet Draft,
+.L http://theory.lcs.mit.edu/~rivest/sexp.txt
+(4 May 1997),
+reproduced in
+.BR /lib/sexp .

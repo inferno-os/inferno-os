@@ -1,0 +1,34 @@
+.TH KPROF 10.1
+.SH NAME
+kprof \- display kernel profiling data
+.SH SYNOPSIS
+.B kprof
+.I kernel
+.I kpdata
+.SH DESCRIPTION
+.I Kprof
+presents the data accumulated by the kernel
+profiling device,
+.IR kprof (3) .
+The symbol table is taken from the file
+.IR kernel ,
+the executable file of the operating system kernel that
+was profiled.
+The data file
+.I kpdata
+is usually a copy of
+.BR /dev/kpdata
+from the device running the profiling kernel.
+.PP
+The symbol table
+is read and correlated with the
+profile data.
+For each symbol, the time (in milliseconds)
+spent executing between that symbol
+and the next
+is printed (in decreasing order),
+together with the percentage of the total time.
+.SH SOURCE
+.B /utils/kprof
+.SH SEE ALSO
+.IR kprof (3)

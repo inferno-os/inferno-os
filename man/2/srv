@@ -1,0 +1,66 @@
+.TH SRV 2
+.SH NAME
+srv \- network name and address translation when hosted
+.SH SYNOPSIS
+.EX
+include "srv.m"
+srv := load Srv Srv->PATH;
+Srv: module
+{
+  init:  fn();
+  iph2a: fn(host: string): list of string;
+  ipa2h: fn(addr: string): list of string;
+  ipn2p: fn(protocol, service: string): string;
+};
+.EE
+.SH DESCRIPTION
+.B Srv
+provides access to the host operating system's
+name and address translation when Inferno is running hosted.
+The module's implementation is usually built-in to
+.IR emu (1),
+and then only on some platforms.
+It uses the Internet name resolution services of the host operating system
+(eg,
+.B gethostbyname
+on Unix systems).
+Its services are normally only used internally by
+.IR cs (8)
+and
+.IR dns (8),
+and even they give priority to data in
+.IR services (6)
+and
+.IR dns (6)
+if available.
+Other Inferno applications normally give network addresses to the functions of
+.IR sys-dial (2),
+and they are then translated automatically, using the services of
+.IR cs (8).
+.PP
+.B Init
+must be called before any other function is used.
+.PP
+Given a host name,
+.B iph2a
+returns a list of its Internet addresses (if any).
+Given an Internet address,
+.B ipa2h
+returns a list of host names (if any) that have that address.
+The results are only as accurate as the host system's name service.
+.PP
+.B Ipn2p
+returns the port number (as a string) for the given
+.I service
+when accessed using a particular protocol
+.I protocol
+(typically
+.B tcp
+or
+.BR udp ).
+.SH SOURCE
+.B /emu/port/srv.c
+.SH SEE ALSO
+.IR sys-file2chan (2),
+.IR cs (8),
+.IR dns (8)

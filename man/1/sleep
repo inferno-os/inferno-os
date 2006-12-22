@@ -1,0 +1,24 @@
+.TH SLEEP 1
+.SH NAME
+sleep, pause \- suspend execution for an interval
+.SH SYNOPSIS
+.B sleep
+.I n
+.PP
+.B pause
+.SH DESCRIPTION
+.I Sleep
+suspends its own execution for
+.I n
+seconds before returning.
+.PP
+.I Pause
+never returns,
+and is typically used to stop a command
+interpreter reading any more from the standard input.
+.SH SOURCE
+.B /appl/cmd/sleep.b
+.br
+.B /appl/cmd/pause.b
+.SH "SEE ALSO"
+.IR sys-sleep (2)

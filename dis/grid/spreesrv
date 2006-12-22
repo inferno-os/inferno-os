@@ -1,0 +1,67 @@
+#!/dis/sh
+
+
+load std
+autoload=std
+pctl forkns newpgrp
+echo -n 62.254.170.99 > /dev/sysname
+
+# from /dis/svc/auth (except -n option)
+fn auth {
+	or {ftest -e /net/dns} {ftest -e /env/emuhost} {ndb/dns}
+	or {ftest -e /net/cs} {ndb/cs}
+	# svc/registry	# unclear if we should
+	or {ftest -f /keydb/signerkey} {echo 'auth: need to use createsignerkey(8)' >[1=2]; exit nosignerkey}
+	or {ftest -f /keydb/keys} {echo 'auth: need to create /keydb/keys' >[1=2]; exit nokeys}
+	nopt := ()
+	if{ftest -r /tmp/gamepasswd} {
+		nopt=-n /tmp/gamepasswd
+	}
+	and {auth/keyfs $nopt} {
+		listen -v -t -A 'tcp!*!inflogin' {auth/logind&}
+		listen -v -t -A 'tcp!*!infkey' {auth/keysrv&}
+		listen -v -t -A 'tcp!*!infsigner' {auth/signer&}
+		listen -v -t -A 'tcp!*!infcsigner' {auth/countersigner&}
+	}
+}
+
+fn ck {
+	or {$*} {
+		echo signer startup failed >[1=2]
+		rm -f /mnt/registry/tcp!doppio!inflogin
+		kill -g ${pid}
+		raise error
+	}
+}
+
+fn register {
+	{
+		or {echo $*} {
+			echo spreesrv: register $* failed >[1=2]
+		}
+		sleep 2000000
+	} $* > /mnt/registry/new &
+}
+sysname="{cat /dev/sysname}
+
+ck ndb/cs
+ck mount -A 'tcp!$registry!registry' /mnt/registry
+
+@ {
+	pctl forkns
+	ck listen -f /usr/i4e/keyring/spree tcp!$sysname!1234 {
+		if {~ $user spree} {
+			export /lib/spreearchive &
+		}
+	}
+}
+
+# start auth services and announce them in the registry.
+ck bind /keydb/gamesignerkey /keydb/signerkey
+ck bind /keydb/gamekeys /keydb/keys
+ck auth
+pk=`{getpk /keydb/signerkey}
+ck register tcp!$sysname!inflogin resource login pk $pk
+ck register tcp!$sysname!infkey resource infkey pk $pk
+
+ck grid/register -a resource createuser -a signer $pk { grid/usercreatesrv }

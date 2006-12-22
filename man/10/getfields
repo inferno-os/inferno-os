@@ -1,0 +1,76 @@
+.TH GETFIELDS 10.2
+.SH NAME
+getfields, tokenize \- break a string into fields
+.SH SYNOPSIS
+.ta \w'\fLchar* \fP'u
+.B
+int	getfields(char *str, char **args, int maxargs, int multiflag,
+.br
+.B
+	    char *delims)
+.PP
+.B
+int	tokenize(char *str, char **args, int maxargs)
+.SH DESCRIPTION
+.I Getfields
+breaks the null-terminated
+.SM UTF
+string
+.I str
+into at most
+.I maxargs
+null-terminated fields and places pointers to the start of these fields in the array
+.IR args .
+Some of the bytes in
+.I str
+are overwritten.
+If there are more than
+.I maxargs
+fields,
+only the first
+.I maxargs
+fields will be set.
+.I Delims
+is a
+.SM UTF
+string defining a set of delimiters.
+.PP
+If
+.I multiflag
+is zero,
+adjacent fields are separated by exactly one delimiter.
+A string containing
+.I n
+delimiter characters
+contains
+.IR n +1
+fields.
+If the
+.I multiflag
+argument is not zero,
+a field is a non-empty string of non-delimiters.
+.PP
+Getfields
+return the number of tokens processed.
+.PP
+.I Tokenize
+is the same as
+.I getfields
+with
+.I multiflag
+non-zero and
+.I delims
+\f5"\et\er\en "\fP,
+except that fields may be quoted using single quotes, in the manner
+of
+the command interpreter.
+.SH SOURCE
+.B /libkern/getfields.c
+.br
+.B /libkern/tokenize.c
+.br
+.B /lib9/getfields.c
+.br
+.B /lib9/tokenize.c
+.SH SEE ALSO
+.IR strcat (10.2)

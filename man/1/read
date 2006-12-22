@@ -1,0 +1,62 @@
+.TH READ 1
+.SH NAME
+read \- read from standard input with optional seek
+.SH SYNOPSIS
+.B read
+[
+.BR - [ eor ]
+.I offset
+] [
+.I count
+]
+.SH DESCRIPTION
+.I Read
+does a single read of
+.I count
+bytes (default:
+8192 bytes)
+from the standard input and writes
+the result to the standard output.
+If the optional
+.I offset
+argument is given,
+.I read
+will first apply
+.IR sys-seek (2):
+.TP
+.BI -o " offset"
+seek
+.I offset
+bytes from the start of the file
+.TP
+.BI -e " offset"
+seek
+.I offset
+bytes from the end of the file
+.TP
+.BI -r " offset"
+seek
+.I offset
+bytes from the standard input's current file offset
+.PP
+In all cases the file offset changes to
+reflect the result of the seek, and the number of bytes
+read.
+.SH SOURCE
+.B /appl/cmd/read.b
+.SH DIAGNOSTICS
+.I Read
+prints a diagnostic and returns a non-empty exit
+status
+.CW fail:error
+on an I/O error;
+it quietly returns status
+.CW fail:eof
+if the read returns zero bytes (conventionally, end of file).
+.SH SEE ALSO
+.IR cat (1),
+.I getline
+in
+.IR sh-std (1),
+.IR stream (1),
+.IR sys-read (2)

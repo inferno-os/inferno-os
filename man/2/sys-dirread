@@ -1,0 +1,59 @@
+.TH SYS-DIRREAD 2
+.SH NAME
+dirread \- read directory
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+dirread:  fn(fd: ref FD): (int, array of Dir);
+.EE
+.SH DESCRIPTION
+.B Dirread
+reads the contents of the directory pointed to by the open file descriptor
+.IR fd ,
+returning a tuple containing an array
+with one
+.B Dir
+structure for each directory entry read.
+These
+.B Dir
+structures are equivalent to the result of a
+.B stat
+call on each file in the directory.
+See
+.IR sys-stat (2)
+for a description of
+.B stat
+and
+.BR Dir .
+.PP
+A successful
+.B dirread
+returns a tuple giving the number of entries read and the resulting array.
+A return of (0,nil) indicates the end of the directory.
+Directory entries are variable length in general;
+the file offset is advanced by the number of bytes actually read.
+.PP
+Seeks (see
+.IR sys-seek (2))
+are allowed on directories only to seek to the start.
+.PP
+In general, several calls to
+.B dirread
+will be needed to read the whole directory.
+.I Readdir (2)
+provides functions that return all the directory entries at once,
+optionally sorted.
+.SH SEE ALSO
+.IR readdir (2),
+.IR sys-intro (2),
+.IR sys-open (2),
+.IR sys-read (2),
+.IR sys-seek (2),
+.IR sys-stat (2)
+.SH DIAGNOSTICS
+The integer in
+.BR dirread 's
+return tuple has a value of -1 on error, and 0 on end of file.
+The array element of the tuple is nil in both cases.

@@ -1,0 +1,149 @@
+.TH MUX 1
+.SH NAME
+mux \- interactive television demo
+.SH SYNOPSIS
+.B mux/mux
+.SH DESCRIPTION
+.I Mux
+is a standalone application environment run from the Inferno console
+in
+.IR emu (1)
+or started
+automatically by
+.IR init (8)
+in a native environment.
+It directly uses the
+.IR draw (3)
+device and either keyboard or Infrared,
+and cannot be run under
+.IR wm (1).
+It is included in this release only as an example of the use of the Prefab graphics
+module described by
+.IR prefab-intro (2).
+The simpler style of graphics and interaction provided by Prefab and
+demonstrated by
+.I mux
+might be more appropriate than Tk
+on devices that use infrared remote control
+for interaction, such as televisions,
+or devices with limited screen space, such as pocket devices or portable telephones.
+.SS Configuration
+.I Mux
+produces a menu derived from the configuration file
+.BR /services/basic .
+Each line in the file has three fields, separated by
+.BR : ,
+of the following form:
+.IP
+.IB icon : app : label
+.PP
+The
+.I icon
+is the name of a bitmap file to displayed in the menu alongside the textual
+.I label
+(which is the rest of the line).
+When the item is selected, as described below,
+.I mux
+runs the Dis file
+.IP
+.BI /dis/mux/ app .dis
+.SS Applications
+The following applications are available:
+.TF audioctl
+.TP
+.B fnn
+Financial reports:
+a scrolling `ticker tape' along the bottom of the screen.
+.TP
+.B movie
+Movies: select a film from a menu of categories
+.TP
+.B news
+Today's Newspaper: on-screen newspapers
+.TP
+.B tv
+Television
+.TP
+.B tvlist
+TV Timetable
+.TP
+.B pizza
+Order Pizza
+.TP
+.B email
+Internet mail
+.TP
+.B web
+Internet Web Browser: simplistic web browser
+.TP
+.B register
+Register with a service provider
+.TP
+.B ovid
+Presentations
+.TP
+.B audioctl
+Audio Control
+.PD
+.PP
+.SS Interaction
+.I Mux
+can be controlled using an infrared device, but for demonstration purposes
+under
+.IR emu (1)
+the infrared is emulated using the keyboard (see
+.IR ir (2)).
+The following are the common controls:
+.TF newline
+.TP
+.B r
+channel up
+.TP
+.B c
+channel down
+.TP
+.B t
+volume up
+.TP
+.B v
+volume down
+.TP
+.B i
+cursor up
+.TP
+.B m
+cursor down
+.TP
+.B j
+cursor left; rewind
+.TP
+.B k
+cursor right; fast forward
+.TP
+.B x
+return to main menu leaving application running; recall
+.TP
+.B newline
+select item
+.TP
+.B space
+exit and return to the previous screen or menu
+.SH FILES
+.B /services/basic
+.br
+.B /icons/*.bit
+.SH SOURCE
+.B /appl/mux
+.SH SEE ALSO
+.IR wm (1),
+.IR ir (2),
+.IR prefab-intro (2),
+.IR virgil (2),
+.IR manufacture (8),
+.IR register (8),
+.IR signer (8),
+.IR virgild (8)
+.SH BUGS
+The video demonstrations currently work only on native machines with specific hardware.
+.br
+For copyright reasons, some databases are not distributed, or have randomly-generated content.

@@ -1,0 +1,89 @@
+.TH TIMERS 2
+.SH NAME
+timers \- interval timers
+.SH SYNOPSIS
+.EX
+include "timers.m";
+timers := load Timers Timers->PATH;
+
+Timer: adt
+{
+   timeout: chan of int;
+   start:   fn(msec: int): ref Timer;
+   stop:    fn(t: self ref Timer);
+};
+
+init:     fn(minms: int): int;
+shutdown: fn();
+.EE
+.SH DESCRIPTION
+.B Timers
+provides simple interval timing.
+Timeouts are notified by a message sent on a channel,
+allowing them to provide timeouts in
+.B alt
+statements.
+.PP
+The module must first be initialised by calling
+.BR init ,
+which starts a process to manage the interval timers and returns its process ID.
+Before exit, the caller must shut the timing process down either by calling
+.BR shutdown ,
+which stops it synchronously; by using the process ID returned by
+.B init
+to kill it;
+or by killing the process group of the process that
+called
+.BR init
+(since the timing processes remain in that group).
+.I Minms
+gives the minimum granularity of timing requests in milliseconds.
+.TP
+.BI Timer.start( msec )
+Returns a
+.B Timer
+that will expire in
+.I msec
+milliseconds,
+measured with the granularity of either
+.IR sys-sleep (2)
+or the granularity set by
+.BR init ,
+whichever is greater.
+.TP
+.IB t .timeout
+An arbitrary integer value is sent on this channel when the timer
+.I t
+expires.
+.TP
+.IB t .stop()
+The timer
+.I t
+is stopped
+and removed from the interval timing queue,
+if it has not already expired.
+.PP
+Each
+.B Timer
+value times a single interval.
+When a timer
+.I t
+expires, the timing process attempts, at that and each subsequent timing interval, to send on
+.IB t .channel
+until the expiry message is delivered or the timer is stopped.
+.SH EXAMPLE
+Wait for data to be sent on an input channel, but give up if it does not arrive within 600 milliseconds:
+.IP
+.EX
+t := Timer.start(600);
+alt {
+data := <-input =>
+	t.stop();
+	# process the data
+<-t.timeout =>
+	# request timed out
+}
+.EE
+.SH SEE ALSO
+.IR sys-millisec (2),
+.IR sys-sleep (2)

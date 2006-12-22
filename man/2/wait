@@ -1,0 +1,100 @@
+.TH WAIT 2
+.SH NAME
+wait \- wait for child process to exit
+.SH SYNOPSIS
+.EX
+wait := load Wait Wait->PATH;
+
+Wait: module
+{
+   init:    fn();
+   read:    fn(fd: ref Sys->FD): (int, string, string);
+   monitor: fn(fd: ref Sys->FD): (int, chan of (int, string, string));
+   parse:   fn(status: string): (int, string, string);
+};
+.EE
+.SH DESCRIPTION
+.B Wait
+helps use the
+.B wait
+file of
+.IR prog (3).
+.PP
+.B Init
+must be called to initialise the module before invoking any other function.
+.PP
+.B Read
+reads a single wait record from file descriptor
+.IR fd ,
+which must be open on some process
+.IR p 's
+.B wait
+file,
+and returns a tuple
+.BI ( pid\f5,\fP\ module\f5,\fP\ status )
+where
+.I pid
+is the process ID of a child of
+.I p
+that has exited,
+.I module
+is the name of the module that caused
+.I p
+to exit,
+and
+.I status
+is nil if
+.I pid
+ended without error or a status message otherwise.
+If reading the
+.B wait
+file resulted in end of file or error,
+.I pid
+is 0 (for end of file) or
+.B -1
+on error (and
+.I status
+is the system error string for the error).
+.PP
+.B Monitor
+provides a channel interface to the
+.B wait
+file open on
+.IR fd ;
+it allows, for instance,
+a process to use
+.B alt
+to exchange data with a process but also watch for to exit (for good or ill).
+It starts a monitor process that applies
+.B read
+to
+.I fd
+and send the resulting tuple on a channel.
+It returns a tuple
+.BI ( pid\f5,\fP\ c )
+where
+.I pid
+is the process ID of the monitor process (which can be used to kill it when done with it),
+and
+.I c
+is the channel on which the process sends each value it reads.
+The tuple has the format described above for
+.BR read .
+The monitor process exits when the wait file
+.I fd
+yields end of file or error, after sending the corresponding tuple on
+.IR c .
+.PP
+.B Parse
+takes a complete
+.I status
+string as read from a
+.B wait
+file and returns a tuple
+.BI ( pid\f5,\fP\ module\f5,\fP\ status )
+as described for
+.B read
+above.
+.SH SEE ALSO
+.IR sh (1),
+.IR prog (3)

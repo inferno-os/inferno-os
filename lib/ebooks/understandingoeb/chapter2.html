@@ -1,0 +1,442 @@
+<?xml version='1.0'?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+<?xml-stylesheet href="understandingoeb.css" type="text/x-oeb1-css"?>
+
+<html>
+<head>
+  <link rel="stylesheet" type="text/x-oeb1-css" href="understandingoeb.css" />
+<title>Understanding OEB Chapter 2</title>
+  <meta name="author" content="Garret Wilson" />
+  <meta name="copyright" content="Copyright (c) 2000-2001 Garret Wilson. All rights reserved." />
+</head>
+
+<body>
+
+<h2 id="chapter2">2. Understanding an OEB Publication</h2>
+
+<p>When you write a letter or create a report, you usually think of your end product as one entity: "my essay" or "Ralph's grocery list." Depending on how fancy you get, your document might have several pages with graphs, pictures, links, or even a sound clip. Depending on which application you use to create the document, the pictures might be separate clip art files or they might be embedded directly in the document. You may not know where the pictures are stored, and you may not care.</p>
+
+<p>Here you'll learn how to create a book in the OEB format by hand. Doing so is straightforward and easy, but there are several things you <em>will</em> have to know about and keep track of, such as the location of whatever graphics (if any) you have in your book. To keep things straight in the discussion, OEB uses the term <dfn>OEB Publication</dfn> to refer to all of the items &mdash; the pictures, charts, text, and everything else in your book &mdash; that are included in your work. We'll sometimes use just <dfn>publication</dfn> to mean the same thing.</p>
+
+<p><object data="OEBPublicationClassDiagram.png" type="image/png">OEB Publication Class Diagram</object></p>
+
+<p>You'll therefore be creating a publication, which consists of several items: an <dfn>OEB Package</dfn>, one or more <dfn>OEB Documents</dfn>, and other related files. The simplest publication would simply have two files: a package and a document. In fact, the first publication we'll create here will be that simple, including the book itself (the document) and a separate file (the package) that simply gives information about the book.</p>
+
+<h3 id="oebdocument">An OEB Document</h3>
+
+<p>Let's assume you already have a book. Your book is quite short &mdash; only one paragraph long. You've spent hours on every word, and now you're ready to introduce it to the world. Your book reads:</p>
+
+<blockquote>
+Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being extremely smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.
+</blockquote>
+
+<p>You have yet to decide whether this work is science fiction, poetry, or a science textbook, but you decide to put off that decision until the sequel &mdash; right now, the important thing is to get it into OEB format!</p>
+
+<h4 id="needmarkup">The Need for Markup</h4>
+
+<p>To publish this work, you would have to decide the format in which it should be stored. The first option would be to simply store the text of the book in a file with no formatting whatsoever. The file might be named <code>karl.txt</code>, and you could use a simple text editor such as the <code>Notepad</code> program that comes with Microsoft Windows. This method, sometimes referred to as <dfn>plain text</dfn> or <dfn>ASCII</dfn>, has several advantages, one of the most important being that your file can be read on basically any computer that has a text editor (most do).</p>
+
+<p>On the downside, your text doesn't look so great: you can't specify the font, you can't change styles, and you certainly can't embed pictures. Supporting multiple languages quickly becomes a problem, and when you realize that some text editors don't wrap lines, you'll have to go back and manually specify where each line ends.</p>
+
+<p>You may then decide to use a word processor to publish your work. This certainly works if you plan to print hard copies on a printer, but if you want to distribute your work electronically there are several issues to deal with. Instead of storing your book in plain text in a file, the word processor will add many codes to the file to specify the font, the style, the pictures, the default printer, among other things. If you were to examine your word processor file using a text editor, it might look something like this (although this particular example is completely fabricated):</p>
+
+<blockquote>@#$5098aa23150J:being @#$@$extremely@!$@...</blockquote>
+
+<p>You might see some familiar words somewhere in the file, but the rest of the "garbage" comprise codes recognizable to your word processor. The problem that arises is that each word processor uses a different format to store data. In fact, most word processors change storage formats whenever a new version is released, and sometimes have different formats for different operating systems. Furthermore, the format is <em>not</em> something that you could edit manually, without the help of the word processor itself.</p>
+
+<p>To solve problems such as these, <dfn>markup languages</dfn> were invented. Markup languages allow documents to be created in plain text format, just as we used earlier, with the addition of special symbols called <dfn>markup</dfn>. This allows files to be easily read, transported to several systems, and even edited by hand if needed, as we'll soon do here.</p>
+
+<p>An early markup language, SGML, stands for "Standard Generalized Markup Language" and was created before the World Wide Web even existed. If you've ever surfed the Web, you've definitely used (though maybe not created) HTML, a particular implementation of SGML which stands for "HyperText Markup Language." Most important to OEB is a markup language named XML, which stands for "eXtensible Markup Language." OEB uses XML to define what markup can be used in a particular document.</p>
+
+<p>As you've noticed already, OEB, like everything else in the computer industry, is rife with acronyms &mdash; don't let that confuse you. To see just how easy it is to create and OEB document, assume you want to emphasize that Karl was <em>extremely</em> small. You might then modify your story as follows:</p>
+
+<blockquote>
+Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.
+</blockquote>
+
+<p>The word "extremely" doesn't look any different &mdash; it just has <code>&lt;em&gt;</code> on one side and <code>&lt;/em&gt;</code> on the other. However, when this gets displayed using an actual OEB reading system, it will look like this: <em>extremely</em>. We refer to the <code>&lt;em&gt;</code> and the <code>&lt;/em&gt;</code> as the beginning and ending <dfn>tags</dfn>. In this case, "em" stands for "emphasized," and the "em" has to be in lowercase.</p>
+
+<div class="sidebar" id="markupalphabetsoup">
+<h4 class="sidebarTitle">More Information: Markup Alphabet Soup</h4>
+<p>Standard Generalized Markup Language (SGML) can be considered the parent of all the markup languages we'll be discussing here. In reality, SGML is more like a markup language construction set &mdash; it allows one to create other markup languages by defining which tags can be used, for example. The Hypertext Markup Language (HTML), used on the World Wide Web,  is a specific <dfn>application</dfn> of SGML. That is, SGML was used to create a certain set of tags and other markup to be used in the web; this set of tags is what is known as HTML.</p>
+
+<p>SGML is a very broad, generic language, allowing other markup languages to be constructed with a wide range of possibilities in the way actual tags are used. While this allows a lot of flexibility in designing markup languages using SGML, it's somewhat more difficult to actually process the documents based upon markup languages created with SGML. HTML in particular is notorious for allowing so many possible tag representations that in many cases it is ambiguous as to what was intended.</p>
+
+<p>In order to make SGML easier to use, easier to process, and to increase its popularity, the eXstensible Markup Language (XML) was created. XML simply takes the rules of SGML and makes them stricter. XML is therefore a subset of SGML, and all correct XML documents will be correct SGML documents. This doesn't necessarily work the other way around, though: even though HTML is an application of SGML, many (perhaps most) HTML documents are not correct XML documents because they don't meet XML's stricter rules.</p>
+
+<p>The OEB publication structure is an application of XML in the same way HTML is an application of SGML. The OEBPS uses XML to define a set of tags to be used for storing electronic book information. OEB documents are by definition correct XML documents. Since XML is a subset of SGML, this means that all correct OEB documents are by definition correct SGML documents.</p>
+
+<p>To say that XML has become popular is certainly an understatement; indeed, it's likely that in the future you can ignore the fact that SGML even exists. What about HTML, though? It's still used on the web and, HTML being an SGML application only, most HTML documents don't meet the strict requirements of XML. To address this situation, the World Wide Web Consortium has now released the XHTML specification at <a href="http://www.w3.org/TR/xhtml1/">http://www.w3.org/TR/xhtml1/</a>. XHTML is a modified version of HTML that correctly follows the rules of XML. Since XML is the way of the future, it is recommended you use XHTML for creating new web pages.</p>
+</div>
+
+<h4 id="usingxml">Using XML</h4>
+
+<p>XML is powerful, but it's quite a simple markup language to use. Its basic rule is that markup consists of a beginning <dfn>tag</dfn> and a matching ending <dfn>tag</dfn>, and this pair of tags says something about the text which appears between them. In our example above, the beginning OEB tag <code>&lt;em&gt;</code> and the ending OEB tag <code>&lt;/em&gt;</code> mean that the text between them should be emphasized, which usually means that they should be displayed in italics. In XML, an ending tag always has the same name as its beginning tag, with an extra slash (/) at the beginning. We usually refer to the <code>&lt;em&gt;</code> <code>&lt;/em&gt;</code> tag pair in general as simply the "<code>&lt;em&gt;</code> tag" or more correctly, the "<code>&lt;em&gt;</code> element" which refers to both the beginning and ending tags and all text between them.</p>
+
+<ul>
+	<li><strong>XML Rule 1:</strong> Every beginning tag must be matched by an ending tag which has the same name, except that the ending tag begins with a forward slash (/).</li>
+</ul>
+
+<p>Another important OEB tag to know about is the <code>&lt;p&gt;</code> tag, which indicates a paragraph. (You know by now that the <code>&lt;p&gt;</code> tag has a beginning tag part, <code>&lt;p&gt;</code>, and ending tag part, <code>&lt;/p&gt;</code>.) Your soon-to-be bestseller, to correctly use OEB, should use the <code>&lt;p&gt;</code> tag for each paragraph. Since you have only one paragraph in your story, adding the <code>&lt;p&gt;</code> tag would look like this:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.<code>&lt;/p&gt;</code>
+</blockquote>
+
+<p>You'll notice that the <code>&lt;em&gt;</code> tag is inside the <code>&lt;p&gt;</code> tag. That's fine. In fact, there's even a name for it: a <dfn>nested tag</dfn>. OEB has certain rules about which tags can go inside which other tags, but one thing that applies to <em>all</em> nested XML tags (OEB tags included), is that they must fit neatly inside one another and not be crossed. In other words, <code>&lt;p&gt;</code><code>&lt;em&gt;</code><code>&lt;/em&gt;</code><code>&lt;/p&gt;</code> is fine, but <code>&lt;p&gt;</code><code>&lt;em&gt;</code><code>&lt;/p&gt;</code><code>&lt;/em&gt;</code> is not.</p>
+
+<ul>
+	<li><strong>XML Rule 2:</strong> A nested tag must have both its beginning and ending tags inside the tag in which it is found; that is, two tags cannot be crossed.</li>
+</ul>
+
+<p>At this point you may be wondering, <em class="rhetoricalQuestion">If the less than (&lt;) and greater than (&gt;) symbols are markup characters, used to indicate tags, how do I present them in the text simply as characters, not as markup?</em> If you use one of these characters in your OEB document, it's likely to be confused as a tag, even if you're writing a mathematical expression such as <code>1 + 2 &lt; 4</code>. For this reason, it is illegal in XML to use the less than (&lt;) or greater than (&gt;) character literally except as part of markup.</p>
+
+<p>To represent one of these characters, you'll need to use a <dfn>general entity</dfn>, which takes the form <code>&amp;<em>entityName</em>;</code>, replacing <code><em>entityName</em></code> with the name of the character. To represent the less than (&lt;) character, for example, you would use <code>&amp;lt;</code>, and to represent the greater than (&gt;) character you would use <code>&amp;gt;</code>. This implies another question: <em class="rhetoricalQuestion">If the ampersand (&amp;) character is used in general entities, how can I place an ampersand itself in the text?</em> There is a general entity for ampersand (&amp;) as well: &amp;amp;.</p>
+
+<p>XML defines five general entities that may be used in any XML document, including OEB documents. These are &amp;amp; (&amp;), &amp;lt; (&lt;), &amp;gt; (&gt;), &amp;apos; ('), and &amp;quot; (&quot;).</p>
+
+<ul>
+	<li><strong>XML Rule 3:</strong> A general entity takes the form <code>&amp;<em>entityName</em>;</code> and represents one or more characters by name. XML defines five general entities that may always be used: &amp;amp; (&amp;), &amp;lt; (&lt;), &amp;gt; (&gt;), &amp;apos; ('), and &amp;quot; (&quot;).</li>
+</ul>
+
+<h4 id="creatingoebdocument">Creating an OEB Document</h4>
+
+<p>There are only two more tags you should know about before you create your first OEB document: <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code>. There's nothing difficult here, it's just a requirement set forth by OEB for a standard OEB document: each document must be inside an <code>&lt;html&gt;</code> tag, and the actual text of your work must be inside a <code>&lt;body&gt;</code> tag. You'll learn why later. For now, they are easy enough to add:</p>
+
+<blockquote>
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>That's it! You've created your first OEB document. Although it's not a complete <em>OEB publication</em>, it is a an <em>OEB document</em>. The way the OEB Publication Structure 1.0 was written, each OEB document is also more or less an HTML file, which means that you can use an Internet World Wide Web browser to look at the document, even though your entire OEB publication isn't yet finished. Just name the file <code>karl.html</code>, for example, and load it into your favorite Web browser application.</p>
+
+<p>OK, actually, it's an HTML document but not <em>quite</em> an OEB document. Why? Because it doesn't <em>say</em> it is. The document needs to declare that it is an OEB document, and doing so requires two more lines that are always the same in OEB documents. Again, you'll learn more about these lines later, but in short, the first one says, "I'm an XML file:"</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code>
+</blockquote>
+
+<p>(Note that this line uses an single quotes (') rather than double quotes ("). As in most cases in XML, either can be used.)</p>
+
+<p>The second one says, "Specifically, I'm an OEB document file &mdash; even more specifically, a 1.0.1 OEB document file:"</p>
+
+<blockquote>
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code>
+</blockquote>
+
+<p>These two lines go at the top of the file, making the final OEB document look like this:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<h4 id="formattingoebtext">Formatting OEB Text</h4>
+
+<p>In this example, we've entered a <dfn>line break</dfn> at the end of each line by pressing the <code>Enter</code> or <code>Return</code> key on the computer keyboard. We've placed line breaks, for example after the <code>&lt;html&gt;</code> and <code>&lt;body&gt;</code> beginning tags. We've done this purely out of convenience: it's easier to edit the file with the beginning <code>&lt;body&gt;</code> tag directly above and in line with the ending <code>&lt;body&gt;</code> tag, for example.</p>
+
+<p>Our formatting of the document text (what programmers call the <dfn>source file</dfn>, or the text originally entered before it is displayed) does not always affect the appearance of the OEB document when it is displayed. We could have instead not entered any line breaks, making that section of the file look like this:</p>
+
+<blockquote>
+...<br />
+<code>&lt;html&gt;</code><code>&lt;body&gt;</code><code>&lt;p&gt;</code>Years ago...<code>&lt;/p&gt;</code><code>&lt;/body&gt;</code><code>&lt;/html&gt;</code>
+</blockquote>
+
+<p>Any <dfn>whitespace</dfn> between elements, such as space, tab, and line breaks, are ignored when the document is displayed.</p>
+
+<ul>
+	<li><strong>XML Rule 4:</strong> Whitespace characters between elements are ignored; spaces, tabs, and line breaks can therefore be used arbitrarily to aid in text entry.</li>
+</ul>
+
+<p>What about whitespace that appears in displayed sections, such as inside the beginning and ending <code>&lt;p&gt;</code> tags? They obviously aren't ignored; when your document is displayed, spaces appear between words. However, multiple whitespace characters are replaced by a single space before being displayed.</p>
+
+<ul>
+	<li><strong>OEB Rule 1:</strong> (<em>Display of Whitespace</em>) If two or more whitespace characters (such as spaces, tabs, and line breaks) appear in a row, they will be <dfn>collapsed</dfn> into (that is, replaced by) a single space character before being displayed.</li>
+</ul>
+
+<p>This means that the following examples will all be displayed identically:</p>
+
+<blockquote>
+<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth...<code>&lt;/p&gt;</code>
+</blockquote>
+
+<blockquote>
+<pre><code>&lt;p&gt;</code>Years      ago,<br />     when strange creatures<br />ruled the earth...<code>&lt;/p&gt;</code></pre>
+</blockquote>
+
+<p>Both of these examples will collapse all spaces, tabs, and line breaks into single spaces, displaying the following:</p>
+
+<blockquote>Years ago, when strange creatures ruled the earth...</blockquote>
+
+<h3 id="oebpackage">An OEB Package</h3>
+
+<p>Half of the job is now done and you have an OEB document. The other half of an OEB publication, as you learned earlier, is an OEB package. The package is where an <dfn>OEB Reading System</dfn> (such as a software reader or a separate eBook device) will look to find out information about your book. What sort of things would a reading system need to know before displaying your book? At minimum, there are three things that a reading system <em>must</em> know:</p>
+
+<ol>
+	<li>Which book is this?</li>
+	<li>What files are in the book?</li>
+	<li>In what order should the files be displayed?</li>
+</ol>
+
+<p>Although the first item sounds reasonable, for your short masterpiece the last two items may seem ridiculous; there is, after all, only one document &mdash; and it's obvious in what order it should be displayed! As we discussed at the beginning of this chapter, though, many people will have several documents and even pictures in their masterpieces. While OEB certainly could have created an exception for one-document publications (and may even decide to do this in a future version of the specification), currently you still need to specifically supply information you may think is obvious. Besides, you may want more than one document in your sequel, so you would have had to learn this information anyway!</p>
+
+<p>The OEB package is an XML file just like the OEB document, and accordingly follows XML rules, including the ones you've learned already. Instead of using HTML tags (as the OEB document does), it will use a special set of tags made especially for an OEB package.</p>
+
+<p>The first two lines look very similar to the first two lines of an OEB document. The first one says, "I'm an XML file, too:"</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code>
+</blockquote>
+
+<p>The second one says, "I'm not an OEB document, though; I'm an OEB <em>package</em>:"</p>
+
+<blockquote>
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code>
+</blockquote>
+
+<p>Like all XML files, there is a beginning and ending tag which together contain the main part of the file. In the OEB document, it was the <code>&lt;html&gt;</code> tag. In contrast, the OEB package uses the <code>&lt;package&gt;</code> tag (for obvious reasons), making the "outside" portion of the package look like this:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code><br />
+<code>&lt;package&gt;</code><br />
+	<em>Actual package goes here...</em><br />
+<code>&lt;/package&gt;</code>
+</blockquote>
+
+<p>Inside the package are several required sections; each one answers one of the questions raised above. Each section has its corresponding tag which reflects the function of that section: <code>&lt;metadata&gt;</code>, <code>&lt;manifest&gt;</code>, and <code>&lt;spine&gt;</code>:</p>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code><br />
+<code>&lt;package&gt;</code>
+	<blockquote>
+	<code>&lt;metadata&gt;</code><br />
+		<em>Which book is this?</em><br />
+	<code>&lt;/metadata&gt;</code>
+	</blockquote>
+	<blockquote>
+	<code>&lt;manifest&gt;</code><br />
+		<em>What files are in the book?</em><br />
+	<code>&lt;/manifest&gt;</code>
+	</blockquote>
+	<blockquote>
+	<code>&lt;spine&gt;</code><br />
+		<em>In what order should the files be displayed?</em><br />
+	<code>&lt;/spine&gt;</code>
+	</blockquote>
+<code>&lt;/package&gt;</code>
+</blockquote>
+
+<p>As we examine the structure of the OEB package, we'll display the text using spaces and tabs so as to make the sections easier to read. When you create your document, you can enter the package in any way you like, using spaces, tabs, or new lines. In fact, XML (and OEB) doesn't even care if everything is entered on one line &mdash; it's just harder for you to read that way, so we've decided not to do that here.</p>
+
+<h4 id="packageelement">The <code>&lt;package&gt;</code> Element</h4>
+
+<p>The surrounding <code>&lt;package&gt;</code> element, made up of the <code>&lt;package&gt;</code> and <code>&lt;/package&gt;</code> tags, is pretty straightforward except that it specifies a unique identifier which will be used later for identifying the document. The exact unique identifier you used is up to you. In this case, it might be appropriate to use the identifier, "karlpackage", like this:</p>
+
+<blockquote>
+<code>&lt;package unique-identifier="karlpackage"&gt;</code>
+</blockquote>
+
+<p>You'll notice that we specify the identifier inside the tag itself! In XML terms, <code>unique-identifier</code> is referred to an <dfn>attribute</dfn> of the tag.</p>
+
+<ul>
+	<li><strong>XML Rule 5:</strong> An element's beginning tag may have one or more attributes in the form <code>attributeName="value"</code> or <code>attributeName='value'</code>.</li>
+</ul>
+
+<p>The value can be surrounded by single or double quotes, as long as you are consistent on both sides of the value.</p>
+
+<h4 id="packagemetadata">The Package Metadata</h4>
+
+<p>The first section inside the <code>&lt;package&gt;</code> element contains metadata. In answering the question, "Which document is this?" the <code>&lt;metadata&gt;</code> element contains several elements, each of which specify something about the book, such as its title and author(s). These items are called <dfn>metadata</dfn> items, hence the name of the element.</p>
+
+<p>In an added twist, the elements in the metadata section are inside another element named <code>&lt;dc-metadata&gt;</code>. The OEB Authoring Group did not create these metadata identifiers from scratch; instead, they used a set of metadata identifiers already defined by a group named the <a href="http://purl.org/dc/">Dublin Core</a>. Since the OEB publication structure allows you to create your own metadata items, the Authoring Group decided to group together the special metadata items from the Dublin core inside its own <code>&lt;dc-metadata&gt;</code> element. Moreover, the <code>&lt;dc-metadata&gt;</code> element takes certain attributes that specify that these metadata are Dublin Code metadata. Your book's metadata section, therefore, might turn out to look something like this:</p>
+
+<blockquote>
+<code>&lt;metadata&gt;</code>
+	<blockquote>
+	<code>&lt;dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/"&gt;</code>
+		<blockquote>
+      <code>&lt;dc:Title&gt;</code>Karl the Kreature<code>&lt;/dc:Title&gt;</code><br />
+			<code>&lt;dc:Identifier id="karlpackage" scheme="ISBN"&gt;</code>123456789X<code>&lt;/dc:Identifier&gt;</code><br />
+			<code>&lt;dc:Creator role="aut"&gt;</code>Jane Doe<code>&lt;/dc:Creator&gt;</code>
+		</blockquote>
+	<code>&lt;/dc-metadata&gt;</code>
+	</blockquote>
+<code>&lt;/metadata&gt;</code>
+</blockquote>
+
+<p>The parts from the above example that will change for each book are the metadata elements: the required elements <code>&lt;dc:Title&gt;</code> and <code>&lt;dc:Identifier&gt;</code>, and the optional (but important to you!) element <code>&lt;dc:Creator&gt;</code>. The metadata elements in this section all begin with "dc:", another requirement that simply specifies that these are Dublin Core metadata.</p>
+
+<p>The <code>&lt;dc:Title&gt;</code> element is simple enough: it holds the title of the book. Similarly, the <code>&lt;dc:Identifier&gt;</code> element holds an identifier that hopefully uniquely identifies the book in the world, even if two books by two separate authors have identical titles. Since there are several methods of identifying books uniquely, the <code>scheme</code> attribute is necessary to specify the identifier used. In this case, we're using an ISBN for the identifier, so we set <code>scheme="ISBN"</code>.</p>
+
+<p>As there are several methods of uniquely identifying a single book, the OEB Authoring Group allowed for several methods to be used together in the same package. However, one identifier must be chosen as the main identifer; this identifier's element must have an <code>id</code> attribute set to the unique ID we specified earlier in the beginning <code>&lt;package&gt;</code> tag. Here we only have one identifier, and we've appropriately set the <code>id</code> attribute to <code>id="karlpackage"</code>.</p>
+
+<p>You can identify yourself as the creator of the work using the <code>&lt;dc:Creator&gt;</code> element. The <code>role</code> attribute, is optional, specifying what role you played during the creation of the book. Common values are <code>"aut"</code> (representing "author"), <code>"edt"</code> ("editor"), and <code>"trl"</code> ("translator"). Probably the role used the most, and the one recommended here that should always be included, is <code>"aut"</code>. As with <code>&lt;dc:Identifier&gt;</code>, you can include several <code>&lt;dc:Creator&gt;</code> elements to identify several creators of your work.</p>
+
+<h4 id="packagemanifest">The Package Manifest</h4>
+
+<p>The next section of the package is referred to as the <dfn>manifest</dfn>, holding information about which files should be included with the book. The Open eBook specification was designed to be distributed and read on a variety of systems and platforms; the manifest guarantees that each system can have a complete list of the minimum files that will be needed to display the contents of the book.</p>
+
+<p>Each item in the manifest specifies three things:</p>
+
+<ul>
+	<li>A unique identifier for the item, so that other parts of the book can unambiguously refer to it.</li>
+	<li>The name of the file in which the actual item is stored.</li>
+	<li>The type of the item (such as a document or a picture).</li>
+</ul>
+
+<p>The manifest of our example, then, will be quite simple:</p>
+
+<blockquote>
+<code>&lt;manifest&gt;</code>
+	<blockquote>
+		<code>&lt;item id="karl" href="karl.html" media-type="text/x-oeb1-document"&gt;</code>
+	</blockquote>
+<code>&lt;/manifest&gt;</code>
+</blockquote>
+
+<p>Each item in the book will be represented by an <code>&lt;item&gt;</code> element. Here, there is only one item in the book, the OEB document we created earlier. You can choose any unique ID you like; here we'll use <code>id="karl"</code>. For the <code>href</code> attribute (so-named from the hypertext references used in HTML), specify the filename you gave the OEB document. There are a standard set of <code>media-type</code> attribute values you can use, such as <code>"image/jpeg"</code> and <code>"image/png"</code> for certain types of images. In this case, the item is an OEB document, so we must state as much by setting <code>media-type="text/x-oeb1-document"</code>.</p>
+
+<h4 id="packagespine">The Package Spine</h4>
+
+<p>Now that we've given information about the book and specified which items are in the book, the last required step is to specify the order in which the book should be read, and this is done inside the <code>&lt;spine&gt;</code> element. Although electronic books bring all sorts of possibilities as far as interaction and reader-influenced reading orders, there must still be one default reading order specified, or what the OEB specification refers to as the <dfn>primary linear reading order</dfn>. (Writers of adventure stories that have no predetermined reading order are in luck; how to format such interactive stories will be explained in a later version of this work.)</p>
+
+<p>The <dfn>spine</dfn> is even simpler than the manifest, because the information about each item has already been specified in the manifest. Therefore, the spine only needs to identify which items from the manifest appear in what order. This implies that only items defined in the manifest can appear in the spine. Furthermore, only OEB documents (that is, items included in the manifest that are of type "text/x-oeb1-document") can appear in the spine. Specifically, only those OEB documents that should be displayed as part of the normal linear reading order of the book should be included in the spine.</p>
+
+<p>The spine of our book is certainly straightforward. Its one item reference (the <code>&lt;itemref&gt;</code> element) identifies the one item in the manifest by referencing the unique ID we assigned it: <code>idref="karl"</code>.</p>
+
+<blockquote>
+<code>&lt;spine&gt;</code>
+	<blockquote>
+		<code>&lt;itemref idref="karl"&gt;</code>
+	</blockquote>
+<code>&lt;/spine&gt;</code>
+</blockquote>
+
+<p>With that, we've answered all three questions a reading system requires, and are thus finished with the OEB package. The complete listings of both the finished document and package appear at the end of this chapter.</p>
+
+<h3 id="xmlrepresentdata">Using XML to Represent Data</h3>
+
+<p>You've probably noticed at least two different ways in which we've used XML tag pairs, or elements. The first was to specify formatting: the <code>&lt;em&gt;</code> element made a section of text appear in italics. The second was to represent data, or information about the work: we used the <code>&lt;dc:Creator&gt;</code> element to specify the author of the book, without specifying how (or if) the author's name would actually be displayed. The latter is simply for storing information about the book.</p>
+
+<p>A closer examination reveals that the uses of both of these elements, <code>&lt;em&gt;</code> and <code>&lt;dc:Creator&gt;</code>, are actually virtually identical. As it turns out, the <code>&lt;em&gt;</code> element does not specify that italics should be used; it rather specifies that the text should be emphasized without specifying exactly <em>how</em> the text should be emphasized. Although the default display method for text inside an <code>&lt;em&gt;</code> element is to use italics, it's certainly conceivable that you could decide later to display emphasis using the color red, so that your book displays, "Being <span style="color: red;">extremely</span> smaller..." instead of "Being <span style="font-style: italic;">extremely</span> smaller..."</p>
+
+<p>If you consistently use <code>&lt;em&gt;</code> to represent emphasis, it's relatively simple using XML (and, by definition, OEB) to change how emphasized text appears &mdash; without changing the actual text of your book! This is an important concept in creating documents, and it's often referred to as a <dfn>separation of content and presentation</dfn>. As you'll learn soon, the way a document appears should be kept distinct (in a completely separate file, in fact) from the actual content of your book.</p>
+
+<ul>
+	<li><strong>OEB Tip 1:</strong> (<em>Separation of Content and Presentation</em>) Do not use an element to specify how text should appear, but rather use elements to specify the content or meaning of sections of your work.</li>
+</ul>
+
+<p>To provide an example of how useful it is to encode <em>meaning</em> into a document rather than trying to specify how a document should be displayed, consider the following extract:</p>
+
+<blockquote>
+<p>In the Urdu language, there is a class of descriptive words called <span style="font-style: italic;">postpositions</span>. These are similar to English prepositions except that they come <span style="font-style: italic;">after</span> the words they modify; hence the name "post"+"position".</p>
+</blockquote>
+
+<p>Since we want "postposition" to be displayed (or <dfn>rendered</dfn>) in italics, it would be tempting at first to use the <code>&lt;em&gt;</code> tag like this: <code>&lt;em&gt;</code>postposition<code>&lt;/em&gt;</code>. However, if you take a moment to think about why we want the word "postposition" displayed differently, you'll realize that we really don't want to emphasize the word but want rather to indicate that we are defining the word for the first time.</p>
+
+<p>There so happens to be an OEB tag that does just that &mdash; the <code>&lt;dfn&gt;</code> tag specifies that a new word is being defined or used for the first time. Text which uses the <code>&lt;dfn&gt;</code> tag is also usually displayed in italics as well, so you might wonder why it matters which tag is used. The concept of separation of content and presentation answers this question. What if we make a reading system that automatically generates a glossary in the back of the book, listing all the new terms introduced and where they were first defined? If we have used the <code>&lt;dfn&gt;</code> tag in the correct places, these terms could be found easily and placed in the glossary automatically.</p>
+
+<p>It's important to note that, in the section above, we would not want to use the <code>&lt;dfn&gt;</code> tag for the second italicized word, "after." Instead, we would want to use the <code>&lt;em&gt;</code> tag; we are not wanting to define the word "after," but merely emphasize the position of a "postposition". Keeping in mind our concept of separation of content and presentation, we'd probably enter the above section like this:</p>
+
+<blockquote>
+<p>&lt;p&gt;In the Urdu language, there is a class of descriptive words called &lt;dfn&gt;postpositions&lt;/dfn&gt;. These are similar to English prepositions except that they come &lt;em&gt;after&lt;/em&gt; the words they modify; hence the name "post"+"position".&lt;/p&gt;</p>
+</blockquote>
+
+<p>As you will see later, there are several methods of displaying italics in OEB. A popular method in the past was the <code>&lt;i&gt;</code> tag, which actually means "italics". This is now considered bad practice, considering the need to separate content from presentation. Unfortunately, since OEB uses many tags from HTML, the <code>&lt;i&gt;</code> tag is available to use in OEB documents. For reasons we've just explained, we strongly recommend against using the <code>&lt;i&gt;</code> tag in your documents, and using the <code>&lt;em&gt;</code> instead in most cases.</p>
+
+<p>The concept of separation of content and presentation is a very important one, and we'll revisit this topic.</p>
+
+<p>You now know the basic structure of an OEB publication. There are several tags which we haven't covered yet which you'll want to use when you create real-world documents. After discussing <a href="chapter3.html">styles and style sheets</a>, we'll cover the <a href="chapter4.html">tags you'll normally need</a> when working in the real world.</p>
+
+<h3 id="review">Review</h3>
+
+<h4 id="summary">Summary</h4>
+<ul>
+	<li>An OEB Publication consists of an OEB Package, one or more OEB Documents, and other related files such as images.</li>
+	<li>The OEB Publication Structure is a markup language which follows the rules of XML; therefore, all OEB files are XML files.</li>
+	<li>OEB in its basic form specifies a set of tags which should be used, always following the rules of XML. OEB also contains the flexibility to use custom tags.</li>
+	<li>The set of basic tags specified by OEB is very similar to, for better or for worse, the set of tags specified by HTML.</li>
+</ul>
+
+<h4 id="xmlrules">XML Rules</h4>
+<ul>
+	<li><strong>XML Rule 1:</strong> Every beginning tag must be matched by an ending tag which has the same name, except that it begins with a forward slash (/). (Special <a href="chapter4.html#emptyElement">empty tags</a> will be discussed later.)</li>
+	<li><strong>XML Rule 2:</strong> A nested tag must have both its beginning and ending tags inside the tag in which it is found; that is, two tags cannot be crossed.</li>
+	<li><strong>XML Rule 3:</strong> A general entity takes the form <code>&amp;<em>entityName</em>;</code> and represents one or more characters by name. XML defines five general entities that may always be used: &amp;amp; (&amp;), &amp;lt; (&lt;), &amp;gt; (&gt;), &amp;apos; ('), and &amp;quot; (&quot;).</li>
+	<li><strong>XML Rule 4:</strong> Whitespace characters between elements are ignored; spaces, tabs, and line breaks can therefore be used arbitrarily to aid in text entry.</li>
+	<li><strong>XML Rule 5:</strong> An element's beginning tag may have one or more attributes in the form <code>attributeName="value"</code> or <code>attributeName='value'</code>.</li>
+</ul>
+
+<h4 id="oebrules">OEB Rules</h4>
+<ul>
+	<li><strong>OEB Rule 1:</strong> (<em>Display of Whitespace</em>) If two or more whitespace characters (such as spaces, tabs, and line breaks) appear in a row, they will be <dfn>collapsed</dfn> into (that is, replaced by) a single space character before being displayed.</li>
+	<li><strong>OEB Tip 1:</strong> (<em>Separation of Content and Presentation</em>) Do not use an element to specify how text should appear, but rather use elements to specify the content or meaning of sections of your work.</li>
+</ul>
+
+<h4 id="oebtags">OEB Tags</h4>
+<ul>
+	<li><code>&lt;dfn&gt;</code> Specifies that a term is being used for the first time; usually rendered in italics.</li>
+	<li><code>&lt;em&gt;</code> Emphasizes text; usually rendered in italics.</li>
+</ul>
+
+<h3 id="exampleoebdocument">Completed Example OEB Document (<code>karl.html</code>)</h3>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN" "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd"&gt;</code><br />
+<code>&lt;html&gt;</code><br />
+<code>&lt;body&gt;</code><br />
+	<code>&lt;p&gt;</code>Years ago, when strange creatures ruled the earth, the seas were beginning to form, and humans had yet to appear, there lived a young blovjus named Karl. Karl had three siblings: Kris, Krista, and Karla. Being <code>&lt;em&gt;</code>extremely<code>&lt;/em&gt;</code> smaller than other blovji his age, Karl constantly ran into trouble at the dinner table.<code>&lt;/p&gt;</code><br />
+<code>&lt;/body&gt;</code><br />
+<code>&lt;/html&gt;</code>
+</blockquote>
+
+<h3 id="exampleoebpackage">Completed Example OEB Package (<code>karl.opf</code>)</h3>
+
+<blockquote>
+<code>&lt;?xml version='1.0'?&gt;</code><br />
+<code>&lt;!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd"&gt;</code><br />
+<code>&lt;package unique-identifier="karlpackage"&gt;</code>
+
+	<blockquote>
+	<code>&lt;metadata&gt;</code>
+		<blockquote>
+		<code>&lt;dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/"&gt;</code>
+			<blockquote>
+	      <code>&lt;dc:Title&gt;</code>Karl the Kreature<code>&lt;/dc:Title&gt;</code><br />
+				<code>&lt;dc:Identifier id="karlpackage" scheme="ISBN"&gt;</code>123456789X<code>&lt;/dc:Identifier&gt;</code><br />
+				<code>&lt;dc:Creator role="aut"&gt;</code>Jane Doe<code>&lt;/dc:Creator&gt;</code>
+			</blockquote>
+		<code>&lt;/dc-metadata&gt;</code>
+		</blockquote>
+	<code>&lt;/metadata&gt;</code>
+	</blockquote>
+	<blockquote>
+	<code>&lt;manifest&gt;</code>
+		<blockquote>
+			<code>&lt;item id="karl" href="karl.html" media-type="text/x-oeb1-document"&gt;</code>
+		</blockquote>
+	<code>&lt;/manifest&gt;</code>
+	</blockquote>
+	<blockquote>
+	<code>&lt;spine&gt;</code>
+		<blockquote>
+			<code>&lt;itemref idref="karl"&gt;</code>
+		</blockquote>
+	<code>&lt;/spine&gt;</code>
+	</blockquote>
+<code>&lt;/package&gt;</code>
+</blockquote>
+
+</body>
+</html>

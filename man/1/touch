@@ -1,0 +1,27 @@
+.TH TOUCH 1
+.SH NAME
+touch \- update the modification time of one or more files
+.SH SYNOPSIS
+.B touch
+.RB [ -c ]
+[
+.BI -t " time"
+]
+.I files
+.SH DESCRIPTION
+.B Touch
+attempts to set the modification time of the specified files to
+.I time
+(by default, the current system time).
+If a file does not exist,
+.B touch
+will attempt to create it, unless the
+.B -c
+option is given.
+.SH SOURCE
+.B /appl/cmd/touch.b
+.SH SEE ALSO
+.IR ls (1),
+.IR chmod (1),
+.IR sys-stat (2),
+.IR stat (5)

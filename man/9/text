@@ -1,0 +1,1188 @@
+.TH TEXT 9
+.SH NAME
+text \- Create and manipulate text widgets
+.SH SYNOPSIS
+\f5text\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-background  -pady              -takefocus
+-borderwidth -relief            -xscrollcommand
+-font        -selectbackground  -yscrollcommand
+-foreground  -selectborderwidth
+-padx        -selectforeground
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -height \fIdist\fP
+Specifies the desired height for the window.
+.TP
+.B -spacing1 \fIdist\fP
+Requests additional space above each text line in the widget,
+using any of the standard forms for screen distances.
+If a line wraps, this option only applies to the first line
+on the display.
+This option may be overriden with \f5-spacing1\fR options in
+tags.
+.TP
+.B -spacing2 \fIdist\fP
+For lines that wrap (so that they cover more than one line on the
+display) this option specifies additional space to provide between
+the display lines that represent a single line of text.
+The value may have any of the standard forms for screen distances.
+This option may be overriden with \f5-spacing2\fR options in
+tags.
+.TP
+.B -spacing3 \fIdist\fP
+Requests additional space below each text line in the widget,
+using any of the standard forms for screen distances.
+If a line wraps, this option only applies to the last line
+on the display.
+This option may be overriden with \f5-spacing3\fR options in
+tags.
+.TP
+.B -state \fPstate\fP
+Specifies one of two states for the text:  \f5normal\fR or \f5disabled\fR.
+If the text is disabled then characters may not be inserted or deleted
+and no insertion cursor will be displayed, even if the input focus is
+in the widget.
+.TP
+.B -tabs \fIdist\fP
+Specifies a set of tab stops for the window.  The option's value consists
+of a list of \fIdist\fP values giving the positions of the tab stops.  Each
+\fIdist\fP may optionally be followed in the next list element
+by one of the keywords \f5left\fR, \f5right\fR, \f5center\fR,
+or \f5numeric\fR, which specifies how to justify
+text relative to the tab stop.  \f5Left\fR is the default; it causes
+the text following the tab character to be positioned with its left edge
+at the tab position.  \f5Right\fR means that the right edge of the text
+following the tab character is positioned at the tab position, and
+\f5center\fR means that the text is centered at the tab position.
+\f5Numeric\fR means that the decimal point in the text is positioned
+at the tab position;  if there is no decimal point then the least
+significant digit of the number is positioned just to the left of the
+tab position;  if there is no number in the text then the text is
+right-justified at the tab position.
+For example, \f5-tabs {2c left 4c 6c center}\fR creates three
+tab stops at two-centimeter intervals;  the first two use left
+justification and the third uses center justification.
+If the list of tab stops does not have enough elements to cover all
+of the tabs in a text line, then Tk extrapolates new tab stops using
+the spacing and alignment from the last tab stop in the list.
+The value of the \f5tabs\fR option may be overridden by \f5-tabs\fR
+options in tags.
+If no \f5-tabs\fR option is specified, or if it is specified as
+an empty list, then Tk uses default tabs spaced every eight
+(average size) characters.
+.TP
+.B -width \fIdist\fP
+Specifies the desired width for the window.
+.TP
+.B -wrap \fIval\fP
+Specifies how to handle lines in the text that are too long to be
+displayed in a single line of the text's window.
+The value must be \f5none\fR or \f5char\fR or \f5word\fR.
+A wrap mode of \f5none\fR means that each line of text appears as
+exactly one line on the screen;  extra characters that don't fit
+on the screen are not displayed.
+In the other modes each line of text will be broken up into several
+screen lines if necessary to keep all the characters visible.
+In \f5char\fR mode a screen line break may occur after any character;
+in \f5word\fR mode a line break will only be made at word boundaries.
+
+.SH DESCRIPTION
+The \f5text\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a text widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the text such as its default background colour
+and relief.  The \f5text\fR command returns the
+path name of the new window.
+.PP
+A text widget displays one or more lines of text and allows that
+text to be edited.
+Text widgets support three different kinds of annotations on the
+text, called tags, marks, and embedded windows.
+Tags allow different portions of the text
+to be displayed with different fonts and colours.
+In addition, Tk commands can be associated with tags so
+that scripts are invoked when particular actions such as keystrokes
+and mouse button presses occur in particular ranges of the text.
+See TAGS below for more details.
+.PP
+The second form of annotation consists of marks, which are floating
+markers in the text.
+Marks are used to keep track of various interesting positions in the
+text as it is edited.
+See MARKS below for more details.
+.PP
+The third form of annotation allows arbitrary windows to be
+embedded in a text widget.
+See EMBEDDED WINDOWS below for more details.
+
+.SH INDICES
+Many of the widget commands for texts take one or more indices
+as arguments.
+An index is a string used to indicate a particular place within
+a text, such as a place to insert characters or one endpoint of a
+range of characters to delete.
+Indices have the syntax
+.RS
+.EX
+\fIbase modifier modifier modifier ...\fR
+.EE
+.RE
+Where \fIbase\fR gives a starting point and the \fImodifier\fRs
+adjust the index from the starting point (e.g. move forward or
+backward one character).  Every index must contain a \fIbase\fR,
+but the \fImodifier\fRs are optional.
+.PP
+The \fIbase\fR for an index must have one of the following forms:
+.TP 12
+\fIline\f5.\fIchar\fR
+Indicates \fIchar\fR'th character on line \fIline\fR.
+Lines are numbered from 1 for consistency with other UNIX programs
+that use this numbering scheme.
+Within a line, characters are numbered from 0.
+If \fIchar\fR is \f5end\fR then it refers to the newline character
+that ends the line.
+.TP 12
+\f5@\fIx\f5,\fIy\fR
+Indicates the character that covers the pixel whose x and y coordinates
+within the text's window are \fIx\fR and \fIy\fR.
+.TP 12
+\f5end\fR
+Indicates the end of the text (the character just after the last
+newline).
+.TP 12
+\fImark\fR
+Indicates the character just after the mark whose name is \fImark\fR.
+.TP 12
+\fItag\f5.first\fR
+Indicates the first character in the text that has been tagged with
+\fItag\fR.
+This form generates an error if no characters are currently tagged
+with \fItag\fR.
+.TP 12
+\fItag\f5.last\fR
+Indicates the character just after the last one in the text that has
+been tagged with \fItag\fR.
+This form generates an error if no characters are currently tagged
+with \fItag\fR.
+.TP 12
+\fIpathName\fR
+Indicates the position of the embedded window whose name is
+\fIpathName\fR.
+This form generates an error if there is no embedded window
+by the given name.
+.PP
+If modifiers follow the base index, each one of them must have one
+of the forms listed below.
+.TP
+\f5+ \fIcount\f5 chars\fR
+Adjust the index forward by \fIcount\fR characters, moving to later
+lines in the text if necessary.  If there are fewer than \fIcount\fR
+characters in the text after the current index, then set the index
+to the last character in the text.
+Spaces on either side of \fIcount\fR are optional.
+.TP
+\f5\- \fIcount\f5 chars\fR
+Adjust the index backward by \fIcount\fR characters, moving to earlier
+lines in the text if necessary.  If there are fewer than \fIcount\fR
+characters in the text before the current index, then set the index
+to the first character in the text.
+Spaces on either side of \fIcount\fR are optional.
+.TP
+\f5+ \fIcount\f5 lines\fR
+Adjust the index forward by \fIcount\fR lines, retaining the same
+character position within the line.  If there are fewer than \fIcount\fR
+lines after the line containing the current index, then set the index
+to refer to the same character position on the last line of the text.
+Then, if the line is not long enough to contain a character at the indicated
+character position, adjust the character position to refer to the last
+character of the line (the newline).
+Spaces on either side of \fIcount\fR are optional.
+.TP
+\f5\- \fIcount\f5 lines\fR
+Adjust the index backward by \fIcount\fR lines, retaining the same
+character position within the line.  If there are fewer than \fIcount\fR
+lines before the line containing the current index, then set the index
+to refer to the same character position on the first line of the text.
+Then, if the line is not long enough to contain a character at the indicated
+character position, adjust the character position to refer to the last
+character of the line (the newline).
+Spaces on either side of \fIcount\fR are optional.
+.TP
+\f5linestart\fR
+Adjust the index to refer to the first character on the line.
+.TP
+\f5lineend\fR
+Adjust the index to refer to the last character on the line (the newline).
+.TP
+\f5wordstart\fR
+Adjust the index to refer to the first character of the word containing
+the current index.  A word consists of any number of adjacent characters
+that are letters, digits, or underscores, or a single character that
+is not one of these.
+.TP
+\f5wordend\fR
+Adjust the index to refer to the character just after the last one of the
+word containing the current index.  If the current index refers to the last
+character of the text then it is not modified.
+.PP
+If more than one modifier is present then they are applied in
+left-to-right order.  For example, the index ``\f5end \- 1 chars\fR''
+refers to the next-to-last character in the text and the index
+``\f5insert wordstart \- 1 c\fR'' refers to the character just before
+the first one in the word containing the insertion cursor.
+
+.SH TAGS
+The first form of annotation in text widgets is a tag.
+A tag is a textual string that is associated with some of the characters
+in a text.
+Tags may contain arbitrary characters, but it is probably best to
+avoid using the the characters `` '' (space), \f5+\fR, or \f5-\fR:
+these characters have special meaning in indices, so tags containing
+them can't be used as indices. The tag name may not begin with a digit.
+There may be any number of tags associated with characters in a
+text.
+Each tag may refer to a single character, a range of characters, or
+several ranges of characters.
+An individual character may have any number of tags associated with it.
+.PP
+A priority order is defined among tags, and this order is used in
+implementing some of the tag-related functions described below.
+When a tag is defined (by associating it with characters or setting
+its display options or binding commands to it), it is given
+a priority higher than any existing tag.
+The priority order of tags may be redefined using the
+``\fIpathName \f5tag raise\fR'' and ``\fIpathName \f5tag lower\fR''
+widget commands.
+.PP
+Tags serve three purposes in text widgets.
+First, they control the way information is displayed on the screen.
+By default, characters are displayed as determined by the
+\f5background\fR, \f5font\fR, and \f5foreground\fR options for the
+text widget.
+However, display options may be associated with individual tags
+using the ``\fIpathName \f5tag configure\fR'' widget command.
+If a character has been tagged, then the display options associated
+with the tag override the default display style.
+The following options are currently supported for tags:
+.TP
+\f5-background \fIcolour\fR
+\fIColor\fR specifies the background colour to use for characters
+associated with the tag.
+.TP
+\f5-borderwidth \fIdist\fR
+\fIDist\fR specifies the width of a 3-D border to draw around
+the background.
+This option is used in conjunction with the \f5-relief\fR
+option to give a 3-D appearance to the background for characters;
+it is ignored unless the \f5-background\fR option
+has been set for the tag.
+.TP
+\f5-font \fIfont\fR
+\fIFont\fR is the name of a font to use for drawing characters.
+.TP
+\f5-foreground \fIcolour\fR
+\fIColor\fR specifies the colour to use when drawing text and other
+foreground information such as underlines.
+.TP
+\f5-justify \fIjustify\fR
+If the first character of a display line has a tag for which this
+option has been specified, then \fIjustify\fR determines how to
+justify the line.
+It must be one of \f5left\fR, \f5right\fR, or \f5center\fR.
+If a line wraps, then the justification for each line on the
+display is determined by the first character of that display line.
+.TP
+\f5-lmargin1 \fIdist\fR
+If the first character of a text line has a tag for which this
+option has been specified, then \fIdist\fR specifies how
+much the line should be indented from the left edge of the
+window.
+\fIDist\fR may have any of the standard forms for screen
+distances.
+If a line of text wraps, this option only applies to the
+first line on the display;  the \f5-lmargin2\fR option controls
+the indentation for subsequent lines.
+.TP
+\f5-lmargin2 \fIdist\fR
+If the first character of a display line has a tag for which this
+option has been specified, and if the display line is not the
+first for its text line (i.e., the text line has wrapped), then
+\fIdist\fR specifies how much the line should be indented from
+the left edge of the window.
+\fIDist\fR may have any of the standard forms for screen
+distances.
+This option is only used when wrapping is enabled, and it only
+applies to the second and later display lines for a text line.
+.TP
+\f5-offset \fIdist\fR
+\fIDist\fR specifies an amount by which the text's baseline
+should be offset vertically from the baseline of the overall
+line, in pixels.
+For example, a positive offset can be used for superscripts
+and a negative offset can be used for subscripts.
+\fIDist\fR may have any of the standard forms for screen
+distances.
+.TP
+\f5-overstrike \fIboolean\fR
+Specifies whether or not to draw a horizontal rule through
+the middle of characters.
+.TP
+\f5-relief \fIrelief\fR
+\fIRelief\fR specifies the 3-D relief to use for drawing backgrounds.
+This option is used in conjunction with the \f5-borderwidth\fR
+option to give a 3-D appearance to the background for characters;
+it is ignored unless the \f5-background\fR option
+has been set for the tag.
+.TP
+\f5-rmargin \fIdist\fR
+If the first character of a display line has a tag for which this
+option has been specified, then \fIdist\fR specifies how wide
+a margin to leave between the end of the line and the right
+edge of the window.
+This option is only used when wrapping is enabled.
+If a text line wraps, the right margin for each line on the
+display is determined by the first character of that display
+line.
+.TP
+\f5-spacing1 \fIdist\fR
+\fIDist\fR specifies how much additional space should be
+left above each text line, using any of the standard forms for
+screen distances.
+If a line wraps, this option only applies to the first
+line on the display.
+.TP
+\f5-spacing2 \fIdist\fR
+For lines that wrap, this option specifies how much additional
+space to leave between the display lines for a single text line.
+\fIDist\fR may have any of the standard forms for screen
+distances.
+.TP
+\f5-spacing3 \fIdist\fR
+\fIDist\fR specifies how much additional space should be
+left below each text line, using any of the standard forms for
+screen distances.
+If a line wraps, this option only applies to the last
+line on the display.
+.TP
+\f5-tabs \fItabList\fR
+\fITabList\fR specifies a set of tab stops in the same form
+as for the \f5-tabs\fR option for the text widget.  This
+option only applies to a display line if it applies to the
+first character on that display line.
+If this option is specified as an empty string, it cancels
+the option, leaving it unspecified for the tag (the default).
+If the option is specified as a non-empty string that is
+an empty list, such as \f5-tags\0{\0}\fR, then it requests
+default 8-character tabs as described for the \f5tabs\fR
+widget option.
+.TP
+\f5-underline \fIboolean\fR
+\fIBoolean\fR specifies whether or not to draw an underline underneath
+characters.
+.TP
+\f5-wrap \fImode\fR
+\fIMode\fR specifies how to handle lines that are wider than the
+text's window.
+It has the same legal values as the \f5-wrap\fR option
+for the text widget:  \f5none\fR, \f5char\fR, or \f5word\fR.
+If this tag option is specified, it overrides the \f5-wrap\fR option
+for the text widget.
+.PP
+If a character has several tags associated with it, and if their
+display options conflict, then the options of the highest priority
+tag are used.
+If a particular display option hasn't been specified for a
+particular tag, or if it is specified as an empty string, then
+that option will never be used;  the next-highest-priority
+tag's option will be used instead.
+If no tag specifies a particular display option, then the default
+style for the widget will be used.
+.PP
+The second purpose for tags is event bindings.
+You can associate bindings with a tag in much the same way you can
+associate bindings with a widget class:  whenever particular
+events occur on characters with the given tag, a given
+Tk command will be executed.
+Tag bindings can be used to give behaviours to ranges of characters;
+among other things, this allows hypertext-like
+features to be implemented.
+For details, see the description of the \f5tag bind\fR widget
+command below.
+.PP
+The third use for tags is in managing the selection.
+See THE SELECTION below.
+
+.SH MARKS
+The second form of annotation in text widgets is a mark.
+Marks are used for remembering particular places in a text.
+They are something like tags, in that they have names and
+they refer to places in the file, but a mark isn't associated
+with particular characters.
+Instead, a mark is associated with the gap between two characters.
+Only a single position may be associated with a mark at any given
+time.
+If the characters around a mark are deleted the mark will still
+remain;  it will just have new neighbour characters.
+In contrast, if the characters containing a tag are deleted then
+the tag will no longer have an association with characters in
+the file.
+Marks may be manipulated with the ``\fIpathName \f5mark\fR'' widget
+command, and their current locations may be determined by using the
+mark name as an index in widget commands.
+.PP
+Each mark also has a \fIgravity\fR, which is either \f5left\fR or
+\f5right\fR.
+The gravity for a mark specifies what happens to the mark when
+text is inserted at the point of the mark.
+If a mark has left gravity, then the mark is treated as if it
+were attached to the character on its left, so the mark will
+remain to the left of any text inserted at the mark position.
+If the mark has right gravity, new text inserted at the mark
+position will appear to the right of the mark.  The gravity
+for a mark defaults to \f5right\fR.
+.PP
+The name space for marks is different from that for tags:  the
+same name may be used for both a mark and a tag, but they will refer
+to different things.
+.PP
+Two marks have special significance.
+First, the mark \f5insert\fR is associated with the insertion cursor,
+as described under THE INSERTION CURSOR below.
+Second, the mark \f5current\fR is associated with the character
+closest to the mouse and is adjusted automatically to track the
+mouse position and any changes to the text in the widget (one
+exception:  \f5current\fR is not updated in response to mouse
+motions if a mouse button is down;  the update will be deferred
+until all mouse buttons have been released).
+Neither of these special marks may be deleted.
+
+.SH EMBEDDED WINDOWS
+The third form of annotation in text widgets is an embedded window.
+Each embedded window annotation causes a window to be displayed
+at a particular point in  the text.
+There may be any number of embedded windows in a text widget,
+and any widget may be used as an embedded window.
+The embedded window's position on the screen will be updated as the
+text is modified or scrolled.
+Each embedded window occupies one character's worth of index space
+in the text widget, and it may be referred to either by the name
+of its embedded window or by its position in the widget's
+index space.
+If the range of text containing the embedded window is deleted and the
+window is a child of the text widget then the window is destroyed.
+.PP
+When an embedded window is added to a text widget with the
+\f5window create\fR widget command, several configuration
+options may be associated with it.
+These options may be  modified later with the \f5window configure\fR
+widget command.
+The following options are currently supported:
+.TP
+\f5-align \fIwhere\fR
+If the window is not as tall as the line in which it is displayed,
+this option determines where the window is displayed in the line.
+\fIWhere\fR must have one of the values \f5top\fR (align the top of the window
+with the top of the line), \f5center\fR (center the window
+within the range of the line), \f5bottom\fR (align the bottom of the
+window with the bottom of the line's area),
+or \f5baseline\fR (align the bottom of the window with the baseline
+of the line).
+.TP
+\f5-padx \fIdist\fR
+\fIDist\fR specifies the amount of extra space to leave on
+each side of the embedded window.
+It may have any of the usual forms defined for a screen distance.
+.TP
+\f5-pady \fIdist\fR
+\fIDist\fR specifies the amount of extra space to leave on
+the top and on the bottom of the embedded window.
+It may have any of the usual forms defined for a screen distance.
+.TP
+\f5-stretch \fIboolean\fR
+If the requested height of the embedded window is less than the
+height of the line in which it is displayed, this option can be
+used to specify whether the window should be stretched vertically
+to fill its line.
+If the \f5-pady\fR option has been specified as well, then the
+requested padding will be retained even if the window is
+stretched.
+.TP
+\f5-window \fIpathName\fR
+Specifies the name of a window to display in the annotation.
+
+.SH THE SELECTION
+Selection support is implemented via tags.
+The \f5sel\fR tag is automatically defined when a text widget is
+created, and it may not be deleted with the ``\fIpathName \f5tag delete\fR''
+widget command.  Furthermore, the \f5selectbackground\fR,
+\f5selectborderwidth\fR, and \f5selectforeground\fR options for
+the text widget are tied to the \f5background\fR,
+\f5borderwidth\fR, and \f5foreground\fR options for the \f5sel\fR
+tag:  changes in either will automatically be reflected in the
+other.
+
+.SH THE INSERTION CURSOR
+The mark named \f5insert\fR has special significance in text widgets.
+It is defined automatically when a text widget is created and it
+may not be unset with the ``\fIpathName \f5mark unset\fR'' widget
+command.
+The \f5insert\fR mark represents the position of the insertion
+cursor, and the insertion cursor will automatically be drawn at
+this point whenever the text widget has the input focus.
+
+.SH "WIDGET COMMAND"
+The \f5text\fR command creates a new Tk command whose
+name is the same as the path name of the text's window.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIPathName\fR is the name of the command, which is the same as
+the text widget's path name.  \fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for text widgets:
+.TP
+\fIpathName \f5bbox \fIindex\fR
+Returns a list of four elements describing the screen area
+of the character given by \fIindex\fR.
+The first two elements of the list give the x and y coordinates
+of the upper-left corner of the area occupied by the
+character, and the last two elements give the width and height
+of the area.
+If the character is only partially visible on the screen, then
+the return value reflects just the visible part.
+If the character is not visible on the screen then the return
+value is an empty list.
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5text\fR
+command.
+.TP
+\fIpathName \f5compare\fR \fIindex1 op index2\fR
+Compares the indices given by \fIindex1\fR and \fIindex2\fR according
+to the relational operator given by \fIop\fR, and returns 1 if
+the relationship is satisfied and 0 if it isn't.
+\fIOp\fR must be one of the operators <, <=, ==, >=, >, or !=.
+If \fIop\fR is == then 1 is returned if the two indices refer to
+the same character, if \fIop\fR is < then 1 is returned if \fIindex1\fR
+refers to an earlier character in the text than \fIindex2\fR, and
+so on.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? \fI?value option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5text\fR
+command.
+.TP
+\fIpathName \f5debug \fR?\fIboolean\fR?
+If the value is a true one then internal consistency checks will be
+turned on in the code associated with text widgets.
+If \fIboolean\fR has a false value then the debugging checks will
+be turned off.
+In either case the command returns an empty string.
+If \fIboolean\fR is not specified then the command returns \f5on\fR
+or \f5off\fR to indicate whether or not debugging is turned on.
+There is a single debugging switch shared by all text widgets:  turning
+debugging on or off in any widget turns it on or off for all widgets.
+For widgets with large amounts of text, the consistency checks may
+cause a noticeable slow-down.
+.TP
+\fIpathName \f5delete \fIindex1 \fR?\fIindex2\fR?
+Delete a range of characters from the text.
+If both \fIindex1\fR and \fIindex2\fR are specified, then delete
+all the characters starting with the one given by \fIindex1\fR
+and stopping just before \fIindex2\fR (i.e. the character at
+\fIindex2\fR is not deleted).
+If \fIindex2\fR doesn't specify a position later in the text
+than \fIindex1\fR then no characters are deleted.
+If \fIindex2\fR isn't specified then the single character at
+\fIindex1\fR is deleted.
+It is not allowable to delete characters in a way that would leave
+the text without a newline as the last character.
+The command returns an empty string.
+.TP
+\fIpathName \f5dlineinfo \fIindex\fR
+Returns a list with five elements describing the area occupied
+by the display line containing \fIindex\fR.
+The first two elements of the list give the x and y coordinates
+of the upper-left corner of the area occupied by the
+line, the third and fourth elements give the width and height
+of the area, and the fifth element gives the position of the baseline
+for the line, measured down from the top of the area.
+All of this information is measured in pixels.
+If the current wrap mode is \f5none\fR and the line extends beyond
+the boundaries of the window,
+the area returned reflects the entire area of the line, including the
+portions that are out of the window.
+If the line is shorter than the full width of the window then the
+area returned reflects just the portion of the line that is occupied
+by characters and embedded windows.
+If the display line containing \fIindex\fR is not visible on
+the screen then the return value is an empty list.
+.TP
+\fIpathName \f5get \fIindex1 \fR?\fIindex2\fR?
+Return a range of characters from the text.
+The return value will be all the characters in the text starting
+with the one whose index is \fIindex1\fR and ending just before
+the one whose index is \fIindex2\fR (the character at \fIindex2\fR
+will not be returned).
+If \fIindex2\fR is omitted then the single character at \fIindex1\fR
+is returned.
+If there are no characters in the specified range (e.g. \fIindex1\fR
+is past the end of the file or \fIindex2\fR is less than or equal
+to \fIindex1\fR) then an empty string is returned.
+If the specified range contains embedded windows, no information
+about them is included in the returned string.
+.TP
+\fIpathName \f5index \fIindex\fR
+Returns the position corresponding to \fIindex\fR in the form
+\fIline.char\fR where \fIline\fR is the line number and \fIchar\fR
+is the character number.
+\fIIndex\fR may have any of the forms described under INDICES above.
+.TP
+\fIpathName \f5insert \fIindex chars \fR?\fItagList chars tagList ...\fR?
+Inserts all of the \fIchars\fR arguments just before the character at
+\fIindex\fR.
+If \fIindex\fR refers to the end of the text (the character after
+the last newline) then the new text is inserted just before the
+last newline instead.
+If there is a single \fIchars\fR argument and no \fItagList\fR, then
+the new text will receive any tags that are present on both the
+character before and the character after the insertion point; if a tag
+is present on only one of these characters then it will not be
+applied to the new text.
+If \fItagList\fR is specified then it consists of a list of
+tag names;  the new characters will receive all of the tags in
+this list and no others, regardless of the tags present around
+the insertion point.
+If multiple \fIchars\fR-\fItagList\fR argument pairs are present,
+they produce the same effect as if a separate \f5insert\fR widget
+command had been issued for each pair, in order.
+The last \fItagList\fR argument may be omitted.
+.TP
+\fIpathName \f5mark \fIoption \fR?\fIarg arg ...\fR?
+This command is used to manipulate marks.  The exact behaviour of
+the command depends on the \fIoption\fR argument that follows
+the \f5mark\fR argument.  The following forms of the command
+are currently supported:
+.RS
+.TP
+\fIpathName \f5mark gravity \fImarkName\fR ?\fIdirection\fR?
+If \fIdirection\fR is not specified, returns \f5left\fR or \f5right\fR
+to indicate which of its adjacent characters \fImarkName\fR is attached
+to.
+If \fIdirection\fR is specified, it must be \f5left\fR or \f5right\fR;
+the gravity of \fImarkName\fR is set to the given value.
+.TP
+\fIpathName \f5mark names\fR
+Returns a list whose elements are the names of all the marks that
+are currently set.
+.TP
+\fIpathName \f5mark next \fIindex\fR
+Returns the name of the next mark at or after \fIindex\fR.
+If \fIindex\fR is specified in numerical form, then the search for
+the next mark begins at that index.
+If \fIindex\fR is the name of a mark, then the search for
+the next mark begins immediately after that mark.
+This can still return a mark at the same position if
+there are multiple marks at the same index.
+If a mark has been set to the special \f5end\fP index,
+then it appears to be \fIafter\fP \f5end\fP with respect to the \f5mark next\fP operation.
+An empty string is returned if there are no marks after \fIindex\fP.
+.TP
+\fIpathName \f5mark previous \fIindex\fR
+Returns the name of the mark at or before \fIindex\fR.
+If \fIindex\fR is specified in numerical form, then the search for
+the previous mark begins with the character just before that index.
+If \fIindex\fR is the name of a mark, then the search for
+the next mark begins immediately before that mark.
+This can still return a mark at the same position if
+there are multiple marks at the same index.
+An empty string is returned if there are no marks before \fIindex\fR.
+.TP
+\fIpathName \f5mark set \fImarkName index\fR
+Sets the mark named \fImarkName\fR to a position just before the
+character at \fIindex\fR.
+If \fImarkName\fR already exists, it is moved from its old position;
+if it doesn't exist, a new mark is created.
+This command returns an empty string.
+.TP
+\fIpathName \f5mark unset \fImarkName \fR?\fImarkName markName ...\fR?
+Remove the mark corresponding to each of the \fImarkName\fR arguments.
+The removed marks will not be usable in indices and will not be
+returned by future calls to ``\fIpathName \f5mark names\fR''.
+This command returns an empty string.
+.RE
+.TP
+\fIpathName \f5scan\fR \fIoption args\fR
+This command is used to implement scanning on texts.  It has
+two forms, depending on \fIoption\fR:
+.RS
+.TP
+\fIpathName \f5scan mark \fIx y\fR
+Records \fIx\fR and \fIy\fR and the current view in the text window,
+for use in conjunction with later \f5scan dragto\fR commands.
+Typically this command is associated with a mouse button press in
+the widget.  It returns an empty string.
+.TP
+\fIpathName \f5scan dragto \fIx y\fR
+This command computes the difference between its \fIx\fR and \fIy\fR
+arguments and the \fIx\fR and \fIy\fR arguments to the last
+\f5scan mark\fR command for the widget.
+It then adjusts the view by 10 times the difference in coordinates.
+This command is typically associated
+with mouse motion events in the widget, to produce the effect of
+dragging the text at high speed through the window.  The return
+value is an empty string.
+.RE
+.TP
+\fIpathName \f5search \fR?\fIswitches\fR? \fIpattern index \fR?\fIstopIndex\fR?
+Searches the text in \fIpathName\fR starting at \fIindex\fR for a range
+of characters that matches \fIpattern\fR.
+If a match is found, the index of the first character in the match is
+returned as result;  otherwise an empty string is returned.
+One or more of the following switches
+may be specified to control the search:
+.RS
+.TP
+\f5-backwards\fR
+The search will proceed backward through the text, finding the
+matching range closest to \fIindex\fR whose first character
+is before \fIindex\fR.
+.TP
+\f5-nocase\fR
+Ignore case differences between the pattern and the text.
+.TP
+\f5-\|-\fR
+This switch has no effect except to terminate the list of switches:
+the next argument will be treated as \fIpattern\fR even if it starts
+with \f5-\fR.
+.LP
+The matching range must be entirely within a single line of text.
+If \fIstopIndex\fR is specified, the search stops at that index:
+for forward searches, no match at or after \fIstopIndex\fR will
+be considered;  for backward searches, no match earlier in the
+text than \fIstopIndex\fR will be considered.
+If \fIstopIndex\fR is omitted, the entire text will be searched:
+when the beginning or end of the text is reached, the search
+continues at the other end until the starting location is reached
+again;  if \fIstopIndex\fR is specified, no wrap-around will occur.
+.RE
+.TP
+\fIpathName \f5see \fIindex\fR
+Adjusts the view in the window so that the character given by \fIindex\fR
+is completely visible.
+If \fIindex\fR is already visible then the command does nothing.
+If \fIindex\fR is a short distance out of view, the command
+adjusts the view just enough to make \fIindex\fR visible at the
+edge of the window.
+If \fIindex\fR is far out of view, then the command centers
+\fIindex\fR in the window.
+.TP
+\fIpathName \f5tag \fIoption \fR?\fIarg arg ...\fR?
+This command is used to manipulate tags.  The exact behaviour of the
+command depends on the \fIoption\fR argument that follows the
+\f5tag\fR argument.  The following forms of the command are currently
+supported:
+.RS
+.TP
+\fIpathName \f5tag add \fItagName index1 \fR?\fIindex2 index1 index2 ...\fR?
+Associate the tag \fItagName\fR with all of the characters starting
+with \fIindex1\fR and ending just before
+\fIindex2\fR (the character at \fIindex2\fR isn't tagged).
+A single command may contain any number of \fIindex1\fR-\fIindex2\fR
+pairs.
+If the last \fIindex2\fR is omitted then the single character at
+\fIindex1\fR is tagged.
+If there are no characters in the specified range (e.g. \fIindex1\fR
+is past the end of the file or \fIindex2\fR is less than or equal
+to \fIindex1\fR) then the command has no effect.
+.TP
+\fIpathName \f5tag bind \fItagName\fR ?\fIsequence\fR? ?\fIscript\fR?
+This command associates \fIscript\fR with the tag given by
+\fItagName\fR.
+Whenever the event sequence given by \fIsequence\fR occurs for a
+character that has been tagged with \fItagName\fR,
+the script will be invoked.
+This widget command is similar to the \f5bind\fR command except that
+it operates on characters in a text rather than entire widgets.
+See the \f5bind\fR manual entry for complete details
+on the syntax of \fIsequence\fR and the substitutions performed
+on \fIscript\fR before invoking it.
+If all arguments are specified then a new binding is created, replacing
+any existing binding for the same \fIsequence\fR and \fItagName\fR
+(if the first character of \fIscript\fR is ``+'' then \fIscript\fR
+augments an existing binding rather than replacing it).
+In this case the return value is an empty string.
+.RS
+.PP
+The only events for which bindings may be specified are those related
+to the mouse and keyboard, such as \f5Enter\fR, \f5Leave\fR,
+\f5ButtonPress\fR, \f5Motion\fR, and \f5KeyPress\fR.
+Event bindings for a text widget use the \f5current\fR mark
+described under MARKS above.
+An \f5Enter\fR event triggers for a tag when the tag first
+becomes present on the current character, and a \f5Leave\fR
+event triggers for a tag when it ceases to be present on
+the current character.
+\f5Enter\fR and \f5Leave\fR events can happen either because the
+\f5current\fR mark moved or because the character at that
+position changed.
+Note that these events are different than \f5Enter\fR and \f5Leave\fR
+events for windows.
+Mouse and keyboard events are directed to the current character.
+.PP
+It is possible for the current character to have multiple tags,
+and for each of them to have a binding for a particular event
+sequence.
+When this occurs, one binding is invoked for each tag, in order
+from lowest-priority to highest priority.
+If there are multiple matching bindings for a single tag, then
+the most specific binding is chosen (see the manual entry for
+the \f5bind\fR command for details).
+.PP
+If bindings are created for the widget as a whole using the
+\f5bind\fR command, then those bindings will supplement the
+tag bindings.
+The tag bindings will be invoked first, followed by bindings
+for the window as a whole.
+.RE
+.TP
+\fIpathName \f5tag cget\fR \fItagName option\fR
+This command returns the current value of the option named \fIoption\fR
+associated with the tag given by \fItagName\fR.
+\fIOption\fR may have any of the values accepted by the \f5tag configure\fR
+widget command.
+.TP
+\fIpathName \f5tag configure \fItagName\fR ?\fIoption\fR? ?\fIvalue\fR? ?\fIoption value ...\fR?
+This command is similar to the \f5configure\fR widget command except
+that it modifies options associated with the tag given by \fItagName\fR
+instead of modifying options for the overall text widget.
+If one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given option(s) to have the given value(s) in \fItagName\fR.
+See TAGS above for details on the options available for tags.
+.TP
+\fIpathName \f5tag delete \fItagName \fR?\fItagName ...\fR?
+Deletes all tag information for each of the \fItagName\fR
+arguments.
+The command removes the tags from all characters in the file
+and also deletes any other information associated with the tags,
+such as bindings and display information.
+The command returns an empty string.
+.TP
+\fIpathName\f5 tag lower \fItagName \fR?\fIbelowThis\fR?
+Changes the priority of tag \fItagName\fR so that it is just lower
+in priority than the tag whose name is \fIbelowThis\fR.
+If \fIbelowThis\fR is omitted, then \fItagName\fR's priority
+is changed to make it lowest priority of all tags.
+.TP
+\fIpathName \f5tag names \fR?\fIindex\fR?
+Returns a list whose elements are the names of all the tags that
+are active at the character position given by \fIindex\fR.
+If \fIindex\fR is omitted, then the return value will describe
+all of the tags that exist for the text (this includes all tags
+that have been named in a ``\fIpathName \f5tag\fR'' widget
+command but haven't been deleted by a ``\fIpathName \f5tag delete\fR''
+widget command, even if no characters are currently marked with
+the tag).
+The list will be sorted in order from highest priority to lowest
+priority.
+.TP
+\fIpathName \f5tag nextrange \fItagName index1 \fR?\fIindex2\fR?
+This command searches the text for a range of characters tagged
+with \fItagName\fR where the first character of the range is
+no earlier than the character at \fIindex1\fR and no later than
+the character just before \fIindex2\fR (a range starting at
+\fIindex2\fR will not be considered).
+If several matching ranges exist, the first one is chosen.
+The command's return value is a list containing
+two elements, which are the index of the first character of the
+range and the index of the character just after the last one in
+the range.
+If no matching range is found then the return value is an
+empty string.
+If \fIindex2\fR is not given then it defaults to the end of the text.
+.TP
+\fIpathName \f5tag prevrange \fItagName index1 \fR?\fIindex2\fR?
+This command searches the text for a range of characters tagged
+with \fItagName\fR where the first character of the range is
+before the character at \fIindex1\fR and no earlier than
+the character at \fIindex2\fR (a range starting at
+\fIindex2\fR will be considered).
+If several matching ranges exist, the one closest to \fIindex1\fR is chosen.
+The command's return value is a list containing
+two elements, which are the index of the first character of the
+range and the index of the character just after the last one in
+the range.
+If no matching range is found then the return value is an
+empty string.
+If \fIindex2\fR is not given then it defaults to the beginning of the text.
+.TP
+\fIpathName\f5 tag raise \fItagName \fR?\fIaboveThis\fR?
+Changes the priority of tag \fItagName\fR so that it is just higher
+in priority than the tag whose name is \fIaboveThis\fR.
+If \fIaboveThis\fR is omitted, then \fItagName\fR's priority
+is changed to make it highest priority of all tags.
+.TP
+\fIpathName \f5tag ranges \fItagName\fR
+Returns a list describing all of the ranges of text that have been
+tagged with \fItagName\fR.
+The first two elements of the list describe the first tagged range
+in the text, the next two elements describe the second range, and
+so on.
+The first element of each pair contains the index of the first
+character of the range, and the second element of the pair contains
+the index of the character just after the last one in the
+range.
+If there are no characters tagged with \fItag\fR then an
+empty string is returned.
+.TP
+\fIpathName \f5tag remove \fItagName index1 \fR?\fIindex2 index1 index2 ...\fR?
+Remove the tag \fItagName\fR from all of the characters starting
+at \fIindex1\fR and ending just before
+\fIindex2\fR (the character at \fIindex2\fR isn't affected).
+A single command may contain any number of \fIindex1\fR-\fIindex2\fR
+pairs.
+If the last \fIindex2\fR is omitted then the single character at
+\fIindex1\fR is tagged.
+If there are no characters in the specified range (e.g. \fIindex1\fR
+is past the end of the file or \fIindex2\fR is less than or equal
+to \fIindex1\fR) then the command has no effect.
+This command returns an empty string.
+.RE
+.TP
+\fIpathName \f5window \fIoption \fR?\fIarg arg ...\fR?
+This command is used to manipulate embedded windows.
+The behaviour of the command depends on the \fIoption\fR argument
+that follows the \f5window\fR argument.
+The following forms of the command are currently supported:
+.RS
+.TP
+\fIpathName \f5window cget\fR \fIindex option\fR
+Returns the value of a configuration option for an embedded window.
+\fIIndex\fR identifies the embedded window, and \fIoption\fR
+specifies a particular configuration option, which must be one of
+the ones listed in the section EMBEDDED WINDOWS.
+.TP
+\fIpathName \f5window configure \fIindex\fR ?\fIoption value ...\fR?
+Query or modify the configuration options for an embedded window.
+If one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given option(s) to have the given value(s).
+See EMBEDDED WINDOWS for information on the options that
+are supported.
+.TP
+\fIpathName \f5window create \fIindex\fR ?\fIoption value ...\fR?
+This command creates a new window annotation, which will appear
+in the text at the position given by \fIindex\fR.
+Any number of \fIoption-value\fR pairs may be specified to
+configure the annotation.
+See EMBEDDED WINDOWS for information on the options that
+are supported.
+Returns an empty string.
+.TP
+\fIpathName \f5window names\fR
+Returns a list whose elements are the names of all windows currently
+embedded in \fIwindow\fR.
+.RE
+.TP
+\fIpathName \f5xview \fIoption args\fR
+This command is used to query and change the horizontal position of the
+text in the widget's window.  It can take any of the following
+forms:
+.RS
+.TP
+\fIpathName \f5xview\fR
+Returns a list containing two elements.
+Each element is a real fraction between 0 and 1;  together they describe
+the portion of the document's horizontal span that is visible in
+the window.
+For example, if the first element is .2 and the second element is .6,
+20% of the text is off-screen to the left, the middle 40% is visible
+in the window, and 40% of the text is off-screen to the right.
+The fractions refer only to the lines that are actually visible in the
+window:  if the lines in the window are all very short, so that they
+are entirely visible, the returned fractions will be 0 and 1,
+even if there are other lines in the text that are
+much wider than the window.
+These are the same values passed to scrollbars via the \f5-xscrollcommand\fR
+option.
+.TP
+\fIpathName \f5xview moveto\fI fraction\fR
+Adjusts the view in the window so that \fIfraction\fR of the horizontal
+span of the text is off-screen to the left.
+\fIFraction\fR is a fraction between 0 and 1.
+.TP
+\fIpathName \f5xview scroll \fInumber what\fR
+This command shifts the view in the window left or right according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts left or right by
+\fInumber\fR average-width characters on the display;  if it is
+\f5pages\fR then the view adjusts by \fInumber\fR screenfuls.
+If \fInumber\fR is negative then characters farther to the left
+become visible;  if it is positive then characters farther to the right
+become visible.
+.RE
+.TP
+\fIpathName \f5yview \fI?args\fR?
+This command is used to query and change the vertical position of the
+text in the widget's window.
+It can take any of the following forms:
+.RS
+.TP
+\fIpathName \f5yview\fR
+Returns a list containing two elements, both of which are real fractions
+between 0 and 1.
+The first element gives the position of the first character in the
+top line in the window, relative to the text as a whole (0.5 means
+it is halfway through the text, for example).
+The second element gives the position of the character just after
+the last one in the bottom line of the window,
+relative to the text as a whole.
+These are the same values passed to scrollbars via the \f5-yscrollcommand\fR
+option.
+.TP
+\fIpathName \f5yview moveto\fI fraction\fR
+Adjusts the view in the window so that the character given by \fIfraction\fR
+appears on the top line of the window.
+\fIFraction\fR is a fraction between 0 and 1;  0 indicates the first
+character in the text, 0.33 indicates the character one-third the
+way through the text, and so on.
+.TP
+\fIpathName \f5yview scroll \fInumber what\fR
+This command adjust the view in the window up or down according to
+\fInumber\fR and \fIwhat\fR.
+\fINumber\fR must be an integer.
+\fIWhat\fR must be either \f5units\fR or \f5pages\fR.
+If \fIwhat\fR is \f5units\fR, the view adjusts up or down by
+\fInumber\fR lines on the display;  if it is \f5pages\fR then
+the view adjusts by \fInumber\fR screenfuls.
+If \fInumber\fR is negative then earlier positions in the text
+become visible;  if it is positive then later positions in the text
+become visible.
+.TP
+\fIpathName \f5yview \fR?\f5-pickplace\fR? \fIindex\fR
+Changes the view in the widget's window to make \fIindex\fR visible.
+If the \f5-pickplace\fR option isn't specified then \fIindex\fR will
+appear at the top of the window.
+If \f5-pickplace\fR is specified then the widget chooses where
+\fIindex\fR appears in the window:
+.RS
+.IP [1]
+If \fIindex\fR is already visible somewhere in the window then the
+command does nothing.
+.IP [2]
+If \fIindex\fR is only a few lines off-screen above the window then
+it will be positioned at the top of the window.
+.IP [3]
+If \fIindex\fR is only a few lines off-screen below the window then
+it will be positioned at the bottom of the window.
+.IP [4]
+Otherwise, \fIindex\fR will be centered in the window.
+.LP
+The \f5-pickplace\fR option has been made obsolete by the \f5see\fR widget
+command (\f5see\fR handles both x- and y-motion to make a location
+visible, whereas \f5-pickplace\fR only handles motion in y).
+.RE
+.RE
+
+.SH BINDINGS
+Tk automatically creates bindings for texts that give them
+the following default behaviour.
+In the descriptions below, ``word'' refers to a contiguous group
+of letters, digits, or ``_'' characters, or any single character
+other than these.
+.IP [1]
+Clicking mouse button 1 positions the insertion cursor
+just before the character underneath the mouse cursor, sets the
+input focus to this widget, and clears any selection in the widget.
+Dragging with mouse button 1 strokes out a selection between
+the insertion cursor and the character under the mouse.
+.IP [2]
+Double-clicking with mouse button 1 selects the word under the mouse
+and positions the insertion cursor at the beginning of the word.
+Dragging after a double click is ignored.
+.IP [3]
+If any normal printing characters are typed, they are
+inserted at the point of the insertion cursor, replacing the
+current selection.
+.IP [4]
+If the mouse is dragged out of the widget
+while button 1 is pressed, the entry will automatically scroll to
+make more text visible (if there is more text off-screen on the side
+where the mouse left the window).
+.IP [5]
+The Left and Right keys move the insertion cursor one character to the
+left or right;  they also clear any selection in the text.
+Control-b and Control-f behave the same as Left and Right, respectively.
+.IP [6]
+The Up and Down keys move the insertion cursor one line up or
+down and clear any selection in the text.
+Control-p and Control-n behave the same as Up and Down, respectively.
+.IP [7]
+The Page-up and Page-down keys move the view up or down
+one screenful without moving the insertion cursor or adjusting the selection.
+IControl-v behaves the same as Page-down.
+.IP [8]
+Home, Control-a and Control-< move the insertion cursor to the
+beginning of its line and clear any selection in the widget.
+.IP [9]
+End, Control-e and Control-> move the insertion cursor to the
+end of the line and clear any selection in the widget.
+.IP [10]
+The Delete key deletes the selection, if there is one in the widget.
+If there is no selection, it deletes the character to the right of
+the insertion cursor.
+.IP [11]
+Backspace and Control-h delete the selection, if there is one
+in the widget.
+If there is no selection, they delete the character to the left of
+the insertion cursor.
+.IP [12]
+Control-d deletes the character to the right of the insertion cursor.
+.IP [13]
+Control-k deletes from the insertion cursor to the end of its line;
+if the insertion cursor is already at the end of a line, then
+Control-k deletes all of the next line.
+.IP [14]
+Control-o opens a new line by inserting a newline character in
+front of the insertion cursor without moving the insertion cursor.
+.IP [15]
+Control-u deletes from the insertion cursor to the start of its line;
+if the insertion cursor is already at the start of the line, then
+the current line is joined with the previous one.
+.IP [16]
+Control-w deletes from the insertion cursor to the start of the word
+that contains it;
+if the insertion cursor is at the start of the line, then
+the current line is joined with the previous one.
+.PP
+If the widget is disabled using the \f5-state\fR option, then its
+view can still be adjusted and text can still be selected,
+but no insertion cursor will be displayed and no text modifications will
+take place.
+.PP
+The behaviour of texts can be changed by defining new bindings for
+individual widgets.
+.SH BUGS
+Tab alignment doesn't work correctly.
+.PP
+The \f5-stretch\fR option on embedded windows is not implemented.
+.SH SEE ALSO
+.IR entry (9),
+.IR options (9),
+.IR types (9)

@@ -1,0 +1,68 @@
+.TH DRAWMUX 2
+.SH NAME
+drawmux \- multiplex stream of draw requests
+.SH SYNOPSIS
+.EX
+include "drawmux.m";
+drawmux := load Drawmux Drawmux->PATH;
+
+init:	    fn(): (string, ref Draw->Display);
+newviewer:  fn(fd: ref Sys->FD);
+.EE
+.SH DESCRIPTION
+.B Drawmux
+puts itself between the invoking application and
+.B /dev/draw
+(see
+.IR draw (3)),
+so that the contents of the current display can be replicated elsewhere.
+.PP
+.B Init
+returns a new
+.B Display
+(see
+.IR draw-display (2))
+representing a connection to a virtual display device.
+Subsequent
+.B Draw
+requests to that display
+(see
+.IR draw-intro (2))
+are forwarded to the underlying
+.IR draw (3)
+device to appear on the physical display, but can also replicated
+elsewhere, typically in a window on a remote display.
+.PP
+.B Newviewer
+prepares the virtual display end of a
+.B Drawmux
+connection for each new viewer of the display created by a previous call to
+.BR init .
+The file descriptor
+.I fd
+is a connection to the viewer.
+The remote viewer must first write 24 bytes on that connection,
+containing two decimal numbers (each 11 digits and a space),
+giving the identifier of a public screen on the viewer's display, on which
+.B newviewer
+will replicate the
+.B Drawmux
+display,
+and the log (base 2) of the number of bits per pixel for windows created on that screen.
+The remote viewer must then use
+.B Sys->export
+(see
+.IR sys-dial (2))
+to export its
+.BR /dev/draw ,
+which
+.B newviewer
+expects to find as the root of the exported hierarchy.
+Subsequent draw operations on the
+.B Drawmux
+display will be replicated on the public screen exported by the viewer.
+Shutting down the connection shuts down the multiplexor for that viewer.
+.SH SEE ALSO
+.IR wm-dmview (1),
+.IR draw-intro (2),
+.IR draw (3)

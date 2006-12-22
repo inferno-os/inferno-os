@@ -1,0 +1,83 @@
+.TH SYS-SELF 2
+.SH NAME
+SELF \- reference self as a compatible module type
+.SH SYNOPSIS
+.B
+include "sys.m";
+.br
+.BI "me := load" " Module " SELF;
+.SH DESCRIPTION
+An instance of
+a module of one type can acquire a reference to itself as any compatible module type,
+using the Limbo
+.B load
+operator with the special built-in module name
+.BR $self .
+Normally, applications use a synonym, the constant
+.BR SELF ,
+which is defined by
+.B sys.m
+.I outside
+the declaration of the
+.B Sys
+module
+(so that it need not be imported).
+Note that the result of the
+.B load
+refers to the same instance
+that is currently executing (ie, the same module data).
+.PP
+This mechanism is most often used to obtain a reference to the current module
+instance with a
+.I restriction
+of its module type to a compatible subtype (eg, containing a subset
+of the current module's declarations).
+For example, given modules of the following types:
+.IP
+.EX
+T: module
+{
+    init:    fn(nil: ref Draw->Context, nil: list of string);
+    special: fn(a, b: int);
+};
+S: module
+{
+    special: fn(x, y: int);
+};
+G: module
+{
+    init:    fn(v: S);
+};
+.EE
+.PP
+an instance of module
+.B T
+can execute both the following:
+.IP
+.EX
+t := load T SELF;
+s := load S SELF;
+.EE
+.PP
+but a module of type
+.B S
+could not load itself as type
+.BR T .
+.PP
+The result might typically be assigned to a module variable of that type
+(including passing as a parameter or storing in an adt), as in:
+.IP
+.EX
+g := load G "g.dis";
+g->init(s);
+.EE
+.PP
+See the definition and use of
+.B BufioFill
+in
+.IR bufio (2)
+and
+.IR bufio-chanfill (2)
+for a practical example.
+.SH SEE ALSO
+``The Limbo Programming Language'', Volume 2.

@@ -1,0 +1,37 @@
+.TH SEE 9
+.SH NAME
+see \- Make a portion of a widget visible.
+.SH SYNOPSIS
+\f5see \fIoption\fP ?\fIpathName\fR?
+.SH DESCRIPTION
+\f5See\fP makes sure that a portion of a widget
+is visible in its containing view; for instance, it will
+scroll a canvas or text widget to ensure that the
+specified portion is in view. The following options
+are supported:
+.TP
+\f5-rectangle\fP  \fIlist\fP
+Specifies a list with four \fIdist\fP coordinates describing the left, top,
+right, and bottom coordinates of the rectangular region,
+in coordinates relative to the widget origin, of the area
+that should be made visible.
+.TP
+\f5-point\fP \fIlist\P
+Specifies a list with two \fIdist\fP coordinates describing
+a point within the widget that should be made visible
+by preference if the entirety of the above-specified
+rectangle cannot be shown. Defaults to the top left of
+the specified rectangle.
+.TP
+\f5-where\fP
+If this option is given, \f5see\fP returns a list containing
+the left, top, right and bottom coordinates of
+the currently visible portion of
+.IR pathName .
+.PP
+If neither the \f5-rectangle\fP or the \f5-point\fP
+options are given, then the entire area of \fIpathName\fP
+will be made visible.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

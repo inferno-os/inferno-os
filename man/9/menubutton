@@ -1,0 +1,134 @@
+.TH MENUBUTTON 9
+.SH NAME
+menubutton \- Create and manipulate menubutton widgets
+.SH SYNOPSIS
+\f5menubutton\fI \fIpathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -disabledcolor      -justify
+-activeforeground -font               -relief
+-anchor           -foreground         -takefocus
+-background       -highlightcolor     -text
+-bitmap           -highlightthickness -underline
+-borderwidth      -image
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.BI -height \ state
+Specifies a desired height for the menubutton.
+If this option is not specified, the menubutton's desired height is computed
+from the size of the image or bitmap or text being displayed in it.
+.TP
+.BI -menu \ widgetname
+Specifies the path name of the menu associated with this menubutton.
+The menu must be a child of the menubutton.
+.TP
+.BI -state \ state
+Specifies one of three states for the menubutton:  \f5normal\fR, \f5active\fR,
+or \f5disabled\fR.  In normal state the menubutton is displayed using the
+\f5foreground\fR and \f5background\fR options.  The active state is
+typically used when the pointer is over the menubutton.  In active state
+the menubutton is displayed using the \f5activeforeground\fR and
+\f5activebackground\fR options.  Disabled state means that the menubutton
+should be insensitive:  the default bindings will refuse to activate
+the widget and will ignore mouse button presses.
+In this state the \f5disabledcolor\fR and
+\f5background\fR options determine how the button is displayed.
+.TP
+.BI -width \ dist
+Specifies a desired width for the menubutton.
+If this option is not specified, the menubutton's desired width is computed
+from the size of the image or bitmap or text being displayed in it.
+.SH INTRODUCTION
+.PP
+The \f5menubutton\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a menubutton widget.
+Additional
+options, described above, may be specified to configure aspects of the
+menubutton such as its colors, font, text, and initial relief.
+The \f5menubutton\fR command returns its
+\fIpathName\fR argument.  At the time this command is invoked,
+there must not exist a window named \fIpathName\fR.
+.PP
+A menubutton is a widget that displays a textual string, bitmap, or image
+and is associated with a menu widget.
+If text is displayed, it must all be in a single font, but it
+can occupy multiple lines on the screen (if it contains newlines) and
+one of the characters may optionally be underlined using the
+\f5underline\fR option.
+In normal usage, pressing
+mouse button 1 over the menubutton causes the associated menu to
+be posted just underneath the menubutton.
+If the mouse button is released over the menubutton then the menu
+remains posted; clicking on the menubutton again unposts the menu.
+Releasing the mouse button over a menu entry invokes the entry, while
+releasing mouse button elsewhere unposts the menu.
+.PP
+Menubuttons are typically organized into groups called menu bars
+that allow scanning:
+if the mouse button is pressed over one menubutton (causing it
+to post its menu) and the mouse is moved over another menubutton
+without releasing the mouse button, then the
+menu of the first menubutton is unposted and the menu of the
+new menubutton is posted instead.
+.SH "WIDGET COMMAND"
+.PP
+The \f5menubutton\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for menubutton widgets:
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5menubutton\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.
+If one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5menubutton\fR
+command.
+.SH "DEFAULT BINDINGS"
+Tk automatically creates class bindings for menubuttons that give them
+the following default behaviour:
+.IP [1]
+A menubutton activates whenever the mouse passes over it and deactivates
+whenever the mouse leaves it.
+.IP [2]
+Pressing mouse button 1 over a menubutton posts the menu specified by the
+.B -menu
+option.
+If the menu is already posted then it is unposted.
+.IP [3]
+Releasing mouse button 1 over the menubutton leaves the menu posted.
+Releasing the button over a menu entry, if the menu is posted, invokes that entry.
+Releaseing the button anywhere else unposts the menu.
+.IP [4]
+When a menubutton is posted, its associated menu claims the input
+focus to allow keyboard traversal of the menu and its submenus.
+See the
+.IR menu (9)
+manual entry for details on these bindings.
+.PP
+If the menubutton's state is \f5disabled\fR then none of the above
+actions occur:  the menubutton is completely non-responsive.
+.PP
+The behaviour of menubuttons can be changed by defining new bindings for
+individual widgets or by redefining the class bindings.
+.SH SEE ALSO
+.IR menu (9),
+.IR options (9),
+.IR types (9)

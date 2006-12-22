@@ -1,0 +1,218 @@
+.TH LIMBO 1E
+.SH NAME
+limbo \- Limbo compiler
+.SH SYNOPSIS
+.EX
+limbo [ \f2option ...\fP ] [ \f2file ...\fP ]
+.EE
+.SH DESCRIPTION
+.B Limbo
+compiles the named Limbo
+.I files
+into machine-independent object files for the Dis virtual machine.
+Depending on the options, the compiler may create output
+files or write information to its standard output.
+Conventional files and their extensions include the following.
+.TP 10
+.IB file .b
+Limbo source file.
+.TP
+.IB file .dis
+Object code for the Dis virtual machine.
+.TP
+.IB file .m
+Limbo source file for
+.B module
+declarations.
+.TP
+.IB file .s
+Assembly code.
+.TP
+.IB file .sbl
+Symbolic debugging information.
+.PP
+With no options,
+.B limbo
+produces a
+.B \&.dis
+file for each
+source file.
+.PP
+The compiler options are:
+.TP 1i
+.B -a
+Print on standard output
+type definitions and call frames
+useful for writing C language implementations of Limbo modules.
+Suppresses normal output file generation.
+.TP
+.B -C
+Mark the Dis object file to prevent run-time compilation.
+.TP
+.B -c
+Mark the Dis object file to guarantee run-time compilation.
+.TP
+.BI -D " flags"
+Turn on debugging
+.IR flags .
+Flags include
+.B A
+for arrays,
+.B a
+for
+.B alt
+statements,
+.B b
+for booleans,
+.B C
+for
+.B case
+body statements,
+.B c
+for
+.B case
+statements,
+.B D
+for use descriptors,
+.B d
+for declarations,
+.B e
+for expressions,
+.B E
+for extended expressions,
+.B F
+for function information,
+.B f
+for constant folding,
+.B m
+for modules,
+.B n
+for
+.B nil
+references,
+.B P
+for program counter manipulations,
+.B r
+for reference types,
+.B S
+for type signatures,
+.B s
+for a code generation summary,
+.B T
+for tuples,
+.B t
+for type checking,
+and
+.B v
+for variable initialization.
+.TP
+.B -e
+Increase the number of errors the compiler will report before exiting.
+.TP
+.B -G
+Annotate assembly language output with debugging information.
+A no-op unless
+.B -S
+is set.
+.TP
+.B -g
+Generate debugging information for the input files and place it in a file
+named by stripping any trailing
+.B \&.b
+from the input file name and appending
+.BR .sbl .
+.TP
+.B -i
+Disable inlining of functions. Currently functions containing a
+single return statement or two return statements and an if clause are candidates for inlining.
+.TP
+.BI \-I " dir"
+An
+.B include
+file whose name does not begin with slash
+is sought first relative to the working directory,
+regardless of the source
+.I file
+argument.
+If this fails,
+.B limbo
+sequences through directories named in 
+.B \-I
+options,
+then searches in
+.BR /module .
+An
+.B include
+file contains Limbo source code, normally holding one or more
+.B module
+declarations.
+.TP
+.BI \-o " obj"
+Place output in file
+.I obj
+(allowed only if there is a single input
+.IR file ).
+The output file will hold either object or assembly code,
+depending on
+.BR \-S .
+Default is to take the last element of the input file name,
+strip any trailing
+.BR .b ,
+and append
+.B .dis
+for object code and
+.B .s
+for assembly code.
+Thus, the default output file for
+.B dir/mod.b
+would be
+.BR mod.dis .
+.TP
+.B \-S
+Create assembly language output instead of object code.
+.TP
+\f5\-T\fP\ \f2module
+Print on standard output C stub functions,
+useful for implementing Limbo modules in the C language for linkage
+with the interpreter.
+.TP
+\f5\-t\fP\ \f2module
+Print on standard output
+a table of runtime functions,
+to link C language implementations of modules with the Limbo interpreter.
+Suppresses normal output file generation.
+.TP
+.B \-w
+Print warning messages about unused variables, etc.
+More \f5w\fP's (e.g., \f5\-ww\fP) increase the pedantry of the checking.
+.PP
+.SH FILES
+.TF /module
+.TP
+.B /module
+directory for Limbo
+.B include
+modules
+.SH SOURCE
+.TF /appl/limbo
+.TP
+.B /appl/limbo
+compiler source in Limbo
+.TP
+.B /limbo
+compiler source in C for host
+.SH "SEE ALSO"
+.IR asm (1),
+.IR emu (1),
+.IR mk (10.1),
+.IR intro (2),
+.IR sys-intro (2),
+.IR tk (2)
+.PP
+``The Limbo Programming Language''
+.br
+``Program Development in Inferno''
+.br
+``A Descent into Limbo''
+.br
+in Volume 2.

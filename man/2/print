@@ -1,0 +1,341 @@
+.TH PRINT 2
+.SH NAME
+Print \- printing system
+.SH SYNOPSIS
+.EX
+include "print.m";
+print := load Print Print->PATH;
+
+Print: module
+{
+	PATH: con "/dis/lib/print/print.dis";
+	CONFIG_PATH: con "/lib/print/";
+
+	init: fn(): int;
+	set_printfd: fn(fd: ref Sys->FD);
+	print_image: fn(p: ref Printer, display: ref Draw->Display, im: ref Draw->Image, pcwidth: int): int;
+	print_textfd: fn(p: ref Printer, fd: ref Sys->FD, ps: real, pr: int, wrap: int): int;
+	get_defprinter: fn(): ref Printer;
+	set_defprinter: fn(p: ref Printer);
+	get_size: fn(p: ref Printer): (int, real, real);	# dpi, xinches, yinches
+	get_printers: fn(): list of ref Printer;
+	get_papers: fn(): list of ref Paper;
+	save_settings: fn(): int;
+
+# Printer types
+
+Ptype: adt {
+	name: string;
+	modes: list of ref Pmode;
+	driver: string;
+	hpmapfile: string;
+};
+
+# Paper sizes
+
+Paper: adt {
+	name: string;
+	hpcode: string;
+	width_inches: real;
+	height_inches: real;
+};
+
+
+
+# Print modes
+
+Pmode: adt {
+	name: string;
+	desc: string;
+	resx: int;
+	resy: int;
+	blackdepth: int;
+	coldepth: int;
+	blackresmult: int;
+};
+
+# Print options
+
+Popt: adt {
+	name: string;
+	mode: ref Pmode;
+	paper: ref Paper;
+	orientation: int;
+	duplex: int;
+};
+
+# Printer instance
+
+PORTRAIT: con 0;
+LANDSCAPE: con 1;
+
+DUPLEX_OFF: con 0;
+DUPLEX_LONG: con 1;
+DUPLEX_SHORT: con 2;
+
+Printer: adt {
+	name: string;
+	ptype: ref Ptype;
+	device: string;
+	popt: ref Popt;
+	pdriver: Pdriver;
+};
+
+};
+
+
+Pdriver: module
+{
+	PATHPREFIX: con "/dis/lib/print/";
+	DATAPREFIX: con "/lib/print/";
+
+	init: fn(debug: int);
+	sendimage: fn(p: ref Print->Printer, tfd: ref Sys->FD, display: ref Draw->Display, im: ref Draw->Image, width: int, lmargin: int): int;
+	sendtextfd: fn(p: ref Print->Printer, pfd, tfd: ref Sys->FD, ps: real, pr: int, wrap: int): int;
+	printable_pixels: fn(p: ref Print->Printer): (int, int);
+
+};
+
+
+.EE
+.SH DESCRIPTION
+The
+.I Print
+module provides an interface to one or more printers.
+.SS "The Print module"
+.TP
+.BI init()
+.B Init
+must be called once to initialise the internal state of
+.BR Print .
+.TP
+.BI set_printfd( fd )
+.B set_printfd
+provides a file descriptor to be used for output. By default, output is sent to the file or device
+specified in the
+.B Printer
+adt.
+.TP
+.BI print_image( p, display, im, pcwidth )
+.B print_image
+prints a page containing a single image. The image is centred horizontally, and is scaled up to fill the percentage of the available
+width specified by 
+.I pcwidth.
+.TP
+.BI print_textfd( p, fd, ps, pr, wrap )
+.B print_textfd
+prints one or more pages of text on printer 
+.I p
+from the file open for reading on 
+.I fd.
+The point size is controlled by 
+.I p.
+If the printer does not support the specified point size an alternative size will be used.
+A point size of 0.0 can be used to select the printer's default size (usually 12 point).
+If 
+.I pr is non-zero, a proportionally-spaced font will be used (if available).
+If
+.I wrap
+is non-zero, lines will be wrapped if they overflow the page width (if this feature is supported by the printer).
+.TP
+.BI get_defprinter(  )
+.B get_defprinter
+returns the default printer (in
+.I /lib/print/defprinter).
+.TP
+.BI set_defprinter( p  )
+.B set_defprinter
+sets the default printer (in
+.IR /lib/print/defprinter ).
+.TP
+.BI get_size(  p  )
+.B get_size
+returns the resolution in dots per inch and the total number of pixels available for printing in the x and y direction.
+Before calling this function the 
+.I orientation
+should be set if required.
+.TP
+.BI get_printers(  )
+.B get_printers
+returns a list of all available printers (in 
+.I /lib/print/printer.cfg).
+.TP
+.BI get_papers(  )
+.B get_papers
+returns a list of all available paper sizes (in 
+.I /lib/print/paper.cfg).
+.SS "Data Structures"
+.TP
+.BI Ptype
+ - specifies a Printer Type, with fields:
+.RS
+.PD
+.TP
+.B name:
+Name used to refer to this printer type
+.TP
+.B desc
+Description
+.TP
+.B modes
+List of supported print modes
+.TP
+.B driver:
+The .dis file specification of the printer driver
+.TP
+.B hpmapfile:
+For HP printers, the name of the color map file
+.RE
+.TP
+.BI Paper
+ - specifies the dimensions of a type of paper
+.RS
+.PD
+.TP
+.B name:
+Name used to refer to this paper size
+.TP
+.B hpcode:
+For HP printers, PCL code used for this paper size
+.TP
+.B width_inches:
+Width of paper in inches
+.TP
+.B height_inches:
+Height of paper in inches
+.RE
+.TP
+.BI Pmode
+ - specifies a print mode
+.RS
+.PD
+.TP
+.B name:
+Name used to refer to this print mode
+.TP
+.B desc:
+Description
+.TP
+.B resx:
+X resolution in dots per inch
+.TP
+.B resx:
+Y resolution in dots per inch
+.TP
+.B blackdepth:
+Depth of black component in bytes
+.TP
+.B coldepth:
+Depth of color components in bytes
+.TP
+.B blackresmult:
+Resolution multiplier of black component (1 means same as base x resolution)
+.RE
+.TP
+.BI Popt
+ - specifies a set of Print Options
+.RS
+.PD
+.TP
+.B name:
+Name of a Printer to which these print options apply
+.TP
+.B mode:
+The name of a print mode
+.TP
+.B paper:
+The name of a paper size
+.TP
+.B orientation:
+Paper orientation - either PORTRAIT or LANDSCAPE
+.TP
+.B duplex (NB DUPLEX IS NOT CURRENTLY SUPPORTED):
+Duplex setting - DUPLEX_OFF or DUPLEX_SHORT or DUPLEX_LONG 
+.RE
+.TP
+.BI Printer
+ - specifies a printer instance
+.RS
+.PD
+.TP
+.B name:
+Name used to refer to this printer
+.TP
+.B ptype:
+The printer type
+.TP
+.B device:
+The name of the file to be used for output (eg /dev/lpt1data)
+.TP
+.B popt:
+The print options
+.TP
+.B driver:
+The printer driver module handle
+.RE
+.SS "Configuration Files"
+.PP
+There are configuration files to initialize the Printer Types, Print Modes, Paper Sizes Printers and Print Modes.
+They all have a similar format, with fields corresponding to the relevant adt.
+Here is an extract from the 
+.I paper.cfg
+file:
+.PP
+.EX
+A4=
+	hpcode=26
+	width_inches=8.3
+	height_inches=11.7
+A5=
+	hpcode=25
+	width_inches=4.15
+	height_inches=5.85
+.EE
+.PP
+Aliases can also be defined, such as
+.PP
+.EX
+myA4=A4
+.EE
+.PP
+The final configuration file, 
+.B defprinter,
+just contains the name of the default printer.
+.SH FILES
+.TP
+.B /lib/print/*.map
+HP color maps.
+.TP
+.BI /lib/print/ptype.cfg
+Print Type configuration file.
+.TP
+.BI /lib/print/pmode.cfg
+Print Mode configuration file.
+.TP
+.BI /lib/print/paper.cfg
+Paper Size configuration file.
+.TP
+.BI /lib/print/printer.cfg
+Printer Instance configuration file.
+.TP
+.BI /lib/print/popts.cfg
+Print options configuration file.
+.TP
+.BI /lib/print/defprinter
+Holds the name of the default printer. Not needed if there is only one printer available.
+.SH SOURCE
+.TF /appl/lib/print/print.b
+.TP
+.B /appl/lib/print/print.b
+Implementation of the
+.B Print
+module.
+.TP
+.B /appl/lib/print/*_driver.b
+Printer-specific driver modules
+.TP
+.B /appl/lib/print/scaler.b
+Scaler module
+.SH SEE ALSO
+.IR draw-image (2),
+.IR image (6)

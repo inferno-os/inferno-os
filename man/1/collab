@@ -1,0 +1,84 @@
+.TH COLLAB 1
+.SH NAME
+collab: connect \- connect to collaborative files and services
+.SH SYNOPSIS
+.B collab/connect
+[
+.BI -C " alg"
+] [
+.BI -k " keyfile"
+] [
+.B -v
+] [
+.I netaddress
+[
+.I localdir
+] ]
+.SH DESCRIPTION
+.I Connect
+dials network address
+.I netaddr
+(default:
+.BR "net!$collab!9999" ),
+which should be served by an instance of
+.IR collabsrv (8),
+and mounts the resulting connection on
+.BR /n/remote ;
+it then binds
+.BR /n/remote/collab
+on
+.I localdir
+(default:
+.BR /n/ftree/collab ).
+.PP
+The resulting hierarchy under
+.B /n/remote
+is determined by the site configuration, but usually includes the
+directory
+.BR /n/remote/services ,
+which gives access to the server side of collaborative activities, as described in
+.IR collabsrv (8),
+and the directory
+.BR /n/remote/collab ,
+which contains the file hierarchy that contains all collaborative resources offered to a client device.
+.PP
+If an instance of
+.IR wm-ftree (1)
+is running in the same name space, then
+after mounting the connection and adjusting the name space,
+.IR connect
+tells it that the name space has changed,
+so any displayed view of it can be updated.
+.PP
+.I Connect
+accepts the following options:
+.TP
+.BI -C " alg"
+Specify the algorithm, 
+.IR alg ,
+to be used following authentication for digesting or encryption. See 
+.IR ssl (3)
+for the supported algorithms.
+The default is
+.BR none :
+.IR ssl (3)
+is not used after authentication.
+.TP
+.BI -k " kfile "
+Specify the keyfile to be used when authenticating.
+The default is
+.BI /usr/ user /keyring/ netaddr ,
+if that exists, and otherwise
+.BI /usr/ user /keyring/default .
+See 
+.IR keyring-auth (2)
+for more details.
+.TP
+.B -v
+Causes
+.I connect
+to chat about its actions on standard output.
+.SH SOURCE
+.B /appl/collab/connect.b
+.SH SEE ALSO
+.IR collabsrv (8)

@@ -1,0 +1,205 @@
+.TH MATH-FP 2
+.SH NAME
+math-fp \- floating point
+.SH SYNOPSIS
+.EX
+include	"math.m";
+math := load Math Math->PATH;
+
+Infinity, NaN, MachEps, Pi, Degree: real;
+INVAL, ZDIV, OVFL, UNFL, INEX: int;
+RND_NR, RND_NINF, RND_PINF, RND_Z, RND_MASK: int;
+
+getFPcontrol, getFPstatus: fn():  int;
+FPcontrol, FPstatus: fn(r, mask: int): int;
+ilogb: fn(x: real): int;
+scalbn: fn(x: real, n: int): real;
+copysign: fn(x, s: real): real;
+finite, isnan: fn(x: real): int;
+nextafter: fn(x, y: real): real;
+
+fdim, fmin, fmax: fn(x, y: real): real;
+fabs: fn(x: real): real;
+ceil, floor: fn(x: real): real;
+remainder: fn(x, p: real): real;
+fmod: fn(x, y: real): real;
+modf: fn(x: real): (int,real);
+rint: fn(x: real): real;
+.EE
+.SH DESCRIPTION
+These constants and functions provide control over rounding modes,
+exceptions, and other properties of floating point arithmetic.
+.PP
+.B Infinity
+and
+.B NaN
+are constants containing
+the positive infinity and quiet not-a-number values
+of the IEEE binary floating point standard, double precision.
+.B MachEps
+is 2\u\s-2-52\s0\d, the smallest
+.I e
+such that 1+\f2e\f1 is not equal to 1.
+.B Pi
+is the nearest machine number to the infinitely precise value.
+.B Degree
+is
+.BR Pi/ 180.
+.PP
+Each thread has a floating point control word (governing rounding mode and
+whether a particular floating point exception causes a trap)
+and a floating point status word (storing accumulated exception flags).
+The functions
+.B FPcontrol
+and
+.B FPstatus
+copy bits to the control or status word,
+in positions specified by a mask, returning the previous values of the bits
+specified in the mask.
+The functions
+.B getFPcontrol
+and
+.B getFPstatus
+return the words unchanged.
+.PP
+.BR INVAL ,
+.BR ZDIV ,
+.BR OVFL ,
+.BR UNFL ,
+and
+.B INEX
+are non-overlapping single-bit masks
+used to compose arguments or return values.
+They stand for the five IEEE exceptions:
+`invalid operation' (0/0,0+NaN,Infinity-Infinity,sqrt(-1)),
+`division by zero' (1/0), `overflow' (1.8e308), `underflow' (1.1e-308),
+and `inexact' (.3*.3).
+.PP
+.BR RND_NR ,
+.BR RND_NINF ,
+.BR RND_PINF ,
+and
+.BR RND_Z
+are distinct bit patterns
+for `round to nearest even', `round toward negative infinity',
+`round toward infinity', and `round toward 0',
+any of which can be set or extracted from the floating point control
+word using
+.BR RND_MASK .
+For example,
+.B FPcontrol(0,
+.B UNFL)
+makes underflow silent;
+.B FPstatus(0,
+.B INEX)
+checks and clears the inexact flag; and
+.B FPcontrol(RND_PINF,
+.B RND_MASK)
+sets directed rounding.
+.PP
+By default,
+.B INEX
+is quiet,
+.BR OVFL ,
+.BR UNFL , 
+and
+.B ZDIV
+are fatal,
+and rounding is to nearest even.
+Limbo modules are
+entitled to assume this, and if they wish to use quiet
+underflow, overflow, or zero-divide, they must either
+set and restore the control register or clearly document that
+their caller must do so.
+.PP
+The
+.B ilogb
+function
+returns the nearest integral logarithm base 2 of the absolute value of
+.IR x:
+for positive finite
+.IR x ,
+1 \(<=
+.IB x *2\u-\s-2ilogb( x )\s0\d
+< 2,
+and
+.BI ilogb(- x )
+.B =
+.BI ilogb( x )\f1.
+.BI Scalbn( x , n )
+is a scaled power of two:
+.IB x *2\u\s-2n\s0\d\f1.
+.BI Copysign( x , s )
+has the magnitude of
+.I x
+and the
+sign bit of
+.IR s .
+.BI Nextafter( x , y )
+is the machine number nearest x closer to y.
+Finally,
+.BI finite( x )
+is 0 if
+.I x
+is
+.B Nan
+or
+.B Infinity,
+1 otherwise, and
+.BI isnan( x )
+is 1 if
+.I x
+is
+.B Nan
+and 0 otherwise.
+.PP
+The function
+.BI fdim( x , y)
+=
+.IB x - y
+if
+.I x
+is greater than
+.IR  y ,
+otherwise it is 0.
+The functions
+.BR fmin ,
+.BR fmax ,
+.BR fabs ,
+.BR ceil ,
+and
+.B floor
+are the
+customary minimum,
+maximum,
+absolute value,
+and integer rounding routines.
+.PP
+There are two functions for computing the modulus:
+.BI fmod( x , y )
+is the function defined by the C standard which gives the value
+.IB x - i*y
+for some
+.I i
+such that the remainder has the sign of
+.I x
+and magnitude less than the magnitude of
+.IR y ,
+while
+.BI remainder( x , y )
+is the function defined by the IEEE standard
+which gives a remainder of magnitude no more than half the
+magnitude of
+.IR y .
+The function
+.BI modf( x )
+breaks
+.I x
+into integer and fractional parts returned in a tuple, and
+.B rint
+rounds to an integer, following the
+rounding mode specified in the floating point control word.
+.SH SOURCE
+.B /libinterp/math.c
+.SH SEE ALSO
+.IR math-intro (2)

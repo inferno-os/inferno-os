@@ -1,0 +1,229 @@
+.TH TKCLIENT 2
+.SH NAME
+tkclient: makedrawcontext, toplevel, onscreen, startinput,
+wmctl, settitle, handler, snarfput, snarfget \-
+window manager interface for Tk applications.
+.SH SYNOPSIS
+.EX
+include "tkclient.m";
+tkclient := load Tkclient Tkclient->PATH;
+
+Resize,
+Hide,
+Help,
+OK,
+Plain:     con 1 << iota;
+
+Appl:   con Resize | Hide;
+
+init:       fn();
+makedrawcontext: fn():  ref Draw->Context;
+toplevel:   fn(ctxt: ref Draw->Context, topconfig: string,
+                title: string, buts: int): (ref Tk->Toplevel, chan of string);
+onscreen:   fn(top: ref Tk->Toplevel, how: string);
+startinput: fn(top: ref Tk->Toplevel, devs: list of string);
+wmctl:      fn(top: ref Tk->Toplevel, request: string): string;
+settitle:   fn(top: ref Tk->Toplevel, name: string): string;
+handler:    fn(top: ref Tk->Toplevel, stop: chan of int);
+
+snarfput:   fn(buf: string);
+snarfget:   fn(): string;
+.EE
+.SH DESCRIPTION
+The
+.B Tkclient
+module provides routines for making windows controlled by
+.IR wm (1)
+containing
+.IR tk (2)
+widgets.
+.PP
+.B Init
+should be called once to initialise the internal state of
+.BR tkclient .
+.PP
+.B Makedrawcontext
+establishes an initial connection with the window manager,
+creating a new
+.B Draw
+context suitable for creating new windows. It is only
+necessary to call this if the application has not already
+been provided with a context.
+.PP
+.B Toplevel
+creates a new window through
+.IR ctxt .
+.I Topconfig
+gives a list of
+.IR frame (9)
+options that are applied to the
+new tk window, as described in
+.IR tk (2).
+.I Title
+gives a label that will be displayed in the title bar
+of the window;
+.I buts
+determines which buttons are created in the titlebar,
+a bitwise combination of the constants
+.BR Resize ,
+.BR Help ,
+.BR OK,
+and
+.BR Hide .
+If
+.B Plain
+is given, the window is given no decoration at all.
+.B Toplevel
+returns a tuple, say
+.RI ( top ,\  ctl ),
+where
+.I top
+is the newly created top level tk window,
+and
+.I ctl
+is a channel down which requests from the
+title bar are sent.
+Messages received on
+.I ctl
+should be processed
+by the application or passed to the
+.B wmctl
+function. Requests are formatted
+as with
+.B quoted
+in
+.IR string (2).
+The messages include:
+.TP
+.B exit
+The window should be closed.
+.B Wmctl
+will kill all processes in the current
+process group.
+.TP
+.B !move \fIx\fP \fIy\fP
+The user has started to try to drag the window.
+.I X
+and
+.I y
+give the location of the initial pointer click.
+.TP
+.B !size
+The user wishes to resize the window.
+.TP
+.B help
+The help button has been clicked.
+.TP
+.B ok
+The OK  button has been clicked.
+.TP
+.B hide
+The Hide button has been clicked.
+The window will be deleted, and an entry
+shown on the toolbar.
+.PP
+In order to function correctly, an application
+should process not only events from the
+title bar channel, but also events from
+the Tk toplevel
+.I wreq
+channel, those received from the window
+manager itself (via
+.IB top .ctxt.ctl\fR),\fP
+and pointer and keyboard events received from
+the window manager (via
+.IB top .ctxt.ptr
+and
+.IB top .ctxt.kbd
+respectively).
+Control events can be passed to
+.BR wmctl ;
+pointer and keyboard events should be
+passed to their respective functions
+in
+.IR tk (2).
+.PP
+When created, the window is not visible
+and will not receive pointer or keyboard events.
+.B Onscreen
+makes it visible, and possibly chooses a
+position and a size for it.
+.I How
+specifies what sort of placement is required
+for the window; it can be one of
+.TP
+.B place
+tries to choose a suitable place on the screen
+with respect to other windows; it may size the
+window as it feels appropriate. This the default
+(if
+.I how
+is nil).
+.TP
+.B onscreen
+tries to keep the position and size the same
+as specified on the window, adjusting them only
+to bring the window fully on screen, and making sure
+that the window is no bigger than the entire display.
+.TP
+.B exact
+does not change the specified size or position
+of the window unless absolutely necessary.
+.PP
+.B Startinput
+informs the window manager that the window is
+ready to the event types specified in
+.IR devs .
+Currently understood are
+.B kbd
+for keyboard events, and
+.B ptr
+for pointer events.
+.PP
+The simplest well-behaved
+.I wm (1)
+client will therefore contain:
+.PP
+.EX
+	(top, ctl) := tkclient->toplevel(ctxt, nil, "My Program", Tkclient->Appl);
+	# ... populate the window with tk widgets
+	tkclient->startinput(top, "ptr" :: "kbd" :: nil);
+	tkclient->onscreen(top, nil);
+	for(;;){
+		alt{
+		s := <-ctl or
+		s = <-top.ctxt.ctl or
+		s = <-top.wreq =>
+			tkclient->wmctl(top, s);
+		p := <-top.ctxt.ptr =>
+			tk->pointer(top, *p);
+		c := <-top.ctxt.kbd =>
+			tk->keyboard(top, c);
+		}
+	}
+.EE
+.PP
+.B Settitle
+changes the name displayed in the title bar
+and the window's name when it is in the task bar.
+.PP
+.B Snarfget
+and
+.B snarfput
+retrieve and replace the contents of the window
+manager's snarf buffer.
+.SH FILES
+.TF /chan/snarf
+.TP
+.B /chan/snarf
+snarf buffer maintained by
+.IR wm (1)
+.TP
+.B /chan/wm
+channel for interaction with
+.IR wm (1)
+.SH SOURCE
+.B /appl/lib/tkclient.b
+.SH SEE ALSO
+.IR wm (1),
+.IR tk (2)

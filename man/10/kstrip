@@ -1,0 +1,32 @@
+.TH KSTRIP 10.1
+.SH NAME
+kstrip \- remove symbols from kernel images
+.SH SYNOPSIS
+.B kstrip
+.I file ...
+.PP
+.B kstrip
+.B -o
+.I ofile
+.I file
+.SH DESCRIPTION
+.I Kstrip
+removes symbol table segments from executable files,
+rewriting the files in place.
+Stripping a file requires write permission on the file
+and the directory it is in.
+.PP
+If the
+.B -o
+flag is given, 
+the single input file
+.I file
+is stripped and the result written to
+.IR ofile .
+.I File
+is unchanged.
+.SH SOURCE
+.B /utils/kstrip
+.SH "SEE ALSO"
+.IR ksize (10.1),
+.IR a.out (10.6)

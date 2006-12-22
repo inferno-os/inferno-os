@@ -1,0 +1,76 @@
+.TH DOSSRV 4
+.SH NAME
+dossrv, 9660srv \- DOS/Windows and ISO 9660 file systems
+.SH SYNOPSIS
+.B dossrv
+.RB [ \-v ]
+.RB [ \-s ]
+.RB [ \-F ]
+.RB [ \-c ]
+[
+.BI -f " devicefile"
+]
+[
+.BI -m " mountpoint"
+]
+[
+.BI -S " sectors/track"
+]
+.PP
+.B 9660srv
+.RB [ \-rab ]
+.I cdfile
+.I dir
+.SH DESCRIPTION
+.I Dossrv
+makes the contents of a DOS/Windows file system visible in the Inferno name space.
+The options are:
+.TP
+.B -v
+print a debugging trace, including Styx messages, on standard error
+.TP
+.B -F
+display FAT information
+.TP
+.B -c
+display cluster data and I/O activity
+.TP
+.B -s
+standard ouput is connected to a client; serve that
+.TP
+.BI -f " devicefile"
+the DOS/Windows file system image; defaults to
+.BR /dev/hd0disk .
+.TP
+.BI -m " mountpoint"
+The directory where the contents of the file system should appear; defaults to
+.BR /n/dos .
+.TP
+.BI -S  " sectors/track"
+The number of sectors per track. The default is 9.
+.PP
+.I 9660srv
+performs a similar function for files (notably CDROMs) in ISO9660 format,
+including the Rock Ridge extension and its Plan 9 variant.
+It makes the contents of
+.I cdfile
+visible in the name space at
+.IR dir .
+The options are those of
+.IR bind (1):
+.BR \-r ,
+to replace the contents of
+.IR dir ;
+.BR \-a ,
+to make a union directory with the CD contents after the contents of
+.IR dir ;
+.BR \-b ,
+to make a union directory with the CD contents before the contents of
+.IR dir .
+.SH SOURCE
+.B /appl/cmd/dossrv.b
+.br
+.B /appl/cmd/9660srv.b
+.SH BUGS
+.I Dossrv
+cannot handle all the FAT32 extensions.

@@ -1,0 +1,40 @@
+.TH TARFS 4
+.SH NAME
+tarfs \- mount tar archive
+.SH SYNOPSIS
+.B tarfs
+[
+.B -ab
+]
+.I tarfile
+.I mountpt
+.SH DESCRIPTION
+.I Tarfs
+makes the contents of the directories and files archived in the given Unix/POSIX
+.I tar
+archive
+.I tarfile
+visible in the name space under
+.IR mountpt .
+They can then be accessed in an obvious way by other commands
+such as
+.IR ls (1)
+and
+.IR cp (1).
+Only read access is supported.
+User and group names are simply the numeric user and group IDs in the file.
+The
+.B -a
+and
+.B -b
+options cause the
+.IR tarfile 's
+name space to be placed after or before the current contents of
+.IR mountpt ;
+the default is to replace that directory's contents.
+.SH SOURCE
+.B /appl/cmd/tarfs.b
+.SH SEE ALSO
+.IR gettar (1),
+.IR archfs (4),
+.IR intro (5)

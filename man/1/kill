@@ -1,0 +1,64 @@
+.TH KILL 1
+.SH NAME
+kill, broke \- terminate process(es)
+.SH SYNOPSIS
+.B kill
+[
+.B -g
+]
+[
+.I pid ...
+]
+[
+.I module ...
+]
+.PP
+.B broke
+.SH DESCRIPTION
+.I Kill
+terminates each process (for a numeric
+process ID
+.IR pid )
+or
+process running a given
+.I module
+(for a non-numeric module name),
+by writing a
+.L kill
+message to the corresponding process's control file
+in
+.IR prog (3).
+The
+.B -g
+option causes
+.I kill
+to write a
+.L killgrp
+message instead, killing all processes in the given process's process group
+(see
+.IR sys-pctl (2)).
+Processes running a
+.I module
+are identified by their
+.L status
+file, and the process ID of each such process is printed on standard output.
+.PP
+A process that incurs an exception (eg, array bounds check)
+is normally suspended in the `broken' state to allow debugging.
+.I Broke
+kills all such processes owned by the current user, releasing any resources
+they hold back to the system;
+it prints their process IDs.
+.SH FILES
+.TF "/prog/pid/status  "
+.TP
+.BI /prog/ pid /ctl
+.TP
+.BI /prog/ pid /status
+.SH SOURCE
+.B /appl/cmd/kill.b
+.br
+.B /appl/cmd/broke.b
+.SH "SEE ALSO"
+.IR ps (1),
+.IR prog (3)

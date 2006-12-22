@@ -1,0 +1,74 @@
+.TH BLUR 1
+.SH NAME
+blur \- an example program to demonstrate splitting a task over several machines.
+.SH SYNOPSIS
+.TP 40
+.B grid/demo/blur [imagefile]
+- master process
+.TP
+.B grid/demo/blur
+- slave process
+.SH DESCRIPTION
+.I Blur
+is a small program that works in two parts to manipulate an
+.IR image (6).
+The master process takes an image file as an argument and displays the image in a window on screen whilst waiting for and displaying results from the slave processes. Each slave process takes a block of the image at a time and blurs it, reduces the contrast and overlays the result of a simple edge detection analysis.
+.PP
+The only requirement for a master and slave process to work together is that they both have a common
+.B /tmp
+directory. Within this a
+.B /blur
+directory is created and used by both processes. All communication and synchronisation is done through files in this directory. There can be many slave processes running concurrently in order to improve performance.
+
+.SH COMMUNICATION
+All the communication takes place through files in the
+.B /tmp/blur 
+directory which is common to all the processses. Once the master process has started, it creates:
+.TP 17
+.B image.bit
+the image being processed
+.TP
+.B data.dat
+processing parameters e.g. block size, blur radius etc
+.TP
+.B working
+tells slave processes to continue reading
+.B todo/
+directory
+.TP
+.B todo/
+contains files showing which blocks still need processing
+.PP
+Within the
+.B todo/
+directory, the master process creates a file for each block to be processed. Starting at
+.BR block.0.a ,
+the name of each file denotes the block number and the version id. The version id is used to indicate the current version of a block being worked on. This is to allow the master process to ask another slave process to work on a block if it believes the current one has crashed or is taking too long. Once a block has been processed, the master removes the file from
+.BR todo/ .
+.PP
+Each slave process reads the list of files in
+.B todo/
+and for each block in turn, attempts to create a directory with the same name e.g.
+.B block.1.a/
+in
+.BR /tmp/blur .
+It is not possible to create a directory if it already exists and as the slave will only process blocks for which it
+.I has
+been able to create a directory, no two slave processes can be simultaneously working on the same block. Once a slave has managed to create a directory, it processes the relevant block of the image and writes the result to 
+.B img.bit
+in the directory. Having completed a block, the slave creates a file called
+.B done
+in order to let the master process know that it can read the completed result.
+.PP
+The master process keeps track of all the blocks being processed and if any of them have not been completed after a certain time, it creates a new file for that block in 
+.B todo/
+with a new version id. This guarantees that all blocks will be processed as long as at least one working slave process remains. Once all the blocks have been processed, the master process removes all the files created in
+.BR /tmp/blur .
+Each slave, upon seeing that the 
+.B working
+file has gone, will then exit.
+
+.SH SOURCE
+.B /appl/grid/demo/blur.b
+.br
+.B /appl/grid/demo/block.b

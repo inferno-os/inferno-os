@@ -1,0 +1,116 @@
+.TH KEYFS 4
+.SH NAME
+keyfs \- encrypted key storage
+.SH SYNOPSIS
+.B auth/keyfs
+[
+.B -D
+]
+[
+.B -m mountpoint
+] [
+.I keyfile
+]
+.SH DESCRIPTION
+.I Keyfs
+serves a two-level name space for storing authentication data, specifically
+the status and secrets of each user to whom
+.IR logind (8)
+can issue a certificate.
+The data is stored in
+.I keyfile
+(default:
+.BR /keydb/keys ),
+encrypted by a master key using AES
+(see
+.IR keyring-crypt (2)).
+.I Keyfs
+should be started only on the machine acting as authentication server (signer),
+before a listener is started for
+.IR signer (8).
+Note that
+.I signer
+and
+.I keyfs
+must share the name space.
+Furthermore, no other application except the console should see that name space.
+.PP
+.I Keyfs
+prompts for the master key, reads and decrypts
+.IR keyfile ,
+and serves files representing the contents at
+.I mountpoint
+in the name space (default:
+.BR /mnt/keys ).
+.PP
+Each
+.I user
+in
+.I keyfile
+is represented by a directory
+.IB mountpoint / user.
+Each such directory has the following files:
+.TF status
+.TP
+.B log
+A count of the number of failed authentications.
+Writing
+.B bad
+to the file increments the count; writing
+.B good
+resets it to 0.
+When the count reaches some implementation-defined limit,
+the account status is set to
+.B disabled
+(see the
+.B status
+file below).
+.TP
+.B expire
+The time in seconds since the epoch when the account will expire,
+or the text
+.B never
+if it has no expiration time.
+The string
+.B never
+or a number can be written to the file to set a new expiry time.
+.TP
+.B secret
+The secret (supposedly) known only to the user and the authentication service.
+A secret is any sequence of bytes between 0 and 255 bytes long;
+it is initially empty.
+The length of the file returned by
+.IR sys-stat (2)
+is the length of the secret.
+If the account has expired or is disabled, an attempt to read the file
+will give an error.
+.TP
+.B status
+The current status of the user's account, either
+.B ok
+or
+.BR disabled .
+Either string can be written to the file to change the state accordingly.
+.PD
+.PP
+To add a new account, make a directory with that name in
+.IR mountpoint .
+It must not already exist.
+To remove an account, remove the corresponding directory;
+to rename an account, rename the directory.
+.PP
+All changes made via file system operations in
+.I mountpoint
+result in appropriate changes to
+.IR keyfile .
+.PD
+.PP
+The
+.B -D
+option enables tracing of the file service protocol, for debugging.
+.SH SOURCE
+.B /appl/cmd/auth/keyfs.b
+.SH SEE ALSO
+.IR changelogin (8),
+.IR login (8),
+.IR signer (8)

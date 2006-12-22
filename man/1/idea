@@ -1,0 +1,65 @@
+.TH IDEA 1 
+.SH NAME
+idea \- encrypt/decrypt a file with the IDEA cipher
+.SH SYNOPSIS
+.B idea
+[
+.B -e
+]
+[
+.B -d
+]
+.I key
+[
+.I datafile
+]
+.SH DESCRIPTION
+.I Idea
+encrypts or decrypts data using the IDEA (International Data Encryption Algorithm) cipher
+first proposed by Xuejia Lai and James Massey in 1990.
+.PP
+The
+.B -e
+option encrypts the data
+and the
+.B -d
+option decrypts the data. Exactly one of these must be specified on the command line.
+.PP
+The
+.I key
+is any 16 character string which is used as the key for both encryption and decryption.
+.PP
+The data to be encrypted/decrypted is either in
+.I datafile
+or is read from standard input. If no input file is given, the output from
+.I idea
+is always sent to standard output. For encryption, if an input file is specified the output
+is sent to a file with the name
+.I datafile.id.
+For decryption, if an input file is specified it
+should have a .id extension and the output is sent to a file whose name is that of
+.I datafile 
+without the .id extension.
+.SH EXAMPLES
+.PP
+Encrypt the data in the file A10076795.gz:
+.IP
+.EX 
+idea -e 'abcd2345 $+*LMNO' A10076795.gz
+.EE
+.PP
+The encrypted data is put in the file A10076795.gz.id. Once this file is transmitted,
+the receiver can then decrypt it, as long as he has the key, with:
+.IP
+.EX
+idea -d 'abcd2345 $+*LMNO' A10076795.gz.id
+.EE
+.PP
+The decryped data is put in the file A10076795.gz.
+.PP
+Note that the quotes around the key are interpreted by the shell and simply delimit
+the key string.
+.SH SOURCE
+.B /appl/cmd/idea.b
+.br
+.B /utils/idea/idea.c

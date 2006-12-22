@@ -1,0 +1,120 @@
+.TH DISKBLOCKS 2
+.SH NAME
+Diskblocks: Block, Disk, tempfile \- temporary storage of variable-sized blocks
+.SH SYNOPSIS
+.EX
+include "diskblocks.m";
+diskblocks := load Diskblocks Diskblocks->PATH;
+
+Block: adt {
+   addr: big;   # address on file
+   n:    int;   # size in bytes
+};
+
+Disk: adt {
+   init:    fn(fd: ref Sys->FD, gran: int, maxblock: int): ref Disk;
+   new:     fn(d: self ref Disk, n: int): ref Block;
+   release: fn(d: self ref Disk, b: ref Block);
+   read:    fn(d: self ref Disk, b: ref Block,
+               a: array of byte, n: int): int;
+   write:   fn(d: self ref Disk, b: ref Block,
+               a: array of byte, n: int): ref Block;
+};
+
+init:     fn();
+tempfile: fn(): ref Sys->FD;
+.EE
+.SH DESCRIPTION
+.B Diskblocks
+manages a set of variable-sized blocks on a temporary file.
+.PP
+.B Init
+must be called before any other function in the module.
+.PP
+Each block has an address and a size in bytes, represented by a value of type
+.BR Block .
+.PP
+Each file is represented by the type
+.BR Disk ,
+providing the following operations:
+.TF 8n
+.TP
+.BI init( fd\f5,\fP\ gran\f5,\fP\ maxblock )
+Initialises the file
+.I fd
+for use as temporary block storage and returns a reference to a
+.B Disk
+to describe it.
+.I Fd
+must be open for reading and writing, and must refer to a file that allows random access.
+Blocks are allocated in multiples of the granularity
+.IR gran ,
+in bytes;
+the largest possible block is
+.I maxblock
+bytes, which must be a multiple of
+.IR gran .
+.TP
+.IB d .new( n )
+Allocate a block of
+.I n
+bytes on Disk
+.I d
+and return a reference to it.
+.TP
+.IB d .release( b )
+Free the Block
+.IR b ,
+making it available for reallocation.
+.TP
+.IB d .write( b\f5,\fP\ a\f5,\fP\ n )
+Write
+.I n
+bytes from array
+.I a
+to Block
+.I b
+on Disk
+.IR d ,
+returning a reference to the resulting Block.
+If
+.I b
+is nil or
+.I n
+exceeds
+.IR b 's
+current size,
+.B write
+allocates a new block (releasing
+.IR b ).
+Thus the returned value might differ from
+.IR b ,
+and must be used in subsequent IO requests.
+.TP
+.IB d .read( b\f5,\fP\ a\f5,\fP\ n )
+Read
+.I n
+bytes from Block
+.I b
+on Disk
+.I d
+into array
+.IR a ,
+returning the number of bytes read.
+.I N
+must not exceed
+.IB b .n .
+.PD
+.PP
+.B Tempfile
+returns a file descriptor referring to a newly-created temporary file,
+suitable for use by
+.BR Disk.init .
+The file will be removed automatically
+when the file descriptor is closed.
+.SH SOURCE
+.B /appl/lib/diskblocks.b
+.SH DIAGNOSTICS
+A function that returns an integer returns -1 on error; a function that returns a reference
+returns nil on error.
+The system error string is set in either case.

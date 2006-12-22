@@ -1,0 +1,64 @@
+.TH VID 3 MPC823
+.SH NAME
+vid \- Motorola 823 video output
+.SH SYNOPSIS
+.B bind -b #v /dev
+.PP
+.B /dev/viddata
+.br
+.B /dev/vidctl
+.br
+.B /dev/vidcram
+.SH DESCRIPTION
+The
+.I vid
+device serves two
+files giving basic access
+to the on-chip video output of the Motorola 823.
+It assumes a video hardware configuration exactly like that of the 823FADS
+board, with an I²C interface to an off-chip ADV7176 NTSC/PAL converter
+at I²C address 0x54.
+.PP
+The control device
+.B vidctl
+accepts the following commands:
+.TP
+.B on
+Disable LCD panel (if present) and enable output from the video frame buffer.
+.TP
+.B off
+Stop display from the video frame buffer and re-enable the LCD panel (if present).
+.TP
+.BI mode " m"
+Set the video output format to
+.IR m ,
+which is one of:
+.BR ntsc ,
+.BR pal-i ,
+.B pal-m
+or
+.BR pal-n .
+This command is only effective when video output is off.
+When next switched on, the both the video controller RAM and
+ADV7176 are reprogrammed to the new format.
+.PP
+Video data can be written to the video frame buffer
+by writes of the
+.B viddata
+file.
+The file offset selects the starting byte within the frame buffer.
+Reads return the corresponding data from the frame buffer.
+The application is responsible for formatting the data as the 823's video
+encoder requires, for the selected video format.
+.PP
+The file
+.B vidcram
+gives read and write access to the contents of the
+video control RAM.
+The file offset addresses bytes in the RAM; values can be read from or
+written to the RAM in groups of 4-byte big-endian words.
+.SH SOURCE
+.B /os/mpc/devvid.c
+.SH BUGS
+Square pixel mode cannot be used on the FADS board:
+no suitable video clock source is available.

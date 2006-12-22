@@ -1,0 +1,95 @@
+.TH FTREE 1
+.SH NAME
+ftree \- file tree browser
+.SH SYNOPSIS
+.B wm/ftree
+[
+.B [-e
+] [
+.B -E
+] [
+.B -p
+] [
+.B -d
+] [
+.I root
+]
+.SH DESCRIPTION
+.I Ftree
+displays the given
+.I root
+directory
+(default:
+.BR / )
+in a graphical form as a tree.
+Files and subdirectories are listed
+beneath the directory that contains them.
+Initially, the contents of a subdirectory are not displayed, but selecting the
+.B ⊕
+symbol next to its name with button 1 causes its contents to be displayed there, and
+the
+.B ⊕
+symbol changes to
+.BR ⊖ ;
+clicking that collapses the subdirectory display back to its name.
+(If the directory is empty, the circle will be empty.)
+Selecting a file or directory name with button 1 pops up a menu of
+operations:
+.BR Open ,
+.BR Copy ,
+.BR "Paste into" ,
+and
+.BR Remove .
+.B Open
+plumbs the full path name of the file or directory; it is up to the
+.IR plumber (8)
+to act appropriately based on the structure of the file name,
+as controlled by the user's
+.IR plumbing (6)
+file.
+Typically images will be displayed in a separate window, source files will be opened in an editor,
+and so on.
+Directory structure can be copied by invoking
+.B Copy
+on the source, then
+.B "Paste into"
+on the destination directory.
+The
+.B -d
+option disallows all operations except
+.BR Open .
+.PP
+Normally,
+.I ftree
+displays the usual
+.IR wm (1)
+controls, and interprets them as usual.
+The other options change that behaviour:
+.TP
+.B -e
+Ignore `exit' but offer move or resize.
+.TP
+.B -E
+Ignore exit, and do not offer move or resize.
+.TP
+.B -p
+Do exit, but do not offer move or resize.
+.PP
+The different options are used to program a user interface for handheld touch screen devices.
+For instance, a start panel can be created by invoking
+.I ftree
+with the
+.B -E
+option, ensuring that the
+.I ftree
+screen is always there, and all subsequent interaction can be controlled
+by the construction of the
+.I root
+namespace and suitable choice of plumbing rules.
+.SH SOURCE
+.B /appl/wm/ftree
+.SH SEE ALSO
+.IR filename (1),
+.IR wm (1),
+.IR plumbing (6),
+.IR plumber (8)

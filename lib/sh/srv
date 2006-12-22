@@ -1,0 +1,24 @@
+# shell functions for starting inferno services
+load std
+
+fn srv {
+	if {! ftest -f /net/cs} {
+		srv.cs
+	}
+	srv.styx
+}
+
+fn srv.cs {
+	ndb/dns -r
+	ndb/cs
+}
+
+fn srv.styx {
+	listen tcp!*!styx {export /&}
+}
+
+fn srv.auth {
+	listen -A tcp!*!inflogin auth/logind
+	listen -A tcp!*!infsigner auth/signer
+	# listen -A tcp!*!infcsigner auth/countersigner
+}

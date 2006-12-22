@@ -1,0 +1,170 @@
+.TH KEYBOARD 6
+.SH NAME
+keyboard \- how to type characters
+.SH DESCRIPTION
+Keyboards are idiosyncratic.
+The differing conventions of host operating systems
+make them more so for Inferno.
+In all implementations,
+it should be obvious how to type ordinary
+.SM ASCII
+characters,
+backspace, tab, escape, and newline.
+When typing into the Inferno environment, the key labelled
+.B Return
+or
+.B Enter
+generates a newline
+.RB ( 0x0A );
+if there is a key labelled
+.B Line
+.BR Feed ,
+it generates a carriage return
+.RB ( 0x0D );
+Inferno eschews CRLFs.
+All control characters are typed in the usual way;
+in particular, control-J is a line feed and control-M a carriage return.
+.PP
+In native mode,
+on the PC and some other machines, the following
+extra conventions might also be used.
+The key labelled
+.B Caps
+.B Lock
+acts as an additional control key.
+The character erase key generates backspace.
+The key labelled
+.B Del
+or
+.B Delete
+generates the delete character
+.RB ( 0x7F ).
+The plethora of function keys generate values in the Unicode
+user-defined space, as defined by
+.B /include/keyboard.h 
+and
+.BR /module/keyboard.m .
+They are fitfully supported by applications, but
+.B "Page\ Up"
+and
+.B "Page\ Down"
+are often understood by Tk applications.
+.PP
+Characters in Inferno are runes (see
+.IR utf (6)).
+Any 16-bit rune can be typed using a compose key followed by several
+other keys.
+The compose key is implementation-dependent, and
+is also generally near the lower right of the main key area:
+either
+.B Alt
+key on the PC,
+and in X11 implementations, whatever X11 regards
+as
+.B Alt
+or
+.BR Meta .
+After typing the compose key, type a capital
+.L X
+and exactly four hexadecimal characters (digits and
+.L a
+to
+.LR f )
+to type a single rune with the value represented by
+the typed number.
+There are shorthands for many characters, comprising
+the compose key followed by a two- or three-character sequence.
+There are several rules guiding the design of the sequences, as
+illustrated by the following examples.
+The full list is too long to repeat here, but is contained in the file
+.L /lib/keyboard
+in a format suitable for
+.IR grep (1).
+.IP
+A repeated symbol gives a variant of that symbol, e.g.,
+.B ??
+yields ¿\|.
+.IP
+ASCII digraphs for mathematical operators give the corresponding operator, e.g.,
+.B <=
+yields ≤.
+.IP
+Two letters give the corresponding ligature, e.g.,
+.B AE
+yields Æ.
+.IP
+Mathematical and other symbols are given by abbreviations for their names, e.g.,
+.B pg
+yields ¶.
+.IP
+Chess pieces are given by a
+.B w
+or
+.B b
+followed by a letter for the piece
+.RB ( k
+for king,
+.B q
+for queen,
+.B r
+for rook,
+.B n
+for knight,
+.B b
+for bishop, or
+.B p
+for pawn),
+e.g.,
+.B wk
+for a white king.
+.IP
+Greek letters are given by an asterisk followed by a corresponding latin letter,
+e.g.,
+.B *d
+yields δ.
+.IP
+Cyrillic letters are given by an at sign followed by a corresponding latin letter or letters,
+e.g.,
+.B @ya
+yields я.
+.IP
+Script letters are given by a dollar sign followed by the corresponding regular letter,
+e.g.,
+.B $F
+yields ℱ.
+.IP
+A digraph of a symbol followed by a letter gives the letter with an accent that looks like the symbol, e.g.,
+.B ,c
+yields ç.
+.IP
+Two digits give the fraction with that numerator and denominator, e.g.,
+.B 12
+yields ½.
+.IP
+The letter s followed by a character gives that character as a superscript, e.g.,
+.B s1
+yields ¹.
+.IP
+Sometimes a pair of characters give a symbol related to the superimposition of the characters, e.g.,
+.B cO
+yields ©.
+.IP
+A mnemonic letter followed by $ gives a currency symbol, e.g.,
+.B l$
+yields £.
+.PP
+Note the difference between ß (ss) and µ (micron) and
+the Greek β and μ.
+.SH FILES
+.TF "/lib/keyboard "
+.TP
+.B /lib/keyboard
+sorted table of characters and keyboard sequences
+.SH "SEE ALSO"
+.IR acme (1),
+.IR wm-brutus (1),
+.IR intro (1),
+.IR unicode (1),
+.IR cons (3),
+.IR utf (6),
+.IR kbdputc (10.2)

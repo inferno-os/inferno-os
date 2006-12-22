@@ -1,0 +1,44 @@
+.TH CHGRP 1
+.SH NAME
+chgrp \- change file's group or owner
+.SH SYNOPSIS
+.B chgrp
+[
+.B -uo
+]
+.I id
+.I file ...
+.SH DESCRIPTION
+.I Chgrp
+changes the group ownership of each
+.I file
+to the given
+.IR id ,
+if the file's server
+permits it.
+The
+.B -u
+and
+.B -o
+options are equivalent
+and cause
+.I chgrp
+to change file ownership instead,
+if the file's server permits it.
+.PP
+Normally, a file's group can be changed by the file's owner, if the
+owner is a member of the new group, or by the leader of both
+the file's current group and the new group,
+but various underlying devices, file servers and host operating systems
+might not permit the operation at all.
+Group and ownership changes allowed by a given device are documented by
+the device's manual page.
+See
+.IR sys-stat (2)
+for the variations amongst host operating systems.
+.SH SOURCE
+.B /appl/cmd/chgrp.b
+.SH SEE ALSO
+.IR chmod (1),
+.IR ls (1)
+.IR sys-stat (2)

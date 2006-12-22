@@ -1,0 +1,74 @@
+.TH AUTH 6
+.SH NAME
+auth \- authentication using station-to-station protocol
+.SH DESCRIPTION
+The following protocol,
+based on the Station-to-Station
+protocol, is used for mutual authentication of two parties,
+each possessing a certificate from the same certifying authority (CA).
+.PP
+In the description below:
+.TF CERTx
+.PD
+.TP
+.I alpha
+is a Diffie-Hellman base used system wide
+.TP
+.I p
+is a Diffie-Hellman modulus used system wide
+.TP
+.I Rx
+is a random number of the same order as
+.IR p .
+.TP
+.BI PK x
+the public key of
+.I x
+.TP
+.BI SK x
+the private key of
+.I x
+.TP
+.BI CERT x
+the public key
+of
+.I x
+signed by the certifying authority
+.TP
+.BI sig n ( x )
+represents
+.I x
+signed with
+.IR n 's
+private key
+.PP
+In the following, the parties are labelled 0 and 1.
+.PP
+Each sends its public key and certificate to the other together with
+a computation
+.IR "alpha**r0 mod p"
+.RI ( "alpha**r1 mod p" )
+based on the Diffie-Hellman parameters contained in the certificate:
+.IP
+.EX
+0 → 1  alpha**r0 mod p, CERTu0, PKu0
+1 → 0  alpha**r1 mod p, CERTu1, PKu1
+.EE
+.PP
+Each can now use the CA's public key and the certificate received to check
+that each has the other's public key.
+.PP
+Finally, each user signs values known to both that each can then verify:
+.IP
+.EX
+0 → 1  sig0(alpha**r0 mod p, alpha**r1 mod p)
+1 → 0  sig1(alpha**r0 mod p, alpha**r1 mod p)
+.EE
+.PP
+At this point 0 and 1 can calculate the shared secret
+.BR "alpha**(r0*r1)" ,
+and can use it to encrypt later communications.
+.SH SEE ALSO
+.IR keyring-auth (2),
+.IR keytext (6),
+.IR login (6)

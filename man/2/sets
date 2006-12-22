@@ -1,0 +1,226 @@
+.TH SETS 2
+.SH NAME
+Sets \-
+sets of non-negative integers
+.SH SYNOPSIS
+.EX
+include    "sets.m";
+\fIOR\fP include "sets32.m";
+sets := load Sets Sets->PATH;
+A, B: import Sets;
+
+Sets: adt {
+    init:       fn();
+    set:        fn(): Set;
+    str2set:    fn(str: string): Set;
+    bytes2set:  fn(d: array of byte): Set;
+    Set: adt {
+        # opaque data
+
+        X:          fn(s1: self Set, op: int, s2: Set): Set;
+        add:        fn(s: self Set, n: int): Set;
+        addlist:    fn(s: self Set, ns: list of int): Set;
+        del:        fn(s: self Set, n: int): Set;
+        invert:     fn(s: self Set): Set;
+
+        eq:         fn(s1: self Set, s2: Set): int;
+        holds:      fn(s: self Set, n: int): int;
+        isempty:      fn(s: self Set): int;
+        msb:        fn(s: self Set): int;
+        limit:      fn(s: self Set): int;
+
+        str:        fn(s: self Set): string;
+        bytes:      fn(s: self Set, n: int): array of byte;
+    };
+};
+.EE
+.SH DESCRIPTION
+.PP
+The
+.B Sets
+module provides routines for manipulating sets
+of small non-negative integers. There are currently
+two implementations available:
+the implementation declared in
+.B sets32.m
+stores sets of numbers from 0 to 31 inclusive;
+the implementation in
+.B sets.m
+stores arbitrary sets of non-negative integers.
+The description given is for the more general
+implementation; behaviour of the other is undefined
+if an integer higher than 31 is used.
+.PP
+.B Init
+must be called first, to allow
+.B Sets
+to initialise its internal state.
+.B Set
+returns a new set, containing nothing.
+.B Str2set
+converts a string to a new set; the string
+should have been created with
+.BR Set.str() .
+.B Bytes2set
+converts an array of bytes,
+.IR d ,
+as returned by
+.BR Set.bytes() ,
+to a new set.
+.PP
+Note that all set operations are copy operations;
+none change an existing set.
+.TP 10
+.IB s1 .X(\fIop\fP,\ \fIs2\fP)
+Returns a new set, the result of combining
+.I s1
+and
+.I s2
+according to boolean operator
+.IR op .
+.I Op
+can be any bitwise boolean combination of the
+two constants
+.B A
+and
+.BR B ,
+defined in the module. Notionally, each
+set is an infinitely long string of bits, each
+bit representing a non-negative integer:
+zero if the integer is present, and one if absent.
+For each corresponding bit in
+.I s1
+and
+.IR s2 ,
+.B X
+sets a corresponding bit in the returned set
+according to the calculation
+.IR "s1 op s2" .
+.TP
+.IB s .add(\fIn\fP)
+Returns the set
+.I s
+with
+.I n
+added.
+.TP
+.IB s .addlist(\fIns\fP)
+.B Addlist
+is the same as calling
+.B add
+on each member of the list
+.IR ns ,
+but somewhat more efficient.
+.TP
+.IB s .del(\fIn\fP)
+Returns
+.I s
+with
+.I n
+removed.
+.TP
+.IB s .invert()
+.B Invert
+returns a set holding all non-negative integers
+other than those already in
+.IR s .
+Hence
+.B set().invert()
+holds all non-negative integers.
+.TP
+.IB s1 .eq(\fIs2\fP)
+Returns non-zero if
+.I s1
+is identical to
+.IR s2 .
+.TP
+.IB s .holds(\fIn\fP)
+Returns non-zero if
+.I s
+holds
+.I n
+as a member.
+.TP
+.IB s .isempty()
+Returns non-zero if
+.I s
+holds no members.
+.TP
+.IB s .msb()
+Returns the "most significant bit": the membership
+status of all members that have not been explicitly
+set. For example,
+.B set().msb()
+is 0;
+.B set().invert().msb()
+is 1.
+.TP
+.IB s .limit()
+If
+.IB s .msb()
+is zero,
+.IB s .limit()
+returns one more than the largest member contained in
+.IR s ,
+otherwise it returns one more than the largest member
+.I not
+contained in
+.IR s .
+Thus
+.B set().limit()
+yields 0,
+and
+.B set().invert().del(5).limit()
+yields 6.
+.TP
+.IB s .str()
+Returns a string corresponding to
+.IR s .
+The format is
+.IB hexdigits : msb\fR,\fP
+where
+.I hexdigits
+give the least significant members of the set,
+most significant on the left, in hexadecimal format;
+.I msb
+gives the padding bit that fills the rest of the set.
+Note that this format is compatible between the
+two implementations.
+.TP
+.IB s .bytes(\fIn\fP)
+Returns a packed byte representaton of
+.I s .
+The array is held in little-endian order,
+with the topmost bit of the top byte
+holding the msb of the set.
+The array returned will contain at least
+.I n
+bytes.
+.SH EXAMPLES
+Given two sets,
+.I s1
+and
+.IR s2 ,
+.IB s1 ".X(A&B," " s2" )
+gives their intersection;
+.IB s1 ".X(A|B," " s2" )
+their union;
+.IB s1 ".X(A&~B," " s2" )
+gives the set of all members of
+.I s1
+that aren't in
+.IR s2 ;
+.IB s1 ".X(~(A|B), " s2 )
+gives the set of all integers in neither
+.I s1
+nor
+.IR s2 .
+.PP
+.EX
+	sys->print("%s\en", set().addlist(1::2::5::nil)
+		.invert().X(A|B, set().add(2)).str());
+.EE
+produces the string
+.RB `` dd:1 '',
+corresponding to the set of all non-negative
+integers except 1 and 5.

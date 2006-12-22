@@ -1,0 +1,35 @@
+.TH TELNET 1
+.SH NAME
+telnet \- make a remote telnet connection
+.SH SYNOPSIS
+.B telnet
+.I machine
+.SH DESCRIPTION
+.B Telnet
+uses the Telnet protocol to talk to a remote
+.IR machine ,
+addressed using any form acceptable to
+.IR sys-dial (2):
+.IB net ! host ! port
+in general.
+The default
+.I net
+is
+.BR tcp ,
+and the default
+.I port
+is 23, the standard Telnet login port.
+.PP
+.I Telnet
+connects to the given
+.I machine
+and interprets the Telnet protocol.
+It reads data from its standard input
+and sends it to the remote machine, and
+copies to the standard output the data it receives from the remote machine.
+.SH SOURCE
+.B /appl/cmd/telnet.b
+.SH SEE ALSO
+.IR cpu (1)
+.br
+``Telnet protocol specification'', RFC854 (1 May 1983) and related RFCs.

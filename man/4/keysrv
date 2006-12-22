@@ -1,0 +1,116 @@
+.TH KEYSRV 4
+.SH NAME
+keysrv \- secret key server
+.SH SYNOPSIS
+.B auth/keysrv
+.SH DESCRIPTION
+.I Keysrv
+is a file service run on a connection to an authentication server.
+It allows a remote user
+to change a secret stored on the server by
+.IR keyfs (4),
+which must have been started before
+.IR keysrv ,
+in a name space with the authentication data available under
+.BR /mnt/keys .
+.PP
+.I Keysrv
+serves a single file,
+.BR secret ,
+on a connection accessed through file descriptor 0 (ie, the standard `input').
+When invoked, it
+first authenticates the connection using
+.IR security-auth (2),
+requiring the client to use
+.B sha1
+and
+.BR rc4_256 .
+If authentication succeeds,
+.I keysrv
+exports a name space containing a file
+.BR secret .
+The authentication ensures that only a user that possesses a valid certificate can connect to the service.
+.PP
+If the authenticated user (ie, the user name in the verified certificate)
+has an entry in
+.BR /mnt/keys ,
+as served by
+.IR keyfs (4),
+and that user has a non-empty secret,
+then the file
+.B secret
+will accept reads and writes.
+(Otherwise, every read or write returns an appropriate error.)
+Every successful read returns 0 bytes; thus a read can be used to check that the user is known and has a secret key.
+Each write contains data of the following form:
+.IP
+.EX
+.fi
+.I oldhash
+[
+.I newsecret
+]
+.EE
+.PP
+.I Oldhash
+is the SHA1 hash
+(see
+.IR keyring-sha1 (2))
+of the user's existing secret, as 20 hexadecimal digits.
+If the value of
+.I oldhash
+does not match that of the stored secret, the write returns an error and suitable diagnostic.
+.I Oldhash
+is optionally followed by a
+.IR newsecret ,
+in clear text as a sequence of bytes (typically the secret as
+.IR utf (6)),
+separated from
+.I oldhash
+by a single space.
+If the
+.I oldhash
+matches that of the secret currently stored,
+.I newsecret
+replaces it.
+The write returns an error if
+.I oldhash
+does not match the stored value, or if something else goes wrong.
+.PP
+.I Keysrv
+can be invoked via
+.IR listen (1):
+.IP
+.EX
+listen -t -A 'tcp!*!infkey' {auth/keysrv}
+.EE
+.PP
+Normally that is done automatically when
+starting an authentication service using
+.B svc/auth
+(see
+.IR svc (8)).
+.PP
+.IR Passwd (1)
+dials the service, authenticates, and mounts the resulting connection on
+.BR /mnt/keysrv ,
+where it accesses the
+.B secret
+file to change the secret.
+.SH FILES
+.TF /mnt/keysrv
+.TP
+.B /mnt/keys
+mount point for
+.IR keyfs (4)
+.TP
+.B /mnt/keysrv
+exported mount point for
+.I keysrv
+.SH SOURCE
+.B /appl/cmd/auth/keysrv.b
+.SH SEE ALSO
+.IR listen (1),
+.IR passwd (1),
+.IR keyfs (4),
+.IR logind (8)

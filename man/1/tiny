@@ -1,0 +1,210 @@
+.TH TINY 1
+.SH NAME
+tiny: sh, rm \- reduced command line interface to the Inferno system
+.SH SYNOPSIS
+.B tiny/sh
+[
+.B -n
+] [
+.BI -c command
+] [
+.I file
+]
+.PP
+.B tiny/rm
+[
+.I file
+\&...
+]
+.SH DESCRIPTION
+The
+.I tiny
+commands are smaller, simpler versions of more capable but larger Inferno commands.
+They are provided for use on devices where a certain level of functionality
+might be useful for configuration or maintenance (or development), but
+device constraints are such as to make the use of the normal, fleshier versions
+of the commands unattractive.
+For example, the Dis object files are typically 5 times smaller (or better) than the
+mainstream alternatives.
+They live in the directory
+.BR /dis/tiny ,
+but could be placed in the
+.B /dis
+of a small device
+(eg, via
+.IR root (3))·
+.PP
+.I Rm
+removes files and empty directories, subject to the permission rules given in
+.IR rm (1).
+There are no options.
+.PP
+.I Sh
+provides a simple user level interface (a shell) to the Inferno system.
+(It was once the only Inferno shell.)
+It reads input lines, identifies a command and arguments for that command, and arranges for execution of the corresponding Inferno module.
+There are features that allow input/output redirection, creating pipelines, and performing tasks in background.
+It is nevertheless a rudimentary shell designed for starting
+and debugging applications.
+It is not intended to serve as a general-purpose programmable shell.
+.PP
+If a file is named as a command line argument, that file is the source of input; otherwise, standard input is read.
+.PP
+Options are:
+.TP
+.B -n
+Don't fork the namespace.  By default, 
+.I sh
+forks the namespace, making subsequent namespace changes invisible to the previous namespace group.
+.TP
+.BI -c command
+Execute the single
+.I command
+rather than prompting to read commands from the standard input.
+.SS "Command line syntax"
+Each line consists of one or more command pipelines each separated by either an ampersand (&) which indicates that the pipeline should be run in background or a semi-colon (;). The semi-colon need not be provided for the last command pipeline on a line.
+.PP
+Command pipelines are not allowed to span lines.
+.PP
+Each command pipeline consists of one or more commands separated by a vertical bar
+.RB ( | )
+character. The standard output of one command is made the standard input of the next command to the right.
+.PP
+Redirection of input/output to pipes takes precedence over redirection from/to files.
+.PP
+In the limit case, a command pipeline consists of a single command with no pipes.
+.PP
+A command consists of one or more fields. The first (leftmost) field is the command field. It is used to determined the executable file to be loaded and run; see below. The remaining fields are parsed and become command line arguments that are passed to the module's init function as a list of strings.
+.PP
+Any input following a
+.B #
+on a line is discarded as comment.
+.SS "Finding the module"
+The command field is converted to the pathname of the Dis file of some module. That field can be either an absolute pathname, starting from
+.BR / ,
+or a relative pathname from the current directory.
+.PP
+As a convenience, the user need not specify the
+.B .dis
+suffix to the filename. If missing, it will be added by the shell.
+.PP
+If the load fails there is, in general, a second attempt to load the module by resolving the pathname relative to the
+.B /dis
+directory (or any directory bound to the
+.B /dis
+directory in the current namespace).
+.PP
+There are two exceptions to this second attempt. The second load attempt is not performed if the command field provides an absolute pathname or a relative pathname starting with dot-slash
+.RB ( ./ ).
+Such explicit naming is taken to mean that the user will accept no substitutions.
+.PP
+The shell requires that the Dis file implement a module with an interface equivalent to the
+.L Command
+module as specified in
+.B /module/sh.m
+(see
+.IR command (2)).
+Otherwise, the named file will not load.
+.PP
+In lieu of a path mechanism, a process can create a union directory at
+.BR /dis .
+.SS "File name expansion"
+Command line arguments (including the command field itself) are expanded by the shell according to the regular expression rules described in
+.IR filepat (2).
+.PP
+This expansion is not applied to the filenames used for input/output redirection.
+.SS "Quoting"
+The shell special characters can be stripped of their meaning and treated as literals by enclosing them in single quotes. Inside a quoted string, the special meaning of the single quote can be removed by immediately following it with another single quote. Command lines with un-terminated quoted strings are rejected and cause an error message.
+.PP
+For example:
+.IP
+.EX
+$ echo ''''
+\&'
+$ echo 'don''t'
+don't
+$ echo 'hello' 'world
+sh: unmatched quote
+$ echo 'a'b
+ab
+$ echo a'b'
+ab
+$
+.EE
+.SS "Shell special characters"
+The following characters are treated specially by
+.I sh
+and must be quoted to be taken literally:
+.TP
+blank
+white space, except in a quoted string
+.TP
+tab
+white space, except in a quoted string
+.TP
+newline
+command line terminator
+.TP
+.B #
+Start of comment
+.TP
+.B '
+Start of/end of quoted string (single quote)
+.TP
+.B |
+Interface between commands in a command pipeline.
+.TP
+.B &
+Terminator for command pipelines to be run in background.
+.TP
+.B ;
+Terminator for command pipelines to be run synchronously by the shell.
+.TP
+.B >
+Output re-direction: create file if it does not exist; truncate file if it exists
+.TP
+.B >>
+Output re-direction: create file if it does not exist; append to file if it exists
+.TP
+.B <
+Input re-direction.
+.SS "Prompt"
+The shell uses a prompt consisting of the system name as provided by
+.B /dev/sysname
+suffixed by
+.BR $ .
+.PP
+.SS "Input/output re-directions"
+By default, standard input is the console keyboard and standard output the console display. Each command can specify that standard input be taken from a file and standard output be written to a file.
+.PP
+Attempts to redirect standard input to a non-existing file will fail. Redirecting standard output to a non-existing file will cause that file to be created. If the destination file already exists, it will be overwritten. Any previous contents are lost.
+.PP
+In cases of competing re-direction mechanisms (re-direct to a file and to a pipe), the pipe has precedence.
+.PP
+.SS "Background tasks"
+In general, the shell waits for the termination of a command pipeline before continuing execution, for example, prompting the user for the next command. However, if the command pipeline is terminated by an ampersand
+.RB ( & )
+character, the wait stage is skipped and the shell continues execution immediately, in this case the command pipeline executes as a background task.
+.PP
+.SS "Name space concerns"
+When started, the shell creates an independent file name space that is a copy of the file name space of the shell's creator.
+.PP
+Command pipelines started by the shell are executed by threads that share the shell's name space. If those commands modify the file name space (and they have not mimicked the shell in creating their own independent name space), those modifications will be perceived by the shell when it continues execution. See
+.IR bind (1)
+and
+.IR sys-pctl (2).
+.SH FILES
+.BI /prog/ n /wait
+.SH SOURCE
+.B /appl/tiny/sh.b
+.br
+.B /appl/tiny/rm.b
+.SH "SEE ALSO"
+.IR bind (1),
+.IR sh (1),
+.IR filepat (2),
+.IR command (2),
+.IR sys-pctl (2),
+.IR cons (3),
+.IR pipe (3),
+.IR prog (3)

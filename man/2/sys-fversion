@@ -1,0 +1,71 @@
+.TH SYS-FVERSION 2
+.SH NAME
+fversion \- initialize Styx connection and negotiate version
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+fversion: fn(fd: ref FD, bufsize: int, version: string): (int, string);
+.EE
+.SH DESCRIPTION
+.B Fversion
+initialises the Styx connection represented by
+.I fd
+and negotiates the maximum message size and the version of the protocol to be used.
+.PP
+The
+.I bufsize
+determines the size of the I/O buffer used to stage Styx requests to the server,
+subject to the constraints of the server itself.
+The
+.I version
+is a text string that represents the highest version level the protocol will support.
+.PP
+.B Fversion
+returns a tuple
+.RI ( n , useversion )
+where
+.I n
+is -1 if the request was rejected, and otherwise
+.I n
+is
+.I bufsize
+and
+.I useversion
+is a string representing the negotiated, possibly lower, version of the protocol.
+.PP
+Default values of zero for
+.I bufsize
+and the empty string for
+.I version
+will negotiate sensible defaults for the connection.
+.PP
+The interpretation of the version strings is defined in
+.IR version (5).
+.PP
+It is rare to use
+.BR fversion
+directly; usually the default negotiation performed
+by the kernel during
+.B mount
+(see
+.IR sys-bind (2))
+is sufficient.
+.SH SEE ALSO
+.IR sys-fauth (2),
+.IR intro (5),
+.IR version (5).
+.SH DIAGNOSTICS
+.B Fversion
+returns a value of -1 for
+.I n
+on error, including failure to negotiate acceptable values,
+and sets the system error string.
+.SH BUGS
+The returned value of
+.I n
+when no error occurs should be the negotiated message size
+but is currently the original
+.I bufsize
+parameter.

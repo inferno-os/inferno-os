@@ -1,0 +1,179 @@
+.TH TV 3
+.SH NAME
+tv \- Hauppage TV device
+.SH NAME
+.B
+bind -b #V /dev
+.PP
+.B /dev/tv
+.br
+.B /dev/tvctl
+.SH DESCRIPTION
+The
+.I tv
+device serves two files giving access to a Hauppage television card
+in NTSC mode (only).
+.PP
+The control device
+.B tvctl
+accepts the following commands to control
+tuning and image processing:
+.TP
+.B init
+Reset the device to the default settings.
+.TP
+.BI window " minx miny maxx maxy"
+Set the display window size (default: none).
+.TP
+.BI colorkey " rl rh gl gh bl bh"
+Set the key limits for chromakey display to
+the given `low' and `high' values for
+each of red, green and blue
+(default: 15 63 255 15 15 63), and enable
+use of the colour key.
+The value 255 for a lower limit disables the limit.
+.TP
+.BI capture " minx miny maxx maxy"
+Set the capture window (default: none);
+see the description of reading the
+.B tv
+file, below.
+.TP
+.BI capbrightness " n"
+Set the brightness of a captured frame to
+.IR n ,
+on a scale from 0 to 100
+(default: 13).
+.TP
+.BI capcontrast " n"
+Set the contrast of a captured frame to
+.IR n ,
+on a scale from 0 to 100
+(default: 57).
+.TP
+.BI capsaturation " n"
+Set the saturation of a captured frame to
+.IR n ,
+on a scale from 0 to 100
+(default: 51).
+.TP
+.BI caphue " n"
+Set the hue of a captured frame to
+.IR n ,
+on a scale from 0 to 100
+(default: 0).
+.TP
+.BI capbw " n"
+Capture colour
+.RI ( n=0 )
+or monochrome
+.RI ( n=1 );
+(default: 0).
+.TP
+.BI brightness " n"
+Set the image brightness to
+.IR n ,
+on a scale from 0 to 100
+(default: 0)
+.TP
+.BI contrast " n"
+Set the image contrast to
+.IR n ,
+on a scale from 0 to 100
+(default: 54)
+.TP
+.BI saturation " n"
+Set image saturation to
+.IR n ,
+on a scale from 0 to 100
+(default: 54)
+.TP
+.BI source " n"
+Set the input source to
+.I n
+(default: video input 0).
+.TP
+.BI svideo " n"
+If
+.I n
+is non-zero, set the input capture format to
+S-Video.
+.TP
+.BI format " n"
+Set the input format to
+.I n
+(0, NTSC-M; 1, NTSC-443; 2, external control).
+Default: 0.
+.TP
+.BI channel " c f"
+Sets the right frequency for HRC CATV channel
+.IR c ,
+with fine tuning by signed offset
+.I f
+(in MHz).
+.TP
+.BI volume " m" [ " n " ]
+Set the volume of left and right channels to
+.I m
+and
+.IR n ,
+on a scale from 0 to 100
+(default: 80).
+If only
+.I m
+is given, set both left and right volumes to
+.IR m .
+.TP
+.BI bass " n"
+Set the bass to
+.IR n ,
+on a scale from 0 to 100 (default: 50).
+.TP
+.BI treble " n"
+Set the treble to
+.IR n ,
+on a scale from 0 to 100 (default: 50).
+.TP
+.BI freeze " n"
+If
+.I n
+is non-zero, freeze the current frame;
+if
+.I n
+is zero, unfreeze the video.
+.PP
+The data file
+.B tv
+is read-only.
+Reading is valid only after a capture window has been set
+(see
+.B capture
+above).
+Each read at file offset 0 causes the contents of the input video image
+within the previously-set capture window to be
+captured.
+The frame data is successively returned
+in this and subsequent reads until a short read signals that
+all frame data has been transferred.
+The data is returned in Plan 9
+.I picfile
+format, with a two line textual header followed by an empty
+line, followed by the image data in binary format.
+The header has the form:
+.IP
+.B "TYPE=ccir601"
+.br
+.BI "WINDOW=" "minx miny maxx maxy"
+.PP
+The
+.B WINDOW
+coordinates are those of the capture window.
+The image data is organised as interleaved scan lines from top to bottom of the window,
+with UY0 and VY1 values alternating, with two bytes per value, stored high-order byte
+first, encoded according to the IEEE digital component video standard.
+.SH SOURCE
+.B /os/port/devtv.c
+.br
+.B /os/pc/tv.h
+.SH SEE ALSO
+.IR audio (3)

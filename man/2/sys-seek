@@ -1,0 +1,48 @@
+.TH SYS-SEEK 2
+.SH NAME
+seek \- change file offset
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+seek:  fn(fd: ref FD, off: big, start: int): big;
+.EE
+.SH DESCRIPTION
+.B Seek
+sets the 64-bit offset for the file
+associated with
+.I fd
+as follows:
+.IP
+If
+.I start
+is
+.BR Sys->SEEKSTART ,
+the offset is set to
+.I off
+bytes.
+.IP
+If
+.I start
+is
+.BR Sys->SEEKRELA ,
+the pointer is set to its current location plus
+.IR off .
+.IP
+If
+.I start
+is
+.BR Sys->SEEKEND ,
+the pointer is set to the size of the
+file plus
+.IR off .
+.PP
+The new file offset value is returned.
+.PP
+Seeking in a pipe is not allowed.
+Seeking in a directory is allowed only if the new offset is zero.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-open (2),
+.IR bufio (2),

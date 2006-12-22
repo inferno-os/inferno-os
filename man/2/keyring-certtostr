@@ -1,0 +1,56 @@
+.TH KEYRING-CERTTOSTR 2
+.SH NAME
+keyring: certtostr, pktostr, sktostr, strtocert, strtopk, strtosk \- encryption key conversion functions
+.SH SYNOPSIS
+.EX
+include "keyring.m"
+keyring:= load Keyring Keyring->PATH;
+
+strtocert: fn(s: string)         : ref Certificate;
+certtostr: fn(c: ref Certificate): string;
+strtopk:   fn(s: string)         : ref PK;
+pktostr:   fn(pk: ref PK)        : string;
+strtosk:   fn(s: string)         : ref SK;
+sktostr:   fn(sk: ref SK)        : string;
+.EE
+.SH DESCRIPTION
+Certificates, public keys, and private keys are passed over networks and between applications using a Unicode representation. This collection of functions provide a means to convert adts supplied by the system to and from their portable textual representation. These routines are typically used as part of an I/O package for implementing security.
+.PP
+.B Strtocert
+takes a string argument containing a user name, a hash algorithm, a certifying authority and an expiration time. Fields are separated by a newline. The return value is a
+.BR Certificate .
+If the string is of improper format, the result is
+.IR nil .
+.PP
+.B Certtostr
+performs the inverse operation: takes the
+.B Certificate
+.I c
+and produces a text string suitable for communication over a network.
+.PP
+.B Strtopk
+and
+.B strtosk
+take as their arguments a string
+.I s
+representing the public and private keys respectively.
+.I S
+must contain an algorithm name, a user name and the key. Fields are separated by a newline.
+.B Strtopk
+returns a reference to the resulting
+.BR PK ;
+.B strtosk
+returns a reference to the resulting
+.BR SK .
+If the format of
+.I s
+is invalid, the result is
+.IR nil .
+.PP
+.B Pktostr
+and
+.B sktostr
+perform the inverse operations:
+they take a public key (secret key) and produce a printable representation as a string.
+.SH SOURCE
+.B /libinterp/keyring.c

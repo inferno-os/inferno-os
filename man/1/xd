@@ -1,0 +1,92 @@
+.TH XD 1 
+.SH NAME
+xd \- dump file contents in multiple formats
+.SH SYNOPSIS
+.B xd
+[
+.I option
+\&... ] [
+.BI - format
+\&... ] [
+.IR file ...
+]
+.SH DESCRIPTION
+.B Xd
+dumps the contents of each
+.I file
+in one or more formats.
+If no file is specified, standard input is read.
+Input is processed in 16 byte chunks.
+Each chunk is output in each of the specified
+.IR format s,
+one format per line.
+Each line of output is prefixed its file offset.
+This is zero padded for the first format; subsequent formats are blank padded.
+If more than one
+.I file
+is specified, the name of each file is output at the start of its dump.
+.PP
+Output formats are specified by a two character name,
+.B 4x
+by default.
+The first character defines the byte width of the format; the second character
+defines the style of output.
+.PP
+The available width specifiers are:
+.TF "1 or b"
+.TP
+.BR 1 " or " b
+1 byte units.
+.TP
+.BR 2 " or " w
+2 byte big-endian units.
+.TP
+.BR 4 " or " l
+4 byte big-endian units.
+.TP
+.BR 8 " or " v
+8 byte big-endian units.
+.PD
+.PP
+The available styles are:
+.TP 0
+.B o
+Octal
+.PD 0
+.TP
+.B d
+Decimal
+.TP
+.B x
+Hexadecimal
+.PD
+.PP
+In addition to the above format specifiers,
+.B -c
+can be used to denote ASCII format.
+This is the same as
+.B 1x
+except that codes are printed as printable ASCII characters or Limbo escape sequences
+where possible.
+.SH OPTIONS
+.TP 10
+.B -u
+Unbuffered output.  The output buffer is flushed after the dump of each 16 byte input chunk
+has been generated.
+.TP
+.B -r
+Mark repeated 16 byte input chunks.
+The first chunk is output as per the format specifiers, followed by an asterisk representing
+1 or more occurrences of identical data.
+.TP
+.B -s
+Reverse the order of input bytes in chunks of 4 before processing for output.
+.TP
+.BI -a style
+Print file addresses in the given
+.IR style .
+.SH SOURCE
+.TP
+.B /appl/cmd/xd.b
+.SH BUGS
+There is no means of dumping 2 or 8 byte wide values in little-endian form.

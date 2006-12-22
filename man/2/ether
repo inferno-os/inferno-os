@@ -1,0 +1,77 @@
+.TH ETHER 2
+.SH NAME
+ether \- Ethernet address manipulation
+.SH SYNOPSIS
+.EX
+include "ether.m";
+ether := load Ether Ether->PATH;
+
+Eaddrlen:	con 6;
+
+init:   fn();
+parse:  fn(s: string): array of byte;
+text:   fn(a: array of byte): string;
+addressof:  fn(dev: string): array of byte;
+eqaddr: fn(a, b: array of byte): int;
+.SH DESCRIPTION
+.B Ether
+provides a small set of functions that manipulate Ethernet MAC addresses,
+for the use of the few applications such as
+.IR bootpd (8)
+that must work with them.
+.PP
+.B Init
+must be called before using any other function in the module.
+.PP
+.B Parse
+takes a textual representation of a MAC address in
+.I s
+and returns its internal representation as an array of bytes of length
+.BR Eaddrlen ,
+the form used in packets read and written via
+.IR ether (3).
+.I S
+is a string of twelve hexadecimal digits, corresponding to the six bytes of a MAC address.
+Each pair of digits can optionally be separated by a colon.
+If
+.I s
+is invalid,
+.B parse
+returns nil.
+.PP
+.B Text
+takes an array of bytes of length
+.B Eaddrlen
+and returns its textual representation (a string of twelve hexadecimal digits).
+It returns
+.LR <invalid>
+if the array is less than
+.BR Eaddrlen ,
+but it ignores any bytes beyond that.
+.PP
+.B Addressof
+returns the MAC address of the given Ether device
+.I dev
+(eg,
+.LR /net/ether0 ),
+which it reads from
+.IB dev /addr .
+It returns nil and sets the error string if that file does not exist or is invalid.
+.PP
+.B Eqaddr
+returns true iff
+.I a
+and
+.I b
+are the same address.
+.SH FILES
+.TF /net/etherN/addr
+.TP
+.IB net /ether N /addr
+hardware address of Ether
+.I N
+.SH SOURCE
+.B /appl/lib/ether.b
+.SH SEE ALSO
+.IR ip (2),
+.IR ether (3)

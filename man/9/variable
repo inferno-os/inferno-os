@@ -1,0 +1,25 @@
+.TH VARIABLE 9
+.SH NAME
+variable \- interrogate a button variable
+.SH SYNOPSIS
+\f5variable \fIvar\fR ?\fIvalue\fR?
+.SH DESCRIPTION
+.B Variable
+queries or sets the value of a Tk radiobutton, checkbutton or choicebutton variable.
+An error diagnostic will be returned if
+the variable is of the wrong type (if for instance
+it is the name of a named channel).
+.PP
+If \fIvalue\fR is given, the value of the variable is set
+to that value, and any associated buttons
+will subsequently reflect this in their appearance.
+Omitting the \fIvalue\fR argument returns the current value of the variable.
+.PP
+The special variable
+.B lasterror
+holds the text of the last Tk error encountered.
+It resets when queried.
+.SH SEE ALSO
+.IR checkbutton (9)
+.IR choicebutton (9)
+.IR radiobutton (9),

@@ -1,0 +1,57 @@
+.TH DICT 2
+.SH NAME
+dict - list of string pairs
+.SH SYNOPSIS
+.EX
+include "dict.m";
+dict := load Dictionary Dictionary->PATH;
+
+Dict: adt {
+	add: fn(d: self ref Dict, e: (string, string));
+	delete: fn(d: self ref Dict, k: string);
+	lookup: fn(d: self ref Dict, k: string): string;
+	keys: fn(d: self ref Dict): list of string;
+};
+.EE
+.SH DESCRIPTION
+.B Dict
+provides a simple string to string association list:
+.TP
+.IB d .add( e )
+Adds a new tuple
+.IR e
+to the list,
+representing a new
+.RI ( "key ,\ value" )
+pair.
+.TP
+.IB d .delete ( k )
+Deletes all pairs with key
+.I k
+from the list.
+.TP
+.IB d .lookup( k )
+Tries to find a pair with key
+.I k
+and returns its associated value,
+or nil if the key was not found.
+.TP
+.IB d .keys()
+Returns a list of all
+keys
+in the list.
+.SH SOURCE
+.B /appl/lib/dict.b
+.SH SEE ALSO
+.IR hash (2)
+.SH BUGS
+No attempt is made to
+keep keys unique in the list; if more
+than one pair exists with the same key, then
+.B lookup
+will select one of them arbitrarily.
+.PP
+Computational overhead of lookup and deletion of
+keys is proportional
+to the number of pairs in the list.
+

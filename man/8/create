@@ -1,0 +1,204 @@
+.TH CREATE 8
+.SH NAME
+create, inst, info \- archive or update a file system
+.SH SYNOPSIS
+.B install/create
+.RB [ -u ]
+.RB [ -U ]
+.RB [ -v ]
+.RB [ -x ]
+.RB [ -o ]
+.RB [ -p
+.IR proto ]
+.RB [ -r
+.IR root ]
+.RB [ -s
+.IR source ]
+.RB [ -N
+.IR uid ]
+.RB [ -G
+.IR gid ]
+.RB [ -d
+.IR description ]
+.I name
+.PP
+.B install/inst
+.RB [ -c ]
+.RB [ -h ]
+.RB [ -t ]
+.RB [ -u ]
+.RB [ -v ]
+.RB [ -F ]
+.RB [ -r
+.IR root ]
+.I name
+.RI [ prefix
+.IR ... ]
+.PP
+.B install/info
+.RB [ -r ]
+.I package
+.SH DESCRIPTION
+.I Create
+copies files from the file tree
+.I source
+(default
+.BR / )
+to an output file in archive format appropriate for a software distribution. The name of the output
+file is the time that the archive was made. The latter includes wrap headers that describe
+the distribution.
+.I Name
+is typically the name of the product or software package. The
+.B -p
+option specifies the prototype file
+.I proto
+to use to build the archive.
+.PP
+Each line of the
+.I proto
+file specifies a file to copy.
+Indentation is significant,
+with each level of indentation corresponding to a level in the file tree.
+Fields within a line are separated by white space.
+The first field is the last path element in the destination file tree.
+The second field specifies the permissions.
+The third field is the owner of the file,
+and the fourth is the group owning the file.
+The fifth field is the name of the file from which to copy;
+this file is read from the current name space,
+not the source file tree.
+All fields except the first are optional.
+.PP
+Names beginning with a
+.L $
+are expanded as environment variables.
+If the first file specified in a directory is
+.LR * ,
+all of the files in that directory are copied.
+If the first file is
+.LR % ,
+all of the non-directory files in that directory are copied.
+If the first file is
+.LR + ,
+all of the files are copied, and all subdirectories
+are recursively copied.
+.PP
+Files in the source tree that are not specified in the
+.I proto
+file
+are not placed in the archive.
+.PP
+The remaining options to
+.I create
+are:
+.TP 10
+.B -u
+Build an update distribution rather than a base distribution. In this case 
+.I name
+should be the name of the previous archive file built for this product. Only files
+that are out of date with respect to the latter are included in the archive. Files which
+no longer exist will be marked for removal.
+.TP
+.B -U
+Build an update package distribution instead. This is a hybrid of a base
+distribution and an update distribution.
+.TP
+.B -v
+Print out the files as they go into the archive.
+.TP
+.B -x
+Print out the files that would go into the archive but do not actually archive them.
+.TP
+.B -o
+Copy the archive file to the standard output rather than putting it in a date stamped output file.
+.TP
+.B -r root
+Specifies the location of any previous archives for this product.
+.TP
+.B -N uid
+Give all the files in the archive the user id specified.
+.TP
+.B -G gid
+Give all the files in the archive the group id specified,
+.TP
+.B -d description
+Give a description of the distribution. This is placed in the wrap header files.
+.PD
+.PP
+.I Inst
+installs archive files made by
+.I create .
+.I Name
+is the name of the archive file to install. Any further names after this are treated as path
+prefixes and only files in the archive that have one of the given prefixes are actually installed.
+The option to
+.I inst
+are :
+.TP 10
+.B -c
+Carry on regardless when errors occur. The default behaviour is to exit on encountering an error.
+.TP
+.B -h
+Only print the names of the files in the archive.
+.TP
+.B -t
+Give each installed file the same date stamp as indicated by that file's entry in the archive.
+.TP
+.B -u
+Give each installed file the same date stamp, user id and group id as shown in the archive.
+.TP
+.B -v
+Print out the names of directories as they are installed.
+.TP
+.B -F
+Force the installation of the files in the archive even when the corresponding local file
+has apparently been locally updated or already exists.
+.TP
+.B -r root
+Specifies the root of destination tree where the files will be copied to.
+.PD
+.PP
+.I Info
+prints information about either a specific file produced by
+.I create
+or about all files making up a package in the
+.B /wrap
+tree. In particular base packages,
+full updates and partial updates are distinguished. The 
+.B -r
+option
+specifies the the root of the tree to look in. This defaults to
+.BR / .
+.SH EXAMPLES
+.PP
+Make an archive to establish a new base package for an Inferno distribution:
+.IP
+.EX
+install/create -o -N inferno -G inf -d InfernoOS -p PROTO Inferno.1.0 > inferno.arch
+.EE
+.PP
+Here the name of the product is Inferno.1.0.
+.PP
+Install that archive on another machine:
+.IP
+.EX
+install/inst -r / inferno.arch
+.EE
+.PP
+Here the product is placed in / with the user and group ids being set to those of the
+person doing the installation.
+.SH SOURCE
+.B /appl/cmd/install/arch.b
+.br
+.B /appl/cmd/install/create.b
+.br
+.B /appl/cmd/install/info.b
+.br
+.B /appl/cmd/install/inst.b
+.br
+.B /appl/cmd/install/proto.b
+.br
+.B /appl/cmd/install/wrap.b
+.SH "SEE ALSO"
+.IR archfs (4)
+

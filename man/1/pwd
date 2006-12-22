@@ -1,0 +1,18 @@
+.TH PWD 1
+.SH NAME
+pwd \- print working directory
+.SH SYNOPSIS
+pwd
+.SH DESCRIPTION
+.I Pwd
+prints the path name of the working (current) directory.
+It is guaranteed to return the same path that was used to enter the directory.
+Note that if meanwhile the name space has changed, or directories in the path have been renamed,
+the path name may no longer be valid.
+.SH SOURCE
+.B /appl/cmd/pwd.b
+.SH "SEE ALSO"
+.IR cd (1),
+.IR bind (1),
+.IR sys-fd2path (2),
+.IR workdir (2)

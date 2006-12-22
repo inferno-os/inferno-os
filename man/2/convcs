@@ -1,0 +1,367 @@
+.TH CONVCS 2
+.SH NAME
+Convcs,  Btos, Stob \- character set conversion suite
+.SH SYNOPSIS
+.EX
+include "convcs.m";
+convcs := load Convcs Convcs->PATH;
+
+Btos: module {
+	init: fn(arg: string): string;
+	btos: fn(s: Convcs->State, b: array of byte, nchars: int)
+			: (Convcs->State, string, int);
+};
+
+Stob: module {
+	init: fn (arg: string): string;
+	stob: fn(s: Convcs->State, str: string)
+			: (Convcs->State, array of byte);
+};
+
+Convcs: module {
+	State: type string;
+	Startstate: con "";
+
+	init: fn(csfile: string): string;
+	getbtos: fn(cs: string): (Btos, string);
+	getstob: fn(cs: string): (Stob, string);
+	enumcs: fn(): list of (string, string, int);
+	aliases: fn(cs: string): (string, list of string);
+};
+
+.EE
+.SH DESCRIPTION
+The
+.I Convcs
+suite is a collection of
+modules for converting various standard
+coded character sets and character encoding schemes
+to and from the Limbo strings.
+.PP
+The
+.B Convcs
+module provides an entry point to the suite, mapping character set names and aliases
+to their associated 
+converter implementation.
+.SS "The Convcs module"
+.TP
+.BI init( csfile )
+.B Init
+should be called once to initialise the internal state of
+.BR Convcs .
+The
+.I csfile
+argument specifies the path of the converter mapping file.
+If this argument is nil, the default mapping file
+.B /lib/convcs/charsets
+is used.
+.TP
+.BI getbtos( cs )
+.B Getbtos
+returns an initialised
+.B Btos
+module for converting from the requested encoding.
+.IP
+The return value is a tuple, holding the module reference and an error string.
+If any errors were encountered in locating, loading or initialising the requested
+converter, the module reference will be nil and the string will contain an explanation.
+.IP
+The character set name,
+.IR cs ,
+is normalised by mapping all upper-case latin1 characters to lower-case before
+comparison with character set names and aliases from the
+.B charsets
+file.
+.TP
+.BI getstob( cs )
+.B Getstob
+returns an initialised
+.B Stob
+module for converting from strings to the requested encoding.
+Apart from the different module type, the return value and semantics are
+the same as for
+.BR getbtos() .
+.TP
+.B enumcs()
+Returns a list describing the set of available converters.
+The list is comprised of
+.RI ( name ,
+.IR desc ,
+.IR mode )
+tuples.
+.IP
+.I Name
+is the standard name of the character set.
+.IP
+.I Desc
+is a more friendly description taken directly from the
+.B desc
+attribute given in the
+.I charsets
+file.
+If the attribute is not given then
+.I desc
+is set to
+.IR name .
+.IP
+.I Mode
+is a bitmap that details the converters available for the given character set.
+Valid
+.I mode
+bits are
+.B Convcs->BTOS
+and
+.BR Convcs->STOB .
+For convenience,
+.B Convcs->BOTH
+is also defined.
+.TP
+.BI aliases( cs )
+Returns the aliases for the character set name
+.IR cs .
+The return value is the tuple
+.BI ( desc ", " aliases ).
+.IP
+.I Desc
+is the descriptive text for the character set, as returned by
+.BR enumcs() .
+.IP
+.I Aliases
+lists all the known aliases for
+.IR cs .
+The first name in the list is the default character set name \- the name
+that all the other aliases refer to.
+If the
+.I aliases
+list is
+.B nil
+then there was an error in looking up the character set name and
+.I desc
+will detail the error.
+.SS "Using a Btos converter"
+The
+.B Btos
+module returned by
+.B getbtos()
+is already initialised and is ready to start the conversion.
+Conversions can be made on a individual basis,
+or in a `streamed' mode.
+.PP
+.IB converter "->btos(" s ,
+.IB b ,
+.IB nchars )
+.RS
+Converts raw byte codes of the character set encoding to a Limbo string.
+.PP
+The argument
+.I s
+is a converter state as returned from the previous call to
+.B btos
+on the same input stream.
+The first call to
+.B btos
+on a particular input stream should give
+.B Convcs->Startstate
+(or
+.BR nil)
+as the value for
+.IR s .
+The argument
+.I b
+is the bytes to be converted.
+The argument
+.I nchars
+is the maximal length of the string to be returned.
+If this argument is
+.B -1
+then as much of
+.I b
+will be consumed as possible.
+A value of
+.B 0
+indicates to the converter that there is no more data and
+that any pending state should be flushed.
+.PP
+The return value of
+.B btos
+is the tuple
+.RI ( state ,
+.IR str ,
+.IR nbytes )
+where
+.I state
+is the new state of the converter,
+.I str
+is the converted string, and
+.I nbytes
+is the number of bytes from
+.I b
+consumed by the conversion.
+.PP
+The same converter module can be used for multiple conversion streams
+by maintaining a separate
+.I state
+variable for each stream.
+.RE
+.SS "Using an Stob converter"
+The
+.B Stob
+module returned by
+.B getstob()
+is already initialised and is ready to start the conversion.
+.PP
+.IB converter "->stob(" s ,
+.IB str )
+.RS
+Converts the limbo string
+.I str
+to the raw byte codes of the character set encoding.
+The argument
+.I s
+represents the converter state and is treated in the same way as for
+.IB converter ->btos()
+described above.
+To terminate a conversion
+.B stob
+should be called with an emtpy string in order to flush
+the converter state.
+.PP
+The return value of
+.B stob
+is the tuple
+.RI ( state ,
+.IR bytes )
+where
+.I state
+is the new state of the converter and
+.I bytes
+is the result of the conversion.
+.RE
+.SS "Conversion errors"
+When using 
+.IB converter "->btos()"
+to convert data to Limbo strings,
+any byte sequences that are not valid for the specific character encoding scheme
+will be converted to the Unicode error character 16rFFFD. 
+.PP
+When using
+.IB converter "->stob()"
+to convert Limbo strings,
+any Unicode characters that can not be mapped
+into the character set will normally be substituted by the US-ASCII code for `?'.
+Note that this may be inappropriate for certain conversions, such converters will use
+a suitable error character for their particular character set and encoding scheme.
+.SS "Charset file format"
+The file
+.B /lib/convcs/charsets
+provides the mapping between character set names and their implementation modules.
+The file format conforms to that supported by
+.IR cfg (2).
+The following description relies on terms defined in the
+.IR cfg (2)
+manual page.
+.PP
+Each record name defines a character set name.
+If the primary value of the record is non-empty then the name is an alias,
+the value being the real name.
+An alias record must point to an actual converter record, not to another alias, as
+.I Convcs
+only follows one level of aliasing.
+.PP
+Each converter record consists of a set of tuples with the following primary attributes:
+.TP
+.B desc
+A more descriptive name for the character set encoding.
+This attribute is used for the description returned by
+.BR enumcs() .
+.TP
+.B btos
+The path to the
+.B Btos
+module implementation of this converter.
+.TP
+.B stob
+The path to the
+.B Stob
+module implementation of this converter.
+.PP
+Both the
+.B btos
+and
+.B stob
+tuples can have an optional
+.B arg
+attribute which is passed to the
+.B init()
+function of the converter when initialised by
+.IR Convcs .
+If a converter record has neither an
+.B stob
+nor a
+.B btos
+tuple, then it is ignored.
+.PP
+The following example is an extract from the standard Inferno
+.I charsets
+file:
+.PP
+.EX
+cp866=ibm866
+866=ibm866
+ibm866=
+    desc='Russian MS-DOS CP 866'
+    stob=/dis/lib/convcs/cp_stob.dis    arg=/lib/convcs/ibm866.cp
+    btos=/dis/lib/convcs/cp_btos.dis    arg=/lib/convcs/ibm866.cp
+.EE
+.PP
+This entry defines
+.I Stob
+and
+.I Btos
+converters for the character set called
+.BR ibm866 .
+The converters are actually the generic codepage converters
+.B cp_stob
+and
+.B cp_btos
+paramaterized with a codepage file.
+The entry also defines the aliases
+.B cp866
+and
+.B 866
+for the name
+.BR ibm866 .
+.SH FILES
+.TP
+.B /lib/convcs/charsets
+The default mapping between character set names and their implementation modules.
+.TP
+.BI /lib/convcs/ csname .cp
+Codepage files for use by the generic codepage converters
+.B cp_stob
+and
+.BR cp_btos .
+Each file consists of 256 unicode runes mapping codepage byte values to unicode by their index.
+The runes are stored in the utf-8 encoding.
+.SH SOURCE
+.TF /appl/lib/convcs/convcs.b
+.TP
+.B /appl/lib/convcs/convcs.b
+Implementation of the
+.B Convcs
+module.
+.TP
+.B /appl/lib/convcs/cp_btos.b
+Generic
+.I Btos
+codepage converter.
+.TP
+.B /appl/lib/convcs/cp_stob.b
+Generic
+.I Stob
+codepage converter.
+.br
+.PP
+.SH SEE ALSO
+.IR tcs (1),
+.IR cfg (2)

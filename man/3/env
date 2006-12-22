@@ -1,0 +1,48 @@
+.TH ENV 3
+.SH NAME
+env \- environment device
+.SH SYNOPSIS
+.nf
+.B bind #e /env
+
+.BI /env/ name
+.fi
+.SH DESCRIPTION
+The environment device serves a one-level directory giving access to environment variables
+and their values.
+It is conventionally bound to
+.BR /env .
+The value of an environment variable 
+.I name
+may be obtained by reading the file
+.BI /env/ name.
+If the file does not exist, the variable is unset and has the value nil. The
+maximum length of a variable name is 127 bytes.
+.PP
+New environment variables are set by creating the corresponding file
+in
+.B /env
+and writing the required value to that file. Similarly environment variables are destroyed (unset) by
+removing the corresponding file.
+.PP
+Processes sharing an `environment group' see the same files and contents;
+changes made by one process are seen by the others.
+A process can insulate itself from further changes using the
+.L FORKENV
+option to
+.IR sys-pctl (2),
+which creates a new environment group that is a copy of the old,
+but further changes in each are independent.
+A new empty environment group is created by the
+.L NEWENV
+option to
+.IR sys-pctl (2).
+.SH SOURCE
+.B /os/port/devenv.c
+.br
+.B /emu/port/devenv.c
+.SH SEE ALSO
+.IR env (1),
+.IR sh (1),
+.IR env (2),
+.IR sys-pctl (2)

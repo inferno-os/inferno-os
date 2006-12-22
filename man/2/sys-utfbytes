@@ -1,0 +1,28 @@
+.TH SYS-UTFBYTES 2
+.SH NAME
+utfbytes \- compute UTF length of complete Unicode characters in a UTF byte sequence
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+utfbytes: fn(buf: array of byte, n: int): int;
+.EE
+.SH DESCRIPTION
+.B Utfbytes
+examines the 
+.IR n -byte
+UTF sequence in
+.IR buf
+and returns the number of bytes representing complete Unicode characters.
+The value will be less than
+.I n
+when the region inspected ends with an incomplete UTF sequence.
+.SH DIAGNOSTIC
+A bounds check error results if
+.I n
+exceeds the length of the array.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-byte2char (2),
+.IR utf (6)

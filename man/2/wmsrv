@@ -1,0 +1,295 @@
+.TH WMSRV 2
+.SH NAME
+Wmsrv \- core window-manager functionality and helper functions
+.SH SYNOPSIS
+.EX
+.ps -1
+.vs -1
+include "sys.m";
+include "draw.m";
+include "wmsrv.m";
+wmsrv := load Wmsrv Wmsrv->PATH;
+Client, Window: import wmsrv;
+
+init:   fn(): 
+    (chan of (string, chan of (string, ref Draw->Wmcontext)),
+    chan of (ref Client, chan of string),
+    chan of (ref Client, array of byte, Sys->Rwrite));
+find:   fn(p: Draw->Point): ref Client;
+top:    fn(): ref Client;
+
+Window: adt {
+    tag:    string;
+    r:  Rect;
+    img:    ref Image;
+};
+
+Client: adt {
+    kbd:    chan of int;
+    ptr:    chan of ref Draw->Pointer;
+    ctl:    chan of string;
+    stop:   chan of int;
+    images: chan of (ref Draw->Point, ref Draw->Image, chan of int);
+    flags:  int;
+    wins:   list of ref Window;
+    znext:  cyclic ref Client;
+    id:     int;
+
+    window:   fn(c: self ref Client, tag: string): ref Window;
+    contains: fn(c: self ref Client, p: Draw->Point): int;
+    setimage: fn(c: self ref Client, tag: string, i: ref Draw->Image): int;
+    setorigin:fn(c: self ref Client, tag: string, o: Draw->Point): int;
+    top:      fn(c: self ref Client);
+    bottom:   fn(c: self ref Client);
+    remove:   fn(w: self ref Client);
+};
+.ps +1
+.vs +1
+.EE
+.SH DESCRIPTION
+.B Wmsrv
+acts as a kind of ``buffer'' module between an actual window-manager
+implementation and possibly misbehaving clients.
+It provides notification when clients arrive, make window-manager requests,
+and leave. For each client, it provides a set of channels that mirror those
+found in
+.BR Draw->Wmcontext ,
+(see
+.IR draw-context (2)),
+except that writing to the
+.BR Client 's
+channels is guaranteed not to block.
+Each client holds zero or more
+.BR Window s,
+each of which is tagged with an identifying string
+and which can hold the image of that window.
+A given client's windows are layered in strict order,
+most recently created at the top. Most clients will have
+only one window; others are generally used only for
+ephemeral purposes, such as pop-up menus.
+.PP
+A
+.BR Client ,
+say
+.IR c ,
+holds some channels directly equivalent to their
+.B Wmcontext
+namesakes:
+.IB c \.kbd\fR
+.IB c \.ptr\fR,
+and
+.IB c \.ctl\fR.
+The behaviour of
+.IB c \.images
+is described below.
+.B Wmsrv
+starts a new process to mediate interaction
+between the window manager and its clients;
+sending a value on
+.IB c \.stop
+causes this process to exit.
+.IB C \.wins
+gives the list of all the windows
+associated with this client;
+.IB c \.flags
+is not used by
+.IR wmsrv :
+it may be used to store arbitrary information;
+.IB c \.id
+holds a unique identifier for the client;
+it will be no larger than the largest
+number of clients that have simultaneously existed;
+.IB c \.znext
+links clients together by window depth (see
+.BR top ,
+below).
+.PP
+.B Init
+must be called before any other
+.I wmsrv
+function to initialise the
+.I wmsrv
+module. It creates the virtual file
+.BR /chan/wm ,
+and returns a tuple of channels, say (\fIwm\fP, \fIjoin\fP, \fIrq\fP).
+.I Wm
+is the channel that should be passed to prospective clients
+in the
+.B Draw->Context
+structure; communication on this channel is used
+to establish a new client connection.
+.I Join
+is used to receive notifications
+of new clients arriving. The tuple received on this channel,
+say (\fIc\fP, \fIrc\fP)
+holds the new client, and a channel on which a reply
+should be sent acknowledging the new client.
+If the string sent is non-empty, it represents an error message
+that will be returned to the client, and the client will not
+be allowed to join.
+.IB c \.ptr\fR,
+.IB c \.kbd\fR,
+and
+.IB c \.ctl
+are all direct equivalents of their
+.B Wmcontext
+namesakes; the
+behaviour of
+.IB c \.images
+is described below.
+.I Rq
+is used to receive requests made by clients to the window
+manager by writing to the file
+.B /chan/wm.
+The tuple received on
+.IR rq ,
+say (\fIc\fP, \fIdata\fP, \fIreply\fP)
+holds the client that is making the request, the
+data that has been sent, and a channel that can be used
+(as described in
+.IR sys-file2chan (2))
+to return a reply to the request,
+The request is conventionally formatted as a utf8-encoded
+string, holding a list of tokens quoted as described in
+.B quoted
+in
+.IR string (2).
+.PP
+If the first character of a window-manager request is an exclamation mark
+.RB ( ! ),
+it should be a request to change the image of a client's window
+(or create a new window).
+In this case, the first three tokens should be
+the name of the command (starting with an exclamation mark),
+the tag of the window to which the request refers, and a tag
+used by clients to match requests to replies.
+If such a request is allowed to succeed, then clients expect that
+a new image will be sent to them.
+The
+.I images
+channel in a client is used to do this (normally accessed through the
+.I setimage
+and
+.I setorigin
+methods, see below). Sending a tuple, say (\fIo\fP, \fIi\fP, \fIrc\fP)
+on
+.I images
+buffers an image to be returned to the client.
+If
+.I o
+is non-nil, the request will change the physical origin of
+.I i
+to
+.IR o ,
+otherwise
+.I i
+gives a new image (its logical origin must match its physical origin).
+Only one such request is allowed to be outstanding
+at any one time; the channel passed in
+.I rc
+will yield the value
+.B -1
+if the image from a previous request has not yet been consumed,
+in which case the current request should be caused to fail.
+.PP
+.B Wmsrv
+can maintain a record of the current
+windows and their stacking order relative to one other.
+.B Top
+returns a pointer to the client at the top of the stack;
+the other clients can be accessed, in stacking order,
+via their
+.B znext
+references.
+.B Find
+finds the top client that has a window containing
+the point
+.IR p .
+.B Wmsrv
+provides various
+.B Client
+methods that may be used to help
+implement a window manager's interface:
+.TP 10
+.IB c .window(\fItag\fP)
+Yield the
+.BR Window ,
+.IR w ,
+corresponding to
+.IR tag ,
+or
+.B nil
+if there is none.
+Note that
+.IB w \.r
+holds the actual screen rectangle of the image;
+the client is free to modify the image's logical
+coordinate system, so
+.IB w \.img.r
+cannot be relied upon to contain a value with a meaningful origin.
+.TP
+.IB c .contains(\fIp\fP)
+Return non-zero if any of the client's windows
+contain the point
+.IR p .
+.TP
+.IB c .setimage(\fItag\fP,\ \fIi\fP)
+Set the image associated with window
+.I tag
+to
+.IR i .
+If this is in response to a window manager request,
+.I i
+must be non-nil, and
+.I wmsrv
+will arrange that the new image is sent to the client.
+If this is not possible, then
+.B setimage
+will return
+.BR -1 .
+If
+.I i
+is nil, no image will be sent to the client
+and the window will be deleted.
+.TP
+.IB c .setorigin(\fItag\fP,\ \fIo\fP)
+Similar to
+.BR setimage ,
+except that only the origin of the window is changed.
+In order to enable clients to maintain their own logical
+coordinate system,
+.I wmsrv
+first sends
+.B nil
+on the
+.B Wmcontext.images
+channel, allowing the client to suspend operations
+on the image momentarily; it then sends to same
+channel, with its origin set to its actual screen origin.
+The client is then free to set the logical origin again.
+.TP
+.IB c .top()
+Raise the client's windows above the other clients' windows.
+.TP
+.IB c .bottom()
+Send the client's windows below the other clients' windows.
+.TP
+.IB c .remove()
+Remove the client and its windows from wmsrv's window stack.
+.SH FILES
+.TP 10
+.B /chan/wm
+Created by
+.I wmsrv
+using
+.IR file2chan (2)
+to serve connection requests.
+.SH SOURCE
+.B /appl/lib/wmsrv.b
+.SH SEE ALSO
+.IR wm (1),
+.IR draw-screen (2),
+.IR wmlib (2),
+.IR wmexport (1),
+.IR wmclient (2),
+.IR tkclient (2),

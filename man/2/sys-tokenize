@@ -1,0 +1,56 @@
+.TH SYS-TOKENIZE 2
+.SH NAME
+tokenize \- split string into words
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+tokenize: fn(s, delim: string): (int, list of string);
+.EE
+.SH DESCRIPTION
+.B Tokenize
+breaks
+.I s
+into words separated by characters in
+.IR delim .
+The returned tuple holds the number of words
+and an ordered list of those words (whose
+.B hd
+gives the leftmost word from
+.IR s ).
+.PP
+Words are delimited by the maximal sequences of any
+character from the
+.I delim
+string.
+.B Tokenize
+skips delimiter characters at the beginning and end of
+.IR s ,
+so each element in the returned list has non-zero length.
+.PP
+If
+.I s
+is
+.B nil
+or contains no words,
+.B tokenize
+returns a count of zero and a
+.B nil
+list.
+.PP
+.I Delim
+may be
+.B nil
+or the empty string, specifying no delimiter characters.
+The resulting word list will be
+.B nil
+(if
+.I s
+is
+.B nil
+or the empty string)
+or a single-item list with a copy of
+.IR s .
+.SH SEE ALSO
+.IR sys-intro (2)

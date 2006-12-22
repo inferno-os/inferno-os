@@ -1,0 +1,21 @@
+# this is not an ndb file, but a file in Unix /etc/services format
+# that might be added to the Unix file (or the similar one on Windows)
+# if needed for host applications to access Inferno.
+# Inferno uses the ndb files when ndb/cs and ndb/dns are running
+#
+# Assignment of inferno port numbers
+#
+
+styx		6666/tcp	# Main file service
+mpeg		6667/tcp	# Mpeg stream
+rstyx		6668/tcp	# Remote invocation
+infdb		6669/tcp	# Database connection
+infweb		6670/tcp	# inferno web server
+infsigner	6671/tcp	# inferno signing services
+infcsigner	6672/tcp	# inferno signing services
+inflogin	6673/tcp	# inferno login service
+virgil		2202/udp	virgild		# inferno info
+infsds	6674/tcp	# SDS
+infgamelogin	6660/tcp	# inferno games login service
+registry		6675/tcp	# default registry
+cpupoolreg	6676/tcp	# cpupool registry

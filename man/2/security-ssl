@@ -1,0 +1,76 @@
+.TH SECURITY-SSL 2
+.SH NAME
+ssl: connect, secret \- interface to the Secure Sockets Layer
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "security.m";
+ssl := load SSL SSL->PATH;
+
+connect: fn(fd: ref Sys->FD): (string, ref Sys->Connection);
+secret:  fn(c: ref Sys->Connection, secretin,
+                secretout: array of byte): string;
+.EE
+.SH DESCRIPTION
+.B SSL
+provides an interface to the secure sockets layer device
+.IR ssl (3).
+.PP
+.B Connect
+allocates a new
+.IR ssl (3)
+connection directory.
+It pushes
+file descriptor
+.I fd
+into the
+.B data
+file of that connection, and if successful,
+returns a reference to a
+.B Connection
+adt describing the connection.
+The
+.B Connection
+adt has its members set as follows:
+.B dir
+names the resulting connection directory;
+.B cfd
+is open on the connection's
+control file; and
+.B dfd
+is open on the connection's
+.B data
+file,
+which is read and written to exchange data on the original
+.I fd
+using SSL.
+.PP
+.B Secret
+writes
+.I secretin
+and
+.I secretout
+to
+.IB c .dir/secretin
+and
+.IB c .dir/secretout
+where
+.I n
+is obtained from the
+.B Connection
+adt
+.IR c .
+The string returned describes errors encountered, if any; otherwise it is nil.
+.PP
+.SH SOURCE
+.B /appl/lib/ssl.b
+.SH "SEE ALSO"
+.IR security-auth (2),
+.IR ssl (3)
+.SH DIAGNOSTICS
+.B Connect
+returns a tuple containing a string and a
+.B Connection
+reference.
+On success the string is nil, and the connection reference is not nil;
+on error, the string contains a diagnostic, and the connection reference is nil.

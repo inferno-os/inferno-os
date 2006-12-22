@@ -1,0 +1,61 @@
+.TH FILENAME 1
+.SH NAME
+filename \- interactively select a file
+.SH SYNOPSIS
+.B wm/filename
+[
+.B -d
+.I startdir
+]
+[
+.B -g
+.I geom
+]
+[
+.B -t
+.I title
+]
+[
+.IR pattern ...
+]
+.SH DESCRIPTION
+.B Filename
+pops up a file browser window, allows the user to select
+a file and prints the name of that file to the standard output.
+The optional list of patterns gives a list of wildcard patterns
+as understood by
+.IR filepat (2);
+the file browser will initially show only files matching one
+or more of the patterns. (N.B. patterns must be quoted to
+prevent the shell from interpreting them). The following options
+are recognised:
+.TP 10
+.B -d
+.I Startdir
+gives the initial directory shown by the file browser.
+.TP
+.B -g
+.I Geom
+is given as a tk argument to the file browser window.
+.TP
+.B -t
+.I Title
+specifies the title of the file browser window.
+.SH EXAMPLE
+The following
+.IR sh (1)
+command compiles an interactively chosen Limbo source file,
+placing the file browser window at a particular spot on the screen
+and starting at joe's home directory.
+.EX
+limbo `{wm/filename -t 'Select a source file' -g '-x 50 -y 50'
+	-d/usr/joe '*.b' '*.m'}
+.EE
+.SH SOURCE
+.B /appl/wm/filename.b
+.SH SEE ALSO
+.IR wmlib (2),
+.IR sh (1)
+.SH BUGS
+The file browser window actually appears 20 pixels below and to the right
+of the position specified.

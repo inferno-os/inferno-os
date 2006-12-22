@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0 Document//EN"
+    "http://openebook.org/dtds/oeb-1.0/oebdoc1.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/x-oeb1-document; charset=utf-8" />
+<link rel="stylesheet" type="text/x-oeb1-css" href="devil.css" />
+<title>The Devil&#8217;s Dictionary: Editor&rsquo;s Foreword</title>
+</head>
+<body lang="en-us">
+
+<h1>Editor&rsquo;s Foreword</h1>
+
+<p class="firstpara">This Open eBook edition of <i>The Devil&#x2019;s Dictionary</i> was begun as a way for
+me to learn the Open eBook (OEB) structure and how to write clean XHTML that duplicates the original formatting of the 
+typeset edition.</p>
+
+<p class="indentpara">Having hit the limitations of the OEB format and current OEB readers in this attempt, I am
+posting this early version of my conversion effort as a test document that illustrates the shortcomings of the
+format and is meant to encourage the developers to address these issues in forthcoming versions of their software
+and the OEB specification itself.</p>
+
+<p class="indentpara">The most difficult problem I have faced in formatting <i>The Devil&#x2019;s Dictionary</i>
+has been poetry. The print copy I own has the poems formatted so that the attribution line is right justified
+with the end of the longest line of the poem, no stanza is broken across pages, and the whole thing is centered
+within the margins of the body text. This is a very natural way to format the poetry, yet it is impossible to
+duplicate this structure with the current eBook readers&mdash;most notably, with Microsoft Reader.</p>
+
+<p>First, the only
+way to create the desired justification and centering with HTML is to place the whole poem inside one table. This
+works for small poems, but not for larger ones because MS Reader cuts off all text in a table cell when the end
+of the page is reached, preventing long poems from being displayed in their entirity. Additionally, if each stanza
+is placed inside a pair of paragraph tags (as would seem natural) many of the indents must be accomplished by
+adjusting the left margin of that individual line with a <code>&lt;span&gt;</code> tag. This should work, since
+both this tag and the left margin property are applied to all elements (block and inline) according to the HTML and
+CSS specifications. MS Reader, however, ignores this instruction. An example of this formatting
+is found in the &ldquo;A&rdquo; section of the <i>Dictionary</i>.</p>
+
+<p>An alternate way to format the poems is to enclose each poem in a <code>&lt;blockquote&gt;</code> tag,
+each line in its own paragraph tag (with different CSS classes to handle the needed indents and close up
+the line spacing) and, each stanza in a <code>&lt;span&gt;</code> tag (with the CSS page-break-after property set
+to avoid breaking across pages). However, the blockquote&rsquo;s margins causes many poems towrap, does not
+center the poem, places the attribution line (and any right-justified lines of the poem) almost at the right margin
+of the book (sometimes far away from the poem itself), and MS Reader ignores the instructions to not
+wrap the stanzas. This method is demonstrated in the &ldquo;B&rdquo; section of the <i>Dictionary</i>.</p>
+
+<p>As I was writing this, I thought of what should have been an obvious construct for these poems: putting
+each stanza in a separate table cell. This solves many, but not all, of the problems described above. For poems
+with short- or medium-length stanzas viewed with the PC version of MS Reader on a large-screen laptop
+it should work fine. But for a PocketPC, or even for poems with long single stanzas on a PC, the bottom of each long
+stanza will still be lost. You can see the results of this experiment in the &ldquo;C&rdquo; section of the
+<i>Dictionary</i>.</p>
+
+<p>These issues can best be demonstrated by one representative poem in each of the first three sections, when
+reading the book in the desktop version of MS Reader. <a href="A.html#abracadabra">Abracadabra</a> should
+be separated into stanzas with 1em of space between each, but since Reader ignores the <code>&lt;span&gt;</code>
+tag, it is just one long block. The poem cited under the definition of <a href="B.html#beg">beg</a> exemplifies
+the problems with the wide right margin described above. Although not perfect, the poem cited under
+<a href="C.html#carmelite">carmelite</a> is presented almost exactly as it should be. The poem is properly
+centered, the indents and right justification appear as intended, and the poem is broken across pages only
+between stanzas. But when viewed on a smaller screen (almost certainly with a Pocket PC) the first stanza
+alone will likely be cut off.</p>
+
+<p>A major additional problem, not specific to this book, is the inability of any current OEB reader to handle
+Unicode text, as mandated in the OEB specification. An example of how such a Unicode document appears is
+demonstrated in sections &ldquo;D&rdquo; (UTF-8) and &ldquo;E&rdquo; (UTF-16) of the <i>Dictionary</i>. Notice that
+the Unicode signature/byte-order mark which appears at the beginning of each of these files causes problems with
+both the readers and with the authoring tools. The MobiPocket Publisher can not complete the conversion
+process at all, and while ReaderWorks handles both relatively OK, MS Reader can not display UTF-8 files
+correctly (the Unicode signature causes it to ignore all CSS formatting and UTF-8 characters are displayed
+as their literal byte sequence, something specifically forbidden by the OEB specification) and the whole
+section &ldquo;E&rdquo; disappears because of the byte-order mark.</p>
+
+<p>Most sections beyond E have not yet been fully formatted, so please do not expect them to look pretty.</p>
+
+<h2>Project Gutenberg</h2>
+
+<p class="indentpara">Another goal is much broader. I have long known of Project Gutenberg, but have
+always found its insistence on plain ASCII to be a handicap that limited its appeal and usability. Don&#x2019;t
+get me wrong&#x2014;the effort has provided a  tremendous resource, and at the time the project was begun
+(and until very recently) plain ASCII was clearly the best  choice. But you can&#x2019;t properly format a book
+with just ASCII characters. Not only must basic things such as *bold* and _italics_ be indicated in a funky
+manner, it is simply impossible to preserve the accented characters, ligatures, and many other important
+features. And trying to display such a work legibly on a PDA or eBbook reader with a small screen is
+impossible, given the hard line breaks that are present (keeping the text from flowing properly).</p>
+
+<p class="indentpara">With is footing solidly in HTML and XML and its completely open nature, the Open eBook
+format is the ideal structure in which to continue the goals of Project Gutenberg on into the 21<sup>st</sup>
+century. So this edition of <i>The Devil&#x2019;s Dictionary</i> is not meant just as a personal learning
+project, but as an example of the benefits to offering current and future editions as Open eBooks. I don&#x2019;t
+dispute the benefits of the current plain ASCII versions, but with the right automation tools, future editions
+could begin as Open eBooks and then be converted to plain ASCII, making both versions available without
+duplicated effort. This would be far preferable to starting with plain ASCII versions and converting them to
+Open eBook. This is the method I obviously used for this edition, and I assure you that it is quite tedious 
+and not well-suited as a standard practice.</p>
+
+<p style="text-align: right">Peter K. Sheerin</p>
+</body>
+</html>

@@ -1,0 +1,146 @@
+.TH MATH-LINALG 2
+.SH NAME
+Math: dot, norm1, norm2, iamax, gemm, sort \- linear algebra primitives
+.SH SYNOPSIS
+.EX
+include	"math.m";
+math := load Math Math->PATH;
+
+dot: fn(x, y: array of real): real;
+norm1, norm2: fn(x: array of real): real;
+iamax: fn(x: array of real): int;
+gemm: fn(transa, transb: int,  # upper case N or T
+		m, n, k: int, alpha: real,
+		a: array of real, lda: int,
+		b: array of real, ldb: int, beta: real,
+		c: array of real, ldc: int);
+
+sort: fn(x: array of real, p: array of int);
+.EE
+.SH DESCRIPTION
+These routines implement the basic functions of linear algebra.
+The standard vector inner product and norms are defined as follows:
+.IP
+.BI dot( "x , y" )
+=
+.BI sum( x [ i ]* y\fP[\fPi\fP])
+.IP
+.BI norm1( x )
+=
+.BI sum(fabs( x [ i\  \f5]))
+.IP
+.BI norm2( x )
+=
+.BI sqrt(dot( "x , x" ))
+.PP
+For the infinity norm, the function
+iamax(x)
+computes an integer
+.I i
+such that
+.BI fabs( x [ i ])
+is maximal.
+These are all standard BLAS (basic linear algebra subroutines)
+except that in Inferno they apply only to contiguous (unit stride)
+vectors.
+.PP
+We assume the convention that matrices are represented as
+singly-subscripted arrays with Fortran storage order.
+So for an
+.I m
+by
+.I n
+matrix
+.I A
+we use loops
+with
+.BI 0\(<= i < m
+and
+.BI 0\(<= j < n
+and access
+\f2A\f5[\f2i\f5+\f2m\f5*\f2j\f5]\f1.
+.PP
+Rather than provide the huge number of entry points in BLAS2 and BLAS3,
+Inferno provides the matrix multiply primitive,
+.BR gemm ,
+defined by
+.PP
+.EX
+    \f2A\fP = \f1\(*a\fP*\f2A\fP\f1'\fP*\f2B\fP\f1'\fP + \f1\(*b\fP*\f2C\fP
+.EE
+.PP
+where the apostrophes indicate an optional transposition.
+As shown by the
+work of Kagstrom, Ling, and Van Loan, the other BLAS functionality can
+be built efficiently on top of
+.BR gemm .
+.PP
+Matrix
+.IR a '
+is
+.I m
+by
+.IR k ,
+matrix
+.IR b '
+is
+.I k
+by
+.IR n ,
+and matrix
+.I c
+is
+.I m
+by
+.IR n .
+Here
+.IR a '
+means
+.I a
+.RI ( a ')
+if
+.I transa
+is the constant
+.B 'N'
+.RB ( 'T' ),
+and similarly for
+.IR b '.
+The sizes
+.IR m ,
+.IR n ,
+and
+.I k
+denote the `active' part of
+the matrix.
+The parameters
+.IR lda ,
+.IR ldb ,
+and
+.I ldc
+denote the `leading dimension'
+or size for purposes of indexing.
+So to loop over
+.I c
+use loops
+with
+.BI 0\(<= i < m
+and
+.BI 0\(<= j < n
+and access
+\f2a\f5[\f2i\f5+\f2ldc\f5*\f2j\f5]\f1.
+.PP
+The sorting function
+.BI sort( x , p )
+updates a 0-origin permutation
+.I p
+so that
+.IB x [ p [ i ]]
+\(<=
+.IB x [ p [ i +1]]\f1,
+leaving
+.I x
+unchanged.
+.SH SOURCE
+.B /libinterp/math.c
+.SH SEE ALSO
+.IR math-intro (2)

@@ -1,0 +1,216 @@
+.TH WM 1
+.SH NAME
+wm \- window manager
+.SH SYNOPSIS
+.B wm/wm
+[
+.I command
+[
+.IR arg ...
+]
+]
+.SH DESCRIPTION
+.I Wm
+is an inferno window manager, providing the control mechanism for
+the user to manage to order and position of a dynamic collection
+of application windows.
+When started, it runs
+.IR command ,
+(by default
+.BR wm/toolbar ,
+see
+.IR toolbar (1))
+By itself,
+.I wm
+does not provide any means for starting new applications;
+that facility must be provided by an auxilliary program,
+.B wm/toolbar
+being one such example.
+.SS Control Inferface
+.I Wm
+provides a control interface to programs running inside it
+through the
+.B Wmcontext
+adt that can be obtained from via the
+.B Draw->Context
+that it passes to applications that it starts
+(see
+.IR draw-context (2)).
+Control messages it understands include:
+.TP
+.B start \fIwhat\fP
+Start input on
+.IR what .
+.I What
+can be
+.BR ptr 
+(pointer events),
+.BR kbd
+(keyboard events)
+and
+.BR control
+(window manager control events, see below).
+.TP
+.B key \fIcharval\fP
+Simulate a key event.
+.I Charval
+is the decimal value of the character that has been
+pressed. The character will be sent exactly as if it
+had been typed on the keyboard. This facility
+is used by
+.IR keyboard (2).
+.TP
+.B !reshape \fItag\fP \fIreqid\fP \fIminx miny maxx maxy\fI \fR[\fIhow\fR]
+Reshape or create the window named
+.IR tag .
+.I Reqid
+is ignored;
+.I minx..maxy
+give the desired bounding rectangle of the
+new window.
+If
+.I how
+is not given, or is
+.BR exact ,
+then
+.I wm
+will attempt to satisfy the request exactly.
+Otherwise,
+.I how
+tells
+.I wm
+how to determine the rectangle of the resulting image;
+it can be one of
+.B place
+(choose some appropriate position and size on screen),
+.B onscreen
+(modify the requested rectangle only so as to bring
+it on screen), or
+.B max
+(request the maximum available rectangle).
+.TP
+.B delete \fItag\fP
+Delete the window named by \fItag\fP.
+.TP
+.B raise
+Raise all windows for the current context above the others.
+.TP
+.B lower
+Send all windows for the current context to the bottom.
+.TP
+.B !move \fItag\fP \fIreqid\fP \fIstartx\fP \fIstarty\fP
+Drag window
+.I tag
+interactively.
+.I Reqid
+is ignored.
+.I Startx
+and
+.I starty
+give the location of the pointer when the drag was initiated.
+.TP
+.B !size \fItag\fP \fIreqid\fP
+Interactively resize window \fItag\fP.
+.TP
+.B fixedorigin
+By default, if a window changes position but not size,
+.I wm
+changes the origin of the window without creating a new image.
+Sending
+.B fixedorigin
+caused
+.I wm
+always to create a new image in that case.
+.TP
+.B kbdfocus \fR[\fIin\fR]
+If the decimal integer
+.I in
+is non-zero, request the keyboard focus,
+otherwise lose the keyboard focus.
+.PP
+.I Wm
+generates control messages to inform applications of
+things that have happened. These include:
+.TP
+.B rect \fIminx miny maxx maxy\fP
+The screen rectangle has changed.
+.I "minx..maxy"
+gives the new bounding box of the screen.
+.TP
+.B haskbdfocus \fIin\fP
+Informs an application of its current keyboard focus state.
+This message is generated in response to pointer events,
+and due to
+.B kbdfocus
+requests.
+.TP
+.B exit
+The window manager is closing down.
+.SS Controlling Application
+The first application that starts under
+.I wm
+is given the privilege of being able to control
+other applications running under the same
+.IR wm .
+If it sends a
+.B start control
+message, then it will also see any control requests
+sent by applications that
+.I wm
+itself does not understand and information about applications
+starting and leaving.
+.I Wm
+accepts several other control messages from its
+controlling application:
+.TP
+.B ctl \fIid\fP \fImsg\fP
+Send message
+.I msg
+to application
+.IR id .
+.TP
+.B endcontrol
+Relinquish controller status.
+The next application that starts will get control status.
+This is used, for instance, to segue smoothly between
+.IR logon (1)
+and
+.IR toolbar (1).
+.PP
+If the controlling application has started control messages,
+.I wm
+sends it the following messages:
+.TP
+.B newclient \fIid\fP
+A new client has connected, identified by
+.IR id .
+.TP
+.B delclient \fIid\fP
+Client
+.I id
+has left.
+.TP
+.B request \fIid\fP \fImsg\fP
+Client
+.I id
+sent the request
+.I msg
+to the window manager, which it did not understand.
+This facility is used, for instance, by
+.IR toolbar (1)
+to implement the
+.B task
+and
+.B untask
+requests.
+.SH FILES
+.TP
+.B /chan/wmrect
+File holding current screen rectangle.
+.SH SOURCE
+.B /appl/wm/wm.b
+.SH "SEE ALSO"
+.IR toolbar (1),
+.IR logon (1),
+.IR tkclient (2),
+.IR wmclient (2)

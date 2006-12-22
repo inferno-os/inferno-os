@@ -1,0 +1,47 @@
+.TH CALENDAR 1
+.SH NAME
+calendar \- calendar and diary
+.SH SYNOPSIS
+.B wm/calendar
+[
+.IR mntdir | datafile
+]
+.br
+.SH DESCRIPTION
+.B Calendar
+is a simple calendar and diary program.
+Its optional argument specifies either a directory
+on which has been mounted a
+.I rawdbfs
+(see
+.IR dbfs (4))
+filesystem, or a file in which to store schedule entries
+(which must already exist). In the latter case,
+.I calendar
+starts up an instance of
+.I rawdbfs
+to serve the file. The default argument to
+.I calendar
+is
+.BR /mnt/schedule .
+If two instances of calendar
+are using the same datafile, care should be taken to run
+.I rawdbfs
+.I before
+running the
+.I calendar
+programs, otherwise the data file will be corrupted.
+.SH EXAMPLE
+Start
+.I calendar
+using
+.B $home/cal
+for the data entries:
+.EX
+	rawdbfs $home/cal /mnt/schedule
+	wm/calendar
+.EE
+.SH SOURCE
+.B /appl/wm/calendar.b
+.SH SEE ALSO
+.IR dbfs (4)

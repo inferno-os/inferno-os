@@ -1,0 +1,144 @@
+.TH SCSIIO 2
+.SH NAME
+ScsiIO: Scsi \- SCSI device operations
+.SH SYNOPSIS
+.EX
+include "scsi.m";
+
+scsiio := load ScsiIO ScsiIO->PATH;
+Scsi: adt {
+    inquire:    string;
+    rawfd:      ref Sys->FD;
+    nchange:    int;
+    changetime: int;
+
+    open:       fn(devdir: string): ref Scsi;
+    rawcmd:     fn(s: self ref Scsi, cmd: array of byte,
+                   data: array of byte, io: int): int;
+    cmd:        fn(s: self ref Scsi, cmd: array of byte,
+                   data: array of byte, io: int): int;
+    ready:      fn(s: self ref Scsi): int;
+};
+
+Sread, Swrite, Snone: con iota;
+
+scsierror:  fn(asc: int, ascq: int): string;
+
+init:   fn(verbose: int);
+.EE
+.SH DESCRIPTION
+.B ScsiIO
+provides a low-level interface to a SCSI or ATAPI device via
+.IR sd (3).
+.PP
+.B Init
+must be called before using any other operation of the module.
+If
+.I verbose
+is non-zero
+the module will produce a fair
+amount of debugging output on file descriptor 2
+when SCSI commands fail.
+.PP
+.B Scsi.open
+attempts to open the file
+.IB devdir /raw
+on which to send raw SCSI commands.
+On success, it reads the device's inquiry
+string and returns a reference to a
+.B Scsi
+value to represent the connection.
+It provides the following operations:
+.TP
+.IB s .ready()
+Sends the ``unit ready'' command up to three times,
+returning zero once the unit responds that it is ready,
+or \-1 on error.
+.TP
+.IB s .rawcmd( "cmd, data, io" )
+.PD 0
+.TP
+.IB s .cmd( "cmd, data, io" )
+Both these functions execute a single SCSI command on the named device.
+The command data is in the byte array
+.IR cmd .
+If
+.I io
+is 
+.BR Sread ,
+a successful operation will store the resulting bytes in
+.IR data ,
+up to its length,
+returning the number of bytes stored.
+If
+.I io
+is
+.BR Swrite ,
+the bytes in
+.I data
+are transmitted as the data argument to
+the command, and the
+number of bytes written is returned.
+If
+.I io
+is
+.BR Snone ,
+.I data
+is ignored and may be nil.
+.B Rawcmd
+simply issues the command and
+returns the result;
+.B cmd
+works a bit harder and
+is the more commonly used routine.
+It attempts to send the commmand;
+if it is successful, 
+.B cmd
+returns the result.
+Otherwise,
+.B cmd
+sends a request sense command to
+obtain the reason for the failure,
+sends a unit ready command in
+an attempt to bring the unit out of any
+inconsistent states, and tries again.
+It also accounts for media change.
+If the second try fails,
+.B cmd
+returns an error.
+On error, both functions return \-1 and set the system error string.
+.PD
+.PP
+The 
+.B nchange
+and
+.B changetime
+elements of
+.B Scsi
+the number of times a media
+change has been detected, and the
+first time the current media was detected (the
+first time a SCSI command was issued
+after it was inserted).
+They are maintained by 
+.BR Scsi.cmd .
+The initial SCSI inquiry result is kept in
+.BR inquire .
+.PP
+.I Scsierror
+returns a textual description of the SCSI status
+denoted by the ASC and ASCQ sense codes.
+The description is found by consulting
+.BR /lib/scsicodes .
+.SH FILES
+.TF
+.TP
+.B /lib/scsicodes
+List of textual messages corresponding to SCSI error codes;
+consulted by
+.BR scsierror .
+.SH SOURCE
+.B /appl/lib/scsiio.b
+.SH SEE ALSO
+.IR disks (2),
+.IR sd (3)

@@ -1,0 +1,291 @@
+.TH PLUMBMSG 2
+.SH NAME
+plumbmsg \- plumbing message module
+.SH SYNOPSIS
+.EX
+include "plumbmsg.m";
+plumbmsg := load Plumbmsg Plumbmsg->PATH;
+Msg: import plumbmsg;
+
+Msg: adt
+{
+    src:    string;
+    dst:    string; 
+    dir:    string;
+    kind:   string;
+    attr:   string;
+    data:   array of byte;
+    # used by applications
+    send:   fn(msg: self ref Msg): int;
+    recv:   fn(): ref Msg;
+    # used by plumb and send, recv
+    pack:   fn(msg: self ref Msg): array of byte;
+    unpack: fn(b: array of byte): ref Msg;
+};
+
+Attr: adt
+{
+    name: string;
+    val:  string;
+};
+
+init:         fn(willsend: int, rcvport: string, maxdata: int): int;
+shutdown:     fn();
+string2attrs: fn(s: string): list of ref Attr;
+attrs2string: fn(l: list of ref Attr): string;
+lookup:       fn(attrs: list of ref Attr, name: string): (int, string);
+.EE
+.SH DESCRIPTION
+.B Plumbmsg
+is an interface for message-passing between applications
+via the
+.IR plumber (8).
+It allows applications to receive messages from the plumber on a logical input port,
+and send messages to other applications via the plumber.
+.PP
+.B Init
+must be called once when the application starts, to
+set up its plumbing connections.
+Applications can choose to send messages, receive them, or do both.
+Note that
+the plumber must be running before any of these functions are useful.
+Normally, that is done by the window system's initialisation procedure,
+but in specialised systems, plumbing can be used for attribute-oriented
+communication even without a window system.
+.PP
+If the application will be sending
+messages via the plumber, the value
+.I willsend
+must be non-zero, and
+.B init
+will open an appropriate channel to the plumber; if the application
+will not send messages, the value should be zero.
+.PP
+If the application is prepared to receive messages, the parameter
+.I rcvport
+names its logical input port,
+which must also be known to the plumber (ie, it must
+be named as a possible destination in
+.IR plumbing (6));
+.B init
+will open an appropriate channel to receive messages from the plumber.
+The parameter
+.I maxdata
+gives the size in bytes of the largest message
+the application is prepared to receive.
+Applications that only send messages set
+.I rcvport
+to nil.
+.PP
+.B Init
+returns returns -1 if for any reason either connection cannot be set up correctly,
+in particular if the plumber is not running or the input port is unknown.
+Otherwise it returns a non-negative value.
+.PP
+The following program fragment establishes input and output plumbing
+for an application `edit':
+.IP
+.EX
+plumbed := 0;
+plumbmsg = load Plumbmsg Plumbmsg->PATH;
+if(plumbmsg->init(1, "edit", 1000) >= 0)
+	plumbed = 1;
+.EE
+.PP
+The variable
+.B plumbed
+is set to allow the application to disable its plumbing user interface
+(and not attempt to send messages) if initialisation fails.
+.PP
+The
+.B Msg
+adt
+encapsulates the message data routed between applications and
+provides member functions to send and receive them.
+Its components are used as follows:
+.TF dataxx
+.PD
+.TP
+.B src
+The name of the program generating the message.
+.TP
+.B dst
+The output port to which the plumber should route the message.
+In practice, destination is often left empty, and
+the destination port will be determined by
+the plumber applying the automatic routing rules
+(cf.
+.IR plumbing (6))
+.TP
+.B dir
+The directory in which to interpret the data (eg, if the data is a local file name).
+.TP
+.B kind
+The format of the data.
+Currently,
+.RB ` text '
+is the only type that applications understand, but the plumbing system
+can route any kind of data.
+.TP
+.B attr
+A string containing
+.IB name = value
+pairs (eg,
+.BR click=7 ),
+separated by tabs.
+Normally the value should be created using
+.B attrs2string
+and parsed using
+.BR string2attrs ,
+described below.
+.TP
+.B data
+The message to be conveyed.
+If
+.B kind
+is
+.BR text ,
+and the message is a string
+.IR s ,
+.B data
+will be
+.RB ` array
+.B of
+.BI byte " s'"
+(ie, its UTF encoding).
+.PD
+.PP
+Plumbing messages are created directly using Limbo's
+.B ref
+operator, giving the desired value to each field.
+For example:
+.IP
+.EX
+	msg := ref Msg(
+		"WmSh",
+		"",
+		workdir->init(),
+		"text",
+		attr,
+		array of byte text);
+.EE
+.PP
+The plumbing messages are exchanged with
+the plumber
+using two member functions:
+.TP
+.IB m .send( msg )
+Writes a plumbing message to the
+plumber.
+It returns the number of bytes written (the result of
+.I write
+in
+.IR sys-read (2)
+which does the writing).
+It returns -1 if the plumber cannot route the message.
+.TP
+.B Msg.recv()
+Reads a plumbing message from the file
+representing the application's input port,
+previously opened by
+.BR init .
+It waits for a message, and returns a reference to a
+.B Msg
+that contains the message data.
+.PP
+.B Shutdown
+sends a message to the plumber
+that shuts down plumbing for the application's input port
+.IR rcvport .
+An application
+.I must
+call it before it exits if it has an active input port.
+.PP
+.B String2attrs
+takes a string containing a tab-separated list of attribute pairs and returns a list of references to
+.B Attr
+adts.
+.PP
+.B Attr2string
+converts a list of references to
+.B Attr
+adts into a string of the form
+.IB name = value name = value
+\&. . .  .
+The
+.IB name = value
+pairs are separated by a single tab.
+.PP
+.B Lookup
+searches
+.I attrs
+for an attribute
+.IR name ,
+and if found, returns the tuple
+.BI (1, value ) .
+If
+.I name
+is not found,
+.B lookup
+returns
+.BR "(0, nil)" .
+.SS Packed message format
+The format of plumbing messages as transmitted, and member functions
+that encapsulate it, are documented here for completeness, and in case
+the details are useful in interpreting plumbing messages outside the Inferno environment.
+.PP
+Plumbing messages have a fixed structure: five lines of text
+giving UTF representations of the
+corresponding fields of
+.BR Msg ,
+then a line giving the length of
+.B data
+in decimal,
+followed by the bytes of
+.BR data :
+.IP
+.nf
+.IB source \en
+.IB destination \en
+.IB directory \en
+.IB kind \en
+.IB attributes \en
+.IB n \en
+.IB n " bytes"
+.fi
+.PP
+The details are encapsulated in two functions:
+.TP
+.IB m .pack()
+.B Pack
+packs the contents
+.B Msg
+.I m
+into an array of byte for subsequent transmission using
+.I write
+(see
+.IR sys-read (2)).
+.TP
+.BI Msg.unpack( b )
+Unpack unpacks an array of byte
+.I b
+to form a copy of the original
+.BR Msg ,
+which it returns.
+.SH FILES
+.TF /chan/plumb.rcvport
+.TP
+.B /chan/plumb.input
+file to send messages to the plumber
+.TP
+.BI /chan/plumb. rcvport
+file to receive messages routed to the logical name
+.I rcvport
+.SH SOURCE
+.B /appl/lib/plumbmsg.b
+.SH BUGS
+.I Shutdown
+should not be needed:
+the
+.IR plumber (8),
+as a file server, must know that a particular client has vanished.

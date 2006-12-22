@@ -1,0 +1,141 @@
+.TH CPU 4
+.SH NAME
+cpu \- cpu server resource
+.SH SYNOPSIS
+.B grid/srv/cpu
+.br
+.B grid/runcpu
+.SH DESCRIPTION
+.I Cpu
+is a file server that provides a processing resource. This resource imports a namespace from one or more external sources and executes selected commands within it. 
+.I Cpu
+creates its own namespace containing three files
+.BR ctl ,
+.B cmd
+and
+.B ns
+which are used to configure the processing task prior to execution, this namespace is exported and served on 
+.I stdin.
+In order to configure a processing task, a client must first mount the
+.I cpu
+namespace. Once this is done, reading the 
+.B cmd
+and
+.B ns
+files will display the current configuration of commands to be executed or directories to be imported respectively. The 
+.B ctl
+file is used to modify the current configuration and accepts the following input:
+.IP
+.B add cmd 
+.I command
+.IP
+.B add ns 
+.I path address
+.IP
+.B del [cmd|ns]
+.I index
+.PP
+Where
+.I command
+is the name (including full path and parameters) of a command to be executed.
+.I Path
+is the name of a directory to import from the exported namespace available at 
+.I address
+and 
+.I index
+is the index (as shown when reading the
+.B cmd
+and
+.B ns
+files) of the command or directory to be removed from the configuration.
+.PP
+For example, to import
+.B /dis
+and
+.B /dev
+from a resource exporting a Styx (see
+.IR intro(5))
+namespace at address
+.B tcp!200.1.5.53!7003
+and then run 
+.B ls -l 
+and
+.BR du ,
+the following commands would be used:
+.IP
+.B "echo 'add cmd /dis/ls -l' > ctl"
+.br
+.B "echo 'add cmd /dis/du' > ctl"
+.br
+.B "echo 'add ns /dis tcp!200.1.5.53!7003' > ctl"
+.br
+.B "echo 'add ns /dev tcp!200.1.5.53!7003' > ctl"
+.PP
+Reading the
+.B cmd
+and 
+.B ns
+files will give the following output:
+.IP
+.B cmd
+.br
+.B 1: /dis/ls -l
+.br
+.B 2: /dis/du
+.IP
+.B ns
+.br
+.B 1: /dis (200.1.5.53!7003)
+.br
+.B 2: /dis (200.1.5.53!7003)
+.PP
+Once the client disconnects from (unmounts) the cpu, the selected namespaces will be imported and the commands executed. Note: A 
+.I cpu
+does not have
+.I any
+namespace of its own. All required namespaces
+.I must
+be imported, for a simple command such as
+.BR ls ,
+the minimum recommended namespace to import would be:
+.B /chan /dev /dis /module
+.PP
+.IR Register (1)
+may be used in conjunction with 
+.I cpu
+to register it with a 
+.IR registry(4)
+and to export and serve its namespace across
+.IR dial(2) 
+network connections. Incoming connections may also be displayed visually using
+.IR monitor (1).
+For example:
+.PP
+.BI "grid/register [" " options ..." " ] { grid/srv/cpu } | grid/srv/monitor 2 'CPU resource'
+.PP
+This set of commands is encapsulated within the shell script
+.I runcpu
+which will automatically register 
+.I cpu
+with a
+.IR registry(4)
+if possible and start up the graphical display to show connections to the resource. There is no need for the user to execute
+.I cpu
+outside of
+.I runcpu
+unless the namespace it provides is required to be accessible in a different way to that provided by
+.IR register (1).
+.SH SOURCE
+.B /appl/grid/srv/cpu.b
+
+.SH BUGS
+At the moment,
+.I Cpu
+will only import namespaces across an unauthenticated connection as provided by
+.IR ns (1).
+
+.SH "SEE ALSO"
+.IR monitor (1),
+.IR ns (1),
+.IR register (1),
+.IR session (1)

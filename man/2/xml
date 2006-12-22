@@ -1,0 +1,266 @@
+.TH XML 2
+.SH NAME
+xml \- XML navigation
+.SH SYNOPSIS
+.EX
+include "xml.m";
+
+xml := load Xml Xml->PATH;
+Parser, Item, Location, Attributes, Mark: import xml;
+
+init:   fn(): string;
+open: fn(f: string, warning: chan of (Locator, string),
+                preelem: string): (ref Parser, string);
+
+Parser: adt {
+    fileoffset: int;
+
+    next:       fn(p: self ref Parser): ref Item;
+    down:       fn(p: self ref Parser);
+    up:         fn(p: self ref Parser);
+    mark:       fn(p: self ref Parser): ref Mark;
+    atmark:     fn(p: self ref Parser, m: ref Mark): int;
+    goto:       fn(p: self ref Parser, m: ref Mark);
+    str2mark:   fn(p: self ref Parser, s: string): ref Mark;
+};
+
+Item: adt {
+    fileoffset: int;
+    pick {
+    Tag =>
+        name:   string;
+        attrs:  Attributes;
+    Text =>
+        ch:     string;
+        ws1:	int;
+		ws2:    int;
+    Process =>
+        target: string;
+        data:   string;
+    Doctype =>
+        name:   string;
+        public: int;
+        params: list of string;
+    Stylesheet =>
+        attrs:  Attributes;
+    Error =>
+        loc:    Locator;
+        msg:    string;
+    }
+};
+
+Locator: adt {
+    line:       int;
+    systemid:   string;
+    publicid:   string;
+};
+
+Attribute: adt {
+    name:       string;
+    value:      string;
+};
+
+Attributes: adt {
+    all:        fn(a: self Attributes): list of Attribute;
+    get:        fn(a: self Attributes, name: string): string;
+};
+
+Mark: adt {
+    offset:     int;
+    str:        fn(m: self ref Mark): string;   
+};
+.EE
+.SH DESCRIPTION
+.B Xml
+provides an interface for navigating XML files (`documents'). Once loaded, the module
+must first be initialised by calling
+.BR init .
+A new parser instance is created by calling
+.BR open(\fIf\fP,\ \fIwarning\fP,\ \fIpreelem\fP) ,
+which opens the file
+.I f
+for parsing as an XML document.
+It returns a tuple, say
+.RI ( p ,\  err ).
+If there is an error opening the document,
+.I p
+is nil, and
+.I err
+contains a description of the error; otherwise
+.I p
+can be used to examine the contents of the document.
+If
+.I warning
+is not nil, non-fatal errors encountered when parsing
+will be sent on this channel - a separate process will
+be needed to received them. Each error is represented
+by a tuple, say
+.RI ( loc ,\  msg ),
+containing the location
+.IR loc ,
+and the description,
+.IR msg ,
+of the error encountered. One XML tag,
+.IR preelem ,
+may be marked for special treatment by the XML parser:
+within this tag all white space will be passed through as-is.
+.PP
+Once an XML document has been opened, the following
+.B Parser
+methods may be used to examine the items contained within:
+.TP 10
+.IB p .next()
+An XML document is represented by a tree-structure.
+.B Next
+returns the next item in the document at the current level of the tree
+within the current parent element. If there are no more such
+items, it returns
+.BR nil .
+.TP
+.IB p .down()
+.B Down
+descends into the element that has just been returned by
+.BR next ,
+which should be a
+.B Tag
+item. Subsequent items returned by
+.B next
+will be those within that tag.
+.TP
+.IB p .up()
+.B Up
+moves up one level in the XML tree.
+.TP
+.IB p .mark()
+.B Mark
+returns a mark that can be used to return later to the current
+position in the document. The underlying file must
+be seekable for this to work.
+.TP
+.IB p .goto(\fIm\fP)
+Goes back to a previously marked position,
+.IR m ,
+in the document.
+.TP
+.IB p .atmark(\fIm\fP)
+.B Atmark
+returns non-zero if the current
+position in the document is the same as that marked by
+.IR m .
+The current tree level is ignored in the comparison.
+.TP
+.IB p .str2mark(\fIs\fP)
+.B Str2mark
+turns a string as created by
+.B Mark.str
+back into a mark as returned by
+.BR Parser.mark .
+.SS Items
+Various species of items live in XML documents; they are encapsulated
+in the
+.B Item
+adt. This contains one member in common to all its subtypes:
+.BR fileoffset ,
+the position in the XML document of the start of the item.
+The various kinds of item are as follows:
+.TP
+.B Tag
+A generic XML tag.
+.B Name
+names the tag, and
+.B attrs
+holds its attributes, if any.
+.TP
+.B Text
+.B Text
+represents inline text in the XML document.
+With the exception of text inside the tag named by
+.I preelem
+in
+.BR open ,
+any runs of white space are compressed to a single space,
+and white space at the start or end of the text is elided.
+.B Ch
+contains the resulting text;
+.B ws1
+and
+.B ws2
+are non-zero if there was originally white space at the start
+or end of the text respectively.
+.TP
+.B Process
+.B Process
+represents an XML document processing directive.
+.B Target
+is the processing instruction's target, and
+.B data
+holds the rest of the text inside the directive.
+XML stylesheet directives are recognised directly and have
+their own item type.
+.TP
+.B Doctype
+.B Doctype
+should only occur at the start of an xml document,
+and represents the type of the XML document.
+.TP
+.B Stylesheet
+.B Stylesheet
+represents an XML stylesheet processing request. The
+data of the processing request is parsed as per the RFC
+into attribute-value pairs.
+.TP
+.B Error
+If an unrecoverable error occurs processing the document,
+an
+.B Error
+item is returned holding the location
+.RB ( loc ),
+and description
+.RB ( msg )
+of the error.
+This will be the last item returned by the parser.
+.PP
+The attribute-value pairs in
+.B Tag
+and
+.B Stylesheet
+items are held in an
+.B Atttributes
+adt, say
+.IR a .
+.IB A .all()
+yields a list holding all the attributes;
+.IB a .get( name )
+yields the value of the attribute
+.IR name .
+.PP
+The location returned when an error is reported is held
+inside a
+.B Locator
+adt, which holds the line number on which the error occurred,
+the ``system id'' of the document (in this implementation, its file name),
+and the "public id" of the document (not currently used).
+.PP
+A
+.B Mark
+.I m
+may be converted to a string with
+.IB m .str()\fR;\fP
+this enables marks to be written out to external storage, to index
+a large XML document, for example.
+Note that if the XML document changes, any stored marks will
+no longer be valid.
+.SH SOURCE
+.B /appl/lib/xml.b
+.SH SEE ALSO
+``Extensible Markup Language (XML) 1.0 (Second Edition)'',
+.B http://www.w3.org/TR/REC-xml
+.SH BUGS
+XML's definition makes it tricky to handle leading and trailing white space
+efficiently;
+.B ws1
+and
+.B ws2
+in
+.B Item.Text
+is the current compromise.

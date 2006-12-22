@@ -1,0 +1,101 @@
+.TH ATTRDB 6
+.SH NAME
+attrdb \- data base of attribute-value pairs
+.SH DESCRIPTION
+An attribute data base is formed from one or more text files,
+each containing groups of related attribute-value pairs.
+A given data base typically stores data relating to a single logical domain.
+For instance,
+Inferno uses an attribute data base
+.IR ndb (6)
+to organise network configuration data.
+.I Attrdb (2)
+is typically used by applications to search the data.
+.PP
+Each entry in the data base consists of one or more lines containing
+attribute/value pairs, separated by white space.
+The first line of an entry starts a line; subsequent lines in the entry
+are preceded by white space (spaces or tabs).
+Pairs on the same line bind tighter together than others in the same entry.
+(This is important when one known pair is used to find another by attribute name.)
+The character
+.RB ` # '
+causes the rest of the line to be ignored (eg, as commentary).
+Empty lines are also ignored.
+.PP
+Attribute/value pairs are written as
+.IB attribute = value,
+which can be abbreviated to
+.lB attribute =
+or simply
+.I attribute
+if the attribute has no value.
+A
+.I value
+that contains white space, or any of the characters \f5#'"=\fP
+must be quoted, using either the single or double quote character.
+Within a quoted string, two adjacent quotes can be written to enter a quote in the string.
+For example:
+.IP
+.EX
+name='Paul Wilson' business company='Fruitbat Villas Ltd'
+   title='Key Grip'
+   address='39 Willis Street, York' tel='+44 1904 20927'
+   address='On the road' tel='+44 7904 169 704'
+name='James Mason' personal=
+   address='10 St James''s, East Grinstead' tel='01342 7674'
+.EE
+.PP
+Note that the binding rule associates each
+.B address
+in the first entry most closely with the
+.B tel
+on the same line.
+The attributes
+.B business
+(first entry)
+and
+.B personal
+(second entry)
+are both attributes without value.
+.PP
+A single logical data base can be formed by concatenating several physical files,
+each having the format above.
+One of the files must contain an entry (typically first in the file) containing a
+.B database
+attribute and a sequence of attributes of the form
+.BI file= filename.
+For example:
+.IP
+.EX
+database=
+   file=file1
+   file=file2
+   file=file3
+.EE
+.PP
+The logical database is formed by (logically) concatenating the contents
+of each
+.I filename
+in the order listed
+(ie,
+.BR file1 ,
+.BR file2 ,
+and
+.BR file3
+above).
+Typically the file containing the
+.B database
+attribute
+appears in the list as well, at the point where its contents should go;
+if it does not appear at all, it is assumed to be first.
+The name of that file is also used as the name of the logical database,
+for instance when opened by
+.IR attrdb (2).
+.SH SEE ALSO
+.IR cfg (2),
+.IR attrdb (2),
+.IR ipattr (2),
+.IR ndb (6),
+.IR cs (8),
+.IR dns (8)

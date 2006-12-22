@@ -1,0 +1,55 @@
+.TH VIRGILD 8
+.SH NAME
+virgild \- connection service for remote clients
+.SH SYNOPSIS
+.B ndb/cs
+.br
+.B ip/virgild
+.SH DESCRIPTION
+.I Virgild
+receives requests for name service on UDP/IP
+port
+.BR virgil ,
+defined as
+2202 by
+.IR services (6),
+and hard-coded in
+.IR virgil (2).
+Each request has the form:
+.IP
+.IB userid ? machine-name
+.PP
+.I Virgild
+translates the
+.I machine-name
+using the local connection server
+(see
+.IR cs (8)),
+and sends a response of the following form to the requesting client:
+.IP
+.IB userid ? machine-name = network-address
+.PP
+If the
+.I machine-name
+cannot be translated,
+.I virgild
+makes no response;
+unless another server replies, the client's request will time out.
+.PP
+.I Virgild
+requires that
+.IR cs (8)
+be running before it is started.
+.SH SOURCE
+.B /appl/cmd/ip/virgild.b
+.SH "SEE ALSO"
+.IR rcmd (1),
+.IR cs (8)
+.SH BUGS
+The
+.I userid
+part is currently unused but must still be included.
+.br
+.I Virgild
+is single threaded: a delay in translating a name for one client will delay response
+to any subsequent clients.

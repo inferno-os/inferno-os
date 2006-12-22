@@ -1,0 +1,81 @@
+.TH INDIR 3
+.SH NAME
+indir \- attach to device indirectly by name
+.SH SYNOPSIS
+.BI "bind  #*" name
+[\c
+.BI ! spec\c
+]
+.I " dir"
+.SH DESCRIPTION
+.I Indir
+allows any other device to be referred to by its name instead of its perhaps arbitrary single character type;
+.I indir
+itself has the type character
+.RB ` * '.
+It has no name space of its own.
+On attach (see
+.IR attach (5))
+.I indir
+interprets its device specifier string as the
+.I name
+of a device to which it should attach, optionally followed by specifier
+.I spec
+for that device, separated from the
+.I name
+by an exclamation mark.
+Attaching to
+.I indir
+(eg, by
+.IR sys-bind (2)),
+effectively attaches to the device with the given
+.I name
+and
+.IR spec ,
+and all subsequent operations in the resulting name space access that
+device, not
+.I indir
+itself.
+.PP
+For example, to access
+.IR cap (3),
+one could write:
+.IP
+.B "bind -a '#*cap' /dev"
+.PP
+The following commands both list the second instance of
+.IR ether (3),
+first directly, then using
+.IR indir :
+.IP
+.B "ls '#l1'"
+.br
+.B "ls '#*ether!1'"
+.PP
+The file
+.B /dev/drivers
+(see
+.IR cons (3))
+lists the names of currently configured devices.
+.SS Credit
+Invented by Bruce Ellis for Lucent's internal Research Inferno to help name dynamically-loaded device drivers.
+This is a re-implementation.
+.SH SOURCE
+.B /emu/port/devindir.c
+.br
+.B /os/port/devindir.c
+.SH SEE ALSO
+.IR bind (1),
+.IR sys-bind (2),
+.IR cons (3)
+.SH DIAGNOSTICS
+If
+.I name
+is not configured,
+.I indir
+returns a suitable diagnostic in the error string.
+.SH BUGS
+Arguably the kernel
+could simply look up the
+.I name
+itself.

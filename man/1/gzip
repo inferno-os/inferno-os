@@ -1,0 +1,69 @@
+.TH GZIP 1
+.SH NAME
+gzip, gunzip \- compression and decompression utilities
+.SH SYNOPSIS
+.B gzip
+[
+.B \-v
+] [
+.BI \- level
+] [
+.IR file ...
+]
+.br
+.B gunzip
+[
+.IR file ...
+]
+.SH DESCRIPTION
+.B Gzip
+and
+.B gunzip
+perform data compression and decompression
+compatible with the Unix
+.I gzip
+file format,
+which uses a hybrid Lempel-Ziv 1977 and Huffman compression algorithm
+called `deflate'.
+If no arguments are given
+.B gzip
+compresses each
+.I file
+replacing it by a file of the same
+name with the a
+.B .gz
+suffix appended.
+If no files are given, standard input
+and standard output are used.
+.I Level
+is a single decimal digit between 1 and 9;
+higher numbers give better compression.
+The default
+.I level
+is 6.
+The
+.B \-v
+option causes
+.B gzip
+to report the compression ratio of each file that
+it compresses.
+.PP
+.B Gunzip
+performs the opposite operation to
+.BR gzip ;
+each
+.I file
+(which must have a
+.B .gz
+suffix) is uncompressed, and replaced
+by a file of the same name with the
+.B .gz
+suffix removed. If no files are given,
+standard input and standard output are used.
+.SH SOURCE
+.B /appl/cmd/gzip.b
+.br
+.B /appl/cmd/gunzip.b
+.SH SEE ALSO
+.IR filter (2),
+.IR filter-deflate (2)

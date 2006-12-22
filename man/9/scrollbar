@@ -1,0 +1,252 @@
+.TH SCROLLBAR 9
+.SH NAME
+scrollbar \- Create and manipulate scrollbar widgets
+.SH SYNOPSIS
+\f5scrollbar\fI pathName \fR?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-activebackground -borderwidth      -orient
+-background       -jump             -relief
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -activerelief \fIrelief\fP
+Specifies the relief to use when displaying the element that is
+active, if any.
+Elements other than the active element are always displayed with
+a raised relief.
+.TP
+.B -command \fIcommand\fP
+Specifies the prefix of a Tk command to invoke to change the view
+in the widget associated with the scrollbar.  When a user requests
+a view change by manipulating the scrollbar, a Tk command is
+invoked.  The actual command consists of this option followed by
+additional information as described later.  This option almost always has
+a value such as \f5.t xview\fR or \f5.t yview\fR, consisting of the
+name of a widget and either \f5xview\fR (if the scrollbar is for
+horizontal scrolling) or \f5yview\fR (for vertical scrolling).
+All scrollable widgets have \f5xview\fR and \f5yview\fR commands
+that take exactly the additional arguments appended by the scrollbar
+as described in SCROLLING COMMANDS below.
+.ig
+DEPRECATED
+.TP
+.B -elementborderwidth \fIdist\fP
+Specifies the width of borders drawn around the internal elements
+of the scrollbar (the two arrows and the slider).
+If this value is less than zero, the value of the \f5borderwidth\fR
+option is used in its place.
+..
+.TP
+.B -height \fIdist\fP
+Specifies a desired height for the scrollbar.
+If this option isn't specified, a suitable default height is chosen.
+.TP
+.B -width \fIdist\fP
+Specifies a desired width for the scrollbar.
+If this option isn't specified, a suitable default width is chosen.
+.SH DESCRIPTION
+The \f5scrollbar\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a scrollbar widget.
+Additional options, described above, may be specified on the command
+line to configure aspects of the scrollbar
+such as its colours, orientation, and relief.
+The \f5scrollbar\fR command returns its \fIpathName\fR argument.
+At the time this command is invoked, there must not exist a window
+named \fIpathName\fR.
+.PP
+A scrollbar is a widget that displays two arrows, one at each end of
+the scrollbar, and a \fIslider\fR in the middle portion of the
+scrollbar.
+It provides information about what is visible in an \fIassociated window\fR
+that displays a document of some sort (such as a file being edited or
+a drawing).
+The position and size of the slider indicate which portion of the
+document is visible in the associated window.  For example, if the
+slider in a vertical scrollbar covers the top third of the area
+between the two arrows, it means that the associated window displays
+the top third of its document.
+.PP
+Scrollbars can be used to adjust the view in the associated window
+by clicking or dragging with the mouse.  See the BINDINGS section
+below for details.
+
+.SH ELEMENTS
+A scrollbar displays five elements, which are referred to in the
+widget commands for the scrollbar:
+.TP 12
+\f5arrow1\fR
+The top or left arrow in the scrollbar.
+.TP 12
+\f5trough1\fR
+The region between the slider and \f5arrow1\fR.
+.TP 12
+\f5slider\fR
+The rectangle that indicates what is visible in the associated widget.
+.TP 12
+\f5trough2\fR
+The region between the slider and \f5arrow2\fR.
+.TP 12
+\f5arrow2\fR
+The bottom or right arrow in the scrollbar.
+
+.SH "WIDGET COMMAND"
+The \f5scrollbar\fR command creates a new Tk command whose
+name is \fIpathName\fR.  This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for scrollbar widgets:
+.TP
+\fIpathName \f5activate \fR?\fIelement\fR?
+Marks the element indicated by \fIelement\fR as active, which
+causes it to be displayed as specified by the \f5activebackground\fR option.
+The only element values understood by this command are \f5arrow1\fR,
+\f5slider\fR, or \f5arrow2\fR.
+If any other value is specified then no element of the scrollbar
+will be active.
+If \fIelement\fR is not specified, the command returns
+the name of the element that is currently active, or an empty string
+if no element is active.
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5scrollbar\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? ?\fIvalue option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5scrollbar\fR
+command.
+.TP
+\fIpathName \f5delta \fIdeltaX deltaY\fR
+Returns a real number indicating the fractional change in
+the scrollbar setting that corresponds to a given change
+in slider position.  For example, if the scrollbar is horizontal,
+the result indicates how much the scrollbar setting must change
+to move the slider \fIdeltaX\fR pixels to the right (\fIdeltaY\fR is
+ignored in this case).
+If the scrollbar is vertical, the result indicates how much the
+scrollbar setting must change to move the slider \fIdeltaY\fR pixels
+down.  The arguments and the result may be zero or negative.
+.TP
+\fIpathName \f5fraction \fIx y\fR
+Returns a real number between 0 and 1 indicating where the point
+given by \fIx\fR and \fIy\fR lies in the trough area of the scrollbar.
+The value 0 corresponds to the top or left of the trough, the
+value 1 corresponds to the bottom or right, 0.5 corresponds to
+the middle, and so on.
+\fIX\fR and \fIy\fR must be pixel coordinates relative to the scrollbar
+widget.
+If \fIx\fR and \fIy\fR refer to a point outside the trough, the closest
+point in the trough is used.
+.TP
+\fIpathName \f5get\fR
+Returns the scrollbar settings in the form of a list whose
+elements are the arguments to the most recent \f5set\fR widget command.
+.TP
+\fIpathName \f5identify\fR \fIx y\fR
+Returns the name of the element under the point given by \fIx\fR and
+\fIy\fR (such as \f5arrow1\fR), or an empty string if the point does
+not lie in any element of the scrollbar.
+\fIX\fR and \fIy\fR must be pixel coordinates relative to the scrollbar
+widget.
+.TP
+\fIpathName \f5set\fR \fIfirst last\fR
+This command is invoked by the scrollbar's associated widget to
+tell the scrollbar about the current view in the widget.
+The command takes two arguments, each of which is a real fraction
+between 0 and 1.
+The fractions describe the range of the document that is visible in
+the associated widget.
+For example, if \fIfirst\fR is 0.2 and \fIlast\fR is 0.4, it means
+that the first part of the document visible in the window is 20%
+of the way through the document, and the last visible part is 40%
+of the way through.
+
+.SH "SCROLLING COMMANDS"
+When the user interacts with the scrollbar, for example by dragging
+the slider, the scrollbar notifies the associated widget that it
+must change its view.
+The scrollbar makes the notification by evaluating a Tk command
+generated from the scrollbar's \f5-command\fR option.
+The command may take any of the following forms.
+In each case, \fIprefix\fR is the contents of the
+\f5-command\fR option, which usually has a form like \f5.t yview\fR
+.TP
+\fIprefix \f5moveto \fIfraction\fR
+\fIFraction\fR is a real number between 0 and 1.
+The widget should adjust its view so that the point given
+by \fIfraction\fR appears at the beginning of the widget.
+If \fIfraction\fR is 0 it refers to the beginning of the
+document.  1.0 refers to the end of the document, 0.333
+refers to a point one-third of the way through the document,
+and so on.
+.TP
+\fIprefix \f5scroll \fInumber \f5unit\fR
+The widget should adjust its view by \fInumber\fR units.
+The units are defined in whatever way makes sense for the widget,
+such as characters or lines in a text widget.
+\fINumber\fR is either 1, which means one unit should scroll off
+the top or left of the window, or -1, which means that one unit
+should scroll off the bottom or right of the window.
+.TP
+\fIprefix \f5scroll \fInumber \f5page\fR
+The widget should adjust its view by \fInumber\fR pages.
+It is up to the widget to define the meaning of a page;  typically
+it is slightly less than what fits in the window, so that there
+is a slight overlap between the old and new views.
+\fINumber\fR is either 1, which means the next page should
+become visible, or -1, which means that the previous page should
+become visible.
+
+.SH BINDINGS
+Tk automatically creates bindings for scrollbars that give them
+the following default behaviour.
+If the behaviour is different for vertical and horizontal scrollbars,
+the horizontal behaviour is described in parentheses.
+
+.IP [1]
+Pressing button 1 over \f5arrow1\fR causes the view in the
+associated widget to shift up (left) by one unit so that the
+document appears to move down (right) one unit.
+If the button is held down, the action auto-repeats.
+.IP [2]
+Pressing button 1 over \f5trough1\fR causes the view in the
+associated widget to shift up (left) by one screenful so that the
+document appears to move down (right) one screenful.
+.IP [3]
+Pressing button 1 over the slider and dragging causes the view
+to drag with the slider.
+If the \f5jump\fR option is true, then the view doesn't drag along
+with the slider;  it changes only when the mouse button is released.
+.IP [4]
+Pressing button 1 over \f5trough2\fR causes the view in the
+associated widget to shift down (right) by one screenful so that the
+document appears to move up (left) one screenful.
+.IP [5]
+Pressing button 1 over \f5arrow2\fR causes the view in the
+associated widget to shift down (right) by one unit so that the
+document appears to move up (left) one unit.
+If the button is held down, the action auto-repeats.
+.IP [6]
+If button 2 is pressed over the trough or the slider, it sets
+the view to correspond to the mouse position;  dragging the
+mouse with button 2 down causes the view to drag with the mouse.
+If button 2 is pressed over one of the arrows, it causes the
+same behaviour as pressing button 1.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

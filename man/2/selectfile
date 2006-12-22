@@ -1,0 +1,57 @@
+.TH SELECTFILE 2
+.SH NAME
+selectfile \-
+file browser
+.SH SYNOPSIS
+.EX
+include "selectfile.m";
+selectfile := load Selectfile Selectfile->PATH;
+
+init:        fn();
+filename:	fn(ctxt: ref Draw->Context, parent: ref Draw->Image,
+               title: string,
+               pat: list of string,
+               dir: string): string;
+.EE
+.SH DESCRIPTION
+.B Selectfile
+provides an interactive file browser for use by a
+.IR wm (1)
+application.
+It allows a user to browse the
+file system to select a file of a give type.
+.PP
+.B Init
+should be called once to initialise the module's internal state.
+.PP
+.B Filename
+makes a dialog panel for selecting a file.
+It is created in the graphics context
+.IR ctxt ,
+near the northeast corner of a given parent window,
+.IR parent ,
+represented by that window's Image.
+(If the parent window is a Tk Toplevel
+.IR t ,
+for instance, the appropriate value is
+.IB t .image \f1.)\fP
+If
+.I parent
+is nil, the panel is centred on the screen.
+.I Dir
+gives the directory where the file search should begin.
+Only files that match
+.I pat
+are displayed.
+The returned string is the name of the selected file,
+or the empty string if no file was selected.
+.SH SOURCE
+.B /appl/lib/selectfile.b
+.SH SEE ALSO
+.IR dialog (2),
+.IR dividers (2),
+.IR draw-context (2),
+.IR tabs (2),
+.IR tk (2),
+.IR wmlib (2)
+

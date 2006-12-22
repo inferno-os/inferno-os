@@ -1,0 +1,101 @@
+.TH KEYRING-AUTH 2
+.SH NAME
+keyring: auth, readauthinfo, writeauthinfo \- authenticate a connection
+.SH SYNOPSIS
+.EX
+include "keyring.m";
+keyring := load Keyring Keyring->PATH;
+auth:           fn(fd: ref Sys->FD, info: ref Authinfo, setid: int)
+                : (string, array of byte);
+readauthinfo:   fn(filename: string): ref Authinfo;
+writeauthinfo:  fn(filename: string, info: ref Authinfo): int;
+.EE
+.SH DESCRIPTION
+.B Auth
+performs mutual authentication over a network connection, usually between a client and a server.
+The function is symmetric: each party runs it on their end of the connection.
+.I Info
+holds the public key of a certifying authority
+.RB ( PKca ),
+the private key of the user
+.RB ( SKu ),
+the public key
+.RB ( PKu )
+of the user signed by the certifying authority
+.RB ( CERTu ),
+and Diffie-Hellman parameters
+.RB ( alpha ,
+.BR p ).
+.PP
+.B Auth
+returns a string and a byte array.
+If the byte array is nil then the authentication has failed and the string is an error message. If the byte array is non-nil, it represents a secret shared by the two communicating parties,
+and the string names the party at the other end of the connection.
+.PP
+If the authentication is successful and
+.I setid
+is non-zero then
+.B auth
+attempts to write the name of the party at the other end of the connection into
+.B /dev/user
+(see
+.IR cons (3));
+no error is generated if that does not succeed.
+If the authentication is not successful and
+.I setid
+is non-zero,
+.B auth
+writes the name
+.B nobody
+into
+.BR /dev/user .
+.PP
+The authentication protocol is based on the Station-to-Station protocol. In the following, the parties are labelled 0 and 1.
+.BI Sig0( x )
+is
+.I x
+signed with 0's private key.
+.IP
+.EX
+0 → 1  alpha**r0 mod p, CERTu0, PKu0
+1 → 0  alpha**r1 mod p, CERTu1, PKu1
+0 → 1  sig0(alpha**r0 mod p, alpha**r1 mod p)
+1 → 0  sig1(alpha**r0 mod p, alpha**r1 mod p)
+.EE
+.PP
+At this point both 0 and 1 share the secret
+.B "alpha**(r0*r1)"
+which is returned in the byte array.
+Amongst other things, it can be the secret to digest or encrypt a conversation
+(see
+.IR security-ssl (2)).
+.PP
+.B Readauthinfo
+reads a representation of an
+.B Authinfo
+from a file.
+It returns nil if there is a read error or a conversion error;
+it returns a reference to the
+.B Authinfo
+otherwise.
+.PP
+.B Writeauthinfo
+writes a representation of
+.I info
+to a file. It returns -1 if the write operation fails, 0 otherwise.
+.SH FILES
+.TF /usr/user/keyring/defaultxxx
+.TP
+.BI /usr/ user /keyring
+The conventional directory for storing
+.B Authinfo
+files
+.TP
+.BI /usr/ user /keyring/default
+The key file normally used by server programs
+.TP
+.BI /usr/ user /keyring/ net ! server
+The key file normally used by clients for a given
+.I server
+.SH SOURCE
+.B /libinterp/keyring.c

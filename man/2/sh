@@ -1,0 +1,561 @@
+.TH SH 2
+.SH NAME
+Sh \- module interface to the shell
+.SH SYNOPSIS
+.EX
+.ps -1
+.vs -1
+include "sh.m";
+sh := load Sh Sh->PATH;
+Context, Listnode: import sh;
+
+system:           fn(drawctxt: ref Draw->Context, cmd: string): string;
+run:              fn(drawctxt: ref Draw->Context, argv: list of string): string;
+parse:            fn(s: string): (ref Cmd, string);
+cmd2string:       fn(c: ref Cmd): string;
+list2stringlist:  fn(nl: list of ref Listnode): list of string;
+stringlist2list:  fn(sl: list of string): list of ref Listnode;
+
+Context: adt {
+        new:            fn(drawcontext: ref Draw->Context): ref Context;
+        get:            fn(c: self ref Context,
+                           name: string): list of ref Listnode;
+        set:            fn(c: self ref Context,
+                           name: string,
+                           value: list of ref Listnode);
+        setlocal:       fn(c: self ref Context,
+                           name: string,
+                           value: list of ref Listnode);
+        envlist:        fn(c: self ref Context):
+			              list of (string, list of ref Listnode);
+        push, pop:      fn(c: self ref Context);
+        copy:           fn(c: self ref Context, copyenv: int): ref Context;
+        run:            fn(c: self ref Context,
+                           args: list of ref Listnode,
+                           last: int): string;
+        addmodule:      fn(c: self ref Context, name: string,
+                           mod: Shellbuiltin);
+        addbuiltin:     fn(c: self ref Context, name: string,
+                           mod: Shellbuiltin);
+        removebuiltin:  fn(c: self ref Context, name: string,
+                           mod: Shellbuiltin);
+        addsbuiltin:    fn(c: self ref Context, name: string,
+                           mod: Shellbuiltin);
+        removesbuiltin: fn(c: self ref Context, name: string,
+                           mod: Shellbuiltin);
+        fail:           fn(c: self ref Context, ename, msg: string);
+        options:        fn(c: self ref Context): int;
+        setoptions:     fn(c: self ref Context, flags, on: int): int;
+};
+
+Listnode: adt {
+        cmd:    ref Cmd;
+        word:   string;
+};
+
+Cmd: adt {
+        # private data
+};
+
+Shellbuiltin: module {
+        initbuiltin:    fn(ctxt: ref Context, sh: Sh): string;
+        whatis:         fn(ctxt: ref Sh->Context, sh: Sh,
+                           name: string, wtype: int): string;
+       runbuiltin:     fn(ctxt: ref Context, sh: Sh,
+                           cmd: list of ref Listnode,
+                           last: int): string;
+        runsbuiltin:    fn(ctxt: ref Context, sh: Sh,
+                           cmd: list of ref Listnode): list of ref Listnode;
+        getself:        fn(): Shellbuiltin;
+};
+
+.ps +1
+.vs +1
+.EE
+.SH DESCRIPTION
+.I Sh
+is a command-line interpreter and a scripting language;
+it also presents a module interface to allow Limbo
+modules to access its functionality at a lower level.
+The
+.B Sh
+module can be used in several different ways.
+At the simplest level, it can be run as a command-line
+program; for details of this, see
+.IR sh (1).
+The simplest access at the Limbo level is through
+the
+.B system
+function, which given a
+.I draw
+.B Context
+(see
+.IR draw-context (2))
+and a string
+executes the
+.I sh
+command contained in
+.I s
+and returns its result. It catches any exceptions raised by the command.
+Almost as simple is
+.BR exec ,
+which runs
+.I argv
+as a command, taking the first word as the command to be
+executed (it can be a braced block) and giving the rest as arguments,
+catching any exceptions raised.
+.PP
+Although program arguments are passed to external programs
+as lists of strings, at the
+.B Sh
+module level, an argument list is held as a
+.BR "list of ref Listnode" .
+A
+.B Listnode
+holds either a simple string, or a braced block
+that has been parsed by the shell. Sometimes it can hold
+both; in this case the string and the block both represent
+the same thing.
+.B Parse
+converts from a string to a
+.B Cmd
+(a braced block). It returns a tuple
+.RI ( cmd ,\  error )
+where
+.I cmd
+holds the parsed block,
+and
+.I error
+is non-empty if an error has occurred doing so.
+.B Cmd2string
+performs the opposite conversion; it returns
+a string that when parsed will yield the same command
+block it was passed.
+The utility functions
+.B List2stringlist
+and
+.B stringlist2list
+convert from and to a
+.B list of ref Listnode
+to or from a
+.B list of string
+respectively.
+.PP
+A
+.B Context
+holds all the state information needed by a currently running
+.I sh
+process; this adt holds current values of environment variables
+and a list of currently loaded modules and builtin commands.
+It is specific to the process within which it was created.
+If it is desired to run
+.I sh
+commands in a newly spawned process, a new
+.B Context
+must be created, or a copy of an existing Context made (making
+sure to synchronise access until the copy has been made).
+.TP 10
+.BI Context.new( drawcontext )
+.B New
+creates a new context.
+.I Drawcontext
+represents the current graphics context
+within which
+.I sh
+commands will be run
+(see
+.IR draw-context (2)).
+.TP
+.IB ctxt .get(\fPname\fP)
+.B Get
+retrieves the value of environment variable
+.I name
+from
+.IR ctxt .
+It is retrieved from the innermost scope in which
+a value for
+.I name
+has been set.
+.TP
+.IB ctxt .set(\fPname\fP,\ \fPvalue\fP)
+.B Set
+sets the value of environment variable
+.I name
+in
+.IR ctxt
+to
+.IR value .
+It is set in the innermost scope in which a value
+for
+.I name
+has been set, or the outermost level if it has
+not been set.
+.TP
+.IB ctxt .setlocal(\fPname\fP,\ \fPvalue\fP)
+Similar to
+.B set()
+except that the value is set in the innermost scope
+that has been pushed.
+.TP
+.IB ctxt .envlist()
+.B Envlist
+retrieves the list of all the environment variables
+currently in scope, and their values.
+It returns a list of
+.RI ( name ,\  value )
+tuples, where
+.I name
+is the name of the variable and
+.I value
+is its value.
+.TP
+.IB ctxt .push()
+.B Push
+creates a new innermost environment variable scope.
+.TP
+.IB ctxt .pop()
+.B Pop
+discards the current innermost scope, losing the
+values of all variables that have been defined there.
+It is an error to
+.B pop
+a context that has not been pushed.
+Care must be taken to ensure that a
+.B push
+is always matched by a
+.BR pop.
+In particular, exceptions should be caught,
+the context popped, and the exception re-raised.
+.TP
+.IB ctxt .copy(\fPcopyenv\fP)
+The shell's
+.B Context
+is associated with a particular process;
+.B copy
+returns a copy of
+.I ctxt
+associated with the current process. If
+.I copyenv
+is non-zero, the whole environment will be copied - this
+should be set if the new process is to run asynchronously - i.e.
+if there is a chance that there might be two processes accessing the
+context in parallel. It is an error to copy a context if not
+within a new process.
+.TP
+.IB ctxt .run(\fPargs\fP,\ \fPlast\fP)
+.B Run
+executes a
+.I sh
+command.
+.I Last
+should be non-zero if this is the last time
+that
+.B run
+will be called, so
+.I sh
+does not have to spawn a new process in order
+to hide file redirection side-effects.
+.TP
+.IB ctxt .addmodule(\fPname\fP,\ \fPmod\fP)
+.B Addmodule
+adds the
+.B Shellbuiltin
+module
+.I mod
+to its list of builtin modules.
+The module will be initialised as described in
+``Builtin modules'', below.
+.TP
+.IB ctxt .addbuiltin(\fPname\fP,\ \fPmod\fP)
+.B Addbuiltin
+may be called by a module that has previously
+been loaded by
+.B addmodule
+or by the
+.B load
+.I sh
+command to add a new builtin command
+to the shell. Any subsequent invocation of
+.I name
+within
+.I ctxt
+will result in a call of
+.B runbuiltin()
+to
+.IR mod .
+Any attempt to redefine the command
+.RB `` builtin ''
+will be ignored.
+.TP
+.IB ctxt .removebuiltin(\fPname\fP,\ \fPmod\fP)
+.B Removebuiltin
+removes
+.I name
+from the list of builtin commands in
+.IR ctxt .
+If
+.I name
+had not previously been defined by
+.IR mod ,
+or had subsequently been replaced, then
+this function does nothing.
+.TP
+.IB ctxt .addsbuiltin(\fPname\fP,\ \fPmod\fP)
+.B Addsbuiltin
+may be called by a module that has previously
+been loaded by
+.B addmodule
+or by the
+.B load
+.I sh
+command to add a new builtin substitution operator
+to the shell.
+Any subsequent invocation of
+.BI ${ name }
+within
+.I ctxt
+will result in a call of
+.B runsbuiltin()
+to
+.IR mod .
+.TP
+.IB ctxt .removesbuiltin(\fPname\fP,\ \fPmod\fP)
+.B Removesbuiltin
+removes
+.I name
+from the list of builtin substitution operators in
+.IR ctxt .
+If
+.I name
+had not previously been defined by
+.IR mod ,
+or had subsequently been replaced, then
+this function does nothing.
+.TP
+.IB ctxt .fail(\fPename\fP,\ \fPmsg\fP)
+.B Fail
+prints
+.I msg
+to the standard error if message printing
+is currently enabled, and raises
+the exception
+.BI fail: ename\f1.\fP
+.TP
+.IB ctxt .options()
+.B Options
+returns a bitmask of the options currently enabled in
+.IR ctxt .
+The bits are defined by constants declared within
+.BR Context .
+They include:
+.RS
+.TP
+.IB ctxt .INTERACTIVE
+.I Sh
+is currently being run from an interactive command-line.
+.TP
+.IB ctxt .VERBOSE
+Message printing is currently enabled.
+.TP
+.IB ctxt .EXECPRINT
+Commands are printed to standard error
+as they are executed.
+.TP
+.IB ctxt .ERROREXIT
+An exception will be raised when the first
+simple command returns an error status.
+.PP
+Options are defined in the innermost scope
+of
+.I ctxt
+and will be lost when it is
+.BR pop ped.
+.RE
+.TP
+.IB ctxt .setoptions(\fPflags\fP,\ \fPon\fP)
+.B Setoptions
+sets the specified
+.I flags
+within
+.IR ctxt .
+.I Flags
+is a bitmask of options, as described in
+.BR options ,
+above. If
+.I on
+is non-zero, the specified bits will be set;
+otherwise they will be reset.
+.B Setoptions
+returns the previously set options bitmask.
+.SS Builtin modules
+.B Shellbuiltin
+specifies the interface to a loadable
+.I sh
+builtin module. Any Limbo module
+.I mod
+adhering to this
+interface may be loaded into the shell.
+.TP 10
+.IB mod ->initbuiltin(\fPctxt\fP,\ \fPsh\fP)
+.B Initbuiltin
+is called when
+.I sh
+loads
+.I mod
+either via the
+.B load
+command, or via the
+.B loadmodule()
+function.
+.I Ctxt
+is the context within which the builtin has been
+loaded, and
+.I sh
+is the
+.B Sh
+module itself. When
+.B initbuiltin
+is called,
+.I mod
+is expected to call
+.IB ctxt .addbuiltin
+and
+.IB ctxt .addsbuiltin
+to define any builtin commands and builtin substitution
+operators that it wants. If an error occurs on
+initialisation,
+.B initbuiltin
+should return a non-nil value; this will cause the load to fail.
+.TP
+.IB mod ->runbuiltin(\fPctxt\fP,\ \fPsh\fP,\ \fPcmd\fP,\ \fPlast\fP)
+.B Runbuiltin
+is invoked when
+.I sh
+executes a command that has previously been
+defined as a builtin command by
+.IR mod .
+.I Ctxt
+is the current execution context (which may not be
+the original context passed to
+.BR initbuiltin() ),
+.I sh
+is the running
+.B Sh
+module, and
+.I cmd
+is the command to be executed.
+.I Last
+is true if this is the last command to be executed
+in the current process; it can be passed to
+.IB ctxt .run()
+as appropriate.
+The name of the command can be found in
+.BR "(hd cmd).word" .
+.B Runbuiltin
+returns its exit status; by convention this
+is the exit status of the last command executed.
+A non-nil exit status is usually treated as false.
+By convention, if an invalid set of arguments are
+passed to a builtin command, a
+.B usage
+exception is raised by calling 
+.IB ctxt .fail
+with
+.B "usage"
+and an explanatory usage message as arguments.
+.TP
+.IB mod ->runsbuiltin(\fPctxt\fP,\ \fPsh\fP,\ \fPcmd\fP)
+Similar to
+.BR runbuiltin ,
+.B runsbuiltin
+is called when
+.I sh
+encounters a builtin substitution operator
+that has previously been defined by
+.IR mod .
+It returns the list of values that will be
+substituted in place of the operator.
+.TP
+.IB mod ->getself()
+.B Getself
+should return the
+.B Shellbuiltin
+module handle for
+.IR mod ,
+usually obtained by invoking
+.BR "load $self" .
+N.B. it is important that the value returned
+by
+.B getself
+is the same as that passed to
+.B addbuiltin
+or
+.BR addsbuiltin .
+As the Limbo
+.B load
+operator returns a different value each time,
+the value to be returned by
+.B getself()
+should be initialised once,
+during the call to 
+.BR initbuiltin() .
+.TP 10
+.IB mod ->whatis(\fPctxt\fP,\ \fPsh\fP,\ \fPname\fP,\ \fPwtype\fP)
+.B Whatis
+is called by the shell's
+.B whatis
+command to query the definition of a name.
+.I Wtype
+gives the type of name that is being asked about; it can be
+.B BUILTIN
+(conventional commands),
+.BR SBUILTIN
+(substitution builtins),
+or
+.BR OTHER
+(any other names that the module defines).
+Return
+.B nil
+to get the usual default behaviour. The
+.B std
+module, for example, uses this feature to
+display the definition of a shell function
+correctly.
+.SS Exceptions
+The exceptions used within
+.I sh
+are exactly the same as those used within Limbo,
+except that all exceptions generated by the
+shell are prefixed by the string
+.RB `` fail: '',
+and any exception caught with the prefix
+.B fail:
+has its first 5 characters removed before
+being made available to the
+.I sh
+script.
+This adheres to the convention defined by
+other shells within Inferno that a process
+that raises an exception with a
+.B fail:
+prefix is just returning a non-zero exit status,
+and should not be left in a Broken state.
+It also means that the number of bytes available
+for the exception string is reduced by 5
+(to 59). Care must therefore be taken to avoid
+generating an exception with a name that is too long;
+.I sh
+takes the pragmatic approach of truncating any
+exception string that is too long.
+.SH FILES
+.TP 10
+.BI /prog/ pid /wait
+The file used by the shell to wait for dead child processes.
+.SH SOURCE
+.B /appl/cmd/sh/sh.y
+.SH SEE ALSO
+.IR sh (1),
+.IR sh-std (1),
+.IR sh-expr (1),
+.IR sh-tk (1),
+.IR sys-exception (2)

@@ -1,0 +1,46 @@
+.TH PSLIB 2
+.SH NAME
+pslib - postscript generation
+.SH SYNOPSIS
+.EX
+include "pslib.m";
+pslib := load Pslib Pslib->PATH;
+
+init: fn(bufio: Bufio);
+writeimage: fn(f: ref Bufio->Iobuf,
+			img: ref Draw->Image, dpi: int): string;
+.EE
+.SH DESCRIPTION
+.B Pslib
+must first be initialised by calling
+.B Init
+with a loaded Bufio module.
+.B Writeimage
+writes a Postscript file containing the data within
+.I img
+to
+.IR f ,
+which should first have been opened for writing
+by
+.IR bufio .
+.I Dpi
+is a value specifying the pixel width of pixels in
+.IR img ;
+the width (and height) of
+.I dpi
+dots in
+.I img
+will be one inch when the Postscript is
+rendered.
+.SH SOURCE
+.B /appl/lib/pslib.b
+.SH SEE ALSO
+.IR bufio (2),
+.IR draw-image (2)
+.SH BUGS
+The resulting Postscript is really only suitable for
+use as encapsulated Postscript, as there's no way
+to set the destination paper size.
+.PP
+There should be many more useful functions
+in this module.

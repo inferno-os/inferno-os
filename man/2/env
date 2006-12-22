@@ -1,0 +1,52 @@
+.TH ENV 2
+.SH NAME
+env \- environment module
+.SH SYNOPSIS
+.EX
+include "env.m";
+env = load Env Env->PATH;
+
+getenv: fn(var: string): string;
+setenv: fn(var: string, val: string): int;
+getall: fn(): list of (string, string);
+clone:  fn(): int;
+new:    fn(): int;
+.EE
+.SH DESCRIPTION
+.B Env
+provides an interface to manipulate environment variables which may then be shared 
+between processes.
+.B Getenv
+returns the value of the environment variable
+.I var
+passed as a parameter,
+or
+.B nil
+if the variable is not set. It does
+this by reading the contents of
+.BI /env/ var.
+.B Setenv
+sets the value of the environment variable
+.I var
+to
+.I val.
+The value may be nil to unset the variable. It does this by writing the string
+.I val
+to
+.BI /env/ var.
+The routine returns a negative number if it fails to set the variable for any reason.
+.B Getall
+returns all the variables in the current environment as a list of (variable, value) pairs.
+.B Clone
+copies the current environment and places the process in a new environment group. Changes now
+made to the environment will not affect the environment of other processes.
+.B New
+places the process in a new empty environment group. Changes made in this new environment will
+not affect other processes.
+.SH SOURCE
+.B /appl/lib/env.b
+.SH SEE ALSO
+.IR env (1),
+.IR sys-pctl (2),
+.IR env (3)
+

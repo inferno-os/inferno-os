@@ -1,0 +1,121 @@
+load std sexprs
+
+# load a job.  result is the new job id.
+subfn job {
+	{
+		id := "{read}
+		result=$id
+		or {echo load ${quote $*} >[1=0]} {
+			raise 'load failed'
+		}
+	} $* <> /n/remote/admin/clone
+}
+
+# load a job.  print the new job id.
+fn job {
+	echo ${job $*}
+}
+
+# load a job, then start it.
+fn start {
+	id := ${job $*}
+	ctl $id start
+	echo $id
+}
+
+# send a control message to a job.
+fn ctl {
+	if {~ $#* 0 1} {
+		echo usage: ctl job-id request... >[1=2]
+		raise usage
+	}
+	(id args) := $*
+	echo ${quote $args} > /n/remote/admin/$id/ctl
+}
+
+# mount the scheduler name space
+fn mountsched {
+	configfile := $configfile		# stop changes propagating out.
+	if{no $root}{
+		root=/grid/slave
+	}
+	opts := ()
+	fsopts := ()
+	schedaddr := ()
+	schedfsaddr := ()
+	readconfig {
+		if{~ $attr schedaddr}{
+			schedaddr=$val
+		}{~ $attr auth}{
+			if{~ $val 0}{
+				opts=($opts -A)
+			}
+		}{~ $attr keyfile}{
+			opts=($opts -k $val)
+		}{~ $attr schedfsaddr}{
+			schedfsaddr=$val
+		}{~ $attr fsauth}{
+			if{~ $val 0}{
+				fsopts=($fsopts -A)
+			}
+		}{~ $attr fskey fskeyfile}{		# first form is deprecated
+			fsopts=($opts -k $val)
+		}
+	}
+	if{no $schedaddr}{
+		ifs=' 
+	'
+		schedaddr=`{cat /grid/slave/schedaddr}
+		if{no $schedaddr}{
+			echo no scheduler address found >[1=2]
+			raise error
+		}
+	}
+	mount $opts $schedaddr /n/remote
+	no $schedfsaddr ||
+		mount $fsopts $schedfsaddr /n/gridfs
+}
+
+# print a format(2) file with the given format
+fn fmtcat {
+	if {! ~ $#* 2} {
+		echo usage: fmtread fmt file >[1=2]
+		raise usage
+	}
+	(fmt file) := $*
+	{echo $fmt >[1=0]; read -o 0; cat} <> $file
+}
+
+# readconfig command.
+# on entry $configfile is name of configuration file, or empty for default.
+# $root is default root directory.
+# run command for each entry in the config file, setting $attr and $val
+# to the attribute and the value in the entry.
+fn readconfig {
+	(cmd nil) := $*
+	if{no $configfile}{
+		if{ftest -f $root/config}{
+			configfile = $root/config
+		}
+	} {
+		if{! ~ $configfile '/*' './*'} {
+			configfile = $root/$configfile
+		}
+		if{! ftest -f $configfile}{
+			echo cannot find config file $configfile >[1=2]
+			raise 'config error'
+		}
+	}
+	if{! no $configfile} {
+		< $configfile getsexprs {
+			(attr sval) := ${els $sexp}
+			if{! ~ $#sval 1}{
+				echo bad config line $sexp >[1=2]
+				raise continue;
+			}
+			attr = ${text $attr}
+			val := ${text $sval}
+			$cmd
+		}
+	}
+}

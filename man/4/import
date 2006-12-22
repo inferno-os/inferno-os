@@ -1,0 +1,148 @@
+.TH IMPORT 4
+.SH NAME
+import, 9export \- exchange name spaces with a Plan 9 system
+.SH SYNOPSIS
+.B import
+[
+.B -ab
+] [
+.B -c
+] [
+.BI -k " keyspec"
+] [
+.BI -e " crypt hash"
+]
+.I host
+.I file
+[
+.I localfile
+]
+.PP
+.B 9export
+[
+.B -A
+] [
+.BI -k " keyspec"
+] [
+.BI -e " crypt hash"
+]
+.SH DESCRIPTION
+.I Import
+dials the Plan 9
+.I host
+(which might be the current host) and makes the given
+.I file
+on that system visible in the local name space as
+.I localfile
+(if
+.I localfile
+is not given,
+.I file
+is used as the local name).
+It requires that the user's Plan 9 authentication agent,
+.IR factotum ,
+appear in the Inferno name space at
+.BR /mnt/factotum .
+(That is why
+.I import
+is currently limited to use when Inferno is hosted on Plan 9,
+until Inferno has an equivalent to
+.IR factotum .)
+The remote files are accessed with the permissions of the user authenticated
+to the remote system by
+.IR factotum .
+.PP
+If the remote
+.I file
+is a directory, the whole file tree rooted at that
+directory is accessible, the local mount point must also be a directory,
+and the
+.BR -a ,
+.BR -b ,
+and
+.B -c
+options control the creation of union directories just as for
+.IR bind (1).
+By default, the remote file replaces the local one in the name space.
+.PP
+If the
+.B -e
+option is given, the network connection can be encrypted, or provided
+with digests to authenticate the contents, or both.
+.I Crypt
+is an encryption algorithm accepted by
+.IR ssl (3);
+.I hash
+is one of its digest algorithms.
+Plan 9's
+.I exportfs
+normally requires
+.B
+\&'rc4_256 sha1'
+on such connections;
+it currently provides no negotiation of algorithms.
+.PP
+The
+.B -k
+option gives a string of space separated
+.IB attr = value
+pairs that control
+.IR factotum 's
+selection of a suitable key for the remote system.
+.PP
+.I 9export
+serves the Plan 9
+.I exportfs
+protocol on its standard input,
+allowing a Plan 9 system to import parts of the Inferno name space in which
+.I 9export
+is run.
+If the
+.B -A
+option is given, the caller is not authenticated, line encryption and message authentication
+are not done,
+and the Plan 9
+.I exportfs
+protocol starts immediately.
+Otherwise, the Plan 9 authentication agent
+.I factotum
+must be accessible via
+.B /mnt/factotum
+as for
+.IR import ,
+and it is used to run the Plan 9 authentication protocol.
+The
+.B -e
+and
+.B -k
+options are as for
+.IR import .
+Normally
+.I 9export
+returns when the client closes the connection; the
+.B -a
+option causes
+.I 9export
+to return immediately, leaving a kernel process to serve the name space.
+.I 9export
+might be used as follows:
+.IP
+.EX
+listen -Av 'tcp!*!exportfs' {9export&}
+.EE
+.PP
+Beware that currently the name space is served with the permissions of the
+person running
+.IR 9export ,
+not those of the caller.
+.SH SOURCE
+.B /appl/cmd/9export.b
+.br
+.B /appl/cmd/import.b
+.SH SEE ALSO
+.IR bind (1),
+.IR factotum (2),
+.IR export (4),
+.IR namespace (6)
+.SH BUGS
+Temporarily limited to Plan 9 hosted environment only.

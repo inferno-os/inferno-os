@@ -1,0 +1,129 @@
+.TH UBFA 6
+.SH NAME
+ubfa \- universal binary format for data transport
+.SH DESCRIPTION
+.I UBF(A)
+is the data transport encoding for Armstrong's
+Universal Binary Format.
+It provides four primitive types: atoms (symbolic constants), integers, strings, and binary data.
+There are two compound types: fixed-length tuples and variable-length lists.
+.IR Ubfa (2)
+provides basic support in Limbo for reading and writing streams of UBF(A)-encoded data.
+.PP
+The
+.I input
+syntax is defined by the following rules:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-xxx\f1'u +\w'\ ::=\ 'u
+\f2input\fP	::=	\f2item\fP* '$'
+\f2item\fP	::=	\f2integer\fP | \f2atom\fP | \f2string\fP | \f2binary\fP | \f2tuple\fP | \f2list\fP | \f2store\fP | \f2push\fP | \f2comment\fP | \f2tag\fP
+
+\f2integer\fP	::=	\f5'-'\fP?\f5[0-9]\fP+
+\f2atom\fP	::=	"'" (\f5[^\e']\fP | '\e\e' | "\e'")* "'"
+\f2string\fP	::=	'"' (\f5[^\e"]\fP | '\e\e' | '\e"')* '"'
+\f2binary\fP	::=	'~' \f2byte\fP* '~'      # preceded by \f2integer\fP byte count
+
+\f2tuple\fP	::=	'{' \f2item\fP* '}'
+\f2list\fP	::=	'#' (\f2item\fP '&')*
+
+\f2store\fP	::=	'>' \f2reg\fP
+\f2push\fP	::=	\f2reg\fP
+\f2reg\fP	::=	\f5[^-%"~'`{}#& \en\er\et,0-9]\fP
+\f2comment\fP	::=	'%' (\f5[^\e%]\fP | '\e\e' | '\e%')* '%'
+\f2tag\fP	::=	'`' (\f5[^\e`]\fP | '\e\e' | '\e`')* '`'
+.EE
+.PD
+.DT
+.PP
+White space is any sequence of blank, tab, newline or carriage-return characters, and can appear
+before or after any instance of
+.I item
+in the grammar.
+.PP
+The
+.I input
+data is interpreted by a simple virtual machine.
+The machine contains a stack of values of primitive and compound types, and a set of registers also containing
+values of those types.
+White space and comments are ignored.
+Primitive
+.IR integer ,
+.I atom
+and
+.IR string
+values are pushed onto the stack as they are recognised.
+Certain input bytes outside any value act as operators:
+.TP
+.B {
+Note the current stack depth.
+.TP
+.B }
+Pop stack values to restore the most recently noted stack depth.
+Push a single value
+representing a tuple of those items; the left-most value in the tuple is the last one popped
+(the first in the original input stream).
+.TP
+.B ~
+Pop an integer value
+.I n
+from the stack.
+Read
+.I n
+bytes from the input stream and push a value onto the stack that represents them.
+The next byte must be the character
+.BR ~ ,
+which is discarded.
+.TP
+.B #
+Push a value representing an empty list onto the stack.
+.TP
+.B &
+Pop a value
+.IR v .
+Pop another value
+.IR l ,
+which must represent a list.
+Push a value that represents
+the list
+.IB v :: l .
+(Note that the items in a
+.I list
+therefore appear in reverse order in the input stream.)
+.TP
+.BI > reg
+Pop the top value from the stack and store it in a register labelled by the byte
+.IR reg .
+.TP
+.I reg
+Push the value of register
+.I reg
+(which must be non-null) onto the stack.
+.TP
+.I tag
+Associate the tag string with the value on top of the stack.
+The
+.IR ubfa (2)
+implementation does so by replacing it by a special
+.B Tag
+tuple.
+.TP
+.B $
+End-of-input: there must be exactly one value on the stack,
+which is the result.
+.PP
+Applications using UBF(A) typically take turns to exchange
+.I input
+values on a communication channel.
+.SH SEE ALSO
+.IR sexprs (2),
+.IR ubfa (2),
+.IR sexprs (6)
+.br
+J L Armstrong, ``Getting Erlang to talk to the outside world'',
+.I "ACM SIGPLAN Erlang workshop 2002" ,
+Pittsburg, PA USA
+.br
+UBF web page,
+.B "http://www.sics.se/~joe/ubf/"

@@ -1,0 +1,542 @@
+.TH PALMFILE 2
+.SH NAME
+Palmfile: Categories, DBInfo, Doc, Entry, Pfile, Record \- read Palm™ file formats
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "palmfile.m";
+
+palmfile := load Palmfile Palmfile->PATH;
+
+Pfile: adt {
+    fname:  string;
+
+    appinfo:  array of byte;
+    sortinfo: array of int;
+
+    entries:  array of ref Entry;
+
+    open:   fn(name: string, mode: int): (ref Pfile, string);
+. #    create: fn(nil: string, mode: int, perm: int, nil: ref DBInfo): ref Pfile;
+    close:  fn(pf: self ref Pfile): int;
+    read:   fn(pf: self ref Pfile, index: int): (ref Record, string);
+. #    append: fn(pf: self ref Pfile, r: ref Record): int;
+    stat:   fn(pf: self ref Pfile): ref DBInfo;
+. #    wstat:  fn(pf: self ref Pfile, nil: ref DBInfo): string;
+. #       readid:  fn(pf: self ref Pfile, nil: int): (ref Record, string);
+. #       setappinfo:   fn(pf: self ref Pfile, nil: array of byte);
+. #       setsortinfo:  fn(pf: self ref Pfile, nil: array of int);
+};
+
+DBInfo: adt {
+    name:    string; # database name on Palm
+    attr:    int;    # file attributes (defined below)
+    dtype:   string; # database type (byte[4])
+    version: int;    # version of data layout, defined by application
+    creator: string; # creating application (byte[4])
+    ctime:   int;    # creation time
+    mtime:   int;    # modification time
+    btime:   int;    # last backup
+    modno:   int;    # modification number
+    uidseed: int;    # unique record ID seed
+
+    new:     fn(name: string, attr: int, dtype: string,
+                   version: int, creator: string): ref DBInfo;
+};
+
+Entry: adt {
+    id: int;        # resource: id; record: unique ID
+    offset: int;    # offset in file
+    size:   int;    # size in bytes
+    name:   int;    # resource entry only
+    attr:   int;    # record entry only
+};
+
+Record: adt {
+    id:     int;    # resource: ID; data: unique record ID
+    index:  int;    # record index (origin 0)
+    name:   int;    # byte[4]: resource record only
+    attr:   int;    # attributes, defined below, data record only
+    cat:    int;    # category, data record only
+    data:   array of byte;   # content of record
+
+. #       new:    fn(size: int): ref Record;
+};
+
+Categories: adt {
+    renamed: int;    # which categories have been renamed
+    labels:  array of string; # category names
+    uids:    array of int;    # corresponding unique IDs
+    lastuid: int;             # last unique ID assigned
+    appdata: array of byte;   # remaining application-specific data
+
+    new:     fn(labels: array of string): ref Categories;
+    unpack:  fn(a: array of byte): ref Categories;
+    pack:    fn(c: self ref Categories): array of byte;
+};
+
+Doc: adt {
+    version:  int;
+    length:   int;  # uncompressed
+    nrec:     int;  # text records only
+    recsize:  int;  # uncompressed
+    position: int;
+    sizes:    array of int;   # sizes of uncompressed records
+
+    open:     fn(file: ref Pfile): (ref Doc, string);
+    read:     fn(doc: self ref Doc, i: int): (string, string);
+    iscompressed:  fn(doc: self ref Doc): int;
+    unpacktext: fn(doc: self ref Doc, a: array of byte):
+                   (string, string);
+    textlength: fn(doc: self ref Doc, a: array of byte): int;
+};
+
+init:     fn(): string;
+
+filename: fn(s: string): string;
+dbname:   fn(s: string): string;
+
+gets:     fn(a: array of byte): string;
+puts:     fn(a: array of byte, s: string);
+get2:     fn(a: array of byte): int;
+get3:     fn(a: array of byte): int;
+get4:     fn(a: array of byte): int;
+put2:     fn(a: array of byte, v: int);
+put3:     fn(a: array of byte, v: int);
+put4:     fn(a: array of byte, v: int);
+.EE
+.SH DESCRIPTION
+.B Palmfile
+provides read-only access to files in the Palm™ database and document formats.
+It currently handles three types of files:
+Palm Database
+.RB ( .pdb )
+files, which store data for applications;
+Palm Resource
+.RB ( .prc )
+files, which store code resources and user interface resource elements;
+and
+Palm Doc
+.RB ( .doc )
+files, which store compressed documents for the Palm document and e-book readers.
+Database and resource files have a similar structure, with slight differences
+in representation, and differing mainly in how the contents are used.
+.PP
+.B Init
+must be called before any other function in the file.
+It returns a diagnostic if it cannot initialise the module.
+.PP
+.B Pfile
+represents an open Palm file of any type:
+.TP
+.B open()
+Opens file
+.I name
+with the given
+.I mode
+(which must currently be
+.BR Sys->OREAD )
+and returns a tuple
+.RI ( pf , err ).
+.I Pf
+is a new
+.B Pfile
+instance giving access to the file,
+or nil if the open failed, in which case the
+.I err
+string contains a diagnostic.
+.TP
+.IB pf .close()
+Close the file (needed only when writing to a file is eventually supported).
+.TP
+.IB pf .read( index )
+Returns a tuple
+.RI ( rec,\ err )
+where
+.I rec
+is a
+.B Record
+containing the data of the record
+with the given
+.I index
+(origin 0), or
+nil if no such record index exists or it cannot be read.
+In the latter case,
+.I err
+is a diagnostic string.
+.TP
+.IB pf .stat()
+Return the database information for
+.IR pf .
+.TP
+.B entries
+An array of
+.B Entry
+values (see below), one per record.
+The length of the array is consequently the length of
+the file in records.
+It can be nil or empty.
+.TP
+.B appinfo
+Optional application-specific data (see
+.B Categories
+below).
+.TP
+.B sortinfo
+Optional application-specific data (typically
+an array of record IDs in a chosen sorting order).
+.TP
+.B fname
+File name given to
+.BR Pfile.open .
+.PP
+.B DBInfo
+gives the database information for a file:
+.TF creator
+.PD
+.TP
+.B name
+Database name used on the Palm, maximum of 31 characters.
+.TP
+.B attr
+A bit set of file attributes, containing the following values:
+.RS
+.TF Fappinfodirty
+.PD
+.TP
+.B Fresource
+File is a resource file
+.RB ( .prc )
+not a database file
+.RB ( .pdb ).
+.TP
+.B Fronly
+File is read only.
+.TP
+.B Fappinfodirty
+Application information has changed.
+.TP
+.B Fbackup
+No conduit program exists (the whole file must be backed up).
+.TP
+.B Foverwrite
+Overwrite older copy if present.
+.TP
+.B Freset
+Reset PDA after installing this file.
+.TP
+.B Fprivate
+Don't allow copy of this file to be beamed.
+.RE
+.TP
+.B dtype
+String identifying database type (up to 4 characters).
+It is usually the string
+\f5"appI"\fP for resource files.
+.TP
+.B version
+Identifies the version of the data format (application specific).
+.TP
+.B creator
+String identifying creating application (up to 4 characters).
+.TP
+.B ctime
+File creation time, in seconds from the Inferno epoch (see
+.IR daytime (2)).
+.TP
+.B mtime
+Time file last modified, in seconds from the epoch.
+.TP
+.B btime
+Time file last backed up, in seconds from the epoch.
+.TP
+.B uidseed
+Seed for generating unique record IDs (typically set to 0 for database files,
+always 0 for resource files).
+.TP
+.BI new( name,\ attr,\ dtype,\ creator )
+Return a new
+.B DBInfo
+with the given values.
+.PP
+In some applications, it is useful to use a data base name
+(ie,
+.BR DBInfo.name )
+as a component of an Inferno file name.
+The device allows space and slash characters in names, though,
+which makes it hard to use the name directly.
+.B Filename
+maps each space character
+in
+.I s
+to U+00A0 (unpaddable space)
+and each slash character to U+2215 (`division /'),
+and returns the result.
+.B Dbname
+maps the other way.
+.SS Entries and Records
+Each record in the file is represented by an
+.B Entry
+in memory, which holds the record's essential attributes,
+leaving the data on file.
+The meaning of some of the elements depends on whether
+the file is a data file or a resource file.
+.TF offset
+.PD
+.TP
+.B id
+Resource ID, 16 bits (resource file); unique record ID, 24 bits (data file).
+.TP
+.B offset
+Offset in file, in bytes.
+.TP
+.B size
+Size of record in bytes.
+.TP
+.B name
+Name of the resource (resource record only).
+.TP
+.B attrs
+Record attributes (data record only):
+.RS
+.TF Rarchive
+.PD
+.TP
+.B Rdelete
+Delete the record when file next synchronised.
+.TP
+.B Rdirty
+Record has been modified.
+.TP
+.B Rinuse
+Record in use (not typically used in Inferno).
+.TP
+.B Rsecret
+Record is secret (shown on the device only with use of a password).
+.TP
+.B Rarchive
+Archive this record when file next synchronised.
+.TP
+.B Rmcat
+Mask for the 4-bit category field (in
+.B Entry.attrs
+only).
+.RE
+.PP
+Records read from the file are represented by a
+.B Record
+adt containing its data and associated values.
+Some fields are valid only for particular classes of records.
+.TF index
+.PD
+.TP
+.B id
+Resource or record ID, as for
+.BR Entry .
+.TP
+.B index
+Index (origin 0) of the record in the file.
+.TP
+.B name
+Resource name (resource record only).
+.TP
+.B attr
+Record attributes, as above (data record only).
+.TP
+.B cat
+Record's category ID (data record only).
+.TP
+.B data
+The actual data.
+.SS Application data
+The contents of both the ``application information'' and ``sort information'' sections of the file
+are defined by an application in general.
+Even so, both have conventional uses with many Palm applications.
+The Palm software often assigns data records to particular categories (eg, ``Business'' or ``Personal''),
+and stores up to 16 category names and IDs in the application data in a fixed format
+(possibly followed by further data that is application specific).
+This is represented by an instance of
+.BR Categories ,
+which provides the following:
+.TF renamed
+.PD
+.TP
+.B renamed
+Bit set indicating which categories have been renamed (for category 0, bit
+.BR 1<<0 ,
+for 1, bit
+.BR 1<<1 ,
+and so on).
+.TP
+.B labels
+Array of 16 category labels.
+.TP
+.B uids
+Array of 16 category IDs, each in the range 0 to 255.
+(It is said that the Palm itself assigns 0 to 127 and desktop applications assign 128 to 255.)
+.TP
+.B lastuid
+Last unique category ID assigned.
+.TP
+.B appdata
+Any data that remained after unpacking the category data.
+.TP
+.BI new( labels )
+Return a new
+.B Categories
+value for the given array of
+.IR labels ,
+assigning unique IDs to each in turn, starting from 128.
+There can be at most 16 labels; if there are fewer, the remaining labels will be marked as unused
+(empty strings).
+.TP
+.BI unpack( a )
+Unpack the application data in array
+.I a
+(typically
+.IB pf .appinfo
+for some
+.B Pfile
+.IR pf ),
+returning a reference to a new
+.B Categories
+instance.
+A nil value is returned if the array is too short to hold valid category data.
+.TP
+.IB c .pack()
+Pack
+.I c
+into a form suitable for writing back to a file's application information area.
+.PP
+Binary data in Palm files is typically encoded in big-endian form.
+.B Palmfile
+functions account for that internally, but some Palm applications might use
+big-endian data in their own data records.
+Several functions are therefore provided to decode and encode big-endian data:
+.BI get n
+retrieves an integer from the first
+.I n
+bytes of array
+.IR a ;
+.BI put n
+stores a big-endian representation of the value
+.I v
+in the first
+.I n
+bytes of array
+.IR a .
+.PP
+Strings are stored in fixed-length arrays of bytes, always terminated by a zero byte.
+The character encoding is (apparently) Latin-1 (ISO 8859-1), not UTF-8,
+so functions
+.B gets
+and
+.B puts
+are provided to convert between that representation and a Limbo string.
+.SS Documents
+.B Doc
+provides read-only access to Palm documents and (unencrypted) e-books:
+.TF position
+.PD
+.TP
+.BI open( file )
+Given a
+.B Pfile
+.IR file ,
+return a tuple
+.RI ( doc,\ err )
+where
+.I doc
+is a new
+.B Doc
+instance giving access to the document contents in
+.IR file .
+If an error occurs, in particular if
+.I file
+does not appear to be a valid Palm document,
+.I doc
+is nil and the string
+.I err
+diagnoses the error.
+.TP
+.IB doc .iscompressed()
+Returns true (non-zero) if the document is compressed; returns false (zero) otherwise.
+.TP
+.IB doc .read( i )
+Read text record with index
+.I i
+(origin 0),
+returning a tuple
+.RI ( s,\ err )
+where
+.I s
+is the uncompressed text for record
+.IR i ,
+or nil if the record does not exist (or there is an error reading it).
+On any error,
+.I err
+is a diagnostic string.
+Note that
+.I i
+is an index into the set of text records, and is not an index into the set of all records.
+It must be no greater than
+.IB doc .nrec .
+.IB doc .unpacktext( a )
+Returns a tuple
+.RI ( s,\ err )
+where
+.I s
+is the text in array
+.IR a ,
+after uncompressing if
+.I doc
+contains compressed records.
+Following Palm conventions, the text is assumed to be written in the Latin-1 encoding (ISO-8859-1).
+If it is compressed but the data in
+.I a
+is corrupt (cannot be uncompressed),
+.I s
+is nil and
+.I err
+diagnoses the problem.
+.TP
+.IB doc .textlength( a )
+Returns the number of bytes required to store the text in array
+.I a
+once it has been uncompressed (if necessary).
+.TP
+.B version
+The document's version number.
+.TP
+.B length
+The length of the whole document in bytes, when uncompressed.
+.TP
+.B nrec
+Number of text records in the document.
+.TP
+.B recsize
+Size of uncompressed text records.
+.TP
+.B position
+Possibly records the position where reading last stopped.
+.TP
+.B sizes
+Array giving sizes of all text records, once uncompressed.
+.PP
+Most document-reading applications require only
+.B Doc.open
+and
+.BR Doc.read ,
+and perhaps
+.BR Doc.length
+to guide the construction of scroll bars (for instance).
+.SH SOURCE
+.B /appl/lib/palmfile.b
+.SH SEE ALSO
+.IR "Palm® File Format Specification" ,
+Gary Hillerson, Palm Inc.,
+Document Number 3008-004,
+1 May 2001.
+. br
+.IR "[Palm®] standard text document file format" ,
+Paul Lucas, 18 August 1998.

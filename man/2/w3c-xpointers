@@ -1,0 +1,382 @@
+.TH W3C-XPOINTERS 2
+.SH NAME
+w3c-xpointers \- parser for XPointers framework including XPath
+.SH SYNOPSIS
+.EX
+include "xpointers.m";
+
+xpointers := load Xpointers Xpointers->PATH;
+Xpath, Xstep: import xpointers;
+
+# special operators ('+', '-', etc represent themselves)
+One, Ole, Oge, Omul, Odiv, Omod, Oand, Oor, Oneg,
+Onodetype, Onametest, Ofilter, Opath: con ...;
+
+# axis types
+Aancestor,
+Aancestor_or_self,
+Aattribute,
+Achild,
+Adescendant,
+Adescendant_or_self,
+Afollowing,
+Afollowing_sibling,
+Anamespace,
+Aparent,
+Apreceding,
+Apreceding_sibling,
+Aself: con iota;
+
+Xstep: adt {
+   axis:  int;  # Aancestor, ... (above)
+   op:    int;  # Onametest or Onodetype
+   ns:    string;
+   name:  string;
+   arg:   string;  # optional parameter to processing-instruction
+   preds: cyclic list of ref Xpath;
+
+   text:  fn(nil: self ref Xstep): string;
+   axisname:  fn(i: int): string;
+};
+
+Xpath: adt {
+   pick{
+   E =>
+      op:    int;
+      l, r:  cyclic ref Xpath;
+   Fn =>
+      ns:    string;
+      name:  string;
+      args:  cyclic list of ref Xpath;
+   Var =>
+      ns:    string;
+      name:  string;
+   Path =>
+      abs:   int;
+      steps: list of ref Xstep;
+   Int =>
+      val:   big;
+   Real =>
+      val:   real;
+   Str =>
+      s:     string;
+   }
+   text: fn(nil: self ref Xpath): string;
+};
+
+framework:  fn(s: string):
+               (string, list of (string, string, string), string);
+
+# predefined schemes
+element:    fn(s: string): (string, list of int, string);
+xmlns:      fn(s: string): (string, string, string);
+xpointer:   fn(s: string): (ref Xpath, string);
+.EE
+.SH DESCRIPTION
+.B Xpointers
+implements a parser for the World-Wide Web Consortium's XPointers framework,
+including a parser for XPath expressions.
+.PP
+.B Init
+must be called before any other operation in the module.
+.PP
+.B Framework
+parses a string
+.I s
+according to the grammar for the XPointers framework,
+and returns a tuple
+.BI ( short,\ pointers,\ err ) .
+On an error, the string
+.I err
+gives a diagnostic and the other two values are nil.
+Otherwise, if
+.I short
+is non-nil, the XPointer was a `shorthand pointer', with the given value;
+.I pointers
+will be nil.
+If a scheme-based pointer is used,
+.I short
+is nil and
+.I pointers
+has a list of tuples
+.BI ( ns,\ scheme,\ data ) ,
+each representing one pointer value.
+.I Ns
+is the XML name space for the given
+.IR scheme ;
+the default name space is represented by nil.
+.I Scheme
+is the XPointer scheme name within that name space; and
+.I data
+is the actual pointer value following the rules of that scheme.
+(They all have completely different syntax.)
+.PP
+Three common schemes are directly supported by the module,
+by functions named after the scheme.
+All of them follow the convention of returning a tuple in which
+the last element is a diagnostic string.
+On an error, all but that last element of the tuple will be nil,
+and the last element will be a non-nil string with a diagnostic.
+.PP
+.B Xmlns
+parses an XML name space definition of the form
+.IB ns = uri,
+and returns its components.
+.PP
+.B Element
+parses a value of the XPointer
+.B element
+scheme, given by the grammar:
+.IP
+.EX
+.ft I
+selector \f1::=\fP name child*  \f1|\fP  child+
+child \f1::=\fP '\f5/\fP' \f5[1-9][0-9]\fP*
+.EE
+.PP
+The optional
+.I name
+is an XPointer `shorthand pointer'.
+Each
+.I child
+number selects the child with that index (origin 1) at the corresponding level of the XML tree
+beneath the node selected by the
+.IR name ,
+or starting at the root of the XML tree.
+.B Element
+returns a tuple
+.BI (( name,\ path ) ,\ err )
+where
+.I name
+is the top element name or nil if none was specified,
+and
+.I path
+is a
+.B "list of int"
+giving the path of child indices.
+.PP
+The most complex scheme is
+.BR xpointer ,
+because its syntax is that of XML's elaborate XPath expression.
+.B Xpointer
+parses such an expression and returns a tuple
+.BI ( e,\ err )
+where
+.I e
+refers to an
+.B Xpath
+value that represents the abstract syntax of the XPath
+.BR Expr .
+.B Xpointer
+checks only the syntax of
+.IR s ,
+and does not check that functions are limited to those specified by the
+.B xpointer
+scheme (that is consistent with it being a parse of
+.IR s ,
+rather than an XPointer or XPath evaluator).
+.PP
+.B Xpath
+and
+.B Xstep
+together represent an abstract syntax of the XPath grammar.
+.PP
+.B Xstep
+represents the XPath
+.B Step
+grammar rule, with all abbreviations expanded to their full form:
+.IP
+.EX
+.ft I
+Step \f1::=\fP AxisName '\f5::\fP' NodeTest Predicate*
+NodeTest \f1::=\fP NameTest \f1|\fP NodeType '\f5(\fP' '\f5)\fP'
+NameTest \f1::=\fP '\f5*\fP' \f1|\fP NCName '\f5:\fP' '\f5*\fP' \f1|\fP (NCName '\f5:\fP')? NCName
+Predicate \f1::=\fP '\f5[\fP' Expr '\f5]\fP'
+.EE
+.PP
+The correspondence is as follows:
+.TF s.text()
+.PD
+.TP
+.IB s .axis
+Represents the
+.B AxisName
+by one of the constants
+.B Aancestor
+to
+.BR Aself .
+.TP
+.IB s .op
+.B Onametest
+or
+.B Onodetype
+to say which rule is represented
+.TP
+.IB s .ns
+For a
+.IR NameTest ,
+gives the XML name space;
+can be
+.L *
+for `any name space' or nil for the default name space.
+For a
+.IR NodeType ,
+gives the type:
+.BR comment ,
+.BR node ,
+.BR processing-instruction ,
+or
+.BR text .
+.TP
+.IB s .name
+Gives the
+.I name
+for a
+.IR NameTest ;
+can be
+.L *
+for `any name'.
+.TP
+.IB s .arg
+The optional literal parameter to a
+.I NodeType
+that is a
+.BR processing-instruction .
+.TP
+.IB s .preds
+A list of
+.B Xpath
+values representing the optional sequence of
+.I Predicate
+expressions
+.TP
+.IB s .text()
+Returns a string representing the
+.B Xstep
+in textual form.
+.TP
+.IB s .axisname( a )
+Returns the printable text for axis code
+.I a
+(ie,
+one of
+.B Aancestor
+to
+.BR Aself )
+.PP
+.B Xpath
+values represent an abstract syntax for an XPath expression.
+Briefly, an expression follows the grammar below (see the XPath specification for the full concrete syntax).
+.IP
+.EX
+.ft I
+.ta \w'e ::=  'u
+e ::=	e '\f5or\fP' e
+   |	e '\f5and\fP' e
+   |	e \f1(\fP'\f5=\fP' \f1|\fP '\f5!=\fP'\f1)\fP e
+   |	e \f1(\fP'\f5<\fP' \f1|\fP '\f5<=\fP' \f1|\fP '\f5>=\fP' \f1|\fP '\f5>\fP'\f1)\fP e
+   |	e \f1(\fP'\f5+\fP' \f1|\fP '\f5-\fP'\f1)\fP e
+   |	e \f1(\fP'\f5*\fP' \f1|\fP '\f5div\fP' \f1|\fP '\f5mod\fP'\f1)\fP e
+   |	'\f5-\fP' e
+   |	e '\f5|\fP' e
+   |	filter
+   |	path
+filter ::= primary predicate* \f1(\fP\f1(\fP'\f5/\fP' \f1|\fP '\f5//\fP'\f1)\fP relpath\f1)\fP?
+primary ::= '\f5$\fP' QName \f1|\fP '\f5(\fP' e '\f5)\fP' \f1|\fP Literal \f1|\fP Number \f1|\fP FunctionName '\f5(\fP' \f1(\fPe \f1(\fP'\f5,\fP' e\f1)\fP*\f1)\fP '\f5)\fP'
+path ::= '\f5/\fP' relpath \f1|\fP relpath
+relpath ::= relpath '\f5/\fP' relpath \f1|\fP relpath '\f5//\fP' relpath \f1|\fP Step
+.EE
+.PP
+Most of
+.I e
+is represented by a binary tree using the pick
+.BI Xpath.E( op,\ l,\ r )
+where
+.I op
+is an operator symbol (either the character itself or one of the constants
+.BR One ,
+.BR Odiv ,
+etc. for compound symbols),
+and
+.I l
+and
+.I r
+represent the operands.
+The only unary operator
+.B Oneg
+has its operand in
+.IR l .
+A
+.I filter
+uses the binary operator
+.BI Xpath.E(Ofilter ,\ e,\ pred )
+to apply each
+.I predicate
+to the preceding
+.I primary
+or
+.IR predicate .
+A
+.I filter
+also uses
+.BI Xpath.E(Opath ,\ e,\ relpath )
+to apply the optional
+.I relpath
+(represented by a value of
+.BR Xpath.Path )
+to the preceding part of the filter expression.
+.PP
+The other cases in the pick adt correspond to the various choices of
+.I path
+and
+.IR primary .
+Integer and real numbers are distinguished.
+.I Literal
+is represented by
+.BR Xpath.Str ;
+variable references (ie,
+.BI $ QName\c
+)
+are represented by
+.BR XPath.Var ,
+where
+.I ns
+gives the optional XML name space of the
+.IR name .
+.I Path
+is represented by
+.BI Xpath.Path( abs,\ steps )
+where
+.I abs is non-zero if and only if the path is absolute (starts with `/' or `//'),
+and
+.I steps
+lists the
+.B Xstep
+values corresponding to the slash-separated
+.I Steps
+in the grammar.
+Abbreviated forms such as
+.RB ` // '
+are converted by
+.B xpointer
+to their full internal form in terms of
+.RB ` / ',
+as defined by the specification,
+so there is no need to distinguish the delimiters in this representation.
+.SH SOURCE
+.B /appl/lib/w3c/xpointers.b
+.SH SEE ALSO
+``XML Path Language (XPath) Version 1.0'',
+.B http://www.w3.org/TR/xpath
+.br
+``XPointer framework'',
+.B http://www.w3.org/TR/xptr-framework/
+.br
+``XPointer element() scheme'',
+.B http://www.w3.org/TR/xptr-element/
+.br
+``XPointer xmlns() scheme'',
+.B http://www.w3.org/TR/xptr-xmlns/
+.br
+``XPointer xpointer() scheme'',
+.B http://www.w3.org/TR/xptr-xpointer/

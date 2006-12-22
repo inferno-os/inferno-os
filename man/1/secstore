@@ -1,0 +1,141 @@
+.TH SECSTORE 1
+.SH NAME
+secstore \- retrieve files from secure store
+.SH SYNOPSIS
+.B auth/secstore
+[
+.B -iv
+] [
+.BI -k " key"
+] [
+.BI -p " pin"
+] [
+.BI -s " address"
+] [
+.BI -u " user"
+] [
+.I op
+[
+.I file
+] ... ]
+.SH DESCRIPTION
+.I Secstore
+manages files on the eponymous Plan 9 secure storage service.
+It holds a set of files for each of its users.
+The service is most often used to store a file
+.B factotum
+containing user credentials in a form ready to be loaded into
+.IR factotum (4).
+.I Op
+is one of the following operations:
+.TP
+.B d
+Delete the given files on the server.
+.TP
+.B p
+Print the contents of each file on standard output.
+Each line is written separately, so that files of keys will be received correctly when written to
+.IR factotum (4).
+.TP
+.B r
+Replace the contents of files on the server by the contents of the named files,
+after encrypting them.
+In each case, the file name on the server is the last component of the local file name
+(ie, everything after the final
+.RB ` / ').
+.TP
+.B t
+List a table of contents of
+.IR user 's
+collection on the the server.
+By default, only the names are listed, one per line, but
+given the
+.B -v
+option, each line displays name, file size in bytes, date last stored, and SHA-1 hash of the file's contents.
+.TP
+.B x
+Extract the named files into files of the same name in the current directory.
+By default, they are decrypted (ie, in clear text).
+.PP
+If no
+.I op
+is specified,
+.I secstore
+connects to the server (thus checking the connection and the validity
+of both
+.I key
+and
+.IR user ),
+but does nothing with it.
+.PP
+By default,
+.I secstore
+prompts for a secret key to authenticate the user and the
+.B secstore
+service.
+The service might be configured to demand an extra authentication code, such as a `pin', in which case
+.I secstore
+will then prompt for that as well.
+The options are:
+.TP
+.B -i
+Read one or two lines from the standard input:
+the first line contains the secret; the optional second line contains the extra authentication code.
+.TP
+.BI -k " key"
+Use
+.I key
+as the secret to authenticate with the
+.B secstore
+service.
+.TP
+.BI -p " pin"
+Supply
+.I pin
+as the extra authentication code if the server demands it.
+.TP
+.BI -s " address"
+Connect to the server at the given network
+.IR address ,
+as defined by
+.IR sys-dial (2),
+and translated by
+.IR cs (8).
+The default is
+.BR net!$auth!secstore .
+.TP
+.BI -u " user"
+Authenticate as
+.I user
+(default: the Inferno user name contained in
+.BR /dev/user )
+.TP
+.B -v
+Make the output more verbose:
+display the name announced by the remote server; and use the long form of the table of contents.
+.SH EXAMPLE
+Retrieve the
+.B factotum
+file and feed the keys therein to
+.IR factotum (4):
+.IP
+.EX
+auth/secstore p factotum >/mnt/factotum/ctl
+.EE
+.SH SOURCE
+.B /appl/cmd/auth/secstore.b
+.SH SEE ALSO
+.IR crypt (1),
+.IR secstore (2),
+.IR factotum (4),
+.br
+``Plan 9 Security'',
+.IR "Plan 9 Programmer's Manual" ,
+Fourth Edition,
+Volume 2, 2003.
+.SH BUGS
+Perhaps
+.I secstore
+should allow several
+.B -s
+options as a simple way to replicate the same files on different servers.

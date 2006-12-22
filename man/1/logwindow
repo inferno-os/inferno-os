@@ -1,0 +1,23 @@
+.TH LOGWINDOW 1
+.SH NAME
+logwindow \- window that pops up when data becomes available.
+.SH SYNOPSIS
+.B wm/logwindow
+.RI [ title ]
+.BI < logfile
+.SH DESCRIPTION
+.I Logwindow
+reads data from its standard input (often a file served by
+.IR logfile (4))
+and shows it in a text widget.
+If the window is hidden (it is hidden initially),
+it will reappear when
+data appears on its standard input. If
+.I title
+is given, it will be used as the title of the window.
+.SH SOURCE
+.B /appl/wm/logwindow.b
+.SH SEE ALSO
+.IR logfile (4)
+.SH BUGS
+The text buffer grows without bound.

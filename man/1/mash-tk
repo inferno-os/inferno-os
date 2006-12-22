@@ -1,0 +1,212 @@
+.TH MASH-TK 1
+.SH NAME
+mash-tk \- control visual elements of mash window
+.SH SYNOPSIS
+.B load tk
+.br
+.B tk clear
+.br
+.B tk def button
+.I name value
+.br
+.B tk def ibutton
+.I name value image
+.br
+.B tk def menu
+.I name
+.br
+.B tk def item
+.I menu name value
+.br
+.B tk dialog
+.I title mesg default label ...
+.br
+.B tk dump [
+.I name ...
+.B ]
+.br
+.B tk env
+.br
+.B tk file
+.I title dir pattern ...
+.br
+.B tk geom
+.br
+.B tk layout [
+.I name ...
+.B ]
+.br
+.B tk notice
+.I message
+.br
+.B tk sel
+.br
+.B tk sget
+.br
+.B tk sput
+.I string
+.br
+.B tk string
+.I mesg
+.br
+.B tk taskbar
+.I string
+.br
+.B tk text
+.br
+.SH DESCRIPTION
+.I Tk
+is a loadable builtin for
+.IR mash.
+It provides a set of primitives for customizing a
+.I mash
+window and building fairly sophisticated graphical functions. It is currently implemented as a single command with a variety of subcommands. For the
+.I tk
+command to work,
+.I mash
+must have been started using
+.BR wm/wmmash .
+In the following descriptions, references to return values indicate strings put on a command's standard output.
+.SS Creating a Menu Bar
+The
+.B def
+subcommand is used to define graphical pushbuttons and menus. The
+.B def button
+and
+.B def ibutton
+commands are used to define pushbuttons labelled with text or graphical icons, respectively.
+The
+.I name
+parameter is used to label buttons, and to layout both buttons and ibuttons.
+.I Value
+is a command to be executed when the button is clicked, and must be quoted if it contains white space.
+.I Image
+is the name of a bitmap file; it is looked for in
+.BR /icon/tk ,
+unless the name begins with
+.BR@ ,
+which suppresses prepending
+.BR /icon/tk .
+.br
+.B Def menu
+is used to name and label menu buttons, and
+.B def item
+specifies items within the corresponding pulldown menus. In
+.BR "def item" ,
+.I menu
+is a name supplied on a
+.B def menu
+subcommand,
+.I name
+is the label for this menu item, and
+.I value
+is a command to execute when this menu item is selected.
+All the items in a menu are simple command buttons;
+there is no provision for any other kind of control, or for cascading menus.
+.br
+The
+.B layout
+subcommand creates and makes visible a menu bar, using menus and buttons defined with
+.B def
+subcommands. The current components, if any, are removed first,
+so layout with no parameters just removes all the current buttons and menus from the
+.I mash
+window. The components are laid out from left to right, in the order presented in the
+.B layout
+subcommand. A copy of the current
+.I mash
+environment is made, and commands executed as a result of clicking buttons
+or selecting menu items are executed in that environment.
+For example, variables will have the values they had when the layout was done.
+.br
+The
+.B env
+subcommand can be used to make a new copy of the environment for use by button
+or menu actions.
+.SS Displaying Popup Widgets
+The
+.B notice
+subcommand pops up a window containing
+.I message
+and a single button to dismiss the window. The icon displayed in the window is
+.BR /icons/tk/error .
+No value is returned by
+.BR notice .
+.br
+The
+.B dialog
+subcommand is more complex;
+.I title
+is used to name the window, and multiple buttons labelled according to the
+.B label
+parameter(s) are provided.
+.I Default
+is the number of the button which is the default choice. The leftmost button is numbered 0.
+When the user selects one of the buttons, the dialog box is popped down and the
+number of the button selected is returned.
+.br
+The
+.B file
+subcommand pops up a standard Inferno file selection box.
+.I Dir
+specifies the initial directory to display, and pattern specifies which non-directory files to include in the list of files. If the Cancel button in the file dialog is clicked, no value is returned. If a file is selected and the Exit button is clicked, the full pathname of the file is returned, complete with final
+.B /
+if the file is a directory. Double clicking on a non-directory file in the list will likewise return that file's path. Double clicking on a directory in the list will display the contents of that directory.
+.br
+The
+.B string
+subcommand pops up a small window with
+.I mesg
+as the label of a text field. Characters typed into the text field, up to but not including ENTER, are returned.
+.SS Dealing With the Selection
+.br
+The
+.B sel
+subcommand returns whatever is currently selected. When typing into the shell's window, nothing is selected, so nothing is returned. However, if invoked via a pushbutton and there is a selection, it is returned.
+.br
+The
+.B sput
+subcommand puts
+.I string
+into the snarf buffer maintained by the window manager, and the
+.B sget
+subcommand retrieves and returns the current contents of the snarf buffer. This provides a way to pass text between the shell and other applications. The Snarf and Paste buttons on the popup menu associated with mouse button two can also be used to do this.
+
+.SS Miscellaneous Tk Subcommands
+The
+.B taskbar
+subcommand lets you put
+.I string
+in the title bar of the
+.I mash
+window. The old value is returned.
+.br
+The
+.B text
+subcommand returns the contents of the
+.I mash
+window.
+.br
+The
+.B clear
+subcommand removes all text from the window.
+.br
+The
+.B dump
+subcommand returns the
+.I mash-tk
+commands needed to define the buttons and menus currently defined,
+and to recreate the currently visible set of buttons and menus, or, if
+.B dump
+has parameters, the commands needed to define the buttons and menus named by the parameters.
+.br
+The
+.B geom
+subcommand returns the position of the upper left corner of the
+.I mash
+window relative to the upper left corner of the Inferno screen.
+
+.SH SOURCE
+.B /appl/cmd/mash/tk.b
+.SH "SEE ALSO"
+.IR mash (1)

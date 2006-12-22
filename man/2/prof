@@ -1,0 +1,225 @@
+.TH PROFILE 2
+.SH NAME
+profile \- profiling library
+.SH SYNOPSIS
+.EX
+include "profile.m";
+
+profile := load Profile Profile->PATH;
+
+Range: adt{
+    l: int;
+    u: int;
+    f: int;
+    n: cyclic ref Range;
+};
+
+Funprof: adt{
+    name: string;
+    line: int;
+    count: int;
+    counte: int;
+};
+
+Modprof: adt{
+    name: string;
+    path: string;
+    srcpath: string;
+    rawtab: array of (int, int);
+    linetab: array of int;
+    rngtab: array of ref Range;
+    funtab: array of Funprof;
+    total: int;
+    totals: array of int;
+    covered: int;
+};
+
+Prof: adt{
+    mods: list of Modprof;
+    total: int;
+    totals: array of int;
+};
+
+Coverage: type list of (string, int, list of (list of (int, int, byte), string));
+
+MODULE: con 1;	# give stats for each module
+FUNCTION: con 2;	# give stats for each function
+LINE: con 4;	# give stats for each line
+VERBOSE: con 8;	# full stats
+FULLHDR: con 16;	# file:lineno: on each line of output
+FREQUENCY: con 32;	# show frequency rather than coverage
+
+init: fn(): int;
+profile: fn(m: string): int;
+sample: fn(i: int): int;
+start: fn(): int;
+stop: fn(): int;
+stats: fn() : Prof;
+show: fn(p: Prof, v: int): int;
+end: fn(): int;
+
+# coverage profiling specific functions
+
+cpstart: fn(pid: int): int;
+cpstats: fn(rec: int, v: int): Prof;
+cpfstats: fn(v: int): Prof;
+cpshow: fn(p: Prof, v: int): int;
+
+coverage: fn(p: Prof, v: int): Coverage;
+
+# memory profiling specific functions
+
+memstart: fn(): int;
+memstats: fn(): Prof;
+memshow: fn(p: Prof, v: int): int;
+
+lasterror: fn(): string;
+.EE
+.SH DESCRIPTION
+.B Profile
+provides an interface to the kernel profile device. It contains routines to start and stop
+profiling, to gather profiling statistics and to display these statistics in relation to the
+relevant limbo source code. All of these routines apart from
+.B lasterror
+return a negative integer if an error occurred during their execution. Once this
+happens, a call to
+.B lasterror
+will give the error message.
+.PP
+.B init
+initializes the module and binds the kernel profile device onto the /prof directory.
+It should be called before any other functions in this module.
+.PP
+.B profile
+takes a module name or a path name as its argument and indicates a module to be profiled.
+Repeated calls of this function allow a number of modules to be profiled together.
+In the absence of any calls to this routine, the profile device profiles all modules
+loaded by the kernel.
+.PP
+.B sample
+sets the sampling interval of the profiling. The argument is in ms. The default value
+in the profile device is 100ms.
+.PP
+.B start
+starts profiling.
+.PP
+.B stop
+stops profiling.
+.PP
+.B stats
+returns profiling statistics. It is recommended that this is called once profiling has
+been stopped, otherwise the results may be slightly inaccurate. It returns an adt
+of type 
+.B Prof.
+Its first field
+.B mods
+is a list of profile statistics for each module under profile.
+Its second field 
+.B total 
+is the number of samples made altogether. The statistics for each module are
+represented in the
+.B Modprof
+adt. Its fields are
+.TP 10n
+.B name
+The name of the module.
+.TP 10n
+.B path
+The path of the module's corresponding dis file.
+.TP 10n
+.B srcpath
+The path of the module's corresponding source file.
+.TP 10n
+.B linetab
+The line frequency count table. The number of samples made on a particular line of
+the above source file is found by indexing this table.
+.TP 10n
+.B funtab
+The function frequency count table. This array of
+.B Funprof
+adt gives the name, line number and number of samples made for each function in
+the above source file.
+.TP 10n
+.B total
+The total number of samples made in this module.
+.PP
+.B stats
+will ignore modules if it fails to locate the symbol (.sbl) file for a particular dis file.
+.PP
+.B show
+simply prints out the profile information returned by
+.B stats.
+For each module it will print out either the line number statistics or the function
+statistics or both. The former gives the line number, percentage of time spent on
+this line and the source code for each line in the source file. The latter gives the
+line number, function name and percentage of time spent in this function for each
+function in the source file. The amount of output can be controlled by the second
+argument to
+.B show.
+The following should be ored together in the required combination to get the
+desired effect.
+.PP
+.TP 10n
+.B FUNCTION
+Print the function table.
+.TP 10n
+.B LINE
+Print the line number table.
+.TP 10n
+.B VERBOSE
+Normally lines and functions are not shown if the sample frequency for them is
+zero. This option prevents this.
+.TP 10n
+.B FULLHDR
+Prints the file name as well as the line number in a form that can be selected in
+.B acme
+to show that particular line in a window.
+.PP
+.B show
+will ignore modules if it fails to locate the source (.b) file for a particular dis file.
+.PP
+.B end
+ends the profiling session. This should be called when all statistics have been 
+gathered in order to clean up the device profile's data structures.
+.PP
+In order to support coverage profiling as well the following new routines are
+provided.
+.PP
+.B cpstart
+Start coverage profiling on the process whose pid is given.
+.PP
+.B cpstats
+Returns coverage profiling statistics from the profile device. If the first argument is
+true, the raw results will be stored in a profile file whose name is <file>.prf where
+<file> is the prefix of the corresponding dis file.
+.PP
+.B cpfstats
+Returns coverage profiling statistics from any saved profile files.
+.PP
+.B cpshow
+Shows the coverage profiling statistics.
+.PP
+.B coverage
+Given the coverage profiler statistics this returns the list of modules profiled. Each module
+has a name, a boolean indicating whether all instructions in the module were executed and a
+list of lines. Each line consists of a list of ranges and the source code.
+The list of ranges contains the character positions on the line of code corresponding to instructions that were not executed and an indicator of whether
+partial execution was performed.
+.PP
+For the further support of memory profiling the following routines are available.
+.PP
+.B memstart
+Start memory profiling.
+.PP
+.B memstats
+Return the memory profile statisics.
+.PP
+.B memshow
+Send memory profile statistics to standard output.
+.PP
+.SH SOURCE
+.B /module/profile.m
+.br
+.B /appl/lib/profile.b
+.SH SEE ALSO
+.IR prof (3)

@@ -1,0 +1,136 @@
+.TH EIA 3 
+.SH NAME
+eia \- serial communication control
+.SH SYNOPSIS
+.nf
+.B bind -a '#t' /dev
+
+.B /dev/eia0
+.B /dev/eia0ctl
+.B /dev/eia0status
+.B /dev/eia1
+.B /dev/eia1ctl
+.B /dev/eia1status
+\&...
+.fi
+.SH DESCRIPTION
+.PP
+The serial line device serves a one-level directory that gives access to the serial ports.
+Each file set
+.BI eia "n ..."
+represents one serial port
+and includes a data file
+(eg,
+.BR eia0 ),
+a control file
+(eg,
+.BR eia0ctl ),
+and a status file
+(eg,
+.BR eia0status ).
+.PP
+The
+.B data
+file can be read and written to access the corresponding serial port.
+Reads will block until at least one character is available.
+.PP
+The
+.B ctl
+file accepts textual commands, via
+.I write
+(see
+.IR sys-read (2)),
+that control or condition
+the serial port for subsequent IO:
+.TP
+.BI b n
+Set the baud rate to
+.IR n .
+.TP
+.BI c n
+If
+.I n
+is non-zero, cause a hangup if the remote drops DCD.
+.TP
+.BI d n
+Set DTR if
+.I n
+is non-zero;
+otherwise clear it.
+.TP
+.BI e n
+If
+.I n
+is non-zero,
+cause a hangup if the remote drops DSR.
+.TP
+.B f 
+Flush the output queue.
+.TP
+.B h
+Hangup both input and output queues.
+.TP
+.BI k n
+Send a break lasting
+.I n
+milliseconds.
+.TP
+.BI l n
+Set number of bits per byte to
+.IR n .
+Legal values are 5, 6, 7, or 8.
+.TP
+.BI m n
+Obey modem CTS signal if
+.I n
+is non-zero; otherwise clear it.
+.TP
+.BI n n
+Set the output queue to non-blocking, if
+.I n
+is non-zero; otherwise mark it as blocking (the default).
+In non-blocking mode, if the output queue is full, new output is discarded
+rather than block the writer until the queue drains.
+.TP
+.BI p c
+Set parity to odd if
+.I c
+is
+.BR o ,
+to even if
+.I c
+is
+.BR e ;
+otherwise set no parity.
+.TP
+.BI q n
+Set the limit on input and output queues to
+.IR n ;
+both queues are initially set to 4k bytes.
+.TP
+.BI r n
+Set RTS if
+.I n
+is non-zero; otherwise clear it.
+.TP
+.BI s n
+Set number of stop bits to
+.IR n .
+Legal values are 1 or 2.
+.TP
+.BI x n
+Enable XON/XOFF flow control if
+.I n
+is non-zero; otherwise disable it (the default).
+.PP
+Changes to port settings persist between a subsequent close and reopen.
+.PP
+The
+.B status
+file can be read for a report of the serial port status.
+.SH SOURCE
+.B /os/port/devns16552.c
+.br
+.B /os/*/devuart.c
+.br
+.B /os/*/devscc.c

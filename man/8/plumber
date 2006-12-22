@@ -1,0 +1,94 @@
+.TH PLUMBER 8
+.SH NAME
+plumber \- plumber for interapplication message routing
+.SH SYNOPSIS
+.B plumber
+[
+.B -v
+] [
+.B -w
+] [
+.BI -c " wmchan"
+] [
+.I rulefile
+\&...
+]
+.SH DESCRIPTION
+.I Plumber
+provides high-level message-passing between applications.
+In a plumbed environment,
+applications can receive messages on an input port, which is given a logical name.
+Messages are not sent directly between applications but are routed via
+the plumber, following user-specified rules.
+.PP
+.I Plumber
+is typically started by
+.IR wm (1)'s
+startup script.
+It reads each
+.I rulefile
+(default:
+.BI /usr/ user /lib/plumbing )
+in turn.
+Each file has the form described in
+.IR plumbing (6);
+the rules direct the routing of each message
+.I plumber
+receives.
+.I Plumber
+then lurks in the background with its mate,
+awaiting plumbing requests sent by
+.IR plumbmsg (2),
+by windowing applications in response to events such as button clicks or drag-and-drop,
+or by
+.IR plumb (1).
+.PP
+When a message arrives,
+.I plumber
+applies the rules to decide how to route it.
+It forwards the message to the selected application's input port, starting it if necessary.
+If no rule applies (or some other error occurs),
+.I plumber
+returns an error to the message's sender.
+The
+.B -v
+option causes
+.I plumber
+to log the contents of messages it receives, to help debug plumbing rules and applications.
+.PP
+.I Plumber
+normally starts applications directly.
+For use on devices that have specialised
+window managers, not
+.IR wm (1),
+the
+.B -w
+option causes
+.I plumber
+to start applications indirectly, by sending a message to
+a window manager listening on
+.BR /chan/wm ,
+allowing
+the window manager to track every application started.
+The
+.B -c
+option can select an alternative
+.I wmchan
+to
+.BR /chan/wm .
+
+.SH FILES
+.TF /usr/user/lib/plumbing
+.TP
+.BI /usr/ user /lib/plumbing
+default plumbing rules for
+.I user
+.SH SOURCE
+.B /appl/cmd/plumber.b
+.br
+.B /appl/lib/plumbing.b
+.SH SEE ALSO
+.IR plumb (1),
+.IR wm (1),
+.IR plumbmsg (2),
+.IR plumbing (6)

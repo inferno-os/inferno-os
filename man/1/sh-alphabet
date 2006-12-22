@@ -1,0 +1,417 @@
+.TH SH-ALPHABET 1
+.SH NAME
+alphabet, typeset, declare, import, type, define, autodeclare,
+autoconvert, -, rewrite, modules, types, usage, info, clear \- typed shell interface
+.SH SYNOPSIS
+.B load alphabet
+
+.B type
+.IR qname ...
+.br
+.B declare
+.I name
+[
+.I usage
+]
+.br
+.B undeclare
+.IR name ...
+.br
+.B define
+.I name
+.I expr
+.br
+.B import
+.IR qname ...
+.br
+.B typeset
+.I qname
+.br
+.B autoconvert
+.I srctype dsttype expr
+.br
+.B autodeclare
+.BR "" 0 | 1
+.br
+.B -
+.BI { expression }
+.br
+.B ${rewrite {\fIexpression\fP}
+[
+.I dsttype
+]
+.B }
+.br
+.B ${modules}
+.br
+.B ${types
+.I typeset
+.B }
+.br
+.B ${usage
+.I qname
+.B }
+.br
+.B info
+.br
+.B clear
+.SH DESCRIPTION
+.I Alphabet
+is a loadable
+.IR sh (1)
+module providing an interface to a simple, experimental, typed shell.
+It initially provides a small set of basic types, which can be added
+to by loading new
+.IR typeset s.
+Types are atomic;
+.I alphabet
+provides no support for higher-order
+types.
+The
+.IR "root typeset" ,
+named
+.BR / ,
+consists of the following kinds of value:
+.TP 10
+.B string
+A simple string literal, represented by itself,
+or quoted according to the usual shell quoting rules.
+.TP
+.B cmd
+A shell command or uninterpreted
+.I alphabet
+expression, represented by the syntax \f5"{\fIblock\f5}\fR.
+.TP
+.B fd
+A file open for reading.
+.TP
+.B wfd
+A file open for reading and writing.
+.TP
+.B status
+The status of a completed command.
+.PP
+Each typeset implements a set of
+types, and has an associated set of
+.IR module s.
+Initially, types may only be referred to by their
+.IR "qualified name" s,
+consisting of the name of the type prefixed with
+the name of its typeset; for instance
+.B /string
+for the string type,
+or
+.B /grid/data
+for a type named
+.B data
+in the typeset
+.BR /grid .
+An
+.I "unqualified name"
+is the qualified name without the typeset prefix;
+for instance
+.B string
+or
+.BR data .
+.PP
+To make a type available as its unqualified name,
+use the
+.B type
+command, which imports the type named
+by the qualified name
+.I qname
+from its parent typeset.
+This is a no-op if the type has previously been imported
+from the same typeset; an error is raised if the type
+has previously been imported from a different typeset.
+.PP
+.B Declare
+declares the module
+.IR name
+with type
+.IR usage .
+If
+.I name
+is a qualified name, the module must exist in the
+specified typeset and be compatible with the specified usage.
+If
+.I usage
+is not given, the module itself will be loaded and queried
+to find it out.
+If
+.I name
+is not qualified, the declaration is
+.IR virtual :
+the module cannot actually be used, but is available
+for typechecking and expression rewriting.
+.B Declare
+is a no-op if the module has already been declared
+with a compatible usage, otherwise an error is raised.
+The syntax of
+.I usage
+is similar to the usage messages printed by normal
+shell commands, and defines the argument types expected
+by a module. For example:
+.IP
+.EX
+declare /foo/bar '[-a] [-x string] fd string [string...] -> fd'
+.EE
+.PP
+The above declares the module
+.B bar
+from typeset
+.BR /foo ,
+which takes
+two possible options (one of which requires a single
+associated argument of type
+.BR string ),
+two mandatory arguments,
+of type
+.B fd
+and
+.B string
+respectively,
+and any number of additional arguments of
+type
+.BR string .
+The module returns a value of type
+.BR fd .
+.PP
+When first loaded,
+.I alphabet
+is lax about declaration requirements:
+if a module is referred to by its qualified name,
+and is not currently declared, the module will automatically
+be declared and used as appropriate (as long as the module
+actually exists).
+Use
+.B autodeclare
+to change this behaviour.
+.B "Autodeclare 0"
+turns off all automatic declaration: all modules used in an
+expression must have previously been declared;
+.B "autodeclare 1"
+reverts to the original behaviour.
+.PP
+Once a module is declared, it may be referred to
+by its qualified name.
+.B Import
+makes the module available under its unqualified name.
+It is an error if a module of the same name has
+already been imported from a different typeset.
+For instance:
+.IP
+.EX
+declare /read 'string -> fd'
+import /read
+.EE
+.PP
+This would declare a module named
+.B read
+from the root typeset (checking that it
+accepts a single string argument and returns a file),
+and make it available under the name
+.BR read .
+.PP
+.B Undeclare
+removes the previously declared
+.IR name .
+Note that an imported module has two names:
+its qualified name and its unqualified name.
+.PP
+.B Typeset
+loads the new typeset
+.IR qname .
+Typesets are hierarchical in the same
+way that types and modules are: a typeset adds some
+types to its parent typeset, and has an associated set of
+modules that provide transformations between those types
+and between those of its parent.
+.PP
+.B Autoconvert
+specifies an automatic conversion between
+.I srctype
+and
+.IR dsttype ,
+i.e. whereever a module expects an argument
+of type
+.IR dsttype ,
+and the argument is actually of type
+.IR srctype ,
+the module block (see below for definition)
+.I expr
+(which must be compatible with type
+.IB srctype -> dsttype\fR),
+will be invoked to convert between the two.
+Several conversions will be applied
+atop one another if necessary.
+It is an error if adding the auto-conversion
+creates an ambiguous conversion path
+between two types.
+As a convenience,
+.I expr
+may simply be the name of a module,
+in which case the expression will be rewritten as
+its identity module block: \f5{(\fIsrctype\fP); \fIexpr\fP}\fR.
+.PP
+The
+.B -
+command evaluates the
+.I alphabet
+.IR expression ,
+of the form:
+.IP
+.EX
+{\fIcommand arg\fR...\f5}
+.EE
+.PP
+Usually,
+.I command
+is the name of a previously declared module,
+which must also have been imported if it is not a qualified name.
+The arguments must conform to those expected by
+the module. Each argument is either a literal string or shell-command,
+as described earlier, or a subexpression of the same form as above.
+All subexpressions are evaluated fully before
+.I command
+is invoked.
+The result of the outermost expression must be convertible to the type
+.BR /status ;
+the shell status of the
+.B -
+command will reflect this when the command has completed.
+.PP
+As a convenience,
+.I alphabet
+provides a pipe-like syntax. It will rewrite any expression of the
+form \fIm1 m1args\f5|\fIm2 m2args\fR
+as \fIm2 \f5{\fIm1 m1args\f5}\fIm2args\fR.
+This occurs before any auto-conversions have been applied.
+.PP
+.I Command
+may also be a
+.IR "module block" ,
+of the form:
+.IP
+.EX
+{(\fIargtype\fR...\f5); \fIcommand arg\fR...\f5}
+.EE
+.PP
+The
+.I argtype
+values given in the brackets
+specify the types of the arguments expected by the module block;
+these can be referred to in the arguments to
+.I command
+(and subexpressions thereof) with values of the form
+.BR $1 ,
+.BR $2 ,
+etc.
+For instance,
+.IP
+.EX
+{(/string); echo $1} hello}
+.EE
+.PP
+is exactly equivalent to:
+.IP
+.EX
+{echo hello}
+.EE
+.PP
+In a module block with no arguments, the argument declaration
+section may be omitted.
+.PP
+.B Define
+defines a new module in terms of previously declared
+modules.
+.I Name
+(which must be an unqualified name)
+gives the name of the
+module to define, and
+.I expr
+is a module block giving the expression to evaluate when
+.I name
+is used. The usage of the module is taken from the types declared
+in the module block; its return type is inferred from the return type
+of
+.IR expr .
+All modules used in the evaluation of
+.I expr
+are evaluated when the definition takes place, so evaluation of
+.I name
+is unaffected if any modules it uses are later undeclared.
+.PP
+To show the complete form of an expression, after pipe
+transformations and auto-conversions have been applied, and
+module definitions expanded, use
+.BR ${rewrite} ,
+which returns the expression's canonical form
+without actually executing it.
+If
+.I dsttype
+is given, auto-conversions will be applied to try to
+convert the result of
+.I expression
+to
+.IR dsttype .
+.B Rewrite
+raises an error if it finds any declarations incompatible with
+.IR expression
+or if the final type cannot be converted successfully.
+.PP
+.I Alphabet
+also provides some shell operations that give information
+on its current state:
+.B ${modules}
+yields a list of all the currently declared module names
+(including entries for both qualified and unqualified names);
+.B ${types}
+yields a list of all currently available types
+(giving only the types in
+.I typeset
+if specified);
+and
+.B ${usage}
+provides usage information on module
+.IR qname ,
+which need not be declared.
+Additionally,
+.B info
+searches the module directories on all currently loaded typesets,
+and prints usage information for everything it can find there,
+along with information on all currently installed auto-conversions.
+.PP
+Finally,
+.B clear
+clears all existing declarations and definitions, and starts again
+with a clean slate.
+.SH EXAMPLE
+.EX
+load alphabet
+type /string
+type /fd
+type /status
+import /cat /filter
+autoconvert string fd /read
+autoconvert fd status {(fd); /print $1 1}
+define wc {(fd); /filter $1 "{wc}}
+- {cat /lib/polyhedra /dis/sh.dis | wc}
+echo ${rewrite {cat /lib/polyhedra /dis/sh.dis | wc} status}
+.EE
+.SH SOURCE
+.B /appl/alphabet/*.b
+.br
+.B /appl/alphabet/*/*.b
+.SH BUGS
+.I Alphabet
+expressions involving external typesets and file descriptors cannot have
+their I/O
+redirected at the shell level. Unfortunately it is not possible
+to provide a diagnostic when this occurs.
+.SH SEE ALSO
+.IR sh (1),
+.IR alphabet (2),
+.IR alphabet-main (1),
+.IR alphabet-fs (1),
+.IR alphabet-grid (1)

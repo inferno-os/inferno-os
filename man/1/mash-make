@@ -1,0 +1,182 @@
+.TH MASH-MAKE 1
+.SH NAME
+mash-make \- builtin `make' functionality
+.SH SYNOPSIS
+.B load make
+
+.B make
+[
+.I -clear
+]
+.br
+.B depends
+[
+.I target
+]
+.br
+.B match
+.I pattern
+.br
+.B rules
+[
+.I pattern
+]
+.br
+.SH DESCRIPTION
+.I Make
+is a loadable builtin for
+.IR mash .
+It can be taught about dependencies that exist between components of a program and
+rules for reconstructing the components of a program.
+.PP
+.I Make
+will examine file modification times to determine which components need
+to be updated and will
+issue commands to reconstruct them in the correct sequence.
+It will update a target if any of its prerequisites are more up to date than the target
+or if the target does not exist.
+.PP
+Typically, dependencies and rules are kept in a file called
+.BR mashfile .
+The sequence
+.PP
+.EX
+	load make
+	run mashfile
+.EE
+.PP
+is used to load the
+.I make
+builtin and read the rules from
+.BR mashfile .
+Thereafter, the command
+.IP
+.B make
+.I target
+.PP
+will perform the correct sequence of operations to reconstruct
+.I target
+and its dependents.
+.PP
+A dependency is specified in
+.I mash
+with a line of the form:
+.IP
+.IB target-list " : " dependent-list " ; "
+.PP
+or
+.IP
+.IB target-list " : " dependent-list  " { " rules " }  ;"
+.PP
+Each of the targets in
+.I target-list
+depends upon each of the dependents in
+.IR dependent-list .
+The optional
+.I rules
+specify how to build the targets. For example
+.EX
+	lflags = -Cg;
+	rotta.dis : rotta.b rotta.m { limbo $lflags rotta.b };
+.EE
+If the rules are omitted
+.I make
+must be able to infer them from implicit rules.
+.PP
+An implicit rule is defined with a line of the form:
+.IP
+.I pattern
+.B :~
+.I dependency
+.B {
+.I rules
+.B }
+.PP
+If
+.I pattern
+matches a target that
+.I make
+needs to build then
+.I make
+will build the target by first making the
+.I dependency
+and then applying the
+.IR rules .
+The wildcard components of the matched target are available in
+the 
+.I dependency
+and the
+.I rules
+as variables
+.BR $1 ,
+.BR $2 ,
+.BR $3 ...
+with
+.B $1
+containing the text matched by the first wildcard,
+.B $2
+the second wildcard
+and so on. The whole of the target is available in the variable
+.BR $0 .
+For example,
+.PP
+.EX
+    /*/*.m :~ $2.m  { cp $2.m /$1/$2.m };
+    /module/rotta.m: rotta.m;
+    /altmodule/frame.m: frame.m;
+.EE
+.PP
+More commonly, implicit rules are defined to provide
+.I make
+with knowledge of how to compile
+.I limbo
+source to produce
+.I Dis
+format binaries.
+Typically,
+.PP
+.EX
+    *.dis       :~ $1.b     { limbo $lflags $1.b};
+    /dis/*.dis  :~ $1.dis   { cp $1.dis /dis};
+.EE
+.PP
+A target is built with the command
+.IP
+.B make
+.I target
+.PP
+The list of rules can be reset with
+.IP
+.B make -clear
+.PP
+The list of dependencies for a target or for all targets can be
+displayed with the command
+.IP
+.B depends
+[
+.I target
+]
+.PP
+The rules that match a pattern and the components of the pattern
+can be displayed with
+.IP
+.B match
+.BI ' pattern '
+.PP
+Taking care to hide the pattern from
+.I mash
+file name pattern matching with quotes.
+The command
+.IP
+.B rules
+[
+.I pattern
+]
+.PP
+will display all the rules or the rules that apply to pattern
+.I pattern
+(if given).
+.SH SOURCE
+.B /appl/cmd/mash/make.b
+.SH "SEE ALSO"
+.IR mash (1)

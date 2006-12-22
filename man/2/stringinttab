@@ -1,0 +1,87 @@
+.TH STRINGINTTAB 2
+.SH NAME
+stringinttab \- string table lookup module
+.SH SYNOPSIS
+.EX
+include "strinttab.m";
+StringInt: import StringIntTab;
+
+strinttab := load StringIntTab StringIntTab->PATH;
+
+StringInt: adt{
+    key: string;
+    val: int;
+};
+
+lookup:    fn(tab: array of StringInt, key: string) : (int, int);
+revlookup: fn(tab: array of StringInt, val: int)    : string;
+.EE
+.SH DESCRIPTION
+.B Stringinttab
+provides functions that perform forward and reverse searches of an ordered table of
+.I key\-value
+pairs.
+.PP
+A table should be constructed as an array of
+.B StringInt
+entries, ordered by increasing
+.I key
+value.  Keys ordering is determined by comparison of the Unicode
+value of their characters.
+.PP
+.B Lookup
+performs a binary search of
+.I tab
+for the
+.B StringInt
+entry whose
+.B key
+field has a value equal to
+.I key
+and returns a tuple: an
+.B int
+whose value is non-zero if a match has been found and zero otherwise,
+and an
+.B int
+whose value is equal to the
+.B val
+field of the matching
+.B StringInt
+entry.
+.PP
+.B Revlookup
+searches
+.I tab
+for the first
+.B StringInt
+entry whose
+.B val
+field has a value equal to
+.I val
+and returns the corresponding
+.B key
+string.
+.SH EXAMPLES
+.EX
+T := load StringIntTab StringIntTab->PATH;
+
+fmtstringtab := array[] of { Strinttab->StringInt
+	("html", FHtml),
+	("latex", FLatex),
+	("latexbook", FLatexBook),
+	("latexpart", FLatexPart),
+	("latexproc", FLatexProc),
+	("latexslides", FLatexSlides),
+};
+
+(fnd, fmt) := T->lookup(fmtstringtab, "latexbook");
+fmtstring := T->revlookup(fmtstringtab, FLatex);
+.EE
+.SH SOURCE
+.B /appl/lib/strinttab.b
+.SH SEE ALSO
+.IR hash (2)
+.SH BUGS
+.B Revlookup
+performs a sequential search of the table.
+

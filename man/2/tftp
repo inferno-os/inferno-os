@@ -1,0 +1,54 @@
+.TH TFTP 2
+.SH NAME
+tftp \- Trivial File Transfer Protocol
+.SH SYNOPSIS
+.EX
+tftp := load Tftp Tftp->PATH;
+Tftp: module
+{
+   init:    fn(progress: int);
+   receive: fn(host: string, filename: string,
+               fd: ref Sys->FD): string;
+};
+.EE
+.SH DESCRIPTION
+.B Tftp
+fetches files from an Internet TFTP server.
+It is typically used only to fetch kernels or configuration files when booting.
+Only one transfer can be active at any given time.
+.PP
+.B Init
+must be called once before using any other function of the module.
+If
+.I progress
+is non-zero,
+.B receive
+will periodically print a character as blocks are received:
+.RB ` . '
+for every 25 blocks,
+.RB ` S '
+for a sequence error,
+.RB ` T '
+for a timeout.
+.PP
+.B Receive
+attempts to fetch the contents of
+.I filename
+from
+.I host
+and writes the blocks of data to
+.I fd
+as they are received.
+It returns when the file transfer has completed,
+returning a nil string on success or a diagnostic string otherwise.
+When booting,
+.I fd
+is typically open on the
+.B kexec
+file of
+.IR boot (3).
+.SH SOURCE
+.B /appl/lib/tftp.b
+.SH SEE ALSO
+.IR ip (2),
+.IR bootpd (8)

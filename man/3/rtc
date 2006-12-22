@@ -1,0 +1,60 @@
+.TH RTC 3
+.SH NAME
+rtc \- real-time clock and non-volatile memory
+.SH SYNOPSIS
+.B bind -b '#r' /dev
+.PP
+.B /dev/rtc
+.br
+.B /dev/rtcid
+.br
+.B /dev/nvram
+.SH DESCRIPTION
+The
+.I rtc
+device provides access to the real-time clock and any associated non-volatile memory.
+Physical devices supported include the Mostek MK48T12-15 Zeropower/Timekeeper,
+the Dallas Semiconductor DS1687 real-time clock,
+and the IBM PC real-time clock on various platforms.
+.PP
+The
+.B rtc
+file when read returns the time as a decimal number, expressed as the number of seconds since the epoch,
+1 January 1970 00:00 GMT.
+The clock is set by writing the desired number of seconds since the epoch to the file.
+Setting the time in this device has no effect on system time returned by
+.B /dev/time
+(see
+.IR cons (3)),
+which must be set separately if desired.
+For example, when
+.I rtc
+is available
+.I osinit
+(see
+.IR init (8))
+uses it to set
+.BR /dev/time .
+.PP
+The
+.B nvram
+file provides access to the non-volatile memory commonly implemented
+by these clock chips.
+There are no cross-platform standards for the range of addresses that
+can be safely used by Inferno, or for the content and format of the data.
+.PP
+The
+.B rtcid
+file holds a decimal number giving the serial number of the device,
+set during manufacturing.
+The file exists only if a particular device provides such a number.
+.SH SOURCE
+.B /os/*/devrtc.c
+.SH SEE ALSO
+.IR cons (3)
+.SH BUGS
+The
+.B rtc
+file returns seconds but
+.B /dev/time
+returns microseconds: it's history.

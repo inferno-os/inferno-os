@@ -1,0 +1,12 @@
+<../fonts
+
+all:V: limbo.pdf addendum.pdf
+
+limbo.ps:D:	limbo.ms limbo.rc synsum mkfile
+	rc limbo.rc | troff -mpm | lp -d stdout >limbo.ps
+
+%.pdf: %.ps
+	ps2pdf <$stem.ps >$stem.pdf
+
+addendum.ps:D:	addendum.ms mkfile
+	cat addendum.ms |troff -mpm | lp -d stdout >$target

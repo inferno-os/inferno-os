@@ -1,0 +1,127 @@
+.TH 5CV 10.1
+.SH NAME
+5cv, mkppcimage, sqz \- convert kernel executable to boot format
+.SH SYNOPSIS
+.B 5cv
+[
+.BI -D n
+] [
+.BI -H n
+] [
+.B -s
+]
+.I "executable outfile"
+.PP
+.B mkppcimage
+[
+.BI -l " loadaddr"
+]
+.I "executable outfile"
+.PP
+.B sqz
+[
+.B -w
+] [
+.B -t
+]
+.I executable
+.SH DESCRIPTION
+These commands convert a kernel executable in Inferno/Plan 9
+.IR a.out (10.5)
+format into another
+format used by a third party's boot loader.
+Most convert the input
+.I executable
+and write the new format to
+.IR outfile .
+.PP
+.IR 5cv
+converts an ARM executable into one of several alternative formats.
+The output format is controlled by the
+.B -H
+option:
+.TP 8n
+.BI -H1
+AIF for RISCOS.
+.TP
+.BI -H2
+Plan 9.
+.TP
+.BI -H3
+Boot for NetBSD.
+.TP
+.BI -H4
+Headerless, stripped, and padded to 2K in length. Used for the ROM resident serial
+bootstrap
+loader in a Cirrus EP72xx.
+.TP
+.BI -H5
+Headerless, and stripped, for general use.
+.TP
+.BI -H6
+EPOC IMG format. Not a complete conversion, currently sufficient for use with some
+NT based downloaders which autosense the file type by the "EP" signature, and then
+ignore the contents of the header.
+.PP
+The other options are:
+.TP
+.BI -s
+Strip symbol table.
+.TP
+.BI -D n
+Enables debug output.
+.PP
+.I Mkppcimage
+converts a PowerPC or ARM
+.I executable
+to a boot image format used by
+.SM PPCBOOT
+and
+.SM UBOOT\c
+\&.
+The output file has a
+.SM PPCBOOT
+image with one component labelled as an `OS kernel' for the appropriate architecture,
+containing the
+.IR a.out (10.6)
+header, text and initialised data, all uncompressed.
+Symbols are not included.
+By default the load address is deduced from the executable's entry point;
+the
+.B -l
+option allows
+.I loadaddr
+to be set explicitly, with the number in C syntax (decimal by default).
+Other attributes are deduced from the executable.
+.PP
+.I Sqz
+squeezes (compresses) the given
+ARM or PowerPC
+.I executable
+using a method that achieves respectable compression for executables but is much faster to decompress than
+(say)
+.BR gzip 's.
+By default, both the program text and initialised data are compressed; the
+.B -t
+option causes
+.I sqz
+to compress only the program text, leaving the data as-is.
+By default,
+.I sqz
+prints compression statistics on its standard error output;
+the
+.B -w
+option causes it also to write the compressed file on its standard output.
+Either the bootstrap that loads it must decompress the result, or a small uncompressed
+stub must also be loaded that decompresses the remainder.
+.SH SOURCE
+.B /utils/5cv
+.br
+.B /utils/mkppcimage
+.br
+.B /utils/sqz
+.SH "SEE ALSO"
+.IR 2l (10.1),
+.IR 5cv (10.1),
+.IR ms2 (10.1),
+.IR a.out (10.5)

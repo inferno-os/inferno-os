@@ -1,0 +1,51 @@
+.TH VOLUME 2 mux
+.SH NAME
+volume \- volume control for an infrared interface
+.SH SYNOPSIS
+.EX
+include "volume.m";
+vctl := load Volumectl Volumectl->PATH;
+
+volumectl: fn(ctxt: ref Draw->Context, ch: chan of int,
+			device: string);
+.EE
+.SH DESCRIPTION
+.B Volumectl
+should be spawned as a separate process from any process that desires volume control via an infrared interface.
+.I Ctxt
+provides
+.B volumectl
+with access to the display,
+on which it displays a slider widget.
+The slider automatically disappears after several seconds of inactivity.
+.B Volumectl
+receives input from the infrared controller on channel
+.IR ch .
+The values recognized are:
+.TF Enter
+.PD
+.TP
+.B VolUP
+increase volume
+.TP
+.B VolDN
+decrease volume
+.TP
+.B Enter
+exit
+.PP
+.I Device
+is a string used as a prefix to commands to the device;
+for example
+.B
+"audio out"
+.ft P
+for
+.IR audio (3).
+.SH FILES
+.B /dev/volume
+.SH SOURCE
+.B /appl/lib/volume.b
+.SH "SEE ALSO"
+.IR ir (2),
+.IR prefab-intro (2)

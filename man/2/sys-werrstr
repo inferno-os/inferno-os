@@ -1,0 +1,26 @@
+.TH SYS-WERRSTR 2
+.SH NAME
+werrstr \- set the system error string
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+werrstr(s: string): int;
+.EE
+.SH DESCRIPTION
+When a system call fails, it returns an error value (often -1)
+and records a string describing the error in a per-process location.
+The verb
+.B r
+in
+.IR sys-print (2)
+outputs the error string.
+.B Werrstr
+sets the process's error string to
+.IR s ,
+to allow a function in a module to mimic the error reporting
+interface of a system call.
+.SH SEE ALSO
+.IR sys-intro (2),
+.IR sys-print (2)

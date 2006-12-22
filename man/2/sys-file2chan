@@ -1,0 +1,158 @@
+.TH SYS-FILE2CHAN 2
+.SH NAME
+file2chan \- create file connected to Limbo channel
+.SH SYNOPSIS
+.EX
+include "sys.m";
+sys := load Sys Sys->PATH;
+
+Rread:  type chan of (array of byte, string);
+Rwrite: type chan of (int, string);
+FileIO: adt
+{
+    read:   chan of (int, int, int, Rread);
+    write:  chan of (int, array of byte, int, Rwrite);
+};
+
+file2chan:  fn(dir, file: string): ref FileIO;
+.EE
+.fi
+.SH DESCRIPTION
+.B File2chan
+presents an interface for binding Limbo channels to files in the file name space.
+A
+.I server
+program calls
+.B file2chan
+to create a
+.I file
+in a directory
+.IR dir ,
+which must be a directory on which device
+.RB ` #s '
+has been bound
+(see
+.IR srv (3)).
+A
+.I client
+program can open the file for reading or writing (see
+.IR sys-open (2)
+and
+.IR sys-read (2))
+to communicate with the server.
+.PP
+.B File2chan
+returns a
+.B FileIO
+type holding two channels used to deliver tuples representing
+the contents of the
+.B Tread
+and
+.B Twrite
+Styx messages received by the system on the server's behalf; see
+.IR intro (5).
+.PP
+When the client invokes the
+.B read
+system call on the file, the server
+receives a tuple, say
+.BI ( offset\fP,\fP\ count\fP,\fP\ fid\fP,\fP\ rc )\f1,
+on the
+.B read
+channel.
+The request asks for
+.I count
+bytes of data, starting at
+.I offset
+bytes from the beginning of the file
+associated with
+.IR fid .
+The server sends its reply to the client by transmitting a tuple, say
+.BI ( data\fP,\fP\ error )\f1,
+that contains the
+.I data
+for the
+.BR read ,
+on the channel
+.I rc
+received as part of the
+.B read
+tuple.
+If the request was successful, the
+.I error
+string should be
+.BR nil .
+If an error occurred,
+.I error
+should be a diagnostic string,
+and the
+.I data
+array should be
+.BR nil .
+The client blocks in the
+.B read
+system call until the server sends its reply.
+The client receives only
+.I count
+bytes even if
+.I data
+is larger.
+.PP
+When the client does a
+.B write
+system call on the file,
+the server receives a tuple,
+.BI ( offset\fP,\fP\ data\fP,\fP\ fid\fP,\fP\ wc )\f1,
+on the
+.B write
+channel.
+A
+.BI ( count\fP,\fP\ error )
+response is sent back on the
+.I wc
+channel received in the
+.B write
+tuple:
+.I count
+gives the number of bytes written (zero if an error occurs), and
+.I error
+is an empty or
+.B nil
+string or an explanation of the problem.
+.PP
+If the client closes the file for reading (writing), the server will receive a
+.B read
+.RB ( write )
+message with a
+.B nil
+.I rc
+.BI ( wc )\f1.
+The server can use these signals to determine when to stop processing.
+The
+.I fid
+received by the server can be used to manage the multiplexing of multiple
+active clients sharing a single file; see
+.IR intro (5)
+for details.
+.SH SOURCE
+.B /emu/port/devsrv.c
+.br
+.B /os/port/devsrv.c
+.SH SEE ALSO
+.IR sh-file2chan (1),
+.IR sys-intro (2),
+.IR sys-open (2),
+.IR sys-read (2),
+.IR sys-bind (2),
+.IR intro (5)
+.SH BUGS
+.B Read
+and
+.B write
+system calls for the file will not return until the
+server sends its reply on the appropriate channel,
+so the process doing the
+.B read
+or
+.B write
+cannot be the one serving.

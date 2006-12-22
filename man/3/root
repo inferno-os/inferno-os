@@ -1,0 +1,45 @@
+.TH ROOT 3 
+.SH NAME
+root \- the root file system
+.SH SYNOPSIS
+.nf
+.B /
+.B /chan
+.B /dev
+.B /env
+.B /fd
+.B /net
+.B /net.alt
+.B /nvfs
+.B /prog
+.B /root
+.B /srv
+.B /osinit.dis
+.fi
+.SH DESCRIPTION
+This device is set up by the kernel to be the initial root of
+the name space.
+In the emulation environment,
+the names in the one-level tree shown above are mostly just place-holders,
+to allow a place on which to
+.I bind
+(see
+.IR sys-bind (2)).
+.PP
+In the native environment, an arbitrary initial directory structure and
+file content can be built-in
+when the kernel is configured, but it will typically include at least
+the names above, to act as mount points.
+The required file
+.B /osinit.dis
+(not present in the emulation environment)
+provides an executable Dis binary when read,
+and is the first program invoked when initialising the system.
+Other files needed for bootstrap
+might also reside in this device.
+.SH SOURCE
+.B /emu/port/devroot.c
+.br
+.B /os/port/devroot.c
+.SH SEE ALSO
+.IR init (8)

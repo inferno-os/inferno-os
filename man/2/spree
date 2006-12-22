@@ -1,0 +1,604 @@
+.TH SPREE 2
+.SH NAME
+Spree \- distributed interactive sessions.
+.SH SYNOPSIS
+.EX
+.ps -1
+.vs -1
+include "sys.m";
+include "draw.m";
+include "sets.m";
+include "spree.m";
+spree := load Spree Spree->PATH;
+Range, Object, Clique, Member: import spree;
+Set: import Sets;
+Archive: import Archives;
+
+Range: adt {
+    start:  int;
+    end:    int;
+};
+
+Object: adt {
+    transfer:           fn(o: self ref Object,
+            r: Range, dst: ref Object, i: int);
+    setvisibility:      fn(o: self ref Object,
+            visibility: Set);
+    setattrvisibility:  fn(o: self ref Object,
+            name: string, visibility: Set);
+    setattr:        fn(o: self ref Object,
+            name: string, val: string, vis: Set);
+    getattr:        fn(o: self ref Object, name: string): string;
+    delete:     fn(o: self ref Object);
+    deletechildren: fn(o: self ref Object, r: Range);
+
+    id:     int;
+    parentid:   int;
+    children:   array of ref Object;
+    objtype:    string;
+    visibility: Set;
+    # ...private data
+};
+
+Clique: adt {
+    new:       fn(parent: self ref Clique, archive: ref Archive,
+				owner: string): (int, string, string);
+    newobject: fn(clique: self ref Clique, parent: ref Object,
+            visibility: int, objtype: string): ref Object;
+    action:   fn(clique: self ref Clique, cmd: string,
+               objs: list of int, rest: string, whoto: int);
+    member:   fn(clique: self ref Clique, id: int): ref Member;
+    start:    fn(clique: self ref Clique);
+    breakmsg: fn(clique: self ref Clique, whoto: Sets->Set);
+    members:  fn(clique: self ref Clique): list of ref Member;
+    owner:    fn(clique: self ref Clique): string;
+    hangup:   fn(clique: self ref Clique);
+    notify:   fn(clique: self ref Clique, cliqueid: int, msg: string);
+
+    objects:  array of ref Object;
+    cliqueid: int;
+    # ...private data
+};
+
+Member: adt {
+    obj:    fn(m: self ref Member, id: int): ref Object;
+    del:    fn(m: self ref Member, suspend: int);
+
+    id:     int;
+    name:   string;
+    # ...private data
+};
+
+Engine: module {
+	init:			fn(srvmod: Spree, clique: ref Clique, argv: list of string): string;
+	command:	fn(member: ref Member, e: string): string;
+	join:			fn(member: ref Member , e: string, suspended: int): string;
+	leave:		fn(member: ref Member): int;
+	notify:		fn(fromid: int, s: string);
+	readfile:		fn(f: int, offset: big, count: int): array of byte;
+};
+
+Archives: module {
+	Archive: adt {
+		argv:		list of string;			# how to restart the session.
+		members:	array of string;			# members involved.
+		info:		list of (string, string);	# any other information.
+		objects:	array of ref Object;
+	};
+	init:			fn(mod: Spree);
+	write:		fn(clique: ref Clique, info: list of (string, string), file: string, members: Set): string;
+	read:			fn(file: string): (ref Archive, string);
+	readheader:	fn(file: string): (ref Archive, string);
+};
+
+rand:   fn(n: int): int;
+.ps +1
+.vs +1
+.EE
+.SH DESCRIPTION
+.I Spree
+provides a general server interface that allows sets of distributed
+clients,
+.IR cliques ,
+to interact in a controlled manner, with the
+interaction mediated
+by Limbo modules, known as
+.IR engines .
+Each engine decides on the rules
+of its particular clique; the engine interface is described
+at the end of this manual page, under
+``Module Interface''.
+.PP
+This manual page describes the
+interface as presented to an engine
+once it has been loaded by
+.IR spree .
+A loaded instance of an engine is responsible for a particular
+.IR clique ,
+in which one or more
+.I members
+participate. Messages sent by members
+are interpreted by the engine, which
+responds by making changes to the hierarchical
+.I object
+database held by the clique.
+Behind the scenes
+.I spree
+distributes updates to this database to members
+of the clique as appropriate (see
+.IR spree (4)
+for details).
+.SS "Objects and visibility"
+Objects hold a clique's visible state. An object
+has a unique integer
+.IR id ,
+which is an index into the array
+.IB clique .objects\fR;\fP
+it also holds a set of attribute-value pairs, a type, and
+zero or more child objects. Together, all the objects
+in the clique form a hierarchical tree, rooted at
+the
+.IR "root object"
+(id 0), which always exists.
+Each attribute and each object also has an associated
+.IR "visibility set" ,
+the set of member that sees updates to the attributes or the children
+of the object.  Each member has a unique id;
+in a visibility set (see
+.IR sets (2)),
+a member is ``visible'' if the set contains the member's id.
+.PP
+Note that the visibility set of an object does not alter the visibility
+of that object's attributes, but only that of its children (and of
+their children: in general an object is visible to a member if the
+intersection of all its ancestors' visibility sets contains that
+member).
+.PP
+Objects can be transferred inside the hierarchy from one parent to
+another. If an object is moved to a parent whose visibility conceals it
+from a member, then it will appear to that member to have been deleted;
+if it is later made visible, then it will be recreated for that
+member.
+A clique engine can almost always ignore this technicality,
+except for one thing: the identifier used by a particular member to
+identify an object is not necessarily the same as that used by the clique
+engine. Thus when an engine receives an object id in a member's
+message, it should convert it using the
+.IB member .obj()
+function.
+.SS \fBClique\fP
+The
+.B Clique
+type holds all the objects in a clique. It allows the
+creation of new objects, and provides a way of communicating
+with members directly.
+All data members of a
+.B Clique
+should be treated as read-only.
+.TP 10
+.IB clique .objects
+This array holds the objects in the clique. An object with
+identifier
+.I id
+is found at
+.IB clique .objects[ id ]\fR.\fP
+.TP
+.IB clique .new(\fIarchive\fP, \fIowner\fP)
+.B New
+creates a new clique.
+.I Archive
+is an archive of the game to be created;
+.IB archive \.argv
+should be non-nil; its first element should name
+the engine to be loaded (as a path relative to the
+engine module directory, and without the
+.B .dis
+extension).
+.TP
+.IB clique .newobject(\fIparent\fP,\ \fIvisibility\fP,\ \fIobjtype\fP)
+.B Newobject
+creates a new object at the end
+of
+.IR parent 's
+children;
+If
+.I parent
+is nil, the new object is created under the root object.
+The new object has visibility
+.IR visibility ,
+and type
+.IR objtype .
+An object's type cannot be changed once
+it has been created.
+.TP
+.IB clique .action(\fIcmd\fP,\ \fIobjs\fP,\ \fIrest\fP,\ \fIwhoto\fP)
+.B Action
+sends a message to some members without affecting
+the object hierarchy. It can be used to send transient
+events that have no meaning when stored statically
+(for example, network latency probes).
+The message is sent to the set of members given by
+.IR whoto .
+.I Objs
+is assumed to be a list of object ids, which are
+converted appropriately for each member
+receiving the message; the final
+message is a string built by concatenating
+.IR cmd ,
+the list of object ids, and
+.IR rest ,
+separated by spaces.
+.TP
+.IB clique .breakmsg(\fIwhoto\fP)
+Messages are usually sent to clients in an uninterrupted
+stream (as documented in
+.IR spree (4)),
+with a single read returning a potentially large
+set of messages.
+.B Breakmsg
+arranges that subsequent messages received by the members specified in
+.I whoto
+will see not be merged with messages sent prior to the call to
+.BR breakmsg .
+This is used to enable a new client module to be started
+without needing to pass it data received in the previous read.
+.TP
+.IB clique .member(\fIid\fP)
+.B Member
+yields the member corresponding to identifier
+.IR id ,
+or
+.B nil
+if there is none.
+.TP
+.IB clique .membernamed(\fIname\fP)
+.B Membernamed
+searches for a member of
+.I clique
+named
+.I name
+and returns it if it finds it, otherwise
+.BR nil .
+.TP
+.IB clique .members()
+.B Members
+returns a list of all the members of
+.IR clique ,
+including those that have been suspended.
+.TP 
+.IB clique .owner()
+.B Owner
+returns the name of the owner of the clique;
+i.e. the user that created it.
+.TP
+.IB clique .hangup()
+.B Hangup
+terminates a game and informs all the
+players of that fact.
+.TP
+.IB clique .notify(\fIcliqueid\fP, \fImsg\fP)
+.B Notify
+sends an informational message to another clique.
+The clique so referenced must be either the parent
+or a child of
+.IR clique .
+The message is not sent synchronously,
+and care should be taken not to send messages that
+can cause an indefinite recursion.
+.SS Member
+The
+.B Member
+type represents a member of a clique.
+.TP 10
+.IB member .id
+The member's identifier is an integer  unique across all current members
+of the clique,
+but ids of members that have left the clique will
+be reused.
+There may not be two members of the same name in the
+same clique.
+.TP
+.IB member .name
+.B Name
+holds the authenticated name of the member.
+This is necessarily unique over the members
+of a clique.
+.TP
+.IB member .obj(\fIid\fP)
+.B Obj
+converts from a member's external object
+identifier to the clique's local
+.B Object
+that it represents. It returns
+.B nil
+if there is no such object.
+.TP
+.IB member .del(\fIsuspend\fP)
+.B Del
+deletes
+.I member
+from the clique;
+no more requests from
+.I member
+will be received by the clique engine.
+If
+.I suspend
+is non-zero, if a member of the same name joins again
+it will be allocated the same object id, allowing a member
+to leave and join again without losing state.
+.SS \fBObject\fP
+The
+.B Object
+type is the basic unit of clique engine state.
+An object's children can be selectively concealed
+from members; it holds a set of
+.RI ( attribute ,\  value )
+pairs, each of which can be concealed likewise.
+Where an argument
+.IR r ,
+of
+.B Range
+type is used, it refers to a range of an object's
+children starting at index
+.IB r .start\fR,\fP
+and finishing at
+.IB r .end-1\fR.\fP
+All the data members of an
+.B Object
+should be treated as read-only.
+.TP 10
+.IB obj .setattr(\fIname\fP,\ \fIval\fP,\ \fIvis\fP)
+.B Setattr
+sets attribute
+.I name
+in
+.I obj
+to
+.IR val.
+If the attribute is being created for the
+first time, then it will be given visibility
+.IR vis .
+.I Name
+should be non-empty, and should not
+contain any space characters.
+Note that it is not possible for an attribute
+to refer directly to an object by its identifier;
+if this facility is needed, another identifying
+scheme should be used. This also applies
+to member identifiers, which will change
+if the clique is saved and loaded again.
+.TP
+.IB obj .getattr(\fIname\fP)
+.B Getattr
+yields the current value of the
+attribute
+.I name
+in
+.IR obj .
+If an attribute is not set, it yields
+.BR nil .
+.TP
+.IB obj .delete()
+.B Delete
+removes
+.I obj
+from the object
+hierarchy.
+.TP
+.IB obj .deletechildren(\fIr\fP)
+.B Deletechildren
+deletes children in range
+.I r
+from
+.IR obj .
+.TP
+.IB obj .transfer(\fIr\fP,\ \fIdst\fP,\ \fIi\fP)
+.B Transfer
+transfers the children in range
+.I r
+from
+.I obj
+to just before the object at index
+.I i
+in
+.IR dst .
+It is permissible for
+.I obj
+and
+.I dst
+to be the same object.
+.TP
+.IB obj .setvisibility(\fIvisibility\fP)
+.B Setvisibility
+allows the set of members
+given in
+.I visibility
+to see the children of
+.IR obj ,
+and denies access to all others.
+Members are notified of the change.
+.TP
+.IB obj .setattrvisibility(\fIname\fP,\ \fIvisibility\fP)
+.B Setattrvisibility
+allows the set of members
+given in
+.I visibility
+to see the value of
+.IR obj 's
+attribute
+.IR name ,
+and denies access to all others.
+Members are not notified of the change;
+if there is a need to communicate
+the fact of an attribute becoming invisible to
+members, it should be done by using another
+(visible) attribute to communicate the change.
+.SS "Archives"
+The
+.B Archives
+module provides a means of committing a clique
+to permanent storage and retrieving it later.
+It should first be initialised by calling
+.BR init ,
+passing the
+.B Spree
+module in
+.IR mod .
+.B Write
+writes
+.I clique
+to the file
+.IR file .
+.I Info
+gives a set of attributes and values associated with the clique;
+.I members
+gives the set of clique members for which visibility information
+will be archived; visibility information for other members is forgotten.
+.PP
+.B Read
+opens
+.I file
+and returns it as an
+.B Archive
+adt, say
+.IR a .
+.IB A .argv
+holds the command line arguments to the clique module
+(including the name of the module, its first element);
+.IB a .members
+gives the names of all archived members - the id
+of an archived member is given by its index in the array;
+.IB a .info
+gives the list of attributes an values as stored by
+.BR write ;
+.IB a .objects
+holds the clique objects.
+.B Readheader
+is just like
+.B read
+except that it parses the header only, so will return an
+.B Archive
+adt such that
+.IB a .objects
+is nil.
+.SS "Module Interface"
+An engine module,
+.IR mod ,
+must implement the
+following functions. Where a function returns a string,
+it is interpreted as an error response to the member
+responsible for the request; an empty string signifies
+no error.
+.TP
+.IB mod ->init(\fIsrvmod\fP, \fIclique\fP, \fIargv\fP)
+.B Init
+initialises the clique engine.
+.I Clique
+is the clique that the engine is controlling,
+and
+.I srvmod
+is the
+.B Spree
+module holding its associated data.
+An error response from this function
+causes the clique to be aborted.
+.I Argv
+gives a list of arguments to the engine, starting
+with its module name.
+.TP
+.IB mod ->join(\fImember\fP, \fIe\fP, \fIsuspended\fP)
+.I Member
+has made a request to join the clique;
+an error response causes the request to be
+refused, otherwise the member joins the
+clique.
+.I E
+is a message from the client about how it would like to
+join the clique (e.g.
+.BR join ,
+.BR watch ,
+etc).
+.I Suspended
+is non-zero if the member was previously suspended from the clique.
+.TP
+.IB mod ->leave(\fImember\fP)
+.I Member
+has left the clique.
+If
+.B leave
+returns zero, the member will not be deleted from the
+clique, but merely suspended until they should join again.
+.TP
+.IB mod ->command(\fImember\fP,\ \fIe\fP)
+.I Member
+has sent the command
+.IR e .
+The command usually follows
+the simple message conventions
+used in
+.IR spree (4),
+i.e. simple space-separated tokens.
+.TP
+.IB mod ->notify(\fIcliqueid\fP, \fIs\fP)
+A notification,
+.IR s ,
+has been posted to
+the current clique
+by the clique identified by
+.IR cliqueid .
+The posting clique is either a parent or a child of the current clique.
+.TP
+.IB mod .
+.SH EXAMPLE
+The following is a small, but working example
+of a clique engine that acts as a chat server
+(parsing error checking omitted, and white-space
+compressed to save paper):
+.PP
+.EX
+.ps -1
+.vs -1
+implement Cliquemodule;
+include "sys.m";
+    sys: Sys;
+include "draw.m";
+include "../spree.m";
+    spree: Spree;
+    Clique, Member: import spree;
+clique: ref Clique;
+clienttype(): string
+{
+    return "chat";
+}
+init(g: ref Clique, srvmod: Spree): string
+{
+    (sys, clique, spree) = (load Sys Sys->PATH, g, srvmod);
+    return nil;
+}
+join(nil: ref Member): string
+{
+    return nil;
+}
+leave(nil: ref Member)
+{
+}
+command(member: ref Member, cmd: string): string
+{
+    clique.action("say " + string member.id + " " + cmd, nil, nil, ~0);
+    return nil;
+}
+.ps +1
+.vs +1
+.EE
+.SH SOURCE
+.B /appl/cmd/cliques/spree.b
+.SH "SEE ALSO"
+.IR spree (4),
+.IR spree-objstore (2),
+.IR spree-cardlib (2),
+.IR spree-allow (2),
+.SH BUGS
+The reuse of object ids can lead to
+problems when objects are deleted and
+recreated on the server before clients become
+aware of the changes.

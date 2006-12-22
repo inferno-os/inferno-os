@@ -1,0 +1,79 @@
+.TH FRAME 9
+.SH NAME
+frame \- Create and manipulate frame widgets
+.SH SYNOPSIS
+\f5frame\fI \fIpathName ?\fIoptions\fR?
+.SH STANDARD OPTIONS
+.EX
+-borderwidth -relief
+.EE
+.SH "WIDGET-SPECIFIC OPTIONS"
+.TP
+.B -background \fIcolour\fP
+This option is the same as the standard \f5background\fR option
+except that its value may also be specified as an empty string.
+In this case, the widget will display no background or border, and
+no colours will be consumed from its colourmap for its background
+and border.
+.TP
+.B -height \fIdist\fP
+Specifies the desired height for the window.
+If this option is less than or equal to zero then the window will
+not request any size at all.
+.TP
+.B -width \fIdist\fP
+Specifies the desired width for the window.
+If this option is less than or equal to zero then the window will
+not request any size at all.
+
+.SH DESCRIPTION
+The \f5frame\fR command creates a new window (given by the
+\fIpathName\fR argument) and makes it into a frame widget.
+Additional
+options, described above, may be specified on the command line
+to configure aspects of the frame such as its background colour
+and relief.  The \f5frame\fR command returns the
+path name of the new window.
+.PP
+A frame is a simple widget.  Its primary purpose is to act as a
+spacer or container for complex window layouts.  The only features
+of a frame are its background colour and an optional 3-D border to make the
+frame appear raised or sunken.
+
+.SH "WIDGET COMMAND"
+The \f5frame\fR command creates a new Tk command whose
+name is \fIpathName\fR.. This
+command may be used to invoke various
+operations on the widget.  It has the following general form:
+.RS
+.EX
+\fIpathName option \fR?\fIarg arg ...\fR?
+.EE
+.RE
+\fIPathName\fR is the name of the command, which is the same as
+the frame widget's path name.  \fIOption\fR and the \fIarg\fRs
+determine the exact behaviour of the command.  The following
+commands are possible for frame widgets:
+.TP
+\fIpathName \f5cget\fR \fIoption\fR
+Returns the current value of the configuration option given
+by \fIoption\fR.
+\fIOption\fR may have any of the values accepted by the \f5frame\fR
+command.
+.TP
+\fIpathName \f5configure\fR ?\fIoption\fR? \fI?value option value ...\fR?
+Query or modify the configuration options of the widget.
+If no \fIoption\fR is specified, returns a list of all of
+the available options for \fIpathName\fR.  If
+one or more \fIoption-value\fR pairs are specified, then the command
+modifies the given widget option(s) to have the given value(s);  in
+this case the command returns an empty string.
+\fIOption\fR may have any of the values accepted by the \f5frame\fR
+command.
+
+.SH BINDINGS
+When a new frame is created, it has no default event bindings:
+frames are not intended to be interactive.
+.SH SEE ALSO
+.IR options (9),
+.IR types (9)

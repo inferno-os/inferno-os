@@ -1,0 +1,939 @@
+.TH SH 1
+.SH NAME
+sh, builtin, exit, load, loaded, local, whatis, quote, run, set, unload, unquote \- command language
+.SH SYNOPSIS
+.B sh
+[
+.B -ilxvn
+]
+[
+.B -c command
+]
+[
+.I file
+[
+.I arg ...
+]
+.SH DESCRIPTION
+.I Sh
+is a programmable user level interface (a shell) for Inferno.
+It executes command lines read from a terminal or a file or, with the
+.B -c
+flag, from
+.IR sh 's
+argument list. It can also be used to give programmable functionality
+to Limbo modules (see
+.IR sh "" "" (2)).
+.SS Command Lines
+A command line is a sequence of commands, separated by ampersands or semicolons
+.RB ( &
+or
+.BR ; ),
+terminated by a newline.
+The commands are executed in sequence
+from left to right.
+.I Sh
+does not wait for a command followed by
+.B &
+to finish executing before starting
+the following command.
+Whenever a command followed by
+.B &
+is executed, its process id is assigned to the
+.I sh
+variable
+.BR $apid .
+Whenever a command
+.I not
+followed by
+.B &
+exits or is terminated, the
+.I sh
+variable
+.B $status
+gets the process's wait message (see
+.IR prog (3));
+it will be the null string if the command was successful.
+.PP
+A number-sign
+.RB ( # )
+and any following characters up to (but not including) the next newline
+are ignored, except in quotation marks.
+.SS Simple Commands
+A simple command is a sequence of arguments interspersed with I/O redirections.
+If the first argument is the name of a
+.I sh
+builtin or it is a braced command block (see
+.IR "Compound Commands",
+below), it is executed by
+.IR sh .
+If the first character of the name is a brace
+.RB ( { ),
+the shell tries to parse it and execute it as a braced command block;
+if the parsing fails, an exception is raised.
+Otherwise
+.I sh
+looks for an external program to execute.
+.PP
+If the name ends in
+.BR .dis ,
+.I sh
+looks for a Dis module of that name; otherwise
+it tries first to find a Dis module of
+that name with
+.B .dis
+appended and failing that, it looks for
+an executable file of the same name, which should
+be a readable, executable script file.
+If the name does not start with a slash
+.RB ( / )
+or dot-slash
+.RB ( ./ ),
+then the name is first looked for relative to
+.BR /dis ,
+and then relative to the current directory.
+A Dis module will be executed only if it
+implements the
+.B Command
+interface (see
+.IR sh (1));
+a script file will be executed only if it
+starts with the characters
+.RB `` #! ''
+followed by the name of a file executable
+under the rules above. In this case the
+command will be executed with any following arguments mentioned
+in the
+.B #!
+header, followed by the path of the script file,
+followed by any arguments originally given to the command.
+.PP
+For example, to execute the simple command
+.BR "ls" ,
+.I sh
+will look for one of the following things, in order,
+stopping the search when one is found:
+.RS
+.IP 1)
+a built-in command named
+.RB `` ls ''.
+.IP 2)
+a Dis module named
+.RB `` /dis/ls.dis '',
+.IP 3)
+an executable script file named
+.RB `` /dis/ls '',
+.IP 4)
+a Dis module named
+.RB `` ./ls.dis '',
+.IP 5)
+an executable script file named
+.RB `` ./ls ''.
+.RE
+.SS Arguments and Variables
+A number of constructions may be used where
+.I sh's
+syntax requires an argument to appear.
+In many cases a construction's
+value will be a list of arguments rather than a single string.
+.PP
+The simplest kind of argument is the unquoted word:
+a sequence of one or more characters none of which is a blank, tab,
+newline, or any of the following:
+.EX
+	# ; & | ^ $ ` ' { } ( ) < > " =
+.EE
+An unquoted word that contains any of the characters
+.B *
+.B ?
+.B [
+is a pattern for matching against file names.
+The character
+.B *
+matches any sequence of characters,
+.B ?
+matches any single character, and
+.BI [ class ]
+matches any character in the
+.IR class .
+If the first character of
+.I class
+is
+.BR ^ ,
+the class is complemented. (As this character
+is special to the shell, it may only be included in a pattern
+if this character is quoted, as long as the leading
+.B [
+is not quoted).
+The
+.I class
+may also contain pairs of characters separated by
+.BR - ,
+standing for all characters lexically between the two.
+The character
+.B /
+must appear explicitly in a pattern.
+A pattern is replaced by a list of arguments, one for each path name matched,
+except that a pattern matching no names is not replaced by the empty list,
+but rather stands for itself.
+Pattern matching is done after all other
+operations.
+Thus,
+.EX
+	x=/tmp; echo $x^/*.b
+.EE
+matches
+.BR /tmp/*.b ,
+rather than matching
+.B "/*.b
+and then prefixing
+.BR /tmp .
+.PP
+A quoted word is a sequence of characters surrounded by single quotes
+.RB ( ' ).
+A single quote is represented in a quoted word by a pair of quotes
+.RB ( '' ).
+.PP
+.ne 3
+Each of the following is an argument.
+.PD 0
+.HP
+.BI ( arguments )
+.br
+The value of a sequence of arguments enclosed in parentheses is
+a list comprising the members of each element of the sequence.
+Argument lists have no recursive structure, although their syntax may
+suggest it.
+The following are entirely equivalent:
+.EX
+	echo hi there everybody
+	((echo) (hi there) everybody)
+	echo (hi
+	there
+	everybody
+	)
+.EE
+Newlines within parentheses count as simple white space;
+they do not terminate the command. This can be useful to give
+some more freedom of layout to commands that take several
+commands as arguments, for instance several of the commands
+defined in
+.IR sh-std (1).
+.HP
+.BI $ argument
+.br
+The
+.I argument
+after the
+.B $
+is the name of a variable whose value is substituted.
+Multiple levels
+of indirection are possible.
+Variable values
+are lists of strings.
+If
+.I argument
+is a number
+.IR n ,
+the value is the
+.IR n th
+element of
+.BR $* ,
+unless
+.B $*
+doesn't have
+.I n
+elements, in which case the value is empty.
+Assignments to variables are described under
+.I "Assignment" ,
+below.
+.HP
+.BI $# argument
+.br
+The value is the number of elements in the named variable.
+A variable
+never assigned a value has zero elements.
+.HP
+\f5$"\fP\fIargument\fP
+.br
+The value is a single string containing the components of the named variable
+separated by spaces.  A variable with zero elements yields the empty string.
+.HP
+.BI `{ command }
+.HP
+.I
+\f5"{\fPcommand\f5}\fP
+.br
+.I Sh
+executes the
+.I command
+and reads its standard output. If backquote
+.RB ( ` )
+is used, it is split into a list of arguments,
+using characters in
+.B $ifs
+as separators.
+If
+.B $ifs
+is not otherwise set, its value is
+.BR "'\ \et\en'" .
+If doublequote (\f5"\fP)
+is used, no tokenization takes place.
+.HP
+.IB argument ^ argument
+.br
+The
+.B ^
+operator concatenates its two operands.
+If the two operands
+have the same number of components, they are concatenated pairwise.
+If not,
+then one operand must have one component, and the other must be non-empty,
+and concatenation is distributive.
+.HP
+.BI ${ command }
+.br
+.I Command
+must be a simple command with no redirections;
+its first word
+must be the name of a builtin substitution operator.
+The operator is invoked and its value substituted.
+See
+.IR "Built-in Commands" ,
+below, for more information on builtins.
+.PD
+.SS Free Carets
+In most circumstances,
+.I sh
+will insert the
+.B ^
+operator automatically between words that are not separated by white space.
+Whenever one of
+.B $
+.B '
+.B `
+follows a quoted or unquoted word or an unquoted word follows a quoted word
+with no intervening blanks or tabs,
+a
+.B ^
+is inserted between the two.
+If an unquoted word immediately follows a
+.BR $ 
+and contains a character other than an alphanumeric, underscore,
+or
+.BR * ,
+a
+.B ^
+is inserted before the first such character.
+Thus
+.IP
+.B limbo -$flags $stem.b
+.LP
+is equivalent to
+.IP
+.B limbo -^$flags $stem^.b
+.SS Assignment
+A command of the form
+.IB name = value
+or
+.IB name := value
+assigns
+.I value
+to the environment variable named
+.IR name .
+.I Value
+is either a list of arguments or an assignment statement. In
+the latter case
+.I value
+is taken from the value assigned in the assignment statement.
+If
+.B :=
+is used, the value is stored in the innermost local scope.
+A local scope is created every time a braced block is entered,
+and destroyed when the block is left. If
+.B =
+is used, the value is stored in the innermost scope
+that contains any definition of
+.IR name .
+.PP
+A list of names can also be used in place of
+.IR name ,
+which causes each element of
+.I value
+in turn to be assigned the respective variable name in
+the list. The last variable in the list is assigned any elements
+that are left over. If there are more variable names than
+elements in
+.IR value ,
+the remaining elements are assigned the null list.
+For instance, after the assignment:
+.EX
+	(a b c) = one two three four five
+.EE
+.B $a
+is
+.BR one ,
+.B $b
+is
+.BR two ,
+and
+.B $c
+contains the remaining three elements
+.BR "(three four five)" .
+.SS I/O Redirections
+The sequence
+.BI > file
+redirects the standard output file (file descriptor 1, normally the
+terminal) to the named
+.IR file ;
+.BI >> file
+appends standard output to the file.
+The standard input file (file descriptor 0, also normally the terminal)
+may be redirected from a file by the sequence
+.BI < file \f1,
+or by the sequence
+.BI <> file \f1,
+which opens the file for writing as well as reading.
+.PP
+Redirections may be applied to a file-descriptor other than standard input
+or output by qualifying the redirection operator
+with a number in square brackets.
+For example, the diagnostic output (file descriptor 2)
+may be redirected by writing
+.BR "limbo junk.b >[2] junk" .
+.PP
+A file descriptor may be redirected to an already open descriptor by writing
+.BI >[ fd0 = fd1 ]
+or
+.BI <[ fd0 = fd1 ]\f1.
+.I Fd1
+is a previously opened file descriptor and
+.I fd0
+becomes a new copy (in the sense of 
+.IR sys-dup (2))
+of it.
+.PP
+Redirections are executed from left to right.
+Therefore,
+.B limbo junk.b >/dev/null >[2=1]
+and
+.B limbo junk.b >[2=1] >/dev/null
+have different effects: the first puts standard output in
+.BR /dev/null
+and then puts diagnostic output in the same place, where the second
+directs diagnostic output to the terminal and sends standard output to
+.BR /dev/null .
+.SS Compound Commands
+A pair of commands separated by a pipe operator
+.RB ( | )
+is a command.
+The standard output of the left command is sent through a pipe
+to the standard input of the right command.
+The pipe operator may be decorated
+to use different file descriptors.
+.BI |[ fd ]
+connects the output end of the pipe to file descriptor
+.I fd
+rather than 1.
+.BI |[ fd0 = fd1 ]
+connects output to
+.I fd1
+of the left command and input to
+.I fd0
+of the right command.
+.PP
+A sequence of commands separated by
+.BR & ,
+.BR ; ,
+or newline
+may be grouped by surrounding
+them with braces
+.RB ( {} ),
+elsewhere referred to as a
+.IR "braced block" .
+A braced block may be used anywhere that a simple word
+is expected. If a simple command is found with
+a braced block as its first word, the
+variable
+.B $*
+is set to any following arguments,
+.B $0
+is set to the block itself, and the commands
+are executed in sequence. If a braced block
+is passed as an argument, no execution takes place:
+the block is converted to a functionally equivalent
+string, suitable for later re-interpretation by the shell.
+The null command 
+.RB ( {} )
+has no effect and always gives a nil status. For instance
+the following commands all produce the same result:
+.EX
+	echo hello world
+	{echo hello world}
+	'{echo hello world}'
+	{echo $*} hello world
+	sh -c {echo hello world}
+	{$*} {echo hello world}
+	{$*} {{$*} {echo hello world}}
+	"{echo {echo hello world}}
+	'{echo hello' ^ ' world}'
+	x := {echo hello world}; $x
+.EE
+It is important to note that the value of
+.B $*
+is lost every time a braced block is entered, so
+for instance, the following command prints an empty string:
+.EX
+	{{echo $*}} hello world
+.EE
+.PD
+.SS Built-in Commands
+The term ``built-in command'', or just ``builtin'', is used somewhat loosely
+in this document to refer to any command that is executed
+directly by the shell; most built-in commands are defined
+by externally loaded modules; there are a few that are not,
+known as ``internal'' builtins, listed below.
+.PP
+Given
+.IR sh 's
+ability to pass compound commands (braced blocks) as
+arguments to other commands, most control-flow
+functionality that is traditionally hard-wired into a shell
+is in
+.I sh
+implemented by loadable modules. See
+.IR sh-std (1),
+.IR sh-expr (1),
+and
+.IR sh-tk (1)
+for more details.
+.PP
+There are two classes of built-in commands;
+the first class, known simply as ``builtins'', are used in
+the same way as normal commands, the only difference
+being that builtins can raise exceptions, while external
+commands cannot, as they are run in a separate process.
+The second class, known as
+``builtin substitutions'' can only be used as the first
+word of the command in the
+.B ${}
+operator. The two classes exist in different name-spaces:
+a builtin  may do something quite different from a
+builtin substitution of the same name.
+.PP
+In general, normal builtins perform some action
+or test some condition;
+the return status of a normal builtin usually
+indicates error status or conditional success. The
+rôle of a substitution builtin is to yield a value,
+(possibly a list)
+which is substituted directly into place as part
+of the argument list of a command.
+.PP
+.PD 0
+.HP
+.BI @ " command ..."
+.br
+Execute
+.I command
+in a subshell, allowing (for instance) the name-space to be
+forked independently of main shell.
+.HP
+.BI run " file ..."
+.br
+Execute commands from
+.IR file .
+.B $*
+is set for the duration to the remainder of the argument list following
+.IR file .
+.HP
+.BI builtin " command ..."
+.br
+Execute
+.I command
+as usual except that any command defined by an external
+module is ignored in favour of the original meaning.
+This command cannot be redefined by an external module.
+.HP
+.B exit
+.br
+Terminate the current process.
+.HP
+.BI load " path..."
+.br
+.B Load
+tries to load each of its arguments as a builtin module
+into
+.IR sh .
+If a module load succeeds, each builtin
+command defined by that module is
+added to the list of builtin commands.
+If there was a previous definition of the command,
+it is replaced, with the exception of internal
+.I sh
+builtins, which are covered up and reappear when
+the module is unloaded. If a module with
+the same
+.I path
+has already been loaded,
+.I sh
+does not try to load it again.
+Unless the path begins with
+.B /
+or
+.BR ./ ,
+the shell looks in the standard builtins directory
+.B /dis/sh
+for the module.
+If a load fails, a
+.B bad module
+exception is raised.
+.HP
+.BI unload " path..."
+.br
+.B Unload
+undoes previous load commands. To succeed,
+.I path
+must be the same as that given to a previous
+invocation of
+.BR load .
+.HP
+.B loaded
+.br
+.B Loaded
+prints all the builtin commands currently
+defined, along with the name of the module that defined them.
+Internally defined commands are tagged with
+module
+.BR builtin .
+.HP
+.BI whatis " name ..."
+.br
+Print the value of each
+.I name
+in a form suitable for input to
+.IR sh .
+The forms are:
+.RS 10
+.TP
+.I varname = "value..."
+.I Varname
+is a non-nil environment variable.
+.TP
+.BI load\  module ;\  name
+.I Name
+has been defined as a builtin by the externally loaded
+.IR module .
+.TP
+.BI load\  module ;\ ${ name }
+.I Name
+has been defined as a builtin substitution by the externally loaded
+.IR module .
+.TP
+.BI builtin\  name
+.I Name
+is defined as a builtin internally by
+.IR sh .
+.TP
+.BI ${ name }
+.I Name
+is defined as a builtin substitution
+internally by the shell.
+.TP
+.I pathname
+The completed pathname of an external file.
+.RE
+.HP
+.B ${builtin
+.I command
+...
+.B }
+.br
+Does for substitution builtin commands
+what
+.B builtin
+does for normal commands.
+.HP
+.B ${loaded}
+.br
+The
+.B loaded
+builtin substitution yields a list of the names of all
+the modules currently loaded, as passed to
+.BR load .
+.HP
+.BI ${quote \ list }
+.br
+.B Quote
+yields a single element
+list which if reparsed by the shell
+will recreate
+.IR list .
+.HP
+.BI ${bquote \ list }
+.br
+Same as
+.B quote
+except that items in
+.I list
+that are known to be
+well-formed command blocks are not quoted.
+.HP
+.BI ${unquote \ arg}
+.br
+.B Unquote
+reverses the operation of
+.BR quote ,
+yielding the original list of values. For example,
+.BI "${unquote ${quote " list }}
+yields
+.IR list .
+A list quoted with
+.B bquote
+can only be unquoted by parsing.
+.PD
+.SS Environment
+The
+.I environment
+is a list of strings made available to externally executing commands by the
+.B env
+module
+(see
+.IR env (2)).
+If the
+.B env
+module does not exist or cannot be loaded, no error will be
+reported, but no variables can be exported to external commands.
+.I Sh
+creates an environment entry for each variable whose value is non-empty.
+This is formatted as if it had been run through
+.BR ${quote} .
+Note that in order for a variable to be exported, its
+name must conform to the restrictions imposed
+by
+.IR env (3);
+names that do not will not be exported.
+.PP
+When
+.I sh
+starts executing it reads variable definitions from its
+environment.
+.PP
+Internally, the shell holds a
+.IR context ,
+which holds a stack of environment variables, the
+current execution flags and the list of built-in modules.
+A copy is made whereever parallel access to the context might
+occur. This happens for processes executing
+in a pipeline,
+processes run asynchronously with
+.BR & ,
+and in any builtin command that runs a shell command
+asynchronously.
+.SS Exceptions
+When
+.I sh
+encounters an error processing its input, an exception is raised,
+and if the
+.B -v
+flag is set, an error message is printed to
+standard error.
+An exception causes processing of the current command to terminate
+and control to be transferred back up the invocation stack.
+In an interactive shell, the central command processing loop
+catches all exceptions and sets
+.B $status
+to the name of the exception.
+Exceptions are not propagated between processes. Any
+command that requires I/O redirection is run in a separate
+process, namely pipes
+.RB ( | ),
+redirections
+.RB ( > ,
+.BR < ,
+.BR >> ,
+and
+.BR <> ),
+backquote substitution
+(\f5`\fP, \f5"\fP)
+and background processes
+.RB ( & ).
+Exceptions can be raised and rescued using
+the
+.B raise
+and
+.B rescue
+functions in the standard builtins module,
+.BR std .
+(See
+.IR sh-std (1)).
+Names of exceptions raised by
+.I sh
+include:
+.TP 10
+.B parse error
+An error has occurred trying to parse a command.
+.TP
+.B usage
+A builtin has been passed an invalid set of arguments;
+.TP
+.B bad redir
+An error was encountered trying to open files prior
+to running a process.
+.TP
+.B bad $ arg
+An invalid name was given to the $ or ${} operator.
+.TP
+.B no pipe
+.I Sh
+failed to make a pipe.
+.TP
+.B bad wait read
+An error occurred while waiting for a process to exit.
+.TP
+.B builtin not found
+A substitution builtin was named but not found.
+.SS Special Variables
+The following variables are set or used by
+.IR sh .
+.PD 0
+.TP \w'\fL$promptXX'u
+.B $*
+Set to
+.IR sh 's
+argument list during initialization.
+Whenever a
+braced block
+is executed, the current value is saved and
+.B $*
+receives the new argument list.
+The saved value is restored on completion of the
+.BR block .
+.TP
+.B $apid
+Whenever a process is started asynchronously with
+.BR & ,
+.B $apid
+is set to its process id.
+.TP
+.B $ifs
+The input field separators used in backquote substitutions.
+If
+.B $ifs
+is not set in
+.IR sh 's
+environment, it is initialized to blank, tab and newline.
+.TP
+.B $prompt
+When
+.I sh
+is run interactively, the first component of
+.B $prompt
+is printed before reading each command.
+The second component is printed whenever a newline is typed and more lines
+are required to complete the command.
+If not set in the environment, it is initialized by
+.BR "prompt=('%\ '\ '')" .
+.TP
+.B $status
+Set to the wait message of the last-executed program,
+the return status of the last-executed builtin
+(unless started with
+.BR &),
+or the name of the last-raised exception, whichever
+is most recent.
+When
+.I sh
+exits at end-of-file of its input,
+.B $status
+is its exit status.
+.PD
+.SS Invocation
+If
+.I sh
+is started with no arguments it reads commands from standard input.
+Otherwise its first non-flag argument is the name of a file from which
+to read commands (but see
+.B -c
+below).
+Subsequent arguments become the initial value of
+.BR $* .
+.I Sh
+accepts the following command-line flags.
+.PD 0
+.TP \w'\fL-c\ \fIstring\fLXX'u
+.BI -c " string"
+Commands are read from
+.IR string .
+.TP
+.B -i
+If
+.B -i
+is present, or
+.I sh
+is given no arguments and its standard input is a terminal,
+it runs interactively.
+Commands are prompted for using
+.BR $prompt .
+This option implies
+.BR -v .
+.TP
+.B -l
+If
+.B -l
+is given or the first character of argument zero is
+.BR - ,
+.I sh
+reads commands from
+.BR /lib/sh/profile ,
+if it exists, and then
+.BR ./lib/profile ,
+if it exists, before reading its normal input.
+.TP
+.B -n
+Normally,
+.I sh
+forks its namespace on startup; if
+.B -n
+is given, this behaviour is suppressed.
+.TP
+.B -v
+Within a non-interactive shell, informational messages
+printed to standard error are usually disabled;
+giving the
+.B -v
+flag enables them.
+.TP
+.B -x
+Print each simple command to stderr before executing it.
+.PD
+.SH SOURCE
+.B /appl/cmd/sh/sh.y
+.SH "SEE ALSO"
+.IR sh (1),
+.IR sh-std (1),
+.IR sh-expr (1),
+.IR sh-file2chan (1),
+.IR sh-tk (1),
+.IR sh-arg (1),
+.IR sh-regex (1),
+.IR sh-string (1),
+.IR sh-csv (1),
+.IR sh (2),
+.IR env (2)
+.SH BUGS
+Due to lack of system support, appending to
+a file with
+.B >>
+will not work correctly when there are
+multiple concurrent writers (but see the
+examples section of
+.IR sh-file2chan (1)
+for one solution to this).
+.PP
+While it
+.I is
+possible to use the shell as a general
+purpose programming language, it is a very slow one!
+Intensive tasks are best done in Limbo, which is a much
+safer language to boot.

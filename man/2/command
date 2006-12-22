@@ -1,0 +1,132 @@
+.TH COMMAND 2
+.SH NAME
+command \- command interface
+.SH SYNOPSIS
+.nf
+.B
+include "sh.m";
+.BI "cmd := load Command" " path" ;
+
+.EX
+PATH: con "/dis/sh.dis";
+init: fn(ctxt: ref Draw->Context, args: list of string);
+.EE
+.SH DESCRIPTION
+.B Command
+defines the module interface for programs started by the Inferno shells
+.IR sh (1)
+and
+.IR mash (1),
+and the window manager
+.IR wm (1).
+Applications to be run as commands must adhere to it,
+and any application wishing to start another command may use it.
+.PP
+Every command must have an
+.B init
+function with the signature shown above.
+Note that Limbo rules allow a module to expose a larger interface for use by
+other applications (see for instance
+.IR sh (2));
+provided it includes the form of
+.B init
+shown above,
+the module can also be invoked as a command.
+.PP
+.B Ctxt
+provides the graphics context for a windowing application,
+which typically passes it to
+.IR wmlib (2)
+(eg, to
+.IR titlebar )
+or directly to
+.IR tk (2).
+It is
+.B nil
+for commands started by the shells.
+.PP
+The arguments to the command are passed as a simple list of strings,
+.BR args .
+By convention, the name of the command or the name of its
+.B .dis
+file heads the list.
+.PP
+.B PATH
+names the file containing
+.IR sh (1),
+(on small systems, this might actually name an
+instance of
+.IR tiny (1))
+but usually the path name of
+another command will be given to the Limbo
+.B load
+operator:
+.IP
+.EX
+include "sh.m";
+.EE
+\&...
+.IP
+.EX
+cmd := load Command "/dis/date.dis";
+cmd->init(nil, "date" :: nil);
+.EE
+.PP
+In practice more care must be taken when invoking programs.
+In the example above, the current process executes the body of
+.B cmd->init
+and if that executes
+.BR exit ,
+raises an exception,
+or otherwise modifies the state of the process,
+the caller is affected.
+The following is more prudent:
+.IP
+.EX
+.ta 6n +6n
+child(file: string, args: list of string, pidc: chan of int)
+{
+	pidc <-= sys->pctl(Sys->NEWFD|Sys->FORKNS|Sys->NEWPGRP,
+		list of {0, 1, 2});
+	cmd := load Command file;
+	if(cmd == nil){
+		sys->print("can't load %s: %r\en", file);
+		exit;
+	}
+	cmd->init(nil, args);
+}
+parent()
+{
+	pidc := chan of int;
+	spawn child(disfile, args, pidc);
+	pid := <-pidc;
+	\&...
+}
+.EE
+.PP
+A new
+.B child
+process runs the command only after using
+.IR sys-pctl
+to insulate the caller from untoward changes to its environment.
+Note the idiomatic use of a channel to return the child's process ID
+to its parent, which can then if desired use the
+.B wait
+file of
+.IR prog (3)
+to watch over the child and wait for its demise.
+or use the
+.B ctl
+file of
+.IR prog (3)
+to dispose of it.
+Furthermore, any state shared between parent and child can safely
+be accessed by the child before it sends the ID
+because the parent is blocked on the receive.
+.SH SEE ALSO
+.IR mash (1),
+.IR sh (1),
+.IR wm (1),
+.IR sh (2),
+.IR sys-pctl (2),
+.IR sys-exception (2)

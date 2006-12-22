@@ -1,0 +1,382 @@
+.TH DEBUG 2
+.SH NAME
+debug \- process debugging
+.SH SYNOPSIS
+.EX
+include "debug.m";
+debug := load Debug Debug->PATH;
+
+Pos: adt
+{
+    file:       string;
+    line:       int;
+    pos:        int;
+};
+Src: adt
+{
+    start:      Pos;        # range within source files
+    stop:       Pos;
+};
+Sym: adt
+{
+    srctopc:    fn(s: self ref Sym, src: ref Src): int;
+    pctosrc:    fn(s: self ref Sym, pc: int): ref Src;
+};
+
+Module: adt
+{
+    addsym: fn(m: self ref Module, sym: ref Sym);
+    stdsym: fn(m: self ref Module);
+    dis:    fn(m: self ref Module): string;
+    sbl:    fn(m: self ref Module): string;
+};
+
+Prog: adt
+{
+    cont:   fn(p: self ref Prog): string;
+    delbpt: fn(p: self ref Prog, dis: string, pc: int): string;
+    event:  fn(p: self ref Prog): string;
+    grab:   fn(p: self ref Prog): string;
+    kill:   fn(p: self ref Prog): string;
+    setbpt: fn(p: self ref Prog, dis: string, pc: int): string;
+    stack:  fn(p: self ref Prog): (array of ref Exp, string);
+    start:  fn(p: self ref Prog): string;
+    status: fn(p: self ref Prog): (int, string, string, string);
+    step:   fn(p: self ref Prog, how: int): string;
+    stop:   fn(p: self ref Prog): string;
+    unstop: fn(p: self ref Prog): string;
+};
+
+Exp: adt
+{
+    name:   string;
+    m:      ref Module;
+
+    expand: fn(e: self ref Exp): array of ref Exp;
+    val:    fn(e: self ref Exp): (string, int);
+    src:    fn(e: self ref Exp): ref Src;
+    findsym:fn(e: self ref Exp): string;
+    srcstr: fn(e: self ref Exp): string;
+};
+
+init:       fn(): int;
+startprog:  fn(dis, dir: string, ctxt: ref Draw->Context,
+               argv: list of string): (ref Prog, string);
+prog:       fn(pid: int): (ref Prog, string);
+sym:        fn(sbl: string): (ref Sym, string);
+.EE
+.SH DESCRIPTION
+.B Debug
+is the module interface to the debugging facilities provided by
+.IR prog (3).
+It allows facilities for inspection of a program's data structures,
+as it is running, and to start and stop a running program
+under program control.
+.B Init
+must be called before any other function to initialise
+.IR debug 's
+global state.
+.PP
+.B Startprog
+starts up a program under control of the debug module.
+.I Dis
+is the full pathname of the Dis module to load (which must
+be compatible with
+.IR command (2);
+.I dir
+is the current directory in which to put the new process;
+.I ctxt
+and
+.I argv
+are the arguments given to the new process.
+.B Startprog
+returns a tuple
+.RI ( prog ,\  err )
+where
+.I prog
+can be used to interrogate and control the running process,
+as detailed below, unless there is an error, in which case
+.I prog
+will be nil, and
+.I err
+contains a description of the error.
+.B Prog
+is similar to startprog, except that it attaches to an
+already running process identified by
+.IR pid .
+.SS Controlling a process
+A
+.B Prog
+adt provides routines for controlling a running process.
+It implements the following routines.
+Unless otherwise stated, they return
+.B nil
+on success and a diagnostic string on error.
+.TP 10
+.IB prog .cont()
+Run the program until a break point is reached.
+.TP
+.IB prog .delbpt(\fIdis\fP,\ \fIpc\fP)
+.B Delbpt
+deletes the breakpoint in the Dis module with filename
+.I dis
+at Dis instruction
+.IR pc .
+.TP
+.IB prog .event()
+.B Event
+waits for a state transition in the running
+.I prog
+and returns the new state, as returned by a read
+of the
+.B dbgctl
+file (see
+.IR prog (3)).
+.TP
+.IB prog .grab()
+.B Grab
+stops the
+.I prog
+and puts it into a state where single stepping
+is possible.
+.TP
+.IB prog .kill()
+.B Kill
+kills
+.IR prog .
+.TP
+.IB prog .setbpt(\fIdis\fP,\ \fIpc\fP)
+.B Setbpt
+sets a breakpoint in the Dis module with filename
+.I dis
+at Dis instruction
+.IR pc .
+.TP
+.IB prog .stack()
+.B Stack
+returns a tuple
+.RI ( exps ,\  err )
+where
+.I exps
+is an array of
+.B Exp
+adts, each representing one frame of the current
+execution stack of
+.IR prog .
+If an error occurs,
+.I exps
+will be nil, and
+.I err
+will contain a description of the error.
+.TP
+.IB prog .start()
+.B Start
+runs
+.I prog
+until it hits a breakpoint or exits.
+.TP
+.IB prog .status()
+.B Status
+returns a tuple
+(\fIpgrp\fP, \fPuser\fP, \fPstate\fP, \fPmodule\fP)
+where
+.I pgrp
+is the process group id of
+.IR prog ,
+.I user
+is the owner of the process,
+.I state
+is the current state of the process, and
+.I module
+is the module implementation name of the currently
+executing module.
+.TP
+.IB prog .step(\fIhow\fP)
+.B Step
+steps
+.I prog
+forward in a manner specified by
+.IR how ,
+which is one of the following constants:
+.RS
+.TP
+.B StepExp
+Step one expression evaluation.
+.TP
+.B StepStmt
+Step one source statement.
+.TP
+.B StepOver
+Step over one called function.
+.TP
+.B StepOut
+Step until the current function has returned.
+.RE
+.TP
+.IB prog .stop()
+Stop
+.IR prog
+from running.
+.TP
+.IB prog .unstop()
+Release a program from its stopped state;
+breakpoints will no longer be triggered.
+.SS "Inspecting data"
+The
+.B Exp
+adt provides facilities for inspecting
+the data structures of a running Dis process.
+A hierarchical data structure can be expanded into
+an array of its component
+.BR Exp s,
+as long as the appropriate symbol information has
+been located correctly using
+.B stdsym
+or
+.BR addsym ,
+and
+.BR findsym .
+.PP
+A
+.B Pos
+represents a position in a Limbo source code file;
+it holds the source file name, the line number (origin 1)
+and the character within the line (origin 0).
+The
+.B Src
+adt represents a range in a Limbo source code file;
+.B Src.start
+and
+.B Src.stop
+represent the beginning and the end of the
+range, respectively.
+.PP
+A
+.B Sym
+represents a
+.B .sbl
+symbol file, and is created by calling
+.BI sym( p )
+where
+.I p
+is the pathname of the symbol file;
+.B sym
+returns a tuple
+.RI ( sym ,\  err ),
+where if
+.I sym
+is nil,
+.I err
+contains an error message.
+A
+.B Sym
+can map between a Dis PC and a source file address,
+and vice versa.
+For a given
+.B Sym
+.IR sym ,
+.IB sym .srctopc( src )
+returns the PC associated with
+.IR src
+(or -1 on error);
+.IB sym .pctosrc
+converts the other way (and returns
+.B nil
+on error).
+.PP
+Each element 
+.I e
+in the top level stack, as returned by
+.BR Prog.stack ,
+has an associated
+.B Module
+.IB e .m
+which needs to be associated with a
+.B Sym
+so that
+.I debug
+can glean from it the type information it needs.
+Given a module
+.IR m ,
+.IB m .stdsym()
+will try and find a symbol file in
+a standard place, but this will fail if the symbol file
+or the Dis file is in a non-standard place.
+.IB M .addsym( s )
+sets the symbol file for
+.I m
+to the
+.B Sym
+.IR s .
+.IB M .dis()
+and
+.IB m .sbl()
+return the paths of the Dis and symbol files associated
+with
+.I m
+respectively.
+.PP
+Each top level stack element
+expands into three elements, ``args'', ``locals'',
+and ``module'', representing the arguments to the function,
+the function's local variables, and the module-global
+variables of the function's module respectively.
+Before a top level stack element can be expanded,
+it is necessary to call
+.B findsym
+on it to locate the function's data.
+.TP 10
+.IB exp .name
+The name of the symbol.
+.TP
+.IB exp .expand()
+Expand a hierarchical structure into an array of its
+component elements. A list element expands into two
+elements named ``hd'' and ``tl''; a tuple into elements
+named ``t0'', ``t1'',..., an array into elements named ``0'', ``1'',..., etc.
+.TP
+.IB exp .val()
+.B Val
+returns a tuple
+.RI ( s ,\  flag )
+where
+.I s
+is a string representation of the value of
+.IR exp ,
+and if
+.I flag
+is zero,
+.I exp
+cannot be expanded.
+.TP
+.IB exp .src()
+.B Src
+returns the file range associated with
+.IR exp.
+.TP
+.IB exp .findsym()
+If
+.I exp
+is a top level stack frame (i.e. one of the members of the array
+returned by
+.BR Prog.stack )
+then
+.B findsym
+will attempt to locate its type and name. If it succeeds,
+it returns the null string, otherwise it returns
+an error indicating the problem.
+.TP
+.IB exp .srcstr()
+.B Srcstr
+returns a string representing the position in the source file
+of
+.IR exp .
+.SH FILES
+.BI /prog/ pid /*
+.SH SOURCE
+.B /appl/lib/debug.b
+.SH SEE ALSO
+.IR wm-deb (1),
+.IR prog (3)
+.SH BUGS
+There is no way of looking at the types of the data extracted.

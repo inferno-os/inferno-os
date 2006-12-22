@@ -1,0 +1,120 @@
+.TH BRUTUS 1
+.SH NAME
+brutus \- screen editor with support for SGML
+.SH SYNOPSIS
+.B wm/brutus
+[
+.I file
+]
+.SH DESCRIPTION
+.I Brutus
+is a multi-file editor for UTF format text files.
+.PP
+When editing multiple files, each file appears in its own window.
+Button 1 can be used to make a window current. Within the current
+window, button 1 selects text.
+Double clicking selects text up to the boundaries of words, lines,
+quoted text or bracketed text depending upon the text at the point of the
+double click. Double clicking at the start of a line
+selects the entire line. Double clicking just inside various forms of
+brace selects text up to the matching brace, correctly handling nested braces.
+Button 2 displays a menu of editing commands:
+.TF snarf
+.TP
+.B cut
+Delete the selected text and save it in the snarf buffer.
+.TP
+.B paste
+Replace the selected text by the contents of the snarf buffer.
+.TP
+.B snarf
+Save the selected text in the snarf buffer.
+.TP
+.B look
+Search forwards and select the next occurrence of the selected text.
+.PD
+.PP
+Mouse chording is implemented, as in
+.IR acme (1).
+Dragging a selection with button-1 held down and then also clicking
+button-2 cuts the selected text into the Snarf buffer.
+Clicking button-3 instead of button-2 replaces the selected text with the contents
+of the Snarf buffer.
+.PP
+Clicking button 3 extracts the whitespace-bounded string around the point of the
+click and plumbs it to the appropriate application (see
+.IR plumber (8)).
+.PP
+A
+.I brutus
+console window is always displayed from which new files may be opened
+or from which existing open files may be selected.
+Typing
+.IP
+.EX
+.BI / word
+.EE
+.PP
+in the console window will search for the character sequence
+.I word
+in the file associated with the current window. Typing
+.IP
+.EX
+.BI ? word
+.EE
+.PP
+in the console window will search backwards for the character sequence
+.IR word .
+If text has been selected in the current window the search begins from the
+end of the selection if searching forwards and the beginning of the selection if
+searching backwards.
+If no text has been selected the search begins from the current insertion point.
+Typing
+.IP
+.EX
+.I linenumber
+.EE
+.PP
+in the console window selects all the text on line
+.I linenumber
+and moves the window to show the selected text.
+.SS SGML
+If the first line of a file is exactly:
+.IP
+.EX
+<SGML>
+.EE
+.PP
+it is assumed to be in SGML format and the contents are displayed according
+to some predefined formatting rules. Tags of the form
+.BI < font . size >
+are recognised and used to control the visual appearance
+of text. The
+.I font
+may be one of:
+.BR Roman ,
+.BR Italic , 
+.BR Bold ,
+and
+.B Type
+giving normal, italicised, emboldened, and constant width text.
+The
+.I size
+may be one of
+.BR 6 ,
+.BR 8 ,
+.BR 10 ,
+.BR 12 ,
+or
+.BR 16 ,
+and determines the point size of the displayed text.
+.SH PLUMBING
+.B wm/brutus
+listens for
+.B edit
+messages and plumbs text selected by button 3
+.SH SOURCE
+.B /appl/wm/brutus.b
+.SH SEE ALSO
+.IR acme (1),
+.IR cook (1)

@@ -1,0 +1,66 @@
+.TH DRAW-POINT 2
+.SH NAME
+Point \-
+coordinate position
+.SH SYNOPSIS
+.EX
+include    "draw.m";
+draw := load Draw Draw->PATH;
+
+Point: adt
+{
+    x:    int;
+    y:    int;
+
+    add:  fn(p: self Point, q: Point):  Point;
+    sub:  fn(p: self Point, q: Point):  Point;
+    mul:  fn(p: self Point, i: int):    Point;
+    div:  fn(p: self Point, i: int):    Point;
+    eq:   fn(p: self Point, q: Point):  int;
+    in:   fn(p: self Point, r: Rect):   int;
+};
+.EE
+.SH DESCRIPTION
+.PP
+The
+.B Point
+data type specifies a position in the integer grid.
+.TP 10
+.BR x ", " y
+The coordinate position. The coordinates increase to the right
+.RI ( x )
+and down
+.RI ( y ).
+.TP
+.IB p .add( q )
+Returns the point
+.BI ( p .x+ q .x,
+.IB p .y+ q .y)\fR.
+.TP
+.IB p .sub( q )
+Returns the point
+.BI ( p .x\- q .x,
+.IB p .y\- q .y)\fR.
+.TP
+.IB p .mul( i )
+Returns the point
+.BI ( p .x* i ,
+.IB p .y* i )\fR.
+.TP
+.IB p .div( i )
+Returns the point
+.BI ( p .x/ i ,
+.IB p .y/ i )\fR.
+.TP
+.IB p .eq( q )
+Returns non-zero if the points' coordinates are equal and zero otherwise.
+.TP
+.IB p .in( r )
+Returns non-zero if point
+.I p
+lies within rectangle
+.I r
+and zero otherwise.
+.SH SEE ALSO
+.IR draw-intro (2),
+.IR draw-rect (2)

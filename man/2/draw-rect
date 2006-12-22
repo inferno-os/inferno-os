@@ -1,0 +1,138 @@
+.TH DRAW-RECT 2
+.SH NAME
+Rect \-
+rectangular portion of the plane
+.SH SYNOPSIS
+.EX
+include	"draw.m";
+draw := load Draw Draw->PATH;
+
+Rect: adt
+{
+  min:      Point;
+  max:      Point;
+
+  canon:    fn(r: self Rect):             Rect;
+  dx:       fn(r: self Rect):             int;
+  dy:       fn(r: self Rect):             int;
+  eq:       fn(r: self Rect, s: Rect):    int;
+  Xrect:    fn(r: self Rect, s: Rect):    int;
+  inrect:   fn(r: self Rect, s: Rect):    int;
+  clip:     fn(r: self Rect, s: Rect):    (Rect, int);
+  combine:  fn(r: self Rect, s: Rect):    Rect;
+  contains: fn(r: self Rect, p: Point):   int;
+  addpt:    fn(r: self Rect, p: Point):   Rect;
+  subpt:    fn(r: self Rect, p: Point):   Rect;
+  inset:    fn(r: self Rect; n: int):     Rect;
+};
+.EE
+.SH DESCRIPTION
+The type
+.B Rect
+defines a rectangular portion of the integer grid.
+.TP 10
+.BR min ", " max
+These
+members define the upper left
+.RB ( min )
+and lower right
+.RB ( max )
+points for the rectangle.
+The rectangle contains the pixels
+.BI "min.x\ \fR\(<=\ " "x\ \fR<\ " max.x
+and
+.BI "min.y\ \fR\(<=\ " "y\ \fR<\ " max.y\fR.
+In general,
+.B Rect
+coordinates should be in canonical form:
+.BR min.x "\ \(<=\ " max.x
+and
+.BR min.y "\ \(<=\ " max.y .
+Some functions give undefined results if the
+input rectangles are not canonical.
+.TP
+.IB r .canon()
+Returns a canonical rectangle by sorting the coordinates of
+.IR r .
+.TP
+.IB r .dx()
+Returns the horizontal dimension of
+.IR r .
+.TP
+.IB r .dy()
+Returns the vertical dimension of
+.IR r .
+.TP
+.IB r .eq( s )
+Returns non-zero if the rectangles
+.I r
+and
+.I s
+have the same coordinates and zero otherwise.
+.TP
+.IB r .Xrect( s )
+Returns non-zero if the rectangles
+.I r
+and
+.I s
+intersect and zero otherwise.
+.I Intersection
+means the rectangles share at least one pixel; zero-sized rectangles do not intersect.
+.TP
+.IB r .inrect( s )
+Returns non-zero if
+.I r
+is completely inside
+.I s
+and zero otherwise.
+Rectangles with equal coordinates are considered to be inside each other.
+Zero-sized rectangles contain no rectangles.
+.TP
+.IB r .clip( s )
+Computes the intersection between
+.I r
+and
+.IR s .
+If the input rectangles intersect,
+.B clip
+returns the resulting rectangle
+and a non-zero integer value.
+If the rectangles do not intersect,
+.B clip
+returns
+.I r
+and a zero value.
+.TP
+.IB r .combine( s )
+Returns the smallest rectangle sufficient
+to cover all the pixels of
+.I r
+and
+.IR s .
+.TP
+.IB r .contains( p )
+Returns non-zero if the rectangle
+.I r
+contains the pixel with the coordinates of
+.I p
+and zero otherwise.
+Zero-sized rectangles contain no points.
+.TP
+.IB r .addpt( p )
+Returns the rectangle
+.BI ( r .min.add( p ),
+.IB r .max.add( p ))\fR.
+.TP
+.IB r .subpt( p )
+Returns the rectangle
+.BI ( r .min.sub( p ),
+.IB r .max.sub( p ))\fR.
+.TP
+.IB r .inset( n )
+Returns the rectangle
+.BI ( r .min.add(( n ,
+.IB n )),
+.IB r .max.sub(( n ,
+.IB n ))\fR.
+The result will not be in canonical form if the inset amount is
+too large for the rectangle.

@@ -1,0 +1,58 @@
+.TH SMTP 2
+.SH NAME
+smtp \- Simple Mail Transfer Protocol
+.SH SYNOPSIS
+.EX
+include "smtp.m";
+smtp := load Smtp Smtp->PATH;
+
+open:     fn(server: string): (int, string);
+sendmail: fn(fromwho: string, 
+             towhom: list of string, 
+             cc: list of string,
+             msg: list of string): (int, string);
+close:    fn(): (int, string);
+.EE
+.SH DESCRIPTION
+.B Smtp
+provides an interface to the mail transport protocol SMTP.
+.PP
+.B Open
+opens a connection to the given SMTP
+.IR server .
+If
+.I server
+is nil,
+.B open
+uses the
+default mail server
+.B $MAILSERVER
+if set up in
+.BR /services/cs/db ;
+see
+.IR db (6).
+It returns -1 and an error message if the connection fails.
+.PP
+.B Sendmail
+sends mail to the SMTP server for subsequent delivery.
+The first argument names the sender, the list
+.I towhom
+names the
+recipients,
+.I cc
+is a list of CC's,
+and
+.I msg
+has the text of the message. The latter
+may simply be a list of one item containing the whole message, a list of lines of the message
+or any intermediate format. It returns -1 and an error message on failure.
+.PP
+.B Close
+closes the connection to the SMTP server.
+.SH SOURCE
+.B /appl/lib/smtp.b
+.SH SEE ALSO
+.IR sendmail (1),
+.IR acme (1)
+.SH BUGS
+Too much copying of strings is done, especially with large messages.

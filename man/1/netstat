@@ -1,0 +1,42 @@
+.TH NETSTAT 1
+.SH NAME
+netstat \- summarize network connections
+.SH SYNOPSIS
+.B netstat
+.SH DESCRIPTION
+.I Netstat
+prints information about network connections.
+The following is presented for each connection:
+.IP
+connection name: the protocol and conversation directory in
+.B /net
+(eg.
+.BR tcp/8 )
+.br
+user name
+.br
+status of the connection
+.br
+address of each end of the connection (eg host and port if IP)
+.PP
+The information is obtained from the
+.B status
+file of each entry under the network directories
+.BR /net/tcp ,
+.BR /net/udp
+and
+.BR /net/il .
+.PP
+.I Netstat
+relies on a populated
+.B /net
+directory; the
+.B #I
+device must therefore
+have previously been bound there.
+.SH FILES
+.B /net/*/status
+.SH SOURCE
+.B /appl/cmd/netstat.b
+.SH "SEE ALSO"
+.IR ip (3)

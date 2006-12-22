@@ -1,0 +1,384 @@
+.TH DBG 3
+.SH NAME
+dbg \- remote kernel debugging
+.SH SYNOPSIS
+.B "bind -b '#b' /dev"
+.PP
+.B /dev/dbgctl
+.br
+.B /dev/dbglog
+.PP
+.BI "echo r >/dev/dbgctl"
+.SH DESCRIPTION
+.I Dbg
+allows a native kernel to be debugged remotely,
+by means of a simple protocol, typically run on a serial port
+(see
+.IR eia (3)).
+The
+.IR acid (10.1)
+debugger uses the protocol for instance; see its
+.B -R
+option.
+.PP
+.I Dbg
+uses the values of several global variables set by the kernel configuration file (see
+.IR conf (10.6)),
+all of which default values.
+The variables and default values are listed below:
+.IP
+.EX
+int dbgstart = 0;
+char	*dbgdata = "#t/eia0";
+char	*dbgctl = "#t/eia0ctl";
+char	*dbgctlstart = "b19200";
+char	*dbgctlstop = "h";
+char	*dbgctlflush = "f";
+.EE
+.PP
+Different values can be set by including similar declarations,
+with values as desired, in the
+.B code
+section of the configuration file.
+.I Dbg
+uses the values as follows:
+.TP \w'\f5dbgctlflushxx\fP'u
+.PD 0
+.B dbgstart
+if non-zero, start the debugger protocol on the
+configured connection during driver initialisation (system startup);
+otherwise it must be started explicitly by the
+.B r
+control request (see below)
+.TP
+.B dbgdata
+data file for the debugging connection
+.TP
+.B dbgctl
+control file for the debugging connection
+.TP
+.B dbgctlstart
+control request to initialise link (eg, baud rate)
+.TP
+.B dbgctlstop
+control request to hang up link
+.TP
+.B dbgctlflush
+control request to write to flush input and output on link
+.PD
+.PP
+.I Dbg
+serves two files that control and monitor its operation.
+.PP
+.B Dbgctl
+accepts several textual commands; normally only
+.B r
+is needed:
+.TP
+.BI d " dbgdata"
+set the value of
+.B dbgdata
+to the value given as an argument
+.TP
+.BI c " dbgctl"
+.PD 0
+.TP
+.BI i " dbgctlstart"
+.TP
+.BI h " dbgctlstop"
+.TP
+.BI f " dbgctlflush"
+set the value of the corresponding control variable to the value of the first argument
+.PD
+.TP
+.B r
+start running the debugger protocol (not needed if
+.B dbgstart
+was non-zero at boot)
+.TP
+.B s
+stop running the debugger protocol; stop and flush the link
+.PP
+When read,
+.B dbgctl
+yields a single line showing the status of the device
+.RB (` running '
+or
+.RB ` stopped ')
+and the current values of the debugger control
+variables listed above.
+.PP
+.B Dbglog
+is a read-only text file containing lines representing debugger events,
+one per line.
+It is mainly useful for checking the operation of the device, or debugging new
+.IR acid (10.1)
+functions.
+.SS Debug protocol
+The protocol is subject to change.
+The host running the debugger and the target to be debugged
+exchange 10-byte messages containing a one byte message type
+and 9 bytes of data.
+Bytes unused by a given type are set to zero.
+Normally the host sends one of the T-messages below and
+receives the corresponding R-message, or
+.BR Rerr .
+(These are unrelated to the T-messages and R-messages of
+.IR intro (5).)
+Exceptionally, the target sends the first message, an
+.B Rerr
+to reset the protocol, and thus the debugger is notified if the target
+is rebooted during a debugging session and can reset its own state.
+Values, including addresses, are sometimes represented textually
+in hexadecimal, but are usually in binary as a single byte, or an array of 4 bytes,
+high-order byte first (big endian).
+.PP
+The term
+.I process
+here refers exclusively to those created directly or indirectly by
+.IR kproc (10.2),
+not to Limbo processes, which are not visible directly through
+the protocol (although it is possible to write
+.IR acid (10.1)
+functions that interact through
+.I dbg
+with the Inferno data structures representing
+the state of the Dis virtual machine).
+Many requests read or write the memory or state of the
+.IR "current process"
+set by the
+.B Tproc
+message (see below).
+Addresses are always 32 bits.
+An address below the size of
+.B Ureg
+(saved register state) for the target is interpreted as an offset within the saved
+state for the current process.
+Otherwise it refers to an address in kernel virtual memory.
+Currently in native Inferno all processes share the same address space.
+.PP
+The message type names used below
+are assigned values by declarations in
+.BR /include/rdbg.h .
+The following messages are currently implemented:
+.TP \w'Tstart'u
+.PD 0
+.B Terr
+unused
+.TP
+.BI Rerr " reason\fR[9]\fR"
+The last message failed for the given
+.IR reason ,
+a text string:
+.BR reset ,
+the target or debug driver was restarted;
+.BR count ,
+bad count;
+.BR unk ,
+unknown command;
+.BR inval ,
+invalid parameter;
+.BR pid ,
+no such process;
+.BR unsup ,
+unsupported action;
+.BR notstop ,
+action requires process to be stopped first.
+.TP
+.BI Tmget " addr\fR[4]\fP n\fR[1]\fP"
+Request
+.I n
+bytes of memory from
+.IR addr ;
+.I n
+must be no greater than 9
+.TP
+.BI Rmget " data\fR[9]\fP"
+Return
+.I data
+requested by
+.B Tmget
+.TP
+.BI Tmput " addr\fR[4]\fP n\fR[1]\fP data\fR[4]\fP"
+Write the first
+.I n
+bytes of
+.I data
+to memory at
+.IR addr ,
+and flush the data and instruction caches for that region;
+.I n
+must be no greater than 4
+.TP
+.BI Rmput
+Reply to a successful
+.B Tmput
+.TP
+.BI Tproc " pid\fR[4]\fP"
+Set the current process to the one with integer process ID
+.I pid
+for subsequent requests.
+.TP
+.BI Rproc " addr\fR[8]\fP"
+.I Addr
+is the address in hexadecimal text of the
+.B Proc
+structure for process
+.I pid
+in the corresponding
+.BR Tproc .
+.TP
+.BI Tstatus " pid\fR[4]\fP"
+Request the status of process
+.I pid
+leaving the current process ID unchanged.
+.TP
+.BI Rstatus " status\fR[9]\fP"
+Return the textual status of the process
+as a text string, currently one of:
+.BR Dead ,
+.BR Moribund ,
+.BR Ready ,
+.BR Scheding ,
+.BR Running ,
+.BR Queueing ,
+.BR Wakeme ,
+.BR Broken ,
+.BR Stopped ,
+.BR Rendezvous ,
+or if invalid, the state value as a hexadecimal number.
+.TP
+.BI Trnote " pid\fR[4]\fP"
+Retrieve the note (trap status) for the given
+.I pid
+.TP
+.BI Rrnote " status\fR[9]\fP"
+Provide the textual trap
+.I status
+for the requested process (currently always returns null status)
+.TP
+.BI Tstop " pid\fR[4]\fP"
+Tell the kernel to stop running process
+.I pid
+in debugging state
+.B Stopped
+when it next appears in the scheduler.
+.TP
+.BI Rstop
+Reply to successful
+.B Tstop
+.TP
+.BI Tstart
+Cancel a previous
+.BR Tstop ;
+if the process has already stopped, make it ready to run.
+.TP
+.BI Rstart
+Reply to successful
+.B Tstart
+.TP
+.BI Tcondbreak " val\fR[4]\fP op\fR[4]\fP"
+If
+.I op
+is
+.BR d ,
+remove and delete the breakpoint with ID
+.IR val .
+All other operations help
+create a conditional breakpoint, providing a possibly empty list of operations
+representing a conditional expression in Reverse Polish is followed
+by a breakpoint request,
+each expression element represented by a single
+.B Tcondbreak
+message.
+.I Op
+is a single character representing an operation, with
+.I val
+(integer, address, process ID) as a parameter.
+The operator
+.B n
+should appear first; it assigns the
+breakpoint an ID number
+.I val
+(no greater than 255).
+Expression primaries are:
+.BI k " val,"
+true if process
+.I val
+is at this breakpoint;
+.BI b " val,"
+true if program counter is
+.IR val ;
+and
+.BI p " val,"
+.I val
+as a 32-bit literal.
+Expression operators are:
+unary
+.B *
+(indirect, yielding 32-bit value);
+.B &
+(bit-wise AND);
+.B =
+(values equal);
+.B !
+(values not equal);
+.B a
+(logical AND);
+.B o
+(logical OR).
+Although the expression is interpreted following Reverse Polish notation,
+when transmitted, the
+.B b
+operation is sent last (to mark the end of the sequence and create the breakpoint),
+but is moved to the start of the expression before evaluation.
+.TP
+.BI Rcondbreak
+Reply to successful
+.BR Tcondbreak .
+.TP
+.BI Tstartstop " pid\fR[4]\fP"
+If the process
+.I pid
+is not stopped, return
+.B Rerr
+.BR notstop .
+Otherwise, if the process is not stopped at
+a breakpoint, start it, and wait for it to reach a breakpoint
+that evaluates `true'
+.TP
+.BI Rstartstop " id\fR[1]\fP"
+Process has stopped at breakpoint with the given
+.I id
+.TP
+.BI Twaitstop
+Unimplemented. See
+.BR Tstartstop .
+.TP
+.BI Rwaitstop
+Unused.
+.TP
+.BI Tkill " pid\fR[4]\fP note\fR[5]\fP"
+Kill process
+.I pid
+with the given textual
+.IR note .
+Unimplemented.
+.TP
+.BI Rkill
+Reply to successful
+.BR Tkill .
+Unused.
+.PP
+.SH SOURCE
+.B /os/port/devdbg.c
+.br
+.B /os/*/*break.c
+.br
+.B /os/*/trap.c
+.SH SEE ALSO
+.IR acid (10.1)
+.SH BUGS
+The protocol is not itself error-detecting let alone error-correcting, although that normally does not
+matter for debugging even
+over a serial line, provided the connection is reasonably sound.

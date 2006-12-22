@@ -1,0 +1,116 @@
+// Acid remote debug (using devdbg.c)
+
+defn step()
+{
+	local ur;
+	local addrs;
+	local id;
+	local l;
+	local b;
+	local bl;
+	local sl;
+
+	complex Proc proc;
+	ur = proc.dbgreg;
+	if ur == 0 then
+		error("step: process not in breakpoint trap");
+	complex Ureg ur;
+
+	 //
+	 // stop all kprocs that could potentially hit this breakpoint
+	 // make a list of all the breakpoints at this address
+	 //
+	bl = {};
+	sl = {};
+	l = bpl;
+	while l do {
+		b = head l;
+		if b[2] == ur.pc then {
+			if status(b[1]) != "Stopped" then {
+				stop(b[1]);
+				sl = append sl, b[1];
+			}
+			bl = append bl, b;
+		}
+		l = tail l;
+	}
+
+	 //
+	 // delete all the breakpoints at this address
+	 //
+	if bl then {
+		l = bl;
+		while l do {
+			b = head l;
+			_bpconddel(b[0]);
+			l = tail l;
+		}
+	}
+
+	 //
+	 // single step to the following address
+	 //
+	addrs = follow(ur.pc);
+	id = bpset(addrs[0]);
+	startstop(pid);
+	bpdel(id);
+
+	 //
+	 // restore all the breakpoints at this address
+	 //
+	if bl then {
+		l = bl;
+		while l do {
+			b = head l;
+			_bpcondset(b[0], b[1], b[2], b[3]);
+			l = tail l;
+		}
+	}
+
+	 //
+	 // restart all kprocs that could potentially hit this breakpoint
+	 //
+	if sl then {
+		l = sl;
+		while l do {
+			start(head l);
+			l = tail l;
+		}
+	}
+}
+
+defn pstop(pid)
+{
+	local l;
+	local pc;
+	local ur;
+
+	if nopstop then
+		return {};
+
+	complex Proc proc;
+	ur = proc.dbgreg;
+	complex Ureg ur;
+	pc = ur.pc;
+
+	if _breakid != -1 then {
+		print("break ", _breakid\d, ": pid ");
+		_breakid = -1;
+	}
+	print(pid,": ", status(pid), "\t");
+
+	print(fmt(pc, 'a'), "\t", fmt(pc, 'i'), "\n");
+
+	if notes then {
+		if notes[0] != "sys: breakpoint" then {
+			print("Notes pending:\n");
+			l = notes;
+			while l do {
+				print("\t", head l, "\n");
+				l = tail l;
+			}
+		}
+	}
+}
+
+print("$ROOT/lib/acid/rdebug");

@@ -1,0 +1,28 @@
+.sidebar, sidebarTitle
+{
+	display: block;
+	background-color: silver;
+}
+
+h1
+{
+	font-family: sans-serif;
+	font-size: 130%;
+}
+
+h2
+{
+	font-family: sans-serif;
+	font-size: 120%;
+}
+
+h3
+{
+	font-family: sans-serif;
+	font-size: 110%;
+}
+
+blockquote
+{
+	font-size: 90%;
+}

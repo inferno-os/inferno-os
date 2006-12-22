@@ -1,0 +1,89 @@
+.TH FSPROTO 2
+.SH NAME
+FSproto: 
+FSproto: readprotofile, readprotostring \- read file system prototype file
+.SH SYNOPSIS
+.EX
+include "fsproto.m";
+fsproto := load FSproto FSproto->PATH;
+
+Direntry: type (string, string, ref Sys->Dir);
+
+init:   fn(): string;
+
+readprotofile: fn(proto: string, root: string,
+        entries: chan of Direntry,
+        warnings: chan of (string, string)): string;
+
+readprotostring: fn(proto: string, root: string,
+        entries: chan of Direntry,
+        warnings: chan of (string, string));
+.EE
+.SH DESCRIPTION
+.B FSproto
+provides an interface to read a file system prototype file,
+as defined by
+.IR proto (6).
+.PP
+.B Init
+must be called before any other function in the module.
+.PP
+.B Readprotofile
+reads a file system prototype from the file
+.IR proto .
+It traverses the file system, starting at the given
+.IR root ,
+and each file or directory encountered that is mentioned
+in the prototype causes
+.B readprotofile
+to send a
+.B Direntry
+tuple on the channel
+.IR entries .
+The tuple has the form
+.BI ( old , new , dir\fP\f5)\fP
+where
+.I old
+is the name of the current file or directory,
+rooted at
+.IR root ,
+.I new
+is the same file's name
+.I relative
+to
+.IR root ,
+and
+.I dir
+is a reference to the
+.B Sys->Dir
+directory information for
+.IR old ,
+as produced by
+.IR sys-stat (2).
+When all files in
+.I root
+have been examined,
+.B readprotofile
+sends a single tuple with all nil components on
+.IR entries .
+For each error that occurs during processing (eg, unable to open a directory)
+.B readprotofile
+sends a tuple
+.BI ( old , diag )
+on the channel
+.IR warnings ,
+naming the file and giving a diagnostic string,
+but processing continues.
+.PP
+.B Readprotostring
+reads a file system prototype from the string
+.I proto
+itself.
+Otherwise, its operation is the same as
+.BR readprotofile .
+.SH SOURCE
+.B /appl/lib/fsproto.b
+.SH SEE ALSO
+.IR fs (1),
+.IR proto (6),
+.IR mkfs (8)

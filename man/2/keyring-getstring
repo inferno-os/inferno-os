@@ -1,0 +1,90 @@
+.TH KEYRING-GETSTRING 2
+.SH NAME
+keyring: getstring, putstring, getbytearray, putbytearray, puterror \- exchange data on delimited streams
+.SH SYNOPSIS
+.EX
+include "keyring.m"
+keyring:= load Keyring Keyring->PATH;
+
+getstring:    fn(fd: ref Sys->FD): (string, string);
+putstring:    fn(fd: ref Sys->FD, s: string): int;
+getbytearray: fn(fd: ref Sys->FD): (array of byte, string);
+putbytearray: fn(fd: ref Sys->FD, a: array of byte, n: int): int;
+puterror:     fn(fd: ref Sys->FD, s: string): int;
+.EE
+.SH DESCRIPTION
+These functions provide
+I/O for strings, byte arrays and error strings over network connections that
+provide a record structure for communication (as provided for arbitrary
+networks by
+.IR ssl (3)).
+.PP
+.B Putstring
+writes string
+.I s
+to
+.IR fd.
+It returns the number of bytes written, or -1 if an error occurred.
+Messages written by
+.B putstring
+are truncated to 4096 bytes.
+.PP
+.B Getstring
+reads a string as written by
+.B putstring
+from
+.IR fd
+and returns a tuple
+.RI ( result , error ).
+If successful, the error
+string is nil.
+.PP
+.B Putbytearray
+writes the array of bytes
+.I a
+to
+.IR fd .
+It returns the number of bytes written, or -1 if an error occurred.
+Messages written by
+.B putbytearray
+are truncated to 4096 bytes.
+.PP
+.B Getbytearray
+reads an array of bytes as written by
+.B putbytearray
+from
+.IR fd
+and returns a tuple of the form
+.RI ( result , error ).
+If successful, the error string is nil.
+.PP
+.B Puterror
+writes an error string
+.I s
+to
+.IR fd .
+It can be used in place of
+.B putstring
+or
+.B putbytearray
+to cause a corresponding
+.B getstring
+or
+.B getbytearray
+to fail
+(in the receiving process),
+forcing them to return the error string
+.IR s .
+It may not be longer than
+.BR Sys->ERRMAX
+bytes.
+.SH SOURCE
+.B /libinterp/keyring.c
+.SH DIAGNOSTICS
+The output functions return an
+.B int
+which is -1 if there was an I/O error,
+and a non-negative value otherwise.
+The input functions
+return a tuple that includes a string indicating the cause of the
+error, as the second element of the tuple.

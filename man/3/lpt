@@ -1,0 +1,51 @@
+.TH LPT 3 
+.SH NAME
+lpt \- parallel port interface
+.SH SYNOPSIS
+.nf
+.B bind -a #L[123] /dev
+
+.B /dev/lpt[123]data
+.B /dev/lpt[123]dlr
+.B /dev/lpt[123]pcr
+.B /dev/lpt[123]psr
+.fi
+.SH DESCRIPTION
+The
+.I lpt
+driver provides an interface to the parallel
+interface normally used for printers.
+The specifiers
+.BR 1 ,
+.BR 2 ,
+and
+.BR 3
+correspond to
+the parallel interfaces at PC ports 0x378, 0x3bc, and 0x278
+respectively.
+.PP
+.B Lpt?data
+is write only.
+Writing to it sends data to the interface.
+This file is sufficient for communicating with most printers.
+.PP
+.BR Lpt?dlr ,
+.BR lpt?pcr ,
+and
+.B lpt?psr
+are used for fine control of the parallel port.
+Reading or writing these files corresponds to
+reading and writing the data latch register,
+printer control register, and printer status
+register.
+These are used by programs to drive special devices.
+The data is written as a hexadecimal
+(leading
+.BR 0x ),
+octal
+(leading
+.BR 0 )
+or decimal number.
+Reads return a hexadecimal number representing the value of the register.
+.SH SOURCE
+.B /os/*/devlpt.c

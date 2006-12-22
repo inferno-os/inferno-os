@@ -1,0 +1,23 @@
+.TH RUNAS 1
+.SH NAME
+runas \- run command as another user
+.SH SYNOPSIS
+.B runas
+.I user
+.I cmd
+[
+.IR arg ...
+]
+.SH DESCRIPTION
+.I Runas
+writes
+.I user
+to /dev/user and invokes
+.I cmd
+with the given arguments.
+The command is only invoked if setting of the user name succeeds.
+.SH SOURCE
+.B /appl/cmd/runas.b
+.SH "SEE ALSO"
+.IR cons (3),
+.

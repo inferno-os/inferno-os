@@ -1,0 +1,89 @@
+.TH LOCKFS 4
+.SH NAME
+lockfs \- exclusive access file server
+.SH SYNOPSIS
+.B lockfs
+[
+.B -A
+] [
+.B -a
+.I alg
+]... [
+.B -p
+.I addr
+]
+.I dir
+[
+.I mountpoint
+]
+.SH DESCRIPTION
+.I Lockfs
+acts as a filesystem layer above an existing namespace,
+allowing multiple-reader, exclusive writer access to the
+files therein. Opening a file served by
+.I lockfs
+obtains a lock on the file, or blocks until a lock can
+be obtained.
+.I Lockfs
+serves a single-level directory that initially contains the
+files in
+.IR dir .
+If the
+.B -p
+option is provided,
+.I lockfs
+will listen for incoming connections on
+.IR addr ,
+authenticating them as required.
+Each
+.B -a
+argument provides an acceptable
+algorithm to run on the connection.
+The list of all
+.IR alg s
+is passed to
+.B server (see
+.IR security-auth (2)).
+If no
+.B -a
+arguments are given,
+.B "-a none"
+is assumed.
+If the
+.B -A
+option is given, then no authentication
+will be performed.
+.PP
+If the
+.B -p
+option is not given, the lockfs file system
+will be mounted on
+.IR mountpoint ,
+or
+.I dir
+if
+.I mountpoint
+is not given.
+.SH EXAMPLE
+Run a lock server guarding access to
+.BR /lib/datafiles :
+.IP
+.EX
+lockfs -p 'tcp!*!32454' /lib/datafiles
+.EE
+.PP
+Mount the above server (where
+.I locksrv
+was originally run on a server named
+.IR machine .
+.IP
+.EX
+mount -c tcp!\fImachine\fP!32454 /n/remote
+.EE
+.SH SOURCE
+.B /appl/cmd/lockfs.b
+.SH BUGS
+There's no way to break a lock held by a
+malingering process.
+.PP
+Should probably support multi-level directories.

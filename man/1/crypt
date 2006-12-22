@@ -1,0 +1,98 @@
+.TH CRYPT 1
+.SH NAME
+crypt, aescbc \- data encryption
+.SH SYNOPSIS
+.B crypt
+[
+.B -d
+] [
+.BI -a " alg\fP\fR[\f5/\fP\fIalg\fP\fR]\fP"
+] [
+.BI -f " keyfile"
+] [
+.BI -k " key"
+] [
+.B -?
+]
+.PP
+.B auth/aescbc
+[
+.B -d
+] [
+.B -e
+] [
+.BI -f " keyfile"
+] [
+.BI -k " key"
+]
+.SH DESCRIPTION
+.I Crypt
+reads a data stream from its standard input and writes it encrypted to standard output,
+preceded by a header that gives details of the algorithm used.
+If the
+.B -d
+option is given,
+.I crypt
+decrypts the standard input instead, writing the clear text on standard output.
+The options are:
+.TP
+.BI -a " alg..."
+Specifies one or two algorithms, for encryption and/or digests.
+The algorithms are those supported by
+.IR ssl (3).
+If two algorithms are given, they should be separated by a slash
+.RB ( / )
+or space, following the conventions of
+.IR ssl (3).
+.TP
+.BI -f " keyfile"
+Read the encryption key from the given file, which obviously should be carefully protected.
+Trailing newlines are ignored.
+.TP
+.BI -k " key"
+Use
+.I key
+as the encryption key.
+.TP
+.B -?
+Print a list of the available encryption and digest algorithms.
+.PP
+If the secret
+.I key
+is not otherwise supplied,
+.I crypt
+prompts for it on
+.BR /dev/cons .
+There is no need to give algorithms when decrypting, because they are taken from the header.
+The default algorithm is
+.BR md5/ideacbc .
+It might be necessary to change that when using
+.I crypt
+for commercial purposes, as noted in
+.IR keyring-crypt (2).
+.PP
+.I Aescbc
+encrypts and decrypts using AES (Rijndael) in cypher
+block chaining (CBC) mode.
+It uses input and output formats compatible with Plan 9's
+.I aescbc
+command; it also
+accepts input in the format used by
+.IR keyfs (4)
+and Plan 9's
+.IR secstore .
+The
+.B -e
+option causes it to encrypt; the
+.B -d
+option to decrypt.
+The other options are just as for
+.IR crypt .
+.SH SOURCE
+.B /appl/cmd/crypt.b
+.br
+.B /appl/cmd/auth/aescbc.b
+.SH SEE ALSO
+.IR ssl (3),
+.IR keyfs (4)
+

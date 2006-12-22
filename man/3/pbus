@@ -1,0 +1,60 @@
+.TH PBUS 3
+.SH NAME
+pbus \- USR/3Com Edgeserver packet bus
+.SH SYNOPSIS
+.B bind -a '#Y' /dev
+.PP
+.B /dev/pbus
+.br
+.B /dev/pbusctl
+.SH DESCRIPTION
+The packet bus driver serves a directory containing two files,
+giving MAC-level access to the EPB version of the packet bus
+of the US Robotics (3Com) Edgeserver chassis.
+.PP
+The read-only file
+.B pbusctl
+contains a single integer that gives the chassis slot occupied by the Edge server
+(its address on the packet bus).
+.PP
+The file
+.B pbus
+is read and written to communicate on the bus.
+Each write
+transmits a single packet on the bus.
+The driver expects a four byte header in each write:
+.IP
+.IB "slot chan" " 0 0"
+.PP
+where
+.I slot
+is the destination chassis slot number and
+.I chan
+identifies a logical receiver in that slot.
+Including the header, the largest write accepted is 128 bytes.
+The driver completes the header as the bus firmware requires;
+it also pads each packet with zero bytes to a hardware packet boundary
+as it puts it on the bus.
+It flashes green in the `Wan TX' LED as packets are transmitted.
+.PP
+Each read of the
+.B pbus
+file returns the contents of a single packet received from the bus.
+The read will block if necessary until a packet arrives.
+The data includes a four byte header
+as above, and padding to a hardware packet boundary.
+Normally a higher-level protocol will provide its own headers including
+an actual length.
+.PP
+At reset, the driver downloads firmware to the controller if required.
+All invalid packets received are quietly discarded.
+Packets are also dropped whenever an internal input queue overflows
+because the reader has not kept up with arriving traffic.
+.SH SOURCE
+.B /os/pc/devpbus.c
+.SH SEE ALSO
+.IR plap (3)
+.SH BUGS
+The driver detects but does not recover from bus clock loss
+.br
+The driver cannot be included in the public distribution.
