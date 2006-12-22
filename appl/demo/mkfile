@@ -1,0 +1,14 @@
+<../../mkconfig
+
+DIRS=\
+	camera\
+	chat\
+	cpupool\
+	lego\
+	ns\
+	odbc\
+	spree\
+	whiteboard\
+
+
+<$ROOT/mkfiles/mksubdirs

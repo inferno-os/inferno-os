@@ -1,0 +1,6 @@
+<../mkconfig
+
+# TARGMODEL not SYSTARG for now
+DIRS=port $TARGMODEL-$OBJTYPE
+
+<$ROOT/mkfiles/mklibsubdirs

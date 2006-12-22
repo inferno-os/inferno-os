@@ -1,0 +1,18 @@
+<../../../mkconfig
+
+TARG=\
+	buildstrokes.dis\
+	strokes.dis\
+	readstrokes.dis\
+	writestrokes.dis\
+
+MODULES=
+
+SYSMODULES= \
+	bufio.m\
+	strokes.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/lib/strokes
+
+<$ROOT/mkfiles/mkdis

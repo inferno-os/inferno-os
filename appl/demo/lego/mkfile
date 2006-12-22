@@ -1,0 +1,36 @@
+<../../../mkconfig
+
+TARG=\
+		clockface.dis\
+		firmdl.dis\
+		legolink.dis\
+		rcxsend.dis\
+		timers.dis\
+		styx.srec\
+
+SHTARG=\
+		clockreg.sh\
+
+MODULES=\
+	rcxsend.m\
+
+SYSMODULES= \
+	bufio.m\
+	draw.m\
+	sys.m\
+	timers.m\
+
+DISBIN=$ROOT/dis/demo/lego
+
+<$ROOT/mkfiles/mkdis
+
+$DISBIN/%.srec:	%.srec
+	rm -f $target && cp $stem.srec $target
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

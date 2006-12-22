@@ -1,0 +1,12 @@
+#
+#	386-specific files
+#
+TARGFILES=\
+	frexp-386.$O\
+	getfcr-386.$O\
+	memmove-386.$O\
+	memset-386.$O\
+	nan-386.$O\
+	strchr-386.$O\
+	vlop-386.$O\
+	vlrt-386.$O\

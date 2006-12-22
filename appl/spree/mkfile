@@ -1,0 +1,66 @@
+<../../mkconfig
+
+ENGINES=\
+	engines/afghan.dis \
+	engines/bounce.dis \
+	engines/canfield.dis \
+	engines/freecell.dis \
+	engines/gather.dis \
+	engines/lobby.dis \
+	engines/othello.dis \
+	engines/racingdemon.dis \
+	engines/spit.dis \
+	engines/spider.dis \
+	engines/whist.dis \
+
+CLIENTS=\
+	clients/cards.dis \
+	clients/gather.dis \
+	clients/lobby.dis \
+	clients/othello.dis \
+
+LIB=\
+	lib/allow.dis \
+	lib/cardlib.dis \
+	lib/commandline.dis \
+	lib/objstore.dis \
+	lib/tricks.dis \
+
+MAIN=\
+	archives.dis \
+	join.dis \
+	spree.dis \
+
+MODULES=\
+	sys.m\
+	draw.m\
+	tk.m\
+	tkclient.m\
+	styx.m\
+	styxservers.m\
+
+DEST=$ROOT/dis/spree
+
+ALL= ${ENGINES:%=$DEST/%} \
+	${CLIENTS:%=$DEST/%} \
+	${LIB:%=$DEST/%} \
+	${MAIN:%=$DEST/%}
+
+all:V: $ENGINES $CLIENTS $LIB $MAIN
+
+install:V:	$ALL
+
+$ROOT/dis/spree/%.dis:	%.dis
+	cp $prereq $target
+
+%.dis:	%.b
+	limbo -gw -I lib -o $stem.dis $stem.b
+
+$ENGINES $MAIN $LIB: spree.m gather.m lib/cardlib.m lib/allow.m lib/objstore.m
+$ENGINES $MAIN $CLIENTS $LIB: ${MODULES:%=$ROOT/module/%}
+
+clean:V:
+	rm -f *.dis *.sbl */*.dis */*.sbl
+
+nuke:V: clean
+	rm -f $DEST/*.dis $DEST/*/*.dis

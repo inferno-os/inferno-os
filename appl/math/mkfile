@@ -1,0 +1,43 @@
+<../../mkconfig
+
+TARG=\
+	ack.dis\
+	crackerbarrel.dis\
+	factor.dis\
+	ffts.dis\
+	fibonacci.dis\
+	fit.dis\
+	genprimes.dis\
+	geodesy.dis\
+	graph0.dis\
+	gr.dis\
+	hist0.dis\
+	linalg.dis\
+	linbench.dis\
+	mersenne.dis\
+	parts.dis\
+	perms.dis\
+	pi.dis\
+	polyfill.dis\
+	polyhedra.dis\
+	powers.dis\
+	primes.dis\
+	sieve.dis\
+
+MODULES=
+
+SYSMODULES=\
+	math.m\
+	gr.m\
+	linalg.m\
+	draw.m\
+	sys.m\
+	tk.m\
+	wmlib.m\
+	bufio.m\
+	math/polyfill.m\
+	math/polyhedra.m\
+
+DISBIN=$ROOT/dis/math
+
+<$ROOT/mkfiles/mkdis

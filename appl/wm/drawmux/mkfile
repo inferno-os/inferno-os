@@ -1,0 +1,37 @@
+<../../../mkconfig
+
+TARG=\
+	dmview.dis\
+	dmwm.dis\
+
+LIBTARG=\
+	drawmux.dis\
+
+MODULES=\
+	drawmux.m\
+	drawoffs.m\
+
+SYSMODULES=\
+	arg.m\
+	draw.m\
+	sh.m\
+	sys.m\
+	tk.m\
+	wmlib.m\
+
+DISBIN=$ROOT/dis/wm
+DISLIB=$ROOT/dis/lib
+
+all:V:	$TARG $LIBTARG
+
+install:V:	$DISBIN/dmview.dis $DISBIN/dmwm.dis $DISLIB/drawmux.dis
+
+<$ROOT/mkfiles/mkdis
+
+nuke:V:	nuke-lib
+
+nuke-lib:V:
+	cd $DISLIB; rm -f $LIBTARG
+
+$DISLIB/%.dis:	%.dis
+	rm -f $DISLIB/$stem.dis && cp $stem.dis $DISLIB/$stem.dis

@@ -1,0 +1,8 @@
+#!/dis/sh
+
+load std
+and {~ $#* 0} {echo usage: runcollab collabname >[2=1]; exit usage}
+pctl forkns
+or {bind -bc /services/$1 /services/collab} {exit fail}
+or {bind /dis/collab/servers /services/collab/servers} {exit fail}
+collab/collabsrv /services/collab

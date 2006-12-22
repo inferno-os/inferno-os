@@ -1,0 +1,34 @@
+<../../../../mkconfig
+
+BIN=$ROOT/acme/mail
+
+DIRS=\
+	src\
+
+TARG=\
+	guide\
+	readme\
+	mkbox.dis\
+
+MODULES=\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+
+BINTARG=${TARG:%=$BIN/%}
+
+DISBIN=$ROOT/acme/mail
+
+all:V:		$TARG
+
+install:V:	$BINTARG
+
+$BIN/guide : guide
+	rm -f $BIN/guide && cp guide $BIN/guide
+
+$BIN/readme : readme
+	rm -f $BIN/readme && cp readme $BIN/readme
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs

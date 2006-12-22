@@ -1,0 +1,296 @@
+.TH GAMESRV 4
+.SH NAME
+gamesrv \- game server
+.SH SYNOPSIS
+.B games/gamesrv
+[
+.B -l
+] [
+.B -a
+.I alg
+]...
+[
+.B -A
+] [
+.IR addr | mntpoint
+]
+.PP
+.IB mntpoint /players
+.br
+.IB mntpoint /new
+.br
+.IB mntpoint / n
+.SH DESCRIPTION
+.B Gamesrv
+serves a file system that allows clients to interact
+through various types of game engine.
+Usually, it operates in network mode:
+it listens for incoming connections on
+.I addr
+(default
+.BR tcp!*!3242 ),
+authenticates them, and serves files to them.
+If the
+.B -A
+option is given, no authentication takes place,
+otherwise each
+.I alg
+gives an additional possible
+encryption or digest algorithm to use
+on the connection (see
+.IR ssl (3)).
+If no
+.I alg
+is specified,
+.B none
+is assumed.
+The
+.B -l
+option causes the game server to be mounted
+locally on
+.I mntpoint
+\- this can be useful for single player games,
+or debugging.
+.PP
+Once the name-space served by
+.I gamesrv
+is mounted, it serves the following files.
+All identifiers referred to below are
+small integers, expressed as decimal ASCII strings.
+.TP
+.B players
+Reading this file provides updates on players
+arriving and leaving, games being created
+and destroyed, and chat messages outside
+the scope of any game.
+Reads will block until something of interest happens.
+Each update holds space separated
+tokens and is terminated with a newline.
+A read will return as many updates as will fit
+into the read buffer. Update messages are as follows:
+.RS
+.TP
+.BI clientid " clientid name"
+Identifies the name,
+.IR name ,
+and the client identifier,
+.IR clientid ,
+of the client
+reading the players file.
+.TP
+.BI join " clientid name"
+A client has authenticated as
+.IR name ,
+and has been allocated identifier
+.IR clientid .
+.TP
+.BI leave " clientid"
+The client identified by
+.I clientid
+has terminated connection with the server.
+.TP
+.BI gametype " clienttype name"
+The server announces the availability of a game
+named
+.I name
+on the server. The game requires a client of
+type
+.I clienttype
+to display the game.
+.TP
+.BI creategame " gameid name clienttype"
+An instance of a game named
+.IR name
+has been created; it needs a client
+of type
+.IR clienttype ,
+and has been given identifier
+.IR gameid .
+.TP
+.BI deletegame " gameid"
+The game identified by
+.I gameid
+has been deleted.
+.TP
+.BI joingame " gameid clientid playerid name"
+Client
+.I clientid
+(named
+.IR name )
+has joined game
+.I gameid ,
+and is allocated player id
+.I playerid
+in the game.
+.TP
+.BI leavegame " gameid playerid name"
+Player
+.I playerid
+(named
+.IR name )
+has left
+.IR gameid .
+.TP
+.BI chat " clientid msg"
+Client
+.I clientid
+has sent the chat message
+.IR msg .
+.PP
+Writing to the
+.B players
+file causes a
+.B chat
+message to be sent to all other clients reading
+the players file. All but the first line of the
+write request is ignored.
+.RE
+.TP
+.B new
+Opening
+.B new
+prepares to create a new game.
+The only message that can be written
+to a newly opened game is
+.BI \fR``\fPcreate " name"\fR'',\fP
+to request a new game named
+.IR name .
+The write request draws an error
+if
+.I gamesrv
+fails to find and load the requisite game
+engine.
+If the write succeeds, the game is created,
+and game updates can be read in the same
+manner as from the
+.B players
+file. The update messages are as follows:
+.RS
+.TP
+.BI playerid " clientid playerid name"
+Identifies the player identifier,
+.IR playerid ,
+and name,
+.IR name ,
+of the reader.
+.TP
+.BI create " objid parentid visibility objtype"
+Create an object, identified by
+.IR objid ,
+at the end of
+.IR parentid 's
+children
+.RI ( parentid
+is
+.B -1
+for the root object).
+.I Visibility
+is the visibility set of the object (see
+.IR gamesrv (2)),
+and
+.I objtype
+is its type.
+.TP
+.BI tx " srcid dstid start end index"
+Transfer objects from
+.I srcid
+to
+.IR dstid.
+Take the objects from the range
+.RI [ start ,\  end )
+in the children of
+.IR srcid ,
+and insert them just before
+.I index
+in
+.IR dstid .
+Note that when objects are transferred
+to an object that conceals its children,
+and the object is itself visible,
+the objects will first be transferred to the
+destination and then deleted; objects transferred
+out of such an object will first be created and
+.I then
+transferred to their destination.
+This enables a client to maintain some knowledge
+of where an object has been transferred to, even
+if the object is no longer visible.
+.TP
+.BI del " parentid start end"
+Delete the range
+.RI [ start ,\  end )
+of children from the object identified by
+.IR parentid .
+.I Gamesrv
+guarantees that those objects will themselves
+not have any children.
+.TP
+.BI set " objid attr val"
+Set the attribute named
+.I attr
+on object
+.I objid
+to
+.IR val .
+.TP
+.BI vis " objid visibility"
+The visibility of object
+.I objid
+has changed to
+.IR visibility .
+.TP
+.I action
+Game engines can generate arbitrary messages
+of their own devising; such messages are specific
+to particular client types.
+.PP
+Note that a given client does not have to interpret
+all the above messages \- different client types
+have their own conventions. The
+.B card
+client type uses most of the above functionality,
+for example, whereas a client for the
+.B chat
+engine listed in
+.IR gamesrv (2)
+can get away with interpreting only one message, the custom action
+.BR chat .
+.PP
+Writes to the opened game file
+are interpreted as game actions by
+the game that has been loaded, and acted on accordingly.
+Invalid actions will draw a write error.
+.RE
+.TP
+.I n
+Once a game has been created, it appears as
+a numbered file, corresponding to the
+.I gameid
+of the game in question.
+Opening this file joins the game; reads and writes
+work as for the
+.B new
+file, above.
+A single client cannot join a particular game
+more than once.
+.PP
+A zero-length write to any file causes any reads
+of that file from the same file descriptor to yield
+EOF (no bytes).
+This is necessary to force a hangup under
+systems such as Windows, where it is not possible
+to interrupt a kproc blocked on a network read.
+.SH EXAMPLE
+The simplest client!
+.PP
+.EX
+mount tcp!somehost.com!3242 /n/remote
+{
+	echo create chat >[1=0]
+	cat &
+	cat  >[1=0] < /dev/cons
+} <> /n/remote/new
+.SH SOURCE
+.B /appl/cmd/games/gamesrv.b
+.SH SEE ALSO
+.IR gamesrv (2)

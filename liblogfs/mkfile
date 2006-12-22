@@ -1,0 +1,45 @@
+<../mkconfig
+
+LIB=liblogfs.a
+
+OFILES=	\
+		boot.$O\
+		clunk.$O\
+		conv.$O\
+		create.$O\
+		dump.$O\
+		error.$O\
+		extentlist.$O\
+		fidmap.$O\
+		findfreeblock.$O\
+		flush.$O\
+		format.$O\
+		gn.$O\
+		group.$O\
+		groupset.$O\
+		is.$O\
+		log.$O\
+		map.$O\
+		open.$O\
+		path.$O\
+		perm.$O\
+		read.$O\
+		remove.$O\
+		replace.$O\
+		replay.$O\
+		scan.$O\
+		srv.$O\
+		sweep.$O\
+		tagname.$O\
+		test.$O\
+		ust.$O\
+		walk.$O\
+		write.$O\
+		wstat.$O\
+
+HFILES=\
+	local.h \
+	$ROOT/include/logfs.h
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+

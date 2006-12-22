@@ -1,0 +1,23 @@
+<../../../mkconfig
+
+TARG=\
+	clock.dis\
+	clockface.dis\
+	firmdl.dis\
+	link.dis\
+	rcxsend.dis\
+	send.dis\
+	timers.dis\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	bufio.m\
+
+MODULES=\
+	rcxsend.m\
+	timers.m\
+
+DISBIN=$ROOT/dis/lego
+
+<$ROOT/mkfiles/mkdis

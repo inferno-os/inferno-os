@@ -1,0 +1,49 @@
+frame .spacer -width 10c -height 5c
+
+listbox .spacer.l -yscrollcommand {.spacer.scroll set} -xscrollcommand {.scrollh set}
+scrollbar .spacer.scroll -command {.spacer.l yview}
+scrollbar .scrollh -orient horizontal -command  {.spacer.l xview} -width [.spacer.l cget width]
+.spacer.l insert end This is some text for the
+.spacer.l insert end listboxandthisentryisverymuchlongerthattherest
+.spacer.l insert end and here is some more stuff to box
+.spacer.l insert end and here is some more stuff to box
+.spacer.l insert end and here is some more stuff to box
+.spacer.l insert end and here is some more stuff to box
+.spacer.l insert end and here is some more stuff to box
+
+canvas .c -width 5c -height 3c
+.c create rectangle 1c 1c 2c 2c -fill red
+.c create line 1c 1c 2c 2c -arrow both
+
+pack .spacer.l .spacer.scroll .c -side left -fill y
+.spacer.l selection set 3
+
+frame .mbar -relief raised -bd 2
+pack .mbar -fill x
+pack .mbar .spacer .scrollh -anchor w
+
+menubutton .mbar.file -text File -menu .mbar.file.m -underline 0
+menubutton .mbar.edit -text Edit -menu .mbar.edit.m -underline 0
+pack .mbar.file .mbar.edit -side left
+
+menu .mbar.file.m
+.mbar.file.m add checkbutton -label Italic
+.mbar.file.m add checkbutton -label Bold
+.mbar.file.m add checkbutton -label Underline
+.mbar.file.m add separator
+.mbar.file.m add command -label Quit
+.mbar.file.m add command -label Dictionary
+.mbar.file.m add cascade -label Search -menu .mbar.file.m.global
+
+menu .mbar.edit.m
+.mbar.edit.m add checkbutton -label Italic
+.mbar.edit.m add checkbutton -label Bold
+.mbar.edit.m add checkbutton -label Underline
+
+menu .mbar.file.m.global
+.mbar.file.m.global add checkbutton -label "\{Case Sensitive\}"
+.mbar.file.m.global add checkbutton -label Forward
+.mbar.file.m.global add checkbutton -label Backward
+.mbar.file.m.global add radiobutton -label "\{Upper case\}" -variable case -value u
+.mbar.file.m.global add radiobutton -label "\{Lower case\}" -variable case -value l
+.mbar.file.m.global add radiobutton -label "\{Case Insensitive\}" -variable case -value i

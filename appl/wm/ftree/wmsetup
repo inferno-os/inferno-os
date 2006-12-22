@@ -1,0 +1,48 @@
+# /dis/sh script
+# wm defines "menu" and "delmenu" builtins
+load std
+prompt='% ' ''
+fn % {$*}
+autoload=std
+home=/usr/^"{cat /dev/user}
+
+if {! {~ wm ${loaded}}} {
+	echo wmsetup must run under wm >[1=2]
+	raise usage
+}
+
+fn wmrun {
+	args := $*
+	{
+		pctl newpgrp
+		fn wmrun
+		$args
+	} >[2] /chan/wmstderr &
+}
+
+fn cd {
+	builtin cd $*; echo cwd `{pwd} > /chan/shctl
+}
+
+menu Shell			{wmrun wm/sh}
+menu Acme			{wmrun acme}
+menu Edit				{wmrun wm/edit}
+menu Charon			{wmrun charon}
+menu Manual			{wmrun wm/man}
+menu Files			{if {ftest -d $home} {wmrun wm/dir $home} {wmrun wm/dir /}}
+menu ''	''
+menu System			'Debugger'		{wmrun wm/deb}
+menu System			'Module manager'	{wmrun wm/rt}
+menu System			'Task manager'		{wmrun wm/task}
+menu System			'Memory monitor'	{wmrun wm/memory}
+menu System			'About'			{wmrun wm/about}
+menu Misc			'Tetris'			{wmrun wm/tetris}
+menu Misc			'Coffee'			{wmrun wm/coffee}
+menu Misc			'Colours'			{wmrun wm/colors}
+menu Misc			'Winctl'			{wmrun wm/winctl}
+menu Misc			'Clock'			{wmrun wm/date}
+
+if {ftest -f $home/lib/wmsetup} {run $home/lib/wmsetup} {}
+
+builtin cd /usr/rog/limbo/browser
+wmrun ftree

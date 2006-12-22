@@ -1,0 +1,24 @@
+<../../../mkconfig
+
+TARG=\
+	cpuslave.dis\
+	digest.dis\
+	fpgaload.dis\
+	mangaload.dis\
+	pcmcia.dis\
+	rdbgsrv.dis\
+	rstyxd.dis\
+
+SYSMODULES=\
+	arg.m\
+	bufio.m\
+	draw.m\
+	sh.m\
+	string.m\
+	strokes.m\
+	styx.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/auxi
+
+<$ROOT/mkfiles/mkdis

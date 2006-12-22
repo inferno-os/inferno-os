@@ -1,0 +1,44 @@
+CANVSFILES=\
+	canvs.$O\
+	canvu.$O\
+	carcs.$O\
+	cbits.$O\
+	cimag.$O\
+	cline.$O\
+	coval.$O\
+	cpoly.$O\
+	crect.$O\
+	ctext.$O\
+	cwind.$O\
+
+LABELFILES=\
+	buton.$O\
+	label.$O\
+
+TEXTWFILES=\
+	textu.$O\
+	textw.$O\
+	tindx.$O\
+	tmark.$O\
+	ttags.$O\
+	twind.$O\
+
+OFILES=$OFILES\
+	$CANVSFILES\
+	colrs.$O\
+	entry.$O\
+	extns.$O\
+	frame.$O\
+	$LABELFILES\
+	listb.$O\
+	menus.$O\
+	scale.$O\
+	scrol.$O\
+	$TEXTWFILES\
+
+frame.$O:	frame.h
+$CANVSFILES:	canvs.h
+$LABELFILES:	label.h
+listb.$O:	listb.h
+menus.$O:	frame.h label.h
+$TEXTWFILES:	textw.h

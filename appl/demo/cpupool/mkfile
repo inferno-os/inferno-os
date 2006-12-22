@@ -1,0 +1,26 @@
+<../../../mkconfig
+
+TARG=\
+		regpoll.dis\
+
+SHTARG=\
+		runrstyx.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	draw.m\
+	registries.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/demo/cpupool
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

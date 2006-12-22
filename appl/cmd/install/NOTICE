@@ -1,0 +1,6 @@
+Most of the code in this directory is a limbo version of Russ Cox's wrap, the
+software package manager that was written for Plan9 distributions. His original
+C code may have  been modularized and partly rewritten to use limbo features,
+but the credit and thanks must go to Russ for developing the original system.
+
+

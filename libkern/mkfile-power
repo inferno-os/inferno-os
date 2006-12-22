@@ -1,0 +1,13 @@
+#
+#	power-specific files
+#
+TARGFILES=\
+	frexp-power.$O\
+	getfcr-power.$O\
+	memmove-power.$O\
+	memset-power.$O\
+	nan-power.$O\
+	strchr-power.$O\
+	vlop-power.$O\
+	vlrt-power.$O\
+

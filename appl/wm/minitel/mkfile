@@ -1,0 +1,24 @@
+<../../../mkconfig
+
+TARG=\
+	mdisplay.dis\
+	miniterm.dis\
+	swkeyb.dis\
+
+MODULES=\
+	mdisplay.m\
+	miniterm.m\
+	event.m\
+	swkeyb.m\
+
+SYSMODULES=\
+	arg.m\
+	sys.m\
+	debug.m\
+	draw.m\
+	tk.m\
+	wmlib.m\
+
+DISBIN=$ROOT/dis/wm/minitel
+
+<$ROOT/mkfiles/mkdis

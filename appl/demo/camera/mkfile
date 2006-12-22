@@ -1,0 +1,42 @@
+<../../../mkconfig
+
+TARG=\
+		camera.dis\
+		camload.bit\
+		camproc.bit\
+		tkinterface.dis\
+
+SHTARG=\
+		runcam.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	arg.m\
+	bufio.m\
+	daytime.m\
+	draw.m\
+	grid/readjpg.m\
+	readdir.m\
+	selectfile.m\
+	string.m\
+	styx.m\
+	styxservers.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+
+DISBIN=$ROOT/dis/demo/camera
+
+<$ROOT/mkfiles/mkdis
+
+$DISBIN/%.bit:		%.bit
+	rm -f $target && cp $stem.bit $target
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

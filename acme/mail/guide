@@ -1,0 +1,5 @@
+Mail /mail/box/$user/stored
+Mail
+Mailpop3
+mkbox /mail/box/$user/new_box
+mail -'x' someaddress

@@ -1,0 +1,18 @@
+make -clear;
+
+MOD=module;
+DISBIN=/acme/mail;
+LFLAGS=-I/$MOD -gw;
+
+fn lcom {
+	limbo $LFLAGS $args;
+};
+
+TARG=mail.dis;
+
+*.dis 			:~ $1.b 		{ lcom $1.b };
+$DISBIN/*.dis 	:~ $1.dis 		{ cp $1.dis $DISBIN };
+
+default : $TARG {};
+all : $TARG {};
+install : $DISBIN/*.dis {};

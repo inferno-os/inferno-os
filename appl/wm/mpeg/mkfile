@@ -1,0 +1,47 @@
+<../../../mkconfig
+
+TARG=\
+	decode.dis\
+	decode4.dis\
+	fixidct.dis\
+	fltidct.dis\
+	makergbvmap.dis\
+	mpegio.dis\
+	refidct.dis\
+	remap.dis\
+	remap1.dis\
+	remap2.dis\
+	remap4.dis\
+	remap24.dis\
+	remap8.dis\
+	scidct.dis\
+	vlc.dis\
+
+MODULES=\
+	closest.m\
+	mpegio.m\
+	rgbvmap.m\
+
+SYSMODULES=\
+	bufio.m\
+	draw.m\
+	math.m\
+	sys.m\
+	tk.m\
+	wmlib.m\
+
+DISBIN=$ROOT/dis/mpeg
+
+<$ROOT/mkfiles/mkdis
+
+all:V:		mpeg.dis
+
+install:V:	$ROOT/dis/mpeg/mpeg.dis
+
+$ROOT/dis/mpeg/mpeg.dis:	mpeg.dis
+	rm -f $target && cp mpeg.dis $target
+
+mpeg.dis:	$MODULES $SYS_MODULE
+
+nuke:V:
+	rm -f $ROOT/dis/mpeg/mpeg.dis

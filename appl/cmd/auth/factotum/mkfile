@@ -1,0 +1,27 @@
+<../../../../mkconfig
+
+DIRS=\
+	proto\
+
+TARG=\
+	factotum.dis\
+	feedkey.dis\
+	rpc.dis\
+
+SYSMODULES=\
+	arg.m\
+	keyring.m\
+	security.m\
+	rand.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	string.m\
+
+MODULES=\
+	authio.m\
+
+DISBIN=$ROOT/dis/auth
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs

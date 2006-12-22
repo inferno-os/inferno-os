@@ -1,0 +1,56 @@
+<../../mkconfig
+
+DIRS=\
+	demo\
+	lib\
+
+TARG=\
+		blurdemo.dis\
+		cpupool.dis\
+		find.dis\
+		jpg2bit.dis\
+		query.dis\
+		readjpg.dis\
+		register.dis\
+		reglisten.dis\
+		regstyxlisten.dis\
+		remotelogon.dis\
+		usercreatesrv.dis\
+
+MODULES=\
+
+SYSMODULES= \
+	arg.m\
+	daytime.m\
+	draw.m\
+	grid/announce.m\
+	grid/browser.m\
+	grid/fbrowse.m\
+	grid/pathreader.m\
+	grid/readjpg.m\
+	grid/srvbrowse.m\
+	keyring.m\
+	newns.m\
+	readdir.m\
+	registries.m\
+	security.m\
+	sh.m\
+	string.m\
+	styx.m\
+	styxservers.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+	workdir.m\
+
+DISBIN=$ROOT/dis/grid
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs
+
+$ROOT/dis/demo/readjpg.dis:	readjpg.dis
+	rm -f $target && cp readjpg.dis $target
+
+readjpg.dis:	readjpg.b $MODULE $SYS_MODULE
+	limbo $LIMBOFLAGS -c -gw readjpg.b
+

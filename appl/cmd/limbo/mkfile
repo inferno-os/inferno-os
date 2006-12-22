@@ -1,0 +1,35 @@
+<../../../mkconfig
+
+TARG=	limbo.dis\
+
+MODULES=\
+	arg.m\
+	disoptab.m\
+	isa.m\
+	limbo.m\
+	opname.m\
+	asm.b\
+	com.b\
+	decls.b\
+	dis.b\
+	ecom.b\
+	gen.b\
+	lex.b\
+	nodes.b\
+	optim.b\
+	sbl.b\
+	stubs.b\
+	typecheck.b\
+	types.b\
+
+SYSMODULES= \
+	bufio.m\
+	draw.m\
+	keyring.m\
+	math.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis
+
+<$ROOT/mkfiles/mkdis

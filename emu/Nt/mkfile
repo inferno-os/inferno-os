@@ -1,0 +1,51 @@
+SYSTARG=Nt
+OBJTYPE=386
+#uncomment following line for full Microsoft debug symbols
+#LDEBUG=-debug -debugtype:cv -pdb:none
+<../../mkconfig
+SYSTARG=Nt
+OBJTYPE=386
+
+#Configurable parameters
+
+CONF=emu			#default configuration
+CONFLIST=emu ie
+CLEANCONFLIST=
+
+INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is installed
+
+#end configurable parameters
+
+OSX=os
+WINX=win
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $PORT, $LIBS
+
+OBJ=\
+	$OSX.$O\
+	$WINX.$O\
+	$CONF.root.$O\
+	lock.$O\
+	fp.$O\
+	vlrt.$O\
+	$DEVS\
+	$PORT\
+
+HFILES=\
+
+CFLAGS='-DROOT="'$ROOT'"' -DEMU -I. -I../port -I$ROOT/$SYSTARG/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp $CTHREADFLAGS $CFLAGS $EMUOPTIONS
+SYSLIBS=	$SYSLIBS wsock32.lib user32.lib gdi32.lib advapi32.lib winmm.lib mpr.lib
+KERNDATE=`{$NDATE}
+
+default:V:	i$CONF.exe
+
+<../port/portmkfile
+
+i$CONF.exe:	$OBJ $CONF.c $CONF.root.h $LIBFILES
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
+	$LD $LDFLAGS -out:$target $OBJ $CONF.$O $LIBFILES $SYSLIBS
+
+install:V: i$CONF.exe
+	cp i$CONF.exe $INSTALLDIR/$CONF.exe

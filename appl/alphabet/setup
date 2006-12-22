@@ -1,0 +1,63 @@
+/appl/alphabet/rexecsrv.sh tcp!rogero {typeset /fs; import /fs/unbundle /fs/entries /fs/print}
+
+####################
+addr=tcp!rogero!1234
+run /appl/alphabet/declare.sh
+/appl/alphabet/mkendpoint.sh $addr
+echo ${rewrite {
+	/echo hello |
+		/grid/remote |
+		/grid/rexec tcp!rogero!1235 "{(/fd);/filter $1 "{wc}}
+	}
+}
+- {
+	/echo hello |
+		/grid/remote |
+		/grid/rexec tcp!rogero!1235 "{(/fd);/filter $1 "{wc}} |
+		/grid/local
+	}
+# - {remote /n/local/lib/words | farm rogero!1235 "{tr -d e} } | /grid/local}
+######################
+
+/appl/alphabet/mkendpoint.sh tcp!rogero!9998
+load alphabet
+run /appl/alphabet/declare.sh
+- {
+	/fs/walk /tmp |
+	/fs/bundle |
+	/grid/remote |
+	/grid/rexec tcp!rogero!1235 "{
+		(/fd)
+		/fs/unbundle $1 |
+		/fs/entries |
+		/fs/print
+	}
+}
+
+- {
+	/fs/walk /tmp |
+	/fs/bundle |
+	/grid/remote |
+	/grid/local |
+	/fs/unbundle |
+	/fs/print
+}
+
+###############
+
+the below script generates:
+
+alphabet: 2. bundle: write error: i/o on hungup channel
+and a much truncated file.
+
+-{
+	/fs/walk /tmp |
+	/fs/bundle |
+	/grid/remote |
+	/grid/rexec tcp!127.1!1235 "{
+		(/fd)
+		/fs/unbundle $1 |
+		/fs/filter -d {/fs/match '*.b'} |
+		/fs/bundle
+	} | /create xx
+}

@@ -1,0 +1,92 @@
+<../../mkconfig
+
+TARG=\
+	build.dis\
+	cookiesrv.dis\
+	chutils.dis\
+	ctype.dis\
+	date.dis\
+	event.dis\
+	file.dis\
+	ftp.dis\
+	gui.dis\
+	http.dis\
+	img.dis\
+	jscript.dis\
+	layout.dis\
+	lex.dis\
+	url.dis\
+
+ICONS=\
+	bookmark.bit\
+	charon.bit\
+	circarrow.bit\
+	conf.bit\
+	down.bit\
+	edit.bit\
+	exit.bit\
+	help.bit\
+	history.bit\
+	home.bit\
+	maxf.bit\
+	minus.bit\
+	plus.bit\
+	redleft.bit\
+	redright.bit\
+	ssloff.bit\
+	sslon.bit\
+	stop.bit\
+	task.bit\
+	up.bit\
+
+MODULES=\
+	build.m\
+	charon.m\
+	chutils.m\
+	common.m\
+	cookiesrv.m\
+	ctype.m\
+	date.m\
+	event.m\
+	gui.m\
+	img.m\
+	layout.m\
+	lex.m\
+	script.m\
+	transport.m\
+	rgb.inc\
+	ycbcr.inc\
+	url.m\
+
+SYSMODULES=\
+	bufio.m\
+	daytime.m\
+	debug.m\
+	draw.m\
+	ecmascript.m\
+	sh.m\
+	ssl3.m\
+	string.m\
+	strinttab.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+
+DISBIN=$ROOT/dis/charon
+
+all:V:	charon.dis
+
+<$ROOT/mkfiles/mkdis
+
+install:V:	$ROOT/dis/charon.dis
+
+$ROOT/dis/charon.dis:	charon.dis
+	rm -f $target && cp charon.dis $target
+
+charon.dis:	$MODULES $SYS_MODULES
+
+img.dis:	img.b $MODULE $SYS_MODULE
+	limbo $LIMBOFLAGS -c -gw img.b
+
+nuke:V:
+	rm -f $ROOT/dis/charon.dis

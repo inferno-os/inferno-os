@@ -1,0 +1,4 @@
+radiobutton .u -text {Upper case} -variable case -value u
+radiobutton .l -text {Lower case} -variable case -value l
+radiobutton .i -text {Ignore case} -variable case -value i
+pack .u .l .i -anchor w -fill x

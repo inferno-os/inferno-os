@@ -1,0 +1,63 @@
+SYSTARG=MacOSX
+OBJTYPE=power
+<../../mkconfig
+SYSTARG=MacOSX
+OBJTYPE=power
+
+#Configurable parameters
+
+CONF=emu			#default configuration
+CONFLIST=emu
+CLEANCONFLIST=
+
+INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is installed
+
+#end configurable parameters
+
+<$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
+
+<| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $PORT, $LIBS
+
+OBJ=\
+	asm-$OBJTYPE.$O\
+	os.$O\
+	win-x11a.$O\
+	$CONF.root.$O\
+	lock.$O\
+	$DEVS\
+	$PORT\
+
+HFILES=\
+
+CFLAGS='-DROOT="'$ROOT'"'\
+	-DEMU -I. -I../port\
+	-I$ROOT/$SYSTARG/$OBJTYPE/include\
+	-I$ROOT/include -I$ROOT/libinterp\
+	$CTHREADFLAGS $CFLAGS $EMUOPTIONS\
+	-I/usr/X11R6/include
+
+KERNDATE=`{$NDATE}
+
+LDFLAGS=$LDFLAGS -L/usr/X11R6/lib
+
+SYSLIBS= \
+	-lm -lX11 -lXext\
+	-lpthread\
+	-framework CoreFoundation\
+	-framework IOKit\
+#	-framework ApplicationServices\
+
+default:V:	$O.$CONF
+
+
+$O.$CONF:	$OBJ $CONF.c $CONF.root.h $LIBFILES
+	$CC $CFLAGS -DKERNDATE=$KERNDATE $CONF.c
+	$LD $LDFLAGS -o $target $OBJ $CONF.$O $LIBFILES $SYSLIBS
+
+install:V: $O.$CONF
+	cp $O.$CONF $INSTALLDIR/$CONF
+
+<../port/portmkfile
+
+ipif.c:N:	../FreeBSD/ipif.c
+devfs.c:N:	../port/devfs-posix.c

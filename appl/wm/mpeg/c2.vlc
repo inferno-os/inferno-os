@@ -1,0 +1,10 @@
+# Run/Level continuation 2
+# vlc -cfp c2 < c2.vlc > c2.tab
+011s	10,0
+000s	11,0
+100s	4,2
+010s	3,4
+101s	2,7
+001s	2,8
+111s	1,20
+110s	1,21

@@ -1,0 +1,39 @@
+#!/dis/sh
+load std
+
+# codepage generators
+GENERATORS=(
+	gencp932
+	genbig5
+	gengb2312
+	genjisx0201kana
+	genjisx0208-1997
+	genjisx0212
+	ibm437
+	ibm850
+	ibm866
+	iso8859-1
+	iso8859-10
+	iso8859-2
+	iso8859-3
+	iso8859-4
+	iso8859-5
+	iso8859-6
+	iso8859-7
+	iso8859-8
+	iso8859-9
+	koi8-r
+	windows-1250
+	windows-1251
+	windows-1252
+)
+
+for i in $GENERATORS {
+	(1st 2nd)=`{ls -t $i.b $i.dis >[2]/dev/null}
+	if {~ $1st $i.b} {
+		echo building $i
+		limbo $i.b
+	}
+	echo running $i
+	$i
+}

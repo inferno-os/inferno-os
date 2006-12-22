@@ -1,0 +1,23 @@
+<../../../../../mkconfig
+
+TARG=\
+	a.dis\
+	c.dis\
+	d.dis\
+	e.dis\
+	g.dis\
+	i.dis\
+	p.dis\
+	x.dis\
+	pipe.dis\
+
+MODULES=\
+	
+SYSMODULES=\
+	sh.m\
+	sys.m\
+	draw.m\
+
+DISBIN=$ROOT/acme/edit
+
+<$ROOT/mkfiles/mkdis

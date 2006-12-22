@@ -1,0 +1,18 @@
+<../../mkconfig
+
+TARG=\
+	rm.dis\
+	sh.dis\
+
+MODULES=\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	env.m\
+	filepat.m\
+	bufio.m\
+
+DISBIN=$ROOT/dis/tiny
+
+<$ROOT/mkfiles/mkdis

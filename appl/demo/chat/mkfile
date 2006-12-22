@@ -1,0 +1,30 @@
+<../../../mkconfig
+
+TARG=\
+		chat.dis\
+		chatsrv.dis\
+
+SHTARG=\
+		chatclient.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	draw.m\
+	styx.m\
+	styxservers.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+
+DISBIN=$ROOT/dis/demo/chat
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

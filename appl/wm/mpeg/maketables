@@ -1,0 +1,36 @@
+echo motion:
+vlc motion < motion.vlc > motion.tab
+echo rl0f:
+vlc -c rl0f < rl0f.vlc > rl0f.tab
+echo rl0n:
+vlc -c rl0n < rl0n.vlc > rl0n.tab
+echo c0:
+vlc -uUNDEF,UNDEF c0 < c0.vlc > c0.tab
+echo c1:
+vlc -cfp c1 < c1.vlc > c1.tab
+echo c2:
+vlc -cfp c2 < c2.vlc > c2.tab
+echo c3:
+vlc -cfp c3 < c3.vlc > c3.tab
+echo c4:
+vlc -cfp c4 < c4.vlc > c4.tab
+echo c5:
+vlc -cfp c5 < c5.vlc > c5.tab
+echo c6:
+vlc -cfp c6 < c6.vlc > c6.tab
+echo c7:
+vlc -cfp c7 < c7.vlc > c7.tab
+echo mai:
+vlc mai < mai.vlc > mai.tab
+echo mbi:
+vlc mbi < mbi.vlc > mbi.tab
+echo mbp:
+vlc mbp < mbp.vlc > mbp.tab
+echo mbb:
+vlc mbb < mbb.vlc > mbb.tab
+echo cbp:
+vlc cbp < cbp.vlc > cbp.tab
+echo cdc:
+vlc cdc < cdc.vlc > cdc.tab
+echo ydc:
+vlc ydc < ydc.vlc > ydc.tab

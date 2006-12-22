@@ -1,0 +1,19 @@
+<../../../mkconfig
+
+TARG=\
+	fetch.dis\
+	delete.dis\
+	keys.dis\
+	list.dis\
+	store.dis\
+
+SYSMODULES=\
+	arg.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	dbm.m\
+
+DISBIN=$ROOT/dis/dbm
+
+<$ROOT/mkfiles/mkdis

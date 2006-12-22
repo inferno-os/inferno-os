@@ -1,0 +1,120 @@
+<../mkconfig
+
+LIB=libinterp.a
+
+OFILES=\
+	alt.$O\
+	comp-$OBJTYPE.$O\
+	conv.$O\
+	dec.$O\
+	dlm-$TARGMODEL.$O\
+	draw.$O\
+	freetype.$O\
+	gc.$O\
+	geom.$O\
+	heap.$O\
+	heapaudit.$O\
+	ipint.$O\
+	link.$O\
+	load.$O\
+	loader.$O\
+	math.$O\
+#	prefab.$O\
+	raise.$O\
+	readmod.$O\
+	runt.$O\
+	sign.$O\
+	stack.$O\
+	tk.$O\
+	validstk.$O\
+	xec.$O\
+	das-$OBJTYPE.$O\
+	keyring.$O\
+	string.$O\
+
+HFILES=\
+	$ROOT/include/interp.h\
+	$ROOT/include/isa.h\
+	runt.h\
+	tab.h\
+
+MODULES=\
+	../module/runt.m\
+	../module/sys.m\
+	../module/draw.m\
+	../module/prefab.m\
+	../module/math.m\
+	../module/tk.m\
+	../module/keyring.m\
+	../module/loader.m\
+	../module/freetype.m\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+runt.h:D: $MODULES
+	rm -f $target && limbo -a -I../module ../module/runt.m > $target
+
+sysmod.h:D: $MODULES
+	rm -f $target && limbo -t Sys -I../module ../module/runt.m > $target
+
+keyring.h:D: $MODULES
+	rm -f $target && limbo -t Keyring -I../module ../module/runt.m > $target
+
+drawmod.h:D: $MODULES
+	rm -f $target && limbo -t Draw -I../module ../module/runt.m > $target
+
+prefabmod.h:D: $MODULES
+	rm -f $target && limbo -t Prefab -I../module ../module/runt.m > $target
+
+tkmod.h:D: $MODULES
+	rm -f $target && limbo -t Tk -I../module ../module/runt.m > $target
+
+mathmod.h:D: $MODULES
+	rm -f $target && limbo -t Math -I../module ../module/runt.m > $target
+
+loadermod.h:D: $MODULES
+	rm -f $target && limbo -t Loader -I../module ../module/runt.m > $target
+
+freetypemod.h:D: $MODULES
+	rm -f $target && limbo -t Freetype -I../module ../module/runt.m > $target
+
+benchmod.h:D: ../module/bench.m
+	rm -f $target && limbo -t Bench -I../module ../module/bench.m > $target
+
+bench.h:D:../module/bench.m
+	rm -f $target && limbo -a -I../module ../module/bench.m > $target
+
+xec.$O:		optab.h  $ROOT/include/pool.h
+tk.$O:		$ROOT/include/tk.h  $ROOT/include/pool.h
+draw.$O: 	$ROOT/include/draw.h $ROOT/include/drawif.h
+prefab.$O: 	$ROOT/include/draw.h\
+		$ROOT/include/prefab.h
+
+runt.$O:	sysmod.h
+prefab.$O:	prefabmod.h
+draw.$O:	drawmod.h
+tk.$O:		$ROOT/include/draw.h tkmod.h
+math.$O:	mathmod.h
+keyring.$O:	keyring.h $ROOT/libkeyring/keys.h
+ipint.$O:	keyring.h
+loader.$O:	loadermod.h
+freetype.$O:	freetypemod.h $ROOT/include/freetype.h
+math.$O:	$ROOT/include/mathi.h
+
+das-spim.c:N:	das-mips.c
+das-68000.c:N:	das-68020.c
+comp-spim.c:N:	comp-mips.c
+
+kif.c:	kif.h
+	rm -f $target && kif -t $SYSTARG kif.h > $target
+kif.$O: kif.c
+	$CC $CFLAGS kif.c && rm -f kif.c
+
+# optab.h:	$ROOT/include/isa.h mkoptab
+#	$SHELLNAME mkoptab > $target
+
+#	Do not remove optab.h, because the script that builds
+#	it works only on UNIX and Plan 9.
+
+nuke:EV:	nuke-std
+	rm -f runt.h sysmod.h drawmod.h prefabmod.h tkmod.h mathmod.h keyring.h readimagemod.h loadermod.h freetypemod.h kif.c

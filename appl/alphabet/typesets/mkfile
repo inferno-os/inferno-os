@@ -1,0 +1,34 @@
+<../../../mkconfig
+
+TARG=\
+	mktypeset.dis\
+	abc.dis\
+	abctypes.dis\
+	fs.dis\
+	fstypes.dis\
+	grid.dis\
+	gridtypes.dis\
+
+SYSMODULES=\
+	alphabet.m\
+	alphabet/endpoints.m\
+	alphabet/reports.m\
+	draw.m\
+	readdir.m\
+	sh.m\
+	sys.m\
+	alphabet/abc.m\
+	alphabet/abctypes.m\
+	alphabet/fs.m\
+	alphabet/fstypes.m\
+	alphabet/grid.m\
+	alphabet/gridtypes.m\
+
+DISBIN=$ROOT/dis/alphabet
+
+<$ROOT/mkfiles/mkdis
+
+LIMBOFLAGS=$LIMBOFLAGS -i -F
+
+#%.b %types.b %.m %types.m: %.typeset
+#	mktypeset $stem.typeset

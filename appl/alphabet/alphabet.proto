@@ -1,0 +1,29 @@
+# -{/fs/proto alphabet.proto | /fs/filter {/fs/or {/fs/path /dis} {/fs/not {/fs/or *.dis *.sbl}}} | /fs/write /tmp/blah}
+# -{/fs/proto alphabet.proto | /fs/filter {/fs/not {/fs/or *.dis *.sbl}} | /fs/select {/fs/mode -d}}
+module
+	alphabet.m
+	alphabet
+		+
+dis
+	sh
+		alphabet.dis
+	alphabet
+		+
+	scheduler
+		workflowgen.dis
+appl
+	alphabet
+		+
+	cmd
+		scheduler
+			workflowgen.b
+			tgsimple.b
+			mkfile
+man
+	1
+		sh-alphabet
+		alphabet-main
+		alphabet-grid
+		alphabet-fs
+	2
+		alphabet-intro

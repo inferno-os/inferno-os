@@ -1,0 +1,9 @@
+<../../../mkconfig
+
+DIRS=\
+	acid\
+	bin\
+	edit\
+	mail\
+
+<$ROOT/mkfiles/mksubdirs

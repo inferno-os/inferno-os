@@ -1,0 +1,10 @@
+<../../../mkconfig
+
+TARG=\
+	burn.dis\
+
+SYSMODULES=\
+
+DISBIN=$ROOT/dis/avr
+
+<$ROOT/mkfiles/mkdis

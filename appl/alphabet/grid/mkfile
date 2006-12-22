@@ -1,0 +1,22 @@
+<../../../mkconfig
+
+TARG=\
+	farm.dis\
+	line2rec.dis\
+	local.dis\
+	remote.dis\
+	rexec.dis\
+
+SYSMODULES=\
+	draw.m\
+	alphabet/endpoints.m\
+	alphabet/grid.m\
+	alphabet/reports.m\
+	sh.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/alphabet/grid
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS

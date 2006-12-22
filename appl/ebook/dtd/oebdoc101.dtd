@@ -1,0 +1,524 @@
+<!--
+    Document Type Definition for the Open eBook document version 1.0.1
+
+    Version:  1.0.1
+    Revision: 20010201-x
+
+    Authors:  Gunter Hille <hille@abc.de>
+              Ben Trafford <bent@exemplary.net>
+              Garret Wilson <garret@globalmentor.com>
+
+    Usage:
+        <?xml version="1.0"?>
+        <!DOCTYPE html PUBLIC
+          "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Document//EN"
+          "http://openebook.org/dtds/oeb-1.0.1/oebdoc101.dtd">
+        <html>
+        ...
+        </html>
+
+    References:
+      This DTD has been derived from XHTML 1.0 and HTML 4.0.
+      It is a pure subset of neither.
+      Transitional XHTML 1.0 DTD at http://www.w3.org/TR/xhtml1/DTD/transitional.dtd
+-->
+
+<!-- ******** Character Mnemonic Entities ******** -->
+
+<!-- OEB supports all XHTML mnemonics, but uses only one entity file. -->
+<!ENTITY % OEBEntities PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0 Entities//EN" "oeb1.ent">
+%OEBEntities;
+
+<!-- ******** Attribute Types ******** -->
+
+<!-- Color: A color specification. -->
+<!ENTITY % Color "CDATA">
+
+<!-- Coords: Comma-separated coordinates for image maps. -->
+<!ENTITY % Coords "CDATA">
+
+<!-- LanguageCode: An RFC1766 language code. -->
+<!ENTITY % LanguageCode "NMTOKEN">
+
+<!-- Length: Number of pixels or percentage in one dimension. -->
+<!ENTITY % Length "CDATA">
+
+<!-- LinkTypes: List of types of document link types, used by "rel" and "rev". -->
+<!ENTITY % LinkTypes "CDATA">
+
+<!-- MediaType: An RFC2045 media type. -->
+<!ENTITY % MediaType "CDATA">
+
+<!-- MediaDest: Intended media destination. -->
+<!ENTITY % MediaDest "CDATA">
+
+<!-- A string of one or more digits. -->
+<!ENTITY % Number "CDATA">
+
+<!-- ObjectAlign: Non-text multidirectional alignment options. -->
+<!ENTITY % ObjectAlign "(top|middle|bottom|left|right)">
+
+<!-- ObjectHAlign: Horizontal non-text alignment options. -->
+<!ENTITY % ObjectHAlign "(left|center|right)">
+
+<!-- Shape: Shapes available for image maps. -->
+<!ENTITY % Shape "(rect|circle|poly|default)">
+
+<!-- StyleData: Style data (e.g. CSS) -->
+<!ENTITY % StyleData "CDATA">
+
+<!-- Text: Character data for such attributes as "title" and "alt". -->
+<!ENTITY % Text "CDATA">
+
+<!-- TextHAlign: Horizontal text alignment options. -->
+<!ENTITY % TextHAlign "(left|center|right|justify)">
+
+<!-- TextVAlign: Vertical text alignment options. -->
+<!ENTITY % TextVAlign "(top|middle|bottom)">
+
+<!-- URI: An RFC2396 Uniform Resource Identifier. -->
+<!ENTITY % URI "CDATA">
+
+<!-- A list of URIs separated by spaces. -->
+<!ENTITY % URIList "CDATA">
+
+<!-- ******** Common Attributes ******** -->
+
+<!-- InternationalAttributes: Attributes for internationalization.
+  xml:lang:     XML language code.
+-->
+<!ENTITY % InternationalAttributes
+  "xml:lang %LanguageCode; #IMPLIED"
+>
+
+<!-- CoreAttributes: Most common attributes used by many elements.
+  id:       ID unique to the entire document.
+  class:    List of classes.
+  style:    Style data.
+  title:    Title or additional information.
+-->
+<!ENTITY % CoreAttributes
+  "id     ID            #IMPLIED
+  class   CDATA         #IMPLIED
+  style   %StyleData;   #IMPLIED
+  title   %Text;        #IMPLIED"
+>
+
+<!-- CommonAttributes: Common attributes used by many elements.
+  CoreAttributes:   Most common attributes.
+  InternationalAttributes:         Internationalization attributes.
+-->
+<!ENTITY % CommonAttributes
+  "%CoreAttributes;
+  %InternationalAttributes;"
+>
+
+<!-- ******** Common Elements ******** -->
+
+<!-- HeadingElements: <h1>..<h6> -->
+<!ENTITY % HeadingElements "h1|h2|h3|h4|h5|h6">
+
+<!-- ListElements: Elements for lists. -->
+<!ENTITY % ListElements "ul|ol|dl">
+
+<!-- PhraseElements: Inline elements that contain a phrase of text.
+  Note that while in current HTML implementations many PhraseElements
+  are rendered identically to FontStyleElements counterparts (such as
+  <em> and <i>, the former do not connotate rendering styles.
+-->
+<!ENTITY % PhraseElements
+  "em | strong | dfn | code | q | sub | sup | samp | kbd | var | cite"
+>
+
+<!-- FontStyleElements: Inline font style elements.
+  Note that many FontStyleElements have been deprecated in favor of
+  their PhraseElements counterparts.
+-->
+<!ENTITY % FontStyleElements
+  "tt | i | b | big | small | u | s | strike |font"
+>
+
+<!-- BlockElements: Elements at the block level. -->
+<!ENTITY % BlockElements
+  "%HeadingElements; | %ListElements; | p | pre | hr | blockquote
+  | center | div | table"
+>
+
+<!-- InlineElements: Elements that are inline. -->
+<!ENTITY % InlineElements
+  "%PhraseElements; | %FontStyleElements; | a | br | span | img | object | map"
+>
+
+<!-- BlockOrInlineElements: Elements that can be either block or inline. -->
+<!ENTITY % BlockOrInlineElements "script">
+
+<!-- %FlowElements: Both block and inline elements, including those that can be both. -->
+<!ENTITY % FlowElements "%BlockElements; | %InlineElements; | %BlockOrInlineElements;">
+
+<!-- ******** OEB Document Elements ******** -->
+
+<!ELEMENT br EMPTY>
+<!ATTLIST br
+  %CoreAttributes;
+  clear (left|all|right|none) "none"
+>
+
+<!ELEMENT span (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST span %CommonAttributes;>
+
+<!ELEMENT b (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST b %CommonAttributes;>
+
+<!ELEMENT big (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST big %CommonAttributes;>
+
+<!ELEMENT i (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST i %CommonAttributes;>
+
+<!ELEMENT small (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST small %CommonAttributes;>
+
+<!ELEMENT sub (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST sub %CommonAttributes;>
+
+<!ELEMENT sup (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST sup %CommonAttributes;>
+
+<!ELEMENT tt (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST tt %CommonAttributes;>
+
+<!ELEMENT font (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST font
+  %CommonAttributes;
+  size    CDATA     #IMPLIED
+  color   %Color;   #IMPLIED
+  face    CDATA     #IMPLIED
+>
+
+<!ELEMENT s (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST s %CommonAttributes;>
+
+<!ELEMENT strike (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST strike %CommonAttributes;>
+
+<!ELEMENT u (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST u %CommonAttributes;>
+
+<!ELEMENT cite (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST cite %CommonAttributes;>
+
+<!ELEMENT code (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST code %CommonAttributes;>
+
+<!ELEMENT dfn (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST dfn %CommonAttributes;>
+
+<!ELEMENT em (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST em %CommonAttributes;>
+
+<!ELEMENT kbd (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST kbd %CommonAttributes;>
+
+<!ELEMENT q (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST q
+  %CommonAttributes;
+  cite %URI; #IMPLIED
+>
+
+<!ELEMENT samp (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST samp %CommonAttributes;>
+
+<!ELEMENT strong (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST strong %CommonAttributes;>
+
+<!ELEMENT var (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST var %CommonAttributes;>
+
+<!ELEMENT div (#PCDATA | %FlowElements;)*>
+<!ATTLIST div
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT p (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST p
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT hr EMPTY >
+<!ATTLIST hr
+  %CommonAttributes;
+  align   %ObjectHAlign;  #IMPLIED
+  size    CDATA           #IMPLIED
+  width   %Length;        #IMPLIED
+>
+
+<!ELEMENT center (#PCDATA | %FlowElements;)*>
+<!ATTLIST center %CommonAttributes;>
+
+<!ELEMENT blockquote (#PCDATA | %FlowElements;)*>
+<!ATTLIST blockquote
+  %CommonAttributes;
+  cite %URI; #IMPLIED
+>
+
+<!ELEMENT pre
+  (#PCDATA | %PhraseElements; | a | br | span | map | tt | i | b | u | s)*
+>
+<!ATTLIST pre
+  %CommonAttributes;
+  xml:space (preserve) #FIXED "preserve"
+>
+
+<!-- Heading Elements -->
+
+<!ELEMENT h1 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h1
+  %CommonAttributes;
+
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT h2 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h2
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT h3 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h3
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT h4 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h4
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT h5 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h5
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT h6 (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST h6
+  %CommonAttributes;
+  align %TextHAlign; #IMPLIED
+>
+
+<!ELEMENT script (#PCDATA)>
+<!ATTLIST script
+  xml:space (preserve) #FIXED "preserve"
+>
+
+<!ELEMENT style (#PCDATA)>
+<!ATTLIST style
+  %InternationalAttributes;
+  type        %MediaType;   #FIXED  "text/x-oeb1-css"
+  title       %Text;        #IMPLIED
+  xml:space (preserve) #FIXED "preserve"
+>
+
+<!ELEMENT img  EMPTY >
+<!ATTLIST img
+  %CommonAttributes;
+  align     %ObjectAlign;   #IMPLIED
+  border    CDATA           #IMPLIED
+  hspace    CDATA           #IMPLIED
+  vspace    CDATA           #IMPLIED
+  src       %URI;           #REQUIRED
+  alt       %Text;          #REQUIRED
+  longdesc  %URI;           #IMPLIED
+  height    %Length;        #IMPLIED
+  width     %Length;        #IMPLIED
+  usemap    %URI;           #IMPLIED
+>
+
+<!ELEMENT a
+   (#PCDATA | %FontStyleElements; | %PhraseElements; | %BlockOrInlineElements;
+   | br | span | object | img | map)*
+>
+<!ATTLIST a
+  %CommonAttributes;
+  name            NMTOKEN       #IMPLIED
+  href            %URI;         #IMPLIED
+  rel             %LinkTypes;   #IMPLIED
+  rev             %LinkTypes;   #IMPLIED
+>
+
+<!ELEMENT base  EMPTY>
+<!ATTLIST base
+  href %URI; #REQUIRED
+>
+
+<!ELEMENT link  EMPTY>
+<!ATTLIST link
+  %CommonAttributes;
+  href    %URI;         #IMPLIED
+  type    %MediaType;   #REQUIRED
+  rel     %LinkTypes;   #IMPLIED
+  rev     %LinkTypes;   #IMPLIED
+  media   %MediaDest;   #IMPLIED
+>
+
+<!-- The CommonAttributes entity is not used here because in this case
+  the "id" attribute is required. -->
+<!ELEMENT map ((%BlockElements; | %BlockOrInlineElements;)+ | area+)>
+<!ATTLIST map
+  %InternationalAttributes;
+  id      ID            #REQUIRED
+  class   CDATA         #IMPLIED
+  style   %StyleData;   #IMPLIED
+  title   %Text;        #IMPLIED
+  name    NMTOKEN       #IMPLIED
+>
+
+<!ELEMENT area  EMPTY>
+<!ATTLIST area
+  %CommonAttributes;
+  href    %URI;     #IMPLIED
+  shape   %Shape;   "rect"
+  coords  %Coords;  #IMPLIED
+  nohref  (nohref)  #IMPLIED
+  alt     %Text;    #REQUIRED
+>
+
+<!ELEMENT object
+  (#PCDATA | %BlockElements; | %InlineElements; | %BlockOrInlineElements; | param)*
+>
+<!ATTLIST object
+  %CommonAttributes;
+  classid   %URI;           #IMPLIED
+  codebase  %URI;           #IMPLIED
+  data      %URI;           #IMPLIED
+  type      %MediaType;     #IMPLIED
+  codetype  %MediaType;     #IMPLIED
+  archive   %URIList;       #IMPLIED
+  height    %Length;        #IMPLIED
+  width     %Length;        #IMPLIED
+  usemap    %URI;           #IMPLIED
+  align     %ObjectAlign;   #IMPLIED
+  border    CDATA           #IMPLIED
+  hspace    CDATA           #IMPLIED
+  vspace    CDATA           #IMPLIED
+>
+
+<!ELEMENT param EMPTY >
+<!ATTLIST param
+  id          ID                  #IMPLIED
+  name        CDATA               #REQUIRED
+  value       CDATA               #IMPLIED
+  valuetype   (data|ref|object)   "data"
+  type        %MediaType;         #IMPLIED
+>
+
+<!ELEMENT dl  (dt|dd)+ >
+<!ATTLIST dl %CommonAttributes;>
+
+<!ELEMENT dt (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST dt %CommonAttributes;>
+
+<!ELEMENT dd (#PCDATA | %FlowElements;)*>
+<!ATTLIST dd %CommonAttributes;>
+
+<!ELEMENT ol (li)+ >
+<!ATTLIST ol
+  %CommonAttributes;
+  type (1|a|A|i|I) #IMPLIED
+>
+
+<!ELEMENT ul (li)+>
+<!ATTLIST ul %CommonAttributes;>
+
+<!ELEMENT li (#PCDATA | %FlowElements;)*>
+<!ATTLIST li %CommonAttributes;>
+
+<!ELEMENT table  (caption?, tr+) >
+<!ATTLIST table
+  %CommonAttributes;
+  summary       %Text;          #IMPLIED
+  width         %Length;        #IMPLIED
+  border        CDATA           #IMPLIED
+  cellspacing   %Length;        #IMPLIED
+  cellpadding   %Length;        #IMPLIED
+  align         %ObjectHAlign;  #IMPLIED
+  bgcolor       %Color;         #IMPLIED
+>
+
+<!ELEMENT caption (#PCDATA | %InlineElements; | %BlockOrInlineElements;)*>
+<!ATTLIST caption %CommonAttributes;>
+
+<!ELEMENT tr  ( th | td )+ >
+<!ATTLIST tr
+  %CommonAttributes;
+  valign    %TextVAlign;    #IMPLIED
+  bgcolor   %Color;         #IMPLIED
+>
+
+<!ELEMENT th (#PCDATA | %FlowElements;)*>
+<!ATTLIST th
+  %CommonAttributes;
+  abbr      %Text;          #IMPLIED
+  rowspan   %Number;        "1"
+  colspan   %Number;        "1"
+  align     %TextHAlign;    #IMPLIED
+  valign    %TextVAlign;    #IMPLIED
+  nowrap    (nowrap)        #IMPLIED
+  bgcolor   %Color;         #IMPLIED
+  width     %Length;        #IMPLIED
+  height    %Length;        #IMPLIED
+>
+
+<!ELEMENT td (#PCDATA | %FlowElements;)*>
+<!ATTLIST td
+  %CommonAttributes;
+  abbr      %Text;          #IMPLIED
+  rowspan   %Number;        "1"
+  colspan   %Number;        "1"
+  align     %TextHAlign;    #IMPLIED
+  valign    %TextVAlign;    #IMPLIED
+  nowrap    (nowrap)        #IMPLIED
+  bgcolor   %Color;         #IMPLIED
+  width     %Length;        #IMPLIED
+  height    %Length;        #IMPLIED
+>
+
+<!ELEMENT title  (#PCDATA)>
+<!ATTLIST title %InternationalAttributes;>
+
+<!ELEMENT meta  EMPTY >
+<!ATTLIST meta
+  %InternationalAttributes;
+  name      NMTOKEN   #IMPLIED
+  content   CDATA     #REQUIRED
+  scheme    CDATA     #IMPLIED
+>
+
+<!-- HeadElements: Elements that can appear many places within <head>.-->
+<!ENTITY % HeadElements "script | style | meta | link | object">
+
+<!-- <head> can have the common head elements (always optional),
+  with one <title> and an optional <base> interspersed.
+-->
+<!ELEMENT head ((%HeadElements;)*,
+ ((title, (%HeadElements;)*, (base, (%HeadElements;)*)?)
+ | (base, (%HeadElements;)*, (title, (%HeadElements;)*))))
+>
+<!ATTLIST head %InternationalAttributes;>
+
+<!ELEMENT body (#PCDATA | %FlowElements;)*>
+<!ATTLIST body
+  %CommonAttributes;
+  bgcolor   %Color;   #IMPLIED
+  text      %Color;   #IMPLIED
+>
+
+<!ELEMENT html (head?, body)>
+<!ATTLIST html
+  %InternationalAttributes;
+  xmlns         %URI;   #FIXED  "http://openebook.org/namespaces/oeb-document/1.0/"
+>

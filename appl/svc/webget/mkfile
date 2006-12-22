@@ -1,0 +1,40 @@
+<../../../mkconfig
+
+TARG=\
+	date.dis\
+	file.dis\
+	ftp.dis\
+	http.dis\
+	image2enc.dis\
+	message.dis\
+	webget.dis\
+	wgutils.dis\
+
+MODULES=\
+	date.m\
+	image2enc.m\
+	message.m\
+	transport.m\
+	wgutils.m\
+
+SYSMODULES=\
+	bufio.m\
+	daytime.m\
+	draw.m\
+	imagefile.m\
+	ssl3.m\
+	string.m\
+	strinttab.m\
+	sys.m\
+	url.m\
+	webget.m\
+
+DISBIN=$ROOT/dis/svc/webget
+
+<$ROOT/mkfiles/mkdis
+
+install:V:	install-logs
+
+install-logs:V:
+	rm -f $ROOT/services/webget/webget.log && cp webget.log $ROOT/services/webget/webget.log
+	# chmod 644 $ROOT/services/webget/webget.log

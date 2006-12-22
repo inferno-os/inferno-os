@@ -1,0 +1,19 @@
+rm -f optab.h
+tr '[A-Z]' '[a-z]' <../include/isa.h >optab.h
+ed optab.h <<'HERE'
+1;/enum/c
+void	(*optab[256])(void) =
+.
+/}/+1,$ d
+,s/^[ 	]*i/	/g
+1;/nop/s//badop/
+1;/exit/s//i&/
+1;/goto/s//i&/
+1;/case/s//i&/
+1;/load/s//i&/
+1;/recv/s//i&/
+1;/send/s//i&/
+1;/raise/s//i&/
+w
+q
+HERE

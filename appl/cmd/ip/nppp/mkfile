@@ -1,0 +1,24 @@
+<../../../../mkconfig
+
+TARG=\
+	ppplink.dis\
+	pppchat.dis\
+	modem.dis\
+	script.dis\
+#	ppptest.dis\
+
+MODULES=\
+	modem.m\
+	script.m\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	tk.m\
+	dict.m\
+	string.m\
+	lock.m\
+
+DISBIN=$ROOT/dis/ip/nppp
+
+<$ROOT/mkfiles/mkdis

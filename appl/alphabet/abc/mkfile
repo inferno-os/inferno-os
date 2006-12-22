@@ -1,0 +1,29 @@
+<../../../mkconfig
+
+TARG=\
+	abc.dis\
+	autoconvert.dis\
+	autodeclare.dis\
+	declare.dis\
+	declares.dis\
+	define.dis\
+	eval.dis\
+	import.dis\
+	rewrite.dis\
+	type.dis\
+	typeset.dis\
+	undeclare.dis\
+
+SYSMODULES=\
+	alphabet.m\
+	draw.m\
+	alphabet/abc.m\
+	alphabet/reports.m\
+	sh.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/alphabet/abc
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS

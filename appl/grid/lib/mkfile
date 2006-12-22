@@ -1,0 +1,27 @@
+<../../../mkconfig
+
+TARG=	announce.dis\
+		browser.dis\
+		fbrowse.dis\
+		srvbrowse.dis\
+
+MODULES=\
+
+SYSMODULES= \
+	draw.m\
+	grid/announce.m\
+	grid/browser.m\
+	grid/fbrowse.m\
+	grid/pathreader.m\
+	grid/srvbrowse.m\
+	readdir.m\
+	registries.m\
+	sh.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+	workdir.m\
+
+DISBIN=$ROOT/dis/grid/lib
+
+<$ROOT/mkfiles/mkdis

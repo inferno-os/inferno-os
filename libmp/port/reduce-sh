@@ -1,0 +1,13 @@
+O=$1
+shift
+nonport=$1
+shift
+
+for i in $*
+do
+	j=`echo $i | sed 's/\.'$O'//'`
+	if test ! -f ../$nonport/$j.c -a ! -f ../$nonport/$j.s -a ! -f ../$nonport/$j.spp
+	then
+		echo $i
+	fi
+done

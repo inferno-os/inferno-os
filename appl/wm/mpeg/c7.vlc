@@ -1,0 +1,4 @@
+# Run/Level continuation 7
+# vlc -cfp c7 < c7.vlc > c7.tab
+0s	1,14
+1s	2,4

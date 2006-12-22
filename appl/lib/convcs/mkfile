@@ -1,0 +1,27 @@
+<../../../mkconfig
+
+TARG=\
+	8bit_stob.dis\
+	big5_btos.dis\
+	big5_stob.dis\
+	convcs.dis\
+	cp932_btos.dis\
+	cp_btos.dis\
+	cp_stob.dis\
+	euc-jp_btos.dis\
+	gb2312_btos.dis\
+	utf8_btos.dis\
+	utf8_stob.dis\
+
+MODULES=\
+
+SYSMODULES= \
+	bufio.m\
+	cfg.m\
+	convcs.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/lib/convcs
+
+<$ROOT/mkfiles/mkdis

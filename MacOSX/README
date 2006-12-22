@@ -1,0 +1,66 @@
+12-Dec-2003
+Emu can use wm with Apple's X11R6 again.
+
+08-Dec-2003
+Inferno Services (6660, 6666-6676, 2202)
+
+26-Aug-2003
+In order to run and use Inferno services appropriately on OSX, you need to ensure that the Sharing System Preferences include an entry in the Firewall section that is turned on and looks like the following line:
+
+Inferno services (6660, 6666-6674)
+
+
+05-Jul-2003
+In order to support 1.4, the build will now use the default 'mk' provided with the Inferno distribution.  You can also copy tcshrc to the Inferno ROOT and source the file from that directory before running or building emu.  Modified mkfiles and sources are now available in the srcMacOSX archive.  You may also want to change 'mkconfig' with the following diff
+
+% cvs diff -r 1.1 mkconfig
+Index: mkconfig
+===================================================================
+RCS file: /usr/local/Repository/cvs/vitanuova/inferno_v14/mkconfig,v
+retrieving revision 1.1
+retrieving revision 1.3
+diff -r1.1 -r1.3
+7c7
+< ROOT=/usr/inferno
+---
+> ROOT=$ROOT
+17c17
+< SYSHOST=Plan9         # build system OS type (Hp, Inferno, Irix, Linux, Nt, Plan9, Solaris)
+---
+> SYSHOST=MacOSX                # build system OS type (Hp, Inferno, Irix, Linux, Nt, Plan9, Solaris)
+25c25
+< OBJTYPE=$objtype
+---
+> OBJTYPE=power
+
+
+
+16-May-2003
+
+The build now uses the open sourced 'mk' from http://www.pdos.lcs.mit.edu/~rsc/software/
+
+There is a file .tcshrc at the root of this tree (..) that can be used to set up the environment required to build emu.
+
+
+
+28-Feb-2001
+
+The initial port has been provided by Corpus Callosum Corporation.
+
+This port of Inferno for Darwin, Mac OS X, and Mac OS X Server hosted environments currently provides base 'emu' support.  Wm, audio, and other services are not currently ported.  It has only been tested on UFS partitions and will require further testing for HFS+ support.
+
+Emu -c1 currently errors out as "Illegal instruction"
+
+Various malloc/free (from libc/System on Mac OS X/Darwin) warnings should be removed in the following version.
+
+eia devices will recognize /dev/ttyd.irda and /dev/ttyd.modem though both are completely untested (need to get updates to the RCX interface to test irda).
+
+The following modification was added to various 'mkfile' to support required redefinition of varios core functions.
+
+	<$ROOT/mkfiles/mkalloc-$SYSHOST-$OBJTYPE
+
+Some of the base libraries and utils will have *.pbproj files which were used to bootstrap the initial build system on Mac OS X (Public Beta).
+
+
+
+"Mac OS X" and "Mac OS X Server" are trade marks of Apple Computer, Inc.

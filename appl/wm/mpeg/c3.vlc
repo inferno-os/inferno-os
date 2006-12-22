@@ -1,0 +1,10 @@
+# Run/Level continuation 3
+# vlc -cfp c3 < c3.vlc > c3.tab
+101s	8,0
+000s	9,0
+011s	5,1
+100s	3,3
+110s	2,6
+111s	1,17
+010s	1,18
+001s	1,19

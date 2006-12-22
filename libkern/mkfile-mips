@@ -1,0 +1,13 @@
+#
+#	mips-specific files
+#
+TARGFILES=\
+	frexp-mips.$O\
+	getfcr-mips.$O\
+	memmove-mips.$O\
+	memset-mips.$O\
+	nan-mips.$O\
+	strchr-mips.$O\
+	vlop-mips.$O\
+	vlrt-mips.$O\
+

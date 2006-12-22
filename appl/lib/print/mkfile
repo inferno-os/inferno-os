@@ -1,0 +1,26 @@
+
+<../../../mkconfig
+
+TARG=\
+	print.dis \
+	hp_driver.dis \
+	scaler.dis \
+
+
+MODULES=\
+	scaler.m \
+
+
+SYSMODULES= \
+	bufio.m\
+	draw.m\
+	string.m\
+	sys.m\
+	print.m \
+
+
+DISBIN=$ROOT/dis/lib/print
+
+<$ROOT/mkfiles/mkdis
+# force compilation or it's very slow
+LIMBOFLAGS= -c $LIMBOFLAGS

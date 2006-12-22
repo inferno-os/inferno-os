@@ -1,0 +1,13 @@
+#
+#	sparc-specific files
+#
+TARGFILES=\
+	frexp-sparc.$O\
+	getfcr-sparc.$O\
+	memmove-sparc.$O\
+	memset-sparc.$O\
+	nan-sparc.$O\
+	strchr-sparc.$O\
+	vlop-sparc.$O\
+	vlrt-sparc.$O\
+

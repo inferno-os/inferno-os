@@ -1,0 +1,90 @@
+<../../mkconfig
+
+DIRS=\
+	acme\
+
+TARG=\
+	acme.dis\
+	dat.dis\
+	buff.dis\
+	col.dis\
+	disk.dis\
+	exec.dis\
+	file.dis\
+	fsys.dis\
+	look.dis\
+	regx.dis\
+	row.dis\
+	scrl.dis\
+	text.dis\
+	time.dis\
+	util.dis\
+	wind.dis\
+	graph.dis\
+	xfid.dis\
+	gui.dis\
+	frame.dis\
+	edit.dis\
+	ecmd.dis\
+	elog.dis\
+	styxaux.dis\
+
+ICONS=\
+	abcde.bit\
+
+MODULES=\
+	acme.m\
+	buff.m\
+	col.m\
+	disk.m\
+	exec.m\
+	file.m\
+	fsys.m\
+	look.m\
+	regx.m\
+	row.m\
+	scrl.m\
+	text.m\
+	time.m\
+	util.m\
+	wind.m\
+	xfid.m\
+	common.m\
+	graph.m\
+	gui.m\
+	frame.m\
+	dat.m\
+	edit.m\
+	elog.m\
+	ecmd.m\
+	styxaux.m\
+
+SYSMODULES=\
+	bufio.m\
+	daytime.m\
+	debug.m\
+	draw.m\
+	sh.m\
+	string.m\
+	styx.m\
+	sys.m\
+	tk.m\
+	workdir.m\
+	wmclient.m\
+
+DISBIN=$ROOT/dis/acme
+
+all:V:	acme.dis
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs
+
+install:V:	$ROOT/dis/acme.dis
+
+$ROOT/dis/acme.dis:	acme.dis
+	rm -f $target && cp acme.dis $target
+
+acme.dis:	$MODULES $SYS_MODULES
+
+nuke:V:
+	rm -f $ROOT/dis/acme.dis

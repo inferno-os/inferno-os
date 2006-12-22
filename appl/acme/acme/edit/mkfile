@@ -1,0 +1,24 @@
+<../../../../mkconfig
+
+BIN=$ROOT/acme/edit
+
+DIRS=\
+	src\
+
+TARG=\
+	guide\
+	readme\
+
+BINTARG=${TARG:%=$BIN/%}
+
+all:V:		$TARG
+
+install:V:	$BINTARG
+
+$BIN/guide : guide
+	rm -f $BIN/guide && cp guide $BIN/guide
+
+$BIN/readme : readme
+	rm -f $BIN/readme && cp readme $BIN/readme
+
+<$ROOT/mkfiles/mksubdirs

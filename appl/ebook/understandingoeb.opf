@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<!DOCTYPE package PUBLIC "+//ISBN 0-9673008-1-9//DTD OEB 1.0.1 Package//EN" "http://openebook.org/dtds/oeb-1.0.1/oebpkg101.dtd">
+<package unique-identifier="understandingoebpackage">
+  <metadata>
+    <dc-metadata xmlns:dc="http://purl.org/dc/elements/1.0/" xmlns:oebpackage="http://openebook.org/namespaces/oeb-package/1.0/">
+      <dc:Title>Understanding OEB</dc:Title>
+			<dc:Type>Tutorial</dc:Type>
+			<dc:Identifier id="understandingoebpackage" scheme="url">http://www.globalmentor.com/publishing/understandingoeb/</dc:Identifier>
+			<dc:Creator role="aut">Garret Wilson</dc:Creator>
+			<dc:Creator role="bkp">Mentor Publishing</dc:Creator>
+			<dc:Creator role="spn">GlobalMentor, Inc.</dc:Creator>
+			<dc:Contributor role="aui">David Ornstein</dc:Contributor>
+			<dc:Rights>Copyright &copy; 2000-2001 Garret Wilson. All Rights Reserved.</dc:Rights>
+			<dc:Date>2001-07-11</dc:Date>
+      <dc:Subject>OEB</dc:Subject>
+      <dc:Subject>eBooks</dc:Subject>
+      <dc:Subject>ePublishing</dc:Subject>
+    </dc-metadata>
+	</metadata>
+  
+  <manifest>
+    <!--OEB Documents-->
+    <item id="title" href="title.html" media-type="text/x-oeb1-document" />
+    <item id="toc" href="toc.html" media-type="text/x-oeb1-document" />
+    <item id="foreword" href="foreword.html" media-type="text/x-oeb1-document" />
+    <item id="preface" href="preface.html" media-type="text/x-oeb1-document" />
+    <item id="chapter1" href="chapter1.html" media-type="text/x-oeb1-document" />
+    <item id="chapter2" href="chapter2.html" media-type="text/x-oeb1-document" />
+    <item id="chapter3" href="chapter3.html" media-type="text/x-oeb1-document" />
+    <item id="chapter4" href="chapter4.html" media-type="text/x-oeb1-document" />
+    <item id="chapter5" href="chapter5.html" media-type="text/x-oeb1-document" />
+    <item id="chapter6" href="chapter6.html" media-type="text/x-oeb1-document" />
+    <!--Images-->
+    <item id="OEBActivityDiagram" href="OEBActivityDiagram.png" media-type="image/png" />
+    <item id="OEBClassDiagram" href="OEBClassDiagram.png" media-type="image/png" />
+    <item id="OEBPublicationClassDiagram" href="OEBPublicationClassDiagram.png" media-type="image/png" />
+    <item id="ReadingSystemClassDiagram" href="ReadingSystemClassDiagram.png" media-type="image/png" />
+  </manifest>
+
+  <spine>
+  	<itemref idref="title" />
+  	<itemref idref="toc" />
+  	<itemref idref="foreword" />
+  	<itemref idref="preface" />
+  	<itemref idref="chapter1" />
+  	<itemref idref="chapter2" />
+  	<itemref idref="chapter3" />
+  	<itemref idref="chapter4" />
+  	<itemref idref="chapter5" />
+  	<itemref idref="chapter6" />
+  </spine>
+
+  <guide>
+    <reference type="toc" title="Table of Contents" href="toc.html" />
+    <reference type="foreword" title="Foreword" href="foreword.html" />
+    <reference type="preface" title="Preface" href="preface.html" />
+    <reference type="other.chapter1" title="Chapter 1" href="chapter1.html" />
+    <reference type="other.chapter2" title="Chapter 2" href="chapter2.html" />
+    <reference type="other.chapter3" title="Chapter 3" href="chapter3.html" />
+    <reference type="other.chapter4" title="Chapter 4" href="chapter4.html" />
+		<reference type="other.chapter5" title="Chapter 5" href="chapter5.html" />
+		<reference type="other.chapter6" title="Chapter 6" href="chapter6.html" />
+  </guide>
+  
+</package>

@@ -1,0 +1,27 @@
+<../../../mkconfig
+
+TARG=\
+		ns.dis\
+
+SHTARG=\
+		runns.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	arg.m\
+	draw.m\
+	sh.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/demo/ns
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

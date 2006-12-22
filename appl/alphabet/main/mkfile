@@ -1,0 +1,36 @@
+<../../../mkconfig
+
+TARG=\
+	auth.dis\
+	cat.dis\
+	create.dis\
+	dial.dis\
+	echo.dis\
+	env.dis\
+	export.dis\
+	fd.dis\
+	filter.dis\
+	mount.dis\
+	par.dis\
+	parse.dis\
+	pretty.dis\
+	print.dis\
+	read.dis\
+	readall.dis\
+	rewrite.dis\
+	seq.dis\
+	unparse.dis\
+	w2fd.dis\
+	wait.dis\
+
+SYSMODULES=\
+	alphabet.m\
+	alphabet/reports.m\
+	draw.m\
+	sh.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/alphabet/main
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS

@@ -1,0 +1,52 @@
+This Inferno® distribution includes software from various sources and
+different portions are therefore subject to different licence terms.
+
+You may copy and redistribute the package as a whole,
+with or without modification, subject to the terms of the Vita Nuova
+Liberal Source Licence (see the file LICENCE), which applies to the
+package as a whole, and to individual components unless otherwise
+specified either in an individual source file or in a NOTICE file
+in a directory or directory tree.  If the terms of that licence are not acceptable,
+you must negotiate other terms with Vita Nuova (www.vitanuova.com).
+
+Individual components (eg, some of the libraries, Freetype, and the
+B&H fonts) might have their own NOTICE and licence files (LICENCE or
+COPYING) that cover their content.  Be sure to read them before
+considering redistribution of them on their own.
+With the exception of the B&H font licence, each is typically
+some variety of Free Software licence.
+
+Where a given section of source code is distributed elsewhere (as a separable component) under
+another licence or licences, and we include it here as well under ours, you can obviously
+regard it as subject to whichever licence you like.
+
+When making non-trivial extracts, or your own modifications, you must
+retain the copyright of the original source file or files (either that
+present in the file or in a NOTICE file covering the directory or
+directories in which the file resides).
+
+The following copyright notice covers the contents of this
+distribution unless otherwise specified by a given file, directory, or
+directory tree:
+
+Inferno® Copyright © 1996-1999 Lucent Technologies Inc.  All rights reserved.
+Inferno revisions Copyright © 1997-1999 Vita Nuova Limited.  All rights reserved.
+Inferno revisions Copyright © 2000-2006 Vita Nuova Holdings Limited.  All rights reserved.
+Inferno new material Copyright © 2000-2006 Vita Nuova Holdings Limited.  All rights reserved.
+
+Inferno, Styx, Dis and Limbo are registered trademarks of Vita Nuova Holdings Limited in the USA and other countries.
+Plan 9 is a registered trademark of Lucent Technologies Inc.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License (`LGPL') as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.

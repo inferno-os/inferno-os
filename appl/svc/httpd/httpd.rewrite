@@ -1,0 +1,10 @@
+# syntax: pattern replacement
+# The most specific pattern wins, and is applied once (no rescanning).
+# Leave off trailing slash if pattern is a directory.
+# Replacements starting with http:// return "Permanently moved" 
+# message.
+# e.g the following line aliases requests for / to requests for
+# /usr/mig/html
+
+# /   /usr/mig/html
+

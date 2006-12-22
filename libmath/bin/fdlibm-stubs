@@ -1,0 +1,71 @@
+echo '#include "real.h"' > real.c
+
+for(i in getFPcontrol getFPstatus){
+	echo 'void'
+	echo 'Real_'$i'(void *fp)'
+	echo '{'
+	echo '	F_Real_'$i' *f;'
+	echo ''
+	echo '	f = fp;'
+	echo ''
+	echo '	*f->ret = '$i'(f->x);'
+	echo '}'
+	echo ''
+} >> real.c
+
+for(i in finite ilogb isnan acos acosh asin asinh atan atanh cbrt ceil cos cosh erf erfc exp expm1 fabs floor j0 j1 log log10 log1p rint sin sinh sqrt tan tanh y0 y1){
+	echo 'void'
+	echo 'Real_'$i'(void *fp)'
+	echo '{'
+	echo '	F_Real_'$i' *f;'
+	echo ''
+	echo '	f = fp;'
+	echo ''
+	echo '	*f->ret = '$i'(f->x);'
+	echo '}'
+	echo ''
+} >> real.c
+
+for(i in fdim fmax fmin fmod hypot nextafter pow){
+	echo 'void'
+	echo 'Real_'$i'(void *fp)'
+	echo '{'
+	echo '	F_Real_'$i' *f;'
+	echo ''
+	echo '	f = fp;'
+	echo ''
+	echo '	*f->ret = '$i'(f->x, f->x);'
+	echo '}'
+	echo ''
+} >> real.c
+
+
+FPcontrol	fn(r, mask: int) of int;
+FPstatus	fn(r, mask: int) of int;
+atan2		fn(y, x: real) of real;
+copysign	fn(x, s: real) of real;
+jn		fn(n: int; x: real) of real;
+lgamma		fn(x: real) of (int,real);
+modf		fn(x: real) of (int,real);
+pow10		fn(p: int) of real;
+remainder	fn(x, p: real) of real;
+scalbn		fn(x: real; n: int) of real;
+yn		fn(n: int; x: real) of real;
+
+dot		fn(x, y: array of real) of real;
+iamax		fn(x: array of real) of int;
+norm1, norm2	fn(x: array of real) of real;
+gemm		fn(transa, transb: byte; m, n, k: int; alpha: real; a: array of real; ai0, aj0, lda: int; b: array of real; bi0, bj0, ldb: int; beta: real; c: array of real; ci0, cj0, ldc: int);
+
+for(i in FPcontrol FPstatus atan2 copysign jn lgamma modf pow10 remainder scalbn yn  dot iamax norm1, norm2 gemm){
+	echo 'void'
+	echo 'Real_'$i'(void *fp)'
+	echo '{'
+	echo '	F_Real_'$i' *f;'
+	echo ''
+	echo '	f = fp;'
+	echo ''
+	echo '	*f->ret = '$i'(f->x, f->x);'
+	echo '}'
+	echo ''
+} >> real.c

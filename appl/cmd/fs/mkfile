@@ -1,0 +1,60 @@
+<../../../mkconfig
+# fs write /n/local/n/fossil/usr/inferno {filter {and {not {or *.dis *.sbl}} {path /appl/cmd/fs /module/fslib.m /appl/lib/fslib.b /appl/cmd/fs.b /man/1/fs}} /}
+TARG=\
+	and.dis\
+	bundle.dis\
+	chstat.dis\
+	compose.dis\
+	depth.dis\
+	entries.dis\
+	eval.dis\
+	exec.dis\
+	filter.dis\
+	ls.dis\
+	match.dis\
+	merge.dis\
+	mergewrite.dis\
+	mode.dis\
+	not.dis\
+	or.dis\
+	path.dis\
+	pipe.dis\
+	print.dis\
+	proto.dis\
+	query.dis\
+	run.dis\
+	select.dis\
+	setroot.dis\
+	size.dis\
+	unbundle.dis\
+	walk.dis\
+	write.dis\
+	void.dis\
+
+
+INS=	${TARG:%=$ROOT/dis/fs/%}
+
+SYSMODULES=\
+	bufio.m\
+	draw.m\
+	sh.m\
+	sys.m\
+	bundle.m\
+	fslib.m\
+
+DISBIN=$ROOT/dis/fs
+
+<$ROOT/mkfiles/mkdis
+
+all:V:		$TARG
+
+install:V:	$INS
+
+nuke:V: clean
+	rm -f $INS
+
+clean:V:
+	rm -f *.dis *.sbl
+
+uninstall:V:
+	rm -f $INS

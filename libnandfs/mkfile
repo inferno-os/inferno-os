@@ -1,0 +1,33 @@
+<../mkconfig
+
+LIB=libnandfs.a
+
+OFILES=	\
+		calcformat.$O\
+		correctauxilliary.$O\
+		ecc.$O\
+		eraseblock.$O\
+		extracttags.$O\
+		findfreeblock.$O\
+		formatblock.$O\
+		getblockstatus.$O\
+		hamming31_26.$O\
+		init.$O\
+		markblockbad.$O\
+		open.$O\
+		readblock.$O\
+		readpage.$O\
+		readpageauxilliary.$O\
+		reformatblock.$O\
+		setget.$O\
+		updatepage.$O\
+		writeblock.$O\
+		writepageauxilliary.$O\
+
+HFILES=\
+	$ROOT/include/nandfs.h \
+	$ROOT/include/logfs.h \
+	local.h
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+

@@ -1,0 +1,23 @@
+<../../../mkconfig
+
+TARG=\
+
+SHTARG=\
+		spreeclient.sh\
+
+MODULES=\
+
+SYSMODULES= \
+
+DISBIN=$ROOT/dis/demo/spree
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+all:V: $SHTARG
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

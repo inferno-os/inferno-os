@@ -1,0 +1,20 @@
+<../../../mkconfig
+
+TARG=\
+	ostyx.dis\
+	styxconv.dis\
+	
+MODULES=\
+	ostyx.m\
+	osys.m\
+
+SYSMODULES=\
+	bufio.m\
+	draw.m\
+	styx.m\
+	styxconv.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/lib/styxconv
+
+<$ROOT/mkfiles/mkdis

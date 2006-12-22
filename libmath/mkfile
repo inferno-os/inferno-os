@@ -1,0 +1,67 @@
+<../mkconfig
+
+TARGTYPE=${SYSTARG:os%=Inferno%}		# maps 'os' into 'Inferno'
+
+LIB=libmath.a
+OFILES=\
+	blas.$O\
+	dtoa.$O\
+	fdim.$O\
+	FPcontrol-$TARGTYPE.$O\
+	gemm.$O\
+	g_fmt.$O\
+	gfltconv.$O\
+	pow10.$O\
+	e_acos.$O\
+	e_acosh.$O\
+	e_asin.$O\
+	e_atan2.$O\
+	e_atanh.$O\
+	e_cosh.$O\
+	e_exp.$O\
+	e_fmod.$O\
+	e_hypot.$O\
+	e_j0.$O\
+	e_j1.$O\
+	e_jn.$O\
+	e_lgamma_r.$O\
+	e_log.$O\
+	e_log10.$O\
+	e_pow.$O\
+	e_rem_pio2.$O\
+	e_remainder.$O\
+	e_sinh.$O\
+	e_sqrt.$O\
+	k_cos.$O\
+	k_rem_pio2.$O\
+	k_sin.$O\
+	k_tan.$O\
+	s_asinh.$O\
+	s_atan.$O\
+	s_cbrt.$O\
+	s_ceil.$O\
+	s_copysign.$O\
+	s_cos.$O\
+	s_erf.$O\
+	s_expm1.$O\
+	s_fabs.$O\
+	s_finite.$O\
+	s_floor.$O\
+	s_ilogb.$O\
+	s_isnan.$O\
+	s_log1p.$O\
+	s_nextafter.$O\
+	s_rint.$O\
+	s_scalbn.$O\
+	s_sin.$O\
+	s_tan.$O\
+	s_tanh.$O\
+
+HFILES=\
+	$ROOT/include/mathi.h\
+	fdlibm/fdlibm.h\
+	
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+%.$O:	fdlibm/%.c
+	$CC $CFLAGS -o $target -Ifdlibm fdlibm/$stem.c

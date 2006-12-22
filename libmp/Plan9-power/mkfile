@@ -1,0 +1,20 @@
+objtype=power
+OBJTYPE=$objtype
+<../../mkconfig
+
+LIB=libmp.a
+SFILES=\
+	mpvecadd.s\
+	mpvecdigmuladd.s\
+	mpvecdigmulsub.s\
+	mpvecsub.s\
+
+HFILES=$ROOT/$SYSTARG/$OBJTYPE/include/u.h $ROOT/include/mp.h ../port/dat.h
+
+OFILES=${SFILES:%.s=%.$O}
+
+UPDATE=mkfile\
+	$HFILES\
+	$SFILES\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

@@ -1,0 +1,9 @@
+# vlc mbi
+mbi_size: con 4;
+mbi_bits: con 2;
+mbi_table:= array[] of {
+	(0, UNDEF),
+	(2, 1),
+	(1, 0),
+	(1, 0),
+};

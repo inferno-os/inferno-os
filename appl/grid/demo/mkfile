@@ -1,0 +1,32 @@
+<../../../mkconfig
+
+TARG=\
+	block.dis\
+	blur.dis\
+
+MODULES=\
+
+SYSMODULES=\
+	daytime.m\
+	draw.m\
+	grid/demo/block.m\
+	grid/demo/exproc.m\
+	readdir.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+
+DISBIN=$ROOT/dis/grid/demo
+
+<$ROOT/mkfiles/mkdis
+
+$ROOT/dis/grid/demo/blur.dis:	blur.dis
+	rm -f $target && cp blur.dis $target
+$ROOT/dis/grid/demo/block.dis:	block.dis
+	rm -f $target && cp block.dis $target
+
+blur.dis:	blur.b $MODULE $SYS_MODULE
+	limbo $LIMBOFLAGS -c -gw blur.b
+
+block.dis:	block.b $MODULE $SYS_MODULE
+	limbo $LIMBOFLAGS -c -gw block.b

@@ -1,0 +1,78 @@
+<../../../mkconfig
+
+TARG=	mash.dis\
+	mashlib.dis\
+	mashparse.dis\
+	builtins.dis\
+	history.dis\
+	make.dis\
+
+INS=	$ROOT/dis/mash.dis\
+	$ROOT/dis/lib/mashlib.dis\
+	$ROOT/dis/lib/mashparse.dis\
+	$ROOT/dis/lib/mash/builtins.dis\
+	$ROOT/dis/lib/mash/history.dis\
+	$ROOT/dis/lib/mash/make.dis\
+
+MODULES=\
+	mash.m\
+	mashparse.m\
+
+SYSMODULES=\
+	bufio.m\
+	draw.m\
+	filepat.m\
+	hash.m\
+	regex.m\
+	sh.m\
+	string.m\
+	sys.m\
+
+LIBSRC=\
+	depends.b\
+	dump.b\
+	exec.b\
+	expr.b\
+	lex.b\
+	misc.b\
+	serve.b\
+	symb.b\
+	xeq.b\
+
+all:V:		$TARG
+
+install:V:	$INS
+
+nuke:V: clean
+	rm -f $INS
+
+clean:V:
+	rm -f *.dis *.sbl
+
+uninstall:V:
+	rm -f $INS
+
+MODDIR=$ROOT/module
+SYS_MODULE=${SYSMODULES:%=$MODDIR/%}
+LIMBOFLAGS=-I$MODDIR
+
+$ROOT/dis/mash.dis:	mash.dis
+	rm -f $ROOT/dis/mash.dis && cp mash.dis $ROOT/dis/mash.dis
+
+$ROOT/dis/lib/mashlib.dis:	mashlib.dis
+	rm -f $ROOT/dis/mashlib.dis && cp mashlib.dis $ROOT/dis/lib/mashlib.dis
+
+$ROOT/dis/lib/mashparse.dis:	mashparse.dis
+	rm -f $ROOT/dis/mashparse.dis && cp mashparse.dis $ROOT/dis/lib/mashparse.dis
+
+$ROOT/dis/lib/mash/%.dis:	%.dis
+	rm -f $ROOT/dis/$stem.dis && cp $stem.dis $ROOT/dis/lib/mash/$stem.dis
+
+%.dis:		$MODULES $SYS_MODULE
+mashlib.dis:	$LIBSRC
+
+%.dis:		%.b
+	limbo $LIMBOFLAGS -gw $stem.b
+
+%.s:		%.b
+	limbo $LIMBOFLAGS -w -G -S $stem.b

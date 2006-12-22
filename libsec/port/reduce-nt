@@ -1,0 +1,4 @@
+# for now, just return the input files
+shift	# $O
+shift	# $SYSTARG-$OBJTYPE
+echo -n $*

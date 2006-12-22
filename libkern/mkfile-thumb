@@ -1,0 +1,12 @@
+#
+#	thumb-specific files
+#
+TARGFILES=\
+	frexp-thumb.$O\
+	getfcr-thumb.$O\
+	memmove-thumb.$O\
+	memset-thumb.$O\
+	nan-thumb.$O\
+	strchr-thumb.$O\
+	vlop-thumb.$O\
+	vlrt-thumb.$O\

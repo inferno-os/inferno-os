@@ -1,0 +1,103 @@
+<../../mkconfig
+
+DIRS=\
+	brutus\
+	camera\
+#	diary\
+	drawmux\
+	ftree\
+	mailtool\
+	mpeg\
+#	minitel\
+
+TARG=\
+	about.dis\
+	avi.dis\
+	bounce.dis\
+	brutus.dis\
+	c4.dis\
+	calendar.dis\
+	clock.dis\
+	coffee.dis\
+	collide.dis\
+	colors.dis\
+	cprof.dis\
+	date.dis\
+	deb.dis\
+	debdata.dis\
+	debsrc.dis\
+	dir.dis\
+	edit.dis\
+	filename.dis\
+	getauthinfo.dis\
+	keyboard.dis\
+	logon.dis\
+	logwindow.dis\
+	man.dis\
+	mand.dis\
+	mash.dis\
+	memory.dis\
+##	mpeg.dis\
+	mprof.dis\
+	pen.dis\
+	polyhedra.dis\
+	prof.dis\
+##	qt.dis\
+	readmail.dis\
+	remotelogon.dis\
+	reversi.dis\
+	rmtdir.dis\
+	rt.dis\
+	sendmail.dis\
+	sh.dis\
+	smenu.dis\
+	snake.dis\
+	stopwatch.dis\
+	sweeper.dis\
+	task.dis\
+	telnet.dis\
+	tetris.dis\
+	toolbar.dis\
+	unibrowse.dis\
+	view.dis\
+	vt.dis\
+	wish.dis\
+	wm.dis\
+	wmplay.dis\
+
+MODULES=\
+	wmdeb.m\
+
+SYSMODULES=\
+	bufio.m\
+	cci.m\
+	daytime.m\
+	debug.m\
+	draw.m\
+	filepat.m\
+	html.m\
+	keyring.m\
+	man.m\
+	mpeg.m\
+	newns.m\
+	plumbmsg.m\
+	quicktime.m\
+	rand.m\
+	readdir.m\
+	riff.m\
+	security.m\
+	sh.m\
+	string.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+	url.m\
+	webget.m\
+	wmclient.m\
+	wmsrv.m\
+	workdir.m\
+
+DISBIN=$ROOT/dis/wm
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs

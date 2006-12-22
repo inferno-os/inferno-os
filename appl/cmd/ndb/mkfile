@@ -1,0 +1,28 @@
+<../../../mkconfig
+
+TARG=\
+	cs.dis\
+	csquery.dis\
+	dns.dis\
+	dnsquery.dis\
+	mkhash.dis\
+	query.dis\
+	registry.dis\
+	regquery.dis\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	bufio.m\
+	arg.m\
+	attrdb.m\
+	ip.m\
+	ipattr.m\
+	styx.m\
+	styxservers.m\
+
+MODULES=\
+
+DISBIN=$ROOT/dis/ndb
+
+<$ROOT/mkfiles/mkdis

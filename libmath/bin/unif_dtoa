@@ -1,0 +1,37 @@
+#!/bin/rc
+test -d /netlib/fp || 9fs netlib
+test -d /n/hati/usr/ehg || 9fs hati
+
+echo '/* derived from /netlib/fp/dtoa.c assuming IEEE, Standard C */' > dtoa.c
+echo '/* kudos to dmg@research.att.com, gripes to ehg@research.att.com */' >> dtoa.c
+echo '#include "lib9.h"' >> dtoa.c
+
+sed 's/^#if defined.IEEE_8087. . defined.IEEE_MC68k.*!= 1/#ifndef IEEE_Arith/
+	s/^#if defined.IEEE_8087. . defined.IEEE_MC68k.*/#ifdef IEEE_Arith/' \
+		/netlib/fp/dtoa.c > /n/hati/usr/ehg/xxx.c
+# undefine __STDC__ because we can't depend on HUGE_VAL
+rx hati 'unifdef -UIBM -UVAX -UKR_headers -U__cplusplus -U__STDC__ -UDEBUG \
+	-UBad_float_h -UJust_16 -UInaccurate_Divide -UROUND_BIASED \
+	-URND_PRODQUOT -DNo_leftright -UCheck_FLT_ROUNDS -D__MATH_H__ \
+	-DUnsigned_Shifts -DMALLOC=Malloc -DCONST=const \
+	-DPack_32 -DIEEE_Arith xxx.c | cb -s' > xxx.c
+sam -d >> dtoa.c >[2] err <<!
+e xxx.c
+1,/include "float\.h"\n/d
+/The following definition of Storeinc/+-;/^#endif\n/d
+/^#define IEEE_Arith\n/+-d
+/When Pack_32 is not defined/+-;/^\n/d
+,s/\n\n\n+/\n\n/g
+,s/\n\(/(/g
+,s/\\\(/\\\n(/g
+,x/IEEE_8087/ c/__LITTLE_ENDIAN/
+,x/^#if / c/#ifdef /
+,x g/errno/d
+,x/MALLOC/ c/malloc/
+,x/Long/ c/long/
+,x/CONST/ c/const/
+w
+q
+!
+cat xxx.c >> dtoa.c
+rm xxx.c

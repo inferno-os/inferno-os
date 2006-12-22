@@ -1,0 +1,28 @@
+<../../../mkconfig
+
+TARG=\
+		wbsrv.dis\
+		whiteboard.dis\
+
+SHTARG=\
+		runwb.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	draw.m\
+	sys.m\
+	tk.m\
+	tkclient.m\
+
+DISBIN=$ROOT/dis/demo/whiteboard
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

@@ -1,0 +1,26 @@
+<../../../../mkconfig
+
+TARG=\
+	fdisk.dis\
+	pedit.dis\
+	prep.dis\
+	calc.tab.dis\
+
+MODULES=\
+	pedit.m\
+
+SYSMODULES=\
+	arg.m\
+	sys.m\
+	draw.m\
+	disks.m\
+	bufio.m\
+	string.m\
+
+DISBIN=$ROOT/dis/disk
+
+<$ROOT/mkfiles/mkdis
+
+# calc
+calc.tab.b:
+	yacc -s calc -d calc.y

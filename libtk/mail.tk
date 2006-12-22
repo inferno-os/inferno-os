@@ -1,0 +1,224 @@
+
+# This is the first screen of the Sun mailtool
+
+# Frame .frame1 contains top-row buttons, label and entry
+# Frame .frame2 contains bottom-row buttons
+frame .frame1 -relief flat -bd 2
+frame .frame1.frame11 -relief flat -bd 2
+frame .frame1.frame12 -relief flat -bd 2
+frame .frame2 -relief flat -bd 2
+frame .frame2.frame21 -relief flat -bd 2
+frame .frame2.frame22 -relief flat -bd 2
+#frame .dummy -width 18c 
+pack .frame1 .frame2 -side top -fill x
+pack .frame2.frame21 -side left -fill x
+pack .frame2.frame22 -side left -fill x
+pack .frame1.frame11 -side left -fill x
+pack .frame1.frame12 -side left -fill x
+# Scrolltext frame
+frame .frame3 -relief sunken -bd 2
+frame .frame3.frame
+
+# File View Edit Compose buttons and associated menus
+
+# Build File button
+menubutton .frame1.frame11.file -text {File} -relief raised -width 8 \    	
+        -menu {.frame1.frame11.file.menu}
+
+# Build File-menu 
+menu .frame1.frame11.file.menu 
+.frame1.frame11.file.menu add command \
+    -label {Load In-Box} \
+    -state {active}
+.frame1.frame11.file.menu add command \
+    -label {Print}
+.frame1.frame11.file.menu add command \
+    -label {Save Changes}
+.frame1.frame11.file.menu add command \
+    -label {Done}
+.frame1.frame11.file.menu add command \
+    -label {Mail Files...}
+
+# Build View button
+menubutton .frame1.frame11.view -text {View} -relief raised -width 8 \
+        -menu {.frame1.frame11.view.menu}
+
+# Build View-menu
+menu .frame1.frame11.view.menu 
+
+.frame1.frame11.view.menu add command \
+    -label {Messages}
+.frame1.frame11.view.menu add command \
+    -label {Previous}
+.frame1.frame11.view.menu add command \
+    -label {Next} \
+    -state {active}
+.frame1.frame11.view.menu add command \
+    -label {Sort By}
+.frame1.frame11.view.menu add command \
+    -label {Find...}
+
+# Build Edit button
+menubutton .frame1.frame11.edit -text {Edit} -relief raised -width 8 \
+        -menu {.frame1.frame11.edit.menu}
+
+# Build Edit-menu
+  menu .frame1.frame11.edit.menu 
+  .frame1.frame11.edit.menu add command \
+    -label {Cut}
+  .frame1.frame11.edit.menu add command \
+    -label {Copy}
+  .frame1.frame11.edit.menu add command \
+    -label {Delete}
+  .frame1.frame11.edit.menu add command \
+    -label {Undelete}
+  .frame1.frame11.edit.menu add separator
+  .frame1.frame11.edit.menu add command \
+    -label {Properties....}
+
+
+# Build Compose button
+menubutton .frame1.frame11.compose -text {Compose} -relief raised -width 12 \
+        -menu {.frame1.frame11.compose.menu}
+
+# Build Compose-menu
+  menu .frame1.frame11.compose.menu 
+  .frame1.frame11.compose.menu add command \
+    -label {New}
+  .frame1.frame11.compose.menu add command \
+    -label {Reply}
+  .frame1.frame11.compose.menu add command \
+    -label {Forward}
+  .frame1.frame11.compose.menu add separator
+  .frame1.frame11.compose.menu add command \
+    -label { Vacation}
+
+# Pack the buttons File, View, Edit, Compose
+pack .frame1.frame11.file \
+    .frame1.frame11.view \
+    .frame1.frame11.edit \
+    .frame1.frame11.compose \
+     -side left 
+
+update
+
+# Build Done, Next, Delete, Reply buttons and associated menus
+# Build Done button
+menubutton .frame2.frame21.done -text {Done} -relief raised  -width 8 \
+	-menu {.frame2.frame21.done.menu}
+
+# Build Done-menu (empty)
+menu .frame2.frame21.done.menu
+
+# Build Next button
+menubutton .frame2.frame21.next -text {Next} -relief raised  -width 8 \
+         -menu {.frame2.frame21.next.menu}
+
+# Build Next-menu (empty)
+menu .frame2.frame21.next.menu
+
+# Build Delete button
+menubutton .frame2.frame21.delete -text {Delete} -relief raised -width 8 \
+        -menu {.frame2.frame21.delete.menu}
+
+# Build Delete-menu (empty)
+menu .frame2.frame21.delete.menu
+
+# Build Reply button
+menubutton .frame2.frame21.reply -text {Reply} -relief raised -width 12 \
+        -menu {.frame2.frame21.reply.menu}
+
+# Build Reply-menu
+menu .frame2.frame21.reply.menu 
+  .frame2.frame21.reply.menu add command \
+    -label {To Sender}
+  .frame2.frame21.reply.menu add command \
+    -label {To All}
+  .frame2.frame21.reply.menu add command \
+    -label {To Sender, Include}
+  .frame2.frame21.reply.menu add command \
+    -label {To All, Include}
+
+# Pack buttons Done, Next, Delete, Reply
+pack .frame2.frame21.done \
+    .frame2.frame21.next \
+    .frame2.frame21.delete \
+    .frame2.frame21.reply \
+     -side left 
+
+update
+
+# Build buttons Move, Copy, Load and associated menus
+menubutton .frame2.frame22.move -text {Move} -relief raised -width 8 \
+        -menu {.frame2.frame22.move.menu}
+menu .frame2.frame22.move.menu 
+.frame2.frame22.move.menu add command \
+    -label {Entry}
+
+menubutton .frame2.frame22.copy -text {Copy} -relief raised -width 8 \
+        -menu {.frame2.frame22.copy.menu}
+menu .frame2.frame22.copy.menu
+.frame2.frame22.copy.menu add command \
+    -label {Entry}
+
+menubutton .frame2.frame22.load -text {Load} -relief raised -width 8 \
+        -menu {.frame2.frame22.load.menu}
+menu .frame2.frame22.load.menu
+.frame2.frame22.load.menu add command \
+    -label {Entry}
+
+pack .frame2.frame22.move \
+    .frame2.frame22.copy \
+    .frame2.frame22.load \
+     -side left -fill x
+
+update
+
+# Build Mail-File label and Dir-Path entry widgets 
+label .frame1.frame12.lab_mailfile -relief flat -text {Mail File:   }
+entry .frame1.frame12.entry_mailfile -width 30 -relief sunken -bd 2 
+pack .frame1.frame12.entry_mailfile -side right 
+pack .frame1.frame12.lab_mailfile  -side left 
+
+update
+
+# Build scrolltext w/ scrollbars
+scrollbar .frame3.frame.scrollbar1 \
+	-command {.frame3.frame.listbox1 xview} \
+	-orient {horizontal} \
+    	-relief {raised}
+scrollbar .frame3.frame.scrollbar2 \
+	-command {.frame3.frame.listbox1 yview} \
+	-relief {raised}
+text .frame3.frame.listbox1 \
+	-relief {raised} \
+	-xscrollcommand {.frame3.frame.scrollbar1 set} \
+    	-yscrollcommand {.frame3.frame.scrollbar2 set}
+.frame3.frame.listbox1 insert end {Some Text}
+pack .frame3.frame 
+pack .frame3.frame.scrollbar2 -side left -fill y 
+pack .frame3.frame.listbox1 -side top -expand 1 -fill both
+pack .frame3.frame.scrollbar1 -side bottom -fill x
+
+# Pack frame3 to the rest of container frames
+pack .frame3 .frame3.frame -side top -expand 1 -fill both
+
+update
+
+# Build label(???) at the bottom
+label .lab_msgnum -relief flat
+pack .lab_msgnum -side top -fill x
+
+# Now make everything visible
+update
+
+# Enable keyboard traversal of a menu (Is this needed in inferno Tk?) 
+#tk_menuBar .frame1.frame11 .frame1.frame11.file .frame1.frame11.view \
+        #.frame1.frame11.edit .frame1.frame11.compose
+#tk_menuBar .frame2.frame21 .frame2.frame21.done .frame2.frame21.next \
+        #.frame2.frame21.delete .frame2.frame21.reply \
+        #.frame2.frame22 .frame2.frame22.move .frame2.frame22.copy .frame2.frame22.load
+focus .frame1.frame11
+update
+
+

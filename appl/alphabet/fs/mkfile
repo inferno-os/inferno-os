@@ -1,0 +1,55 @@
+<../../../mkconfig
+
+TARG=\
+	and.dis\
+	bundle.dis\
+	chstat.dis\
+	compose.dis\
+	depth.dis\
+	entries.dis\
+	exec.dis\
+	filter.dis\
+	ls.dis\
+	match.dis\
+	merge.dis\
+	mergewrite.dis\
+	mode.dis\
+	newer.dis\
+	not.dis\
+	or.dis\
+	path.dis\
+	pipe.dis\
+	print.dis\
+	proto.dis\
+	query.dis\
+	run.dis\
+	select.dis\
+	setroot.dis\
+	size.dis\
+	unbundle.dis\
+	walk.dis\
+	write.dis\
+
+MODULES=\
+	bundle.m\
+	unbundle.m\
+
+SYSMODULES=\
+	alphabet/fs.m\
+	alphabet/reports.m\
+	bufio.m\
+	bundle.m\
+	daytime.m\
+	draw.m\
+	filepat.m\
+	readdir.m\
+	regex.m\
+	sh.m\
+	string.m\
+	sys.m\
+	unbundle.m\
+
+DISBIN=$ROOT/dis/alphabet/fs
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS

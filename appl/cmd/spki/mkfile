@@ -1,0 +1,22 @@
+<../../../mkconfig
+
+TARG=\
+	verify.dis\
+
+SYSMODULES=\
+	arg.m\
+	keyring.m\
+	security.m\
+	rand.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	string.m\
+	styx.m\
+	styxservers.m\
+	sexprs.m\
+	spki.m\
+
+DISBIN=$ROOT/dis/spki
+
+<$ROOT/mkfiles/mkdis

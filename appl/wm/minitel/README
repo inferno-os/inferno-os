@@ -1,0 +1,209 @@
+Minitel Emulation for Inferno
+
+This directory contains the source of `miniterm', a minitel emulator
+for Inferno.  Miniterm is written in Limbo.  The main components are:
+
+	miniterm.m	- common constants
+	miniterm.b	- terminal emulator, messaging and Minitel `protocol`
+	event.[mb]	- inter-module message format
+	keyb.b		- Minitel keyboard module
+	modem.b		- Minitel modem module
+	screen.b		- Minitel screen module
+	socket.b		- Minitel socket module
+	arg.m 		- basic command line argument handling
+	mdisplay.[mb]	- Videotex display module
+	swkeyb.[mb]	- Minitel aware software keyboard
+
+	fonts.tgz	which expands into:
+
+	fonts/minitel	- external and subfont directory (`bind -b' into /fonts)
+	fonts/minitel/f40x25	- 40 column external font
+	fonts/minitel/14x17
+	fonts/minitel/14x17xoe
+	fonts/minitel/14x17arrow
+	fonts/minitel/f40x25g1	- 40 column semigraphic external font
+	fonts/minitel/vid14x17
+	fonts/minitel/f40x25h	- 40 column double height external font
+	fonts/minitel/14x34
+	fonts/minitel/14x34xoe
+	fonts/minitel/14x34arrow
+	fonts/minitel/f40x25w	- 40 column double width external font
+	fonts/minitel/28x17
+	fonts/minitel/28x17xoe
+	fonts/minitel/28x17arrow
+	fonts/minitel/f40x25s	- 40 column double size external font
+	fonts/minitel/28x34xoe
+	fonts/minitel/28x34arrow
+	fonts/minitel/f80x25	- 80 column external font
+	fonts/minitel/8x12
+	fonts/minitel/8x12xoe
+	fonts/minitel/8x12arrow
+
+The fonts subdirectory should be bound into /fonts:
+	bind -b fonts /fonts
+or the directory fonts/minitel copied to /fonts/minitel before invoking the emulator.
+The names of the external fonts are
+known to the Videotex display module.  Similarly, the files:
+	/dev/modem
+	/dev/modemctl
+are known to the modem module, but you can ignore them if
+(as is almost certain) you are using the Internet-minitel gateway
+and you haven't got appropriate modem hardware anyway.
+
+To build
+	mkdir /usr/inferno/dis/wm/minitel
+	mk install
+
+The code models the structure outlined in the Minitel 1B specification
+provided by France Telecom.  However, much more interpretation was
+required to display the majority of screens currently seen on Minitel.
+Additional information (although sketchy) was found on the Internet by
+searching for Minitel or Videotex and also by examination of the codes
+sent by minitel servers and experimenting with replies.  There must be
+some more up to date information somewhere! 
+
+We don't support downloadable fonts, but correctly filter them out.
+
+The file miniterm.b contains the code for the minitel `terminal' with
+which the other modules communicate.  The keyboard, modem, socket,
+screen and terminal are run as separate threads which communicate by
+calling:
+	send(e: ref Event)
+The clue to the intermodule communication is in Terminal.run which
+does something like:
+	for(;;) {
+		ev =<- t.in =>
+			eva := protocol(ev);
+			while(len eva > 0) {
+				post(eva[0]);
+				eva = eva[1:];
+			}
+		# then deliver any `posted' messages (without blocking)
+	}
+An Event `ev' may typically be an Edata type (say from the modem) or
+an Eproto type for internal interpretation.  In the call:
+	eva := protocol(ev)
+The function protocol() dissects Edata messages to produce an inline
+sequence of Edata and Eproto messages.  The function post() queues
+messages for delivery to the appropriate modules.  For example, data
+from the modem might be destined for the screen and the socket module.
+Messages are queued until they can be delivered. That way the line:
+	ev =<- t.in
+is executed in a timely way and the other modules can be written to
+make blocking writes (via send()) and to service reads when they are
+ready.
+
+In many places in the code lines appear with comments like:
+		if(p.skip < 1 || p.skip > 127)	# 5.0
+These refer to sections of the Minitel specification which explain the
+code.
+
+The mdisplay code provides a Videotex display using Inferno
+primitives.  The screen, keyboard and modem modules interpret data as
+described in the equivalent section of the Minitel specification.  The
+socket module has not been implemented but currently performs a `null'
+function and could easily be added if required.
+
+
+- Namespace
+We always expect the fonts to appear in /fonts and the softmodem
+to appear as /dev/modem and /dev/modemctl.
+
+- Invocation
+If invoked with no argument, miniterm uses the France Telecom
+internet gateway by default (tcp!193.252.252.250!513).
+If the argument starts with `modem' then 
+a direct connection through /dev/modem will be established.
+
+An argument beginning with anything other than `modem' will
+be assumed to be an address suitable for dial(). For example:
+
+	wm/minitel/miniterm tcp!193.252.252.250!513
+
+will connect to the current France Telecom internet server.
+
+For direct connections a modem `init' string and an optional
+phone number can follow the modem prefix, as in:
+
+	wm/minitel/miniterm modem!F3!3615
+
+or
+
+	wm/minitel/miniterm modem!F3!01133836431414
+
+The `F3' is the code which instructs the softmodem to enable V.23
+and needs to be passed when connecting to the FT servers.
+To use pulse dialing instead of tone dialing the phone number
+can be prefixed with a 'P' as in:
+
+	wm/minitel/miniterm modem!F3!P3614
+
+If the parameter specifies a network connection or a direct connection
+with a phone number the software will attempt to connect immediately.
+If Cx/Fin is used to disconnect and then re-connect it will use the
+same IP address for a network connection or prompt for a new
+phone number in the case of a direct connection. When prompting
+for a new number the top row of the screen is used to allow the user
+to edit the last used number. Simple editing is available, and the minitel
+keys do the obvious things.
+
+
+
+** Notes on the 15th December 1998 Release **
+
+- Software keyboard
+A version of the software keyboard which understands some of
+the minitel keyboard mappings is included. For example, hitting 'A' results
+in a capital 'A' on the screen in spite of the Videotex case mapping.
+
+- Minitel function keys
+The minitel keys are displayed on the right hand side of the screen
+in 40 column mode on a network connection 
+and can be swapped to the left hand side by hitting the <- key.
+In direct dial mode and 80 column network mode the keys are
+displayed at the bottom of the screen.
+In network mode they are re-displayed as appropriate on 40 to 80
+column mode changes.
+
+
+Known Omission
+-------------
+- Error Correction (direct dial only)
+There is no screen button to enable error correction in the release.
+If a server asks for error correction it will be enabled. It looks as though
+we need to include a key to enable it. Without it direct dial screens are
+occasionally corrupted.
+
+- Software Keyboard Handling
+We need to add some code to update the software keyboard and
+bring it to the foreground on a mode change.
+
+- Full 80 column support
+I am aware of some screens which don't look correct in 80 column
+mode (and others that do). See `EMAIL' then choose USENET and
+press SUITE a few times. I believe it behaves as specified but as we
+have seen with the 40 column Videotex mode the specification
+is not sufficient to display most of the minitel screens correctly.
+80 column support needs just a little more work.
+It may be, too, that the 80 column font could be made much more
+readable by utilising a few more pixels on the screen now that we
+are able to cover the toolbar.
+
+- Full toolbar integration
+Experimentation will show whether there needs to be more
+integration with the toolbar.
+
+Known Bugs
+----------
+- Softmodem disconnection
+Often, the modem does not hangup correctly.
+
+- Choose `USA' from a network connection
+USA (from a network connection) gives an `iC' in bottom left hand
+corner of screen. Possibly a server issue. Doesn't occur when
+connecting directly. The server is really sending this sequence.
+Both the FT emulator and their explorer plug-in suffer from it too.
+
+
+John Bates
+Vita Nuova Limited

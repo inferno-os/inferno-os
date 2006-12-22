@@ -1,0 +1,18 @@
+<../../../mkconfig
+
+TARG=\
+	ida.dis\
+	idatab.dis\
+
+MODULES=\
+
+SYSMODULES= \
+	ida.m\
+	rand.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/lib/ida
+
+<$ROOT/mkfiles/mkdis
+# force compilation
+LIMBOFLAGS= -c $LIMBOFLAGS

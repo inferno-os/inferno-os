@@ -1,0 +1,14 @@
+<../../../mkconfig
+
+TARG=\
+	qconfig.dis\
+	qflash.dis\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	string.m\
+
+DISBIN=$ROOT/dis/mpc
+
+<$ROOT/mkfiles/mkdis

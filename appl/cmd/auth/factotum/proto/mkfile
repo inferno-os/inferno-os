@@ -1,0 +1,22 @@
+<../../../../../mkconfig
+
+TARG=\
+	p9any.dis\
+	pass.dis\
+
+SYSMODULES=\
+	factotum.m\
+	keyring.m\
+	security.m\
+	rand.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	string.m\
+
+MODULES=\
+	../authio.m\
+
+DISBIN=$ROOT/dis/auth/proto
+
+<$ROOT/mkfiles/mkdis

@@ -1,0 +1,9 @@
+# vlc -cfp c6
+c6_size: con 4;
+c6_bits: con 2;
+c6_table:= array[] of {
+	(4,1),
+	(-4,1),
+	(1,15),
+	(-1,15),
+};

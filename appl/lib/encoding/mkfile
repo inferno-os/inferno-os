@@ -1,0 +1,16 @@
+<../../../mkconfig
+
+TARG=\
+	base16.dis\
+	base32.dis\
+	base32a.dis\
+	base64.dis\
+
+MODULES=\
+
+SYSMODULES= \
+	encoding.m\
+
+DISBIN=$ROOT/dis/lib/encoding
+
+<$ROOT/mkfiles/mkdis

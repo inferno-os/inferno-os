@@ -1,0 +1,21 @@
+<../../../mkconfig
+
+TARG=\
+	endpoints.dis\
+	endpointsrv.dis\
+	rexecsrv.dis\
+	fsfilter.dis\
+
+SYSMODULES=\
+	alphabet.m\
+	alphabet/endpoints.m\
+	alphabet/reports.m\
+	draw.m\
+	sh.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/alphabet
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS

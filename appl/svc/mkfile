@@ -1,0 +1,24 @@
+<../../mkconfig
+
+DIRS=\
+	httpd\
+	webget\
+
+SHTARG=\
+	auth.sh\
+	net.sh\
+	registry.sh\
+	rstyx.sh\
+	styx.sh\
+
+BIN=$ROOT/dis/svc
+
+<$ROOT/mkfiles/mksubdirs
+
+SHFILES=${SHTARG:%.sh=$BIN/%}
+install:V:	$SHFILES
+%.install:V:	$BIN/%
+%.installall:V:	$BIN/%
+
+$BIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

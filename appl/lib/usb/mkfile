@@ -1,0 +1,16 @@
+<../../../mkconfig
+
+TARG=\
+	usb.dis\
+	usbmouse.dis\
+	usbmct.dis\
+	usbmass.dis
+
+MODULES=
+
+SYSMODULES= \
+	usb.m\
+
+DISBIN=$ROOT/dis/lib/usb
+
+<$ROOT/mkfiles/mkdis

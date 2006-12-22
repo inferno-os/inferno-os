@@ -1,0 +1,24 @@
+<../../../mkconfig
+
+TARG=\
+	excerpt.dis\
+	image.dis\
+	mod.dis\
+	table.dis\
+
+MODULES=\
+
+SYSMODULES=\
+	brutus.m\
+	brutusext.m\
+	bufio.m\
+	draw.m\
+	html.m\
+	imagefile.m\
+	pslib.m\
+	regex.m\
+	string.m\
+
+DISBIN=$ROOT/dis/wm/brutus
+
+<$ROOT/mkfiles/mkdis

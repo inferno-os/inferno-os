@@ -1,0 +1,31 @@
+<../../../mkconfig
+
+TARG=\
+		odbcmnt.dis\
+
+SHTARG=\
+		runodbc.sh\
+
+MODULES=\
+
+SYSMODULES= \
+	arg.m\
+	convcs.m\
+	daytime.m\
+	draw.m\
+	string.m\
+	styx.m\
+	styxservers.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/demo/odbc
+
+<$ROOT/mkfiles/mkdis
+
+SHFILES=${SHTARG:%.sh=$DISBIN/%}
+install:V:	$SHFILES
+%.install:V:	$DISBIN/%
+%.installall:V:	$DISBIN/%
+
+$DISBIN/%:	%.sh
+	cp $stem.sh $target && chmod a+rx $target

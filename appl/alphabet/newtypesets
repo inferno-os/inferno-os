@@ -1,0 +1,229 @@
+arithmetic typeset:
+	
+		int
+		big
+		real
+	
+	i+i int int -> int
+	
+	{(int); {i+i $1 10}}
+	
+	
+	
+	{i+i 12 34} | {i*i 10} | {
+	
+	Expr: adt {
+		pick {
+		Op =>
+			op: int;
+			l: ref Expr;
+			r: ref Expr;
+		Int =>
+			i: int;
+		Big =>
+			i: big;
+		Real =>
+			i: real;
+		}
+	};
+	
+	+ {int 12} {
+	
+	when we come to run the expression, say in module
+	generate limbo code containing function
+	
+		gen(hd args);
+		gen("+");
+		gen(hd tl args);
+		compile();
+	
+	output limbo code might look like:
+	
+	implement M;
+	M: module {
+		f: fn(a, b: int): int;
+	};
+	
+	f(a, b: int): int
+	{
+		return (a + 
+
+graphics:
+
+	rect point point -> rect
+	point string string -> point
+
+	x point -> string
+	y point -> string
+
+	r string [string...] -> rect
+	r.canon rect -> rect
+	r.min rect -> point
+	r.max rect -> point
+	r.dx rect -> string
+	r.dy rect -> string
+	r.combine rect rect -> rect
+	r+p rect point -> rect
+	r-p rect point -> rect
+	r.inset rect string -> rect
+
+	image [-r] [-b string] [-c string] rect -> image
+	draw [-o string] image point image -> image
+	win [-t string] rect -> image
+	
+	tkwin [-t string] rect -> tk
+	tk tk string -> tk
+
+{(rect); r {min $1|x} {min $1|y} {max $1|x} {max $1|y}}
+
+if we wish to be at all efficient, we need to deal with chans
+not single values.
+
+	r: chan of Rect;
+
+or do we?
+if we had some way of expressing combinations
+of external modules, then perhaps an external
+typeset could do a reasonable job of interpreting stuff.
+
+if a typeset can build expressions bottom-up, incrementally
+out of its own components...
+
+when we're rewriting an expression, we could rewrite it
+in terms of module units provided by the underlying
+typeset... when we ask to find a module, the typeset
+can return some other info as well
+
+we can give the underlying typeset an opportunity
+to optimise the expression, if some of its arguments are
+modules from the same typeset, or from a parent/grandparent
+typeset.
+
+on Load, the typeset could be given expressions representing
+each of its arguments. it then has the opportunity to rewrite
+this whole expression, yielding a module customised for the
+particular arguments it's been given.
+
+perhaps a typeset could assign ids to each module it has returned,
+so that it could easily look up...
+of course, the arguments to the expression consist either
+of modules external to the typeset (no optimisation possible),
+or of modules that have already been loaded by the typeset
+(or by its parent), in which case we can retrieve info on them
+and decide what sort of optimisation might be possible.
+
+there's a moment when you should actually have
+the opportunity to compile optimised code
+(when the expression is passed to another typeset's module?)
+
+---
+
+what about expression types, and allowing access to expressions
+from within the context of a particular typeset.
+
+perhaps any typeset could be treated as the root
+typeset for the purposes of a particular expression evaluation:
+
+what about
+
+	{(/grid/data /fs/fs)
+		/grid/local $1 |
+		/fs/unbundle |
+		/fs/merge $2
+	}
+
+when we wish to pass $1 and $2 from our own program?
+
+rewritten:
+	/fs/merge {/fs/unbundle {/grid/local $1}} $2}
+
+so reduces to
+
+	fd := {grid/local $1}						# in /grid/typeset
+	result := {/fs/merge {/fs/unbundle $fd} $2}	# in /fs typeset
+
+maybe not possible. (bollocks)
+
+---
+
+typeset for the control library.
+
+
+decl {
+	declare read (string >> fd)
+	define hello (string >> fd) {(string); read $1}
+	
+
+abc typeset
+
+	declare [-t string] abc string string -> abc
+	typeset abc string -> abc
+	define abc string cmd -> abc
+	eval abc cmd -> any
+
+{
+	abc |
+	declare read (string >> fd) |
+	define wc (fd >> fd) |
+	define readfile {(>>fd); read /tmp/blah}
+} | {(abc);
+	eval $1 "{
+		read 
+
+compile string >> expr
+
+compile string >> (abc string >> expr)
+
+compile '100 + 12 * sin($1)'
+
+
+transform fd (string >> string) >> fd
+
+
+----
+
+descendant typesets problem...
+
+we can't tell which types are identical.
+
+when we load a typeset, we have to look at its parent
+typeset and use its types if the typec characters are contained there.
+
+
+---- 
+
+if we allow expression types, we have to be very careful...
+can get recursion (equivalent to Y-combinator in λ calculus):
+
+declare eval (cmd->cmd) [(cmd->cmd)...] -> (cmd->cmd)
+
+{((cmd->cmd)->(cmd->cmd))
+	{((cmd->cmd)->(cmd->cmd))
+		eval $1 $1
+	} "{((cmd->cmd)->(cmd->cmd))
+		eval $1 $1
+	}
+}
+
+note this isn't possible without an eval operator and/or
+something that admits a cyclic expression type evaluation.
+
+note also that if this was done in the current implementation,
+it would just hang, as two runs can't be outstanding at the same time (monitor channel).
+
+-----
+
+records:
+
+apply1 records (data -> status) -> records
+apply records (data -> status) -> status
+
+filter records (data -> data) -> records
+filter1 records (data -> data) -> records
+
+discard records -> status
+
+| apply1 "{
+	| data2fd | /fs/unbundle | /fs/write somewhere
+} | apply "{
+	| 

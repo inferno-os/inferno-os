@@ -1,0 +1,41 @@
+<../mkconfig
+
+TARG=limbo
+
+OFILES=	asm.$O\
+	com.$O\
+	decls.$O\
+	dis.$O\
+	dtocanon.$O\
+	ecom.$O\
+	gen.$O\
+	lex.$O\
+	nodes.$O\
+	optab.$O\
+	optim.$O\
+	sbl.$O\
+	stubs.$O\
+	typecheck.$O\
+	types.$O\
+	y.tab.$O\
+
+HFILES=	limbo.h\
+	fns.h\
+	y.tab.h\
+	$ROOT/include/interp.h\
+	$ROOT/include/isa.h\
+
+LIBS=	bio\
+	math\
+	sec\
+	mp\
+	9\
+
+YFILES=	limbo.y
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS='-DINCPATH="'$ROOT/module'"' $CFLAGS
+YFLAGS=-d

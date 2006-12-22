@@ -1,0 +1,8 @@
+#
+#	spim-specific files
+#
+TARGFILES=\
+	getfcr-spim.$O\
+	memmove-spim.$O\
+	memset-spim.$O\
+	strchr-spim.$O\

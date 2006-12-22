@@ -1,0 +1,48 @@
+==========graph.b, gr.b================
+
+I believe scientific authors and readers are best served by a
+minimalist approach that makes all plots look boringly alike, except
+for the data content. Here is a library that does the task of
+accumulating data to find a bounding box and then draws the curves,
+points, and text surrounded by readable axes.
+
+The command   appl/math/graph.dis  is meant to be launched from wm and
+then provided a file containing (x,y) pairs.  There are no options.
+
+The library version, appl/math/gr.b, is a little more flexible.
+
+Include gr.m and call p := GR->open().  To draw a curve, call
+   p.graph(x,y)
+where x and y are of real arrays. To add the string s at a point (u,v), call
+   p.text(j,s,u,v)
+where j is LJUST, CENTER, or RJUST to indicate whether the left, middle,
+or right of the string should be at (u,v) plus one of HIGH, MED, BASE, or LOW
+to indicate where the baseline of the text should be relative to (u,v).
+To get text running in the y direction, add UP. To enforce the
+same scaling in x and y, call   p.equalxy().
+
+To change from the default solid line, call
+   p.pen(j) where j is one
+of the symbols: DASHED, DOTTED, REFERENCE, SOLID, 
+CIRCLE, CROSS, or INVIS. A CIRCLE and CROSS
+"pen" just puts markers at the points, and doesn't connect with line
+segments. A REFERENCE line is lighter than other lines. DASHED
+curve follows the curve even within one dash, and preserves arclength of
+dashes and spaces. An INVIS line is sometimes handy as "strut" for
+maintaining a consistent scale across a series of plots.
+
+Finally, call
+   p.out(p,"xlabel","xunit","ylabel","yunit")
+to put out the curves and text in PostScript on standard output.
+Axes are produced with "Guggenheim slash notation," in which the user
+variable is divided by scaled units to get dimensionless numbers of
+reasonable magnitude.
+
+The function
+	name := p.getfilename();
+opens a dialog box to get a filename from the user and update the titlebar;
+	p.bye();
+pauses until the user clicks the "X" exit button in the titlebar.
+
+
+<ehg@bell-labs.com> 16 May 1996

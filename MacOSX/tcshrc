@@ -1,0 +1,12 @@
+#
+# needed for the build process
+#
+set path=( $path `pwd`/MacOSX/power/bin )
+
+setenv EMU "-r`pwd` -g1024x768"
+
+setenv ROOT `pwd`
+setenv SYSHOST MacOSX
+setenv OBJTYPE power
+setenv ACIDLIB $ROOT/lib/acid
+

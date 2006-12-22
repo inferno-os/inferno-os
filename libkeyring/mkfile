@@ -1,0 +1,17 @@
+<../mkconfig
+
+LIB=libkeyring.a
+
+OFILES=\
+	dsaalg.$O\
+	egalg.$O\
+	rsaalg.$O
+
+HFILES=\
+	$ROOT/include/mp.h\
+	$ROOT/include/libsec.h\
+	$ROOT/libinterp/runt.h\
+	$ROOT/include/interp.h\
+	keys.h\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE

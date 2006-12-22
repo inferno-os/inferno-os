@@ -1,0 +1,49 @@
+<../../mkconfig
+DIRS=\
+	typesets\
+	auxi\
+	abc\
+	fs\
+	grid\
+	main\
+
+TARG=\
+	alphabet.dis\
+	alphabet.shmod.dis\
+	eval.dis\
+	extvalues.dis\
+	proxy.dis\
+	reports.dis\
+
+INS=${TARG:%=$ROOT/dis/alphabet/%} \
+	$ROOT/dis/sh/alphabet.dis
+
+MODULES=\
+
+SYSMODULES=\
+	alphabet.m\
+	alphabet/abc.m\
+	alphabet/reports.m\
+	draw.m\
+	readdir.m\
+	sets.m\
+	sh.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/alphabet
+
+<$ROOT/mkfiles/mkdis
+LIMBOFLAGS=-F $LIMBOFLAGS
+install:V:	$INS
+
+nuke:V: clean
+	rm -f $INS
+
+uninstall:V:
+	rm -f $INS
+
+$ROOT/dis/sh/alphabet.dis: alphabet.shmod.dis
+	rm -f $ROOT/dis/sh/alphabet.dis && cp alphabet.shmod.dis $ROOT/dis/sh/alphabet.dis
+
+<$ROOT/mkfiles/mksubdirs
+

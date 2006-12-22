@@ -1,0 +1,49 @@
+<../mkconfig
+
+LIB=libfreetype.a
+
+OFILES=\
+	freetype.$O\
+	autohint.$O\
+	ftbase.$O\
+	ftglyph.$O\
+	cff.$O\
+	psaux.$O\
+	psnames.$O\
+	raster.$O\
+	sfnt.$O\
+	smooth.$O\
+	truetype.$O\
+	type1.$O\
+	type42.$O\
+	ftsystem_inf.$O\
+	ftinit.$O\
+	pshinter.$O\
+	pfr.$O\
+
+# optional modules - see include/freetype/config/ftmodule.h
+#	type1cid.$O\
+#	winfnt.$O\
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+CFLAGS= $ANSICPP $CFLAGS -I$ROOT/include/freetype -I.
+
+freetype.$O:	$ROOT/include/freetype.h
+
+# FreeType is organised by #include of .c files
+# here are the necessary depenencies
+
+autohint.$O:	ahangles.c ahglyph.c ahglobal.c ahhint.c ahmodule.c
+ftbase.$O:	ftutil.c ftdbgmem.c ftstream.c ftcalc.c fttrigon.c ftoutln.c ftgloadr.c ftobjs.c ftnames.c
+cff.$O:	cffdrivr.c cffparse.c cffload.c cffobjs.c cffgload.c cffcmap.c
+psaux.$O:	psobjs.c psauxmod.c t1decode.c t1cmap.c
+psnames.$O:	psmodule.c
+raster.$O:	ftraster.c ftrend1.c
+sfnt.$O:	ttload.c ttcmap.c ttcmap0.c sfobjs.c sfdriver.c
+smooth.$O:	ftgrays.c ftsmooth.c
+truetype.$O:	ttdriver.c ttpload.c ttgload.c ttobjs.c
+type1.$O:	t1parse.c t1load.c t1objs.c t1driver.c t1gload.c
+type42.$O:	t42objs.c t42parse.c t42drivr.c
+pshinter.$O:	pshrec.c pshglob.c pshalgo1.c pshalgo2.c pshalgo3.c pshmod.c
+pfr.$O:	pfrload.c pfrgload.c pfrcmap.c pfrobjs.c pfrdrivr.c pfrsbit.c

@@ -1,0 +1,36 @@
+make -clear;
+lflags = -wg;
+
+fn lc {
+	limbo $lflags $args;
+};
+
+libsrc = depends.b dump.b exec.b expr.b lex.b misc.b serve.b symb.b xeq.b;
+bus = builtins.dis tk.dis make.dis history.dis;
+core = mash.dis mashlib.dis mashparse.dis;
+
+bulib = /dis/lib/mash;
+bulibs = $bulib/$bus;
+
+mashparse.b mashparse.m : mash.y
+{
+	eyacc -vd mash.y;
+	mv y.tab.m mashparse.m;
+	mv y.tab.b mashparse.b;
+};
+
+*.dis			:~ $1.b { lc $1.b };
+$bulib/*.dis	:~ $1.dis { cp $1.dis $bulib };
+/dis/*.dis		:~ $1.dis { cp $1.dis /dis };
+/dis/lib/*.dis	:~ $1.dis { cp $1.dis /dis/lib };
+
+$core $bus : mash.m mashparse.m;
+mashlib.dis :  $libsrc;
+
+insbu : $bulibs {};
+insdis : /dis/mash.dis /dis/lib/mashlib.dis /dis/lib/mashparse.dis {};
+
+all : eyacc.dis mash.dis mashlib.dis mashparse.dis $bus {};
+install : insbu insdis {};
+
+clean : { rm mashparse.b mashparse.m *.dis };

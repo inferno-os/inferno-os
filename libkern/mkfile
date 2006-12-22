@@ -1,0 +1,81 @@
+<../mkconfig
+
+LIB=libkern.a
+
+COMMONFILES=\
+	abort.$O\
+	abs.$O\
+	atol.$O\
+	charstod.$O\
+	cistrcmp.$O\
+	cistrncmp.$O\
+	cistrstr.$O\
+	cleanname.$O\
+	convD2M.$O\
+	convM2D.$O\
+	convM2S.$O\
+	convS2M.$O\
+	dofmt.$O\
+	exp.$O\
+	fcallfmt.$O\
+	floor.$O\
+	fmt.$O\
+	fmtprint.$O\
+	fmtquote.$O\
+	fmtstr.$O\
+	fmtvprint.$O\
+	getfields.$O\
+	log.$O\
+	memccpy.$O\
+	memchr.$O\
+	memcmp.$O\
+#	netmkaddr.$O\
+	pow.$O\
+	pow10.$O\
+	qsort.$O\
+	rune.$O\
+	runestrlen.$O\
+	sin.$O\
+	seprint.$O\
+	smprint.$O\
+	snprint.$O\
+	sqrt.$O\
+	strcat.$O\
+	strcmp.$O\
+	strcpy.$O\
+	strdup.$O\
+	strecpy.$O\
+	strlen.$O\
+	strncmp.$O\
+	strncpy.$O\
+	strrchr.$O\
+	strstr.$O\
+	strtod.$O\
+	strtol.$O\
+	strtoll.$O\
+	strtoul.$O\
+	tokenize.$O\
+	toupper.$O\
+	u16.$O\
+	u32.$O\
+	u64.$O\
+	utfecpy.$O\
+	utflen.$O\
+	utfnlen.$O\
+	utfrrune.$O\
+	utfrune.$O\
+	vseprint.$O\
+	vsmprint.$O\
+	vsnprint.$O\
+
+<mkfile-$OBJTYPE		#sets $TARGFILES
+
+OFILES=	$COMMONFILES $TARGFILES
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+convD2M.$O: $ROOT/include/fcall.h
+convM2D.$O: $ROOT/include/fcall.h
+convM2S.$O: $ROOT/include/fcall.h
+convS2M.$O: $ROOT/include/fcall.h
+fcallfmt.$O: $ROOT/include/fcall.h

@@ -1,0 +1,26 @@
+<../mkconfig
+
+LIB=libtk.a
+
+OFILES=\
+	ebind.$O\
+	grids.$O\
+	image.$O\
+	packr.$O\
+	panel.$O\
+	parse.$O\
+	utils.$O\
+	windw.$O\
+	xdata.$O\
+
+HFILES=\
+	$ROOT/include/tk.h\
+	$ROOT/include/draw.h\
+
+default:V:	all
+
+<mkfile-$TKSTYLE
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+ebind.$O:		$ROOT/include/interp.h
+windw.$O:	canvs.h textw.h

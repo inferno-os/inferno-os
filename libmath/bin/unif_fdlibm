@@ -1,0 +1,20 @@
+#!/bin/rc
+test -d /netlib/fdlibm || 9fs netlib
+test -d /n/hati/usr/ehg || 9fs hati
+
+echo '/* derived from /netlib/fdlibm */' > $1
+if (~ $1 fdlibm.h) echo '#include "lib9.h"' >> $1
+
+cp /netlib/fdlibm/$1 /n/hati/usr/ehg/xxx.c
+rx hati 'unifdef -D__STDC__ -D_IEEE_LIBM -D_SCALB_INT -U__NEWVALID xxx.c' > xxx.c
+> /n/hati/usr/ehg/xxx.c
+sam -d >> $1 >[2] err <<!
+e xxx.c
+/extern int signgam;/,/#define	PLOSS/+d
+,x/HUGE_VAL/ c/DBL_MAX/
+,x/huge/ c/Huge/
+w
+q
+!
+cat xxx.c >> $1
+rm xxx.c

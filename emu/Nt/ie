@@ -1,0 +1,104 @@
+env
+	LDFLAGS=	-subsystem:windows $LDFLAGS
+	WINX=	ie-win
+	OSX=	ie-os
+
+dev
+	root
+	cons
+	env
+	mnt
+	pipe
+	prog
+	prof
+	srv
+	dup
+	ssl
+	cap
+	fs
+	indir
+
+	draw
+
+	ip	ipif ipaux
+	eia
+	audio	audio
+	mem
+#	arch
+
+lib
+	interp
+	tk
+	freetype
+	math
+	draw
+	memlayer
+	memdraw
+	keyring
+	crypt
+	9
+
+link
+
+mod
+	sys
+	draw
+	tk
+	math
+	srv	srv
+	keyring
+	loader
+	freetype
+
+port
+	alloc
+	cache
+	chan
+	dev
+	dial
+	dis
+	discall
+	env
+	error
+	errstr
+	exception
+	exportfs
+	inferno
+	latin1
+	main
+	parse
+	pgrp
+	print
+	proc
+	qio
+	random
+	sysfile
+	uqid
+
+code
+
+init
+	emuinit
+
+root
+	/root /
+	/root/dev	/
+	/root/fd	/
+	/root/prog	/
+	/root/net	/
+	/root/net.alt	/
+	/root/chan	/
+	/root/nvfs	/
+	/root/env	/
+	/root/dis	/
+	/root/dis/lib	/
+	/root/dis/install	/
+	/root/dis/install/archfs.dis	/dis/install/archfs.dis
+	/root/dis/install/arch.dis	/dis/install/arch.dis
+	/root/dis/gunzip.dis	/dis/gunzip.dis
+	/root/dis/lib/bufio.dis	/dis/lib/bufio.dis
+	/root/dis/lib/inflate.dis	/dis/lib/inflate.dis
+	/root/dis/lib/string.dis	/dis/lib/string.dis
+	/root/dis/lib/daytime.dis	/dis/lib/daytime.dis
+	/root/dis/lib/arg.dis	/dis/lib/arg.dis
+	/root/dis/lib/styx.dis	/dis/lib/styx.dis

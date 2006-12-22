@@ -1,0 +1,1 @@
+#include	"comp-mips.c"

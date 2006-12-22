@@ -1,0 +1,25 @@
+<../../../mkconfig
+
+DIRS=\
+	prep\
+
+TARG=\
+	kfs.dis\
+	mbr.dis\
+	mkext.dis\
+	mkfs.dis\
+	kfscmd.dis\
+	format.dis\
+	ftl.dis\
+
+SYSMODULES=\
+	arg.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	string.m\
+
+DISBIN=$ROOT/dis/disk
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs

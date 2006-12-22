@@ -1,0 +1,23 @@
+<../../../mkconfig
+
+TARG=	ecmascript.dis\
+
+MODULES=\
+	builtin.b\
+	date.b\
+	exec.b\
+	obj.b\
+	pprint.b\
+	regexp.b\
+	uri.b\
+
+SYSMODULES= \
+	sys.m\
+	math.m\
+	string.m\
+	daytime.m\
+	ecmascript.m\
+
+DISBIN=$ROOT/dis/lib
+
+<$ROOT/mkfiles/mkdis

@@ -1,0 +1,21 @@
+<../../../mkconfig
+
+TARG=\
+	spki.dis\
+	verifier.dis\
+
+MODULES=
+
+SYSMODULES= \
+	sys.m\
+	daytime.m\
+	keyring.m\
+	security.m\
+	bufio.m\
+	sexprs.m\
+	spki.m\
+	encoding.m\
+
+DISBIN=$ROOT/dis/lib/spki
+
+<$ROOT/mkfiles/mkdis

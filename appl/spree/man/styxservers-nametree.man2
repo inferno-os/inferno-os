@@ -1,0 +1,180 @@
+.TH STYXSERVERS-NAMETREE 2
+.SH NAME
+Styxservers: nametree \-
+hierarchical name storage for use with Styxservers.
+.SH SYNOPSIS
+.EX
+include "sys.m";
+include "styx.m";
+include "styxservers.m";
+nametree := load Nametree Nametree->PATH;
+	Tree: import nametree;
+
+Tree: adt {
+    create: fn(t: self ref Tree, parentpath: big, d: Sys->Dir): string;
+    remove: fn(t: self ref Tree, path: big): string;
+    wstat:   fn(t: self ref Tree, path: big, d: Sys->Dir);
+    quit:   fn(t: self ref Tree);
+};
+init:       fn();
+start:      fn(): (ref Tree, chan of ref Styxservers->Navop);
+.EE
+.SH DESCRIPTION
+.B Nametree
+provides the storage for a hierarchical namespace
+to be used by
+.IR styxservers (2).
+After the module is loaded, the
+.B init
+function should be called to
+initialise the module's internal variables.
+.B Start
+spawns a new
+.B nametree
+process; it returns a tuple, say
+.RI ( tree ,\  c ),
+where c is a channel that can be used to create
+an instance of
+.BR Styxservers->Navigator ,
+to access files inside
+.BR nametree ,
+and
+.I tree
+is an adt that allows creation and removal of those files.
+On failure, these functions return a string describing
+the error.
+.PP
+Note that the full set of operations on
+.B Nametree
+(i.e. stat, walk, readdir, wstate, create and remove),
+is only available in conjunction with
+.BR Styxserver 's
+.B Navigator
+interface.
+Files in the name space are ultimately identified by a 64-bit
+.I path
+value, which forms the path component of the file's Qid.
+(See
+.IR intro (5)
+for a description of the system's interpretation of Qids.)
+.PP
+The
+.B Tree
+operations
+are:
+.TP 10
+.IB t .create(\fIparentpath\fP,\ \fId\fP)
+Create a new file or directory.
+.I D
+gives the directory information that will be stored
+for the file, including its own path value,
+given by
+.IB d .qid.path .
+If the file referenced by
+.I parentpath
+does not exist, creation will not be allowed,
+other than in the special case when
+.IB d .qid.path
+is equal to
+.IR parentpath ,
+in which case it is assumed to be a root directory
+and may be created. This potentially allows a single
+.B Nametree
+instance to hold many distinct directory hierarchies.
+Note that no attempt is made to ensure that
+.I parentpath
+refers to a directory; the check is assumed to have
+been made previously.
+When a hierarchy is traversed,
+.B Nametree
+interprets the name
+.RB ` .. '
+itself as `parent directory', and that name should not be created explicitly.
+.TP
+.IB t .remove(\fIpath\fP)
+Remove the file referred to by
+.IR path ,
+and all its descendants.
+.TP
+.IB t .wstat(\fIpath\fP,\ \fId\fP)
+Change the directory information held on file
+.IR path .
+The Qid path itself cannot be changed by
+.IR d .
+.TP
+.IB t .quit()
+Shut down the
+.B nametree
+process.
+.SH EXAMPLE
+Here is a complete example that uses
+.B Nametree
+in conjunction with
+.B Styxservers
+in order to serve two files
+.B data
+and
+.BR ctl " ..."
+and do nothing with them:
+.EX
+implement Tst;
+include "sys.m";
+	sys: Sys;
+include "draw.m";
+include "styx.m";
+include "styxservers.m";
+	styxservers: Styxservers;
+	Styxserver, Navigator: import styxservers;
+	nametree: Nametree;
+	Tree: import nametree;
+
+Tst: module
+{
+	init: fn(nil: ref Draw->Context, argv: list of string);
+};
+
+Qroot, Qctl, Qdata: con big iota;	# paths
+init(nil: ref Draw->Context, args: list of string)
+{
+	sys = load Sys Sys->PATH;
+	styx := load Styx Styx->PATH;
+	styx->init();
+	styxservers = load Styxservers Styxservers->PATH;
+	styxservers->init(styx);
+	nametree = load Nametree Nametree->PATH;
+	nametree->init();
+	sys->pctl(Sys->FORKNS, nil);
+	(tree, treeop) := nametree->start();
+	tree.create(Qroot, dir(".", 8r555|Sys->DMDIR, Qroot));
+	tree.create(Qroot, dir("ctl", 8r666, Qctl));
+	tree.create(Qroot, dir("data", 8r444, Qdata));
+	(tchan, srv) := Styxserver.new(sys->fildes(0),
+						Navigator.new(treeop), Qroot);
+	while((gm := <-tchan) != nil) {
+		# normally a pick on gm would act on
+		# Tmsg.Read and Tmsg.Write at least
+		srv.default(gm);
+	}
+	tree.quit();
+}
+
+dir(name: string, perm: int, qid: big): Sys->Dir
+{
+	d := sys->zerodir;
+	d.name = name;
+	d.uid = "me";
+	d.gid = "me";
+	d.qid.path = qid;
+	if (perm & Sys->DMDIR)
+		d.qid.qtype = Sys->QTDIR;
+	else
+		d.qid.qtype = Sys->QTFILE;
+	d.mode = perm;
+	return d;
+}
+.EE
+.SH SOURCE
+.B /appl/lib/nametree.b
+.SH SEE ALSO
+.IR styxservers (2),
+.IR intro (5)

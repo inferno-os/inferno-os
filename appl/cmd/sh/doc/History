@@ -1,0 +1,14 @@
+14/11/96	started
+12/12/96	first mostly working version
+13/12/96	fixed bug in builtin_if
+14/12/96	prompt fixed, dup fixed.
+17/1/97		fiddled with shell script perm checking
+16/2/97		converted to yacc grammar
+18/2/97		got pipes and backquotes working, with only minor hacks...
+2/4/00		revamped:
+			single process, single main module; added load builtin; added ${} operator;
+			added eval and std modules
+17/4/00		added '=' and ':=' operators; removed builtin 'set' and 'local'.
+11/6/00		added tuple assignment
+2/3/01		added n-char lookahead in lexer; ':' no longer so special
+15/2/01		store environment variables in standard quoted format.

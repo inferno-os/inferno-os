@@ -1,0 +1,16 @@
+<../../../mkconfig
+
+TARG=\
+	palmsrv.dis\
+	desklink.dis\
+	connex.dis\
+
+MODULES=\
+	desklink.m\
+
+SYSMODULES=\
+	palm.m\
+
+DISBIN=$ROOT/dis/palm
+
+<$ROOT/mkfiles/mkdis

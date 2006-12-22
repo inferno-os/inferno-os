@@ -1,0 +1,62 @@
+<../../mkconfig
+
+SERVERS=\
+	servers/chatsrv.dis \
+	servers/memfssrv.dis \
+	servers/mpx.dis \
+	servers/wbsrv.dis \
+
+CLIENTS=\
+	clients/chat.dis \
+	clients/poll.dis \
+	clients/poller.dis \
+	clients/whiteboard.dis \
+
+LIB=\
+	lib/messages.dis \
+
+MAIN=\
+	collabsrv.dis \
+	connect.dis \
+	proxy.dis \
+	srvmgr.dis \
+
+MODULES=\
+	proxy.m\
+	service.m\
+	srvmgr.m\
+
+SYSMODULES=\
+	arg.m\
+	cfg.m\
+	draw.m\
+	keyring.m\
+	security.m\
+	sys.m\
+
+DEST=$ROOT/dis/collab
+
+ALL = $SERVERS $CLIENTS $LIB $MAIN
+
+all:V:	$ALL
+
+install:V: ${SERVERS:%=$DEST/%} \
+	${CLIENTS:%=$DEST/%} \
+	${LIB:%=$DEST/%} \
+	${MAIN:%=$DEST/%}
+
+$DEST/%.dis:	%.dis
+	cp $stem.dis $target
+
+%.dis:		$MODULES ${SYSMODULES:%=$ROOT/module/%}
+
+%.dis:	%.b
+	limbo -gw -I$ROOT/module -Ilib -I. -o $stem.dis $stem.b
+
+$ENGINES $MAIN $LIB: service.m srvmgr.m proxy.m lib/messages.m
+
+clean:NV:
+	rm -f *.dis *.sbl */*.dis */*.sbl
+
+nuke:NV: clean
+	cd $DEST && rm -f $ALL

@@ -1,0 +1,38 @@
+<../../../mkconfig
+
+DIRS=\
+	factotum\
+
+TARG=\
+	aescbc.dis\
+	changelogin.dis\
+	countersigner.dis\
+	convpasswd.dis\
+	createsignerkey.dis\
+	keyfs.dis\
+	keysrv.dis\
+	getpk.dis\
+	logind.dis\
+	mkauthinfo.dis\
+	passwd.dis\
+	secstore.dis\
+	signer.dis\
+	verify.dis\
+
+SYSMODULES=\
+	arg.m\
+	keyring.m\
+	security.m\
+	rand.m\
+	sys.m\
+	draw.m\
+	bufio.m\
+	secstore.m\
+	string.m\
+	styx.m\
+	styxservers.m\
+
+DISBIN=$ROOT/dis/auth
+
+<$ROOT/mkfiles/mkdis
+<$ROOT/mkfiles/mksubdirs
