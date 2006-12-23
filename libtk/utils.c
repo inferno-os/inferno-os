@@ -310,6 +310,7 @@ tkrgbashade(ulong rgba, int shade)
 		return rgba;
 
 	tkrgbavals(rgba, &R, &G, &B, &A);
+	h = s = v = 0;
 	rgb2hsv(R, G, B, &h, &s, &v);
 
 	if (v < MINDELTA) {

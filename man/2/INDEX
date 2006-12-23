@@ -21,6 +21,7 @@ btos convcs
 convcs convcs
 stob convcs
 crc crc
+csv csv
 daytime daytime
 filet daytime
 gmt daytime
@@ -98,9 +99,7 @@ inflate filter-deflate
 filter-slip filter-slip
 slip filter-slip
 format format
-
 fsproto fsproto
-fsproto fsproto fsproto
 readprotofile fsproto
 readprotostring fsproto
 geodesy geodesy
@@ -287,6 +286,7 @@ rand rand
 readdir readdir
 regex regex
 registries registries
+rfc822 rfc822
 scsi scsiio
 scsiio scsiio
 secstore secstore
@@ -412,6 +412,7 @@ pctl sys-pctl
 sys-pctl sys-pctl
 pipe sys-pipe
 sys-pipe sys-pipe
+aprint sys-print
 fprint sys-print
 print sys-print
 sprint sys-print
@@ -479,6 +480,8 @@ virgil virgil
 volume volume
 w3c w3c-css
 w3c-css w3c-css
+w3c w3c-uris
+w3c-uris w3c-uris
 w3c w3c-xpointers
 w3c-xpointers w3c-xpointers
 wait wait

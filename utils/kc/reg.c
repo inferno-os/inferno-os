@@ -1111,6 +1111,7 @@ FtoB(int f)
 	return 1L << (f/2 + 20);
 }
 
+int
 BtoF(long b)
 {
 

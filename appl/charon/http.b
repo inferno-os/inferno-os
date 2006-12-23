@@ -478,7 +478,7 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
  			rv = sys->write(nc.conn.dfd, req.body, len req.body);
 	}
 	if(rv < 0) {
-		err = "error writing to host";
+		err = sys->sprint("error writing to host: %r");
 #constate("writereq", nc.conn);
 	}
 	if(err != "") {

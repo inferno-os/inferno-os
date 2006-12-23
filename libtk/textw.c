@@ -113,10 +113,10 @@ static TkEbind tktbinds[] = {
 	{TkKey|CNTL('p'),	"%W tkTextSetCursor {insert-1l}"},
 	{TkKey|Up,		"%W tkTextSetCursor {insert-1l}"},
 	{TkKey|CNTL('u'),	"%W tkTextDelIns -l"},
-	{TkKey|CNTL('v'),	"%W yview scroll 1 page"},
-	{TkKey|Pgdown,	"%W yview scroll 1 page"},
+	{TkKey|CNTL('v'),	"%W yview scroll 0.75 page"},
+	{TkKey|Pgdown,	"%W yview scroll 0.75 page"},
 	{TkKey|CNTL('w'),	"%W tkTextDelIns -w"},
-	{TkKey|Pgup,	"%W yview scroll -1 page"},
+	{TkKey|Pgup,	"%W yview scroll -0.75 page"},
 	{TkFocusout,            "%W tkTextCursor delete"},
 	{TkKey|APP|'\t',	""},
 	{TkKey|BackTab,		""},
@@ -1799,8 +1799,9 @@ tktview(Tk *tk, char *arg, char **val, int nl, int *posn, int max, int orient)
 	}
 	else
 	if(strcmp(buf, "scroll") == 0) {
-		arg = tkword(tk->env->top, arg, buf, buf+sizeof(buf), nil);
-		amount = atoi(buf);
+		e = tkfracword(tk->env->top, &arg, &amount, nil);
+		if(e != nil)
+			return e;
 		arg = tkskip(arg, " \t");
 		if(*arg == 'p')		/* Pages */
 			amount *= nl;
@@ -1811,6 +1812,7 @@ tktview(Tk *tk, char *arg, char **val, int nl, int *posn, int max, int orient)
 		}
 		else
 			amount *= tk->env->wzero;
+		amount = TKF2I(amount);
 		n = *posn + amount;
 		if(n < 0)
 			n = 0;

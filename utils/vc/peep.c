@@ -410,7 +410,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 
 	default:
 		if(debug['P'])
-			print(" (???)");
+			print(" (?)");
 		return 2;
 
 

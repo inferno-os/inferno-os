@@ -140,6 +140,7 @@
 82543gc	/man/10/plan9.ini
 91cxx	/man/10/plan9.ini
 9660srv	/man/4/dossrv
+9660srv	/man/7/cddb
 9660srv	/man/8/init
 9660srv.b	/man/4/dossrv
 9999:noworld	/man/4/kfs
@@ -255,6 +256,7 @@ abs	/man/2/w3c-xpointers
 absence	/man/10/strcat
 absence	/man/2/ir
 absence	/man/2/prof
+absence	/man/2/w3c-uris
 absence	/man/3/ip
 absence	/man/8/dns
 absence	/man/8/prep
@@ -271,6 +273,7 @@ absolute	/man/10/a.out
 absolute	/man/10/conf
 absolute	/man/2/math-fp
 absolute	/man/2/sys-millisec
+absolute	/man/2/w3c-uris
 absolute	/man/2/w3c-xpointers
 absolute	/man/8/bootpd
 absolutely	/man/1/chmod
@@ -301,6 +304,7 @@ accept	/man/10ti925/epocimg
 accept	/man/2/arg
 accept	/man/2/dhcpclient
 accept	/man/2/ip
+accept	/man/2/rfc822
 accept	/man/2/sexprs
 accept	/man/2/spree-gather
 accept	/man/3/cmd
@@ -319,6 +323,7 @@ acceptable	/man/1/miniterm
 acceptable	/man/1/sh-arg
 acceptable	/man/1/sh-expr
 acceptable	/man/1/telnet
+acceptable	/man/2/rfc822
 acceptable	/man/2/secstore
 acceptable	/man/2/security-auth
 acceptable	/man/2/spki-verifier
@@ -413,6 +418,7 @@ access	/man/1/0intro
 access	/man/1/alphabet-abc
 access	/man/1/alphabet-fs
 access	/man/1/alphabet-grid
+access	/man/1/ar
 access	/man/1/chmod
 access	/man/1/collab
 access	/man/1/ebook
@@ -924,6 +930,7 @@ adaptec	/man/10/plan9.ini
 adapter	/man/10/plan9.ini
 adapters	/man/10/plan9.ini
 adcs	/man/3/audio
+add	/man/1/ar
 add	/man/1/bind
 add	/man/1/chmod
 add	/man/1/grid-monitor
@@ -967,6 +974,7 @@ add	/man/9/canvas
 add	/man/9/menu
 add	/man/9/options
 add	/man/9/text
+addbase	/man/2/w3c-uris
 addbuiltin	/man/2/sh
 addclock0link	/man/10/delay
 addclock0link	/man/10/kbdputc
@@ -993,6 +1001,7 @@ added	/man/10/plan9.ini
 added	/man/10/styxserver
 added	/man/2/draw-display
 added	/man/2/draw-image
+added	/man/2/rfc822
 added	/man/2/sets
 added	/man/2/spree-cardlib
 added	/man/3/sd
@@ -1014,6 +1023,7 @@ adding	/man/1/sh-alphabet
 adding	/man/10/devattach
 adding	/man/10/plan9.ini
 adding	/man/10/strcat
+adding	/man/2/w3c-uris
 adding	/man/3/pnp
 adding	/man/6/dis
 adding	/man/8/cs
@@ -1101,6 +1111,7 @@ addr	/man/4/acme
 addr	/man/4/lockfs
 addr	/man/7/db
 addr	/man/8/cs
+addr	/man/8/httpd
 addr&amask	/man/2/dis
 address	/man/1/acme
 address	/man/1/alphabet-abc
@@ -1185,6 +1196,7 @@ address	/man/8/cs
 address	/man/8/dhcp
 address	/man/8/dns
 address	/man/8/getauthinfo
+address	/man/8/httpd
 address	/man/8/prep
 address	/man/8/rip
 address	/man/8/styxchat
@@ -1260,6 +1272,7 @@ adds	/man/2/spree-cardlib
 adds	/man/3/ip
 adds	/man/3/logfs
 adds	/man/4/registry
+adds	/man/7/cddb
 adds	/man/8/ftl
 adds	/man/8/prep
 addsbuiltin	/man/2/sh
@@ -1406,6 +1419,7 @@ adt	/man/2/prefab-style
 adt	/man/2/print
 adt	/man/2/prof
 adt	/man/2/registries
+adt	/man/2/rfc822
 adt	/man/2/scsiio
 adt	/man/2/security-login
 adt	/man/2/security-ssl
@@ -1430,6 +1444,7 @@ adt	/man/2/translate
 adt	/man/2/ubfa
 adt	/man/2/venti
 adt	/man/2/w3c-css
+adt	/man/2/w3c-uris
 adt	/man/2/w3c-xpointers
 adt	/man/2/wmclient
 adt	/man/2/wmsrv
@@ -1520,6 +1535,7 @@ afid	/man/2/styxservers
 afid	/man/5/0intro
 afid	/man/5/attach
 afid	/man/8/styxchat
+afile	/man/1/ar
 afile	/man/10/iar
 afollowing	/man/2/w3c-xpointers
 afp	/man/2/dis
@@ -1877,6 +1893,7 @@ allow	/man/9/text
 allow.b	/man/2/spree-allow
 allow.m	/man/2/spree-allow
 allowable	/man/2/keyring-0intro
+allowable	/man/2/rfc822
 allowable	/man/9/canvas
 allowable	/man/9/text
 allowance	/man/2/prefab-compound
@@ -2054,6 +2071,7 @@ alt	/man/2/tkclient
 alt	/man/2/wait
 alt	/man/3/prog
 alt	/man/6/keyboard
+alter	/man/1/ar
 alter	/man/1/mash
 alter	/man/1/wm-misc
 alter	/man/10/iar
@@ -2356,6 +2374,7 @@ appearing	/man/1/wm-sh
 appearing	/man/2/cfg
 appearing	/man/9/scale
 append	/man/1/acme
+append	/man/1/ar
 append	/man/1/chmod
 append	/man/1/limbo
 append	/man/1/ls
@@ -2396,12 +2415,14 @@ appended	/man/2/security-0intro
 appended	/man/2/tk
 appended	/man/3/ssl
 appended	/man/4/acme
+appended	/man/7/cddb
 appended	/man/9/bind
 appended	/man/9/scrollbar
 appending	/man/1/asm
 appending	/man/1/limbo
 appending	/man/1/sh
 appending	/man/2/attrdb
+appending	/man/2/rfc822
 appending	/man/2/security-0intro
 appending	/man/8/prep
 appending	/man/9/menu
@@ -2422,6 +2443,7 @@ appl	/man/1/alphabet-abc
 appl	/man/1/alphabet-fs
 appl	/man/1/alphabet-grid
 appl	/man/1/alphabet-main
+appl	/man/1/ar
 appl	/man/1/asm
 appl	/man/1/auplay
 appl	/man/1/avr
@@ -2566,6 +2588,7 @@ appl	/man/2/bufio
 appl	/man/2/cfg
 appl	/man/2/convcs
 appl	/man/2/crc
+appl	/man/2/csv
 appl	/man/2/daytime
 appl	/man/2/dbm
 appl	/man/2/debug
@@ -2607,6 +2630,7 @@ appl	/man/2/pslib
 appl	/man/2/rand
 appl	/man/2/readdir
 appl	/man/2/regex
+appl	/man/2/rfc822
 appl	/man/2/scsiio
 appl	/man/2/secstore
 appl	/man/2/security-auth
@@ -2638,6 +2662,7 @@ appl	/man/2/venti
 appl	/man/2/virgil
 appl	/man/2/volume
 appl	/man/2/w3c-css
+appl	/man/2/w3c-uris
 appl	/man/2/w3c-xpointers
 appl	/man/2/wmclient
 appl	/man/2/wmlib
@@ -2668,6 +2693,7 @@ appl	/man/4/ramfile
 appl	/man/4/registry
 appl	/man/4/spree
 appl	/man/4/tarfs
+appl	/man/7/cddb
 appl	/man/7/db
 appl	/man/7/dbsrv
 appl	/man/8/applylog
@@ -2696,7 +2722,6 @@ appl	/man/8/rdbgsrv
 appl	/man/8/register
 appl	/man/8/rip
 appl	/man/8/rstyxd
-appl	/man/8/shutdown
 appl	/man/8/signer
 appl	/man/8/sntp
 appl	/man/8/srv
@@ -2742,6 +2767,7 @@ application	/man/2/popup
 application	/man/2/prefab-element
 application	/man/2/prefab-environ
 application	/man/2/prefab-style
+application	/man/2/rfc822
 application	/man/2/security-0intro
 application	/man/2/selectfile
 application	/man/2/styxservers
@@ -2752,6 +2778,7 @@ application	/man/2/tk
 application	/man/2/tkclient
 application	/man/2/translate
 application	/man/2/ubfa
+application	/man/2/w3c-uris
 application	/man/2/wmclient
 application	/man/2/wmlib
 application	/man/3/draw
@@ -2948,9 +2975,11 @@ approximate	/man/1/sh-file2chan
 approximate	/man/2/geodesy
 approximate	/man/9/canvas
 approximately	/man/2/bloomfilter
+approximation	/man/1/man
 approximation	/man/3/fs
 apreceding	/man/2/w3c-xpointers
 april	/man/2/ida
+aprint	/man/2/sys-print
 aprvx	/man/8/mkfs
 apx	/man/10/2c
 aqid	/man/10/styx
@@ -2960,10 +2989,12 @@ aqid	/man/5/attach
 aqid	/man/8/styxchat
 aqua	/man/9/types
 ar	/man/1/alphabet-fs
+ar	/man/1/ar
 ar	/man/1/fs
 ar	/man/10/ar
 ar	/man/10/iar
 ar	/man/10/mk
+ar.b	/man/1/ar
 ar.h	/man/10/ar
 arbitrarily	/man/1/acme
 arbitrarily	/man/2/dict
@@ -3020,6 +3051,7 @@ arch	/man/3/vga
 arch	/man/4/archfs
 arch	/man/4/namespace
 arch	/man/8/mkfs
+arch.a	/man/1/ar
 arch.b	/man/8/create
 archfile	/man/4/archfs
 archfs	/man/4/archfs
@@ -3052,6 +3084,7 @@ archival	/man/2/spree-gather
 archival	/man/2/spree-objstore
 archival	/man/2/venti
 archive	/man/1/alphabet-fs
+archive	/man/1/ar
 archive	/man/1/fs
 archive	/man/1/gettar
 archive	/man/10/0intro
@@ -3078,6 +3111,7 @@ archived	/man/4/tarfs
 archived	/man/8/mkfs
 archived	/man/8/prep
 archiveobj	/man/2/spree-allow
+archives	/man/1/ar
 archives	/man/1/gettar
 archives	/man/10/2l
 archives	/man/10/ar
@@ -3326,6 +3360,7 @@ array	/man/2/popup
 array	/man/2/prof
 array	/man/2/readdir
 array	/man/2/regex
+array	/man/2/rfc822
 array	/man/2/scsiio
 array	/man/2/secstore
 array	/man/2/security-random
@@ -3344,6 +3379,7 @@ array	/man/2/sys-byte2char
 array	/man/2/sys-dirread
 array	/man/2/sys-file2chan
 array	/man/2/sys-pipe
+array	/man/2/sys-print
 array	/man/2/sys-read
 array	/man/2/sys-utfbytes
 array	/man/2/tabs
@@ -3426,6 +3462,7 @@ arrows	/man/1/ebook
 arrows	/man/9/canvas
 arrows	/man/9/scrollbar
 arrowshape	/man/9/canvas
+art	/man/1/ar
 artifacts	/man/6/colour
 artist	/man/1/collab-clients
 artists	/man/1/collab-clients
@@ -3531,6 +3568,7 @@ assigned	/man/1/yacc
 assigned	/man/10/styxserver
 assigned	/man/2/dhcpclient
 assigned	/man/2/palmfile
+assigned	/man/2/rfc822
 assigned	/man/2/sys-0intro
 assigned	/man/2/sys-dial
 assigned	/man/2/sys-self
@@ -3631,6 +3669,7 @@ assumed	/man/1/collab-clients
 assumed	/man/1/cprof
 assumed	/man/1/du
 assumed	/man/1/look
+assumed	/man/1/man
 assumed	/man/1/mash
 assumed	/man/1/mdb
 assumed	/man/1/mprof
@@ -3652,6 +3691,7 @@ assumed	/man/2/spree
 assumed	/man/2/spree-cardlib
 assumed	/man/2/styx
 assumed	/man/2/styxservers-nametree
+assumed	/man/2/w3c-uris
 assumed	/man/3/boot
 assumed	/man/3/ds
 assumed	/man/3/gpio
@@ -3684,6 +3724,7 @@ assuming	/man/9/types
 assumption	/man/1/disdep
 assumption	/man/1/mdb
 assumption	/man/10/2c
+assumptions	/man/1/ar
 assumptions	/man/10/iar
 asterisk	/man/1/sh-arg
 asterisk	/man/1/sh-std
@@ -3829,6 +3870,7 @@ attempt	/man/1/charon
 attempt	/man/1/dmview
 attempt	/man/1/listen
 attempt	/man/1/miniterm
+attempt	/man/1/os
 attempt	/man/1/tiny
 attempt	/man/1/touch
 attempt	/man/1/wm
@@ -3908,6 +3950,7 @@ attr	/man/2/factotum
 attr	/man/2/palmfile
 attr	/man/2/plumbmsg
 attr	/man/2/registries
+attr	/man/2/rfc822
 attr	/man/3/i82365
 attr	/man/3/sign
 attr	/man/4/factotum
@@ -3939,6 +3982,7 @@ attribute	/man/2/cfg
 attribute	/man/2/convcs
 attribute	/man/2/plumbmsg
 attribute	/man/2/registries
+attribute	/man/2/rfc822
 attribute	/man/2/spree
 attribute	/man/2/spree-cardlib
 attribute	/man/2/spree-objstore
@@ -4016,6 +4060,7 @@ audio	/man/3/kprof
 audio	/man/3/mpeg
 audio	/man/3/tv
 audio	/man/6/audio
+audio	/man/7/cddb
 audio0	/man/10/plan9.ini
 audioctl	/man/1/auplay
 audioctl	/man/1/mux
@@ -4224,6 +4269,7 @@ authority	/man/2/security-0intro
 authority	/man/2/security-login
 authority	/man/2/spki
 authority	/man/2/tk
+authority	/man/2/w3c-uris
 authority	/man/6/auth
 authority	/man/6/dis
 authority	/man/6/keys
@@ -4252,6 +4298,7 @@ autoconvert	/man/1/sh-alphabet
 autodeclare	/man/1/sh-alphabet
 autodetected	/man/10/plan9.ini
 autoexec.bat	/man/10/plan9.ini
+autoload	/man/1/sh
 automate	/man/1/wm-sh
 automate	/man/2/styxservers
 automatic	/man/1/acme
@@ -4384,6 +4431,7 @@ avoid	/man/5/stat
 avoid	/man/6/ndb
 avoid	/man/9/text
 avoiding	/man/4/ftpfs
+avoids	/man/1/ar
 avoids	/man/1/sh-file2chan
 avoids	/man/10/iar
 avoids	/man/2/crc
@@ -4422,6 +4470,7 @@ b64toip	/man/2/keyring-ipint
 backed	/man/2/palmfile
 backed	/man/9/canvas
 background	/man/1/cprof
+background	/man/1/os
 background	/man/1/sh
 background	/man/1/tiny
 background	/man/1/tktester
@@ -4564,6 +4613,7 @@ base	/man/2/print
 base	/man/2/sexprs
 base	/man/2/string
 base	/man/2/sys-dial
+base	/man/2/w3c-uris
 base	/man/3/flash
 base	/man/3/kprof
 base	/man/3/pnp
@@ -4755,6 +4805,7 @@ behaves	/man/2/prefab-compound
 behaves	/man/9/canvas
 behaves	/man/9/menu
 behaves	/man/9/text
+behavior	/man/1/ar
 behavior	/man/10/iar
 behavior	/man/10/plan9.ini
 behavior	/man/2/draw-image
@@ -4763,6 +4814,7 @@ behavior	/man/5/open
 behaviour	/man/1/acme
 behaviour	/man/1/emu
 behaviour	/man/1/ftree
+behaviour	/man/1/os
 behaviour	/man/1/sh
 behaviour	/man/1/sh-alphabet
 behaviour	/man/1/wm-sh
@@ -5237,6 +5289,7 @@ bitstring	/man/2/asn1
 bitwise	/man/1/fc
 bitwise	/man/1/mdb
 bitwise	/man/1/sh-expr
+bitwise	/man/2/keyring-ipint
 bitwise	/man/2/sets
 bitwise	/man/2/tkclient
 bitwise	/man/2/wmclient
@@ -6037,22 +6090,27 @@ bufio	/man/1/yacc
 bufio	/man/2/attrdb
 bufio	/man/2/bufio
 bufio	/man/2/bufio-chanfill
+bufio	/man/2/csv
 bufio	/man/2/format
 bufio	/man/2/imagefile
 bufio	/man/2/pslib
+bufio	/man/2/rfc822
 bufio	/man/2/sexprs
 bufio	/man/2/spki
 bufio	/man/2/sys-read
 bufio	/man/2/sys-seek
 bufio	/man/2/sys-self
 bufio	/man/2/ubfa
+bufio	/man/2/xml
 bufio.b	/man/2/bufio
 bufio.m	/man/1/yacc
 bufio.m	/man/2/attrdb
 bufio.m	/man/2/bufio
 bufio.m	/man/2/bufio-chanfill
+bufio.m	/man/2/csv
 bufio.m	/man/2/format
 bufio.m	/man/2/palmfile
+bufio.m	/man/2/rfc822
 bufio.m	/man/2/sexprs
 bufio.m	/man/2/spki
 bufio.m	/man/2/spki-verifier
@@ -6068,6 +6126,7 @@ bug	/man/10/ref
 buggy	/man/3/sd
 bugs	/man/1/9win
 bugs	/man/1/acme
+bugs	/man/1/ar
 bugs	/man/1/asm
 bugs	/man/1/cal
 bugs	/man/1/cat
@@ -6340,6 +6399,7 @@ button	/man/1/ftree
 button	/man/1/grid-monitor
 button	/man/1/grid-query
 button	/man/1/keyboard
+button	/man/1/man
 button	/man/1/mash-tk
 button	/man/1/miniterm
 button	/man/1/session
@@ -6477,6 +6537,7 @@ byte	/man/2/math-export
 byte	/man/2/palmfile
 byte	/man/2/plumbmsg
 byte	/man/2/prof
+byte	/man/2/rfc822
 byte	/man/2/scsiio
 byte	/man/2/secstore
 byte	/man/2/security-random
@@ -6491,10 +6552,12 @@ byte	/man/2/styxservers
 byte	/man/2/sys-0intro
 byte	/man/2/sys-byte2char
 byte	/man/2/sys-file2chan
+byte	/man/2/sys-print
 byte	/man/2/sys-read
 byte	/man/2/sys-utfbytes
 byte	/man/2/ubfa
 byte	/man/2/venti
+byte	/man/2/w3c-uris
 byte	/man/2/wmsrv
 byte	/man/3/arch
 byte	/man/3/boot
@@ -6617,6 +6680,7 @@ bytes	/man/2/palmfile
 bytes	/man/2/plumbmsg
 bytes	/man/2/pop3
 bytes	/man/2/print
+bytes	/man/2/rfc822
 bytes	/man/2/scsiio
 bytes	/man/2/secstore
 bytes	/man/2/security-random
@@ -6868,6 +6932,7 @@ canonical	/man/2/draw-rect
 canonical	/man/2/keyset
 canonical	/man/2/sexprs
 canonical	/man/2/spki
+canonical	/man/2/w3c-uris
 canonical	/man/6/dis
 canonical	/man/6/sexprs
 canonical	/man/9/types
@@ -6977,6 +7042,7 @@ carets	/man/1/mash
 carets	/man/1/sh
 carriage	/man/1/deb
 carriage	/man/1/mash
+carriage	/man/2/csv
 carriage	/man/6/keyboard
 carriage	/man/6/sexprs
 carriage	/man/6/translate
@@ -7017,6 +7083,7 @@ cases	/man/2/0intro
 cases	/man/2/dis
 cases	/man/2/draw-0intro
 cases	/man/2/draw-image
+cases	/man/2/rfc822
 cases	/man/2/security-auth
 cases	/man/2/sys-dirread
 cases	/man/2/w3c-xpointers
@@ -7133,12 +7200,16 @@ cd	/man/3/prog
 cd	/man/3/sd
 cd	/man/4/dossrv
 cd	/man/6/namespace
+cd	/man/7/cddb
 cd.b	/man/1/cd
+cddb	/man/7/cddb
+cddb.b	/man/7/cddb
 cdfile	/man/4/dossrv
 cdfppqrtw	/man/8/kfscmd
 cdir	/man/10/styxserver
 cdroms	/man/4/dossrv
 cds	/man/1/tr
+cds	/man/7/cddb
 ce	/man/10/srclist
 ceases	/man/9/canvas
 ceases	/man/9/text
@@ -7535,6 +7606,7 @@ char	/man/6/sexprs
 char	/man/9/text
 char2byte	/man/2/sys-byte2char
 character	/man/1/acme
+character	/man/1/ar
 character	/man/1/bind
 character	/man/1/brutus
 character	/man/1/charon
@@ -7583,6 +7655,7 @@ character	/man/2/asn1
 character	/man/2/bufio
 character	/man/2/cfg
 character	/man/2/convcs
+character	/man/2/csv
 character	/man/2/debug
 character	/man/2/draw-0intro
 character	/man/2/draw-font
@@ -7594,6 +7667,7 @@ character	/man/2/keyring-getmsg
 character	/man/2/palmfile
 character	/man/2/prof
 character	/man/2/regex
+character	/man/2/rfc822
 character	/man/2/sexprs
 character	/man/2/spree-cardlib
 character	/man/2/string
@@ -7604,6 +7678,7 @@ character	/man/2/sys-tokenize
 character	/man/2/tftp
 character	/man/2/ubfa
 character	/man/2/w3c-css
+character	/man/2/w3c-uris
 character	/man/2/w3c-xpointers
 character	/man/2/wmsrv
 character	/man/3/0intro
@@ -7648,11 +7723,13 @@ characteristics	/man/3/flash
 characteristics	/man/3/ip
 characteristics	/man/6/audio
 characteristics	/man/6/colour
+characteristics	/man/7/cddb
 characteristics	/man/7/db
 characteristics	/man/8/ftl
 characterized	/man/9/canvas
 characters	/man/1/acme
 characters	/man/1/alphabet-fs
+characters	/man/1/ar
 characters	/man/1/bind
 characters	/man/1/charon
 characters	/man/1/dd
@@ -7707,6 +7784,7 @@ characters	/man/2/filepat
 characters	/man/2/filter-deflate
 characters	/man/2/filter-slip
 characters	/man/2/palmfile
+characters	/man/2/rfc822
 characters	/man/2/sexprs
 characters	/man/2/sh
 characters	/man/2/spree
@@ -7718,6 +7796,7 @@ characters	/man/2/sys-print
 characters	/man/2/sys-tokenize
 characters	/man/2/sys-utfbytes
 characters	/man/2/w3c-css
+characters	/man/2/w3c-uris
 characters	/man/3/0intro
 characters	/man/3/cap
 characters	/man/3/cons
@@ -7763,6 +7842,7 @@ charon	/man/1/charon
 charon	/man/1/miniterm
 charon	/man/1/webgrab
 charon	/man/1/wm-misc
+charon	/man/2/w3c-uris
 charon.cfg	/man/1/charon
 chars	/man/9/text
 charset	/man/2/convcs
@@ -7810,6 +7890,7 @@ check	/man/10/styxserver
 check	/man/2/crc
 check	/man/2/format
 check	/man/2/keyring-crypt
+check	/man/2/rfc822
 check	/man/2/security-0intro
 check	/man/2/styxservers
 check	/man/2/styxservers-nametree
@@ -7849,6 +7930,7 @@ checked	/man/8/changelogin
 checked	/man/8/kfscmd
 checking	/man/1/acme
 checking	/man/1/alphabet-main
+checking	/man/1/ar
 checking	/man/1/ftest
 checking	/man/1/limbo
 checking	/man/1/listen
@@ -8061,6 +8143,7 @@ class	/man/1/sh-string
 class	/man/2/0intro
 class	/man/2/asn1
 class	/man/2/ip
+class	/man/2/rfc822
 class	/man/2/string
 class	/man/2/w3c-css
 class	/man/3/arch
@@ -8212,6 +8295,7 @@ client	/man/2/factotum
 client	/man/2/format
 client	/man/2/keyring-auth
 client	/man/2/plumbmsg
+client	/man/2/rfc822
 client	/man/2/security-0intro
 client	/man/2/security-auth
 client	/man/2/security-login
@@ -8481,6 +8565,7 @@ cmd	/man/1/alphabet-abc
 cmd	/man/1/alphabet-fs
 cmd	/man/1/alphabet-grid
 cmd	/man/1/alphabet-main
+cmd	/man/1/ar
 cmd	/man/1/asm
 cmd	/man/1/auplay
 cmd	/man/1/avr
@@ -8619,6 +8704,7 @@ cmd	/man/4/ramfile
 cmd	/man/4/registry
 cmd	/man/4/spree
 cmd	/man/4/tarfs
+cmd	/man/7/cddb
 cmd	/man/7/dbsrv
 cmd	/man/8/applylog
 cmd	/man/8/bootpd
@@ -8642,7 +8728,6 @@ cmd	/man/8/plumber
 cmd	/man/8/prep
 cmd	/man/8/rip
 cmd	/man/8/rstyxd
-cmd	/man/8/shutdown
 cmd	/man/8/signer
 cmd	/man/8/sntp
 cmd	/man/8/styxchat
@@ -8750,6 +8835,7 @@ codes	/man/2/ir
 codes	/man/2/scsiio
 codes	/man/3/cons
 codes	/man/6/scancode
+coding	/man/2/rfc822
 coding	/man/2/security-0intro
 coff	/man/10/5coff
 coffee	/man/1/wm-misc
@@ -8957,6 +9043,7 @@ combine	/man/2/draw-rect
 combine	/man/3/draw
 combine	/man/3/ssl
 combine	/man/9/bind
+combined	/man/1/ar
 combined	/man/10/iar
 combined	/man/2/bloomfilter
 combined	/man/2/draw-0intro
@@ -8978,6 +9065,8 @@ comm.b	/man/1/comm
 comma	/man/1/charon
 comma	/man/1/mc
 comma	/man/1/sh-csv
+comma	/man/2/csv
+comma	/man/2/rfc822
 comma	/man/6/users
 command's	/man/1/mash
 command's	/man/1/mash-tk
@@ -8991,6 +9080,7 @@ command2	/man/1/mash
 commas	/man/10/acid
 commas	/man/10/plan9.ini
 commas	/man/10/print
+commas	/man/2/csv
 commas	/man/2/sys-print
 commas	/man/9/grid
 commence	/man/1/session
@@ -9055,6 +9145,7 @@ common	/man/2/spree-gather
 common	/man/2/styxservers
 common	/man/2/sys-dial
 common	/man/2/ubfa
+common	/man/2/w3c-uris
 common	/man/2/w3c-xpointers
 common	/man/2/xml
 common	/man/3/cons
@@ -9295,6 +9386,7 @@ complement	/man/1/sh-expr
 complement	/man/1/tr
 complement	/man/2/bufio
 complement	/man/2/draw-display
+complement	/man/2/keyring-ipint
 complement	/man/3/audio
 complement	/man/6/audio
 complement	/man/6/dis
@@ -9419,6 +9511,7 @@ component	/man/2/names
 component	/man/2/palmfile
 component	/man/2/prefab-element
 component	/man/2/print
+component	/man/2/rfc822
 component	/man/2/secstore
 component	/man/2/security-0intro
 component	/man/2/security-login
@@ -9426,6 +9519,7 @@ component	/man/2/styxservers-nametree
 component	/man/2/sys-dial
 component	/man/2/sys-fd2path
 component	/man/2/ubfa
+component	/man/2/w3c-uris
 component	/man/3/tv
 component	/man/6/colour
 component	/man/6/ndb
@@ -9460,6 +9554,7 @@ components	/man/2/prefab-element
 components	/man/2/print
 components	/man/2/ubfa
 components	/man/2/w3c-css
+components	/man/2/w3c-uris
 components	/man/2/w3c-xpointers
 components	/man/5/0intro
 components	/man/6/colour
@@ -9604,6 +9699,7 @@ con	/man/2/prefab-element
 con	/man/2/print
 con	/man/2/prof
 con	/man/2/readdir
+con	/man/2/rfc822
 con	/man/2/scsiio
 con	/man/2/secstore
 con	/man/2/styx
@@ -9615,6 +9711,7 @@ con	/man/2/wmclient
 concatblock	/man/10/allocb
 concatenate	/man/1/cat
 concatenate	/man/1/mash
+concatenated	/man/1/ar
 concatenated	/man/1/mash
 concatenated	/man/1/sh
 concatenated	/man/1/sh-string
@@ -10342,12 +10439,14 @@ constants	/man/5/0intro
 constants	/man/6/ubfa
 constants	/man/8/httpd
 constants	/man/8/prep
+constituent	/man/1/ar
 constituent	/man/1/sh-regex
 constituent	/man/10/ar
 constituent	/man/10/iar
 constituent	/man/2/prefab-element
 constituent	/man/2/sys-bind
 constituent	/man/2/sys-open
+constituents	/man/1/ar
 constituents	/man/10/iar
 constr	/man/2/asn1
 constrained	/man/2/asn1
@@ -10408,6 +10507,7 @@ consume	/man/9/pack
 consumed	/man/10/styxserver
 consumed	/man/2/convcs
 consumed	/man/2/filter
+consumed	/man/2/rfc822
 consumed	/man/2/sys-byte2char
 consumed	/man/2/wmclient
 consumed	/man/2/wmsrv
@@ -10494,6 +10594,7 @@ contains	/man/10/styxserver
 contains	/man/2/alphabet-intro
 contains	/man/2/asn1
 contains	/man/2/attrdb
+contains	/man/2/csv
 contains	/man/2/dbm
 contains	/man/2/debug
 contains	/man/2/dhcpclient
@@ -10519,6 +10620,7 @@ contains	/man/2/prefab-element
 contains	/man/2/print
 contains	/man/2/prof
 contains	/man/2/registries
+contains	/man/2/rfc822
 contains	/man/2/secstore
 contains	/man/2/security-login
 contains	/man/2/security-ssl
@@ -10614,6 +10716,7 @@ content	/man/2/dbm
 content	/man/2/format
 content	/man/2/keyring-getmsg
 content	/man/2/palmfile
+content	/man/2/rfc822
 content	/man/2/sys-stat
 content	/man/2/venti
 content	/man/2/w3c-css
@@ -10690,6 +10793,7 @@ continually	/man/2/sys-read
 continuation	/man/1/mash
 continuation	/man/1/strings
 continuation	/man/10/atoi
+continuation	/man/2/rfc822
 continue	/man/1/blur
 continue	/man/1/deb
 continue	/man/1/mc
@@ -10719,6 +10823,7 @@ continues	/man/9/0intro
 continues	/man/9/text
 continuing	/man/1/acme
 continuing	/man/1/tiny
+continuing	/man/2/csv
 continuous	/man/6/colour
 continuously	/man/2/sys-millisec
 continuously	/man/9/options
@@ -10742,6 +10847,7 @@ control	/man/1/mc
 control	/man/1/miniterm
 control	/man/1/mk
 control	/man/1/mux
+control	/man/1/os
 control	/man/1/sh
 control	/man/1/sh-std
 control	/man/1/tktester
@@ -10929,6 +11035,7 @@ convention	/man/2/math-linalg
 convention	/man/2/sh
 convention	/man/2/sys-0intro
 convention	/man/2/sys-dial
+convention	/man/2/w3c-uris
 convention	/man/2/w3c-xpointers
 convention	/man/3/sd
 convention	/man/5/0intro
@@ -11119,6 +11226,7 @@ converted	/man/2/spki
 converted	/man/2/spree
 converted	/man/2/sys-print
 converted	/man/2/w3c-css
+converted	/man/2/w3c-uris
 converted	/man/2/w3c-xpointers
 converted	/man/2/xml
 converted	/man/3/mnt
@@ -11365,6 +11473,7 @@ copy	/man/2/sh
 copy	/man/2/styxservers
 copy	/man/2/sys-pctl
 copy	/man/2/sys-tokenize
+copy	/man/2/w3c-uris
 copy	/man/3/env
 copy	/man/3/ether
 copy	/man/3/flash
@@ -11698,6 +11807,7 @@ cpu.b	/man/1/cpu
 cpu.b	/man/4/cpu
 cpus	/man/10/mk
 cputype	/man/3/arch
+cr	/man/1/ar
 cr	/man/10/iar
 crackerbarrel	/man/1/math-misc
 crackerbarrel.b	/man/1/math-misc
@@ -11721,6 +11831,7 @@ create	/man/1/alphabet-abc
 create	/man/1/alphabet-fs
 create	/man/1/alphabet-grid
 create	/man/1/alphabet-main
+create	/man/1/ar
 create	/man/1/bind
 create	/man/1/blur
 create	/man/1/fs
@@ -11867,6 +11978,7 @@ created	/man/2/sys-open
 created	/man/2/tabs
 created	/man/2/tk
 created	/man/2/tkclient
+created	/man/2/w3c-uris
 created	/man/2/wmclient
 created	/man/2/wmlib
 created	/man/2/wmsrv
@@ -12115,10 +12227,8 @@ cs	/man/1/secstore
 cs	/man/1/tr
 cs	/man/1/webgrab
 cs	/man/2/convcs
-cs	/man/2/pop3
 cs	/man/2/secstore
 cs	/man/2/security-login
-cs	/man/2/smtp
 cs	/man/2/srv
 cs	/man/2/sys-dial
 cs	/man/2/virgil
@@ -12148,7 +12258,10 @@ css.m	/man/2/w3c-css
 css21	/man/2/w3c-css
 csv	/man/1/sh
 csv	/man/1/sh-csv
+csv	/man/2/csv
 csv.b	/man/1/sh-csv
+csv.b	/man/2/csv
+csv.m	/man/2/csv
 ct65545	/man/3/vga
 ct65545hwgc	/man/3/vga
 ctime	/man/2/daytime
@@ -12241,6 +12354,7 @@ currency	/man/1/units
 currency	/man/6/keyboard
 current	/man/1/acme
 current	/man/1/alphabet-fs
+current	/man/1/ar
 current	/man/1/basename
 current	/man/1/bind
 current	/man/1/blur
@@ -12335,6 +12449,7 @@ current	/man/2/keyring-sha1
 current	/man/2/newns
 current	/man/2/popup
 current	/man/2/registries
+current	/man/2/rfc822
 current	/man/2/scsiio
 current	/man/2/security-auth
 current	/man/2/sh
@@ -12611,6 +12726,7 @@ data	/man/2/bufio
 data	/man/2/bufio-chanfill
 data	/man/2/convcs
 data	/man/2/crc
+data	/man/2/csv
 data	/man/2/dbm
 data	/man/2/debug
 data	/man/2/devpointer
@@ -12777,6 +12893,7 @@ database	/man/4/dbfs
 database	/man/4/registry
 database	/man/6/attrdb
 database	/man/6/ndb
+database	/man/7/cddb
 database	/man/7/db
 database	/man/7/dbsrv
 database	/man/8/bootpd
@@ -12790,6 +12907,7 @@ databases	/man/2/attrdb
 databases	/man/2/dbm
 databases	/man/7/0intro
 databook	/man/3/i82365
+dataclass	/man/2/rfc822
 datafd	/man/7/db
 datafile	/man/1/calendar
 datafile	/man/1/idea
@@ -12805,6 +12923,7 @@ datasource	/man/10/odbc
 datatype	/man/2/venti
 dataxx	/man/2/plumbmsg
 date	/man/1/acme
+date	/man/1/ar
 date	/man/1/date
 date	/man/1/deb
 date	/man/1/emu
@@ -12820,6 +12939,7 @@ date	/man/10/iar
 date	/man/10/mk
 date	/man/2/command
 date	/man/2/keyring-0intro
+date	/man/2/rfc822
 date	/man/2/tk
 date	/man/8/changelogin
 date	/man/8/collabsrv
@@ -12833,7 +12953,10 @@ date.b	/man/1/date
 date.b	/man/1/wm-misc
 date.dis	/man/2/command
 date2epoch	/man/2/spki
+date2sec	/man/2/rfc822
+dates	/man/1/ar
 dates	/man/10/iar
+dates	/man/2/rfc822
 dates	/man/2/sys-0intro
 dates	/man/8/mkfs
 datops	/man/2/draw-image
@@ -12848,6 +12971,7 @@ dawes	/man/2/format
 daytime	/man/1/date
 daytime	/man/2/daytime
 daytime	/man/2/palmfile
+daytime	/man/2/rfc822
 daytime	/man/8/createsignerkey
 daytime.b	/man/2/daytime
 daytime.m	/man/2/daytime
@@ -12859,8 +12983,6 @@ db	/man/10/devattach
 db	/man/10/odbc
 db	/man/2/attrdb
 db	/man/2/dbm
-db	/man/2/pop3
-db	/man/2/smtp
 db	/man/2/sys-dial
 db	/man/7/db
 db	/man/7/dbsrv
@@ -12970,6 +13092,7 @@ deb	/man/6/sbl
 deb.b	/man/1/deb
 debate	/man/1/diff
 debdata.b	/man/1/deb
+debian	/man/1/ar
 debsrc.b	/man/1/deb
 debug	/man/1/0intro
 debug	/man/1/deb
@@ -13043,6 +13166,7 @@ debugging	/man/9/text
 debugon	/man/3/draw
 dec	/man/10/a.out
 dec	/man/2/encoding
+dec	/man/2/w3c-uris
 decakilometre	/man/2/geodesy
 decametre	/man/2/geodesy
 decendants	/man/9/destroy
@@ -13177,11 +13301,13 @@ decode	/man/1/uuencode
 decode	/man/2/asn1
 decode	/man/2/filter-slip
 decode	/man/2/palmfile
+decode	/man/2/w3c-uris
 decoded	/man/1/uuencode
 decoded	/man/10/rune
 decoded	/man/2/asn1
 decoded	/man/2/dis
 decoded	/man/2/w3c-css
+decoded	/man/2/w3c-uris
 decoded	/man/6/sexprs
 decoder	/man/3/mpeg
 decoders	/man/10/ms2
@@ -13195,6 +13321,7 @@ decoding	/man/2/encoding
 decoding	/man/2/filter-slip
 decoding	/man/2/ubfa
 decoding	/man/2/w3c-css
+decoding	/man/2/w3c-uris
 decoding	/man/3/tls
 decompress	/man/10/5cv
 decompresses	/man/10/5cv
@@ -13284,6 +13411,7 @@ default	/man/1/limbo
 default	/man/1/listen
 default	/man/1/logon
 default	/man/1/look
+default	/man/1/man
 default	/man/1/mash
 default	/man/1/mash-tk
 default	/man/1/math-misc
@@ -13354,7 +13482,6 @@ default	/man/2/geodesy
 default	/man/2/keyring-auth
 default	/man/2/keyset
 default	/man/2/math-fp
-default	/man/2/pop3
 default	/man/2/prefab-compound
 default	/man/2/print
 default	/man/2/prof
@@ -13409,6 +13536,7 @@ default	/man/6/man
 default	/man/6/namespace
 default	/man/6/ndb
 default	/man/6/translate
+default	/man/7/cddb
 default	/man/7/db
 default	/man/7/dbsrv
 default	/man/8/applylog
@@ -13586,6 +13714,7 @@ defined	/man/2/secstore
 defined	/man/2/sets
 defined	/man/2/sexprs
 defined	/man/2/sh
+defined	/man/2/smtp
 defined	/man/2/spki
 defined	/man/2/spki-verifier
 defined	/man/2/styx
@@ -13598,6 +13727,7 @@ defined	/man/2/sys-self
 defined	/man/2/sys-stat
 defined	/man/2/translate
 defined	/man/2/ubfa
+defined	/man/2/w3c-uris
 defined	/man/2/w3c-xpointers
 defined	/man/3/cons
 defined	/man/3/draw
@@ -13806,6 +13936,7 @@ delegate	/man/2/spki
 delegated	/man/6/ndb
 delegation	/man/2/spki
 delete	/man/1/acme
+delete	/man/1/ar
 delete	/man/1/brutus
 delete	/man/1/secstore
 delete	/man/1/tktester
@@ -13921,8 +14052,10 @@ delimiter	/man/2/sys-tokenize
 delimiter	/man/6/regexp
 delimiters	/man/1/acme
 delimiters	/man/10/getfields
+delimiters	/man/2/w3c-uris
 delimiters	/man/2/w3c-xpointers
 delimiters	/man/3/ssl
+delimiting	/man/2/w3c-uris
 delims	/man/10/getfields
 delindex	/man/2/spree-cardlib
 deliver	/man/1/tail
@@ -14076,8 +14209,10 @@ depends	/man/9/text
 deprecated	/man/10/ms2
 deprecated	/man/10/plan9.ini
 deprecated	/man/10/print
+deprecated	/man/2/w3c-uris
 deprecated	/man/3/ip
 deprecated	/man/9/scrollbar
+depressingly	/man/2/w3c-uris
 depth	/man/1/alphabet-fs
 depth	/man/1/fs
 depth	/man/1/wm-misc
@@ -14105,6 +14240,8 @@ derived	/man/10/0intro
 derived	/man/10/c2l
 derived	/man/2/styxservers
 derived	/man/2/w3c-css
+derived	/man/2/w3c-uris
+derived	/man/7/cddb
 derived	/man/9/0intro
 derived	/man/9/1copyright
 des	/man/2/keyring-0intro
@@ -14315,6 +14452,7 @@ describing	/man/2/convcs
 describing	/man/2/dbm
 describing	/man/2/dis
 describing	/man/2/filter
+describing	/man/2/rfc822
 describing	/man/2/security-ssl
 describing	/man/2/spree-allow
 describing	/man/2/styxservers-nametree
@@ -14339,6 +14477,7 @@ descriptions	/man/1/sh-std
 descriptions	/man/1/unicode
 descriptions	/man/10/qio
 descriptions	/man/2/draw-font
+descriptions	/man/2/rfc822
 descriptions	/man/2/security-0intro
 descriptions	/man/4/registry
 descriptions	/man/5/0intro
@@ -14629,6 +14768,7 @@ details	/man/3/prog
 details	/man/4/archfs
 details	/man/6/colour
 details	/man/6/image
+details	/man/7/cddb
 details	/man/8/dhcp
 details	/man/9/bind
 details	/man/9/canvas
@@ -15313,6 +15453,7 @@ diagnostics	/man/2/sys-iounit
 diagnostics	/man/2/sys-pipe
 diagnostics	/man/2/virgil
 diagnostics	/man/2/w3c-css
+diagnostics	/man/2/xml
 diagnostics	/man/3/boot
 diagnostics	/man/3/cap
 diagnostics	/man/3/cmd
@@ -15356,6 +15497,7 @@ dial	/man/4/cpu
 dial	/man/4/export
 dial	/man/8/collabsrv
 dial	/man/8/cs
+dial	/man/8/httpd
 dial	/man/8/ping
 dial	/man/8/rstyxd
 dial	/man/8/styxchat
@@ -15802,6 +15944,7 @@ directories	/man/8/mkfs
 directory	/man/1/0intro
 directory	/man/1/acme
 directory	/man/1/alphabet-fs
+directory	/man/1/ar
 directory	/man/1/basename
 directory	/man/1/bind
 directory	/man/1/blur
@@ -16020,6 +16163,7 @@ dis	/man/1/emu
 dis	/man/1/fs
 dis	/man/1/grid-ns
 dis	/man/1/limbo
+dis	/man/1/man
 dis	/man/1/mash
 dis	/man/1/mash-make
 dis	/man/1/mk
@@ -16061,6 +16205,7 @@ dis	/man/6/proto
 dis	/man/6/sbl
 dis	/man/8/collabsrv
 dis	/man/8/init
+dis	/man/8/shutdown
 dis	/man/8/srv
 dis	/man/8/svc
 dis.b	/man/2/dis
@@ -16168,6 +16313,7 @@ discarded	/man/8/changelogin
 discarded	/man/9/send
 discarding	/man/1/charon
 discarding	/man/2/bufio
+discards	/man/1/ar
 discards	/man/10/allocb
 discards	/man/10/iar
 discards	/man/10/plan9.ini
@@ -16203,6 +16349,7 @@ discussed	/man/10/qio
 discussed	/man/2/bufio
 discussed	/man/2/keyring-0intro
 discussed	/man/2/sys-stat
+discussed	/man/2/w3c-uris
 discussion	/man/10/2c
 discussion	/man/2/draw-image
 discussion	/man/3/draw
@@ -16244,6 +16391,7 @@ diskblocks.b	/man/2/diskblocks
 diskblocks.m	/man/2/diskblocks
 diskette	/man/8/prep
 diskettes	/man/8/prep
+diskid	/man/7/cddb
 disks	/man/10/9load
 disks	/man/2/disks
 disks	/man/2/scsiio
@@ -16813,6 +16961,7 @@ dossrv	/man/10/9load
 dossrv	/man/3/ds
 dossrv	/man/4/0intro
 dossrv	/man/4/dossrv
+dossrv	/man/7/cddb
 dossrv	/man/8/init
 dossrv	/man/8/prep
 dossrv.b	/man/4/dossrv
@@ -16847,6 +16996,7 @@ double	/man/10/c2l
 double	/man/10/print
 double	/man/10/sleep
 double	/man/2/cfg
+double	/man/2/csv
 double	/man/2/math-export
 double	/man/2/math-fp
 double	/man/6/attrdb
@@ -16856,6 +17006,7 @@ double	/man/8/prep
 double	/man/9/bind
 double	/man/9/entry
 double	/man/9/text
+doubled	/man/2/csv
 doubled	/man/2/string
 doubled	/man/9/bind
 doublequote	/man/1/sh
@@ -17152,6 +17303,7 @@ dropped	/man/3/pbus
 dropping	/man/1/wm-misc
 drops	/man/3/eia
 drops	/man/3/ip
+drqtpmx	/man/1/ar
 drqtpmx	/man/10/iar
 ds	/man/1/units
 ds	/man/3/ds
@@ -17182,6 +17334,7 @@ dt	/man/6/man
 dtag	/man/9/canvas
 dtop	/man/2/spree-cardlib
 dtr	/man/3/eia
+dtt	/man/7/cddb
 dtype	/man/2/disks
 dtype	/man/2/palmfile
 dtype	/man/2/styxservers
@@ -17213,6 +17366,7 @@ dump	/man/10/acid
 dump	/man/4/acme
 dump	/man/8/styxchat
 dumpdir	/man/4/acme
+dumped	/man/7/cddb
 dumping	/man/1/xd
 dumps	/man/1/xd
 dumps	/man/10/panic
@@ -17237,6 +17391,7 @@ duplicated	/man/1/uniq
 duplicated	/man/10/9load
 duplicated	/man/2/readdir
 duplicated	/man/8/kfscmd
+duplicates	/man/1/ar
 duplicates	/man/1/disdep
 duplicates	/man/10/iar
 duplicates	/man/4/registry
@@ -17553,6 +17708,7 @@ efr	/man/1/cprof
 eg	/man/1/keyboard
 eg	/man/1/kill
 eg	/man/1/netstat
+eg	/man/1/os
 eg	/man/1/timestamp
 eg	/man/1/tiny
 eg	/man/1/webgrab
@@ -17585,6 +17741,7 @@ eg	/man/2/palmfile
 eg	/man/2/plumbmsg
 eg	/man/2/print
 eg	/man/2/registries
+eg	/man/2/rfc822
 eg	/man/2/secstore
 eg	/man/2/security-login
 eg	/man/2/srv
@@ -17745,6 +17902,7 @@ els	/man/2/names
 els	/man/2/sexprs
 els	/man/2/ubfa
 elseaction	/man/1/sh-std
+elsewhere	/man/1/ar
 elsewhere	/man/1/dmview
 elsewhere	/man/1/session
 elsewhere	/man/1/sh
@@ -17762,6 +17920,7 @@ email	/man/1/mux
 emanating	/man/1/sh-file2chan
 embedded	/man/1/ebook
 embedded	/man/2/asn1
+embedded	/man/2/csv
 embedded	/man/2/ip
 embedded	/man/2/math-0intro
 embedded	/man/9/panel
@@ -17953,6 +18112,8 @@ ename	/man/5/error
 ename	/man/8/styxchat
 enc	/man/2/encoding
 enc	/man/2/ida
+enc	/man/2/rfc822
+enc	/man/2/w3c-uris
 enc	/man/3/audio
 enc	/man/3/tls
 enc	/man/6/audio
@@ -17993,6 +18154,7 @@ encode	/man/2/encoding
 encode	/man/2/filter-slip
 encode	/man/2/keyring-0intro
 encode	/man/2/palmfile
+encode	/man/2/w3c-uris
 encode	/man/3/tls
 encode	/man/6/dis
 encode	/man/6/image
@@ -18014,6 +18176,8 @@ encoded	/man/2/keyring-crypt
 encoded	/man/2/keyring-ipint
 encoded	/man/2/math-export
 encoded	/man/2/palmfile
+encoded	/man/2/rfc822
+encoded	/man/2/w3c-uris
 encoded	/man/2/wmsrv
 encoded	/man/3/tls
 encoded	/man/3/tv
@@ -18053,10 +18217,12 @@ encoding	/man/2/keyring-0intro
 encoding	/man/2/keyring-getmsg
 encoding	/man/2/palmfile
 encoding	/man/2/plumbmsg
+encoding	/man/2/rfc822
 encoding	/man/2/secstore
 encoding	/man/2/sexprs
 encoding	/man/2/sys-print
 encoding	/man/2/ubfa
+encoding	/man/2/w3c-uris
 encoding	/man/3/cons
 encoding	/man/5/stat
 encoding	/man/6/audio
@@ -18071,7 +18237,9 @@ encoding.m	/man/2/encoding
 encodings	/man/1/charon
 encodings	/man/2/asn1
 encodings	/man/2/encoding
+encodings	/man/2/rfc822
 encodings	/man/2/sexprs
+encodings	/man/2/w3c-uris
 encodings	/man/6/sexprs
 encountering	/man/10/9load
 encountering	/man/2/bufio
@@ -18145,6 +18313,7 @@ endarrow	/man/2/draw-image
 endcontrol	/man/1/wm
 enddisc	/man/2/draw-image
 ended	/man/10/error
+ended	/man/2/rfc822
 ended	/man/2/wait
 ended	/man/3/pointer
 endian	/man/1/auplay
@@ -18610,6 +18779,7 @@ eo	/man/1/itest
 eoc	/man/2/asn1
 eof	/man/2/bufio
 eof	/man/2/ir
+eof	/man/2/rfc822
 eof	/man/4/spree
 eoff	/man/2/dis
 eol	/man/2/regex
@@ -18635,6 +18805,7 @@ epoch	/man/1/timestamp
 epoch	/man/10/seconds
 epoch	/man/2/daytime
 epoch	/man/2/palmfile
+epoch	/man/2/rfc822
 epoch	/man/2/sys-millisec
 epoch	/man/2/sys-stat
 epoch	/man/3/cons
@@ -18660,9 +18831,11 @@ eq	/man/2/sexprs
 eq	/man/2/spki
 eq	/man/2/ubfa
 eq	/man/2/venti
+eq	/man/2/w3c-uris
 eq	/man/6/man
 eqaddr	/man/2/ether
 eqchan	/man/10/newchan
+eqf	/man/2/w3c-uris
 eqn	/man/6/man
 eqqid	/man/10/newchan
 equal	/man/1/diff
@@ -18690,6 +18863,7 @@ equal	/man/2/stringinttab
 equal	/man/2/styxservers-nametree
 equal	/man/2/sys-pctl
 equal	/man/2/ubfa
+equal	/man/2/w3c-uris
 equal	/man/3/dbg
 equal	/man/3/ssl
 equal	/man/5/read
@@ -18743,10 +18917,12 @@ equivalent	/man/2/geodesy
 equivalent	/man/2/ir
 equivalent	/man/2/keyring-rc4
 equivalent	/man/2/math-export
+equivalent	/man/2/rfc822
 equivalent	/man/2/secstore
 equivalent	/man/2/sexprs
 equivalent	/man/2/sys-dirread
 equivalent	/man/2/sys-read
+equivalent	/man/2/w3c-uris
 equivalent	/man/2/wmsrv
 equivalent	/man/3/cmd
 equivalent	/man/3/draw
@@ -18891,6 +19067,7 @@ error	/man/2/bloomfilter
 error	/man/2/bufio
 error	/man/2/cfg
 error	/man/2/convcs
+error	/man/2/csv
 error	/man/2/dbm
 error	/man/2/debug
 error	/man/2/dhcpclient
@@ -18954,6 +19131,7 @@ error	/man/2/translate
 error	/man/2/ubfa
 error	/man/2/venti
 error	/man/2/w3c-css
+error	/man/2/w3c-uris
 error	/man/2/w3c-xpointers
 error	/man/2/wait
 error	/man/2/wmsrv
@@ -19068,6 +19246,7 @@ escape	/man/1/xd
 escape	/man/10/acid
 escape	/man/2/filter-slip
 escape	/man/2/sexprs
+escape	/man/2/w3c-uris
 escape	/man/6/keyboard
 escape	/man/6/sexprs
 escape	/man/6/translate
@@ -19075,9 +19254,11 @@ escape	/man/9/0intro
 escaped	/man/1/mash
 escaped	/man/1/mdb
 escaped	/man/2/tk
+escaped	/man/2/w3c-uris
 escaped	/man/9/0intro
 escaped	/man/9/bind
 escapes	/man/10/atoi
+escapes	/man/2/w3c-uris
 escapes	/man/6/sexprs
 escaping	/man/1/mash
 eschews	/man/6/keyboard
@@ -19165,6 +19346,7 @@ etc	/man/2/draw-image
 etc	/man/2/ir
 etc	/man/2/math-elem
 etc	/man/2/prefab-element
+etc	/man/2/rfc822
 etc	/man/2/spree
 etc	/man/2/styx
 etc	/man/2/styxservers
@@ -19365,6 +19547,7 @@ ex	/man/6/man
 exact	/man/1/0intro
 exact	/man/1/look
 exact	/man/1/sh-std
+exact	/man/1/sh-tk
 exact	/man/1/wm
 exact	/man/2/asn1
 exact	/man/2/tkclient
@@ -19459,6 +19642,7 @@ exceed	/man/2/diskblocks
 exceed	/man/8/prep
 exceeded	/man/1/charon
 exceeded	/man/10/qio
+exceeded	/man/2/rfc822
 exceeded	/man/3/ip
 exceeds	/man/1/charon
 exceeds	/man/10/dmainit
@@ -19527,6 +19711,7 @@ except	/man/2/sys-dial
 except	/man/2/sys-pctl
 except	/man/2/sys-print
 except	/man/2/sys-stat
+except	/man/2/w3c-uris
 except	/man/2/wmsrv
 except	/man/3/cmd
 except	/man/3/flash
@@ -19575,6 +19760,7 @@ exception	/man/2/math-0intro
 exception	/man/2/math-fp
 exception	/man/2/sh
 exception	/man/2/sys-pipe
+exception	/man/2/w3c-uris
 exception	/man/2/xml
 exception	/man/3/pipe
 exception	/man/3/prog
@@ -19690,6 +19876,7 @@ exclusive	/man/1/mathcalc
 exclusive	/man/10/ar
 exclusive	/man/10/dev
 exclusive	/man/10/qlock
+exclusive	/man/2/keyring-ipint
 exclusive	/man/2/lock
 exclusive	/man/2/spree-cardlib
 exclusive	/man/2/sys-export
@@ -19910,6 +20097,7 @@ exhaustively	/man/2/asn1
 exist	/man/1/0intro
 exist	/man/1/acme
 exist	/man/1/alphabet-fs
+exist	/man/1/ar
 exist	/man/1/calendar
 exist	/man/1/charon
 exist	/man/1/cprof
@@ -20147,6 +20335,7 @@ exits	/man/1/listen
 exits	/man/1/mathcalc
 exits	/man/1/mk
 exits	/man/1/netkey
+exits	/man/1/os
 exits	/man/1/sh
 exits	/man/1/wm-sh
 exits	/man/10/mk
@@ -20429,6 +20618,7 @@ expressed	/man/3/pnp
 expressed	/man/3/rtc
 expressed	/man/6/sexprs
 expressed	/man/8/cs
+expressed	/man/8/httpd
 expresses	/man/2/spki
 expression	/man/1/acme
 expression	/man/1/alphabet-abc
@@ -20542,6 +20732,7 @@ extension	/man/4/dossrv
 extension	/man/6/dis
 extensions	/man/1/limbo
 extensions	/man/10/2c
+extensions	/man/2/rfc822
 extensions	/man/3/cons
 extensions	/man/4/dossrv
 extensive	/man/10/9load
@@ -20622,6 +20813,7 @@ extra	/man/9/grid
 extra	/man/9/options
 extra	/man/9/pack
 extra	/man/9/text
+extract	/man/1/ar
 extract	/man/1/gettar
 extract	/man/1/secstore
 extract	/man/1/sh-arg
@@ -20633,6 +20825,7 @@ extract	/man/2/convcs
 extract	/man/2/disks
 extract	/man/2/print
 extract	/man/2/sexprs
+extracted	/man/1/ar
 extracted	/man/1/gettar
 extracted	/man/1/sh-arg
 extracted	/man/10/iar
@@ -20853,6 +21046,7 @@ false	/man/2/palmfile
 false	/man/2/secstore
 false	/man/2/sh
 false	/man/2/styxservers
+false	/man/2/w3c-uris
 false	/man/9/checkbutton
 false	/man/9/grid
 false	/man/9/options
@@ -20956,6 +21150,7 @@ fd	/man/10/print
 fd	/man/10/styxserver
 fd	/man/2/attrdb
 fd	/man/2/bufio
+fd	/man/2/csv
 fd	/man/2/dhcpclient
 fd	/man/2/diskblocks
 fd	/man/2/disks
@@ -20972,6 +21167,7 @@ fd	/man/2/keyring-sha1
 fd	/man/2/print
 fd	/man/2/readdir
 fd	/man/2/registries
+fd	/man/2/rfc822
 fd	/man/2/scsiio
 fd	/man/2/security-auth
 fd	/man/2/security-ssl
@@ -21123,6 +21319,7 @@ fids	/man/2/styxservers
 fids	/man/5/0intro
 fids	/man/5/version
 field's	/man/2/format
+fieldname	/man/2/rfc822
 fields	/man/1/alphabet-fs
 fields	/man/1/fs
 fields	/man/1/gettar
@@ -21142,6 +21339,7 @@ fields	/man/10/parsecmd
 fields	/man/10/styx
 fields	/man/10/styxserver
 fields	/man/2/crc
+fields	/man/2/csv
 fields	/man/2/dhcpclient
 fields	/man/2/draw-screen
 fields	/man/2/format
@@ -21151,8 +21349,10 @@ fields	/man/2/plumbmsg
 fields	/man/2/prefab-element
 fields	/man/2/print
 fields	/man/2/prof
+fields	/man/2/rfc822
 fields	/man/2/spki
 fields	/man/2/sys-stat
+fields	/man/2/w3c-uris
 fields	/man/3/arch
 fields	/man/3/cmd
 fields	/man/3/cons
@@ -21191,6 +21391,7 @@ file	/man/1/0intro
 file	/man/1/acme
 file	/man/1/alphabet-fs
 file	/man/1/alphabet-main
+file	/man/1/ar
 file	/man/1/asm
 file	/man/1/auplay
 file	/man/1/avr
@@ -21340,6 +21541,7 @@ file	/man/2/cfg
 file	/man/2/command
 file	/man/2/convcs
 file	/man/2/crc
+file	/man/2/csv
 file	/man/2/daytime
 file	/man/2/dbm
 file	/man/2/debug
@@ -21377,6 +21579,7 @@ file	/man/2/prof
 file	/man/2/pslib
 file	/man/2/readdir
 file	/man/2/registries
+file	/man/2/rfc822
 file	/man/2/scsiio
 file	/man/2/secstore
 file	/man/2/security-auth
@@ -21666,6 +21869,7 @@ files	/man/1/0intro
 files	/man/1/9win
 files	/man/1/acme
 files	/man/1/alphabet-fs
+files	/man/1/ar
 files	/man/1/auplay
 files	/man/1/bind
 files	/man/1/blur
@@ -21778,6 +21982,7 @@ files	/man/2/alphabet-intro
 files	/man/2/attrdb
 files	/man/2/bufio
 files	/man/2/convcs
+files	/man/2/csv
 files	/man/2/dbm
 files	/man/2/debug
 files	/man/2/devpointer
@@ -21800,6 +22005,7 @@ files	/man/2/plumbmsg
 files	/man/2/print
 files	/man/2/prof
 files	/man/2/readdir
+files	/man/2/rfc822
 files	/man/2/scsiio
 files	/man/2/secstore
 files	/man/2/security-0intro
@@ -22095,6 +22301,7 @@ findpair	/man/2/attrdb
 finds	/man/1/acme
 finds	/man/1/diff
 finds	/man/1/disdep
+finds	/man/1/man
 finds	/man/1/sh-alphabet
 finds	/man/1/strings
 finds	/man/10/9load
@@ -22320,6 +22527,7 @@ floating	/man/10/print
 floating	/man/2/math-0intro
 floating	/man/2/math-export
 floating	/man/2/math-fp
+floating	/man/2/rfc822
 floating	/man/2/sys-print
 floating	/man/9/canvas
 floating	/man/9/text
@@ -22417,6 +22625,7 @@ fn	/man/2/cfg
 fn	/man/2/command
 fn	/man/2/convcs
 fn	/man/2/crc
+fn	/man/2/csv
 fn	/man/2/daytime
 fn	/man/2/dbm
 fn	/man/2/debug
@@ -22488,6 +22697,7 @@ fn	/man/2/rand
 fn	/man/2/readdir
 fn	/man/2/regex
 fn	/man/2/registries
+fn	/man/2/rfc822
 fn	/man/2/scsiio
 fn	/man/2/secstore
 fn	/man/2/security-auth
@@ -22549,6 +22759,7 @@ fn	/man/2/venti
 fn	/man/2/virgil
 fn	/man/2/volume
 fn	/man/2/w3c-css
+fn	/man/2/w3c-uris
 fn	/man/2/w3c-xpointers
 fn	/man/2/wait
 fn	/man/2/wmclient
@@ -22568,6 +22779,7 @@ fnn	/man/1/mux
 fns.h	/man/10/0intro
 fnvram	/man/3/tinyfs
 focus	/man/1/wm
+focus	/man/2/rfc822
 focus	/man/9/0intro
 focus	/man/9/bind
 focus	/man/9/button
@@ -22683,6 +22895,7 @@ footypes.b	/man/2/alphabet-intro
 footypes.m	/man/2/alphabet-intro
 fopen	/man/1/yacc
 fopen	/man/2/bufio
+fopen	/man/2/xml
 force100	/man/10/plan9.ini
 forced	/man/10/delay
 forces	/man/1/charon
@@ -22747,6 +22960,7 @@ format	/man/1/0intro
 format	/man/1/acme
 format	/man/1/alphabet-fs
 format	/man/1/alphabet-main
+format	/man/1/ar
 format	/man/1/auplay
 format	/man/1/avr
 format	/man/1/brutus
@@ -22801,6 +23015,7 @@ format	/man/2/attrdb
 format	/man/2/bufio
 format	/man/2/cfg
 format	/man/2/convcs
+format	/man/2/csv
 format	/man/2/daytime
 format	/man/2/devpointer
 format	/man/2/dis
@@ -22824,6 +23039,7 @@ format	/man/2/palmfile
 format	/man/2/plumbmsg
 format	/man/2/prefab-element
 format	/man/2/print
+format	/man/2/rfc822
 format	/man/2/sets
 format	/man/2/smtp
 format	/man/2/styx
@@ -23003,6 +23219,7 @@ forms	/man/10/conf
 forms	/man/2/dhcpclient
 forms	/man/2/ip
 forms	/man/2/math-0intro
+forms	/man/2/rfc822
 forms	/man/2/sexprs
 forms	/man/2/spki
 forms	/man/2/styxservers-nametree
@@ -23109,6 +23326,7 @@ fractions	/man/9/text
 frag	/man/2/ida
 fragment	/man/2/ida
 fragment	/man/2/plumbmsg
+fragment	/man/2/w3c-uris
 fragments	/man/2/ida
 frags	/man/2/ida
 frame	/man/1/charon
@@ -23166,6 +23384,7 @@ freed	/man/2/registries
 freed	/man/3/cons
 freed	/man/3/draw
 freed	/man/5/version
+freedb.freedb.org	/man/7/cddb
 freedom	/man/1/sh
 freeing	/man/1/mprof
 freeing	/man/10/allocb
@@ -23207,7 +23426,7 @@ fromfile	/man/1/mv
 fromfiles	/man/1/cp
 fromid	/man/2/spree
 fromuser	/man/3/cap
-fromwho	/man/2/smtp
+fromwhom	/man/2/smtp
 fronly	/man/2/palmfile
 front	/man/1/acme
 front	/man/1/deb
@@ -23271,6 +23490,7 @@ ftlctl	/man/3/ftl
 ftldata	/man/3/ftl
 ftldata	/man/8/ftl
 ftp	/man/1/charon
+ftp	/man/2/w3c-uris
 ftp	/man/4/9srvfs
 ftp	/man/4/ftpfs
 ftp.vitanuova.com	/man/4/ftpfs
@@ -23404,6 +23624,7 @@ further	/man/2/sexprs
 further	/man/2/spki
 further	/man/2/spki-verifier
 further	/man/2/styxservers
+further	/man/2/w3c-uris
 further	/man/3/cap
 further	/man/3/cmd
 further	/man/3/draw
@@ -23630,6 +23851,8 @@ generic	/man/10/plan9.ini
 generic	/man/2/alphabet-intro
 generic	/man/2/convcs
 generic	/man/2/disks
+generic	/man/2/rfc822
+generic	/man/2/w3c-uris
 generic	/man/2/xml
 generic	/man/6/proto
 generic	/man/8/mkfs
@@ -23684,6 +23907,7 @@ getb	/man/2/bufio
 getbtos	/man/2/convcs
 getbytearray	/man/2/keyring-getstring
 getc	/man/2/bufio
+getc	/man/2/rfc822
 getcard	/man/2/spree-cardlib
 getcards	/man/2/spree-cardlib
 getcsv	/man/1/sh-csv
@@ -23703,6 +23927,7 @@ getip	/man/2/dhcpclient
 getips	/man/2/dhcpclient
 getkeys	/man/2/cfg
 getline	/man/1/read
+getline	/man/2/csv
 getlines	/man/1/sh-csv
 getlines	/man/1/sh-sexprs
 getlines	/man/1/sh-std
@@ -23738,6 +23963,7 @@ gfer	/man/3/gpio
 gg	/man/9/types
 gh	/man/3/tv
 ghost	/man/10/panic
+gid	/man/1/ar
 gid	/man/10/ar
 gid	/man/10/devattach
 gid	/man/10/iar
@@ -23850,6 +24076,7 @@ gradually	/man/10/panic
 grained	/man/1/wm-misc
 gram.y	/man/10/mk
 grammar	/man/1/yacc
+grammar	/man/2/rfc822
 grammar	/man/2/w3c-css
 grammar	/man/2/w3c-xpointers
 grammar	/man/6/ubfa
@@ -24036,6 +24263,7 @@ grouping	/man/1/mash
 grouping	/man/1/mc
 grouping	/man/1/units
 grouping	/man/9/menu
+groups	/man/1/ar
 groups	/man/1/ls
 groups	/man/10/iar
 groups	/man/2/attrdb
@@ -24113,6 +24341,7 @@ gux	/man/1/cp
 gw	/man/3/ip
 gwip	/man/3/ip
 gz	/man/1/gzip
+gzip	/man/1/ar
 gzip	/man/1/gzip
 gzip	/man/10/5cv
 gzip	/man/10/9load
@@ -24168,6 +24397,7 @@ handled	/man/10/conf
 handled	/man/10/qio
 handled	/man/2/cfg
 handled	/man/2/sys-export
+handled	/man/2/w3c-uris
 handled	/man/3/cons
 handled	/man/3/ds
 handled	/man/5/flush
@@ -24278,6 +24508,7 @@ hardware	/man/3/vga
 hardware	/man/3/vid
 hardware	/man/8/bootpd
 hasattr	/man/2/attrdb
+hasauthority	/man/2/w3c-uris
 hasexcept	/man/6/dis
 hash	/man/1/alphabet-main
 hash	/man/1/secstore
@@ -24311,6 +24542,7 @@ hash	/man/6/dis
 hash	/man/6/keys
 hash	/man/6/keytext
 hash	/man/6/login
+hash	/man/7/cddb
 hash.b	/man/2/hash
 hash.m	/man/2/hash
 hashalg	/man/3/tls
@@ -24384,6 +24616,7 @@ header	/man/2/asn1
 header	/man/2/dis
 header	/man/2/filter-deflate
 header	/man/2/keyring-getmsg
+header	/man/2/rfc822
 header	/man/2/spree
 header	/man/3/ether
 header	/man/3/ftl
@@ -24401,6 +24634,7 @@ header	/man/8/create
 headerless	/man/10/5cv
 headers	/man/10/allocb
 headers	/man/10/inm
+headers	/man/2/rfc822
 headers	/man/2/secstore
 headers	/man/3/ip
 headers	/man/3/pbus
@@ -24482,6 +24716,7 @@ helmert	/man/2/geodesy
 help.html	/man/1/charon
 helper	/man/2/alphabet-intro
 helper	/man/2/wmsrv
+helpers	/man/2/rfc822
 helpful	/man/1/unicode
 helpful	/man/8/cs
 helpful	/man/8/rip
@@ -24533,6 +24768,7 @@ hexadecimal	/man/2/registries
 hexadecimal	/man/2/sets
 hexadecimal	/man/2/sexprs
 hexadecimal	/man/2/sys-print
+hexadecimal	/man/2/w3c-uris
 hexadecimal	/man/3/arch
 hexadecimal	/man/3/dbg
 hexadecimal	/man/3/ether
@@ -24625,6 +24861,7 @@ higher	/man/10/lock
 higher	/man/10/xalloc
 higher	/man/2/draw-0intro
 higher	/man/2/draw-image
+higher	/man/2/rfc822
 higher	/man/2/sets
 higher	/man/2/wmlib
 higher	/man/3/flash
@@ -24860,6 +25097,7 @@ host	/man/2/srv
 host	/man/2/sys-dial
 host	/man/2/tftp
 host	/man/2/virgil
+host	/man/2/w3c-uris
 host	/man/3/audio
 host	/man/3/boot
 host	/man/3/cap
@@ -24893,6 +25131,7 @@ host	/man/8/rdbgsrv
 host	/man/8/register
 host	/man/8/signer
 host	/man/8/svc
+host's	/man/1/os
 host's	/man/2/ip
 host's	/man/2/sys-dial
 host's	/man/3/cmd
@@ -24942,19 +25181,23 @@ ht	/man/2/hash
 html	/man/1/charon
 html	/man/1/cook
 html	/man/1/ebook
+html	/man/1/man
 html	/man/1/webgrab
 html	/man/2/stringinttab
 http	/man/1/charon
 http	/man/1/webgrab
 http	/man/2/dhcpclient
+http	/man/2/rfc822
 http	/man/2/sexprs
 http	/man/2/w3c-css
+http	/man/2/w3c-uris
 http	/man/2/w3c-xpointers
 http	/man/2/xml
 http	/man/6/ubfa
 http	/man/8/httpd
 http.suff	/man/8/httpd
 http1.0	/man/1/charon
+httpd	/man/2/w3c-uris
 httpd	/man/8/httpd
 httpd.debug	/man/8/httpd
 httpd.log	/man/8/httpd
@@ -25022,6 +25265,7 @@ ia5string	/man/2/asn1
 iallocb	/man/10/allocb
 ialt	/man/2/dis
 iamax	/man/2/math-linalg
+iar	/man/1/ar
 iar	/man/10/2l
 iar	/man/10/ar
 iar	/man/10/iar
@@ -25231,6 +25475,7 @@ identifier	/man/8/bootpd
 identifiers	/man/2/0intro
 identifiers	/man/2/asn1
 identifiers	/man/2/spree
+identifiers	/man/2/w3c-uris
 identifiers	/man/3/draw
 identifiers	/man/3/prog
 identifiers	/man/4/spree
@@ -25315,6 +25560,7 @@ idiomatic	/man/2/command
 idioms	/man/1/acme
 idiosyncratic	/man/6/keyboard
 idle	/man/10/dmainit
+ids	/man/1/ar
 ids	/man/1/deb
 ids	/man/1/kill
 ids	/man/10/iar
@@ -25329,6 +25575,7 @@ ids	/man/3/tinyfs
 ids	/man/4/acme
 ids	/man/4/kfs
 ids	/man/4/tarfs
+ids	/man/7/cddb
 ids	/man/8/create
 ids	/man/9/canvas
 idstring	/man/3/pnp
@@ -25352,6 +25599,7 @@ ie	/man/2/ip
 ie	/man/2/palmfile
 ie	/man/2/plumbmsg
 ie	/man/2/registries
+ie	/man/2/rfc822
 ie	/man/2/secstore
 ie	/man/2/sexprs
 ie	/man/2/spki
@@ -25386,6 +25634,7 @@ ifcdir	/man/8/dhcp
 ifdef	/man/10/2c
 iff	/man/2/ether
 iff	/man/2/names
+iff	/man/2/rfc822
 iff	/man/2/sexprs
 iff	/man/2/spki
 iff	/man/6/dis
@@ -25428,10 +25677,13 @@ ignoring	/man/10/2c
 ignoring	/man/10/newchan
 ignoring	/man/2/draw-0intro
 ignoring	/man/2/prefab-compound
+ignoring	/man/2/rfc822
 ignoring	/man/3/draw
 ignoring	/man/8/prep
+ii	/man/2/w3c-uris
 iic.c	/man/3/i2c
 iii	/man/10/plan9.ini
+iii	/man/2/w3c-uris
 il	/man/1/netstat
 il	/man/3/ip
 il	/man/6/ndb
@@ -25493,6 +25745,7 @@ image	/man/2/prefab-element
 image	/man/2/prefab-style
 image	/man/2/print
 image	/man/2/pslib
+image	/man/2/rfc822
 image	/man/2/selectfile
 image	/man/2/tk
 image	/man/2/wmclient
@@ -25810,6 +26063,7 @@ import	/man/2/ip
 import	/man/2/itslib
 import	/man/2/math-export
 import	/man/2/plumbmsg
+import	/man/2/rfc822
 import	/man/2/sets
 import	/man/2/sh
 import	/man/2/spki-verifier
@@ -25825,6 +26079,7 @@ import	/man/2/tk
 import	/man/2/translate
 import	/man/2/venti
 import	/man/2/w3c-css
+import	/man/2/w3c-uris
 import	/man/2/w3c-xpointers
 import	/man/2/wmsrv
 import	/man/2/xml
@@ -25945,6 +26200,7 @@ include	/man/2/cfg
 include	/man/2/command
 include	/man/2/convcs
 include	/man/2/crc
+include	/man/2/csv
 include	/man/2/daytime
 include	/man/2/dbm
 include	/man/2/debug
@@ -26021,6 +26277,7 @@ include	/man/2/rand
 include	/man/2/readdir
 include	/man/2/regex
 include	/man/2/registries
+include	/man/2/rfc822
 include	/man/2/scsiio
 include	/man/2/secstore
 include	/man/2/security-0intro
@@ -26085,6 +26342,7 @@ include	/man/2/venti
 include	/man/2/virgil
 include	/man/2/volume
 include	/man/2/w3c-css
+include	/man/2/w3c-uris
 include	/man/2/w3c-xpointers
 include	/man/2/wmclient
 include	/man/2/wmlib
@@ -26141,6 +26399,7 @@ included	/man/10/kproc
 included	/man/10/mk
 included	/man/10/plan9.ini
 included	/man/2/cfg
+included	/man/2/csv
 included	/man/2/encoding
 included	/man/2/keyring-sha1
 included	/man/2/prefab-compound
@@ -26179,6 +26438,7 @@ includes	/man/2/keyring-ipint
 includes	/man/2/security-0intro
 includes	/man/2/sys-print
 includes	/man/2/w3c-css
+includes	/man/2/w3c-uris
 includes	/man/3/0intro
 includes	/man/3/eia
 includes	/man/3/pbus
@@ -26197,6 +26457,7 @@ inclusion	/man/2/prefab-element
 inclusive	/man/1/mc
 inclusive	/man/1/strings
 inclusive	/man/10/plan9.ini
+inclusive	/man/2/keyring-ipint
 inclusive	/man/2/sets
 inclusive	/man/2/spree-cardlib
 inclusive	/man/2/string
@@ -26311,6 +26572,7 @@ indeed	/man/1/0intro
 indeed	/man/10/intrenable
 indeed	/man/2/security-0intro
 indeed	/man/2/sys-fd2path
+indeed	/man/2/w3c-uris
 indeed	/man/3/srv9
 indeed	/man/4/9srvfs
 indeed	/man/4/ramfile
@@ -26343,6 +26605,7 @@ independent	/man/2/draw-display
 independent	/man/2/draw-image
 independent	/man/2/styx
 independent	/man/2/sys-0intro
+independent	/man/2/w3c-uris
 independent	/man/3/audio
 independent	/man/3/draw
 independent	/man/3/env
@@ -26606,6 +26869,7 @@ infer	/man/2/ir
 inferface	/man/1/wm
 inferno	/man/1/0intro
 inferno	/man/1/9win
+inferno	/man/1/ar
 inferno	/man/1/auplay
 inferno	/man/1/avr
 inferno	/man/1/bind
@@ -26842,6 +27106,7 @@ init	/man/2/cfg
 init	/man/2/command
 init	/man/2/convcs
 init	/man/2/crc
+init	/man/2/csv
 init	/man/2/dbm
 init	/man/2/debug
 init	/man/2/devpointer
@@ -26878,6 +27143,7 @@ init	/man/2/pslib
 init	/man/2/rand
 init	/man/2/readdir
 init	/man/2/registries
+init	/man/2/rfc822
 init	/man/2/scsiio
 init	/man/2/secstore
 init	/man/2/security-auth
@@ -26906,6 +27172,7 @@ init	/man/2/translate
 init	/man/2/ubfa
 init	/man/2/venti
 init	/man/2/w3c-css
+init	/man/2/w3c-uris
 init	/man/2/w3c-xpointers
 init	/man/2/wait
 init	/man/2/wmclient
@@ -26924,6 +27191,7 @@ init	/man/4/namespace
 init	/man/8/init
 initbuiltin	/man/2/sh
 initialisation	/man/1/emu
+initialisation	/man/1/sh
 initialisation	/man/1/toolbar
 initialisation	/man/10/9load
 initialisation	/man/10/allocb
@@ -26994,6 +27262,7 @@ initialised	/man/2/draw-context
 initialised	/man/2/draw-display
 initialised	/man/2/itslib
 initialised	/man/2/pslib
+initialised	/man/2/rfc822
 initialised	/man/2/sh
 initialised	/man/2/spree
 initialised	/man/2/sys-stat
@@ -27210,6 +27479,7 @@ input	/man/2/ir
 input	/man/2/keyring-getstring
 input	/man/2/math-export
 input	/man/2/plumbmsg
+input	/man/2/rfc822
 input	/man/2/sexprs
 input	/man/2/styx
 input	/man/2/sys-0intro
@@ -27404,6 +27674,7 @@ installs	/man/8/create
 installs	/man/8/prep
 instance	/man/1/acme
 instance	/man/1/alphabet-fs
+instance	/man/1/ar
 instance	/man/1/calendar
 instance	/man/1/collab
 instance	/man/1/collab-clients
@@ -27441,6 +27712,7 @@ instance	/man/2/asn1
 instance	/man/2/bufio
 instance	/man/2/bufio-chanfill
 instance	/man/2/command
+instance	/man/2/csv
 instance	/man/2/dhcpclient
 instance	/man/2/dialog
 instance	/man/2/draw-0intro
@@ -27455,6 +27727,7 @@ instance	/man/2/keyset
 instance	/man/2/palmfile
 instance	/man/2/print
 instance	/man/2/registries
+instance	/man/2/rfc822
 instance	/man/2/secstore
 instance	/man/2/security-auth
 instance	/man/2/selectfile
@@ -27474,6 +27747,7 @@ instance	/man/2/sys-print
 instance	/man/2/sys-self
 instance	/man/2/sys-stat
 instance	/man/2/ubfa
+instance	/man/2/w3c-uris
 instance	/man/2/wait
 instance	/man/2/xml
 instance	/man/3/dbg
@@ -27511,6 +27785,7 @@ instances	/man/10/error
 instances	/man/2/filter
 instances	/man/2/styxservers
 instances	/man/2/sys-dup
+instances	/man/2/w3c-uris
 instances	/man/3/draw
 instances	/man/3/ip
 instances	/man/3/srv
@@ -27666,6 +27941,7 @@ int	/man/2/rand
 int	/man/2/readdir
 int	/man/2/regex
 int	/man/2/registries
+int	/man/2/rfc822
 int	/man/2/scsiio
 int	/man/2/secstore
 int	/man/2/security-auth
@@ -27719,6 +27995,7 @@ int	/man/2/ubfa
 int	/man/2/venti
 int	/man/2/volume
 int	/man/2/w3c-css
+int	/man/2/w3c-uris
 int	/man/2/w3c-xpointers
 int	/man/2/wait
 int	/man/2/wmclient
@@ -28227,12 +28504,14 @@ internet	/man/1/mux
 internet	/man/2/dhcpclient
 internet	/man/2/ip
 internet	/man/2/keyring-sha1
+internet	/man/2/rfc822
 internet	/man/2/sexprs
 internet	/man/2/srv
 internet	/man/2/tftp
 internet	/man/3/ip
 internet	/man/6/ndb
 internet	/man/6/sexprs
+internet	/man/7/cddb
 internet	/man/8/bootpd
 internet	/man/8/cs
 internet	/man/8/dns
@@ -28273,6 +28552,7 @@ interpretation	/man/2/names
 interpretation	/man/2/registries
 interpretation	/man/2/styxservers-nametree
 interpretation	/man/2/sys-fversion
+interpretation	/man/2/w3c-uris
 interpretation	/man/3/cmd
 interpretation	/man/3/fpga
 interpretation	/man/3/ip
@@ -28497,6 +28777,7 @@ introduced	/man/1/mc
 introduced	/man/2/cfg
 introduced	/man/2/w3c-css
 introduces	/man/2/0intro
+introduces	/man/2/w3c-uris
 introduction	/man/1/0intro
 introduction	/man/10/0intro
 introduction	/man/2/0intro
@@ -28521,6 +28802,7 @@ ints	/man/3/prog
 inttoip	/man/2/keyring-ipint
 inval	/man/2/math-fp
 inval	/man/3/dbg
+invalid	/man/1/ar
 invalid	/man/1/sh
 invalid	/man/1/sh-std
 invalid	/man/10/c2l
@@ -28718,22 +29000,27 @@ io	/man/3/i2c
 io.h	/man/10/0intro
 ioalloc	/man/3/arch
 iob	/man/2/format
+iob	/man/2/xml
 iob	/man/3/arch
 iobfd	/man/3/arch
 iobuf	/man/1/yacc
 iobuf	/man/2/attrdb
 iobuf	/man/2/bufio
 iobuf	/man/2/bufio-chanfill
+iobuf	/man/2/csv
 iobuf	/man/2/format
 iobuf	/man/2/imagefile
 iobuf	/man/2/pslib
+iobuf	/man/2/rfc822
 iobuf	/man/2/sexprs
 iobuf	/man/2/ubfa
+iobuf	/man/2/xml
 iobuf.gets	/man/6/dis
 ioexclude	/man/10/plan9.ini
 iohdrsz	/man/10/styx
 iohdrsz	/man/2/styx
 iol	/man/3/arch
+ior	/man/2/keyring-ipint
 iostats	/man/4/iostats
 iostats.b	/man/4/iostats
 iostats.out	/man/4/iostats
@@ -28778,7 +29065,6 @@ ip	/man/8/cs
 ip	/man/8/dhcp
 ip	/man/8/dns
 ip	/man/8/fpgaload
-ip	/man/8/httpd
 ip	/man/8/init
 ip	/man/8/logind
 ip	/man/8/ping
@@ -28889,6 +29175,7 @@ isa	/man/10/dmainit
 isa	/man/10/plan9.ini
 isa	/man/3/pnp
 isa.h	/man/6/dis
+isabsolute	/man/2/w3c-uris
 isaconfig	/man/10/inb
 isatom	/man/2/ubfa
 isbinary	/man/2/ubfa
@@ -28929,6 +29216,7 @@ isn't	/man/9/text
 isnan	/man/2/math-fp
 iso	/man/1/charon
 iso	/man/2/palmfile
+iso	/man/2/rfc822
 iso	/man/4/dossrv
 iso	/man/6/utf
 iso11172	/man/3/mpeg
@@ -29307,6 +29595,7 @@ kexec	/man/2/tftp
 kexec	/man/3/boot
 key	/man/1/acme
 key	/man/1/alphabet-main
+key	/man/1/ar
 key	/man/1/charon
 key	/man/1/crypt
 key	/man/1/idea
@@ -29577,6 +29866,7 @@ keytext	/man/6/auth
 keytext	/man/6/keytext
 keyword	/man/1/man
 keyword	/man/1/mc
+keyword	/man/2/keyring-ipint
 keywords	/man/1/man
 keywords	/man/1/mash
 keywords	/man/10/c2l
@@ -29615,6 +29905,7 @@ kids	/man/2/prefab-element
 kill	/man/1/acme
 kill	/man/1/grid-monitor
 kill	/man/1/kill
+kill	/man/1/os
 kill	/man/1/ps
 kill	/man/1/wm-misc
 kill	/man/10/acid
@@ -29634,6 +29925,7 @@ kill	/man/8/cs
 kill.b	/man/1/kill
 killed	/man/1/deb
 killed	/man/1/grid-monitor
+killed	/man/1/os
 killed	/man/10/kproc
 killed	/man/3/cmd
 killed	/man/3/prog
@@ -29766,6 +30058,7 @@ labour	/man/1/alphabet-abc
 labour	/man/1/alphabet-grid
 labs	/man/10/0intro
 labs	/man/2/dialog
+lack	/man/1/os
 lack	/man/1/sh
 lack	/man/8/dns
 lack	/man/8/ping
@@ -29873,6 +30166,7 @@ latexslides	/man/1/cook
 latexslides	/man/2/stringinttab
 latin	/man/10/kbdputc
 latin	/man/2/palmfile
+latin	/man/2/rfc822
 latin	/man/2/sys-0intro
 latin	/man/6/keyboard
 latin1	/man/2/convcs
@@ -29984,7 +30278,9 @@ leading	/man/1/uuencode
 leading	/man/10/atoi
 leading	/man/2/ip
 leading	/man/2/math-linalg
+leading	/man/2/rfc822
 leading	/man/2/string
+leading	/man/2/w3c-uris
 leading	/man/2/xml
 leading	/man/3/cons
 leading	/man/3/ether
@@ -30279,6 +30575,7 @@ level	/man/2/filter-deflate
 level	/man/2/ida
 level	/man/2/itslib
 level	/man/2/prefab-compound
+level	/man/2/rfc822
 level	/man/2/scsiio
 level	/man/2/security-0intro
 level	/man/2/sh
@@ -30350,6 +30647,7 @@ levels	/man/2/keyring-0intro
 levels	/man/2/security-0intro
 levels	/man/2/venti
 lex	/man/1/yacc
+lex	/man/2/rfc822
 lex.c	/man/10/mk
 lex.lval.v	/man/1/yacc
 lex.o	/man/10/mk
@@ -30408,6 +30706,7 @@ lib	/man/2/bufio
 lib	/man/2/cfg
 lib	/man/2/convcs
 lib	/man/2/crc
+lib	/man/2/csv
 lib	/man/2/daytime
 lib	/man/2/dbm
 lib	/man/2/debug
@@ -30448,6 +30747,7 @@ lib	/man/2/pslib
 lib	/man/2/rand
 lib	/man/2/readdir
 lib	/man/2/regex
+lib	/man/2/rfc822
 lib	/man/2/scsiio
 lib	/man/2/secstore
 lib	/man/2/security-auth
@@ -30477,6 +30777,7 @@ lib	/man/2/venti
 lib	/man/2/virgil
 lib	/man/2/volume
 lib	/man/2/w3c-css
+lib	/man/2/w3c-uris
 lib	/man/2/w3c-xpointers
 lib	/man/2/wmclient
 lib	/man/2/wmlib
@@ -30504,6 +30805,7 @@ lib	/man/8/plumber
 lib	/man/8/srv
 lib	/man/8/styxmon
 lib	/man/8/svc
+lib.a	/man/1/ar
 lib.a	/man/10/iar
 lib.h	/man/10/0intro
 lib9	/man/10/getfields
@@ -30577,6 +30879,7 @@ libprefab	/man/2/prefab-element
 libprefab	/man/2/prefab-environ
 libprefab	/man/2/prefab-style
 libprefab	/man/4/namespace
+libraries	/man/1/ar
 libraries	/man/10/0intro
 libraries	/man/10/2c
 libraries	/man/10/2l
@@ -30745,6 +31048,7 @@ limit	/man/10/lock
 limit	/man/10/plan9.ini
 limit	/man/10/qio
 limit	/man/2/0intro
+limit	/man/2/rfc822
 limit	/man/2/sets
 limit	/man/2/styx
 limit	/man/3/cons
@@ -30801,6 +31105,7 @@ linalg	/man/2/0intro
 linalg	/man/2/math-0intro
 linalg	/man/2/math-linalg
 line's	/man/2/attrdb
+line's	/man/2/rfc822
 line's	/man/9/text
 line.char	/man/9/text
 linear	/man/1/mash
@@ -30861,6 +31166,7 @@ lines	/man/2/plumbmsg
 lines	/man/2/prefab-compound
 lines	/man/2/print
 lines	/man/2/prof
+lines	/man/2/rfc822
 lines	/man/2/secstore
 lines	/man/2/smtp
 lines	/man/3/audio
@@ -30934,6 +31240,7 @@ links	/man/2/wmsrv
 links	/man/4/ftpfs
 links	/man/6/sexprs
 linksys	/man/10/plan9.ini
+linux	/man/1/ar
 linux	/man/10/conf
 linux	/man/10/styxserver
 linux	/man/4/namespace
@@ -30943,6 +31250,7 @@ linuxswap	/man/8/prep
 lisp	/man/2/sexprs
 lisp's	/man/2/sexprs
 list	/man/1/acme
+list	/man/1/ar
 list	/man/1/blur
 list	/man/1/charon
 list	/man/1/cook
@@ -31014,6 +31322,7 @@ list	/man/2/attrdb
 list	/man/2/cfg
 list	/man/2/command
 list	/man/2/convcs
+list	/man/2/csv
 list	/man/2/debug
 list	/man/2/dhcpclient
 list	/man/2/dialog
@@ -31041,6 +31350,7 @@ list	/man/2/prefab-element
 list	/man/2/print
 list	/man/2/prof
 list	/man/2/registries
+list	/man/2/rfc822
 list	/man/2/scsiio
 list	/man/2/secstore
 list	/man/2/security-auth
@@ -31139,6 +31449,7 @@ listbox	/man/9/listbox
 listbox's	/man/9/listbox
 listboxes	/man/1/tktester
 listboxes	/man/9/listbox
+listed	/man/1/ar
 listed	/man/1/ftree
 listed	/man/1/grid-ns
 listed	/man/1/grid-register
@@ -31214,6 +31525,7 @@ listens	/man/8/httpd
 listens	/man/8/srv
 listens	/man/8/svc
 listing	/man/1/acme
+listing	/man/1/ar
 listing	/man/1/asm
 listing	/man/1/env
 listing	/man/1/gettar
@@ -31265,6 +31577,7 @@ lists	/man/2/registries
 lists	/man/2/sexprs
 lists	/man/2/sh
 lists	/man/2/w3c-css
+lists	/man/2/w3c-uris
 lists	/man/2/w3c-xpointers
 lists	/man/3/dynld
 lists	/man/3/indir
@@ -31364,6 +31677,7 @@ load	/man/2/cfg
 load	/man/2/command
 load	/man/2/convcs
 load	/man/2/crc
+load	/man/2/csv
 load	/man/2/daytime
 load	/man/2/dbm
 load	/man/2/debug
@@ -31440,6 +31754,7 @@ load	/man/2/rand
 load	/man/2/readdir
 load	/man/2/regex
 load	/man/2/registries
+load	/man/2/rfc822
 load	/man/2/scsiio
 load	/man/2/secstore
 load	/man/2/security-auth
@@ -31503,6 +31818,7 @@ load	/man/2/venti
 load	/man/2/virgil
 load	/man/2/volume
 load	/man/2/w3c-css
+load	/man/2/w3c-uris
 load	/man/2/w3c-xpointers
 load	/man/2/wait
 load	/man/2/wmclient
@@ -31589,6 +31905,7 @@ loader	/man/10/5cv
 loader	/man/10/dynld
 loader	/man/2/dis
 loader	/man/6/dis
+loaders	/man/1/ar
 loaders	/man/10/2c
 loaders	/man/10/2l
 loaders	/man/10/9load
@@ -31852,6 +32169,7 @@ logwindow	/man/1/logwindow
 logwindow	/man/4/logfile
 logwindow.b	/man/1/logwindow
 log₂	/man/2/bloomfilter
+lone	/man/2/csv
 longer	/man/1/acme
 longer	/man/1/miniterm
 longer	/man/1/prof
@@ -31904,7 +32222,6 @@ looking	/man/2/spree-objstore
 looking	/man/6/ndb
 looking	/man/8/httpd
 lookman	/man/1/man
-lookman.b	/man/1/man
 looks	/man/1/0intro
 looks	/man/1/ps
 looks	/man/1/sh
@@ -31952,6 +32269,7 @@ loops	/man/10/lock
 loops	/man/2/math-linalg
 loops	/man/6/colour
 loosely	/man/1/sh
+loosely	/man/2/rfc822
 lose	/man/1/wm
 loses	/man/2/filepat
 losing	/man/2/sh
@@ -32005,6 +32323,7 @@ lower	/man/10/error
 lower	/man/2/convcs
 lower	/man/2/draw-rect
 lower	/man/2/encoding
+lower	/man/2/rfc822
 lower	/man/2/security-0intro
 lower	/man/2/sexprs
 lower	/man/2/sh
@@ -32014,6 +32333,7 @@ lower	/man/2/sys-fversion
 lower	/man/2/sys-print
 lower	/man/2/tk
 lower	/man/2/w3c-css
+lower	/man/2/w3c-uris
 lower	/man/3/tv
 lower	/man/6/keyboard
 lower	/man/6/man
@@ -32056,6 +32376,7 @@ lpt?raw	/man/10ti925/tihost
 lr	/man/1/yacc
 lr	/man/6/man
 ls	/man/1/alphabet-fs
+ls	/man/1/ar
 ls	/man/1/chgrp
 ls	/man/1/chmod
 ls	/man/1/fs
@@ -32230,6 +32551,7 @@ mail	/man/2/dhcpclient
 mail	/man/2/encoding
 mail	/man/2/keyring-0intro
 mail	/man/2/pop3
+mail	/man/2/rfc822
 mail	/man/2/smtp
 mail	/man/2/translate
 mail	/man/4/ftpfs
@@ -32240,12 +32562,11 @@ mailbox	/man/2/pop3
 mailboxes	/man/4/namespace
 mailpop3	/man/1/acme
 mailserver	/man/1/sendmail
-mailserver	/man/2/pop3
-mailserver	/man/2/smtp
 main	/man/1/alphabet-abc
 main	/man/1/alphabet-fs
 main	/man/1/alphabet-grid
 main	/man/1/alphabet-main
+main	/man/1/ar
 main	/man/1/charon
 main	/man/1/deb
 main	/man/1/emu
@@ -32323,12 +32644,14 @@ maintained	/man/2/wmlib
 maintained	/man/3/logfs
 maintained	/man/4/dbfs
 maintained	/man/4/memfs
+maintainer	/man/1/ar
 maintainer	/man/10/iar
 maintaining	/man/2/convcs
 maintaining	/man/3/draw
 maintaining	/man/4/factotum
 maintaining	/man/8/dhcp
 maintains	/man/1/acme
+maintains	/man/1/ar
 maintains	/man/10/devattach
 maintains	/man/10/iar
 maintains	/man/10/plan9.ini
@@ -32369,9 +32692,11 @@ malloc	/man/10/xalloc
 mallocz	/man/10/error
 mallocz	/man/10/malloc
 man.b	/man/1/man
+man2html	/man/1/man
 man2txt	/man/1/man
 man2txt.b	/man/1/man
 manage	/man/1/0intro
+manage	/man/1/ar
 manage	/man/1/gettar
 manage	/man/1/wm
 manage	/man/1/wm-sh
@@ -32465,7 +32790,9 @@ manga	/man/8/mangaload
 mangaload	/man/8/mangaload
 mangaload.b	/man/8/mangaload
 manga™	/man/8/mangaload
+manifest	/man/1/ar
 manifestation	/man/6/utf
+manipulate	/man/1/ar
 manipulate	/man/1/blur
 manipulate	/man/10/dev
 manipulate	/man/10/odbc
@@ -32589,6 +32916,7 @@ map	/man/2/draw-0intro
 map	/man/2/draw-display
 map	/man/2/imagefile
 map	/man/2/print
+map	/man/2/rfc822
 map	/man/3/draw
 map	/man/3/fs
 map	/man/3/ip
@@ -32789,6 +33117,7 @@ match	/man/2/filter
 match	/man/2/keyring-0intro
 match	/man/2/popup
 match	/man/2/regex
+match	/man/2/rfc822
 match	/man/2/security-0intro
 match	/man/2/selectfile
 match	/man/2/spree-allow
@@ -32971,6 +33300,7 @@ maximum	/man/2/factotum
 maximum	/man/2/keyring-0intro
 maximum	/man/2/math-fp
 maximum	/man/2/palmfile
+maximum	/man/2/rfc822
 maximum	/man/2/spree-gather
 maximum	/man/2/styx
 maximum	/man/2/sys-fversion
@@ -33003,6 +33333,7 @@ maxmembers	/man/2/spree-gather
 maxn	/man/2/venti
 maxpkt	/man/3/usb
 maxraint	/man/2/ip
+maxrequest	/man/2/rfc822
 maxrpc	/man/2/styx
 maxsd53c8xx	/man/10/plan9.ini
 maxsize	/man/1/emu
@@ -33081,6 +33412,7 @@ meaningful	/man/1/charon
 meaningful	/man/1/tktester
 meaningful	/man/2/wmsrv
 meaningless	/man/1/acme
+meanings	/man/1/ar
 meanings	/man/10/iar
 meanings	/man/10ti925/tihost
 meant	/man/1/cpu
@@ -33132,6 +33464,7 @@ mechanisms	/man/9/canvas
 medblue	/man/2/draw-display
 medgreen	/man/2/draw-display
 media	/man/10/plan9.ini
+media	/man/2/rfc822
 media	/man/2/scsiio
 media	/man/2/w3c-css
 media	/man/3/ip
@@ -33296,6 +33629,7 @@ memsize	/man/6/dis
 memstart	/man/2/prof
 memstats	/man/2/prof
 mention	/man/10/2l
+mentioned	/man/1/ar
 mentioned	/man/1/sendmail
 mentioned	/man/1/sh
 mentioned	/man/10/2l
@@ -33359,9 +33693,7 @@ merge	/man/1/alphabet-fs
 merge	/man/1/fs
 merge	/man/1/sh-string
 merge	/man/9/grid
-merged	/man/1/os
 merged	/man/2/spree
-merged	/man/3/cmd
 merging	/man/1/alphabet-fs
 merging	/man/1/fs
 mersenne	/man/1/math-misc
@@ -33663,7 +33995,10 @@ millliseconds	/man/10/sleep
 mime	/man/1/charon
 mime	/man/2/encoding
 mime	/man/2/keyring-0intro
+mime	/man/2/rfc822
 mime	/man/6/sexprs
+mimefields	/man/2/rfc822
+mimetype	/man/2/rfc822
 mimic	/man/1/ebook
 mimic	/man/2/sys-werrstr
 mimicked	/man/1/tiny
@@ -33773,10 +34108,12 @@ miscellaneous	/man/1/wm-misc
 miscellaneous	/man/3/cons
 miscellany	/man/1/acme
 mishandled	/man/3/draw
+misinterpreted	/man/2/w3c-uris
 misleading	/man/8/rip
 mismatch	/man/10/2c
 mismatches	/man/2/sys-stat
 missing	/man/1/acme
+missing	/man/1/ar
 missing	/man/1/look
 missing	/man/1/mk
 missing	/man/1/mkdir
@@ -33811,6 +34148,7 @@ mk	/man/10/acid
 mk	/man/10/conf
 mk	/man/10/mk
 mk	/man/2/draw-display
+mk	/man/2/rfc822
 mk	/man/4/namespace
 mk's	/man/1/mk
 mk's	/man/10/mk
@@ -33906,6 +34244,7 @@ mod.dis	/man/1/limbo
 mod.types	/man/2/dis
 mode	/man/1/9win
 mode	/man/1/alphabet-fs
+mode	/man/1/ar
 mode	/man/1/chmod
 mode	/man/1/cp
 mode	/man/1/crypt
@@ -34005,6 +34344,7 @@ modes	/man/9/listbox
 modes	/man/9/text
 modf	/man/2/math-fp
 modification	/man/1/alphabet-fs
+modification	/man/1/ar
 modification	/man/1/bind
 modification	/man/1/du
 modification	/man/1/fs
@@ -34039,6 +34379,7 @@ modifications	/man/9/entry
 modifications	/man/9/text
 modified	/man/1/acme
 modified	/man/1/alphabet-fs
+modified	/man/1/ar
 modified	/man/1/charon
 modified	/man/1/cp
 modified	/man/1/du
@@ -34071,6 +34412,7 @@ modified	/man/9/text
 modifier	/man/10/devattach
 modifier	/man/2/sys-stat
 modifier	/man/9/text
+modifiers	/man/1/ar
 modifiers	/man/10/iar
 modifiers	/man/9/text
 modifies	/man/2/command
@@ -34184,6 +34526,7 @@ module	/man/2/cfg
 module	/man/2/command
 module	/man/2/convcs
 module	/man/2/crc
+module	/man/2/csv
 module	/man/2/dbm
 module	/man/2/debug
 module	/man/2/dhcpclient
@@ -34222,6 +34565,7 @@ module	/man/2/prof
 module	/man/2/pslib
 module	/man/2/regex
 module	/man/2/registries
+module	/man/2/rfc822
 module	/man/2/scsiio
 module	/man/2/secstore
 module	/man/2/security-0intro
@@ -34254,6 +34598,7 @@ module	/man/2/translate
 module	/man/2/ubfa
 module	/man/2/venti
 module	/man/2/w3c-css
+module	/man/2/w3c-uris
 module	/man/2/w3c-xpointers
 module	/man/2/wait
 module	/man/2/wmclient
@@ -34547,6 +34892,7 @@ mouse	/man/1/collab-clients
 mouse	/man/1/emu
 mouse	/man/1/keyboard
 mouse	/man/1/logon
+mouse	/man/1/man
 mouse	/man/1/mash-tk
 mouse	/man/1/miniterm
 mouse	/man/1/session
@@ -34584,6 +34930,7 @@ mouse	/man/9/text
 mouse	/man/9/update
 mouseport	/man/10/plan9.ini
 move	/man/1/acme
+move	/man/1/ar
 move	/man/1/cprof
 move	/man/1/ebook
 move	/man/1/ftree
@@ -34763,6 +35110,7 @@ multicast	/man/3/ether
 multicast	/man/3/ip
 multiflag	/man/10/getfields
 multimaster	/man/10/plan9.ini
+multipart	/man/2/rfc822
 multiples	/man/10/devattach
 multiples	/man/2/diskblocks
 multiples	/man/2/spree-cardlib
@@ -34798,6 +35146,7 @@ multiprocessor	/man/10/lock
 multiprocessor	/man/10/plan9.ini
 multiprocessor	/man/10/sleep
 multiprocessors	/man/10/splhi
+multipurpose	/man/2/rfc822
 multisync135	/man/10/plan9.ini
 musicam,i	/man/3/mpeg
 musicam,ii	/man/3/mpeg
@@ -34867,6 +35216,7 @@ names	/man/1/0intro
 names	/man/1/acme
 names	/man/1/alphabet-fs
 names	/man/1/alphabet-main
+names	/man/1/ar
 names	/man/1/basename
 names	/man/1/charon
 names	/man/1/cleanname
@@ -35140,6 +35490,8 @@ ndb	/man/1/grid-localreg
 ndb	/man/10/9load
 ndb	/man/2/attrdb
 ndb	/man/2/dhcpclient
+ndb	/man/2/pop3
+ndb	/man/2/smtp
 ndb	/man/4/namespace
 ndb	/man/4/registry
 ndb	/man/6/attrdb
@@ -35213,6 +35565,7 @@ necessary	/man/2/keyring-0intro
 necessary	/man/2/palmfile
 necessary	/man/2/prefab-element
 necessary	/man/2/prefab-environ
+necessary	/man/2/rfc822
 necessary	/man/2/security-0intro
 necessary	/man/2/spki
 necessary	/man/2/styxpersist
@@ -35271,6 +35624,7 @@ needed	/man/2/spree
 needed	/man/2/styxservers
 needed	/man/2/sys-dirread
 needed	/man/2/sys-pctl
+needed	/man/2/w3c-uris
 needed	/man/2/xml
 needed	/man/3/dbg
 needed	/man/3/ip
@@ -35341,6 +35695,7 @@ negative	/man/2/math-fp
 negative	/man/2/plumbmsg
 negative	/man/2/prof
 negative	/man/2/rand
+negative	/man/2/rfc822
 negative	/man/2/secstore
 negative	/man/2/sets
 negative	/man/2/styxservers
@@ -35379,6 +35734,7 @@ negotiation	/man/4/import
 negotiation	/man/7/db
 neighbour	/man/9/text
 neither	/man/1/alphabet-fs
+neither	/man/1/ar
 neither	/man/1/charon
 neither	/man/1/cprof
 neither	/man/1/fs
@@ -35615,6 +35971,7 @@ newline	/man/10/panic
 newline	/man/2/arg
 newline	/man/2/asn1
 newline	/man/2/bufio
+newline	/man/2/csv
 newline	/man/2/dialog
 newline	/man/2/keyring-certtostr
 newline	/man/2/keyring-getmsg
@@ -35747,6 +36104,7 @@ nil	/man/2/bufio
 nil	/man/2/cfg
 nil	/man/2/command
 nil	/man/2/convcs
+nil	/man/2/csv
 nil	/man/2/dbm
 nil	/man/2/debug
 nil	/man/2/devpointer
@@ -35793,6 +36151,7 @@ nil	/man/2/prefab-compound
 nil	/man/2/prefab-element
 nil	/man/2/regex
 nil	/man/2/registries
+nil	/man/2/rfc822
 nil	/man/2/scsiio
 nil	/man/2/secstore
 nil	/man/2/security-auth
@@ -35834,6 +36193,7 @@ nil	/man/2/translate
 nil	/man/2/ubfa
 nil	/man/2/virgil
 nil	/man/2/w3c-css
+nil	/man/2/w3c-uris
 nil	/man/2/w3c-xpointers
 nil	/man/2/wait
 nil	/man/2/wmclient
@@ -35881,6 +36241,7 @@ nodev	/man/6/namespace
 nodevs	/man/1/sh-std
 nodevs	/man/2/sys-pctl
 nodevs	/man/6/namespace
+nodots	/man/2/w3c-uris
 nodummyrr	/man/10/plan9.ini
 noecho	/man/4/acme
 noerror	/man/1/dd
@@ -35972,6 +36333,7 @@ non	/man/2/print
 non	/man/2/rand
 non	/man/2/regex
 non	/man/2/registries
+non	/man/2/rfc822
 non	/man/2/scsiio
 non	/man/2/security-auth
 non	/man/2/sets
@@ -36185,6 +36547,7 @@ notation	/man/9/types
 notbefore	/man/2/spki
 note	/man/1/acme
 note	/man/1/alphabet-fs
+note	/man/1/ar
 note	/man/1/bind
 note	/man/1/fc
 note	/man/1/fs
@@ -36217,6 +36580,7 @@ note	/man/2/bufio
 note	/man/2/cfg
 note	/man/2/command
 note	/man/2/convcs
+note	/man/2/csv
 note	/man/2/daytime
 note	/man/2/geodesy
 note	/man/2/palmfile
@@ -36233,6 +36597,7 @@ note	/man/2/styxservers-nametree
 note	/man/2/sys-dial
 note	/man/2/sys-self
 note	/man/2/translate
+note	/man/2/w3c-uris
 note	/man/2/wmsrv
 note	/man/2/xml
 note	/man/3/dbg
@@ -36375,6 +36740,7 @@ ntfs	/man/3/fs
 ntfs	/man/8/prep
 nthreads	/man/1/charon
 ntp	/man/8/sntp
+ntracks	/man/7/cddb
 ntsc	/man/2/draw-image
 ntsc	/man/3/tv
 ntsc	/man/3/vid
@@ -36459,6 +36825,7 @@ numblocks	/man/1/zeros
 numeral	/man/1/acme
 numeral	/man/2/ir
 numerator	/man/6/keyboard
+numeric	/man/1/ar
 numeric	/man/1/charon
 numeric	/man/1/kill
 numeric	/man/1/look
@@ -36531,6 +36898,7 @@ obj	/man/2/spree
 obj	/man/2/spree-allow
 obj	/man/2/spree-cardlib
 obj	/man/2/ubfa
+object	/man/1/ar
 object	/man/1/asm
 object	/man/1/bind
 object	/man/1/disdep
@@ -36830,6 +37198,7 @@ octal	/man/6/proto
 octal	/man/6/sexprs
 octal	/man/8/kfscmd
 octet	/man/2/asn1
+octet	/man/2/rfc822
 octet	/man/8/httpd
 octets	/man/2/asn1
 octetstring	/man/2/asn1
@@ -36963,6 +37332,7 @@ ok	/man/1/sh-test
 ok	/man/1/tktester
 ok	/man/2/ip
 ok	/man/2/itslib
+ok	/man/2/rfc822
 ok	/man/2/security-auth
 ok	/man/2/tkclient
 ok	/man/2/venti
@@ -36971,6 +37341,7 @@ ok	/man/4/factotum
 ok	/man/4/keyfs
 ok	/man/8/rdbgsrv
 ok	/man/9/canvas
+oks	/man/2/rfc822
 old.bundle	/man/1/alphabet-fs
 old.bundle	/man/1/fs
 old.index.html	/man/1/webgrab
@@ -37055,6 +37426,7 @@ ones	/man/10/plan9.ini
 ones	/man/2/0intro
 ones	/man/2/draw-display
 ones	/man/2/ip
+ones	/man/2/keyring-ipint
 ones	/man/2/translate
 ones	/man/3/cons
 ones	/man/3/ds
@@ -37067,6 +37439,7 @@ ones	/man/8/styxchat
 ones	/man/9/text
 onetbiosns	/man/2/dhcpclient
 onodetype	/man/2/w3c-xpointers
+onscreen	/man/1/sh-tk
 onscreen	/man/1/wm
 onscreen	/man/2/tkclient
 onscreen	/man/2/wmclient
@@ -37316,6 +37689,7 @@ operation	/man/10/dmainit
 operation	/man/10/plan9.ini
 operation	/man/10/qio
 operation	/man/10/styxserver
+operation	/man/2/csv
 operation	/man/2/dbm
 operation	/man/2/dhcpclient
 operation	/man/2/dis
@@ -37332,6 +37706,7 @@ operation	/man/2/keyring-ipint
 operation	/man/2/math-export
 operation	/man/2/math-fp
 operation	/man/2/prefab-element
+operation	/man/2/rfc822
 operation	/man/2/scsiio
 operation	/man/2/secstore
 operation	/man/2/sexprs
@@ -37343,6 +37718,7 @@ operation	/man/2/sys-open
 operation	/man/2/sys-stat
 operation	/man/2/ubfa
 operation	/man/2/w3c-css
+operation	/man/2/w3c-uris
 operation	/man/2/w3c-xpointers
 operation	/man/3/dbg
 operation	/man/3/dup
@@ -37359,6 +37735,7 @@ operations	/man/1/mash
 operations	/man/1/mash-make
 operations	/man/1/mprof
 operations	/man/1/nsbuild
+operations	/man/1/os
 operations	/man/1/secstore
 operations	/man/1/sh
 operations	/man/1/sh-alphabet
@@ -37393,6 +37770,7 @@ operations	/man/2/math-0intro
 operations	/man/2/names
 operations	/man/2/prefab-0intro
 operations	/man/2/registries
+operations	/man/2/rfc822
 operations	/man/2/scsiio
 operations	/man/2/sets
 operations	/man/2/sexprs
@@ -37407,6 +37785,7 @@ operations	/man/2/sys-bind
 operations	/man/2/sys-export
 operations	/man/2/sys-iounit
 operations	/man/2/ubfa
+operations	/man/2/w3c-uris
 operations	/man/2/wmsrv
 operations	/man/3/dbg
 operations	/man/3/draw
@@ -37513,6 +37892,7 @@ option	/man/1/9win
 option	/man/1/acme
 option	/man/1/alphabet-fs
 option	/man/1/alphabet-main
+option	/man/1/ar
 option	/man/1/asm
 option	/man/1/auplay
 option	/man/1/avr
@@ -37629,6 +38009,7 @@ option	/man/4/ramfile
 option	/man/4/registry
 option	/man/6/namespace
 option	/man/6/sbl
+option	/man/7/cddb
 option	/man/8/applylog
 option	/man/8/bootpd
 option	/man/8/changelogin
@@ -37674,6 +38055,7 @@ option's	/man/1/sh-arg
 option's	/man/9/options
 option's	/man/9/text
 optional	/man/1/acme
+optional	/man/1/ar
 optional	/man/1/bind
 optional	/man/1/calendar
 optional	/man/1/charon
@@ -37708,8 +38090,10 @@ optional	/man/2/factotum
 optional	/man/2/geodesy
 optional	/man/2/math-linalg
 optional	/man/2/palmfile
+optional	/man/2/rfc822
 optional	/man/2/spki
 optional	/man/2/w3c-css
+optional	/man/2/w3c-uris
 optional	/man/2/w3c-xpointers
 optional	/man/3/cmd
 optional	/man/3/cons
@@ -37728,6 +38112,7 @@ optional	/man/6/proto
 optional	/man/6/sbl
 optional	/man/6/sexprs
 optional	/man/6/translate
+optional	/man/7/cddb
 optional	/man/8/create
 optional	/man/8/cs
 optional	/man/9/bind
@@ -37735,6 +38120,7 @@ optional	/man/9/frame
 optional	/man/9/text
 optional	/man/9/types
 optionally	/man/1/alphabet-main
+optionally	/man/1/ar
 optionally	/man/1/cprof
 optionally	/man/1/du
 optionally	/man/1/echo
@@ -38035,6 +38421,7 @@ original	/man/2/sys-fd2path
 original	/man/2/sys-fversion
 original	/man/2/translate
 original	/man/2/w3c-css
+original	/man/2/w3c-uris
 original	/man/3/srv
 original	/man/5/0intro
 original	/man/6/sbl
@@ -38331,6 +38718,7 @@ output	/man/4/cpu
 output	/man/4/iostats
 output	/man/6/colour
 output	/man/6/man
+output	/man/7/cddb
 output	/man/8/applylog
 output	/man/8/bootpd
 output	/man/8/create
@@ -38576,6 +38964,7 @@ package	/man/6/man
 package	/man/8/create
 package.tgz	/man/4/ftpfs
 packaged	/man/2/prefab-element
+packages	/man/1/ar
 packages	/man/1/man
 packages	/man/8/create
 packblock	/man/10/allocb
@@ -38782,6 +39171,7 @@ pairs	/man/2/keyring-0intro
 pairs	/man/2/plumbmsg
 pairs	/man/2/pop3
 pairs	/man/2/registries
+pairs	/man/2/rfc822
 pairs	/man/2/spree
 pairs	/man/2/stringinttab
 pairs	/man/2/styxpersist
@@ -38919,6 +39309,7 @@ parameter	/man/2/ida
 parameter	/man/2/keyring-sha1
 parameter	/man/2/plumbmsg
 parameter	/man/2/popup
+parameter	/man/2/rfc822
 parameter	/man/2/secstore
 parameter	/man/2/styx
 parameter	/man/2/styxservers
@@ -38927,6 +39318,7 @@ parameter	/man/2/sys-read
 parameter	/man/2/sys-self
 parameter	/man/2/ubfa
 parameter	/man/2/w3c-css
+parameter	/man/2/w3c-uris
 parameter	/man/2/w3c-xpointers
 parameter	/man/3/0intro
 parameter	/man/3/dbg
@@ -38960,6 +39352,7 @@ parameters	/man/2/keyring-0intro
 parameters	/man/2/keyring-auth
 parameters	/man/2/keyring-gensk
 parameters	/man/2/math-linalg
+parameters	/man/2/rfc822
 parameters	/man/2/security-0intro
 parameters	/man/2/security-login
 parameters	/man/2/sexprs
@@ -38981,6 +39374,7 @@ parameters	/man/6/ndb
 parameters	/man/8/dhcp
 params	/man/10/plan9.ini
 params	/man/2/factotum
+params	/man/2/rfc822
 params	/man/2/xml
 parcel	/man/9/pack
 parent	/man/1/0intro
@@ -39053,12 +39447,14 @@ parse	/man/2/dhcpclient
 parse	/man/2/ether
 parse	/man/2/ip
 parse	/man/2/math-0intro
+parse	/man/2/rfc822
 parse	/man/2/sexprs
 parse	/man/2/sh
 parse	/man/2/spki
 parse	/man/2/styxservers
 parse	/man/2/venti
 parse	/man/2/w3c-css
+parse	/man/2/w3c-uris
 parse	/man/2/w3c-xpointers
 parse	/man/2/wait
 parse	/man/5/stat
@@ -39069,6 +39465,7 @@ parsecidr	/man/2/ip
 parsecmd	/man/10/parsecmd
 parsecmd	/man/3/cmd
 parsecompound	/man/2/spki
+parsecontent	/man/2/rfc822
 parsed	/man/1/mash
 parsed	/man/1/sh-arg
 parsed	/man/1/tiny
@@ -39088,6 +39485,7 @@ parseline	/man/2/attrdb
 parseman.b	/man/1/man
 parsemask	/man/2/ip
 parsename	/man/2/spki
+parseparams	/man/2/rfc822
 parser	/man/1/yacc
 parser	/man/2/asn1
 parser	/man/2/cfg
@@ -39105,6 +39503,7 @@ parses	/man/10/parsecmd
 parses	/man/2/arg
 parses	/man/2/cfg
 parses	/man/2/disks
+parses	/man/2/rfc822
 parses	/man/2/spki
 parses	/man/2/spree
 parses	/man/2/w3c-css
@@ -39121,6 +39520,7 @@ parsing	/man/10/mk
 parsing	/man/2/spki
 parsing	/man/2/spree
 parsing	/man/2/w3c-css
+parsing	/man/2/w3c-uris
 parsing	/man/2/xml
 parsing	/man/6/sexprs
 partial	/man/1/cprof
@@ -39181,6 +39581,7 @@ particular	/man/2/plumbmsg
 particular	/man/2/prof
 particular	/man/2/readdir
 particular	/man/2/registries
+particular	/man/2/rfc822
 particular	/man/2/security-auth
 particular	/man/2/sh
 particular	/man/2/spki
@@ -39375,6 +39776,7 @@ password	/man/2/pop3
 password	/man/2/secstore
 password	/man/2/security-0intro
 password	/man/2/security-login
+password	/man/2/w3c-uris
 password	/man/4/factotum
 password	/man/4/ftpfs
 password	/man/6/keys
@@ -39443,6 +39845,7 @@ path	/man/2/cfg
 path	/man/2/command
 path	/man/2/convcs
 path	/man/2/crc
+path	/man/2/csv
 path	/man/2/daytime
 path	/man/2/dbm
 path	/man/2/debug
@@ -39516,6 +39919,7 @@ path	/man/2/rand
 path	/man/2/readdir
 path	/man/2/regex
 path	/man/2/registries
+path	/man/2/rfc822
 path	/man/2/scsiio
 path	/man/2/secstore
 path	/man/2/security-auth
@@ -39578,6 +39982,7 @@ path	/man/2/venti
 path	/man/2/virgil
 path	/man/2/volume
 path	/man/2/w3c-css
+path	/man/2/w3c-uris
 path	/man/2/w3c-xpointers
 path	/man/2/wait
 path	/man/2/wmclient
@@ -39834,6 +40239,7 @@ perceived	/man/1/tiny
 percent	/man/1/mk
 percent	/man/10/mk
 percent	/man/2/w3c-css
+percent	/man/2/w3c-uris
 percent	/man/9/bind
 percentage	/man/1/collab-clients
 percentage	/man/1/prof
@@ -40353,6 +40759,8 @@ plain	/man/1/man
 plain	/man/1/wish
 plain	/man/10/print
 plain	/man/2/disks
+plain	/man/2/keyring-ipint
+plain	/man/2/rfc822
 plain	/man/2/sys-print
 plain	/man/2/tkclient
 plain	/man/2/w3c-css
@@ -40367,6 +40775,7 @@ plain	/man/8/dhcp
 plaintext	/man/2/security-0intro
 plan	/man/1/0intro
 plan	/man/1/9win
+plan	/man/1/ar
 plan	/man/1/bind
 plan	/man/1/crypt
 plan	/man/1/diff
@@ -40491,6 +40900,7 @@ plot	/man/1/wm-misc
 plotted	/man/1/wm-misc
 plug	/man/1/miniterm
 plug	/man/3/pnp
+plumb	/man/1/man
 plumb	/man/1/plumb
 plumb	/man/1/wm-sh
 plumb	/man/2/plumbmsg
@@ -40747,7 +41157,6 @@ pops	/man/2/dialog
 pops	/man/2/popup
 pops	/man/4/factotum
 pops	/man/6/dis
-popserver	/man/2/pop3
 popt	/man/2/print
 popts.cfg	/man/2/print
 popular	/man/1/wm-misc
@@ -40799,6 +41208,7 @@ port	/man/2/sys-file2chan
 port	/man/2/sys-iounit
 port	/man/2/sys-print
 port	/man/2/virgil
+port	/man/2/w3c-uris
 port	/man/3/arch
 port	/man/3/audio
 port	/man/3/boot
@@ -40843,7 +41253,6 @@ port	/man/6/plumbing
 port	/man/7/db
 port	/man/8/bootpd
 port	/man/8/cs
-port	/man/8/httpd
 port	/man/8/logind
 port	/man/8/mangaload
 port	/man/8/plumber
@@ -40920,6 +41329,7 @@ positions	/man/2/draw-pointer
 positions	/man/2/math-fp
 positions	/man/2/prof
 positions	/man/2/regex
+positions	/man/2/rfc822
 positions	/man/2/sexprs
 positions	/man/3/pointer
 positions	/man/6/sbl
@@ -40944,6 +41354,7 @@ posix	/man/4/tarfs
 posix.1	/man/1/gettar
 posix.c	/man/3/fs
 posn	/man/2/devpointer
+posname	/man/1/ar
 posname	/man/10/iar
 possess	/man/2/keyring-0intro
 possess	/man/4/registry
@@ -41053,6 +41464,7 @@ pre	/man/2/string
 pre	/man/9/types
 pread	/man/1/cp
 pread	/man/2/sys-read
+precede	/man/1/ar
 precede	/man/1/deb
 precede	/man/1/grep
 precede	/man/10/error
@@ -41091,6 +41503,7 @@ preceeding	/man/2/cfg
 precise	/man/2/math-fp
 precise	/man/2/sexprs
 precise	/man/3/mpeg
+precisely	/man/1/sh
 precisely	/man/3/sign
 precision	/man/1/fc
 precision	/man/10/print
@@ -41289,6 +41702,7 @@ presents	/man/2/sh
 presents	/man/2/sys-0intro
 presents	/man/2/sys-file2chan
 presents	/man/3/arch
+preserve	/man/1/ar
 preserve	/man/1/dd
 preserve	/man/10/iar
 preserve	/man/2/keyring-getmsg
@@ -41365,6 +41779,7 @@ prevent	/man/2/disks
 prevent	/man/2/security-0intro
 prevent	/man/2/sys-chdir
 prevent	/man/2/sys-pctl
+prevent	/man/2/w3c-uris
 prevent	/man/3/cap
 prevent	/man/3/cmd
 prevent	/man/9/bind
@@ -41492,6 +41907,7 @@ prinormal	/man/10/kproc
 print	/man/1/acme
 print	/man/1/alphabet-fs
 print	/man/1/alphabet-main
+print	/man/1/ar
 print	/man/1/cal
 print	/man/1/cmp
 print	/man/1/comm
@@ -41715,6 +42131,7 @@ prints	/man/2/sys-byte2char
 prints	/man/2/sys-print
 prints	/man/3/cons
 prints	/man/4/registry
+prints	/man/7/cddb
 prints	/man/8/bootpd
 prints	/man/8/create
 prints	/man/8/cs
@@ -41841,6 +42258,7 @@ process	/man/1/listen
 process	/man/1/mc
 process	/man/1/mk
 process	/man/1/nsbuild
+process	/man/1/os
 process	/man/1/ps
 process	/man/1/sh
 process	/man/1/sh-file2chan
@@ -42068,6 +42486,7 @@ prod	/man/10/qio
 produce	/man/1/acme
 produce	/man/1/alphabet-abc
 produce	/man/1/alphabet-grid
+produce	/man/1/ar
 produce	/man/1/cook
 produce	/man/1/ls
 produce	/man/1/mash-make
@@ -42082,6 +42501,7 @@ produce	/man/10/mk
 produce	/man/2/keyring-0intro
 produce	/man/2/keyring-certtostr
 produce	/man/2/keyring-sha1
+produce	/man/2/rfc822
 produce	/man/2/scsiio
 produce	/man/2/styx
 produce	/man/2/sys-pipe
@@ -42141,6 +42561,7 @@ produces	/man/10/print
 produces	/man/2/draw-image
 produces	/man/2/keyring-certtostr
 produces	/man/2/keyring-sha1
+produces	/man/2/rfc822
 produces	/man/2/sets
 produces	/man/2/sys-print
 produces	/man/3/ip
@@ -42151,6 +42572,7 @@ produces	/man/8/applylog
 produces	/man/8/cs
 producing	/man/1/acme
 producing	/man/10/print
+producing	/man/2/rfc822
 producing	/man/2/sys-print
 producing	/man/2/translate
 producing	/man/4/logfile
@@ -42565,6 +42987,7 @@ protocols	/man/1/charon
 protocols	/man/10/allocb
 protocols	/man/10/conf
 protocols	/man/2/keyring-getmsg
+protocols	/man/2/rfc822
 protocols	/man/2/security-0intro
 protocols	/man/2/sys-open
 protocols	/man/3/ip
@@ -42611,6 +43034,7 @@ provide	/man/10/sleep
 provide	/man/10/splhi
 provide	/man/2/0intro
 provide	/man/2/alphabet-intro
+provide	/man/2/csv
 provide	/man/2/dhcpclient
 provide	/man/2/draw-0intro
 provide	/man/2/draw-context
@@ -42790,6 +43214,7 @@ provides	/man/2/bufio
 provides	/man/2/command
 provides	/man/2/convcs
 provides	/man/2/crc
+provides	/man/2/csv
 provides	/man/2/debug
 provides	/man/2/devpointer
 provides	/man/2/dhcpclient
@@ -42827,6 +43252,7 @@ provides	/man/2/print
 provides	/man/2/prof
 provides	/man/2/readdir
 provides	/man/2/registries
+provides	/man/2/rfc822
 provides	/man/2/scsiio
 provides	/man/2/security-0intro
 provides	/man/2/security-ssl
@@ -42856,6 +43282,7 @@ provides	/man/2/ubfa
 provides	/man/2/venti
 provides	/man/2/virgil
 provides	/man/2/volume
+provides	/man/2/w3c-uris
 provides	/man/2/wait
 provides	/man/2/wmclient
 provides	/man/2/wmlib
@@ -42938,6 +43365,7 @@ ps	/man/1/ps
 ps	/man/1/stack
 ps	/man/1/time
 ps	/man/2/print
+ps	/man/2/rfc822
 ps.b	/man/1/ps
 ps2	/man/10/plan9.ini
 ps2intellimouse	/man/10/plan9.ini
@@ -43173,6 +43601,7 @@ qreopen	/man/10/qio
 qroot	/man/10/styxserver
 qroot	/man/2/styxservers-nametree
 qsetlimit	/man/10/qio
+qstring	/man/2/rfc822
 qtappend	/man/2/sys-stat
 qtappend	/man/5/0intro
 qtappend	/man/8/styxchat
@@ -43196,6 +43625,7 @@ qtfile	/man/5/0intro
 qtmount	/man/10/devattach
 qtype	/man/2/styxservers
 qtype	/man/2/sys-stat
+quadratic	/man/1/ar
 quadratic	/man/10/iar
 quadratic	/man/2/draw-image
 qualified	/man/1/acme
@@ -43217,6 +43647,7 @@ qualify	/man/2/0intro
 qualify	/man/6/ndb
 qualifying	/man/1/sh
 quality	/man/2/rand
+quality	/man/2/rfc822
 quantisation	/man/1/du
 quantised	/man/1/du
 quantities	/man/1/units
@@ -43236,6 +43667,7 @@ queried	/man/9/variable
 queries	/man/2/bloomfilter
 queries	/man/2/styxservers
 queries	/man/4/registry
+queries	/man/7/cddb
 queries	/man/8/cs
 queries	/man/8/dns
 queries	/man/8/httpd
@@ -43246,8 +43678,10 @@ query	/man/1/grid-query
 query	/man/1/session
 query	/man/2/filepat
 query	/man/2/sh
+query	/man/2/w3c-uris
 query	/man/3/prog
 query	/man/4/factotum
+query	/man/7/cddb
 query	/man/8/cs
 query	/man/8/dns
 query	/man/9/button
@@ -43293,6 +43727,7 @@ queues	/man/10/qio
 queues	/man/3/eia
 queues	/man/3/pipe
 queuing	/man/2/wmlib
+quick	/man/1/ar
 quick	/man/10/iar
 quick	/man/4/namespace
 quickly	/man/1/charon
@@ -43314,6 +43749,7 @@ quiz	/man/1/collab-clients
 qunlock	/man/10/error
 qunlock	/man/10/qlock
 quota	/man/10/allocb
+quotable	/man/2/rfc822
 quotation	/man/1/mash
 quotation	/man/1/sh
 quote	/man/1/mash
@@ -43324,6 +43760,8 @@ quote	/man/1/sh-regex
 quote	/man/1/tiny
 quote	/man/1/wm-sh
 quote	/man/2/attrdb
+quote	/man/2/csv
+quote	/man/2/rfc822
 quote	/man/2/string
 quote	/man/2/tk
 quote	/man/4/registry
@@ -43352,7 +43790,9 @@ quoted	/man/10/getfields
 quoted	/man/10/mk
 quoted	/man/10/parsecmd
 quoted	/man/2/cfg
+quoted	/man/2/csv
 quoted	/man/2/draw-context
+quoted	/man/2/rfc822
 quoted	/man/2/string
 quoted	/man/2/sys-print
 quoted	/man/2/tk
@@ -43380,6 +43820,8 @@ quotes	/man/10/c2l
 quotes	/man/10/getfields
 quotes	/man/10/mk
 quotes	/man/2/cfg
+quotes	/man/2/csv
+quotes	/man/2/rfc822
 quotes	/man/2/string
 quotes	/man/2/sys-print
 quotes	/man/4/registry
@@ -43651,6 +44093,7 @@ raw	/man/3/pnp
 raw	/man/3/sd
 raw	/man/3/touch
 raw	/man/6/sexprs
+raw	/man/7/cddb
 raw	/man/8/fpgaload
 raw	/man/8/ftl
 raw	/man/8/prep
@@ -43820,6 +44263,7 @@ read	/man/10/readnum
 read	/man/10/styxserver
 read	/man/2/bufio
 read	/man/2/bufio-chanfill
+read	/man/2/csv
 read	/man/2/debug
 read	/man/2/devpointer
 read	/man/2/dis
@@ -43845,6 +44289,7 @@ read	/man/2/prefab-0intro
 read	/man/2/prefab-element
 read	/man/2/readdir
 read	/man/2/registries
+read	/man/2/rfc822
 read	/man/2/secstore
 read	/man/2/security-0intro
 read	/man/2/security-ssl
@@ -44003,6 +44448,7 @@ readgif	/man/2/imagefile
 readgif.b	/man/2/imagefile
 readgifpath	/man/2/imagefile
 readheader	/man/2/spree
+readheaders	/man/2/rfc822
 readid	/man/2/palmfile
 readimage	/man/2/draw-display
 readiness	/man/2/crc
@@ -44037,6 +44483,7 @@ reading	/man/2/math-0intro
 reading	/man/2/palmfile
 reading	/man/2/print
 reading	/man/2/readdir
+reading	/man/2/rfc822
 reading	/man/2/security-0intro
 reading	/man/2/styx
 reading	/man/2/styxservers
@@ -44149,6 +44596,7 @@ reads	/man/1/wish
 reads	/man/10/odbc
 reads	/man/10/plan9.ini
 reads	/man/10/qio
+reads	/man/2/csv
 reads	/man/2/devpointer
 reads	/man/2/dis
 reads	/man/2/disks
@@ -44162,6 +44610,7 @@ reads	/man/2/keyring-getstring
 reads	/man/2/newns
 reads	/man/2/plumbmsg
 reads	/man/2/readdir
+reads	/man/2/rfc822
 reads	/man/2/scsiio
 reads	/man/2/styx
 reads	/man/2/styxpersist
@@ -44780,6 +45229,7 @@ ref	/man/2/bufio-chanfill
 ref	/man/2/cfg
 ref	/man/2/command
 ref	/man/2/crc
+ref	/man/2/csv
 ref	/man/2/daytime
 ref	/man/2/dbm
 ref	/man/2/debug
@@ -44834,6 +45284,7 @@ ref	/man/2/prof
 ref	/man/2/pslib
 ref	/man/2/readdir
 ref	/man/2/registries
+ref	/man/2/rfc822
 ref	/man/2/scsiio
 ref	/man/2/secstore
 ref	/man/2/security-auth
@@ -44881,6 +45332,7 @@ ref	/man/2/ubfa
 ref	/man/2/venti
 ref	/man/2/volume
 ref	/man/2/w3c-css
+ref	/man/2/w3c-uris
 ref	/man/2/w3c-xpointers
 ref	/man/2/wait
 ref	/man/2/wmclient
@@ -44926,6 +45378,7 @@ refer	/man/9/text
 reference	/man/1/0intro
 reference	/man/1/charon
 reference	/man/1/limbo
+reference	/man/1/man
 reference	/man/1/mk
 reference	/man/1/sh-tk
 reference	/man/1/yacc
@@ -44962,6 +45415,7 @@ reference	/man/2/keyring-ipint
 reference	/man/2/lock
 reference	/man/2/palmfile
 reference	/man/2/plumbmsg
+reference	/man/2/rfc822
 reference	/man/2/scsiio
 reference	/man/2/secstore
 reference	/man/2/security-login
@@ -44974,6 +45428,7 @@ reference	/man/2/sys-open
 reference	/man/2/sys-self
 reference	/man/2/translate
 reference	/man/2/w3c-css
+reference	/man/2/w3c-uris
 reference	/man/3/draw
 reference	/man/3/prog
 reference	/man/3/touch
@@ -44997,6 +45452,7 @@ referenced	/man/4/mntgen
 referenced	/man/6/sbl
 referenced	/man/8/mkfs
 references	/man/1/limbo
+references	/man/1/man
 references	/man/1/mash
 references	/man/1/mash-tk
 references	/man/1/mk
@@ -45034,6 +45490,7 @@ referring	/man/1/mash
 referring	/man/10/conf
 referring	/man/2/arg
 referring	/man/2/diskblocks
+referring	/man/2/rfc822
 referring	/man/2/spree-objstore
 referring	/man/2/styxservers
 referring	/man/2/sys-dup
@@ -45123,6 +45580,7 @@ reg	/man/2/registries
 reg	/man/3/gpio
 reg	/man/6/ubfa
 regard	/man/10/qio
+regarded	/man/2/csv
 regarded	/man/2/itslib
 regarded	/man/2/sys-read
 regarded	/man/4/registry
@@ -45303,6 +45761,7 @@ rejected	/man/8/getauthinfo
 rejecting	/man/3/ip
 rejecting	/man/3/usb
 rejects	/man/4/palmsrv
+rel	/man/2/w3c-uris
 relate	/man/1/ls
 related	/man/1/acme
 related	/man/1/mk
@@ -45348,6 +45807,7 @@ relative	/man/2/dis
 relative	/man/2/disks
 relative	/man/2/fsproto
 relative	/man/2/names
+relative	/man/2/rfc822
 relative	/man/2/spree
 relative	/man/2/sys-export
 relative	/man/2/tk
@@ -45491,6 +45951,7 @@ remainder	/man/10/5cv
 remainder	/man/10/plan9.ini
 remainder	/man/10/qio
 remainder	/man/2/math-fp
+remainder	/man/2/rfc822
 remainder	/man/3/audio
 remainder	/man/3/cons
 remainder	/man/3/kprof
@@ -45700,6 +46161,7 @@ removed	/man/2/styxservers
 removed	/man/2/sys-fd2path
 removed	/man/2/sys-print
 removed	/man/2/timers
+removed	/man/2/w3c-uris
 removed	/man/3/cap
 removed	/man/3/flash
 removed	/man/3/fs
@@ -45748,6 +46210,7 @@ removes	/man/9/pack
 removes	/man/9/text
 removesbuiltin	/man/2/sh
 removing	/man/1/rm
+removing	/man/2/rfc822
 removing	/man/3/env
 removing	/man/4/dbfs
 removing	/man/4/registry
@@ -45832,6 +46295,7 @@ repl	/man/2/draw-display
 repl	/man/2/draw-image
 repl	/man/3/draw
 replace	/man/1/acme
+replace	/man/1/ar
 replace	/man/1/bind
 replace	/man/1/brutus
 replace	/man/1/secstore
@@ -45866,6 +46330,7 @@ replaced	/man/2/asn1
 replaced	/man/2/ip
 replaced	/man/2/keyring-getmsg
 replaced	/man/2/math-0intro
+replaced	/man/2/rfc822
 replaced	/man/2/sh
 replaced	/man/2/sys-dial
 replaced	/man/2/sys-print
@@ -46032,6 +46497,7 @@ represent	/man/10/lock
 represent	/man/10/newchan
 represent	/man/10/rune
 represent	/man/2/asn1
+represent	/man/2/csv
 represent	/man/2/debug
 represent	/man/2/disks
 represent	/man/2/draw-display
@@ -46040,6 +46506,7 @@ represent	/man/2/draw-pointer
 represent	/man/2/ida
 represent	/man/2/prefab-element
 represent	/man/2/registries
+represent	/man/2/rfc822
 represent	/man/2/scsiio
 represent	/man/2/sexprs
 represent	/man/2/sh
@@ -46087,6 +46554,7 @@ representation	/man/2/keyring-rc4
 representation	/man/2/keyset
 representation	/man/2/math-export
 representation	/man/2/palmfile
+representation	/man/2/rfc822
 representation	/man/2/sexprs
 representation	/man/2/spki
 representation	/man/2/spree-allow
@@ -46094,7 +46562,9 @@ representation	/man/2/spree-cardlib
 representation	/man/2/styx
 representation	/man/2/styxservers
 representation	/man/2/sys-0intro
+representation	/man/2/sys-print
 representation	/man/2/ubfa
+representation	/man/2/w3c-uris
 representation	/man/2/w3c-xpointers
 representation	/man/2/workdir
 representation	/man/3/cons
@@ -46152,6 +46622,7 @@ representing	/man/2/keyring-ipint
 representing	/man/2/plumbmsg
 representing	/man/2/prefab-element
 representing	/man/2/registries
+representing	/man/2/rfc822
 representing	/man/2/secstore
 representing	/man/2/sets
 representing	/man/2/sexprs
@@ -46164,6 +46635,7 @@ representing	/man/2/sys-fversion
 representing	/man/2/sys-pipe
 representing	/man/2/sys-utfbytes
 representing	/man/2/w3c-css
+representing	/man/2/w3c-uris
 representing	/man/2/w3c-xpointers
 representing	/man/3/0intro
 representing	/man/3/boot
@@ -46235,6 +46707,7 @@ represents	/man/2/translate
 represents	/man/2/ubfa
 represents	/man/2/venti
 represents	/man/2/w3c-css
+represents	/man/2/w3c-uris
 represents	/man/2/w3c-xpointers
 represents	/man/2/wmsrv
 represents	/man/2/xml
@@ -46261,6 +46734,7 @@ represents	/man/8/styxchat
 represents	/man/9/bind
 represents	/man/9/grid
 represents	/man/9/text
+reproduce	/man/2/w3c-uris
 reproduced	/man/2/sexprs
 reproduced	/man/5/0intro
 reproduced	/man/6/sexprs
@@ -46496,6 +46970,7 @@ required	/man/10/styx
 required	/man/10/styxserver
 required	/man/2/alphabet-intro
 required	/man/2/asn1
+required	/man/2/csv
 required	/man/2/dhcpclient
 required	/man/2/disks
 required	/man/2/encoding
@@ -46509,6 +46984,7 @@ required	/man/2/palmfile
 required	/man/2/print
 required	/man/2/prof
 required	/man/2/registries
+required	/man/2/rfc822
 required	/man/2/sexprs
 required	/man/2/styx
 required	/man/2/styxconv
@@ -46517,6 +46993,7 @@ required	/man/2/sys-print
 required	/man/2/tk
 required	/man/2/tkclient
 required	/man/2/w3c-css
+required	/man/2/w3c-uris
 required	/man/2/wmclient
 required	/man/3/env
 required	/man/3/flash
@@ -46633,6 +47110,7 @@ reserve	/man/8/ftl
 reserved	/man/10/dev
 reserved	/man/10/devattach
 reserved	/man/10/plan9.ini
+reserved	/man/2/w3c-uris
 reserved	/man/6/dis
 reserved	/man/8/prep
 reserves	/man/10/odbc
@@ -46720,15 +47198,18 @@ resolve	/man/8/applylog
 resolved	/man/1/alphabet-fs
 resolved	/man/1/fs
 resolved	/man/2/virgil
+resolved	/man/2/w3c-uris
 resolver	/man/2/virgil
 resolver	/man/6/ndb
 resolver	/man/8/dns
 resolvers	/man/6/ndb
 resolvers	/man/8/dns
 resolves	/man/2/draw-image
+resolves	/man/2/w3c-uris
 resolves	/man/3/draw
 resolves	/man/8/prep
 resolving	/man/1/tiny
+resolving	/man/2/w3c-uris
 resolving	/man/6/ndb
 resorting	/man/8/dns
 resource	/man/1/charon
@@ -46743,6 +47224,7 @@ resource	/man/10/lock
 resource	/man/10/qlock
 resource	/man/2/palmfile
 resource	/man/2/sys-pctl
+resource	/man/2/w3c-uris
 resource	/man/3/draw
 resource	/man/4/cpu
 resources	/man/1/0intro
@@ -46771,6 +47253,7 @@ respect	/man/10/mk
 respect	/man/2/draw-display
 respect	/man/2/format
 respect	/man/2/tkclient
+respect	/man/2/w3c-uris
 respect	/man/2/wmclient
 respect	/man/8/create
 respect	/man/9/panel
@@ -46820,6 +47303,7 @@ response	/man/5/0intro
 response	/man/5/flush
 response	/man/5/version
 response	/man/6/colour
+response	/man/7/cddb
 response	/man/8/plumber
 response	/man/8/rstyxd
 response	/man/8/signer
@@ -46852,6 +47336,7 @@ rest	/man/1/sh-tk
 rest	/man/2/arg
 rest	/man/2/filter-deflate
 rest	/man/2/prefab-element
+rest	/man/2/rfc822
 rest	/man/2/sets
 rest	/man/2/sexprs
 rest	/man/2/sh
@@ -46932,6 +47417,7 @@ restrictions	/man/10/intrenable
 restrictions	/man/10/mk
 restrictions	/man/10/xalloc
 restrictions	/man/2/draw-display
+restrictions	/man/2/rfc822
 restrictions	/man/2/security-0intro
 restrictions	/man/3/flash
 restrictions	/man/3/ftl
@@ -46995,6 +47481,7 @@ resulting	/man/2/sys-dirread
 resulting	/man/2/sys-fd2path
 resulting	/man/2/sys-tokenize
 resulting	/man/2/tk
+resulting	/man/2/w3c-uris
 resulting	/man/2/wait
 resulting	/man/2/xml
 resulting	/man/3/i2c
@@ -47041,6 +47528,7 @@ results	/man/2/srv
 results	/man/2/sys-0intro
 results	/man/2/sys-print
 results	/man/2/sys-utfbytes
+results	/man/2/w3c-uris
 results	/man/3/cons
 results	/man/3/dup
 results	/man/3/ftl
@@ -47171,6 +47659,7 @@ return	/man/2/bufio-chanfill
 return	/man/2/cfg
 return	/man/2/command
 return	/man/2/convcs
+return	/man/2/csv
 return	/man/2/dbm
 return	/man/2/debug
 return	/man/2/dhcpclient
@@ -47196,6 +47685,7 @@ return	/man/2/prefab-compound
 return	/man/2/prof
 return	/man/2/rand
 return	/man/2/registries
+return	/man/2/rfc822
 return	/man/2/scsiio
 return	/man/2/security-random
 return	/man/2/sexprs
@@ -47227,6 +47717,7 @@ return	/man/2/sys-stat
 return	/man/2/tk
 return	/man/2/translate
 return	/man/2/ubfa
+return	/man/2/w3c-uris
 return	/man/2/wmsrv
 return	/man/2/xml
 return	/man/3/arch
@@ -47322,6 +47813,7 @@ returned	/man/2/popup
 returned	/man/2/prefab-compound
 returned	/man/2/prof
 returned	/man/2/readdir
+returned	/man/2/rfc822
 returned	/man/2/scsiio
 returned	/man/2/secstore
 returned	/man/2/security-login
@@ -47466,6 +47958,7 @@ returns	/man/2/bufio-chanfill
 returns	/man/2/cfg
 returns	/man/2/convcs
 returns	/man/2/crc
+returns	/man/2/csv
 returns	/man/2/daytime
 returns	/man/2/dbm
 returns	/man/2/debug
@@ -47522,6 +48015,7 @@ returns	/man/2/prof
 returns	/man/2/readdir
 returns	/man/2/regex
 returns	/man/2/registries
+returns	/man/2/rfc822
 returns	/man/2/scsiio
 returns	/man/2/secstore
 returns	/man/2/security-0intro
@@ -47577,6 +48071,7 @@ returns	/man/2/ubfa
 returns	/man/2/venti
 returns	/man/2/virgil
 returns	/man/2/w3c-css
+returns	/man/2/w3c-uris
 returns	/man/2/w3c-xpointers
 returns	/man/2/wait
 returns	/man/2/wmclient
@@ -47738,13 +48233,23 @@ rfc1055	/man/2/filter-slip
 rfc1058	/man/8/rip
 rfc1361	/man/8/sntp
 rfc1942	/man/1/charon
+rfc2045	/man/2/rfc822
 rfc2104	/man/2/keyring-sha1
 rfc2131	/man/2/dhcpclient
 rfc2373	/man/2/ip
 rfc2453	/man/8/rip
+rfc2822	/man/2/rfc822
 rfc3548	/man/2/encoding
+rfc3986	/man/2/w3c-uris
+rfc822	/man/2/rfc822
+rfc822's	/man/2/rfc822
+rfc822.b	/man/2/rfc822
+rfc822.m	/man/2/rfc822
 rfc854	/man/1/telnet
+rfclex	/man/2/rfc822
+rfclex.mk	/man/2/rfc822
 rfcs	/man/1/telnet
+rfl	/man/2/rfc822
 rflush	/man/5/0intro
 rflush	/man/5/flush
 rflush	/man/8/styxchat
@@ -48165,6 +48670,7 @@ rule	/man/1/mash-make
 rule	/man/1/mk
 rule	/man/10/mk
 rule	/man/2/draw-image
+rule	/man/2/rfc822
 rule	/man/2/sys-0intro
 rule	/man/2/w3c-xpointers
 rule	/man/3/draw
@@ -48201,6 +48707,7 @@ rules	/man/2/command
 rules	/man/2/draw-display
 rules	/man/2/math-0intro
 rules	/man/2/plumbmsg
+rules	/man/2/rfc822
 rules	/man/2/spree
 rules	/man/2/styx
 rules	/man/2/w3c-css
@@ -48344,6 +48851,7 @@ running	/man/1/emu
 running	/man/1/grid-query
 running	/man/1/kill
 running	/man/1/mux
+running	/man/1/os
 running	/man/1/ps
 running	/man/1/sendmail
 running	/man/1/sh
@@ -48497,6 +49005,7 @@ safe	/man/1/0intro
 safe	/man/1/charon
 safe	/man/10/intrenable
 safe	/man/2/styxservers
+safe	/man/2/w3c-uris
 safe	/man/6/sexprs
 safely	/man/10/malloc
 safely	/man/10/parsecmd
@@ -48675,6 +49184,7 @@ scheme	/man/2/convcs
 scheme	/man/2/ida
 scheme	/man/2/spree
 scheme	/man/2/spree-cardlib
+scheme	/man/2/w3c-uris
 scheme	/man/2/w3c-xpointers
 scheme	/man/3/ip
 scheme	/man/3/mnt
@@ -48684,6 +49194,7 @@ scheme	/man/9/canvas
 scheme	/man/9/text
 schemes	/man/2/convcs
 schemes	/man/2/sexprs
+schemes	/man/2/w3c-uris
 schemes	/man/2/w3c-xpointers
 schemes	/man/6/sexprs
 schneier	/man/2/keyring-0intro
@@ -48795,6 +49306,7 @@ script	/man/1/charon
 script	/man/1/diff
 script	/man/1/grid-ns
 script	/man/1/itest
+script	/man/1/man
 script	/man/1/mk
 script	/man/1/plumb
 script	/man/1/sh
@@ -48810,6 +49322,7 @@ script	/man/2/sh
 script	/man/4/cpu
 script	/man/6/keyboard
 script	/man/8/plumber
+script	/man/8/shutdown
 script	/man/9/bind
 script	/man/9/canvas
 script	/man/9/menu
@@ -48960,6 +49473,7 @@ searching	/man/8/dns
 searchspec	/man/9/canvas
 sec	/man/2/daytime
 sec	/man/2/keyring-crypt
+sec2date	/man/2/rfc822
 seckey	/man/2/secstore
 secondary	/man/6/colour
 secondary	/man/6/man
@@ -48979,6 +49493,7 @@ seconds	/man/2/daytime
 seconds	/man/2/dhcpclient
 seconds	/man/2/geodesy
 seconds	/man/2/palmfile
+seconds	/man/2/rfc822
 seconds	/man/2/sys-stat
 seconds	/man/2/virgil
 seconds	/man/2/volume
@@ -49031,6 +49546,7 @@ secrets	/man/4/namespace
 secrets	/man/6/keys
 secrets	/man/8/svc
 secs	/man/2/disks
+secs	/man/2/rfc822
 secs2time	/man/2/spki
 secsize	/man/2/disks
 secsize	/man/8/ftl
@@ -49247,6 +49763,7 @@ segments	/man/10/a.out
 segments	/man/10/ksize
 segments	/man/10/kstrip
 segments	/man/10ti925/tihost
+segments	/man/2/w3c-uris
 segments	/man/3/draw
 segments	/man/3/flash
 segments	/man/3/ip
@@ -49323,6 +49840,7 @@ selected	/man/1/grid-ns
 selected	/man/1/keyboard
 selected	/man/1/logon
 selected	/man/1/ls
+selected	/man/1/man
 selected	/man/1/mash-tk
 selected	/man/1/mux
 selected	/man/1/session
@@ -49492,6 +50010,7 @@ self	/man/2/plumbmsg
 self	/man/2/prefab-compound
 self	/man/2/prefab-element
 self	/man/2/registries
+self	/man/2/rfc822
 self	/man/2/scsiio
 self	/man/2/sets
 self	/man/2/sexprs
@@ -49507,6 +50026,7 @@ self	/man/2/timers
 self	/man/2/translate
 self	/man/2/ubfa
 self	/man/2/venti
+self	/man/2/w3c-uris
 self	/man/2/w3c-xpointers
 self	/man/2/wmclient
 self	/man/2/wmsrv
@@ -49670,6 +50190,7 @@ sends	/man/9/send
 sendtext	/man/1/wm-sh
 sendtextfd	/man/2/print
 sensible	/man/2/prefab-element
+sensible	/man/2/rfc822
 sensible	/man/2/sys-fversion
 sensible	/man/8/getauthinfo
 sensible	/man/8/prep
@@ -49682,6 +50203,7 @@ sensitive	/man/9/grab
 sent	/man/1/acme
 sent	/man/1/collab-clients
 sent	/man/1/idea
+sent	/man/1/man
 sent	/man/1/mash
 sent	/man/1/miniterm
 sent	/man/1/plumb
@@ -49973,6 +50495,7 @@ server	/man/5/walk
 server	/man/6/keys
 server	/man/6/ndb
 server	/man/6/users
+server	/man/7/cddb
 server	/man/7/db
 server	/man/7/dbsrv
 server	/man/8/applylog
@@ -50129,10 +50652,8 @@ services	/man/1/ns
 services	/man/1/webgrab
 services	/man/10/ntsrv
 services	/man/2/0intro
-services	/man/2/pop3
 services	/man/2/registries
 services	/man/2/security-0intro
-services	/man/2/smtp
 services	/man/2/srv
 services	/man/2/sys-pctl
 services	/man/3/cmd
@@ -50269,6 +50790,7 @@ settings	/man/10/plan9.ini
 settings	/man/2/exception
 settings	/man/2/geodesy
 settings	/man/2/print
+settings	/man/2/rfc822
 settings	/man/3/draw
 settings	/man/3/eia
 settings	/man/3/fs
@@ -50350,6 +50872,7 @@ sh	/man/1/fs
 sh	/man/1/ftest
 sh	/man/1/itest
 sh	/man/1/listen
+sh	/man/1/man
 sh	/man/1/mk
 sh	/man/1/rcmd
 sh	/man/1/read
@@ -50376,6 +50899,7 @@ sh	/man/10/parsecmd
 sh	/man/2/0intro
 sh	/man/2/arg
 sh	/man/2/command
+sh	/man/2/csv
 sh	/man/2/itslib
 sh	/man/2/sh
 sh	/man/2/string
@@ -50397,6 +50921,7 @@ sh	/man/6/proto
 sh	/man/6/regexp
 sh	/man/8/kfscmd
 sh	/man/8/rstyxd
+sh	/man/8/shutdown
 sh	/man/8/srv
 sh	/man/8/styxchat
 sh	/man/8/svc
@@ -50632,6 +51157,7 @@ shorthand	/man/5/0intro
 shorthands	/man/6/keyboard
 shortly	/man/2/ip
 shorts	/man/10/inb
+showing	/man/1/ar
 showing	/man/1/asm
 showing	/man/1/blur
 showing	/man/1/collab-clients
@@ -50719,7 +51245,6 @@ shutdown	/man/2/plumbmsg
 shutdown	/man/2/sys-open
 shutdown	/man/2/timers
 shutdown	/man/8/shutdown
-shutdown.b	/man/8/shutdown
 shuts	/man/2/drawmux
 shuts	/man/2/plumbmsg
 shutting	/man/2/drawmux
@@ -50995,8 +51520,10 @@ similar	/man/2/sys-0intro
 similar	/man/2/sys-print
 similar	/man/2/translate
 similar	/man/2/ubfa
+similar	/man/2/w3c-uris
 similar	/man/2/wmsrv
 similar	/man/3/audio
+similar	/man/3/cmd
 similar	/man/3/dbg
 similar	/man/3/ftl
 similar	/man/3/srv9
@@ -51065,6 +51592,7 @@ simply	/man/1/cprof
 simply	/man/1/deb
 simply	/man/1/grid-monitor
 simply	/man/1/idea
+simply	/man/1/man
 simply	/man/1/mc
 simply	/man/1/mv
 simply	/man/1/sh
@@ -51152,6 +51680,7 @@ six	/man/6/man
 sixteen	/man/5/walk
 sixth	/man/3/kprof
 size	/man/1/alphabet-fs
+size	/man/1/ar
 size	/man/1/blur
 size	/man/1/brutus
 size	/man/1/cook
@@ -51213,6 +51742,7 @@ size	/man/2/prefab-element
 size	/man/2/print
 size	/man/2/pslib
 size	/man/2/readdir
+size	/man/2/rfc822
 size	/man/2/secstore
 size	/man/2/security-0intro
 size	/man/2/sexprs
@@ -51329,6 +51859,7 @@ sk	/man/2/spki
 sk	/man/6/auth
 skeleton	/man/4/namespace
 skip	/man/1/dd
+skip	/man/2/rfc822
 skipped	/man/1/tiny
 skipped	/man/4/archfs
 skipped	/man/5/0intro
@@ -51336,6 +51867,7 @@ skipping	/man/5/0intro
 skips	/man/2/keyring-rc4
 skips	/man/2/sys-tokenize
 skips	/man/9/canvas
+skipws	/man/2/rfc822
 sktopk	/man/2/keyring-gensk
 sktostr	/man/2/keyring-certtostr
 sku	/man/2/keyring-auth
@@ -51577,6 +52109,7 @@ sometimes	/man/6/keyboard
 sometimes	/man/6/sexprs
 sometimes	/man/6/utf
 sometimes	/man/9/canvas
+somewhat	/man/1/ar
 somewhat	/man/1/sh
 somewhat	/man/10/iar
 somewhat	/man/2/dividers
@@ -51653,6 +52186,7 @@ source	/man/1/alphabet-abc
 source	/man/1/alphabet-fs
 source	/man/1/alphabet-grid
 source	/man/1/alphabet-main
+source	/man/1/ar
 source	/man/1/asm
 source	/man/1/auplay
 source	/man/1/avr
@@ -51844,6 +52378,7 @@ source	/man/2/bufio
 source	/man/2/cfg
 source	/man/2/convcs
 source	/man/2/crc
+source	/man/2/csv
 source	/man/2/daytime
 source	/man/2/dbm
 source	/man/2/debug
@@ -51905,6 +52440,7 @@ source	/man/2/pslib
 source	/man/2/rand
 source	/man/2/readdir
 source	/man/2/regex
+source	/man/2/rfc822
 source	/man/2/scsiio
 source	/man/2/secstore
 source	/man/2/security-auth
@@ -51945,6 +52481,7 @@ source	/man/2/venti
 source	/man/2/virgil
 source	/man/2/volume
 source	/man/2/w3c-css
+source	/man/2/w3c-uris
 source	/man/2/w3c-xpointers
 source	/man/2/wmclient
 source	/man/2/wmlib
@@ -52031,6 +52568,7 @@ source	/man/6/plumbing
 source	/man/6/proto
 source	/man/6/sbl
 source	/man/6/translate
+source	/man/7/cddb
 source	/man/7/db
 source	/man/7/dbsrv
 source	/man/8/applylog
@@ -52147,6 +52685,7 @@ space	/man/2/palmfile
 space	/man/2/prefab-compound
 space	/man/2/prefab-element
 space	/man/2/registries
+space	/man/2/rfc822
 space	/man/2/secstore
 space	/man/2/sexprs
 space	/man/2/spki
@@ -52357,6 +52896,7 @@ specially	/man/1/sh-std
 specially	/man/1/tiny
 specially	/man/10/allocb
 specially	/man/10/mk
+specially	/man/2/csv
 specially	/man/2/dialog
 specially	/man/3/cons
 specially	/man/8/cs
@@ -52386,6 +52926,7 @@ specific	/man/2/palmfile
 specific	/man/2/prefab-element
 specific	/man/2/print
 specific	/man/2/prof
+specific	/man/2/rfc822
 specific	/man/2/sexprs
 specific	/man/2/sh
 specific	/man/2/spree-allow
@@ -52393,6 +52934,7 @@ specific	/man/2/spree-cardlib
 specific	/man/2/sys-iounit
 specific	/man/2/tabs
 specific	/man/2/ubfa
+specific	/man/2/w3c-uris
 specific	/man/3/arch
 specific	/man/3/cons
 specific	/man/3/ether
@@ -52516,6 +53058,7 @@ specifies	/man/2/prefab-element
 specifies	/man/2/prefab-environ
 specifies	/man/2/prefab-style
 specifies	/man/2/print
+specifies	/man/2/rfc822
 specifies	/man/2/sh
 specifies	/man/2/spree-cardlib
 specifies	/man/2/sys-byte2char
@@ -52588,6 +53131,7 @@ specify	/man/2/format
 specify	/man/2/keyring-0intro
 specify	/man/2/prefab-0intro
 specify	/man/2/prefab-environ
+specify	/man/2/rfc822
 specify	/man/2/spree-cardlib
 specify	/man/2/sys-print
 specify	/man/3/draw
@@ -52677,6 +53221,7 @@ split	/man/10/dmainit
 split	/man/10/qio
 split	/man/2/imagefile
 split	/man/2/sys-tokenize
+split	/man/2/w3c-uris
 split	/man/3/pipe
 split	/man/3/sd
 split	/man/6/namespace
@@ -53041,6 +53586,7 @@ standard	/man/4/namespace
 standard	/man/4/registry
 standard	/man/6/sexprs
 standard	/man/6/utf
+standard	/man/7/cddb
 standard	/man/8/applylog
 standard	/man/8/bootpd
 standard	/man/8/create
@@ -53189,6 +53735,7 @@ starts	/man/10/dmainit
 starts	/man/10/kbdputc
 starts	/man/10/ntsrv
 starts	/man/10ti925/tihost
+starts	/man/2/csv
 starts	/man/2/debug
 starts	/man/2/draw-0intro
 starts	/man/2/draw-image
@@ -53199,6 +53746,7 @@ starts	/man/2/prof
 starts	/man/2/styxpersist
 starts	/man/2/sys-pctl
 starts	/man/2/timers
+starts	/man/2/w3c-uris
 starts	/man/2/w3c-xpointers
 starts	/man/2/wait
 starts	/man/2/wmsrv
@@ -53456,6 +54004,7 @@ stderr	/man/1/sh
 stderr	/man/1/sh-std
 stderr	/man/1/yacc
 stderr	/man/2/security-auth
+stderr	/man/3/cmd
 stdin	/man/1/grid-monitor
 stdin	/man/1/grid-ns
 stdin	/man/1/grid-register
@@ -53803,6 +54352,7 @@ stream	/man/2/filter-deflate
 stream	/man/2/filter-slip
 stream	/man/2/imagefile
 stream	/man/2/keyring-rc4
+stream	/man/2/rfc822
 stream	/man/2/spree
 stream	/man/2/sys-print
 stream	/man/2/sys-read
@@ -53822,6 +54372,8 @@ stream.b	/man/1/stream
 streamed	/man/2/convcs
 streamers	/man/1/stream
 streaming	/man/1/stream
+streamlined	/man/2/rfc822
+streams	/man/1/os
 streams	/man/1/stream
 streams	/man/2/convcs
 streams	/man/2/keyring-getmsg
@@ -53829,7 +54381,6 @@ streams	/man/2/keyring-getstring
 streams	/man/2/sys-stat
 streams	/man/2/wmlib
 streams	/man/3/audio
-streams	/man/3/cmd
 streams	/man/6/ubfa
 streams	/man/6/utf
 streams	/man/7/db
@@ -53915,6 +54466,7 @@ string	/man/2/bufio
 string	/man/2/cfg
 string	/man/2/command
 string	/man/2/convcs
+string	/man/2/csv
 string	/man/2/daytime
 string	/man/2/dbm
 string	/man/2/debug
@@ -53975,6 +54527,7 @@ string	/man/2/pslib
 string	/man/2/readdir
 string	/man/2/regex
 string	/man/2/registries
+string	/man/2/rfc822
 string	/man/2/scsiio
 string	/man/2/secstore
 string	/man/2/security-0intro
@@ -54026,6 +54579,7 @@ string	/man/2/venti
 string	/man/2/virgil
 string	/man/2/volume
 string	/man/2/w3c-css
+string	/man/2/w3c-uris
 string	/man/2/w3c-xpointers
 string	/man/2/wait
 string	/man/2/wmclient
@@ -54158,6 +54712,7 @@ strings	/man/2/sys-fversion
 strings	/man/2/sys-print
 strings	/man/2/tk
 strings	/man/2/ubfa
+strings	/man/2/w3c-uris
 strings	/man/3/audio
 strings	/man/3/cons
 strings	/man/3/draw
@@ -54574,8 +55129,10 @@ subcommand	/man/1/tktester
 subcommands	/man/1/mash-tk
 subcommands	/man/1/tktester
 subcomponent	/man/10/conf
+subcomponent	/man/2/w3c-uris
 subcomponents	/man/1/webgrab
 subcomponents	/man/2/ubfa
+subcomponents	/man/2/w3c-uris
 subcube	/man/6/colour
 subcubes	/man/6/colour
 subdirectories	/man/1/acme
@@ -54750,6 +55307,7 @@ substrings	/man/6/plumbing
 substructure	/man/1/gettar
 substructure	/man/1/rm
 substructure	/man/10/2c
+substructure	/man/2/w3c-uris
 substructures	/man/10/2c
 subsumes	/man/9/grid
 subsystem	/man/3/fpga
@@ -54767,6 +55325,7 @@ subtraction	/man/1/sh-expr
 subtree	/man/9/grab
 subtrees	/man/8/applylog
 subtype	/man/10/devattach
+subtype	/man/2/rfc822
 subtype	/man/2/sys-self
 subtype	/man/2/sys-stat
 subtypes	/man/2/xml
@@ -54949,6 +55508,7 @@ suffix	/man/2/dbm
 suffix	/man/2/disks
 suffix	/man/2/draw-image
 suffix	/man/2/names
+suffix	/man/2/rfc822
 suffix	/man/2/spki
 suffix	/man/2/w3c-css
 suffix	/man/5/version
@@ -54959,6 +55519,7 @@ suffix	/man/8/prep
 suffix	/man/9/types
 suffix1	/man/1/webgrab
 suffix2	/man/1/webgrab
+suffixclass	/man/2/rfc822
 suffixed	/man/1/du
 suffixed	/man/1/tiny
 suffixed	/man/10/atoi
@@ -55135,6 +55696,7 @@ support	/man/2/imagefile
 support	/man/2/keyring-ipint
 support	/man/2/print
 support	/man/2/prof
+support	/man/2/rfc822
 support	/man/2/spki-verifier
 support	/man/2/spree-cardlib
 support	/man/2/spree-gather
@@ -55224,6 +55786,7 @@ supports	/man/2/security-0intro
 supports	/man/2/spki-verifier
 supports	/man/2/sys-open
 supports	/man/2/ubfa
+supports	/man/2/w3c-uris
 supports	/man/3/audio
 supports	/man/3/i82365
 supports	/man/3/sd
@@ -55247,10 +55810,12 @@ suppress	/man/6/man
 suppress	/man/8/kfscmd
 suppress	/man/8/ping
 suppressed	/man/1/sh
+suppresses	/man/1/ar
 suppresses	/man/1/comm
 suppresses	/man/1/echo
 suppresses	/man/1/limbo
 suppresses	/man/1/mash-tk
+suppresses	/man/1/os
 suppresses	/man/1/yacc
 suppresses	/man/10/acid
 suppresses	/man/10/iar
@@ -55473,8 +56038,10 @@ syntax	/man/2/attrdb
 syntax	/man/2/draw-display
 syntax	/man/2/ip
 syntax	/man/2/names
+syntax	/man/2/rfc822
 syntax	/man/2/tk
 syntax	/man/2/w3c-css
+syntax	/man/2/w3c-uris
 syntax	/man/2/w3c-xpointers
 syntax	/man/3/cmd
 syntax	/man/3/flash
@@ -55484,6 +56051,7 @@ syntax	/man/6/regexp
 syntax	/man/6/sexprs
 syntax	/man/6/translate
 syntax	/man/6/ubfa
+syntax	/man/8/httpd
 syntax	/man/8/ping
 syntax	/man/9/bind
 syntax	/man/9/canvas
@@ -55675,6 +56243,7 @@ sys	/man/7/db
 sys	/man/8/bootpd
 sys	/man/8/collabsrv
 sys	/man/8/cs
+sys	/man/8/httpd
 sys	/man/8/ping
 sys	/man/8/rstyxd
 sys	/man/8/styxchat
@@ -55819,6 +56388,7 @@ tab	/man/6/translate
 tab	/man/6/ubfa
 tab	/man/9/text
 tabbed	/man/2/tabs
+table	/man/1/ar
 table	/man/1/charon
 table	/man/1/cprof
 table	/man/1/fortune
@@ -55865,6 +56435,7 @@ table	/man/6/dis
 table	/man/6/keyboard
 table	/man/6/man
 table	/man/6/sbl
+table	/man/7/cddb
 table	/man/8/prep
 table	/man/8/rip
 table	/man/9/grid
@@ -56056,6 +56627,7 @@ takes	/man/2/plumbmsg
 takes	/man/2/prefab-compound
 takes	/man/2/prefab-element
 takes	/man/2/prof
+takes	/man/2/rfc822
 takes	/man/2/secstore
 takes	/man/2/security-0intro
 takes	/man/2/sh
@@ -56070,6 +56642,7 @@ takes	/man/2/wait
 takes	/man/3/ftl
 takes	/man/3/prog
 takes	/man/6/colour
+takes	/man/7/cddb
 takes	/man/8/applylog
 takes	/man/8/dhcp
 takes	/man/8/getauthinfo
@@ -56081,6 +56654,7 @@ taking	/man/1/blur
 taking	/man/1/fs
 taking	/man/1/mash-make
 taking	/man/2/bufio
+taking	/man/2/csv
 taking	/man/2/draw-example
 taking	/man/2/sh
 taking	/man/2/styxservers
@@ -56103,8 +56677,10 @@ tanh	/man/2/math-elem
 tape	/man/1/dd
 tape	/man/1/mux
 tapping	/man/1/wm-misc
+tar	/man/1/ar
 tar	/man/1/gettar
 tar	/man/4/tarfs
+tar.gz	/man/1/ar
 tarfile	/man/4/tarfs
 tarfs	/man/1/gettar
 tarfs	/man/4/archfs
@@ -56296,6 +56872,7 @@ template	/man/1/tktester
 template	/man/4/factotum
 templates	/man/1/tktester
 templates	/man/4/factotum
+temporaries	/man/1/ar
 temporaries	/man/10/iar
 temporarily	/man/1/acme
 temporarily	/man/10/lock
@@ -56366,6 +56943,8 @@ termination	/man/1/tiny
 termination	/man/10/acid
 termination	/man/10/kproc
 terminator	/man/1/tiny
+terminator	/man/2/csv
+terminators	/man/2/csv
 terminology	/man/2/draw-0intro
 terms	/man/1/charon
 terms	/man/1/math-misc
@@ -56480,6 +57059,7 @@ text	/man/2/alphabet-intro
 text	/man/2/asn1
 text	/man/2/bufio
 text	/man/2/convcs
+text	/man/2/csv
 text	/man/2/daytime
 text	/man/2/disks
 text	/man/2/draw-0intro
@@ -56501,6 +57081,7 @@ text	/man/2/prefab-compound
 text	/man/2/prefab-element
 text	/man/2/prefab-style
 text	/man/2/print
+text	/man/2/rfc822
 text	/man/2/secstore
 text	/man/2/sexprs
 text	/man/2/smtp
@@ -56515,6 +57096,7 @@ text	/man/2/translate
 text	/man/2/ubfa
 text	/man/2/venti
 text	/man/2/w3c-css
+text	/man/2/w3c-uris
 text	/man/2/w3c-xpointers
 text	/man/2/xml
 text	/man/3/dbg
@@ -56607,6 +57189,7 @@ textual	/man/2/scsiio
 textual	/man/2/secstore
 textual	/man/2/sexprs
 textual	/man/2/spki
+textual	/man/2/w3c-uris
 textual	/man/2/w3c-xpointers
 textual	/man/3/arch
 textual	/man/3/cmd
@@ -56644,6 +57227,7 @@ textual	/man/9/text
 textually	/man/1/acme
 textually	/man/2/ip
 textually	/man/2/keyring-ipint
+textually	/man/2/w3c-uris
 textually	/man/3/dbg
 textually	/man/3/pnp
 textually	/man/8/signer
@@ -56676,6 +57260,7 @@ th	/man/2/regex
 th	/man/2/spree-cardlib
 th	/man/6/colour
 th	/man/6/man
+th	/man/7/cddb
 th	/man/9/choicebutton
 th	/man/9/grid
 th	/man/9/text
@@ -56850,6 +57435,7 @@ time	/man/1/grid-register
 time	/man/1/itest
 time	/man/1/limbo
 time	/man/1/ls
+time	/man/1/man
 time	/man/1/mash
 time	/man/1/math-misc
 time	/man/1/mk
@@ -56859,6 +57445,7 @@ time	/man/1/ps
 time	/man/1/sh
 time	/man/1/sh-file2chan
 time	/man/1/sh-std
+time	/man/1/sh-tk
 time	/man/1/time
 time	/man/1/timestamp
 time	/man/1/touch
@@ -56900,6 +57487,7 @@ time	/man/2/palmfile
 time	/man/2/prof
 time	/man/2/readdir
 time	/man/2/registries
+time	/man/2/rfc822
 time	/man/2/scsiio
 time	/man/2/secstore
 time	/man/2/security-0intro
@@ -56942,6 +57530,7 @@ time	/man/6/keys
 time	/man/6/keytext
 time	/man/6/ndb
 time	/man/6/utf
+time	/man/7/cddb
 time	/man/8/applylog
 time	/man/8/bootpd
 time	/man/8/changelogin
@@ -56990,6 +57579,7 @@ timer.start	/man/2/timers
 timers	/man/2/timers
 timers.m	/man/2/timers
 times	/man/1/acme
+times	/man/1/ar
 times	/man/1/cprof
 times	/man/1/itest
 times	/man/1/mash-make
@@ -57012,6 +57602,7 @@ times	/man/3/tls
 times	/man/4/kfs
 times	/man/5/0intro
 times	/man/6/translate
+times	/man/7/cddb
 times	/man/8/changelogin
 times	/man/8/mkfs
 times	/man/9/text
@@ -57147,6 +57738,7 @@ tk.m	/man/2/wmclient
 tk2ms	/man/10/seconds
 tk2sec	/man/10/seconds
 tkarg	/man/1/tkcmd
+tkclient	/man/1/sh-tk
 tkclient	/man/1/toolbar
 tkclient	/man/1/wm
 tkclient	/man/2/draw-context
@@ -57181,6 +57773,7 @@ tmget	/man/3/dbg
 tmp	/man/1/alphabet-abc
 tmp	/man/1/alphabet-fs
 tmp	/man/1/alphabet-grid
+tmp	/man/1/ar
 tmp	/man/1/blur
 tmp	/man/1/diff
 tmp	/man/1/fs
@@ -57246,7 +57839,9 @@ toggles	/man/9/listbox
 toggles	/man/9/menu
 toggling	/man/9/menu
 toint	/man/2/string
+tok	/man/2/rfc822
 token	/man/1/yacc
+token	/man/2/rfc822
 token	/man/2/sexprs
 token	/man/2/sys-dial
 token	/man/6/sexprs
@@ -57259,6 +57854,7 @@ tokenize	/man/2/sys-tokenize
 tokenize.c	/man/10/getfields
 tokens	/man/1/yacc
 tokens	/man/10/getfields
+tokens	/man/2/rfc822
 tokens	/man/2/sexprs
 tokens	/man/2/spree
 tokens	/man/2/wmsrv
@@ -57356,6 +57952,7 @@ total	/man/3/prog
 total	/man/4/factotum
 total	/man/4/iostats
 total	/man/5/stat
+total	/man/7/cddb
 total	/man/8/prep
 total	/man/9/canvas
 total	/man/9/listbox
@@ -57429,11 +58026,16 @@ track	/man/1/blur
 track	/man/2/disks
 track	/man/4/dossrv
 track	/man/4/spree
+track	/man/7/cddb
 track	/man/8/plumber
 track	/man/8/prep
 track	/man/9/menu
 track	/man/9/text
+track's	/man/7/cddb
+track0id	/man/7/cddb
 trackballs	/man/2/draw-0intro
+tracknid	/man/7/cddb
+tracks	/man/7/cddb
 trademark	/man/6/man
 traditional	/man/10/plan9.ini
 traditional	/man/2/arg
@@ -57469,6 +58071,7 @@ transfer	/man/10/error
 transfer	/man/10/inb
 transfer	/man/10ti925/tihost
 transfer	/man/2/keyring-0intro
+transfer	/man/2/rfc822
 transfer	/man/2/smtp
 transfer	/man/2/spree
 transfer	/man/2/spree-cardlib
@@ -57786,6 +58389,7 @@ trip	/man/8/ping
 triple	/man/2/draw-display
 triple	/man/2/exception
 triple	/man/2/w3c-css
+triple	/man/2/w3c-uris
 triple	/man/6/colour
 triplets	/man/2/draw-0intro
 trivial	/man/2/tftp
@@ -57908,6 +58512,7 @@ tuple	/man/2/prefab-compound
 tuple	/man/2/readdir
 tuple	/man/2/regex
 tuple	/man/2/registries
+tuple	/man/2/rfc822
 tuple	/man/2/secstore
 tuple	/man/2/security-ssl
 tuple	/man/2/sexprs
@@ -57932,6 +58537,7 @@ tuple	/man/2/translate
 tuple	/man/2/ubfa
 tuple	/man/2/venti
 tuple	/man/2/w3c-css
+tuple	/man/2/w3c-uris
 tuple	/man/2/w3c-xpointers
 tuple	/man/2/wait
 tuple	/man/2/wmlib
@@ -57949,6 +58555,7 @@ tuples	/man/2/convcs
 tuples	/man/2/keyset
 tuples	/man/2/pop3
 tuples	/man/2/registries
+tuples	/man/2/rfc822
 tuples	/man/2/sh
 tuples	/man/2/sys-0intro
 tuples	/man/2/sys-file2chan
@@ -57998,6 +58605,7 @@ twelve	/man/2/ether
 twelve	/man/3/cons
 twelve	/man/3/ether
 twelve	/man/6/image
+twice	/man/1/ar
 twice	/man/1/charon
 twice	/man/10/iar
 twice	/man/2/cfg
@@ -58096,6 +58704,7 @@ type	/man/2/prefab-style
 type	/man/2/print
 type	/man/2/prof
 type	/man/2/registries
+type	/man/2/rfc822
 type	/man/2/selectfile
 type	/man/2/sexprs
 type	/man/2/sh
@@ -58229,6 +58838,7 @@ types	/man/2/prefab-0intro
 types	/man/2/prefab-element
 types	/man/2/prefab-environ
 types	/man/2/print
+types	/man/2/rfc822
 types	/man/2/security-0intro
 types	/man/2/spki
 types	/man/2/styx
@@ -58437,6 +59047,7 @@ udpmsg	/man/3/ip
 uexp	/man/1/yacc
 ugo	/man/1/chmod
 uhci	/man/10/plan9.ini
+uid	/man/1/ar
 uid	/man/10/ar
 uid	/man/10/devattach
 uid	/man/10/iar
@@ -58699,6 +59310,7 @@ unfortunately	/man/3/cmd
 unfreeze	/man/3/tv
 ungetb	/man/2/bufio
 ungetc	/man/2/bufio
+ungetc	/man/2/rfc822
 unhandled	/man/2/0intro
 unibrowse	/man/1/wm-misc
 unibrowse.b	/man/1/wm-misc
@@ -58736,6 +59348,7 @@ unicode.9.font	/man/9/types
 unicode.b	/man/1/unicode
 unicoderange	/man/2/w3c-css
 unidata	/man/1/wm-misc
+uniform	/man/2/w3c-uris
 uniformly	/man/1/acme
 uniformly	/man/6/colour
 uniformly	/man/9/pack
@@ -58751,6 +59364,7 @@ uninitialized	/man/5/attach
 uninitialized	/man/5/version
 unintercepted	/man/2/security-0intro
 uninterpreted	/man/1/sh-alphabet
+uninterpreted	/man/2/rfc822
 uninterpreted	/man/2/w3c-css
 uninterpreted	/man/6/utf
 uninterrupted	/man/2/spree
@@ -58873,6 +59487,7 @@ universalstring	/man/2/asn1
 university	/man/9/0intro
 university	/man/9/1copyright
 unix	/man/1/0intro
+unix	/man/1/ar
 unix	/man/1/diff
 unix	/man/1/gzip
 unix	/man/1/mash
@@ -58965,6 +59580,7 @@ unless	/man/9/menu
 unless	/man/9/pack
 unless	/man/9/radiobutton
 unless	/man/9/text
+unlex	/man/2/rfc822
 unlike	/man/1/sh-std
 unlike	/man/1/sh-string
 unlike	/man/10/plan9.ini
@@ -59073,9 +59689,11 @@ unquoted	/man/1/mk
 unquoted	/man/1/sh
 unquoted	/man/1/wm-sh
 unquoted	/man/10/mk
+unquoted	/man/2/rfc822
 unquoted	/man/2/sexprs
 unquoted	/man/2/string
 unquoted	/man/6/sexprs
+unquotes	/man/2/csv
 unreachable	/man/3/ip
 unread	/man/1/wm-sh
 unread	/man/10/allocb
@@ -59286,8 +59904,17 @@ ureg	/man/3/dbg
 ureg.h	/man/10/0intro
 ureg.h	/man/10/intrenable
 uri	/man/2/w3c-css
+uri	/man/2/w3c-uris
 uri	/man/2/w3c-xpointers
 uri	/man/8/httpd
+uri's	/man/2/w3c-uris
+uri.authority	/man/2/w3c-uris
+uri.parse	/man/2/w3c-uris
+uri.query	/man/2/w3c-uris
+uri.text	/man/2/w3c-uris
+uris	/man/2/w3c-uris
+uris.b	/man/2/w3c-uris
+uris.m	/man/2/w3c-uris
 url	/man/1/charon
 url	/man/1/webgrab
 url	/man/2/w3c-css
@@ -59338,6 +59965,7 @@ user	/man/1/0intro
 user	/man/1/acme
 user	/man/1/alphabet-fs
 user	/man/1/alphabet-main
+user	/man/1/ar
 user	/man/1/bind
 user	/man/1/cd
 user	/man/1/charon
@@ -59509,14 +60137,17 @@ user's	/man/6/proto
 user's	/man/8/getauthinfo
 userdir	/man/1/charon
 userid	/man/8/virgild
+userinfo	/man/2/w3c-uris
 username	/man/1/deb
 username	/man/1/rcmd
 username	/man/1/toolbar
 username	/man/10/odbc
+username	/man/2/w3c-uris
 username	/man/3/ip
 username	/man/7/db
 username	/man/8/getauthinfo
 usernames	/man/10/eve
+userpw	/man/2/w3c-uris
 users	/man/1/0intro
 users	/man/1/collab-clients
 users	/man/1/emu
@@ -59674,6 +60305,7 @@ using	/man/2/timers
 using	/man/2/tk
 using	/man/2/translate
 using	/man/2/ubfa
+using	/man/2/w3c-uris
 using	/man/2/w3c-xpointers
 using	/man/2/wmsrv
 using	/man/3/arch
@@ -59880,6 +60512,7 @@ utility	/man/10/0intro
 utility	/man/10/styxserver
 utility	/man/2/exception
 utility	/man/2/keyring-ipint
+utility	/man/2/rfc822
 utility	/man/2/sh
 utility	/man/2/styxservers
 utils	/man/1/idea
@@ -59949,6 +60582,7 @@ val	/man/2/format
 val	/man/2/hash
 val	/man/2/plumbmsg
 val	/man/2/registries
+val	/man/2/rfc822
 val	/man/2/spree
 val	/man/2/stringinttab
 val	/man/2/ubfa
@@ -60108,6 +60742,7 @@ value	/man/2/bufio
 value	/man/2/cfg
 value	/man/2/convcs
 value	/man/2/crc
+value	/man/2/csv
 value	/man/2/dbm
 value	/man/2/debug
 value	/man/2/dhcpclient
@@ -60145,6 +60780,7 @@ value	/man/2/prof
 value	/man/2/pslib
 value	/man/2/readdir
 value	/man/2/registries
+value	/man/2/rfc822
 value	/man/2/scsiio
 value	/man/2/secstore
 value	/man/2/security-0intro
@@ -60181,6 +60817,7 @@ value	/man/2/sys-werrstr
 value	/man/2/timers
 value	/man/2/ubfa
 value	/man/2/w3c-css
+value	/man/2/w3c-uris
 value	/man/2/w3c-xpointers
 value	/man/2/wait
 value	/man/2/wmsrv
@@ -60234,6 +60871,7 @@ value	/man/6/sbl
 value	/man/6/sexprs
 value	/man/6/ubfa
 value	/man/6/utf
+value	/man/7/cddb
 value	/man/7/db
 value	/man/8/bootpd
 value	/man/8/changelogin
@@ -60344,6 +60982,7 @@ values	/man/2/attrdb
 values	/man/2/bufio-chanfill
 values	/man/2/cfg
 values	/man/2/convcs
+values	/man/2/csv
 values	/man/2/daytime
 values	/man/2/dbm
 values	/man/2/dhcpclient
@@ -60365,6 +61004,7 @@ values	/man/2/palmfile
 values	/man/2/popup
 values	/man/2/readdir
 values	/man/2/registries
+values	/man/2/rfc822
 values	/man/2/secstore
 values	/man/2/security-0intro
 values	/man/2/sexprs
@@ -60381,6 +61021,7 @@ values	/man/2/sys-stat
 values	/man/2/ubfa
 values	/man/2/volume
 values	/man/2/w3c-css
+values	/man/2/w3c-uris
 values	/man/2/w3c-xpointers
 values	/man/3/audio
 values	/man/3/cons
@@ -60700,6 +61341,7 @@ verbatim	/man/1/alphabet-abc
 verbatim	/man/1/alphabet-grid
 verbatim	/man/6/sexprs
 verbatim	/man/9/1copyright
+verbose	/man/1/ar
 verbose	/man/1/secstore
 verbose	/man/10/iar
 verbose	/man/2/filter-deflate
@@ -61004,6 +61646,7 @@ visible	/man/1/cpu
 visible	/man/1/listen
 visible	/man/1/mash-tk
 visible	/man/1/mk
+visible	/man/1/sh-tk
 visible	/man/10/2c
 visible	/man/10/kproc
 visible	/man/10/mk
@@ -61153,12 +61796,15 @@ vseprint	/man/10/print
 vsmprint	/man/10/print
 vsnprint	/man/10/print
 vsync	/man/3/vga
+vuaibclo	/man/1/ar
 vuaibclo	/man/10/iar
 vulnerable	/man/2/security-0intro
 vv	/man/1/webgrab
 vxxxx	/man/10/iar
 vy1	/man/3/tv
+w3c	/man/2/rfc822
 w3c	/man/2/w3c-css
+w3c	/man/2/w3c-uris
 w3c	/man/2/w3c-xpointers
 wait	/man/1/charon
 wait	/man/1/mash
@@ -61248,6 +61894,7 @@ wants	/man/2/sh
 warn	/man/10/2c
 warn	/man/2/itslib
 warning	/man/1/acme
+warning	/man/1/ar
 warning	/man/1/limbo
 warning	/man/1/mkdir
 warning	/man/10/2c
@@ -61906,6 +62553,7 @@ won't	/man/9/image
 won't	/man/9/scale
 wordend	/man/9/text
 wordstart	/man/9/text
+wordval	/man/2/rfc822
 wordy	/man/1/alphabet-abc
 wordy	/man/1/alphabet-grid
 workdir	/man/1/plumb
@@ -62024,6 +62672,7 @@ write	/man/10/qlock
 write	/man/10/styxserver
 write	/man/2/bufio
 write	/man/2/bufio-chanfill
+write	/man/2/csv
 write	/man/2/dbm
 write	/man/2/diskblocks
 write	/man/2/draw-context
@@ -62479,6 +63128,7 @@ xoff	/man/3/eia
 xon	/man/3/eia
 xor	/man/1/fc
 xor	/man/1/sh-expr
+xor	/man/2/keyring-ipint
 xor	/man/8/signer
 xored	/man/2/crc
 xorigin	/man/9/canvas
@@ -62517,6 +63167,7 @@ xview	/man/9/scrollbar
 xview	/man/9/text
 xx	/man/1/fc
 xx	/man/2/draw-example
+xx	/man/2/w3c-uris
 xx	/man/6/man
 xx,yy	/man/2/draw-example
 xxx	/man/10/plan9.ini

@@ -62,31 +62,36 @@ dateindex : fn(nil: string, nill:array of string): int;
 gmtm2sec  : fn(tm: Tm): int;
 
 
-yrsize(yr : int): array of int {
+yrsize(yr : int): array of int
+{
 	if(yr % 4 == 0 && (yr % 100 != 0 || yr % 400 == 0))
 		return ldmsize;
 	else
 		return dmsize;
 }
 
-tolower(c: int): int {
+tolower(c: int): int
+{
 	if(c >= 'A' && c <= 'Z')
 		return c - 'A' + 'a';
 	return c;
 }
 
 
-isalpha(c: int): int{
+isalpha(c: int): int
+{
 	return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z';
 }
 
 
-isdig(c: int): int {
+isdig(c: int): int
+{
 	return c >= '0' && c <= '9';
 }
 
 
-dateconv(t: int): string {
+dateconv(t: int): string
+{
 	tm : ref Tm;
 	tm = daytime->gmt(t);
 	return sys->sprint("%s, %.2d %s %.4d %.2d:%.2d:%.2d GMT",
@@ -132,7 +137,8 @@ datenum(date : string): (string, int){
  # return 0 for a failure
  
 # could be big?
-date2sec(date : string): int {
+date2sec(date : string): int
+{
 	tm : Tm;
 	buf : string;
 
@@ -210,14 +216,16 @@ date2sec(date : string): int {
 	return gmtm2sec(tm);
 }
 
-lowercase(name:string): string {
+lowercase(name:string): string
+{
 	p: string;
 	for(i:=0;i<len name;i++)
 		p[i]=tolower(name[i]);
 	return p;
 }
 
-dateindex(d : string, tab : array of string): int{
+dateindex(d : string, tab : array of string): int
+{
 	for(i := 0; i < len tab; i++)
 		if (lowercase(tab[i]) == d)
 			return i;

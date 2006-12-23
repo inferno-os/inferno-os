@@ -666,8 +666,6 @@ enum{
 	Mialloc,
 };
 
-#ifdef HEAP_ALIGN
-
 static void
 memprof(int c, void *v, ulong n)
 {
@@ -703,7 +701,7 @@ memprof(int c, void *v, ulong n)
 		i = p-r->base;
 		k = (r->id<<24) | i;
 		if(c == Mhalloc){
-			h->pad = k;
+			h->hprof = k;
 			j = hmsize(h)-sizeof(Heap);
 		}
 		else if(c == Mmalloc){
@@ -721,7 +719,7 @@ memprof(int c, void *v, ulong n)
 		else if(c == Mifree)
 			k = ((ulong*)v)[1];
 		else
-			k = h->pad;
+			k = h->hprof;
 		if((r = getrec(k>>24)) == nil){
 			unlock(&profile.l);
 			return;
@@ -765,18 +763,6 @@ memprof(int c, void *v, ulong n)
 	}
 	unlock(&profile.l);
 }
-
-#else
-
-static void
-memprof(int c, void *v, ulong n)
-{
-	USED(c);
-	USED(v);
-	USED(n);
-}
-
-#endif
 
 /* main and image memory */
 static void

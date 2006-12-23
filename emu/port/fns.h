@@ -118,7 +118,7 @@ void		nexterror(void);
 void		notkilled(void);
 int		openmode(ulong);
 void		osblock(void);
-void*		oscmd(char**, int, char*, int*, int*);
+void*		oscmd(char**, int, char*, int*);
 int		oscmdwait(void*, char*, int);
 int		oscmdkill(void*);
 void		oscmdfree(void*);

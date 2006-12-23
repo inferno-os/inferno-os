@@ -10,6 +10,8 @@ cmd \- interface to host operating system commands
 .br
 .BI /cmd/ n /data
 .br
+.BI /cmd/ n /stderr
+.br
 .BI /cmd/ n /status
 .br
 .BI /cmd/ n /wait
@@ -69,9 +71,11 @@ Spawn a host process to run the
 with arguments as given.
 The write returns with an error, setting the error string, if anything prevents
 starting the command.
-If write returns successfully, the command has started, and its input and
+If write returns successfully, the command has started, and its standard input and
 output may be accessed through
-.B data
+.BR data ,
+and its error output accessed through
+.B stderr
 (see below).
 If arguments containing white space are quoted (following the conventions of
 .IR sh (1)
@@ -105,13 +109,16 @@ The
 file provides a connection to the input and output of a previously-started
 host command.
 It must be opened separately for reading and for writing.
-When opened for reading, it returns data that the command writes to its standard output and standard error (the
-streams are merged); when closed, further writes by the command will receive the host
+When opened for reading, it returns data that the command writes to its standard output; when closed, further writes by the command will receive the host
 equivalent of `write to closed pipe'.
 When opened for writing, data written to the file
 can be read by the command on its standard input; when closed, further reads by
 the command will see the host equivalent of `end of file'.
 (Unfortunately there is no way to know when the command needs input.)
+.PP
+The
+.B stderr
+file provides a similar read-only connection to the error output from the command.
 .PP
 Once started, a host command runs until it terminates or until it is killed,
 by using the

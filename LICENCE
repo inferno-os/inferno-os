@@ -16,9 +16,9 @@ licences, listed here in increasing order of liberality:
 The text of each licence can be found in lib/legal.
 
 Some portions of the software are subject to GPL and LGPL.
-Through their `copyleft' clauses impose some degree of reciprocity in terms of (for instance)
-making changes and additions available in source form if you distribute software
-that is subject to those licences, but only to the extent the licences require.
+Their `copyleft' clauses impose some degree of reciprocity; for instance, if you
+make changes and additions to such software, and you also distribute the result,
+you must make those changes and additions available in source form.
 
 Other portions are subject to the Lucent Public or Vita Nuova `free for all' licence
 and do not impose `copyleft' conditions.

@@ -339,6 +339,7 @@ appl
 		9export.b
 		9srvfs.b
 		B.b
+		ar.b
 		archfs.b
 		auplay.b
 		auth
@@ -390,6 +391,7 @@ appl
 		cal.b
 		cat.b
 		cd.b
+		cddb.b
 		chgrp.b
 		chmod.b
 		cleanname.b
@@ -593,10 +595,10 @@ appl
 		lockfs.b
 		logfile.b
 		look.b
-		lookman.b
 		ls.b
 		lstar.b
 		man.b
+		man2html.b
 		man2txt.b
 		manufacture.b
 		mash
@@ -708,7 +710,6 @@ appl
 			test.b
 			tk.b
 		sha1sum.b
-		shutdown.b
 		sleep.b
 		sort.b
 		spki
@@ -894,6 +895,7 @@ appl
 			ssl3.b
 			sslsession.b
 			x509.b
+		csv.b
 		daytime.b
 		db.b
 		dbm.b
@@ -993,6 +995,7 @@ appl
 		regex.b
 		regexutils.b
 		registries.b
+		rfc822.b
 		riff.b
 		secstore.b
 		scoretable.b
@@ -1062,6 +1065,7 @@ appl
 		w3c
 			css.b
 			mkfile
+			uris.b
 			xpointers.b
 		wait.b
 		watchvars.b
@@ -1387,6 +1391,7 @@ dis
 	9export.dis
 	9srvfs.dis
 	9win.dis
+	ar.dis
 	archfs.dis
 	B.dis
 	acme
@@ -1408,6 +1413,7 @@ dis
 	cal.dis
 	cat.dis
 	cd.dis
+	cddb.dis
 	charon
 		+
 	charon.dis
@@ -1497,6 +1503,7 @@ dis
 		crc.dis
 		crypt
 			+
+		csv.dis
 		daytime.dis
 		db.dis
 		dbm.dis
@@ -1578,6 +1585,7 @@ dis
 		regex.dis
 		regexutils.dis
 		registries.dis
+		rfc822.dis
 		riff.dis
 		secstore.dis
 		scoretable.dis
@@ -1647,10 +1655,11 @@ dis
 	lockfs.dis
 	logfile.dis
 	look.dis
-	lookman.dis
+	lookman
 	ls.dis
 	lstar.dis
 	man.dis
+	man2html.dis
 	man2txt.dis
 	mash.dis
 	math
@@ -1708,7 +1717,7 @@ dis
 		+
 	sh.dis
 	sha1sum.dis
-	shutdown.dis
+	shutdown
 	sleep.dis
 	sort.dis
 	spki
@@ -1881,6 +1890,9 @@ lib
 	lego
 		*
 	mashinit
+	mimetype
+	mk
+		*
 	ndb
 		common
 		dns	664	inferno inferno /lib/ndb/dns.dist
@@ -2050,6 +2062,7 @@ module
 	convcs.m
 	crc.m
 	css.m
+	csv.m
 	cvsimages.m
 	daytime.m
 	db.m
@@ -2094,6 +2107,7 @@ module
 		srvbrowse.m
 	hash.m
 	html.m
+	ida.m
 	imagefile.m
 	inflate.m
 	ip.m
@@ -2135,6 +2149,7 @@ module
 	regex.m
 	regexutils.m
 	registries.m
+	rfc822.m
 	riff.m
 	runt.m
 	scoretable.m
@@ -2173,6 +2188,7 @@ module
 	translate.m
 	ubfa.m
 	unbundle.m
+	uris.m
 	url.m
 	usb.m
 	venti.m

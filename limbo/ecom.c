@@ -657,7 +657,7 @@ sumark(Node *n)
 			if(n->flags & FNPTR){
 				if(n->flags == FNPTR2)
 					n->addable = Roff;
-				else if(n->flags == FNPTR2|FNPTRN)
+				else if(n->flags == (FNPTR2|FNPTRN))
 					n->addable = Rnoff;
 			}
 			else
@@ -1793,7 +1793,7 @@ arraycom(Node *a, Node *elems)
 {
 	Node tindex, fake, tmp, ri, *e, *n, *q, *body, *wild;
 	Inst *top, *out;
-	Case *c;
+	/* Case *c; */
 
 	if(debug['A'])
 		print("arraycom: %n %n\n", a, elems);

@@ -1,6 +1,6 @@
 Inferno® Copyright © 1996-1999 Lucent Technologies Inc.  All rights reserved.
 iPAQ 36xx Inferno port Copyright © 2000-2003 Vita Nuova Holdings Limited.  All rights reserved.
 
-This software is subject to the Vita Nuova Liberal Source Licence, except for the following:
+This software is subject to the terms of ../NOTICE, except for the following:
 	devaudio.c came from Plan 9 and is covered by the Lucent Public License 1.02
 	The etherwavelan.c driver was contributed to Plan 9 by nemo@gsyc.escet.urjc.es

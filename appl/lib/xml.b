@@ -94,16 +94,22 @@ blankparser: Parser;
 
 open(srcfile: string, warning: chan of (Locator, string), preelem: string): (ref Parser, string)
 {
-	x := ref blankparser;
-	x.in = bufio->open(srcfile, Bufio->OREAD);
-	if (x.in == nil)
+	fd := bufio->open(srcfile, Bufio->OREAD);
+	if(fd == nil)
 		return (nil, sys->sprint("cannot open %s: %r", srcfile));
-	# ignore utf16 intialisation character (yuck)
+	return fopen(fd, srcfile, warning, preelem);
+}
+
+fopen(fd: ref Bufio->Iobuf, name: string, warning: chan of (Locator, string), preelem: string): (ref Parser, string)
+{
+	x := ref blankparser;
+	x.in = fd;
+	# ignore utf16 initialisation character (yuck)
 	c := x.in.getc();
 	if (c != 16rfffe && c != 16rfeff)
 		x.in.ungetc();
 	x.estack = nil;
-	x.loc = Locator(1, srcfile, "");
+	x.loc = Locator(1, name, "");
 	x.warning = warning;
 	x.preelem = preelem;
 	return (x, "");
@@ -235,9 +241,8 @@ getparcel(x: ref Parser): ref Parcel
 		if (p == nil)
 			p = ref Parcel.EOF;
 		return p;
-	}
-	exception e{
-		"sax:*" =>
+	}exception e{
+	"sax:*" =>
 			return ref Parcel.Error(x.loc, x.errormsg);
 	}
 }

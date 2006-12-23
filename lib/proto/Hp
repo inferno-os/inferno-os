@@ -1,7 +1,7 @@
 Hp
 	s800
 		bin
-			emu.new	0775	inferno	inf	/Linux/386/bin/emu
+			emu.new	0775	inferno	inferno	/Linux/386/bin/emu
 			0a
 			0c
 			0l

@@ -1,0 +1,18 @@
+#!/dis/sh
+load std
+x=$*
+{~ $#x 1 && ~ ${hd $x} -h -r} || {echo usage: shutdown -h or shutdown -r >[1=2]; exit usage}
+# the following is a bit pointless until kfs has halt
+#ftest -f /dis/disk/kfscmd.dis && {
+#	for(a in /chan/kfs.*.cmd){
+#		b=${hd ${tl ${split '.' $a}}}
+#		~ $b '*' || disk/kfscmd -n $b halt
+#	}
+#}
+if {~ $1 -r} {
+	echo reboot >/dev/sysctl
+} {~ $1 -h} {
+	echo halt >/dev/sysctl
+} {}
+echo shutdown: failed: $status >[1=2]
+exit failed

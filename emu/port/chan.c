@@ -1297,7 +1297,6 @@ if(c->umh != nil){
 			omode |= OTRUNC;
 			goto Open;
 		}
-		panic("namec: not reached");				
 
 	default:
 		panic("unknown namec access %d\n", amode);

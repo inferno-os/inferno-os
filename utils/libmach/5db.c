@@ -689,7 +689,7 @@ armfmov(Map *map, Rgetter rget, Instr *i, ulong pc)
 
 	 /* LDR */
 	/* BUG: Needs LDH/B, too */
-	if((i->w>>26)&0x3 == 1) {
+	if(((i->w>>26)&0x3) == 1) {
 		if(get4(map, armaddr(map, rget, i), (long*)&v) < 0) {
 			werrstr("can't read instruction: %r");
 			return pc+4;
@@ -698,9 +698,7 @@ armfmov(Map *map, Rgetter rget, Instr *i, ulong pc)
 	}
 
 	 /* MOV */
-	v = armshiftval(map, rget, i);
-
-	return v;
+	return armshiftval(map, rget, i);
 }
 
 static Opcode opcodes[] =

@@ -1,8 +1,8 @@
 SYSTARG=MacOSX
-OBJTYPE=power
+#OBJTYPE=power
 <../../mkconfig
 SYSTARG=MacOSX
-OBJTYPE=power
+#OBJTYPE=power
 
 #Configurable parameters
 
@@ -30,6 +30,7 @@ OBJ=\
 HFILES=\
 
 CFLAGS='-DROOT="'$ROOT'"'\
+	'-DOBJTYPE="'$OBJTYPE'"'\
 	-DEMU -I. -I../port\
 	-I$ROOT/$SYSTARG/$OBJTYPE/include\
 	-I$ROOT/include -I$ROOT/libinterp\

@@ -26,12 +26,14 @@ init(nil: ref Draw->Context, args: list of string)
 		fail(sys->sprint("cannot load %s: %r", Arg->PATH));
 
 	arg->init(args);
-	arg->setusage("os [-d dir] [-n] command [arg...]");
+	arg->setusage("os [-d dir] [-m mount] [-n] [-N nice] [-b] command [arg...]");
 
 	nice := 0;
 	nicearg: string;
 	workdir := "";
 	mntpoint := "";
+	foreground := 1;
+
 	while((opt := arg->opt()) != 0) {
 		case opt {
 		'd' =>
@@ -43,6 +45,8 @@ init(nil: ref Draw->Context, args: list of string)
 		'N' =>
 			nice = 1;
 			nicearg = sys->sprint(" %q", arg->earg());
+		'b' =>
+			foreground = 0;
 		* =>
 			arg->usage();
 		}
@@ -78,32 +82,41 @@ init(nil: ref Draw->Context, args: list of string)
 	if(workdir != nil && sys->fprint(cfd, "dir %s", workdir) < 0)
 		fail(sys->sprint("cannot set cwd %q: %r", workdir));
 
-	if(sys->fprint(cfd, "killonclose") < 0)
+	if(foreground && sys->fprint(cfd, "killonclose") < 0)
 		sys->fprint(sys->fildes(2), "os: warning: cannot write killonclose: %r\n");
 
 	if(sys->fprint(cfd, "exec %s", str->quoted(args)) < 0)
 		fail(sys->sprint("cannot exec: %r"));
 
-	if((tocmd := sys->open(dir+"/data", sys->OWRITE)) == nil)
-		fail(sys->sprint("canot open %s/data for writing: %r", dir));
+	if(foreground){
+		if((tocmd := sys->open(dir+"/data", sys->OWRITE)) == nil)
+			fail(sys->sprint("canot open %s/data for writing: %r", dir));
+		if((fromcmd := sys->open(dir+"/data", sys->OREAD)) == nil)
+			fail(sys->sprint("cannot open %s/data for reading: %r", dir));
+		if((errcmd := sys->open(dir+"/stderr", sys->OREAD)) == nil)
+			fail(sys->sprint("cannot open %s/stderr for reading: %r", dir));
 
-	if((fromcmd := sys->open(dir+"/data", sys->OREAD)) == nil)
-		fail(sys->sprint("cannot open %s/data for reading: %r", dir));
+		spawn copy(sync := chan of int, nil, sys->fildes(0), tocmd);
+		pid := <-sync;
+		tocmd = nil;
 
-	spawn copy(sync := chan of int, nil, sys->fildes(0), tocmd);
-	pid := <-sync;
-	sync = nil;
-	tocmd = nil;
+		spawn copy(sync, nil, errcmd, sys->fildes(2));
+		epid := <-sync;
+		sync = nil;
+		errcmd = nil;
+	
+		spawn copy(nil, done := chan of int, fromcmd, sys->fildes(1));
+		fromcmd = nil;
 
-	spawn copy(nil, done := chan of int, fromcmd, sys->fildes(1));
+		# cfd is still open, so if we're killgrp'ed and we're on a platform
+		# (e.g. windows) where the fromcmd read is uninterruptible,
+		# cfd will be closed, so the command will be killed (due to killonclose), and
+		# the fromcmd read should complete, allowing that process to be killed.
 
-	# cfd is still open, so if we're killgrp'ed and we're on a platform
-	# (e.g. windows) where the fromcmd read is uninterruptible,
-	# cfd will be closed, so the command will be killed (due to killonclose), and
-	# the fromcmd read should complete, allowing that process to be killed.
-
-	<-done;
-	kill(pid);
+		<-done;
+		kill(pid);
+		kill(epid);
+	}
 
 	if(wfd != nil){
 		status := array[1024] of byte;

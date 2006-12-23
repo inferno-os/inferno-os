@@ -20,9 +20,6 @@ CLEANEXTRA=
 %.$O:		../ip/%.c
 		$CC $CFLAGS -I. ../ip/$stem.c
 
-%.$O:		../kfs/%.c
-		$CC $CFLAGS -I. ../kfs/$stem.c
-
 &.$O:		$HFILES $PORTHFILES
 
 $INSTALLDIR/%: %

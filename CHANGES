@@ -1,3 +1,81 @@
+20061219
+	cmd(3) and thus os(1) change to separate standard output and error streams
+	all /emu/*/cmd.c change to account for that (original changes to devcmd.c and MacOSX/cmd.c courtesy Cibernet)
+20061215
+	replaced things like <???> because gcc annoyingly whines even with 1950's trigraphs off
+	libtk/textu.c: uninitialised field in boundary case
+	libtk/textw.c: possibly uninitialised value; leave unchanged
+	utils/ql/l.h: uchar as to ushort, because of extra ops
+20061214
+	added fopen to xml.m to allow bufio->sopen and others to be used
+20061213
+	added MacOSX/386 components
+20061013
+	updated /os/ip/lookbackmedium.c and /os/ip/rudp.c
+20061021
+	change /os/port/exportfs.c to allow negotiating up to 64k msize
+	(matching /emu/port/exportfs.c)
+20060809
+	/appl/lib/newns.b uses String->unquoted, if it can load it
+20060803
+	/libtk/textw.c: default page up/down scrolls 0.75 of a page (to give context); also allows fractional value
+20060801
+	/utils/data2s/data2s.c: allocate at least one linker byte to empty files to avoid complaints
+20060715
+	/appl/lib/pop3.b remove defaultserver(); update pop3(2) to remove references to /services
+	similarly update smtp(2)
+	avoid some boundary cases in /appl/charon/^(build.b layout.b)
+20060625
+	added caerwynj@gmail.com changes to /appl/acme/acme/mail/src/Mailpop3.b
+20060622
+	/appl/lib/sets*.b: correct op's implementation of 2r1101
+20060613
+	added csv(2), /module/csv.m, /appl/lib/csv.b
+20060608
+	preliminary rfc822(2), /appl/lib/rfc822.b
+20060605
+	/appl/lib/chanfill.b: remove alt => *
+20060601
+	fix /appl/lib/dis.b to save the real array once read in
+20060526
+	/appl/lib/venti.b: fix g64's byte ordering [not that it is, or can be called yet]
+20060524
+	copy end fix to lib*/utfecpy.c
+20060523
+	w3c-uris(2): add a .copy() operation
+20060518
+	/Nt/386/include/lib9.h define _USE_32BIT_TIME_T and deprecate `deprecated' warnings
+20060504
+	remove use of HEAP_ALIGN from /*/port/devprof.c; change Heap.pad to Heap.hprof in /include/interp.h
+20060426
+	correct text and selection colours in wm/sh for loss-of-focus and holding modes
+20060423
+	add /appl/lib/w3c/uris.b w3c-uris(2) /module/uris.m
+20060419
+	/emu/port/devcmd.c: correct wakeup state for started command
+20060412
+	/appl/svc/webget	include caerwyn's changes
+20060411
+	put `|| exit 1' after each (command-list) in the mkfiles, just for bash
+20060410
+	/appl/cmd/limbo/typecheck.b /limbo/typecheck.c - stop wrong warning wrt use of ref fn
+20060313
+	remembered to install cddb port from last year... cddb(7)
+20060312
+	/emu/Nt/win.c; #define windows names out of the way to remove IPoint etc
+	/emu/Nt/os.c, simplify osblock/osready and eliminate erendezvous
+	/emu/port/devcons.c, tug into line with /os/port, to prepare for single-window changes
+	echo ^U on CAN (ctrl-U)
+20060311
+	replace Limbo version of shutdown by sh script; it's still a bit silly
+20060309
+	/*/port/inferno.c: 0 or -1 return value from dial functions
+	/os/port/portmkfile: remove reference to ../kfs
+	/man/8/httpd document -a; /appl/svc/httpd/httpd.b
+	/libmp/port/mptouv.c sign extension fix from 9
+	/module/keyring.m, /libinterp/ipint.c: add some bitwise operators
+	change (undocumented) /appl/cmd/test.b so that `host' mkfiles will work in Inferno
+		should probably change the mkfiles to replace it
 20060303
 	/emu/Plan9/win.c replace ldepthof
 20060302

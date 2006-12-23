@@ -933,7 +933,7 @@ declconv(Fmt *f)
 
 	d = va_arg(f->args, Decl*);
 	if(d->sym == nil)
-		s = "<???>";
+		s = "<nil>";
 	else
 		s = d->sym->name;
 	seprint(buf, buf+sizeof(buf), "%s %s", storename[d->store], s);

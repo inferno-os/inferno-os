@@ -1153,7 +1153,7 @@ for these IP based services, and the remote addresses are not filled in
 because they all represent listening services that are in the
 .CW Announced
 state.
-In this example the fourth line shows a TCP service listening on port 6673.
+In this example the third line shows a TCP service listening on port 6675.
 Examining
 .CW /lib/ndb/inferno
 with

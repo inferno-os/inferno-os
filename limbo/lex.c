@@ -61,6 +61,7 @@ static	Keywd	keywords[] =
 	"continue",	Lcont,
 	"cyclic",	Lcyclic,
 	"do",		Ldo,
+	"dynamic",	Ldynamic,
 	"else",		Lelse,
 	"exception",	Lexcept,
 	"exit",		Lexit,

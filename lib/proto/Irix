@@ -1,7 +1,7 @@
 Irix
 	mips
 		bin
-			emu.new	0775	inferno	inf	/Irix/mips/bin/emu
+			emu.new	0775	inferno	inferno	/Irix/mips/bin/emu
 			0a
 			0c
 			0l

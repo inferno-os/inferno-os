@@ -33,14 +33,9 @@ is
 .IR nil ,
 .B open
 uses
-.BR $POPSERVER ,
-and if that is not defined, it
-uses
-.BR $MAILSERVER ,
-the default mail server, if set up in
-.LR /services/cs/db
-(see
-.IR db (6)).
+.BR $pop3 ,
+which must be defined in
+.IR ndb (6).
 The remaining functions assume a successfully opened connection.
 .PP
 .B Stat

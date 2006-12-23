@@ -653,8 +653,8 @@ g48(f: array of byte, i: int): big
 
 g64(f: array of byte, i: int): big
 {
-	b0 := (((((int f[i+3] << 8) | int f[i+2]) << 8) | int f[i+1]) << 8) | int f[i];
-	b1 := (((((int f[i+7] << 8) | int f[i+6]) << 8) | int f[i+5]) << 8) | int f[i+4];
-	return (big b1 << 32) | (big b0 & 16rFFFFFFFF);
+	b0 := (((((int f[i+0] << 8) | int f[i+1]) << 8) | int f[i+2]) << 8) | int f[i+3];
+	b1 := (((((int f[i+4] << 8) | int f[i+5]) << 8) | int f[i+6]) << 8) | int f[i+7];
+	return (big b0 << 32) | (big b1 & 16rFFFFFFFF);
 }
 

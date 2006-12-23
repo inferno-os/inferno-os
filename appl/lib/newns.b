@@ -39,6 +39,9 @@ include "factotum.m";
 include "arg.m";
 	arg: Arg;
 
+include "string.m";
+	str: String;
+
 newns(user: string, file: string): string
 {
 	sys = load Sys Sys->PATH;
@@ -62,6 +65,8 @@ newns(user: string, file: string): string
 	err := au->init();
 	if(err != nil)
 		return "Auth->init: "+err;
+
+	str = load String String->PATH;		# no check, because we'll live without it
 
 	if(file == nil){
 		file = "namespace";
@@ -87,8 +92,11 @@ nsfile(b: ref Iobuf, facfd: ref Sys->FD): string
 {
 	e := "";
 	while((l := b.gets('\n')) != nil){
-		(n, slist) := sys->tokenize(l, " \t\n\r");	# should use str->unquote?
-		if(n <= 0)
+		if(str != nil)
+			slist := str->unquoted(l);
+		else
+			(nil, slist) = sys->tokenize(l, " \t\n\r");	# old way, in absence of String
+		if(slist == nil)
 			continue;
 		e = nsop(expand(slist), facfd);
 		if(e != "")
@@ -264,7 +272,7 @@ mount(argv: list of string, facfd: ref Sys->FD): string
 			return ig(r, sys->sprint("cannot load %s: %r", Factotum->PATH));
 		factotum->init();
 		afd := sys->fauth(fd, spec);
-		ai := factotum->proxy(afd, facfd, "proto=p9any role=client");
+		ai := factotum->proxy(afd, facfd, "proto=p9any role=client");	# TO DO: something with ai
 		if(sys->mount(fd, afd, dir, r.flags, spec) < 0)
 			return ig(r, sys->sprint("mount %q %q: %r", addr, dir));
 		return nil;
@@ -343,7 +351,7 @@ import9(argv: list of string, facfd: ref Sys->FD): string
 	}
 	# TO DO: new style: impo aan|nofilter clear|ssl|tls\n
 	afd := sys->fauth(fd, "");
-	ai := factotum->proxy(afd, facfd, "proto=p9any role=client");
+	ai := factotum->proxy(afd, facfd, "proto=p9any role=client");	# TO DO: something with ai
 	if(sys->mount(fd, afd, dir, r.flags, "") < 0)
 		return ig(r, sys->sprint("import %q %q: %r", addr, dir));
 	return nil;

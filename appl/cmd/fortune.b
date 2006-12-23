@@ -52,7 +52,7 @@ init(nil: ref Draw->Context, args: list of string)
 		if(ix != nil){
 			(nil, ixbuf) := sys->fstat(ix);
 			(nil, fbuf) := sys->fstat(f.fd);
-			if(fbuf.mtime > ixbuf.mtime){
+			if(fbuf.mtime >= ixbuf.mtime){
 				ix = nil;
 				nix = sys->create(findex, Sys->OWRITE, 8r666);
 			}else
@@ -71,7 +71,7 @@ init(nil: ref Draw->Context, args: list of string)
 	}else{
 		rand->init(truerand());
 		offs := 0;
-		g := bufio->fopen(ix, Bufio->ORDWR);
+		g := bufio->fopen(nix, Bufio->ORDWR);
 		for(i := 1;; i++){
 			if(nix != nil)
 				offs = int f.offset();

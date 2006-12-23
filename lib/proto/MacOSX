@@ -2,7 +2,7 @@ MacOSX
 	README
 	power
 		bin
-			emu.new	0775	inferno	inf	/MacOSX/power/bin/emu
+			emu.new	0775	inferno	inferno	/MacOSX/power/bin/emu
 			asm
 			iar
 			data2c
@@ -12,6 +12,7 @@ MacOSX
 
 			limbo
 			mk
+			mkext
 			ms2
 			ndate
 			inm
@@ -22,3 +23,25 @@ MacOSX
 			+
 		lib
 	tcshrc
+	386
+		bin
+			emu.new	0775	inferno	inferno	/MacOSX/386/bin/emu
+			asm
+			iar
+			data2c
+			data2s
+			ksize
+			kstrip
+
+			limbo
+			mk
+			mkext
+			ms2
+			ndate
+			inm
+			sqz
+			srclist
+			yacc
+		include
+			+
+		lib

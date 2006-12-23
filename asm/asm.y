@@ -155,10 +155,10 @@ data	: TOKDB expr ',' elist
 	| TOKDF expr ',' TID
 	{
 		if(strcmp($4->name, "Inf") == 0 || strcmp($4->name, "Infinity") == 0) {
-			u.l = 0x7ff0000000000000;
+			u.l = (uvlong)0x7ff00000<<32;
 			data(DEFF, $2, newi(dtocanon(u.d), nil));
 		} else if(strcmp($4->name, "NaN") == 0) {
-			u.l = 0x7fffffffffffffff;
+			u.l = ((uvlong)0x7fffffff<<32) | (uvlong)0xffffffffUL;
 			data(DEFF, $2, newi(dtocanon(u.d), nil));
 		} else
 			diag("bad value for real: %s", $4->name);
@@ -174,7 +174,7 @@ data	: TOKDB expr ',' elist
 	| TOKDF expr ',' '-' TID
 	{
 		if(strcmp($5->name, "Inf") == 0 || strcmp($5->name, "Infinity") == 0) {
-			u.l = 0xfff0000000000000;
+			u.l = (uvlong)0xfff00000<<32;
 			data(DEFF, $2, newi(dtocanon(u.d), nil));
 		} else
 			diag("bad value for real: %s", $5->name);

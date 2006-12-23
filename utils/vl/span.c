@@ -179,6 +179,7 @@ regoff(Adr *a)
 	return instoffset;
 }
 
+int
 aclass(Adr *a)
 {
 	Sym *s;

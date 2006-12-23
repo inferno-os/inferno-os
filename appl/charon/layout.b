@@ -2249,6 +2249,8 @@ drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
 		clay := f.sublays[c.layid];
 		if(clay == nil)
 			continue;
+		if(c.col >= len tab.cols)
+			continue;
 		cx := x + tab.cols[c.col].pos.x;
 		cy := y + tab.rows[c.row].pos.y;
 		wd := cellwidth(tab, c, hsep);
@@ -3304,6 +3306,8 @@ Control.scrollset(c: self ref Control, v1, v2, vmax, nsteps, draw: int)
 				breadth = sc.r.max.y - sc.r.min.y;
 			}
 			l := length - (2*breadth + MINSCR);
+			if(l <= 0)
+				l = 1;
 			if(l < 0)
 				CU->raisex("EXInternal: negative scrollbar trough");
 			sc.top = l*v1/vmax;

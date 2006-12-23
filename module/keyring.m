@@ -41,6 +41,12 @@ Keyring: module
 		# shifts
 		shl:	fn(i: self ref IPint, n: int): ref IPint;
 		shr:	fn(i: self ref IPint, n: int): ref IPint;
+
+		# bitwise
+		and:	fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+		ori:	fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+		xor:	fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+		not:	fn(i1: self ref IPint): ref IPint;
 	};
 
 	# signature algorithm

@@ -12,7 +12,7 @@ extern	void	vstack(void*);
 typedef struct Targ Targ;
 struct Targ
 {
-	int	fd[2];
+	int	fd[3];	/* standard input, output and error */
 	int	wfd;
 	int*	spin;
 	char**	args;
@@ -41,18 +41,21 @@ exectramp(Targ *t)
 
 	nfd = MAXNFD;	/* TO DO: should read from /fd */
 	for(i = 0; i < nfd; i++)
-		if(i != fd[0] && i != fd[1] && i != t->wfd)
+		if(i != fd[0] && i != fd[1] && i != fd[2] && i != t->wfd)
 			close(i);
 
 	if(fd[0] != 0){
 		dup(fd[0], 0);
 		close(fd[0]);
 	}
-	if(fd[0] != 1){
+	if(fd[1] != 1){
 		dup(fd[1], 1);
 		close(fd[1]);
 	}
-	dup(1, 2);
+	if(fd[2] != 2){
+		dup(fd[2], 2);
+		close(fd[2]);
+	}
 
 	if(t->dir != nil && chdir(t->dir) < 0){
 		if(t->wfd > 0)
@@ -79,10 +82,10 @@ exectramp(Targ *t)
 }
 
 void*
-oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
+oscmd(char **args, int nice, char *dir, int *fd)
 {
 	Targ *t;
-	int spin, *spinptr, fd0[2], fd1[2], wfd[2], n;
+	int spin, *spinptr, fd0[2], fd1[2], fd2[2], wfd[2], n;
 	Dir *d;
 
 	up->genbuf[0] = 0;
@@ -94,6 +97,7 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 	t->nice = nice;
 	fd0[0] = fd0[1] = -1;
 	fd1[0] = fd1[1] = -1;
+	fd2[0] = fd2[1] = -1;
 	wfd[0] = wfd[1] = -1;
 	if(dir != nil){
 		d = dirstat(dir);
@@ -101,7 +105,7 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 			goto Error;
 		free(d);
 	}
-	if(pipe(fd0) < 0 || pipe(fd1) < 0 || pipe(wfd) < 0)
+	if(pipe(fd0) < 0 || pipe(fd1) < 0 || pipe(fd2) < 0 || pipe(wfd) < 0)
 		goto Error;
 
 	spinptr = &spin;
@@ -109,6 +113,7 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 
 	t->fd[0] = fd0[0];
 	t->fd[1] = fd1[1];
+	t->fd[2] = fd2[1];
 	t->wfd = wfd[1];
 	t->spin = spinptr;
 	switch(rfork(RFPROC|RFMEM|RFREND|RFNOTEG|RFFDG|RFNAMEG|RFENVG)) {
@@ -128,20 +133,24 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 
 	close(fd0[0]);
 	close(fd1[1]);
+	close(fd2[1]);
 	close(wfd[1]);
+
 	n = read(wfd[0], up->genbuf, sizeof(up->genbuf)-1);
 	close(wfd[0]);
 	if(n > 0){
 		close(fd0[1]);
 		close(fd1[0]);
+		close(fd2[0]);
 		up->genbuf[n] = 0;
 		errstr(up->genbuf, sizeof(up->genbuf));
 		free(t);
 		return nil;
 	}
 
-	*sfd = fd0[1];
-	*rfd = fd1[0];
+	fd[0] = fd0[1];
+	fd[1] = fd1[0];
+	fd[2] = fd2[0];
 	return t;
 
 Error:
@@ -150,6 +159,8 @@ Error:
 	close(fd0[1]);
 	close(fd1[0]);
 	close(fd1[1]);
+	close(fd2[0]);
+	close(fd2[1]);
 	close(wfd[0]);
 	close(wfd[1]);
 	free(t);

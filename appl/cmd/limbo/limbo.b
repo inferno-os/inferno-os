@@ -93,6 +93,7 @@ Lexit: con	57414;
 Lspawn: con	57415;
 Lraise: con	57416;
 Lfix: con	57417;
+Ldynamic: con	57418;
 
 };
 
@@ -171,7 +172,7 @@ YYEOFCODE: con 1;
 YYERRCODE: con 2;
 YYMAXDEPTH: con 200;
 
-#line	1630	"limbo.y"
+#line	1631	"limbo.y"
 
 
 include "keyring.m";
@@ -526,7 +527,7 @@ yyexca := array[] of {-1, 1,
 	39, 88,
 	50, 62,
 	54, 88,
-	98, 62,
+	99, 62,
 	-2, 252,
 -1, 211,
 	59, 29,
@@ -554,7 +555,7 @@ yyexca := array[] of {-1, 1,
 	-2, 0,
 -1, 380,
 	50, 62,
-	98, 62,
+	99, 62,
 	-2, 252,
 -1, 381,
 	72, 175,
@@ -601,7 +602,7 @@ yyexca := array[] of {-1, 1,
 	-2, 113,
 -1, 452,
 	71, 279,
-	98, 279,
+	99, 279,
 	-2, 163,
 -1, 469,
 	72, 175,
@@ -614,7 +615,7 @@ yyexca := array[] of {-1, 1,
 	-2, 0,
 -1, 486,
 	50, 126,
-	98, 126,
+	99, 126,
 	-2, 239,
 -1, 491,
 	71, 276,
@@ -715,7 +716,7 @@ yyexca := array[] of {-1, 1,
 	50, 62,
 	56, 171,
 	62, 171,
-	98, 62,
+	99, 62,
 	-2, 252,
 };
 YYNPROD: con 284;
@@ -728,88 +729,88 @@ yyact := array[] of {
  379, 591, 453, 364, 505, 384, 412, 310, 369, 314,
  359, 451, 449, 185,  84,  83, 432, 298, 270,  15,
    8,  49, 213, 102, 320,  12,  42, 110,  48,  78,
-  79,  80,   4,  35, 198,  51,  23, 459, 363,   6,
- 458,   3,   6, 544, 486, 491, 365,  14, 382,  21,
-  14, 353, 400, 293, 350, 423, 225, 285, 118, 330,
- 286, 226, 223,  46,  31, 112, 465,  11, 105, 517,
- 566, 599, 308, 186, 164, 165, 166, 167, 168, 169,
- 170, 171, 172, 173, 174, 175, 176,  43, 117, 309,
- 182, 183, 184, 349,  71,  10, 349, 205,  10, 208,
-  93, 286, 286, 422,  32,  37, 119, 114,  40, 294,
- 349, 294,  32, 585,  44, 286, 119, 428, 427, 426,
- 547, 430, 429, 431, 231, 232, 233, 234, 235, 236,
- 237, 238, 239, 240, 241, 242, 485, 244, 245, 246,
+  79,  80,   4,  35, 198,  51,  23, 544, 363,   6,
+ 423,   3,   6, 486, 459, 382, 365,  14, 458,  21,
+  14, 353, 350, 293, 285, 491, 118, 225, 400, 330,
+ 286, 226,  31, 223,  46, 112, 465,  11, 105, 517,
+ 420, 419, 418, 186, 164, 165, 166, 167, 168, 169,
+ 170, 171, 172, 173, 174, 175, 176,  43, 117, 422,
+ 182, 183, 184, 599,  71,  10, 286, 205,  10, 208,
+  93, 349, 286, 601, 119, 349,  32, 114,  40, 349,
+ 294,  32, 294, 286,  44, 119, 428, 427, 426, 308,
+ 430, 429, 431, 585, 231, 232, 233, 234, 235, 236,
+ 237, 238, 239, 240, 241, 242, 309, 244, 245, 246,
  247, 248, 249, 250, 251, 252, 253, 254, 255, 256,
  257, 258, 259, 260, 261, 262, 263, 264, 265, 186,
-   6, 483, 273, 230, 482,  22, 481, 438,  14,  22,
- 271, 424, 267, 210,   5, 409, 407, 565, 279, 187,
- 513, 410, 284,  87, 420, 419, 418, 228,  94, 288,
-  85, 312, 311,  90, 289,  99, 269, 415, 217, 202,
+   6, 547, 273, 230,  37,  22, 194, 195,  14,  22,
+ 271, 485, 267, 210,   5, 483, 482, 565, 279, 481,
+ 513, 410, 284,  87, 438, 559, 424, 228, 409, 288,
+  85, 407,  94,  90, 289,  99, 269, 415, 217, 202,
    5, 415,  47,  92,  82,  22, 209,  26, 303,  25,
- 212,  19,  24, 218, 229, 508,  10, 354,  96, 601,
-  98,  95, 100, 595, 101,  88,  89,  86, 572, 194,
- 195,  17,  87, 557, 553,  18, 297,  19, 536,  85,
- 525,  77,  90, 313, 326, 305, 490,  13, 512, 112,
- 323, 318,  92,  82, 468, 207, 399,  17,  87, 383,
- 498,  18, 215,  23, 479,  85, 316, 467,  90,   6,
- 398,   2, 500,  13,  88,  89,  86,  14,  92,  82,
- 194, 195, 361, 186,  43, 282, 219, 340, 194, 195,
-  77, 114, 193, 211, 487, 499, 338, 182, 500, 559,
-  88,  89,  86, 336, 194, 195, 488, 535,  87, 324,
- 341,  44,  87, 325, 580,  85,  77, 579,  90,  85,
+ 212,  19,  24, 218, 229, 566,  10, 354,  96, 595,
+  98,  95, 100, 572, 101,  88,  89,  86, 557, 194,
+ 195,  17,  87, 312, 311,  18, 297,  19, 187,  85,
+ 553,  77,  90, 313, 326, 305, 536,  13, 512, 112,
+ 323, 318,  92,  82, 525, 207, 490,  17,  87, 468,
+ 399,  18, 383,  23, 508,  85, 316, 215,  90,   6,
+ 498,   2, 500,  13,  88,  89,  86,  14,  92,  82,
+ 194, 195, 479, 186,  43, 467, 398, 340, 194, 195,
+  77, 114, 193, 361, 282, 499, 338, 182, 500, 535,
+  88,  89,  86, 336, 194, 195, 219, 530,  87, 211,
+ 341,  44,  87, 324, 580,  85,  77, 325,  90,  85,
  381, 348,  90, 206,  19,  10, 358, 357,  92,  82,
- 214, 393,  92,  82, 604,  33, 389, 387, 391, 448,
+ 579, 393,  92,  82, 604, 214, 389, 387, 391, 448,
  614, 194, 195, 402,  45, 539, 194, 195,  18, 392,
   88,  89,  86, 356,  88,  89,  86, 321, 194, 195,
- 192, 194, 195, 403, 404, 530,  77, 281, 317, 108,
-  77, 416, 493,  19,  19, 421, 436, 495, 612, 186,
- 301, 385, 604, 435, 564, 437, 507, 216, 603, 493,
- 434, 441, 439, 115, 115, 600, 562, 116, 116, 452,
- 543, 340, 183, 444, 443, 504, 414,  45, 316, 493,
-  22,  18, 493, 480, 493, 597, 336, 493, 588,  70,
- 574, 493,  63, 555, 540,  73, 473, 494, 469, 433,
- 478, 442, 476,  76,  75,  69,  68,  74, 291,  18,
-  54,  55,  62,  60,  61,  64,  87, 290, 268, 452,
- 157,  91, 120,  85,  91, 104,  90,  65,  66,  67,
- 159, 489, 507,  39, 497, 103,  92,  82, 194, 195,
- 594, 510, 186,  77, 568, 477, 168, 487,  36, 518,
- 523, 466, 522, 515, 516, 511, 406, 417,  88,  89,
-  86,  87, 452, 527, 523, 529, 528, 408,  85, 329,
- 533,  90, 593, 526,  77,  91, 224,  91, 532, 537,
- 106,  92,  82,  34, 545,  91, 401, 177, 546, 541,
- 523, 331, 552, 397, 335, 556,  91, 592, 299, 554,
- 332, 300, 201,  88,  89,  86, 158, 200, 161, 197,
- 162, 163, 560, 563, 441, 316, 179, 446, 445,  77,
- 160, 159, 570, 328, 227, 577, 569, 575, 571, 573,
-  81, 477, 181,  97, 177, 346, 180, 523, 178, 583,
- 345,  41, 584, 203, 577, 606, 587, 138, 139, 140,
- 137, 135, 586,  72, 561, 548, 386, 327, 414, 222,
- 596, 221, 549,  73, 598, 477, 475, 577, 602, 605,
-  91,  76,  75,  45, 607,  74, 611,  18, 474, 471,
- 613, 425, 137, 135, 196, 477, 199,  91,  39, 188,
-  91,  91,  19,  91, 204, 524, 243, 360, 538, 307,
-  91, 183, 168, 287,  29, 220, 141, 142, 138, 139,
- 140, 137, 135, 368,  91,  91,  30, 121,   1, 464,
- 272, 274, 315, 477, 123, 124, 125, 126, 127, 128,
- 129, 130, 131, 132, 133, 134, 136, 542, 156, 155,
+ 192, 385,  72, 403, 404, 495,  77,  33, 317, 108,
+  77, 416,  73,  19,  19, 421, 436, 301, 281, 186,
+  76,  75,  45, 435,  74, 437,  18, 216, 487, 493,
+ 434, 441, 439, 115, 115, 612, 564, 116, 116, 452,
+ 488, 340, 183, 444, 443, 507, 414,  45, 316, 604,
+ 562,  18, 493, 543, 493, 603, 336, 493, 600,  70,
+ 597, 493,  63, 588, 504,  73, 473, 574, 469,  22,
+ 478, 442, 476,  76,  75,  69,  68,  74, 480,  18,
+  54,  55,  62,  60,  61,  64,  87, 433, 291, 452,
+ 290,  91, 268,  85,  91, 157,  90,  65,  66,  67,
+ 120, 489, 493, 104, 497, 493,  92,  82, 555, 540,
+ 594, 494, 186,  77, 159, 477, 168, 194, 195, 103,
+ 523, 507, 522, 515, 516, 511, 406, 510,  88,  89,
+  86,  87, 452, 527, 523, 529, 528, 487,  85, 518,
+ 533,  90, 593, 526,  77,  91,  39,  91, 532, 537,
+ 466,  92,  82, 417, 545,  91, 408, 568, 546, 541,
+ 523,  36, 552, 329, 224, 556,  91, 592, 299, 554,
+ 106, 300,  34,  88,  89,  86, 158, 401, 161, 397,
+ 162, 163, 560, 563, 441, 316, 335, 332, 201,  77,
+ 160, 159, 570, 200, 197, 577, 569, 575, 571, 573,
+  81, 477, 177,  97, 181, 179, 331, 523, 180, 583,
+ 446, 177, 584, 445, 577, 178, 587, 141, 142, 138,
+ 139, 140, 137, 135, 561, 328, 227, 346, 414, 345,
+ 596,  41, 203, 606, 598, 477, 586, 577, 602, 605,
+  91, 548, 386, 327, 607, 222, 611, 221, 549, 475,
+ 613, 474, 471, 425, 196, 477, 199,  91, 137, 135,
+  91,  91,  39,  91, 204, 138, 139, 140, 137, 135,
+  91, 183, 168, 188,  19, 220,  29,  27, 524, 243,
+ 360, 538, 307, 287,  91,  91, 368, 121,  30,  28,
+   1, 464, 272, 477, 123, 124, 125, 126, 127, 128,
+ 129, 130, 131, 132, 133, 134, 136, 274, 156, 155,
  154, 153, 152, 151, 149, 150, 145, 146, 147, 148,
- 144, 143, 141, 142, 138, 139, 140, 137, 135, 582,
- 343, 581, 413, 503, 502, 590,  27, 589,  91, 144,
- 143, 141, 142, 138, 139, 140, 137, 135,  28, 283,
-  16, 411, 306, 355,  91,   9, 551, 550, 521, 520,
-  91,   7, 450, 337, 266, 506, 292, 371, 109, 295,
- 296, 107, 113, 111,  20,  87,  38,   0,   0, 199,
-   0,  91,  85,   0,   0,  90,   0,  99, 342,   0,
-   0,  91,  91, 319, 322,  92,  82,   0,   0,   0,
-   0,  87,   0,   0,   0,  91,  91,   0,  85,  91,
-  96,  90,  98,  95,   0,   0,   0,  88,  89,  86,
-   0,  92,  82,   0,   0,   0,   0,   0,   0,   0,
-   0,  87, 282,  77,   0,   0,   0,   0,  85,   0,
-   0,  90,   0,  88,  89,  86,   0, 333,  91,   0,
- 455,  92,  82,   0,   0,   0,   0,  91,   0,  77,
-   0,  91,   0, 347,   0,  50,  91,   0,  91, 351,
-   0,   0,   0,  88,  89,  86,   0,  91,   0,   0,
-  52,  53, 454,  91,   0,   0,  59,  72,   0,  77,
+ 144, 143, 141, 142, 138, 139, 140, 137, 135, 315,
+ 343, 542, 582, 581, 413, 503, 502, 590,  91, 144,
+ 143, 141, 142, 138, 139, 140, 137, 135, 589, 283,
+  16, 411, 306, 355,  91,   9, 551,  87, 550, 521,
+  91, 520,   7, 450,  85, 337, 292,  90, 266, 295,
+ 296, 506, 371, 109, 107,  87, 113,  92,  82, 199,
+ 111,  91,  85,  20,  38,  90,   0,  99, 282, 342,
+   0,  91,  91, 319, 322,  92,  82,   0,   0,  88,
+  89,  86,   0,   0,   0,  91,  91,   0,   0,  91,
+  96,   0,  98,  95,   0,  77,  87,  88,  89,  86,
+   0,   0,   0,  85,   0,   0,  90,   0,   0,   0,
+   0,   0,   0,  77,   0,   0,  92,  82,   0,   0,
+   0,   0,   0,   0,   0,   0,   0, 333,  91,   0,
+ 455,   0,   0,   0,   0,   0,   0,  91,  88,  89,
+  86,  91,   0, 347,   0,  50,  91,   0,  91, 351,
+   0,   0,   0,   0,  77,   0,   0,  91,   0,   0,
+  52,  53, 454,  91,   0,   0,  59,  72,   0,   0,
  390,  57,  58,   0,  63,   0,   0,  73,   0,   0,
  395, 396,   0,   0,   0,  76,  75,  69,  68,  74,
    0,  18,  54,  55,  62,  60,  61,  64, 405,   0,
@@ -1000,78 +1001,78 @@ yyact := array[] of {
  141, 142, 138, 139, 140, 137, 135,
 };
 yypact := array[] of {
- 198,-1000, 351, 172,-1000, 140,-1000,-1000, 137, 135,
- 692, 630,  14, 274, 463,-1000, 424, 530,-1000, 285,
+ 198,-1000, 370, 172,-1000, 140,-1000,-1000, 137, 135,
+ 633, 632,  12, 306, 482,-1000, 467, 550,-1000, 285,
  -35, 130,-1000,-1000,-1000,-1000,-1000,1507,1507,1507,
-1507, 752, 583, 116, 144, 413, 396, -19, 460, 335,
--1000, 351,  18,-1000,-1000,-1000, 393,-1000,2272,-1000,
- 391, 497,1548,1548,1548,1548,1548,1548,1548,1548,
-1548,1548,1548,1548,1548, 523, 501, 521,1548, 376,
-1548,-1000,1507, 579,-1000,-1000,-1000, 580,2217,2162,
-2107, 288,-1000,-1000,-1000, 752, 494, 752, 492, 487,
- 530,-1000, 532,-1000,-1000, 752,1507, 251,1507, 134,
- 223, 530, 260, 348, 530, 216, 752, 551, 549, -36,
--1000, 456,   6, -37,-1000,-1000,-1000, 512,-1000, 285,
+1507, 737, 595, 120, 144, 427, 404, -19, 480, 335,
+-1000, 370,  16,-1000,-1000,-1000, 401,-1000,2272,-1000,
+ 396, 497,1548,1548,1548,1548,1548,1548,1548,1548,
+1548,1548,1548,1548,1548, 530, 520, 523,1548, 376,
+1548,-1000,1507, 583,-1000,-1000,-1000, 594,2217,2162,
+2107, 288,-1000,-1000,-1000, 737, 509, 737, 508, 503,
+ 550,-1000, 551,-1000,-1000, 737,1507, 251,1507, 134,
+ 239, 550, 265, 348, 550, 236, 737, 567, 565, -36,
+-1000, 474,   7, -38,-1000,-1000,-1000, 544,-1000, 285,
 -1000, 172,-1000,1507,1507,1507,1507,1507,1507,1507,
-1507,1507,1507,1507,1507, 622,1507,1507,1507,1507,
+1507,1507,1507,1507,1507, 635,1507,1507,1507,1507,
 1507,1507,1507,1507,1507,1507,1507,1507,1507,1507,
-1507,1507,1507,1507,1507,1507,1507,1507,1507, 389,
- 544,1396,-1000,-1000,-1000,-1000,-1000,-1000,-1000,-1000,
--1000,-1000,-1000,-1000,-1000,-1000,-1000,1452, 307, 215,
- 752,1507,-1000,-1000,-1000,  17,2667,-1000,1507,-1000,
--1000,-1000,-1000,1507, 388, 379, 415, 752,  13, 415,
- 752, 752, 579, 452, 308,2052,-1000,1507,1997,-1000,
- 752, 627,   2,-1000,-1000, 121, 285,-1000,-1000, 351,
- 415,-1000,-1000, 334, 273, 273, 250,-1000,-1000,-1000,
+1507,1507,1507,1507,1507,1507,1507,1507,1507, 393,
+ 323,1396,-1000,-1000,-1000,-1000,-1000,-1000,-1000,-1000,
+-1000,-1000,-1000,-1000,-1000,-1000,-1000,1452, 318, 224,
+ 737,1507,-1000,-1000,-1000,  14,2667,-1000,1507,-1000,
+-1000,-1000,-1000,1507, 391, 389, 424, 737,  13, 424,
+ 737, 737, 583, 452, 305,2052,-1000,1507,1997,-1000,
+ 737, 640,  49,-1000,-1000, 163, 285,-1000,-1000, 370,
+ 424,-1000,-1000, 334, 273, 273, 254,-1000,-1000,-1000,
  172,2667,2667,2667,2667,2667,2667,2667,2667,2667,
-2667,2667,2667,1507,2667, 575, 575, 575, 575, 543,
- 543, 604, 604, 669, 669, 669, 669, 866, 866,1624,
-1848,1794,1741,1741,1687,2688, 547, -38,-1000, 406,
- 511, 449, -39,2667,-1000,1548, 476, 485, 752,2554,
- 479,1548,1507, 415,2515,-1000,1507, 260, 650,1942,
- 529, 524, 415,-1000, 752, 415, 415, 413,  12, 415,
- 752,-1000,-1000,1887,-1000,  11, 146,-1000, 625, 212,
-1121,-1000,-1000,   8, 188,-1000, 319, 546,-1000, 415,
--1000,2277, 415,-1000,-1000,-1000,2667,-1000,-1000,1507,
-1396,2273, 722, 415, 478, 200,-1000, 185, -46, 471,
-2667,-1000,1507,-1000,-1000, 452, 452, 415,-1000, 407,
--1000, 415,-1000, 104,-1000,-1000, 447, 103,-1000, 110,
--1000, 351,-1000,-1000,-1000, 437, 114,-1000,   5,  99,
- 572,  32, 370, 370,1507,1507,1507,  95,1507,2667,
- 376,1051,-1000,-1000, 351,-1000,-1000,-1000, 752,-1000,
- 415, 506, 505,2667,1548, 415, 415, 269, 808,-1000,
-1507, 752,2630,  -2,  -5, 415, 752,-1000,1587,-1000,
- -21,-1000,-1000,-1000, 431, 197, 183, 696,-1000,-1000,
--1000, 981, 570, 752,-1000,1507, 569, 557,1329,1507,
- 194, 354,  94,-1000,  92,  89,1832,  64,-1000,   4,
--1000,-1000, 244,-1000,-1000,-1000,-1000, 415, 808, 175,
- -53,-1000,2477, 365,1548,-1000, 415,-1000,-1000,-1000,
- 415, 305, 752,1507,-1000, 190, 219, 403, 145, 911,
- 420,1507, 176,2593,1507,1507, -17, 429,2424, 808,
- 609,-1000,-1000,-1000,-1000,-1000,-1000, 193,-1000, 169,
--1000, 808,1507, 808,1507,-1000, 293,1777, 351,1507,
- 752, 235, 167, 626,-1000, 283, 368,-1000, 625,-1000,
- 341,   3,-1000,1507,1329,  48, 545, 553,-1000, 808,
- 163,-1000, 361,2477,1507,-1000,-1000,2667,-1000,2667,
--1000,-1000, 162,1722, 227,-1000,-1000, 337, 327,-1000,
- 325, 106,   0,-1000,-1000,1667, 426,1507,1329,1507,
- 157,-1000, 358,-1000,1260,-1000,2371,-1000,-1000,-1000,
- 255, 427,-1000, 252,-1000,-1000, 808,-1000,1329,  41,
--1000, 542,-1000,1260,-1000, 356, 114,2477, 468,-1000,
--1000, 152,-1000, 353,-1000,1507,  -1, 333,-1000, 148,
--1000, 326,-1000,-1000,-1000,-1000,1260,-1000, 535,-1000,
--1000,-1000,1191,-1000, 468, 316,1329, 278, 114, 376,
+2667,2667,2667,1507,2667, 581, 581, 581, 581, 591,
+ 591, 545, 545, 669, 669, 669, 669, 866, 866,1624,
+1848,1794,1741,1741,1687,2688, 563, -39,-1000, 420,
+ 543, 473, -40,2667,-1000,1548, 521, 502, 737,2554,
+ 501,1548,1507, 424,2515,-1000,1507, 265, 650,1942,
+ 548, 546, 424,-1000, 737, 424, 424, 427,  10, 424,
+ 737,-1000,-1000,1887,-1000,  11, 146,-1000, 638, 223,
+1121,-1000,-1000,   5, 191,-1000, 299, 562,-1000, 424,
+-1000,2277, 424,-1000,-1000,-1000,2667,-1000,-1000,1507,
+1396,2273, 678, 424, 494, 216,-1000, 189, -41, 492,
+2667,-1000,1507,-1000,-1000, 452, 452, 424,-1000, 407,
+-1000, 424,-1000, 119,-1000,-1000, 466, 116,-1000, 110,
+-1000, 370,-1000,-1000,-1000, 463,   0,-1000, -10, 114,
+ 574,  31, 388, 388,1507,1507,1507, 112,1507,2667,
+ 376,1051,-1000,-1000, 370,-1000,-1000,-1000, 737,-1000,
+ 424, 531, 528,2667,1548, 424, 424, 269, 808,-1000,
+1507, 737,2630,   6,   2, 424, 737,-1000,1587,-1000,
+ -21,-1000,-1000,-1000, 460, 215, 188, 696,-1000,-1000,
+-1000, 981, 573, 737,-1000,1507, 572, 570,1329,1507,
+ 212, 379, 107,-1000, 104, 103,1832,  99,-1000,   3,
+-1000,-1000, 338,-1000,-1000,-1000,-1000, 424, 808, 185,
+ -44,-1000,2477, 409,1548,-1000, 424,-1000,-1000,-1000,
+ 424, 293, 737,1507,-1000, 200, 219, 422, 194, 911,
+ 436,1507, 176,2593,1507,1507, -17, 449,2424, 808,
+ 622,-1000,-1000,-1000,-1000,-1000,-1000, 193,-1000, 183,
+-1000, 808,1507, 808,1507,-1000, 235,1777, 370,1507,
+ 737, 227, 175, 639,-1000, 283, 413,-1000, 638,-1000,
+ 354,  -3,-1000,1507,1329,  89, 561, 569,-1000, 808,
+ 169,-1000, 406,2477,1507,-1000,-1000,2667,-1000,2667,
+-1000,-1000, 157,1722, 113,-1000,-1000, 351, 346,-1000,
+ 337, 106, 145,-1000,-1000,1667, 469,1507,1329,1507,
+ 152,-1000, 365,-1000,1260,-1000,2371,-1000,-1000,-1000,
+ 268, 447,-1000, 252,-1000,-1000, 808,-1000,1329,  51,
+-1000, 556,-1000,1260,-1000, 361,   0,2477, 468,-1000,
+-1000, 148,-1000, 358,-1000,1507,  21, 356,-1000,  32,
+-1000, 353,-1000,-1000,-1000,-1000,1260,-1000, 553,-1000,
+-1000,-1000,1191,-1000, 468, 333,1329, 278,   0, 376,
 1548,-1000,-1000,-1000,-1000,
 };
 yypgo := array[] of {
-   0, 528, 736, 105,  33,  24, 419,  15,  14,  46,
- 734, 733, 732,  34, 731, 728,  27, 727,  16,   4,
- 725, 108,   8,   0,  21,  35,  13, 724, 723,  94,
-  25,  67,  26,  12, 722,  11,   2,  38,  41,  32,
- 721,  22,   3,   7, 719, 718, 717, 716, 715,  20,
- 713, 712, 711,  10, 710, 697, 695,   1, 694, 693,
- 692,   6,   5, 691, 689, 667,  19,  23, 652,   9,
- 651,  18, 650, 649,  17, 648, 647, 643, 633,
+   0, 528, 744, 164,  33,  24, 419,  15,  14,  46,
+ 743, 740, 736,  34, 734, 733,  27, 732,  16,   4,
+ 731, 108,   8,   0,  21,  35,  13, 728, 725,  94,
+  25,  67,  26,  12, 723,  11,   2,  38,  41,  32,
+ 722,  22,   3,   7, 721, 719, 718, 716, 715,  20,
+ 713, 712, 711,  10, 710, 708, 697,   1, 696, 695,
+ 694,   6,   5, 693, 692, 691,  19,  23, 689,   9,
+ 667,  18, 652, 651,  17, 650, 647, 646, 643,
 };
 yyr1 := array[] of {
    0,  76,  75,  75,  38,  38,  39,  39,  39,  39,
@@ -1139,15 +1140,15 @@ yychk := array[] of {
 -1000, -75,  73, -38, -39,   2, -37, -40, -49, -48,
  -29, -31, -30,  75,  -9, -66, -54,  59,  63,  39,
  -10,  -9,  59, -39,  72,  72,  72,   4,  16,   4,
-  16,  50,  98,  61,  50,  -4,  54,  -3,  -2,  39,
- -21,  41, -32, -31, -29,  59,  98,  72, -23, -24,
+  16,  50,  99,  61,  50,  -4,  54,  -3,  -2,  39,
+ -21,  41, -32, -31, -29,  59,  99,  72, -23, -24,
   17, -25,  32,  33,  64,  65,  34,  43,  44,  38,
   67,  68,  66,  46,  69,  81,  82,  83,  60,  59,
   -6, -29,  39,  49,  61,  58,  57,  97, -23, -23,
  -23,  -1,  60,  -7,  -8,  46,  83,  39,  81,  82,
   49,  -6,  59, -31,  72,  77,  74,  -1,  76,  51,
   78,  80, -67,  52,  59,  87,  50, -14,  34, -15,
- -16, -11, -30, -12, -31,  59,  63,  -9,  40,  98,
+ -16, -11, -30, -12, -31,  59,  63,  -9,  40,  99,
   59, -76,  72,   4,   5,   6,   7,   8,   9,  10,
   11,  12,  13,  14,  15,  38,  16,  37,  34,  35,
   36,  32,  33,  31,  30,  26,  27,  28,  29,  24,
@@ -1158,34 +1159,34 @@ yychk := array[] of {
   72,  72,  72,   4,  53,  54,  -1,  45, -13,  -1,
   45,  45, -21,  41,  -1, -23,  72,   4, -23,  72,
   39,  70, -21, -41,  70,   2,  39, -29, -21,  70,
-  -1,  40,  40,  98,  50,  50,  98,  42, -31, -29,
+  -1,  40,  40,  99,  50,  50,  99,  42, -31, -29,
  -38, -23, -23, -23, -23, -23, -23, -23, -23, -23,
  -23, -23, -23,   4, -23, -23, -23, -23, -23, -23,
  -23, -23, -23, -23, -23, -23, -23, -23, -23, -23,
  -23, -23, -23, -23, -23, -23, -27, -26,  59, -25,
  -71, -22, -72, -23, -70,  60,  81,  82,  79, -23,
-  42,  60,  70,  -1, -23,  40,  98, -78, -23, -23,
-  59,  59,  -1,  40,  98,  -1,  -1,  -4, -74,  -1,
+  42,  60,  70,  -1, -23,  40,  99, -78, -23, -23,
+  59,  59,  -1,  40,  99,  -1,  -1,  -4, -74,  -1,
   79,  72,  72, -23,  72, -13, -51,   2,  70,  87,
  -43,  71,  70, -32, -69, -68,  -9,  34, -16,  -1,
   -5,  84,  -1,  -5,  59,  63, -23,  40,  42,  50,
-  98,  45,  45,  -1,  42,  45, -24, -28, -26,  42,
- -23, -41,  98,  40,  72,  41,  41,  -1, -67,  98,
+  99,  45,  45,  -1,  42,  45, -24, -28, -26,  42,
+ -23, -41,  99,  40,  72,  41,  41,  -1, -67,  99,
   42,  -1,  72,  40,  71, -50,  -9, -49, -66, -53,
    2,  70,  71, -37, -42,  -9,   2,  70, -77, -22,
   47, -17,  88,  92,  93,  95,  96,  94,  39, -23,
   59, -43,  40,  71, -62,  62,  40,  -7,  46,  -8,
   -1, -22, -71, -23,  60,  -1,  -1,  45,  70,  71,
-  98,  45, -23, -74, -74,  -1,  79,  72,  50,  72,
+  99,  45, -23, -74, -74,  -1,  79,  72,  50,  72,
   71, -52, -61, -60,  -9,  91, -69,  50,  72,  71,
-  70, -43,  98,  50,  72,  39,  87,  86,  85,  90,
+  70, -43,  99,  50,  72,  39,  87,  86,  85,  90,
   89,  91, -18,  59, -18, -22, -23, -22,  72, -26,
   71, -61,  -9,  -7,  -8,  42,  42,  -1,  70, -33,
  -34, -35, -23, -36,  34,   2,  -1,  40,  42,  42,
   -1,  -1,  77,  76, -73,  87,  50,  70,  71, -43,
   71,  39,  -1, -23,  39,  39, -42,  -9, -23,  70,
   59,  72,  72,  72,  72,  72,  40,  50,  62, -33,
-  71,  98,  55,  56,  62,  72,  -1, -23,  70,  76,
+  71,  99,  55,  56,  62,  72,  -1, -23,  70,  76,
   79,  -1, -58, -59,   2, -19, -20,  59,  70,  71,
   51, -26,  72,   4,  40, -22, -22,  86,  50,  70,
  -44, -45, -36, -23,  16,  71, -35, -23, -36, -23,
@@ -1268,7 +1269,7 @@ yytok1 := array[] of {
    3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
    3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
    3,   3,   3,  64,   3,   3,   3,  36,  23,   3,
-  39,  40,  34,  32,  98,  33,  54,  35,   3,   3,
+  39,  40,  34,  32,  99,  33,  54,  35,   3,   3,
    3,   3,   3,   3,   3,   3,   3,   3,  50,  72,
   26,   4,  27,   3,   3,   3,   3,   3,   3,   3,
    3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
@@ -1286,7 +1287,7 @@ yytok2 := array[] of {
   59,  60,  61,  62,  63,  66,  67,  68,  69,  73,
   74,  75,  76,  77,  78,  79,  80,  81,  82,  83,
   84,  85,  86,  87,  88,  89,  90,  91,  92,  93,
-  94,  95,  96,  97,
+  94,  95,  96,  97,  98,
 };
 yytok3 := array[] of {
    0
@@ -1498,17 +1499,17 @@ yystack:
 		case yym {
 			
 1=>
-#line	151	"limbo.y"
+#line	152	"limbo.y"
 {
 		impmods = yys[yypt-1].yyv.ids;
 	}
 2=>
-#line	154	"limbo.y"
+#line	155	"limbo.y"
 {
 		tree = rotater(yys[yypt-0].yyv.node);
 	}
 3=>
-#line	158	"limbo.y"
+#line	159	"limbo.y"
 {
 		impmods = nil;
 		tree = rotater(yys[yypt-0].yyv.node);
@@ -1516,7 +1517,7 @@ yystack:
 4=>
 yyval.node = yys[yyp+1].yyv.node;
 5=>
-#line	166	"limbo.y"
+#line	167	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -1526,7 +1527,7 @@ yyval.node = yys[yyp+1].yyv.node;
 			yyval.node = mkbin(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 6=>
-#line	177	"limbo.y"
+#line	178	"limbo.y"
 {
 		yyval.node = nil;
 	}
@@ -1539,33 +1540,33 @@ yyval.node = yys[yyp+1].yyv.node;
 10=>
 yyval.node = yys[yyp+1].yyv.node;
 11=>
-#line	185	"limbo.y"
+#line	186	"limbo.y"
 {
 		yyval.node = mkbin(Oas, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 	}
 12=>
-#line	189	"limbo.y"
+#line	190	"limbo.y"
 {
 		yyval.node = mkbin(Oas, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 	}
 13=>
-#line	193	"limbo.y"
+#line	194	"limbo.y"
 {
 		yyval.node = mkbin(Odas, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 	}
 14=>
-#line	197	"limbo.y"
+#line	198	"limbo.y"
 {
 		yyval.node = mkbin(Odas, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 	}
 15=>
-#line	201	"limbo.y"
+#line	202	"limbo.y"
 {
 		yyerror("illegal declaration");
 		yyval.node = nil;
 	}
 16=>
-#line	206	"limbo.y"
+#line	207	"limbo.y"
 {
 		yyerror("illegal declaration");
 		yyval.node = nil;
@@ -1573,68 +1574,68 @@ yyval.node = yys[yyp+1].yyv.node;
 17=>
 yyval.node = yys[yyp+1].yyv.node;
 18=>
-#line	214	"limbo.y"
+#line	215	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 19=>
-#line	220	"limbo.y"
+#line	221	"limbo.y"
 {
 		includef(yys[yypt-1].yyv.tok.v.idval);
 		yyval.node = nil;
 	}
 20=>
-#line	225	"limbo.y"
+#line	226	"limbo.y"
 {
 		yyval.node = typedecl(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.ty);
 	}
 21=>
-#line	229	"limbo.y"
+#line	230	"limbo.y"
 {
 		yyval.node = importdecl(yys[yypt-1].yyv.node, yys[yypt-4].yyv.ids);
 		yyval.node.src.start = yys[yypt-4].yyv.ids.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 22=>
-#line	235	"limbo.y"
+#line	236	"limbo.y"
 {
 		yyval.node = vardecl(yys[yypt-3].yyv.ids, yys[yypt-1].yyv.ty);
 	}
 23=>
-#line	239	"limbo.y"
+#line	240	"limbo.y"
 {
 		yyval.node = mkbin(Ovardecli, vardecl(yys[yypt-5].yyv.ids, yys[yypt-3].yyv.ty), varinit(yys[yypt-5].yyv.ids, yys[yypt-1].yyv.node));
 	}
 24=>
-#line	243	"limbo.y"
+#line	244	"limbo.y"
 {
 		yyval.node = condecl(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.node);
 	}
 25=>
 yyval.node = yys[yyp+1].yyv.node;
 26=>
-#line	250	"limbo.y"
+#line	251	"limbo.y"
 {
 		yyval.node = exdecl(yys[yypt-3].yyv.ids, nil);
 	}
 27=>
-#line	254	"limbo.y"
+#line	255	"limbo.y"
 {
 		yyval.node = exdecl(yys[yypt-6].yyv.ids, revids(yys[yypt-2].yyv.ids));
 	}
 28=>
-#line	260	"limbo.y"
+#line	261	"limbo.y"
 {
 		yys[yypt-5].yyv.ids.src.stop = yys[yypt-0].yyv.tok.src.stop;
 		yyval.node = moddecl(yys[yypt-5].yyv.ids, rotater(yys[yypt-1].yyv.node));
 	}
 29=>
-#line	267	"limbo.y"
+#line	268	"limbo.y"
 {
 		yyval.node = nil;
 	}
 30=>
-#line	271	"limbo.y"
+#line	272	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -1644,31 +1645,31 @@ yyval.node = yys[yyp+1].yyv.node;
 			yyval.node = mkn(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 31=>
-#line	280	"limbo.y"
+#line	281	"limbo.y"
 {
 		yyval.node = nil;
 	}
 32=>
-#line	286	"limbo.y"
+#line	287	"limbo.y"
 {
 		yyval.node = fielddecl(Dglobal, typeids(yys[yypt-3].yyv.ids, yys[yypt-1].yyv.ty));
 	}
 33=>
 yyval.node = yys[yyp+1].yyv.node;
 34=>
-#line	291	"limbo.y"
+#line	292	"limbo.y"
 {
 		yyval.node = typedecl(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.ty);
 	}
 35=>
-#line	295	"limbo.y"
+#line	296	"limbo.y"
 {
 		yyval.node = condecl(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.node);
 	}
 36=>
 yyval.node = yys[yyp+1].yyv.node;
 37=>
-#line	302	"limbo.y"
+#line	303	"limbo.y"
 {
 		yys[yypt-7].yyv.ids.src.stop = yys[yypt-1].yyv.tok.src.stop;
 		yyval.node = adtdecl(yys[yypt-7].yyv.ids, rotater(yys[yypt-2].yyv.node));
@@ -1676,7 +1677,7 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.ty.val = rotater(yys[yypt-0].yyv.node);
 	}
 38=>
-#line	309	"limbo.y"
+#line	310	"limbo.y"
 {
 		yys[yypt-10].yyv.ids.src.stop = yys[yypt-0].yyv.tok.src.stop;
 		yyval.node = adtdecl(yys[yypt-10].yyv.ids, rotater(yys[yypt-1].yyv.node));
@@ -1684,22 +1685,22 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.ty.val = rotater(yys[yypt-4].yyv.node);
 	}
 39=>
-#line	318	"limbo.y"
+#line	319	"limbo.y"
 {
 		yyval.node = nil;
 	}
 40=>
-#line	322	"limbo.y"
+#line	323	"limbo.y"
 {
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 41=>
-#line	328	"limbo.y"
+#line	329	"limbo.y"
 {
 		yyval.node = nil;
 	}
 42=>
-#line	332	"limbo.y"
+#line	333	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -1709,7 +1710,7 @@ yyval.node = yys[yyp+1].yyv.node;
 			yyval.node = mkn(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 43=>
-#line	341	"limbo.y"
+#line	342	"limbo.y"
 {
 		yyval.node = nil;
 	}
@@ -1718,17 +1719,17 @@ yyval.node = yys[yyp+1].yyv.node;
 45=>
 yyval.node = yys[yyp+1].yyv.node;
 46=>
-#line	349	"limbo.y"
+#line	350	"limbo.y"
 {
 		yyval.node = condecl(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.node);
 	}
 47=>
-#line	355	"limbo.y"
+#line	356	"limbo.y"
 {
 		yyval.node = nil;
 	}
 48=>
-#line	359	"limbo.y"
+#line	360	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -1738,159 +1739,159 @@ yyval.node = yys[yyp+1].yyv.node;
 			yyval.node = mkn(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 49=>
-#line	370	"limbo.y"
+#line	371	"limbo.y"
 {
 		for(d := yys[yypt-4].yyv.ids; d != nil; d = d.next)
 			d.cyc = byte 1;
 		yyval.node = fielddecl(Dfield, typeids(yys[yypt-4].yyv.ids, yys[yypt-1].yyv.ty));
 	}
 50=>
-#line	376	"limbo.y"
+#line	377	"limbo.y"
 {
 		yyval.node = fielddecl(Dfield, typeids(yys[yypt-3].yyv.ids, yys[yypt-1].yyv.ty));
 	}
 51=>
-#line	382	"limbo.y"
+#line	383	"limbo.y"
 {
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 52=>
-#line	388	"limbo.y"
+#line	389	"limbo.y"
 {
 		yys[yypt-1].yyv.node.right.right = yys[yypt-0].yyv.node;
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 53=>
-#line	393	"limbo.y"
+#line	394	"limbo.y"
 {
 		yyval.node = nil;
 	}
 54=>
-#line	397	"limbo.y"
+#line	398	"limbo.y"
 {
 		yyval.node = nil;
 	}
 55=>
-#line	403	"limbo.y"
+#line	404	"limbo.y"
 {
 		yyval.node = mkn(Opickdecl, nil, mkn(Oseq, fielddecl(Dtag, yys[yypt-1].yyv.ids), nil));
 		typeids(yys[yypt-1].yyv.ids, mktype(yys[yypt-1].yyv.ids.src.start, yys[yypt-1].yyv.ids.src.stop, Tadtpick, nil, nil));
 	}
 56=>
-#line	408	"limbo.y"
+#line	409	"limbo.y"
 {
 		yys[yypt-3].yyv.node.right.right = yys[yypt-2].yyv.node;
 		yyval.node = mkn(Opickdecl, yys[yypt-3].yyv.node, mkn(Oseq, fielddecl(Dtag, yys[yypt-1].yyv.ids), nil));
 		typeids(yys[yypt-1].yyv.ids, mktype(yys[yypt-1].yyv.ids.src.start, yys[yypt-1].yyv.ids.src.stop, Tadtpick, nil, nil));
 	}
 57=>
-#line	414	"limbo.y"
+#line	415	"limbo.y"
 {
 		yyval.node = mkn(Opickdecl, nil, mkn(Oseq, fielddecl(Dtag, yys[yypt-1].yyv.ids), nil));
 		typeids(yys[yypt-1].yyv.ids, mktype(yys[yypt-1].yyv.ids.src.start, yys[yypt-1].yyv.ids.src.stop, Tadtpick, nil, nil));
 	}
 58=>
-#line	421	"limbo.y"
+#line	422	"limbo.y"
 {
 		yyval.ids = revids(yys[yypt-0].yyv.ids);
 	}
 59=>
-#line	427	"limbo.y"
+#line	428	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, nil);
 	}
 60=>
-#line	431	"limbo.y"
+#line	432	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, yys[yypt-2].yyv.ids);
 	}
 61=>
-#line	437	"limbo.y"
+#line	438	"limbo.y"
 {
 		yyval.ids = revids(yys[yypt-0].yyv.ids);
 	}
 62=>
-#line	443	"limbo.y"
+#line	444	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, nil);
 	}
 63=>
-#line	447	"limbo.y"
+#line	448	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, yys[yypt-2].yyv.ids);
 	}
 64=>
-#line	453	"limbo.y"
+#line	454	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-5].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tfix, nil, nil);
 		yyval.ty.val = mkbin(Oseq, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 	}
 65=>
-#line	458	"limbo.y"
+#line	459	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-3].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tfix, nil, nil);
 		yyval.ty.val = yys[yypt-1].yyv.node;
 	}
 66=>
-#line	465	"limbo.y"
+#line	466	"limbo.y"
 {
 		yyval.types = addtype(yys[yypt-0].yyv.ty, nil);
 	}
 67=>
-#line	469	"limbo.y"
+#line	470	"limbo.y"
 {
 		yyval.types = addtype(yys[yypt-0].yyv.ty, nil);
 		yys[yypt-0].yyv.ty.flags |= CYCLIC;
 	}
 68=>
-#line	474	"limbo.y"
+#line	475	"limbo.y"
 {
 		yyval.types = addtype(yys[yypt-0].yyv.ty, yys[yypt-2].yyv.types);
 	}
 69=>
-#line	478	"limbo.y"
+#line	479	"limbo.y"
 {
 		yyval.types = addtype(yys[yypt-0].yyv.ty, yys[yypt-3].yyv.types);
 		yys[yypt-0].yyv.ty.flags |= CYCLIC;
 	}
 70=>
-#line	485	"limbo.y"
+#line	486	"limbo.y"
 {
 		yyval.ty = mkidtype(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 71=>
-#line	489	"limbo.y"
+#line	490	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 72=>
-#line	493	"limbo.y"
+#line	494	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 73=>
-#line	497	"limbo.y"
+#line	498	"limbo.y"
 {
 		yyval.ty = mkarrowtype(yys[yypt-2].yyv.ty.src.start, yys[yypt-0].yyv.tok.src.stop, yys[yypt-2].yyv.ty, yys[yypt-0].yyv.tok.v.idval);
 	}
 74=>
-#line	501	"limbo.y"
+#line	502	"limbo.y"
 {
 		yyval.ty = mkarrowtype(yys[yypt-5].yyv.ty.src.start, yys[yypt-3].yyv.tok.src.stop, yys[yypt-5].yyv.ty, yys[yypt-3].yyv.tok.v.idval);
 		yyval.ty = mkinsttype(yys[yypt-5].yyv.ty.src, yyval.ty, yys[yypt-1].yyv.types);
 	}
 75=>
-#line	506	"limbo.y"
+#line	507	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-1].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tref, yys[yypt-0].yyv.ty, nil);
 	}
 76=>
-#line	510	"limbo.y"
+#line	511	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tchan, yys[yypt-0].yyv.ty, nil);
 	}
 77=>
-#line	514	"limbo.y"
+#line	515	"limbo.y"
 {
 		if(yys[yypt-1].yyv.ids.next == nil)
 			yyval.ty = yys[yypt-1].yyv.ids.ty;
@@ -1898,17 +1899,17 @@ yyval.node = yys[yyp+1].yyv.node;
 			yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Ttuple, nil, revids(yys[yypt-1].yyv.ids));
 	}
 78=>
-#line	521	"limbo.y"
+#line	522	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tarray, yys[yypt-0].yyv.ty, nil);
 	}
 79=>
-#line	525	"limbo.y"
+#line	526	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tlist, yys[yypt-0].yyv.ty, nil);
 	}
 80=>
-#line	529	"limbo.y"
+#line	530	"limbo.y"
 {
 		yys[yypt-1].yyv.ty.src.start = yys[yypt-3].yyv.tok.src.start;
 		yys[yypt-1].yyv.ty.polys = yys[yypt-2].yyv.ids;
@@ -1918,88 +1919,88 @@ yyval.node = yys[yyp+1].yyv.node;
 81=>
 yyval.ty = yys[yyp+1].yyv.ty;
 82=>
-#line	549	"limbo.y"
+#line	550	"limbo.y"
 {
 		yyval.ty = mkidtype(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 83=>
-#line	553	"limbo.y"
+#line	554	"limbo.y"
 {
 		yyval.ty = mkinsttype(yys[yypt-3].yyv.tok.src, mkidtype(yys[yypt-3].yyv.tok.src, yys[yypt-3].yyv.tok.v.idval), yys[yypt-1].yyv.types);
 	}
 84=>
-#line	559	"limbo.y"
+#line	560	"limbo.y"
 {
 		yyval.ty = mkdottype(yys[yypt-2].yyv.ty.src.start, yys[yypt-0].yyv.tok.src.stop, yys[yypt-2].yyv.ty, yys[yypt-0].yyv.tok.v.idval);
 	}
 85=>
-#line	563	"limbo.y"
+#line	564	"limbo.y"
 {
 		yyval.ty = mkdottype(yys[yypt-5].yyv.ty.src.start, yys[yypt-3].yyv.tok.src.stop, yys[yypt-5].yyv.ty, yys[yypt-3].yyv.tok.v.idval);
 		yyval.ty = mkinsttype(yys[yypt-5].yyv.ty.src, yyval.ty, yys[yypt-1].yyv.types);
 	}
 86=>
-#line	570	"limbo.y"
+#line	571	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.ty.src, nil, yys[yypt-0].yyv.ty, nil);
 	}
 87=>
-#line	574	"limbo.y"
+#line	575	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-2].yyv.ids.src, nil, yys[yypt-0].yyv.ty, yys[yypt-2].yyv.ids);
 	}
 88=>
-#line	580	"limbo.y"
+#line	581	"limbo.y"
 {
 		yyval.ids = nil;
 	}
 89=>
-#line	584	"limbo.y"
+#line	585	"limbo.y"
 {
 		yyval.ids = polydecl(yys[yypt-1].yyv.ids);
 	}
 90=>
-#line	590	"limbo.y"
+#line	591	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tfn, tnone, yys[yypt-1].yyv.ids);
 	}
 91=>
-#line	594	"limbo.y"
+#line	595	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tfn, tnone, nil);
 		yyval.ty.varargs = byte 1;
 	}
 92=>
-#line	599	"limbo.y"
+#line	600	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-4].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tfn, tnone, yys[yypt-3].yyv.ids);
 		yyval.ty.varargs = byte 1;
 	}
 93=>
-#line	606	"limbo.y"
+#line	607	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 94=>
-#line	610	"limbo.y"
+#line	611	"limbo.y"
 {
 		yys[yypt-2].yyv.ty.tof = yys[yypt-0].yyv.ty;
 		yys[yypt-2].yyv.ty.src.stop = yys[yypt-0].yyv.ty.src.stop;
 		yyval.ty = yys[yypt-2].yyv.ty;
 	}
 95=>
-#line	618	"limbo.y"
+#line	619	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 96=>
-#line	622	"limbo.y"
+#line	623	"limbo.y"
 {
 		yyval.ty = yys[yypt-4].yyv.ty;
 		yyval.ty.val = rotater(yys[yypt-1].yyv.node);
 	}
 97=>
-#line	629	"limbo.y"
+#line	630	"limbo.y"
 {
 		yyval.ids = nil;
 	}
@@ -2008,87 +2009,87 @@ yyval.ids = yys[yyp+1].yyv.ids;
 99=>
 yyval.ids = yys[yyp+1].yyv.ids;
 100=>
-#line	637	"limbo.y"
+#line	638	"limbo.y"
 {
 		yyval.ids = appdecls(yys[yypt-2].yyv.ids, yys[yypt-0].yyv.ids);
 	}
 101=>
-#line	643	"limbo.y"
+#line	644	"limbo.y"
 {
 		yyval.ids = typeids(yys[yypt-2].yyv.ids, yys[yypt-0].yyv.ty);
 	}
 102=>
-#line	647	"limbo.y"
+#line	648	"limbo.y"
 {
 		yyval.ids = typeids(yys[yypt-2].yyv.ids, yys[yypt-0].yyv.ty);
 		for(d := yyval.ids; d != nil; d = d.next)
 			d.implicit = byte 1;
 	}
 103=>
-#line	653	"limbo.y"
+#line	654	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-2].yyv.node.src, enter("junk", 0), yys[yypt-0].yyv.ty, nil);
 		yyval.ids.store = Darg;
 		yyerror("illegal argument declaraion");
 	}
 104=>
-#line	659	"limbo.y"
+#line	660	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-2].yyv.node.src, enter("junk", 0), yys[yypt-0].yyv.ty, nil);
 		yyval.ids.store = Darg;
 		yyerror("illegal argument declaraion");
 	}
 105=>
-#line	667	"limbo.y"
+#line	668	"limbo.y"
 {
 		yyval.ids = revids(yys[yypt-0].yyv.ids);
 	}
 106=>
-#line	673	"limbo.y"
+#line	674	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, nil);
 		yyval.ids.store = Darg;
 	}
 107=>
-#line	678	"limbo.y"
+#line	679	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, nil, nil, nil);
 		yyval.ids.store = Darg;
 	}
 108=>
-#line	683	"limbo.y"
+#line	684	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, yys[yypt-2].yyv.ids);
 		yyval.ids.store = Darg;
 	}
 109=>
-#line	688	"limbo.y"
+#line	689	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, nil, nil, yys[yypt-2].yyv.ids);
 		yyval.ids.store = Darg;
 	}
 110=>
-#line	695	"limbo.y"
+#line	696	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 111=>
-#line	699	"limbo.y"
+#line	700	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-1].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tref, yys[yypt-0].yyv.ty, nil);
 	}
 112=>
-#line	703	"limbo.y"
+#line	704	"limbo.y"
 {
 		yyval.ty = yys[yypt-0].yyv.ty;
 	}
 113=>
-#line	707	"limbo.y"
+#line	708	"limbo.y"
 {
 		yyval.ty = mktype(yys[yypt-1].yyv.tok.src.start, yys[yypt-0].yyv.tok.src.stop, Tref, yys[yypt-0].yyv.ty, nil);
 	}
 114=>
-#line	713	"limbo.y"
+#line	714	"limbo.y"
 {
 		yyval.node = fndecl(yys[yypt-3].yyv.node, yys[yypt-2].yyv.ty, yys[yypt-0].yyv.node);
 		nfns++;
@@ -2113,26 +2114,26 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.src = yys[yypt-3].yyv.node.src;
 	}
 115=>
-#line	739	"limbo.y"
+#line	740	"limbo.y"
 {
 		yyval.node = mkn(Otuple, rotater(yys[yypt-1].yyv.node), nil);
 		yyval.node.src.start = yys[yypt-3].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 116=>
-#line	745	"limbo.y"
+#line	746	"limbo.y"
 {
 		yyval.node = mkn(Otuple, mkunary(Oseq, yys[yypt-0].yyv.node), nil);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.node.src.stop;
 	}
 117=>
-#line	751	"limbo.y"
+#line	752	"limbo.y"
 {
 		yyval.node = nil;
 	}
 118=>
-#line	757	"limbo.y"
+#line	758	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil){
 			yys[yypt-1].yyv.node = mkn(Onothing, nil, nil);
@@ -2144,17 +2145,17 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 119=>
-#line	768	"limbo.y"
+#line	769	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 	}
 120=>
-#line	772	"limbo.y"
+#line	773	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 	}
 121=>
-#line	778	"limbo.y"
+#line	779	"limbo.y"
 {
 		yyval.node = mkname(yys[yypt-1].yyv.tok.src, yys[yypt-1].yyv.tok.v.idval);
 		if(yys[yypt-0].yyv.ids != nil){
@@ -2163,7 +2164,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		}
 	}
 122=>
-#line	786	"limbo.y"
+#line	787	"limbo.y"
 {
 		yyval.node = mkbin(Odot, yys[yypt-3].yyv.node, mkname(yys[yypt-1].yyv.tok.src, yys[yypt-1].yyv.tok.v.idval));
 		if(yys[yypt-0].yyv.ids != nil){
@@ -2172,12 +2173,12 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		}
 	}
 123=>
-#line	796	"limbo.y"
+#line	797	"limbo.y"
 {
 		yyval.node = nil;
 	}
 124=>
-#line	800	"limbo.y"
+#line	801	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -2187,7 +2188,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 			yyval.node = mkbin(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 125=>
-#line	809	"limbo.y"
+#line	810	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil)
 			yyval.node = yys[yypt-0].yyv.node;
@@ -2195,28 +2196,28 @@ yyval.ids = yys[yyp+1].yyv.ids;
 			yyval.node = mkbin(Oseq, yys[yypt-1].yyv.node, yys[yypt-0].yyv.node);
 	}
 128=>
-#line	822	"limbo.y"
+#line	823	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 129=>
-#line	828	"limbo.y"
+#line	829	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 130=>
-#line	834	"limbo.y"
+#line	835	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 131=>
-#line	840	"limbo.y"
+#line	841	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node == nil){
 			yys[yypt-1].yyv.node = mkn(Onothing, nil, nil);
@@ -2226,7 +2227,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node = mkscope(rotater(yys[yypt-1].yyv.node));
 	}
 132=>
-#line	849	"limbo.y"
+#line	850	"limbo.y"
 {
 		yyerror("illegal declaration");
 		yyval.node = mkn(Onothing, nil, nil);
@@ -2234,7 +2235,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 133=>
-#line	856	"limbo.y"
+#line	857	"limbo.y"
 {
 		yyerror("illegal declaration");
 		yyval.node = mkn(Onothing, nil, nil);
@@ -2242,26 +2243,26 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 134=>
-#line	863	"limbo.y"
+#line	864	"limbo.y"
 {
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 135=>
-#line	867	"limbo.y"
+#line	868	"limbo.y"
 {
 		yyval.node = mkn(Oif, yys[yypt-2].yyv.node, mkunary(Oseq, yys[yypt-0].yyv.node));
 		yyval.node.src.start = yys[yypt-4].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.node.src.stop;
 	}
 136=>
-#line	873	"limbo.y"
+#line	874	"limbo.y"
 {
 		yyval.node = mkn(Oif, yys[yypt-4].yyv.node, mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node));
 		yyval.node.src.start = yys[yypt-6].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.node.src.stop;
 	}
 137=>
-#line	879	"limbo.y"
+#line	880	"limbo.y"
 {
 		yyval.node = mkunary(Oseq, yys[yypt-0].yyv.node);
 		if(yys[yypt-2].yyv.node.op != Onothing)
@@ -2272,7 +2273,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 			yyval.node = mkbin(Oseq, yys[yypt-6].yyv.node, yyval.node);
 	}
 138=>
-#line	889	"limbo.y"
+#line	890	"limbo.y"
 {
 		yyval.node = mkn(Ofor, yys[yypt-2].yyv.node, mkunary(Oseq, yys[yypt-0].yyv.node));
 		yyval.node.src.start = yys[yypt-4].yyv.tok.src.start;
@@ -2280,7 +2281,7 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.decl = yys[yypt-5].yyv.ids;
 	}
 139=>
-#line	896	"limbo.y"
+#line	897	"limbo.y"
 {
 		yyval.node = mkn(Odo, yys[yypt-2].yyv.node, yys[yypt-5].yyv.node);
 		yyval.node.src.start = yys[yypt-6].yyv.tok.src.start;
@@ -2288,21 +2289,21 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.decl = yys[yypt-7].yyv.ids;
 	}
 140=>
-#line	903	"limbo.y"
+#line	904	"limbo.y"
 {
 		yyval.node = mkn(Obreak, nil, nil);
 		yyval.node.decl = yys[yypt-1].yyv.ids;
 		yyval.node.src = yys[yypt-2].yyv.tok.src;
 	}
 141=>
-#line	909	"limbo.y"
+#line	910	"limbo.y"
 {
 		yyval.node = mkn(Ocont, nil, nil);
 		yyval.node.decl = yys[yypt-1].yyv.ids;
 		yyval.node.src = yys[yypt-2].yyv.tok.src;
 	}
 142=>
-#line	915	"limbo.y"
+#line	916	"limbo.y"
 {
 		yyval.node = mkn(Oret, yys[yypt-1].yyv.node, nil);
 		yyval.node.src = yys[yypt-2].yyv.tok.src;
@@ -2312,35 +2313,35 @@ yyval.ids = yys[yyp+1].yyv.ids;
 			yyval.node.src.stop = yys[yypt-1].yyv.node.src.stop;
 	}
 143=>
-#line	924	"limbo.y"
+#line	925	"limbo.y"
 {
 		yyval.node = mkn(Ospawn, yys[yypt-1].yyv.node, nil);
 		yyval.node.src.start = yys[yypt-2].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-1].yyv.node.src.stop;
 	}
 144=>
-#line	930	"limbo.y"
+#line	931	"limbo.y"
 {
 		yyval.node = mkn(Oraise, yys[yypt-1].yyv.node, nil);
 		yyval.node.src.start = yys[yypt-2].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-1].yyv.node.src.stop;
 	}
 145=>
-#line	936	"limbo.y"
+#line	937	"limbo.y"
 {
 		yyval.node = mkn(Ocase, yys[yypt-3].yyv.node, caselist(yys[yypt-1].yyv.node, nil));
 		yyval.node.src = yys[yypt-3].yyv.node.src;
 		yyval.node.decl = yys[yypt-5].yyv.ids;
 	}
 146=>
-#line	942	"limbo.y"
+#line	943	"limbo.y"
 {
 		yyval.node = mkn(Oalt, caselist(yys[yypt-1].yyv.node, nil), nil);
 		yyval.node.src = yys[yypt-3].yyv.tok.src;
 		yyval.node.decl = yys[yypt-4].yyv.ids;
 	}
 147=>
-#line	948	"limbo.y"
+#line	949	"limbo.y"
 {
 		yyval.node = mkn(Opick, mkbin(Odas, mkname(yys[yypt-5].yyv.tok.src, yys[yypt-5].yyv.tok.v.idval), yys[yypt-3].yyv.node), caselist(yys[yypt-1].yyv.node, nil));
 		yyval.node.src.start = yys[yypt-5].yyv.tok.src.start;
@@ -2348,13 +2349,13 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node.decl = yys[yypt-7].yyv.ids;
 	}
 148=>
-#line	955	"limbo.y"
+#line	956	"limbo.y"
 {
 		yyval.node = mkn(Oexit, nil, nil);
 		yyval.node.src = yys[yypt-1].yyv.tok.src;
 	}
 149=>
-#line	960	"limbo.y"
+#line	961	"limbo.y"
 {
 		if(yys[yypt-6].yyv.node == nil){
 			yys[yypt-6].yyv.node = mkn(Onothing, nil, nil);
@@ -2364,74 +2365,74 @@ yyval.ids = yys[yyp+1].yyv.ids;
 		yyval.node = mkbin(Oexstmt, yys[yypt-6].yyv.node, mkn(Oexcept, yys[yypt-3].yyv.node, caselist(yys[yypt-1].yyv.node, nil)));
 	}
 150=>
-#line	975	"limbo.y"
+#line	976	"limbo.y"
 {
 		yyval.ids = nil;
 	}
 151=>
-#line	979	"limbo.y"
+#line	980	"limbo.y"
 {
 		if(yys[yypt-1].yyv.ids.next != nil)
 			yyerror("only one identifier allowed in a label");
 		yyval.ids = yys[yypt-1].yyv.ids;
 	}
 152=>
-#line	987	"limbo.y"
+#line	988	"limbo.y"
 {
 		yyval.ids = nil;
 	}
 153=>
-#line	991	"limbo.y"
+#line	992	"limbo.y"
 {
 		yyval.ids = mkids(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval, nil, nil);
 	}
 154=>
-#line	997	"limbo.y"
+#line	998	"limbo.y"
 {
 		yys[yypt-1].yyv.node.left.right.right = yys[yypt-0].yyv.node;
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 155=>
-#line	1004	"limbo.y"
+#line	1005	"limbo.y"
 {
 		yyval.node = mkunary(Oseq, mkscope(mkunary(Olabel, rotater(yys[yypt-1].yyv.node))));
 	}
 156=>
-#line	1008	"limbo.y"
+#line	1009	"limbo.y"
 {
 		yys[yypt-3].yyv.node.left.right.right = yys[yypt-2].yyv.node;
 		yyval.node = mkbin(Oseq, mkscope(mkunary(Olabel, rotater(yys[yypt-1].yyv.node))), yys[yypt-3].yyv.node);
 	}
 157=>
-#line	1015	"limbo.y"
+#line	1016	"limbo.y"
 {
 		yys[yypt-1].yyv.node.left.right = mkscope(yys[yypt-0].yyv.node);
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 158=>
-#line	1022	"limbo.y"
+#line	1023	"limbo.y"
 {
 		yyval.node = mkunary(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)));
 	}
 159=>
-#line	1026	"limbo.y"
+#line	1027	"limbo.y"
 {
 		yys[yypt-3].yyv.node.left.right = mkscope(yys[yypt-2].yyv.node);
 		yyval.node = mkbin(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)), yys[yypt-3].yyv.node);
 	}
 160=>
-#line	1033	"limbo.y"
+#line	1034	"limbo.y"
 {
 		yys[yypt-1].yyv.node.left.right = mkscope(yys[yypt-0].yyv.node);
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 161=>
-#line	1040	"limbo.y"
+#line	1041	"limbo.y"
 {
 		yyval.node = mkunary(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)));
 	}
 162=>
-#line	1044	"limbo.y"
+#line	1045	"limbo.y"
 {
 		yys[yypt-3].yyv.node.left.right = mkscope(yys[yypt-2].yyv.node);
 		yyval.node = mkbin(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)), yys[yypt-3].yyv.node);
@@ -2439,70 +2440,70 @@ yyval.ids = yys[yyp+1].yyv.ids;
 163=>
 yyval.node = yys[yyp+1].yyv.node;
 164=>
-#line	1052	"limbo.y"
+#line	1053	"limbo.y"
 {
 		yyval.node = mkbin(Orange, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 165=>
-#line	1056	"limbo.y"
+#line	1057	"limbo.y"
 {
 		yyval.node = mkn(Owild, nil, nil);
 		yyval.node.src = yys[yypt-0].yyv.tok.src;
 	}
 166=>
-#line	1061	"limbo.y"
+#line	1062	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 167=>
-#line	1065	"limbo.y"
+#line	1066	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 168=>
-#line	1073	"limbo.y"
+#line	1074	"limbo.y"
 {
 		yys[yypt-1].yyv.node.left.right = mkscope(yys[yypt-0].yyv.node);
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 169=>
-#line	1080	"limbo.y"
+#line	1081	"limbo.y"
 {
 		yyval.node = mkunary(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)));
 	}
 170=>
-#line	1084	"limbo.y"
+#line	1085	"limbo.y"
 {
 		yys[yypt-3].yyv.node.left.right = mkscope(yys[yypt-2].yyv.node);
 		yyval.node = mkbin(Oseq, mkunary(Olabel, rotater(yys[yypt-1].yyv.node)), yys[yypt-3].yyv.node);
 	}
 171=>
-#line	1091	"limbo.y"
+#line	1092	"limbo.y"
 {
 		yyval.node = mkname(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 172=>
-#line	1095	"limbo.y"
+#line	1096	"limbo.y"
 {
 		yyval.node = mkn(Owild, nil, nil);
 		yyval.node.src = yys[yypt-0].yyv.tok.src;
 	}
 173=>
-#line	1100	"limbo.y"
+#line	1101	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 174=>
-#line	1104	"limbo.y"
+#line	1105	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
 		yyval.node.src.stop = yyval.node.src.start;
 	}
 175=>
-#line	1112	"limbo.y"
+#line	1113	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = curline();
@@ -2513,77 +2514,77 @@ yyval.node = yys[yyp+1].yyv.node;
 177=>
 yyval.node = yys[yyp+1].yyv.node;
 178=>
-#line	1122	"limbo.y"
+#line	1123	"limbo.y"
 {
 		yyval.node = mkbin(Oas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 179=>
-#line	1126	"limbo.y"
+#line	1127	"limbo.y"
 {
 		yyval.node = mkbin(Oandas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 180=>
-#line	1130	"limbo.y"
+#line	1131	"limbo.y"
 {
 		yyval.node = mkbin(Ooras, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 181=>
-#line	1134	"limbo.y"
+#line	1135	"limbo.y"
 {
 		yyval.node = mkbin(Oxoras, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 182=>
-#line	1138	"limbo.y"
+#line	1139	"limbo.y"
 {
 		yyval.node = mkbin(Olshas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 183=>
-#line	1142	"limbo.y"
+#line	1143	"limbo.y"
 {
 		yyval.node = mkbin(Orshas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 184=>
-#line	1146	"limbo.y"
+#line	1147	"limbo.y"
 {
 		yyval.node = mkbin(Oaddas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 185=>
-#line	1150	"limbo.y"
+#line	1151	"limbo.y"
 {
 		yyval.node = mkbin(Osubas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 186=>
-#line	1154	"limbo.y"
+#line	1155	"limbo.y"
 {
 		yyval.node = mkbin(Omulas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 187=>
-#line	1158	"limbo.y"
+#line	1159	"limbo.y"
 {
 		yyval.node = mkbin(Odivas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 188=>
-#line	1162	"limbo.y"
+#line	1163	"limbo.y"
 {
 		yyval.node = mkbin(Omodas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 189=>
-#line	1166	"limbo.y"
+#line	1167	"limbo.y"
 {
 		yyval.node = mkbin(Oexpas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 190=>
-#line	1170	"limbo.y"
+#line	1171	"limbo.y"
 {
 		yyval.node = mkbin(Osnd, yys[yypt-3].yyv.node, yys[yypt-0].yyv.node);
 	}
 191=>
-#line	1174	"limbo.y"
+#line	1175	"limbo.y"
 {
 		yyval.node = mkbin(Odas, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 192=>
-#line	1178	"limbo.y"
+#line	1179	"limbo.y"
 {
 		yyval.node = mkn(Oload, yys[yypt-0].yyv.node, nil);
 		yyval.node.src.start = yys[yypt-2].yyv.tok.src.start;
@@ -2591,201 +2592,201 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.ty = mkidtype(yys[yypt-1].yyv.tok.src, yys[yypt-1].yyv.tok.v.idval);
 	}
 193=>
-#line	1185	"limbo.y"
+#line	1186	"limbo.y"
 {
 		yyval.node = yyval.node = mkbin(Oexp, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 194=>
-#line	1189	"limbo.y"
+#line	1190	"limbo.y"
 {
 		yyval.node = mkbin(Omul, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 195=>
-#line	1193	"limbo.y"
+#line	1194	"limbo.y"
 {
 		yyval.node = mkbin(Odiv, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 196=>
-#line	1197	"limbo.y"
+#line	1198	"limbo.y"
 {
 		yyval.node = mkbin(Omod, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 197=>
-#line	1201	"limbo.y"
+#line	1202	"limbo.y"
 {
 		yyval.node = mkbin(Oadd, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 198=>
-#line	1205	"limbo.y"
+#line	1206	"limbo.y"
 {
 		yyval.node = mkbin(Osub, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 199=>
-#line	1209	"limbo.y"
+#line	1210	"limbo.y"
 {
 		yyval.node = mkbin(Orsh, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 200=>
-#line	1213	"limbo.y"
+#line	1214	"limbo.y"
 {
 		yyval.node = mkbin(Olsh, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 201=>
-#line	1217	"limbo.y"
+#line	1218	"limbo.y"
 {
 		yyval.node = mkbin(Olt, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 202=>
-#line	1221	"limbo.y"
+#line	1222	"limbo.y"
 {
 		yyval.node = mkbin(Ogt, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 203=>
-#line	1225	"limbo.y"
+#line	1226	"limbo.y"
 {
 		yyval.node = mkbin(Oleq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 204=>
-#line	1229	"limbo.y"
+#line	1230	"limbo.y"
 {
 		yyval.node = mkbin(Ogeq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 205=>
-#line	1233	"limbo.y"
+#line	1234	"limbo.y"
 {
 		yyval.node = mkbin(Oeq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 206=>
-#line	1237	"limbo.y"
+#line	1238	"limbo.y"
 {
 		yyval.node = mkbin(Oneq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 207=>
-#line	1241	"limbo.y"
+#line	1242	"limbo.y"
 {
 		yyval.node = mkbin(Oand, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 208=>
-#line	1245	"limbo.y"
+#line	1246	"limbo.y"
 {
 		yyval.node = mkbin(Oxor, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 209=>
-#line	1249	"limbo.y"
+#line	1250	"limbo.y"
 {
 		yyval.node = mkbin(Oor, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 210=>
-#line	1253	"limbo.y"
+#line	1254	"limbo.y"
 {
 		yyval.node = mkbin(Ocons, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 211=>
-#line	1257	"limbo.y"
+#line	1258	"limbo.y"
 {
 		yyval.node = mkbin(Oandand, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 212=>
-#line	1261	"limbo.y"
+#line	1262	"limbo.y"
 {
 		yyval.node = mkbin(Ooror, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 213=>
 yyval.node = yys[yyp+1].yyv.node;
 214=>
-#line	1268	"limbo.y"
+#line	1269	"limbo.y"
 {
 		yys[yypt-0].yyv.node.src.start = yys[yypt-1].yyv.tok.src.start;
 		yyval.node = yys[yypt-0].yyv.node;
 	}
 215=>
-#line	1273	"limbo.y"
+#line	1274	"limbo.y"
 {
 		yyval.node = mkunary(Oneg, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 216=>
-#line	1278	"limbo.y"
+#line	1279	"limbo.y"
 {
 		yyval.node = mkunary(Onot, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 217=>
-#line	1283	"limbo.y"
+#line	1284	"limbo.y"
 {
 		yyval.node = mkunary(Ocomp, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 218=>
-#line	1288	"limbo.y"
+#line	1289	"limbo.y"
 {
 		yyval.node = mkunary(Oind, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 219=>
-#line	1293	"limbo.y"
+#line	1294	"limbo.y"
 {
 		yyval.node = mkunary(Opreinc, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 220=>
-#line	1298	"limbo.y"
+#line	1299	"limbo.y"
 {
 		yyval.node = mkunary(Opredec, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 221=>
-#line	1303	"limbo.y"
+#line	1304	"limbo.y"
 {
 		yyval.node = mkunary(Orcv, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 222=>
-#line	1308	"limbo.y"
+#line	1309	"limbo.y"
 {
 		yyval.node = mkunary(Ohd, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 223=>
-#line	1313	"limbo.y"
+#line	1314	"limbo.y"
 {
 		yyval.node = mkunary(Otl, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 224=>
-#line	1318	"limbo.y"
+#line	1319	"limbo.y"
 {
 		yyval.node = mkunary(Olen, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 225=>
-#line	1323	"limbo.y"
+#line	1324	"limbo.y"
 {
 		yyval.node = mkunary(Oref, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 226=>
-#line	1328	"limbo.y"
+#line	1329	"limbo.y"
 {
 		yyval.node = mkunary(Otagof, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 	}
 227=>
-#line	1333	"limbo.y"
+#line	1334	"limbo.y"
 {
 		yyval.node = mkn(Oarray, yys[yypt-3].yyv.node, nil);
 		yyval.node.ty = mktype(yys[yypt-5].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tarray, yys[yypt-0].yyv.ty, nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 228=>
-#line	1339	"limbo.y"
+#line	1340	"limbo.y"
 {
 		yyval.node = mkn(Oarray, yys[yypt-5].yyv.node, yys[yypt-1].yyv.node);
 		yyval.node.src.start = yys[yypt-7].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 229=>
-#line	1345	"limbo.y"
+#line	1346	"limbo.y"
 {
 		yyval.node = mkn(Onothing, nil, nil);
 		yyval.node.src.start = yys[yypt-5].yyv.tok.src.start;
@@ -2795,49 +2796,49 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 230=>
-#line	1354	"limbo.y"
+#line	1355	"limbo.y"
 {
 		yyval.node = etolist(yys[yypt-1].yyv.node);
 		yyval.node.src.start = yys[yypt-4].yyv.tok.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 231=>
-#line	1360	"limbo.y"
+#line	1361	"limbo.y"
 {
 		yyval.node = mkn(Ochan, nil, nil);
 		yyval.node.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tchan, yys[yypt-0].yyv.ty, nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 232=>
-#line	1366	"limbo.y"
+#line	1367	"limbo.y"
 {
 		yyval.node = mkn(Ochan, yys[yypt-3].yyv.node, nil);
 		yyval.node.ty = mktype(yys[yypt-5].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tchan, yys[yypt-0].yyv.ty, nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 233=>
-#line	1372	"limbo.y"
+#line	1373	"limbo.y"
 {
 		yyval.node = mkunary(Ocast, yys[yypt-0].yyv.node);
 		yyval.node.ty = mktype(yys[yypt-3].yyv.tok.src.start, yys[yypt-0].yyv.node.src.stop, Tarray, mkidtype(yys[yypt-1].yyv.tok.src, yys[yypt-1].yyv.tok.v.idval), nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 234=>
-#line	1378	"limbo.y"
+#line	1379	"limbo.y"
 {
 		yyval.node = mkunary(Ocast, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 		yyval.node.ty = mkidtype(yyval.node.src, yys[yypt-1].yyv.tok.v.idval);
 	}
 235=>
-#line	1384	"limbo.y"
+#line	1385	"limbo.y"
 {
 		yyval.node = mkunary(Ocast, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
 		yyval.node.ty = mkidtype(yyval.node.src, yys[yypt-1].yyv.tok.v.idval);
 	}
 236=>
-#line	1390	"limbo.y"
+#line	1391	"limbo.y"
 {
 		yyval.node = mkunary(Ocast, yys[yypt-0].yyv.node);
 		yyval.node.src.start = yys[yypt-1].yyv.tok.src.start;
@@ -2846,14 +2847,14 @@ yyval.node = yys[yyp+1].yyv.node;
 237=>
 yyval.node = yys[yyp+1].yyv.node;
 238=>
-#line	1399	"limbo.y"
+#line	1400	"limbo.y"
 {
 		yyval.node = mkn(Ocall, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 		yyval.node.src.start = yys[yypt-3].yyv.node.src.start;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 239=>
-#line	1405	"limbo.y"
+#line	1406	"limbo.y"
 {
 		yyval.node = yys[yypt-1].yyv.node;
 		if(yys[yypt-1].yyv.node.op == Oseq)
@@ -2864,14 +2865,14 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 240=>
-#line	1415	"limbo.y"
+#line	1416	"limbo.y"
 {
 #		n := mkdeclname($1, mkids($1, enter(".fn"+string nfnexp++, 0), nil, nil));
 #		$<node>$ = fndef(n, $2);
 #		nfns++;
 	}
 241=>
-#line	1420	"limbo.y"
+#line	1421	"limbo.y"
 {
 #		$$ = fnfinishdef($<node>3, $4);
 #		$$ = mkdeclname($1, $$.left.decl);
@@ -2879,23 +2880,23 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node = nil;
 	}
 242=>
-#line	1427	"limbo.y"
+#line	1428	"limbo.y"
 {
 		yyval.node = mkbin(Odot, yys[yypt-2].yyv.node, mkname(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval));
 	}
 243=>
-#line	1431	"limbo.y"
+#line	1432	"limbo.y"
 {
 		yyval.node = mkbin(Omdot, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 244=>
-#line	1435	"limbo.y"
+#line	1436	"limbo.y"
 {
 		yyval.node = mkbin(Oindex, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node);
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 245=>
-#line	1440	"limbo.y"
+#line	1441	"limbo.y"
 {
 		if(yys[yypt-3].yyv.node.op == Onothing)
 			yys[yypt-3].yyv.node.src = yys[yypt-2].yyv.tok.src;
@@ -2905,52 +2906,52 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 246=>
-#line	1449	"limbo.y"
+#line	1450	"limbo.y"
 {
 		yyval.node = mkunary(Oinc, yys[yypt-1].yyv.node);
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 247=>
-#line	1454	"limbo.y"
+#line	1455	"limbo.y"
 {
 		yyval.node = mkunary(Odec, yys[yypt-1].yyv.node);
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 248=>
-#line	1459	"limbo.y"
+#line	1460	"limbo.y"
 {
 		yyval.node = mksconst(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 249=>
-#line	1463	"limbo.y"
+#line	1464	"limbo.y"
 {
 		yyval.node = mkconst(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.ival);
 		if(yys[yypt-0].yyv.tok.v.ival > big 16r7fffffff || yys[yypt-0].yyv.tok.v.ival < big -16r7fffffff)
 			yyval.node.ty = tbig;
 	}
 250=>
-#line	1469	"limbo.y"
+#line	1470	"limbo.y"
 {
 		yyval.node = mkrconst(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.rval);
 	}
 251=>
-#line	1473	"limbo.y"
+#line	1474	"limbo.y"
 {
 		yyval.node = mkbin(Oindex, yys[yypt-5].yyv.node, rotater(mkbin(Oseq, yys[yypt-3].yyv.node, yys[yypt-1].yyv.node)));
 		yyval.node.src.stop = yys[yypt-0].yyv.tok.src.stop;
 	}
 252=>
-#line	1480	"limbo.y"
+#line	1481	"limbo.y"
 {
 		yyval.node = mkname(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 253=>
-#line	1484	"limbo.y"
+#line	1485	"limbo.y"
 {
 		yyval.node = mknil(yys[yypt-0].yyv.tok.src);
 	}
 254=>
-#line	1490	"limbo.y"
+#line	1491	"limbo.y"
 {
 		yyval.node = mkn(Otuple, rotater(yys[yypt-1].yyv.node), nil);
 		yyval.node.src.start = yys[yypt-2].yyv.tok.src.start;
@@ -2959,7 +2960,7 @@ yyval.node = yys[yyp+1].yyv.node;
 255=>
 yyval.node = yys[yyp+1].yyv.node;
 256=>
-#line	1499	"limbo.y"
+#line	1500	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
@@ -2968,28 +2969,28 @@ yyval.node = yys[yyp+1].yyv.node;
 258=>
 yyval.node = yys[yyp+1].yyv.node;
 259=>
-#line	1509	"limbo.y"
+#line	1510	"limbo.y"
 {
 		yyval.node = mkn(Otype, nil, nil);
 		yyval.node.ty = mkidtype(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 		yyval.node.src = yyval.node.ty.src;
 	}
 260=>
-#line	1515	"limbo.y"
+#line	1516	"limbo.y"
 {
 		yyval.node = mkn(Otype, nil, nil);
 		yyval.node.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tarray, yys[yypt-0].yyv.ty, nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 261=>
-#line	1521	"limbo.y"
+#line	1522	"limbo.y"
 {
 		yyval.node = mkn(Otype, nil, nil);
 		yyval.node.ty = mktype(yys[yypt-2].yyv.tok.src.start, yys[yypt-0].yyv.ty.src.stop, Tlist, yys[yypt-0].yyv.ty, nil);
 		yyval.node.src = yyval.node.ty.src;
 	}
 262=>
-#line	1527	"limbo.y"
+#line	1528	"limbo.y"
 {
 		yyval.node = mkn(Otype, nil ,nil);
 		yyval.node.ty = yys[yypt-0].yyv.ty;
@@ -2997,12 +2998,12 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node.src = yyval.node.ty.src;
 	}
 263=>
-#line	1536	"limbo.y"
+#line	1537	"limbo.y"
 {
 		yyval.node = mkname(yys[yypt-0].yyv.tok.src, yys[yypt-0].yyv.tok.v.idval);
 	}
 264=>
-#line	1540	"limbo.y"
+#line	1541	"limbo.y"
 {
 		yyval.node = nil;
 	}
@@ -3011,22 +3012,22 @@ yyval.node = yys[yyp+1].yyv.node;
 266=>
 yyval.node = yys[yyp+1].yyv.node;
 267=>
-#line	1548	"limbo.y"
+#line	1549	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 268=>
-#line	1552	"limbo.y"
+#line	1553	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 269=>
-#line	1558	"limbo.y"
+#line	1559	"limbo.y"
 {
 		yyval.node = nil;
 	}
 270=>
-#line	1562	"limbo.y"
+#line	1563	"limbo.y"
 {
 		yyval.node = rotater(yys[yypt-0].yyv.node);
 	}
@@ -3037,40 +3038,40 @@ yyval.node = yys[yyp+1].yyv.node;
 273=>
 yyval.node = yys[yyp+1].yyv.node;
 274=>
-#line	1573	"limbo.y"
+#line	1574	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 275=>
-#line	1579	"limbo.y"
+#line	1580	"limbo.y"
 {
 		yyval.node = rotater(yys[yypt-0].yyv.node);
 	}
 276=>
-#line	1583	"limbo.y"
+#line	1584	"limbo.y"
 {
 		yyval.node = rotater(yys[yypt-1].yyv.node);
 	}
 277=>
 yyval.node = yys[yyp+1].yyv.node;
 278=>
-#line	1590	"limbo.y"
+#line	1591	"limbo.y"
 {
 		yyval.node = mkbin(Oseq, yys[yypt-2].yyv.node, yys[yypt-0].yyv.node);
 	}
 279=>
-#line	1596	"limbo.y"
+#line	1597	"limbo.y"
 {
 		yyval.node = mkn(Oelem, nil, yys[yypt-0].yyv.node);
 		yyval.node.src = yys[yypt-0].yyv.node.src;
 	}
 280=>
-#line	1601	"limbo.y"
+#line	1602	"limbo.y"
 {
 		yyval.node = mkbin(Oelem, rotater(yys[yypt-2].yyv.node), yys[yypt-0].yyv.node);
 	}
 281=>
-#line	1607	"limbo.y"
+#line	1608	"limbo.y"
 {
 		if(yys[yypt-1].yyv.node.op == Oseq)
 			yys[yypt-1].yyv.node.right.left = rotater(yys[yypt-0].yyv.node);
@@ -3079,12 +3080,12 @@ yyval.node = yys[yyp+1].yyv.node;
 		yyval.node = yys[yypt-1].yyv.node;
 	}
 282=>
-#line	1617	"limbo.y"
+#line	1618	"limbo.y"
 {
 		yyval.node = typedecl(yys[yypt-1].yyv.ids, mktype(yys[yypt-1].yyv.ids.src.start, yys[yypt-0].yyv.tok.src.stop, Tpoly, nil, nil));
 	}
 283=>
-#line	1621	"limbo.y"
+#line	1622	"limbo.y"
 {
 		if(yys[yypt-3].yyv.node.op == Oseq)
 			yys[yypt-3].yyv.node.right.left = rotater(yys[yypt-2].yyv.node);

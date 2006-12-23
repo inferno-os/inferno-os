@@ -640,7 +640,7 @@ memprof(int c, Heap *h, ulong n)
 		i = p-r->base;
 		k = (r->id<<24) | i;
 		if(c == 0){
-			h->pad = k;
+			h->hprof = k;
 			k = sizeof(Heap);
 		}
 		else{
@@ -657,7 +657,7 @@ memprof(int c, Heap *h, ulong n)
 		if(c == 3)
 			k = *(ulong*)h;
 		else
-			k = h->pad;
+			k = h->hprof;
 		if((r = getrec(k>>24)) == nil){
 			unlock(&profile.l);
 			return;

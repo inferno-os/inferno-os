@@ -64,23 +64,23 @@ pfree(Proc *p)
 	}
 	free(e->user);
 	free(p->prog);
+	CloseHandle((HANDLE)p->os);
 	free(p);
 }
-
-static ulong erendezvous(void*, ulong);
 
 void
 osblock(void)
 {
-	erendezvous(up, 0);
+	if(WaitForSingleObject((HANDLE)up->os, INFINITE) != WAIT_OBJECT_0)
+		panic("osblock failed");
 }
 
 void
 osready(Proc *p)
 {
-	erendezvous(p, 0);
+	if(SetEvent((HANDLE)p->os) == FALSE)
+		panic("osready failed");
 }
-
 
 void
 pexit(char *msg, int t)
@@ -118,11 +118,9 @@ tramp(LPVOID p)
 	up = p;
 	up->func(up->arg);
 	pexit("", 0);
-	// should never get here but tidy up anyway
-	_asm {
-		mov fs:[0],-1
-		add esp, 8
-	}
+	/* not reached */
+	for(;;)
+		panic("tramp");
 	return 0;
 }
 
@@ -138,6 +136,12 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	p = newproc();
 	if(p == nil){
 		print("out of kernel processes\n");
+		return -1;
+	}
+	p->os = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if(p->os == NULL){
+		pfree(p);
+		print("can't allocate os event\n");
 		return -1;
 	}
 		
@@ -429,7 +433,7 @@ libinit(char *imod)
 		lasterror = GetLastError();	
 		if(PlatformId == VER_PLATFORM_WIN32_NT || lasterror != ERROR_NOT_LOGGED_ON)
 			print("cannot GetUserName: %d\n", lasterror);
-	} else {
+	}else{
 		uns = narrowen(wuname);
 		snprint(uname, sizeof(uname), "%s", uns);
 		free(uns);
@@ -437,85 +441,6 @@ libinit(char *imod)
 	kstrdup(&eve, uname);
 
 	emuinit(imod);
-}
-
-enum
-{
-	NHLOG	= 7,
-	NHASH	= (1<<NHLOG)
-};
-
-typedef struct Tag Tag;
-struct Tag
-{
-	void*	tag;
-	ulong	val;
-	HANDLE	pid;
-	Tag*	next;
-};
-
-static	Tag*	ht[NHASH];
-static	Tag*	ft;
-static	Lock	hlock;
-static	int	nsema;
-
-static ulong
-erendezvous(void *tag, ulong value)
-{
-	int h;
-	ulong rval;
-	Tag *t, **l, *f;
-
-
-	h = (ulong)tag & (NHASH-1);
-
-	lock(&hlock);
-	l = &ht[h];
-	for(t = ht[h]; t; t = t->next) {
-		if(t->tag == tag) {
-			rval = t->val;
-			t->val = value;
-			t->tag = 0;
-			unlock(&hlock);
-			if(SetEvent(t->pid) == FALSE)
-				panic("Release failed\n");
-			return rval;		
-		}
-	}
-
-	t = ft;
-	if(t == 0) {
-		t = malloc(sizeof(Tag));
-		if(t == nil)
-			panic("rendezvous: no memory");
-		t->pid = CreateEvent(0, 0, 0, 0);
-	}
-	else
-		ft = t->next;
-
-	t->tag = tag;
-	t->val = value;
-	t->next = *l;
-	*l = t;
-	unlock(&hlock);
-
-	if(WaitForSingleObject(t->pid, INFINITE) != WAIT_OBJECT_0)
-		panic("WaitForSingleObject failed\n");
-
-	lock(&hlock);
-	rval = t->val;
-	for(f = *l; f; f = f->next) {
-		if(f == t) {
-			*l = f->next;
-			break;
-		}
-		l = &f->next;
-	}
-	t->next = ft;
-	ft = t;
-	unlock(&hlock);
-
-	return rval;
 }
 
 void

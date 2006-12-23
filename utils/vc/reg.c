@@ -1112,6 +1112,7 @@ RtoB(int r)
 	return 1L << (r-3);
 }
 
+int
 BtoR(long b)
 {
 

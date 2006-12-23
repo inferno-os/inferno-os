@@ -16,14 +16,14 @@ enum
 
 extern Memimage *screenimage;
 
-ulong*	attachwindow(Rectangle*, ulong*, int*, int*);
+static	ulong*	attachwindow(Rectangle*, ulong*, int*, int*);
 
 static void	plan9readmouse(void*);
 static void	plan9readkeybd(void*);
 static int	mapspecials(char *s1, char *s2, int *n);
 
-int	pixels = 1;
 int	usenewwin = 1;
+int	kbdiscons;
 static int	truedepth;
 
 static int		datafd;
@@ -84,31 +84,35 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 			fprint(2, "attachscreen: can't mount window manager: %r\n");
 			return nil;
 		}
+		if(bind("/mnt/wsys", "/dev", MBEFORE) < 0){
+			fprint(2, "attachscreen: can't bind /mnt/wsys before /dev: %r\n");
+			return nil;
+		}
 	}
 
-	cursfd = open("/mnt/wsys/cursor", OWRITE);
+	cursfd = open("/dev/cursor", OWRITE);
 	if(cursfd < 0) {
 		fprint(2, "attachscreen: open cursor: %r\n");
 		return nil;
 	}
 	
 	/* Set up graphics window console (chars->gkbdq) */
-	keybdfd = open("/mnt/wsys/cons", OREAD);
+	keybdfd = open("/dev/cons", OREAD);
 	if(keybdfd < 0) {
 		fprint(2, "attachscreen: open keyboard: %r\n");
 		return nil;
 	}
-	mousefd = open("/mnt/wsys/mouse", ORDWR);
+	mousefd = open("/dev/mouse", ORDWR);
 	if(mousefd < 0){
 		fprint(2, "attachscreen: can't open mouse: %r\n");
 		return nil;
 	}
-	if(usenewwin){
-		fd = open("/mnt/wsys/consctl", OWRITE);
+	if(usenewwin || 1){
+		fd = open("/dev/consctl", OWRITE);
 		if(fd < 0)
-			fprint(2, "attachscreen: open /mnt/wsys/consctl: %r\n");
+			fprint(2, "attachscreen: open /dev/consctl: %r\n");
 		if(write(fd, "rawon", 5) != 5)
-			fprint(2, "attachscreen: write /mnt/wsys/consctl: %r\n");
+			fprint(2, "attachscreen: write /dev/consctl: %r\n");
 	}
 
 	/* Set up graphics files */
@@ -148,11 +152,11 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	
 	mousepid = kproc("readmouse", plan9readmouse, nil, 0);
 	keybdpid = kproc("readkbd", plan9readkeybd, nil, 0);
-	bind("/mnt/wsys", "/dev", MBEFORE);
 
 	fd = open("/dev/label", OWRITE);
-	if (fd >= 0) {
-		write(fd, "inferno", 7);
+	if(fd >= 0){
+		snprint(buf, sizeof(buf), "inferno %d", getpid());
+		write(fd, buf, strlen(buf));
 		close(fd);
 	}
 
@@ -160,35 +164,7 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	return (uchar*)data;
 }
 
-static int
-depthof(char *s)
-{
-	char *es;
-	int n, c, d;
-
-	es = s+12;
-	while(s<es && *s==' ')
-		s++;
-	if(s == es)
-		return -1;
-	if('0'<=*s && *s<='9'){
-		truedepth = 1<<atoi(s);
-		return truedepth;
-	}
-
-	d = 0;
-	while(s<es && *s!=' '){
-		c = *s++;	/* skip letter */
-		n = strtoul(s, &s, 10);
-		d += n;
-		if(c != 'r' && c != 'g' && c != 'b' && c != 'k' && c != 'm')
-			return -1;
-	}
-	truedepth = d;
-	return d;
-}
-
-ulong*
+static ulong*
 attachwindow(Rectangle *r, ulong *chan, int *d, int *width)
 {
 	int n, fd, nb;
@@ -231,7 +207,8 @@ attachwindow(Rectangle *r, ulong *chan, int *d, int *width)
 		return nil;
 	}
 	imagechan = strtochan(buf+2*12);
-	if(depthof(buf+2*12) < 0){
+	truedepth = chantodepth(imagechan);
+	if(truedepth == 0){
 		fprint(2, "attachwindow: cannot handle window depth specifier %.12s\n", buf+2*12);
 		return nil;
 	}
@@ -272,7 +249,7 @@ attachwindow(Rectangle *r, ulong *chan, int *d, int *width)
 	return data;
 }
 
-int
+static int
 plan9loadimage(Rectangle r, uchar *data, int ndata)
 {
 	long dy;
@@ -396,7 +373,7 @@ drawcursor(Drawcursor *c)
 	write(cursfd, curs, sizeof curs);
 }
 
-int
+static int
 checkmouse(char *buf, int n)
 {
 	int x, y, tick, b;
@@ -453,12 +430,12 @@ plan9readmouse(void *v)
 }
 
 static void
-plan9readkeybd(void *v)
+plan9readkeybd(void*)
 {
 	int n, partial;
 	char buf[32];
 	char dbuf[32 * 3];		/* overestimate but safe */
-	USED(v);
+
 	partial = 0;
 	for(;;){
 		n = read(keybdfd, buf + partial, sizeof(buf) - partial);

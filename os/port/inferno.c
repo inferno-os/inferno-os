@@ -586,6 +586,7 @@ Sys_dial(void *fp)
 		return;
 
 	f->ret->t1.dfd = mkfd(f->ret->t0);
+	f->ret->t0 = 0;
 	f->ret->t1.cfd = mkfd(cfd);
 	retstr(dir, &f->ret->t1.dir);
 }
@@ -609,6 +610,7 @@ Sys_announce(void *fp)
 		return;
 
 	f->ret->t1.cfd = mkfd(f->ret->t0);
+	f->ret->t0 = 0;
 	retstr(dir, &f->ret->t1.dir);
 }
 
@@ -632,6 +634,7 @@ Sys_listen(void *fp)
 		return;
 
 	f->ret->t1.cfd = mkfd(f->ret->t0);
+	f->ret->t0 = 0;
 	retstr(dir, &f->ret->t1.dir);
 }
 

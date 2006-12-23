@@ -1,0 +1,242 @@
+.TH W3C-URIS 2
+.SH NAME
+w3c-uris \- uniform resource identifiers
+.SH SYNOPSIS
+.EX
+include "uris.m";
+
+uris := load URIs URIs->PATH;
+URI: import uris;
+
+URI: adt
+{
+   scheme:     string;
+   userinfo:   string;  # authority, part I
+   host:       string;  # authority, part II
+   port:       string;  # authority, part III
+   path:       string;  # starts with / if absolute
+   query:      string;  # includes ? if not nil
+   fragment:   string;  # includes # if not nil
+
+   parse:      fn(s: string): ref URI;
+   text:       fn(u: self ref URI): string;
+   addbase:    fn(base: self ref URI, rel: ref URI): ref URI;
+   authority:  fn(u: self ref URI): string;
+   copy:       fn(u: self ref URI): ref URI;
+   eq:         fn(u: self ref URI, v: ref URI): int;
+   hasauthority: fn(u: self ref URI): int;
+   isabsolute: fn(u: self ref URI): int;
+   nodots:     fn(u: self ref URI): ref URI;
+   userpw:     fn(u: self ref URI): (string, string);
+};
+
+init: fn();
+dec:  fn(s: string): string;
+enc:  fn(s: string, safe: string): string;
+.EE
+.SH DESCRIPTION
+.B URIs
+supports the `generic syntax' for `Uniform' Resource Identifiers (URIs), defined by RFC3986.
+Each URI can have up to five components in the general syntax:
+.IP
+.IB scheme :
+.BI // authority / path
+.BI ? query
+.BI # fragment
+.PP
+where each component is optional, and can have scheme-specific substructure.
+For instance, in the
+.BR ftp ,
+.B http
+schemes, and perhaps others, the
+.I authority
+component has the further syntax:
+.IP
+.IB userinfo @ host : port
+.PP
+The set of characters allowed in most components is also scheme-specific, as is their interpretation, and indeed the
+interpretation of the component itself.
+.PP
+.B Init
+must be called before any other operation in the module.
+.PP
+.B URI
+represents a parse of a URI into its components, where the
+.I authority
+has been further split into the scheme-specific but common triple of
+.IR userinfo ,
+.I host
+and
+.IR port .
+(The function
+.B URI.authority
+will reproduce the original
+.I authority
+component if required.)
+The
+.B query
+field starts with the
+.RB ` ? '
+character that introduces the
+.I query
+component, so that an empty query is represented by the string
+\f5"?"\fP, and the absence of a query component is represented by a nil value.
+The
+.B fragment
+field is handled in a similar way with its delimiting
+.RB ` # '.
+The fields representing the other components do not include the delimiters in the syntax,
+and all but
+.B query
+have percent-encoded characters decoded.
+(The query string is an exception because the set of characters to escape is application-specific.
+See below for decoding and encoding functions.)
+.B URI
+provides the following operations:
+.TP
+.BI parse( s )
+Return a
+.B URI
+value representing the results of parsing string
+.I s
+as a URI.
+There is no error return.
+The component values have percent-escapes decoded as discussed above.
+The scheme name is converted to lower case.
+.TP
+.IB u .text()
+Return the textual representation of
+.I u
+in the generic syntax,
+adding percent-encoding as required to prevent characters
+being misinterpreted as delimiters.
+.TP
+.IB u .addbase( b )
+Resolves URI reference
+.I u
+with respect to a base URI
+.IR b ,
+including resolving all
+.RB ` . '
+and
+.RB ` .. '
+segments in the URI's path,
+and returns the resulting
+.B URI
+value.
+If
+.I u
+is an absolute URI reference or
+.I b
+is nil, the result is the same as
+.I u
+except that all
+.RB ` . '
+and
+.RB ` .. '
+segments have been resolved in the resulting path, and leading
+instances of them removed.
+.TP
+.IB u .authority()
+Returns the text of the
+.I authority
+component of
+.IR u ,
+in the generic syntax,
+created from its
+.BR userinfo ,
+.B host
+and
+.B port
+components.
+.TP
+.IB u .copy()
+Return a reference to an independent copy of
+.IR u .
+.TP
+.IB u .eq( v )
+Returns true if
+.I u
+and
+.I v
+are textually equal in all components except
+.BR fragment .
+Note that
+.I u
+and
+.I v
+are assumed to be in a canonical  form for the scheme and application.
+.TP
+.IB u .eqf( v )
+Returns true if
+.I u
+and
+.I v
+are textually equal in all components including
+.BR fragment .
+.TP
+.IB u .hasauthority()
+Returns true if any of the authority subcomponents of
+.I u
+are not nil; returns false otherwise.
+.TP
+.IB u .isabsolute()
+Returns true if
+.I u
+has a
+.I scheme
+component; returns false otherwise.
+.TP
+.IB u .nodots()
+Returns a new
+.B URI
+value in which all
+.RB ` . '
+and
+.RB ` .. '
+segments have been resolved (equivalent to
+.IB u .addbase(nil)\c
+).
+.TP
+.IB u .userpw()
+Returns a tuple
+.BI ( username,\ password )
+derived from parsing the
+.I userinfo
+subcomponent of
+.I authority
+using the deprecated but depressingly still common convention that
+.I userinfo
+has the syntax ``\fIusername\fP\f5:\fP\fIpassword\fP''.
+.PP
+A reserved or otherwise special character that appears in a URI component must be
+encoded using a sequence of one or more strings of the form
+.BI % xx
+where
+.I xx
+is the hexadecimal value of one byte of the character.
+A string
+.I s
+containing such encodings can be decoded by the function
+.BR dec .
+A string
+.I s
+can be encoded by
+.BR enc ,
+where the parameter
+.I safe
+lists the characters that need not be escaped (where
+.I safe
+may be nil or empty).
+These functions are normally only needed to decode and encode the values of
+.BR URI.query ,
+because
+.B URI.parse
+and
+.B URI.text
+above decode and encode the other fields.
+.SH SOURCE
+.B /appl/lib/w3c/uris.b
+.SH SEE ALSO
+.IR charon (1),
+.IR httpd (8)

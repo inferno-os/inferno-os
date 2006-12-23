@@ -1,0 +1,163 @@
+.TH AR 1
+.SH NAME
+ar \- archive maintainer
+.SH SYNOPSIS
+.B ar
+.I key
+[
+.I posname
+]
+.I afile
+[
+.I file ...
+]
+.SH DESCRIPTION
+.I Ar
+maintains groups of files
+combined into a single archive file,
+.IR afile .
+The main use of
+.I ar
+is to produce and manipulate UNIX archive files, for instance to create
+program packages for Debian Linux.
+Note that only
+.IR iar (10.1)
+can manage archives used as object file libraries by the Inferno and Plan 9 loaders.
+.PP
+.I Key
+is one character from the set
+.BR drqtpmx ,
+optionally concatenated with
+one or more of
+.BR vuaibclo .
+The
+.I files
+are constituents of the archive
+.IR afile .
+The meanings of the
+.I key
+characters are:
+.TP
+.B d
+Delete 
+.I files 
+from the archive file.
+.TP
+.B r
+Replace
+.I files 
+in the archive file, or add them if missing.
+Optional modifiers are
+.RS
+.PD0
+.TP
+.B u
+Replace only files with
+modified dates later than that of
+the archive.
+.TP
+.B a
+Place new files after
+.I posname
+in the archive rather than at the end.
+.TP
+.BR b " or " i
+Place new files before
+.I posname
+in the archive.
+.RE
+.PD
+.TP
+.B q
+Quick.  Append
+.I files 
+to the end of the archive without checking for duplicates.
+Avoids quadratic behavior in
+.LR "for (i in *.v) ar r lib.a $i" .
+.TP
+.B t
+List a table of contents of the archive.
+If names are given, only those files are listed.
+.TP
+.B p
+Print the named files in the archive.
+.TP
+.B m
+Move the named files to the end or elsewhere,
+specified as with 
+.LR r .
+.TP
+.B o
+Preserve the access and modification times of files
+extracted with the
+.B x
+command.
+.TP
+.B x
+Extract the named files.
+If no names are given, all files in the archive are
+extracted.
+In neither case does
+.B x
+alter the archive file.
+.TP
+.B v
+Verbose.
+Give a file-by-file
+description of the making of a
+new archive file from the old archive and the constituent files.
+With
+.BR p ,
+precede each file with a name.
+With
+.BR t ,
+give a long listing of all information about the files,
+somewhat like a listing by
+.IR ls (1),
+showing
+.br
+.ns
+.IP
+.B
+	mode uid/gid size date name
+.TP
+.B c
+Create.
+Normally
+.I ar
+will create a new archive when
+.I afile
+does not exist, and give a warning.
+Option 
+.B c
+discards any old contents and suppresses the warning.
+.SH EXAMPLE
+.TP
+.L
+ar cr arch.a manifest *.tar.gz
+Replace the contents of
+.L arch.a
+with the
+.B manifest
+file and all the
+.IR gzip (1)'d
+.I tar
+files in the current directory.
+.SH FILES
+.TF /tmp/art.*.*
+.TP
+.B /tmp/art.*.*
+temporaries
+.SH SOURCE
+.B /appl/cmd/ar.b
+.SH "SEE ALSO"
+.IR 2l (10.1),
+.IR iar (10.1),
+.IR ar (10.6)
+.SH BUGS
+If the same file is mentioned twice in an argument list,
+it may be put in the archive twice.
+.br
+The file format used by this command is taken from UNIX, and
+makes some invalid assumptions,
+for instance that user IDs are numeric.

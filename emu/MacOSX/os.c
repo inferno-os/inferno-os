@@ -42,7 +42,7 @@ enum
     DELETE = 0x7F
 };
 char *hosttype = "MacOSX";
-char *cputype = "power";
+char *cputype = OBJTYPE;
 
 static pthread_key_t  prdakey;
 

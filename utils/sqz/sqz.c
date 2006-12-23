@@ -41,12 +41,10 @@ static	Word*	hash2[HSIZE];
 static	Sqhdr	sqhdr;
 static	ulong	chksum;
 
-static	int	aflag;	/* all: both text (squeezed) and data (not) */
 static	int	dflag;	/* squeeze data, not text */
 static	int	tflag;		/* squeeze text, leave data as-is */
 static	int	qflag = 1;	/* enable powerpc option */
 static	int	wflag;	/* write output */
-static	int	zflag;	/* use top==0 for data segment */
 static	int	islittle;		/* object code uses little-endian byte order */
 static	int	debug;
 static	char*	fname;

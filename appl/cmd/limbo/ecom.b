@@ -557,7 +557,7 @@ sumark(n: ref Node): ref Node
 			if(int n.flags & FNPTR){
 				if(int n.flags == FNPTR2)
 					n.addable = Roff;
-				else if(int n.flags == FNPTR2|FNPTRN)
+				else if(int n.flags == (FNPTR2|FNPTRN))
 					n.addable = Rnoff;
 			}
 			else

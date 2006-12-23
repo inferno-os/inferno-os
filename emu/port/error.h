@@ -32,9 +32,6 @@ extern char Ehungup[];		/* i/o on hungup channel */
 extern char Ebadctl[];		/* bad process or channel control request */
 extern char Enodev[];		/* no free devices */
 extern char Enoenv[];		/* no free environment resources */
-extern char Emuxshutdown[];	/* mux server shut down */
-extern char Emuxbusy[];		/* all mux channels busy */
-extern char Emuxmsg[];		/* bad mux message format or mismatch */
 extern char Ethread[];		/* thread exited */
 extern char Enochild[];		/* no living children */
 extern char Eioload[];		/* i/o error in demand load */

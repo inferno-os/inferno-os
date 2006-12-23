@@ -1,6 +1,5 @@
 .TH FSPROTO 2
 .SH NAME
-FSproto: 
 FSproto: readprotofile, readprotostring \- read file system prototype file
 .SH SYNOPSIS
 .EX

@@ -300,12 +300,13 @@ struct Modlink
 	Modl	links[1];
 };
 
+/* must be a multiple of 8 bytes */
 struct Heap
 {
 	int	color;		/* Allocation color */
 	ulong	ref;
 	Type*	t;
-	ulong	pad;	/* ensure double alignment; also used for heap profiling */
+	ulong	hprof;	/* heap profiling */
 };
 
 struct	Atidle

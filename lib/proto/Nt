@@ -1,7 +1,7 @@
 Nt
 	386
 		bin
-			emu.new	0775	inferno	inf	/Nt/386/bin/emu.exe
+			emu.new	0775	inferno	inferno	/Nt/386/bin/emu.exe
 			ie.exe
 			0a.exe
 			0c.exe

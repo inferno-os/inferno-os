@@ -2,21 +2,7 @@
 #include "fpuctl.h"
 #include "mathi.h"
 
-#include<stdio.h>
-
-void PPC_PrintFPSCR()
-{
-    ppc_fp_scr_t fpscr;
-
-    fpscr = get_fp_scr();
-    fprintf(stderr, "FPSCR = 0x%08x : 0x%08x\n",
-            ((unsigned int *)&fpscr)[0],
-            ((unsigned int *)&fpscr)[1]);
-    fprintf(stderr, "FPSCR[ve] = %d\n", fpscr.ve);
-    fprintf(stderr, "FPSCR[ze] = %d\n", fpscr.ze);
-    fprintf(stderr, "FPSCR[ue] = %d\n", fpscr.ue);
-    fprintf(stderr, "FPSCR[oe] = %d\n", fpscr.oe);
-}
+#include <stdio.h>
 
 void
 FPinit(void)

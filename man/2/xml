@@ -11,6 +11,8 @@ Parser, Item, Location, Attributes, Mark: import xml;
 init:   fn(): string;
 open: fn(f: string, warning: chan of (Locator, string),
                 preelem: string): (ref Parser, string);
+fopen: fn(iob: ref Bufio->Iobuf, f: string, warning: chan of (Locator, string),
+                preelem: string): (ref Parser, string);
 
 Parser: adt {
     fileoffset: int;
@@ -79,8 +81,15 @@ A new parser instance is created by calling
 .BR open(\fIf\fP,\ \fIwarning\fP,\ \fIpreelem\fP) ,
 which opens the file
 .I f
-for parsing as an XML document.
-It returns a tuple, say
+for parsing as an XML document,
+or
+.BR fopen(\fIiob\fP,\ \fIname\fP,\ \fIwarning\fP,\ \fIpreelem\fP) ,
+which does the same for an already open
+.B Iobuf
+(the string
+.I name
+will be used in diagnostics).
+Both functions return a tuple
 .RI ( p ,\  err ).
 If there is an error opening the document,
 .I p
@@ -94,7 +103,7 @@ If
 is not nil, non-fatal errors encountered when parsing
 will be sent on this channel - a separate process will
 be needed to received them. Each error is represented
-by a tuple, say
+by a tuple
 .RI ( loc ,\  msg ),
 containing the location
 .IR loc ,

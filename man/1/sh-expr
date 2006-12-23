@@ -18,23 +18,26 @@ expr, ntest \- shell module for simple arithmetic.
 .I num
 .br
 .SH DESCRIPTION
-.B Expr
+.I Expr
 is a loadable module for
 .IR sh (1)
 that provides support for simple integer arithmetic.
 It provides one command,
-.BR ntest ,
+.IR ntest ,
 which performs a simple boolean test
 on its integer argument, and the
 substitution operator
-.BR expr ,
+.IR expr ,
 which takes an expression in Reverse Polish
 notation, and yields its result.
-.B Ntest
+.PP
+.I Ntest
 returns true if its argument
 .I num
-is non-zero.
-.B Expr
+is non-zero,
+and false otherwise.
+.PP
+.I Expr
 evaluates each
 .I arg
 in turn; if it is an integer it gets pushed onto
@@ -50,7 +53,7 @@ yields 1, not -1.
 Alternative names are given for some operators;
 this is to avoid the necessity of quoting operators
 that contain
-.I sh
+.IR sh (1)
 metacharacters. All operations use 64-bit signed
 integers; integers are given in the same form acceptable
 to Limbo. The relational operators yield either
@@ -59,10 +62,10 @@ to Limbo. The relational operators yield either
 option is given,
 .I radix
 specifies an output base for numbers yielded by
-.BR expr .
+.IR expr .
 Numbers are printed in a form suitable for re-interpretation
 by
-.BR expr .
+.IR expr .
 .PP
 When all its arguments have been evaluated,
 .B expr

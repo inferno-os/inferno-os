@@ -146,6 +146,7 @@ include "draw.m";
 			Ldo Lwhile Lfor Lbreak
 			Lalt Lcase Lpick Lcont
 			Lreturn Lexit Lspawn Lraise Lfix
+			Ldynamic
 %%
 prog	: Limplement ids ';'
 	{

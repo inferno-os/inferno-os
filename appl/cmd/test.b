@@ -1,193 +1,188 @@
 implement Test;
-#
-# POSIX standard
-#	test expression
-#	[ expression ]
-#
-# translated Brazil /sys/src/cmd/test.c
 
 #
-# print "true" on stdout iff the expression evaluates to true
+#	venerable
+#		test expression
 #
 
 include "sys.m";
-sys: Sys;
-stderr: ref Sys->FD;
+	sys: Sys;
+	stderr: ref Sys->FD;
 
 include "draw.m";
+
+include "daytime.m";
+	daytime: Daytime;
 
 Test: module
 {
 	init:	fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
-ap: int;
-ac: int;
-av: array of string;
+gargs: list of string;
 
-init(nil: ref Draw->Context, argl: list of string)
+init(nil: ref Draw->Context, args: list of string)
 {
-	if(argl == nil)
+	if(args == nil)
 		return;
+	gargs = tl args;
 
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
 
-	ac = len argl;
-	av = array [ac] of string;
-	for(i := 0; argl != nil; argl = tl argl)
-		av[i++] = hd argl;
-	
-	if(av[0] == "[") {
-		if(av[--ac] != "]")
-			synbad("] missing");
-	}
-
-	ap = 1;
-	if(ap<ac && e())
-		sys->print("true");
-#		exit;
-#	sys->raise "fail: false";
+	if(gargs == nil)
+		raise "fail:usage";
+	if(!e())
+		raise "fail:false";
 }
 
-nxtarg(mt: int): string
+nextarg(mt: int): string
 {
-	if(ap >= ac){
-		if(mt){
-			ap++;
+	if(gargs == nil){
+		if(mt)
 			return nil;
-		}
 		synbad("argument expected");
 	}
-	return av[ap++];
+	s := hd gargs;
+	gargs = tl gargs;
+	return s;
 }
 
-nxtintarg(): (int, int)
+nextintarg(): (int, int)
 {
-	if(ap<ac && isint(av[ap]))
-		return (1, int av[ap++]);
+	if(gargs != nil && isint(hd gargs))
+		return (1, int nextarg(0));
 	return (0, 0);
+}
+
+isnextarg(s: string): int
+{
+	if(gargs != nil && hd gargs == s){
+		gargs = tl gargs;
+		return 1;
+	}
+	return 0;
 }
 
 e(): int
 {
 	p1 := e1();
-	if(nxtarg(1) == "-o")
+	if(isnextarg("-o"))
 		return p1 || e();
-	ap--;
 	return p1;
 }
 
 e1(): int
 {
 	p1 := e2();
-	if(nxtarg(1) == "-a")
+	if(isnextarg("-a"))
 		return p1 && e1();
-	ap--;
 	return p1;
 }
 
 e2(): int
 {
-	if(nxtarg(0) == "!")
+	if(isnextarg("!"))
 		return !e2();
-	ap--;
 	return e3();
 }
 
 e3(): int
 {
-	a := nxtarg(0);
-	if(a == "(") {
+	a := nextarg(0);
+	case a {
+	"(" =>
 		p1 := e();
-		if(nxtarg(0) != ")")
+		if(nextarg(0) != ")")
 			synbad(") expected");
 		return p1;
-	}
-
-	if(a == "-f")
-		return filck(nxtarg(0), Topf);
-
-	if(a == "-d")
-		return filck(nxtarg(0), Topd);
-
-	if(a == "-r")
-		return filck(nxtarg(0), Topr);
-
-	if(a == "-w")
-		return filck(nxtarg(0), Topw);
-
-	if(a == "-x")
-		return filck(nxtarg(0), Topx);
-
-	if(a == "-e")
-		return filck(nxtarg(0), Tope);
-
-	if(a == "-c")
-		return 0;
-
-	if(a == "-b")
-		return 0;
-
-	if(a == "-u")
-		return 0;
-
-	if(a == "-g")
-		return 0;
-
-	if(a == "-s")
-		return filck(nxtarg(0), Tops);
-
-	if(a == "-t") {
-		(ok, int1) := nxtintarg();
+	"-A" =>
+		return hasmode(nextarg(0), Sys->DMAPPEND);
+	"-L" =>
+		return hasmode(nextarg(0), Sys->DMEXCL);
+	"-T" =>
+		return hasmode(nextarg(0), Sys->DMTMP);
+	"-f" =>
+		f := nextarg(0);
+		return exists(f) && !hasmode(f, Sys->DMDIR);
+	"-d" =>
+		return hasmode(nextarg(0), Sys->DMDIR);
+	"-r" =>
+		return sys->open(nextarg(0), Sys->OREAD) != nil;
+	"-w" =>
+		return sys->open(nextarg(0), Sys->OWRITE) != nil;
+	"-x" =>
+		fd := sys->open(nextarg(0), Sys->OREAD);
+		if(fd == nil)
+			return 0;
+		(ok, d) := sys->fstat(fd);
+		if(ok < 0)
+			return 0;
+		return (d.mode & 8r111) != 0;
+	"-e" =>
+		return exists(nextarg(0));
+	"-s" =>
+		(ok, d) := sys->stat(nextarg(0));
+		if(ok < 0)
+			return 0;
+		return d.length > big 0;
+	"-t" =>
+		(ok, fd) := nextintarg();
 		if(!ok)
-			return isatty(1);
-		else
-			return isatty(int1);
+			return iscons(1);
+		return iscons(fd);
+	"-n" =>
+		return nextarg(0) != "";
+	"-z" =>
+		return nextarg(0) == "";
+	* =>
+		p2 := nextarg(1);
+		if(p2 == nil)
+			return a != nil;
+		case p2 {
+		"=" =>
+			return nextarg(0) == a;
+		"!=" =>
+			return nextarg(0) != a;
+		"-older" =>
+			return isolder(nextarg(0), a);
+		"-ot" =>
+			return isolderthan(a, nextarg(0));
+		"-nt" =>
+			return isnewerthan(a, nextarg(0));
+		}
+
+		if(!isint(a))
+			return a != nil;
+
+		int1 := int a;
+		(ok, int2) := nextintarg();
+		if(ok){
+			case p2 {
+			"-eq" =>
+				return int1 == int2;
+			"-ne" =>
+				return int1 != int2;
+			"-gt" =>
+				return int1 > int2;
+			"-lt" =>
+				return int1 < int2;
+			"-ge" =>
+				return int1 >= int2;
+			"-le" =>
+				return int1 <= int2;
+			}
+		}
+
+		synbad("unknown operator " + p2);
+		return 0;
 	}
-
-	if(a == "-n")
-		return nxtarg(0) != "";
-	if(a == "-z")
-		return nxtarg(0) == "";
-
-	p2 := nxtarg(1);
-	if (p2 == nil)
-		return a != nil;
-	if(p2 == "=")
-		return nxtarg(0) == a;
-
-	if(p2 == "!=")
-		return nxtarg(0) != a;
-
-	if(!isint(a))
-		return a != nil;
-	int1 := int a;
-
-	(ok, int2) := nxtintarg();
-	if(ok){
-		if(p2 == "-eq")
-			return int1 == int2;
-		if(p2 == "-ne")
-			return int1 != int2;
-		if(p2 == "-gt")
-			return int1 > int2;
-		if(p2 == "-lt")
-			return int1 < int2;
-		if(p2 == "-ge")
-			return int1 >= int2;
-		if(p2 == "-le")
-			return int1 <= int2;
-	}
-
-	synbad("unknown operator " + p2);
-	return 0;		# to shut ken up
 }
 
 synbad(s: string)
 {
 	sys->fprint(stderr, "test: bad syntax: %s\n", s);
-	exit;
+	raise "fail:bad syntax";
 }
 
 isint(s: string): int
@@ -200,79 +195,90 @@ isint(s: string): int
 	return 1;
 }
 
-Topr,
-Topw,
-Topx,
-Tope,
-Topf,
-Topd,
-Tops: con iota;
-
-filck(fname: string, Top: int): int
+exists(f: string): int
 {
-	(ok, dir) := sys->stat(fname);
-
-	if(ok >= 0) {
-		ok = 0;
-		case Top {
-		Topr =>	# readable
-			ok = permck(dir, 8r004);
-		Topw =>	# writable
-			ok = permck(dir, 8r002);
-		Topx =>	# executable
-			ok = permck(dir, 8r001);
-		Tope =>	# exists
-			ok = 1;
-		Topf =>	# is a regular file
-			ok = (dir.mode & Sys->DMDIR) == 0;
-		Topd =>	# is a directory
-			ok = (dir.mode & Sys->DMDIR) != 0;
-		Tops =>	# has length > 0
-			ok = dir.length > big 0;
-		}
-	}
-
-	return ok > 0;
+	return sys->stat(f).t0 >= 0;
 }
 
-uid,
-gid: string;
-
-permck(dir: Sys->Dir, mask: int): int
+hasmode(f: string, m: int): int
 {
-	if(uid == nil) {
-		fd := sys->open("/dev/user", Sys->OREAD);
-		if(fd != nil) {
-			buf := array [28] of byte;
-			n := sys->read(fd, buf, len buf);
-			if(n > 0)
-				uid = string buf[:n];
-		}
-		gid = nil;	# how do I find out what my group is?
-	}
-	
-	ok: int = 0;
-
-	ok = dir.mode & mask<<0;
-	if(!ok && dir.gid == gid)
-		ok = dir.mode & mask<<3;
-	if(!ok && dir.uid == uid)
-		ok = dir.mode & mask<<6;
-
-	return ok > 0;
-}
-
-isatty(fd: int): int
-{
-	d1, d2: Sys->Dir;
-
-	ok: int;
-	(ok, d1) = sys->fstat(sys->fildes(fd));
+	(ok, d) := sys->stat(f);
 	if(ok < 0)
 		return 0;
-	(ok, d2) = sys->stat("/dev/cons");
+	return (d.mode & m) != 0;
+}
+
+iscons(fno: int): int
+{
+	fd := sys->fildes(fno);
+	if(fd == nil)
+		return 0;
+	s := sys->fd2path(fd);
+	n := len "/dev/cons";
+	return s == "#c/cons" || len s >= n && s[len s-n:] == "/dev/cons";
+}
+
+isolder(t: string, f: string): int
+{
+	(ok, dir) := sys->stat(f);
 	if(ok < 0)
 		return 0;
 
-	return d1.dtype==d2.dtype && d1.dev==d2.dev && d1.qid.path==d2.qid.path;
+	n := 0;
+	for(i := 0; i < len t;){
+		for(j := i; j < len t; j++)
+			if(!(t[j] >= '0' && t[j] <= '9'))
+				break;
+		if(i == j)
+			synbad("bad time syntax, "+t);
+		m := int t[i:j];
+		i = j;
+		if(i == len t){
+			n = m;
+			break;
+		}
+		case t[i++] {
+		'y' =>	n += m*12*30*24*3600;
+		'M' =>	n += m*30*24*3600;
+		'd' =>	n += m*24*3600;
+		'h' =>	n += m*3600;
+		'm' =>	n += m*60;
+		's' =>		n += m;
+		* =>		synbad("bad time syntax, "+t);
+		}
+	}
+
+	return dir.mtime+n < now();
+}
+
+isolderthan(a: string, b: string): int
+{
+	(aok, ad) := sys->stat(a);
+	if(aok < 0)
+		return 0;
+	(bok, bd) := sys->stat(b);
+	if(bok < 0)
+		return 0;
+	return ad.mtime < bd.mtime;
+}
+
+isnewerthan(a: string, b: string): int
+{
+	(aok, ad) := sys->stat(a);
+	if(aok < 0)
+		return 0;
+	(bok, bd) := sys->stat(b);
+	if(bok < 0)
+		return 0;
+	return ad.mtime > bd.mtime;
+}
+
+now(): int
+{
+	if(daytime == nil){
+		daytime = load Daytime Daytime->PATH;
+		if(daytime == nil)
+			synbad(sys->sprint("can't load %s: %r", Daytime->PATH));
+	}
+	return daytime->now();
 }

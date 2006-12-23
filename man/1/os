@@ -6,6 +6,8 @@ os \- interface to host OS commands (hosted Inferno only)
 .br
 .B os
 [
+.B -b
+] [
 .B -m
 .I mountpoint
 ] [
@@ -43,7 +45,10 @@ option causes the command to run in directory
 an error results and the command will not run if
 .I dir
 does not exist or is inaccessible.
-The standard output and standard error of the command are merged on the standard output.
+The standard output and standard error of the command appear on the standard output
+and standard error streams of the
+.I os
+command itself.
 .I Os
 copies the standard input to the remote command's standard input; redirect
 .IR os 's
@@ -56,6 +61,17 @@ terminates when
 does, and its exit status reflects the status of
 .I cmd
 (if available).
+.PP
+If the
+.I os
+command is killed or exits (eg, for lack of input and output),
+the host's own process control operations are used to (attempt to) kill
+.IR cmd ,
+if it is still running.
+The
+.B -b
+(background) option suppresses that behaviour.
+.PP
 The
 .B -n
 option causes

@@ -10,6 +10,7 @@ alphabet-grid alphabet-grid
 grid alphabet-grid
 alphabet-main alphabet-main
 main alphabet-main
+ar ar
 asm asm
 disdump asm
 auhdr auplay
@@ -103,6 +104,7 @@ look look
 ls ls
 lookman man
 man man
+man2html man
 man2txt man
 wm/man man
 mash mash

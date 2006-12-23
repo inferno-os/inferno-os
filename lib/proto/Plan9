@@ -1,7 +1,7 @@
 Plan9
 	386
 		bin
-			emu.new	775	inferno	inf	/Plan9/386/bin/emu
+			emu.new	775	inferno	inferno	/Plan9/386/bin/emu
 			5a
 			5c
 			5l

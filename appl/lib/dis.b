@@ -318,7 +318,7 @@ loadobj(disfile: string): (ref Mod, string)
 				reals := array[n] of real;
 				for(i = 0; i < n; i++)
 					reals[i] = math->bits64real(getl());
-				dat = ref Data.Reals(op, n, offset, nil);
+				dat = ref Data.Reals(op, n, offset, reals);
 			} else {
 				disptr += 8*n;	# skip it
 				dat = ref Data.Reals(op, n, offset, nil);

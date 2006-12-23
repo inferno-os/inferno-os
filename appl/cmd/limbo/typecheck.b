@@ -2116,12 +2116,12 @@ argncompat(n: ref Node, f: ref Decl, a: ref Node): int
 passimplicit(fname, args: ref Node): ref Node
 {
 	t := fname.ty;
+	n := fname.left;
 	if(t.ids == nil || t.ids.implicit == byte 0){
-		if(hasside(fname.left, 1))
-			nwarn(fname, "result of expression "+expconv(fname.left)+" ignored");
+		if(!isfnrefty(t) && hasside(n, 1))
+			nwarn(fname, "result of expression "+expconv(n)+" ignored");
 		return args;
 	}
-	n := fname.left;
 	if(n.op == Oname && n.decl.store == Dtype){
 		nerror(n, expconv(n)+" is a type and cannot be a self argument");
 		n = mkn(Onothing, nil, nil);

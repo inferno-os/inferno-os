@@ -75,4 +75,5 @@ Xml: module {
 	};
 	init:	fn(): string;
 	open: fn(f: string, warning: chan of (Locator, string), preelem: string): (ref Parser, string);
+	fopen:	fn(f: ref Bufio->Iobuf, srcname: string, warning: chan of (Locator, string), preelem: string): (ref Parser, string);
 };

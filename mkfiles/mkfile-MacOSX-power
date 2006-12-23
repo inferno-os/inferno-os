@@ -6,10 +6,10 @@ O=		o
 OS=		o
 
 AR=		ar
-ARFLAGS=	crvs
+ARFLAGS=	ruvs
 A=		a
 
-AS=		cc -c
+AS=		cc -c -arch ppc
 ASFLAGS=	
 
 CC=		cc -c
@@ -23,7 +23,7 @@ COPTFLAGS=	-O2
 CDEBFLAGS=	-g
 CTHREADFLAGS=
 
-LD=		cc
+LD=		cc -arch ppc
 LDFLAGS= -multiply_defined suppress
 
 SYSLIBS=

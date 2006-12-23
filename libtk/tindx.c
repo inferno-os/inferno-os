@@ -517,7 +517,8 @@ tktindcompare(TkText *tkt, TkTindex *i1, int op, TkTindex *i2)
 		ans = !eq && tktindbefore(i2, i1);
 		break;
 	default:
-		SET(ans);
+		ans = 0;	/* not reached */
+		break;
 	};
 
 	return ans;

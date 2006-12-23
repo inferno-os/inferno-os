@@ -1,7 +1,7 @@
 FreeBSD
 	386
 		bin
-			emu.new	0775	inferno	inf	/FreeBSD/386/bin/emu
+			emu.new	0775	inferno	inferno	/FreeBSD/386/bin/emu
 			asm
 			iar
 			data2c
@@ -11,6 +11,7 @@ FreeBSD
 
 			limbo
 			mk
+			mkext
 			ndate
 			inm
 			yacc

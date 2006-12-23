@@ -41,6 +41,7 @@ mtypes := array[] of { T->StringInt
 	("application/pdf", ApplPdf),
 	("application/postscript", ApplPostscript),
 	("application/rtf", ApplRtf),
+	("application/soap+xml", TextPlain),
 	("application/x-html", TextHtml),
 	("au", AudioBasic),
 	("audio/au", AudioBasic),
@@ -67,6 +68,7 @@ mtypes := array[] of { T->StringInt
 	("text/html", TextHtml),
 	("text/plain", TextPlain),
 	("text/x-html", TextHtml),
+	("text/xml", TextXml),
 	("tif", ImageTiff),
 	("tiff", ImageTiff),
 	("txt", TextPlain),
@@ -91,7 +93,9 @@ mnames := array[] of {
 	"image/x-xbitmap",
 	"audio/basic",
 	"video/mpeg",
-	"video/quicktime"
+	"video/quicktime",
+	"application/soap+xml",
+	"text/xml"
 };
 
 init(m: Message, s: String, b: Bufio, u: Url, lfd: ref Sys->FD)
@@ -121,7 +125,7 @@ init(m: Message, s: String, b: Bufio, u: Url, lfd: ref Sys->FD)
 usererr(r: ref Req, msg: string) : ref Msg
 {
 	m := Msg.newmsg();
-	m.prefixline = sys->sprint("ERROR %s %s", r.reqid, msg);
+	m.prefixline = sys->sprint("ERROR %s %s\n", r.reqid, msg);
 	m.bodylen = 0;
 	return m;
 }
@@ -136,7 +140,7 @@ okprefix(r: ref Req, mrep: ref Msg)
 	(nil, cloc) := mrep.fieldval("content-location");
 	if(cloc == "")
 		cloc = "unknown";
-	mrep.prefixline = "OK " + string mrep.bodylen + " " + r.reqid + " " + sctype + " " + cloc;
+	mrep.prefixline = "OK " + string mrep.bodylen + " " + r.reqid + " " + sctype + " " + cloc +"\n";
 }
 
 canon_mtype(s: string) : string

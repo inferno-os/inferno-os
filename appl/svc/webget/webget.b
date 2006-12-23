@@ -197,7 +197,7 @@ start(ctl: chan of int)
 					prefix = string data[0:i];
 					if(i+1 < ndata) {
 						r.body = array[ndata-i-1] of byte;
-						r.body[0:] = data[i:ndata];
+						r.body[0:] = data[i+1:ndata];
 					}
 					break;
 				}

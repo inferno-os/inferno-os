@@ -490,6 +490,163 @@ IPint_shr(void *fp)
 	*f->ret = newIPint(ret);
 }
 
+static void
+mpand(mpint *b, mpint *m, mpint *res)
+{
+	int i;
+
+	res->sign = b->sign;
+	if(b->top == 0 || m->top == 0){
+		res->top = 0;
+		return;
+	}
+	mpbits(res, b->top*Dbits);
+	res->top = b->top;
+	for(i = b->top; --i >= 0;){
+		if(i < m->top)
+			res->p[i] = b->p[i] & m->p[i];
+		else
+			res->p[i] = 0;
+	}
+	mpnorm(res);
+}
+
+static void
+mpor(mpint *b1, mpint *b2, mpint *res)
+{
+	mpint *t;
+	int i;
+
+	if(b2->top > b1->top){
+		t = b1;
+		b1 = b2;
+		b2 = t;
+	}
+	if(b1->top == 0){
+		mpassign(b2, res);
+		return;
+	}
+	if(b2->top == 0){
+		mpassign(b1, res);
+		return;
+	}
+	mpassign(b1, res);
+	for(i = b2->top; --i >= 0;)
+		res->p[i] |= b2->p[i];
+	mpnorm(res);
+}
+
+static void
+mpxor(mpint *b1, mpint *b2, mpint *res)
+{
+	mpint *t;
+	int i;
+
+	if(b2->top > b1->top){
+		t = b1;
+		b1 = b2;
+		b2 = t;
+	}
+	if(b1->top == 0){
+		mpassign(b2, res);
+		return;
+	}
+	if(b2->top == 0){
+		mpassign(b1, res);
+		return;
+	}
+	mpassign(b1, res);
+	for(i = b2->top; --i >= 0;)
+		res->p[i] ^= b2->p[i];
+	mpnorm(res);
+}
+
+static void
+mpnot(mpint *b1, mpint *res)
+{
+	int i;
+
+	mpbits(res, Dbits*b1->top);
+	res->sign = 1;
+	res->top = b1->top;
+	for(i = res->top; --i >= 0;)
+		res->p[i] = ~b1->p[i];
+	mpnorm(res);
+}
+
+/* bits */
+void
+IPint_and(void *fp)
+{
+	F_IPint_and *f;
+	BigInt ret;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i1 == H || f->i2 == H)
+		error(exNilref);
+	ret = mpnew(0);
+	if(ret != nil)
+		mpand(MP(f->i1), MP(f->i2), ret);
+	*f->ret = newIPint(ret);
+}
+
+void
+IPint_ori(void *fp)
+{
+	F_IPint_ori *f;
+	BigInt ret;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i1 == H || f->i2 == H)
+		error(exNilref);
+	ret = mpnew(0);
+	if(ret != nil)
+		mpor(MP(f->i1), MP(f->i2), ret);
+	*f->ret = newIPint(ret);
+}
+
+void
+IPint_xor(void *fp)
+{
+	F_IPint_xor *f;
+	BigInt ret;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i1 == H || f->i2 == H)
+		error(exNilref);
+	ret = mpnew(0);
+	if(ret != nil)
+		mpxor(MP(f->i1), MP(f->i2), ret);
+	*f->ret = newIPint(ret);
+}
+
+void
+IPint_not(void *fp)
+{
+	F_IPint_not *f;
+	BigInt ret;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i1 == H)
+		error(exNilref);
+	ret = mpnew(0);
+	if(ret != nil)
+		mpnot(MP(f->i1), ret);
+	*f->ret = newIPint(ret);
+}
+
 /*
  * return a random number between a and b
  */

@@ -1,8 +1,6 @@
 SYSTARG=Linux
-OBJTYPE=386
 <../../mkconfig
 SYSTARG=Linux
-OBJTYPE=386
 
 #Configurable parameters
 

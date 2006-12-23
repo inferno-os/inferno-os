@@ -168,6 +168,7 @@ runcmd(char *cmd)
 
 void (*notefunc)(int);
 
+void
 os_notify(void (*func)(int))
 {
 	notefunc = func;

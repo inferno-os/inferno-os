@@ -1,4 +1,5 @@
 #define _POSIX_SOURCE
+#define	_USE_32BIT_TIME_T
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
@@ -34,8 +35,9 @@ typedef struct Proc Proc;
  * 4090 different volatile quals
  * 4554 operator precedence
  * 4146 unary - on unsigned type
+ * 4996 `deprecated' functions: they often suggest non-portable replacements
  */
-#pragma warning( disable : 4305 4244 4102 4761 4018 4245 4244 4068 4090 4554 4146)
+#pragma warning( disable : 4305 4244 4102 4761 4018 4245 4244 4068 4090 4554 4146 4996)
 
 #define	nil		((void*)0)
 

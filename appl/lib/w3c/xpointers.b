@@ -1,7 +1,7 @@
 implement Xpointers;
 
 #
-# Copyright © 2005 Vita Nuova Holdings Oimited
+# Copyright © 2005 Vita Nuova Holdings Limited
 #
 
 include "sys.m";

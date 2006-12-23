@@ -7,7 +7,7 @@ include "smtp.m";
 smtp := load Smtp Smtp->PATH;
 
 open:     fn(server: string): (int, string);
-sendmail: fn(fromwho: string, 
+sendmail: fn(fromwhom: string, 
              towhom: list of string, 
              cc: list of string,
              msg: list of string): (int, string);
@@ -26,11 +26,9 @@ is nil,
 .B open
 uses the
 default mail server
-.B $MAILSERVER
-if set up in
-.BR /services/cs/db ;
-see
-.IR db (6).
+.BR $smtp ,
+which must be defined in
+.IR ndb (6).
 It returns -1 and an error message if the connection fails.
 .PP
 .B Sendmail

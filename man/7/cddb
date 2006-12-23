@@ -1,0 +1,56 @@
+.TH CDDB 7
+.SH NAME
+cddb \- CD database
+.SH SYNOPSIS
+.B cddb
+[
+.B -DTt
+]
+[
+.B -s
+.I server
+]
+.B query
+.I diskid
+.I ntracks
+.I track0id
+.I ...
+.SH DESCRIPTION
+.I Cddb
+queries an Internet database to get a table of
+contents and other details for audio CDs.
+The CD has
+.I ntracks
+tracks, and
+.I trackNid
+is a hash value derived from the
+.IR N 'th
+track's characteristics;
+.I diskid
+is a hash of all the track IDs.
+.PP
+.I Cddb
+takes 4 optional arguments.
+The
+.B -s server
+option causes
+.I cddb
+to use a different server for the query
+(default is
+.IR freedb.freedb.org ).
+The
+.B -D
+option causes the raw database response from the server to be dumped
+to standard output.
+The
+.I -t
+option causes the time of each track to be appended to the normal output.
+.I -T
+prints track times and
+adds a line at the end with the total time.
+.SH SOURCE
+.B /appl/cmd/cddb.b
+.SH SEE ALSO
+.I 9660srv
+(in
+.IR dossrv (4))

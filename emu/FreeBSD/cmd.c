@@ -21,7 +21,7 @@ enum
 typedef struct Targ Targ;
 struct Targ
 {
-	int	fd[2];	/* fd[0] is standard input, fd[1] is standard output */
+	int	fd[3];	/* fd[0] is standard input, fd[1] is standard output, fd[2] is standard error */
 	char**	args;
 	char*	dir;
 	int	pid;
@@ -43,15 +43,17 @@ childproc(Targ *t)
 
 	nfd = getdtablesize();
 	for(i = 0; i < nfd; i++)
-		if(i != t->fd[0] && i != t->fd[1] && i != t->wfd)
+		if(i != t->fd[0] && i != t->fd[1] && i != t->fd[2] && i != t->wfd)
 			close(i);
 
 	dup2(t->fd[0], 0);
 	dup2(t->fd[1], 1);
-	dup2(t->fd[1], 2);
+	dup2(t->fd[2], 2);
 	close(t->fd[0]);
 	close(t->fd[1]);
+	close(t->fd[2]);
 
+	/* should have an auth file to do host-specific authorisation? */
 	if(t->gid != -1){
 		if(setgid(t->gid) < 0 && getegid() == 0){
 			fprint(t->wfd, "can't set gid %d: %s", t->gid, strerror(errno));
@@ -82,10 +84,10 @@ childproc(Targ *t)
 }
 
 void*
-oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
+oscmd(char **args, int nice, char *dir, int *fd)
 {
 	Targ *t;
-	int r, fd0[2], fd1[2], wfd[2], n, pid;
+	int r, fd0[2], fd1[2], fd2[2], wfd[2], n, pid;
 
 	t = mallocz(sizeof(*t), 1);
 	if(t == nil)
@@ -93,14 +95,16 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 
 	fd0[0] = fd0[1] = -1;
 	fd1[0] = fd1[1] = -1;
+	fd2[0] = fd2[1] = -1;
 	wfd[0] = wfd[1] = -1;
-	if(pipe(fd0) < 0 || pipe(fd1) < 0 || pipe(wfd) < 0)
+	if(pipe(fd0) < 0 || pipe(fd1) < 0 || pipe(fd2) < 0 || pipe(wfd) < 0)
 		goto Error;
 	if(fcntl(wfd[1], F_SETFD, FD_CLOEXEC) < 0)	/* close on exec to give end of file on success */
 		goto Error;
 
 	t->fd[0] = fd0[0];
 	t->fd[1] = fd1[1];
+	t->fd[2] = fd2[1];
 	t->wfd = wfd[1];
 	t->args = args;
 	t->dir = dir;
@@ -130,6 +134,7 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 
 	close(fd0[0]);
 	close(fd1[1]);
+	close(fd2[1]);
 	close(wfd[1]);
 
 	n = read(wfd[0], up->genbuf, sizeof(up->genbuf)-1);
@@ -137,6 +142,7 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 	if(n > 0){
 		close(fd0[1]);
 		close(fd1[0]);
+		close(fd2[0]);
 		free(t);
 		up->genbuf[n] = 0;
 		if(Debug)
@@ -145,8 +151,9 @@ oscmd(char **args, int nice, char *dir, int *rfd, int *sfd)
 		return nil;
 	}
 
-	*sfd = fd0[1];
-	*rfd = fd1[0];
+	fd[0] = fd0[1];
+	fd[1] = fd1[0];
+	fd[2] = fd2[0];
 	return t;
 
 Error:
@@ -157,6 +164,8 @@ Error:
 	close(fd0[1]);
 	close(fd1[0]);
 	close(fd1[1]);
+	close(fd2[0]);
+	close(fd2[1]);
 	close(wfd[0]);
 	close(wfd[1]);
 	error(strerror(r));

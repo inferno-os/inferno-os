@@ -699,7 +699,7 @@ static char*
 decname(Decl *d)
 {
 	if(d->sym == nil)
-		return "<??>";
+		return "<nil>";
 	return d->sym->name;
 }
 

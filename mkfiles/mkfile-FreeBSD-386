@@ -6,7 +6,7 @@ O=		o
 OS=		o
 
 AR=		ar
-ARFLAGS=	crvs
+ARFLAGS=	ruvs
 
 AS=		cc -c
 ASFLAGS=

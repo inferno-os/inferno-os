@@ -1,7 +1,7 @@
 Linux
 	386
 		bin
-			emu.new	0775	inferno	inf	/Linux/386/bin/emu
+			emu.new	0775	inferno	inferno	/Linux/386/bin/emu
 			asm
 			iar
 			data2c
@@ -11,8 +11,14 @@ Linux
 
 			limbo
 			mk
+			mkext
 			ndate
 			yacc
+		include
+			+
+		lib
+	arm
+		bin
 		include
 			+
 		lib

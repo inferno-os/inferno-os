@@ -1,11 +1,12 @@
 .TH SYS-PRINT 2
 .SH NAME
-print, fprint, sprint \- print formatted output
+print, aprint, fprint, sprint \- print formatted output
 .SH SYNOPSIS
 .EX
 include "sys.m";
 sys := load Sys Sys->PATH;
 
+aprint: fn(format: string, *): array of byte;
 fprint: fn(fd: ref FD, format: string, *): int;
 print:  fn(format: string, *): int;
 sprint: fn(format: string, *): string;
@@ -22,6 +23,10 @@ file descriptor.
 .B Sprint
 places text
 in a string, which it returns.
+.B Aprint
+is similar but returns the text in
+.IR utf (6)
+representation as an array of bytes.
 .B Print
 and
 .B fprint

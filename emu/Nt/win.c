@@ -1,74 +1,42 @@
-#define Unknown win_Unknown
+#define Unknown WUnknown
+#define Colormap	WColormap
+#define Cursor		WCursor
+#define Display		WDisplay
+#define Drawable	WDrawable
+#define Font		WFont
+#define GC		WGC
+#define Point		WPoint
+#define Rectangle	WRectangle
+#define Screen		WScreen
+#define Visual		WVisual
+#define Window		WWindow
+
 #include	<windows.h>
+
+#undef Colormap
+#undef Cursor
+#undef Display
+#undef XDrawable
+#undef Font
+#undef GC
+#undef Point
+#undef Rectangle
+#undef Screen
+#undef Visual
+#undef Window
 #undef Unknown
+
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
-
+#include	<draw.h>
 #include	"keyboard.h"
 #include	"cursor.h"
 
-/*
- * image channel descriptors - copied from draw.h as it clashes with windows.h on many things
- */
-enum {
-	CRed = 0,
-	CGreen,
-	CBlue,
-	CGrey,
-	CAlpha,
-	CMap,
-	CIgnore,
-	NChan,
-};
-
-#define __DC(type, nbits)	((((type)&15)<<4)|((nbits)&15))
-#define CHAN1(a,b)	__DC(a,b)
-#define CHAN2(a,b,c,d)	(CHAN1((a),(b))<<8|__DC((c),(d)))
-#define CHAN3(a,b,c,d,e,f)	(CHAN2((a),(b),(c),(d))<<8|__DC((e),(f)))
-#define CHAN4(a,b,c,d,e,f,g,h)	(CHAN3((a),(b),(c),(d),(e),(f))<<8|__DC((g),(h)))
-
-#define NBITS(c) ((c)&15)
-#define TYPE(c) (((c)>>4)&15)
-
-enum {
-	GREY1	= CHAN1(CGrey, 1),
-	GREY2	= CHAN1(CGrey, 2),
-	GREY4	= CHAN1(CGrey, 4),
-	GREY8	= CHAN1(CGrey, 8),
-	CMAP8	= CHAN1(CMap, 8),
-	RGB15	= CHAN4(CIgnore, 1, CRed, 5, CGreen, 5, CBlue, 5),
-	RGB16	= CHAN3(CRed, 5, CGreen, 6, CBlue, 5),
-	RGB24	= CHAN3(CRed, 8, CGreen, 8, CBlue, 8),
-	RGBA32	= CHAN4(CRed, 8, CGreen, 8, CBlue, 8, CAlpha, 8),
-	ARGB32	= CHAN4(CAlpha, 8, CRed, 8, CGreen, 8, CBlue, 8),	/* stupid VGAs */
-	XRGB32  = CHAN4(CIgnore, 8, CRed, 8, CGreen, 8, CBlue, 8),
-};
-
 extern ulong displaychan;
 
-extern void drawend(void);
-
-/*
- * defs for image types to overcome name conflicts
- */
-typedef struct IPoint		IPoint;
-typedef struct IRectangle	IRectangle;
-
-struct IPoint
-{
-	LONG	x;
-	LONG	y;
-};
-
-struct IRectangle
-{
-	IPoint	min;
-	IPoint	max;
-};
-
 extern	char*	runestoutf(char*, Rune*, int);
-extern	int	bytesperline(IRectangle, int);
+extern	int	bytesperline(Rectangle, int);
 extern	int	main(int argc, char **argv);
 static	void	dprint(char*, ...);
 static	DWORD WINAPI	winproc(LPVOID);
@@ -105,7 +73,7 @@ WinMain(HINSTANCE winst, HINSTANCE wprevinst, LPSTR cmdline, int wcmdshow)
 	return 0;
 }
 
-void
+static void
 dprint(char *fmt, ...)
 {
 	va_list arg;
@@ -116,17 +84,6 @@ dprint(char *fmt, ...)
 	va_end(arg);
 	OutputDebugString("inferno: ");
 	OutputDebugString(buf);
-}
-
-int
-col(int v, int n)
-{
-	int i, c;
-
-	c = 0;
-	for(i = 0; i < 8; i += n)
-		c |= v << (16-(n+i));
-	return c >> 8;
 }
 
 static void
@@ -190,11 +147,13 @@ autochan(void)
 		return CMAP8;
 	if (bpp < 24)
 		return RGB15;
-	return RGB24;
+	if (bpp < 32)
+		return RGB24;
+	return XRGB32;
 }
 
 uchar*
-attachscreen(IRectangle *r, ulong *chan, int *d, int *width, int *softscreen)
+attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 {
 	int i, k;
 	ulong c;
@@ -314,7 +273,7 @@ attachscreen(IRectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 }
 
 void
-flushmemscreen(IRectangle r)
+flushmemscreen(Rectangle r)
 {
 	RECT wr;
 
@@ -385,11 +344,12 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			b |= 1;
 		if(wparam & MK_MBUTTON)
 			b |= 2;
-		if(wparam & MK_RBUTTON)
+		if(wparam & MK_RBUTTON) {
 			if(wparam & MK_CONTROL)
 				b |= 2;  //simulate middle button
 			else
 				b |= 4;  //right button
+		}
 		mousetrack(b, x, y, 0);
 		break;
 	case WM_SYSKEYDOWN:
@@ -590,8 +550,7 @@ winproc(LPVOID x)
 	if(AdjustWindowRect(&size, ws, 0)) {
 		maxxsize = size.right - size.left;
 		maxysize = size.bottom - size.top;
-	}
-	else {
+	}else{
 		maxxsize = Xsize + 40;
 		maxysize = Ysize + 40;
 	}
@@ -611,8 +570,7 @@ winproc(LPVOID x)
 			inst,			/* program handle */
 			NULL			/* create parms */
 			);
-	}
-	else {
+	}else{
 		window = CreateWindowExA(
 			0,			/* extended style */
 			"inferno",		/* class */
@@ -644,15 +602,13 @@ winproc(LPVOID x)
 			TranslateMessage(&msg);
 			DispatchMessageW(&msg);
 		}
-	}
-	else {
+	}else{
 		while(GetMessageA(&msg, NULL, 0, 0)) {
 			TranslateMessage(&msg);
 			DispatchMessageA(&msg);
 		}
 	}
 	attached = 0;
-	/* drawend(); */
 	ExitThread(msg.wParam);
 	return 0;
 }
@@ -663,7 +619,7 @@ setpointer(int x, int y)
 	POINT pt; 
  
 	pt.x = x; pt.y = y;
-	ClientToScreen(window, (LPPOINT)&pt);
+	ClientToScreen(window, &pt);
 	SetCursorPos(pt.x, pt.y);
 }
 
@@ -671,7 +627,7 @@ void
 drawcursor(Drawcursor* c)
 {
 	HCURSOR nh, oh;
-	IRectangle ir;
+	Rectangle ir;
 	int i, h, j, bpl, ch, cw;
 	uchar *bs, *bc, *and, *xor, *cand, *cxor;
 
@@ -690,7 +646,6 @@ drawcursor(Drawcursor* c)
 	ir.min.y = c->miny;
 	ir.max.x = c->maxx;
 	ir.max.y = c->maxy;
-	/* passing IRectangle to Rectangle is safe */
 	bpl = bytesperline(ir, 1);
 
 	h = (c->maxy-c->miny)/2;
@@ -728,8 +683,7 @@ drawcursor(Drawcursor* c)
 		SendMessage(window, WM_SETCURSOR, (int)window, 0);
 		if(oh != NULL)
 			DestroyCursor(oh);
-	}
-	else {
+	}else{
 		print("CreateCursor error %d\n", GetLastError());
 		print("CXCURSOR=%d\n", GetSystemMetrics(SM_CXCURSOR));
 		print("CYCURSOR=%d\n", GetSystemMetrics(SM_CYCURSOR));

@@ -309,6 +309,7 @@ uniqs(Reg *r)
  * if the system forces R0 to be zero,
  * convert references to $0 to references to R0.
  */
+int
 regzer(Adr *a)
 {
 	if(R0ISZERO) {
@@ -323,6 +324,7 @@ regzer(Adr *a)
 	return 0;
 }
 
+int
 regtyp(Adr *a)
 {
 
@@ -490,6 +492,7 @@ copyprop(Reg *r0)
 	return copy1(v1, v2, r0->s1, 0);
 }
 
+int
 copy1(Adr *v1, Adr *v2, Reg *r, int f)
 {
 	int t;
@@ -582,7 +585,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 
 	default:
 		if(debug['P'])
-			print(" (???)");
+			print(" (?)");
 		return 2;
 
 

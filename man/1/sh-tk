@@ -41,6 +41,13 @@ tk, chan, send, recv, alt \- loadable tk module for sh.
 ]
 .B }
 .br
+.B ${tk onscreen
+.I winid
+[
+.I how
+]
+.B }
+.br
 .B ${tk
 .I winid tkcmd
 .B }
@@ -127,6 +134,22 @@ channel of the same name is created. Events from
 the window manager arrive on this channel, and
 should be responded to appropriately using
 .BR "tk winctl" .
+.TP
+.B tk onscreen
+.B Tk onscreen
+must be called to make window
+.I winid
+visible for the first time, the same as
+.I onscreen
+in
+.IR tkclient (2).
+.I How
+is the same as for that call - if given, it must be one of
+.BR place ,
+.BR onscreen
+or
+.BR exact .
+.BR 
 .TP
 .B tk winctl
 .B Tk winctl
@@ -241,6 +264,7 @@ sh
 load std tk
 pctl newpgrp
 wid=${tk window 'My window'}
+tk onscreen $wid
 tk $wid update
 while {} {tk winctl $wid ${recv $wid}} &
 .EE
@@ -252,5 +276,6 @@ while {} {tk winctl $wid ${recv $wid}} &
 .IR sh-expr (1),
 .IR tkcmd (1),
 .IR tk (2),
+.IR tkclient (2),
 .IR wmlib (2),
 ``The Tk Reference Manual''

@@ -273,7 +273,8 @@ int
 so_gethostbyname(char *host, char**hostv, int n)
 {
 	int i;
-	unsigned char buf[32], *p;
+	char buf[32];
+	uchar *p;
 	struct hostent *hp;
 
 	hp = gethostbyname(host);
@@ -282,7 +283,7 @@ so_gethostbyname(char *host, char**hostv, int n)
 
 	for(i = 0; hp->h_addr_list[i] && i < n; i++) {
 		p = hp->h_addr_list[i];
-		sprint(buf, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
+		snprint(buf, sizeof(buf), "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
 		hostv[i] = strdup(buf);
 		if(hostv[i] == 0)
 			break;

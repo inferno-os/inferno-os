@@ -95,6 +95,7 @@ keywords := array [] of
 	Keywd("continue",	Lcont),
 	Keywd("cyclic",		Lcyclic),
 	Keywd("do",		Ldo),
+	Keywd("dynamic",	Ldynamic),
 	Keywd("else",		Lelse),
 	Keywd("exception",	Lexcept),
 	Keywd("exit",		Lexit),

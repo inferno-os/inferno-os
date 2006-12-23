@@ -137,6 +137,7 @@ tkinwindow(Tk *tk, Point p, int descend)
 		if (descend && tkmethod[tk->type]->inwindow != nil)
 			f = tkmethod[tk->type]->inwindow(tk, &p);
 		else {
+			q = p;
 			for (f = tk->slave; f; f = f->next) {
 				q.x = p.x - (f->act.x + f->borderwidth);
 				q.y = p.y - (f->act.y + f->borderwidth);

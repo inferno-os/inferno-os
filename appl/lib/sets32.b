@@ -218,7 +218,7 @@ op(o: int, a, b: int): int
 	2r1010 => return a;
 	2r1011 => return a | ~b;
 	2r1100 => return b;
-	2r1101 => return ~(a | b);
+	2r1101 => return ~a | b;
 	2r1110 => return a | b;
 	2r1111 => return ~0;
 	}

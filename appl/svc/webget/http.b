@@ -69,6 +69,7 @@ usecache := 1;
 cachedir: con "/services/webget/cache";
 
 httpproxy: ref ParsedUrl;
+noproxydoms: list of string;	# domains that don't require proxy
 agent := "Inferno-webget/" + Version;
 
 responses := array[] of {
@@ -137,22 +138,42 @@ readconfig()
 			}
 			if(line[0]=='#')
 				continue;
-			(key, val) := S->splitl(line, " \t");
-			val = S->take(S->drop(val, " \t"), "^\r\n");
-			if(val == "")
+			(key, val) := S->splitl(line, " \t=");
+			val = S->take(S->drop(val, " \t="), "^\r\n");
+			if(val == nil)
 				continue;
-			if(key == "httpproxy" && val != "none") {
-				# val should be host or host:port
-				httpproxy = U->makeurl("http://" + val);
-				W->log(nil, "Using http proxy " + httpproxy.tostring());
-				usecache = 0;
-			}
-			if(key == "agent") {
+			case key{
+			"httpproxy" =>
+				if(val != "none"){
+					# val should be host or host:port
+					httpproxy = U->makeurl("http://" + val);
+					W->log(nil, "Using http proxy " + httpproxy.tostring());
+					usecache = 0;
+				}
+			"noproxy" =>
+				(nil, noproxydoms) = sys->tokenize(val, ";, \t");
+			"agent" =>
 				agent = val;
 				W->log(nil, sys->sprint("User agent specfied as '%s'\n", agent));
 			}
 		}
 	}
+}
+
+need_proxy(h: string) : int
+{
+	doml := noproxydoms;
+	if(doml == nil)
+		return 1;		# all domains need proxy
+
+	lh := len h;
+	for(dom := hd doml; doml != nil; doml = tl doml) {
+		ld := len dom;
+		if(lh >= ld && h[lh-ld:] == dom)
+			return 0;	# domain is on the noproxy list
+	}
+
+	return 1;
 }
 
 connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
@@ -202,7 +223,7 @@ connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
 			# Find the port and dial the network
 			#
 			dialu := u;
-			if(httpproxy != nil)
+			if(httpproxy != nil && need_proxy(u.host))
 				dialu = httpproxy;
 			port := dialu.port;
 			if(port == "") {
@@ -237,7 +258,7 @@ connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
 			#
 			m := Msg.newmsg();
 			requ: string;
-			if(httpproxy != nil)
+			if(httpproxy != nil && need_proxy(u.host))
 				requ = u.tostring();
 			else {
 				requ = u.pstart + u.path;
@@ -259,7 +280,7 @@ connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
 				m.body = r.body;
 				m.bodylen = len m.body;
 				m.addhdrs(Nameval("Content-Length", string (len r.body)) :: 
-						Nameval("Content-type", "application/x-www-form-urlencoded") ::
+						Nameval("Content-type", "text/xml") ::	# was application/x-www-form-urlencoded
 						nil);
 			}
 			io = B->fopen(net.dfd, sys->ORDWR);
@@ -400,7 +421,7 @@ connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
 
 getcode(status: string) : int
 {
-	(vers, scode) := S->splitl(status, " ");
+	(nil, scode) := S->splitl(status, " ");
 	scode = S->drop(scode, " ");
 	return int scode;
 }

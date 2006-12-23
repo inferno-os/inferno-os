@@ -1211,7 +1211,7 @@ rewritecomm(Node *n, Node *comm, Node *tmp, Node *slot)
 		}
 	}
 	if(n->right == comm && n->op == Oas && comm->op == Orcv
-	&& sumark(n->left)->addable < Rcant)
+	&& sumark(n->left)->addable < Rcant && (n->left->op != Oname || n->left->decl != nildecl))
 		adr = n->left;
 	if(adr != nil){
 		p = genrawop(&comm->left->src, ILEA, adr, nil, slot);

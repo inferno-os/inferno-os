@@ -92,6 +92,7 @@ shwin_cfg := array[] of {
 rdreq: list of Rdreq;
 menuindex := "0";
 holding := 0;
+haskbdfocus := 0;
 plumbed := 0;
 rawon := 0;
 rawinput := "";
@@ -260,16 +261,22 @@ main(ctxt: ref Draw->Context, argv: list of string)
 	c := <-wm.ctl or
 	c = <-t.wreq or
 	c = <-titlectl =>
+		(nil, flds) := sys->tokenize(c, " \t");
+		if(flds != nil && hd flds == "haskbdfocus" && tl flds != nil){
+			haskbdfocus = int hd tl flds;
+			setcols(t);
+		}
 		tkclient->wmctl(t, c);
 	ecmd := <-edit =>
 		editor(t, ecmd);
 		sendinput(t);
 
 	c := <-keys =>
-		cut(t, 1);
 		char := c[1];
 		if(char == '\\')
 			char = c[2];
+		if(char != ESC)
+			cut(t, 1);
 		if(rawon){
 			if(int cmd(t, ".ft.t compare insert >= outpoint")){
 				rawinput[len rawinput] = char;
@@ -488,14 +495,30 @@ setholding(t: ref Tk->Toplevel, hold: int)
 	if(hold == holding)
 		return;
 	holding = hold;
-	color := "blue";
 	if(!holding){
-		color = "black";
 		tkclient->settitle(t, winname);
 		sendinput(t);
 	}else
 		tkclient->settitle(t, winname+" (holding)");
-	cmd(t, ".ft.t configure -foreground "+color);
+	setcols(t);
+}
+
+setcols(t: ref Tk->Toplevel)
+{
+	fgcol := "black";
+	if(holding){
+		if(haskbdfocus)
+			fgcol = "#000099FF";	# DMedblue
+		else
+			fgcol = "#005DBBFF";	# DGreyblue
+	}else{
+		if(haskbdfocus)
+			fgcol = "black";
+		else
+			fgcol = "#666666FF";	# dark grey
+	}
+	cmd(t, ".ft.t configure -foreground "+fgcol+" -selectforeground "+fgcol);
+	cmd(t, ".ft.t tag configure sel -foreground "+fgcol);
 }
 
 tkunquote(s: string): string

@@ -72,7 +72,7 @@ nukedist:V: nuke
 	for j in $DIRS utils tools
 	do
 		echo "(cd $j; mk $MKFLAGS $stem)"
-		(cd $j; mk $MKFLAGS $stem)
+		(cd $j; mk $MKFLAGS $stem) || exit 1
 	done
 
 &-Nt:QV:
@@ -100,7 +100,7 @@ emu/&-Posix:QV:
 	for j in $EMUDIRS
 	do
 		echo "(cd $j; mk $MKFLAGS $stem)"
-		(cd $j; mk $MKFLAGS $stem)
+		(cd $j; mk $MKFLAGS $stem) || exit 1
 	done
 
 emu/&-Nt:QV:
@@ -121,7 +121,7 @@ kernel/&-Posix:QV:
 	for j in $KERNEL_DIRS
 	do
 		echo "(cd $j; mk $MKFLAGS $stem)"
-		(cd $j; mk $MKFLAGS $stem)
+		(cd $j; mk $MKFLAGS $stem) || exit 1
 	done
 
 kernel/&-Nt:QV:

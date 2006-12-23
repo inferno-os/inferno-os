@@ -1,0 +1,327 @@
+.TH RFC822 2
+.SH NAME
+rfc822 \- RFC822 mail format helpers
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "rfc822.m";
+rfc822 := load RFC822 RFC822->PATH;
+Content, Rfclex: import rfc822;
+
+Word, QString: con ...;
+Maxrequest: con 16*1024;   # more than enough for anything sensible
+
+init:         fn(b: Bufio);
+
+Rfclex: adt {
+   tok:     int;
+   wordval: string;
+
+   mk:      fn(a: array of byte): ref Rfclex;
+   getc:    fn(p: self ref Rfclex): int;
+   ungetc:  fn(p: self ref Rfclex);
+   lex:     fn(p: self ref Rfclex): int;
+   unlex:   fn(p: self ref Rfclex);
+   skipws:  fn(p: self ref Rfclex): int;
+
+   line:    fn(p: self ref Rfclex): string;
+};
+
+readheaders:  fn(fd: ref Bufio->Iobuf, limit: int):
+                  array of (string, array of byte);
+parseparams:  fn(ps: ref Rfclex): list of (string, string);
+parsecontent: fn(ps: ref Rfclex, multipart: int,
+                  head: list of ref Content): list of ref Content;
+mimefields:   fn(ps: ref Rfclex):
+                  list of (string, list of (string, string));
+
+quotable:     fn(s: string): int;
+quote:        fn(s: string): string;
+
+sec2date:     fn(secs: int): string;
+date2sec:     fn(s: string): int;
+now:          fn(): int;
+time:         fn(): string;
+
+Content: adt{
+   generic:   string;
+   specific:  string;
+   params:    list of (string, string);
+
+   mk:        fn(specific: string, generic: string,
+                 params: list of (string, string)): ref Content;
+   check:     fn(c: self ref Content, oks: list of ref Content): int;
+   text:      fn(c: self ref Content): string;
+};
+
+suffixclass:  fn(name: string): (ref Content, ref Content);
+dataclass:    fn(a: array of byte): (ref Content, ref Content);
+.EE
+.SH DESCRIPTION
+.B RFC822
+provides types and functions to help read and parse RFC822 e-mail headers
+(following the more streamlined rules of RFC2822, which has replaced RFC822),
+including some MIME extensions.
+Currently the focus is on operations that support HTTP and other W3C protocols,
+rather than mail reading.
+.PP
+.B Init
+must be called before any other operation in the module.
+It must be given an instance of the
+.B Bufio
+module (see
+.IR bufio (2)).
+.PP
+.B Readheaders
+reads a set of RFC822 header lines from
+.IR fd ,
+ended by an empty line.
+It returns an array of tuples
+.BI ( fieldname,\ value ),
+one per header line.
+The string
+.I fieldname
+is the header line's field name, in lower case.
+The
+.I value
+gives the rest of the line, after removing any initial white space and appending any continuation lines, uninterpreted,
+as an array of bytes (not a string).
+.I Limit
+is the maximum allowed size of the header in bytes;
+usually that is
+.BR Maxrequest .
+.B Readheaders
+returns the tuple
+.B (nil,\ nil)
+on end of file or if the header size limit is exceeded.
+.PP
+.B Rfclex
+takes a header line's
+.I value
+and produces a sequence of tokens.
+It provides the following operations:
+.TP
+.BI Rfclex.mk( a )
+Return a reference to a new
+.B Rfclex
+value that will produce tokens from the array of byte
+.IR a ,
+which is normally the
+.I value
+of one of the header lines returned by
+.BR readheaders .
+.TP
+.IB rfl .getc()
+Return the next character from the input stream, in the Latin-1 (ISO 8859-1) character set.
+Return a negative value
+.RB ( Bufio->EOF )
+on end-of-file.
+.TP
+.IB rfl .ungetc()
+Put back the last character read, which will be returned again by the next call to
+.IR rfl .getc .
+.TP
+.IB rfl .lex()
+Return the next token from the input stream, ignoring any leading white space.
+Most tokens are single characters representing themselves.
+The token value is also assigned to
+.IB rfl .tok .
+There are two special token values:
+.BR Word ,
+representing an unquoted word in the RFC2822 grammar; and
+.BR QString ,
+representing a quoted string.
+In both cases
+.IB rfl .wordval
+will contain the text of the word or string (without quotes).
+.TP
+.IB rfl .unlex()
+Put back the last token read; the next call to
+.IB rfl .lex
+will return it again.
+.TP
+.IB rfl .skipws()
+Skip over any white space at the current position;
+return the initial character of the next token (which is not consumed).
+.TP
+.IB rfl .line()
+Return a string giving the remainder of the input line.
+.PP
+Several functions take an
+.B Rfclex
+referring to a header line's value, parse it, and return a higher-level representation of its value.
+.PP
+.B Parseparams
+parses a sequence of
+.I parameter
+settings of the form (\c
+.BI ; attribute = value\c
+)*
+and returns a corresponding list of tuples
+.BI ( attribute,\ value ) .
+It returns nil if no parameters are found.
+.PP
+.B Parsecontent
+parses the values of fields such as
+.B Content-Type
+and
+.BR Accept .
+The syntax is (loosely) a sequence of comma-separated elements of the form
+.IR type ,
+.IB type /* ,
+or
+.IB type / subtype
+followed by an optional sequence of parameters of the form (\c
+. BI ; attribute = value
+)*.
+The
+.IB type  / subtype
+form is allowed only if
+.I multipart
+is true (non-zero).
+It returns a corresponding list of
+.B Content
+values followed by the initial list
+.IR head .
+.PP
+.B Mimefields
+parses a sequence of comma-separated elements of the form
+.IR word (\c
+.BI ; attr = val
+)*
+as used for instance in the rule
+.IR transfer-coding .
+It returns a corresponding list of tuples
+.BI ( word,\ l )
+where
+.I l
+is an optional list of tuples
+.BI ( attr,\ val ) .
+.PP
+When producing an RFC822 header line, words must be quoted when they contain certain
+special characters.
+.B Quotable
+returns true iff the string
+.I s
+contains any of those characters.
+.B Quote
+returns the value of
+.I s
+with quotes added as required.
+.PP
+RFC822 headers have a particular syntax for dates, different from that of
+.IR daytime (2).
+The function
+.B sec2date
+returns a string in RFC822 date format representing the time
+.I secs
+(in seconds from the Epoch).
+.B Date2sec
+takes a string in RFC822 date format and returns the time in seconds from the Epoch.
+.B Now
+returns the current time in seconds from the epoch
+(it is equivalent to
+.B Daytime->now()
+from
+.IR daytime (2)).
+.B Time
+returns the current time in RFC822's date format.
+.PP
+The Multipurpose Internet Mail Extensions (see RFC2045-7) include syntax
+for describing different types of media, content, and content encodings.
+.B Content
+values represent those descriptions.
+Its fields and operations are as follows:
+.TP
+.B generic
+General class of content (eg,
+.BR application ,
+.BR image ,
+.BR text ,
+etc)
+.TP
+.B specific
+Optional particular type within that class
+(eg,
+.B octet-stream
+within
+.BR application ,
+or
+.B plain
+within
+.BR text )
+.TP
+.B params
+Optional list of
+.BI ( attr,\ value )
+pairs giving parameters to the content type or encoding.
+The particular attribute
+.B q
+has a floating-point
+.I value
+that specifies the relative quality (utility) of a particular type or encoding to a client.
+.TP
+.BI mk( generic,\ specific,\ params )
+Return a reference to a new
+.B Content
+value, initialised with the given parameters.
+.TP
+.IB c .check( ok )
+Return true if
+.I c
+is acceptable content/media/encoding according to the list of allowable forms in
+.IR ok .
+.I C
+is always acceptable if
+.I ok
+is nil (ie, there are no restrictions).
+Otherwise, at least one of the
+.B Content
+values in
+.I ok
+must match
+.IR c .
+That is, an
+.I ok
+value must have the same generic and specific types as
+.IR c ,
+or specify
+.RB ` * '
+in one or both positions (to match any value in
+.IR c ).
+Any
+.I params
+are ignored.
+.TP
+.IB c .text()
+Return the RFC822 syntax for
+.IR c :
+.IB generic / specific ; a\f5=\fIv\fR\&...
+where the component words are quoted if necessary.
+.PP
+Given the
+.I name
+of a file,
+.B suffixclass
+returns a tuple
+.BI ( type,\ enc )
+where
+.I type
+gives the MIME
+.B Content-Type
+of
+.I name
+(or nil, if its type is not known), and
+.I enc
+gives the MIME
+.B Content-Encoding
+of
+.I name
+(or nil, if it is not encoded).
+.SH FILES
+.TF /lib/mimetype
+.TP
+/lib/mimetype
+map between file suffix and MIME content types
+.SH SOURCE
+.B /appl/lib/rfc822.b

@@ -25,6 +25,7 @@ TARG=\
 	cfgfile.dis\
 	chanfill.dis\
 	crc.dis\
+	csv.dis\
 	daytime.dis\
 	db.dis\
 	dbm.dis\
@@ -221,3 +222,5 @@ dhcpclient.dis:	$ROOT/module/dhcp.m
 ubfa.dis: $ROOT/module/ubfa.m
 secstore.dis:	$ROOT/module/secstore.m
 ida.dis:	$ROOT/module/ida.m
+rfc822.dis:	$ROOT/module/rfc822.m
+csv.dis: $ROOT/module/csv.m

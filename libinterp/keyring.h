@@ -3,6 +3,7 @@ Runtab Keyringmodtab[]={
 	"IPint.add",0xa47c1b24,IPint_add,40,2,{0x0,0xc0,},
 	"aescbc",0xac616ba,Keyring_aescbc,48,2,{0x0,0xc0,},
 	"aessetup",0x44452583,Keyring_aessetup,40,2,{0x0,0xc0,},
+	"IPint.and",0xa47c1b24,IPint_and,40,2,{0x0,0xc0,},
 	"auth",0x9c576bb,Keyring_auth,48,2,{0x0,0xc0,},
 	"IPint.b64toip",0xa803ee03,IPint_b64toip,40,2,{0x0,0x80,},
 	"IPint.bebytestoip",0x6fa90725,IPint_bebytestoip,40,2,{0x0,0x80,},
@@ -41,6 +42,8 @@ Runtab Keyringmodtab[]={
 	"md5",0x7656377,Keyring_md5,48,2,{0x0,0xb0,},
 	"IPint.mul",0xa47c1b24,IPint_mul,40,2,{0x0,0xc0,},
 	"IPint.neg",0x491fbd11,IPint_neg,40,2,{0x0,0x80,},
+	"IPint.not",0x491fbd11,IPint_not,40,2,{0x0,0x80,},
+	"IPint.ori",0xa47c1b24,IPint_ori,40,2,{0x0,0xc0,},
 	"pktoattr",0xfb4e61ba,Keyring_pktoattr,40,2,{0x0,0x80,},
 	"pktostr",0xfb4e61ba,Keyring_pktostr,40,2,{0x0,0x80,},
 	"putbytearray",0x7cfef557,Keyring_putbytearray,48,2,{0x0,0xc0,},
@@ -70,6 +73,7 @@ Runtab Keyringmodtab[]={
 	"verify",0x8b5b9f76,Keyring_verify,48,2,{0x0,0xe0,},
 	"verifym",0x8b5b9f76,Keyring_verifym,48,2,{0x0,0xe0,},
 	"writeauthinfo",0x5ba03002,Keyring_writeauthinfo,40,2,{0x0,0xc0,},
+	"IPint.xor",0xa47c1b24,IPint_xor,40,2,{0x0,0xc0,},
 	0
 };
-#define Keyringmodlen	70
+#define Keyringmodlen	74

@@ -634,6 +634,7 @@ void	pdecl(int, Type*, Sym*);
 Decl*	push(void);
 Decl*	push1(Sym*);
 Node*	revertdcl(void);
+#undef round
 #define	round	ccround
 long	round(long, int);
 int	rsametype(Type*, Type*, int, int);

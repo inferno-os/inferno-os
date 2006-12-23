@@ -610,8 +610,6 @@ exslave(void *a)
 		notkilled();
 		exfreeq(q);
 	}
-	print("exslave %ld shut down", up->pid);	/* not reached */
-	pexit("exslave shut down", 0);
 }
 
 static void

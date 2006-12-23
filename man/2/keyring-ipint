@@ -31,6 +31,10 @@ IPint: adt
   cmp:  fn(i1: self ref IPint, i2: ref IPint): int;
   shl:  fn(i: self ref IPint, n: int): ref IPint;
   shr:  fn(i: self ref IPint, n: int): ref IPint;
+  and:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  ior:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  not:  fn(i: self ref IPint): ref IPint;
+  xor:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
 };
 .EE
 .SH DESCRIPTION
@@ -145,3 +149,28 @@ Returns
 .IB i .shr( n )
 Returns
 .IR i >> n
+.TP
+.IB i1 .and( i2 )
+Returns
+.IR i & n ,
+bitwise AND
+.TP
+.IB i1 .ior( i2 )
+Returns
+.IR i | n ,
+bitwise inclusive-OR
+(it is
+.B ior
+because plain
+.B or
+is a Limbo keyword)
+.TP
+.IB i .not()
+Returns
+.RI ~ i ,
+bitwise ones-complement
+.TP
+.IB i1 .xor( i2 )
+Returns
+.IR i ^ n ,
+bitwise exclusive-OR

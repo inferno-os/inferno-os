@@ -107,11 +107,19 @@ kbdslave(void *a)
 	USED(a);
 	for(;;) {
 		b = readkbd();
-		if(kbd.raw == 0)
-			write(1, &b, 1);
+		if(kbd.raw == 0){
+			switch(b){
+			case 0x15:
+				write(1, "^U\n", 3);
+				break;
+			default:
+				write(1, &b, 1);
+				break;
+			}
+		}
 		qproduce(kbdq, &b, 1);
 	}
-	pexit("kbdslave", 0);
+	/* pexit("kbdslave", 0); */	/* not reached */
 }
 
 void
@@ -152,13 +160,13 @@ gkbdputc(Queue *q, int ch)
 void
 consinit(void)
 {
-	kbdq = qopen(512, 0, 0, 0);
+	kbdq = qopen(512, 0, nil, nil);
 	if(kbdq == 0)
 		panic("no memory");
-	lineq = qopen(512, 0, 0, 0);
+	lineq = qopen(2*1024, 0, nil, nil);
 	if(lineq == 0)
 		panic("no memory");
-	gkbdq = qopen(512, 0, 0, 0);
+	gkbdq = qopen(512, 0, nil, nil);
 	if(gkbdq == 0)
 		panic("no memory");
 	randominit();
@@ -178,9 +186,9 @@ consattach(char *spec)
 {
 	static int kp;
 
-	if (kp == 0 && !dflag) {
-		kproc("kbd", kbdslave, 0, 0);
+	if(kp == 0 && !dflag) {
 		kp = 1;
+		kproc("kbd", kbdslave, 0, 0);
 	}
 	return devattach('c', spec);
 }
@@ -205,34 +213,37 @@ consopen(Chan *c, int omode)
 	case Qconsctl:
 		incref(&kbd.ctl);
 		break;
+
 	case Qscancode:
 		qlock(&kbd.gq);
-		if(gkscanq || !gkscanid) {
+		if(gkscanq != nil || gkscanid == nil) {
 			qunlock(&kbd.q);
 			c->flag &= ~COPEN;
 			if(gkscanq)
 				error(Einuse);
 			else
-				error(Ebadarg);
+				error("not supported");
 		}
 		gkscanq = qopen(256, 0, nil, nil);
 		qunlock(&kbd.gq);
 		break;
+
 	case Qkprint:
 		wlock(&kprintq.l);
-		if(kprintq.q != nil){
+		if(waserror()){
 			wunlock(&kprintq.l);
 			c->flag &= ~COPEN;
+			nexterror();
+		}
+		if(kprintq.q != nil)
 			error(Einuse);
-		}
-		kprintq.q = qopen(32*1024, 0, 0, 0);
-		if(kprintq.q == nil){
-			wunlock(&kprintq.l);
-			c->flag &= ~COPEN;
+		kprintq.q = qopen(32*1024, Qcoalesce, nil, nil);
+		if(kprintq.q == nil)
 			error(Enomem);
-		}
 		qnoblock(kprintq.q, 1);
+		poperror();
 		wunlock(&kprintq.l);
+		c->iounit = qiomaxatomic;
 		break;
 	}
 	return c;
@@ -246,17 +257,20 @@ consclose(Chan *c)
 
 	switch((ulong)c->qid.path) {
 	case Qconsctl:
+		/* last close of control file turns off raw */
 		if(decref(&kbd.ctl) == 0)
 			kbd.raw = 0;
 		break;
+
 	case Qscancode:
 		qlock(&kbd.gq);
 		if(gkscanq) {
 			qfree(gkscanq);
-			gkscanq = 0;
+			gkscanq = nil;
 		}
 		qunlock(&kbd.gq);
 		break;
+
 	case Qkprint:
 		wlock(&kprintq.l);
 		qfree(kprintq.q);
@@ -267,62 +281,82 @@ consclose(Chan *c)
 }
 
 static long
-consread(Chan *c, void *va, long count, vlong offset)
+consread(Chan *c, void *va, long n, vlong offset)
 {
-	int i, n, ch, eol;
-	char *p, buf[64];
+	ulong l;
+	int i, send;
+	char *p, buf[64], ch;
 
 	if(c->qid.type & QTDIR)
-		return devdirread(c, va, count, contab, nelem(contab), devgen);
+		return devdirread(c, va, n, contab, nelem(contab), devgen);
 
 	switch((ulong)c->qid.path) {
 	default:
 		error(Egreg);
+
 	case Qsysctl:
-		return readstr(offset, va, count, VERSION);
+		return readstr(offset, va, n, VERSION);
+
 	case Qsysname:
 		if(ossysname == nil)
 			return 0;
-		return readstr(offset, va, count, ossysname);
+		return readstr(offset, va, n, ossysname);
+
 	case Qrandom:
-		return randomread(va, count);
+		return randomread(va, n);
+
 	case Qnotquiterandom:
-		genrandom(va, count);
-		return count;
+		genrandom(va, n);
+		return n;
+
 	case Qpin:
 		p = "pin set";
 		if(up->env->pgrp->pin == Nopin)
 			p = "no pin";
-		return readstr(offset, va, count, p);
+		return readstr(offset, va, n, p);
+
 	case Qhostowner:
-		return readstr(offset, va, count, eve);
+		return readstr(offset, va, n, eve);
+
 	case Qhoststdin:
-		return read(0, va, count);	/* should be pread */
+		return read(0, va, n);	/* should be pread */
+
 	case Quser:
-		return readstr(offset, va, count, up->env->user);
+		return readstr(offset, va, n, up->env->user);
+
 	case Qjit:
 		snprint(buf, sizeof(buf), "%d", cflag);
-		return readstr(offset, va, count, buf);
+		return readstr(offset, va, n, buf);
+
 	case Qtime:
 		snprint(buf, sizeof(buf), "%.lld", timeoffset + osusectime());
-		return readstr(offset, va, count, buf);
+		return readstr(offset, va, n, buf);
+
 	case Qdrivers:
 		p = malloc(READSTR);
 		if(p == nil)
 			error(Enomem);
-		n = 0;
+		l = 0;
 		for(i = 0; devtab[i] != nil; i++)
-			n += snprint(p+n, READSTR-n, "#%C %s\n", devtab[i]->dc,  devtab[i]->name);
-		n = readstr(offset, va, count, p);
+			l += snprint(p+l, READSTR-l, "#%C %s\n", devtab[i]->dc,  devtab[i]->name);
+		if(waserror()){
+			free(p);
+			nexterror();
+		}
+		n = readstr(offset, va, n, p);
+		poperror();
 		free(p);
 		return n;
+
 	case Qmemory:
-		return poolread(va, count, offset);
+		return poolread(va, n, offset);
 
 	case Qnull:
 		return 0;
+
 	case Qmsec:
-		return readnum(offset, va, count, osmillisec(), NUMSIZE);
+		return readnum(offset, va, n, osmillisec(), NUMSIZE);
+
 	case Qcons:
 		qlock(&kbd.q);
 		if(waserror()){
@@ -334,53 +368,60 @@ consread(Chan *c, void *va, long count, vlong offset)
 			error(Enonexist);
 
 		while(!qcanread(lineq)) {
-			qread(kbdq, &kbd.line[kbd.x], 1);
-			ch = kbd.line[kbd.x];
-			if(kbd.raw){
-				qiwrite(lineq, &kbd.line[kbd.x], 1);
+			if(qread(kbdq, &ch, 1) == 0)
 				continue;
-			}
-			eol = 0;
-			switch(ch) {
-			case '\b':
-				if(kbd.x)
-					kbd.x--;
-				break;
-			case 0x15:
-				kbd.x = 0;
-				break;
-			case '\n':
-			case 0x04:
-				eol = 1;
-			default:
+			send = 0;
+			if(ch == 0){
+				/* flush output on rawoff -> rawon */
+				if(kbd.x > 0)
+					send = !qcanread(kbdq);
+			}else if(kbd.raw){
 				kbd.line[kbd.x++] = ch;
-				break;
+				send = !qcanread(kbdq);
+			}else{
+				switch(ch){
+				case '\b':
+					if(kbd.x)
+						kbd.x--;
+					break;
+				case 0x15:
+					kbd.x = 0;
+					break;
+				case 0x04:
+					send = 1;
+					break;
+				case '\n':
+					send = 1;
+				default:
+					kbd.line[kbd.x++] = ch;
+					break;
+				}
 			}
-			if(kbd.x == sizeof(kbd.line) || eol){
-				if(ch == 0x04)
-					kbd.x--;
+			if(send || kbd.x == sizeof kbd.line){
 				qwrite(lineq, kbd.line, kbd.x);
 				kbd.x = 0;
 			}
 		}
-		n = qread(lineq, va, count);
+		n = qread(lineq, va, n);
 		qunlock(&kbd.q);
 		poperror();
 		return n;
+
 	case Qscancode:
 		if(offset == 0)
-			return readstr(0, va, count, gkscanid);
-		else
-			return qread(gkscanq, va, count);
+			return readstr(0, va, n, gkscanid);
+		return qread(gkscanq, va, n);
+
 	case Qkeyboard:
-		return qread(gkbdq, va, count);
+		return qread(gkbdq, va, n);
+
 	case Qkprint:
 		rlock(&kprintq.l);
 		if(waserror()){
 			runlock(&kprintq.l);
 			nexterror();
 		}
-		n = qread(kprintq.q, va, count);
+		n = qread(kprintq.q, va, n);
 		poperror();
 		runlock(&kprintq.l);
 		return n;
@@ -388,12 +429,10 @@ consread(Chan *c, void *va, long count, vlong offset)
 }
 
 static long
-conswrite(Chan *c, void *va, long count, vlong offset)
+conswrite(Chan *c, void *va, long n, vlong offset)
 {
-	char buf[128];
+	char buf[128], *a, ch;
 	int x;
-
-	USED(offset);
 
 	if(c->qid.type & QTDIR)
 		error(Eperm);
@@ -401,6 +440,7 @@ conswrite(Chan *c, void *va, long count, vlong offset)
 	switch((ulong)c->qid.path) {
 	default:
 		error(Egreg);
+
 	case Qcons:
 		if(canrlock(&kprintq.l)){
 			if(kprintq.q != nil){
@@ -408,105 +448,129 @@ conswrite(Chan *c, void *va, long count, vlong offset)
 					runlock(&kprintq.l);
 					nexterror();
 				}
-				qwrite(kprintq.q, va, count);
+				qwrite(kprintq.q, va, n);
 				poperror();
 				runlock(&kprintq.l);
-				return count;
+				return n;
 			}
 			runlock(&kprintq.l);
 		}
-		return write(1, va, count);
+		return write(1, va, n);
+
 	case Qsysctl:
-		return sysconwrite(va, count);
+		return sysconwrite(va, n);
+
 	case Qconsctl:
-		if(count >= sizeof(buf))
-			count = sizeof(buf)-1;
-		strncpy(buf, va, count);
-		buf[count] = 0;
-		if(strncmp(buf, "rawon", 5) == 0) {
-			kbd.raw = 1;
-			return count;
+		if(n >= sizeof(buf))
+			n = sizeof(buf)-1;
+		strncpy(buf, va, n);
+		buf[n] = 0;
+		for(a = buf; a;){
+			if(strncmp(a, "rawon", 5) == 0){
+				kbd.raw = 1;
+				/* clumsy hack - wake up reader */
+				ch = 0;
+				qwrite(kbdq, &ch, 1);
+			} else if(strncmp(buf, "rawoff", 6) == 0){
+				kbd.raw = 0;
+			}
+			if((a = strchr(a, ' ')) != nil)
+				a++;
 		}
-		else
-		if(strncmp(buf, "rawoff", 6) == 0) {
-			kbd.raw = 0;
-			return count;
-		}
-		error(Ebadctl);
+		break;
+
 	case Qkeyboard:
-		for(x=0; x<count; ) {
+		for(x=0; x<n; ) {
 			Rune r;
 			x += chartorune(&r, &((char*)va)[x]);
 			gkbdputc(gkbdq, r);
 		}
-		return count;
+		break;
+
 	case Qnull:
-		return count;
+		break;
+
 	case Qpin:
 		if(up->env->pgrp->pin != Nopin)
 			error("pin already set");
-		if(count >= sizeof(buf))
-			count = sizeof(buf)-1;
-		strncpy(buf, va, count);
-		buf[count] = '\0';
+		if(n >= sizeof(buf))
+			n = sizeof(buf)-1;
+		strncpy(buf, va, n);
+		buf[n] = '\0';
 		up->env->pgrp->pin = atoi(buf);
-		return count;
+		break;
+
 	case Qtime:
-		if(count >= sizeof(buf))
-			count = sizeof(buf)-1;
-		strncpy(buf, va, count);
-		buf[count] = '\0';
+		if(n >= sizeof(buf))
+			n = sizeof(buf)-1;
+		strncpy(buf, va, n);
+		buf[n] = '\0';
 		timeoffset = strtoll(buf, 0, 0)-osusectime();
-		return count;
-	case Quser:
-		if(count >= sizeof(buf))
-			error(Ebadarg);
-		strncpy(buf, va, count);
-		buf[count] = '\0';
-		if(count > 0 && buf[count-1] == '\n')
-			buf[--count] = '\0';
-		if(count == 0)
-			error(Ebadarg);
-		if(strcmp(up->env->user, eve) != 0)
-			error(Eperm);
-		setid(buf, 0);
-		return count;
+		break;
+
 	case Qhostowner:
-		if(count >= sizeof(buf))
-			error(Ebadarg);
-		strncpy(buf, va, count);
-		buf[count] = '\0';
-		if(count > 0 && buf[count-1] == '\n')
-			buf[--count] = '\0';
-		if(count == 0)
-			error(Ebadarg);
-		if(strcmp(up->env->user, eve) != 0)
+		if(!iseve())
 			error(Eperm);
+		if(offset != 0 || n >= sizeof(buf))
+			error(Ebadarg);
+		memmove(buf, va, n);
+		buf[n] = '\0';
+		if(n > 0 && buf[n-1] == '\n')
+			buf[--n] = '\0';
+		if(n == 0)
+			error(Ebadarg);
+		/* renameuser(eve, buf); */
+		/* renameproguser(eve, buf); */
 		kstrdup(&eve, buf);
-		return count;
+		kstrdup(&up->env->user, buf);
+		break;
+
+	case Quser:
+		if(!iseve())
+			error(Eperm);
+		if(offset != 0)
+			error(Ebadarg);
+		if(n <= 0 || n >= sizeof(buf))
+			error(Ebadarg);
+		strncpy(buf, va, n);
+		buf[n] = '\0';
+		if(n > 0 && buf[n-1] == '\n')
+			buf[--n] = '\0';
+		if(n == 0)
+			error(Ebadarg);
+		setid(buf, 0);
+		break;
+
 	case Qhoststdout:
-		return write(1, va, count);
+		return write(1, va, n);
+
 	case Qhoststderr:
-		return write(2, va, count);
+		return write(2, va, n);
+
 	case Qjit:
-		if(count >= sizeof(buf))
-			count = sizeof(buf)-1;
-		strncpy(buf, va, count);
-		buf[count] = '\0';
+		if(n >= sizeof(buf))
+			n = sizeof(buf)-1;
+		strncpy(buf, va, n);
+		buf[n] = '\0';
 		x = atoi(buf);
-		if (x < 0 || x > 9)
+		if(x < 0 || x > 9)
 			error(Ebadarg);
 		cflag = x;
-		return count;
+		break;
+
 	case Qsysname:
-		if(count >= sizeof(buf))
-			count = sizeof(buf)-1;
-		strncpy(buf, va, count);
-		buf[count] = '\0';
+		if(offset != 0)
+			error(Ebadarg);
+		if(n < 0 || n >= sizeof(buf))
+			error(Ebadarg);
+		strncpy(buf, va, n);
+		buf[n] = '\0';
+		if(buf[n-1] == '\n')
+			buf[n-1] = 0;
 		kstrdup(&ossysname, buf);
-		return count;
+		break;
 	}
-	return 0;
+	return n;
 }
 
 static int	

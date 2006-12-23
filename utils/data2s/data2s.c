@@ -25,7 +25,10 @@ main(int argc, char *argv[])
 				Bprint(&bout, "\\z");
 		Bprint(&bout, "\"\n");
 	}
-	Bprint(&bout, "GLOBL %scode+0(SB), $%ld\n", argv[1], len);
+	if(len == 0)
+		Bprint(&bout, "GLOBL %scode+0(SB), $1\n", argv[1]);
+	else
+		Bprint(&bout, "GLOBL %scode+0(SB), $%ld\n", argv[1], len);
 	Bprint(&bout, "GLOBL %slen+0(SB), $4\n", argv[1]);
 	Bprint(&bout, "DATA %slen+0(SB)/4, $%ld\n", argv[1], len);
 	exits(0);

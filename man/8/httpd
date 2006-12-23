@@ -4,11 +4,11 @@ httpd, echo, stats \- HTTP server
 .SH SYNOPSIS
 .B svc/httpd/httpd
 [
-.BI -c cachesize
+.BI -a " addr"
+] [
+.BI -c " cachesize"
 ] [
 .B -D
-] [
-.BI -p port
 ]
 .PP
 .BI svc/httpd/echo " meth vers uri search"
@@ -17,9 +17,10 @@ httpd, echo, stats \- HTTP server
 .SH DESCRIPTION
 .I Httpd
 is a simple HTTP daemon, serving version 1.0 of the HTTP protocol.
-It listens for incoming calls on a given TCP/IP
-.I port
-(default: 80).
+It listens for incoming calls on a given
+.I address
+(default:
+.BR tcp!*!80 ).
 It serves content rooted at
 .L /services/httpd/root
 in its name space.
@@ -55,7 +56,13 @@ are provided (see below).
 .I Httpd
 has the following options:
 .TP
-.BI -c cachesize
+.BI -a " address"
+Listen for calls on the given
+.IR address ,
+expressed using the syntax of
+.IR sys-dial (2).
+.TP
+.BI -c " cachesize"
 Set the size of the daemon's cache to
 .I cachesize
 kilobytes. The default is a five megabyte cache.
@@ -63,10 +70,6 @@ kilobytes. The default is a five megabyte cache.
 .B -D
 Debugging information is written to the file
 .BR /services/httpd/httpd.debug .
-.TP
-.BI -p port
-Listen for requests on the given
-.IR port .
 .PP
 .I Echo
 is a trivial server that just returns the method, URI, any search, and the headers sent by the client.

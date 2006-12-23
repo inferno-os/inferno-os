@@ -30,12 +30,9 @@ open(user, password, server : string): (int, string)
 	}
 	if (conn)
 		return (-1, "connection is already open");
-	if (server == nil) {
-		server = defaultserver();
-		if (server == nil)
-			return (-1, "no default mail server");
-	}
-	(ok, c) := sys->dial ("tcp!" + server + "!110", nil);
+	if (server == nil)
+		server = "$pop3";
+	(ok, c) := sys->dial ("net!" + server + "!110", nil);
 	if (ok < 0)
 		return (-1, "dialup failed");
 	ibuf = bufio->fopen(c.dfd, Bufio->OREAD);
@@ -254,11 +251,6 @@ mcmd(s : string) : (int, string)
 	if (len r > 1 && r[0] == '+')
 		return (1, r);
 	return (-1, r);
-}
-
-defaultserver() : string
-{
-	return "$pop3";
 }
 
 rev1(l1 : list of int) : list of int

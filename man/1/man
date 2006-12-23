@@ -1,6 +1,6 @@
 .TH MAN 1
 .SH NAME
-man, wm/man, man2txt, lookman \-
+man, wm/man, man2html, man2txt, lookman \-
 print or find manual pages
 .SH SYNOPSIS
 .B man
@@ -21,6 +21,12 @@ print or find manual pages
 .B wm/man -f
 .I file ...
 .br
+.B man2html
+.I file
+[
+.I section
+]
+.br
 .B man2txt
 [
 .B -p
@@ -31,6 +37,9 @@ print or find manual pages
 ]
 .br
 .B lookman
+[
+.B -f
+]
 .I keyword ...
 .SH DESCRIPTION
 Both
@@ -72,9 +81,20 @@ some detail is lost in conversion to plain text.
 displays the pages in a graphical Wm window, providing a more faithful
 reproduction of the intended layout.
 .PP
+.I Man2html
+converts
+.B "troff -man"
+macro markup to an approximation in HTML on standard output.
+Only one file is processed at a time.
+It is assumed the input
+.I file
+is a manual page, in the given
+.I section
+(default: 1).
+.PP
 .I Man2txt
 converts
-.I "troff -man"
+.B "troff -man"
 macro markup
 to plain text.
 Each file is processed separately.
@@ -87,10 +107,27 @@ option to
 specifies the page width in characters.
 .PP
 .I Lookman
-prints the file names of manual pages, from any section, that
+finds the manual pages, in any section, that
 contain all of the
 .I keywords
-given as arguments.
+given as arguments, and prints
+.I man
+commands and manual references for them, one per line.
+In a
+.IR wm-sh (1)
+window,
+any of the
+.I man
+commands can be selected with mouse button 2 and
+sent
+as a command; a manual reference can simply be
+.IR plumb (1)'d
+using mouse button 3.
+The
+.B -f
+option causes
+.I lookman
+just to list the file names.
 .SH FILES
 .TF /man/1/INDEX
 .TP
@@ -118,7 +155,9 @@ index.
 .br
 .B /appl/cmd/man2txt.b
 .br
-.B /appl/cmd/lookman.b
+.B /dis/lookman
+.IR sh (1)
+script
 .br
 .B /appl/lib/parseman.b
 .SH "SEE ALSO"

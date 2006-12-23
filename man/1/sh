@@ -588,6 +588,18 @@ for the module.
 If a load fails, a
 .B bad module
 exception is raised.
+The environment variable
+.B $autoload
+can be set to a list of Shell modules that
+each instance of
+.I sh
+should load automatically during its initialisation.
+(More precisely, the modules are loaded
+when a new
+.B Sh->Context
+is created: see
+.IR sh (2)
+for details.)
 .HP
 .BI unload " path..."
 .br

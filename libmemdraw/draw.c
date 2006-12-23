@@ -2390,7 +2390,7 @@ DBG print("bsh %d\n", bsh);
 
 	bx = -bsh-1;
 	ex = -bsh-1-dx;
-	SET(bits);
+	bits = 0;
 	v = par->sdval;
 
 	/* make little endian */

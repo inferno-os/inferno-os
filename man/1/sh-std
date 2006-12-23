@@ -76,13 +76,6 @@ std, if, while, ~, no, !, apply, getlines, status, pctl, fn, and, or, raise, res
 .B subfn
 .I name command
 .br
-.B if
-[
-.I condition action
-]... [
-.I elseaction
-]
-.br
 .B while
 .I condition command
 .br

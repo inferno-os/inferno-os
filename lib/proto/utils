@@ -39,7 +39,9 @@ lib9
 	getcallerpc-Hp-s800.s
 	getcallerpc-Irix-mips.s
 	getcallerpc-Linux-386.S
+	getcallerpc-Linux-arm.S
 	getcallerpc-MacOSX-power.s
+	getcallerpc-MacOSX-386.s
 	getcallerpc-Solaris-386.s
 	getcallerpc-Solaris-sparc.s
 	getcallerpc-Unixware-386.s
@@ -398,6 +400,9 @@ utils
 		sub.c
 	cp
 		cp.c
+		mkfile
+	cvbit
+		cvbit.c
 		mkfile
 	data2c
 		data2c.c

@@ -1,7 +1,7 @@
 Solaris
 	sparc
 		bin
-			emu.new	0775	inferno	inf	/Solaris/sparc/bin/emu
+			emu.new	0775	inferno	inferno	/Solaris/sparc/bin/emu
 			0a
 			0c
 			0l

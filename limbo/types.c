@@ -4403,10 +4403,10 @@ ispow2(double x)
 }
 
 static int
-round(double x, int n, int *m)
+fround(double x, int n, int *m)
 {
 	if(n != 31)
-		fatal("not 31 in round");
+		fatal("not 31 in fround");
 	return nf(x, m);
 }
 
@@ -4418,7 +4418,7 @@ fixmul2(double sx, double sy, double sr, int *rp, int *ra)
 
 	alpha = (sx*sy)/sr;
 	n = 31;
-	k = round(1/alpha, n, &a);
+	k = fround(1/alpha, n, &a);
 	*rp = 1-k;
 	*ra = 0;
 	return IMULX;
@@ -4432,7 +4432,7 @@ fixdiv2(double sx, double sy, double sr, int *rp, int *ra)
 
 	beta = sx/(sy*sr);
 	n = 31;
-	k = round(beta, n, &b);
+	k = fround(beta, n, &b);
 	*rp = k-1;
 	*ra = 0;
 	return IDIVX;
@@ -4449,7 +4449,7 @@ fixmul(double sx, double sy, double sr, int *rp, int *ra)
 	if(ispow2(alpha))
 		return fixmul2(sx, sy, sr, rp, ra);
 	n = 31;
-	k = round(1/alpha, n, &a);
+	k = fround(1/alpha, n, &a);
 	m = n-k;
 	if(m < -n-1)
 		return IMOVW;	/* result is zero whatever the values */
@@ -4480,7 +4480,7 @@ fixdiv(double sx, double sy, double sr, int *rp, int *ra)
 	if(ispow2(beta))
 		return fixdiv2(sx, sy, sr, rp, ra);
 	n = 31;
-	k = round(beta, n, &b);
+	k = fround(beta, n, &b);
 	m = k-n;
 	if(m <= -2*n)
 		return IMOVW;	/* result is zero whatever the values */

@@ -2406,7 +2406,7 @@ argcompat(Node *n, Decl *f, Node *a)
 /*
  * fn is Odot(adt, methid)
  * pass adt implicitly if needed
- * if not, any side effect of adt will be ingored
+ * if not, any side effect of adt will be ignored
  */
 Node*
 passimplicit(Node *fn, Node *args)
@@ -2415,12 +2415,12 @@ passimplicit(Node *fn, Node *args)
 	Type *t;
 
 	t = fn->ty;
+	n = fn->left;
 	if(t->ids == nil || !t->ids->implicit){
-		if(hasside(fn->left, 1))
-			nwarn(fn, "result of expression %V ignored", fn->left);
+		if(!isfnrefty(t) && hasside(n, 1))
+			nwarn(fn, "result of expression %V ignored", n);
 		return args;
 	}
-	n = fn->left;
 	if(n->op == Oname && n->decl->store == Dtype){
 		nerror(n, "%V is a type and cannot be a self argument", n);
 		n = mkn(Onothing, nil, nil);

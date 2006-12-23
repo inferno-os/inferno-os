@@ -618,7 +618,7 @@ tktbbox(Tk *tk, TkTindex *ix)
 	r.min.x = 0;
 	r.min.y = 0;
 	r.max.x = 0;
-	r.max.x = 0;
+	r.max.y = 0;
 	return r;
 }
 

@@ -1,0 +1,18 @@
+#!/dis/sh
+load std
+
+fn cmdform {
+	sed 's;/man/;;
+	s;(.*)/(.*);man \1 \2 # \2(\1);'
+}
+post=cmdform
+
+x=$*
+~ $1 -f && {
+	post=cat
+	x=${tl $x}
+}
+x=`{echo $x|tr A-Z a-z|tr -dc 'a-z0-9_ \012'}	# fold case, delete funny chars
+~ $#x 0 && {echo Usage: lookman key ... >[1=2]; exit usage}
+
+look $x /man/index | sed 's/^.*	//' |sort |uniq | $post

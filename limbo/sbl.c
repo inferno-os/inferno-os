@@ -163,6 +163,7 @@ sblinst(Inst *inst, long ninst)
 	sblblocks = allocmem(nblocks * sizeof *sblblocks);
 	for(i = 0; i < nblocks; i++)
 		sblblocks[i] = -1;
+	src = nosrc;
 	for(in = inst; in != nil; in = in->next){
 		if(in->op == INOOP)
 			continue;

@@ -8,7 +8,7 @@ nuke:V:	nuke-$HOSTMODEL
 
 &-Posix:QV:
 	echo "(cd $SYSTARG; mk $MKFLAGS $stem)"
-	(cd $SYSTARG; mk $MKFLAGS $stem)
+	(cd $SYSTARG; mk $MKFLAGS $stem) || exit 1
 
 &-Nt:QV:
 	echo '@{builtin cd' $SYSTARG '; mk $MKFLAGS $stem}'

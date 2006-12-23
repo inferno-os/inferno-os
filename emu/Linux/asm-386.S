@@ -94,12 +94,6 @@ FPrestore:
 	popl	%ebp
 	ret
 
-	.type	getcallerpc,@function
-	.global	getcallerpc
-getcallerpc:
-	movl	4(%ebp), %eax
-	ret
-
 	.type	_tas,@function
 	.globl	_tas
 _tas:

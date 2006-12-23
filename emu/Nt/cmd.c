@@ -104,11 +104,11 @@ exporthandle(HANDLE h, int close)
 /* TO DO: check that oserrstr will have the right text on error */
 
 void*
-oscmd(char **args, int nice, char *dir, int *rpfd, int *wpfd)
+oscmd(char **args, int nice, char *dir, int *fd)
 {
 	STARTUPINFO si;
 	SECURITY_ATTRIBUTES sec;
-	HANDLE rh, wh, srh, swh;
+	HANDLE rh, wh, eh, srh, swh, seh;
 	PROCESS_INFORMATION pinfo;
 	char *cmd;
 	wchar_t *wcmd, *wdir;
@@ -126,35 +126,22 @@ oscmd(char **args, int nice, char *dir, int *rpfd, int *wpfd)
 	sec.nLength = sizeof(sec);
 	sec.lpSecurityDescriptor = 0;
 	sec.bInheritHandle = 0;
-	if(!CreatePipe(&rh, &swh, &sec, 0)) {
-		print("can't create pipe\n");
-		free(cmd);
-		free(wcmd);
-		free(wdir);
-		return nil;
-	}
-	if(!CreatePipe(&srh, &wh, &sec, 0)) {
-		print("can't create pipe\n");
-		CloseHandle(rh);
-		CloseHandle(swh);
-		free(cmd);
-		free(wcmd);
-		free(wdir);
-		return nil;
-	}
+	rh = wh = eh = srh = swh = seh = nil;
+	if(!CreatePipe(&rh, &swh, &sec, 0))
+		goto Error;
+	if(!CreatePipe(&srh, &wh, &sec, 0))
+		goto Error;
+	if(!CreatePipe(&seh, &eh, &sec, 0))
+		goto Error;
 	rh = exporthandle(rh, 1);
+	if(rh == nil)
+		goto Error;
 	wh = exporthandle(wh, 1);
-	if (rh == nil || wh == nil) {
-		print("can't dup pipes\n");
-		CloseHandle(rh);
-		CloseHandle(swh);
-		CloseHandle(wh);
-		CloseHandle(srh);
-		free(cmd);
-		free(wcmd);
-		free(wdir);
-		return nil;
-	}
+	if(wh == nil)
+		goto Error;
+	eh = exporthandle(eh, 1);
+	if(eh == nil)
+		goto Error;
 
 	memset(&si, 0, sizeof(si));
 	si.cb = sizeof(si);
@@ -162,7 +149,7 @@ oscmd(char **args, int nice, char *dir, int *rpfd, int *wpfd)
 	si.wShowWindow = SW_SHOW;
 	si.hStdInput = rh;
 	si.hStdOutput = wh;
-	si.hStdError = exporthandle(wh, 0);
+	si.hStdError = eh;
 
 	prio = 0;
 	if(nice){
@@ -175,21 +162,14 @@ oscmd(char **args, int nice, char *dir, int *rpfd, int *wpfd)
 	if(!CreateProcess(nil/*wpath*/, wcmd, 0, 0, 1,
 	   CREATE_NEW_PROCESS_GROUP|CREATE_DEFAULT_ERROR_MODE|prio,
 	   0 /*env*/, wdir, &si, &pinfo)){
-		print("can't create process '%Q' %d\n", wcmd, GetLastError());
-		CloseHandle(si.hStdInput);
-		CloseHandle(swh);
-		CloseHandle(si.hStdOutput);
-		CloseHandle(si.hStdError);
-		CloseHandle(srh);
-		free(cmd);
-		free(wcmd);
-		free(wdir);
-		return nil;
+		//print("can't create process '%Q' %d\n", wcmd, GetLastError());
+		goto Error;
 	}
 
-	*rpfd = nth2fd(srh);
-	*wpfd = nth2fd(swh);
-	if(*wpfd == 1 || *wpfd == 2)
+	fd[0] = nth2fd(swh);
+	fd[1] = nth2fd(srh);
+	fd[2] = nth2fd(seh);
+	if(fd[1] == 1 || fd[2] == 2)
 		panic("invalid mapping of handle to fd");
 	CloseHandle(si.hStdInput);
 	CloseHandle(si.hStdOutput);
@@ -209,6 +189,24 @@ oscmd(char **args, int nice, char *dir, int *rpfd, int *wpfd)
 	free(wcmd);
 	free(wdir);
 	return pinfo.hProcess;
+
+Error:
+	if(rh)
+		CloseHandle(rh);
+	if(wh)
+		CloseHandle(wh);
+	if(eh)
+		CloseHandle(eh);
+	if(srh)
+		CloseHandle(srh);
+	if(swh)
+		CloseHandle(swh);
+	if(seh)
+		CloseHandle(seh);
+	free(cmd);
+	free(wcmd);
+	free(wdir);
+	return nil;
 }
 
 int

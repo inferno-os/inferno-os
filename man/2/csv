@@ -1,0 +1,58 @@
+.TH CSV 2
+.SH NAME
+csv \- comma-separated values
+.SH SYNOPSIS
+.EX
+include "bufio.m";
+include "csv.m";
+csv := load CSV CSV->PATH;
+
+init:    fn(bufio: Bufio);
+getline: fn(fd: ref Bufio->Iobuf): list of string;
+quote:   fn(s: string): string;
+.EE
+.SH DESCRIPTION
+.B CSV
+provides a few functions to help read and write data in ``comma-separated value'' format.
+The
+.I csv
+format has a sequence of fields on a line (terminated by a newline, carriage return,
+or carriage return and newline).
+Fields are separated by commas, and may be empty.
+A field that starts with a double-quote is a quoted field, continuing
+to the next lone double-quote character, including commas and line terminators,
+but taking two double-quotes to represent one double-quote.
+Any text following quoted text, up to the next comma or line terminator, is included
+in the field value.
+Note that in a field that does not start with a double-quote, double-quotes are not treated specially.
+.PP
+.B Init
+must be called before any other operation of the module.
+.I Bufio
+is the instance of the
+.IR bufio (2)
+module that will provide the open files to be read.
+.PP
+.B Getline
+reads a sequence of fields in
+.I csv
+format from
+.B Iobuf
+.IR fd ,
+unquotes fields as required, and returns them in order in a list.
+It returns nil on end-of-file (or read error).
+An empty line is regarded as containing a single empty field.
+.PP
+.B Quote
+returns string
+.I s
+quoted as required by the
+.I csv
+format:
+the result is quoted if
+.I s
+contains comma, newline, or a quote (and all embedded quotes are doubled).
+.SH SOURCE
+.B /appl/lib/csv.b
+.SH SEE ALSO
+.IR sh-csv (1)

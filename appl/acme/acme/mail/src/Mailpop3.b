@@ -648,7 +648,7 @@ nrunes(s : array of byte, nb : int) : int
 
 	n = 0;
 	for(i=0; i<nb; n++) {
-		(r, b, ok) := byte2char(s, i);
+		(nil, b, ok) := byte2char(s, i);
 		if (!ok)
 			error("help needed in nrunes()");
 		i += b;
@@ -869,7 +869,7 @@ Win.wreadall(w : self ref Win) : string
 	return s;
 }
 
-None,Unknown,Ignore,CC,From,ReplyTo,Sender,Subject,Re,To, Date : con iota;
+None, Unknown, Ignore, CC, From, ReplyTo, Sender, Subject, Re, To, Date, Received : con iota;
 NHeaders : con 200;
 
 Hdrs : adt {
@@ -887,6 +887,7 @@ hdrs := array[NHeaders+1] of {
 	Hdrs ( "Re:",				Re ),
 	Hdrs ( "To:",				To ),
 	Hdrs ( "Date:",				Date),
+	Hdrs ( "Received:",			Received),
  * => Hdrs ( "",					0 ),
 };
 
@@ -967,11 +968,14 @@ Mesg.read(b : ref Box) : ref Mesg
 	s : string;
 	n, typex : int;
 
-	s = b.readline();
-	n = len s;
-	if(n <= 0)
-		return nil;
-	
+	for(;;){
+		s = b.readline();
+		n = len s;
+		if(n <= 0)
+			return nil;
+		if(n >= 5 && (s[0:5] == "From:" || s[0:5] == "From "))
+			break;
+	}
 {
 	if(n < 5 || (s[0:5] !="From " && s[0:5] != "From:"))
 		raise("e");
@@ -1262,7 +1266,7 @@ Mesg.command(m : self ref Mesg, s : string) : int
 	}
 	if(len s >= 4 && s[0:4] == "Save"){
 		s = s[4:];
-		while(s[0]==' ' || s[0]=='\t' || s[0]=='\n')
+		while(len s > 0 && (s[0]==' ' || s[0]=='\t' || s[0]=='\n'))
 			s = s[1:];
 		if(s == nil)
 			m.save("stored");

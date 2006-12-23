@@ -18,8 +18,6 @@ include "bufio.m";
 	Iobuf: import bufio;
 include "libc0.m";
 	libc0: Libc0;
-include "math.m";
-	math: Math;
 include "regex.m";
 	regex: Regex;
 include "ar.m";
@@ -33,9 +31,9 @@ init(nil: ref Draw->Context, argl: list of string)
 	sys = load Sys Sys->PATH;
 	bufio = load Bufio Bufio->PATH;
 	libc0 = load Libc0 Libc0->PATH;
-	math = load Math Math->PATH;
 	regex = load Regex Regex->PATH;
 	daytime = load Daytime Daytime->PATH;
+	sys->pctl(Sys->FORKNS, nil);
 	main(len argl, libc0->ls2aab(argl));
 }
 
@@ -622,7 +620,7 @@ initbind()
 	f := sys->sprint("/usr/%s/lib/mkbinds", getuser());
 	b := bufio->open(f, Bufio->OREAD);
 	if(b == nil)
-		b = bufio->open("/appl/cmd/mk/mkbinds", Bufio->OREAD);
+		b = bufio->open("/lib/mk/binds", Bufio->OREAD);
 	if(b == nil)
 		return;
 	while((s := b.gets('\n')) != nil){
@@ -3038,6 +3036,11 @@ readenv()
 	w: ref Word;
 
 	sys->pctl(Sys->FORKENV, nil);	#   use copy of the current environment variables 
+	if(sys->open("/env/autoload", Sys->OREAD) == nil){
+		fd := sys->create("/env/autoload", Sys->OWRITE, 8r666);
+		if(fd != nil)
+			sys->fprint(fd, "std");
+	}
 	envf = sys->open("/env", Sys->OREAD);
 	if(envf == nil)
 		return;

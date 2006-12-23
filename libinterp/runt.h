@@ -3076,6 +3076,16 @@ struct F_Keyring_aessetup
 	Array*	key;
 	Array*	ivec;
 };
+void IPint_and(void*);
+typedef struct F_IPint_and F_IPint_and;
+struct F_IPint_and
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i1;
+	Keyring_IPint*	i2;
+};
 void Keyring_auth(void*);
 typedef struct F_Keyring_auth F_Keyring_auth;
 struct F_Keyring_auth
@@ -3459,6 +3469,25 @@ struct F_IPint_neg
 	uchar	temps[12];
 	Keyring_IPint*	i;
 };
+void IPint_not(void*);
+typedef struct F_IPint_not F_IPint_not;
+struct F_IPint_not
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i1;
+};
+void IPint_ori(void*);
+typedef struct F_IPint_ori F_IPint_ori;
+struct F_IPint_ori
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i1;
+	Keyring_IPint*	i2;
+};
 void Keyring_pktoattr(void*);
 typedef struct F_Keyring_pktoattr F_Keyring_pktoattr;
 struct F_Keyring_pktoattr
@@ -3748,6 +3777,16 @@ struct F_Keyring_writeauthinfo
 	uchar	temps[12];
 	String*	filename;
 	Keyring_Authinfo*	info;
+};
+void IPint_xor(void*);
+typedef struct F_IPint_xor F_IPint_xor;
+struct F_IPint_xor
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i1;
+	Keyring_IPint*	i2;
 };
 #define Keyring_PATH "$Keyring"
 #define Keyring_Encrypt 0

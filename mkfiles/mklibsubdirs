@@ -20,6 +20,6 @@ clean:V: clean-$SHELLTYPE
 	do
 		if test -d $j; then
 			echo "(cd $j; mk $MKFLAGS SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE $stem)"
-			(cd $j; mk $MKFLAGS 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE $stem)
+			(cd $j; mk $MKFLAGS 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE $stem) || exit 1
 		fi || test ! -e $j
 	done

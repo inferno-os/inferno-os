@@ -205,17 +205,17 @@ init(drawctxt: ref Draw->Context, nil: list of string)
 			keywordsearch(c);
 		}
 
-	c := <-elements[BYNUMBER].cmd =>
+	<-elements[BYNUMBER].cmd =>
 		txt := cmd(top, ".numfield.f get");
 		(n, nil) := str->toint(txt, 16);
 
 		pop(BYNUMBER);
 		push(TABLE);
-		setchar(n);
+		setchar(0, n);
 		currpos = filltable(n);
 		update(top);
 
-	c := <-elements[BYCATEGORY].cmd =>
+	<-elements[BYCATEGORY].cmd =>
 		sel := cmd(top, ".cat.menu curselection");
 		(currpos, nil) = str->toint(cmd(top, ".cat.menu get "+sel), 16);
 		pop(BYCATEGORY);
@@ -231,23 +231,23 @@ init(drawctxt: ref Draw->Context, nil: list of string)
 		"backw" =>	currpos = filltable(currpos - Tablerows * Tablecols);
 				update(top);
 
-		* =>		# must be set <col> <row>
+		* =>		# must be set <col> <row> <raise>
 				(nil, args) := sys->tokenize(c, " ");
-				setchar(currpos + int hd tl args
+				setchar(int hd tl tl tl args, currpos + int hd tl args
 						+ int hd tl tl args * Tablecols);
 		}
 
-	c := <-elements[BYSEARCH].cmd =>
+	<-elements[BYSEARCH].cmd =>
 		sel := cmd(top, ".srch.menu curselection");
 		(n, nil) := str->toint(cmd(top, ".srch.menu get "+sel), 16);
 
 		pop(BYSEARCH);
 		push(TABLE);
-		setchar(n);
+		setchar(0, n);
 		currpos = filltable(n);
 		update(top);
 
-	c := <-elements[BYFONT].cmd =>
+	<-elements[BYFONT].cmd =>
 		sel := cmd(top, ".font.menu curselection");
 		(currpos, nil) = str->toint(cmd(top, ".font.menu get "+sel), 16);
 		pop(BYFONT);
@@ -264,9 +264,11 @@ sendentry(t: ref Tk->Toplevel, msg: string, where: chan of string)
 	exit;
 }
 
-setchar(c: int)
+setchar(raisei: int, c: int)
 {
 	s := ""; s[0] = c;
+	if(raisei)
+		inspchan <-= "raise";
 	inspchan <-= s;
 }
 
@@ -370,6 +372,8 @@ inspector(ctxt: ref Draw->Context, cmdch: chan of string)
 
 inspector_setchar(t: ref Tk->Toplevel, c: int)
 {
+	if(t == nil)
+		return;
 	line := look(unidata, ';', sys->sprint("%4.4X", c));
 	labelset(t, ".chdata.ch", sys->sprint("%c", c));
 	labelset(t, ".chdata.val", sys->sprint("%4.4X", c));
@@ -560,7 +564,9 @@ inittable()
 			cmd(top, tkexpand("$label unicode "+cname
 					+" -borderwidth 1 -relief raised"));
 			cmd(top, "bind "+cname+" <ButtonRelease-1>"
-					+" {send tblcmd set "+string j +" "+string i+"}");
+					+" {send tblcmd set "+string j+" "+string i+" 0}");
+			cmd(top, "bind "+cname+" <Double-Button-1>"
+					+" {send tblcmd set "+string j+" "+string i+" 1}");
 			cmd(top, "grid "+cname+" -row "+string i+" -column "+string (j+1) +
 						" -sticky ews");
 		}

@@ -99,7 +99,7 @@ nuke:QV:	nuke-$TARGMODEL
 	do
 		test -d $j || continue
 		echo "(cd $j; mk $MKFLAGS $stem)"
-		(cd $j; mk $MKFLAGS $stem)
+		(cd $j; mk $MKFLAGS $stem) || exit 1
 	done
 
 %-Nt:QV:

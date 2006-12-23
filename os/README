@@ -5,10 +5,10 @@ ipaq1110	arm	Strongarm SA1110 native kernel for Compaq iPAQ 36xx
 sa1110	arm	SA1110 code common to most/all SA1110 platforms (eg, ipaq, cerf)
 
 cerf250	arm	Intrinsyc Cerfboard250 (PXA250)
-gum	arm	Gumstix PXA255
+gum	arm	Gumstix PXA255	not yet ready for distribution
 pxa	arm	general PXA support
 
-js	sparc	original port to Javastation-1, not recently tested
+js	sparc	original port to Javastation-1, included as sparc example but will not build
 
 ks32	arm	ARM Evaluator 7t demo
 

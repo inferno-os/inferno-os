@@ -438,7 +438,6 @@ memread(Chan *c, void *va, long count, vlong offset)
 		free(s);
 		return count;
 	}
-	return 0;
 }
 
 static long

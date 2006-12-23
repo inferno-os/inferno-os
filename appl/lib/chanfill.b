@@ -32,25 +32,21 @@ init(data: array of byte, f: int, c: Sys->Rwrite, r: ref Sys->FileIO, b: Bufio):
 fill(b: ref Iobuf): int
 {
 	for (;;) {
-		alt {
-		(nil, data, f, c) := <-fio.write =>
-			if (f != fid) {
-				if (c != nil)
-					c <-= (0, "file busy");
-				continue;
-			}
-			if (c == nil)
-				return Bufio->EOF;
-			c <-= (len data, nil);
-			i := len data;
-			if (i == 0)
-				continue;
-			b.buffer[b.size:] = data;
-			b.size += i;
-			b.filpos += big i;
-			return i;
-		* =>
-			return Bufio->EOF;
+		(nil, data, f, c) := <-fio.write;
+		if (f != fid) {
+			if (c != nil)
+				c <-= (0, "file busy");
+			continue;
 		}
+		if (c == nil)
+			return Bufio->EOF;
+		c <-= (len data, nil);
+		i := len data;
+		if (i == 0)
+			continue;
+		b.buffer[b.size:] = data;
+		b.size += i;
+		b.filpos += big i;
+		return i;
 	}
 }

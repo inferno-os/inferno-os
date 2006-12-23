@@ -147,6 +147,7 @@ uniqs(Reg *r)
 	return r1;
 }
 
+int
 regzer(Adr *a)
 {
 
@@ -160,6 +161,7 @@ regzer(Adr *a)
 	return 0;
 }
 
+int
 regtyp(Adr *a)
 {
 
@@ -312,6 +314,7 @@ copyprop(Reg *r0)
 	return copy1(v1, v2, r0->s1, 0);
 }
 
+int
 copy1(Adr *v1, Adr *v2, Reg *r, int f)
 {
 	int t;
@@ -404,7 +407,7 @@ copyu(Prog *p, Adr *v, Adr *s)
 
 	default:
 		if(debug['P'])
-			print(" (???)");
+			print(" (?)");
 		return 2;
 
 

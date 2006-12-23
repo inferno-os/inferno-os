@@ -511,6 +511,7 @@ exslave(void*)
 	Export *fs;
 	Exq *q, *t, *fq, **last;
 	char *err;
+	int nstat;
 
 	for(;;){
 		qlock(&exq.qwait);
@@ -569,7 +570,11 @@ exslave(void*)
 					break;
 				case Tstat:
 					q->out.stat = q->buf + MSGHDRSZ + BIT16SZ;	/* leaves it just where we want it */
-					q->out.nstat = q->bsize-(MSGHDRSZ+BIT16SZ);
+					nstat = q->bsize;
+					if(nstat > STATMAX)
+						nstat = STATMAX;
+					nstat -= MSGHDRSZ+BIT16SZ;
+					q->out.nstat = nstat;
 					break;
 				}
 				err = (*fcalls[q->in.type])(fs, &q->in, &q->out);
