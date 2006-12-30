@@ -1,0 +1,13 @@
+all:V:	all-$SHELLTYPE
+install:V: install-$SHELLTYPE
+uninstall:V: uninstall-$SHELLTYPE
+nuke:V: nuke-$SHELLTYPE
+clean:V: clean-$SHELLTYPE
+
+%-rc %-nt %-sh:QV:
+	for j in $DIRS {
+		if { ftest -d $j } {
+			echo 'cd' $j '; mk' $MKFLAGS $stem
+			cd $j; mk $MKFLAGS $stem; cd ..
+		}
+	}

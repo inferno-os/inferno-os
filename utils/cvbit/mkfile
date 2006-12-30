@@ -1,0 +1,15 @@
+<../../mkconfig
+
+TARG=cvbit
+
+OFILES=	cvbit.$O\
+
+HFILES=	\
+	$ROOT/include/draw.h\
+	$ROOT/include/memdraw.h\
+
+LIBS=	draw memdraw draw bio 9
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
