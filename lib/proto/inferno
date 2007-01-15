@@ -63,7 +63,6 @@ include
 	isa.h
 	kernel.h
 	keyboard.h
-	libcrypt_o.h
 	libsec.h
 	mathi.h
 	memdraw.h
@@ -597,7 +596,6 @@ appl
 		look.b
 		ls.b
 		lstar.b
-		man.b
 		man2html.b
 		man2txt.b
 		manufacture.b
@@ -813,6 +811,7 @@ appl
 		units.b
 		units.m
 	grid
+		README
 		demo
 			block.b
 			blur.b
@@ -850,6 +849,7 @@ appl
 		cfg.b
 		cfgfile.b
 		chanfill.b
+		complete.b
 		convcs
 			8bit_stob.b
 			big5_btos.b
@@ -1140,8 +1140,6 @@ appl
 		spree.b
 		spree.m
 		clients
-			images
-				+
 			bounce.b
 			cards.b
 			chat.b
@@ -1289,7 +1287,18 @@ appl
 		mash.b
 		memory.b
 		minitel
-			*
+			README
+			event.b
+			event.m
+			keyb.b
+			miniterm.b
+			miniterm.m
+			mkfile
+			modem.b
+			screen.b
+			socket.b
+			swkeyb.b
+			swkeyb.m
 		mkfile
 		mpeg.b
 		mpeg
@@ -1407,6 +1416,7 @@ dis
 		+
 	avr
 		+
+	basename.dis
 	bind.dis
 	broke.dis
 	bytes.dis
@@ -1498,6 +1508,7 @@ dis
 		cfg.dis
 		cfgfile.dis
 		chanfill.dis
+		complete.dis
 		convcs
 			+
 		crc.dis
@@ -1658,7 +1669,7 @@ dis
 	lookman
 	ls.dis
 	lstar.dis
-	man.dis
+	man
 	man2html.dis
 	man2txt.dis
 	mash.dis
@@ -2059,6 +2070,7 @@ module
 	cci.m
 	cfg.m
 	cfgfile.m
+	complete.m
 	convcs.m
 	crc.m
 	css.m

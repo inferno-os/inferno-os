@@ -1030,7 +1030,7 @@ do_on(e: ref ScriptEvent)
 		E->SEscript =>
 			# TODO - handle document text from evalscript
 			# need to determine if document is 'open' or not.
-			(err, nil, val) := evalscript(f, e.script);
+			(nil, nil, val) := evalscript(f, e.script);
 			if (e.reply != nil)
 				e.reply <- = val;
 			e.reply = nil;
@@ -2713,7 +2713,7 @@ fieldinstant(ex : ref Exec, field: ref Build->Formfield, oform: ref Obj) : ref V
 # Make an event handler named hname in o, with given body.
 puthandler(ex: ref Exec, o: ref Obj, hname: string, hbody: string)
 {
-	c := ES->eval(ex, "function PRIVhandler() {" + hbody + "}");
+	ES->eval(ex, "function PRIVhandler() {" + hbody + "}");
 	hobj := getobj(ex, ex.global, "PRIVhandler");
 	if(hobj != nil) {
 		ES->put(ex, o, hname, ES->objval(hobj));
@@ -3013,7 +3013,7 @@ newcharon(url: string, nm: string, sw: ref ScriptWin)
 					continue;
 				if(s == "E")
 					exit;
-				(n, l) := sys->tokenize(s, " ");
+				(nil, l) := sys->tokenize(s, " ");
 				case hd l{
 					"L" =>
 						sw.newloc = hd tl l;

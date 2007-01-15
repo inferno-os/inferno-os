@@ -5,6 +5,7 @@ DIRS=\
 	crypt\
 	ecmascript\
 	encoding\
+	ida\
 	print\
 	spki\
 	strokes\
@@ -24,6 +25,7 @@ TARG=\
 	cfg.dis\
 	cfgfile.dis\
 	chanfill.dis\
+	complete.dis\
 	crc.dis\
 	csv.dis\
 	daytime.dis\
@@ -92,6 +94,7 @@ TARG=\
 	regex.dis\
 	regexutils.dis\
 	registries.dis\
+	rfc822.dis\
 	riff.dis\
 	scoretable.dis\
 	scsiio.dis\

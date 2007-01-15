@@ -17,6 +17,7 @@ cfg cfg
 record cfg
 tuple cfg
 command command
+complete complete
 btos convcs
 convcs convcs
 stob convcs

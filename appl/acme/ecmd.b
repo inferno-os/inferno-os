@@ -1346,4 +1346,3 @@ copysel(rs: Rangeset): Rangeset
 		nrs[i] = rs[i];
 	return nrs;
 }
-	

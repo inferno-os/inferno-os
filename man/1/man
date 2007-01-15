@@ -5,6 +5,17 @@ print or find manual pages
 .SH SYNOPSIS
 .B man
 [
+.B -b
+] [
+.B -n
+] [
+.B -p
+] [
+.B -S
+] [
+.B -w
+]
+[
 .I section ...
 ]
 .I title ...
@@ -81,6 +92,30 @@ some detail is lost in conversion to plain text.
 displays the pages in a graphical Wm window, providing a more faithful
 reproduction of the intended layout.
 .PP
+.I Man
+also accepts the following options:
+.TP
+.B -b
+Print the pages and send them to
+.IR plumber (1)
+for display in an editor.
+.TP
+.B -n
+Use
+.I man2txt
+to format the pages (default).
+.TP
+.B -p
+Display the pages using
+.IR wm/man .
+.TP
+.B -S
+Do not search the manual indices for the names: only print pages whose file names match the
+.IR titles .
+.TP
+.B -w
+Print the names of the man page source files instead of formatting them.
+.PP
 .I Man2html
 converts
 .B "troff -man"
@@ -151,7 +186,9 @@ index.
 .SH SOURCE
 .B /appl/wm/man.b
 .br
-.B /appl/cmd/man.b
+.B /dis/man
+.IR sh (1)
+script
 .br
 .B /appl/cmd/man2txt.b
 .br

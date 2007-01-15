@@ -65,6 +65,8 @@ typedef struct Proc Proc;
 #define	SET(x)
 
 #define nelem(x)	(sizeof(x)/sizeof((x)[0]))
+#undef offsetof
+#undef assert
 #define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
 #define	assert(x)	if(x){}else _assert("x")
 

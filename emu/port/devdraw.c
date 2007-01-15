@@ -1990,14 +1990,6 @@ drawqunlock(void)
 }
 
 void
-drawxflush(Rectangle r)	/* used by X11 only */
-{
-	qlock(&sdraw.q);
-	flushmemscreen(r);
-	qunlock(&sdraw.q);
-}
-
-void
 interf(void)
 {
 	/* force it to load */

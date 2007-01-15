@@ -69,7 +69,11 @@ lib9
 	readn.c
 	rerrstr.c
 	rune.c
+	runeseprint.c
+	runesmprint.c
+	runesnprint.c
 	runestrlen.c
+	runevseprint.c
 	sbrk-posix.c
 	seek.c
 	seprint.c

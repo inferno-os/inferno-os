@@ -8,7 +8,7 @@ include "readdir.m";
 init(path: string, sortkey: int): (array of ref Dir, int)
 {
 	sys = load Sys Sys->PATH;
-	fd := sys->open(path, sys->OREAD);
+	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil)
 		return (nil, -1);
 	return readall(fd, sortkey);

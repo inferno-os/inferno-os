@@ -47,6 +47,10 @@ IMPORTFILES=\
 	print.$O\
 	readn.$O\
 	rerrstr.$O\
+	runeseprint.$O\
+	runesmprint.$O\
+	runesnprint.$O\
+	runevseprint.$O\
 	seek.$O\
 	seprint.$O\
 	smprint.$O\

@@ -1,8 +1,6 @@
 #include	"mk.h"
 
 static char *vexpand(char*, Envy*, Bufblock*);
-static char *shquote(char*, Rune, Bufblock*);
-static char *shbquote(char*, Bufblock*);
 
 void
 shprint(char *s, Envy *env, Bufblock *buf)

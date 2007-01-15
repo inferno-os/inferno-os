@@ -105,7 +105,7 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 dialdata(nc: ref Netconn, ctlfd: ref sys->FD) : string
 {
 	# put in passive mode
-	err := sendrequest(nc, ctlfd, "PASV");
+	sendrequest(nc, ctlfd, "PASV");
 	(code, msg) := getreply(nc, ctlfd);
 	if(code != Success)
 		return "can't use passive mode: " + msg;

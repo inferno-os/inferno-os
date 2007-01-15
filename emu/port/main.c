@@ -162,7 +162,7 @@ option(int argc, char *argv[], void (*badusage)(void))
 		tkfont = EARGF(badusage());
 		break;
 	case 'r':		/* Set inferno root */
-		strncpy(rootdir, EARGF(badusage()), sizeof(rootdir)-1);
+		strecpy(rootdir, rootdir+sizeof(rootdir), EARGF(badusage()));
 		break;
 	case '7':		/* use 7 bit colormap in X */
 		xtblbit = 1;
@@ -230,11 +230,15 @@ putenvqv(char *name, char **v, int n, int conf)
 void
 main(int argc, char *argv[])
 {
-	char *opt;
+	char *opt, *p;
 	char *enva[20];
 	int envc;
+
 	quotefmtinstall();
 	savestartup(argc, argv);
+	/* set default root now, so either $EMU or -r can override it later */
+	if((p = getenv("INFERNO")) != nil || (p = getenv("ROOT")) != nil)
+		strecpy(rootdir, rootdir+sizeof(rootdir), p);
 	opt = getenv("EMU");
 	if(opt != nil && *opt != '\0') {
 		enva[0] = "emu";

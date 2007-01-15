@@ -1726,7 +1726,7 @@ cell_pstate(oldps: ref Pstate, ishead: int) : ref Pstate
 trim_white(data: string): string
 {
 	data = S->drop(data, whitespace);
-	(l,r) := S->splitr(data, notwhitespace);
+	(l,nil) := S->splitr(data, notwhitespace);
 	return l;
 }
 
@@ -2480,8 +2480,6 @@ makealign(tok: ref Token) : Align
 # Make a Dimen, based on value of attid attr
 makedimen(tok: ref Token, attid: int) : Dimen
 {
-	kind := Dnone;
-	spec := 0;
 	(fnd, wd) := tok.aval(attid);
 	if(fnd)
 		return parsedim(wd);

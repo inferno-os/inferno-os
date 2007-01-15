@@ -633,7 +633,9 @@ xexpose(XEvent *e)
 	r.min.y = xe->y;
 	r.max.x = xe->x + xe->width;
 	r.max.y = xe->y + xe->height;
-	drawxflush(r);
+	drawqlock();
+	flushmemscreen(r);
+	drawqunlock();
 }
 
 

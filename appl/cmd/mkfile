@@ -88,7 +88,6 @@ TARG=\
 	lc.dis\
 	ls.dis\
 	lstar.dis\
-	man.dis\
 	man2html.dis\
 	man2txt.dis\
 	mathcalc.dis\

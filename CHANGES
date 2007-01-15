@@ -1,3 +1,19 @@
+20070114
+	remove some unused static declarations in /utils/mk/shprint.c
+20070111
+	delete drawxflush from devdraw.c (call drawq(un)?lock instead)
+20070107
+	have emu (/emu/port/main.c) check environment variables INFERNO and ROOT before EMU and -r, for inferno root directory
+		(haven't yet changed the build system and mkfiles to match)
+	remove /include/libcrypt_o.h since the library isn't used
+	add complete(2)
+20070103
+	replace man.dis by Salva Peiró's sh version of plan 9's man script
+20061221
+	add data2c to Irix package prototype
+	remove unwanted .dis/.sbl files from /appl packages
+	change liblogfs to GPLv2 from proprietary, to fit google code
+	correct cmd(3) to account for new stderr file
 20061219
 	cmd(3) and thus os(1) change to separate standard output and error streams
 	all /emu/*/cmd.c change to account for that (original changes to devcmd.c and MacOSX/cmd.c courtesy Cibernet)

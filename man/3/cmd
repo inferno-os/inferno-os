@@ -28,9 +28,10 @@ that contains a
 .B clone
 file and zero or more numbered directories.
 Each directory represents a distinct connection to the host's command interpreter.
-The directory contains four files:
+The directory contains five files:
 .BR ctl ,
 .BR data ,
+.BR stderr ,
 .B status
 and
 .BR wait ,
@@ -119,6 +120,9 @@ the command will see the host equivalent of `end of file'.
 The
 .B stderr
 file provides a similar read-only connection to the error output from the command.
+If the
+.B stderr
+file is not opened, the error output will be discarded.
 .PP
 Once started, a host command runs until it terminates or until it is killed,
 by using the
@@ -269,8 +273,6 @@ name to prevent its interpretation as a command option.)
 .SH "SEE ALSO"
 .IR emu (1),
 .IR os (1)
-.SH BUGS
-Standard output and standard error ideally should not be mingled.
 .SH DIAGNOSTICS
 A
 .B write

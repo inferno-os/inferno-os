@@ -697,7 +697,7 @@ TokenSource.setchset(ts: self ref TokenSource, chset: Btos)
 	if (nchars > 0 && nchars < len st.s) {
 		# align bi to the current input char
 		bs := ts.b;
-		(state, nil, n) := ts.chset->btos(st.prevcsstate, bs.data[st.prevbi:st.bi], nchars);
+		(nil, nil, n) := ts.chset->btos(st.prevcsstate, bs.data[st.prevbi:st.bi], nchars);
 		st.bi = st.prevbi + n;
 		st.prevbi = st.bi;
 	}
