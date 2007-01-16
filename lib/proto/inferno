@@ -959,6 +959,7 @@ appl
 		libc0.b
 		lock.b
 		login.b
+		man.b
 		memfs.b
 		mkfile
 		mpeg.b
@@ -1562,6 +1563,7 @@ dis
 		libc0.dis
 		lock.dis
 		login.dis
+		man.dis
 		mash
 			+
 		mashlib.dis

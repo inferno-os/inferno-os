@@ -67,6 +67,7 @@ TARG=\
 	libc0.dis\
 	lock.dis\
 	login.dis\
+	man.dis\
 	mpeg.dis\
 	nametree.dis\
 	names.dis\

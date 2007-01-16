@@ -34,7 +34,7 @@ Parseman: module {
 };
 
 Man: module {
-	PATH: con "/dis/man.dis";
+	PATH: con "/dis/lib/man.dis";
 
 	loadsections: fn(sections: list of string): string;
 	getfiles: fn(sections: list of string , keys: list of string): list of (int, string, string);
