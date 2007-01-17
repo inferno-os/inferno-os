@@ -1,3 +1,5 @@
+20070117
+	remove duplicate libmp/libsec reference from /mkfile (i assume it wasn't necessary to visit them twice!)
 20070116
 	move Man from /dis/man.dis (which vanished a few changes ago) to /dis/lib/man.dis.  honestly.  wm/man works again.
 20070114
