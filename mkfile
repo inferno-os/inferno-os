@@ -11,8 +11,6 @@ EMUDIRS=\
 	libbio\
 	libmp\
 	libsec\
-	libmp\
-	libsec\
 	libmath\
 	limbo\
 	libinterp\
