@@ -121,6 +121,10 @@ remap imagefile
 ip ip
 ir ir
 itslib itslib
+json json
+jvalue json
+readjson json
+writejson json
 keyring intro keyring-0intro
 keyring-intro keyring-0intro
 auth keyring-auth

@@ -117,8 +117,8 @@ Applications using UBF(A) typically take turns to exchange
 .I input
 values on a communication channel.
 .SH SEE ALSO
-.IR sexprs (2),
 .IR ubfa (2),
+.IR json (6),
 .IR sexprs (6)
 .br
 J L Armstrong, ``Getting Erlang to talk to the outside world'',

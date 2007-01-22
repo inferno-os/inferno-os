@@ -954,6 +954,7 @@ appl
 		irsage.b
 		irsim.b
 		itslib.b
+		json.b
 		keyset.b
 		libc.b
 		libc0.b
@@ -1558,6 +1559,7 @@ dis
 		irsage.dis
 		irsim.dis
 		itslib.dis
+		json.dis
 		keyset.dis
 		libc.dis
 		libc0.dis
@@ -2128,6 +2130,7 @@ module
 	ipattr.m
 	ir.m
 	itslib.m
+	json.m
 	keyboard.m
 	keyring.m
 	keyset.m

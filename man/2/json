@@ -1,0 +1,218 @@
+.TH JSON 2
+.SH NAME
+json: readjson, writejson, JValue \- read, write and represent values in JavaScript Object Notation
+.SH SYNOPSIS
+.EX
+include "json.m";
+json := load JSON JSON->PATH;
+
+JValue: adt {
+    pick{
+    Object =>
+        l:     cyclic list of (string, ref JValue);
+    Array =>
+        a:     cyclic array of ref JValue;
+    String =>
+        s:     string;
+    Int =>
+        value: big;
+    Real =>
+        value: real;
+    True or
+    False or
+    Null =>
+    }
+    isarray:   fn(v: self ref JValue): int;
+    isfalse:   fn(v: self ref JValue): int;
+    isint:     fn(v: self ref JValue): int;
+    isnull:    fn(v: self ref JValue): int;
+    isnumber:  fn(v: self ref JValue): int;
+    isobject:  fn(v: self ref JValue): int;
+    isreal:    fn(v: self ref JValue): int;
+    isstring:  fn(v: self ref JValue): int;
+    istrue:    fn(v: self ref JValue): int;
+    copy:      fn(v: self ref JValue): ref Jvalue;
+    eq:        fn(v: self ref JValue, v: ref JValue): int;
+    get:       fn(v: self ref JValue, mem: string): ref JValue;
+    set:       fn(v: self ref JValue, mem: string, value: ref JValue);
+    text:      fn(v: self ref JValue): string;
+};
+
+init:      fn(bufio: Bufio);
+readjson:  fn(input: ref Bufio->Iobuf): (ref JValue, string);
+writejson: fn(output: ref Bufio->Iobuf, val: ref JValue): int;
+
+jvarray:   fn(a: array of ref JValue): ref JValue.Array;
+jvbig:     fn(b: big): ref JValue.Int;
+jvfalse:   fn(): ref JValue.False;
+jvint:     fn(i: int): ref JValue.Int;
+jvnull:    fn(): ref JValue.Null;
+jvobject:  fn(m: list of (string, ref JValue)): ref JValue.Object;
+jvreal:    fn(r: real): ref JValue.Real;
+jvstring:  fn(s: string): ref JValue.String;
+jvtrue:    fn(): ref JValue.True;
+.EE
+.SH DESCRIPTION
+.B JSON
+provides value representations, and encoding and decoding operations for the JavaScript Object Notation (JSON)
+described by Internet RFC4627
+and summarised in
+.IR json (6).
+.PP
+.B Init
+must be called before invoking any other operation of the module.
+The
+.I bufio
+parameter must refer to the instance of
+.IR bufio (2)
+that provides the
+.B Iobuf
+parameters used for input and output.
+.PP
+.B JValue
+is the internal representation of values transmitted by the JSON encoding.
+They are distinguished in a pick adt:
+.TP
+.B JValue.False
+Represents the value
+.BR false .
+.TP
+.B JValue.Null
+Represents a null value of any type.
+.TP
+.B JValue.True
+Represents the value
+.BR true .
+.TP
+.B JValue.Int
+Represents as a Limbo
+.B big
+a JavaScript number with no fractional part.
+.TP
+.B JValue.Real
+Represents as a Limbo
+.B real
+a JavaScript number with a fractional part.
+.TP
+.B JValue.String
+Represents a JavaScript string of Unicode characters from
+.B +U'0000'
+to
+.BR +U'FFFF' .
+.TP
+.B JValue.Array
+Represents a JavaScript array of values of any type.
+.TP
+.B JValue.Object
+Represents a tuple of (member/property name, value) pairs corresponding to the value of a JavaScript object,
+or an associative array or table, indexed by strings.
+The member names must be unique within a value.
+.PP
+.B Readjson
+reads a single value in JSON
+format from the
+.I input
+stream and returns a tuple
+.BI ( val,\ err ).
+On success,
+.I val
+is a
+.B JValue
+that represents the value successfully read.
+If an error occurs,
+.I val
+is nil and
+.I err
+contains a diagnostic.
+.PP
+.B Writejson
+writes to the
+.I output
+stream in JSON format a
+representation of the value
+.IR v .
+It returns 0 on success and -1 on error (setting the system error string).
+.PP
+The easiest way to create a new
+.B JValue
+for subsequent output is with one of the module-level functions
+.BR jvarray ,
+.BR jvint ,
+.BR jvobject ,
+.BR jvstring ,
+and so on.
+As values of a pick adt, a
+.B JValue
+can be inspected using Limbo's
+.B tagof
+operator and the appropriate variant accessed using a
+.B pick
+statement.
+.B JValue
+also supports several groups of common operations, for smaller, tidier code.
+First, the set of enquiry functions
+.IB v .is X ()
+return true if the value
+.I v
+is an instance of the JavaScript type
+.I X
+.RI ( array ,
+.IR int ,
+.IR object ,
+.IR real ,
+.IR string ,
+etc).
+A
+.I numeric
+value is either
+.I int
+or
+.IR real .
+The other operations are:
+.TP
+.IB v .copy()
+Return a (reference to) a copy of value
+.IR v .
+.TP
+.IB v .eq( w )
+Return true if the values of
+.I v
+and
+.I w
+are equal, including the values of corresponding subcomponents, recursively
+.TP
+.IB v .get( mem )
+Return the value associated with member
+.I mem
+in
+.IR v ;
+return null if there is none.
+.TP
+.IB v .set( mem,\ value )
+Adds or changes the
+.I value
+associated with
+.I mem
+in
+.IR v ,
+which must be a
+.BR JValue.Object (
+raises exception
+.B "json: set non-object"
+otherwise).
+.TP
+.IB v .text()
+Return a printable representation of the value
+.IR v ,
+mainly intended for debugging and tracing.
+.SH SOURCE
+.B /appl/lib/json.b
+.SH SEE ALSO
+.IR sexprs (2),
+.IR ubfa (2) ,
+.IR json (6),
+.IR sexprs (6),
+.IR ubfa (6)
+.br
+D Crockford, ``The application/json Media Type for JavaScript Object Notation (JSON)'',
+.IR RFC4627 .

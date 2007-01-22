@@ -1,0 +1,68 @@
+.TH JSON 6
+.SH NAME
+json \- javascript object notation
+.SH DESCRIPTION
+.I JSON
+is a textual data transport encoding for a small collection of basic and structured values:
+.BR null ,
+booleans, numbers, strings, arrays, and objects (property/value list).
+It is a subset of JavaScript (ECMAScript).
+.IR Json (2)
+describes a Limbo module that can read and write streams of JSON-encoded data.
+.PP
+The encoding syntax and its interpretation is defined by Internet RFC4627, but is briefly summarised here:
+.IP
+.EX
+.ft R
+.ta \w'\f2simple-xxx\f1'u +\w'\ ::=\ 'u
+\f2text\fP	::=	\f2array\fP | \f2object\fP
+
+\f2value\fP	::=	 \f5null\fP | \f5true\fP | \f5false\fP | \f2number\fP | \f2string\fP | \f2array\fP | \f2object\fP
+
+\f2object\fP	::=	\f5'{'\fP [\f2pair\fP (\f5','\fP \f2pair\fP)*] \f5'}'\fP
+\f2pair\fP	::=	\f2string\fP \f5':'\fP \f2value\fP
+
+\f2array\fP	::=	\f5'['\fP [\f2value\fP (\f5','\fP \f2value\fP)*] \f5']'\fP
+
+\f2number\fP	::=	\f2int\fP \f2frac\fP? \f2exp\fP?
+\f2int\fP	::=	\f5'-'\fP? \f5[0-9]\fP | \f5[1-9][0-9]\fP+
+\f2frac\fP	::=	\f5'.'\fP \f5[0-9]\fP+
+\f2exp\fP	::=	\f5[eE][-+]\fP? \f5[0-9]\fP+
+
+\f2string\fP	::=	\f5'"'\fP \f2char\fP* \f5'"'\fP
+\f2char\fP	::=	\f5[^\ex00-\ex1F"\e\e]\fP |
+		 \f5'\e"'\fP | \f5'\e/'\fP | \f5'\eb'\fP | \f5'\ef'\fP | \f5'\en'\fP | \f5'\er'\fP | \f5'\et'\fP |
+		\f5'\eu'\fP \f2hex\fP \f2hex\fP \f2hex\fP \f2hex\fP
+\f2hex\fP	::=	\f5[0-9a-fA-F]\fP
+.EE
+.PD
+.DT
+.PP
+A sequence of blank, tab, newline or carriage-return characters (`white space') can appear
+before or after opening and closing brackets and braces, colons and commas,
+and is ignored.
+The
+.B null
+represents a null value of any type.
+The
+.I strings
+in the
+.I pairs
+of an
+.I object
+are intended to represent member names, and should be unique within that object.
+Note that array and object denotations can be empty.
+Also note that the RFC wants applications to exchange a
+.I text
+(ie, object or array) not an arbitrary
+.IR value .
+.SH SEE ALSO
+.IR json (2),
+.IR sexprs (6),
+.IR ubfa (6)
+.br
+.br
+D Crockford, ``The application/json Media Type for JavaScript Object Notation (JSON)'',
+.IR RFC4627 .
+UBF web page,
+.B "http://www.sics.se/~joe/ubf/"

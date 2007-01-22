@@ -1,3 +1,5 @@
+20070118
+	add json(2) {/appl/lib/json.b, /module/json.m, /dis/lib/json.dis} for RFC4627 notation [json(6)]
 20070117
 	remove duplicate libmp/libsec reference from /mkfile (i assume it wasn't necessary to visit them twice!)
 20070116

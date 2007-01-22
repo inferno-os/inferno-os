@@ -228,7 +228,9 @@ The following is an S-expression in advanced form:
 Note that advanced form contains canonical form as a subset;
 here it is used for the innermost list.
 .SH SEE ALSO
-.IR sexprs (2)
+.IR sexprs (2),
+.IR json (6),
+.IR ubfa (6)
 .PP
 R. Rivest, ``S-expressions'', Network Working Group Internet Draft
 (4 May 1997),
