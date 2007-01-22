@@ -68,6 +68,8 @@ doc
 	perform
 		perform.ms
 		perform.pdf
+	port.ms
+	port.pdf
 	realinferno
 		real.ms
 		real.pdf

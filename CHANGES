@@ -1,3 +1,5 @@
+20070122
+	add doc/port.ms, doc/port.pdf to src proto.  add brief instructions for source rebuild to port.ms
 20070118
 	add json(2) {/appl/lib/json.b, /module/json.m, /dis/lib/json.dis} for RFC4627 notation [json(6)]
 20070117
