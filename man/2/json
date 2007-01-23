@@ -9,7 +9,7 @@ json := load JSON JSON->PATH;
 JValue: adt {
     pick{
     Object =>
-        l:     cyclic list of (string, ref JValue);
+        mem:   cyclic list of (string, ref JValue);
     Array =>
         a:     cyclic array of ref JValue;
     String =>
