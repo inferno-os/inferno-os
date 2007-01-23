@@ -179,12 +179,15 @@ static long
 envwrite(Chan *c, void *a, long n, vlong offset)
 {
 	char *s;
-	int ve;
+	ulong ve;
 	Egrp *eg;
 	Evalue *e;
 
 	if(n <= 0)
 		return 0;
+	ve = offset+n;
+	if(ve > Maxenvsize)
+		error(Etoobig);
 	eg = up->env->egrp;
 	qlock(eg);
 	if(waserror()){
@@ -196,9 +199,6 @@ envwrite(Chan *c, void *a, long n, vlong offset)
 			break;
 	if(e == nil)
 		error(Enonexist);
-	ve = offset+n;
-	if(ve > Maxenvsize)
-		error(Etoobig);
 	if(ve > e->len) {
 		s = smalloc(ve);
 		memmove(s, e->val, e->len);

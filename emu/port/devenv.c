@@ -5,6 +5,12 @@
 #include	"fns.h"
 #include	"error.h"
 
+enum
+{
+	Maxenvlen=	16*1024-1,
+};
+
+
 static void envremove(Chan*);
 
 static int
@@ -168,12 +174,15 @@ static long
 envwrite(Chan *c, void *a, long n, vlong offset)
 {
 	char *s;
-	int ve;
+	ulong ve;
 	Egrp *eg;
 	Evalue *e;
 
 	if(n <= 0)
 		return 0;
+	ve = offset+n;
+	if(ve > Maxenvlen)
+		error(Etoobig);
 	eg = up->env->egrp;
 	qlock(&eg->l);
 	for(e = eg->entries; e != nil; e = e->next)
@@ -183,7 +192,6 @@ envwrite(Chan *c, void *a, long n, vlong offset)
 		qunlock(&eg->l);
 		error(Enonexist);
 	}
-	ve = offset+n;
 	if(ve > e->len) {
 		s = smalloc(ve);
 		memmove(s, e->val, e->len);
