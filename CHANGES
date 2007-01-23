@@ -1,3 +1,5 @@
+20070123
+	check lengths properly in devenv.c
 20070122
 	add doc/port.ms, doc/port.pdf to src proto.  add brief instructions for source rebuild to port.ms
 20070118
