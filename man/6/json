@@ -64,5 +64,5 @@ Also note that the RFC wants applications to exchange a
 .br
 D Crockford, ``The application/json Media Type for JavaScript Object Notation (JSON)'',
 .IR RFC4627 .
-UBF web page,
-.B "http://www.sics.se/~joe/ubf/"
+.br
+.B "http://www.json.org/"
