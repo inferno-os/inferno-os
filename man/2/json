@@ -173,6 +173,7 @@ The other operations are:
 .IB v .copy()
 Return a (reference to) a copy of value
 .IR v .
+The copying is not recursive.
 .TP
 .IB v .eq( w )
 Return true if the values of
@@ -182,7 +183,7 @@ and
 are equal, including the values of corresponding subcomponents, recursively
 .TP
 .IB v .get( mem )
-Return the value associated with member
+Return the value associated with the member named
 .I mem
 in
 .IR v ;
@@ -191,7 +192,7 @@ return null if there is none.
 .IB v .set( mem,\ value )
 Adds or changes the
 .I value
-associated with
+associated with the member named
 .I mem
 in
 .IR v ,
@@ -202,9 +203,8 @@ raises exception
 otherwise).
 .TP
 .IB v .text()
-Return a printable representation of the value
-.IR v ,
-mainly intended for debugging and tracing.
+Return a string containing the JSON representation of
+.IR v .
 .SH SOURCE
 .B /appl/lib/json.b
 .SH SEE ALSO
