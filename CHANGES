@@ -1,3 +1,7 @@
+20070131
+	add /appl/lib/convcs/utf16_btos.b, utf16_stob.b etc [rog]
+20070130
+	fix wording in some of the licence files (eg, remove references to old liberal licence)
 20070123
 	check lengths properly in devenv.c
 	move all of doc into lib/proto/inferno from lib/proto/src
