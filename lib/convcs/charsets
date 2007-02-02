@@ -121,6 +121,24 @@ utf-8=
 	stob=/dis/lib/convcs/utf8_stob.dis
 	btos=/dis/lib/convcs/utf8_btos.dis
 
+utf16=utf-16
+utf-16=
+	desc='Unicode UTF-16'
+	btos=/dis/lib/convcs/utf16_btos.dis
+	stob=/dis/lib/convcs/utf16_stob.dis
+
+utf16le=utf-16le
+utf-16le=
+	desc='Unicode UTF-16 little endian'
+	btos=/dis/lib/convcs/utf16_btos.dis arg=le
+	stob=/dis/lib/convcs/utf16_stob.dis arg=le
+
+utf16be=utf-16be
+utf-16be=
+	desc='Unicode UTF-16 big endian'
+	btos=/dis/lib/convcs/utf16_btos.dis arg=be
+	stob=/dis/lib/convcs/utf16_stob.dis arg=be
+
 # UTF-7
 #utf-7=
 #	desc='Unicode UTF-7'

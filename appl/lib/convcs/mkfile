@@ -12,6 +12,8 @@ TARG=\
 	gb2312_btos.dis\
 	utf8_btos.dis\
 	utf8_stob.dis\
+	utf16_btos.dis\
+	utf16_stob.dis\
 
 MODULES=\
 

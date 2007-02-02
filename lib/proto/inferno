@@ -885,6 +885,8 @@ appl
 			mkfile
 			utf8_btos.b
 			utf8_stob.b
+			utf16_btos.b
+			utf16_stob.b
 			windows-1250.b
 			windows-1251.b
 			windows-1252.b

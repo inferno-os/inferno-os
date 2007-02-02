@@ -11540,6 +11540,7 @@ copying	/man/1/dd
 copying	/man/1/tail
 copying	/man/10/dev
 copying	/man/10/readnum
+copying	/man/2/json
 copying	/man/2/smtp
 copying	/man/3/ftl
 copying	/man/4/ftpfs
@@ -13189,7 +13190,6 @@ debugging	/man/10/xalloc
 debugging	/man/2/alphabet-intro
 debugging	/man/2/debug
 debugging	/man/2/filter-deflate
-debugging	/man/2/json
 debugging	/man/2/scsiio
 debugging	/man/2/styx
 debugging	/man/2/ubfa
@@ -28281,7 +28281,6 @@ intended	/man/10/allocb
 intended	/man/10/kproc
 intended	/man/10/plan9.ini
 intended	/man/10/xalloc
-intended	/man/2/json
 intended	/man/2/keyring-0intro
 intended	/man/2/math-0intro
 intended	/man/2/prefab-element
@@ -29533,7 +29532,6 @@ jn	/man/2/math-elem
 jo	/man/10/odbc
 joe	/man/1/filename
 joe	/man/10/styxserver
-joe	/man/6/json
 joe	/man/6/ubfa
 joe's	/man/1/filename
 joel	/man/9/canvas
@@ -32785,7 +32783,6 @@ mainly	/man/1/acme
 mainly	/man/10/ar
 mainly	/man/10/styxserver
 mainly	/man/2/ip
-mainly	/man/2/json
 mainly	/man/2/palmfile
 mainly	/man/2/ubfa
 mainly	/man/3/cons
@@ -39297,7 +39294,6 @@ page	/man/2/tabs
 page	/man/2/w3c-css
 page	/man/3/flash
 page	/man/3/ip
-page	/man/6/json
 page	/man/6/keyboard
 page	/man/6/man
 page	/man/6/ubfa
@@ -42224,7 +42220,6 @@ printable	/man/1/strings
 printable	/man/1/xd
 printable	/man/2/bufio
 printable	/man/2/encoding
-printable	/man/2/json
 printable	/man/2/keyring-certtostr
 printable	/man/2/print
 printable	/man/2/sexprs
@@ -45358,6 +45353,7 @@ recursion	/man/1/math-misc
 recursion	/man/2/spree
 recursive	/man/1/sh
 recursive	/man/10/lock
+recursive	/man/2/json
 recursive	/man/6/sexprs
 recursively	/man/1/alphabet-fs
 recursively	/man/1/cp
@@ -58312,7 +58308,6 @@ traces	/man/1/emu
 traces	/man/3/cons
 traceset	/man/2/styxservers
 tracing	/man/2/dhcpclient
-tracing	/man/2/json
 tracing	/man/2/styx
 tracing	/man/2/ubfa
 tracing	/man/3/ftl
@@ -59318,7 +59313,6 @@ uart	/man/10/plan9.ini
 uart0	/man/10/intrenable
 uarts	/man/10/plan9.ini
 ubf	/man/2/ubfa
-ubf	/man/6/json
 ubf	/man/6/ubfa
 ubfa	/man/2/json
 ubfa	/man/2/ubfa
@@ -62285,7 +62279,6 @@ web	/man/1/mux
 web	/man/1/webgrab
 web	/man/2/w3c-css
 web	/man/2/w3c-xpointers
-web	/man/6/json
 web	/man/6/ubfa
 web	/man/8/httpd
 webget	/man/1/charon
@@ -63414,8 +63407,8 @@ wunlock	/man/10/qlock
 ww	/man/1/limbo
 www	/man/1/webgrab
 www.innerhost.vitanuova.com	/man/1/webgrab
+www.json.org	/man/6/json
 www.minitelfr.com	/man/1/miniterm
-www.sics.se	/man/6/json
 www.sics.se	/man/6/ubfa
 www.vitanuova.com	/man/1/webgrab
 www.w3.org	/man/2/w3c-css
