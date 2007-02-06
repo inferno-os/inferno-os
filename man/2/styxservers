@@ -15,7 +15,7 @@ Styxserver: adt {
     fd:      ref Sys->FD;     # file server end of connection
     t:       ref Navigator;   # name space navigator for this server
     msize:   int;             # negotiated Styx message size
-
+ 
     new:     fn(fd: ref Sys->FD, t: ref Navigator, rootpath: big)
                   :(chan of ref Tmsg, ref Styxserver);
     reply:   fn(srv: self ref Styxserver, m: ref Rmsg): int;
@@ -30,7 +30,10 @@ Styxserver: adt {
     stat:    fn(srv: self ref Styxserver, m: ref Tmsg.Stat);
     default: fn(srv: self ref Styxserver, gm: ref Tmsg);
 
-    # check validity
+    replychan: chan of ref Rmsg;             # replies sent here if not nil.
+    replydirect: fn(srv: self ref Styxserver, gm: ref Rmsg): int; # called by receiver for replychan
+
+   # check validity
     cancreate: fn(srv: self ref Styxserver, m: ref Tmsg.Create)
                   :(ref Fid, int, ref Sys->Dir, string);
     canopen:   fn(srv: self ref Styxserver, m: ref Tmsg.Open)
@@ -357,7 +360,13 @@ gives the Qid path of the root of the served name space.
 .TP
 .IB srv .reply(\fIm\fP)
 Send a reply (R-message) to a client. The various utility methods,
-listed below, call this function to make their response.
+listed below, call this function to make their response. When
+.IB srv .replychan
+is not nil
+the function sends the R-message to this channel. It is assumed that a process
+will drain replies from it and call
+.IB srv .replydirect
+when appropriate.
 .TP
 .IB srv .attach(\fIm\fP)
 Respond to an
