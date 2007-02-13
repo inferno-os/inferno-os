@@ -245,7 +245,7 @@ srv9open(Chan *c, int omode)
 
 			/* spawn exportfs */
 			args[0] = "exportfs";
-			args[1] = "-dS";
+			args[1] = "-S";
 			args[2] = up->genbuf;
 			args[3] = nil;
 			if(pipe(fd) < 0)

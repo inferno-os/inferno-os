@@ -160,6 +160,7 @@ typedef struct Qid	Qid;
 typedef struct Dir	Dir;
 typedef struct Waitmsg	Waitmsg;
 
+#define	STATMAX	65535U	/* max length of machine-independent stat structure */
 #define	ERRMAX			128	/* max length of error string */
 #define	KNAMELEN		28	/* max length of name held in kernel */
 

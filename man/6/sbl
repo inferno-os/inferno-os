@@ -142,6 +142,7 @@ Each entry describes a
 	m \fImodule\fP \en \fIsrc\fP
 	A \fItype\fP
 	C \fItype\fP
+	F \fIfn-name\fP \fItype\fP
 	L \fItype\fP
 	R \fItype\fP
 	n
@@ -182,6 +183,12 @@ without
 .B
 C
 .B chan of
+.I type
+.TP
+.B
+F
+.B fn
+returning
 .I type
 .TP
 .B f
