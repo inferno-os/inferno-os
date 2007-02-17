@@ -443,6 +443,8 @@ ipopen(Chan *c, int omode)
 		if(cv->inuse == 1) {
 			kstrdup(&cv->owner, up->env->user);
 			cv->perm = 0660;
+			if(cv->sfd < 0)
+				cv->sfd = so_socket(p->stype);
 		}
 		poperror();
 		qunlock(&cv->l);
@@ -510,6 +512,7 @@ closeconv(Conv *cv)
 	cv->perm = 0660;
 	/* cv->p->close(cv); */
 	cv->state = Idle;
+	cv->restricted = 0;
 	fd = cv->sfd;
 	cv->sfd = -1;
 	if(fd >= 0)

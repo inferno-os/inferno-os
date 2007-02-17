@@ -1,5 +1,6 @@
 20070217
 	repair /appl/lib/libc.b and /appl/lib/libc0.b strncmp implementations (used only by c2l output) [inferno-os issue 9]
+	/emu/port/devip.c, get socket fd on reopen of ctl
 20070216
 	add /module/lists.m, /appl/lib/lists.b, and lists(2)
 20070209
