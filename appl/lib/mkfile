@@ -66,6 +66,7 @@ TARG=\
 	keyset.dis\
 	libc.dis\
 	libc0.dis\
+	lists.dis\
 	lock.dis\
 	login.dis\
 	man.dis\
@@ -230,3 +231,4 @@ ida.dis:	$ROOT/module/ida.m
 rfc822.dis:	$ROOT/module/rfc822.m
 csv.dis: $ROOT/module/csv.m
 json.dis: $ROOT/module/json.m
+lists.dis:	$ROOT/module/lists.m

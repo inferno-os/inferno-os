@@ -21,6 +21,15 @@ Linux
 		bin
 		include
 		lib
+MacOSX
+	386
+		bin
+		include
+		lib
+	power
+		bin
+		include
+		lib
 Nt
 	386
 		bin
@@ -947,6 +956,7 @@ appl
 			idatest.b
 			mkfile
 			mktab.b
+			idatab.dis
 		imageremap.b
 		inflate.b
 		ip.b
@@ -960,6 +970,7 @@ appl
 		keyset.b
 		libc.b
 		libc0.b
+		lists.b
 		lock.b
 		login.b
 		man.b
@@ -1565,6 +1576,7 @@ dis
 		keyset.dis
 		libc.dis
 		libc0.dis
+		lists.dis
 		lock.dis
 		login.dis
 		man.dis
@@ -2205,6 +2217,7 @@ module
 	libc.m
 	libc0.m
 	linalg.m
+	lists.mappl
 	loader.m
 	lock.m
 	man.m
