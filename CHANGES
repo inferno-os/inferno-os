@@ -1,3 +1,12 @@
+20070217
+	repair /appl/lib/libc.b and /appl/lib/libc0.b strncmp implementations (used only by c2l output) [inferno-os issue 9]
+20070216
+	add /module/lists.m, /appl/lib/lists.b, and lists(2)
+20070209
+	remove debugging -d option to exportfs call in emu/Plan9/devsrv9.c(!)
+20070206
+	/appl/svc/auth.sh: replace exit by raise
+	/man/2/styxservers: document replychan and replydirect
 20070201
 	update US timezone files to save energy
 20070131

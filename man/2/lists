@@ -1,0 +1,185 @@
+.TH LISTS 2
+.SH NAME
+lists: allsat, anysat, append, combine, concat, delete, filter, ismember, last, map, pair, partition, rev, unpair\- list operations
+.SH SYNOPSIS
+.EX
+include "lists.m"
+lists := load Lists Lists->PATH;
+
+append:    fn[T](l: list of T, x: T): list of T;
+combine:   fn[T](l1: list of T, l2: list of T): list of T;
+concat:    fn[T](l1: list of T, l2: list of T): list of T;
+delete:    fn[T](x: T, l: list of T): list of T
+             for { T => eq:  fn(a, b: T): int; };
+ismember:  fn[T](x: T, l: list of T): int
+             for { T =>  eq: fn(a, b: T): int; };
+last:      fn[T](l: list of T): T;
+pair:      fn[T1, T2](l1: list of T1, l2: list of T2):
+             list of (T1, T2);
+reverse:   fn[T](l: list of T): list of T;
+unpair:    fn[T1, T2](l: list of (T1, T2)):
+             (list of T1, list of T2);
+
+allsat:    fn[T](p: ref fn(x: T): int, l: list of T): int;
+anysat:    fn[T](p: ref fn(x: T): int, l: list of T): int;
+filter:    fn[T](p: ref fn(x: T): int, l: list of T): list of T;
+map:       fn[T](f: ref fn(x: T): T, l: list of T): list of T;
+partition: fn[T](p: ref fn(x: T): int, l: list of T):
+             (list of T, list of T);
+.EE
+.SH DESCRIPTION
+The module provides operations on lists of type
+.IR T ,
+which may be any reference type, or
+.BR string .
+Reference types are
+.BR array ,
+.BR chan ,
+.BR list ,
+.BR module ,
+and
+.BI ref "adt".
+None of the operations change their parameter lists: they always return a new list.
+.PP
+First, there is a group of common list operations.
+.PP
+.B Append
+returns a new list with the elements of
+.I l
+followed by the element
+.IR x .
+.PP
+.B Combine
+returns a new list that has the elements of both
+.I l1
+and
+.I l2
+in no defined order.
+.PP
+.B Concat
+returns a new list that has the elements of
+.I l1
+followed by the elements of
+.IR l2 .
+.PP
+.B Delete
+returns a new list in which the first element of
+.I l
+that is equal to
+.I x
+has been removed (all others remain).
+.I X
+must be an adt reference type
+.I T
+with an operation
+.IB T .eq
+that returns true (non-zero) if two values of type
+.I T
+are considered equal.
+.PP
+.B Ismember
+returns 1 if
+there is an element of
+.I l
+that is equal to
+.IR x .
+.PP
+.B Last
+returns the value of the element at the end of list
+.IR l .
+A run-time error occurs if
+.I l
+is nil.
+.PP
+.B Pair
+takes two lists
+.I l1
+and
+.IR l2 ,
+and returns a new list of tuples
+.BI ( v1,\ v2 )
+in which each element of
+.I l1
+has been paired with the corresponding element of
+.IR l2 .
+A run-time error occurs if the lists are not equal in length.
+.PP
+.B Reverse
+returns a new list containing the elements of
+.I l
+in reverse order.
+.PP
+.B Unpair
+takes a list of tuples
+.BI ( v1,\ v2 )
+and returns a tuple of lists
+.BI ( l1,\ l2 )
+where
+.I l1
+contains the first element of each tuple, and
+.I l2
+contains the second element of each tuple.
+.PP
+A second group of operations applies a function
+.I f
+or a Boolean predicate
+.I p
+to each element of a list
+.IR l ,
+returning a transformed list or a Boolean value.
+A predicate
+.I p
+must return non-zero if its parameter value satisfies its condition, and must return zero if it does not.
+.PP
+.B Allsat
+returns 1 if all elements of
+.I l
+satisfy
+.IR p ,
+and returns 0 otherwise.
+.PP
+.B Anyset
+returns 1 if any element of
+.I l
+satisfies
+.IR p ,
+and returns 0 otherwise.
+.PP
+.B Filter
+returns a new list containing only the elements of
+.I l
+that satisfy
+.IR p .
+.PP
+.B Map
+returns a new list in which each element of
+.I l
+has been transformed by
+.I f
+(ie, if
+.I l
+is
+.IB e0 :: e1 ::  ...
+then the result is
+.IB f(e0) :: f(e1) :: ... ).
+.PP
+.B Partition
+returns a tuple of lists
+.BI ( l1,\ l2 )
+of lists where
+.I l1
+contains all elements of
+.I l
+that satisfy
+.I p
+and
+.I l2
+contains all elements of
+.I l
+that do not satisfy
+.IR p .
+.SH SOURCE
+.B /appl/lib/lists.b
+.SH BUGS
+The current implementation of polymorphism is limited to reference types and strings,
+which in turn limits use of this module.

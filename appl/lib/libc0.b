@@ -170,12 +170,20 @@ strcmp(s1: array of byte, s2: array of byte): int
 
 strncmp(s1: array of byte, s2: array of byte, n: int): int
 {
-	l1 := strlen(s1);
-	l2 := strlen(s2);
-	for(i := 0; i < l1 && i < l2 && i < n; i++)
-		if(s1[i] != s2[i])
-			return int s1[i]-int s2[i];
-	return l1-l2;
+	i1 := i2 := 0;
+	while(n > 0){
+		c1 := int s1[i1++];
+		c2 := int s2[i2++];
+		n--;
+		if(c1 != c2){
+			if(c1 > c2)
+				return 1;
+			return -1;
+		}
+		if(c1 == 0)
+			break;
+	}
+	return 0;
 }
 
 strchr(s: array of byte, n: int): array of byte
