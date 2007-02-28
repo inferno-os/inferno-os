@@ -46,20 +46,9 @@ which is read and written to exchange data on the original
 using SSL.
 .PP
 .B Secret
-writes
-.I secretin
-and
-.I secretout
-to
-.IB c .dir/secretin
-and
-.IB c .dir/secretout
-where
-.I n
-is obtained from the
-.B Connection
-adt
-.IR c .
+sets the secrets for each direction on Connection
+.I c ;
+if a secret is nil, the existing setting for that direction remains unchanged.
 The string returned describes errors encountered, if any; otherwise it is nil.
 .PP
 .SH SOURCE

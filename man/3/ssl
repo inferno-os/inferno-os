@@ -2,24 +2,27 @@
 .SH NAME
 ssl \- secure sockets layer device
 .SH SYNOPSIS
-.B bind '#D' /n/ssl
-.PP
-.B /n/ssl/clone
+.B #D/clone
 .br
-.BI /n/ssl/ n
+.BI #D/ n
 .br
-.BI /n/ssl/ n /data
+.BI #D/ n /data
 .br
-.BI /n/ssl/ n /ctl
+.BI #D/ n /ctl
 .br
-.BI /n/ssl/ n /secretin
+.BI #D/ n /secretin
 .br
-.BI /n/ssl/ n /secretout
+.BI #D/ n /secretout
+.br
+.BI #D/ n /encalgs
+.br
+.BI #D/ n /hashalgs
 .SH DESCRIPTION
 The
 .I ssl
 device provides access to a Secure Socket Layer that implements the record layer protocol
-of SSLv2.
+of SSLv2
+(but not its handshaking).
 The device provides encrypting and digesting for many independent connections.
 Once associated with a network connection, the
 .I ssl
@@ -29,6 +32,10 @@ can send data in the clear, digested or encrypted. In all cases, if
 .I ssl
 is associated with both ends of a connection, all messages are delimited.
 As long as reads always specify buffers that are of equal or greater lengths than the writes at the other end of the connection, one write will correspond to one read.
+The device is unusual because it is not bound into the name space but named directly by its local name,
+.BR #D .
+That is because the interface described below requires writing a local file descriptor number to a file,
+which will not work remotely.
 .PP
 The top-level directory contains a
 .B clone
@@ -41,16 +48,17 @@ will be open on the control file,
 .BR ctl ,
 in the directory that represents the new connection.
 Reading the control file will return a text string giving the connection number
-(and thus the directory name).
+.IR n ,
+and thus the directory name.
 .PP
 Writing to
 .B ctl
 controls the corresponding connection.
 The following control messages are possible:
 .TP
-.BI fd " n"
-Associate the network connection on file descriptor
-.I n
+.BI fd " m"
+Associate the network connection on existing file descriptor
+.I m
 with the
 .I ssl
 device.
