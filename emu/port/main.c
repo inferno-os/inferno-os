@@ -20,6 +20,7 @@ extern	int	mflag;
 	char	*eve;
 	int	Xsize	= 640;
 	int	Ysize	= 480;
+	int	bflag = 1;
 	int	sflag;
 	int	qflag;
 	int	xtblbit;
@@ -126,8 +127,11 @@ option(int argc, char *argv[], void (*badusage)(void))
 		if (geom(EARGF(badusage())) == 0)
 			badusage();
 		break;
-	case 'b':		/* jit array bounds checking */
+	case 'b':		/* (obsolete) jit array bounds checking */
 		bflag = 1;
+		break;
+	case 'B':		/* suppress jit array bounds checks */
+		bflag = 0;
 		break;
 	case 'c':		/* Compile on the fly */
 		cp = EARGF(badusage());
