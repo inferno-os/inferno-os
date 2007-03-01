@@ -536,15 +536,3 @@ Mount point for named pipes.
 .IR sh (1),
 .IR sh-expr (1),
 .IR sh-tk (1)
-.SH BUGS
-As the shell does not know about functions,
-the
-.B whatis
-command cannot return information about
-their value. Use
-.BI "whatis fn-" name
-to find out the current definition of a function,
-or
-.BI "whatis sfn-" name
-to find out the current definition of a substitution function.
-

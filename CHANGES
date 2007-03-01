@@ -1,5 +1,6 @@
 20070228
 	make array bounds checking the default for on-the-fly compilers (emu/port/main.c)
+	improve wording in security-ssl(2) and ssl(3)
 20070227
 	/include/fcall.h: ensure unsigned promotion to counter ansi sign-extending rules for GBIT64
 	/libmemdraw/draw.c: copy fix to memfillcolor
