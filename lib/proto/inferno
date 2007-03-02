@@ -791,7 +791,51 @@ appl
 		srvmgr.b
 		srvmgr.m
 	demo
-		+
+		camera
+			camera.b
+			camload.bit
+			camproc.bit
+			mkfile
+			runcam.sh
+			runcamlocal.sh
+			tkinterface.b
+		chat
+			chat.b
+			chatclient.sh
+			chatsrv.b
+			mkfile
+		cpupool
+			mkfile
+			regpoll.b
+			runrstyx.sh
+		lego
+			clockface.b
+			clockreg.sh
+			firmdl.b
+			legolink.b
+			mkfile
+			rcxsend.b
+			rcxsend.m
+			styx.srec
+			timers.b
+			timers.m
+		mkfile
+		ns
+			mkfile
+			ns.b
+			runns.sh
+		odbc
+			mkfile
+			odbcmnt.b
+			runodbc.sh
+		spree
+			mkfile
+			spreeclient.sh
+		whiteboard
+			mkfile
+			runwb.sh
+			wbsrv.b
+			whiteboard.b
 	ebook
 		checkxml.b
 		cssfont.b
