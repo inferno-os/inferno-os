@@ -20,7 +20,6 @@ char buf[128], mbuf[128];
 static Sym *sysop, *bioop, *libcop;
 static int again;
 
-#define INFINITY 0x7fffffff
 #define	STAR	0x80
 #define	RET		0x80
 
@@ -1053,7 +1052,7 @@ epgen(int b)
 {
 	char **p;
 
-	/* output(INFINITY, 1); */
+	/* output(0x7fffffff, 1); */	/* INFINITY */
 	if(!dolog())
 		return;
 	if(b){
@@ -1402,7 +1401,6 @@ ltype(Type *t)
 		default:
 			return t;
 	}
-	return t;
 }
 
 static int
@@ -4633,7 +4631,6 @@ hasbrk(Node *n)
 		default:
 			return 0;
 	}
-	return 0;
 }
 
 static int

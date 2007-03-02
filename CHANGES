@@ -1,3 +1,6 @@
+20070302
+	change /mkfile to build yacc earlier, mainly to make bootstrap of a new host easier (makemk.sh and mk install)
+	change /utils/mkfile not to build k[acl] and q[acl] on Plan 9, since the system ones are the same
 20070228
 	make array bounds checking the default for on-the-fly compilers (emu/port/main.c)
 	improve wording in security-ssl(2) and ssl(3)

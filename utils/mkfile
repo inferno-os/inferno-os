@@ -25,12 +25,6 @@ ALWAYS=\
 #	5i\
 	5coff\
 	5cv\
-	ka\
-	kc\
-	kl\
-	qa\
-	qc\
-	ql\
 	sqz\
 	tc\
 	acid\
@@ -53,9 +47,15 @@ NOTPLAN9=\
 	8a\
 	8c\
 	8l\
+	qa\
+	qc\
+	ql\
 	va\
 	vc\
 	vl\
+	ka\
+	kc\
+	kl\
 	mk\
 	ksize\
 	kstrip\

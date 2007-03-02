@@ -12,6 +12,7 @@ EMUDIRS=\
 	libmp\
 	libsec\
 	libmath\
+	utils/yacc\
 	limbo\
 	libinterp\
 	libkeyring\
