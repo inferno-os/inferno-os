@@ -30,7 +30,7 @@ chantostr(char *buf, ulong cc)
 
 /* avoid pulling in ctype when using with drawterm etc. */
 static int
-isspace(char c)
+iswhitespace(char c)
 {
 	return c==' ' || c== '\t' || c=='\r' || c=='\n';
 }
@@ -44,10 +44,10 @@ strtochan(char *s)
 
 	c = 0;
 	p=s;
-	while(*p && isspace(*p))
+	while(*p && iswhitespace(*p))
 		p++;
 
-	while(*p && !isspace(*p)){
+	while(*p && !iswhitespace(*p)){
 		if((q = strchr(channames, p[0])) == nil) 
 			return 0;
 		t = q-channames;
