@@ -40,6 +40,7 @@ Webgrab: module
 
 stderr: ref FD;
 verbose := 0;
+postbody : string;
 
 httpproxy: ref Url->ParsedUrl;
 noproxydoms: list of string;	# domains that don't require proxy
@@ -59,7 +60,7 @@ init(nil: ref Draw->Context, args: list of string)
 	stem := "";
 	rawflag := 0;
 	arg->init(args);
-	arg->setusage("webgrab [-r] [-v[v]] [-o stem] url");
+	arg->setusage("webgrab [-r] [-v[v]] [-p postbody] [-o stem] url");
 	url := "";
 	while((o := arg->opt()) != 0)
 		case o {
@@ -69,6 +70,8 @@ init(nil: ref Draw->Context, args: list of string)
 			verbose++;
 		'o' =>
 			stem = arg->earg();
+		'p' =>
+			postbody = arg->earg();
 		* =>
 			arg->usage();
 		}
@@ -174,7 +177,7 @@ grab(u: ref ParsedUrl, stem: string, rawflag: int)
 		(fname, suburl) := hd l;
 		subu := U->makeurl(suburl);
 		subu.makeabsolute(actual);
-		(suberr, subcontents, subfd, subactual) := httpget(subu);
+		(suberr, subcontents, subfd, nil) := httpget(subu);
 		if(suberr != "") {
 			sys->fprint(stderr, "webgrab: can't fetch subordinate %s from %s: %s\n", fname, subu.tostring(), suberr);
 			continue;
@@ -361,17 +364,18 @@ httpget(u: ref ParsedUrl) : (string, array of byte, ref Sys->FD, ref ParsedUrl)
 {
 	ans, body : array of byte;
 	restfd: ref Sys->FD;
+	req : string;
+	
 	for(redir := 0; redir < 10; redir++) {
 		if(u.port == "")
 			u.port = "80";	# default IP port for HTTP
 		if(verbose)
 			sys->fprint(stderr, "connecting to %s\n", u.host);
 		dialhost, port: string;
-		req := "GET ";
+
 		if(httpproxy != nil && need_proxy(u.host)) {
 			dialhost = httpproxy.host;
 			port = httpproxy.port;
-			req += "http://" + u.host;
 		}
 		else {
 			dialhost = u.host;
@@ -380,10 +384,39 @@ httpget(u: ref ParsedUrl) : (string, array of byte, ref Sys->FD, ref ParsedUrl)
 		(ok, net) := sys->dial("tcp!" + dialhost + "!" + port, nil);
 		if(ok < 0)
 			return (sys->sprint("can't dial %s: %r", dialhost), nil, nil, nil);
-		req += "/" + u.path;
-		if(u.query != "")
-			req += "?" + u.query;
-		req += " HTTP/1.0\r\nHost: "+u.host+"\r\nUser-agent: Inferno/webgrab\r\n\r\n";
+			
+		# prepare request
+		if(u.query != ""){
+			u.query = "?" + u.query;
+		}
+
+		if (postbody == nil){
+			if(httpproxy == nil || !need_proxy(u.host)){
+				req = sys->sprint("GET /%s%s HTTP/1.0\r\n"+
+						"Host: %s\r\n"+
+						"User-agent: Inferno/webgrab\r\n"+
+						"Cache-Control: no-cache\r\n"+
+						"Pragma: no-cache\r\n\r\n",
+						u.path, u.query, u.host);
+			}else{
+				req = sys->sprint("GET http:///%s%s HTTP/1.0\r\n"+
+						"Host: %s\r\n"+
+						"User-agent: Inferno/webgrab\r\n"+
+						"Cache-Control: no-cache\r\n"+
+						"Pragma: no-cache\r\n\r\n",
+						u.host, u.path, u.host);
+			}
+		}else{
+				req = sys->sprint("POST /%s HTTP/1.0\r\n"+
+						"Host: %s\r\n"+
+						"Content-type: application/x-www-form-urlencoded\r\n"+
+						"Content-length: %d\r\n"+
+						"User-agent: Inferno/webgrab\r\n"+
+						"\r\n"+"%s",
+						u.path, u.host, len postbody, postbody);
+
+		}
+
 		if(verbose)
 			sys->fprint(stderr, "writing request: %s\n", req);
 		areq := array of byte req;
@@ -432,6 +465,7 @@ httpget(u: ref ParsedUrl) : (string, array of byte, ref Sys->FD, ref ParsedUrl)
 	}
 	return ("", body, restfd, u);
 }
+
 
 need_proxy(h: string) : int
 {

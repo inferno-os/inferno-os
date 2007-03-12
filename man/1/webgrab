@@ -9,6 +9,8 @@ webgrab \- fetch web page content as files
 .B -v
 ] [
 .BI -o " stem"
+] [
+.BI -p " body"
 ]
 .I url
 .SH DESCRIPTION
@@ -93,6 +95,15 @@ print a chatty progress report
 use the
 .I stem
 as given
+.TP
+.BI -p " body"
+Use HTTP
+.B POST
+instead of
+.BR GET ,
+posting
+.I body
+as the data
 .PP
 .I Webgrab
 reads the
