@@ -729,7 +729,7 @@ fslseek(HANDLE h, vlong offset)
 {
 	LONG hi;
 
-	if(1 || offset <= 0x7ffffff){	/* TO DO: remove 1 || */
+	if(offset <= 0x7fffffff){
 		if(SetFilePointer(h, (LONG)offset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 			oserror();
 	}else{
