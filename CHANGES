@@ -1,3 +1,5 @@
+20070312
+	rename -D and -k options to plumb (old ones still accepted); add -i option to take data from standard input; update man page
 20070302
 	change /mkfile to build yacc earlier, mainly to make bootstrap of a new host easier (makemk.sh and mk install)
 	change /utils/mkfile not to build k[acl] and q[acl] on Plan 9, since the system ones are the same

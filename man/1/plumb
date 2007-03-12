@@ -8,11 +8,13 @@ plumb \- send message to plumber
 ] [
 .BI -d " dest"
 ] [
-.BI -D " dir"
+.BI -w " wdir"
 ] [
-.BI -k " kind"
+.BI -t " type"
 ] [
 .BI -a " name value"
+] [
+.B -i
 ]
 .I data
 \&...
@@ -40,17 +42,17 @@ Set the destination to
 .I dest
 (default: unspecified).
 .TP
-.BI -D " dir"
-Set the directory to
-.I dir
+.BI -w " wdir"
+Set the working directory to
+.I wdir
 (default: current directory as reported by
 .IR pwd (1)
 or
 .IR workdir (2)).
 .TP
-.BI -k " kind"
-Set the kind of data to
-.I kind
+.BI -t " type"
+Set the type of data to
+.I type
 (default:
 .BR text )
 .TP
@@ -58,6 +60,18 @@ Set the kind of data to
 Include an attribute
 .RI ` name = value ';
 there can be more than one.
+.TP
+.B -i
+Take the
+.I data
+from the standard input not from the argument strings.
+If an
+.B action
+attribute is not otherwise specified,
+.I plumb
+will add an
+.B action=showdata
+attribute to the message.
 .PP
 The remaining arguments are sent, separated by spaces, as the
 .I data
