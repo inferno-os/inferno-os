@@ -607,10 +607,6 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	ptrdel(D2H(req.t1));
 	destroy(req.t1);
 
-	poperror();
-	ptrdel(D2H(wc));
-	destroy(wc);
-
 	h = heap(dev.Rwrite);
 	w = H2D(Sys_Rwrite *, h);
 	ptradd(h);
@@ -626,6 +622,10 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	ptrdel(h);
 	l = w->t0;
 	destroy(w);
+
+	poperror();
+	ptrdel(D2H(wc));
+	destroy(wc);
 
 	poperror();
 	release();

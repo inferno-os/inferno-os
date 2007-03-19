@@ -42,6 +42,8 @@ Styxserver: adt {
                   :(ref Fid, string);
     canwrite:  fn(srv: self ref Styxserver, m: ref Tmsg.Write)
                   :(ref Fid, string);
+    canremove: fn(srv: self ref Styxserver, m: ref Tmsg.Remove)
+                  :(ref Fid, big, string);
 
     # fid management
     getfid:  fn(srv: self ref Styxserver, fid: int): ref Fid;
@@ -621,7 +623,7 @@ message
 refers to a valid fid that has been opened for writing,
 and that the file offset is non-negative.
 .B Canwrite
-returns a tuple, say
+returns a tuple
 .RI ( f ,\  err );
 if the attempted access is illegal,
 .I f
@@ -638,6 +640,34 @@ It is typically called by an application's implementation of
 to obtain the
 .B Fid
 corresponding to the fid in the message, and check the access.
+.TP
+.IB srv .canremove( m )
+Checks whether the
+removal of the file requested by
+message
+.I m
+is legal: the fid is valid, it is not a root directory, and there is write permission
+in the parent directory.
+.B Canremove
+returns a tuple
+.RI ( f,\ path,\ err );
+if the attempted access is illegal,
+.I f
+will be nil and
+.I err
+contains a description of the error;
+otherwise
+.I f
+contains the
+.B Fid
+for the file to be removed, and
+.I path
+is the
+.B Qid.path
+for the parent directory.The caller should remove the file, and in every case must call
+.B srv.delfid
+before replying,
+because the protocol's remove operation always clunks the fid.
 .TP
 .IB srv .iounit()
 Return an appropriate value for use as the

@@ -1,3 +1,5 @@
+20070319
+	emu/port/devsrv.c and os/port/devsrv.c delete wc at correct time
 20070312
 	rename -D and -k options to plumb (old ones still accepted); add -i option to take data from standard input; update man page
 	enable 64-bit seeks in /emu/Nt/devfs.c
