@@ -1,0 +1,80 @@
+Installing hosted Inferno from source
+
+First change mkconfig to reflect your host environment,
+specifically ROOT (which must be an absolute path name), SYSHOST and OBJTYPE.
+
+     Like the native kernels  _eeee_mmmm_uuuu relies on  several  auxil-
+iary libraries (the source of which it often shares with the
+native kernels).  Emu itself is built by the  _mmmm_kkkk_ffff_iiii_llll_eeee in the
+_eeee_mmmm_uuuu  platform  directory  for  the host, as described above.
+Each library has its own  _mmmm_kkkk_ffff_iiii_llll_eeee; the various components are
+made  in  the  right order by the  _mmmm_kkkk_ffff_iiii_llll_eeee at the root of the
+Inferno tree.  The   _mmmm_kkkk_ffff_iiii_llll_eeee  for  each  platform  will  also
+invoke  _mmmm_kkkk recursively to make the appropriate libraries for
+a given configuration.
+
+     The Unix emu variant generally is  covered  by  `POSIX'
+(with  common  extensions)  but  each Unix port has one file
+that   differs   considerably   for   each   port,    namely
+emu/platform/os.c, the differences corresponding to the dif-
+ferent ways  under  Unix  of  implementing  kernel-scheduled
+threads efficiently.
+
+     There  are  working  emu  versions   for   FreeBSD/386,
+Irix/mips,  Linux/386,  MacOSX/power, Plan 9, Solaris/sparc,
+and Windows (NT, 2000 and Explorer plug-in).  Each  platform
+typically  uses  mechanisms  specific  to the host operating
+system to implement Inferno's internal thread/process struc-
+ture.   POSIX  threads  have often been found to be insuffi-
+cient (poorly implemented) on some platforms, and if so  are
+avoided.  See  _kkkk_pppp_rrrr_oooo_cccc in  _eeee_mmmm_uuuu/*/_oooo_ssss._cccc.
+
+     Source is included for ports to HP/UX  (S800  architec-
+ture),  Solaris/386, and Unixware, in case someone wishes to
+take them up now, but we have not determined their fitness.
+
+     The Plan 9 hosted implementation is unusual in that  it
+supports several processor types:  _3333_8888_6666,  _mmmm_iiii_pppp_ssss,  _pppp_oooo_wwww_eeee_rrrr (Power
+PC) and  _ssss_pppp_aaaa_rrrr_cccc.  Furthermore, all versions of   _eeee_mmmm_uuuu  can  be
+built on any processor type, in the usual way for Plan 9.
+
+     Otherwise, as distributed,  _eeee_mmmm_uuuu for a platform can only
+be built when running on that platform.
+
+     One unusual variant makes the whole of Inferno a  plug-
+in  for Microsoft's Internet Explorer, giving the same envi-
+ronment for Inferno applications running in an HTML page  as
+is  provided by hosted or native Inferno.  That is, there is
+not a distinct `applet' environment with special programming
+interfaces.   The  source for the various plug-in components
+is found in  /_tttt_oooo_oooo_llll_ssss/_pppp_llll_uuuu_gggg_iiii_nnnn and    /_uuuu_ssss_rrrr/_iiii_nnnn_tttt_eeee_rrrr_nnnn_eeee_tttt  within  the
+Inferno  tree;  they  use the version of  _eeee_mmmm_uuuu defined by the
+configuration file  /_eeee_mmmm_uuuu/_NNNN_tttt/_iiii_eeee.
+
+     All the libraries an executables can be built in a tree
+containing only the source code.  To do that for a supported
+variant of hosted Inferno, on Unix or Plan 9, do the follow-
+ing in the root of the Inferno tree:
+
+1.   Run  _mmmm_aaaa_kkkk_eeee_mmmm_kkkk._ssss_hhhh to rebuild the   _mmmm_kkkk  command,  which  is
+     used to build everything else.
+
+2.   Set  _PPPP_AAAA_TTTT_HHHH (or  _pppp_aaaa_tttt_hhhh on Plan 9)  to  include  the    _bbbb_iiii_nnnn
+     directory for the platform, which will now contain the
+     _mmmm_kkkk binary just built.  On Unix, export  _PPPP_AAAA_TTTT_HHHH.
+
+3.   Then  _mmmm_kkkk _nnnn_uuuu_kkkk_eeee to remove any extraneous object files.
+
+4.   Finally,    _mmmm_kkkk  _iiii_nnnn_ssss_tttt_aaaa_llll_llll  to  create  and  install   the
+     libraries,    _llll_iiii_mmmm_bbbb_oooo  compiler,  _eeee_mmmm_uuuu for hosted Inferno,
+     and auxiliary commands.  The rules do that in an  order
+     that ensures that the commands or libraries needed by a
+     later stage are built and installed first.  (Note  that
+     a  plain   _mmmm_kkkk will not suffice, because it does not put
+     the results in the search path.)
+
+Doing something similar  on  Windows  or  Plan  9  currently
+requires  the  executable  for    _mmmm_kkkk  to be available in the
+search path, since there is no  equivalent  of    _mmmm_aaaa_kkkk_eeee_mmmm_kkkk._ssss_hhhh.
+Otherwise  the procedure is the same.  On Plan 9, of course,
+the host system's normal version of  _mmmm_kkkk should be adequate.
