@@ -138,7 +138,7 @@ satisfy
 .IR p ,
 and returns 0 otherwise.
 .PP
-.B Anyset
+.B Anysat
 returns 1 if any element of
 .I l
 satisfies
