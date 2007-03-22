@@ -11,7 +11,7 @@ setexcnotifyleader:	fn(pid: int): int;
 setexcpropagate:	fn(pid: int): int;
 .EE
 .SH DESCRIPTION
-.B Except
+.B Exception
 provides exception-related utility routines to read or write to system
 device files.
 .PP

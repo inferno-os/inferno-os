@@ -397,7 +397,7 @@ messages and subsequently manipulated using
 .B read
 and
 .B write
-messages to exchange authentication information not defined explicitly by Styx.
+messages to exchange authentication information not defined explicitly by the protocol.
 Once the authentication protocol is complete, the
 .B afid
 is presented in the
@@ -604,7 +604,10 @@ if bit 27
 .RB ( DMAUTH )
 is set, the file is an authentication file established by
 .B auth
-messages.
+messages;
+if bit 26
+.RB ( DMTMP )
+is set, the contents of the file (or directory) are not included in nightly archives.
 (Bit 28 is skipped for historical reasons.)
 These bits are reproduced, from the top bit down, in the type byte of the Qid:
 .BR QTDIR ,
