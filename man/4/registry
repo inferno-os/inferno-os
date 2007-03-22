@@ -116,6 +116,15 @@ so that several processes can set different filters simultaneously.
 (Note that after the write, the file offset must be set to zero using
 .IR sys-seek (2)
 before reading.)
+.TP
+.B event
+A read-only text file that can be used to detect when changes are made to the registry.
+Reading from it blocks until a change is made. At that point, the read completes and returns a
+string with a newline terminated decimal version number representing
+the number of changes made to the registry, which matches
+.B Qid.vers
+for the registry directory.
+Multiple changes are coalesced into one report.
 .PP
 A service file created by
 .B new
