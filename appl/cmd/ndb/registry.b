@@ -179,7 +179,7 @@ Serve:
 		err := "";
 		pick m := gm {
 		Readerror =>
-			error(sys->sprint("fatal read error: %s\n", m.error));
+			sys->fprint(sys->fildes(2), "registry: styx read error: %s\n", m.error);
 			break Serve;
 		Open =>
 			(fid, nil, nil, e) := srv.canopen(m);
