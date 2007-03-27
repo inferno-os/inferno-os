@@ -107,7 +107,7 @@ unmount /n/ftp
 .B /tmp/ftp.*
 Temporarily cached files
 .SH SOURCE
-.B /appl/ftpfs
+.B /appl/cmd/ftpfs.b
 .SH BUGS
 Symbolic links are not supported.
 .br
