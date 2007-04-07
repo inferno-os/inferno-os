@@ -982,7 +982,6 @@ Fsstdannounce(Conv* c, char* argv[], int argc)
 	case 2:
 		return setladdrport(c, argv[1], 1);
 	}
-	return nil;
 }
 
 /*
@@ -1033,7 +1032,6 @@ Fsstdbind(Conv* c, char* argv[], int argc)
 	case 2:
 		return setladdrport(c, argv[1], 0);
 	}
-	return nil;
 }
 
 static void

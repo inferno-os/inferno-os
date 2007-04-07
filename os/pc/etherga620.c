@@ -124,7 +124,11 @@ enum {					/* Om */
 enum {					/* Lmw */
 	Lmwsz		= 2*1024,	/* Local Memory Window Size */
 
-	Sr		= 0x3800,	/* Send Ring (accessed via Lmw) */
+	/*
+	 * legal values are 0x3800 iff Nsr is 128, 0x3000 iff Nsr is 256,
+	 * or 0x2000 iff Nsr is 512.
+	 */
+	Sr		= 0x2000,	/* Send Ring (accessed via Lmw) */
 };
 
 enum {					/* Link */
@@ -146,17 +150,17 @@ typedef struct Host64 {
 } Host64;
 
 typedef struct Ere {			/* Event Ring Element */
-	int	event;			/* (event<<24)|(code<<12)|index */
+	int	event;			/* event<<24 | code<<12 | index */
 	int	unused;
 } Ere;
 
-typedef int Cmd;			/* (cmd<<24)|(flags<<12)|index */
+typedef int Cmd;			/* cmd<<24 | flags<<12 | index */
 
 typedef struct Rbd {			/* Receive Buffer Descriptor */
 	Host64	addr;
-	int	indexlen;		/* (ring-index<<16)|buffer-length */
+	int	indexlen;		/* ring-index<<16 | buffer-length */
 	int	flags;			/* only lower 16-bits */
-	int	checksum;		/* (ip<<16)|tcp/udp */
+	int	checksum;		/* ip<<16 | tcp/udp */
 	int	error;			/* only upper 16-bits */
 	int	reserved;
 	void*	opaque;			/* passed to receive return ring */
@@ -164,7 +168,7 @@ typedef struct Rbd {			/* Receive Buffer Descriptor */
 
 typedef struct Sbd {			/* Send Buffer Descriptor */
 	Host64	addr;
-	int	lenflags;		/* (len<<16)|flags */
+	int	lenflags;		/* len<<16 | flags */
 	int	reserved;
 } Sbd;
 
@@ -192,7 +196,7 @@ enum {					/* Buffer Error Flags */
 
 typedef struct Rcb {			/* Ring Control Block */
 	Host64	addr;			/* points to the Rbd ring */
-	int	control;		/* (max_len<<16)|flags */
+	int	control;		/* max_len<<16 | flags */
 	int	unused;
 } Rcb;
 
@@ -223,13 +227,17 @@ typedef struct Gib {			/* General Information Block */
 	Host64	rsp;			/* Refresh Stats */
 } Gib;
 
+/*
+ * these sizes are all fixed in the card,
+ * except for Nsr, which has only 3 valid sizes.
+ */
 enum {					/* Host/NIC Interface ring sizes */
 	Ner		= 256,		/* event ring */
 	Ncr		= 64,		/* command ring */
-	Nsr		= 512,		/* send ring */
+	Nsr		= 512,		/* send ring: 128, 256 or 512 */
 	Nrsr		= 512,		/* receive standard ring */
 	Nrjr		= 256,		/* receive jumbo ring */
-	Nrmr		= 1024,		/* receive mini ring */
+	Nrmr		= 1024,		/* receive mini ring, optional */
 	Nrrr		= 2048,		/* receive return ring */
 };
 
@@ -243,7 +251,7 @@ enum {
 };
 
 typedef struct Ctlr Ctlr;
-typedef struct Ctlr {
+struct Ctlr {
 	int	port;
 	Pcidev*	pcidev;
 	Ctlr*	next;
@@ -286,7 +294,7 @@ typedef struct Ctlr {
 	int	st;			/* Stat Ticks */
 	int	smcbd;			/* Send Max. Coalesced BDs */
 	int	rmcbd;			/* Receive Max. Coalesced BDs */
-} Ctlr;
+};
 
 static Ctlr* ctlrhead;
 static Ctlr* ctlrtail;
@@ -310,7 +318,7 @@ ga620command(Ctlr* ctlr, int cmd, int flags, int index)
 	int cpi;
 
 	cpi = csr32r(ctlr, Cpi);
-	csr32w(ctlr, Cr+(cpi*4), (cmd<<24)|(flags<<12)|index);
+	csr32w(ctlr, Cr+(cpi*4), cmd<<24 | flags<<12 | index);
 	cpi = NEXT(cpi, Ncr);
 	csr32w(ctlr, Cpi, cpi);
 }
@@ -508,7 +516,7 @@ _ga620transmit(Ether* edev)
 
 		sbd = &ctlr->sr[spi];
 		sethost64(&sbd->addr, bp->rp);
-		sbd->lenflags = (BLEN(bp)<<16)|Fend;
+		sbd->lenflags = BLEN(bp)<<16 | Fend;
 
 		ctlr->srb[spi] = bp;
 		work++;
@@ -539,7 +547,7 @@ ga620replenish(Ctlr* ctlr)
 			break;
 		rbd = &ctlr->rsr[rspi];
 		sethost64(&rbd->addr, bp->rp);
-		rbd->indexlen = (rspi<<16)|(ETHERMAXTU+4);
+		rbd->indexlen = rspi<<16 | (ETHERMAXTU+4);
 		rbd->flags = 0;
 		rbd->opaque = bp;
 
@@ -550,27 +558,49 @@ ga620replenish(Ctlr* ctlr)
 }
 
 static void
-ga620event(Ctlr* ctlr, int eci, int epi)
+ga620event(Ether *edev, int eci, int epi)
 {
-	int event;
+	unsigned event, code;
+	Ctlr *ctlr;
 
+	ctlr = edev->ctlr;
 	while(eci != epi){
 		event = ctlr->er[eci].event;
+		code = (event >> 12) & ((1<<12)-1);
 		switch(event>>24){
 		case 0x01:		/* firmware operational */
+			/* host stack (us) is up.  3rd arg of 2 means down. */
 			ga620command(ctlr, 0x01, 0x01, 0x00);
+			/*
+			 * link negotiation: any speed is okay.
+			 * 3rd arg of 1 selects gigabit only; 2 10/100 only.
+			 */
 			ga620command(ctlr, 0x0B, 0x00, 0x00);
-print("%8.8uX: %8.8uX\n", ctlr->port, event);
+			print("#l%d: ga620: port %8.8uX: firmware is up\n",
+				edev->ctlrno, ctlr->port);
 			break;
 		case 0x04:		/* statistics updated */
 			break;
 		case 0x06:		/* link state changed */
-print("%8.8uX: %8.8uX %8.8uX %8.8uX\n",
-    ctlr->port, event, csr32r(ctlr, Gls), csr32r(ctlr, Fls));
+			switch (code) {
+			case 1:
+				edev->mbps = 1000;
+				break;
+			case 2:
+				print("#l%d: link down\n", edev->ctlrno);
+				break;
+			case 3:
+				edev->mbps = 100;	/* it's 10 or 100 */
+				break;
+			}
+			if (code != 2)
+				print("#l%d: %dMbps link up\n",
+					edev->ctlrno, edev->mbps);
 			break;
 		case 0x07:		/* event error */
 		default:
-			print("er[%d] = %8.8uX\n", eci, event);
+			print("#l%d: ga620: er[%d] = %8.8uX\n", edev->ctlrno,
+				eci, event);
 			break;
 		}
 		eci = NEXT(eci, Ner);
@@ -645,7 +675,7 @@ ga620interrupt(Ureg*, void* arg)
 
 		csr = csr32r(ctlr, Eci);
 		if(csr != ctlr->epi[0]){
-			ga620event(ctlr, csr, ctlr->epi[0]);
+			ga620event(edev, csr, ctlr->epi[0]);
 			work = 1;
 		}
 
@@ -714,9 +744,9 @@ ga620init(Ether* edev)
 	/*
 	 * Load the MAC address.
 	 */
-	ea = (edev->ea[0]<<8)|edev->ea[1];
+	ea = edev->ea[0]<<8 | edev->ea[1];
 	csr32w(ctlr, Mac, ea);
-	ea = (edev->ea[2]<<24)|(edev->ea[3]<<16)|(edev->ea[4]<<8)|edev->ea[5];
+	ea = edev->ea[2]<<24 | edev->ea[3]<<16 | edev->ea[4]<<8 | edev->ea[5];
 	csr32w(ctlr, Mac+4, ea);
 
 	/*
@@ -758,7 +788,7 @@ ga620init(Ether* edev)
 	 * memory it is accessed via the Local Memory Window; with a send
 	 * ring size of 128 the window covers the whole ring and then need
 	 * only be set once:
-	 *	ctlr->sr = KADDR(ctlr->port+Lmw);
+	 *	ctlr->sr = (uchar*)ctlr->nic+Lmw;
 	 *	ga620lmw(ctlr, Sr, nil, sizeof(Sbd)*Nsr);
 	 *	ctlr->gib->srcb.addr.lo = Sr;
 	 * There is nowhere in the Sbd to hold the Block* associated
@@ -772,7 +802,7 @@ ga620init(Ether* edev)
 		flags = HostRing;
 	if(ctlr->coalupdateonly) 
 		flags |= CoalUpdateOnly;
-	ctlr->gib->srcb.control = (Nsr<<16)|flags;
+	ctlr->gib->srcb.control = Nsr<<16 | flags;
 	sethost64(&ctlr->gib->scp, ctlr->sci);
 	csr32w(ctlr, Spi, 0);
 	ctlr->srb = malloc(sizeof(Block*)*Nsr);
@@ -786,7 +816,7 @@ ga620init(Ether* edev)
 		flags = TcpUdpCksum|NoPseudoHdrCksum;
 	else
 		flags = 0;
-	ctlr->gib->rsrcb.control = ((ETHERMAXTU+4)<<16)|flags;
+	ctlr->gib->rsrcb.control = (ETHERMAXTU+4)<<16 | flags;
 	csr32w(ctlr, Rspi, 0);
 
 	/*
@@ -802,7 +832,7 @@ ga620init(Ether* edev)
 	 */
 	ctlr->rrr = malign(sizeof(Rbd)*Nrrr);
 	sethost64(&ctlr->gib->rrrcb.addr, ctlr->rrr);
-	ctlr->gib->rrrcb.control = (Nrrr<<16)|0;
+	ctlr->gib->rrrcb.control = Nrrr<<16 | 0;
 	sethost64(&ctlr->gib->rrrpp, ctlr->rrrpi);
 	ctlr->rrrci = 0;
 
@@ -1024,8 +1054,8 @@ ga620detach(Ctlr* ctlr)
 	 * wait for code to be loaded from serial EEPROM or flash;
 	 * make sure CPU A is halted.
 	 */
-	csr32w(ctlr, Mhc, (Hr<<24)|Hr);
-	csr32w(ctlr, Mhc, ((Eews|Ci)<<24)|(Eews|Ci));
+	csr32w(ctlr, Mhc, Hr<<24 | Hr);
+	csr32w(ctlr, Mhc, (Eews|Ci)<<24 | Eews|Ci);
 
 	microdelay(1);
 	for(timeo = 0; timeo < 500000; timeo++){
@@ -1056,7 +1086,7 @@ print("ga620shutdown\n");
 static int
 ga620reset(Ctlr* ctlr)
 {
-	int cls, csr, i;
+	int cls, csr, i, r;
 
 	if(ga620detach(ctlr) < 0)
 		return -1;
@@ -1095,8 +1125,9 @@ ga620reset(Ctlr* ctlr)
 	 * Snarf the MAC address from the serial EEPROM.
 	 */
 	for(i = 0; i < Eaddrlen; i++){
-		if((ctlr->ea[i] = at24c32r(ctlr, 0x8E+i)) == -1)
+		if((r = at24c32r(ctlr, 0x8E+i)) == -1)
 			return -1;
+		ctlr->ea[i] = r;
 	}
 
 	/*
@@ -1114,7 +1145,7 @@ ga620reset(Ctlr* ctlr)
 static void
 ga620pci(void)
 {
-	int port;
+	void *mem;
 	Pcidev *p;
 	Ctlr *ctlr;
 
@@ -1123,30 +1154,30 @@ ga620pci(void)
 		if(p->ccrb != 0x02 || p->ccru != 0)
 			continue;
 
-		switch((p->did<<16)|p->vid){
+		switch(p->did<<16 | p->vid){
 		default:
 			continue;
-		case (0x620A<<16)|0x1385:	/* Netgear GA620 */
-		case (0x630A<<16)|0x1385:	/* Netgear GA620T */
-		case (0x0001<<16)|0x12AE:	/* Alteon Acenic fiber
+		case 0x620A<<16 | 0x1385:	/* Netgear GA620 fiber */
+		case 0x630A<<16 | 0x1385:	/* Netgear GA620T copper */
+		case 0x0001<<16 | 0x12AE:	/* Alteon Acenic fiber
 						 * and DEC DEGPA-SA */
-		case (0x0002<<16)|0x12AE:	/* Alteon Acenic copper */
-		case (0x0009<<16)|0x10A9:	/* SGI Acenic */
+		case 0x0002<<16 | 0x12AE:	/* Alteon Acenic copper */
+		case 0x0009<<16 | 0x10A9:	/* SGI Acenic */
 			break;
 		}
 
-		port = upamalloc(p->mem[0].bar & ~0x0F, p->mem[0].size, 0);
-		if(port == 0){
+		mem = vmap(p->mem[0].bar & ~0x0F, p->mem[0].size);
+		if(mem == 0){
 			print("ga620: can't map %8.8luX\n", p->mem[0].bar);
 			continue;
 		}
 
 		ctlr = malloc(sizeof(Ctlr));
-		ctlr->port = port;
+		ctlr->port = p->mem[0].bar & ~0x0F;
 		ctlr->pcidev = p;
-		ctlr->id = (p->did<<16)|p->vid;
+		ctlr->id = p->did<<16 | p->vid;
 
-		ctlr->nic = KADDR(ctlr->port);
+		ctlr->nic = mem;
 		if(ga620reset(ctlr)){
 			free(ctlr);
 			continue;
@@ -1158,6 +1189,25 @@ ga620pci(void)
 			ctlrhead = ctlr;
 		ctlrtail = ctlr;
 	}
+}
+
+static void
+ga620promiscuous(void *arg, int on)
+{
+	Ether *ether = arg;
+
+	/* 3rd arg: 1 enables, 2 disables */
+	ga620command(ether->ctlr, 0xa, (on? 1: 2), 0);
+}
+
+static void
+ga620multicast(void *arg, uchar *addr, int on)
+{
+	Ether *ether = arg;
+
+	USED(addr);
+	/* 3rd arg: 1 enables, 2 disables */
+	ga620command(ether->ctlr, 0xe, (on? 1: 2), 0);
 }
 
 static int
@@ -1188,7 +1238,7 @@ ga620pnp(Ether* edev)
 	edev->port = ctlr->port;
 	edev->irq = ctlr->pcidev->intl;
 	edev->tbdf = ctlr->pcidev->tbdf;
-	edev->mbps = 1000;
+	edev->mbps = 1000;		/* placeholder */
 
 	/*
 	 * Check if the adapter's station address is to be overridden.
@@ -1209,10 +1259,11 @@ ga620pnp(Ether* edev)
 	edev->interrupt = ga620interrupt;
 	edev->ifstat = ga620ifstat;
 	edev->ctl = ga620ctl;
-	edev->shutdown = ga620shutdown;
 
 	edev->arg = edev;
-	edev->promiscuous = nil;
+	edev->promiscuous = ga620promiscuous;
+	edev->multicast = ga620multicast;
+	edev->shutdown = ga620shutdown;
 
 	return 0;
 }

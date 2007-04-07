@@ -79,9 +79,22 @@ enum {	/* cmdsts */
 	Col =	1<<16,		/* collision during receive */
 };
 
-enum {				/* Variants */
+enum {				/* PCI vendor & device IDs */
 	Nat83815	= (0x0020<<16)|0x100B,
-	Sis900 = (0x0630<<16)|0x1039,	/* untested */
+	SiS = 	0x1039,
+	SiS900 =	(0x0900<<16)|SiS,
+	SiS7016 =	(0x7016<<16)|SiS,
+
+	SiS630bridge	= 0x0008,
+
+	/* SiS 900 PCI revision codes */
+	SiSrev630s =	0x81,
+	SiSrev630e =	0x82,
+	SiSrev630ea1 =	0x83,
+
+	SiSeenodeaddr =	8,		/* short addr of SiS eeprom mac addr */
+	SiS630eenodeaddr =	9,	/* likewise for the 630 */
+	Nseenodeaddr =	6,		/* " for NS eeprom */
 };
 
 typedef struct Ctlr Ctlr;
@@ -456,9 +469,9 @@ txrxcfg(Ctlr *ctlr, int txdrth)
 static void
 interrupt(Ureg*, void* arg)
 {
+	int len, status, cmdsts, n;
 	Ctlr *ctlr;
 	Ether *ether;
-	int len, status, cmdsts;
 	Des *des;
 	Block *bp;
 
@@ -481,6 +494,15 @@ interrupt(Ureg*, void* arg)
 			if(status & Rtabt)
 				ctlr->rtabt++;
 			status &= ~(Hiberr|Txrcmp|Rxrcmp|Rxsovr|Dperr|Sserr|Rmabt|Rtabt);
+		}
+
+		/* update link state */
+		if(status&Phy){
+			status &= ~Phy;
+			csr32r(ctlr, Rcfg);
+			n = csr32r(ctlr, Rcfg);
+//			iprint("83815 phy %x %x\n", n, n&Lnksts);
+			ether->link = (n&Lnksts) != 0;
 		}
 
 		/*
@@ -511,11 +533,19 @@ interrupt(Ureg*, void* arg)
 				}
 				else if(bp = iallocb(Rbsz)){
 					len = (cmdsts&Size)-4;
-					des->bp->wp = des->bp->rp+len;
-					etheriq(ether, des->bp, 1);
+					if(len <= 0){
+						debug("ns83815: packet len %d <=0\n", len);
+						freeb(des->bp);
+					}else{
+						des->bp->wp = des->bp->rp+len;
+						etheriq(ether, des->bp, 1);
+					}
 					des->bp = bp;
 					des->addr = PADDR(bp->rp);
 					coherence();
+				}else{
+					debug("ns83815: interrupt: iallocb for input buffer failed\n");
+					des->bp->next = 0;
 				}
 
 				des->cmdsts = Rbsz;
@@ -607,7 +637,7 @@ ctlrinit(Ether* ether)
 	last = nil;
 	for(des = ctlr->rdr; des < &ctlr->rdr[ctlr->nrdr]; des++){
 		des->bp = iallocb(Rbsz);
-		if (des->bp == nil)
+		if(des->bp == nil)
 			error(Enomem);
 		des->cmdsts = Rbsz;
 		des->addr = PADDR(des->bp->rp);
@@ -635,8 +665,10 @@ ctlrinit(Ether* ether)
 
 	txrxcfg(ctlr, Drth512);
 
-	csr32w(ctlr, Rimr, Dperr|Sserr|Rmabt|Rtabt|Rxsovr|Hiberr|Txurn|Txerr|Txdesc|Txok|Rxorn|Rxerr|Rxdesc|Rxok);	/* Phy|Pme|Mib */
-	csr32r(ctlr, Risr);	/* clear status */
+	csr32w(ctlr, Rimr, Dperr|Sserr|Rmabt|Rtabt|Rxsovr|Hiberr|Txurn|Txerr|
+		Txdesc|Txok|Rxorn|Rxerr|Rxdesc|Rxok);	/* Phy|Pme|Mib */
+	csr32w(ctlr, Rmicr, Inten);	/* enable phy interrupts */
+	csr32r(ctlr, Risr);		/* clear status */
 	csr32w(ctlr, Rier, Ie);
 }
 
@@ -762,7 +794,7 @@ softreset(Ctlr* ctlr, int resetphys)
 	if(csr16r(ctlr, Ranar) == 0 || (csr32r(ctlr, Rcfg) & Aneg_dn) == 0){
 		csr16w(ctlr, Rbmcr, Anena|Anrestart);
 		for(i=0;; i++){
-			if(i > 6000){
+			if(i > 3000){
 				print("ns83815: auto neg timed out\n");
 				break;
 			}
@@ -791,11 +823,8 @@ media(Ether* ether)
 	ctlr = ether->ctlr;
 	cfg = csr32r(ctlr, Rcfg);
 	ctlr->fd = (cfg & Fdup) != 0;
-	if(cfg & Speed100)
-		return 100;
-	if((cfg & Lnksts) == 0)
-		return 100;	/* no link: use 100 to ensure larger queues */
-	return 10;
+	ether->link = (cfg&Lnksts) != 0;
+	return (cfg&(Lnksts|Speed100)) == Lnksts? 10: 100;
 }
 
 static char* mediatable[9] = {
@@ -810,8 +839,82 @@ static char* mediatable[9] = {
 	"100BASE-FXFD",
 };
 
+static int
+is630(ulong id, Pcidev *p)
+{
+	if(id == SiS900)
+		switch (p->rid) {
+		case SiSrev630s:
+		case SiSrev630e:
+	  	case SiSrev630ea1:
+			return 1;
+		}
+	return 0;
+}
+
+enum {
+	MagicReg = 0x48,
+	MagicRegSz = 1,
+	Magicrden = 0x40,	/* read enable, apparently */
+	Paddr=		0x70,	/* address port */
+	Pdata=		0x71,	/* data port */
+};
+
+/* rcmos() originally from LANL's SiS 900 driver's rcmos() */
+static int
+sisrdcmos(Ctlr *ctlr)
+{
+	int i;
+	unsigned reg;
+	ulong port;
+	Pcidev *p;
+
+	debug("ns83815: SiS 630 rev. %ux reading mac address from cmos\n", ctlr->pcidev->rid);
+	p = pcimatch(nil, SiS, SiS630bridge);
+	if(p == nil) {
+		print("ns83815: no SiS 630 rev. %ux bridge for mac addr\n",
+			ctlr->pcidev->rid);
+		return 0;
+	}
+	port = p->mem[0].bar & ~0x01;
+	debug("ns83815: SiS 630 rev. %ux reading mac addr from cmos via bridge at port 0x%lux\n", ctlr->pcidev->rid, port);
+
+	reg = pcicfgr8(p, MagicReg);
+	pcicfgw8(p, MagicReg, reg|Magicrden);
+
+	for (i = 0; i < Eaddrlen; i++) {
+		outb(port+Paddr, SiS630eenodeaddr + i);
+		ctlr->sromea[i] = inb(port+Pdata);
+	}
+
+	pcicfgw8(p, MagicReg, reg & ~Magicrden);
+	return 1;
+}
+
+/*
+ * If this is a SiS 630E chipset with an embedded SiS 900 controller,
+ * we have to read the MAC address from the APC CMOS RAM. - sez freebsd.
+ * However, CMOS *is* NVRAM normally.  See devrtc.c:440, memory.c:88.
+ */
 static void
-srom(Ctlr* ctlr)
+sissrom(Ctlr *ctlr)
+{
+	union {
+		uchar	eaddr[Eaddrlen];
+		ushort	alignment;
+	} ee;
+	int i, off = SiSeenodeaddr, cnt = sizeof ee.eaddr / sizeof(short);
+	ushort *shp = (ushort *)ee.eaddr;
+
+	if(!is630(ctlr->id, ctlr->pcidev) || !sisrdcmos(ctlr)) {
+		for (i = 0; i < cnt; i++)
+			*shp++ = eegetw(ctlr, off++);
+		memmove(ctlr->sromea, ee.eaddr, sizeof ctlr->sromea);
+	}
+}
+
+static void
+nssrom(Ctlr* ctlr)
 {
 	int i, j;
 
@@ -821,11 +924,28 @@ srom(Ctlr* ctlr)
 	/*
 	 * the MAC address is reversed, straddling word boundaries
 	 */
-	memset(ctlr->sromea, 0, sizeof(ctlr->sromea));
-	j = 6*16 + 15;
+	j = Nseenodeaddr*16 + 15;
 	for(i=0; i<48; i++){
 		ctlr->sromea[i>>3] |= ((ctlr->srom[j>>4] >> (15-(j&0xF))) & 1) << (i&7);
 		j++;
+	}
+}
+
+static void
+srom(Ctlr* ctlr)
+{
+	memset(ctlr->sromea, 0, sizeof(ctlr->sromea));
+	switch (ctlr->id) {
+	case SiS900:
+	case SiS7016:
+		sissrom(ctlr);
+		break;
+	case Nat83815:
+		nssrom(ctlr);
+		break;
+	default:
+		print("ns83815: srom: unknown id 0x%ux\n", ctlr->id);
+		break;
 	}
 }
 
@@ -834,17 +954,20 @@ scanpci83815(void)
 {
 	Ctlr *ctlr;
 	Pcidev *p;
+	ulong id;
 
 	p = nil;
 	while(p = pcimatch(p, 0, 0)){
-		if(p->ccrb != 0x02 || p->ccru != 0)
+		if(p->ccrb != Pcibcnet || p->ccru != 0)
 			continue;
-		switch((p->did<<16)|p->vid){
+		id = (p->did<<16)|p->vid;
+		switch(id){
 		default:
 			continue;
 
 		case Nat83815:
-		case Sis900:
+			break;
+		case SiS900:
 			break;
 		}
 
@@ -855,7 +978,7 @@ scanpci83815(void)
 		ctlr = malloc(sizeof(Ctlr));
 		ctlr->port = p->mem[0].bar & ~0x01;
 		ctlr->pcidev = p;
-		ctlr->id = (p->did<<16)|p->vid;
+		ctlr->id = id;
 
 		if(ioalloc(ctlr->port, p->mem[0].size, 0, "ns83815") < 0){
 			print("ns83815: port 0x%uX in use\n", ctlr->port);
@@ -885,6 +1008,7 @@ reset(Ether* ether)
 {
 	Ctlr *ctlr;
 	int i, x;
+	ulong ctladdr;
 	uchar ea[Eaddrlen];
 	static int scandone;
 
@@ -923,7 +1047,8 @@ reset(Ether* ether)
 		memmove(ether->ea, ctlr->sromea, Eaddrlen);
 	for(i=0; i<Eaddrlen; i+=2){
 		x = ether->ea[i] | (ether->ea[i+1]<<8);
-		csr32w(ctlr, Rrfcr, i);
+		ctladdr = (ctlr->id == Nat83815? i: i<<15);
+		csr32w(ctlr, Rrfcr, ctladdr);
 		csr32w(ctlr, Rrfdr, x);
 	}
 	csr32w(ctlr, Rrfcr, Rfen|Apm|Aab|Aam);

@@ -234,6 +234,12 @@ rtl8139promiscuous(void* arg, int on)
 	iunlock(&ctlr->ilock);
 }
 
+static void
+rtl8139multicast(void* arg, uchar*, int)
+{
+	rtl8139promiscuous(arg, 1);
+}
+
 static long
 rtl8139ifstat(Ether* edev, void* a, long n, ulong offset)
 {
@@ -637,8 +643,10 @@ rtl8139match(Ether* edev, int id)
 		}
 
 		ctlr->port = port;
-		if(rtl8139reset(ctlr))
+		if(rtl8139reset(ctlr)) {
+			iofree(port);
 			continue;
+		}
 		pcisetbme(p);
 
 		ctlr->active = 1;
@@ -738,6 +746,8 @@ rtl8139pnp(Ether* edev)
 
 	edev->arg = edev;
 	edev->promiscuous = rtl8139promiscuous;
+	edev->multicast = rtl8139multicast;
+//	edev->shutdown = rtl8139shutdown;
 
 	/*
 	 * This should be much more dynamic but will do for now.

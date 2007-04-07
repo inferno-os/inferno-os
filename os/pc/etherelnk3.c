@@ -1485,15 +1485,15 @@ tcm59Xpci(void)
 			break;
 		case 0x5157:
 			ctlr->eepromcmd = EepromRead8bRegister;
-			ctlr->cbfnpa = upamalloc(p->mem[2].bar, p->mem[2].size, 0);
+			ctlr->cbfnpa = p->mem[2].bar&~0x0F;
+			ctlr->cbfn = vmap(p->mem[2].bar&~0x0F, p->mem[2].size);
 			break;
 		case 0x6056:
 			ctlr->eepromcmd = EepromReadOffRegister;
-			ctlr->cbfnpa = upamalloc(p->mem[2].bar, p->mem[2].size, 0);
+			ctlr->cbfnpa = p->mem[2].bar&~0x0F;
+			ctlr->cbfn = vmap(p->mem[2].bar&~0x0F, p->mem[2].size);
 			break;
 		}
-		if(ctlr->cbfnpa != 0)
-			ctlr->cbfn = KADDR(ctlr->cbfnpa);
 		pcisetbme(p);
 	}
 }
@@ -1834,6 +1834,7 @@ etherelnk3reset(Ether* ether)
 	case 0x9055:		/* 3C905B-TX */
 	case 0x9200:		/* 3C905C-TX */
 	case 0x9201:		/* 3C920 */
+	case 0x9805:		/* 3C9805: 3C980-TX Python-T 10/100baseTX */
 		/*FALLTHROUGH*/
 	case 0x9000:		/* 3C900-TPO */
 	case 0x9001:		/* 3C900-COMBO */
@@ -1927,6 +1928,7 @@ etherelnk3reset(Ether* ether)
 	case 0x9055:
 	case 0x9200:
 	case 0x9201:
+	case 0x9805:
 		ctlr->xcvr = xcvrMii;
 		resetctlr(ctlr);
 		break;

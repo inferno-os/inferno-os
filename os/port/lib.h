@@ -2,9 +2,9 @@
 /*
  * functions (possibly) linked in, complete, from libc.
  */
-#define nelem(n)	(sizeof(n)/sizeof(n[0]))
+#define nelem(x)	(sizeof(x)/sizeof((x)[0]))
 #define offsetof(s, m)	(ulong)(&(((s*)0)->m))
-#define	assert(x)	if(x){}else _assert("x")
+#define assert(x)	if(x){}else _assert("x")
 
 /*
  * mem routines
@@ -123,6 +123,7 @@ extern	char	end[];
 extern	int	getfields(char*, char**, int, int, char*);
 extern	int	tokenize(char*, char**, int);
 extern	int	dec64(uchar*, int, char*, int);
+extern	void	qsort(void*, long, long, int (*)(void*, void*));
 
 extern	int	toupper(int);
 extern	char*	netmkaddr(char*, char*, char*);

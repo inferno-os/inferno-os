@@ -319,3 +319,19 @@ mmukmap(ulong pa, ulong va, int size)
 
 	return pa;
 }
+
+void*
+vmap(ulong pa, int size)
+{
+	pa = upamalloc(pa, size, 0);
+	if(pa == 0)
+		return nil;
+	return KADDR(pa);
+}
+
+void
+vunmap(void *va, int size)
+{
+	if(va != nil)
+		upafree(PADDR(va), size);
+}

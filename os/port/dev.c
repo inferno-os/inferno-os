@@ -258,8 +258,6 @@ devstat(Chan *c, uchar *db, int n, Dirtab *tab, int ntab, Devgen *gen)
 			}
 			break;
 		}
-	error(Egreg);	/* not reached? */
-	return -1;
 }
 
 long

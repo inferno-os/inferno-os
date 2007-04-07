@@ -176,7 +176,6 @@ pcibusmap(Pcidev *root, ulong *pmema, ulong *pioa, int wrreg)
 	int ntb, i, size, rno, hole;
 	ulong v, mema, ioa, sioa, smema, base, limit;
 	Pcisiz *table, *tptr, *mtb, *itb;
-	extern void qsort(void*, long, long, int (*)(void*, void*));
 
 	if(!nobios)
 		return;

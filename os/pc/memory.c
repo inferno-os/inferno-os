@@ -568,3 +568,21 @@ upafree(ulong pa, int size)
 {
 	mapfree(&xrmapupa, pa, size);
 }
+
+void
+upareserve(ulong pa, int size)
+{
+	ulong a;
+	
+	a = mapalloc(&rmapupa, pa, size, 0);
+	if(a != pa){
+		/*
+		 * This can happen when we're using the E820
+		 * map, which might have already reserved some
+		 * of the regions claimed by the pci devices.
+		 */
+	//	print("upareserve: cannot reserve pa=%#.8lux size=%d\n", pa, size);
+		if(a != 0)
+			mapfree(&rmapupa, a, size);
+	}
+}

@@ -1297,25 +1297,25 @@ if(c->umh != nil){
 			c = cnew;
 			c->name = addelem(c->name, e.elems[e.nelems-1]);
 			break;
-		}else{		/* create failed */
-			cclose(cnew);
-			if(m)
-				putmhead(m);
-			if(omode & OEXCL)
-				nexterror();
-			/* save error */
-			createerr = up->env->errstr;
-			up->env->errstr = tmperrbuf;
-			/* note: we depend that walk does not error */
-			if(walk(&c, e.elems+e.nelems-1, 1, nomount, nil) < 0){
-				up->env->errstr = createerr;
-				error(createerr);	/* report true error */
-			}
-			up->env->errstr = createerr;
-			omode |= OTRUNC;
-			goto Open;
 		}
-		panic("namec: not reached");				
+
+		/* create failed */
+		cclose(cnew);
+		if(m)
+			putmhead(m);
+		if(omode & OEXCL)
+			nexterror();
+		/* save error */
+		createerr = up->env->errstr;
+		up->env->errstr = tmperrbuf;
+		/* note: we depend that walk does not error */
+		if(walk(&c, e.elems+e.nelems-1, 1, nomount, nil) < 0){
+			up->env->errstr = createerr;
+			error(createerr);	/* report true error */
+		}
+		up->env->errstr = createerr;
+		omode |= OTRUNC;
+		goto Open;
 
 	default:
 		panic("unknown namec access %d\n", amode);
