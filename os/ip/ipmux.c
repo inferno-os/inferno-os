@@ -8,8 +8,6 @@
 #include "ip.h"
 #define DPRINT if(0)print
 
-#define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
-
 typedef struct Ipmuxrock  Ipmuxrock;
 typedef struct Ipmux      Ipmux;
 typedef struct Ip4hdr     Ip4hdr;

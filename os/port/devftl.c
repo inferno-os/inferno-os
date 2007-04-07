@@ -32,10 +32,6 @@
 
 #include "kernel.h"
 
-#ifndef offsetof
-#define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
-#endif
-
 typedef struct Ftl Ftl;
 typedef struct Merase Merase;
 typedef struct Terase Terase;

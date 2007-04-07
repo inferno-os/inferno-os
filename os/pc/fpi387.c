@@ -547,17 +547,16 @@ fstore(Ureg*, int op, void *mem, Internal *s, Internal*)
 }
 
 #define	REG(x) (*(ulong*)(((char*)ur)+roff[(x)]))
-#define	offsetof(X)	((ulong)&((Ureg*)0)->X)
 
 static	int	roff[] = {
-	offsetof(ax),
-	offsetof(cx),
-	offsetof(dx),
-	offsetof(bx),
-	offsetof(ecode),	/* ksp */
-	offsetof(bp),
-	offsetof(si),
-	offsetof(di),
+	offsetof(Ureg, ax),
+	offsetof(Ureg, cx),
+	offsetof(Ureg, dx),
+	offsetof(Ureg, bx),
+	offsetof(Ureg, ecode),	/* ksp */
+	offsetof(Ureg, bp),
+	offsetof(Ureg, si),
+	offsetof(Ureg, di),
 };
 
 static long

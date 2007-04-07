@@ -2,6 +2,7 @@
 #include "u.h"
 #include "../port/lib.h"
 #include "../port/error.h"
+#include "mem.h"
 #else
 #include	"error.h"
 #endif
@@ -14,10 +15,6 @@
 #ifndef EMU
 #define Sleep sleep
 #define Wakeup wakeup
-#endif
-
-#ifndef offsetof
-#define offsetof(T,X) ((ulong)&(((T*)0)->X))
 #endif
 
 typedef struct Devlogfs Devlogfs;
