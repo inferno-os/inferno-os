@@ -1902,7 +1902,6 @@ xfunc(Controller *c, enum na_external x, unsigned long *v)
 		print("xfunc: can't find external %d\n", x);
 		return 0;
 	}
-	return 1;
 }
 
 static int
