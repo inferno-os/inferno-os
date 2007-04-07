@@ -1,0 +1,8 @@
+Booting Inferno on a Gumstix/Etherstix
+
+This is a preliminary version (work in progress) of Inferno
+on a Gumstix (with Etherstix daughterboard and tweener for console).
+The current source is on its way, after I do a few more checks.
+
+forsyth@vitanuova.com
+Sat Apr  7 13:53:23 BST 2007

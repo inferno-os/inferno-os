@@ -1,0 +1,51 @@
+GUM> cp.b 0xa2000000 0xa0020000 881240
+
+GUM> go 0xa0020020
+
+## Starting application at 0xA0020020 ...
+
+Inferno
+confinit...
+xinit...
+mmuinit...
+trapinit...
+printinit...
+uartinstall...
+i2c: unexpected status: 0442eepromscan: -1
+adinit: 04000300 -> 04000300 mcs0=128c26ab
+value=00003332
+ether91c111: chip 0x92 detected
+398 MHz id 69052d06
+
+Inferno Fourth Edition (20070219)
+Vita Nuova
+conf gum (1171905918) jit 0
+
+pmcr=00000000 pwer=00000003 prer=00000003 pfer=00000003 pedr=00000000 pcfr=00000000 rcsr=00000001
+cccr=00000161 cken=00017fff oscc=00000003
+msc0=128c26ab mcs1=0000128c mcs2=7ff07ff0
+clkcfg=00000002
+Initial Dis: "/osinit.dis"
+can't open #F/flash/flashctl: no free devices
+root from (kernel)[kernel] 
+time warped
+cerf$ 
+
+date
+
+cerf$ cerf$ date: '/dis/date.dis' does not exist
+cerf$ cerf$ date
+
+
+pdate: '/dis/date.dis' does not exist
+cerf$ cerf$ cerf$ s
+
+
+
+
+
+
+       2        1    inferno    0:00.0    release    12K Sh[$Sys]
+
+       5        1    inferno    0:00.0      ready    13K Ps[$Sys]
+cerf$ cerf$ cerf$ cerf$ cerf$ cerf$ cerf$ 
