@@ -2,6 +2,9 @@
 /*
  * functions (possibly) linked in, complete, from libc.
  */
+#define nelem(n)	(sizeof(n)/sizeof(n[0]))
+#define offsetof(s, m)	(ulong)(&(((s*)0)->m))
+#define	assert(x)	if(x){}else _assert("x")
 
 /*
  * mem routines

@@ -28,3 +28,4 @@ registry registry
 regquery registry
 spree spree
 tarfs tarfs
+trfs trfs

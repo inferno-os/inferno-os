@@ -9,7 +9,6 @@ Block*		adjustblock(Block*, int);
 Block*		allocb(int);
 int	anyhigher(void);
 int	anyready(void);
-#define	assert(x)	if(x){}else _assert("assert(x) failed")
 void	_assert(char*);
 Block*		bl2mem(uchar*, Block*, int);
 int		blocklen(Block*);

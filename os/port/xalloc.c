@@ -163,9 +163,14 @@ xmerge(void *vp, void *vq)
 {
 	Xhdr *p, *q;
 
-	p = vp;
-	if((uchar*)vp+p->size == (uchar*)vq) {
-		q = vq;
+	p = (Xhdr*)(((ulong)vp - offsetof(Xhdr, data[0])));
+	q = (Xhdr*)(((ulong)vq - offsetof(Xhdr, data[0])));
+	if(p->magix != Magichole || q->magix != Magichole) {
+		xsummary();
+		panic("xmerge(%#p, %#p) bad magic %#lux, %#lux\n",
+			vp, vq, p->magix, q->magix);
+	}
+	if((uchar*)p+p->size == (uchar*)q) {
 		p->size += q->size;
 		return 1;
 	}

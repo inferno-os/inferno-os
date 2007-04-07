@@ -53,8 +53,6 @@ typedef int    Devgen(Chan*, char*, Dirtab*, int, int, Dir*);
 #include "fcall.h"
 #include <pool.h>
 
-#define nelem(n)	(sizeof(n)/sizeof(n[0]))
-
 struct Ref
 {
 	Lock	l;
