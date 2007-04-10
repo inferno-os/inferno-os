@@ -28,13 +28,11 @@ bout: ref Iobuf;
 debug := 0;
 fold, direc, exact, iflag, range: int;
 rev := 1;	# -1 for reverse-ordered file, not implemented
+compare: ref fn(a, b: string): int;
 tab := '\t';
-nflag := 0;
 entry: string;
 word: string;
 key: string;
-orig: string;
-targ: string;
 latin_fold_tab := array[64] of {
 	# 	Table to fold latin 1 characters to ASCII equivalents
 	# 	based at Rune value 0xc0
@@ -64,10 +62,15 @@ init(nil: ref Draw->Context, args: list of string)
 	bufio = load Bufio Bufio->PATH;
 	arg := load Arg Arg->PATH;
 
+	lastkey: string;
+
 	arg->init(args);
-	arg->setusage(arg->progname()+" -[dfinx] [-r orig] [-t c] [string] [file]");
+	arg->setusage("look -[dfinx] [-r lastkey] [-t c] [string] [file]");
+	compare = acomp;
 	while((c := arg->opt()) != 0)
 		case c {
+		'D' =>
+			debug = 1;
 		'd' =>
 			direc++;
 		'f' =>
@@ -75,37 +78,37 @@ init(nil: ref Draw->Context, args: list of string)
 		'i' =>
 			iflag++;
 		'n' =>
-			nflag = 1;
+			compare = ncomp;
 		't' =>
 			tab = (arg->earg())[0];
 		'x' =>
 			exact++;
 		'r' =>
 			range++;
-			orig = arg->earg();
-			targ = rcanon(orig);
+			lastkey = rcanon(arg->earg());
 		* =>
-			sys->fprint(sys->fildes(2), "%s: bad option %c\n", arg->progname(), c);
-			sys->fprint(sys->fildes(2), "usage: %s -[dfinx] [-t c] [-r limit] [string] [file]\n", arg->progname());
-			raise "fail:usage";
+			arg->usage();
 		}
 	args = arg->argv();
 	arg = nil;
 
 	bin := bufio->fopen(sys->fildes(0), Sys->OREAD); 
 	bout = bufio->fopen(sys->fildes(1), Sys->OWRITE);
-	if(!iflag)
+	orig: string;
+	if(!iflag){
 		if(args != nil){
 			orig = hd args;
 			args = tl args;
-			key = rcanon(orig);
 		}else
 			iflag++;
+	}
 	if(args == nil){
 		direc++;
 		fold++;
 	}else
 		filename = hd args;
+	if(!iflag)
+		key = rcanon(orig);
 	if(debug)
 		sys->fprint(sys->fildes(2), "orig %s key %s %s\n", orig, key, filename);
 	dfile = bufio->open(filename, Sys->OREAD);
@@ -114,7 +117,7 @@ init(nil: ref Draw->Context, args: list of string)
 		raise "fail:no dictionary";
 	}
 	if(!iflag) 
-		if(!locate() && !range && exact)
+		if(!locate() && !range)
 			raise "fail:not found";
 	do{
 		if(iflag){
@@ -126,36 +129,34 @@ init(nil: ref Draw->Context, args: list of string)
 				continue;
 		}
 		if(range){
-			if(compare(key, word) <= 0 && compare(word, targ) <= 0)
+			if(compare(key, word) <= 0 && compare(word, lastkey) <= 0)
 				bout.puts(entry);
-		}else if(!exact || !compare(word, key))
+		}else if(!exact || acomp(word, orig) == 0)
 			bout.puts(entry);
+	Matches:
 		while((entry = dfile.gets('\n')) != nil){
 			word = rcanon(entry);
 			if(range)
-				n := compare(word, targ);
+				n := compare(word, lastkey);
 			else
 				n = compare(key, word);
 			if(debug)
-				sys->print("compare %d\n", n);
+				sys->print("compare %d %q\n", n, word);
 			case n {
 			-2 =>
-				if(range){
-					bout.puts(entry);
-					continue;
-				}
+				if(!range)
+					break Matches;
+				bout.puts(entry);
 			-1 =>
 				if(exact)
-					break;
-				if(!exact || !compare(word, key))
-					bout.puts(entry);
-				continue;
+					break Matches;
+				bout.puts(entry);
 			0 =>
-				if(!exact || !compare(word, key))
+				if(!exact || acomp(word, orig) == 0)
 					bout.puts(entry);
-				continue;
+			* =>
+				break Matches;
 			}
-			break;
 		}
 	}while(iflag);
 	bout.flush();
@@ -208,24 +209,14 @@ Search:
 		-2 =>
 			return 0;
 		-1 =>
-			if(exact)
-				return 0;
-			return 1;
+			return !exact;
 		0 =>
 			return 1;
 		1 or 2 =>
-			continue;
+			;
 		}
 	}
 	return 0;
-}
-
-compare(s, t: string): int
-{
-	if(nflag)
-		return ncomp(s, t);
-	else
-		return acomp(s, t);
 }
 
 #
@@ -265,7 +256,7 @@ rcanon(s: string): string
 		s = s[0: len s - 1];
 	o := 0;
 	for(i := 0; i < len s && (r := s[i]) != tab; i++){
-		if(16rc0 <= r && r <= 16rff && (mr := latin_fold_tab[r-16rc0]) != 0)
+		if(islatin1(r) && (mr := latin_fold_tab[r-16rc0]) != 0)
 			r = mr;
 		if(direc)
 			if(!(isalnum(r) || r == ' ' || r == '\t'))

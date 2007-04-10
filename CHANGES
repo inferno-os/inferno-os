@@ -1,3 +1,6 @@
+20070410
+	fix some porting errors in /appl/cmd/look.b
+	document look's -r option in look(1)
 20070407
 	/os/port/^(portdat.h lib.h portfns.h xalloc.c) compatiblity changes with plan 9
 	/os/pc ether drivers updated to match plan 9, and os/ip (and a few files in /os/port) also updated, including removing some unreachable code

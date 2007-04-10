@@ -4,9 +4,12 @@ look \- find lines in a sorted list
 .SH SYNOPSIS
 .B look
 [
-.BI -dfnixt c
-]
-[
+.BI -dfnix
+] [
+.BI -r " endkey"
+] [
+.BI -t c
+] [
 .I string
 ]
 [
@@ -48,6 +51,12 @@ Upper case letters compare equal to lower case.
 .B -n
 Numeric comparison with initial string of digits, optional minus sign,
 and optional decimal point.
+.TP
+.BI -r " endkey"
+Limit the range of matching values, to include
+the word
+.I endkey
+but no larger values.
 .TP
 .BR -t [ \f2c\f1 ]
 Character
