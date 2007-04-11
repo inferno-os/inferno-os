@@ -22,6 +22,7 @@ GENERATORS=(
 	iso8859-7
 	iso8859-8
 	iso8859-9
+	iso8859-15
 	koi8-r
 	windows-1250
 	windows-1251

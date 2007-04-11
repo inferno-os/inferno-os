@@ -105,6 +105,12 @@ iso-8859-10=
 	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-10.cp
 	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-10.cp
 
+l9-iso-8859-15
+latin9=iso-8859-15
+iso-8859-15=
+	desc=Latin-9
+	stob=/dis/lib/convcs/cp_stob.dis	arg=/lib/convcs/iso-8859-15.cp
+	btos=/dis/lib/convcs/cp_btos.dis	arg=/lib/convcs/iso-8859-15.cp
 
 # Traditional Chinese
 big5=
