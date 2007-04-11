@@ -1,3 +1,5 @@
+20070411
+	if mkconfig has been changed from the distribution, use it to set parameters in makemk.sh (issue 41)
 20070410
 	fix some porting errors in /appl/cmd/look.b
 	document look's -r option in look(1)

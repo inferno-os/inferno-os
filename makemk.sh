@@ -6,13 +6,19 @@
 
 #	support@vitanuova.com
 
-# change these defines as appropriate
+# change these defines as appropriate here or in mkconfig
 # ROOT should be the root of the Inferno tree
 ROOT=/usr/inferno
 SYSTARG=FreeBSD
 OBJTYPE=386
 SYSTYPE=posix
+
+# if you have already changed mkconfig from the distribution, we'll use the definitions from that
+grep -s 'SYSTARG=Plan9' mkconfig || . ./mkconfig
+
 PLAT=$ROOT/$SYSTARG/$OBJTYPE
+
+# you might need to adjust the CC, LD, AR, and RANLIB definitions after this point
 CC="p gcc -c -I$PLAT/include -I$ROOT/include -I$ROOT/utils/include"
 LD="p gcc"
 AR="p ar crvs"
