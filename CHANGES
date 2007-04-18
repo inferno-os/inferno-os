@@ -1,3 +1,5 @@
+20070418
+	add scan code to X11 (issue 45)
 20070411
 	if mkconfig has been changed from the distribution, use it to set parameters in makemk.sh (issue 41)
 	add iso8859-15 (what? will the line stretch on to the crack of doom?) (issue 43)

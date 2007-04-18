@@ -116,6 +116,7 @@ static int              is_shm;
 static XShmSegmentInfo	*shminfo;
 
 static int putsnarf, assertsnarf;
+char *gkscanid = "emu_x11";
 
 /*
  * The documentation for the XSHM extension implies that if the server
