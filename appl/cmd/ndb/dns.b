@@ -30,7 +30,7 @@ include "srv.m";
 
 include "ip.m";
 	ip: IP;
-	IPaddrlen, IPaddr, IPv4off, OUdphdrlen: import ip;
+	IPaddrlen, IPaddr, IPv4off, Udphdrlen, Udpraddr, Udpladdr, Udprport, Udplport: import ip;
 
 include "arg.m";
 
@@ -924,7 +924,7 @@ fullresult(name: string, attr: string, l: list of string): list of string
 
 arpa2addr(a: string): string
 {
-	(nf, flds) := sys->tokenize(a, ".");
+	(nil, flds) := sys->tokenize(a, ".");
 	rl: list of string;
 	for(; flds != nil && lower(s := hd flds) != "in-addr"; flds = tl flds)
 		rl = s :: rl;
@@ -1648,13 +1648,9 @@ rrtypename(t: int): string
 }
 
 #
-# format of UDP head read and written in `oldheaders' mode
+# format of UDP head read and written in `headers' mode
 #
-Udphdrsize: con OUdphdrlen;
-Udpraddr: con 0;
-Udpladdr: con IPaddrlen;
-Udprport: con 2*IPaddrlen;
-Udplport: con 2*IPaddrlen+2;
+Udphdrsize: con Udphdrlen;
 dnsid := 1;
 
 mkquery(qtype: int, qclass: int, name: string): (int, array of byte, string)
@@ -1779,7 +1775,6 @@ udpport(): ref Sys->FD
 		sys->fprint(stderr, "dns: can't set headers mode: %r\n");
 		return nil;
 	}
-	sys->fprint(conn.cfd, "oldheaders");	# plan 9 interface
 	conn.dfd = sys->open(conn.dir+"/data", Sys->ORDWR);
 	if(conn.dfd == nil){
 		sys->fprint(stderr, "dns: can't open %s/data: %r\n", conn.dir);

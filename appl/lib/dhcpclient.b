@@ -10,7 +10,7 @@ include "sys.m";
 
 include "ip.m";
 	ip: IP;
-	IPv4off, IPaddrlen, OUdphdrlen: import IP;
+	IPv4off, IPaddrlen, Udphdrlen, Udpraddr, Udpladdr, Udprport, Udplport: import IP;
 	IPaddr: import ip;
 	get2, get4, put2, put4: import ip;
 
@@ -20,15 +20,6 @@ include "security.m";	# for Random
 include "dhcp.m";
 
 debug := 0;
-
-#
-# format of UDP head read and written in `oldheaders' mode
-#
-Udphdrsize: con OUdphdrlen;
-Udpraddr: con 0;
-Udpladdr: con IPaddrlen;
-Udprport: con 2*IPaddrlen;
-Udplport: con 2*IPaddrlen+2;
 
 xidgen: int;
 
@@ -226,9 +217,9 @@ magic := array[] of {byte 99, byte 130, byte 83, byte 99};	# RFC2132 (replacing 
 dhcpsend(fd: ref Sys->FD, xid: int, dhcp: ref Dhcp)
 {
 	dhcp.xid = xid;
-	abuf := array[576+Udphdrsize] of {* => byte 0};
+	abuf := array[576+Udphdrlen] of {* => byte 0};
 	abuf[0:] = dhcp.udphdr;
-	buf := abuf[Udphdrsize:];
+	buf := abuf[Udphdrlen:];
 	buf[0] = byte dhcp.op;
 	buf[1] = byte dhcp.htype;
 	buf[2] = byte len dhcp.chaddr;
@@ -309,7 +300,7 @@ dhcpreader(pidc: chan of int, srv: ref DhcpIO)
 {
 	pidc <-= sys->pctl(0, nil);
 	for(;;){
-		abuf := array [576+Udphdrsize] of byte;
+		abuf := array [576+Udphdrlen] of byte;
 		n := sys->read(srv.fd, abuf, len abuf);
 		if(n < 0){
 			if(debug)
@@ -317,13 +308,13 @@ dhcpreader(pidc: chan of int, srv: ref DhcpIO)
 			sys->sleep(1000);
 			continue;
 		}
-		if(n < Udphdrsize+236){
+		if(n < Udphdrlen+236){
 			if(debug)
 				sys->print("short read: %d\n", n);
 			continue;
 		}
-		buf := abuf[Udphdrsize:n];
-		n -= Udphdrsize;
+		buf := abuf[Udphdrlen:n];
+		n -= Udphdrlen;
 		dhcp := ref Dhcp;
 		dhcp.op = int buf[0];
 		if(dhcp.op != Bootpreply){
@@ -342,7 +333,7 @@ dhcpreader(pidc: chan of int, srv: ref DhcpIO)
 				sys->print("dhcp: ignore dhcp op %d\n", dhcp.dhcpop);
 			continue;
 		}
-		dhcp.udphdr = abuf[0:Udphdrsize];
+		dhcp.udphdr = abuf[0:Udphdrlen];
 		dhcp.htype = int buf[1];
 		hlen := int buf[2];
 		dhcp.hops = int buf[3];
@@ -411,7 +402,7 @@ newrequest(dest: IPaddr, bootfile: string, htype: int, haddr: array of byte, ipa
 {
 	dhcp := ref Dhcp;
 	dhcp.op = Bootprequest;
-	hdr := array[Udphdrsize] of {* => byte 0};
+	hdr := array[Udphdrlen] of {* => byte 0};
 	hdr[Udpraddr:] = dest.v6();
 	put2(hdr, Udprport, 67);
 	dhcp.udphdr = hdr;
@@ -449,7 +440,6 @@ udpannounce(net: string): (ref Sys->FD, string)
 		return (nil, sys->sprint("can't announce dhcp port: %r"));
 	if(sys->fprint(conn.cfd, "headers") < 0)
 		return (nil, sys->sprint("can't set headers mode on dhcp port: %r"));
-	sys->fprint(conn.cfd, "oldheaders");
 	conn.dfd = sys->open(conn.dir+"/data", Sys->ORDWR);
 	if(conn.dfd == nil)
 		return (nil, sys->sprint("can't open %s: %r", conn.dir+"/data"));

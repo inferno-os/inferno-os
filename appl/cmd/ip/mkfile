@@ -11,7 +11,6 @@ TARG=\
 	rip.dis\
 	tftpd.dis\
 	virgild.dis\
-	obootpd.dis\
 	sntp.dis\
 
 SYSMODULES=\

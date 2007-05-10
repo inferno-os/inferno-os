@@ -50,7 +50,7 @@ ndbfile := "/lib/ndb/local";
 mtime := 0;
 testing := 0;
 
-Udphdrsize: con IP->OUdphdrlen;
+Udphdrsize: con IP->Udphdrlen;
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -125,7 +125,6 @@ init(nil: ref Draw->Context, args: list of string)
 		error(sys->sprint("can't announce %s: %r", addr));
 	if(sys->fprint(c.cfd, "headers") < 0)
 		error(sys->sprint("can't set headers mode: %r"));
-	sys->fprint(c.cfd, "oldheaders");
 
 	if(debug)
 		sys->fprint(stderr, "bootpd: opening %s/data\n", c.dir);

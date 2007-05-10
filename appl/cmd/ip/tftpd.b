@@ -32,7 +32,7 @@ dbg := 0;
 restricted := 0;
 port := 69;
 
-Udphdrsize: con IP->OUdphdrlen;
+Udphdrsize: con IP->Udphdrlen;
 
 tftpcon: Sys->Connection;
 tftpreq: ref Sys->FD;
@@ -498,8 +498,6 @@ openlisten()
 		fatal("can't announce "+name);
 	if(sys->fprint(tftpcon.cfd, "headers") < 0)
 		fatal("can't set header mode");
-	sys->fprint(tftpcon.cfd, "oldheaders");
-
 	tftpreq = sys->open(tftpcon.dir+"/data", sys->ORDWR);
 	if(tftpreq == nil)
 		fatal("open udp data");

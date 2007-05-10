@@ -14,7 +14,7 @@ Virgild: module
 
 stderr: ref Sys->FD;
 
-Udphdrsize: con IP->OUdphdrlen;
+Udphdrsize: con IP->Udphdrlen;
 
 init(nil: ref Draw->Context, nil: list of string)
 {
@@ -76,7 +76,6 @@ openlisten(): ref Sys->FD
 		sys->fprint(stderr, "virgild: can't set headers: %r\n");
 		return nil;
 	}
-	sys->fprint(c.cfd, "oldheaders");
 
 	c.dfd = sys->open(c.dir+"/data", Sys->ORDWR);
 	if(c.dfd == nil) {

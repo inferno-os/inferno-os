@@ -322,24 +322,6 @@ and if the local IP address corresponds to a valid local unicast interface,
 that address is used, otherwise the IP address of the transmitting interface
 is substituted.
 .TP
-.B oldheaders
-Set the connection to use an address header with IPv6 addressing
-on reads and writes of the data file,
-allowing a single connection to send datagrams to converse with
-many different destination addresses and ports.
-The 36 byte binary header appears before the data
-read or written.
-It contains: remote IP address, local IP address, remote port, and local port.
-The IP addresses are 16 bytes each in IPv6 format,
-the port addresses are 2 bytes each, all written in network (big-endian) order.
-On reads, the header gives the values from the incoming datagram,
-except that if the remote used a multicast destination address, the IP address
-of the receiving interface is substituted.
-On writes, the header provides the destination for the resulting datagram,
-and if the local IP address corresponds to a valid local unicast interface,
-that address is used, otherwise the IP address of the transmitting interface
-is substituted.
-.TP
 .B headers4
 Set the connection to use an address header with IPv4 addresses
 on reads and writes of the data file,

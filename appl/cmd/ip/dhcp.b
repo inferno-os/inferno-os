@@ -11,7 +11,7 @@ include "draw.m";
 
 include "ip.m";
 	ip: IP;
-	IPv4off, IPaddrlen, OUdphdrlen: import IP;
+	IPv4off, IPaddrlen: import IP;
 	IPaddr: import ip;
 	get2, get4, put2, put4: import ip;
 

@@ -12,7 +12,7 @@ include "ip.m";
 
 stderr: ref Sys->FD;
 done: int;
-Udphdrsize: con IP->OUdphdrlen;	# use oldheaders format for compatibility
+Udphdrsize: con IP->Udphdrlen;
 Virgilport: con 2202;
 
 #
@@ -75,7 +75,6 @@ virgil(argv: list of string): string
 		return nil;
 	if(sys->fprint(c.cfd, "headers") < 0)
 		return nil;
-	sys->fprint(c.cfd, "oldheaders");
 	c.dfd = sys->open(c.dir+"/data", sys->ORDWR);
 	if(c.dfd == nil)
 		return nil;
