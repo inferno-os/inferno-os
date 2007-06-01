@@ -1,4 +1,5 @@
 20070601
+	/appl/cmd/ls.b /dis/ls.dis /man/1/ls: document new -F option and -T option
 	/appl/cmd/auth/factotum/factotum.b: ignore empty writes, don't fail; make a few diagnostics match plan 9
 	rename /appl/cmd/mc.b to /appl/cmd/calc.b; also /man/1/mc to /man/1/calc; /dis/mc.dis to /dis/calc.dis
 	add /appl/cmd/mc.b (initial version)

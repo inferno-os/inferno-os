@@ -39,6 +39,7 @@ qopt := 0;
 sopt := 0;
 topt := 0;
 uopt := 0;
+Fopt := 0;
 Topt := 0;
 now:	int;
 sortby:	int;
@@ -112,6 +113,8 @@ init(nil: ref Context, argv: list of string)
 			rev = Readdir->DESCENDING;
 		'T' =>
 			Topt++;
+		'F' =>
+			Fopt++;
 		* =>
 			sys->fprint(stderr, "usage: ls [-delmnpqrstucT] [files]\n");
 			raise "fail:usage";
@@ -271,6 +274,8 @@ lslineprint(dirname, name: string, dir: ref Dir, w: ref Widths)
 		else
 			file = dirname + "/" + file;
 	}
+	if(Fopt)
+		file += fileflag(dir);
 
 
 	if(lopt) {
@@ -289,6 +294,15 @@ lslineprint(dirname, name: string, dir: ref Dir, w: ref Widths)
 				daytime->filet(now, time), file));
 	} else
 		out.puts(file+"\n");
+}
+
+fileflag(dir: ref Dir): string
+{
+	if(dir.qid.qtype & Sys->QTDIR)
+		return "/";
+	if(dir.mode & 8r111)
+		return "*";
+	return "";
 }
 
 mtab := array[] of {
