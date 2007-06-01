@@ -25,6 +25,7 @@ unmount bind
 blur blur
 brutus brutus
 cal cal
+calc calc
 calendar calendar
 cat cat
 cd cd
@@ -93,7 +94,6 @@ keyboard keyboard
 pen keyboard
 broke kill
 kill kill
-lc lc
 limbo limbo
 dial listen
 listen listen
@@ -101,6 +101,7 @@ styxlisten listen
 logon logon
 logwindow logwindow
 look look
+lc ls
 ls ls
 lookman man
 man man
@@ -126,7 +127,6 @@ pi math-misc
 powers math-misc
 primes math-misc
 sieve math-misc
-mathcalc mathcalc
 mc mc
 mdb mdb
 miniterm miniterm

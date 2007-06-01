@@ -1,5 +1,9 @@
 20070601
-	/apl/cmd/auth/factotum/factotum.b: ignore empty writes, don't fail; make a few diagnostics match plan 9
+	/appl/cmd/auth/factotum/factotum.b: ignore empty writes, don't fail; make a few diagnostics match plan 9
+	rename /appl/cmd/mc.b to /appl/cmd/calc.b; also /man/1/mc to /man/1/calc; /dis/mc.dis to /dis/calc.dis
+	add /appl/cmd/mc.b (initial version)
+	replace /dis/lc.dis by /dis/lc; remove /appl/cmd/lc.b
+	remove /appl/cmd/mathcalc.b /dis/mathcalc.dis /man/1/mathcalc
 20070510
 	quickly remove references to udp's "oldheaders" because plan 9 removed it
 	remove obootpd completely

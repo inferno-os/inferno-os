@@ -1,6 +1,6 @@
 .TH LS 1
 .SH NAME
-ls \- list files
+ls, lc \- list files
 .SH SYNOPSIS
 .B ls
 [
@@ -8,8 +8,15 @@ ls \- list files
 ] [
 .IR file ...
 ]
+.LP
+.B lc
+[
+.B -lpmnqduntscr
+] [
+.IR file ...
+]
 .SH DESCRIPTION
-.B Ls
+.I Ls
 lists the named
 .IR file s
 in an order and format determined by its options.
@@ -134,10 +141,18 @@ Sort by size (smallest first).
 .TP
 .B -r
 Reverse the sort order.
+.PP
+.I Lc
+is the same as
+.IR ls ,
+but sets the
+.B -p
+option and pipes the output through
+.IR mc (1).
 .SH SOURCE
 .B /appl/cmd/ls.b
+.br
+.B /dis/lc
 .SH SEE ALSO
 .IR readdir (2),
-.IR lc (1)
-
-
+.IR mc (1)
