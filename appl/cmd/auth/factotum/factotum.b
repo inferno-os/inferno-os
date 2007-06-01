@@ -133,11 +133,11 @@ factotumsrv()
 			wc <-= (0, "multiline write not allowed");
 			break;
 		}
-		s := hd flds;
-		if(s == nil || s[0] == '#'){
+		if(flds == nil || (hd flds)[0] == '#'){
 			wc <-= (len data, nil);
 			break;
 		}
+		s := hd flds;
 		for(i := 0; i < len s && s[i] != ' '; i++){
 			# skip
 		}
@@ -174,7 +174,7 @@ factotumsrv()
 		"debug" =>
 			wc <-= (len data, nil);
 		* =>
-			wc <-= (0, "unknown ctl request");
+			wc <-= (0, "unknown verb");
 		}
 
 	(nil, nbytes, fid, rc) := <-files.rpc.read =>
@@ -182,7 +182,7 @@ factotumsrv()
 			break;
 		r := findfid(fid);
 		if(r == nil){
-			rc <-= (nil, "unknown request");
+			rc <-= (nil, "no rpc pending");
 			break;
 		}
 		alt{

@@ -1,3 +1,5 @@
+20070601
+	/apl/cmd/auth/factotum/factotum.b: ignore empty writes, don't fail; make a few diagnostics match plan 9
 20070510
 	quickly remove references to udp's "oldheaders" because plan 9 removed it
 	remove obootpd completely
