@@ -1,272 +1,40 @@
 .TH MC 1
 .SH NAME
-mc \- interactive floating point mathematics calculator
+mc \- multicolumn print
 .SH SYNOPSIS
 .B mc
 [
-.B -s
-] [
-.I file
+.BI -c " columns"
 ]
-.PP
-.B mc
 [
-.B -s
-] [
-.I expression
+.I file ...
 ]
 .SH DESCRIPTION
 .I Mc
-interprets a simple language for floating point arithmetic
-with limbo-like syntax and
-functions.
-.PP
-If no
-.I file
-or
-.I expression
-is given
-.I mc
-interprets the standard input.
-.PP
-.I Mc
-input consists of
-.I expressions
-and
-.IR statements .
-Expressions are evaluated and their results printed.
-Statements, typically assignments and function
-definitions, produce no output unless they explicitly call
-.IR print .
-.PP
-Comments begin with # and extend to the end of the line as in limbo.
-.PP
-Numbers may have a base specified using C or limbo syntax.
-.PP
-Variable names have the usual syntax, including 
-.LR _ .
-They may be introduced without a declaration and have an initial default value
-of 0.0.
-.PP
-The predefined variable
-.B degrees
-can be set to specify angles in degrees rather than radians in the trigonometric functions below. It is initially 0 (angles in radians by default).
-.PP
-The predefined variable
-.B printbase
-can be set to any integer between 2 and 36 inclusive to specify
-the base of all values output.
-.PP
-The constants
-.BR e ,
-.BR Pi (π) ,
-.BR Phi (φ) ,
-.BR Gamma (γ) ,
-.BR Infinity (∞) ,
-and
-.BR Nan (NaN)
-are predefined.
-.PP
-Expressions are formed with these limbo-like operators, listed by
-decreasing precedence.
-.TP
-.B ! ~ + - ++ --
-.TP
-.B **
-.TP
-.B * / % //
-.TP
-.B + -
-.TP
-.B << >>
-.TP
-.B > >= < <= <->
-.TP
-.B == != -> <-
-.TP
-.BR & " " " " ↑
-.TP
-.B ^
-.TP
-.BR | " " " " ↓
-.TP
-.B &&
-.TP
-.B ||
-.TP
-.B ? :
-.TP
-.B = := += -= *= /= %= //= &= ^= |= <<= >>=
-.TP
-.B ,
-.PP
-If the
-.B -s
-flag is given, a strict interpretation of the declaration rules are enforced - all variables must be declared and initialized first using the 
-.B :=
-operator. Otherwise undeclared variables are declared and initialized to 0.0 in the
-current scope. In either case, 
-.B :=
-always forces a new declaration.
-.PP
-The extra non-limbo operators are factorial (! when postfix), integer division (//),
-conditional (? and :) comma (,), logical equivalence (<->), implication (->), reverse implication (<-), nand (↑) and nor (↓).
-.PP
-Unary operators, assignment operators, **, ? and : are right associative as usual.
-.PP
-The comma operator may be replaced by white space in expressions.
-.PP
-Built in functions are
-.BR abs ,
-.BR acos ,
-.BR acosh ,
-.BR asin ,
-.BR asinh ,
-.BR atan ,
-.BR atanh ,
-.BR atan2 ,
-.BR cbrt ,
-.BR ceiling ,
-.BR cos ,
-.BR cosh ,
-.BR erf ,
-.BR exp ,
-.BR floor ,
-.BR frac ,
-.BR gamma (Γ) ,
-.BR int ,
-.BR log ,
-.BR log10 ,
-.BR max ,
-.BR min ,
-.BR pow ,
-.BR rand ,
-.BR round ,
-.BR sign ,
-.BR sin ,
-.BR sinh ,
-.BR sqrt ,
-.BR tan ,
-and
-.BR tanh .
-.PP
-Functions of one argument may be written without brackets:
-.sp
-.EX
-	sin 45
-	sqrt 2
-.EE
-.sp
-These behave as unary operators with the highest precedence.
-.PP
-Sum and product operators are available using sigma (Σ) and pi (Π).
-For example
-.sp
-.EX
-	sigma(i = 0, 100, 1/i!)
-.EE
-.sp
-gives the value 2.7182818284590455 .
-.PP
-Simple definite integration can be done :-
-.sp
-.EX
-	integral(x = -1.96, 1.96, exp(-0.5*x*x)/sqrt(2*Pi))
-.EE
-.sp
-outputs 0.9500042096998785 .
-∫ may be used in place of integral.
-.PP
-For the sake of completeness, the derivative of a function at a given
-point can be calculated :-
-.sp
-.EX
-	differential(x=1, x*x+5*x+6)
-.EE
-.sp
-gives 7.
-Δ may be used in place of differential.
-.PP
-There is limited support for the solution of equations.
-For example
-.sp
-.EX
-	solve(x**2-5*x+6==0)
-.EE
-.sp
-outputs the values 2 and 3. The value returned by
-.B solve
-is the largest of the roots. To specify the variable to solve for, if
-ambiguous, simply add it as a second parameter as in, for example,
-.sp
-.EX
-	solve(x**2-5*x+6==y**3+z, x)
-.EE
-.sp
-This will substitute the current values of
-.B y
-and
-.B z
-and solve for
-.B x.
-To tune the solution process, the predefined variables
-.B solvelimit
-(default value 100) and
-.B solvestep
-(default value 1) are available.
-The former specifies the maximum absolute solution
-to search for. The latter
-specifies the interval increment to apply when searching
-for sign changes.
-.PP
-.B Print
-prints a list of expressions that may include
-string constants such as
-\fL"hello\en"\f1.\fP
-.PP
-.B Read
-reads in a list of values interactively. The list of variables to assign
-these values should follow.
-.PP
-Other files may be read in using the limbo include statement.
-.PP
-Control flow statements are
-.BR break ,
-.BR continue ,
-.BR exit ,
-.BR return ,
-.BR if - else ,
-.BR while ,
-.BR do - while ,
-and
-.BR for ,
-with braces for grouping.
-.PP
-The use of semi-colon and newline is optional.
-.PP
-Functions are introduced by the keyword
-.BR fn .
-.SH EXAMPLE
-.EX
-fn ack(a, b)
-{
-	n = n+1
-	if(a == 0)
-		return b+1;
-	if(b == 0)
-		return ack(a-1, 1);
-	return ack(a-1, ack(a, b-1));
-}
-
-for(i = 0; i < 4; i++)
-	for(j = 0; j < 4; j++){
-		n = 0
-		print "ack(", i, ",", j, ")=", ack(i, j), "\n"
-		print n, " calls", "\n"
-	}
-.EE
+formats the contents of
+.I files
+(standard input by default) into columns.
+.I Columns
+is an integer specifying the number of
+character widths into which
+.IR mc 's
+output is formatted.
+If run in an
+.IR acme (1)
+window, the default
+.I columns
+is the number of zeros that will fit across the window;
+otherwise the default
+.I columns
+is 65.
 .SH SOURCE
 .B /appl/cmd/mc.b
 .SH "SEE ALSO"
-.IR fc (1),
-.IR math (2)
+.IR acme (1)
+.SH BUGS
+The columns are not aligned properly
+if the input contains tabs.
+.br
+The output doesn't fit the width of a
+.IR wm-sh (1)
+window by default.

@@ -167,6 +167,7 @@ fc -help
 .fi
 .ne 5
 .SH SEE ALSO
+.IR calc (1),
 .IR math-fp (2),
 .IR math-elem (2),
 .IR sh-expr (1)
