@@ -112,5 +112,5 @@ option enables tracing of the file service protocol, for debugging.
 .B /appl/cmd/auth/keyfs.b
 .SH SEE ALSO
 .IR changelogin (8),
-.IR login (8),
+.IR logind (8),
 .IR signer (8)
