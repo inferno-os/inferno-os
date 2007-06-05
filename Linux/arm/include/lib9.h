@@ -2,6 +2,7 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
+#define _XOPEN_SOURCE  500
 #define _LARGEFILE_SOURCE	1
 #define _LARGEFILE64_SOURCE	1
 #define _FILE_OFFSET_BITS 64
