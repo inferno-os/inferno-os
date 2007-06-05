@@ -33,6 +33,7 @@ TARG=\
 	broke.dis\
 	bytes.dis\
 	cal.dis\
+	calc.dis\
 	cat.dis\
 	cd.dis\
 	cddb.dis\
@@ -85,12 +86,10 @@ TARG=\
 	lockfs.dis\
 	logfile.dis\
 	look.dis\
-	lc.dis\
 	ls.dis\
 	lstar.dis\
 	man2html.dis\
 	man2txt.dis\
-	mathcalc.dis\
 	mc.dis\
 	md5sum.dis\
 	mdb.dis\
