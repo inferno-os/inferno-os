@@ -1,3 +1,6 @@
+20070605
+	add another xopen #define to lib9.h includes for Linux
+	copy plan9 acme's colormix
 20070601
 	/appl/cmd/ls.b /dis/ls.dis /man/1/ls: document new -F option and -T option
 	/appl/cmd/auth/factotum/factotum.b: ignore empty writes, don't fail; make a few diagnostics match plan 9

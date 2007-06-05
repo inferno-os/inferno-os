@@ -937,17 +937,19 @@ iconinit()
 {
 	r : Rect;
 
+	# Blue
 	tagcols = array[NCOL] of ref Draw->Image;
-	tagcols[BACK] = imagemix(display.rgb(16raa, 16rff, 16rff), white, 1, 3);	# mix DPalebluegreenwith DWhite
-	tagcols[HIGH] = display.rgb(16r9e, 16ree, 16ree);		# was DPalegreygreen
-	tagcols[BORD] = display.rgb(16r88, 16r88, 16rcc);		# was DPurpleblue
+	tagcols[BACK] = display.colormix(Draw->Palebluegreen, Draw->White);
+	tagcols[HIGH] = display.color(Draw->Palegreygreen);
+	tagcols[BORD] = display.color(Draw->Purpleblue);
 	tagcols[TEXT] = black;
 	tagcols[HTEXT] = black;
 
+	# Yellow
 	textcols = array[NCOL] of ref Draw->Image;
-	textcols[BACK] = imagemix(display.rgb(16rff, 16rff, 16raa), white, 1, 3);		# mix DPaleyellow with DWhite
-	textcols[HIGH] = display.rgb(16ree, 16ree, 16r9e);		# was DDarkyellow
-	textcols[BORD] = display.rgb(16r99, 16r99, 16r4c);		# was Dyellowgreen
+	textcols[BACK] = display.colormix(Draw->Paleyellow, Draw->White);
+	textcols[HIGH] = display.color(Draw->Darkyellow);
+	textcols[BORD] = display.color(Draw->Yellowgreen); 
 	textcols[TEXT] = black;
 	textcols[HTEXT] = black;
 
@@ -1015,19 +1017,6 @@ rgb(s : string, n : int) : (int, int, int)
 	return (col(s, n), col(s, n+2), col(s, n+4));
 }
 
-imagemix(i1 : ref Image, i2 : ref Image, n1 : int, n2 : int) : ref Image
-{
-	# 2,2		1,3	only	: generalize later
-	i3 := balloc(((0, 0), (2, 2)), mainwin.chans, Draw->White);
-	draw(i3, i3.r, i2, nil, (0, 0));
-	draw(i3, ((0, 0), (1, 1)), i1, nil, (0, 0));
-	if (n1 == n2)
-		draw(i3, ((1, 1), (2, 2)), i1, nil, (0, 0));
-	i3.repl = 1;
-	i3.clipr = ((-1729, -1729), (1729, 1729));
-	return i3;
-}
-	
 cenv(s : string, t : string, but : int, i : ref Image) : ref Image
 {
 	c := utils->getenv("acme-" + s + "-" + t + "-" + string but);
@@ -1037,14 +1026,12 @@ cenv(s : string, t : string, but : int, i : ref Image) : ref Image
 		c = utils->getenv("acme-" + s);
 	if (c != nil) {
 		if (c[0] == '#' && len c >= 7) {
-			(r, g, b) := rgb(c, 1);
-			i1 := display.rgb(r, g, b);
+			(r1, g1, b1) := rgb(c, 1);
 			if (len c >= 15 && c[7] == '/' && c[8] == '#') {
-				(r, g, b) = rgb(c, 9);
-				i2 := display.rgb(r, g, b);
-				return imagemix(i1, i2, 2, 2);
+				(r2, g2, b2) := rgb(c, 9);
+				return display.colormix((r1<<24)|(g1<<16)|(b1<<8)|16rFF, (r2<<24)|(g2<<16)|(b2<<8)|16rFF);
 			}
-			return i1;
+			return display.color((r1<<24)|(g1<<16)|(b1<<8)|16rFF);
 		}
 		for (j := 0; j < len c; j++)
 			if (c[j] >= 'A' && c[j] <= 'Z')
