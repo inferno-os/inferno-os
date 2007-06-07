@@ -11,11 +11,6 @@ PATHDEPTH: con 1;
 
 indices: list of (string, list of (string, string));
 
-init()
-{
-	sys = load Sys Sys->PATH;
-}
-
 loadsections(scanlist: list of string): string
 {
 	sys = load Sys Sys->PATH;
@@ -33,10 +28,10 @@ loadsections(scanlist: list of string): string
 
 		indexpaths = filepat->expand(MANPATH + "[0-9]*/INDEX");
 		if (indexpaths == nil)
-			return sys->sprint("cannot find man pages");
+			return "cannot find man pages";
 	} else {
 		for (; scanlist != nil; scanlist = tl scanlist)
-			indexpaths = MANPATH + string hd scanlist + "/INDEX" :: indexpaths;
+			indexpaths = MANPATH + trimdot(hd scanlist) + "/INDEX" :: indexpaths;
 		indexpaths = sortuniq(indexpaths);
 	}
 
@@ -51,7 +46,7 @@ loadsections(scanlist: list of string): string
 
 	for (sl := sections; sl != nil; sl = tl sl) {
 		section := hd sl;
-		path := MANPATH + string section + "/INDEX";
+		path := MANPATH + section + "/INDEX";
 		iob := bufio->open(path, Sys->OREAD);
 		if (iob == nil)
 			continue;
@@ -71,6 +66,14 @@ loadsections(scanlist: list of string): string
 	return nil;
 }
 
+trimdot(s: string): string
+{
+	for(i := 0; i < len s; i++)
+		if(s[i] == '.')
+			return s[0: i];
+	return s;
+}
+
 getfiles(sections: list of string, keys: list of string): list of (int, string, string)
 {
 	ixl: list of (string, list of (string, string));
@@ -79,7 +82,7 @@ getfiles(sections: list of string, keys: list of string): list of (int, string, 
 		ixl = indices;
 	else {
 		for (; sections != nil; sections = tl sections) {
-			section := hd sections;
+			section := trimdot(hd sections);
 			for (il := indices; il != nil; il = tl il) {
 				(s, mapl) := hd il;
 				if (s == section) {
@@ -95,13 +98,13 @@ getfiles(sections: list of string, keys: list of string): list of (int, string, 
 			for ((s, mapl) := hd ixl; mapl != nil; mapl = tl mapl) {
 				(kw, file) := hd mapl;
 				if (hd keyl == kw) {
-					p := MANPATH + s + "/" + file;
+					p := MANPATH + trimdot(s) + "/" + file;
 					paths = (int s, kw, p) :: paths;
 				}
 			}
 			# allow files not in the index
 			if(paths == nil || (hd paths).t0 != int s || (hd paths).t1 != hd keyl){
-				p := MANPATH + string s + "/" + hd keyl;
+				p := MANPATH + string int s + "/" + hd keyl;
 				if(sys->stat(p).t0 != -1)
 					paths = (int s, hd keyl, p) :: paths;
 			}

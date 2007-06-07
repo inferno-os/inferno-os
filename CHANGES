@@ -1,3 +1,5 @@
+20070607
+	/appl/wm/man.b /appl/lib/man.b to allow 10.1 etc as section references
 20070605
 	add another xopen #define to lib9.h includes for Linux
 	copy plan9 acme's colormix

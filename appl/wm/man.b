@@ -2,12 +2,17 @@ implement WmMan;
 
 include "sys.m";
 	sys: Sys;
+
 include "draw.m";
 	draw: Draw;
+	Font: import draw;
+
 include "tk.m";
 	tk: Tk;
+
 include "tkclient.m";
 	tkclient: Tkclient;
+
 include "plumbmsg.m";
 include "man.m";
 	man: Man;
@@ -19,7 +24,7 @@ WmMan: module {
 window: ref Tk->Toplevel;
 
 W: adt {
-	textwidth: fn(nil: self ref W, text: Parseman->Text): int;
+	textwidth: fn(nil: self ref W, text: Text): int;
 };
 
 ROMAN: con "/fonts/lucidasans/unicode.7.font";
@@ -27,7 +32,7 @@ BOLD: con "/fonts/lucidasans/typelatin1.7.font";
 ITALIC: con "/fonts/lucidasans/italiclatin1.7.font";
 HEADING1: con "/fonts/lucidasans/boldlatin1.7.font";
 HEADING2: con "/fonts/lucidasans/italiclatin1.7.font";
-rfont, bfont, ifont, h1font, h2font: ref Draw->Font;
+rfont, bfont, ifont, h1font, h2font: ref Font;
 
 GOATTR: con Parseman->ATTR_LAST << iota;
 MANPATH: con "/man/1/man";
@@ -35,6 +40,7 @@ INDENT: con 40;
 
 metrics: Parseman->Metrics;
 parser: Parseman;
+Text: import parser;
 
 
 tkconfig := array [] of {
@@ -124,14 +130,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	argv = tl argv;
 
-	rfont = draw->(Draw->Font).open(ctxt.display, ROMAN);
-	bfont = draw->(Draw->Font).open(ctxt.display, BOLD);
-	ifont = draw->(Draw->Font).open(ctxt.display, ITALIC);
-	h1font = draw->(Draw->Font).open(ctxt.display, HEADING1);
-	h2font = draw->(Draw->Font).open(ctxt.display, HEADING2);
+	rfont = Font.open(ctxt.display, ROMAN);
+	bfont = Font.open(ctxt.display, BOLD);
+	ifont = Font.open(ctxt.display, ITALIC);
+	h1font = Font.open(ctxt.display, HEADING1);
+	h2font = Font.open(ctxt.display, HEADING2);
 
-	em := draw->rfont.width("m");
-	en := draw->rfont.width("n");
+	em := rfont.width("m");
+	en := rfont.width("n");
 	metrics = Parseman->Metrics(490, 80, em, en, 14, 40, 20);
 
 	tkclient->init();
@@ -157,7 +163,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		vw = 1;
 	metrics.pagew = vw;
 
-	linechan := chan of list of (int, Parseman->Text);
+	linechan := chan of list of (int, Text);
 	man->loadsections(nil);
 
 	pidc := chan of int;
@@ -381,7 +387,7 @@ setbuttons()
 		tkcmd(window, ".input.forward configure -state normal");
 }
 
-dolayout(linechan: chan of list of (int, Parseman->Text), path: string)
+dolayout(linechan: chan of list of (int, Text), path: string)
 {
 	fd := sys->open(path, Sys->OREAD);
 	if (fd == nil) {
@@ -392,7 +398,7 @@ dolayout(linechan: chan of list of (int, Parseman->Text), path: string)
 	parser->parseman(fd, metrics, 0, w, linechan);
 }
 
-printman(pidc: chan of int, linechan: chan of list of (int, Parseman->Text), h: ref History)
+printman(pidc: chan of int, linechan: chan of list of (int, Text), h: ref History)
 {
 	pidc <-= sys->pctl(0, nil);
 	args: list of string;
@@ -412,7 +418,7 @@ printman(pidc: chan of int, linechan: chan of list of (int, Parseman->Text), h: 
 		arg := hd args;
 		if (arg == nil)
 			continue;
-		if (addsections && !isint(arg)) {
+		if (addsections && !isint(trimdot(arg))) {
 			addsections = 0;
 			keywords = args;
 		}
@@ -429,33 +435,33 @@ printman(pidc: chan of int, linechan: chan of list of (int, Parseman->Text), h: 
 		return;
 	}
 
-	tt := Parseman->Text(Parseman->FONT_ROMAN, 0, "Search:", 1, nil);
-	at := Parseman->Text(Parseman->FONT_BOLD, 0, argstext, 0, nil);
+	tt := Text(Parseman->FONT_ROMAN, 0, "Search:", 1, nil);
+	at := Text(Parseman->FONT_BOLD, 0, argstext, 0, nil);
 	linechan <-= (0, tt)::(0, at)::nil;
 	tt.text = "";
 	linechan <-= (0, tt)::nil;
 
 	if (pagelist == nil) {
-		donet := Parseman->Text(Parseman->FONT_ROMAN, 0, "No matches", 0, nil);
+		donet := Text(Parseman->FONT_ROMAN, 0, "No matches", 0, nil);
 		linechan <-= (INDENT, donet) :: nil;
 		linechan <-= nil;
 		pidc <-= -1;
 		return;
 	}
 
-	linelist: list of list of Parseman->Text;
-	pathlist: list of Parseman->Text;
+	linelist: list of list of Text;
+	pathlist: list of Text;
 	
 	maxkwlen := 0;
-	comma := Parseman->Text(Parseman->FONT_ROMAN, 0, ", ", 0, "");
+	comma := Text(Parseman->FONT_ROMAN, 0, ", ", 0, "");
 	for (; pagelist != nil; pagelist = tl pagelist) {
 		(n, p, kwl) := hd pagelist;
 		l := 0;
-		keywords: list of Parseman->Text = nil;
+		keywords: list of Text = nil;
 		for (; kwl != nil; kwl = tl kwl) {
 			kw := hd kwl;
-			kwt := Parseman->Text(Parseman->FONT_ITALIC, GOATTR, kw, 0, p);
-			nt := Parseman->Text(Parseman->FONT_ROMAN, GOATTR, "(" + string n + ")", 0, p);
+			kwt := Text(Parseman->FONT_ITALIC, GOATTR, kw, 0, p);
+			nt := Text(Parseman->FONT_ROMAN, GOATTR, "(" + string n + ")", 0, p);
 			l += textwidth(kwt) + textwidth(nt);
 			if (keywords != nil) {
 				l += textwidth(comma);
@@ -466,7 +472,7 @@ printman(pidc: chan of int, linechan: chan of list of (int, Parseman->Text), h: 
 		if (l > maxkwlen)
 			maxkwlen = l;
 		linelist = keywords :: linelist;
-		ptext := Parseman->Text(Parseman->FONT_ROMAN, GOATTR, p, 0, "");
+		ptext := Text(Parseman->FONT_ROMAN, GOATTR, p, 0, "");
 		pathlist = ptext :: pathlist;
 	}
 
@@ -485,10 +491,10 @@ printman(pidc: chan of int, linechan: chan of list of (int, Parseman->Text), h: 
 	pidc <-= -1;
 }
 
-layouterror(linechan: chan of list of (int, Parseman->Text), msg: string)
+layouterror(linechan: chan of list of (int, Text), msg: string)
 {
 	text := "ERROR: " + msg;
-	t := Parseman->Text(Parseman->FONT_ROMAN, 0, text, 0, nil);
+	t := Text(Parseman->FONT_ROMAN, 0, text, 0, nil);
 	linechan <-= (0, t)::nil;
 	linechan <-= nil;
 }
@@ -499,14 +505,14 @@ loaderr(modname: string)
 	raise "fail:init";
 }
 
-W.textwidth(nil: self ref W, text: Parseman->Text): int
+W.textwidth(nil: self ref W, text: Text): int
 {
 	return textwidth(text);
 }
 
-textwidth(text: Parseman->Text): int
+textwidth(text: Text): int
 {
-	f: ref Draw->Font;
+	f: ref Font;
 	if (text.heading == 1)
 		f = h1font;
 	else if (text.heading == 2)
@@ -528,7 +534,7 @@ textwidth(text: Parseman->Text): int
 
 lnum := 0;
 
-setline(line: list of (int, Parseman->Text))
+setline(line: list of (int, Text))
 {
 	tabstr := "";
 	linestr := "";
@@ -659,11 +665,9 @@ isint(s: string): int
 
 kill(pid: int)
 {
-	pctl := sys->open("/prog/" + string pid + "/ctl", Sys->OWRITE);
-	if (pctl != nil) {
-		poison := array of byte "kill";
-		sys->write(pctl, poison, len poison);
-	}
+	fd := sys->open("/prog/" + string pid + "/ctl", Sys->OWRITE);
+	if (fd != nil)
+		sys->fprint(fd, "kill");
 }
 
 revsortuniq(strlist: list of string): list of string
@@ -762,8 +766,15 @@ fittoscreen(win: ref Tk->Toplevel)
 tkcmd(top: ref Tk->Toplevel, s: string): string
 {
 	e := tk->cmd(top, s);
-	if (e != nil && e[0] == '!') {
+	if (e != nil && e[0] == '!')
 		sys->print("tk error %s on '%s'\n", e, s);
-	}
 	return e;
+}
+
+trimdot(s: string): string
+{
+	for(i := 0; i < len s; i++)
+		if(s[i] == '.')
+			return s[0: i];
+	return s;
 }

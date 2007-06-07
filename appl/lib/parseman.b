@@ -1,12 +1,13 @@
 implement Parseman;
 
 include "sys.m";
-include "bufio.m";
-include "man.m";
+	sys: Sys;
 
-sys: Sys;
-bufio: Bufio;
-Iobuf: import bufio;
+include "bufio.m";
+	bufio: Bufio;
+	Iobuf: import bufio;
+
+include "man.m";
 
 FONT_LITERAL: con -1;
 
