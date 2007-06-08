@@ -116,7 +116,7 @@ init(nil: ref Context, argv: list of string)
 		'F' =>
 			Fopt++;
 		* =>
-			sys->fprint(stderr, "usage: ls [-delmnpqrstucT] [files]\n");
+			sys->fprint(stderr, "usage: ls [-delmnpqrstucFT] [files]\n");
 			raise "fail:usage";
 		}
 	}
