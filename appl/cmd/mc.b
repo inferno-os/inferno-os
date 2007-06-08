@@ -10,8 +10,6 @@ include "draw.m";
 include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
-include "env.m";
-	env: Env;
 include "arg.m";
 
 font: ref Font;
@@ -28,10 +26,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	sys = load Sys Sys->PATH;
 	if((bufio = load Bufio Bufio->PATH) == nil)
 		fatal("can't load " + Bufio->PATH);
-	if((env = load Env Env->PATH) == nil)
-		fatal("can't load " + Env->PATH);
-	if((draw = load Draw Draw->PATH) == nil)
-		fatal("can't load " + Draw->PATH);
+	draw = load Draw Draw->PATH;
 	if((arg := load Arg Arg->PATH) == nil)
 		fatal("can't load " + Arg->PATH);
 
@@ -120,18 +115,20 @@ nexttab(col: int): int
 
 getwidth(ctxt: ref Draw->Context)
 {
-	if((wid:=env->getenv("acmewin")) == nil)
+	if(ctxt == nil || draw == nil)
 		return;
-	if((fd:=open("/chan/" + wid + "/ctl", ORDWR)) == nil)
+	if((wid := rf("/env/acmewin")) == nil)
+		return;
+	if((fd := open("/chan/" + wid + "/ctl", ORDWR)) == nil)
 		return;
 	buf := array[256] of byte;
-	if((n:=read(fd, buf, len buf)) <= 0)
+	if((n := read(fd, buf, len buf)) <= 0)
 		return;
 	(nf, f) := tokenize(string buf[:n], " ");
 	if(nf != 8)
 		return;
 	f0 := tl tl tl tl tl f;
-	if((font=Font.open(ctxt.display, hd tl f0)) == nil)
+	if((font = Font.open(ctxt.display, hd tl f0)) == nil)
 		return;
 	tabwid = int hd tl tl f0;
 	mintab = font.width("0");	
@@ -142,4 +139,16 @@ fatal(s: string)
 {
 	fprint(fildes(2), "mc: %s: %r\n", s);
 	raise "fail:"+s;
+}
+
+rf(f: string): string
+{
+	fd := sys->open(f, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	b := array[Sys->NAMEMAX] of byte;
+	n := sys->read(fd, b, len b);
+	if(n < 0)
+		return nil;
+	return string b[0:n];
 }
