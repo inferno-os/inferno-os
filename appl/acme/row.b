@@ -446,7 +446,7 @@ Row.dump(row : self ref Row, file : string)
 						w.body.file.buf.nc, fontname));
 				}
 				a = nil;
-				buf = w.ctlprint();
+				buf = w.ctlprint(0);
 				b.puts(buf);
 				m = min(BUFSIZE, w.tag.file.buf.nc);
 				w.tag.file.buf.read(0, r, 0, m);

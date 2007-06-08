@@ -527,10 +527,14 @@ Window.clean(w : self ref Window, conservative : int, exiting : int) : int	# as 
 	return TRUE;
 }
 
-Window.ctlprint(w : self ref Window) : string
+Window.ctlprint(w : self ref Window, fonts : int) : string
 {
-	return sprint("%11d %11d %11d %11d %11d ", w.id, w.tag.file.buf.nc,
+	s := sprint("%11d %11d %11d %11d %11d ", w.id, w.tag.file.buf.nc,
 			w.body.file.buf.nc, w.isdir, w.dirty);
+	if(fonts)
+		return sprint("%s%11d %q %11d ", s, w.body.frame.r.dx(),
+			w.body.reffont.f.name, w.body.frame.maxtab);
+	return s;
 }
 
 Window.event(w : self ref Window, fmt : string)

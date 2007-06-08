@@ -1164,7 +1164,7 @@ run(win : ref Window, s : string, rdir : string, ndir : int, newns : int, argadd
 	pipechar := 0;
 	if (t < len s && (s[t] == '<' || s[t] == '|' || s[t] == '>')){
 		pipechar = s[t++];
-		s = s[1: ];
+		s = s[t:];
 	}
 	c.pid = sys->pctl(0, nil);
 	c.iseditcmd = iseditcmd;

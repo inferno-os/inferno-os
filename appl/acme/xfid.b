@@ -374,7 +374,7 @@ Xfid.read(x : self ref Xfid)
 	QWbody =>
 		x.utfread(w.body, 0, w.body.file.buf.nc, QWbody);
 	QWctl =>
-		sbuf = w.ctlprint();
+		sbuf = w.ctlprint(1);
 	QWevent =>
 		x.eventread(w);
 	QWdata =>
@@ -1052,7 +1052,7 @@ Xfid.indexread(x : self ref Xfid)
 			# only show the currently active window of a set
 			if(w.body.file.curtext != w.body)
 				continue;
-			ctls := w.ctlprint();
+			ctls := w.ctlprint(0);
 			ctlb := array of byte ctls;
 			if (len ctls != Ctlsize || len ctlb != Ctlsize)
 				error("bad length in indexread");

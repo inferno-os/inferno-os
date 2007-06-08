@@ -4,9 +4,11 @@ include "sys.m";
 include "draw.m";
 include "workdir.m";
 include "sh.m";
+include "env.m";
 
 sys : Sys;
 workdir : Workdir;
+env: Env;
 
 OREAD, OWRITE, ORDWR, FORKNS, FORKENV, FORKFD, NEWPGRP, MREPL, FD, UTFmax, pctl, open, read, write, fprint, sprint, fildes, bind, dup, byte2char, utfbytes : import sys;
 
@@ -35,6 +37,7 @@ init(ctxt : ref Draw->Context, argl : list of string)
 {
 	sys = load Sys Sys->PATH;
 	workdir = load Workdir Workdir->PATH;
+	env = load Env Env->PATH;
 	drawctxt = ctxt;
 	stdout = fildes(1);
 	stderr = fildes(2);
@@ -222,6 +225,7 @@ main(argv : list of string)
 		error("ctl");
 	id = int string buf;
 	buf = nil;
+	env->setenv("acmewin", string id);
 	b := sprint("/chan/%d/tag", id);
 	fd = open(b, OWRITE);
 	write(fd, array of byte " Send Delete", 12);
