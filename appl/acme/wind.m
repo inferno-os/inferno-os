@@ -62,6 +62,6 @@ Windowm : module {
 		mousebut : fn(w : self ref Window);
 		addincl : fn(w : self ref Window, r : string, n : int);
 		cleartag : fn(w : self ref Window);
-		ctlprint : fn(w : self ref Window) : string;
+		ctlprint : fn(w : self ref Window, fonts : int) : string;
 	};
 };
