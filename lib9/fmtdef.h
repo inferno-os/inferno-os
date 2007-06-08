@@ -96,3 +96,7 @@ void	_fmtunlock(void);
 		t += runetochar(t, &_rune);\
 	}\
 	}while(0)
+
+#ifndef va_copy
+#define	va_copy(a, b) ((a) = (b))
+#endif

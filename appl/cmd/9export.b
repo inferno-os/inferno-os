@@ -38,7 +38,6 @@ init(nil: ref Draw->Context, args: list of string)
 
 	arg->init(args);
 	arg->setusage("9export [-aA9] [-k keyspec] [-e enc digest]");
-	flags := 0;
 	cryptalg := "";	# will be rc4_256 sha1
 	keyspec := "";
 	noauth := 0;

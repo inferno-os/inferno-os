@@ -1,3 +1,5 @@
+20070608
+	update /lib9 functions to use silly va_copy (and then va_end) instead of just assigning, to account for silly C implementations
 20070607
 	/appl/wm/man.b /appl/lib/man.b to allow 10.1 etc as section references
 20070605

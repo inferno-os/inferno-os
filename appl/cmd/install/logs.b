@@ -122,7 +122,7 @@ contents(e: ref Entry): string
 	s := "";
 	for(cl := e.contents; cl != nil; cl = tl cl)
 		s += " " + hd cl;
-	return s[1:];
+	return s;	# includes initial space
 }
 
 Entry.text(e: self ref Entry): string
