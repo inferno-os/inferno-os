@@ -1,5 +1,8 @@
 20070614
 	/appl/lib/venti.b bug fixes, a few more errstrs, remove prints to stderr
+	add initial module/vac.m appl/lib/vac.b from mjl (gsoc project ventivac)
+	add initial /appl/cmd/^(vacfs.b vacget.b vacput.b) /man/4/vacfs /man/1/vacget from mjl (gsoc:ventivac)
+	include omitted man/mkfile man/lib
 20070608
 	update /lib9 functions to use silly va_copy (and then va_end) instead of just assigning, to account for silly C implementations
 	change /appl/cmd/mc.b not to require Draw or Env (so lc works on smaller systems)

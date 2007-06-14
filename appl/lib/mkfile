@@ -137,6 +137,7 @@ TARG=\
 	translate.dis\
 	ubfa.dis\
 	url.dis\
+	vac.dis\
 	venti.dis\
 	virgil.dis\
 	volume.dis\
@@ -232,3 +233,4 @@ rfc822.dis:	$ROOT/module/rfc822.m
 csv.dis: $ROOT/module/csv.m
 json.dis: $ROOT/module/json.m
 lists.dis:	$ROOT/module/lists.m
+vac.dis:	$ROOT/module/vac.m $ROOT/module/venti.m

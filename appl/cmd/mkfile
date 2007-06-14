@@ -160,6 +160,9 @@ TARG=\
 	unmount.dis\
 	uudecode.dis\
 	uuencode.dis\
+	vacfs.dis\
+	vacget.dis\
+	vacput.dis\
 	wav2iaf.dis\
 	wc.dis\
 	webgrab.dis\
@@ -216,3 +219,6 @@ rawdbfs.dis: $MODDIR/styxservers.m
 import.dis:	$MODDIR/encoding.m $MODDIR/factotum.m
 basename.dis: $MODDIR/names.m
 cleanname.dis: $MODDIR/names.m
+vacfs.dis:	$MODDIR/vac.m $MODDIR/venti.m
+vacget.dis:	$MODDIR/vac.m $MODDIR/venti.m
+vacput.dis:	$MODDIR/vac.m $MODDIR/venti.m

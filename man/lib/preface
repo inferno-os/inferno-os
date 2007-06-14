@@ -1,0 +1,73 @@
+.FP lucidasans
+.nr PS -1
+.nr VS -1
+.TL
+Preface
+.SP 0.4i exactly
+.LP
+Inferno benefits from the results of many years of systems research
+at the Computing Science Research Center at Lucent Technologies, Bell Labs.
+The system is clearly a cultural descendent of the earliest Unix systems,
+and amongst Inferno's inventors, listed below, are several venerable programmers
+associated with the development of Unix.
+Inferno looks out on a very different world from Unix: complexity is no longer
+confined to large mainframes, but has sprawled
+across world wide networks, trapping programmers in its web.
+.LP
+Inferno tackles this as radically now as Unix did then.
+First, it adopts key ideas from the system Plan 9, also from Bell Labs:
+.IP \(bu
+Replace a plethora of protocols by a simple, unifying file service protocol (Styx),
+that can be served even by tiny devices, giving a uniform
+way to access objects throughout the network.
+.IP \(bu
+Let applications `compute a name space': all resources are represented
+as file systems, which an application assembles into an application-specific
+hierarchy or `name space', private or shared, that hides their source (local or remote)
+and nature (static or dynamic), for completely transparent access.
+.IP \(bu
+Using those primitives, implement windowing systems, networked graphics, remote debugging,
+device control, and much more, with remarkable ease
+and great simplicity.
+.LP
+Inferno carries Plan 9's ideas further.
+Plan 9 virtualised resources; Inferno virtualises the whole system.
+The operating system kernel can run both native and `hosted' on a range
+of platforms presenting identical interfaces on all, offering wider portability.
+The Limbo programming language offers proper concurrent programming,
+and straightforward yet dynamic modularity.
+The Dis virtual machine allows applications to cross architecture boundaries
+invisibly during execution.
+Inferno shows the `continued appliance of computer science'.
+.LP
+The original development team at Bell Labs was
+Sean Dorward, Rob Pike and Phil Winterbottom,
+with Eric Grosse, Jim McKie, Dave Presotto,
+Dennis Ritchie, Ken Thompson and Howard Trickey.
+Many others have contributed much since then, both within Lucent and without.
+.LP
+Inferno® is now a supported, commercial product of Vita Nuova.
+The Third Edition of the Programmer's manual marked that event.
+The Fourth Edition brings many changes in content, but also makes the full
+source available as Free Software under a new `dual licence' scheme.
+.LP
+.sp
+.in 4i
+.nf
+.ft I
+.ce 100
+Dave Atkin
+John Bates
+Danny Byrne
+John Firth
+Charles Forsyth
+Michael Jeffrey
+Chris Locke
+Roger Peppé
+Nigel Roles
+.sp
+Vita Nuova
+.br
+June 2003
+.ce 0
+.in -4i

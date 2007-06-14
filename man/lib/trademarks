@@ -1,0 +1,46 @@
+.sp |2i
+.vs 12
+.fp 1 R LucidaSans
+.ft 1
+.fi
+Trademarks referenced in this document:
+.sp 2
+.ps -1
+.vs -1
+.nf
+Inferno, Dis, Styx and Limbo are registered trademarks of Vita Nuova Holdings Limited
+    in the United States and other countries.
+68020 and 68040 are trademarks of Motorola.
+AMD is a trade mark of Advanced Micro Devices.
+ARM is a trade mark of Advanced Risc Machines, Limited.
+DSP3210 is a trade mark of AT&T.
+Aladdin Ghostscript is a trademark of Aladdin Enterprises.
+CGA is a trademark of International Business Machines Corporation.
+Challenge, Indigo\s-2\u2\d\s0, Indy, and POWER Series are trademarks of Silicon Graphics, Inc.
+Ethernet is a trademark of Xerox Corporation.
+IBM, PS/2, and VGA are registered trademarks of International Business Machines Corporation.
+IDEA is a trademark of Ascom-Tech AG.
+Intel, i386, 960, 8088, 80286, 80386, 80486, and Pentium are trademarks of Intel Corporation.
+Java is a trademark and Sun is a registered trademark of Sun Microsystems Inc.
+Lucida and Pellucida are registered trademarks of Bigelow & Holmes.
+MIPS and R3000 are registered trademarks of MIPS Technologies, Inc.
+Microsoft is a registered trademark of Microsoft Corporation.
+Windows, Windows NT and MS-DOS are registered trademarks of Microsoft Corporation
+    in the United States and other countries.
+NFS is a registered trademark of Sun Microsystems, Inc.
+PDP and VAX are registered trademarks of Digital Equipment Corp.
+Plan 9 is a trademark of Lucent Technologies Inc.
+PostScript is a registered trademark of Adobe Systems Incorporated.
+ProPhone is a registered trademark of Prolink Corporation.
+R2000, R6000, R4000, and R4400 are trademarks of MIPS Technologies, Inc.
+RC4 is a registered trademark of RSA Security Inc.
+SecureNet is a registered trademark of Digital Pathways, Inc.
+Silicon Graphics, IRIS Indigo, IRIS, and IRIX are registered trademarks of Silicon Graphics, Inc.
+Sound Blaster is a registered trademark of Creative Labs, Inc.
+SPARC is a registered trademark of SPARC International, Inc.
+StrongARM is a registered trademark of Advanced RISC Machines, Ltd.
+ThinkJet  is a registered trademark of the Hewlett-Packard Company.
+Unicode is a registered trademark of Unicode, Inc.
+UNIX is a registered trademark of The Open Group.
+.ps
+.vs

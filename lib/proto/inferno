@@ -397,6 +397,7 @@ appl
 		broke.b
 		bytes.b
 		cal.b
+		calc.b
 		cat.b
 		cd.b
 		cddb.b
@@ -543,7 +544,6 @@ appl
 				ppptest.b
 				script.b
 				script.m
-			obootpd.b
 			ping.b
 			ppp
 				mkfile
@@ -565,7 +565,6 @@ appl
 		itest.b
 		itreplay.b
 		kill.b
-		lc.b
 		lego
 			clock.b
 			clockface.b
@@ -632,7 +631,6 @@ appl
 			symb.b
 			tk.b
 			xeq.b
-		mathcalc.b
 		mc.b
 		md5sum.b
 		mdb.b
@@ -756,6 +754,9 @@ appl
 			mkfile
 		uuencode.b
 		uudecode.b
+		vacfs.b
+		vacget.b
+		vacput.b
 		wav2iaf.b
 		wc.b
 		webgrab.b
@@ -925,6 +926,7 @@ appl
 			ibm866.b
 			iso8859-1.b
 			iso8859-10.b
+			iso8859-15.b
 			iso8859-2.b
 			iso8859-3.b
 			iso8859-4.b
@@ -1118,6 +1120,7 @@ appl
 			usbmct.b
 			usbmouse.b
 		utils.m
+		vac.b
 		venti.b
 		virgil.b
 		volume.b
@@ -1480,6 +1483,7 @@ dis
 	broke.dis
 	bytes.dis
 	cal.dis
+	calc.dis
 	cat.dis
 	cd.dis
 	cddb.dis
@@ -1552,7 +1556,7 @@ dis
 	itest.dis
 	itreplay.dis
 	kill.dis
-	lc.dis
+	lc
 	lego
 		+
 	lib
@@ -1709,6 +1713,7 @@ dis
 			usbmass.dis
 			usbmct.dis
 			usbmouse.dis
+		vac.dis
 		venti.dis
 		virgil.dis
 		volume.dis
@@ -1737,7 +1742,6 @@ dis
 	mash.dis
 	math
 		+
-	mathcalc.dis
 	mc.dis
 	md5sum.dis
 	mdb.dis
@@ -1831,6 +1835,9 @@ dis
 		usbd.dis
 	uudecode.dis
 	uuencode.dis
+	vacfs.dis
+	vacget.dis
+	vacput.dis
 	wav2iaf.dis
 	wc.dis
 	webgrab.dis
@@ -1963,6 +1970,7 @@ doc
 	limbotk
 		tk.ms
 		tk.pdf
+	manhow.pdf
 	mk.ms
 	mk.pdf
 	perform
@@ -2005,7 +2013,6 @@ fonts
 	psrename
 icons
 	+
-install
 keydb
 	countersigned
 	keys 600 inferno inferno /keydb/keys.dist
@@ -2069,6 +2076,7 @@ lib
 		+
 	units
 	usbdb
+	video.specs
 	wmcharon
 	wmsetup
 	wmsetup.grid
@@ -2261,7 +2269,7 @@ module
 	libc.m
 	libc0.m
 	linalg.m
-	lists.mappl
+	lists.m
 	loader.m
 	lock.m
 	man.m
@@ -2333,6 +2341,7 @@ module
 	uris.m
 	url.m
 	usb.m
+	vac.m
 	venti.m
 	volume.m
 	wait.m
@@ -2376,6 +2385,8 @@ services
 		inferno.gif
 		start.html
 		vnlogo.gif
+src
+sys
 #mux
 #	basic
 #	email

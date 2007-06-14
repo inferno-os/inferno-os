@@ -1,3 +1,4 @@
+INSTALL
 asm
 	NOTICE
 	asm.h
@@ -769,6 +770,19 @@ libtk
 	utils.c
 	windw.c
 	xdata.c
+man
+	lib
+		checkman.awk
+		colophon
+		lookman
+			+
+		man
+		notes
+		permind
+		preface
+		secindex
+		title
+		trademarks
 tools
 	NOTICE
 	db

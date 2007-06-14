@@ -283,6 +283,8 @@ uniq uniq
 units units
 uudecode uuencode
 uuencode uuencode
+vacget vacget
+vacput vacget
 wc wc
 webgrab webgrab
 wish wish

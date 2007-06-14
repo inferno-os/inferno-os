@@ -1,0 +1,47 @@
+.TH VACFS 4
+.SH NAME
+vacfs \- mount venti archive
+.SH SYNOPSIS
+.B vacfs
+[
+.B -Ddp
+] [
+.B -a
+.I addr
+]
+.I [vac:score]
+.SH DESCRIPTION
+.I Vacfs
+makes the contents of a venti archive available over styx.  Standard input is used for reading and writing styx messages.
+If
+.I score
+is not specified, vacfs
+serves multiple venti archives.  In this case the root directory lists no files, but walking to a directory
+.I score
+opens the venti archive with that score.  Note that the vacfs does not support writing.
+.TP
+.B -D
+Print styx trace messages.
+.TP
+.B -d
+Print debug messages.
+.TP
+.B -p
+Disable permission checking.
+.TP
+.BI -a " address"
+Dial
+.I address
+instead of the default venti server.
+.SH SOURCE
+.B /appl/cmd/vacfs.b
+.SH SEE ALSO
+.IR vacget (1),
+.IR vacput (1),
+.IR vcache (1),
+.IR venti (2),
+.IR ventisrv (8)
+.SH BUGS
+Vacfs needs more testing.
+.br
+When the venti connection is broken, directories appear empty.

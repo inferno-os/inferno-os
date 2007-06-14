@@ -1,0 +1,75 @@
+.TH VACGET 1
+.SH NAME
+vacget, vacput \- venti archive utilities
+.SH SYNOPSIS
+.B vacget
+[
+.B -vdpt
+] [
+.B -a
+.I addr
+]
+.I vac:score
+.br
+.B vacput
+[
+.B -vd
+] [
+.B -a
+.I addr
+] [
+.B -b
+.I blocksize
+] [
+.B -n
+.I name
+]
+.I path ...
+.SH DESCRIPTION
+.I Vacget
+retrieves a venti archive from a venti server to the current working directory.
+.PP
+.I Vacput
+writes a venti archive to a venti server.  The
+.I paths
+are walked recursively and all files and directories written to the archive.  Temporary files, i.e. those with the
+.B DMTMP
+bit set, are skipped.  Writing only changed files relative to a previously written archive is not implemented.
+.TP
+.B -d
+Print debug messages.
+.TP
+.B -p
+Try to preserve file permissions and owner/group.  Only for vacget.
+.TP
+.B -v
+Be verbose.  Prints files as they are being retrieved or written.
+.TP
+.B -t
+List files, do not write them.  Only for vacget.
+.TP
+.BI -a " address"
+Dial
+.I address
+instead of the default venti server.
+.TP
+.BI -b " blocksize"
+Use blocks with
+.I blocksize
+bytes instead of the default 8192 byte blocks.  Only for vacput.
+.TP
+.BI -n " name"
+Use
+.I name
+as the name in the root block.  Only for vacput.
+.SH SOURCE
+.B /appl/cmd/vacget.b
+.br
+.B /appl/cmd/vacput.b
+.SH SEE ALSO
+.IR vcache (1),
+.IR venti (2),
+.IR vacfs (4),
+.IR ventisrv (8)
+.SH BUGS
+These tools need more testing.

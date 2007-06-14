@@ -1,0 +1,77 @@
+.fp 1 R LucidaSans
+.fp 2 I LucidaSansI
+.ps36
+.sp |2i
+.ce
+Inferno\s36\u\s8\u™
+.sp |3.275i
+.ps24
+.ce
+Programmer's Manual
+.sp .3i
+.ce
+Volume 1
+.ps12
+.sp |4.8i
+.ft I
+.ce
+Fourth Edition
+.sp |7.6i
+.ce
+Vita Nuova Holdings Limited
+.ce
+3 Innovation Close
+.ce
+York Science Park
+.ce
+University Road
+.ce
+York  YO10 5ZF
+.ce
+England
+.bp
+.ft R
+\" .ll 5.5i
+\" .in .5i
+.hy 0
+.vs 10p
+.ps 10
+.sp |1i
+.nf
+Published by Vita Nuova Holdings Limited,
+3 Innovation Close,
+York Science Park,
+University Road,
+York YO10 5ZF,
+England
+.sp 3
+.ps 8
+Copyright © 1995-1999 Lucent Technologies Inc. All Rights Reserved.
+Portions Copyright © 1999-2005 Vita Nuova Holdings Limited.  All Rights Reserved.
+Portions of Section 9 are derived from works which themselves are
+Copyright © 1990 The Regents of the University of California, and
+Copyright © 1994-1996 Sun Microsystems, Inc.
+subject to the terms described in the copyright notice in Section 9.
+.ps 10
+.sp 3
+All rights reserved; no part of this publication may be reproduced,
+stored in a retrieval system or transmitted in any form or by any means,
+electronic, mechanical, photocopying, recording or otherwise without
+the prior written permission of the publishers.
+.sp 3
+First published 2000. This edition published 2005.
+.sp 3
+.ig
+ISBN for complete set of 2 volumes: 0 9538701 0 3
+.br
+ISBN for this volume: 0 9538701 1 1
+.sp 3
+.ft I
+Printed in Great Britain by
+William Clowes,
+Beccles,
+Suffolk NR34 9QE,
+England.
+.ft R
+.sp 3
+Cover Design: Jeff Parker
