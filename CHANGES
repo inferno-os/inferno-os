@@ -1,3 +1,5 @@
+20070614
+	/appl/lib/venti.b bug fixes, a few more errstrs, remove prints to stderr
 20070608
 	update /lib9 functions to use silly va_copy (and then va_end) instead of just assigning, to account for silly C implementations
 	change /appl/cmd/mc.b not to require Draw or Env (so lc works on smaller systems)

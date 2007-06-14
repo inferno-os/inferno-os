@@ -82,7 +82,7 @@ Vmsg.read(fd: ref Sys->FD): (ref Vmsg, string)
 	if(err != nil)
 		return (nil, err);
 	if(msg == nil)
-		return (nil, nil);
+		return (nil, "eof reading message");
 	(nil, m) := Vmsg.unpack(msg);
 	if(m == nil)
 		return (nil, sys->sprint("bad venti message format: %r"));
@@ -91,8 +91,10 @@ Vmsg.read(fd: ref Sys->FD): (ref Vmsg, string)
 
 Vmsg.unpack(f: array of byte): (int, ref Vmsg)
 {
-	if(len f < H)
+	if(len f < H) {
+		sys->werrstr("message too small");
 		return (0, nil);
+	}
 	size := (int f[0] << 8) | int f[1];		# size does not include self
 	size += BIT16SZ;
 	if(len f != size){
@@ -111,27 +113,18 @@ Vmsg.unpack(f: array of byte): (int, ref Vmsg)
 	m: ref Vmsg;
 	case mtype {
 	Thello =>
-		(version, o) := gstring(f, H);
-		if(o < 0)
-			break;
 		uid: string;
+		cryptos, codecs: array of byte;
+
+		(version, o) := gstring(f, H);
 		(uid, o) = gstring(f, o);
-		if(o < 0)
-			break;
-		if(o+2 >= len f)
+		if(o < 0 || o >= len f)
 			break;
 		cryptostrength := int f[o++];
-		ncryptos := int f[o++];
-		if(o+ncryptos >= len f)
+		(cryptos, o) = gbytes(f, o);
+		(codecs, o) = gbytes(f, o);
+		if(o != len f)
 			break;
-		cryptos := f[o:o+ncryptos];
-		o += ncryptos;
-		if(o+1 >= len f)
-			break;
-		ncodecs := int f[o++];
-		if(o+ncodecs >= len f)
-			break;
-		codecs := f[o:o+ncodecs];
 		m = ref Vmsg.Thello(1, tid, version, uid, cryptostrength, cryptos, codecs);
 	Tping =>
 		m = ref Vmsg.Tping(1, tid);
@@ -149,10 +142,8 @@ Vmsg.unpack(f: array of byte): (int, ref Vmsg)
 		m = ref Vmsg.Tsync(1, tid);
 	Rhello =>
 		(sid, o) := gstring(f, H);
-		if(o+2 != len f){
-			sys->werrstr("Rhello message size incorrect");
+		if(o+2 != len f)
 			break;
-		}
 		crypto := int f[o++];
 		codec := int f[o++];
 		m = ref Vmsg.Rhello(0, tid, sid, crypto, codec);
@@ -171,9 +162,12 @@ Vmsg.unpack(f: array of byte): (int, ref Vmsg)
 		m = ref Vmsg.Rerror(0, tid, err);
 	* =>
 		sys->werrstr("unrecognised mtype " + string mtype);
-	}
-	if(m == nil)
 		return (-1, nil);
+	}
+	if(m == nil) {
+		sys->werrstr("bad message size");
+		return (-1, nil);
+	}
 	return (size, m);
 }
 
@@ -411,14 +405,14 @@ readversion(fd: ref Sys->FD, prefix: string, versions: array of string): string
 		sys->werrstr("bad version string");
 		return nil;
 	}
-sys->fprint(sys->fildes(2), "read version %#q\n", string buf[0:i]);
+#sys->fprint(sys->fildes(2), "read version %#q\n", string buf[0:i]);
 	v := string buf[len prefix:i];
 	i = 0;
 	for(;;){
 		for(j := i; j < len v && v[j] != ':' && v[j] != '-'; j++)
 			;
 		vv := v[i:j];
-sys->fprint(sys->fildes(2), "checking %#q\n", vv);
+#sys->fprint(sys->fildes(2), "checking %#q\n", vv);
 		for(k := 0; k < len versions; k++)
 			if(versions[k] == vv)
 				return vv;
@@ -502,7 +496,7 @@ readmsg(fd: ref Sys->FD): (array of byte, string)
 		return (nil, sys->sprint("%r"));
 	}
 	ml := (int sbuf[0] << 8) | int sbuf[1];
-	if(ml <= BIT16SZ)
+	if(ml < BIT16SZ)
 		return (nil, "invalid venti message size");
 	buf := array[ml + BIT16SZ] of byte;
 	buf[0:] = sbuf;
@@ -536,6 +530,17 @@ gstring(a: array of byte, o: int): (string, int)
 	if(e > len a)
 		return (nil, -1);
 	return (string a[o:e], e);
+}
+
+gbytes(a: array of byte, o: int): (array of byte, int)
+{
+	if(o < 0 || o+1 > len a)
+		return (nil, -1);
+	n := int a[o];
+	if(1+n > len a)
+		return (nil, -1);
+	no := o+1+n;
+	return (a[o+1:no], no);
 }
 
 utflen(s: string): int
@@ -657,4 +662,3 @@ g64(f: array of byte, i: int): big
 	b1 := (((((int f[i+4] << 8) | int f[i+5]) << 8) | int f[i+6]) << 8) | int f[i+7];
 	return (big b0 << 32) | (big b1 & 16rFFFFFFFF);
 }
-
