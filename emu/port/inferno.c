@@ -271,6 +271,35 @@ Sys_read(void *fp)
 }
 
 void
+Sys_readn(void *fp)
+{
+	int fd, m, n, t;
+	F_Sys_readn *f;
+
+	f = fp;
+	n = f->n;
+	if(f->buf == (Array*)H || n < 0) {
+		*f->ret = 0;
+		return;		
+	}
+	if(n > f->buf->len)
+		n = f->buf->len;
+	fd = fdchk(f->fd);
+
+	release();
+	for(t = 0; t < n; t += m){
+		m = kread(fd, (char*)f->buf->data+t, n-t);
+		if(m <= 0){
+			if(t == 0)
+				t = m;
+			break;
+		}
+	}
+	*f->ret = t;
+	acquire();
+}
+
+void
 Sys_pread(void *fp)
 {
 	int n;

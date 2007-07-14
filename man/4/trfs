@@ -1,0 +1,22 @@
+.TH TRFS 4
+.SH NAME
+trfs \- translate spaces and other runes in names in a file system
+.SH SYNOPSIS
+.B trfs
+.I olddir
+.I mountdir
+.SH DESCRIPTION
+.I Trfs
+makes the contents of directory
+.I olddir
+appear on the directory
+.IR mountdir ,
+but every space character in file and directory names viewed through
+.I mountdir
+is made visible as a special `no-break space' character (U+00A0).
+Other Inferno applications will not mistake it for the end of a file name,
+and it has some visible representation in most fonts.
+.SH SOURCE
+.B /appl/cmd/trfs.b
+.SH BUGS
+There can be error or ambiguity if the existing tree also uses no-break space in its names.

@@ -145,6 +145,7 @@ Sys: module
 	pread:	fn(fd: ref FD, buf: array of byte, n: int, off: big): int;
 	pwrite:	fn(fd: ref FD, buf: array of byte, n: int, off: big): int;
 	read:		fn(fd: ref FD, buf: array of byte, n: int): int;
+	readn:		fn(fd: ref FD, buf: array of byte, n: int): int;
 	remove:		fn(s: string): int;
 	seek:		fn(fd: ref FD, off: big, start: int): big;
 	sleep:		fn(period: int): int;

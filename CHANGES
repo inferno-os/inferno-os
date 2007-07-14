@@ -1,3 +1,8 @@
+20070714
+	add Sys->readn
+	copy two repairs from emu/port/inferno.c to os/port/inferno.c
+20070619
+	remembered to include /appl/cmd/trfs.b /dis/trfs.dis
 20070614
 	/appl/lib/venti.b bug fixes, a few more errstrs, remove prints to stderr
 	add initial module/vac.m appl/lib/vac.b from mjl (gsoc project ventivac)

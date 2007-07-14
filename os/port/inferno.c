@@ -62,7 +62,8 @@ freeFD(Heap *h, int swept)
 	handle = H2D(FD*, h);
 
 	release();
-	kfgrpclose(handle->grp, handle->fd.fd);
+	if(handle->fd.fd >= 0)
+		kfgrpclose(handle->grp, handle->fd.fd);
 	closefgrp(handle->grp);
 	acquire();
 }
@@ -273,6 +274,35 @@ Sys_read(void *fp)
 }
 
 void
+Sys_readn(void *fp)
+{
+	int fd, m, n, t;
+	F_Sys_readn *f;
+
+	f = fp;
+	n = f->n;
+	if(f->buf == (Array*)H || n < 0) {
+		*f->ret = 0;
+		return;		
+	}
+	if(n > f->buf->len)
+		n = f->buf->len;
+	fd = fdchk(f->fd);
+
+	release();
+	for(t = 0; t < n; t += m){
+		m = kread(fd, (char*)f->buf->data+t, n-t);
+		if(m <= 0){
+			if(t == 0)
+				t = m;
+			break;
+		}
+	}
+	*f->ret = t;
+	acquire();
+}
+
+void
 Sys_pread(void *fp)
 {
 	int n;
@@ -380,6 +410,7 @@ packdir(Sys_Dir *sd)
 	for(i=0; i<4; i++){
 		n = strlen(nm[i])+1;
 		memmove(p, nm[i], n);
+		nm[i] = p;
 		p += n;
 	}
 	d->name = nm[0];
