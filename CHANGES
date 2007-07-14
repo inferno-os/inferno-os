@@ -1,6 +1,9 @@
 20070714
 	add Sys->readn, update sys-read(2)
 	copy two repairs from emu/port/inferno.c to os/port/inferno.c
+	remove readn implementation from several commands
+	print correct diagnostic in appl/cmd/crypt.b
+	prevent window titlebars from being dragged out of the main window in wm/wm.b
 20070619
 	remembered to include /appl/cmd/trfs.b /dis/trfs.dis
 20070614

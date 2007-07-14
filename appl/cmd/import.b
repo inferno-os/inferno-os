@@ -117,7 +117,7 @@ init(nil: ref Draw->Context, args: list of string)
 		key[4:] = ai.secret[0:ns];
 		if(sys->write(c.dfd, key, 4) != 4)
 			fail("import", sys->sprint("can't write key to remote: %r"));
-		if(readn(c.dfd, key[12:], 4) != 4)
+		if(sys->readn(c.dfd, key[12:], 4) != 4)
 			fail("import", sys->sprint("can't read remote key: %r"));
 		digest := array[Keyring->SHA1dlen] of byte;
 		kr->sha1(key, len key, digest, nil);
@@ -133,20 +133,6 @@ init(nil: ref Draw->Context, args: list of string)
 		factotum->proxy(afd, facfd, "proto=p9any role=client");
 	if(sys->mount(c.dfd, afd, mountpt, flags, "") < 0)
 		fail("mount failed", sys->sprint("import %s %s: mount failed: %r", addr, file));
-}
-
-readn(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	for(nr := 0; nr < nb;){
-		n := sys->read(fd, buf[nr:], nb-nr);
-		if(n <= 0){
-			if(nr == 0)
-				return n;
-			break;
-		}
-		nr += n;
-	}
-	return nr;
 }
 
 S(a: array of byte): string
@@ -180,7 +166,7 @@ netmkaddr(addr, net, svc: string): string
 {
 	if(net == nil)
 		net = "net";
-	(n, l) := sys->tokenize(addr, "!");
+	(n, nil) := sys->tokenize(addr, "!");
 	if(n <= 1){
 		if(svc== nil)
 			return sys->sprint("%s!%s", net, addr);

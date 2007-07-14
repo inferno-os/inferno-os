@@ -153,11 +153,11 @@ cryptpipe(decrypt: int, alg: string, sk: array of byte): (string, array of ref S
 
 	(err, c) := ssl->connect(pfd[1]);
 	if (err != nil)
-		return ("could not connect ssl: "+sys->sprint("%r"), nil, nil, nil);
+		return ("could not connect ssl: "+err, nil, nil, nil);
 	pfd[1] = nil;
 	err = ssl->secret(c, sk, sk);
 	if (err != nil) 
-		return ("could not write secret: "+sys->sprint("%r"), nil, nil, nil);
+		return ("could not write secret: "+err, nil, nil, nil);
 
 	if (alg != nil)
 		if (sys->fprint(c.cfd, "alg %s", alg) == -1)

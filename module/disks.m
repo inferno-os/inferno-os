@@ -30,7 +30,6 @@ Disks: module
 	};
 
 	init:	fn();
-	readn:	fn(fd: ref Sys->FD, buf: array of byte, n: int): int;
 
 	# PC partition grot
 	PCpart: adt {

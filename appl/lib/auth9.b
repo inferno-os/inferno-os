@@ -288,12 +288,8 @@ decrypt(key: array of byte, data: array of byte, n: int)
 readn(fd: ref Sys->FD, nb: int): array of byte
 {
 	buf:= array[nb] of byte;
-	for(n:=0; n<nb;){
-		m := sys->read(fd, buf[n:], nb-n);
-		if(m <= 0)
-			return nil;
-		n += m;
-	}
+	if(sys->readn(fd, buf, nb) != nb)
+		return nil;
 	return buf;
 }
 

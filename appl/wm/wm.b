@@ -402,9 +402,20 @@ dragwin(ptr: chan of ref Pointer, c: ref Client, w: ref Window, off: Point): str
 	if(buttons == 0)
 		return "too late";
 	p: ref Pointer;
+	scr := screen.image.r;
+	Margin: con 10;
 	do{
 		p = <-ptr;
-		w.img.origin(w.img.r.min, p.xy.sub(off));
+		org := p.xy.sub(off);
+		if(org.y < scr.min.y)
+			org.y = scr.min.y;
+		else if(org.y > scr.max.y - Margin)
+			org.y = scr.max.y - Margin;
+		if(org.x < scr.min.x && org.x + w.r.dx() < scr.min.x + Margin)
+			org.x = scr.min.x + Margin - w.r.dx();
+		else if(org.x > scr.max.x - Margin)
+			org.x = scr.max.x - Margin;
+		w.img.origin(w.img.r.min, org);
 	} while (p.buttons != 0);
 	c.ptr <-= p;
 	buttons = 0;

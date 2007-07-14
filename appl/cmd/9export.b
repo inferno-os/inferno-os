@@ -124,7 +124,7 @@ init(nil: ref Draw->Context, args: list of string)
 		key[12:] = secret[0:ns];
 		if(sys->write(fd, key[12:], 4) != 4)
 			fail("import", sys->sprint("can't write key to remote: %r"));
-		if(readn(fd, key, 4) != 4)
+		if(sys->readn(fd, key, 4) != 4)
 			fail("import", sys->sprint("can't read remote key: %r"));
 		digest := array[Keyring->SHA1dlen] of byte;
 		kr->sha1(key, len key, digest, nil);
@@ -135,20 +135,6 @@ init(nil: ref Draw->Context, args: list of string)
 	}
 	if(sys->export(fd, ".", xflag) < 0)
 		fail("export", sys->sprint("can't export %s: %r", tree));
-}
-
-readn(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	for(nr := 0; nr < nb;){
-		n := sys->read(fd, buf[nr:], nb-nr);
-		if(n <= 0){
-			if(nr == 0)
-				return n;
-			break;
-		}
-		nr += n;
-	}
-	return nr;
 }
 
 S(a: array of byte): string

@@ -16,7 +16,6 @@ include "bufio.m";
 include "disks.m";
 	disks: Disks;
 	Disk: import disks;
-	readn: import disks;
 
 include "pedit.m";
 	pedit: Pedit;
@@ -279,7 +278,7 @@ rdpart(edit: ref Edit)
 {
 	disk := edit.disk;
 	sys->seek(disk.fd, big disk.secsize, 0);
-	if(readn(disk.fd, osecbuf, disk.secsize) != disk.secsize)
+	if(sys->readn(disk.fd, osecbuf, disk.secsize) != disk.secsize)
 		return;
 	osecbuf[disk.secsize] = byte 0;
 	secbuf[0:] = osecbuf;

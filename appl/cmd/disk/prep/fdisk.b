@@ -14,7 +14,6 @@ include "disks.m";
 	Disk, PCpart: import disks;
 	NTentry, Toffset, TentrySize: import Disks;
 	Magic0, Magic1: import Disks;
-	readn: import disks;
 
 include "pedit.m";
 	pedit: Pedit;
@@ -299,7 +298,7 @@ diskread(disk: ref Disk, data: array of byte, ndata: int, sec: big, off: int)
 	a := sec*big disk.secsize + big off;
 	if(sys->seek(disk.fd, a, 0) != a)
 		sysfatal(sys->sprint("diskread seek %bud.%ud: %r", sec, off));
-	if(readn(disk.fd, data, ndata) != ndata)
+	if(sys->readn(disk.fd, data, ndata) != ndata)
 		sysfatal(sys->sprint("diskread %ud at %bud.%ud: %r", ndata, sec, off));
 }
 

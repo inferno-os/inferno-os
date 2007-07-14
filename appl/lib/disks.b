@@ -72,14 +72,14 @@ partitiongeometry(d: ref Disk): int
 	rawfd := sys->open(d.prefix+"data", Sys->OREAD);
 	if(rawfd != nil
 	&& sys->seek(rawfd, big 0, 0) == big 0
-	&& readn(rawfd, buf, 512) == 512
+	&& sys->readn(rawfd, buf, 512) == 512
 	&& int t[Omagic] == Magic0
 	&& int t[Omagic+1] == Magic1) {
 		rawfd = nil;
 	}else{
 		rawfd = nil;
 		if(sys->seek(d.fd, big 0, 0) < big 0
-		|| readn(d.fd, buf, 512) != 512
+		|| sys->readn(d.fd, buf, 512) != 512
 		|| int t[Omagic] != Magic0
 		|| int t[Omagic+1] != Magic1)
 			return -1;
@@ -350,7 +350,7 @@ putle32(p: array of byte, i: big)
 
 Disk.readn(d: self ref Disk, buf: array of byte, nb: int): int
 {
-	return readn(d.fd, buf, nb);
+	return sys->readn(d.fd, buf, nb);
 }
 
 chstext(p: array of byte): string
@@ -360,18 +360,4 @@ chstext(p: array of byte): string
 	c |= (int p[1]&16rC0)<<2;
 	s := (int p[1] & 16r3F);
 	return sys->sprint("%d/%d/%d", c, h, s);
-}
-
-readn(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	for(nr := 0; nr < nb;){
-		n := sys->read(fd, buf[nr:], nb-nr);
-		if(n <= 0){
-			if(nr == 0)
-				return n;
-			break;
-		}
-		nr += n;
-	}
-	return nr;
 }

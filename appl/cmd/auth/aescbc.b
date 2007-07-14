@@ -81,7 +81,7 @@ init(nil: ref Draw->Context, args: list of string)
 		fd := sys->open(keyfile, Sys->OREAD);
 		if(fd == nil)
 			error(sys->sprint("can't open %q: %r", keyfile), "keyfile");
-		n := readn(fd, buf, len buf);
+		n := sys->readn(fd, buf, len buf);
 		while(n > 0 && buf[n-1] == byte '\n')
 			n--;
 		if(n <= 0)
@@ -173,20 +173,6 @@ eqbytes(a: array of byte, b: array of byte, n: int): int
 		if(a[i] != b[i])
 			return 0;
 	return 1;
-}
-
-readn(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	for(nr := 0; nr < nb;){
-		n := sys->read(fd, buf[nr:], nb-nr);
-		if(n <= 0){
-			if(nr == 0)
-				return n;
-			break;
-		}
-		nr += n;
-	}
-	return nr;
 }
 
 Read(buf: array of byte, n: int)

@@ -14,7 +14,6 @@ include "bufio.m";
 include "disks.m";
 	disks: Disks;
 	Disk: import disks;
-	readn: import disks;
 
 include "draw.m";
 include "calc.tab.m";
@@ -378,7 +377,7 @@ rdctlpart(edit: ref Edit)
 	edit.ctlpart = array[0] of ref Part;
 	sys->seek(disk.ctlfd, big 0, 0);
 	buf := array[4096] of byte;
-	if(readn(disk.ctlfd, buf, len buf) <= 0)
+	if(sys->readn(disk.ctlfd, buf, len buf) <= 0)
 		return;
 	for(i := 0; i < len buf; i++)
 		if(buf[i] == byte 0)

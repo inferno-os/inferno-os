@@ -264,7 +264,7 @@ Scsi.open(dev: string): ref Scsi
 		return nil;
 
 	buf := array[512] of byte;
-	n := readn(ctlfd, buf, len buf);
+	n := sys->readn(ctlfd, buf, len buf);
 	if(n < 8){
 		if(n >= 0)
 			sys->werrstr("error reading ctl file");
@@ -300,18 +300,4 @@ qlock(s: ref Scsi)
 qunlock(s: ref Scsi)
 {
 	<-s.lock;
-}
-
-readn(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	for(nr := 0; nr < nb;){
-		n := sys->read(fd, buf[nr:], nb-nr);
-		if(n <= 0){
-			if(nr == 0)
-				return n;
-			break;
-		}
-		nr += n;
-	}
-	return nr;
 }
