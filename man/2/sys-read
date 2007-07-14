@@ -7,6 +7,7 @@ include "sys.m";
 sys := load Sys Sys->PATH;
 
 read:   fn(fd: ref FD, buf: array of byte, nbytes: int): int;
+readn:  fn(fd: ref FD, buf: array of byte, nbytes: int): int;
 write:  fn(fd: ref FD, buf: array of byte, nbytes: int): int;
 
 pread:  fn(fd: ref FD, buf: array of byte, nbytes: int,
@@ -35,6 +36,19 @@ will be returned.
 In any event the number of bytes read is returned.
 A return value of
 0 is conventionally interpreted as end of file.
+.PP
+.B Readn
+continues to
+.B read
+from
+.I fd
+sequentially into
+.IR buf ,
+until
+.I nbytes
+have been read, or
+.B read
+returns a non-positive count.
 .PP
 .B Write
 writes

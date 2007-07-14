@@ -1,5 +1,5 @@
 20070714
-	add Sys->readn
+	add Sys->readn, update sys-read(2)
 	copy two repairs from emu/port/inferno.c to os/port/inferno.c
 20070619
 	remembered to include /appl/cmd/trfs.b /dis/trfs.dis
