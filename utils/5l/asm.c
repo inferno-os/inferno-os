@@ -760,7 +760,9 @@ if(debug['G']) print("%ulx: %s: arm %d %d %d %d\n", (ulong)(p->pc), p->from.sym-
 		r = p->reg;
 		if(p->to.type == D_NONE)
 			rt = 0;
-		if(r == NREG)
+		if(p->as == AMOVW)
+			r = 0;
+		else if(r == NREG)
 			r = rt;
 		o1 |= (r<<16) | (rt<<12);
 		break;

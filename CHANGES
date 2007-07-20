@@ -1,3 +1,5 @@
+20070720
+	utils/5l/asm.c: ensure SBZ field in MOV is regarded as MBZ (ie, force to zero)
 20070714
 	add Sys->readn, update sys-read(2)
 	copy two repairs from emu/port/inferno.c to os/port/inferno.c
