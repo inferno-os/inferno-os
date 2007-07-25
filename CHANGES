@@ -1,3 +1,5 @@
+20070725
+	/dis/man initialise fils correctly to empty list and remove hack (issue 56)
 20070720
 	utils/5l/asm.c: ensure SBZ field in MOV is regarded as MBZ (ie, force to zero)
 20070714

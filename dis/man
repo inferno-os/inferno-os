@@ -3,7 +3,7 @@
 # for more details see the real man(1)
 load std
 
-fils=''
+fils=()
 cmd=n
 sec=()
 S=/man
@@ -86,9 +86,7 @@ if{no $fils} {
 }
 
 for i in $fils {
-	if {~ $i ''}{
-		#echo bug ignore ''
-	}{! ftest -f $i}{
+	if {! ftest -f $i}{
 		echo need:$i
 	}{
 		if {~ $cmd n}{
@@ -98,12 +96,13 @@ for i in $fils {
 		}{~ $cmd p}{
 			wm/man -f $i
 		}{~ $cmd b}{
-			if{~ $i '/man/*/*'}{
+			if{~ $i '/man/*/0intro'}{
+				x=`{echo $i | sed 's;/man/(.*)/.*;/\1 intro;'}
+			}{~ $i '/man/*/*'}{
 				x=`{echo $i | sed 's;/man/(.*)/(.*);\1 \2;'}			
-				if{~ ${index 2 $x} 0intro}{
-					x=(${index 1 $x} intro)
-				}
-			}{ x=($i ''); }
+			}{
+				x=($i '')
+			}
 
 			man2txt $i |
 		 	plumb -i -d edit -a action showdata -a filename '/man/'^${tl $x}^'('^${hd $x}^')'
