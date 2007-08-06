@@ -1,5 +1,6 @@
 Lists: module
 {
+	PATH:	con "/dis/lib/lists.dis";
 	map:	fn[T](f: ref fn(x: T): T, l: list of T): list of T;
 	allsat:	fn[T](p: ref fn(x: T): int, l: list of T): int;
 	anysat:	fn[T](p: ref fn(x: T): int, l: list of T): int;

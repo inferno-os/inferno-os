@@ -1,3 +1,5 @@
+20070806
+	/module/lists.m add PATH(!), also simplify concat implementation
 20070725
 	/dis/man initialise fils correctly to empty list and remove hack (issue 56)
 20070720

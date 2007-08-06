@@ -3,6 +3,11 @@ implement SPKI;
 #
 # Copyright © 2004 Vita Nuova Holdings Limited
 #
+# To do:
+#	- diagnostics
+#	- support for dsa
+#	- finish the TO DO
+#	- might like a list of ref Hash for a Key
 
 include "sys.m";
 	sys: Sys;
@@ -61,7 +66,7 @@ parse(e: ref Sexp): (ref Toplev, string)
 		if((s := parsesig(e)) != nil)
 			return (ref Toplev.Sig(s), nil);
 		return (nil, "bad signature syntax");
-	"public-key" =>
+	"public-key" or "private-key" =>
 		if((k := parsekey(e)) != nil)
 			return (ref Toplev.K(k), nil);
 		return (nil, "bad public-key syntax");
@@ -118,6 +123,7 @@ parsecert(e: ref Sexp): ref Cert
 	# "(" "cert" <version>? <cert-display>? <issuer> <issuer-loc>? <subject> <subject-loc>?
 	#	<deleg>? <tag> <valid>? <comment>? ")"
 	# elements can appear in any order in a top-level item, though the one above is conventional
+	# the original s-expression is also retained for later use by the caller, for instance in signature verification
 
 	l := mustbe(e, "cert");
 	if(l == nil)
@@ -281,7 +287,7 @@ parsecompound(e: ref Sexp): ref Name
 {
 	if(e == nil)
 		return nil;
-	case t := e.op() {
+	case e.op() {
 	"name" =>
 		return parsename(e);
 	"public-key" or "hash" =>
@@ -319,7 +325,7 @@ parsename(e: ref Sexp): ref Name
 parseprincipal(e: ref Sexp): ref Key
 {
 	case e.op() {
-	"public-key" =>
+	"public-key" or "private-key" =>
 		return parsekey(e);
 	"hash" =>
 		hash := parsehash(e);
@@ -333,9 +339,14 @@ parseprincipal(e: ref Sexp): ref Key
 
 parsekey(e: ref Sexp): ref Key
 {
+	issk := 0;
 	l := mustbe(e, "public-key");
-	if(l == nil)
-		return nil;
+	if(l == nil){
+		l = mustbe(e, "private-key");
+		if(l == nil)
+			return nil;
+		issk = 1;
+	}
 	kind := (hd l).op();
 	(nf, fld) := sys->tokenize(kind, "-");
 	if(nf < 1)
@@ -345,7 +356,7 @@ parsekey(e: ref Sexp): ref Key
 		enc := hd tl fld;		# signature hash encoding
 	if(nf > 2)
 		mha := hd tl tl fld;	# signature hash algorithm
-	kha := "md5";	# could be sha1
+	kha := "md5";	# could be sha1 (TO DO)
 	kl := (hd l).args();
 	if(kl == nil)
 		return nil;
@@ -363,11 +374,20 @@ parsekey(e: ref Sexp): ref Key
 	krp := ref Keyrep.PK(alg, "sdsi", els);
 	(pk, nbits) := krp.mkpk();
 	if(pk == nil){
-		sys->print("can't convert key\n");
+		sys->print("can't convert public-key\n");
 		return nil;
 	}
+	sk: ref Keyring->SK;
+	if(issk){
+		krp = ref Keyrep.SK(alg, "sdsi", els);
+		sk = krp.mksk();
+		if(sk == nil){
+			sys->print("can't convert private-key\n");
+			return nil;
+		}
+	}
 #(ref Key(pk,nil,kha,nil)).hashed(kha);		# TEST
-	return ref Key(pk, nil, nbits, kha, ref Hash(kha, nil));
+	return ref Key(pk, sk, nbits, kha, ref Hash(kha, nil));
 }
 
 parsehash(e: ref Sexp): ref Hash
@@ -930,16 +950,27 @@ Key.sexp(k: self ref Key): ref Sexp
 {
 	if(k.hash != nil && k.hash.hash != nil)
 		return k.hash.sexp();
-	krp := Keyrep.pk(k.pk);
-	if(krp == nil)
-		return nil;
-	rl: list of ref Sexp;
-	for(el := krp.els; el != nil; el = tl el){
-		(n, v) := hd el;
-		a := pre0(v.iptobebytes());
-		rl = ref Sexp.List(ref Sexp.String(n,nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
+	sort := "public-key";
+	els: list of (string, ref IPint);
+	if(k.sk != nil){
+		krp := Keyrep.sk(k.sk);
+		if(krp == nil)
+			return nil;
+		els = krp.els;
+		sort = "private-key";
+	}else{
+		krp := Keyrep.pk(k.pk);
+		if(krp == nil)
+			return nil;
+		els = krp.els;
 	}
-	return ref Sexp.List(ref Sexp.String("public-key", nil) ::
+	rl: list of ref Sexp;
+	for(; els != nil; els = tl els){
+		(n, v) := hd els;
+		a := pre0(v.iptobebytes());
+		rl = ref Sexp.List(ref Sexp.String(f2s(n),nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
+	}
+	return ref Sexp.List(ref Sexp.String(sort, nil) ::
 		ref Sexp.List(ref Sexp.String(k.sigalg(),nil) :: rev(rl)) :: nil);
 }
 
@@ -1893,6 +1924,10 @@ Keyrep: adt {
 	eq:	fn(k1: self ref Keyrep, k2: ref Keyrep): int;
 };
 
+#
+# convert an Inferno key into a (name, IPint) representation,
+# where `names' maps between Inferno key component offsets and factotum names
+#
 keyextract(flds: list of string, names: list of (string, int)): list of (string, ref IPint)
 {
 	a := array[len flds] of ref IPint;
@@ -1929,7 +1964,7 @@ Keyrep.pk(pk: ref Keyring->PK): ref Keyrep.PK
 
 Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 {
-	s := kr->pktostr(pk);
+	s := kr->sktostr(pk);
 	(nf, flds) := sys->tokenize(s, "\n");
 	if((nf -= 2) < 0)
 		return nil;
@@ -1947,8 +1982,9 @@ Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 
 Keyrep.get(k: self ref Keyrep, n: string): ref IPint
 {
+	n1 := f2s(n);
 	for(el := k.els; el != nil; el = tl el)
-		if((hd el).t0 == n)
+		if((hd el).t0 == n || (hd el).t0 == n1)
 			return (hd el).t1;
 	return nil;
 }
@@ -1967,6 +2003,8 @@ Keyrep.mkpk(k: self ref Keyrep): (ref Keyring->PK, int)
 	"rsa" =>
 		e := k.get("e");
 		n := k.get("n");
+		if(e == nil || n == nil)
+			return (nil, 0);
 		return (kr->strtopk(sys->sprint("rsa\n%s\n%s\n%s\n", k.owner, n.iptob64(), e.iptob64())), n.bits());
 	* =>
 		raise "Keyrep: unknown algorithm";
@@ -1985,11 +2023,44 @@ Keyrep.mksk(k: self ref Keyrep): ref Keyring->SK
 		kp := k.get("!kp");
 		kq := k.get("!kq");
 		c12 := k.get("!c2");
+		if(e == nil || n == nil || dk == nil || p == nil || q == nil || kp == nil || kq == nil || c12 == nil)
+			return nil;
 		return kr->strtosk(sys->sprint("rsa\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
 			k.owner, n.iptob64(), e.iptob64(), dk.iptob64(), p.iptob64(), q.iptob64(),
 			kp.iptob64(), kq.iptob64(), c12.iptob64()));
 	* =>
 		raise "Keyrep: unknown algorithm";
+	}
+}
+
+#
+# account for naming differences between keyring and factotum, and spki.
+# this might not be the best place for this.
+#
+s2f(s: string): string
+{
+	case s {
+	"d" => return "!dk";
+	"p" => return "!p";
+	"q" => return "!q";
+	"a" => return "!kp";
+	"b" => return "!kq";
+	"c" => return "!c2";
+	* =>	return s;
+	}
+}
+
+f2s(s: string): string
+{
+	case s {
+	"!dk" =>	return "d";
+	"!kp" =>	return "a";
+	"!kq" =>	return "b";
+	"!c2" =>	return "c";
+	* =>
+		if(s != nil && s[0] == '!')
+			return s[1:];
+		return s;
 	}
 }
 

@@ -59,9 +59,9 @@ concat[T](l: list of T, l2: list of T): list of T
 {
 	if(l2 == nil)
 		return l;
-	for(l = reverse(l); l2 != nil; l2 = tl l2)
-		l = hd l2 :: l;
-	return reverse(l);
+	for(rl1 := reverse(l); rl1 != nil; rl1 = tl rl1)
+		l2 = hd rl1 :: l2;
+	return l2;
 }
 
 combine[T](l: list of T, l2: list of T): list of T
