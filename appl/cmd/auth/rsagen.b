@@ -51,8 +51,8 @@ init(nil: ref Draw->Context, args: list of string)
 	s = skip(s, "alg");
 	s = skip(s, "owner");
 	if(tag != nil)
-		s = tag+" "+s;
-	a := sys->aprint("key proto=rsa size=%d %s\n", nbits, s);
+		tag = " "+tag;
+	a := sys->aprint("key proto=rsa%s size=%d %s\n", tag, nbits, s);
 	if(sys->write(sys->fildes(1), a, len a) != len a)
 		error(sys->sprint("error writing key: %r"));
 }
