@@ -376,6 +376,7 @@ appl
 			mkauthinfo.b
 			mkfile
 			passwd.b
+			rsagen.b
 			secstore.b
 			signer.b
 			verify.b
@@ -743,6 +744,7 @@ appl
 		touch.b
 		touchcal.b
 		tr.b
+		trfs.b
 		tsort.b
 		unicode.b
 		units.b
@@ -1827,6 +1829,7 @@ dis
 	touch.dis
 	touchcal.dis
 	tr.dis
+	trfs.dis
 	tsort.dis
 	unicode.dis
 	uniq.dis

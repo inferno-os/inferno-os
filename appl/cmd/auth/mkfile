@@ -15,7 +15,7 @@ TARG=\
 	logind.dis\
 	mkauthinfo.dis\
 	passwd.dis\
-	secstore.dis\
+	rsagen.dis\
 	signer.dis\
 	verify.dis\
 
@@ -27,7 +27,6 @@ SYSMODULES=\
 	sys.m\
 	draw.m\
 	bufio.m\
-	secstore.m\
 	string.m\
 	styx.m\
 	styxservers.m\

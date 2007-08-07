@@ -368,7 +368,7 @@ void
 Keyring_sktoattr(void *fp)
 {
 	F_Keyring_sktoattr *f;
-	char *val, *buf;
+	char *val, *buf, *owner;
 	SigAlg *sa;
 	Fmt o;
 	SK *sk;
@@ -383,7 +383,10 @@ Keyring_sktoattr(void *fp)
 	}
 	(*sa->vec->sk2str)(sk->key, buf, Maxbuf);
 	fmtstrinit(&o);
-	fmtprint(&o, "alg=%q owner=%q", string2c(sa->x.name), string2c(sk->x.owner));
+	fmtprint(&o, "alg=%q", string2c(sa->x.name));
+	owner = string2c(sk->x.owner);
+	if(*owner)
+		fmtprint(&o, " owner=%q", owner);
 	val = bigs2attr(&o, buf, sa->vec->skattr);
 	free(buf);
 	retstr(val, f->ret);
@@ -577,7 +580,7 @@ void
 Keyring_pktoattr(void *fp)
 {
 	F_Keyring_pktoattr *f;
-	char *val, *buf;
+	char *val, *buf, *owner;
 	SigAlg *sa;
 	Fmt o;
 	PK *pk;
@@ -592,7 +595,10 @@ Keyring_pktoattr(void *fp)
 	}
 	(*sa->vec->pk2str)(pk->key, buf, Maxbuf);
 	fmtstrinit(&o);
-	fmtprint(&o, "alg=%q owner=%q", string2c(sa->x.name), string2c(pk->x.owner));
+	fmtprint(&o, "alg=%q", string2c(sa->x.name));
+	owner = string2c(pk->x.owner);
+	if(*owner)
+		fmtprint(&o, " owner=%q", owner);
 	val = bigs2attr(&o, buf, sa->vec->pkattr);
 	free(buf);
 	retstr(val, f->ret);
