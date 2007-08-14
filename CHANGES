@@ -1,3 +1,5 @@
+20070814
+	bufio.b didn't update the buffer pointers correctly on write errors
 20070807
 	libinterp/keyring.c don't include owner= if owner is nil or ""
 	add auth/rsagen

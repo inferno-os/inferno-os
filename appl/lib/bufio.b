@@ -88,17 +88,16 @@ readchunk(b: ref Iobuf): int
 
 writechunk(b: ref Iobuf): int
 {
-	if (b.fd == nil)
-		return ERROR;
+	err := (b.fd == nil);
 	if (b.filpos != b.bufpos) {
 		if (sys->seek(b.fd, b.bufpos, 0) != b.bufpos)
-			return ERROR;
+			err = 1;
 		b.filpos = b.bufpos;
 	}
 	if ((size := b.size) > Bufsize)
 		size = Bufsize;
 	if (sys->write(b.fd, b.buffer, size) != size)
-		return ERROR;
+		err = 1;
 	b.filpos += big size;
 	b.size -= size;
 	if (b.size) {
@@ -108,6 +107,8 @@ writechunk(b: ref Iobuf): int
 		b.dirty = 0;
 	b.bufpos += big size;
 	b.index -= size;
+	if(err)
+		return ERROR;
 	return size;
 }
 
@@ -295,7 +296,7 @@ Iobuf.ungetc(b: self ref Iobuf): int
 		stop = 0;
 	buf := b.buffer[0:b.size];
 	for(i := b.index-1; i >= stop; i--){
-		(r, n, s) := sys->byte2char(buf, i);
+		(nil, n, s) := sys->byte2char(buf, i);
 		if(s && i + n == b.index){
 			b.index = i;
 			return 1;
