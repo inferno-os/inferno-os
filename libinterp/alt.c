@@ -268,7 +268,7 @@ xecalt(int block)
 	Alt *a;
 	Prog *p;
 	int nrdy;
-	static int xrand = -1;
+	static ulong xrand = 0x20342;
 
 	p = currun();
 
@@ -288,10 +288,7 @@ xecalt(int block)
 		return;
 	}
 
-	xrand += xrand;
-	if(xrand < 0)
-		xrand ^= 0x88888EEF;
-
-	altcomm(a, xrand%nrdy);
+	xrand = xrand*1103515245 + 12345;
+	altcomm(a, (xrand>>8)%nrdy);
 	altdone(a, p, nil, -1);
 }

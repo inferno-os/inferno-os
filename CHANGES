@@ -1,3 +1,7 @@
+20070817
+	two old changes that weren't in the distribution...
+	libkeyring/rsaalg.c: previously failed to ensure the output key was the right length (really rsagen should do that)
+	libinterp/alt.c: use a better random number generator
 20070814
 	bufio.b didn't update the buffer pointers correctly on write errors
 20070807

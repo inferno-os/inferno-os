@@ -124,7 +124,14 @@ rsa_sk2pk(void *vs)
 static void*
 rsa_gen(int len)
 {
-	return rsagen(len, 8, 0);
+	RSApriv *key;
+
+	for(;;){
+		key = rsagen(len, 6, 0);
+		if(mpsignif(key->pub.n) == len)
+			return key;
+		free(key);
+	}
 }
 
 /* generate an rsa secret key with same params as a public key */
