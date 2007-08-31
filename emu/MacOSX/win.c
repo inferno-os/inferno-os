@@ -38,7 +38,6 @@
 extern	void		flushmemscreen(Rectangle);
 
 Memimage	*gscreen;
-//Screeninfo	screen;
 
 static int readybit;
 static Rendez	rend;
@@ -74,7 +73,7 @@ isready(void*a)
 
 CGContextRef QuartzContext;
 
-void winproc(void *a);
+static void winproc(void *a);
 
 void
 screeninit(void)
@@ -115,16 +114,16 @@ screeninit(void)
 static OSStatus MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *userData);
 static OSStatus MainWindowCommandHandler(EventHandlerCallRef nextHandler, EventRef event, void *userData);
 
-void 
+void
 window_resized(void)
 {
-	GetWindowBounds(theWindow, kWindowContentRgn, &winRect );
+	GetWindowBounds(theWindow, kWindowContentRgn, &winRect);
 
 	bounds = CGRectMake(0, 0, winRect.right-winRect.left, winRect.bottom - winRect.top);
 }
 
 
-void
+static void
 winproc(void *a)
 {
 	MenuItemIndex index;
@@ -152,7 +151,7 @@ winproc(void *a)
 	AppendMenuItemTextWithCFString(viewMenu, CFSTR("Full Screen"), 0,
 			kFullScreenCmd, &index);
 	SetMenuItemCommandKey(viewMenu, index, 0, 'F');
-	AppendMenuItemTextWithCFString(viewMenu, CFSTR("ctrl-opt to return"), 
+	AppendMenuItemTextWithCFString(viewMenu, CFSTR("ctrl-opt to return"),
 			kMenuItemAttrDisabled,
 			kFullScreenCmd, &index);
 	InsertMenu(viewMenu, GetMenuID(windMenu));
@@ -221,53 +220,53 @@ static int
 convert_key(UInt32 key, UInt32 charcode)
 {
 	switch(key) {
-		case QZ_IBOOK_ENTER:
-		case QZ_RETURN: return '\n';
-		case QZ_ESCAPE: return 27;
-		case QZ_BACKSPACE: return '\b';
-		case QZ_LALT: return Kalt;
-		case QZ_LCTRL: return Kctl;
-		case QZ_LSHIFT: return Kshift;
-		case QZ_F1: return KF+1;
-		case QZ_F2: return KF+2;
-		case QZ_F3: return KF+3;
-		case QZ_F4: return KF+4;
-		case QZ_F5: return KF+5;
-		case QZ_F6: return KF+6;
-		case QZ_F7: return KF+7;
-		case QZ_F8: return KF+8;
-		case QZ_F9: return KF+9;
-		case QZ_F10: return KF+10;
-		case QZ_F11: return KF+11;
-		case QZ_F12: return KF+12;
-		case QZ_INSERT: return Kins;
-		case QZ_DELETE: return '0';
-		case QZ_HOME: return Khome;
-		case QZ_END: return Kend;
-		case QZ_KP_PLUS: return '+';
-		case QZ_KP_MINUS: return '-';
-		case QZ_TAB: return '\t';
-		case QZ_PAGEUP: return Kpgup;
-		case QZ_PAGEDOWN: return Kpgdown;
-		case QZ_UP: return Kup;
-		case QZ_DOWN: return Kdown;
-		case QZ_LEFT: return Kleft;
-		case QZ_RIGHT: return Kright;
-		case QZ_KP_MULTIPLY: return '*';
-		case QZ_KP_DIVIDE: return '/';
-		case QZ_KP_ENTER: return '\b';
-		case QZ_KP_PERIOD: return '.';
-		case QZ_KP0: return '0';
-		case QZ_KP1: return '1';
-		case QZ_KP2: return '2';
-		case QZ_KP3: return '3';
-		case QZ_KP4: return '4';
-		case QZ_KP5: return '5';
-		case QZ_KP6: return '6';
-		case QZ_KP7: return '7';
-		case QZ_KP8: return '8';
-		case QZ_KP9: return '9';
-		default: return charcode;
+	case QZ_IBOOK_ENTER:
+	case QZ_RETURN: return '\n';
+	case QZ_ESCAPE: return 27;
+	case QZ_BACKSPACE: return '\b';
+	case QZ_LALT: return Kalt;
+	case QZ_LCTRL: return Kctl;
+	case QZ_LSHIFT: return Kshift;
+	case QZ_F1: return KF+1;
+	case QZ_F2: return KF+2;
+	case QZ_F3: return KF+3;
+	case QZ_F4: return KF+4;
+	case QZ_F5: return KF+5;
+	case QZ_F6: return KF+6;
+	case QZ_F7: return KF+7;
+	case QZ_F8: return KF+8;
+	case QZ_F9: return KF+9;
+	case QZ_F10: return KF+10;
+	case QZ_F11: return KF+11;
+	case QZ_F12: return KF+12;
+	case QZ_INSERT: return Kins;
+	case QZ_DELETE: return 0x7F;
+	case QZ_HOME: return Khome;
+	case QZ_END: return Kend;
+	case QZ_KP_PLUS: return '+';
+	case QZ_KP_MINUS: return '-';
+	case QZ_TAB: return '\t';
+	case QZ_PAGEUP: return Kpgup;
+	case QZ_PAGEDOWN: return Kpgdown;
+	case QZ_UP: return Kup;
+	case QZ_DOWN: return Kdown;
+	case QZ_LEFT: return Kleft;
+	case QZ_RIGHT: return Kright;
+	case QZ_KP_MULTIPLY: return '*';
+	case QZ_KP_DIVIDE: return '/';
+	case QZ_KP_ENTER: return '\n';
+	case QZ_KP_PERIOD: return '.';
+	case QZ_KP0: return '0';
+	case QZ_KP1: return '1';
+	case QZ_KP2: return '2';
+	case QZ_KP3: return '3';
+	case QZ_KP4: return '4';
+	case QZ_KP5: return '5';
+	case QZ_KP6: return '6';
+	case QZ_KP7: return '7';
+	case QZ_KP8: return '8';
+	case QZ_KP9: return '9';
+	default: return charcode;
 	}
 }
 
@@ -334,7 +333,7 @@ MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *us
 							sizeof(macKeyModifiers), NULL, &macKeyModifiers);
 		switch(kind) {
 		case kEventRawKeyModifiersChanged:
-			if ( macKeyModifiers == 0x1800 ) leave_full_screen();
+			if (macKeyModifiers == 0x1800) leave_full_screen();
 			break;
 		case kEventRawKeyDown:
 		case kEventRawKeyRepeat: {
@@ -363,33 +362,35 @@ if(0 && key != -1)fprint(2, "[%C]", key);
 		static uint32_t mousebuttons = 0; // bitmask of buttons currently down
 		
 		switch (kind) {
-			case kEventMouseWheelMoved: {
-				int32_t wheeldelta;
-				GetEventParameter(event,kEventParamMouseWheelDelta,typeLongInteger,
-									0,sizeof(EventMouseButton), 0, &wheeldelta);
-				sendbuttons((int16_t)wheeldelta>0 ? 8 : 16,
-							mousePos.h - winRect.left,
-							mousePos.v - winRect.top);
-				break;
-			}
-			case kEventMouseUp:
-			case kEventMouseDown: {
-				uint32_t buttons;
-				GetEventParameter(event, kEventParamMouseChord,
-					typeUInt32, 0, sizeof buttons, 0, &buttons);
-				mousebuttons = (buttons & 1)
-							 | ((buttons & 2)<<1)
-							 | ((buttons & 4)>>1);
-			} /* Fallthrough */
-			case kEventMouseMoved:
-			case kEventMouseDragged: {
-				sendbuttons(mousebuttons,
-							mousePos.h - winRect.left,
-							mousePos.v - winRect.top);
-			}
+		case kEventMouseWheelMoved: {
+			int32_t wheeldelta;
+			GetEventParameter(event,kEventParamMouseWheelDelta,typeLongInteger,
+								0,sizeof(EventMouseButton), 0, &wheeldelta);
+			sendbuttons((int16_t)wheeldelta>0 ? 8 : 16,
+						mousePos.h - winRect.left,
+						mousePos.v - winRect.top);
 			break;
+		}
+		case kEventMouseUp:
+		case kEventMouseDown: {
+			uint32_t buttons;
+			GetEventParameter(event, kEventParamMouseChord,
+				typeUInt32, 0, sizeof buttons, 0, &buttons);
+			mousebuttons = (buttons & 1)
+						 | ((buttons & 2)<<1)
+						 | ((buttons & 4)>>1);
+		} /* Fallthrough */
+		case kEventMouseMoved:
+		case kEventMouseDragged: {
+			sendbuttons(mousebuttons,
+						mousePos.h - winRect.left,
+						mousePos.v - winRect.top);
+		}
+		break;
 
-			default:result = eventNotHandledErr;break;
+		default:
+			result = eventNotHandledErr;
+			break;
 		}
 	}
 	return result;
@@ -407,24 +408,23 @@ MainWindowCommandHandler(EventHandlerCallRef nextHandler, EventRef event, void *
 
 	if(class == kEventClassCommand){
 		HICommand theHICommand;
-		GetEventParameter( event, kEventParamDirectObject, typeHICommand,
-							NULL, sizeof( HICommand ), NULL, &theHICommand );
+		GetEventParameter(event, kEventParamDirectObject, typeHICommand,
+							NULL, sizeof(HICommand), NULL, &theHICommand);
 
-		switch ( theHICommand.commandID ){
-			case kHICommandQuit:
-				cleanexit(0);
-				break;
+		switch(theHICommand.commandID){
+		case kHICommandQuit:
+			cleanexit(0);
+			break;
 
-			case kFullScreenCmd:
-				full_screen();
-				break;
+		case kFullScreenCmd:
+			full_screen();
+			break;
 
-			default:
-				result = eventNotHandledErr;
-				break;
+		default:
+			result = eventNotHandledErr;
+			break;
 		}
-	}
-	else if(class == kEventClassWindow){
+	} else if(class == kEventClassWindow){
 		WindowRef     window;
 		_Rect          rectPort = {0,0,0,0};
 
@@ -435,25 +435,25 @@ MainWindowCommandHandler(EventHandlerCallRef nextHandler, EventRef event, void *
 			GetPortBounds(GetWindowPort(window), &rectPort);
 
 		switch (kind){
-			case kEventWindowClosed:
-				theWindow = NULL;
-				cleanexit(0); // only one window
-				break;
+		case kEventWindowClosed:
+			theWindow = NULL;
+			cleanexit(0); // only one window
+			break;
 
-			//resize window
-			case kEventWindowBoundsChanged:
-				window_resized();
-				Rectangle rect =  { { 0, 0 },
+		//resize window
+		case kEventWindowBoundsChanged:
+			window_resized();
+			Rectangle rect =  { { 0, 0 },
  									{ bounds.size.width,
  									  bounds.size.height} };
-				drawqlock();
- 				flushmemscreen(rect);
- 				drawqunlock();
-				break;
+			drawqlock();
+ 			flushmemscreen(rect);
+ 			drawqunlock();
+			break;
 
-			default:
-				result = eventNotHandledErr;
-				break;
+		default:
+			result = eventNotHandledErr;
+			break;
 		}
 	}
 
@@ -477,7 +477,7 @@ flushmemscreen(Rectangle r)
 	if(rbounds.size.width <= 0 || rbounds.size.height <= 0)
 		return;
 		
-	QDBeginCGContext( GetWindowPort(theWindow), &context);
+	QDBeginCGContext(GetWindowPort(theWindow), &context);
 	
 	// The sub-image is relative to our whole screen image.
 	CGImageRef subimg = CGImageCreateWithImageInRect(fullScreenImage, rbounds);
@@ -487,7 +487,7 @@ flushmemscreen(Rectangle r)
 	CGContextDrawImage(context, rbounds, subimg);
 	CGContextFlush(context);
 	CGImageRelease(subimg);
-	QDEndCGContext( GetWindowPort(theWindow), &context);
+	QDEndCGContext(GetWindowPort(theWindow), &context);
 }
 
 uchar*
@@ -536,19 +536,19 @@ clipread(void)
 {
 	CFDataRef cfdata;
 	OSStatus err = noErr;
-	ItemCount nItems;
+	ItemCount nitems;
 	int i;
 	char *s;
 
 	// Wow.  This is ridiculously complicated.
 	PasteboardSynchronize(appleclip);
-	if((err = PasteboardGetItemCount(appleclip, &nItems)) != noErr) {
+	if((err = PasteboardGetItemCount(appleclip, &nitems)) != noErr) {
 		fprint(2, "apple pasteboard GetItemCount failed - Error %d\n", err);
 		return 0;
 	}
 
 	// Yes, based at 1.  Silly API.
-	for(i = 1; i <= nItems; i++) {
+	for(i = 1; i <= nitems; i++) {
 		PasteboardItemID itemID;
 		CFArrayRef flavorTypeArray;
 		CFIndex flavorCount;
@@ -577,7 +577,7 @@ clipread(void)
 				CFIndex length = CFDataGetLength(cfdata);
 				if (length > sizeof rsnarf) length = sizeof rsnarf;
 				CFDataGetBytes(cfdata, CFRangeMake(0, length), (uint8_t *)rsnarf);
-				snprint(snarf, sizeof snarf, "%S", rsnarf);
+				snprint(snarf, sizeof snarf, "%.*S", length/sizeof(Rune), rsnarf);
 				for(s = snarf; *s; s++)
 					if(*s == '\r')
 						*s = '\n';
@@ -589,7 +589,6 @@ clipread(void)
 	return 0;
 }
 
-// TO DO: check that the return value is correct
 int
 clipwrite(char *snarf)
 {
