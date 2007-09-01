@@ -97,7 +97,7 @@ for i in $fils {
 			wm/man -f $i
 		}{~ $cmd b}{
 			if{~ $i '/man/*/0intro'}{
-				x=`{echo $i | sed 's;/man/(.*)/.*;/\1 intro;'}
+				x=`{echo $i | sed 's;/man/(.*)/.*;\1 intro;'}
 			}{~ $i '/man/*/*'}{
 				x=`{echo $i | sed 's;/man/(.*)/(.*);\1 \2;'}			
 			}{

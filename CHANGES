@@ -1,5 +1,6 @@
 20070901
 	add andrey's changes to emu/MacOSX/win.c (used by emu/MacOSX/mkfile-a)
+	add saoret's changes to dis/lookman, dis/man
 20070817
 	two old changes that weren't in the distribution...
 	libkeyring/rsaalg.c: previously failed to ensure the output key was the right length (really rsagen should do that)

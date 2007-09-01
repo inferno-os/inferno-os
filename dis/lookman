@@ -3,6 +3,7 @@ load std
 
 fn cmdform {
 	sed 's;/man/;;
+	s;(.*)/(0intro);man \1 \2 # intro(\1);
 	s;(.*)/(.*);man \1 \2 # \2(\1);'
 }
 post=cmdform
