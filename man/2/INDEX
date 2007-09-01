@@ -28,6 +28,7 @@ filet daytime
 gmt daytime
 local daytime
 now daytime
+string2tm daytime
 text daytime
 time daytime
 tm2epoch daytime

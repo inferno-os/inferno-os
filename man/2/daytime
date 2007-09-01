@@ -1,6 +1,6 @@
 .TH DAYTIME 2
 .SH NAME
-daytime: text, filet, gmt, local, now, time, tm2epoch \- time conversions
+daytime: text, filet, gmt, local, now, string2tm, time, tm2epoch \- time conversions
 .SH SYNOPSIS
 .EX
 include "daytime.m";
@@ -20,13 +20,14 @@ Tm: adt
     tzoff:  int;    # time zone offset (seconds from GMT)
 };
 
-text:     fn(tm: ref Tm): string;
-filet:    fn(now, t: int): string;
-gmt:      fn(tim: int): ref Tm;
-local:    fn(tim: int): ref Tm;
-now:      fn(): int;
-time:     fn(): string;
-tm2epoch: fn(tm: ref Tm): int;
+text:      fn(tm: ref Tm): string;
+filet:     fn(now, t: int): string;
+gmt:       fn(tim: int): ref Tm;
+local:     fn(tim: int): ref Tm;
+now:       fn(): int;
+time:      fn(): string;
+tm2epoch:  fn(tm: ref Tm): int;
+string2tm: fn(date: string): ref Tm;
 .EE
 .SH DESCRIPTION
 These routines perform time conversions relative to the
@@ -42,7 +43,7 @@ converts a time structure referenced by
 .I tm
 from local or GMT time to a string in the format:
 .IP
-.BR "Sat Jan  1 13:00:00 GMT 2000" .
+.B "Sat Jan  1 13:00:00 GMT 2000"
 .PP
 .B Filet
 converts the file access or modification time
@@ -70,12 +71,10 @@ converts seconds since the epoch, received in
 to a time structure in local time.
 .PP
 .B Now
-returns the time in seconds since the epoch, which
-it obtains by reading
+returns the time in seconds since the epoch, obtained by reading
 .B /dev/time
 (see
-.IR cons (3))
-to get the time in microseconds since the epoch.
+.IR cons (3)).
 .PP
 .B Time
 converts seconds since the epoch
@@ -86,6 +85,26 @@ to the local time as a string in the format
 converts a time structure referenced by
 .I tm
 from local or GMT time to seconds since the epoch.
+.PP
+.B String2tm
+returns a reference to a
+.B Tm
+value corresponding to the date and time in textual form in string
+.IR s ,
+which must have one of the forms below:
+.IP
+.EX
+Sun, 06 Nov 1994 08:49:37 GMT    \fR(RFC822, RFC1123)\fP
+Sunday, 06-Nov-94 08:49:37 GMT   \fR(RFC850)\fP
+Sun Nov  6 08:49:37 GMT 1994     \fR(output of \fPtext\fR, above)\fP
+.EE
+.PP
+A missing time zone in any format is assumed to be
+.BR GMT .
+.B String2tm
+returns nil if
+.I s
+is not correctly formed.
 .SH SOURCE
 .B /appl/lib/daytime.b
 .SH SEE ALSO

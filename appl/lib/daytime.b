@@ -341,10 +341,26 @@ string2tm(date: string): ref Tm
 		if(!ok)
 			return nil;
 
+		# optional time zone
+		while(date != nil && date[0] == ' ')
+			date = date[1:];
+		if(date != nil && !(date[0] >= '0' && date[0] <= '9')){
+			for(i := 0; i < len date; i++)
+				if(date[i] == ' '){
+					(tm.zone, tm.tzoff) = tzinfo(date[0: i]);
+					date = date[i:];
+					break;
+				}
+		}
+
 		# YY|YYYY
-		(buf, tm.year) = datenum(date);
+		(nil, tm.year) = datenum(date);
 		if(tm.year > 1900)
 			tm.year -= 1900;
+		if(tm.zone == ""){
+			tm.zone = "GMT";
+			tm.tzoff = 0;
+		}
 	} else {
 		# Mon was not OK
 		date = odate;
@@ -364,10 +380,10 @@ string2tm(date: string): ref Tm
 		(ok, buf) = hhmmss(date, tm);
 		if(!ok)
 			return nil;
+		(tm.zone, tm.tzoff) = tzinfo(buf);
+		if(tm.zone == "")
+			return nil;
 	}
-	(tm.zone, tm.tzoff) = tzinfo(buf);
-	if(tm.zone == "")
-		return nil;
 
 	return tm;
 }

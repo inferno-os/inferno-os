@@ -1,3 +1,5 @@
+20070902
+	make /appl/lib/daytime.b accept Daytime->text's output; add string2tm to man page (issue 59)
 20070901
 	add andrey's changes to emu/MacOSX/win.c (used by emu/MacOSX/mkfile-a)
 	add saoret's changes to dis/lookman, dis/man (issue 58)
