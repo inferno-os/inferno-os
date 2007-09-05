@@ -1158,7 +1158,7 @@ global(k: int)
 	#
 	# Special case: g/.../d (avoid n^2 algorithm)
 	 
-	if(globuf[0] == 'd' && globuf[1] == '\n' && globuf[2] == 0) {
+	if(globuf == "d\n") {
 		gdelete();
 		return;
 	}

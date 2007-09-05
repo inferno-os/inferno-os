@@ -1,3 +1,6 @@
+20070905
+	/appl/cmd/ed.b (caerwyn's fix for g/.../d)
+	also /appl/lib/ecmascript/builtin.b (toupper fix)
 20070902
 	make /appl/lib/daytime.b accept Daytime->text's output; add string2tm to man page (issue 59)
 20070901
