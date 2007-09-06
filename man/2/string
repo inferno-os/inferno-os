@@ -1,7 +1,7 @@
 .TH STRING 2
 .SH NAME
 string: append, drop, in, prefix, quoted, splitl, splitr, splitstrl,
-splitstrr, take, tobig, toint, tolower, toupper, unquoted \- string operations
+splitstrr, take, tobig, toint, toreal, tolower, toupper, unquoted \- string operations
 .SH SYNOPSIS
 .EX
 include "string.m";
@@ -18,6 +18,7 @@ splitstrr: fn(s, t: string): (string, string);
 take:      fn(s, cl: string): string;
 tobig:     fn(s: string, base: int): (big, string);
 toint:     fn(s: string, base: int): (int, string);
+toreal:    fn(s: string, base: int): (real, string);
 tolower:   fn(s: string): string;
 toupper:   fn(s: string): string;
 quoted:    fn(args: list of string): string;
@@ -136,6 +137,21 @@ has the same specification as
 .B toint
 except that converts to 64-bit
 .BR big .
+.PP
+.B Toreal
+is similar to
+.BR toint ,
+except that it expects a floating-point number after optional leading white space:
+an optional sign, then a string of digits containing a decimal point, then an optional
+.RB ` e '
+or
+.RB ` E '
+followed by an optionally signed decimal integer exponent.
+The string of digits can optionally be preceded by a base (radix) specifier
+of the form
+.IB B r ,
+as for integers.
+Any exponent is then interpreted as a power of that base.
 .PP
 .B Tolower
 converts all upper case letters in the string

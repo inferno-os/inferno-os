@@ -372,6 +372,7 @@ take string
 tobig string
 toint string
 tolower string
+toreal string
 toupper string
 unquoted string
 stringinttab stringinttab

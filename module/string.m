@@ -30,6 +30,7 @@ String: module
 	# string to int returning value, remainder
 	toint:		fn(s: string, base: int): (int, string);
 	tobig:		fn(s: string, base: int): (big, string);
+	toreal:		fn(s: string, base: int): (real, string);
 
 	# append s to end of l
 	append:		fn(s: string, l: list of string): list of string;
