@@ -152,6 +152,13 @@ of the form
 .IB B r ,
 as for integers.
 Any exponent is then interpreted as a power of that base.
+Alternatively, following any leading white space and an optional sign, either
+.B nan
+or
+.B infinity
+can appear, in any case, and
+.B toreal
+will return the appropriate value for IEEE floating-point.
 .PP
 .B Tolower
 converts all upper case letters in the string
