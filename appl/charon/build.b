@@ -807,7 +807,7 @@ TokLoop:
 #						continue;
 					}
 					if(field.value == "")
-						field.value = "1";
+						field.value = "on";
 				Fradio =>
 					if(field.name == "" || field.value == "") {
 						if(warn)
