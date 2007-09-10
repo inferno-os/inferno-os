@@ -50,14 +50,25 @@ putkey(keys: list of ref Key, k: ref Key): list of ref Key
 	return k :: keys;
 }
 
-keybyhash(h: ref Hash, keys: list of ref Key): ref Key
+keybyhash(hl: list of ref Hash, keys: list of ref Key): ref Key
 {
 	for(kl := keys; kl != nil; kl = tl kl){
 		k := hd kl;
-		if(k.hash != nil && h.eq(k.hash))
+		if(k.hash != nil && anyhashmatch(hl, k.hash))
 			return k;
 	}
 	return nil;
+}
+
+anyhashmatch(hl1, hl2: list of ref Hash): int
+{
+	for(; hl1 != nil; hl1 = tl hl1){
+		h1 := hd hl1;
+		for(; hl2 != nil; hl2 = tl hl2)
+			if(h1.eq(hd hl2))
+				return 1;
+	}
+	return 0;
 }
 
 verify(seq: list of ref Seqel): (ref Speaksfor, list of ref Seqel, string)
@@ -184,5 +195,6 @@ verify(seq: list of ref Seqel): (ref Speaksfor, list of ref Seqel, string)
 
 checkcert(c: ref Cert): string
 {
+	# TO DO?
 	return nil;
 }

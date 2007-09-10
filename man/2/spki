@@ -21,14 +21,18 @@ Hash: adt {
 Key: adt {
     pk:     ref Keyring->PK;    # either pk/sk or hash might be nil
     sk:     ref Keyring->SK;
-    halg:   string;
-    hash:   ref Hash;
+    nbits:  int;
+    halg:   string;             # basic signature hash algorithm
+    henc:   string;             # pre-signature encoding
+    hash:   list of ref Hash;
 
-    hashed: fn(k: self ref Key, alg: string): array of byte;
-    sigalg: fn(k: self ref Key): string;
-    text:   fn(k: self ref Key): string;
-    sexp:   fn(k: self ref Key): ref Sexprs->Sexp;
-    eq:     fn(k1: self ref Key, k2: ref Key): int;
+    hashed:  fn(k: self ref Key, alg: string): array of byte;
+    hashexp: fn(k: self ref Key, alg: string): ref Hash;
+    public:  fn(k: self ref Key): ref Key;
+    sigalg:  fn(k: self ref Key): string;
+    text:    fn(k: self ref Key): string;
+    sexp:    fn(k: self ref Key): ref Sexprs->Sexp;
+    eq:      fn(k1: self ref Key, k2: ref Key): int;
 };
 
 Name: adt {
@@ -84,9 +88,10 @@ Subject: adt {
 Signature: adt {
     hash:   ref Hash;
     key:    ref Key;    # find by hash if necessary
-    sa:     string;
+    sa:     string;     # alg[-[encoding-]hash
     sig:    list of (string, array of byte);
 
+    algs:   fn(s: self ref Signature): (string, string, string);
     sexp:   fn(s: self ref Signature): ref Sexprs->Sexp;
     text:   fn(s: self ref Signature): string;
 };
@@ -106,12 +111,13 @@ Seqel: adt {
         exp:    ref Sexprs->Sexp;
     }
 
+    sexp:   fn(se: self ref Seqeql): ref Sexprs->Sexp;
     text:   fn(se: self ref Seqel): string;
 };
 
 Valid: adt {
-    notbefore:  int;
-    notafter:   int;
+    notbefore:  string;
+    notafter:   string;
 
     intersect:  fn(a: self Valid, b: Valid): (int, Valid);
     text:   fn(a: self Valid): string;
@@ -129,6 +135,9 @@ Toplev: adt {
     Seq =>
         v:  list of ref Seqel;
     }
+
+    sexp:   fn(t: self ref Toplev): ref Sexprs->Sexp;
+    text:   fn(t: self ref Toplev): string;
 };
 
 init:   fn();
@@ -136,6 +145,7 @@ date2epoch: fn(s: string): int; # YYYY-MM-DD_HH:MM:SS
 epoch2date: fn(t: int): string;
 time2secs:  fn(s: string): int; # HH:MM:SS
 secs2time:  fn(t: int): string;
+sigalgs:    fn(spec: string): (string, string, string);
 
 # parse structures
 parse:      fn(s: ref Sexprs->Sexp): (ref Toplev, string);
@@ -146,6 +156,17 @@ parsename:  fn(s: ref Sexprs->Sexp): ref Name;
 parsekey:   fn(s: ref Sexprs->Sexp): ref Key;
 parsehash:  fn(s: ref Sexprs->Sexp): ref Hash;
 parsecompound:  fn(s: ref Sexprs->Sexp): ref Name;
+parsevalid: fn(s: ref Sexprs->Sexp): ref Valid;
+
+# signature checking
+checksig:   fn(c: ref Cert, sig: ref Signature): string;
+sig2icert:  fn(sig: ref Signature, signer: string, exp: int): ref Keyring->Certificate;
+
+# signature making
+signcert:   fn(c: ref Cert, sigalg: string, key: ref Key):
+                 (ref Signature, string);
+signbytes:  fn(a: array of byte, sigalg: string, key: ref Key):
+                 (ref Signature, string);
 
 # tags
 maketag:    fn(e: ref Sexprs->Sexp): ref Sexprs->Sexp;
@@ -204,9 +225,20 @@ is the internal representation of hash values,
 containing an
 algorithm name
 .B alg
-and the 
+and then the
 .B hash
 itself as an array of bytes.
+SPKI entities such as the public key of a principal or a signed certificate are often represented by the hash
+values of their corresponding S-expressions, where the hash value is later used as a compact way to refer
+to the original entity.
+For example, a
+.B <principal>
+is either a
+.B <public-key>
+or a
+.BR <hash-of-key> ,
+where the latter refers to some instance of the former.
+Current hash algorithms are \f5"sha1"\fP and \f5"md5\fP.
 A
 .B Hash
 value can be created from an S-expression representing a SPKI
@@ -218,8 +250,12 @@ It returns nil if the S-expression was ill-formed.
 .PP
 .B Key
 represents public and private keys,
-with an optional associated hash algorithm when signing, and
-an optional hash of the key itself.
+with an optional associated pre-hash encoding
+.BR henc ,
+the hash algorithm
+.B halg
+to be used when signing, and an optional list of
+currently known hashes of the public component of the key itself.
 SPKI identifies principals and public keys, thus each instance of a principal
 in the other data structures is represented by a
 .B Key
@@ -233,6 +269,49 @@ value can be created from an S-expression representing a SPKI
 element by
 .BR parsekey .
 It returns nil if the S-expression was ill-formed.
+For a given
+.B Key
+.IR k :
+.TP
+.IB k .ishash()
+Returns true if
+.I k
+is just a hash of a key, with no public or private components.
+.TP
+.IB k .public()
+Returns the public key for
+.IR k ,
+which is simply
+.I k
+if it is already a public key, but if it
+is a private key, then a new key is returned
+that has only public components.
+.B Public
+returns a nil value if
+.I k
+is just a hash of a key value.
+.TP
+.IB k .sigalg()
+Returns the SPKI signature algorithm for the key.
+.TP
+.IB k .hashed( alg )
+Return an array of bytes giving the hash of the Key
+.I k
+using algorithm
+.IR alg .
+It returns nil if
+.IB k .ishash()
+is true, and
+.I k
+has no associated hash value for
+.IR alg .
+.TP
+.IB k .hashexp( alg )
+Similar to
+.BR hashed ,
+but returns a
+.B Hash
+value instead of the raw data.
 .PP
 .B Name
 represents both local and extended names, and simple principals consisting of just a key.
@@ -438,6 +517,82 @@ returns an array of bytes containing the hash of the canonical form of expressio
 .I e
 using hash algorithm
 .IR alg .
+.PP
+.B Signature
+associates
+.B hash ,
+the
+.B Hash
+value of something (eg, a public key) with the result of applying a public-key signature
+algorithm
+.B sa
+ to that hash value.
+The name of the algorithm has the form
+.IP
+.EX
+\fIalg\fP\fR[-[\fP\fIencoding\fP\fR-]\fP\fIhash\fP\fR]\fP
+.EE
+with up to three subcomponents (separated by dashes),
+where
+.I alg
+is a public key algorithm such as
+.B rsa
+or
+.BR dsa ,
+.I encoding
+is an optional encoding to apply to the value before signing,
+and
+.I hash
+is the secure hash algorithm to apply to the encoded value before signing.
+For example, the usual algorithms for RSA keys are
+.B rsa-pkcs1-sha1
+and
+.BR rsa-pkcs1-md5 .
+.PP
+Signatures are created by
+.BR signcert ,
+which signs a SPKI certificate represented by
+.I c
+with
+.I key
+using the signature algorithm
+.IR sigalg .
+.I Key
+must contain both public and secret (private) components.
+Any other binary data can be signed by
+.BR signbytes ,
+which signs arbitrary data represented by an array of bytes
+.IR a .
+Both functions apply any encoding and hash algorithms mentioned by
+.IR sigalg ,
+and return a tuple
+.BI ( sig , err ).
+On success,
+.I sig
+refers to a
+.B Signature
+value that can be converted to an S-expression using
+.IB sig .sexp()
+and
+.I err
+is nil.
+On an error,
+.I sig
+is nil and
+.I err
+contains a diagnostic.
+.PP
+A certificate's signature can be checked by
+.BR checksig .
+If
+.I sig
+is a valid signature for certificate
+.IR c ,
+.B checksig
+returns nil.
+If the signature is invalid,
+.I checksig
+returns a diagnostic.
 .SH SOURCE
 .B /appl/lib/spki.b
 .SH SEE ALSO

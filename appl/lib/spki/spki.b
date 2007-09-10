@@ -7,7 +7,6 @@ implement SPKI;
 #	- diagnostics
 #	- support for dsa
 #	- finish the TO DO
-#	- might like a list of ref Hash for a Key
 
 include "sys.m";
 	sys: Sys;
@@ -331,7 +330,7 @@ parseprincipal(e: ref Sexp): ref Key
 		hash := parsehash(e);
 		if(hash == nil)
 			return nil;
-		return ref Key(nil, nil, 0, hash.alg, hash);
+		return ref Key(nil, nil, 0, nil, nil, hash::nil);
 	* =>
 		return nil;
 	}
@@ -354,9 +353,9 @@ parsekey(e: ref Sexp): ref Key
 	alg := hd fld;
 	if(nf > 1)
 		enc := hd tl fld;		# signature hash encoding
+	mha := "sha1";
 	if(nf > 2)
-		mha := hd tl tl fld;	# signature hash algorithm
-	kha := "md5";	# could be sha1 (TO DO)
+		mha = hd tl tl fld;	# signature hash algorithm
 	kl := (hd l).args();
 	if(kl == nil)
 		return nil;
@@ -386,8 +385,8 @@ parsekey(e: ref Sexp): ref Key
 			return nil;
 		}
 	}
-#(ref Key(pk,nil,kha,nil)).hashed(kha);		# TEST
-	return ref Key(pk, sk, nbits, kha, ref Hash(kha, nil));
+#(ref Key(pk,nil,"md5",nil,nil)).hashed("md5");		# TEST
+	return ref Key(pk, sk, nbits, mha, enc, nil);
 }
 
 parsehash(e: ref Sexp): ref Hash
@@ -437,6 +436,49 @@ ckdate(s: string): string
 	return s;
 }
 
+Toplev.sexp(top: self ref Toplev): ref Sexp
+{
+	pick t := top {
+	C =>
+		return t.v.sexp();
+	Sig =>
+		return t.v.sexp();
+	K =>
+		return t.v.sexp();
+	Seq =>
+		rels := rev(t.v);
+		els: list of ref Sexp;
+		for(; rels != nil; rels = tl rels)
+			els = (hd rels).sexp() :: els;
+		return ref Sexp.List(ref Sexp.String("sequence", nil) :: els);
+	* =>
+		raise "unexpected spki type";
+	}
+}
+
+Toplev.text(top: self ref Toplev): string
+{
+	return top.sexp().text();
+}
+
+Seqel.sexp(se: self ref Seqel): ref Sexp
+{
+	pick r := se {
+	C =>
+		return r.c.sexp();
+	K =>
+		return r.k.sexp();
+	O =>
+		return ref Sexp.List(ref Sexp.String("do",nil) :: ref Sexp.String(r.op,nil) :: r.args);
+	S =>
+		return r.sig.sexp();
+	E =>
+		return r.exp;
+	* =>
+		raise "unsupported value";
+	}
+}
+
 Seqel.text(se: self ref Seqel): string
 {
 	pick r := se {
@@ -445,14 +487,13 @@ Seqel.text(se: self ref Seqel): string
 	K =>
 		return r.k.text();
 	O =>
-		e := ref Sexp.List(ref Sexp.String("do",nil) :: ref Sexp.String(r.op,nil) :: r.args);
-		return e.text();
+		return se.sexp().text();
 	S =>
 		return r.sig.text();
 	E =>
 		return r.exp.text();
 	* =>
-		return "unsupported";
+		raise "unsupported value";
 	}
 }
 
@@ -513,22 +554,25 @@ checksig(c: ref Cert, sig: ref Signature): string
 		return "missing signature value";
 	pk := sig.key.pk;
 	if(pk == nil)
-		return "missing Keyring->PK for signature";	# TO DO
+		return "missing Keyring->PK for signature";	# TO DO (need a way to tell that key was just a hash)
 #rsacomp((hd sig.sig).t1, sig.key);
 #sys->print("nbits= %d\n", sig.key.nbits);
 	(alg, enc, hashalg) := sig.algs();
 	if(alg == nil)
 		return "unspecified signature algorithm";
 	if(hashalg == nil)
-		hashalg = "md5";	# TO DO
+		hashalg = "md5";	# TO DO?
+	hash := hashbytes(c.e.pack(), hashalg);
+	if(hash == nil)
+		return "unknown hash algorithm "+hashalg;
 	if(enc == nil)
-		h := hashbytes(c.e.pack(), hashalg);
+		h := hash;
 	else if(enc == "pkcs" || enc == "pkcs1")
-		h = pkcs1_encode(hashalg, c.e.pack(), (sig.key.nbits+7)/8);
+		h = pkcs1_encode(hashalg, hash, (sig.key.nbits+7)/8);
 	else
 		return "unknown encoding algorithm "+enc;
-	if(h == nil)
-		return "unknown hash algorithm "+hashalg;
+#dump("check/hashed", hash);
+#dump("check/h", h);
 	ip := IPint.bebytestoip(h);
 	isig := sig2icert(sig, "sdsi", 0);
 	if(isig == nil)
@@ -538,14 +582,62 @@ checksig(c: ref Cert, sig: ref Signature): string
 	return nil;
 }
 
+signcert(c: ref Cert, sigalg: string, key: ref Key): (ref Signature, string)
+{
+	if(c.e == nil){
+		c.e = c.sexp();
+		if(c.e == nil)
+			return (nil, "bad input certificate");
+	}
+	return signbytes(c.e.pack(), sigalg, key);
+}
+
+#
+# might be useful to have a separate `signhash' for cases where the data was hashed elsewhere
+#
+signbytes(data: array of byte, sigalg: string, key: ref Key): (ref Signature, string)
+{
+	if(key.sk == nil)
+		return (nil, "missing Keyring->SK for signature");
+	pubkey := ref *key;
+	pubkey.sk = nil;
+	sig := ref Signature(nil, pubkey, sigalg, nil);	# ref Hash, key, alg, sig: list of (string, array of byte)
+	(alg, enc, hashalg) := sigalgs(sigalg);
+	if(alg == nil)
+		return (nil, "unspecified signature algorithm");
+	if(hashalg == nil)
+		hashalg = "md5";	# TO DO?
+	hash := hashbytes(data, hashalg);
+	if(hash == nil)
+		return (nil, "unknown hash algorithm "+hashalg);
+	if(enc == nil)
+		h := hash;
+	else if(enc == "pkcs" || enc == "pkcs1")
+		h = pkcs1_encode(hashalg, hash, (sig.key.nbits+7)/8);
+	else
+		return (nil, "unknown encoding algorithm "+enc);
+#dump("sign/hashed", hash);
+#dump("sign/h", h);
+	sig.hash = ref Hash(hashalg, hash);
+	ip := IPint.bebytestoip(h);
+	icert := kr->signm(key.sk, ip, hashalg);
+	if(icert == nil)
+		return (nil, "signature failed");	# can't happen?
+	(nil, nil, nil, vals) := icert2els(icert);
+	if(vals == nil)
+		return (nil, "couldn't extract values from Keyring Certificate");
+	l: list of (string, array of byte);
+	for(; vals != nil; vals = tl vals){
+		(n, v) := hd vals;
+		l = (f2s(n), v) :: l;
+	}
+	sig.sig = revt(l);
+	return (sig, nil);
+}
+
 hashexp(e: ref Sexp, alg: string): array of byte
 {
-	a := e.pack();
-#dump("inp a", a);
-	hash := hashbytes(a, alg);
-#dump(alg, hash);
-#sys->print("%s = |%s|\n", alg, base64->enc(hash));
-	return hash;
+	return hashbytes(e.pack(), alg);
 }
 
 hashbytes(a: array of byte, alg: string): array of byte
@@ -559,11 +651,12 @@ hashbytes(a: array of byte, alg: string): array of byte
 		hash = array[Keyring->SHA1dlen] of byte;
 		kr->sha1(a, len a, hash, nil);
 	* =>
-		return nil;
+		raise "Spki->hashbytes: unknown algorithm: "+alg;
 	}
 	return hash;
 }
 
+# trim mpint and add leading zero byte if needed to ensure value is unsigned
 pre0(a: array of byte): array of byte
 {
 	for(i:=0; i<len a-1; i++)
@@ -589,7 +682,13 @@ dump(s: string, a: array of byte)
 
 Signature.algs(sg: self ref Signature): (string, string, string)
 {
-	(nf, flds) := sys->tokenize(sg.sa, "-");
+	return sigalgs(sg.sa);
+}
+
+# sig[-[enc-]hash]
+sigalgs(alg: string): (string, string, string)
+{
+	(nf, flds) := sys->tokenize(alg, "-");
 	if(nf >= 3)
 		return (hd flds, hd tl flds, hd tl tl flds);
 	if(nf >= 2)
@@ -613,7 +712,7 @@ Signature.sexp(sg: self ref Signature): ref Sexp
 		}
 		sv = ref Sexp.List(rev(l));
 	}else
-		sv = ref Sexp.Binary((hd sg.sig).t1, nil);
+		sv = ref Sexp.Binary((hd sg.sig).t1, nil);	# no list if signature has one component
 	if(sg.sa != nil)
 		sv = ref Sexp.List(ref Sexp.String(sg.sa,nil) :: sv :: nil);
 	return ref Sexp.List(ref Sexp.String("signature",nil) :: sg.hash.sexp() :: sg.key.sexp() ::
@@ -706,6 +805,8 @@ Cert.sexp(c: self ref Cert): ref Sexp
 {
 	if(c == nil)
 		return nil;
+	if(c.e != nil)
+		return c.e;
 	ds, tag: ref Sexp;
 	pick d := c {
 	N =>
@@ -733,8 +834,12 @@ Subject.principal(s: self ref Subject): ref Key
 		return r.key;
 	N =>
 		return r.name.principal;
+	KH =>
+		return r.holder.principal;
+	O =>
+		return nil;	# TO DO: need cache of hashed keys
 	* =>
-		return nil;	# TO DO
+		return nil;	# TO DO? (no particular principal for threshold)
 	}
 }
 
@@ -897,45 +1002,64 @@ Name.eq(a: self ref Name, b: ref Name): int
 	return nb == nil;
 }
 
+Key.public(key: self ref Key): ref Key
+{
+	if(key.sk != nil){
+		pk := ref *key;
+		if(pk.pk == nil)
+			pk.pk = kr->sktopk(pk.sk);
+		pk.sk = nil;
+		return pk;
+	}
+	if(key.pk == nil)
+		return nil;
+	return key;
+}
+
+Key.ishash(k: self ref Key): int
+{
+	return k.hash != nil && k.sk == nil && k.pk == nil;
+}
+
 Key.hashed(key: self ref Key, alg: string): array of byte
 {
-	if(key.hash != nil && key.halg == alg && key.hash.hash != nil)
-		return key.hash.hash;
-	krp := Keyrep.pk(key.pk);
-	if(krp == nil)
+	e := key.sexp();
+	if(e == nil)
 		return nil;
-	n := krp.getb("n");
-	e := krp.getb("e");
-	if(n == nil || e == nil)
-		return nil;
-	ex := ref Sexp.List(
-			ref Sexp.String("public-key", nil) ::
-			ref Sexp.List(
-				ref Sexp.String("rsa-pkcs1-"+alg, nil) ::
-				ref Sexp.List(ref Sexp.String("e", nil) :: ref Sexp.Binary(e, nil) :: nil) ::
-				ref Sexp.List(ref Sexp.String("n", nil) :: ref Sexp.Binary(n, nil) :: nil)
-				:: nil)
-			:: nil);
-#	sys->print("=> %q %s\n", hd tl tl flds, ex.text());
-	hash := hashexp(ex, alg);
-	if((key.hash == nil || key.hash.hash == nil) && (key.halg == alg || key.halg == nil)){
-		key.halg = alg;
-		key.hash = ref Hash(alg, hash);
+	return hashexp(key.sexp(), alg);
+}
+
+Key.hashexp(key: self ref Key, alg: string): ref Hash
+{
+	if(key.hash != nil){
+		for(l := key.hash; l != nil; l = tl l){
+			h := hd l;
+			if(h.alg == alg && h.hash != nil)
+				return h;
+		}
 	}
-	return hash;
+	hash := key.hashed(alg);
+	if(hash == nil)
+		return nil;
+	h := ref Hash(alg, hash);
+	key.hash = h :: key.hash;
+	return h;
 }
 
 Key.sigalg(k: self ref Key): string
 {
-	if(k.pk == nil || k.pk.sa == nil)
+	if(k.pk != nil)
+		alg := k.pk.sa.name;
+	else if(k.sk != nil)
+		alg = k.sk.sa.name;
+	else
 		return nil;
-	halg := "";
-	if(k.halg != nil)
-		halg = "-"+k.halg;
-	n := k.pk.sa.name;
-	if(n == "rsa" || n == "dsa")
-		return n+"-pkcs1"+halg;
-	return n+halg;
+	if(k.halg != nil){
+		if(k.henc != nil)
+			alg += "-"+k.henc;
+		alg += "-"+k.halg;
+	}
+	return alg;
 }
 
 Key.text(k: self ref Key): string
@@ -948,8 +1072,11 @@ Key.text(k: self ref Key): string
 
 Key.sexp(k: self ref Key): ref Sexp
 {
-	if(k.hash != nil && k.hash.hash != nil)
-		return k.hash.sexp();
+	if(k.sk == nil && k.pk == nil){
+		if(k.hash != nil)
+			return (hd k.hash).sexp();
+		return nil;
+	}
 	sort := "public-key";
 	els: list of (string, ref IPint);
 	if(k.sk != nil){
@@ -980,8 +1107,14 @@ Key.eq(k1: self ref Key, k2: ref Key): int
 		return 1;
 	if(k1 == nil || k2 == nil)
 		return 0;
-	if(k1.hash != nil && k2.hash != nil && k1.hash.eq(k2.hash))
-		return 1;
+	for(hl1 := k1.hash; hl1 != nil; hl1 = tl hl1){
+		h1 := hd hl1;
+		for(hl2 := k2.hash; hl2 != nil; hl2 = tl hl2){
+			h2 := hd hl2;
+			if(h1.hash != nil && h1.eq(h2))
+				return 1;
+		}
+	}
 	if(k1.pk != nil && k2.pk != nil)
 		return kr->pktostr(k1.pk) == kr->pktostr(k2.pk);	# TO DO
 	return 0;
@@ -1000,11 +1133,13 @@ dec(s: string, i: int, l: int): (int, int)
 	return (n, l);
 }
 
-# TO DO: any valid prefix of a date
-
+# accepts at least any valid prefix of a date
 date2epoch(t: string): int
 {
-	if(len t != 19)
+	# yyyy-mm-dd_hh:mm:ss
+	if(len t >= 4 && len t < 19)
+		t += "-01-01_00:00:00"[len t-4:];	# extend non-standard short forms
+	else if(len t != 19)
 		return -1;
 	tm := ref Daytime->Tm;
 	i: int;
@@ -1043,7 +1178,10 @@ epoch2date(t: int): string
 
 time2secs(s: string): int
 {
-	if(len s != 8)	# HH:MM:SS
+	# HH:MM:SS
+	if(len s >= 2 && len s < 8)
+		s += ":00:00"[len s-2:];	# extend non-standard short forms
+	else if(len s != 8)
 		return -1;
 	hh, mm, ss, i: int;
 	(hh, i) = dec(s, 0, 2);
@@ -1903,7 +2041,8 @@ revt[S,T](l: list of (S,T)): list of (S,T)
 }
 
 #
-# the following should probably be in a separate Limbo library module
+# the following should probably be in a separate Limbo library module,
+# or provided in some way directly by Keyring
 #
 
 Keyrep: adt {
@@ -1953,7 +2092,7 @@ Keyrep.pk(pk: ref Keyring->PK): ref Keyrep.PK
 	case hd flds {
 	"rsa" =>
 		return ref Keyrep.PK(hd flds, hd tl flds,
-			keyextract(tl tl flds, list of {("e",1), ("n",0)}));
+			keyextract(tl tl flds, list of {("ek",1), ("n",0)}));
 	"elgamal" or "dsa" =>
 		return ref Keyrep.PK(hd flds, hd tl flds,
 			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2)}));
@@ -1968,10 +2107,11 @@ Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 	(nf, flds) := sys->tokenize(s, "\n");
 	if((nf -= 2) < 0)
 		return nil;
+	# the ordering of components below should match the one defined in the spki spec
 	case hd flds {
 	"rsa" =>
 		return ref Keyrep.SK(hd flds, hd tl flds,
-			keyextract(tl tl flds,list of {("e",1), ("n",0), ("!dk",2), ("!p",3), ("!q",4), ("!kp",5), ("!kq",6), ("!c2",7)}));
+			keyextract(tl tl flds,list of {("ek",1), ("n",0), ("!dk",2), ("!q",4), ("!p",3), ("!kq",6), ("!kp",5), ("!c2",7)}));	# see comment elsewhere about p, q
 	"elgamal" or "dsa" =>
 		return ref Keyrep.SK(hd flds, hd tl flds,
 			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2), ("!secret",3)}));
@@ -2001,7 +2141,7 @@ Keyrep.mkpk(k: self ref Keyrep): (ref Keyring->PK, int)
 {
 	case k.alg {
 	"rsa" =>
-		e := k.get("e");
+		e := k.get("ek");
 		n := k.get("n");
 		if(e == nil || n == nil)
 			return (nil, 0);
@@ -2015,7 +2155,7 @@ Keyrep.mksk(k: self ref Keyrep): ref Keyring->SK
 {
 	case k.alg {
 	"rsa" =>
-		e := k.get("e");
+		e := k.get("ek");
 		n := k.get("n");
 		dk := k.get("!dk");
 		p := k.get("!p");
@@ -2040,11 +2180,12 @@ Keyrep.mksk(k: self ref Keyrep): ref Keyring->SK
 s2f(s: string): string
 {
 	case s {
+	"e" => return "ek";
 	"d" => return "!dk";
-	"p" => return "!p";
-	"q" => return "!q";
-	"a" => return "!kp";
-	"b" => return "!kq";
+	"p" => return "!q";		# NB: p and q (kp and kq) roles are reversed between libsec and pkcs
+	"q" => return "!p";
+	"a" => return "!kq";
+	"b" => return "!kp";
 	"c" => return "!c2";
 	* =>	return s;
 	}
@@ -2053,9 +2194,12 @@ s2f(s: string): string
 f2s(s: string): string
 {
 	case s {
+	"ek" =>	return "e";
+	"!p" =>	return "q";	# see above
+	"!q" =>	return "p";
 	"!dk" =>	return "d";
-	"!kp" =>	return "a";
-	"!kq" =>	return "b";
+	"!kp" =>	return "b";
+	"!kq" =>	return "a";
 	"!c2" =>	return "c";
 	* =>
 		if(s != nil && s[0] == '!')
@@ -2086,6 +2230,36 @@ sig2icert(sig: ref Signature, signer: string, exp: int): ref Keyring->Certificat
 	s := sys->sprint("%s\n%s\n%s\n%d\n%s\n", "rsa", sig.hash.alg, signer, exp, base64->enc((hd sig.sig).t1));
 #sys->print("alg %s *** %s\n", sig.sa, base64->enc((hd sig.sig).t1));
 	return kr->strtocert(s);
+}
+
+icert2els(cert: ref Keyring->Certificate): (string, string, string, list of (string, array of byte))
+{
+	s := kr->certtoattr(cert);
+	if(s == nil)
+		return (nil, nil, nil, nil);
+	(nil, l) := sys->tokenize(s, " ");	# really need parseattr, and a better interface
+	vals: list of (string, array of byte);
+	alg, hashalg, signer: string;
+	for(; l != nil; l = tl l){
+		(nf, fld) := sys->tokenize(hd l, "=");
+		if(nf != 2)
+			continue;
+		case hd fld {
+		"sigalg" =>
+			(nf, fld) = sys->tokenize(hd tl fld, "-");
+			if(nf != 2)
+				continue;
+			alg = hd fld;
+			hashalg = hd tl fld;
+		"signer" =>
+			signer = hd tl fld;
+		"expires" =>
+			;	# don't care
+		* =>
+			vals = (hd fld, base16->dec(hd tl fld)) :: vals;
+		}
+	}
+	return (alg, hashalg, signer, revt(vals));
 }
 
 #
@@ -2121,20 +2295,15 @@ pkcs1_sha1_pfx := array[] of {
 #
 # mlen should be key length in bytes
 #
-pkcs1_encode(ha: string, msg: array of byte, mlen: int): array of byte
+pkcs1_encode(ha: string, hash: array of byte, mlen: int): array of byte
 {
 	# apply hash function to message
-	hash: array of byte;
 	prefix: array of byte;
 	case ha {
 	"md5" =>
 		prefix = pkcs1_md5_pfx;
-		hash = array[Keyring->MD5dlen] of byte;
-		kr->md5(msg, len msg, hash, nil);
 	"sha" or "sha1" =>
 		prefix = pkcs1_sha1_pfx;
-		hash = array[Keyring->SHA1dlen] of byte;
-		kr->sha1(msg, len msg, hash, nil);
 	* =>
 		return nil;
 	}

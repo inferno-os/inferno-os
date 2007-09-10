@@ -40,10 +40,14 @@ SPKI: module
 		pk:	ref Keyring->PK;	# either pk/sk or hash might be nil
 		sk:	ref Keyring->SK;
 		nbits:	int;
-		halg:	string;
-		hash:	ref Hash;
+		halg:	string;	# basic signature hash algorithm
+		henc:	string;	# pre-signature encoding
+		hash:	list of ref Hash;
 
 		hashed:	fn(k: self ref Key, alg: string): array of byte;
+		hashexp:	fn(k: self ref Key, alg: string): ref Hash;
+		ishash:	fn(k: self ref Key): int;
+		public:	fn(k: self ref Key): ref Key;
 		sigalg:	fn(k: self ref Key): string;
 		text:	fn(k: self ref Key): string;
 		sexp:	fn(k: self ref Key): ref Sexprs->Sexp;
@@ -115,7 +119,7 @@ SPKI: module
 	Signature: adt {
 		hash:	ref Hash;
 		key:	ref Key;	# find by hash if necessary
-		sa:	string;
+		sa:	string;	# alg[-[encoding-]hash]
 		sig:	list of (string, array of byte);
 
 		algs:	fn(s: self ref Signature): (string, string, string);
@@ -149,6 +153,7 @@ SPKI: module
 			exp:	ref Sexprs->Sexp;
 		}
 
+		sexp:	fn(se: self ref Seqel): ref Sexprs->Sexp;
 		text:	fn(se: self ref Seqel): string;
 	};
 
@@ -172,6 +177,9 @@ SPKI: module
 		Seq =>
 			v:	list of ref Seqel;
 		}
+
+		sexp:	fn(t: self ref Toplev): ref Sexprs->Sexp;
+		text:	fn(t: self ref Toplev): string;
 	};
 
 	init:	fn();
@@ -191,6 +199,10 @@ SPKI: module
 	checksig:	fn(c: ref Cert, sig: ref Signature): string;
 	sig2icert:	fn(sig: ref Signature, signer: string, exp: int): ref Keyring->Certificate;
 
+	# signature making
+	signcert:	fn(c: ref Cert, sigalg: string, key: ref Key): (ref Signature, string);
+	signbytes:	fn(a: array of byte, sigalg: string, key: ref Key): (ref Signature, string);
+
 	# tags
 	maketag:	fn(e: ref Sexprs->Sexp): ref Sexprs->Sexp;
 	tagintersect:	fn(t1: ref Sexprs->Sexp, t2: ref Sexprs->Sexp): ref Sexprs->Sexp;
@@ -205,6 +217,9 @@ SPKI: module
 	epoch2date:	fn(t: int): string;
 	time2secs:	fn(s: string): int;	# HH:MM:SS
 	secs2time:	fn(t: int): string;
+
+	# misc
+	sigalgs:	fn(algs: string): (string, string, string);
 
 	# debugging
 	dump:	fn(s: string, a: array of byte);
