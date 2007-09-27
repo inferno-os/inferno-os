@@ -716,8 +716,37 @@ setpointer(int x, int y)
 void
 drawcursor(Drawcursor* c)
 {
-	if(c->data == nil){
+	Cursor crsr;
+	uchar *bc, *bs, *ps, *pm;
+	int i, j, h, w, bpl;
+
+	if(c->data == nil || c->minx >= c->maxx){
 		InitCursor();
 		return;
 	}
+	memset(crsr.data, 0, sizeof(crsr.data));
+	memset(crsr.mask, 0, sizeof(crsr.mask));
+	ps = (uchar*)crsr.data;
+	pm = (uchar*)crsr.mask;
+	h = (c->maxy - c->miny)/2;	/* bounds include both masks, strangely */
+	bpl = bytesperline(Rect(c->minx, c->miny, c->maxx, c->maxy), 1);
+	if((w = bpl) > 2)
+		w = 2;
+	bc = c->data;
+	bs = c->data + h*bpl;
+	if(h > 16)
+		h = 16;
+	for(i = 0; i < h; i++){
+		for(j = 0; j < w; j++){
+			ps[j] = bs[j];
+			pm[j] = bs[j] | bc[j];
+		}
+		bs += bpl;
+		bc += bpl;
+		ps += 2;
+		pm += 2;
+	}
+	crsr.hotSpot.h = -c->hotx;
+	crsr.hotSpot.v = -c->hoty;
+	SetCursor(&crsr);
 }

@@ -1,3 +1,5 @@
+20070927
+	add working drawcursor to emu/MacOSX/win.c, based on mirtchovski's changes (but mapping general cursor images to Mac's form)
 20070910
 	update spki(2) [change handling of hashes, add signature functions] appl/lib/spki/spki.b module/spki.m, updated for GSoC
 20070906
