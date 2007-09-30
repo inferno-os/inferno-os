@@ -1,8 +1,8 @@
 SYSTARG=MacOSX
-OBJTYPE=power
+#OBJTYPE=power
 <../../mkconfig
 SYSTARG=MacOSX
-OBJTYPE=power
+#OBJTYPE=power
 
 #Configurable parameters
 

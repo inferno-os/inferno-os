@@ -1,3 +1,5 @@
+20070929
+	move emu/MacOSX/mkfile to .../mkfile-x11 and replace it by the variant that builds for Carbon, now the default
 20070927
 	add working drawcursor to emu/MacOSX/win.c, based on mirtchovski's changes (but mapping general cursor images to Mac's form)
 20070910
