@@ -12,6 +12,7 @@
  * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
  */
 #include "lib9.h"
+#include "fmtdef.h"
 
 char*
 vseprint(char *buf, char *e, char *fmt, va_list args)

@@ -1,4 +1,5 @@
 #include "lib9.h"
+#include "fmtdef.h"
 
 Rune*
 runevseprint(Rune *buf, Rune *e, char *fmt, va_list args)
