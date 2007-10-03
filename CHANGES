@@ -1,5 +1,6 @@
 20071002
 	ensure fmtdef.h included by some lib9 functions so that va_copy is defined on older systems that lack that needless notion
+	<{} and >{} added to sh(1)
 20070929
 	move emu/MacOSX/mkfile to .../mkfile-x11 and replace it by the variant that builds for Carbon, now the default
 20070927

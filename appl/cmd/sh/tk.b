@@ -118,7 +118,6 @@ builtin_tk(ctxt: ref Context, argv: list of ref Listnode): string
 		argv = tl argv;
 		if (len argv < 1 || !isnum((hd argv).word))
 			ctxt.fail("usage", "usage: tk onscreen winid [how]");
-		wid := (hd argv).word;
 		how := "";
 		if(tl argv != nil)
 			how = word(hd tl argv);
@@ -232,22 +231,35 @@ sbuiltin_alt(ctxt: ref Context, argv: list of ref Listnode): list of ref Listnod
 	argv = tl argv;
 	if (argv == nil)
 		ctxt.fail("usage", "usage: alt chan...");
-	ca := array[len argv] of chan of string;
-	cname := array[len ca] of string;
+	nc := len argv;
+	kbd := array[nc] of chan of int;
+	ptr := array[nc] of chan of ref Draw->Pointer;
+	ca := array[nc * 3] of chan of string;
+	win := array[nc] of ref Tk->Toplevel;
+	
+	cname := array[nc] of string;
 	i := 0;
 	for (; argv != nil; argv = tl argv) {
-		ca[i] = egetchan(ctxt, hd argv);
-		cname[i] = (hd argv).word;
+		w := (hd argv).word;
+		ca[i*3] = egetchan(ctxt, hd argv);
+		cname[i] = w;
+		if(isnum(w)){
+			win[i] = egetwin(ctxt, hd argv);
+			ca[i*3+1] = win[i].ctxt.ctl;
+			ca[i*3+2] = win[i].wreq;
+			ptr[i] = win[i].ctxt.ptr;
+			kbd[i] = win[i].ctxt.kbd;
+		}
 		i++;
 	}
-	n := 0;
-	v: string;
-	if (i == 1)
-		v = <-ca[0];
-	else
-		(n, v) = <-ca;
-	
-	return ref Listnode(nil, cname[n]) :: ref Listnode(nil, v) :: nil;
+	for(;;) alt{
+	(n, key) := <-kbd =>
+		tk->keyboard(win[n], key);
+	(n, p) := <-ptr =>
+		tk->pointer(win[n], *p);
+	(n, v) := <-ca =>
+		return ref Listnode(nil, cname[n/3]) :: ref Listnode(nil, v) :: nil;
+	}
 }
 
 sbuiltin_recv(ctxt: ref Context, argv: list of ref Listnode): list of ref Listnode
