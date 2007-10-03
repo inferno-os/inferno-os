@@ -301,6 +301,29 @@ The operator is invoked and its value substituted.
 See
 .IR "Built-in Commands" ,
 below, for more information on builtins.
+.HP
+.BI <{ command }
+.HP
+.BI >{ command }
+.br
+The
+.I command
+is executed asynchronously with its standard output or standard input
+connected to a pipe.
+The value of the argument is the name of a file
+referring to the other end of the pipe.
+This allows the construction of
+non-linear pipelines.
+For example, the following runs two commands
+.B old
+and
+.B new
+and uses
+.B cmp
+to compare their outputs
+.EX
+	cmp <{old} <{new}
+.EE
 .PD
 .SS Free Carets
 In most circumstances,
@@ -394,6 +417,12 @@ may be redirected from a file by the sequence
 or by the sequence
 .BI <> file \f1,
 which opens the file for writing as well as reading.
+Note that if
+.I file
+is in fact a parsed braced block, the redirection will be treated as
+pipe to the given command - it is identical to the
+.B "<{}"
+operator mentioned above.
 .PP
 Redirections may be applied to a file-descriptor other than standard input
 or output by qualifying the redirection operator

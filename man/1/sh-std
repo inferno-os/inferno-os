@@ -463,17 +463,10 @@ its standard input is connected; otherwise file descriptor
 is connected.
 .B Pipe
 yields the name of a file that can be opened to access
-the other end of the pipe. This allows the construction
-of non-linear pipelines. For example, the following runs two commands
-.B old
-and
-.B new
-and uses
-.B cmp
-to compare their outputs
-.EX
-	cmp ${pipe from {old}} ${pipe from {new}}
-.EE
+the other end of the pipe. Note that this command is now
+deprecated in favour of the
+.B <{}
+redirection operator built in to the shell.
 .TP
 .B ${split}
 .B Split
