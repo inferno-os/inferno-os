@@ -52,7 +52,7 @@ genrandom(void *v)
 		for(;;)
 			if(++rb.randomcount > 65535)
 				break;
-		if(!rbnotfull(0))
+		if(rb.filled || !rbnotfull(0))
 			Sleep(&rb.producer, rbnotfull, 0);
 	}
 }

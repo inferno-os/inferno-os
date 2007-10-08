@@ -1,3 +1,5 @@
+20071008
+	nemo's change to emu/port/random.c; really the file needs a little rewriting for clarity (too many overlapping states)
 20071002
 	ensure fmtdef.h included by some lib9 functions so that va_copy is defined on older systems that lack that needless notion
 	<{} and >{} added to sh(1)

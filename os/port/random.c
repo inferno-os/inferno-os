@@ -51,7 +51,7 @@ genrandom(void*)
 				break;
 		if(anyhigher())
 			sched();
-		if(!rbnotfull(0))
+		if(rb.filled || !rbnotfull(0))
 			sleep(&rb.producer, rbnotfull, 0);
 	}
 }
