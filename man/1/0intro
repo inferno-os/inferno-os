@@ -164,18 +164,18 @@ Volume 2 contains papers and other documentation about Inferno.
 .PP
 The back of this volume contains a permuted index.
 .SH DIAGNOSTICS
+On successful execution, a process can simply exit.
 Programs (modules) that wish to return error status to
 the command interpreters
 .IR sh (1)
 and
 .IR mash (1)
-do so by executing a
-.IR sys-raise
-(see
-.IR sys-exception (2))
-with an error string starting with
+do so by raising a special exception (eg, using the
+.B raise
+statement in Limbo).
+The exception's value is a string
+beginning with the text
 .RB ` fail: '.
-On successful execution, a process can simply exit.
 .SH SEE ALSO
 .IR intro (2),
 .IR intro (3),

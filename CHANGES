@@ -1,3 +1,7 @@
+20071011
+	remove obsolete references to sh-exception(2)
+20071010
+	add abhey's changes for cmd key as unicode compose key for MacOS X to emu/MacOSX/win.c
 20071008
 	nemo's change to emu/port/random.c; really the file needs a little rewriting for clarity (too many overlapping states)
 20071002

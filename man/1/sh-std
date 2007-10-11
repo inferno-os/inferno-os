@@ -334,8 +334,9 @@ raises the exception
 will be truncated if it is longer than
 that allowed by
 .I raise
-(see
-.IR sys-exception (2)).
+(128 bytes in
+.IR utf (6)
+representation).
 Control will be transferred to the innermost
 rescue block in the same process that
 matches
@@ -365,13 +366,13 @@ matching
 where
 .I pattern
 is of the same form accepted by
-.I rescue
-(see
-.IR sys-exception (2));
-i.e. an exact match, or a prefix
-followed by an asterisk
-.RB ( * )
-which will match an exception starting with the prefix.
+Limbo's
+.B exception
+handling statement.
+Specifically, the pattern is a string that matches literally,
+except that a trailing
+.RB ` * '
+character will match any sequence of characters.
 If an exception is caught,
 .B rescue
 executes

@@ -128,5 +128,4 @@ because the parent is blocked on the receive.
 .IR sh (1),
 .IR wm (1),
 .IR sh (2),
-.IR sys-pctl (2),
-.IR sys-exception (2)
+.IR sys-pctl (2)

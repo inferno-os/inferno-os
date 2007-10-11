@@ -557,5 +557,4 @@ The file used by the shell to wait for dead child processes.
 .IR sh (1),
 .IR sh-std (1),
 .IR sh-expr (1),
-.IR sh-tk (1),
-.IR sys-exception (2)
+.IR sh-tk (1)

@@ -390,7 +390,8 @@ MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *us
 					mousebuttons |= 4;	/* set button 3 */
 					button3 = true;
 					sendbuttons(mousebuttons, mouseX, mouseY);
-				}
+				}else
+					gkbdputc(gkbdq, Latin);
 				break;
 			case 0:
 			default:
@@ -416,9 +417,11 @@ MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *us
 		case kEventRawKeyDown:
 		case kEventRawKeyRepeat:
 			if(macKeyModifiers != cmdKey) {
-				int key = convert_key(macKeyCode, macCharCodes);
-				if (key != -1) gkbdputc(gkbdq, key);
-			} else
+				int key;
+				key = convert_key(macKeyCode, macCharCodes);
+				if(key != -1)
+					gkbdputc(gkbdq, key);
+			}else
 				result = eventNotHandledErr;
 			break;
 		default:
