@@ -184,9 +184,31 @@ negotiatecrypto(io: ref IO, key: ref Key, ai: ref Authinfo, attrs: list of ref S
 	if(alg != nil)
 		attrs = sl(ss("alg") :: ss(alg) :: nil) :: attrs;
 	ai.secret = sl(attrs).pack();
+	if(role == "server")
+		ai.cap = capability(nil, ai.suid);
 
 	io.done(ai);
 	return nil;
+}
+
+capability(ufrom, uto: string): string
+{
+	capfd := sys->open("#¤/caphash", Sys->OWRITE);
+	if(capfd == nil)
+		return nil;
+	key := IPint.random(0, 160).iptob64();
+	if(key == nil)
+		return nil;
+
+	users := uto;
+	if(ufrom != nil)
+		users = ufrom+"@"+uto;
+	digest := array[Keyring->SHA1dlen] of byte;
+	ausers := array of byte users;
+	keyring->hmac_sha1(ausers, len ausers, array of byte key, digest, nil);
+	if(sys->write(capfd, digest, len digest) < 0)
+		return nil;
+	return users+"@"+key;
 }
 
 algcompatible(nil: string, nil: list of string): int

@@ -1,3 +1,7 @@
+20071019
+	change emu/port/devfs-posix.c to update uid/gid map incrementally
+20071015
+	add cap creation to infauth in server role in factotum
 20071011
 	remove obsolete references to sh-exception(2)
 20071010

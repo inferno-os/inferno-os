@@ -45,41 +45,39 @@ enum
 	MAXPATH	= 1024	/* TO DO: eliminate this */
 };
 
-typedef struct Pass Pass;
-struct Pass
+typedef struct User User;
+struct User
 {
-	int	id;
-	int	gid;
+	int	id;		/* might be user or group ID */
+	int	gid;		/* if it's a user not a group, the group ID (only for setid) */
 	char*	name;
-	Pass*	next;
+	int	nmem;
+	int*	mem;	/* member array, if nmem != 0 */
+	User*	next;
 };
 
 char	rootdir[MAXROOT] = ROOT;
 
-static	Pass*	uid[NID];
-static	Pass*	gid[NID];
-static	Pass*	member[NID];
-static	RWlock	idl;
+static	User*	uidmap[NID];
+static	User*	gidmap[NID];
+static	QLock	idl;
+static	User*	name2user(User**, char*, User* (*get)(char*));
+static	User*	id2user(User**, int, User* (*get)(int));
+static	User*	newuid(int);
+static	User*	newgid(int);
+static	User*	newuname(char*);
+static	User*	newgname(char*);
 
 static	Qid	fsqid(struct stat *);
 static	void	fspath(Cname*, char*, char*);
 static	int	fsdirconv(Chan*, char*, struct stat*, uchar*, int, int);
 static	Cname*	fswalkpath(Cname*, char*, int);
 static	char*	fslastelem(Cname*);
-static	char*	id2name(Pass**, int);
 static	int ingroup(int id, int gid);
 static	void	fsperm(Chan*, int);
 static	long	fsdirread(Chan*, uchar*, int, vlong);
 static	int	fsomode(int);
-static	Pass*	name2pass(Pass**, char*);
-static	void	getpwdf(void);
-static	void	getgrpf(void);
 static	void	fsremove(Chan*);
-
-/* Unix libc */
-
-extern	struct passwd *getpwent(void);
-extern	struct group *getgrent(void);
 
 /*
  * this crud is to compensate for invalid symbolic links;
@@ -90,7 +88,7 @@ xstat(char *f, struct stat *sb)
 {
 	if(stat(f, sb) >= 0)
 		return 0;
-	/* could possibly generate ->name as rob suggested */
+	/* could possibly generate ->name as rob once suggested */
 	return lstat(f, sb);
 }
 
@@ -108,9 +106,6 @@ fsattach(char *spec)
 	struct stat stbuf;
 	static int devno;
 	static Lock l;
-
-	getpwdf();
-	getgrpf();
 
 	if(!emptystr(spec) && strcmp(spec, "*") != 0)
 		error(Ebadspec);
@@ -238,9 +233,9 @@ fsstat(Chan *c, uchar *dp, int n)
 	p = fslastelem(FS(c)->name);
 	if(*p == 0)
 		p = "/";
-	rlock(&idl);
+	qlock(&idl);
 	n = fsdirconv(c, p, &stbuf, dp, n, 0);
-	runlock(&idl);
+	qunlock(&idl);
 	return n;
 }
 
@@ -258,7 +253,7 @@ fsopen(Chan *c, int mode)
 	case 1|16:
 		fsperm(c, 2);
 		break;
-	case 2:	
+	case 2:
 	case 0|16:
 	case 2|16:
 		fsperm(c, 4);
@@ -283,7 +278,7 @@ fsopen(Chan *c, int mode)
 		FS(c)->dir = opendir(FS(c)->name->s);
 		if(FS(c)->dir == 0)
 			oserror();
-	}	
+	}
 	else {
 		if(mode & OTRUNC)
 			m |= O_TRUNC;
@@ -459,7 +454,7 @@ fsremove(Chan *c)
 		fsfree(c);
 		nexterror();
 	}
-	fswchk(dir.dir);		
+	fswchk(dir.dir);
 	cnameclose(dir.dir);
 	dir.dir = nil;
 	if(c->qid.type & QTDIR)
@@ -476,7 +471,7 @@ static int
 fswstat(Chan *c, uchar *buf, int nb)
 {
 	Dir *d;
-	Pass *p;
+	User *p;
 	volatile struct { Cname *ph; } ph;
 	struct stat stbuf;
 	struct utimbuf utbuf;
@@ -551,12 +546,12 @@ fswstat(Chan *c, uchar *buf, int nb)
 
 	if(*d->gid){
 		tsync = 0;
-		rlock(&idl);
+		qlock(&idl);
 		if(waserror()){
-			runlock(&idl);
+			qunlock(&idl);
 			nexterror();
 		}
-		p = name2pass(gid, d->gid);
+		p = name2user(gidmap, d->gid, newgname);
 		if(p == 0)
 			error(Eunknown);
 		if(p->id != stbuf.st_gid) {
@@ -572,7 +567,7 @@ fswstat(Chan *c, uchar *buf, int nb)
 			FS(c)->gid = p->id;
 		}
 		poperror();
-		runlock(&idl);
+		qunlock(&idl);
 	}
 
 	if(d->length != ~(uvlong)0){
@@ -678,208 +673,6 @@ fslastelem(Cname *c)
 	return p;
 }
 
-/*
- * Assuming pass is one of the static arrays protected by idl, caller must
- * hold idl in writer mode.
- */
-static void
-freepass(Pass **pass)
-{
-	int i;
-	Pass *p, *np;
-
-	for(i=0; i<NID; i++){
-		for(p = pass[i]; p; p = np){
-			np = p->next;
-			free(p);
-		}
-		pass[i] = 0; 
-	}
-}
-
-static void
-getpwdf(void)
-{
-	unsigned i;
-	Pass *p;
-	static int mtime;		/* serialized by idl */
-	struct stat stbuf;
-	struct passwd *pw;
-
-	if(stat("/etc/passwd", &stbuf) < 0)
-		panic("can't read /etc/passwd");
-
-	/*
-	 * Unlocked peek is okay, since the check is a heuristic (as is
-	 * the function).
-	 */
-	if(stbuf.st_mtime <= mtime)
-		return;
-
-	wlock(&idl);
-	if(stbuf.st_mtime <= mtime) {
-		/*
-		 * If we lost a race on updating the database, we can
-		 * avoid some work.
-		 */
-		wunlock(&idl);
-		return;
-	}
-	mtime = stbuf.st_mtime;
-	freepass(uid);
-	setpwent();
-	while(pw = getpwent()){
-		i = pw->pw_uid;
-		i = (i&IDMASK) ^ ((i>>IDSHIFT)&IDMASK);
-		p = realloc(0, sizeof(Pass));
-		if(p == 0)
-			panic("getpwdf");
-
-		p->next = uid[i];
-		uid[i] = p;
-		p->id = pw->pw_uid;
-		p->gid = pw->pw_gid;
-		p->name = strdup(pw->pw_name);
-		if(p->name == 0)
-			panic("no memory");
-	}
-
-	wunlock(&idl);
-	endpwent();
-}
-
-static void
-getgrpf(void)
-{
-	static int mtime;		/* serialized by idl */
-	struct stat stbuf;
-	struct group *pw;
-	unsigned i;
-	int j;
-	Pass *p, *q;
-
-	if(stat("/etc/group", &stbuf) < 0)
-		panic("can't read /etc/group");
-
-	/*
-	 * Unlocked peek is okay, since the check is a heuristic (as is
-	 * the function).
-	 */
-	if(stbuf.st_mtime <= mtime)
-		return;
-
-	wlock(&idl);
-	if(stbuf.st_mtime <= mtime) {
-		/*
-		 * If we lost a race on updating the database, we can
-		 * avoid some work.
-		 */
-		wunlock(&idl);
-		return;
-	}
-	mtime = stbuf.st_mtime;
-	freepass(gid);
-	freepass(member);
-	/*
-	 *	Pass one -- group name to gid mapping.
-	 */
-	setgrent();
-	while(pw = getgrent()){
-		i = pw->gr_gid;
-		i = (i&IDMASK) ^ ((i>>IDSHIFT)&IDMASK);
-		p = realloc(0, sizeof(Pass));
-		if(p == 0)
-			panic("getpwdf");
-		p->next = gid[i];
-		gid[i] = p;
-		p->id = pw->gr_gid;
-		p->gid = 0;
-		p->name = strdup(pw->gr_name);
-		if(p->name == 0)
-			panic("no memory");
-	}
-	/*
-	 *	Pass two -- group memberships.
-	 */
-	setgrent();
-	while(pw = getgrent()){
-		for (j = 0;; j++) {
-			if (pw->gr_mem[j] == nil)
-				break;
-			q = name2pass(gid, pw->gr_mem[j]);
-			if (q == nil)
-				continue;
-			i = q->id + pw->gr_gid;
-			i = (i&IDMASK) ^ ((i>>IDSHIFT)&IDMASK);
-			p = realloc(0, sizeof(Pass));
-			if(p == 0)
-				panic("getpwdf");
-			p->next = member[i];
-			member[i] = p;
-			p->id = q->id;
-			p->gid = pw->gr_gid;
-		}
-	}
-
-	wunlock(&idl);
-	endgrent();
-}
-
-/* Caller must hold idl.  Does not raise an error. */
-static Pass*
-name2pass(Pass **pw, char *name)
-{
-	int i;
-	static Pass *p;
-	static Pass **pwdb;
-
-	if(p && pwdb == pw && strcmp(name, p->name) == 0)
-		return p;
-
-	for(i=0; i<NID; i++)
-		for(p = pw[i]; p; p = p->next)
-			if(strcmp(name, p->name) == 0) {
-				pwdb = pw;
-				return p;
-			}
-
-	return 0;
-}
-
-/* Caller must hold idl.  Does not raise an error. */
-static char*
-id2name(Pass **pw, int id)
-{
-	int i;
-	Pass *p;
-	char *s;
-
-	s = nil;
-	/* use last on list == first in file */
-	i = (id&IDMASK) ^ ((id>>IDSHIFT)&IDMASK);
-	for(p = pw[i]; p; p = p->next)
-		if(p->id == id)
-			s = p->name;
-	if(s)
-		return s;
-	return "";	/* TO DO: should be "%d" */
-}
-
-/* Caller must hold idl.  Does not raise an error. */
-static int
-ingroup(int id, int gid)
-{
-	int i;
-	Pass *p;
-
-	i = id+gid;
-	i = (id&IDMASK) ^ ((id>>IDSHIFT)&IDMASK);
-	for(p = member[i]; p; p = p->next)
-		if(p->id == id && p->gid == gid)
-			return 1;
-	return 0;
-}
-
 static void
 fsperm(Chan *c, int mask)
 {
@@ -911,11 +704,23 @@ static int
 fsdirconv(Chan *c, char *name, struct stat *s, uchar *va, int nb, int indir)
 {
 	Dir d;
+	char uidbuf[NUMSIZE], gidbuf[NUMSIZE];
+	User *u;
 
 	memset(&d, 0, sizeof(d));
 	d.name = name;
-	d.uid = id2name(uid, s->st_uid);
-	d.gid = id2name(gid, s->st_gid);
+	u = id2user(uidmap, s->st_uid, newuid);
+	if(u == nil){
+		snprint(uidbuf, sizeof(uidbuf), "#%lud", (long)s->st_uid);
+		d.uid = uidbuf;
+	}else
+		d.uid = u->name;
+	u = id2user(gidmap, s->st_gid, newgid);
+	if(u == nil){
+		snprint(gidbuf, sizeof(gidbuf), "#%lud", (long)s->st_gid);
+		d.gid = gidbuf;
+	}else
+		d.gid = u->name;
 	d.muid = "";
 	d.qid = fsqid(s);
 	d.mode = (d.qid.type<<24)|(s->st_mode&0777);
@@ -961,9 +766,9 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 				fprint(2, "dir: bad path %s\n", path);
 				continue;
 			}
-			rlock(&idl);
+			qlock(&idl);
 			r = fsdirconv(c, de->d_name, &stbuf, slop, sizeof(slop), 1);
-			runlock(&idl);
+			qunlock(&idl);
 			if(r <= 0) {
 				FS(c)->offset = n;
 				return 0;
@@ -978,7 +783,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 	 * rare operation, until the readdir completes is probably
 	 * preferable to adding lock round-trips.
 	 */
-	rlock(&idl);
+	qlock(&idl);
 	while(i < count){
 		de = FS(c)->de;
 		FS(c)->de = nil;
@@ -1003,7 +808,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 		i += r;
 		FS(c)->offset += r;
 	}
-	runlock(&idl);
+	qunlock(&idl);
 	return i;
 }
 
@@ -1018,24 +823,203 @@ fsomode(int m)
 void
 setid(char *name, int owner)
 {
-	Pass *p;
+	User *u;
 
 	if(owner && !iseve())
 		return;
 	kstrdup(&up->env->user, name);
 
-	rlock(&idl);
-	p = name2pass(uid, name);
-	if(p == nil){
-		runlock(&idl);
+	qlock(&idl);
+	u = name2user(uidmap, name, newuname);
+	if(u == nil){
+		qunlock(&idl);
 		up->env->uid = -1;
 		up->env->gid = -1;
 		return;
 	}
 
-	up->env->uid = p->id;
-	up->env->gid = p->gid;
-	runlock(&idl);
+	up->env->uid = u->id;
+	up->env->gid = u->gid;
+	qunlock(&idl);
+}
+
+static User**
+hashuser(User** tab, int id)
+{
+	int i;
+
+	i = (id>>IDSHIFT) ^ id;
+	return &tab[i & IDMASK];
+}
+
+/*
+ * the caller of the following functions must hold QLock idl.
+ */
+
+/*
+ * we could keep separate maps of user and group names to Users to
+ * speed this up, but the reverse lookup currently isn't common (ie, change group by wstat and setid)
+ */
+static User*
+name2user(User **tab, char *name, User* (*get)(char*))
+{
+	int i;
+	User *u, **h;
+	static User *prevu;
+	static User **prevtab;
+
+	if(prevu != nil && prevtab == tab && strcmp(name, prevu->name) == 0)
+		return prevu;	/* it's often the one we've just seen */
+
+	for(i=0; i<NID; i++)
+		for(u = tab[i]; u != nil; u = u->next)
+			if(strcmp(name, u->name) == 0) {
+				prevtab = tab;
+				prevu = u;
+				return u;
+			}
+
+	u = get(name);
+	if(u == nil)
+		return nil;
+	h = hashuser(tab, u->id);
+	u->next = *h;
+	*h = u;
+	prevtab = tab;
+	prevu = u;
+	return u;
+}
+
+static void
+freeuser(User *u)
+{
+	if(u != nil){
+		free(u->name);
+		free(u->mem);
+		free(u);
+	}
+}
+
+static User*
+newuser(int id, int gid, char *name, int nmem)
+{
+	User *u;
+
+	u = malloc(sizeof(*u));
+	if(u == nil)
+		return nil;
+	u->name = strdup(name);
+	if(u->name == nil){
+		free(u);
+		return nil;
+	}
+	u->nmem = nmem;
+	if(nmem){
+		u->mem = malloc(nmem*sizeof(*u->mem));
+		if(u->mem == nil){
+			free(u->name);
+			free(u);
+			return nil;
+		}
+	}else
+		u->mem = nil;
+	u->id = id;
+	u->gid = gid;
+	u->next = nil;
+	return u;
+}
+
+static User*
+newuname(char *name)
+{
+	struct passwd *p;
+	User *u;
+
+	p = getpwnam(name);
+	if(p == nil)
+		return nil;
+	return newuser(p->pw_uid, p->pw_gid, name, 0);
+}
+
+static User*
+newuid(int id)
+{
+	struct passwd *p;
+	User *u;
+
+	p = getpwuid(id);
+	if(p == nil)
+		return nil;
+	return newuser(p->pw_uid, p->pw_gid, p->pw_name, 0);
+}
+
+static User*
+newgroup(struct group *g)
+{
+	User *u, *gm;
+	int n, o;
+
+	if(g == nil)
+		return nil;
+	for(n=0; g->gr_mem[n] != nil; n++)
+		;
+	u = newuser(g->gr_gid, g->gr_gid, g->gr_name, n);
+	if(u == nil)
+		return nil;
+	o = 0;
+	for(n=0; g->gr_mem[n] != nil; n++){
+		gm = name2user(uidmap, g->gr_mem[n], newuname);
+		if(gm != nil)
+			u->mem[o++] = gm->id;
+		/* ignore names that don't map to IDs */
+	}
+	u->nmem = o;
+	return u;
+}
+
+static User*
+newgid(int id)
+{
+	return newgroup(getgrgid(id));
+}
+
+static User*
+newgname(char *name)
+{
+	return newgroup(getgrnam(name));
+}
+
+static User*
+id2user(User **tab, int id, User* (*get)(int))
+{
+	int i;
+	User *u, **h;
+
+	h = hashuser(tab, id);
+	for(u = *h; u != nil; u = u->next)
+		if(u->id == id)
+			return u;
+	u = get(id);
+	if(u == nil)
+		return nil;
+	u->next = *h;
+	*h = u;
+	return u;
+}
+
+static int
+ingroup(int id, int gid)
+{
+	int i;
+	User *g;
+
+	g = id2user(gidmap, gid, newgid);
+	if(g == nil || g->mem == nil)
+		return 0;
+	for(i = 0; i < g->nmem; i++)
+		if(g->mem[i] == id)
+			return 1;
+	return 0;
 }
 
 Dev fsdevtab = {
