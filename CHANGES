@@ -1,3 +1,5 @@
+20071027
+	appl/lib/names.b correction for "/" as prefix
 20071019
 	change emu/port/devfs-posix.c to update uid/gid map incrementally
 20071015

@@ -126,7 +126,7 @@ isprefix(a: string, b: string): int
 		return 0;
 	if(la == lb)
 		return a == b;
-	return a == b[0:la] && b[la] == '/';
+	return a == b[0:la] && (b[la] == '/' || a == "/");
 }
 
 elements(name: string): list of string
