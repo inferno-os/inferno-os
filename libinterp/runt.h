@@ -727,6 +727,17 @@ struct F_Sys_read
 	Array*	buf;
 	WORD	n;
 };
+void Sys_readn(void*);
+typedef struct F_Sys_readn F_Sys_readn;
+struct F_Sys_readn
+{
+	WORD	regs[NREG-1];
+	WORD*	ret;
+	uchar	temps[12];
+	Sys_FD*	fd;
+	Array*	buf;
+	WORD	n;
+};
 void Sys_remove(void*);
 typedef struct F_Sys_remove F_Sys_remove;
 struct F_Sys_remove
