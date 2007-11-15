@@ -1618,8 +1618,11 @@ A term of the form
 	termC . Iidentifier
 .s2
 denotes selection of a member of an
-.CW adt .
-The term must be a
+.CW adt
+or one element from a tuple.
+.PP
+In the first case,
+the term must be a
 type name or yield an object;
 its type must be
 .CW adt
@@ -1630,6 +1633,14 @@ the identifier must be a member of the
 .CW adt .
 The result denotes the named member (either a data object
 or a function).
+.PP
+In the second case,
+the term must yield a value of a tuple type,
+and the identifier must have the form \f(CWt\fP\fIn\fP
+where
+.I n
+is a decimal number giving the index (starting from 0) of an element of the tuple.
+The result is the value of that element.
 .NH 3
 Module qualification
 .PP
@@ -3934,7 +3945,7 @@ and
 .P2
 is equivalent to
 .P1
-	th: M.Thing;
+	th: M->Thing;
 	m->th.f();
 .P2
 When the module declaration for the module being
