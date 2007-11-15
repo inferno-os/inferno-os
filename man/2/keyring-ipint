@@ -32,7 +32,7 @@ IPint: adt
   shl:  fn(i: self ref IPint, n: int): ref IPint;
   shr:  fn(i: self ref IPint, n: int): ref IPint;
   and:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
-  ior:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  ori:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
   not:  fn(i: self ref IPint): ref IPint;
   xor:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
 };
@@ -81,6 +81,8 @@ returns 0 on error.
 Converts a large integer to a string in base
 .IR base ;
 returns nil on error.
+Only the bases 10, 16, 32, and 64 are
+supported.  Anything else defaults to 16.
 .TP
 .BI strtoip( str , base )
 Converts a string
@@ -88,6 +90,8 @@ Converts a string
 representing a number in in base
 .I base
 to a large integer; returns nil on error.
+Only the bases 10, 16, 32, and 64 are
+supported.
 .TP
 .BI random( minbits , maxbits )
 Returns a large random number with length from
@@ -155,12 +159,12 @@ Returns
 .IR i & n ,
 bitwise AND
 .TP
-.IB i1 .ior( i2 )
+.IB i1 .ori( i2 )
 Returns
 .IR i | n ,
 bitwise inclusive-OR
 (it is
-.B ior
+.B ori
 because plain
 .B or
 is a Limbo keyword)
