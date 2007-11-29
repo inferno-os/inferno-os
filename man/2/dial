@@ -1,0 +1,312 @@
+.TH DIAL 2
+.SH NAME
+Dial: accept, announce, dial, listen, netinfo, netmkaddr, reject \- make network connections
+.SH SYNOPSIS
+.EX
+include "sys.m";
+dial := load Dial Dial->PATH;
+
+Connection: adt
+{
+    dfd:  ref FD;  # data file
+    cfd:  ref FD;  # control file
+    dir:  string;  # pathname of line directory
+};
+
+announce:  fn(addr: string):        ref Connection;
+dial:      fn(addr, local: string): ref Connection;
+listen:    fn(c: ref Connection):       ref Connection;
+accept:    fn(c: ref Connection): ref Sys->FD;
+reject:    fn(c: ref Connection, why: string);
+
+netmkaddr: fn(net, host, svc: string): string;
+
+Conninfo: adt
+{
+    dir:   string;   # connection directory
+    root:  string;   # network mount point
+    spec:  string;   # its binding spec
+    lsys:  string;   # local host address
+    lserv: string;   # local service
+    rsys:  string;   # remote host address
+    rserv: string;   # remote service
+    laddr: string;   # local address in dial form
+    raddr: string;   # remote address in dial form
+};
+
+netinfo:   fn(c: ref Connection): ref Conninfo;
+.EE
+.SH DESCRIPTION
+.B Dial
+establishes network connections.
+The description below uses the following definitions:
+.TF network
+.PD
+.TP
+.I addr
+is a network address in one of the following forms:
+.br
+.IP
+.IB network ! netaddr ! service\f1
+.br
+.IB network ! netaddr\f1
+.br
+.IR netaddr
+.TP
+.I network
+Any directory listed in
+.B /net
+(eg,
+.BR tcp ),
+or the special token,
+.BR net .
+The special name
+.B net
+stands for any network that connects
+the current host and
+.IR netaddr .
+A network name can be preceded by the full path name of a directory
+of networks, using the form
+.I /dir/network
+(eg,
+.BR /net.alt/tcp ).
+.TP
+.I netaddr
+A host name, a domain name, a network address,
+or a meta-name of the form
+.BI $ attribute\f1,
+which
+is replaced by
+.I value
+from the corresponding attribute-value pair
+in the connection server data base (see
+.IR db (6)).
+.PP
+The functions
+.B dial
+and
+.B announce
+translate a given
+.I addr
+to an actual network address using
+the connection server
+.IR cs (8).
+If a logical name
+.I addr
+corresponds to several network addresses,
+for instance if a destination machine has several interfaces,
+.I cs
+will return them all;
+.B dial
+or
+.B announce
+will try each in turn until one works.
+In particular, if
+.I addr
+is
+.BR net ,
+.I cs
+will return addresses on
+all networks that are common to source and destination.
+The translation procedure accesses
+.I cs
+using its interface file
+.BR cs ,
+which is sought as follows:
+first, in an explicit directory
+.BI / dir
+if one was given in
+.IR network ;
+second, in the standard directory
+.BR /net ;
+and finally in the directory
+.BR /net.alt
+.RB ( dial
+only).
+If the connection server cannot be found,
+the
+.I addr
+is used as-is.
+.PP
+If a connection attempt is successful, the
+.B dir
+member of the resulting
+.B Connection
+will be
+the path name of a
+.I line directory
+that has files for accessing the connection.
+One line directory exists for each possible connection.
+The
+.B data
+file in the line directory is opened to
+make a connection, and read and written to communicate with the destination.
+The
+.B ctl
+file in the line directory can be used to send commands to the line.
+See
+.IR ip (3)
+for messages that can be written to the
+.B ctl
+file.
+The last close of both
+.B data
+and
+.B ctl
+file will close the connection.
+The
+.B remote
+file in the line directory contains the address called; the file
+.B local
+contains the local address assigned.
+.PP
+The function
+.B dial
+calls destination
+.I addr
+on a multiplexed network.
+If the connection server returns several possible locations for
+.IR addr ,
+.B dial
+tries each in turn, until a connection is made,
+or no address remains to be tried.
+.B Dial
+returns a reference to a
+.B Connection
+value containing a string
+.B dir
+that names the conversation directory for the connection,
+a file descriptor
+.B dfd
+open for reading and writing the
+.B data
+file in that directory, and
+a file descriptor
+.B cfd
+open for reading and writing the directory's
+.B ctl
+file.
+If
+.IR local
+is non-empty, and the network allows the local address to be set,
+as is the case with UDP and TCP port numbers,
+the local address will be set to
+.IR local .
+.PP
+.B Announce
+and
+.B listen
+are the complements of
+.BR dial .
+.B Announce
+establishes a network name to which incoming calls can be made.
+In
+.IR addr ,
+.I netaddr
+gives the name or address of one of the local host's interfaces on which to listen for
+calls to the given
+.IR service ;
+it can be
+.B *
+to listen for calls on any interface on
+.IR network .
+.B Announce
+returns a reference to a
+.B Connection
+value in which only the
+.B cfd
+descriptor is open, on the control file representing the announcement.
+.B Listen
+takes as its only argument a reference to the
+.B Connection
+returned by a successful call to
+.BR announce .
+When a call is received,
+.B listen
+returns a reference to a new
+.B Connection
+value that refers to the conversation directory for the incoming call;
+only the
+.B cfd
+descriptor is open.
+That call can be accepted or rejected.
+Use
+.B accept
+to obtain a file descriptor for the data file for the conversation.
+Use
+.B reject
+to reject the incoming call; some networks will also tell the caller the reason
+.IR why .
+.PP
+Given a
+.BR Connection ,
+.B netinfo
+returns a reference to a
+.B Conninfo
+value that gives details about the connection and its network.
+.SH EXAMPLES
+.PP
+Make a call and return an open file descriptor to
+use for communications:
+.IP
+.EX
+callkremvax(): ref Sys->FD
+{
+	c := dial->dial("tcp!kremvax!80", nil);
+	if(c == nil)
+		return nil;
+	return c.dfd;
+}
+.EE
+.PP
+Call the local certificate signer:
+.IP
+.EX
+dialsigner(service: string): ref Sys->FD
+{
+	c := dial->dial("net!$SIGNER!inflogin", nil);
+	if(c == nil)
+		return nil;
+	return c.dfd;
+}
+.EE
+.PP
+Listen for incoming calls.
+.IP
+.EX
+listener()
+{
+	ac := dial->announce("tcp!*!9995");
+	if(ac == nil){
+		sys->print("can't announce: %r\n");
+		exit;
+	}
+	for(;;){
+		lc := dial->listen(ac);
+		if(lc == nil){
+			sys->print("listen: %r\n");
+			exit;
+		}
+		sys->print("incoming: %s\n", hd ctext(lc));
+		spawn client(lc);
+	}
+}
+
+client(c: ref Connection)
+{
+	dfd := dial->accept(c);
+	if(dfd == nil){
+		sys->print("%s: can't accept: %r\n", c.dir);
+		exit;
+	}
+	buf := array[Sys->ATOMICIO] of byte;
+	while((n := sys->read(dfd, buf, len buf)) > 0)
+		sys->write(dfd, buf, n);
+}
+.EE
+.SH SOURCE
+.B /appl/lib/dial.b
+.SH DIAGNOSTICS
+The integer valued functions return 0 on success and -1 on error;
+functions returning a reference return nil on error.
+In those cases the system error string is set.

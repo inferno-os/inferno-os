@@ -183,6 +183,7 @@ csv sh-csv
 getcsv sh-csv
 sh-csv sh-csv
 expr sh-expr
+mpexpr sh-expr
 ntest sh-expr
 sh-expr sh-expr
 file2chan sh-file2chan
@@ -194,6 +195,9 @@ rread sh-file2chan
 rreadone sh-file2chan
 rwrite sh-file2chan
 sh-file2chan sh-file2chan
+mload sh-mload
+munload sh-mload
+sh-mload sh-mload
 match sh-regex
 re sh-regex
 sh-regex sh-regex

@@ -44,6 +44,13 @@ dhcp dhcpclient
 dhcpclient dhcpclient
 lease dhcpclient
 removecfg dhcpclient
+accept dial
+announce dial
+dial dial
+listen dial
+netinfo dial
+netmkaddr dial
+reject dial
 dialog dialog
 getstring dialog
 prompt dialog
@@ -387,6 +394,7 @@ styx styx
 tmsg styx
 unpackdir styx
 styxconv styxconv
+styxflush styxflush
 styxpersist styxpersist
 styxservers styxservers
 nametree styxservers-nametree

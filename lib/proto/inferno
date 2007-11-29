@@ -706,7 +706,9 @@ appl
 			echo.b
 			expr.b
 			file2chan.b
+			mload.b
 			mkfile
+			mpexpr.b
 			regex.b
 			sexprs.b
 			sh.b
@@ -963,6 +965,7 @@ appl
 		deflate.b
 		devpointer.b
 		dhcpclient.b
+		dial.b
 		dialog.b
 		dict.b
 		dis.b
@@ -1091,6 +1094,7 @@ appl
 		string.b
 		strinttab.b
 		styx.b
+		styxflush.b
 		styxlib.b
 		styxservers.b
 		tables.b
@@ -1588,6 +1592,7 @@ dis
 		deflate.dis
 		devpointer.dis
 		dhcpclient.dis
+		dial.dis
 		dialog.dis
 		dict.dis
 		dis.dis
@@ -1686,6 +1691,7 @@ dis
 		styx.dis
 		styxconv
 			+
+		styxflush.dis
 		styxlib.dis
 		styxpersist.dis
 		styxservers.dis
@@ -2191,6 +2197,8 @@ mkfiles
 	*
 mnt
 	*
+	spki
+		keys
 module
 	NOTICE
 	alphabet.m
@@ -2221,6 +2229,7 @@ module
 	debug.m
 	devpointer.m
 	dhcp.m
+	dial.m
 	dialog.m
 	dict.m
 	dis.m
@@ -2326,6 +2335,7 @@ module
 	strinttab.m
 	styx.m
 	styxconv.m
+	styxflush.m
 	styxlib.m
 	styxpersist.m
 	styxservers.m

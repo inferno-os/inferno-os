@@ -113,6 +113,7 @@ TARG=\
 	string.dis\
 	strinttab.dis\
 	styx.dis\
+	styxflush.dis\
 	styxlib.dis\
 	styxpersist.dis\
 	styxservers.dis\
@@ -234,3 +235,4 @@ csv.dis: $ROOT/module/csv.m
 json.dis: $ROOT/module/json.m
 lists.dis:	$ROOT/module/lists.m
 vac.dis:	$ROOT/module/vac.m $ROOT/module/venti.m
+dial.dis:	$ROOT/module/dial.m
