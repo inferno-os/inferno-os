@@ -675,8 +675,8 @@ setladdrport(Conv *c, char *str, int announcing)
 	} else {
 		if(strcmp(str, "*") == 0)
 			ipmove(c->laddr, IPnoaddr);
-		else
-			parseip(c->laddr, str);
+		else if(parseip(c->laddr, str) == 0)
+			error("invalid IP address");
 	}
 
 	if(announcing && strcmp(p, "*") == 0){
@@ -705,7 +705,8 @@ setraddrport(Conv *c, char *str)
 	if(p == nil)
 		return "malformed address";
 	*p++ = 0;
-	parseip(c->raddr, str);
+	if(parseip(c->raddr, str) == 0)
+		return "invalid IP address";
 	c->rport = portno(p);
 	p = strchr(p, '!');
 	if(p){
