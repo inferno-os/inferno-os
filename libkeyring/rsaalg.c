@@ -130,7 +130,7 @@ rsa_gen(int len)
 		key = rsagen(len, 6, 0);
 		if(mpsignif(key->pub.n) == len)
 			return key;
-		free(key);
+		rsaprivfree(key);
 	}
 }
 
