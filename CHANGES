@@ -1,3 +1,14 @@
+20071214
+	add dial(2)
+20071129
+	emu/port/devip.c: moan about bad IP addresses
+20071127
+	added /module/dial.m and /appl/lib/dial.b
+20071031
+	module/keyring.m and libinterp/keyring.c: add algorithm-specific adts for public key systems
+	appl/lib/spki/spki.b: correct names for dsa parameters
+20071030
+	libkeyring/rsaalg.c should call rsaprivfree not free
 20071027
 	appl/lib/names.b correction for "/" as prefix
 20071019
