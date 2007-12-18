@@ -102,7 +102,6 @@ devclone(Chan *c)
 		panic("clone of open file type %C\n", devtab[c->type]->dc);
 
 	nc = newchan();
-
 	nc->type = c->type;
 	nc->dev = c->dev;
 	nc->mode = c->mode;
@@ -119,7 +118,8 @@ devclone(Chan *c)
 Walkqid*
 devwalk(Chan *c, Chan *nc, char **name, int nname, Dirtab *tab, int ntab, Devgen *gen)
 {
-	int i, j, alloc;
+	int i, j;
+	volatile int alloc;
 	Walkqid *wq;
 	char *n;
 	Dir dir;

@@ -379,7 +379,8 @@ mntchan(void)
 static Walkqid*
 mntwalk(Chan *c, Chan *nc, char **name, int nname)
 {
-	int i, alloc;
+	volatile int alloc;
+	int i;
 	Mnt *m;
 	Mntrpc *r;
 	Walkqid *wq;
