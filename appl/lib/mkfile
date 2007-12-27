@@ -236,3 +236,4 @@ json.dis: $ROOT/module/json.m
 lists.dis:	$ROOT/module/lists.m
 vac.dis:	$ROOT/module/vac.m $ROOT/module/venti.m
 dial.dis:	$ROOT/module/dial.m
+styxflush.dis:	$ROOT/module/styxflush.m

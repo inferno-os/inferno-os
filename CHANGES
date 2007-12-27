@@ -1,5 +1,10 @@
-20071214
-	add dial(2)
+20071227
+	add styxflush(2) etc.
+	add NetBSD, emu/NetBSD
+20071217
+	emu/port/devmnt.c needs volatile for alloc
+20071213
+	emu/port/dev.c needs volatile for alloc
 20071129
 	emu/port/devip.c: moan about bad IP addresses
 20071127
