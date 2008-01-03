@@ -3,7 +3,7 @@
 Dial: accept, announce, dial, listen, netinfo, netmkaddr, reject \- make network connections
 .SH SYNOPSIS
 .EX
-include "sys.m";
+include "dial.m";
 dial := load Dial Dial->PATH;
 
 Connection: adt
@@ -278,16 +278,16 @@ listener()
 {
 	ac := dial->announce("tcp!*!9995");
 	if(ac == nil){
-		sys->print("can't announce: %r\en");
+		sys->print("can't announce: %r\n");
 		exit;
 	}
 	for(;;){
 		lc := dial->listen(ac);
 		if(lc == nil){
-			sys->print("listen: %r\en");
+			sys->print("listen: %r\n");
 			exit;
 		}
-		sys->print("incoming: %s\en", hd ctext(lc));
+		sys->print("incoming: %s\n", hd ctext(lc));
 		spawn client(lc);
 	}
 }
@@ -296,7 +296,7 @@ client(c: ref Connection)
 {
 	dfd := dial->accept(c);
 	if(dfd == nil){
-		sys->print("%s: can't accept: %r\en", c.dir);
+		sys->print("%s: can't accept: %r\n", c.dir);
 		exit;
 	}
 	buf := array[Sys->ATOMICIO] of byte;
