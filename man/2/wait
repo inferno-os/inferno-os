@@ -64,12 +64,12 @@ file open on
 it allows, for instance,
 a process to use
 .B alt
-to exchange data with a process but also watch for to exit (for good or ill).
+to exchange data with a process but also see it exit (for good or ill).
 It starts a monitor process that applies
 .B read
 to
 .I fd
-and send the resulting tuple on a channel.
+and sends each resulting tuple on a channel.
 It returns a tuple
 .BI ( pid\f5,\fP\ c )
 where

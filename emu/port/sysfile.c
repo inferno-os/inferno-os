@@ -1077,7 +1077,7 @@ kiounit(int fd)
 	Chan *c;
 	int n;
 
-	c = fdtochan(up->env->fgrp, fd, ORDWR, 0, 1);
+	c = fdtochan(up->env->fgrp, fd, -1, 0, 1);
 	if(waserror()){
 		cclose(c);
 		return 0;	/* n.b. */

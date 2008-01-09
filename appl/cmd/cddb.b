@@ -112,6 +112,7 @@ cddbfilltoc(t: ref Toc): int
 			return died(p);
 		categ = hd tl fl;
 		id = hd tl tl fl;
+	210 or	# exact matches
 	211 =>	# close matches
 		if((p = getline(bin)) == nil)
 			return died(nil);
