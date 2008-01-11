@@ -1,3 +1,7 @@
+20080111
+	add newuser to newns(2)
+20080109
+	Sys->iounit should accept any valid file descriptor, not just ORDWR
 20071227
 	add styxflush(2) etc.
 	add NetBSD, emu/NetBSD

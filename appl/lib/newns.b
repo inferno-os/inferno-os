@@ -272,7 +272,8 @@ mount(argv: list of string, facfd: ref Sys->FD): string
 			return ig(r, sys->sprint("cannot load %s: %r", Factotum->PATH));
 		factotum->init();
 		afd := sys->fauth(fd, spec);
-		ai := factotum->proxy(afd, facfd, "proto=p9any role=client");	# TO DO: something with ai
+		if(afd != nil)
+			factotum->proxy(afd, facfd, "proto=p9any role=client");	# ignore result; if it fails, mount will fail
 		if(sys->mount(fd, afd, dir, r.flags, spec) < 0)
 			return ig(r, sys->sprint("mount %q %q: %r", addr, dir));
 		return nil;
@@ -351,7 +352,8 @@ import9(argv: list of string, facfd: ref Sys->FD): string
 	}
 	# TO DO: new style: impo aan|nofilter clear|ssl|tls\n
 	afd := sys->fauth(fd, "");
-	ai := factotum->proxy(afd, facfd, "proto=p9any role=client");	# TO DO: something with ai
+	if(afd != nil)
+		factotum->proxy(afd, facfd, "proto=p9any role=client");
 	if(sys->mount(fd, afd, dir, r.flags, "") < 0)
 		return ig(r, sys->sprint("import %q %q: %r", addr, dir));
 	return nil;
@@ -439,4 +441,25 @@ netmkaddr(addr, net, svc: string): string
 	if(svc == nil || n > 2)
 		return addr;
 	return sys->sprint("%s!%s", addr, svc);
+}
+
+newuser(user: string, cap: string, nsfile: string): string
+{
+	if(cap == nil)
+		return "no capability";
+
+	sys = load Sys Sys->PATH;
+	fd := sys->open("#¤/capuse", Sys->OWRITE);
+	if(fd == nil)
+		return sys->sprint("opening #¤/capuse: %r");
+
+	b := array of byte cap;
+	if(sys->write(fd, b, len b) < 0)
+		return sys->sprint("writing %s to #¤/capuse: %r", cap);
+
+	# mount factotum as new user (probably unhelpful if not factotum owner)
+	sys->unmount(nil, "/mnt/factotum");
+	sys->bind("#sfactotum", "/mnt/factotum", Sys->MREPL);
+
+	return newns(user, nsfile);
 }

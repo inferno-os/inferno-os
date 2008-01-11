@@ -277,6 +277,7 @@ pathname names
 relative names
 rooted names
 newns newns
+newuser newns
 categories palmfile
 dbinfo palmfile
 doc palmfile

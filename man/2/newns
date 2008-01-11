@@ -1,12 +1,13 @@
 .TH NEWNS 2
 .SH NAME
-newns \- build a new name space from a description file
+Newns: newns, newuser \- build a new name space from a description file
 .SH SYNOPSIS
 .EX
 include "newns.m";
 ns := load Newns Newns->PATH;
 
-newns:  fn(user: string, nsfile: string): string;
+newns:   fn(user: string, nsfile: string): string;
+newuser: fn(user: string, cap: string, nsfile: string): string;
 .EE
 .SH DESCRIPTION
 .B Newns
@@ -23,12 +24,28 @@ or empty, then
 .B newns
 attempts to read file the file
 .BR namespace .
+.PP
+.B Newuser
+uses a capability
+.I cap
+suitable for
+.IR cap (3)
+to change the current process's user name to
+.IR user ,
+and uses
+.B newns
+and
+.I nsfile
+to build it a new name space.
+The capability is typically obtained via
+.IR factotum (4).
 .SH SOURCE
 .B /appl/lib/newns.b
 .SH SEE ALSO
 .IR sys-bind (2),
 .IR sys-chdir (2),
 .IR sys-pctl (2),
+.IR factotum (4),
 .IR namespace (6)
 .SH BUGS
 The
