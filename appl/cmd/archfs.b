@@ -125,7 +125,7 @@ init(nil: ref Draw->Context, args: list of string)
 		fatal("can't create pipe");
 	pidch := chan of int;
 	spawn serve(p[1], pidch);
-	pid := <- pidch;
+	<- pidch;
 	if(sys->mount(p[0], nil, mtpt, flags, nil) < 0)
 		fatal(sys->sprint("cannot mount archive on %s: %r", mtpt));
 }

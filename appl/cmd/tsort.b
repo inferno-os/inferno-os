@@ -60,7 +60,7 @@ input()
 {
 	b := bufio->fopen(sys->fildes(0), Sys->OREAD);
 	while((line := b.gets('\n')) != nil){
-		(nf, fld) := sys->tokenize(line, " \t\n");
+		(nil, fld) := sys->tokenize(line, " \t\n");
 		if(fld != nil){
 			a := finditem(hd fld);
 			while((fld = tl fld) != nil)

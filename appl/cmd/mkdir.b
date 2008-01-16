@@ -29,7 +29,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	for(; argv != nil; argv = tl argv){
 		dir := hd argv;
 		if(!pflag){
-			(ok, d) := sys->stat(dir);
+			(ok, nil) := sys->stat(dir);
 			if(ok < 0){
 				if(mkdir(dir) < 0)
 					e = "error";

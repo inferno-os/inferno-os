@@ -49,8 +49,8 @@ init(nil: ref Draw->Context, argv: list of string)
 		usage();
 
 	argv = tl argv;
-	def := 0;
-	baud := 0;
+
+
 	while (argv != nil && len (arg := hd argv) > 1 && arg[0] == '-') {
 		case arg[1] {
 		'D' =>

@@ -116,7 +116,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	else rs = "s";
 	mreport(0, S_INFO, 2, sys->sprint("Starting tests - %s run%s of %d test%s", reps, rs, len testlist, ts));
 	run := big 1;
-	tlist := testlist;
+
 	if (recroot != nil) 
 		recn := highest(recroot) + 1;
 	while (repcount == 0 || run <= big repcount) {
@@ -259,7 +259,7 @@ runtest(t: ref Test)
 {
 	if (t.failed)
 		return;
-	path := t.fullspec;
+
 	if (cflag != -1) {
 		mreport(0, S_INFO, 7, sys->sprint("Setting cflag to %d", cflag));
 		set_cflag(cflag);
@@ -270,7 +270,7 @@ runtest(t: ref Test)
 		display_file(readme);
 	sync := chan of int;
 	spawn monitor(t, sync);
-	pid := <-sync;
+	<-sync;
 }
 
 monitor(t: ref Test, sync: chan of int)
@@ -299,7 +299,7 @@ monitor(t: ref Test, sync: chan of int)
 	etime := -1;
 	rsync := chan of int;
 	spawn runit(t.fullspec, t.stdout, t.stderr, t.spec, pa[0], rsync);
-	rpid := <-rsync;
+	<-rsync;
 	pa[0] = nil;
 	(nwarns, nerrors, nfatals) := (0, 0, 0);
 	while (1) {

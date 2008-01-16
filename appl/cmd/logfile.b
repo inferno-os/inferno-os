@@ -87,7 +87,7 @@ logserver(fio: ref Sys->FileIO, bufsize: int)
 	for (;;) alt {
 	<-availchan =>
 		availcount++;
-	(off, count, fid, rc) := <-fio.read =>
+	(nil, count, fid, rc) := <-fio.read =>
 		r := readers.get(fid);
 		if (rc == nil) {
 			if (r != nil)
@@ -112,7 +112,7 @@ logserver(fio: ref Sys->FileIO, bufsize: int)
 			r.rq = (count, rc) :: r.rq;
 		}
 
-	(off, data, fid, wc) := <-fio.write =>
+	(nil, data, nil, wc) := <-fio.write =>
 		if (wc == nil)
 			continue;
 		if ((n := buf.put(data)) < len data)

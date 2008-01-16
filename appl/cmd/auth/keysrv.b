@@ -116,7 +116,7 @@ worker(file: ref Sys->FileIO, user: string, exitc: chan of int)
 	for(;;)alt{
 	<-exitc =>
 		exit;
-	(nil, nbytes, fid, rc) := <-file.read =>
+	(nil, nil, nil, rc) := <-file.read =>
 		if(rc == nil)
 			break;
 		if(err != nil){
@@ -124,7 +124,7 @@ worker(file: ref Sys->FileIO, user: string, exitc: chan of int)
 			break;
 		}
 		rc <-= (nil, nil);
-	(nil, data, fid, wc) := <-file.write =>
+	(nil, data, nil, wc) := <-file.write =>
 		if(wc == nil)
 			break;
 		if(err != nil){

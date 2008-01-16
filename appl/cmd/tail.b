@@ -57,7 +57,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	else {
 		if((file=sys->open(hd argv,sys->OREAD)) == nil )
 			fatal(hd argv);
-		(ok, stat) := sys->fstat(file);
+		(nil, stat) := sys->fstat(file);
 		seekable = sys->seek(file,big 0,sys->SEEKSTART) == big 0 && stat.length > big 0;
 	}
 
@@ -99,7 +99,7 @@ init(nil: ref Draw->Context, argv: list of string)
 
 trunc(length : big) : sys->Dir
 {
-	(i,d):=sys->fstat(file);
+	(nil,d):=sys->fstat(file);
 	if(d.length < length)
 		d.length = tseek(big 0, sys->SEEKSTART);
 	return d;

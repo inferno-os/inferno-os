@@ -144,7 +144,7 @@ replay_msgs(mfile: string, tspec: string, cflag: int)
 		return;
 	(nwarns, nerrors, nfatals) := (0, 0, 0);
 	stime := 0;
-	etime := 0;
+
 	while ((line := mf.gets('\n')) != nil) {
 		(whens, rest) := str->splitl(line, ":");
 		when := int whens;

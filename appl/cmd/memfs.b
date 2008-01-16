@@ -217,7 +217,7 @@ memfs(maxsz : int, tc : chan of ref Tmsg, srv : ref Styxserver, sync: chan of in
 			c.mode = tm.mode;
 			c.qid.vers = mf.qid.vers;
 			mf.nopen++;
-			if (tm.mode & OTRUNC) {
+			if ((tm.mode & OTRUNC) && !(mf.perm & Sys->DMAPPEND)) {
 				# OTRUNC cannot be set for a directory
 				# always at least one blk so don't need to check fs limit
 				freeblks += (len mf.data);
@@ -321,7 +321,7 @@ memfs(maxsz : int, tc : chan of ref Tmsg, srv : ref Styxserver, sync: chan of in
 			}
 			srv.reply(ref Rmsg.Clunk(tm.tag));
 		Stat =>
-			(err, c, mf) := fidtomf(srv, qhash, tm.fid);
+			(err, nil, mf) := fidtomf(srv, qhash, tm.fid);
 			if (err != nil) {
 				srv.reply(ref Rmsg.Error(tm.tag, err));
 				continue;
@@ -354,7 +354,7 @@ memfs(maxsz : int, tc : chan of ref Tmsg, srv : ref Styxserver, sync: chan of in
 		Wstat =>
 			(err, c, mf) := fidtomf(srv, qhash, tm.fid);
 			stat := tm.stat;
-			perm := mf.perm & ~Sys->DMDIR;
+
 			if (err == nil && stat.name != mf.name) {
 				parent := mf.parent;
 				if (!modeok(OWRITE, parent.perm, c.uname, parent.owner))

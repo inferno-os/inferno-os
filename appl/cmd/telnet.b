@@ -470,7 +470,7 @@ netmkaddr(addr, net, svc: string): string
 {
 	if(net == nil)
 		net = "net";
-	(n, l) := sys->tokenize(addr, "!");
+	(n, nil) := sys->tokenize(addr, "!");
 	if(n <= 1){
 		if(svc== nil)
 			return sys->sprint("%s!%s", net, addr);

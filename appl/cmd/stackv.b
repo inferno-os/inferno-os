@@ -360,6 +360,8 @@ plist(exp: ref Exp, v: string, w: int, depth: int)
 	while(w && v != "nil"){
 		exps := exp.expand();
 		h := getname(exps, "hd");
+		if(h == nil)
+			break;
 		(hv, vw) := h.val();
 		if(pref(v) == 0)
 			return;

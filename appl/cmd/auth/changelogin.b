@@ -206,7 +206,6 @@ getuser(id: string): (string, array of byte, int, string)
 		if(sys->read(fd, secret, len secret) != len secret)
 			return (nil, nil, 0, sys->sprint("error reading %s/secret: %r", id));
 	}
-	expiry := 0;
 	fd = sys->open(dbdir+"/expire", Sys->OREAD);
 	if(fd == nil)
 		return (nil, nil, 0, sys->sprint("can't open %s/expiry: %r", id));

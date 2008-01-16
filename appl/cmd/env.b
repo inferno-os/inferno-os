@@ -32,8 +32,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	readdir := load Readdir Readdir->PATH;
 	if(readdir == nil)
 		error(sys->sprint("can't load %s: %r", Readdir->PATH));
-	(a, n) := readdir->init("/env",
-			Readdir->NONE | Readdir->COMPACT | Readdir->DESCENDING);
+	(a, nil) := readdir->init("/env", Readdir->NONE | Readdir->COMPACT | Readdir->DESCENDING);
 	for(i := 0; i < len a; i++){
 		s := a[i].name+"="+env->getenv(a[i].name)+"\n";
 		b := array of byte s;

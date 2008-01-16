@@ -80,7 +80,7 @@ init(nil: ref Draw->Context, args: list of string)
 sys->print("key owner: %s\n", ai.mypk.owner);
 
 	sys->pctl(Sys->FORKNS|Sys->FORKFD, nil);
-	remid := mountsrv(ai);
+	mountsrv(ai);
 
 	# get password
 	ok: int;
@@ -224,7 +224,7 @@ netmkaddr(addr, net, svc: string): string
 {
 	if(net == nil)
 		net = "net";
-	(n, l) := sys->tokenize(addr, "!");
+	(n, nil) := sys->tokenize(addr, "!");
 	if(n <= 1){
 		if(svc== nil)
 			return sys->sprint("%s!%s", net, addr);

@@ -781,7 +781,6 @@ gettok(): int
 
 	tokname = "";
 	for(;;){
-		reserve := 0;
 		lineno += peekline;
 		peekline = 0;
 		c = finput.getc();

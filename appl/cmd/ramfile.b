@@ -52,7 +52,7 @@ init(nil: ref Draw->Context, argv: list of string)
 server(fio: ref Sys->FileIO, data: array of byte)
 {
 	for (;;) alt {
-	(offset, count, fid, rc) := <-fio.read =>
+	(offset, count, nil, rc) := <-fio.read =>
 		if (rc != nil) {
 			if (offset > len data)
 				rc <-= (nil, nil);
@@ -63,7 +63,7 @@ server(fio: ref Sys->FileIO, data: array of byte)
 				rc <-= (data[offset:end], nil);
 			}
 		}
-	(offset, d, fid, wc) := <-fio.write =>
+	(offset, d, nil, wc) := <-fio.write =>
 		if (wc != nil) {
 			if (offset == 0)
 				data = array[0] of byte;

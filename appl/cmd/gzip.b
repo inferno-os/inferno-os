@@ -145,7 +145,7 @@ gzip(nil: string, nil: int, bin, bout: ref Iobuf, fin, fout: string): int
 	if (debug)
 		param += "dv";
 	rq := deflate->start(param);
-	crc := 0;
+
 	for (;;) {
 		pick m := <-rq {
 		Fill =>

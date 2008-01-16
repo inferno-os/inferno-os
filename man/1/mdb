@@ -181,7 +181,7 @@ Prints a single byte as a printable character, converting
 it to backslash escaped hex if necessary.
 .RE
 .PD
-There are two other commands:
+Other commands include:
 .TP 10
 .RB [ ?/ ] w\ \fIvalue\fP
 Write the two-byte
@@ -192,8 +192,51 @@ to the addressed location.
 Write the four-byte
 .I value
 to the addressed location.
+.TP
+.RB [ ?/ ] i
+Disassemble
+.I count
+instructions starting at
+.I address
+.RI ( dot
+by default).
+.TP
+.BI $ modifier
+.I File
+must be a
+.IR dis (6)
+file.
+.I Modifier
+is one of the following subcommands:
+.RS
+.TP
+.PD 0
+.B D
+Print the descriptor section.
+.TP
+.B h
+Print the file header.
+.TP
+.B l
+Print the links section.
+.TP
+.B i
+Print the import section.
+.TP
+.B d
+Print the data section.
+.TP
+.B H
+Print exception handler tables.
+.TP
+.B s
+Print the name of the source file.
+.PD
+.RE
 .SH SOURCE
 .B /appl/cmd/mdb.b
+.SH SEE ALSO
+.IR dis (6)
 .SH BUGS
 Most of the more useful features of
 .IR mdb 's

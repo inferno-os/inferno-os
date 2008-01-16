@@ -11,6 +11,16 @@ include "string.m";
 include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
+include "dis.m";
+	dis: Dis;
+	Inst, Type, Data, Link, Mod: import dis;
+	XMAGIC: import Dis;
+	MUSTCOMPILE, DONTCOMPILE: import Dis;
+	AMP, AFP, AIMM, AXXX, AIND, AMASK: import Dis;
+	ARM, AXNON, AXIMM, AXINF, AXINM: import Dis;
+	DEFB, DEFW, DEFS, DEFF, DEFA, DIND, DAPOP, DEFL: import Dis;
+disfile: string;
+m: ref Mod;
 
 Mdb: module
 {
@@ -151,8 +161,28 @@ docmd(s: string)
 			writemem(2, s[2:]);
 		'W' =>
 			writemem(4, s[2:]);
+		'i' =>
+			das();
 		* =>
 			dumpmem(s[1:], cmd);
+		}
+	'$' =>
+		case s[1] {
+		'D' =>
+			desc();
+		'h' =>
+			hdr();
+		'l' =>
+			link();
+		'i' =>
+			imports();
+		'd' =>
+			dat();
+		'H' =>
+			handlers();
+		's' =>
+			if(m != nil)
+				print("%s\n", m.srcpath);
 		}
 	'=' =>
 		dumpmem(s[1:], cmd);
@@ -294,6 +324,8 @@ init(nil: ref Draw->Context, argv: list of string)
 		sys->fprint(stderr, "mdb: cannot load %s: %r\n", Bufio->PATH);
 		raise "fail:bad module";
 	}
+	dis = load Dis Dis->PATH;
+	dis->init();
 
 	if (len argv < 2)
 		usage();
@@ -321,6 +353,7 @@ init(nil: ref Draw->Context, argv: list of string)
 		sys->fprint(stderr, "mdb: cannot open %s: %r\n", fname);
 		raise "fail:cannot open";
 	}
+	(m, nil) = dis->loadobj(fname);
 
 	if(cmd != nil)
 		docmd(cmd);
@@ -332,4 +365,173 @@ init(nil: ref Draw->Context, argv: list of string)
 			docmd(s);
 		}
 	}
+}
+
+link()
+{
+	if(m == nil || m.magic == 0)
+		return;
+
+	for(i := 0; i < m.lsize; i++) {
+		l := m.links[i];
+		print("	link %d,%d, 0x%ux, \"%s\"\n",
+					l.desc, l.pc, l.sig, l.name);
+	}
+}
+
+imports()
+{
+	if(m == nil || m.magic == 0)
+		return;
+
+	mi := m.imports;
+	for(i := 0; i < len mi; i++) {
+		a := mi[i];
+		for(j := 0; j < len a; j++) {
+			ai := a[j];
+			print("	import 0x%ux, \"%s\"\n", ai.sig, ai.name);
+		}
+	}
+}
+
+handlers()
+{
+	if(m == nil || m.magic == 0)
+		return;
+
+	hs := m.handlers;
+	for(i := 0; i < len hs; i++) {
+		h := hs[i];
+		tt := -1;
+		for(j := 0; j < len m.types; j++) {
+			if(h.t == m.types[j]) {
+				tt = j;
+				break;
+			}
+		}
+		print("	%d-%d, o=%d, e=%d t=%d\n", h.pc1, h.pc2, h.eoff, h.ne, tt);
+		et := h.etab;
+		for(j = 0; j < len et; j++) {
+			e := et[j];
+			if(e.s == nil)
+				print("		%d	*\n", e.pc);
+			else
+				print("		%d	\"%s\"\n", e.pc, e.s);
+		}
+	}
+}
+
+desc()
+{
+	if(m == nil || m.magic == 0)
+		return;
+
+	for(i := 0; i < m.tsize; i++) {
+		h := m.types[i];
+		s := sprint("	desc $%d, %d, \"", i, h.size);
+		for(j := 0; j < h.np; j++)
+			s += sprint("%.2ux", int h.map[j]);
+		s += "\"\n";
+		print("%s", s);
+	}
+}
+
+hdr()
+{
+	if(m == nil || m.magic == 0)
+		return;
+	s := sprint("%.8ux Version %d Dis VM\n", m.magic, m.magic - XMAGIC + 1);
+	s += sprint("%.8ux Runtime flags %s\n", m.rt, rtflag(m.rt));
+	s += sprint("%8d bytes per stack extent\n\n", m.ssize);
+
+
+	s += sprint("%8d instructions\n", m.isize);
+	s += sprint("%8d data size\n", m.dsize);
+	s += sprint("%8d heap type descriptors\n", m.tsize);
+	s += sprint("%8d link directives\n", m.lsize);
+	s += sprint("%8d entry pc\n", m.entry);
+	s += sprint("%8d entry type descriptor\n\n", m.entryt);
+
+	if(m.sign == nil)
+		s += "Module is Insecure\n";
+	print("%s", s);
+}
+
+rtflag(flag: int): string
+{
+	if(flag == 0)
+		return "";
+
+	s := "[";
+
+	if(flag & MUSTCOMPILE)
+		s += "MustCompile";
+	if(flag & DONTCOMPILE) {
+		if(flag & MUSTCOMPILE)
+			s += "|";
+		s += "DontCompile";
+	}
+	s[len s] = ']';
+
+	return s;
+}
+
+das()
+{
+	if(m == nil || m.magic == 0)
+		return;
+
+	for(i := dot;  count-- > 0 && i < m.isize; i++) {
+		if(i % 10 == 0)
+			print("#%d\n", i);
+		print("\t%s\n", dis->inst2s(m.inst[i]));
+	}
+}
+
+dat()
+{
+	if(m == nil || m.magic == 0)
+		return;
+	print("	var @mp, %d\n", m.types[0].size);
+
+	s := "";
+	for(d := m.data; d != nil; d = tl d) {
+		pick dat := hd d {
+		Bytes =>
+			s = sprint("\tbyte @mp+%d", dat.off);
+			for(n := 0; n < dat.n; n++)
+				s += sprint(",%d", int dat.bytes[n]);
+		Words =>
+			s = sprint("\tword @mp+%d", dat.off);
+			for(n := 0; n < dat.n; n++)
+				s += sprint(",%d", dat.words[n]);
+		String =>
+			s = sprint("\tstring @mp+%d, \"%s\"", dat.off, mapstr(dat.str));
+		Reals =>
+			s = sprint("\treal @mp+%d", dat.off);
+			for(n := 0; n < dat.n; n++)
+				s += sprint(", %g", dat.reals[n]);
+			break;
+		Array =>
+			s = sprint("\tarray @mp+%d,$%d,%d", dat.off, dat.typex, dat.length);
+		Aindex =>
+			s = sprint("\tindir @mp+%d,%d", dat.off, dat.index);
+		Arestore =>
+			s = "\tapop";
+			break;
+		Bigs =>
+			s = sprint("\tlong @mp+%d", dat.off);
+			for(n := 0; n < dat.n; n++)
+				s += sprint(", %bd", dat.bigs[n]);
+		}
+		print("%s\n", s);
+	}
+}
+
+mapstr(s: string): string
+{
+	for(i := 0; i < len s; i++)
+		if(s[i] == '\n')
+			s = s[0:i] + "\\n" + s[i+1:];
+	return s;
 }

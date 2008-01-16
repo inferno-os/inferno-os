@@ -155,7 +155,7 @@ stdsym(m: ref Module)
 	}
 	if(dism != nil && (sp := dism->src(dis)) != nil){
 		sp = sp[0: len sp - 1] + "sbl";
-		(sym, err) := debug->sym(sp);
+		(sym, nil) := debug->sym(sp);
 		if (sym != nil) {
 			m.addsym(sym);
 			return;
@@ -167,7 +167,7 @@ stdsym(m: ref Module)
 			sblpath = sblpath + dis[len dispath:];
 			if (len sblpath > 4 && sblpath[len sblpath - 4:] == ".dis")
 				sblpath = sblpath[0:len sblpath - 4] + ".sbl";
-			(sym, err) := debug->sym(sblpath);
+			(sym, nil) := debug->sym(sblpath);
 			if (sym != nil) {
 				m.addsym(sym);
 				return;

@@ -113,7 +113,6 @@ mv(from,todir,toelem : string): int
 		sys->fprint(stderr, "mv: can't open %s: %r\n", fromname);
 		return -1;
 	}
-	(j,dirt):=sys->stat(toname);
 	fdt := sys->create(toname, Sys->OWRITE, dirb.mode);
 	if(fdt == nil){
 		sys->fprint(stderr, "mv: can't create %s: %r\n", toname);

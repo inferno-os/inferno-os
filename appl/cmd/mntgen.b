@@ -79,7 +79,7 @@ walk1(c: ref Fid, name: string): string
 			decref(c.path);
 		c.walk(Sys->Qid(Qroot, 0, Sys->QTDIR));
 	} else if (c.path == Qroot) {
-		(d, err) := nav.walk(c.path, name);
+		(d, nil) := nav.walk(c.path, name);
 		if (d == nil)
 			d = addentry(name);
 		else

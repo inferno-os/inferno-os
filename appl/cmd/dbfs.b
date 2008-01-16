@@ -120,7 +120,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	df := bufio->open(file, Sys->OREAD);
 	if(df == nil && empty){
-		(rc, d) := sys->stat(file);
+		(rc, nil) := sys->stat(file);
 		if(rc < 0)
 			df = bufio->create(file, Sys->OREAD, 8r600);
 	}
