@@ -2,7 +2,7 @@ implement Ftpfs;
 
 include "sys.m";
 	sys: Sys;
-	FD, Connection, Dir: import Sys;
+	FD, Dir: import Sys;
 
 include "draw.m";
 
@@ -22,6 +22,10 @@ include "string.m";
 include "styx.m";
 	styx: Styx;
 	Tmsg, Rmsg: import styx;
+
+include "dial.m";
+	dial: Dial;
+	Connection: import dial;
 
 include "factotum.m";
 
@@ -107,7 +111,7 @@ File: adt
 	createtmp:	fn(f: self ref File): ref FD;
 };
 
-ftp:		Connection;
+ftp:		ref Connection;
 dfid:			ref FD;
 dfidiob:		ref Iobuf;
 buffresidue:	int = 0;
@@ -700,7 +704,7 @@ getfullreply(echo: int): (int, int, string)
 
 getreply(echo: int): (int, string)
 {
-	(c, code, s) := getfullreply(echo);
+	(c, nil, s) := getfullreply(echo);
 	return (c, s);
 }
 
@@ -767,15 +771,15 @@ third(cmd: string): ref FD
 {
 	acquire();
 	for (;;) {
-		(n, data) := sys->dial(firewall, nil);
-		if (n < 0) {
+		data := dial->dial(firewall, nil);
+		if(data == nil) {
 			if (debug)
 				sys->print("dial %s failed: %r\n", firewall);
 			break;
 		}
 		t := sys->sprint("\n%s!*\n\n%s\n%s\n1\n-1\n-1\n", proxyhost, myhost, myname);
 		b := array of byte t;
-		n = sys->write(data.dfd, b, len b);
+		n := sys->write(data.dfd, b, len b);
 		if (n < 0) {
 			if (debug)
 				sys->print("firewall write failed: %r\n");
@@ -872,8 +876,8 @@ passive(cmd: string): ref FD
 	a := dataport(l);
 	if (debug)
 		sys->print("data dial %s\n", a);
-	(s, d) := sys->dial(a, nil);
-	if (s < 0)
+	d := dial->dial(a, nil);
+	if(d == nil)
 		return nil;
 	acquire();
 	r = sendrequest(cmd, 0);
@@ -919,14 +923,14 @@ activate(cmd: string): ref FD
 {
 	r: int;
 
-	listenport, dataport: Connection;
+	listenport, dataport: ref Connection;
 	m: string;
 
-	(r, listenport) = sys->announce("tcp!" + net + "!0");
-	if (r < 0)
+	listenport = dial->announce("tcp!" + net + "!0");
+	if(listenport == nil)
 		return nil;
 	(x1, x2)  := getnet(listenport.dir);
-	(x3, x4) := sys->tokenize(x1, ".");
+	(nil, x4) := sys->tokenize(x1, ".");
 	t := sys->sprint("PORT %s,%d,%d", commas(x4), int x2 / 256, int x2&255);
 	acquire();
 	r = sendrequest(t, 0);
@@ -948,8 +952,8 @@ activate(cmd: string): ref FD
 	release();
 	if (r != Extra)
 		return nil;
-	(r, dataport) = sys->listen(listenport);
-	if (r < 0) {
+	dataport = dial->listen(listenport);
+	if(dataport == nil) {
 		sys->fprint(stderr, "activate: listen failed: %r\n");
 		return nil;
 	}
@@ -1488,8 +1492,8 @@ init(nil: ref Draw->Context, args: list of string)
 	rv: int;
 	code: int;
 
-	if (sys == nil)
-		sys = load Sys Sys->PATH;
+	sys = load Sys Sys->PATH;
+	dial = load Dial Dial->PATH;
 	stdin = sys->fildes(0);
 	stderr = sys->fildes(2);
 
@@ -1549,8 +1553,8 @@ init(nil: ref Draw->Context, args: list of string)
 	if (proxy) {
 		if (!quiet)
 			sys->print("dial firewall service %s\n", firewall);
-		(rv, ftp) = sys->dial(firewall, nil);
-		if (rv < 0) {
+		ftp = dial->dial(firewall, nil);
+		if(ftp == nil) {
 			sys->print("dial %s failed: %r\n", firewall);
 			exit;
 		}
@@ -1593,13 +1597,13 @@ init(nil: ref Draw->Context, args: list of string)
 			sys->print("proxyhost %s\n", proxyhost);
 	} else {
 		d := "tcp!" + hostname + "!ftp";
-		(rv, ftp) = sys->dial(d, nil);
-		if (debug)
-			sys->print("localdir %s\n", ftp.dir);
-		if (rv < 0) {
+		ftp = dial->dial(d, nil);
+		if(ftp == nil) {
 			sys->print("dial %s failed: %r\n", d);
 			exit;
 		}
+		if(debug)
+			sys->print("localdir %s\n", ftp.dir);
 		dfid = ftp.dfd;
 	}
 	dfidiob = bufio->fopen(dfid, sys->OREAD);
