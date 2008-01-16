@@ -4,6 +4,7 @@
 	mdb(1) changes from Acme-sac
 	ftpfs uses new dial(2)
 	add qbypass to emu/port/qio.c
+	sed fix issue 49
 20080115
 	add blowfish to keyring (not yet documented)
 	add explicit public and private key types to keyring (in development: not yet documented)
