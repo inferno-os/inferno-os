@@ -230,3 +230,8 @@ authdial(netroot: string, dom: string): ref Sys->FD
 	(nil, conn) := sys->dial(netmkaddr(p, netroot, "ticket"), nil);
 	return conn.dfd;
 }
+
+keycheck(nil: ref Authio->Key): string
+{
+	return nil;
+}

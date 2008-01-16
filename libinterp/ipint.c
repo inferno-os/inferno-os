@@ -46,6 +46,44 @@ freeIPint(Heap *h, int swept)
 }
 
 void
+IPint_iptob64z(void *fp)
+{
+	F_IPint_iptob64 *f;
+	BigInt b;
+	char buf[MaxBigBytes];	/* TO DO: should allocate these */
+	uchar *p;
+	int n, o;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i == H)
+		error(exNilref);
+
+	b = MP(f->i);
+	n = (b->top+1)*Dbytes;
+	p = malloc(n+1);
+	if(p == nil)
+		error(exHeap);
+	n = mptobe(b, p+1, n, nil);
+	if(n < 0){
+		free(p);
+		return;
+	}
+	p[0] = 0;
+	if(n != 0 && (p[1]&0x80)){
+		/* force leading 0 byte for compatibility with older representation */
+		o = 0;
+		n++;
+	}else
+		o = 1;
+	enc64(buf, sizeof(buf), p+o, n);
+	retstr(buf, f->ret);
+	free(p);
+}
+
+void
 IPint_iptob64(void *fp)
 {
 	F_IPint_iptob64 *f;
@@ -112,21 +150,33 @@ IPint_iptostr(void *fp)
 	retstr(buf, f->ret);
 }
 
+static Keyring_IPint*
+strtoipint(String *s, int base)
+{
+	char *p, *q;
+	BigInt b;
+
+	p = string2c(s);
+	b = strtomp(p, &q, base, nil);
+	if(b == nil)
+		return H;
+	if(q == p || *q != 0){
+		mpfree(b);
+		return H;
+	}
+	return newIPint(b);
+}
+
 void
 IPint_b64toip(void *fp)
 {
 	F_IPint_b64toip *f;
-	BigInt b;
 
 	f = fp;
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->str == H)
-		error(exNilref);
-
-	b = strtomp(string2c(f->str), nil, 64, nil);
-	*f->ret = newIPint(b);
+	*f->ret = strtoipint(f->str, 64);
 }
 
 void
@@ -167,17 +217,12 @@ void
 IPint_strtoip(void *fp)
 {
 	F_IPint_strtoip *f;
-	BigInt b;
 
 	f = fp;
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->str == H)
-		return;
-
-	b = strtomp(string2c(f->str), nil, f->base, nil);
-	*f->ret = newIPint(b);
+	*f->ret = strtoipint(f->str, f->base);
 }
 
 /* create a random integer */
@@ -382,6 +427,27 @@ IPint_div(void *fp)
 
 	f->ret->t0 = newIPint(quo);
 	f->ret->t1 = newIPint(rem);
+}
+void
+IPint_mod(void *fp)
+{
+	F_IPint_mod *f;
+	BigInt i1, i2, ret;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->i1 == H || f->i2 == H)
+		error(exNilref);
+
+	i1 = ((IPint*)f->i1)->b;
+	i2 = ((IPint*)f->i2)->b;
+	ret = mpnew(0);
+	if(ret != nil)
+		mpmod(i1, i2, ret);
+
+	*f->ret = newIPint(ret);
 }
 void
 IPint_neg(void *fp)
@@ -669,6 +735,7 @@ if(0)print("1");
 
 	two = itomp(2, nil);
 	if(mpcmp(diff, two) < 0){
+		mpfree(one);
 		mpfree(two);
 		itomp(0, result);
 		return;

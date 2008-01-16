@@ -306,3 +306,123 @@ getuserpasswd(keyspec: string): (string, string)
 	}
 	return (hd flds, hd tl flds);
 }
+
+parseattrs(s: string): list of ref Attr
+{
+	str := load String String->PATH;
+	fld := str->unquoted(s);
+	rfld := fld;
+	for(fld = nil; rfld != nil; rfld = tl rfld)
+		fld = (hd rfld) :: fld;
+	attrs: list of ref Attr;
+	for(; fld != nil; fld = tl fld){
+		n := hd fld;
+		a := "";
+		tag := Aattr;
+		for(i:=0; i<len n; i++)
+			if(n[i] == '='){
+				a = n[i+1:];
+				n = n[0:i];
+				tag = Aval;
+			}
+		if(len n == 0)
+			continue;
+		if(tag == Aattr && len n > 1 && n[len n-1] == '?'){
+			tag = Aquery;
+			n = n[0:len n-1];
+		}
+		attrs = ref Attr(tag, n, a) :: attrs;
+	}
+	# TO DO: eliminate answered queries
+	return attrs;
+}
+
+Attr.text(a: self ref Attr): string
+{
+	case a.tag {
+	Aattr =>
+		return a.name;
+	Aval =>
+		return sys->sprint("%q=%q", a.name, a.val);
+	Aquery =>
+		return sys->sprint("%q?", a.name);
+	* =>
+		return "??";
+	}
+}
+
+attrtext(attrs: list of ref Attr): string
+{
+	s := "";
+	for(; attrs != nil; attrs = tl attrs){
+		if(s != nil)
+			s[len s] = ' ';
+		s += (hd attrs).text();
+	}
+	return s;
+}
+
+findattr(attrs: list of ref Attr, n: string): ref Attr
+{
+	for(; attrs != nil; attrs = tl attrs)
+		if((a := hd attrs).tag != Aquery && a.name == n)
+			return a;
+	return nil;
+}
+
+findattrval(attrs: list of ref Attr, n: string): string
+{
+	if((a := findattr(attrs, n)) != nil)
+		return a.val;
+	return nil;
+}
+
+delattr(l: list of ref Attr, n: string): list of ref Attr
+{
+	rl: list of ref Attr;
+	for(; l != nil; l = tl l)
+		if((hd l).name != n)
+			rl = hd l :: rl;
+	return rev(rl);
+}
+
+copyattrs(l: list of ref Attr): list of ref Attr
+{
+	rl: list of ref Attr;
+	for(; l != nil; l = tl l)
+		rl = hd l :: rl;
+	return rev(rl);
+}
+
+takeattrs(l: list of ref Attr, names: list of string): list of ref Attr
+{
+	rl: list of ref Attr;
+	for(; l != nil; l = tl l){
+		n := (hd l).name;
+		for(nl := names; nl != nil; nl = tl nl)
+			if((hd nl) == n){
+				rl = hd l :: rl;
+				break;
+			}
+	}
+	return rev(rl);
+}
+
+publicattrs(l: list of ref Attr): list of ref Attr
+{
+	rl: list of ref Attr;
+	for(; l != nil; l = tl l){
+		a := hd l;
+		if(a.tag != Aquery || a.val == nil)
+			rl = a :: rl;
+	}
+	return rev(rl);
+}
+
+rev[T](l: list of T): list of T
+{
+	rl: list of T;
+	for(; l != nil; l = tl l)
+		rl = hd l :: rl;
+	return rl;
+}

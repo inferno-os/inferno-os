@@ -31,7 +31,17 @@ typedef struct Keyring_AESstate Keyring_AESstate;
 typedef struct Keyring_DESstate Keyring_DESstate;
 typedef struct Keyring_IDEAstate Keyring_IDEAstate;
 typedef struct Keyring_RC4state Keyring_RC4state;
+typedef struct Keyring_BFstate Keyring_BFstate;
 typedef struct Keyring_Authinfo Keyring_Authinfo;
+typedef struct Keyring_RSApk Keyring_RSApk;
+typedef struct Keyring_RSAsk Keyring_RSAsk;
+typedef struct Keyring_RSAsig Keyring_RSAsig;
+typedef struct Keyring_DSApk Keyring_DSApk;
+typedef struct Keyring_DSAsk Keyring_DSAsk;
+typedef struct Keyring_DSAsig Keyring_DSAsig;
+typedef struct Keyring_EGpk Keyring_EGpk;
+typedef struct Keyring_EGsk Keyring_EGsk;
+typedef struct Keyring_EGsig Keyring_EGsig;
 typedef struct Loader_Inst Loader_Inst;
 typedef struct Loader_Typedesc Loader_Typedesc;
 typedef struct Loader_Link Loader_Link;
@@ -337,6 +347,12 @@ struct Keyring_RC4state
 };
 #define Keyring_RC4state_size 4
 #define Keyring_RC4state_map {0}
+struct Keyring_BFstate
+{
+	WORD	x;
+};
+#define Keyring_BFstate_size 4
+#define Keyring_BFstate_map {0}
 struct Keyring_Authinfo
 {
 	Keyring_SK*	mysk;
@@ -348,6 +364,76 @@ struct Keyring_Authinfo
 };
 #define Keyring_Authinfo_size 24
 #define Keyring_Authinfo_map {0xfc,}
+struct Keyring_RSApk
+{
+	Keyring_IPint*	n;
+	Keyring_IPint*	ek;
+};
+#define Keyring_RSApk_size 8
+#define Keyring_RSApk_map {0xc0,}
+struct Keyring_RSAsk
+{
+	Keyring_RSApk*	pk;
+	Keyring_IPint*	dk;
+	Keyring_IPint*	p;
+	Keyring_IPint*	q;
+	Keyring_IPint*	kp;
+	Keyring_IPint*	kq;
+	Keyring_IPint*	c2;
+};
+#define Keyring_RSAsk_size 28
+#define Keyring_RSAsk_map {0xfe,}
+struct Keyring_RSAsig
+{
+	Keyring_IPint*	n;
+};
+#define Keyring_RSAsig_size 4
+#define Keyring_RSAsig_map {0x80,}
+struct Keyring_DSApk
+{
+	Keyring_IPint*	p;
+	Keyring_IPint*	q;
+	Keyring_IPint*	alpha;
+	Keyring_IPint*	key;
+};
+#define Keyring_DSApk_size 16
+#define Keyring_DSApk_map {0xf0,}
+struct Keyring_DSAsk
+{
+	Keyring_DSApk*	pk;
+	Keyring_IPint*	secret;
+};
+#define Keyring_DSAsk_size 8
+#define Keyring_DSAsk_map {0xc0,}
+struct Keyring_DSAsig
+{
+	Keyring_IPint*	r;
+	Keyring_IPint*	s;
+};
+#define Keyring_DSAsig_size 8
+#define Keyring_DSAsig_map {0xc0,}
+struct Keyring_EGpk
+{
+	Keyring_IPint*	p;
+	Keyring_IPint*	alpha;
+	Keyring_IPint*	key;
+};
+#define Keyring_EGpk_size 12
+#define Keyring_EGpk_map {0xe0,}
+struct Keyring_EGsk
+{
+	Keyring_EGpk*	pk;
+	Keyring_IPint*	secret;
+};
+#define Keyring_EGsk_size 8
+#define Keyring_EGsk_map {0xc0,}
+struct Keyring_EGsig
+{
+	Keyring_IPint*	r;
+	Keyring_IPint*	s;
+};
+#define Keyring_EGsig_size 8
+#define Keyring_EGsig_map {0xc0,}
 struct Loader_Inst
 {
 	BYTE	op;
@@ -3135,6 +3221,28 @@ struct F_IPint_bits
 	uchar	temps[12];
 	Keyring_IPint*	i;
 };
+void Keyring_blowfishcbc(void*);
+typedef struct F_Keyring_blowfishcbc F_Keyring_blowfishcbc;
+struct F_Keyring_blowfishcbc
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Keyring_BFstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Keyring_blowfishsetup(void*);
+typedef struct F_Keyring_blowfishsetup F_Keyring_blowfishsetup;
+struct F_Keyring_blowfishsetup
+{
+	WORD	regs[NREG-1];
+	Keyring_BFstate**	ret;
+	uchar	temps[12];
+	Array*	key;
+	Array*	ivec;
+};
 void IPint_bytestoip(void*);
 typedef struct F_IPint_bytestoip F_IPint_bytestoip;
 struct F_IPint_bytestoip
@@ -3190,6 +3298,16 @@ struct F_DigestState_copy
 	uchar	temps[12];
 	Keyring_DigestState*	d;
 };
+void RSAsk_decrypt(void*);
+typedef struct F_RSAsk_decrypt F_RSAsk_decrypt;
+struct F_RSAsk_decrypt
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_RSAsk*	k;
+	Keyring_IPint*	m;
+};
 void Keyring_descbc(void*);
 typedef struct F_Keyring_descbc F_Keyring_descbc;
 struct F_Keyring_descbc
@@ -3243,6 +3361,16 @@ struct F_IPint_div
 	Keyring_IPint*	i1;
 	Keyring_IPint*	i2;
 };
+void RSApk_encrypt(void*);
+typedef struct F_RSApk_encrypt F_RSApk_encrypt;
+struct F_RSApk_encrypt
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_RSApk*	k;
+	Keyring_IPint*	m;
+};
 void IPint_eq(void*);
 typedef struct F_IPint_eq F_IPint_eq;
 struct F_IPint_eq
@@ -3263,6 +3391,49 @@ struct F_IPint_expmod
 	Keyring_IPint*	base;
 	Keyring_IPint*	exp;
 	Keyring_IPint*	mod;
+};
+void RSAsk_fill(void*);
+typedef struct F_RSAsk_fill F_RSAsk_fill;
+struct F_RSAsk_fill
+{
+	WORD	regs[NREG-1];
+	Keyring_RSAsk**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	n;
+	Keyring_IPint*	e;
+	Keyring_IPint*	d;
+	Keyring_IPint*	p;
+	Keyring_IPint*	q;
+};
+void RSAsk_gen(void*);
+typedef struct F_RSAsk_gen F_RSAsk_gen;
+struct F_RSAsk_gen
+{
+	WORD	regs[NREG-1];
+	Keyring_RSAsk**	ret;
+	uchar	temps[12];
+	WORD	nlen;
+	WORD	elen;
+	WORD	nrep;
+};
+void DSAsk_gen(void*);
+typedef struct F_DSAsk_gen F_DSAsk_gen;
+struct F_DSAsk_gen
+{
+	WORD	regs[NREG-1];
+	Keyring_DSAsk**	ret;
+	uchar	temps[12];
+	Keyring_DSApk*	oldpk;
+};
+void EGsk_gen(void*);
+typedef struct F_EGsk_gen F_EGsk_gen;
+struct F_EGsk_gen
+{
+	WORD	regs[NREG-1];
+	Keyring_EGsk**	ret;
+	uchar	temps[12];
+	WORD	nlen;
+	WORD	nrep;
 };
 void Keyring_genSK(void*);
 typedef struct F_Keyring_genSK F_Keyring_genSK;
@@ -3400,6 +3571,15 @@ struct F_IPint_iptob64
 	uchar	temps[12];
 	Keyring_IPint*	i;
 };
+void IPint_iptob64z(void*);
+typedef struct F_IPint_iptob64z F_IPint_iptob64z;
+struct F_IPint_iptob64z
+{
+	WORD	regs[NREG-1];
+	String**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i;
+};
 void IPint_iptobebytes(void*);
 typedef struct F_IPint_iptobebytes F_IPint_iptobebytes;
 struct F_IPint_iptobebytes
@@ -3460,6 +3640,16 @@ struct F_Keyring_md5
 	WORD	n;
 	Array*	digest;
 	Keyring_DigestState*	state;
+};
+void IPint_mod(void*);
+typedef struct F_IPint_mod F_IPint_mod;
+struct F_IPint_mod
+{
+	WORD	regs[NREG-1];
+	Keyring_IPint**	ret;
+	uchar	temps[12];
+	Keyring_IPint*	i1;
+	Keyring_IPint*	i2;
 };
 void IPint_mul(void*);
 typedef struct F_IPint_mul F_IPint_mul;
@@ -3672,6 +3862,36 @@ struct F_Keyring_sign
 	Keyring_DigestState*	state;
 	String*	ha;
 };
+void RSAsk_sign(void*);
+typedef struct F_RSAsk_sign F_RSAsk_sign;
+struct F_RSAsk_sign
+{
+	WORD	regs[NREG-1];
+	Keyring_RSAsig**	ret;
+	uchar	temps[12];
+	Keyring_RSAsk*	k;
+	Keyring_IPint*	m;
+};
+void DSAsk_sign(void*);
+typedef struct F_DSAsk_sign F_DSAsk_sign;
+struct F_DSAsk_sign
+{
+	WORD	regs[NREG-1];
+	Keyring_DSAsig**	ret;
+	uchar	temps[12];
+	Keyring_DSAsk*	k;
+	Keyring_IPint*	m;
+};
+void EGsk_sign(void*);
+typedef struct F_EGsk_sign F_EGsk_sign;
+struct F_EGsk_sign
+{
+	WORD	regs[NREG-1];
+	Keyring_EGsig**	ret;
+	uchar	temps[12];
+	Keyring_EGsk*	k;
+	Keyring_IPint*	m;
+};
 void Keyring_signm(void*);
 typedef struct F_Keyring_signm F_Keyring_signm;
 struct F_Keyring_signm
@@ -3768,6 +3988,39 @@ struct F_Keyring_verify
 	Keyring_Certificate*	cert;
 	Keyring_DigestState*	state;
 };
+void RSApk_verify(void*);
+typedef struct F_RSApk_verify F_RSApk_verify;
+struct F_RSApk_verify
+{
+	WORD	regs[NREG-1];
+	WORD*	ret;
+	uchar	temps[12];
+	Keyring_RSApk*	k;
+	Keyring_RSAsig*	sig;
+	Keyring_IPint*	m;
+};
+void DSApk_verify(void*);
+typedef struct F_DSApk_verify F_DSApk_verify;
+struct F_DSApk_verify
+{
+	WORD	regs[NREG-1];
+	WORD*	ret;
+	uchar	temps[12];
+	Keyring_DSApk*	k;
+	Keyring_DSAsig*	sig;
+	Keyring_IPint*	m;
+};
+void EGpk_verify(void*);
+typedef struct F_EGpk_verify F_EGpk_verify;
+struct F_EGpk_verify
+{
+	WORD	regs[NREG-1];
+	WORD*	ret;
+	uchar	temps[12];
+	Keyring_EGpk*	k;
+	Keyring_EGsig*	sig;
+	Keyring_IPint*	m;
+};
 void Keyring_verifym(void*);
 typedef struct F_Keyring_verifym F_Keyring_verifym;
 struct F_Keyring_verifym
@@ -3800,21 +4053,15 @@ struct F_IPint_xor
 	Keyring_IPint*	i2;
 };
 #define Keyring_PATH "$Keyring"
+#define Keyring_SHA1dlen 20
+#define Keyring_MD5dlen 16
+#define Keyring_MD4dlen 16
 #define Keyring_Encrypt 0
 #define Keyring_Decrypt 1
 #define Keyring_AESbsize 16
 #define Keyring_DESbsize 8
 #define Keyring_IDEAbsize 8
-#define Keyring_DEScbc 0
-#define Keyring_DESecb 1
-#define Keyring_SHA1 2
-#define Keyring_MD5 3
-#define Keyring_MD4 4
-#define Keyring_IDEAcbc 5
-#define Keyring_IDEAecb 6
-#define Keyring_SHA1dlen 20
-#define Keyring_MD5dlen 16
-#define Keyring_MD4dlen 16
+#define Keyring_BFbsize 8
 void Loader_compile(void*);
 typedef struct F_Loader_compile F_Loader_compile;
 struct F_Loader_compile

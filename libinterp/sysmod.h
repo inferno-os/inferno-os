@@ -30,6 +30,7 @@ Runtab Sysmodtab[]={
 	"print",0xac849033,Sys_print,0,0,{0},
 	"pwrite",0x9d8aac6,Sys_pwrite,56,2,{0x0,0xc0,},
 	"read",0x7cfef557,Sys_read,48,2,{0x0,0xc0,},
+	"readn",0x7cfef557,Sys_readn,48,2,{0x0,0xc0,},
 	"remove",0xc6935858,Sys_remove,40,2,{0x0,0x80,},
 	"seek",0xaeccaddb,Sys_seek,56,2,{0x0,0x80,},
 	"sleep",0xe67bf126,Sys_sleep,40,0,{0},
@@ -44,4 +45,4 @@ Runtab Sysmodtab[]={
 	"wstat",0x56b02096,Sys_wstat,104,2,{0x0,0xbc,},
 	0
 };
-#define Sysmodlen	42
+#define Sysmodlen	43

@@ -58,7 +58,7 @@ rpc(f: ref Sys->FD, addr: string)
 	b := array of byte addr;
 	if(sys->write(f, b, len b) > 0){
 		sys->seek(f, big 0, Sys->SEEKSTART);
-		buf := array[256] of byte;
+		buf := array[4096+3] of byte;
 		if((n := sys->read(f, buf, len buf)) > 0)
 			sys->print("%s\n", string buf[0:n]);
 		if(n >= 0)

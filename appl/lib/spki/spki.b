@@ -629,7 +629,7 @@ signbytes(data: array of byte, sigalg: string, key: ref Key): (ref Signature, st
 	l: list of (string, array of byte);
 	for(; vals != nil; vals = tl vals){
 		(n, v) := hd vals;
-		l = (f2s(n), v) :: l;
+		l = (f2s("rsa", n), v) :: l;
 	}
 	sig.sig = revt(l);
 	return (sig, nil);
@@ -1095,7 +1095,7 @@ Key.sexp(k: self ref Key): ref Sexp
 	for(; els != nil; els = tl els){
 		(n, v) := hd els;
 		a := pre0(v.iptobebytes());
-		rl = ref Sexp.List(ref Sexp.String(f2s(n),nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
+		rl = ref Sexp.List(ref Sexp.String(f2s("rsa", n),nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
 	}
 	return ref Sexp.List(ref Sexp.String(sort, nil) ::
 		ref Sexp.List(ref Sexp.String(k.sigalg(),nil) :: rev(rl)) :: nil);
@@ -2093,9 +2093,12 @@ Keyrep.pk(pk: ref Keyring->PK): ref Keyrep.PK
 	"rsa" =>
 		return ref Keyrep.PK(hd flds, hd tl flds,
 			keyextract(tl tl flds, list of {("ek",1), ("n",0)}));
-	"elgamal" or "dsa" =>
+	"elgamal" =>
 		return ref Keyrep.PK(hd flds, hd tl flds,
 			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2)}));
+	"dsa" =>
+		return ref Keyrep.PK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",2), ("q",1), ("key",3)}));
 	* =>
 		return nil;
 	}
@@ -2112,9 +2115,12 @@ Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 	"rsa" =>
 		return ref Keyrep.SK(hd flds, hd tl flds,
 			keyextract(tl tl flds,list of {("ek",1), ("n",0), ("!dk",2), ("!q",4), ("!p",3), ("!kq",6), ("!kp",5), ("!c2",7)}));	# see comment elsewhere about p, q
-	"elgamal" or "dsa" =>
+	"elgamal" =>
 		return ref Keyrep.SK(hd flds, hd tl flds,
 			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2), ("!secret",3)}));
+	"dsa" =>
+		return ref Keyrep.SK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",2), ("q",1), ("key",3), ("!secret",4)}));
 	* =>
 		return nil;
 	}
@@ -2122,7 +2128,7 @@ Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 
 Keyrep.get(k: self ref Keyrep, n: string): ref IPint
 {
-	n1 := f2s(n);
+	n1 := f2s("rsa", n);
 	for(el := k.els; el != nil; el = tl el)
 		if((hd el).t0 == n || (hd el).t0 == n1)
 			return (hd el).t1;
@@ -2191,21 +2197,31 @@ s2f(s: string): string
 	}
 }
 
-f2s(s: string): string
+f2s(alg: string, s: string): string
 {
-	case s {
-	"ek" =>	return "e";
-	"!p" =>	return "q";	# see above
-	"!q" =>	return "p";
-	"!dk" =>	return "d";
-	"!kp" =>	return "b";
-	"!kq" =>	return "a";
-	"!c2" =>	return "c";
+	case alg {
+	"rsa" =>
+		case s {
+		"ek" =>	return "e";
+		"!p" =>	return "q";	# see above
+		"!q" =>	return "p";
+		"!dk" =>	return "d";
+		"!kp" =>	return "b";
+		"!kq" =>	return "a";
+		"!c2" =>	return "c";
+		}
+	"dsa" =>
+		case s {
+		"p" or "q" =>	return s;
+		"alpha" =>	return "g";
+		"key" =>	return "y";
+		}
 	* =>
-		if(s != nil && s[0] == '!')
-			return s[1:];
-		return s;
+		;
 	}
+	if(s != nil && s[0] == '!')
+		return s[1:];
+	return s;
 }
 
 Keyrep.eq(k1: self ref Keyrep, k2: ref Keyrep): int

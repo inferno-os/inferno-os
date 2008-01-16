@@ -47,12 +47,15 @@ Authio: module
 		rpc:	ref Rpc;
 
 		findkey:	fn(io: self ref IO, attrs: list of ref Attr, extra: string): (ref Key, string);
+		findkeys:	fn(io: self ref IO, attrs: list of ref Attr, extra: string): (list of ref Key, string);
 		needkey:	fn(io: self ref IO, attrs: list of ref Attr, extra: string): (ref Key, string);
 		read:	fn(io: self ref IO): array of byte;
 		readn:	fn(io: self ref IO, n: int): array of byte;
 		write:	fn(io: self ref IO, buf: array of byte, n: int): int;
 		toosmall:	fn(io: self ref IO, n: int);
 		error:	fn(io: self ref IO, s: string);
+		rdwr:	fn(io: self ref IO): array of byte;
+		reply2read:	fn(io: self ref IO, a: array of byte, n: int): int;
 		ok:	fn(io: self ref IO);
 		done:	fn(io: self ref IO, ai: ref Authinfo);
 	};
@@ -71,10 +74,12 @@ Authio: module
 	user:	fn(): string;
 	lookattrval:	fn(a: list of ref Attr, n: string): string;
 	parseline:	fn(s: string): list of ref Attr;
+	attrtext:	fn(a: list of ref Attr): string;
 };
 
 Authproto: module
 {
 	init:	fn(f: Authio): string;
 	interaction:	fn(attrs: list of ref Authio->Attr, io: ref Authio->IO): string;
+	keycheck:	fn(k: ref Authio->Key): string;
 };

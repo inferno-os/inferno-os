@@ -382,3 +382,8 @@ sl(l: list of ref Sexp): ref Sexp
 {
 	return ref Sexp.List(l);
 }
+
+keycheck(nil: ref Authio->Key): string
+{
+	return nil;
+}

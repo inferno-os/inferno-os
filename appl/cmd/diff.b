@@ -203,7 +203,6 @@ init(nil: ref Draw->Context, args: list of string)
 sort(a : array of line, n : int)
 {
 	w : line;
-	j1:=0;
 	m := 0;
 	for (i := 1; i <= n; i *= 2)
 		m = 2*i - 1;
@@ -791,12 +790,9 @@ statfile(file : string) : (string,Sys->Dir)
 {
 	(ret,sb):=sys->stat(file);
 	if (ret==-1) {
-		if (file == "-") {
-			 (ret,sb)= sys->fstat(sys->fildes(0));
-			if (ret == -1) {
-				error(sys->sprint("cannot stat %s: %r", file));
-				return (nil,sb);
-			}
+		if (file != "-" || sys->fstat(sys->fildes(0)).t0 == -1){
+			error(sys->sprint("cannot stat %s: %r", file));
+			return (nil,sb);
 		}
 		(file, sb) = mktmpfile(sys->fildes(0));
 	}

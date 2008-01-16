@@ -1867,8 +1867,10 @@ secsdstat(SECURITY_DESCRIPTOR *sd, Stat *st, Rune *srv)
 		gsid = osid;
 
 	owner = sidtouser(srv, osid);
+	if(owner == nil)
+		return 0;
 	group = sidtouser(srv, gsid);
-	if(owner == 0 || group == 0)
+	if(group == nil)
 		return 0;
 
 	/* no acl means full access */
@@ -2065,7 +2067,7 @@ sidtouser(Rune *srv, SID *s)
 	ndname = sizeof(dname);
 
 	if(!LookupAccountSidW(srv, s, aname, &naname, dname, &ndname, &type))
-		return nil;
+		return mkuser(s, SidTypeUnknown, L"unknown", L"unknown") ;	/* was return nil; */
 	return mkuser(s, type, aname, dname);
 }
 

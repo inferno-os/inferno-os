@@ -33,4 +33,23 @@ Factotum: module
 
 	dump:	fn(a: array of byte): string;
 	setdebug:	fn(i: int);
+
+	Aattr, Aval, Aquery: con iota;
+
+	Attr: adt {
+		tag:	int;
+		name:	string;
+		val:	string;
+
+		text:	fn(a: self ref Attr): string;
+	};
+
+	parseattrs:	fn(s: string): list of ref Attr;
+	copyattrs:		fn(l: list of ref Attr): list of ref Attr;
+	delattr:	fn(l: list of ref Attr, n: string): list of ref Attr;
+	takeattrs:	fn(l: list of ref Attr, names: list of string): list of ref Attr;
+	findattr:	fn(l: list of ref Attr, n: string): ref Attr;
+	findattrval:	fn(l: list of ref Attr, n: string): string;
+	publicattrs:	fn(l: list of ref Attr): list of ref Attr;
+	attrtext:	fn(l: list of ref Attr): string;
 };

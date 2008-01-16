@@ -27,3 +27,8 @@ interaction(attrs: list of ref Attr, io: ref Authio->IO): string
 	io.write(a, len a);
 	return nil;
 }
+
+keycheck(nil: ref Authio->Key): string
+{
+	return nil;
+}

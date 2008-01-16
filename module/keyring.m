@@ -12,6 +12,7 @@ Keyring: module
 
 		# conversions
 		iptob64:	fn(i: self ref IPint): string;
+		iptob64z:	fn(i: self ref IPint): string;
 		b64toip:	fn(str: string): ref IPint;
 		iptobytes:	fn(i: self ref IPint): array of byte;
 		iptobebytes:	fn(i: self ref IPint): array of byte;
@@ -34,6 +35,7 @@ Keyring: module
 		neg:		fn(i: self ref IPint): ref IPint;
 		mul:		fn(i1: self ref IPint, i2: ref IPint): ref IPint;
 		div:		fn(i1: self ref IPint, i2: ref IPint): (ref IPint, ref IPint);
+		mod:	fn(i1: self ref IPint, i2: ref IPint): ref IPint;
 		eq:		fn(i1: self ref IPint, i2: ref IPint): int;
 		cmp:		fn(i1: self ref IPint, i2: ref IPint): int;
 		copy:	fn(i: self ref IPint): ref IPint;
@@ -119,6 +121,13 @@ Keyring: module
 		# all the state is hidden
 	};
 
+	# expanded Blowfish key + state for chaining
+	BFstate: adt
+	{
+		x:	int;		# dummy for C compiler for runt.h
+		# all the state is hidden
+	};
+
 	# authentication info
 	Authinfo: adt
 	{
@@ -178,6 +187,10 @@ Keyring: module
 	hmac_md5: fn(data: array of byte, n: int, key: array of byte, digest: array of byte, state: ref DigestState):
 		ref DigestState;
 
+	SHA1dlen: con 20;
+	MD5dlen:	con 16;
+	MD4dlen:	con 16;
+
 	# encryption interfaces
 	Encrypt:	con 0;
 	Decrypt:	con 1;
@@ -198,6 +211,12 @@ Keyring: module
 	ideasetup: fn(key: array of byte, ivec: array of byte): ref IDEAstate;
 	ideaecb: fn(state: ref IDEAstate, buf: array of byte, n: int, direction: int);
 	ideacbc: fn(state: ref IDEAstate, buf: array of byte, n: int, direction: int);
+
+	BFbsize: con 8;
+
+	blowfishsetup: fn(key: array of byte, ivec: array of byte): ref BFstate;
+#	blowfishecb: fn(state: ref BFstate, buf: array of byte, n: int, direction: int);
+	blowfishcbc: fn(state: ref BFstate, buf: array of byte, n: int, direction: int);
 
 	rc4setup:	fn(seed: array of byte): ref RC4state;
 	rc4:	fn(state: ref RC4state, buf: array of byte, n: int);
@@ -229,16 +248,76 @@ Keyring: module
 	sendmsg: fn(fd: ref Sys->FD, buf: array of byte, n: int): int;
 	senderrmsg: fn(fd: ref Sys->FD, s: string): int;
 
-	# algorithms
-	DEScbc:		con 0;
-	DESecb:		con 1;
-	SHA1:			con 2;
-	MD5:		con 3;
-	MD4:		con 4;
-	IDEAcbc:		con 5;
-	IDEAecb:		con 6;
+	RSApk: adt {
+		n:	ref IPint;		# modulus
+		ek:	ref IPint;		# exp (encryption key)
 
-	SHA1dlen: con 20;
-	MD5dlen:	con 16;
-	MD4dlen:	con 16;
+		encrypt:	fn(k: self ref RSApk, m: ref IPint): ref IPint;
+		verify:	fn(k: self ref RSApk, sig: ref RSAsig, m: ref IPint): int;
+	};
+
+	RSAsk: adt {
+		pk:	ref RSApk;
+		dk:	ref IPint;		# exp (decryption key)
+		p:	ref IPint;		# q in pkcs
+		q:	ref IPint;		# p in pkcs
+
+		# precomputed crt values
+		kp:	ref IPint;		# k mod p-1
+		kq:	ref IPint;		# k mod q-1
+		c2:	ref IPint;		# for converting residues to number
+
+		gen:	fn(nlen: int, elen: int, nrep: int): ref RSAsk;
+		fill:	fn(n: ref IPint, e: ref IPint, d: ref IPint, p: ref IPint, q: ref IPint): ref RSAsk;
+		decrypt:	fn(k: self ref RSAsk, m: ref IPint): ref IPint;
+		sign:	fn(k: self ref RSAsk, m: ref IPint): ref RSAsig;
+	};
+
+	RSAsig: adt {
+		n:	ref IPint;
+	};
+
+	DSApk: adt {
+		p:	ref IPint;	# modulus
+		q:	ref IPint;	# group order, q divides p-1
+		alpha: ref IPint;	# group generator
+		key:	ref IPint;	# encryption key (alpha**secret mod p)
+
+		verify:	fn(k: self ref DSApk, sig: ref DSAsig, m: ref IPint): int;
+	};
+
+	DSAsk: adt {
+		pk:	ref DSApk;
+		secret:	ref IPint;	# decryption key
+
+		gen:	fn(oldpk: ref DSApk): ref DSAsk;
+		sign:	fn(k: self ref DSAsk, m: ref IPint): ref DSAsig;
+	};
+
+	DSAsig: adt {
+		r:	ref IPint;
+		s:	ref IPint;
+	};
+
+	EGpk: adt {
+		p:	ref IPint;		# modulus
+		alpha: ref IPint;		# generator
+		key:	ref IPint;		# encryption key (alpha**secret mod p)
+
+		verify:	fn(k: self ref EGpk, sig: ref EGsig, m: ref IPint): int;
+	};
+
+	EGsk: adt {
+		pk:	ref EGpk;
+		secret:	ref IPint;	# decryption key
+
+		gen:	fn(nlen: int, nrep: int): ref EGsk;
+		sign:	fn(k: self ref EGsk, m: ref IPint): ref EGsig;
+	};
+
+	EGsig: adt {
+		r:	ref IPint;
+		s:	ref IPint;
+	};
+
 };

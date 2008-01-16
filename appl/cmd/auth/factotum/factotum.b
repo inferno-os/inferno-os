@@ -19,6 +19,8 @@ include "authio.m";
 
 include "arg.m";
 
+include "readdir.m";
+
 Factotum: module
 {
 	init:	fn(nil: ref Draw->Context, nil: list of string);
@@ -39,7 +41,7 @@ debug := Debug;
 files: Files;
 authio: Authio;
 
-keymanc: chan of (list of ref Attr, int, chan of (ref Key, string));
+keymanc: chan of (list of ref Attr, int, chan of (list of ref Key, string));
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -55,7 +57,7 @@ init(nil: ref Draw->Context, args: list of string)
 		arg->setusage("auth/factotum [-d] [-m /mnt/factotum] [-s factotum]");
 		while((o := arg->opt()) != 0)
 			case o {
-			'd' =>	debug = 1;
+			'd' =>	debug++;
 			'm' =>	mntpt = arg->earg();
 			's' =>		svcname = "#s"+arg->earg();
 			* =>	arg->usage();
@@ -74,7 +76,7 @@ init(nil: ref Draw->Context, args: list of string)
 	files.needkey = sys->file2chan(mntpt, "needkey");
 	if(files.ctl == nil || files.rpc == nil || files.proto == nil || files.needkey == nil)
 		err(sys->sprint("can't create %s/*: %r", mntpt));
-	keymanc = chan of (list of ref Attr, int, chan of (ref Key, string));
+	keymanc = chan of (list of ref Attr, int, chan of (list of ref Key, string));
 	spawn factotumsrv();
 }
 
@@ -101,14 +103,14 @@ rlist: list of ref Fid;
 factotumsrv()
 {
 	sys->pctl(Sys->NEWPGRP|Sys->FORKFD|Sys->FORKENV, nil);
-	if(!Debug)
+	if(debug == 0)
 		privacy();
 	allkeys := array[0] of ref Key;
 	pidc := chan of int;
 	donec := chan of ref Fid;
 #	keyc := chan of (list of ref Attr, chan of (ref Key, string));
 	needfid := -1;
-	needed, needy: list of (int, list of ref Attr, chan of (ref Key, string));
+	needed, needy: list of (int, list of ref Attr, chan of (list of ref Key, string));
 	needread: Sys->Rread;
 	needtag := 0;
 	for(;;) X: alt{
@@ -216,7 +218,7 @@ factotumsrv()
 	(off, nbytes, nil, rc) := <-files.proto.read =>
 		if(rc == nil)
 			break;
-		rc <-= reads("pass\np9any\n", off, nbytes);	# TO DO
+		rc <-= reads(readprotos(), off, nbytes);
 	(nil, nil, nil, wc) := <-files.proto.write =>
 		if(wc != nil)
 			wc <-= (0, "illegal operation");
@@ -260,7 +262,7 @@ factotumsrv()
 			break;
 		}
 		tag := int t;
-		nl: list of (int, list of ref Attr, chan of (ref Key, string));
+		nl: list of (int, list of ref Attr, chan of (list of ref Key, string));
 		found := 0;
 		for(l := needed; l != nil; l = tl l){
 			(ntag, attrs, kc) := hd l;
@@ -268,7 +270,7 @@ factotumsrv()
 				found = 1;
 				k := findkey(allkeys, attrs);
 				if(k != nil)
-					kc <-= (k, nil);
+					kc <-= (k :: nil, nil);
 				else
 					kc <-= (nil, "needkey "+attrtext(attrs));
 				while((l = tl l) != nil)
@@ -284,9 +286,9 @@ factotumsrv()
 
 	(attrs, required, kc) := <-keymanc =>
 		# look for key and reply
-		k := findkey(allkeys, attrs);
-		if(k != nil){
-			kc <-= (k, nil);
+		kl := findkeys(allkeys, attrs);
+		if(kl != nil){
+			kc <-= (kl, nil);
 			break;
 		}else if(!required || needfid == -1){
 			kc <-= (nil, "needkey "+attrtext(attrs));
@@ -353,6 +355,21 @@ reads(str: string, off, nbytes: int): (array of byte, string)
 	return (bstr[off:off+nbytes], nil);
 }
 
+readprotos(): string
+{
+	readdir := load Readdir Readdir->PATH;
+	if(readdir == nil)
+		return "unknown\n";
+	(dirs, nil) := readdir->init("/dis/auth/proto", Readdir->NAME|Readdir->COMPACT);
+	s := "";
+	for(i := 0; i < len dirs; i++){
+		n := dirs[i].name;
+		if(len n > 4 && n[len n-4:] == ".dis")
+			s += n[0: len n-4]+"\n";
+	}
+	return s;
+}
+
 Ogok, Ostart, Oread, Owrite, Oauthinfo, Oattr: con iota;
 
 ops := array[] of {
@@ -406,19 +423,19 @@ request(r: ref Fid, pidc: chan of int, donec: chan of ref Fid)
 startproto(request: string): (Authproto, list of ref Attr, string)
 {
 	attrs := parseline(request);
-	if(Debug)
+	if(debug > 1)
 		sys->print("-> %s <-\n", attrtext(attrs));
 	p := lookattrval(attrs, "proto");
 	if(p == nil)
 		return (nil, nil, "did not specify protocol");
-	if(Debug)
+	if(debug > 1)
 		sys->print("proto=%s\n", p);
 	if(any(p, "./"))	# avoid unpleasantness
 		return (nil, nil, "illegal protocol: "+p);
 	proto := load Authproto "/dis/auth/proto/"+p+".dis";
 	if(proto == nil)
 		return (nil, nil, sys->sprint("protocol %s: %r", p));
-	if(Debug)
+	if(debug)
 		sys->print("start %s\n", p);
 	e: string;
 	{
@@ -708,9 +725,15 @@ delattrs(lv: list of ref Attr, rv: list of ref Attr): list of ref Attr
 	return reverse(nl);
 }
 
+ignored(s: string): int
+{
+	return s == "role" || s == "disabled";
+}
+
 matchattr(attrs: list of ref Attr, pat: ref Attr): int
 {
-	return (b := lookattr(attrs, pat.name)) != nil && (pat.tag == Aquery || b.val == pat.val);
+	return (b := lookattr(attrs, pat.name)) != nil && (pat.tag == Aquery || b.val == pat.val) ||
+			ignored(pat.name);
 }
 
 matchattrs(pub: list of ref Attr, secret: list of ref Attr, pats: list of ref Attr): int
@@ -756,12 +779,23 @@ shellsort(a: array of ref Attr)
 
 findkey(keys: array of ref Key, attrs: list of ref Attr): ref Key
 {
-	if(Debug)
+	if(debug)
 		sys->print("findkey %q\n", attrtext(attrs));
 	for(i := 0; i < len keys; i++)
 		if((k := keys[i]) != nil && matchattrs(k.attrs, k.secrets, attrs))
 			return k;
 	return nil;
+}
+
+findkeys(keys: array of ref Key, attrs: list of ref Attr): list of ref Key
+{
+	if(debug)
+		sys->print("findkey %q\n", attrtext(attrs));
+	kl: list of ref Key;
+	for(i := 0; i < len keys; i++)
+		if((k := keys[i]) != nil && matchattrs(k.attrs, k.secrets, attrs))
+			kl = k :: kl;
+	return reverse(kl);
 }
 
 delkey(keys: array of ref Key, attrs: list of ref Attr): int
@@ -835,12 +869,20 @@ any(s: string, t: string): int
 	return 0;
 }
 
-IO.findkey(nil: self ref IO, attrs: list of ref Attr, extra: string): (ref Key, string)
+IO.findkey(io: self ref IO, attrs: list of ref Attr, extra: string): (ref Key, string)
+{
+	(kl, err) := io.findkeys(attrs, extra);
+	if(kl != nil)
+		return (hd kl, err);
+	return (nil, err);
+}
+
+IO.findkeys(nil: self ref IO, attrs: list of ref Attr, extra: string): (list of ref Key, string)
 {
 	ea := parseline(extra);
 	for(; ea != nil; ea = tl ea)
 		attrs = hd ea :: attrs;
-	kc := chan of (ref Key, string);
+	kc := chan of (list of ref Key, string);
 	keymanc <-= (attrs, 1, kc);	# TO DO: 1 => 0 for not needed
 	return <-kc;
 }
@@ -850,9 +892,12 @@ IO.needkey(nil: self ref IO, attrs: list of ref Attr, extra: string): (ref Key, 
 	ea := parseline(extra);
 	for(; ea != nil; ea = tl ea)
 		attrs = hd ea :: attrs;
-	kc := chan of (ref Key, string);
+	kc := chan of (list of ref Key, string);
 	keymanc <-= (attrs, 1, kc);
-	return <-kc;
+	(kl, err) := <-kc;
+	if(kl != nil)
+		return (hd kl, err);
+	return (nil, err);
 }
 
 IO.read(io: self ref IO): array of byte
@@ -890,6 +935,7 @@ IO.write(io: self ref IO, buf: array of byte, n: int): int
 				okdata(rpc, buf[0:n]);
 				return n;
 			}
+			io.rpc = rpc;
 			io.toosmall(n+3);
 		Oauthinfo =>
 			reply(rpc, "error authentication unfinished");
@@ -897,6 +943,48 @@ IO.write(io: self ref IO, buf: array of byte, n: int): int
 			phase(rpc, "protocol phase error");
 		}
 	exit;
+}
+
+IO.rdwr(io: self ref IO): array of byte
+{
+	io.ok();
+	while((rpc := rio(io.f)) != nil)
+		case rpc.cmd {
+		Oread =>
+			io.rpc = rpc;
+			if(rpc.nbytes >= 3)
+				return nil;
+			io.toosmall(128+3);		# make them read something
+		Owrite =>
+			io.rpc = rpc;
+			if(rpc.arg == nil)
+				rpc.arg = array[0] of byte;
+			return rpc.arg;
+		Oauthinfo =>
+			reply(rpc, "error authentication unfinished");
+		* =>
+			phase(rpc, "protocol phase error");
+		}
+	exit;
+}
+
+IO.reply2read(io: self ref IO, buf: array of byte, n: int): int
+{
+	if(io.rpc == nil)
+		return 0;
+	rpc := io.rpc;
+	if(rpc.cmd != Oread){
+		io.rpc = nil;
+		phase(rpc, "internal phase error");
+		return 0;
+	}
+	if(rpc.nbytes-3 < n){
+		io.toosmall(n+3);
+		return 0;
+	}
+	io.rpc = nil;
+	okdata(rpc, buf[0:n]);
+	return 1;
 }
 
 IO.ok(io: self ref IO)
