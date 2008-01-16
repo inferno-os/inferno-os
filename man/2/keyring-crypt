@@ -15,6 +15,12 @@ aessetup:  fn(key: array of byte, ivec: array of byte): ref AESstate;
 aescbc:    fn(state: ref AESstate, buf: array of byte,
              n: int, direction: int);
 
+BFbsize: con 8;
+
+blowfishsetup: fn(key: array of byte, ivec: array of byte): ref BFstate;
+blowfishcbc:   fn(state: ref BFstate, buf: array of byte,
+             n: int, direction: int);
+
 DESbsize:  con 8;
 
 dessetup:  fn(key: array of byte, ivec: array of byte): ref DESstate;
@@ -87,6 +93,21 @@ should be
 .B AESbsize
 bytes of random data: random enough to be unlikely to be reused but
 not cryptographically strongly unpredictable.
+.TP
+.B blowfish
+Bruce Schneier's symmetric block cipher.
+The
+.I key
+is any length from 4 to 56 bytes.
+.I Ivec
+if non-nil is
+.B BFbsize
+bytes of random data.
+For
+.BR blowfishcbc ,
+.I n
+must be a multiple of
+.BR BFbsize .
 .TP
 .B des
 The older Data Encryption Standard, DES.

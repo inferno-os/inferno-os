@@ -57,12 +57,17 @@ Authinfo.unpack(a: array of byte): (int, ref Authinfo)
 	return (n, ai);
 }
 
+open(): ref Sys->FD
+{
+	return sys->open("/mnt/factotum/rpc", Sys->ORDWR);
+}
+
 mount(fd: ref Sys->FD, mnt: string, flags: int, aname: string, keyspec: string): (int, ref Authinfo)
 {
 	ai: ref Authinfo;
 	afd := sys->fauth(fd, aname);
 	if(afd != nil){
-		ai = proxy(afd, sys->open("/mnt/factotum/rpc", Sys->ORDWR), "proto=p9any role=client "+keyspec);
+		ai = proxy(afd, open(), "proto=p9any role=client "+keyspec);
 		if(debug && ai == nil){
 			sys->print("proxy failed: %r\n");
 			return (-1, nil);
@@ -286,12 +291,16 @@ done:
 	donec <-= (ai, err);
 }
 
+#
+# insecure passwords, role=client
+#
+
 getuserpasswd(keyspec: string): (string, string)
 {
 	str := load String String->PATH;
 	if(str == nil)
 		return (nil, nil);
-	fd := sys->open("/mnt/factotum/rpc", Sys->ORDWR);
+	fd := open();
 	if(fd == nil)
 		return (nil, nil);
 	if(((o, a) := dorpc(fd, "start", array of byte keyspec)).t0 != "ok" ||
@@ -306,6 +315,90 @@ getuserpasswd(keyspec: string): (string, string)
 	}
 	return (hd flds, hd tl flds);
 }
+
+#
+# challenge/response, role=server
+#
+
+challenge(keyspec: string): ref Challenge
+{
+	c := ref Challenge;
+	if((c.afd = open()) == nil)
+		return nil;
+	if(rpc(c.afd, "start", array of byte keyspec).t0 != "ok")
+		return nil;
+	(w, val) := rpc(c.afd, "read", nil);
+	if(w != "ok")
+		return nil;
+	c.chal = string val;
+	return c;
+}
+
+response(c: ref Challenge, resp: string): ref Authinfo
+{
+	if(c.afd == nil){
+		sys->werrstr("auth_response: connection not open");
+		return nil;
+	}
+	if(resp == nil){
+		sys->werrstr("auth_response: nil response");
+		return nil;
+	}
+
+	if(c.user != nil){
+		if(rpc(c.afd, "write", array of byte c.user).t0 != "ok"){
+			# we're out of phase with factotum; give up
+			c.afd = nil;
+			return nil;
+		}
+	}
+
+	if(rpc(c.afd, "write", array of byte resp).t0 != "ok"){
+		# don't close the connection; we might try again
+		return nil;
+	}
+
+	(w, val) := rpc(c.afd, "read", nil);
+	if(w != "done"){
+		sys->werrstr(sys->sprint("unexpected factotum reply: %q %q", w, string val));
+		c.afd = nil;
+		return nil;
+	}
+	ai := Authinfo.read(c.afd);
+	c.afd = nil;
+	return ai;
+}
+
+#
+# challenge/response, role=client
+#
+
+respond(chal: string, keyspec: string): (string, string)
+{
+	if((afd := open()) == nil)
+		return (nil, nil);
+
+	if(dorpc(afd, "start", array of byte keyspec).t0 != "ok" ||
+	   dorpc(afd, "write", array of byte chal).t0 != "ok")
+		return (nil, nil);
+	(o, resp) := dorpc(afd, "read", nil);
+	if(o != "ok")
+		return (nil, nil);
+
+	return (string resp, findattrval(rpcattrs(afd), "user"));
+}
+
+rpcattrs(afd: ref Sys->FD): list of ref Attr
+{
+	(o, a) := rpc(afd, "attr", nil);
+	if(o != "ok")
+		return nil;
+	return parseattrs(string a);
+}
+
+#
+# attributes
+#
 
 parseattrs(s: string): list of ref Attr
 {

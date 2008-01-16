@@ -9,6 +9,7 @@ Factotum: module
 		suid:	string;	# server id
 		cap:	string;	# capability (only valid on server side)
 		secret:	array of byte;
+		# TO DO: add attrs
 
 		unpack:	fn(a: array of byte): (int, ref Authinfo);
 		read:	fn(fd: ref Sys->FD): ref Authinfo;
@@ -20,6 +21,7 @@ Factotum: module
 	AuthRpcMax: con 4096;
 
 	init:	fn();
+	open:	fn(): ref Sys->FD;
 	rpc:	fn(fd: ref Sys->FD, verb: string, a: array of byte): (string, array of byte);
 	proxy:	fn(afd: ref Sys->FD, facfd: ref Sys->FD, arg: string): ref Authinfo;
 	genproxy: fn(
@@ -28,8 +30,20 @@ Factotum: module
 		donec: chan of (ref Authinfo, string),
 		afd: ref Sys->FD,
 		params: string);
+	rpcattrs:	fn(afd: ref Sys->FD): list of ref Attr;
 
 	getuserpasswd:	fn(keyspec: string): (string, string);
+
+	# challenge/response
+	Challenge: adt {
+		user:	string;
+		chal:	string;
+		afd:	ref Sys->FD;
+	};
+
+	challenge:	fn(keyspec: string): ref Challenge;
+	response:	fn(c: ref Challenge, resp: string): ref Authinfo;
+	respond:	fn(chal: string, keyspec: string): (string, string);
 
 	dump:	fn(a: array of byte): string;
 	setdebug:	fn(i: int);

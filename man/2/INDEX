@@ -94,10 +94,25 @@ encoding encoding
 env env
 ether ether
 exception exception
+attrtext factotum
+challenge factotum
+copyattrs factotum
+delattr factotum
 factotum factotum
+factotum factotum factotum
+findattr factotum
+findattrval factotum
+getuserpassd factotum
 mount factotum
-proxy factotum
+open factotum
+parseattrs factotum
+proxy
+publicattrs factotum
+respond factotum
+response factotum
 rpc factotum
+rpcattrs factotum
+takeattrs factotum
 expand filepat
 filepat filepat
 match filepat

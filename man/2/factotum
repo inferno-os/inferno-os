@@ -1,6 +1,7 @@
 .TH FACTOTUM 2
 .SH NAME
-Factotum: mount, proxy, rpc \- client interface to factotum
+Factotum: attrtext, challenge, copyattrs, delattr, findattr, findattrval, getuserpassd, mount, open, parseattrs, proxy,
+publicattrs, takeattrs, respond, response, rpc, rpcattrs \- client interface to factotum
 .SH SYNOPSIS
 .EX
 include "factotum.m";
@@ -18,11 +19,41 @@ AuthRpcMax: con \fR...\fP;
 init:          fn();
 mount:  fn(fd: ref Sys->FD, mnt: string, flags: int, aname: string):
             (int, ref Authinfo);
+
 getuserpasswd:	fn(keyspec: string): (string, string);
-rpc:    fn(facfd: ref Sys->FD, verb: string, a: array of byte):
-            (string, array of byte);
-proxy:  fn(afd: ref Sys->FD, facfd: ref Sys->FD, arg: string):
-            ref Authinfo;
+
+Challenge: adt {
+    user:  string;      # user (some protocols)
+    chal:  string;      # challenge string
+};
+
+challenge: fn(keyspec: string): ref Challenge;
+response:  fn(c: ref Challenge, resp: string): ref Authinfo;
+respond:   fn(chal: string, keyspec: string): (string, string);
+
+open:      fn(): ref Sys->FD;
+rpc:       fn(facfd: ref Sys->FD, verb: string, a: array of byte):
+              (string, array of byte);
+proxy:     fn(afd: ref Sys->FD, facfd: ref Sys->FD, arg: string):
+              ref Authinfo;
+rpcattrs:  fn(facfd: ref Sys->FD): list of ref Attr;
+
+Attr: adt {
+    tag:    int;      # Aattr, Aval, or Aquery
+    name:   string;
+    val:    string;
+
+    text:   fn(a: self ref Attr): string;
+};
+
+parseattrs:  fn(s: string): list of ref Attr;
+copyattrs:   fn(l: list of ref Attr): list of ref Attr;
+delattr:     fn(l: list of ref Attr, n: string): list of ref Attr;
+takeattrs:   fn(l: list of ref Attr, names: list of string): list of ref Attr;
+findattr:    fn(l: list of ref Attr, n: string): ref Attr;
+findattrval: fn(l: list of ref Attr, n: string): string;
+publicattrs: fn(l: list of ref Attr): list of ref Attr;
+attrtext:    fn(l: list of ref Attr): string;
 .EE
 .SH DESCRIPTION
 .B Factotum
@@ -33,6 +64,12 @@ It can also interact with Plan 9's
 .I factotum
 if that is in the name space (as well as or instead of
 .IR factotum (4)).
+.PP
+.B Factotum
+supports both the basic RPC interface to
+.I factotum
+and various high-level operations built on that.
+The high-level functions will be described first.
 .PP
 .B Init
 must be called before any other function.
@@ -92,6 +129,151 @@ and matches the given
 .IR keyspec .
 The tuple values are nil if no entry matches or the caller lacks permission to see them.
 .PP
+The pair of functions
+.B challenge
+and
+.B response
+give servers access to challenge/response protocols provided by
+.IR factotum .
+All such authentication protocols are embedded in an application-level protocol
+such as FTP, IMAP, POP3 and so on, in a way specific to that protocol.
+These functions calculate parameters for application-specific messages.
+.PP
+A server calls
+.B challenge
+to get a challenge value to present to the user who will answer the challenge.
+The server verifies the user's response by calling
+.BR response ,
+which returns an
+.B Authinfo
+value (as described above) if the response is correct.
+The specific challenge/response protocol is selected by the
+.B proto
+attribute in the
+.I keyspec
+for
+.BR challenge ,
+which opens a connection to
+.IR factotum ,
+obtains a string representing a challenge value,
+and returns a reference to a
+.B Challenge
+adt that gives the challenge and a user name.
+Some protocols take the user name from a
+.B user
+attribute in the
+.IR keyspec ,
+and others negotiate it within the authentication protocol.
+In the latter case, the
+.B user
+field of the resulting
+.B Challenge
+gives the name negotiated.
+.PP
+In the other direction, a process uses
+.B respond
+to calculate the correct response to a given challenge.
+.I Chal
+is the challenge presented by a server, and
+.I keyspec
+gives the attributes of the relevant key in the local
+.IR factotum .
+.B Respond
+interacts with
+.I factotum
+and returns a tuple
+.RI ( response,\ user )
+that gives the
+.I response
+string to return to the server, and an optional
+.I user
+name, depending on the protocol.
+On error, the
+.I response
+is nil, and the system error string contains a diagnostic.
+.PP
+.IR Factotum (4)
+represents keys as attribute value pairs in textual form, with space-separated fields.
+A field can be a value-less
+.IR attribute ,
+an
+.IB attribute = value
+pair, or
+.IB attribute ?
+to mark a required attribute with unknown value.
+An
+.I attribute
+name that begins with an exclamation mark
+.RB ( ! )
+is to be considered hidden or secret.
+Values containing white space or special characters can be quoted using the conventions of
+.IR sh (1).
+.PP
+.B Parseattrs
+parses a string
+.I s
+of that form into a list of
+.B Attr
+references.
+Each
+.B Attr
+has a
+.B tag
+that identifies the value as
+.B Aattr
+(a value-less attribute), a
+.B Aval
+(an attribute-value pair), or
+.B Aquery
+(an attribute for which a value is needed).
+Other operations include:
+.TP 15n
+.B copyattrs
+Return a copy of attribute list
+.IR l .
+.TP
+.B delattr
+Return a copy of
+.I l
+removing all attributes with name
+.IR n .
+.TP
+.B takeattrs
+Return the subset of list
+.I l
+that contains only the attributes listed in
+.IR names .
+.TP
+.B findattr
+Return a reference to the first
+.B Attr
+in
+.I l
+with the name
+.IR n .
+.TP
+.B findattrval
+Return the value of the first attribute in
+.I l
+with name
+.IR n ;
+return nil if the attribute is not found or has no value.
+.TP
+.B publicattrs
+Return a copy of
+.I l
+in which all secret attributes have been removed.
+.TP
+.B attrtext
+Return the textual representation of attribute list
+.IR l ,
+acceptable to
+.BR parseattrs .
+.PP
+The low-level interfaces to
+.I factotum
+are as follows.
+.PP
 .B Proxy
 links an authenticating server on
 .I afd
@@ -101,16 +283,19 @@ agent on
 .IR facfd .
 Typically
 .I facfd
-is the result of
+is the result of calling
+.BR Factotum->open ,
+which is equivalent to
 .IP
 .EX
 sys->open("/mnt/factotum/rpc", Sys->ORDWR)
 .EE
 .PP
 .I Afd
-is typically the result of
+is a file descriptor that represents a connection to the service that requires authentication.
+It is typically the result of
 .IR sys-open (2),
-.IR sys-dial (2),
+.IR dial (2),
 or
 .IR sys-fauth (2).
 .I Params
