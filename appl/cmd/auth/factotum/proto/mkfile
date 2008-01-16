@@ -1,8 +1,10 @@
 <../../../../../mkconfig
 
 TARG=\
+	authquery.dis\
 	p9any.dis\
 	pass.dis\
+	rsa.dis\
 
 SYSMODULES=\
 	factotum.m\
