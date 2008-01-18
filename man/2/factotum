@@ -315,6 +315,11 @@ returns nil; otherwise on success it always returns a non-nil reference to an
 value with contents as above, but if the protocol does not
 supply that authentication data, all the values are nil.
 .PP
+.B Rpcattrs
+returns the initial attributes provided in the
+.B start
+request, and any others added later by the protocol.
+.PP
 .B Rpc
 does one message exchange with the
 .I factotum
@@ -357,3 +362,5 @@ exchange.
 .IR sys-fauth (2),
 .IR factotum (4),
 .IR auth (5)
+.SH DIAGNOSTICS
+Functions that  return nil references on error also set the system error string.

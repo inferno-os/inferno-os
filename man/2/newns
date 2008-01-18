@@ -47,11 +47,3 @@ The capability is typically obtained via
 .IR sys-pctl (2),
 .IR factotum (4),
 .IR namespace (6)
-.SH BUGS
-The
-.I user
-string is currently ignored:
-use
-.B nil
-or the current user name
-.RB ( /dev/user ).
