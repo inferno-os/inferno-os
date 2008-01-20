@@ -1,3 +1,5 @@
+20080120
+	forgot to push updated appl/lib/x509.b during keyring changes
 20080116
 	add rsa to factotum
 	set but not used changes from Acme-sac

@@ -20,7 +20,7 @@ include "asn1.m";
 
 include "keyring.m";
 	keyring				: Keyring;
-	MD4, MD5, SHA1, IPint, DESstate	: import keyring;
+	IPint, DESstate	: import keyring;
 
 include "security.m";
 	random				: Random;
