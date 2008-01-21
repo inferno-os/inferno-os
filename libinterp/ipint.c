@@ -160,6 +160,8 @@ strtoipint(String *s, int base)
 	b = strtomp(p, &q, base, nil);
 	if(b == nil)
 		return H;
+	while(*q == '=')
+		q++;
 	if(q == p || *q != 0){
 		mpfree(b);
 		return H;
