@@ -56,7 +56,7 @@ getall(): list of (string, string)
 	readdir := load Readdir Readdir->PATH;
 	if (readdir == nil)
 		return nil;
-	(a, n) := readdir->init(ENVDIR,
+	(a, nil) := readdir->init(ENVDIR,
 			Readdir->NONE | Readdir->COMPACT | Readdir->DESCENDING);
 	vl: list of (string, string);
 	for (i := 0; i < len a; i++)

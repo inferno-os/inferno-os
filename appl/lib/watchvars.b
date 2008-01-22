@@ -17,7 +17,7 @@ Watchvar[T].get(e: self Watchvar): T
 
 Watchvar[T].set(e: self Watchvar, v: T)
 {
-	(ov, ic) := <-e.c;
+	(nil, ic) := <-e.c;
 	ic <-= v;
 	e.c <-= (v, chan[1] of T);
 }

@@ -302,8 +302,8 @@ header(s: ref State)
 	mtime |= (getb(s) << 16);
 	mtime |= (getb(s) << 24);
 	s.c <-= ref Rq.Info("mtime " + string mtime);
-	xfl := getb(s);
-	os := getb(s);
+	getb(s);	# xfl
+	getb(s);	# os
 
 	# skip optional "extra field"
 	if(flags & GZFEXTRA) {

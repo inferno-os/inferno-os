@@ -59,7 +59,6 @@ Tree.getpath(t: self ref Tree, q: big): string
 fsproc(c: chan of ref Styxservers->Navop, fsc: chan of ref Treeop)
 {
 	tab := array[23] of ref Fholder;
-	starttime := 0;
 
 	for (;;) alt {
 	grq := <-c =>

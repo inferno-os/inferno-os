@@ -195,7 +195,7 @@ split(s, c: string) : (string, string)
 canonize(s: string): string
 {
 	(base, file) := S->splitr(s, "/");
-	(n,path) := sys->tokenize(base, "/");
+	(nil, path) := sys->tokenize(base, "/");
 	revpath : list of string = nil;
 	for(p := path; p != nil; p = tl p) {
 		if(hd p == "..") {

@@ -69,7 +69,7 @@ secret(c: ref Sys->Connection, secretin, secretout: array of byte): string
 
 algs(): (list of string, list of string)
 {
-	(c, err) := sslclone();
+	(c, nil) := sslclone();
 	if(c == nil)
 		return (nil, nil);
 	c.dfd = nil;

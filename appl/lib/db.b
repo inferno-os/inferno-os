@@ -1,9 +1,9 @@
 implement DB;
 
 include "sys.m";
-	sys :	Sys;
+	sys: Sys;
 
-include "draw.m";
+include "dial.m";
 
 include "keyring.m";
 
@@ -25,30 +25,28 @@ connect(addr: string, alg: string): (ref Sys->FD, string)
 {
 	if (sys == nil)
 		sys = load Sys Sys->PATH;
-#
-#	Should check to see if addr == /dev/sysname.  If so, probably should
-#	change addr to localhost, since some underlying platform code might
-#	choke if handed its own address.
-#
-	(ok, c) := sys->dial(addr, nil);
-	if(ok < 0)
-		return (nil, sys->sprint("DB init: dial %s: %r\n", addr));
+
+	dial := load Dial Dial->PATH;
+	if(dial == nil)
+		return (nil, sys->sprint("load %s: %r", Dial->PATH));
+
+	addr = dial->netmkaddr(addr, "net", "6669");	# infdb
+
+	conn := dial->dial(addr, nil);
+	if(conn == nil)
+		return (nil, sys->sprint("can't dial %s: %r", addr));
+
 	(n, addrparts) := sys->tokenize(addr, "!");
 	if(n >= 2)
-		addr = hd addrparts + "!" + hd tl addrparts;
+		addr = hd addrparts + "!" + hd tl addrparts;	# ignore service for key search
 
 	kr := load Keyring Keyring->PATH;
 
 	user := user();
 	kd := "/usr/" + user + "/keyring/";
 	cert := kd + addr;
-	(ok, nil) = sys->stat(cert);
-	if(ok < 0){
+	if(sys->stat(cert).t0 < 0)
 		cert = kd + "default";
-		# (ok, nil) = sys->stat(cert);
-		# if(ok<0)
-		#	sys->fprint(stderr, "Warning: no certificate found in %s; use getauthinfo\n", kd);
-	}
 
 	ai := kr->readauthinfo(cert);
 
@@ -69,7 +67,7 @@ connect(addr: string, alg: string): (ref Sys->FD, string)
 
 	fd: ref Sys->FD;
 
-	(fd, err) = au->client(alg, ai, c.dfd);
+	(fd, err) = au->client(alg, ai, conn.dfd);
 	if(fd == nil)
 		return (nil, sys->sprint("DB init: authentication failed: %s", err));
 
@@ -98,7 +96,7 @@ dbopen(fd: ref Sys->FD, username, password, dbname: string): (ref DB_Handle, lis
 DB_Handle.SQLOpen(oldh: self ref DB_Handle): (int, ref DB_Handle)
 {
 	dbh := ref *oldh;
-	(mtype, strm, rc, data) := sendReq(dbh, 'O', array of byte string dbh.sqlconn);
+	(mtype, nil, nil, data) := sendReq(dbh, 'O', array of byte string dbh.sqlconn);
 	if(mtype == 'h')
 		return (-1, nil);
 	dbh.sqlstream = int string data;
@@ -107,7 +105,7 @@ DB_Handle.SQLOpen(oldh: self ref DB_Handle): (int, ref DB_Handle)
 
 DB_Handle.SQLClose(dbh: self ref DB_Handle): int
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'K', array[0] of byte);
+	(mtype, nil, nil, nil) := sendReq(dbh, 'K', array[0] of byte);
 	if(mtype == 'h')
 		return -1;
 	dbh.sqlstream = -1;
@@ -116,7 +114,7 @@ DB_Handle.SQLClose(dbh: self ref DB_Handle): int
 
 DB_Handle.SQL(dbh: self ref DB_Handle, command: string): (int, list of string)
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'W', array of byte command);
+	(mtype, nil, nil, data) := sendReq(dbh, 'W', array of byte command);
 	if(mtype == 'h')
 		return (-1, "Probable SQL format error" :: string data :: nil);
 	return (0, nil);
@@ -124,7 +122,7 @@ DB_Handle.SQL(dbh: self ref DB_Handle, command: string): (int, list of string)
 
 DB_Handle.columns(dbh: self ref DB_Handle): int
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'C', array[0] of byte);
+	(mtype, nil, nil, data) := sendReq(dbh, 'C', array[0] of byte);
 	if(mtype == 'h')
 		return 0;
 	return int string data;
@@ -132,7 +130,7 @@ DB_Handle.columns(dbh: self ref DB_Handle): int
 
 DB_Handle.nextRow(dbh: self ref DB_Handle): int
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'N', array[0] of byte);
+	(mtype, nil, nil, data) := sendReq(dbh, 'N', array[0] of byte);
 	if(mtype == 'h')
 		return 0;
 	return int string data;
@@ -140,7 +138,7 @@ DB_Handle.nextRow(dbh: self ref DB_Handle): int
 
 DB_Handle.read(dbh: self ref DB_Handle, columnI: int): (int, array of byte)
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'R', array of byte string columnI);
+	(mtype, nil, nil, data) := sendReq(dbh, 'R', array of byte string columnI);
 	if(mtype == 'h')
 		return (-1, data);
 	return (len data, data);
@@ -155,7 +153,7 @@ DB_Handle.write(dbh: self ref DB_Handle, paramI: int, val: array of byte)
 	for(i := 0; i < 4; i++)
 		outbuf[i] = param[i];
 	outbuf[4:] = val;
-	(mtype, strm, rc, data) := sendReq(dbh, 'P', outbuf);
+	(mtype, nil, nil, nil) := sendReq(dbh, 'P', outbuf);
 	if(mtype == 'h')
 		return -1;
 	return len val;
@@ -163,7 +161,7 @@ DB_Handle.write(dbh: self ref DB_Handle, paramI: int, val: array of byte)
  
 DB_Handle.columnTitle(handle: self ref DB_Handle, columnI: int): string
 {
-	(mtype, strm, rc, data) := sendReq(handle, 'T', array of byte string columnI);
+	(mtype, nil, nil, data) := sendReq(handle, 'T', array of byte string columnI);
 	if(mtype == 'h')
 		return nil;
 	return string data;
@@ -171,7 +169,7 @@ DB_Handle.columnTitle(handle: self ref DB_Handle, columnI: int): string
 
 DB_Handle.errmsg(dbh: self ref DB_Handle): string
 {
-	(mtype, strm, rc, data) := sendReq(dbh, 'H', array[0] of byte);
+	(nil, nil, nil, data) := sendReq(dbh, 'H', array[0] of byte);
 	return string data;
 }
 
@@ -192,15 +190,15 @@ sendReq(dbh: ref DB_Handle, mtype: int, data: array of byte) : (int, int, int, a
 		return ('h', dbh.sqlstream, 0, array of byte "header write failure");
 	}
 	hbuf := array[RES_HEADER_SIZE+3] of byte;
-	if((n := sys->read(dbh.datafd, hbuf, RES_HEADER_SIZE)) !=
-								RES_HEADER_SIZE) {
-		#  Is this an error?  Try another read.
-		if(n < 0 ||
-			(m := sys->read(dbh.datafd, hbuf[n:], RES_HEADER_SIZE-n)) !=
-								RES_HEADER_SIZE-n) {
-		    unlock(dbh);
-		    return ('h', dbh.sqlstream, 0, array of byte "read error");
-		}
+	if((n := sys->readn(dbh.datafd, hbuf, RES_HEADER_SIZE)) != RES_HEADER_SIZE) {
+		unlock(dbh);
+		if(n < 0)
+			why := sys->aprint("read error: %r");
+		else if(n == 0)
+			why = sys->aprint("lost connection");
+		else
+			why = sys->aprint("read error: short read");
+		return ('h', dbh.sqlstream, 0, why);
 	}
 	rheader := string hbuf[0:22];
 	rtype := rheader[0];
@@ -228,17 +226,7 @@ sendReq(dbh: ref DB_Handle, mtype: int, data: array of byte) : (int, int, int, a
 
 makelock(): chan of int
 {
-	ch := chan of int;
-	spawn holdlock(ch);
-	return ch;
-}
-
-holdlock(c: chan of int)
-{
-	for(;;){
-		i := <-c;
-		c <-= i;
-	}
+	return chan[1] of int;
 }
 
 lock(h: ref DB_Handle)
@@ -257,7 +245,7 @@ user(): string
 	fd := sys->open("/dev/user", sys->OREAD);
 	if(fd == nil)
 		return "";
-	buf := array[128] of byte;
+	buf := array[Sys->NAMEMAX] of byte;
 	n := sys->read(fd, buf, len buf);
 	if(n < 0)
 		return "";

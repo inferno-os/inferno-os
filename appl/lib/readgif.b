@@ -222,7 +222,7 @@ skipextension(h: ref Header): string
 	hsize := 0;
 	hasdata := 0;
 
-	case XX := h.fd.getb(){
+	case h.fd.getb(){
 	Bufio->ERROR or Bufio->EOF =>
 		return sys->sprint(readerr);
 	16r01 =>	# Plain Text Extension

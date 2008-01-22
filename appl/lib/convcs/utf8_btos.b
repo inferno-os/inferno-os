@@ -23,12 +23,11 @@ btos(nil : Convcs->State, b : array of byte, n : int) : (Convcs->State, string, 
 			str = string b[:nbytes];
 	} else {
 		for (; nbytes < len b && len str < n;) {
-			(ch, l, s) := sys->byte2char(b, nbytes);
-			if (l > 0) {
-				str[len str] = ch;
-				nbytes += l;
-			} else
+			(ch, l, nil) := sys->byte2char(b, nbytes);
+			if (l <= 0)
 				break;
+			str[len str] = ch;
+			nbytes += l;
 		}
 	}
 	return (nil, str, nbytes);

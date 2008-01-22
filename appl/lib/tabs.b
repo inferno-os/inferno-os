@@ -42,7 +42,6 @@ mktabs(t: ref Tk->Toplevel, dot: string, tabs: array of (string, string), dflt: 
 	c := chan of string;
 	tk->namechan(t, c, dot[1:]);
 	xpos := 2*TABSXdelta;
-	top := 10;
 	ypos := TABSYheight - 3;
 	back := cmd(t, dot+" cget -background");
 	dark := "#999999";
@@ -153,7 +152,7 @@ tabsctl(t: ref Tk->Toplevel,
 	(lab, widg) = tabs[id];
 	pos := tk->cmd(t, dot+" coords tag" + string id);
 	if(len pos >= 1 && pos[0] != '!'){
-		(p, nli) := parsept(pos);
+		(p, nil) := parsept(pos);
 		cmd(t, dot+" coords tag"+string id+" "+string(p.x-1)+" "+string(p.y-1));
 	}
 	cmd(t, dot+" raise tag"+string id);

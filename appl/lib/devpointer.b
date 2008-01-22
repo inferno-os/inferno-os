@@ -27,7 +27,7 @@ reader(file: string, posn: chan of ref Pointer, pid: chan of (int, string))
 	if(pid != nil)
 		pid <-= (sys->pctl(0, nil), nil);
 	b:= array[Size] of byte;
-	while((n := sys->read(dfd, b, len b)) == Size)
+	while(sys->read(dfd, b, len b) == Size)
 		posn <-= bytes2ptr(b);
 }
 
@@ -64,7 +64,7 @@ srv(c: chan of ref Pointer, f: ref Sys->FileIO)
 			if(p == nil)
 				exit;
 			ptrq.put(p);
-		(nil, n, nil, rc) := <-r =>
+		(nil, nil, nil, rc) := <-r =>
 			if(rc != nil){
 				alt{
 				rc <-= (ptr2bytes(ptrq.get()), nil) =>;

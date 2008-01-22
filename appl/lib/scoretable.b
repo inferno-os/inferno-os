@@ -22,7 +22,7 @@ username: string;
 
 MAXSCORES: con 10;
 
-init(port: int, user, name: string, sfile: string): (int, string)
+init(nil: int, user, nil: string, sfile: string): (int, string)
 {
 	if (sys == nil) {
 		sys = load Sys Sys->PATH;

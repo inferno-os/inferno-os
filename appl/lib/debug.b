@@ -552,7 +552,7 @@ Exp.expand(e: self ref Exp): array of ref Exp
 		k[1] = ref Exp("tl", hex(array of byte tloff), e.pc, e.m, e.p, ref Id(nil, "tl", H, H, t));
 		return k;
 	Tarray =>
-		(s, err) := pdata(e.p, e.offset, "A");
+		(s, nil) := pdata(e.p, e.offset, "A");
 		if(s == "nil")
 			return nil;
 		(sn, sa) := str->splitl(s, ".");
@@ -622,7 +622,7 @@ Exp.expand(e: self ref Exp): array of ref Exp
 			return k;
 		}	
 	Tchan =>
-		(s, err) := pdata(e.p, e.offset, "c");
+		(s, nil) := pdata(e.p, e.offset, "c");
 		if(s == "nil")
 			return nil;
 		(sn, sa) := str->splitl(s, ".");

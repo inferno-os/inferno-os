@@ -272,7 +272,7 @@ printimage(ioutb: ref Iobuf, line: Lineinfo, imag: Iteminfo): (string,string)
 						line.height));
 			return (class,msg);
 		"label" =>
-			(im,im2,err) := tk->getimage(t,imag.buf);
+			(im,nil,nil) := tk->getimage(t,imag.buf);
 			if (im!=nil){
 				bps := im.depth;
 				ioutb.puts(sys->sprint("%d %d %d %d %d %d %d %d doimage\n",
@@ -358,7 +358,7 @@ parseTkline(ioutb: ref Iobuf, input: string): string
 	PS:=792-18-18;	# page size in points	
 	TM:=792-18;	# top margin in points
 	LM:=18;		# left margin 1/4 in. in
-	BM:=18;		# bottom margin 1/4 in. in
+#	BM:=18;		# bottom margin 1/4 in. in
 	x : int;
 	(x,input)=str->toint(input,10);
 	thisline.xorg=(x*PTPI)/PXPI;

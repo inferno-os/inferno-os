@@ -142,7 +142,7 @@ aliases(cs : string) : (string, list of string)
 		recs := cfg->lookup(name);
 		if (recs == nil)
 			continue;	# shouldn't happen!
-		(val, rec) := hd recs;
+		(val, nil) := hd recs;
 		if (val != cs)
 			continue;
 		al = name :: al;

@@ -307,7 +307,7 @@ flatten(ts: list of (ref Tuples, list of ref Attr), attr: string): list of ref A
 {
 	l: list of ref Attr;
 	for(; ts != nil; ts = tl ts){
-		(line, a) := hd ts;
+		(line, nil) := hd ts;
 		t := line.find(attr);
 		for(; t != nil; t = tl t)
 			l = hd t :: l;

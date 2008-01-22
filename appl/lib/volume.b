@@ -93,7 +93,6 @@ volumectl(ctxt: ref Context, ch: chan of int, var: string)
 		}
 	}
 
-	n := 0;
 	for(;;) {
 		key = <- ch;
 		case key {

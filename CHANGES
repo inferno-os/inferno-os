@@ -1,3 +1,6 @@
+20080122
+	update appl/lib/db.b: allow for split i/o on pipes or tcp/ip; eliminate lock process
+	eliminate more unused identifier warnings (courtesy acme-sac)
 20080121
 	skip trailing '=' in b64 rep of IPint
 20080120
