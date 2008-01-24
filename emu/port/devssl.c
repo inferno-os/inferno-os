@@ -78,7 +78,6 @@ Lock	dslock;
 int	dshiwat;
 int	maxdstate = 20;
 Dstate** dstate;
-char** dsname;
 
 enum{
 	Qtopdir		= 1,	/* top level directory */
@@ -111,7 +110,7 @@ static Block*	digestb(Dstate*, Block*, int);
 static void	checkdigestb(Dstate*, Block*);
 static Chan*	buftochan(char*);
 static void	sslhangup(Dstate*);
-static Dstate*	dsclone(Chan *c);
+static void dsclone(Chan *c);
 static void	dsnew(Chan *c, Dstate **);
 
 static int
@@ -119,7 +118,7 @@ sslgen(Chan *c, char *dname, Dirtab *d, int nd, int s, Dir *dp)
 {
 	Qid q;
 	Dstate *ds;
-	char name[16], *p, *nm;
+	char *p, *nm;
 
 	USED(dname);
 	USED(nd);
@@ -138,15 +137,12 @@ sslgen(Chan *c, char *dname, Dirtab *d, int nd, int s, Dir *dp)
 			q.path = QID(s, Qconvdir);
 			q.type = QTDIR;
 			ds = dstate[s];
- 			if(ds != 0)
+			if(ds != 0)
  				nm = ds->user;
  			else
  				nm = eve;
-			if(dsname[s] == nil){
-				sprint(name, "%d", s);
-				kstrdup(&dsname[s], name);
-			}
-			devdir(c, q, dsname[s], 0, nm, DMDIR|0555, dp);
+			snprint(up->genbuf, sizeof(up->genbuf), "%d", s);
+			devdir(c, q, up->genbuf, 0, nm, DMDIR|0555, dp);
 			return 1;
 		}
 		if(s > dshiwat)
@@ -200,8 +196,6 @@ static void
 sslinit(void)
 {
 	if((dstate = malloc(sizeof(Dstate*) * maxdstate)) == 0)
-		panic("sslinit");
-	if((dsname = malloc(sizeof(*dsname) * maxdstate)) == 0)
 		panic("sslinit");
 	alglistinit();
 }
@@ -259,9 +253,7 @@ sslopen(Chan *c, int omode)
 			error(Eperm);
 		break;
 	case Qclonus:
-		s = dsclone(c);
-		if(s == 0)
-			error(Enodev);
+		dsclone(c);
 		break;
 	case Qctl:
 	case Qdata:
@@ -300,24 +292,32 @@ sslopen(Chan *c, int omode)
 }
 
 static int
-sslwstat(Chan *c, uchar *dp, int n)
+sslwstat(Chan *c, uchar *db, int n)
 {
-	Dir d;
+	Dir *dir;
 	Dstate *s;
+	int m;
 
-	n = convM2D(dp, n, &d, nil);
-	if(n == 0)
-		error(Eshortstat);
 	s = dstate[CONV(c->qid)];
 	if(s == 0)
 		error(Ebadusefd);
 	if(strcmp(s->user, up->env->user) != 0)
 		error(Eperm);
-	if(!emptystr(d.uid))
-		kstrdup(&s->user, d.uid);
-	if(d.mode != ~0UL)
-		s->perm = d.mode;
-	return n;
+
+	dir = smalloc(sizeof(Dir)+n);
+	m = convM2D(db, n, &dir[0], (char*)&dir[1]);
+	if(m == 0){
+		free(dir);
+		error(Eshortstat);
+	}
+
+	if(!emptystr(dir->uid))
+		kstrdup(&s->user, dir->uid);
+	if(dir->mode != ~0UL)
+		s->perm = dir->mode;
+
+	free(dir);
+	return m;
 }
 
 static void
@@ -1359,17 +1359,17 @@ sslhangup(Dstate *s)
 	qunlock(&s->in.q);
 }
 
-static Dstate*
+static void
 dsclone(Chan *ch)
 {
 	Dstate **pp, **ep, **np;
 	int newmax;
 
+	lock(&dslock);
 	if(waserror()) {
 		unlock(&dslock);
 		nexterror();
 	}
-	lock(&dslock);
 	ep = &dstate[maxdstate];
 	for(pp = dstate; pp < ep; pp++) {
 		if(*pp == 0) {
@@ -1378,26 +1378,24 @@ dsclone(Chan *ch)
 		}
 	}
 	if(pp >= ep) {
-		if(maxdstate >= Maxdstate) {
-			unlock(&dslock);
-			poperror();
-			return 0;
-		}
+		if(maxdstate >= Maxdstate)
+			error(Enodev);
 		newmax = 2 * maxdstate;
 		if(newmax > Maxdstate)
 			newmax = Maxdstate;
+
 		np = realloc(dstate, sizeof(Dstate*) * newmax);
 		if(np == 0)
 			error(Enomem);
 		dstate = np;
 		pp = &dstate[maxdstate];
 		memset(pp, 0, sizeof(Dstate*)*(newmax - maxdstate));
+
 		maxdstate = newmax;
 		dsnew(ch, pp);
 	}
-	unlock(&dslock);
 	poperror();
-	return *pp;
+	unlock(&dslock);
 }
 
 static void
@@ -1406,8 +1404,8 @@ dsnew(Chan *ch, Dstate **pp)
 	Dstate *s;
 	int t;
 
-	*pp = s = malloc(sizeof(*s));
-	if(!s)
+	*pp = s = mallocz(sizeof(*s), 1);
+	if(s == nil)
 		error(Enomem);
 	if(pp - dstate >= dshiwat)
 		dshiwat++;
