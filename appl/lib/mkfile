@@ -71,6 +71,7 @@ TARG=\
 	login.dis\
 	man.dis\
 	mpeg.dis\
+	msgio.dis\
 	nametree.dis\
 	names.dis\
 	newns.dis\
@@ -237,3 +238,4 @@ lists.dis:	$ROOT/module/lists.m
 vac.dis:	$ROOT/module/vac.m $ROOT/module/venti.m
 dial.dis:	$ROOT/module/dial.m
 styxflush.dis:	$ROOT/module/styxflush.m
+msgio.dis:	$ROOT/module/msgio.m

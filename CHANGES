@@ -1,6 +1,7 @@
 20080130
 	failed to return nil from Jvalue.get in appl/lib/json.b if member name didn't match
 	similar problem in appl/lib/ubfa.b
+	add msgio(2)
 20080124
 	fix emu/port/devssl.c os/port/devssl.c not to keep the directory numbers(!)
 20080122

@@ -1,0 +1,155 @@
+.TH MSGIO 2
+.SH NAME
+msgio: getmsg, sendmsg, senderrmsg, getstring, putstring, getbytearray, putbytearray, puterror \- exchange data on delimited and undelimited streams
+.SH SYNOPSIS
+.EX
+include "msgio.m";
+msgio := load Msgio Msgio->PATH;
+
+init:         fn();
+
+getmsg:       fn(fd: ref Sys->FD): array of byte;
+sendmsg:      fn(fd: ref Sys->FD, buf: array of byte, n: int): int;
+senderrmsg:   fn(fd: ref Sys->FD, s: string): int;
+
+getstring:    fn(fd: ref Sys->FD): (string, string);
+putstring:    fn(fd: ref Sys->FD, s: string): int;
+getbytearray: fn(fd: ref Sys->FD): (array of byte, string);
+putbytearray: fn(fd: ref Sys->FD, a: array of byte, n: int): int;
+puterror:     fn(fd: ref Sys->FD, s: string): int;
+.EE
+.SH DESCRIPTION
+.B Msgio
+provides two complementary sets of functions for the exchange of data over a network
+connection that uses a connection-oriented transport protocols.
+The connection is represented by a file descriptor
+.IR fd .
+.PP
+.B Init
+must be called before any other operation of the module.
+.PP
+The first set allows arbitrary data, packed into arrays of bytes, to be exchanged
+on network connections using protocols such as TCP/IP that do not preserve
+record boundaries.
+They are used to implement various authentication protocols, including
+.IR auth (6).
+.PP
+Each data message is transmitted with a five-byte header containing a four-character zero-padded decimal count
+.I n
+terminated by a newline, followed by
+.I n
+bytes of message data.
+An error message has a similar structure, except that the first character
+of the count is replaced by an exclamation mark
+.RB ( ! );
+the message data following
+contains the diagnostic string in its UTF-8 encoding (see
+.IR utf (6)).
+.PP
+.B Getmsg
+reads the next message from
+.I fd
+and returns its data content.
+.PP
+.B Sendmsg
+sends the first
+.I n
+bytes of
+.I buf
+as a message on
+.IR fd ,
+and returns
+.IR n .
+.PP
+.B Senderrmsg
+sends the error message
+.IR s .
+.PP
+The second set of functions provide
+I/O for strings, byte arrays and error strings over network connections that
+provide a record structure for communication (as provided for arbitrary
+networks by
+.IR ssl (3)).
+.PP
+.B Putstring
+writes string
+.I s
+to
+.IR fd.
+It returns the number of bytes written, or -1 if an error occurred.
+Messages written by
+.B putstring
+are truncated to 4096 bytes.
+.PP
+.B Getstring
+reads a string as written by
+.B putstring
+from
+.IR fd
+and returns a tuple
+.RI ( result , error ).
+If successful, the error
+string is nil.
+.PP
+.B Putbytearray
+writes the array of bytes
+.I a
+to
+.IR fd .
+It returns the number of bytes written, or -1 if an error occurred.
+Messages written by
+.B putbytearray
+are truncated to 4096 bytes.
+.PP
+.B Getbytearray
+reads an array of bytes as written by
+.B putbytearray
+from
+.IR fd
+and returns a tuple of the form
+.RI ( result , error ).
+If successful, the error string is nil.
+.PP
+.B Puterror
+writes an error string
+.I s
+to
+.IR fd .
+It can be used in place of
+.B putstring
+or
+.B putbytearray
+to cause a corresponding
+.B getstring
+or
+.B getbytearray
+to fail
+(in the receiving process),
+forcing them to return the error string
+.IR s .
+It may not be longer than
+.BR Sys->ERRMAX
+bytes.
+.SH SOURCE
+.B /appl/lib/msgio.b
+.SH DIAGNOSTICS
+The output functions return an
+.B int
+which is -1 if there was an I/O error,
+and a non-negative value otherwise;
+they also set the system error string.
+.B Getmsg
+returns nil if there was an error reading from
+.IR fd ;
+it sets the system error string to reflect the cause.
+It also returns nil
+if an error message was received instead of a data message;
+the system error string will contain the error message's diagnostic.
+The other input functions (for streams with delimiters)
+return a tuple that includes a string indicating the cause of the
+error, as the second element of the tuple.
+.SH BUGS
+The module is really intended to retrofit the original Inferno authentication
+protocols into a new regime, and is not yet intended for general-purpose use,
+hence the irregular naming and calling conventions, inherited from the original implementation in
+.BR Keyring .

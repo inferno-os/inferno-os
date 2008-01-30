@@ -1028,6 +1028,7 @@ appl
 		memfs.b
 		mkfile
 		mpeg.b
+		msgio.b
 		nametree.b
 		names.b
 		newns.b
@@ -1641,6 +1642,7 @@ dis
 		mashparse.dis
 		memfs.dis
 		mpeg.dis
+		msgio.dis
 		nametree.dis
 		names.dis
 		newns.dis
@@ -2290,6 +2292,7 @@ module
 		*
 	memfs.m
 	mpeg.m
+	msgio.m
 	multistyx.m
 	muxclient.m
 	names.m

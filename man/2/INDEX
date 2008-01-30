@@ -282,6 +282,15 @@ norm1 math-linalg
 norm2 math-linalg
 sort math-linalg
 mpeg mpeg
+getbytearray msgio
+getmsg msgio
+getstring msgio
+msgio msgio
+putbytearray msgio
+puterror msgio
+putstring msgio
+senderrmsg msgio
+sendmsg msgio
 basename names
 cleanname names
 dirname names
