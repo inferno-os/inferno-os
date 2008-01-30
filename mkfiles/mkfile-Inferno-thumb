@@ -8,14 +8,14 @@ OS=		v851ok0q2t6
 AR=		iar
 ARFLAGS=	vu
 
-AS=		/usr/inferno/utils/5a/8.out -t
+AS=5a -t
 ASFLAGS=
 
 CC=		tc
 CFLAGS=		-wFV -I$ROOT/Inferno/arm/include -I$ROOT/include
 ANSICPP= -p
 
-LD=		/usr/inferno/utils/5l/8.out
+LD=5l
 LDFLAGS=
 
 SYSLIBS=	#-lc
