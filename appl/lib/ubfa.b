@@ -349,6 +349,7 @@ UValue.eq(o: self ref UValue, v: ref UValue): int
 		Int =>
 			return r.value == s.value;
 		}
+		return 0;
 	Tuple =>
 		pick s := v {
 		Tuple =>

@@ -534,6 +534,7 @@ JValue.get(v: self ref JValue, mem: string): ref JValue
 		for(l := r.mem; l != nil; l = tl l)
 			if((hd l).t0 == mem)
 				return (hd l).t1;
+		return nil;
 	* =>
 		return nil;
 	}

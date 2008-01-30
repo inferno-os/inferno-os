@@ -262,6 +262,7 @@ sort sort
 join spree-join
 spree-join spree-join
 stack stack
+stackv stack
 stream stream
 strings strings
 md5sum sum
