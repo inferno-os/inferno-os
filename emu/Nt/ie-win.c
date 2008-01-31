@@ -216,8 +216,9 @@ clipread(void)
 	return nil;
 }
 
-void
+int
 clipwrite(char *p)
 {
 	USED(p);
+	return -1;
 {
