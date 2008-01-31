@@ -16,14 +16,6 @@ static QLock	srv9lk;
 static Srv	*srv9;
 static Srv	*srvroot;
 
-static void
-oserr(void)
-{
-	up->genbuf[0] = 0;
-	oserrstr(up->genbuf, sizeof(up->genbuf));
-	error(up->genbuf);
-}
-
 static char*
 srvname(Chan *c)
 {
@@ -216,7 +208,7 @@ srv9open(Chan *c, int omode)
 		sv->fd = open("/srv", omode);
 		osleave();
 		if(sv->fd < 0)
-			oserr();
+			oserror();
 		c->mode = omode;
 		c->flag |= COPEN;
 		c->offset = 0;
@@ -233,7 +225,7 @@ srv9open(Chan *c, int omode)
 		ifd = open(up->genbuf, omode);
 		osleave();
 		if(ifd < 0)
-			oserr();
+			oserror();
 		osenter();
 		d = dirfstat(ifd);
 		is9p = d != nil && d->qid.type & QTMOUNT;
@@ -249,7 +241,7 @@ srv9open(Chan *c, int omode)
 			args[2] = up->genbuf;
 			args[3] = nil;
 			if(pipe(fd) < 0)
-				oserr();
+				oserror();
 			/* TO DO: without RFMEM there's a copy made of each page touched by any kproc until the exec */
 			switch(rfork(RFPROC|RFNOWAIT|RFREND|RFFDG|RFNAMEG|RFENVG)){	/* no sharing except NOTEG */
 			case -1:
@@ -298,7 +290,7 @@ srv9read(Chan *c, void *va, long n, vlong off)
 	n = pread(sv->fd, va, n, off);
 	osleave();
 	if(n < 0)
-		oserr();
+		oserror();
 	return n;
 }
 
@@ -314,7 +306,7 @@ srv9write(Chan *c, void *va, long n, vlong off)
 	if(n == 0)
 		error(Ehungup);
 	if(n < 0)
-		oserr();
+		oserror();
 	return n;
 }
 
@@ -330,7 +322,7 @@ srv9create(Chan *c, char *name, int omode, ulong perm)
 		error(Eperm);
 
 	if(pipe(fd) < 0)
-		oserr();
+		oserror();
 	if(waserror()){
 		close(fd[0]);
 		close(fd[1]);
@@ -342,7 +334,7 @@ srv9create(Chan *c, char *name, int omode, ulong perm)
 	sfd = create(up->genbuf, OWRITE|ORCLOSE, perm);
 	osleave();
 	if(sfd < 0)
-		oserr();
+		oserror();
 	if(waserror()){
 		close(sfd);
 		nexterror();
@@ -350,7 +342,7 @@ srv9create(Chan *c, char *name, int omode, ulong perm)
 	osenter();
 	if(fprint(sfd, "%d", fd[1]) < 0){
 		osleave();
-		oserr();
+		oserror();
 	}
 	d = dirfstat(sfd);
 	osleave();
@@ -358,7 +350,7 @@ srv9create(Chan *c, char *name, int omode, ulong perm)
 		path = d->qid.path;
 		free(d);
 	}else
-		oserr();
+		oserror();
 
 	poperror();
 	poperror();
