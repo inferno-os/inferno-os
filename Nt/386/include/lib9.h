@@ -1,5 +1,4 @@
 #define _POSIX_SOURCE
-#define	_USE_32BIT_TIME_T
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>

@@ -696,19 +696,6 @@ tm2sec(SYSTEMTIME *tm)
 	return secs;
 }
 
-long
-time(long *tp)
-{
-	SYSTEMTIME tm;
-	long t;
-
-	GetSystemTime(&tm);
-	t = tm2sec(&tm);
-	if(tp != nil)
-		*tp = t;
-	return t;
-}
-
 /*
  * Return the time since the epoch in microseconds
  * The epoch is defined at 1 Jan 1970
@@ -722,6 +709,12 @@ osusectime(void)
 	GetSystemTime(&tm);
 	secs = tm2sec(&tm);
 	return secs * 1000000 + tm.wMilliseconds * 1000;
+}
+
+vlong
+osnsec(void)
+{
+	return osusectime()*1000;	/* TO DO better */
 }
 
 int
