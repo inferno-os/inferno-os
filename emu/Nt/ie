@@ -24,6 +24,7 @@ dev
 	eia
 	audio	audio
 	mem
+	pointer
 #	arch
 
 lib
@@ -35,7 +36,8 @@ lib
 	memlayer
 	memdraw
 	keyring
-	crypt
+	sec
+	mp
 	9
 
 link
