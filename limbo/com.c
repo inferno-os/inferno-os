@@ -368,6 +368,7 @@ fncom(Decl *decl)
 	Node *n;
 	Decl *loc, *last;
 	Inst *in;
+	int valued;
 
 	curfn = decl;
 	if(ispoly(decl))
@@ -410,10 +411,11 @@ fncom(Decl *decl)
 			scom(n->left);
 	}
 	pushblock();
-	in = genrawop(&src, IRET, nil, nil, nil);
+	valued = decl->ty->tof != tnone;
+	in = genrawop(&src, valued? IRAISE: IRET, nil, nil, nil);
 	popblock();
 	reach(decl->pc);
-	if(in->reach && decl->ty->tof != tnone)
+	if(valued && in->reach)
 		error(src.start, "no return at end of function %D", decl);
 	/* decl->endpc = lastinst; */
 	if(labdep != 0)
@@ -1435,6 +1437,9 @@ ret(Node *n, int nilret)
 	return n->op == Oret && n->left == nil;
 }
 
+/*
+ * tail-recursive call
+ */
 static int
 trcom(Node *e, Node *ne, int nilret)
 {
@@ -1442,7 +1447,8 @@ trcom(Node *e, Node *ne, int nilret)
 	Node *as, *a, *f, *n;
 	Inst *p;
 
-return 0;	// TBS
+	if(1)
+		return 0;	/* TO DO: should we enable this? */
 	if(e->op != Ocall || e->left->op != Oname)
 		return 0;
 	d = e->left->decl;

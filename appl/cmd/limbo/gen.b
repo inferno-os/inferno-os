@@ -562,8 +562,6 @@ foldbranch(in: ref Inst)
 				next := in.next;
 				*in = *b;
 				in.next = next;
-				if(b.op == IRET)
-					b.reach = byte 1;	# might be default return (TO DO)
 				continue;
 			}
 			foldbranch(in.branch);

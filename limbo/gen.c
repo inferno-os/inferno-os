@@ -590,8 +590,6 @@ foldbranch(Inst *in)
 				next = in->next;
 				*in = *b;
 				in->next = next;
-				if(b->op == IRET)
-					b->reach = 1;	/* might be default return (TO DO) */
 				continue;
 			}
 			foldbranch(b);
