@@ -816,7 +816,7 @@ pins(Inst *i)
 {
 	/* print("%L		%ld	", i->src.start, i->pc); */
 	print("		%ld	", i->pc);
-	if(i->op >= 0 && i->op < MAXDIS)
+	if(i->op < MAXDIS)
 		print("%s", instname[i->op]);
 	else
 		print("noop");

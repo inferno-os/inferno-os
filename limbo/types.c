@@ -2805,7 +2805,7 @@ tequal(Type *t1, Type *t2)
 	eqset = 0;
 	ok = rtequal(t1, t2);
 	v = cleareqrec(t1) + cleareqrec(t2);
-	if(0 && v != eqset)
+	if(v != eqset && 0)
 		fatal("recid t1 %t and t2 %t not balanced in tequal: %d %d", t1, t2, v, eqset);
 	eqset = 0;
 	return ok;
@@ -3205,7 +3205,6 @@ if(debug['w']) print("rtunifyb - %T %T\n", t1, t2);
 	case Tpoly:
 		return t1 == t2;
 	}
-	return 1;
 }
 
 static int
@@ -3314,48 +3313,50 @@ tpolys(Type *t)
 	if(t->flags&(POLY|NOPOLY))
 		return t->flags&POLY;
 	switch(t->kind){
-		default:
-			v = 0;
-			break;
-		case Tarrow:
-		case Tdot:
-		case Tpoly:
-			v = 1;
-			break;
-		case Tref:
-		case Tlist:
-		case Tarray:
-		case Tchan:
-			v = tpolys(t->tof);
-			break;
-		case Tid:
-			v = tpolys(t->decl->ty);
-			break;
-		case Tinst:
-			for(tl = t->u.tlist; tl != nil; tl = tl->nxt)
-				if(tpolys(tl->t)){
-					v = 1;
-					break;
-				}
-			v = tpolys(t->tof);
-			break;
-		case Tfn:
-		case Tadt:
-		case Tadtpick:
-		case Ttuple:
-		case Texception:
-			if(t->polys != nil){
+	default:
+		v = 0;
+		break;
+	case Tarrow:
+	case Tdot:
+	case Tpoly:
+		v = 1;
+		break;
+	case Tref:
+	case Tlist:
+	case Tarray:
+	case Tchan:
+		v = tpolys(t->tof);
+		break;
+	case Tid:
+		v = tpolys(t->decl->ty);
+		break;
+	case Tinst:
+		v = 0;
+		for(tl = t->u.tlist; tl != nil; tl = tl->nxt)
+			if(tpolys(tl->t)){
 				v = 1;
 				break;
 			}
-			if(t->rec&TRvis)
-				return 0;
-			t->rec |= TRvis;
-			v = tpolys(t->tof) || dpolys(t->polys) || dpolys(t->ids) || dpolys(t->tags);
-			t->rec &= ~TRvis;
-			if(t->kind == Tadtpick && v == 0)
-				v = tpolys(t->decl->dot->ty);
+		if(v == 0)
+			v = tpolys(t->tof);
+		break;
+	case Tfn:
+	case Tadt:
+	case Tadtpick:
+	case Ttuple:
+	case Texception:
+		if(t->polys != nil){
+			v = 1;
 			break;
+		}
+		if(t->rec&TRvis)
+			return 0;
+		t->rec |= TRvis;
+		v = tpolys(t->tof) || dpolys(t->polys) || dpolys(t->ids) || dpolys(t->tags);
+		t->rec &= ~TRvis;
+		if(t->kind == Tadtpick && v == 0)
+			v = tpolys(t->decl->dot->ty);
+		break;
 	}
 	if(v)
 		t->flags |= POLY;
@@ -4229,7 +4230,6 @@ tparent1(Type *t1, Type *t2)
 			return t1;
 		return t1->decl->dot->ty;
 	}
-	return t1;
 }
 
 Type*

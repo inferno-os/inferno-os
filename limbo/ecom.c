@@ -2372,7 +2372,6 @@ tupaliased(Node *n, Node *e)
 			return 1;
 		e = e->right;
 	}
-	return 0;
 }
 
 /*
@@ -2390,7 +2389,6 @@ tupsaliased(Node *n, Node *e)
 			return 1;
 		n = n->right;
 	}
-	return 0;	
 }
 
 /*

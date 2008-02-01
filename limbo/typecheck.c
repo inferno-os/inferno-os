@@ -2148,7 +2148,6 @@ marklval(Node *n)
 	default:
 		return 0;
 	}
-	return 0;
 }
 
 /*
@@ -2483,8 +2482,9 @@ if(debug['v']) print("fnlookup: %p\n", id);
 						mod = args0->left;
 						break;
 					}
-					if(args0 != nil)
-						args0 = args0->right;
+					if(args0 == nil)
+						break;
+					args0 = args0->right;
 				}
 			}
 			if(mod == nil && (dot = module(id)) != nil && !isimpmod(dot->sym))
