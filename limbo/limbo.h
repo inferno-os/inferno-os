@@ -194,7 +194,7 @@ struct Decl
 	Sym	*sym;
 	uchar	store;			/* storage class */
 	uchar	nid;		/* block grouping for locals */
-	uchar	caninline;	/* inline function */
+	schar	caninline;	/* inline function */
 	uchar	das;		/* declared with := */
 	Decl	*dot;			/* parent adt or module */
 	Type	*ty;
