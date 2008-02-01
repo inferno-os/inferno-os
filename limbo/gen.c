@@ -590,10 +590,11 @@ foldbranch(Inst *in)
 				next = in->next;
 				*in = *b;
 				in->next = next;
-				/* b->reach = 1; */	/* why ? */
+				if(b->op == IRET)
+					b->reach = 1;	/* might be default return (TO DO) */
 				continue;
 			}
-			foldbranch(in->branch);
+			foldbranch(b);
 			return;
 		default:
 			if(in->branch != nil)
@@ -976,7 +977,7 @@ instconv(Fmt *f)
 
 	in = va_arg(f->args, Inst*);
 	op = nil;
-	if(in->op >= 0 && in->op < MAXDIS)
+	if(in->op < MAXDIS)
 		op = instname[in->op];
 	if(op == nil)
 		op = "??";

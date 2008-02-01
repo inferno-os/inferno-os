@@ -1,3 +1,5 @@
+20080201
+	change foldbranch in limbo/gen.c to prevent loss of `no return value' diagnostics
 20080131
 	update emu/Nt/^(os.c ie-os.c ie-win.c ie emu), but properly this time [issue 81]
 	remove _USE_32BIT_TIME_T from Nt/386/include/lib9.h, and time() def'n from emu/Nt/*.c [issue 81]
