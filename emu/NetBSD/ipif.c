@@ -217,7 +217,7 @@ so_accept(int fd, unsigned long *raddr, unsigned short *rport)
 }
 
 void
-so_bind(int fd, int su, unsigned short port)
+so_bind(int fd, int su, unsigned long addr, unsigned short port)
 {
 	int i, one;
 	struct sockaddr sa;
@@ -235,6 +235,7 @@ so_bind(int fd, int su, unsigned short port)
 		for(i = 600; i < 1024; i++) {
 			memset(&sa, 0, sizeof(sa));
 			sin->sin_family = AF_INET;
+			hnputl(&sin->sin_addr.s_addr, addr);
 			hnputs(&sin->sin_port, i);
 
 			if(bind(fd, &sa, sizeof(sa)) >= 0)	
@@ -245,6 +246,7 @@ so_bind(int fd, int su, unsigned short port)
 
 	memset(&sa, 0, sizeof(sa));
 	sin->sin_family = AF_INET;
+	hnputl(&sin->sin_addr.s_addr, addr);
 	hnputs(&sin->sin_port, port);
 
 	if(bind(fd, &sa, sizeof(sa)) < 0)

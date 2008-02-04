@@ -614,7 +614,7 @@ setladdr(Conv *c)
 {
 	ulong laddr;
 
-	/* TO DO: this can't be right for hosts with several addresses */
+	/* TO DO: this can't be right for hosts with several addresses before connect/accept */
 	so_getsockname(c->sfd, &laddr, &c->lport);
 	ipw6(c->laddr, laddr);
 }
@@ -626,10 +626,16 @@ static void
 setlport(Conv *c)
 {
 	ulong laddr;
+	ushort p;
 
-	so_bind(c->sfd, c->restricted, c->lport);
-	if(c->lport == 0)
-		so_getsockname(c->sfd, &laddr, &c->lport);
+	so_bind(c->sfd, c->restricted, ip6w(c->laddr), c->lport);
+	if(c->lport == 0  || ipcmp(c->laddr, IPnoaddr) == 0){
+		so_getsockname(c->sfd, &laddr, &p);
+		if(c->lport == 0)
+			c->lport = p;
+		if(ipcmp(c->laddr, IPnoaddr) == 0)
+			ipw6(c->laddr, laddr);
+	}
 }
 
 static int

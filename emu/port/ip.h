@@ -18,7 +18,7 @@ typedef struct Conv	Conv;
 extern int		so_socket(int type);
 extern void		so_connect(int, unsigned long, unsigned short);
 extern void		so_getsockname(int, unsigned long*, unsigned short*);
-extern void		so_bind(int, int, unsigned short);
+extern void		so_bind(int, int, unsigned long, unsigned short);
 extern void		so_listen(int);
 extern int		so_accept(int, unsigned long*, unsigned short*);
 extern int		so_getservbyname(char*, char*, char*);

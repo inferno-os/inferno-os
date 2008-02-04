@@ -1,3 +1,5 @@
+20080204
+	emu/*/*ipif*.c and devip.c: try to allow local address to be set (changes so_bind signature in emu/ip.h)
 20080201
 	change foldbranch in limbo/gen.c to prevent loss of `no return value' diagnostics
 20080131
