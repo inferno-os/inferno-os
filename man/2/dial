@@ -248,6 +248,7 @@ or
 .BR announce .
 It adds the default network
 .I defnet
+(usually "\f5net\fP")
 and a default service
 .I defsvc
 to the given
