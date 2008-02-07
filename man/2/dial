@@ -19,7 +19,7 @@ listen:    fn(c: ref Connection):       ref Connection;
 accept:    fn(c: ref Connection): ref Sys->FD;
 reject:    fn(c: ref Connection, why: string);
 
-netmkaddr: fn(net, host, svc: string): string;
+netmkaddr: fn(addr, defnet, defsvc: string): string;
 
 Conninfo: adt
 {
@@ -237,6 +237,25 @@ Use
 .B reject
 to reject the incoming call; some networks will also tell the caller the reason
 .IR why .
+.PP
+.B Netmkaddr
+makes
+.I addr
+into a full network address,
+suitable for
+.B dial
+or
+.BR announce .
+It adds the default network
+.I defnet
+and a default service
+.I defsvc
+to the given
+.I addr
+as required, including
+.RB ` ! '
+separators,
+and returns the result.
 .PP
 Given a
 .BR Connection ,
