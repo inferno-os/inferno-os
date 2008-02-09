@@ -53,7 +53,7 @@ csdial(netdir: string, proto: string, rem: string, local: string): ref Connectio
 	sys->seek(fd, big 0, 0);
 	for(;;){
 		(clonefile, addr) := csread(fd);
-		if(clone == nil)
+		if(clonefile == nil)
 			break;
 		c := call(redir(clonefile, netdir), addr, local);
 		if(c != nil)
