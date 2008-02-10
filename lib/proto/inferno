@@ -356,6 +356,7 @@ appl
 			countersigner.b
 			convpasswd.b
 			createsignerkey.b
+			dsagen.b
 			factotum
 				authio.m
 				mkfile
