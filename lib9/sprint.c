@@ -25,7 +25,7 @@ sprint(char *buf, char *fmt, ...)
 	 * the stack might be near the top of memory, so
 	 * we must be sure not to overflow a 32-bit pointer.
 	 */
-	if(buf+len < buf)
+	if((uintptr)buf+len < (uintptr)buf)
 		len = -(uint)buf-1;
 
 	va_start(args, fmt);
