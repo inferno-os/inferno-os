@@ -9,6 +9,9 @@ include "sys.m";
 
 include "draw.m";
 
+include "dial.m";
+	dial: Dial;
+
 include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
@@ -37,6 +40,7 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	bufio = load Bufio Bufio->PATH;
 	secstore = load Secstore Secstore->PATH;
+	dial = load Dial Dial->PATH;
 
 	sys->pctl(Sys->FORKFD, nil);
 	stderr = sys->fildes(2);
@@ -108,7 +112,7 @@ Auth:
 		filekey = secstore->mkfilekey(pass);
 		for(i := 0; i < len pass; i++)
 			pass[i] = 0;	# clear it
-		conn = secstore->dial(netmkaddr(addr, "net", "secstore"));
+		conn = secstore->dial(dial->netmkaddr(addr, "net", "secstore"));
 		if(conn == nil)
 			error(sys->sprint("can't connect to secstore: %r"));
 		(srvname, diag) := secstore->auth(conn, user, seckey);
@@ -299,19 +303,4 @@ readfile(f: string): string
 	if(n < 0)
 		return "";
 	return string buf[0:n]; 
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

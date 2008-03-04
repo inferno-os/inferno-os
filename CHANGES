@@ -1,3 +1,5 @@
+20080304
+	auth/secstore uses dial module
 20080210
 	add auth/dsagen
 20080204
