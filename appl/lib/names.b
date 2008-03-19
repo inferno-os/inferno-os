@@ -119,6 +119,8 @@ rooted(root: string, name: string): string
 isprefix(a: string, b: string): int
 {
 	la := len a;
+	if(la == 0)
+		return 0;	# "" isnt' a pathname
 	while(la > 1 && a[la-1] == '/')
 		a = a[0:--la];
 	lb := len b;

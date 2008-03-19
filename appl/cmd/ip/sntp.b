@@ -13,6 +13,9 @@ include "ip.m";
 	ip: IP;
 	IPaddr: import ip;
 
+include "dial.m";
+	dial: Dial;
+
 include "timers.m";
 	timers: Timers;
 	Timer: import timers;
@@ -60,7 +63,7 @@ ClientMode: con 3;
 ServerMode: con 4;
 Epoch: con big 86400*big (365*70 + 17);	# seconds between 1 Jan 1900 and 1 Jan 1970
 
-Microsec: con big 100000;
+Microsec: con big 1000000;
 
 server := "$ntp";
 stderr: ref Sys->FD;
@@ -70,6 +73,7 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	ip = load IP IP->PATH;
 	timers = load Timers Timers->PATH;
+	dial = load Dial Dial->PATH;
 
 	ip->init();
 	arg := load Arg Arg->PATH;
@@ -95,8 +99,8 @@ init(nil: ref Draw->Context, args: list of string)
 	stderr = sys->fildes(2);
 	timers->init(100);
 
-	(ok, conn) := sys->dial(netmkaddr(server, "udp", "ntp"), nil);
-	if(ok < 0){
+	conn := dial->dial(dial->netmkaddr(server, "udp", "ntp"), nil);
+	if(conn == nil){
 		sys->fprint(stderr, "sntp: can't dial %s: %r\n", server);
 		raise "fail:dial";
 	}
@@ -141,7 +145,7 @@ init(nil: ref Draw->Context, args: list of string)
 				sys->print("%bd\n", now);
 			if(doset){
 				settime("#r/rtc", now);
-				settime("/dev/time", now * Microsec);
+				settime("/dev/time", now*Microsec);
 			}
 			quit(nil);
 		<-t.timeout =>
@@ -187,17 +191,25 @@ quit(s: string)
 
 time(): int
 {
-	fd := sys->open("#r/rtctime", Sys->OREAD);
-	if(fd == nil){
-		fd = sys->open("/dev/time", Sys->OREAD);
-		if(fd == nil)
-			return 0;
-	}
+	n := rdn("#r/rtc");
+	if(n > big 300)	# ie, possibly set
+		return int n;
+	n = rdn("/dev/time");
+	if(n <= big 0)
+		return 0;
+	return int(n/big Microsec);
+}
+
+rdn(f: string): big
+{
+	fd := sys->open(f, Sys->OREAD);
+	if(fd == nil)
+		return big -1;
 	b := array[128] of byte;
 	n := sys->read(fd, b, len b);
 	if(n <= 0)
-		return 0;
-	return int (big string b[0:n] / big 1000000);
+		return big 0;
+	return big string b[0:n];
 }
 
 settime(f: string, t: big)
@@ -295,19 +307,4 @@ SNTP.new(vn, mode: int): ref SNTP
 	s.rcvtime = big 0;
 	s.xmttime = big 0;
 	return s;
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

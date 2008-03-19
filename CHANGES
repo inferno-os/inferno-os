@@ -1,3 +1,7 @@
+20080319
+	ip/sntp neither read nor set the time correctly
+20080311
+	in appl/lib/names.b define "" as valid prefix for anything
 20080304
 	auth/secstore uses dial module
 20080210
