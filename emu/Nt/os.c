@@ -19,6 +19,7 @@ DWORD			consolestate;
 static			char*	path;
 static			HANDLE	kbdh = INVALID_HANDLE_VALUE;
 static			HANDLE	conh = INVALID_HANDLE_VALUE;
+static			HANDLE	errh = INVALID_HANDLE_VALUE;
 static			int sleepers = 0;
 
 	wchar_t	*widen(char *s);
@@ -359,6 +360,7 @@ termset(void)
 		return;
 	conh = GetStdHandle(STD_OUTPUT_HANDLE);
 	kbdh = GetStdHandle(STD_INPUT_HANDLE);
+	errh = GetStdHandle(STD_ERROR_HANDLE);
 
 	// The following will fail if kbdh not from console (e.g. a pipe)
 	// in which case we don't care
@@ -497,13 +499,19 @@ read(int fd, void *buf, uint n)
 int
 write(int fd, void *buf, uint n)
 {
+	HANDLE h;
+
 	if(fd == 1 || fd == 2){
-		if(conh == INVALID_HANDLE_VALUE){
-			termset();
-			if(conh == INVALID_HANDLE_VALUE)
-				return -1;
-		}
-		if(!WriteFile(conh, buf, n, &n, NULL))
+		if(fd == 1){
+			if(conh == INVALID_HANDLE_VALUE){
+				termset();
+			}
+			h = conh;
+		}else
+			h = errh;
+		if(h == INVALID_HANDLE_VALUE)
+			return -1;
+		if(!WriteFile(h, buf, n, &n, NULL))
 			return -1;
 		return n;
 	}

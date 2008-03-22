@@ -1,3 +1,5 @@
+20080322
+	enable hoststderr, following acme-sac
 20080319
 	ip/sntp neither read nor set the time correctly
 20080311
