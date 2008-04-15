@@ -10,6 +10,7 @@
  */
 
 #define _GNU_SOURCE 1
+#define XTHREADS
 #include "dat.h"
 #include "fns.h"
 #undef log2
@@ -463,6 +464,7 @@ xkbdproc(void *arg)
 
 	/* BEWARE: the value of up is not defined for this proc on some systems */
 
+	XLockDisplay(xd);	/* should be ours alone */
 	XSelectInput(xd, xdrawable, KeyPressMask);		
 	for(;;){
 		XNextEvent(xd, &event);
@@ -495,6 +497,7 @@ xproc(void *arg)
 		ExposureMask|
 		StructureNotifyMask;
 
+	XLockDisplay(xd);	/* should be ours alone */
 	XSelectInput(xd, xdrawable, mask);		
 	for(;;){
 		XNextEvent(xd, &event);
@@ -676,6 +679,7 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 	dispname = getenv("DISPLAY");
 	if(dispname == nil)
 		dispname = "not set";
+	XInitThreads();
 	xdisplay = XOpenDisplay(NULL);
 	if(xdisplay == 0){
 		fprint(2, "emu: win-x11 open %r, DISPLAY is %s\n", dispname);
@@ -1414,12 +1418,23 @@ if(0) iprint("xselect target=%d requestor=%d property=%d selection=%d\n",
 char*
 clipread(void)
 {
-	return _xgetsnarf(xsnarfcon);
+	char *p;
+
+	if(xsnarfcon == nil)
+		return nil;
+	XLockDisplay(xsnarfcon);
+	p = _xgetsnarf(xsnarfcon);
+	XUnlockDisplay(xsnarfcon);
+	return p;
 }
 
 int
 clipwrite(char *buf)
 {
+	if(xsnarfcon == nil)
+		return 0;
+	XLockDisplay(xsnarfcon);
 	_xputsnarf(xsnarfcon, buf);
+	XUnlockDisplay(xsnarfcon);
 	return 0;
 }

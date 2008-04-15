@@ -1,6 +1,7 @@
 20080415
 	googlecode update with correct dis files for acme
 	tidier code for hoststderr
+	emu/port/win-x11a.c changes that attempt to satisfy libxcb's locking requirements
 20080322
 	enable hoststderr, following acme-sac
 20080319
