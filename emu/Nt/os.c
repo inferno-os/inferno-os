@@ -12,15 +12,16 @@ int	SYS_SLEEP = 2;
 int SOCK_SELECT = 3;
 #define	MAXSLEEPERS	1500
 
-extern			int	cflag;
+extern	int	cflag;
 
-DWORD			PlatformId;
-DWORD			consolestate;
-static			char*	path;
-static			HANDLE	kbdh = INVALID_HANDLE_VALUE;
-static			HANDLE	conh = INVALID_HANDLE_VALUE;
-static			HANDLE	errh = INVALID_HANDLE_VALUE;
-static			int sleepers = 0;
+DWORD	PlatformId;
+DWORD	consolestate;
+static	char*	path;
+static	HANDLE	kbdh = INVALID_HANDLE_VALUE;
+static	HANDLE	conh = INVALID_HANDLE_VALUE;
+static	HANDLE	errh = INVALID_HANDLE_VALUE;
+static	int	donetermset = 0;
+static	int sleepers = 0;
 
 	wchar_t	*widen(char *s);
 	char		*narrowen(wchar_t *ws);
@@ -356,11 +357,14 @@ termset(void)
 {
 	DWORD flag;
 
-	if(conh != INVALID_HANDLE_VALUE)
+	if(donetermset)
 		return;
+	donetermset = 1;
 	conh = GetStdHandle(STD_OUTPUT_HANDLE);
 	kbdh = GetStdHandle(STD_INPUT_HANDLE);
 	errh = GetStdHandle(STD_ERROR_HANDLE);
+	if(errh == INVALID_FILE_HANDLE)
+		errh = conh;
 
 	// The following will fail if kbdh not from console (e.g. a pipe)
 	// in which case we don't care
@@ -502,12 +506,11 @@ write(int fd, void *buf, uint n)
 	HANDLE h;
 
 	if(fd == 1 || fd == 2){
-		if(fd == 1){
-			if(conh == INVALID_HANDLE_VALUE){
-				termset();
-			}
+		if(!donetermset)
+			termset();
+		if(fd == 1)
 			h = conh;
-		}else
+		else
 			h = errh;
 		if(h == INVALID_HANDLE_VALUE)
 			return -1;

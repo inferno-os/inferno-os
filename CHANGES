@@ -1,5 +1,6 @@
 20080415
 	googlecode update with correct dis files for acme
+	tidier code for hoststderr
 20080322
 	enable hoststderr, following acme-sac
 20080319
