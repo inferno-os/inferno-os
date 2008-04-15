@@ -63,8 +63,6 @@ port
 	uqid
 
 code
-	int	dontcompile = 1;
-	int macjit = 1;
 	void setpointer(int x, int y){USED(x); USED(y);}
 	ulong strtochan(char *s){USED(s); return ~0;}
 
