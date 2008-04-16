@@ -21,7 +21,6 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 OBJ=\
 	asm-$OBJTYPE.$O\
 	os.$O\
-	win-x11.$O\
 	$CONF.root.$O\
 	lock.$O\
 	$DEVS\

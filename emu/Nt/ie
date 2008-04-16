@@ -1,6 +1,5 @@
 env
 	LDFLAGS=	-subsystem:windows $LDFLAGS
-	WINX=	ie-win
 	OSX=	ie-os
 
 dev
@@ -18,7 +17,7 @@ dev
 	fs
 	indir
 
-	draw
+	draw	ie-win
 
 	ip	ipif ipaux
 	eia

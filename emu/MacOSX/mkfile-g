@@ -29,11 +29,11 @@ OBJ=\
 HFILES=\
 
 CFLAGS='-DROOT="'$ROOT'"'\
+	'-DOBJTYPE="'$OBJTYPE'"'\
 	-DEMU -I. -I../port\
 	-I$ROOT/$SYSTARG/$OBJTYPE/include\
 	-I$ROOT/include -I$ROOT/libinterp\
 	$CTHREADFLAGS $CFLAGS $EMUOPTIONS\
-	-I/usr/X11R6/include
 
 KERNDATE=`{$NDATE}
 

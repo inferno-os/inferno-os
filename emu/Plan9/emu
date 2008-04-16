@@ -15,7 +15,7 @@ dev
 	indir
 	sign
 
-	draw
+	draw	win
 	pointer
 
 	dynld

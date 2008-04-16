@@ -14,7 +14,7 @@ dev
 	indir
 	sign
 
-	draw
+	draw	win
 
 #	ip and eia are simply bound in from Plan 9
 

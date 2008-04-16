@@ -14,15 +14,11 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 
 <$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
 
-OSX=os
-WINX=win
-
 <| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $PORT, $LIBS
 
 OBJ=\
 	asm-$OBJTYPE.$O\
-	$OSX.$O\
-	$WINX.$O\
+	os.$O\
 	$CONF.root.$O\
 	$DEVS\
 	$PORT\

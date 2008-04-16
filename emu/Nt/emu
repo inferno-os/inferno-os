@@ -17,7 +17,7 @@ dev
 	cmd	cmd
 	indir
 
-	draw
+	draw	win
 
 	ip	ipif ipaux
 	eia

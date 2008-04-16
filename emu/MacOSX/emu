@@ -14,7 +14,7 @@ dev
 	cmd	cmd
 	indir
 
-	draw
+	draw	win
 	pointer
 	snarf
 

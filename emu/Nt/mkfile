@@ -17,7 +17,6 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 #end configurable parameters
 
 OSX=os
-WINX=win
 
 <$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
 
@@ -25,7 +24,6 @@ WINX=win
 
 OBJ=\
 	$OSX.$O\
-	$WINX.$O\
 	$CONF.root.$O\
 	lock.$O\
 	fp.$O\
