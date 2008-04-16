@@ -1,3 +1,5 @@
+20080416
+	fix emu/Nt/os.c in-flight error
 20080415
 	googlecode update with correct dis files for acme
 	tidier code for hoststderr

@@ -363,7 +363,7 @@ termset(void)
 	conh = GetStdHandle(STD_OUTPUT_HANDLE);
 	kbdh = GetStdHandle(STD_INPUT_HANDLE);
 	errh = GetStdHandle(STD_ERROR_HANDLE);
-	if(errh == INVALID_FILE_HANDLE)
+	if(errh == INVALID_HANDLE_VALUE)
 		errh = conh;
 
 	// The following will fail if kbdh not from console (e.g. a pipe)
