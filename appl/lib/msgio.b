@@ -89,7 +89,7 @@ getbuf(fd: ref Sys->FD, buf: array of byte, n: int): (int, string)
 	}
 	if(buf[0] == byte 0)
 		return (n, nil);
-	if(buf[0] == byte 16rFF){
+	if(buf[0] != byte 16rFF){
 		# garbled, possibly the wrong encryption
 		return (-1, "failure");
 	}

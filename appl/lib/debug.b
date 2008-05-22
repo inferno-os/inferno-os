@@ -921,6 +921,9 @@ pstring(p: ref Prog, a: int): (int, string, string)
 		(n, s, err) = pstring0(p, a, m);
 		if(err != "" || n <= len s)
 			break;
+		# guard against broken devprog
+		if(m >= 3 * n)
+			return (-1, nil, "bad string");
 		m *= 2;
 	}
 	return (n, s, err);

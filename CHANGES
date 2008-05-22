@@ -1,3 +1,5 @@
+20080522
+	dis/lib/msgio.dis appl/lib/msgio.b - fix incorrect check for 16rFF
 20080416
 	fix emu/Nt/os.c use of wrong name for null value
 	move win/win-x11a references to emu/*/emu config files from emu/*/mkfile
