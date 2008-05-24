@@ -1,3 +1,5 @@
+20080524
+	add missing NetBSD files
 20080522
 	dis/lib/msgio.dis appl/lib/msgio.b - fix incorrect check for 16rFF
 	add OpenBSD changes from tim@nop.cx (more changes to follow shortly that cause changes elsewhere)
