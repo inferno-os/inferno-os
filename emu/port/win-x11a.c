@@ -152,7 +152,6 @@ clean_errhandlers(void)
 uchar*
 attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 {
-	ulong c;
 	int depth;
 
 	Xsize &= ~0x3;	/* ensure multiple of 4 */
@@ -162,12 +161,8 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	r->max.x = Xsize;
 	r->max.y = Ysize;
 
-	c = displaychan;
-	if(c == 0)
-		c = CMAP8;
-	
 	if(!triedscreen){
-		xinitscreen(Xsize, Ysize, c, chan, d);
+		xinitscreen(Xsize, Ysize, displaychan, chan, d);
 		/*
 		 * moved xproc from here to end since it could cause an expose event and
 		 * hence a flushmemscreen before xscreendata is initialized
@@ -673,6 +668,8 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 	XClassHint classhints;
 	XSizeHints normalhints;
 	XSetWindowAttributes attrs;
+	XPixmapFormatValues *pfmt;
+	int i, n;
  
 	xdrawable = 0;
 
@@ -693,8 +690,51 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 	screen = DefaultScreenOfDisplay(xdisplay);
 	xcmap = DefaultColormapOfScreen(screen);
 
-	*chan = CMAP8;
-	*d = 8;
+	/*
+	 * xscreendepth is only the number of significant pixel bits,
+	 * not the total number of pixel bits.  We need to walk the
+	 * display list to find how many actual bits are used
+	 * per pixel.
+	 */
+	if(c == 0){
+		pfmt = XListPixmapFormats(xdisplay, &n);
+		for(i=0; i<n; i++)
+			if(pfmt[i].depth == xscreendepth){
+				*d = pfmt[i].bits_per_pixel;
+				break;
+			}
+		if(i == n){
+			fprint(2, "emu: win-x11 could not determine pixel format.\n");
+			cleanexit(0);
+		}
+	}
+		
+	switch(*d){
+	case 1:	/* untested */
+		*chan = GREY1;
+		break;
+	case 2:	/* untested */
+		*chan = GREY2;
+		break;
+	case 4:	/* untested */
+		*chan = GREY4;
+		break;
+	case 8:
+		*chan = CMAP8;
+		break;
+	case 15:
+		*chan = RGB15;
+		break;
+	case 16: /* how to tell RGB15? */
+		*chan = RGB16;
+		break;
+	case 24: /* untested (impossible?) */
+		*chan = RGB24;
+		break;
+	case 32:
+		*chan = XRGB32;
+		break;
+	}
 
 	if(xvis->class != StaticColor) {
 		if(TYPE(c) == CGrey)
@@ -889,10 +929,6 @@ initmap(XWindow w, ulong cc, ulong *chan, int *d)
 				XAllocColor(xdisplay, xcmap, &c);
 				infernobtox11[i] = (c.pixel>>0)&0xff;
 			}
-		}
-		if(TYPE(cc) != CGrey && cc != CMAP8 && xscreendepth >= 24){
-			*chan = XRGB32;
-			*d = 32;
 		}
 	}
 	else if(xvis->class == PseudoColor) {
