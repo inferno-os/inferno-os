@@ -493,6 +493,8 @@ ctprint(char *buf, char *end, Type *t)
 	case Tfix:
 	case Tpoly:
 		return seprint(buf, end, "%s", ckindname[t->kind]);
+	case Tadtpick:
+		return ctprint(buf, end, t->decl->dot->ty);
 	case Tadt:
 	case Ttuple:
 		if(t->decl->sym != anontupsym)

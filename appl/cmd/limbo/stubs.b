@@ -481,6 +481,8 @@ ctypeconv(t: ref Type): string
 	Tfix or
 	Tpoly =>
 		return ckindname[t.kind];
+	Tadtpick =>
+		return ctypeconv(t.decl.dot.ty);
 	Tadt or
 	Ttuple =>
 		if(t.decl.sym != anontupsym)

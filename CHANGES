@@ -1,3 +1,5 @@
+20080529
+	limbo/stubs.c: allow pick adt types
 20080528
 	emu/port/win-x11a.c screen depth checks from drawterm via tim@nop.cx
 20080524
