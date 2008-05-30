@@ -1,5 +1,6 @@
 20080530
 	issue 91: _declspec changed to __declspec in Nt files
+	issue 92: argv0 declaration changed to extern from static in emu/Nt/win.c
 20080529
 	limbo/stubs.c: allow pick adt types
 20080528

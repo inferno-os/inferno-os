@@ -53,7 +53,7 @@ static	int		attached;
 static	int		isunicode = 1;
 static	HCURSOR		hcursor;
 
-static	char	*argv0 = "inferno";
+char	*argv0 = "inferno";
 static	ulong	*data;
 
 extern	DWORD	PlatformId;
