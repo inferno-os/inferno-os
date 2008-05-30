@@ -479,7 +479,7 @@ struct FPU
 extern	void		sleep(int);
 
 /* Set up private thread space */
-extern	_declspec(thread) Proc*	up;
+extern	__declspec(thread) Proc*	up;
 #define Sleep	NTsleep
 
 typedef jmp_buf osjmpbuf;

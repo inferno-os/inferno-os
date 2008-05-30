@@ -32,7 +32,7 @@ static	int sleepers = 0;
 	char*	runestoutf(char*, Rune*, int);
 	int		runescmp(Rune*, Rune*);
 
-_declspec(thread)       Proc    *up;
+__declspec(thread)       Proc    *up;
 
 HANDLE	ntfd2h(int);
 int	nth2fd(HANDLE);

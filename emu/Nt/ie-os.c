@@ -34,7 +34,7 @@ static ulong erendezvous(void*, ulong);
 	char*	runestoutf(char*, Rune*, int);
 	int		runescmp(Rune*, Rune*);
 
-_declspec(thread)       Proc    *up;
+__declspec(thread)       Proc    *up;
 
 HANDLE	ntfd2h(int);
 int	nth2fd(HANDLE);
