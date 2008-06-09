@@ -369,7 +369,7 @@ extern	void	sysfatal(char*, ...);
 #pragma	varargck	argpos	sysfatal	1
 extern	void	syslog(int, char*, char*, ...);
 #pragma	varargck	argpos	syslog	3
-extern	ulong	_tas(ulong*);
+extern	int	_tas(int*);
 extern	long	time(long*);
 extern	int	tolower(int);
 extern	int	toupper(int);
