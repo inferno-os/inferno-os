@@ -515,7 +515,7 @@ enum {
 
 typedef struct ICursor ICursor;
 struct ICursor {
-	ulong	inuse;
+	int	inuse;
 	int	modify;
 	int	hotx;
 	int	hoty;
