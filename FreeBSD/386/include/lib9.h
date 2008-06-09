@@ -284,11 +284,11 @@ extern	int	encodefmt(Fmt*);
  */
 typedef
 struct Lock {
-	ulong	val;
+	int	val;
 	int	pid;
 } Lock;
 
-extern ulong	_tas(ulong*);
+extern int	_tas(int*);
 
 extern	void	lock(Lock*);
 extern	void	unlock(Lock*);

@@ -380,10 +380,10 @@ extern	int	toupper(int);
  */
 typedef
 struct Lock {
-	ulong	val;
+	int	val;
 } Lock;
 
-extern ulong	_tas(ulong*);
+extern int	_tas(int*);
 
 extern	void	lock(Lock*);
 extern	void	unlock(Lock*);

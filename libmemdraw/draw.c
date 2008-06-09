@@ -493,7 +493,7 @@ struct Dbuf
 	uchar *p;
 	int n;
 	Param spar, mpar, dpar;
-	ulong inuse;
+	int inuse;
 };
 static Dbuf dbuf[10];
 

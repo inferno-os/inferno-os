@@ -1,3 +1,5 @@
+20080609
+	_tas type changed from ulong to int
 20080530
 	issue 91: _declspec changed to __declspec in Nt files
 	issue 92: argv0 declaration changed to extern from static in emu/Nt/win.c

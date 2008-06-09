@@ -1,9 +1,9 @@
 #include "lib9.h"
 
-ulong
-_tas(ulong *la)
+int
+_tas(int *la)
 {
-	ulong v;
+	int v;
 
 	_asm {
 		mov eax, la
