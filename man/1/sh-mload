@@ -1,0 +1,68 @@
+.TH SH-MLOAD 1
+.SH NAME
+mload, munload \- namespace separation for shell modules
+.SH SYNOPSIS
+.B load mload
+
+.B mload
+.I name
+[
+.IR path ...
+]
+.br
+.B munload
+.I name
+[
+.IR path ...
+]
+.br
+.SH DESCRIPTION
+.I Mload
+is a loadable module for
+.IR sh (1)
+that allows the simultaneous use of shell modules with
+potentially clashing command name spaces.
+.B Mload
+creates a new namespace
+.I name
+and loads each
+.I path
+as a builtin module in the same way as
+.B load
+(see
+.IR sh (1)).
+Any commands or substitution builtins defined
+by the modules are accessible by giving
+the command and its arguments as arguments to
+the
+.I name
+command.
+.PP
+.B Munload
+unloads a module from the namespace
+.IR name .
+If no modules remain in the namespace,
+.I name
+is undefined as a command.
+.SH EXAMPLE
+Load
+.I mpexpr
+in a different namespace from
+.I expr
+(see
+.IR sh-expr (1)):
+.EX
+load expr
+mload mp mpexpr
+echo ${expr 1 2 +}
+echo ${mp expr 2 300 xx}
+.EE
+.SH SOURCE
+.B /appl/cmd/sh/mload.b
+.SH SEE ALSO
+.IR sh (1),
+.SH BUGS
+Because of the way shell modules are implemented,
+the namespaces are global across all processes that
+share an instance of
+.IR mload .

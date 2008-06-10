@@ -3,7 +3,9 @@
 TARG=sh.dis\
 	arg.dis\
 	expr.dis\
+	mpexpr.dis\
 	file2chan.dis\
+	mload.dis\
 	regex.dis\
 	sexprs.dis\
 	std.dis\
@@ -16,6 +18,9 @@ TARG=sh.dis\
 INS=	$ROOT/dis/sh.dis\
 	$ROOT/dis/sh/arg.dis\
 	$ROOT/dis/sh/expr.dis\
+	$ROOT/dis/sh/file2chan.dis\
+	$ROOT/dis/sh/mload.dis\
+	$ROOT/dis/sh/mpexpr.dis\
 	$ROOT/dis/sh/regex.dis\
 	$ROOT/dis/sh/std.dis\
 	$ROOT/dis/sh/string.dis\

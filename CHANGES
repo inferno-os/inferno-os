@@ -1,3 +1,5 @@
+20080610
+	push sh-mload(1) and changes to sh-expr(1)
 20080609
 	_tas type changed from ulong to int
 20080530

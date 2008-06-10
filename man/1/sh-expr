@@ -1,8 +1,10 @@
 .TH SH-EXPR 1
 .SH NAME
-expr, ntest \- shell module for simple arithmetic.
+expr, ntest, mpexpr \- shell module for simple arithmetic.
 .SH SYNOPSIS
 .B load expr
+OR
+.B load mpexpr
 
 .B ${expr
 [
@@ -19,10 +21,17 @@ expr, ntest \- shell module for simple arithmetic.
 .br
 .SH DESCRIPTION
 .I Expr
-is a loadable module for
+and
+.I mpexpr
+are loadable modules for
 .IR sh (1)
-that provides support for simple integer arithmetic.
-It provides one command,
+that provide support for integer arithmetic.
+.I Expr
+uses 64-bit signed integers;
+.I mpexpr
+uses arbitrary-precision signed integers.
+They each provide the same interface:
+a command
 .IR ntest ,
 which performs a simple boolean test
 on its integer argument, and the
@@ -54,15 +63,16 @@ Alternative names are given for some operators;
 this is to avoid the necessity of quoting operators
 that contain
 .IR sh (1)
-metacharacters. All operations use 64-bit signed
-integers; integers are given in the same form acceptable
+metacharacters. Integers are given in the same form acceptable
 to Limbo. The relational operators yield either
 1 (true) or 0 (false). If the
 .B -r
 option is given,
 .I radix
-specifies an output base for numbers yielded by
-.IR expr .
+specifies an output base for printed numbers.
+It may be from 2 to 36;
+.I mpexpr
+also allows 64 to specify base64 notation.
 Numbers are printed in a form suitable for re-interpretation
 by
 .IR expr .
@@ -70,8 +80,9 @@ by
 When all its arguments have been evaluated,
 .B expr
 yields all the values remaining on its stack, first pushed
-first. The operators supported by expr are as follows (the number
-of operands required in is given parentheses):
+first. Note that bitwise operators treat their operands as if they
+were stored in two's complement form. The operators supported by expr are as follows (the number
+of operands required in is given parentheses).
 .TP 15
 .BR + \ (2)
 Addition
@@ -148,13 +159,30 @@ pushes on the stack a sequence of numbers ranging
 numerically from its first argument up to and including
 its second argument. If its second argument is
 less than its first, the sequence will descend.
+.TP
+.BR rand \ (1)
+(\fImpexpr\fP only). Push a secure random number;
+the argument value gives the size of the number, in bits.
+.TP
+.BR bits \ (1)
+(\fImpexpr\fP only). Push the size, in bits, of the argument.
+.TP
+.BR expmod ", " invert " (2)"
+(\fImpexpr\fP only). See
+.IR ipint (2).
+.TP
+.BR exp ", " xx ", " **
+(\fImpexpr\fP only). Exponentiation.
 .SH SOURCE
 .B /appl/cmd/sh/expr.b
 .SH SEE ALSO
 .IR sh (1),
 .IR sh-std (1),
-.IR sh-tk (1)
+.IR sh-tk (1),
+.IR keyring-ipint (2)
 .SH BUGS
 Postfix notation can be confusing.
 Any operators that contain shell metacharacters (e.g. ``*'', ``>'')
 must be quoted to avoid interpretation by the shell.
+Base64 notation can contain # characters, which need
+quoting to avoid interpretation by the shell.
