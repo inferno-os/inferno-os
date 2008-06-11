@@ -59,13 +59,12 @@ IPint_iptob64z(void *fp)
 	char buf[MaxBigBytes];	/* TO DO: should allocate these */
 	uchar *p;
 	int n, o;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		error(exNilref);
+	destroy(v);
 
 	b = MP(f->i);
 	n = (b->top+1)*Dbytes;
@@ -94,13 +93,12 @@ IPint_iptob64(void *fp)
 {
 	F_IPint_iptob64 *f;
 	char buf[MaxBigBytes];
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		error(exNilref);
+	destroy(v);
 
 	mptoa(MP(f->i), 64, buf, sizeof(buf));
 	retstr(buf, f->ret);
@@ -111,13 +109,12 @@ IPint_iptobytes(void *fp)
 {
 	F_IPint_iptobytes *f;
 	uchar buf[MaxBigBytes];
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		error(exNilref);
+	destroy(v);
 
 	/* TO DO: two's complement or have ipmagtobe? */
 	*f->ret = mem2array(buf, mptobe(MP(f->i), buf, sizeof(buf), nil));	/* for now we'll ignore sign */
@@ -128,13 +125,12 @@ IPint_iptobebytes(void *fp)
 {
 	F_IPint_iptobebytes *f;
 	uchar buf[MaxBigBytes];
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		error(exNilref);
+	destroy(v);
 
 	*f->ret = mem2array(buf, mptobe(MP(f->i), buf, sizeof(buf), nil));
 }
@@ -144,13 +140,12 @@ IPint_iptostr(void *fp)
 {
 	F_IPint_iptostr *f;
 	char buf[MaxBigBytes];
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		error(exNilref);
+	destroy(v);
 
 	mptoa(MP(f->i), f->base, buf, sizeof(buf));
 	retstr(buf, f->ret);
@@ -179,10 +174,12 @@ void
 IPint_b64toip(void *fp)
 {
 	F_IPint_b64toip *f;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	*f->ret = strtoipint(f->str, 64);
 }
@@ -192,10 +189,12 @@ IPint_bytestoip(void *fp)
 {
 	F_IPint_bytestoip *f;
 	mpint *b;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	if(f->buf == H)
 		error(exNilref);
@@ -209,10 +208,12 @@ IPint_bebytestoip(void *fp)
 {
 	F_IPint_bebytestoip *f;
 	mpint *b;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	if(f->mag == H)
 		error(exNilref);
@@ -225,10 +226,12 @@ void
 IPint_strtoip(void *fp)
 {
 	F_IPint_strtoip *f;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	*f->ret = strtoipint(f->str, f->base);
 }
@@ -275,10 +278,12 @@ void
 IPint_inttoip(void *fp)
 {
 	F_IPint_inttoip *f;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	*f->ret = newIPint(itomp(f->i, nil));
 }
@@ -300,21 +305,23 @@ void
 IPint_expmod(void *fp)
 {
 	F_IPint_expmod *f;
-	mpint *ret, *mod;
+	mpint *ret, *mod, *base, *exp;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->base == H || f->exp == H)
-		error(exNilref);
-
-	mod = nil;
+	base = MP(f->base);
+	exp = MP(f->exp);
 	if(f->mod != H)
 		mod = MP(f->mod);
+	else
+		mod = nil;
 	ret = mpnew(0);
 	if(ret != nil)
-		mpexp(MP(f->base), MP(f->exp), mod, ret);
+		mpexp(base, exp, mod, ret);
 	*f->ret = newIPint(ret);
 }
 
@@ -324,10 +331,12 @@ IPint_invert(void *fp)
 {
 	F_IPint_invert *f;
 	mpint *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
 	ret = mpnew(0);
 	if(ret != nil)
@@ -341,16 +350,15 @@ IPint_add(void *fp)
 {
 	F_IPint_add *f;
 	mpint *i1, *i2, *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
-	i1 = ((IPint*)f->i1)->b;
-	i2 = ((IPint*)f->i2)->b;
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
 		mpadd(i1, i2, ret);
@@ -362,16 +370,15 @@ IPint_sub(void *fp)
 {
 	F_IPint_sub *f;
 	mpint *i1, *i2, *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
-	i1 = ((IPint*)f->i1)->b;
-	i2 = ((IPint*)f->i2)->b;
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
 		mpsub(i1, i2, ret);
@@ -383,16 +390,15 @@ IPint_mul(void *fp)
 {
 	F_IPint_mul *f;
 	mpint *i1, *i2, *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
-	i1 = ((IPint*)f->i1)->b;
-	i2 = ((IPint*)f->i2)->b;
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
 		mpmul(i1, i2, ret);
@@ -404,18 +410,18 @@ IPint_div(void *fp)
 {
 	F_IPint_div *f;
 	mpint *i1, *i2, *quo, *rem;
+	void *v;
 
 	f = fp;
-	destroy(f->ret->t0);
+	v = f->ret->t0;
 	f->ret->t0 = H;
-	destroy(f->ret->t1);
+	destroy(v);
+	v = f->ret->t1;
 	f->ret->t1 = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
-	i1 = ((IPint*)f->i1)->b;
-	i2 = ((IPint*)f->i2)->b;
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	quo = mpnew(0);
 	if(quo == nil)
 		error(exHeap);
@@ -434,16 +440,15 @@ IPint_mod(void *fp)
 {
 	F_IPint_mod *f;
 	mpint *i1, *i2, *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
-	i1 = ((IPint*)f->i1)->b;
-	i2 = ((IPint*)f->i2)->b;
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
 		mpmod(i1, i2, ret);
@@ -454,17 +459,15 @@ void
 IPint_neg(void *fp)
 {
 	F_IPint_neg *f;
-	mpint *i, *ret;
+	mpint *ret;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i == H)
-		error(exNilref);
-
-	i = ((IPint*)f->i)->b;
-	ret = mpcopy(i);
+	ret = mpcopy(MP(f->i));
 	if(ret == nil)
 		error(exHeap);
 	ret->sign = -ret->sign;
@@ -477,13 +480,12 @@ void
 IPint_copy(void *fp)
 {
 	F_IPint_copy *f;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
-
-	if(f->i == H)
-		return;
+	destroy(v);
 
 	*f->ret = newIPint(mpcopy(MP(f->i)));
 }
@@ -496,11 +498,6 @@ IPint_eq(void *fp)
 	F_IPint_eq *f;
 
 	f = fp;
-	*f->ret = 0;
-
-	if(f->i1 == H || f->i2 == H)
-		return;
-
 	*f->ret = mpcmp(MP(f->i1), MP(f->i2)) == 0;
 }
 
@@ -511,11 +508,6 @@ IPint_cmp(void *fp)
 	F_IPint_eq *f;
 
 	f = fp;
-	*f->ret = 0;
-
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
-
 	*f->ret = mpcmp(MP(f->i1), MP(f->i2));
 }
 
@@ -524,36 +516,36 @@ void
 IPint_shl(void *fp)
 {
 	F_IPint_shl *f;
-	mpint *ret;
+	mpint *ret, *i;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i == H)
-		error(exNilref);
-
+	i = MP(f->i);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpleft(MP(f->i), f->n, ret);
+		mpleft(i, f->n, ret);
 	*f->ret = newIPint(ret);
 }
 void
 IPint_shr(void *fp)
 {
 	F_IPint_shr *f;
-	mpint *ret;
+	mpint *ret, *i;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i == H)
-		error(exNilref);
-
+	i = MP(f->i);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpright(MP(f->i), f->n, ret);
+		mpright(i, f->n, ret);
 	*f->ret = newIPint(ret);
 }
 
@@ -646,17 +638,19 @@ void
 IPint_and(void *fp)
 {
 	F_IPint_and *f;
-	mpint *ret;
+	mpint *ret, *i1, *i2;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpand(MP(f->i1), MP(f->i2), ret);
+		mpand(i1, i2, ret);
 	*f->ret = newIPint(ret);
 }
 
@@ -664,17 +658,19 @@ void
 IPint_ori(void *fp)
 {
 	F_IPint_ori *f;
-	mpint *ret;
+	mpint *ret, *i1, *i2;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpor(MP(f->i1), MP(f->i2), ret);
+		mpor(i1, i2, ret);
 	*f->ret = newIPint(ret);
 }
 
@@ -682,17 +678,19 @@ void
 IPint_xor(void *fp)
 {
 	F_IPint_xor *f;
-	mpint *ret;
+	mpint *ret, *i1, *i2;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H || f->i2 == H)
-		error(exNilref);
+	i1 = MP(f->i1);
+	i2 = MP(f->i2);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpxor(MP(f->i1), MP(f->i2), ret);
+		mpxor(i1, i2, ret);
 	*f->ret = newIPint(ret);
 }
 
@@ -700,16 +698,17 @@ void
 IPint_not(void *fp)
 {
 	F_IPint_not *f;
-	mpint *ret;
+	mpint *ret, *i1;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	if(f->i1 == H)
-		error(exNilref);
+	i1 = MP(f->i1);
 	ret = mpnew(0);
 	if(ret != nil)
-		mpnot(MP(f->i1), ret);
+		mpnot(i1, ret);
 	*f->ret = newIPint(ret);
 }
