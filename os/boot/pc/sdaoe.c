@@ -11,7 +11,6 @@
 #include "sd.h"
 #include "aoe.h"
 
-#define uprint(...)	snprint(up->genbuf, sizeof up->genbuf, __VA_ARGS__);
 
 enum {
 	Nctlr	= 4,

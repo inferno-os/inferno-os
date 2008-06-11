@@ -14,9 +14,9 @@
 #include "sd.h"
 #include "ahci.h"
 
-#define	dprint(...)	if(debug == 1)	print(__VA_ARGS__); else USED(debug)
-#define	idprint(...)	if(prid == 1)	print(__VA_ARGS__); else USED(prid)
-#define	aprint(...)	if(datapi == 1)	print(__VA_ARGS__); else USED(datapi)
+#define	dprint	if(debug==0){}else print
+#define	idprint	if(prid==0){}else print
+#define	aprint	if(datapi==0){}else print
 
 enum {
 	NCtlr	= 2,
