@@ -1,3 +1,9 @@
+20080611
+	Keyring->dhparams to use DSAprimes in special case
+	IPint.random now ignores minint (will go next revision)
+	BigInt -> mpint*
+	checkIPint in libinterp/ipint.c
+	default keys in auth/createsignerkey are 1024 not 512 bits
 20080610
 	push sh-mload(1) and changes to sh-expr(1)
 20080609

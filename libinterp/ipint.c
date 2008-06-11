@@ -9,28 +9,34 @@
 #include "../libkeyring/keys.h"
 #include "raise.h"
 
-enum {
-	PSEUDO=0,
-	REALLY,
-};
-
-void getRandBetween(BigInt p, BigInt q, BigInt result, int type);
-
 extern Type	*TIPint;
-#define	MP(x)	(((IPint*)(x))->b)
+#define	MP(x)	checkIPint((x))
 
 Keyring_IPint*
-newIPint(BigInt b)
+newIPint(mpint* b)
 {
 	Heap *h;
 	IPint *ip;
 
 	if(b == nil)
 		error(exHeap);
-	h = heap(TIPint);	/* TO DO: loss if heap fails */
+	h = heap(TIPint);	/* TO DO: caller might lose other values if heap raises error here */
 	ip = H2D(IPint*, h);
 	ip->b = b;
 	return (Keyring_IPint*)ip;
+}
+
+mpint*
+checkIPint(Keyring_IPint *v)
+{
+	IPint *ip;
+
+	ip = (IPint*)v;
+	if(ip == H || ip == nil)
+		error(exNilref);
+	if(D2H(ip)->t != TIPint)
+		error(exType);
+	return ip->b;
 }
 
 void
@@ -49,7 +55,7 @@ void
 IPint_iptob64z(void *fp)
 {
 	F_IPint_iptob64 *f;
-	BigInt b;
+	mpint *b;
 	char buf[MaxBigBytes];	/* TO DO: should allocate these */
 	uchar *p;
 	int n, o;
@@ -154,7 +160,7 @@ static Keyring_IPint*
 strtoipint(String *s, int base)
 {
 	char *p, *q;
-	BigInt b;
+	mpint *b;
 
 	p = string2c(s);
 	b = strtomp(p, &q, base, nil);
@@ -185,7 +191,7 @@ void
 IPint_bytestoip(void *fp)
 {
 	F_IPint_bytestoip *f;
-	BigInt b;
+	mpint *b;
 
 	f = fp;
 	destroy(*f->ret);
@@ -202,7 +208,7 @@ void
 IPint_bebytestoip(void *fp)
 {
 	F_IPint_bebytestoip *f;
-	BigInt b;
+	mpint *b;
 
 	f = fp;
 	destroy(*f->ret);
@@ -232,24 +238,17 @@ void
 IPint_random(void *fp)
 {
 	F_IPint_random *f;
-	BigInt b, min, max;
+	mpint *b;
+	void *v;
 
 	f = fp;
-	destroy(*f->ret);
+	v = *f->ret;
 	*f->ret = H;
+	destroy(v);
 
-	b = itomp(1, nil);
-	min = mpnew(0);
-	max = mpnew(0);
-	mpleft(b, f->minbits, min);
-	mpleft(b, f->maxbits, max);
-	
 	release();
-	getRandBetween(min, max, b, PSEUDO);	/* TO DO */
+	b = mprand(f->maxbits, genrandom, nil);
 	acquire();
-
-	mpfree(min);
-	mpfree(max);
 	*f->ret = newIPint(b);
 }
 
@@ -301,7 +300,7 @@ void
 IPint_expmod(void *fp)
 {
 	F_IPint_expmod *f;
-	BigInt ret, mod;
+	mpint *ret, *mod;
 
 	f = fp;
 	destroy(*f->ret);
@@ -324,7 +323,7 @@ void
 IPint_invert(void *fp)
 {
 	F_IPint_invert *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -341,7 +340,7 @@ void
 IPint_add(void *fp)
 {
 	F_IPint_add *f;
-	BigInt i1, i2, ret;
+	mpint *i1, *i2, *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -362,7 +361,7 @@ void
 IPint_sub(void *fp)
 {
 	F_IPint_sub *f;
-	BigInt i1, i2, ret;
+	mpint *i1, *i2, *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -383,7 +382,7 @@ void
 IPint_mul(void *fp)
 {
 	F_IPint_mul *f;
-	BigInt i1, i2, ret;
+	mpint *i1, *i2, *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -404,7 +403,7 @@ void
 IPint_div(void *fp)
 {
 	F_IPint_div *f;
-	BigInt i1, i2, quo, rem;
+	mpint *i1, *i2, *quo, *rem;
 
 	f = fp;
 	destroy(f->ret->t0);
@@ -434,7 +433,7 @@ void
 IPint_mod(void *fp)
 {
 	F_IPint_mod *f;
-	BigInt i1, i2, ret;
+	mpint *i1, *i2, *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -455,7 +454,7 @@ void
 IPint_neg(void *fp)
 {
 	F_IPint_neg *f;
-	BigInt i, ret;
+	mpint *i, *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -525,7 +524,7 @@ void
 IPint_shl(void *fp)
 {
 	F_IPint_shl *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -543,7 +542,7 @@ void
 IPint_shr(void *fp)
 {
 	F_IPint_shr *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -647,7 +646,7 @@ void
 IPint_and(void *fp)
 {
 	F_IPint_and *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -665,7 +664,7 @@ void
 IPint_ori(void *fp)
 {
 	F_IPint_ori *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -683,7 +682,7 @@ void
 IPint_xor(void *fp)
 {
 	F_IPint_xor *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -701,7 +700,7 @@ void
 IPint_not(void *fp)
 {
 	F_IPint_not *f;
-	BigInt ret;
+	mpint *ret;
 
 	f = fp;
 	destroy(*f->ret);
@@ -713,61 +712,4 @@ IPint_not(void *fp)
 	if(ret != nil)
 		mpnot(MP(f->i1), ret);
 	*f->ret = newIPint(ret);
-}
-
-/*
- * return a random number between a and b
- */
-void
-getRandBetween(BigInt p, BigInt q, BigInt result, int type)
-{
-	BigInt T, slop, r, diff, one, two;
-	int length;
-
-if(0)print("1");
-	diff = mpnew(0);
-	one = itomp(1, nil);
-
-	/* smaller in p, larger in q */
-	if (mpcmp(p, q) > 0) {
-		T = p; p = q; q = T;
-	}
-	
-	mpsub(q, p, diff);
-
-	two = itomp(2, nil);
-	if(mpcmp(diff, two) < 0){
-		mpfree(one);
-		mpfree(two);
-		itomp(0, result);
-		return;
-	}
-	mpfree(two);
-	
-	/* generate a random number between 0 and diff */
-	T = mpnew(0);
-	slop = mpnew(0);
-	mpleft(one, mpsignif(diff), T);
-	length = mpsignif(T);
-	
-	mpmod(T, diff, slop);
-	mpfree(T);
-	
-	r = mpnew(0);
-	do {
-if(0)print("3");
-		mprand(length, type == PSEUDO? prng: genrandom, r);
-if(0)print("4");
-	} while (mpcmp(r, slop) < 0);
-	mpfree(slop);
-	
-	mpmod(r, diff, result);
-	mpfree(r);
-	mpfree(diff);
-	mpfree(one);
-	
-	/* add smaller number back in */
-	mpadd(result, p, result);
-
-if(0)print("2");
 }

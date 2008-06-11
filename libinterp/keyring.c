@@ -15,7 +15,6 @@ enum {
 	PSEUDO=0,
 	REALLY,
 };
-void getRandBetween(BigInt p, BigInt q, BigInt result, int type);
 
 Type	*TSigAlg;
 Type	*TCertificate;
@@ -69,7 +68,8 @@ PK*	checkPK(Keyring_PK *k);
 
 extern void		setid(char*, int);
 extern vlong		osusectime(void);
-extern Keyring_IPint*	newIPint(BigInt);
+extern Keyring_IPint*	newIPint(mpint*);
+extern mpint*	checkIPint(Keyring_IPint*);
 extern void		freeIPint(Heap*, int);
 
 static char exBadSA[]	= "bad signature algorithm";
@@ -92,7 +92,7 @@ struct XBFstate
 
 /* convert a Big to base64 ascii */
 int
-bigtobase64(BigInt b, char *buf, int len)
+bigtobase64(mpint* b, char *buf, int len)
 {
 	uchar *p;
 	int n, rv, o;
@@ -129,11 +129,11 @@ Err:
 int
 big64conv(Fmt *f)
 {
-	BigInt b;
+	mpint *b;
 	char *buf;
 	int n;
 
-	b = va_arg(f->args, BigInt);
+	b = va_arg(f->args, mpint*);
 	n = (b->top+1)*Dbytes + 1;
 	n = ((n+3)/3)*4 + 1;
 	buf = malloc(n);
@@ -141,19 +141,6 @@ big64conv(Fmt *f)
 	n = fmtstrcpy(f, buf);
 	free(buf);
 	return  n;
-}
-
-static BigInt
-checkIPint(Keyring_IPint *v)
-{
-	IPint *ip;
-
-	ip = (IPint*)v;
-	if(ip == H || ip == nil)
-		error(exNilref);
-	if(D2H(ip)->t != TIPint)
-		error(exType);
-	return ip->b;
 }
 
 static void*
@@ -168,7 +155,7 @@ newthing(Type *t, int add)
 }
 
 static Keyring_IPint*
-ipcopymp(BigInt b)
+ipcopymp(mpint* b)
 {
 	if(b == nil)
 		return H;
@@ -176,12 +163,12 @@ ipcopymp(BigInt b)
 }
 
 /* convert a base64 string to a big */
-BigInt
+mpint*
 base64tobig(char *str, char **strp)
 {
 	int n;
 	char *p;
-	BigInt b;
+	mpint *b;
 	uchar hex[(MaxBigBytes*6 + 7)/8];
 
 	for(p = str; *p && *p != '\n'; p++)
@@ -400,7 +387,7 @@ Keyring_genSKfromPK(void *fp)
 	acquire();
 }
 
-/* converts a sequence of newline-separated base64-encoded BigInts to attr=hexval ... in f */
+/* converts a sequence of newline-separated base64-encoded mpints to attr=hexval ... in f */
 static char*
 bigs2attr(Fmt *f, char *bigs, char **names)
 {
@@ -900,7 +887,7 @@ static Certificate*
 sign(SK *sk, char *ha, ulong exp, uchar *a, int len)
 {
 	Certificate *c;
-	BigInt b;
+	mpint *b;
 	int n;
 	SigAlg *sa;
 	DigestState *ds;
@@ -956,7 +943,7 @@ Keyring_sign(void *fp)
 {
 	F_Keyring_sign *f;
 	Certificate *c;
-	BigInt b;
+	mpint *b;
 	int n;
 	SigAlg *sa;
 	SK *sk;
@@ -1015,7 +1002,7 @@ Keyring_signm(void *fp)
 {
 	F_Keyring_signm *f;
 	Certificate *c;
-	BigInt b;
+	mpint *b;
 	SigAlg *sa;
 	SK *sk;
 	void *v;
@@ -1043,7 +1030,7 @@ Keyring_signm(void *fp)
 static int
 verify(PK *pk, Certificate *c, char *a, int len)
 {
-	BigInt b;
+	mpint *b;
 	int n;
 	SigAlg *sa, *pksa;
 	DigestState *ds;
@@ -1096,7 +1083,7 @@ Keyring_verify(void *fp)
 {
 	F_Keyring_verify *f;
 	Certificate *c;
-	BigInt b;
+	mpint *b;
 	int n;
 	SigAlg *sa, *pksa;
 	PK *pk;
@@ -1352,21 +1339,25 @@ void
 Keyring_dhparams(void *fp)
 {
 	F_Keyring_dhparams *f;
-	EGpriv *egp;
-	BigInt p, alpha;
+	mpint *p, *alpha;
+	void *v;
 
 	f = fp;
-	destroy(f->ret->t0);
+	v = f->ret->t0;
 	f->ret->t0 = H;
-	destroy(f->ret->t1);
+	destroy(v);
+	v = f->ret->t1;
 	f->ret->t1 = H;
+	destroy(v);
 
+	p = mpnew(0);
+	alpha = mpnew(0);
 	release();
-	egp = eggen(f->nbits, 0);
+	if(f->nbits == 1024)
+		DSAprimes(alpha, p, nil);
+	else
+		gensafeprime(p, alpha, f->nbits, 0);
 	acquire();
-	p = mpcopy(egp->pub.p);
-	alpha = mpcopy(egp->pub.alpha);
-	egprivfree(egp);
 	f->ret->t0 = newIPint(alpha);
 	f->ret->t1 = newIPint(p);
 }
@@ -1548,7 +1539,7 @@ void
 Keyring_auth(void *fp)
 {
 	F_Keyring_auth *f;
-	BigInt r0, r1, p, alpha, alphar0, alphar1, alphar0r1, low;
+	mpint *r0, *r1, *p, *alpha, *alphar0, *alphar1, *alphar0r1;
 	SK *mysk;
 	PK *mypk, *spk, *hispk;
 	Certificate *cert, *hiscert, *alphacert;
@@ -1568,7 +1559,7 @@ Keyring_auth(void *fp)
 	f->ret->t0 = H;
 	destroy(f->ret->t1);
 	f->ret->t1 = H;
-	low = r0 = r1 = alphar0 = alphar1 = alphar0r1 = nil;
+	r0 = r1 = alphar0 = alphar1 = alphar0r1 = nil;
 
 	/* check args */
 	if(f->fd == H || f->fd->fd < 0){
@@ -1636,15 +1627,14 @@ Keyring_auth(void *fp)
 	}
 
 	/* get alpha and p */
-	p = ((IPint*)f->info->p)->b;
-	alpha = ((IPint*)f->info->alpha)->b;
+	p = checkIPint(f->info->p);
+	alpha = checkIPint(f->info->alpha);
 
 	if(p->sign == -1) {
 		err = "-ve modulus";
 		goto out;
 	}
 
-	low = mpnew(0);
 	r0 = mpnew(0);
 	r1 = mpnew(0);
 	alphar0 = mpnew(0);
@@ -1653,8 +1643,7 @@ Keyring_auth(void *fp)
 	/* generate alpha**r0 */
 if(0)print("X");
 	release();
-	mpright(p, mpsignif(p)/4, low);
-	getRandBetween(low, p, r0, PSEUDO);
+	mprand(mpsignif(p), genrandom, r0);
 	mpexp(alpha, r0, p, alphar0);
 	acquire();
 if(0)print("Y");
@@ -1842,8 +1831,7 @@ out:
 		destroy(alphacert);
 	}
 	free(buf);
-	if(low != nil){
-		mpfree(low);
+	if(r0 != nil){
 		mpfree(r0);
 		mpfree(r1);
 		mpfree(alphar0);
@@ -1949,7 +1937,7 @@ Keyring_readauthinfo(void *fp)
 	SK *mysk;
 	SigAlg *sa;
 	Keyring_Authinfo *ai;
-	BigInt b;
+	mpint *b;
 
 	f = fp;
 	destroy(*f->ret);
@@ -2704,7 +2692,7 @@ DSAsk_sign(void *fp)
 	F_DSAsk_sign *f;
 	Keyring_DSAsig *sig;
 	DSApriv p;
-	BigInt m;
+	mpint *m;
 	DSAsig *s;
 	void *v;
 
@@ -2730,7 +2718,7 @@ DSApk_verify(void *fp)
 	F_DSApk_verify *f;
 	DSApub p;
 	DSAsig sig;
-	BigInt m;
+	mpint *m;
 
 	f = fp;
 	*f->ret = 0;
@@ -2808,7 +2796,7 @@ EGsk_sign(void *fp)
 	F_EGsk_sign *f;
 	Keyring_EGsig *sig;
 	EGpriv p;
-	BigInt m;
+	mpint *m;
 	EGsig *s;
 	void *v;
 
@@ -2834,7 +2822,7 @@ EGpk_verify(void *fp)
 	F_EGpk_verify *f;
 	EGpub p;
 	EGsig sig;
-	BigInt m;
+	mpint *m;
 
 	f = fp;
 	*f->ret = 0;
@@ -2894,7 +2882,7 @@ RSApk_encrypt(void *fp)
 {
 	F_RSApk_encrypt *f;
 	RSApub p;
-	BigInt m, o;
+	mpint *m, *o;
 	void *v;
 
 	f = fp;
@@ -2968,7 +2956,7 @@ RSAsk_decrypt(void *fp)
 {
 	F_RSAsk_decrypt *f;
 	RSApriv p;
-	BigInt m, o;
+	mpint *m, *o;
 	void *v;
 
 	f = fp;
@@ -2990,7 +2978,7 @@ RSAsk_sign(void *fp)
 	F_RSAsk_sign *f;
 	Keyring_RSAsig *sig;
 	RSApriv p;
-	BigInt m, s;
+	mpint *m, *s;
 	void *v;
 
 	f = fp;
@@ -3012,7 +3000,7 @@ RSApk_verify(void *fp)
 {
 	F_RSApk_verify *f;
 	RSApub p;
-	BigInt sig, m, t;
+	mpint *sig, *m, *t;
 
 	f = fp;
 	*f->ret = 0;

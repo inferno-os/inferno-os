@@ -20,7 +20,7 @@ enum
 struct IPint
 {
 	Keyring_IPint x;
-	BigInt	b;
+	mpint*	b;
 };
 
 /* generic certificate */
@@ -98,8 +98,8 @@ struct SigAlgVec {
 
 	void*	(*gensk)(int);
 	void*	(*genskfrompk)(void*);
-	void*	(*sign)(BigInt, void*);
-	int	(*verify)(BigInt, void*, void*);
+	void*	(*sign)(mpint*, void*);
+	int	(*verify)(mpint*, void*, void*);
 
 	void	(*skfree)(void*);
 	void	(*pkfree)(void*);
@@ -112,7 +112,7 @@ struct SigAlg
 	SigAlgVec	*vec;
 };
 
-int	bigtobase64(BigInt b, char *buf, int blen);
-BigInt	base64tobig(char *str, char **strp);
+int	bigtobase64(mpint* b, char *buf, int blen);
+mpint*	base64tobig(char *str, char **strp);
 SigAlgVec*	findsigalg(char*);
-Keyring_IPint*	newIPint(BigInt);
+Keyring_IPint*	newIPint(mpint*);

@@ -154,13 +154,13 @@ dsa_freesig(void *a)
 }
 
 static void*
-dsa_sign(BigInt md, void *key)
+dsa_sign(mpint* md, void *key)
 {
 	return dsasign((DSApriv*)key, md);
 }
 
 static int
-dsa_verify(BigInt md, void *sig, void *key)
+dsa_verify(mpint* md, void *sig, void *key)
 {
 	return dsaverify((DSApub*)key, (DSAsig*)sig, md) == 0;
 }

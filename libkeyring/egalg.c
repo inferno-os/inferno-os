@@ -145,13 +145,13 @@ eg_genfrompk(void *vpub)
 }
 
 static void*
-eg_sign(BigInt mp, void *key)
+eg_sign(mpint* mp, void *key)
 {
 	return egsign((EGpriv*)key, mp);
 }
 
 static int
-eg_verify(BigInt mp, void *sig, void *key)
+eg_verify(mpint* mp, void *sig, void *key)
 {
 	return egverify((EGpub*)key, (EGsig*)sig, mp) == 0;
 }

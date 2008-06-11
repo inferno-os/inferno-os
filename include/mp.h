@@ -137,5 +137,3 @@ void	crtresfree(CRTres*);
 
 #pragma	varargck	type	"B"	mpint*
 #pragma varargck	type	"U" mpint*
-
-typedef mpint *BigInt;

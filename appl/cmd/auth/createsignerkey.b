@@ -16,10 +16,10 @@ include "arg.m";
 SKexpire:       con 0;
 
 # size in bits of modulus for public keys
-PKmodlen:		con 512;
+PKmodlen:		con 1024;
 
 # size in bits of modulus for diffie hellman
-DHmodlen:		con 512;
+DHmodlen:		con 1024;
 
 algs := array[] of {"rsa", "elgamal"};	# first entry is default
 
