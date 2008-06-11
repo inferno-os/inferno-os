@@ -4,6 +4,7 @@
 	BigInt -> mpint*
 	checkIPint in libinterp/ipint.c
 	default keys in auth/createsignerkey are 1024 not 512 bits
+	update os/boot/pc
 20080610
 	push sh-mload(1) and changes to sh-expr(1)
 20080609

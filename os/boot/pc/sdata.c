@@ -1465,7 +1465,8 @@ atapnp(void)
 		case (0x4D69<<16)|0x105A:	/* Promise Ultra/133 TX2 */
 		case (0x3373<<16)|0x105A:	/* Promise 20378 RAID */
 		case (0x3149<<16)|0x1106:	/* VIA VT8237 SATA/RAID */
-		case (0x3112<<16)|0x1095:   	/* SiL 3112 SATA (DMA busted?) */
+		case (0x4379<<16)|0x1002:	/* ATI 4379 SATA*/
+		case (0x3112<<16)|0x1095:	/* SiL 3112 SATA (DMA busted?) */
 		case (0x3114<<16)|0x1095:	/* SiL 3114 SATA/RAID */
 			pi = 0x85;
 			break;
@@ -1506,7 +1507,16 @@ atapnp(void)
 			 * This can probably be lumped in with the 768 above.
 			 */
 			/*FALLTHROUGH*/
+		case (0x209A<<16)|0x1022:	/* AMD CS5536 */
+		case (0x01BC<<16)|0x10DE:	/* nVidia nForce1 */
+		case (0x0065<<16)|0x10DE:	/* nVidia nForce2 */
+		case (0x0085<<16)|0x10DE:	/* nVidia nForce2 MCP */
 		case (0x00D5<<16)|0x10DE:	/* nVidia nForce3 */
+		case (0x00E5<<16)|0x10DE:	/* nVidia nForce3 Pro */
+		case (0x0035<<16)|0x10DE:	/* nVidia nForce3 MCP */
+		case (0x0053<<16)|0x10DE:	/* nVidia nForce4 */
+		case (0x0054<<16)|0x10DE:	/* nVidia nForce4 SATA */
+		case (0x0055<<16)|0x10DE:	/* nVidia nForce4 SATA */
 			/*
 			 * Ditto, although it may have a different base
 			 * address for the registers (0x50?).
@@ -1527,6 +1537,9 @@ atapnp(void)
 		case (0x24CA<<16)|0x8086:	/* 82801DBM (ICH4, Mobile) */
 		case (0x24CB<<16)|0x8086:	/* 82801DB (ICH4, High-End) */
 		case (0x24DB<<16)|0x8086:	/* 82801EB (ICH5) */
+		case (0x266F<<16)|0x8086:	/* 82801FB (ICH6) */
+		case (0x27C4<<16)|0x8086:	/* 82801GBM SATA (ICH7) */
+		case (0x27C5<<16)|0x8086:	/* 82801GBM SATA AHCI (ICH7) */
 			break;
 		}
 

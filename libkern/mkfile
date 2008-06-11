@@ -54,6 +54,7 @@ COMMONFILES=\
 	strtol.$O\
 	strtoll.$O\
 	strtoul.$O\
+	strtoull.$O\
 	tokenize.$O\
 	toupper.$O\
 	u16.$O\

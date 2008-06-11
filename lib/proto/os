@@ -157,6 +157,7 @@ libkern
 	strtol.c
 	strtoll.c
 	strtoul.c
+	strtoull.c
 	tokenize.c
 	toupper.c
 	u16.c
@@ -338,17 +339,22 @@ os
 			8250.c
 			LICENCE
 			NOTICE
+			ahci.h
 			alarm.c
+			aoe.h
 			apm.c
 			bcom.c
 			boot.c
 			bootld.c
 			bootp.c
 			cga.c
+			cis.c
 			clock.c
 			conf.c
 			console.c
 			dat.h
+			devbios.c
+			devbios.h
 			devfloppy.c
 			devfloppy.h
 			devi82365.c
@@ -368,11 +374,16 @@ os
 			ether8139.c
 			ether8169.c
 			ether82557.c
+			ether82563.c
 			ether83815.c
 			ether8390.c
 			ether8390.h
+			etherdp83820.c
 			etherec2t.c
 			etherelnk3.c
+			etherelnk3x.c
+			etherga620.c
+			etherga620fw.h
 			etherif.h
 			etherigbe.c
 			ethermii.c
@@ -410,7 +421,10 @@ os
 			sd.h
 			sd53c8xx.c
 			sd53c8xx.i
+			sdaoe.c
 			sdata.c
+			sdbios.c
+			sdiahci.c
 			sdmylex.c
 			sdscsi.c
 			trap.c

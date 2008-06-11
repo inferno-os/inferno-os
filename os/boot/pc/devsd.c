@@ -32,13 +32,13 @@ enum {
 };
 
 void
-sdaddpart(SDunit* unit, char* name, ulong start, ulong end)
+sdaddpart(SDunit* unit, char* name, uvlong start, uvlong end)
 {
 	SDpart *pp;
 	int i, partno;
 
 	if(parttrace)
-		print("add %d %s %s %ld %ld\n", unit->npart, unit->name, name, start, end);
+		print("add %d %s %s %lld %lld\n", unit->npart, unit->name, name, start, end);
 	/*
 	 * Check name not already used
 	 * and look for a free slot.
@@ -73,7 +73,7 @@ sdaddpart(SDunit* unit, char* name, ulong start, ulong end)
 	 * Check there is a free slot and size and extent are valid.
 	 */
 	if(partno == -1 || start > end || end > unit->sectors){
-		print("cannot add %s!%s [%lud,%lud) to disk [0,%lud): %s\n",
+		print("cannot add %s!%s [%llud,%llud) to disk [0,%llud): %s\n",
 			unit->name, name, start, end, unit->sectors, 
 			partno==-1 ? "no free partitions" : "partition boundaries out of range");
 		return;
@@ -224,6 +224,19 @@ _sddetach(void)
 	}
 }
 
+static void
+sddump(void)
+{
+	SDev *sdev;
+
+	print("sdevs:\n");
+	for(sdev = sdlist; sdev != nil; sdev = sdev->next){
+		print("sdev %c index %d nunit %d: ",
+			sdev->idno, sdev->index, sdev->nunit);
+		print("\n");
+	}
+}
+
 static int
 _sdinit(void)
 {
@@ -247,13 +260,12 @@ _sdinit(void)
 		else
 			sdlist = sdev;
 		for(tail = sdev; tail->next != nil; tail = tail->next){
-			sdev->index = sdnunit;
+			tail->index = sdnunit;
 			sdnunit += tail->nunit;
 		}
 		tail->index = sdnunit;
 		sdnunit += tail->nunit;
 	}
-
 	/*
 	 * Legacy and option code goes here. This will be hard...
 	 */
@@ -274,6 +286,8 @@ _sdinit(void)
 		if(sdifc[i]->id)
 			sdifc[i]->id(sdlist);
 	}
+	if (0)
+		sddump();
 
 	m = 0;
 	cdmask = sdmask = 0;
@@ -448,7 +462,7 @@ sdaddconf(int i)
 
 	addconf("%spart=", unit->name);
 	for(i=1, pp=&unit->part[i]; i<unit->npart; i++, pp++)	/* skip 0, which is "data" */
-		addconf("%s%s %ld %ld", i==1 ? "" : "/", pp->name,
+		addconf("%s%s %lld %lld", i==1 ? "" : "/", pp->name,
 			pp->start, pp->end);
 	addconf("\n");
 }

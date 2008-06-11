@@ -1,3 +1,5 @@
+#define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
+
 /*
  * functions (possibly) linked in, complete, from libc.
  */
@@ -5,17 +7,17 @@
 /*
  * mem routines
  */
-extern	void*	memccpy(void*, void*, int, long);
-extern	void*	memset(void*, int, long);
-extern	int	memcmp(void*, void*, long);
-extern	void*	memmove(void*, void*, long);
-extern	void*	memchr(void*, int, long);
+extern	void*	memccpy(void*, void*, int, ulong);
+extern	void*	memset(void*, int, ulong);
+extern	int	memcmp(void*, void*, ulong);
+extern	void*	memmove(void*, void*, ulong);
+extern	void*	memchr(void*, int, ulong);
 
 /*
  * string routines
  */
 extern	char*	strcat(char*, char*);
-extern	char*	strchr(char*, char);
+extern	char*	strchr(char*, int);
 extern	int	strcmp(char*, char*);
 extern	char*	strcpy(char*, char*);
 extern	char*	strncat(char*, char*, long);
@@ -51,6 +53,7 @@ extern	int	sprint(char*, char*, ...);
 extern 	int	snprint(char*, int, char*, ...);
 extern	int	fmtinstall(int, int (*)(Fmt*));
 
+#pragma varargck	argpos	addconf 1
 #pragma	varargck	argpos	fmtprint	2
 #pragma	varargck	argpos	print		1
 #pragma	varargck	argpos	seprint		3
@@ -94,9 +97,10 @@ extern	int	fmtinstall(int, int (*)(Fmt*));
  * one-of-a-kind
  */
 extern	int	atoi(char*);
-extern	ulong	getcallerpc(void*);
+extern	uintptr	getcallerpc(void*);
 extern	long	strtol(char*, char**, int);
 extern	ulong	strtoul(char*, char**, int);
+extern	uvlong	strtoull(char*, char**, int);
 extern	long	end;
 
 #define	NAMELEN	28

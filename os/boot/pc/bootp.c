@@ -7,6 +7,8 @@
 
 #include "ip.h"
 
+extern int debugload;
+
 uchar broadcast[Eaddrlen] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 };
@@ -292,15 +294,15 @@ udprecv(int ctlrno, Netaddr *a, void *data, int dlen)
 
 		if(a->port != 0 && nhgets(h->udpsport) != a->port) {
 			if(debug)
-				print("udpport %ux %ux\n",
+				print("udpport %ux not %ux\n",
 					nhgets(h->udpsport), a->port);
 			continue;
 		}
 
 		addr = nhgetl(h->udpsrc);
-		if(a->ip != Bcastip && addr != a->ip) {
+		if(a->ip != Bcastip && a->ip != addr) {
 			if(debug)
-				print("bad ip\n");
+				print("bad ip %lux not %lux\n", addr, a->ip);
 			continue;
 		}
 
@@ -441,6 +443,8 @@ bootpopen(int ctlrno, char *file, Bootp *rep, int dotftpopen)
 	uchar *ea;
 	char name[128], *filename, *sysname;
 
+	if (debugload)
+		print("bootpopen: ether%d!%s...", ctlrno, file);
 	if((ea = etheraddr(ctlrno)) == 0){
 		print("invalid ctlrno %d\n", ctlrno);
 		return -1;
@@ -620,7 +624,8 @@ pxewalk(File* f, char* name)
 			return 0;
 
 		ini = pxether[f->fs->dev].ini;
-		snprint(ini, INIPATHLEN, "/cfg/pxe/%E", rep.chaddr);
+		/* use our mac address instead of relying on a bootp answer */
+		snprint(ini, INIPATHLEN, "/cfg/pxe/%E", (uchar *)myaddr.ea);
 		f->path = ini;
 
 		return 1;
@@ -636,6 +641,8 @@ pxegetfspart(int ctlrno, char* part, int)
 	if(strcmp(part, "*") != 0)
 		return nil;
 	if(ctlrno >= MaxEther)
+		return nil;
+	if(iniread && getconf("*pxeini") != nil)
 		return nil;
 
 	pxether[ctlrno].fs.dev = ctlrno;

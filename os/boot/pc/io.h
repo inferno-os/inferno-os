@@ -85,6 +85,54 @@ enum {					/* type 0 and type 1 pre-defined header */
 	PciINTP		= 0x3D,		/* interrupt pin */
 };
 
+/* ccrb (base class code) values; controller types */
+enum {
+	Pcibcpci1	= 0,		/* pci 1.0; no class codes defined */
+	Pcibcstore	= 1,		/* mass storage */
+	Pcibcnet	= 2,		/* network */
+	Pcibcdisp	= 3,		/* display */
+	Pcibcmmedia	= 4,		/* multimedia */
+	Pcibcmem	= 5,		/* memory */
+	Pcibcbridge	= 6,		/* bridge */
+	Pcibccomm	= 7,		/* simple comms (e.g., serial) */
+	Pcibcbasesys	= 8,		/* base system */
+	Pcibcinput	= 9,		/* input */
+	Pcibcdock	= 0xa,		/* docking stations */
+	Pcibcproc	= 0xb,		/* processors */
+	Pcibcserial	= 0xc,		/* serial bus (e.g., USB) */
+	Pcibcwireless	= 0xd,		/* wireless */
+	Pcibcintell	= 0xe,		/* intelligent i/o */
+	Pcibcsatcom	= 0xf,		/* satellite comms */
+	Pcibccrypto	= 0x10,		/* encryption/decryption */
+	Pcibcdacq	= 0x11,		/* data acquisition & signal proc. */
+};
+
+/* ccru (sub-class code) values; common cases only */
+enum {
+	/* mass storage */
+	Pciscscsi	= 0,		/* SCSI */
+	Pciscide	= 1,		/* IDE (ATA) */
+
+	/* network */
+	Pciscether	= 0,		/* Ethernet */
+
+	/* display */
+	Pciscvga	= 0,		/* VGA */
+	Pciscxga	= 1,		/* XGA */
+	Pcisc3d		= 2,		/* 3D */
+
+	/* bridges */
+	Pcischostpci	= 0,		/* host/pci */
+	Pciscpcicpci	= 1,		/* pci/pci */
+
+	/* simple comms */
+	Pciscserial	= 0,		/* 16450, etc. */
+	Pciscmultiser	= 1,		/* multiport serial */
+
+	/* serial bus */
+	Pciscusb	= 3,		/* USB */
+};
+
 enum {					/* type 0 pre-defined header */
 	PciBAR2		= 0x18,
 	PciBAR3		= 0x1C,
@@ -133,7 +181,7 @@ enum {					/* type 2 pre-defined header */
 	PciCBILR0	= 0x30,		/* I/O limit */
 	PciCBIBR1	= 0x34,		/* I/O base */
 	PciCBILR1	= 0x38,		/* I/O limit */
-	PciCBBCTL	= 0x3E,		/* Bridhe control */
+	PciCBBCTL	= 0x3E,		/* Bridge control */
 	PciCBSVID	= 0x40,		/* subsystem vendor ID */
 	PciCBSID	= 0x42,		/* subsystem ID */
 	PciCBLMBAR	= 0x44,		/* legacy mode base address */
@@ -153,10 +201,14 @@ typedef struct Pcidev {
 	ushort	vid;			/* vendor ID */
 	ushort	did;			/* device ID */
 
+	ushort	pcr;
+
 	uchar	rid;
 	uchar	ccrp;
 	uchar	ccru;
 	uchar	ccrb;
+	uchar	cls;
+	uchar	ltr;
 
 	struct {
 		ulong	bar;		/* base address */
@@ -170,14 +222,15 @@ typedef struct Pcidev {
 	uchar	intl;			/* interrupt line */
 
 	Pcidev*	list;
-	Pcidev*	bridge;			/* down a bus */
 	Pcidev*	link;			/* next device on this bno */
+
+	Pcidev*	bridge;			/* down a bus */
 	struct {
 		ulong	bar;
 		int	size;
 	} ioa, mema;
 
-	ulong	pcr;
+	int	pmrb;			/* power management register block */
 };
 
 #define PCIWINDOW	0
@@ -188,6 +241,9 @@ typedef struct Pcidev {
 /*
  * PCMCIA support code.
  */
+typedef struct PCMslot		PCMslot;
+typedef struct PCMconftab	PCMconftab;
+
 /*
  * Map between ISA memory space and PCMCIA card memory space.
  */
@@ -198,4 +254,64 @@ struct PCMmap {
 	int	len;			/* length of the ISA area */
 	int	attr;			/* attribute memory */
 	int	ref;
+};
+
+/* configuration table entry */
+struct PCMconftab
+{
+	int	index;
+	ushort	irqs;		/* legal irqs */
+	uchar	irqtype;
+	uchar	bit16;		/* true for 16 bit access */
+	struct {
+		ulong	start;
+		ulong	len;
+	} io[16];
+	int	nio;
+	uchar	vpp1;
+	uchar	vpp2;
+	uchar	memwait;
+	ulong	maxwait;
+	ulong	readywait;
+	ulong	otherwait;
+};
+
+/* a card slot */
+struct PCMslot
+{
+	Lock;
+	int	ref;
+
+	void	*cp;		/* controller for this slot */
+	long	memlen;		/* memory length */
+	uchar	base;		/* index register base */
+	uchar	slotno;		/* slot number */
+
+	/* status */
+	uchar	special;	/* in use for a special device */
+	uchar	already;	/* already inited */
+	uchar	occupied;
+	uchar	battery;
+	uchar	wrprot;
+	uchar	powered;
+	uchar	configed;
+	uchar	enabled;
+	uchar	busy;
+
+	/* cis info */
+	ulong	msec;		/* time of last slotinfo call */
+	char	verstr[512];	/* version string */
+	int	ncfg;		/* number of configurations */
+	struct {
+		ushort	cpresent;	/* config registers present */
+		ulong	caddr;		/* relative address of config registers */
+	} cfg[8];
+	int	nctab;		/* number of config table entries */
+	PCMconftab	ctab[8];
+	PCMconftab	*def;	/* default conftab */
+
+	/* memory maps */
+	Lock	mlock;		/* lock down the maps */
+	int	time;
+	PCMmap	mmap[4];	/* maps, last is always for the kernel */
 };

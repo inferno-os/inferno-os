@@ -1,6 +1,6 @@
 /*
  * bootstrap driver for
- * Intel RS-82543GC Gigabit Ethernet Controller
+ * Intel RS-82543GC Gigabit Ethernet PCI Controllers
  * as found on the Intel PRO/1000[FT] Server Adapter.
  * The older non-[FT] cards use the 82542 (LSI L2A1157) chip; no attempt
  * is made to handle the older chip although it should be possible.
@@ -31,17 +31,21 @@
 #include "ethermii.h"
 
 enum {
+	Debug = 0,		/* mostly for X60 debugging */
+};
+enum {
 	i82542     = (0x1000<<16)|0x8086,
 	i82543gc   = (0x1004<<16)|0x8086,
 	i82544ei   = (0x1008<<16)|0x8086,
-	i82547ei   = (0x1019<<16)|0x8086,
 	i82540em   = (0x100E<<16)|0x8086,
+	i82546eb   = (0x1010<<16)|0x8086,
+	i82547ei   = (0x1019<<16)|0x8086,
 	i82540eplp = (0x101E<<16)|0x8086,
 	i82547gi   = (0x1075<<16)|0x8086,
 	i82541gi   = (0x1076<<16)|0x8086,
+	i82541gi2  = (0x1077<<16)|0x8086,
 	i82546gb   = (0x1079<<16)|0x8086,
 	i82541pi   = (0x107c<<16)|0x8086,
-	i82546eb   = (0x1010<<16)|0x8086,
 };
 
 /* compatibility with cpu kernels */
@@ -139,10 +143,15 @@ enum {					/* Ctrl */
 	Vme		= 0x40000000,	/* VLAN Mode Enable */
 };
 
+/*
+ * can't find Tckok nor Rbcok in any Intel docs,
+ * but even 82543gc docs define Lanid.
+ */
 enum {					/* Status */
 	Lu		= 0x00000002,	/* Link Up */
-	Tckok		= 0x00000004,	/* Transmit clock is running */
-	Rbcok		= 0x00000008,	/* Receive clock is running */
+	Lanid		= 0x0000000C,	/* mask for Lan ID. (function id) */
+//	Tckok		= 0x00000004,	/* Transmit clock is running */
+//	Rbcok		= 0x00000008,	/* Receive clock is running */
 	Txoff		= 0x00000010,	/* Transmission Paused */
 	Tbimode		= 0x00000020,	/* TBI Mode Indication */
 	SpeedMASK	= 0x000000C0,
@@ -169,7 +178,9 @@ enum {					/* Eecd */
 	Do		= 0x00000008,	/* Data Output from the EEPROM */
 	Areq		= 0x00000040,	/* EEPROM Access Request */
 	Agnt		= 0x00000080,	/* EEPROM Access Grant */
+	Eepresent	= 0x00000100,	/* EEPROM Present */
 	Eesz256		= 0x00000200,	/* EEPROM is 256 words not 64 */
+	Eeszaddr	= 0x00000400,	/* EEPROM size for 8254[17] */
 	Spi		= 0x00002000,	/* EEPROM is SPI not Microwire */
 };
 
@@ -385,8 +396,8 @@ enum {					/* Tdesc status */
 };
 
 enum {
-	Nrdesc		= 128,		/* multiple of 8 */
-	Ntdesc		= 128,		/* multiple of 8 */
+	Nrdesc		= 32,		/* multiple of 8 */
+	Ntdesc		= 8,		/* multiple of 8 */
 };
 
 typedef struct Ctlr Ctlr;
@@ -724,7 +735,7 @@ igbeinterrupt(Ureg*, void* arg)
 		 */
 		if(icr & (Rxseq|Lsc)){
 			/*
-			 * More here...
+			 * should be more here...
 			 */
 		}
 
@@ -845,10 +856,11 @@ igbeinit(Ether* edev)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541gi2:
+	case i82541pi:
 	case i82546gb:
 	case i82546eb:
 	case i82547gi:
-	case i82541pi:
 		csr32w(ctlr, Radv, 64);
 		break;
 	}
@@ -887,6 +899,7 @@ igbeinit(Ether* edev)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541gi2:
 	case i82541pi:
 	case i82546gb:
 	case i82546eb:
@@ -925,10 +938,11 @@ igbeinit(Ether* edev)
 	case i82540em:
 	case i82540eplp:
 	case i82547gi:
+	case i82541pi:
 	case i82546gb:
 	case i82546eb:
 	case i82541gi:
-	case i82541pi:
+	case i82541gi2:
 		r = csr32r(ctlr, Txdctl);
 		r &= ~WthreshMASK;
 		r |= Gran|(4<<WthreshSHIFT);
@@ -1157,6 +1171,7 @@ igbemii(Ctlr* ctlr)
 	case i82540eplp:
 	case i82547gi:
 	case i82541gi:
+	case i82541gi2:
 	case i82541pi:
 	case i82546gb:
 	case i82546eb:
@@ -1178,7 +1193,10 @@ igbemii(Ctlr* ctlr)
 		ctlr->mii = nil;
 		return -1;
 	}
-	print("oui %X phyno %d\n", phy->oui, phy->phyno);
+	if (Debug)
+		print("oui %X phyno %d\n", phy->oui, phy->phyno);
+	else
+		USED(phy);
 
 	/*
 	 * 8254X-specific PHY registers not in 802.3:
@@ -1190,6 +1208,7 @@ igbemii(Ctlr* ctlr)
 	switch(ctlr->id){
 	case i82547gi:
 	case i82541gi:
+	case i82541gi2:
 	case i82541pi:
 	case i82546gb:
 	case i82546eb:
@@ -1200,13 +1219,13 @@ igbemii(Ctlr* ctlr)
 		r |= 0x0060;			/* auto-crossover all speeds */
 		r |= 0x0002;			/* polarity reversal enabled */
 		miimiw(ctlr->mii, 16, r);
-	
+
 		r = miimir(ctlr->mii, 20);
 		r |= 0x0070;			/* +25MHz clock */
 		r &= ~0x0F00;
 		r |= 0x0100;			/* 1x downshift */
 		miimiw(ctlr->mii, 20, r);
-	
+
 		miireset(ctlr->mii);
 		break;
 	}
@@ -1288,7 +1307,7 @@ at93c46io(Ctlr* ctlr, char* op, int data)
 			break;
 		}
 		csr32w(ctlr, Eecd, eecd);
-		microdelay(1);
+		microdelay(50);
 	}
 	if(loop >= 0)
 		return -1;
@@ -1307,12 +1326,10 @@ at93c46r(Ctlr* ctlr)
 		print("igbe: SPI EEPROM access not implemented\n");
 		return 0;
 	}
-	if(eecd & Eesz256)
+	if(eecd & (Eeszaddr|Eesz256))
 		bits = 8;
 	else
 		bits = 6;
-	snprint(rop, sizeof(rop), "S :%dDCc;", bits+3);
-
 	sum = 0;
 
 	switch(ctlr->id){
@@ -1322,6 +1339,7 @@ at93c46r(Ctlr* ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541gi2:
 	case i82541pi:
 	case i82547gi:
 	case i82546gb:
@@ -1339,6 +1357,7 @@ at93c46r(Ctlr* ctlr)
 		}
 		break;
 	}
+	snprint(rop, sizeof(rop), "S :%dDCc;", bits+3);
 
 	for(addr = 0; addr < 0x40; addr++){
 		/*
@@ -1355,8 +1374,14 @@ at93c46r(Ctlr* ctlr)
 		at93c46io(ctlr, "sic", 0);
 		ctlr->eeprom[addr] = data;
 		sum += data;
+		if (Debug) {
+			if(addr && ((addr & 0x07) == 0))
+				print("\n");
+			print(" %4.4ux", data);
+		}
 	}
-
+	if (Debug)
+		print("\n");
 release:
 	if(areq)
 		csr32w(ctlr, Eecd, eecd & ~Areq);
@@ -1377,7 +1402,7 @@ detach(Ctlr *ctlr)
 	csr32w(ctlr, Rctl, 0);
 	csr32w(ctlr, Tctl, 0);
 
-	delay(10);
+	delay(20);
 
 	csr32w(ctlr, Ctrl, Devrst);
 	/* apparently needed on multi-GHz processors to avoid infinite loops */
@@ -1396,6 +1421,7 @@ detach(Ctlr *ctlr)
 	case i82540em:
 	case i82540eplp:
 	case i82541gi:
+	case i82541gi2:
 	case i82541pi:
 	case i82547gi:
 	case i82546gb:
@@ -1448,11 +1474,17 @@ igbereset(Ctlr* ctlr)
 	 * There are 16 addresses. The first should be the MAC address.
 	 * The others are cleared and not marked valid (MS bit of Rah).
 	 */
-	if ((ctlr->id == i82546gb || ctlr->id == i82546eb) && BUSFNO(ctlr->pcidev->tbdf) == 1)
-		ctlr->eeprom[Ea+2] += 0x100;	// second interface
+	if ((ctlr->id == i82546gb || ctlr->id == i82546eb) &&
+	    BUSFNO(ctlr->pcidev->tbdf) == 1)
+		ctlr->eeprom[Ea+2] += 0x100;		/* second interface */
 	for(i = Ea; i < Eaddrlen/2; i++){
-		ctlr->ra[2*i] = ctlr->eeprom[i];
+		ctlr->ra[2*i]   = ctlr->eeprom[i];
 		ctlr->ra[2*i+1] = ctlr->eeprom[i]>>8;
+	}
+	/* lan id seems to vary on 82543gc; don't use it */
+	if (ctlr->id != i82543gc) {
+		r = (csr32r(ctlr, Status) & Lanid) >> 2;
+		ctlr->ra[5] += r;		/* ea ctlr[1] = ea ctlr[0]+1 */
 	}
 	r = (ctlr->ra[3]<<24)|(ctlr->ra[2]<<16)|(ctlr->ra[1]<<8)|ctlr->ra[0];
 	csr32w(ctlr, Ral, r);
@@ -1480,7 +1512,7 @@ igbereset(Ctlr* ctlr)
 		txcw &= ~(TxcwAne|TxcwPauseMASK|TxcwFd);
 		ctrl = csr32r(ctlr, Ctrl);
 		ctrl &= ~(SwdpioloMASK|Frcspd|Ilos|Lrst|Fd);
-	
+
 		if(ctlr->eeprom[Icw1] & 0x0400){
 			ctrl |= Fd;
 			txcw |= TxcwFd;
@@ -1502,7 +1534,7 @@ igbereset(Ctlr* ctlr)
 			ctrl |= Ips;
 		ctrl |= swdpio<<SwdpiohiSHIFT;
 		csr32w(ctlr, Ctrlext, ctrl);
-	
+
 		if(ctlr->eeprom[Icw2] & 0x0800)
 			txcw |= TxcwAne;
 		pause = (ctlr->eeprom[Icw2] & 0x3000)>>12;
@@ -1539,7 +1571,7 @@ igbereset(Ctlr* ctlr)
 
 	ilock(&ctlr->imlock);
 	csr32w(ctlr, Imc, ~0);
-	ctlr->im = Lsc;
+	ctlr->im = 0;		/* was = Lsc, which hangs some controllers */
 	csr32w(ctlr, Ims, ctlr->im);
 	iunlock(&ctlr->imlock);
 
@@ -1583,6 +1615,7 @@ igbepci(void)
 		case i82540eplp:
 		case i82547gi:
 		case i82541gi:
+		case i82541gi2:
 		case i82541pi:
 		case i82546gb:
 		case i82546eb:
@@ -1633,12 +1666,14 @@ igbepci(void)
 		ctlr->id = (p->did<<16)|p->vid;
 		ctlr->cls = cls*4;
 		ctlr->nic = KADDR(ctlr->port);
-print("status0 %8.8uX\n", csr32r(ctlr, Status));
+		if (Debug)
+			print("status0 %8.8uX\n", csr32r(ctlr, Status));
 		if(igbereset(ctlr)){
 			free(ctlr);
 			continue;
 		}
-print("status1 %8.8uX\n", csr32r(ctlr, Status));
+		if (Debug)
+			print("status1 %8.8uX\n", csr32r(ctlr, Status));
 		pcisetbme(p);
 
 		if(ctlrhead != nil)

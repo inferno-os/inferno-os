@@ -49,7 +49,6 @@
 
 #include "etherif.h"
 
-#define coherence()
 #define XCVRDEBUG		if(0)print
 
 enum {

@@ -46,9 +46,11 @@ LOAD=\
 	8250.$O\
 	apm.$O\
 	boot.$O\
-	devpccard.$O\
+	cis.$O\
 	conf.$O\
+	devbios.$O\
 	devi82365.$O\
+	devpccard.$O\
 	devsd.$O\
 	inflate.$O\
 	load.$O\
@@ -58,7 +60,10 @@ LOAD=\
 	sdata.$O\
 	sdmylex.$O\
 	sd53c8xx.$O\
+	sdiahci.$O\
 	sdscsi.$O\
+	sdaoe.$O\
+	sdbios.$O\
 
 ETHER=\
 	bootp.$O\
@@ -71,14 +76,17 @@ ETHER=\
 	ether8003.$O\
 	ether8139.$O\
 	ether8169.$O\
+	ether82563.$O\
 	ether82557.$O\
 	ether83815.$O\
 	ether8390.$O\
 	etherec2t.$O\
 	etherelnk3.$O\
+	etherga620.$O\
 	etherigbe.$O\
 	ethermii.$O\
 	etherrhine.$O\
+	etherdp83820.$O\
 
 BCOM=\
 	bcom.$O\
@@ -96,8 +104,9 @@ HFILES=\
 	dat.h\
 	fns.h\
 	io.h\
+	aoe.h\
 
-CFLAGS=-FVw -I. -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include
+CFLAGS=-FVTw -I. -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/include
 
 all:V:	$TARG
 
