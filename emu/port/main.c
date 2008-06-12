@@ -421,6 +421,9 @@ _assert(char *fmt)
 	panic("assert failed: %s", fmt);
 }
 
+/*
+ * mainly for libmp
+ */
 void
 sysfatal(char *fmt, ...)
 {
@@ -430,7 +433,7 @@ sysfatal(char *fmt, ...)
 	va_start(arg, fmt);
 	vsnprint(buf, sizeof(buf), fmt, arg);
 	va_end(arg);
-	panic("sysfatal: %s", buf);
+	error(buf);
 }
 
 void

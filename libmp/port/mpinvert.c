@@ -9,13 +9,15 @@ void
 mpinvert(mpint *b, mpint *m, mpint *res)
 {
 	mpint *dc1, *dc2;	// don't care
+	int r;
 
 	dc1 = mpnew(0);
 	dc2 = mpnew(0);
 	mpextendedgcd(b, m, dc1, res, dc2);
-	if(mpcmp(dc1, mpone) != 0)
-		abort();
-	mpmod(res, m, res);
+	r = mpcmp(dc1, mpone);
 	mpfree(dc1);
 	mpfree(dc2);
+	if(r != 0)
+		sysfatal("mpinvert: no inverse");
+	mpmod(res, m, res);
 }

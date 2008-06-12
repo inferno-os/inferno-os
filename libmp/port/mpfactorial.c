@@ -42,8 +42,12 @@ mpfactorial(ulong n)
 				max++;
 				if(max > mmax){
 					mmax++;
-					if(max > nelem(stk))
-						abort();
+					if(max >= nelem(stk)){
+						while(--max >= 0)
+							mpfree(stk[max]);
+						mpfree(r);
+						sysfatal("mpfactorial: stack overflow");
+					}
 					stk[max] = mpnew(Dbits);
 				}
 				stk[max]->top = 1;

@@ -1,3 +1,6 @@
+20080612
+	change several libmp/port functions to use sysfatal not abort
+	change emu/port/main.c to have sysfatal call error not exit
 20080611
 	Keyring->dhparams to use DSAprimes in special case
 	IPint.random now ignores minint (will go next revision)
