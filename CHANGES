@@ -1,3 +1,5 @@
+20080617
+	win-x11a.c add sqweek's change to pass on KeyRelease values (but perhaps 1-byte values are no longer enough?)
 20080614
 	change os/port/devcons.c to use error not panic in sysfatal
 20080612

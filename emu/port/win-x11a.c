@@ -460,7 +460,7 @@ xkbdproc(void *arg)
 	/* BEWARE: the value of up is not defined for this proc on some systems */
 
 	XLockDisplay(xd);	/* should be ours alone */
-	XSelectInput(xd, xdrawable, KeyPressMask);		
+	XSelectInput(xd, xdrawable, KeyPressMask | KeyReleaseMask);		
 	for(;;){
 		XNextEvent(xd, &event);
 		xkeyboard(&event);
@@ -1004,7 +1004,7 @@ xkeyboard(XEvent *e)
 	int ind, md;
 	KeySym k;
 
-	if(e->type == KeyPress && gkscanq != nil){
+	if(gkscanq != nil && (e->type == KeyPress || e->type == KeyRelease)){
 		uchar ch = e->xkey.keycode;
 		if(e->xany.type == KeyRelease)
 			ch |= 0x80;
