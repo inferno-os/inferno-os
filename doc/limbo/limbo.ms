@@ -4228,7 +4228,7 @@ values have the same type
 and their argument lists have correspondingly equal types.
 Any
 .CW self
-attributes given to arguments much match.
+attributes given to arguments must match.
 Names given to arguments do not enter into the comparison.
 .PP
 A type name has the same type as the type from
