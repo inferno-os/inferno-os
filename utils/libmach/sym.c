@@ -43,7 +43,7 @@ static	int	debug = 0;
 
 static	Sym	**autos;		/* Base of auto variables */
 static	File	*files;			/* Base of file arena */
-static	int	fmaxp;			/* largest file path index */
+static	int	fpmax;			/* largest file path index */
 static	Sym	**fnames;		/* file names path component table */
 static	Sym	**globals;		/* globals by addr table */
 static	Hist	*hist;			/* base of history stack */
@@ -144,8 +144,8 @@ syminit(int fd, Fhdr *fp)
 				p->type = 'm';
 				nauto++;
 			}
-			else if(p->value > fmaxp)
-				fmaxp = p->value;	/* highest path index */
+			else if(p->value > fpmax)
+				fpmax = p->value;	/* highest path index */
 			break;
 		case 'a':
 		case 'p':
@@ -164,7 +164,7 @@ syminit(int fd, Fhdr *fp)
 		}
 	}
 	if (debug)
-		fprint(2,"NG: %ld NT: %ld NF: %d\n", nglob, ntxt, fmaxp);
+		fprint(2,"NG: %ld NT: %ld NF: %d\n", nglob, ntxt, fpmax);
 	if (fp->sppcsz) {			/* pc-sp offset table */
 		spoff = (uchar *)malloc(fp->sppcsz);
 		if(spoff == 0) {
@@ -285,7 +285,7 @@ cleansyms(void)
 	if(fnames)
 		free(fnames);
 	fnames = 0;
-	fmaxp = 0;
+	fpmax = 0;
 
 	if(files)
 		free(files);
@@ -373,13 +373,13 @@ buildtbls(void)
 			return 0;
 		}
 	}
-	fmaxp++;
-	fnames = malloc(fmaxp*sizeof(*fnames));
+	fpmax++;
+	fnames = malloc(fpmax*sizeof(*fnames));
 	if (!fnames) {
 		werrstr("can't malloc file name table");
 		return 0;
 	}
-	memset(fnames, 0, fmaxp*sizeof(*fnames));
+	memset(fnames, 0, fpmax*sizeof(*fnames));
 	files = malloc(nfiles*sizeof(*files));
 	if(!files) {
 		werrstr("can't malloc file table");
@@ -858,7 +858,7 @@ pathcomp(char *s, int n)
 {
 	int i;
 
-	for(i = 0; i <= fmaxp; i++)
+	for(i = 0; i <= fpmax; i++)
 		if(fnames[i] && strncmp(s, fnames[i]->name, n) == 0 && fnames[i]->name[n] == 0)
 			return i;
 	return -1;
