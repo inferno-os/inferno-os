@@ -50,8 +50,8 @@ verifysigner(uchar *sign, int len, uchar *data, ulong ndata)
 	int footprint, r, n;
 	uchar buf[128], digest[SHA1dlen];
 	DigestState *ds;
-	volatile struct {BigInt b;} b;
-	volatile struct {BigInt s;} s;
+	volatile struct {mpint* b;} b;
+	volatile struct {mpint* s;} s;
 	SigAlgVec *sa;
 	Signerkey *key;
 	Skeyset *sigs;
