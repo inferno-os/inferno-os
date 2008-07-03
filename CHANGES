@@ -1,3 +1,5 @@
+20080703
+	remove anonymous unions (and unused structs) from unpacking structures in emu/Nt/vlrt.c, not that it's used
 20080617
 	win-x11a.c add sqweek's change to pass on KeyRelease values (but perhaps 1-byte values are no longer enough?)
 20080614

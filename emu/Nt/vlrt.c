@@ -13,21 +13,8 @@
 typedef	struct	Vlong	Vlong;
 struct	Vlong
 {
-	union
-	{
-		struct
-		{
-			ulong	lo;
-			ulong	hi;
-		};
-		struct
-		{
-			ushort	lols;
-			ushort	loms;
-			ushort	hils;
-			ushort	hims;
-		};
-	};
+	ulong	lo;
+	ulong	hi;
 };
 
 void	abort(void);
@@ -102,11 +89,11 @@ _mulv(Vlong *r, Vlong a, Vlong b)
 void
 _d2v(Vlong *y, double d)
 {
-	union { double d; struct Vlong; } x;
+	Vlong x;
 	ulong xhi, xlo, ylo, yhi;
 	int sh;
 
-	x.d = d;
+	*(double*)&x = d;
 
 	xhi = (x.hi & 0xfffff) | 0x100000;
 	xlo = x.lo;
