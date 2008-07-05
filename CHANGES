@@ -1,3 +1,6 @@
+20080705
+	update utils/sed, eliminating anonymous unions (just by commenting them out, to keep source in step with 9)
+		and several other changes for portability
 20080703
 	remove anonymous unions (and unused structs) from unpacking structures in emu/Nt/vlrt.c, not that it's used
 20080617
