@@ -24,7 +24,6 @@ extern	int	mflag;
 	int	sflag;
 	int	qflag;
 	int	xtblbit;
-	int	globfs;
 	ulong	displaychan;
 char *cputype;
 
@@ -42,7 +41,6 @@ usage(void)
 		"\t-f<fontpath>\n"
 		"\t-r<rootpath>\n"
 		"\t-7\n"
-		"\t-G\n"
 		"\t-C<channel string>\n"
 		"\t-S\n");
 
@@ -127,8 +125,7 @@ option(int argc, char *argv[], void (*badusage)(void))
 		if (geom(EARGF(badusage())) == 0)
 			badusage();
 		break;
-	case 'b':		/* (obsolete) jit array bounds checking */
-		bflag = 1;
+	case 'b':		/* jit array bounds checking (obsolete, now on by default) */
 		break;
 	case 'B':		/* suppress jit array bounds checks */
 		bflag = 0;
@@ -171,8 +168,7 @@ option(int argc, char *argv[], void (*badusage)(void))
 	case '7':		/* use 7 bit colormap in X */
 		xtblbit = 1;
 		break;
-	case 'G':		/* allow global access to file system */
-		globfs = 1;
+	case 'G':		/* allow global access to file system (obsolete) */
 		break;
 	case	'C':		/* channel specification for display */
 		cp = EARGF(badusage());

@@ -100,7 +100,7 @@ static void		xdestroy(XEvent*);
 static void		xselect(XEvent*, XDisplay*);
 static void		xproc(void*);
 static void		xinitscreen(int, int, ulong, ulong*, int*);
-static void		initmap(XWindow, ulong, ulong*, int*);
+static void		initmap(XWindow);
 static XGC		creategc(XDrawable);
 static void		graphicsgmap(XColor*, int);
 static void		graphicscmap(XColor*);
@@ -210,7 +210,7 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		}
 		
 		if(img == nil) {
-			fprint(2, "emu: can not allocate virtual screen buffer\n");
+			fprint(2, "emu: cannot allocate virtual screen buffer\n");
 			cleanexit(0);
 		}
 		
@@ -707,33 +707,36 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 			fprint(2, "emu: win-x11 could not determine pixel format.\n");
 			cleanexit(0);
 		}
-	}
-		
-	switch(*d){
-	case 1:	/* untested */
-		*chan = GREY1;
-		break;
-	case 2:	/* untested */
-		*chan = GREY2;
-		break;
-	case 4:	/* untested */
-		*chan = GREY4;
-		break;
-	case 8:
-		*chan = CMAP8;
-		break;
-	case 15:
-		*chan = RGB15;
-		break;
-	case 16: /* how to tell RGB15? */
-		*chan = RGB16;
-		break;
-	case 24: /* untested (impossible?) */
-		*chan = RGB24;
-		break;
-	case 32:
-		*chan = XRGB32;
-		break;
+			
+		switch(*d){
+		case 1:	/* untested */
+			*chan = GREY1;
+			break;
+		case 2:	/* untested */
+			*chan = GREY2;
+			break;
+		case 4:	/* untested */
+			*chan = GREY4;
+			break;
+		case 8:
+			*chan = CMAP8;
+			break;
+		case 15:
+			*chan = RGB15;
+			break;
+		case 16: /* how to tell RGB15? */
+			*chan = RGB16;
+			break;
+		case 24: /* untested (impossible?) */
+			*chan = RGB24;
+			break;
+		case 32:
+			*chan = XRGB32;
+			break;
+		}
+	}else{
+		*d = chantodepth(c);
+		*chan = c;		/* not every channel description will work */
 	}
 
 	if(xvis->class != StaticColor) {
@@ -743,9 +746,10 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 			graphicscmap(map);
 			graphicsrgbmap(mapr, mapg, mapb);
 		}
-		initmap(rootwin, c, chan, d);
+		initmap(rootwin);
 	}
 
+	memset(&attrs, 0, sizeof(attrs));
 	attrs.colormap = xcmap;
 	attrs.background_pixel = 0;
 	attrs.border_pixel = 0;
@@ -756,16 +760,21 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 	/*
 	 * set up property as required by ICCCM
 	 */
+	memset(&name, 0, sizeof(name));
 	name.value = (uchar*)"inferno";
 	name.encoding = XA_STRING;
 	name.format = 8;
 	name.nitems = strlen((char*)name.value);
+
+	memset(&normalhints, 0, sizeof(normalhints));
 	normalhints.flags = USSize|PMaxSize;
 	normalhints.max_width = normalhints.width = xsize;
 	normalhints.max_height = normalhints.height = ysize;
 	hints.flags = InputHint|StateHint;
 	hints.input = 1;
 	hints.initial_state = NormalState;
+
+	memset(&classhints, 0, sizeof(classhints));
 	classhints.res_name = "inferno";
 	classhints.res_class = "Inferno";
 	argv[0] = "inferno";
@@ -901,7 +910,7 @@ graphicsrgbmap(XColor *mapr, XColor *mapg, XColor *mapb)
  * application.  Inferno gets the best colors here when it has the cursor focus.
  */  
 static void 
-initmap(XWindow w, ulong cc, ulong *chan, int *d)
+initmap(XWindow w)
 {
 	XColor c;
 	int i;
@@ -909,7 +918,9 @@ initmap(XWindow w, ulong cc, ulong *chan, int *d)
 	if(xscreendepth <= 1)
 		return;
 
-	if(xvis->class == TrueColor || xvis->class == DirectColor) {
+	switch(xvis->class){
+	case TrueColor:
+	case DirectColor:
 		for(i = 0; i < 256; i++) {
 			c = map[i];
 			/* find out index into colormap for our RGB */
@@ -930,8 +941,9 @@ initmap(XWindow w, ulong cc, ulong *chan, int *d)
 				infernobtox11[i] = (c.pixel>>0)&0xff;
 			}
 		}
-	}
-	else if(xvis->class == PseudoColor) {
+		break;
+
+	case PseudoColor:
 		if(xtblbit == 0){
 			xcmap = XCreateColormap(xdisplay, w, xvis, AllocAll); 
 			XStoreColors(xdisplay, xcmap, map, 256);
@@ -948,12 +960,13 @@ initmap(XWindow w, ulong cc, ulong *chan, int *d)
 				infernotox11[map7to8[i][1]] = c.pixel;
 			}
 		}
-	}
-	else {
+		break;
+
+	default:
 		xtblbit = 0;
 		fprint(2, "emu: win-x11 unsupported visual class %d\n", xvis->class);
+		break;
 	}
-	return;
 }
 
 static void
