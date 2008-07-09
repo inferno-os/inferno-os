@@ -247,7 +247,7 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 
 		gscreendata = malloc(Xsize * Ysize * (displaydepth >> 3));
 		if(gscreendata == nil) {
-			fprint(2, "emu: cannot allocate screen buffer (%dx%d)\n", Xsize*Ysize);
+			fprint(2, "emu: cannot allocate screen buffer (%dx%dx%d)\n", Xsize, Ysize, displaydepth);
 			cleanexit(0);
 		}
 		xscreendata = (uchar*)img->data;
@@ -264,13 +264,13 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		gscreendata = malloc(Xsize * Ysize * (displaydepth >> 3));
 		xscreendata = malloc(Xsize * Ysize * (depth >> 3));
 		if(!gscreendata || !xscreendata) {
-			fprint(2, "emu: can not allocate virtual screen buffer\n");
+			fprint(2, "emu: can not allocate virtual screen buffer (%dx%dx%d[%d])\n", Xsize, Ysize, displaydepth, depth);
 			return 0;
 		}
 		img = XCreateImage(xdisplay, xvis, xscreendepth, ZPixmap, 0, 
 				   (char*)xscreendata, Xsize, Ysize, 8, Xsize * (depth >> 3));
 		if(img == nil) {
-			fprint(2, "emu: can not allocate virtual screen buffer\n");
+			fprint(2, "emu: can not allocate virtual screen buffer (%dx%dx%d)\n", Xsize, Ysize, depth);
 			return 0;
 		}
 		
@@ -290,6 +290,7 @@ flushmemscreen(Rectangle r)
 {
 	int x, y, width, height, dx;
 	uchar *p, *ep, *cp;
+	char chanbuf[16];
 
 	// Clip to screen
 	if(r.min.x < 0)
@@ -304,7 +305,7 @@ flushmemscreen(Rectangle r)
 	// is there anything left ...	
 	width = r.max.x-r.min.x;
 	height = r.max.y-r.min.y;
-	if((width < 1) | (height < 1))
+	if(width <= 0 || height <= 0)
 		return;
 
 	// Blit the pixel data ...
@@ -411,7 +412,8 @@ flushmemscreen(Rectangle r)
 		}
 	}
 	else{
-		fprint(2, "emu: bad display depth %d\n", displaydepth);
+		fprint(2, "emu: bad display depth %d chan %s xscreendepth %d\n", displaydepth,
+			chantostr(chanbuf, displaychan), xscreendepth);
 		cleanexit(0);
 	}
 
