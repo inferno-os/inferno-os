@@ -33,7 +33,6 @@ usage(void)
 	fprint(2, "Usage: emu [options...] [file.dis [args...]]\n"
 		"\t-gXxY\n"
 		"\t-c[0-9]\n"
-		"\t-b\n"
 		"\t-d file.dis\n"
 		"\t-s\n"
 		"\t-v\n"
@@ -41,6 +40,7 @@ usage(void)
 		"\t-f<fontpath>\n"
 		"\t-r<rootpath>\n"
 		"\t-7\n"
+		"\t-B\n"
 		"\t-C<channel string>\n"
 		"\t-S\n");
 

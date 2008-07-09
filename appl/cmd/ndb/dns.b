@@ -42,6 +42,10 @@ include "ipattr.m";
 	ipattr: IPattr;
 	dbattr: import ipattr;
 
+include "keyring.m";
+include "security.m";
+	random: Random;
+
 DNS: module
 {
 	init:	fn(nil: ref Draw->Context, nil: list of string);
@@ -124,6 +128,12 @@ init(nil: ref Draw->Context, args: list of string)
 	ipattr->init(attrdb, ip);
 
 	sys->pctl(Sys->NEWPGRP | Sys->FORKFD, nil);
+
+	random = load Random Random->PATH;
+	if(random == nil)
+		cantload(Random->PATH);
+	dnsid = random->randomint(Random->ReallyRandom);	# avoid clashes
+	random = nil;
 	myname = sysname();
 	stderr = sys->fildes(2);
 	readservers();
@@ -1657,7 +1667,7 @@ mkquery(qtype: int, qclass: int, name: string): (int, array of byte, string)
 {
 	qd := ref QR(name, qtype, qclass);
 	dm := ref DNSmsg;
-	dm.id = dnsid++;	# doesn't matter if two different procs use it
+	dm.id = dnsid++;	# doesn't matter if two different procs use it (different fds)
 	dm.flags = Oquery;
 	if(referdns || !debug)
 		dm.flags |= Frecurse;
@@ -1670,7 +1680,7 @@ mkquery(qtype: int, qclass: int, name: string): (int, array of byte, string)
 		a[i] = byte 0;
 	a[Udprport] = byte (DNSport>>8);
 	a[Udprport+1] = byte DNSport;
-	return (dm.id, a, nil);
+	return (dm.id&16rFFFF, a, nil);
 }
 
 udpquery(fd: ref Sys->FD, id: int, query: array of byte, sname: string, addr: ref RR): (ref DNSmsg, string)
