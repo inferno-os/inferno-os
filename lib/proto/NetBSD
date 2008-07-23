@@ -13,7 +13,7 @@ NetBSD
 			mkext
 			ndate
 			inm
-			yacc
+			iyacc
 		include
 			+
 		lib

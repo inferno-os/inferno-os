@@ -8,13 +8,12 @@ FreeBSD
 			data2s
 			ksize
 			kstrip
-
 			limbo
 			mk
 			mkext
 			ndate
 			inm
-			yacc
+			iyacc
 		include
 			+
 		lib

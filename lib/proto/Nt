@@ -57,7 +57,7 @@ Nt
 			va.exe
 			vc.exe
 			vl.exe
-			yacc.exe
+			iyacc.exe
 		include
 			+
 		lib

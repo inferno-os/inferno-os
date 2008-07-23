@@ -48,7 +48,7 @@ Irix
 			va
 			vc
 			vl
-			yacc
+			iyacc
 		include
 			+
 		lib

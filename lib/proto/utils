@@ -745,7 +745,7 @@ utils
 		pass.c
 		sched.c
 		span.c
-	yacc
+	iyacc
 		mkfile
 		yacc.c
 		yaccpar

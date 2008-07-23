@@ -8,12 +8,11 @@ Linux
 			data2s
 			ksize
 			kstrip
-
 			limbo
 			mk
 			mkext
 			ndate
-			yacc
+			iyacc
 		include
 			+
 		lib
