@@ -28,5 +28,5 @@ LDFLAGS= -multiply_defined suppress
 
 SYSLIBS=
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

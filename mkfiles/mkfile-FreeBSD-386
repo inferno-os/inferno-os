@@ -27,5 +27,5 @@ LDFLAGS=	-L/usr/openwin/lib\
 
 SYSLIBS=
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

@@ -36,5 +36,5 @@ LDSYSLIBS=	-lm -lX11
 
 RANLIB=		true
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

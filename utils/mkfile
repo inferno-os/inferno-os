@@ -43,7 +43,7 @@ ALWAYS=\
 #	Utils we build on Posix and Nt, which already exist on Plan 9.
 #
 NOTPLAN9=\
-	yacc\
+	iyacc\
 	8a\
 	8c\
 	8l\

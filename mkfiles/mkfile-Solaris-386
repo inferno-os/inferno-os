@@ -32,5 +32,5 @@ LDFLAGS=	$LDFLAGS\
 SYSLIBS=
 EMULIBS=	-lnsl -lsocket -lX11 -lm -lposix4
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

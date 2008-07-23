@@ -36,6 +36,6 @@ LDFLAGS=\
 
 SYSLIBS=
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d
 

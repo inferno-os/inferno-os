@@ -20,5 +20,5 @@ ANSICPP= -p
 LD=		8l
 LDFLAGS=
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

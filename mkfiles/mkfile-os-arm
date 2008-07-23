@@ -22,5 +22,5 @@ LDFLAGS=
 
 SYSLIBS=	#-lc
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d

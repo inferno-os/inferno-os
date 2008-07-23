@@ -12,10 +12,9 @@ EMUDIRS=\
 	libmp\
 	libsec\
 	libmath\
-	utils/yacc\
+	utils/iyacc\
 	limbo\
 	libinterp\
-	libkeyring\
 	libdraw\
 	libprefab\
 	libtk\

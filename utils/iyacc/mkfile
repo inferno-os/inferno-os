@@ -1,6 +1,6 @@
 <../../mkconfig
 
-TARG=yacc
+TARG=iyacc
 
 OFILES=	yacc.$O\
 

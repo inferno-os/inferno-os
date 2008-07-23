@@ -8,7 +8,7 @@ OS=		o
 AR=		ar
 ARFLAGS=	cvru
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d
 
 AS=             gcc

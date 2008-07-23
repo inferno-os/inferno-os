@@ -26,5 +26,5 @@ LDFLAGS=	-L/usr/X11R6/lib
 
 SYSLIBS=
 
-YACC=		yacc
+YACC=		iyacc
 YFLAGS=		-d
