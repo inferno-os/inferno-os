@@ -1,3 +1,5 @@
+20080723
+	rename Inferno's yacc to iyacc to avoid clash with system's own (now that Linux and others distribute it)
 20080707
 	update emu/port/win-x11a.c (fix someone's earlier patch to stop using undefined value)
 	emu/port/main.c mark obsolete options and remove from usage
