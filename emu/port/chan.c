@@ -947,8 +947,8 @@ parsename(char *name, Elemlist *e)
 	}
 }
 
-void*
-memrchr(void *va, int c, long n)
+static void*
+kmemrchr(void *va, int c, long n)
 {
 	uchar *a, *e;
 
@@ -1089,7 +1089,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 		strcpy(tmperrbuf, up->env->errstr);
 	NameError:
 		len = prefix+e.off[npath];
-		if(len < ERRMAX/3 || (name=memrchr(aname, '/', len))==nil || name==aname)
+		if(len < ERRMAX/3 || (name=kmemrchr(aname, '/', len))==nil || name==aname)
 			snprint(up->genbuf, sizeof up->genbuf, "%.*s", len, aname);
 		else
 			snprint(up->genbuf, sizeof up->genbuf, "...%.*s", (int)(len-(name-aname)), name);
