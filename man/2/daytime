@@ -105,6 +105,36 @@ A missing time zone in any format is assumed to be
 returns nil if
 .I s
 is not correctly formed.
+.PP
+When local time is first requested,
+.B daytime
+reads a table for time zone conversion from the
+.B timezone
+environment variable, if that is set,
+and otherwise from the file
+.BR /locale/timezone ,
+which is copied from one of the other files in
+.B /locale
+when the system is installed.
+The timezone table is a text file containing lines of space-separated fields.
+The first line gives the normal time zone name and its difference from GMT
+in seconds followed by an alternative time zone name (eg, for `daylight savings' or `summer' time) and
+its difference from GMT followed by a newline.
+The remainder is a list of pairs of times
+(seconds past the start of 1970, in the first time zone)
+when the alternative time zone applies.
+For example:
+.IP
+.EX
+EST -18000 EDT -14400
+ 9943200 25664400 41392800 57718800 ...
+.EE
+.PP
+Greenwich Mean Time is represented by
+.IP
+.EX
+GMT 0
+.EE
 .SH SOURCE
 .B /appl/lib/daytime.b
 .SH SEE ALSO
