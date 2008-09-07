@@ -195,7 +195,7 @@ execfunc(Var *func)
 	starval=runq->argv->words;
 	runq->argv->words=0;
 	poplist();
-	start(func->fn, func->pc, 0);
+	start(func->fn, func->pc, runq->local);
 	runq->local=newvar(strdup("*"), runq->local);
 	runq->local->val=starval;
 	runq->local->changed=1;

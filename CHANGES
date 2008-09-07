@@ -1,3 +1,5 @@
+20080907
+	include some changes from acme-sac in emu/Nt/devfs.c; need further control of usesec (or discard it)
 20080723
 	rename Inferno's yacc to iyacc to avoid clash with system's own (now that Linux and others distribute it)
 20080707

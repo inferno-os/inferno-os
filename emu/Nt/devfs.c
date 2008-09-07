@@ -415,7 +415,8 @@ fsattach(char *spec)
 		strcpy(s, spec);
 		FS(c)->spec = s;
 		FS(c)->srv = filesrv(spec);
-		FS(c)->usesec = fsacls(spec);
+		if(usesec)
+			FS(c)->usesec = fsacls(spec);
 		FS(c)->checksec = FS(c)->usesec && isserver;
 		c->qid.path = fsqidpath(spec);
 		c->qid.type = QTDIR;
@@ -2067,7 +2068,7 @@ sidtouser(Rune *srv, SID *s)
 	ndname = sizeof(dname);
 
 	if(!LookupAccountSidW(srv, s, aname, &naname, dname, &ndname, &type))
-		return mkuser(s, SidTypeUnknown, L"unknown", L"unknown") ;	/* was return nil; */
+		return mkuser(s, SidTypeUnknown, L"unknown", L"unknown");
 	return mkuser(s, type, aname, dname);
 }
 
@@ -2244,14 +2245,11 @@ addgroups(User *u, int force)
 		return;
 	u->gotgroup = 1;
 
-	rem = 1;
 	n = 0;
 	srv = domsrv(u->dom, srvrock);
-	while(rem != n){
-		i = net.UserGetGroups(srv, u->name, 0,
-			(BYTE**)&grp, 1024, &n, &rem);
-		if(i != NERR_Success && i != ERROR_MORE_DATA)
-			break;
+	i = net.UserGetGroups(srv, u->name, 0,
+		(BYTE**)&grp, MAX_PREFERRED_LENGTH, &n, &rem);
+	if(i == NERR_Success || i == ERROR_MORE_DATA){
 		for(i = 0; i < n; i++){
 			gu = domnametouser(srv, grp[i].grui0_name, u->dom);
 			if(gu == 0)
@@ -2266,13 +2264,10 @@ addgroups(User *u, int force)
 		net.ApiBufferFree(grp);
 	}
 
-	rem = 1;
 	n = 0;
-	while(rem != n){
-		i = net.UserGetLocalGroups(srv, u->name, 0, LG_INCLUDE_INDIRECT,
-			(BYTE**)&loc, 1024, &n, &rem);
-		if(i != NERR_Success && i != ERROR_MORE_DATA)
-			break;
+	i = net.UserGetLocalGroups(srv, u->name, 0, LG_INCLUDE_INDIRECT,
+		(BYTE**)&loc, MAX_PREFERRED_LENGTH, &n, &rem);
+	if(i == NERR_Success || i == ERROR_MORE_DATA){
 		for(i = 0; i < n; i++){
 			gu = domnametouser(srv, loc[i].lgrui0_name, u->dom);
 			if(gu == NULL)
