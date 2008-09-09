@@ -1,3 +1,5 @@
+20080909
+	/appl/cmd/puttar.b add extra empty block at end of archive as required by format
 20080907
 	include some changes from acme-sac in emu/Nt/devfs.c; need further control of usesec (or discard it)
 20080723

@@ -178,6 +178,6 @@ init(nil: ref Draw->Context, args: list of string){
 			rtar(hd args);
 	}
 	putblock(zeros);
-#	putblock(zeros);		# XXX is this necessary?
+	putblock(zeros);	# format requires two empty blocks at end
 	flushblocks();
 }
