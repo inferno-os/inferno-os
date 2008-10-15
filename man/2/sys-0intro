@@ -32,8 +32,7 @@ consist of a number of
 with the slashes corresponding to directories.
 A path element must contain only printable
 characters (those outside ASCII and Latin-1 control space).
-A path element cannot contain a space, slash, or
-.BR # .
+A path element cannot contain a slash.
 The path element
 .B \&..
 refers to the parent directory of the directory containing that element.
@@ -71,18 +70,12 @@ or
 .B mount
 (see
 .IR sys-bind (2))
-to say that whenever a certain (specified) file is reached during an evaluation,
-that evaluation continues instead from some other (specified) file.
-.PP
+to say that whenever a specified file is reached during an evaluation,
+that evaluation continues instead from a second specified file.
 Also, these same calls create
 \f2union directories\fP,
 which are concatenations of ordinary directories
 that are searched sequentially until the desired element is found.
-.PP
-The result of evaluating
-.B \&..
-in a union directory is undefined.
-.PP
 Using
 .B bind
 and
@@ -90,10 +83,36 @@ and
 to do name space adjustment affects only
 the current name space group (see below, and
 .IR sys-pctl (2)).
-.PP
 Certain conventions about the layout of the name space should be preserved;
 see
 .IR namespace (4).
+.PP
+The operating system kernel records the file name used to access each open file or directory.
+If the file is opened by a local name (one that does not begin
+.B /
+or
+.BR # ),
+the system makes the stored name absolute by prefixing
+the string associated with the current directory.
+Similar lexical adjustments are made for path names containing
+.B .
+(dot) or
+.B ..
+(dot-dot).
+By this process, the system maintains a record of the route by which each file was accessed.
+Although there is a possibility for error\(emthe name is not maintained after the file is opened,
+so removals and renamings can confound it\(emthis simple method usually
+permits the system to return, via
+.IR sys-fd2path (2)
+and related calls such as those of
+.IR workdir (2),
+a valid name that may be used to find a file again.
+This is also the source of the names reported in the name space listing of
+.IR ns (1)
+or the
+.B ns
+file of
+.IR prog (3).
 .SS "File I/O"
 Files are opened for input or output
 by
@@ -159,6 +178,31 @@ and may be set arbitrarily using the
 .B seek
 system call
 .RI ( sys-seek (2)).
+An offset can also be passed as a parameter to
+.B pread
+and
+.B pwrite
+(see
+.I sys-read (2)).
+.PP
+Inferno provides no guarantee of consistency should
+several processes access a file concurrently.
+Guaranteed synchronous writes are not available.
+Whether the exclusive-use attributes described in
+.IR sys-open (2)
+and
+.IR sys-stat (2)
+will be honoured for a file depends entirely on the underlying file server
+(eg,
+.IR fs (3)).
+Record locking in the underlying file system is not supported by Inferno.
+Processes can coordinate their file operations by other mechanisms.
+.PP
+Atomicity is guaranteed for byte counts smaller than the
+.I Styx
+message size;
+see
+.IR read (5).
 .PP
 Directories may be opened and read
 much like regular files (see
@@ -195,26 +239,13 @@ and deleted with
 .IR sys-open (2)
 and
 .IR sys-remove (2)).
-.PP
-Directories are manipulated by
+Directories may not directly be written;
 .BR create ,
 .BR remove ,
 .BR wstat ,
 and
-.BR fwstat ;
-they may not directly be written.
-.PP
-Inferno provides no guarantee of consistency should
-several processes access a file concurrently.
-Guaranteed synchronous writes are not available.
-Nor is file locking from underlying file systems supported by Inferno.
-Processes can coordinate their file operations by other mechanisms.
-.PP
-Atomicity is guaranteed for byte counts smaller than the
-.I Styx
-message size;
-see
-.IR read (5).
+.B fwstat
+change them.
 .SS "Process execution and control"
 A Limbo
 .IR process ,

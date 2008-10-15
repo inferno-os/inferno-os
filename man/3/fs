@@ -64,6 +64,12 @@ typically runs as the user that starts it, and that user will own all newly-crea
 files and directories, and that user's host system access rights control access
 to any file.
 Other details are specific to the host system, as given below.
+.PP
+The set of characters visible in file names within
+.I fs
+is also determined by the host operating system, not Inferno.
+For instance, names might contain control characters, or even `/',
+which might render them unusable in Inferno.
 .SS Unix
 When checking owner, group and other permissions, the intent in Inferno is that
 each is tried in turn, in that order.
