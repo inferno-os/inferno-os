@@ -462,7 +462,7 @@ Setting the site's time zone
 .LP
 Time zone settings are defined by
 files in the directory
-.CW /locale/timezone .
+.CW /locale .
 The setting affects only how the time is displayed; the internal representation does not vary.
 For instance, the file
 .CW /locale/GMT
