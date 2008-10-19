@@ -80,8 +80,9 @@ will block until a child of the process, created after
 was opened, exits.
 When such a child exits, it produces a string with three fields:
 the pid of the exiting process, a space,
-module name, enclosed in
-\ \f5"\fP's
+module name enclosed in
+\ \f5"\fP's,
+a colon,
 and a possibly empty error message.
 The error message will contain at most 64 characters.
 .PP
