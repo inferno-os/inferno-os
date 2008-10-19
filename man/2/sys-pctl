@@ -126,9 +126,8 @@ The window manager
 uses
 .B NEWPGRP|FORKFD
 when starting a window manager application.
-.IR Srv (8)
-uses
-.B NEWGRP|FORKNS|FORKFD
+A network server might use
+.B NEWPGRP|FORKNS|FORKFD|FORKENV
 to insulate itself completely from services it starts.
 .PP
 The return value of

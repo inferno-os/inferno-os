@@ -1,6 +1,8 @@
 20081019
 	/appl/cmd/man2html.b implement "\ " => "&nbsp;"
 	/man/3/prog change way a literal " was formatted
+	/man/8/srv deleted (obsolete)
+	removed reference to srv(8) from sys-pctl(2)
 20080909
 	/appl/cmd/puttar.b add extra empty block at end of archive as required by format
 20080907
