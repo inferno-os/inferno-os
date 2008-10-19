@@ -1120,6 +1120,9 @@ getnext(g: ref Global): string
 		g.lastc = c;
 		case c {
 
+		' ' =>
+			return "&nbsp;";
+
 		# chars to ignore
 		'|' or '&' or '^' =>
 			return getnext(g);

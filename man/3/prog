@@ -81,9 +81,7 @@ was opened, exits.
 When such a child exits, it produces a string with three fields:
 the pid of the exiting process, a space,
 module name, enclosed in
-.B
-\&"\c
-\&'s,
+\ \f5"\fP's
 and a possibly empty error message.
 The error message will contain at most 64 characters.
 .PP
