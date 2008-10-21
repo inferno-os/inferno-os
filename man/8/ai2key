@@ -1,0 +1,262 @@
+.TH AI2KEY 8
+.SH NAME
+ai2key, dsagen, rsagen \- generate and reformat public keys
+.SH SYNOPSIS
+.B ai2key
+[
+.BI -t " tag"
+]
+.I keyfile
+...
+.P
+.B dsagen
+[
+.BI -t " tag"
+]
+.PP
+.B rsagen
+[
+.BI -b " nbits"
+] [
+.BI -t " tag"
+]
+.SH DESCRIPTION
+.IR Factotum (4)
+represents public keys as lists of attribute-value pairs, each key on a single line prefixed with the string
+.BR key .
+.PP
+.I Ai2key
+converts the original Inferno representation of authentication data,
+in the format defined for
+.B authinfo
+by
+.IR keytext (6),
+to an attribute-value format accepted by
+.IR factotum (4)
+for the
+.B infauth
+authentication protocol.
+For each
+.I keyfile
+it writes a single line on standard output, containing
+the following fields:
+.IP
+.EX
+.fi
+.ti -3n
+key proto=infauth
+[
+.I tag
+]
+.BI "sigalg=" pkalg - hashalg
+[
+.BI dom= host
+]
+.BI server= host
+[
+.BI service= svc
+]
+.BI "user=" name
+.BI "signer=" name
+.BI "pk=" pk
+.BI "!sk=" sk
+.BI spk= pk
+.BI cert= cert
+.BI dh-alpha= hex
+.BI dh-p= hex
+.EE
+.PP
+where
+.RS
+.TP 15n
+.I pkalg
+is
+.BR dsa ,
+.B elgamal
+or
+.BR rsa
+.PD 0
+.ns
+.TP
+.I hashalg
+is
+.B md5
+or
+.BR sha1
+.br
+.ns
+.TP
+.B user
+is the user name associated with the key, as vouched for by the supporting
+certificate
+.BR cert
+.br
+.ns
+.TP
+.B signer
+is the user name associated with the key that signed the certificate
+.br
+.ns
+.TP
+.B pk
+is the user's public key
+.br
+.ns
+.TP
+.B !sk
+is the user's private (secret) key
+.br
+.ns
+.TP
+.B spk
+is the signer's public key
+.br
+.ns
+.TP
+.B cert
+is the
+.I certificate
+.br
+.ns
+.TP
+.BR dh-alpha ,\  dh-p
+are the Diffie-Hellman parameters shared by the user and file servers.
+.RE
+.PD
+.PP
+The key is tagged by one or more of
+.BR dom ,
+.B server
+and
+.BR service ,
+derived from the file name
+.IR keyfile .
+The server is
+.RB ` * '
+if
+.I keyfile
+is
+.BR default .
+Otherwise
+.I keyfile
+has the form
+.IP
+[
+.IB net !
+]
+.I host
+[
+.BI ! srv
+]
+.PP
+and
+.B server
+and
+.B service
+are set accordingly;
+.B dom
+is set if
+.I host
+looks like a domain name.
+Key and certificate values have the form defined in
+.IR keytext (6);
+.I hex
+is a large number in hexadecimal.
+.PP
+.I Dsagen
+prints a randomly-generated DSA private key using the NIST-recommended algorithm.
+If
+.I tag
+text is specified, it is printed after the
+.B proto
+attribute-value pair.
+Typically,
+.I tag
+is a sequence of attribute-value comments describing the key.
+A DSA key has the following attributes
+.RS
+.TP 8n
+.B p
+prime public modulus
+.PD 0
+.TP
+.B q
+prime group order; divides
+.BR p -1
+.TP
+.B alpha
+group generator
+.TP
+.B key
+.BR alpha ^ !secret
+mod
+.B p
+.TP
+.B !secret
+the secret exponent
+.RE
+.PD
+.PP
+.I Rsagen
+prints a randomly generated RSA private key
+whose
+.B n
+has exactly
+.I nbits
+(default 1024)
+significant bits.
+The key has the following attributes:
+.RS
+.TP
+.B size
+the number of significant bits in
+.B n
+.PD 0
+.TP
+.B ek
+the encryption exponent
+.TP
+.B n
+the product of
+.B !p
+and
+.B !q
+.TP
+.B !dk
+the decryption exponent
+.TP
+.B !p
+a large prime
+.TP
+.B !q
+another large prime
+.TP
+.B "!kp\fR, \fL!kq\fR, \fL!c2
+parameters derived from the other attributes, cached to speed decryption
+.RE
+.PD
+.PP
+All the numbers in
+.I dsagen
+and
+.I rsagen
+output are in hexadecimal except RSA's
+.BR size ,
+which is decimal.
+A public key omits the attributes beginning with
+.L ! .
+A key may have other attributes as well, for example a
+.B service
+attribute identifying how this key is typically used,
+but to these utilities such attributes are merely comments.
+They can be provided in a
+.I tag
+argument.
+.SH SOURCE
+.B /appl/cmd/auth/ai2key.b
+.br
+.B /appl/cmd/auth/dsagen.b
+.br
+.B /appl/cmd/auth/rsagen.b
+.SH "SEE ALSO"
+.IR factotum (4)

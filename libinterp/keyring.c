@@ -1696,7 +1696,7 @@ if(0)print("Y");
 	buf[n] = 0;
 	hiscert = strtocert(buf);
 	if(hiscert == H){
-		err = "bad certificate";
+		err = "bad certificate syntax";
 		goto out;
 	}
 	certimmutable(hiscert);		/* hide from the garbage collector */

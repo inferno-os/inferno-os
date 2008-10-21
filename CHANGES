@@ -1,3 +1,6 @@
+20081021
+	/appl/cmd/auth/ai2key.b new command to convert authinfo files to factotum keys
+	/appl/cmd/auth/factotum/proto/infauth.b allow new key format
 20081019
 	/appl/cmd/man2html.b implement "\ " => "&nbsp;"
 	/man/3/prog change way a literal " was formatted

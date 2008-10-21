@@ -139,9 +139,8 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 		senderr(io, e);
 		break;
 	Error1 =>
-		senderr(io, "missing your authentication data");
-		x: string = e;
-		return "remote: "+x;
+		senderr(io, "failed");	# acknowledge error
+		return remote(e);
 	}
 
 	{	
@@ -151,8 +150,7 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 	Error0 =>
 		return e;
 	Error1 =>
-		x: string = e;
-		return "remote: "+x;
+		return remote(e);
 	}
 	if(err != nil)
 		return err;
@@ -160,13 +158,26 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 	return negotiatecrypto(io, key, ai, rattrs);
 }
 
+remote(s: string): string
+{
+	# account for strange earlier interface
+	if(len s < 6 || s[0: 6] != "remote")
+		return "remote: "+s;
+	return s;
+}
+
+# TO DO: exchange attr/value pairs, covered by hmac (use part of secret up to hmac block size of 64 bytes)
+# the old scheme can be distinguished either by a prefix "attrs " or simply because the string contains "=",
+# and the server side can then reply.  the hmac is to prevent tampering.
 negotiatecrypto(io: ref IO, key: ref Key, ai: ref Authinfo, attrs: list of ref Sexp): string
 {
 	role := authio->lookattrval(key.attrs, "role");
 	alg: string;
 	{
 		if(role == "client"){
-			alg = authio->lookattrval(key.attrs, "alg");
+			alg = authio->lookattrval(key.attrs, ":alg");
+			if(alg == nil)
+				alg = authio->lookattrval(key.attrs, "alg");	# old way
 			if(alg == nil)
 				alg = "md5/rc4_256";
 			sendmsg(io, array of byte alg);
@@ -297,7 +308,8 @@ getmsg(io: ref IO): array of byte raises (Error0, Error1)
 	if(len buf != m)
 		raise Error0("io error: (impossible?) msg length " + string m);
 	if(h[0] == '!'){
-sys->print("got remote error: %s, len %d\n", string buf, len string buf);
+		if(0)
+			sys->print("got remote error: %q, len %d\n", string buf, len string buf);
 		raise Error1(string buf);
 	}
 	return buf;
@@ -318,16 +330,46 @@ senderr(io: ref IO, e: string)
 	io.write(buf, len buf);
 }
 
+# both the s-expression and k=v form are interim, until all
+# the factotum implementations can manage public keys
+# the s-expression form was the original one used by Inferno factotum
+# the form in which Authinfo components are separate attributes is the
+# one now used by Plan 9 and Plan 9 Ports factotum implementations
 keytoauthinfo(key:ref Key): (ref Keyring->Authinfo, string)
 {
-	if((s := authio->lookattrval(key.secrets, "!authinfo")) == nil){
-		# XXX could look up authinfo by hash at this point
-		return (nil, "no authinfo attribute");
-	}
-
-	return strtoauthinfo(s);
+	if((s := authio->lookattrval(key.secrets, "!authinfo")) != nil)
+		return strtoauthinfo(s);
+	# TO DO: could look up authinfo by hash
+	ai := ref Keyring->Authinfo;
+	if((s = kv(key.secrets, "!sk")) == nil || (ai.mysk = keyring->strtosk(s)) == nil)
+		return (nil, "bad secret key");
+	if((s = kv(key.attrs, "pk")) == nil || (ai.mypk = keyring->strtopk(s)) == nil)
+		return (nil, "bad public key");
+	if((s = kv(key.attrs, "cert")) == nil || (ai.cert = keyring->strtocert(s)) == nil)
+		return (nil, "bad certificate");
+	if((s = kv(key.attrs, "spk")) == nil || (ai.spk = keyring->strtopk(s)) == nil)
+		return (nil, "bad signer public key");
+	if((s = kv(key.attrs, "dh-alpha")) == nil || (ai.alpha = IPint.strtoip(s, 16)) == nil)
+		return (nil, "bad value for alpha");
+	if((s = kv(key.attrs, "dh-p")) == nil || (ai.p = IPint.strtoip(s, 16)) == nil)
+		return (nil, "bad value for p");
+	return (ai, nil);
 }
 
+kv(a: list of ref Attr, name: string): string
+{
+	return rnl(authio->lookattrval(a, name));
+}
+
+rnl(s: string): string
+{
+	for(i := 0; i < len s; i++)
+		if(s[i] == '^')
+			s[i] = '\n';
+	return s;
+}
+
+# s-expression form
 strtoauthinfo(s: string): (ref Keyring->Authinfo, string)
 {
 	(se, err, nil) := Sexp.parse(s);
