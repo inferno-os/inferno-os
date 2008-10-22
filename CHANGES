@@ -1,3 +1,6 @@
+20081022
+	sh: ignore leading white space in fail: strings, and change empty tail to "failed"
+	/emu/port/devfs-posix.c don't call readdir after it has returned end of file
 20081021
 	/appl/cmd/auth/ai2key.b new command to convert authinfo files to factotum keys
 	/appl/cmd/auth/factotum/proto/infauth.b allow new key format
