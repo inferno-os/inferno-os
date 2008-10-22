@@ -286,7 +286,7 @@ system(drawctxt: ref Draw->Context, cmd: string): string
 		return Context.new(drawctxt).run(ref Listnode(n, nil) :: nil, 0);
 	} exception e {
 	"fail:*" =>
-		return e[5:];
+		return failurestatus(e);
 	}
 }
 
@@ -297,7 +297,7 @@ run(drawctxt: ref Draw->Context, argv: list of string): string
 		return Context.new(drawctxt).run(stringlist2list(argv), 0);
 	} exception e {
 	"fail:*" =>
-		return e[5:];
+		return failurestatus(e);
 	}
 }
 
@@ -362,7 +362,7 @@ runfile(ctxt: ref Context, fd: ref Sys->FD, path: string, args: list of ref List
 						laststatus = walk(ctxt, n, 0);
 					} exception e2 {
 					"fail:*" =>
-						laststatus = e2[5:];
+						laststatus = failurestatus(e2);
 					}
 				} else
 					laststatus = walk(ctxt, n, 0);
@@ -884,7 +884,7 @@ runexternal(ctxt: ref Context, args: list of ref Listnode, last: int): string
 				EPIPE =>
 					return EPIPE;
 				"fail:*" =>
-					return e[5:];
+					return failurestatus(e);
 				}
 			}
 			extstart := chan of int;
@@ -909,6 +909,16 @@ runexternal(ctxt: ref Context, args: list of ref Listnode, last: int): string
 	} while (pathlist != nil && nonexistent(err));
 	diagnostic(ctxt, sys->sprint("%s: %s", progname, err));
 	return err;
+}
+
+failurestatus(e: string): string
+{
+	s := e[5:];
+	while(s != nil && (s[0] == ' ' || s[0] == '\t'))
+		s = s[1:];
+	if(s != nil)
+		return s;
+	return "failed";
 }
 
 runhashpling(ctxt: ref Context, fd: ref Sys->FD,
@@ -1119,7 +1129,7 @@ waitfor(ctxt: ref Context, pids: list of int): string
 		(who, line, s) := parsewaitstatus(ctxt, string buf[0:n]);
 		if (s != nil) {
 			if (len s >= 5 && s[0:5] == "fail:")
-				s = s[5:];
+				s = failurestatus(s);
 			else
 				diagnostic(ctxt, line);
 		}
@@ -2049,7 +2059,7 @@ builtin_run(ctxt: ref Context, args: list of ref Listnode, nil: int): string
 	} exception e {
 	"fail:*" =>
 		ctxt.pop();
-		return e[5:];
+		return failurestatus(e);
 	}
 }
 

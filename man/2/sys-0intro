@@ -88,7 +88,7 @@ see
 .IR namespace (4).
 .PP
 The operating system kernel records the file name used to access each open file or directory.
-If the file is opened by a local name (one that does not begin
+If the file is opened by a relative path name (one that does not begin
 .B /
 or
 .BR # ),
@@ -100,8 +100,8 @@ Similar lexical adjustments are made for path names containing
 .B ..
 (dot-dot).
 By this process, the system maintains a record of the route by which each file was accessed.
-Although there is a possibility for error\(emthe name is not maintained after the file is opened,
-so removals and renamings can confound it\(emthis simple method usually
+Although there is a possibility for error—the name is not maintained after the file is opened,
+so removals and renamings can confound it—this simple method usually
 permits the system to return, via
 .IR sys-fd2path (2)
 and related calls such as those of
@@ -113,6 +113,18 @@ or the
 .B ns
 file of
 .IR prog (3).
+.PP
+Inferno gives special meaning in path names only to `/' and an initial `#',
+but individual file servers might impose further restrictions or conventions of their own.
+For instance, the set of characters allowed in names by
+.IR fs (3)
+ultimately depends on the host operating system;
+and
+.IR dial (2)
+and
+.IR cs (8)
+amongst others use `!' as a delimiter in network names,
+preventing their use in the names of network devices.
 .SS "File I/O"
 Files are opened for input or output
 by
@@ -133,7 +145,7 @@ and
 .IR sys-read (2)).
 When the last reference to an
 .B FD
-disappears, the file descriptor is released\(emclosed, in Unix parlance.
+disappears, the file descriptor is released—closed, in Unix parlance.
 The
 .B FD
 contains an integer file descriptor, similar to those in Unix, but the
@@ -297,7 +309,7 @@ and
 A comparison of process and file identities take place when a process
 attempts to open or create a file.
 .PP
-When a pathname crosses from one server to another the process identities are
+When a path name crosses from one server to another the process identities are
 mapped by each server receiving a file request.
 .PP
 The
