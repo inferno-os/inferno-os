@@ -2,7 +2,7 @@
 
 TARG=\
 	ida.dis\
-#	idatab.dis\
+	idatab.dis\
 
 MODULES=\
 
@@ -16,3 +16,6 @@ DISBIN=$ROOT/dis/lib/ida
 <$ROOT/mkfiles/mkdis
 # force compilation
 LIMBOFLAGS= -c $LIMBOFLAGS
+
+idatab.dis:N:
+	;
