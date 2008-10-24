@@ -31,7 +31,10 @@ The source for
 .CW mk
 itself is included in
 .CW utils/mk .
-(It must be compiled manually on the initial port to a new host environment.)
+It is included ready-made in the full and source-only distributions, to make life easier.
+It must be compiled manually only on the initial port to a new host environment;
+instructions for that are given below.
+.PP
 .NH 1
 The C compilers
 .PP
@@ -189,17 +192,19 @@ with a subdirectory for each hosted platform:
 .CW FreeBSD ,
 .CW Irix ,
 .CW Linux ,
+.CW MacOSX ,
+.CW NetBSD ,
 .CW Nt
 (for all Windows platforms, including the Internet Explorer plug-in),
-.CW MacOSX ,
 .CW Plan9 ,
+.CW Solaris ,
 and so on.
 Each platform directory has a
 .CW mkfile
 and one or more configuration files of the form described by
 .I config (6).
 An executable for a particular host type is built on that host type,
-under the host's own command interpreter, not under Inferno.
+using the host's own command interpreter, not under Inferno.
 Move to the
 .CW emu
 subdirectory appropriate to that host,
@@ -220,7 +225,7 @@ Emu itself is built by the
 .CW mkfile
 in the
 .CW emu
-platform directory for the host, as described above.
+subdirectory containing the platform-specific source for the host platform.
 Each library has its own
 .CW mkfile ;
 the various components are made in the right order by the
@@ -244,6 +249,8 @@ for
 FreeBSD/386,
 Irix/mips,
 Linux/386,
+NetBSD/386,
+MacOSX/386,
 MacOSX/power,
 Plan 9,
 Solaris/sparc,
@@ -290,16 +297,26 @@ within the Inferno tree; they use the version of
 defined by the configuration file
 .CW /emu/Nt/ie .
 .PP
-All the libraries an executables can be built in a tree containing only the source code.
+All the libraries and executables can be built in a tree containing only the source code.
 To do that for a supported variant of hosted Inferno, on Unix or Plan 9, do the following
 in the root of the Inferno tree:
-.IP 1.
+.nr Ci 0 +1
+.de Xx
+.IP \\n+(Ci
+..
+.Xx
+Edit
+.CW mkconfig
+to reflect your host environment,
+specifically ROOT (which must be an absolute path name), SYSHOST and OBJTYPE.
+The comments in the file should help you choose.
+.Xx
 Run
 .CW makemk.sh
 to rebuild the
 .CW mk
 command, which is used to build everything else.
-.IP 2.
+.Xx
 Set
 .CW PATH
 (or
@@ -312,11 +329,11 @@ directory for the platform, which will now contain the
 binary just built.
 On Unix, export
 .CW PATH .
-.IP 3.
+.Xx
 Then
 .CW "mk nuke"
 to remove any extraneous object files.
-.IP 4.
+.Xx
 Finally,
 .CW "mk install"
 to create and install the libraries,

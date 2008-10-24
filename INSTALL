@@ -1,17 +1,16 @@
 Installing hosted Inferno from source
 
-First change mkconfig to reflect your host environment,
-specifically ROOT (which must be an absolute path name), SYSHOST and OBJTYPE.
+Overview
 
      Like the native kernels  emu relies on  several  auxil-
 iary libraries (the source of which it often shares with the
 native kernels).  Emu itself is built by the  mkfile in the
-emu  platform  directory  for  the host, as described above.
-Each library has its own  mkfile; the various components are
-made  in  the  right order by the  mkfile at the root of the
-Inferno tree.  The   mkfile  for  each  platform  will  also
-invoke  mk recursively to make the appropriate libraries for
-a given configuration.
+emu subdirectory containing the platform-specific source for
+the host platform.  Each library has its own    mkfile;  the
+various  components  are  made  in  the  right order by the
+mkfile at the root of the Inferno tree.   The    mkfile  for
+each  platform  will also invoke  mk recursively to make the
+appropriate libraries for a given configuration.
 
      The Unix emu variant generally is  covered  by  `POSIX'
 (with  common  extensions)  but  each Unix port has one file
@@ -21,13 +20,13 @@ ferent ways  under  Unix  of  implementing  kernel-scheduled
 threads efficiently.
 
      There  are  working  emu  versions   for   FreeBSD/386,
-Irix/mips,  Linux/386,  MacOSX/power, Plan 9, Solaris/sparc,
-and Windows (NT, 2000 and Explorer plug-in).  Each  platform
-typically  uses  mechanisms  specific  to the host operating
-system to implement Inferno's internal thread/process struc-
-ture.   POSIX  threads  have often been found to be insuffi-
-cient (poorly implemented) on some platforms, and if so  are
-avoided.  See  kproc in  emu/*/os.c.
+Irix/mips,  Linux/386, NetBSD/386, MacOSX/386, MacOSX/power,
+Plan 9, Solaris/sparc, and Windows (NT,  2000  and  Explorer
+plug-in).   Each platform typically uses mechanisms specific
+to the host operating system to implement Inferno's internal
+thread/process  structure.   POSIX  threads  have often been
+found to be insufficient (poorly implemented) on some  plat-
+forms, and if so are avoided.  See  kproc in  emu/*/os.c.
 
      Source is included for ports to HP/UX  (S800  architec-
 ture),  Solaris/386, and Unixware, in case someone wishes to
@@ -51,22 +50,28 @@ is found in  /tools/plugin and    /usr/internet  within  the
 Inferno  tree;  they  use the version of  emu defined by the
 configuration file  /emu/Nt/ie.
 
-     All the libraries an executables can be built in a tree
-containing only the source code.  To do that for a supported
-variant of hosted Inferno, on Unix or Plan 9, do the follow-
-ing in the root of the Inferno tree:
+Build steps
 
-0.  Edit mkconfig as described above.
-1.   Run  makemk.sh to rebuild the   mk  command,  which  is
+     All the libraries and executables can  be  built  in  a
+tree containing only the source code.  To do that for a sup-
+ported variant of hosted Inferno, on Unix or Plan 9, do  the
+following in the root of the Inferno tree:
+
+1    Edit    mkconfig  to  reflect  your  host  environment,
+     specifically  ROOT  (which  must  be  an  absolute path
+     name), SYSHOST and OBJTYPE.  The comments in  the  file
+     should help you choose.
+
+2    Run  makemk.sh to rebuild the   mk  command,  which  is
      used to build everything else.
 
-2.   Set  PATH (or  path on Plan 9)  to  include  the    bin
+3    Set  PATH (or  path on Plan 9)  to  include  the    bin
      directory for the platform, which will now contain the
      mk binary just built.  On Unix, export  PATH.
 
-3.   Then  mk nuke to remove any extraneous object files.
+4    Then  mk nuke to remove any extraneous object files.
 
-4.   Finally,    mk  install  to  create  and  install   the
+5    Finally,    mk  install  to  create  and  install   the
      libraries,    limbo  compiler,  emu for hosted Inferno,
      and auxiliary commands.  The rules do that in an  order
      that ensures that the commands or libraries needed by a

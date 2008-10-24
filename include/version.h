@@ -1,1 +1,1 @@
-#define VERSION	"Fourth Edition (20081023)"
+#define VERSION	"Fourth Edition (20081024)"
