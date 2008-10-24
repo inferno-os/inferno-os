@@ -21,7 +21,7 @@ SYSTARG=$SYSHOST		# target system OS type (Hp, Inferno, Irix, Linux, Nt, Plan9, 
 #	specify the architecture of the target system - Plan 9 imports it from the
 #	environment; for other systems it is usually just hard-coded
 #
-#OBJTYPE=386			# target system object type (eg, 386, arm, mips, powerpc, s800, sparc)
+#OBJTYPE=386			# target system object type (eg, 386, arm, mips, power, s800, sparc)
 OBJTYPE=$objtype
 
 #
