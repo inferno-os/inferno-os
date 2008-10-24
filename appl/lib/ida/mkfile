@@ -17,5 +17,5 @@ DISBIN=$ROOT/dis/lib/ida
 # force compilation
 LIMBOFLAGS= -c $LIMBOFLAGS
 
-idatab.dis:N:
-	;
+idatab.dis:	idatab.dist
+	cp idatab.dist idatab.dis
