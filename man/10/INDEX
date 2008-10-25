@@ -142,6 +142,8 @@ malloc malloc
 mallocz malloc
 realloc malloc
 smalloc malloc
+master master
+master.local master
 memccpy memory
 memchr memory
 memcmp memory

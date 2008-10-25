@@ -1,0 +1,62 @@
+.TH MASTER 10.6
+.SH NAME
+master, master.local \- list of device specifiers
+.SH SYNOPSIS
+.B /emu/port/master
+.br
+.B /emu/port/master.local
+.PP
+.B os/port/master
+.br
+.B os/port/master.local
+.SH DESCRIPTION
+Each device has a name of the form
+.BI # x
+where
+.I x
+is a single Unicode character,
+which represents the root of the name space served (generated) by the driver.
+(There can be a further
+.I specifier
+that selects a particular hierarchy within the device, but that is not relevant here.)
+These names allow the devices' name spaces to be added to a process's name space
+(see
+.IR sys-intro (2)),
+using
+.IR bind (1)
+commands,
+.IR sys-bind (2)
+operations and
+.IR namespace (6)
+files.
+A given character can represent only one driver in a running system,
+but the same character might be used by several drivers in the source tree
+if they are never configured into the same system (eg, different platforms or
+mutually-exclusive configurations).
+The file
+.B #c/drivers
+gives the local system's assignment (see
+.IR cons (3)).
+A list of the set of characters used across all drivers on all platforms
+can be found in the several
+.B master
+files.
+In the distribution, the
+.B master.local
+files list characters that are reserved for use by locally-written drivers.
+They are updated by hand at a given installation.
+The
+.B master
+files by contrast are generated automatically by
+.B emu/port/mkfile
+and
+.B os/port/mkfile
+from the source for all platforms and
+.BR master.local .
+In the distribution, they might include names for drivers that exist but are not
+distributed.
+.SH SEE ALSO
+.IR bind (1),
+.IR sys-intro (2),
+.IR namespace (6),
+.IR dev (10.2)
