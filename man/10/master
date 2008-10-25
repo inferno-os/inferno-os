@@ -55,8 +55,16 @@ from the source for all platforms and
 .BR master.local .
 In the distribution, they might include names for drivers that exist but are not
 distributed.
+.PP
+Except for a few fundamental drivers, the character assignment is
+arbitrary, can vary between installations, and is notionally subject to change
+(although that rarely happens).
+The
+.IR indir (3)
+allows referring to drivers using a longer name that is even less likely to change.
 .SH SEE ALSO
 .IR bind (1),
 .IR sys-intro (2),
+.IR indir (3),
 .IR namespace (6),
 .IR dev (10.2)
