@@ -30,6 +30,8 @@ In the native environment, an arbitrary initial directory structure and
 file content can be built-in
 when the kernel is configured, but it will typically include at least
 the names above, to act as mount points.
+(See the discussion of the `root section' in
+.IR conf (10.6).)
 The required file
 .B /osinit.dis
 (not present in the emulation environment)
@@ -37,6 +39,13 @@ provides an executable Dis binary when read,
 and is the first program invoked when initialising the system.
 Other files needed for bootstrap
 might also reside in this device.
+.PP
+Its local name
+.B #/
+can be used by programs outside the kernel, for instance to implement
+.B newns
+in
+.IR newns (2).
 .SH SOURCE
 .B /emu/port/devroot.c
 .br
