@@ -91,10 +91,18 @@ Setting
 .I n
 to values larger than 1 enables increasingly detailed traces of the compiler.
 .TP
-.BI \-d
+.BI \-d " daemon"
 Run 
 .I emu
-as a server.
+as a server, invoking
+.I daemon
+instead of
+.BR /dis/emuinit.dis ,
+and disabling
+input from
+.B cons
+(see
+.IR cons (3)).
 .TP
 .BI \-g Xsize x Ysize
 Define screen width and height in pixels.
