@@ -26,7 +26,7 @@ Empty lines are also ignored.
 Attribute/value pairs are written as
 .IB attribute = value,
 which can be abbreviated to
-.lB attribute =
+.IB attribute =
 or simply
 .I attribute
 if the attribute has no value.
