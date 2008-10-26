@@ -41,41 +41,12 @@ Dbentry: adt {
                   list of (ref Tuples, list of ref Attr);
 };
 
-.ig
-Dbptr: adt {
-    dbs:    list of ref Dbf;
-    index:  ref Index;
-    pick{
-    Direct =>
-        offset:   int;
-    Hash =>
-        current:  int;
-        next:     int;
-    }
-};
-
-Index: adt {
-    fd:     ref Sys->FD;
-    attr:   string;
-    mtime:  int;
-    size:   int;
-};
-
-Dbf: adt {
-    fd:      ref Bufio->Iobuf;
-    name:    string;
-    mtime:   int;
-    indices: list of ref Index;
-
-    open:    fn(path: string): ref Dbf;
-    sopen:   fn(data: string): ref Dbf;
-};
-..
-
 Db: adt {
-    open:   fn(path: string): ref Db;
-    sopen:  fn(data: string): ref Db;
-    append: fn(db1: self ref Db, db2: ref Db): ref Db;
+    open:    fn(path: string): ref Db;
+    sopen:   fn(data: string): ref Db;
+    changed: fn(db: self ref Db): int;
+    reopen:  fn(db: self ref Db): int;
+    append:  fn(db1: self ref Db, db2: ref Db): ref Db;
 
     find:       fn(db: self ref Db, start: ref Dbptr,
                   attr: string): (ref Dbentry, ref Dbptr);
@@ -146,6 +117,13 @@ the contents of database
 .I db2
 to
 .IR db1 .
+.TP
+.IB db .changed()
+Return true iff one or more of the underlying files have changed since they were last read.
+.TP
+.IB db .reopen()
+Discard any cached data, and reopen the database files.
+Return 0 on success but -1 if any file could not be reopened.
 .TP
 .IB db .find( ptr , attr )
 Starting at
