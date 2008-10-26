@@ -193,7 +193,7 @@ sysname(): string
 	if(t == nil){
 		s := rf(mntpt+"/ndb");
 		if(s != nil){
-			db := Db.sopen(t);
+			db := Db.sopen(s);
 			if(db != nil){
 				(e, nil) := db.find(nil, "sys");
 				if(e != nil)
@@ -212,7 +212,7 @@ sysname(): string
 rf(name: string): string
 {
 	fd := sys->open(name, Sys->OREAD);
-	buf := array[Sys->NAMEMAX] of byte;
+	buf := array[512] of byte;
 	n := sys->read(fd, buf, len buf);
 	if(n <= 0)
 		return nil;
@@ -465,11 +465,21 @@ xlate(address: string, now: int): (list of string, string)
 	while(l != nil) {
 		s := hd l;
 		l = tl l;
+		dnetw := netw;
+		if(s != nil){
+			(divert, err) := ipattr->findnetattr(ndb, "ip", s, "divert-"+netw);
+			if(err == nil && divert != nil){
+				dnetw = divert;
+				if(!isnetwork(dnetw))
+					return (nil, "network unavailable "+dnetw);	# XXX should only give up if all addresses fail?
+			}
+		}
+
 		if(s != "")
 			s[len s] = '!';
 		s += service;
 
-		repl = mntpt+"/"+netw+"/clone "+s;
+		repl = mntpt+"/"+dnetw+"/clone "+s;
 		if(verbose)
 			sys->fprint(stderr, "cs: %s!%s!%s -> %s\n", netw, mach, service, repl);
 
