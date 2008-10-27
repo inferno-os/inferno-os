@@ -1,7 +1,7 @@
 .TH GRID-NS 1
 .SH NAME
-ns \- exports a selected namespace and serves it on
-.I stdin.
+grid: ns \- exports a selected namespace and serves it on
+standard input
 .SH SYNOPSIS
 .BI "grid/srv/ns	[ -r " "relpath " "]" " path1 path2...path n"
 .br
@@ -31,8 +31,8 @@ would be listed as
 and
 .B /tmp
 would not be listed at all.
-
-.IR Register (1)
+.PP
+.IR Grid-register (1)
 may be used in conjunction with 
 .I ns
 to register it with a 
@@ -56,12 +56,12 @@ if possible and start up the graphical display to show connections to the resour
 outside of
 .I runns
 unless the namespace it provides is required to be accessible in a different way to that provided by
-.IR register (1).
+.IR grid-register (1).
 .SH SOURCE
 .B /appl/grid/srv/ns.b
 
 .SH "SEE ALSO"
-.IR cpu (4),
+.IR grid-cpu (4),
 .IR grid-monitor (1),
 .IR grid-register (1),
-.IR session (1)
+.IR grid-session (1)

@@ -1,7 +1,7 @@
 .TH GRID-LOCALREG 1
 .SH NAME
-localreg \- starts a
-.IR registry (4)
+grid: localreg \- starts a
+registry
 on the local machine
 .SH SYNOPSIS
 .B grid/localreg 

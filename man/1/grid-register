@@ -1,6 +1,6 @@
 .TH GRID-REGISTER 1
 .SH NAME
-register \- registers a resource with a known
+grid: register \- registers a resource with a known
 .IR registry (4)
 .SH SYNOPSIS
 .B grid/register [
@@ -22,7 +22,7 @@ It then marshals the service by listening for incoming connections and exporting
 prints out various status messages to
 .I stdout
 in the form which may be read by
-.IR monitor (1).
+.IR grid-monitor (1).
 .SH OPTIONS
 .TP 17
 .BI -u " maxusers"

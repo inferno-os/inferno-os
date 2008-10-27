@@ -1,6 +1,6 @@
 .TH GRID-QUERY 1
 .SH NAME
-query \- graphical interface to view resources registered with a known
+grid: query \- graphical interface to view resources registered with a known
 .IR registry (4)
 .SH SYNOPSIS
 .B grid/query
