@@ -10,7 +10,7 @@ dbfs, rawdbfs \- simple database file system
 .br
 .B rawdbfs
 [
-.B -abcelrx
+.B -abcelx
 ]
 [
 .B -u
@@ -34,10 +34,9 @@ in
 .IR file .
 The
 .BR -a ,
-.BR -b ,
-.BR -c ,
+.B -b
 and
-.B -r
+.B -c
 options have the same meaning as the options accepted by
 .IR bind (1).
 If the
