@@ -87,7 +87,7 @@ files will give the following output:
 .br
 .B 1: /dis (200.1.5.53!7003)
 .br
-.B 2: /dis (200.1.5.53!7003)
+.B 2: /dev (200.1.5.53!7003)
 .PP
 Once the client disconnects from (unmounts) the cpu, the selected namespaces will be imported and the commands executed. Note: A 
 .I cpu
@@ -135,7 +135,7 @@ will only import namespaces across an unauthenticated connection as provided by
 .IR ns (1).
 
 .SH "SEE ALSO"
-.IR monitor (1),
-.IR ns (1),
-.IR register (1),
-.IR session (1)
+.IR grid-monitor (1),
+.IR grid-ns (1),
+.IR grid-query (1),
+.IR grid-register (1)

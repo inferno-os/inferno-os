@@ -55,7 +55,7 @@ where
 .I service
 and
 .I network
-are optional.
+are optional for some networks.
 The write returns an error if the address cannot be translated.
 Otherwise, the file offset should be reset to 0 using
 .IR sys-seek (2)
@@ -107,8 +107,11 @@ If found, the value of the attribute replaces the
 .I netaddr
 before further translation.
 .PP
-In the second form of query, the text written contains space-separated attribute/value pairs:
+In the second form of query, the text written contains space-separated attribute/value pairs following
+an initial
+.LR ! :
 .IP
+.B !
 .IB attr1 = val1
 [
 .IB attr2 = val2
