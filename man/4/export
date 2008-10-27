@@ -37,6 +37,10 @@ will be visible to clients.
 .I Export
 starts serving Styx immediately; it assumes that the connection
 has been authenticated if required.
+.I Export
+is typically called via
+.IR listen (1),
+which can authenticate the connection.
 .SH EXAMPLE
 Start a background process to serve the name space on the serial port.
 .IP
@@ -48,5 +52,6 @@ unless a transport protocol is run on the connection.
 .B /appl/cmd/export.b
 .SH SEE ALSO
 .IR cpu (1),
+.IR listen (1),
 .IR sys-dial (2),
 .IR intro (5)
