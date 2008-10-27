@@ -5,8 +5,6 @@ export \- export name space on a connection
 .B export
 [
 .B \-a
-] [
-.B \-n
 ]
 .I dir
 [
@@ -32,22 +30,7 @@ option is given, however,
 .I export
 starts an Inferno kernel process
 to serve the name space and returns immediately.
-.PP
-Normally,
-.I export
-forks the current name space, and makes
-.I dir
-the root of its copy.
-Changes subsequently made to the current name space will
-not be visible to clients of
-.IR export .
-If the
-.B \-n
-option is given, however, and
-.I dir
-is the root
-.RB (` / '),
-.I export
+.I Export
 serves the current name space without forking it; changes made to it
 will be visible to clients.
 .PP
