@@ -412,16 +412,14 @@ domanpage(g: ref Global, man: Hit)
 dogoobie(g: ref Global, deferred: int)
 {
 	# read line, translate special chars
-	line: string;
-	while ((token := getnext(g)) != "\n") {
-		if (token == nil)
-			return;
-		line += token;
-	}
+	line := getline(g);
+	if (line == nil || line == "\n")
+		return;
 
 	# parse into arguments
+	token: string;
 	argl, rargl: list of string;	# create reversed version, then invert
-	while ((line = str->drop(line, " \t")) != nil)
+	while ((line = str->drop(line, " \t\n")) != nil)
 		if (line[0] == '"') {
 			(token, line) = split(line[1:], '"');
 			rargl = token :: rargl;
@@ -486,6 +484,13 @@ subgoobie(g: ref Global, argl: list of string)
 		g.print("\n");
 
 	"1C" or "2C" or "DT" or "TF" =>	 # ignore these
+		return;
+
+	"ig" =>
+		while ((line := getline(g)) != nil){
+			if(len line > 1 && line[0:2] == "..")
+				break;
+		}
 		return;
 
 	"P" or "PP" or "LP" =>
@@ -1085,6 +1090,20 @@ Global.softp(g: self ref Global): string
 }
 
 #
+# get (remainder of) a line
+#
+getline(g: ref Global): string
+{
+	line := "";
+	while ((token := getnext(g)) != "\n") {
+		if (token == nil)
+			return line;
+		line += token;
+	}
+	return line+"\n";
+}
+
+#
 # Get next logical character.  Expand it with escapes.
 #
 getnext(g: ref Global): string
@@ -1185,7 +1204,7 @@ getnext(g: ref Global): string
 #			if (g.curfont != nil)
 #				token += sprint("<%s>", g.curfont);
 			if (token == nil)
-				return " ";	# shouldn't happen - maybe a \fR inside a font macro - just do something!
+				return "<i></i>";	# looks odd but it avoids inserting a space in <pre> text
 			return token;
 		's' =>
 			sign := '+';
