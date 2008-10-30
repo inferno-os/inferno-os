@@ -287,10 +287,6 @@ cleanexit(int x)
 void
 osreboot(char *file, char **argv)
 {
-	if(dflag == 0)
-		termrestore();
-	execvp(file, argv);
-	error("reboot failure");
 }
 
 void
