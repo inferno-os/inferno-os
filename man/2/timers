@@ -69,7 +69,7 @@ value times a single interval.
 When a timer
 .I t
 expires, the timing process attempts, at that and each subsequent timing interval, to send on
-.IB t .channel
+.IB t .timeout
 until the expiry message is delivered or the timer is stopped.
 .SH EXAMPLE
 Wait for data to be sent on an input channel, but give up if it does not arrive within 600 milliseconds:

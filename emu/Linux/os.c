@@ -16,6 +16,10 @@
 #include	<sys/syscall.h>
 #define	getpid()	syscall(SYS_getpid)
 
+/* temporarily suppress CLONE_PTRACE so it works on broken Linux kernels */
+#undef CLONE_PTRACE
+#define	CLONE_PTRACE	0
+
 enum
 {
 	DELETE	= 0x7f,
