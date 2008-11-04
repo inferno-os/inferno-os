@@ -23,4 +23,7 @@ DISBIN=$ROOT/dis/disk
 
 # calc
 calc.tab.b:
-	yacc -s calc -d calc.y
+	$YACC -s calc -d calc.y
+
+clean:V:	clean-std
+	rm -f calc.tab.b
