@@ -1,3 +1,6 @@
+20081105
+	emu/port/dis.c change to killgrp to prevent new spawns during kill [#117]
+	(will do os/port/dis.c later)
 20081022
 	sh: ignore leading white space in fail: strings, and change empty tail to "failed"
 	/emu/port/devfs-posix.c don't call readdir after it has returned end of file

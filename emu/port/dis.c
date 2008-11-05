@@ -118,6 +118,14 @@ newprog(Prog *p, Modlink *m)
 	Osenv *on, *op;
 	static int pidnum;
 
+	if(p != nil){
+		if(p->group != nil)
+			p->flags |= p->group->flags & Pkilled;
+		if(p->kill != nil)
+			error(p->kill);
+		if(p->flags & Pkilled)
+			error("");
+	}
 	n = malloc(sizeof(Prog)+sizeof(Osenv));
 	if(n == 0){
 		if(p == nil)
@@ -550,7 +558,7 @@ killgrp(Prog *p, char *msg)
 
 	/* interpreter has been acquired */
 	g = p->group;
-	if(g == nil || g->head == nil)
+	if(g == nil || g->head == nil || g->flags & Pkilled)
 		return 0;
 	npid = 0;
 	for(f = g->head; f != nil; f = f->grpnext)
@@ -558,14 +566,16 @@ killgrp(Prog *p, char *msg)
 			panic("killgrp");
 		else
 			npid++;
-	/* use pids not Prog* because state can change during killprog */
+	/* use pids not Prog* because state can change during killprog (eg, in delprog) */
 	pids = malloc(npid*sizeof(int));
 	if(pids == nil)
 		error(Enomem);
 	npid = 0;
 	for(f = g->head; f != nil; f = f->grpnext)
 		pids[npid++] = f->pid;
+	g->flags |= Pkilled;
 	if(waserror()) {
+		g->flags &= ~Pkilled;
 		free(pids);
 		nexterror();
 	}
@@ -575,6 +585,7 @@ killgrp(Prog *p, char *msg)
 			killprog(f, msg);
 	}
 	poperror();
+	g->flags &= ~Pkilled;
 	free(pids);
 	return 1;
 }
