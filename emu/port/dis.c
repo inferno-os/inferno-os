@@ -238,10 +238,8 @@ delprog(Prog *p, char *msg)
 	}
 	p->state = 0xdeadbeef;
 	free(o->user);
-	if(p->killstr)
-		free(p->killstr);
-	if(p->exstr)
-		free(p->exstr);
+	free(p->killstr);
+	free(p->exstr);
 	free(p);
 }
 
@@ -558,8 +556,12 @@ killgrp(Prog *p, char *msg)
 
 	/* interpreter has been acquired */
 	g = p->group;
-	if(g == nil || g->head == nil || g->flags & Pkilled)
+	if(g == nil || g->head == nil)
 		return 0;
+	while(g->flags & Pkilled){
+		release();
+		acquire();
+	}
 	npid = 0;
 	for(f = g->head; f != nil; f = f->grpnext)
 		if(f->group != g)
