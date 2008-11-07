@@ -1,3 +1,5 @@
+20081107
+	replace calls to calloc by malloc
 20081106
 	os/port/dis.c prevent new spawns during killgrp
 	also synchronise two killgrps of the same group

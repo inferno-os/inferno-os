@@ -175,10 +175,10 @@ eiainit(void)
 	// allocate directory table and eia structure
 	// for each active port.
 	ndir = Nqid*nports+1;
-	dp = eiadir = calloc(ndir, sizeof(Dirtab));
+	dp = eiadir = malloc(ndir*sizeof(Dirtab));
 	if(dp == 0)
 		panic("eiainit");
-	eia = calloc(nports, sizeof(Eia));
+	eia = malloc(nports*sizeof(Eia));
 	if(eia == 0) {
 		free(dp);
 		panic("eiainit");
