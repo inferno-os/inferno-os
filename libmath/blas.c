@@ -41,7 +41,8 @@ norm1(int n, double *x)
 	if (n <= 0) 
 		return 0;
 	while (n--) {
-		sum += fabs(*x++);
+		sum += fabs(*x);
+		x++;
 	}
 	return sum;
 }

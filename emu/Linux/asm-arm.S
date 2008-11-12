@@ -126,6 +126,7 @@ _tas:
 	@ link register save eliminated.
 	@ lr needed for prologue
 	mov	r3, #1
-	swp	r0, r3, [r0]
+	mov	r1, r0
+	swp	r0, r3, [r1]
 	mov	pc, lr
 	.size	_tas, .-_tas
