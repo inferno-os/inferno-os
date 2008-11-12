@@ -1,3 +1,6 @@
+20081112
+	emu/Linux/asm-arm.S old failure to use different regs for swp finally changed here
+	libmath/blas.c compensate for gcc bug on arm
 20081107
 	replace calls to calloc by malloc
 20081106
