@@ -15,6 +15,7 @@ EMUDIRS=\
 	utils/iyacc\
 	limbo\
 	libinterp\
+	libkeyring\
 	libdraw\
 	libprefab\
 	libtk\
