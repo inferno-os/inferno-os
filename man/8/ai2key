@@ -7,8 +7,8 @@ ai2key, dsagen, rsagen \- generate and reformat public keys
 .BI -t " tag"
 ]
 .I keyfile
-...
-.P
+\&...
+.PP
 .B dsagen
 [
 .BI -t " tag"
