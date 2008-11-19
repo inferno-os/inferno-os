@@ -48,7 +48,7 @@ int	i8259enable(Vctl*);
 int	i8259vecno(int);
 int	i8259disable(int);
 void	idle(void);
-#define	idlehands()			/* nothing to do in the runproc */
+void	idlehands(void);
 int	inb(int);
 void	insb(int, void*, int);
 ushort	ins(int);

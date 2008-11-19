@@ -1,3 +1,5 @@
+20081119
+	os/pc/^(main.c fns.h) more idle idlehands
 20081112
 	emu/Linux/asm-arm.S old failure to use different regs for swp finally changed here
 	libmath/blas.c compensate for gcc bug on arm

@@ -455,3 +455,14 @@ isaconfig(char *class, int ctlrno, ISAConf *isa)
 	}
 	return 1;
 }
+
+/*
+ *  put the processor in the halt state if we've no processes to run.
+ *  an interrupt will get us going again.
+ */
+void
+idlehands(void)
+{
+	if(conf.nmach == 1)
+		halt();
+}
