@@ -131,6 +131,8 @@ slicer(ulong start, ulong v, String *ds)
 		l = -ds->len;
 		if(v < start || v > l)
 			error(exBounds);
+		if(nc == 0)
+			return H;
 		ns = newrunes(nc);
 		memmove(ns->Srune, &ds->Srune[start], nc*sizeof(Rune));
 	}
@@ -138,6 +140,8 @@ slicer(ulong start, ulong v, String *ds)
 		l = ds->len;
 		if(v < start || v > l)
 			error(exBounds);
+		if(nc == 0)
+			return H;
 		ns = newstring(nc);
 		memmove(ns->Sascii, &ds->Sascii[start], nc);
 	}

@@ -1,4 +1,6 @@
 20081119
+20090122
+	libinterp/string.c: slicer can return H for empty slice after bounds check
 	os/pc/^(main.c fns.h) more idle idlehands
 20081112
 	emu/Linux/asm-arm.S old failure to use different regs for swp finally changed here
