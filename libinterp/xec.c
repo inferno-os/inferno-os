@@ -455,8 +455,8 @@ cnewc(Type *t, void (*mover)(void), int len)
 
 	h = heap(&Tchannel);
 	c = H2D(Channel*, h);
-	c->send = (Progq*)malloc(sizeof(Progq));
-	c->recv = (Progq*)malloc(sizeof(Progq));
+	c->send = malloc(sizeof(Progq));
+	c->recv = malloc(sizeof(Progq));
 	if(c->send == nil || c->recv == nil){
 		free(c->send);
 		free(c->recv);
@@ -722,6 +722,7 @@ OP(iload)
 	Import *ldt;
 	Module *m;
 	Modlink *ml, **mp, *t;
+	Heap *h;
 
 	n = string2c(S(s));
 	m = R.M->m;
@@ -737,7 +738,9 @@ OP(iload)
 		ml = linkmod(m, ldt, 0);
 		if(ml != H) {
 			ml->MP = R.M->MP;
-			D2H(ml->MP)->ref++;
+			h = D2H(ml->MP);
+			h->ref++;
+			Setmark(h);
 		}
 	}
 	else {
@@ -1560,9 +1563,12 @@ OP(cvtxf)
 OP(self)
 {
 	Modlink *ml, **mp, *t;
+	Heap *h;
 
 	ml = R.M;
-	D2H(ml)->ref++;
+	h = D2H(ml);
+	h->ref++;
+	Setmark(h);
 	mp = R.d;
 	t = *mp;
 	*mp = ml;

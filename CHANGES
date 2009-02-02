@@ -1,3 +1,7 @@
+20090202
+	emu/port/win-x11a.c: might as well try this everywhere now
+20090127
+	libinterp/xec.c: fix gc problem with self
 20090122
 	libinterp/string.c: slicer can return H for empty slice after bounds check (brucee)
 20081119

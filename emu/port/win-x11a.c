@@ -33,6 +33,8 @@
 #define Visual		XVisual
 #define Window		XWindow
 
+#define XLIB_ILLEGAL_ACCESS
+
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -100,11 +102,12 @@ static void		xdestroy(XEvent*);
 static void		xselect(XEvent*, XDisplay*);
 static void		xproc(void*);
 static void		xinitscreen(int, int, ulong, ulong*, int*);
-static void		initmap(XWindow);
+static void		initxcmap(XWindow);
 static XGC		creategc(XDrawable);
 static void		graphicsgmap(XColor*, int);
 static void		graphicscmap(XColor*);
 static void		graphicsrgbmap(XColor*, XColor*, XColor*);
+
 static int		xscreendepth;
 static	XDisplay*	xdisplay;	/* used holding draw lock */
 static	XDisplay*	xmcon;	/* used only in xproc */
@@ -114,7 +117,6 @@ static XVisual		*xvis;
 static XGC		xgc;
 static XImage 		*img;
 static int              is_shm;
-static XShmSegmentInfo	*shminfo;
 
 static int putsnarf, assertsnarf;
 char *gkscanid = "emu_x11";
@@ -126,7 +128,7 @@ char *gkscanid = "emu_x11";
  * server throws a BadAccess error.  So, we need to catch X errors
  * around all of our XSHM calls, sigh.
  */
-static int shm_got_x_error = False;
+static int shm_got_x_error = 0;
 static XErrorHandler old_handler = 0;
 static XErrorHandler old_io_handler = 0;
 
@@ -147,6 +149,82 @@ clean_errhandlers(void)
 	if(old_io_handler)
 		XSetErrorHandler(old_io_handler); 
 	old_io_handler = 0;
+}
+
+static int
+makesharedfb(void)
+{
+	XShmSegmentInfo *shminfo;
+
+	shminfo = malloc(sizeof(XShmSegmentInfo));
+	if(shminfo == nil) {
+		fprint(2, "emu: cannot allocate XShmSegmentInfo\n");
+		cleanexit(0);
+	}
+
+	/* setup to catch X11 error(s) */
+	XSync(xdisplay, 0); 
+	shm_got_x_error = 0; 
+	if(old_handler != shm_ehandler)
+		old_handler = XSetErrorHandler(shm_ehandler);
+	if(old_io_handler != shm_ehandler)
+		old_io_handler = XSetErrorHandler(shm_ehandler);
+
+	img = XShmCreateImage(xdisplay, xvis, xscreendepth, ZPixmap, 
+			      NULL, shminfo, Xsize, Ysize);
+	XSync(xdisplay, 0);
+
+	/* did we get an X11 error? if so then try without shm */
+	if(shm_got_x_error) {
+		free(shminfo);
+		shminfo = NULL;
+		clean_errhandlers();
+		return 0;
+	}
+	
+	if(img == nil) {
+		fprint(2, "emu: cannot allocate virtual screen buffer\n");
+		cleanexit(0);
+	}
+	
+	shminfo->shmid = shmget(IPC_PRIVATE, img->bytes_per_line * img->height, IPC_CREAT|0777);
+	shminfo->shmaddr = img->data = shmat(shminfo->shmid, 0, 0);
+	shminfo->readOnly = True;
+
+	if(!XShmAttach(xdisplay, shminfo)) {
+		fprint(2, "emu: cannot allocate virtual screen buffer\n");
+		cleanexit(0);
+	}
+	XSync(xdisplay, 0);
+
+	/*
+	 * Delete the shared segment right now; the segment
+	 * won't actually go away until both the client and
+	 * server have deleted it.  The server will delete it
+	 * as soon as the client disconnects, so we might as
+	 * well delete our side now as later.
+	 */
+	shmctl(shminfo->shmid, IPC_RMID, 0);
+
+	/* did we get an X11 error? if so then try without shm */
+	if(shm_got_x_error) {
+		XDestroyImage(img);
+		XSync(xdisplay, 0);
+		free(shminfo);
+		shminfo = NULL;
+		clean_errhandlers();
+		return 0;
+	}
+
+	gscreendata = malloc(Xsize * Ysize * (displaydepth >> 3));
+	if(gscreendata == nil) {
+		fprint(2, "emu: cannot allocate screen buffer (%dx%dx%d)\n", Xsize, Ysize, displaydepth);
+		cleanexit(0);
+	}
+	xscreendata = (uchar*)img->data;
+	
+	clean_errhandlers();
+	return 1;
 }
 
 uchar*
@@ -181,81 +259,8 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	/* check for X Shared Memory Extension */
 	is_shm = XShmQueryExtension(xdisplay);
 	
-	if(is_shm) {
-		shminfo = malloc(sizeof(XShmSegmentInfo));
-		if(shminfo == nil) {
-			fprint(2, "emu: cannot allocate XShmSegmentInfo\n");
-			cleanexit(0);
-		}
-
-		/* setup to catch X11 error(s) */
-		XSync(xdisplay, 0); 
-		shm_got_x_error = 0; 
-		if(old_handler != shm_ehandler)
-			old_handler = XSetErrorHandler(shm_ehandler);
-		if(old_io_handler != shm_ehandler)
-			old_io_handler = XSetErrorHandler(shm_ehandler);
-
-		img = XShmCreateImage(xdisplay, xvis, xscreendepth, ZPixmap, 
-				      NULL, shminfo, Xsize, Ysize);
-		XSync(xdisplay, 0);
-
-		/* did we get an X11 error? if so then try without shm */
-		if(shm_got_x_error) {
-			is_shm = 0;
-			free(shminfo);
-			shminfo = NULL;
-			clean_errhandlers();
-			goto next;
-		}
-		
-		if(img == nil) {
-			fprint(2, "emu: cannot allocate virtual screen buffer\n");
-			cleanexit(0);
-		}
-		
-		shminfo->shmid = shmget(IPC_PRIVATE, img->bytes_per_line * img->height,
-					IPC_CREAT|0777);
-		shminfo->shmaddr = img->data = shmat(shminfo->shmid, 0, 0);
-		shminfo->readOnly = True;
-
-		if(!XShmAttach(xdisplay, shminfo)) {
-			fprint(2, "emu: cannot allocate virtual screen buffer\n");
-			cleanexit(0);
-		}
-		XSync(xdisplay, 0);
-
-		/*
-		 * Delete the shared segment right now; the segment
-		 * won't actually go away until both the client and
-		 * server have deleted it.  The server will delete it
-		 * as soon as the client disconnects, so we might as
-		 * well delete our side now as later.
-		 */
-		shmctl(shminfo->shmid, IPC_RMID, 0);
-
-		/* did we get an X11 error? if so then try without shm */
-		if(shm_got_x_error) {
-			is_shm = 0;
-			XDestroyImage(img);
-			XSync(xdisplay, 0);
-			free(shminfo);
-			shminfo = NULL;
-			clean_errhandlers();
-			goto next;
-		}
-
-		gscreendata = malloc(Xsize * Ysize * (displaydepth >> 3));
-		if(gscreendata == nil) {
-			fprint(2, "emu: cannot allocate screen buffer (%dx%dx%d)\n", Xsize, Ysize, displaydepth);
-			cleanexit(0);
-		}
-		xscreendata = (uchar*)img->data;
-		
-		clean_errhandlers();
-	}
- next:
-	if(!is_shm) {
+	if(!is_shm || !makesharedfb()){
+		is_shm = 0;
 		depth = xscreendepth;
 		if(depth == 24)
 			depth = 32;
@@ -263,7 +268,7 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		/* allocate virtual screen */	
 		gscreendata = malloc(Xsize * Ysize * (displaydepth >> 3));
 		xscreendata = malloc(Xsize * Ysize * (depth >> 3));
-		if(!gscreendata || !xscreendata) {
+		if(gscreendata == nil || xscreendata == nil) {
 			fprint(2, "emu: can not allocate virtual screen buffer (%dx%dx%d[%d])\n", Xsize, Ysize, displaydepth, depth);
 			return 0;
 		}
@@ -285,11 +290,135 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	return gscreendata;
 }
 
+static void
+copy32to32(Rectangle r)
+{
+	int dx, width;
+	uchar *p, *ep, *cp;
+	u32int v, w, *dp, *wp, *edp, *lp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	dp = (u32int*)(gscreendata + (r.min.y * Xsize + r.min.x) * 4);
+	wp = (u32int*)(xscreendata + (r.min.y * Xsize + r.min.x) * 4);
+	edp = (u32int*)(gscreendata + (r.max.y * Xsize + r.max.x) * 4);
+	while(dp < edp) {
+		lp = dp + width;
+		while(dp < lp){
+			v = *dp++;
+			w = infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
+			*wp++ = w;
+		}
+		dp += dx;
+		wp += dx;
+	}
+}
+
+static void
+copy8to32(Rectangle r)
+{
+	int dx, width;
+	uchar *p, *ep, *lp;
+	u32int *wp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	p = gscreendata + r.min.y * Xsize + r.min.x;
+	wp = (u32int *)(xscreendata + (r.min.y * Xsize + r.min.x) * 4);
+	ep = gscreendata + r.max.y * Xsize + r.max.x;
+	while(p < ep) {
+		lp = p + width;
+		while(p < lp) 
+			*wp++ = infernotox11[*p++];
+		p += dx;
+		wp += dx;
+	}
+}
+
+static void
+copy8to24(Rectangle r)
+{
+	int dx, width, v;
+	uchar *p, *cp, *ep, *lp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	p = gscreendata + r.min.y * Xsize + r.min.x;
+	cp = xscreendata + (r.min.y * Xsize + r.min.x) * 3;
+	ep = gscreendata + r.max.y * Xsize + r.max.x;
+	while(p < ep) {
+		lp = p + width;
+		while(p < lp){
+			v = infernotox11[*p++];
+			cp[0] = (v>>16)&0xff;
+			cp[1] = (v>>8)&0xff;
+			cp[2] = (v>>0)&0xff;
+			cp += 3;
+		}
+		p += dx;
+		cp += 3*dx;
+	}
+}
+
+static void
+copy8to16(Rectangle r)
+{
+	int dx, width;
+	uchar *p, *ep, *lp;
+	u16int *sp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	p = gscreendata + r.min.y * Xsize + r.min.x;
+	sp = (unsigned short *)(xscreendata + (r.min.y * Xsize + r.min.x) * 2);
+	ep = gscreendata + r.max.y * Xsize + r.max.x;
+	while(p < ep) {
+		lp = p + width;
+		while(p < lp) 
+			*sp++ = infernotox11[*p++];
+		p += dx;
+		sp += dx;
+	}
+}
+
+static void
+copy8to8(Rectangle r)
+{
+	int dx, width;
+	uchar *p, *cp, *ep, *lp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	p = gscreendata + r.min.y * Xsize + r.min.x;
+	cp = xscreendata + r.min.y * Xsize + r.min.x;
+	ep = gscreendata + r.max.y * Xsize + r.max.x;
+	while(p < ep) {
+		lp = p + width;
+		while(p < lp)
+			*cp++ = infernotox11[*p++];
+		p += dx;
+		cp += dx;
+	}
+}
+
+static void
+copy8topixel(Rectangle r)
+{
+	int x, y;
+	uchar *p;
+
+	/* mainly for 4-bit greyscale */
+	for (y = r.min.y; y < r.max.y; y++) {
+		x = r.min.x;
+		p = gscreendata + y * Xsize + x;
+		while (x < r.max.x)
+			XPutPixel(img, x++, y, infernotox11[*p++]);
+	}
+}
+
 void
 flushmemscreen(Rectangle r)
 {
-	int x, y, width, height, dx;
-	uchar *p, *ep, *cp;
 	char chanbuf[16];
 
 	// Clip to screen
@@ -301,128 +430,46 @@ flushmemscreen(Rectangle r)
 		r.max.x = Xsize - 1;
 	if(r.max.y >= Ysize)
                 r.max.y = Ysize - 1;
-
-	// is there anything left ...	
-	width = r.max.x-r.min.x;
-	height = r.max.y-r.min.y;
-	if(width <= 0 || height <= 0)
+	if(r.max.x <= r.min.x || r.max.y <= r.min.y)
 		return;
 
-	// Blit the pixel data ...
-	if(displaydepth == 32){
-		u32int v, w, *dp, *wp, *edp;
-	
-		dx = Xsize - width;
-		dp = (unsigned int *)(gscreendata + (r.min.y * Xsize + r.min.x) * 4);
-		wp = (unsigned int *)(xscreendata + (r.min.y * Xsize + r.min.x) * 4);
-		edp = (unsigned int *)(gscreendata + (r.max.y * Xsize + r.max.x) * 4);
-		while (dp < edp) {
-			const unsigned int *lp = dp + width;
-
-			while (dp < lp){
-				v = *dp++;
-				w = infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
-				*wp++ = w;
-			}
-
-			dp += dx;
-			wp += dx;
+	switch(displaydepth){
+	case 32:
+		copy32to32(r);
+		break;
+	case 8:
+		switch(xscreendepth){
+		case 24:
+			/* copy8to24(r); */	/* doesn't happen? */
+			/* break */
+		case 32:
+			copy8to32(r);
+			break;
+		case 16:
+			copy8to16(r);
+			break;
+		case 8:
+			copy8to8(r);
+			break;
+		default:
+			copy8topixel(r);
+			break;
 		}
-	}
-	else if(displaydepth == 8){
-		if(xscreendepth == 24 || xscreendepth == 32) {
-			u32int *wp;
-	
-			dx = Xsize - width;
-			p = gscreendata + r.min.y * Xsize + r.min.x;
-			wp = (u32int *)(xscreendata + (r.min.y * Xsize + r.min.x) * 4);
-			ep = gscreendata + r.max.y * Xsize + r.max.x;
-			while (p < ep) {
-				const uchar *lp = p + width;
-
-				while (p < lp) 
-					*wp++ = infernotox11[*p++];
-
-				p += dx;
-				wp += dx;
-			}
-
-		} else if(xscreendepth == 24) {
-			int v;
-
-			dx = Xsize - width;
-			p = gscreendata + r.min.y * Xsize + r.min.x;
-			cp = xscreendata + (r.min.y * Xsize + r.min.x) * 3;
-			ep = gscreendata + r.max.y * Xsize + r.max.x;
-			while (p < ep) {
-				const uchar *lp = p + width;
-
-				while (p < lp){
-					v = infernotox11[*p++];
-					cp[0] = (v>>16)&0xff;
-					cp[1] = (v>>8)&0xff;
-					cp[2] = (v>>0)&0xff;
-					cp += 3;
-				}
-
-				p += dx;
-				cp += 3*dx;
-			}
-
-		} else if(xscreendepth == 16) {
-			u16int *sp;
-	
-			dx = Xsize - width;
-			p = gscreendata + r.min.y * Xsize + r.min.x;
-			sp = (unsigned short *)(xscreendata + (r.min.y * Xsize + r.min.x) * 2);
-			ep = gscreendata + r.max.y * Xsize + r.max.x;
-			while (p < ep) {
-				const uchar *lp = p + width;
-
-				while (p < lp) 
-					*sp++ = infernotox11[*p++];
-
-				p += dx;
-				sp += dx;
-			}
-
-		} else if(xscreendepth == 8) {
-
-                		dx = Xsize - width;
-                		p = gscreendata + r.min.y * Xsize + r.min.x;
-                		cp = xscreendata + r.min.y * Xsize + r.min.x;
-                		ep = gscreendata + r.max.y * Xsize + r.max.x;
-                		while (p < ep) {
-                        		const uchar *lp = p + width;
-
-                        		while (p < lp)
-                                		*cp++ = infernotox11[*p++];
-
-                        		p += dx;
-                        		cp += dx;
-                		}
-
-		} else {
-			for (y = r.min.y; y < r.max.y; y++) {
-				x = r.min.x;
-				p = gscreendata + y * Xsize + x;
-				while (x < r.max.x)
-					XPutPixel(img, x++, y, infernotox11[*p++]);
-			}
-		}
-	}
-	else{
+		break;
+	default:
 		fprint(2, "emu: bad display depth %d chan %s xscreendepth %d\n", displaydepth,
 			chantostr(chanbuf, displaychan), xscreendepth);
 		cleanexit(0);
 	}
 
+	XLockDisplay(xdisplay);
 	/* Display image on X11 */
 	if(is_shm)
-		XShmPutImage(xdisplay, xdrawable, xgc, img, r.min.x, r.min.y, r.min.x, r.min.y, width, height, 0);
+		XShmPutImage(xdisplay, xdrawable, xgc, img, r.min.x, r.min.y, r.min.x, r.min.y, Dx(r), Dy(r), 0);
 	else
-		XPutImage(xdisplay, xdrawable, xgc, img, r.min.x, r.min.y, r.min.x, r.min.y, width, height);
+		XPutImage(xdisplay, xdrawable, xgc, img, r.min.x, r.min.y, r.min.x, r.min.y, Dx(r), Dy(r));
 	XSync(xdisplay, 0);
+	XUnlockDisplay(xdisplay);
 }
 
 static int
@@ -446,8 +493,10 @@ void
 setpointer(int x, int y)
 {
 	drawqlock();
+	XLockDisplay(xdisplay);
 	XWarpPointer(xdisplay, None, xdrawable, 0, 0, 0, 0, x, y);
 	XFlush(xdisplay);
+	XUnlockDisplay(xdisplay);
 	drawqunlock();
 }
 
@@ -657,21 +706,117 @@ xsetcursor(XEvent *e)
 	XFlush(xkbdcon);
 }
 
+typedef struct Mg Mg;
+struct Mg
+{
+	int	code;
+	int	bit;
+	int	len;
+	ulong	mask;
+};
+
+static int
+maskx(Mg* g, int code, ulong mask)
+{
+	int i;
+
+	for(i=0; i<32; i++)
+		if(mask & (1<<i))
+			break;
+	if(i == 32)
+		return 0;
+	g->code = code;
+	g->bit = i;
+	g->mask = mask;
+	for(g->len = 0; i<32 && (mask & (1<<i))!=0; i++)
+		g->len++;
+	return 1;
+}
+
+/*
+ * for a given depth, we need to check the available formats
+ * to find how many actual bits are used per pixel.
+ */
+static int
+xactualdepth(int screenno, int depth)
+{
+	XPixmapFormatValues *pfmt;
+	int i, n;
+
+	pfmt = XListPixmapFormats(xdisplay, &n);
+	for(i=0; i<n; i++)
+		if(pfmt[i].depth == depth)
+			return pfmt[i].bits_per_pixel;
+	return -1;
+}
+
+static int
+xtruevisual(int screenno, int reqdepth, XVisualInfo *vi, ulong *chan)
+{
+	XVisual *xv;
+	Mg r, g, b;
+	int pad, d;
+	ulong c;
+	char buf[30];
+
+	if(XMatchVisualInfo(xdisplay, screenno, reqdepth, TrueColor, vi) ||
+	   XMatchVisualInfo(xdisplay, screenno, reqdepth, DirectColor, vi)){
+		xv = vi->visual;
+		if(maskx(&r, CRed, xv->red_mask) &&
+		   maskx(&g, CGreen, xv->green_mask) &&
+		   maskx(&b, CBlue, xv->blue_mask)){
+			d = xactualdepth(screenno, reqdepth);
+			if(d < 0)
+				return 0;
+			pad = d - (r.len + g.len + b.len);
+			if(0){
+				fprint(2, "r: %8.8lux %d %d\ng: %8.8lux %d %d\nb: %8.8lux %d %d\n",
+				 xv->red_mask, r.bit, r.len, xv->green_mask, g.bit, g.len, xv->blue_mask, b.bit, b.len);
+			}
+			if(r.bit > b.bit)
+				c = CHAN3(CRed, r.len, CGreen, g.len, CBlue, b.len);
+			else
+				c = CHAN3(CBlue, b.len, CGreen, g.len, CRed, r.len);
+			if(pad > 0)
+				c |= CHAN1(CIgnore, pad) << 24;
+			*chan = c;
+			xscreendepth = reqdepth;
+			if(0)
+				fprint(2, "chan=%s reqdepth=%d bits=%d\n", chantostr(buf, c), reqdepth, d);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+xmapvisual(int screenno, XVisualInfo *vi, ulong *chan)
+{
+	if(XMatchVisualInfo(xdisplay, screenno, 8, PseudoColor, vi) ||
+	   XMatchVisualInfo(xdisplay, screenno, 8, StaticColor, vi)){
+		*chan = CMAP8;
+		xscreendepth = 8;
+		return 1;
+	}
+	return 0;
+}
+
 static void
-xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
+xinitscreen(int xsize, int ysize, ulong reqchan, ulong *chan, int *d)
 {
 	char *argv[2];
 	char *dispname;
 	XWindow rootwin;
 	XWMHints hints;
+	XVisualInfo xvi;
 	XScreen *screen;
 	int rootscreennum;
 	XTextProperty name;
 	XClassHint classhints;
 	XSizeHints normalhints;
 	XSetWindowAttributes attrs;
-	XPixmapFormatValues *pfmt;
-	int i, n;
+	char buf[30];
+	int i;
  
 	xdrawable = 0;
 
@@ -692,63 +837,42 @@ xinitscreen(int xsize, int ysize, ulong c, ulong *chan, int *d)
 	screen = DefaultScreenOfDisplay(xdisplay);
 	xcmap = DefaultColormapOfScreen(screen);
 
-	/*
-	 * xscreendepth is only the number of significant pixel bits,
-	 * not the total number of pixel bits.  We need to walk the
-	 * display list to find how many actual bits are used
-	 * per pixel.
-	 */
-	if(c == 0){
-		pfmt = XListPixmapFormats(xdisplay, &n);
-		for(i=0; i<n; i++)
-			if(pfmt[i].depth == xscreendepth){
-				*d = pfmt[i].bits_per_pixel;
-				break;
-			}
-		if(i == n){
-			fprint(2, "emu: win-x11 could not determine pixel format.\n");
+	if(reqchan == 0){
+		*chan = 0;
+		if(xscreendepth <= 16){	/* try for better colour */
+			xtruevisual(rootscreennum, 16, &xvi, chan) ||
+			xtruevisual(rootscreennum, 15, &xvi, chan) ||
+			xtruevisual(rootscreennum, 24, &xvi, chan) ||
+			xmapvisual(rootscreennum, &xvi, chan);
+		}else{
+			xtruevisual(rootscreennum, xscreendepth, &xvi, chan) ||
+			xtruevisual(rootscreennum, 24, &xvi, chan);
+		}
+		if(*chan == 0){
+			fprint(2, "emu: could not find suitable x11 pixel format for depth %d on this display\n", xscreendepth);
 			cleanexit(0);
 		}
-			
-		switch(*d){
-		case 1:	/* untested */
-			*chan = GREY1;
-			break;
-		case 2:	/* untested */
-			*chan = GREY2;
-			break;
-		case 4:	/* untested */
-			*chan = GREY4;
-			break;
-		case 8:
-			*chan = CMAP8;
-			break;
-		case 15:
-			*chan = RGB15;
-			break;
-		case 16: /* how to tell RGB15? */
-			*chan = RGB16;
-			break;
-		case 24: /* untested (impossible?) */
-			*chan = RGB24;
-			break;
-		case 32:
-			*chan = XRGB32;
-			break;
-		}
+		reqchan = *chan;
+		*d = chantodepth(reqchan);
+		xvis = xvi.visual;
 	}else{
-		*d = chantodepth(c);
-		*chan = c;		/* not every channel description will work */
+		*chan = reqchan;		/* not every channel description will work */
+		*d = chantodepth(reqchan);
+		if(*d != xactualdepth(rootscreennum, *d)){
+			fprint(2, "emu: current x11 display configuration does not support %s (depth %d) directly\n",
+				chantostr(buf, reqchan), *d);
+			cleanexit(0);
+		}
 	}
 
 	if(xvis->class != StaticColor) {
-		if(TYPE(c) == CGrey)
-			graphicsgmap(map, NBITS(c));
+		if(TYPE(*chan) == CGrey)
+			graphicsgmap(map, NBITS(reqchan));
 		else{
 			graphicscmap(map);
 			graphicsrgbmap(mapr, mapg, mapb);
 		}
-		initmap(rootwin);
+		initxcmap(rootwin);
 	}
 
 	memset(&attrs, 0, sizeof(attrs));
@@ -912,7 +1036,7 @@ graphicsrgbmap(XColor *mapr, XColor *mapg, XColor *mapb)
  * application.  Inferno gets the best colors here when it has the cursor focus.
  */  
 static void 
-initmap(XWindow w)
+initxcmap(XWindow w)
 {
 	XColor c;
 	int i;
@@ -925,7 +1049,7 @@ initmap(XWindow w)
 	case DirectColor:
 		for(i = 0; i < 256; i++) {
 			c = map[i];
-			/* find out index into colormap for our RGB */
+			/* find index into colormap for our RGB */
 			if(!XAllocColor(xdisplay, xcmap, &c)) {
 				fprint(2, "emu: win-x11 can't alloc color\n");
 				cleanexit(0);
@@ -943,6 +1067,8 @@ initmap(XWindow w)
 				infernobtox11[i] = (c.pixel>>0)&0xff;
 			}
 		}
+if(0){int i, j; for(i=0;i<256; i+=16){print("%3d", i); for(j=i; j<i+16; j++)print(" %2.2ux/%2.2ux/%2.2ux", infernortox11[j], infernogtox11[j],infernobtox11[j]); print("\n");}}
+		/* TO DO: if the map(s) used give the identity map, don't use the map during copy */
 		break;
 
 	case PseudoColor:
@@ -951,6 +1077,7 @@ initmap(XWindow w)
 			XStoreColors(xdisplay, xcmap, map, 256);
 			for(i = 0; i < 256; i++)
 				infernotox11[i] = i;
+			/* TO DO: the map is the identity, so don't need the map in copy */
 		} else {
 			for(i = 0; i < 128; i++) {
 				c = map7[i];
