@@ -1,53 +1,11 @@
 .TH RSTYXD 8
 .SH NAME
-rstyxd, styxd \- Styx-based remote execution and file service
+rstyxd \- Styx-based remote execution and file service
 .SH SYNOPSIS
 .B auxi/rstyxd
 .I alg
 \&...
-.PP
-.B auxi/styxd
-.I alg
-\&...
 .SH DESCRIPTION
-These services are normally started by
-.IR svc (8)
-in response to incoming network calls.
-Each expects the standard input to be connected to the client;
-unusually, it is both read and written.
-.PP
-Both commands first authenticate the incoming call using
-.IR keyring-auth (2)
-via
-.IR security-auth (2).
-On successful authorisation, the server sets
-its user identity to that of the caller,
-and the client can request that a digest and/or encryption
-algorithm be applied using
-.IR ssl (3)
-to protect the data exchanged with the server.
-Each
-.I alg
-names a digest or encryption algorithm that the server will allow
-the client to use,
-in any form accepted by
-.IR ssl ;
-the special name
-.B none
-is usually listed, to allow the client to choose not to use
-.IR ssl .
-.PP
-.I Styxd
-provides Styx file service to its client.
-Having authorised the client and optionally established
-.IR ssl ,
-as described above,
-it exports its name space (usually the name space inherited from
-.IR svc (8))
-on the connection using
-.B Sys->export
-(see
-.IR sys-dial (2)).
 .PP
 .I Rstyxd
 provides a remote-execution service.
@@ -82,6 +40,34 @@ and opens the new
 .BR /dev/cons )
 on file descriptors 0, 1 and 2.
 Finally, it executes the command.
+.PP
+.I Rstyxd
+is normally started by
+.IR svc (8)
+in response to incoming network calls.
+It expects the standard input to be connected to the client;
+unusually, it is both read and written.
+It
+first authenticates the incoming call using
+.IR keyring-auth (2)
+via
+.IR security-auth (2).
+On successful authorisation, the server sets
+its user identity to that of the caller,
+and the client can request that a digest and/or encryption
+algorithm be applied using
+.IR ssl (3)
+to protect the data exchanged with the server.
+Each
+.I alg
+names a digest or encryption algorithm that the server will allow
+the client to use,
+in any form accepted by
+.IR ssl ;
+the special name
+.B none
+is usually listed, to allow the client to choose not to use
+.IR ssl .
 .SH FILES
 .TF /usr/user/keyring/default
 .TP
@@ -96,8 +82,6 @@ run as given
 .I user
 .SH SOURCE
 .B /appl/cmd/auxi/rstyxd.b
-.br
-.B /appl/cmd/auxi/styxd.b
 .SH SEE ALSO
 .IR keyring-auth (2),
 .IR security-auth (2),
