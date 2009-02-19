@@ -78,7 +78,7 @@ must be called before any other function.
 is similar to
 .B Sys->mount
 (see
-.IR sys-bind (1)),
+.IR sys-bind (2)),
 but uses
 .I factotum
 to authenticate,
@@ -87,7 +87,7 @@ if the server requires it.
 should be used instead of
 .B Sys->mount
 when mounting file servers that use
-.IR auth (5)
+.IR attach (5)
 to authenticate.
 (If the server on
 .I fd
@@ -361,6 +361,6 @@ exchange.
 .IR sys-bind (2),
 .IR sys-fauth (2),
 .IR factotum (4),
-.IR auth (5)
+.IR attach (5)
 .SH DIAGNOSTICS
 Functions that  return nil references on error also set the system error string.

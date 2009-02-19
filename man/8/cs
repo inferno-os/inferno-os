@@ -198,17 +198,20 @@ when there is more than one network stack
 (see
 .IR ip (3)).
 .PP
-.IR Cs (8)
+.I Cs
 uses
-.IR services (6)
+.IR ndb (6)
 to map protocol and service names to Internet port numbers.
-Finally, if all else fails, it applies the built-in
+When running hosted,
+if entries are not in
+.IR ndb (6),
+.I cs
+applies the built-in
 .IR srv (2),
-if available.
+if available,
+to have the host system try the translation.
 Consequently, entries in
-.IR services (6)
-and
-.IR dns (6)
+.IR ndb (6)
 take precedence over the host's system-wide configuration.
 (This is helpful for adding symbolic names for Inferno services
 without requiring administrative privileges on the host system.)
@@ -241,5 +244,5 @@ map from symbolic service names to servers
 .B /appl/cmd/ndb/csquery.b
 .SH "SEE ALSO"
 .IR sys-dial (2),
-.IR db (6),
+.IR ndb (6),
 .IR dns (8)

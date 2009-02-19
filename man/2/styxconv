@@ -31,7 +31,7 @@ is a connection, perhaps a pipe, to something that requires the current protocol
 .B Sys->mount
 for instance
 (see
-.IR sys-bind (1)).
+.IR sys-bind (2)).
 .B Styxconv
 is spawned by the caller, to create a process that copies messages between
 .I from
