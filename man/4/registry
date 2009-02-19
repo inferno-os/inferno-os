@@ -188,7 +188,7 @@ Start a registry that appears at the standard location for local registries,
 .BR /mnt/registry :
 .IP
 .EX
-mount -A ${pipe to ndb/register} /mnt/registry
+mount {ndb/registry} /mnt/registry
 .EE
 .PP
 Make that registry available to the network on authenticated connections:
