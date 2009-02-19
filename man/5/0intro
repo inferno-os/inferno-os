@@ -484,7 +484,7 @@ access permissions (read, write and execute for owner, group and public),
 access and modification times, and
 owner and group identifications
 (see
-.IR stat (2)).
+.IR sys-stat (2)).
 The owner and group identifications are textual names.
 The
 .B wstat

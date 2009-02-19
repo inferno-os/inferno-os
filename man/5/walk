@@ -156,7 +156,7 @@ Despite this restriction, the system imposes no limit on the number of elements 
 only the number that may be transmitted in a single message.
 .SH ENTRY POINTS
 A call to
-.IR chdir (2)
+.IR sys-chdir (2)
 causes a
 .BR walk .
 One or more

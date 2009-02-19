@@ -75,7 +75,7 @@ returned in the previous
 .BR read .
 In other words, seeking other than to the beginning
 is illegal in a directory (see
-.IR seek (2)).
+.IR sys-seek (2)).
 .PP
 The
 .B write
