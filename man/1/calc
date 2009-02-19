@@ -261,8 +261,8 @@ fn ack(a, b)
 for(i = 0; i < 4; i++)
 	for(j = 0; j < 4; j++){
 		n = 0
-		print "ack(", i, ",", j, ")=", ack(i, j), "\n"
-		print n, " calls", "\n"
+		print "ack(", i, ",", j, ")=", ack(i, j), "\en"
+		print n, " calls", "\en"
 	}
 .EE
 .SH SOURCE

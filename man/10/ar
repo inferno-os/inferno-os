@@ -22,10 +22,10 @@ include file are:
 .IP
 .EX
 .ec %
-#define ARMAG   "!<arch>\n"
+#define ARMAG   "!<arch>\en"
 #define SARMAG  8
 
-#define ARFMAG  "`\n"
+#define ARFMAG  "`\en"
 
 struct ar_hdr {
     char    name[16];

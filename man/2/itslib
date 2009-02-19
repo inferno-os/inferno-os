@@ -92,7 +92,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 report(sev: int, verb: int, msg: string)
 {
 	if (tconf != nil) tconf.report(sev, verb, msg);
-	else sys->print("%d:%s\n", sev, msg);
+	else sys->print("%d:%s\en", sev, msg);
 }
 
 .EE

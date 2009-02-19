@@ -298,16 +298,16 @@ listener()
 {
 	ac := dial->announce("tcp!*!9995");
 	if(ac == nil){
-		sys->print("can't announce: %r\n");
+		sys->print("can't announce: %r\en");
 		exit;
 	}
 	for(;;){
 		lc := dial->listen(ac);
 		if(lc == nil){
-			sys->print("listen: %r\n");
+			sys->print("listen: %r\en");
 			exit;
 		}
-		sys->print("incoming: %s\n", hd ctext(lc));
+		sys->print("incoming: %s\en", hd ctext(lc));
 		spawn client(lc);
 	}
 }
@@ -316,7 +316,7 @@ client(c: ref Connection)
 {
 	dfd := dial->accept(c);
 	if(dfd == nil){
-		sys->print("%s: can't accept: %r\n", c.dir);
+		sys->print("%s: can't accept: %r\en", c.dir);
 		exit;
 	}
 	buf := array[Sys->ATOMICIO] of byte;

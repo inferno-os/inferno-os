@@ -81,7 +81,7 @@ the probability of a false positive would be
 approximately 0.0063.
 .EX
     if(filter(array of byte s, 7, 6).X(A&~B, f).eq(None))
-        sys->print("'%s' might be a member of f\\n", s);
+        sys->print("'%s' might be a member of f\en", s);
 .EE
 .SH SOURCE
 .B /appl/lib/bloomfilter.b
