@@ -164,7 +164,7 @@ Can take quite a time to present statistics when profiling all modules in the
 system.
 .SH SEE ALSO
 .IR cprof (1),
-.IR wm-cprof (1),
+.IR cprof (1),
 .IR prof (2),
 .IR prof (3)
 

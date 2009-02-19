@@ -104,9 +104,9 @@ Lists are sequences of expressions surrounded by
 .BR {\^} 
 and separated by commas.
 .PP
-Expressions are much as in C or Alef,
+Expressions are much as in C,
 but yield both a value and a format.
-Alef-style casts to complex types are allowed.
+Casts to complex types are allowed.
 Lists admit the following operators, with
 subscripts counted from 0.
 .IP
@@ -184,8 +184,9 @@ Print 10 lines of source around the program address.
 .BI Bsrc( address )
 Get the source line for the program address
 into a window of a running
-.IR sam (10.1)
+editor
 and select it.
+(This works only on Plan 9, or a Unix-like system running `Plan 9 Ports'.)
 .TP
 .BI line( address )
 Print source line nearest to the program address.
@@ -275,7 +276,7 @@ Make the given process current.
 .TP
 .BI rc( string )
 Escape to the shell,
-.IR rc (10.1),
+.....IR rc (10.1),
 to execute the command string.
 .SH EXAMPLES
 Start to debug
@@ -353,7 +354,6 @@ notation)
 .IR 2a (10.1),
 .IR 2c (10.1),
 .IR 2l (10.1),
-.IR alef (10.1),
 .IR mk (10.1),
 .IR db (10.1)
 .br

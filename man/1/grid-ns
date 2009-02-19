@@ -40,7 +40,7 @@ to register it with a
 and to export and serve its namespace across
 .IR dial (2) 
 network connections. Incoming connections may also be displayed visually using
-.IR monitor (1).
+.IR grid-monitor (1).
 For example:
 .PP
 .BI "grid/register [" " options ..." " ] { grid/srv/ns " "paths..." " } | grid/srv/monitor 1 'NS resource'

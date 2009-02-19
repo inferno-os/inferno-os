@@ -128,8 +128,8 @@ is present.
 .SH SEE ALSO
 .IR cprof (1),
 .IR mprof (1),
-.IR wm-cprof (1),
-.IR wm-mprof (1),
+.IR cprof (1),
+.IR mprof (1),
 .IR prof (2),
 .IR prof (3)
 .SH BUGS

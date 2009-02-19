@@ -269,4 +269,4 @@ for(i = 0; i < 4; i++)
 .B /appl/cmd/calc.b
 .SH "SEE ALSO"
 .IR fc (1),
-.IR math (2)
+.IR math-intro (2)

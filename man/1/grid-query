@@ -38,9 +38,7 @@ is only implemented in a very simple way. Given the attribute
 pairs, the search will return all resources whose attributes exactly match the specified values.
 .B *
 may be used to match any attribute value but not name.
-
 .SH "SEE ALSO"
-.IR grid-query (2),
+.IR grid-localreg (1),
 .IR registries (2),
-.IR registry (4),
-.IR grid-localreg (1)
+.IR registry (4)

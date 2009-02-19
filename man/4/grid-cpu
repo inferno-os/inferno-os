@@ -1,6 +1,6 @@
-.TH CPU 4
+.TH GRID-CPU 4
 .SH NAME
-cpu \- cpu server resource
+grid: cpu \- cpu server resource
 .SH SYNOPSIS
 .B grid/srv/cpu
 .br
@@ -104,11 +104,11 @@ the minimum recommended namespace to import would be:
 may be used in conjunction with 
 .I cpu
 to register it with a 
-.IR registry(4)
+.IR registry (4)
 and to export and serve its namespace across
 .IR dial(2) 
 network connections. Incoming connections may also be displayed visually using
-.IR monitor (1).
+.IR grid-monitor (1).
 For example:
 .PP
 .BI "grid/register [" " options ..." " ] { grid/srv/cpu } | grid/srv/monitor 2 'CPU resource'
@@ -124,7 +124,7 @@ if possible and start up the graphical display to show connections to the resour
 outside of
 .I runcpu
 unless the namespace it provides is required to be accessible in a different way to that provided by
-.IR register (1).
+.IR grid-register (1).
 .SH SOURCE
 .B /appl/grid/srv/cpu.b
 

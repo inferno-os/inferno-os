@@ -58,7 +58,7 @@ is the decimal value of the character that has been
 pressed. The character will be sent exactly as if it
 had been typed on the keyboard. This facility
 is used by
-.IR keyboard (2).
+.IR keyboard (1).
 .TP
 .B !reshape \fItag\fP \fIreqid\fP \fIminx miny maxx maxy\fI \fR[\fIhow\fR]
 Reshape or create the window named

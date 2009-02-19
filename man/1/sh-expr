@@ -169,7 +169,7 @@ the argument value gives the size of the number, in bits.
 .TP
 .BR expmod ", " invert " (2)"
 (\fImpexpr\fP only). See
-.IR ipint (2).
+.IR keyring-ipint (2).
 .TP
 .BR exp ", " xx ", " **
 (\fImpexpr\fP only). Exponentiation.

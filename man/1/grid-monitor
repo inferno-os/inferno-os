@@ -11,7 +11,7 @@ monitor \- graphical display for viewing resource use.
 .SH DESCRIPTION
 .I Monitor
 is designed to work with resources that deal with incoming connections (such as
-.IR register (1))
+.IR grid-register (1))
 to visually display the connections to a specific resource. 
 .I Interface
 sets the style of interface, this can be 1 or 2. Interface 1 is the simplest, displaying only a list of connections to the resource. Interface 2 is slightly more complex, allowing extra data to be displayed for each connection. While interface 1 shows all the connections at any one time, interface 2 displays a selection of 'slots' which have buttons that light up to signify a connection. Clicking on a lit button will display any data given about that connection in the main window.
@@ -81,6 +81,6 @@ Input messages of any other form will simply be ignored.
 .br
 
 .SH "SEE ALSO"
-.IR register (1),
+.IR grid-register (1),
 .IR ns (1),
 .IR cpu (4)

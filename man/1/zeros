@@ -31,15 +31,14 @@ has a specialised use:
 ensuring a file has the desired number of blocks in it to hold a file system image,
 before reaming it.
 .SH EXAMPLE
-To create and initialize a file system containing 2880 1024 byte
+To create and initialize a file system containing 2048 1024 byte
 blocks 
 .IP
 .EX
-zeros 1024 2880 > kfs
-echo 'ream fs kfs' > '#Kcons/kfsctl'
-echo halt > '#Kcons/kfscons'
+zeros 1024 2048 >kfs.file
+mount -c {disk/kfs -r kfs.file} /n/local
 .EE
 .SH SOURCE
 .B /appl/cmd/zeros.b
 .SH SEE ALSO
-.IR kfs (3)
+.IR kfs (4)
