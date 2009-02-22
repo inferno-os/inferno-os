@@ -1,3 +1,5 @@
+20090222
+	appl/cmd/ndb/registry.b and dis/registry.dis - implement flush for event file (issue 162)
 20090217
 	appl/cmd/limbo/stubs.b limbo/stubs.c - include length parameter to builtinmod (could just be 0 in most cases)
 	change f->ret/destroy code in stubs.c/stubs.b to destroy correctly in case of exceptions

@@ -92,6 +92,7 @@ Event: adt {
 	remove:	fn(e: self ref Event);
 	queue:	fn(e: self ref Event, m: ref Tmsg.Read): string;
 	post:		fn(vers: int);
+	flush:	fn(tag: int);
 };
 
 filters: list of ref Filter;
@@ -214,6 +215,9 @@ Serve:
 			err = remove(fid);
 			if(err == nil)
 				srv.reply(ref Rmsg.Remove(m.tag));
+		Flush =>
+			Event.flush(m.oldtag);
+			srv.default(gm);
 		* =>
 			srv.default(gm);
 		}
@@ -374,7 +378,8 @@ svcnameok(s: string): string
 	"new" or
 	"event" or
 	"find" or
-	"index" =>
+	"index" or
+	"" =>
 		return "bad service name";
 	}
 	for(i = 0; i < nservices; i++)
@@ -460,16 +465,25 @@ navigator(navops: chan of ref Navop)
 				d[1] = Qindex;
 				d[2] = Qfind;
 				d[3] = Qevent;
+				nd := 0;
 				for(i := 0; i < nservices; i++)
-					if(services[i].name != nil)
-						d[i + Nstatic] = (services[i].id<<Shift) | Qsvc;
+					if(services[i].name != nil){
+						d[nd + Nstatic] = (services[i].id<<Shift) | Qsvc;
+						nd++;
+					}
+				d = d[0:Nstatic + nd];
 			}
 			if(d == nil){
 				n.reply <-= (nil, Enotdir);
 				break;
 			}
-			for(i := n.offset; i < len d; i++)
-				n.reply <-= dirgen(d[i]);
+			for(i := n.offset; i < len d; i++){
+				(dir, err) := dirgen(d[i]);
+				if(dir == nil)
+					sys->fprint(sys->fildes(2), "registry: bad qid %#ux: %s\n", d[i], err);
+				else
+					n.reply <-= (dir, err);
+			}
 			n.reply <-= (nil, nil);
 		}
 	}
@@ -692,6 +706,17 @@ Event.post(vers: int)
 			srv.reply(styxservers->readstr(e.m, s));
 			e.vers = vers;
 			e.m = nil;
+		}
+	}
+}
+
+Event.flush(tag: int)
+{
+	for(l := events; l != nil; l = tl l){
+		e := hd l;
+		if(e.m != nil && e.m.tag == tag){
+			e.m = nil;
+			break;
 		}
 	}
 }
