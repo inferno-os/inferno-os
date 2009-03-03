@@ -1,36 +1,65 @@
 .TH EXCEPTION 2
 .SH NAME
-exception \- Exception module
+exception \- obtain data about exceptions and set exception-handling modes
 .SH SYNOPSIS
 .EX
 include "exception.m";
 exc := load Exception Exception->PATH;
 
+NOTIFYLEADER, PROPAGATE: con iota;
+
 getexc:	fn(pid: int): (int, string, string);
-setexcnotifyleader:	fn(pid: int): int;
-setexcpropagate:	fn(pid: int): int;
+setexcmode:	fn(mode: int): int;
 .EE
 .SH DESCRIPTION
 .B Exception
-provides exception-related utility routines to read or write to system
-device files.
+provides functions to fetch data about exceptions in other processes
+and change exception-handling modes.
+It encapsulates exception-related operations on files in
+.IR prog (3).
 .PP
+When a process incurs an exception, the system saves details before processing the exception,
+following Limbo's rules.
 .B Getexc
-returns the last exception to be raised on the process with the given process
-id. A process id of -1 is taken to mean the current process. The returned
-triple gives the pc value, the module and the exception name or 0, nil, nil
-if no exception has occurred.
+returns a tuple
+.BI ( pc,\ module,\ description )
+that describes the most recent exception raised in process
+.IR pid .
+(A process id of -1 is taken to mean the current process.)
+The tuple contains the pc value, the module name, and the exception name.
+The value
+.B "(0,\ nil,\ nil)"
+is returned if no exception has occurred.
 .PP
-.B Setexcnotifyleader
-and
-.B setexcpropagate
-set 'exceptions notifyleader' and 'exceptions propagate' respectively on the given
-process. 0 is returned on success,
--1 on failure (for instance if the process is not a group leader or does not exist).
-See
-.I prog (3)
-for the actual meaning of these settings.
+By default, when a process incurs an exception that is not handled —
+no
+.B exception
+clause matches that exception —
+the process is stopped in a `Broken' state for debugging,
+and the exception does not propagate further.
+.B Setexcmode
+changes the way that the system handles exceptions for the current process
+and those it later spawns.
+A
+.I mode
+of
+.BR NOTIFYLEADER
+makes the invoking process the leader of the
+current process group for exception handling.
+Subsequently, an exception in any process in the current process group
+will atomically destroy all processes in the group except the leader,
+and the exception will be raised in the leader.
+(This works even when the leader itself incurs the exception.)
+A
+.I mode
+of
+.B PROPAGATE
+instead causes an exception in any process in the group to be raised in
+all process in the group, allowing them all to initiate local error recovery
+(ie, within each process).
 .SH SOURCE
 .B /appl/lib/exception.b
+.SH DIAGNOSTICS
+Both functions return -1 on error and set the system error string.
 .SH SEE ALSO
 .IR prog (3)
