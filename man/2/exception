@@ -55,7 +55,7 @@ A
 of
 .B PROPAGATE
 instead causes an exception in any process in the group to be raised in
-all process in the group, allowing them all to initiate local error recovery
+all processes in the group, allowing them all to initiate local error recovery
 (ie, within each process).
 .SH SOURCE
 .B /appl/lib/exception.b
