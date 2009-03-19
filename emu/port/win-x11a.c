@@ -595,6 +595,7 @@ xcursnotify(void)
 {
 	XClientMessageEvent e;
 
+return;	/* temporarily disable cursor setting done this way, to avoid upsetting xcb */
 	memset(&e, 0, sizeof e);
 	e.type = ClientMessage;
 	e.window = xdrawable;
