@@ -1136,7 +1136,7 @@ main(int argc, char *argv[])
 	styxinit(&s, &ops, netport, -1, 1);
 	styxaddfile(&s, Qroot, Qnclients, "nclients", 0444, inferno);
 	styxadddir(&s, Qroot, Qprotodir, "db", 0555, inferno);
-	styxaddfile(&s, Qprotodir, Qclonus, "new", 0660, inferno);
+	styxaddfile(&s, Qprotodir, Qclonus, "new", 0666, inferno);
 	newproto("db", 100);
 	for (;;) {
 		styxwait(&s);
