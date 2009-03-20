@@ -114,7 +114,7 @@ newclient(Styxserver *server, int fd)
 	c->state = 0;
 	c->fids = nil;
 	c->uname = strdup(eve);
-	c->aname = strdup(eve);
+	c->aname = strdup("");
 	c->next = server->clients;
 	server->clients = c;
 	if(server->ops->newclient)
@@ -167,7 +167,7 @@ rd(Client *c, Fcall *r)
 {
 	if(c->nc > 0){	/* last convM2S consumed nc bytes */
 		c->nread -= c->nc;
-		if(c->nread < 0){
+		if((int)c->nread < 0){
 			r->ename = "negative size in rd";
 			return -1;
 		}
@@ -903,7 +903,7 @@ run(Client *c)
 		break;
 	case	Tattach:
 		if(Debug)
-			fprint(2, "Tattach %d %s\n", f.fid, f.uname[0] ? f.uname : c->uname);
+			fprint(2, "Tattach %d %s %s\n", f.fid, f.uname[0] ? f.uname : c->uname, f.aname[0]? f.aname: c->aname);
 		if(fp){
 			f.type = Rerror;
 			f.ename = "fid in use";
@@ -1064,4 +1064,10 @@ styxqid(int path, int isdir)
 	else
 		q.type = 0;
 	return q;
+}
+
+void
+styxsetowner(char *name)
+{
+	eve = name;
 }

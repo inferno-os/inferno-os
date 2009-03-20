@@ -1,4 +1,6 @@
 INSTALL
+include
+	styxserver.h
 asm
 	NOTICE
 	asm.h
@@ -795,7 +797,6 @@ tools
 		mkfile
 		styxaux.h
 		styxserver.c
-		styxserver.h
 	mkfile
 	odbc
 		mkfile

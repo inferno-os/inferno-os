@@ -844,7 +844,7 @@ dbopen(Qid *qid, int omode)
 		break;
 	case Qclonus:
 		p = &proto[PROTO(q)];
-		cv = protoclone(p, c->aname);
+		cv = protoclone(p, c->uname);
 		if(cv == 0){
 			return Enodev;
 		}
@@ -860,7 +860,7 @@ dbopen(Qid *qid, int omode)
 	case Qctl:
 		p = &proto[PROTO(q)];
 		cv = p->conv[CONV(q)];
-		user = c->aname;
+		user = c->uname;
 		if((perm & (cv->perm>>6)) != perm) {
 			if(strcmp(user, cv->owner) != 0 ||
 		 	  (perm & cv->perm) != perm) {

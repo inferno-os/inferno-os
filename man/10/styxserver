@@ -3,6 +3,9 @@
 Styxserver \- C Styx server library
 .SH SYNOPSIS
 .EX
+#include <lib9.h>
+#include <styx.h>
+#include <styxserver.h>
 #define Qroot	0
 
 #define MSGMAX	((((8192+128)*2)+3) & ~3)

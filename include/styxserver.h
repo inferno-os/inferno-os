@@ -95,3 +95,4 @@ Qid styxqid(int path, int isdir);
 void *styxmalloc(int n);
 void styxfree(void *p);
 void styxdebug(void);
+void styxsetowner(char*);
