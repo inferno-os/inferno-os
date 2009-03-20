@@ -33,8 +33,6 @@
 #define Visual		XVisual
 #define Window		XWindow
 
-#define XLIB_ILLEGAL_ACCESS
-
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -595,14 +593,15 @@ xcursnotify(void)
 {
 	XClientMessageEvent e;
 
-return;	/* temporarily disable cursor setting done this way, to avoid upsetting xcb */
 	memset(&e, 0, sizeof e);
 	e.type = ClientMessage;
 	e.window = xdrawable;
 	e.message_type = cursorchange;
 	e.format = 8;
-	XSendEvent(xkbdcon, xdrawable, True, KeyPressMask, (XEvent*)&e);
-	XFlush(xkbdcon);
+	XLockDisplay(xdisplay);
+	XSendEvent(xdisplay, xdrawable, True, KeyPressMask, (XEvent*)&e);
+	XFlush(xdisplay);
+	XUnlockDisplay(xdisplay);
 }
 
 void
@@ -630,6 +629,8 @@ drawcursor(Drawcursor* c)
 	xcursunlock();
 
 	h = (c->maxy-c->miny)/2;	/* image, then mask */
+	if(h > CursorSize)
+		h = CursorSize;
 	bpl = bytesperline(Rect(c->minx, c->miny, c->maxx, c->maxy), 1);
 	w = bpl;
 	if(w > CursorSize/8)

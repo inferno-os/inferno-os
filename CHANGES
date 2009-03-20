@@ -1,3 +1,6 @@
+20090320
+	emu/port/win-x11a.c: unintuitively use xdisplay not xkbdcon to send to kbdproc (with big stack) to change cursor
+		(the big stack is needed because XCreateBitmapFromData and XPutImage pass control to theme-related code that uses lots of stack space)
 20090222
 	appl/cmd/ndb/registry.b and dis/registry.dis - implement flush for event file (issue 162)
 20090217
