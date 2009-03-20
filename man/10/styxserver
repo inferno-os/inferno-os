@@ -82,6 +82,7 @@ struct Styxfile
 	void	*u;
 };
 
+void styxsetowner(char *user);
 char *styxinit(Styxserver *server, Styxops *ops, char *port, int perm, int needfile);
 char *styxwait(Styxserver *server);
 char *styxprocess(Styxserver *server);
@@ -125,6 +126,14 @@ is set to true, the styx library will check that each path number it deals with
 has a corresponding file associated with it and, if it hasn't, it will issue a
 "file does not exist" message automatically. In case of an error, the error message is
 returned, otherwise nil is returned to indicate success.
+By default, files are owned by
+.BR inferno ;
+.I styxsetowner
+can be called before
+.I styxinit
+to make
+.I user
+the default owner of files.
 .TP
 .BI styxwait(server )
 Waits for communication from a client. Return value as above.

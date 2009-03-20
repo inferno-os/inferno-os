@@ -3,6 +3,8 @@
 		(the big stack is needed because XCreateBitmapFromData and XPutImage pass control to theme-related code that uses lots of stack space)
 	use uname not aname for user name in libstyx and set aname to "" by default
 	make odbc's new file have mode 666 so others can open it
+	add styxsetowner function to styxserver.h to set default owner (eve)
+	move styxserver.h to inferno's include directory
 20090222
 	appl/cmd/ndb/registry.b and dis/registry.dis - implement flush for event file (issue 162)
 20090217
