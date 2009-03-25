@@ -227,7 +227,9 @@ Dev capdevtab = {
 	0x00A4,	/* L'¤' */
 	"cap",
 
+	devreset,
 	devinit,
+	devshutdown,
 	capattach,
 	capwalk,
 	capstat,

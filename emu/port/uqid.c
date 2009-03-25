@@ -29,7 +29,7 @@ uqidlook(Uqid **tab, Chan *c, vlong path)
 	Uqid **hp, *q;
 
 	for(hp = &tab[uqidhash(path)]; (q = *hp) != nil; hp = &q->next)
-		if(q->type == c->type && q->dev == c->dev && q->oldpath == path)
+		if(q->dc == c->dev->dc && q->devno == c->devno && q->oldpath == path)
 			break;
 	return hp;
 }
@@ -65,8 +65,8 @@ uqidalloc(Uqidtab *tab, Chan *c)
 		error(Enomem);
 	}
 	q->r.ref = 1;
-	q->type = c->type;
-	q->dev = c->dev;
+	q->dc = c->dev->dc;
+	q->devno = c->devno;
 	q->oldpath = c->qid.path;
 	q->newpath = c->qid.path;
 	while(uqidexists(tab->qids, q->newpath)){

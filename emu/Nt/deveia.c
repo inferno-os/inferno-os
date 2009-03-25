@@ -379,7 +379,9 @@ Dev eiadevtab = {
         Devchar,
         "eia",
 
+	devreset,
         eiainit,
+	devshutdown,
         eiaattach,
         eiawalk,
         eiastat,

@@ -99,7 +99,6 @@ pipeattach(char *spec)
 	c->qid.vers = 0;
 	c->qid.type = QTDIR;
 	c->aux = p;
-	c->dev = 0;
 	return c;
 }
 
@@ -311,7 +310,7 @@ piperead(Chan *c, void *va, long n, vlong junk)
 }
 
 static Block*
-pipebread(Chan *c, long n, ulong offset)
+pipebread(Chan *c, long n, vlong offset)
 {
 	Pipe *p;
 
@@ -368,7 +367,7 @@ pipewrite(Chan *c, void *va, long n, vlong junk)
 }
 
 static long
-pipebwrite(Chan *c, Block *bp, ulong junk)
+pipebwrite(Chan *c, Block *bp, vlong junk)
 {
 	long n;
 	Pipe *p;
@@ -444,7 +443,9 @@ Dev pipedevtab = {
 	'|',
 	"pipe",
 
+	devreset,
 	pipeinit,
+	devshutdown,
 	pipeattach,
 	pipewalk,
 	pipestat,

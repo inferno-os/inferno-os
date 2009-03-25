@@ -128,7 +128,7 @@ srv9walk(Chan *c, Chan *nc, char **name, int nname)
 	}
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;	/* device doesn't know about this channel yet */
+		/* device doesn't know about this channel yet */
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -161,7 +161,8 @@ srv9walk(Chan *c, Chan *nc, char **name, int nname)
 		wq->clone = nil;
 	}else{
 		/* attach cloned channel to device */
-		wq->clone->type = c->type;
+		devtabincref(c->dev);
+		wq->clone->dev = c->dev;
 		if(wq->clone != c)
 			nc->aux = srvget(nc->qid.path);
 	}
@@ -379,7 +380,9 @@ Dev srv9devtab = {
 	L'₪',
 	"srv9",
 
+	devreset,
 	srv9init,	
+	devshutdown,
 	srv9attach,
 	srv9walk,
 	srv9stat,

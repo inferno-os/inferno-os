@@ -108,8 +108,8 @@ struct Chan
 	Chan*	next;			/* allocation */
 	Chan*	link;
 	vlong	offset;			/* in file */
-	ushort	type;
-	ulong	dev;
+	Dev*	dev;
+	uint	devno;
 	ushort	mode;			/* read/write */
 	ushort	flag;
 	Qid	qid;
@@ -142,7 +142,9 @@ struct Dev
 	int	dc;
 	char*	name;
 
+	void	(*reset)(void);
 	void	(*init)(void);
+	void	(*shutdown)(void);
 	Chan*	(*attach)(char*);
 	Walkqid*	(*walk)(Chan*, Chan*, char**, int);
 	int	(*stat)(Chan*, uchar*, int);
@@ -150,18 +152,16 @@ struct Dev
 	void	(*create)(Chan*, char*, int, ulong);
 	void	(*close)(Chan*);
 	long	(*read)(Chan*, void*, long, vlong);
-	Block*	(*bread)(Chan*, long, ulong);
+	Block*	(*bread)(Chan*, long, vlong);
 	long	(*write)(Chan*, void*, long, vlong);
-	long	(*bwrite)(Chan*, Block*, ulong);
+	long	(*bwrite)(Chan*, Block*, vlong);
 	void	(*remove)(Chan*);
 	int	(*wstat)(Chan*, uchar*, int);
 };
 
 enum
 {
-	BINTR		=	(1<<0),
-	BFREE		=	(1<<1),
-	BMORE		=	(1<<2)		/* continued in next block */
+	BINTR		=	(1<<0)
 };
 
 struct Block
@@ -333,8 +333,8 @@ struct Skeyset
 struct Uqid
 {
 	Ref	r;
-	int	type;
-	int	dev;
+	int	dc;
+	int	devno;
 	vlong	oldpath;
 	vlong	newpath;
 	Uqid*	next;

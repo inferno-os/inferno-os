@@ -119,7 +119,7 @@ devload(char *path)
 {
 	int i;
 	Dyndev *l;
-	Dev *dev;
+	Dev *dev, *curdev;
 	char devname[32];
 
 	l = dlload(path, _exporttab, dyntabsize(_exporttab));
@@ -131,8 +131,11 @@ devload(char *path)
 	dev = dynimport(l->o, devname, signof(*dev));
 	if(dev == nil)
 		error("no devtab");
-	if(devno(dev->dc, 1) >= 0)
+	curdev = devtabget(dev->dc, 1);
+	if(curdev != nil){
+		devtabput(curdev);
 		error("device loaded");
+	}
 	for(i = 0; devtab[i] != nil; i++)
 		;
 	if(i >= ndevs || devtab[i+1] != nil)
@@ -321,7 +324,9 @@ Dev dynlddevtab = {
 	DEVCHAR,
 	"dynld",
 
+	devreset,
 	devinit,
+	devshutdown,
 	dlattach,
 	dlwalk,
 	dlstat,

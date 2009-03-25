@@ -12,21 +12,6 @@ mkqid(Qid *q, vlong path, ulong vers, int type)
 	q->path = path;
 }
 
-int
-devno(int c, int user)
-{
-	int i;
-
-	for(i = 0; devtab[i] != nil; i++) {
-		if(devtab[i]->dc == c)
-			return i;
-	}
-	if(user == 0)
-		panic("devno %C 0x%ux", c, c);
-
-	return -1;
-}
-
 void
 devdir(Chan *c, Qid qid, char *n, long length, char *user, long perm, Dir *db)
 {
@@ -34,8 +19,11 @@ devdir(Chan *c, Qid qid, char *n, long length, char *user, long perm, Dir *db)
 	if(c->flag&CMSG)
 		qid.type |= QTMOUNT;
 	db->qid = qid;
-	db->type = devtab[c->type]->dc;
-	db->dev = c->dev;
+	if(c->dev != nil)
+		db->type = c->dev->dc;
+	else
+		db->type = -1;
+	db->dev = c->devno;
 	db->mode = perm | (qid.type << 24);
 	db->atime = time(0);
 	db->mtime = kerndate;
@@ -66,6 +54,11 @@ devgen(Chan *c, char *name, Dirtab *tab, int ntab, int i, Dir *dp)
 }
 
 void
+devreset(void)
+{
+}
+
+void
 devinit(void)
 {
 }
@@ -76,18 +69,18 @@ devshutdown(void)
 }
 
 Chan*
-devattach(int tc, char *spec)
+devattach(int dc, char *spec)
 {
 	Chan *c;
 	char *buf;
 
 	c = newchan();
 	mkqid(&c->qid, 0, 0, QTDIR);
-	c->type = devno(tc, 0);
+	c->dev = devtabget(dc, 0);
 	if(spec == nil)
 		spec = "";
 	buf = smalloc(4+strlen(spec)+1);
-	sprint(buf, "#%C%s", tc, spec);
+	sprint(buf, "#%C%s", dc, spec);
 	c->name = newcname(buf);
 	free(buf);
 	return c;
@@ -99,11 +92,11 @@ devclone(Chan *c)
 	Chan *nc;
 
 	if(c->flag & COPEN)
-		panic("clone of open file type %C\n", devtab[c->type]->dc);
+		panic("clone of open file type %C\n", c->dev != nil? c->dev->dc: -1);
 
 	nc = newchan();
-	nc->type = c->type;
-	nc->dev = c->dev;
+	/* the caller fills in nc->dev, if and when necessary */
+	nc->devno = c->devno;
 	nc->mode = c->mode;
 	nc->qid = c->qid;
 	nc->offset = c->offset;
@@ -137,7 +130,7 @@ devwalk(Chan *c, Chan *nc, char **name, int nname, Dirtab *tab, int ntab, Devgen
 	}
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;	/* device doesn't know about this channel yet */
+		/* nc->dev remains nil for now */
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -155,7 +148,15 @@ devwalk(Chan *c, Chan *nc, char **name, int nname, Dirtab *tab, int ntab, Devgen
 			continue;
 		}
 		if(strcmp(n, "..") == 0){
-			(*gen)(nc, nil, tab, ntab, DEVDOTDOT, &dir);
+			/*
+			 * Use c->dev->name in the error because
+			 * nc->dev should be nil here.
+			 */
+			if((*gen)(nc, nil, tab, ntab, DEVDOTDOT, &dir) != 1){
+				print("devgen walk .. in dev%s %#llux broken\n",
+					c->dev->name, nc->qid.path);
+				error("broken devgen");
+			}
 			nc->qid = dir.qid;
 			goto Accept;
 		}
@@ -201,7 +202,10 @@ Done:
 		wq->clone = nil;
 	}else if(wq->clone){
 		/* attach cloned channel to same device */
-		wq->clone->type = c->type;
+		if(c->dev != nil){
+			devtabincref(c->dev);
+		}
+		wq->clone->dev = c->dev;
 	}
 	return wq;
 }
@@ -233,7 +237,7 @@ devstat(Chan *c, uchar *db, int n, Dirtab *tab, int ntab, Devgen *gen)
 			}
 			print("%s %s: devstat %C %llux\n",
 				up->text, up->env->user,
-				devtab[c->type]->dc, c->qid.path);
+				c->dev->dc, c->qid.path);
 
 			error(Enonexist);
 		case 0:
@@ -336,7 +340,7 @@ Return:
 }
 
 Block*
-devbread(Chan *c, long n, ulong offset)
+devbread(Chan *c, long n, vlong offset)
 {
 	Block *bp;
 
@@ -345,13 +349,13 @@ devbread(Chan *c, long n, ulong offset)
 		freeb(bp);
 		nexterror();
 	}
-	bp->wp += devtab[c->type]->read(c, bp->wp, n, offset);
+	bp->wp += c->dev->read(c, bp->wp, n, offset);
 	poperror();
 	return bp;
 }
 
 long
-devbwrite(Chan *c, Block *bp, ulong offset)
+devbwrite(Chan *c, Block *bp, vlong offset)
 {
 	long n;
 
@@ -359,7 +363,7 @@ devbwrite(Chan *c, Block *bp, ulong offset)
 		freeb(bp);
 		nexterror();
 	}
-	n = devtab[c->type]->write(c, bp->rp, BLEN(bp), offset);
+	n = c->dev->write(c, bp->rp, BLEN(bp), offset);
 	poperror();
 	freeb(bp);
 
@@ -432,15 +436,4 @@ validwstatname(char *name)
 	validname(name, 0);
 	if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
 		error(Efilename);
-}
-
-Dev*
-devbyname(char *name)
-{
-	int i;
-
-	for(i = 0; devtab[i] != nil; i++)
-		if(strcmp(devtab[i]->name, name) == 0)
-			return devtab[i];
-	return nil;
 }

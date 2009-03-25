@@ -134,7 +134,9 @@ Dev dupdevtab = {
 	'd',
 	"dup",
 
+	devreset,
 	devinit,
+	devshutdown,
 	dupattach,
 	dupwalk,
 	dupstat,

@@ -42,6 +42,8 @@ port
 	cache
 	chan
 	dev
+	devtab
+
 	dial
 	dis
 	discall

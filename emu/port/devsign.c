@@ -424,7 +424,9 @@ Dev signdevtab = {
 	0x03A3,	/* L'Σ',	/* U+03A3 */
 	"sign",
 
+	devreset,
 	devinit,
+	devshutdown,
 	signattach,
 	signwalk,
 	signstat,

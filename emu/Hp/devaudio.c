@@ -489,7 +489,9 @@ Dev audiodevtab = {
 	'A',
 	"audio",
 
+	devreset,
 	audioinit,
+	devshutdown,
 	audioattach,
 	devclone,
 	audiowalk,

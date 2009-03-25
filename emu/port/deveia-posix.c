@@ -444,20 +444,22 @@ eiawstat(Chan *c, uchar *dp, int n)
 }
 
 Dev eiadevtab = {
-        Devchar,
-        Devname,
+	Devchar,
+	Devname,
 
-        eiainit,
-        eiaattach,
-        eiawalk,
-        eiastat,
-        eiaopen,
-        devcreate,
-        eiaclose,
-        eiaread,
-        devbread,
-        eiawrite,
-        devbwrite,
-        devremove,
-        eiawstat
+	devreset,
+	eiainit,
+	devshutdown,
+	eiaattach,
+	eiawalk,
+	eiastat,
+	eiaopen,
+	devcreate,
+	eiaclose,
+	eiaread,
+	devbread,
+	eiawrite,
+	devbwrite,
+	devremove,
+	eiawstat
 };

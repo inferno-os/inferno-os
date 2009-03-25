@@ -145,7 +145,9 @@ Dev snarfdevtab = {
 	'^',
 	"snarf",
 
+	devreset,
 	devinit,
+	devshutdown,
 	snarfattach,
 	snarfwalk,
 	snarfstat,

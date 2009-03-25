@@ -375,7 +375,7 @@ ensure(Dstate *s, Block **l, int n)
 	}
 
 	while(sofar < n){
-		bl = devtab[s->c->type]->bread(s->c, Maxdmsg, 0);
+		bl = s->c->dev->bread(s->c, Maxdmsg, 0);
 		if(bl == 0)
 			error(Ehungup);
 		*l = bl;
@@ -466,7 +466,7 @@ qtake(Block **l, int n, int discard)
 }
 
 static Block*
-sslbread(Chan *c, long n, ulong offset)
+sslbread(Chan *c, long n, vlong offset)
 {
 	volatile struct { Dstate *s; } s;
 	volatile struct { int nc; } nc;
@@ -623,7 +623,7 @@ randfill(uchar *buf, int len)
  *  use SSL record format, add in count and digest or encrypt
  */
 static long
-sslbwrite(Chan *c, Block *b, ulong offset)
+sslbwrite(Chan *c, Block *b, vlong offset)
 {
 	volatile struct { Dstate *s; } s;
 	volatile struct { Block *b; } bb;
@@ -719,7 +719,7 @@ sslbwrite(Chan *c, Block *b, ulong offset)
 		s.s->out.mid++;
 
 		m = BLEN(nb);
-		devtab[s.s->c->type]->bwrite(s.s->c, nb, s.s->c->offset);
+		s.s->c->dev->bwrite(s.s->c, nb, s.s->c->offset);
 		s.s->c->offset += m;
 	}
 	qunlock(&s.s->out.q);
@@ -1133,6 +1133,27 @@ out:
 }
 
 
+Dev ssldevtab = {
+	'D',
+	"ssl",
+
+	devreset,
+	sslinit,
+	devshutdown,
+	sslattach,
+	sslwalk,
+	sslstat,
+	sslopen,
+	devcreate,
+	sslclose,
+	sslread,
+	sslbread,
+	sslwrite,
+	sslbwrite,
+	devremove,
+	sslwstat
+};
+
 static Block*
 encryptb(Dstate *s, Block *b, int offset)
 {
@@ -1343,6 +1364,10 @@ buftochan(char *p)
 	if(fd < 0)
 		error(Ebadarg);
 	c = fdtochan(up->env->fgrp, fd, -1, 0, 1);	/* error check and inc ref */
+	if(c->dev == &ssldevtab){
+		cclose(c);
+		error("cannot ssl encrypt devssl files");
+	}
 	return c;
 }
 
@@ -1420,22 +1445,3 @@ dsnew(Chan *ch, Dstate **pp)
 	ch->qid.vers = 0;
 	ch->qid.type = QTFILE;
 }
-
-Dev ssldevtab = {
-	'D',
-	"ssl",
-
-	sslinit,
-	sslattach,
-	sslwalk,
-	sslstat,
-	sslopen,
-	devcreate,
-	sslclose,
-	sslread,
-	sslbread,
-	sslwrite,
-	sslbwrite,
-	devremove,
-	sslwstat
-};

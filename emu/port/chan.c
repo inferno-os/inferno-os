@@ -140,15 +140,12 @@ static char isfrog[256]=
 void
 chandevinit(void)
 {
-	int i;
-
 
 /*	isfrog[' '] = 1; */	/* let's see what happens */
 	isfrog['/'] = 1;
 	isfrog[0x7f] = 1;
 
-	for(i=0; devtab[i] != nil; i++)
-		devtab[i]->init();
+	devtabinit();
 }
 
 Chan*
@@ -173,12 +170,10 @@ newchan(void)
 		unlock(&chanalloc.l);
 	}
 
-	/* if you get an error before associating with a dev,
-	   close calls rootclose, a nop */
-	c->type = 0;
+	c->dev = nil;
 	c->flag = 0;
 	c->r.ref = 1;
-	c->dev = 0;
+	c->devno = 0;
 	c->offset = 0;
 	c->iounit = 0;
 	c->umh = 0;
@@ -191,7 +186,7 @@ newchan(void)
 	c->mqid.path = 0;
 	c->mqid.vers = 0;
 	c->mqid.type = 0;
-	c->name = 0;
+	c->name = nil;
 	return c;
 }
 
@@ -282,8 +277,13 @@ chanfree(Chan *c)
 		cclose(c->mchan);
 		c->mchan = nil;
 	}
+	if(c->dev != nil){
+		devtabput(c->dev);
+		c->dev = nil;
+	}
 
 	cnameclose(c->name);
+	c->name = nil;
 
 	lock(&chanalloc.l);
 	c->next = chanalloc.free;
@@ -304,7 +304,8 @@ cclose(Chan *c)
 		return;
 
 	if(!waserror()){
-		devtab[c->type]->close(c);
+		if(c->dev != nil)
+			c->dev->close(c);
 		poperror();
 	}
 
@@ -341,23 +342,23 @@ eqchan(Chan *a, Chan *b, int pathonly)
 		return 0;
 	if(!pathonly && a->qid.vers!=b->qid.vers)
 		return 0;
-	if(a->type != b->type)
+	if(a->dev->dc != b->dev->dc)
 		return 0;
-	if(a->dev != b->dev)
+	if(a->devno != b->devno)
 		return 0;
 	return 1;
 }
 
 int
-eqchantdqid(Chan *a, int type, int dev, Qid qid, int pathonly)
+eqchanddq(Chan *a, int dc, uint devno, Qid qid, int pathonly)
 {
 	if(a->qid.path != qid.path)
 		return 0;
 	if(!pathonly && a->qid.vers!=qid.vers)
 		return 0;
-	if(a->type != type)
+	if(a->dev->dc != dc)
 		return 0;
-	if(a->dev != dev)
+	if(a->devno != devno)
 		return 0;
 	return 1;
 }
@@ -576,7 +577,7 @@ cclone(Chan *c)
 	Chan *nc;
 	Walkqid *wq;
 
-	wq = devtab[c->type]->walk(c, nil, nil, 0);
+	wq = c->dev->walk(c, nil, nil, 0);
 	if(wq == nil)
 		error("clone failed");
 	nc = wq->clone;
@@ -588,7 +589,7 @@ cclone(Chan *c)
 }
 
 int
-findmount(Chan **cp, Mhead **mp, int type, int dev, Qid qid)
+findmount(Chan **cp, Mhead **mp, int dc, uint devno, Qid qid)
 {
 	Pgrp *pg;
 	Mhead *m;
@@ -602,7 +603,7 @@ if(m->from == nil){
 	runlock(&m->lock);
 	continue;
 }
-		if(eqchantdqid(m->from, type, dev, qid, 1)) {
+		if(eqchanddq(m->from, dc, devno, qid, 1)) {
 			runlock(&pg->ns);
 			if(mp != nil){
 				incref(&m->r);
@@ -627,7 +628,7 @@ if(m->from == nil){
 int
 domount(Chan **cp, Mhead **mp)
 {
-	return findmount(cp, mp, (*cp)->type, (*cp)->dev, (*cp)->qid);
+	return findmount(cp, mp, (*cp)->dev->dc, (*cp)->devno, (*cp)->qid);
 }
 
 Chan*
@@ -682,7 +683,7 @@ static char Edoesnotexist[] = "does not exist";
 int
 walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 {
-	int dev, dotdot, i, n, nhave, ntry, type;
+	int dc, devno, dotdot, i, n, nhave, ntry;
 	Chan *c, *nc;
 	Cname *cname;
 	Mount *f;
@@ -734,10 +735,10 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 		if(!dotdot && !nomount)
 			domount(&c, &mh);
 
-		type = c->type;
-		dev = c->dev;
+		dc = c->dev->dc;
+		devno = c->devno;
 
-		if((wq = devtab[type]->walk(c, nil, names+nhave, ntry)) == nil){
+		if((wq = c->dev->walk(c, nil, names+nhave, ntry)) == nil){
 			/* try a union mount, if any */
 			if(mh && !nomount){
 				/*
@@ -745,12 +746,12 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 				 */
 				rlock(&mh->lock);
 				for(f = mh->mount->next; f; f = f->next)
-					if((wq = devtab[f->to->type]->walk(f->to, nil, names+nhave, ntry)) != nil)
+					if((wq = f->to->dev->walk(f->to, nil, names+nhave, ntry)) != nil)
 						break;
 				runlock(&mh->lock);
 				if(f != nil){
-					type = f->to->type;
-					dev = f->to->dev;
+					dc = f->to->dev->dc;
+					devno = f->to->devno;
 				}
 			}
 			if(wq == nil){
@@ -776,7 +777,7 @@ walk(Chan **cp, char **names, int nnames, int nomount, int *nerror)
 			nc = nil;
 			if(!nomount)
 				for(i=0; i<wq->nqid && i<ntry-1; i++)
-					if(findmount(&nc, &nmh, type, dev, wq->qid[i]))
+					if(findmount(&nc, &nmh, dc, devno, wq->qid[i]))
 						break;
 			if(nc == nil){	/* no mount points along path */
 				if(wq->clone == nil){
@@ -983,7 +984,7 @@ saveregisters(void)
 Chan*
 namec(char *aname, int amode, int omode, ulong perm)
 {
-	int n, prefix, len, t, nomount, npath;
+	int n, prefix, len, nomount, npath;
 	Chan *c, *cnew;
 	Cname *cname;
 	Elemlist e;
@@ -991,6 +992,7 @@ namec(char *aname, int amode, int omode, ulong perm)
 	Mhead *m;
 	char *createerr, tmperrbuf[ERRMAX];
 	char *name;
+	Dev *dev;
 
 	name = aname;
 	if(name[0] == '\0')
@@ -1033,10 +1035,16 @@ namec(char *aname, int amode, int omode, ulong perm)
 		if(up->env->pgrp->nodevs &&
 		   (utfrune("|esDa", r) == nil || r == 's' && up->genbuf[n]!='\0'))
 			error(Enoattach);
-		t = devno(r, 1);
-		if(t == -1)
+		dev = devtabget(r, 1);
+		if(dev == nil)
 			error(Ebadsharp);
-		c = devtab[t]->attach(up->genbuf+n);
+		if(waserror()){
+			devtabput(dev);
+			nexterror();
+		}
+		c = dev->attach(up->genbuf+n);
+		poperror();
+		devtabput(dev);
 		break;
 
 	default:
@@ -1165,7 +1173,7 @@ if(c->umh != nil){
 			if(omode == OEXEC)
 				c->flag &= ~CCACHE;
 
-			c = devtab[c->type]->open(c, omode&~OCEXEC);
+			c = c->dev->open(c, omode&~OCEXEC);
 
 			if(omode & OCEXEC)
 				c->flag |= CCEXEC;
@@ -1249,7 +1257,7 @@ if(c->umh != nil){
 		m = nil;
 		cnew = nil;	/* is this assignment necessary? */
 		if(!waserror()){	/* try create */
-			if(!nomount && findmount(&cnew, &m, c->type, c->dev, c->qid))
+			if(!nomount && findmount(&cnew, &m, c->dev->dc, c->devno, c->qid))
 				cnew = createdir(cnew, m);
 			else{
 				cnew = c;
@@ -1267,7 +1275,7 @@ if(c->umh != nil){
 			cnew->name = c->name;
 			incref(&cnew->name->r);
 
-			devtab[cnew->type]->create(cnew, e.elems[e.nelems-1], omode&~(OEXCL|OCEXEC), perm);
+			cnew->dev->create(cnew, e.elems[e.nelems-1], omode&~(OEXCL|OCEXEC), perm);
 			poperror();
 			if(omode & OCEXEC)
 				cnew->flag |= CCEXEC;

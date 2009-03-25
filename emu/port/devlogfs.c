@@ -778,7 +778,6 @@ devlogfswalk(Chan *c, Chan *nc, char **name, int nname)
 	clone = 0;
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;
 		SPLITPATH(c->qid.path, c->qid.type, instance, qid, qt);
 		if(DATAQID(qid, qt))
 			nc->aux = devlogfsget(instance);
@@ -791,7 +790,8 @@ devlogfswalk(Chan *c, Chan *nc, char **name, int nname)
 	}
 	else if (clone) {
 		wq->clone = nc;
-		nc->type = c->type;
+		devtabincref(nc->dev);
+		nc->dev = c->dev;
 	}
 #ifdef CALLTRACE
 	print("devlogfswalk(c = 0x%.8lux, nc = 0x%.8lux, name = 0x%.8lux, nname = %d) - return\n",
@@ -804,8 +804,8 @@ static int
 devlogfsstat(Chan *c, uchar *dp, int n)
 {
 #ifdef CALLTRACE
-	print("devlogfsstat(c = 0x%.8lux, dp = 0x%.8lux n= %d)\n",
-		(ulong)c, (ulong)dp, n);
+	print("devlogfsstat(c = %.8p, dp = %.8p n= %d)\n",
+		c, dp, n);
 #endif
 	return devstat(c, dp, n, 0, 0, devlogfsgen);
 }
@@ -1503,7 +1503,9 @@ Dev logfsdevtab = {
 #ifndef EMU
 	devreset,
 #endif
+	devreset,
 	devinit,
+	devshutdown,
 #ifndef EMU
 	devshutdown,
 #endif

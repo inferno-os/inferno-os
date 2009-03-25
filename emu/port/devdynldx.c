@@ -341,7 +341,9 @@ Dev dynlddevtab = {
 	DEVCHAR,
 	"dynld",
 
+	devreset,
 	devinit,
+	devshutdown,
 	dlattach,
 	dlwalk,
 	dlstat,

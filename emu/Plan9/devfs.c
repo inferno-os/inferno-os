@@ -68,7 +68,7 @@ fsattach(char *spec)
 
 	c = devattach('U', spec);
 	lock(&l);
-	c->dev = devno++;
+	c->devno = devno++;
 	c->qid = rootqid;
 	unlock(&l);
 	c->aux = smalloc(sizeof(Fsinfo));
@@ -105,7 +105,6 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	}
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -152,7 +151,8 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	}else if(wq->clone){
 		/* now attach to our device */
 		nc->aux = smalloc(sizeof(Fsinfo));
-		nc->type = c->type;
+		devtabincref(c->dev);
+		wq->clone->dev = c->dev;
 		FS(nc)->rootqid = FS(c)->rootqid;
 		FS(nc)->name = current;
 		FS(nc)->fd = -1;
@@ -349,7 +349,9 @@ Dev fsdevtab = {
 	'U',
 	"fs",
 
+	devreset,
 	devinit,
+	devshutdown,
 	fsattach,
 	fswalk,
 	fsstat,

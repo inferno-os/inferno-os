@@ -237,7 +237,9 @@ Dev envdevtab = {
 	'e',
 	"env",
 
+	devreset,
 	devinit,
+	devshutdown,
 	envattach,
 	envwalk,
 	envstat,

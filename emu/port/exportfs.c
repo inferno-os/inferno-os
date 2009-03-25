@@ -200,7 +200,7 @@ exreadn(Chan *c, void *buf, int n)
 	if(waserror())
 		return -1;
 	for(nr = 0; nr < n;){
-		t = devtab[c->type]->read(c, (char*)buf+nr, n-nr, 0);
+		t = c->dev->read(c, (char*)buf+nr, n-nr, 0);
 		if(t <= 0)
 			break;
 		nr += t;
@@ -636,7 +636,7 @@ exreply(Exq *q, char *who)
 		print("%s %ld -> %F\n", who, up->pid, r);
 
 	if(!waserror()){
-		devtab[fs->io->type]->write(fs->io, q->buf, n, 0);
+		fs->io->dev->write(fs->io, q->buf, n, 0);
 		poperror();
 	}
 }
@@ -738,7 +738,7 @@ exmount(Chan *c, Mhead **mp, int doname)
 	Cname *oname;
 
 	nc.nc = nil;
-	if((c->flag & COPEN) == 0 && findmount(&nc.nc, mp, c->type, c->dev, c->qid)){
+	if((c->flag & COPEN) == 0 && findmount(&nc.nc, mp, c->dev->dc, c->devno, c->qid)){
 		if(waserror()){
 			cclose(nc.nc);
 			nexterror();
@@ -934,7 +934,7 @@ Exopen(Export *fs, Fcall *t, Fcall *r)
 	else
 		putmhead(m);
 
-	c = devtab[c->type]->open(c, t->mode);
+	c = c->dev->open(c, t->mode);
 	if(t->mode & ORCLOSE)
 		c->flag |= CRCLOSE;
 
@@ -1001,7 +1001,7 @@ Excreate(Export *fs, Fcall *t, Fcall *r)
 		poperror();
 		c.c->name = oname;
 	}
-	devtab[c.c->type]->create(c.c, t->name, t->mode, t->perm);
+	c.c->dev->create(c.c, t->name, t->mode, t->perm);
 	c.c->name = addelem(c.c->name, t->name);
 	if(t->mode & ORCLOSE)
 		c.c->flag |= CRCLOSE;
@@ -1043,7 +1043,7 @@ Exread(Export *fs, Fcall *t, Fcall *r)
 		error(Emode);
 	if(c->mode != OREAD && c->mode != ORDWR)
 		error(Eaccess);
-	if(t->count < 0 || t->count > fs->msize-IOHDRSZ)
+	if((int)t->count < 0 || t->count > fs->msize-IOHDRSZ)
 		error(Ecount);
 	if(t->offset < 0)
 		error(Enegoff);
@@ -1077,7 +1077,7 @@ Exread(Export *fs, Fcall *t, Fcall *r)
 			lock(cl);
 			c->offset = off;
 			unlock(cl);
-			n = devtab[c->type]->read(c, r->data, n, off);
+			n = c->dev->read(c, r->data, n, off);
 			lock(cl);
 			c->offset += n;
 			unlock(cl);
@@ -1113,11 +1113,11 @@ Exwrite(Export *fs, Fcall *t, Fcall *r)
 		error(Eaccess);
 	if(c->qid.type & QTDIR)
 		error(Eisdir);
-	if(t->count < 0 || t->count > fs->msize-IOHDRSZ)
+	if((int)t->count < 0 || t->count > fs->msize-IOHDRSZ)
 		error(Ecount);
 	if(t->offset < 0)
 		error(Enegoff);
-	r->count = devtab[c->type]->write(c, t->data, t->count, t->offset);
+	r->count = c->dev->write(c, t->data, t->count, t->offset);
 	poperror();
 	Exputfid(fs, f);
 	return nil;
@@ -1139,7 +1139,7 @@ Exstat(Export *fs, Fcall *t, Fcall *r)
 		Exputfid(fs, f);
 		return up->env->errstr;
 	}
-	n = devtab[c->type]->stat(c, r->stat, r->nstat);
+	n = c->dev->stat(c, r->stat, r->nstat);
 	if(n <= BIT16SZ)
 		error(Eshortstat);
 	r->nstat = n;
@@ -1171,7 +1171,7 @@ Exwstat(Export *fs, Fcall *t, Fcall *r)
 		cclose(c);
 		nexterror();
 	}
-	devtab[c->type]->wstat(c, t->stat, t->nstat);
+	c->dev->wstat(c, t->stat, t->nstat);
 	poperror();
 
 	cclose(c);
@@ -1197,20 +1197,24 @@ Exremove(Export *fs, Fcall *t, Fcall *r)
 	}
 	c = exmount(f->chan, nil, 0);
 	if(waserror()){
-		c->type = 0;	/* see below */
+		if(c->dev != nil){
+			devtabput(c->dev);
+			c->dev = nil;	/* see below */
+		}
 		cclose(c);
 		nexterror();
 	}
-	devtab[c->type]->remove(c);
+	c->dev->remove(c);
 	poperror();
 	poperror();
 
 	/*
 	 * chan is already clunked by remove.
 	 * however, we need to recover the chan,
-	 * and follow sysremove's lead in making it point to root.
+	 * and follow sysremove's lead in making its dev nil.
 	 */
-	c->type = 0;
+	devtabput(c->dev);
+	c->dev = nil;
 	cclose(c);
 
 	f->attached = 0;

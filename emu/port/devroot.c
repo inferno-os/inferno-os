@@ -134,7 +134,9 @@ Dev rootdevtab = {
 	'/',
 	"root",
 
+	devreset,
 	devinit,
+	devshutdown,
 	rootattach,
 	rootwalk,
 	rootstat,

@@ -468,7 +468,9 @@ Dev memdevtab = {
 	'%',
 	"mem",
 
+	devreset,
 	devinit,
+	devshutdown,
 	memattach,
 	memwalk,
 	memstat,

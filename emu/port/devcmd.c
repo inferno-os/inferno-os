@@ -667,7 +667,9 @@ Dev cmddevtab = {
 	'C',
 	"cmd",
 
+	devreset,
 	cmdinit,
+	devshutdown,
 	cmdattach,
 	cmdwalk,
 	cmdstat,

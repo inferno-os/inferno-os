@@ -288,7 +288,9 @@ Dev pointerdevtab = {
 	'm',
 	"pointer",
 
+	devreset,
 	devinit,
+	devshutdown,
 	pointerattach,
 	pointerwalk,
 	pointerstat,

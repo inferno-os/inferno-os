@@ -320,7 +320,9 @@ Dev archdevtab = {
 	'a',
 	"arch",
 
+	devreset,
 	archinit,
+	devshutdown,
 	archattach,
 	archwalk,
 	archstat,

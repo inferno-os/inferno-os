@@ -480,10 +480,10 @@ progfdprint(Chan *c, int fd, int w, char *s, int ns)
 
 	if(w == 0)
 		w = progqidwidth(c);
-	n = snprint(s, ns, "%3d %.2s %C %4ld (%.16llux %*lud %.2ux) %5ld %8lld %s\n",
+	n = snprint(s, ns, "%3d %.2s %C %4d (%.16llux %*lud %.2ux) %5ld %8lld %s\n",
 		fd,
 		&"r w rw"[(c->mode&3)<<1],
-		devtab[c->type]->dc, c->dev,
+		c->dev->dc, c->devno,
 		c->qid.path, w, c->qid.vers, c->qid.type,
 		c->iounit, c->offset, c->name->s);
 	return n;
@@ -610,6 +610,16 @@ calldepth(REG *reg)
 	return n;
 }
 
+int
+stringutflen(String *s)
+{
+	int n;
+	n = s->len;
+	if(n >= 0)
+		return n;
+	return runenlen(s->Srune, -n);
+}
+
 static int
 progheap(Heapqry *hq, char *va, int count, ulong offset)
 {
@@ -716,8 +726,8 @@ progheap(Heapqry *hq, char *va, int count, ulong offset)
 				return -1;
 			n += snprint(va+n, count-n, "%d.", abs(ss->len));
 			str = string2c(ss);
-			len = strlen(str);
-			if(count-n < len)
+			len = stringutflen(ss);
+			if(len >= count-n)
 				len = count-n;
 			if(len > 0) {
 				memmove(va+n, str, len);
@@ -892,11 +902,11 @@ progread(Chan *c, void *va, long n, vlong offset)
 		}
 		int2flag(mw->cm->mflag, flag);
 		if(strcmp(mw->cm->to->name->s, "#M") == 0){
-			i = snprint(a, n, "mount %s %s %s %s\n", flag,
+			i = snprint(a, n, "mount %s %q %q %q\n", flag,
 				mw->cm->to->mchan->name->s,
 				mw->mh->from->name->s, mw->cm->spec? mw->cm->spec : "");
 		}else
-			i = snprint(a, n, "bind %s %s %s\n", flag,
+			i = snprint(a, n, "bind %s %q %q\n", flag,
 				mw->cm->to->name->s, mw->mh->from->name->s);
 		poperror();
 		release();
@@ -1491,7 +1501,9 @@ Dev progdevtab = {
 	'p',
 	"prog",
 
+	devreset,
 	devinit,
+	devshutdown,
 	progattach,
 	progwalk,
 	progstat,

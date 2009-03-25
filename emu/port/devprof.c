@@ -801,7 +801,9 @@ Dev profdevtab = {
 	'P',
 	"prof",
 
+	devreset,
 	devinit,
+	devshutdown,
 	profattach,
 	profwalk,
 	profstat,

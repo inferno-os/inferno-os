@@ -123,7 +123,7 @@ fsattach(char *spec)
 	FS(c)->uid = stbuf.st_uid;
 	FS(c)->mode = stbuf.st_mode;
 	lock(&l);
-	c->dev = devno++;
+	c->devno = devno++;
 	unlock(&l);
 	if (!emptystr(spec)){
 		FS(c)->spec = "/";
@@ -162,7 +162,7 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	}
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;
+		/* nc->dev remains nil for now */
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -203,8 +203,9 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 		wq->clone = nil;
 	}else if(wq->clone){
 		nc->aux = smalloc(sizeof(Fsinfo));
-		nc->type = c->type;
-		if (nname) {
+		devtabincref(c->dev);
+		nc->dev = c->dev;
+		if(nname) {
 			FS(nc)->gid = stbuf.st_gid;
 			FS(nc)->uid = stbuf.st_uid;
 			FS(nc)->mode = stbuf.st_mode;
@@ -1036,7 +1037,9 @@ Dev fsdevtab = {
 	'U',
 	"fs",
 
+	devreset,
 	devinit,
+	devshutdown,
 	fsattach,
 	fswalk,
 	fsstat,

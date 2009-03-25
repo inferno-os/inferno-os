@@ -148,7 +148,7 @@ ip3gen(Chan *c, int i, Dir *dp)
 	Conv *cv;
 	char *p;
 
-	cv = ipfs[c->dev]->p[PROTO(c->qid)]->conv[CONV(c->qid)];
+	cv = ipfs[c->devno]->p[PROTO(c->qid)]->conv[CONV(c->qid)];
 	if(cv->owner == nil)
 		kstrdup(&cv->owner, eve);
 	mkqid(&q, QID(PROTO(c->qid), CONV(c->qid), i), 0, QTFILE);
@@ -207,7 +207,7 @@ ip1gen(Chan *c, int i, Dir *dp)
 	Fs *f;
 	extern ulong	kerndate;
 
-	f = ipfs[c->dev];
+	f = ipfs[c->devno];
 
 	prot = 0664;
 	mkqid(&q, QID(0, 0, i), 0, QTFILE);
@@ -219,7 +219,7 @@ ip1gen(Chan *c, int i, Dir *dp)
 		break;
 	case Qndb:
 		p = "ndb";
-		len = strlen(ipfs[c->dev]->ndb);
+		len = strlen(ipfs[c->devno]->ndb);
 		break;
 /*	case Qiproute:
 		p = "iproute";
@@ -252,13 +252,13 @@ ipgen(Chan *c, char *name, Dirtab *tab, int x, int s, Dir *dp)
 	USED(name);
 	USED(tab);
 	USED(x);
-	f = ipfs[c->dev];
+	f = ipfs[c->devno];
 
 	switch(TYPE(c->qid)) {
 	case Qtopdir:
 		if(s == DEVDOTDOT){
 			mkqid(&q, QID(0, 0, Qtopdir), 0, QTDIR);
-			sprint(up->genbuf, "#I%lud", c->dev);
+			sprint(up->genbuf, "#I%ud", c->devno);
 			devdir(c, q, up->genbuf, 0, network, 0555, dp);
 			return 1;
 		}
@@ -280,7 +280,7 @@ ipgen(Chan *c, char *name, Dirtab *tab, int x, int s, Dir *dp)
 	case Qprotodir:
 		if(s == DEVDOTDOT){
 			mkqid(&q, QID(0, 0, Qtopdir), 0, QTDIR);
-			sprint(up->genbuf, "#I%lud", c->dev);
+			sprint(up->genbuf, "#I%ud", c->devno);
 			devdir(c, q, up->genbuf, 0, network, 0555, dp);
 			return 1;
 		}
@@ -356,7 +356,7 @@ ipattach(char *spec)
 
 	c = devattach('I', spec);
 	mkqid(&c->qid, QID(0, 0, Qtopdir), 0, QTDIR);
-	c->dev = 0;
+	c->devno = 0;
 
 	return c;
 }
@@ -391,7 +391,7 @@ ipopen(Chan *c, int omode)
 
 	perm = m2p[omode&3];
 
-	f = ipfs[c->dev];
+	f = ipfs[c->devno];
 
 	switch(TYPE(c->qid)) {
 	default:
@@ -526,7 +526,7 @@ ipclose(Chan *c)
 {
 	Fs *f;
 
-	f = ipfs[c->dev];
+	f = ipfs[c->devno];
 	switch(TYPE(c->qid)) {
 	case Qdata:
 	case Qctl:
@@ -546,7 +546,7 @@ ipread(Chan *ch, void *a, long n, vlong off)
 	Fs *f;
 	ulong offset = off;
 
-	f = ipfs[ch->dev];
+	f = ipfs[ch->devno];
 
 	p = a;
 	switch(TYPE(ch->qid)) {
@@ -816,7 +816,7 @@ ipwrite(Chan *ch, void *a, long n, vlong off)
 	Cmdbuf *cb;
 	Fs *f;
 
-	f = ipfs[ch->dev];
+	f = ipfs[ch->devno];
 
 	switch(TYPE(ch->qid)) {
 	default:
@@ -932,7 +932,7 @@ ipwstat(Chan *c, uchar *dp, int n)
 	Proto *p;
 	Fs *f;
 
-	f = ipfs[c->dev];
+	f = ipfs[c->devno];
 	switch(TYPE(c->qid)) {
 	default:
 		error(Eperm);
@@ -1071,7 +1071,9 @@ Dev ipdevtab = {
 	'I',
 	"ip",
 
+	devreset,
 	ipinit,
+	devshutdown,
 	ipattach,
 	ipwalk,
 	ipstat,

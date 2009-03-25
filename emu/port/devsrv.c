@@ -662,7 +662,7 @@ srvf2c(char *dir, char *file, Sys_FileIO *io)
 		error(Efilename);
 
 	c.c = namec(dir, Aaccess, 0, 0);
-	if((c.c->qid.type&QTDIR) == 0 || devtab[c.c->type]->dc != 's')
+	if((c.c->qid.type&QTDIR) == 0 || c.c->dev->dc != 's')
 		error("directory not a srv device");
 
 	s = c.c->aux;
@@ -709,7 +709,9 @@ Dev srvdevtab = {
 	's',
 	"srv",
 
+	devreset,
 	srvinit,
+	devshutdown,
 	srvattach,
 	srvwalk,
 	srvstat,

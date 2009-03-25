@@ -158,8 +158,9 @@ Dev tkdevtab = {
 	L'τ',
 	"tk",
 
-//	devreset,
+	devreset,
 	devinit,
+	devshutdown,
 	tkattach,
 //	devdetach,
 	devclone,

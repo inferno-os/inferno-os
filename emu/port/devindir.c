@@ -30,6 +30,8 @@ Dev indirdevtab = {
 	'*',
 	"indir",
 
+	devreset,
 	devinit,
+	devshutdown,
 	indirattach,
 };

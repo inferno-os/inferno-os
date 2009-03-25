@@ -16,9 +16,10 @@ readfc(void *a, void *buf, long nbytes)
 
 	if(waserror())
 		return -1;
-	nbytes = devtab[c->type]->read(c, buf, nbytes, c->offset);
+	nbytes = c->dev->read(c, buf, nbytes, c->offset);
 	poperror();
 	return nbytes;
+	devshutdown,
 }
 
 static vlong

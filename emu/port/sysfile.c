@@ -92,9 +92,9 @@ kchanio(void *vc, void *buf, int n, int mode)
 		return -1;
 
 	if(mode == OREAD)
-		r = devtab[c->type]->read(c, buf, n, c->offset);
+		r = c->dev->read(c, buf, n, c->offset);
 	else
-		r = devtab[c->type]->write(c, buf, n, c->offset);
+		r = c->dev->write(c, buf, n, c->offset);
 
 	lock(&c->l);
 	c->offset += r;
@@ -255,7 +255,7 @@ kfstat(int fd, uchar *buf, int n)
 		return -1;
 	}
 	c.c = fdtochan(up->env->fgrp, fd, -1, 0, 1);
-	devtab[c.c->type]->stat(c.c, buf, n);
+	c.c->dev->stat(c.c, buf, n);
 	poperror();
 	cclose(c.c);
 	return n;
@@ -351,14 +351,12 @@ kfversion(int fd, uint msize, char *vers, uint arglen)
 int
 kpipe(int fd[2])
 {
-	Dev *d;
 	Fgrp *f;
 	Chan *c[2];
 	static char *names[] = {"data", "data1"};
 
 	f = up->env->fgrp;
 
-	d = devtab[devno('|', 0)];
 	c[0] = namec("#|", Atodir, 0, 0);
 	c[1] = 0;
 	fd[0] = -1;
@@ -379,8 +377,8 @@ kpipe(int fd[2])
 		error(Egreg);
 	if(walk(&c[1], &names[1], 1, 1, nil) < 0)
 		error(Egreg);
-	c[0] = d->open(c[0], ORDWR);
-	c[1] = d->open(c[1], ORDWR);
+	c[0] = c[0]->dev->open(c[0], ORDWR);
+	c[1] = c[1]->dev->open(c[1], ORDWR);
 	fd[0] = newfd(c[0]);
 	if(fd[0] < 0)
 		error(Enofd);
@@ -403,7 +401,7 @@ kfwstat(int fd, uchar *buf, int n)
 	}
 	validstat(buf, n);
 	c.c = fdtochan(up->env->fgrp, fd, -1, 1, 1);
-	n = devtab[c.c->type]->wstat(c.c, buf, n);
+	n = c.c->dev->wstat(c.c, buf, n);
 	poperror();
 	cclose(c.c);
 	return n;
@@ -455,11 +453,13 @@ kmount(int fd, int afd, char *old, int flags, char *spec)
 	volatile struct { Chan *c; } c0;
 	volatile struct { Chan *c; } bc;
 	volatile struct { Chan *c; } ac;
+	volatile struct { Dev *d; } dev;
 	Mntparam mntparam;
 
 	ac.c = nil;
 	bc.c = nil;
 	c0.c = nil;
+	dev.d = nil;
 	if(waserror()) {
 		cclose(ac.c);
 		cclose(bc.c);
@@ -473,7 +473,14 @@ kmount(int fd, int afd, char *old, int flags, char *spec)
 	mntparam.authchan = ac.c;
 	mntparam.spec = spec;
 	mntparam.flags = flags;
-	c0.c = devtab[devno('M', 0)]->attach((char*)&mntparam);
+	dev.d = devtabget('M', 0);
+	if(waserror()){
+		devtabput(dev.d);
+		nexterror();
+	}
+	c0.c = dev.d->attach((char*)&mntparam);
+	poperror();
+	devtabput(dev.d);
 
 	r = bindmount(c0.c, old, flags, spec);
 	poperror();
@@ -562,10 +569,10 @@ unionread(Chan *c, void *va, long n)
 		if(mount->to && !waserror()) {
 			if(c->umc == nil){
 				c->umc = cclone(mount->to);
-				c->umc = devtab[c->umc->type]->open(c->umc, OREAD);
+				c->umc = c->umc->dev->open(c->umc, OREAD);
 			}
 	
-			nr = devtab[c->umc->type]->read(c->umc, va, n, c->umc->offset);
+			nr = c->umc->dev->read(c->umc, va, n, c->umc->offset);
 			if(nr < 0)
 				nr = 0;	/* dev.c can return -1 */
 			c->umc->offset += nr;
@@ -641,7 +648,7 @@ rread(int fd, void *va, long n, vlong *offp)
 			}
 			unionrewind(c.c);
 		}
-		n = devtab[c.c->type]->read(c.c, va, n, off);
+		n = c.c->dev->read(c.c, va, n, off);
 		lock(cl);
 		c.c->offset += n;
 		unlock(cl);
@@ -676,16 +683,20 @@ kremove(char *path)
 
 	c.c = namec(path, Aremove, 0, 0);
 	if(waserror()){
-		c.c->type = 0;	/* see below */
+		if(c.c->dev != nil){
+			devtabput(c.c->dev);
+			c.c->dev = nil;	/* see below */
+		}
 		cclose(c.c);
 		nexterror();
 	}
-	devtab[c.c->type]->remove(c.c);
+	c.c->dev->remove(c.c);
 	/*
 	 * Remove clunks the fid, but we need to recover the Chan
-	 * so fake it up.  rootclose() is known to be a nop.
+	 * so discard the association with the current device.
 	 */
-	c.c->type = 0;
+	devtabput(c.c->dev);
+	c.c->dev = nil;
 	poperror();
 	cclose(c.c);
 
@@ -708,7 +719,7 @@ kseek(int fd, vlong off, int whence)
 		nexterror();
 	}
 
-	if(devtab[c->type]->dc == '|')
+	if(c->dev->dc == '|')
 		error(Eisstream);
 
 	switch(whence) {
@@ -801,7 +812,7 @@ kstat(char *path, uchar *buf, int n)
 		return -1;
 	}
 	c.c = namec(path, Aaccess, 0, 0);
-	devtab[c.c->type]->stat(c.c, buf, n);
+	c.c->dev->stat(c.c, buf, n);
 	poperror();
 	cclose(c.c);
 	return 0;
@@ -847,7 +858,7 @@ rwrite(int fd, void *va, long n, vlong *offp)
 	}
 	if(off < 0)
 		error(Enegoff);
-	m = devtab[c.c->type]->write(c.c, va, n, off);
+	m = c.c->dev->write(c.c, va, n, off);
 	poperror();
 
 	if(offp == nil && m < n){
@@ -887,7 +898,7 @@ kwstat(char *path, uchar *buf, int n)
 	}
 	validstat(buf, n);
 	c.c = namec(path, Aaccess, 0, 0);
-	n = devtab[c.c->type]->wstat(c.c, buf, n);
+	n = c.c->dev->wstat(c.c, buf, n);
 	poperror();
 	cclose(c.c);
 	return n;
@@ -914,7 +925,7 @@ chandirstat(Chan *c)
 			free(d);
 			return nil;
 		}
-		n = devtab[c->type]->stat(c, buf, nd);
+		n = c->dev->stat(c, buf, nd);
 		poperror();
 		if(n < BIT16SZ){
 			free(d);

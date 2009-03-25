@@ -333,20 +333,7 @@ consread(Chan *c, void *va, long n, vlong offset)
 		return readstr(offset, va, n, buf);
 
 	case Qdrivers:
-		p = malloc(READSTR);
-		if(p == nil)
-			error(Enomem);
-		l = 0;
-		for(i = 0; devtab[i] != nil; i++)
-			l += snprint(p+l, READSTR-l, "#%C %s\n", devtab[i]->dc,  devtab[i]->name);
-		if(waserror()){
-			free(p);
-			nexterror();
-		}
-		n = readstr(offset, va, n, p);
-		poperror();
-		free(p);
-		return n;
+		return devtabread(c, buf, n, off);
 
 	case Qmemory:
 		return poolread(va, n, offset);
@@ -611,7 +598,9 @@ Dev consdevtab = {
 	'c',
 	"cons",
 
+	devreset,
 	consinit,
+	devshutdown,
 	consattach,
 	conswalk,
 	consstat,

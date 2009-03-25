@@ -453,7 +453,6 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	}
 	if(nc == nil){
 		nc = devclone(c);
-		nc->type = 0;
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -528,7 +527,8 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 		wq->clone = nil;
 	}else if(wq->clone){
 		nc->aux = smalloc(sizeof(Fsinfo));
-		nc->type = c->type;
+		devtabincref(c->dev);
+		nc->dev = c->dev;
 		FS(nc)->spec = FS(c)->spec;
 		FS(nc)->srv = FS(c)->srv;
 		FS(nc)->name = current;

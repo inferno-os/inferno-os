@@ -2000,7 +2000,9 @@ Dev drawdevtab = {
 	'i',
 	"draw",
 
+	devreset,
 	devinit,
+	devshutdown,
 	drawattach,
 	drawwalk,
 	drawstat,
