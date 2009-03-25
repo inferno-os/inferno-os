@@ -283,8 +283,7 @@ consclose(Chan *c)
 static long
 consread(Chan *c, void *va, long n, vlong offset)
 {
-	ulong l;
-	int i, send;
+	int send;
 	char *p, buf[64], ch;
 
 	if(c->qid.type & QTDIR)
@@ -333,7 +332,7 @@ consread(Chan *c, void *va, long n, vlong offset)
 		return readstr(offset, va, n, buf);
 
 	case Qdrivers:
-		return devtabread(c, buf, n, off);
+		return devtabread(c, buf, n, offset);
 
 	case Qmemory:
 		return poolread(va, n, offset);
