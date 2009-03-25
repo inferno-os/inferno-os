@@ -1,0 +1,19 @@
+<../mkconfig
+
+all:V:	all-$HOSTMODEL
+install:V:	install-$HOSTMODEL
+safeinstall:V:	safeinstall-$HOSTMODEL
+clean:V:	clean-$HOSTMODEL
+nuke:V:	nuke-$HOSTMODEL
+
+&-Posix:QV:
+	echo "(cd $SYSTARG; mk $MKFLAGS $stem)"
+	(cd $SYSTARG; mk $MKFLAGS $stem) || exit 1
+
+&-Nt:QV:
+	echo '@{builtin cd' $SYSTARG '; mk $MKFLAGS $stem}'
+	@{builtin cd $SYSTARG; mk $MKFLAGS $stem }
+
+&-Plan9:QV:
+	echo '@{builtin cd' $SYSTARG '; mk $MKFLAGS $stem}'
+	@{builtin cd $SYSTARG; mk $MKFLAGS $stem }

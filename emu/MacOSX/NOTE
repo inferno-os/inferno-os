@@ -1,0 +1,4 @@
+-	still interp mode only, jit not complete
+-	mkfile uses Carbon only; mkfile-x11 uses X11R6 from Apple
+-	both powerpc and x86 versions compiled from this source
+-	mkfile-g doesn't include graphics (uses emu-g not emu as configuration)

@@ -1,0 +1,36 @@
+# do not edit; automatically generated
+
+%	mem
+*	indir
+/	root
+A	audio
+C	cmd
+D	ssl
+F	tinyfs
+I	ip
+M	mnt
+P	prof
+U	fs
+^	snarf
+a	arch
+c	cons
+d	dup
+e	env
+i	draw
+m	pointer
+p	prog
+s	srv
+|	pipe
+τ	tk
+₪	srv9
+
+α	local use
+β	local use
+γ	local use
+δ	local use
+ε	local use
+ζ	local use
+η	local use
+θ	local use
+ι	local use
+κ	local use

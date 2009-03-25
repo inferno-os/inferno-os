@@ -1,0 +1,17 @@
+#
+#	architecture-dependent files for OpenBSD
+#
+
+LDFLAGS=
+
+TARGFILES=devfs-posix.$O\
+	deveia-OpenBSD.$O\
+	devip.$O\
+	ipif-posix.$O\
+	os-OpenBSD.$O\
+	win-x11.$O\
+	srv.$O\
+	lock.$O\
+	asm-OpenBSD-$OBJTYPE.$O
+
+SYSLIBS=/usr/X11R6/lib/libX11.a -lm 
