@@ -1,3 +1,5 @@
+20090330
+	include appl/cmd/ssh source (won't compile here because it needs the keyring changes)
 20090325
 	emu/* adopt changes to Chan (Dev* dev pointer instead of int type)
 20090320
