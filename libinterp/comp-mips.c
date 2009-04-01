@@ -15,6 +15,10 @@
 #define	JR(op,r)		gen((op)|((r)<<21))
 #define	J(op,c)			gen((op)|(((ulong)(c)>>2)&0x3FFFFFFUL))
 
+#ifndef HIOFFSET
+#define	HIOFFSET	0	/* big endian */
+#endif
+
 enum
 {
 	Rzero	= 0,
@@ -111,6 +115,9 @@ enum
 	OMASK	= (1<<4) - 1,
 	REV1	= 1<<4,
 	REV2	= 1<<5,
+
+	Bhi		= HIOFFSET,
+	Blo		= Bhi ^ 4,
 
 	MacRET	= 0,
 	MacFRP,
@@ -620,9 +627,9 @@ cbral(Inst *i, int op, int mode)
 	cp = 0;
 	op1(i, Olea, Ri, 0);
 	op2(i, Olea, Rj, 0);
-	IRR(Olw, 0,Ri, Ro1);
-	IRR(Olw, 0,Rj, Ro2);
-	IRR(Olw, 4,Ri, Ri);
+	IRR(Olw, Bhi,Ri, Ro1);
+	IRR(Olw, Bhi,Rj, Ro2);
+	IRR(Olw, Blo,Ri, Ri);
 
 	switch(mode & OMASK) {
 	case ANDAND:
@@ -633,7 +640,7 @@ cbral(Inst *i, int op, int mode)
 	case OROR:
 		BRRI(Obne, Ro2,Ro1, branch(i));
 	b1:
-		IRR(Olw, 4,Rj, Rj);
+		IRR(Olw, Blo,Rj, Rj);
 		delay();
 		BRRI(op, Rj,Ri, branch(i));
 		break;
@@ -644,7 +651,7 @@ cbral(Inst *i, int op, int mode)
 		else
 			RRR(Oslt, Ro1,Ro2, Ro3);
 		BRI(Obne, Ro3, branch(i));
-		IRR(Olw, 4,Rj, Rj);
+		IRR(Olw, Blo,Rj, Rj);
 		cp = code;
 		BRRI(Obne, Ro2,Ro1, 0);
 		if(mode & REV2)
@@ -697,24 +704,24 @@ shrl(Inst *i)
 	}
 	c = i->s.imm;
 	op2(i, Olea, Ro3, 1);
-	IRR(Olw, 0,Ro3, Ro1);
+	IRR(Olw, Bhi,Ro3, Ro1);
 	if(c >= 32) {
 		if((i->add&ARM) != AXNON)
 			op3(i, Olea, Ro3, 0);
 		else
 			delay();
 		SRR(Osra, 31, Ro1, Ro2);
-		IRR(Osw, 0,Ro3, Ro2);
+		IRR(Osw, Bhi,Ro3, Ro2);
 		if(c >= 64) {
-			IRR(Osw, 4,Ro3, Ro2);
+			IRR(Osw, Blo,Ro3, Ro2);
 			return;
 		}
 		if(c > 32)
 			SRR(Osra, c-32, Ro1, Ro1);
-		IRR(Osw, 4,Ro3, Ro1);
+		IRR(Osw, Blo,Ro3, Ro1);
 		return;
 	}
-	IRR(Olw, 4,Ro3, Ro2);
+	IRR(Olw, Blo,Ro3, Ro2);
 	if((i->add&ARM) != AXNON)
 		op3(i, Olea, Ro3, !c);
 	if(c != 0) {
@@ -723,8 +730,8 @@ shrl(Inst *i)
 		SRR(Osrl, c, Ro2, Ro2);
 		RRR(Oor, Ri, Ro2, Ro2);
 	}
-	IRR(Osw, 4,Ro3, Ro2);
-	IRR(Osw, 0,Ro3, Ro1);
+	IRR(Osw, Blo,Ro3, Ro2);
+	IRR(Osw, Bhi,Ro3, Ro1);
 }
 
 static void
@@ -739,23 +746,23 @@ shll(Inst *i)
 	c = i->s.imm;
 	if(c >= 64) {
 		op3(i, Olea, Ro3, 1);
-		IRR(Osw, 0,Ro3, Rzero);
-		IRR(Osw, 4,Ro3, Rzero);
+		IRR(Osw, Bhi,Ro3, Rzero);
+		IRR(Osw, Blo,Ro3, Rzero);
 		return;
 	}
 	op2(i, Olea, Ro3, 1);
 	if(c >= 32) {
-		IRR(Olw, 4,Ro3, Ro1);
+		IRR(Olw, Blo,Ro3, Ro1);
 		if((i->add&ARM) != AXNON)
 			op3(i, Olea, Ro3, 1);
-		IRR(Osw, 4,Ro3, Rzero);
+		IRR(Osw, Blo,Ro3, Rzero);
 		if(c > 32)
 			SRR(Osll, c-32, Ro1, Ro1);
-		IRR(Osw, 0,Ro3, Ro1);
+		IRR(Osw, Bhi,Ro3, Ro1);
 		return;
 	}
-	IRR(Olw, 4,Ro3, Ro2);
-	IRR(Olw, 0,Ro3, Ro1);
+	IRR(Olw, Blo,Ro3, Ro2);
+	IRR(Olw, Bhi,Ro3, Ro1);
 	if((i->add&ARM) != AXNON)
 		op3(i, Olea, Ro3, !c);
 	if(c != 0) {
@@ -764,8 +771,8 @@ shll(Inst *i)
 		SRR(Osll, c, Ro1, Ro1);
 		RRR(Oor, Ri, Ro1, Ro1);
 	}
-	IRR(Osw, 4,Ro3, Ro2);
-	IRR(Osw, 0,Ro3, Ro1);
+	IRR(Osw, Blo,Ro3, Ro2);
+	IRR(Osw, Bhi,Ro3, Ro1);
 }
 
 static void
@@ -913,7 +920,7 @@ comp(Inst *i)
 		break;
 	case ICVTLW:
 		op1(i, Olea, Ro1, 1);
-		IRR(Olw, 4,Ro1, Ro1);
+		IRR(Olw, Blo,Ro1, Ro1);
 		delay();
 		op3(i, Osw, Ro1, 0);
 		break;
@@ -921,8 +928,8 @@ comp(Inst *i)
 		op1(i, Olw, Ro1, 0);
 		op3(i, Olea, Ro2, 0);
 		SRR(Osra, 31, Ro1, Ro3);
-		IRR(Osw, 4,Ro2, Ro1);
-		IRR(Osw, 0,Ro2, Ro3);
+		IRR(Osw, Blo,Ro2, Ro1);
+		IRR(Osw, Bhi,Ro2, Ro3);
 		break;
 	case IHEADM:
 		op1(i, Olw, Ro1, 1);
@@ -1030,8 +1037,8 @@ comp(Inst *i)
 		break;
 	case ICVTFW:
 		op1(i, Olea, Ro1, 1);
-		IRR(Olf, 0,Ro1, Rf2+1);
-		IRR(Olf, 4,Ro1, Rf2);
+		IRR(Olf, Bhi,Ro1, Rf2+1);
+		IRR(Olf, Blo,Ro1, Rf2);
 		delay();
 		FRRR(Ocvtfw, 0, Rf2, Rf2);
 		op3(i, Olea, Ro2, 1);
@@ -1043,17 +1050,17 @@ comp(Inst *i)
 		delay();
 		FRRR(Ocvtwf, 0, Rf2, Rf2);
 		op3(i, Olea, Ro2, 1);
-		IRR(Osf, 0,Ro2, Rf2+1);
-		IRR(Osf, 4,Ro2, Rf2);
+		IRR(Osf, Bhi,Ro2, Rf2+1);
+		IRR(Osf, Blo,Ro2, Rf2);
 		break;
 	case INEGF:
 		op1(i, Olea, Ro1, 1);
-		IRR(Olf, 0,Ro1, Rf1+1);
-		IRR(Olf, 4,Ro1, Rf1);
+		IRR(Olf, Bhi,Ro1, Rf1+1);
+		IRR(Olf, Blo,Ro1, Rf1);
 		op3(i, Olea, Ro2, 1);
 		FRRR(Onegf, 0, Rf1,Rf2);
-		IRR(Osf, 0,Ro2, Rf2+1);
-		IRR(Osf, 4,Ro2, Rf2);
+		IRR(Osf, Bhi,Ro2, Rf2+1);
+		IRR(Osf, Blo,Ro2, Rf2);
 		break;
 	case IXORL:
 	case IORL:
@@ -1063,10 +1070,10 @@ comp(Inst *i)
 		op1(i, Olea, Ro1, 0);
 		op2(i, Olea, Ro3, 0);
 
-		IRR(Olw, 4,Ro1, Rj);	/* ls */
-		IRR(Olw, 4,Ro3, Ro2);
-		IRR(Olw, 0,Ro1, Ri);	/* ms */
-		IRR(Olw, 0,Ro3, Ro1);
+		IRR(Olw, Blo,Ro1, Rj);	/* ls */
+		IRR(Olw, Blo,Ro3, Ro2);
+		IRR(Olw, Bhi,Ro1, Ri);	/* ms */
+		IRR(Olw, Bhi,Ro3, Ro1);
 
 		switch(i->op) {
 		case IXORL:
@@ -1096,8 +1103,8 @@ comp(Inst *i)
 		}
 		if((i->add&ARM) != AXNON)
 			op3(i, Olea, Ro3, 1);
-		IRR(Osw, 0,Ro3, Ro1);
-		IRR(Osw, 4,Ro3, Ro2);
+		IRR(Osw, Bhi,Ro3, Ro1);
+		IRR(Osw, Blo,Ro3, Ro2);
 		break;
 	case ISHLL:
 		shll(i);
@@ -1117,10 +1124,10 @@ comp(Inst *i)
 	case IBNEF:
 		op1(i, Olea, Ro1, 0);
 		op2(i, Olea, Ro2, 0);
-		IRR(Olf, 0,Ro1, Rf1+1);
-		IRR(Olf, 4,Ro1, Rf1);
-		IRR(Olf, 0,Ro2, Rf2+1);
-		IRR(Olf, 4,Ro2, Rf2);
+		IRR(Olf, Bhi,Ro1, Rf1+1);
+		IRR(Olf, Blo,Ro1, Rf1);
+		IRR(Olf, Bhi,Ro2, Rf2+1);
+		IRR(Olf, Blo,Ro2, Rf2);
 		switch(i->op) {
 		case IADDF:	o = Oaddf; goto f1;
 		case ISUBF:	o = Osubf; goto f1;
@@ -1135,8 +1142,8 @@ comp(Inst *i)
 		f1:
 			op3(i, Olea, Ro1, 0);
 			FRRR(o, Rf1,Rf2, Rf2);
-			IRR(Osf, 0,Ro1, Rf2+1);
-			IRR(Osf, 4,Ro1, Rf2);
+			IRR(Osf, Bhi,Ro1, Rf2+1);
+			IRR(Osf, Blo,Ro1, Rf2);
 			break;
 		f2:
 			delay();

@@ -13,8 +13,8 @@ struct	Vlong
 	{
 		struct
 		{
-			ulong	hi;
 			ulong	lo;
+			ulong	hi;
 		};
 	};
 };
@@ -46,6 +46,7 @@ _subv(Vlong *r, Vlong a, Vlong b)
 	r->lo = lo;
 	r->hi = hi;
 }
+
 
 void
 _d2v(Vlong *y, double d)
@@ -106,7 +107,6 @@ _d2v(Vlong *y, double d)
 void
 _f2v(Vlong *y, float f)
 {
-
 	_d2v(y, f);
 }
 
@@ -131,7 +131,7 @@ _v2f(Vlong x)
 }
 
 static void
-dodiv(Vlong num, Vlong den, Vlong *qp, Vlong *rp)
+dodiv(Vlong num, Vlong den, Vlong *q, Vlong *r)
 {
 	ulong numlo, numhi, denhi, denlo, quohi, quolo, t;
 	int i;
@@ -182,13 +182,13 @@ dodiv(Vlong num, Vlong den, Vlong *qp, Vlong *rp)
 		denhi >>= 1;
 	}
 
-	if(qp) {
-		qp->lo = quolo;
-		qp->hi = quohi;
+	if(q) {
+		q->lo = quolo;
+		q->hi = quohi;
 	}
-	if(rp) {
-		rp->lo = numlo;
-		rp->hi = numhi;
+	if(r) {
+		r->lo = numlo;
+		r->hi = numhi;
 	}
 }
 
@@ -415,8 +415,7 @@ _vasop(Vlong *ret, void *lv, void fn(Vlong*, Vlong, Vlong), int type, Vlong rv)
 {
 	Vlong t, u;
 
-	u.lo = 0;
-	u.hi = 0;
+	u = *ret;
 	switch(type) {
 	default:
 		abort();

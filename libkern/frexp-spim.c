@@ -9,8 +9,8 @@ typedef	union
 	double	d;
 	struct
 	{
-		long	ms;
 		long	ls;
+		long	ms;
 	};
 } Cheat;
 

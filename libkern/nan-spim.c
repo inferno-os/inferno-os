@@ -13,8 +13,8 @@ NaN(void)
 		long	x[2];
 	} a;
 
-	a.x[0] = NANEXP;
-	a.x[1] = 1;
+	a.x[1] = NANEXP;
+	a.x[0] = 1;
 	return a.d;
 }
 
@@ -28,7 +28,7 @@ isNaN(double d)
 	} a;
 
 	a.d = d;
-	if((a.x[0] & NANMASK) != NANEXP)
+	if((a.x[1] & NANMASK) != NANEXP)
 		return 0;
 	return !isInf(d, 0);
 }
@@ -42,10 +42,10 @@ Inf(int sign)
 		long	x[2];
 	} a;
 
-	a.x[0] = NANEXP;
-	a.x[1] = 0;
+	a.x[1] = NANEXP;
+	a.x[0] = 0;
 	if(sign < 0)
-		a.x[0] |= NANSIGN;
+		a.x[1] |= NANSIGN;
 	return a.d;
 }
 
@@ -59,11 +59,11 @@ isInf(double d, int sign)
 	} a;
 
 	a.d = d;
-	if(a.x[1] != 0)
+	if(a.x[0] != 0)
 		return 0;
-	if(a.x[0] == NANEXP)
+	if(a.x[1] == NANEXP)
 		return sign >= 0;
-	if(a.x[0] == (NANEXP|NANSIGN))
+	if(a.x[1] == (NANEXP|NANSIGN))
 		return sign <= 0;
 	return 0;
 }
