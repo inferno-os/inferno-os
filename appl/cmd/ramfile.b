@@ -32,7 +32,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	path := hd tl argv;
 	(dir, f) := pathsplit(path);
 
-	if (sys->bind("#s", dir, Sys->MBEFORE|Sys->MCREATE) == -1) {
+	if (sys->bind("#s", dir, Sys->MBEFORE) == -1) {
 		sys->fprint(stderr, "ramfile: %r\n");
 		return;
 	}

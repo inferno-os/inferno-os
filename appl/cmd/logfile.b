@@ -63,7 +63,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	path := hd argv;
 
 	(dir, f) := pathsplit(path);
-	if (sys->bind("#s", dir, Sys->MBEFORE|Sys->MCREATE) == -1) {
+	if (sys->bind("#s", dir, Sys->MBEFORE) == -1) {
 		sys->fprint(stderr, "logfile: bind #s failed: %r\n");
 		return;
 	}
