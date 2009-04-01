@@ -21,6 +21,14 @@ Linux
 		bin
 		include
 		lib
+	arm
+		bin
+		include
+		lib
+	spim
+		bin
+		include
+		lib
 MacOSX
 	386
 		bin

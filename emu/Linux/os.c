@@ -128,7 +128,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 
 	if(flags & KPX11){
 		p->kstack = nil;	/* never freed; also up not defined */
-		tos = (char*)mallocz(X11STACK, 0) + X11STACK - sizeof(void*);
+		tos = (char*)mallocz(X11STACK, 0) + X11STACK - sizeof(vlong);
 	}else
 		p->kstack = stackalloc(p, &tos);
 
@@ -291,6 +291,10 @@ cleanexit(int x)
 void
 osreboot(char *file, char **argv)
 {
+	if(dflag == 0)
+		termrestore();
+	execvp(file, argv);
+	error("reboot failure");
 }
 
 void
@@ -517,7 +521,7 @@ stackalloc(Proc *p, void **tos)
 	rv = stacklist.free;
 	stacklist.free = *(void **)rv;
 	unlock(&stacklist.l);
-	*tos = rv + KSTACK - sizeof(void *);
+	*tos = rv + KSTACK - sizeof(vlong);
 	*(Proc **)rv = p;
 	return rv;
 }

@@ -1,0 +1,8 @@
+#!/bin/sh
+
+OPENWRT=$HOME/OpenWrt-SDK-Linux-i686-1
+INFERNO=/usr/inferno
+
+PATH=$OPENWRT/staging_dir_mipsel/bin:$INFERNO/Linux/386/bin:$PATH
+
+mk OBJTYPE=spim CONF=emu-wrt CONFLIST=emu-wrt SYSLIBS=-lm WIN= $*

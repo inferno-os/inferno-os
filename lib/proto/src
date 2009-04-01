@@ -97,6 +97,7 @@ libdynld
 	dynld-mips.c
 	dynld-power.c
 	dynld-sparc.c
+	dynld-spim.c
 	dynld.c
 	dynloadfd.c
 	mkfile

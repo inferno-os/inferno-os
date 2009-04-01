@@ -1372,9 +1372,8 @@ dtoa(double d, int mode, int ndigits, int *decpt, int *sign, char **rve)
 #else
 	if (i = (int)(word0(d) >> Exp_shift1 & (Exp_mask >> Exp_shift1))) {
 #endif
-		d2 = d;
-		word0(d2) &= Frac_mask1;
-		word0(d2) |= Exp_11;
+		word0(d2) = (word0(d) & Frac_mask1) | Exp_11;
+		word1(d2) = word1(d);
 
 		/* log(x)	~=~ log(1.5) + (x-1.5)/1.5
 		 * log10(x)	 =  log(x) / log(10)
