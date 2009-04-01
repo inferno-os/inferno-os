@@ -16,7 +16,7 @@ fninline(d: ref Decl): int
 	left, right: ref Node;
 
 	n := d.init;
-	if(dontinline || d.inline < byte 0 || d.locals != nil || ispoly(d) || n.ty.tof.kind == Tnone || nodes(n) >= 100)
+	if(dontinline || d.inline == byte -1 || d.locals != nil || ispoly(d) || n.ty.tof.kind == Tnone || nodes(n) >= 100)
 		return 0;
 	n = n.right;
 	if(n.op == Oseq && n.right == nil)
