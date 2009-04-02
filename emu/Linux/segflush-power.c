@@ -1,9 +1,15 @@
+#include <sys/types.h>
+#include <sys/syscall.h>
+
+#include "dat.h"
+
+
 /*
  * from geoff collyer's port
  * invalidate instruction cache and write back data cache from a to a+n-1,
  * at least.
  */
-void
+int
 segflush(void *a, ulong n)
 {
     ulong *p;
@@ -24,4 +30,5 @@ segflush(void *a, ulong n)
             : // no output
             :
             );
+	return 0;
 }

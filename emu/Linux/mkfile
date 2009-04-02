@@ -12,6 +12,8 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 
 #end configurable parameters
 
+X11LIBS= -lX11 -lXext	# can remove or override using env section in config files
+
 <$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
 
 <| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $PORT, $LIBS
@@ -19,6 +21,7 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 OBJ=\
 	asm-$OBJTYPE.$O\
 	os.$O\
+	segflush-$OBJTYPE.$O\
 	$CONF.root.$O\
 	lock.$O\
 	$DEVS\
@@ -30,7 +33,7 @@ LIBNAMES=${LIBS:%=lib%.a}
 HFILES=\
 
 CFLAGS='-DROOT="'$ROOT'"' -DEMU -I. -I../port -I$ROOT/$SYSTARG/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp $CTHREADFLAGS $CFLAGS $EMUOPTIONS
-SYSLIBS= -lm -lX11 -lXext
+SYSLIBS= $X11LIBS -lm
 KERNDATE=`{$NDATE}
 
 default:V:	$O.$CONF

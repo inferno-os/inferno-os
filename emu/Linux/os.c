@@ -525,15 +525,3 @@ stackalloc(Proc *p, void **tos)
 	*(Proc **)rv = p;
 	return rv;
 }
-
-#ifdef LINUX_ARM
-#define	SYS_cacheflush	__ARM_NR_cacheflush
-
-int
-segflush(void *a, ulong n)
-{
-	if(n)
-		syscall(SYS_cacheflush, a, (char*)a+n-1, 1);
-	return 0;
-}
-#endif
