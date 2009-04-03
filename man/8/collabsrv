@@ -2,7 +2,7 @@
 .SH NAME
 collabsrv \- multi-user collaboration
 .SH SYNOPSIS
-.B collabsrv/collabsrv
+.B collab/collabsrv
 [
 .BI "-f " keyfile
 ] [
@@ -11,11 +11,11 @@ collabsrv \- multi-user collaboration
 .I dir
 ]
 .PP
-.B collabsrv/servers/chatsrv
+.B collab/servers/chatsrv
 .PP
-.B collabsrv/servers/mpx
+.B collab/servers/mpx
 .PP
-.B collabsrv/servers/wbsrv
+.B collab/servers/wbsrv
 .SH DESCRIPTION
 .I Collabsrv
 listens on network address
@@ -136,7 +136,7 @@ names a Dis file implementing that service;
 path names are interpreted relative to
 .BR /services/collab ,
 but usually refer to files in
-.BR /dis/collabsrv/servers .
+.BR /dis/collab/servers .
 .PP
 Each
 .I collabsrv
@@ -321,14 +321,14 @@ active service directory
 .B /services/collab/services.cfg
 maps service names to modules
 .TP
-.B /dis/collabsrv/servers
+.B /dis/collab/servers
 service implementation modules
 .SH SOURCE
 .B /appl/collabsrv
 .br
-.B /appl/collabsrv/servers
+.B /appl/collab/servers
 .br
-.B /appl/collabsrv/lib
+.B /appl/collab/lib
 .SH SEE ALSO
 .IR collab (1),
 .IR collab-clients (1)
