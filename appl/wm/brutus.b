@@ -1718,7 +1718,7 @@ widget(parent: ref Tk->Toplevel, ctxt: ref Draw->Context, cfg: array of string):
 tkcmds(top: ref Tk->Toplevel, a: array of string)
 {
 	for(i := 0; i < len a; i++)
-		v := tk->cmd(top, a[i]);
+		v := tkcmd(top, a[i]);
 }
 
 confirm(ctxt: ref Draw->Context, parent: ref Tk->Toplevel, message: string, write: int): string
@@ -1735,8 +1735,17 @@ confirm1(ctxt: ref Draw->Context, parent: ref Tk->Toplevel, message: string, wri
 	if(write == 0)
 		tkcmd(t, "destroy .f.exitclean");
 	tkcmd(t, UPDATE);
+	tkclient->onscreen(t, "onscreen");
 	cmd := chan of string;
 	tk->namechan(t, cmd, "cmd");
+	tkclient->onscreen(t, "exact");
+	tkclient->startinput(t, "ptr"::nil);
+	for(;;) alt {
+		s := <-t.ctxt.ptr =>
+			tk->pointer(t, *s);
+		c := <-cmd =>
+			return c;
+	}
 	return <-cmd;
 }
 
@@ -1843,17 +1852,26 @@ tageditor(ctxt: ref Draw->Context, f: ref File)
 	t := widget(f.tk, ctxt, cfg[0:i]);
 	cmd := chan of string;
 	tk->namechan(t, cmd, "cmd");
+	tkclient->onscreen(t, "exact");
+	tkclient->startinput(t, "kbd"::"ptr"::nil);
 
     loop:
 	for(;;){
-		case c := <-cmd {
-		"ok" =>
-			break loop;
-		"cancel" =>
-			return;
-		* =>
-			j = int c;
-			set[j] = (tkcmd(t, "variable c"+c) == "1");
+		alt{
+		s := <-t.ctxt.kbd =>
+			tk->keyboard(t, s);
+		s := <-t.ctxt.ptr =>
+			tk->pointer(t, *s);
+		c := <-cmd =>
+			case c {
+			"ok" =>
+				break loop;
+			"cancel" =>
+				return;
+			* =>
+				j = int c;
+				set[j] = (tkcmd(t, "variable c"+c) == "1");
+			}
 		}
 	}
 	for(j=0; j<NEXTRA; j++){

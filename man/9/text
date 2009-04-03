@@ -376,7 +376,7 @@ first character on that display line.
 If this option is specified as an empty string, it cancels
 the option, leaving it unspecified for the tag (the default).
 If the option is specified as a non-empty string that is
-an empty list, such as \f5-tags\0{\0}\fR, then it requests
+an empty list, such as \f5-tabs\0{\0}\fR, then it requests
 default 8-character tabs as described for the \f5tabs\fR
 widget option.
 .TP

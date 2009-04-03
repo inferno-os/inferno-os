@@ -1,5 +1,6 @@
 20090403
 	change ,2 to ,#function in Solaris sparc assembler files (apparently works in gcc and sun's)
+	make appl/wm/brutus.b pass input to its widgets (issue 105)
 20090402
 	add missing emu/Linux/segflush-*.c files and remove ARM segflush from os.c
 20090402

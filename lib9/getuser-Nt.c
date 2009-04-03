@@ -3,7 +3,6 @@
 char*
 getuser(void)
 {
-	static char *user = 0;
-	user = "unknown";
-	return user;
+	/* could do better, but result isn't really used */
+	return "unknown";
 }
