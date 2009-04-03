@@ -1,3 +1,21 @@
+20090403
+	change ,2 to ,#function in Solaris sparc assembler files (apparently works in gcc and sun's)
+20090402
+	add missing emu/Linux/segflush-*.c files and remove ARM segflush from os.c
+20090402
+	ramfile and logfile shouldn't set Sys->MCREATE (issue 137)
+20090401
+	appl/cmd/limbo/typecheck.b check correctly for function prevented from inline expansion
+20090330
+	use (low, high) order for words in vlong and fp on arm: libinterp/comp-arm.c, Inferno/arm/include/^(lib9.h u.h)
+		also os/*/fpi.h (for arm platforms), exchanging order of ulongs in Double
+		also libkern/^(vlrt-arm.c vlop-arm.s vlop-thumb.s frexp-arm.c frexp-thumb.c)
+	include changes from richard miller for little-endian mips (spim) and Linux/spim hosted
+	libmath/dtoa.c: use simpler code to avoid gcc bug on mips and perhaps other platforms (rmiller)
+20090330-branches/forse
+	include appl/cmd/ssh source (won't compile here because it needs the keyring changes)
+20090325-branches/forse
+	emu/* adopt changes to Chan (Dev* dev pointer instead of int type)
 20090320
 	emu/port/win-x11a.c: unintuitively use xdisplay not xkbdcon to send to kbdproc (with big stack) to change cursor
 		(the big stack is needed because XCreateBitmapFromData and XPutImage pass control to theme-related code that uses lots of stack space)
