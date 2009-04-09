@@ -1,6 +1,11 @@
+20090409
+	tools/odbc/odbc.c data read should return 0 if no columns or rows (issue 170)
+20090408
+	tools/odbc/odbc.c use strecpy and more care in allocation (issue 169)
 20090403
 	change ,2 to ,#function in Solaris sparc assembler files (apparently works in gcc and sun's)
 	make appl/wm/brutus.b pass input to its widgets (issue 105)
+	enable fullscreen mode in MacOSX (issue 148)
 20090402
 	add missing emu/Linux/segflush-*.c files and remove ARM segflush from os.c
 20090402

@@ -210,7 +210,8 @@ odbcerror(Conv *cv, int lasterr)
 	return cv->errmsg;
 }
 
-char *odbcsources(Client *c)
+char*
+odbcsources(Client *c)
 {
 	int ss, i;
 	char server[SQL_MAX_DSN_LENGTH+1];
@@ -225,7 +226,7 @@ char *odbcsources(Client *c)
 				source, sizeof(source), &sourcelen);
 		if (ss != SQL_SUCCESS)
 			break;
-		sprint(buff, "%s:%s\n", server, source);
+		snprint(buff, sizeof(buff), "%s:%s\n", server, source);
 		if (i == 0)
 			all = strdup(buff);
 		else {
@@ -248,7 +249,7 @@ sqlerr(Conv *c, int sqlstatus, char *errp, char *func, char *sqlcall)
 	errp[0] = 0;
 	e = "failed";
 	if (sqlstatus == SQL_ERROR || sqlstatus == SQL_SUCCESS_WITH_INFO)
-		strcat(errp, odbcerror(c, 0));
+		strecpy(errp, errp+ERRMAX, odbcerror(c, 0));
 	if (sqlstatus == SQL_SUCCESS_WITH_INFO)
 		e = "info";
 	if (sqlstatus != SQL_SUCCESS)
@@ -525,7 +526,7 @@ odbcdataread(Conv *c, void *a, long n, ulong offset, char *ename)
 		return -1;
 	}
 	if (s->cols == 0 || s->rec == 0)
-		return -1;
+		return 0;
 	p = a;
 	left = n;
 	if (c->headings) {
@@ -609,7 +610,7 @@ odbcfmtread(Conv *c, void *a, long n, ulong offset, char *ename)
 	for(i=0; i<s->ncols; i++){
 		Coltype *t = &s->cols[i];
 
-		len = sprint(buf, "%ld %ld %s\n", off, off+t->size, t->name);
+		len = snprint(buf, sizeof(buf), "%ld %ld %s\n", off, off+t->size, t->name);
 		off += t->size;
 		if(left < len)
 			break;
@@ -788,7 +789,7 @@ protoclone(Proto *p, char *user)
 	c->errmsg[0] = 0;
 
 	nr = QID(0, c->x, Qconvdir);
-	sprint(buf, "%d", c->x);
+	snprint(buf, sizeof(buf), "%d", c->x);
 	styxadddir(iserver, Qprotodir, nr, buf, 0555, c->owner);
 	styxaddfile(iserver, nr, QID(0, c->x, Qcmd), "cmd", c->perm, c->owner);
 	styxaddfile(iserver, nr, QID(0, c->x, Qctl), "ctl", c->perm, c->owner);
@@ -904,7 +905,7 @@ dbclose(Qid qid, int mode)
 	return nil;
 }
 
-static char ebuf[128];
+static char ebuf[ERRMAX];
 
 char*
 dbread(Qid qid, char *ba, ulong *n, vlong offset)
@@ -931,7 +932,7 @@ dbread(Qid qid, char *ba, ulong *n, vlong offset)
 	case Qconvdir:
 		return "bad read of directory";
 	case Qctl:
-		sprint(buf, "%ld", CONV(qid));
+		snprint(buf, sizeof(buf), "%ld", CONV(qid));
 		*n = readstr(offset, p, m, buf);
 		return nil;
 	case Qstatus:
@@ -1093,7 +1094,7 @@ dbwrite(Qid qid, char *ba, ulong *n, vlong offset)
 }
 
 void
-badusage()
+badusage(void)
 {
 	fprint(2, "Usage: odbc [-d] [-p port]\n");
 	exit(1);
