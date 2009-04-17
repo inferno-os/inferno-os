@@ -614,6 +614,7 @@ appl
 		look.b
 		ls.b
 		lstar.b
+		m4.b
 		man2html.b
 		man2txt.b
 		manufacture.b
@@ -1242,8 +1243,6 @@ appl
 			spider.b
 			spit.b
 			whist.b
-		man
-			+
 		lib
 			allow.b
 			allow.m
@@ -1755,6 +1754,7 @@ dis
 	lookman
 	ls.dis
 	lstar.dis
+	m4.dis
 	man
 	man2html.dis
 	man2txt.dis

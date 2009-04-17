@@ -1,0 +1,233 @@
+.TH M4 1 
+.SH NAME
+m4 \- macro processor
+.SH SYNOPSIS
+.B m4
+[
+.BI -D name = value
+] [
+.BI -U name
+] [
+.I file
+\&...
+]
+.SH DESCRIPTION
+.I M4
+is a general-purpose macro processor.
+It copies text from each of the input
+.I files
+in order (or standard input by default), and writes the processed text to the standard output.
+.PP
+Macro calls
+have the form
+.IP
+.IB name ( arg1,\ arg2,\ ...,\ argn )
+.PP
+The `(' must immediately follow the name of the macro.
+If a defined macro name is not followed by a `(',
+it is deemed to have no arguments.
+Leading unquoted blanks, tabs, and newlines are ignored while collecting arguments.
+A comma within a nested parenthesis is part of an argument value, not an argument separator.
+Potential macro names consist of alphabetic letters, Unicode characters,
+digits, and underscore `\_', where the first character is not a digit.
+.PP
+The left and right single quotes(ie, grave and acute accents \`\|\' ) are used to quote strings.
+Because the left and right quotes are distinct, quoted strings may nest.
+The value of a quoted string is the string stripped of the outermost quotes.
+.PP
+When
+.I m4
+recognises a macro name, followed by a `(', it collects arguments up to a matching right parenthesis.
+Macro evaluation proceeds normally during this collection, and the text produced by those macro calls
+is interpreted exactly as if it had been in the original input stream (in place of the corresponding macro call).
+Thus, any commas or right parentheses within the value of a nested
+call are as effective as those in the original input text.
+(Remember however that commas within
+.I nested
+parentheses are not argument separators.)
+After argument collection,
+the value of the macro is pushed back onto the input stream
+and rescanned.
+.PP
+.I M4
+makes available the following built-in macros.
+They may be redefined, but once this is done the original meaning is lost.
+Their values are null unless otherwise stated.
+.TF changequote
+.TP
+changecom
+Change the starting and ending delimiters for subsequent comments to the first and second arguments.
+If the second argument is missing or an empty string, comments will be ended by newline.
+If there are no arguments, there are no comments.
+.TP
+changequote
+Change quote characters to the first and second arguments.
+.I Changequote
+without arguments restores the original values of
+.BR `\|' .
+.TP
+define
+The second argument is installed as the value of the macro
+whose name is the first argument.
+When the macro is later called (expanded),
+each occurrence in the replacement text of
+.BI $ n,
+where
+.I n
+is a digit,
+is replaced by the
+.IR n -th
+argument of that macro call.
+Argument 0 is the name of the macro;
+missing arguments are replaced by the null string.
+If the macro value is the same as its name, or the value is simply
+.BR $0 ,
+the result is the macro name.
+.TP
+divert
+.I M4
+maintains 10 output streams,
+numbered 0-9.
+The final output is the concatenation of the streams
+in numerical order;
+initially stream 0 is the current stream.
+The
+.I divert
+macro changes the current output stream to its (digit-string)
+argument.
+Output diverted to a stream other than 0 through 9
+is discarded.
+.TP
+divnum
+Returns the value of the current output stream.
+.TP
+dnl
+Reads and discards characters up to and including the next newline.
+.TP
+dumpdef
+Prints current names and definitions,
+for the named items, or for all if no arguments are given.
+.TP
+errprint
+Prints its argument
+on the diagnostic output file.
+.TP
+eval
+Evaluates its argument as an arithmetic expression, using 32-bit arithmetic.
+Operators are those of Limbo: the binary operators
+.BR || ,
+.BR && ,
+.BR | ,
+.BR ^ ,
+.BR & ,
+.BR "== !=" ,
+.BR "< > >= <=" ,
+.B "<< >>"
+(arithmetic shifts),
+.BR "+ -" ,
+.BR "* / %" ,
+.BR "**" " (power)";
+the unary operators
+.BR + ,
+.BR - ,
+.BR ~ ,
+.BR ! ;
+and parenthesis.
+The operator precedence is the same as in Limbo.
+Right shifts are signed.
+.TP
+ifdef
+If the first argument is defined, the value is the second argument, otherwise the third.
+If there is no third argument, the value is null.
+The word
+.B inferno
+is predefined with
+.RB ` inferno '
+as its replacement text.
+.TP
+ifelse
+Has three or more arguments.
+If the first argument is the same string as the second,
+then the value is the third argument.
+If not, the process is repeated with arguments 4, 5, 6 and so on, in groups of three.
+If no match is found, the result is the remaining argument (not part of a group of three),
+or null if none is present.
+.TP
+include
+Returns the contents of the file named in the argument.
+.TP
+incr
+Returns the value of its argument incremented by 1.
+The value of the argument is calculated
+by interpreting an initial digit-string as a decimal number.
+.TP
+index
+Returns the position in its first argument where the second argument begins (zero origin),
+or \-1 if the second argument does not occur.
+.TP
+len
+Returns the number of characters in its argument.
+.TP
+maketemp
+Returns its first argument after replacing any trailing XXXs by the current host name, process ID, and a unique letter.
+Normally used to create unique temporary file names.
+.TP
+sinclude
+The same as
+.I include,
+except that it
+says nothing if the file is inaccessible.
+.TP
+substr
+Returns a substring of its first argument.
+The second argument is a zero origin
+number selecting the first character;
+the third argument indicates the length of the substring.
+A missing third argument is taken to be large enough to extend to
+the end of the first string.
+\"	.TP
+\"	syscmd
+\"	executes the shell command given in the first argument.
+\"	No value is returned.
+.TP
+translit
+Transliterates the characters in its first argument
+from the set given by the second argument to the set given by the third.
+No abbreviations are permitted.
+.TP
+undefine
+Removes the definition of the macro named in its argument.
+.TP
+undivert
+Causes immediate output of text from diversions named as
+arguments, or all diversions if no argument.
+Text may be undiverted into another diversion.
+Undiverting discards the diverted text.
+.PD
+.PP
+.I M4
+interprets the
+.B -D
+and
+.B -U
+command line options after installing the predefined macro set.
+The
+.B -D
+option defines
+.I name
+as a macro with the given
+.IR value .
+The
+.B -U
+option
+.I undefines
+the given macro
+.IR name ,
+which may be one of the predefined macros.
+.PP
+.I M4
+in Inferno is more closely related to the original version in Seventh Edition UNIX
+than the more elaborate relatives in System V and POSIX.
+.SH "SEE ALSO"
+B. W. Kernighan and D. M. Ritchie,
+.I The M4 Macro Processor

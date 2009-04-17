@@ -5,6 +5,7 @@ DIRS=\
 	auxi\
 	avr\
 	disk\
+	fs\
 	install\
 	ip\
 	lego\
@@ -13,8 +14,11 @@ DIRS=\
 	mk\
 	mpc\
 	ndb\
+	owen\
+	scheduler\
 	sh\
 	spki\
+	ssh\
 	usb\
 
 TARG=\
@@ -88,6 +92,7 @@ TARG=\
 	look.dis\
 	ls.dis\
 	lstar.dis\
+	m4.dis\
 	man2html.dis\
 	man2txt.dis\
 	mc.dis\
@@ -153,6 +158,7 @@ TARG=\
 	touchcal.dis\
 	tokenize.dis\
 	tr.dis\
+	trfs.dis\
 	tsort.dis\
 	unicode.dis\
 	units.dis\
@@ -171,7 +177,6 @@ TARG=\
 	wmimport.dis\
 	xargs.dis\
 	xd.dis\
-	xmount.dis\
 	yacc.dis\
 	zeros.dis\
 
