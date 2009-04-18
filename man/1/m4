@@ -31,9 +31,20 @@ A comma within a nested parenthesis is part of an argument value, not an argumen
 Potential macro names consist of alphabetic letters, Unicode characters,
 digits, and underscore `\_', where the first character is not a digit.
 .PP
-The left and right single quotes(ie, grave and acute accents \`\|\' ) are used to quote strings.
+Comments begin with the
+.B #
+character and extend to the end of that line; the characters in a comment are copied to the current
+output stream unchanged.
+The comment start and end sequences may be changed using the
+.B changecom
+call described below.
+.PP
+The left and right single quotes (ie, grave and acute accents \`\|\' ) are used to quote strings.
 Because the left and right quotes are distinct, quoted strings may nest.
 The value of a quoted string is the string stripped of the outermost quotes.
+The left and right quote characters may be changed using the
+.B changequote
+call described below.
 .PP
 When
 .I m4
@@ -80,9 +91,10 @@ is replaced by the
 argument of that macro call.
 Argument 0 is the name of the macro;
 missing arguments are replaced by the null string.
-If the macro value is the same as its name, or the value is simply
+If the macro value is the same as its name, or the value is
 .BR $0 ,
 the result is the macro name.
+To prevent expansion of a name when redefining a macro, quote the first argument.
 .TP
 divert
 .I M4
@@ -113,7 +125,9 @@ Prints its argument
 on the diagnostic output file.
 .TP
 eval
-Evaluates its argument as an arithmetic expression, using 32-bit arithmetic.
+Evaluates its argument as an arithmetic expression, using 32-bit arithmetic,
+and returns the result as a signed decimal integer.
+The only literals are decimal integers.
 Operators are those of Limbo: the binary operators
 .BR || ,
 .BR && ,
@@ -133,7 +147,7 @@ the unary operators
 .BR ~ ,
 .BR ! ;
 and parenthesis.
-The operator precedence is the same as in Limbo.
+Operator precedence is the same as in Limbo.
 Right shifts are signed.
 .TP
 ifdef
@@ -226,8 +240,9 @@ the given macro
 which may be one of the predefined macros.
 .PP
 .I M4
-in Inferno is more closely related to the original version in Seventh Edition UNIX
-than the more elaborate relatives in System V and POSIX.
+in Inferno is more closely related to the original
+.I m4
+in Seventh Edition UNIX than its more elaborate relatives in System V and POSIX.
 .SH "SEE ALSO"
 B. W. Kernighan and D. M. Ritchie,
 .I The M4 Macro Processor
