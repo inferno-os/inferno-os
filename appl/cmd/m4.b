@@ -9,6 +9,8 @@ include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
 
+include "sh.m";
+
 include "arg.m";
 
 M4: module
@@ -50,6 +52,7 @@ rquote := '\'';
 initcom := "#";
 endcom := "\n";
 bout: ref Iobuf;
+sh: Sh;
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -78,6 +81,7 @@ init(nil: ref Draw->Context, args: list of string)
 	builtin("maketemp", domaketemp);
 	builtin("sinclude", dosinclude);
 	builtin("substr", dosubstr);
+	builtin("syscmd", dosyscmd);
 	builtin("translit", dotranslit);
 	builtin("undefine", doundefine);
 	builtin("undivert", doundivert);
@@ -670,6 +674,23 @@ domaketemp(args: array of string)
 		pushs(mktemp(args[1]));
 }
 
+dosyscmd(args: array of string)
+{
+	if(len args > 1){
+		{
+			if(sh == nil){
+				sh = load Sh Sh->PATH;
+				if(sh == nil)
+					raise sys->sprint("load: can't load %s: %r", Sh->PATH);
+			}
+			sh->system(nil, args[1]);
+		}exception e{
+		"load:*" =>
+			error(e);
+		}
+	}
+}
+
 sysname: string;
 
 mktemp(s: string): string
@@ -685,7 +706,9 @@ mktemp(s: string): string
 			break;
 		}
 	# add system name, process ID and 'a'
-	s += sys->sprint(".%s.%.10uda", sysname, sys->pctl(0, nil));
+	if(s != nil)
+		s += ".";
+	s += sys->sprint("%s.%.10uda", sysname, sys->pctl(0, nil));
 	while(sys->stat(s).t0 >= 0){
 		if(s[len s-1] == 'z')
 			error("out of temp files: "+s);

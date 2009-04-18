@@ -199,10 +199,15 @@ number selecting the first character;
 the third argument indicates the length of the substring.
 A missing third argument is taken to be large enough to extend to
 the end of the first string.
-\"	.TP
-\"	syscmd
-\"	executes the shell command given in the first argument.
-\"	No value is returned.
+.TP
+syscmd
+Runs the first argument as an
+.IR sh (1)
+command.
+No value is returned.
+Note that the output of a command can be redirected to a temporary file named by
+.BR maketemp ,
+included, and then removed.
 .TP
 translit
 Transliterates the characters in its first argument
