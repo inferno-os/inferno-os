@@ -77,9 +77,19 @@ Change quote characters to the first and second arguments.
 without arguments restores the original values of
 .BR `\|' .
 .TP
+copydef
+The second argument is installed with the value of the macro
+named by the first argument,
+which may be a built-in macro.
+Typically both arguments are quoted to prevent too early expansion.
+A macro can be renamed using
+.B copydef
+followed by
+.BR undefine .
+.TP
 define
 The second argument is installed as the value of the macro
-whose name is the first argument.
+named by the first argument.
 When the macro is later called (expanded),
 each occurrence in the replacement text of
 .BI $ n,

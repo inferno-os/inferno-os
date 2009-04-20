@@ -65,6 +65,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	builtin("changecom", dochangecom);
 	builtin("changequote", dochangequote);
+	builtin("copydef", docopydef);
 	builtin("define", dodefine);
 	builtin("divert", dodivert);
 	builtin("divnum", dodivnum);
@@ -457,6 +458,20 @@ doundefine(args: array of string)
 		undefine(args[i]);
 }
 
+docopydef(args: array of string)
+{
+	if(len args > 2 && args[1] != args[2]){
+		undefine(args[2]);
+		if((n := lookup(args[1])) != nil){
+			if(n.impl == nil)
+				define(args[2], n.repl);
+			else
+				builtin(args[2], n.impl);
+		}else
+			define(args[2], "");
+	}
+}
+
 doeval(args: array of string)
 {
 	if(len args > 1)
@@ -683,6 +698,7 @@ dosyscmd(args: array of string)
 				if(sh == nil)
 					raise sys->sprint("load: can't load %s: %r", Sh->PATH);
 			}
+			bout.flush();
 			sh->system(nil, args[1]);
 		}exception e{
 		"load:*" =>
