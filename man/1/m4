@@ -6,6 +6,8 @@ m4 \- macro processor
 [
 .BI -D name = value
 ] [
+.BI -Q name = value
+] [
 .BI -U name
 ] [
 .I file
@@ -235,17 +237,24 @@ Undiverting discards the diverted text.
 .PD
 .PP
 .I M4
-interprets the
-.B -D
-and
-.B -U
-command line options after installing the predefined macro set.
+interprets its command line options after installing the predefined macro set.
 The
 .B -D
 option defines
 .I name
 as a macro with the given
-.IR value .
+.IR value ;
+.B -Q
+defines
+.I name
+as a macro with the given
+.IR value
+that is regarded as always quoted (ie, is never rescanned).
+Neither
+.B -D
+nor
+.B -Q
+may change a predefined macro.
 The
 .B -U
 option

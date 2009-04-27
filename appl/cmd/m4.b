@@ -25,6 +25,7 @@ Name: adt {
 	repl:	string;
 	impl:	ref fn(nil: array of string);
 	dol:	int;	# repl contains $[0-9]
+	asis:	int;	# replacement text not rescanned
 
 	text:	fn(n: self ref Name): string;
 };
@@ -61,7 +62,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	bout = bufio->fopen(sys->fildes(1), Sys->OWRITE);
 
-	define("inferno", "inferno");
+	define("inferno", "inferno", 0);
 
 	builtin("changecom", dochangecom);
 	builtin("changequote", dochangequote);
@@ -88,20 +89,15 @@ init(nil: ref Draw->Context, args: list of string)
 	builtin("undivert", doundivert);
 
 	arg := load Arg Arg->PATH;
-	arg->setusage("m4 [-Dname[=value]] [-Uname] [file ...]");
+	arg->setusage("m4 [-Dname[=value]] [-Qname[=value]] [-Uname] [file ...]");
 	arg->init(args);
 
 	while((o := arg->opt()) != 0){
 		case o {
 		'D' =>
-			s := arg->earg();
-			for(i := 0; i < len s; i++)
-				if(s[i] == '='){
-					define(s[0: i], s[i+1:]);
-					break;
-				}
-			if(i == len s)
-				define(s[0: i], "");
+			argdefine(arg->earg(), 0);
+		'Q' =>
+			argdefine(arg->earg(), 1);
 		'U' =>
 			undefine(arg->earg());
 		* =>
@@ -124,6 +120,20 @@ init(nil: ref Draw->Context, args: list of string)
 		scan();
 	}
 	bout.flush();
+}
+
+argdefine(s: string, asis: int)
+{
+	text := "";
+	for(i := 0; i < len s; i++)
+		if(s[i] == '='){
+			text = s[i+1:];
+			break;
+		}
+	n := lookup(s[0: i]);
+	if(n != nil && n.impl != nil)
+		error(sys->sprint("can't redefine built-in %s", s[0: i]));
+	define(s[0: i], text, asis);
 }
 
 scan()
@@ -169,7 +179,7 @@ called(c: int)
 		puts(tok);
 		return;
 	}
-	if(c != '('){	# no parameters
+	if(c != '(' || def.asis){	# no parameters
 		pushc(c);
 		expand(def, array[] of {tok});
 		return;
@@ -292,24 +302,22 @@ hash(name: string): int
 builtin(name: string, impl: ref fn(nil: array of string))
 {
 	h := hash(name);
-	n := ref Name(name, nil, impl, 0);
+	n := ref Name(name, nil, impl, 0, 0);
 	names[h] = n :: names[h];
 }
 
-define(name: string, repl: string)
+define(name: string, repl: string, asis: int)
 {
 	h := hash(name);
 	dol := hasdol(repl);
 	for(l := names[h]; l != nil; l = tl l){
 		n := hd l;
 		if(n.name == name){
-			n.impl = nil;
-			n.repl = repl;
-			n.dol = dol;
+			*n = Name(name, repl, nil, dol, asis);
 			return;
 		}
 	}
-	n := ref Name(name, repl, nil, dol);
+	n := ref Name(name, repl, nil, dol, asis);
 	names[h] = n :: names[h];
 }
 
@@ -447,9 +455,9 @@ hasdol(s: string): int
 dodefine(args: array of string)
 {
 	if(len args > 2)
-		define(args[1], args[2]);
+		define(args[1], args[2], 0);
 	else if(len args > 1)
-		define(args[1], "");
+		define(args[1], "", 0);
 }
 
 doundefine(args: array of string)
@@ -464,11 +472,11 @@ docopydef(args: array of string)
 		undefine(args[2]);
 		if((n := lookup(args[1])) != nil){
 			if(n.impl == nil)
-				define(args[2], n.repl);
+				define(args[2], n.repl, n.asis);
 			else
 				builtin(args[2], n.impl);
 		}else
-			define(args[2], "");
+			define(args[2], "", 0);
 	}
 }
 
