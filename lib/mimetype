@@ -1,4 +1,6 @@
-#suffix		generic type	specific type	encoding	safe?
+#suffix		generic type	specific type	encoding	safe? y=yes, m=maybe, n=no, p=previous.suffix, r=mailreject
+.3gp		video		3gpp		-		y
+.3gpp		video		3gpp		-		y
 .C		text		plain		-		y # C++ program
 .Z		-		-		compress	m
 .a		application	octet-stream	-		y
@@ -8,6 +10,7 @@
 .aifc		audio		x-aiff		-		y
 .aiff		audio		x-aiff		-		y
 .asf		video		x-ms-asf	-		m # MS streaming
+.asc		application	text		-		y # sometimes application/pgp-signature
 .asx		video		x-ms-asf	-		m # MS streaming
 .au		audio		basic		-		y # sun audio
 .avi		video		x-msvideo	-		m
@@ -18,6 +21,7 @@
 .bcpio		application	x-bcpio		-		m
 .bib		text		plain		-		y # BibTex input
 .bmp		image		bmp		-		y # bitmapped image
+.bz2		-		-		bzip2		m # bzipped file
 .c		text		plain		-		y # C program
 .c++		text		plain		-		y # C++ program
 .cacert		application	x-x509-ca-cert	-		y # DER X.509 CA certificate
@@ -26,6 +30,7 @@
 .class		application	java		-		y # Java bytecodes
 .com		application	octet-stream	-		r # DOS executable
 .cpio		application	x-cpio		-		y
+.cpl		application	octet-stream	-		r # Windows Control Panel Applet
 .cpp		text		plain		-		y # DOS C++ program
 .crt		application	x-x509-ca-cert	-		y # DER X.509 CA certificate
 .css		text		css		-		m
@@ -45,23 +50,27 @@
 .f90		text		plain		-		y # fortran-90 program
 .flc		video		x-flc		-		m
 .fli		video		x-fli		-		m
+.gcd		text		x-pcs-gcd	-		y	# helper file for .qcp
 .gif		image		gif		-		y
 .gtar		application	x-gtar		-		m
 .gz		-		-		gzip		m # gzipped file
 .h		text		plain		-		y # C header file
 .hdf		application	x-hdf		-		y
+.hdml		text		x-hdml		-		y
 .hqx		application	octet-stream	-		m # Mac BinHex
 .htm		text		html		-		m
 .html		text		html		-		m
 .ico		image		x-icon		-		y
 .ief		image		ief		-		y
-.jar		application	java-archive -		y
+.jad		text		vnd.sun.j2me.app-descriptor	-	y
+.jar		application	java-archive	-		y
 .jfif		image		jpeg		-		y
 .jfif-tbnl	image		jpeg		-		y
 .jpe		image		jpeg		-		y
 .jpeg		image		jpeg		-		y
 .jpg		image		jpeg		-		y
-.jpg		image		pjpeg		-		y
+#.jpg		image		pjpeg		-		y
+.js		application	x-javascript	-		y
 .latex		application	x-latex		-		y
 .ltx		application	x-latex		-		y
 .man		application	x-troff-man	-		y
@@ -80,12 +89,14 @@
 .o		application	octet-stream	-		y
 .oda		application	oda		-		m
 .p		text		plain			-	y # Pascal program
+.p7m		application	x-pkcs7-mime		-	y # SMIME
 .p7s		application	x-pkcs7-signature	-	y # SMIME
 .pbm		image		x-portable-bitmap	-	y
 .pdf		application	pdf		-		y # Adobe Portable Document Format
 .pif		application	octet-stream	-		r # DOS executable
 .pgm		image		x-portable-graymap	-	y
 .pl		text		plain		-		y
+.png		image		png		-		y
 .pnm		image		x-portable-anymap	-	y
 .ppm		image		x-portable-pixmap	-	y
 .ppt		application	vnd.ms-powerpoint	-	n # Microsoft PowerPoint
@@ -114,6 +125,7 @@
 .suspect	application	octet-stream	-		y # upas/vf
 .sv4cpio	application	x-sv4cpio	-		m
 .sv4crc		application	x-sv4crc	-		y
+.swf		application	x-shockwave-flash		-		y
 .t		application	x-troff		-		y
 .tar		application	x-tar		-		m
 .tardist	application	x-tardist	-		n # SGI SoftwareManager
@@ -155,3 +167,4 @@
 -		application	x-gunzip	-		p # type for .tar.gz
 -		message		delivery-status	-		y # mail bounces
 -		application	pgp-signature	-		y
+-		application	pgp-encrypted	-		y
