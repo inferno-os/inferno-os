@@ -135,6 +135,7 @@ offdec: ref DeHuff;
 revtab: array of byte;	# bit reversal for endian swap of huffman codes
 mask: array of int;		# for masking low-order n bits of an int
 
+Hnone, Hgzip, Hzlib: con iota;  # State.headers
 State: adt {
 	ibuf, obuf: array of byte;
 	c: chan of ref Rq;
@@ -145,7 +146,8 @@ State: adt {
 	hist: array of byte;	# history buffer for lempel-ziv backward references
 	usehist: int;		# == 1 if 'hist' is valid
 	crctab: array of int;
-	crc, tot: int;
+	crc, tot: int;		# for gzip trailer
+	sum:	big;		# for zlib trailer
 	
 	reg: int;		# 24-bit shift register
 	nbits: int;		# number of valid bits in reg
@@ -226,9 +228,16 @@ start(params: string): chan of ref Rq
 	s.nbits = 0;
 	s.crc = 0;
 	s.tot = 0;
+	s.sum = big 1;
 	s.hist = array[Blocksize] of byte;
-	s.headers = (params != nil && params[0] == 'h');
-	if (s.headers)
+	s.headers = Hnone;
+	if(params != nil) {
+		if(params[0] == 'h')
+			s.headers = Hgzip;
+		if(params[0] == 'z')
+			s.headers = Hzlib;
+	}
+	if (s.headers == Hgzip)
 		s.crctab = mkcrctab(GZCRCPOLY);
 	spawn inflate(s);
 	return s.c;
@@ -237,8 +246,7 @@ start(params: string): chan of ref Rq
 inflate(s: ref State)
 {
 	s.c <-= ref Rq.Start(sys->pctl(0, nil));
-	if (s.headers)
-		header(s);
+	header(s);
 
 	for(;;) {
 		bfinal := getn(s, 1, 0);
@@ -268,23 +276,21 @@ inflate(s: ref State)
 		}
 		if(bfinal) {
 			if(s.out) {
-				if (s.headers)
-					outblock(s);
+				outblock(s);
 				s.c <- = ref Rq.Result(s.obuf[0:s.out], s.rc);
 				flag := <- s.rc;
 				if (flag == -1)
 					exit;
 			}
 			flushbits(s);
-			if (s.headers)
-				footer(s);
+			footer(s);
 			s.c <-= ref Rq.Finished(s.ibuf[s.in - s.nbits/8:s.ein]);
 			exit;
 		}
 	}
 }
 
-header(s: ref State)
+headergzip(s: ref State)
 {
 	if(byte getb(s) != GZMAGIC1 || byte getb(s) != GZMAGIC2)
 		fatal(s, "not a gzip file");
@@ -335,7 +341,33 @@ header(s: ref State)
 	}
 }
 
-footer(s: ref State)
+headerzlib(s: ref State)
+{
+	Fdict:		con 1<<5;
+	CMshift:	con 8;
+	CMmask:		con (1<<4)-1;
+	CMdeflate:	con 8;
+
+	h := 0;
+	h |= getb(s)<<8;
+	h |= getb(s);
+	if(h % 31 != 0)
+		fatal(s, "invalid zlib header");
+	if(h&Fdict)
+		fatal(s, "preset dictionary not supported");
+	if(((h>>CMshift)&CMmask) != CMdeflate)
+		fatal(s, "zlib compression method not deflate");
+}
+
+header(s: ref State)
+{
+	case s.headers {
+	Hgzip =>	headergzip(s);
+	Hzlib =>	headerzlib(s);
+	}
+}
+
+footergzip(s: ref State)
 {
 	fcrc := getword(s);
 	if(s.crc != fcrc)
@@ -343,6 +375,25 @@ footer(s: ref State)
 	ftot := getword(s);
 	if(s.tot != ftot)
 		fatal(s, sys->sprint("byte count mismatch: computed %d, expected %d", s.tot, ftot));
+}
+
+footerzlib(s: ref State)
+{
+	sum := big 0;
+	sum = (sum<<8)|big getb(s);
+	sum = (sum<<8)|big getb(s);
+	sum = (sum<<8)|big getb(s);
+	sum = (sum<<8)|big getb(s);
+	if(sum != s.sum)
+		fatal(s, sys->sprint("adler32 mismatch: computed %bux, expected %bux", s.sum, sum));
+}
+
+footer(s: ref State)
+{
+	case s.headers {
+	Hgzip =>	footergzip(s);
+	Hzlib =>	footerzlib(s);
+	}
 }
 
 getword(s: ref State): int
@@ -694,8 +745,7 @@ flushbits(s: ref State)
 #
 flushout(s: ref State)
 {
-	if (s.headers)
-		outblock(s);
+	outblock(s);
 	s.c <-= ref Rq.Result(s.obuf[0:s.out], s.rc);
 	flag := <- s.rc;
 	if (flag == -1)
@@ -723,7 +773,7 @@ mkcrctab(poly: int): array of int
 	return crctab;
 }
 
-outblock(s: ref State)
+outblockgzip(s: ref State)
 {
 	buf := s.obuf;
 	n := s.out;
@@ -733,6 +783,31 @@ outblock(s: ref State)
 		crc = s.crctab[int(byte crc ^ buf[i])] ^ ((crc >> 8) & 16r00ffffff);
 	s.crc = crc ^ int 16rffffffff;
 	s.tot += n;
+}
+
+outblockzlib(s: ref State)
+{
+	ZLADLERBASE:	con big 65521;
+
+	buf := s.obuf;
+	n := s.out;
+
+	s1 := s.sum & big 16rffff;
+	s2 := (s.sum>>16) & big 16rffff;
+
+	for(i := 0; i < n; i++) {
+		s1 = (s1 + big buf[i]) % ZLADLERBASE;
+		s2 = (s2 + s1) % ZLADLERBASE;
+	}
+	s.sum = (s2<<16) + s1;
+}
+
+outblock(s: ref State)
+{
+	case s.headers {
+	Hgzip =>	outblockgzip(s);
+	Hzlib =>	outblockzlib(s);
+	}
 }
 
 #

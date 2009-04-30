@@ -44,6 +44,10 @@ Add a gzip header and footer to the data. With this flag,
 the data after filtering will be in exactly the same
 format as a gzip file, with accompanying checksum.
 .TP
+.RB ` z '
+Add a zlib header and footer to the data.  The footer contains a
+checksum.
+.TP
 .RB ` 0 '\ to\ ` 9 '
 Specifies the level of compression to be used (9 highest). See
 .IR gzip (1).
@@ -59,8 +63,10 @@ argument to
 begins with the character
 .RB ` h '
 then the input to the filter is assumed to be in the
-standard gzip file format; the output will be checked
-for integrity. While processing, the
+standard gzip file format; if it starts with the character
+.RB ` z '
+it is assumed to be in zlib format; the output will be checked
+for integrity in both cases. While processing a gzip stream, the
 .B Rq.Info
 message is used to transmit some information; the type
 of information is determined by the first word of
@@ -87,3 +93,9 @@ original file before compression.
 .SH SEE ALSO
 .IR gzip (1),
 .IR filter (2)
+.br
+Internet RFCs
+.IR RFC1950 ,
+.IR RFC1951 ,
+and
+.IR RFC1952 .

@@ -42,6 +42,7 @@ GZCRCPOLY:	con int 16redb88320;
 GZOSINFERNO:	con GZOSUNIX;
 
 
+Hnone, Hgzip, Hzlib: con iota;  # LZstate.headers
 LZstate: adt
 {
 	hist:		array of byte;		# [HistSize];
@@ -56,11 +57,13 @@ LZstate: adt
 	prevoff:	int;
 	maxchars:	int;			# compressor tuning
 	maxdefer:	int;
+	level:		int;
 
-	crctab: array of int;
+	crctab: array of int;			# for gzip trailer
 	crc:		int;
 	tot:		int;
-	headers:	int;
+	sum:		big;			# for zlib trailer
+	headers:	int;			# which header to print, if any
 
 	outbuf:		array of byte;		# current output buffer;
 	out:		int;			# current position in the output buffer
@@ -287,22 +290,27 @@ start(param: string): chan of ref Rq
 {
 	# param contains flags:
 	# [0-9] - compression level
+	# h gzip header/trailer
+	# z zlib header/trailer
 	# v verbose
 	# d debug
 	lz := ref LZstate;
-	level := 6;
+	lz.level = 6;
 	lz.verbose = lz.debug = 0;
-	lz.headers = 0;
+	lz.headers = Hnone;
 	lz.crc = lz.tot = 0;
+	lz.sum = big 1;
 	# XXX could also put filename and modification time in param
 	for (i := 0; i < len param; i++) {
 		case param[i] {
 		'0' to '9' =>
-			level = param[i] - '0';
+			lz.level = param[i] - '0';
 		'v' =>
 			lz.verbose = 1;
 		'h' =>
-			lz.headers = 1;
+			lz.headers = Hgzip;
+		'z' =>
+			lz.headers = Hzlib;
 		'd' =>
 			lz.debug = 1;
 		}
@@ -345,17 +353,17 @@ start(param: string): chan of ref Rq
 	lz.dot = lz.me;
 	lz.bits = 0;
 	lz.nbits = 0;
-	if(level < 5) {
+	if(lz.level < 5) {
 		lz.maxchars = 1;
 		lz.maxdefer = 0;
-	} else if(level == 9) {
+	} else if(lz.level == 9) {
 		lz.maxchars = 4000;
 		lz.maxdefer = MaxMatch;
 	} else {
 		lz.maxchars = 200;
 		lz.maxdefer = MaxMatch / 4;
 	}
-	if (lz.headers)
+	if (lz.headers == Hgzip)
 		lz.crctab = mkcrctab(GZCRCPOLY);
 	lz.c = chan of ref Rq;
 	lz.rc = chan of int;
@@ -383,8 +391,7 @@ deflate(lz: ref LZstate)
 {
 	lz.c <-= ref Rq.Start(sys->pctl(0, nil));
 
-	if (lz.headers)
-		header(lz);
+	header(lz);
 	buf := array[DeflateBlock] of byte;
 	out := array[DeflateBlock + DeflateOut] of byte;
 	eof := 0;
@@ -393,8 +400,7 @@ deflate(lz: ref LZstate)
 		nbuf := 0;
 		if (!eof) {
 			(eof, nbuf) = fillbuf(lz, buf);
-			if (lz.headers)	# added by Roman Joel Pacheco
-				inblock(lz, buf[0:nbuf]);
+			inblock(lz, buf[0:nbuf]);
 		}
 		if(eof && nbuf == 0 && nslop == 0) {
 			if(lz.nbits) {
@@ -405,8 +411,7 @@ deflate(lz: ref LZstate)
 					exit;
 				continue;
 			}
-			if (lz.headers)
-				footer(lz);
+			footer(lz);
 			lz.c <-= ref Rq.Finished(nil);
 			exit;
 		}
@@ -538,7 +543,7 @@ deflate(lz: ref LZstate)
 	}
 }
 
-header(lz: ref LZstate)
+headergzip(lz: ref LZstate)
 {
 	buf := array[20] of byte;
 	i := 0;
@@ -569,7 +574,44 @@ header(lz: ref LZstate)
 		exit;
 }
 
-footer(lz: ref LZstate)
+headerzlib(lz: ref LZstate)
+{
+	CIshift:	con 12;
+	CMdeflate:	con 8;
+	CMshift:	con 8;
+	LVshift:	con 6;
+	LVfastest, LVfast, LVnormal, LVbest: con iota;
+
+	level := LVnormal;
+	if(lz.level < 6)
+		level = LVfastest;
+	else if(lz.level >= 9)
+		level = LVbest;
+
+	h := 0;
+	h |= 7<<CIshift; # value is: (log2 of window size)-8
+	h |= CMdeflate<<CMshift;
+	h |= level<<LVshift;
+	h += 31-(h%31);
+
+	buf := array[2] of byte;
+	buf[0] = byte (h>>8);
+	buf[1] = byte (h>>0);
+
+	lz.c <-= ref Rq.Result(buf, lz.rc);
+	if (<-lz.rc == -1)
+		exit;
+}
+
+header(lz: ref LZstate)
+{
+	case lz.headers {
+	Hgzip =>	headergzip(lz);
+	Hzlib =>	headerzlib(lz);
+	}
+}
+
+footergzip(lz: ref LZstate)
 {
 	buf := array[8] of byte;
 	i := 0;
@@ -585,6 +627,28 @@ footer(lz: ref LZstate)
 	lz.c <-= ref Rq.Result(buf[0:i], lz.rc);
 	if (<-lz.rc == -1)
 		exit;
+}
+
+footerzlib(lz: ref LZstate)
+{
+        buf := array[4] of byte;
+	i := 0;
+        buf[i++] = byte (lz.sum>>24);
+        buf[i++] = byte (lz.sum>>16);
+        buf[i++] = byte (lz.sum>>8);
+        buf[i++] = byte (lz.sum>>0);
+
+	lz.c <-= ref Rq.Result(buf, lz.rc);
+	if(<-lz.rc == -1)
+		exit;
+}
+
+footer(lz: ref LZstate)
+{
+	case lz.headers {
+	Hgzip =>	footergzip(lz);
+	Hzlib =>	footerzlib(lz);
+	}
 }
 
 lzput(lz: ref LZstate, bits, nbits: int): int
@@ -1349,7 +1413,7 @@ mkcrctab(poly: int): array of int
 	return crctab;
 }
 
-inblock(lz: ref LZstate, buf: array of byte)
+inblockcrc(lz: ref LZstate, buf: array of byte)
 {
 	crc := lz.crc;
 	n := len buf;
@@ -1358,6 +1422,28 @@ inblock(lz: ref LZstate, buf: array of byte)
 		crc = lz.crctab[int(byte crc ^ buf[i])] ^ ((crc >> 8) & 16r00ffffff);
 	lz.crc = crc ^ int 16rffffffff;
 	lz.tot += n;
+}
+
+inblockadler(lz: ref LZstate, buf: array of byte)
+{
+	ZLADLERBASE:	con big 65521;
+
+	s1 := lz.sum & big 16rffff;
+	s2 := (lz.sum>>16) & big 16rffff;
+
+	for(i := 0; i < len buf; i++) {
+		s1 = (s1 + big buf[i]) % ZLADLERBASE;
+		s2 = (s2 + s1) % ZLADLERBASE;
+	}
+	lz.sum = (s2<<16) + s1;
+}
+
+inblock(lz: ref LZstate, buf: array of byte)
+{
+	case lz.headers {
+	Hgzip =>	inblockcrc(lz, buf);
+	Hzlib =>	inblockadler(lz, buf);
+	}
 }
 
 fatal(lz: ref LZstate, s: string)
