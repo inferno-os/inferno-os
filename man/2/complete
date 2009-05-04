@@ -16,7 +16,7 @@ Completion: adt {
 
 init:     fn();
 complete: fn(dir, s: string): (ref Completion, string);
-.EX
+.EE
 .SH DESCRIPTION
 .B Complete
 implements file name completion.
