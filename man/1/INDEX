@@ -75,16 +75,20 @@ gettar gettar
 lstar gettar
 puttar gettar
 grep grep
-grid-localreg grid-localreg
-localreg grid-localreg
 grid-monitor grid-monitor
 monitor grid-monitor
+grid grid-ns
 grid-ns grid-ns
 ns grid-ns
+grid grid-query
 grid-query grid-query
 query grid-query
+grid grid-register
 grid-register grid-register
 register grid-register
+grid grid-session
+grid-session grid-session
+session grid-session
 gunzip gzip
 gzip gzip
 idea idea
@@ -103,6 +107,7 @@ logwindow logwindow
 look look
 lc ls
 ls ls
+m4 m4
 lookman man
 man man
 man2html man
@@ -154,7 +159,6 @@ rm rm
 runas runas
 secstore secstore
 sendmail sendmail
-session session
 builtin sh
 exit sh
 load sh
@@ -262,7 +266,6 @@ sort sort
 join spree-join
 spree-join spree-join
 stack stack
-stackv stack
 stream stream
 strings strings
 md5sum sum

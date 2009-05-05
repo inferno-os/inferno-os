@@ -36,6 +36,8 @@ print or find manual pages
 [
 .BI -h " header"
 ] [
+.BI -i " initial"
+] [
 .BI -t " trailer"
 ]
 .I file
@@ -134,8 +136,12 @@ is a manual page, in the given
 The optional
 .I header
 string replaces the default header
-.B "<HTML><HEAD>"
-and the optional
+.BR "<HTML><HEAD>" .
+The optional
+.I initial
+text will appear immediately after
+.BR "<BODY>" .
+The optional
 .I trailer
 string replaces the default trailer
 .BR "</BODY></HTML>" .
