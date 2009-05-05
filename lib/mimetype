@@ -62,6 +62,7 @@
 .html		text		html		-		m
 .ico		image		x-icon		-		y
 .ief		image		ief		-		y
+.iso		application	octet-stream	-	y	# ISO9660 image
 .jad		text		vnd.sun.j2me.app-descriptor	-	y
 .jar		application	java-archive	-		y
 .jfif		image		jpeg		-		y

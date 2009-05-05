@@ -33,6 +33,11 @@ print or find manual pages
 .I file ...
 .br
 .B man2html
+[
+.BI -h " header"
+] [
+.BI -t " trailer"
+]
 .I file
 [
 .I section
@@ -126,6 +131,14 @@ It is assumed the input
 is a manual page, in the given
 .I section
 (default: 1).
+The optional
+.I header
+string replaces the default header
+.B "<HTML><HEAD>"
+and the optional
+.I trailer
+string replaces the default trailer
+.BR "</BODY></HTML>" .
 .PP
 .I Man2txt
 converts

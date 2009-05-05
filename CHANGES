@@ -1,3 +1,7 @@
+20090505
+	add -h/-t header/trailer options to man2html
+20090430
+	filter-deflate(2), appl/lib/^(inflate.b deflate.b): changes from mjl to support zlib headers for deflate streams as well as gzip's
 20090417
 	add m4(1) in its initial form (might split the macro processing proper off into a library module)
 20090409

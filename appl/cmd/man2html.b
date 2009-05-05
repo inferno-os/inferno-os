@@ -16,6 +16,8 @@ include "daytime.m";
 include "string.m";
 	str: String;
 
+include "arg.m";
+
 Man2html: module
 {
 	init:	fn(ctxt: ref Draw->Context, args: list of string);
@@ -315,10 +317,12 @@ Global: adt {
 	softp: fn(g: self ref Global): string;
 };
 
+header := "<HTML><HEAD>";
+trailer := "</BODY></HTML>";
 
 usage()
 {
-	sys->fprint(stderr, "Usage: man2html file [section]\n");
+	sys->fprint(stderr, "Usage: man2html [-h header] [-t trailer] file [section]\n");
 	raise "fail:usage";
 }
 
@@ -329,11 +333,20 @@ init(nil: ref Draw->Context, args: list of string)
 	stderr = sys->fildes(2);
 	str = load String String->PATH;
 	dt = load Daytime Daytime->PATH;
-	g := Global_init();
-	if(args != nil)
-		args = tl args;
+	arg := load Arg Arg->PATH;
+	arg->init(args);
+	arg->setusage("man2html [-h header] [-t trailer] file [section]");
+	while((o := arg->opt()) != 0)
+		case o {
+		'h' =>	header = arg->earg();
+		't' =>	trailer = arg->earg();
+		* =>	arg->usage();
+		}
+	args = arg->argv();
 	if(args == nil)
-		usage();
+		arg->usage();
+	arg = nil;
+	g := Global_init();
 	page := hd args;
 	args = tl args;
 	section := "1";
@@ -341,6 +354,7 @@ init(nil: ref Draw->Context, args: list of string)
 		section = hd args;
 	hit := Hit ("", "man", section, page);
 	domanpage(g, hit);
+	g.print(trailer+"\n");
 	g.bufio->g.bout.flush();
 }
 
@@ -1342,7 +1356,7 @@ title(g: ref Global, t: string, search: int)
 {
 	if(search)
 		;	# not yet used
-	g.print("<HTML><HEAD>\n");
+	g.print(header+"\n");
 	g.print(sprint("<TITLE>Inferno's %s</TITLE>\n", demark(t)));
 	g.print("</HEAD>\n");
 	g.print("<BODY bgcolor=\"#FFFFFF\">\n");
