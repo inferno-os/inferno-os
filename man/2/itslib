@@ -1,4 +1,5 @@
 .TH ITSLIB 2
+.SH NAME
 itslib \- test library
 .SH SYNOPSIS
 .EX

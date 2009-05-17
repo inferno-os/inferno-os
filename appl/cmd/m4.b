@@ -288,7 +288,7 @@ isname(s: string): int
 
 isalpha(c: int): int
 {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16r80;
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0;
 }
 
 hash(name: string): int

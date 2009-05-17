@@ -305,7 +305,7 @@ static WindowRef oldWindow = NULL;
 static void
 leave_full_screen(void)
 {
-	if (0 && amFullScreen) {
+	if(amFullScreen){
 		EndFullScreen(fullScreenRestore, 0);
 		theWindow = oldWindow;
 		ShowWindow(theWindow);
@@ -321,7 +321,7 @@ leave_full_screen(void)
 static void
 full_screen(void)
 {
-	if (0 && !amFullScreen) {
+	if(!amFullScreen){
 		oldWindow = theWindow;
 		HideWindow(theWindow);
 		BeginFullScreen(&fullScreenRestore, 0, 0, 0, &theWindow, 0, 0);
@@ -626,6 +626,8 @@ clipread(void)
 	int i;
 	char *s;
 
+	if(appleclip == NULL)
+		return nil;
 	// Wow.  This is ridiculously complicated.
 	PasteboardSynchronize(appleclip);
 	if((err = PasteboardGetItemCount(appleclip, &nitems)) != noErr) {
@@ -681,6 +683,8 @@ clipwrite(char *snarf)
 	CFDataRef cfdata;
 	PasteboardSyncFlags flags;
 
+	if(appleclip == NULL)
+		return 0;
 	runeseprint(rsnarf, rsnarf+nelem(rsnarf), "%s", snarf);
 	if(PasteboardClear(appleclip) != noErr){
 		fprint(2, "apple pasteboard clear failed\n");
