@@ -436,7 +436,7 @@ fflush(f: ref File, last: int): (int, ref Entry)
 			return (0, nil);
 		if(last && f.p[i].o == Scoresize) {
 			flags := Entryactive;
-			if(f.dtype & Dirtype)
+			if(f.dtype == Dirtype)
 				flags |= Entrydir;
 			flags |= i<<Entrydepthshift;
 			score := Score(f.p[i].data());
@@ -540,7 +540,7 @@ Mentry.cmp(a, b: ref Mentry): int
 
 MSink.new(s: ref Venti->Session, dsize: int): ref MSink
 {
-	return ref MSink(File.new(s, Dirtype, dsize), array[dsize] of byte, 0, nil);
+	return ref MSink(File.new(s, Datatype, dsize), array[dsize] of byte, 0, nil);
 }
 
 l2a[T](l: list of T): array of T
@@ -620,7 +620,10 @@ MSink.finish(m: self ref MSink): ref Entry
 
 Source.new(s: ref Session, e: ref Entry): ref Source
 {
-	return ref Source(s, e);
+	dsize := e.dsize;
+	if(e.flags&Entrydir)
+		dsize = Entrysize*(dsize/Entrysize);
+	return ref Source(s, e, dsize);
 }
 
 power(b, e: int): big
@@ -640,13 +643,13 @@ blocksize(e: ref Entry): int
 
 Source.get(s: self ref Source, i: big, d: array of byte): int
 {
-	npages := (s.e.size+big (s.e.dsize-1))/big s.e.dsize;
-	if(i*big s.e.dsize >= s.e.size)
+	npages := (s.e.size+big (s.dsize-1))/big s.dsize;
+	if(i*big s.dsize >= s.e.size)
 		return 0;
 
-	want := s.e.dsize;
+	want := s.dsize;
 	if(i == npages-big 1)
-		want = int (s.e.size - i*big s.e.dsize);
+		want = int (s.e.size - i*big s.dsize);
 	last := s.e.score;
 	bsize := blocksize(s.e);
 	buf: array of byte;
@@ -710,11 +713,12 @@ Vacfile.read(v: self ref Vacfile, d: array of byte, n: int): int
 
 Vacfile.pread(v: self ref Vacfile, d: array of byte, n: int, offset: big): int
 {
-	dsize := v.s.e.dsize;
+	dsize := v.s.dsize;
+say(sprint("vf.preadn, len d %d, n %d, offset %bd", len d, n, offset));
 	have := v.s.get(big (offset/big dsize), buf := array[dsize] of byte);
 	if(have <= 0)
 		return have;
-say(sprint("vacfile.read: have=%d dsize=%d", have, dsize));
+say(sprint("vacfile.pread: have=%d dsize=%d", have, dsize));
 	o := int (offset % big dsize);
 	have -= o;
 	if(have > n)
@@ -775,7 +779,7 @@ finddirentry(d: array of byte, elem: string): (int, ref Direntry)
 		if(c == 0)
 			break;
         }
-	de := readdirentry(d, left);
+	de := readdirentry(d, left, 0);
 	if(de != nil && de.elem == elem)
 		return (1, de);
 	return (0, nil);
@@ -809,7 +813,7 @@ say(sprint("vfreadentry: reading entry=%d", entry));
 	if(n < 0)
 		return nil;
 	if(n != len ebuf) {
-		werrstr(sprint("bad archive, entry=%d not present", entry));
+		werrstr(sprint("bad archive, entry=%d not present (read %d, wanted %d)", entry, n, len ebuf));
 		return nil;
 	}
 	e := Entry.unpack(ebuf);
@@ -817,7 +821,8 @@ say(sprint("vfreadentry: reading entry=%d", entry));
 		werrstr("entry not active");
 		return nil;
 	}
-	if(e.flags&Entrylocal) {
+	# p9p writes archives with Entrylocal set?
+	if(0 && e.flags&Entrylocal) {
 		werrstr("entry is local");
 		return nil;
 	}
@@ -848,14 +853,14 @@ say(sprint("vacdir.open: have mentry, score=%s size=%bd", me.score.text(), e.siz
 	return (e, me);
 }
 
-readdirentry(buf: array of byte, i: int): ref Direntry
+readdirentry(buf: array of byte, i: int, allowroot: int): ref Direntry
 {
 	me := Metaentry.unpack(buf, i);
 	if(me == nil)
 		return nil;
 	o := me.offset;
 	de := Direntry.unpack(buf[o:o+me.size]);
-	if(badelem(de.elem)) {
+	if(badelem(de.elem) && !(allowroot && de.elem == "/")) {
 		werrstr(sprint("bad direntry: %s", de.elem));
 		return nil;
 	}
@@ -875,18 +880,18 @@ badelem(elem: string): int
 	return elem == "" || elem == "." || elem == ".." || has('/', elem) || has(0, elem);
 }
 
-Vacdir.readdir(vd: self ref Vacdir): (int, ref Direntry)
+vdreaddir(vd: ref Vacdir, allowroot: int): (int, ref Direntry)
 {
-say(sprint("vacdir.readdir: ms.e.size=%bd vd.p=%bd vd.i=%d", vd.ms.e.size, vd.p, vd.i));
-	dsize := vd.ms.e.dsize;
+say(sprint("vdreaddir: ms.e.size=%bd vd.p=%bd vd.i=%d", vd.ms.e.size, vd.p, vd.i));
+	dsize := vd.ms.dsize;
 	n := vd.ms.get(vd.p, buf := array[dsize] of byte);
 	if(n <= 0)
 		return (n, nil);
-say(sprint("vacdir.readdir: have buf, length=%d e.size=%bd", n, vd.ms.e.size));
+say(sprint("vdreaddir: have buf, length=%d e.size=%bd", n, vd.ms.e.size));
 	mb := Metablock.unpack(buf);
 	if(mb == nil)
 		return (-1, nil);
-	de := readdirentry(buf, vd.i);
+	de := readdirentry(buf, vd.i, allowroot);
 	if(de == nil)
 		return (-1, nil);
 	vd.i++;
@@ -894,9 +899,15 @@ say(sprint("vacdir.readdir: have buf, length=%d e.size=%bd", n, vd.ms.e.size));
 		vd.p++;
 		vd.i = 0;
 	}
-say("vacdir.readdir: have entry");
+say("vdreaddir: have entry");
 	return (1, de);
 }
+
+Vacdir.readdir(vd: self ref Vacdir): (int, ref Direntry)
+{
+	return vdreaddir(vd, 0);
+}
+
 
 Vacdir.rewind(vd: self ref Vacdir)
 {
@@ -944,8 +955,8 @@ vdroot(session: ref Session, score: Venti->Score): (ref Vacdir, ref Direntry, st
 	}
 	say("top entries unpacked");
 
-	mroot := Vacdir.new(session, nil, e[2]);
-	(ok, de) := mroot.readdir();
+	mroot := Vacdir.mk(nil, Source.new(session, e[2]));
+	(ok, de) := vdreaddir(mroot, 1);
 	if(ok <= 0)
 		return (nil, nil, sprint("reading root meta entry: %r"));
 

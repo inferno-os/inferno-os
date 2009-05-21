@@ -1,3 +1,5 @@
+20090521
+	module/vac.m appl/cmd/vacfs.b appl/lib/vac.b [issue 152] (Mecchiel)
 20090505
 	add -h/-t header/trailer options to man2html
 20090430

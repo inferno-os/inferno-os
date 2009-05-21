@@ -152,6 +152,7 @@ Vac: module {
 	Source: adt {
 		session:	ref Venti->Session;
 		e:	ref Entry;
+		dsize:	int;  # real dsize
 
 		new:	fn(s: ref Venti->Session, e: ref Entry): ref Source;
 		get:	fn(s: self ref Source, i: big, d: array of byte): int;

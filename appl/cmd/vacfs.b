@@ -158,6 +158,8 @@ walk(ed: ref Elem.Dir, name: string): (ref Elem, string)
 	if(ne == nil) {
 		nqid := childput(ed.qid, de.qid);
 		ne = Elem.new(nqid, ed.vd, de, ed.qid);
+		if(ne == nil)
+			return (nil, sprint("%r"));
 		set(ne);
 	}
 	return (ne, nil);
@@ -204,13 +206,14 @@ init(nil: ref Draw->Context, args: list of string)
 	styx = load Styx Styx->PATH;
 	styxservers = load Styxservers Styxservers->PATH;
 	vac = load Vac Vac->PATH;
-	if(venti == nil || vac == nil)
-		error("loading venti,vac");
-	sys->pctl(sys->NEWPGRP, nil);
 	venti->init();
 	vac->init();
 	styx->init();
 	styxservers->init(styx);
+
+	sys->pctl(sys->NEWPGRP, nil);
+	if(venti == nil || vac == nil)
+		error("loading venti,vac");
 
 	arg->init(args);
 	arg->setusage(arg->progname()+" [-Ddp] [-a addr] [[tag:]score]");
@@ -402,6 +405,10 @@ loop:
 				if(ne == nil) {
 					nqid := childput(ed.qid, de.qid);
 					ne = Elem.new(nqid, ed.vd, de, ed.qid);
+					if(ne == nil) {
+						n.reply <-= (nil, sprint("%r"));
+						continue loop;
+					}
 				}
 				d := ne.stat();
 				ed.prev[ed.nprev++] = d;
