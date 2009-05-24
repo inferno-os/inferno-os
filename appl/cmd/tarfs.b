@@ -329,7 +329,7 @@ readtar(fd: ref Sys->FD): int
 		if(buf[0] == byte 0)
 			break;
 		offset += big Blocksize;
-		mode := octal(buf[Omode:Ouid]);
+		mode := int octal(buf[Omode:Ouid]);
 		linkflag := int buf[Olinkflag];
 		# don't use linkname
 		if((mode & 8r170000) == 8r40000)
@@ -352,15 +352,15 @@ readtar(fd: ref Sys->FD): int
 			f.name = f.name[:len f.name-1];
 		}
 		f.mode = mode;
-		f.uid = octal(buf[Ouid:Ogid]);
-		f.gid = octal(buf[Ogid:Osize]);
-		f.length = big octal(buf[Osize:Omtime]);
+		f.uid = int octal(buf[Ouid:Ogid]);
+		f.gid = int octal(buf[Ogid:Osize]);
+		f.length = octal(buf[Osize:Omtime]);
 		if(f.length < big 0)
 			error(sys->sprint("tar file size is negative: %s", f.name));
 		if(mode & Sys->DMDIR)
 			f.length = big 0;
-		f.mtime = octal(buf[Omtime:Ochksum]);
-		sum := octal(buf[Ochksum:Olinkflag]);
+		f.mtime = int octal(buf[Omtime:Ochksum]);
+		sum := int octal(buf[Ochksum:Olinkflag]);
 		if(sum != checksum(buf))
 			error(sys->sprint("checksum error on %s", f.name));
 		f.offset = offset;
@@ -384,16 +384,16 @@ ascii(b: array of byte): string
 	return string b[0:i];
 }
 
-octal(b: array of byte): int
+octal(b: array of byte): big
 {
-	v := 0;
+	v := big 0;
 	for(i := 0; i < len b && b[i] == byte ' '; i++)
 		;
 	for(; i < len b && b[i] != byte 0 && b[i] != byte ' '; i++){
 		c := int b[i];
 		if(!(c >= '0' && c <= '7'))
 			error(sys->sprint("bad octal value in tar header: %s (%c)", string b, c));
-		v = (v<<3) | (c-'0');
+		v = (v<<3) | big (c-'0');
 	}
 	return v;
 }
