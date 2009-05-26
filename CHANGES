@@ -1,3 +1,5 @@
+20090526
+	emu/Nt/os.c allow /dev/hoststdin input on file or pipe (thanks to caerwyn, issue 173)
 20090524
 	appl/cmd/tarfs.b dis/tarfs.dis - remove accidentally small limit on file size in tar file (issue 172)
 20090521

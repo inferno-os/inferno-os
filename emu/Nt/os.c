@@ -495,7 +495,15 @@ close(int fd)
 int
 read(int fd, void *buf, uint n)
 {
-	if(!ReadFile(ntfd2h(fd), buf, n, &n, NULL))
+	HANDLE h;
+
+	if(fd == 0)
+		h = kbdh;
+	else
+		h = ntfd2h(fd);
+	if(h == INVALID_HANDLE_VALUE)
+		return -1;
+	if(!ReadFile(h, buf, n, &n, NULL))
 		return -1;
 	return n;
 }
