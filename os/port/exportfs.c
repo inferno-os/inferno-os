@@ -1053,7 +1053,7 @@ Exread(Export *fs, Fcall *t, Fcall *r)
 {
 	Fid *f;
 	Chan *c;
-	long off;
+	vlong off;
 	int dir, n, seek;
 
 	f = Exgetfid(fs, t->fid);

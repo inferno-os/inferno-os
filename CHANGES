@@ -1,5 +1,7 @@
 20090526
 	emu/Nt/os.c allow /dev/hoststdin input on file or pipe (thanks to caerwyn, issue 173)
+	emu/port/devfs-posix.c correct handling of error return from pread (issue 172, but goes beyond that)
+	emu/port/exportfs.c os/port/exportfs.c use vlong for offset
 20090524
 	appl/cmd/tarfs.b dis/tarfs.dis - remove accidentally small limit on file size in tar file (issue 172)
 20090521

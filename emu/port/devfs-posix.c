@@ -401,10 +401,13 @@ fsread(Chan *c, void *va, long n, vlong offset)
 		qunlock(&FS(c)->oq);
 	}else{
 		r = pread(FS(c)->fd, va, n, offset);
-		if(r < 0 && (errno == ESPIPE || errno == EPIPE)){
-			r = read(FS(c)->fd, va, n);
-			if(r < 0)
-				oserror();
+		if(r < 0){
+			if(errno == ESPIPE || errno == EPIPE){
+				r = read(FS(c)->fd, va, n);
+				if(r >= 0)
+					return r;
+			}
+			oserror();
 		}
 	}
 	return r;
