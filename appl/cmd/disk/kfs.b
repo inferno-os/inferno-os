@@ -444,7 +444,7 @@ init(nil: ref Draw->Context, args: list of string)
 	if(wrencheck(wrenfd))
 		error("kfs super/root in trouble");
 
-	if(!ream && !superok(0)){
+	if(!ream && !readonly && !superok(0)){
 		sys->print("kfs needs check\n");
 		if(!nocheck)
 			check(thedevice, Cquiet|Cfree);
@@ -508,7 +508,7 @@ shutdown()
 		kill(hd pids);
 	# TO DO: when Bmod deferred, must sync
 	# sync super block
-	if(superok(1)){
+	if(!readonly && superok(1)){
 		# ;
 	}
 	iobufclear();
@@ -1393,6 +1393,8 @@ dirread(cp: ref Chan, f: ref Tmsg.Read, file: ref File, d: ref Dentry): ref Rmsg
 	data := array[count] of byte;
 	offset := f.offset;
 	iounit := cp.msize-IOHDRSZ;
+	if(count > iounit)
+		count = iounit;
 
 	# Pick up where we left off last time if nothing has changed,
 	# otherwise must scan from the beginning.

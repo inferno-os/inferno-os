@@ -1,3 +1,5 @@
+20090605
+	appl/cmd/disk/kfs.b dis/disk/kfs.dis - don't try to update super block if readonly(!) [issue 175]
 20090526
 	emu/Nt/os.c allow /dev/hoststdin input on file or pipe (thanks to caerwyn, issue 173)
 	emu/port/devfs-posix.c correct handling of error return from pread (issue 172, but goes beyond that)
