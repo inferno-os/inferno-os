@@ -413,7 +413,7 @@ sub(Opcode *o, Instr *i)
 }
 
 static void
-div(Opcode *o, Instr *i)
+idiv(Opcode *o, Instr *i)
 {
 	format(o->mnemonic, i, 0);
 	if(i->op == 31)
@@ -554,8 +554,8 @@ static Opcode opcodes[] = {
 	{31,	246,	ALL,	"DCBTST",	dcb,	0},
 	{31,	1014,	ALL,	"DCBZ",		dcb,	0},
 
-	{31,	491,	OEM,	"DIVW%V%C",	div,	ir3},
-	{31,	459,	OEM,	"DIVWU%V%C",	div,	ir3},
+	{31,	491,	OEM,	"DIVW%V%C",	idiv,	ir3},
+	{31,	459,	OEM,	"DIVWU%V%C",	idiv,	ir3},
 
 	{31,	310,	ALL,	"ECIWX",	ldx,	0},
 	{31,	438,	ALL,	"ECOWX",	stx,	0},
@@ -647,7 +647,7 @@ static Opcode opcodes[] = {
 	{31,	242,	ALL,	"MOVW",		gen,	"R%s,SEG(R%b)"},
 
 	{31,	235,	OEM,	"MULLW%V%C",	gencc,	ir3},
-	{7,	0,	0,	"MULLW",	div,	"%i,R%a,R%d"},
+	{7,	0,	0,	"MULLW",	idiv,	"%i,R%a,R%d"},
 
 	{31,	476,	ALL,	"NAND%C",	gencc,	il3},
 	{31,	104,	OEM,	"NEG%V%C",	neg,	ir2},

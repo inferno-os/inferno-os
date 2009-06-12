@@ -25,6 +25,10 @@ Linux
 		bin
 		include
 		lib
+	power
+		bin
+		include
+		lib
 	spim
 		bin
 		include

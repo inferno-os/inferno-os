@@ -16,7 +16,7 @@ segflush(void *a, ulong n)
 
     // cache blocks are often eight words (32 bytes) long, sometimes 16 bytes.
     // need to determine it dynamically?
-    for (p = (ulong *)((ulong)a & ~3UL); (char *)p < (char *)a + n; p++)
+    for (p = (ulong *)((ulong)a & ~7UL); (char *)p < (char *)a + n; p++)
         __asm__("dcbst	0,%0\n\t"	// not dcbf, which writes back, then invalidates
             "icbi	0,%0\n\t"
             : // no output

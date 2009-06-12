@@ -1,3 +1,5 @@
+200090612
+	added support for Linux-power (ericvh; and further simplified)
 20090605
 	appl/cmd/disk/kfs.b dis/disk/kfs.dis - don't try to update super block if readonly(!) [issue 175]
 20090526
