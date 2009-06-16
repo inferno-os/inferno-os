@@ -92,7 +92,7 @@ function above might be called using:
 .IP
 .EX
 pid := chan of int;
-spawn export(fd, "/", pid);
+spawn exportdir(fd, "/", pid);
 expid := <-pid;
 .EE
 .PP
