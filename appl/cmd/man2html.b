@@ -318,11 +318,12 @@ Global: adt {
 };
 
 header := "<HTML><HEAD>";
+initial := "";
 trailer := "</BODY></HTML>";
 
 usage()
 {
-	sys->fprint(stderr, "Usage: man2html [-h header] [-t trailer] file [section]\n");
+	sys->fprint(stderr, "Usage: man2html [-h header] [-i initialtext] [-t trailer] file [section]\n");
 	raise "fail:usage";
 }
 
@@ -753,6 +754,7 @@ g_SH(g: ref Global, argl: list of string)
 	closeall(g, 1);		# .SH is top-level list item
 	if (g.example)
 		g_EE(g);
+	g_fi(g);
 	if (g.fill && ! g.sop)
 		g.print("<P>");
 	g.print("<DT><H4>");
@@ -1359,6 +1361,6 @@ title(g: ref Global, t: string, search: int)
 	g.print(header+"\n");
 	g.print(sprint("<TITLE>Inferno's %s</TITLE>\n", demark(t)));
 	g.print("</HEAD>\n");
-	g.print("<BODY bgcolor=\"#FFFFFF\">\n");
+	g.print("<BODY>"+initial+"\n");
 
 }

@@ -2,7 +2,6 @@
 .SH NAME
 devattach, devclone, devdir, devgen, devwalk, devdirread, devstat, devopen, devbread, devbwrite, devcreate, devremove, devwstat, devreset, devinit, devshutdown, openmode \- common device driver support
 .SH SYNOPSIS
-.nf
 .ta \w'\fLBlock* 'u +10n
 .B
 typedef int

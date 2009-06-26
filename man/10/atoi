@@ -2,7 +2,6 @@
 .SH NAME
 atoi, atol, charstod, strtod, strtol, strtoul, strtoll \- convert text to numbers
 .SH SYNOPSIS
-.nf
 .ta \w'\fLdouble 'u
 .B
 int	atoi(char *nptr)
@@ -24,7 +23,6 @@ ulong	strtoul(char *nptr, char **rptr, int base)
 .PP
 .B
 vlong	strtoll(char *nptr, char **rptr, int base)
-.fi
 .SH DESCRIPTION
 .IR Atoi
 and
