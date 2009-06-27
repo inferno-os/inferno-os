@@ -13,15 +13,8 @@ struct	Vlong
 	{
 		struct
 		{
-			ulong	hi;
 			ulong	lo;
-		};
-		struct
-		{
-			ushort	hims;
-			ushort	hils;
-			ushort	loms;
-			ushort	lols;
+			ulong	hi;
 		};
 	};
 };

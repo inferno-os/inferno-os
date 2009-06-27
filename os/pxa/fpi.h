@@ -1,8 +1,8 @@
 typedef long Word;
 typedef unsigned long Single;
 typedef struct {
-	unsigned long h;
 	unsigned long l;
+	unsigned long h;
 } Double;
 
 enum {

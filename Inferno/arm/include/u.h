@@ -44,9 +44,9 @@ typedef unsigned long uintptr;
 union FPdbleword
 {
 	double	x;
-	struct {	/* big endian (on 7500) */
-		ulong hi;
+	struct {	/* little endian (on VFP and now in software) */
 		ulong lo;
+		ulong hi;
 	};
 };
 

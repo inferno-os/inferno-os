@@ -7,7 +7,6 @@
  * to do:
  *	eliminate litpool?
  *	eliminate long constants in comi/comd
- *	bounds checks
  *	enable and check inline FP code (not much point with fpemu)
  */
 
@@ -114,6 +113,9 @@ enum
 	Ldf,
 	Stf,
 	Ldh,
+
+	Blo	= 0,	/* offset of low order word in big */
+	Bhi	= 4,	/* offset of high order word in big */
 
 	NCON	= (0xFFC-8)/4,
 
@@ -869,8 +871,8 @@ cbral(Inst *i, int jmsw, int jlsw, int mode)
 		schedcheck(i);
 	opwld(i, Lea, RA1);
 	mid(i, Lea, RA3);
-	mem(Ldw, 0, RA1, RA2);
-	mem(Ldw, 0, RA3, RA0);
+	mem(Ldw, Bhi, RA1, RA2);
+	mem(Ldw, Bhi, RA3, RA0);
 	CMP(AL, RA2, 0, 0, RA0);
 	label = nil;
 	dst = i->d.ins-mod->prog;
@@ -888,8 +890,8 @@ cbral(Inst *i, int jmsw, int jlsw, int mode)
 		BRA(NE, 0);
 		break;
 	}
-	mem(Ldw, 4, RA3, RA0);
-	mem(Ldw, 4, RA1, RA2);
+	mem(Ldw, Blo, RA3, RA0);
+	mem(Ldw, Blo, RA1, RA2);
 	CMP(AL, RA2, 0, 0, RA0);
 	BRADIS(jlsw, dst);
 	if(label != nil)
@@ -1039,16 +1041,16 @@ larith(Inst *i, int op, int opc)
 {
 	opwld(i, Lea, RA0);
 	mid(i, Lea, RA3);
-	mem(Ldw, 4, RA0, RA1);	// ls (big endian `big' even in little endian mode)
-	mem(Ldw, 4, RA3, RA2);
+	mem(Ldw, Blo, RA0, RA1);	// ls
+	mem(Ldw, Blo, RA3, RA2);
 	DP(AL, op, RA2, RA2, 0, RA1) | SBIT;	// ls: RA2 = RA2 op RA1
-	mem(Ldw, 0, RA0, RA1);
-	mem(Ldw, 0, RA3, RA0);
+	mem(Ldw, Bhi, RA0, RA1);
+	mem(Ldw, Bhi, RA3, RA0);
 	DP(AL, opc, RA0, RA0, 0, RA1);	// ms: RA0 = RA0 opc RA1
 	if((i->add&ARM) != AXNON)
 		opwst(i, Lea, RA3);
-	mem(Stw, 0, RA3, RA0);
-	mem(Stw, 4, RA3, RA2);
+	mem(Stw, Blo, RA3, RA2);
+	mem(Stw, Bhi, RA3, RA0);
 }
 
 static void
@@ -1635,12 +1637,12 @@ comp(Inst *i)
 		opwld(i, Ldw, RA1);
 		opwst(i, Lea, RA2);
 		DP(AL, Mov, 0, RA0, (0<<3)|(2<<1), RA1);	// ASR 32
-		STW(AL, RA2, RA0, 0);
-		STW(AL, RA2, RA1, 4);
+		STW(AL, RA2, RA1, Blo);
+		STW(AL, RA2, RA0, Bhi);
 		break;
 	case ICVTLW:
 		opwld(i, Lea, RA0);
-		mem(Ldw, 4, RA0, RA0);
+		mem(Ldw, Blo, RA0, RA0);
 		opwst(i, Stw, RA0);
 		break;
 	case IBEQL:
@@ -1718,9 +1720,11 @@ comp(Inst *i)
 //if(pass){print("%D\n", i); das(s, code-s);}
 		break;
 	case ISHLL:
+		/* should do better */
 		punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case ISHRL:
+		/* should do better */
 		punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case IRAISE:
@@ -2113,12 +2117,6 @@ typecom(Type *t)
 		print("typ= %.8p %4d i %.8p d %.8p asm=%d\n",
 			t, t->size, t->initialize, t->destroy, n);
 }
-
-extern ulong timer_start(void);
-extern ulong timer_ticks(ulong);
-extern ulong tmr2ms(ulong);
-extern ulong tmr2us(ulong);
-extern void timer_delay();
 
 static void
 patchex(Module *m, ulong *p)

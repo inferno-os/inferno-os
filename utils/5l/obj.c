@@ -1387,7 +1387,7 @@ nuxiinit(void)
 			inuxi1[i] = c;
 		inuxi4[i] = c;
 		fnuxi4[i] = c;
-		if(debug['d']){
+		if(!debug['d']){
 			fnuxi8[i] = c;
 			fnuxi8[i+4] = c+4;
 		}

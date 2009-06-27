@@ -6,17 +6,17 @@ arg=0
 /* replaced use of R10 by R11 because the former can be the data segment base register */
 
 TEXT	_mulv(SB), $0
-	MOVW	8(FP), R9	/* l0 */
-	MOVW	4(FP), R11	/* h0 */
-	MOVW	16(FP), R4	/* l1 */
-	MOVW	12(FP), R5	/* h1 */
+	MOVW	4(FP), R9	/* l0 */
+	MOVW	8(FP), R11	/* h0 */
+	MOVW	12(FP), R4	/* l1 */
+	MOVW	16(FP), R5	/* h1 */
 	UMULL(4, 9, 7, 6, 0)
 	MUL(11, 4, 8, 0)
 	ADD	R8, R7
 	MUL(9, 5, 8, 0)
 	ADD	R8, R7
-	MOVW	R6, 4(R(arg))
-	MOVW	R7, 0(R(arg))
+	MOVW	R6, 0(R(arg))
+	MOVW	R7, 4(R(arg))
 	RET
 
 /* multiply, add, and right-shift, yielding a 32-bit result, while

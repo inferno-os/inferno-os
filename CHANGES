@@ -1,3 +1,6 @@
+20090627
+	push changes described for arm in 20090330 (but not previously pushed)
+	begin change of inferno-os.googlecode.com from svn to mercurial
 200090612
 	added support for Linux-power (ericvh; and further simplified)
 20090605

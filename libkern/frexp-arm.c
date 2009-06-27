@@ -7,10 +7,10 @@
 typedef	union
 {
 	double	d;
-	struct	/* this is BIGENDIAN */
+	struct
 	{
-		long	ms;
 		long	ls;
+		long	ms;
 	};
 } Cheat;
 
