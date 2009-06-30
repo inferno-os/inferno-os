@@ -1,0 +1,32 @@
+#!/dis/sh.dis
+# Usage: sig key ...
+#	prints out function signatures by grepping the manual
+# stolen from plan 9 via p9p and caerwyn
+load std
+
+x=$*
+*=`{echo $x | tr A-Z a-z | tr -dc 'a-z0-9_ \012'} # fold case, delete funny chars
+if {no $*} {
+	echo Usage: sig function ... >[1=2]
+	exit 1
+}
+
+for i in $* {
+	files=`{grep -il '[ 	]*'$i':[ 	]*fn\(' /man/2/*}
+	for j in $files {
+		sect=`{basename $j}^'(2)'
+		{echo .nr LL 20i; sed -n '/^.SH SYNOPSIS/,/^.SH.*DESCR/p'  $j} |
+#			os nroff -man |
+			sed '
+				:a
+				/,$|:$/ {
+					N
+					s/\n//
+				}
+				ta
+				s/[ 	]+/ /g' |
+			grep -i '[	]*'$i':[ 	]*fn\(' | sed 's/^[ ]+/	/; s/;$/; \# '$sect'/'
+	}
+}
+
+exit 0

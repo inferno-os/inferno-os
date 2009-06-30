@@ -1,6 +1,6 @@
 .TH MAN 1
 .SH NAME
-man, wm/man, man2html, man2txt, lookman \-
+man, wm/man, man2html, man2txt, lookman, sig \-
 print or find manual pages
 .SH SYNOPSIS
 .B man
@@ -59,6 +59,9 @@ print or find manual pages
 .B -f
 ]
 .I keyword ...
+.PP
+.B sig
+.I function ...
 .SH DESCRIPTION
 Both
 .I man
@@ -182,6 +185,12 @@ The
 option causes
 .I lookman
 just to list the file names.
+.PP
+.I Sig
+prints the type signature \- parameters and return types \- of
+each
+.I function
+found in section 2 of this manual.
 .SH FILES
 .TF /man/1/INDEX
 .TP
@@ -212,6 +221,10 @@ script
 .B /appl/cmd/man2txt.b
 .br
 .B /dis/lookman
+.IR sh (1)
+script
+.br
+.B /dis/sig
 .IR sh (1)
 script
 .br

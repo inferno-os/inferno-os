@@ -1,3 +1,5 @@
+20090630
+	add sig (see man(1)) [via p9p and caerwyn]
 20090627
 	push changes described for arm in 20090330 (but not previously pushed)
 	begin change of inferno-os.googlecode.com from svn to mercurial
