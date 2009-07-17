@@ -66,7 +66,7 @@ init()
 
 IPaddr.newv6(a: array of byte): IPaddr
 {
-	b := array[len a] of byte;
+	b := array[IPaddrlen] of byte;
 	b[0:] = a[0:IPaddrlen];
 	return IPaddr(b);
 }
@@ -83,7 +83,7 @@ IPaddr.copy(ip: self IPaddr): IPaddr
 {
 	if(ip.a == nil)
 		return noaddr.copy();
-	a := array[len ip.a] of byte;
+	a := array[IPaddrlen] of byte;
 	a[0:] = ip.a;
 	return IPaddr(a);
 }

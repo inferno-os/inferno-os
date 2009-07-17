@@ -1,3 +1,7 @@
+20090717
+	fix appl/lib/ip.b (see issue 186) [mjl]
+20090716
+	add segflush calls to comp-386.c [probably need different name eventually to avoid time wasting when not needed]
 20090630
 	add sig (see man(1)) [via p9p and caerwyn]
 20090627
