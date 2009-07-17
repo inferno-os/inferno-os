@@ -1208,10 +1208,10 @@ xkeyboard(XEvent *e)
 		case XK_KP_Space:
 			k = ' ';
 			break;
-//		case XK_Home:
-//		case XK_KP_Home:
-//			k = Khome;
-//			break;
+		case XK_Home:
+		case XK_KP_Home:
+			k = Home;
+			break;
 		case XK_Left:
 		case XK_KP_Left:
 			k = Left;
@@ -1228,22 +1228,22 @@ xkeyboard(XEvent *e)
 		case XK_KP_Right:
 			k = Right;
 			break;
-//		case XK_Page_Down:
-//		case XK_KP_Page_Down:
-//			k = Kpgdown;
-//			break;
+		case XK_Page_Down:
+		case XK_KP_Page_Down:
+			k = Pgdown;
+			break;
 		case XK_End:
 		case XK_KP_End:
 			k = End;
 			break;
-//		case XK_Page_Up:	
-//		case XK_KP_Page_Up:
-//			k = Kpgup;
-//			break;
-//		case XK_Insert:
-//		case XK_KP_Insert:
-//			k = Kins;
-//			break;
+		case XK_Page_Up:	
+		case XK_KP_Page_Up:
+			k = Pgup;
+			break;
+		case XK_Insert:
+		case XK_KP_Insert:
+			k = Ins;
+			break;
 		case XK_KP_Enter:
 		case XK_Return:
 			k = '\n';
