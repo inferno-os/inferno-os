@@ -93,6 +93,5 @@ eopen(name: string, mode: int): ref Sys->FD
 
 fail(s: string)
 {
-	raise s;
-	exit;
+	raise "fail:"+s;
 }

@@ -1,3 +1,5 @@
+20090718
+	fix appl/cmd/stream.b error exits to include fail: [mjl]
 20090717
 	fix appl/lib/ip.b (see issue 186) [mjl]
 	re-enable XK_ keys in port/win-x11a.c [mjl]
