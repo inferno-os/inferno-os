@@ -76,6 +76,10 @@ static char exBadSA[]	= "bad signature algorithm";
 static char exBadSK[]	= "bad secret key";
 static char exBadPK[]	= "bad public key";
 static char exBadCert[]	= "bad certificate";
+static char exBadBsize[]	= "data not multiple of block size";
+static char exBadKey[]	= "bad encryption key";
+static char exBadDigest[]	= "bad digest value";
+static char exBadIvec[]	= "bad ivec";
 
 typedef struct XBFstate XBFstate;
 
@@ -1201,13 +1205,13 @@ keyring_digest_x(Array *buf, int n, Array *digest, int dlen, Keyring_DigestState
 		cbuf = buf->data;
 	}else{
 		if(n != 0)
-			return H;
+			error(exInval);
 		cbuf = nil;
 	}
 
 	if(digest != H){
 		if(digest->len < dlen)
-			return H;
+			error(exBadDigest);
 		cdigest = digest->data;
 	} else
 		cdigest = nil;
@@ -1281,16 +1285,16 @@ keyring_hmac_x(Array *data, int n, Array *key, Array *digest, int dlen, Keyring_
 		cdata = data->data;
 	}else{
 		if(n != 0)
-			return H;
+			error(exInval);
 		cdata = nil;
 	}
 
 	if(key == H || key->len > 64)
-		return H;
+		error(exBadKey);
 
 	if(digest != H){
 		if(digest->len < dlen)
-			return H;
+			error(exBadDigest);
 		cdigest = digest->data;
 	} else
 		cdigest = nil;
@@ -2250,15 +2254,14 @@ Keyring_dessetup(void *fp)
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->key == H)
-		return;
-	if(f->ivec == H)
-		ivec = 0;
-	else
+	if(f->key == H || f->key->len < 8)
+		error(exBadKey);
+	if(f->ivec != H){
+		if(f->ivec->len < 8)
+			error(exBadIvec);
 		ivec = f->ivec->data;
-
-	if(f->key->len < 8 || (ivec && f->ivec->len < 8))
-		return;
+	}else
+		ivec = nil;
 
 	h = heap(TDESstate);
 	ds = H2D(XDESstate*, h);
@@ -2285,7 +2288,7 @@ Keyring_desecb(void *fp)
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
 	if(f->n & 7)
-		return;
+		error(exBadBsize);
 
 	ds = (XDESstate*)f->state;
 	p = f->buf->data;
@@ -2311,7 +2314,7 @@ Keyring_descbc(void *fp)
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
 	if(f->n & 7)
-		return;
+		error(exBadBsize);
 
 	ds = (XDESstate*)f->state;
 	p = f->buf->data;
@@ -2351,15 +2354,14 @@ Keyring_ideasetup(void *fp)
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->key == (Array*)H)
-		return;
-	if(f->ivec == (Array*)H)
-		ivec = 0;
-	else
+	if(f->key == H || f->key->len < 16)
+		error(exBadKey);
+	if(f->ivec != H){
+		if(f->ivec->len < 8)
+			error(exBadIvec);
 		ivec = f->ivec->data;
-
-	if(f->key->len < 16 || (ivec && f->ivec->len < 8))
-		return;
+	}else
+		ivec = nil;
 
 	h = heap(TIDEAstate);
 	is = H2D(XIDEAstate*, h);
@@ -2380,14 +2382,14 @@ Keyring_ideaecb(void *fp)
 
 	f = fp;
 
-	if(f->state == (Keyring_IDEAstate*)H)
+	if(f->state == H)
 		return;
-	if(f->buf == (Array*)H)
+	if(f->buf == H)
 		return;
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
 	if(f->n & 7)
-		return;
+		error(exBadBsize);
 
 	is = (XIDEAstate*)f->state;
 	p = f->buf->data;
@@ -2406,14 +2408,14 @@ Keyring_ideacbc(void *fp)
 
 	f = fp;
 
-	if(f->state == (Keyring_IDEAstate*)H)
+	if(f->state == H)
 		return;
-	if(f->buf == (Array*)H)
+	if(f->buf == H)
 		return;
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
 	if(f->n & 7)
-		return;
+		error(exBadBsize);
 
 	is = (XIDEAstate*)f->state;
 	p = f->buf->data;
@@ -2453,17 +2455,15 @@ Keyring_aessetup(void *fp)
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->key == (Array*)H)
-		return;
-	if(f->ivec == (Array*)H)
-		ivec = nil;
-	else
+	if(f->key == H ||
+	   f->key->len != 16 && f->key->len != 24 && f->key->len != 32)
+		error(exBadKey);
+	if(f->ivec != H){
+		if(f->ivec->len < AESbsize)
+			error(exBadIvec);
 		ivec = f->ivec->data;
-
-	if(f->key->len != 16 && f->key->len != 24 && f->key->len != 32)
-		return;
-	if(ivec && f->ivec->len < AESbsize)
-		return;
+	}else
+		ivec = nil;
 
 	h = heap(TAESstate);
 	is = H2D(XAESstate*, h);
@@ -2482,9 +2482,9 @@ Keyring_aescbc(void *fp)
 
 	f = fp;
 
-	if(f->state == (Keyring_AESstate*)H)
+	if(f->state == H)
 		return;
-	if(f->buf == (Array*)H)
+	if(f->buf == H)
 		return;
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
@@ -2510,17 +2510,14 @@ Keyring_blowfishsetup(void *fp)
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->key == (Array*)H)
-		return;
-	if(f->ivec == (Array*)H)
-		ivec = nil;
-	else
+	if(f->key == H || f->key->len <= 0)
+		error(exBadKey);
+	if(f->ivec != H){
+		if(f->ivec->len != BFbsize)
+			error(exBadIvec);
 		ivec = f->ivec->data;
-
-	if(f->key->len <= 0)
-		return;
-	if(ivec && f->ivec->len != BFbsize)
-		return;
+	}else
+		ivec = nil;
 
 	h = heap(TBFstate);
 	is = H2D(XBFstate*, h);
@@ -2539,9 +2536,9 @@ Keyring_blowfishcbc(void *fp)
 
 	f = fp;
 
-	if(f->state == (Keyring_BFstate*)H)
+	if(f->state == H)
 		return;
-	if(f->buf == (Array*)H)
+	if(f->buf == H)
 		return;
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
@@ -2566,7 +2563,7 @@ Keyring_rc4setup(void *fp)
 	destroy(*f->ret);
 	*f->ret = H;
 
-	if(f->seed == (Array*)H)
+	if(f->seed == H)
 		return;
 
 	h = heap(TRC4state);
@@ -2585,9 +2582,9 @@ Keyring_rc4(void *fp)
 	uchar *p;
 
 	f = fp;
-	if(f->state == (Keyring_RC4state*)H)
+	if(f->state == H)
 		return;
-	if(f->buf == (Array*)H)
+	if(f->buf == H)
 		return;
 	if(f->buf->len < f->n)
 		f->n = f->buf->len;
@@ -2603,7 +2600,7 @@ Keyring_rc4skip(void *fp)
 	XRC4state *is;
 
 	f = fp;
-	if(f->state == (Keyring_RC4state*)H)
+	if(f->state == H)
 		return;
 	is = (XRC4state*)f->state;
 	rc4skip(&is->state, f->n);
@@ -2616,7 +2613,7 @@ Keyring_rc4back(void *fp)
 	XRC4state *is;
 
 	f = fp;
-	if(f->state == (Keyring_RC4state*)H)
+	if(f->state == H)
 		return;
 	is = (XRC4state*)f->state;
 	rc4back(&is->state, f->n);

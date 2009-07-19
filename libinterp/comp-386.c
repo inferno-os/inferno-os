@@ -1523,6 +1523,8 @@ preamble(void)
 	modrm(Oldw, O(REG, FP), RTMP, RFP);
 	modrm(Oldw, O(REG, MP), RTMP, RMP);
 	modrm(Ojmprm, O(REG, PC), RTMP, 4);
+
+	segflush(comvec, 32);
 }
 
 static void
@@ -1854,6 +1856,8 @@ typecom(Type *t)
 	if(cflag > 3)
 		print("typ= %.8lux %4d i %.8lux d %.8lux asm=%d\n",
 			(ulong)t, t->size, (ulong)t->initialize, (ulong)t->destroy, n);
+
+	segflush(t->initialize, n);
 }
 
 static void
@@ -1964,6 +1968,7 @@ compile(Module *m, int size, Modlink *ml)
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
+	segflush(base, n*sizeof(base));
 	return 1;
 bad:
 	free(patch);

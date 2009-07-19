@@ -526,3 +526,11 @@ stackalloc(Proc *p, void **tos)
 	*(Proc **)rv = p;
 	return rv;
 }
+
+int
+segflush(void *a, ulong n)
+{
+	USED(a);
+	USED(n);
+	return 0;
+}
