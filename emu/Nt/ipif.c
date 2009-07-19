@@ -52,7 +52,7 @@ so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 	if(hdr == 0)
 		r = send(sock, va, len, 0);
 	else {
-		memset(&sa, sizeof(sa), 0);
+		memset(&sa, 0, sizeof(sa));
 		sin = (struct sockaddr_in*)&sa;
 		sin->sin_family = AF_INET;
 		switch(hdrlen){
@@ -127,7 +127,7 @@ so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 		l = sizeof(sa);
 		r = recvfrom(sock, va, len, 0, &sa, &l);
 		if(r >= 0) {
-			memset(h, sizeof h, 0);
+			memset(h, 0, sizeof(h));
 			switch(hdrlen){
 			case OUdphdrlenv4:
 				memmove(h, &sin->sin_addr, 4);

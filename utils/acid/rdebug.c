@@ -71,7 +71,7 @@ remoteio(int pid, char *file, char *buf, int nb)
 
 	if(protodebug)
 		fprint(2, "remoteio %d: %s\n", pid, file);
-	memset(buf, nb, 0);
+	memset(buf, 0, nb);
 	if(strcmp(file, "proc") == 0)
 		tag = Tproc;
 	else if(strcmp(file, "status") == 0)
