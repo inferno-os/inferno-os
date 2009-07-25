@@ -23,7 +23,6 @@ CFLAGS=		-c\
 		-nologo\
 		-W3\
 		-Zi\
-		-Yd\
 		-MT\
 		-D_WIN32_WINNT=0x0400\
 		-I$ROOT/Nt/386/include\
