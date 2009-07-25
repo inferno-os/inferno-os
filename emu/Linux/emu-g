@@ -1,6 +1,3 @@
-env
-	X11LIBS=
-
 dev
 	root
 	cons
@@ -45,6 +42,8 @@ port
 	cache
 	chan
 	dev
+	devtab
+
 	dial
 	dis
 	discall
@@ -76,6 +75,7 @@ root
 	/dev	/
 	/fd	/
 	/prog	/
+	/prof	/
 	/net	/
 	/net.alt	/
 	/chan	/
