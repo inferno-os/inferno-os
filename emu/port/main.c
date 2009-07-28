@@ -263,6 +263,7 @@ void
 emuinit(void *imod)
 {
 	Osenv *e;
+	char *wdir;
 
 	e = up->env;
 	e->pgrp = newpgrp();
@@ -312,6 +313,12 @@ emuinit(void *imod)
 	putenvqv("emuargs", rebootargv, rebootargc, 1);
 	putenvq("emuroot", rootdir, 1);
 	ksetenv("emuhost", hosttype, 1);
+	wdir = malloc(1024);
+	if(wdir != nil){
+		if(getwd(wdir, 1024) != nil)
+			putenvq("emuwdir", wdir, 1);
+		free(wdir);
+	}
 
 	kproc("main", disinit, imod, KPDUPFDG|KPDUPPG|KPDUPENVG);
 

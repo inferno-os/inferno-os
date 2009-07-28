@@ -208,6 +208,53 @@ set by a
 option to the
 .I emu
 command itself.
+.PP
+.I Emu
+sets several Inferno environment variables:
+.TF emuwdirxxx
+.PD
+.TP
+.B cputype
+host processor architecture:
+.B 386
+(for any x86),
+.BR arm ,
+.BR mips ,
+.B power
+(any Power or PowerPC),
+.BR sparc ,
+and
+.BR spim
+(little-endian MIPS).
+.TP
+.B emuargs
+arguments with which
+.I emu
+was invoked
+.TP
+.B emuhost
+host operating system type, such as:
+.BR FreeBSD ,
+.BR Irix ,
+.BR Linux ,
+.BR MacOSX ,
+.BR NetBSD ,
+.BR Nt
+(used for Windows generally),
+.BR OpenBSD ,
+.BR Plan9 ,
+.B Solaris
+and
+.BR Unixware .
+.TP
+.B emuroot
+name of directory in host file system that acts as Inferno's root directory
+.TP
+.B emuwdir
+name in host file system of directory where
+.I emu
+was invoked
+.PD
 .SH EXAMPLE
 To start
 .B wm/logon
