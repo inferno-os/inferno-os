@@ -171,8 +171,10 @@ Iobuf.seek(b: self ref Iobuf, off: big, start: int): big
 		return big ERROR;
 	b.size = 0;
 	b.index = 0;
-	if ((s := sys->seek(b.fd, off, start)) < big 0)
+	if ((s := sys->seek(b.fd, off, start)) < big 0) {
+		b.bufpos = b.filpos;
 		return big ERROR;
+	}
 	b.bufpos = b.filpos = s;
 	return s;
 }
