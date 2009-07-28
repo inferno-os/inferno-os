@@ -121,20 +121,20 @@ throw_out()
 		if (tmp!=nil)
 			break;
 	}
-	if (i==HASHSIZE && (dbg_log!=nil))
-		sys->fprint(dbg_log,"LRU not found!!!\n");
 	# now, the lru is in tab[i]...
 	nlist=nil;
-	for(;tab[i]!=nil;tab[i]=tl tab[i]){
-		if ((hd tab[i]).tag==lru){
-			if (dbg_log!=nil)
-				sys->fprint(dbg_log,"Throwing out %s\n",(hd tab[i]).name);
-			cur_size-=(hd tab[i]).length;	
-			tab[i] = tl tab[i];
+	if(i < len tab){
+		for(;tab[i]!=nil;tab[i]=tl tab[i]){
+			if ((hd tab[i]).tag==lru){
+				if (dbg_log!=nil)
+					sys->fprint(dbg_log,"Throwing out %s\n",(hd tab[i]).name);
+				cur_size-=(hd tab[i]).length;	
+				tab[i] = tl tab[i];
+			}
+			if (tab[i]!=nil)
+				nlist = (hd tab[i]) :: nlist;
+			if (tab[i]==nil) break;
 		}
-		if (tab[i]!=nil)
-			nlist = (hd tab[i]) :: nlist;
-		if (tab[i]==nil) break;
 	}
 	lru=find_lru();
 	if (dbg_log!=nil)

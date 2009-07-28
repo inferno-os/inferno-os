@@ -2,6 +2,7 @@
 	emu/port/main.c: put host's working directory name as emuwdir
 	document initial environment variables in emu(1)
 	appl/lib/bufio.b dis/lib/bufio.dis [issue 199] don't lose track of actual file seek offset (following second suggestion of mjl)
+	issue 196: after general apologies for appl/svc/httpd/cache.b (don't look if you don't need it, not one of ours, etc. etc.) will patch as suggested by extrudedaluminiu(!) [vs]
 20090719
 	correct order of operands to memset(!), eg in ipif [mjl]
 20090718
