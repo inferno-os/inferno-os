@@ -25,6 +25,11 @@ dsa_str2sk(char *str, char **strp)
 	dsa->secret = base64tobig(p, &p);
 	if(strp)
 		*strp = p;
+	if(dsa->pub.p == nil || dsa->pub.q == nil ||
+	   dsa->pub.alpha == nil || dsa->pub.key == nil || dsa->secret == nil){
+		dsaprivfree(dsa);
+		return nil;
+	}
 	return dsa;
 }
 
@@ -41,6 +46,10 @@ dsa_str2pk(char *str, char **strp)
 	dsa->key = base64tobig(p, &p);
 	if(strp)
 		*strp = p;
+	if(dsa->p == nil || dsa->q == nil || dsa->alpha == nil || dsa->key == nil){
+		dsapubfree(dsa);
+		return nil;
+	}
 	return dsa;
 }
 
@@ -55,6 +64,10 @@ dsa_str2sig(char *str, char **strp)
 	dsa->s = base64tobig(p, &p);
 	if(strp)
 		*strp = p;
+	if(dsa->r == nil || dsa->s == nil){
+		dsasigfree(dsa);
+		return nil;
+	}
 	return dsa;
 }
 

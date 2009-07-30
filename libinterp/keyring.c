@@ -177,6 +177,8 @@ base64tobig(char *str, char **strp)
 
 	for(p = str; *p && *p != '\n'; p++)
 		;
+	if(p == str)
+		return nil;
 	n = dec64(hex, sizeof(hex), str, p - str);
 	b = betomp(hex, n, nil);
 	if(strp){

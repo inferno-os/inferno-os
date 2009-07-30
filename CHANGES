@@ -1,3 +1,5 @@
+20090730
+	improve the error checking in strtosk and strtopk to help detect mangled or inappropriate keys
 20090728
 	emu/port/main.c: put host's working directory name as emuwdir
 	document initial environment variables in emu(1)

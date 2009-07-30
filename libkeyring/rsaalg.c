@@ -28,6 +28,12 @@ rsa_str2sk(char *str, char **strp)
 	rsa->c2 = base64tobig(p, &p);
 	if(strp)
 		*strp = p;
+	if(rsa->pub.n == nil || rsa->pub.ek == nil ||
+	   rsa->dk == nil || rsa->p == nil || rsa->q == nil ||
+	   rsa->kp == nil || rsa->kq == nil || rsa->c2 == nil){
+		rsaprivfree(rsa);
+		return nil;
+	}
 
 	return rsa;
 }
@@ -43,6 +49,10 @@ rsa_str2pk(char *str, char **strp)
 	rsa->ek = base64tobig(p, &p);
 	if(strp)
 		*strp = p;
+	if(rsa->n == nil || rsa->ek == nil){
+		rsapubfree(rsa);
+		return nil;
+	}
 
 	return rsa;
 }
@@ -54,6 +64,8 @@ rsa_str2sig(char *str, char **strp)
 	char *p;
 
 	rsa = base64tobig(str, &p);
+	if(rsa == nil)
+		return nil;
 	if(strp)
 		*strp = p;
 	return rsa;
