@@ -2042,11 +2042,7 @@ keydb
 	keys 600 inferno inferno /keydb/keys.dist
 	signed
 lib
-	legal
-		*
 	acid
-		+
-	brutus
 		+
 	convcs
 		+
@@ -2054,9 +2050,12 @@ lib
 		+
 	ebooks
 		+
+	emptydirs
 	games
 		+
 	keyboard
+	legal
+		*
 	lego
 		*
 	mashinit

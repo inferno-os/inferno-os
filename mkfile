@@ -172,3 +172,16 @@ Nt-% nt-% Win95-% win95-%:V:
 
 Solaris-% solaris-%:V:
 	mk 'SYSHOST=Solaris' 'OBJTYPE=sparc' $stem
+
+mkdirs:V:	mkdirs-$SHELLTYPE
+
+mkdirs-rc:V:
+	mkdir -p `{cat lib/emptydirs}
+	chmod 555 mnt/* n/client/* n/*
+
+mkdirs-sh:V:
+	mkdir -p `cat lib/emptydirs`
+	chmod 555 mnt/* n/client/* n/*
+
+mkdirs-rcsh:V:
+	mkdir -p `{cat lib/emptydirs}

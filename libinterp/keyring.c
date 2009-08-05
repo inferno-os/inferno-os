@@ -11,11 +11,6 @@
 #include "../libkeyring/keys.h"
 
 
-enum {
-	PSEUDO=0,
-	REALLY,
-};
-
 Type	*TSigAlg;
 Type	*TCertificate;
 Type	*TSK;
@@ -80,6 +75,7 @@ static char exBadBsize[]	= "data not multiple of block size";
 static char exBadKey[]	= "bad encryption key";
 static char exBadDigest[]	= "bad digest value";
 static char exBadIvec[]	= "bad ivec";
+static char exBadState[] = "bad encryption state";
 
 typedef struct XBFstate XBFstate;
 
@@ -591,10 +587,12 @@ Keyring_sktopk(void *fp)
 	PK *pk;
 	SigAlg *sa;
 	SK *sk;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	sk = checkSK(f->sk);
 	sa = checkSigAlg(sk->x.sa);
@@ -882,10 +880,12 @@ void
 Keyring_strtocert(void *fp)
 {
 	F_Keyring_strtocert *f;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 	*f->ret = (Keyring_Certificate*)strtocert(string2c(f->s));
 }
 
@@ -1170,6 +1170,23 @@ Keyring_verifym(void *fp)
 	acquire();
 }
 
+static void*
+checktype(void *v, Type *t, char *name, int newref)
+{
+	Heap *h;
+
+	if(v == H || v == nil)
+		error(exNilref);
+	h = D2H(v);
+	if(h->t != t)
+		errorf("%s: %s", exType, name);
+	if(newref){
+		h->ref++;
+		Setmark(h);
+	}
+	return v;
+}
+
 /*
  *  digests
  */
@@ -1178,7 +1195,7 @@ DigestState_copy(void *fp)
 {
 	F_DigestState_copy *f;
 	Heap *h;
-	XDigestState *ds;
+	XDigestState *ds, *ods;
 	void *r;
 
 	f = fp;
@@ -1187,9 +1204,10 @@ DigestState_copy(void *fp)
 	destroy(r);
 
 	if(f->d != H){
+		ods = checktype(f->d, TDigestState, "DigestState", 0);
 		h = heap(TDigestState);
 		ds = H2D(XDigestState*, h); 	
-		memmove(&ds->state, &((XDigestState*)f->d)->state, sizeof(ds->state)); 
+		memmove(&ds->state, &ods->state, sizeof(ds->state)); 
 		*f->ret = (Keyring_DigestState*)ds;
 	}
 }
@@ -1222,10 +1240,8 @@ keyring_digest_x(Array *buf, int n, Array *digest, int dlen, Keyring_DigestState
 		h = heap(TDigestState);
 		ds = H2D(XDigestState*, h);
 		memset(&ds->state, 0, sizeof(ds->state));
-	} else {
-		D2H(state)->ref++;
-		ds = (XDigestState*)state;
-	}
+	} else
+		ds = checktype(state, TDigestState, "DigestState", 1);
 
 	(*fn)(cbuf, n, cdigest, &ds->state);
 
@@ -1305,10 +1321,8 @@ keyring_hmac_x(Array *data, int n, Array *key, Array *digest, int dlen, Keyring_
 		h = heap(TDigestState);
 		ds = H2D(XDigestState*, h);
 		memset(&ds->state, 0, sizeof(ds->state));
-	} else {
-		D2H(state)->ref++;
-		ds = (XDigestState*)state;
-	}
+	} else
+		ds = checktype(state, TDigestState, "DigestState", 1);
 
 	(*fn)(cdata, n, key->data, key->len, cdigest, &ds->state);
 
@@ -1394,9 +1408,9 @@ Keyring_sendmsg(void *fp)
 	*f->ret = -1;
 	if(f->fd == H || f->buf == H || f->n < 0)
 		return;
-	n = f->buf->len;
-	if(n > f->n)
-		n = f->n;
+	n = f->n;
+	if(n < 0 || n > f->buf->len)
+		error(exBounds);
 	*f->ret = sendmsg(f->fd->fd, f->buf->data, n);
 }
 
@@ -1515,10 +1529,12 @@ Keyring_getmsg(void *fp)
 	F_Keyring_getmsg *f;
 	char *buf;
 	int n;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 	if(f->fd == H){
 		kwerrstr("nil fd");
 		return;
@@ -1944,10 +1960,12 @@ Keyring_readauthinfo(void *fp)
 	SigAlg *sa;
 	Keyring_Authinfo *ai;
 	mpint *b;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	ok = 0;
 
@@ -2013,8 +2031,9 @@ Keyring_readauthinfo(void *fp)
 	ok = 1;
 out:
 	if(!ok){
-		destroy(*f->ret);
+		r = *f->ret;
 		*f->ret = H;
+		destroy(r);
 	}
 	free(buf);
 	if(fd >= 0){
@@ -2239,8 +2258,8 @@ Keyring_putbytearray(void *fp)
 	if(f->fd == H || f->a == H)
 		return;
 	n = f->n;
-	if(n > f->a->len)
-		n = f->a->len;
+	if(n < 0 || n > f->a->len)
+		error(exBounds);
 	*f->ret = putbuf(f->fd->fd, f->a->data, n);
 }
 
@@ -2251,10 +2270,12 @@ Keyring_dessetup(void *fp)
 	Heap *h;
 	XDESstate *ds;
 	uchar *ivec;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	if(f->key == H || f->key->len < 8)
 		error(exBadKey);
@@ -2279,20 +2300,17 @@ Keyring_desecb(void *fp)
 	XDESstate *ds;
 	int i;
 	uchar *p;
-	/* uchar tmp[8]; */
 
 	f = fp;
 
-	if(f->state == (Keyring_DESstate*)H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
 	if(f->n & 7)
 		error(exBadBsize);
 
-	ds = (XDESstate*)f->state;
+	ds = checktype(f->state, TDESstate, exBadState, 0);
 	p = f->buf->data;
 
 	for(i = 8; i <= f->n; i += 8, p += 8)
@@ -2309,16 +2327,14 @@ Keyring_descbc(void *fp)
 
 	f = fp;
 
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
 	if(f->n & 7)
 		error(exBadBsize);
 
-	ds = (XDESstate*)f->state;
+	ds = checktype(f->state, TDESstate, exBadState, 0);
 	p = f->buf->data;
 
 	if(f->direction == 0){
@@ -2351,10 +2367,12 @@ Keyring_ideasetup(void *fp)
 	Heap *h;
 	XIDEAstate *is;
 	uchar *ivec;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	if(f->key == H || f->key->len < 16)
 		error(exBadKey);
@@ -2380,20 +2398,17 @@ Keyring_ideaecb(void *fp)
 	XIDEAstate *is;
 	int i;
 	uchar *p;
-	/* uchar tmp[8]; */
 
 	f = fp;
 
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
 	if(f->n & 7)
 		error(exBadBsize);
 
-	is = (XIDEAstate*)f->state;
+	is = checktype(f->state, TIDEAstate, exBadState, 0);
 	p = f->buf->data;
 
 	for(i = 8; i <= f->n; i += 8, p += 8)
@@ -2410,16 +2425,14 @@ Keyring_ideacbc(void *fp)
 
 	f = fp;
 
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
 	if(f->n & 7)
 		error(exBadBsize);
 
-	is = (XIDEAstate*)f->state;
+	is = checktype(f->state, TIDEAstate, exBadState, 0);
 	p = f->buf->data;
 
 	if(f->direction == 0){
@@ -2452,10 +2465,12 @@ Keyring_aessetup(void *fp)
 	Heap *h;
 	XAESstate *is;
 	uchar *ivec;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	if(f->key == H ||
 	   f->key->len != 16 && f->key->len != 24 && f->key->len != 32)
@@ -2484,14 +2499,12 @@ Keyring_aescbc(void *fp)
 
 	f = fp;
 
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
 
-	is = (XAESstate*)f->state;
+	is = checktype(f->state, TAESstate, exBadState, 0);
 	p = f->buf->data;
 
 	if(f->direction == 0)
@@ -2507,10 +2520,12 @@ Keyring_blowfishsetup(void *fp)
 	Heap *h;
 	XBFstate *is;
 	uchar *ivec;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	if(f->key == H || f->key->len <= 0)
 		error(exBadKey);
@@ -2538,14 +2553,14 @@ Keyring_blowfishcbc(void *fp)
 
 	f = fp;
 
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
+	if(f->n & 7)
+		error(exBadBsize);
 
-	is = (XBFstate*)f->state;
+	is = checktype(f->state, TBFstate, exBadState, 0);
 	p = f->buf->data;
 
 	if(f->direction == 0)
@@ -2560,10 +2575,12 @@ Keyring_rc4setup(void *fp)
 	F_Keyring_rc4setup *f;
 	Heap *h;
 	XRC4state *is;
+	void *r;
 
 	f = fp;
-	destroy(*f->ret);
+	r = *f->ret;
 	*f->ret = H;
+	destroy(r);
 
 	if(f->seed == H)
 		return;
@@ -2584,13 +2601,11 @@ Keyring_rc4(void *fp)
 	uchar *p;
 
 	f = fp;
-	if(f->state == H)
-		return;
 	if(f->buf == H)
 		return;
-	if(f->buf->len < f->n)
-		f->n = f->buf->len;
-	is = (XRC4state*)f->state;
+	if(f->n < 0 || f->n > f->buf->len)
+		error(exBounds);
+	is = checktype(f->state, TRC4state, exBadState, 0);
 	p = f->buf->data;
 	rc4(&is->state, p, f->n);
 }
@@ -2602,9 +2617,7 @@ Keyring_rc4skip(void *fp)
 	XRC4state *is;
 
 	f = fp;
-	if(f->state == H)
-		return;
-	is = (XRC4state*)f->state;
+	is = checktype(f->state, TRC4state, exBadState, 0);
 	rc4skip(&is->state, f->n);
 }
 
@@ -2615,9 +2628,7 @@ Keyring_rc4back(void *fp)
 	XRC4state *is;
 
 	f = fp;
-	if(f->state == H)
-		return;
-	is = (XRC4state*)f->state;
+	is = checktype(f->state, TRC4state, exBadState, 0);
 	rc4back(&is->state, f->n);
 }
 

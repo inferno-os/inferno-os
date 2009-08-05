@@ -1,3 +1,6 @@
+20090805
+	further checking added to libinterp/keyring.c: rejects incorrect states and out of bounds values of f->n
+	add lib/emptydirs and mkdirs target to /mkfile (utils/mkdir needs to be changed for Windows use)
 20090730
 	improve the error checking in strtosk and strtopk to help detect mangled or inappropriate keys
 20090728
