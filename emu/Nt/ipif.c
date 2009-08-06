@@ -219,7 +219,7 @@ so_listen(int fd)
 	int r;
 
 	osenter();
-	r = listen(fd, 5);
+	r = listen(fd, 256);
 	osleave();
 	if(r < 0)
 		oserror();
