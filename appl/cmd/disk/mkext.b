@@ -30,16 +30,9 @@ tflag := 0;
 hflag := 0;
 vflag := 0;
 fflag := 0;
-qflag := 1;
 stderr: ref Sys->FD;
 bout: ref Iobuf;
 argv0 := "mkext";
-
-usage()
-{
-	fprint(stderr, "Usage: mkext [-h] [-u] [-v] [-f] [-t] [-q] [-d dest-fs] [file ...]\n");
-	raise "fail:usage";
-}
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -59,12 +52,11 @@ init(nil: ref Draw->Context, args: list of string)
 
 	destdir := "";
 	arg->init(args);
+	arg->setusage("mkext [-h] [-d destdir] [-T] [-u] [-v] [file ...]");
 	while((c := arg->opt()) != 0)
 		case c {
 		'd' =>
-			destdir = arg->arg();
-			if(destdir == nil)
-				error("destination directory name missing");
+			destdir = arg->earg();
 		'f' =>
 			fflag = 1;
 
@@ -75,14 +67,13 @@ init(nil: ref Draw->Context, args: list of string)
 				error(sys->sprint("can't access standard output: %r"));
 		'u' =>
 			uflag = 1;
-		't' =>
+			tflag = 1;
+		't' or 'T' =>
 			tflag = 1;
 		'v' =>
 			vflag = 1;
-		'q' =>
-			qflag = 0;
 		* =>
-			usage();
+			arg->usage();
 		}
 	args = arg->argv();
 
@@ -94,14 +85,8 @@ init(nil: ref Draw->Context, args: list of string)
 			fprint(stderr, "done\n");
 			quit(nil);
 		}
-		fields: list of string;
-		nf: int;
-		if(qflag){
-			fields = str->unquoted(p);
-			nf = len fields;
-		}else
-			(nf, fields) = sys->tokenize(p, " \t\n");
-		if(nf != NFLDS){
+		fields := str->unquoted(p);
+		if(len fields != NFLDS){
 			warn("too few fields in file header");
 			continue;
 		}
@@ -126,8 +111,8 @@ init(nil: ref Draw->Context, args: list of string)
 		}
 		name = destdir+name;
 		if(hflag){
-			bout.puts(sys->sprint("%s %s %s %s %ud %bd\n",
-				quoted(name), octal(mode), uid, gid, mtime, bytes));
+			bout.puts(sys->sprint("%q %s %s %s %ud %bd\n",
+				name, octal(mode), uid, gid, mtime, bytes));
 			if(bytes != big 0)
 				seekpast(bytes);
 			continue;
@@ -212,7 +197,6 @@ mkdir(name: string, mode: int, mtime: int, uid: string, gid: string)
 	if(uflag){
 		d.uid = uid;
 		d.gid = gid;
-		d.mtime = mtime;
 	}
 	d.mode = mode;
 	if(sys->wstat(name, d) < 0)
@@ -272,7 +256,7 @@ extract(name: string, mode: int, mtime: int, uid: string, gid: string, bytes: bi
 	if(p == nil)
 		p = name;
 	d.name = p;
-	if(tflag || uflag)
+	if(tflag)
 		d.mtime = mtime;
 	if(uflag){
 		d.uid = uid;
@@ -365,13 +349,4 @@ create(name : string, rw : int, mode : int) : ref Sys->FD
 		sys->wstat(p, d);
 	}
 	return fd;
-}
-
-quoted(s: string): string
-{
-	if(qflag)
-		for(i:=0; i<len s; i++)
-			if((c := s[i]) == ' ' || c == '\t' || c == '\n' || c == '\'')
-				return str->quoted(s :: nil);
-	return s;
 }

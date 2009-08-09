@@ -1,3 +1,6 @@
+20090809
+	bring mkfs(8) up to date (issue 176)
+	remove -q options from mkfs and mkext (-q was a transitional option to suppress quoting of file names)
 20090806
 	increase `backlog' value in all listen calls in hosted Inferno (emu/*/ipif*.c) [powerman]
 20090805

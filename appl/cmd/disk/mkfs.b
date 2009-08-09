@@ -55,7 +55,6 @@ modes: int;
 ream: int;
 debug: int;
 xflag: int;
-qflag := 1;
 sfd: ref Sys->FD;
 fskind: int;	# Kfs, Fs, Archive
 user: string;
@@ -63,12 +62,6 @@ stderr: ref Sys->FD;
 usrid, grpid : string;
 setuid: int;
 	
-usage()
-{
-	fprint(stderr, "usage: %s [-apqrvx] [-d root] [-n kfsname] [-s src-fs] [-u userfile] [-z n] proto ...\n", prog);
-	quit("usage");
-}
-
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
@@ -80,7 +73,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	stderr = sys->fildes(2);
 	if(arg == nil)
-		error(sys->sprint("can't load %s: %r", Arg->PATH));
+		error(sys->sprint("can't load %q: %r", Arg->PATH));
 
 	user = getuser();
 	if(user == nil)
@@ -95,6 +88,7 @@ init(nil: ref Draw->Context, args: list of string)
 	users = nil;
 	fskind = Kfs;	# i suspect Inferno default should be different
 	arg->init(args);
+	arg->setusage("mkfs [-aprvxS] [-d root] [-n kfscmdname] [-s src-fs] [-u userfile] [-z n] [-G group] [-U user] proto ...");
 	while((c := arg->opt()) != 0)
 		case c {
 		'a' =>
@@ -105,49 +99,52 @@ init(nil: ref Draw->Context, args: list of string)
 				error(sys->sprint("can't open standard output for archive: %r"));
 		'd' =>
 			fskind = Fs;
-			newroot = reqarg("destination directory (-d)");
+			newroot = arg->earg();
 		'D' =>
 			debug = 1;
 		'n' =>
-			name = reqarg("kfs instance name (-n)");
+			name = arg->earg();
 		'p' =>
 			modes = 1;
 		'q' =>
-			qflag = 0;
+			;
 		'r' =>
 			ream = 1;
 		's' =>
-			oldroot = reqarg("source directory (-d)");
+			oldroot = arg->earg();
 		'u' =>
-			users = reqarg("/adm/users file (-u)");
+			users = arg->earg();
 		'v' =>
 			verb = 1;
 		'x' =>
 			xflag = 1;
 		'z' =>
-			(buflen, nil) = str->toint(reqarg("buffer length (-z)"), 10);
+			(buflen, nil) = str->toint(arg->earg(), 10);
 			buflen -= 8;	# qid.path and tag at end of each kfs block
 		'U' => 
-			usrid = reqarg("user name (-U)");
+			usrid = arg->earg();
 		'G' =>
-			grpid = reqarg("group name (-G)");
+			grpid = arg->earg();
 		'S' =>
 			setuid = 1;
 		* =>
-			usage();
+			arg->usage();
 		}
 
 	args = arg->argv();
 	if(args == nil)
-		usage();
+		arg->usage();
 
 	buf = array [buflen] of byte;
 	zbuf = array [buflen] of { * => byte 0 };
 
-	mountkfs(name);
+	if(name != nil)
+		openkfscmd(name);
 	kfscmd("allow");
-	proto = "users";
-	setusers();
+	if(users != nil){
+		proto = "users";	# for diagnostics
+		setusers();
+	}
 	cputype = getenv("cputype");
 	if(cputype == nil)
 		cputype = "dis";
@@ -159,7 +156,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 		b = bufio->open(proto, Sys->OREAD);
 		if(b == nil){
-			fprint(stderr, "%s: can't open %s: %r: skipping\n", prog, proto);
+			fprint(stderr, "%s: can't open %q: %r: skipping\n", prog, proto);
 			errs++;
 			continue;
 		}
@@ -190,15 +187,6 @@ quit(why: string)
 	exit;
 }
 
-reqarg(what: string): string
-{
-	if((o := arg->arg()) == nil){
-		sys->fprint(stderr, "%s: missing %s\n", prog, what);
-		quit("usage");
-	}
-	return o;
-}
-
 mkfs(me: ref File, level: int)
 {
 	(child, fp) := getfile(me);
@@ -227,7 +215,7 @@ mktree(me: ref File, rec: int, filesonly: int)
 {
 	fd := sys->open(oldfile, Sys->OREAD);
 	if(fd == nil){
-		warn(sys->sprint("can't open %s: %r", oldfile));
+		warn(sys->sprint("can't open %q: %r", oldfile));
 		return;
 	}
 
@@ -282,7 +270,7 @@ mkfile(f: ref File): int
 {
 	(i, dir) := sys->stat(oldfile);
 	if(i < 0){
-		warn(sys->sprint("can't stat file %s: %r", oldfile));
+		warn(sys->sprint("can't stat file %q: %r", oldfile));
 		skipdir();
 		return 0;
 	}
@@ -294,7 +282,7 @@ copyfile(f: ref File, d: ref Dir, permonly: int): int
 	mode: int;
 
 	if(xflag && bout != nil){
-		bout.puts(sys->sprint("%s\t%d\t%bd\n", quoted(f.new), d.mtime, d.length));
+		bout.puts(sys->sprint("%q\t%d\t%bd\n", f.new, d.mtime, d.length));
 		return (d.mode & Sys->DMDIR) != 0;
 	}
 	d.name = f.elem;
@@ -329,7 +317,7 @@ copyfile(f: ref File, d: ref Dir, permonly: int): int
 			mkdir(d);
 		else {
 			if(verb)
-				fprint(stderr, "%s\n", f.new);
+				fprint(stderr, "%q\n", f.new);
 			copy(d);
 		}
 	}else if(modes){
@@ -338,7 +326,7 @@ copyfile(f: ref File, d: ref Dir, permonly: int): int
 		nd.mtime = d.mtime;
 		nd.gid = d.gid;
 		if(sys->wstat(newfile, nd) < 0)
-			warn(sys->sprint("can't set modes for %s: %r", f.new));
+			warn(sys->sprint("can't set modes for %q: %r", f.new));
 		# do the uid separately since different file systems object
 		nd = sys->nulldir;
 		nd.uid = d.uid;
@@ -368,7 +356,7 @@ copy(d: ref Dir)
 
 	f := sys->open(oldfile, Sys->OREAD);
 	if(f == nil){
-		warn(sys->sprint("can't open %s: %r", oldfile));
+		warn(sys->sprint("can't open %q: %r", oldfile));
 		return;
 	}
 	t = nil;
@@ -381,7 +369,7 @@ copy(d: ref Dir)
 		cptmp := dname+"__mkfstmp";
 		t = sys->create(cptmp, Sys->OWRITE, 8r666);
 		if(t == nil){
-			warn(sys->sprint("can't create %s: %r", newfile));
+			warn(sys->sprint("can't create %q: %r", newfile));
 			return;
 		}
 	}
@@ -389,7 +377,7 @@ copy(d: ref Dir)
 	for(tot := big 0;; tot += big n){
 		n = sys->read(f, buf, buflen);
 		if(n < 0){
-			warn(sys->sprint("can't read %s: %r", oldfile));
+			warn(sys->sprint("can't read %q: %r", oldfile));
 			break;
 		}
 		if(n == 0)
@@ -399,9 +387,9 @@ copy(d: ref Dir)
 				error(sys->sprint("write error: %r"));
 		}else if(buf[0:buflen] == zbuf[0:buflen]){
 			if(sys->seek(t, big buflen, 1) < big 0)
-				error(sys->sprint("can't write zeros to %s: %r", newfile));
+				error(sys->sprint("can't write zeros to %q: %r", newfile));
 		}else if(sys->write(t, buf, n) < n)
-			error(sys->sprint("can't write %s: %r", newfile));
+			error(sys->sprint("can't write %q: %r", newfile));
 	}
 	f = nil;
 	if(tot != d.length){
@@ -420,11 +408,11 @@ copy(d: ref Dir)
 	nd.mode = d.mode;
 	nd.mtime = d.mtime;
 	if(sys->fwstat(t, nd) < 0)
-		error(sys->sprint("can't move tmp file to %s: %r", newfile));
+		error(sys->sprint("can't move tmp file to %q: %r", newfile));
 	nd = sys->nulldir;
 	nd.gid = d.gid;
 	if(sys->fwstat(t, nd) < 0)
-		warn(sys->sprint("can't set group id of %s to %s: %r", newfile, d.gid));
+		warn(sys->sprint("can't set group id of %q to %q: %r", newfile, d.gid));
 	nd.gid = nil;
 	nd.uid = d.uid;
 	sys->fwstat(t, nd);
@@ -444,16 +432,16 @@ mkdir(d: ref Dir)
 	if(fd == nil){
 		(i, d1) := sys->stat(newfile);
 		if(i < 0 || !(d1.mode & Sys->DMDIR))
-			error(sys->sprint("can't create %s", newfile));
+			error(sys->sprint("can't create %q", newfile));
 		if(sys->wstat(newfile, nd) < 0)
-			warn(sys->sprint("can't set modes for %s: %r", newfile));
+			warn(sys->sprint("can't set modes for %q: %r", newfile));
 		nd = sys->nulldir;
 		nd.uid = d.uid;
 		sys->wstat(newfile, nd);
 		return;
 	}
 	if(sys->fwstat(fd, nd) < 0)
-		warn(sys->sprint("can't set modes for %s: %r", newfile));
+		warn(sys->sprint("can't set modes for %q: %r", newfile));
 	nd = sys->nulldir;
 	nd.uid = d.uid;
 	sys->fwstat(fd, nd);
@@ -461,8 +449,8 @@ mkdir(d: ref Dir)
 
 arch(d: ref Dir)
 {
-	bout.puts(sys->sprint("%s %s %s %s %ud %bd\n",
-		quoted(newfile), octal(d.mode), d.uid, d.gid, d.mtime, d.length));
+	bout.puts(sys->sprint("%q %uo %q %q %ud %bd\n",
+		newfile, d.mode, d.uid, d.gid, d.mtime, d.length));
 }
 
 mkpath(prefix, elem: string): string
@@ -543,11 +531,11 @@ getfile(old: ref File): (ref File, big)
 	f = ref File;
 	(elem, p) = getname(p);
 	if(debug)
-		fprint(stderr, "getfile: %s root %s\n", elem, old.new);
+		fprint(stderr, "getfile: %q root %q\n", elem, old.new);
 	f.new = mkpath(old.new, elem);
 	(nil, f.elem) = str->splitr(f.new, "/");
 	if(f.elem == nil)
-		error(sys->sprint("can't find file name component of %s", f.new));
+		error(sys->sprint("can't find file name component of %q", f.new));
 	(f.mode, p) = getmode(p);
 	(f.uid, p) = getname(p);
 	if(f.uid == nil)
@@ -585,7 +573,7 @@ getname(p: string): (string, string)
 	for(; (c = p[0]) != '\n' && (c != ' ' && c != '\t' || quoted); p = p[1:]){
 			if(quoted && c == '\'' && p[1] == '\'')
 				p = p[1:];
-			else if(c == '\'' && qflag){
+			else if(c == '\''){
 				quoted = !quoted;
 				continue;
 			}
@@ -594,7 +582,7 @@ getname(p: string): (string, string)
 	if(len s > 0 && s[0] == '$'){
 		s = getenv(s[1:]);
 		if(s == nil)
-			error(sys->sprint("can't read environment variable %s", s));
+			error(sys->sprint("can't read environment variable %q", s));
 	}
 	return (s, p);
 }
@@ -654,13 +642,6 @@ getmode(p: string): (int, string)
 	return (m|v, p);
 }
 
-quoted(s: string): string
-{
-	if(qflag)
-		return sys->sprint("%q", s);
-	return s;
-}
-
 setusers()
 {
 	if(fskind != Kfs)
@@ -693,30 +674,14 @@ setusers()
 	modes = m;
 }
 
-# this isn't right for the current #K
-mountkfs(name: string)
+openkfscmd(name: string)
 {
-	kname: string;
-
 	if(fskind != Kfs)
 		return;
-	if(name != nil)
-		kname = sys->sprint("/srv/kfs.%s", name);
-	else
-		kname = "/srv/kfs";
-	fd := sys->open(kname, Sys->ORDWR);
-	if(fd == nil){
-		fprint(stderr, "%s: can't open %s: %r\n", prog, kname);
-		quit("open kfs");
-	}
-	if(sys->mount(fd, nil, "/n/kfs", Sys->MREPL|Sys->MCREATE, "") < 0){
-		fprint(stderr, "%s: can't mount kfs on /n/kfs: %r\n", prog);
-		quit("mount kfs");
-	}
-	kname += ".cmd";
+	kname := sys->sprint("/chan/kfs.%s.cmd", name);
 	sfd = sys->open(kname, Sys->ORDWR);
 	if(sfd == nil){
-		fprint(stderr, "%s: can't open %s: %r\n", prog, kname);
+		fprint(stderr, "%s: can't open %q: %r\n", prog, kname);
 		quit("open kfscmd");
 	}
 }
@@ -747,7 +712,7 @@ kfscmd(cmd: string)
 
 error(s: string)
 {
-	fprint(stderr, "%s: %s: %d: %s\n", prog, proto, lineno, s);
+	fprint(stderr, "%s: %s:%d: %s\n", prog, proto, lineno, s);
 	kfscmd("disallow");
 	kfscmd("sync");
 	quit("error");
@@ -755,24 +720,13 @@ error(s: string)
 
 warn(s: string)
 {
-	fprint(stderr, "%s: %s: %d: %s\n", prog, proto, lineno, s);
+	fprint(stderr, "%s: %s:%d: %s\n", prog, proto, lineno, s);
 }
 
 printfile(f: ref File)
 {
 	if(f.old != nil)
-		fprint(stderr, "%s from %s %s %s %s\n", f.new, f.old, f.uid, f.gid, octal(f.mode));
+		fprint(stderr, "%q from %q %q %q %uo\n", f.new, f.old, f.uid, f.gid, f.mode);
 	else
-		fprint(stderr, "%s %s %s %s\n", f.new, f.uid, f.gid, octal(f.mode));
-}
-
-octal(i: int): string
-{
-	s := "";
-	do {
-		t: string;
-		t[0] = '0' + (i&7);
-		s = t+s;
-	} while((i = (i>>3)&~(7<<29)) != 0);
-	return s;
+		fprint(stderr, "%q %q %q %uo\n", f.new, f.uid, f.gid, f.mode);
 }
