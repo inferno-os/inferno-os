@@ -153,6 +153,7 @@ init(nil: ref Draw->Context, args: list of string)
 			error(sys->sprint("can't open %s: %r", dbfile));
 		dbload(db);
 		db = nil;	# for now assume it's static
+		attrdb = nil;
 	}
 	navops := chan of ref Navop;
 	spawn navigator(navops);
@@ -295,8 +296,9 @@ write(m: ref Tmsg.Write, fid: ref Fid): string
 			return "bad syntax";
 		# first write names the service (possibly with attributes)
 		if(svc.name == nil){
-			if(svcnameok(hd toks) != nil)
-				return "bad service name";
+			err := svcnameok(hd toks);
+			if(err != nil)
+				return err;
 			svc.name = hd toks;
 			toks = tl toks;
 		}
@@ -306,7 +308,8 @@ write(m: ref Tmsg.Write, fid: ref Fid): string
 		svc.vers++;
 		for(; toks != nil; toks = tl tl toks)
 			svc.set(hd toks, hd tl toks);
-		Event.post(++rootvers);
+		rootvers++;
+		Event.post(rootvers);
 	Qfind =>
 		s := string m.data;
 		toks := str->unquoted(s);
@@ -339,9 +342,12 @@ clunk(fid: ref Fid)
 	case path & Mask {
 	Qsvc =>
 		svc := Service.find(path >> Shift);
-		if(svc != nil && svc.fid == fid.fid && int svc.get("persist") == 0){
+		if(svc != nil && svc.fid == fid.fid && (fid.mode & Sys->ORCLOSE || int svc.get("persist") == 0)){
 			svc.remove();
-			Event.post(rootvers);
+			if(svc.name != nil){	# otherwise there's no visible change
+				rootvers++;
+				Event.post(rootvers);
+			}
 		}
 	Qevent =>
 		if((e := Event.find(fid.fid)) != nil)
@@ -359,6 +365,7 @@ remove(fid: ref Fid): string
 		svc := Service.find(path >> Shift);
 		if(fid.uname == svc.owner){
 			svc.remove();
+			rootvers++;
 			Event.post(rootvers);
 			return nil;
 		}
@@ -568,7 +575,6 @@ Service.new(owner: string): ref Service
 	services[nservices] = svc;
 	svc.slot = nservices;
 	nservices++;
-	rootvers++;
 	return svc;
 }
 
@@ -585,7 +591,6 @@ Service.remove(svc: self ref Service)
 	slot := svc.slot;
 	services[slot] = nil;
 	nservices--;
-	rootvers++;
 	if(slot != nservices){
 		services[slot] = services[nservices];
 		services[slot].slot = slot;
