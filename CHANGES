@@ -1,3 +1,5 @@
+20090819
+	appl/cmd/mk/mk.b replace maketmp/mktemp (issue 202, mechiel); also old change: don't persist with bulkmtime on non-directories
 20090816
 	registry(4) Event.post increased rootvers when entries are written or removed (issue 179, powerman)
 20090809

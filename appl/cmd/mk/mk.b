@@ -175,7 +175,7 @@ patrule: ref Rule;
 main(argc: int, argv: array of array of byte)
 {
 	w: ref Word;
-	s, temp: array of byte;
+	s: array of byte;
 	files := array[256] of array of byte;
 	f: array of array of byte = files;
 	ff: int;
@@ -265,20 +265,15 @@ main(argc: int, argv: array of array of byte)
 	# 
 	# 		assignment args become null strings
 	# 	
-	temp = nil;
+	temp: string;
 	for(i = 0; argv[i] != nil; i++)
 		if(libc0->strchr(argv[i], '=') != nil){
 			bufcpy(buf, argv[i], libc0->strlen(argv[i]));
 			insert(buf, ' ');
 			if(tfd == nil){
-				temp = maketmp();
-				if(temp == nil){
-					perrors("temp file");
-					Exit();
-				}
-				sys->create(libc0->ab2s(temp), Sys->OWRITE, 8r600);
-				if((tfd = sys->open(libc0->ab2s(temp), 2)) == nil){
-					perror(temp);
+				(temp, tfd) = tmpfile("/tmp/mkarg");
+				if(tfd == nil){
+					perror(array of byte temp);
 					Exit();
 				}
 				tb = bufio->fopen(tfd, Sys->OWRITE);
@@ -290,7 +285,7 @@ main(argc: int, argv: array of array of byte)
 		tb.flush();
 		sys->seek(tfd, big 0, 0);
 		parse(libc0->s2ab("command line args"), tfd, 1);
-		sys->remove(libc0->ab2s(temp));
+		sys->remove(temp);
 	}
 	if(buf.current != 0){
 		buf.current--;
@@ -424,20 +419,16 @@ stob(buf: array of byte, s: string)
 	libc0->strncpy(buf, b, len buf);
 }
 
-mktemp(t: array of byte)
+tmpfile(basename: string): (string, ref Sys->FD)
 {
-	x := libc0->strchr(t, 'X');
-	if(x == nil)
-		return;
-	pid := libc0->s2ab(string sys->pctl(0, nil));
-	for(i := 'a'; i <= 'z'; i++){
-		x[0] = byte i;
-		x = x[1: ];
-		libc0->strncpy(x, pid, libc0->strlen(x));
-		(ok, nil) := sys->stat(libc0->ab2s(t));
-		if(ok >= 0)
-			continue;
+	pid := sys->pctl(0, nil);
+	for(i := 0; i < 100; i++){
+		t := basename+sys->sprint("%8.8d.%.2d", pid, i);
+		fd := sys->create(t, Sys->OEXCL|Sys->ORDWR, 8r600);
+		if(fd != nil)
+			return (t, fd);
 	}
+	return (nil, nil);
 }
 
 postnote(t: int, pid: int, note: array of byte)
@@ -3383,15 +3374,6 @@ notifyf(a: array of byte, msg: array of byte): int
 catchnotes()
 {
 	# atnotify(notifyf, 1);
-}
-
-temp := array[] of { byte '/', byte 't', byte 'm', byte 'p', byte '/', byte 'm', byte 'k', byte 'a', byte 'r', byte 'g', byte 'X', byte 'X', byte 'X', byte 'X', byte 'X', byte 'X', byte '\0' };
-
-maketmp(): array of byte
-{
-	t := libc0->strdup(temp);
-	mktemp(t);
-	return t;
 }
 
 chgtime(name: array of byte): int
