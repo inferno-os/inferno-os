@@ -4,6 +4,7 @@
 #include <winbase.h>
 #include	<winsock.h>
 #undef Unknown
+#include	<excpt.h>
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"

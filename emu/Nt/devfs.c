@@ -11,6 +11,10 @@
 
 /* TODO: try using / in place of \ in path names */
 
+#ifndef SID_MAX_SUB_AUTHORITIES
+#define	SID_MAX_SUB_AUTHORITIES	15
+#endif
+
 enum
 {
 	MAX_SID		= sizeof(SID) + SID_MAX_SUB_AUTHORITIES*sizeof(DWORD),
