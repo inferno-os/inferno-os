@@ -39,9 +39,9 @@ init(nil: ref Draw->Context, args: list of string)
 		* =>	arg->usage();
 		}
 	args = arg->argv();
-	arg = nil;
 	if(args == nil)
 		arg->usage();
+	arg = nil;
 	for(; args != nil; args = tl args)
 		status += touch(force, hd args, now);
 	if(status)
