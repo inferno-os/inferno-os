@@ -202,10 +202,11 @@ connect(): string
 	return nil;
 }
 
-#shut(s: string)
-#{
-#	sys->print("ftpfs: %s shutdown\n", s);
-#}
+error(s: string)
+{
+	sys->fprint(sys->fildes(2), "ftpfs: %s\n", s);
+	raise "fail:"+s;
+}
 
 #
 #	Mount server.  Must be spawned because it does
@@ -214,8 +215,8 @@ connect(): string
 
 mount(mountpoint: string)
 {
-	if (sys->mount(mountfd, nil, mountpoint, sys->MREPL | sys->MCREATE, nil) < 0) {
-		sys->print("mount %s failed: %r\n", mountpoint);
+	if (sys->mount(mountfd, nil, mountpoint, Sys->MREPL | Sys->MCREATE, nil) < 0) {
+		sys->fprint(sys->fildes(2), "ftpfs: mount %s failed: %r\n", mountpoint);
 		shutdown();
 	}
 	mountfd = nil;
@@ -1596,12 +1597,10 @@ init(nil: ref Draw->Context, args: list of string)
 		if (debug)
 			sys->print("proxyhost %s\n", proxyhost);
 	} else {
-		d := "tcp!" + hostname + "!ftp";
+		d := dial->netmkaddr(hostname, "tcp", "ftp");
 		ftp = dial->dial(d, nil);
-		if(ftp == nil) {
-			sys->print("dial %s failed: %r\n", d);
-			exit;
-		}
+		if(ftp == nil)
+			error(sys->sprint("dial %s failed: %r", d));
 		if(debug)
 			sys->print("localdir %s\n", ftp.dir);
 		dfid = ftp.dfd;
@@ -1685,20 +1684,13 @@ init(nil: ref Draw->Context, args: list of string)
 	spawn server();				# dies when receive on chan fails
 }
 
-kill(pid: int): int
+kill(pid: int)
 {
 	if (debug)
 		sys->print("killing %d\n", pid);
-	fd := sys->open("/prog/"+string pid+"/ctl", Sys->OWRITE);
-	if (fd == nil) {
-		sys->print("kill: open failed\n");
-		return -1;
-	}
-	if (sys->write(fd, array of byte "kill", 4) != 4) {
-		sys->print("kill: write failed\n");
-		return -1;
-	}
-	return 0;
+	fd := sys->open("#p/"+string pid+"/ctl", Sys->OWRITE);
+	if(fd != nil)
+		sys->fprint(fd, "kill");
 }
 
 shutdown()
@@ -1911,7 +1903,7 @@ clunkT(t: ref Tmsg.Clunk)
 	f := getfid(t.fid);
 	if (f.node.fileisdirty()) {
 		if (f.node.createfile() < 0)
-			sys->print("ftpfs: could not create %s\n", f.node.pathname());
+			sys->print("ftpfs: could not create %s: %r\n", f.node.pathname());
 		f.node.fileclean();
 		f.node.uncache();
 	}

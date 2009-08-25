@@ -1,3 +1,5 @@
+20090825
+	add netmkaddr call to /appl/cmd/ftpfs.b; send errors to standard error
 20090824
 	delete unused (and somewhat incomplete) pin support
 20090822
