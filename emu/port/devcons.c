@@ -324,7 +324,7 @@ consread(Chan *c, void *va, long n, vlong offset)
 		return readstr(offset, va, n, buf);
 
 	case Qdrivers:
-		return devtabread(c, buf, n, offset);
+		return devtabread(c, va, n, offset);
 
 	case Qmemory:
 		return poolread(va, n, offset);
