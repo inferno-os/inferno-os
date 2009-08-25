@@ -337,7 +337,7 @@ newfile(Tfs *fs, char *name)
 	rock.f->bno = mapalloc(rock.fs);
 	rock.f->fbno = Notabno;
 	rock.f->r = 1;
-	rock.f->pin = up->env->pgrp->pin;
+	rock.f->pin = Notapin;
 
 	/* write directory block */
 	if(waserror()){

@@ -15,7 +15,6 @@ newpgrp(void)
 		error(Enomem);
 	p->r.ref = 1;
 	p->pgrpid = incref(&pgrpid);
-	p->pin = Nopin;
 	p->progmode = 0644;
 	p->privatemem = 0;
 	return p;
@@ -44,8 +43,8 @@ closepgrp(Pgrp *p)
 		}
 	}
 	wunlock(&p->ns);
-	cclose(p->slash);
 	cclose(p->dot);
+	cclose(p->slash);
 	free(p);
 }
 
@@ -81,18 +80,23 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 	Mhead *f, **tom, **l, *mh;
 
 	wlock(&from->ns);
+	if(waserror()){
+		wunlock(&from->ns);
+		nexterror();
+	}
 	order = 0;
 	tom = to->mnthash;
 	for(i = 0; i < MNTHASH; i++) {
 		l = tom++;
 		for(f = from->mnthash[i]; f; f = f->hash) {
 			rlock(&f->lock);
-			mh = malloc(sizeof(Mhead));
-			if(mh == nil) {
+			if(waserror()){
 				runlock(&f->lock);
-				wunlock(&from->ns);
-				error(Enomem);
+				nexterror();
 			}
+			mh = malloc(sizeof(Mhead));
+			if(mh == nil)
+				error(Enomem);
 			mh->from = f->from;
 			mh->r.ref = 1;
 			incref(&mh->from->r);
@@ -101,16 +105,12 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 			link = &mh->mount;
 			for(m = f->mount; m; m = m->next) {
 				n = newmount(mh, m->to, m->mflag, m->spec);
-				if(n == nil) {
-					runlock(&f->lock);
-					wunlock(&from->ns);
-					error(Enomem);
-				}
 				m->copy = n;
 				pgrpinsert(&order, m);
 				*link = n;
 				link = &n->next;	
 			}
+			poperror();
 			runlock(&f->lock);
 		}
 	}
@@ -122,11 +122,11 @@ pgrpcpy(Pgrp *to, Pgrp *from)
 		m->copy->mountid = mountid.ref++;
 	unlock(&mountid.lk);
 
-	to->pin = from->pin;
-
+	to->progmode = from->progmode;
 	to->slash = cclone(from->slash);
 	to->dot = cclone(from->dot);
 	to->nodevs = from->nodevs;
+	poperror();
 	wunlock(&from->ns);
 }
 

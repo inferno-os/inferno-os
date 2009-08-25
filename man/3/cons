@@ -16,7 +16,6 @@ cons \- console device
 .B /dev/msec
 .B /dev/null
 .B /dev/notquiterandom
-.B /dev/pin
 .B /dev/pointer
 .B /dev/random
 .B /dev/scancode
@@ -159,18 +158,6 @@ causes the pointer to move to the specified x, y position
 (the button and millisecond fields are ignored, and optional).
 If there is a visible image representing the pointer's position,
 that will move too.
-.PP
-The
-.B pin
-file, when read, returns either the string
-.B "no pin
-if no PIN has been set for authentication, or
-.B "pin set
-if one has.
-The
-.B pin
-file may be written once with a decimal representation of the PIN
-to use on this Inferno machine.
 .PP
 The
 .B random

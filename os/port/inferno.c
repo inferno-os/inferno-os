@@ -861,7 +861,6 @@ Sys_pctl(void *fp)
 		np.np->slash = cclone(dot);
 		cnameclose(np.np->slash->name);
 		np.np->slash->name = newcname("/");
-		np.np->pin = o->pgrp->pin;		/* pin is ALWAYS inherited */
 		np.np->nodevs = o->pgrp->nodevs;
 		opg = o->pgrp;
 		o->pgrp = np.np;

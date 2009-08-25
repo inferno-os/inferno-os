@@ -27,7 +27,6 @@ enum
 	Qmsec,
 	Qnotquiterandom,
 	Qnull,
-	Qpin,
 	Qrandom,
 	Qscancode,
 	Qsysctl,
@@ -53,7 +52,6 @@ Dirtab contab[] =
 	"msec",		{Qmsec},	NUMSIZE,	0444,
 	"notquiterandom",	{Qnotquiterandom},	0,	0444,
 	"null",		{Qnull},	0,	0666,
-	"pin",		{Qpin},		0,	0666,
 	"random",	{Qrandom},	0,	0444,
 	"scancode",	{Qscancode},	0,	0444,
 	"sysctl",	{Qsysctl},	0,	0644,
@@ -283,8 +281,7 @@ consclose(Chan *c)
 static long
 consread(Chan *c, void *va, long n, vlong offset)
 {
-	ulong l;
-	int i, send;
+	int send;
 	char *p, buf[64], ch;
 
 	if(c->qid.type & QTDIR)
@@ -309,12 +306,6 @@ consread(Chan *c, void *va, long n, vlong offset)
 		genrandom(va, n);
 		return n;
 
-	case Qpin:
-		p = "pin set";
-		if(up->env->pgrp->pin == Nopin)
-			p = "no pin";
-		return readstr(offset, va, n, p);
-
 	case Qhostowner:
 		return readstr(offset, va, n, eve);
 
@@ -333,20 +324,7 @@ consread(Chan *c, void *va, long n, vlong offset)
 		return readstr(offset, va, n, buf);
 
 	case Qdrivers:
-		p = malloc(READSTR);
-		if(p == nil)
-			error(Enomem);
-		l = 0;
-		for(i = 0; devtab[i] != nil; i++)
-			l += snprint(p+l, READSTR-l, "#%C %s\n", devtab[i]->dc,  devtab[i]->name);
-		if(waserror()){
-			free(p);
-			nexterror();
-		}
-		n = readstr(offset, va, n, p);
-		poperror();
-		free(p);
-		return n;
+		return devtabread(c, buf, n, offset);
 
 	case Qmemory:
 		return poolread(va, n, offset);
@@ -490,16 +468,6 @@ conswrite(Chan *c, void *va, long n, vlong offset)
 	case Qnull:
 		break;
 
-	case Qpin:
-		if(up->env->pgrp->pin != Nopin)
-			error("pin already set");
-		if(n >= sizeof(buf))
-			n = sizeof(buf)-1;
-		strncpy(buf, va, n);
-		buf[n] = '\0';
-		up->env->pgrp->pin = atoi(buf);
-		break;
-
 	case Qtime:
 		if(n >= sizeof(buf))
 			n = sizeof(buf)-1;
@@ -611,7 +579,9 @@ Dev consdevtab = {
 	'c',
 	"cons",
 
+	devreset,
 	consinit,
+	devshutdown,
 	consattach,
 	conswalk,
 	consstat,

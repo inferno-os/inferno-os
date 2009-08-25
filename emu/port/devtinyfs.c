@@ -185,7 +185,7 @@ readdata(Tfs *fs, ulong bno, uchar *buf, int *lenp)
 {
 	if(bno >= fs->nblocks)
 		return 0;
-	if(devtab[fs->c->type]->read(fs->c, buf, Blen, Blen*bno) != Blen)
+	if(fs->c->dev->read(fs->c, buf, Blen, Blen*bno) != Blen)
 		error(Eio);
 	return validdata(fs, buf, lenp);
 }
@@ -212,7 +212,7 @@ writedata(Tfs *fs, ulong bno, ulong next, uchar *buf, int len, int last)
 	memmove(md.data, buf, len);
 	md.sum = 0 - checksum((uchar*)&md);
 	
-	if(devtab[fs->c->type]->write(fs->c, &md, Blen, Blen*bno) != Blen)
+	if(fs->c->dev->write(fs->c, &md, Blen, Blen*bno) != Blen)
 		error(Eio);
 }
 
@@ -233,7 +233,7 @@ writedir(Tfs *fs, Tfile *f)
 	PUTS(md->pin, f->pin);
 	md->sum = 0 - checksum(buf);
 	
-	if(devtab[fs->c->type]->write(fs->c, buf, Blen, Blen*f->bno) != Blen)
+	if(fs->c->dev->write(fs->c, buf, Blen, Blen*f->bno) != Blen)
 		error(Eio);
 }
 
@@ -248,7 +248,7 @@ freeblocks(Tfs *fs, ulong bno, ulong bend)
 
 	while(bno != bend && bno != Notabno){
 		mapclr(fs, bno);
-		if(devtab[fs->c->type]->read(fs->c, buf, Blen, Blen*bno) != Blen)
+		if(fs->c->dev->read(fs->c, buf, Blen, Blen*bno) != Blen)
 			break;
 		md = validdata(fs, buf, 0);
 		if(md == 0)
@@ -272,7 +272,7 @@ freefile(Tfs *fs, Tfile *f, ulong bend)
 	/* change file type to free on medium */
 	if(f->bno != Notabno){
 		memset(buf, 0x55, Blen);
-		devtab[fs->c->type]->write(fs->c, buf, Blen, Blen*f->bno);
+		fs->c->dev->write(fs->c, buf, Blen, Blen*f->bno);
 		mapclr(fs, f->bno);
 	}
 
@@ -332,7 +332,7 @@ newfile(Tfs *fs, char *name)
 	rock.f->bno = mapalloc(rock.fs);
 	rock.f->fbno = Notabno;
 	rock.f->r = 1;
-	rock.f->pin = up->env->pgrp->pin;
+	rock.f->pin = Notapin;
 
 	/* write directory block */
 	if(waserror()){
@@ -364,7 +364,7 @@ tfsinit(Tfs *fs)
 	Mdir *mdir;
 	Mdata *mdata;
 
-	n = devtab[fs->c->type]->stat(fs->c, dbuf, sizeof(dbuf));
+	n = fs->c->dev->stat(fs->c, dbuf, sizeof(dbuf));
 	n = convM2D(dbuf, n, &d, nil);
 	if(n <= 0)
 		error("cannot stat tinyfs medium");
@@ -382,7 +382,7 @@ tfsinit(Tfs *fs)
 
 	/* find files */
 	for(bno = 0; bno < fs->nblocks; bno++){
-		n = devtab[fs->c->type]->read(fs->c, buf, Blen, Blen*bno);
+		n = fs->c->dev->read(fs->c, buf, Blen, Blen*bno);
 		if(n != Blen)
 			break;
 
@@ -412,7 +412,7 @@ tfsinit(Tfs *fs)
 				freefile(fs, f, bno);
 				break;
 			}
-			n = devtab[fs->c->type]->read(fs->c, buf, Blen, Blen*bno);
+			n = fs->c->dev->read(fs->c, buf, Blen, Blen*bno);
 			if(n != Blen){
 				freefile(fs, f, bno);
 				break;
@@ -453,7 +453,7 @@ tinyfsgen(Chan *c, char *name, Dirtab *tab, int ntab, int i, Dir *dp)
 	USED(ntab);
 	USED(tab);
 
-	fs = &tinyfs.fs[c->dev];
+	fs = &tinyfs.fs[c->devno];
 	if(i >= fs->nf)
 		return -1;
 	qid.vers = 0;
@@ -525,7 +525,7 @@ tinyfsattach(char *spec)
 	poperror();
 
 	c = devattach('F', spec);
-	c->dev = fs - tinyfs.fs;
+	c->devno = fs - tinyfs.fs;
 	c->qid.type = QTDIR;
 	c->qid.vers = 0;
 
@@ -538,12 +538,12 @@ tinyfswalk(Chan *c, Chan *nc, char **name, int nname)
 	Tfs *fs;
 	Walkqid *wq;
 
-	fs = &tinyfs.fs[c->dev];
+	fs = &tinyfs.fs[c->devno];
 
 	qlock(&fs->ql);
 	wq = devwalk(c, nc, name, nname, 0, 0, tinyfsgen);
 	if(wq != nil && (nc = wq->clone) != nil && nc->qid.path != Qdir){
-		fs = &tinyfs.fs[nc->dev];
+		fs = &tinyfs.fs[nc->devno];
 		fs->f[nc->qid.path-1].r++;
 	}
 	qunlock(&fs->ql);
@@ -562,7 +562,7 @@ tinyfsopen(Chan *c, int omode)
 	Tfile *f;
 	volatile struct { Tfs *fs; } rock;
 
-	rock.fs = &tinyfs.fs[c->dev];
+	rock.fs = &tinyfs.fs[c->devno];
 
 	if(c->qid.type & QTDIR){
 		if(omode != OREAD)
@@ -600,7 +600,7 @@ tinyfscreate(Chan *c, char *name, int omode, ulong perm)
 
 	USED(perm);
 
-	rock.fs = &tinyfs.fs[c->dev];
+	rock.fs = &tinyfs.fs[c->devno];
 
 	qlock(&rock.fs->ql);
 	if(waserror()){
@@ -625,7 +625,7 @@ tinyfsremove(Chan *c)
 
 	if(c->qid.path == Qdir)
 		error(Eperm);
-	fs = &tinyfs.fs[c->dev];
+	fs = &tinyfs.fs[c->devno];
 	f = &fs->f[c->qid.path-1];
 	qlock(&fs->ql);
 	freefile(fs, f, Notabno);
@@ -639,7 +639,7 @@ tinyfsclose(Chan *c)
 	Tfile *f, *nf;
 	int i;
 
-	rock.fs = &tinyfs.fs[c->dev];
+	rock.fs = &tinyfs.fs[c->devno];
 
 	qlock(&rock.fs->ql);
 
@@ -703,7 +703,7 @@ tinyfsread(Chan *c, void *a, long n, vlong offset)
 		return devdirread(c, a, n, 0, 0, tinyfsgen);
 
 	p = a;
-	rock.fs = &tinyfs.fs[c->dev];
+	rock.fs = &tinyfs.fs[c->devno];
 	f = &rock.fs->f[c->qid.path-1];
 	if(offset >= f->length)
 		return 0;
@@ -783,7 +783,7 @@ tinyfswrite(Chan *c, void *a, long n, vlong offset)
 		return 0;
 
 	p = a;
-	rock.fs = &tinyfs.fs[c->dev];
+	rock.fs = &tinyfs.fs[c->devno];
 	f = &rock.fs->f[c->qid.path-1];
 
 	qlock(&rock.fs->ql);
@@ -879,7 +879,9 @@ Dev tinyfsdevtab = {
 	'F',
 	"tinyfs",
 
+	devreset,
 	devinit,
+	devshutdown,
 	tinyfsattach,
 	tinyfswalk,
 	tinyfsstat,

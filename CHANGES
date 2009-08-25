@@ -1,3 +1,8 @@
+20090824
+	delete unused (and somewhat incomplete) pin support
+20090822
+	in the what were we thinking dept: appl/cmd/touch.b and dis/touch.dis updated to avoid using an Arg after nil'ing it [thanks to cmbrannon]
+	make progmode propagate to pgrps; recover from exceptions in pgrp creation
 20090821
 	emu/Nt/^(os.c ie-os.c) add #include <excpt.h>
 20090819
