@@ -47,6 +47,7 @@ Dev*		devbyname(char*);
 void		devpermcheck(char*, ulong, int);
 void		devremove(Chan*);
 int		devstat(Chan*, uchar*, int, Dirtab*, int, Devgen*);
+long		devtabread(Chan*, void*, long, vlong);
 int		devwstat(Chan*, uchar*, int);
 Chan*	devattach(int, char*);
 Block*	devbread(Chan*, long, ulong);

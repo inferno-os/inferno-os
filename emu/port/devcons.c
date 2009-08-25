@@ -579,9 +579,7 @@ Dev consdevtab = {
 	'c',
 	"cons",
 
-	devreset,
 	consinit,
-	devshutdown,
 	consattach,
 	conswalk,
 	consstat,
