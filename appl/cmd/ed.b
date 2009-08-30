@@ -1314,7 +1314,7 @@ dosub()
 		}
 		if(c == ESCFLG && (c = rhsbuf[rp++]) >= '1' && c < MAXSUB+'0') {
 			n = c-'0';
-			if(subexp != nil && subexp[n].rsp >= 0 && subexp[n].rep >= 0) {
+			if(n < len subexp && subexp[n].rsp >= 0 && subexp[n].rep >= 0) {
 				sp = place(sp, subexp[n].rsp, subexp[n].rep);
 				continue;
 			}
