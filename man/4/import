@@ -46,7 +46,7 @@ must be active.
 agent can be used, by binding Plan 9's
 .B /mnt/factotum
 to the same name in Inferno's own name space. See
-.IR fs (3)).
+.IR fs (3).)
 The remote files are accessed with the permissions of the user authenticated
 to the remote system by
 .IR factotum .
