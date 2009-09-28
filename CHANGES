@@ -1,3 +1,5 @@
+20090928
+	update import(4) to remove the restriction to Plan 9 (can use Inferno's own factotum)
 20090830
 	check subexp length in ed [cmbrannon79]
 20090825

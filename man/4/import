@@ -39,15 +39,14 @@ on that system visible in the local name space as
 is not given,
 .I file
 is used as the local name).
-It requires that the user's Plan 9 authentication agent,
-.IR factotum ,
-appear in the Inferno name space at
-.BR /mnt/factotum .
-(That is why
-.I import
-is currently limited to use when Inferno is hosted on Plan 9,
-until Inferno has an equivalent to
-.IR factotum .)
+The authentication agent
+.IR factotum (4)
+must be active.
+(When Inferno is running on Plan 9, Plan 9's own authentication
+agent can be used, by binding Plan 9's
+.B /mnt/factotum
+to the same name in Inferno's own name space. See
+.IR fs (3)).
 The remote files are accessed with the permissions of the user authenticated
 to the remote system by
 .IR factotum .
@@ -104,8 +103,8 @@ are not done,
 and the Plan 9
 .I exportfs
 protocol starts immediately.
-Otherwise, the Plan 9 authentication agent
-.I factotum
+Otherwise,
+.IR factotum (4)
 must be accessible via
 .B /mnt/factotum
 as for
@@ -144,5 +143,3 @@ not those of the caller.
 .IR factotum (2),
 .IR export (4),
 .IR namespace (6)
-.SH BUGS
-Temporarily limited to Plan 9 hosted environment only.
