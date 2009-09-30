@@ -164,7 +164,7 @@ mntversion(Chan *c, char *version, int msize, int returnlen)
 	c->offset += k;
 	unlock(&c->l);
 
-	l = c->dev->write(c, msg, k, oo);
+	l = devtab[c->type]->write(c, msg, k, oo);
 
 	if(l < k){
 		lock(&c->l);
@@ -174,7 +174,7 @@ mntversion(Chan *c, char *version, int msize, int returnlen)
 	}
 
 	/* message sent; receive and decode reply */
-	k = c->dev->read(c, msg, 8192+IOHDRSZ, c->offset);
+	k = devtab[c->type]->read(c, msg, 8192+IOHDRSZ, c->offset);
 	if(k <= 0)
 		error("EOF receiving fversion reply");
 
@@ -368,7 +368,7 @@ mntchan(void)
 
 	c = devattach('M', 0);
 	lock(&mntalloc.l);
-	c->devno = mntalloc.id++;
+	c->dev = mntalloc.id++;
 	unlock(&mntalloc.l);
 
 	if(c->mchan)
@@ -405,8 +405,9 @@ mntwalk(Chan *c, Chan *nc, char **name, int nname)
 		nc = devclone(c);
 		/*
 		 * Until the other side accepts this fid, we can't mntclose it.
-		 * nc->dev remains nil for now.
+		 * Therefore set type to 0 for now; rootclose is known to be safe.
 		 */
+		nc->type = 0;
 		alloc = 1;
 	}
 	wq->clone = nc;
@@ -439,8 +440,7 @@ mntwalk(Chan *c, Chan *nc, char **name, int nname)
 	/* move new fid onto mnt device and update its qid */
 	if(wq->clone != nil){
 		if(wq->clone != c){
-			devtabincref(c->dev);
-			wq->clone->dev = c->dev;
+			wq->clone->type = c->type;
 			wq->clone->mchan = c->mchan;
 			incref(&c->mchan->r);
 		}
@@ -794,7 +794,7 @@ mountio(Mnt *m, Mntrpc *r)
 	n = convS2M(&r->request, r->rpc, m->msize);
 	if(n < 0)
 		panic("bad message type in mountio");
-	if(m->c->dev->write(m->c, r->rpc, n, 0) != n)
+	if(devtab[m->c->type]->write(m->c, r->rpc, n, 0) != n)
 		error(Emountrpc);
 /*	r->stime = fastticks(nil); */
 	r->reqlen = n;
@@ -830,7 +830,7 @@ doread(Mnt *m, int len)
 	Block *b;
 
 	while(qlen(m->q) < len){
-		b = m->c->dev->bread(m->c, m->msize, 0);
+		b = devtab[m->c->type]->bread(m->c, m->msize, 0);
 		if(b == nil)
 			return -1;
 		if(blocklen(b) == 0){
@@ -1151,7 +1151,7 @@ mntchk(Chan *c)
 	/*
 	 * Was it closed and reused (was error(Eshutdown); now, it can't happen)
 	 */
-	if(m->id == 0 || m->id >= c->devno)
+	if(m->id == 0 || m->id >= c->dev)
 		panic("mntchk 3: can't happen");
 
 	return m;
@@ -1167,11 +1167,11 @@ mntdirfix(uchar *dirbuf, Chan *c)
 {
 	uint r;
 
-	r = c->dev->dc;
+	r = devtab[c->type]->dc;
 	dirbuf += BIT16SZ;	/* skip count */
 	PBIT16(dirbuf, r);
 	dirbuf += BIT16SZ;
-	PBIT32(dirbuf, c->devno);
+	PBIT32(dirbuf, c->dev);
 }
 
 int
@@ -1187,9 +1187,7 @@ Dev mntdevtab = {
 	'M',
 	"mnt",
 
-	devreset,
 	mntinit,
-	devshutdown,
 	mntattach,
 	mntwalk,
 	mntstat,
