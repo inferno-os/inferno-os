@@ -1,3 +1,5 @@
+20090930
+	emu/*/ipif*.c make "hangup" act as in native Inferno; also delete unused so_setsockopt
 20090928
 	update import(4) to remove the restriction to Plan 9 (can use Inferno's own factotum)
 	(emu os)^/port/devmnt.c fix from plan 9 (don't access vanished data)

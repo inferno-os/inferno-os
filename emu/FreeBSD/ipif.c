@@ -253,24 +253,6 @@ so_bind(int fd, int su, unsigned long addr, unsigned short port)
 		oserror();
 }
 
-void
-so_setsockopt(int fd, int opt, int value)
-{
-	int r;
-	struct linger l;
-
-	if(opt == SO_LINGER){
-		l.l_onoff = 1;
-		l.l_linger = (short) value;
-		osenter();
-		r = setsockopt(fd, SOL_SOCKET, opt, (char *)&l, sizeof(l));
-		osleave();
-	}else
-		error(Ebadctl);
-	if(r < 0)
-		oserror();
-}
-
 int
 so_gethostbyname(char *host, char**hostv, int n)
 {
@@ -334,13 +316,13 @@ so_getservbyname(char *service, char *net, char *port)
 }
 
 int
-so_hangup(int fd, int linger)
+so_hangup(int fd, int nolinger)
 {
 	int r;
-	static struct linger l = {1, 1000};
+	static struct linger l = {1, 0};
 
 	osenter();
-	if(linger)
+	if(nolinger)
 		setsockopt(fd, SOL_SOCKET, SO_LINGER, (char*)&l, sizeof(l));
 	r = shutdown(fd, 2);
 	if(r >= 0)
