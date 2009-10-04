@@ -1,3 +1,5 @@
+20091004
+	restore "keyring" to lib section of emu/Plan9/emu
 20090930
 	emu/*/ipif*.c make "hangup" act as in native Inferno; also delete unused so_setsockopt
 	provide correct version of devmnt.c

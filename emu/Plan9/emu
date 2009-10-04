@@ -33,6 +33,7 @@ lib
 
 	memlayer
 	memdraw
+	keyring
 	sec
 	mp
 	dynld
