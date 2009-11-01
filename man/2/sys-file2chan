@@ -120,20 +120,33 @@ is an empty or
 .B nil
 string or an explanation of the problem.
 .PP
-If the client closes the file for reading (writing), the server will receive a
-.B read
-.RB ( write )
-message with a
-.B nil
-.I rc
-.BI ( wc )\f1.
-The server can use these signals to determine when to stop processing.
 The
 .I fid
 received by the server can be used to manage the multiplexing of multiple
 active clients sharing a single file; see
 .IR intro (5)
 for details.
+Each distinct
+open of the file will yield a distinct
+.IR fid ,
+unique to that open, which will appear in the read and write
+messages corresponding to reads and writes on that open instance of the file.
+.PP
+When the client closes the file,
+the server will be sent a
+.B read
+message with a nil
+.IR rc ,
+then a
+.B write
+message with a nil
+.IR wc .
+A server typically ignores the former and uses the latter as a signal to stop processing for the given client
+(more precisely, the given
+.IR fid ).
+Note that the
+.I fid
+can later be re-used by another client.
 .SH SOURCE
 .B /emu/port/devsrv.c
 .br
