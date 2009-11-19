@@ -775,7 +775,12 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 				continue;
 			}
 			qlock(&idl);
+			if(waserror()){
+				qunlock(&idl);
+				nexterror();
+			}
 			r = fsdirconv(c, de->d_name, &stbuf, slop, sizeof(slop), 1);
+			poperror();
 			qunlock(&idl);
 			if(r <= 0) {
 				FS(c)->offset = n;
