@@ -335,3 +335,9 @@ vunmap(void *va, int size)
 	if(va != nil)
 		upafree(PADDR(va), size);
 }
+
+int
+segflush(void*, ulong)
+{
+	return 0;
+}

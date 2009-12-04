@@ -1620,7 +1620,7 @@ lexstring(s: string) : array of ref Token
 lastps(psl: list of ref Pstate) : ref Pstate
 {
 	if(psl == nil)
-		CU->raisex("EXInternal: empty pstate stack");
+		raise "EXInternal: empty pstate stack";
 	while(tl psl != nil)
 		psl = tl psl;
 	return hd psl;

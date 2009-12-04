@@ -161,7 +161,7 @@ imgerror(is: ref ImageSource, msg: string)
 	is.err = msg;
 	if(dbg)
 		sys->print("Image error: %s\n", msg);
-	CU->raisex("exImageerror:");
+	raise "exImageerror:";
 }
 
 # Get next char or raise exception if cannot
@@ -179,7 +179,7 @@ getc(is: ref ImageSource) : int
 ungetc(is: ref ImageSource)
 {
 	if(is.i == 0)
-		CU->raisex("EXInternal: ungetc past beginning of buffer");
+		raise "EXInternal: ungetc past beginning of buffer";
 	is.i--;
 }
 
@@ -190,7 +190,7 @@ ungetc2(is: ref ImageSource, nil: byte)
 {
 	if(is.i < 2) {
 		if(is.i != 1)
-			CU->raisex("EXInternal: ungetc2 past beginning of buffer");
+			raise "EXInternal: ungetc2 past beginning of buffer";
 		is.i = 0;
 	}
 	else

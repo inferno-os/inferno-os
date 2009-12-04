@@ -215,17 +215,15 @@ runcmd(sh: Sh, ctxt: ref Draw->Context, argv: list of string, stdin: ref Sys->FD
 
 cvstyx(fd: ref Sys->FD): (ref Sys->FD, string)
 {
-	styxconv := load Styxconv Styxconv->PATH;
+	styxconv := load Styxconv Styxconv->PATHNEW2OLD;
 	if(styxconv == nil)
-		return (nil, sys->sprint("cannot load %s: %r", Styxconv->PATH));
+		return (nil, sys->sprint("cannot load %s: %r", Styxconv->PATHNEW2OLD));
 	styxconv->init();
 	p := array[2] of ref Sys->FD;
 	if(sys->pipe(p) < 0)
 		return (nil, sys->sprint("can't create pipe: %r"));
-	pidc := chan of int;
-	spawn styxconv->styxconv(p[1], fd, pidc);
+	spawn styxconv->styxconv(p[1], fd);
 	p[1] = nil;
-	<-pidc;
 	return (p[0], nil);
 }
 

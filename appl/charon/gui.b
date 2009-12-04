@@ -98,7 +98,7 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 	tk = load Tk Tk->PATH;
 	tkclient = load Tkclient Tkclient->PATH;
 	if(tkclient == nil)
-		CU->raisex(sys->sprint("EXInternal: can't load module Tkclient: %r"));
+		raise sys->sprint("EXInternal: can't load module Tkclient: %r");
 	tkclient->init();
 
 	wmctl: chan of string;
@@ -386,11 +386,11 @@ makewins()
 	realwin = screen.newwindow(r, D->Refnone, D->White);
 	realwin.origin(ZP, r.min);
 	if(realwin == nil)
-		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
+		raise sys->sprint("EXFatal: can't initialize windows: %r");
 
 	mainwin = display.newimage(realwin.r, realwin.chans, 0, D->White);
 	if(mainwin == nil)
-		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
+		raise sys->sprint("EXFatal: can't initialize windows: %r");
 }
 
 hidewins()

@@ -1,3 +1,9 @@
+20091127
+	problems fixed in styxconv(2), which can now convert both ways [rog]
+20091119
+	emu/port/devfs-posix.c	missing waserror in dirread (obscure but possible failure)
+20091007
+	remove intermediate exception-raising function from charon implementation
 20091004
 	restore "keyring" to lib section of emu/Plan9/emu
 20090930

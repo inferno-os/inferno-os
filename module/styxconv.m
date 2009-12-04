@@ -1,9 +1,10 @@
 Styxconv: module
 {
-	PATH: con "/dis/lib/styxconv/styxconv.dis";
-	
+	PATHOLD2NEW: con "/dis/lib/styxconv/old2new.dis";
+	PATHNEW2OLD: con "/dis/lib/styxconv/new2old.dis";
+
 	# call first
 	init: fn();
 	# spawn and synchronize
-	styxconv: fn(in: ref Sys->FD, out: ref Sys->FD, sync: chan of int);
+	styxconv: fn(client: ref Sys->FD, server: ref Sys->FD);
 };

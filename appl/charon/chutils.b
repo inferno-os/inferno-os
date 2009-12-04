@@ -1227,14 +1227,14 @@ ResourceState.cur() : ResourceState
 	if(mfd == nil)
 		mfd = sys->open("/dev/memory", sys->OREAD);
 	if (mfd == nil)
-		raisex(sys->sprint("can't open /dev/memory: %r"));
+		raise sys->sprint("can't open /dev/memory: %r");
 
 	sys->seek(mfd, big 0, Sys->SEEKSTART);
 
 	buf := array[400] of byte;
 	n := sys->read(mfd, buf, len buf);
 	if (n <= 0)
-		raisex(sys->sprint("can't read /dev/memory: %r"));
+		raise sys->sprint("can't read /dev/memory: %r");
 
 	(nil, l) := sys->tokenize(string buf[0:n], "\n");
 	# p->cursize, p->maxsize, p->hw, p->nalloc, p->nfree, p->nbrk, poolmax(p), p->name)
@@ -1763,7 +1763,7 @@ makestrinttab(a: array of string) : array of T->StringInt
 		ans[i].key = a[i];
 		ans[i].val = i;
 		if(i > 0 && a[i] < a[i-1])
-			raisex("EXInternal: table out of alphabetical order");
+			raise "EXInternal: table out of alphabetical order";
 	}
 	return ans;
 }
@@ -1866,15 +1866,10 @@ min(a,b: int) : int
 	return b;
 }
 
-raisex(e: string)
-{
-	raise e;
-}
-
 assert(i: int)
 {
 	if(!i) {
-		raisex("EXInternal: assertion failed");
+		raise "EXInternal: assertion failed";
 #		sys->print("assertion failed\n");
 #		s := hmeth[-1];
 	}

@@ -2107,7 +2107,7 @@ specindex(class: string) : int
 		if(objspecs[i].name == class)
 			break;
 	if(i == len objspecs)
-		CU->raisex("EXInternal: couldn't find host object class " + class);
+		raise "EXInternal: couldn't find host object class " + class;
 	return i;
 }
 

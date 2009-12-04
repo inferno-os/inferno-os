@@ -24,6 +24,7 @@ OStyx: module
 		devclone: fn(srv: self ref Styxserver, m: ref OTmsg.Clone): ref Chan;
 	};
 
+	init: fn();
 	d2tmsg: fn(d: array of byte): (int, ref OTmsg);
 	d2rmsg: fn(d: array of byte): (int, ref ORmsg);
 	tmsg2d: fn(gm: ref OTmsg, d: array of byte): int;
@@ -69,6 +70,7 @@ OStyx: module
 			fid: int;
 			uname, aname: string;
 		}
+		read:	fn(fd: ref Sys->FD): ref OTmsg;
 	};
 
 	ORmsg: adt {
@@ -99,7 +101,7 @@ OStyx: module
 			stat: OSys->Dir;
 		}
 
-		read:	fn(fd: ref Sys->FD, msize: int): ref ORmsg;
+		read:	fn(fd: ref Sys->FD): ref ORmsg;
 	};
 
 	MAXRPC: con 128 + OSys->ATOMICIO;

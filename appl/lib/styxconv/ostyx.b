@@ -13,42 +13,80 @@ DEBUG: con 0;
 
 CHANHASHSIZE: con 32;
 
+init()
+{
+	sys = load Sys Sys->PATH;
+	gsofar = 0;
+	gdata = array[MAXRPC] of {* => byte 0};
+}
+
+# note that this implementation fails if we're reading OTmsgs and ORmsgs
+# concurrently. luckily we don't need to in styxconv.
 gsofar: int;
 gdata: array of byte;
 
-ORmsg.read(fd: ref Sys->FD, msize: int): ref ORmsg
+ORmsg.read(fd: ref Sys->FD): ref ORmsg
 {
-	if(sys == nil)
-		sys = load Sys Sys->PATH;
-	if(gdata == nil){
-		gsofar = 0;
-		gdata = array[msize] of byte;
-	}
+	mlen := 0;
+	m: ref ORmsg;
 	for (;;){
-		n := sys->read(fd, gdata[gsofar:], len gdata - gsofar);
-		if(n <= 0){
-			m: ref ORmsg = nil;
-
-			if(n < 0)
-				m = ref ORmsg.Error(-1, sys->sprint("%r"));
-			return m;
-		}
-		gsofar += n;
-		(cn, m) := d2rmsg(gdata[0: gsofar]);
-		if(cn == -1)
-			gsofar = 0;
-		else if(cn > 0){
-			if(tagof(m) == tagof(ORmsg.Read)) {
-				ndata := array[msize] of byte;
-				ndata[0: ] = gdata[cn: gsofar];
+		if(gsofar > 0)
+			(mlen, m) = d2rmsg(gdata[0 : gsofar]);
+		if(mlen == 0){
+			if(gsofar == len gdata){
+				ndata := array[MAXRPC] of byte;
+				ndata[0:] = gdata;
+				gdata = ndata;
+			}
+			n := sys->read(fd, gdata[gsofar:], len gdata - gsofar);
+			if(n <= 0)
+				return nil;
+			gsofar += n;
+		}else if(mlen > 0){
+			if(tagof(m) == tagof(OTmsg.Write)) {
+				ndata := array[MAXRPC] of byte;
+				ndata[0:] = gdata[mlen : gsofar];
 				gdata = ndata;
 			}else
-				gdata[0: ] = gdata[cn: gsofar];
-			gsofar -= cn;
+				gdata[0:] = gdata[mlen : gsofar];
+			gsofar -= mlen;
 			return m;
-		}
+		}else
+			gsofar = 0;
 	}
 }
+
+OTmsg.read(fd: ref Sys->FD): ref OTmsg
+{
+	mlen := 0;
+	m: ref OTmsg;
+	for (;;){
+		if(gsofar > 0)
+			(mlen, m) = d2tmsg(gdata[0 : gsofar]);
+		if(mlen == 0){
+			if(gsofar == len gdata){
+				ndata := array[MAXRPC] of byte;
+				ndata[0:] = gdata;
+				gdata = ndata;
+			}
+			n := sys->read(fd, gdata[gsofar:], len gdata - gsofar);
+			if(n <= 0)
+				return nil;
+			gsofar += n;
+		}else if(mlen > 0){
+			if(tagof(m) == tagof(OTmsg.Write)) {
+				ndata := array[MAXRPC] of byte;
+				ndata[0:] = gdata[mlen : gsofar];
+				gdata = ndata;
+			}else
+				gdata[0:] = gdata[mlen : gsofar];
+			gsofar -= mlen;
+			return m;
+		}else
+			gsofar = 0;
+	}
+}
+
 
 Styxserver.new(fd: ref Sys->FD): (chan of ref OTmsg, ref Styxserver)
 {
@@ -572,7 +610,6 @@ pstring(a: array of byte, s: string, n: int): array of byte
 # convert from Dir to bytes
 convD2M(d: array of byte, f: OSys->Dir): array of byte
 {
-	n := len d;
 	d = pstring(d, f.name, OSys->NAMELEN);
 	d = pstring(d, f.uid, OSys->NAMELEN);
 	d = pstring(d, f.gid, OSys->NAMELEN);

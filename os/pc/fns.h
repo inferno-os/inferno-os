@@ -133,12 +133,12 @@ ulong rdtsc32(void);
 void	screeninit(void);
 int	screenprint(char*, ...);			/* debugging */
 void	(*screenputs)(char*, int);
-#define	segflush(a,n)
+int	segflush(void*, ulong);
 void	syncclock(void);
 uvlong	tscticks(uvlong*);
 void	trapenable(int, void (*)(Ureg*, void*), void*, char*);
 void	trapinit(void);
-ulong	_tas(ulong*);
+int	_tas(int*);
 ulong	umbmalloc(ulong, int, int);
 void	umbfree(ulong, int);
 ulong	umbrwmalloc(ulong, int, int);

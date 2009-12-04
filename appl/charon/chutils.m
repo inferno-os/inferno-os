@@ -360,7 +360,6 @@ CharonUtils: module
 	color: fn(s: string, dflt: int) : int;
 	max: fn(a, b : int) : int;
 	min: fn(a, b : int) : int;
-	raisex: fn(e: string);
 	assert: fn(i: int);
 	stripscript: fn(s: string) : string;	# strip HTML comments from Script
 	getconv: fn(chset : string) : Btos;

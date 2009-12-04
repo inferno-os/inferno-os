@@ -4,10 +4,11 @@ styxconv \- convert between old and new Styx
 .SH SYNOPSIS
 .EX
 include "styxconv.m";
-styxconv := load Styxconv Styxconv->PATH;
+styxconv := load Styxconv Styxconv->PATHNEW2OLD;
+styxconv := load Styxconv Styxconv->PATHOLD2NEW;
 
 init:     fn();
-styxconv: fn(to: ref Sys->FD, from: ref Sys->FD, pid: chan of int);
+styxconv: fn(client: ref Sys->FD, server: ref Sys->FD);
 .EE
 .SH DESCRIPTION
 .B Styxconv
@@ -22,49 +23,46 @@ must be called before any other function in the module.
 .PP
 The function
 .B styxconv
-takes two file descriptors.
-.I From
-must be a connection to a file server that serves the original, older
-version of Styx.
-.I To
-is a connection, perhaps a pipe, to something that requires the current protocol;
-.B Sys->mount
-for instance
-(see
-.IR sys-bind (2)).
+takes two file descriptors:
+.I client
+should be a connection to a styx client requiring
+one version of the protocol;
+.I server
+should be a connection to a styx server serving
+the other version of the protocol.
+There are two conversion modules:
+.B PATHNEW2OLD
+converts from a new client to an old server;
+.B PATHOLD2NEW
+converts from an old client to a new server.
+.PP
 .B Styxconv
-is spawned by the caller, to create a process that copies messages between
-.I from
+should be spawned by the caller, and copies messages between
+.I client
 and
-.IR to ,
-converting as required as it goes.
-Its process ID is the only message sent on
-channel
-.IR pidc ;
-it must be received by
-.BR styxconv 's
-caller.
+.IR server ,
+converting as required.
 See the example below.
 .SH EXAMPLE
 Apply
 .B styxconv
 to file descriptor
-.I fd
-connected to an old Styx server:
+.IR fd ,
+connected to an old Styx server, and return
+a file descriptor suitable for mounting with
+.IR mount (2).
 .IP
 .EX
 cvstyx(fd: ref Sys->FD): ref Sys->FD
 {
-	styxconv := load Styxconv Styxconv->PATH;
+	styxconv := load Styxconv Styxconv->NEW2OLDPATH;
 	if(styxconv == nil)
 		return nil;
 	p := array[2] of ref Sys->FD;
 	if(sys->pipe(p) < 0)
 		return nil;
 	styxconv->init();
-	pidc := chan of int;
-	spawn styxconv->styxconv(p[1], fd, pidc);
-	<-pidc;
+	spawn styxconv->styxconv(p[1], fd);
 	return p[0];
 }
 .EE
@@ -75,3 +73,5 @@ cvstyx(fd: ref Sys->FD): ref Sys->FD
 .IR sys-bind (2),
 .IR sys-pipe (2),
 .IR intro (5)
+.SH BUGS
+There is no provision for 9p2000 authentication.

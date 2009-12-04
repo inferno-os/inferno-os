@@ -2,11 +2,13 @@
 
 TARG=\
 	ostyx.dis\
-	styxconv.dis\
-	
+	new2old.dis\
+	old2new.dis\
+
 MODULES=\
 	ostyx.m\
 	osys.m\
+	nsys.m\
 
 SYSMODULES=\
 	bufio.m\

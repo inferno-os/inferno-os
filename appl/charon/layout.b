@@ -516,7 +516,7 @@ createvscroll(f: ref Frame)
 	f.vscr.r = f.vscr.r.addpt(Point(f.cr.max.x-breadth, f.cr.min.y));
 	f.cr.max.x -= breadth;
 	if(f.cr.dx() <= 2*f.marginw)
-		CU->raisex("EXInternal: frame too small for layout");
+		raise "EXInternal: frame too small for layout";
 	f.vscr.draw(1);
 }
 
@@ -531,7 +531,7 @@ createhscroll(f: ref Frame)
 	f.hscr.r = f.hscr.r.addpt(Point(x,f.cr.max.y-breadth));
 	f.cr.max.y -= breadth;
 	if(f.cr.dy() <= 2*f.marginh)
-		CU->raisex("EXInternal: frame too small for layout");
+		raise "EXInternal: frame too small for layout";
 	f.hscr.draw(1);
 }
 
@@ -985,7 +985,7 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 	# line is complete, next line will start with it (or it is nil)
 	rest := it;
 	if(lastit == nil)
-		CU->raisex("EXInternal: no items on line");
+		raise "EXInternal: no items on line";
 	lastit.next = nil;
 
 	l.width = w;
@@ -1087,7 +1087,7 @@ getfont(num: int) : ref Font
 		f = Font.open(display, fonts[num].name);
 		if(f == nil) {
 			if(num == DefFnt)
-				CU->raisex(sys->sprint("exLayout: can't open default font %s: %r", fonts[num].name));
+				raise sys->sprint("exLayout: can't open default font %s: %r", fonts[num].name);
 			else {
 				if(int (CU->config).dbg['w'])
 					sys->print("warning: substituting default for font %s\n",
@@ -2389,7 +2389,7 @@ markchanges(loc: ref Loc)
 			}
 		LEtablecell =>
 			if(lastf == nil)
-				CU->raisex("EXInternal: markchanges no lastf");
+				raise "EXInternal: markchanges no lastf";
 			c := loc.le[i].tcell;
 			clay := lastf.sublays[c.layid];
 			if(clay != nil)
@@ -2424,7 +2424,7 @@ colorimage(rgb: int) : ref Image
 #			im := display.color(pix);
 			im := display.rgb((rgb>>16)&255, (rgb>>8)&255, rgb&255);
 			if(im == nil)
-				CU->raisex(sys->sprint("exLayout: can't allocate color #%8.8ux: %r", rgb));
+				raise sys->sprint("exLayout: can't allocate color #%8.8ux: %r", rgb);
 			x = ref Colornode(rgb, im, xhd);
 			colorhashtab[hv] = x;
 		}
@@ -3309,7 +3309,7 @@ Control.scrollset(c: self ref Control, v1, v2, vmax, nsteps, draw: int)
 			if(l <= 0)
 				l = 1;
 			if(l < 0)
-				CU->raisex("EXInternal: negative scrollbar trough");
+				raise "EXInternal: negative scrollbar trough";
 			sc.top = l*v1/vmax;
 			sc.bot = l*(vmax-v2)/vmax;
 			if (nsteps == 0)
