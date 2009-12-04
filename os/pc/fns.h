@@ -138,7 +138,6 @@ void	syncclock(void);
 uvlong	tscticks(uvlong*);
 void	trapenable(int, void (*)(Ureg*, void*), void*, char*);
 void	trapinit(void);
-int	_tas(int*);
 ulong	umbmalloc(ulong, int, int);
 void	umbfree(ulong, int);
 ulong	umbrwmalloc(ulong, int, int);
