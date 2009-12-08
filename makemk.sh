@@ -43,6 +43,9 @@ echo removing old libraries and binaries
 rm -f $PLAT/lib/*.a $PLAT/bin/*
 rm -f utils/cc/y.tab.?
 
+# ensure the output directories exist
+mkdir -p $PLAT/lib $PLAT/bin
+
 # libregexp
 cd $ROOT/utils/libregexp || error cannot find libregexp directory
 CFILES="regaux.c regcomp.c regerror.c regexec.c regsub.c rregexec.c rregsub.c"

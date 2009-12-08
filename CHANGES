@@ -1,3 +1,5 @@
+20091208
+	add mkdir -p to makemk.sh to ensure output directories exist [issue 213]
 20091127
 	problems fixed in styxconv(2), which can now convert both ways [rog]
 20091119
