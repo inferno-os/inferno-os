@@ -119,7 +119,8 @@ execatidle(void)
 		}
 		rungc(isched.head);
 		gcidlepass++;
-		sched();
+		if(((ulong)gcidlepass&0xFF) == 0)
+			sched();
 	}
 
 	up->type = Interp;

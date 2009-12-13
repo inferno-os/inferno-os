@@ -104,7 +104,8 @@ execatidle(void)
 		}
 		rungc(isched.head);
 		gcidlepass++;
-		osyield();
+		if(((ulong)gcidlepass&0xFF) == 0)
+			osyield();
 	}
 	up->type = Interp;
 	delrunq(up->prog);
