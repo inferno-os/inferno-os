@@ -14,6 +14,9 @@ include "bufio.m";
 include "string.m";
 	str: String;
 
+include "dial.m";
+	dial: Dial;
+
 include "arg.m";
 
 Cddb: module
@@ -66,8 +69,8 @@ dumpcddb(t: ref Toc)
 
 cddbfilltoc(t: ref Toc): int
 {
-	(ok, conn) := sys->dial(netmkaddr(server, "tcp", "888"), nil);
-	if(ok < 0) {
+	conn := dial->dial(dial->netmkaddr(server, "tcp", "888"), nil);
+	if(conn == nil){
 		sys->fprint(sys->fildes(2), "cddb: cannot dial %s: %r\n", server);
 		return -1;
 	}
@@ -149,7 +152,7 @@ cddbfilltoc(t: ref Toc): int
 DPRINT(2, sys->sprint("cddb %s\n", p));
 		if(len p >= 7 && p[0:7] == "DTITLE=")
 			t.title += p[7:];
-		else if(len p >= 6 && p[0:6] == "TTITLE"&& isdigit(p[6])) {
+		else if(len p >= 7 && p[0:6] == "TTITLE"&& isdigit(p[6])) {
 			i = atoi(p[6:]);
 			if(i < t.ntrack) {
 				p = p[6:];
@@ -200,6 +203,7 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	bufio = load Bufio Bufio->PATH;
 	str = load String String->PATH;
+	dial = load Dial Dial->PATH;
 
 	arg := load Arg Arg->PATH;
 	arg->init(args);
@@ -235,21 +239,6 @@ init(nil: ref Draw->Context, args: list of string)
 		raise "fail:whoops";
 
 	dumpcddb(toc);
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 atoi(s: string): int

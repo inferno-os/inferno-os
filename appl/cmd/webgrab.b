@@ -31,6 +31,9 @@ include "daytime.m";
 include "bufio.m";
 	B: Bufio;
 
+include "dial.m";
+	D: Dial;
+
 include "arg.m";
 
 Webgrab: module
@@ -52,6 +55,7 @@ init(nil: ref Draw->Context, args: list of string)
 	S = load String String->PATH;
 	U = load Url Url->PATH;
 	DT = load Daytime Daytime->PATH;
+	D = load Dial Dial->PATH;
 	B = load Bufio Bufio->PATH;
 	arg := load Arg Arg->PATH;
 	if(S == nil || U == nil || DT == nil || B == nil || arg == nil)
@@ -381,9 +385,10 @@ httpget(u: ref ParsedUrl) : (string, array of byte, ref Sys->FD, ref ParsedUrl)
 			dialhost = u.host;
 			port = u.port;
 		}
-		(ok, net) := sys->dial("tcp!" + dialhost + "!" + port, nil);
-		if(ok < 0)
-			return (sys->sprint("can't dial %s: %r", dialhost), nil, nil, nil);
+		dest := D->netmkaddr(dialhost, "tcp", port);
+		net := D->dial(dest, nil);
+		if(net == nil)
+			return (sys->sprint("can't dial %s: %r", dest), nil, nil, nil);
 			
 		# prepare request
 		if(u.query != ""){

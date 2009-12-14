@@ -4,6 +4,7 @@ include "sys.m";
 	sys: Sys;
 
 include "draw.m";
+include "dial.m";
 include "keyring.m";
 include "security.m";
 include "factotum.m";
@@ -35,6 +36,7 @@ init(nil: ref Draw->Context, args: list of string)
 	if(factotum == nil)
 		nomod(Factotum->PATH);
 	factotum->init();
+	dial := load Dial Dial->PATH;
 
 	arg := load Arg Arg->PATH;
 	if(arg == nil)
@@ -80,9 +82,9 @@ init(nil: ref Draw->Context, args: list of string)
 	if(facfd == nil)
 		fail("factotum", sys->sprint("can't open %s: %r", factotumfile));
 
-	dest := netmkaddr(addr, "net", "exportfs");
-	(ok, c) := sys->dial(dest, nil);
-	if(ok < 0)
+	dest := dial->netmkaddr(addr, "net", "exportfs");
+	c := dial->dial(dest, nil);
+	if(c == nil)
 		fail("dial failed",  sys->sprint("can't dial %s: %r", dest));
 	ai := factotum->proxy(c.dfd, facfd, "proto=p9any role=client "+keyspec);
 	if(ai == nil)
@@ -160,19 +162,4 @@ pushssl(fd: ref Sys->FD, secretin, secretout: array of byte, alg: string): (ref 
 		return (nil, sys->sprint("can't push algorithm %s: %r", alg));
 
 	return (c.dfd, nil);
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

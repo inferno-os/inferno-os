@@ -15,6 +15,10 @@ include "bufio.m";
 include "daytime.m";
 	daytime: Daytime;
 
+include "dial.m";
+	dial: Dial;
+
+
 include "ip.m";
 	ip: IP;
 	IPaddr, Ifcaddr, Udphdr: import ip;
@@ -105,6 +109,7 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	bufio = load Bufio Bufio->PATH;
 	daytime = load Daytime Daytime->PATH;
+	dial = load Dial Dial->PATH;
 	ip = load IP IP->PATH;
 	ip->init();
 
@@ -420,7 +425,7 @@ sendroutes(ifc: ref Ifcaddr, dst: IPaddr, op: int, changes: int)
 	buf[o+2] = byte 0;
 	buf[o+3] = byte 0;
 	o += Riphdrlen;
-	rips := buf[IP->Udphdrlen+Riphdrlen:];
+#	rips := buf[IP->Udphdrlen+Riphdrlen:];
 	if(op == OpRequest){
 		buf[o:] = zeroentry;
 		ip->put4(buf, o+Ometric, HopLimit);
@@ -602,8 +607,8 @@ Gateway.contains(g: self ref Gateway, a: IPaddr): int
 riplisten(): ref Sys->FD
 {
 	addr := sys->sprint("%s/udp!*!rip", netdir);
-	(ok, c) := sys->announce(addr);
-	if(ok < 0)
+	c := dial->announce(addr);
+	if(c == nil)
 		fatal(sys->sprint("can't announce %s: %r", addr));
 	if(sys->fprint(c.cfd, "headers") < 0)
 		fatal(sys->sprint("can't set udp headers: %r"));

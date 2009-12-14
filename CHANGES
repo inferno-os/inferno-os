@@ -1,3 +1,6 @@
+20091214
+	switch more commands to use dial(2)
+	change emu/Linux/emu-g not to require X11 libs (again)
 20091213
 	temper the tendancy of port/dis.c to yield during idle gc: it's compensating for os scheduling, but yield less often
 20091208

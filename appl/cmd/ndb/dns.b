@@ -46,6 +46,9 @@ include "keyring.m";
 include "security.m";
 	random: Random;
 
+include "dial.m";
+	dial: Dial;
+
 DNS: module
 {
 	init:	fn(nil: ref Draw->Context, nil: list of string);
@@ -85,6 +88,9 @@ init(nil: ref Draw->Context, args: list of string)
 	arg := load Arg Arg->PATH;
 	if(arg == nil)
 		cantload(Arg->PATH);
+	dial = load Dial Dial->PATH;
+	if(dial == nil)
+		cantload(Dial->PATH);
 	arg->init(args);
 	arg->setusage("dns [-Drh] [-f dnsfile] [-x mntpt]");
 	svcname := "#sdns";
@@ -1778,8 +1784,8 @@ kill(pid: int)
 
 udpport(): ref Sys->FD
 {
-	(ok, conn) := sys->announce(mntpt+"/udp!*!0");
-	if(ok < 0)
+	conn := dial->announce(mntpt+"/udp!*!0");
+	if(conn == nil)
 		return nil;
 	if(sys->fprint(conn.cfd, "headers") < 0){
 		sys->fprint(stderr, "dns: can't set headers mode: %r\n");
@@ -1802,8 +1808,8 @@ tcpquery(query: array of byte): (ref DNSmsg, string)
 
 	ipa := query[Udpraddr+IPv4off:];
 	addr := sys->sprint("tcp!%d.%d.%d.%d!%d", int ipa[0], int ipa[1], int ipa[2], int ipa[3], DNSport);
-	(ok, conn) := sys->dial(addr, nil);
-	if(ok < 0)
+	conn := dial->dial(addr, nil);
+	if(conn == nil)
 		return (nil, sys->sprint("can't dial %s: %r", addr));
 	query = query[Udphdrsize-2:];
 	put2(query, 0, len query-2);	# replace UDP header by message length

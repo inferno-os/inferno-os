@@ -16,6 +16,9 @@ include "timers.m";
 	timers: Timers;
 	Timer: import timers;
 
+include "dial.m";
+	dial: Dial;
+
 include "arg.m";
 
 Mangaload: module
@@ -88,6 +91,7 @@ init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
 	timers = load Timers Timers->PATH;
+	dial = load Dial Dial->PATH;
 	ip = load IP IP->PATH;
 	ip->init();
 
@@ -137,9 +141,9 @@ init(nil: ref Draw->Context, args: list of string)
 	filesize := int d.length;
 
 	port := sys->sprint("%d", 16r8695);
-	addr := netmkaddr(hd args, "icmp", port);
-	(rok, c) := sys->dial(addr, port);
-	if(rok < 0){
+	addr := dial->netmkaddr(hd args, "icmp", port);
+	c := dial->dial(addr, port);
+	if(c == nil){
 		sys->fprint(sys->fildes(2), "mangaload: can't dial %s: %r\n", addr);
 		raise "fail:dial";
 	}
@@ -182,7 +186,6 @@ init(nil: ref Draw->Context, args: list of string)
 		last := 0;
 		while((n := sys->read(fd, buf, len buf)) >= 0 && !last){
 			last = n != len buf;
-			nretry := 0;
 		  Retry:
 			for(;;){
 				if(++nsent%10 == 0){	# probe
@@ -344,19 +347,4 @@ Icmp.unpack(b: array of byte): ref Icmp
 	if(len b > Odata)
 		ic.data = b[Odata:];
 	return ic;
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

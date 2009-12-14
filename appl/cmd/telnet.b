@@ -2,11 +2,12 @@ implement Telnet;
 
 include "sys.m";
 	sys: Sys;
-	Connection: import sys;
 
 include "draw.m";
-	draw: Draw;
-	Context: import draw;
+
+include "dial.m";
+	dial: Dial;
+	Connection: import dial;
 
 Telnet: module
 {
@@ -34,7 +35,7 @@ BSL:		con 21;		# ^u backspace line
 EOT:		con 4;		# ^d end of file
 ESC:		con 27;		# hold mode
 
-net:	Connection;
+net:	ref Connection;
 stdin, stdout, stderr: ref Sys->FD;
 
 # control characters
@@ -99,12 +100,13 @@ usage()
 	raise "fail:usage";
 }
 
-init(nil: ref Context, argv: list of string)
+init(nil: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
 	stdout = sys->fildes(1);
 	stdin = sys->fildes(0);
+	dial = load Dial Dial->PATH;
 
 	if (len argv < 2)
 		usage();
@@ -120,11 +122,11 @@ init(nil: ref Context, argv: list of string)
 ccfd: ref Sys->FD;
 connect(addr: string, port: string)
 {
-	ok: int;
-	(ok, net) = sys->dial(netmkaddr(addr, "tcp", port), nil);
-	if(ok < 0) {
-		sys->fprint(stderr, "telnet: %r\n");
-		return;
+	dest := dial->netmkaddr(addr, "tcp", port);
+	net = dial->dial(dest, nil);
+	if(net == nil) {
+		sys->fprint(stderr, "telnet: can't dial %s: %r\n", dest);
+		raise "fail:dial";
 	}
 	sys->fprint(stderr, "telnet: connected to %s\n", addr);
 
@@ -464,19 +466,4 @@ raw(on: int)
 		sys->fprint(ccfd, "rawon");
 	else
 		sys->fprint(ccfd, "rawoff");
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

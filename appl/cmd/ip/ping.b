@@ -16,6 +16,9 @@ include "timers.m";
 include "rand.m";
 	rand: Rand;
 
+include "dial.m";
+	dial: Dial;
+
 include "arg.m";
 
 Ping: module
@@ -74,6 +77,7 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	rand = load Rand Rand->PATH;
 	timers = load Timers Timers->PATH;
+	dial = load Dial Dial->PATH;
 	ip = load IP IP->PATH;
 	ip->init();
 
@@ -117,9 +121,9 @@ init(nil: ref Draw->Context, args: list of string)
 	opentime();
 	rand->init(int(nsec()/big 1000));
 
-	addr := netmkaddr(hd args, "icmp", "1");
-	(ok, c) := sys->dial(addr, nil);
-	if(ok < 0){
+	addr := dial->netmkaddr(hd args, "icmp", "1");
+	c := dial->dial(addr, nil);
+	if(c == nil){
 		sys->fprint(sys->fildes(2), "ip/ping: can't dial %s: %r\n", addr);
 		raise "fail:dial";
 	}
@@ -331,21 +335,6 @@ Icmp.unpack(b: array of byte): ref Icmp
 	ic.munged = 0;
 	ic.time = big 0;
 	return ic;
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, l) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 timefd: ref Sys->FD;

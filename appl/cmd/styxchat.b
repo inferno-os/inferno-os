@@ -20,6 +20,9 @@ include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
 
+include "dial.m";
+	dial: Dial;
+
 include "arg.m";
 
 Styxchat: module
@@ -39,6 +42,7 @@ init(nil: ref Draw->Context, args: list of string)
 	styx = load Styx Styx->PATH;
 	str = load String String->PATH;
 	bufio = load Bufio Bufio->PATH;
+	dial = load Dial Dial->PATH;
 	styx->init();
 
 	client := 1;
@@ -74,21 +78,21 @@ init(nil: ref Draw->Context, args: list of string)
 		stdin = sys->fildes(0);
 		dest := hd args;
 		if(addr){
-			dest = netmkaddr(dest, "net", "styx");
+			dest = dial->netmkaddr(dest, "net", "styx");
 			if (client){
-				(rc, c) := sys->dial(dest, nil);
-				if(rc < 0)
+				c := dial->dial(dest, nil);
+				if(c == nil)
 					err(sys->sprint("can't dial %s: %r", dest));
 				fd = c.dfd;
 			}else{
-				(rlc, lc) := sys->announce(dest);
-				if (rlc < 0)
+				lc := dial->announce(dest);
+				if(lc == nil)
 					err(sys->sprint("can't announce %s: %r", dest));
-				(rc, c) := sys->listen(lc);
-				if (rc < 0)
+				c := dial->listen(lc);
+				if(c == nil)
 					err(sys->sprint("can't listen on %s: %r", dest));
-				fd = sys->open(c.dir + "/data", Sys->ORDWR);
-				if (fd == nil)
+				fd = dial->accept(c);
+				if(fd == nil)
 					err(sys->sprint("can't open %s/data: %r", c.dir));
 			}
 		}else{
@@ -105,21 +109,6 @@ init(nil: ref Draw->Context, args: list of string)
 		spawn Treader(fd);
 		Rwriter(fd);
 	}
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 quit(e: int)

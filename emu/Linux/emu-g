@@ -1,3 +1,5 @@
+env
+	X11LIBS=
 dev
 	root
 	cons
