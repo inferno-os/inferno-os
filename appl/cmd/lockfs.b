@@ -73,11 +73,18 @@ Uproc: type chan of (ref Ureq, chan of (ref Sys->FD, string));
 maxqidpath := big 1;
 locks: list of ref Lockfile;
 lockdir: string;
+authinfo: ref Keyring->Authinfo;
 timefd: ref Sys->FD;
 
 MAXCONN: con 20;
 
 verbose := 0;
+
+usage()
+{
+	sys->fprint(stderr, "usage: lockfs [-A] [-a alg]... [-p addr] dir [mountpoint]\n");
+	raise "fail:usage";
+}
 
 badmodule(p: string)
 {
@@ -92,6 +99,9 @@ init(nil: ref Draw->Context, argv: list of string)
 	styx = load Styx Styx->PATH;
 	if (styx == nil)
 		badmodule(Styx->PATH);
+	dial = load Dial Dial->PATH;
+	if (dial == nil)
+		badmodule(Dial->PATH);
 	styx->init();
 	styxlib = load Styxlib Styxlib->PATH;
 	if (styxlib == nil)
@@ -100,9 +110,6 @@ init(nil: ref Draw->Context, argv: list of string)
 	devgen = load Dirgenmod "$self";
 	if (devgen == nil)
 		badmodule("self as Dirgenmod");
-	dial = load Dial Dial->PATH;
-	if(dial == nil)
-		badmodule(Dial->PATH);
 	timefd = sys->open("/dev/time", sys->OREAD);
 	if (timefd == nil) {
 		sys->fprint(stderr, "lockfs: cannot open /dev/time: %r\n");
@@ -112,52 +119,55 @@ init(nil: ref Draw->Context, argv: list of string)
 	if (arg == nil)
 		badmodule(Arg->PATH);
 	arg->init(argv);
-	arg->setusage("lockfs [-A] [-e 'crypt hash'] ... [-k keyspec] [-p addr] dir [mountpoint]");
 
 	addr := "";
 	doauth := 1;
 	algs: list of string;
-	keyspec: string;
 	while ((opt := arg->opt()) != 0) {
 		case opt {
 		'p' =>
-			addr = arg->earg();
-		'k' =>
-			addr = arg->earg();
-		'a' or 'e' =>
-			algs = arg->earg() :: algs;
+			addr = arg->arg();
+		'a' =>
+			alg := arg->arg();
+			if (alg == nil)
+				usage();
+			algs = alg :: algs;
 		'A' =>
 			doauth = 0;
 		'v' =>
 			verbose = 1;
 		* =>
-			arg->usage();
+			usage();
 		}
 	}
 	argv = arg->argv();
 	if (argv == nil || (addr != nil && tl argv != nil))
-		arg->usage();
+		usage();
 	if (addr == nil)
 		doauth = 0;		# no authentication necessary for local mount
 	if (doauth) {
 		auth = load Auth Auth->PATH;
 		if (auth == nil)
 			badmodule(Auth->PATH);
-		auth->init();
+		if ((e := auth->init()) != nil) {
+			sys->fprint(stderr, "lockfs: cannot init auth: %s\n", e);
+			raise "fail:errors";
+		}
+		keyring = load Keyring Keyring->PATH;
+		if (keyring == nil)
+			badmodule(Keyring->PATH);
+		authinfo = keyring->readauthinfo("/usr/" + user() + "/keyring/default");
 	}
 
 	mountpoint := lockdir = hd argv;
 	if (tl argv != nil)
 		mountpoint = hd tl argv;
 	if (addr != nil) {
-		if (doauth){
-			if(algs == nil)
-				algs = "none" :: nil;		# XXX is this default a bad idea?
-			keyspec += " :alg='"+flatten(algs, ' ')+"'";
-		}
+		if (doauth && algs == nil)
+			algs = "none" :: nil;		# XXX is this default a bad idea?
 		srvrq := chan of (ref Sys->FD, string, Uproc);
 		srvsync := chan of (int, string);
-		spawn listener(addr, keyspec, srvrq, srvsync, algs);
+		spawn listener(addr, srvrq, srvsync, algs);
 		(srvpid, err) := <-srvsync;
 		srvsync = nil;
 		if (srvpid == -1) {
@@ -628,12 +638,12 @@ revrqlist(ls: list of ref Openreq) : list of ref Openreq
 }
 
 # addr should be, e.g. tcp!*!2345
-listener(addr: string, keyspec: string, ch: chan of (ref Sys->FD, string, Uproc),
+listener(addr: string, ch: chan of (ref Sys->FD, string, Uproc),
 		sync: chan of (int, string), algs: list of string)
 {
 	addr = dial->netmkaddr(addr, "tcp", "33234");
 	c := dial->announce(addr);
-	if(c == nil) {
+	if (c == nil) {
 		sync <-= (-1, sys->sprint("cannot anounce on %s: %r", addr));
 		return;
 	}
@@ -644,12 +654,12 @@ listener(addr: string, keyspec: string, ch: chan of (ref Sys->FD, string, Uproc)
 			ch <-= (nil, sys->sprint("listen failed: %r"), nil);
 			return;
 		}
-		dfd := dial->accept(nc);
+		dfd := sys->open(nc.dir + "/data", Sys->ORDWR);
 		if (dfd != nil) {
 			if (algs == nil)
 				ch <-= (dfd, nil, nil);
 			else
-				spawn authenticator(dfd, keyspec, ch);
+				spawn authenticator(dfd, ch, algs);
 		}
 	}
 }
@@ -657,9 +667,9 @@ listener(addr: string, keyspec: string, ch: chan of (ref Sys->FD, string, Uproc)
 # authenticate a connection, setting the user id appropriately,
 # and then act as a server, performing file operations
 # on behalf of the central process.
-authenticator(dfd: ref Sys->FD, keyspec: string, ch: chan of (ref Sys->FD, string, Uproc))
+authenticator(dfd: ref Sys->FD, ch: chan of (ref Sys->FD, string, Uproc), algs: list of string)
 {
-	(fd, err) := auth->auth(keyspec, dfd, 1);
+	(fd, err) := auth->server(algs, authinfo, dfd, 1);
 	if (fd == nil) {
 		if (verbose)
 			sys->fprint(stderr, "lockfs: authentication failed: %s\n", err);
@@ -725,6 +735,21 @@ doreq(greq: ref Ureq): (ref Sys->FD, string)
 	return (fd, err);
 }
 
+netmkaddr(addr, net, svc: string): string
+{
+	if(net == nil)
+		net = "net";
+	(n, nil) := sys->tokenize(addr, "!");
+	if(n <= 1){
+		if(svc== nil)
+			return sys->sprint("%s!%s", net, addr);
+		return sys->sprint("%s!%s!%s", net, addr, svc);
+	}
+	if(svc == nil || n > 2)
+		return addr;
+	return sys->sprint("%s!%s", addr, svc);
+}
+
 user(): string
 {
 	fd := sys->open("/dev/user", sys->OREAD);
@@ -750,15 +775,4 @@ now(): int
 	if ((n := sys->read(timefd, buf, len buf)) < 0)
 		return 0;
 	return int (big string buf[0:n] / big 1000000);
-}
-
-flatten(l: list of string, sep: int): string
-{
-	s := "";
-	for(; l != nil; l = tl l){
-		if(s != "")
-			s[len s] = sep;
-		s += hd l;
-	}
-	return s;
 }
