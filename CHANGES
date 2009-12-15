@@ -1,3 +1,7 @@
+20091215
+	factotum(2) updated to include keyspec in signature
+	appl/cmd/mount.b uses -k value as keyspec if -9 selected [not to much purpose with current factotum's p9any]
+	bind(1) [for mount] updated to describe -k used for keyspec if -9 selected
 20091214
 	switch more commands to use dial(2)
 	change emu/Linux/emu-g not to require X11 libs (again)

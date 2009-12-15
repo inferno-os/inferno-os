@@ -103,7 +103,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 		if(factotum == nil)
 			nomod(Factotum->PATH);
 		factotum->init();
-		ok = factotum->mount(fd, mountpoint, flags, spec, nil).t0;
+		ok = factotum->mount(fd, mountpoint, flags, spec, keyfile).t0;
 	}else{
 		err: string;
 		if(!persist){

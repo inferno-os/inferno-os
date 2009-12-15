@@ -225,6 +225,9 @@ The default is
 See 
 .IR keyring-auth (2)
 for more details.
+(If the
+.B -9
+option is given, this option is interpreted differently: see below.)
 .TP
 .B -9
 For
@@ -240,9 +243,12 @@ any Inferno host, by using the
 option to suppress Inferno authentication.)
 The existing Plan 9 file servers do not encrypt connections, so the
 .B -C
-and
+option is ignored.
+The value of the
 .B -k
-options are ignored.
+option is added to the key specification for
+.IR factotum (4)
+for authentication.
 .TP
 .B -P
 When

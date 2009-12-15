@@ -17,8 +17,8 @@ Authinfo: adt{
 AuthRpcMax: con \fR...\fP;
 
 init:          fn();
-mount:  fn(fd: ref Sys->FD, mnt: string, flags: int, aname: string):
-            (int, ref Authinfo);
+mount:  fn(fd: ref Sys->FD, mnt: string, flags: int,
+            aname: string, keyspec: string): (int, ref Authinfo);
 
 getuserpasswd:	fn(keyspec: string): (string, string);
 
