@@ -11,8 +11,8 @@ enum {
 	Nchild	= 100,
 };
 
-char *rootdir =		"c:\\inferno";
-char *shell =		"Nt\\386\\bin\\rcsh.exe";	/* Path relative to root */
+char *rootdir =		ROOT;
+char *shell =		"Nt/386/bin/rcsh.exe";	/* Path relative to root */
 
 typedef struct Child	Child;
 
