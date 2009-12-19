@@ -1,3 +1,5 @@
+20091219
+	change default roots in Nt utils to c:\inferno
 20091215
 	factotum(2) updated to include keyspec in signature
 	appl/cmd/mount.b uses -k value as keyspec if -9 selected [not to much purpose with current factotum's p9any]
