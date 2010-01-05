@@ -1,0 +1,90 @@
+Notes on the Tk implementation.
+
+General
+
+	TkTop represents a top-level window.
+	It holds pointers to the widgets created in that
+	window:
+		windows		gives a list of all windows (this includes "." and any menu widgets)
+		root			the list of all widgets, whether packed or not.
+	
+	Each Tk widget holds pointers to the widgets packed inside it, its slaves.
+	Widgets that do their own child widget management (canvas
+	and text) do not use the slaves list, but store pointers
+	to them in their own data structures.
+	
+	Each Tk widget, w, holds a pointer to the widget it's packed or stored inside.
+	
+		w->master
+			if it's packed or stored in a grid
+		w->parent
+			if it's a child widget of a canvas or text widget.
+	
+	A widget type is operated on through functions referred to in its TkMethod structure,
+	defined in that widget type's source file, and pointed to by the
+	method dispatch table, tkmethod, defined in xdata.c.
+	
+	utils.c contains the master table holding the built-in commands
+	(e.g. widget creation, focus, grab, etc) with their
+	associated functions.
+	
+	xdata.c holds the method table (tkmethod) mapping from
+	widget type to the method functions supported by individual widgets.
+
+
+
+Coordinates:
+
+	A widget requests a particular size allocation
+	by setting its req.width and req.height fields.
+	The packer (or its parent) determines the actual
+	size allocation, and position and sets act.x, act.y, act.width
+	and act.height appropriately.
+
+	The requested width and height do not include the
+	borderwidth, which is factored in additionally.
+
+	Coordinates as delivered by the %x and %y verbs provided
+	by bind(9) are relative to the top left of the widget,
+	inside its border. I'll call this the "widget's coordinate system".
+
+	The draw method of each widget type is provided with
+	an "origin" argument.
+
+		(origin.x + act.x + borderwidth, origin.y + act.y + borderwidth)
+
+	gives the screen coordinate of (0, 0) in the widget coordinate
+	system.
+
+
+Dirtiness
+
+	Each widget has a "dirty" rectangle, the bounding
+	box of any changes that it needs to make visible.
+	This is in the widget's coordinate system.
+
+	A widget does not have to update everything in
+	the dirty rectangle, unless the Tkrefresh flag
+	is set, in which case it must.
+
+	A widget never has to draw anything outside of its dirty
+	rectangle.
+
+Locking
+
+	Mostly, Tk is non-reentrant because the interpreter is held
+	when a call to, e.g.  Tk_cmd, is made.
+
+	However, when the display is remote, any access of the display
+	(drawing, stringsize, etc) can do a release() and therefore
+	let another thread access tk.
+
+	The drawing code itself locks the display, so code invoked
+	from within a widgets draw() method is guaranteed
+	non-reentrant.
+
+	If access to the draw device is required during code executed
+	in a non-drawing context (e.g.  to calculate the size of a
+	string), care must be taken to lock the draw device
+	appropriately.  Tk provides some convenience functions to do
+	this (e.g.  tkstringsize).
