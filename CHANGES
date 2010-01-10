@@ -1,3 +1,5 @@
+20100110
+	appl/cmd/tcs.b [issue 12, arvindht]: process unconverted bytes next cycle, flush conversion state; improve error checking
 20091219
 	change default roots in Nt utils to c:\inferno
 20091215

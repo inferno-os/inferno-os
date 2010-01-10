@@ -223,7 +223,7 @@ represents the converter state and is treated in the same way as for
 described above.
 To terminate a conversion
 .B stob
-should be called with an emtpy string in order to flush
+should be called with an empty string in order to flush
 the converter state.
 .PP
 The return value of

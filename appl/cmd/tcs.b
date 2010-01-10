@@ -1,30 +1,23 @@
 implement Tcs;
 
 include "sys.m";
+	sys: Sys;
 include "draw.m";
 include "arg.m";
 include "bufio.m";
+	bufio: Bufio;
+	Iobuf: import bufio;
 include "convcs.m";
+	convcs: Convcs;
 
-Tcs : module {
-	init : fn (nil : ref Draw->Context, args : list of string);
+Tcs: module
+{
+	init: fn (nil: ref Draw->Context, args: list of string);
 };
 
-sys : Sys;
-convcs : Convcs;
-bufio : Bufio;
+stderr: ref Sys->FD;
 
-Iobuf : import bufio;
-
-stderr : ref Sys->FD;
-
-usage()
-{
-	sys->fprint(stderr, "tcs [-C configfile] [-l] [-f ics] [-t ocs] file ...\n");
-	raise "fail:usage";
-}
-
-init(nil : ref Draw->Context, args : list of string)
+init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
@@ -36,8 +29,11 @@ init(nil : ref Draw->Context, args : list of string)
 		badmodule(Convcs->PATH);
 
 	arg->init(args);
-	lflag, vflag : int = 0;
-	ics, ocs : string = "utf8";
+	arg->setusage("tcs [-C configfile] [-l] [-f ics] [-t ocs] file ...");
+	lflag := 0;
+	vflag := 0;
+	ics := "utf8";
+	ocs := "utf8";
 	csfile := "";
 	while ((c := arg->opt()) != 0) {
 		case c {
@@ -52,7 +48,7 @@ init(nil : ref Draw->Context, args : list of string)
 		'v' =>
 			vflag = 1;
 		* =>
-			usage();
+			arg->usage();
 		}
 	}
 	file := arg->arg();
@@ -72,46 +68,59 @@ init(nil : ref Draw->Context, args : list of string)
 		return;
 	}
 	
-	stob : Stob;
-	btos : Btos;
+	stob: Stob;
+	btos: Btos;
 	(stob, err) = convcs->getstob(ocs);
 	if (err != nil) {
-		sys->fprint(stderr, "%s: %s\n", ocs, err);
+		sys->fprint(stderr, "tcs: %s: %s\n", ocs, err);
 		raise "fail:badarg";
 	}
 	(btos, err) = convcs->getbtos(ics);
 	if (err != nil) {
-		sys->fprint(stderr, "%s: %s\n", ics, err);
+		sys->fprint(stderr, "tcs: %s: %s\n", ics, err);
 		raise "fail:badarg";
 	}
 
-	fd := sys->fildes(0);
-	if (file != nil)
+	fd: ref Sys->FD;
+	if (file == nil) {
+		fd = sys->fildes(0);
+		file = "standard input";
+	} else
 		fd = open(file);
 
 	inbuf := array [Sys->ATOMICIO] of byte;
-	start := 0;
-	while (fd != nil) {
-		btoss : Convcs->State = nil;
-		stobs : Convcs->State = nil;
+	for(;;){
+		btoss: Convcs->State = nil;
+		stobs: Convcs->State = nil;
 
-		while ((n := sys->read(fd, inbuf[start:], len inbuf - start)) > 0) {
-			s := "";
-			nc := 0;
-			outbuf : array of byte = nil;
+		unc := 0;
+		nc: int;
+		s: string;
+		while ((n := sys->read(fd, inbuf[unc:], len inbuf - unc)) > 0) {
+			n += unc;		# include unconsumed prefix
 			(btoss, s, nc) = btos->btos(btoss, inbuf[0:n], -1);
 			if (s != nil)
-				(stobs, outbuf) = stob->stob(stobs, s);
-			if (outbuf != nil) {
-				out.write(outbuf, len outbuf);
-			}
+				stobs = output(out, stob, stobs, s);
 			# copy down unconverted part of buffer
-			start = n - nc;
-			if (start && nc)
-				inbuf[:] = inbuf[nc:n];
+			unc = n - nc;
+			if (unc > 0 && nc > 0)
+				inbuf[0:] = inbuf[nc: n];
+		}
+		if (n < 0) {
+			sys->fprint(stderr, "tcs: error reading %s: %r\n", file);
+			raise "fail:read error";
 		}
 
-		out.flush();
+		# flush conversion state
+		(nil, s, nil) = btos->btos(btoss, inbuf[0: unc], 0);
+		if(s != nil)
+			stobs = output(out, stob, stobs, s);
+		output(out, stob, stobs, "");
+
+		if(out.flush() != 0) {
+			sys->fprint(stderr, "tcs: write error: %r\n");
+			raise "fail:write error";
+		}
 		file = arg->arg();
 		if (file == nil)
 			break;
@@ -119,13 +128,22 @@ init(nil : ref Draw->Context, args : list of string)
 	}
 }
 
-badmodule(s : string)
+output(out: ref Iobuf, stob: Stob, stobs: Convcs->State, s: string): Convcs->State
 {
-	sys->fprint(stderr, "cannot load module %s: %r\n", s);
+	outbuf: array of byte;
+	(stobs, outbuf) = stob->stob(stobs, s);
+	if(outbuf != nil)
+		out.write(outbuf, len outbuf);
+	return stobs;
+}
+
+badmodule(s: string)
+{
+	sys->fprint(stderr, "tcs: cannot load module %s: %r\n", s);
 	raise "fail:init";
 }
 
-dumpconvs(out : ref Iobuf, verbose : int)
+dumpconvs(out: ref Iobuf, verbose: int)
 {
 	first := 1;
 	for (csl := convcs->enumcs(); csl != nil; csl = tl csl) {
@@ -151,7 +169,7 @@ dumpconvs(out : ref Iobuf, verbose : int)
 	out.flush();
 }
 
-dumpaliases(out : ref Iobuf, cs : string, verbose : int)
+dumpaliases(out: ref Iobuf, cs: string, verbose: int)
 {
 	(desc, asl) := convcs->aliases(cs);
 	if (asl == nil) {
@@ -175,10 +193,12 @@ dumpaliases(out : ref Iobuf, cs : string, verbose : int)
 	out.flush();
 }
 
-open(path : string) : ref Sys->FD
+open(path: string): ref Sys->FD
 {
 	fd := sys->open(path, Bufio->OREAD);
-	if (fd == nil)
-		sys->fprint(stderr, "cannot open %s: %r\n", path);
+	if (fd == nil) {
+		sys->fprint(stderr, "tcs: cannot open %s: %r\n", path);
+		raise "fail:open";
+	}
 	return fd;
 }
