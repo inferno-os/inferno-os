@@ -1,16 +1,10 @@
 .TH KEYRING-SHA1 2
 .SH NAME
-keyring: sha1, md4, md5, hmac_sha1, hmac_md5 \- cryptographic digests
+keyring: sha1, md4, md5, hmac_sha1, hmac_md5, sign, verify \- cryptographic digests and digital signatures
 .SH SYNOPSIS
 .EX
 include "keyring.m";
 keyring := load Keyring Keyring->PATH;
-
-DigestState: adt
-{
-    # hidden state
-    copy:   fn(d: self ref DigestState): ref DigestState;
-};
 
 .ta \w'verify:\ 'u +\w'fn(\ \ \ 'u
 sha1:	fn(buf: array of byte, n: int, digest: array of byte,
@@ -19,13 +13,14 @@ md4:	fn(buf: array of byte, n: int, digest: array of byte,
 		state: ref DigestState): ref DigestState;
 md5:	fn(buf: array of byte, n: int, digest: array of byte,
 		state: ref DigestState): ref DigestState;
-
-hmac_sha1: fn(buf: array of byte, n: int, key: array of byte,
-		    digest: array of byte,
-		    state: ref DigestState): ref DigestState;
-hmac_md5:  fn(buf: array of byte, n: int, key: array of byte,
-		    digest: array of byte,
-		    state: ref DigestState): ref DigestState;
+hmac_sha1:	fn(buf: array of byte, n: int, key: array of byte, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+hmac_md5:	fn(buf: array of byte, n: int, key: array of byte, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+sign:	fn(sk: ref SK, exp: int, state: ref DigestState,
+		ha: string): ref Certificate;
+verify:	fn(pk: ref PK, cert: ref Certificate,
+		state: ref DigestState): int;
 .EE
 .SH DESCRIPTION
 .BR Sha1 ,
@@ -37,7 +32,6 @@ Each function computes a hash of
 .I n
 bytes of the data in
 .IR buf ,
-using the named algorithm,
 and updates the current
 .IR state .
 They can be called iteratively to form a single digest for many data blocks.
@@ -83,11 +77,45 @@ The
 .I key
 must currently be no more than 64 bytes.
 .PP
-.B DigestState
-hides the state of partially completed hash functions during processing.
-Its
-.B copy
-operation returns a reference to a new copy of a given state.
+.B Sign
+creates a digital signature of a digest from the concatenation of: a message, the name of the signer, and an expiration time.
+.I State
+is the digest state after running
+.BR sha1 ,
+.B md4
+or
+.B md5
+over the message.
+.I Ha
+is a string specifying the hash algorithm to use:
+.B
+"sha"\fR,
+.B
+"sha1"\fR,
+.B
+"md4"\fR
+or
+.B
+"md5"\fR.
+.B Sign
+extends the digest to cover the signer's name
+(taken from the private key,
+.IR sk )
+and the expiration time.
+It returns a certificate containing the digital signature of the digest, signer name, hash algorithm and signature algorithm.
+If any parameter is invalid,
+.B sign
+returns nil.
+The signature algorithm is implied by the type of the private key.
+.PP
+.B Verify
+uses public key
+.I pk
+to verify a certificate.
+It returns non-zero (true) if the certificate is valid; zero (false) otherwise.
+.I State
+is the digest state after running the chosen digest algorithm
+over the message.
 .SH EXAMPLES
 A program to read a file and hash it using SHA might contain the following inner loop:
 .IP
@@ -101,13 +129,13 @@ kr->sha1(buf, 0, digest, state);
 .SH SOURCE
 .B /libinterp/keyring.c
 .br
-.B /libsec/port/hmac.c
+.B /libcrypt/hmac.c
 .br
-.B /libsec/port/md4.c
+.B /libcrypt/md4.c
 .br
-.B /libsec/port/md5.c
+.B /libcrypt/md5.c
 .br
-.B /libsec/port/sha1.c
+.B /libcrypt/sha1.c
 .SH BUGS
 The MD4 algorithm is included only to allow communication with software
 that might still use it; it should not otherwise be used now, because it
