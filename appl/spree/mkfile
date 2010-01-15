@@ -54,7 +54,7 @@ $ROOT/dis/spree/%.dis:	%.dis
 	cp $prereq $target
 
 %.dis:	%.b
-	limbo -gw -I lib -o $stem.dis $stem.b
+	limbo -gw -I$ROOT/module -Ilib -o $stem.dis $stem.b
 
 $ENGINES $MAIN $LIB: spree.m gather.m lib/cardlib.m lib/allow.m lib/objstore.m
 $ENGINES $MAIN $CLIENTS $LIB: ${MODULES:%=$ROOT/module/%}

@@ -1,5 +1,6 @@
 20100115
 	appl/cmd/tarfs.b man/4/tarfs changes to permission handling from mechiel [issue 220]
+	appl/spree/mkfile add explicit -I$ROOT/module [issue 209, powerman]
 20100110
 	appl/cmd/tcs.b [issue 12, arvindht]: process unconverted bytes next cycle, flush conversion state; improve error checking
 20091219
