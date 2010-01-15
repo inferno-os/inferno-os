@@ -5,6 +5,8 @@ tarfs \- mount tar archive
 .B tarfs
 [
 .B -ab
+] [
+.B -p
 ]
 .I tarfile
 .I mountpt
@@ -22,7 +24,7 @@ such as
 and
 .IR cp (1).
 Only read access is supported.
-User and group names are simply the numeric user and group IDs in the file.
+User and group names are taken from the ``ustar'' headers when present.  Otherwise, the numeric user and group IDs are used.
 The
 .B -a
 and
@@ -32,6 +34,9 @@ options cause the
 name space to be placed after or before the current contents of
 .IR mountpt ;
 the default is to replace that directory's contents.
+Option
+.B -p
+causes permissions in the tar file to be discarded.
 .SH SOURCE
 .B /appl/cmd/tarfs.b
 .SH SEE ALSO
