@@ -202,7 +202,7 @@ and
 may be zero.
 If it is not, it is the maximum number of bytes that are guaranteed to
 be read from or written to the file without breaking the I/O transfer
-into multiple Styx messages; see
+into multiple 9P messages; see
 .IR read (5).
 .SH ENTRY POINTS
 .I Open

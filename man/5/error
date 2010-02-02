@@ -20,6 +20,6 @@ It replaces the corresponding reply message
 that would accompany a successful call; its tag is that
 of the failing request.
 .PP
-By convention, clients may truncate error messages after 128 bytes,
-defined as the constant
-.BR Sys->ERRMAX .
+By convention, clients may truncate error messages after
+.B Sys->ERRMAX-1
+bytes.

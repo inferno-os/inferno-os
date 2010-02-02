@@ -262,7 +262,7 @@ the machine independent encoding given above
 .PP
 Note that since the
 .B stat
-information is sent as a Styx variable-length datum, it is limited to a maximum of
+information is sent as a 9P variable-length datum, it is limited to a maximum of
 65535 bytes.
 .SH ENTRY POINTS
 .B Stat
@@ -305,5 +305,5 @@ message is formatted as
 .IR dev [4]...,''
 where 
 .I n
-is the value returned by
+is the length of the array returned by
 .BR Styx->packdir .

@@ -1,11 +1,25 @@
 .TH INTRO 5 
 .SH NAME
-intro \- introduction to the Inferno File Protocol, Styx
+intro \- introduction to the Plan 9 File Protocol 9P in Inferno
 .SH SYNOPSIS
 .B #include <lib9.h>
 .br
 .B #include <styx.h>
 .SH DESCRIPTION
+Inferno uses the Plan 9 protocol 9P to make resources visible as file hierarchies.
+There have been two versions of 9P, the most recent being 9P2000.
+Inferno originally used its own protocol called
+.IR Styx ,
+which was a simplified version of the first 9P protocol.
+When 9P was subsequently revised as 9P2000, Inferno adopted that, but still using the name
+.IR Styx .
+To reduce confusion and to emphasise that Inferno and Plan 9 use the same protocol,
+the name
+.I Styx
+is being replaced by 9P.
+References to `Styx' remain in the programs and documentation,
+but will eventually be eliminated.
+.PP
 An Inferno
 .I server
 is an agent that provides one or more hierarchical file systems
@@ -56,12 +70,11 @@ system calls operating on files are translated into requests
 and responses transmitted on the connection to the appropriate service.
 .PP
 The
-.IR "Inferno File Protocol" ,
-Styx, is used for messages between
+.IR "Plan 9 File Protocol" ,
+9P, is used for messages between
 .I clients
 and
 .IR servers .
-The current version of Styx is identical to Plan 9's 9P2000.
 A client transmits
 .I requests
 .RI ( T-messages )
@@ -90,17 +103,17 @@ Text strings are represented this way,
 with the text itself stored as a UTF-8
 encoded sequence of Unicode characters (see
 .IR utf (6)).
-Text strings in Styx messages are not
+Text strings in 9P messages are not
 .SM NUL\c
 -terminated:
 .I n
 counts the bytes of UTF-8 data, which include no final zero byte.
 The
 .SM NUL
-character is illegal in all text strings in Styx, and is therefore
+character is illegal in all text strings in 9P, and is therefore
 excluded from file names, user names, and so on.
 .PP
-Each Styx message begins with a four-byte size field
+Each 9P message begins with a four-byte size field
 specifying the length in bytes of the complete message including
 the four bytes of the size field itself.
 The next byte is the message type, one of the constants
@@ -397,7 +410,7 @@ messages and subsequently manipulated using
 .B read
 and
 .B write
-messages to exchange authentication information not defined explicitly by the protocol.
+messages to exchange authentication information not defined explicitly by 9P.
 Once the authentication protocol is complete, the
 .B afid
 is presented in the
@@ -524,11 +537,11 @@ The exception is that a long error string in an
 message should be truncated if necessary, since the string is only
 advisory and in some sense arbitrary.
 .PP
-Most programs do not see the Styx protocol directly; instead calls to library
+Most programs do not see the 9P protocol directly; instead calls to library
 routines that access files are
 translated by the mount driver,
 .IR mnt (3),
-into Styx messages.
+into 9P messages.
 .SH DIRECTORIES
 Directories are created by
 .B create
@@ -613,8 +626,10 @@ These bits are reproduced, from the top bit down, in the type byte of the Qid:
 .BR QTDIR ,
 .BR QTAPPEND ,
 .BR QTEXCL ,
-and (skipping one bit)
-.BR QTAUTH .
+(skipping one bit)
+.BR QTAUTH ,
+and
+.BR QTTMP .
 The name
 .BR QTFILE ,
 defined to be zero,

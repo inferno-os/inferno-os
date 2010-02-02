@@ -97,7 +97,7 @@ reply records the number of bytes actually written.
 It is usually an error
 if this is not the same as requested.
 .PP
-Because Styx implementations may limit the size of individual
+Because 9P implementations may limit the size of individual
 messages,
 more than one message may be produced by a single
 .I read

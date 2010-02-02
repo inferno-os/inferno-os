@@ -102,7 +102,7 @@ that may be read and written (using
 and
 .B write
 messages in the usual way) to execute an authentication protocol.
-That protocol's definition is not part of Styx itself.
+That protocol's definition is not part of 9P itself.
 .PP
 Once the protocol is complete, the same
 .I afid
