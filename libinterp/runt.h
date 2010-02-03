@@ -3830,6 +3830,54 @@ struct F_Keyring_sha1
 	Array*	digest;
 	Keyring_DigestState*	state;
 };
+void Keyring_sha224(void*);
+typedef struct F_Keyring_sha224 F_Keyring_sha224;
+struct F_Keyring_sha224
+{
+	WORD	regs[NREG-1];
+	Keyring_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Keyring_DigestState*	state;
+};
+void Keyring_sha256(void*);
+typedef struct F_Keyring_sha256 F_Keyring_sha256;
+struct F_Keyring_sha256
+{
+	WORD	regs[NREG-1];
+	Keyring_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Keyring_DigestState*	state;
+};
+void Keyring_sha384(void*);
+typedef struct F_Keyring_sha384 F_Keyring_sha384;
+struct F_Keyring_sha384
+{
+	WORD	regs[NREG-1];
+	Keyring_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Keyring_DigestState*	state;
+};
+void Keyring_sha512(void*);
+typedef struct F_Keyring_sha512 F_Keyring_sha512;
+struct F_Keyring_sha512
+{
+	WORD	regs[NREG-1];
+	Keyring_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Keyring_DigestState*	state;
+};
 void IPint_shl(void*);
 typedef struct F_IPint_shl F_IPint_shl;
 struct F_IPint_shl
@@ -4054,6 +4102,10 @@ struct F_IPint_xor
 };
 #define Keyring_PATH "$Keyring"
 #define Keyring_SHA1dlen 20
+#define Keyring_SHA224dlen 28
+#define Keyring_SHA256dlen 32
+#define Keyring_SHA384dlen 48
+#define Keyring_SHA512dlen 64
 #define Keyring_MD5dlen 16
 #define Keyring_MD4dlen 16
 #define Keyring_Encrypt 0

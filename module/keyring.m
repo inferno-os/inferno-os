@@ -175,11 +175,19 @@ Keyring: module
 	sktopk: fn (sk: ref SK): ref PK;
 
 	# digests
-	sha1: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
-		ref DigestState;
 	md4: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
 		ref DigestState;
 	md5: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
+		ref DigestState;
+	sha1: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
+		ref DigestState;
+	sha224: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
+		ref DigestState;
+	sha256: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
+		ref DigestState;
+	sha384: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
+		ref DigestState;
+	sha512: fn(buf: array of byte, n: int, digest: array of byte, state: ref DigestState):
 		ref DigestState;
 
 	hmac_sha1: fn(data: array of byte, n: int, key: array of byte, digest: array of byte, state: ref DigestState):
@@ -187,7 +195,11 @@ Keyring: module
 	hmac_md5: fn(data: array of byte, n: int, key: array of byte, digest: array of byte, state: ref DigestState):
 		ref DigestState;
 
-	SHA1dlen: con 20;
+	SHA1dlen:	con 20;
+	SHA224dlen:	con 28;
+	SHA256dlen:	con 32;
+	SHA384dlen:	con 48;
+	SHA512dlen:	con 64;
 	MD5dlen:	con 16;
 	MD4dlen:	con 16;
 

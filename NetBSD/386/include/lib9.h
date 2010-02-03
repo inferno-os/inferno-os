@@ -45,6 +45,8 @@ typedef uint64_t	uvlong;
 typedef uint8_t		u8int;
 typedef uint16_t	u16int;
 typedef uint32_t	u32int;
+typedef uvlong u64int;
+
 typedef uintptr_t	uintptr;
 
 typedef unsigned short	Rune;

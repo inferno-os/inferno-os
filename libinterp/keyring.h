@@ -68,6 +68,10 @@ Runtab Keyringmodtab[]={
 	"senderrmsg",0xd2526222,Keyring_senderrmsg,40,2,{0x0,0xc0,},
 	"sendmsg",0x7cfef557,Keyring_sendmsg,48,2,{0x0,0xc0,},
 	"sha1",0x7656377,Keyring_sha1,48,2,{0x0,0xb0,},
+	"sha224",0x7656377,Keyring_sha224,48,2,{0x0,0xb0,},
+	"sha256",0x7656377,Keyring_sha256,48,2,{0x0,0xb0,},
+	"sha384",0x7656377,Keyring_sha384,48,2,{0x0,0xb0,},
+	"sha512",0x7656377,Keyring_sha512,48,2,{0x0,0xb0,},
 	"IPint.shl",0xc7b0bc01,IPint_shl,40,2,{0x0,0x80,},
 	"IPint.shr",0xc7b0bc01,IPint_shr,40,2,{0x0,0x80,},
 	"sign",0xdacb7a7e,Keyring_sign,48,2,{0x0,0xb0,},
@@ -92,4 +96,4 @@ Runtab Keyringmodtab[]={
 	"IPint.xor",0xa47c1b24,IPint_xor,40,2,{0x0,0xc0,},
 	0
 };
-#define Keyringmodlen	90
+#define Keyringmodlen	94

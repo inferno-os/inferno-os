@@ -138,18 +138,33 @@ void	idea_cipher(ushort*, uchar*, int);
 
 enum
 {
-	SHA1dlen=	20,	/* SHA digest length */
-	MD4dlen=	16,	/* MD4 digest length */
-	MD5dlen=	16	/* MD5 digest length */
+	/* digest lengths */
+	SHA1dlen=	20,
+	MD4dlen=	16,
+	MD5dlen=	16,
+
+	SHA224dlen=	28,
+	SHA256dlen=	32,
+
+	SHA384dlen=	48,
+	SHA512dlen=	64,
+
+	/* block sizes */
+	SHA256bsize=	64,
+	SHA512bsize=	128,
+	Digestbsize=	128,		/* maximum */
 };
 
 typedef struct DigestState DigestState;
 struct DigestState
 {
-	uvlong len;
+	u64int len;
 	u32int state[5];
-	uchar buf[128];
+	uchar buf[Digestbsize];
 	int blen;
+	u64int nb128[2];
+	u64int h64[8];
+	u32int h32[8];
 	char malloced;
 	char seeded;
 };
@@ -157,10 +172,16 @@ typedef struct DigestState SHAstate;	/* obsolete name */
 typedef struct DigestState SHA1state;
 typedef struct DigestState MD5state;
 typedef struct DigestState MD4state;
+typedef struct DigestState SHA256state;
+typedef struct DigestState SHA512state;
 
 DigestState* md4(uchar*, ulong, uchar*, DigestState*);
 DigestState* md5(uchar*, ulong, uchar*, DigestState*);
 DigestState* sha1(uchar*, ulong, uchar*, DigestState*);
+DigestState* sha224(uchar*, ulong, uchar*, DigestState*);
+DigestState* sha256(uchar*, ulong, uchar*, DigestState*);
+DigestState* sha384(uchar*, ulong, uchar*, DigestState*);
+DigestState* sha512(uchar*, ulong, uchar*, DigestState*);
 DigestState* hmac_md5(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
 DigestState* hmac_sha1(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
 char* md5pickle(MD5state*);

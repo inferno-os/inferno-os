@@ -1263,6 +1263,62 @@ Keyring_sha1(void *fp)
 }
 
 void
+Keyring_sha224(void *fp)
+{
+	F_Keyring_sha224 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA224dlen, f->state, sha224);
+}
+
+void
+Keyring_sha256(void *fp)
+{
+	F_Keyring_sha256 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA256dlen, f->state, sha256);
+}
+
+void
+Keyring_sha384(void *fp)
+{
+	F_Keyring_sha384 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA384dlen, f->state, sha384);
+}
+
+void
+Keyring_sha512(void *fp)
+{
+	F_Keyring_sha512 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA512dlen, f->state, sha512);
+}
+
+void
 Keyring_md5(void *fp)
 {
 	F_Keyring_md5 *f;
