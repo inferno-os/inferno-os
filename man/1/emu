@@ -1,33 +1,30 @@
 .TH EMU 1E
 .SH NAME
-emu \- Inferno emulator
+emu \- Inferno emulator (hosted Inferno)
 .SH SYNOPSIS
 .B emu
 [
-.BI \-g Xsize x Ysize
+.BI \-g " Xsize x Ysize"
 ]
 [
-.BR \-c [0-9]
+.BI \-c n
 ]
 [
 .BI -d " daemon"
 ]
-[
-.BR \-m [0-9]
-]
 .RB [ \-s ]
 [
-.BI \-p pool = maxsize
+.BI \-p " pool=maxsize"
 ]
 [
-.BI \-f font
+.BI \-f " font"
 ]
 [
-.BI \-r rootpath
+.BI \-r " rootpath"
 ]
 .RB [ \-7 ]
 [
-.RB \-C channel
+.RB \-C " channel"
 ]
 [
 .RB \-S
@@ -41,7 +38,8 @@ emu \- Inferno emulator
 ]
 .SH DESCRIPTION
 .I Emu
-provides the Inferno emulation environment.
+provides the Inferno emulation environment,
+otherwise known as `hosted Inferno'.
 The emulator runs as an application under the
 machine's native operating system, and
 provides system services and a Dis virtual machine for Inferno applications.
@@ -167,10 +165,18 @@ use this option only if X11 refused to allow
 to configure the normal (default) 8-bit Inferno colour map.
 .TP
 .B \-C channel
-Use the given channel for the display if possible. For example, k8 gives
-8 bit greyscale. See 
+Use the given
+.I channel
+for the display, if possible.
+See
 .IR image (6)
 for the full range of channel descriptors.
+For example,
+.B k8
+gives 8 bit greyscale, and
+.B x8r8g8b8
+gives 24 bit colour on a PC.
+The set of channels supported is platform-dependent.
 .TP
 .B \-S
 Force stylus input behaviour for Tk mouse events:
