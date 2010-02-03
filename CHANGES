@@ -1,3 +1,5 @@
+20100203
+	appl/lib/cfg.b treat \r as white space (issue 69, 70)
 20100115
 	appl/cmd/tarfs.b man/4/tarfs changes to permission handling from mechiel [issue 220]
 	appl/spree/mkfile add explicit -I$ROOT/module [issue 209, powerman]

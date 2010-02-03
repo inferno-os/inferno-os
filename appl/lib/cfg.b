@@ -80,7 +80,7 @@ loop:
 			continue;
 		'#' =>
 			break loop;
-		' ' or '\t' or '\n' =>
+		' ' or '\t' or '\n' or '\r' =>
 			if (word == nil)
 				continue;
 			if (lastword != nil) {
