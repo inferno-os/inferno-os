@@ -65,7 +65,7 @@ Display summary of file I/O incurred by
 iostats ls
 .EE
 .PP
-Start a new shell, displaying all Styx traffic caused by the shell or its children:
+Start a new shell, displaying all 9P traffic caused by the shell or its children:
 .IP
 .EX
 iostats -df /fd/1 sh

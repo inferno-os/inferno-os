@@ -126,7 +126,7 @@ The device follows the conventions that allow
 and
 .B listen
 of
-.IR sys-dial (2)
+.IR dial (2)
 to do the work needed to establish and manipulate network connections.
 .SH SOURCE
 .B /os/pc/devplap.c

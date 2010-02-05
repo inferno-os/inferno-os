@@ -27,7 +27,7 @@ mount or bind, the original name of the file is shown.
 .PP
 Mounts of file services on a network show the network address as
 given to
-.IR sys-dial (2)
+.IR dial (2)
 instead of the name of the data file for the connection; the
 .B -r
 option causes
@@ -40,4 +40,3 @@ to show the raw file name instead.
 .IR prog (3),
 .IR namespace (4),
 .IR namespace (6)
-

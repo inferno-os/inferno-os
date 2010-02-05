@@ -9,7 +9,7 @@ telnet \- make a remote telnet connection
 uses the Telnet protocol to talk to a remote
 .IR machine ,
 addressed using any form acceptable to
-.IR sys-dial (2):
+.IR dial (2):
 .IB net ! host ! port
 in general.
 The default

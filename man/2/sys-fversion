@@ -1,6 +1,6 @@
 .TH SYS-FVERSION 2
 .SH NAME
-fversion \- initialize Styx connection and negotiate version
+fversion \- initialize 9P connection and negotiate version
 .SH SYNOPSIS
 .EX
 include "sys.m";
@@ -10,13 +10,13 @@ fversion: fn(fd: ref FD, bufsize: int, version: string): (int, string);
 .EE
 .SH DESCRIPTION
 .B Fversion
-initialises the Styx connection represented by
+initialises the 9P connection represented by
 .I fd
 and negotiates the maximum message size and the version of the protocol to be used.
 .PP
 The
 .I bufsize
-determines the size of the I/O buffer used to stage Styx requests to the server,
+determines the size of the I/O buffer used to stage 9P requests to the server,
 subject to the constraints of the server itself.
 The
 .I version

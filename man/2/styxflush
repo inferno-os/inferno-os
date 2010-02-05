@@ -1,6 +1,6 @@
 .TH STYXFLUSH 2
 .SH NAME
-styxflush \- handler for styx flush protocol
+styxflush \- handler for 9P (Styx) flush protocol
 .SH SYNOPSIS
 .EX
 include "sys.m";
@@ -16,17 +16,17 @@ rmsg: fn(m: ref Styx->Rmsg): int;
 Einterrupted: con "interrupted";
 .EE
 .SH DESCRIPTION
-Getting the semantics of the Styx
+Getting the semantics of the 9P
 .IR flush (5)
 protocol correct when handling requests concurrently
 is surprisingly hard to do.
 .I Styxflush
-is designed to help get it right. It deals with Styx
-messages for a single styx session \- if a server needs to
+is designed to help get it right. It deals with 9P
+messages for a single 9P session \- if a server needs to
 deal with multiple sessions, then multiple instances of
 .I styxflush
 should be loaded. It assumes there is a loop in a central process
-which both reads T-messages and sends their R-message replies.
+that both reads T-messages and sends their R-message replies.
 .I Styxflush
 handles the flushing of requests that are being run
 outside the central process.

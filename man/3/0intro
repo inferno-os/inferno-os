@@ -29,7 +29,7 @@ device.
 .PP
 A kernel device driver is a
 .I server
-in the sense of the Inferno File Protocol, Styx (see Section 5),
+in the sense of the Inferno File Protocol, 9P (see Section 5),
 but with the messages implemented by local
 rather than remote procedure calls.
 Also, several of the messages

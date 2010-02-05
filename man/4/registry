@@ -25,7 +25,7 @@ where services come and go.
 It was originally intended to register Grid resources
 but has much wider use.
 .I Registry
-serves Styx on its standard input.
+serves 9P on its standard input.
 That can be mounted in the local name space (see below for an example),
 or served over a connection
 (eg, via

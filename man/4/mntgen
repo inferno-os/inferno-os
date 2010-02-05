@@ -5,7 +5,7 @@ mntgen \- dynamically generate mount points
 .BI "mount {mntgen} " dir
 .SH DESCRIPTION
 .I Mntgen
-serves a Styx connection on its standard input, providing a name space containing a
+serves 9P on its standard input, providing a name space containing a
 single directory that is initially empty, but in which a subdirectory name appears when
 is first referenced, and remains only as long as it is needed (referenced).
 .I Mntgen

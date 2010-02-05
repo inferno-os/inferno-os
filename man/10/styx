@@ -40,7 +40,8 @@ uint sizeD2M(Dir *d)
 These
 routines convert messages in the machine-independent format of
 the Inferno file protocol,
-Styx (which is equivalent to the Plan 9 protocol 9P2000),
+described by
+.IR intro (5),
 to and from a more convenient form,
 an
 .B Fcall
@@ -129,7 +130,7 @@ void	PBIT64(uchar*, vlong)
 This structure is defined in
 .BR <styx.h> .
 See section 5
-for a full description of Styx messages and their encoding.
+for a full description of 9P messages and their encoding.
 For all message types, the
 .B type
 field of an
@@ -149,7 +150,7 @@ The other fields are used selectively by the message types
 given in comments.
 .PP
 .I ConvM2S
-takes a Styx message at
+takes a 9P message at
 .I ap
 of length
 .IR nap ,
@@ -197,7 +198,7 @@ are copied into the message.
 The constant
 .B IOHDRSZ
 is a suitable amount of buffer to reserve for storing
-the Styx header;
+the 9P header;
 the data portion of a
 .B Twrite
 or
@@ -295,7 +296,7 @@ which is a simple but effective test of validity.
 and
 .I buf
 should include the second two-byte (16-bit) length field that precedes the entry when
-formatted in a Styx message (see
+formatted in a 9P message (see
 .IR stat (5));
 in other words,
 .I nbuf

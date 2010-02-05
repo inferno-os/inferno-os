@@ -25,7 +25,7 @@ a summary of differences with Unix
 .I make ,
 can be found in
 .I "Maintaining Files on Plan 9 with Mk"
-by Hume and Flandera,
+by Hume and Flandrena,
 reprinted in this volume.
 The source for
 .CW mk
@@ -453,7 +453,7 @@ UART, and IrDA mode
 .CW etherscc.c
 and
 .CW devuart.c ).
-The IrDA has been used for Styx transport between a FADS board
+The IrDA has been used for 9P transport between a FADS board
 and an IBM Thinkpad 560.
 The file
 .CW screen.c

@@ -1,6 +1,6 @@
 .TH STYXCHAT 8
 .SH NAME
-styxchat \- exchange Styx messages with a server or client
+styxchat \- exchange 9P (Styx) messages with a server or client
 .SH SYNOPSIS
 .B styxchat
 [
@@ -16,7 +16,8 @@ styxchat \- exchange Styx messages with a server or client
 ]
 .SH DESCRIPTION
 .I Styxchat
-exchanges messages with a Styx service.
+exchanges messages with a 9P service.
+(9P was previously called `Styx' when used by Inferno, hence the command's name.)
 See
 .IR intro (5)
 for the protocol definition.
@@ -27,9 +28,9 @@ It makes a connection to a given
 if the
 .B -s
 option is specified),
-then reads a textual representation of Styx T-messages from the standard
+then reads a textual representation of 9P T-messages from the standard
 input and writes them on the connection, with a copy on standard output,
-simultaneously reading Styx R-messages from the connection and printing a representation of them
+simultaneously reading 9P R-messages from the connection and printing a representation of them
 on standard output.
 Each message is represented by one line
 on the standard output in the form of a literal of either
@@ -58,7 +59,7 @@ The
 option causes
 .I destination
 to be interpreted as a network address, as accepted by
-.IR sys-dial (2)
+.IR dial (2)
 (or
 .I listen
 with
@@ -67,7 +68,7 @@ If
 .I destination
 is not provided,
 .B styxchat
-reads and writes Styx messages on its standard input,
+reads and writes 9P messages on its standard input,
 using
 .B /dev/cons
 where it would usually use its standard input and output.
@@ -192,10 +193,10 @@ option, allowing data display to be enabled later.
 .PP
 By default,
 .I styxchat
-sends a Styx client's T-messages and prints a server's R-messages.
+sends a 9P client's T-messages and prints a server's R-messages.
 The
 .B -s
-option causes it to present a server's view: it prints the T-messages from Styx clients, and sends R-messages
+option causes it to present a server's view: it prints the T-messages from 9P clients, and sends R-messages
 as it reads a textual representation of them from standard input:
 .IP
 .br

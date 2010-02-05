@@ -135,7 +135,7 @@ image data.
 The rest of the file is a string of compression blocks, each encoding
 a number of rows of the image's pixel data.  Compression blocks
 are at most 6024 bytes long, so that they fit comfortably in a
-single Styx message.  Since a compression block must encode a
+single 9P message.  Since a compression block must encode a
 whole number of rows, there is a limit (about 5825 bytes) to the width of images
 that may be encoded.  Most wide images are in subfonts,
 which, at 1 bit per pixel (the usual case for fonts), can be 46600 pixels wide.

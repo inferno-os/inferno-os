@@ -1,6 +1,6 @@
 .TH STYX 2
 .SH NAME
-Styx: Rmsg, Tmsg, dir2text, istmsg, packdir, packdirsize, readmsg, qid2text, unpackdir \- interface to Styx file protocol
+Styx: Rmsg, Tmsg, dir2text, istmsg, packdir, packdirsize, readmsg, qid2text, unpackdir \- interface to 9P (Styx) file protocol
 .SH SYNOPSIS
 .EX
 include "styx.m";
@@ -118,13 +118,14 @@ MAXRPC:   con \fIimplementation-defined\f5;
 .EE
 .SH DESCRIPTION
 .B Styx
-provides a Limbo interface to send and receive messages of the Styx file service protocol,
-described by Section 5 of this manual (a thorough reading of which
-is advised before using this module).
+provides a Limbo interface to send and receive messages of the 9P file service protocol,
+described by Section 5 of this manual, a thorough reading of which
+is advised before using this module.
+(The protocol was previously called `Styx' in Inferno, hence the module's name.)
 .B Init
 must be called before using any other function in the module.
 .PP
-A Styx client transmits requests to a server as `T-messages'
+A 9P client transmits requests to a server as `T-messages'
 and receives replies in matching `R-messages'.
 A T-message is here represented by values of the type
 .BR Tmsg ,
@@ -232,7 +233,7 @@ Return a printable string showing the contents of
 for tracing or debugging.
 .TP
 .IB t .mtype()
-Return the Styx message type of the message.
+Return the 9P message type of the message.
 .PP
 An R-message is represented by
 .BR Rmsg .

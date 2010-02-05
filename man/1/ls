@@ -61,7 +61,7 @@ to the file's owner, members of the file's group and anybody else
 respectively.
 .IP 2.
 The device type (this is the `#' device letter for local devices
-or `M' for files mounted over a Styx connection).
+or `M' for files mounted over a 9P connection).
 .IP 3.
 The device instance number (this distinguishes between
 separately mounted instances of the same device).

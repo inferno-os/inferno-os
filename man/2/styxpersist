@@ -1,20 +1,20 @@
 .TH STYXPERSIST 2
 .SH NAME
-styxpersist \- persistent Styx connection
+styxpersist \- persistent 9P (Styx) connection
 .SH SYNOPSIS
 .EX
 include "sys.m";
 include "styxpersist.m";
 styxpersist := load Styxpersist Styxpersist->PATH;
 
-init: fn(clientfd: ref Sys->FD, usefac: int, keyspec: string)
-        : (chan of chan of ref Sys->FD, string);
+init: fn(clientfd: ref Sys->FD, usefac: int, keyspec: string):
+        (chan of chan of ref Sys->FD, string);
 .EE
 .SH DESCRIPTION
 .I Styxpersist
-tries to maintain a persistent Styx connection for its client.
+tries to maintain a persistent 9P (Styx) connection for its client.
 .B Init
-starts a process to serve Styx for the client on
+starts a process to serve 9P for the client on
 .IR clientfd .
 If
 .I usefac
@@ -77,4 +77,4 @@ Plan 9 style. If a client uses an external factotum with different keys,
 may be unable to re-authenticate.
 .SH "SEE ALSO"
 .IR mount (1),
-.IR sys-dial (2)
+.IR dial (2)

@@ -11,7 +11,7 @@ export:   fn(fd: ref FD, dir: string, flag: int):   int;
 .SH DESCRIPTION
 .B Export
 receives and replies
-to Styx requests from a client on a connection represented by
+to 9P requests from a client on a connection represented by
 .IR fd ,
 for file operations on the part of the current file name space
 rooted at
@@ -40,7 +40,7 @@ of a
 returned by
 .B listen
 (see
-.IR sys-dial (2)).
+.IR dial (2)).
 Before calling
 .BR export ,
 the connection on

@@ -235,7 +235,9 @@ memory-based file called
 .EE
 It is, however, very limited, as binary data stored in the file
 will be corrupted, and the size of the file is limited to the amount
-of data that can be transmitted in a single Styx message (8192 bytes).
+of data that can be transmitted in a single write
+(see
+.IR sys-read (2)).
 .PP
 The following code implements a single-threaded logfile
 which can support multiple concurrent writers:

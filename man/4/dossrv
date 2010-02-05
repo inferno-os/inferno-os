@@ -27,7 +27,7 @@ makes the contents of a DOS/Windows file system visible in the Inferno name spac
 The options are:
 .TP
 .B -v
-print a debugging trace, including Styx messages, on standard error
+print a debugging trace, including 9P messages, on standard error
 .TP
 .B -F
 display FAT information

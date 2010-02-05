@@ -33,12 +33,12 @@ communication by cooperating processes.
 Pipes are still useful, however,
 to connect applications that do not (or cannot) share such channels,
 or when a system interface requires a file descriptor.
-For instance, a process that serves the Styx protocol can
+For instance, a process that serves the 9P protocol can
 pass the file descriptor for one end of a pipe to
 .B Sys->mount
 (see
 .IR sys-bind (2)),
-and read and write Styx messages on the other end of the pipe.
+and read and write 9P messages on the other end of the pipe.
 .SH DIAGNOSTICS
 Returns 0 on success; -1 on failure.
 .SH "SEE ALSO"

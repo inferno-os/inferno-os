@@ -21,7 +21,7 @@ kfs \- disk file system
 implements a hierarchical Inferno file system within an existing
 .IR file ,
 which is typically a disk or flash memory partition.
-It gives access to it through the Styx protocol on its standard input,
+It gives access to it through the 9P protocol on its standard input,
 and the contents can be mounted directly on a given
 .I dir
 as shown above.

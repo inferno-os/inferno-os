@@ -60,7 +60,7 @@ has the following options:
 Listen for calls on the given
 .IR address ,
 expressed using the syntax of
-.IR sys-dial (2).
+.IR dial (2).
 .TP
 .BI -c " cachesize"
 Set the size of the daemon's cache to

@@ -3,6 +3,7 @@
 secstore \- fetch data from Plan 9's secure storage service
 .SH SYNOPSIS
 .EX
+include "dial.m";
 include "secstore.m";
 secstore := load Secstore Secstore->PATH;
 
@@ -12,19 +13,19 @@ init:       fn();
 privacy:    fn(): int;
 cansecstore:    fn(addr: string, user: string): int;
 mkseckey:   fn(pass: string): array of byte;
-dial:       fn(addr: string): ref Sys->Connection;
-auth:       fn(conn: ref Sys->Connection, user: string, seckey: array of byte):
+dial:       fn(addr: string): ref Dial->Connection;
+auth:       fn(conn: ref Dial->Connection, user: string, seckey: array of byte):
                 (string, string);
 connect:    fn(addr: string, user: string, seckey: array of byte):
-                (ref Sys->Connection, string, string);
-sendpin:    fn(conn: ref Sys->Connection, pin: string): int;
-files:       fn(conn: ref Sys->Connection):
+                (ref Dial->Connection, string, string);
+sendpin:    fn(conn: ref Dial->Connection, pin: string): int;
+files:       fn(conn: ref Dial->Connection):
                 list of (string, int, string, string, array of byte);
-getfile:    fn(conn: ref Sys->Connection, name: string,
+getfile:    fn(conn: ref Dial->Connection, name: string,
                 maxsize: int): array of byte;
-.\"putfile: fn(conn: ref Sys->Connection, name: string, data: array of byte,): int;
-remove:     fn(conn: ref Sys->Connection, file: string): int;
-bye:        fn(conn: ref Sys->Connection);
+.\"putfile: fn(conn: ref Dial->Connection, name: string, data: array of byte,): int;
+remove:     fn(conn: ref Dial->Connection, file: string): int;
+bye:        fn(conn: ref Dial->Connection);
 
 mkfilekey:   fn(pass: string): array of byte;
 decrypt:    fn(data: array of byte, filekey: array of byte): array of byte;
@@ -43,16 +44,16 @@ that can then be used to fetch and decrypt data files, such as the
 file containing the initial keys for an instance of
 .IR factotum (4).
 The module's functions hold the file descriptors for the connection in a
-.BR Sys->Connection
+.BR Dial->Connection
 value,
 as returned by
-.IR sys-dial (2).
+.IR dial (2).
 The
 .I addr
 parameter that gives the network address of the
 .I secstore
 service is also as defined in
-.IR sys-dial (2).
+.IR dial (2).
 A nil value defaults to
 .BR "net!$auth!secstore" ,
 for translation in the usual way by
@@ -94,9 +95,9 @@ dials the
 at network address
 .I addr
 (as defined by
-.IR sys-dial (2))
-and returns a  reference to the resulting
-.BR Sys->Connection .
+.IR dial (2))
+and returns a reference to the resulting
+.BR Dial->Connection .
 It returns nil on an error and sets the error string.
 .PP
 .B Auth
@@ -106,7 +107,7 @@ of the service.
 The parameter
 .I conn
 refers to the
-.B Sys->Connection
+.B Dial->Connection
 value representing the connection.
 .I User
 names a user registered with the service.

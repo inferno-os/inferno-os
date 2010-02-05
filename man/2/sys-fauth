@@ -11,7 +11,7 @@ fauth:  fn(fd: ref FD, aname: string): ref FD;
 .SH DESCRIPTION
 .B Fauth
 provides a means for the current user to authenticate to access
-resources available through the Styx connection represented by
+resources available through the 9P connection represented by
 .IR fd .
 The return value is a file descriptor, conventionally called
 .IR afd ,

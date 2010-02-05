@@ -59,7 +59,7 @@ waits for an incoming network connection on
 (as accepted by
 .B announce
 in
-.IR sys-dial (2))
+.IR dial (2))
 and then invokes
 .IR sh (1)
 to run the associated
@@ -97,7 +97,7 @@ with the shell variable
 .B net
 set to the name of the corresponding network directory
 (see
-.IR sys-dial (2)),
+.IR dial (2)),
 before listening for incoming calls.
 This can be used to change, or find out the characteristics
 of an announced port (for instance to find out
@@ -231,7 +231,7 @@ attach message seen by the command that
 has been started by
 .IR styxlisten .
 .SH "SEE ALSO"
-.IR svc (8),
-.IR sys-dial (2),
+.IR dial (2),
+.IR ssl (3),
 .IR auth (6),
-.IR ssl (3)
+.IR svc (8)

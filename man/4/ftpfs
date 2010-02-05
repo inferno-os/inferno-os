@@ -23,7 +23,7 @@ visible at
 .BR /n/ftp )
 in the current name space,
 for access by ordinary Inferno file operations.
-In other words, it is a protocol translator between FTP and Styx.
+In other words, it is a protocol translator between FTP and 9P.
 The connection is shut down by unmounting the mount point;
 see
 .IR bind (1).

@@ -9,7 +9,7 @@ sys := load Sys Sys->PATH;
 iounit:	fn(fd: ref FD): int;
 .EE
 .SH DESCRIPTION
-Reads and writes of files are transmitted using the Styx protocol (see
+Reads and writes of files are transmitted using the 9P protocol (see
 .IR intro (5))
 and in general, operations involving large amounts of data must be
 broken into smaller pieces by the operating system.

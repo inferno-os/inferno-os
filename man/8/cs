@@ -31,7 +31,7 @@ answering requests by client processes
 to translate symbolic network and service names into
 instructions for connecting to the given service.
 It is normally accessed indirectly by calls to
-.IR sys-dial (2).
+.IR dial (2).
 .PP
 The network data is taken from the network database files,
 described in
@@ -76,7 +76,7 @@ or
 .B announce
 as required.
 (All this activity is normally encapsulated in a call to
-.IR sys-dial (2)).
+.IR dial (2).)
 .I Cs
 produces a translation for each network and for each network address on which a symbolic
 .I netaddr
@@ -243,6 +243,6 @@ map from symbolic service names to servers
 .br
 .B /appl/cmd/ndb/csquery.b
 .SH "SEE ALSO"
-.IR sys-dial (2),
+.IR dial (2),
 .IR ndb (6),
 .IR dns (8)

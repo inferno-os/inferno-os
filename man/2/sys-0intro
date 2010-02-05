@@ -210,8 +210,8 @@ will be honoured for a file depends entirely on the underlying file server
 Record locking in the underlying file system is not supported by Inferno.
 Processes can coordinate their file operations by other mechanisms.
 .PP
-Atomicity is guaranteed for byte counts smaller than the
-.I Styx
+Atomicity is guaranteed for byte counts no larger than the
+.I 9P
 message size;
 see
 .IR read (5).

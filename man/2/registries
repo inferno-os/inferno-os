@@ -108,7 +108,7 @@ It has the following members and operations:
 .TP
 .B addr
 A string that represents where the service can be reached: it is often a
-.IR sys-dial (2)
+.IR dial (2)
 address string, but might be a name in the name space; the interpretation is internal to
 .BR Registries .
 .TP
@@ -148,7 +148,7 @@ It provides the following members:
 .TP
 .B fd
 A file descriptor that can be read and written to exchange data with the service.
-The meaning of the data depends on the service (eg, it might be a Styx connection
+The meaning of the data depends on the service (eg, it might be a 9P connection
 or a SOAP implementation).
 Typically an attribute of the service description hints at the protocol.
 .TP
@@ -222,7 +222,7 @@ Connect to the registry at the location determined by the service description
 if
 .I svc
 is nil, the default is to try
-.IR sys-dial (2)
+.IR dial (2)
 to
 .BR net!$registry!registry ,
 the symbolic name of the default registry for the current host.

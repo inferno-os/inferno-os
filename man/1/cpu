@@ -49,7 +49,7 @@ is not used after authentication.
 .SH SOURCE
 .B /appl/cmd/cpu.b
 .SH SEE ALSO
-.IR sys-dial (2),
+.IR dial (2),
 .IR keyring-auth (2),
 .IR security-auth (2)
 .SH BUGS

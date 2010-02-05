@@ -17,7 +17,7 @@ ping \- probe the Internet
 sends ICMP echo requests to a network
 .I destination
 (which has the syntax accepted by
-.IR sys-dial (2)).
+.IR dial (2)).
 The target host, if up, should send a corresponding reply.
 By default, one line is printed for each reply,
 containing the sequence number (starting at 0) of the message it answers,
@@ -54,7 +54,7 @@ in bytes
 .SH SOURCE
 .B /appl/cmd/ip/ping.b
 .SH SEE ALSO
-.IR sys-dial (2),
+.IR dial (2),
 .IR ip (3)
 .SH DIAGNOSTICS
 .I Ping

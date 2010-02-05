@@ -1,6 +1,6 @@
 .TH STYXCONV 2
 .SH NAME
-styxconv \- convert between old and new Styx
+styxconv \- convert between old 1995 Styx and current Styx (9P)
 .SH SYNOPSIS
 .EX
 include "styxconv.m";
@@ -12,9 +12,10 @@ styxconv: fn(client: ref Sys->FD, server: ref Sys->FD);
 .EE
 .SH DESCRIPTION
 .B Styxconv
-converts between the previous version of the Styx protocol,
+converts between the obsolete 1995 version of the Styx protocol,
 as used for instance in Inferno's Third Edition and earlier,
-and the current version of the protocol,
+and the current file service protocol,
+previously also called `Styx' but
 based on 9P2000 and defined by
 .IR intro (5).
 .PP
@@ -25,10 +26,10 @@ The function
 .B styxconv
 takes two file descriptors:
 .I client
-should be a connection to a styx client requiring
+should be a connection to a client requiring
 one version of the protocol;
 .I server
-should be a connection to a styx server serving
+should be a connection to a server serving
 the other version of the protocol.
 There are two conversion modules:
 .B PATHNEW2OLD
@@ -74,4 +75,4 @@ cvstyx(fd: ref Sys->FD): ref Sys->FD
 .IR sys-pipe (2),
 .IR intro (5)
 .SH BUGS
-There is no provision for 9p2000 authentication.
+There is no provision for 9P2000 authentication.

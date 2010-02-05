@@ -44,7 +44,7 @@ devices are supported.
 .PP
 The file system maintains two storage regions on the same medium:
 a log-structured hierarchical file system that implements all the
-functionality communicable by the Styx protocol
+functionality communicable by the 9P protocol
 (see
 .IR intro (5)),
 and a boot
@@ -106,7 +106,7 @@ two files appear in the device name space,
 .BI /dev/logfs name
 and
 .BI /dev/logfs name\f5boot\fI.
-The former serves the Styx protocol giving access to the hierarchical file system;
+The former serves the 9P protocol giving access to the hierarchical file system;
 the latter is a fixed size file that represents the boot partition.
 .TP
 .BI [fsys " name\f5] format \fIbootsize"

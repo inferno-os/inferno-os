@@ -267,7 +267,7 @@ and
 .BR 'sha1' .
 .SH "SEE ALSO"
 .IR listen (1),
-.IR sys-dial (2),
+.IR dial (2),
 .IR ssl (3)
 \".IR pushtls (2)
 .SH SOURCE

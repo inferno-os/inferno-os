@@ -7,6 +7,9 @@ implement Secstore;
 include "sys.m";
 	sys: Sys;
 
+include "dial.m";
+	dialler: Dial;
+
 include "keyring.m";
 	kr: Keyring;
 	DigestState, IPint: import kr;
@@ -27,6 +30,7 @@ init()
 	kr = load Keyring Keyring->PATH;
 	ssl = load SSL SSL->PATH;
 	base64 = load Encoding Encoding->BASE64PATH;
+	dialler = load Dial Dial->PATH;
 	initPAKparams();
 }
 
@@ -38,7 +42,7 @@ privacy(): int
 	return 1;
 }
 
-connect(addr: string, user: string, pwhash: array of byte): (ref Sys->Connection, string, string)
+connect(addr: string, user: string, pwhash: array of byte): (ref Dial->Connection, string, string)
 {
 	conn := dial(addr);
 	if(conn == nil){
@@ -53,12 +57,12 @@ connect(addr: string, user: string, pwhash: array of byte): (ref Sys->Connection
 	return (conn, sname, diag);
 }
 
-dial(netaddr: string): ref Sys->Connection
+dial(netaddr: string): ref Dial->Connection
 {
 	if(netaddr == nil)
 		netaddr = "net!$auth!secstore";
-	(ok, conn) := sys->dial(netaddr, nil);
-	if(ok < 0)
+	conn := dialler->dial(netaddr, nil);
+	if(conn == nil)
 		return nil;
 	(err, sslconn) := ssl->connect(conn.dfd);
 	if(err != nil)
@@ -66,7 +70,7 @@ dial(netaddr: string): ref Sys->Connection
 	return sslconn;
 }
 
-auth(conn: ref Sys->Connection, user: string, pwhash: array of byte): (string, string)
+auth(conn: ref Dial->Connection, user: string, pwhash: array of byte): (string, string)
 {
 	sname := PAKclient(conn, user, pwhash);
 	if(sname == nil)
@@ -96,7 +100,7 @@ cansecstore(netaddr: string, user: string): int
 	return string buf[0:n] == "!account exists";
 }
 
-sendpin(conn: ref Sys->Connection, pin: string): int
+sendpin(conn: ref Dial->Connection, pin: string): int
 {
 	if(sys->fprint(conn.dfd, "STA%s", pin) < 0)
 		return -1;
@@ -109,7 +113,7 @@ sendpin(conn: ref Sys->Connection, pin: string): int
 	return 0;
 }
 
-files(conn: ref Sys->Connection): list of (string, int, string, string, array of byte)
+files(conn: ref Dial->Connection): list of (string, int, string, string, array of byte)
 {
 	file := getfile(conn, ".", 0);
 	if(file == nil)
@@ -136,7 +140,7 @@ files(conn: ref Sys->Connection): list of (string, int, string, string, array of
 	return l;
 }
 
-getfile(conn: ref Sys->Connection, name: string, maxsize: int): array of byte
+getfile(conn: ref Dial->Connection, name: string, maxsize: int): array of byte
 {
 	fd := conn.dfd;
 	if(maxsize <= 0)
@@ -171,7 +175,7 @@ getfile(conn: ref Sys->Connection, name: string, maxsize: int): array of byte
 	return file;
 }
 
-remove(conn: ref Sys->Connection, name: string): int
+remove(conn: ref Dial->Connection, name: string): int
 {
 	if(sys->fprint(conn.dfd, "RM %s\n", name) < 0)
 		return -1;
@@ -179,7 +183,7 @@ remove(conn: ref Sys->Connection, name: string): int
 	return 0;
 }
 
-bye(conn: ref Sys->Connection)
+bye(conn: ref Dial->Connection)
 {
 	if(conn != nil){
 		if(conn.dfd != nil)
@@ -270,7 +274,7 @@ writerr(fd: ref Sys->FD, s: string)
 	sys->werrstr(s);
 }
 
-setsecret(conn: ref Sys->Connection, sigma: array of byte, direction: int): string
+setsecret(conn: ref Dial->Connection, sigma: array of byte, direction: int): string
 {
 	secretin := array[Keyring->SHA1dlen] of byte;
 	secretout := array[Keyring->SHA1dlen] of byte;
@@ -399,14 +403,14 @@ shorthash(mess: string, C: string, S: string, m: string, mu: string, sigma: stri
 # On output, session secret has been set in conn
 #	(unless return code is negative, which means failure).
 #
-PAKclient(conn: ref Sys->Connection, C: string, pwhash: array of byte): string
+PAKclient(conn: ref Dial->Connection, C: string, pwhash: array of byte): string
 {
 	dfd := conn.dfd;
 
 	(hexHi, H, nil) := PAK_Hi(C, pwhash);
 
 	# random 1<=x<=q-1; send C, m=g**x H
-	x := mod(IPint.random(240, 240), pak.q);
+	x := mod(IPint.random(240), pak.q);
 	if(x.eq(IPint.inttoip(0)))
 		x = IPint.inttoip(1);
 	m := mod(pak.g.expmod(x, pak.p).mul(H), pak.p);

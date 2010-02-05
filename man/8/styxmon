@@ -1,6 +1,6 @@
 .TH STYXMON 8
 .SH NAME
-styxmon \- monitor a Styx conversation
+styxmon \- monitor a 9P (Styx) conversation
 .SH SYNOPSIS
 .B styxmon
 [
@@ -14,13 +14,13 @@ styxmon \- monitor a Styx conversation
 ]
 .SH DESCRIPTION
 .I Styxmon
-allows the monitoring of styx messages sent and received
+allows the monitoring of 9P messages sent and received
 by
 .IR cmd ,
-which should serve Styx through its standard input.
+which should serve 9P through its standard input.
 .I Styxmon
-in its turn serves Styx through its standard input,
-and writes information on the Styx messages that
+in its turn serves 9P through its standard input,
+and writes information on the 9P messages that
 it sees to the standard error.
 The
 .B -r

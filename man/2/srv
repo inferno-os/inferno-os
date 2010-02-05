@@ -34,7 +34,7 @@ and
 .IR dns (6)
 if available.
 Other Inferno applications normally give network addresses to the functions of
-.IR sys-dial (2),
+.IR dial (2),
 and they are then translated automatically, using the services of
 .IR cs (8).
 .PP

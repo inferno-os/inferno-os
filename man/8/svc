@@ -5,6 +5,9 @@ svc: auth, net, registry, rstyx, styx \- start Inferno network services
 .B svc/net
 .br
 .B svc/auth
+[
+.B -n
+]
 .br
 .B svc/registry
 .br
@@ -38,6 +41,11 @@ file service or remote execution.
 .I Auth
 must be run (only) on a host that is to act as an authentication server,
 providing signing and other authentication services to itself and the network.
+The
+.B -n
+flag tells it not to start
+.IR keyfs (4),
+perhaps because it has been started already.
 The files
 .BR /keydb/signerkey ,
 created by
@@ -85,7 +93,7 @@ putting it at the conventional location for the local registry,
 Initial (static) service descriptions are taken from
 .B /lib/ndb/registry
 if it exists.
-It then starts a listener to give other hosts access to the registry as a Styx
+It then starts a listener to give other hosts access to the registry as a 9P
 service at
 .BR tcp!*!registry ,
 normally port 6675.

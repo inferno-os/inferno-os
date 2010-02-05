@@ -54,7 +54,7 @@ The
 argument to
 .B mount
 is a file descriptor of an open pipe or network connection
-to a file server ready to receive Styx messages.
+to a file server ready to receive 9P messages.
 The
 .I old
 file must be a directory.

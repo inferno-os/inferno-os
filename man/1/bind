@@ -89,13 +89,14 @@ it is assumed to be a network address for a machine acting
 as a file server.
 This argument should then conform to the conventions
 described in
-.IR sys-dial (2).
+.IR dial (2).
 Otherwise
 .I source
 should be the name of a file that when opened gives a connection
-to a file server, something serving the Styx protocol
+to a file server, something serving the 9P protocol
 described in
-.IR intro (5).
+.IR intro (5),
+formerly called `Styx'.
 The optional
 .I spec
 argument to
@@ -262,7 +263,7 @@ Note the caveats on that page.
 For
 .I mount
 only,
-the file server serves the original version of the Styx protocol, and
+the file server serves the 1995 version of Inferno's Styx protocol, and
 .I mount
 inserts a process that translates to the current version.
 .SH SOURCE
@@ -273,10 +274,10 @@ inserts a process that translates to the current version.
 .B /appl/cmd/unmount.b
 .SH SEE ALSO
 .IR sh (1),
+.IR dial (2),
 .IR keyring-auth (2),
 .IR security-auth (2),
 .IR sys-intro (2),
 .IR sys-bind (2),
-.IR sys-dial (2),
 .IR intro (3),
 .IR getauthinfo (8)

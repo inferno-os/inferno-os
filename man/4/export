@@ -13,12 +13,10 @@ export \- export name space on a connection
 .SH DESCRIPTION
 .I Export
 calls
-.B Sys->export
-(see
-.IR sys-dial (2))
-to serve a name space rooted at
+.IR sys-export (2)
+to serve the name space rooted at
 .I dir
-over a connection to a Styx client.
+over a connection to a 9P (Styx) client.
 .I Export
 opens the connection on the given
 .IR file ,
@@ -35,7 +33,7 @@ serves the current name space without forking it; changes made to it
 will be visible to clients.
 .PP
 .I Export
-starts serving Styx immediately; it assumes that the connection
+starts serving 9P immediately; it assumes that the connection
 has been authenticated if required.
 .I Export
 is typically called via
@@ -53,5 +51,6 @@ unless a transport protocol is run on the connection.
 .SH SEE ALSO
 .IR cpu (1),
 .IR listen (1),
-.IR sys-dial (2),
+.IR dial (2),
+.IR sys-export (2),
 .IR intro (5)

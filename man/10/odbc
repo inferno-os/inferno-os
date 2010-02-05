@@ -7,11 +7,13 @@ ODBC \- A Windows ODBC file server
 .B -d
 ] [
 .BI -p " port"
+] [
+.BI -u " user"
 ]
 .SH DESCRIPTION
 .I Odbc
 is a file server that runs under Windows and
-exports a Styx namespace
+exports a 9P namespace
 (see
 .IR intro (5)).
 An Inferno process that mounts the namespace
@@ -26,6 +28,15 @@ to print debugging information.
 The
 .B -p
 option gives the port number to listen on for connections. The default is 6700.
+.PP
+By default, the user
+.B inferno
+owns the files in the name space.
+The
+.B -u
+option makes
+.I user
+own the files instead.
 .SS Name space
 .I Odbc
 presents the following name space:

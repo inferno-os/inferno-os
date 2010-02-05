@@ -2,7 +2,7 @@
 .SH NAME
 intro \- introduction to file servers
 .SH DESCRIPTION
-This section describes programs that serve Styx
+This section describes programs that serve 9P
 (see
 .IR intro (5)),
 and can therefore

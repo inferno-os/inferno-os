@@ -15,19 +15,13 @@ rdbgsrv \- remote debug server
 .I mountpoint
 .SH DESCRIPTION
 .I Rdbgsrv
-is intended for use with versions of
-.IR sboot (10.8)
-that do not use
-.IR styxmon (10.8),
-but serve Styx directly.
-.I Rdbgsrv
 interposes itself between
 .I dev
 (default:
 .BR /dev/eia0 )
 and
 .I mountpoint
-to convey Styx messages via the serial port to and from a Styx server program
+to convey 9P messages via the serial port to and from a 9P server program
 running on a board running native Inferno.
 The
 .B \-f
@@ -39,8 +33,8 @@ option sets the line speed; the default is 38400 baud.
 The
 .B \-d
 option selects debugging options by a bit mask:
-1, print trace of Styx message types;
-2, print actual Styx message contents.
+1, print trace of 9P message types;
+2, print actual 9P message contents.
 .PP
 The monitor program on the board must be started first.
 .I Rdbgsrv
@@ -49,63 +43,16 @@ writes the two byte message
 and keeps reading the device until it sees the reply
 .BR ok .
 It then attempts to mount the exported name space, and
-copies Styx messages to and from the device.
+copies 9P messages to and from the device.
 .PP
 Once
 .I rdbgsrv
-is running, several device files provided by the program
+is running, any device files provided by the program
 will be visible at
 .IR mountpoint .
-The files include flash partitions, a console file, and a file representing
-temporary storage in the device's memory:
-.TF sbootconsole
-.PD
-.TP
-.B sbootconsole
-Accepts
-.IR sboot (10.8)
-commands.
-When read, it returns output from recent commands.
-.TP
-.B tmp
-Temporary memory buffer that accepts data to be copied to the flash.
-.TP
-.BI F! partition
-Represents the flash partition with the name
-.IR partition .
-.PP
-The following example
-Inferno
-session on the host mounts the serial device on
-.BR /n/rdbg ,
-and sends commands by writing to
-.BR /n/rdbg/sbootconsole .
-.IP
-.EX
-% bind -b '#t' /dev           # ensure /dev/eia0 is visible
-% auxi/rdbgsrv /n/rdbg
-% ls /n/rdbg
-/n/rdbg/F!kern
-/n/rdbg/F!fs
-/n/rdbg/sbootconsole
-/n/rdbg/tmp
-% cp /os/sa1100/isword.p9.gz /n/rdbg/F!kern # copy kernel
-% cp /tmp/fs.tgz /n/rdbg/tmp  # copy compressed file system
-% echo c/u T! F!fs >/n/rdbg/sbootconsole
-% cat /n/rdbg/sbootconsole
-% echo P >/n/rdbg/sbootconsole
-% echo b F!kern >/n/rdbg/sbootconsole       # boot from F!kern
-.EE
-.PP
-Copying a file containing
-.I sboot
-commands to
-.B /n/rdbg/sbootconsole
-has the same effect as writing the individual commands to the console.
 .SH SOURCE
 .B /appl/auxi/rdbgsrv.b
 .SH SEE ALSO
-.IR sboot (10.8),
-.IR styxmon (10.8)
+.IR styxchat (8)
 .SH BUGS
 No error recovery is applied, let alone error correction.

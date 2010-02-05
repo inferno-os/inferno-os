@@ -53,7 +53,7 @@ For example, to import
 .B /dis
 and
 .B /dev
-from a resource exporting a Styx (see
+from a resource exporting a 9P (see
 .IR intro(5))
 namespace at address
 .B tcp!200.1.5.53!7003

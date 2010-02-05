@@ -44,7 +44,7 @@ CA.
 .PP
 .B Login
 connects, using
-.IR sys-dial (2),
+.IR dial (2),
 to the signer at network address
 .IR addr ,
 which is any form accepted by

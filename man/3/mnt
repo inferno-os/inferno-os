@@ -1,6 +1,6 @@
 .TH MNT 3 
 .SH NAME
-mnt \- attach to Styx servers
+mnt \- attach to 9P servers
 .SH SYNOPSIS
 .nf
 .B #M
@@ -15,12 +15,12 @@ is used by
 see
 .IR sys-bind (2))
 to connect the name space of a process to
-the service provided by a Styx server over a communications channel.
+the service provided by a 9P server over a communications channel.
 After the
 .BR mount ,
 file operations in that portion of the name space will
 be converted by the mount driver into the appropriate
-Styx messages to the server, and its Styx replies returned
+9P messages to the server, and its 9P replies returned
 as the status of the system calls.
 .PP
 Any authentication must precede
@@ -40,8 +40,8 @@ Each distinct user of a connection must mount it separately;
 the mount driver multiplexes the access of the various users and their
 processes to the service.
 .PP
-File-oriented system calls are converted by the kernel into messages in the Styx protocol.
-Within the kernel, Styx is implemented by procedure calls to the
+File-oriented system calls are converted by the kernel into messages in the 9P protocol.
+Within the kernel, 9P is implemented by procedure calls to the
 various kernel device drivers, as described in
 .IR intro (10)
 and
@@ -61,7 +61,7 @@ system call on a file served by the mount driver
 may be translated
 into more than one
 message,
-since there is a maximum data size for a Styx message.
+since there is a maximum data size for a 9P message.
 The system call
 will return when the specified number of bytes have been transferred
 or a short reply is returned.

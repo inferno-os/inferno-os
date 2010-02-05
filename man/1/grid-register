@@ -11,12 +11,12 @@ grid: register \- registers a resource with a known
 
 .SH DESCRIPTION
 .I Register
-takes a program which serves a Styx (see
-.IR intro (5))
-namespace on
-.I stdin
-and registers it with a known 
-.IR registry (4).
+takes a program that serves a namespace using the 9P protocol on its standard input
+and registers it with a known
+.IR registery (4).
+(See
+.IR intro (5)
+for a description of the protocol.)
 It then marshals the service by listening for incoming connections and exporting the namespace across them.
 .I Register
 prints out various status messages to

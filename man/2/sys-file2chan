@@ -49,7 +49,7 @@ the contents of the
 .B Tread
 and
 .B Twrite
-Styx messages received by the system on the server's behalf; see
+9P messages received by the system on the server's behalf; see
 .IR intro (5).
 .PP
 When the client invokes the

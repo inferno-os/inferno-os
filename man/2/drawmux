@@ -52,7 +52,7 @@ and the log (base 2) of the number of bits per pixel for windows created on that
 The remote viewer must then use
 .B Sys->export
 (see
-.IR sys-dial (2))
+.IR sys-export (2))
 to export its
 .BR /dev/draw ,
 which

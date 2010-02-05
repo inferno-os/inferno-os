@@ -39,7 +39,7 @@ It accepts and returns the first answer it receives.
 .SH SOURCE
 .B /appl/lib/virgil.b
 .SH SEE ALSO
-.IR sys-dial (2),
+.IR dial (2),
 .IR cs (8),
 .IR register (8),
 .IR virgild (8)

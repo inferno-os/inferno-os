@@ -1,7 +1,7 @@
 .TH STYXSERVERS 2
 .SH NAME
 styxservers \-
-Styx server implementation assistance
+9P (Styx) server implementation assistance
 .SH SYNOPSIS
 .EX
 include "sys.m";
@@ -14,7 +14,7 @@ Styxserver, Fid, Navigator: import styxservers;
 Styxserver: adt {
     fd:      ref Sys->FD;     # file server end of connection
     t:       ref Navigator;   # name space navigator for this server
-    msize:   int;             # negotiated Styx message size
+    msize:   int;             # negotiated 9P message size
  
     new:     fn(fd: ref Sys->FD, t: ref Navigator, rootpath: big)
                   :(chan of ref Tmsg, ref Styxserver);
@@ -103,7 +103,7 @@ openok:    fn(uname: string, omode,
 openmode:  fn(o: int): int;
 .EE
 .SH DESCRIPTION
-When writing a Styx file server, there are some
+When writing a file server, there are some
 commonly performed tasks that are
 fiddly or tedious to implement each time.
 .B Styxservers
@@ -119,7 +119,7 @@ left to the file server program itself.
 Familiarity with Section 5 of the manual which defines the protocol
 (see
 .IR intro (5)),
-and with the representation of Styx messages in Limbo
+and with the representation of 9P messages in Limbo
 (see
 .IR styx (2)),
 is a prerequisite for use of this module.
@@ -322,7 +322,7 @@ reference
 which can be used to access that navigator; and
 the file descriptor
 .IB srv .fd
-that is the file server's end of the connection to the Styx client.
+that is the file server's end of the connection to the 9P client.
 Both values are initially provided by the file serving application,
 but can be accessed through the
 .B Styxserver
@@ -345,7 +345,7 @@ It returns a tuple, say
 .RI ( c ", " srv ),
 and spawns a new process, which uses
 .IR styx (2)
-to read and parse Styx messages read
+to read and parse 9P messages read
 from
 .IR fd ,
 and send them down
@@ -892,14 +892,14 @@ with OTRUNC and ORCLOSE flags removed.
 If
 .I on
 is true (non-zero),
-will trace Styx requests and replies, on standard error.
+will trace 9P requests and replies, on standard error.
 This option must be set before creating a
 .BR Styxserver ,
 to ensure that it preserves its standard error descriptor.
 .SS Constants
 .B Styxservers
 defines a number of constants applicable to the writing
-of Styx servers, including:
+of 9P servers, including:
 .TP
 .BR Einuse\fP,\fP\ Ebadfid\fP,\fP\ Eopen\fP,\fP\ Enotfound\fP,\fP\ Enotdir\fP,\fP\ Eperm\fP,\fP\ Ebadarg\fP,\fP\ Eexists
 These provide standard strings for commonly used error conditions,

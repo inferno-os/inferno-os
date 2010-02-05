@@ -17,9 +17,11 @@ Once started,
 .IR session
 presents a heirarchical view of currently registered resources (such as
 .IR grid-ns (1))
-which export a Styx (see
-.IR intro (5))
-namespace. The top level displays the type of resource e.g. 
+that serve name spaces using 9P.
+(See
+.IR intro (5)
+for a description of the protocol.)
+The top level displays the type of resource, for instance
 .BR 'CPU resource' , 
 whilst the second level shows the name of each individual resource. Descending futher down the tree will reveal the attributes of the selected resource. To mount a resource and see the namespace it exports, click mouse button 3 on the resource name. The view will switch to a split pane view displaying the resource namespace with directories listed on the left and all files in the current directory displayed on the right.
 .PP

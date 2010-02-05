@@ -29,7 +29,7 @@ Secstorec: module
 Maxfilesize: con 128*1024;
 
 stderr: ref Sys->FD;
-conn: ref Sys->Connection;
+conn: ref Dial->Connection;
 seckey: array of byte;
 filekey: array of byte;
 file: array of byte;
@@ -100,7 +100,7 @@ init(nil: ref Draw->Context, args: list of string)
 		if(nf > 1)
 			pin = hd tl flds;
 	}
-	conn: ref Sys->Connection;
+	conn: ref Dial->Connection;
 Auth:
 	for(;;){
 		if(!iflag)
@@ -229,7 +229,7 @@ verb(op: int, n: string)
 		sys->fprint(stderr, "%c %q\n", op, n);
 }
 
-getfile(conn: ref Sys->Connection, fname: string, key: array of byte): array of byte
+getfile(conn: ref Dial->Connection, fname: string, key: array of byte): array of byte
 {
 	f := secstore->getfile(conn, fname, 0);
 	if(f == nil)

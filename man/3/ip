@@ -243,7 +243,7 @@ The
 and
 .BR listen
 functions described in
-.IR sys-dial (2)
+.IR dial (2)
 perform the necessary I/O to establish and
 manipulate network connections.
 .SS TCP protocol
@@ -747,7 +747,7 @@ and
 .IB device !0x806
 (ARP).
 See
-.IR sys-dial (2)
+.IR dial (2)
 for the interpretation of such addresses.
 The interface runs until a process does an explicit
 .BR unbind .
@@ -807,7 +807,7 @@ contains
 a connection will be opened using
 .B dial
 (see
-.IR sys-dial (2)).
+.IR dial (2)).
 Otherwise the name will be opened as-is;
 usually it is the name of a serial device
 (eg,
@@ -921,6 +921,6 @@ to be set, or the current user lacks the privileges to set it.
 .br
 .B /os/ip/*medium.c
 .SH "SEE ALSO"
-.IR sys-dial (2)
+.IR dial (2)
 .\" joinmulti and leavemulti are unimplemented
 .\" many media are only partly implemented

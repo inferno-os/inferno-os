@@ -29,7 +29,7 @@ The services are defined by the contents of directory
 (default:
 .BR /services/collab ).
 .I Collabsrv
-serves an authenticated Styx connection that exports the contents of
+serves an authenticated 9P connection that exports the contents of
 .IB dir /export
 (default:
 .BR /services/collab/export ).
@@ -57,10 +57,10 @@ all share that name space.
 The name space is determined by the service.
 .PP
 A client wishing to make use of the services must first
-.IR sys-dial (2)
+.IR dial (2)
 to connect to
 .IR collabsrv,
-and authenticate and mount the resulting Styx connection.
+and authenticate and mount the resulting 9P connection.
 It can do so using the
 .I mount
 command
@@ -141,7 +141,7 @@ but usually refer to files in
 Each
 .I collabsrv
 service is represented by a name space peculiar to that service.
-The interface to the service is therefore implemented by a service-specific Styx server
+The interface to the service is therefore implemented by a service-specific 9P server
 .RI ( disfile
 in the configuration file).
 Current services are described below.

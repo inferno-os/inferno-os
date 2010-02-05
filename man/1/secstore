@@ -98,7 +98,7 @@ as the extra authentication code if the server demands it.
 Connect to the server at the given network
 .IR address ,
 as defined by
-.IR sys-dial (2),
+.IR dial (2),
 and translated by
 .IR cs (8).
 The default is

@@ -203,7 +203,7 @@ and consequently those values must remain valid until the last use of
 .BR up->genbuf .)
 If channel
 .I c
-corresponds to a file descriptor on which Styx is served,
+corresponds to a file descriptor on which 9P is served,
 .I devdir
 sets both the flag bit
 .B QTMOUNT
@@ -214,9 +214,7 @@ and the flag bit
 in
 .IB dp ->mode
 (see
-.I export
-in
-.IR sys-dial (2)
+.IR sys-export (2)
 and
 .I mount
 in
@@ -470,7 +468,7 @@ returned by
 .BR Qid.path ).
 If
 .I c
-is a communications channel connecting a Styx server to a current mount point,
+is a communications channel connecting a 9P server to a current mount point,
 the
 .B DMMOUNT
 bit is set in the resulting
