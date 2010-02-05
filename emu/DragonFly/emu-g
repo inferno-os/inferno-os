@@ -1,0 +1,95 @@
+dev
+	root
+	cons
+	env
+	mnt
+	pipe
+	prog
+	srv
+	dup
+	ssl
+	cap
+	fs
+	cmd	cmd
+	indir
+
+	ip	ipif ipaux
+	eia
+	mem
+
+lib
+	interp
+	math
+	keyring
+	sec
+	mp
+
+	9
+
+link
+
+mod
+	sys
+	math
+	srv	srv
+	keyring
+	loader
+
+port
+	alloc
+	cache
+	chan
+	dev
+	devtab
+
+	dial
+	dis
+	discall
+	env
+	error
+	errstr
+	exception
+	exportfs
+	inferno
+	latin1
+	main
+	parse
+	pgrp
+	print
+	proc
+	qio
+	random
+	sysfile
+	uqid
+
+code
+	void setpointer(int x, int y) { USED(x); USED(y); }
+	ulong strtochan(char *s) { USED(s); return ~0; }
+
+init
+	emuinit
+
+root
+	/dev	/
+	/fd	/
+	/prog	/
+	/prof	/
+	/net	/
+	/net.alt	/
+	/chan	/
+	/nvfs	/
+	/env	/
+#	/chan
+#	/dev
+#	/dis
+#	/env
+#	/n
+#	/net
+#	/nvfs /
+#	/prog
+#	/icons
+#	/osinit.dis
+#	/dis/emuinit.dis
+#	/dis/lib/auth.dis
+#	/dis/lib/ssl.dis
+#	/n/local /
