@@ -410,7 +410,7 @@ PAKclient(conn: ref Dial->Connection, C: string, pwhash: array of byte): string
 	(hexHi, H, nil) := PAK_Hi(C, pwhash);
 
 	# random 1<=x<=q-1; send C, m=g**x H
-	x := mod(IPint.random(240), pak.q);
+	x := mod(IPint.random(240, 240), pak.q);
 	if(x.eq(IPint.inttoip(0)))
 		x = IPint.inttoip(1);
 	m := mod(pak.g.expmod(x, pak.p).mul(H), pak.p);
