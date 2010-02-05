@@ -54,7 +54,7 @@ Elem: adt {
 
 Qdir: adt {
 	qid:	int;
-	cqids:	list of (big, int);
+	cqids:	list of (string, int); # name, qid
 };
 
 elems := array[512] of list of ref Elem;
@@ -63,21 +63,21 @@ lastqid := 0;
 qidscores: list of (string, int);
 
 
-childget(qid: int, vqid: big): ref Elem
+childget(qid: int, name: string): ref Elem
 {
 	for(l := qids[qid % len qids]; l != nil; l = tl l) {
 		if((hd l).qid != qid)
 			continue;
 		for(m := (hd l).cqids; m != nil; m = tl m) {
-			(vq, cq) := hd m;
-			if(vq == vqid)
+			(cname, cq) := hd m;
+			if(name == cname)
 				return get(cq);
 		}
 	}
 	return nil;
 }
 
-childput(qid: int, vqid: big): int
+childput(qid: int, name: string): int
 {
 	qd: ref Qdir;
 	for(l := qids[qid % len qids]; l != nil; l = tl l)
@@ -89,7 +89,7 @@ childput(qid: int, vqid: big): int
 		qd = ref Qdir(qid, nil);
 		qids[qid % len qids] = qd::nil;
 	}
-	qd.cqids = (vqid, ++lastqid)::qd.cqids;
+	qd.cqids = (name, ++lastqid)::qd.cqids;
 	return lastqid;
 }
 
@@ -154,9 +154,9 @@ walk(ed: ref Elem.Dir, name: string): (ref Elem, string)
 	de := ed.vd.walk(name);
 	if(de == nil)
 		return (nil, sprint("%r"));
-	ne := childget(ed.qid, de.qid);
+	ne := childget(ed.qid, de.elem);
 	if(ne == nil) {
-		nqid := childput(ed.qid, de.qid);
+		nqid := childput(ed.qid, de.elem);
 		ne = Elem.new(nqid, ed.vd, de, ed.qid);
 		if(ne == nil)
 			return (nil, sprint("%r"));
@@ -379,6 +379,7 @@ loop:
 			if(n.offset == 0) {
 				ed.vd.rewind();
 				ed.offset = 0;
+				ed.nprev = 0;
 				ed.prev = array[0] of ref Sys->Dir;
 			}
 			skip := n.offset-ed.offset;
@@ -401,14 +402,15 @@ loop:
 				}
 				if(de == nil)
 					break;
-				ne := childget(ed.qid, de.qid);
+				ne := childget(ed.qid, de.elem);
 				if(ne == nil) {
-					nqid := childput(ed.qid, de.qid);
+					nqid := childput(ed.qid, de.elem);
 					ne = Elem.new(nqid, ed.vd, de, ed.qid);
 					if(ne == nil) {
 						n.reply <-= (nil, sprint("%r"));
 						continue loop;
 					}
+					set(ne);
 				}
 				d := ne.stat();
 				ed.prev[ed.nprev++] = d;
