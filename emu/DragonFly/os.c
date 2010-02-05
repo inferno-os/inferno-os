@@ -115,9 +115,10 @@ trapSEGV(int signo)
 static void
 trapFPE(int signo)
 {
+	char buf[64];
 	USED(signo);
-	print("FPU status=0x$.4lux", getfsr());
-	disfault(nil, "Floating point exception");
+	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux", getfsr());
+	disfault(nil, buf);
 }
 
 static sigset_t initmask;

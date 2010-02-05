@@ -12,6 +12,7 @@
 #include	<errno.h>
 #include	<unistd.h>
 #include	<sys/resource.h>
+#include	<fpuctl.h>
 
 enum
 {
@@ -111,6 +112,16 @@ trapSEGV(int signo)
 	disfault(nil, "Segmentation violation");
 }
 
+static void
+trapFPE(int signo)
+{
+
+	char buf[64];
+	USED(signo);
+	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux", getfsr());
+	disfault(nil, buf);
+}
+
 static sigset_t initmask;
 
 static void
@@ -156,6 +167,9 @@ setsigs(void)
 		act.sa_handler = trapSEGV;
 		if(sigaction(SIGSEGV, &act, nil))
 			panic("sigaction SIGSEGV");
+		act.sa_handler = trapFPE;
+		if(sigaction(SIGFPE, &act, nil))
+			panic("sigaction SIGFPE");
 		if(sigaddset(&initmask, SIGINT) == -1)
 			panic("sigaddset");
 	}

@@ -11,6 +11,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include <fpuctl.h>
 
 /* glibc 2.3.3-NTPL messes up getpid() by trying to cache the result, so we'll do it ourselves */
 #include	<sys/syscall.h>
@@ -188,13 +189,13 @@ trapSEGV(int signo)
 	disfault(nil, "Segmentation violation");
 }
 
-#include <fpuctl.h>
 static void
 trapFPE(int signo)
 {
+	char buf[64];
 	USED(signo);
-	print("FPU status=0x%.4lux", getfsr());
-	disfault(nil, "Floating exception");
+	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux", getfsr());
+	disfault(nil, buf);
 }
 
 static void

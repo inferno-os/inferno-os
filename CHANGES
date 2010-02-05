@@ -2,6 +2,7 @@
 	update man pages to replace most references to Styx by 9P
 	update man pages to replace references to sys-dial(2) by dial(2)
 	add DragonFly files (from fgudin and extrudedaluminiu, issue 181); possibly should automatically keep aligned with FreeBSD
+	fpe handling in OpenBSD and FreeBSD [mechiel, issue 190]
 20100203
 	appl/lib/cfg.b treat \r as white space [issue 69, issue 70]
 	add u64int to lib9.h files that needed it
