@@ -20,12 +20,8 @@ emit(globals: ref Decl)
 		}
 	}
 	if(emitstub){
-		print("#pragma hjdicks x4\n");
-		print("#pragma pack x4\n");
 		adtstub(globals);
 		modstub(globals);
-		print("#pragma pack off\n");
-		print("#pragma hjdicks off\n");
 	}
 	if(emittab != nil)
 		modtab(globals);
