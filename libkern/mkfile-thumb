@@ -10,3 +10,4 @@ TARGFILES=\
 	strchr-thumb.$O\
 	vlop-thumb.$O\
 	vlrt-thumb.$O\
+	div-thumb.$O\

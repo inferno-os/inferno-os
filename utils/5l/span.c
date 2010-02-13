@@ -266,7 +266,7 @@ span(void)
 
 	loop:
 		passes++;
-		if(passes > 100){
+		if(passes > 150){
 			diag("span looping !");
 			errorexit();
 		}

@@ -750,7 +750,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 	struct stat stbuf;
 	char path[MAXPATH], *ep;
 	struct dirent *de;
-	static char slop[8192];
+	static uchar slop[8192];
 
 	i = 0;
 	fspath(FS(c)->name, "", path);
@@ -951,7 +951,6 @@ static User*
 newuname(char *name)
 {
 	struct passwd *p;
-	User *u;
 
 	p = getpwnam(name);
 	if(p == nil)
@@ -963,7 +962,6 @@ static User*
 newuid(int id)
 {
 	struct passwd *p;
-	User *u;
 
 	p = getpwuid(id);
 	if(p == nil)
@@ -1010,7 +1008,6 @@ newgname(char *name)
 static User*
 id2user(User **tab, int id, User* (*get)(int))
 {
-	int i;
 	User *u, **h;
 
 	h = hashuser(tab, id);

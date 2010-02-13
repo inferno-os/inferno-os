@@ -9,7 +9,7 @@ LIBFILES=${LIBS:%=$ROOT/Inferno/$OBJTYPE/lib/lib%.a}
 CLEANEXTRA=
 
 %.$O:	%.s
-	$AS $stem.s
+	$AS $ASFLAGS $stem.s
 
 %.$O:	%.c
 	$CC $CFLAGS $stem.c
