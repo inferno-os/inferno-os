@@ -195,7 +195,6 @@ dossrv(rfd: ref Sys->FD)
 {
 	sys->pctl(Sys->NEWFD, rfd.fd :: 2 :: nil);
 	rfd = sys->fildes(rfd.fd);
-	data := array[Styx->MAXRPC] of byte;
 	while((t := Tmsg.read(rfd, 0)) != nil){
 		if(debug & STYX_MESS)
 			chat(sys->sprint("%s...", t.text()));
@@ -242,7 +241,7 @@ dossrv(rfd: ref Sys->FD)
 			panic("Rmsg.pack");
 		if(debug & STYX_MESS)
 			chat(sys->sprint("%s\n", r.text()));
-		if(styx->write(rfd, rbuf, len rbuf) != len rbuf)
+		if(sys->write(rfd, rbuf, len rbuf) != len rbuf)
 			panic("mount write");
 	}
 
@@ -967,7 +966,7 @@ rwstat(t: ref Tmsg.Wstat): ref Rmsg
 		oaddr := dp.addr;
 		ooffset := dp.offset;
 		d := dpd;
-		od := *d;
+#		od := *d;
 		# start := getstart(f.xf, d);
 		start := d.start;
 		length := d.length;
@@ -1395,7 +1394,7 @@ putstart(nil: ref Xfs, d: ref Dosdir, start: int)
 fileclust(f: ref Xfile, iclust: int, cflag: int): int
 {
 
-	bp := f.xf.ptr;
+#	bp := f.xf.ptr;
 	dp := f.ptr;
 	if(isroot(dp.addr))
 		return -1;		# root directory for old FAT format does not start on a cluster boundary
@@ -2067,7 +2066,7 @@ writefile(f: ref Xfile, buf: array of byte, offset,count: int): int
 truncfile(f: ref Xfile): int
 {
 	xf := f.xf;
-	bp := xf.ptr;
+#	bp := xf.ptr;
 	dp := f.ptr;
 	d := Dosdir.arr2Dd(dp.p.iobuf[dp.offset:dp.offset+DOSDIRSIZE]);
 

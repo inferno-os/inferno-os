@@ -415,6 +415,7 @@ serveloop(tchan: chan of ref Tmsg, srv: ref Styxserver, pidc: chan of int, navop
 			}
 			case TYPE(c.path) {
 			Quser =>
+				srv.delfid(c);
 				u := finduserpath(c.path);
 				if(u == nil){
 					srv.reply(ref Rmsg.Error(m.tag, Eremoved));
@@ -422,9 +423,9 @@ serveloop(tchan: chan of ref Tmsg, srv: ref Styxserver, pidc: chan of int, navop
 				}
 				removeuser(u);
 				writekeys(keyfile);
-				srv.delfid(c);
 				srv.reply(ref Rmsg.Remove(m.tag));
 			Qsecret =>
+				srv.delfid(c);
 				u := finduserpath(c.path);
 				if(u == nil){
 					srv.reply(ref Rmsg.Error(m.tag, Eremoved));
@@ -432,7 +433,6 @@ serveloop(tchan: chan of ref Tmsg, srv: ref Styxserver, pidc: chan of int, navop
 				}
 				u.secret = nil;
 				writekeys(keyfile);
-				srv.delfid(c);
 				srv.reply(ref Rmsg.Remove(m.tag));
 			* =>
 				srv.remove(m);	# let it reject it

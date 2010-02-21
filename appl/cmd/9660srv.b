@@ -185,7 +185,7 @@ fileserve(rfd: ref Sys->FD, sync: chan of int)
 			error("bad R-message conversion");
 		if(showstyx)
 			chat(r.text()+"\n");
-		if(styx->write(rfd, rbuf, len rbuf) != len rbuf)
+		if(sys->write(rfd, rbuf, len rbuf) != len rbuf)
 			error(sys->sprint("connection write error: %r"));
 	}
 

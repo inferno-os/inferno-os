@@ -1,3 +1,5 @@
+20100220
+	appl/cmd/keyfs.b wasn't clunking fids on error in remove [issue 225]
 20100213
 	apply saoret.one's changes for thumb [issue 155]
 20100205

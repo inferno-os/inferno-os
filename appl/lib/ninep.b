@@ -1,9 +1,9 @@
-implement Styx;
+implement Ninep;
 
 include "sys.m";
 	sys: Sys;
 
-include "styx.m";
+include "9p.m";
 
 STR: con BIT16SZ;	# string length
 TAG: con BIT16SZ;
@@ -127,7 +127,7 @@ packdir(f: Sys->Dir): array of byte
 	i = pstring(a, i, f.gid);
 	i = pstring(a, i, f.muid);
 	if(i != len a)
-		raise "assertion: Styx->packdir: bad count";	# can't happen unless packedsize is wrong
+		raise "assertion: Ninep->packdir: bad count";	# can't happen unless packedsize is wrong
 	return a;
 }
 
@@ -384,7 +384,7 @@ Tmsg.pack(t: self ref Tmsg): array of byte
 		d[H+FID+1] = byte (n>>8);
 		d[H+FID+LEN:] = stat;
 	* =>
-		raise sys->sprint("assertion: Styx->Tmsg.pack: bad tag: %d", tagof t);
+		raise sys->sprint("assertion: Ninep->Tmsg.pack: bad tag: %d", tagof t);
 	}
 	return d;
 }
@@ -488,7 +488,7 @@ Decode:
 			break;
 		(ds, stat) := unpackdir(f[H+FID+LEN:]);
 		if(ds != n){
-			sys->print("Styx->Tmsg.unpack: wstat count: %d/%d\n", ds, n);	# temporary
+			sys->print("Ninep->Tmsg.unpack: wstat count: %d/%d\n", ds, n);	# temporary
 			break;
 		}
 		return (H+FID+LEN+n, ref Tmsg.Wstat(tag, fid, stat));
@@ -681,7 +681,7 @@ Rmsg.pack(r: self ref Rmsg): array of byte
 		d[H+1] = byte (v>>8);
 		d[H+2:] = stat;		# should avoid copy?
 	* =>
-		raise sys->sprint("assertion: Styx->Rmsg.pack: missed case: tag %d", tagof r);
+		raise sys->sprint("assertion: Ninep->Rmsg.pack: missed case: tag %d", tagof r);
 	}
 	return d;
 }
@@ -708,7 +708,7 @@ Rmsg.unpack(f: array of byte): (int, ref Rmsg)
 
 	case mtype {
 	* =>
-		sys->print("Styx->Rmsg.unpack: bad type %d\n", mtype);	# temporary
+		sys->print("Ninep->Rmsg.unpack: bad type %d\n", mtype);	# temporary
 	Rversion =>
 		msize := g32(f, H);
 		(version, o) := gstring(f, H+BIT32SZ);
@@ -763,7 +763,7 @@ Rmsg.unpack(f: array of byte): (int, ref Rmsg)
 		if(ds <= 0)
 			break;
 		if(ds != n){
-			sys->print("Styx->Rmsg.unpack: stat count: %d/%d\n", ds, n);		# temporary
+			sys->print("Ninep->Rmsg.unpack: stat count: %d/%d\n", ds, n);		# temporary
 			break;
 		}
 		return (H+LEN+n, ref Rmsg.Stat(tag, d));
@@ -861,7 +861,7 @@ qid2text(q: Sys->Qid): string
 readmsg(fd: ref Sys->FD, msglim: int): (array of byte, string)
 {
 	if(msglim <= 0)
-		msglim = MAXRPC;
+		msglim = DEFMSIZE;
 	sbuf := array[BIT32SZ] of byte;
 	if((n := sys->readn(fd, sbuf, BIT32SZ)) != BIT32SZ){
 		if(n == 0)
@@ -911,10 +911,4 @@ compatible(t: ref Tmsg.Version, msize: int, version: string): (int, string)
 	if(v < version)
 		version = v;
 	return (msize, version);
-}
-
-# only here to support an implementation of this module that talks the previous version of Styx
-write(fd: ref Sys->FD, buf: array of byte, nb: int): int
-{
-	return sys->write(fd, buf, nb);
 }

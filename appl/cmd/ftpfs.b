@@ -280,7 +280,7 @@ sendreply(r: ref Rmsg)
 	if (debug)
 		sys->print("> %s\n", r.text());
 	a := r.pack();
-	if(styx->write(styxfd, a, len a) != len a)
+	if(sys->write(styxfd, a, len a) != len a)
 		sys->print("ftpfs: error replying: %r\n");
 }
 
