@@ -1,3 +1,5 @@
+20100226
+	mention -n nvram option in keyfs(4)
 20100220
 	appl/cmd/keyfs.b wasn't clunking fids on error in remove [issue 225]
 20100213

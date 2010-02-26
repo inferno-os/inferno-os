@@ -7,7 +7,9 @@ keyfs \- encrypted key storage
 .B -D
 ]
 [
-.B -m mountpoint
+.BI -m " mountpoint"
+] [
+.BI -n " nvram"
 ] [
 .I keyfile
 ]
@@ -104,6 +106,14 @@ All changes made via file system operations in
 result in appropriate changes to
 .IR keyfile .
 .PD
+.PP
+If the
+.B -n
+option is given, instead of prompting for the master key,
+.I keyfs
+will read it from the file
+.IR nvram .
+Obviously that file should be well-protected from ordinary observers.
 .PP
 The
 .B -D

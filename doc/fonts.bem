@@ -1,0 +1,7 @@
+# FONTS=''
+FONTS='.fp 1 R BemboBookMTStd-Regular
+.fp 2 I BemboBookMTStd-Italic
+.fp 3 B BemboBookMTStd-Bold
+.fp 4 BI BemboBookMTStd-BoldIt
+....fp 5 L LucidaCW
+'
