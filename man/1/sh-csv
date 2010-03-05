@@ -63,4 +63,4 @@ Empty lines are ambiguous:
 .B csv
 treats an empty line as containing a single,
 empty element; there is thus no way of
-representing an line containing no elements at all.
+representing a line containing no elements at all.

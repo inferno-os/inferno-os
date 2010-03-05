@@ -20,7 +20,7 @@ dev
 
 	ip	ipif-posix ipaux
 	eia
-#	audio	audio
+#	audio	audio-oss
 	mem
 
 lib
@@ -93,14 +93,8 @@ root
 	/chan	/
 	/nvfs	/
 	/env	/
-#	/chan
-#	/dev
 #	/dis
-#	/env
 #	/n
-#	/net
-#	/nvfs /
-#	/prog
 #	/icons
 #	/osinit.dis
 #	/dis/emuinit.dis
