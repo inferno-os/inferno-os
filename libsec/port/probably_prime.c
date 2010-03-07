@@ -2,10 +2,10 @@
 #include <mp.h>
 #include <libsec.h>
 
-// Miller-Rabin probabilistic primality testing
-//	Knuth (1981) Seminumerical Algorithms, p.379
-//	Menezes et al () Handbook, p.39
-// 0 if composite; 1 if almost surely prime, Pr(err)<1/4**nrep
+/* Miller-Rabin probabilistic primality testing */
+/*	Knuth (1981) Seminumerical Algorithms, p.379 */
+/*	Menezes et al () Handbook, p.39 */
+/* 0 if composite; 1 if almost surely prime, Pr(err)<1/4**nrep */
 int
 probably_prime(mpint *n, int nrep)
 {
@@ -19,11 +19,11 @@ probably_prime(mpint *n, int nrep)
 		nrep = 18;
 
 	k = mptoi(n);
-	if(k == 2) 	      /* 2 is prime */
+	if(k == 2)		/* 2 is prime */
 		return 1;
-	if(k < 2) 	       /* 1 is not prime */
+	if(k < 2)		/* 1 is not prime */
 		return 0;
-	if((n->p[0] & 1) == 0)  /* even is not prime */
+	if((n->p[0] & 1) == 0)	/* even is not prime */
 		return 0;
 
 	/* test against small prime numbers */
@@ -43,10 +43,10 @@ probably_prime(mpint *n, int nrep)
 
 	nbits = mpsignif(n);
 	nm1 = mpnew(nbits);
-	mpsub(n, mpone, nm1);   /* nm1 = n - 1 */
+	mpsub(n, mpone, nm1);	/* nm1 = n - 1 */
 	k = mplowbits0(nm1);
 	q = mpnew(0);
-	mpright(nm1, k, q);     /* q = (n-1)/2**k */
+	mpright(nm1, k, q);	/* q = (n-1)/2**k */
 
 	for(rep = 0; rep < nrep; rep++){
 		for(;;){
@@ -62,21 +62,21 @@ probably_prime(mpint *n, int nrep)
 		mpexp(x, q, n, y);
 
 		if(mpcmp(y, mpone) == 0 || mpcmp(y, nm1) == 0)
-		 	continue;
+			continue;
 
 		for(j = 1;; j++){
-		 	if(j >= k) {
-		 		isprime = 0;
-		 		goto done;
-		 	}
-		 	mpmul(y, y, x);
-		 	mpmod(x, n, y); /* y = y*y mod n */
-		 	if(mpcmp(y, nm1) == 0)
-		 		break;
-		 	if(mpcmp(y, mpone) == 0){
-		 		isprime = 0;
-		 		goto done;
-		 	}
+			if(j >= k) {
+				isprime = 0;
+				goto done;
+			}
+			mpmul(y, y, x);
+			mpmod(x, n, y);	/* y = y*y mod n */
+			if(mpcmp(y, nm1) == 0)
+				break;
+			if(mpcmp(y, mpone) == 0){
+				isprime = 0;
+				goto done;
+			}
 		}
 	}
 	isprime = 1;
