@@ -5,7 +5,7 @@ bind \- Arrange for events to invoke Tk scripts
 \f5bind\fI tag sequence script\fR
 .sp
 \f5bind\fI tag sequence \f5+\fIscript\fR
-.SH INTRODUCTION
+.SH DESCRIPTION
 The \f5bind\fR command associates Tk scripts with window events.
 If all three arguments are specified, \f5bind\fR will
 arrange for \fIscript\fR (a Tk script) to be evaluated whenever
@@ -22,7 +22,7 @@ If \fIscript\fR is prefixed with a ``-'', then any existing binding for
 \fIsequence\fR, whose script is exactly the same as \fIscript\fR, is removed.
 The \fItag\fR argument gives the pathname of the window
 to which \fIsequence\fR is bound.
-.SH "EVENT PATTERNS"
+.SS Event Patterns
 The \fIsequence\fR argument specifies a sequence of one or more
 event patterns, with optional white space between the patterns.  Each
 event pattern may
@@ -32,11 +32,11 @@ may not be a space character or the character \f5<\fR.  This form of
 pattern matches a \f5KeyPress\fR event for the particular
 character.  The second form of pattern is longer but more general.
 It has the following syntax:
-.RS
+.IP
 .EX
 \f5<\fIevent\f5-\fIevent\f5-\fR...\f5-\fIevent\f5>\fR
 .EE
-.RE
+.PP
 The following events are accepted:
 .TP
 .BR Key \ or\  Keypress
@@ -98,7 +98,14 @@ The event of the widget getting the keyboard focus.
 .TP
 .B FocusOut
 The event of the widget losing the keyboard focus.
+.TP
+.B Destroy
+The event of the widget being destroyed.
+See
+.IR destroy  (9)
+for details of widget destruction.
 .RE
+.PP
 The event sequence can contain any combination of the above
 events. They are treated independently, and if any of the
 events occur, the sequence matches. You cannot combine
@@ -106,14 +113,7 @@ key presses of more than one key. Events will not be combined
 on delivery, except that
 .B Motion
 events may be combined with button presses (possibly doubled).
-.TP
-.B Destroy
-The event of the widget being destroyed.
-See
-.IR destroy  (9)
-for details of widget destruction.
-
-.SH "BINDING SCRIPTS AND SUBSTITUTIONS"
+.SS Binding Scripts and Substitutions
 The \fIscript\fR argument to \f5bind\fR is a Tk script,
 which will be executed whenever the given event sequence occurs.
 If \fIscript\fR contains

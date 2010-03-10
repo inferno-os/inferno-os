@@ -20,6 +20,6 @@ The special variable
 holds the text of the last Tk error encountered.
 It resets when queried.
 .SH SEE ALSO
-.IR checkbutton (9)
-.IR choicebutton (9)
-.IR radiobutton (9),
+.IR checkbutton (9),
+.IR choicebutton (9),
+.IR radiobutton (9)

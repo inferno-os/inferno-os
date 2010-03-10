@@ -216,7 +216,7 @@ struct TkVar
 
 struct TkPanelimage
 {
-	void*		image;		/* really Draw_Image */
+	void*		image;		/* Image paired with Draw_Image: see lookupimage in libinterp/draw.c */
 	int			ref;
 	TkPanelimage*	link;
 };

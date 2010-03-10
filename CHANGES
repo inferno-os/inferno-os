@@ -1,3 +1,5 @@
+20100310
+	stop tabs(2) from issuing pointless tk cmd that produces diagnostics
 20100305
 	add emu/Linux/audio-oss.c from saoret.one [issue 226]
 20100226

@@ -138,23 +138,23 @@ tabsctl(t: ref Tk->Toplevel,
 		(lab, widg) = tabs[id];
 		tag := "tag" + string id;
 		cmd(t, dot+" lower sel" + string id);
-		pos := cmd(t, dot+" coords " + tag);
-		if(len pos >= 1 && pos[0] != '!'){
-			(p, nil) := parsept(pos);
-			cmd(t, dot+" coords "+tag+" "+string(p.x+1)+
-				" "+string(p.y+1));
-		}
+#		pos := cmd(t, dot+" coords " + tag);
+#		if(len pos >= 1 && pos[0] != '!'){
+#			(p, nil) := parsept(pos);
+#			cmd(t, dot+" coords "+tag+" "+string(p.x+1)+
+#				" "+string(p.y+1));
+#		}
 		if(id > 0)
 			cmd(t, dot+" lower "+ tag + " tag"+string (id - 1));
 		cmd(t, dot+" delete win" + string id);
 	}
 	id = nid;
 	(lab, widg) = tabs[id];
-	pos := tk->cmd(t, dot+" coords tag" + string id);
-	if(len pos >= 1 && pos[0] != '!'){
-		(p, nil) := parsept(pos);
-		cmd(t, dot+" coords tag"+string id+" "+string(p.x-1)+" "+string(p.y-1));
-	}
+#	pos := tk->cmd(t, dot+" coords tag" + string id);
+#	if(len pos >= 1 && pos[0] != '!'){
+#		(p, nil) := parsept(pos);
+#		cmd(t, dot+" coords tag"+string id+" "+string(p.x-1)+" "+string(p.y-1));
+#	}
 	cmd(t, dot+" raise tag"+string id);
 	cmd(t, dot+" raise sel"+string id);
 	cmd(t, dot+" create window "+string TABSBord+" "+
