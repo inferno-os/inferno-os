@@ -28,15 +28,6 @@ horizontal scrolling) or \f5yview\fR (for vertical scrolling).
 All scrollable widgets have \f5xview\fR and \f5yview\fR commands
 that take exactly the additional arguments appended by the scrollbar
 as described in SCROLLING COMMANDS below.
-.ig
-DEPRECATED
-.TP
-.B -elementborderwidth \fIdist\fP
-Specifies the width of borders drawn around the internal elements
-of the scrollbar (the two arrows and the slider).
-If this value is less than zero, the value of the \f5borderwidth\fR
-option is used in its place.
-..
 .TP
 .B -height \fIdist\fP
 Specifies a desired height for the scrollbar.

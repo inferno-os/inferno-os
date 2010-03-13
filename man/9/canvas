@@ -19,7 +19,7 @@ Defaults to 1.0.
 .B -confine \fIboolean\fP
 Specifies a boolean value that indicates whether or not it should be
 allowable to set the canvas's view outside the region defined by the
-\f5scrollRegion\fR argument.
+\f5scrollregion\fR option.
 Defaults to true, which means that the view will
 be constrained within the scroll region.
 .TP
@@ -1342,10 +1342,11 @@ the canvas widget or a child of some ancestor of the canvas widget.
 \fIPathName\fR may not refer to a top-level window.
 
 .SH BINDINGS
-In the current implementation, new canvases are not given any
-default behaviour:  you'll have to execute explicit Tk commands
-to give the canvas its behaviour.
-
+New canvases are not given any
+default behaviour.
+Use
+.IR bind (2)
+commands to give the canvas its behaviour.
 .SH CREDITS
 Tk's canvas widget is a blatant ripoff of ideas from Joel Bartlett's
 \fIezd\fR program.  \fIEzd\fR provides structured graphics in a Scheme

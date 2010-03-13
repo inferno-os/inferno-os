@@ -44,7 +44,6 @@ TkOption opts[] =
 {
 	"activerelief",	OPTstab,	O(TkScroll, activer),	tkrelief,
 	"command",	OPTtext,	O(TkScroll, cmd),	nil,
-	"elementborderwidth",	OPTignore,	0,	nil,	/* deprecated */
 	"jump",	OPTstab,	O(TkScroll, jump),	tkbool,
 	"orient",	OPTstab,	O(TkScroll, orient),	tkorient,
 	nil
