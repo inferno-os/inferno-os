@@ -576,7 +576,7 @@ JValue.text(v: self ref JValue): string
 	Int =>
 		return string r.value;
 	Real =>
-		return string r.value;
+		return sys->sprint("%f", r.value);
 	String =>
 		return quote(r.s);		# quoted, or not?
 	Array =>
