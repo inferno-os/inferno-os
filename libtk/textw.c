@@ -171,7 +171,7 @@ tktext(TkTop *t, char* arg, char **ret)
 	tkt = TKobj(TkText, tk);
 
 	tk->relief = TKsunken;
-	tk->borderwidth = 2;
+	tk->borderwidth = 1;
 	tk->ipad.x = Textpadx * 2;
 	tk->ipad.y = Textpady * 2;
 	tk->flag |= Tktakefocus;

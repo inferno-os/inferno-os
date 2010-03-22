@@ -379,8 +379,6 @@ tkfreecanv(Tk *tk)
 	}
 }
 
-enum {Bufnone = 99};
-
 char*
 tkdrawcanv(Tk *tk, Point orig)
 {

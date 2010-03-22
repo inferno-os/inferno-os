@@ -359,7 +359,7 @@ mkchoicemenu(Tk *tkb)
 
 	menu->relief = TKraised;
 	menu->flag |= Tknograb;
-	menu->borderwidth = 2;
+	menu->borderwidth = 1;
 	tkputenv(menu->env);
 	menu->env = tkb->env;
 	menu->env->ref++;
@@ -662,7 +662,7 @@ tkmenu(TkTop *t, char *arg, char **ret)
 	tkw->di = (void*)-1;		// XXX
 	tk->relief = TKraised;
 	tk->flag |= Tknograb;
-	tk->borderwidth = 2;
+	tk->borderwidth = 1;
 
 	tko[0].ptr = tk;
 	tko[0].optab = tkgeneric;

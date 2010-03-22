@@ -81,7 +81,7 @@ enum
 {
 	Scalewidth	= 18,
 	ScalePad	= 2,
-	ScaleBW		= 2,
+	ScaleBW		= 1,
 	ScaleSlider	= 16,
 	ScaleLen	= 80,
 
@@ -132,8 +132,7 @@ tksizescale(Tk *tk)
 			w += p.x + ScalePad;
 		if (tks->sv == BoolT)
 			w += digits + ScalePad;
-	}
-	else {
+	} else {
 		w = maximum(p.x, tks->len + ScaleBW + 2*ScalePad);
 		h = Scalewidth + 2*ScalePad + 2*ScaleBW;
 		fh = tk->env->font->height;
@@ -280,7 +279,7 @@ tkscalehoriz(Tk *tk, Image *i)
 	Image *d, *l;
 	Rectangle r, r2, sr;
 	Point p, q;
-	int fh, sh, sl, v, w, h, len;
+	int fh, sh, gh, sl, v, w, h, len;
 	int fgnd;
 
 	e = tk->env;
@@ -347,7 +346,11 @@ tkscalehoriz(Tk *tk, Image *i)
 	p.y = sr.min.y;
 	q = p;
 	q.x += tks->sl/2 + 1;
-	q.y++; 
+	if(ScaleBW > 1) {
+		gh = sh;
+		q.y++;
+	} else
+		gh = sh-1;
 	if(tk->flag & Tkactivated) {
 		r2.min = p;
 		r2.max.x = p.x+sl;
@@ -357,11 +360,11 @@ tkscalehoriz(Tk *tk, Image *i)
 	switch(tks->relief) {
 	case TKsunken:
 		tkbevel(i, p, tks->sl, sh, ScaleBW, d, l);
-		tkbevel(i, q, 0, sh, 1, l, d);
+		tkbevel(i, q, 0, gh, 1, l, d);
 		break;
 	case TKraised:
 		tkbevel(i, p, tks->sl, sh, ScaleBW, l, d);
-		tkbevel(i, q, 0, sh, 1, d, l);
+		tkbevel(i, q, 0, gh, 1, d, l);
 		break;
 	}
 	tks->pixpos = p.x;
@@ -395,7 +398,7 @@ tkscalevert(Tk *tk, Image *i)
 	Image *d, *l;
 	Rectangle r, r2, sr;
 	Point p, q;
-	int fh, v, sw, w, h, len, sl;
+	int fh, v, sw, gw, w, h, len, sl;
 	int fgnd;
 
 	e = tk->env;
@@ -464,7 +467,11 @@ tkscalevert(Tk *tk, Image *i)
 		p.y += ((vlong)v*h)/len;
 	p.x = sr.min.x;
 	q = p;
-	q.x++;
+	if(ScaleBW > 1) {
+		q.x++;
+		gw = sw;
+	} else
+		gw = sw-1;
 	q.y += tks->sl/2 + 1;
 	if(tk->flag & Tkactivated) {
 		r2.min = p;
@@ -475,11 +482,11 @@ tkscalevert(Tk *tk, Image *i)
 	switch(tks->relief) {
 	case TKsunken:
 		tkbevel(i, p, sw, tks->sl, ScaleBW, d, l);
-		tkbevel(i, q, sw, 0, 1, l, d);
+		tkbevel(i, q, sw, 0, gw, l, d);
 		break;
 	case TKraised:
 		tkbevel(i, p, sw, tks->sl, ScaleBW, l, d);
-		tkbevel(i, q, sw, 0, 1, d, l);
+		tkbevel(i, q, sw, 0, gw, d, l);
 		break;
 	}
 	tks->pixpos = p.y;
@@ -611,11 +618,9 @@ tkscaleposn(TkEnv *env, Tk *tk, char *arg, int *z)
 	}
 	if(x > tks->pixmin && x < tks->pixpos)
 		return trough1;
-	else
-	if(x >= tks->pixpos && x < tks->pixpos+tks->sl+2*ScaleBW)
+	else if(x >= tks->pixpos && x < tks->pixpos+tks->sl+2*ScaleBW)
 		return slider;
-	else
-	if(x >= tks->pixpos+tks->sl+2*ScaleBW && x < tks->pixmax)
+	else if(x >= tks->pixpos+tks->sl+2*ScaleBW && x < tks->pixmax)
 		return trough2;
 
 	return "";

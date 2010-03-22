@@ -90,7 +90,7 @@ tklistbox(TkTop *t, char *arg, char **ret)
 	tkl = TKobj(TkListbox, tk);
 	tkl->sborderwidth = 1;
 	tk->relief = TKsunken;
-	tk->borderwidth = 2;
+	tk->borderwidth = 1;
 	tk->highlightwidth = 1;
 	tk->flag |= Tktakefocus;
 	tk->req.width = 170;

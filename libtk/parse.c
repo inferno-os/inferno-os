@@ -97,15 +97,11 @@ tkword(TkTop *t, char *str, char *buf, char *ebuf, int *gotarg)
 			if(c == '\\') {
 				if(*str == '}' || *str == '{' || *str == '\\')
 					c = *str++;
-			}
-			else
-			if(c == '}') {
+			} else if(c == '}') {
 				lev--;
 				if(lev == 0)
 					break;
-			}
-			else
-			if(c == '{')
+			} else if(c == '{')
 				lev++;
 			*buf++ = c;
 		}
@@ -127,15 +123,11 @@ tkword(TkTop *t, char *str, char *buf, char *ebuf, int *gotarg)
 			if(c == '\\') {
 				if(*str == ']' || *str == '[' || *str == '\\')
 					c = *str++;
-			}
-			else
-			if(c == ']') {
+			} else if(c == ']') {
 				lev--;
 				if(lev == 0)
 					break;
-			}
-			else
-			if(c == '[')
+			} else if(c == '[')
 				lev++;
 			*p++ = c;
 		}
@@ -701,8 +693,7 @@ pbmap(TkTop *t, TkOption *o, void *place, char **str, char *buf, char *ebuf)
 
 	if(buf[0] == '@')
 		i = display_open(d, buf+1);
-	else
-	if(buf[0] == '<') {
+ else if(buf[0] == '<') {
 		buf++;
 		fd = strtoul(buf, &c, 0);
 		if(c == buf) {

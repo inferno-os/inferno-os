@@ -242,11 +242,9 @@ tkcmdbind(Tk *tk, int event, char *s, void *data)
 			if (!(event & TkKey)) {
 				if(event & (TkButton1P|TkButton1R))
 					v = 1;
-				else
-				if(event & (TkButton2P|TkButton2R))
+				else if(event & (TkButton2P|TkButton2R))
 					v = 2;
-				else
-				if(event & (TkButton3P|TkButton3R))
+				else if(event & (TkButton3P|TkButton3R))
 					v = 3;
 			}
 			c += snprint(c, len, "%d", v);
@@ -260,11 +258,9 @@ tkcmdbind(Tk *tk, int event, char *s, void *data)
 		case 's':
 			if((event & TkKey))
 				c += snprint(c, len, "%d", TKKEY(event));
-			else
-			if((event & (TkEmouse|TkEnter)))
+			else if((event & (TkEmouse|TkEnter)))
 				c += snprint(c, len, "%d", m->b);
-			else
-			if((event & TkFocusin))
+			else if((event & TkFocusin))
 				c += snprint(c, len, "%d", (int)data);
 			else
 				goto def;
@@ -298,8 +294,7 @@ tkcmdbind(Tk *tk, int event, char *s, void *data)
 			v = TKKEY(event);
 			if(v == '{' || v == '}' || v == '\\')
 				c += snprint(c, len, "\\%C", v);
-			else
-			if(v != '\0')
+			else if(v != '\0')
 				c += snprint(c, len, "%C", v);
 			break;
 		case 'K':
@@ -319,8 +314,7 @@ tkcmdbind(Tk *tk, int event, char *s, void *data)
 	t->execdepth = 0;
 	if(cmd[0] == '|')
 		tkexec(t, cmd+1, nil);
-	else
-	if(cmd[0] != '\0')
+	else if(cmd[0] != '\0')
 		e = tkexec(t, cmd, nil);
 	t->execdepth = -1;
 
