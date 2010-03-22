@@ -54,8 +54,6 @@ extern	TkOption	tkradopts[];
 extern	TkOption	tkcbopts[];
 
 /* label.c */
-extern	char*	tklabelsaverelief(Tk*, char*, char**);
-extern	char*	tklabelrestorerelief(Tk*, char*, char**);
 extern	void		tksizelabel(Tk*);
 extern	char*	tkdrawlabel(Tk*, Point);
 extern	void		tkfreelabel(Tk*);

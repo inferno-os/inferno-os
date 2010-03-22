@@ -2,6 +2,14 @@
 #include "draw.h"
 #include "tk.h"
 
+struct TkCol
+{
+	ulong	rgba1;
+	ulong	rgba3;	/* if mixed, otherwise DNotacolor */
+	Image*	i;
+	TkCol*	forw;
+};
+
 extern void	rptwakeup(void*, void*);
 extern void*	rptproc(char*, int, void*, int (*)(void*), int (*)(void*,int), void (*)(void*));
 
@@ -119,6 +127,48 @@ tkrgbavals(ulong rgba, int *R, int *G, int *B, int *A)
 	}
 }
 
+static int
+tkcachecol(TkCtxt *c, Image *i, ulong one, ulong three)
+{
+	TkCol *cc;
+
+	cc = malloc(sizeof(*cc));
+	if(cc == nil)
+		return 0;
+	cc->rgba1 = one;
+	cc->rgba3 = three;
+	cc->i = i;
+	cc->forw = c->chead;
+	c->chead = cc;
+	c->ncol++;
+	/* we'll do LRU management at some point */
+	if(c->ncol > TkColcachesize){
+		static int warn;
+		if(warn == 0){
+			warn = 1;
+			print("tk: %d colours cached\n", TkColcachesize);
+		}
+	}
+	return 1;
+}
+
+static Image*
+tkfindcol(TkCtxt *c, ulong one, ulong three)
+{
+	TkCol *cc, **l;
+
+	for(l = &c->chead; (cc = *l) != nil; l = &cc->forw)
+		if(cc->rgba1 == one && cc->rgba3 == three){
+			/* move it up in the list */
+			*l = cc->forw;
+			cc->forw = c->chead;
+			c->chead = cc;
+			/* we assume it will be used right away and not stored */
+			return cc->i;
+		}
+	return nil;
+}
+
 void
 tkfreecolcache(TkCtxt *c)
 {
@@ -136,27 +186,40 @@ tkfreecolcache(TkCtxt *c)
 }
 
 Image*
+tkcolormix(TkCtxt *c, ulong one, ulong three)
+{
+	Image *i;
+	Display *d;
+
+	i = tkfindcol(c, one, three);
+	if(i != nil)
+		return i;
+	d = c->display;
+	i = allocimagemix(d, one, three);
+	if(i == nil)
+		return d->black;
+	if(!tkcachecol(c, i, one, three)){
+		freeimage(i);
+		return d->black;
+	}
+	return i;
+}
+
+Image*
 tkcolor(TkCtxt *c, ulong pix)
 {
 	Image *i;
-	TkCol *cc, **l;
 	Display *d;
 	Rectangle r;
 
-	for(l = &c->chead; (cc = *l) != nil; l = &cc->forw)
-		if(cc->rgba == pix){
-			/* move it up in the list */
-			*l = cc->forw;
-			cc->forw = c->chead;
-			c->chead = cc;
-			/* we assume it will be used right away and not stored */
-			return cc->i;
-		}
 	d = c->display;
 	if(pix == DWhite)
 		return d->white;
 	if(pix == DBlack)
 		return d->black;
+	i = tkfindcol(c, pix, DNotacolor);
+	if(i != nil)
+		return i;
 	r.min = ZP;
 	r.max.x = 1;
 	r.max.y = 1;
@@ -166,24 +229,65 @@ tkcolor(TkCtxt *c, ulong pix)
 		i = allocimage(d, r, RGBA32, 1, pix);
 	if(i == nil)
 		return d->black;
-	cc = malloc(sizeof(*cc));
-	if(cc == nil){
+	if(!tkcachecol(c, i, pix, DNotacolor)) {
 		freeimage(i);
 		return d->black;
 	}
-	cc->rgba = pix;
-	cc->i = i;
-	cc->forw = c->chead;
-	c->chead = cc;
-	c->ncol++;
-	/* we'll do LRU management at some point */
-	if(c->ncol > TkColcachesize){
-		static int warn;
-		if(warn == 0){
-			warn = 1;
-			print("tk: %d colours cached\n", TkColcachesize);
-		}
+	return i;
+}
+
+Image*
+tkgradient(TkCtxt *c, Rectangle r, int dir, ulong pix0, ulong pix1)
+{
+	Display *d;
+	Image *i;
+	uchar *b, *p, *e;
+	int c0[3], c1[3], delta[3], a, j, x, y, n, locked;
+	Rectangle s;
+
+	d = c->display;
+	y = Dy(r);
+	x = Dx(r);
+	if(x <= 0 || y <= 0)
+		return d->black;
+	/* TO DO: diagonal */
+	s = r;
+	if(dir == Tkhorizontal){
+		n = x;
+		r.max.y = r.min.y+1;
+	}else{
+		n = y;
+		r.max.x = r.min.x+1;
 	}
+	b = mallocz(3*n, 0);
+	if(b == nil)
+		return d->black;
+	locked = lockdisplay(d);
+	i = allocimage(d, r, RGB24, 1, DNofill);
+	if(i == nil)
+		goto Ret;
+	tkrgbavals(pix0, &c0[2], &c0[1], &c0[0], &a);
+	tkrgbavals(pix1, &c1[2], &c1[1], &c1[0], &a);
+	for(j = 0; j < 3; j++){
+		c0[j] <<= 12;
+		c1[j] <<= 12;
+		delta[j] = ((c1[j]-c0[j])+(1<<11))/n;
+	}
+	e = b+3*n;
+	for(p = b; p < e; p += 3) {
+		p[0] = c0[0]>>12;
+		p[1] = c0[1]>>12;
+		p[2] = c0[2]>>12;
+		c0[0] += delta[0];
+		c0[1] += delta[1];
+		c0[2] += delta[2];
+	}
+	loadimage(i, r, b, 3*n);
+	replclipr(i, 1, s);
+Ret:
+	if(locked)
+		unlockdisplay(d);
+	free(b);
 	return i;
 }
 
@@ -816,7 +920,20 @@ tkstringsize(Tk *tk, char *text)
 	return p;	
 }
 
-static char*
+static void
+tkulall(Image *i, Point o, Image *col, Font *f, char *text)
+{
+	Rectangle r;
+
+	r.max = stringsize(f, text);
+	r.max = addpt(r.max, o);
+	r.min.x = o.x;
+	r.min.y = r.max.y - 1;
+	r.max.y += 1;
+	draw(i, r, col, nil, ZP);	
+}
+
+static void
 tkul(Image *i, Point o, Image *col, int ul, Font *f, char *text)
 {
 	char c, *v;
@@ -833,8 +950,6 @@ tkul(Image *i, Point o, Image *col, int ul, Font *f, char *text)
 	r.min.y = r.max.y - 1;
 	r.max.y += 2;
 	draw(i, r, col, nil, ZP);	
-
-	return nil;
 }
 
 char*
@@ -880,14 +995,13 @@ tkdrawstring(Tk *tk, Image *i, Point o, char *text, int ul, Image *col, int j)
 		if(ul >= 0) {
 			n = strlen(text);
 			if(ul < n) {
-				char *r;
-
-				r = tkul(i, o, col, ul, e->font, text);
-				if(r != nil)
-					return r;
+				tkul(i, o, col, ul, e->font, text);
 				ul = -1;
-			}
-			ul -= n;
+			} else if(ul == n) {
+				tkulall(i, o, col, e->font, text);
+				ul = -1;
+			} else
+				ul -= n;
 		}
 		o.y += e->font->height;
 		if(q == nil)
@@ -1216,14 +1330,12 @@ tkanchorpoint(Rectangle r, Point size, int anchor)
 	dy = Dy(r) - size.y;
 	if((anchor & (Tknorth|Tksouth)) == 0)
 		p.y += dy/2;
-	else
-	if(anchor & Tksouth)
+	else if(anchor & Tksouth)
 		p.y += dy;
 
 	if((anchor & (Tkeast|Tkwest)) == 0)
 		p.x += dx/2;
-	else
-	if(anchor & Tkeast)
+	else if(anchor & Tkeast)
 		p.x += dx;
 	return p;
 }
@@ -1779,12 +1891,12 @@ tkinsidepoly(Point *poly, int np, int winding, Point p)
 
 	hit = 0;
 	j = np - 1;
-	for (i = 0; i < np; j = i++) {
+	for(i = 0; i < np; j = i++) {
 		pi = poly[i];
 		pj = poly[j];
-		if ((pi.y <= p.y && p.y < pj.y || pj.y <= p.y && p.y < pi.y) &&
+		if((pi.y <= p.y && p.y < pj.y || pj.y <= p.y && p.y < pi.y) &&
 				p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y) + pi.x) {
-			if (winding == 1 || pi.y > p.y)
+			if(winding == 1 || pi.y > p.y)
 				hit++;
 			else
 				hit--;

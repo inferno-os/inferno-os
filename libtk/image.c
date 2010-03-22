@@ -227,7 +227,6 @@ tkimage(TkTop *t, char *arg, char **ret)
 	TkImg *tkim;
 	char *fmt, *e, *buf, *cmd;
 
-	/* Note - could actually allocate buf and cmd in one buffer - DBK */
 	buf = mallocz(Tkmaxitem, 0);
 	if(buf == nil)
 		return TkNomem;
@@ -318,14 +317,14 @@ tkimgput(TkImg *tki)
 }
 
 TkImg*
-tkauximage(TkTop *t, char* s, uchar* bytes, int nbytes, int chans, Rectangle r, int repl)
+tkauximage(TkTop *t, char* s, TkMemimage *m, int repl)
 {
 	TkName *name;
 	TkCtxt *c;
 	TkImg *tki;
 	Display *d;
 	Image *i;
-	int locked;
+	int locked, nbytes;
 
 	tki = tkname2img(t, s);
 	if (tki != nil) {
@@ -336,7 +335,7 @@ tkauximage(TkTop *t, char* s, uchar* bytes, int nbytes, int chans, Rectangle r, 
 	name = tkmkname(s);
 	if (name == nil)
 		return nil;
-	tki = mallocz(sizeof(*tki), 0);
+	tki = mallocz(sizeof(*tki), 1);
 	if (tki == nil)
 		goto err;
 	tki->env = tkdefaultenv(t);
@@ -346,15 +345,16 @@ tkauximage(TkTop *t, char* s, uchar* bytes, int nbytes, int chans, Rectangle r, 
 	c = t->ctxt;
 	d = c->display;
 
+	nbytes = bytesperline(m->r, chantodepth(m->chans))*Dy(m->r);
 	locked = lockdisplay(d);
-	i = allocimage(d, r, chans, repl, DTransparent);
+	i = allocimage(d, m->r, m->chans, repl, DTransparent);
 	if (i != nil) {
-		if (loadimage(i, r, bytes, nbytes) != nbytes) {
+		if (loadimage(i, m->r, m->data, nbytes) != nbytes) {
 			freeimage(i);
 			i = nil;
 		}
 		if (repl)
-			replclipr(i, 1, huger);
+			replclipr(i, 1, huger);	/* TO DO: doesn't allocimage do this? */
 	}
 	if (locked)
 		unlockdisplay(d);
@@ -363,8 +363,8 @@ tkauximage(TkTop *t, char* s, uchar* bytes, int nbytes, int chans, Rectangle r, 
 	tki->top = t;
 	tki->ref = 2;	/* t->imgs ref and the ref we are returning */
 	tki->type = 0;	/* bitmap */
-	tki->w = Dx(r);
-	tki->h = Dy(r);
+	tki->w = Dx(m->r);
+	tki->h = Dy(m->r);
 	tki->img = i;
 	tki->name = name;
 	tki->link = t->imgs;

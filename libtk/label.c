@@ -128,19 +128,15 @@ tksizelabel(Tk *tk)
 	if(tkl->img != nil) {
 		w = tkl->img->w + 2*Bitpadx;
 		h = tkl->img->h + 2*Bitpady;
-	}
-	else
-	if(tkl->bitmap != nil) {
+	} else if(tkl->bitmap != nil) {
 		w = Dx(tkl->bitmap->r) + 2*Bitpadx;
 		h = Dy(tkl->bitmap->r) + 2*Bitpady;
-	}
-	else 
-	if(tkl->text != nil) {
+	} else if(tkl->text != nil) {
 		p = tkstringsize(tk, tkl->text);
 		w = p.x + 2*Textpadx;
 		h = p.y + 2*Textpady;
 		if(tkl->ul != -1 && tkl->ul > strlen(tkl->text))
-			tkl->ul = -1;
+			tkl->ul = strlen(tkl->text);	/* underline all */
 		tkl->textheight = p.y;
 	}
 
@@ -232,11 +228,7 @@ tktriangle(Point u, Image *i, TkEnv *e)
 	p[1].y = u.y + CheckButton;
 	p[2].x = u.x;
 	p[2].y = u.y;
-	fillpoly(i, p, 3, ~0, tkgc(e, TkCbackgnddark), p[0]);
-	for(j = 0; j < 3; j++)
-		p[j].y -= 2;
-	
-	fillpoly(i, p, 3, ~0, tkgc(e, TkCbackgndlght), p[0]);
+	fillpoly(i, p, 3, ~0, tkgc(e, TkCforegnd), p[0]);
 }
 
 /*
@@ -297,14 +289,12 @@ tkdrawlabel(Tk *tk, Point orig)
 	dy = tk->act.height - tkl->h - tk->ipad.y;
 	if((tkl->anchor & (Tknorth|Tksouth)) == 0)
 		p.y += dy/2;
-	else
-	if(tkl->anchor & Tksouth)
+	else if(tkl->anchor & Tksouth)
 		p.y += dy;
 
 	if((tkl->anchor & (Tkeast|Tkwest)) == 0)
 		p.x += dx/2;
-	else
-	if(tkl->anchor & Tkeast)
+	else if(tkl->anchor & Tkeast)
 		p.x += dx;
 
 	switch(tk->type) {
