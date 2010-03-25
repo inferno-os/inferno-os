@@ -321,9 +321,7 @@ tkdrawlabel(Tk *tk, Point orig)
 		ct = tkgc(e, fgnd);
 		
 		p.y += (h - tkl->textheight) / 2;
-		o = tkdrawstring(tk, i, addpt(u, p), tkl->text, tkl->ul, ct, tkl->justify);
-		if(o != nil)
-			return o;
+		tkdrawstring(tk, i, addpt(u, p), tkl->text, tkl->ul, ct, tkl->justify);
 	}
 
 	if(tkhaskeyfocus(tk))

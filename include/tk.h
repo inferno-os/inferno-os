@@ -742,7 +742,7 @@ extern	void		tkbox(Image*, Rectangle, int, Image*);
 extern	void		tkbevel(Image*, Point, int, int, int, Image*, Image*);
 extern	void		tkdrawrelief(Image*, Tk*, Point, int, int);
 extern	Point		tkstringsize(Tk*, char*);
-extern	char*		tkdrawstring(Tk*, Image*, Point, char*, int, Image *, int);
+extern	void		tkdrawstring(Tk*, Image*, Point, char*, int, Image *, int);
 extern	int		tkeventfmt(Fmt*);
 extern	Tk*		tkdeliver(Tk*, int, void*);
 extern	int		tksubdeliver(Tk*, TkAction*, int, void*, int);
