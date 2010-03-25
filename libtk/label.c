@@ -6,11 +6,6 @@
 
 #define	O(t, e)		((long)(&((t*)0)->e))
 
-/* Layout constants */
-enum {
-	CheckSpace = CheckButton + 2*CheckButtonBW + 2*ButtonBorder,
-};
-
 TkOption tklabelopts[] =
 {
 	"text",		OPTtext,	O(TkLabel, text),	nil,
@@ -140,11 +135,7 @@ tksizelabel(Tk *tk)
 		tkl->textheight = p.y;
 	}
 
-	if((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator != BoolF) {
-		w += CheckSpace;
-		if(h < CheckSpace)
-			h = CheckSpace;
-	} else if(tk->type == TKcascade) {
+	if(tk->type == TKcascade) {
 		w += CheckButton + 2*CheckButtonBW;
 		if(h < CheckButton)
 			h = CheckButton;
@@ -165,9 +156,12 @@ tklabelmargin(Tk *tk)
 	TkLabel *tkl;
 	Image *img;
 
-	if (tk->type == TKseparator)
+	switch(tk->type){
+	case TKseparator:
 		return 0;
-	if (tk->type == TKlabel || tk->type == TKcascade) {
+
+	case TKlabel:
+	case TKcascade:
 		tkl = TKobj(TkLabel, tk);
 		img = nil;
 		if (tkl->img != nil)
@@ -177,8 +171,11 @@ tklabelmargin(Tk *tk)
 		if (img != nil)
 			return Bitpadx;
 		return Textpadx;
+
+	default:
+		fprint(2, "label margin: type %d\n", tk->type);
+		return 0;
 	}
-	return tkbuttonmargin(tk);
 }
 
 void
@@ -218,7 +215,6 @@ tkfreelabel(Tk *tk)
 static void
 tktriangle(Point u, Image *i, TkEnv *e)
 {	
-	int j;
 	Point p[3];
 
 	u.y++;
@@ -232,7 +228,7 @@ tktriangle(Point u, Image *i, TkEnv *e)
 }
 
 /*
- * draw TKlabel, TKcheckbutton, TKradiobutton
+ * draw TKlabel, TKseparator, and TKcascade (cascade should really be a button)
  */
 char*
 tkdrawlabel(Tk *tk, Point orig)
@@ -241,8 +237,8 @@ tkdrawlabel(Tk *tk, Point orig)
 	TkLabel *tkl;
 	Rectangle r, s, mainr, focusr;
 	int dx, dy, h;
-	Point p, u, v, *pp;
-	Image *i, *dst, *cd, *cl, *ct, *img;
+	Point p, u, v;
+	Image *i, *dst, *ct, *img;
 	char *o;
 	int relief, bgnd, fgnd;
 
@@ -256,8 +252,7 @@ tkdrawlabel(Tk *tk, Point orig)
 	v.y = tk->act.height + 2*tk->borderwidth;
 
 	r.min = ZP;
-	r.max.x = v.x;
-	r.max.y = v.y;
+	r.max = v;
 	focusr = insetrect(r, tk->borderwidth);
 	mainr = insetrect(focusr, tk->highlightwidth);
 	relief = tk->relief;
@@ -268,8 +263,6 @@ tkdrawlabel(Tk *tk, Point orig)
 	bgnd = TkCbackgnd;
 	if (tk->flag & Tkdisabled)
 		fgnd = TkCdisablefgnd;
-	else if ((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator == BoolF && tkl->check)
-		bgnd = TkCselect;
 	else if (tk->flag & Tkactive) {
 		fgnd = TkCactivefgnd;
 		bgnd = TkCactivebgnd;
@@ -297,95 +290,28 @@ tkdrawlabel(Tk *tk, Point orig)
 	else if(tkl->anchor & Tkeast)
 		p.x += dx;
 
-	switch(tk->type) {
-	case TKcheckbutton:
-		if (tkl->indicator == BoolF) {
-			relief = tkl->check?TKsunken:TKraised;
-			break;
-		}
-		u.x = p.x + ButtonBorder;
-		u.y = p.y + ButtonBorder + (h - CheckSpace) / 2;
-
-		cl = tkgc(e, bgnd+TkLightshade);
-		cd = tkgc(e, bgnd+TkDarkshade);
-		if(tkl->check) {
-			tkbevel(i, u, CheckButton, CheckButton, CheckButtonBW, cd, cl);
-			u.x += CheckButtonBW;
-			u.y += CheckButtonBW;
-			s.min = u;
-			s.max.x = u.x + CheckButton;
-			s.max.y = u.y + CheckButton;
-			draw(i, s, tkgc(e, TkCselect), nil, ZP);
-		}
-		else
-			tkbevel(i, u, CheckButton, CheckButton, CheckButtonBW, cl, cd);
-		break;
-	case TKradiobutton:
-		if (tkl->indicator == BoolF) {
-			relief = tkl->check?TKsunken:TKraised;
-			break;
-		}
-		u.x = p.x + ButtonBorder;
-		u.y = p.y + ButtonBorder + (h - CheckSpace) / 2;
-		pp = mallocz(4*sizeof(Point), 0);
-		if(pp == nil)
-			return TkNomem;
-		pp[0].x = u.x + CheckButton/2;
-		pp[0].y = u.y;
-		pp[1].x = u.x + CheckButton;
-		pp[1].y = u.y + CheckButton/2;
-		pp[2].x = pp[0].x;
-		pp[2].y = u.y + CheckButton;
-		pp[3].x = u.x;
-		pp[3].y = pp[1].y;
-		cl = tkgc(e, bgnd+TkLightshade);
-		cd = tkgc(e, bgnd+TkDarkshade);
-		if(tkl->check)
-			fillpoly(i, pp, 4, ~0, tkgc(e, TkCselect), pp[0]);
-		else {
-			ct = cl;
-			cl = cd;
-			cd = ct;
-		}
-		line(i, pp[0], pp[1], 0, Enddisc, CheckButtonBW/2, cd, pp[0]);
-		line(i, pp[1], pp[2], 0, Enddisc, CheckButtonBW/2, cl, pp[1]);
-		line(i, pp[2], pp[3], 0, Enddisc, CheckButtonBW/2, cl, pp[2]);
-		line(i, pp[3], pp[0], 0, Enddisc, CheckButtonBW/2, cd, pp[3]);
-		free(pp);
-		break;
-	case TKcascade:
-		u.x = mainr.max.x - CheckButton - CheckButtonBW;
+	if(tk->type == TKcascade) {
+		u.x = mainr.max.x - CheckButton - CheckButtonBW;	/* TO DO: CheckButton etc is really the triangle/arrow */
 		u.y = p.y + ButtonBorder + (h-CheckSpace)/2;
 		tktriangle(u, i, e);
-		break;
-	case TKbutton:
-		if ((tk->flag & (Tkactivated|Tkactive)) == (Tkactivated|Tkactive))
-			relief = TKsunken;
-		break;
 	}
 
 	p.x += tk->ipad.x/2;
 	p.y += tk->ipad.y/2;
 	u = ZP;
-	if(tk->type == TKbutton && relief == TKsunken) {
-		u.x++;
-		u.y++;
-	}
-	if((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator != BoolF)
-		u.x += CheckSpace;
 
 	img = nil;
-	if (tkl->img != nil && tkl->img->img != nil)
+	if(tkl->img != nil && tkl->img->img != nil)
 		img = tkl->img->img;
 	else if (tkl->bitmap != nil)
 		img = tkl->bitmap;
-	if (img != nil) {
+	if(img != nil) {
 		s.min.x = p.x + Bitpadx;
 		s.min.y = p.y + Bitpady;
 		s.max.x = s.min.x + Dx(img->r);
 		s.max.y = s.min.y + Dy(img->r);
 		s = rectaddpt(s, u);
-		if (tkchanhastype(img->chan, CGrey))
+		if(tkchanhastype(img->chan, CGrey))
 			draw(i, s, tkgc(e, fgnd), img, ZP);
 		else
 			draw(i, s, img, nil, ZP);
@@ -400,7 +326,7 @@ tkdrawlabel(Tk *tk, Point orig)
 			return o;
 	}
 
-	if (tkhaskeyfocus(tk))
+	if(tkhaskeyfocus(tk))
 		tkbox(i, focusr, tk->highlightwidth, tkgc(e, TkChighlightfgnd));
 	tkdrawrelief(i, tk, ZP, bgnd, relief);
 
@@ -410,92 +336,6 @@ tkdrawlabel(Tk *tk, Point orig)
 	draw(dst, r, i, nil, ZP);
 
 	return nil;
-}
-
-char*
-tksetvar(TkTop *top, char *c, char *newval)
-{
-	TkVar *v;
-	TkWin *tkw;
-	Tk *f, *m;
-	void (*vc)(Tk*, char*, char*);
-
-	if (c == nil || c[0] == '\0')
-		return nil;
-
-	v = tkmkvar(top, c, TkVstring);
-	if(v == nil)
-		return TkNomem;
-	if(v->type != TkVstring)
-		return TkNotvt;
-
-	if(newval == nil)
-		newval = "";
-
-	if(v->value != nil) {
-		if (strcmp(v->value, newval) == 0)
-			return nil;
-		free(v->value);
-	}
-
-	v->value = strdup(newval);
-	if(v->value == nil)
-		return TkNomem;
-
-	for(f = top->root; f; f = f->siblings) {
-		if(f->type == TKmenu) {
-			tkw = TKobj(TkWin, f);
-			for(m = tkw->slave; m; m = m->next)
-				if ((vc = tkmethod[m->type]->varchanged) != nil)
-					(*vc)(m, c, newval);
-		} else
-			if ((vc = tkmethod[f->type]->varchanged) != nil)
-				(*vc)(f, c, newval);
-	}
-
-	return nil;
-}
-
-char*
-tkvariable(TkTop *t, char *arg, char **ret)
-{
-	TkVar *v;
-	char *fmt, *e, *buf, *ebuf, *val;
-	int l;
-
-	l = strlen(arg) + 2;
-	buf = malloc(l);
-	if(buf == nil)
-		return TkNomem;
-	ebuf = buf+l;
-
-	arg = tkword(t, arg, buf, ebuf, nil);
-	arg = tkskip(arg, " \t");
-	if (*arg == '\0') {
-		if(strcmp(buf, "lasterror") == 0) {
-			free(buf);
-			if(t->err == nil)
-				return nil;
-			fmt = "%s: %s";
-			if(strlen(t->errcmd) == sizeof(t->errcmd)-1)
-				fmt = "%s...: %s";
-			e = tkvalue(ret, fmt, t->errcmd, t->err);
-			t->err = nil;
-			return e;
-		}
-		v = tkmkvar(t, buf, 0);
-		free(buf);
-		if(v == nil || v->value == nil)
-			return nil;
-		if(v->type != TkVstring)
-			return TkNotvt;
-		return tkvalue(ret, "%s", v->value);
-	}
-	val = buf+strlen(buf)+1;
-	tkword(t, arg, val, ebuf, nil);
-	e = tksetvar(t, buf, val);
-	free(buf);
-	return e;
 }
 
 void

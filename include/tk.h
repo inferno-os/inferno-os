@@ -235,7 +235,7 @@ struct TkMemimage
 {
 	Rectangle	r;
 	ulong	chans;
-	uchar	data[];
+	uchar*	data;
 };
 
 struct TkCmdtab

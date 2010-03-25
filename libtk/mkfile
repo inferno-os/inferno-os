@@ -10,6 +10,7 @@ OFILES=\
 	panel.$O\
 	parse.$O\
 	utils.$O\
+	varbl.$O\
 	windw.$O\
 	xdata.$O\
 

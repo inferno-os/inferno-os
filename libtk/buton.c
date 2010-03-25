@@ -126,7 +126,7 @@ newbutton(TkTop *t, int btype, char *arg, char **ret)
 		break;
 	default:
 		tk->relief = TKraised;
-		tk->borderwidth = 2;
+		tk->borderwidth = 1;
 		tko[2].ptr = nil;
 		break;
 	}
@@ -219,12 +219,193 @@ tkmkbutton(TkTop *t, int btype)
 	return tk;
 }
 
-void tksizebutton(Tk *tk)
+/*
+ * draw TKbutton, TKcheckbutton, TKradiobutton
+ */
+char*
+tkdrawbutton(Tk *tk, Point orig)
 {
-	tksizelabel(tk);
+ 	TkEnv *e;
+	TkLabel *tkl;
+	Rectangle r, s, mainr, focusr;
+	int dx, dy, h;
+	Point p, u, v, pp[4];
+	Image *i, *dst, *cd, *cl, *ct, *img;
+	char *o;
+	int relief, bgnd, fgnd;
+
+	e = tk->env;
+
+	dst = tkimageof(tk);
+	if(dst == nil)
+		return nil;
+
+	v.x = tk->act.width + 2*tk->borderwidth;
+	v.y = tk->act.height + 2*tk->borderwidth;
+
+	r.min = ZP;
+	r.max = v;
+	focusr = insetrect(r, tk->borderwidth);
+	mainr = insetrect(focusr, tk->highlightwidth);
+	relief = tk->relief;
+
+	tkl = TKobj(TkLabel, tk);
+
+	fgnd = TkCforegnd;
+	bgnd = TkCbackgnd;
+	if (tk->flag & Tkdisabled)
+		fgnd = TkCdisablefgnd;
+	else if ((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator == BoolF && tkl->check)
+		bgnd = TkCselect;
+	else if (tk->flag & Tkactive) {
+		fgnd = TkCactivefgnd;
+		bgnd = TkCactivebgnd;
+	}
+
+	i = tkitmp(e, r.max, bgnd);
+	if(i == nil)
+		return nil;
+
+	if(tk->flag & Tkactive)
+		draw(i, r, tkgc(e, bgnd), nil, ZP);
+
+	p = mainr.min;
+	h = tkl->h - 2 * tk->highlightwidth;
+
+	dx = tk->act.width - tkl->w - tk->ipad.x;
+	dy = tk->act.height - tkl->h - tk->ipad.y;
+	if((tkl->anchor & (Tknorth|Tksouth)) == 0)
+		p.y += dy/2;
+	else if(tkl->anchor & Tksouth)
+		p.y += dy;
+
+	if((tkl->anchor & (Tkeast|Tkwest)) == 0)
+		p.x += dx/2;
+	else if(tkl->anchor & Tkeast)
+		p.x += dx;
+
+	switch(tk->type) {
+	case TKcheckbutton:
+		if(tkl->indicator == BoolF) {
+			relief = tkl->check? TKsunken: TKraised;
+			break;
+		}
+		u.x = p.x + ButtonBorder;
+		u.y = p.y + ButtonBorder + (h - CheckSpace) / 2;
+
+		cl = tkgc(e, bgnd+TkLightshade);
+		cd = tkgc(e, bgnd+TkDarkshade);
+		tkbevel(i, u, CheckButton, CheckButton, CheckButtonBW, cd, cl);
+		if(tkl->check) {
+			u.x += CheckButtonBW+1;
+			u.y += CheckButtonBW+1;
+			pp[0] = u;
+			pp[0].y += CheckButton/2-1;
+			pp[1] = pp[0];
+			pp[1].x += 2;
+			pp[1].y += 2;
+			pp[2] = u;
+			pp[2].x += CheckButton/4;
+			pp[2].y += CheckButton-2;
+			pp[3] = u;
+			pp[3].x += CheckButton-2;
+			pp[3].y++;
+			bezspline(i, pp, 4, Enddisc, Enddisc, 1, tkgc(e, TkCforegnd), ZP);
+		}
+		break;
+	case TKradiobutton:
+		if(tkl->indicator == BoolF) {
+			relief = tkl->check? TKsunken: TKraised;
+			break;
+		}
+		u.x = p.x + ButtonBorder;
+		u.y = p.y + ButtonBorder + (h - CheckSpace) / 2;
+		v = Pt(u.x+CheckButton/2,u.y+CheckButton/2);
+		ellipse(i, v, CheckButton/2, CheckButton/2, CheckButtonBW-1, tkgc(e, bgnd+TkDarkshade), ZP);
+		if(tkl->check)
+			fillellipse(i, v, CheckButton/2-2, CheckButton/2-2, tkgc(e, TkCforegnd), ZP);	/* could be TkCselect */
+		break;
+	case TKbutton:
+		if ((tk->flag & (Tkactivated|Tkactive)) == (Tkactivated|Tkactive))
+			relief = TKsunken;
+		break;
+	}
+
+	p.x += tk->ipad.x/2;
+	p.y += tk->ipad.y/2;
+	u = ZP;
+	if(tk->type == TKbutton && relief == TKsunken) {
+		u.x++;
+		u.y++;
+	}
+	if((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator != BoolF)
+		u.x += CheckSpace;
+
+	img = nil;
+	if (tkl->img != nil && tkl->img->img != nil)
+		img = tkl->img->img;
+	else if (tkl->bitmap != nil)
+		img = tkl->bitmap;
+	if (img != nil) {
+		s.min.x = p.x + Bitpadx;
+		s.min.y = p.y + Bitpady;
+		s.max.x = s.min.x + Dx(img->r);
+		s.max.y = s.min.y + Dy(img->r);
+		s = rectaddpt(s, u);
+		if(tkchanhastype(img->chan, CGrey))
+			draw(i, s, tkgc(e, fgnd), img, ZP);
+		else
+			draw(i, s, img, nil, ZP);
+	} else if(tkl->text != nil) {
+		u.x += Textpadx;
+		u.y += Textpady;
+		ct = tkgc(e, fgnd);
+		
+		p.y += (h - tkl->textheight) / 2;
+		o = tkdrawstring(tk, i, addpt(u, p), tkl->text, tkl->ul, ct, tkl->justify);
+		if(o != nil)
+			return o;
+	}
+
+//	if(tkhaskeyfocus(tk))
+//		tkbox(i, focusr, tk->highlightwidth, tkgc(e, TkChighlightfgnd));
+	tkdrawrelief(i, tk, ZP, bgnd, relief);
+
+	p.x = tk->act.x + orig.x;
+	p.y = tk->act.y + orig.y;
+	r = rectaddpt(r, p);
+	draw(dst, r, i, nil, ZP);
+
+	return nil;
 }
 
-/* shame that this is separated from the sizing and rendering code in label.c */
+void
+tksizebutton(Tk *tk)
+{
+	int w, h;
+	TkLabel *tkl;
+	
+	tkl = TKobj(TkLabel, tk);
+	if(tkl->anchor == 0)	
+		tkl->anchor = Tkcenter;
+
+	tksizelabel(tk);	/* text, bitmap or image, and highlight */
+	w = tkl->w;
+	h = tkl->h;
+
+	if((tk->type == TKcheckbutton || tk->type == TKradiobutton) && tkl->indicator != BoolF) {
+		w += CheckSpace;
+		if(h < CheckSpace)
+			h = CheckSpace;
+	}
+	tkl->w = w;
+	tkl->h = h;
+	if((tk->flag & Tksetwidth) == 0)
+		tk->req.width = w;
+	if((tk->flag & Tksetheight) == 0)
+		tk->req.height = h;
+}
+
 int
 tkbuttonmargin(Tk *tk)
 {
@@ -240,7 +421,13 @@ tkbuttonmargin(Tk *tk)
 	case TKradiobutton:
 		return CheckButton + 2*CheckButtonBW + 2*ButtonBorder;
 	}
-	return 0;
+	return tklabelmargin(tk);
+}
+
+void
+tkfreebutton(Tk *tk)
+{
+	tkfreelabel(tk);
 }
 
 static char*
@@ -570,8 +757,8 @@ TkCmdtab tkradbuttoncmd[] =
 TkMethod buttonmethod = {
 	"button",
 	tkbuttoncmd,
-	tkfreelabel,
-	tkdrawlabel,
+	tkfreebutton,
+	tkdrawbutton,
 	nil,
 	tklabelgetimgs
 };
@@ -579,8 +766,8 @@ TkMethod buttonmethod = {
 TkMethod checkbuttonmethod = {
 	"checkbutton",
 	tkchkbuttoncmd,
-	tkfreelabel,
-	tkdrawlabel,
+	tkfreebutton,
+	tkdrawbutton,
 	nil,
 	tklabelgetimgs,
 	nil,
@@ -595,8 +782,8 @@ TkMethod checkbuttonmethod = {
 TkMethod radiobuttonmethod = {
 	"radiobutton",
 	tkradbuttoncmd,
-	tkfreelabel,
-	tkdrawlabel,
+	tkfreebutton,
+	tkdrawbutton,
 	nil,
 	nil,
 	nil,

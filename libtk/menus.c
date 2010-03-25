@@ -155,7 +155,7 @@ tksizemenubutton(Tk *tk)
 	TkLabel *tkl = TKobj(TkLabel, tk);
 
 	tksizelabel(tk);
-	if (tk->type != TKchoicebutton)
+	if(tk->type != TKchoicebutton)
 		return;
 	w = tk->req.width;
 	h = tk->req.height;
@@ -789,7 +789,7 @@ layout(Tk *menu)
 
 	/* determine padding for item text alignment */
 	for (tk = tkw->slave; tk != nil; tk = tk->next) {
-		m = tklabelmargin(tk);
+		m = tkbuttonmargin(tk);	/* TO DO: relies on buttonmargin defaulting to labelmargin */
 		tk->act.x = m;		/* temp store */
 		if (m > maxmargin)
 			maxmargin = m;

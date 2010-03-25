@@ -192,7 +192,7 @@ drawarrow(TkScroll *tks, Image *i, Point p[3], TkEnv *e, int activef, int button
 static void
 drawslider(TkScroll *tks, Image *i, Point o, int w, int h, TkEnv *e)
 {
-	Image *l, *d, *t;
+	Image *l, *d;
 	Rectangle r;
 	int bgnd;
 
@@ -218,8 +218,7 @@ tkvscroll(Tk *tk, TkScroll *tks, Image *i, Point size)
 {
 	TkEnv *e;
 	Point p[3], o;
-	Image *d, *l;
-	int bo, w, h, triangle, bgnd;
+	int bo, w, h, triangle;
 
 	e = tk->env;
 
@@ -264,8 +263,7 @@ tkhscroll(Tk *tk, TkScroll *tks, Image *i, Point size)
 {
 	TkEnv *e;
 	Point p[3], o;
-	Image *d, *l;
-	int bo, w, h, triangle, bgnd;
+	int bo, w, h, triangle;
 
 	e = tk->env;
 

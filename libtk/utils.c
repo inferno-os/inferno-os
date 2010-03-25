@@ -1541,7 +1541,8 @@ tkrect(Tk *tk, int withborder)
 {
 	Rectangle r;
 	int bd;
-	bd = withborder ? tk->borderwidth : 0;
+
+	bd = withborder? tk->borderwidth: 0;
 	r.min.x = -bd;
 	r.min.y = -bd;
 	r.max.x = tk->act.width + bd;
@@ -1910,6 +1911,7 @@ tklinehit(Point *a, int np, int w, Point p)
 {
 	Point *b;
 	int z, nx, ny, nrm;
+
 	while(np-- > 1) {
 		b = a+1;
 		nx = a->y - b->y;
