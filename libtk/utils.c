@@ -952,7 +952,7 @@ tkul(Image *i, Point o, Image *col, int ul, Font *f, char *text)
 	draw(i, r, col, nil, ZP);	
 }
 
-char*
+void
 tkdrawstring(Tk *tk, Image *i, Point o, char *text, int ul, Image *col, int j)
 {
 	int n, l, maxl, sox;
@@ -1009,7 +1009,6 @@ tkdrawstring(Tk *tk, Image *i, Point o, char *text, int ul, Image *col, int j)
 		text = q+1;
 		*q = '\n';
 	}
-	return nil;
 }
 
 /* for debugging */
