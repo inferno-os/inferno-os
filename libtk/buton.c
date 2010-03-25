@@ -231,7 +231,6 @@ tkdrawbutton(Tk *tk, Point orig)
 	int dx, dy, h;
 	Point p, u, v, pp[4];
 	Image *i, *dst, *cd, *cl, *ct, *img;
-	char *o;
 	int relief, bgnd, fgnd;
 
 	e = tk->env;

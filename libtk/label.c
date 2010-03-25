@@ -239,7 +239,6 @@ tkdrawlabel(Tk *tk, Point orig)
 	int dx, dy, h;
 	Point p, u, v;
 	Image *i, *dst, *ct, *img;
-	char *o;
 	int relief, bgnd, fgnd;
 
 	e = tk->env;
