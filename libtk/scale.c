@@ -482,11 +482,11 @@ tkscalevert(Tk *tk, Image *i)
 	switch(tks->relief) {
 	case TKsunken:
 		tkbevel(i, p, sw, tks->sl, ScaleBW, d, l);
-		tkbevel(i, q, sw, 0, gw, l, d);
+		tkbevel(i, q, gw, 0, 1, l, d);
 		break;
 	case TKraised:
 		tkbevel(i, p, sw, tks->sl, ScaleBW, l, d);
-		tkbevel(i, q, sw, 0, gw, d, l);
+		tkbevel(i, q, gw, 0, 1, d, l);
 		break;
 	}
 	tks->pixpos = p.y;

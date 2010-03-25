@@ -85,7 +85,7 @@ text, and initial relief.  The \f5radiobutton\fR command returns its
 there must not exist a window named \fIpathName\fR.
 .PP
 A radiobutton is a widget that displays a textual string, bitmap or image
-and a diamond called an \fIindicator\fR.
+and a circle called an \fIindicator\fR.
 If text is displayed, it must all be in a single font, but it
 can occupy multiple lines on the screen (if it contains newlines) and
 one of the characters may optionally be underlined using the
@@ -99,11 +99,11 @@ check button.
 .PP
 In addition, radiobuttons can be \fIselected\fR.
 If a radiobutton is selected, the indicator is normally
-drawn with a sunken relief and a special colour, and
+drawn as a circle containing a disc (possibly in a special colour), and
 a Tk variable associated with the radiobutton is set to a particular
 value.
-If the radiobutton is not selected, the indicator is drawn with a
-raised relief and no special colour.
+If the radiobutton is not selected, the indicator is drawn as an
+empty circle.
 Typically, several radiobuttons share a single variable and the
 value of the variable indicates which radiobutton is to be selected.
 When a radiobutton is selected it sets the value of the variable to

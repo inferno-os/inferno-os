@@ -105,12 +105,12 @@ checkbutton.
 .PP
 In addition, checkbuttons can be \fIselected\fR.
 If a checkbutton is selected then the indicator is normally
-drawn with a sunken relief and a special colour, and
+drawn with a sunken relief and a tick (check) mark, and
 a Tk variable associated with the checkbutton is set to the
 .B onvalue
 (normally 1).
-If the checkbutton is not selected, then the indicator is drawn with a
-raised relief and no special colour, and the associated variable is
+If the checkbutton is not selected, then the indicator is drawn as an empty box with
+raised relief, and the associated variable is
 set to the
 .B offvalue
 (normally 0).

@@ -929,7 +929,6 @@ tkulall(Image *i, Point o, Image *col, Font *f, char *text)
 	r.max = addpt(r.max, o);
 	r.min.x = o.x;
 	r.min.y = r.max.y - 1;
-	r.max.y += 1;
 	draw(i, r, col, nil, ZP);	
 }
 
@@ -948,7 +947,7 @@ tkul(Image *i, Point o, Image *col, int ul, Font *f, char *text)
 	*v = c;
 	r.min.x = r.max.x - r.min.x;
 	r.min.y = r.max.y - 1;
-	r.max.y += 2;
+	r.max.y++;
 	draw(i, r, col, nil, ZP);	
 }
 
