@@ -99,6 +99,7 @@ enum
 	OPTignore,	/* ignore this option */
 	OPTsticky,	/* sticky (any comb. of chars n, s, e, w) */
 	OPTlist,		/* list of text values */
+	OPTflags,		/* more than one OPTflag */
 
 	BoolX		= 0,
 	BoolT,

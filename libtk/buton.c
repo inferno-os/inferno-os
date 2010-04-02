@@ -198,15 +198,16 @@ tkmkbutton(TkTop *t, int btype)
 	tkl = TKobj(TkLabel, tk);
 	tkl->ul = -1;
 	tkl->justify = Tkleft;
-	if (btype == TKradiobutton)
-		tkl->variable = strdup(tkselbut);
 
 	switch (btype) {
 	case TKbutton:
 		e = tkbindings(t, tk, bb, nelem(bb));
 		break;
 	case TKcheckbutton:
+		e = tkbindings(t, tk, cb, nelem(cb));
+		break;
 	case TKradiobutton:
+		tkl->variable = strdup(tkselbut);
 		e = tkbindings(t, tk, cb, nelem(cb));
 		break;
 	}

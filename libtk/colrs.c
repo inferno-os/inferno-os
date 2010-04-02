@@ -73,6 +73,9 @@ static Coltab coltab[] =
 	TkChighlightfgnd,
 		RGB(0, 0, 0),
 		TkSameshade,
+	TkCtransparent,
+		DTransparent,
+		TkSameshade,
 	-1,
 };
 

@@ -676,7 +676,7 @@ adtdefd(Type *t)
 /*
  * assemble the data structure for an adt with a pick clause.
  * since the scoping rules for adt pick fields are strange,
- * we have a cutomized check for overlapping defitions.
+ * we have a customized check for overlapping definitions.
  */
 Decl*
 pickdefd(Type *t, Decl *tg)
@@ -4289,7 +4289,7 @@ mkextype(Type *t)
 }
 
 /*
- * convert an instantiated exception type to it's underlying type
+ * convert an instantiated exception type to its underlying type
  */
 Type*
 mkextuptype(Type *t)

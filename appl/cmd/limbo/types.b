@@ -574,7 +574,7 @@ adtdefd(t: ref Type)
 #
 # assemble the data structure for an adt with a pick clause.
 # since the scoping rules for adt pick fields are strange,
-# we have a cutomized check for overlapping defitions.
+# we have a customized check for overlapping definitions.
 #
 pickdefd(t: ref Type, tg: ref Decl): ref Decl
 {
@@ -3837,7 +3837,7 @@ mkextype(t: ref Type): ref Type
 }
 
 #
-# convert an instantiated exception type to it's underlying type
+# convert an instantiated exception type to its underlying type
 #
 mkextuptype(t: ref Type): ref Type
 {

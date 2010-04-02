@@ -1812,18 +1812,6 @@ n->ty->decl->refs++;
 			return ok;
 		}
 		break;
-/*
-		if(mathchk(n, 0)){
-			if(n->ty != tint){
-				nerror(n, "exponentiation operands not int");
-				ok.ok = ok.allok = 0;
-				return ok;
-			}
-			break;
-		}
-		ok.ok = ok.allok = 0;
-		return ok;
-*/
 	case Olsh:
 	case Orsh:
 		if(shiftchk(n))
@@ -2590,7 +2578,7 @@ mkvarargs(Node *n, Node *args)
 }
 
 /*
- * check that a print style format string matches it's arguments
+ * check that a print style format string matches its arguments
  */
 void
 fmtcheck(Node *f, Node *fmtarg, Node *va)
