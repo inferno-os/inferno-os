@@ -248,8 +248,10 @@ tkgradient(TkCtxt *c, Rectangle r, int dir, ulong pix0, ulong pix1)
 	d = c->display;
 	y = Dy(r);
 	x = Dx(r);
-	if(x <= 0 || y <= 0)
-		return d->black;
+	if(x <= 0 || y <= 0) {
+		r = Rect(0, 0, 1, 1);
+		x = y = 1;
+	}
 	/* TO DO: diagonal */
 	s = r;
 	if(dir == Tkhorizontal){
@@ -261,7 +263,7 @@ tkgradient(TkCtxt *c, Rectangle r, int dir, ulong pix0, ulong pix1)
 	}
 	b = mallocz(3*n, 0);
 	if(b == nil)
-		return d->black;
+		return nil;
 	locked = lockdisplay(d);
 	i = allocimage(d, r, RGB24, 1, DNofill);
 	if(i == nil)

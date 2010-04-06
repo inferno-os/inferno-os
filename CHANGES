@@ -1,3 +1,5 @@
+20100406
+	fix handling of boundary case in libtk/utils.c
 20100402
 	add new option OPTflags to libtk for later use
 20100325
