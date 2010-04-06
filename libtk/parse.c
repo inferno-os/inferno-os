@@ -391,7 +391,7 @@ tkgencget(TkOptab *ft, char *arg, char **val, TkTop *t)
 		}
 		c = out;
 		for (s = o->aux; s->val != nil; s++) {
-			if (con & s->con)
+			if (s->con == (s->con&-s->con) && (con & s->con) != 0)
 				c = seprint(c, out+Tkmaxitem, " %s", s->val);	/* should this be quoted? */
 		}
 		free(buf);
