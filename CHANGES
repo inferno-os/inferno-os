@@ -1,3 +1,5 @@
+20100425
+	appl/wm/wm.b shorten processing of wmctl close if client hadn't started
 20100406
 	fix handling of boundary case in libtk/utils.c
 20100402

@@ -154,6 +154,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		# if client leaving
 		if(rc == nil){
 			c.remove();
+			if(c.stop == nil)
+				break;
 			if(c == ptrfocus)
 				ptrfocus = nil;
 			if(c == kbdfocus)

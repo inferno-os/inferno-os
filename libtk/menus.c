@@ -608,7 +608,7 @@ tkchoicevarchanged(Tk *tk, char *var, char *value)
 		if(value[0] < '0' || value[0] > '9')
 			return;
 		v = atoi(value);
-		if(v < 0 || v > tkl->nvalues)
+		if(v < 0 || v >= tkl->nvalues)
 			return;		/* what else can we do? */
 		free(tkl->text);
 		tkl->text = strdup(tkl->values[v]);
