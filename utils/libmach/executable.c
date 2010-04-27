@@ -407,11 +407,12 @@ common(int fd, Fhdr *fp, ExecHdr *hp)
 }
 
 static int
-commonllp64(int, Fhdr *fp, ExecHdr *hp)
+commonllp64(int fd, Fhdr *fp, ExecHdr *hp)
 {
 	long pgsize;
 	uvlong entry;
 
+	USED(fd);
 	hswal(&hp->e, sizeof(Exec)/sizeof(long), beswal);
 	if(!(hp->e.exec.magic & HDR_MAGIC))
 		return 0;
