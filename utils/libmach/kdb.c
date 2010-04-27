@@ -84,16 +84,16 @@ sparcexcep(Map *map, Rgetter rget)
 }
 
 	/* Sparc disassembler and related functions */
+typedef struct instr Instr;
 
 struct opcode {
 	char	*mnemonic;
-	void	(*f)(struct instr*, char*);
+	void	(*f)(Instr*, char*);
 	int	flag;
 };
 
 static	char FRAMENAME[] = ".frame";
 
-typedef struct instr Instr;
 
 struct instr {
 	uchar	op;		/* bits 31-30 */
