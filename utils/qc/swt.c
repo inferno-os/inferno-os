@@ -1,6 +1,5 @@
 #include "gc.h"
 
-int	hasdoubled;
 static int	doubleflag;
 
 void
@@ -370,12 +369,16 @@ zwrite(Biobuf *b, Prog *p, int sf, int st)
 	bf[0] = p->as;
 	bf[1] = p->as>>8;
 	bf[2] = p->reg;
+	if(p->from3.type != D_NONE)
+		bf[2] |= 0x40;
 	l = p->lineno;
 	bf[3] = l;
 	bf[4] = l>>8;
 	bf[5] = l>>16;
 	bf[6] = l>>24;
 	bp = zaddr(bf+7, &p->from, sf);
+	if(bf[2] & 0x40)
+		bp = zaddr(bp, &p->from3, 0);
 	bp = zaddr(bp, &p->to, st);
 	Bwrite(b, bf, bp-bf);
 }
