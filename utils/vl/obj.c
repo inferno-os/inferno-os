@@ -18,7 +18,10 @@ char	*thestring 	= "mips";
  *	-H3 -T0x80020000 -R8		is bootp() format for 4k
  *	-H4 -T0x400000 -R4		is sgi unix coff executable
  *	-H5 -T0x4000A0 -R4		is sgi unix elf executable
+ *	-H6						is headerless
  */
+
+int little;
 
 void
 main(int argc, char *argv[])
@@ -52,6 +55,11 @@ main(int argc, char *argv[])
 		if(a)
 			INITENTRY = a;
 		break;
+	case  'L':			/* for little-endian mips */
+		thechar = '0';
+		thestring = "spim";
+		little = 1;
+		break;
 	case 'T':
 		a = ARGF();
 		if(a)
@@ -78,7 +86,7 @@ main(int argc, char *argv[])
 	USED(argc);
 
 	if(*argv == 0) {
-		diag("usage: vl [-options] objects");
+		diag("usage: %cl [-options] objects", thechar);
 		errorexit();
 	}
 	if(!debug['9'] && !debug['U'] && !debug['B'])
@@ -150,6 +158,15 @@ main(int argc, char *argv[])
 		if(INITRND == -1)
 			INITRND = 0;
 		break;
+	case 6:	/* headerless */
+		HEADR = 0;
+		if(INITTEXT == -1)
+			INITTEXT = 0x80000000L+HEADR;
+		if(INITDAT == -1)
+			INITDAT = 0;
+		if(INITRND == -1)
+			INITRND = 4096;
+		break;
 	}
 	if(INITDAT != 0 && INITRND != 0)
 		print("warning: -D0x%lux is ignored because of -R0x%lux\n",
@@ -170,8 +187,12 @@ main(int argc, char *argv[])
 	datap = P;
 	pc = 0;
 	dtype = 4;
-	if(outfile == 0)
-		outfile = "v.out";
+	if(outfile == 0) {
+		static char name[20];
+
+		snprint(name, sizeof name, "%c.out", thechar);
+		outfile = name;
+	}
 	cout = create(outfile, 1, 0775);
 	if(cout < 0) {
 		diag("%s: cannot create", outfile);
@@ -677,7 +698,7 @@ loop:
 	o = bloc[0];		/* as */
 	if(o <= AXXX || o >= ALAST) {
 		diag("%s: line %ld: opcode out of range %d", pn, pc-ipc, o);
-		print("	probably not a .v file\n");
+		print("	probably not a .%c file\n", thechar);
 		errorexit();
 	}
 	if(o == ANAME || o == ASIGNAME) {
@@ -1150,15 +1171,24 @@ void
 doprof2(void)
 {
 	Sym *s2, *s4;
-	Prog *p, *q, *ps2, *ps4;
+	Prog *p, *q, *q2, *ps2, *ps4;
 
 	if(debug['v'])
 		Bprint(&bso, "%5.2f profile 2\n", cputime());
 	Bflush(&bso);
-	s2 = lookup("_profin", 0);
-	s4 = lookup("_profout", 0);
+
+	if(debug['e']){
+		s2 = lookup("_tracein", 0);
+		s4 = lookup("_traceout", 0);
+	}else{
+		s2 = lookup("_profin", 0);
+		s4 = lookup("_profout", 0);
+	}
 	if(s2->type != STEXT || s4->type != STEXT) {
-		diag("_profin/_profout not defined");
+		if(debug['e'])
+			diag("_tracein/_traceout not defined %d %d", s2->type, s4->type);
+		else
+			diag("_profin/_profout not defined");
 		return;
 	}
 
@@ -1197,7 +1227,20 @@ doprof2(void)
 			q->line = p->line;
 			q->pc = p->pc;
 			q->link = p->link;
-			p->link = q;
+			if(debug['e']){		/* embedded tracing */
+				q2 = prg();
+				p->link = q2;
+				q2->link = q;
+
+				q2->line = p->line;
+				q2->pc = p->pc;
+
+				q2->as = AJMP;
+				q2->to.type = D_BRANCH;
+				q2->to.sym = p->to.sym;
+				q2->cond = q->link;
+			}else
+				p->link = q;
 			p = q;
 			p->as = AJAL;
 			p->to.type = D_BRANCH;
@@ -1207,6 +1250,17 @@ doprof2(void)
 			continue;
 		}
 		if(p->as == ARET) {
+			/*
+			 * RET (default)
+			 */
+			if(debug['e']){		/* embedded tracing */
+				q = prg();
+				q->line = p->line;
+				q->pc = p->pc;
+				q->link = p->link;
+				p->link = q;
+				p = q;
+			}
 			/*
 			 * RET
 			 */
@@ -1239,17 +1293,27 @@ nuxiinit(void)
 {
 	int i, c;
 
-	for(i=0; i<4; i++) {
-		c = find1(0x01020304L, i+1);
-		if(i >= 2)
-			inuxi2[i-2] = c;
-		if(i >= 3)
-			inuxi1[i-3] = c;
-		inuxi4[i] = c;
-
-		fnuxi8[i] = c+4;
-		fnuxi8[i+4] = c;
-	}
+	for(i=0; i<4; i++)
+		if (!little) {			/* normal big-endian case */
+			c = find1(0x01020304L, i+1);
+			if(i >= 2)
+				inuxi2[i-2] = c;
+			if(i >= 3)
+				inuxi1[i-3] = c;
+			inuxi4[i] = c;
+			fnuxi8[i] = c+4;
+			fnuxi8[i+4] = c;
+		} else {			/* oddball little-endian case */
+			c = find1(0x04030201L, i+1);
+			if(i < 2)
+				inuxi2[i] = c;
+			if(i < 1)
+				inuxi1[i] = c;
+			inuxi4[i] = c;
+			fnuxi4[i] = c;
+			fnuxi8[i] = c;
+			fnuxi8[i+4] = c+4;
+		}
 	if(debug['v']) {
 		Bprint(&bso, "inuxi = ");
 		for(i=0; i<1; i++)
@@ -1268,7 +1332,6 @@ nuxiinit(void)
 	Bflush(&bso);
 }
 
-int
 find1(long l, int c)
 {
 	char *p;

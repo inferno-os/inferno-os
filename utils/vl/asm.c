@@ -13,7 +13,27 @@ long	BADOFFSET	=	-1;
 		OFFSET++;\
 */
 
-#define	LPUT(c)\
+#define LPUT(l) { \
+		if (little) { \
+			LLEPUT(l); \
+		} else { \
+			LBEPUT(l); \
+		} \
+	}
+
+#define	LLEPUT(c)\
+	{\
+		cbp[0] = (c);\
+		cbp[1] = (c)>>8;\
+		cbp[2] = (c)>>16;\
+		cbp[3] = (c)>>24;\
+		cbp += 4;\
+		cbc -= 4;\
+		if(cbc <= 0)\
+			cflush();\
+	}
+
+#define	LBEPUT(c)\
 	{\
 		cbp[0] = (c)>>24;\
 		cbp[1] = (c)>>16;\
@@ -25,6 +45,35 @@ long	BADOFFSET	=	-1;
 			cflush();\
 	}
 
+#define HPUT(h) { \
+		if (little) { \
+			HLEPUT(h); \
+		} else { \
+			HBEPUT(h); \
+		} \
+	}
+
+#define	HLEPUT(c)\
+	{\
+		cbp[0] = (c);\
+		cbp[1] = (c)>>8;\
+		cbp += 2;\
+		cbc -= 2;\
+		if(cbc <= 0)\
+			cflush();\
+	}
+
+#define	HBEPUT(c)\
+	{\
+		cbp[0] = (c)>>8;\
+		cbp[1] = (c);\
+		cbp += 2;\
+		cbc -= 2;\
+		if(cbc <= 0)\
+			cflush();\
+	}
+
+
 #define	CPUT(c)\
 	{\
 		cbp[0] = (c);\
@@ -33,6 +82,24 @@ long	BADOFFSET	=	-1;
 		if(cbc <= 0)\
 			cflush();\
 	}
+
+void
+objput(long l)	/* emit long in byte order appropriate to object machine */
+{
+	LPUT(l);
+}
+
+void
+objhput(short s)
+{
+	HPUT(s);
+}
+
+void
+lput(long l)		/* emit long in big-endian byte order */
+{
+	LBEPUT(l);
+}
 
 long
 entryvalue(void)
@@ -111,6 +178,7 @@ asmb(void)
 	case 2:
 	case 3:
 	case 5:
+	case 6:
 		OFFSET = HEADR+textsize;
 		seek(cout, OFFSET, 0);
 		break;
@@ -138,6 +206,7 @@ asmb(void)
 		case 2:
 		case 1:
 		case 5:
+		case 6:
 			OFFSET = HEADR+textsize+datsize;
 			seek(cout, OFFSET, 0);
 			break;
@@ -203,7 +272,11 @@ asmb(void)
 		lput(0L);			/* complete mystery */
 		break;
 	case 2:
-		lput(0x407);			/* magic */
+		if (little)
+			t = 24;
+		else
+			t = 16;
+		lput(((((4*t)+0)*t)+7));	/* magic */
 		lput(textsize);			/* sizes */
 		lput(datsize);
 		lput(bsssize);
@@ -318,47 +391,67 @@ asmb(void)
 		lput(0x80L);			/* flags */
 		break;
 	case 5:
+		/* first part of ELF is byte-wide parts, thus no byte-order issues */
 		strnput("\177ELF", 4);		/* e_ident */
 		CPUT(1);			/* class = 32 bit */
-		CPUT(2);			/* data = MSB */
-		CPUT(1);			/* version = CURRENT */
-		strnput("", 9);
-		lput((2L<<16)|8L);		/* type = EXEC; machine = MIPS */
-		lput(1L);			/* version = CURRENT */
-		lput(entryvalue());		/* entry vaddr */
-		lput(52L);			/* offset to first phdr */
-		lput(0L);			/* offset to first shdr */
-		lput(0L);			/* flags = MIPS */
-		lput((52L<<16)|32L);		/* Ehdr & Phdr sizes*/
-		lput((3L<<16)|0L);		/* # Phdrs & Shdr size */
-		lput((0L<<16)|0L);		/* # Shdrs & shdr string size */
+		CPUT(little? 1: 2);		/* data: 1 = LSB, 2 = MSB */
+		CPUT(1);			/* version = 1 */
+		strnput("", 9);			/* reserved for expansion */
+		/* entire remainder of ELF file is in target byte order */
 
-		lput(1L);			/* text - type = PT_LOAD */
-		lput(0L);			/* file offset */
-		lput(INITTEXT-HEADR);		/* vaddr */
-		lput(INITTEXT-HEADR);		/* paddr */
-		lput(HEADR+textsize);		/* file size */
-		lput(HEADR+textsize);		/* memory size */
-		lput(0x05L);			/* protections = RX */
-		lput(0x10000L);			/* alignment code?? */
+		/* file header part of ELF header */
+		objhput(2);			/* type = EXEC */
+		objhput(8);			/* machine = MIPS */
+		objput(1L);			/* version = CURRENT */
+		objput(entryvalue());		/* entry vaddr */
+		objput(52L);			/* offset to first phdr */
+		objput(0L);			/* offset to first shdr */
+		objput(0L);			/* flags (no MIPS flags defined) */
+		objhput(52);			/* Ehdr size */
+		objhput(32);			/* Phdr size */
+		objhput(3);			/* # of Phdrs */
+		objhput(0);			/* Shdr size */
+		objhput(0);			/* # of Shdrs */
+		objhput(0);			/* Shdr string size */
 
-		lput(1L);			/* data - type = PT_LOAD */
-		lput(HEADR+textsize);		/* file offset */
-		lput(INITDAT);			/* vaddr */
-		lput(INITDAT);			/* paddr */
-		lput(datsize);			/* file size */
-		lput(datsize+bsssize);		/* memory size */
-		lput(0x06L);			/* protections = RW */
-		lput(0x10000L);			/* alignment code?? */
+		/* "Program headers" - one per chunk of file to load */
 
-		lput(0L);			/* data - type = PT_NULL */
-		lput(HEADR+textsize+datsize);	/* file offset */
-		lput(0L);
-		lput(0L);
-		lput(symsize);			/* symbol table size */
-		lput(lcsize);			/* line number size */
-		lput(0x04L);			/* protections = R */
-		lput(0x04L);			/* alignment code?? */
+		/*
+		 * include ELF headers in text -- 8l doesn't,
+		 * but in theory it aids demand loading.
+		 */
+		objput(1L);			/* text: type = PT_LOAD */
+		objput(0L);			/* file offset */
+		objput(INITTEXT-HEADR);		/* vaddr */
+		objput(INITTEXT-HEADR);		/* paddr */
+		objput(HEADR+textsize);		/* file size */
+		objput(HEADR+textsize);		/* memory size */
+		objput(0x05L);			/* protections = RX */
+		objput(0x1000L);		/* page-align text off's & vaddrs */
+
+		objput(1L);			/* data: type = PT_LOAD */
+		objput(HEADR+textsize);		/* file offset */
+		objput(INITDAT);		/* vaddr */
+		objput(INITDAT);		/* paddr */
+		objput(datsize);		/* file size */
+		objput(datsize+bsssize);	/* memory size */
+		objput(0x06L);			/* protections = RW */
+		if(INITDAT % 4096 == 0 && (HEADR + textsize) % 4096 == 0)
+			objput(0x1000L);	/* page-align data off's & vaddrs */
+		else
+			objput(0L);		/* do not claim alignment */
+
+		objput(0L);			/* P9 symbols: type = PT_NULL */
+		objput(HEADR+textsize+datsize);	/* file offset */
+		objput(0L);
+		objput(0L);
+		objput(symsize);		/* symbol table size */
+		objput(lcsize);			/* line number size */
+		objput(0x04L);			/* protections = R */
+		objput(0L);			/* do not claim alignment */
+		break;
+	case 6:
+		break;
 	}
 	cflush();
 }
@@ -372,13 +465,6 @@ strnput(char *s, int n)
 	}
 	for(; n > 0; n--)
 		CPUT(0);
-}
-
-void
-lput(long l)
-{
-
-	LPUT(l);
 }
 
 void
@@ -477,7 +563,7 @@ putsymb(char *s, int t, long v, int ver)
 
 	if(t == 'f')
 		s++;
-	LPUT(v);
+	LBEPUT(v);
 	if(ver)
 		t += 'a' - 'A';
 	CPUT(t+0x80);			/* 0x80 is variable length */
@@ -820,7 +906,7 @@ asmout(Prog *p, Optab *o, int aflag)
 		else
 			v = (p->cond->pc - pc-4) >> 2;
 		if(((v << 16) >> 16) != v)
-			diag("short branch too far: %d\n%P", v, p);
+			diag("short branch too far: %ld\n%P", v, p);
 		o1 = OP_IRR(opirr(p->as), v, p->from.reg, p->reg);
 		break;
 

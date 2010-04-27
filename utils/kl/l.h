@@ -1,4 +1,3 @@
-/* #include	<u.h> */
 #include	<lib9.h>
 #include	<bio.h>
 #include	"../kc/k.out.h"
@@ -250,10 +249,13 @@ extern	Optab	optab[];
 extern	char*	anames[];
 
 #pragma	varargck	type	"A"	int
+#pragma	varargck	type	"A"	uint
 #pragma	varargck	type	"D"	Adr*
 #pragma	varargck	type	"N"	Adr*
 #pragma	varargck	type	"P"	Prog*
 #pragma	varargck	type	"S"	char*
+
+#pragma	varargck	argpos	diag 1
 
 int	Aconv(Fmt*);
 int	Dconv(Fmt*);
