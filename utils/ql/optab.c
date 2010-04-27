@@ -206,8 +206,6 @@ Optab	optab[] =
 	{ AFMOVD,	C_FREG,	C_NONE, C_NONE, 	C_LOREG,	7, 4, REGZERO },
 	{ AFMOVD,	C_FREG,	C_NONE, C_NONE, 	C_ADDR,		74, 8, 0 },
 
-	{ AFPMOVD,	C_FREG,	C_NONE, C_NONE, 	C_FREG,		33, 4, 0 },
-
 	{ ASYNC,		C_NONE,	C_NONE, C_NONE, 	C_NONE,		46, 4, 0 },
 	{ AWORD,	C_LCON,	C_NONE, C_NONE, 	C_NONE,		40, 4, 0 },
 
@@ -287,13 +285,18 @@ Optab	optab[] =
 
 	{ AMACCHW,	C_REG,	C_REG, C_NONE, 	C_REG,		 2, 4, 0 },	/* op rb,ra,rt */
 
-	{ AFMOVSS,	C_ZOREG,	C_REG, C_NONE, C_FREG,		45, 4, 0 },
-	{ AFMOVSS,	C_ZOREG, C_NONE, C_NONE, C_FREG,	45, 4, 0 },
-	{ AFMOVSS,	C_FREG,	C_REG, C_NONE,	C_ZOREG,		44, 4, 0 },
-	{ AFMOVSS,	C_FREG,	C_NONE, C_NONE,	C_ZOREG,		44, 4, 0 },
+	{ AFSMOVS,	C_ZOREG,	C_REG, C_NONE, C_FREG,		45, 4, 0 },
+	{ AFSMOVS,	C_ZOREG, C_NONE, C_NONE, C_FREG,	45, 4, 0 },
+	{ AFSMOVS,	C_FREG,	C_REG, C_NONE,	C_ZOREG,		44, 4, 0 },
+	{ AFSMOVS,	C_FREG,	C_NONE, C_NONE,	C_ZOREG,		44, 4, 0 },
 
-	{ AFMOVPIW,	C_FREG,	C_REG, C_NONE, 	C_ZOREG,	44, 4, 0 },
-	{ AFMOVPIW,	C_FREG,	C_NONE, C_NONE, 	C_ZOREG,	44, 4, 0 },
+	{ AFPMOVD,	C_ZOREG,	C_REG, C_NONE, C_FREG,		45, 4, 0 },
+	{ AFPMOVD,	C_ZOREG, C_NONE, C_NONE, C_FREG,	45, 4, 0 },
+	{ AFPMOVD,	C_FREG,	C_REG, C_NONE,	C_ZOREG,		44, 4, 0 },
+	{ AFPMOVD,	C_FREG,	C_NONE, C_NONE,	C_ZOREG,		44, 4, 0 },
+
+	{ AFPMOVD,	C_FREG,	C_NONE, C_NONE, 	C_FREG,		33, 4, 0 },	/* f[xps]mr */
+	{ AFMOVSPD,	C_FREG,	C_NONE, C_NONE, 	C_FREG,		33, 4, 0 },	/* fsm[tf]p */
 
 	{ AXXX,		C_NONE,	C_NONE, C_NONE, 	C_NONE,		 0, 4, 0 },
 };

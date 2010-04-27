@@ -672,16 +672,24 @@ asmout(Prog *p, Optab *o, int aflag)
 		if(p->from.type == D_REG) {
 			r = p->from.reg;
 			v = p->to.offset;
-			if(p->to.type == D_DCR)
-				o1 = OPVCC(31,451,0,0);	/* mtdcr */
-			else
+			if(p->to.type == D_DCR) {
+				if(p->to.reg != NREG) {
+					o1 = OPVCC(31,387,0,0);	/* mtdcrx */
+					v = p->to.reg;
+				}else
+					o1 = OPVCC(31,451,0,0);	/* mtdcr */
+			}else
 				o1 = OPVCC(31,467,0,0); /* mtspr */
 		} else {
 			r = p->to.reg;
 			v = p->from.offset;
-			if(p->from.type == D_DCR)
-				o1 = OPVCC(31,323,0,0);	/* mfdcr */
-			else
+			if(p->from.type == D_DCR) {
+				if(p->from.reg != NREG) {
+					o1 = OPVCC(31,259,0,0);	/* mfdcrx */
+					v = p->from.reg;
+				}else
+					o1 = OPVCC(31,323,0,0);	/* mfdcr */
+			}else
 				o1 = OPVCC(31,339,0,0);	/* mfspr */
 		}
 		o1 = AOP_RRR(o1, r, 0, 0) | ((v&0x1f)<<16) | (((v>>5)&0x1f)<<11);
@@ -984,25 +992,22 @@ oprrr(int a)
 	case AFXNMSUB:	return OPVCC(0,29,0,0);
 	case AFXCPNMSUB:	return OPVCC(0,30,0,0);
 	case AFXCSNMSUB:	return OPVCC(0,31,0,0);
-	case AFMOVPD:	return OPVCC(0,32,0,0);	/* fpmr, X form */
 	case AFPABS:	return OPVCC(0,96,0,0);
 	case AFPNEG:	return OPVCC(0,160,0,0);
 	case AFPRSP:	return OPVCC(0,192,0,0);
 	case AFPNABS:	return OPVCC(0,224,0,0);
-	case AFMOVSD:	return OPVCC(0,288,0,0);	/* fsmr */
 	case AFSCMP:	return OPVCC(0,320,0,0)|(3<<21);
 	case AFSABS:	return OPVCC(0,352,0,0);
 	case AFSNEG:	return OPVCC(0,416,0,0);
 	case AFSNABS:	return OPVCC(0,480,0,0);
-	case AFMOVXD:	return OPVCC(0,544,0,0);
 	case AFPCTIW:	return OPVCC(0,576,0,0);
 	case AFPCTIWZ:	return OPVCC(0,704,0,0);
 
 	case AFPMOVD:	return OPVCC(0,32,0,0);	/* fpmr */
 	case AFSMOVD:	return OPVCC(0,288,0,0);	/* fsmr */
 	case AFXMOVD:	return OPVCC(0,544,0,0);	/* fxmr */
-	case AFSMOVP:		return OPVCC(0,800,0,0);	/* fsmtp */
-	case AFPMOVS:		return OPVCC(0,928,0,0);	/* fsmfp */
+	case AFMOVSPD:		return OPVCC(0,800,0,0);	/* fsmtp */
+	case AFMOVPSD:		return OPVCC(0,928,0,0);	/* fsmfp */
 
 	case AFXCPNPMA:	return OPVCC(4,24,0,0);
 	case AFXCSNPMA:	return OPVCC(4,25,0,0);
@@ -1290,18 +1295,18 @@ oploadx(int a)
 	case AECIWX:	return OPVCC(31,310,0,0);	/* eciwx */
 	case ALWAR:	return OPVCC(31,20,0,0);	/* lwarx */
 	case ALSW:	return OPVCC(31,533,0,0);	/* lswx */
-	case AFMOVSS:	return OPVCC(31,142,0,0);	/* lfssx */
-	case AFMOVSSU:	return OPVCC(31,174,0,0);	/* lfssux */
-	case AFMOVSD:	return OPVCC(31,206,0,0);
-	case AFMOVSDU:	return OPVCC(31,238,0,0);
-	case AFMOVXS:	return OPVCC(31,270,0,0);
-	case AFMOVSXU:	return OPVCC(31,302,0,0);
-	case AFMOVXD:	return OPVCC(31,334,0,0);
-	case AFMOVXDU:	return OPVCC(31,366,0,0);
-	case AFMOVPS:	return OPVCC(31,398,0,0);
-	case AFMOVPSU:	return OPVCC(31,430,0,0);
-	case AFMOVPD:	return OPVCC(31,462,0,0);
-	case AFMOVPDU:	return OPVCC(31,494,0,0);
+	case AFSMOVS:	return OPVCC(31,142,0,0);	/* lfssx */
+	case AFSMOVSU:	return OPVCC(31,174,0,0);	/* lfssux */
+	case AFSMOVD:	return OPVCC(31,206,0,0);	/* lfsdx */
+	case AFSMOVDU:	return OPVCC(31,238,0,0);	/* lfsdux */
+	case AFXMOVS:	return OPVCC(31,270,0,0);	/* lfxsx */
+	case AFXMOVSU:	return OPVCC(31,302,0,0);	/* lfxsux */
+	case AFXMOVD:	return OPVCC(31,334,0,0);	/* lfxdx */
+	case AFXMOVDU:	return OPVCC(31,366,0,0);	/* lfxdux */
+	case AFPMOVS:	return OPVCC(31,398,0,0);	/* lfpsx */
+	case AFPMOVSU:	return OPVCC(31,430,0,0);	/* lfpsux */
+	case AFPMOVD:	return OPVCC(31,462,0,0);	/* lfpdx */
+	case AFPMOVDU:	return OPVCC(31,494,0,0);	/* lfpdux */
 	}
 	diag("bad loadx opcode %A", a);
 	return 0;
@@ -1361,19 +1366,19 @@ opstorex(int a)
 	case AMOVWBR:	return OPVCC(31,662,0,0);	/* stwbrx */
 	case ASTWCCC:	return OPVCC(31,150,0,1);	/* stwcx. */
 	case AECOWX:	return OPVCC(31,438,0,0);	/* ecowx */
-	case AFMOVSS:	return OPVCC(31,654,0,0);
-/*	case AFMOVSSU:	return OPVCC(31,yy,0,0); */	/* stfssux not known */
-/*	case AFMOVSD:	return OPVCC(31,yy,0,0); */ /* stfsdx not known */
-	case AFMOVSDU:	return OPVCC(31,750,0,0);
-	case AFMOVXS:	return OPVCC(31,782,0,0);
-	case AFMOVSXU:	return OPVCC(31,814,0,0);
-	case AFMOVXD:	return OPVCC(31,846,0,0);
-	case AFMOVXDU:	return OPVCC(31,878,0,0);
-	case AFMOVPS:	return OPVCC(31,910,0,0);
-	case AFMOVPSU:	return OPVCC(31,942,0,0);
-	case AFMOVPD:	return OPVCC(31,974,0,0);
-	case AFMOVPDU:	return OPVCC(31,1006,0,0);
-	case AFMOVPIW:	return OPVCC(31,526,0,0);	/* stfpiwx */
+	case AFSMOVS:	return OPVCC(31,654,0,0);	/* stfssx */
+/*	case AFSMOVSU:	return OPVCC(31,yy,0,0); */	/* stfssux not known */
+/*	case AFSMOVD:	return OPVCC(31,yy,0,0); */ /* stfsdx not known */
+	case AFSMOVDU:	return OPVCC(31,750,0,0);	/* stfsdux */
+	case AFXMOVS:	return OPVCC(31,782,0,0);	/* stfxsx */
+	case AFXMOVSU:	return OPVCC(31,814,0,0);	/* stfxsux */
+	case AFXMOVD:	return OPVCC(31,846,0,0);	/* stfxdx */
+	case AFXMOVDU:	return OPVCC(31,878,0,0);	/* stfxdux */
+	case AFPMOVS:	return OPVCC(31,910,0,0);	/* stfpsx */
+	case AFPMOVSU:	return OPVCC(31,942,0,0);	/* stfpsux */
+	case AFPMOVD:	return OPVCC(31,974,0,0);	/* stfpdx */
+	case AFPMOVDU:	return OPVCC(31,1006,0,0);	/* stfpdux */
+	case AFPMOVIW:	return OPVCC(31,526,0,0);	/* stfpiwx */
 	}
 	diag("unknown storex opcode %A", a);
 	return 0;

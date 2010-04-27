@@ -499,8 +499,6 @@ buildop(void)
 		case AECOWX:	/* indexed store: op s,(b+a); op s,(b) */
 			oprange[ASTWCCC] = oprange[r];
 			break;
-		case AFMOVPIW:	/* indexed floating store */
-			break;
 		case AREM:	/* macro */
 			oprange[AREMCC] = oprange[r];
 			oprange[AREMV] = oprange[r];
@@ -845,12 +843,6 @@ buildop(void)
 			oprange[AFMOVS] = oprange[r];
 			oprange[AFMOVSU] = oprange[r];
 			break;
-		case AFPMOVD:
-			oprange[AFSMOVD] = oprange[r];
-			oprange[AFXMOVD] = oprange[r];
-			oprange[AFSMOVP] = oprange[r];
-			oprange[AFPMOVS] = oprange[r];
-			break;
 		case AECIWX:
 			oprange[ALWAR] = oprange[r];
 			break;
@@ -861,18 +853,23 @@ buildop(void)
 		case AMOVHBR:
 			oprange[AMOVWBR] = oprange[r];
 			break;
-		case AFMOVSS:	/* indexed floating loads and stores (fp2) */
-			oprange[AFMOVSSU] = oprange[r];
-			oprange[AFMOVSD] = oprange[r];
-			oprange[AFMOVSDU] = oprange[r];
-			oprange[AFMOVXS] = oprange[r];
-			oprange[AFMOVSXU] = oprange[r];
-			oprange[AFMOVXD] = oprange[r];
-			oprange[AFMOVXDU] = oprange[r];
-			oprange[AFMOVPS] = oprange[r];
-			oprange[AFMOVPSU] = oprange[r];
-			oprange[AFMOVPD] = oprange[r];
-			oprange[AFMOVPDU] = oprange[r];
+		case AFSMOVS:	/* indexed floating loads and stores (fp2) */
+			oprange[AFSMOVSU] = oprange[r];
+			oprange[AFSMOVDU] = oprange[r];
+			oprange[AFXMOVS] = oprange[r];
+			oprange[AFXMOVSU] = oprange[r];
+			oprange[AFXMOVDU] = oprange[r];
+			oprange[AFPMOVS] = oprange[r];
+			oprange[AFPMOVSU] = oprange[r];
+			oprange[AFPMOVDU] = oprange[r];
+			oprange[AFPMOVIW] = oprange[r];
+			break;
+		case AFPMOVD:	/* indexed load/store and moves (fp2) */
+			oprange[AFSMOVD] = oprange[r];
+			oprange[AFXMOVD] = oprange[r];
+			break;
+		case AFMOVSPD:	/* move between fp reg sets (fp2) */
+			oprange[AFMOVPSD] = oprange[r];
 			break;
 		case AADD:
 		case AANDCC:	/* and. Rb,Rs,Ra; andi. $uimm,Rs,Ra; andis. $uimm,Rs,Ra */
