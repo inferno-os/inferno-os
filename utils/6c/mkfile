@@ -12,6 +12,8 @@ OFILES=\
 	txt.$O\
 	reg.$O\
 	peep.$O\
+	pgen.$O\
+	pswt.$O\
 	machcap.$O\
 	div.$O\
 	mul.$O\
@@ -33,3 +35,9 @@ $ROOT/$OBJDIR/lib/libcc.a:
 	cd ../cc
 	mk $MKFLAGS install
 	mk $MKFLAGS clean
+
+%.$O: ../cc/%.c
+	$CC $CFLAGS -I. ../cc/$stem.c
+
+#enam.c:	6.out.h
+#	rc mkenam

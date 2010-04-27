@@ -22,6 +22,9 @@ ginit(void)
 	lastp = P;
 	tfield = types[TINT];
 
+	typeword = typechlvp;
+	typecmplx = typesu;
+
 	/* TO DO */
 	memmove(typechlpv, typechlp, sizeof(typechlpv));
 	typechlpv[TVLONG] = 1;
@@ -979,7 +982,7 @@ gmove(Node *f, Node *t)
 	case CASE(	TDOUBLE,TUVLONG):
 	case CASE(	TDOUBLE,TIND):
 		regalloc(&nod, t, Z);
-		if(ewidth[tt] == SZ_VLONG){
+		if(ewidth[tt] == SZ_VLONG || typeu[tt] && ewidth[tt] == SZ_INT){
 			if(ft == TFLOAT)
 				a = ACVTTSS2SQ;
 			else

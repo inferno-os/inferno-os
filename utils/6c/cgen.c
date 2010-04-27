@@ -577,13 +577,14 @@ cgen(Node *n, Node *nn)
 				regalloc(&nod2, r, Z);
 				gmove(&nod, &nod2);
 				gopcode(o, r->type, &nod1, &nod2);
+				regfree(&nod1);
 				gmove(&nod2, &nod);
 				regfree(&nod2);
 			} else {
 				gopcode(o, r->type, &nod, &nod1);
 				gmove(&nod1, &nod);
+				regfree(&nod1);
 			}
-			regfree(&nod1);
 		}
 		if(nn != Z)
 			gmove(&nod, nn);
