@@ -13,7 +13,8 @@ char	*thestring 	= "amd64";
 char	*paramspace	= "FP";
 
 /*
- *	-H2 -T4128 -R4096		is plan9 format
+ *	-H2 -T4136 -R4096		is plan9 64-bit format
+ *	-H3 -T4128 -R4096		is plan9 32-bit format
  *	-H5 -T0x80110000 -R4096		is ELF32
  *
  *	options used: 189BLQSWabcjlnpsvz
@@ -122,9 +123,18 @@ main(int argc, char *argv[])
 		diag("unknown -H option");
 		errorexit();
 	case 2:	/* plan 9 */
+		HEADR = 32L+8L;
+		if(INITTEXT == -1)
+			INITTEXT = 4096+HEADR;
+		if(INITDAT == -1)
+			INITDAT = 0;
+		if(INITRND == -1)
+			INITRND = 4096;
+		break;
+	case 3:	/* plan 9 */
 		HEADR = 32L;
 		if(INITTEXT == -1)
-			INITTEXT = 1024*1024;
+			INITTEXT = 4096+32;
 		if(INITDAT == -1)
 			INITDAT = 0;
 		if(INITRND == -1)
@@ -500,7 +510,11 @@ zaddr(uchar *p, Adr *a, Sym *h[])
 	}
 	a->offset = 0;
 	if(t & T_OFFSET) {
-		l = (long)(p[c] | (p[c+1]<<8) | (p[c+2]<<16) | (p[c+3]<<24));
+		/*
+		 * Hack until Charles fixes the compiler.
+		a->offset = (long)(p[c] | (p[c+1]<<8) | (p[c+2]<<16) | (p[c+3]<<24));
+		 */
+		l = p[c] | (p[c+1]<<8) | (p[c+2]<<16) | (p[c+3]<<24);
 		a->offset = l;
 		c += 4;
 		if(t & T_64) {

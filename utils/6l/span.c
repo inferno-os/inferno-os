@@ -120,12 +120,17 @@ xdefine(char *p, int t, vlong v)
 }
 
 void
-putsymb(char *s, int t, long v, int ver)
+putsymb(char *s, int t, vlong v, int ver)
 {
-	int i, f;
+	int i, f, l;
 
 	if(t == 'f')
 		s++;
+	l = 4;
+	if(!debug['8']){
+		lput(v>>32);
+		l = 8;
+	}
 	lput(v);
 	if(ver)
 		t += 'a' - 'A';
@@ -146,11 +151,11 @@ putsymb(char *s, int t, long v, int ver)
 			cput(s[i]);
 		cput(0);
 	}
-	symsize += 4 + 1 + i + 1;
+	symsize += l + 1 + i + 1;
 
 	if(debug['n']) {
 		if(t == 'z' || t == 'Z') {
-			Bprint(&bso, "%c %.8lux ", t, v);
+			Bprint(&bso, "%c %.8llux ", t, v);
 			for(i=1; s[i] != 0 || s[i+1] != 0; i+=2) {
 				f = ((s[i]&0xff) << 8) | (s[i+1]&0xff);
 				Bprint(&bso, "/%x", f);
@@ -159,9 +164,9 @@ putsymb(char *s, int t, long v, int ver)
 			return;
 		}
 		if(ver)
-			Bprint(&bso, "%c %.8lux %s<%d>\n", t, v, s, ver);
+			Bprint(&bso, "%c %.8llux %s<%d>\n", t, v, s, ver);
 		else
-			Bprint(&bso, "%c %.8lux %s\n", t, v, s);
+			Bprint(&bso, "%c %.8llux %s\n", t, v, s);
 	}
 }
 
@@ -213,7 +218,7 @@ asmsym(void)
 		putsymb(s->name, 'T', s->value, s->version);
 
 		/* frame, auto and param after */
-		putsymb(".frame", 'm', p->to.offset+4, 0);
+		putsymb(".frame", 'm', p->to.offset+8, 0);
 
 		for(a=p->to.autom; a; a=a->link)
 			if(a->type == D_AUTO)
@@ -230,9 +235,9 @@ asmsym(void)
 void
 asmlc(void)
 {
-	long oldpc, oldlc;
+	vlong oldpc;
 	Prog *p;
-	long v, s;
+	long oldlc, v, s;
 
 	oldpc = INITTEXT;
 	oldlc = 0;

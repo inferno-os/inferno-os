@@ -4,7 +4,7 @@
 
 #define PADDR(a)	((ulong)(a) & ~0x80000000)
 
-long
+vlong
 entryvalue(void)
 {
 	char *a;
@@ -52,6 +52,13 @@ lput(long l)
 }
 
 void
+llput(vlong v)
+{
+	lput(v>>32);
+	lput(v);
+}
+
+void
 lputl(long l)
 {
 	cput(l);
@@ -80,6 +87,7 @@ asmb(void)
 	long v, magic;
 	int a;
 	uchar *op1;
+	vlong vl;
 
 	if(debug['v'])
 		Bprint(&bso, "%5.2f asmb\n", cputime());
@@ -123,20 +131,9 @@ asmb(void)
 	switch(HEADTYPE) {
 	default:
 		diag("unknown header type %ld", HEADTYPE);
-	case 0:
-		seek(cout, rnd(HEADR+textsize, 8192), 0);
-		break;
-	case 1:
-		textsize = rnd(HEADR+textsize, 4096)-HEADR;
-		seek(cout, textsize+HEADR, 0);
-		break;
 	case 2:
 	case 5:
 		seek(cout, HEADR+textsize, 0);
-		break;
-	case 3:
-	case 4:
-		seek(cout, HEADR+rnd(textsize, INITRND), 0);
 		break;
 	}
 
@@ -167,19 +164,9 @@ asmb(void)
 		Bflush(&bso);
 		switch(HEADTYPE) {
 		default:
-		case 0:
-			seek(cout, rnd(HEADR+textsize, 8192)+datsize, 0);
-			break;
-		case 1:
-			seek(cout, rnd(HEADR+textsize, INITRND)+datsize, 0);
-			break;
 		case 2:
 		case 5:
 			seek(cout, HEADR+textsize+datsize, 0);
-			break;
-		case 3:
-		case 4:
-			debug['s'] = 1;
 			break;
 		}
 		if(!debug['s'])
@@ -207,97 +194,23 @@ asmb(void)
 	seek(cout, 0L, 0);
 	switch(HEADTYPE) {
 	default:
-	case 0:	/* garbage */
-		lput(0x160L<<16);		/* magic and sections */
-		lput(0L);			/* time and date */
-		lput(rnd(HEADR+textsize, 4096)+datsize);
-		lput(symsize);			/* nsyms */
-		lput((0x38L<<16)|7L);		/* size of optional hdr and flags */
-		lput((0413<<16)|0437L);		/* magic and version */
-		lput(rnd(HEADR+textsize, 4096));	/* sizes */
+	case 2:	/* plan9 */
+		magic = 4*26*26+7;
+		magic |= 0x00008000;		/* fat header */
+		if(dlm)
+			magic |= 0x80000000;	/* dlm */
+		lput(magic);			/* magic */
+		lput(textsize);			/* sizes */
 		lput(datsize);
 		lput(bsssize);
-		lput(entryvalue());		/* va of entry */
-		lput(INITTEXT-HEADR);		/* va of base of text */
-		lput(INITDAT);			/* va of base of data */
-		lput(INITDAT+datsize);		/* va of base of bss */
-		lput(~0L);			/* gp reg mask */
-		lput(0L);
-		lput(0L);
-		lput(0L);
-		lput(0L);
-		lput(~0L);			/* gp value ?? */
+		lput(symsize);			/* nsyms */
+		vl = entryvalue();
+		lput(PADDR(vl));		/* va of entry */
+		lput(spsize);			/* sp offsets */
+		lput(lcsize);			/* line offsets */
+		llput(vl);			/* va of entry */
 		break;
-		lputl(0);			/* x */
-	case 1:	/* unix coff */
-		/*
-		 * file header
-		 */
-		lputl(0x0004014c);		/* 4 sections, magic */
-		lputl(0);			/* unix time stamp */
-		lputl(0);			/* symbol table */
-		lputl(0);			/* nsyms */
-		lputl(0x0003001c);		/* flags, sizeof a.out header */
-		/*
-		 * a.out header
-		 */
-		lputl(0x10b);			/* magic, version stamp */
-		lputl(rnd(textsize, INITRND));	/* text sizes */
-		lputl(datsize);			/* data sizes */
-		lputl(bsssize);			/* bss sizes */
-		lput(entryvalue());		/* va of entry */
-		lputl(INITTEXT);		/* text start */
-		lputl(INITDAT);			/* data start */
-		/*
-		 * text section header
-		 */
-		strnput(".text", 8);
-		lputl(HEADR);			/* pa */
-		lputl(HEADR);			/* va */
-		lputl(textsize);		/* text size */
-		lputl(HEADR);			/* file offset */
-		lputl(0);			/* relocation */
-		lputl(0);			/* line numbers */
-		lputl(0);			/* relocation, line numbers */
-		lputl(0x20);			/* flags text only */
-		/*
-		 * data section header
-		 */
-		strnput(".data", 8);
-		lputl(INITDAT);			/* pa */
-		lputl(INITDAT);			/* va */
-		lputl(datsize);			/* data size */
-		lputl(HEADR+textsize);		/* file offset */
-		lputl(0);			/* relocation */
-		lputl(0);			/* line numbers */
-		lputl(0);			/* relocation, line numbers */
-		lputl(0x40);			/* flags data only */
-		/*
-		 * bss section header
-		 */
-		strnput(".bss", 8);
-		lputl(INITDAT+datsize);		/* pa */
-		lputl(INITDAT+datsize);		/* va */
-		lputl(bsssize);			/* bss size */
-		lputl(0);			/* file offset */
-		lputl(0);			/* relocation */
-		lputl(0);			/* line numbers */
-		lputl(0);			/* relocation, line numbers */
-		lputl(0x80);			/* flags bss only */
-		/*
-		 * comment section header
-		 */
-		strnput(".comment", 8);
-		lputl(0);			/* pa */
-		lputl(0);			/* va */
-		lputl(symsize+lcsize);		/* comment size */
-		lputl(HEADR+textsize+datsize);	/* file offset */
-		lputl(HEADR+textsize+datsize);	/* offset of syms */
-		lputl(HEADR+textsize+datsize+symsize);/* offset of line numbers */
-		lputl(0);			/* relocation, line numbers */
-		lputl(0x200);			/* flags comment only */
-		break;
-	case 2:	/* plan9 */
+	case 3:	/* plan9 */
 		magic = 4*26*26+7;
 		if(dlm)
 			magic |= 0x80000000;
@@ -310,31 +223,6 @@ asmb(void)
 		lput(spsize);			/* sp offsets */
 		lput(lcsize);			/* line offsets */
 		break;
-	case 3:
-		/* MS-DOS .COM */
-		break;
-	case 4:
-		/* fake MS-DOS .EXE */
-		v = rnd(HEADR+textsize, INITRND)+datsize;
-		wputl(0x5A4D);			/* 'MZ' */
-		wputl(v % 512);			/* bytes in last page */
-		wputl(rnd(v, 512)/512);		/* total number of pages */
-		wputl(0x0000);			/* number of reloc items */
-		v = rnd(HEADR-(INITTEXT & 0xFFFF), 16);
-		wputl(v/16);			/* size of header */
-		wputl(0x0000);			/* minimum allocation */
-		wputl(0xFFFF);			/* maximum allocation */
-		wputl(0x0000);			/* initial ss value */
-		wputl(0x0100);			/* initial sp value */
-		wputl(0x0000);			/* complemented checksum */
-		v = entryvalue();
-		wputl(v);			/* initial ip value (!) */
-		wputl(0x0000);			/* initial cs value */
-		wputl(0x0000);
-		wputl(0x0000);
-		wputl(0x003E);			/* reloc table offset */
-		wputl(0x0000);			/* overlay number */
-		break;
 	case 5:
 		strnput("\177ELF", 4);		/* e_ident */
 		cput(1);			/* class = 32 bit */
@@ -342,12 +230,12 @@ asmb(void)
 		cput(1);			/* version = CURRENT */
 		strnput("", 9);
 		wputl(2);			/* type = EXEC */
-		wputl(3);			/* machine = 386 */
+		wputl(62);			/* machine = AMD64 */
 		lputl(1L);			/* version = CURRENT */
 		lputl(PADDR(entryvalue()));	/* entry vaddr */
 		lputl(52L);			/* offset to first phdr */
 		lputl(0L);			/* offset to first shdr */
-		lputl(0L);			/* flags = 386 */
+		lputl(0L);			/* processor specific flags */
 		wputl(52);			/* Ehdr size */
 		wputl(32);			/* Phdr size */
 		wputl(3);			/* # of Phdrs */
@@ -554,10 +442,10 @@ datblk(long s, long n)
 	write(cout, buf.dbuf, n);
 }
 
-long
-rnd(long v, long r)
+vlong
+rnd(vlong v, vlong r)
 {
-	long c;
+	vlong c;
 
 	if(r <= 0)
 		return v;
