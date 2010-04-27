@@ -203,8 +203,8 @@ compile(char *file, char **defs, int ndef)
 	if((debug['a'] || debug['Z']) && !debug['n']) {
 		if (first) {
 			outfile = 0;
-			Binit(&outbuf, dup(1, -1), OWRITE);
-			dup(2, 1);
+			Binit(&outbuf, mydup(1, -1), OWRITE);
+			mydup(2, 1);
 		}
 	} else {
 		c = mycreat(outfile, 0664);
