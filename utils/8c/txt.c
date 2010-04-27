@@ -203,7 +203,7 @@ garg1(Node *n, Node *tn1, Node *tn2, int f, Node **fnxp)
 			sugen(n, tn2, n->type->width);
 		return;
 	}
-	if(REGARG && curarg == 0 && typeilp[n->type->etype]) {
+	if(REGARG>=0 && curarg == 0 && typeilp[n->type->etype]) {
 		regaalloc1(tn1, n);
 		if(n->complex >= FNX) {
 			cgen(*fnxp, tn1);
@@ -306,6 +306,7 @@ regalloc(Node *n, Node *tn, Node *o)
 			if(reg[i] == 0)
 				goto out;
 		diag(tn, "out of fixed registers");
+abort();
 		goto err;
 
 	case TFLOAT:
@@ -321,6 +322,7 @@ out:
 	if(i)
 		reg[i]++;
 	nodreg(n, tn, i);
+//print("+ %R %d\n", i, reg[i]);
 }
 
 void
@@ -347,6 +349,7 @@ regfree(Node *n)
 	if(reg[i] <= 0)
 		goto err;
 	reg[i]--;
+//print("- %R %d\n", i, reg[i]);
 	return;
 err:
 	diag(n, "error in regfree: %R", i);
@@ -367,11 +370,19 @@ regsalloc(Node *n, Node *nn)
 void
 regaalloc1(Node *n, Node *nn)
 {
+	USED(nn);
+
+	if(REGARG < 0) {
+		diag(n, "regaalloc1");
+		return;
+	}
+/* not reached 
 	nodreg(n, nn, REGARG);
 	reg[REGARG]++;
 	curarg = align(curarg, nn->type, Aarg1);
 	curarg = align(curarg, nn->type, Aarg2);
 	maxargsafe = maxround(maxargsafe, cursafe+curarg);
+*/
 }
 
 void
@@ -412,6 +423,7 @@ naddr(Node *n, Adr *a)
 	default:
 	bad:
 		diag(n, "bad in naddr: %O %D", n->op, a);
+//prtree(n, "naddr");
 		break;
 
 	case OREGISTER:
@@ -787,9 +799,7 @@ gmove(Node *f, Node *t)
 	case CASE(	TFLOAT,	TSHORT):
 	case CASE(	TFLOAT,	TUSHORT):
 	case CASE(	TFLOAT,	TINT):
-	case CASE(	TFLOAT,	TUINT):
 	case CASE(	TFLOAT,	TLONG):
-	case CASE(	TFLOAT,	TULONG):
 	case CASE(	TFLOAT,	TIND):
 
 	case CASE(	TDOUBLE,TCHAR):
@@ -797,20 +807,8 @@ gmove(Node *f, Node *t)
 	case CASE(	TDOUBLE,TSHORT):
 	case CASE(	TDOUBLE,TUSHORT):
 	case CASE(	TDOUBLE,TINT):
-	case CASE(	TDOUBLE,TUINT):
 	case CASE(	TDOUBLE,TLONG):
-	case CASE(	TDOUBLE,TULONG):
 	case CASE(	TDOUBLE,TIND):
-
-	case CASE(	TVLONG,	TCHAR):
-	case CASE(	TVLONG,	TUCHAR):
-	case CASE(	TVLONG,	TSHORT):
-	case CASE(	TVLONG,	TUSHORT):
-	case CASE(	TVLONG,	TINT):
-	case CASE(	TVLONG,	TUINT):
-	case CASE(	TVLONG,	TLONG):
-	case CASE(	TVLONG,	TULONG):
-	case CASE(	TVLONG,	TIND):
 		if(fproundflg) {
 			regsalloc(&nod, &regnode);
 			gins(AFMOVLP, f, &nod);
@@ -830,13 +828,26 @@ gmove(Node *f, Node *t)
 		return;
 
 /*
+ * float to ulong
+ */
+	case CASE(	TDOUBLE,	TULONG):
+	case CASE(	TFLOAT,	TULONG):
+	case CASE(	TDOUBLE,	TUINT):
+	case CASE(	TFLOAT,	TUINT):
+		regsalloc(&nod, &regnode);
+		gmove(f, &fregnode0);
+		gins(AFADDD, nodfconst(-2147483648.), &fregnode0);
+		gins(AFMOVLP, f, &nod);
+		gins(ASUBL, nodconst(-2147483648), &nod);
+		gmove(&nod, t);
+		return;
+
+/*
  * ulong to float
  */
 	case CASE(	TULONG,	TDOUBLE):
-	case CASE(	TULONG,	TVLONG):
 	case CASE(	TULONG,	TFLOAT):
 	case CASE(	TUINT,	TDOUBLE):
-	case CASE(	TUINT,	TVLONG):
 	case CASE(	TUINT,	TFLOAT):
 		regalloc(&nod, f, f);
 		gmove(f, &nod);
@@ -869,14 +880,6 @@ gmove(Node *f, Node *t)
 	case CASE(	TINT,	TDOUBLE):
 	case CASE(	TLONG,	TDOUBLE):
 	case CASE(	TIND,	TDOUBLE):
-
-	case CASE(	TCHAR,	TVLONG):
-	case CASE(	TUCHAR,	TVLONG):
-	case CASE(	TSHORT,	TVLONG):
-	case CASE(	TUSHORT,TVLONG):
-	case CASE(	TINT,	TVLONG):
-	case CASE(	TLONG,	TVLONG):
-	case CASE(	TIND,	TVLONG):
 		regsalloc(&nod, &regnode);
 		gmove(f, &nod);
 		gins(AFMOVL, &nod, &fregnode0);
@@ -887,15 +890,9 @@ gmove(Node *f, Node *t)
  */
 	case CASE(	TFLOAT,	TFLOAT):
 	case CASE(	TDOUBLE,TFLOAT):
-	case CASE(	TVLONG,	TFLOAT):
 
 	case CASE(	TFLOAT,	TDOUBLE):
 	case CASE(	TDOUBLE,TDOUBLE):
-	case CASE(	TVLONG,	TDOUBLE):
-
-	case CASE(	TFLOAT,	TVLONG):
-	case CASE(	TDOUBLE,TVLONG):
-	case CASE(	TVLONG,	TVLONG):
 		a = AFMOVD;	break;
 	}
 	if(a == AMOVL || a == AFMOVD)
@@ -923,6 +920,7 @@ print("botch in doindex\n");
 	if(n->left->op == OCONST)
 		idx.ptr = D_CONST;
 	else if(n->left->op == OREGISTER)
+//	else if(n->left->op == OREGISTER && typeil[n->left->type->etype])
 		idx.ptr = n->left->reg;
 	else if(n->left->op != OADDR) {
 		reg[D_BP]++;	// cant be used as a base

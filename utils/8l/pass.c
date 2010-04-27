@@ -629,7 +629,8 @@ import(void)
 				if(s->value != 0)
 					diag("value != 0 on SXREF");
 				undefsym(s);
-				Bprint(&bso, "IMPORT: %s sig=%lux v=%ld\n", s->name, s->sig, s->value);
+				if(debug['X'])
+					Bprint(&bso, "IMPORT: %s sig=%lux v=%ld\n", s->name, s->sig, s->value);
 				if(debug['S'])
 					s->sig = 0;
 			}
@@ -674,14 +675,14 @@ export(void)
 	n = 0;
 	for(i = 0; i < NHASH; i++)
 		for(s = hash[i]; s != S; s = s->link)
-			if(s->sig != 0 && s->type != SXREF && s->type != SUNDEF && (nexports == 0 || s->subtype == SEXPORT))
+			if(s->type != SXREF && s->type != SUNDEF && (nexports == 0 && s->sig != 0 || s->subtype == SEXPORT || allexport))
 				n++;
 	esyms = malloc(n*sizeof(Sym*));
 	ne = n;
 	n = 0;
 	for(i = 0; i < NHASH; i++)
 		for(s = hash[i]; s != S; s = s->link)
-			if(s->sig != 0 && s->type != SXREF && s->type != SUNDEF && (nexports == 0 || s->subtype == SEXPORT))
+			if(s->type != SXREF && s->type != SUNDEF && (nexports == 0 && s->sig != 0 || s->subtype == SEXPORT || allexport))
 				esyms[n++] = s;
 	for(i = 0; i < ne-1; i++)
 		for(j = i+1; j < ne; j++)

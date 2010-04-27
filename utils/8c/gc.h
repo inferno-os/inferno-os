@@ -64,6 +64,7 @@ struct	Case
 	long	val;
 	long	label;
 	char	def;
+	char isv;
 };
 #define	C	((Case*)0)
 
@@ -131,6 +132,7 @@ struct	Rgn
 };
 
 EXTERN	long	breakpc;
+EXTERN	long	nbreak;
 EXTERN	Case*	cases;
 EXTERN	Node	constnode;
 EXTERN	Node	fconstnode;
@@ -141,7 +143,6 @@ EXTERN	Prog*	firstp;
 EXTERN	Prog*	lastp;
 EXTERN	long	maxargsafe;
 EXTERN	int	mnstring;
-EXTERN	int	retok;
 EXTERN	Node*	nodrat;
 EXTERN	Node*	nodret;
 EXTERN	Node*	nodsafe;

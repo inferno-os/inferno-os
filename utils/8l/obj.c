@@ -17,6 +17,7 @@ char	*thestring 	= "386";
  *	-H2 -T4128 -R4096		is plan9 format
  *	-H3 -Tx -Rx			is MS-DOS .COM
  *	-H4 -Tx -Rx			is fake MS-DOS .EXE
+ *	-H5 -T0x80100020 -R4096		is ELF
  */
 
 static int
@@ -94,8 +95,13 @@ main(int argc, char *argv[])
 		break;
 	case 'x':	/* produce export table */
 		doexp = 1;
-		if(argv[1] != nil && argv[1][0] != '-' && !isobjfile(argv[1]))
-			readundefs(ARGF(), SEXPORT);
+		if(argv[1] != nil && argv[1][0] != '-' && !isobjfile(argv[1])){
+			a = ARGF();
+			if(strcmp(a, "*") == 0)
+				allexport = 1;
+			else
+				readundefs(a, SEXPORT);
+		}
 		break;
 	case 'u':	/* produce dynamically loadable module */
 		dlm = 1;
@@ -172,6 +178,15 @@ main(int argc, char *argv[])
 		if(debug['v'])
 			Bprint(&bso, "HEADR = 0x%ld\n", HEADR);
 		break;
+	case 5:	/* elf executable */
+		HEADR = rnd(52L+3*32L, 16);
+		if(INITTEXT == -1)
+			INITTEXT = 0x80100020L;
+		if(INITDAT == -1)
+			INITDAT = 0;
+		if(INITRND == -1)
+			INITRND = 4096;
+		break;
 	}
 	if(INITDAT != 0 && INITRND != 0)
 		print("warning: -D0x%lux is ignored because of -R0x%lux\n",
@@ -185,7 +200,6 @@ main(int argc, char *argv[])
 			diag("phase error in optab: %d", i);
 			errorexit();
 		}
-	maxop = i;
 
 	for(i=0; i<Ymax; i++)
 		ycover[i*Ymax + i] = 1;

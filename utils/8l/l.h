@@ -9,6 +9,7 @@
 #define	P		((Prog*)0)
 #define	S		((Sym*)0)
 #define	TNAME		(curtext?curtext->from.sym->name:noname)
+
 #define	cput(c)\
 	{ *cbp++ = c;\
 	if(--cbc <= 0)\
@@ -246,7 +247,6 @@ EXTERN	uchar	and[30];
 EXTERN	char	reg[D_NONE];
 EXTERN	Prog*	lastp;
 EXTERN	long	lcsize;
-EXTERN	int	maxop;
 EXTERN	int	nerrors;
 EXTERN	long	nhunk;
 EXTERN	long	nsymbol;
@@ -266,7 +266,7 @@ EXTERN	int	dtype;
 EXTERN	Adr*	reloca;
 EXTERN	int	doexp, dlm;
 EXTERN	int	imports, nimports;
-EXTERN	int	exports, nexports;
+EXTERN	int	exports, nexports, allexport;
 EXTERN	char*	EXPTAB;
 EXTERN	Prog	undefp;
 
@@ -332,12 +332,11 @@ void	readundefs(char*, int);
 int	relinv(int);
 long	reuse(Prog*, Sym*);
 long	rnd(long, long);
-void	s8put(char*);
 void	span(void);
 void	undef(void);
 void	undefsym(Sym*);
 long	vaddr(Adr*);
-void	wputb(ushort);
+void	wput(ushort);
 void	xdefine(char*, int, long);
 void	xfol(Prog*);
 int	zaddr(uchar*, Adr*, Sym*[]);

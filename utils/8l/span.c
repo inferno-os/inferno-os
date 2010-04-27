@@ -1133,7 +1133,7 @@ bad:
 		}
 		return;
 	}
-	diag("doasm: notfound t2=%lux from=%lux to=%lux %P", t[2], p->from.type, p->to.type, p);
+	diag("doasm: notfound t2=%ux from=%ux to=%ux %P", t[2], p->from.type, p->to.type, p);
 	return;
 
 mfound:
@@ -1366,7 +1366,7 @@ asmdyn()
 			t++;
 		}
 		else if(c == 1){
-			wputb(ra);
+			wput(ra);
 			t += 2;
 		}
 		else{
