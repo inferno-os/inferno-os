@@ -25,7 +25,6 @@ OFILES=\
 	8obj.$O\
 	kobj.$O\
 	qobj.$O\
-	tobj.$O\
 	vobj.$O\
 	obj.$O\
 	map.$O\
