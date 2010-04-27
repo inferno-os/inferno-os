@@ -7,6 +7,8 @@ OFILES=\
 	enam.$O\
 	list.$O\
 	peep.$O\
+	pgen.$O\
+	pswt.$O\
 	reg.$O\
 	sgen.$O\
 	swt.$O\
@@ -30,3 +32,9 @@ $ROOT/$OBJDIR/lib/libcc.a:
 	cd ../cc
 	mk $MKFLAGS install
 	mk $MKFLAGS clean
+
+%.$O: ../cc/%.c
+	$CC $CFLAGS -I. ../cc/$stem.c
+
+#enam.c:	v.out.h
+#	rc mkenam

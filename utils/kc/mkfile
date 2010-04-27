@@ -4,6 +4,8 @@ TARG=kc
 
 OFILES=\
 	peep.$O\
+	pgen.$O\
+	pswt.$O\
 	reg.$O\
 	cgen.$O\
 	enam.$O\
@@ -30,3 +32,9 @@ $ROOT/$OBJDIR/lib/libcc.a:
 	cd ../cc
 	mk $MKFLAGS install
 	mk $MKFLAGS clean
+
+%.$O: ../cc/%.c
+	$CC $CFLAGS -I. ../cc/$stem.c
+
+#enam.c:	k.out.h
+#	rc mkenam
