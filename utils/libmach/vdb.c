@@ -5,11 +5,12 @@
  * Mips-specific debugger interface
  */
 
-extern	char	*mipsexcep(Map*, Rgetter);
-extern	int	mipsfoll(Map*, ulong, Rgetter, ulong*);
-extern	int	mipsinst(Map*, ulong, char, char*, int);
-extern	int	mipsdas(Map*, ulong, char*, int);
-extern	int	mipsinstlen(Map*, ulong);
+static	char	*mipsexcep(Map*, Rgetter);
+static	int	mipsfoll(Map*, uvlong, Rgetter, uvlong*);
+static	int	mipsinst(Map*, uvlong, char, char*, int);
+static	int	mipsdas(Map*, uvlong, char*, int);
+static	int	mipsinstlen(Map*, uvlong);
+
 /*
  *	Debugger interface
  */
@@ -33,6 +34,73 @@ Machdata mipsmach =
 	mipsinstlen,		/* instruction size */
 };
 
+Machdata mipsmachle =
+{
+	{0, 0, 0, 0xD},		/* break point */
+	4,			/* break point size */
+
+	leswab,			/* short to local byte order */
+	leswal,			/* long to local byte order */
+	leswav,			/* vlong to local byte order */
+	risctrace,		/* C traceback */
+	riscframe,		/* Frame finder */
+	mipsexcep,		/* print exception */
+	0,			/* breakpoint fixup */
+	leieeesftos,		/* single precision float printer */
+	leieeedftos,		/* double precisioin float printer */
+	mipsfoll,		/* following addresses */
+	mipsinst,		/* print instruction */
+	mipsdas,		/* dissembler */
+	mipsinstlen,		/* instruction size */
+};
+
+/*
+ *	mips r4k little-endian
+ */
+Machdata mipsmach2le =
+{
+	{0, 0, 0, 0xD},		/* break point */
+	4,			/* break point size */
+
+	leswab,			/* short to local byte order */
+	leswal,			/* long to local byte order */
+	leswav,			/* vlong to local byte order */
+	risctrace,		/* C traceback */
+	riscframe,		/* Frame finder */
+	mipsexcep,		/* print exception */
+	0,			/* breakpoint fixup */
+	leieeesftos,		/* single precision float printer */
+	leieeedftos,		/* double precisioin float printer */
+	mipsfoll,		/* following addresses */
+	mipsinst,		/* print instruction */
+	mipsdas,		/* dissembler */
+	mipsinstlen,		/* instruction size */
+};
+
+/*
+ *	mips r4k big-endian
+ */
+Machdata mipsmach2be =
+{
+	{0, 0, 0, 0xD},		/* break point */
+	4,			/* break point size */
+
+	beswab,			/* short to local byte order */
+	beswal,			/* long to local byte order */
+	beswav,			/* vlong to local byte order */
+	risctrace,		/* C traceback */
+	riscframe,		/* Frame finder */
+	mipsexcep,		/* print exception */
+	0,			/* breakpoint fixup */
+	beieeesftos,		/* single precision float printer */
+	beieeedftos,		/* double precisioin float printer */
+	mipsfoll,		/* following addresses */
+	mipsinst,		/* print instruction */
+	mipsdas,		/* dissembler */
+	mipsinstlen,		/* instruction size */
+};
+
+
 static char *excname[] =
 {
 	"external interrupt",
@@ -55,7 +123,7 @@ static char *excname[] =
 	"floating point exception"		/* FPEXC */
 };
 
-char*
+static char*
 mipsexcep(Map *map, Rgetter rget)
 {
 	int e;
@@ -74,7 +142,7 @@ mipsexcep(Map *map, Rgetter rget)
 static	char FRAMENAME[] = ".frame";
 
 typedef struct {
-	ulong addr;
+	uvlong addr;
 	uchar op;			/* bits 31-26 */
 	uchar rs;			/* bits 25-21 */
 	uchar rt;			/* bits 20-16 */
@@ -95,14 +163,15 @@ typedef struct {
 static Map *mymap;
 
 static int
-decode(ulong pc, Instr *i)
+decode(uvlong pc, Instr *i)
 {
-	long w;
+	ulong w;
 
 	if (get4(mymap, pc, &w) < 0) {
 		werrstr("can't read instruction: %r");
 		return -1;
 	}
+
 	i->addr = pc;
 	i->size = 1;
 	i->op = (w >> 26) & 0x3F;
@@ -121,7 +190,7 @@ decode(ulong pc, Instr *i)
 }
 
 static int
-mkinstr(ulong pc, Instr *i)
+mkinstr(uvlong pc, Instr *i)
 {
 	Instr x;
 
@@ -172,6 +241,8 @@ mkinstr(ulong pc, Instr *i)
 	}
 	return 1;
 }
+
+#pragma	varargck	argpos	bprint		2
 
 static void
 bprint(Instr *i, char *fmt, ...)
@@ -942,7 +1013,7 @@ cop1(Instr *i)
 }
 
 static int
-printins(Map *map, ulong pc, char *buf, int n)
+printins(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr i;
 	Opcode *o;
@@ -995,11 +1066,11 @@ printins(Map *map, ulong pc, char *buf, int n)
 	return i.size*4;
 }
 
-extern	int	_mipscoinst(Map *, ulong, char*, int);
+extern	int	_mipscoinst(Map *, uvlong, char*, int);
 
 	/* modifier 'I' toggles the default disassembler type */
-int
-mipsinst(Map *map, ulong pc, char modifier, char *buf, int n)
+static int
+mipsinst(Map *map, uvlong pc, char modifier, char *buf, int n)
 {
 	if ((asstype == AMIPSCO && modifier == 'i')
 		|| (asstype == AMIPS && modifier == 'I'))
@@ -1008,8 +1079,8 @@ mipsinst(Map *map, ulong pc, char modifier, char *buf, int n)
 		return printins(map, pc, buf, n);
 }
 
-int
-mipsdas(Map *map, ulong pc, char *buf, int n)
+static int
+mipsdas(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr i;
 
@@ -1028,8 +1099,8 @@ mipsdas(Map *map, ulong pc, char *buf, int n)
 	return i.size*4;
 }
 
-int
-mipsinstlen(Map *map, ulong pc)
+static int
+mipsinstlen(Map *map, uvlong pc)
 {
 	Instr i;
 
@@ -1039,8 +1110,8 @@ mipsinstlen(Map *map, ulong pc)
 	return i.size*4;
 }
 
-int
-mipsfoll(Map *map, ulong pc, Rgetter rget, ulong *foll)
+static int
+mipsfoll(Map *map, uvlong pc, Rgetter rget, uvlong *foll)
 {
 	ulong w, l;
 	char buf[8];

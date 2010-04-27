@@ -11,7 +11,6 @@ struct	Exec
 	long	pcsz;		/* size of pc/line number table */
 };
 
-
 #define HDR_MAGIC	0x00008000		/* header expansion */
 
 #define	_MAGIC(f, b)	((f)|((((4*(b))+0)*(b))+7))
@@ -30,16 +29,18 @@ struct	Exec
 #define	P_MAGIC		_MAGIC(0, 24)		/* mips 3000 LE */
 #define	U_MAGIC		_MAGIC(0, 25)		/* sparc64 */
 #define	S_MAGIC		_MAGIC(HDR_MAGIC, 26)	/* amd64 */
+#define	T_MAGIC		_MAGIC(HDR_MAGIC, 27)	/* powerpc64 */
 
 #define	MIN_MAGIC	8
-#define	MAX_MAGIC	26			/* <= 90 */
+#define	MAX_MAGIC	27			/* <= 90 */
 
-#define	DYN_MAGIC	0x80000000	/* or'd in for dynamically loaded modules */
+#define	DYN_MAGIC	0x80000000		/* dlm */
 
 typedef	struct	Sym	Sym;
 struct	Sym
 {
-	long	value;
+	vlong	value;
+	uint	sig;
 	char	type;
 	char	*name;
 };

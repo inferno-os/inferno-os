@@ -347,6 +347,10 @@ init1(Sym *s, Type *t, long o, int exflag)
 			return Z;
 
 		if(a->op == OCONST) {
+			if(vconst(a) && t->etype == TIND && a->type && a->type->etype != TIND){
+				diag(a, "initialize pointer to an integer: %s", s->name);
+				return Z;
+			}
 			if(!sametype(a->type, t)) {
 				/* hoop jumping to save malloc */
 				if(nodcast == Z)
@@ -537,6 +541,7 @@ suallign(Type *t)
 				l->offset = o;
 			} else {
 				if(l->width <= 0)
+				if(l->down != T)
 					if(l->sym)
 						diag(Z, "incomplete structure element: %s",
 							l->sym->name);
@@ -864,7 +869,7 @@ fnproto1(Node *n)
 		dodecl(NODECL, CXXX, n->type, n->left);
 		t = typ(TXXX, T);
 		if(lastdcl != T)
-			*t = *paramconv(lastdcl, 1);
+			*t = *paramconv(lastdcl, 1, 0);
 		return t;
 
 	case ONAME:
@@ -970,6 +975,12 @@ rsametype(Type *t1, Type *t2, int n, int f)
 				snap(t1);
 			if(t2->link == T)
 				snap(t2);
+			if(t1 != t2 && t1->link == T && t2->link == T){
+				/* structs with missing or different tag names aren't considered equal */
+				if(t1->tag == nil || t2->tag == nil ||
+				   strcmp(t1->tag->name, t2->tag->name) != 0)
+					return 0;
+			}
 			t1 = t1->link;
 			t2 = t2->link;
 			for(;;) {
@@ -990,7 +1001,6 @@ rsametype(Type *t1, Type *t2, int n, int f)
 				return 1;
 		}
 	}
-	return 0;
 }
 
 typedef struct Typetab Typetab;
@@ -1166,13 +1176,13 @@ dcllabel(Sym *s, int f)
 }
 
 Type*
-paramconv(Type *t, int f)
+paramconv(Type *t, int f, int defining)
 {
 
 	switch(t->etype) {
 	case TUNION:
 	case TSTRUCT:
-		if(t->width <= 0)
+		if(t->width <= 0 && defining)
 			diag(Z, "incomplete structure: %s", t->tag->name);
 		break;
 
@@ -1266,7 +1276,7 @@ pdecl(int c, Type *t, Sym *s)
 		diag(Z, "not a parameter: %s", s->name);
 		return;
 	}
-	t = paramconv(t, c==CPARAM);
+	t = paramconv(t, c==CPARAM, 1);
 	if(c == CXXX)
 		c = CPARAM;
 	if(c != CPARAM) {

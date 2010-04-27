@@ -121,7 +121,7 @@ struct	Type
 	long	width;
 	long	offset;
 	long	lineno;
-	char	shift;
+	schar	shift;
 	char	nbits;
 	char	etype;
 	char	garb;
@@ -317,6 +317,7 @@ enum
 	TSTRUCT,
 	TUNION,
 	TENUM,
+	TDOT,
 	NTYPE,
 
 	TAUTO	= NTYPE,
@@ -329,7 +330,6 @@ enum
 	TVOLATILE,
 	TUNSIGNED,
 	TSIGNED,
-	TDOT,
 	TFILE,
 	TOLD,
 	NALLTYPES,
@@ -430,6 +430,7 @@ EXTERN	Type*	firstargtype;
 EXTERN	Decl*	firstdcl;
 EXTERN	int	fperror;
 EXTERN	Sym*	hash[NHASH];
+EXTERN	int	hasdoubled;
 EXTERN	char*	hunk;
 EXTERN	char*	include[20];
 EXTERN	Io*	iofree;
@@ -473,6 +474,9 @@ EXTERN	int	nterm;
 EXTERN	int	packflg;
 EXTERN	int	fproundflg;
 EXTERN	int	profileflg;
+EXTERN	int	ncontin;
+EXTERN	int	canreach;
+EXTERN	int	warnreach;
 EXTERN	Bits	zbits;
 
 extern	char	*onames[], *tnames[], *gnames[];
@@ -500,6 +504,9 @@ extern	char	typechlv[];
 extern	char	typechlvp[];
 extern	char	typechlp[];
 extern	char	typechlpfd[];
+
+EXTERN	char*	typeword;
+EXTERN	char*	typecmplx;
 
 extern	ulong	thash1;
 extern	ulong	thash2;
@@ -596,7 +603,7 @@ void	edecl(int, Type*, Sym*);
 Type*	fnproto(Node*);
 Type*	fnproto1(Node*);
 void	markdcl(void);
-Type*	paramconv(Type*, int);
+Type*	paramconv(Type*, int, int);
 void	pdecl(int, Type*, Sym*);
 Decl*	push(void);
 Decl*	push1(Sym*);

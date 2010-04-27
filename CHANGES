@@ -1,3 +1,6 @@
+20100426
+	updated libmach
+	updated compiler suites (continuing)
 20100425
 	appl/wm/wm.b shorten processing of wmctl close if client hadn't started
 20100406

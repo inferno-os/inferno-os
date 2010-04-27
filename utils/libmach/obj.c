@@ -4,7 +4,7 @@
  */
 #include <lib9.h>
 #include <bio.h>
-#include "ar.h"
+#include <ar.h>
 #include "mach.h"
 #include "obj.h"
 
@@ -22,23 +22,21 @@ enum
 int	_is2(char*),		/* in [$OS].c */
 	_is5(char*),
 	_is6(char*),
+	_is7(char*),
 	_is8(char*),
 	_is9(char*),
 	_isk(char*),
 	_isq(char*),
-	_ist(char*),
 	_isv(char*),
-	_isx(char*),
 	_read2(Biobuf*, Prog*),
 	_read5(Biobuf*, Prog*),
 	_read6(Biobuf*, Prog*),
+	_read7(Biobuf*, Prog*),
 	_read8(Biobuf*, Prog*),
 	_read9(Biobuf*, Prog*),
 	_readk(Biobuf*, Prog*),
 	_readq(Biobuf*, Prog*),
-	_readt(Biobuf*, Prog*),
-	_readv(Biobuf*, Prog*),
-	_readx(Biobuf*, Prog*);
+	_readv(Biobuf*, Prog*);
 
 typedef struct Obj	Obj;
 typedef struct Symtab	Symtab;
@@ -52,18 +50,15 @@ struct	Obj		/* functions to handle each intermediate (.$O) file */
 
 static Obj	obj[] =
 {			/* functions to identify and parse each type of obj */
-	/*[Obj68020]*/	"68020 .2",	_is2, _read2,
-	/*[ObjSparc]*/	"sparc .k",	_isk, _readk,
-	/*[ObjMips]*/	"mips .v",	_isv, _readv,
-	/*[Obj386]*/	"386 .8",	_is8, _read8,
-	/*[Obj960]*/	"960 .6",	0, 0, 
-	/*[Obj3210]*/	"3210 .x",	0, 0,
-	/*[ObjMips2]*/	"mips2 .4",	0, 0,
-	/*[Obj29000]*/	"29000 .9",	0, 0,
-	/*[ObjArm]*/	"arm .5",	_is5, _read5,
-	/*[ObjPower]*/	"power .q",	_isq, _readq,
-	/*[ObjMips2le]*/	"mips2 .0",	0, 0,
-	/*[Maxobjtype]*/	0, 0
+	[Obj68020]	"68020 .2",	_is2, _read2,
+	[ObjAmd64]	"amd64 .6",	_is6, _read6,
+	[ObjArm]	"arm .5",	_is5, _read5,
+	[Obj386]	"386 .8",	_is8, _read8,
+	[ObjSparc]	"sparc .k",	_isk, _readk,
+	[ObjPower]	"power .q",	_isq, _readq,
+	[ObjMips]	"mips .v",	_isv, _readv,
+	[ObjPower64]	"power64 .9",	_is9, _read9,
+	[Maxobjtype]	0, 0
 };
 
 struct	Symtab
@@ -77,7 +72,7 @@ static	Sym	*names[NNAMES];	/* working set of active names */
 
 static	int	processprog(Prog*,int);	/* decode each symbol reference */
 static	void	objreset(void);
-static	void	objlookup(int, char *, int );
+static	void	objlookup(int, char *, int, uint);
 static	void 	objupdate(int, int);
 
 int
@@ -130,14 +125,14 @@ readobj(Biobuf *bp, int objtype)
 }
 
 int
-readar(Biobuf *bp, int objtype, int end, int doautos)
+readar(Biobuf *bp, int objtype, vlong end, int doautos)
 {
 	Prog p;
 
 	if (objtype < 0 || objtype >= Maxobjtype || obj[objtype].is == 0)
 		return 1;
 	objreset();
-	while ((*obj[objtype].read)(bp, &p) && BOFFSET(bp) < end)
+	while ((*obj[objtype].read)(bp, &p) && Boffset(bp) < end)
 		if (!processprog(&p, doautos))
 			return 0;
 	return 1;
@@ -159,7 +154,7 @@ processprog(Prog *p, int doautos)
 		if (!doautos)
 		if(p->type != 'U' && p->type != 'b')
 			break;
-		objlookup(p->sym, p->id, p->type);
+		objlookup(p->sym, p->id, p->type, p->sig);
 		break;
 	case aText:
 		objupdate(p->sym, 'T');
@@ -178,7 +173,7 @@ processprog(Prog *p, int doautos)
  * make a new entry if it is not already there.
  */
 static void
-objlookup(int id, char *name, int type)
+objlookup(int id, char *name, int type, uint sig)
 {
 	long h;
 	char *cp;
@@ -188,6 +183,7 @@ objlookup(int id, char *name, int type)
 	s = names[id];
 	if(s && strcmp(s->name, name) == 0) {
 		s->type = type;
+		s->sig = sig;
 		return;
 	}
 
@@ -232,6 +228,7 @@ objlookup(int id, char *name, int type)
 	sp = malloc(sizeof(Symtab));
 	sp->s.name = name;
 	sp->s.type = type;
+	sp->s.sig = sig;
 	sp->s.value = islocal(type) ? MAXOFF : 0;
 	names[id] = &sp->s;
 	sp->next = hash[h];
@@ -256,7 +253,7 @@ objtraverse(void (*fn)(Sym*, void*), void *pointer)
  * update the offset information for a 'a' or 'p' symbol in an intermediate file
  */
 void
-_offset(int id, long off)
+_offset(int id, vlong off)
 {
 	Sym *s;
 
@@ -302,7 +299,7 @@ nextar(Biobuf *bp, int offset, char *buf)
 	for(i=0; i<sizeof(a.name) && i<SARNAME && a.name[i] != ' '; i++)
 		buf[i] = a.name[i];
 	buf[i] = 0;
-	arsize = atol(a.size);
+	arsize = strtol(a.size, 0, 0);
 	if (arsize&1)
 		arsize++;
 	return arsize + SAR_HDR;

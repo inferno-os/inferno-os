@@ -33,12 +33,10 @@ struct mipsexec
 	long	data_start;	/* base of data used for this file	*/
 	long	bss_start;	/* base of bss used for this file	*/
 	long	gprmask;	/* general purpose register mask	*/
-union{
-	long	mcprmask[4];	/* co-processor register masks		*/
-	long	mpcsize;
-} u0;
+	long	cprmask[4];	/* co-processor register masks		*/
 	long	gp_value;	/* the gp value used for this object    */
 };
+#define	pcsize	cprmask[0]
 
 struct mips4kexec
 {
@@ -134,39 +132,5 @@ struct i386exec
 	struct coffsect idatas;
 	struct coffsect ibsss;
 	struct coffsect icomments;
-};
-
-struct i960exec
-{
-	struct	i960coff{
-		ulong	i6sectmagic;
-		ulong	i6time;
-		ulong	i6syms;
-		ulong	i6nsyms;
-		ulong	i6opthdrflags;
-	}i6coff;
-	struct	i960hdr{
-		ulong	i6magic;
-		ulong	i6textsize;
-		ulong	i6datasize;
-		ulong	i6bsssize;
-		ulong	i6entry;
-		ulong	i6textstart;
-		ulong	i6datastart;
-		ulong	i6tagentries;
-	}i6hdr;
-	struct i960sect{
-		char	name[8];
-		ulong	phys;
-		ulong	virt;
-		ulong	size;
-		ulong	fptr;
-		ulong	fptrreloc;
-		ulong	fptrlineno;
-		ulong	nrelocnlineno;
-		ulong	flags;
-		ulong	align;
-	}i6texts;
-	struct i960sect i6datas;
 };
 

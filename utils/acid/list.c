@@ -194,7 +194,7 @@ static List*
 listlocals(Map *map, Symbol *fn, ulong fp)
 {
 	int i;
-	long val;
+	uvlong val;
 	Symbol s;
 	List **tail, *l2;
 
@@ -208,7 +208,7 @@ listlocals(Map *map, Symbol *fn, ulong fp)
 		if(s.name[0] == '.')
 			continue;
 
-		if(get4(map, fp-s.value, &val) > 0) {
+		if(geta(map, fp-s.value, &val) > 0) {
 			*tail = listvar(s.name, val);
 			tail = &(*tail)->next;
 		}
@@ -221,7 +221,7 @@ listparams(Map *map, Symbol *fn, ulong fp)
 {
 	int i;
 	Symbol s;
-	long v;
+	uvlong v;
 	List **tail, *l2;
 
 	l2 = 0;
@@ -232,7 +232,7 @@ listparams(Map *map, Symbol *fn, ulong fp)
 		if (s.class != CPARAM)
 			continue;
 
-		if(get4(map, fp+s.value, &v) > 0) {
+		if(geta(map, fp+s.value, &v) > 0) {
 			*tail = listvar(s.name, v);
 			tail = &(*tail)->next;
 		}
@@ -241,7 +241,7 @@ listparams(Map *map, Symbol *fn, ulong fp)
 }
 
 void
-trlist(Map *map, ulong pc, ulong sp, Symbol *sym)
+trlist(Map *map, uvlong pc, uvlong sp, Symbol *sym)
 {
 	List *q, *l;
 

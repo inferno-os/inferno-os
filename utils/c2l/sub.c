@@ -263,10 +263,12 @@ simplet(long b)
 int
 stcompat(Node *n, Type *t1, Type *t2, long ttab[])
 {
+	USED(n); USED(t1); USED(t2); USED(ttab[0]);
+	return 0;
+#ifdef WHATEVA
 	int i;
 	ulong b;
 
-	return 0;
 	i = 0;
 	if(t2 != T)
 		i = t2->etype;
@@ -286,6 +288,7 @@ stcompat(Node *n, Type *t1, Type *t2, long ttab[])
 		return 0;
 	}
 	return 1;
+#endif
 }
 
 int

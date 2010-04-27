@@ -342,7 +342,7 @@ follow(Node *r, Node *args)
 {
 	int n, i;
 	Node res;
-	ulong f[10];
+	uvlong f[10];
 	List **tail, *l;
 
 	if(args == 0)
@@ -369,7 +369,7 @@ funcbound(Node *r, Node *args)
 {
 	int n;
 	Node res;
-	ulong bounds[2];
+	uvlong bounds[2];
 	List *l;
 
 	if(args == 0)

@@ -54,7 +54,7 @@ waitfor(int pid)
 		}
 		free(w);
 	}
-	return nil;
+	/* not reached */
 }
 
 char *
@@ -78,7 +78,7 @@ runcmd(char *cmd)
 	default:
 		return waitfor(pid);
 	}
-	return 0;
+	/* not reached */
 }
 
 void

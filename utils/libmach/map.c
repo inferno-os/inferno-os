@@ -25,7 +25,7 @@ newmap(Map *map, int n)
 }
 
 int
-setmap(Map *map, int fd, ulong b, ulong e, ulong f, char *name)
+setmap(Map *map, int fd, uvlong b, uvlong e, vlong f, char *name)
 {
 	int i;
 
@@ -45,7 +45,7 @@ setmap(Map *map, int fd, ulong b, ulong e, ulong f, char *name)
 	return 1;
 }
 
-static ulong
+static uvlong
 stacktop(int pid)
 {
 	char buf[64];
@@ -53,7 +53,7 @@ stacktop(int pid)
 	int n;
 	char *cp;
 
-	sprint(buf, "/proc/%d/segment", pid);
+	snprint(buf, sizeof(buf), "/proc/%d/segment", pid);
 	fd = open(buf, 0);
 	if (fd < 0)
 		return 0;
@@ -73,7 +73,7 @@ stacktop(int pid)
 		cp++;
 	if (!*cp)
 		return 0;
-	return strtoul(cp, 0, 16);
+	return strtoull(cp, 0, 16);
 }
 
 Map*
@@ -82,7 +82,7 @@ attachproc(int pid, int kflag, int corefd, Fhdr *fp)
 	char buf[64], *regs;
 	int fd;
 	Map *map;
-	ulong n;
+	uvlong n;
 	int mode;
 
 	map = newmap(0, 4);
@@ -115,13 +115,13 @@ attachproc(int pid, int kflag, int corefd, Fhdr *fp)
 		setmap(map, fd, mach->regsize, mach->regsize+mach->fpregsize, 0, "fpregs");
 	}
 	setmap(map, corefd, fp->txtaddr, fp->txtaddr+fp->txtsz, fp->txtaddr, "text");
-	if(kflag || (ulong) fp->dataddr >= 0x7fffffff) {
-		setmap(map, corefd, fp->dataddr, 0xffffffff, fp->dataddr, "data");
+	if(kflag || fp->dataddr >= mach->utop) {
+		setmap(map, corefd, fp->dataddr, ~0, fp->dataddr, "data");
 		return map;
 	}
 	n = stacktop(pid);
 	if (n == 0) {
-		setmap(map, corefd, fp->dataddr, 0x7fffffff, fp->dataddr, "data");
+		setmap(map, corefd, fp->dataddr, mach->utop, fp->dataddr, "data");
 		return map;
 	}
 	setmap(map, corefd, fp->dataddr, n, fp->dataddr, "data");
@@ -149,6 +149,28 @@ unusemap(Map *map, int i)
 }
 
 Map*
+loadmap(Map *map, int fd, Fhdr *fp)
+{
+	map = newmap(map, 2);
+	if (map == 0)
+		return 0;
+
+	map->seg[0].b = fp->txtaddr;
+	map->seg[0].e = fp->txtaddr+fp->txtsz;
+	map->seg[0].f = fp->txtoff;
+	map->seg[0].fd = fd;
+	map->seg[0].inuse = 1;
+	map->seg[0].name = "text";
+	map->seg[1].b = fp->dataddr;
+	map->seg[1].e = fp->dataddr+fp->datsz;
+	map->seg[1].f = fp->datoff;
+	map->seg[1].fd = fd;
+	map->seg[1].inuse = 1;
+	map->seg[1].name = "data";
+	return map;
+}
+
+Map*
 attachremt(int fd, Fhdr *f)
 {
 	Map *m;
@@ -169,28 +191,6 @@ attachremt(int fd, Fhdr *f)
 	setmap(m, fd, 0x0, mach->regsize, 0, "kreg");
 
 	return m;
-}
-
-Map*
-loadmap(Map *map, int fd, Fhdr *fp)
-{
-	map = newmap(map, 2);
-	if (map == 0)
-		return 0;
-
-	map->seg[0].b = fp->txtaddr;
-	map->seg[0].e = fp->txtaddr+fp->txtsz;
-	map->seg[0].f = fp->txtoff;
-	map->seg[0].fd = fd;
-	map->seg[0].inuse = 1;
-	map->seg[0].name = "text";
-	map->seg[1].b = fp->dataddr;
-	map->seg[1].e = fp->dataddr+fp->datsz;
-	map->seg[1].f = fp->datoff;
-	map->seg[1].fd = fd;
-	map->seg[1].inuse = 1;
-	map->seg[1].name = "data";
-	return map;
 }
 
 void

@@ -153,7 +153,7 @@ oframe(Node *n, Node *res)
 {
 	char *p;
 	Node *lp;
-	long ival;
+	uvlong ival;
 	Frtype *f;
 
 	p = n->sym->name;

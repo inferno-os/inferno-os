@@ -4,16 +4,19 @@
 void
 span(void)
 {
-	Prog *p;
+	Prog *p, *q;
 	Sym *setext;
 	Optab *o;
-	int m;
-	long c;
+	int m, bflag;
+	long c, otxt;
 
 	if(debug['v'])
 		Bprint(&bso, "%5.2f span\n", cputime());
 	Bflush(&bso);
+
+	bflag = 0;
 	c = INITTEXT;
+	otxt = c;
 	for(p = firstp; p != P; p = p->link) {
 		p->pc = c;
 		o = oplook(p);
@@ -33,6 +36,10 @@ span(void)
 				}
 				if(p->from.sym != S)
 					p->from.sym->value = c;
+				/* need passes to resolve branches? */
+				if(c-otxt >= (1L<<15))
+					bflag = c;
+				otxt = c;
 				continue;
 			}
 			if(p->as != ANOP)
@@ -41,7 +48,60 @@ span(void)
 		}
 		c += m;
 	}
-	c = rnd(c, 4);
+
+	/*
+	 * if any procedure is large enough to
+	 * generate a large SBRA branch, then
+	 * generate extra passes putting branches
+	 * around jmps to fix. this is rare.
+	 */
+	while(bflag) {
+		if(debug['v'])
+			Bprint(&bso, "%5.2f span1\n", cputime());
+		bflag = 0;
+		c = INITTEXT;
+		for(p = firstp; p != P; p = p->link) {
+			p->pc = c;
+			o = oplook(p);
+			if((o->type == 16 || o->type == 17) && p->cond) {
+				otxt = p->cond->pc - c;
+				if(otxt < -(1L<<16)+10 || otxt >= (1L<<15)-10) {
+					q = prg();
+					q->link = p->link;
+					p->link = q;
+					q->as = ABR;
+					q->to.type = D_BRANCH;
+					q->cond = p->cond;
+					p->cond = q;
+					q = prg();
+					q->link = p->link;
+					p->link = q;
+					q->as = ABR;
+					q->to.type = D_BRANCH;
+					q->cond = q->link->link;
+					addnop(p->link);
+					addnop(p);
+					bflag = 1;
+				}
+			}
+			m = o->size;
+			if(m == 0) {
+				if(p->as == ATEXT) {
+					curtext = p;
+					autosize = p->to.offset + 4;
+					if(p->from.sym != S)
+						p->from.sym->value = c;
+					continue;
+				}
+				if(p->as != ANOP)
+					diag("zero-width instruction\n%P", p);
+				continue;
+			}
+			c += m;
+		}
+	}
+
+	c = rnd(c, 8);
 
 	setext = lookup("etext", 0);
 	if(setext != S) {
@@ -224,8 +284,9 @@ aclass(Adr *a)
 			instoffset = s->value + a->offset + INITDAT;
 			if(dlm)
 				return C_LCON;
-/* not sure why this barfs */
-return C_LCON;
+			/* not sure why this barfs */
+			return C_LCON;
+		/*
 			if(instoffset == 0)
 				return C_ZCON;
 			if(instoffset >= -0x8000 && instoffset <= 0xffff)
@@ -233,6 +294,7 @@ return C_LCON;
 			if((instoffset & 0xffff) == 0)
 				return C_UCON;
 			return C_LCON;
+		*/
 
 		case D_AUTO:
 			instoffset = autosize + a->offset;
@@ -437,6 +499,8 @@ buildop(void)
 		case AECOWX:	/* indexed store: op s,(b+a); op s,(b) */
 			oprange[ASTWCCC] = oprange[r];
 			break;
+		case AFMOVPIW:	/* indexed floating store */
+			break;
 		case AREM:	/* macro */
 			oprange[AREMCC] = oprange[r];
 			oprange[AREMV] = oprange[r];
@@ -564,11 +628,6 @@ buildop(void)
 			oprange[ANMACLHWV] = oprange[r];
 			oprange[ANMACLHWVCC] = oprange[r];
 			break;
-/* floating point move *//*
-			oprange[AFMR] = oprange[r];
-			oprange[AFMRCC] = oprange[r];
-*/
-/**/
 		case AMOVBZ:	/* lbz, stz, rlwm(r/r), lhz, lha, stz, and x variants */
 			oprange[AMOVH] = oprange[r];
 			oprange[AMOVHZ] = oprange[r];
@@ -647,6 +706,25 @@ buildop(void)
 			oprange[AFCTIWCC] = oprange[r];
 			oprange[AFCTIWZ] = oprange[r];
 			oprange[AFCTIWZCC] = oprange[r];
+			oprange[AFRES] = oprange[r];
+			oprange[AFRESCC] = oprange[r];
+			oprange[AFRSQRTE] = oprange[r];
+			oprange[AFRSQRTECC] = oprange[r];
+			oprange[AFSQRT] = oprange[r];
+			oprange[AFSQRTCC] = oprange[r];
+			oprange[AFSQRTS] = oprange[r];
+			oprange[AFSQRTSCC] = oprange[r];
+			oprange[AFPRE] = oprange[r];
+			oprange[AFPRSQRTE] = oprange[r];
+			oprange[AFPABS] = oprange[r];
+			oprange[AFPNEG] = oprange[r];
+			oprange[AFPRSP] = oprange[r];
+			oprange[AFPNABS] = oprange[r];
+			oprange[AFSABS] = oprange[r];
+			oprange[AFSNEG] = oprange[r];
+			oprange[AFSNABS] = oprange[r];
+			oprange[AFPCTIW] = oprange[r];
+			oprange[AFPCTIWZ] = oprange[r];
 			break;
 		case AFADD:
 			oprange[AFADDS] = oprange[r];
@@ -660,6 +738,8 @@ buildop(void)
 			oprange[AFSUBS] = oprange[r];
 			oprange[AFSUBCC] = oprange[r];
 			oprange[AFSUBSCC] = oprange[r];
+			oprange[AFPADD] = oprange[r];
+			oprange[AFPSUB] = oprange[r];
 			break;
 		case AFMADD:
 			oprange[AFMADDCC] = oprange[r];
@@ -677,11 +757,42 @@ buildop(void)
 			oprange[AFNMSUBCC] = oprange[r];
 			oprange[AFNMSUBS] = oprange[r];
 			oprange[AFNMSUBSCC] = oprange[r];
+			oprange[AFSEL] = oprange[r];
+			oprange[AFSELCC] = oprange[r];
+			oprange[AFPSEL] = oprange[r];
+			oprange[AFPMADD] = oprange[r];
+			oprange[AFXMADD] = oprange[r];
+			oprange[AFXCPMADD] = oprange[r];
+			oprange[AFXCSMADD] = oprange[r];
+			oprange[AFPNMADD] = oprange[r];
+			oprange[AFXNMADD] = oprange[r];
+			oprange[AFXCPNMADD] = oprange[r];
+			oprange[AFXCSNMADD] = oprange[r];
+			oprange[AFPMSUB] = oprange[r];
+			oprange[AFXMSUB] = oprange[r];
+			oprange[AFXCPMSUB] = oprange[r];
+			oprange[AFXCSMSUB] = oprange[r];
+			oprange[AFPNMSUB] = oprange[r];
+			oprange[AFXNMSUB] = oprange[r];
+			oprange[AFXCPNMSUB] = oprange[r];
+			oprange[AFXCSNMSUB] = oprange[r];
+			oprange[AFXCPNPMA] = oprange[r];
+			oprange[AFXCSNPMA] = oprange[r];
+			oprange[AFXCPNSMA] = oprange[r];
+			oprange[AFXCSNSMA] = oprange[r];
+			oprange[AFXCXNPMA] = oprange[r];
+			oprange[AFXCXNSMA] = oprange[r];
+			oprange[AFXCXMA] = oprange[r];
+			oprange[AFXCXNMS] = oprange[r];
 			break;
 		case AFMUL:
 			oprange[AFMULS] = oprange[r];
 			oprange[AFMULCC] = oprange[r];
 			oprange[AFMULSCC] = oprange[r];
+			oprange[AFPMUL] = oprange[r];
+			oprange[AFXMUL] = oprange[r];
+			oprange[AFXPMUL] = oprange[r];
+			oprange[AFXSMUL] = oprange[r];
 			break;
 		case AFCMPO:
 			oprange[AFCMPU] = oprange[r];
@@ -734,6 +845,12 @@ buildop(void)
 			oprange[AFMOVS] = oprange[r];
 			oprange[AFMOVSU] = oprange[r];
 			break;
+		case AFPMOVD:
+			oprange[AFSMOVD] = oprange[r];
+			oprange[AFXMOVD] = oprange[r];
+			oprange[AFSMOVP] = oprange[r];
+			oprange[AFPMOVS] = oprange[r];
+			break;
 		case AECIWX:
 			oprange[ALWAR] = oprange[r];
 			break;
@@ -743,6 +860,19 @@ buildop(void)
 			break;
 		case AMOVHBR:
 			oprange[AMOVWBR] = oprange[r];
+			break;
+		case AFMOVSS:	/* indexed floating loads and stores (fp2) */
+			oprange[AFMOVSSU] = oprange[r];
+			oprange[AFMOVSD] = oprange[r];
+			oprange[AFMOVSDU] = oprange[r];
+			oprange[AFMOVXS] = oprange[r];
+			oprange[AFMOVSXU] = oprange[r];
+			oprange[AFMOVXD] = oprange[r];
+			oprange[AFMOVXDU] = oprange[r];
+			oprange[AFMOVPS] = oprange[r];
+			oprange[AFMOVPSU] = oprange[r];
+			oprange[AFMOVPD] = oprange[r];
+			oprange[AFMOVPDU] = oprange[r];
 			break;
 		case AADD:
 		case AANDCC:	/* and. Rb,Rs,Ra; andi. $uimm,Rs,Ra; andis. $uimm,Rs,Ra */

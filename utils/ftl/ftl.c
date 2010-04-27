@@ -209,7 +209,7 @@ ftlread(void *buf, long n, ulong offset)
 			a += Bsize;
 		}
 		return a-(uchar*)buf;
-	return 0;		/* not reached */
+	/* not reached */
 }
 
 static long	 
@@ -256,7 +256,7 @@ ftlwrite(void *buf, long n, ulong offset)
 			a += Bsize;
 		}
 		return a-(uchar*)buf;
-	return 0;		/* not reached */
+	/* not reached */
 }
 
 static Ftl *

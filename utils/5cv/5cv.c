@@ -107,7 +107,7 @@ get_file(char *ifile)
 	h = crackhdr(Ifd, &Ihdr);
 	if (!h || Debug){
 		fprint(2, "Crackhdr: %d, type: %d, name: %s\n", h, Ihdr.type, Ihdr.name);
-		fprint(2, "txt %lux, ent %lux, txtsz %lux, dataddr %lux\n",
+		fprint(2, "txt %llux, ent %llux, txtsz %lux, dataddr %llux\n",
 			Ihdr.txtaddr, Ihdr.entry, Ihdr.txtsz, Ihdr.dataddr);
 	}
 	if (!h)

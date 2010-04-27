@@ -3,6 +3,7 @@
  */
 #include <lib9.h>
 #include <bio.h>
+#include <mach.h>
 #include "6c/6.out.h"
 #include "obj.h"
 
@@ -42,9 +43,12 @@ _read6(Biobuf *bp, Prog* p)
 		return 0;
 	as |= ((c & 0xff) << 8);
 	p->kind = aNone;
+	p->sig = 0;
 	if(as == ANAME || as == ASIGNAME){
-		if(as == ASIGNAME)
-			skip(bp, 4);	/* signature */
+		if(as == ASIGNAME){
+			Bread(bp, &p->sig, 4);
+			p->sig = leswal(p->sig);
+		}
 		p->kind = aName;
 		p->type = type2char(Bgetc(bp));		/* type */
 		p->sym = Bgetc(bp);			/* sym */

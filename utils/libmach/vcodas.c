@@ -5,7 +5,7 @@
 	/* mips native disassembler */
 
 typedef struct {
-	long addr;			/* pc of instr */
+	uvlong addr;			/* pc of instr */
 	uchar op;			/* bits 31-26 */
 	uchar rs;			/* bits 25-21 */
 	uchar rt;			/* bits 20-16 */
@@ -281,9 +281,9 @@ static char fsub[16] = {
 
 
 static int
-mkinstr(Instr *i, Map *map, ulong pc)
+mkinstr(Instr *i, Map *map, uvlong pc)
 {
-	long w;
+	ulong w;
 
 	if (get4(map, pc, &w) < 0) {
 		werrstr("can't read instruction: %r");
@@ -304,6 +304,8 @@ mkinstr(Instr *i, Map *map, ulong pc)
 	i->w0 = w;
 	return 1;
 }
+
+#pragma	varargck	argpos	bprint		2
 
 static void
 bprint(Instr *i, char *fmt, ...)
@@ -505,7 +507,7 @@ cop0(Instr *i)
 }
 
 int
-_mipscoinst(Map *map, ulong pc, char *buf, int n)
+_mipscoinst(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr i;
 	Opcode *o;

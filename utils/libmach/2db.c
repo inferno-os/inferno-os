@@ -1,6 +1,6 @@
 #include <lib9.h>
 #include <bio.h>
-#include "mach.h"
+#include <mach.h>
 
 /*
  * 68020-specific debugger interface
@@ -8,10 +8,10 @@
 
 static	char	*m68020excep(Map*, Rgetter);
 
-static	int	m68020foll(Map*, ulong, Rgetter, ulong*);
-static	int	m68020inst(Map*, ulong, char, char*, int);
-static	int	m68020das(Map*, ulong, char*, int);
-static	int	m68020instlen(Map*, ulong);
+static	int	m68020foll(Map*, uvlong, Rgetter, uvlong*);
+static	int	m68020inst(Map*, uvlong, char, char*, int);
+static	int	m68020das(Map*, uvlong, char*, int);
+static	int	m68020instlen(Map*, uvlong);
 
 Machdata m68020mach =
 {
@@ -99,9 +99,10 @@ m68020ufix(Map *map)
 {
 	struct ftype *ft;
 	int i, size, vec;
-	ulong efl[2], stktop;
+	ulong efl[2];
 	uchar *ef=(uchar*)efl;
-	long l;
+	ulong l;
+	uvlong stktop;
 	short fvo;
 
 		/* The kernel proc pointer on a 68020 is always
@@ -116,8 +117,8 @@ m68020ufix(Map *map)
 	if ((l&0xfc000000) == 0x04000000)	/* if NeXT */
 		size = 30*2;
 	else
-		size = 46*2;		/* 68020 */
-	USED(size);	/* kept because it might be re-used later */
+		size = 46*2;			/* 68020 */
+	USED(size);
 
 	stktop = mach->kbase+mach->pgsize;
 	for(i=3; i<100; i++){
@@ -150,7 +151,7 @@ m68020ufix(Map *map)
 static char *
 m68020excep(Map *map, Rgetter rget)
 {
-	ulong pc;
+	uvlong pc;
 	uchar buf[4];
 
 	if (m68020ufix(map) < 0)
@@ -373,20 +374,20 @@ struct	operand
 {
 	int	eatype;
 	short	ext;
-	union {
+	/*union {*/
 		long	immediate;	/* sign-extended integer byte/word/long */
-		struct	{		/* index mode displacements */
+		/*struct	{*/		/* index mode displacements */
 			long	disp;
 			long	outer;
-		} s0;
+		/*};*/
 		char	floater[24];	/* floating point immediates */
-	} u0;
+	/*};*/
 };
 
 struct	inst
 {
 	int	n;		/* # bytes in instruction */
-	ulong	addr;		/* addr of start of instruction */
+	uvlong	addr;		/* addr of start of instruction */
 	ushort	raw[4+12];	/* longest instruction: 24 byte packed immediate */
 	Operand	and[2];
 	char	*end;		/* end of print buffer */
@@ -911,7 +912,7 @@ dumpinst(Inst *ip, char *buf, int n)
 }
 
 static int
-getword(Inst *ip, long offset)
+getword(Inst *ip, uvlong offset)
 {
 	if (ip->n < nelem(ip->raw)) {
 		if (get2(mymap, offset, &ip->raw[ip->n++]) > 0)
@@ -978,56 +979,55 @@ getimm(Inst *ip, Operand *ap, int mode)
 	{
 	case EAM_B:	/* byte */
 	case EAALL_B:
-		return i8(ip, &ap->u0.immediate);
+		return i8(ip, &ap->immediate);
 	case EADI_W:	/* word */
 	case EAALL_W:
-		return i16(ip, &ap->u0.immediate);
+		return i16(ip, &ap->immediate);
 	case EADI_L:	/* long */
 	case EAALL_L:
-		return i32(ip, &ap->u0.immediate);
+		return i32(ip, &ap->immediate);
 	case EAFLT:	/* floating point - size in bits 10-12 or word 1 */
 		switch((ip->raw[1]>>10)&0x07)
 		{
 		case 0:	/* long integer */
-			return i32(ip, &ap->u0.immediate);
+			return i32(ip, &ap->immediate);
 		case 1:	/* single precision real */
 			ap->eatype = IREAL;
-			return getshorts(ip, ap->u0.floater, 2);
+			return getshorts(ip, ap->floater, 2);
 		case 2:	/* extended precision real - not supported */
 			ap->eatype = IEXT;
-			return getshorts(ip, ap->u0.floater, 6);
+			return getshorts(ip, ap->floater, 6);
 		case 3: /* packed decimal real - not supported */
 			ap->eatype = IPACK;
-			return getshorts(ip, ap->u0.floater, 12);
+			return getshorts(ip, ap->floater, 12);
 		case 4:	/* integer word */
-			return i16(ip, &ap->u0.immediate);
+			return i16(ip, &ap->immediate);
 		case 5:	/* double precision real */
 			ap->eatype = IDBL;
-			return getshorts(ip, ap->u0.floater, 4);
+			return getshorts(ip, ap->floater, 4);
 		case 6:	/* integer byte */
-			return i8(ip, &ap->u0.immediate);
+			return i8(ip, &ap->immediate);
 		default:
 			ip->errmsg = "bad immediate float data";
 			return -1;
 		}
-		break;
+		/* not reached */
 	case IV:	/* size encoded in bits 6&7 of opcode word */
 	default:
 		switch((ip->raw[0]>>6)&0x03)
 		{
 		case 0x00:	/* integer byte */
-			return i8(ip, &ap->u0.immediate);
+			return i8(ip, &ap->immediate);
 		case 0x01:	/* integer word */
-			return i16(ip, &ap->u0.immediate);
+			return i16(ip, &ap->immediate);
 		case 0x02:	/* integer long */
-			return i32(ip, &ap->u0.immediate);
+			return i32(ip, &ap->immediate);
 		default:
 			ip->errmsg = "bad immediate size";
 			return -1;
 		}
-		break;
+		/* not reached */
 	}
-	return 1;
 }
 
 static int
@@ -1040,9 +1040,9 @@ getdisp(Inst *ip, Operand *ap)
 	ext = ip->raw[ip->n-1];
 	ap->ext = ext;
 	if ((ext&0x100) == 0) {		/* indexed with 7-bit displacement */
-		ap->u0.s0.disp = ext&0x7f;
-		if (ap->u0.s0.disp&0x40)
-			ap->u0.s0.disp |= ~0x7f;
+		ap->disp = ext&0x7f;
+		if (ap->disp&0x40)
+			ap->disp |= ~0x7f;
 		return 1;
 	}
 	switch(ext&0x30)	/* first (inner) displacement  */
@@ -1050,11 +1050,11 @@ getdisp(Inst *ip, Operand *ap)
 	case 0x10:
 		break;
 	case 0x20:
-		if (i16(ip, &ap->u0.s0.disp) < 0)
+		if (i16(ip, &ap->disp) < 0)
 			return -1;
 		break;
 	case 0x30:
-		if (i32(ip, &ap->u0.s0.disp) < 0)
+		if (i32(ip, &ap->disp) < 0)
 			return -1;
 		break;
 	default:
@@ -1064,9 +1064,9 @@ getdisp(Inst *ip, Operand *ap)
 	switch (ext&0x03)	/* outer displacement */
 	{
 	case 0x02:		/* 16 bit displacement */
-		return i16(ip, &ap->u0.s0.outer);
+		return i16(ip, &ap->outer);
 	case 0x03:		/* 32 bit displacement */
-		return i32(ip, &ap->u0.s0.outer);
+		return i32(ip, &ap->outer);
 	default:
 		break;
 	}
@@ -1105,7 +1105,7 @@ ea(Inst *ip, int ea, Operand *ap, int mode)
 	case 0x05:
 		ap->eatype = ADisp;
 		type = Bdisp;
-		if (i16(ip, &ap->u0.s0.disp) < 0)
+		if (i16(ip, &ap->disp) < 0)
 			return -1;
 		break;
 	case 0x06:
@@ -1120,19 +1120,19 @@ ea(Inst *ip, int ea, Operand *ap, int mode)
 		case 0x00:
 			type = Abs;
 			ap->eatype = ABS;
-			if (i16(ip, &ap->u0.immediate) < 0)
+			if (i16(ip, &ap->immediate) < 0)
 				return -1;
 			break;
 		case 0x01:
 			type = Abs;
 			ap->eatype = ABS;
-			if (i32(ip, &ap->u0.immediate) < 0)
+			if (i32(ip, &ap->immediate) < 0)
 				return -1;
 			break;
 		case 0x02:
 			type = PCrel;
 			ap->eatype = PDisp;
-			if (i16(ip, &ap->u0.s0.disp) < 0)
+			if (i16(ip, &ap->disp) < 0)
 				return -1;
 			break;
 		case 0x03:
@@ -1217,27 +1217,27 @@ decode(Inst *ip, Optable *op)
 			break;
 		case OP8:	/* weird movq instruction */
 			ap->eatype = IMM;
-			ap->u0.immediate = opcode&0xff;
+			ap->immediate = opcode&0xff;
 			if (opcode&0x80)
-				ap->u0.immediate |= ~0xff;
+				ap->immediate |= ~0xff;
 			break;
 		case I8:	/* must be two-word opcode */
 			ap->eatype = IMM;
-			ap->u0.immediate = ip->raw[1]&0xff;
-			if (ap->u0.immediate&0x80)
-				ap->u0.immediate |= ~0xff;
+			ap->immediate = ip->raw[1]&0xff;
+			if (ap->immediate&0x80)
+				ap->immediate |= ~0xff;
 			break;
 		case I16:	/* 16 bit immediate */
 		case BR16:
 			ap->eatype = IMM;
-			if (i16(ip, &ap->u0.immediate) < 0)
+			if (i16(ip, &ap->immediate) < 0)
 				return -1;
 			break;
 		case C16:	/* CAS2 16 bit immediate */
 			ap->eatype = IMM;
-			if (i16(ip, &ap->u0.immediate) < 0)
+			if (i16(ip, &ap->immediate) < 0)
 				return -1;
-			if (ap->u0.immediate & 0x0e38) {
+			if (ap->immediate & 0x0e38) {
 				ip->errmsg = "bad CAS2W operand";
 				return 0;
 			}
@@ -1245,7 +1245,7 @@ decode(Inst *ip, Optable *op)
 		case I32:	/* 32 bit immediate */
 		case BR32:
 			ap->eatype = IMM;
-			if (i32(ip, &ap->u0.immediate) < 0)
+			if (i32(ip, &ap->immediate) < 0)
 				return -1;
 			break;
 		case IV:	/* immediate data depends on size field */
@@ -1254,15 +1254,15 @@ decode(Inst *ip, Optable *op)
 			break;
 		case BR8:	/* branch displacement format */
 			ap->eatype = IMM;
-			ap->u0.immediate = opcode&0xff;
-			if (ap->u0.immediate == 0) {
-				if (i16(ip, &ap->u0.immediate) < 0)
+			ap->immediate = opcode&0xff;
+			if (ap->immediate == 0) {
+				if (i16(ip, &ap->immediate) < 0)
 					return -1;
-			} else if (ap->u0.immediate == 0xff) {
-				if (i32(ip, &ap->u0.immediate) < 0)
+			} else if (ap->immediate == 0xff) {
+				if (i32(ip, &ap->immediate) < 0)
 					return -1;
-			} else if (ap->u0.immediate & 0x80)
-				ap->u0.immediate |= ~0xff;
+			} else if (ap->immediate & 0x80)
+				ap->immediate |= ~0xff;
 			break;
 		case STACK:	/* Dummy operand type for Return instructions */
 		default:
@@ -1299,6 +1299,8 @@ instruction(Inst *ip)
 	return 0;
 }
 
+#pragma	varargck	argpos	bprint		2
+
 static void
 bprint(Inst *i, char *fmt, ...)
 {
@@ -1318,11 +1320,12 @@ static	char	*regname[] =
 static void
 plocal(Inst *ip, Operand *ap)
 {
-	int ret, offset;
-	long moved;
+	int ret;
+	long offset;
+	uvlong moved;
 	Symbol s;
 
-	offset = ap->u0.s0.disp;
+	offset = ap->disp;
 	if (!findsym(ip->addr, CTEXT, &s))
 		goto none;
 
@@ -1338,7 +1341,7 @@ plocal(Inst *ip, Operand *ap)
 	if (ret)
 		bprint(ip, "%s+%lux", s.name, offset);
 	else
-none:		bprint(ip, "%lux", ap->u0.s0.disp);
+none:		bprint(ip, "%lux", ap->disp);
 }
 
 /*
@@ -1401,7 +1404,7 @@ prindex(Inst *ip, int reg, Operand *ap)
 	if (left <= 0)
 		return;
 	ext = ap->ext;
-	disp = ap->u0.s0.disp;
+	disp = ap->disp;
 		/* look for static base register references */
 	if ((ext&0xa0) == 0x20 && reg == 14 && mach->sb && disp) {
 		reg = 17;		/* "A6" -> "SB" */
@@ -1429,7 +1432,7 @@ prindex(Inst *ip, int reg, Operand *ap)
 		break;
 	case 0x12:
 	case 0x13:
-		ip->curr += symoff(ip->curr, left, ap->u0.s0.outer, CANY);
+		ip->curr += symoff(ip->curr, left, ap->outer, CANY);
 		if (pidx(ip, ext, reg, "((%s)", "((%s)", 0))
 			bprint(ip, ")");
 		break;
@@ -1439,7 +1442,7 @@ prindex(Inst *ip, int reg, Operand *ap)
 		break;
 	case 0x16:
 	case 0x17:
-		ip->curr += symoff(ip->curr, left, ap->u0.s0.outer, CANY);
+		ip->curr += symoff(ip->curr, left, ap->outer, CANY);
 		pidx(ip, ext, reg, "((%s))", "(%s)", 0);
 		break;
 	case 0x20:
@@ -1464,7 +1467,7 @@ prindex(Inst *ip, int reg, Operand *ap)
 	case 0x23:
 	case 0x32:
 	case 0x33:
-		ip->curr += symoff(ip->curr, left, ap->u0.s0.outer, CANY);
+		ip->curr += symoff(ip->curr, left, ap->outer, CANY);
 		bprint(ip, "(");
 		if (reg == 15)
 			plocal(ip, ap);
@@ -1487,7 +1490,7 @@ prindex(Inst *ip, int reg, Operand *ap)
 	case 0x27:
 	case 0x36:
 	case 0x37:
-		ip->curr += symoff(ip->curr, left, ap->u0.s0.outer, CANY);
+		ip->curr += symoff(ip->curr, left, ap->outer, CANY);
 		bprint(ip, "(");
 		if (reg == 15)
 			plocal(ip, ap);
@@ -1528,53 +1531,53 @@ pea(int reg, Inst *ip, Operand *ap)
 		bprint(ip, "-(A%d)", reg);
 		break;
 	case PDisp:
-		ip->curr += symoff(ip->curr, left, ip->addr+2+ap->u0.s0.disp, CANY);
+		ip->curr += symoff(ip->curr, left, ip->addr+2+ap->disp, CANY);
 		break;
 	case PXD:
 		prindex(ip, 16, ap);
 		break;
 	case ADisp:	/* references off the static base */
-		if (reg == 6 && mach->sb && ap->u0.s0.disp) {
-			ip->curr += symoff(ip->curr, left, ap->u0.s0.disp+mach->sb, CANY);
-			bprint(ip, "(SB)", reg);
+		if (reg == 6 && mach->sb && ap->disp) {
+			ip->curr += symoff(ip->curr, left, ap->disp+mach->sb, CANY);
+			bprint(ip, "(SB)");
 			break;
 		}
 			/* reference autos and parameters off the stack */
 		if (reg == 7)
 			plocal(ip, ap);
 		else
-			ip->curr += symoff(ip->curr, left, ap->u0.s0.disp, CANY);
+			ip->curr += symoff(ip->curr, left, ap->disp, CANY);
 		bprint(ip, "(A%d)", reg);
 		break;
 	case BXD:
 		prindex(ip, reg+8, ap);
 		break;
 	case ABS:
-		ip->curr += symoff(ip->curr, left, ap->u0.immediate, CANY);
+		ip->curr += symoff(ip->curr, left, ap->immediate, CANY);
 		bprint(ip, "($0)");
 		break;
 	case IMM:
 		*ip->curr++ = '$';
-		ip->curr += symoff(ip->curr, left-1, ap->u0.immediate, CANY);
+		ip->curr += symoff(ip->curr, left-1, ap->immediate, CANY);
 		break;
 	case IREAL:
 		*ip->curr++ = '$';
-		ip->curr += beieeesftos(ip->curr, left-1, (void*) ap->u0.floater);
+		ip->curr += beieeesftos(ip->curr, left-1, (void*) ap->floater);
 		break;
 	case IDBL:
 		*ip->curr++ = '$';
-		ip->curr += beieeedftos(ip->curr, left-1, (void*) ap->u0.floater);
+		ip->curr += beieeedftos(ip->curr, left-1, (void*) ap->floater);
 		break;
 	case IPACK:
 		bprint(ip, "$#");
 		for (i = 0; i < 24 && ip->curr < ip->end-1; i++) {
-			_hexify(ip->curr, ap->u0.floater[i], 1);
+			_hexify(ip->curr, ap->floater[i], 1);
 			ip->curr += 2;
 		}
 		break;
 	case IEXT:
 		bprint(ip, "$#");
-		ip->curr += beieee80ftos(ip->curr, left-2, (void*)ap->u0.floater);
+		ip->curr += beieee80ftos(ip->curr, left-2, (void*)ap->floater);
 		break;
 	default:
 		bprint(ip, "??%x??", ap->eatype);
@@ -1646,7 +1649,7 @@ formatins(char *fmt, Inst *ip)
 			break;
 		case 'i':	/* immediate operand */
 			ip->curr += symoff(ip->curr, ip->end-ip->curr,
-					ip->and[currand++].u0.immediate, CANY);
+					ip->and[currand++].immediate, CANY);
 			break;
 		case 'j':	/* data registers; word 1: [0-2] & [12-14] */
 			r1 = w1&0x07;
@@ -1686,7 +1689,7 @@ formatins(char *fmt, Inst *ip)
 			break;
 		case 't':	/* text offset */
 			ip->curr += symoff(ip->curr, ip->end-ip->curr,
-				ip->and[currand++].u0.immediate+ip->addr+2, CTEXT);
+				ip->and[currand++].immediate+ip->addr+2, CTEXT);
 			break;
 		case 'u':	/* register number; word 1: [6-8] */
 			*ip->curr++ = ((w1>>6)&0x07)+'0';
@@ -1817,7 +1820,6 @@ immsize(Inst *ip, int mode)
 	default:
 		return isize[(ip->raw[0]>>6)&0x03];
 	}
-	return -1;
 }
 
 static int
@@ -1902,7 +1904,7 @@ instrsize(Inst *ip, Optable *op)
 		case BREAC:	/* EAC JMP or CALL operand */
 				/* easy displacements for follow set */
 			if ((opcode&0x038) == 0x28 || (opcode&0x3f) == 0x3a) {
-				if (i16(ip, &ip->and[i].u0.immediate) < 0)
+				if (i16(ip, &ip->and[i].immediate) < 0)
 					return -1;
 			} else {
 				t = easize(ip, opcode&0x3f, mode);
@@ -1916,11 +1918,11 @@ instrsize(Inst *ip, Optable *op)
 			ip->n++;
 			break;
 		case BR16:	/* 16 bit branch displacement */
-			if (i16(ip, &ip->and[i].u0.immediate) < 0)
+			if (i16(ip, &ip->and[i].immediate) < 0)
 				return -1;
 			break;
 		case BR32:	/* 32 bit branch displacement */
-			if (i32(ip, &ip->and[i].u0.immediate) < 0)
+			if (i32(ip, &ip->and[i].immediate) < 0)
 				return -1;
 			break;
 		case I32:	/* 32 bit immediate */
@@ -1938,15 +1940,15 @@ instrsize(Inst *ip, Optable *op)
 		case BR8:	/* loony branch displacement format */
 			t = opcode&0xff;
 			if (t == 0) {
-				if (i16(ip, &ip->and[i].u0.immediate) < 0)
+				if (i16(ip, &ip->and[i].immediate) < 0)
 					return -1;
 			} else if (t == 0xff) {
-				if (i32(ip, &ip->and[i].u0.immediate) < 0)
+				if (i32(ip, &ip->and[i].immediate) < 0)
 					return -1;
 			} else {
-				ip->and[i].u0.immediate = t;
+				ip->and[i].immediate = t;
 				if (t & 0x80)
-					ip->and[i].u0.immediate |= ~0xff;
+					ip->and[i].immediate |= ~0xff;
 			}
 			break;
 		case STACK:	/* Dummy operand for Return instructions */
@@ -1972,19 +1974,19 @@ eaval(Inst *ip, Operand *ap, Rgetter rget)
 		sprint(buf, "A%d", reg);
 		return (*rget)(mymap, buf);
 	case PDisp:
-		return ip->addr+2+ap->u0.s0.disp;
+		return ip->addr+2+ap->disp;
 	case ADisp:
 		sprint(buf, "A%d", reg);
-		return ap->u0.s0.disp+(*rget)(mymap, buf);
+		return ap->disp+(*rget)(mymap, buf);
 	case ABS:
-		return ap->u0.immediate;
+		return ap->immediate;
 	default:
 		return 0;
 	}
 }
 
 static int
-m68020instlen(Map *map, ulong pc)
+m68020instlen(Map *map, uvlong pc)
 {
 	Inst i;
 	Optable *op;
@@ -1999,10 +2001,11 @@ m68020instlen(Map *map, ulong pc)
 }
 
 static int
-m68020foll(Map *map, ulong pc, Rgetter rget, ulong *foll)
+m68020foll(Map *map, uvlong pc, Rgetter rget, uvlong *foll)
 {
 	int j;
 	Inst i;
+	ulong l;
 	Optable *op;
 
 	mymap = map;
@@ -2021,11 +2024,12 @@ m68020foll(Map *map, ulong pc, Rgetter rget, ulong *foll)
 		case BR16:	/* FBcc, FDBcc, DBcc */
 		case BR32:	/* FBcc */
 			foll[0] = pc+i.n*2;
-			foll[1] = pc+2+i.and[j].u0.immediate;
+			foll[1] = pc+2+i.and[j].immediate;
 			return 2;
 		case STACK:	/* RTR, RTS, RTD */
-			if (get4(map, (*rget)(map, mach->sp), (long*) foll) < 0)
+			if (get4(map, (*rget)(map, mach->sp), &l) < 0)
 				return -1;
+			*foll = l;
 			return 1;
 		default:
 			break;
@@ -2036,7 +2040,7 @@ m68020foll(Map *map, ulong pc, Rgetter rget, ulong *foll)
 }
 
 static int
-m68020inst(Map *map, ulong pc, char modifier, char *buf, int n)
+m68020inst(Map *map, uvlong pc, char modifier, char *buf, int n)
 {
 	Inst i;
 	Optable *op;
@@ -2062,7 +2066,7 @@ m68020inst(Map *map, ulong pc, char modifier, char *buf, int n)
 }
 
 static int
-m68020das(Map *map, ulong pc, char *buf, int n)
+m68020das(Map *map, uvlong pc, char *buf, int n)
 {
 	Inst i;
 	Optable *op;

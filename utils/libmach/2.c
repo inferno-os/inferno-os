@@ -75,8 +75,9 @@ Mach m68020 =
 	"a6base",	/* static base register name */
 	0,		/* value */
 	0x2000,		/* page size */
-	0x80000000,	/* kernel base */
-	0,		/* kernel text mask */
+	0x80000000U,	/* kernel base */
+	0x80000000U,	/* kernel text mask */
+	0x7FFFFFFFU,	/* user stack top */
 	2,		/* quantization of pc */
 	4,		/* szaddr */
 	4,		/* szreg */

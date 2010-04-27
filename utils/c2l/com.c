@@ -599,6 +599,7 @@ addaddr:
 	if(n->type->etype == TARRAY)
 		n->type = typ1(TIND, n->type->link);
 	return 0;
+#ifdef WHATEVA
 	if(tlvalue(n))
 		goto bad;
 	l = new1(OXXX, Z, Z);
@@ -611,6 +612,7 @@ addaddr:
 	n->type = typ1(TIND, l->type);
 	n->type->width = types[TIND]->width;
 	return 0;
+#endif
 
 bad:
 	n->type = T;

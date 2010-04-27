@@ -89,7 +89,7 @@ swit1(C1 *q, int nc, long def, Node *n)
 }
 
 void
-cas(void)
+casf(void)
 {
 	Case *c;
 

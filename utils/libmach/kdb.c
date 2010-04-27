@@ -7,10 +7,10 @@
  */
 
 static	char	*sparcexcep(Map*, Rgetter);
-static	int	sparcfoll(Map*, ulong, Rgetter, ulong*);
-static	int	sparcinst(Map*, ulong, char, char*, int);
-static	int	sparcdas(Map*, ulong, char*, int);
-static	int	sparcinstlen(Map*, ulong);
+static	int	sparcfoll(Map*, uvlong, Rgetter, uvlong*);
+static	int	sparcinst(Map*, uvlong, char, char*, int);
+static	int	sparcdas(Map*, uvlong, char*, int);
+static	int	sparcinstlen(Map*, uvlong);
 
 Machdata sparcmach =
 {
@@ -85,15 +85,15 @@ sparcexcep(Map *map, Rgetter rget)
 
 	/* Sparc disassembler and related functions */
 
-typedef struct instr Instr;
-
 struct opcode {
 	char	*mnemonic;
-	void	(*f)(Instr*, char*);
+	void	(*f)(struct instr*, char*);
 	int	flag;
 };
 
 static	char FRAMENAME[] = ".frame";
+
+typedef struct instr Instr;
 
 struct instr {
 	uchar	op;		/* bits 31-30 */
@@ -115,7 +115,7 @@ struct instr {
 	int	target;		/* SETHI+ADD dest reg */
 	long	w0;
 	long	w1;
-	ulong	addr;		/* pc of instruction */
+	uvlong	addr;		/* pc of instruction */
 	char	*curr;		/* current fill level in output buffer */
 	char	*end;		/* end of buffer */
 	int 	size;		/* number of longs in instr */
@@ -125,7 +125,7 @@ struct instr {
 static	Map	*mymap;		/* disassembler context */
 static	int	dascase;
 
-static int	mkinstr(ulong, Instr*);
+static int	mkinstr(uvlong, Instr*);
 static void	bra1(Instr*, char*, char*[]);
 static void	bra(Instr*, char*);
 static void	fbra(Instr*, char*);
@@ -150,139 +150,151 @@ static void	loadcsr(Instr*, char*);
 static void	trap(Instr*, char*);
 
 static struct opcode sparcop0[8] = {
-	"UNIMP",	unimp,	0,	/* page 137 */	/* 0 */
-		"",		0,	0,		/* 1 */
-	"B",		bra,	0,	/* page 119 */	/* 2 */
-		"",		0,	0,		/* 3 */
-	"SETHI",	sethi,	0,	/* page 104 */	/* 4 */
-		"",		0,	0,		/* 5 */
-	"FB",		fbra,	0,	/* page 121 */	/* 6 */
-	"CB",		cbra,	0,	/* page 123 */	/* 7 */
+	[0]	"UNIMP",	unimp,	0,	/* page 137 */
+	[2]	"B",		bra,	0,	/* page 119 */
+	[4]	"SETHI",	sethi,	0,	/* page 104 */
+	[6]	"FB",		fbra,	0,	/* page 121 */
+	[7]	"CB",		cbra,	0,	/* page 123 */
 };
 
 static struct opcode sparcop2[64] = {
-		"ADD",		add,	0,	/* page 108 */	/* 0x00 */
-		"AND",		add,	0,	/* page 106 */	/* 0x01 */
-		"OR",		add,	0,			/* 0x02 */
-		"XOR",		add,	0,			/* 0x03 */
-		"SUB",		add,	0,	/* page 110 */	/* 0x04 */
-		"ANDN",		add,	0,			/* 0x05 */
-		"ORN",		add,	0,			/* 0x06 */
-		"XORN",		add,	0,			/* 0x07 */
-		"ADDX",		add,	0,			/* 0x08 */
-		"",		0,	0,			/* 0x09 */
-		"UMUL",		add,	0,	/* page 113 */	/* 0x0a */
-		"SMUL",		add,	0,			/* 0x0b */
-		"SUBX",		add,	0,			/* 0x0c */
-		"",		0,	0,			/* 0x0d */
-		"UDIV",		add,	0,	/* page 115 */	/* 0x0e */
-		"SDIV",		add,	0,			/* 0x0f */
-		"ADDCC",	add,	0,			/* 0x10 */
-		"ANDCC",	add,	0,			/* 0x11 */
-		"ORCC",		add,	0,			/* 0x12 */
-		"XORCC",	add,	0,			/* 0x13 */
-		"SUBCC",	cmp,	0,			/* 0x14 */
-		"ANDNCC",	add,	0,			/* 0x15 */
-		"ORNCC",	add,	0,			/* 0x16 */
-		"XORNCC",	add,	0,			/* 0x17 */
-		"ADDXCC",	add,	0,			/* 0x18 */
-		"",		0,	0,			/* 0x19 */
-		"UMULCC",	add,	0,			/* 0x1a */
-		"SMULCC",	add,	0,			/* 0x1b */
-		"SUBXCC",	add,	0,			/* 0x1c */
-		"",		0,	0,			/* 0x1d */
-		"UDIVCC",	add,	0,			/* 0x1e */
-		"SDIVCC",	add,	0,			/* 0x1f */
-		"TADD",		add,	0,	/* page 109 */	/* 0x20 */
-		"TSUB",		add,	0,	/* page 111 */	/* 0x21 */
-		"TADDCCTV",	add,	0,			/* 0x22 */
-		"TSUBCCTV",	add,	0,			/* 0x23 */
-		"MULSCC",	add,	0,	/* page 112 */	/* 0x24 */
-		"SLL",		shift,	0,	/* page 107 */	/* 0x25 */
-		"SRL",		shift,	0,			/* 0x26 */
-		"SRA",		shift,	0,			/* 0x27 */
-		"rdy",		rd,	0,	/* page 131 */	/* 0x28 */
-		"rdpsr",	rd,	0,			/* 0x29 */
-		"rdwim",	rd,	0,			/* 0x2a */
-		"rdtbr",	rd,	0,			/* 0x2b */
-		"",		0,	0,			/* 0x2c */
-		"",		0,	0,			/* 0x2d */
-		"",		0,	0,			/* 0x2e */
-		"",		0,	0,			/* 0x2f */
-		"wry",		wr,	0,	/* page 133 */	/* 0x30 */
-		"wrpsr",	wr,	0,			/* 0x31 */
-		"wrwim",	wr,	0,			/* 0x32 */
-		"wrtbr",	wr,	0,			/* 0x33 */
-		"FPOP",		fpop,	0,	/* page 140 */	/* 0x34 */
-		"FPOP",		fpop,	0,			/* 0x35 */
-		"",		0,	0,			/* 0x36 */
-		"",		0,	0,			/* 0x37 */
-		"JMPL",		jmpl,	0,	/* page 126 */	/* 0x38 */
-		"RETT",		add,	0,	/* page 127 */	/* 0x39 */
-		"T",		trap,	0,	/* page 129 */	/* 0x3a */
-		"flush",	add,	0,	/* page 138 */	/* 0x3b */
-		"SAVE",		add,	0,	/* page 117 */	/* 0x3c */
-		"RESTORE",	add,	0,			/* 0x3d */
+	[0x00]	"ADD",		add,	0,	/* page 108 */
+	[0x10]	"ADDCC",	add,	0,
+	[0x08]	"ADDX",		add,	0,
+	[0x18]	"ADDXCC",	add,	0,
+
+	[0x20]	"TADD",		add,	0,	/* page 109 */
+	[0x22]	"TADDCCTV",	add,	0,
+
+	[0x04]	"SUB",		add,	0,	/* page 110 */
+	[0x14]	"SUBCC",	cmp,	0,
+	[0x0C]	"SUBX",		add,	0,
+	[0x1C]	"SUBXCC",	add,	0,
+
+	[0x21]	"TSUB",		add,	0,	/* page 111 */
+	[0x23]	"TSUBCCTV",	add,	0,
+
+	[0x24]	"MULSCC",	add,	0,	/* page 112 */
+
+	[0x0A]	"UMUL",		add,	0,	/* page 113 */
+	[0x0B]	"SMUL",		add,	0,
+	[0x1A]	"UMULCC",	add,	0,
+	[0x1B]	"SMULCC",	add,	0,
+
+	[0x0E]	"UDIV",		add,	0,	/* page 115 */
+	[0x0F]	"SDIV",		add,	0,
+	[0x1E]	"UDIVCC",	add,	0,
+	[0x1F]	"SDIVCC",	add,	0,
+
+	[0x01]	"AND",		add,	0,	/* page 106 */
+	[0x11]	"ANDCC",	add,	0,
+	[0x05]	"ANDN",		add,	0,
+	[0x15]	"ANDNCC",	add,	0,
+	[0x02]	"OR",		add,	0,
+	[0x12]	"ORCC",		add,	0,
+	[0x06]	"ORN",		add,	0,
+	[0x16]	"ORNCC",	add,	0,
+	[0x03]	"XOR",		add,	0,
+	[0x13]	"XORCC",	add,	0,
+	[0x07]	"XORN",		add,	0,
+	[0x17]	"XORNCC",	add,	0,
+
+	[0x25]	"SLL",		shift,	0,	/* page 107 */
+	[0x26]	"SRL",		shift,	0,
+	[0x27]	"SRA",		shift,	0,
+
+	[0x3C]	"SAVE",		add,	0,	/* page 117 */
+	[0x3D]	"RESTORE",	add,	0,
+
+	[0x38]	"JMPL",		jmpl,	0,	/* page 126 */
+
+	[0x39]	"RETT",		add,	0,	/* page 127 */
+
+	[0x3A]	"T",		trap,	0,	/* page 129 */
+
+	[0x28]	"rdy",		rd,	0,	/* page 131 */
+	[0x29]	"rdpsr",	rd,	0,
+	[0x2A]	"rdwim",	rd,	0,
+	[0x2B]	"rdtbr",	rd,	0,
+
+	[0x30]	"wry",		wr,	0,	/* page 133 */
+	[0x31]	"wrpsr",	wr,	0,
+	[0x32]	"wrwim",	wr,	0,
+	[0x33]	"wrtbr",	wr,	0,
+
+	[0x3B]	"flush",	add,	0,	/* page 138 */
+
+	[0x34]	"FPOP",		fpop,	0,	/* page 140 */
+	[0x35]	"FPOP",		fpop,	0,
 };
 
 static struct opcode sparcop3[64]={
-		"ld",		load,	0,			/* 0x00 */
-		"ldub",		load,	0,			/* 0x01 */
-		"lduh",		load,	0,			/* 0x02 */
-		"ldd",		load,	0,			/* 0x03 */
-		"st",		store,	0,			/* 0x04 */
-		"stb",		store,	0,	/* page 95 */	/* 0x05 */
-		"sth",		store,	0,			/* 0x06 */
-		"std",		store,	0,			/* 0x07 */
-		"",		0,	0,			/* 0x08 */
-		"ldsb",		load,	0,	/* page 90 */	/* 0x09 */
-		"ldsh",		load,	0,			/* 0x0a */
-		"",		0,	0,			/* 0x0b */
-		"",		0,	0,			/* 0x0c */
-		"ldstub",	store,	0,	/* page 101 */	/* 0x0d */
-		"",		0,	0,			/* 0x0e */
-		"swap",		load,	0,	/* page 102 */	/* 0x0f */
-		"lda",		loada,	0,			/* 0x10 */
-		"lduba",	loada,	0,			/* 0x11 */
-		"lduha",	loada,	0,			/* 0x12 */
-		"ldda",		loada,	0,			/* 0x13 */
-		"sta",		storea,	0,			/* 0x14 */
-		"stba",		storea,	0,			/* 0x15 */
-		"stha",		storea,	0,			/* 0x16 */
-		"stda",		storea,	0,			/* 0x17 */
-		"",		0,	0,			/* 0x18 */
-		"ldsba",	loada,	0,			/* 0x19 */
-		"ldsha",	loada,	0,			/* 0x1a */
-		"",		0,	0,			/* 0x1b */
-		"",		0,	0,			/* 0x1c */
-		"ldstuba",	storea,	0,			/* 0x1d */
-		"",		0,	0,			/* 0x1e */
-		"swapa",	loada,	0,			/* 0x1f */
-		"ldf",		loadf,	0,	/* page 92 */	/* 0x20 */
-		"ldfsr",	loadf,0,			/* 0x21 */
-		"",		0,	0,			/* 0x22 */
-		"lddf",		loadf,	0,			/* 0x23 */
-		"stf",		storef,	0,	/* page 97 */	/* 0x24 */
-		"stfsr",	storef,0,			/* 0x25 */
-		"stdfq",	storef,0,			/* 0x26 */
-		"stdf",		storef,	0,			/* 0x27 */
-		"",		0,	0,			/* 0x28 */
-		"",		0,	0,			/* 0x29 */
-		"",		0,	0,			/* 0x2a */
-		"",		0,	0,			/* 0x2b */
-		"",		0,	0,			/* 0x2c */
-		"",		0,	0,			/* 0x2d */
-		"",		0,	0,			/* 0x2e */
-		"",		0,	0,			/* 0x2f */
-		"ldc",		loadc,	0,	/* page 94 */	/* 0x30 */
-		"ldcsr",	loadcsr,0,			/* 0x31 */
-		"",		0,	0,			/* 0x32 */
-		"lddc",		loadc,	0,			/* 0x33 */
-		"stc",		loadc,	0,	/* page 99 */	/* 0x34 */
-		"stcsr",	loadcsr,0,			/* 0x35 */
-		"stdcq",	loadcsr,0,			/* 0x36 */
-		"stdc",		loadc,	0,			/* 0x37 */
+	[0x09]	"ldsb",		load,	0,	/* page 90 */
+	[0x19]	"ldsba",	loada,	0,
+	[0x0A]	"ldsh",		load,	0,
+	[0x1A]	"ldsha",	loada,	0,
+	[0x01]	"ldub",		load,	0,
+	[0x11]	"lduba",	loada,	0,
+	[0x02]	"lduh",		load,	0,
+	[0x12]	"lduha",	loada,	0,
+	[0x00]	"ld",		load,	0,
+	[0x10]	"lda",		loada,	0,
+	[0x03]	"ldd",		load,	0,
+	[0x13]	"ldda",		loada,	0,
+
+	[0x20]	"ldf",		loadf,	0,	/* page 92 */
+	[0x23]	"lddf",		loadf,	0,
+	[0x21]	"ldfsr",	loadf,0,
+
+	[0x30]	"ldc",		loadc,	0,	/* page 94 */
+	[0x33]	"lddc",		loadc,	0,
+	[0x31]	"ldcsr",	loadcsr,0,
+
+	[0x05]	"stb",		store,	0,	/* page 95 */
+	[0x15]	"stba",		storea,	0,
+	[0x06]	"sth",		store,	0,
+	[0x16]	"stha",		storea,	0,
+	[0x04]	"st",		store,	0,
+	[0x14]	"sta",		storea,	0,
+	[0x07]	"std",		store,	0,
+	[0x17]	"stda",		storea,	0,
+
+	[0x24]	"stf",		storef,	0,	/* page 97 */
+	[0x27]	"stdf",		storef,	0,
+	[0x25]	"stfsr",	storef,0,
+	[0x26]	"stdfq",	storef,0,
+
+	[0x34]	"stc",		loadc,	0,	/* page 99 */
+	[0x37]	"stdc",		loadc,	0,
+	[0x35]	"stcsr",	loadcsr,0,
+	[0x36]	"stdcq",	loadcsr,0,
+
+	[0x0D]	"ldstub",	store,	0,	/* page 101 */
+	[0x1D]	"ldstuba",	storea,	0,
+
+	[0x0F]	"swap",		load,	0,	/* page 102 */
+	[0x1F]	"swapa",	loada,	0,
 };
+
+#pragma	varargck	argpos	bprint	2
+#pragma	varargck	type	"T"	char*
+
+/* convert to lower case from upper, according to dascase */
+static int
+Tfmt(Fmt *f)
+{
+	char buf[128];
+	char *s, *t, *oa;
+
+	oa = va_arg(f->args, char*);
+	if(dascase){
+		for(s=oa,t=buf; *t = *s; s++,t++)
+			if('A'<=*t && *t<='Z')
+				*t += 'a'-'A';
+		return fmtstrcpy(f, buf);
+	}
+	return fmtstrcpy(f, oa);
+}
 
 static void
 bprint(Instr *i, char *fmt, ...)
@@ -295,9 +307,9 @@ bprint(Instr *i, char *fmt, ...)
 }
 
 static int
-decode(ulong pc, Instr *i)
+decode(uvlong pc, Instr *i)
 {
-	long w;
+	ulong w;
 
 	if (get4(mymap, pc, &w) < 0) {
 		werrstr("can't read instruction: %r");
@@ -330,7 +342,7 @@ decode(ulong pc, Instr *i)
 }
 
 static int
-mkinstr(ulong pc, Instr *i)
+mkinstr(uvlong pc, Instr *i)
 {
 	Instr xi;
 
@@ -361,7 +373,7 @@ mkinstr(ulong pc, Instr *i)
 }
 
 static int
-printins(Map *map, ulong pc, char *buf, int n)
+printins(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr instr;
 	void (*f)(Instr*, char*);
@@ -382,7 +394,7 @@ printins(Map *map, ulong pc, char *buf, int n)
 		break;
 
 	case 1:
-		bprint(&instr, "%X", "CALL\t");
+		bprint(&instr, "%T", "CALL\t");
 		instr.curr += symoff(instr.curr, instr.end-instr.curr,
 					pc+instr.disp30*4, CTEXT);
 		if (!dascase)
@@ -413,32 +425,15 @@ printins(Map *map, ulong pc, char *buf, int n)
 	return instr.size*4;
 }
 
-/* convert to lower case from upper, according to dascase */
 static int
-Xconv(Fmt *f)
-{
-	char buf[128];
-	char *s, *t, *oa;
-
-	oa = va_arg(f->args, char*);
-	if(dascase){
-		for(s=oa,t=buf; *t = *s; s++,t++)
-			if('A'<=*t && *t<='Z')
-				*t += 'a'-'A';
-		return fmtstrcpy(f, buf);
-	}
-	return fmtstrcpy(f, oa);
-}
-
-static int
-sparcinst(Map *map, ulong pc, char modifier, char *buf, int n)
+sparcinst(Map *map, uvlong pc, char modifier, char *buf, int n)
 {
 	static int fmtinstalled = 0;
 
 		/* a modifier of 'I' toggles the dissassembler type */
 	if (!fmtinstalled) {
 		fmtinstalled = 1;
-		fmtinstall('X', Xconv);
+		fmtinstall('T', Tfmt);
 	}
 	if ((asstype == ASUNSPARC && modifier == 'i')
 		|| (asstype == ASPARC && modifier == 'I'))
@@ -449,7 +444,7 @@ sparcinst(Map *map, ulong pc, char modifier, char *buf, int n)
 }
 
 static int
-sparcdas(Map *map, ulong pc, char *buf, int n)
+sparcdas(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr instr;
 
@@ -470,7 +465,7 @@ sparcdas(Map *map, ulong pc, char *buf, int n)
 }
 
 static int
-sparcinstlen(Map *map, ulong pc)
+sparcinstlen(Map *map, uvlong pc)
 {
 	Instr i;
 
@@ -490,7 +485,7 @@ plocal(Instr *i)
 		return -1;
 	if (s.value > i->simm13) {
 		if(getauto(&s, s.value-i->simm13, CAUTO, &s)) {
-			bprint(i, "%s+%d(SP)", s.name, s.value);
+			bprint(i, "%s+%lld(SP)", s.name, s.value);
 			return 1;
 		}
 	} else {
@@ -507,7 +502,7 @@ static void
 address(Instr *i)
 {
 	Symbol s, s2;
-	long off, off1;
+	uvlong off, off1;
 
 	if (i->rs1 == 1 && plocal(i) >= 0)
 		return;
@@ -517,7 +512,7 @@ address(Instr *i)
 			&& (s.class == CDATA || s.class == CTEXT)) {
 		if(off==s.value && s.name[0]=='$'){
 			off1 = 0;
-			get4(mymap, s.value, &off1);
+			geta(mymap, s.value, &off1);
 			if(off1 && findsym(off1, CANY, &s2) && s2.value == off1){
 				bprint(i, "$%s(SB)", s2.name);
 				return;
@@ -525,74 +520,74 @@ address(Instr *i)
 		}
 		bprint(i, "%s", s.name);
 		if (s.value != off)
-			bprint(i, "+%lux", s.value-off);
+			bprint(i, "+%llux", s.value-off);
 		bprint(i, "(SB)");
 		return;
 	}
-	bprint(i, "%lux(R%d)", i->simm13, i->rs1);
+	bprint(i, "%ux(R%d)", i->simm13, i->rs1);
 }
 
 static void
 unimp(Instr *i, char *m)
 {
-	bprint(i, "%X", m);
+	bprint(i, "%T", m);
 }
 
 static char	*bratab[16] = {	/* page 91 */
-		"N",		/* 0x0 */
-		"E",		/* 0x1 */
-		"LE",		/* 0x2 */
-		"L",		/* 0x3 */
-		"LEU",		/* 0x4 */
-		"CS",		/* 0x5 */
-		"NEG",		/* 0x6 */
-		"VS",		/* 0x7 */
-		"A",		/* 0x8 */
-		"NE",		/* 0x9 */
-		"G",		/* 0xa */
-		"GE",		/* 0xb */
-		"GU",		/* 0xc */
-		"CC",		/* 0xd */
-		"POS",		/* 0xe */
-		"VC",		/* 0xf */
+	[0X8]	"A",
+	[0X0]	"N",
+	[0X9]	"NE",
+	[0X1]	"E",
+	[0XA]	"G",
+	[0X2]	"LE",
+	[0XB]	"GE",
+	[0X3]	"L",
+	[0XC]	"GU",
+	[0X4]	"LEU",
+	[0XD]	"CC",
+	[0X5]	"CS",
+	[0XE]	"POS",
+	[0X6]	"NEG",
+	[0XF]	"VC",
+	[0X7]	"VS",
 };
 
 static char	*fbratab[16] = {	/* page 91 */
-		"N",		/* 0x0 */
-		"NE",		/* 0x1 */
-		"LG",		/* 0x2 */
-		"UL",		/* 0x3 */
-		"L",		/* 0x4 */
-		"UG",		/* 0x5 */
-		"G",		/* 0x6 */
-		"U",		/* 0x7 */
-		"A",		/* 0x8 */
-		"E",		/* 0x9 */
-		"UE",		/* 0xa */
-		"GE",		/* 0xb */
-		"UGE",		/* 0xc */
-		"LE",		/* 0xd */
-		"ULE",		/* 0xe */
-		"O",		/* 0xf */
+	[0X8]	"A",
+	[0X0]	"N",
+	[0X7]	"U",
+	[0X6]	"G",
+	[0X5]	"UG",
+	[0X4]	"L",
+	[0X3]	"UL",
+	[0X2]	"LG",
+	[0X1]	"NE",
+	[0X9]	"E",
+	[0XA]	"UE",
+	[0XB]	"GE",
+	[0XC]	"UGE",
+	[0XD]	"LE",
+	[0XE]	"ULE",
+	[0XF]	"O",
 };
 
 static char	*cbratab[16] = {	/* page 91 */
-		"N",		/* 0x0 */
-		"123",		/* 0x1 */
-		"12",		/* 0x2 */
-		"13",		/* 0x3 */
-		"1",		/* 0x4 */
-		"23",		/* 0x5 */
-		"2",		/* 0x6 */
-		"3",		/* 0x7 */
-		"A",		/* 0x8 */
-		"0",		/* 0x9 */
-		"03",		/* 0xa */
-		"02",		/* 0xb */
-		"023",		/* 0xc */
-		"01",		/* 0xd */
-		"013",		/* 0xe */
-		"012",		/* 0xf */
+	[0X8]	"A",
+	[0X0]	"N",
+	[0X7]	"3",
+	[0X6]	"2",
+	[0X5]	"23",
+	[0X4]	"1",
+	[0X3]	"13",
+	[0X2]	"12",
+	[0X1]	"123",
+	[0X9]	"0",
+	[0XA]	"03",
+	[0XB]	"02",
+	[0XC]	"023",
+	[0XD]	"01",
+	[0XE]	"013",
+	[0XF]	"012",
 };
 
 static void
@@ -602,9 +597,9 @@ bra1(Instr *i, char *m, char *tab[])
 
 	imm = i->simmdisp22;
 	if(i->a)
-		bprint(i, "%X%X.%c\t", m, tab[i->cond], 'A'+dascase);
+		bprint(i, "%T%T.%c\t", m, tab[i->cond], 'A'+dascase);
 	else
-		bprint(i, "%X%X\t", m, tab[i->cond]);
+		bprint(i, "%T%T\t", m, tab[i->cond]);
 	i->curr += symoff(i->curr, i->end-i->curr, i->addr+4*imm, CTEXT);
 	if (!dascase)
 		bprint(i, "(SB)");
@@ -632,9 +627,9 @@ static void
 trap(Instr *i, char *m)			/* page 101 */
 {
 	if(i->i == 0)
-		bprint(i, "%X%X\tR%d+R%d", m, bratab[i->cond], i->rs2, i->rs1);
+		bprint(i, "%T%T\tR%d+R%d", m, bratab[i->cond], i->rs2, i->rs1);
 	else
-		bprint(i, "%X%X\t$%lux+R%d", m, bratab[i->cond], i->simm13, i->rs1);
+		bprint(i, "%T%T\t$%ux+R%d", m, bratab[i->cond], i->simm13, i->rs1);
 }
 
 static void
@@ -644,7 +639,7 @@ sethi(Instr *i, char *m)		/* page 89 */
 
 	imm = i->immdisp22<<10;
 	if(dascase){
-		bprint(i, "%X\t%lux, R%d", m, imm, i->rd);
+		bprint(i, "%T\t%lux, R%d", m, imm, i->rd);
 		return;
 	}
 	if(imm==0 && i->rd==0){
@@ -740,25 +735,25 @@ shift(Instr *i, char *m)	/* page 88 */
 	if(i->i == 0){
 		if(i->rs1 == i->rd)
 			if(dascase)
-				bprint(i, "%X\tR%d, R%d", m, i->rs1, i->rs2);
+				bprint(i, "%T\tR%d, R%d", m, i->rs1, i->rs2);
 			else
-				bprint(i, "%X\tR%d, R%d", m, i->rs2, i->rs1);
+				bprint(i, "%T\tR%d, R%d", m, i->rs2, i->rs1);
 		else
 			if(dascase)
-				bprint(i, "%X\tR%d, R%d, R%d", m, i->rs1, i->rs2, i->rd);
+				bprint(i, "%T\tR%d, R%d, R%d", m, i->rs1, i->rs2, i->rd);
 			else
-				bprint(i, "%X\tR%d, R%d, R%d", m, i->rs2, i->rs1, i->rd);
+				bprint(i, "%T\tR%d, R%d, R%d", m, i->rs2, i->rs1, i->rd);
 	}else{
 		if(i->rs1 == i->rd)
 			if(dascase)
-				bprint(i, "%X\t$%d,R%d", m, i->simm13&0x1F, i->rs1);
+				bprint(i, "%T\t$%d,R%d", m, i->simm13&0x1F, i->rs1);
 			else
-				bprint(i, "%X\tR%d, $%d", m,  i->rs1, i->simm13&0x1F);
+				bprint(i, "%T\tR%d, $%d", m,  i->rs1, i->simm13&0x1F);
 		else
 			if(dascase)
-				bprint(i, "%X\tR%d, $%d, R%d",m,i->rs1,i->simm13&0x1F,i->rd);
+				bprint(i, "%T\tR%d, $%d, R%d",m,i->rs1,i->simm13&0x1F,i->rd);
 			else
-				bprint(i, "%X\t$%d, R%d, R%d",m,i->simm13&0x1F,i->rs1,i->rd);
+				bprint(i, "%T\t$%d, R%d, R%d",m,i->simm13&0x1F,i->rs1,i->rd);
 	}
 }
 
@@ -767,24 +762,24 @@ add(Instr *i, char *m)	/* page 82 */
 {
 	if(i->i == 0){
 		if(dascase)
-			bprint(i, "%X\tR%d, R%d", m, i->rs1, i->rs2);
+			bprint(i, "%T\tR%d, R%d", m, i->rs1, i->rs2);
 		else
 			if(i->op3==2 && i->rs1==0 && i->rd)  /* OR R2, R0, R1 */
 				bprint(i, "MOVW\tR%d", i->rs2);
 			else
-				bprint(i, "%X\tR%d, R%d", m, i->rs2, i->rs1);
+				bprint(i, "%T\tR%d, R%d", m, i->rs2, i->rs1);
 	}else{
 		if(dascase)
-			bprint(i, "%X\tR%d, $%lux", m, i->rs1, i->simm13);
+			bprint(i, "%T\tR%d, $%ux", m, i->rs1, i->simm13);
 		else
 			if(i->op3==0 && i->rd && i->rs1==0)	/* ADD $x, R0, R1 */
-				bprint(i, "MOVW\t$%lux", i->simm13);
+				bprint(i, "MOVW\t$%ux", i->simm13);
 			else if(i->op3==0 && i->rd && i->rs1==2){
 				/* ADD $x, R2, R1 -> MOVW $x(SB), R1 */
 				bprint(i, "MOVW\t$");
 				address(i);
 			} else
-				bprint(i, "%X\t$%lux, R%d", m, i->simm13, i->rs1);
+				bprint(i, "%T\t$%ux, R%d", m, i->simm13, i->rs1);
 	}
 	if(i->rs1 != i->rd)
 		bprint(i, ", R%d", i->rd);
@@ -800,7 +795,7 @@ cmp(Instr *i, char *m)
 	if(i->i == 0)
 		bprint(i, "CMP\tR%d, R%d", i->rs1, i->rs2);
 	else
-		bprint(i, "CMP\tR%d, $%lux", i->rs1, i->simm13);
+		bprint(i, "CMP\tR%d, $%ux", i->rs1, i->simm13);
 }
 
 static char *regtab[4] = {
@@ -817,14 +812,14 @@ wr(Instr *i, char *m)		/* page 82 */
 		if(i->i == 0)
 			bprint(i, "%s\tR%d, R%d", m, i->rs1, i->rs2);
 		else
-			bprint(i, "%s\tR%d, $%lux", m, i->rs1, i->simm13);
+			bprint(i, "%s\tR%d, $%ux", m, i->rs1, i->simm13);
 	}else{
 		if(i->i && i->simm13==0)
 			bprint(i, "MOVW\tR%d", i->rs1);
 		else if(i->i == 0)
 			bprint(i, "wr\tR%d, R%d", i->rs2, i->rs1);
 		else
-			bprint(i, "wr\t$%lux, R%d", i->simm13, i->rs1);
+			bprint(i, "wr\t$%ux, R%d", i->simm13, i->rs1);
 	}
 	bprint(i, ", %s", regtab[i->op3&3]);
 }
@@ -849,14 +844,14 @@ jmpl(Instr *i, char *m)		/* page 82 */
 {
 	if(i->i == 0){
 		if(i->rd == 15)
-			bprint(i, "%X\t(R%d+R%d)", "CALL", i->rs2, i->rs1);
+			bprint(i, "%T\t(R%d+R%d)", "CALL", i->rs2, i->rs1);
 		else
-			bprint(i, "%X\t(R%d+R%d), R%d", m, i->rs2, i->rs1, i->rd);
+			bprint(i, "%T\t(R%d+R%d), R%d", m, i->rs2, i->rs1, i->rd);
 	}else{
 		if(!dascase && i->simm13==8 && i->rs1==15 && i->rd==0)
 			bprint(i, "RETURN");
 		else{
-			bprint(i, "%X\t", m);
+			bprint(i, "%T\t", m);
 			address(i);
 			bprint(i, ", R%d", i->rd);
 		}
@@ -885,8 +880,8 @@ loadf(Instr *i, char *m)		/* page 70 */
 		bprint(i, ", R%d", i->rd);
 }
 
-static
-void storef(Instr *i, char *m)		/* page 70 */
+static void
+storef(Instr *i, char *m)		/* page 70 */
 {
 	if(!dascase){
 		m = "FMOVD";
@@ -908,8 +903,8 @@ void storef(Instr *i, char *m)		/* page 70 */
 		address(i);
 }
 
-static
-void loadc(Instr *i, char *m)			/* page 72 */
+static void
+loadc(Instr *i, char *m)			/* page 72 */
 {
 	if(i->i == 0)
 		bprint(i, "%s\t(R%d+R%d), C%d", m, i->rs1, i->rs2, i->rd);
@@ -920,8 +915,8 @@ void loadc(Instr *i, char *m)			/* page 72 */
 	}
 }
 
-static
-void loadcsr(Instr *i, char *m)			/* page 72 */
+static void
+loadcsr(Instr *i, char *m)			/* page 72 */
 {
 	if(i->i == 0)
 		bprint(i, "%s\t(R%d+R%d), CSR", m, i->rs1, i->rs2);
@@ -1002,19 +997,19 @@ fpop(Instr *i, char *m)	/* page 108-116 */
 	}
 	for(j=0; fptab1[j].name; j++)
 		if(fptab1[j].opf == i->opf){
-			bprint(i, "%X\tF%d, F%d", fptab1[j].name, i->rs2, i->rd);
+			bprint(i, "%T\tF%d, F%d", fptab1[j].name, i->rs2, i->rd);
 			return;
 		}
 	for(j=0; fptab2[j].name; j++)
 		if(fptab2[j].opf == i->opf){
-			bprint(i, "%X\tF%d, F%d, F%d", fptab2[j].name, i->rs1, i->rs2, i->rd);
+			bprint(i, "%T\tF%d, F%d, F%d", fptab2[j].name, i->rs1, i->rs2, i->rd);
 			return;
 		}
-	bprint(i, "%X%ux\tF%d, F%d, F%d", m, i->opf, i->rs1, i->rs2, i->rd);
+	bprint(i, "%T%ux\tF%d, F%d, F%d", m, i->opf, i->rs1, i->rs2, i->rd);
 }
 
 static int
-sparcfoll(Map *map, ulong pc, Rgetter rget, ulong *foll)
+sparcfoll(Map *map, uvlong pc, Rgetter rget, uvlong *foll)
 {
 	ulong w, r1, r2;
 	char buf[8];

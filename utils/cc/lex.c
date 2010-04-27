@@ -7,27 +7,30 @@
 
 /*
  * known debug flags
- *	-o file		output file
- *	-D name		define
- *	-I path		include
  *	-a		acid declaration output
- *	-M		constant multiplication
- *	-B		non ANSI
  *	-A		!B
+ *	-B		non ANSI
  *	-d		print declarations
- *	-t		print type trees
- *	-L		print every NAME symbol
- *	-i		print initialization
+ *	-D name		define
  *	-F		format specification check
- *	-r		print registerization
- *	-v		verbose printing
- *	-X		abort on error
- *	-w		print warnings
+ *	-i		print initialization
+ *	-I path		include
+ *	-l		generate little-endian code
+ *	-L		print every NAME symbol
+ *	-M		constant multiplication
  *	-m		print add/sub/mul trees
- *	-s		print structure offsets (with -a or -aa)
  *	-n		print acid to file (%.c=%.acid) (with -a or -aa)
+ *	-o file		output file
  *	-p		use standard cpp ANSI preprocessor (not on windows)
+ *	-r		print registerization
+ *	-s		print structure offsets (with -a or -aa)
+ *	-S		print assembly
+ *	-t		print type trees
  *	-V		enable void* conversion warnings
+ *	-v		verbose printing
+ *	-w		print warnings
+ *	-X		abort on error
+ *	-.		Inhibit search for includes in source directory
  */
 
 void
@@ -52,6 +55,15 @@ main(int argc, char *argv[])
 		c = ARGC();
 		if(c >= 0 && c < sizeof(debug))
 			debug[c]++;
+		break;
+
+	case 'l':			/* for little-endian mips */
+		if(thechar != 'v'){
+			print("can only use -l with vc");
+			errorexit();
+		}
+		thechar = '0';
+		thestring = "spim";
 		break;
 
 	case 'o':
@@ -81,7 +93,12 @@ main(int argc, char *argv[])
 	}
 	if(argc > 1 && !systemtype(Windows)) {
 		nproc = 1;
-		if(p = getenv("NPROC"))
+		/*
+		 * if we're writing acid to standard output, don't compile
+		 * concurrently, to avoid interleaving output.
+		 */
+		if(((!debug['a'] && !debug['Z']) || debug['n']) &&
+		    (p = getenv("NPROC")) != nil)
 			nproc = atol(p);	/* */
 		c = 0;
 		nout = 0;
@@ -137,6 +154,7 @@ compile(char *file, char **defs, int ndef)
 	char ofile[400], incfile[20];
 	char *p, *av[100], opt[256];
 	int i, c, fd[2];
+	static int first = 1;
 
 	strcpy(ofile, file);
 	p = utfrrune(ofile, pathchar());
@@ -146,6 +164,7 @@ compile(char *file, char **defs, int ndef)
 			include[0] = strdup(ofile);
 	} else
 		p = ofile;
+
 	if(outfile == 0) {
 		outfile = p;
 		if(outfile) {
@@ -175,21 +194,29 @@ compile(char *file, char **defs, int ndef)
 			setinclude("/sys/include");
 		}
 	}
+	if (first)
+		Binit(&diagbuf, 1, OWRITE);
+	/*
+	 * if we're writing acid to standard output, don't keep scratching
+	 * outbuf.
+	 */
 	if((debug['a'] || debug['Z']) && !debug['n']) {
-		outfile = 0;
-		Binit(&outbuf, 1, OWRITE);
-		Binit(&diagbuf, 2, OWRITE);
+		if (first) {
+			outfile = 0;
+			Binit(&outbuf, dup(1, -1), OWRITE);
+			dup(2, 1);
+		}
 	} else {
 		c = mycreat(outfile, 0664);
 		if(c < 0) {
-			diag(Z, "cannot open %s", outfile);
+			diag(Z, "cannot open %s - %r", outfile);
 			outfile = 0;
 			errorexit();
 		}
 		Binit(&outbuf, c, OWRITE);
-		Binit(&diagbuf, 1, OWRITE);
 	}
 	newio();
+	first = 0;
 
 	/* Use an ANSI preprocessor */
 	if(debug['p']) {
@@ -215,6 +242,10 @@ compile(char *file, char **defs, int ndef)
 			close(fd[1]);
 			av[0] = CPP;
 			i = 1;
+			if(debug['.']){
+				sprint(opt, "-.");
+				av[i++] = strdup(opt);
+			}
 			if(debug['+']) {
 				sprint(opt, "-+");
 				av[i++] = strdup(opt);
@@ -1005,7 +1036,6 @@ getnsc(void)
 		}
 		c = GETC();
 	}
-	return 0;
 }
 
 void
@@ -1123,9 +1153,11 @@ struct
 	"for",		LFOR,		0,
 	"goto",		LGOTO,		0,
 	"if",		LIF,		0,
+	"inline",	LINLINE,	0,
 	"int",		LINT,		TINT,
 	"long",		LLONG,		TLONG,
 	"register",	LREGISTER,	0,
+	"restrict",	LRESTRICT,	0,
 	"return",	LRETURN,	0,
 	"SET",		LSET,		0,
 	"short",	LSHORT,		TSHORT,

@@ -501,7 +501,7 @@ addnop(Prog *p)
 	Prog *q;
 
 	q = prg();
-	q->as = ANOR;
+	q->as = AOR;
 	q->line = p->line;
 	q->from.type = D_REG;
 	q->from.reg = REGZERO;

@@ -35,7 +35,7 @@ unique(char *buf, Sym *s)
 		}
 	}
 	if(renamed && !quiet)
-		print("\t%s=%s %c/%lux\n", s->name, buf, s->type, s->value);
+		print("\t%s=%s %c/%llux\n", s->name, buf, s->type, s->value);
 	if(l == 0)
 		l = enter(buf, Tid);
 	return l;	
@@ -193,12 +193,12 @@ loadvars(void)
 	}
 }
 
-vlong
+uvlong
 rget(Map *map, char *reg)
 {
 	Lsym *s;
-	long x;
-	vlong v;
+	ulong x;
+	uvlong v;
 	int ret;
 
 	s = look(reg);
@@ -206,7 +206,7 @@ rget(Map *map, char *reg)
 		fatal("rget: %s\n", reg);
 
 	if(s->v->vstore.fmt == 'Y')
-		ret = get8(map, (long)s->v->vstore.u0.sival, &v);
+		ret = get8(map, s->v->vstore.u0.sival, &v);
 	else {
 		ret = get4(map, (long)s->v->vstore.u0.sival, &x);
 		v = x;

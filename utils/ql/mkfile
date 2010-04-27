@@ -4,14 +4,14 @@ TARG=ql
 
 OFILES=\
 	asm.$O\
+	asmout.$O\
 	list.$O\
+	noop.$O\
 	obj.$O\
 	optab.$O\
 	pass.$O\
 	span.$O\
 	enam.$O\
-	noop.$O\
-	asmout.$O\
 	cnam.$O\
 	sched.$O\
 	$TARGMODEL.$O\
@@ -31,3 +31,6 @@ CFLAGS=	$CFLAGS -I../include
 
 enam.$O:	../qc/enam.c
 	$CC $CFLAGS ../qc/enam.c
+
+#cnam.c:	l.h
+#	rc mkcname

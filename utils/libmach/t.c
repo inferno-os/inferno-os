@@ -56,6 +56,7 @@ Mach mthumb =
 	0x1000,		/* page size */
 	0x80000000,	/* kernel base */
 	0,		/* kernel text mask */
+	0x7FFFFFFF,	/* stack top */
 	2,		/* quantization of pc */
 	4,		/* szaddr */
 	4,		/* szreg */
@@ -99,9 +100,9 @@ thumbpctab(Biobuf *b, Fhdr *fp)
 }
 
 int
-thumbpclookup(ulong pc)
+thumbpclookup(uvlong pc)
 {
-	ulong l, u, m;
+	uvlong l, u, m;
 	pcentry *tab = pctab;
 
 	l = 0;
@@ -115,8 +116,7 @@ thumbpclookup(ulong pc)
 		else
 			l = u = m;
 	}
-	if(l == u && u >= 0 && u < npctab && tab[u].start <= pc && pc <= tab[u].stop)
+	if(l == u && u < npctab && tab[u].start <= pc && pc <= tab[u].stop)
 		return 1;	// thumb
 	return 0;	// arm
 }
-

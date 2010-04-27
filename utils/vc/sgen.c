@@ -154,7 +154,7 @@ loop:
 		if(cases == C)
 			diag(n, "case/default outside a switch");
 		if(l == Z) {
-			cas();
+			casf();
 			cases->val = 0;
 			cases->def = 1;
 			cases->label = pc;
@@ -165,7 +165,7 @@ loop:
 			goto rloop;
 		if(l->op == OCONST)
 		if(typechl[l->type->etype]) {
-			cas();
+			casf();
 			cases->val = l->vconst;
 			cases->def = 0;
 			cases->label = pc;
@@ -189,7 +189,7 @@ loop:
 
 		cn = cases;
 		cases = C;
-		cas();
+		casf();
 
 		sbc = breakpc;
 		breakpc = pc;

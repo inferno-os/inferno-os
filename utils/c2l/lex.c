@@ -951,7 +951,7 @@ getnsc(void)
 		}
 		c = GETC();
 	}
-	return 0;
+	/* not reached */
 }
 
 void

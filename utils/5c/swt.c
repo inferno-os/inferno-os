@@ -123,7 +123,7 @@ direct:
 }
 
 void
-cas(void)
+casf(void)
 {
 	Case *c;
 

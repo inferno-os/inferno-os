@@ -18,7 +18,7 @@ OFILES=\
 	scon.$O\
 	sub.$O\
 	y.tab.$O\
-	machcap.$O\
+	omachcap.$O\
  
 HFILES=cc.h\
 	y.tab.h\

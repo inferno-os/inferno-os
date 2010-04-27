@@ -1,7 +1,7 @@
 struct Ureg
 {
 	ulong	cause;
-	ulong	status;
+	ulong	srr1;
 	ulong	pc;	/* SRR0 */
 	ulong	pad;
 	ulong	lr;

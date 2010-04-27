@@ -28,7 +28,7 @@ struct Opcode
 {
 	char*	o;
 	void	(*fmt)(Opcode*, Instr*);
-	ulong	(*foll)(Map*, Rgetter, Instr*, ulong);
+	uvlong	(*foll)(Map*, Rgetter, Instr*, uvlong);
 	char*	a;
 };
 
@@ -40,10 +40,10 @@ static	char	FRAMENAME[] = ".frame";
  */
 
 static	char	*thumbexcep(Map*, Rgetter);
-static	int	thumbfoll(Map*, ulong, Rgetter, ulong*);
-static	int	thumbinst(Map*, ulong, char, char*, int);
-static	int	thumbdas(Map*, ulong, char*, int);
-static	int	thumbinstlen(Map*, ulong);
+static	int	thumbfoll(Map*, uvlong, Rgetter, uvlong*);
+static	int	thumbinst(Map*, uvlong, char, char*, int);
+static	int	thumbdas(Map*, uvlong, char*, int);
+static	int	thumbinstlen(Map*, uvlong);
 
 /*
  *	Debugger interface
@@ -191,7 +191,7 @@ thumbclass(long w)
 }
 
 static int
-decode(Map *map, ulong pc, Instr *i)
+decode(Map *map, uvlong pc, Instr *i)
 {
 	ushort w;
 
@@ -277,7 +277,7 @@ gsymoff(char *buf, int n, long v, int space)
 	if (!delta)
 		return snprint(buf, n, "%s", s.name);
 	if (s.type != 't' && s.type != 'T')
-		return snprint(buf, n, "%s+%lux", s.name, v-s.value);
+		return snprint(buf, n, "%s+%llux", s.name, v-s.value);
 	else
 		return snprint(buf, n, "#%lux", v);
 }
@@ -318,8 +318,8 @@ thumbcondpass(Map *map, Rgetter rget, uchar cond)
 	return 0;
 }
 
-static ulong
-thumbfbranch(Map *map, Rgetter rget, Instr *i, ulong pc)
+static uvlong
+thumbfbranch(Map *map, Rgetter rget, Instr *i, uvlong pc)
 {
 	char buf[8];
 
@@ -346,8 +346,8 @@ thumbfbranch(Map *map, Rgetter rget, Instr *i, ulong pc)
 	return 0;
 }
 
-static ulong
-thumbfmov(Map *map, Rgetter rget, Instr *i, ulong pc)
+static uvlong
+thumbfmov(Map *map, Rgetter rget, Instr *i, uvlong pc)
 {
 	char buf[8];
 	ulong rd;
@@ -360,8 +360,8 @@ thumbfmov(Map *map, Rgetter rget, Instr *i, ulong pc)
 	return rget(map, buf);
 }
 
-static ulong
-thumbfadd(Map *map, Rgetter rget, Instr *i, ulong pc)
+static uvlong
+thumbfadd(Map *map, Rgetter rget, Instr *i, uvlong pc)
 {
 	char buf[8];
 	ulong rd, v;
@@ -712,7 +712,7 @@ format(char *mnemonic, Instr *i, char *f)
 			fmt = "#%lx(R%d)";
 			if (i->rn == 15) {
 				/* convert load of offset(PC) to a load immediate */
-				if (get4(i->map, i->addr + i->imm, &i->imm) > 0)
+				if (get4(i->map, i->addr + i->imm, (ulong*)&i->imm) > 0)
 				{
 					g = 1;
 					fmt = "";
@@ -773,7 +773,7 @@ format(char *mnemonic, Instr *i, char *f)
 }
 
 static int
-printins(Map *map, ulong pc, char *buf, int n)
+printins(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr i;
 
@@ -787,14 +787,14 @@ printins(Map *map, ulong pc, char *buf, int n)
 }
 
 static int
-thumbinst(Map *map, ulong pc, char modifier, char *buf, int n)
+thumbinst(Map *map, uvlong pc, char modifier, char *buf, int n)
 {
 	USED(modifier);
 	return printins(map, pc, buf, n);
 }
 
 static int
-thumbdas(Map *map, ulong pc, char *buf, int n)
+thumbdas(Map *map, uvlong pc, char *buf, int n)
 {
 	Instr i;
 
@@ -809,7 +809,7 @@ thumbdas(Map *map, ulong pc, char *buf, int n)
 }
 
 static int
-thumbinstlen(Map *map, ulong pc)
+thumbinstlen(Map *map, uvlong pc)
 {
 	Instr i;
 
@@ -819,7 +819,7 @@ thumbinstlen(Map *map, ulong pc)
 }
 
 static int
-thumbfoll(Map *map, ulong pc, Rgetter rget, ulong *foll)
+thumbfoll(Map *map, uvlong pc, Rgetter rget, uvlong *foll)
 {
 	ulong d;
 	Instr i;

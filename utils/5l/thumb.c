@@ -469,31 +469,30 @@ brextra(Prog *p)
 		diag("bad op in brextra()");
 	c = thumbaclass(&p->to, p);
 	switch(p->as){
-		case AB:
-			if(c != C_SBRA)
-				return 0;
-			return 8-2+2;
-		case ABL:
-			if(c != C_SBRA)
-				return 0;
-			return 14-4+2;
-		case ABX:
-			if(c == C_REG || c == C_HREG)
-				return 0;
+	case AB:
+		if(c != C_SBRA)
+			return 0;
+		return 8-2+2;
+	case ABL:
+		if(c != C_SBRA)
+			return 0;
+		return 14-4+2;
+	case ABX:
+		if(c == C_REG || c == C_HREG)
+			return 0;
 #ifdef CALLEEBX
-			diag("ABX $I in brextra");
+		diag("ABX $I in brextra");
 #endif
-			if(c != C_SBRA)
-				return 0;
-			return 14-10+2;
-		default:
-			if(c == C_GBRA)
-				return 0;
-			if(c == C_LBRA)
-				return 10-4+2;
-			return 10-2+2;
+		if(c != C_SBRA)
+			return 0;
+		return 14-10+2;
+	default:
+		if(c == C_GBRA)
+			return 0;
+		if(c == C_LBRA)
+			return 10-4+2;
+		return 10-2+2;
 	}
-	return 0;
 }
 
 #define high(r)	((r)>=8)
