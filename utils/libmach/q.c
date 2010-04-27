@@ -2,7 +2,7 @@
  * PowerPC definition
  *	forsyth@terzarima.net
  */
-#include <u.h>
+#include <lib9.h>
 #include <bio.h>
 #include "uregq.h"
 #include "mach.h"
