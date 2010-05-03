@@ -6,3 +6,4 @@ TARGFILES=\
 	getwd-Nt.$O\
 	setbinmode-Nt.$O\
 	lock-Nt-386.$O\
+	pread-Nt.$O\

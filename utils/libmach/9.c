@@ -109,9 +109,9 @@ Mach mpower64 =
 	"setSB",	/* static base register name */
 	0,		/* value */
 	0x1000,		/* page size */
-	0x80000000ULL,	/* kernel base */
+	0x80000000U,	/* kernel base */
 	0,		/* kernel text mask */
-	0x7FFFFFFFULL,	/* user stack top */
+	0x7FFFFFFFU,	/* user stack top */
 	4,		/* quantization of pc */
 	8,		/* szaddr */
 	8,		/* szreg */

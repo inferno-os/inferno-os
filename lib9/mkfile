@@ -14,6 +14,7 @@ COMMONFILES=\
 	qsort.$O\
 	runestrlen.$O\
 	strtoll.$O\
+	strtoull.$O\
 	rune.$O\
 #
 # files used by most models.  these are added to TARGFILES in some
