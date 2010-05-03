@@ -1,3 +1,7 @@
+20100503
+	updated libmach/8db.c to avoid [] initialisers
+20100501
+	update libmach to compensate for MS compiler
 20100426
 	updated libmach
 	updated compiler suites (continuing)

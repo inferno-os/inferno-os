@@ -50,15 +50,23 @@ struct	Obj		/* functions to handle each intermediate (.$O) file */
 
 static Obj	obj[] =
 {			/* functions to identify and parse each type of obj */
-	[Obj68020]	"68020 .2",	_is2, _read2,
-	[ObjAmd64]	"amd64 .6",	_is6, _read6,
-	[ObjArm]	"arm .5",	_is5, _read5,
-	[Obj386]	"386 .8",	_is8, _read8,
-	[ObjSparc]	"sparc .k",	_isk, _readk,
-	[ObjPower]	"power .q",	_isq, _readq,
-	[ObjMips]	"mips .v",	_isv, _readv,
-	[ObjPower64]	"power64 .9",	_is9, _read9,
-	[Maxobjtype]	0, 0
+	/*[Obj68020]*/	"68020 .2",	_is2, _read2,
+	/*[ObjSparc]*/	"sparc .k",	_isk, _readk,
+	/*[ObjMips]*/	"mips .v",	_isv, _readv,
+	/*[Obj386]*/	"386 .8",	_is8, _read8,
+	/*[Obj960]*/	{0, 0,},
+	/*[Obj3210]*/	{0, 0,},
+	/*[ObjMips2]*/	{0, 0,},
+	/*[Obj29000]*/	{0, 0,},
+	/*[ObjArm]*/	"arm .5",	_is5, _read5,
+	/*[ObjPower]*/	"power .q",	_isq, _readq,
+	/*[ObjMips2le]*/	{0, 0,},
+	/*[ObjAlpha]*/	{0, 0,},
+	/*[ObjSparc64]*/	{0, 0,},
+	/*[ObjAmd64]*/	"amd64 .6",	_is6, _read6,
+	/*[ObjSpim]*/	{0, 0,},
+	/*[ObjPower64]*/	"power64 .9",	_is9, _read9,
+	/*[Maxobjtype]*/	0, 0
 };
 
 struct	Symtab

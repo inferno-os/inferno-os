@@ -1,6 +1,6 @@
 .TH SH-STD 1
 .SH NAME
-std, if, while, ~, no, !, apply, getlines, status, pctl, fn, and, or, raise, rescue, hd, tl, index, split, join, pid, parse, pctl, env \- standard shell builtins module.
+std, if, while, ~, no, !, apply, getlines, status, pctl, fn, and, or, raise, rescue, hd, tl, index, split, join, pid, parse, pipe, env \- standard shell builtins module.
 .SH SYNOPSIS
 .B load std
 
