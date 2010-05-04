@@ -1,3 +1,5 @@
+20100504
+	change lib9/strtoull.c for MS
 20100503
 	updated libmach/8db.c to avoid [] initialisers
 20100501
