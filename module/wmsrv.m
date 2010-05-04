@@ -10,7 +10,7 @@ Wmsrv: module{
 
 	Window: adt {
 		tag:	string;
-		r:	Rect;
+		r:	Draw->Rect;
 		img:	ref Draw->Image;
 	};
 
