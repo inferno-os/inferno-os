@@ -3,9 +3,9 @@
 #define UVLONG_MAX	((uvlong)1<<63)
 
 uvlong
-strtoull(char *nptr, char **endptr, int base)
+strtoull(const char *nptr, char **endptr, int base)
 {
-	char *p;
+	const char *p;
 	uvlong n, nn, m;
 	int c, ovfl, v, neg, ndig;
 
@@ -87,7 +87,7 @@ Return:
 	if(ndig == 0)
 		p = nptr;
 	if(endptr)
-		*endptr = p;
+		*endptr = (char*)p;
 	if(ovfl)
 		return UVLONG_MAX;
 	if(neg)
