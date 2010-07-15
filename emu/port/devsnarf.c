@@ -63,7 +63,8 @@ snarfclose(Chan* c)
 		/* this must be the last reference: no need to lock */
 		if(c->mode == ORDWR || c->mode == OWRITE){
 			if(!waserror()){
-				clipwrite(c->aux);
+				if(c->aux != nil)
+					clipwrite(c->aux);
 				poperror();
 			}
 		}

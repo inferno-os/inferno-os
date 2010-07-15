@@ -70,7 +70,7 @@ Aconv(Fmt *fp)
 int
 Dconv(Fmt *fp)
 {
-	char str[40], s[20];
+	char str[STRINGSZ], s[STRINGSZ];
 	Adr *a;
 	int i;
 
@@ -224,7 +224,7 @@ char*	regstr[] =
 int
 Rconv(Fmt *fp)
 {
-	char str[20];
+	char str[STRINGSZ];
 	int r;
 
 	r = va_arg(fp->args, int);
@@ -240,7 +240,7 @@ int
 Sconv(Fmt *fp)
 {
 	int i, c;
-	char str[30], *p, *a;
+	char str[STRINGSZ], *p, *a;
 
 	a = va_arg(fp->args, char*);
 	p = str;

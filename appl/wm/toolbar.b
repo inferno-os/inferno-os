@@ -82,12 +82,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	sys->bind("#s", "/chan", sys->MBEFORE);
 
 	arg->init(argv);
-	arg->setusage("toolbar [-s]");
+	arg->setusage("toolbar [-s] [-p]");
 	startmenu := 1;
+#	ownsnarf := (sys->open("/chan/snarf", Sys->ORDWR) == nil);
+	ownsnarf := sys->stat("/chan/snarf").t0 < 0;
 	while((c := arg->opt()) != 0){
 		case c {
 		's' =>
 			startmenu = 0;
+		'p' =>
+			ownsnarf = 1;
 		* =>
 			arg->usage();
 		}
@@ -110,9 +114,13 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	shctxt := Context.new(ctxt);
 	shctxt.addmodule("wm", myselfbuiltin);
 
-	snarfIO := sys->file2chan("/chan", "snarf");
-	if(snarfIO == nil)
-		fatal(sys->sprint("cannot make /chan/snarf: %r"));
+	snarfIO: ref Sys->FileIO;
+	if(ownsnarf){
+		snarfIO = sys->file2chan("/chan", "snarf");
+		if(snarfIO == nil)
+			fatal(sys->sprint("cannot make /chan/snarf: %r"));
+	}else
+		snarfIO = ref Sys->FileIO(chan of (int, int, int, Sys->Rread), chan of (int, array of byte, int, Sys->Rwrite));
 	sync := chan of string;
 	spawn consoleproc(ctxt, sync);
 	if ((err := <-sync) != nil)
@@ -125,8 +133,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	snarf: array of byte;
 #	write("/prog/"+string sys->pctl(0, nil)+"/ctl", "restricted"); # for testing
 	for(;;) alt{
-	s := <-tbtop.ctxt.kbd =>
-		tk->keyboard(tbtop, c);
+	k := <-tbtop.ctxt.kbd =>
+		tk->keyboard(tbtop, k);
 	m := <-tbtop.ctxt.ptr =>
 		tk->pointer(tbtop, *m);
 	s := <-tbtop.ctxt.ctl or
@@ -137,11 +145,13 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		if (donesetup){
 			{
  				shctxt.run(ref Listnode(nil, s) :: nil, 0);
-			} exception e {"fail:*" =>;}
+			} exception {
+			"fail:*" =>	;
+			}
 		}
 	detask := <-task =>
 		deiconify(detask);
-	(off, data, fid, wc) := <-snarfIO.write =>
+	(off, data, nil, wc) := <-snarfIO.write =>
 		if(wc == nil)
 			break;
 		if (off == 0)			# write at zero truncates
@@ -519,23 +529,15 @@ consoleproc(ctxt: ref Draw->Context, sync: chan of string)
 		tk->keyboard(top, c);
 	p := <-top.ctxt.ptr =>
 		tk->pointer(top, *p);
-	(off, nbytes, fid, rc) := <-iostdout.read =>
-		if(rc == nil)
-			break;
-		alt{
-		rc <-= (nil, "inappropriate use of file") =>;
-		* =>;
-		}
-	(off, nbytes, fid, rc) := <-iostderr.read =>
-		if(rc == nil)
-			break;
-		alt{
-		rc <-= (nil, "inappropriate use of file") =>;
-		* =>;
-		}
-	(off, data, fid, wc) := <-iostdout.write =>
+	(nil, nil, nil, rc) := <-iostdout.read =>
+		if(rc != nil)
+			rc <-= (nil, "inappropriate use of file");
+	(nil, nil, nil, rc) := <-iostderr.read =>
+		if(rc != nil)
+			rc <-= (nil, "inappropriate use of file");
+	(nil, data, nil, wc) := <-iostdout.write =>
 		conout(top, data, wc);
-	(off, data, fid, wc) := <-iostderr.write =>
+	(nil, data, nil, wc) := <-iostderr.write =>
 		conout(top, data, wc);
 		if(wc != nil)
 			tkclient->wmctl(top, "untask");

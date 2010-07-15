@@ -5,6 +5,8 @@ toolbar \- window manager toolbar
 .B wm/toolbar
 [
 .B -s
+] [
+.B -p
 ]
 .SH DESCRIPTION
 .I Toolbar
@@ -55,6 +57,34 @@ The standard
 script executes the script
 .BI /usr/ username /lib/wmsetup ,
 enabling each user to have their own window manager configuration.
+.PP
+Normally
+.I toolbar
+packs a menu button referring to the start menu at the left hand side of the tool bar.
+The
+.B -s
+option suppresses that.
+.PP
+.I Toolbar
+serves the shared
+.I "snarf buffer"
+used by cut and paste in
+.IR wm (1)
+applications,
+except in hosted Inferno where the host's standard clipboard system is used instead,
+via
+.IR snarf (3).
+If
+.I toolbar
+cannot find
+.B /chan/snarf
+or the
+.B -p
+option is given,
+.I toolbar
+will create its own snarf buffer, private to the set of
+applications running under the current instance of
+.IR wm (1).
 .SH FILES
 .TP
 .B /lib/wmsetup

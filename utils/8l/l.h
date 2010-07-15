@@ -346,3 +346,4 @@ void	zerosig(char*);
 #pragma	varargck	type	"P"	Prog*
 #pragma	varargck	type	"R"	int
 #pragma	varargck	type	"A"	int
+#pragma varargck	argpos	diag	1

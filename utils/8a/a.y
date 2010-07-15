@@ -236,6 +236,7 @@ rom:
 	}
 |	reg
 |	omem
+|	imm
 
 rim:
 	rem
@@ -385,6 +386,12 @@ omem:
 	{
 		$$ = nullgen;
 		$$.type = D_INDIR+D_SP;
+	}
+|	con '(' LSREG ')'
+	{
+		$$ = nullgen;
+		$$.type = D_INDIR+$3;
+		$$.offset = $1;
 	}
 |	'(' LLREG '*' con ')'
 	{

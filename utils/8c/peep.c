@@ -639,10 +639,14 @@ copyu(Prog *p, Adr *v, Adr *s)
 			return 2;
 		goto caseread;
 
-	case AMOVSL:
 	case AREP:
 	case AREPN:
-		if(v->type == D_CX || v->type == D_DI || v->type == D_SI)
+		if(v->type == D_CX)
+			return 2;
+		goto caseread;
+
+	case AMOVSL:
+		if(v->type == D_DI || v->type == D_SI)
 			return 2;
 		goto caseread;
 

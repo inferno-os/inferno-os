@@ -1,3 +1,9 @@
+20100715
+	appl/wm/toolbar.b changed not to create new /chan/snarf if one exists, unless -p (private) option given [toolbar(1)]
+	utils/cc/macbody - add overlooked change to implement __VA_ARGS__
+	other minor updates to the compilers to resync
+20100714
+	correctly initialise types in utils/cc/sub.c
 20100504
 	change lib9/strtoull.c for MS
 20100503

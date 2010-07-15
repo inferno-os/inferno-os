@@ -334,6 +334,8 @@ oclass(Adr *a)
 		return Yax;
 
 	case D_CL:
+		return Ycl;
+
 	case D_DL:
 	case D_BL:
 	case D_AH:
