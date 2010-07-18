@@ -2465,7 +2465,7 @@ membyteval(Memimage *src)
 	bpp = src->depth;
 	uc <<= (src->r.min.x&(7/src->depth))*src->depth;
 	uc &= ~(0xFF>>bpp);
-	/* pixel value is now in high part of byte. repeat throughout byte 
+	// pixel value is now in high part of byte. repeat throughout byte 
 	val = uc;
 	for(i=bpp; i<8; i<<=1)
 		val |= val>>i;
