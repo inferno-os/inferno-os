@@ -556,35 +556,35 @@ getfile(old: ref File): (ref File, big)
 
 getpath(p: string): string
 {
-	for(; (c := p[0]) == ' ' || c == '\t'; p = p[1:])
+	for(i := 0; i < len p && (p[i] == ' ' || p[i] == '\t'); i++)
 		;
-	for(n := 0; (c = p[n]) != '\n' && c != ' ' && c != '\t'; n++)
+	for(n := i; n < len p && (c := p[n]) != '\n' && c != ' ' && c != '\t'; n++)
 		;
-	return p[0:n];
+	return p[i:n];
 }
 
 getname(p: string): (string, string)
 {
-	for(; (c := p[0]) == ' ' || c == '\t'; p = p[1:])
+	for(i := 0; i < len p && (p[0] == ' ' || p[0] == '\t'); i++)
 		;
-	i := 0;
 	s := "";
 	quoted := 0;
-	for(; (c = p[0]) != '\n' && (c != ' ' && c != '\t' || quoted); p = p[1:]){
-			if(quoted && c == '\'' && p[1] == '\'')
-				p = p[1:];
-			else if(c == '\''){
+	for(; i < len p && (c := p[i]) != '\n' && (c != ' ' && c != '\t' || quoted); i++){
+		if(c == '\''){
+			if(i+1 >= len p || p[i+1] != '\''){
 				quoted = !quoted;
 				continue;
 			}
-			s[i++] = c;
+			i++;
+		}
+		s[len s] = c;
 	}
 	if(len s > 0 && s[0] == '$'){
 		s = getenv(s[1:]);
 		if(s == nil)
 			error(sys->sprint("can't read environment variable %q", s));
 	}
-	return (s, p);
+	return (s, p[i:]);
 }
 
 getenv(s: string): string

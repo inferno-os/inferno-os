@@ -1,3 +1,5 @@
+20100719
+	appl/cmd/disk/mkfs.b change getname/getpath to cope with missing newline [issue 236]
 20100715
 	appl/wm/toolbar.b changed not to create new /chan/snarf if one exists, unless -p (private) option given [toolbar(1)]
 	utils/cc/macbody - add overlooked change to implement __VA_ARGS__
