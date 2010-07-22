@@ -165,7 +165,7 @@ main(int argc, char *argv[])
 		print("warning: -D0x%lux is ignored because of -R0x%lux\n",
 			INITDAT, INITRND);
 	if(debug['v'])
-		Bprint(&bso, "HEADER = -H0x%ld -T0x%lux -D0x%lux -R0x%lux\n",
+		Bprint(&bso, "HEADER = -H0x%x -T0x%lux -D0x%lux -R0x%lux\n",
 			HEADTYPE, INITTEXT, INITDAT, INITRND);
 	Bflush(&bso);
 	zprg.as = AGOK;

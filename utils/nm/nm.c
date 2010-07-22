@@ -20,6 +20,7 @@ int	hflag;
 int	nflag;
 int	sflag;
 int	uflag;
+int	Tflag;
 
 Sym	**fnames;		/* file path translation table */
 Sym	**symptr;
@@ -36,6 +37,13 @@ void	dofile(Biobuf*);
 void	zenter(Sym*);
 
 void
+usage(void)
+{
+	fprint(2, "usage: nm [-aghnsTu] file ...\n");
+	exits("usage");
+}
+
+void
 main(int argc, char *argv[])
 {
 	int i;
@@ -44,13 +52,17 @@ main(int argc, char *argv[])
 	Binit(&bout, 1, OWRITE);
 	argv0 = argv[0];
 	ARGBEGIN {
+	default:	usage();
 	case 'a':	aflag = 1; break;
 	case 'g':	gflag = 1; break;
 	case 'h':	hflag = 1; break;
 	case 'n':	nflag = 1; break;
 	case 's':	sflag = 1; break;
 	case 'u':	uflag = 1; break;
+	case 'T':	Tflag = 1; break;
 	} ARGEND
+	if (argc == 0)
+		usage();
 	if (argc > 1)
 		multifile++;
 	for(i=0; i<argc; i++){
@@ -78,14 +90,15 @@ main(int argc, char *argv[])
 void
 doar(Biobuf *bp)
 {
-	int offset, size, obj;
+	vlong offset;
+	int size, obj;
 	char membername[SARNAME];
 
 	multifile = 1;
 	for (offset = Boffset(bp);;offset += size) {
 		size = nextar(bp, offset, membername);
 		if (size < 0) {
-			error("phase error on ar header %ld", offset);
+			error("phase error on ar header %lld", offset);
 			return;
 		}
 		if (size == 0)
@@ -141,10 +154,10 @@ cmp(const void *vs, const void *vt)
 	s = (Sym**)vs;
 	t = (Sym**)vt;
 	if(nflag)
-		if((ulong)(*s)->value < (ulong)(*t)->value)
+		if((*s)->value < (*t)->value)
 			return -1;
 		else
-			return (ulong)(*s)->value > (ulong)(*t)->value;
+			return (*s)->value > (*t)->value;
 	return strcmp((*s)->name, (*t)->name);
 }
 /*
@@ -155,7 +168,7 @@ zenter(Sym *s)
 {
 	static int maxf = 0;
 
-	if (s->value > maxf) {
+	if (s->value >= maxf) {
 		maxf = (s->value+CHUNK-1) &~ (CHUNK-1);
 		fnames = realloc(fnames, maxf*sizeof(*fnames));
 		if(fnames == 0) {
@@ -263,8 +276,10 @@ printsyms(Sym **symptr, long nsym)
 			cp = path;
 		} else
 			cp = s->name;
+		if (Tflag)
+			Bprint(&bout, "%8ux ", s->sig);
 		if (s->value || s->type == 'a' || s->type == 'p')
-			Bprint(&bout, "%8lux %c %s\n", s->value, s->type, cp);
+			Bprint(&bout, "%8llux %c %s\n", s->value, s->type, cp);
 		else
 			Bprint(&bout, "         %c %s\n", s->type, cp);
 	}

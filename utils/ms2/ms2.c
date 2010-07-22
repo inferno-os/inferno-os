@@ -136,11 +136,11 @@ record(uchar *s, int l)
 	ulong cksum;
 
 	if(addr & (0xFF<<24)){
-		Bprint(&bout, "S3%.2X%.8X", l+5, addr);
+		Bprint(&bout, "S3%.2X%.8lX", l+5, addr);
 		cksum = l+5;
 		cksum += (addr>>24)&0xff;
 	}else{
-		Bprint(&bout, "S2%.2X%.6X", l+4, addr);
+		Bprint(&bout, "S2%.2X%.6lX", l+4, addr);
 		cksum = l+4;
 	}
 	cksum += addr&0xff;
@@ -151,7 +151,7 @@ record(uchar *s, int l)
 		cksum += *s;
 		Bprint(&bout, "%.2X", *s++);
 	}
-	Bprint(&bout, "%.2X\n", (~cksum)&0xff);
+	Bprint(&bout, "%.2lX\n", (~cksum)&0xff);
 	addr += l;
 }
 
@@ -168,14 +168,14 @@ trailer(ulong a)
 
 	cksum = 0;
 	if(a & (0xFF<<24)){
-		Bprint(&bout, "S7%.8X", a);
+		Bprint(&bout, "S7%.8lX", a);
 		cksum += (a>>24)&0xff;
 	}else
-		Bprint(&bout, "S9%.6X", a);
+		Bprint(&bout, "S9%.6lX", a);
 	cksum += a&0xff;
 	cksum += (a>>8)&0xff;
 	cksum += (a>>16)&0xff;
-	Bprint(&bout, "%.2X\n", (~cksum)&0xff);
+	Bprint(&bout, "%.2lX\n", (~cksum)&0xff);
 }
 
 void

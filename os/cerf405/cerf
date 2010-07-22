@@ -11,7 +11,7 @@ dev
 	dup
 	ssl
 	cap
-	sign
+#	sign
 
 	ip	ip ipv6 ipaux iproute arp netlog ptclbsum iprouter plan9 nullmedium pktmedium netaux
 	ether netif netaux

@@ -144,7 +144,7 @@ asminitializer(long offset, Node *n)
 			Bprint(bout, "\tword\t@mp+%ld,%ld\n", offset, lab->inst->pc);
 			offset += IBY2WD;
 		}
-		Bprint(bout, "\tword\t@mp+%ld,%d\n", offset, c->iwild ? c->iwild->pc : -1);
+		Bprint(bout, "\tword\t@mp+%ld,%ld\n", offset, c->iwild ? c->iwild->pc : -1);
 		break;
 	case Tgoto:
 		c = n->ty->cse;
@@ -188,16 +188,16 @@ asminitializer(long offset, Node *n)
 		break;
 	case Tiface:
 		if(LDT)
-			Bprint(bout, "\tword\t@ldt+%d,%d\n", offset, (long)n->val);
+			Bprint(bout, "\tword\t@ldt+%ld,%ld\n", offset, (long)n->val);
 		else
-			Bprint(bout, "\tword\t@mp+%d,%d\n", offset, (long)n->val);
+			Bprint(bout, "\tword\t@mp+%ld,%ld\n", offset, (long)n->val);
 		offset += IBY2WD;
 		for(id = n->decl->ty->ids; id != nil; id = id->next){
 			offset = align(offset, IBY2WD);
 			if(LDT)
-				Bprint(bout, "\text\t@ldt+%d,0x%lux,\"", offset, sign(id));
+				Bprint(bout, "\text\t@ldt+%ld,0x%lux,\"", offset, sign(id));
 			else
-				Bprint(bout, "\text\t@mp+%d,0x%lux,\"", offset, sign(id));
+				Bprint(bout, "\text\t@mp+%ld,0x%lux,\"", offset, sign(id));
 			dotlen = 0;
 			idlen = id->sym->len + 1;
 			if(id->dot->ty->kind == Tadt){
@@ -236,18 +236,18 @@ asmexc(Except *es)
 			id = e->desc->id;
 		else
 			id = -1;
-		Bprint(bout, "\texception\t%d, %d, %d, %d, %d, %d\n", getpc(e->p1), getpc(e->p2), o, id, c->nlab, e->ne);
+		Bprint(bout, "\texception\t%ld, %ld, %d, %d, %d, %d\n", getpc(e->p1), getpc(e->p2), o, id, c->nlab, e->ne);
 		for(i = 0; i < c->nlab; i++){
 			lab = &c->labs[i];
 			d = lab->start->decl;
 			if(lab->start->ty->kind == Texception)
 				d = d->init->decl;
-			Bprint(bout, "\texctab\t\"%s\", %d\n", d->sym->name, lab->inst->pc);
+			Bprint(bout, "\texctab\t\"%s\", %ld\n", d->sym->name, lab->inst->pc);
 		}
 		if(c->iwild == nil)
 			Bprint(bout, "\texctab\t*, %d\n", -1);
 		else
-			Bprint(bout, "\texctab\t*, %d\n", c->iwild->pc);
+			Bprint(bout, "\texctab\t*, %ld\n", c->iwild->pc);
 	}
 }
 
@@ -283,7 +283,7 @@ asminst(Inst *in)
 		if(in->op == INOOP)
 			continue;
 		if(in->pc % 10 == 0)
-			Bprint(bout, "#%d\n", in->pc);
+			Bprint(bout, "#%ld\n", in->pc);
 		Bprint(bout, "%I\n", in);
 	}
 }

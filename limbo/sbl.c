@@ -317,7 +317,7 @@ sbltype(Type *t, int force)
 		break;
 	case Ttuple:
 	case Texception:
-		Bprint(bsym, "%c%d.", sbltname[t->kind], t->size);
+		Bprint(bsym, "%c%ld.", sbltname[t->kind], t->size);
 		sbldecl(t->ids, Dfield);
 		break;
 	case Tadt:
@@ -327,7 +327,7 @@ sbltype(Type *t, int force)
 			Bputc(bsym, sbltname[t->kind]);
 		if(d->dot != nil && !isimpmod(d->dot->sym))
 			Bprint(bsym, "%s->", d->dot->sym->name);
-		Bprint(bsym, "%s %s%d\n", d->sym->name, sblsrcconv(buf, buf+sizeof(buf), &d->src), d->ty->size);
+		Bprint(bsym, "%s %s%ld\n", d->sym->name, sblsrcconv(buf, buf+sizeof(buf), &d->src), d->ty->size);
 		sbldecl(t->ids, Dfield);
 		if(t->tags != nil){
 			Bprint(bsym, "%d\n", t->decl->tag);
@@ -337,7 +337,7 @@ sbltype(Type *t, int force)
 				if(lastt == tg->ty){
 					Bputc(bsym, '\n');
 				}else{
-					Bprint(bsym, "%d\n", tg->ty->size);
+					Bprint(bsym, "%ld\n", tg->ty->size);
 					sbldecl(tg->ty->ids, Dfield);
 				}
 				lastt = tg->ty;

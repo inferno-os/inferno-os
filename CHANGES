@@ -1,3 +1,5 @@
+20100722
+	include/bio.h add varargck and repair resulting diagnostics in utils and limbo/ [issue 237, mechiel]
 20100719
 	appl/cmd/disk/mkfs.b change getname/getpath to cope with missing newline [issue 236]
 20100715

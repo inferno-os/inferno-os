@@ -11,7 +11,7 @@ dev
 	dup
 	ssl
 	cap
-	sign
+#	sign
 
 #	draw	screen
 #	pointer

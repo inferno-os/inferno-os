@@ -201,10 +201,10 @@ pcode(Node *n, int d)
 		Bprint(bout, "%.*sif ", d, tabs);
 		pexpr(l);
 		d++;
-		Bprint(bout, " then\n", d, tabs);
+		Bprint(bout, "%.*sthen\n", d, tabs);
 		if(r && r->op == OELSE) {
 			slist(r->left, d);
-			Bprint(bout, "%.*selse\n", d-1, tabs, d, tabs);
+			Bprint(bout, "%.*selse\n", d-1, tabs);
 			slist(r->right, d);
 		}
 		else
@@ -214,7 +214,7 @@ pcode(Node *n, int d)
 		Bprint(bout, "%.*swhile ", d, tabs);
 		pexpr(l);
 		d++;
-		Bprint(bout, " do\n", d, tabs);
+		Bprint(bout, "%.*sdo\n", d, tabs);
 		slist(r, d);
 		break;
 	case ORET:
@@ -387,7 +387,7 @@ pexpr(Node *n)
 		pexpr(l);
 		break;
 	case OWHAT:
-		Bprint(bout, "whatis", n->sym->name);
+		Bprint(bout, "whatis");
 		if(n->sym)
 			Bprint(bout, " %s", n->sym->name);
 		break;

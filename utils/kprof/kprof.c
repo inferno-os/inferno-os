@@ -146,7 +146,7 @@ main(int argc, char *argv[])
 	Binit(&outbuf, 1, OWRITE);
 	Bprint(&outbuf, "ms	  %%	sym\n");
 	while(--k>=0)
-		Bprint(&outbuf, "%lud\t%3lud.%d\t%s\n",
+		Bprint(&outbuf, "%lud\t%3lud.%ld\t%s\n",
 				tickstoms(cp[k].time),
 				100*cp[k].time/delta,
 				(1000*cp[k].time/delta)%10,

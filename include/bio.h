@@ -71,3 +71,5 @@ int	Bterm(Biobuf*);
 int	Bungetc(Biobuf*);
 int	Bungetrune(Biobuf*);
 long	Bwrite(Biobuf*, void*, long);
+
+#pragma	varargck	argpos	Bprint	2
