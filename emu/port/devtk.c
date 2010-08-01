@@ -4,8 +4,8 @@
 
 #include <interp.h>
 
-#include	"image.h"
-#include	<memimage.h>
+#include	"draw.h"
+#include	<memdraw.h>
 #include	<memlayer.h>
 #include	<cursor.h>
 
@@ -15,7 +15,9 @@ enum{
 };
 
 static
-Dirtab tkdirtab[]={
+Dirtab tkdirtab[]=
+{
+	".",	{Qdir, 0, QTDIR},	0,		DMDIR|0555,
 	"tkevents",		{Qtkevents, 0},		0,	0600,
 };
 
@@ -32,6 +34,9 @@ tkwiretapper(void *top, char *cmd, char *result, void *image, Rectangle *rp)
 	int n;
 	char *s, *e;
 
+//fprint(2, "wiretap %p %q %q\n", top, cmd, result);
+	if(tkevents.eq == nil)
+		return;
 	n = 12;
 	if(cmd != nil)
 		n += strlen(cmd)+2+1;
@@ -71,6 +76,9 @@ tkwiretapper(void *top, char *cmd, char *result, void *image, Rectangle *rp)
 		}
 		if(tkevents.eq != nil)
 			qbwrite(tkevents.eq, b);
+		else
+			freeb(b);
+		poperror();
 		qunlock(&tkevents.l);
 		acquire();
 	}
@@ -84,16 +92,16 @@ tkattach(char* spec)
 	return devattach(L'τ', spec);
 }
 
-static int
-tkwalk(Chan* c, char* name)
+static Walkqid*
+tkwalk(Chan *c, Chan *nc, char **name, int nname)
 {
-	return devwalk(c, name, tkdirtab, nelem(tkdirtab), devgen);
+	return devwalk(c, nc, name, nname, tkdirtab, nelem(tkdirtab), devgen);
 }
 
-static void
-tkstat(Chan* c, char* db)
+static int
+tkstat(Chan *c, uchar *db, int n)
 {
-	devstat(c, db, tkdirtab, nelem(tkdirtab), devgen);
+	return devstat(c, db, n, tkdirtab, nelem(tkdirtab), devgen);
 }
 
 static Chan*
@@ -134,9 +142,10 @@ static long
 tkread(Chan* c, void* a, long n, vlong offset)
 {
 	USED(offset);
-	switch(c->qid.path & ~CHDIR){
-	case Qdir:
+	if(c->qid.type & QTDIR)
 		return devdirread(c, a, n, tkdirtab, nelem(tkdirtab), devgen);
+
+	switch((ulong)c->qid.path){
 	case Qtkevents:
 		return qread(tkevents.eq, a, n);
 	default:
@@ -162,7 +171,6 @@ Dev tkdevtab = {
 	devinit,
 	tkattach,
 //	devdetach,
-	devclone,
 	tkwalk,
 	tkstat,
 	tkopen,

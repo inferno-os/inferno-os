@@ -1,3 +1,7 @@
+20100801
+	libtk/coval.c - simplify vlong expression for some compilers [issue 216, mechiel]
+20100727
+	on Linux and MacOSX, look at faulting address to decide if it's dereference of nil
 20100722
 	include/bio.h add varargck and repair resulting diagnostics in utils and limbo/ [issue 237, mechiel]
 20100719

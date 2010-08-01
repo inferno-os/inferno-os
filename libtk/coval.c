@@ -228,6 +228,7 @@ tkcvsovalhit(TkCitem *i, Point p)
 	TkCoval *o;
 	int w, dx, dy;
 	Rectangle d;
+	vlong v;
 	
 	o = TKobj(TkCoval, i);
 	w = TKF2I(o->width)/2;
@@ -244,5 +245,7 @@ tkcvsovalhit(TkCitem *i, Point p)
 	dy *= dy;
 
 	/* XXX can we do this nicely without overflow and without vlongs? */
-	return (vlong)(p.x*p.x)*dy + (vlong)(p.y*p.y)*dx < (vlong)dx*dy;
+	v = (vlong)(p.x*p.x)*dy;
+	v += (vlong)(p.y*p.y)*dx;
+	return v < (vlong)dx*dy;
 }

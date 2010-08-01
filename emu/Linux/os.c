@@ -8,10 +8,14 @@
 #include	<sys/wait.h>
 #include	<sys/time.h>
 
+#include	<stdint.h>
+
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
 #include <fpuctl.h>
+
+#include	<raise.h>
 
 /* glibc 2.3.3-NTPL messes up getpid() by trying to cache the result, so we'll do it ourselves */
 #include	<sys/syscall.h>
@@ -96,7 +100,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 
 	p = newproc();
 	if(0)
-		print("start %s:%.8lx\n", name, p);
+		print("start %s:%#p\n", name, p);
 	if(p == nil) {
 		print("kproc(%s): no memory", name);
 		return;
@@ -151,50 +155,49 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	return 0;
 }
 
-/*
- * TO DO:
- * To get pc on trap, use sigaction instead of signal and
- * examine its siginfo structure
- */
-
-/*
 static void
-diserr(char *s, int pc)
-{
-	char buf[ERRMAX];
-
-	snprint(buf, sizeof(buf), "%s: pc=0x%lux", s, pc);
-	disfault(nil, buf);
-}
-*/
-
-static void
-trapILL(int signo)
-{
-	USED(signo);
-	disfault(nil, "Illegal instruction");
-}
-
-static void
-trapBUS(int signo)
-{
-	USED(signo);
-	disfault(nil, "Bus error");
-}
-
-static void
-trapSEGV(int signo)
-{
-	USED(signo);
-	disfault(nil, "Segmentation violation");
-}
-
-static void
-trapFPE(int signo)
+sysfault(char *what, void *addr)
 {
 	char buf[64];
+
+	snprint(buf, sizeof(buf), "sys: %s%#p", what, addr);
+	disfault(nil, buf);
+}
+
+static void
+trapILL(int signo, siginfo_t *si, void *a)
+{
 	USED(signo);
-	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux", getfsr());
+	USED(a);
+	sysfault("illegal instruction pc=", si->si_addr);
+}
+
+static int
+isnilref(siginfo_t *si)
+{
+	return si != 0 && (si->si_addr == (void*)~(uintptr_t)0 || (uintptr_t)si->si_addr < 512);
+}
+
+static void
+trapmemref(int signo, siginfo_t *si, void *a)
+{
+	USED(a);	/* ucontext_t*, could fetch pc in machine-dependent way */
+	if(isnilref(si))
+		disfault(nil, exNilref);
+	else if(signo == SIGBUS)
+		sysfault("bad address addr=", si->si_addr);	/* eg, misaligned */
+	else
+		sysfault("segmentation violation addr=", si->si_addr);
+}
+
+static void
+trapFPE(int signo, siginfo_t *si, void *a)
+{
+	char buf[64];
+
+	USED(signo);
+	USED(a);
+	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux pc=%#p", getfsr(), si->si_addr);
 	disfault(nil, buf);
 }
 
@@ -348,14 +351,15 @@ libinit(char *imod)
 		signal(SIGINT, cleanexit);
 
 	if(sflag == 0) {
-		act.sa_handler = trapBUS;
-		sigaction(SIGBUS, &act, nil);
-		act.sa_handler = trapILL;
+		act.sa_flags = SA_SIGINFO;
+		act.sa_sigaction = trapILL;
 		sigaction(SIGILL, &act, nil);
-		act.sa_handler = trapSEGV;
-		sigaction(SIGSEGV, &act, nil);
-		act.sa_handler = trapFPE;
+		act.sa_sigaction = trapFPE;
 		sigaction(SIGFPE, &act, nil);
+		act.sa_sigaction = trapmemref;
+		sigaction(SIGBUS, &act, nil);
+		sigaction(SIGSEGV, &act, nil);
+		act.sa_flags &= ~SA_SIGINFO;
 	}
 
 	p = newproc();
