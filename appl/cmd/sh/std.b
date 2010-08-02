@@ -512,7 +512,7 @@ builtin_rescue(ctxt: ref Context, args: list of ref Listnode, last: int) : strin
 			status := ctxt.run(handler, last);
 			ctxt.pop();
 			return status;
-		} exception e2{
+		} exception {
 		"fail:*" =>
 			ctxt.pop();
 			raise e;

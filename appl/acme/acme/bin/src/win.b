@@ -625,25 +625,27 @@ addtype(c : int, p0 : int, b : array of byte, nb : int, nr : int)
 
 sendtype(fd0 : ref FD, raw : int)
 {
-	i, n, nr : int;
-
 	while(ntypebreak){
 		brkc := 0;
-		for(i=0; i<ntypeb; i++)
+		i := 0;
+		while(i<ntypeb){
 			if(typing[i]==byte '\n' || typing[i]==byte 16r04){
-				n = i + (typing[i] == byte '\n');
+				n := i + (typing[i] == byte '\n');
 				i++;
 				if(write(fd0, typing, n) != n)
 					error("sending to program");
-				nr = nrunes(typing, i);
+				nr := nrunes(typing, i);
 				if (!raw)
 					q.p += nr;
 				ntyper -= nr;
 				ntypeb -= i;
 				typing[0:] = typing[i:i+ntypeb];
+				i = 0;
 				ntypebreak--;
 				brkc = 1;
-			}
+			}else
+				i++;
+		}
 		if (!brkc) {
 			fprint(stdout, "no breakchar\n");
 			ntypebreak = 0;

@@ -9,6 +9,9 @@ include "draw.m";
 include "keyring.m";
 	kr: Keyring;
 
+include "msgio.m";
+	msgio: Msgio;
+
 include "security.m";
 
 Countersigner: module
@@ -22,6 +25,8 @@ init(nil: ref Draw->Context, nil: list of string)
 {
 	sys = load Sys Sys->PATH;
 	kr = load Keyring Keyring->PATH;
+	msgio = load Msgio Msgio->PATH;
+	msgio->init();
 
 	stdin = sys->fildes(0);
 	stdout = sys->fildes(1);
@@ -34,7 +39,7 @@ init(nil: ref Draw->Context, nil: list of string)
 	}
 
 	# get boxid
-	buf := kr->getmsg(stdin);
+	buf := msgio->getmsg(stdin);
 	if(buf == nil){
 		sys->fprint(stderr, "countersigner: client hung up\n");
 		raise "fail:hungup";
@@ -48,12 +53,12 @@ init(nil: ref Draw->Context, nil: list of string)
 		sys->fprint(stderr, "countersigner: can't open %s: %r\n", file);
 		raise "fail:bad boxid";
 	}
-	blind := kr->getmsg(fd);
+	blind := msgio->getmsg(fd);
 	if(blind == nil){
 		sys->fprint(stderr, "countersigner: can't read %s\n", file);
 		raise "fail:no blind";
 	}
 
 	# answer client
-	kr->sendmsg(stdout, blind, len blind);
+	msgio->sendmsg(stdout, blind, len blind);
 }

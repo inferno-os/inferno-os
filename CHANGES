@@ -1,4 +1,7 @@
 20100801
+	various changes held back by accident, notably stackv in stack(1), better diagnostics by cat(1)
+20100802
+20100801
 	libtk/coval.c - simplify vlong expression for some compilers [issue 216, mechiel]
 20100727
 	on Linux and MacOSX, look at faulting address to decide if it's dereference of nil

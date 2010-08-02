@@ -33,7 +33,7 @@ Proto: adt {
 	iob: ref Iobuf;
 };
 
-Star, Plus: con 1<<iota;
+Star, Plus, Empty: con 1<<iota;
 
 types(): string
 {
@@ -103,29 +103,30 @@ protowalk1(c: Fschan, flags: int, path: string, d: ref Sys->Dir,
 	Skip =>
 		return r;
 	}
-	(a, n) := readdir->init(path, Readdir->NAME|Readdir->COMPACT);
-	if(len a == 0){
-		c <-= ((nil, nil), reply);
-		if(<-reply == Quit)
-			quit(errorc);
-		return Next;
-	}
-	j := 0;
+	a: array of ref Sys->Dir;
+	n := 0;
+	if((flags&Empty)==0)
+		(a, n) = readdir->init(path, Readdir->NAME|Readdir->COMPACT);
+	i := j := 0;
 	prevsub: string;
-	for(i := 0; i < n; i++){
+	while(i < n || j < len sub){
 		for(; j < len sub; j++){
 			s := sub[j].name;
 			if(s == prevsub){
 				report(errorc, sys->sprint("duplicate entry %s", pathconcat(path, s)));
 				continue;			# eliminate duplicates in proto
 			}
-			if(s >= a[i].name || sub[j].old != nil)
+			# if we're copying from an old file, and there's a matching
+			# entry in the directory, then skip it.
+			if(sub[j].old != nil && i < n && s == a[i].name)
+				i++;
+			if(sub[j].old != nil || i < n && s >= a[i].name)
 				break;
 			report(errorc, sys->sprint("%s not found", pathconcat(path, s)));
 		}
-		foundsub := j < len sub && (sub[j].name == a[i].name || sub[j].old != nil);
-		if(foundsub || flags&Plus ||
-				(flags&Star && (a[i].mode & Sys->DMDIR)==0)){
+		foundsub := j < len sub && (sub[j].old != nil || sub[j].name == a[i].name);
+
+		if(foundsub || flags&(Plus|Star)){
 			f: ref File;
 			if(foundsub){
 				f = sub[j++];
@@ -143,7 +144,7 @@ protowalk1(c: Fschan, flags: int, path: string, d: ref Sys->Dir,
 				d = ref xd;
 			}else{
 				p = pathconcat(path, a[i].name);
-				d = a[i];
+				d = a[i++];
 			}
 
 			d = file2dir(f, d);
@@ -152,12 +153,16 @@ protowalk1(c: Fschan, flags: int, path: string, d: ref Sys->Dir,
 				r = walkfile(c, p, d, errorc);
 			else if(flags & Plus)
 				r = protowalk1(c, Plus, p, d, nil, errorc);
+			else if((flags&Star) && !foundsub)
+				r = protowalk1(c, Empty, p, d, nil, errorc);
 			else
 				r = protowalk1(c, f.flags, p, d, f.sub, errorc);
 			if(r == Skip)
 				return Next;
-		}
+		}else
+			i++;
 	}
+
 	c <-= ((nil, nil), reply);
 	if(<-reply == Quit)
 		quit(errorc);
@@ -272,7 +277,7 @@ readline(proto: ref Proto, indent: int): ref File
 		return nil;
 	}
 	proto.indent = spc;
-	(n, toks) := sys->tokenize(s, " \t\n");
+	(nil, toks) := sys->tokenize(s, " \t\n");
 	f := ref File(nil, ~0, nil, nil, nil, 0, nil);
 	(f.name, toks) = (getname(hd toks, 0), tl toks);
 	if(toks == nil)

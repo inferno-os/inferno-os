@@ -10,6 +10,9 @@ include "keyring.m";
 	keyring: Keyring;
 include "security.m";
 	ssl: SSL;
+include "bufio.m";
+include "msgio.m";
+	msgio: Msgio;
 include "arg.m";
 
 Crypt: module {
@@ -47,6 +50,8 @@ init(nil: ref Draw->Context, argv: list of string)
 	keyring = load Keyring Keyring->PATH;
 	if (keyring == nil)
 		badmodule(SSL->PATH);
+	msgio = load Msgio Msgio->PATH;
+	msgio->init();
 
 	arg := load Arg Arg->PATH;
 	if (arg == nil)
@@ -84,16 +89,14 @@ init(nil: ref Draw->Context, argv: list of string)
 	argv = arg->argv();
 	if (argv != nil)
 		usage();
-	if(secret == nil){
-		sys->fprint(stderr, "crypt: no secret given\n");
-		usage();
-	}
+	if(secret == nil)
+		secret = array of byte readpassword();
 	sk := array[Keyring->SHA1dlen] of byte;
 	keyring->sha1(secret, len secret, sk, nil);
 	if (headers) {
 		# deal with header - the header encodes the algorithm along with the data.
 		if (decrypt) {
-			msg := keyring->getmsg(sys->fildes(0));
+			msg := msgio->getmsg(sys->fildes(0));
 			if (msg != nil)
 				alg = string msg;
 			if (msg == nil || len alg < len ALGSTR || alg[0:len ALGSTR] != ALGSTR)
@@ -101,7 +104,7 @@ init(nil: ref Draw->Context, argv: list of string)
 			alg = alg[len ALGSTR:];
 		} else {
 			msg := array of byte ("alg " + alg);
-			e := keyring->sendmsg(sys->fildes(1),  msg, len msg);
+			e := msgio->sendmsg(sys->fildes(1),  msg, len msg);
 			if (e == -1)
 				error("couldn't write algorithm string");
 		}
@@ -203,6 +206,32 @@ showalgs(fd: ref Sys->FD)
 			sys->fprint(fd, " %s", hd l);
 		sys->fprint(fd, "\n");
 	}
+}
+
+readpassword(): string
+{
+	bufio := load Bufio Bufio->PATH;
+	Iobuf: import bufio;
+	stdin := bufio->open("/dev/cons", Sys->OREAD);
+
+	cfd := sys->open("/dev/consctl", Sys->OWRITE);
+	if (cfd == nil || sys->fprint(cfd, "rawon") <= 0)
+		sys->fprint(stderr, "crypt: warning: cannot hide typed password\n");
+	sys->fprint(stderr, "password: ");
+	s := "";
+	while ((c := stdin.getc()) >= 0 && c != '\n'){
+		case c {
+		'\b' =>
+			if (len s > 0)
+				s = s[0:len s - 1];
+		8r25 =>		# ^U
+			s = nil;
+		* =>
+			s[len s] = c;
+		}
+	}
+	sys->fprint(stderr, "\n");
+	return s;
 }
 
 stream(src, dst: ref Sys->FD, bufsize: int)

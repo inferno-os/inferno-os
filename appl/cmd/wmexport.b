@@ -18,7 +18,6 @@ include "styxservers.m";
 	styxservers: Styxservers;
 	Styxserver, Fid, Navigator, Navop: import styxservers;
 	Enotdir, Enotfound: import Styxservers;
-	nametree: Nametree;
 
 Wmexport: module {
 	init: fn(nil: ref Draw->Context, argv: list of string);

@@ -16,7 +16,8 @@ include "bufio.m";
 
 stderr: ref Sys->FD;
 stdout: ref Iobuf;
-hasht := array[97] of list of string;
+
+hasht := array[97] of (int, array of int);
 
 Stackv: module {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -33,7 +34,7 @@ badmodule(p: string)
 currp: ref Prog;
 showtypes := 1;
 showsource := 0;
-sep := "\t";
+showmodule := 0;
 
 init(nil: ref Draw->Context, argv: list of string)
 {
@@ -52,7 +53,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	stdout = bufio->fopen(sys->fildes(1), Sys->OWRITE);
 
 	arg->init(argv);
-	arg->setusage("stackv [-Tl] [-i indent] [-r maxdepth] [-s dis sbl]... [pid[.sym...] ...]");
+	arg->setusage("stackv [-Tlm] [-r maxdepth] [-s dis sbl]... [pid[.sym]...] ...");
 	sblfile := "";
 	while((opt := arg->opt()) != 0){
 		case opt {
@@ -61,12 +62,12 @@ init(nil: ref Draw->Context, argv: list of string)
 			sblfile = arg->earg();
 		'l' =>
 			showsource = 1;
+		'm' =>
+			showmodule = 1;
 		'r' =>
 			maxrecur = int arg->earg();
 		'T' =>
 			showtypes = 0;
-		'i' =>
-			sep = arg->earg();
 		* =>
 			arg->usage();
 		}
@@ -137,7 +138,7 @@ pexp(stk: array of ref Exp, toks: list of string, depth: int)
 		exp := stackfindsym(stk, toks, depth);
 		if(exp == nil)
 			return;
-		pname(exp, depth);
+		pname(exp, depth, nil);
 		stdout.putc('\n');
 	}
 }
@@ -218,7 +219,7 @@ pfn(exp: ref Exp, depth: int)
 	if((e := getname(exps, "args")) != nil){
 		args := e.expand();
 		for(i := 0; i < len args; i++){
-			pname(args[i], depth+1);
+			pname(args[i], depth+1, nil);
 			if(i != len args - 1)
 				stdout.puts(", ");
 		}
@@ -230,7 +231,15 @@ pfn(exp: ref Exp, depth: int)
 		locals := e.expand();
 		for(i := 0; i < len locals; i++){
 			indent(depth+1);
-			pname(locals[i], depth+1);
+			pname(locals[i], depth+1, nil);
+			stdout.puts("\n");
+		}
+	}
+	if(showmodule && (e = getname(exps, "module")) != nil){
+		mvars := e.expand();
+		for(i := 0; i < len mvars; i++){
+			indent(depth+1);
+			pname(mvars[i], depth+1, "module.");
 			stdout.puts("\n");
 		}
 	}
@@ -256,8 +265,9 @@ strval(v: string): string
 	return v;
 }
 
-pname(exp: ref Exp, depth: int)
+pname(exp: ref Exp, depth: int, prefix: string)
 {
+	name := prefix+symname(exp);
 	(v, w) := exp.val();
 	if (!w && v == nil) {
 		stdout.puts(sys->sprint("%s: %s = novalue", symname(exp), exp.typename()));
@@ -267,18 +277,18 @@ pname(exp: ref Exp, depth: int)
 	Tfn =>
 		pfn(exp, depth);
 	Tint =>
-		stdout.puts(sys->sprint("%s := %s", symname(exp), v));
+		stdout.puts(sys->sprint("%s := %s", name, v));
 	Tstring =>
-		stdout.puts(sys->sprint("%s := %s", symname(exp), strval(v)));
+		stdout.puts(sys->sprint("%s := %s", name, strval(v)));
 	Tbyte or
 	Tbig or
 	Treal =>
-		stdout.puts(sys->sprint("%s := %s %s", symname(exp), exp.typename(), v));
+		stdout.puts(sys->sprint("%s := %s %s", name, exp.typename(), v));
 	* =>
 		if(showtypes)
-			stdout.puts(sys->sprint("%s: %s = ", symname(exp), exp.typename()));
+			stdout.puts(sys->sprint("%s: %s = ", name, exp.typename()));
 		else
-			stdout.puts(sys->sprint("%s := ", symname(exp)));
+			stdout.puts(sys->sprint("%s := ", name));
 		pval(exp, v, w, depth);
 	}
 }
@@ -390,7 +400,7 @@ pgenval(exp: ref Exp, v: string, w: int, depth: int)
 				}else{
 					for (i := 0; i < len exps; i++){
 						indent(depth+1);
-						pname(exps[i], depth+1);
+						pname(exps[i], depth+1, nil);
 						stdout.puts("\n");
 					}
 				}
@@ -412,36 +422,80 @@ symname(exp: ref Exp): string
 indent(n: int)
 {
 	while(n-- > 0)
-		stdout.puts(sep);
+		stdout.putc('\t');
+}
+
+ref2int(v: string): int
+{
+	if(v == nil)
+		error("bad empty value for ref");
+	i := 0;
+	n := len v;
+	if(v[0] == '@')
+		i = 1;
+	else{
+		# skip array bounds
+		if(v[0] == '['){
+			for(; i < n && v[i] != ']'; i++)
+				;
+			if(i >= n - 2 || v[i+1] != ' ' || v[i+2] != '@')
+				error("bad value for ref: "+v);
+			i += 3;
+		}
+	}
+	if(n - i > 8)
+		error("64-bit pointers?");
+	p := 0;
+	for(; i < n; i++){
+		c := v[i];
+		case c {
+		'0' to '9' =>
+			p = (p << 4) + (c - '0');
+		'a' to 'f' =>
+			p = (p << 4) + (c - 'a' + 10);
+		* =>
+			error("bad value for ref: "+v);
+		}
+	}
+	return p;
 }
 
 pref(v: string): int
 {
-	if(addref(v) == 0){
+	if(v == "nil"){
+		stdout.puts("nil");
+		return 0;
+	}
+	if(addref(ref2int(v)) == 0){
 		stdout.puts(v);
-		if(v != "nil")
-			stdout.puts("(qv)");
+		stdout.puts("(qv)");
 		return 0;
 	}
 	return 1;
 }
 
-addref(v: string): int
+# hash table implementation that tries to be reasonably
+# parsimonious on memory usage.
+addref(v: int): int
 {
-	slot := hashfn(v, len hasht);
-	for(l := hasht[slot]; l != nil; l = tl l)
-		if((hd l) == v)
+	slot := (v & 16r7fffffff) % len hasht;
+	(n, a) := hasht[slot];
+	for(i := 0; i < n; i++)
+		if(a[i] == v)
 			return 0;
-	hasht[slot] = v :: hasht[slot];
+	if(n == len a){
+		if(n == 0)
+			n = 3;
+		t := array[n*3/2] of int;
+		t[0:] = a;
+		hasht[slot].t1 = t;
+	}
+	a[hasht[slot].t0++] = v;
 	return 1;
 }
 
-hashfn(s: string, n: int): int
+error(e: string)
 {
-	h := 0;
-	m := len s;
-	for(i:=0; i<m; i++){
-		h = 65599*h+s[i];
-	}
-	return (h & 16r7fffffff) % n;
+	sys->fprint(sys->fildes(2), "stackv: error: %s\n", e);
+	raise "fail:error";
 }

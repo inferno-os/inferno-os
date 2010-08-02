@@ -1,6 +1,6 @@
 .TH STACK 1
 .SH NAME
-stack \- examine call stack
+stack, stackv \- examine call stack
 .SH SYNOPSIS
 .B "bind '#p' /prog"
 .br
@@ -14,6 +14,15 @@ stack \- examine call stack
 .I sblpath
 ]...
 .I pid
+.br
+.B stackv
+[
+.B -Tlm
+] [
+.B -r
+.I maxdepth
+] [
+.I pid\fR[\f5.\fIsym\fR] ...] ...
 .SH DESCRIPTION
 .I Stack
 writes to the standard output a stack trace for process
@@ -59,6 +68,43 @@ The
 .B -p
 options take precedence over
 .BR $sblpath .
+.PP
+.I Stackv
+recursively traverses the symbols it finds, printing
+values as it goes. Repeated identical structure is not
+shown \- only the pointer value is printed, followed by
+.BR (qv) .
+Each argument gives a starting point
+for the traversal, rooted by a process id,
+.IR pid .
+If an unadorned process id is given, all values in all
+stack frames in the process will be printed; adding names
+specifies the starting point. For instance,
+.B 123.init.ctxt.display
+might specify the
+.B display
+field inside the
+.B ctxt
+adt inside the
+.B init
+function inside the process
+.BR 123 .
+.I Stackv
+understands the following options:
+.TP 10
+.B -l
+Show source line information with each item.
+.TP
+.B -m
+Show module variables accessible from each stack frame.
+.TP
+.B -T
+Do not show the Limbo types of value encountered.
+.TP
+.BI -r \ maxdepth
+Restrict the maximum traversal depth to
+.I maxdepth
+levels.
 .SH EXAMPLE
 Run
 .I stack
@@ -111,6 +157,8 @@ $
 .BI /prog/ pid /status
 .SH SOURCE
 .B /appl/cmd/stack.b
+.br
+.B /appl/cmd/stackv.b
 .SH "SEE ALSO"
 .IR deb (1),
 .IR ps (1),

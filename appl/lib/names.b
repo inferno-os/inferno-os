@@ -120,7 +120,7 @@ isprefix(a: string, b: string): int
 {
 	la := len a;
 	if(la == 0)
-		return 0;	# "" isnt' a pathname
+		return 0;	# "" isn't a pathname
 	while(la > 1 && a[la-1] == '/')
 		a = a[0:--la];
 	lb := len b;
@@ -128,7 +128,7 @@ isprefix(a: string, b: string): int
 		return 0;
 	if(la == lb)
 		return a == b;
-	return a == b[0:la] && (b[la] == '/' || a == "/");
+	return a == b[0:la] && (a == "/" || b[la] == '/');
 }
 
 elements(name: string): list of string

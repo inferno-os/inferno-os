@@ -438,10 +438,8 @@ Game.rotate(g: self ref Game, clockwise: int)
 	npiece.rot = (npiece.rot + inc + nrots) % nrots;
 	if (canmove(g, npiece, g.pos)) {
 		c := coords[npiece.rot];
-		for (i := 0; i < len c; i++) {
-			np := g.pos.add(c[i]);
+		for (i := 0; i < len c; i++)
 			g.bd.moveblock(g.pieceids[i], g.pos.add(c[i]));
-		}
 		g.curr = npiece;
 		g.bd.update();
 	}
@@ -525,7 +523,7 @@ canmove(g: ref Game, piece: Piece, p: Point): int
 
 newpiece(g: ref Game)
 {
-	piece := g.curr = g.next;
+	g.curr = g.next;
 	g.next = randompiece();
 	g.bd.setnextshape(shapes[g.next.shape].colour, shapes[g.next.shape].coords[g.next.rot]);
 	shape := shapes[g.curr.shape];
@@ -582,7 +580,7 @@ makescorewidget(top: ref Tk->Toplevel, w, title: string)
 	cmd(top, "frame " + w);
 	cmd(top, "label " + w + ".title -text " + tk->quote(title));
 	cmd(top, "label " + w +
-		".val -bd 3 -relief sunken -width 5w -text 0 -anchor e");
+		".val -bd 2 -relief sunken -width 5w -text 0 -anchor e");
 	cmd(top, "pack " + w + ".title -side left -anchor w");
 	cmd(top, "pack " + w + ".val -side right -anchor e");
 }
@@ -619,7 +617,7 @@ Board.landedblock(bd: self ref Board, b: string, p: Point)
 	rs := cmd(bd.win, bd.w + ".c coords " + b);
 	if (rs != nil && rs[0] == '!')
 		return;
-	(n, toks) := sys->tokenize(rs, " ");
+	(nil, toks) := sys->tokenize(rs, " ");
 	if (len toks != 4) {
 		sys->fprint(stderr, "bad coords for block %s\n", b);
 		return;
