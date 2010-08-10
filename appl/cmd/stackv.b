@@ -489,6 +489,7 @@ addref(v: int): int
 		t := array[n*3/2] of int;
 		t[0:] = a;
 		hasht[slot].t1 = t;
+		a = t;
 	}
 	a[hasht[slot].t0++] = v;
 	return 1;
