@@ -79,23 +79,6 @@ load(char *path)
 	return readmod(path, nil, 0);
 }
 
-Type*
-dtype(void (*destroy)(Heap*, int), int size, uchar *map, int mapsize)
-{
-	Type *t;
-
-	t = malloc(sizeof(Type)+mapsize);
-	if(t != nil) {
-		t->ref = 1;
-		t->free = destroy;
-		t->mark = markheap;
-		t->size = size;
-		t->np = mapsize;
-		memmove(t->map, map, mapsize);
-	}
-	return t;
-}
-
 int
 brpatch(Inst *ip, Module *m)
 {

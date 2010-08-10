@@ -1,0 +1,49 @@
+.TH CRYPT-RC4 2
+.SH NAME
+crypt: rc4setup, rc4, rc4skip, rc4back \- RC4 encryption
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+include "crypt.m";
+crypt := load Crypt Crypt->PATH;
+
+rc4setup: fn(seed: array of byte): ref RC4state;
+rc4:      fn(state: ref RC4state, buf: array of byte, n: int);
+rc4skip:  fn(state: ref RC4state, n: int);
+rc4back:  fn(state: ref RC4state, n: int);
+.EE
+.SH DESCRIPTION
+These functions implement the stream encryption algorithm that is claimed to
+be equivalent to RSA Security's RC4.
+It is a pseudo-random number generator with a 256
+byte state and a long cycle.
+.PP
+.B Rc4setup
+sets the initial
+.IR seed ,
+which can be any non-zero length, and
+returns a representation of the initial state of the algorithm,
+which is used in subsequent calls.
+.PP
+.B Rc4
+runs the generator starting with the given
+.IR state ,
+and XORs the output of the generator with
+the first
+.I n
+bytes of
+.IR buf ,
+updating the
+.IR state .
+.B Rc4
+is symmetric and is used both to encrypt and decrypt.
+.B Rc4skip
+skips over bytes (eg, to account for lost transmissions);
+.B rc4back
+runs the generator backwards (eg, to account for retransmissions).
+.SH SEE ALSO
+.IR crypt-intro (2),
+.IR crypt-crypt (2)

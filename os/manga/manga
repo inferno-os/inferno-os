@@ -40,7 +40,9 @@ lib
 mod
 	math
 	sys
-	keyring
+	keyring	crypt
+	ipints
+
 
 port
 	alarm

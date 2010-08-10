@@ -2,69 +2,73 @@
 #include "kernel.h"
 #include <isa.h>
 #include "interp.h"
-#include "runt.h"
-#include "keyring.h"
 #include <mp.h>
 #include <libsec.h>
 #include "pool.h"
 #include "raise.h"
+
+/* arguably limbo -t should qualify type name */
+#define	DigestState_copy Keyring_DigestState_copy
+#define	IPint_random Keyring_IPint_random
+#include "keyringif.h"
+#include "keyring.h"
+
+#include "ipint.h"
 #include "../libkeyring/keys.h"
 
+static Type*	TDigestState;
+static Type*	TAESstate;
+static Type*	TDESstate;
+static Type*	TIDEAstate;
+static Type*	TBFstate;
+static Type*	TRC4state;
 
-Type	*TSigAlg;
-Type	*TCertificate;
-Type	*TSK;
-Type	*TPK;
-Type	*TDigestState;
-Type	*TAuthinfo;
-Type *TAESstate;
-Type	*TDESstate;
-Type *TIDEAstate;
-Type *TBFstate;
-Type	*TRC4state;
-Type	*TIPint;
-Type *TDSAsk;
-Type *TDSApk;
-Type *TDSAsig;
-Type *TEGsk;
-Type *TEGpk;
-Type *TEGsig;
-Type *TRSAsk;
-Type *TRSApk;
-Type *TRSAsig;
+static Type*	TSigAlg;
+static Type*	TCertificate;
+static Type*	TSK;
+static Type*	TPK;
+static Type*	TAuthinfo;
+
+static Type*	TDSAsk;
+static Type*	TDSApk;
+static Type*	TDSAsig;
+static Type*	TEGsk;
+static Type*	TEGpk;
+static Type*	TEGsig;
+static Type*	TRSAsk;
+static Type*	TRSApk;
+static Type*	TRSAsig;
 
 enum {
 	Maxmsg=	4096
 };
 
-uchar IPintmap[] = Keyring_IPint_map;
-uchar SigAlgmap[] = Keyring_SigAlg_map;
-uchar SKmap[] = Keyring_SK_map;
-uchar PKmap[] = Keyring_PK_map;
-uchar Certificatemap[] = Keyring_Certificate_map;
-uchar DigestStatemap[] = Keyring_DigestState_map;
-uchar Authinfomap[] = Keyring_Authinfo_map;
-uchar AESstatemap[] = Keyring_AESstate_map;
-uchar DESstatemap[] = Keyring_DESstate_map;
-uchar IDEAstatemap[] = Keyring_IDEAstate_map;
-uchar BFstatemap[] = Keyring_BFstate_map;
-uchar RC4statemap[] = Keyring_RC4state_map;
-uchar DSAskmap[] = Keyring_DSAsk_map;
-uchar DSApkmap[] = Keyring_DSApk_map;
-uchar DSAsigmap[] = Keyring_DSAsig_map;
-uchar EGskmap[] = Keyring_EGsk_map;
-uchar EGpkmap[] = Keyring_EGpk_map;
-uchar EGsigmap[] = Keyring_EGsig_map;
-uchar RSAskmap[] = Keyring_RSAsk_map;
-uchar RSApkmap[] = Keyring_RSApk_map;
-uchar RSAsigmap[] = Keyring_RSAsig_map;
+static uchar DigestStatemap[] = Keyring_DigestState_map;
+static uchar AESstatemap[] = Keyring_AESstate_map;
+static uchar DESstatemap[] = Keyring_DESstate_map;
+static uchar IDEAstatemap[] = Keyring_IDEAstate_map;
+static uchar BFstatemap[] = Keyring_BFstate_map;
+static uchar RC4statemap[] = Keyring_RC4state_map;
 
-PK*	checkPK(Keyring_PK *k);
+static uchar SigAlgmap[] = Keyring_SigAlg_map;
+static uchar SKmap[] = Keyring_SK_map;
+static uchar PKmap[] = Keyring_PK_map;
+static uchar Certificatemap[] = Keyring_Certificate_map;
+static uchar Authinfomap[] = Keyring_Authinfo_map;
+static uchar DSAskmap[] = Keyring_DSAsk_map;
+static uchar DSApkmap[] = Keyring_DSApk_map;
+static uchar DSAsigmap[] = Keyring_DSAsig_map;
+static uchar EGskmap[] = Keyring_EGsk_map;
+static uchar EGpkmap[] = Keyring_EGpk_map;
+static uchar EGsigmap[] = Keyring_EGsig_map;
+static uchar RSAskmap[] = Keyring_RSAsk_map;
+static uchar RSApkmap[] = Keyring_RSApk_map;
+static uchar RSAsigmap[] = Keyring_RSAsig_map;
+
+static	PK*	checkPK(Keyring_PK *k);
 
 extern void		setid(char*, int);
 extern vlong		osusectime(void);
-extern Keyring_IPint*	newIPint(mpint*);
-extern mpint*	checkIPint(Keyring_IPint*);
 extern void		freeIPint(Heap*, int);
 
 static char exBadSA[]	= "bad signature algorithm";
@@ -85,10 +89,6 @@ struct XBFstate
 	Keyring_BFstate	x;
 	BFstate	state;
 };
-
-/*
- *  Infinite (actually kind of big) precision integers
- */
 
 /* convert a Big to base64 ascii */
 int
@@ -567,7 +567,7 @@ freePK(Heap *h, int swept)
 	freeheap(h, swept);
 }
 
-PK*
+static PK*
 checkPK(Keyring_PK *k)
 {
 	PK *pk;
@@ -1170,28 +1170,11 @@ Keyring_verifym(void *fp)
 	acquire();
 }
 
-static void*
-checktype(void *v, Type *t, char *name, int newref)
-{
-	Heap *h;
-
-	if(v == H || v == nil)
-		error(exNilref);
-	h = D2H(v);
-	if(h->t != t)
-		errorf("%s: %s", exType, name);
-	if(newref){
-		h->ref++;
-		Setmark(h);
-	}
-	return v;
-}
-
 /*
  *  digests
  */
 void
-DigestState_copy(void *fp)
+Keyring_DigestState_copy(void *fp)
 {
 	F_DigestState_copy *f;
 	Heap *h;
@@ -1933,18 +1916,17 @@ Keyring_writeauthinfo(void *fp)
 	PK *spk;
 	SK *mysk;
 	Certificate *c;
+	mpint *p, *alpha;
 
 	f = fp;
 	*f->ret = -1;
 
 	if(f->filename == H)
-		return;
+		error(exNilref);
 	if(f->info == H)
-		return;
-	if(f->info->alpha == H || f->info->p == H)
-		return;
-	if(((IPint*)f->info->alpha)->b == 0 || ((IPint*)f->info->p)->b == H)
-		return;
+		error(exNilref);
+	alpha = checkIPint(f->info->alpha);
+	p = checkIPint(f->info->p);
 	spk = checkPK(f->info->spk);
 	mysk = checkSK(f->info->mysk);
 	c = checkCertificate(f->info->cert);
@@ -1985,12 +1967,12 @@ Keyring_writeauthinfo(void *fp)
 		goto out;
 
 	/* diffie hellman base */
-	n = bigtobase64(((IPint*)f->info->alpha)->b, buf, Maxbuf);
+	n = bigtobase64(alpha, buf, Maxbuf);
 	if(sendmsg(fd, buf, n) <= 0)
 		goto out;
 
 	/* diffie hellman modulus */
-	n = bigtobase64(((IPint*)f->info->p)->b, buf, Maxbuf);
+	n = bigtobase64(p, buf, Maxbuf);
 	if(sendmsg(fd, buf, n) <= 0)
 		goto out;
 
@@ -2108,7 +2090,7 @@ keyringmodinit(void)
 	extern SigAlgVec* rsainit(void);
 	extern SigAlgVec* dsainit(void);
 
-	TIPint = dtype(freeIPint, sizeof(IPint), IPintmap, sizeof(IPintmap));
+	ipintsmodinit();	/* in case only Keyring is configured */
 	TSigAlg = dtype(freeSigAlg, sizeof(SigAlg), SigAlgmap, sizeof(SigAlgmap));
 	TSK = dtype(freeSK, sizeof(SK), SKmap, sizeof(SKmap));
 	TPK = dtype(freePK, sizeof(PK), PKmap, sizeof(PKmap));
@@ -3080,4 +3062,22 @@ RSApk_verify(void *fp)
 	*f->ret = mpcmp(t, m) == 0;
 	mpfree(t);
 	acquire();
+}
+
+void
+Keyring_IPint_random(void *fp)
+{
+	F_IPint_random *f;
+	mpint *b;
+	void *v;
+
+	f = fp;
+	v = *f->ret;
+	*f->ret = H;
+	destroy(v);
+
+	release();
+	b = mprand(f->maxbits, genrandom, nil);
+	acquire();
+	*f->ret = newIPint(b);
 }

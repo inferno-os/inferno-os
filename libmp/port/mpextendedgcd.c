@@ -101,6 +101,4 @@ mpextendedgcd(mpint *a, mpint *b, mpint *v, mpint *x, mpint *y)
 	mpfree(u);
 	mpfree(a);
 	mpfree(b);
-
-	return;
 }

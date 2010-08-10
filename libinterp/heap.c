@@ -237,6 +237,40 @@ destroy(void *v)
 	poolfree(heapmem, h);
 }
 
+Type*
+dtype(void (*destroy)(Heap*, int), int size, uchar *map, int mapsize)
+{
+	Type *t;
+
+	t = malloc(sizeof(Type)+mapsize);
+	if(t != nil) {
+		t->ref = 1;
+		t->free = destroy;
+		t->mark = markheap;
+		t->size = size;
+		t->np = mapsize;
+		memmove(t->map, map, mapsize);
+	}
+	return t;
+}
+
+void*
+checktype(void *v, Type *t, char *name, int newref)
+{
+	Heap *h;
+
+	if(v == H || v == nil)
+		error(exNilref);
+	h = D2H(v);
+	if(t == nil || h->t != t)
+		errorf("%s: %s", exType, name);
+	if(newref){
+		h->ref++;
+		Setmark(h);
+	}
+	return v;
+}
+
 void
 freetype(Type *t)
 {

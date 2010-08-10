@@ -49,6 +49,8 @@ mod
 	math
 #	srv		not used on Plan 9
 	keyring
+	crypt
+	ipints
 	loader
 	freetype
 

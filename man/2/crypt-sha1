@@ -1,0 +1,144 @@
+.TH CRYPT-SHA1 2
+.SH NAME
+crypt: sha1, sha224, sha256, sha384, sha512, md4, md5, hmac_sha1, hmac_md5 \- cryptographic digests
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+include "crypt.m";
+crypt := load Crypt Crypt->PATH;
+
+DigestState: adt
+{
+    # hidden state
+    copy:   fn(d: self ref DigestState): ref DigestState;
+};
+
+.ta \w'verify:\ 'u +\w'fn(\ \ \ 'u
+sha1:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+sha224:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+sha256:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+sha384:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+sha512:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+md4:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+md5:	fn(buf: array of byte, n: int, digest: array of byte,
+		state: ref DigestState): ref DigestState;
+
+SHA1dlen, SHA224dlen, SHA256dlen, SHA384dlen, SHA512dlen, MD4dlen, MD5dlen: con ...;
+
+hmac_sha1: fn(buf: array of byte, n: int, key: array of byte,
+		    digest: array of byte,
+		    state: ref DigestState): ref DigestState;
+hmac_md5:  fn(buf: array of byte, n: int, key: array of byte,
+		    digest: array of byte,
+		    state: ref DigestState): ref DigestState;
+.EE
+.SH DESCRIPTION
+.BR Sha1 ,
+.BR sha224 ,
+.BR sha256 ,
+.BR sha384 ,
+.BR sha512 ,
+.B md4
+and
+.B md5
+are cryptographically secure hash functions that produce output called a message digest.
+Each function computes a hash of
+.I n
+bytes of the data in
+.IR buf ,
+using the named algorithm,
+and updates the current
+.IR state .
+They can be called iteratively to form a single digest for many data blocks.
+The state is kept in the
+.B DigestState
+value referenced by
+.I state
+between calls.
+.I State
+should be
+.B nil
+on the first call, and a newly allocated
+.B DigestState
+will be returned for use in subsequent calls.
+On a call in which
+.I digest
+is not
+.BR nil ,
+the hash is completed and copied into the
+.I digest
+array.
+.B Sha1
+produces a 20-byte hash
+.RB ( SHA1dlen ),
+.B sha224
+a 28-byte hash
+.RB ( SHA224dlen ),
+.B sha256
+a 32-byte hash
+.RB ( SHA256dlen ),
+.B sha384
+a 48-byte hash
+.RB ( SHA384dlen ),
+.B sha256
+a 64-byte hash
+.RB ( SHA512dlen ),
+.B md4
+and
+.B md5
+a 16-byte one
+.RB ( MD4len
+and
+.BR MD5len ).
+.PP
+.B Hmac_sha1
+and
+.B hmac_md5
+are keyed versions of the hashing functions, following Internet RFC2104.
+The
+.I key
+must be provided in each call, but otherwise
+the calling conventions are those of
+.BR sha1 .
+The
+.I key
+must currently be no more than 64 bytes.
+.PP
+.B DigestState
+hides the state of partially completed hash functions during processing.
+Its
+.B copy
+operation returns a reference to a new copy of a given state.
+.SH EXAMPLES
+A program to read a file and hash it using SHA might contain the following inner loop:
+.IP
+.EX
+state: ref DigestState = nil;
+while((n := sys->read(fd, buf, len buf)) > 0)
+	state = kr->sha1(buf, n, nil, state);
+digest := array[kr->SHA1dlen] of byte;
+kr->sha1(buf, 0, digest, state);
+.EE
+.SH SOURCE
+.B /libinterp/crypt.c
+.br
+.B /libsec/port/hmac.c
+.br
+.B /libsec/port/md4.c
+.br
+.B /libsec/port/md5.c
+.br
+.B /libsec/port/sha1.c
+.SH BUGS
+The MD4 algorithm is included only to allow communication with software
+that might still use it; it should not otherwise be used now, because it
+is easily broken.

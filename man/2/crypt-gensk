@@ -1,0 +1,159 @@
+.TH CRYPT-GENSK 2
+.SH NAME
+crypt: genSK, genSKfromPK, sktopk, dhparams, sign, verify \- generate keys and digital signatures
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+include "crypt.m";
+crypt := load Crypt Crypt->PATH;
+
+PK: adt
+{
+    pick {
+    RSA =>
+        n:     ref IPint;   # modulus
+        ek:    ref IPint;   # exp (encryption key)
+    Elgamal =>
+        p:     ref IPint;   # modulus
+        alpha: ref IPint;   # generator
+        key:   ref IPint;   # encryption key (alpha**secret mod p)
+    DSA =>
+        p:     ref IPint;   # modulus
+        q:     ref IPint;   # group order, q divides p-1
+        alpha: ref IPint;   # group generator
+        key:   ref IPint;   # encryption key (alpha**secret mod p)
+    }
+};
+
+SK: adt
+{
+    pick {
+    RSA =>
+        pk:     ref PK.RSA;
+        dk:     ref IPint;   # exp (decryption key)
+        p:      ref IPint;   # q in pkcs
+        q:      ref IPint;   # p in pkcs
+        # precomputed crt values
+        kp:     ref IPint;   # k mod p-1
+        kq:     ref IPint;   # k mod q-1
+        c2:     ref IPint;   # for converting residues to number
+    Elgamal =>
+        pk:     ref PK.Elgamal;
+        secret: ref IPint;   # decryption key
+    DSA =>
+        pk:     ref PK.DSA;
+        secret: ref IPint;   # decryption key
+    }
+};
+
+PKsig: adt
+{
+    pick {
+    RSA =>
+        n:  ref IPint;
+    Elgamal =>
+        r:  ref IPint;
+        s:  ref IPint;
+    DSA =>
+        r:  ref IPint;
+        s:  ref IPint;
+    }
+};
+
+genSK:       fn(algname: string, length: int): ref SK;
+genSKfromPK: fn(pk: ref PK): ref SK;
+sktopk:      fn(sk: ref SK): ref PK;
+
+sign:        fn(sk: ref SK, m: ref IPint): ref PKsig;
+verify:      fn(pk: ref PK, sig: ref PKsig, m: ref IPint): int;
+
+dhparams:    fn(nbits: int): (ref IPint, ref IPint);
+.EE
+.SH DESCRIPTION
+.B Crypt
+implements a set of public-key signature algorithms.
+The public/private key pairs are represented by values of the adt
+.BR SK ,
+containing both the private (secret) and public parts of the pair,
+and
+.BR PK ,
+containing only the public part.
+The several algorithms are represented by different pick variants.
+.PP
+.B GenSK
+generates a new public/private key pair, represented by
+.BR SK .
+.I Algname
+is the name of the algorithm to use; in the current implementation,
+.BR dsa ,
+.B elgamal
+and
+.B rsa
+are possible.
+.I Length
+gives the length of the key modulus in bits.
+.B GenSK
+returns nil if an unknown algorithm has been specified.
+.PP
+.B GenSKfromPK
+generates a private key that has the system parameters as the public key
+.IR pk .
+It is used to generate new keys that are of the same complexity as old keys.
+.PP
+.B Sktopk
+returns a reference to the public part of private key
+.IR sk .
+.PP
+.B Sign
+creates a digital signature of a message
+.IR m ,
+represented by an IPint,
+using the private key
+.IR sk .
+Typically
+.I m
+represents a secure hash (eg, using
+.IR crypt-sha1 (2))
+of a much larger message.
+.PP
+.B Verify
+uses public key
+.I pk
+to verify that the value
+.I sig
+is a digital signature of the message
+.I m
+using the private key corresponding to
+.IR pk .
+It returns non-zero (true) if the signature is valid; zero (false) otherwise.
+.PP
+Most applications use generic operations on public and private keys,
+referring to
+.B PK
+and
+.BR SK ,
+but specific variants can be named, such as
+.BR PK.RSA
+for RSA keys, allowing use of RSA-specific operations.
+.IR Crypt-dsagen (2)
+describes functions for key generation that are specific to various algorithms,
+using algorithm-specific parameters.
+.PP
+.B Dhparams
+creates Diffie-Hellman parameters. It returns
+a tuple of IPints
+.RI ( alpha , p ).
+.I P
+is an
+.I nbits
+long prime number that serves as the modulus.
+.I Alpha
+is a primitive root in the integer field defined by that modulus.
+.SH SEE ALSO
+.IR crypt-dsagen (2),
+.IR crypt-sha1 (2),
+.IR security-auth (2),
+.IR security-oldauth (2)

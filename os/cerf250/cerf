@@ -60,7 +60,9 @@ mod
 	sys
 #	draw
 #	tk
-	keyring
+	keyring	crypt
+	ipints
+
 
 port
 	alarm

@@ -1,0 +1,94 @@
+.TH CRYPT-DSAGEN 2
+.SH NAME
+crypt: dsagen, eggen, rsagen, rsafill,  rsaencrypt, rsadecrypt \- specific public key systems
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+include "crypt.m";
+crypt := load Crypt Crypt->PATH;
+
+dsagen:     fn(oldpk: ref PK.DSA): ref SK.DSA;
+
+eggen:      fn(nlen: int, nrep: int): ref SK.Elgamal;
+
+rsagen:     fn(nlen: int, elen: int, nrep: int): ref SK.RSA;
+rsafill:    fn(n: ref IPint, ek: ref IPint, dk: ref IPint,
+               p: ref IPint, q: ref IPint): ref SK.RSA;
+rsaencrypt: fn(k: ref PK.RSA, m: ref IPint): ref IPint;
+rsadecrypt: fn(k: ref SK.RSA, m: ref IPint): ref IPint;
+.EE
+.SH DESCRIPTION
+.IR Crypt-gensk (2)
+describes a set of functions that generate public/private key pairs given an algorithm name
+and a key length.
+Some key types allow further parameters for key generation or support further operations.
+.PP
+.B Dsagen
+generates a DSA public/private key pair, represented by the pick adt
+.BR SK.DSA ,
+and compatible with the containing type
+.BR SK .
+If the parameter
+.B oldpk
+is not nil,
+.B dsagen
+takes the new key's modulus and group order from the existing key;
+otherwise it generates a new pair of primes.
+.PP
+.B Eggen
+generates a new El-Gamal key pair, represented by the pick adt
+.BR SK.Elgamal .
+.I Nlen
+is the length of the modulus;
+.I nrep
+is the number of repetitions of the Miller-Rabin primality test (0 gives the default, currently 18).
+.PP
+.B Rsagen
+generates an RSA public/private key pair, represented by the pick adt
+.BR SK.RSA ,
+and compatible with the containing type
+.BR SK .
+.I Nlen
+gives the length of the key modulus in bits;
+.I elen
+gives the exponent length in bits; and
+.I nrep
+is as above.
+.PP
+The RSA private key representation used by Inferno includes some extra values to speed computation.
+.B Rsagen
+provides those values but keys imported from other systems might not.
+Given the essential set of RSA private key parameters for a given key, represented as IPints,
+.B rsafill
+returns a suitable
+.B SK.RSA
+for that key, including the extra values.
+.PP
+The public key of type
+.B PK.RSA
+can be extracted from a given private key value
+.I sk
+by referencing the field
+.BI sk .pk .
+.PP
+.B Rsaencrypt
+encrypts a message
+.IR m ,
+represented by an IPint,
+using the public key
+.IR pk .
+.PP
+.B Rsadecrypt
+decrypts
+.I m
+using private key
+.IR sk .
+The result is again returned as an IPint.
+.SH SEE ALSO
+.IR crypt-gensk (2),
+.IR crypt-sha1 (2),
+.IR security-auth (2),
+.IR security-oldauth (2)

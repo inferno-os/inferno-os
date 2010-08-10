@@ -68,7 +68,9 @@ mod
 	sys
 #	draw
 #	tk
-	keyring
+	keyring	crypt
+	ipints
+
 	math
 
 init

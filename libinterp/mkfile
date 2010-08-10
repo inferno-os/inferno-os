@@ -6,6 +6,7 @@ OFILES=\
 	alt.$O\
 	comp-$OBJTYPE.$O\
 	conv.$O\
+	crypt.$O\
 	dec.$O\
 	dlm-$TARGMODEL.$O\
 	draw.$O\
@@ -48,6 +49,9 @@ MODULES=\
 	../module/keyring.m\
 	../module/loader.m\
 	../module/freetype.m\
+	../module/ipints.m\
+	../module/crypt.m\
+	keyringif.m\
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE
 
@@ -58,7 +62,7 @@ sysmod.h:D: $MODULES
 	rm -f $target && limbo -t Sys -I../module ../module/runt.m > $target
 
 keyring.h:D: $MODULES
-	rm -f $target && limbo -t Keyring -I../module ../module/runt.m > $target
+	rm -f $target && limbo -t Keyring -I../module keyringif.m > $target
 
 drawmod.h:D: $MODULES
 	rm -f $target && limbo -t Draw -I../module ../module/runt.m > $target
@@ -78,8 +82,18 @@ loadermod.h:D: $MODULES
 freetypemod.h:D: $MODULES
 	rm -f $target && limbo -t Freetype -I../module ../module/runt.m > $target
 
+ipintsmod.h:D:	$MODULES
+	rm -f $target && limbo -t IPints -I../module ../module/ipints.m > $target
+
 benchmod.h:D: ../module/bench.m
 	rm -f $target && limbo -t Bench -I../module ../module/bench.m > $target
+
+cryptmod.h:D:	$MODULES
+	rm -f $target && limbo -t Crypt -I../module ../module/runt.m > $target
+
+keyringif.h:D:	$MODULES keyringif.m
+	rm -f $target && limbo -a -I../module keyringif.m > $target
+
 
 bench.h:D:../module/bench.m
 	rm -f $target && limbo -a -I../module ../module/bench.m > $target
@@ -95,8 +109,9 @@ prefab.$O:	prefabmod.h
 draw.$O:	drawmod.h
 tk.$O:		$ROOT/include/draw.h tkmod.h
 math.$O:	mathmod.h
-keyring.$O:	keyring.h $ROOT/libkeyring/keys.h
-ipint.$O:	keyring.h
+keyring.$O:	keyring.h ipint.h keyringif.h
+crypt.$O:	ipint.h runt.h cryptmod.h
+ipint.$O:	ipint.h ipintsmod.h
 loader.$O:	loadermod.h
 freetype.$O:	freetypemod.h $ROOT/include/freetype.h
 math.$O:	$ROOT/include/mathi.h
@@ -105,11 +120,6 @@ das-spim.c:N:	das-mips.c
 das-68000.c:N:	das-68020.c
 comp-spim.c:N:	comp-mips.c
 
-kif.c:	kif.h
-	rm -f $target && kif -t $SYSTARG kif.h > $target
-kif.$O: kif.c
-	$CC $CFLAGS kif.c && rm -f kif.c
-
 # optab.h:	$ROOT/include/isa.h mkoptab
 #	$SHELLNAME mkoptab > $target
 
@@ -117,4 +127,4 @@ kif.$O: kif.c
 #	it works only on UNIX and Plan 9.
 
 nuke:EV:	nuke-std
-	rm -f runt.h sysmod.h drawmod.h prefabmod.h tkmod.h mathmod.h keyring.h readimagemod.h loadermod.h freetypemod.h kif.c
+	rm -f runt.h sysmod.h drawmod.h prefabmod.h tkmod.h mathmod.h keyring.h readimagemod.h loadermod.h freetypemod.h cryptmod.h keyringif.h ipintsmod.h

@@ -49,7 +49,9 @@ mod
 	draw
 	prefab
 	tk
-	keyring
+	keyring	crypt
+	ipints
+
 
 link
 	pppmedium ppp compress

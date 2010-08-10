@@ -1,0 +1,112 @@
+.TH IPINTS-GENPRIME 2
+.SH NAME
+ipints: genprime, gensafeprime, genstrongprime, DSAprimes, probably_prime  \- prime number generation
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+probably_prime: fn(n: ref IPint, nrep: int): int;
+
+genprime: fn(nbits: int, nrep: int): ref IPint;
+gensafeprime: fn(nbits: int, nrep: int): (ref IPint, ref IPint);	# p, alpha
+genstrongprime: fn(nbits: int, nrep: int): ref IPint;
+DSAprimes: fn(): (ref IPint, ref IPint, array of byte);	# q, p, seed
+.EE
+.SH DESCRIPTION
+This set of functions in
+.B IPints
+(see
+.IR ipints (2))
+helps Limbo applications
+generate and test large prime numbers with relative efficiency.
+The numbers are all represented by
+.BR IPint .
+.PP
+.I Probably_prime
+uses the Miller-Rabin test to test
+.IR n .
+It returns true (non-zero) if
+.I P
+is probably prime.  The probability of
+.I n
+not being prime is
+1/4**\fInrep\fR.
+If
+.I probably_prime
+returns false (zero),
+.I n
+is certainly not prime.
+.PP
+.I Genprime
+returns a random prime of length
+.IR nbits .
+Since it uses the Miller-Rabin test,
+.I nrep
+is the repetition count passed to
+.IR probably_prime .
+.PP
+.I Gensafeprime
+returns a tuple
+.BI ( p,\ alpha ),
+where
+.I p
+is a prime of length
+.I nbits
+and
+.I alpha
+is a generator of the multiplicative group of integers mod \fIp\fR;
+there is a prime \fIq\fR such that \fIp-1=2*q\fR.
+.PP
+.I Genstrongprime
+returns a prime
+.I p
+with the following properties:
+.IP \-
+(\fIp\fR-1)/2 is prime.  Therefore
+.IR p -1
+has a large prime factor,
+.IR p '.
+.IP \-
+.IR p '-1
+has a large prime factor
+.IP \-
+.IR p +1
+has a large prime factor
+.PP
+.I DSAprimes
+uses the NIST recommended algorithm for generating DSA primes and
+returns a tuple
+.BI ( q,\ p,\ seed ) ,
+where
+.I p
+and
+.I q
+are primes, and
+.I q
+divides
+.IR p -1.
+The random
+.I seed
+used is also returned, so that sceptics
+can later confirm the computation.
+.SH SOURCE
+.B /libinterp/ipint.c
+.br
+.B /libsec/port/probably_prime.c
+.br
+.B /libsec/port/dsaprimes.c
+.br
+.B /libsec/port/genprime.c
+.br
+.B /libsec/port/gensafeprime.c
+.br
+.B /libsec/port/genstrongprime.c
+.br
+.SH SEE ALSO
+.IR crypt-intro (2),
+.IR crypt-crypt (2),
+.IR crypt-dsagen (2),
+.IR crypt-gensk (2),
+.IR ipints (2)

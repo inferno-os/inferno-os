@@ -1,0 +1,98 @@
+.TH CRYPT-INTRO 2
+.SH NAME
+Crypt intro \- introduction to the
+.B Crypt
+cryptography
+module
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+ipints := load IPints IPints->PATH;
+IPint: import ipints;
+
+include "crypt.m";
+crypt := load Crypt Crypt->PATH;
+.EE
+.SH DESCRIPTION
+.B Crypt
+contains a mixed set of functions that variously:
+.IP \(bu
+form cryptographically secure digests; see
+.IR crypt-sha1 (2)
+.IP \(bu
+generate public/private key pairs; see
+.IR crypt-gensk (2)
+.IP \(bu
+encrypt data, using AES, DES, or IDEA; see
+.IR crypt-crypt (2)
+.IP \(bu
+create and verify cryptographic signatures using the
+public keys; see
+.IR crypt-sign (2)
+.SS "Public Key Cryptography"
+Public key cryptography has many uses.
+Inferno relies on it only for digital signatures.
+The private key may be used to digitally
+sign data, the public one to verify the signature.
+.PP
+Inferno provides three data types to represent the different components of the public key signature scheme.
+The
+.B PK
+adt contains the data necessary to construct a public key;
+the
+.B SK
+adt contains the data necessary to construct a secret key.
+A key contains the public or secret parameters for the signature algorithm specified by the adt's pick tag.
+Ownership of a key is not recorded in the key value itself but in a separate certificate.
+Finally,
+the
+.B PKsig
+adt contains one or more values representing a given form of digital signature.
+.PP
+Certificates and indeed signature representations are varied, and implemented by other modules.
+.SS "Large Precision Arithmetic"
+Many
+.B Crypt
+operations require integers much larger than
+.B int
+or
+.BR big .
+It therefore uses the multiple-precision package
+.IR ipints (2).
+That module's
+.B IPint
+adt
+stands for infinite precision integer, though, for
+space considerations, our
+implementation limits the maximum integer to
+2\u\s-2\&8192\s0\d-1.
+.PP
+An
+.B IPint
+can be converted into two external formats.
+The first is
+an array of bytes in which the first byte is the highest order
+byte of the integer.  This format is useful when
+communicating with the
+.IR ssl (3)
+device.
+The second is similar but represents the array of bytes as text, using either base 16 or a MIME base 64 format,
+allowing
+.BR IPint s
+to be stored in files or transmitted across
+networks in a human readable form.
+.SH SOURCE
+.br
+.B /libinterp/crypt.c
+.br
+.B /libinterp/ipint.c
+.br
+.B /libmp
+.br
+.B /libsec
+.SH SEE ALSO
+.IR security-intro (2)
+.br
+B. Schneier,
+.IR "Applied Cryptography" ,
+1996, J. Wiley & Sons, Inc.

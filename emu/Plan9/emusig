@@ -39,6 +39,8 @@ mod
 	math
 #	srv		not used on Plan 9
 	keyring
+	crypt
+	ipints
 	loader
 	freetype
 
@@ -47,6 +49,8 @@ port
 	cache
 	chan
 	dev
+	devtab
+
 	dial
 	dis
 	discall
@@ -74,6 +78,7 @@ init
 root
 	/dev	/
 	/prog	/
+	/prof	/
 	/net	/
 	/net.alt	/
 	/chan	/

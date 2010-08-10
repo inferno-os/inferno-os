@@ -1,4 +1,3 @@
-typedef struct IPint IPint;
 typedef struct SigAlg SigAlg;
 typedef struct SigAlgVec SigAlgVec;
 typedef struct SK SK;
@@ -14,13 +13,6 @@ enum
 {
 	Maxbuf=	4096,
 	MaxBigBytes = 1024
-};
-
-/* infininite precision integer */
-struct IPint
-{
-	Keyring_IPint x;
-	mpint*	b;
 };
 
 /* generic certificate */
@@ -115,4 +107,5 @@ struct SigAlg
 int	bigtobase64(mpint* b, char *buf, int blen);
 mpint*	base64tobig(char *str, char **strp);
 SigAlgVec*	findsigalg(char*);
-Keyring_IPint*	newIPint(mpint*);
+//Keyring_IPint*	newIPint(mpint*);
+void*	newIPint(mpint*);

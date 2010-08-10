@@ -6,9 +6,9 @@ include "sys.m";
 
 include "draw.m";
 
-include "keyring.m";
-	kr : Keyring;
-	IPint: import kr;
+include "ipints.m";
+	ipints: IPints;
+	IPint: import ipints;
 
 Randpass: module
 {
@@ -18,7 +18,7 @@ Randpass: module
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
-	kr = load Keyring Keyring->PATH;
+	ipints = load IPints IPints->PATH;
 
 	if(args != nil)
 		args = tl args;
@@ -29,11 +29,7 @@ init(nil: ref Draw->Context, args: list of string)
 			raise "fail:usage";
 		}
 	}
-
-	rbig := IPint.random(pwlen*8, pwlen*16);
-	rstr := rbig.iptob64();
-
-	sys->print("%s\n", rstr[0:pwlen]);
+	sys->print("%s\n", IPint.random(pwlen*8).iptob64()[0: pwlen]);
 }
 
 isnumeric(s: string): int

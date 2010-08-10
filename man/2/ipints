@@ -1,0 +1,193 @@
+.TH IPINTS 2
+.SH NAME
+ipints: IPint \- `infinite' precision integer utility functions
+.SH SYNOPSIS
+.EX
+include "ipints.m"
+ipints:= load IPints IPints->PATH;
+
+IPint: adt
+{
+  iptob64:   fn(i: self ref IPint): string;
+  iptob64z:  fn(i: self ref IPint): string;
+  b64toip:   fn(str: string)  : ref IPint;
+  iptobytes: fn(i: self ref IPint): array of byte;
+  bytestoip: fn(buf: array of byte): ref IPint;
+  iptobebytes: fn(i: self ref IPint): array of byte;
+  bebytestoip: fn(buf: array of byte): ref IPint;
+  inttoip:   fn(i: int): ref IPint;
+  iptoint:   fn(i: self ref IPint): int;
+  iptostr:   fn(i: self ref IPint, base: int): string;
+  strtoip:   fn(str: string, base: int): ref IPint;
+  random:    fn(nbits: int): ref IPint;
+  copy:      fn(i: self ref IPint): ref IPint;
+  bits:      fn(i:  self ref IPint): int;
+  expmod:    fn(base: self ref IPint, exp, mod: ref IPint):ref IPint;
+  add:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  sub:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  neg:  fn(i: self ref IPint): ref IPint;
+  mul:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  div:  fn(i1: self ref IPint, i2: ref IPint): (ref IPint, ref IPint);
+  mod:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  eq:   fn(i1:  self ref IPint, i2: ref IPint): int;
+  cmp:  fn(i1: self ref IPint, i2: ref IPint): int;
+  shl:  fn(i: self ref IPint, n: int): ref IPint;
+  shr:  fn(i: self ref IPint, n: int): ref IPint;
+  and:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  ori:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+  not:  fn(i: self ref IPint): ref IPint;
+  xor:  fn(i1: self ref IPint, i2: ref IPint): ref IPint;
+};
+.EE
+.SH DESCRIPTION
+.B IPint
+provides the following arbitrary-length integer manipulation functions required for cryptographic support in Limbo:
+.TP
+.IB i .iptob64()
+Returns a string that represents a large integer textually in base 64 for convenient transmission over a network connection.
+.TP
+.IB i .iptob64z()
+Returns a similar representation to
+.B iptob64
+but ensures that the top bit of the received value is zero.
+.TP
+.BI b64toip( str )
+Returns the
+.B IPint
+represented by the base-64 encoded
+.IR str .
+.TP
+.IB i .iptobytes()
+Returns an array of bytes representing a large integer. The representation includes both positive and negative numbers.
+.TP
+.BI bytestoip( buf )
+The inverse operation of
+.BR iptobytes .
+.TP
+.IB i .iptobebytes()
+Returns an array of bytes in big-endian format representing the magnitude of a large integer; used for instance to pass a value to
+.IR ssl (3).
+Only non-negative numbers are represented.
+.TP
+.BI bebytestoip( buf )
+The inverse operation of
+.BR iptobebytes .
+.TP
+.BI inttoip( i )
+Creates a new large integer from integer
+.IR i .
+.TP
+.IB i .iptoint()
+Converts a large integer
+.I i
+to an
+.BR int ;
+returns 0 on error.
+.TP
+.IB i .iptostr( base )
+Converts a large integer to a string in base
+.IR base ;
+returns nil on error.
+Only the bases 10, 16, 32, and 64 are
+supported.  Anything else defaults to 16.
+.TP
+.BI strtoip( str , base )
+Converts a string
+.I str
+representing a number in in base
+.I base
+to a large integer; returns nil on error.
+Only the bases 10, 16, 32, and 64 are
+supported.
+.TP
+.BI random( nbits )
+Returns a large random number of length at most
+.IR minbits .
+The largest number allowed in the current implementation is
+2^8192-1 .
+The seed for the generator is obtained by duelling clocks.
+.TP
+.IB i .copy()
+Returns a reference to the same value as
+.IR i .
+.TP
+.IB i .bits()
+Returns the number of bits of precision of
+.IR i .
+.TP
+.IB base .expmod( "exp , mod" )
+Returns
+.BI ( base ** exp ") mod " mod.
+.TP
+.IB i1 .add( i2 )
+Returns
+.RI ( i1 + i2 ).
+.TP
+.IB i1 .sub( i2 )
+Returns
+.RI ( i1 - i2 ).
+.TP
+.IB i1 .mul ( i2 )
+Returns
+.IR i1*i2 .
+.TP
+.IB i1 .div ( i2 )
+Returns
+.RI ( i1 / i2,
+.IR i1 rem i2 ).
+.TP
+.IB i1 .mod ( i2 )
+Returns
+.RI ( i1 mod i2 ).
+.TP
+.IB i1 .eq( i2 )
+Returns 1 if
+.I i1
+and
+.I i2
+are equal; 0 otherwise.
+.TP
+.IB i1 .cmp( i2 )
+Compares two large integers, returning 1 if
+.I i1
+is larger,
+-1 if
+.I i2
+is larger, and 0 if they are equal.
+.TP
+.IB i .shl( n )
+Returns
+.IR i << n
+.TP
+.IB i .shr( n )
+Returns
+.IR i >> n
+.TP
+.IB i1 .and( i2 )
+Returns
+.IR i & n ,
+bitwise AND
+.TP
+.IB i1 .ori( i2 )
+Returns
+.IR i | n ,
+bitwise inclusive-OR
+(it is
+.B ori
+because plain
+.B or
+is a Limbo keyword)
+.TP
+.IB i .not()
+Returns
+.RI ~ i ,
+bitwise ones-complement
+.TP
+.IB i1 .xor( i2 )
+Returns
+.IR i ^ n ,
+bitwise exclusive-OR
+.SH SOURCE
+.B /libinterp/ipint.c
+.br
+.B /libmp

@@ -6,13 +6,39 @@
 #include <mp.h>
 #include <libsec.h>
 #include "pool.h"
-#include "../libkeyring/keys.h"
+#include "ipint.h"
 #include "raise.h"
 
-extern Type	*TIPint;
+#include "ipintsmod.h"
+
+enum
+{
+	MaxBigBytes = 1024
+};
+
+/* infinite precision integer */
+struct IPint
+{
+	IPints_IPint x;
+	mpint*	b;
+};
+
+Type	*TIPint;
+static uchar IPintmap[] = IPints_IPint_map;
+
 #define	MP(x)	checkIPint((x))
 
-Keyring_IPint*
+void
+ipintsmodinit(void)
+{
+	/* can be called from modinit, Keyring or Crypt */
+	if(TIPint == nil)
+		TIPint = dtype(freeIPint, sizeof(IPint), IPintmap, sizeof(IPintmap));
+	builtinmod("$IPints", IPintsmodtab, IPintsmodlen);
+}
+
+//IPints_IPint*
+void*
 newIPint(mpint* b)
 {
 	Heap *h;
@@ -23,20 +49,22 @@ newIPint(mpint* b)
 	h = heap(TIPint);	/* TO DO: caller might lose other values if heap raises error here */
 	ip = H2D(IPint*, h);
 	ip->b = b;
-	return (Keyring_IPint*)ip;
+	return (IPints_IPint*)ip;
 }
 
 mpint*
-checkIPint(Keyring_IPint *v)
+checkIPint(void *a)
 {
+	IPints_IPint *v;
 	IPint *ip;
 
+	v = a;
 	ip = (IPint*)v;
 	if(ip == H || ip == nil)
 		error(exNilref);
 	if(D2H(ip)->t != TIPint)
 		error(exType);
-	return ip->b;
+	return ip->b;	/* non-nil by construction */
 }
 
 void
@@ -151,7 +179,7 @@ IPint_iptostr(void *fp)
 	retstr(buf, f->ret);
 }
 
-static Keyring_IPint*
+static IPints_IPint*
 strtoipint(String *s, int base)
 {
 	char *p, *q;
@@ -250,7 +278,7 @@ IPint_random(void *fp)
 	destroy(v);
 
 	release();
-	b = mprand(f->maxbits, genrandom, nil);
+	b = mprand(f->nbits, genrandom, nil);
 	acquire();
 	*f->ret = newIPint(b);
 }
@@ -711,4 +739,110 @@ IPint_not(void *fp)
 	if(ret != nil)
 		mpnot(i1, ret);
 	*f->ret = newIPint(ret);
+}
+
+/*
+ * primes
+ */
+
+void
+IPints_probably_prime(void *fp)
+{
+	F_IPints_probably_prime *f;
+
+	f = fp;
+	release();
+	*f->ret = probably_prime(checkIPint(f->n), f->nrep);
+	acquire();
+}
+
+void
+IPints_genprime(void *fp)
+{
+	F_IPints_genprime *f;
+	mpint *p;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+	p = mpnew(0);
+	release();
+	genprime(p, f->nbits, f->nrep);
+	acquire();
+	*f->ret = newIPint(p);
+}
+
+void
+IPints_genstrongprime(void *fp)
+{
+	F_IPints_genstrongprime *f;
+	mpint *p;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+	p = mpnew(0);
+	release();
+	genstrongprime(p, f->nbits, f->nrep);
+	acquire();
+	*f->ret = newIPint(p);
+}
+
+void
+IPints_gensafeprime(void *fp)
+{
+	F_IPints_gensafeprime *f;
+	mpint *p, *alpha;
+	void *v;
+
+	f = fp;
+	v = f->ret->t0;
+	f->ret->t0 = H;
+	destroy(v);
+	v = f->ret->t1;
+	f->ret->t1 = H;
+	destroy(v);
+
+	p = mpnew(0);
+	alpha = mpnew(0);
+	release();
+	gensafeprime(p, alpha, f->nbits, f->nrep);
+	acquire();
+	f->ret->t0 = newIPint(p);
+	f->ret->t1 = newIPint(alpha);
+}
+
+void
+IPints_DSAprimes(void *fp)
+{
+	F_IPints_DSAprimes *f;
+	mpint *p, *q;
+	Heap *h;
+	void *v;
+
+	f = fp;
+	v = f->ret->t0;
+	f->ret->t0 = H;
+	destroy(v);
+	v = f->ret->t1;
+	f->ret->t1 = H;
+	destroy(v);
+	v = f->ret->t2;
+	f->ret->t2 = H;
+	destroy(v);
+
+	h = heaparray(&Tbyte, SHA1dlen);
+	f->ret->t2 = H2D(Array*, h);
+
+	p = mpnew(0);
+	q = mpnew(0);
+	release();
+	DSAprimes(q, p, f->ret->t2->data);
+	acquire();
+	f->ret->t0 = newIPint(q);
+	f->ret->t1 = newIPint(p);
 }
