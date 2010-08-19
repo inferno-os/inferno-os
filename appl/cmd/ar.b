@@ -174,14 +174,15 @@ init(nil: ref Draw->Context, args: list of string)
 	for(i = 0; args != nil; args = tl args)
 		files[i++] = ref File(hd args, trim(hd args), 0);
 	comfun(cp, files);	# do the command
+	allfound := 1;
 	for(i = 0; i < len files; i++)
 		if(!files[i].found){
 			sys->fprint(stderr, "ar: %s not found\n", files[i].name);
-			cp = "error";
+			allfound = 0;
 		}
 	bout.flush();
-	if(cp != nil)
-		raise "fail:"+cp;
+	if(!allfound)
+		raise "fail: file not found";
 }
 
 #
