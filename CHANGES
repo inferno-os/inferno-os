@@ -1,3 +1,5 @@
+20100819
+	failed to push Solaris/sparc/include/lib9.h with u64int change [issue 151]
 20100810
 	initial introduction of crypt-*(2) and ipints(2)
 	replace keyring.m in module/runt.m by ipints.m and crypt.m; compensate in libinterp and libkeyring by using keyringif.m to generate Keyring's interface
