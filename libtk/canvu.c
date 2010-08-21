@@ -426,18 +426,14 @@ tkcvsdeliver(Tk *tk, TkCitem *i, int event, void *data)
 		if(!(event & TkKey) && (event & TkEmouse)) {
 			ftk = tkcvsmouseinsub(w, *(TkMouse*)data);
 			if(ftk != w->focus) {
-{TkCitem *si; if(w->focus != nil && (si = tkcvsfindwin(w->focus)) != i)print("focus botch 4: i=%p si=%p\n", i, si);}
 				tkdeliver(w->focus, TkLeave, data);
-{TkCitem *si; if(ftk != nil && (si = tkcvsfindwin(ftk)) != i)print("focus botch: i=%p si=%p\n", i, si);}
 if(0)print("focus %p %q %p %q\n", w->sub, tkname(w->sub), ftk, tkname(ftk));
 				tkdeliver(ftk, TkEnter, data);
 				w->focus = ftk;
 			}
-else{TkCitem *si; if(ftk != nil && (si = tkcvsfindwin(ftk)) != i)print("focus botch 2: i=%p si=%p\n", i, si);}
 			if(ftk != nil)
 				dest = tkdeliver(ftk, event, data);
 		} else {
-{TkCitem *si; if(w->focus != nil && (si = tkcvsfindwin(w->focus)) != i)print("focus botch 3: i=%p si=%p\n", i, si);}
 			if(event & TkLeave) {
 				tkdeliver(w->focus, TkLeave, data);
 				w->focus = nil;
