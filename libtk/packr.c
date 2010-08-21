@@ -80,7 +80,14 @@ TkOption opts[] =
 void
 tkdelpack(Tk *t)
 {
-	Tk *f, **l;
+	Tk *f, **l, *sub, *p;
+
+	sub = tkfindsub(t);
+	if(sub != nil) {
+		p = sub->parent;
+		if(tkmethod[p->type]->forgetsub != nil)
+			tkmethod[p->type]->forgetsub(sub, t);
+	}
 
 	if(t->master == nil)
 		return;

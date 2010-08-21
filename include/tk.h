@@ -455,7 +455,7 @@ struct Tk
 	Tk*		master;		/* Pack owner */
 	Tk*		slave;		/* Packer slaves */
 	Tk*		next;		/* Link for packer slaves */
-	Tk*		parent;		/* Window is sub of canvas or text */
+	Tk*		parent;		/* Window is sub of this canvas or text */
 	Tk*		depth;		/* Window depth when mapped */
 	void		(*geom)(Tk*, int, int, int, int);		/* Geometry change notify function */
 	void		(*destroyed)(Tk*);		/* Destroy notify function */
@@ -473,7 +473,7 @@ struct Tk
 	Rectangle	dirty;	/* dirty rectangle, relative to widget */
 	TkGrid*	grid;		/* children are packed in a grid */
 
-//	char		obj[TKSTRUCTALIGN];
+	/* followed by widget-dependent data */
 };
 
 struct TkWin
@@ -514,6 +514,7 @@ struct TkMethod
 	void		(*see)(Tk*, Rectangle*, Point*);
 	Tk*		(*inwindow)(Tk*, Point*);
 	void		(*varchanged)(Tk*, char*, char*);
+	void		(*forgetsub)(Tk*, Tk*);
 	int		ncmd;
 };
 
@@ -733,6 +734,7 @@ extern	TkEnv*		tkdefaultenv(TkTop*);
 extern	void		tkputenv(TkEnv*);
 extern	TkEnv*		tkdupenv(TkEnv**);
 extern	Tk*		tknewobj(TkTop*, int, int);
+extern	Tk*		tkfindsub(Tk*);
 extern	void		tkfreebind(TkAction*);
 extern	void		tkfreename(TkName*);
 extern	void		tkfreeobj(Tk*);
@@ -750,7 +752,6 @@ extern	int		tksubdeliver(Tk*, TkAction*, int, void*, int);
 extern	void		tkcancel(TkAction**, int);
 extern	char*		tkaction(TkAction**, int, int, char*, int);
 extern	char*		tkitem(char*, char*);
-extern	int		tkismapped(Tk*);
 extern	Point		tkposn(Tk*);
 extern	Point		tkscrn2local(Tk*, Point);
 extern	int		tkvisiblerect(Tk *tk, Rectangle *rr);
@@ -817,6 +818,11 @@ extern	void		tkextnfreeobj(Tk*);
 extern	int		tkextnnewctxt(TkCtxt*);
 extern	void		tkextnfreectxt(TkCtxt*);
 extern	char*	tkextnparseseq(char*, char*, int*);
+
+/* Debugging */
+extern	void		tkdump(Tk*);
+extern	void		tktopdump(Tk*);
+extern	void		tkcvsdump(Tk*);
 
 /* External to libtk */
 extern	void		tkenterleave(TkTop*);

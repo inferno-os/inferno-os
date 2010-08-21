@@ -383,9 +383,9 @@ tktwinnames(Tk *tk, char *arg, char **val)
 	tktstartind(tkt, &ix);
 	fmt = "%s";
 	do {
-		if(ix.item->kind == TkTwin 
-		   && ix.item->iwin->sub != nil
-                   && (ix.item->iwin->sub->name != nil)) {
+		if(ix.item->kind == TkTwin &&
+		   ix.item->iwin->sub != nil &&
+                     ix.item->iwin->sub->name != nil) {
 			e = tkvalue(val, fmt, ix.item->iwin->sub->name->name);
 			if(e != nil)
 				return e;

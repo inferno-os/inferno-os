@@ -810,7 +810,7 @@ tkdestroy(TkTop *t, char *arg, char **ret)
 				if(strcmp(buf, n) == 0) {
 					tk->flag |= Tkdestroy;
 					found = 1;
-				} else if(isroot || (strncmp(buf, n, len) == 0 &&n[len] == '.'))
+				} else if(isroot || (strncmp(buf, n, len) == 0 && n[len] == '.'))
 					tk->flag |= Tkdestroy;
 			}
 		}
@@ -827,13 +827,14 @@ tkdestroy(TkTop *t, char *arg, char **ret)
 			continue;
 		if(tk->flag & Tkwindow) {
 			tkunmap(tk);
-			if((tk->name != nil) 
-			   && (strcmp(tk->name->name, ".") == 0))
+			if(tk->name != nil &&
+			   strcmp(tk->name->name, ".") == 0)
 				tk->flag &= ~Tkdestroy;
 			else
 				tkdeliver(tk, TkDestroy, nil);
 		} else
 			tkdeliver(tk, TkDestroy, nil);
+if(0)print("tkdestroy %q\n", tkname(tk));
 		if(tk->destroyed != nil)
 			tk->destroyed(tk);
 		tkpackqit(tk->master);

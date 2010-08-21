@@ -236,3 +236,5 @@ extern	char*	tkcvsimgcoord(TkCitem*, char*, int, int);
 extern	char*	tkcvsimgcget(TkCitem*, char*, char**);
 extern	char*	tkcvsimgconf(Tk*, TkCitem*, char*);
 
+extern	TkCitem*	tkcvsfindwin(Tk*);
+extern	void		tkcvsforgetsub(Tk*, Tk*);

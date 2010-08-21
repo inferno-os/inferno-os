@@ -117,6 +117,8 @@ static TkEbind tktbinds[] = {
 	{TkKey|Pgdown,	"%W yview scroll 0.75 page"},
 	{TkKey|CNTL('w'),	"%W tkTextDelIns -w"},
 	{TkKey|Pgup,	"%W yview scroll -0.75 page"},
+	{TkButton4P,	"%W yview scroll -0.2 page"},
+	{TkButton5P,	"%W yview scroll 0.2 page"},
 	{TkFocusout,            "%W tkTextCursor delete"},
 	{TkKey|APP|'\t',	""},
 	{TkKey|BackTab,		""},

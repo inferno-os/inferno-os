@@ -64,6 +64,47 @@ tkcvswindsize(TkCitem *i)
 	i->p.bb.max.y = p.y + s->act.height + bw;
 }
 
+TkCitem*
+tkcvsfindwin(Tk *tk)
+{
+	Tk *parent, *sub;
+	TkCitem *i;
+	TkCanvas *c;
+	TkCwind *w;
+
+	sub = tkfindsub(tk);
+	if(sub == nil)
+		return nil;
+	parent = sub->parent;
+	if(parent->type != TKcanvas)
+		return nil;	/* inconsistent */
+	c = TKobj(TkCanvas, parent);
+	for(i = c->head; i != nil; i = i->next) {
+		if(i->type == TkCVwindow) {
+			w = TKobj(TkCwind, i);
+			if(w->sub == sub)
+				return i;
+		}
+	}
+	return nil;
+}
+
+void
+tkcvsforgetsub(Tk *sub, Tk *tk)
+{
+	TkCwind *w;
+	TkCitem *i;
+
+	i = tkcvsfindwin(sub);
+	if(i == nil)
+		return;
+	w = TKobj(TkCwind, i);
+	if(w->focus == tk) {
+if(0)print("tkcsvsforget sub %p %q focus %p %q\n", sub, tkname(sub), tk, tkname(tk));
+		w->focus = nil;
+	}
+}
+
 static int
 tkcvschkwfocus(TkCwind *w, Tk *tk)
 {
@@ -97,6 +138,7 @@ tkcvswindgeom(Tk *sub, int x, int y, int w, int h)
 	}
 
 	if(win->focus != nil) {
+if(0)print("check focus %p %q %p %q\n", win, tkname(win->focus), sub, tkname(sub));
 		if(tkcvschkwfocus(win, sub) == 0)
 			win->focus = nil;
 	}
@@ -127,6 +169,15 @@ tkcvssubdestry(Tk *sub)
 	tk = sub->parent;
 	if(tk == nil)
 		return;
+
+if(0)print("tkcvssubdestry %p %q\n", sub, tkname(sub));
+	i = tkcvsfindwin(sub);
+	if(i != nil){
+		win = TKobj(TkCwind, i);
+		if(win->sub != sub){
+			print("inconsistent tkcvssubdestry %p %q\n", sub, tkname(sub));
+		}
+	}
 
 	c = TKobj(TkCanvas, tk);
 	for(i = c->head; i; i = i->next) {

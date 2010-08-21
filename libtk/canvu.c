@@ -426,18 +426,22 @@ tkcvsdeliver(Tk *tk, TkCitem *i, int event, void *data)
 		if(!(event & TkKey) && (event & TkEmouse)) {
 			ftk = tkcvsmouseinsub(w, *(TkMouse*)data);
 			if(ftk != w->focus) {
+{TkCitem *si; if(w->focus != nil && (si = tkcvsfindwin(w->focus)) != i)print("focus botch 4: i=%p si=%p\n", i, si);}
 				tkdeliver(w->focus, TkLeave, data);
+{TkCitem *si; if(ftk != nil && (si = tkcvsfindwin(ftk)) != i)print("focus botch: i=%p si=%p\n", i, si);}
+if(0)print("focus %p %q %p %q\n", w->sub, tkname(w->sub), ftk, tkname(ftk));
 				tkdeliver(ftk, TkEnter, data);
 				w->focus = ftk;
 			}
+else{TkCitem *si; if(ftk != nil && (si = tkcvsfindwin(ftk)) != i)print("focus botch 2: i=%p si=%p\n", i, si);}
 			if(ftk != nil)
 				dest = tkdeliver(ftk, event, data);
-		}
-		else {
-			if (event & TkLeave) {
+		} else {
+{TkCitem *si; if(w->focus != nil && (si = tkcvsfindwin(w->focus)) != i)print("focus botch 3: i=%p si=%p\n", i, si);}
+			if(event & TkLeave) {
 				tkdeliver(w->focus, TkLeave, data);
 				w->focus = nil;
-			} else if (event & TkEnter) {
+			} else if(event & TkEnter) {
 				ftk = tkcvsmouseinsub(w, *(TkMouse*)data);
 				tkdeliver(ftk, TkEnter, data);
 				w->focus = ftk;
@@ -503,4 +507,40 @@ tkcvsevent(Tk *tk, int event, void *data)
 	if(dest == nil)
 		tksubdeliver(tk, tk->binds, event, data, 0);
 	return dest;
+}
+
+/*
+ * debugging
+ */
+void
+tkcvsdump(Tk *tk)
+{
+	TkCanvas *c;
+	TkCitem *it;
+	TkCwind *w;
+	char v1[Tkminitem], v2[Tkminitem];
+	int i;
+
+	if(tk == nil)
+		return;
+	c = TKobj(TkCanvas, tk);
+	tkfprint(v1, c->width);
+	tkfprint(v2, c->height);
+	print("%q configure -width %s -height %s", tkname(tk), v1, v2);
+	print(" # focus %#p mouse %#p grab %#p\n", c->focus, c->mouse, c->grab);
+	for(it = c->head; it != nil; it = it->next){
+		print("%q create %q", tkname(tk), tkcimethod[it->type].name);
+		for(i = 0; i < it->p.npoint; i++){
+			tkfprint(v1, it->p.parampt[i].x);
+			tkfprint(v2, it->p.parampt[i].y);
+			print(" %s %s", v1, v2);
+		}
+		if(it->type == TkCVwindow){
+			w = TKobj(TkCwind, it);
+			if(w->sub != nil)
+				print(" -window %q", tkname(w->sub));
+			print(" # item %#p id %d sub %#p focus [%#p %q]\n", it, it->id, w->sub, w->focus, tkname(w->focus));
+		}else
+			print("# item %#p id %d\n", it, it->id);
+	}
 }

@@ -112,16 +112,16 @@ struct TkText
 struct TkTwind
 {
 	Tk*		sub;		/* Subwindow of canvas */
+	Tk*		focus;		/* Current Mouse focus */
+	int		width;		/* current internal width */
+	int		height;		/* current internal height */
+	int		owned;	/* true if window is destroyed on item deletion */
 	int		align;		/* how to align within line */
 	char*		create;		/* creation script */
 	int		padx;		/* extra space on each side */
 	int		pady;		/* extra space on top and bot */
-	int		width;		/* current internal width */
-	int		height;		/* current internal height */
 	int		ascent;		/* distance from top of widget to baseline */
 	int		stretch;	/* true if need to stretch height */
-	int		owned;	/* true if window is destroyed on item deletion */
-	Tk*		focus;		/* Current Mouse focus */
 };
 
 struct TkTitem

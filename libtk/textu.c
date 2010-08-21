@@ -571,6 +571,7 @@ tktbbox(Tk *tk, TkTindex *ix)
 	/* r in V space */
 	r.min = subpt(l->orig, tkt->deltatv);
 	r.min.y += l->ascent;
+	r.max = r.min;
 
 	/* tabs dependon tags of first non-mark on display line */
 	for(i = l->items; i->kind == TkTmark; )

@@ -2214,5 +2214,7 @@ TkMethod canvasmethod = {
 	tkcvsrelpos,
 	tkcvsevent,
 	tkcvsseesub,
-	tkcvsinwindow
+	tkcvsinwindow,
+	nil,
+	tkcvsforgetsub,
 };

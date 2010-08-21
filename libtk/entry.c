@@ -179,17 +179,6 @@ x2index(Tk *tk,  int x, int *xc)
 	return t1;
 }
 
-static int
-x2index0(Tk *tk, int x, int *xc)
-{
-	int xx, z;
-	z = x2index(tk, x, &xx);
-	print("x2index(%d)-> (%d, %d)\n", x, z, xx);
-	if (xc)
-		*xc = xx;
-	return z;
-}
-
 /*
  * recalculate derived values
  */

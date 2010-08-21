@@ -56,7 +56,8 @@ static struct Cmd cmdmain[] =
 
 char*	tkfont;
 
-/* auto-repeating support
+/*
+ * auto-repeating support
  * should perhaps be one rptproc per TkCtxt
  * This is not done for the moment as there isn't
  * a mechanism for terminating the rptproc
@@ -1016,17 +1017,25 @@ tkdrawstring(Tk *tk, Image *i, Point o, char *text, int ul, Image *col, int j)
 char*
 tkname(Tk *tk)
 {
-	return tk ? (tk->name ? tk->name->name : "(noname)") : "(nil)";
+	if(tk == nil)
+		return "(nil)";
+	if(tk->name == nil)
+		return "(noname)";
+	return tk->name->name;
 }
 
 Tk*
 tkdeliver(Tk *tk, int event, void *data)
 {
 	Tk *dest;
+
+	if(tk != nil && ((ulong)tk->type >= TKwidgets || (ulong)tk->name < 4096 && tk->name != nil)){
+		print("invalid Tk: type %d name %p\n", tk->type, tk->name);
+		abort();
+	}
 //print("tkdeliver %v to %s\n", event, tkname(tk));
 	if(tk == nil || ((tk->flag&Tkdestroy) && event != TkDestroy))
 		return tk;
-
 	if(event&(TkFocusin|TkFocusout) && (tk->flag&Tktakefocus))
 		tk->dirty = tkrect(tk, 1);
 
@@ -1058,6 +1067,7 @@ tksubdeliver(Tk *tk, TkAction *binds, int event, void *data, int extn)
 	TkAction *a;
 	int delivered, genkey, delivered2, iskey;
 //int (*debug)(char *fmt, ...);
+
 	if (!extn)
 		return tkextndeliver(tk, binds, event, data);
 
@@ -1201,20 +1211,18 @@ tkitem(char *buf, char *a)
 	return a;
 }
 
-int
-tkismapped(Tk *tk)
+/*
+ * if tk is a subwindow or a descendent, return the subwindow;
+ * return nil otherwise
+ */
+Tk*
+tkfindsub(Tk *tk)
 {
-	while(tk->master)
-		tk = tk->master;
-
-	/* We need subwindows of text & canvas to appear mapped always
-	 * so that the geom function update are seen by the parent
-	 * widget
-	 */
-	if((tk->flag & Tkwindow) == 0)
-		return 1;
-
-	return tk->flag & Tkmapped;
+	for(; tk != nil; tk = tk->master){
+		if(tk->parent != nil)
+			return tk;	/* tk->parent is canvas or text */
+	}
+	return nil;
 }
 
 /*
@@ -1233,21 +1241,19 @@ tkposn(Tk *tk)
 	if(tk->parent != nil) {
 		g = tkmethod[tk->parent->type]->relpos(tk);
 		f = tk->parent;
-	}
-	else {
+	} else {
 		g.x = tk->act.x;
 		g.y = tk->act.y;
 		f = tk->master;
 	}
-	while(f) {
+	while(f != nil) {
 		g.x += f->borderwidth;
 		g.y += f->borderwidth;
 		last = f;
 		if(f->parent != nil) {
 			g = addpt(g, tkmethod[f->parent->type]->relpos(f));
 			f = f->parent;
-		}
-		else {
+		} else {
 			g.x += f->act.x;
 			g.y += f->act.y;
 			f = f->master;
@@ -2063,4 +2069,56 @@ tkblink(Tk *tk, void (*callback)(Tk*, int))
 		blinkrpt = rptproc("blinker", TkBlinkinterval, nil, blinkactive, ckblink, doblink);
 	else
 		rptwakeup(nil, blinkrpt);
+}
+
+/*
+ * debugging
+ */
+void
+tkdump(Tk *tk)
+{
+	Tk *sl;
+
+	if(tk == nil)
+		return;
+	if((uint)tk->type < TKwidgets)
+		print("%s", tkmethod[tk->type]->name);
+	else
+		print("TYPE#%#ux", tk->type);
+	if(tk->name == nil || (ulong)tk->name < 512)
+		print(" NAME %p", tk->name);
+	else
+		print(" %s", tkname(tk));
+	print(" # tk %#p flag %#ux grid %#p", tk, tk->flag, tk->grid);
+	if(tk->parent != nil)
+		print(" parent [%#p %q]", tk->parent, tkname(tk->parent));
+	if(tk->master != nil)
+		print(" master [%#p %q]", tk->master, tkname(tk->master));
+	if(tk->slave != nil){
+		print(" slaves");
+		for(sl = tk->slave; sl != nil; sl = sl->next)
+			print(" [%#p %q]", sl, tkname(sl));
+	}
+	print("\n");
+	if(tk->type != TKcanvas)
+		return;
+	tkcvsdump(tk);
+}
+
+void
+tktopdump(Tk *tk)
+{
+	TkTop *top;
+	Tk *sub;
+
+	if(tk == nil || tk->env == nil){
+		print("# %#p no top\n", tk);
+		return;
+	}
+	top = tk->env->top;
+	print("# env %#p top %#p\n", tk->env, top);
+	if(top != nil){
+		for(sub = top->root; sub != nil; sub = sub->siblings)
+			tkdump(sub);
+	}
 }

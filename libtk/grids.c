@@ -143,7 +143,7 @@ ensuregridsize(TkGrid *grid, Point dim)
 		for(i = olddim.y; i < dim.y; i++){
 			cells[i] = malloc(sizeof(TkGridcell)*dim.x);
 			if(cells[i] == nil){
-				for(i--; i >= olddim.y; i--)
+				while(--i >= olddim.y)
 					free(cells[i]);
 				return TkNomem;
 			}
@@ -721,32 +721,6 @@ gridfindloc(TkGridbeam *beam, int blen, int f)
 	return -1;
 }
 
-/*
- * optimised way to find a given slave, but somewhat more fragile
- * as it assumes the slave has already been placed on the grid.
- * not tested.
- */
-static int
-findslave(TkGrid *grid, Tk *tk, Point *pt)
-{
-	Point loc, dim, p;
-	TkGridcell **cells;
-	dim = grid->dim;
-	cells = grid->cells;
-	loc.x = gridfindloc(grid->cols, grid->dim.x, tk->act.x);
-	if(loc.x == -1)
-		loc.x = 0;
-	loc.y = gridfindloc(grid->rows, grid->dim.y, tk->act.y);
-	if(loc.y == -1)
-		loc.y = 0;
-	for(p.y = loc.y; p.y < dim.y; p.y++)
-		for(p.x = loc.x; p.x < dim.x; p.x++)
-			if(cells[p.y][p.x].tk == tk){
-				*pt = p;
-				return 1;
-			}
-	return 0;
-}
 static char*
 tkgridcellinfo(TkTop *t, char *arg, char **val, char *buf, char *ebuf)
 {

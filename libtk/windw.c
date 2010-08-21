@@ -389,29 +389,6 @@ tkmap(Tk *tk)
 }
 
 void
-tkclrfocus(Tk *master)
-{
-	TkCtxt *c;
-	Tk *tk;
-	TkTop *top;
-
-	if(master == nil)
-		return;
-	top = master->env->top;
-	c = top->ctxt;
-
-	tk = c->mgrab;
-	if(tkischild(master, tk))
-		tksetmgrab(top, nil);
-
-	tk = c->entered;
-	if(tkischild(master, tk)){
-		c->entered = nil;
-		tkdeliver(tk, TkLeave, nil);
-	}
-}
-
-void
 tkunmap(Tk *tk)
 {
 	TkTop *t;
