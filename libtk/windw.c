@@ -150,7 +150,6 @@ tkinwindow(Tk *tk, Point p, int descend)
 			return tk;
 		tk = f;
 	}
-	return nil;	/* for compiler */
 }
 
 Tk*

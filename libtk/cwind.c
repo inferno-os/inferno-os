@@ -105,17 +105,6 @@ if(0)print("tkcsvsforget sub %p %q focus %p %q\n", sub, tkname(sub), tk, tkname(
 	}
 }
 
-static int
-tkcvschkwfocus(TkCwind *w, Tk *tk)
-{
-	if(w->focus == tk)
-		return 1;
-	for(tk = tk->slave; tk; tk = tk->next)
-		if(tkcvschkwfocus(w, tk))
-			return 1;
-	return 0;
-}
-
 static void
 tkcvswindgeom(Tk *sub, int x, int y, int w, int h)
 {
@@ -135,12 +124,6 @@ tkcvswindgeom(Tk *sub, int x, int y, int w, int h)
 			if(win->sub == sub)
 				break;
 		}
-	}
-
-	if(win->focus != nil) {
-if(0)print("check focus %p %q %p %q\n", win, tkname(win->focus), sub, tkname(sub));
-		if(tkcvschkwfocus(win, sub) == 0)
-			win->focus = nil;
 	}
 
 	tkbbmax(&c->update, &i->p.bb);
@@ -172,29 +155,23 @@ tkcvssubdestry(Tk *sub)
 
 if(0)print("tkcvssubdestry %p %q\n", sub, tkname(sub));
 	i = tkcvsfindwin(sub);
-	if(i != nil){
-		win = TKobj(TkCwind, i);
-		if(win->sub != sub){
+	if(i == nil)
+		return;
+	win = TKobj(TkCwind, i);
+	if(win->sub != sub){
+		if(win->sub != nil)
 			print("inconsistent tkcvssubdestry %p %q\n", sub, tkname(sub));
-		}
+		return;
 	}
 
 	c = TKobj(TkCanvas, tk);
-	for(i = c->head; i; i = i->next) {
-		if(i->type == TkCVwindow) {
-			win = TKobj(TkCwind, i);
-			if(win->sub == sub) {
-				tkbbmax(&c->update, &i->p.bb);
-				tkcvssetdirty(tk);
+	tkbbmax(&c->update, &i->p.bb);
+	tkcvssetdirty(tk);
 
-				win->focus = nil;
-				win->sub = nil;
-				sub->parent = nil;
-				sub->geom = nil;
-				return;
-			}
-		}
-	}
+	win->focus = nil;
+	win->sub = nil;
+	sub->parent = nil;
+	sub->geom = nil;
 }
 
 Point
@@ -386,13 +363,13 @@ tkcvswindfree(TkCitem *i)
 
 	w = TKobj(TkCwind, i);
 	sub = w->sub;
-	if(w->focus == sub)
-		w->focus = nil;
 	if(sub != nil) {
 		sub->parent = nil;
 		sub->geom = nil;
 		sub->destroyed = nil;
 	}
+	w->focus = nil;
+	w->sub = nil;
 }
 
 void

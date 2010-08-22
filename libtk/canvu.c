@@ -338,16 +338,14 @@ tkcvsanchor(Point dp, int w, int h, int anchor)
 
 	if(anchor & Tknorth)
 		o.y = dp.y;
-	else
-	if(anchor & Tksouth)
+	else if(anchor & Tksouth)
 		o.y = dp.y - h;
 	else
 		o.y = dp.y - h/2;
 
 	if(anchor & Tkwest)
 		o.x = dp.x;
-	else
-	if(anchor & Tkeast)
+	else if(anchor & Tkeast)
 		o.x = dp.x - w;
 	else
 		o.x = dp.x - w/2;

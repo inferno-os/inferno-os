@@ -3693,5 +3693,7 @@ TkMethod textmethod = {
 	tktrelpos,
 	tktextevent,
 	nil,				/* XXX need to implement textsee */
-	tktinwindow
+	tktinwindow,
+	nil,
+	tktxtforgetsub,
 };

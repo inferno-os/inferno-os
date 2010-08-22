@@ -101,21 +101,19 @@ tktwindsize(Tk *tk, TkTindex *ix)
 	tktextsize(tk, 1);
 }
 
-/*
- * check that w->focus is a window packed under tk.
- * XXX couldn't this be done more simply by traversing
- * directly upwards from w->focus and seeing whether
- * it hits tk? (same applies to tkcvschkwfocus in cwind.c)
- */
-static int
-tktchkwfocus(TkTwind *w, Tk *tk)
+void
+tktxtforgetsub(Tk *sub, Tk *tk)
 {
-	if(w->focus == tk)
-		return 1;
-	for(tk = tk->slave; tk; tk = tk->next)
-		if(tktchkwfocus(w, tk))
-			return 1;
-	return 0;
+	TkTwind *w;
+	TkTindex ix;
+
+	if(!tktfindsubitem(sub, &ix))
+		return;
+	w = ix.item->iwin;
+	if(w->focus == tk) {
+if(0)print("tktxtforget sub %p %q focus %p %q\n", sub, tkname(sub), tk, tkname(tk));
+		w->focus = nil;
+	}
 }
 
 static void
@@ -135,11 +133,6 @@ tktwingeom(Tk *sub, int x, int y, int w, int h)
 	}
 
 	win = ix.item->iwin;
-
-	if(win->focus != nil) {
-		if(tktchkwfocus(win, sub) == 0)
-			win->focus = nil;
-	}
 
 	win->width = w;
 	win->height = h;

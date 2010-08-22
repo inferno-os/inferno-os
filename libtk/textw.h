@@ -227,3 +227,4 @@ extern	void		tkttagopts(Tk*, TkTitem*, int*, TkEnv*, TkTtabstop **, int);
 extern	char*		tkttagparse(Tk*, char**, TkTtaginfo**);
 extern	int		tkttagset(TkTitem*, int);
 extern	int		tktxyind(Tk*, int, int, TkTindex*);
+extern	void		tktxtforgetsub(Tk*, Tk*);

@@ -1,5 +1,7 @@
+20100822
+	correct handling of mouse focus in sub-widgets of widget windowed in text [issue 241]
 20100821
-	correct handling of mouse focus in sub-widgets of widget windowed in canvas (soon, text widget) [issue 241]
+	correct handling of mouse focus in sub-widgets of widget windowed in canvas [issue 241]
 20100819
 	failed to push Solaris/sparc/include/lib9.h with u64int change [issue 151]
 	appl/cmd/ar.b eliminate false error return
