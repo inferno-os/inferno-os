@@ -1,5 +1,8 @@
+20100914
+	emu/Nt/os.c - replace trap handling
 20100822
 	correct handling of mouse focus in sub-widgets of widget windowed in text [issue 241]
+	add various warnings to mkfile-Linux-386
 20100821
 	correct handling of mouse focus in sub-widgets of widget windowed in canvas [issue 241]
 20100819

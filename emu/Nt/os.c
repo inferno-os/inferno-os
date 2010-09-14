@@ -107,17 +107,6 @@ Exhandler(EXCEPTION_RECORD *rec, void *frame, CONTEXT *context, void *dcon)
 DWORD WINAPI
 tramp(LPVOID p)
 {
-	// install our own exception handler
-	// replacing all others installed on this thread
-	DWORD handler = (DWORD)Exhandler;
-	_asm {
-		mov eax,handler
-		push eax
-		mov eax,-1
-		push eax
-		mov fs:[0],esp
-	}
-		
 	up = p;
 	up->func(up->arg);
 	pexit("", 0);
@@ -251,58 +240,29 @@ struct ecodes {
 	DWORD	code;
 	char*	name;
 } ecodes[] = {
-	EXCEPTION_ACCESS_VIOLATION,		"Segmentation violation",
-	EXCEPTION_DATATYPE_MISALIGNMENT,	"Data Alignment",
-	EXCEPTION_BREAKPOINT,                	"Breakpoint",
-	EXCEPTION_SINGLE_STEP,               	"SingleStep",
-	EXCEPTION_ARRAY_BOUNDS_EXCEEDED,	"Array Bounds Check",
-	EXCEPTION_FLT_DENORMAL_OPERAND,		"Denormalized Float",
-	EXCEPTION_FLT_DIVIDE_BY_ZERO,		"Floating Point Divide by Zero",
-	EXCEPTION_FLT_INEXACT_RESULT,		"Inexact Floating Point",
-	EXCEPTION_FLT_INVALID_OPERATION,	"Invalid Floating Operation",
-	EXCEPTION_FLT_OVERFLOW,			"Floating Point Result Overflow",
-	EXCEPTION_FLT_STACK_CHECK,		"Floating Point Stack Check",
-	EXCEPTION_FLT_UNDERFLOW,		"Floating Point Result Underflow",
-	EXCEPTION_INT_DIVIDE_BY_ZERO,		"Divide by Zero",
-	EXCEPTION_INT_OVERFLOW,			"Integer Overflow",
-	EXCEPTION_PRIV_INSTRUCTION,		"Privileged Instruction",
-	EXCEPTION_IN_PAGE_ERROR,		"Page-in Error",
-	EXCEPTION_ILLEGAL_INSTRUCTION,		"Illegal Instruction",
-	EXCEPTION_NONCONTINUABLE_EXCEPTION,	"Non-Continuable Exception",
-	EXCEPTION_STACK_OVERFLOW,		"Stack Overflow",
-	EXCEPTION_INVALID_DISPOSITION,		"Invalid Disposition",
-	EXCEPTION_GUARD_PAGE,			"Guard Page Violation",
+	EXCEPTION_ACCESS_VIOLATION,		"segmentation violation",
+	EXCEPTION_DATATYPE_MISALIGNMENT,	"data alignment",
+	EXCEPTION_BREAKPOINT,                	"breakpoint",
+	EXCEPTION_SINGLE_STEP,               	"single step",
+	EXCEPTION_ARRAY_BOUNDS_EXCEEDED,	"array bounds check",
+	EXCEPTION_FLT_DENORMAL_OPERAND,		"denormalized float",
+	EXCEPTION_FLT_DIVIDE_BY_ZERO,		"floating point divide by zero",
+	EXCEPTION_FLT_INEXACT_RESULT,		"inexact floating point",
+	EXCEPTION_FLT_INVALID_OPERATION,	"invalid floating operation",
+	EXCEPTION_FLT_OVERFLOW,			"floating point result overflow",
+	EXCEPTION_FLT_STACK_CHECK,		"floating point stack check",
+	EXCEPTION_FLT_UNDERFLOW,		"floating point result underflow",
+	EXCEPTION_INT_DIVIDE_BY_ZERO,		"divide by zero",
+	EXCEPTION_INT_OVERFLOW,			"integer overflow",
+	EXCEPTION_PRIV_INSTRUCTION,		"privileged instruction",
+	EXCEPTION_IN_PAGE_ERROR,		"page-in error",
+	EXCEPTION_ILLEGAL_INSTRUCTION,		"illegal instruction",
+	EXCEPTION_NONCONTINUABLE_EXCEPTION,	"non-continuable exception",
+	EXCEPTION_STACK_OVERFLOW,		"stack overflow",
+	EXCEPTION_INVALID_DISPOSITION,		"invalid disposition",
+	EXCEPTION_GUARD_PAGE,			"guard page violation",
 	0,					nil
 };
-
-void
-dodisfault(void)
-{
-	disfault(nil, up->env->errstr);
-}
-
-typedef struct Ereg Ereg;
-struct Ereg {
-	Ereg *prev;
-	FARPROC handler;
-};
-
-void
-dumpex()
-{
-	Ereg *er;
-	int i;
-	_asm { mov eax,fs:[0] };
-	_asm { mov [er],eax };
-
-	i = 0;
-	while ((unsigned)er != ~0) {
-		print("handler %ux\n", er->handler);
-		i++;
-	er = er->prev;
-	}
-	print("EXCEPTION CHAIN LENGTH = %d\n", i);
-}
 
 LONG
 TrapHandler(LPEXCEPTION_POINTERS ureg)
@@ -325,7 +285,7 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 	}
 
 	if(name == nil) {
-		snprint(buf, sizeof(buf), "Unrecognized Machine Trap (%.8lux)\n", code);
+		snprint(buf, sizeof(buf), "unknown trap type (%#.8lux)\n", code);
 		name = buf;
 	}
 /*
@@ -334,8 +294,6 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 		name = buf;
 	}
 */
-	/* YUCK! */
-	strncpy(up->env->errstr, name, ERRMAX);
 	switch (code) {
 	case EXCEPTION_FLT_DENORMAL_OPERAND:
 	case EXCEPTION_FLT_DIVIDE_BY_ZERO:
@@ -344,12 +302,12 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 	case EXCEPTION_FLT_OVERFLOW:
 	case EXCEPTION_FLT_STACK_CHECK:
 	case EXCEPTION_FLT_UNDERFLOW:
-		/* clear exception flags and register stack */
+		/* clear exception flags and ensure safe empty state */
 		_asm { fnclex };
-		ureg->ContextRecord->FloatSave.StatusWord = 0x0000;
-		ureg->ContextRecord->FloatSave.TagWord = 0xffff;
+		_asm { fninit };
 	}
-	ureg->ContextRecord->Eip = (DWORD)dodisfault;
+	disfault(nil, name);
+	/* not reached */
 	return EXCEPTION_CONTINUE_EXECUTION;
 }
 
@@ -423,8 +381,8 @@ libinit(char *imod)
 
 	gethostname(sys, sizeof(sys));
 	kstrdup(&ossysname, sys);
-//	if(sflag == 0)
-//		SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)TrapHandler);
+	if(sflag == 0)
+		SetUnhandledExceptionFilter((LPTOP_LEVEL_EXCEPTION_FILTER)TrapHandler);
 
 	path = getenv("PATH");
 	if(path == nil)
