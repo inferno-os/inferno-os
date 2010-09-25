@@ -1,3 +1,6 @@
+20100925
+	appl/lib/w3c/uris.b - handle existing Unicode characters if they happen not to have been encoded into string
+	appl/svc/httpd/parser.b - similar [response to issue 233]
 20100914
 	emu/Nt/os.c - replace trap handling
 20100822

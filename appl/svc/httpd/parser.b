@@ -14,7 +14,7 @@ include "contents.m";
 	Content: import contents;
 include "cache.m";
 include "httpd.m";
-	Entity, Private_info: import Httpd;
+	Private_info: import Httpd;
 	Internal, TempFail, Unimp, UnkVers, BadCont, BadReq, Syntax, 
 	BadSearch, NotFound, NoSearch , OnlySearch, Unauth, OK : import Httpd;	
 include "parser.m";
@@ -60,236 +60,6 @@ errormsg := array[] of {
 		"You are not authorized to see the object %s."),
 	OK =>	Error("200 OK", "everything is fine","Groovy man"),
 };	
-
-latin1 := array[] of {
-	'¡',
-	'¢',
-	'£',
-	'¤',
-	'¥',
-	'¦',
-	'§',
-	'¨',
-	'©',
-	'ª',
-	'«',
-	'¬',
-	'­',
-	'®',
-	'¯',
-	'°',
-	'±',
-	'²',
-	'³',
-	'´',
-	'µ',
-	'¶',
-	'·',
-	'¸',
-	'¹',
-	'º',
-	'»',
-	'¼',
-	'½',
-	'¾',
-	'¿',
-	'À',
-	'Á',
-	'Â',
-	'Ã',
-	'Ä',
-	'Å',
-	'Æ',
-	'Ç',
-	'È',
-	'É',
-	'Ê',
-	'Ë',
-	'Ì',
-	'Í',
-	'Î',
-	'Ï',
-	'Ð',
-	'Ñ',
-	'Ò',
-	'Ó',
-	'Ô',
-	'Õ',
-	'Ö',
-	'×',
-	'Ø',
-	'Ù',
-	'Ú',
-	'Û',
-	'Ü',
-	'Ý',
-	'Þ',
-	'ß',
-	'à',
-	'á',
-	'â',
-	'ã',
-	'ä',
-	'å',
-	'æ',
-	'ç',
-	'è',
-	'é',
-	'ê',
-	'ë',
-	'ì',
-	'í',
-	'î',
-	'ï',
-	'ð',
-	'ñ',
-	'ò',
-	'ó',
-	'ô',
-	'õ',
-	'ö',
-	'÷',
-	'ø',
-	'ù',
-	'ú',
-	'û',
-	'ü',
-	'ý',
-	'þ',
-	'ÿ',
-	0,
-};
-
-entities :=array[] of {
-		Entity( "&#161;",	'¡' ),
-		Entity( "&#162;",	'¢' ),
-		Entity( "&#163;",	'£' ),
-		Entity( "&#164;",	'¤' ),
-		Entity( "&#165;",	'¥' ),
-		Entity( "&#166;",	'¦' ),
-		Entity( "&#167;",	'§' ),
-		Entity( "&#168;",	'¨' ),
-		Entity( "&#169;",	'©' ),
-		Entity( "&#170;",	'ª' ),
-		Entity( "&#171;",	'«' ),
-		Entity( "&#172;",	'¬' ),
-		Entity( "&#173;",	'­' ),
-		Entity( "&#174;",	'®' ),
-		Entity( "&#175;",	'¯' ),
-		Entity( "&#176;",	'°' ),
-		Entity( "&#177;",	'±' ),
-		Entity( "&#178;",	'²' ),
-		Entity( "&#179;",	'³' ),
-		Entity( "&#180;",	'´' ),
-		Entity( "&#181;",	'µ' ),
-		Entity( "&#182;",	'¶' ),
-		Entity( "&#183;",	'·' ),
-		Entity( "&#184;",	'¸' ),
-		Entity( "&#185;",	'¹' ),
-		Entity( "&#186;",	'º' ),
-		Entity( "&#187;",	'»' ),
-		Entity( "&#188;",	'¼' ),
-		Entity( "&#189;",	'½' ),
-		Entity( "&#190;",	'¾' ),
-		Entity( "&#191;",	'¿' ),
-		Entity( "&Agrave;",	'À' ),
-		Entity( "&Aacute;",	'Á' ),
-		Entity( "&Acirc;",	'Â' ),
-		Entity( "&Atilde;",	'Ã' ),
-		Entity( "&Auml;",	'Ä' ),
-		Entity( "&Aring;",	'Å' ),
-		Entity( "&AElig;",	'Æ' ),
-		Entity( "&Ccedil;",	'Ç' ),
-		Entity( "&Egrave;",	'È' ),
-		Entity( "&Eacute;",	'É' ),
-		Entity( "&Ecirc;",	'Ê' ),
-		Entity( "&Euml;",	'Ë' ),
-		Entity( "&Igrave;",	'Ì' ),
-		Entity( "&Iacute;",	'Í' ),
-		Entity( "&Icirc;",	'Î' ),
-		Entity( "&Iuml;",	'Ï' ),
-		Entity( "&ETH;",	'Ð' ),
-		Entity( "&Ntilde;",	'Ñ' ),
-		Entity( "&Ograve;",	'Ò' ),
-		Entity( "&Oacute;",	'Ó' ),
-		Entity( "&Ocirc;",	'Ô' ),
-		Entity( "&Otilde;",	'Õ' ),
-		Entity( "&Ouml;",	'Ö' ),
-		Entity( "&215;",	'×' ),
-		Entity( "&Oslash;",	'Ø' ),
-		Entity( "&Ugrave;",	'Ù' ),
-		Entity( "&Uacute;",	'Ú' ),
-		Entity( "&Ucirc;",	'Û' ),
-		Entity( "&Uuml;",	'Ü' ),
-		Entity( "&Yacute;",	'Ý' ),
-		Entity( "&THORN;",	'Þ' ),
-		Entity( "&szlig;",	'ß' ),
-		Entity( "&agrave;",	'à' ),
-		Entity( "&aacute;",	'á' ),
-		Entity( "&acirc;",	'â' ),
-		Entity( "&atilde;",	'ã' ),
-		Entity( "&auml;",	'ä' ),
-		Entity( "&aring;",	'å' ),
-		Entity( "&aelig;",	'æ' ),
-		Entity( "&ccedil;",	'ç' ),
-		Entity( "&egrave;",	'è' ),
-		Entity( "&eacute;",	'é' ),
-		Entity( "&ecirc;",	'ê' ),
-		Entity( "&euml;",	'ë' ),
-		Entity( "&igrave;",	'ì' ),
-		Entity( "&iacute;",	'í' ),
-		Entity( "&icirc;",	'î' ),
-		Entity( "&iuml;",	'ï' ),
-		Entity( "&eth;",	'ð' ),
-		Entity( "&ntilde;",	'ñ' ),
-		Entity( "&ograve;",	'ò' ),
-		Entity( "&oacute;",	'ó' ),
-		Entity( "&ocirc;",	'ô' ),
-		Entity( "&otilde;",	'õ' ),
-		Entity( "&ouml;",	'ö' ),
-		Entity( "&247;",	'÷' ),
-		Entity( "&oslash;",	'ø' ),
-		Entity( "&ugrave;",	'ù' ),
-		Entity( "&uacute;",	'ú' ),
-		Entity( "&ucirc;",	'û' ),
-		Entity( "&uuml;",	'ü' ),
-		Entity( "&yacute;",	'ý' ),
-		Entity( "&thorn;",	'þ' ),
-		Entity( "&yuml;",	'ÿ' ),
-
-		Entity( "&#SPACE;",	' ' ),
-		Entity( "&#RS;",	'\n' ),
-		Entity( "&#RE;",	'\r' ),
-		Entity( "&quot;",	'"' ),
-		Entity( "&amp;",	'&' ),
-		Entity( "&lt;",	'<' ),
-		Entity( "&gt;",	'>' ),
-
-		Entity( "CAP-DELTA",	'Δ' ),
-		Entity( "ALPHA",	'α' ),
-		Entity( "BETA",	'β' ),
-		Entity( "DELTA",	'δ' ),
-		Entity( "EPSILON",	'ε' ),
-		Entity( "THETA",	'θ' ),
-		Entity( "MU",		'μ' ),
-		Entity( "PI",		'π' ),
-		Entity( "TAU",	'τ' ),
-		Entity( "CHI",	'χ' ),
-
-		Entity( "<-",		'←' ),
-		Entity( "^",		'↑' ),
-		Entity( "->",		'→' ),
-		Entity( "v",		'↓' ),
-		Entity( "!=",		'≠' ),
-		Entity( "<=",		'≤' ),
-		Entity( nil, 0 ),
-	};
-
-
-initarray() : array of Entity
-{
-	return entities;
-}
 
 badmodule(p: string)
 {
@@ -690,92 +460,50 @@ getc(g: ref Private_info): int
 	return c & 16r7f;
 }
 
-ungetc(g: ref Private_info) {
+ungetc(g: ref Private_info)
+{
 	# this is a dirty hack, I am tacitly assuming that characters read
 	# from stdin will be ASCII.....
 	g.bufio->g.bin.ungetc();
 }
 
-# go from url with latin1 and escapes to utf 
+# go from url with ascii and %xx escapes to unicode, allowing for existing unencoded utf-8
 
 urlunesc(s : string): string
 {
-	c, n : int;
-	t : string;
-	for(i := 0;i<len s ; i++){
-		c = int s[i];
-		if(c == '%'){
-			n = int s[i+1];
-			if(n >= '0' && n <= '9')
-				n = n - '0';
-			else if(n >= 'A' && n <= 'F')
-				n = n - 'A' + 10;
-			else if(n >= 'a' && n <= 'f')
-				n = n - 'a' + 10;
-			else
-				break;
-			c = n;
-			n = int s[i+2];
-			if(n >= '0' && n <= '9')
-				n = n - '0';
-			else if(n >= 'A' && n <= 'F')
-				n = n - 'A' + 10;
-			else if(n >= 'a' && n <= 'f')
-				n = n - 'a' + 10;
-			else
-				break;
-			i += 2;
-			c = c * 16 + n;
-		}
-		else if( c == '+' )
-			c = ' ';
-		t[len t] = c;
+	a := array[Sys->UTFmax*len s] of byte;
+	o := 0;
+	for(i := 0; i < len s; i++){
+		c := int s[i];
+		if(c < Runeself){
+			if(c == '%' && i+2 < len s){
+				d0 := hex(int s[i+1]);
+				if(d0 >= 0){
+					d1 := hex(int s[i+2]);
+					if(d1 >= 0){
+						i += 2;
+						c = d0*16 + d1;
+					}
+				}
+			} else if(c == '+'  || c == 0)
+				c = ' ';
+			a[o++] = byte c;
+		}else
+			o += sys->char2byte(c, a, o);
 	}
-	return t;
+	return string a[0: o];
 }
 
-
-#  go from http with latin1 escapes to utf,
-# we assume that anything >= Runeself is already in utf
-
-httpunesc(g: ref Private_info,s : array of byte): string
+hex(c: int): int
 {
-	t,v: string;
-	c,i : int;
-	# convert bytes to a string.
-	v = string s;
-	for(i=0; i < len v;i++){
-		c = v[i];
-		if(c == '&'){
-			if(v[1] == '#' && v[2] && v[3] && v[4] && v[5] == ';'){
-				c = 100*(v[2])+10*(v[3])+(v[4]);
-				if(c < Runeself){
-					t[len t] = c;
-					i += 6;
-					continue;
-				}
-				if(c < 256 && c >= 161){
-					t[len t] = g.entity[c-161].value;
-					i += 6;
-					continue;
-				}
-			} else {
-				for(j:= 0;g.entity[j].name != nil; j++)
-					if(g.entity[j].name == v[i+1:])
-				# problem here cvert array of byte to string?
-						break;
-				if(g.entity[j].name != nil){
-					i += len g.entity[j].name;
-					t[len t] = g.entity[j].value;
-					continue;
-				}
-			}
-		}
-		t[len t] = c;
-	}
-	return t;
+	if(c >= '0' && c <= '9')
+		return c-'0';
+	if(c >= 'a' && c <= 'f')
+		return c-'a' + 10;
+	if(c >= 'A' && c <= 'F')
+		return c-'A' + 10;
+	return -1;
 }
-
 
 # write a failure message to the net and exit
 fail(g: ref Private_info,reason : int, message : string)
@@ -845,14 +573,18 @@ logit(g: ref Private_info,message : string )
 
 urlconv(p : string): string
 {
-	c : int;
-	t : string;
-	for(i:=0;i<len p ;i++){
-		c = p[i];
+	a := array[Sys->UTFmax] of byte;
+	t := "";
+	for(i := 0; i < len p; i++){
+		c := p[i];
 		if(c == 0)
-			break;
-		if(c <= ' ' || c == '%' || c >= Runeself){
-			t += sys->sprint("%%%2.2x", c);
+			continue;	# ignore nul bytes
+		if(c >= Runeself){	# convert to UTF-8
+			n := sys->char2byte(c, a, 0);
+			for(j := 0; j < n; j++)
+				t += sys->sprint("%%%.2X", int a[j]);
+		}else if(c <= ' ' || c == '%'){
+			t += sys->sprint("%%%2.2X", c);
 		} else {
 			t[len t] = c;
 		}

@@ -165,7 +165,7 @@ Note that
 .I u
 and
 .I v
-are assumed to be in a canonical  form for the scheme and application.
+are assumed to be in a canonical form for the scheme and application.
 .TP
 .IB u .eqf( v )
 Returns true if
@@ -214,7 +214,8 @@ encoded using a sequence of one or more strings of the form
 .BI % xx
 where
 .I xx
-is the hexadecimal value of one byte of the character.
+is the hexadecimal value of one byte of the character's encoding in
+.IR utf (6).
 A string
 .I s
 containing such encodings can be decoded by the function

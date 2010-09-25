@@ -5,7 +5,6 @@ Parser: module {
 	PATH:  		con	"/dis/svc/httpd/parser.dis";
 
 	init: fn();
-	initarray: fn(): array of Httpd->Entity;
 	urlunesc: fn(s: string): string;
 	fail: fn(g: ref Httpd->Private_info,reason: int, message: string);
 	logit: fn(g: ref Httpd->Private_info, message: string );

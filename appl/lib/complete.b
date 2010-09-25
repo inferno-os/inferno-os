@@ -41,7 +41,6 @@ complete(dir, s: string): (ref Completion, string)
 	if(n == 0)
 		return (nil, nil);
 
-	readdir = nil;
 
 	c := ref Completion(0, 0, nil, 0, nil);
 

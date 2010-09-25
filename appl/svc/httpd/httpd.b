@@ -212,7 +212,6 @@ service_req(nc : Sys->Connection)
 	g.dbg_log=dbg_log;
 	g.logfile = logfile;
 	g.modtime=0;
-	g.entity = parser->initarray();
 	g.mydomain = my_domain;
 	g.version = "HTTP/1.0";
 	g.cache = cache;
@@ -715,7 +714,7 @@ getendpoint(dir, file: string): (string, string)
 
 getendpoints(dir: string): string
 {
-	(lsys, lserv) := getendpoint(dir, "local");
-	(rsys, rserv) := getendpoint(dir, "remote");
+#	(lsys, lserv) := getendpoint(dir, "local");
+	(rsys, nil) := getendpoint(dir, "remote");
 	return rsys;
 }

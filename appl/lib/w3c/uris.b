@@ -260,20 +260,26 @@ dec(s: string): string
 		if(s[i] == '%' || s[i] == 0)
 			break;
 	}
-	o := s[0:i];
+	t := s[0:i];
+	a := array[Sys->UTFmax*len s] of byte;	# upper bound
+	o := 0;
 	while(i < len s){
-		case c := s[i++] {
-		'%' =>
-			if((v := hex2(s[i:])) > 0){
-				c = v;
-				i += 2;
+		c := s[i++];
+		if(c < 16r80){
+			case c {
+			'%' =>
+				if((v := hex2(s[i:])) > 0){
+					c = v;
+					i += 2;
+				}
+			0 =>
+				c = ' ';	# shouldn't happen
 			}
-		0 =>
-			c = ' ';	# shouldn't happen
-		}
-		o[len o] = c;
+			a[o++] = byte c;
+		}else
+			o += sys->char2byte(c, a, o);	# string contained Unicode
 	}
-	return o;
+	return t + string a[0:o];
 }
 
 enc1(s: string, safe: string): string

@@ -1,8 +1,4 @@
 Httpd: module {
-	Entity: adt{
-		 name : string;
-		 value : int;
-	};
 	
 	Internal, TempFail, Unimp, UnkVers, BadCont, BadReq, Syntax, 
 	BadSearch, NotFound, NoSearch , OnlySearch, Unauth, OK : con iota;	
@@ -35,7 +31,6 @@ Httpd: module {
 		wordval : string;
 		tok,parse_eof : int;
 		mydomain,client : string;
-		entity: array of Entity; 
 		oklang : list of ref Contents->Content;
 	};
 	Request: adt {
