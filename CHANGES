@@ -1,3 +1,5 @@
+20101125
+	asm/assem.c don't attempt to use missing src (issue 243)
 20100925
 	appl/lib/w3c/uris.b - handle existing Unicode characters if they happen not to have been encoded into string
 	appl/svc/httpd/parser.b - similar [response to issue 233]

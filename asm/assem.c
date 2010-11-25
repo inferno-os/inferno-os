@@ -263,6 +263,8 @@ srcout(void)
 {
 	char *p;
 
+	if(srcpath == nil)
+		return;
 	for(p = srcpath; *p; p++)
 		Bputc(bout, *p);
 	Bputc(bout, '\0');
