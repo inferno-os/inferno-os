@@ -34,6 +34,9 @@ enum
 };
 char *hosttype = "Linux";
 
+extern void unlockandexit(int*);
+extern void executeonnewstack(void*, void (*f)(void*), void*);
+
 static void *stackalloc(Proc *p, void **tos);
 static void stackfreeandexit(void *stack);
 
@@ -91,7 +94,6 @@ tramp(void *arg)
 int
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
-	int pid;
 	Proc *p;
 	Pgrp *pg;
 	Fgrp *fg;
@@ -101,10 +103,8 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	p = newproc();
 	if(0)
 		print("start %s:%#p\n", name, p);
-	if(p == nil) {
-		print("kproc(%s): no memory", name);
-		return;
-	}
+	if(p == nil)
+		panic("kproc(%s): no memory", name);
 
 	if(flags & KPDUPPG) {
 		pg = up->env->pgrp;
@@ -304,7 +304,6 @@ osreboot(char *file, char **argv)
 void
 libinit(char *imod)
 {
-	struct termios t;
 	struct sigaction act;
 	sigset_t mask;
 	struct passwd *pw;
