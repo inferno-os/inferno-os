@@ -138,8 +138,6 @@ static	char* ipstates[] = {
 static	Conv*	protoclone(Proto*, char*, int);
 static	Conv*	newconv(Proto*, Conv **);
 static	void	setladdr(Conv*);
-static	ulong	ip6w(uchar*);
-static	void	ipw6(uchar*, ulong);
 
 static int
 ip3gen(Chan *c, int i, Dir *dp)
@@ -384,7 +382,7 @@ ipopen(Chan *c, int omode)
 {
 	Conv *cv, *nc;
 	Proto *p;
-	ulong raddr;
+	uchar raddr[IPaddrlen];
 	ushort rport;
 	int perm, sfd;
 	Fs *f;
@@ -469,14 +467,14 @@ ipopen(Chan *c, int omode)
 			nexterror();
 		}
 
-		sfd = so_accept(cv->sfd, &raddr, &rport);
+		sfd = so_accept(cv->sfd, raddr, &rport);
 
 		nc = protoclone(p, up->env->user, sfd);
 		if(nc == 0) {
 			so_close(sfd);
 			error(Enodev);
 		}
-		ipw6(nc->raddr, raddr);
+		memmove(nc->raddr, raddr, IPaddrlen);
 		nc->rport = rport;
 		setladdr(nc);
 		nc->state = Connected;
@@ -612,11 +610,8 @@ ipread(Chan *ch, void *a, long n, vlong off)
 static void
 setladdr(Conv *c)
 {
-	ulong laddr;
-
 	/* TO DO: this can't be right for hosts with several addresses before connect/accept */
-	so_getsockname(c->sfd, &laddr, &c->lport);
-	ipw6(c->laddr, laddr);
+	so_getsockname(c->sfd, c->laddr, &c->lport);
 }
 
 /*
@@ -625,16 +620,16 @@ setladdr(Conv *c)
 static void
 setlport(Conv *c)
 {
-	ulong laddr;
+	uchar laddr[IPaddrlen];
 	ushort p;
 
-	so_bind(c->sfd, c->restricted, ip6w(c->laddr), c->lport);
-	if(c->lport == 0  || ipcmp(c->laddr, IPnoaddr) == 0){
-		so_getsockname(c->sfd, &laddr, &p);
+	so_bind(c->sfd, c->restricted, c->laddr, c->lport);
+	if(c->lport == 0 || ipcmp(c->laddr, IPnoaddr) == 0){
+		so_getsockname(c->sfd, laddr, &p);
 		if(c->lport == 0)
 			c->lport = p;
 		if(ipcmp(c->laddr, IPnoaddr) == 0)
-			ipw6(c->laddr, laddr);
+			memmove(c->laddr, laddr, sizeof laddr);
 	}
 }
 
@@ -755,7 +750,7 @@ connectctlmsg(Proto *x, Conv *c, Cmdbuf *cb)
 		nexterror();
 	}
 	/* p = x->connect(c, cb->f, cb->nf); */
-	so_connect(c->sfd, ip6w(c->raddr), c->rport);
+	so_connect(c->sfd, c->raddr, c->rport);
 	qlock(&c->l);
 	poperror();
 	setladdr(c);
@@ -1120,24 +1115,4 @@ int
 Fsbuiltinproto(Fs* f, uchar proto)
 {
 	return f->t2p[proto] != nil;
-}
-
-/*
- * temporarily convert ipv6 addresses to ipv4 as ulong for
- * ipif.c interface
- */
-static ulong
-ip6w(uchar *a)
-{
-	uchar v4[IPv4addrlen];
-
-	v6tov4(v4, a);
-	return (((((v4[0]<<8)|v4[1])<<8)|v4[2])<<8)|v4[3];
-}
-
-static void
-ipw6(uchar *a, ulong w)
-{
-	memmove(a, v4prefix, IPv4off);
-	hnputl(a+IPv4off, w);
 }

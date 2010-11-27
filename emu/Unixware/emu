@@ -18,7 +18,7 @@ dev
 	pointer
 	snarf
 
-	ip	ipif ipaux
+	ip	ipif-posix ipaux
 	eia
 #	audio	audio
 	mem

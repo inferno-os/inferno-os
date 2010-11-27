@@ -22,19 +22,11 @@
 #include        "ip.h"
 #include        "error.h"
 
-char Enotv4[] = "address not IPv4";
-
-static void
-ipw6(uchar *a, ulong w)
-{
-	memmove(a, v4prefix, IPv4off);
-	memmove(a+IPv4off, &w, IPv4addrlen);
-}
-
 int
 so_socket(int type)
 {
 	int fd, one;
+	int v6only;
 
 	switch(type) {
 	default:
@@ -47,9 +39,15 @@ so_socket(int type)
 		break;
 	}
 
-	fd = socket(AF_INET, type, 0);
+	fd = socket(AF_INET6, type, 0);
 	if(fd < 0)
 		oserror();
+
+	/* OpenBSD has v6only fixed to 1, so the following will fail */
+	v6only = 0;
+	if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (void*)&v6only, sizeof v6only) < 0)
+		oserror();
+
 	if(type == SOCK_DGRAM){
 		one = 1;
 		setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (char*)&one, sizeof(one));
@@ -64,8 +62,8 @@ int
 so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 {
 	int r;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 	char *h = hdr;
 
 	osenter();
@@ -73,23 +71,23 @@ so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 		r = write(sock, va, len);
 	else {
 		memset(&sa, 0, sizeof(sa));
-		sin = (struct sockaddr_in*)&sa;
-		sin->sin_family = AF_INET;
+		sin6 = (struct sockaddr_in6*)&sa;
+		sin6->sin6_family = AF_INET6;
 		switch(hdrlen){
 		case OUdphdrlenv4:
-			memmove(&sin->sin_addr, h,  4);
-			memmove(&sin->sin_port, h+8, 2);
+			v4tov6((uchar*)&sin6->sin6_addr, h);
+			memmove(&sin6->sin6_port, h+8, 2);
 			break;
 		case OUdphdrlen:
-			v6tov4((uchar*)&sin->sin_addr, h);
-			memmove(&sin->sin_port, h+2*IPaddrlen, 2);	/* rport */
+			memmove((uchar*)&sin6->sin6_addr, h, IPaddrlen);
+			memmove(&sin6->sin6_port, h+2*IPaddrlen, 2);	/* rport */
 			break;
 		default:
-			v6tov4((uchar*)&sin->sin_addr, h);
-			memmove(&sin->sin_port, h+3*IPaddrlen, 2);
+			memmove((uchar*)&sin6->sin6_addr, h, IPaddrlen);
+			memmove(&sin6->sin6_port, h+3*IPaddrlen, 2);
 			break;
 		}
-		r = sendto(sock, va, len, 0, &sa, sizeof(sa));
+		r = sendto(sock, va, len, 0, (struct sockaddr*)sin6, sizeof(*sin6));
 	}
 	osleave();
 	return r;
@@ -99,50 +97,62 @@ int
 so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 {
 	int r, l;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 	char h[Udphdrlen];
 
 	osenter();
 	if(hdr == 0)
 		r = read(sock, va, len);
 	else {
-		sin = (struct sockaddr_in*)&sa;
+		sin6 = (struct sockaddr_in6*)&sa;
 		l = sizeof(sa);
-		r = recvfrom(sock, va, len, 0, &sa, &l);
+		r = recvfrom(sock, va, len, 0, (struct sockaddr*)&sa, &l);
 		if(r >= 0) {
 			memset(h, 0, sizeof(h));
 			switch(hdrlen){
 			case OUdphdrlenv4:
-				memmove(h, &sin->sin_addr, IPv4addrlen);
-				memmove(h+2*IPv4addrlen, &sin->sin_port, 2);
+				if(v6tov4(h, (uchar*)&sin6->sin6_addr) < 0) {
+					osleave();
+					error("OUdphdrlenv4 with IPv6 address");
+				}
+				memmove(h+2*IPv4addrlen, &sin6->sin6_port, 2);
 				break;
 			case OUdphdrlen:
-				v4tov6(h, (uchar*)&sin->sin_addr);
-				memmove(h+2*IPaddrlen, &sin->sin_port, 2);
+				memmove(h, (uchar*)&sin6->sin6_addr, IPaddrlen);
+				memmove(h+2*IPaddrlen, &sin6->sin6_port, 2);
 				break;
 			default:
-				v4tov6(h, (uchar*)&sin->sin_addr);
-				memmove(h+3*IPaddrlen, &sin->sin_port, 2);
+				memmove(h, (uchar*)&sin6->sin6_addr, IPaddrlen);
+				memmove(h+3*IPaddrlen, &sin6->sin6_port, 2);
 				break;
 			}
 
 			/* alas there's no way to get the local addr/port correctly.  Pretend. */
 			memset(&sa, 0, sizeof(sa));
-			getsockname(sock, &sa, &l);
+			l = sizeof(sa);
+			getsockname(sock, (struct sockaddr*)&sa, &l);
 			switch(hdrlen){
 			case OUdphdrlenv4:
-				memmove(h+IPv4addrlen, &sin->sin_addr, IPv4addrlen);
-				memmove(h+2*IPv4addrlen+2, &sin->sin_port, 2);
+				/*
+				 * we get v6Unspecified/noaddr if local address cannot be determined.
+				 * that's reasonable for ipv4 too.
+				 */
+				if(ipcmp(v6Unspecified, (uchar*)&sin6->sin6_addr) != 0
+				&& v6tov4(h+IPv4addrlen, (uchar*)&sin6->sin6_addr) < 0) {
+					osleave();
+					error("OUdphdrlenv4 with IPv6 address");
+				}
+				memmove(h+2*IPv4addrlen+2, &sin6->sin6_port, 2);
 				break;
 			case OUdphdrlen:
-				v4tov6(h+IPaddrlen, (uchar*)&sin->sin_addr);
-				memmove(h+2*IPaddrlen+2, &sin->sin_port, 2);
+				memmove(h+IPaddrlen, (uchar*)&sin6->sin6_addr, IPaddrlen);
+				memmove(h+2*IPaddrlen+2, &sin6->sin6_port, 2);
 				break;
 			default:
-				v4tov6(h+IPaddrlen, (uchar*)&sin->sin_addr);
-				v4tov6(h+2*IPaddrlen, (uchar*)&sin->sin_addr);	/* ifcaddr */
-				memmove(h+3*IPaddrlen+2, &sin->sin_port, 2);
+				memmove(h+IPaddrlen, (uchar*)&sin6->sin6_addr, IPaddrlen);
+				memmove(h+2*IPaddrlen, (uchar*)&sin6->sin6_addr, IPaddrlen);	/* ifcaddr */
+				memmove(h+3*IPaddrlen+2, &sin6->sin6_port, 2);
 				break;
 			}
 			memmove(hdr, h, hdrlen);
@@ -162,20 +172,17 @@ void
 so_connect(int fd, uchar *raddr, ushort rport)
 {
 	int r;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
-
-	if(!isv4(raddr))
-		error(Enotv4);
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 
 	memset(&sa, 0, sizeof(sa));
-	sin = (struct sockaddr_in*)&sa;
-	sin->sin_family = AF_INET;
-	hnputs(&sin->sin_port, rport);
-	memmove(&sin->sin_addr.s_addr, raddr+IPv4off, IPv4addrlen);
+	sin6 = (struct sockaddr_in6*)&sa;
+	sin6->sin6_family = AF_INET6;
+	hnputs(&sin6->sin6_port, rport);
+	memmove((uchar*)&sin6->sin6_addr, raddr, IPaddrlen);
 
 	osenter();
-	r = connect(fd, &sa, sizeof(sa));
+	r = connect(fd, (struct sockaddr*)sin6, sizeof(*sin6));
 	osleave();
 	if(r < 0)
 		oserror();
@@ -185,19 +192,19 @@ void
 so_getsockname(int fd, uchar *laddr, ushort *lport)
 {
 	int len;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 
-	len = sizeof(sa);
-	if(getsockname(fd, &sa, &len) < 0)
+	len = sizeof(*sin6);
+	if(getsockname(fd, (struct sockaddr*)&sa, &len) < 0)
 		oserror();
 
-	sin = (struct sockaddr_in*)&sa;
-	if(sin->sin_family != AF_INET || len != sizeof(*sin))
-		error(Enotv4);
+	sin6 = (struct sockaddr_in6*)&sa;
+	if(sin6->sin6_family != AF_INET6 || len != sizeof(*sin6))
+		error("not AF_INET6");
 
-	ipw6(laddr, sin->sin_addr.s_addr);
-	*lport = nhgets(&sin->sin_port);
+	memmove(laddr, &sin6->sin6_addr, IPaddrlen);
+	*lport = nhgets(&sin6->sin6_port);
 }
 
 void
@@ -216,23 +223,23 @@ int
 so_accept(int fd, uchar *raddr, ushort *rport)
 {
 	int nfd, len;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 
-	sin = (struct sockaddr_in*)&sa;
+	sin6 = (struct sockaddr_in6*)&sa;
 
-	len = sizeof(sa);
+	len = sizeof(*sin6);
 	osenter();
-	nfd = accept(fd, &sa, &len);
+	nfd = accept(fd, (struct sockaddr*)&sa, &len);
 	osleave();
 	if(nfd < 0)
 		oserror();
 
-	if(sin->sin_family != AF_INET || len != sizeof(*sin))
-		error(Enotv4);
+	if(sin6->sin6_family != AF_INET6 || len != sizeof(*sin6))
+		error("not AF_INET6");
 
-	ipw6(raddr, sin->sin_addr.s_addr);
-	*rport = nhgets(&sin->sin_port);
+	memmove(raddr, &sin6->sin6_addr, IPaddrlen);
+	*rport = nhgets(&sin6->sin6_port);
 	return nfd;
 }
 
@@ -240,10 +247,10 @@ void
 so_bind(int fd, int su, uchar *addr, ushort port)
 {
 	int i, one;
-	struct sockaddr sa;
-	struct sockaddr_in *sin;
+	struct sockaddr_storage sa;
+	struct sockaddr_in6 *sin6;
 
-	sin = (struct sockaddr_in*)&sa;
+	sin6 = (struct sockaddr_in6*)&sa;
 
 	one = 1;
 	if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&one, sizeof(one)) < 0) {
@@ -254,70 +261,67 @@ so_bind(int fd, int su, uchar *addr, ushort port)
 	if(su) {
 		for(i = 600; i < 1024; i++) {
 			memset(&sa, 0, sizeof(sa));
-			sin->sin_family = AF_INET;
-			memmove(&sin->sin_addr.s_addr, addr+IPv4off, IPv4addrlen);
-			hnputs(&sin->sin_port, i);
+			sin6->sin6_family = AF_INET6;
+			memmove(&sin6->sin6_addr, addr, IPaddrlen);
+			hnputs(&sin6->sin6_port, i);
 
-			if(bind(fd, &sa, sizeof(sa)) >= 0)	
+			if(bind(fd, (struct sockaddr*)sin6, sizeof(*sin6)) >= 0)	
 				return;
 		}
 		oserror();
 	}
 
 	memset(&sa, 0, sizeof(sa));
-	sin->sin_family = AF_INET;
-	memmove(&sin->sin_addr.s_addr, addr+IPv4off, IPv4addrlen);
-	hnputs(&sin->sin_port, port);
+	sin6->sin6_family = AF_INET6;
+	memmove(&sin6->sin6_addr, addr, IPaddrlen);
+	hnputs(&sin6->sin6_port, port);
 
-	if(bind(fd, &sa, sizeof(sa)) < 0)
+	if(bind(fd, (struct sockaddr*)sin6, sizeof(*sin6)) < 0)
 		oserror();
 }
 
-int
-so_gethostbyname(char *host, char**hostv, int n)
+static int
+resolve(char *name, char **hostv, int n, int isnumeric)
 {
 	int i;
-	uchar buf[32], *p;
-	struct hostent *hp;
+	struct addrinfo *res0, *r;
+	char buf[5*8];
+	uchar addr[IPaddrlen];
+	struct addrinfo hints;
 
-	hp = gethostbyname(host);
-	if(hp == 0)
+	memset(&hints, 0, sizeof hints);
+	hints.ai_flags = isnumeric? AI_NUMERICHOST: 0;
+	hints.ai_family = PF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	if(getaddrinfo(name, nil, &hints, &res0) < 0)
 		return 0;
+	i = 0;
+	for(r = res0; r != nil && i < n; r = r->ai_next) {
+		if(r->ai_family == AF_INET)
+			v4tov6(addr, (uchar*)&((struct sockaddr_in*)r->ai_addr)->sin_addr);
+		else if(r->ai_family == AF_INET6)
+			memmove(addr, &((struct sockaddr_in6*)r->ai_addr)->sin6_addr, IPaddrlen);
+		else
+			continue;
 
-	for(i = 0; hp->h_addr_list[i] && i < n; i++) {
-		p = hp->h_addr_list[i];
-		sprint(buf, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
-		hostv[i] = strdup(buf);
-		if(hostv[i] == 0)
-			break;
+		snprint(buf, sizeof buf, "%I", addr);
+		hostv[i++] = strdup(buf);
 	}
+
+	freeaddrinfo(res0);
 	return i;
+}
+
+int
+so_gethostbyname(char *host, char **hostv, int n)
+{
+	return resolve(host, hostv, n, 0);
 }
 
 int
 so_gethostbyaddr(char *addr, char **hostv, int n)
 {
-	int i;
-	struct hostent *hp;
-	unsigned long straddr;
-
-	straddr = inet_addr(addr);
-	if(straddr == -1)
-		return 0;
-
-	hp = gethostbyaddr((char *)&straddr, sizeof(straddr), AF_INET);
-	if(hp == 0)
-		return 0;
-
-	hostv[0] = strdup(hp->h_name);
-	if(hostv[0] == 0)
-		return 0;
-	for(i = 1; hp->h_aliases[i-1] && i < n; i++) {
-		hostv[i] = strdup(hp->h_aliases[i-1]);
-		if(hostv[i] == 0)
-			break;
-	}
-	return i;
+	return resolve(addr, hostv, n, 1);
 }
 
 int

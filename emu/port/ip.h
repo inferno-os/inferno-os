@@ -16,11 +16,11 @@ typedef struct Proto	Proto;
 typedef struct Conv	Conv;
 
 extern int		so_socket(int type);
-extern void		so_connect(int, unsigned long, unsigned short);
-extern void		so_getsockname(int, unsigned long*, unsigned short*);
-extern void		so_bind(int, int, unsigned long, unsigned short);
+extern void		so_connect(int, uchar*, ushort);
+extern void		so_getsockname(int, uchar*, ushort*);
+extern void		so_bind(int, int, uchar*, ushort);
 extern void		so_listen(int);
-extern int		so_accept(int, unsigned long*, unsigned short*);
+extern int		so_accept(int, uchar*, ushort*);
 extern int		so_getservbyname(char*, char*, char*);
 extern int		so_gethostbyname(char*, char**, int);
 extern int		so_gethostbyaddr(char*, char**, int);
@@ -34,9 +34,9 @@ extern void		so_keepalive(int, int);
 
 
 extern void		hnputl(void *p, unsigned long v);
-extern void		hnputs(void *p, unsigned short v);
+extern void		hnputs(void *p, ushort v);
 extern unsigned long	nhgetl(void *p);
-extern unsigned short	nhgets(void *p);
+extern ushort	nhgets(void *p);
 extern unsigned long	parseip(uchar *to, char *from);
 extern int	parsemac(uchar *to, char *from, int len);
 extern char*	v4parseip(uchar*, char*);
@@ -57,6 +57,7 @@ extern uchar IPv4allrouter[IPaddrlen];
 extern uchar IPnoaddr[IPaddrlen];
 extern uchar v4prefix[IPaddrlen];
 extern uchar IPallbits[IPaddrlen];
+extern uchar v6Unspecified[IPaddrlen];
 
 extern void	arpadd(char*, char*, int);
 extern int	arpwrite(char*, int);

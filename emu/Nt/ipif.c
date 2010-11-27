@@ -184,7 +184,7 @@ so_connect(int fd, unsigned long raddr, unsigned short rport)
 	sin = (struct sockaddr_in*)&sa;
 	sin->sin_family = AF_INET;
 	hnputs(&sin->sin_port, rport);
-	hnputl(&sin->sin_addr.s_addr, raddr);
+	memmove(&sin->sin_addr.s_addr, raddr+IPv4off, IPv4addrlen);
 
 	osenter();
 	r = connect(fd, &sa, sizeof(sa));
