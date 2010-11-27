@@ -1,3 +1,6 @@
+20101127
+	emu/port/*ip*.[ch] and emu/Nt/ipif*.c updated with new interface for ipv6 support [mechiel] [issue 193]
+	emu/Linux/os.c address compilation warnings (setfcr etc still to do)
 20101125
 	asm/assem.c don't attempt to use missing src (issue 243)
 20100925
