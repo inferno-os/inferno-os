@@ -66,7 +66,7 @@ so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 	int r;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
-	char *h = hdr;
+	uchar *h = hdr;
 
 	osenter();
 	if(hdr == 0)
@@ -98,10 +98,11 @@ so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 int
 so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 {
-	int r, l;
+	int r;
+	socklen_t l;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
-	char h[Udphdrlen];
+	uchar h[Udphdrlen];
 
 	osenter();
 	if(hdr == 0)
@@ -184,7 +185,7 @@ so_connect(int fd, uchar *raddr, ushort rport)
 void
 so_getsockname(int fd, uchar *laddr, ushort *lport)
 {
-	int len;
+	socklen_t len;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
 
@@ -215,7 +216,8 @@ so_listen(int fd)
 int
 so_accept(int fd, uchar *raddr, ushort *rport)
 {
-	int nfd, len;
+	int nfd;
+	socklen_t len;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
 
@@ -277,7 +279,8 @@ int
 so_gethostbyname(char *host, char**hostv, int n)
 {
 	int i;
-	uchar buf[32], *p;
+	char buf[32];
+	uchar *p;
 	struct hostent *hp;
 
 	hp = gethostbyname(host);
@@ -285,7 +288,7 @@ so_gethostbyname(char *host, char**hostv, int n)
 		return 0;
 
 	for(i = 0; hp->h_addr_list[i] && i < n; i++) {
-		p = hp->h_addr_list[i];
+		p = (uchar*)hp->h_addr_list[i];
 		sprint(buf, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
 		hostv[i] = strdup(buf);
 		if(hostv[i] == 0)
