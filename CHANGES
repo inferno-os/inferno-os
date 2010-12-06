@@ -1,5 +1,6 @@
 20101205
 	change a few types in ipif-posix.c to appease the gods
+	emu/MacOSX/mkfile - include portmkfile at correct point for LIBFILES to work (and other, minor, changes) [issue 24]
 20101127
 	emu/port/*ip*.[ch] and emu/Nt/ipif*.c updated with new interface for ipv6 support [mechiel] [issue 193]
 	emu/Linux/os.c address compilation warnings (setfcr etc still to do)

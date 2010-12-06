@@ -1,12 +1,10 @@
 SYSTARG=MacOSX
-#OBJTYPE=power
 <../../mkconfig
 SYSTARG=MacOSX
-#OBJTYPE=power
 
 #Configurable parameters
 
-CONF=emu			#default configuration
+CONF=emu-g			#default configuration
 CONFLIST=emu
 CLEANCONFLIST=
 
@@ -37,26 +35,21 @@ CFLAGS='-DROOT="'$ROOT'"'\
 
 KERNDATE=`{$NDATE}
 
-LDFLAGS=$LDFLAGS -L/usr/X11R6/lib
-
 SYSLIBS= \
 	-lm\
 	-lpthread\
 	-framework CoreFoundation\
 	-framework IOKit\
-#	-framework ApplicationServices\
 
 default:V:	$O.$CONF
 
+<../port/portmkfile
 
 $O.$CONF:	$OBJ $CONF.c $CONF.root.h $LIBFILES
-	$CC $CFLAGS -DKERNDATE=$KERNDATE $CONF.c
+	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
 	$LD $LDFLAGS -o $target $OBJ $CONF.$O $LIBFILES $SYSLIBS
 
 install:V: $O.$CONF
 	cp $O.$CONF $INSTALLDIR/$CONF
 
-<../port/portmkfile
-
-ipif.c:N:	../FreeBSD/ipif.c
 devfs.c:N:	../port/devfs-posix.c
