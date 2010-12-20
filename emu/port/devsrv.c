@@ -136,6 +136,7 @@ srvattach(char *spec)
 {
 	Chan *c;
 	SrvFile *d;
+	char srvname[16];
 
 	qlock(&dev.l);
 	if(waserror()){
@@ -166,8 +167,8 @@ srvattach(char *spec)
 	d->ref = 1;
 	kstrdup(&d->spec, spec);
 	kstrdup(&d->user, up->env->user);
-	snprint(up->genbuf, sizeof(up->genbuf), "srv%ld", up->env->pgrp->pgrpid);
-	kstrdup(&d->name, up->genbuf);
+	snprint(srvname, sizeof(srvname), "srv%ld", up->env->pgrp->pgrpid);
+	kstrdup(&d->name, srvname);
 	d->perm = DMDIR|0770;
 	mkqid(&d->qid, dev.pathgen++, 0, QTDIR);
 
