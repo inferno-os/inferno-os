@@ -9,22 +9,39 @@
 #include "runt.h"
 
 typedef struct SrvFile SrvFile;
+typedef struct Pending Pending;
+
+/* request pending to a server, in case a server vanishes */
+struct Pending
+{
+	Pending*	next;
+	Pending*	prev;
+	int fid;
+	Channel*	rc;
+	Channel*	wc;
+};
+
 struct SrvFile
 {
-	char*	spec;
 	char*	name;
 	char*	user;
 	ulong		perm;
-	vlong	length;
 	Qid		qid;
 	int		ref;
+
+	/* root directory */
+	char*	spec;
+	SrvFile*	devlist;
+	SrvFile*	entry;
+
+	/* file */
 	int		opens;
 	int		flags;
+	vlong	length;
 	Channel*	read;
 	Channel*	write;
-	SrvFile*	entry;
-	SrvFile*	dir;
-	SrvFile*	devlist;
+	SrvFile*	dir;		/* parent directory */
+	Pending	waitlist;	/* pending requests from client opens */
 };
 
 enum
@@ -50,14 +67,19 @@ static SrvDev dev;
 void	freechan(Heap*, int);
 static void	freerdchan(Heap*, int);
 static void	freewrchan(Heap*, int);
+static void delwaiting(Pending*);
 
 Type	*Trdchan;
 Type	*Twrchan;
 
 static int
-srvgen(Chan *c, char*, Dirtab*, int, int s, Dir *dp)
+srvgen(Chan *c, char *name, Dirtab *tab, int ntab, int s, Dir *dp)
 {
 	SrvFile *f;
+
+	USED(name);
+	USED(tab);
+	USED(ntab);
 
 	if(s == DEVDOTDOT){
 		devdir(c, c->qid, "#s", 0, eve, 0555, dp);
@@ -97,7 +119,7 @@ srvinit(void)
 }
 
 static int
-srvchkattach(SrvFile *d)
+srvcanattach(SrvFile *d)
 {
 	if(strcmp(d->user, up->env->user) == 0)
 		return 1;
@@ -118,25 +140,25 @@ srvattach(char *spec)
 	Chan *c;
 	SrvFile *d;
 
+	qlock(&dev.l);
+	if(waserror()){
+		qunlock(&dev.l);
+		nexterror();
+	}
+
 	if(spec[0] != '\0'){
-		qlock(&dev.l);
 		for(d = dev.devices; d != nil; d = d->devlist){
 			if(strcmp(spec, d->spec) == 0){
-				if(srvchkattach(d) == 0){
-					qunlock(&dev.l);
+				if(!srvcanattach(d))
 					error(Eperm);
-				}
+				c = devattach('s', spec);
+				c->aux = d;
+				c->qid = d->qid;
 				d->ref++;
-				break;
+				poperror();
+				qunlock(&dev.l);
+				return c;
 			}
-		}
-		qunlock(&dev.l);
-
-		if(d != nil){
-			c = devattach('s', spec);
-			c->aux = d;
-			c->qid = d->qid;
-			return c;
 		}
 	}
 
@@ -144,21 +166,21 @@ srvattach(char *spec)
 	if(d == nil)
 		error(Enomem);
 
-	c = devattach('s', spec);
-
 	d->ref = 1;
 	kstrdup(&d->spec, spec);
 	kstrdup(&d->user, up->env->user);
 	snprint(up->genbuf, sizeof(up->genbuf), "srv%ld", up->env->pgrp->pgrpid);
 	kstrdup(&d->name, up->genbuf);
 	d->perm = DMDIR|0770;
-
-	qlock(&dev.l);
 	mkqid(&d->qid, dev.pathgen++, 0, QTDIR);
+
 	d->devlist = dev.devices;
 	dev.devices = d;
+
+	poperror();
 	qunlock(&dev.l);
 
+	c = devattach('s', spec);
 	c->aux = d;
 	c->qid = d->qid;
 
@@ -193,6 +215,7 @@ srvwalk(Chan *c, Chan *nc, char **name, int nname)
 		w->clone->aux = d;
 		d->ref++;
 	}
+
 	poperror();
 	qunlock(&dev.l);
 	return w;
@@ -293,23 +316,23 @@ srvwstat(Chan *c, uchar *dp, int n)
 }
 
 static void
-srvputdir(SrvFile *sf)
+srvputdir(SrvFile *dir)
 {
 	SrvFile **l, *d;
 
-	sf->ref--;
-	if(sf->ref != 0)
+	dir->ref--;
+	if(dir->ref != 0)
 		return;
 
 	for(l = &dev.devices; (d = *l) != nil; l = &d->devlist)
-		if(d == sf){
+		if(d == dir){
 			*l = d->devlist;
 			break;
 		}
-	free(sf->spec);
-	free(sf->user);
-	free(sf->name);
-	free(sf);
+	free(dir->spec);
+	free(dir->user);
+	free(dir->name);
+	free(dir);
 }
 
 static void
@@ -346,30 +369,59 @@ srvunblock(SrvFile *sf, int fid)
 }
 
 static void
-srvdecr(SrvFile *sf, int remove)
+srvcancelreqs(SrvFile *sf)
+{
+	Pending *w, *ws;
+	Sys_Rread rreply;
+	Sys_Rwrite wreply;
+
+	acquire();
+	ws = &sf->waitlist;
+	while((w = ws->next) != ws){
+		delwaiting(w);
+		if(waserror() == 0){
+			if(w->rc != nil){
+				rreply.t0 = H;
+				rreply.t1 = c2string(Ehungup, strlen(Ehungup));
+				csend(w->rc, &rreply);
+			}
+			if(w->wc != nil){
+				wreply.t0 = 0;
+				wreply.t1 = c2string(Ehungup, strlen(Ehungup));
+				csend(w->wc, &wreply);
+			}
+			poperror();
+		}
+	}
+	release();
+}
+
+static void
+srvdelete(SrvFile *sf)
 {
 	SrvFile *f, **l;
 
-	if(remove){
-		l = &sf->dir->entry;
-		for(f = *l; f != nil; f = f->entry){
+	if((sf->flags & SREMOVED) == 0){
+		for(l = &sf->dir->entry; (f = *l) != nil; l = &f->entry){
 			if(sf == f){
 				*l = f->entry;
 				break;
 			}
-			l = &f->entry;
 		}
 		sf->ref--;
 		sf->flags |= SREMOVED;
 	}
+}
 
+static void
+srvchkref(SrvFile *sf)
+{
 	if(sf->ref != 0)
 		return;
 
 	if(sf->dir != nil)
 		srvputdir(sf->dir);
 
-	free(sf->spec);
 	free(sf->user);
 	free(sf->name);
 	free(sf);
@@ -381,7 +433,10 @@ srvfree(SrvFile *sf, int flag)
 	sf->flags |= flag;
 	if((sf->flags & (SRDCLOSE | SWRCLOSE)) == (SRDCLOSE | SWRCLOSE)){
 		sf->ref--;
-		srvdecr(sf, (sf->flags & SREMOVED) == 0);
+		srvdelete(sf);
+		/* no further requests can arrive; return error to pending requests */
+		srvcancelreqs(sf);
+		srvchkref(sf);
 	}
 }
 
@@ -397,6 +452,7 @@ freerdchan(Heap *h, int swept)
 	srvfree(sf, SRDCLOSE);
 	qunlock(&dev.l);
 	acquire();
+
 	freechan(h, swept);
 }
 
@@ -412,6 +468,7 @@ freewrchan(Heap *h, int swept)
 	srvfree(sf, SWRCLOSE);
 	qunlock(&dev.l);
 	acquire();
+
 	freechan(h, swept);
 }
 
@@ -430,17 +487,16 @@ srvclunk(Chan *c, int remove)
 			error(Eperm);
 		return;
 	}
-
 	opens = 0;
 	if(c->flag & COPEN){
 		opens = sf->opens--;
-		if (sf->read != H || sf->write != H)
+		if(sf->read != H || sf->write != H)
 			srvunblock(sf, c->fid);
 	}
 
 	sf->ref--;
 	if(opens == 1){
-		if((sf->flags & (SORCLOSE | SREMOVED)) == SORCLOSE)
+		if(sf->flags & SORCLOSE)
 			remove = 1;
 	}
 
@@ -449,8 +505,9 @@ srvclunk(Chan *c, int remove)
 		noperm = 1;
 		remove = 0;
 	}
-
-	srvdecr(sf, remove);
+	if(remove)
+		srvdelete(sf);
+	srvchkref(sf);
 	qunlock(&dev.l);
 
 	if(noperm)
@@ -469,6 +526,25 @@ srvremove(Chan *c)
 	srvclunk(c, 1);
 }
 
+static void
+addwaiting(SrvFile *sp, Pending *w)
+{
+	Pending *sw;
+
+	sw = &sp->waitlist;
+	w->next = sw;
+	w->prev = sw->prev;
+	sw->prev->next = w;
+	sw->prev = w;
+}
+
+static void
+delwaiting(Pending *w)
+{
+	w->next->prev = w->prev;
+	w->prev->next = w->next;
+}
+
 static long
 srvread(Chan *c, void *va, long count, vlong offset)
 {
@@ -478,6 +554,7 @@ srvread(Chan *c, void *va, long count, vlong offset)
 	SrvFile *sp;
 	Channel *rc;
 	Channel *rd;
+	Pending wait;
 	Sys_Rread * volatile r;
 	Sys_FileIO_read req;
 
@@ -503,7 +580,7 @@ srvread(Chan *c, void *va, long count, vlong offset)
 
 	rd = sp->read;
 	if(rd == H)
-		error(Eshutdown);
+		error(Ehungup);
 
 	rc = cnewc(dev.Rread, movtmp, 1);
 	ptradd(D2H(rc));
@@ -519,16 +596,23 @@ srvread(Chan *c, void *va, long count, vlong offset)
 	req.t3 = rc;
 	csend(rd, &req);
 
+	wait.fid = c->fid;
+	wait.rc = rc;
+	wait.wc = nil;
+	addwaiting(sp, &wait);
+
 	h = heap(dev.Rread);
 	r = H2D(Sys_Rread *, h);
 	ptradd(h);
 	if(waserror()){
 		ptrdel(h);
 		destroy(r);
+		delwaiting(&wait);
 		nexterror();
 	}
 
 	crecv(rc, r);
+	delwaiting(&wait);
 	if(r->t1 != H)
 		error(string2c(r->t1));
 
@@ -563,6 +647,7 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	SrvFile *sp;
 	Channel *wc;
 	Channel *wr;
+	Pending wait;
 	Sys_Rwrite * volatile w;
 	Sys_FileIO_write req;
 
@@ -578,7 +663,7 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	sp = c->aux;
 	wr = sp->write;
 	if(wr == H)
-		error(Eshutdown);
+		error(Ehungup);
 
 	wc = cnewc(dev.Rwrite, movtmp, 1);
 	ptradd(D2H(wc));
@@ -594,6 +679,7 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	req.t3 = wc;
 
 	ptradd(D2H(req.t1));
+
 	if(waserror()){
 		ptrdel(D2H(req.t1));
 		destroy(req.t1);
@@ -609,12 +695,20 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	h = heap(dev.Rwrite);
 	w = H2D(Sys_Rwrite *, h);
 	ptradd(h);
+
+	wait.fid = c->fid;
+	wait.rc = nil;
+	wait.wc = wc;
+	addwaiting(sp, &wait);
+
 	if(waserror()){
+		delwaiting(&wait);
 		ptrdel(h);
 		destroy(w);
 		nexterror();
 	}
 	crecv(wc, w);
+	delwaiting(&wait);
 	if(w->t1 != H)
 		error(string2c(w->t1));
 	poperror();
@@ -639,7 +733,7 @@ srvretype(Channel *c, SrvFile *f, Type *t)
 	Heap *h;
 
 	h = D2H(c);
-	h->t->ref--;
+	freetype(h->t);
 	h->t = t;
 	t->ref++;
 	c->aux = f;
@@ -667,23 +761,26 @@ srvf2c(char *dir, char *file, Sys_FileIO *io)
 	s = c.c->aux;
 
 	qlock(&dev.l);
+	if(waserror()){
+		qunlock(&dev.l);
+		nexterror();
+	}
 	for(f = s->entry; f != nil; f = f->entry){
-		if(strcmp(f->name, file) == 0){
-			qunlock(&dev.l);
+		if(strcmp(f->name, file) == 0)
 			error(Eexist);
-		}
 	}
 
 	f = malloc(sizeof(SrvFile));
-	if(f == nil){
-		qunlock(&dev.l);
+	if(f == nil)
 		error(Enomem);
-	}
 
 	srvretype(io->read, f, Trdchan);
 	srvretype(io->write, f, Twrchan);
 	f->read = io->read;
 	f->write = io->write;
+	
+	f->waitlist.next = &f->waitlist;
+	f->waitlist.prev = &f->waitlist;
 
 	kstrdup(&f->name, file);
 	kstrdup(&f->user, up->env->user);
@@ -696,6 +793,7 @@ srvf2c(char *dir, char *file, Sys_FileIO *io)
 	s->entry = f;
 	s->ref++;
 	f->dir = s;
+	poperror();
 	qunlock(&dev.l);
 
 	cclose(c.c);

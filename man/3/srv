@@ -84,5 +84,3 @@ is conventionally bound by various applications
 .IR plumb (1),
 .IR wm (1),
 .IR sys-file2chan (2)
-.SH BUGS
-A client with a read or write pending can remain blocked if the server exits before reply.
