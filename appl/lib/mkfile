@@ -77,6 +77,8 @@ TARG=\
 	nametree.dis\
 	names.dis\
 	newns.dis\
+	ninep.dis\
+	oldauth.dis\
 	palm.dis\
 	palmdb.dis\
 	palmfile.dis\

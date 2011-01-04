@@ -1,0 +1,246 @@
+.TH SECURITY-OLDAUTH 2
+.SH NAME
+oldauth: certtostr, pktostr, sktostr, strtocert, strtopk, strtosk, sign, verify, readauthinfo, writeauthinfo \- encoding for original Inferno authentication protocol
+.SH SYNOPSIS
+.EX
+include "ipints.m";
+include "crypt.m";
+include "oldauth.m";
+oldauth := load Oldauth Oldauth->PATH;
+
+Certificate: adt
+{
+    sa:     string;
+    ha:     string;
+    signer: string;
+    exp:    int;
+    sig:    ref Crypt->PKsig;
+};
+
+Authinfo: adt
+{
+    mysk:   ref Crypt->SK;
+    mypk:   ref Crypt->PK;
+    owner:  string;
+    cert:   ref Certificate;
+    spk:    ref Crypt->PK;
+    alpha:  ref IPints->IPint;
+    p:      ref IPints->IPint;
+};
+
+sign:   fn (sk: ref Crypt->SK, signer: string, exp: int,
+          state: ref Crypt->DigestState, ha: string): ref Certificate;
+verify: fn (pk: ref Crypt->PK, cert: ref Certificate,
+          state: ref Crypt->DigestState): int;
+
+strtocert: fn(s: string): ref Certificate;
+certtostr: fn(c: ref Certificate): string;
+strtopk:   fn(s: string): (ref Crypt->PK, string);
+pktostr:   fn(pk: ref Crypt->PK, owner: string): string;
+strtosk:   fn(s: string): (ref Crypt->SK, string);
+sktostr:   fn(sk: ref Crypt->SK, owner: string): string;
+
+readauthinfo:   fn(filename: string): ref Authinfo;
+writeauthinfo:  fn(filename: string, info: ref Authinfo): int;
+.EE
+.SH DESCRIPTION
+Certificates, public keys, and private keys are passed over networks and between applications using a Unicode representation.
+This collection of functions provide a means to convert adts supplied by the system to and from their portable textual representation. These routines are used by
+.IR login (2)
+and
+.IR factotum (4)
+to implement the Inferno authentication protocol.
+.PP
+Public and private keys are represented by
+.B Crypt->PK
+and
+.B Crypt->SK
+(see
+.IR keyring-intro (2)).
+An authentication domain is represented by
+the public key of the domain's
+.IR signer ,
+typically in control of a
+.IR keyfs (4)
+and running a
+.IR logind (8).
+Two adts associate a public/private key pair with a user name within a specific authentication domain:
+.TP
+.B Authinfo
+The
+.B Authinfo
+adt contains an individual user's private and public key, a human-readable name for the key (eg, a user name),
+the signer's certificate
+and the signer's public key, and the Diffie-Hellman parameters.
+The signer's certificate binds the user's public key to the given key name in the signer's domain.
+.TP
+.B Certificate
+The
+.B Certificate
+adt contains a digital signature with the certification of the trusted authority (CA).
+The signature covers not only the user's public key, but the key's name, the signer's name and
+the expiration time of the certificate.
+Both the key's name and the signer's name are local to the signer's domain.
+.PP
+.B Init
+must be called before using any other operation in the module.
+.PP
+.B Sign
+returns a Certificate containing the digital signature using secret key
+.I sk
+of a digest's
+.IR state ,
+which is the output of the hash algorithm named
+.IR ha ,
+combined with the hash of the signer's name, and the certificate's expiration time (in seconds from the Epoch).
+Valid hash algorithms are
+.B sha1
+and
+.BR md5 .
+The expiry time should be zero if the certificate does not expire.
+Typically the
+.I state
+is the result of hashing
+.IP
+.EX
+array of byte pktostr(pk, username)
+.EE
+.PP
+for a given public key
+.I pk
+that is associated with the given
+.I username
+by the signer.
+.PP
+.B Verify
+checks that the given Certificate is the result of signing the given
+.I state
+using the secret (private) key corresponding to public key
+.IR pk .
+It returns true (non-zero) if the certificate is valid, including the signer's name, and the expiration time;
+the caller must enforce the expiration time if desired.
+It returns false (zero) if the certificate is invalid.
+.	#######
+.PP
+.B Sign
+creates a digital signature of a digest from the concatenation of: a message, the name of the signer, and an expiration time.
+.I State
+is the digest state after running
+.BR sha1 ,
+.B md4
+or
+.B md5
+over the message.
+.I Ha
+is a string specifying the hash algorithm to use:
+.B
+"sha"\fR,
+.B
+"sha1"\fR,
+.B
+"md4"\fR
+or
+.B
+"md5"\fR.
+.B Sign
+extends the digest to cover the signer's name
+(taken from the private key,
+.IR sk )
+and the expiration time.
+It returns a certificate containing the digital signature of the digest, signer name, hash algorithm and signature algorithm.
+If any parameter is invalid,
+.B sign
+returns nil.
+The signature algorithm is implied by the type of the private key.
+.PP
+.B Verify
+uses public key
+.I pk
+to verify a certificate.
+It returns non-zero (true) if the certificate is valid; zero (false) otherwise.
+.I State
+is the digest state after running the chosen digest algorithm
+over the message.
+.	#######
+.PP
+The remaining operations fetch and store those values and convert to and from text representations for use in protocols and for storage.
+.PP
+.B Strtocert
+takes a string argument containing a varying number of newline-separated fields:
+a signature algorithm, a hash algorithm, a signer's name, an expiration time, and values representing a digital signature.
+It returns the corresponding
+.BR Certificate .
+If the string is of improper format, the result is
+.IR nil .
+.PP
+.B Certtostr
+performs the inverse operation: takes the
+.B Certificate
+.I c
+and produces a text string suitable for communication over a network.
+Note that the string will contain newline characters.
+.PP
+.B Strtopk
+and
+.B strtosk
+take as their arguments a string
+.I s
+representing the public and private keys respectively.
+.I S
+contains an algorithm name, a user name and values representing the key.
+Each returns a tuple
+.BI ( k,\ s ),
+where
+.I k
+is the resulting key value (ie,
+.B Crypt->PK
+or
+.BR Crypt->SK )
+and
+.I s
+is a string giving the name associated with the key, typically a user name.
+If the format of
+.I s
+is invalid,
+.I k
+is
+.IR nil ,
+and
+.I s
+contains a diagnostic.
+.PP
+.B Pktostr
+and
+.B sktostr
+perform the inverse operations:
+they take a public key (secret key)
+.I pk
+or
+.IR sk ,
+the
+.I owner
+name to be associated with that key, and produce a printable representation as a string.
+The
+.I owner
+names the user that owns the key; in the case of a public key,
+the user is expected to possess the corresponding private key.
+.PP
+.B Readauthinfo
+reads a representation of an
+.B Authinfo
+from a file.
+It returns nil if there is a read error or a conversion error;
+it returns a reference to the
+.B Authinfo
+otherwise.
+.PP
+.B Writeauthinfo
+writes a representation of
+.I info
+to a file. It returns -1 if the write operation fails, 0 otherwise.
+.SH SOURCE
+.B /appl/lib/oldauth.b
+.SH SEE ALSO
+.IR crypt-intro (2),
+.IR ipints (2),
+.IR security-intro (2)
