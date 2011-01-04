@@ -871,7 +871,8 @@ and
 .BR /net/udp ,
 but is currently more limited in the set of services and control requests.
 Both IPv4 and IPv6 address syntax may be used, but the IPv6 form must
-still map to the IPv4 address space.
+still map to the IPv4 address space if the IPv6 support is not configured into
+.IR emu .
 Only TCP and UDP are generally available, and a limited interface to ARP on some platforms (see below).
 The set of TCP/UDP control requests is limited to:
 .BR connect ,

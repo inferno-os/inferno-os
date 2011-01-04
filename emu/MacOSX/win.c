@@ -450,10 +450,15 @@ MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *us
 		{
 			uint32_t buttons;
 			uint32_t modifiers;
+			uint32_t clkcnt;
+
 			GetEventParameter(event, kEventParamKeyModifiers, typeUInt32,
 								0, sizeof(modifiers), 0, &modifiers);
 			GetEventParameter(event, kEventParamMouseChord, typeUInt32,
 								0, sizeof buttons, 0, &buttons);
+			GetEventParameter(event, kEventParamClickCount, typeUInt32,
+								0, sizeof(clkcnt), 0, &clkcnt);
+			
 			/* simulate other buttons via alt/apple key. like x11 */
 			if(modifiers & optionKey) {
 				mousebuttons = ((buttons & 1) ? 2 : 0);
@@ -465,6 +470,8 @@ MainWindowEventHandler(EventHandlerCallRef nextHandler, EventRef event, void *us
 
 			mousebuttons |= ((buttons & 2)<<1);
 			mousebuttons |= ((buttons & 4)>>1);
+			if(clkcnt > 1)
+				mousebuttons |= 1<<8;
 
 		} /* Fallthrough */
 		case kEventMouseMoved:
