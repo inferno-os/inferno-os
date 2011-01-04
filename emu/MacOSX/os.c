@@ -47,6 +47,13 @@ enum
 char *hosttype = "MacOSX";
 char *cputype = OBJTYPE;
 
+typedef struct Sem Sem;
+struct Sem {
+	pthread_cond_t	c;
+	pthread_mutex_t	m;
+	int	v;
+};
+
 static pthread_key_t  prdakey;
 
 extern int dflag;
@@ -60,8 +67,9 @@ getup(void)
 void
 pexit(char *msg, int t)
 {
-	Osenv * e;
-	Proc * p;
+	Osenv *e;
+	Proc *p;
+	Sem *sem;
 
 	USED(t);
 	USED(msg);
@@ -91,6 +99,12 @@ pexit(char *msg, int t)
 	}
 	free(e->user);
 	free(p->prog);
+	sem = p->os;
+	if(sem != nil){
+		pthread_cond_destroy(&sem->c);
+		pthread_mutex_destroy(&sem->m);
+	}
+	free(p->os);
 	free(p);
 	pthread_exit(0);
 }
@@ -223,16 +237,23 @@ int
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	pthread_t thread;
-	Proc * p;
-	Pgrp * pg;
-	Fgrp * fg;
-	Egrp * eg;
-
+	Proc *p;
+	Pgrp *pg;
+	Fgrp *fg;
+	Egrp *eg;
 	pthread_attr_t attr;
+	Sem *sem;
 
 	p = newproc();
 	if(p == nil)
 		panic("kproc: no memory");
+	sem = malloc(sizeof(*sem));
+	if(sem == nil)
+		panic("can't allocate semaphore");
+	pthread_cond_init(&sem->c, NULL);
+	pthread_mutex_init(&sem->m, NULL);
+	sem->v = 0;
+	p->os = sem;
 
 	if(flags & KPDUPPG) {
 		pg = up->env->pgrp;
@@ -309,21 +330,33 @@ segflush(void *va, ulong len)
 void
 oshostintr(Proc *p)
 {
+fprint(2, "oshostintr %p\n", p);
 	pthread_kill((pthread_t)p->sigid, SIGUSR1);
 }
-
-static ulong erendezvous(void*, ulong);
 
 void
 osblock(void)
 {
-	erendezvous(up, 0);
+	Sem *sem;
+
+	sem = up->os;
+	pthread_mutex_lock(&sem->m);
+	while(sem->v == 0)
+		pthread_cond_wait(&sem->c, &sem->m);
+	sem->v--;
+	pthread_mutex_unlock(&sem->m);
 }
 
 void
 osready(Proc *p)
 {
-	erendezvous(p, 0);
+	Sem *sem;
+
+	sem = p->os;
+	pthread_mutex_lock(&sem->m);
+	sem->v++;
+	pthread_cond_signal(&sem->c);
+	pthread_mutex_unlock(&sem->m);
 }
 
 void
@@ -397,14 +430,11 @@ getnobody()
 	}
 }
 
-static	pthread_mutex_t rendezvouslock;
-static	pthread_mutexattr_t	*pthread_mutexattr_default = NULL;
-
 void
 libinit(char *imod)
 {
 	struct passwd *pw;
-	Proc * p;
+	Proc *p;
 	char	sys[64];
 
 	setsid();
@@ -418,9 +448,6 @@ libinit(char *imod)
 		termset();
 
 	setsigs();
-
-	if(pthread_mutex_init(&rendezvouslock, pthread_mutexattr_default))
-		panic("pthread_mutex_init");
 
 	if(pthread_key_create(&prdakey, NULL))
 		print("key_create failed\n");
@@ -466,92 +493,6 @@ readkbd(void)
 	return buf[0];
 }
 
-
-
-enum
-{
-    NHLOG	= 7,
-    NHASH	= (1<<NHLOG)
-};
-
-typedef struct Tag Tag;
-struct Tag
-{
-	void*	tag;
-	ulong	val;
-	pthread_cond_t cv;
-	Tag* 	next;
-};
-
-static	Tag*	ht[NHASH];
-static	Tag*	ft;
-//static	Lock	hlock;
-
-static ulong
-erendezvous(void *tag, ulong value)
-{
-	int	h;
-	ulong rval;
-	Tag * t, **l, *f;
-
-	h = (ulong)tag & (NHASH - 1);
-
-	//    lock(&hlock);
-	pthread_mutex_lock(&rendezvouslock);
-	l = &ht[h];
-	for(t = ht[h]; t; t = t->next) {
-		if(t->tag == tag) {
-			rval = t->val;
-			t->val = value;
-			t->tag = 0;
-			pthread_mutex_unlock(&rendezvouslock);
-			//            unlock(&hlock);
-			if(pthread_cond_signal(&(t->cv)))
-				panic("pthread_cond_signal");
-			return rval;
-		}
-	}
-
-	t = ft;
-	if(t == 0) {
-		t = malloc(sizeof(Tag));
-		if(t == nil)
-			panic("rendezvous: no memory");
-		if(pthread_cond_init(&(t->cv), NULL)) {
-			print("pthread_cond_init (errno: %s) \n", strerror(errno));
-			panic("pthread_cond_init");
-		}
-	} else
-		ft = t->next;
-
-	t->tag = tag;
-	t->val = value;
-	t->next = *l;
-	*l = t;
-	//    pthread_mutex_unlock(&rendezvouslock);
-	//    unlock(&hlock);
-
-	while(t->tag != nil)
-		pthread_cond_wait(&(t->cv), &rendezvouslock);
-
-	//    pthread_mutex_lock(&rendezvouslock);
-	//    lock(&hlock);
-	rval = t->val;
-	for(f = *l; f; f = f->next) {
-		if(f == t) {
-			*l = f->next;
-			break;
-		}
-		l = &f->next;
-	}
-	t->next = ft;
-	ft = t;
-	pthread_mutex_unlock(&rendezvouslock);
-	//    unlock(&hlock);
-
-	return rval;
-}
-
 /*
  * Return an abitrary millisecond clock time
  */
@@ -569,8 +510,6 @@ osmillisec(void)
 	}
 	return((t.tv_sec - sec0) * 1000 + (t.tv_usec - usec0 + 500) / 1000);
 }
-
-
 
 /*
  * Return the time since the epoch in nanoseconds and microseconds
@@ -593,10 +532,6 @@ osusectime(void)
 	gettimeofday(&t, nil);
 	return (vlong)t.tv_sec * 1000000 + t.tv_usec;
 }
-
-
-
-
 int
 osmillisleep(ulong milsec)
 {
@@ -606,8 +541,6 @@ osmillisleep(ulong milsec)
 	nanosleep(&time, nil);
 	return 0;
 }
-
-
 
 int
 limbosleep(ulong milsec)
