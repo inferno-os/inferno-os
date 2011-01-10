@@ -602,7 +602,7 @@ sub(Opcode *o, Instr *i)
 }
 
 static void
-qdiv(Opcode *o, Instr *i)
+qmuldiv(Opcode *o, Instr *i)
 {
 	format(o->mnemonic, i, nil);
 	if(i->op == 31)
@@ -750,10 +750,10 @@ static Opcode opcodes[] = {
 	{31,	454,	ALL,	"DCCCI",	dcb,	0},
 	{31,	966,	ALL,	"ICCCI",	dcb,	0},
 
-	{31,	489,	OEM,	"DIVD%V%C",	qdiv,	ir3},	/* 64 */
-	{31,	457,	OEM,	"DIVDU%V%C",	qdiv,	ir3},	/* 64 */
-	{31,	491,	OEM,	"DIVW%V%C",	qdiv,	ir3},
-	{31,	459,	OEM,	"DIVWU%V%C",	qdiv,	ir3},
+	{31,	489,	OEM,	"DIVD%V%C",	qmuldiv,	ir3},	/* 64 */
+	{31,	457,	OEM,	"DIVDU%V%C",	qmuldiv,	ir3},	/* 64 */
+	{31,	491,	OEM,	"DIVW%V%C",	qmuldiv,	ir3},
+	{31,	459,	OEM,	"DIVWU%V%C",	qmuldiv,	ir3},
 
 	{31,	310,	ALL,	"ECIWX",	ldx,	0},
 	{31,	438,	ALL,	"ECOWX",	stx,	0},
@@ -876,7 +876,7 @@ static Opcode opcodes[] = {
 	{31,	11,	ALL,	"MULHWU%C",	gencc,	ir3},
 	{31,	235,	OEM,	"MULLW%V%C",	gencc,	ir3},
 
-	{7,	0,	0,	"MULLW",	qdiv,	"%i,R%a,R%d"},
+	{7,	0,	0,	"MULLW",	qmuldiv,	"%i,R%a,R%d"},
 
 	{31,	476,	ALL,	"NAND%C",	gencc,	il3},
 	{31,	104,	OEM,	"NEG%V%C",	neg,	ir2},
