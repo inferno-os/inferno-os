@@ -26,7 +26,10 @@ OpenBSD/386/bin
 OpenBSD/386/lib
 OpenBSD/arm/bin
 OpenBSD/arm/lib
+Plan9/386/bin
 Plan9/386/lib
+Plan9/arm/bin
+Plan9/arm/lib
 Plan9/mips/bin
 Plan9/mips/lib
 Plan9/power/bin

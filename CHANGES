@@ -1,3 +1,7 @@
+20110116
+	add Plan9/arm support [provided by richard miller]
+20110110	
+	utils/libmach/qdb.c [issue 245] restore renaming of qdiv as qmuldiv
 20110104
 	emu/MacOSX/win.c detect double clicks [issue 232, jas]
 	emu/MacOSX/os.c replace erendezvous by a per-kproc semaphore for osblock/osready
