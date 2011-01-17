@@ -7,8 +7,9 @@ implement Verifier;
 include "sys.m";
 	sys: Sys;
 
-include "ipints.m";
-include "crypt.m";
+include "keyring.m";
+	kr: Keyring;
+	IPint: import kr;
 
 include "bufio.m";
 	bufio: Bufio;
@@ -31,6 +32,7 @@ debug := 0;
 init()
 {
 	sys = load Sys Sys->PATH;
+	kr = load Keyring Keyring->PATH;
 	bufio = load Bufio Bufio->PATH;
 	sexprs = load Sexprs Sexprs->PATH;
 	spki = load SPKI SPKI->PATH;

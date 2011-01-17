@@ -1,4 +1,4 @@
-implement Dialcmd;
+implement Dial;
 include "sys.m";
 	sys: Sys;
 include "draw.m";
@@ -7,12 +7,11 @@ include "keyring.m";
 	keyring: Keyring;
 include "security.m";
 	auth: Auth;
-include "dial.m";
 include "sh.m";
 	sh: Sh;
 	Context: import sh;
 
-Dialcmd: module {
+Dial: module {
 	init: fn(nil: ref Draw->Context, argv: list of string);
 };
 
@@ -36,9 +35,6 @@ init(drawctxt: ref Draw->Context, argv: list of string)
 	arg := load Arg Arg->PATH;
 	if (arg == nil)
 		badmodule(Arg->PATH);
-	dial := load Dial Dial->PATH;
-	if(dial == nil)
-		badmodule(Dial->PATH);
 	sh = load Sh Sh->PATH;
 	if (sh == nil)
 		badmodule(Sh->PATH);
@@ -91,8 +87,8 @@ init(drawctxt: ref Draw->Context, argv: list of string)
 		}
 	}
 
-	c := dial->dial(addr, nil);
-	if (c == nil) {
+	(ok, c) := sys->dial(addr, nil);
+	if (ok == -1) {
 		sys->fprint(stderr(), "dial: cannot dial %s:: %r\n", addr);
 		raise "fail:errors";
 	}

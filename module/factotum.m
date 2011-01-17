@@ -9,10 +9,10 @@ Factotum: module
 		suid:	string;	# server id
 		cap:	string;	# capability (only valid on server side)
 		secret:	array of byte;
-		attrs:	list of ref Attr;		# attributes after authentication
+		# TO DO: add attrs
 
-		unpack:	fn(a: array of byte): (int, ref Authinfo);	# excludes attributes
-		read:	fn(facfd: ref Sys->FD): ref Authinfo;	# includes attributes
+		unpack:	fn(a: array of byte): (int, ref Authinfo);
+		read:	fn(fd: ref Sys->FD): ref Authinfo;
 	};
 
 	mount:	fn(fd: ref Sys->FD, mnt: string, flags: int, aname: string, keyspec: string): (int, ref Authinfo);

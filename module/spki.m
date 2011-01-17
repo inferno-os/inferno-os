@@ -37,8 +37,8 @@ SPKI: module
 	};
 
 	Key: adt {
-		pk:	ref Crypt->PK;	# either pk/sk or hash might be nil
-		sk:	ref Crypt->SK;
+		pk:	ref Keyring->PK;	# either pk/sk or hash might be nil
+		sk:	ref Keyring->SK;
 		nbits:	int;
 		halg:	string;	# basic signature hash algorithm
 		henc:	string;	# pre-signature encoding
@@ -49,9 +49,9 @@ SPKI: module
 		ishash:	fn(k: self ref Key): int;
 		public:	fn(k: self ref Key): ref Key;
 		sigalg:	fn(k: self ref Key): string;
-		text:		fn(k: self ref Key): string;
+		text:	fn(k: self ref Key): string;
 		sexp:	fn(k: self ref Key): ref Sexprs->Sexp;
-		eq:		fn(k1: self ref Key, k2: ref Key): int;
+		eq:	fn(k1: self ref Key, k2: ref Key): int;
 	};
 
 	Name: adt {
@@ -120,7 +120,7 @@ SPKI: module
 		hash:	ref Hash;
 		key:	ref Key;	# find by hash if necessary
 		sa:	string;	# alg[-[encoding-]hash]
-		params:	array of (string, array of byte);
+		sig:	list of (string, array of byte);
 
 		algs:	fn(s: self ref Signature): (string, string, string);
 		sexp:	fn(s: self ref Signature): ref Sexprs->Sexp;
@@ -197,7 +197,7 @@ SPKI: module
 
 	# signature checking
 	checksig:	fn(c: ref Cert, sig: ref Signature): string;
-	#sig2icert:	fn(sig: ref Signature, signer: string, exp: int): ref Oldauth->Certificate;
+	sig2icert:	fn(sig: ref Signature, signer: string, exp: int): ref Keyring->Certificate;
 
 	# signature making
 	signcert:	fn(c: ref Cert, sigalg: string, key: ref Key): (ref Signature, string);

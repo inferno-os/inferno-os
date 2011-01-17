@@ -5,12 +5,9 @@ include "sys.m";
 
 include "draw.m";
 
-include "ipints.m";
-	ipints: IPints;
-	IPint: import ipints;
-
-include "crypt.m";
-	crypt: Crypt;
+include "keyring.m";
+	kr: Keyring;
+	IPint, DSAsk, DSApk, DSAsig: import kr;
 
 include "arg.m";
 
@@ -22,8 +19,7 @@ Dsagen: module
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
-	ipints = load IPints IPints->PATH;
-	crypt = load Crypt Crypt->PATH;
+	kr = load Keyring Keyring->PATH;
 
 	arg := load Arg Arg->PATH;
 	arg->init(args);
@@ -41,7 +37,7 @@ init(nil: ref Draw->Context, args: list of string)
 		arg->usage();
 	arg = nil;
 
-	sk := crypt->dsagen(nil);
+	sk := DSAsk.gen(nil);
 	if(tag != nil)
 		tag = " "+tag;
 	s := add("p", sk.pk.p);

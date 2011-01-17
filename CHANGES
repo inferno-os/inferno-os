@@ -1,5 +1,3 @@
-20110117
-	emu/Nt/ipif.c changed to work with ipv6 interface changes
 20110116
 	add Plan9/arm support [provided by richard miller]
 20110110	

@@ -3,14 +3,10 @@ include "sys.m";
 	sys: Sys;
 include "draw.m";
 include "arg.m";
-include "ipints.m";
-include "crypt.m";
-	crypt: Crypt;
-include "oldauth.m";
-	oldauth: Oldauth;
+include "keyring.m";
+	keyring: Keyring;
 
-Getpk: module
-{
+Getpk: module {
 	init: fn(nil: ref Draw->Context, argv: list of string);
 };
 
@@ -23,18 +19,14 @@ badmodule(p: string)
 init(nil: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
-	crypt = load Crypt Crypt->PATH;
-	if(crypt == nil)
-		badmodule(Crypt->PATH);
-	oldauth = load Oldauth Oldauth->PATH;
-	if(oldauth == nil)
-		badmodule(Oldauth->PATH);
-	oldauth->init();
+	keyring = load Keyring Keyring->PATH;
+	if(keyring == nil)
+		badmodule(Keyring->PATH);
 	arg := load Arg Arg->PATH;
 	if(arg == nil)
 		badmodule(Arg->PATH);
 	arg->init(argv);
-	arg->setusage("getpk [-asu] file...");
+	arg->setusage("usage: getpk [-asu] file...");
 	aflag := 0;
 	sflag := 0;
 	uflag := 0;
@@ -55,7 +47,7 @@ init(nil: ref Draw->Context, argv: list of string)
 		arg->usage();
 	multi := len argv > 1;
 	for(; argv != nil; argv = tl argv){
-		info := oldauth->readauthinfo(hd argv);
+		info := keyring->readauthinfo(hd argv);
 		if(info == nil){
 			sys->fprint(sys->fildes(2), "getpk: cannot read %s: %r\n", hd argv);
 			continue;
@@ -63,13 +55,13 @@ init(nil: ref Draw->Context, argv: list of string)
 		pk := info.mypk;
 		if(sflag)
 			pk = info.spk;
-		s := oldauth->pktostr(pk, info.owner);
+		s := keyring->pktostr(pk);
 		if(!aflag)
 			s = hex(hash(s));
 		if(multi)
 			s = hd argv + ": " + s;
 		if(uflag)
-			s += " " + info.owner;
+			s += " " + pk.owner;
 		sys->print("%s\n", s);
 	}
 }
@@ -77,8 +69,8 @@ init(nil: ref Draw->Context, argv: list of string)
 hash(s: string): array of byte
 {
 	d := array of byte s;
-	digest := array[Crypt->SHA1dlen] of byte;
-	crypt->sha1(d, len d, digest, nil);
+	digest := array[Keyring->SHA1dlen] of byte;
+	keyring->sha1(d, len d, digest, nil);
 	return digest;
 }
 

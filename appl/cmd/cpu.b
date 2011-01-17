@@ -5,9 +5,6 @@ include "sys.m";
 	stderr: ref Sys->FD;
 include "draw.m";
 	Context: import Draw;
-
-include "dial.m";
-
 include "string.m";
 	str: String;
 include "arg.m";
@@ -53,9 +50,6 @@ init(nil: ref Context, argv: list of string)
 	kr := load Keyring Keyring->PATH;
 	if (kr == nil) badmodule(Keyring->PATH);
 
-	dial := load Dial Dial->PATH;
-	if(dial == nil) badmodule(Dial->PATH);
-
 	arg->init(argv);
 	alg := "";
 	while ((opt := arg->opt()) != 0) {
@@ -85,7 +79,7 @@ init(nil: ref Context, argv: list of string)
 
 	user := getuser();
 	kd := "/usr/" + user + "/keyring/";
-	cert := kd + dial->netmkaddr(mach, "tcp", "");
+	cert := kd + netmkaddr(mach, "tcp", "");
 	if (!exists(cert)) {
 		cert = kd + "default";
 		if (!exists(cert)) {
@@ -98,8 +92,8 @@ init(nil: ref Context, argv: list of string)
 	if(!exists("/dev/draw/new"))
 		sys->bind("#d", "/dev", Sys->MBEFORE);
 
-	c := dial->dial(dial->netmkaddr(mach, "net", "rstyx"), nil);
-	if(c == nil){
+	(ok, c) := sys->dial(netmkaddr(mach, "net", "rstyx"), nil);
+	if(ok < 0){
 		sys->fprint(stderr, "Error: cpu: dial: %r\n");
 		return;
 	}
@@ -156,4 +150,19 @@ getuser(): string
 	}
 
 	return string buf[0:n];	
+}
+
+netmkaddr(addr, net, svc: string): string
+{
+	if(net == nil)
+		net = "net";
+	(n, nil) := sys->tokenize(addr, "!");
+	if(n <= 1){
+		if(svc== nil)
+			return sys->sprint("%s!%s", net, addr);
+		return sys->sprint("%s!%s!%s", net, addr, svc);
+	}
+	if(svc == nil || n > 2)
+		return addr;
+	return sys->sprint("%s!%s", addr, svc);
 }

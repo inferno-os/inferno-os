@@ -1,7 +1,7 @@
 implement SPKI;
 
 #
-# Copyright © 2004,2008 Vita Nuova Holdings Limited
+# Copyright © 2004 Vita Nuova Holdings Limited
 #
 # To do:
 #	- diagnostics
@@ -14,13 +14,11 @@ include "sys.m";
 include "daytime.m";
 	daytime: Daytime;
 
-include "ipints.m";
-	ipints: IPints;
-	IPint: import ipints;
+include "keyring.m";
+	kr: Keyring;
+	IPint, Certificate, PK, SK: import kr;
 
-include "crypt.m";
-	crypt: Crypt;
-	PK, PKsig, SK: import crypt;
+include "security.m";
 
 include "bufio.m";
 
@@ -39,7 +37,7 @@ debug: con 0;
 init()
 {
 	sys = load Sys Sys->PATH;
-	crypt = load Crypt Crypt->PATH;
+	kr = load Keyring Keyring->PATH;
 	daytime = load Daytime Daytime->PATH;
 	sexprs = load Sexprs Sexprs->PATH;
 	base16 = load Encoding Encoding->BASE16PATH;
@@ -265,24 +263,23 @@ parsesig(e: ref Sexp): ref Signature
 		sigalg: string;
 		if(k != nil)
 			sigalg = k.sigalg();
-		return ref Signature(hash, k, sigalg, array[] of {("", val.asdata())});
+		return ref Signature(hash, k, sigalg, (nil, val.asdata()) :: nil);
 	}
 	sigalg := val.op();
 	if(sigalg == nil)
 		return nil;
-	vals := array[len val.args()] of (string, array of byte);
-	i := 0;
+	rl: list of (string, array of byte);
 	for(els := val.args(); els != nil; els = tl els){
 		g := hd els;
 		if(g.islist()){
 			arg := onlyarg(g);
 			if(arg == nil)
 				return nil;
-			vals[i++] = (g.op(), arg.asdata());
+			rl = (g.op(), arg.asdata()) :: rl;
 		}else
-			vals[i++] = ("", g.asdata());
+			rl = (nil, g.asdata()) :: rl;
 	}
-	return ref Signature(hash, k, sigalg, vals);
+	return ref Signature(hash, k, sigalg, revt(rl));
 }
 
 parsecompound(e: ref Sexp): ref Name
@@ -362,29 +359,30 @@ parsekey(e: ref Sexp): ref Key
 	kl := (hd l).args();
 	if(kl == nil)
 		return nil;
-	els := array[len kl] of (string, array of byte);
-	i := 0;
+	els: list of (string, ref IPint);
 	for(; kl != nil; kl = tl kl){
 		t := (hd kl).op();
 		a := onlyarg(hd kl).asdata();
 		if(a == nil)
 			return nil;
-		els[i++] = (t, a);
-	}
-	pk: ref Crypt->PK;
-	sk: ref Crypt->SK;
-	nbits := 0;
-	if(issk){
-		(sk, pk, nbits) = mksk(alg, els);
-		if(sk == nil){
-			sys->werrstr("can't convert private-key");
+		ip := IPint.bebytestoip(a);
+		if(ip == nil)
 			return nil;
-		}
-	}else{
-		(pk, nbits) = mkpk(alg, els);
-		if(pk == nil){
-			sys->werrstr("can't convert public-key");
-			return  nil;
+		els = (t, ip) :: els;
+	}
+	krp := ref Keyrep.PK(alg, "sdsi", els);
+	(pk, nbits) := krp.mkpk();
+	if(pk == nil){
+		sys->print("can't convert public-key\n");
+		return nil;
+	}
+	sk: ref Keyring->SK;
+	if(issk){
+		krp = ref Keyrep.SK(alg, "sdsi", els);
+		sk = krp.mksk();
+		if(sk == nil){
+			sys->print("can't convert private-key\n");
+			return nil;
 		}
 	}
 #(ref Key(pk,nil,"md5",nil,nil)).hashed("md5");		# TEST
@@ -552,12 +550,12 @@ checksig(c: ref Cert, sig: ref Signature): string
 		return "missing key for signature";
 	if(sig.hash == nil)
 		return "missing hash for signature";
-	if(sig.params == nil)
+	if(sig.sig == nil)
 		return "missing signature value";
 	pk := sig.key.pk;
 	if(pk == nil)
-		return "missing Crypt->PK for signature";	# TO DO (need a way to tell that key was just a hash)
-#rsacomp((hd sig.params).t1, sig.key);
+		return "missing Keyring->PK for signature";	# TO DO (need a way to tell that key was just a hash)
+#rsacomp((hd sig.sig).t1, sig.key);
 #sys->print("nbits= %d\n", sig.key.nbits);
 	(alg, enc, hashalg) := sig.algs();
 	if(alg == nil)
@@ -576,12 +574,10 @@ checksig(c: ref Cert, sig: ref Signature): string
 #dump("check/hashed", hash);
 #dump("check/h", h);
 	ip := IPint.bebytestoip(h);
-	isig := sig2isig(sig);
+	isig := sig2icert(sig, "sdsi", 0);
 	if(isig == nil)
-		return "couldn't convert SPKI signature to Crypt form";
-	if(tagof pk != tagof isig)
-		return "signature and public key are incompatible";
-	if(!crypt->verify(pk, isig, ip))
+		return "couldn't convert SPKI signature to Keyring form";
+	if(!kr->verifym(pk, isig, ip))
 		return "signature does not match";
 	return nil;
 }
@@ -602,7 +598,7 @@ signcert(c: ref Cert, sigalg: string, key: ref Key): (ref Signature, string)
 signbytes(data: array of byte, sigalg: string, key: ref Key): (ref Signature, string)
 {
 	if(key.sk == nil)
-		return (nil, "missing private key for signature");
+		return (nil, "missing Keyring->SK for signature");
 	pubkey := ref *key;
 	pubkey.sk = nil;
 	sig := ref Signature(nil, pubkey, sigalg, nil);	# ref Hash, key, alg, sig: list of (string, array of byte)
@@ -624,16 +620,18 @@ signbytes(data: array of byte, sigalg: string, key: ref Key): (ref Signature, st
 #dump("sign/h", h);
 	sig.hash = ref Hash(hashalg, hash);
 	ip := IPint.bebytestoip(h);
-	pick isig := crypt->sign(key.sk, ip) {
-	RSA =>
-		sig.params = array[] of {("", isig.n.iptobebytes())};
-	DSA =>
-		sig.params = array[] of {("r", isig.r.iptobebytes()), ("s", isig.s.iptobebytes())};
-	Elgamal =>
-		sig.params = array[] of {("r", isig.r.iptobebytes()), ("s", isig.s.iptobebytes())};
-	* =>
-		return (nil, "unsupported signature type");	# don't know the elements
+	icert := kr->signm(key.sk, ip, hashalg);
+	if(icert == nil)
+		return (nil, "signature failed");	# can't happen?
+	(nil, nil, nil, vals) := icert2els(icert);
+	if(vals == nil)
+		return (nil, "couldn't extract values from Keyring Certificate");
+	l: list of (string, array of byte);
+	for(; vals != nil; vals = tl vals){
+		(n, v) := hd vals;
+		l = (f2s("rsa", n), v) :: l;
 	}
+	sig.sig = revt(l);
 	return (sig, nil);
 }
 
@@ -647,11 +645,11 @@ hashbytes(a: array of byte, alg: string): array of byte
 	hash: array of byte;
 	case alg {
 	"md5" =>
-		hash = array[Crypt->MD5dlen] of byte;
-		crypt->md5(a, len a, hash, nil);
+		hash = array[Keyring->MD5dlen] of byte;
+		kr->md5(a, len a, hash, nil);
 	"sha" or "sha1" =>
-		hash = array[Crypt->SHA1dlen] of byte;
-		crypt->sha1(a, len a, hash, nil);
+		hash = array[Keyring->SHA1dlen] of byte;
+		kr->sha1(a, len a, hash, nil);
 	* =>
 		raise "Spki->hashbytes: unknown algorithm: "+alg;
 	}
@@ -703,10 +701,10 @@ sigalgs(alg: string): (string, string, string)
 Signature.sexp(sg: self ref Signature): ref Sexp
 {
 	sv: ref Sexp;
-	if(len sg.params != 1){
+	if(len sg.sig != 1){
 		l: list of ref Sexp;
-		for(i := 0; i < len sg.params; i++){
-			(op, val) := sg.params[i];
+		for(els := sg.sig; els != nil; els = tl els){
+			(op, val) := hd els;
 			if(op != nil)
 				l = ref Sexp.List(ref Sexp.String(op,nil) :: ref Sexp.Binary(val,nil) :: nil) :: l;
 			else
@@ -714,7 +712,7 @@ Signature.sexp(sg: self ref Signature): ref Sexp
 		}
 		sv = ref Sexp.List(rev(l));
 	}else
-		sv = ref Sexp.Binary(sg.params[0].t1, nil);	# no list if signature has one component
+		sv = ref Sexp.Binary((hd sg.sig).t1, nil);	# no list if signature has one component
 	if(sg.sa != nil)
 		sv = ref Sexp.List(ref Sexp.String(sg.sa,nil) :: sv :: nil);
 	return ref Sexp.List(ref Sexp.String("signature",nil) :: sg.hash.sexp() :: sg.key.sexp() ::
@@ -1007,16 +1005,11 @@ Name.eq(a: self ref Name, b: ref Name): int
 Key.public(key: self ref Key): ref Key
 {
 	if(key.sk != nil){
-		pk := key.pk;
-		if(pk == nil){
-			pk = crypt->sktopk(key.sk);
-			if(pk == nil)
-				return nil;
-		}
-		key = ref *key;
-		key.pk = pk;
-		key.sk = nil;
-		return key;
+		pk := ref *key;
+		if(pk.pk == nil)
+			pk.pk = kr->sktopk(pk.sk);
+		pk.sk = nil;
+		return pk;
 	}
 	if(key.pk == nil)
 		return nil;
@@ -1056,9 +1049,9 @@ Key.hashexp(key: self ref Key, alg: string): ref Hash
 Key.sigalg(k: self ref Key): string
 {
 	if(k.pk != nil)
-		alg := pkalg(k.pk);
+		alg := k.pk.sa.name;
 	else if(k.sk != nil)
-		alg = skalg(k.sk);
+		alg = k.sk.sa.name;
 	else
 		return nil;
 	if(k.halg != nil){
@@ -1067,30 +1060,6 @@ Key.sigalg(k: self ref Key): string
 		alg += "-"+k.halg;
 	}
 	return alg;
-}
-
-skalg(sk: ref SK): string
-{
-	if(sk == nil)
-		return "nil";
-	case tagof sk {
-	tagof SK.RSA =>	return "rsa";
-	tagof SK.Elgamal =>	return "elgamal";
-	tagof SK.DSA =>	return "dsa";
-	* =>	return "gok";
-	}
-}
-
-pkalg(pk: ref PK): string
-{
-	if(pk == nil)
-		return "nil";
-	case tagof pk {
-	tagof PK.RSA =>	return "rsa";
-	tagof PK.Elgamal =>	return "elgamal";
-	tagof PK.DSA =>	return "dsa";
-	* =>	return "gok";
-	}
 }
 
 Key.text(k: self ref Key): string
@@ -1109,19 +1078,24 @@ Key.sexp(k: self ref Key): ref Sexp
 		return nil;
 	}
 	sort := "public-key";
-	els: array of (string, ref IPint);
+	els: list of (string, ref IPint);
 	if(k.sk != nil){
-		els = repsk(k.sk);
+		krp := Keyrep.sk(k.sk);
+		if(krp == nil)
+			return nil;
+		els = krp.els;
 		sort = "private-key";
-	}else
-		els = reppk(k.pk);
-	if(els == nil)
-		return nil;
+	}else{
+		krp := Keyrep.pk(k.pk);
+		if(krp == nil)
+			return nil;
+		els = krp.els;
+	}
 	rl: list of ref Sexp;
-	for(i := 0; i < len els; i++){
-		(n, v) := els[i];
+	for(; els != nil; els = tl els){
+		(n, v) := hd els;
 		a := pre0(v.iptobebytes());
-		rl = ref Sexp.List(ref Sexp.String(n,nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
+		rl = ref Sexp.List(ref Sexp.String(f2s("rsa", n),nil) :: ref Sexp.Binary(a,nil) :: nil) :: rl;
 	}
 	return ref Sexp.List(ref Sexp.String(sort, nil) ::
 		ref Sexp.List(ref Sexp.String(k.sigalg(),nil) :: rev(rl)) :: nil);
@@ -1141,27 +1115,8 @@ Key.eq(k1: self ref Key, k2: ref Key): int
 				return 1;
 		}
 	}
-	if(k1.pk != nil && k2.pk != nil){
-		pick rk1 := k1.pk {
-		RSA =>
-			pick rk2 := k2.pk {
-			RSA =>
-				return rk1.n.eq(rk2.n) && rk1.ek.eq(rk2.n);
-			}
-		DSA =>
-			pick rk2 := k2.pk {
-			DSA =>
-				return rk1.p.eq(rk2.p) && rk1.q.eq(rk2.q) &&
-					rk1.alpha.eq(rk2.alpha) && rk1.key.eq(rk2.key);
-			}
-		Elgamal =>
-			pick rk2 := k2.pk {
-			Elgamal =>
-				return rk1.p.eq(rk2.p) && rk1.alpha.eq(rk2.alpha) &&
-					rk1.key.eq(rk2.key);
-			}
-		}
-	}
+	if(k1.pk != nil && k2.pk != nil)
+		return kr->pktostr(k1.pk) == kr->pktostr(k2.pk);	# TO DO
 	return 0;
 }
 
@@ -2077,133 +2032,250 @@ rev[T](l: list of T): list of T
 	return rl;
 }
 
+revt[S,T](l: list of (S,T)): list of (S,T)
+{
+	rl: list of (S,T);
+	for(; l != nil; l = tl l)
+		rl = hd l :: rl;
+	return rl;
+}
+
 #
-# these are in the order given in draft-ietf-spki-cert-structure-06.txt
+# the following should probably be in a separate Limbo library module,
+# or provided in some way directly by Keyring
 #
 
-mkpk(alg: string, els: array of (string, array of byte)): (ref Crypt->PK, int)
-{
-	case alg {
-	"rsa" =>
-		a := getparams(els, "e" :: "n" :: nil);
-		if(a == nil)
-			break;
-		return (ref PK.RSA(a[1], a[0]), a[1].bits());
-	"dsa" =>
-		a := getparams(els, "p" :: "g" :: "q" :: "y" :: nil);
-		if(a == nil)
-			break;
-		return (ref PK.DSA(a[0], a[2], a[1], a[3]), a[0].bits());
-	"elgamal" =>
-		a := getparams(els, "p" :: "g" :: "y" :: nil);
-		if(a == nil)
-			break;
-		return (ref PK.Elgamal(a[0], a[1], a[2]), a[0].bits());
+Keyrep: adt {
+	alg:	string;
+	owner:	string;
+	els:	list of (string, ref IPint);
+	pick{	# keeps a type distance between public and private keys
+	PK =>
+	SK =>
 	}
-	return (nil, 0);
+
+	pk:	fn(pk: ref Keyring->PK): ref Keyrep.PK;
+	sk:	fn(sk: ref Keyring->SK): ref Keyrep.SK;
+	mkpk:	fn(k: self ref Keyrep): (ref Keyring->PK, int);
+	mksk:	fn(k: self ref Keyrep): ref Keyring->SK;
+	get:	fn(k: self ref Keyrep, n: string): ref IPint;
+	getb:	fn(k: self ref Keyrep, n: string): array of byte;
+	eq:	fn(k1: self ref Keyrep, k2: ref Keyrep): int;
+};
+
+#
+# convert an Inferno key into a (name, IPint) representation,
+# where `names' maps between Inferno key component offsets and factotum names
+#
+keyextract(flds: list of string, names: list of (string, int)): list of (string, ref IPint)
+{
+	a := array[len flds] of ref IPint;
+	for(i := 0; i < len a; i++){
+		a[i] = IPint.b64toip(hd flds);
+		flds = tl flds;
+	}
+	rl: list of (string, ref IPint);
+	for(; names != nil; names = tl names){
+		(n, p) := hd names;
+		if(p < len a)
+			rl = (n, a[p]) :: rl;
+	}
+	return revt(rl);
 }
 
-reppk(pk: ref Crypt->PK): array of (string, ref IPint)
+Keyrep.pk(pk: ref Keyring->PK): ref Keyrep.PK
 {
-	pick k := pk {
-	RSA =>
-		return array[] of {("e", k.ek), ("n", k.n)};
-	DSA =>
-		return array[] of {("p", k.p), ("g", k.alpha), ("q", k.q), ("y", k.key)};
-	Elgamal =>
-		return array[] of {("p", k.p), ("g", k.alpha), ("y", k.key)};
+	s := kr->pktostr(pk);
+	(nf, flds) := sys->tokenize(s, "\n");
+	if((nf -= 2) < 0)
+		return nil;
+	case hd flds {
+	"rsa" =>
+		return ref Keyrep.PK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("ek",1), ("n",0)}));
+	"elgamal" =>
+		return ref Keyrep.PK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2)}));
+	"dsa" =>
+		return ref Keyrep.PK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",2), ("q",1), ("key",3)}));
 	* =>
 		return nil;
 	}
 }
 
-mksk(alg: string, els: array of (string, array of byte)): (ref Crypt->SK, ref Crypt->PK, int)
+Keyrep.sk(pk: ref Keyring->SK): ref Keyrep.SK
 {
-	case alg {
+	s := kr->sktostr(pk);
+	(nf, flds) := sys->tokenize(s, "\n");
+	if((nf -= 2) < 0)
+		return nil;
+	# the ordering of components below should match the one defined in the spki spec
+	case hd flds {
 	"rsa" =>
-		a := getparams(els, "e" :: "n" :: "d" :: "p" :: "q" :: "a" :: "b" :: "c" :: nil);
-		if(a == nil)
-			break;
-		# NB: p and q (and a and b) roles are reversed between libsec and pkcs
-		pk := ref PK.RSA(a[1], a[0]);
-		sk := ref SK.RSA(pk, a[2], a[4], a[3], a[6], a[5], a[7]);
-		return (sk, pk, a[1].bits());
-	"dsa" =>
-		a := getparams(els, "p" :: "g" :: "q" :: "y" :: "x" :: nil);
-		if(a == nil)
-			break;
-		pk := ref PK.DSA(a[0], a[2], a[1], a[3]);
-		sk := ref SK.DSA(pk, a[4]);
-		return (sk, pk, a[0].bits());
+		return ref Keyrep.SK(hd flds, hd tl flds,
+			keyextract(tl tl flds,list of {("ek",1), ("n",0), ("!dk",2), ("!q",4), ("!p",3), ("!kq",6), ("!kp",5), ("!c2",7)}));	# see comment elsewhere about p, q
 	"elgamal" =>
-		a := getparams(els, "p" :: "g" :: "y" :: "x" :: nil);
-		if(a == nil)
-			break;
-		pk := ref PK.Elgamal(a[0], a[1], a[2]);
-		sk := ref SK.Elgamal(pk, a[3]);
-		return (sk, pk, a[0].bits());
-	}
-	return (nil, nil, 0);
-}
-
-repsk(sk: ref Crypt->SK): array of (string, ref IPint)
-{
-	pick k := sk {
-	RSA =>
-		return array[] of
-			{("e", k.pk.ek), ("n", k.pk.n), ("d", k.dk), ("p", k.q), ("q", k.p), ("a", k.kq), ("b", k.kp), ("c", k.c2)};
-	DSA =>
-		return array[] of {("p", k.pk.p), ("g", k.pk.alpha), ("q", k.pk.q), ("y", k.pk.key), ("x", k.secret)};
-	Elgamal =>
-		return array[] of {("p", k.pk.p), ("g", k.pk.alpha), ("y", k.pk.key), ("x", k.secret)};
+		return ref Keyrep.SK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",1), ("key",2), ("!secret",3)}));
+	"dsa" =>
+		return ref Keyrep.SK(hd flds, hd tl flds,
+			keyextract(tl tl flds, list of {("p",0), ("alpha",2), ("q",1), ("key",3), ("!secret",4)}));
 	* =>
 		return nil;
 	}
 }
 
-sig2isig(sig: ref Signature): ref Crypt->PKsig
+Keyrep.get(k: self ref Keyrep, n: string): ref IPint
 {
-	if(sig.params == nil)
-		return nil;
-	case sig.algs().t0 {
-	"rsa" =>
-		ip := getp(sig.params, "");
-		if(ip == nil)
-			return nil;
-		return ref PKsig.RSA(ip);
-	"dsa" =>
-		a := getparams(sig.params, "r" :: "s" :: nil);
-		if(a == nil)
-			return nil;
-		return ref PKsig.DSA(a[0], a[1]);
-	"elgamal" =>
-		a := getparams(sig.params, "r" :: "s" :: nil);
-		if(a == nil)
-			return nil;
-		return ref PKsig.Elgamal(a[0], a[1]);
-	* =>
-		return nil;
-	}
-}
-
-getparams(v: array of (string, array of byte), names: list of string): array of ref IPint
-{
-	r := array[len names] of ref IPint;
-	for(i := 0; names != nil; names = tl names){
-		r[i] = getp(v, hd names);
-		if(r[i] == nil)
-			return nil;
-		i++;
-	}
-	return r;
-}
-
-getp(v: array of (string, array of byte), name: string): ref IPint
-{
-	for(i := 0; i < len v; i++)
-		if(v[i].t0 == name)
-			return IPint.bebytestoip(v[i].t1);
+	n1 := f2s("rsa", n);
+	for(el := k.els; el != nil; el = tl el)
+		if((hd el).t0 == n || (hd el).t0 == n1)
+			return (hd el).t1;
 	return nil;
+}
+
+Keyrep.getb(k: self ref Keyrep, n: string): array of byte
+{
+	v := k.get(n);
+	if(v == nil)
+		return nil;
+	return pre0(v.iptobebytes());
+}
+
+Keyrep.mkpk(k: self ref Keyrep): (ref Keyring->PK, int)
+{
+	case k.alg {
+	"rsa" =>
+		e := k.get("ek");
+		n := k.get("n");
+		if(e == nil || n == nil)
+			return (nil, 0);
+		return (kr->strtopk(sys->sprint("rsa\n%s\n%s\n%s\n", k.owner, n.iptob64(), e.iptob64())), n.bits());
+	* =>
+		raise "Keyrep: unknown algorithm";
+	}
+}
+
+Keyrep.mksk(k: self ref Keyrep): ref Keyring->SK
+{
+	case k.alg {
+	"rsa" =>
+		e := k.get("ek");
+		n := k.get("n");
+		dk := k.get("!dk");
+		p := k.get("!p");
+		q := k.get("!q");
+		kp := k.get("!kp");
+		kq := k.get("!kq");
+		c12 := k.get("!c2");
+		if(e == nil || n == nil || dk == nil || p == nil || q == nil || kp == nil || kq == nil || c12 == nil)
+			return nil;
+		return kr->strtosk(sys->sprint("rsa\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n",
+			k.owner, n.iptob64(), e.iptob64(), dk.iptob64(), p.iptob64(), q.iptob64(),
+			kp.iptob64(), kq.iptob64(), c12.iptob64()));
+	* =>
+		raise "Keyrep: unknown algorithm";
+	}
+}
+
+#
+# account for naming differences between keyring and factotum, and spki.
+# this might not be the best place for this.
+#
+s2f(s: string): string
+{
+	case s {
+	"e" => return "ek";
+	"d" => return "!dk";
+	"p" => return "!q";		# NB: p and q (kp and kq) roles are reversed between libsec and pkcs
+	"q" => return "!p";
+	"a" => return "!kq";
+	"b" => return "!kp";
+	"c" => return "!c2";
+	* =>	return s;
+	}
+}
+
+f2s(alg: string, s: string): string
+{
+	case alg {
+	"rsa" =>
+		case s {
+		"ek" =>	return "e";
+		"!p" =>	return "q";	# see above
+		"!q" =>	return "p";
+		"!dk" =>	return "d";
+		"!kp" =>	return "b";
+		"!kq" =>	return "a";
+		"!c2" =>	return "c";
+		}
+	"dsa" =>
+		case s {
+		"p" or "q" =>	return s;
+		"alpha" =>	return "g";
+		"key" =>	return "y";
+		}
+	* =>
+		;
+	}
+	if(s != nil && s[0] == '!')
+		return s[1:];
+	return s;
+}
+
+Keyrep.eq(k1: self ref Keyrep, k2: ref Keyrep): int
+{
+	# n⁲ but n is small
+	for(l1 := k1.els; l1 != nil; l1 = tl l1){
+		(n, v1) := hd l1;
+		v2 := k2.get(n);
+		if(v2 == nil || !v1.eq(v2))
+			return 0;
+	}
+	for(l2 := k2.els; l2 != nil; l2 = tl l2)
+		if(k1.get((hd l2).t0) == nil)
+			return 0;
+	return 1;
+}
+
+sig2icert(sig: ref Signature, signer: string, exp: int): ref Keyring->Certificate
+{
+	if(sig.sig == nil)
+		return nil;
+	s := sys->sprint("%s\n%s\n%s\n%d\n%s\n", "rsa", sig.hash.alg, signer, exp, base64->enc((hd sig.sig).t1));
+#sys->print("alg %s *** %s\n", sig.sa, base64->enc((hd sig.sig).t1));
+	return kr->strtocert(s);
+}
+
+icert2els(cert: ref Keyring->Certificate): (string, string, string, list of (string, array of byte))
+{
+	s := kr->certtoattr(cert);
+	if(s == nil)
+		return (nil, nil, nil, nil);
+	(nil, l) := sys->tokenize(s, " ");	# really need parseattr, and a better interface
+	vals: list of (string, array of byte);
+	alg, hashalg, signer: string;
+	for(; l != nil; l = tl l){
+		(nf, fld) := sys->tokenize(hd l, "=");
+		if(nf != 2)
+			continue;
+		case hd fld {
+		"sigalg" =>
+			(nf, fld) = sys->tokenize(hd tl fld, "-");
+			if(nf != 2)
+				continue;
+			alg = hd fld;
+			hashalg = hd tl fld;
+		"signer" =>
+			signer = hd tl fld;
+		"expires" =>
+			;	# don't care
+		* =>
+			vals = (hd fld, base16->dec(hd tl fld)) :: vals;
+		}
+	}
+	return (alg, hashalg, signer, revt(vals));
 }
 
 #
@@ -2271,27 +2343,23 @@ pkcs1_encode(ha: string, hash: array of byte, mlen: int): array of byte
 #
 rsacomp(block: array of byte, akey: ref Key): array of byte
 {
-	pick pk := akey.pk {
-	RSA =>
-		x := IPint.bebytestoip(block);
-		y := x.expmod(pk.ek, pk.n);
-		ybytes := y.iptobebytes();
-	#dump("rsacomp", ybytes);
-		k := 1024; # key.modlen;
-		ylen := len ybytes;
-		if(ylen < k) {
-			a := array[k] of { * =>  byte 0};
-			a[k-ylen:] = ybytes[0:];
-			ybytes = a;
-		}
-		else if(ylen > k) {
-			# assume it has leading zeros (mod should make it so)
-			a := array[k] of byte;
-			a[0:] = ybytes[ylen-k:];
-			ybytes = a;
-		}
-		return ybytes;
-	* =>
-		return nil;
+	key := Keyrep.pk(akey.pk);
+	x := kr->IPint.bebytestoip(block);
+	y := x.expmod(key.get("e"), key.get("n"));
+	ybytes := y.iptobebytes();
+#dump("rsacomp", ybytes);
+	k := 1024; # key.modlen;
+	ylen := len ybytes;
+	if(ylen < k) {
+		a := array[k] of { * =>  byte 0};
+		a[k-ylen:] = ybytes[0:];
+		ybytes = a;
 	}
+	else if(ylen > k) {
+		# assume it has leading zeros (mod should make it so)
+		a := array[k] of byte;
+		a[0:] = ybytes[ylen-k:];
+		ybytes = a;
+	}
+	return ybytes;
 }

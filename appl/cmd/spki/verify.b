@@ -11,11 +11,9 @@ include "sys.m";
 
 include "draw.m";
 
-include "ipints.m";
-	ipints: IPints;
-	IPint: import ipints;
-
-include "crypt.m";
+include "keyring.m";
+	kr: Keyring;
+	IPint: import kr;
 
 include "bufio.m";
 	bufio: Bufio;
@@ -46,7 +44,7 @@ debug := 0;
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
-	ipints = load IPints IPints->PATH;
+	kr = load Keyring Keyring->PATH;
 	bufio = load Bufio Bufio->PATH;
 	sexprs = load Sexprs Sexprs->PATH;
 	spki = load SPKI SPKI->PATH;
