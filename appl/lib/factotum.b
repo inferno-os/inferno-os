@@ -11,6 +11,8 @@ include "sys.m";
 
 include "string.m";
 
+include "encoding.m";
+
 include "factotum.m";
 
 debug := 0;
@@ -183,12 +185,37 @@ rpc(afd: ref Sys->FD, verb: string, a: array of byte): (string, array of byte)
 
 Authinfo.read(fd: ref Sys->FD): ref Authinfo
 {
-	(o, a) := rpc(fd, "authinfo", nil);
-	if(o != "ok")
+	(o, a) := rpc(fd, "authinfo", nil);	# deprecated in p9p factotum
+	e := sys->sprint("%r");
+	attrs := rpcattrs(fd);
+	cuid := findattrval(attrs, "cuid");
+	suid := findattrval(attrs, "suid");
+	secret16 := findattrval(attrs, "secret");
+	secret: array of byte;
+	if(secret16 != nil){
+		enc16 := load Encoding Encoding->BASE16PATH;
+		if(enc16 != nil)
+			secret = enc16->dec(secret16);
+	}
+	cap := findattrval(attrs, "cap");
+	if(o != "ok"){
+		if(cuid != nil || suid != nil || secret != nil || cap != nil || attrs != nil)
+			return ref Authinfo(cuid, suid, cap, secret, attrs);
+		sys->werrstr(e);
 		return nil;
+	}
 	(n, ai) := Authinfo.unpack(a);
 	if(n <= 0)
 		sys->werrstr("bad auth info from factotum");
+	ai.attrs = attrs;
+	if(ai.cuid == nil)
+		ai.cuid = cuid;
+	if(ai.suid == nil)
+		ai.suid = suid;
+	if(ai.cap == nil)
+		ai.cap = cap;
+	if(ai.secret == nil)
+		ai.secret = secret;
 	return ai;
 }
 

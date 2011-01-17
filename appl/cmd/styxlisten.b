@@ -1,6 +1,8 @@
 implement Styxlisten;
 include "sys.m";
 	sys: Sys;
+include "dial.m";
+	dial: Dial;
 include "draw.m";
 include "keyring.m";
 	keyring: Keyring;
@@ -28,6 +30,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	auth = load Auth Auth->PATH;
 	if (auth == nil)
 		badmodule(Auth->PATH);
+	dial = load Dial Dial->PATH;
+	if (dial == nil)
+		badmodule(Dial->PATH);
 	if ((e := auth->init()) != nil)
 		error("auth init failed: " + e);
 	keyring = load Keyring Keyring->PATH;
@@ -76,7 +81,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	arg = nil;
 	if (doauth && algs == nil)
 		algs = getalgs();
-	addr := netmkaddr(hd argv, "tcp", "styx");
+	addr := dial->netmkaddr(hd argv, "tcp", "styx");
 	cmd := tl argv;
 
 	authinfo: ref Keyring->Authinfo;
@@ -88,8 +93,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			error(sys->sprint("cannot read %s: %r", keyfile));
 	}
 
-	(ok, c) := sys->announce(addr);
-	if (ok == -1)
+	c := dial->announce(addr);
+	if (c == nil)
 		error(sys->sprint("cannot announce on %s: %r", addr));
 	if(!trusted){
 		sys->unmount(nil, "/mnt/keys");	# should do for now
@@ -103,17 +108,17 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		spawn listener(c, popen(ctxt, cmd, lsync), authinfo, algs, lsync);
 }
 
-listener(c: Sys->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
+listener(c: ref Dial->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
 {
 	lsync <-= sys->pctl(0, nil);
 	for (;;) {
-		(n, nc) := sys->listen(c);
-		if (n == -1)
+		nc := dial->listen(c);
+		if (nc == nil)
 			error(sys->sprint("listen failed: %r"));
 		if (verbose)
 			sys->fprint(stderr(), "styxlisten: got connection from %s",
 					readfile(nc.dir + "/remote"));
-		dfd := sys->open(nc.dir + "/data", Sys->ORDWR);
+		dfd := dial->accept(nc);
 		if (dfd != nil) {
 			if(nc.cfd != nil)
 				sys->fprint(nc.cfd, "keepalive");
@@ -244,19 +249,4 @@ getalgs(): list of string
 stderr(): ref Sys->FD
 {
 	return sys->fildes(2);
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

@@ -9,6 +9,9 @@
 #include        "ip.h"
 #include        "error.h"
 
+typedef int socklen_t;	/* Windows is leading edge as always */
+
+
 extern int SOCK_SELECT;
 
 char Enotv4[] = "address not IPv4";

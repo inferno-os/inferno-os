@@ -5,8 +5,12 @@ include "sys.m";
 
 include "draw.m";
 
-include "keyring.m";
-	kr: Keyring;
+include "ipints.m";
+	ipints: IPints;
+	IPint: import ipints;
+
+include "crypt.m";
+	crypt: Crypt;
 
 include "arg.m";
 
@@ -18,7 +22,8 @@ Rsagen: module
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
-	kr = load Keyring Keyring->PATH;
+	ipints = load IPints IPints->PATH;
+	crypt = load Crypt Crypt->PATH;
 
 	arg := load Arg Arg->PATH;
 	arg->init(args);
@@ -43,34 +48,31 @@ init(nil: ref Draw->Context, args: list of string)
 		arg->usage();
 	arg = nil;
 
-	sk := kr->genSK("rsa", "", nbits);
+	sk := crypt->rsagen(nbits, 6, 0);
 	if(sk == nil)
 		error("unable to generate key");
-	s := kr->sktoattr(sk);
-	# need to fix the attr interface so the following isn't needed:
-	s = skip(s, "alg");
-	s = skip(s, "owner");
 	if(tag != nil)
 		tag = " "+tag;
-	a := sys->aprint("key proto=rsa%s size=%d %s\n", tag, nbits, s);
+	s := add("ek", sk.pk.ek);
+	s += add("n", sk.pk.n);
+	s += add("!dk", sk.dk);
+	s += add("!p", sk.p);
+	s += add("!q", sk.q);
+	s += add("!kp", sk.kp);
+	s += add("!kq", sk.kq);
+	s += add("!c2", sk.c2);
+	a := sys->aprint("key proto=rsa%s size=%d%s\n", tag, sk.pk.n.bits(), s);
 	if(sys->write(sys->fildes(1), a, len a) != len a)
 		error(sys->sprint("error writing key: %r"));
-}
-
-skip(s: string, attr: string): string
-{
-	for(i := 0; i < len s && s[i] != ' '; i++)
-		{}
-	if(i >= len s)
-		return s;
-	(nf, fld) := sys->tokenize(s[0:i], "=");
-	if(nf == 2 && hd fld == attr)
-		s = s[i+1:];
-	return s;
 }
 
 error(s: string)
 {
 	sys->fprint(sys->fildes(2), "rsagen: %s\n", s);
 	raise "fail:error";
+}
+
+add(name: string, b: ref IPint): string
+{
+	return " "+name+"="+b.iptostr(16);
 }

@@ -1,0 +1,29 @@
+<../../../mkconfig
+
+TARG=\
+	authpassword.dis\
+	authrsa.dis\
+	authtis.dis\
+	cipher3des.dis\
+	cipherblowfish.dis\
+	cipherdes.dis\
+	ciphernone.dis\
+	cipherrc4.dis\
+	sshio.dis\
+	sshserve.dis\
+#	ssh.dis\
+
+SYSMODULES=\
+	arg.m\
+	keyring.m\
+	security.m\
+	rand.m\
+	sys.m\
+	draw.m\
+
+MODULES=\
+	sshio.m\
+
+DISBIN=$ROOT/dis/ssh
+
+<$ROOT/mkfiles/mkdis

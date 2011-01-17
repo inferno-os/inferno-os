@@ -3,9 +3,9 @@ implement Shellbuiltin;
 include "sys.m";
 	sys: Sys;
 include "draw.m";
-include "keyring.m";
-	keyring: Keyring;
-	IPint: import keyring;
+include "ipints.m";
+	ipints: IPints;
+	IPint: import ipints;
 include "sh.m";
 	sh: Sh;
 	Listnode, Context: import sh;
@@ -17,7 +17,7 @@ One: Big;
 initbuiltin(ctxt: ref Context, shmod: Sh): string
 {
 	sys = load Sys Sys->PATH;
-	keyring = load Keyring Keyring->PATH;
+	ipints = load IPints IPints->PATH;
 	sh = shmod;
 	myself = load Shellbuiltin "$self";
 	if (myself == nil)
@@ -233,7 +233,7 @@ oper(ctxt: ref Context, args: list of Big, op, lastop, lastn: int,
 	BITS =>	r = mki(n1.bits());
 	EXPMOD =>	r = n1.expmod(n2, n3);
 	EXP =>	r = n1.expmod(n2, nil);
-	RAND =>	r = IPint.random(0, n1.iptoint());
+	RAND =>	r = IPint.random(n1.iptoint());
 	INVERT =>	r = n1.invert(n2);
 	}
 	return r :: stk;

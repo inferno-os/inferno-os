@@ -12,6 +12,7 @@ Authinfo: adt{
     suid: string;    # ID on server
     cap:  string;    # capability (only valid on server side)
     secret: array of byte;   # key for encryption
+    attrs:  list of ref Attr;  # attributes after authentication
 };
 
 AuthRpcMax: con \fR...\fP;
@@ -115,6 +116,8 @@ value containing the agreed user IDs, a capability for
 that is valid only on the server, and an array of bytes
 containing a shared secret that can be used by client
 and server to create encryption and hashing keys for the conversation.
+There might also be an optional list of attributes provided during the authentication protocol;
+which of those attributes, if any, are authenticated depends on the protocol.
 .PP
 .B Getuserpasswd
 returns a tuple

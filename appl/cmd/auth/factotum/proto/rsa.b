@@ -1,6 +1,10 @@
 implement Authproto;
 
-# SSH RSA authentication.
+# SSH RSA authentication
+#
+# this version is compatible with Plan 9 factotum
+# Plan 9 port's factotum works differently, and eventually
+# we'll support both (the role= attribute distinguishes the cases), but not today
 #
 # Client protocol:
 #	read public key
@@ -16,35 +20,38 @@ include "sys.m";
 
 include "draw.m";
 
-include "keyring.m";
-	kr: Keyring;
-	IPint, RSAsk, RSApk: import kr;
+include "ipints.m";
+	ipints: IPints;
+	IPint: import ipints;
+include "crypt.m";
+	crypt: Crypt;
+	SK, PK: import crypt;
 
 include "../authio.m";
 	authio: Authio;
 	Aattr, Aval, Aquery: import Authio;
-	Attr, IO, Key, Authinfo: import authio;
+	Attr, IO, Key: import authio;
 	eqbytes, memrandom: import authio;
-	lookattrval: import authio;
+	findattrval: import authio;
 
 
 init(f: Authio): string
 {
 	authio = f;
 	sys = load Sys Sys->PATH;
-	kr = load Keyring Keyring->PATH;
-#	base16 = load Encoding Encoding->BASE16PATH;
+	ipints = load IPints IPints->PATH;
+	crypt = load Crypt Crypt->PATH;
 	return nil;
 }
 
 interaction(attrs: list of ref Attr, io: ref IO): string
 {
-	role := lookattrval(attrs, "role");
+	role := findattrval(attrs, "role");
 	if(role == nil)
 		return "role not specified";
 	if(role != "client")
 		return "only client role supported";
-	sk: ref RSAsk;
+	sk: ref SK.RSA;
 	keys: list of ref Key;
 	err: string;
 	for(;;){
@@ -67,7 +74,7 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 					io.error("invalid challenge value");
 					continue;
 				}
-				m := sk.decrypt(chal);
+				m := crypt->rsadecrypt(sk, chal);
 				b := array of byte m.iptostr(16);
 				io.write(b, len b);
 				io.done(nil);
@@ -89,30 +96,33 @@ waitread(io: ref IO)
 
 Badkey: exception(string);
 
-ipint(attrs: list of ref Attr, name: string): ref IPint raises Badkey
+kv(key: ref Key, name: string): ref IPint raises Badkey
 {
-	s := lookattrval(attrs, name);
-	if(s == nil)
+	if(name[0] == '!')
+		a := authio->findattrval(key.secrets, name);
+	else
+		a = authio->findattrval(key.attrs, name);
+	if(a == nil)
 		raise Badkey("missing attribute "+name);
-	m := IPint.strtoip(s, 16);
+	m := IPint.strtoip(a, 16);
 	if(m == nil)
-		raise Badkey("invalid value for "+name);
+		raise Badkey("bad value for "+name);
 	return m;
 }
 
-keytorsa(k: ref Key): (ref RSAsk, string)
+keytorsa(k: ref Key): (ref SK.RSA, string)
 {
-	sk := ref RSAsk;
-	sk.pk = ref RSApk;
+	sk := ref SK.RSA;
+	sk.pk = ref PK.RSA;
 	{
-		sk.pk.ek = ipint(k.attrs, "ek");
-		sk.pk.n = ipint(k.attrs, "n");
-		sk.dk = ipint(k.secrets, "!dk");
-		sk.p = ipint(k.secrets, "!p");
-		sk.q = ipint(k.secrets, "!q");
-		sk.kp = ipint(k.secrets, "!kp");
-		sk.kq = ipint(k.secrets, "!kq");
-		sk.c2 = ipint(k.secrets, "!c2");
+		sk.pk.ek = kv(k, "ek");
+		sk.pk.n = kv(k, "n");
+		sk.dk = kv(k, "!dk");
+		sk.p = kv(k, "!p");
+		sk.q = kv(k, "!q");
+		sk.kp = kv(k, "!kp");
+		sk.kq = kv(k, "!kq");
+		sk.c2 = kv(k, "!c2");
 	}exception e{
 	Badkey =>
 		return (nil, "rsa key "+e);

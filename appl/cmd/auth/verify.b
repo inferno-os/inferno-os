@@ -3,8 +3,8 @@ implement Verify;
 include "sys.m";
 	sys: Sys;
 
-include "keyring.m";
-	kr: Keyring;
+include "msgio.m";
+	msgio: Msgio;
 
 include "draw.m";
 
@@ -25,7 +25,8 @@ pro := array[] of {
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
-	kr = load Keyring Keyring->PATH;
+	msgio = load Msgio Msgio->PATH;
+	msgio->init();
 
 	stdin = sys->fildes(0);
 	stderr = sys->fildes(2);
@@ -50,8 +51,8 @@ init(nil: ref Draw->Context, args: list of string)
 		sys->fprint(stderr, "signer: can't open %s: %r\n", file);
 		raise "fail:no certificate";
 	}
-	certbuf := kr->getmsg(fd);
-	digest := kr->getmsg(fd);
+	certbuf := msgio->getmsg(fd);
+	digest := msgio->getmsg(fd);
 	if(digest == nil || certbuf == nil){
 		sys->fprint(stderr, "signer: can't read %s: %r\n", file);
 		raise "fail:bad certificate";
@@ -78,7 +79,7 @@ init(nil: ref Draw->Context, args: list of string)
 		sys->fprint(stderr, "signer: can't create %s: %r\n", nfile);
 		raise "fail:create";
 	}
-	if(kr->sendmsg(fd, certbuf, len certbuf) < 0){
+	if(msgio->sendmsg(fd, certbuf, len certbuf) < 0){
 		sys->fprint(stderr, "signer: can't write %s: %r\n", nfile);
 		raise "fail:write";
 	}
