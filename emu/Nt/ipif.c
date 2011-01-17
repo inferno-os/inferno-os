@@ -11,6 +11,15 @@
 
 extern int SOCK_SELECT;
 
+char Enotv4[] = "address not IPv4";
+
+static void
+ipw6(uchar *a, ulong w)
+{
+	memmove(a, v4prefix, IPv4off);
+	memmove(a+IPv4off, &w, IPv4addrlen);
+}
+
 int
 so_socket(int type)
 {
@@ -31,10 +40,10 @@ so_socket(int type)
 		oserror();
 	if(type == SOCK_DGRAM){
 		one = 1;
-		setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (char*)&one, sizeof (one));
+		setsockopt(fd, SOL_SOCKET, SO_BROADCAST, (char*)&one, sizeof(one));
 	}else{
 		one = 1;
-		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&one, sizeof(one));
+		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char*)&one, sizeof(one));
 	}
 	return fd;
 }
@@ -45,7 +54,7 @@ so_send(int sock, void *va, int len, void *hdr, int hdrlen)
 	int r;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
-	char *h = hdr;
+	uchar *h = hdr;
 
 
 	osenter();
@@ -113,7 +122,7 @@ so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 	int r, l;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
-	char h[Udphdrlen];
+	uchar h[Udphdrlen];
 
 	osenter();
 	if(doselect(sock) < 0) {
@@ -130,7 +139,7 @@ so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 			memset(h, 0, sizeof(h));
 			switch(hdrlen){
 			case OUdphdrlenv4:
-				memmove(h, &sin->sin_addr, 4);
+				memmove(h, &sin->sin_addr, IPv4addrlen);
 				memmove(h+2*IPv4addrlen, &sin->sin_port, 2);
 				break;
 			case OUdphdrlen:
@@ -144,6 +153,7 @@ so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 			}
 
 			/* alas there's no way to get the local addr/port correctly.  Pretend. */
+			memset(&sa, 0, sizeof(sa));
 			getsockname(sock, &sa, &l);
 			switch(hdrlen){
 			case OUdphdrlenv4:
@@ -174,11 +184,14 @@ so_close(int sock)
 }
 
 void
-so_connect(int fd, unsigned long raddr, unsigned short rport)
+so_connect(int fd, uchar* raddr, unsigned short rport)
 {
 	int r;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
+
+	if(!isv4(raddr))
+		error(Enotv4);
 
 	memset(&sa, 0, sizeof(sa));
 	sin = (struct sockaddr_in*)&sa;
@@ -194,22 +207,21 @@ so_connect(int fd, unsigned long raddr, unsigned short rport)
 }
 
 void
-so_getsockname(int fd, unsigned long *laddr, unsigned short *lport)
+so_getsockname(int fd, uchar *laddr, unsigned short *lport)
 {
-	int len;
+	socklen_t len;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
-
-	sin = (struct sockaddr_in*)&sa;
 
 	len = sizeof(sa);
 	if(getsockname(fd, &sa, &len) < 0)
 		oserror();
 
+	sin = (struct sockaddr_in*)&sa;
 	if(sin->sin_family != AF_INET || len != sizeof(*sin))
-		error("not AF_INET");
+		error(Enotv4);
 
-	*laddr = nhgetl(&sin->sin_addr.s_addr);
+	ipw6(laddr, sin->sin_addr.s_addr);
 	*lport = nhgets(&sin->sin_port);
 }
 
@@ -226,9 +238,10 @@ so_listen(int fd)
 }
 
 int
-so_accept(int fd, unsigned long *raddr, unsigned short *rport)
+so_accept(int fd, uchar *raddr, unsigned short *rport)
 {
-	int nfd, len;
+	int nfd;
+	socklen_t len;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
 
@@ -246,15 +259,15 @@ so_accept(int fd, unsigned long *raddr, unsigned short *rport)
 		oserror();
 
 	if(sin->sin_family != AF_INET || len != sizeof(*sin))
-		error("not AF_INET");
+		error(Enotv4);
 
-	*raddr = nhgetl(&sin->sin_addr.s_addr);
+	ipw6(raddr, sin->sin_addr.s_addr);
 	*rport = nhgets(&sin->sin_port);
 	return nfd;
 }
 
 void
-so_bind(int fd, int su, unsigned long addr, unsigned short port)
+so_bind(int fd, int su, uchar *addr, unsigned short port)
 {
 	int i, one;
 	struct sockaddr sa;
@@ -272,7 +285,7 @@ so_bind(int fd, int su, unsigned long addr, unsigned short port)
 		for(i = 600; i < 1024; i++) {
 			memset(&sa, 0, sizeof(sa));
 			sin->sin_family = AF_INET;
-			hnputl(&sin->sin_addr.s_addr, addr);
+			memmove(&sin->sin_addr.s_addr, addr+IPv4off, IPv4addrlen);
 			hnputs(&sin->sin_port, i);
 
 			if(bind(fd, &sa, sizeof(sa)) >= 0)	
@@ -283,7 +296,7 @@ so_bind(int fd, int su, unsigned long addr, unsigned short port)
 
 	memset(&sa, 0, sizeof(sa));
 	sin->sin_family = AF_INET;
-	hnputl(&sin->sin_addr.s_addr, addr);
+	memmove(&sin->sin_addr.s_addr, addr+IPv4off, IPv4addrlen);
 	hnputs(&sin->sin_port, port);
 
 	if(bind(fd, &sa, sizeof(sa)) < 0)
@@ -294,7 +307,8 @@ int
 so_gethostbyname(char *host, char**hostv, int n)
 {
 	int i;
-	unsigned char buf[32], *p;
+	char buf[32];
+	uchar *p;
 	struct hostent *hp;
 
 	hp = gethostbyname(host);
@@ -302,7 +316,7 @@ so_gethostbyname(char *host, char**hostv, int n)
 		return 0;
 
 	for(i = 0; hp->h_addr_list[i] && i < n; i++) {
-		p = hp->h_addr_list[i];
+		p = (uchar*)hp->h_addr_list[i];
 		sprint(buf, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
 		hostv[i] = strdup(buf);
 		if(hostv[i] == 0)
@@ -322,7 +336,7 @@ so_gethostbyaddr(char *addr, char **hostv, int n)
 	if(straddr == -1)
 		return 0;
 
-	hp = gethostbyaddr((char *)&straddr, sizeof (straddr), AF_INET);
+	hp = gethostbyaddr((char *)&straddr, sizeof(straddr), AF_INET);
 	if(hp == 0)
 		return 0;
 
