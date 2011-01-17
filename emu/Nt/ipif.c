@@ -122,7 +122,8 @@ doselect(int sock)
 int
 so_recv(int sock, void *va, int len, void *hdr, int hdrlen)
 {
-	int r, l;
+	int r;
+	socklen_t l;
 	struct sockaddr sa;
 	struct sockaddr_in *sin;
 	uchar h[Udphdrlen];
@@ -187,7 +188,7 @@ so_close(int sock)
 }
 
 void
-so_connect(int fd, uchar* raddr, unsigned short rport)
+so_connect(int fd, uchar *raddr, ushort rport)
 {
 	int r;
 	struct sockaddr sa;
@@ -210,7 +211,7 @@ so_connect(int fd, uchar* raddr, unsigned short rport)
 }
 
 void
-so_getsockname(int fd, uchar *laddr, unsigned short *lport)
+so_getsockname(int fd, uchar *laddr, ushort *lport)
 {
 	socklen_t len;
 	struct sockaddr sa;
@@ -241,7 +242,7 @@ so_listen(int fd)
 }
 
 int
-so_accept(int fd, uchar *raddr, unsigned short *rport)
+so_accept(int fd, uchar *raddr, ushort *rport)
 {
 	int nfd;
 	socklen_t len;
@@ -270,7 +271,7 @@ so_accept(int fd, uchar *raddr, unsigned short *rport)
 }
 
 void
-so_bind(int fd, int su, uchar *addr, unsigned short port)
+so_bind(int fd, int su, uchar *addr, ushort port)
 {
 	int i, one;
 	struct sockaddr sa;
