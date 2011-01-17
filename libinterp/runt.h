@@ -19,27 +19,16 @@ typedef struct Prefab_Layout Prefab_Layout;
 typedef struct Prefab_Element Prefab_Element;
 typedef struct Prefab_Compound Prefab_Compound;
 typedef struct Tk_Toplevel Tk_Toplevel;
-typedef struct Keyring_IPint Keyring_IPint;
-typedef struct Keyring_SigAlg Keyring_SigAlg;
-typedef struct Keyring_PK Keyring_PK;
-typedef struct Keyring_SK Keyring_SK;
-typedef struct Keyring_Certificate Keyring_Certificate;
-typedef struct Keyring_DigestState Keyring_DigestState;
-typedef struct Keyring_AESstate Keyring_AESstate;
-typedef struct Keyring_DESstate Keyring_DESstate;
-typedef struct Keyring_IDEAstate Keyring_IDEAstate;
-typedef struct Keyring_RC4state Keyring_RC4state;
-typedef struct Keyring_BFstate Keyring_BFstate;
-typedef struct Keyring_Authinfo Keyring_Authinfo;
-typedef struct Keyring_RSApk Keyring_RSApk;
-typedef struct Keyring_RSAsk Keyring_RSAsk;
-typedef struct Keyring_RSAsig Keyring_RSAsig;
-typedef struct Keyring_DSApk Keyring_DSApk;
-typedef struct Keyring_DSAsk Keyring_DSAsk;
-typedef struct Keyring_DSAsig Keyring_DSAsig;
-typedef struct Keyring_EGpk Keyring_EGpk;
-typedef struct Keyring_EGsk Keyring_EGsk;
-typedef struct Keyring_EGsig Keyring_EGsig;
+typedef struct IPints_IPint IPints_IPint;
+typedef struct Crypt_DigestState Crypt_DigestState;
+typedef struct Crypt_AESstate Crypt_AESstate;
+typedef struct Crypt_DESstate Crypt_DESstate;
+typedef struct Crypt_IDEAstate Crypt_IDEAstate;
+typedef struct Crypt_RC4state Crypt_RC4state;
+typedef struct Crypt_BFstate Crypt_BFstate;
+typedef struct Crypt_PK Crypt_PK;
+typedef struct Crypt_SK Crypt_SK;
+typedef struct Crypt_PKsig Crypt_PKsig;
 typedef struct Loader_Inst Loader_Inst;
 typedef struct Loader_Typedesc Loader_Typedesc;
 typedef struct Loader_Link Loader_Link;
@@ -280,158 +269,136 @@ typedef String* Tk_Toplevel_wreq;
 #define Tk_Toplevel_wreq_map {0x80,}
 #define Tk_Toplevel_size 32
 #define Tk_Toplevel_map {0xf0,}
-struct Keyring_IPint
+struct IPints_IPint
 {
 	WORD	x;
 };
-#define Keyring_IPint_size 4
-#define Keyring_IPint_map {0}
-struct Keyring_SigAlg
-{
-	String*	name;
-};
-#define Keyring_SigAlg_size 4
-#define Keyring_SigAlg_map {0x80,}
-struct Keyring_PK
-{
-	Keyring_SigAlg*	sa;
-	String*	owner;
-};
-#define Keyring_PK_size 8
-#define Keyring_PK_map {0xc0,}
-struct Keyring_SK
-{
-	Keyring_SigAlg*	sa;
-	String*	owner;
-};
-#define Keyring_SK_size 8
-#define Keyring_SK_map {0xc0,}
-struct Keyring_Certificate
-{
-	Keyring_SigAlg*	sa;
-	String*	ha;
-	String*	signer;
-	WORD	exp;
-};
-#define Keyring_Certificate_size 16
-#define Keyring_Certificate_map {0xe0,}
-struct Keyring_DigestState
+#define IPints_IPint_size 4
+#define IPints_IPint_map {0}
+struct Crypt_DigestState
 {
 	WORD	x;
 };
-#define Keyring_DigestState_size 4
-#define Keyring_DigestState_map {0}
-struct Keyring_AESstate
+#define Crypt_DigestState_size 4
+#define Crypt_DigestState_map {0}
+struct Crypt_AESstate
 {
 	WORD	x;
 };
-#define Keyring_AESstate_size 4
-#define Keyring_AESstate_map {0}
-struct Keyring_DESstate
+#define Crypt_AESstate_size 4
+#define Crypt_AESstate_map {0}
+struct Crypt_DESstate
 {
 	WORD	x;
 };
-#define Keyring_DESstate_size 4
-#define Keyring_DESstate_map {0}
-struct Keyring_IDEAstate
+#define Crypt_DESstate_size 4
+#define Crypt_DESstate_map {0}
+struct Crypt_IDEAstate
 {
 	WORD	x;
 };
-#define Keyring_IDEAstate_size 4
-#define Keyring_IDEAstate_map {0}
-struct Keyring_RC4state
+#define Crypt_IDEAstate_size 4
+#define Crypt_IDEAstate_map {0}
+struct Crypt_RC4state
 {
 	WORD	x;
 };
-#define Keyring_RC4state_size 4
-#define Keyring_RC4state_map {0}
-struct Keyring_BFstate
+#define Crypt_RC4state_size 4
+#define Crypt_RC4state_map {0}
+struct Crypt_BFstate
 {
 	WORD	x;
 };
-#define Keyring_BFstate_size 4
-#define Keyring_BFstate_map {0}
-struct Keyring_Authinfo
+#define Crypt_BFstate_size 4
+#define Crypt_BFstate_map {0}
+#define Crypt_PK_RSA 0
+#define Crypt_PK_Elgamal 1
+#define Crypt_PK_DSA 2
+struct Crypt_PK
 {
-	Keyring_SK*	mysk;
-	Keyring_PK*	mypk;
-	Keyring_Certificate*	cert;
-	Keyring_PK*	spk;
-	Keyring_IPint*	alpha;
-	Keyring_IPint*	p;
+	int	pick;
+	union{
+		struct{
+			IPints_IPint*	n;
+			IPints_IPint*	ek;
+		} RSA;
+		struct{
+			IPints_IPint*	p;
+			IPints_IPint*	alpha;
+			IPints_IPint*	key;
+		} Elgamal;
+		struct{
+			IPints_IPint*	p;
+			IPints_IPint*	q;
+			IPints_IPint*	alpha;
+			IPints_IPint*	key;
+		} DSA;
+	} u;
 };
-#define Keyring_Authinfo_size 24
-#define Keyring_Authinfo_map {0xfc,}
-struct Keyring_RSApk
+#define Crypt_PK_RSA_size 12
+#define Crypt_PK_RSA_map {0x60,}
+#define Crypt_PK_Elgamal_size 16
+#define Crypt_PK_Elgamal_map {0x70,}
+#define Crypt_PK_DSA_size 20
+#define Crypt_PK_DSA_map {0x78,}
+#define Crypt_SK_RSA 0
+#define Crypt_SK_Elgamal 1
+#define Crypt_SK_DSA 2
+struct Crypt_SK
 {
-	Keyring_IPint*	n;
-	Keyring_IPint*	ek;
+	int	pick;
+	union{
+		struct{
+			Crypt_PK*	pk;
+			IPints_IPint*	dk;
+			IPints_IPint*	p;
+			IPints_IPint*	q;
+			IPints_IPint*	kp;
+			IPints_IPint*	kq;
+			IPints_IPint*	c2;
+		} RSA;
+		struct{
+			Crypt_PK*	pk;
+			IPints_IPint*	secret;
+		} Elgamal;
+		struct{
+			Crypt_PK*	pk;
+			IPints_IPint*	secret;
+		} DSA;
+	} u;
 };
-#define Keyring_RSApk_size 8
-#define Keyring_RSApk_map {0xc0,}
-struct Keyring_RSAsk
+#define Crypt_SK_RSA_size 32
+#define Crypt_SK_RSA_map {0x7f,}
+#define Crypt_SK_Elgamal_size 12
+#define Crypt_SK_Elgamal_map {0x60,}
+#define Crypt_SK_DSA_size 12
+#define Crypt_SK_DSA_map {0x60,}
+#define Crypt_PKsig_RSA 0
+#define Crypt_PKsig_Elgamal 1
+#define Crypt_PKsig_DSA 2
+struct Crypt_PKsig
 {
-	Keyring_RSApk*	pk;
-	Keyring_IPint*	dk;
-	Keyring_IPint*	p;
-	Keyring_IPint*	q;
-	Keyring_IPint*	kp;
-	Keyring_IPint*	kq;
-	Keyring_IPint*	c2;
+	int	pick;
+	union{
+		struct{
+			IPints_IPint*	n;
+		} RSA;
+		struct{
+			IPints_IPint*	r;
+			IPints_IPint*	s;
+		} Elgamal;
+		struct{
+			IPints_IPint*	r;
+			IPints_IPint*	s;
+		} DSA;
+	} u;
 };
-#define Keyring_RSAsk_size 28
-#define Keyring_RSAsk_map {0xfe,}
-struct Keyring_RSAsig
-{
-	Keyring_IPint*	n;
-};
-#define Keyring_RSAsig_size 4
-#define Keyring_RSAsig_map {0x80,}
-struct Keyring_DSApk
-{
-	Keyring_IPint*	p;
-	Keyring_IPint*	q;
-	Keyring_IPint*	alpha;
-	Keyring_IPint*	key;
-};
-#define Keyring_DSApk_size 16
-#define Keyring_DSApk_map {0xf0,}
-struct Keyring_DSAsk
-{
-	Keyring_DSApk*	pk;
-	Keyring_IPint*	secret;
-};
-#define Keyring_DSAsk_size 8
-#define Keyring_DSAsk_map {0xc0,}
-struct Keyring_DSAsig
-{
-	Keyring_IPint*	r;
-	Keyring_IPint*	s;
-};
-#define Keyring_DSAsig_size 8
-#define Keyring_DSAsig_map {0xc0,}
-struct Keyring_EGpk
-{
-	Keyring_IPint*	p;
-	Keyring_IPint*	alpha;
-	Keyring_IPint*	key;
-};
-#define Keyring_EGpk_size 12
-#define Keyring_EGpk_map {0xe0,}
-struct Keyring_EGsk
-{
-	Keyring_EGpk*	pk;
-	Keyring_IPint*	secret;
-};
-#define Keyring_EGsk_size 8
-#define Keyring_EGsk_map {0xc0,}
-struct Keyring_EGsig
-{
-	Keyring_IPint*	r;
-	Keyring_IPint*	s;
-};
-#define Keyring_EGsig_size 8
-#define Keyring_EGsig_map {0xc0,}
+#define Crypt_PKsig_RSA_size 8
+#define Crypt_PKsig_RSA_map {0x40,}
+#define Crypt_PKsig_Elgamal_size 12
+#define Crypt_PKsig_Elgamal_map {0x60,}
+#define Crypt_PKsig_DSA_size 12
+#define Crypt_PKsig_DSA_map {0x60,}
 struct Loader_Inst
 {
 	BYTE	op;
@@ -3139,65 +3106,40 @@ struct F_Math_yn
 #define Math_RND_PINF 512
 #define Math_RND_Z 768
 #define Math_RND_MASK 768
+void IPints_DSAprimes(void*);
+typedef struct F_IPints_DSAprimes F_IPints_DSAprimes;
+struct F_IPints_DSAprimes
+{
+	WORD	regs[NREG-1];
+	struct{ IPints_IPint* t0; IPints_IPint* t1; Array* t2; }*	ret;
+	uchar	temps[12];
+};
 void IPint_add(void*);
 typedef struct F_IPint_add F_IPint_add;
 struct F_IPint_add
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
-};
-void Keyring_aescbc(void*);
-typedef struct F_Keyring_aescbc F_Keyring_aescbc;
-struct F_Keyring_aescbc
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_AESstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_aessetup(void*);
-typedef struct F_Keyring_aessetup F_Keyring_aessetup;
-struct F_Keyring_aessetup
-{
-	WORD	regs[NREG-1];
-	Keyring_AESstate**	ret;
-	uchar	temps[12];
-	Array*	key;
-	Array*	ivec;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_and(void*);
 typedef struct F_IPint_and F_IPint_and;
 struct F_IPint_and
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
-};
-void Keyring_auth(void*);
-typedef struct F_Keyring_auth F_Keyring_auth;
-struct F_Keyring_auth
-{
-	WORD	regs[NREG-1];
-	struct{ String* t0; Array* t1; }*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-	Keyring_Authinfo*	info;
-	WORD	setid;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_b64toip(void*);
 typedef struct F_IPint_b64toip F_IPint_b64toip;
 struct F_IPint_b64toip
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
 	String*	str;
 };
@@ -3206,7 +3148,7 @@ typedef struct F_IPint_bebytestoip F_IPint_bebytestoip;
 struct F_IPint_bebytestoip
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
 	Array*	mag;
 };
@@ -3217,56 +3159,16 @@ struct F_IPint_bits
 	WORD	regs[NREG-1];
 	WORD*	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
-};
-void Keyring_blowfishcbc(void*);
-typedef struct F_Keyring_blowfishcbc F_Keyring_blowfishcbc;
-struct F_Keyring_blowfishcbc
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_BFstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_blowfishsetup(void*);
-typedef struct F_Keyring_blowfishsetup F_Keyring_blowfishsetup;
-struct F_Keyring_blowfishsetup
-{
-	WORD	regs[NREG-1];
-	Keyring_BFstate**	ret;
-	uchar	temps[12];
-	Array*	key;
-	Array*	ivec;
+	IPints_IPint*	i;
 };
 void IPint_bytestoip(void*);
 typedef struct F_IPint_bytestoip F_IPint_bytestoip;
 struct F_IPint_bytestoip
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
 	Array*	buf;
-};
-void Keyring_certtoattr(void*);
-typedef struct F_Keyring_certtoattr F_Keyring_certtoattr;
-struct F_Keyring_certtoattr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_Certificate*	c;
-};
-void Keyring_certtostr(void*);
-typedef struct F_Keyring_certtostr F_Keyring_certtostr;
-struct F_Keyring_certtostr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_Certificate*	c;
 };
 void IPint_cmp(void*);
 typedef struct F_IPint_cmp F_IPint_cmp;
@@ -3275,99 +3177,27 @@ struct F_IPint_cmp
 	WORD	regs[NREG-1];
 	WORD*	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_copy(void*);
 typedef struct F_IPint_copy F_IPint_copy;
 struct F_IPint_copy
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
-};
-void DigestState_copy(void*);
-typedef struct F_DigestState_copy F_DigestState_copy;
-struct F_DigestState_copy
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Keyring_DigestState*	d;
-};
-void RSAsk_decrypt(void*);
-typedef struct F_RSAsk_decrypt F_RSAsk_decrypt;
-struct F_RSAsk_decrypt
-{
-	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
-	uchar	temps[12];
-	Keyring_RSAsk*	k;
-	Keyring_IPint*	m;
-};
-void Keyring_descbc(void*);
-typedef struct F_Keyring_descbc F_Keyring_descbc;
-struct F_Keyring_descbc
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_DESstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_desecb(void*);
-typedef struct F_Keyring_desecb F_Keyring_desecb;
-struct F_Keyring_desecb
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_DESstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_dessetup(void*);
-typedef struct F_Keyring_dessetup F_Keyring_dessetup;
-struct F_Keyring_dessetup
-{
-	WORD	regs[NREG-1];
-	Keyring_DESstate**	ret;
-	uchar	temps[12];
-	Array*	key;
-	Array*	ivec;
-};
-void Keyring_dhparams(void*);
-typedef struct F_Keyring_dhparams F_Keyring_dhparams;
-struct F_Keyring_dhparams
-{
-	WORD	regs[NREG-1];
-	struct{ Keyring_IPint* t0; Keyring_IPint* t1; }*	ret;
-	uchar	temps[12];
-	WORD	nbits;
+	IPints_IPint*	i;
 };
 void IPint_div(void*);
 typedef struct F_IPint_div F_IPint_div;
 struct F_IPint_div
 {
 	WORD	regs[NREG-1];
-	struct{ Keyring_IPint* t0; Keyring_IPint* t1; }*	ret;
+	struct{ IPints_IPint* t0; IPints_IPint* t1; }*	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
-};
-void RSApk_encrypt(void*);
-typedef struct F_RSApk_encrypt F_RSApk_encrypt;
-struct F_RSApk_encrypt
-{
-	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
-	uchar	temps[12];
-	Keyring_RSApk*	k;
-	Keyring_IPint*	m;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_eq(void*);
 typedef struct F_IPint_eq F_IPint_eq;
@@ -3376,177 +3206,56 @@ struct F_IPint_eq
 	WORD	regs[NREG-1];
 	WORD*	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_expmod(void*);
 typedef struct F_IPint_expmod F_IPint_expmod;
 struct F_IPint_expmod
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	base;
-	Keyring_IPint*	exp;
-	Keyring_IPint*	mod;
+	IPints_IPint*	base;
+	IPints_IPint*	exp;
+	IPints_IPint*	mod;
 };
-void RSAsk_fill(void*);
-typedef struct F_RSAsk_fill F_RSAsk_fill;
-struct F_RSAsk_fill
+void IPints_genprime(void*);
+typedef struct F_IPints_genprime F_IPints_genprime;
+struct F_IPints_genprime
 {
 	WORD	regs[NREG-1];
-	Keyring_RSAsk**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	n;
-	Keyring_IPint*	e;
-	Keyring_IPint*	d;
-	Keyring_IPint*	p;
-	Keyring_IPint*	q;
-};
-void RSAsk_gen(void*);
-typedef struct F_RSAsk_gen F_RSAsk_gen;
-struct F_RSAsk_gen
-{
-	WORD	regs[NREG-1];
-	Keyring_RSAsk**	ret;
-	uchar	temps[12];
-	WORD	nlen;
-	WORD	elen;
+	WORD	nbits;
 	WORD	nrep;
 };
-void DSAsk_gen(void*);
-typedef struct F_DSAsk_gen F_DSAsk_gen;
-struct F_DSAsk_gen
+void IPints_gensafeprime(void*);
+typedef struct F_IPints_gensafeprime F_IPints_gensafeprime;
+struct F_IPints_gensafeprime
 {
 	WORD	regs[NREG-1];
-	Keyring_DSAsk**	ret;
+	struct{ IPints_IPint* t0; IPints_IPint* t1; }*	ret;
 	uchar	temps[12];
-	Keyring_DSApk*	oldpk;
-};
-void EGsk_gen(void*);
-typedef struct F_EGsk_gen F_EGsk_gen;
-struct F_EGsk_gen
-{
-	WORD	regs[NREG-1];
-	Keyring_EGsk**	ret;
-	uchar	temps[12];
-	WORD	nlen;
+	WORD	nbits;
 	WORD	nrep;
 };
-void Keyring_genSK(void*);
-typedef struct F_Keyring_genSK F_Keyring_genSK;
-struct F_Keyring_genSK
+void IPints_genstrongprime(void*);
+typedef struct F_IPints_genstrongprime F_IPints_genstrongprime;
+struct F_IPints_genstrongprime
 {
 	WORD	regs[NREG-1];
-	Keyring_SK**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	String*	algname;
-	String*	owner;
-	WORD	length;
-};
-void Keyring_genSKfromPK(void*);
-typedef struct F_Keyring_genSKfromPK F_Keyring_genSKfromPK;
-struct F_Keyring_genSKfromPK
-{
-	WORD	regs[NREG-1];
-	Keyring_SK**	ret;
-	uchar	temps[12];
-	Keyring_PK*	pk;
-	String*	owner;
-};
-void Keyring_getbytearray(void*);
-typedef struct F_Keyring_getbytearray F_Keyring_getbytearray;
-struct F_Keyring_getbytearray
-{
-	WORD	regs[NREG-1];
-	struct{ Array* t0; String* t1; }*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-};
-void Keyring_getmsg(void*);
-typedef struct F_Keyring_getmsg F_Keyring_getmsg;
-struct F_Keyring_getmsg
-{
-	WORD	regs[NREG-1];
-	Array**	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-};
-void Keyring_getstring(void*);
-typedef struct F_Keyring_getstring F_Keyring_getstring;
-struct F_Keyring_getstring
-{
-	WORD	regs[NREG-1];
-	struct{ String* t0; String* t1; }*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-};
-void Keyring_hmac_md5(void*);
-typedef struct F_Keyring_hmac_md5 F_Keyring_hmac_md5;
-struct F_Keyring_hmac_md5
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	data;
-	WORD	n;
-	Array*	key;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_hmac_sha1(void*);
-typedef struct F_Keyring_hmac_sha1 F_Keyring_hmac_sha1;
-struct F_Keyring_hmac_sha1
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	data;
-	WORD	n;
-	Array*	key;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_ideacbc(void*);
-typedef struct F_Keyring_ideacbc F_Keyring_ideacbc;
-struct F_Keyring_ideacbc
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_IDEAstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_ideaecb(void*);
-typedef struct F_Keyring_ideaecb F_Keyring_ideaecb;
-struct F_Keyring_ideaecb
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_IDEAstate*	state;
-	Array*	buf;
-	WORD	n;
-	WORD	direction;
-};
-void Keyring_ideasetup(void*);
-typedef struct F_Keyring_ideasetup F_Keyring_ideasetup;
-struct F_Keyring_ideasetup
-{
-	WORD	regs[NREG-1];
-	Keyring_IDEAstate**	ret;
-	uchar	temps[12];
-	Array*	key;
-	Array*	ivec;
+	WORD	nbits;
+	WORD	nrep;
 };
 void IPint_inttoip(void*);
 typedef struct F_IPint_inttoip F_IPint_inttoip;
 struct F_IPint_inttoip
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
 	WORD	i;
 };
@@ -3555,10 +3264,10 @@ typedef struct F_IPint_invert F_IPint_invert;
 struct F_IPint_invert
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	base;
-	Keyring_IPint*	mod;
+	IPints_IPint*	base;
+	IPints_IPint*	mod;
 };
 void IPint_iptob64(void*);
 typedef struct F_IPint_iptob64 F_IPint_iptob64;
@@ -3567,7 +3276,7 @@ struct F_IPint_iptob64
 	WORD	regs[NREG-1];
 	String**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_iptob64z(void*);
 typedef struct F_IPint_iptob64z F_IPint_iptob64z;
@@ -3576,7 +3285,7 @@ struct F_IPint_iptob64z
 	WORD	regs[NREG-1];
 	String**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_iptobebytes(void*);
 typedef struct F_IPint_iptobebytes F_IPint_iptobebytes;
@@ -3585,7 +3294,7 @@ struct F_IPint_iptobebytes
 	WORD	regs[NREG-1];
 	Array**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_iptobytes(void*);
 typedef struct F_IPint_iptobytes F_IPint_iptobytes;
@@ -3594,7 +3303,7 @@ struct F_IPint_iptobytes
 	WORD	regs[NREG-1];
 	Array**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_iptoint(void*);
 typedef struct F_IPint_iptoint F_IPint_iptoint;
@@ -3603,7 +3312,7 @@ struct F_IPint_iptoint
 	WORD	regs[NREG-1];
 	WORD*	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_iptostr(void*);
 typedef struct F_IPint_iptostr F_IPint_iptostr;
@@ -3612,278 +3321,84 @@ struct F_IPint_iptostr
 	WORD	regs[NREG-1];
 	String**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 	WORD	base;
-};
-void Keyring_md4(void*);
-typedef struct F_Keyring_md4 F_Keyring_md4;
-struct F_Keyring_md4
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_md5(void*);
-typedef struct F_Keyring_md5 F_Keyring_md5;
-struct F_Keyring_md5
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
 };
 void IPint_mod(void*);
 typedef struct F_IPint_mod F_IPint_mod;
 struct F_IPint_mod
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_mul(void*);
 typedef struct F_IPint_mul F_IPint_mul;
 struct F_IPint_mul
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_neg(void*);
 typedef struct F_IPint_neg F_IPint_neg;
 struct F_IPint_neg
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 };
 void IPint_not(void*);
 typedef struct F_IPint_not F_IPint_not;
 struct F_IPint_not
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
+	IPints_IPint*	i1;
 };
 void IPint_ori(void*);
 typedef struct F_IPint_ori F_IPint_ori;
 struct F_IPint_ori
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
-void Keyring_pktoattr(void*);
-typedef struct F_Keyring_pktoattr F_Keyring_pktoattr;
-struct F_Keyring_pktoattr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_PK*	pk;
-};
-void Keyring_pktostr(void*);
-typedef struct F_Keyring_pktostr F_Keyring_pktostr;
-struct F_Keyring_pktostr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_PK*	pk;
-};
-void Keyring_putbytearray(void*);
-typedef struct F_Keyring_putbytearray F_Keyring_putbytearray;
-struct F_Keyring_putbytearray
+void IPints_probably_prime(void*);
+typedef struct F_IPints_probably_prime F_IPints_probably_prime;
+struct F_IPints_probably_prime
 {
 	WORD	regs[NREG-1];
 	WORD*	ret;
 	uchar	temps[12];
-	Sys_FD*	fd;
-	Array*	a;
-	WORD	n;
-};
-void Keyring_puterror(void*);
-typedef struct F_Keyring_puterror F_Keyring_puterror;
-struct F_Keyring_puterror
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-	String*	s;
-};
-void Keyring_putstring(void*);
-typedef struct F_Keyring_putstring F_Keyring_putstring;
-struct F_Keyring_putstring
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-	String*	s;
+	IPints_IPint*	n;
+	WORD	nrep;
 };
 void IPint_random(void*);
 typedef struct F_IPint_random F_IPint_random;
 struct F_IPint_random
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	WORD	minbits;
-	WORD	maxbits;
-};
-void Keyring_rc4(void*);
-typedef struct F_Keyring_rc4 F_Keyring_rc4;
-struct F_Keyring_rc4
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_RC4state*	state;
-	Array*	buf;
-	WORD	n;
-};
-void Keyring_rc4back(void*);
-typedef struct F_Keyring_rc4back F_Keyring_rc4back;
-struct F_Keyring_rc4back
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_RC4state*	state;
-	WORD	n;
-};
-void Keyring_rc4setup(void*);
-typedef struct F_Keyring_rc4setup F_Keyring_rc4setup;
-struct F_Keyring_rc4setup
-{
-	WORD	regs[NREG-1];
-	Keyring_RC4state**	ret;
-	uchar	temps[12];
-	Array*	seed;
-};
-void Keyring_rc4skip(void*);
-typedef struct F_Keyring_rc4skip F_Keyring_rc4skip;
-struct F_Keyring_rc4skip
-{
-	WORD	regs[NREG-1];
-	WORD	noret;
-	uchar	temps[12];
-	Keyring_RC4state*	state;
-	WORD	n;
-};
-void Keyring_readauthinfo(void*);
-typedef struct F_Keyring_readauthinfo F_Keyring_readauthinfo;
-struct F_Keyring_readauthinfo
-{
-	WORD	regs[NREG-1];
-	Keyring_Authinfo**	ret;
-	uchar	temps[12];
-	String*	filename;
-};
-void Keyring_senderrmsg(void*);
-typedef struct F_Keyring_senderrmsg F_Keyring_senderrmsg;
-struct F_Keyring_senderrmsg
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-	String*	s;
-};
-void Keyring_sendmsg(void*);
-typedef struct F_Keyring_sendmsg F_Keyring_sendmsg;
-struct F_Keyring_sendmsg
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Sys_FD*	fd;
-	Array*	buf;
-	WORD	n;
-};
-void Keyring_sha1(void*);
-typedef struct F_Keyring_sha1 F_Keyring_sha1;
-struct F_Keyring_sha1
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_sha224(void*);
-typedef struct F_Keyring_sha224 F_Keyring_sha224;
-struct F_Keyring_sha224
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_sha256(void*);
-typedef struct F_Keyring_sha256 F_Keyring_sha256;
-struct F_Keyring_sha256
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_sha384(void*);
-typedef struct F_Keyring_sha384 F_Keyring_sha384;
-struct F_Keyring_sha384
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
-};
-void Keyring_sha512(void*);
-typedef struct F_Keyring_sha512 F_Keyring_sha512;
-struct F_Keyring_sha512
-{
-	WORD	regs[NREG-1];
-	Keyring_DigestState**	ret;
-	uchar	temps[12];
-	Array*	buf;
-	WORD	n;
-	Array*	digest;
-	Keyring_DigestState*	state;
+	WORD	nbits;
 };
 void IPint_shl(void*);
 typedef struct F_IPint_shl F_IPint_shl;
 struct F_IPint_shl
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 	WORD	n;
 };
 void IPint_shr(void*);
@@ -3891,227 +3406,448 @@ typedef struct F_IPint_shr F_IPint_shr;
 struct F_IPint_shr
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i;
+	IPints_IPint*	i;
 	WORD	n;
-};
-void Keyring_sign(void*);
-typedef struct F_Keyring_sign F_Keyring_sign;
-struct F_Keyring_sign
-{
-	WORD	regs[NREG-1];
-	Keyring_Certificate**	ret;
-	uchar	temps[12];
-	Keyring_SK*	sk;
-	WORD	exp;
-	Keyring_DigestState*	state;
-	String*	ha;
-};
-void RSAsk_sign(void*);
-typedef struct F_RSAsk_sign F_RSAsk_sign;
-struct F_RSAsk_sign
-{
-	WORD	regs[NREG-1];
-	Keyring_RSAsig**	ret;
-	uchar	temps[12];
-	Keyring_RSAsk*	k;
-	Keyring_IPint*	m;
-};
-void DSAsk_sign(void*);
-typedef struct F_DSAsk_sign F_DSAsk_sign;
-struct F_DSAsk_sign
-{
-	WORD	regs[NREG-1];
-	Keyring_DSAsig**	ret;
-	uchar	temps[12];
-	Keyring_DSAsk*	k;
-	Keyring_IPint*	m;
-};
-void EGsk_sign(void*);
-typedef struct F_EGsk_sign F_EGsk_sign;
-struct F_EGsk_sign
-{
-	WORD	regs[NREG-1];
-	Keyring_EGsig**	ret;
-	uchar	temps[12];
-	Keyring_EGsk*	k;
-	Keyring_IPint*	m;
-};
-void Keyring_signm(void*);
-typedef struct F_Keyring_signm F_Keyring_signm;
-struct F_Keyring_signm
-{
-	WORD	regs[NREG-1];
-	Keyring_Certificate**	ret;
-	uchar	temps[12];
-	Keyring_SK*	sk;
-	Keyring_IPint*	m;
-	String*	ha;
-};
-void Keyring_sktoattr(void*);
-typedef struct F_Keyring_sktoattr F_Keyring_sktoattr;
-struct F_Keyring_sktoattr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_SK*	sk;
-};
-void Keyring_sktopk(void*);
-typedef struct F_Keyring_sktopk F_Keyring_sktopk;
-struct F_Keyring_sktopk
-{
-	WORD	regs[NREG-1];
-	Keyring_PK**	ret;
-	uchar	temps[12];
-	Keyring_SK*	sk;
-};
-void Keyring_sktostr(void*);
-typedef struct F_Keyring_sktostr F_Keyring_sktostr;
-struct F_Keyring_sktostr
-{
-	WORD	regs[NREG-1];
-	String**	ret;
-	uchar	temps[12];
-	Keyring_SK*	sk;
-};
-void Keyring_strtocert(void*);
-typedef struct F_Keyring_strtocert F_Keyring_strtocert;
-struct F_Keyring_strtocert
-{
-	WORD	regs[NREG-1];
-	Keyring_Certificate**	ret;
-	uchar	temps[12];
-	String*	s;
 };
 void IPint_strtoip(void*);
 typedef struct F_IPint_strtoip F_IPint_strtoip;
 struct F_IPint_strtoip
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
 	String*	str;
 	WORD	base;
-};
-void Keyring_strtopk(void*);
-typedef struct F_Keyring_strtopk F_Keyring_strtopk;
-struct F_Keyring_strtopk
-{
-	WORD	regs[NREG-1];
-	Keyring_PK**	ret;
-	uchar	temps[12];
-	String*	s;
-};
-void Keyring_strtosk(void*);
-typedef struct F_Keyring_strtosk F_Keyring_strtosk;
-struct F_Keyring_strtosk
-{
-	WORD	regs[NREG-1];
-	Keyring_SK**	ret;
-	uchar	temps[12];
-	String*	s;
 };
 void IPint_sub(void*);
 typedef struct F_IPint_sub F_IPint_sub;
 struct F_IPint_sub
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
-};
-void Keyring_verify(void*);
-typedef struct F_Keyring_verify F_Keyring_verify;
-struct F_Keyring_verify
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Keyring_PK*	pk;
-	Keyring_Certificate*	cert;
-	Keyring_DigestState*	state;
-};
-void RSApk_verify(void*);
-typedef struct F_RSApk_verify F_RSApk_verify;
-struct F_RSApk_verify
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Keyring_RSApk*	k;
-	Keyring_RSAsig*	sig;
-	Keyring_IPint*	m;
-};
-void DSApk_verify(void*);
-typedef struct F_DSApk_verify F_DSApk_verify;
-struct F_DSApk_verify
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Keyring_DSApk*	k;
-	Keyring_DSAsig*	sig;
-	Keyring_IPint*	m;
-};
-void EGpk_verify(void*);
-typedef struct F_EGpk_verify F_EGpk_verify;
-struct F_EGpk_verify
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Keyring_EGpk*	k;
-	Keyring_EGsig*	sig;
-	Keyring_IPint*	m;
-};
-void Keyring_verifym(void*);
-typedef struct F_Keyring_verifym F_Keyring_verifym;
-struct F_Keyring_verifym
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	Keyring_PK*	pk;
-	Keyring_Certificate*	cert;
-	Keyring_IPint*	m;
-};
-void Keyring_writeauthinfo(void*);
-typedef struct F_Keyring_writeauthinfo F_Keyring_writeauthinfo;
-struct F_Keyring_writeauthinfo
-{
-	WORD	regs[NREG-1];
-	WORD*	ret;
-	uchar	temps[12];
-	String*	filename;
-	Keyring_Authinfo*	info;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
 void IPint_xor(void*);
 typedef struct F_IPint_xor F_IPint_xor;
 struct F_IPint_xor
 {
 	WORD	regs[NREG-1];
-	Keyring_IPint**	ret;
+	IPints_IPint**	ret;
 	uchar	temps[12];
-	Keyring_IPint*	i1;
-	Keyring_IPint*	i2;
+	IPints_IPint*	i1;
+	IPints_IPint*	i2;
 };
-#define Keyring_PATH "$Keyring"
-#define Keyring_SHA1dlen 20
-#define Keyring_SHA224dlen 28
-#define Keyring_SHA256dlen 32
-#define Keyring_SHA384dlen 48
-#define Keyring_SHA512dlen 64
-#define Keyring_MD5dlen 16
-#define Keyring_MD4dlen 16
-#define Keyring_Encrypt 0
-#define Keyring_Decrypt 1
-#define Keyring_AESbsize 16
-#define Keyring_DESbsize 8
-#define Keyring_IDEAbsize 8
-#define Keyring_BFbsize 8
+#define IPints_PATH "$IPints"
+void Crypt_aescbc(void*);
+typedef struct F_Crypt_aescbc F_Crypt_aescbc;
+struct F_Crypt_aescbc
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_AESstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_aessetup(void*);
+typedef struct F_Crypt_aessetup F_Crypt_aessetup;
+struct F_Crypt_aessetup
+{
+	WORD	regs[NREG-1];
+	Crypt_AESstate**	ret;
+	uchar	temps[12];
+	Array*	key;
+	Array*	ivec;
+};
+void Crypt_blowfishcbc(void*);
+typedef struct F_Crypt_blowfishcbc F_Crypt_blowfishcbc;
+struct F_Crypt_blowfishcbc
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_BFstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_blowfishsetup(void*);
+typedef struct F_Crypt_blowfishsetup F_Crypt_blowfishsetup;
+struct F_Crypt_blowfishsetup
+{
+	WORD	regs[NREG-1];
+	Crypt_BFstate**	ret;
+	uchar	temps[12];
+	Array*	key;
+	Array*	ivec;
+};
+void DigestState_copy(void*);
+typedef struct F_DigestState_copy F_DigestState_copy;
+struct F_DigestState_copy
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Crypt_DigestState*	d;
+};
+void Crypt_descbc(void*);
+typedef struct F_Crypt_descbc F_Crypt_descbc;
+struct F_Crypt_descbc
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_DESstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_desecb(void*);
+typedef struct F_Crypt_desecb F_Crypt_desecb;
+struct F_Crypt_desecb
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_DESstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_dessetup(void*);
+typedef struct F_Crypt_dessetup F_Crypt_dessetup;
+struct F_Crypt_dessetup
+{
+	WORD	regs[NREG-1];
+	Crypt_DESstate**	ret;
+	uchar	temps[12];
+	Array*	key;
+	Array*	ivec;
+};
+void Crypt_dhparams(void*);
+typedef struct F_Crypt_dhparams F_Crypt_dhparams;
+struct F_Crypt_dhparams
+{
+	WORD	regs[NREG-1];
+	struct{ IPints_IPint* t0; IPints_IPint* t1; }*	ret;
+	uchar	temps[12];
+	WORD	nbits;
+};
+void Crypt_dsagen(void*);
+typedef struct F_Crypt_dsagen F_Crypt_dsagen;
+struct F_Crypt_dsagen
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	Crypt_PK*	oldpk;
+};
+void Crypt_eggen(void*);
+typedef struct F_Crypt_eggen F_Crypt_eggen;
+struct F_Crypt_eggen
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	WORD	nlen;
+	WORD	nrep;
+};
+void Crypt_genSK(void*);
+typedef struct F_Crypt_genSK F_Crypt_genSK;
+struct F_Crypt_genSK
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	String*	algname;
+	WORD	length;
+};
+void Crypt_genSKfromPK(void*);
+typedef struct F_Crypt_genSKfromPK F_Crypt_genSKfromPK;
+struct F_Crypt_genSKfromPK
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	Crypt_PK*	pk;
+};
+void Crypt_hmac_md5(void*);
+typedef struct F_Crypt_hmac_md5 F_Crypt_hmac_md5;
+struct F_Crypt_hmac_md5
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	data;
+	WORD	n;
+	Array*	key;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_hmac_sha1(void*);
+typedef struct F_Crypt_hmac_sha1 F_Crypt_hmac_sha1;
+struct F_Crypt_hmac_sha1
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	data;
+	WORD	n;
+	Array*	key;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_ideacbc(void*);
+typedef struct F_Crypt_ideacbc F_Crypt_ideacbc;
+struct F_Crypt_ideacbc
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_IDEAstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_ideaecb(void*);
+typedef struct F_Crypt_ideaecb F_Crypt_ideaecb;
+struct F_Crypt_ideaecb
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_IDEAstate*	state;
+	Array*	buf;
+	WORD	n;
+	WORD	direction;
+};
+void Crypt_ideasetup(void*);
+typedef struct F_Crypt_ideasetup F_Crypt_ideasetup;
+struct F_Crypt_ideasetup
+{
+	WORD	regs[NREG-1];
+	Crypt_IDEAstate**	ret;
+	uchar	temps[12];
+	Array*	key;
+	Array*	ivec;
+};
+void Crypt_md4(void*);
+typedef struct F_Crypt_md4 F_Crypt_md4;
+struct F_Crypt_md4
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_md5(void*);
+typedef struct F_Crypt_md5 F_Crypt_md5;
+struct F_Crypt_md5
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_rc4(void*);
+typedef struct F_Crypt_rc4 F_Crypt_rc4;
+struct F_Crypt_rc4
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_RC4state*	state;
+	Array*	buf;
+	WORD	n;
+};
+void Crypt_rc4back(void*);
+typedef struct F_Crypt_rc4back F_Crypt_rc4back;
+struct F_Crypt_rc4back
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_RC4state*	state;
+	WORD	n;
+};
+void Crypt_rc4setup(void*);
+typedef struct F_Crypt_rc4setup F_Crypt_rc4setup;
+struct F_Crypt_rc4setup
+{
+	WORD	regs[NREG-1];
+	Crypt_RC4state**	ret;
+	uchar	temps[12];
+	Array*	seed;
+};
+void Crypt_rc4skip(void*);
+typedef struct F_Crypt_rc4skip F_Crypt_rc4skip;
+struct F_Crypt_rc4skip
+{
+	WORD	regs[NREG-1];
+	WORD	noret;
+	uchar	temps[12];
+	Crypt_RC4state*	state;
+	WORD	n;
+};
+void Crypt_rsadecrypt(void*);
+typedef struct F_Crypt_rsadecrypt F_Crypt_rsadecrypt;
+struct F_Crypt_rsadecrypt
+{
+	WORD	regs[NREG-1];
+	IPints_IPint**	ret;
+	uchar	temps[12];
+	Crypt_SK*	k;
+	IPints_IPint*	m;
+};
+void Crypt_rsaencrypt(void*);
+typedef struct F_Crypt_rsaencrypt F_Crypt_rsaencrypt;
+struct F_Crypt_rsaencrypt
+{
+	WORD	regs[NREG-1];
+	IPints_IPint**	ret;
+	uchar	temps[12];
+	Crypt_PK*	k;
+	IPints_IPint*	m;
+};
+void Crypt_rsafill(void*);
+typedef struct F_Crypt_rsafill F_Crypt_rsafill;
+struct F_Crypt_rsafill
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	IPints_IPint*	n;
+	IPints_IPint*	ek;
+	IPints_IPint*	dk;
+	IPints_IPint*	p;
+	IPints_IPint*	q;
+};
+void Crypt_rsagen(void*);
+typedef struct F_Crypt_rsagen F_Crypt_rsagen;
+struct F_Crypt_rsagen
+{
+	WORD	regs[NREG-1];
+	Crypt_SK**	ret;
+	uchar	temps[12];
+	WORD	nlen;
+	WORD	elen;
+	WORD	nrep;
+};
+void Crypt_sha1(void*);
+typedef struct F_Crypt_sha1 F_Crypt_sha1;
+struct F_Crypt_sha1
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_sha224(void*);
+typedef struct F_Crypt_sha224 F_Crypt_sha224;
+struct F_Crypt_sha224
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_sha256(void*);
+typedef struct F_Crypt_sha256 F_Crypt_sha256;
+struct F_Crypt_sha256
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_sha384(void*);
+typedef struct F_Crypt_sha384 F_Crypt_sha384;
+struct F_Crypt_sha384
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_sha512(void*);
+typedef struct F_Crypt_sha512 F_Crypt_sha512;
+struct F_Crypt_sha512
+{
+	WORD	regs[NREG-1];
+	Crypt_DigestState**	ret;
+	uchar	temps[12];
+	Array*	buf;
+	WORD	n;
+	Array*	digest;
+	Crypt_DigestState*	state;
+};
+void Crypt_sign(void*);
+typedef struct F_Crypt_sign F_Crypt_sign;
+struct F_Crypt_sign
+{
+	WORD	regs[NREG-1];
+	Crypt_PKsig**	ret;
+	uchar	temps[12];
+	Crypt_SK*	sk;
+	IPints_IPint*	m;
+};
+void Crypt_sktopk(void*);
+typedef struct F_Crypt_sktopk F_Crypt_sktopk;
+struct F_Crypt_sktopk
+{
+	WORD	regs[NREG-1];
+	Crypt_PK**	ret;
+	uchar	temps[12];
+	Crypt_SK*	sk;
+};
+void Crypt_verify(void*);
+typedef struct F_Crypt_verify F_Crypt_verify;
+struct F_Crypt_verify
+{
+	WORD	regs[NREG-1];
+	WORD*	ret;
+	uchar	temps[12];
+	Crypt_PK*	pk;
+	Crypt_PKsig*	sig;
+	IPints_IPint*	m;
+};
+#define Crypt_PATH "$Crypt"
+#define Crypt_SHA1dlen 20
+#define Crypt_SHA224dlen 28
+#define Crypt_SHA256dlen 32
+#define Crypt_SHA384dlen 48
+#define Crypt_SHA512dlen 64
+#define Crypt_MD5dlen 16
+#define Crypt_MD4dlen 16
+#define Crypt_Encrypt 0
+#define Crypt_Decrypt 1
+#define Crypt_AESbsize 16
+#define Crypt_DESbsize 8
+#define Crypt_IDEAbsize 8
+#define Crypt_BFbsize 8
 void Loader_compile(void*);
 typedef struct F_Loader_compile F_Loader_compile;
 struct F_Loader_compile
