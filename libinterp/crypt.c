@@ -46,8 +46,6 @@ static uchar RSAskmap[] = Crypt_SK_RSA_map;
 static uchar RSApkmap[] = Crypt_PK_RSA_map;
 static uchar RSAsigmap[] = Crypt_PKsig_RSA_map;
 
-static char exBadSK[]	= "bad secret key";
-static char exBadPK[]	= "bad public key";
 static char exBadBsize[]	= "data not multiple of block size";
 static char exBadKey[]	= "bad encryption key";
 static char exBadDigest[]	= "bad digest value";

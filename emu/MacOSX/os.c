@@ -96,8 +96,8 @@ pexit(char *msg, int t)
 		closepgrp(e->pgrp);
 		closeegrp(e->egrp);
 		closesigs(e->sigs);
+		free(e->user);
 	}
-	free(e->user);
 	free(p->prog);
 	sem = p->os;
 	if(sem != nil){
