@@ -15,6 +15,8 @@
 #include	"error.h"
 #include <fpuctl.h>
 
+#include <semaphore.h>
+
 #include	<raise.h>
 
 /* glibc 2.3.3-NTPL messes up getpid() by trying to cache the result, so we'll do it ourselves */
@@ -40,6 +42,8 @@ extern void executeonnewstack(void*, void (*f)(void*), void*);
 static void *stackalloc(Proc *p, void **tos);
 static void stackfreeandexit(void *stack);
 
+typedef sem_t	Sem;
+
 extern int dflag;
 
 int	gidnobody = -1;
@@ -50,38 +54,46 @@ void
 pexit(char *msg, int t)
 {
 	Osenv *e;
+	Proc *p;
+	Sem *sem;
 	void *kstack;
 
 	lock(&procs.l);
-	if(up->prev)
-		up->prev->next = up->next;
+	p = up;
+	if(p->prev)
+		p->prev->next = p->next;
 	else
-		procs.head = up->next;
+		procs.head = p->next;
 
-	if(up->next)
-		up->next->prev = up->prev;
+	if(p->next)
+		p->next->prev = p->prev;
 	else
-		procs.tail = up->prev;
+		procs.tail = p->prev;
 	unlock(&procs.l);
 
 	if(0)
-		print("pexit: %s: %s\n", up->text, msg);
+		print("pexit: %s: %s\n", p->text, msg);
 
-	e = up->env;
+	e = p->env;
 	if(e != nil) {
 		closefgrp(e->fgrp);
 		closepgrp(e->pgrp);
 		closeegrp(e->egrp);
 		closesigs(e->sigs);
+		free(e->user);
 	}
-	kstack = up->kstack;
-	free(up->prog);
-	free(up);
+	kstack = p->kstack;
+	free(p->prog);
+	sem = p->os;
+	if(sem != nil)
+		sem_destroy(sem);
+	free(p->os);
+	free(p);
 	if(kstack != nil)
 		stackfreeandexit(kstack);
 }
 
-void
+int
 tramp(void *arg)
 {
 	Proc *p;
@@ -89,6 +101,7 @@ tramp(void *arg)
 	p->pid = p->sigid = getpid();
 	(*p->func)(p->arg);
 	pexit("{Tramp}", 0);
+	return 0;	/* not reached */
 }
 
 int
@@ -99,12 +112,19 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	Fgrp *fg;
 	Egrp *eg;
 	void *tos;
+	Sem *sem;
 
 	p = newproc();
 	if(0)
 		print("start %s:%#p\n", name, p);
 	if(p == nil)
 		panic("kproc(%s): no memory", name);
+
+	sem = malloc(sizeof(*sem));
+	if(sem == nil)
+		panic("can't allocate semaphore");
+	sem_init(sem, 0, 0);
+	p->os = sem;
 
 	if(flags & KPDUPPG) {
 		pg = up->env->pgrp;
@@ -149,7 +169,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	procs.tail = p;
 	unlock(&procs.l);
 
-	if (__clone(tramp, tos, CLONE_PTRACE|CLONE_VM|CLONE_FS|CLONE_FILES|SIGCHLD, p) <= 0)
+	if(clone(tramp, tos, CLONE_PTRACE|CLONE_VM|CLONE_FS|CLONE_FILES|SIGCHLD, p, nil, nil, nil) <= 0)
 		panic("kproc: clone failed");
 
 	return 0;
@@ -225,28 +245,20 @@ oshostintr(Proc *p)
 	kill(p->sigid, SIGUSR1);
 }
 
-static void
-trapUSR2(int signo)
-{
-	USED(signo);
-	/* we've done our work of interrupting sigsuspend */
-}
-
 void
 osblock(void)
 {
-	sigset_t mask;
+	Sem *sem;
 
-	sigprocmask(SIG_SETMASK, NULL, &mask);
-	sigdelset(&mask, SIGUSR2);
-	sigsuspend(&mask);
+	sem = up->os;
+	while(sem_wait(sem))
+		{}	/* retry on signals (which shouldn't happen) */
 }
 
 void
 osready(Proc *p)
 {
-	if(kill(p->sigid, SIGUSR2) < 0)
-		fprint(2, "emu: osready failed: pid %d: %s\n", p->sigid, strerror(errno));
+	sem_post(p->os);
 }
 
 void
@@ -305,7 +317,6 @@ void
 libinit(char *imod)
 {
 	struct sigaction act;
-	sigset_t mask;
 	struct passwd *pw;
 	Proc *p;
 	void *tos;
@@ -324,17 +335,9 @@ libinit(char *imod)
 	if(dflag == 0)
 		termset();
 
-	memset(&act, 0 , sizeof(act));
+	memset(&act, 0, sizeof(act));
 	act.sa_handler = trapUSR1;
 	sigaction(SIGUSR1, &act, nil);
-
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGUSR2);
-	sigprocmask(SIG_BLOCK, &mask, NULL);
-
-	memset(&act, 0 , sizeof(act));
-	act.sa_handler = trapUSR2;
-	sigaction(SIGUSR2, &act, nil);
 
 	act.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &act, nil);

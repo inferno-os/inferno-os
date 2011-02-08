@@ -1,3 +1,6 @@
+20110208
+	emu/Linux/os.c - use -lrt's semaphores instead of signals
+	emu/Linux/mkfile - add -lrt to library list, and push out separation of X11LIBS from SYSLIBS for emu-g done ages ago
 20110126
 	emu/MacOSX/os.c - move a free to a more sensible place
 20110117
