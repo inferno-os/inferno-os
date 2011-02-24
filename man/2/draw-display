@@ -306,7 +306,7 @@ Returns a reference to the image published as
 on display
 .I d
 by
-.B Image.nameimage
+.B Image.name
 (see
 .IR draw-image (2)).
 This allows unrelated processes to share the image (eg, a window manager and client).

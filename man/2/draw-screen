@@ -114,7 +114,7 @@ parameter can be
 which provides backing store to store obscured parts of the window when necessary,
 and is used by the window manager and its clients; or
 .BR Draw->Refnone ,
-wihch provides no refresh, and is used for windows that are transient, or are already protected by backing
+which provides no refresh, and is used for windows that are transient, or are already protected by backing
 store.
 .TP
 .IB screen .top( wins )

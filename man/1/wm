@@ -26,12 +26,12 @@ does not provide any means for starting new applications;
 that facility must be provided by an auxilliary program,
 .B wm/toolbar
 being one such example.
-.SS Control Inferface
+.SS Control Interface
 .I Wm
 provides a control interface to programs running inside it
 through the
 .B Wmcontext
-adt that can be obtained from via the
+adt that can be obtained from the
 .B Draw->Context
 that it passes to applications that it starts
 (see

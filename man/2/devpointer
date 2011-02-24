@@ -5,9 +5,11 @@ devpointer \- I/O interface for the pointer device
 .EX
 include "draw.m";   # for Draw->Pointer
 include "devpointer.m";
-ptr:= load Devpointer Devpointer->PATH;
+ptr := load Devpointer Devpointer->PATH;
 
-init:      fn(file: string, posn: chan of ref Draw->Pointer): int;
+init:      fn();
+reader:    fn(file: string, posn: chan of ref Draw->Pointer,
+              pid: chan of (int, string));
 bytes2ptr: fn(buf: array of byte)    : ref Draw->Pointer;
 ptr2bytes: fn(ptr: ref Draw->Pointer): array of byte;
 .EE
@@ -20,11 +22,30 @@ converting them to
 adts.
 .PP
 .B Init
-spawns a process to read continually the pointer device specified by
-.I file
-and send a
+must be called before any other operation of the module.
+.PP
+.B Reader
+should be spawned by the caller.
+It opens the pointer device specified by
+.IR file ,
+and sends a value
+.BI ( id,\ err )
+on channel
+.IR pid .
+On success,
+.I id
+is the process ID of the spawned process and
+.I err
+is nil; on an error,
+.I err
+is a diagnostic, and
+.I id
+is undefined.
+If the file was opened successfully,
+.B reader
+continually reads the pointer device and sends
 .B Pointer
-adts over the channel specified by
+adts over the channel
 .IR posn .
 If
 .I file
