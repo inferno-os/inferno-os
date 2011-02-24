@@ -17,7 +17,6 @@ newpgrp(void)
 	p->ref = 1;
 	p->pgrpid = incref(&pgrpid);
 	p->progmode = 0644;
-	p->privatemem = 0;
 	return p;
 }
 
