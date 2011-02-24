@@ -295,14 +295,14 @@ progopen(Chan *c, int omode)
 			error(Enomem);
 		break;
 	case Qheap:
-		if(SECURE || o->pgrp->privatemem || omode != ORDWR)
+		if(SECURE || p->group->flags&Pprivatemem || omode != ORDWR)
 			error(Eperm);
 		c->aux = malloc(sizeof(Heapqry));
 		if(c->aux == nil)
 			error(Enomem);
 		break;
 	case Qdbgctl:
-		if(SECURE || o->pgrp->privatemem || omode != ORDWR)
+		if(SECURE || p->group->flags&Pprivatemem || omode != ORDWR)
 			error(Eperm);
 		ctl = malloc(sizeof(Progctl));
 		if(ctl == nil)
@@ -1028,7 +1028,6 @@ progwrite(Chan *c, void *va, long n, vlong offset)
 	int i, pc;
 	Cmdbuf *cb;
 	Cmdtab *ct;
-	Osenv *o;
 
 	USED(offset);
 	USED(va);
@@ -1074,8 +1073,7 @@ progwrite(Chan *c, void *va, long n, vlong offset)
 				error(Ebadctl);
 			break;
 		case CMprivate:
-			o = p->osenv;
-			o->pgrp->privatemem = 1;
+			p->group->flags |= Pprivatemem;
 			break;
 		}
 		poperror();

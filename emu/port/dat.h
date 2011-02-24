@@ -37,6 +37,8 @@ typedef struct Walkqid	Walkqid;
 #undef NAMELEN
 #undef ERRLEN
 
+#include "emu.h"
+
 #pragma incomplete Queue
 #pragma incomplete Mntrpc
 
@@ -269,7 +271,6 @@ struct Pgrp
 	QLock	nsh;
 	Mhead*	mnthash[MNTHASH];
 	int	progmode;
-	int	privatemem;	/* deny access to /prog by debuggers */
 	Chan*	dot;
 	Chan*	slash;
 	int	nodevs;

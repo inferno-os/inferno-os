@@ -340,7 +340,6 @@ struct Pgrp
 	QLock	nsh;
 	Mhead*	mnthash[MNTHASH];
 	int	progmode;
-	int	privatemem;	/* deny access to /prog by debuggers */
 	Chan*	dot;
 	Chan*	slash;
 	int	nodevs;

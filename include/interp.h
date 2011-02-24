@@ -34,11 +34,13 @@ enum
 
 enum
 {
-	Ppropagate = 1<<0,
-	Pnotifyleader = 1<<1,
-	Prestrict = 1<<2,
+	/* Prog and Progs flags */
+	Ppropagate = 1<<0,	/* propagate exceptions within group */
+	Pnotifyleader = 1<<1,	/* send exceptions to group leader */
+	Prestrict = 1<<2,	/* enforce memory limits */
 	Prestricted = 1<<3,
-	Pkilled = 1<<4
+	Pkilled = 1<<4,
+	Pprivatemem = 1<<5	/* keep heap and stack private */
 };
 
 typedef struct Alt	Alt;

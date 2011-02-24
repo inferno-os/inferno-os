@@ -459,6 +459,8 @@ newgrp(Prog *p)
 	p->flags &= ~(Ppropagate|Pnotifyleader);
 	g->id = p->pid;
 	g->flags = 0;
+	if(p->group != nil)
+		g->flags |= p->group->flags&Pprivatemem;
 	g->child = nil;
 	pg = delgrp(p);
 	g->head = g->tail = p;
