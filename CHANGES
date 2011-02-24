@@ -1,6 +1,5 @@
-20110209
-	split emu.h from lib9.h for all platforms
-	kproc in emu is now a void type as in os
+20110224
+	move private mem flag to Progs [issue 240, mechiel]
 20110208
 	emu/Linux/os.c - use -lrt's semaphores instead of signals
 	emu/Linux/mkfile - add -lrt to library list, and push out separation of X11LIBS from SYSLIBS for emu-g done ages ago
