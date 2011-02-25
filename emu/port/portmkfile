@@ -1,5 +1,6 @@
 PORTHFILES=\
 	$ROOT/$OBJDIR/include/lib9.h\
+	$ROOT/$OBJDIR/include/emu.h\
 	$ROOT/include/fcall.h\
 	$ROOT/include/interp.h\
 	$ROOT/include/draw.h\
