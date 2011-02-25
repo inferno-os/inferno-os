@@ -1,26 +1,22 @@
 #define _POSIX_SOURCE
-#define	_POSIX_C_SOURCE 1
+#define	_POSIX_C_SOURCE	1
 #define _LARGEFILE64_SOURCE	1
 #define _FILE_OFFSET_BITS 64
-#include <sys/types.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#define	__EXTENSIONS__
-#include <unistd.h>
-#undef __EXTENSIONS__
 #include <errno.h>
 #include <string.h>
 #include "math.h"
 #include <fcntl.h>
 #include <setjmp.h>
 #include <float.h>
-#include <time.h>
 
 #define	getwd	infgetwd
 
-#ifndef EMU
-typedef struct Proc Proc;
-#endif
+/*
+ * math/dtoa.c
+ */
+#define __LITTLE_ENDIAN
 
 #define	nil		((void*)0)
 
@@ -32,34 +28,19 @@ typedef unsigned short	ushort;
 typedef unsigned short	Rune;
 typedef long long int	vlong;
 typedef unsigned long long int	uvlong;
-typedef unsigned int u32int;
-typedef uvlong u64int;
-
 typedef unsigned int	mpdigit;	/* for /sys/include/mp.h */
 typedef unsigned short u16int;
 typedef unsigned char u8int;
 typedef unsigned long uintptr;
 
-#define	USED(x)		if(x){}else{}
+#define	USED(x)		if(x);else
 #define	SET(x)
 
-#undef nelem
-#define	nelem(x)	(sizeof(x)/sizeof((x)[0]))
-#undef offsetof
-#define	offsetof(s, m)	(ulong)(&(((s*)0)->m))
-#undef assert
-#define	assert(x)	if(x){}else _assert("x")
+#define nelem(x)	(sizeof(x)/sizeof((x)[0]))
 
 /*
- * most mem and string routines are declared by ANSI/POSIX files above
+ * mem and string routines are declared by ANSI/POSIX files above
  */
-
-extern	char*	strecpy(char*, char*, char*);
-extern	char*	strdup(const char*);
-extern	int	cistrncmp(char*, char*, int);
-extern	int	cistrcmp(char*, char*);
-extern	char*	cistrstr(char*, char*);
-extern	int	tokenize(char*, char**, int);
 
 enum
 {
@@ -120,6 +101,9 @@ extern	void		setrealloctag(void*, ulong);
 extern	ulong	getmalloctag(void*);
 extern	ulong	getrealloctag(void*);
 extern	void*	malloctopoolblock(void*);
+
+extern	int	getfields(char*, char**, int, int, char*);
+extern	ulong	getcallerpc(void*);
 
 /*
  * print routines
@@ -210,23 +194,12 @@ extern	int	quoterunestrfmt(Fmt*);
 extern	void	quotefmtinstall(void);
 extern	int	(*doquote)(int);
 
-/*
- * random number
- */
-extern	int	nrand(int);
+extern	char*	strdup(const char*);
+extern	int	tokenize(char*, char**, int);
+extern	vlong	strtoll(const char*, char**, int);
 
-/*
- * random number
- */
-extern	ulong	truerand(void);
-extern	ulong	ntruerand(ulong);
-
-/*
- * math
- */
 extern	int	isNaN(double);
 extern	int	isInf(double, int);
-extern	double	pow(double, double);
 
 /*
  * Time-of-day
@@ -243,27 +216,16 @@ struct Tm {
 	int	wday;
 	int	yday;
 	char	zone[4];
-	int	tzoff;
 };
-extern	vlong	osnsec(void);
-#define	nsec	osnsec
 	
 /*
  * one-of-a-kind
  */
-extern	void	_assert(char*);
-extern	double	charstod(int(*)(void*), void*);
-extern	char*	cleanname(char*);
-extern	double	frexp(double, int*);
-extern	ulong	getcallerpc(void*);
 extern	int	getfields(char*, char**, int, int, char*);
 extern	char*	getuser(void);
 extern	char*	getwd(char*, int);
-extern	double	ipow10(int);
-extern	double	ldexp(double, int);
-extern	double	modf(double, double*);
-#define	pow10	infpow10
 extern	double	pow10(int);
+extern	double	ipow10(int);
 extern	vlong	strtoll(const char*, char**, int);
 extern	uvlong	strtoull(const char*, char**, int);
 extern	void	sysfatal(char*, ...);
@@ -321,132 +283,95 @@ extern	void	wlock(RWLock*);
 extern	void	wunlock(RWLock*);
 
 /*
- * network dialing
- */
-#define NETPATHLEN 40
-
-/*
  * system calls
  *
  */
-#define	STATMAX	65535U	/* max length of machine-independent stat structure */
-#define	DIRMAX	(sizeof(Dir)+STATMAX)	/* max length of Dir structure */
-#define	ERRMAX	128	/* max length of error string */
+enum
+{
+	NAMELEN	= 28,
+	ERRLEN	= 64,
+	ERRMAX = 128,
+	DIRLEN	= 116
+};
 
-#define	MORDER	0x0003	/* mask for bits defining order of mounting */
-#define	MREPL	0x0000	/* mount replaces object */
-#define	MBEFORE	0x0001	/* mount goes before others in union directory */
-#define	MAFTER	0x0002	/* mount goes after others in union directory */
-#define	MCREATE	0x0004	/* permit creation in mounted directory */
+#define CHDIR		0x80000000	/* mode bit for directories */
+#define CHAPPEND	0x40000000	/* mode bit for append only files */
+#define CHEXCL		0x20000000	/* mode bit for exclusive use files */
+#define CHMOUNT		0x10000000	/* mode bit for mounted channel */
+#define CHREAD		0x4		/* mode bit for read permission */
+#define CHWRITE		0x2		/* mode bit for write permission */
+#define CHEXEC		0x1		/* mode bit for execute permission */
+
+#define	MORDER		0x0003		/* mask for bits defining order of mounting */
+#define	MREPL		0x0000		/* mount replaces object */
+#define	MBEFORE		0x0001		/* mount goes before others in union directory */
+#define	MAFTER		0x0002		/* mount goes after others in union directory */
+#define	MCREATE		0x0004		/* permit creation in mounted directory */
 #define	MCACHE	0x0010	/* cache some data */
-#define	MMASK	0x0017	/* all bits on */
+#define	MMASK		0x0007		/* all bits on */
 
-#define	OREAD	0	/* open for read */
-#define	OWRITE	1	/* write */
-#define	ORDWR	2	/* read and write */
-#define	OEXEC	3	/* execute, == read but check execute permission */
-#define	OTRUNC	16	/* or'ed in (except for exec), truncate file first */
-#define	OCEXEC	32	/* or'ed in, close on exec */
-#define	ORCLOSE	64	/* or'ed in, remove on close */
+#define	OREAD		0		/* open for read */
+#define	OWRITE		1		/* write */
+#define	ORDWR		2		/* read and write */
+#define	OEXEC		3		/* execute, == read but check execute permission */
+#define	OTRUNC		16		/* or'ed in (except for exec), truncate file first */
+#define	OCEXEC		32		/* or'ed in, close on exec */
+#define	ORCLOSE		64		/* or'ed in, remove on close */
 #define	OEXCL	0x1000	/* or'ed in, exclusive use (create only) */
-
-#define	AEXIST	0	/* accessible: exists */
-#define	AEXEC	1	/* execute access */
-#define	AWRITE	2	/* write access */
-#define	AREAD	4	/* read access */
-
-/* bits in Qid.type */
-#define QTDIR		0x80		/* type bit for directories */
-#define QTAPPEND	0x40		/* type bit for append only files */
-#define QTEXCL		0x20		/* type bit for exclusive use files */
-#define QTMOUNT		0x10		/* type bit for mounted channel */
-#define QTAUTH		0x08		/* type bit for authentication file */
-#define QTFILE		0x00		/* plain file */
-
-/* bits in Dir.mode */
-#define DMDIR		0x80000000	/* mode bit for directories */
-#define DMAPPEND	0x40000000	/* mode bit for append only files */
-#define DMEXCL		0x20000000	/* mode bit for exclusive use files */
-#define DMMOUNT		0x10000000	/* mode bit for mounted channel */
-#define DMAUTH		0x08000000	/* mode bit for authentication file */
-#define DMREAD		0x4		/* mode bit for read permission */
-#define DMWRITE		0x2		/* mode bit for write permission */
-#define DMEXEC		0x1		/* mode bit for execute permission */
 
 typedef
 struct Qid
 {
-	uvlong	path;
+	ulong	path;
 	ulong	vers;
-	uchar	type;
 } Qid;
 
 typedef
-struct Dir {
-	/* system-modified data */
-	ushort	type;	/* server type */
-	uint	dev;	/* server subtype */
-	/* file data */
-	Qid	qid;	/* unique id from server */
-	ulong	mode;	/* permissions */
-	ulong	atime;	/* last read time */
-	ulong	mtime;	/* last write time */
-	vlong	length;	/* file length */
-	char	*name;	/* last element of path */
-	char	*uid;	/* owner name */
-	char	*gid;	/* group name */
-	char	*muid;	/* last modifier name */
+struct Dir
+{
+	char	name[NAMELEN];
+	char	uid[NAMELEN];
+	char	gid[NAMELEN];
+	Qid	qid;
+	ulong	mode;
+	int	atime;
+	int	mtime;
+	vlong	length;
+	ushort	type;
+	ushort	dev;
 } Dir;
 
-extern	Dir*	dirstat(char*);
-extern	Dir*	dirfstat(int);
-extern	int	dirwstat(char*, Dir*);
+extern	int	dirfstat(int, Dir*);
+extern	int	dirstat(char*, Dir*);
 extern	int	dirfwstat(int, Dir*);
-extern	long	dirread(int, Dir**);
-extern	void	nulldir(Dir*);
-extern	long	dirreadall(int, Dir**);
+extern	int	dirwstat(char*, Dir*);
 
-typedef
-struct Waitmsg
-{
-	int pid;	/* of loved one */
-	ulong time[3];	/* of loved one & descendants */
-	char	*msg;
-} Waitmsg;
-
-extern	void	_exits(char*);
-
+extern	char*	cleanname(char*);
 extern	void	exits(char*);
+extern	void	_exits(char*);
 extern	int	create(char*, int, int);
-extern	int	errstr(char*, uint);
 
-extern	void	perror(const char*);
-extern	long	readn(int, void*, long);
-extern	int	remove(const char*);
-extern	void	rerrstr(char*, uint);
-extern	vlong	seek(int, vlong, int);
-extern	int	segflush(void*, ulong);
+extern	char*	getuser(void);
+extern	char*	getwd(char*, int);
+
+extern	int	errstr(char*, uint);
 extern	void	werrstr(char*, ...);
 
-extern char *argv0;
-#define	ARGBEGIN	for((argv0||(argv0=*argv)),argv++,argc--;\
+#define	ARGBEGIN	for(argv++,argc--;\
 			    argv[0] && argv[0][0]=='-' && argv[0][1];\
 			    argc--, argv++) {\
 				char *_args, *_argt;\
-				Rune _argc;\
+				char _argc;\
 				_args = &argv[0][1];\
 				if(_args[0]=='-' && _args[1]==0){\
 					argc--; argv++; break;\
 				}\
 				_argc = 0;\
-				while(*_args && (_args += chartorune(&_argc, _args)))\
+				while((_argc = *_args++)!='\0')\
 				switch(_argc)
-#define	ARGEND		SET(_argt);USED(_argt);USED(_argc); USED(_args);}USED(argv); USED(argc);
+#define	ARGEND		}
 #define	ARGF()		(_argt=_args, _args="",\
 				(*_argt? _argt: argv[1]? (argc--, *++argv): 0))
-#define	EARGF(x)	(_argt=_args, _args="",\
-				(*_argt? _argt: argv[1]? (argc--, *++argv): ((x), abort(), (char*)0)))
-
 #define	ARGC()		_argc
 
 /*

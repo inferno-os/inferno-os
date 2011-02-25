@@ -656,25 +656,3 @@ extern char *argv0;
 #define	setbinmode()
 #define __LITTLE_ENDIAN
 
-/*
- *	Extensions for emu kernel emulation
- */
-#ifdef	EMU
-
-extern	Proc**	Xup;
-#define	up	(*Xup)
-
-typedef	struct	FPU	FPU;
-
-/*
- * This structure must agree with FPsave and FPrestore asm routines
- */
-struct FPU
-{
-	uchar	env[28];
-};
-
-typedef jmp_buf osjmpbuf;
-#define	ossetjmp(buf)	setjmp(buf)
-
-#endif
