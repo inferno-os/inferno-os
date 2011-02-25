@@ -80,7 +80,7 @@ tramp(void *arg)
 	return 0;
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	int pid;
@@ -96,7 +96,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if(p == nil) {
 		print("kproc(%s): no memory", name);
 		panic("kproc: no memory");
-		return -1;
 	}
 
 	if(flags & KPDUPPG) {
@@ -146,8 +145,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 		fprint(2, "emu: clone failed: %s\n", strerror(errno));
 		panic("kproc: clone failed");
 	}
-
-	return 0;
 }
 
 /*
@@ -192,9 +189,10 @@ trapSEGV(int signo)
 static void
 trapFPE(int signo)
 {
+	char buf[64];
 	USED(signo);
-	print("FPU status=0x%.4lux", getfsr());
-	disfault(nil, "Floating exception");
+	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux", getfsr());
+	disfault(nil, buf);
 }
 
 static void

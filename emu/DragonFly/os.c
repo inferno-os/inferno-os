@@ -189,7 +189,7 @@ tramp(void *arg)
 	_exit(0);
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	Proc *p;
@@ -245,10 +245,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 		p->kstack = stackalloc(p, &tos);
 	pid = rfork_thread(RFPROC|RFMEM|RFNOWAIT, tos, tramp, p);
 	if(pid < 0)
-		panic("ourfork");
-		
-	return pid;
-
+		panic("rfork");
 }
 
 void

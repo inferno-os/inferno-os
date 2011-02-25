@@ -83,7 +83,7 @@ tramp(void *p, size_t stacksz)
 	pexit("", 0);
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	Proc *p;
@@ -147,12 +147,10 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 
 	pid = sprocsp(tramp, PR_SALL, p, 0, KSTACK);
 
-	if(-1 < pid)
+	if(pid >= 0)
 		sproctbl[i] = pid;
 	else
 		sproctbl[i] = -1;
-
-	return pid;
 }
 
 void

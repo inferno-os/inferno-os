@@ -16,6 +16,8 @@ enum
 
 extern Memimage *screenimage;
 
+extern int kproc1(char*, void (*)(void*), void*, int);
+
 static	ulong*	attachwindow(Rectangle*, ulong*, int*, int*);
 
 static void	plan9readmouse(void*);
@@ -150,8 +152,8 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		return nil;
 	}
 	
-	mousepid = kproc("readmouse", plan9readmouse, nil, 0);
-	keybdpid = kproc("readkbd", plan9readkeybd, nil, 0);
+	mousepid = kproc1("readmouse", plan9readmouse, nil, 0);
+	keybdpid = kproc1("readkbd", plan9readkeybd, nil, 0);
 
 	fd = open("/dev/label", OWRITE);
 	if(fd >= 0){

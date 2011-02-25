@@ -116,7 +116,7 @@ tramp(LPVOID p)
 	return 0;
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	DWORD h;
@@ -126,16 +126,11 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	Egrp *eg;
 
 	p = newproc();
-	if(p == nil){
-		print("out of kernel processes\n");
-		return -1;
-	}
+	if(p == nil)
+		panic("out of kernel processes");
 	p->os = CreateEvent(NULL, FALSE, FALSE, NULL);
-	if(p->os == NULL){
-		pfree(p);
-		print("can't allocate os event\n");
-		return -1;
-	}
+	if(p->os == NULL)
+		panic("can't allocate os event");
 		
 	if(flags & KPDUPPG) {
 		pg = up->env->pgrp;
@@ -173,12 +168,8 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	unlock(&procs.l);
 
 	p->pid = (int)CreateThread(0, 16384, tramp, p, 0, &h);
-	if(p->pid <= 0){
-		pfree(p);
-		print("ran out of  kernel processes\n");
-		return -1;
-	}
-	return p->pid;
+	if(p->pid <= 0)
+		panic("ran out of  kernel processes");
 }
 
 #if(_WIN32_WINNT >= 0x0400)

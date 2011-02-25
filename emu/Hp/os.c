@@ -189,7 +189,7 @@ tramp(void *v)
 
 pthread_t active_threads[BUNCHES]; /* this should be more than enuf */
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	pthread_t thread;
@@ -221,8 +221,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 
 	p->env->uid = up->env->uid;
 	p->env->gid = up->env->gid;
-		kstrdup(&p->env->user, up->env->user);
-;
+	kstrdup(&p->env->user, up->env->user);
 
 	strcpy(p->text, name);
 
@@ -243,12 +242,8 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if((pthread_attr_create(&attr))== -1)
 		panic("pthread_attr_create failed");
 
-	errno=0;
 	pthread_attr_setsched(&attr,SCHED_OTHER);
-	if(errno)
-		panic("pthread_attr_setsched failed");
-
-	if(pthread_create(&thread, attr, tramp, p))
+	if(pthread_create(&thread, &attr, tramp, p))
 		panic("thr_create failed\n");
         if(sigaction(SIGBUS, nil, &oldact))
                 panic("sigaction failed");
@@ -258,7 +253,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if((id=cma_thread_get_unique(&thread))>=BUNCHES)
 		panic("id too big");
 	active_threads[id]=thread;
-	return id;
 }
 
 void

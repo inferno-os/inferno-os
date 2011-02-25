@@ -104,7 +104,7 @@ tramp(void *arg)
 	return 0;	/* not reached */
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	Proc *p;
@@ -171,8 +171,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 
 	if(clone(tramp, tos, CLONE_PTRACE|CLONE_VM|CLONE_FS|CLONE_FILES|SIGCHLD, p, nil, nil, nil) <= 0)
 		panic("kproc: clone failed");
-
-	return 0;
 }
 
 static void

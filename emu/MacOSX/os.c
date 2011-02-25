@@ -233,7 +233,7 @@ tramp(void *arg)
 	return NULL;
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	pthread_t thread;
@@ -291,24 +291,16 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	procs.tail = p;
 	unlock(&procs.l);
 
-	up->kid = p;
-
 	if(pthread_attr_init(&attr) == -1)
 		panic("pthread_attr_init failed");
 
-	errno = 0;
 	pthread_attr_setschedpolicy(&attr, SCHED_OTHER);
-	if(errno)
-		panic("pthread_attr_setschedpolicy failed");
-
 	pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
 	if(pthread_create(&thread, &attr, tramp, p))
 		panic("thr_create failed\n");
 	pthread_attr_destroy(&attr);
-
-	return (int)thread;
 }
 
 int
@@ -330,7 +322,6 @@ segflush(void *va, ulong len)
 void
 oshostintr(Proc *p)
 {
-fprint(2, "oshostintr %p\n", p);
 	pthread_kill((pthread_t)p->sigid, SIGUSR1);
 }
 

@@ -81,7 +81,7 @@ tramp(void *v)
 	pexit("", 0);
 }
 
-int
+void
 kproc(char *name, void (*func)(void*), void *arg, int flags)
 {
 	thread_t thread;
@@ -139,7 +139,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if(thr_create(0, 0, &tramp, p, THR_BOUND|THR_DETACHED, &thread))
 		panic("thr_create failed\n");
 	thr_yield();
-	return(thread);
 }
 
 /* to get pc on trap use siginfo.si_pc field and define all trap handlers

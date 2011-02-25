@@ -67,7 +67,7 @@ pexit(char *msg, int)
 }
 
 int
-kproc(char *name, void (*func)(void*), void *arg, int flags)
+kproc1(char *name, void (*func)(void*), void *arg, int flags)
 {
 	int pid;
 	Proc *p;
@@ -129,6 +129,12 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if(pid == 0)
 		longjmp(up->privstack, 1);
 	return pid;
+}
+
+void
+kproc(char *name, void (*func)(void*), void *arg, int flags)
+{
+	kproc1(name, func, arg, flags);
 }
 
 void
