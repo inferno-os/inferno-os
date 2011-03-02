@@ -183,5 +183,5 @@ mkdirs-sh:V:
 	mkdir -p `cat lib/emptydirs`
 	chmod 555 mnt/* n/client/* n/*
 
-mkdirs-rcsh:V:
+mkdirs-nt:V:
 	mkdir -p `{cat lib/emptydirs}
