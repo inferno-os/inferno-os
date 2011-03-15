@@ -98,15 +98,15 @@ static TkEbind tktbinds[] = {
 	{TkKey|CNTL('<'),	"%W tkTextSetCursor {insert linestart}"},
 	{TkKey|CNTL('b'),	"%W tkTextSetCursor insert-1c"},
 	{TkKey|Left,		"%W tkTextSetCursor insert-1c"},
-	{TkKey|CNTL('d'),	"%W delete insert"},
+	{TkKey|CNTL('d'),	"%W tkTextDelIns"},
 	{TkKey|CNTL('e'),	"%W tkTextSetCursor {insert lineend}"}, 
 	{TkKey|End,		"%W tkTextSetCursor {insert lineend}"}, 
 	{TkKey|CNTL('>'),	"%W tkTextSetCursor {insert lineend}"}, 
 	{TkKey|CNTL('f'),	"%W tkTextSetCursor insert+1c"},
 	{TkKey|Right,		"%W tkTextSetCursor insert+1c"},
 	{TkKey|CNTL('h'),	"%W tkTextDelIns -c"},
-	{TkKey|DEL,		"%W tkTextDelIns +c"},
-	{TkKey|CNTL('k'),	"%W delete insert {insert lineend}"},
+	{TkKey|DEL,		"%W tkTextDelIns"},
+	{TkKey|CNTL('k'),	"%W tkTextDelIns +l"},
 	{TkKey|CNTL('n'),	"%W tkTextSetCursor {insert+1l}"},
 	{TkKey|Down,		"%W tkTextSetCursor {insert+1l}"},
 	{TkKey|CNTL('o'),       "%W tkTextInsert {\n}; %W mark set insert insert-1c"},
@@ -2613,6 +2613,8 @@ tktextdelins(Tk *tk, char *arg, char **val)
 			sprint(buf, "insert-%dc insert", n);
 			tktextdelete(tk, buf, nil);
 		}
+		else if(arg[0] == '+' && arg[1] == 'l')
+			tktextdelete(tk, "insert {insert lineend}", nil);
 		else
 			tktextdelete(tk, "insert", nil);
 		tktextsee(tk, "insert", nil);

@@ -1,3 +1,5 @@
+20110315
+	libtk/textw.c - fix mysterious control characters for editing (D and K) [issue 253, fix from mechiel]
 20110225
 	split emu.h from lib9.h for all platforms
 	kproc in emu is now a void type as in os
