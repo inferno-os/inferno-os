@@ -1,4 +1,5 @@
 20110329
+	utils/mkdir/mkdir.c - add -p option [mechiel, issue 250]
 	emu/Linux/mkfile - try searching -lpthread after -lrt for sem_* [issue 247]
 	emu/port/devfs-posix.c - treat unix domain sockets as files (open/read/write/close) [npe, rsc, issue 254]
 	emu/port/devfs-posix.c - use volatile correctly; slight code tidy
