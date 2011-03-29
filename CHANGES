@@ -1,3 +1,7 @@
+20110329
+	emu/port/devfs-posix.c - treat unix domain sockets as files (open/read/write/close) [npe, rsc, issue 254]
+	emu/port/devfs-posix.c - use volatile correctly; slight code tidy
+	emu/lib9/errstr-posix.c replace EINTR's error string by Eintr's text
 20110315
 	libtk/textw.c - fix mysterious control characters for editing (D and K) [issue 253, fix from mechiel]
 20110225

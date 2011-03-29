@@ -23,7 +23,13 @@ werrstr(char *fmt, ...)
 void
 oserrstr(char *buf, uint nerr)
 {
-	utfecpy(buf, buf+nerr, strerror(errno));
+	char *s;
+
+	if(errno != EINTR)
+		s = strerror(errno);
+	else
+		s = "interrupted";
+	utfecpy(buf, buf+nerr, s);
 }
 
 int
