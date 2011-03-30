@@ -584,7 +584,7 @@ tkbuttonkey(Tk *tk, char *arg, char **val)
 	if(tk->flag & Tkdisabled)
 		return nil;
 
-	key = atoi(arg);
+	key = strtol(arg, nil, 0);
 	if (key == '\n' || key ==' ')
 		return tkbuttoninvoke(tk, nil, val);
 	return nil;

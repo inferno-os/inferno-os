@@ -926,7 +926,7 @@ tkscalekey(Tk *tk, char *arg, char **val)
 	if(tk->flag & Tkdisabled)
 		return nil;
 
-	key = atoi(arg);
+	key = strtol(arg, nil, 0);
 	if (key == Up || key == Left)
 		pos = trough1;
 	else if (key == Down || key == Right)

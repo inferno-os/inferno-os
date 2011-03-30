@@ -999,7 +999,7 @@ tklistbkey(Tk *tk, char *arg, char **val)
 	if(tk->flag & Tkdisabled)
 		return nil;
 
-	key = atoi(arg);
+	key = strtol(arg, nil, 0);
 	active = 0;
 	for (e = l->head; e != nil; e = e->link) {
 		if (e->flag & Tkactive)

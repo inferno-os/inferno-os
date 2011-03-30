@@ -449,7 +449,7 @@ tkMBkey(Tk *tk, char *arg, char **val)
 	if(tk->flag & Tkdisabled)
 		return nil;
 
-	key = atoi(arg);
+	key = strtol(arg, nil, 0);
 	if (key == '\n' || key == ' ')
 		return tkMBpress(tk, "1", nil);
 	return nil;

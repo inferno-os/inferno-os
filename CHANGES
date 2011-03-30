@@ -1,3 +1,5 @@
+20110330
+	call strtol not atoi for hex numbers [issue 255, mechiel]
 20110329
 	utils/mkdir/mkdir.c - add -p option [mechiel, issue 250]
 	emu/Linux/mkfile - try searching -lpthread after -lrt for sem_* [issue 247]
