@@ -1,3 +1,5 @@
+20110402
+	revision to devsrv.c change [issue 244] to avoid two calls to delwaiting
 20110330
 	call strtol not atoi for hex numbers [issue 255, mechiel]
 20110329

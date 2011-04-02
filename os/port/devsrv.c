@@ -597,23 +597,27 @@ srvread(Chan *c, void *va, long count, vlong offset)
 	req.t3 = rc;
 	csend(rd, &req);
 
-	wait.fid = c->fid;
-	wait.rc = rc;
-	wait.wc = nil;
-	addwaiting(sp, &wait);
-
 	h = heap(dev.Rread);
 	r = H2D(Sys_Rread *, h);
 	ptradd(h);
 	if(waserror()){
 		ptrdel(h);
 		destroy(r);
-		delwaiting(&wait);
 		nexterror();
 	}
 
+	wait.fid = c->fid;
+	wait.rc = rc;
+	wait.wc = nil;
+	addwaiting(sp, &wait);
+	if(waserror()){
+		delwaiting(&wait);
+		nexterror();
+	}
 	crecv(rc, r);
+	poperror();
 	delwaiting(&wait);
+
 	if(r->t1 != H)
 		error(string2c(r->t1));
 
@@ -697,19 +701,24 @@ srvwrite(Chan *c, void *va, long count, vlong offset)
 	w = H2D(Sys_Rwrite *, h);
 	ptradd(h);
 
-	wait.fid = c->fid;
-	wait.rc = nil;
-	wait.wc = wc;
-	addwaiting(sp, &wait);
-
 	if(waserror()){
-		delwaiting(&wait);
 		ptrdel(h);
 		destroy(w);
 		nexterror();
 	}
+
+	wait.fid = c->fid;
+	wait.rc = nil;
+	wait.wc = wc;
+	addwaiting(sp, &wait);
+	if(waserror()){
+		delwaiting(&wait);
+		nexterror();
+	}
 	crecv(wc, w);
+	poperror();
 	delwaiting(&wait);
+
 	if(w->t1 != H)
 		error(string2c(w->t1));
 	poperror();
