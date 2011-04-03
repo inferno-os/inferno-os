@@ -199,7 +199,25 @@ Auth:
 			secstore->erasekey(file);
 			file = nil;
 			verb('x', fname);
-		'r' or * =>
+		'r' =>
+			checkname(fname, 1);
+			fd := sys->open(fname, sys->OREAD);
+			if(fd == nil)
+				error(sys->sprint("open %q: %r", fname));
+			(ok, dir) := sys->fstat(fd);
+			if(ok != 0)
+				error(sys->sprint("stat %q: %r", fname));
+			if(int dir.length > Maxfilesize)
+				error(sys->sprint("length %bd > Maxfilesize %d", dir.length, Maxfilesize));
+			file = array[int dir.length] of byte;
+			if(sys->readn(fd, file, len file) != len file)
+				error(sys->sprint("short read: %r"));
+			if(putfile(conn, fname, file, filekey) < 0)
+				error(sys->sprint("putfile: %r"));
+			secstore->erasekey(file);
+			file = nil;
+			verb('r', fname);
+		* =>
 			error(sys->sprint("op %c not implemented", op));
 		}
 	}
@@ -240,6 +258,14 @@ getfile(conn: ref Dial->Connection, fname: string, key: array of byte): array of
 			error(sys->sprint("can't decrypt %q: %r", fname));
 	}
 	return f;
+}
+
+putfile(conn: ref Dial->Connection, fname: string, data, key: array of byte): int
+{
+	data = secstore->encrypt(data, key);
+	if(data == nil)
+		return -1;
+	return secstore->putfile(conn, fname, data);
 }
 
 erase()

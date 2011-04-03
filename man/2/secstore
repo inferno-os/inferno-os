@@ -23,13 +23,13 @@ files:       fn(conn: ref Dial->Connection):
                 list of (string, int, string, string, array of byte);
 getfile:    fn(conn: ref Dial->Connection, name: string,
                 maxsize: int): array of byte;
-.\"putfile: fn(conn: ref Dial->Connection, name: string, data: array of byte,): int;
+putfile:    fn(conn: ref Dial->Connection, name: string, data: array of byte): int;
 remove:     fn(conn: ref Dial->Connection, file: string): int;
 bye:        fn(conn: ref Dial->Connection);
 
 mkfilekey:   fn(pass: string): array of byte;
 decrypt:    fn(data: array of byte, filekey: array of byte): array of byte;
-.\"encrypt: fn(data: array of byte, filekey: array of byte): array of byte;
+encrypt:    fn(data: array of byte, filekey: array of byte): array of byte;
 erasekey:   fn(key: array of byte);
 
 lines:      fn(file: array of byte): list of array of byte;
@@ -193,6 +193,19 @@ is not the same value as the
 .I seckey
 used for initial authentication, although the secret text is the same.)
 .PP
+.B Putfile
+writes
+.I data
+under file
+.I name
+to the secure store, overwriting a possibly existing file by that name.
+.I Data
+should already be encrypted.
+The caller can arrange this by calling
+.BR encrypt .
+.B Putfile
+returns 0 on success and a negative value on error.
+.PP
 .B Remove
 deletes the given
 .I file
@@ -215,6 +228,19 @@ that excludes any headers and trailers in the encoding.
 It returns nil if the file could not be decrypted (usually because the
 .I key
 value is not actually the encryption key).
+.PP
+.B Encrypt
+does the opposite of
+.BR decrypt .
+Given plain
+.I data
+and
+.I filekey
+produced by
+.BR mkfilekey ,
+it returns an encrypted version of data, including headers and trailers.
+This data is suitable for writing to the secure store with
+.BR putfile .
 .PP
 .B Erasekey
 clears the bytes of
@@ -247,5 +273,6 @@ closes the connection to the
 As well as returning the error values described above, functions set the system error string.
 .SH SEE ALSO
 .IR crypt (1),
+.IR secstore (1),
 .IR factotum (2),
 .IR factotum (4)

@@ -16,12 +16,12 @@ Secstore: module
 	files:		fn(conn: ref Dial->Connection): list of (string, int, string, string, array of byte);
 	getfile:	fn(conn: ref Dial->Connection, filename: string, maxsize: int): array of byte;
 	remove:	fn(conn: ref Dial->Connection, filename: string): int;
-#	putfile:	fn(conn: ref Dial->Connection, filename: string, data: array of byte,): int;
+	putfile:	fn(conn: ref Dial->Connection, filename: string, data: array of byte): int;
 	bye:		fn(conn: ref Dial->Connection);
 
 	mkfilekey:	fn(pass: string): array of byte;
 	decrypt:	fn(a: array of byte, key: array of byte): array of byte;
-#	encrypt:	fn(a: array of byte, key: array of byte): array of byte;
+	encrypt:	fn(a: array of byte, key: array of byte): array of byte;
 	erasekey:	fn(a: array of byte);
 
 	lines:	fn(file: array of byte): list of array of byte;

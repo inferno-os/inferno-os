@@ -17,6 +17,7 @@ TARG=\
 	mkauthinfo.dis\
 	passwd.dis\
 	rsagen.dis\
+	secstore.dis\
 	signer.dis\
 	verify.dis\
 

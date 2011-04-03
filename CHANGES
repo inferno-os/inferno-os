@@ -1,3 +1,5 @@
+20110403
+	secstore(2) and secstore(1) updated to implement writing [issue 256, mechiel]
 20110402
 	revision to devsrv.c change [issue 244] to avoid two calls to delwaiting
 20110330

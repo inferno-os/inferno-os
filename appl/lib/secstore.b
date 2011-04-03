@@ -17,6 +17,7 @@ include "keyring.m";
 
 include "security.m";
 	ssl: SSL;
+	random: Random;
 
 include "encoding.m";
 	base64: Encoding;
@@ -29,6 +30,7 @@ init()
 	sys = load Sys Sys->PATH;
 	kr = load Keyring Keyring->PATH;
 	ssl = load SSL SSL->PATH;
+	random = load Random Random->PATH;
 	base64 = load Encoding Encoding->BASE64PATH;
 	dialler = load Dial Dial->PATH;
 	initPAKparams();
@@ -183,6 +185,28 @@ remove(conn: ref Dial->Connection, name: string): int
 	return 0;
 }
 
+putfile(conn: ref Dial->Connection, name: string, data: array of byte): int
+{
+	if(len data > Maxfilesize){
+		sys->werrstr("file too long");
+		return -1;
+	}
+	fd := conn.dfd;
+	if(sys->fprint(fd, "PUT %s\n", name) < 0)
+		return -1;
+	if(sys->fprint(fd, "%d", len data) < 0)
+		return -1;
+	for(o := 0; o < len data;){
+		n := len data-o;
+		if(n > Maxmsg)
+			n = Maxmsg;
+		if(sys->write(fd, data[o:o+n], n) != n)
+			return -1;
+		o += n;
+	}
+	return 0;
+}
+
 bye(conn: ref Dial->Connection)
 {
 	if(conn != nil){
@@ -234,6 +258,24 @@ decrypt(file: array of byte, key: array of byte): array of byte
 		return nil;
 	}
 	return file[AESbsize: length-Checklen];
+}
+
+encrypt(file: array of byte, key: array of byte): array of byte
+{
+	dat := array[AESbsize+len file+Checklen] of byte;
+	iv := random->randombuf(random->NotQuiteRandom, AESbsize);
+	if(len iv != AESbsize)
+		return nil;
+	dat[:] = iv;
+	dat[len iv:] = file;
+	dat[len iv+len file:] = array of byte Checkpat;
+	state := kr->aessetup(key, iv);
+	if(state == nil){
+		sys->werrstr("can't set AES state");
+		return nil;
+	}
+	kr->aescbc(state, dat[AESbsize:], len dat-AESbsize, Keyring->Encrypt);
+	return dat;
 }
 
 lines(file: array of byte): list of array of byte
