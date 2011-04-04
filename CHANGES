@@ -1,5 +1,7 @@
 20110404
 	update Nt/386/bin
+	/limbo/com.c - count constants in qualifiers, not qualifiers [issue 212, mechiel]
+	/appl/cmd/limbo/com.b [also issue 212]
 20110403
 	secstore(2) and secstore(1) updated to implement writing [issue 256, mechiel]
 20110402

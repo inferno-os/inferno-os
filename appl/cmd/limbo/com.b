@@ -734,6 +734,17 @@ fillrange(c: ref Case, nn: ref Node, in: ref Inst)
 		l[i++].inst = in;
 }
 
+nconstqual(s1: ref Node): int
+{
+	n := 0;
+	for(; s1 != nil; s1 = s1.right){
+		for(s2 := s1.left.left; s2 != nil; s2 = s2.right)
+			if(s2.left.op == Oconst)
+				n++;
+	}
+	return n;
+}
+
 casecom(cn: ref Node)
 {
 	d: ref Decl;
@@ -742,7 +753,7 @@ casecom(cn: ref Node)
 
 	c := cn.ty.cse;
 
-	needwild := cn.op != Opick || c.nlab != cn.left.right.ty.tof.decl.tag;
+	needwild := cn.op != Opick || nconstqual(cn.right) != cn.left.right.ty.tof.decl.tag;
 	igoto := cn.left.ty == tint && dogoto(c);
 
 	#

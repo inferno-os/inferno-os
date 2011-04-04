@@ -768,6 +768,21 @@ fillrange(Case *c, Node *nn, Inst *in)
 		l[i++].inst = in;
 }
 
+static int
+nconstqual(Node *s1)
+{
+	Node *s2;
+	int n;
+
+	n = 0;
+	for(; s1 != nil; s1 = s1->right){
+		for(s2 = s1->left->left; s2 != nil; s2 = s2->right)
+			if(s2->left->op == Oconst)
+				n++;
+	}
+	return n;
+}
+
 void
 casecom(Node *cn)
 {
@@ -783,7 +798,7 @@ casecom(Node *cn)
 
 	c = cn->ty->cse;
 
-	needwild = cn->op != Opick || c->nlab != cn->left->right->ty->tof->decl->tag;
+	needwild = cn->op != Opick || nconstqual(cn->right) != cn->left->right->ty->tof->decl->tag;
 	igoto = cn->left->ty == tint && dogoto(c);
 	j1 = j2 = nil;
 
