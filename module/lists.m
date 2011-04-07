@@ -11,7 +11,9 @@ Lists: module
 	concat:	fn[T](l: list of T, l2: list of T): list of T;
 	combine:	fn[T](l: list of T, l2: list of T): list of T;
 	reverse:	fn[T](l: list of T): list of T;
-	last:	fn[T](l: list of T): T;
+	last:		fn[T](l: list of T): T;
+	find:		fn[T](x: T, l: list of T): list of T
+		for { T => eq:	fn(a, b: T): int; };
 	delete:	fn[T](x: T, l: list of T): list of T
 		for { T => eq:	fn(a, b: T): int; };
 	pair:	fn[T1, T2](l1: list of T1, l2: list of T2): list of (T1, T2);

@@ -21,6 +21,9 @@ or simply `file descriptor' when the context is understood.
 holds an integer-valued file descriptor, the form used
 by the operating system, in a structure that can be reference counted
 and garbage collected.
+When the
+.B FD
+value is reclaimed, the system automatically closes the associated integer file descriptor.
 There are occasions when a program must access the underlying
 integer file descriptor, such as when rearranging the standard input
 and output for a new subprocess.
@@ -47,15 +50,22 @@ If a suitable file descriptor cannot be found,
 returns \-1.
 .PP
 .B Fildes
-uses the integer file descriptor
-.B fd
-to create a new Limbo
-file descriptor, suitable for other
-.B Sys
-module functions.
-It returns
-.B nil
-if it cannot convert
+duplicates the integer file descriptor
+.IR fd ,
+as if by
+.BI "sys->dup(" fd ",-1"),
+and returns a reference to the new descriptor as an
+.B FD
+value,
+making it usable by other functions in
+.BR Sys ,
+such as
+.IR sys-print (2)
+and
+.IR sys-read (2).
+.B Fildes
+returns nil
+if it cannot duplicate
 .IR fd .
 .SH SEE ALSO
 .IR sys-intro (2),

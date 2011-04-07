@@ -87,22 +87,30 @@ last[T](l: list of T): T
 	return hd l;
 }
 
-# delete the first instance of x in l
-delete[T](x: T, al: list of T): list of T
+# find instance of x in l, return tail of l from x
+find[T](x: T, l: list of T): list of T
 	for { T =>	eq:	fn(a, b: T): int; }
 {
-	for(l := al; l != nil; l = tl l){
-		if(T.eq(x, hd l)){
-			o: list of T;
-			for(; al != l; al = tl al)
-				o = hd al :: o;
-			l = tl l;
-			for(; o != nil; o = tl o)
-				l = hd o :: l;
+	for(; l != nil; l = tl l)
+		if(T.eq(x, hd l))
 			return l;
-		}
-	}
-	return al;
+	return nil;
+}
+
+# delete the first instance of x in l
+delete[T](x: T, l: list of T): list of T
+	for { T =>	eq:	fn(a, b: T): int; }
+{
+	loc := find(x, l);
+	if(loc == nil)
+		return l;
+	o: list of T;
+	for(; l != loc; l = tl l)
+		o = hd l :: o;
+	l = tl loc;
+	for(; o != nil; o = tl o)
+		l = hd o :: l;
+	return l;
 }
 
 pair[T1, T2](l1: list of T1, l2: list of T2): list of (T1, T2)

@@ -1,6 +1,6 @@
 .TH LISTS 2
 .SH NAME
-lists: allsat, anysat, append, combine, concat, delete, filter, ismember, last, map, pair, partition, rev, unpair\- list operations
+lists: allsat, anysat, append, combine, concat, delete, filter, find, ismember, last, map, pair, partition, rev, unpair\- list operations
 .SH SYNOPSIS
 .EX
 include "lists.m"
@@ -10,6 +10,8 @@ append:    fn[T](l: list of T, x: T): list of T;
 combine:   fn[T](l1: list of T, l2: list of T): list of T;
 concat:    fn[T](l1: list of T, l2: list of T): list of T;
 delete:    fn[T](x: T, l: list of T): list of T
+             for { T => eq:  fn(a, b: T): int; };
+find:      fn[T](x: T, l: list of T): list of T
              for { T => eq:  fn(a, b: T): int; };
 ismember:  fn[T](x: T, l: list of T): int
              for { T =>  eq: fn(a, b: T): int; };
@@ -38,7 +40,7 @@ Reference types are
 .BR list ,
 .BR module ,
 and
-.BI ref "adt".
+.BI ref " adt".
 None of the operations change their parameter lists: they always return a new list.
 .PP
 First, there is a group of common list operations.
@@ -76,6 +78,23 @@ with an operation
 that returns true (non-zero) if two values of type
 .I T
 are considered equal.
+.PP
+.B Find
+finds the first instance of
+.I x
+in list
+.I l
+and returns the tail of
+.I l
+with
+.I x
+at its head.
+.B Find
+returns nil if there is no
+instance of
+.I x
+in
+.IR l .
 .PP
 .B Ismember
 returns 1 if

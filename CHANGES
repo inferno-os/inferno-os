@@ -1,3 +1,6 @@
+20110407
+	fix embarrassingly broken Lists->delete; add Lists->find [issue 257]
+	add some extra explanation to sys-dup(2) about fildes
 20110404
 	update Nt/386/bin
 	/limbo/com.c - count constants in qualifiers, not qualifiers [issue 212, mechiel]
