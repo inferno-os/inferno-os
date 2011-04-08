@@ -63,6 +63,9 @@ such as
 .IR sys-print (2)
 and
 .IR sys-read (2).
+(Note that as described above, the newly-allocated file descriptor will be closed automatically when the
+.B FD
+value is reclaimed.)
 .B Fildes
 returns nil
 if it cannot duplicate

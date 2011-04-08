@@ -1,3 +1,5 @@
+20110408
+	appl/lib/json.b - have writeval produce same (correct) form as .text for Real [issue 230]
 20110407
 	fix embarrassingly broken Lists->delete; add Lists->find [issue 257]
 	add some extra explanation to sys-dup(2) about fildes

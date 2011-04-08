@@ -279,9 +279,9 @@ writeval(out: ref Iobuf, o: ref JValue) raises(Badwrite)
 		String =>
 			writestring(out, r.s);
 		Int =>
-			puts(out, string r.value);
+			puts(out, r.text());
 		Real =>
-			puts(out, string r.value);
+			puts(out, r.text());
 		Object =>	# '{' [pair (',' pair)*] '}'
 			putc(out, '{');
 			for(l := r.mem; l != nil; l = tl l){

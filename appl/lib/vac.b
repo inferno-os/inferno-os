@@ -1029,7 +1029,7 @@ p48(d: array of byte, i: int, v: big): int
 p64(d: array of byte, i: int, v: big): int
 {
 	p32(d, i+0, int (v>>32));
-	p32(d, i+0, int v);
+	p32(d, i+4, int v);
 	return i+BIT64SZ;
 }
 
