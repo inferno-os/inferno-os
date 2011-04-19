@@ -1,3 +1,6 @@
+20110419
+	libinterp/tk.c:/^Tk_rect shouldn't return non-canonical rectangles
+	/appl/wm/mand.b handle reshape to empty rectangles
 20110408
 	appl/lib/json.b - have writeval produce same (correct) form as .text for Real [issue 230]
 20110407

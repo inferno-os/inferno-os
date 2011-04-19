@@ -198,19 +198,18 @@ Tk_rect(void *fp)
 	Tk *tk;
 	TkTop *t;
 	Rectangle r;
-	TkGeom *g;
 	Point o;
-	int bd, flags;
+	int bd, flags, w, h;
 
 	t = (TkTop*)f->t;
 	if(t == H || D2H(t)->t != fakeTkTop){
-		*(Rectangle *)f->ret = ZR;
+		*(Rectangle*)f->ret = ZR;
 		return;
 	}
 	lockctxt(t->ctxt);
 	tk = tklook(t, string2c(f->name), 0);
 	if(tk == nil){
-		*(Rectangle *)f->ret = ZR;
+		*(Rectangle*)f->ret = ZR;
 		unlockctxt(t->ctxt);
 		return;
 	}
@@ -218,20 +217,32 @@ Tk_rect(void *fp)
 	flags = f->flags;
 	if(flags & Tk_Local)
 		o = subpt(o, tkposn(tk->env->top->root));
+	if(flags & Tk_Required){
+		h = tk->req.height;
+		w = tk->req.width;
+	}else{
+		h = tk->act.height;
+		w = tk->act.width;
+	}
+	unlockctxt(t->ctxt);
+	if(w < 0)
+		w = 0;
+	if(h < 0)
+		h = 0;
 	bd = tk->borderwidth;
-	g = (flags & Tk_Required) ? &tk->req : &tk->act;
+	if(bd < 0)
+		bd = 0;
 	if(flags & Tk_Border){
 		r.min = o;
-		r.max.x = r.min.x + g->width + bd + bd;
-		r.max.y = r.min.y + g->height + bd + bd;
-	} else {
+		r.max.x = r.min.x + w + bd + bd;
+		r.max.y = r.min.y + h + bd + bd;
+	}else{
 		r.min.x = o.x + bd;
 		r.min.y = o.y + bd;
-		r.max.x = r.min.x + g->width;
-		r.max.y = r.min.y + g->height;
+		r.max.x = r.min.x + w;
+		r.max.y = r.min.y + h;
 	}
-	*(Rectangle *)f->ret = r;
-	unlockctxt(t->ctxt);
+	*(Rectangle*)f->ret = r;
 }
 
 int
@@ -580,7 +591,6 @@ Tk_namechan(void *a)
 	h = D2H(v->value);
 	h->ref++;
 	Setmark(h);
-	// poolimmutable((void *)h);
 	retstr("", f->ret);
 }
 

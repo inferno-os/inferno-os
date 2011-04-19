@@ -1,6 +1,6 @@
 .TH TK 2
 .SH NAME
-Tk: toplevel, namechan, cmd, pointer, keyboard, imageget, imageput, quote \- graphics toolkit
+Tk: toplevel, namechan, cmd, pointer, keyboard, imageget, imageput, quote, rect \- graphics toolkit
 .SH SYNOPSIS
 .EX
 include "draw.m";

@@ -94,6 +94,8 @@ Fracpoint: adt {
 
 Fracrect: adt {
 	min, max: Fracpoint;
+	dx:	fn(r: self Fracrect): real;
+	dy:	fn(r: self Fracrect): real;
 };
 
 Params: adt {
@@ -189,9 +191,10 @@ init(ctxt: ref Context, argv : list of string)
 		colours[i] = ctxt.display.rgb(col(i/(G*B), R),
 							    col(i/(1*B), G),
 							    col(i/(1*1), B));
+	canvr := canvposn(win);
 	specr := Fracrect((-2.0, -1.5), (1.0, 1.5));
 	p := Params(
-			correctratio(specr, win),
+			correctratio(specr, canvr),
 			(0.0, 0.0),
 			1,			# m
 			1,			# kdivisor
@@ -200,7 +203,6 @@ init(ctxt: ref Context, argv : list of string)
 	pid := -1;
 	sync := chan of int;
 	imgch := chan of (ref Image, Rect);
-	canvr := canvposn(win);
 	spawn docalculate(sync, p, imgch);
 	pid = <-sync;
 	imgch <-= (win.image, canvr);
@@ -290,11 +292,14 @@ init(ctxt: ref Context, argv : list of string)
 			if (pid != -1)
 				kill(pid);
 			win.image.flush(Draw->Flushoff);
-			p.r = correctratio(specr, win);
-			sync = chan of int;
-			spawn docalculate(sync, p, imgch);
-			pid = <-sync;
-			imgch <-= (win.image, canvposn(win));
+			wr := canvposn(win);
+			if(!isempty(wr)){
+				p.r = correctratio(specr, wr);
+				sync = chan of int;
+				spawn docalculate(sync, p, imgch);
+				pid = <-sync;
+				imgch <-= (win.image, wr);
+			}
 		}
 	}
 }
@@ -318,21 +323,22 @@ winreq(win: ref Tk->Toplevel, c: string, imgch: chan of (ref Image, Rect), termi
 	return 0;
 }
 
-correctratio(r: Fracrect, win: ref Tk->Toplevel): Fracrect
+correctratio(r: Fracrect, wr: Rect): Fracrect
 {
 	# make sure calculation rectangle is in
 	# the same ratio as bitmap (also make sure that
 	# calculated area always includes desired area)
-	wr := canvposn(win);
-	(btall, atall) := (real wr.dy() / real wr.dx(), (r.max.y - r.min.y) / (r.max.x - r.min.x));
+	if(isempty(wr))
+		return ((0.0,0.0), (0.0,0.0));
+	(btall, atall) := (real wr.dy() / real wr.dx(), r.dy() / r.dx());
 	if (btall > atall) {
 		# bitmap is taller than area, so expand area vertically
-		excess := (r.max.x - r.min.x) * btall - (r.max.y - r.min.y);
+		excess := r.dx()*btall - r.dy();
 		r.min.y -= excess / 2.0;
 		r.max.y += excess / 2.0;
 	} else {
 		# area is taller than bitmap, so expand area horizontally
-		excess := (r.max.y - r.min.y) / btall - (r.max.x - r.min.x);
+		excess := r.dy()/btall - r.dx();
 		r.min.x -= excess / 2.0;
 		r.max.x += excess / 2.0;
 	}
@@ -421,6 +427,11 @@ docalculate(sync: chan of int, p: Params, imgch: chan of (ref Image, Rect))
 canvposn(win: ref Tk->Toplevel): Rect
 {
 	return tk->rect(win, ".c", Tk->Local);
+}
+
+isempty(r: Rect): int
+{
+	return r.dx() <= 0 || r.dy() <= 0;
 }
 
 calculate(p: Params, imgch: chan of (ref Image, Rect))
@@ -777,6 +788,16 @@ horizline(calc: ref Calc, d: ref Image, x0, x1, y: int, col: int)
 	d.draw(r.addpt(calc.winr.min), colours[col], nil, (0, 0));
 	# r := Rect((x0, y), (x1, y)).canon();
 	# r.max = r.max.add((1, 1));
+}
+
+Fracrect.dx(r: self Fracrect): real
+{
+	return r.max.x - r.min.x;
+}
+
+Fracrect.dy(r: self Fracrect): real
+{
+	return r.max.y - r.min.y;
 }
 
 real2fix(x: real): FIX
