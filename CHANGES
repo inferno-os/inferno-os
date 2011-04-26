@@ -1,3 +1,5 @@
+20110426
+	emu/Linux/asm-arm.S linux system call interface changed [issue 215, mechiel]
 20110419
 	libinterp/tk.c:/^Tk_rect shouldn't return non-canonical rectangles
 	/appl/wm/mand.b handle reshape to empty rectangles

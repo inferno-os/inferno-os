@@ -26,16 +26,14 @@ executeonnewstack:
         blx     r1             /* call tramp*/
 
         /* if we return here, tramp didn't do it's job */
-        swi     SYS_exit
+	mov	r0, #0
+	mov	r7, #SYS_exit
+	swi	0x0
         ldmea   fp, {fp, sp, pc}
         .size   executeonnewstack, .-executeonnewstack
 
 /*
  * void unlockandexit(int *key)
- *
- * NB: the return status may be garbaged if the stack is reused
- *	between the unlock and the system call, but this should
- *	not matter since no task is waiting for the result
  */
 
         .align  2
@@ -50,7 +48,9 @@ unlockandexit:
         sub     sp, sp, #4
         mov     r1, #0
         str     r1, [r0]
-        swi     SYS_exit
+	mov	r0, #0
+	mov	r7, #SYS_exit
+	swi	0x0
         ldmea   fp, {fp, sp, pc}
         .size   unlockandexit, .-unlockandexit
 
