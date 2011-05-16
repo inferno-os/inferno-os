@@ -15,6 +15,10 @@ vacget, vacput \- venti archive utilities
 [
 .B -vd
 ] [
+.B -i
+|
+.B -x
+] [
 .B -a
 .I addr
 ] [
@@ -23,6 +27,10 @@ vacget, vacput \- venti archive utilities
 ] [
 .B -n
 .I name
+] [
+.B -u uid
+] [
+.B -g gid
 ]
 .I path ...
 .SH DESCRIPTION
@@ -62,14 +70,34 @@ bytes instead of the default 8192 byte blocks.  Only for vacput.
 Use
 .I name
 as the name in the root block.  Only for vacput.
+.TP
+.BR -i " or " -x
+Read a list of files from stdin to include
+.RB ( -i )
+or exclude
+.RB ( -x )
+from the (recursively walked)
+.I paths
+specified on the command-line.
+Only for vacput.
+.TP
+.BI -u " uid"
+Use
+.I uid
+for all files.
+Only for vacput.
+.TP
+.BI -g " gid"
+Use
+.I gid
+for all files.
+Only for vacput.
 .SH SOURCE
 .B /appl/cmd/vacget.b
 .br
 .B /appl/cmd/vacput.b
 .SH SEE ALSO
-.IR vcache (1),
 .IR venti (2),
-.IR vacfs (4),
-.IR ventisrv (8)
+.IR vacfs (4)
 .SH BUGS
 These tools need more testing.

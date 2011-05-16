@@ -8,8 +8,6 @@ venti := load Venti Venti->PATH;
 Session: import venti;
 
 init:			fn();
-unpackentry:	fn(d: array of byte): ref Entry;
-unpackroot:	fn(d: array of byte): ref Root;
 
 Session: adt {
 	new:		fn(fd: ref Sys->FD): ref Session;
@@ -48,7 +46,7 @@ Blocks are additionally tagged with a
 facilitating recovery in the event of corruption.
 A
 .B Session
-represents an session with a Venti server.
+represents a session with a Venti server.
 .TP
 .IB s .new(\fIfd\fP)
 .B New
@@ -99,9 +97,7 @@ contains the Venti score for the block that has been written.
 tells the Venti server to make sure that all data is committed to
 active storage.
 .SH SOURCE
+.B /module/venti.m
+.br
 .B /appl/lib/venti.b
 .SH BUGS
-to do: 
-Score adt
-entry packing/unpacking
-other Vmsgs, Session.rpc()?

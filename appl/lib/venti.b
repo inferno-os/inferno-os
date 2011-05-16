@@ -2,6 +2,7 @@ implement Venti;
 
 include "sys.m";
 	sys: Sys;
+	sprint: import sys;
 include "venti.m";
 
 BIT8SZ:	con 1;
@@ -566,7 +567,34 @@ gtstring(a: array of byte, o: int, n: int): string
 			break;
 	return string a[o:i];
 }
-unpackroot(d: array of byte): ref Root
+
+Root.pack(r: self ref Root): array of byte
+{
+	d := array[Rootsize] of byte;
+	i := 0;
+	i = p16(d, i, r.version);
+	i = ptstring(d, i, r.name, Rootnamelen);
+	if(i < 0)
+		return nil;
+	i = ptstring(d, i, r.rtype, Rootnamelen);
+	if(i < 0)
+		return nil;
+	i = pscore(d, i, r.score);
+	i = p16(d, i, r.blocksize);
+	if(r.prev == nil) {
+		for(j := 0; j < Scoresize; j++)
+			d[i+j] = byte 0;
+		i += Scoresize;
+	} else 
+		i = pscore(d, i, *r.prev);
+	if(i != len d) {
+		sys->werrstr("root pack, bad length: "+string i);
+		return nil;
+	}
+	return d;
+}
+
+Root.unpack(d: array of byte): ref Root
 {
 	if(len d != Rootsize){
 		sys->werrstr("root entry is wrong length");
@@ -587,11 +615,34 @@ unpackroot(d: array of byte): ref Root
 	o += Scoresize;
 	r.blocksize = g16(d, o);
 	o += BIT16SZ;
-	r.prev = gscore(d, o);
+	prev := gscore(d, o);
+	if(!prev.eq(Score(array[Scoresize] of {* => byte 0})))
+		r.prev = ref prev;
 	return r;
 }
 
-unpackentry(d: array of byte): ref Entry
+
+Entry.pack(e: self ref Entry): array of byte
+{
+	d := array[Entrysize] of byte;
+	i := 0;
+	i = p32(d, i, e.gen);
+	i = p16(d, i, e.psize);
+	i = p16(d, i, e.dsize);
+	e.flags |= e.depth<<Entrydepthshift;
+	d[i++] = byte e.flags;
+	for(j := 0; j < 5; j++)
+		d[i++] = byte 0;
+	i = p48(d, i, e.size);
+	i = pscore(d, i, e.score);
+	if(i != len d) {
+		sys->werrstr(sprint("bad length, have %d, want %d", i, len d));
+		return nil;
+	}
+	return d;
+}
+
+Entry.unpack(d: array of byte): ref Entry
 {
 	if(len d != Entrysize){
 		sys->werrstr("entry is wrong length");
@@ -606,7 +657,7 @@ unpackentry(d: array of byte): ref Entry
 	e.dsize = g16(d, i);
 	i += BIT16SZ;
 	e.flags = int d[i];
-	e.depth= (e.flags & Entrydepthmask) >> Entrydepthshift;
+	e.depth = (e.flags & Entrydepthmask) >> Entrydepthshift;
 	e.flags &= ~Entrydepthmask;
 	i += BIT8SZ;
 	i += 5;			# skip something...
@@ -661,4 +712,46 @@ g64(f: array of byte, i: int): big
 	b0 := (((((int f[i+0] << 8) | int f[i+1]) << 8) | int f[i+2]) << 8) | int f[i+3];
 	b1 := (((((int f[i+4] << 8) | int f[i+5]) << 8) | int f[i+6]) << 8) | int f[i+7];
 	return (big b0 << 32) | (big b1 & 16rFFFFFFFF);
+}
+
+p16(d: array of byte, i: int, v: int): int
+{
+	d[i+0] = byte (v>>8);
+	d[i+1] = byte v;
+	return i+BIT16SZ;
+}
+
+p32(d: array of byte, i: int, v: int): int
+{
+	p16(d, i+0, v>>16);
+	p16(d, i+2, v);
+	return i+BIT32SZ;
+}
+
+p48(d: array of byte, i: int, v: big): int
+{
+	p16(d, i+0, int (v>>32));
+	p32(d, i+2, int v);
+	return i+BIT48SZ;
+}
+
+ptstring(d: array of byte, i: int, s: string, l: int): int
+{
+	a := array of byte s;
+	if(len a > l) {
+		sys->werrstr("string too long: "+s);
+		return -1;
+	}
+	for(j := 0; j < len a; j++)
+		d[i+j] = a[j];
+	while(j < l)
+		d[i+j++] = byte 0;
+	return i+l;
+}
+
+pscore(d: array of byte, i: int, s: Score): int
+{
+	for(j := 0; j < Scoresize; j++)
+		d[i+j] = s.a[j];
+	return i+Scoresize;
 }

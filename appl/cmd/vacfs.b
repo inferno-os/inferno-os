@@ -2,35 +2,36 @@ implement Vacfs;
 
 include "sys.m";
 	sys: Sys;
+	sprint: import sys;
 include "draw.m";
 include "arg.m";
+include "dial.m";
+	dial: Dial;
 include "string.m";
+	str: String;
 include "daytime.m";
+	dt: Daytime;
 include "venti.m";
+	venti: Venti;
+	Root, Entry, Score, Session: import venti;
+	Roottype, Dirtype, Pointertype0, Datatype: import venti;
 include "vac.m";
+	vac: Vac;
+	Direntry, Vacdir, Vacfile: import vac;
 include "styx.m";
 	styx: Styx;
 	Tmsg, Rmsg: import styx;
 include "styxservers.m";
-
-str: String;
-daytime: Daytime;
-venti: Venti;
-vac: Vac;
-styxservers: Styxservers;
-
-print, sprint, fprint, fildes: import sys;
-Score, Session: import venti;
-Roottype, Dirtype, Pointertype0, Datatype: import venti;
-Root, Entry, Direntry, Metablock, Metaentry, Entrysize, Modeperm, Modeappend, Modeexcl, Modedir, Modesnapshot, Vacdir, Vacfile, Source: import vac;
-Styxserver, Fid, Navigator, Navop, Enotfound: import styxservers;
+	styxservers: Styxservers;
+	Styxserver, Fid, Navigator, Navop, Enotfound: import styxservers;
 
 Vacfs: module {
 	init:	fn(nil: ref Draw->Context, args: list of string);
 };
 
-addr := "net!$venti!venti";
-dflag := pflag := 0;
+addr := "$venti";
+dflag: int;
+pflag: int;
 session: ref Session;
 
 ss: ref Styxserver;
@@ -183,7 +184,7 @@ getfile(qid: int): ref Elem.File
 	pick file := get(qid) {
 	File =>	return file;
 	}
-	error("internal error, getfile");
+	fail("internal error, getfile");
 	return nil;
 }
 
@@ -192,7 +193,7 @@ getdir(qid: int): ref Elem.Dir
 	pick d := get(qid) {
 	Dir =>	return d;
 	}
-	error("internal error, getdir");
+	fail("internal error, getdir");
 	return nil;
 }
 
@@ -200,8 +201,9 @@ init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
 	arg := load Arg Arg->PATH;
+	dial = load Dial Dial->PATH;
 	str = load String String->PATH;
-	daytime = load Daytime Daytime->PATH;
+	dt = load Daytime Daytime->PATH;
 	venti = load Venti Venti->PATH;
 	styx = load Styx Styx->PATH;
 	styxservers = load Styxservers Styxservers->PATH;
@@ -213,7 +215,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	sys->pctl(sys->NEWPGRP, nil);
 	if(venti == nil || vac == nil)
-		error("loading venti,vac");
+		fail("loading venti,vac");
 
 	arg->init(args);
 	arg->setusage(arg->progname()+" [-Ddp] [-a addr] [[tag:]score]");
@@ -221,11 +223,9 @@ init(nil: ref Draw->Context, args: list of string)
 		case ch {
 		'D' =>	styxservers->traceset(1);
 		'a' =>	addr = arg->earg();
-		'd' =>	dflag++;
-			vac->dflag++;
+		'd' =>	vac->dflag = dflag++;
 		'p' =>	pflag++;
-		* =>	warn(sprint("bad option: -%c", ch));
-			arg->usage();
+		* =>	arg->usage();
 		}
 	args = arg->argv();
 	if(len args > 1)
@@ -239,22 +239,23 @@ init(nil: ref Draw->Context, args: list of string)
 		if(tag == nil)
 			tag = "vac";
 		if(tag != "vac")
-			error("bad score type: "+tag);
+			fail("bad score type: "+tag);
 		(ok, s) := Score.parse(scorestr);
 		if(ok != 0)
-			error("bad score: "+scorestr);
+			fail("bad score: "+scorestr);
 		score = ref s;
 	}
 
-	(cok, conn) := sys->dial(addr, nil);
-	if(cok < 0)
-		error(sprint("dialing %s: %r", addr));
+	addr = dial->netmkaddr(addr, "net", "venti");
+	cc := dial->dial(addr, nil);
+	if(cc == nil)
+		fail(sprint("dialing %s: %r", addr));
 	say("have connection");
 
-	fd := conn.dfd;
+	fd := cc.dfd;
 	session = Session.new(fd);
 	if(session == nil)
-		error(sprint("handshake: %r"));
+		fail(sprint("handshake: %r"));
 	say("have handshake");
 
 	rqid := 0;
@@ -262,14 +263,14 @@ init(nil: ref Draw->Context, args: list of string)
 	if(args == nil) {
 		de := Direntry.new();
 		de.uid = de.gid = de.mid = user();
-		de.ctime = de.atime = de.mtime = daytime->now();
+		de.ctime = de.atime = de.mtime = dt->now();
 		de.mode = Vac->Modedir|8r755;
 		de.emode = Sys->DMDIR|8r755;
 		red = ref Elem.Dir(rqid, de, big 0, nil, rqid, 0, 0, nil);
 	} else {
 		(vd, de, err) := vac->vdroot(session, *score);
 		if(err != nil)
-			error(err);
+			fail(err);
 		rqid = ++lastqid;
 		red = ref Elem.Dir(rqid, de, big 0, vd, rqid, 0, 0, nil);
 	}
@@ -284,12 +285,16 @@ init(nil: ref Draw->Context, args: list of string)
 	(msgc, ss) = Styxserver.new(sys->fildes(0), nav, big rqid);
 
 	for(;;) {
-		pick m := <- msgc {
+		mm := <-msgc;
+		if(mm == nil)
+			fail("eof");
+
+		pick m := mm {
 		Readerror =>
-			say("read error: "+m.error);
+			fail("read error: "+m.error);
 
 		Read =>
-			say(sprint("have read, offset=%ubd count=%d", m.offset, m.count));
+			if(dflag) say(sprint("have read, offset=%ubd count=%d", m.offset, m.count));
 			(c, err) := ss.canread(m);
 			if(c == nil){
 				ss.reply(ref Rmsg.Error(m.tag, err));
@@ -353,14 +358,14 @@ navigator(c: chan of ref Navop)
 loop:
 	for(;;) {
 		navop := <- c;
-		say(sprint("have navop, path=%bd", navop.path));
+		if(dflag) say(sprint("have navop, path=%bd", navop.path));
 		pick n := navop {
 		Stat =>
-			say(sprint("have stat"));
+			if(dflag) say(sprint("have stat"));
 			n.reply <-= (get(int n.path).stat(), nil);
 
 		Walk =>
-			say(sprint("have walk, name=%q", n.name));
+			if(dflag) say(sprint("have walk, name=%q", n.name));
 			ed := getdir(int n.path);
 			(ne, err) := walk(ed, n.name);
 			if(err != nil) {
@@ -370,7 +375,7 @@ loop:
 			n.reply <-= (ne.stat(), nil);
 
 		Readdir =>
-			say(sprint("have readdir path=%bd offset=%d count=%d", n.path, n.offset, n.count));
+			if(dflag) say(sprint("have readdir path=%bd offset=%d count=%d", n.path, n.offset, n.count));
 			if(n.path == big 0) {
 				n.reply <-= (nil, nil);
 				break;
@@ -423,22 +428,21 @@ loop:
 
 user(): string
 {
-	if((fd := sys->open("/dev/user", Sys->OREAD)) != nil
-		&& (n := sys->read(fd, d := array[128] of byte, len d)) > 0)
+	fd := sys->open("/dev/user", Sys->OREAD);
+	if(fd != nil)
+	if((n := sys->read(fd, d := array[128] of byte, len d)) > 0)
 		return string d[:n];
 	return "nobody";
 }
 
-error(s: string)
+pid(): int
 {
-	killgrp();
-	fprint(fildes(2), "%s\n", s);
-	raise "fail:"+s;
+	return sys->pctl(0, nil);
 }
 
-warn(s: string)
+killgrp(pid: int)
 {
-	fprint(fildes(2), "%s\n", s);
+	sys->fprint(sys->open(sprint("/prog/%d/ctl", pid), sys->OWRITE), "killgrp");
 }
 
 say(s: string)
@@ -447,9 +451,17 @@ say(s: string)
 		warn(s);
 }
 
-killgrp()
+fd2: ref Sys->FD;
+warn(s: string)
 {
-	fd := sys->open("/prog/"+string sys->pctl(0, nil)+"/ctl", sys->OWRITE);
-	if(fd != nil)
-		sys->fprint(fd, "killgrp\n");
+	if(fd2 == nil)
+		fd2 = sys->fildes(2);
+	sys->fprint(fd2, "%s\n", s);
+}
+
+fail(s: string)
+{
+	warn(s);
+	killgrp(pid());
+	raise "fail:"+s;
 }

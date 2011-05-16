@@ -2,30 +2,33 @@ implement Vacget;
 
 include "sys.m";
 	sys: Sys;
+	sprint: import sys;
 include "draw.m";
 include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
 include "arg.m";
+include "dial.m";
+	dial: Dial;
 include "string.m";
+	str: String;
 include "venti.m";
+	venti: Venti;
+	Root, Entry, Score, Session: import venti;
 include "vac.m";
-
-str: String;
-venti: Venti;
-vac: Vac;
-
-print, sprint, fprint, fildes: import sys;
-Score, Session: import venti;
-Roottype, Dirtype, Pointertype0, Datatype: import venti;
-Root, Entry, Direntry, Metablock, Metaentry, Entrysize, Modeperm, Modeappend, Modeexcl, Modedir, Modesnapshot, Vacdir, Vacfile, Source: import vac;
+	vac: Vac;
+	Direntry, Vacdir, Vacfile: import vac;
 
 Vacget: module {
 	init:	fn(nil: ref Draw->Context, args: list of string);
 };
 
-addr := "net!$venti!venti";
-dflag := vflag := pflag := tflag := 0;
+addr := "$venti";
+dflag: int;
+vflag: int;
+pflag: int;
+tflag: int;
+
 session: ref Session;
 
 init(nil: ref Draw->Context, args: list of string)
@@ -33,26 +36,25 @@ init(nil: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	bufio = load Bufio Bufio->PATH;
 	arg := load Arg Arg->PATH;
+	dial = load Dial Dial->PATH;
 	str = load String String->PATH;
 	venti = load Venti Venti->PATH;
 	vac = load Vac Vac->PATH;
 	if(venti == nil || vac == nil)
-		error("loading venti,vac");
+		fail("loading venti,vac");
 	venti->init();
 	vac->init();
 
 	arg->init(args);
-	arg->setusage(sprint("%s [-dtv] [-a addr] [tag:]score", arg->progname()));
+	arg->setusage(arg->progname()+" [-dtv] [-a addr] [tag:]score");
 	while((c := arg->opt()) != 0)
 		case c {
 		'a' =>	addr = arg->earg();
-		'd' =>	dflag++;
-			vac->dflag++;
+		'd' =>	vac->dflag = dflag++;
 		'p' =>	pflag++;
 		't' =>	tflag++;
 		'v' =>	vflag++;
-		* =>	warn(sprint("bad option: -%c", c));
-			arg->usage();
+		* =>	arg->usage();
 		}
 	args = arg->argv();
 	if(len args != 1)
@@ -64,27 +66,28 @@ init(nil: ref Draw->Context, args: list of string)
 	if(tag == nil)
 		tag = "vac";
 	if(tag != "vac")
-		error("bad score type: "+tag);
+		fail("bad score type: "+tag);
 
 	(sok, score) := Score.parse(scorestr);
 	if(sok != 0)
-		error("bad score: "+scorestr);
+		fail("bad score: "+scorestr);
 	say("have score");
 
-	(cok, conn) := sys->dial(addr, nil);
-	if(cok < 0)
-		error(sprint("dialing %s: %r", addr));
+	addr = dial->netmkaddr(addr, "net", "venti");
+	cc := dial->dial(addr, nil);
+	if(cc == nil)
+		fail(sprint("dialing %s: %r", addr));
 	say("have connection");
 
-	fd := conn.dfd;
+	fd := cc.dfd;
 	session = Session.new(fd);
 	if(session == nil)
-		error(sprint("handshake: %r"));
+		fail(sprint("handshake: %r"));
 	say("have handshake");
 
 	(vd, nil, err) := vac->vdroot(session, score);
 	if(err != nil)
-		error(err);
+		fail(err);
 
 	say("starting walk");
 	walk(".", vd);
@@ -120,21 +123,21 @@ walk(path: string, vd: ref Vacdir)
 	for(;;) {
 		(n, de) := vd.readdir();
 		if(n < 0)
-			error(sprint("reading direntry in %s: %r", path));
+			fail(sprint("reading direntry in %s: %r", path));
 		if(n == 0)
 			break;
-		say("walk: have direntry, elem="+de.elem);
+		if(dflag) say("walk: have direntry, elem="+de.elem);
 		newpath := path+"/"+de.elem;
 		(e, me) := vd.open(de);
 		if(e == nil)
-			error(sprint("reading entry for %s: %r", newpath));
+			fail(sprint("reading entry for %s: %r", newpath));
 
-		oflags := de.mode&~(Modeperm|Modeappend|Modeexcl|Modedir|Modesnapshot);
+		oflags := de.mode&~(vac->Modeperm|vac->Modeappend|vac->Modeexcl|vac->Modedir|vac->Modesnapshot);
 		if(oflags)
 			warn(sprint("%s: not all bits in mode can be set: 0x%x", newpath, oflags));
 
 		if(tflag || vflag)
-			print("%s\n", newpath);
+			sys->print("%s\n", newpath);
 
 		if(me != nil) {
 			if(!tflag)
@@ -148,10 +151,10 @@ walk(path: string, vd: ref Vacdir)
 			say("writing file");
 			fd := create(newpath, sys->OWRITE, de);
 			if(fd == nil)
-				error(sprint("creating %s: %r", newpath));
+				fail(sprint("creating %s: %r", newpath));
 			bio := bufio->fopen(fd, bufio->OWRITE);
 			if(bio == nil)
-				error(sprint("bufio fopen %s: %r", newpath));
+				fail(sprint("bufio fopen %s: %r", newpath));
 
 			buf := array[sys->ATOMICIO] of byte;
 			vf := Vacfile.new(session, e);
@@ -160,15 +163,15 @@ walk(path: string, vd: ref Vacdir)
 				if(rn == 0)
 					break;
 				if(rn < 0)
-					error(sprint("reading vac %s: %r", newpath));
+					fail(sprint("reading vac %s: %r", newpath));
 				wn := bio.write(buf, rn);
 				if(wn != rn)
-					error(sprint("writing local %s: %r", newpath));
+					fail(sprint("writing local %s: %r", newpath));
 			}
 			bok := bio.flush();
 			bio.close();
 			if(bok == bufio->ERROR || bok == bufio->EOF)
-				error(sprint("bufio close: %r"));
+				fail(sprint("bufio close: %r"));
 
 			if(pflag) {
 				d := sys->nulldir;
@@ -181,19 +184,22 @@ walk(path: string, vd: ref Vacdir)
 	}
 }
 
-error(s: string)
-{
-	fprint(fildes(2), "%s\n", s);
-	raise "fail:"+s;
-}
-
-warn(s: string)
-{
-	fprint(fildes(2), "%s\n", s);
-}
-
 say(s: string)
 {
 	if(dflag)
 		warn(s);
+}
+
+fd2: ref Sys->FD;
+warn(s: string)
+{
+	if(fd2 == nil)
+		fd2 = sys->fildes(2);
+	sys->fprint(fd2, "%s\n", s);
+}
+
+fail(s: string)
+{
+	warn(s);
+	raise "fail:"+s;
 }

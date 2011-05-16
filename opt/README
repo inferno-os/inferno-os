@@ -1,1 +1,2 @@
 optional components live in subdirectories of /opt.
+see opt(6) and opt(1)

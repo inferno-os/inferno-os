@@ -124,7 +124,10 @@ Venti: module {
 		rtype:	string;
 		score:	Venti->Score;		# to a Dir block
 		blocksize:	int;				# maximum block size
-		prev:		Venti->Score;		# last root block
+		prev:		ref Venti->Score;		# last root block
+
+		pack:	fn(r: self ref Root): array of byte;
+		unpack:	fn(d: array of byte): ref Root;
 	};
 
 	Entry: adt {
@@ -135,6 +138,9 @@ Venti: module {
 		flags:	int;
 		size:		big;		# (XXX should be unsigned)
 		score:	Venti->Score;
+
+		pack:	fn(e: self ref Entry): array of byte;
+		unpack:	fn(d: array of byte): ref Entry;
 	};
 	Score: adt {
 		a: array of byte;
@@ -153,7 +159,5 @@ Venti: module {
 		sync:	fn(s: self ref Session): int;
 		rpc:		fn(s: self ref Session, m: ref Vmsg): (ref Vmsg, string);
 	};
-	unpackentry:	fn(d: array of byte): ref Entry;
-	unpackroot:	fn(d: array of byte): ref Root;
 	init:	fn();
 };
