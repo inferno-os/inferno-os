@@ -34,7 +34,7 @@ $ROOT/$OBJDIR/lib/libcc.a:
 	mk $MKFLAGS clean
 
 %.$O: ../cc/%.c
-	$CC $CFLAGS -I. ../cc/$stem.c
+	$CC -I. $CFLAGS ../cc/$stem.c
 
 #enam.c:	v.out.h
 #	rc mkenam

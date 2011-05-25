@@ -1,3 +1,5 @@
+20110525
+	utils/[5678kqv]c/mkfile - include -I. before $CFLAGS to ensure right gc.h [issue 264]
 20110516
 	merge changes from vac branch of mechiel-inferno-os (googlecode)
 20110426
