@@ -1,3 +1,5 @@
+20110526
+	change osyield in Windows to use SwitchToThread instead of sleep(0) [e-mail list]
 20110525
 	utils/[5678kqv]c/mkfile - include -I. before $CFLAGS to ensure right gc.h [issue 264]
 20110516

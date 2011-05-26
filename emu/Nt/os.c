@@ -658,7 +658,7 @@ limbosleep(ulong milsec)
 void
 osyield(void)
 {	
-	sleep(0);
+	SwitchToThread();
 }
 
 void
