@@ -174,9 +174,9 @@ Access file for information, as in the stat command or call.
 .TP
 .B Atodir
 Access file as directory (the
-.B CHDIR
+.B QTDIR
 bit of its
-.B qid.path
+.B qid.type
 must be set).
 .TP
 .B Aopen

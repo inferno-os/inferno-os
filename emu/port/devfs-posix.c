@@ -632,45 +632,28 @@ fswstat(Chan *c, uchar *buf, int nb)
 	return nb;
 }
 
-#define	QDEVBITS 4	/* 16 devices should be plenty */
-#define MAXDEV (1<<QDEVBITS)
-#define	QDEVSHIFT	(64-QDEVBITS)
-#define	QINOMASK	(((uvlong)1<<QDEVSHIFT)-1)
-#define QPATH(d,i)      (((uvlong)(d)<<QDEVSHIFT)|((uvlong)(i)&QINOMASK))
-
 static Qid
 fsqid(struct stat *st)
 {
 	Qid q;
-	ulong dev;
-	int idev;
-	static int nqdev = 0;
-	static ulong qdev[MAXDEV];
-	static Lock l;
+	u16int dev;
 
 	q.type = QTFILE;
 	if(S_ISDIR(st->st_mode))
 		q.type = QTDIR;
 
-	dev = st->st_dev;
-	lock(&l);
-	for(idev = 0; idev < nqdev; idev++)
-		if(qdev[idev] == dev)
-			break;
-	if(idev == nqdev) {
-		if(nqdev == MAXDEV) {
-			unlock(&l);
-			error("too many devices");
+	dev = (u16int)st->st_dev;
+	if(dev & 0x8000){
+		static int aware;
+		if(aware==0){
+			aware = 1;
+			fprint(2, "fs: fsqid: top-bit dev: %#4.4ux\n", dev);
 		}
-		qdev[nqdev++] = dev;
+		dev ^= 0x8080;
 	}
-	unlock(&l);
 
-	if(0)	/* we'll just let it be masked off */
-	if((uvlong)st->st_ino & ~QINOMASK)
-		error("inode number too large");
-
-	q.path = QPATH(idev, st->st_ino);
+	q.path = (uvlong)dev<<48;
+	q.path ^= st->st_ino;
 	q.vers = st->st_mtime;
 
 	return q;

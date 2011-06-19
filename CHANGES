@@ -1,3 +1,6 @@
+20110619
+	emu/port/devfs-posix.c: put major/minor st_dev into path without mapping (with luck)
+	emu/port/kproc-pthreads.c: ensure pthread stack is at least PTHREAD_STACK_MIN (plus slop)
 20110526
 	change osyield in Windows to use SwitchToThread instead of sleep(0) [e-mail list]
 20110525

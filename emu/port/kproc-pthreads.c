@@ -8,6 +8,7 @@
 #include	<unistd.h>
 #include	<signal.h>
 #include 	<pthread.h>
+#include	<limits.h>
 #include	<errno.h>
 #include	<semaphore.h>
 
@@ -81,6 +82,14 @@ tramp(void *arg)
 	os->self = pthread_self();
 	if(pthread_setspecific(prdakey, arg))
 		panic("set specific data failed in tramp\n");
+	if(0){
+		pthread_attr_t attr;
+		memset(&attr, 0, sizeof(attr));
+		pthread_getattr_np(pthread_self(), &attr);
+		size_t s;
+		pthread_attr_getstacksize(&attr, &s);
+		print("stack size = %d\n", s);
+	}
 	p->func(p->arg);
 	pexit("{Tramp}", 0);
 	return nil;
@@ -150,7 +159,7 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	if(flags & KPX11)
 		pthread_attr_setstacksize(&attr, 512*1024);	/* could be a parameter */
 	else if(KSTACK > 0)
-		pthread_attr_setstacksize(&attr, KSTACK);
+		pthread_attr_setstacksize(&attr, (KSTACK < PTHREAD_STACK_MIN? PTHREAD_STACK_MIN: KSTACK)+1024);
 	pthread_attr_setinheritsched(&attr, PTHREAD_INHERIT_SCHED);
 	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	if(pthread_create(&thread, &attr, tramp, p))
