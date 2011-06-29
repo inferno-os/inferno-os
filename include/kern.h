@@ -202,6 +202,7 @@ extern	Rune*	runefmtstrflush(Fmt*);
 #pragma	varargck	type	"%"	void
 #pragma	varargck	type	"n"	int*
 #pragma	varargck	type	"p"	void*
+#pragma	varargck	type	"p"	uintptr
 #pragma	varargck	flag	','
 #pragma varargck	type	"<" void*
 #pragma varargck	type	"[" void*
@@ -341,7 +342,7 @@ extern	int	enc16(char*, int, uchar*, int);
 extern	int	encodefmt(Fmt*);
 extern	void	exits(char*);
 extern	double	frexp(double, int*);
-extern	ulong	getcallerpc(void*);
+extern	uintptr	getcallerpc(void*);
 extern	char*	getenv(char*);
 extern	int	getfields(char*, char**, int, int, char*);
 extern	char*	getuser(void);

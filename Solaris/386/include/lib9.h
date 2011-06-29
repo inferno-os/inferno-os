@@ -103,7 +103,7 @@ extern	ulong	getrealloctag(void*);
 extern	void*	malloctopoolblock(void*);
 
 extern	int	getfields(char*, char**, int, int, char*);
-extern	ulong	getcallerpc(void*);
+extern	uintptr	getcallerpc(void*);
 
 /*
  * print routines

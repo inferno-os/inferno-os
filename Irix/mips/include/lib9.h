@@ -244,7 +244,7 @@ struct Tm {
 extern	void	_assert(char*);
 extern	double	charstod(int(*)(void*), void*);
 extern	char*	cleanname(char*);
-extern	ulong	getcallerpc(void*);
+extern	uintptr	getcallerpc(void*);
 extern	int	getfields(char*, char**, int, int, char*);
 extern	char*	getuser(void);
 extern	char*	getwd(char*, int);

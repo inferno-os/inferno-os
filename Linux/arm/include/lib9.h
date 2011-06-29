@@ -6,6 +6,9 @@
 #define _LARGEFILE_SOURCE	1
 #define _LARGEFILE64_SOURCE	1
 #define _FILE_OFFSET_BITS 64
+#ifdef USE_PTHREADS
+#define	_REENTRANT	1
+#endif
 #include <features.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -256,7 +259,7 @@ extern	vlong	osnsec(void);
 extern	void	_assert(char*);
 extern	double	charstod(int(*)(void*), void*);
 extern	char*	cleanname(char*);
-//extern	ulong	getcallerpc(void*);
+//extern	uintptr	getcallerpc(void*);
 extern	int	getfields(char*, char**, int, int, char*);
 extern	char*	getuser(void);
 extern	char*	getwd(char*, int);
@@ -455,7 +458,7 @@ extern char *argv0;
 #define	setbinmode()
 
 /* need the inline because the link register is not saved in a known location */
-static __inline ulong getcallerpc(void* dummy) {
+static __inline uintptr getcallerpc(void* dummy) {
 	ulong lr;
  	__asm__(	"mov	%0, %%lr;" 
  			: "=r" (lr) 

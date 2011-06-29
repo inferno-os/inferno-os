@@ -341,7 +341,7 @@ extern	int	enc16(char*, int, uchar*, int);
 extern	int	encodefmt(Fmt*);
 extern	void	exits(char*);
 extern	double	frexp(double, int*);
-extern	ulong	getcallerpc(void*);
+extern	uintptr	getcallerpc(void*);
 extern	char*	getenv(char*);
 extern	int	getfields(char*, char**, int, int, char*);
 extern	char*	getuser(void);
