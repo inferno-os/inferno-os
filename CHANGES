@@ -1,3 +1,5 @@
+20110819
+	appl/cmd/mk/mk.b - use raise "fail:..." for exit status [issue 268]
 20110629
 	change x86 getcallerpc to avoid use of %ebp [issue 266]
 	change type of getcallerpc to uintptr from ulong

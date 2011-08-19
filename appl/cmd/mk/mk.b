@@ -368,7 +368,6 @@ main(argc: int, argv: array of array of byte)
 	if(uflag)
 		prusage();
 	bout.flush();
-	exit;
 }
 
 badusage()
@@ -575,7 +574,7 @@ execl(sh: string, name: string, a1: string, a2: string, a3: string, a4: string)
 	c := load Command sh;
 	if(c == nil){
 		sys->fprint(sys->fildes(2), "x %s: %r\n", sh);
-		return;
+		raise "fail:execl";
 	}
 	argl: list of string;
 	if(a4 != nil)
@@ -3232,8 +3231,6 @@ fork1(c1: chan of int, args: array of byte, cmd: array of byte, buf: ref Bufbloc
 			else
 				execl(shell, shellname, argss, nil, nil, nil);
 			exit;
-			# perror(shell);
-			# exits("exec");
 		}
 	}
 }
@@ -3260,7 +3257,6 @@ fork2(c2: chan of int, cmd: array of byte, in: array of ref Sys->FD, out: array 
 		}
 		in[1] = nil;
 		exit;
-		# exits(nil);
 	}
 }
 
@@ -3317,8 +3313,6 @@ fork3(c3: chan of int, cmd: array of byte, e: array of Envy, fd: array of ref Sy
 		else
 			execl(shell, shellname, "-c", cmds, nil, nil);
 		exit;
-		# perror(shell);
-		# exits("exec");
 	}
 }
 
@@ -3351,7 +3345,7 @@ Exit()
 	while(wait().t0 >= 0)
 		;
 	bout.flush();
-	exit;
+	raise "fail:error";
 }
 
 nnote: int;
