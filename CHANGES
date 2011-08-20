@@ -1,3 +1,6 @@
+20110820
+	emu/*/devfs.c, emu/port/devfs-posix.c - stubs for osdisksize, Linux implementation of osdisksize
+	emu/port/devfs-posix.c - also try SOCK_DGRAM for AF_UNIX [issue 269]
 20110819
 	appl/cmd/mk/mk.b - use raise "fail:..." for exit status [issue 268]
 20110629

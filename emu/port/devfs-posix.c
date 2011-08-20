@@ -74,7 +74,7 @@ static	User*	newgname(char*);
 
 static	Qid	fsqid(struct stat *);
 static	void	fspath(Cname*, char*, char*);
-static	int	fsdirconv(Chan*, char*, struct stat*, uchar*, int, int);
+static	int	fsdirconv(Chan*, char*, char*, struct stat*, uchar*, int, int);
 static	Cname*	fswalkpath(Cname*, char*, int);
 static	char*	fslastelem(Cname*);
 static	int ingroup(int id, int gid);
@@ -82,6 +82,7 @@ static	void	fsperm(Chan*, int);
 static	long	fsdirread(Chan*, uchar*, int, vlong);
 static	int	fsomode(int);
 static	void	fsremove(Chan*);
+static	vlong osdisksize(int);	/* defined by including file */
 
 /*
  * make invalid symbolic links visible; less confusing, and at least you can then delete them.
@@ -236,13 +237,18 @@ fsstat(Chan *c, uchar *dp, int n)
 	struct stat st;
 	char *p;
 
-	if(xstat(FS(c)->name->s, &st) < 0)
-		oserror();
+	if(FS(c)->fd >= 0){
+		if(fstat(FS(c)->fd, &st) < 0)
+			oserror();
+	}else{
+		if(xstat(FS(c)->name->s, &st) < 0)
+			oserror();
+	}
 	p = fslastelem(FS(c)->name);
 	if(*p == 0)
 		p = "/";
 	qlock(&idl);
-	n = fsdirconv(c, p, &st, dp, n, 0);
+	n = fsdirconv(c, FS(c)->name->s, p, &st, dp, n, 0);
 	qunlock(&idl);
 	return n;
 }
@@ -259,6 +265,11 @@ opensocket(char *path)
 		error("unix socket name too long");
 	strcpy(su.sun_path, path);
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
+		return -1;
+	if(connect(fd, (struct sockaddr*)&su, sizeof su) >= 0)
+		return fd;
+	close(fd);
+	if((fd = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
 		return -1;
 	if(connect(fd, (struct sockaddr*)&su, sizeof su) >= 0)
 		return fd;
@@ -725,11 +736,12 @@ isdots(char *name)
 }
 
 static int
-fsdirconv(Chan *c, char *name, struct stat *s, uchar *va, int nb, int indir)
+fsdirconv(Chan *c, char *path, char *name, struct stat *s, uchar *va, int nb, int indir)
 {
 	Dir d;
 	char uidbuf[NUMSIZE], gidbuf[NUMSIZE];
 	User *u;
+	int fd;
 
 	memset(&d, 0, sizeof(d));
 	d.name = name;
@@ -753,6 +765,13 @@ fsdirconv(Chan *c, char *name, struct stat *s, uchar *va, int nb, int indir)
 	d.length = s->st_size;
 	if(d.mode&DMDIR)
 		d.length = 0;
+	else if(S_ISBLK(s->st_mode) && s->st_size == 0){
+		fd = open(path, O_RDONLY);
+		if(fd >= 0){
+			d.length = osdisksize(fd);
+			close(fd);
+		}
+	}
 	d.type = 'U';
 	d.dev = c->dev;
 	if(indir && sizeD2M(&d) > nb)
@@ -797,7 +816,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 				qunlock(&idl);
 				nexterror();
 			}
-			r = fsdirconv(c, de->d_name, &st, slop, sizeof(slop), 1);
+			r = fsdirconv(c, path, de->d_name, &st, slop, sizeof(slop), 1);
 			poperror();
 			qunlock(&idl);
 			if(r <= 0) {
@@ -836,7 +855,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 			fprint(2, "dir: bad path %s\n", path);
 			continue;
 		}
-		r = fsdirconv(c, de->d_name, &st, va+i, count-i, 1);
+		r = fsdirconv(c, path, de->d_name, &st, va+i, count-i, 1);
 		if(r <= 0){
 			FS(c)->de = de;
 			break;
