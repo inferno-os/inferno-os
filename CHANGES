@@ -1,3 +1,5 @@
+20111003
+	libinterp/heap.c:/^dtype discount size of map [issue 258]
 20110820
 	emu/*/devfs.c, emu/port/devfs-posix.c - stubs for osdisksize, Linux implementation of osdisksize
 	emu/port/devfs-posix.c - also try SOCK_DGRAM for AF_UNIX [issue 269]
