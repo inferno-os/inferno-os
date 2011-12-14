@@ -13,7 +13,7 @@ struct FPU
 	uchar	env[28];
 };
 
-#define KSTACK (16 * 1024)
+#define KSTACK (32 * 1024)
 
 #ifndef USE_PTHREADS
 static __inline Proc *getup(void) {

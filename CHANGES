@@ -1,3 +1,9 @@
+20111214
+	change Linux port to use pthreads instead of clone directly
+	emu/Linux: rename os.c to os-clone.c; rename osp.c to os.c
+	emu/Linux/mkfile: remove -lrt, add kproc-pthreads.$O
+	Linux/*/include: define USE_PTHREADS
+	Linux/386/include/emu.h: increase KSTACK to 32k for Linux gethost* functions
 20111003
 	libinterp/heap.c:/^dtype discount size of map [issue 258]
 20110820

@@ -1,4 +1,5 @@
 /* define _BSD_SOURCE to use ISO C, POSIX, and 4.3BSD things. */
+#define	USE_PTHREADS
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
