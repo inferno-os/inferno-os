@@ -1,11 +1,13 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
-typedef struct MapNode {
-	struct MapNode *next;
+typedef struct MapNode MapNode;
+
+struct MapNode {
+	MapNode *next;
 	uchar e[1];	// entry goes here, inline
-} MapNode;
+};
 
 struct Map {
 	int size;
@@ -61,6 +63,7 @@ find(FidMap *m, void *key, int create, void **ep)
 {
 	MapNode *n;
 	int i;
+
 	i = (*m->hash)(key, m->size);
 	n = m->head[i];
 	while(n && !(*m->compare)(n->e, key))

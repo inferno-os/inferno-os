@@ -1,10 +1,10 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 #include "fcall.h"
 
 static char *
-copypages(LogfsServer *server, long newb, long oldb, ulong copymask, LogfsLowLevelReadResult *llrrp, int *markedbadp)
+copypages(LogfsServer *server, long newb, long oldb, Pageset copymask, LogfsLowLevelReadResult *llrrp, int *markedbadp)
 {
 	char *errmsg;
 	int page;
@@ -28,7 +28,7 @@ copypages(LogfsServer *server, long newb, long oldb, ulong copymask, LogfsLowLev
 		return Enomem;
 
 	for(page = ppb - 1; page >= 0; page--) {
-		ulong m;
+		Pageset m;
 
 		m = logfsdatapagemask(1, page);
 
@@ -66,28 +66,24 @@ logfsservercopyactivedata(LogfsServer *server, long newb, long oldblockindex, in
 	ulong newpath;
 	DataBlock *ob;
 	char *errmsg;
+	Pageset copymask;
 
 	ob = server->datablock + oldblockindex;
-	if(forcepage0) {
-		u32int mask;
-		mask = logfsdatapagemask(1, 0);
-		if(ob->free & mask) {
-			ob->dirty |= mask;
-			ob->free |= mask;
-		}
-	}
+	copymask = ~ob->free;
+	if(forcepage0)
+		copymask |= logfsdatapagemask(1, 0);
 	if(server->trace > 1)
 		print("copyactivedata %ld: (%ld -> %ld)\n", oldblockindex, ob->block, newb);
 	newpath = mkdatapath(dataseqof(ob->path), copygensucc(copygenof(ob->path)));
 	(*ll->setblocktag)(ll, newb, LogfsTdata);
 	(*ll->setblockpath)(ll, newb, newpath);
-	errmsg = copypages(server, newb, ob->block, ~ob->free, llrrp, markedbadp);
+	errmsg = copypages(server, newb, ob->block, copymask, llrrp, markedbadp);
 	if(errmsg)
 		return errmsg;
 	/*
-	 * anything dirty and free is now not dirty and free
+	 * anything not copied is now not dirty
 	 */
-	ob->dirty &= ~(ob->dirty & ob->free);
+	ob->dirty &= copymask;
 	ob->block = newb;
 	ob->path = newpath;
 	return nil;

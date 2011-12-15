@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 #include "fcall.h"
@@ -173,7 +173,7 @@ logfslogbytes(LogfsServer *server, int active, uchar *msg, uint size)
 	errmsg = logspace(server, active, 0, size, &p, nil);
 	if(errmsg)
 		return errmsg;
-	memcpy(p, msg, size);
+	memmove(p, msg, size);
 	logdirty(server, active);
 	return nil;
 }

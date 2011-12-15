@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "fcall.h"
 #include "local.h"
@@ -26,11 +26,11 @@ logfsserverwstat(LogfsServer *server, u32int fid, uchar *stat, ushort nstat)
 	if(server->trace > 1)
 		print("logfsserverwstat(%ud, %ud)\n", fid, nstat);
 	if(nstat < 49)
-		return Emsgsize;
+		return Eshortstat;
 	p  = stat;
 	len = GBIT16(p); p += BIT16SZ;
 	if(len + BIT16SZ  != nstat)
-		return Emsgsize;
+		return Eshortstat;
 	mep = p + len;
 	p += BIT16SZ + BIT32SZ;		/* skip type and dev */
 	qid.type = *p++;
@@ -42,9 +42,9 @@ logfsserverwstat(LogfsServer *server, u32int fid, uchar *stat, ushort nstat)
 	length = GBIT64(p); p+= BIT64SZ;
 	if(!logfsgn(&p, mep, &name) || !logfsgn(&p, mep, &uname)
 		|| !logfsgn(&p, mep, &gname) || !logfsgn(&p, mep, &muname))
-		return Emsgsize;
+		return Eshortstat;
 	if(p != mep)
-		return Emsgsize;
+		return Eshortstat;
 	qiddonttouch = qid.type == (uchar)~0 && qid.vers == ~0 && qid.path == ~(uvlong)0;
 	permdonttouch = perm == ~0;
 	mtimedonttouch = mtime == ~0;

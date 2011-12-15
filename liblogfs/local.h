@@ -1,33 +1,55 @@
+typedef struct DataBlock DataBlock;
+typedef struct Extent Extent;
+typedef struct Entry Entry;
+typedef struct ExtentList ExtentList;
+typedef struct Fid Fid;
+typedef struct Map Map;
+typedef struct GroupSet GroupSet;
+typedef struct Group Group;
+typedef struct Uname Uname;
+typedef struct LogMessage LogMessage;
+typedef struct LogSegment LogSegment;
+typedef struct Path Path;
+typedef struct DirReadState DirReadState;
+
+typedef struct Map PathMap;
+typedef struct Map FidMap;
+typedef struct Map GroupMap;
+typedef struct Map UnameMap;
+typedef struct Map Ust;
+
+#pragma incomplete Extent
+#pragma incomplete ExtentList
+#pragma incomplete Map
+#pragma incomplete DirReadState
 
 enum {
 	L2LogSweeps = 2,
 	L2BlockCopies = 2,
 	LogDataLimit = 128,
 	LogAddr = (1 << 31),
-	Replacements = 2,		/* how much free space must be available for replacements */
-	Transfers = 2,			/* how much additional space must be available for transfers */
-	LogSlack = 1,			/* how much additional space must be available for data allocation */
+	Replacements = 2,		/* extra space for replacements */
+	Transfers = 2,			/* extra space available for transfers */
+	LogSlack = 1,			/* extra space for data allocation */
 };
 
-typedef struct Extent {
+struct Extent {
 	u32int min, max;
 	u32int flashaddr;		/* encode block index, page number, and offset within page to min */
-} Extent;
+};
 
-typedef struct ExtentList ExtentList;
+char *logfsextentlistnew(ExtentList **);
+void logfsextentlistfree(ExtentList **);
+char *logfsextentlistinsert(ExtentList *, Extent *, Extent **);
+int logfsextentlistwalk(ExtentList *, int (*)(void *, Extent *, int),void *);
+Extent *logfsextentlistmatch(ExtentList *, Extent *);
+int logfsextentlistwalkrange(ExtentList *,
+	int (*)(void *, u32int, u32int, Extent *, u32int),
+	void *, u32int, u32int);
+int logfsextentlistmatchall(ExtentList *, int (*)(void *, Extent *), void *, Extent *);
+void logfsextentlistreset(ExtentList *);
 
-char *logfsextentlistnew(ExtentList **l);
-void logfsextentlistfree(ExtentList **l);
-char *logfsextentlistinsert(ExtentList *l, Extent *add, Extent **new);
-int logfsextentlistwalk(ExtentList *l, int (*func)(void *magic, Extent *e, int hole),void *magic);
-Extent *logfsextentlistmatch(ExtentList *l, Extent *e);
-int logfsextentlistwalkrange(ExtentList *l,
-	int (*func)(void *magic, u32int baseoffset, u32int limitoffset, Extent *, u32int extentoffset),
-	void *magic, u32int base, u32int limit);
-int logfsextentlistmatchall(ExtentList *l, int (*func)(void *magic, Extent *), void *magic, Extent *e);
-void logfsextentlistreset(ExtentList *l);
-
-typedef struct Entry {
+struct Entry {
 	int inuse;
 	int deadandgone;	/* removed */
 	Qid qid;
@@ -49,56 +71,44 @@ typedef struct Entry {
 			struct Entry *list;
 		} dir;
 	} u;
-} Entry;
+};
 
-char *logfsentrynew(LogfsServer *server, int inuse, u32int path, Entry *parent,
-	char *name, char *uid, char *gid,
-	u32int mtime, char *muid, u32int perm, ulong cvers, ulong length, Entry **ep);
-void logfsentryclunk(Entry *e);
+char *logfsentrynew(LogfsServer *, int, u32int, Entry *,
+	char *, char *, char *,
+	u32int, char *, u32int, ulong, ulong, Entry **);
+void logfsentryclunk(Entry *);
 
-typedef struct DirReadState DirReadState;
-void logfsdrsfree(DirReadState **drsp);
+void logfsdrsfree(DirReadState **);
 
-typedef struct Fid {
+struct Fid {
 	ulong fid;
 	int openmode;
 	Entry *entry;
 	char *uname;
 	DirReadState *drs;
-} Fid;
+};
 
-typedef struct Map Map;
-typedef int LOGFSMAPWALKFN(void *magic, void *entry);
-char *logfsmapnew(int size, int (*hash)(void *key, int size), int (*compare)(void *entry, void *key), int (*allocsize)(void *key), void (*free)(void *), Map **mapp);
-void logfsmapfree(Map **mp);
-char *logfsmapnewentry(Map *m, void *key, void **entryp);
-void *logfsmapfindentry(Map *m, void *key);
-int logfsmapdeleteentry(Map *m, void *key);
-int logfsmapwalk(Map *m, LOGFSMAPWALKFN *func, void *magic);
+typedef int LOGFSMAPWALKFN(void*, void*);
+char *logfsmapnew(int, int (*)(void*, int), int (*)(void*, void*), int (*)(void*), void (*)(void*), Map **);
+void logfsmapfree(Map **);
+char *logfsmapnewentry(Map*, void*, void **);
+void *logfsmapfindentry(Map*, void*);
+int logfsmapdeleteentry(Map*, void*);
+int logfsmapwalk(Map*, LOGFSMAPWALKFN*, void*);
 
-typedef struct Map FidMap;
-
-char *logfsfidmapnew(FidMap **fidmapmapp);
+char *logfsfidmapnew(FidMap **);
 #define logfsfidmapfree(mp) logfsmapfree(mp)
-char *logfsfidmapnewentry(FidMap *m, ulong fid, Fid **fidmapp);
+char *logfsfidmapnewentry(FidMap *, ulong, Fid **);
 #define logfsfidmapfindentry(m, fid) logfsmapfindentry(m, (void *)fid)
-int logfsfidmapclunk(FidMap *m, ulong fid);
+int logfsfidmapclunk(FidMap *, ulong);
 
 struct Logfs {
 	int trace;
 };
 
-typedef struct Map Ust;
-char *logfsustnew(Ust **ustp);
-#define logfsustfree(m) logfsmapfree(m)
-char *logfsustadd(Ust *m, char *s);
-
-typedef struct GroupSet GroupSet;
-
-typedef struct Group Group;
-typedef struct Map GroupMap;
-typedef struct Uname Uname;
-typedef struct Map UnameMap;
+char *logfsustnew(Ust**);
+#define logfsustfree(m) logfsmapfree((m))
+char *logfsustadd(Ust*, char*);
 
 struct Group {
 	char *uid;
@@ -118,35 +128,35 @@ struct LogfsIdentityStore {
 	UnameMap *unamemap;
 };
 
-char *logfsgroupmapnew(GroupMap **groupmapp, UnameMap **unamemapp);
+char *logfsgroupmapnew(GroupMap **, UnameMap **);
 #define logfsgroupmapfree(mp) logfsmapfree(mp)
 #define logfsunamemapfree(mp) logfsmapfree(mp)
-char *logfsgroupmapnewentry(GroupMap *gm, UnameMap *um, char *uid, char *uname, Group **groupp, Uname **unamep);
+char *logfsgroupmapnewentry(GroupMap *, UnameMap *, char *, char *, Group **, Uname **);
 #define logfsgroupmapdeleteentry(m, uid) logfsmapdeleteentry(m, (void *)uid)
 #define logfsgroupmapfindentry(m, uid) logfsmapfindentry(m, uid)
 #define logfsunamemapfindentry(m, uname) logfsmapfindentry(m, uname)
-char *logfsgroupmapfinduname(GroupMap *m, char *uid);
-char *logfsunamemapfinduid(UnameMap *m, char *uid);
+char *logfsgroupmapfinduname(GroupMap *, char *);
+char *logfsunamemapfinduid(UnameMap *, char *);
 #define logfsunamemapdeleteentry(m, uname) logfsmapdeleteentry(m, (void *)uname)
 
-typedef int LOGFSGROUPSETWALKFN(void *magic, Group *g);
-char *logfsgroupsetnew(GroupSet **sp);
-void logfsgroupsetfree(GroupSet **sp);
-int logfsgroupsetadd(GroupSet *s, Group *g);
-int logfsgroupsetremove(GroupSet *s, Group *g);
-int logfsgroupsetwalk(GroupSet *s, LOGFSGROUPSETWALKFN *func, void *magic);
-int logfsgroupsetismember(GroupSet *gs, Group *g);
-char *logfsisfindidfromname(LogfsIdentityStore *is, char *name);
-char *logfsisfindnamefromid(LogfsIdentityStore *is, char *id);
+typedef int LOGFSGROUPSETWALKFN(void *, Group *);
+char *logfsgroupsetnew(GroupSet **);
+void logfsgroupsetfree(GroupSet **);
+int logfsgroupsetadd(GroupSet *, Group *);
+int logfsgroupsetremove(GroupSet *, Group *);
+int logfsgroupsetwalk(GroupSet *, LOGFSGROUPSETWALKFN *, void *);
+int logfsgroupsetismember(GroupSet *, Group *);
+char *logfsisfindidfromname(LogfsIdentityStore *, char *);
+char *logfsisfindnamefromid(LogfsIdentityStore *, char *);
 #define logfsisfindgroupfromid(is, id) logfsgroupmapfindentry((is)->groupmap, id)
-Group *logfsisfindgroupfromname(LogfsIdentityStore *is, char *uname);
+Group *logfsisfindgroupfromname(LogfsIdentityStore *, char *);
 #define logfsisustadd(is, s) logfsustadd((is)->ids, s)
-int logfsisgroupunameismember(LogfsIdentityStore *is, Group *g, char *uname);
-int logfsisgroupuidismember(LogfsIdentityStore *is, Group *g, char *uid);
-int logfsisgroupuidisleader(LogfsIdentityStore *is, Group *g, char *uid);
+int logfsisgroupunameismember(LogfsIdentityStore *, Group *, char *);
+int logfsisgroupuidismember(LogfsIdentityStore *, Group *, char *);
+int logfsisgroupuidisleader(LogfsIdentityStore *, Group *, char *);
 extern char *logfsisgroupnonename;
 
-typedef struct LogMessage {
+struct LogMessage {
 	uchar type;
 	u32int path;
 	union {
@@ -189,14 +199,12 @@ typedef struct LogMessage {
 			char *muid;
 		} wstat;
 	} u;
-} LogMessage;
+};
 
-uint logfsconvM2S(uchar *ap, uint nap, LogMessage *f);
-uint logfssizeS2M(LogMessage *f);
-uint logfsconvS2M(LogMessage *f, uchar *ap, uint nap);
-void logfsdumpS(LogMessage *s);
-
-typedef struct LogSegment LogSegment;
+uint logfsconvM2S(uchar *, uint, LogMessage *);
+uint logfssizeS2M(LogMessage *);
+uint logfsconvS2M(LogMessage *, uchar *, uint);
+void logfsdumpS(LogMessage *);
 
 struct LogSegment {
 	int gen;				/* generation number of this log */
@@ -209,42 +217,36 @@ struct LogSegment {
 	long blockmap[1];		/* there are ll->blocks of these */
 };
 
-char *logfslogsegmentnew(LogfsServer *server, int gen, LogSegment **segp);
-void logfslogsegmentfree(LogSegment **segp);
-char *logfslogbytes(LogfsServer *server, int active, uchar *msg, uint size);
-char *logfslog(LogfsServer *server, int active, LogMessage *s);
-char *logfslogwrite(LogfsServer *server, int active, u32int path, u32int offset, int count, u32int mtime,
-	u32int cvers, char *muid, uchar *data, u32int *flashaddr);
-char *logfslogsegmentflush(LogfsServer *server, int active);
-int lognicesizeforwrite(LogfsServer *server, int active, u32int count, int muidlen);
-char *logfsscan(LogfsServer *server);
-
-typedef struct DataBlock DataBlock;
+char *logfslogsegmentnew(LogfsServer *, int, LogSegment **);
+void logfslogsegmentfree(LogSegment **);
+char *logfslogbytes(LogfsServer *, int, uchar *, uint);
+char *logfslog(LogfsServer *, int, LogMessage *);
+char *logfslogwrite(LogfsServer *, int, u32int, u32int, int, u32int,
+	u32int, char *, uchar *, u32int *);
+char *logfslogsegmentflush(LogfsServer *, int);
+int lognicesizeforwrite(LogfsServer *, int, u32int, int);
+char *logfsscan(LogfsServer *);
 
 struct DataBlock {
-	u32int free;
-	u32int dirty;
+	Pageset free;
+	Pageset dirty;
 	long path;			/* includes generation */
 	long block;
 };
 
-u32int logfsdatapagemask(int pages, int base);
-
-typedef struct Path Path;
+Pageset logfsdatapagemask(int, int);
 
 struct Path {
 	ulong path;
 	Entry *entry;
 };
 
-typedef struct Map PathMap;
-
-char *logfspathmapnew(PathMap **pathmapmapp);
+char *logfspathmapnew(PathMap **);
 #define logfspathmapfree(mp) logfsmapfree(mp)
-char *logfspathmapnewentry(PathMap *m, ulong path, Entry *e, Path **pathmapp);
+char *logfspathmapnewentry(PathMap *, ulong, Entry *, Path **);
 #define logfspathmapfindentry(m, path) (Path *)logfsmapfindentry(m, (void *)path)
 #define logfspathmapdeleteentry(m, path) logfsmapdeleteentry(m, (void *)path)
-Entry *logfspathmapfinde(PathMap *m, ulong path);
+Entry *logfspathmapfinde(PathMap *, ulong);
 
 enum {
 	LogfsTestDontFettleDataBlock = 1,
@@ -267,31 +269,31 @@ struct LogfsServer {
 	ulong testflags;
 };
 
-int logfshashulong(void *v, int size);
+int logfshashulong(void *, int);
 
-int logfsuserpermcheck(LogfsServer *s, Entry *e, Fid *f, ulong modemask);
-u32int logfsflattenentry(LogfsIdentityStore *is, uchar *buf, u32int buflen, Entry *e);
-char *logfsreplay(LogfsServer *server, LogSegment *seg, int disableerrorsforfirstblock);
-void logfsreplayfinddata(LogfsServer *server);
+int logfsuserpermcheck(LogfsServer *, Entry *, Fid *, ulong);
+u32int logfsflattenentry(LogfsIdentityStore *, uchar *, u32int, Entry *);
+char *logfsreplay(LogfsServer *, LogSegment *, int);
+void logfsreplayfinddata(LogfsServer *);
 
 #define dataseqof(path) ((path) >> L2BlockCopies)
 #define copygenof(path) ((path) & ((1 << L2BlockCopies) -1))
 #define mkdatapath(seq, gen) (((seq) << L2BlockCopies) | (gen))
 #define gensucc(g, l2) (((g) + 1) & ((1 << (l2)) - 1))
-#define copygensucc(g) gensucc(g, L2BlockCopies)
+#define copygensucc(g) gensucc((g), L2BlockCopies)
 #define loggenof(path) ((path >> L2BlockCopies) & ((1 << L2LogSweeps) - 1))
 #define logseqof(path) ((path) >> (L2BlockCopies + L2LogSweeps))
 #define mklogpath(seq, gen, copygen) (((((seq) << L2LogSweeps) | (gen)) << L2BlockCopies) | (copygen))
-#define loggensucc(g) gensucc(g, L2LogSweeps)
+#define loggensucc(g) gensucc((g), L2LogSweeps)
 
-int logfsunconditionallymarkfreeanddirty(void *magic, Extent *e, int hole);
-void logfsflashaddr2spo(LogfsServer *server, u32int flashaddr, long *seq, int *page, int *offset);
-int logfsgn(uchar **pp, uchar *mep, char **v);
-u32int logfsspo2flashaddr(LogfsServer *server, long seq, int page, int offset);
-int logfsgn(uchar **pp, uchar *mep, char **v);
-void logfsflashaddr2o(LogfsServer *server, u32int flashaddr, int *offset);
-void logfsfreedatapages(LogfsServer *server, long seq, u32int mask);
-void logfsfreeanddirtydatablockcheck(LogfsServer *server, long seq);
+int logfsunconditionallymarkfreeanddirty(void *, Extent *, int);
+void logfsflashaddr2spo(LogfsServer *, u32int, long *, int *, int *);
+int logfsgn(uchar **, uchar *, char **);
+u32int logfsspo2flashaddr(LogfsServer *, long, int, int);
+int logfsgn(uchar **, uchar *, char **);
+void logfsflashaddr2o(LogfsServer *, u32int, int *);
+void logfsfreedatapages(LogfsServer *, long, Pageset);
+void logfsfreeanddirtydatablockcheck(LogfsServer *, long);
 
 typedef enum AllocReason {
 	AllocReasonReplace,
@@ -300,18 +302,18 @@ typedef enum AllocReason {
 	AllocReasonDataExtend,
 } AllocReason;
 
-long logfsfindfreeblock(LogfsLowLevel *ll, AllocReason reason);
-char *logfsbootfettleblock(LogfsBoot *lb, long block, uchar tag, long path, int *markedbad);
-char *logfsserverreplacedatablock(LogfsServer *server, long index);
-char *logfsserverreplacelogblock(LogfsServer *server, LogSegment *seg, long index);
-char *logfsserverreplaceblock(LogfsServer *server, LogSegment *seg, long seq);
-char *logfsservercopyactivedata(LogfsServer *server, long newb, long oldblockindex, int forcepage0,
-	LogfsLowLevelReadResult *llrrp, int *markedbadp);
+long logfsfindfreeblock(LogfsLowLevel *, AllocReason);
+char *logfsbootfettleblock(LogfsBoot *, long, uchar tag, long, int *);
+char *logfsserverreplacedatablock(LogfsServer *, long);
+char *logfsserverreplacelogblock(LogfsServer *, LogSegment *, long);
+char *logfsserverreplaceblock(LogfsServer *, LogSegment *, long);
+char *logfsservercopyactivedata(LogfsServer *, long, long, int,
+	LogfsLowLevelReadResult *, int *);
 
-char *logfsstrdup(char *);
+char *logfsstrdup(char*);
 
 extern char Enomem[];
-extern char Emsgsize[];
+extern char Eshortstat[];
 extern char Enonexist[];
 extern char Etoobig[];
 extern char Eexist[];

@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -7,8 +7,10 @@ enum {
 };
 
 static int
-compare(Path *f, ulong path)
+compare(void *a, void *b)
 {
+	Path *f = a;
+	ulong path = (ulong)b;	/* sic */
 	return f->path == path;
 }
 
@@ -22,14 +24,14 @@ allocsize(void *key)
 char *
 logfspathmapnew(PathMap **pathmapp)
 {
-	return logfsmapnew(PATHMOD, logfshashulong, (int (*)(void *, void *))compare, allocsize, nil, pathmapp);
+	return logfsmapnew(PATHMOD, logfshashulong, compare, allocsize, nil, pathmapp);
 }
 
 char *
 logfspathmapnewentry(PathMap *m, ulong path, Entry *e, Path **pathmapp)
 {
 	char *errmsg;
-	errmsg = logfsmapnewentry(m, (void *)path, pathmapp);
+	errmsg = logfsmapnewentry(m, (void*)path, pathmapp);
 	if(errmsg)
 		return errmsg;
 	if(*pathmapp == nil)

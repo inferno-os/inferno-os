@@ -1,8 +1,6 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
-#include "mp.h"
-#include "libsec.h"
 
 char *
 logfsformat(LogfsLowLevel *ll, long base, long limit, long bootsize, int trace)
@@ -70,7 +68,7 @@ logfsformat(LogfsLowLevel *ll, long base, long limit, long bootsize, int trace)
 			if(trace > 1)
 				print(" previously formatted");
 		}
-		r = rand() % (sizeinblocks - u);
+		r = nrand(sizeinblocks - u);
 		if(bootblocksdone < bootblocks && r < (bootblocks - bootblocksdone)) {
 			tag = LogfsTboot;
 			path = mkdatapath(bootblocksdone, 0);

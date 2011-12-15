@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "fcall.h"
 #include "local.h"
@@ -206,7 +206,7 @@ printgroup(void *magic, Group *g)
 			buf -= trim;
 		if(ds->printoffset + ds->printn > ds->offset + ds->n)
 			ds->printn = ds->offset + ds->n - ds->printoffset;
-		memcpy(buf, printbuf, ds->printn);
+		memmove(buf, printbuf, ds->printn);
 	}
 	/*
 	 * advance print position

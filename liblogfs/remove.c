@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -6,7 +6,7 @@ void
 logfsfreeanddirtydatablockcheck(LogfsServer *server, long seq)
 {
 	DataBlock *db;
-	u32int mask;
+	Pageset mask, allpages;
 
 	if(seq >= server->ndatablocks)
 		return;
@@ -16,7 +16,7 @@ logfsfreeanddirtydatablockcheck(LogfsServer *server, long seq)
 
 	mask = db->dirty & db->free;
 	if(mask) {
-		u32int allpages = logfsdatapagemask(1 << server->ll->l2pagesperblock, 0);
+		allpages = logfsdatapagemask(1 << server->ll->l2pagesperblock, 0);
 		if((mask & allpages) == allpages) {
 //print("logfsfreedatapages: returning block to the wild\n");
 			logfsbootfettleblock(server->lb, db->block, LogfsTnone, ~0, nil);
@@ -28,7 +28,7 @@ logfsfreeanddirtydatablockcheck(LogfsServer *server, long seq)
 }
 
 void
-logfsfreedatapages(LogfsServer *server, long seq, u32int mask)
+logfsfreedatapages(LogfsServer *server, long seq, Pageset mask)
 {
 	DataBlock *db;
 	if(seq >= server->ndatablocks)
@@ -50,11 +50,13 @@ logfsunconditionallymarkfreeanddirty(void *magic, Extent *e, int hole)
 		LogfsLowLevel *ll = server->ll;
 		DataBlock *db;
 		long blockindex;
-		int page, offset;
+		int page, offset, npages;
+		Pageset mask;
+
 		logfsflashaddr2spo(server, e->flashaddr, &blockindex, &page, &offset);
 		if(blockindex < server->ndatablocks && (db = server->datablock + blockindex)->block >= 0) {
-			int npages = ((offset + e->max - e->min) + (1 << ll->l2pagesize) - 1) >> ll->l2pagesize;
-			u32int mask = logfsdatapagemask(npages, page);
+			npages = ((offset + e->max - e->min) + (1 << ll->l2pagesize) - 1) >> ll->l2pagesize;
+			mask = logfsdatapagemask(npages, page);
 			if((db->dirty & mask) != mask)
 				print("markfreeandirty: not all pages dirty\n");
 //print("markfreeanddirty: datablock %ld mask 0x%.8ux\n", blockindex, mask);
@@ -144,4 +146,3 @@ clunk:
 	logfsfidmapclunk(server->fidmap, fid);
 	return errmsg;
 }
-

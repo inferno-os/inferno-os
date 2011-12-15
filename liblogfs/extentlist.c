@@ -1,11 +1,13 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
-typedef struct ExtentNode {
+typedef struct ExtentNode ExtentNode;
+
+struct ExtentNode {
 	Extent e;
-	struct ExtentNode *next;
-} ExtentNode;
+	ExtentNode *next;
+};
 
 struct ExtentList {
 	ExtentNode *head;
@@ -70,10 +72,11 @@ logfsextentlistinsert(ExtentList *l, Extent *add, Extent **new)
 					int trimmed;
 					/* but doesn't overlap end */
 					/* retain tail of old */
-					if(saved == nil)
+					if(saved == nil){
 						saved = logfsrealloc(nil, sizeof(*saved));
-					if(saved == nil)
-						goto nomem;
+						if(saved == nil)
+							return Enomem;
+					}
 					trimmed = add->max - old->e.min;
 					old->e.min += trimmed;
 					old->e.flashaddr += trimmed;
@@ -106,7 +109,7 @@ logfsextentlistinsert(ExtentList *l, Extent *add, Extent **new)
 						saved = logfsrealloc(nil, sizeof(*saved));
 					frag = logfsrealloc(nil, sizeof(*frag));
 					if(saved == nil || frag == nil)
-						goto nomem;
+						return Enomem;
 					frag->next = next;
 					old->next = frag;
 					frag->e.min = add->max;
@@ -121,10 +124,11 @@ logfsextentlistinsert(ExtentList *l, Extent *add, Extent **new)
 					 * will need at most one add extent, so create one
 					 * now before changing data structures
 					 */
-					if(saved == nil)
+					if(saved == nil){
 						saved = logfsrealloc(nil, sizeof(*saved));
-					if(saved == nil)
-						goto nomem;
+						if(saved == nil)
+							return Enomem;
+					}
 					old->e.max = add->min;		/* retain start of old */
 				}
 				/* old.max <= add.max ⇒ add covers tail of old */
@@ -136,11 +140,10 @@ logfsextentlistinsert(ExtentList *l, Extent *add, Extent **new)
 	/*
 	 * if here, and saved == nil, then there was no overlap
 	 */
-	if(saved == nil)
+	if(saved == nil){
 		saved = logfsrealloc(nil, sizeof(*saved));
-	if(saved == nil) {
-	nomem:
-		return Enomem;
+		if(saved == nil)
+			return Enomem;
 	}
 	saved->e = *add;
 	if(prev) {

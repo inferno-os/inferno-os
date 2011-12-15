@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "nandecc.h"
 
 static uchar ecctab[] = {

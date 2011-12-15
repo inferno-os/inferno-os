@@ -1,5 +1,21 @@
 #pragma src "/usr/inferno/liblogfs"
 
+typedef struct LogfsLowLevel LogfsLowLevel;
+typedef struct LogfsBoot LogfsBoot;
+typedef struct Logfs Logfs;
+typedef struct LogfsServer LogfsServer;
+typedef struct LogfsIdentityStore LogfsIdentityStore;
+
+#pragma incomplete Logfs
+#pragma incomplete LogfsServer
+#pragma incomplete LogfsIdentityStore
+#pragma incomplete LogfsBoot
+
+typedef u64int Pageset;
+
+#define	BITSPERSET	(sizeof(Pageset)*8)
+#define	PAGETOP	((Pageset)1<<(BITSPERSET-1))
+
 enum {
 	LogfsTnone = 0xff,
 	LogfsTboot = 0x01,
@@ -25,15 +41,6 @@ enum {
 	LogfsOpenFlagWstatAllow = 2,
 };
 
-typedef struct LogfsLowLevel LogfsLowLevel;
-
-typedef enum LogfsLowLevelFettleAction {
-	LogfsLowLevelFettleActionMarkBad,
-	LogfsLowLevelFettleActionErase,
-	LogfsLowLevelFettleActionFormat,
-	LogfsLowLevelFettleActionEraseAndFormat,
-} LogfsLowLevelFettleAction;
-
 typedef enum LogfsLowLevelReadResult {
 	LogfsLowLevelReadResultOk,
 	LogfsLowLevelReadResultSoftError,
@@ -42,30 +49,30 @@ typedef enum LogfsLowLevelReadResult {
 	LogfsLowLevelReadResultAllOnes,
 } LogfsLowLevelReadResult;
 
-typedef short LOGFSGETBLOCKTAGFN(LogfsLowLevel *ll, long block);
-typedef void LOGFSSETBLOCKTAGFN(LogfsLowLevel *ll, long block, short tag);
-typedef ulong LOGFSGETBLOCKPATHFN(LogfsLowLevel *ll, long block);
-typedef void LOGFSSETBLOCKPATHFN(LogfsLowLevel *ll, long block, ulong path);
-typedef long LOGFSFINDFREEBLOCKFN(LogfsLowLevel *ll, long *freeblocks);
-typedef char *LOGFSREADBLOCKFN(LogfsLowLevel *ll, void *buf, long block, LogfsLowLevelReadResult *blocke);
-typedef char *LOGFSWRITEBLOCKFN(LogfsLowLevel *ll, void *buf, uchar tag, ulong path, int xcount, long *xdata, long block);
-typedef char *LOGFSERASEBLOCKFN(LogfsLowLevel *ll, long block, void **llsave, int *markedbad);
-typedef char *LOGFSFORMATBLOCKFN(LogfsLowLevel *ll, long block, uchar tag, long path, long baseblock, long sizeinblocks, int xcount, long *xdata, void *llsave, int *markedbad);
-typedef char *LOGFSREFORMATBLOCKFN(LogfsLowLevel *ll, long block, uchar tag, long path, int xcount, long *xdata, void *llsave, int *markedbad);
-typedef void LOGFSMARKBLOCKBADFN(LogfsLowLevel *ll, long block);
-typedef int LOGFSGETBLOCKSFN(LogfsLowLevel *ll);
-typedef long LOGFSGETBASEBLOCKFN(LogfsLowLevel *ll);
-typedef int LOGFSGETBLOCKSIZEFN(LogfsLowLevel *ll);
-typedef int LOGFSGETBLOCKPARTIALFORMATSTATUSFN(LogfsLowLevel *ll, long block);
-typedef ulong LOGFSCALCRAWADDRESSFN(LogfsLowLevel *ll, long pblock, int dataoffset);
-typedef char *LOGFSOPENFN(LogfsLowLevel *ll, long base, long limit, int trace, int xcount, long *xdata);
-typedef char *LOGFSGETBLOCKSTATUSFN(LogfsLowLevel *ll, long block, int *magicfound, void **llsave, LogfsLowLevelReadResult *result);
-typedef int LOGFSCALCFORMATFN(LogfsLowLevel *ll, long base, long limit, long bootsize, long *baseblock, long *limitblock, long *bootblocks);
-typedef int LOGFSGETOPENSTATUSFN(LogfsLowLevel *ll);
-typedef void LOGFSFREEFN(LogfsLowLevel *ll);
-typedef char *LOGFSREADPAGERANGEFN(LogfsLowLevel *ll, uchar *data, long block, int page, int offset, int count, LogfsLowLevelReadResult *result);
-typedef char *LOGFSWRITEPAGEFN(LogfsLowLevel *ll, uchar *data, long block, int page);
-typedef char *LOGFSSYNCFN(LogfsLowLevel *ll);
+typedef short LOGFSGETBLOCKTAGFN(LogfsLowLevel*, long);
+typedef void LOGFSSETBLOCKTAGFN(LogfsLowLevel*, long, short);
+typedef ulong LOGFSGETBLOCKPATHFN(LogfsLowLevel*, long);
+typedef void LOGFSSETBLOCKPATHFN(LogfsLowLevel*, long, ulong);
+typedef long LOGFSFINDFREEBLOCKFN(LogfsLowLevel*, long*);
+typedef char *LOGFSREADBLOCKFN(LogfsLowLevel*, void*, long, LogfsLowLevelReadResult*);
+typedef char *LOGFSWRITEBLOCKFN(LogfsLowLevel*, void*, uchar, ulong, int, long*, long);
+typedef char *LOGFSERASEBLOCKFN(LogfsLowLevel*, long, void **, int*);
+typedef char *LOGFSFORMATBLOCKFN(LogfsLowLevel*, long, uchar, long, long, long, int, long*, void*, int*);
+typedef char *LOGFSREFORMATBLOCKFN(LogfsLowLevel*, long, uchar, long, int, long*, void*, int*);
+typedef void LOGFSMARKBLOCKBADFN(LogfsLowLevel*, long);
+typedef int LOGFSGETBLOCKSFN(LogfsLowLevel*);
+typedef long LOGFSGETBASEBLOCKFN(LogfsLowLevel*);
+typedef int LOGFSGETBLOCKSIZEFN(LogfsLowLevel*);
+typedef int LOGFSGETBLOCKPARTIALFORMATSTATUSFN(LogfsLowLevel*, long);
+typedef ulong LOGFSCALCRAWADDRESSFN(LogfsLowLevel*, long, int);
+typedef char *LOGFSOPENFN(LogfsLowLevel*, long, long, int, int, long*);
+typedef char *LOGFSGETBLOCKSTATUSFN(LogfsLowLevel*, long, int*, void **, LogfsLowLevelReadResult*);
+typedef int LOGFSCALCFORMATFN(LogfsLowLevel*, long, long, long, long*, long*, long*);
+typedef int LOGFSGETOPENSTATUSFN(LogfsLowLevel*);
+typedef void LOGFSFREEFN(LogfsLowLevel*);
+typedef char *LOGFSREADPAGERANGEFN(LogfsLowLevel*, uchar*, long, int, int, int, LogfsLowLevelReadResult*);
+typedef char *LOGFSWRITEPAGEFN(LogfsLowLevel*, uchar*, long, int);
+typedef char *LOGFSSYNCFN(LogfsLowLevel*);
 
 struct LogfsLowLevel {
 	int l2pagesize;
@@ -97,60 +104,55 @@ struct LogfsLowLevel {
 	LOGFSSYNCFN *sync;
 };
 
-extern char Eio[];
-extern char Ebadarg[];
-extern char Eperm[];
+char *logfstagname(uchar);
 
-char *logfstagname(uchar tag);
+char *logfsisnew(LogfsIdentityStore **);
+void logfsisfree(LogfsIdentityStore **);
+char *logfsisgroupcreate(LogfsIdentityStore*, char*, char*);
+char *logfsisgrouprename(LogfsIdentityStore*, char*, char*);
+char *logfsisgroupsetleader(LogfsIdentityStore*, char*, char*);
+char *logfsisgroupaddmember(LogfsIdentityStore*, char*, char*);
+char *logfsisgroupremovemember(LogfsIdentityStore*, char*, char*);
+char *logfsisusersread(LogfsIdentityStore*, void*, long, ulong, long*);
 
-typedef struct LogfsIdentityStore LogfsIdentityStore;
-char *logfsisnew(LogfsIdentityStore **isp);
-void logfsisfree(LogfsIdentityStore **isp);
-char *logfsisgroupcreate(LogfsIdentityStore *is, char *groupname, char *groupid);
-char *logfsisgrouprename(LogfsIdentityStore *is, char *oldgroupname, char *newgroupname);
-char *logfsisgroupsetleader(LogfsIdentityStore *is, char *groupname, char *leadername);
-char *logfsisgroupaddmember(LogfsIdentityStore *is, char *groupname, char *membername);
-char *logfsisgroupremovemember(LogfsIdentityStore *is, char *groupname, char *nonmembername);
-char *logfsisusersread(LogfsIdentityStore *is, void *buf, long n, ulong offset, long *nr);
+char *logfsformat(LogfsLowLevel*, long, long, long, int);
+char *logfsbootopen(LogfsLowLevel*, long, long, int, int, LogfsBoot**);
+void logfsbootfree(LogfsBoot*);
+char *logfsbootread(LogfsBoot*, void*, long, ulong);
+char *logfsbootwrite(LogfsBoot*, void*, long, ulong);
+char *logfsbootio(LogfsBoot*, void*, long, ulong, int);
+char *logfsbootmap(LogfsBoot*, ulong, ulong*, int*, int*, int*, ulong*, ulong*);
+long logfsbootgetiosize(LogfsBoot*);
+long logfsbootgetsize(LogfsBoot*);
+void logfsboottrace(LogfsBoot*, int);
 
-typedef struct LogfsBoot LogfsBoot;
-typedef struct Logfs Logfs;
-typedef struct LogfsServer LogfsServer;
+char *logfsserverattach(LogfsServer*, u32int, char*, Qid*);
+char *logfsserverclunk(LogfsServer*, u32int);
+char *logfsservercreate(LogfsServer*, u32int, char*, u32int, uchar, Qid*);
+char *logfsserverflush(LogfsServer*);
+char *logfsservernew(LogfsBoot*, LogfsLowLevel*, LogfsIdentityStore*, ulong, int, LogfsServer**);
+char *logfsserveropen(LogfsServer*, u32int, uchar mode, Qid*);
+char *logfsserverread(LogfsServer*, u32int, u32int, u32int, uchar*, u32int, u32int*);
+char *logfsserverremove(LogfsServer*, u32int);
+char *logfsserverstat(LogfsServer*, u32int, uchar*, u32int, ushort*);
+char *logfsserverwalk(LogfsServer*, u32int, u32int, ushort, char **, ushort*, Qid*);
+char *logfsserverwrite(LogfsServer*, u32int, u32int, u32int, uchar*, u32int*);
+char *logfsserverwstat(LogfsServer*, u32int, uchar*, ushort nstat);
+void logfsserverfree(LogfsServer **);
+char *logfsserverlogsweep(LogfsServer*, int, int*);
+char *logfsserverreadpathextent(LogfsServer*, u32int, int, u32int*, u32int*, long*, int*, int*);
 
-char *logfsformat(LogfsLowLevel *ll, long base, long limit, long bootsize, int trace);
-char *logfsbootopen(LogfsLowLevel *ll, long base, long limit, int trace, int printbad, LogfsBoot **lbp);
-void logfsbootfree(LogfsBoot *lb);
-char *logfsbootread(LogfsBoot *lb, void *buf, long n, ulong offset);
-char *logfsbootwrite(LogfsBoot *lb, void *buf, long n, ulong offset);
-char *logfsbootio(LogfsBoot *lb, void *buf, long n, ulong offset, int write);
-char *logfsbootmap(LogfsBoot *lb, ulong laddress, ulong *lblockp, int *lboffsetp, int *lpagep, int *lpageoffsetp, ulong *pblockp, ulong *paddressp);
-long logfsbootgetiosize(LogfsBoot *lb);
-long logfsbootgetsize(LogfsBoot *lb);
-void logfsboottrace(LogfsBoot *lb, int level);
-
-char *logfsserverattach(LogfsServer *s, u32int fid, char *uname, Qid *qid);
-char *logfsserverclunk(LogfsServer *s, u32int fid);
-char *logfsservercreate(LogfsServer *server, u32int fid, char *name, u32int perm, uchar mode, Qid *qid);
-char *logfsserverflush(LogfsServer *server);
-char *logfsservernew(LogfsBoot *lb, LogfsLowLevel *ll, LogfsIdentityStore *is, ulong openflags, int trace, LogfsServer **sp);
-char *logfsserveropen(LogfsServer *s, u32int fid, uchar mode, Qid *qid);
-char *logfsserverread(LogfsServer *s, u32int fid, u32int offset, u32int count, uchar *buf, u32int buflen, u32int *rcount);
-char *logfsserverremove(LogfsServer *server, u32int fid);
-char *logfsserverstat(LogfsServer *s, u32int fid, uchar *buf, u32int bufsize, ushort *count);
-char *logfsserverwalk(LogfsServer *s, u32int fid, u32int newfid, ushort nwname, char **wname, ushort *nwqid, Qid *wqid);
-char *logfsserverwrite(LogfsServer *server, u32int fid, u32int offset, u32int count, uchar *buf, u32int *rcount);
-char *logfsserverwstat(LogfsServer *server, u32int fid, uchar *stat, ushort nstat);
-void logfsserverfree(LogfsServer **sp);
-char *logfsserverlogsweep(LogfsServer *server, int justone, int *didsomething);
-char *logfsserverreadpathextent(LogfsServer *server, u32int path, int nth, u32int *flashaddrp, u32int *lengthp,
-	long *blockp, int *pagep, int *offsetp);
-
-char *logfsservertestcmd(LogfsServer *s, int argc, char **argv);
-void logfsservertrace(LogfsServer *s, int level);
+char *logfsservertestcmd(LogfsServer*, int, char **);
+void logfsservertrace(LogfsServer*, int);
 
 /*
  * implemented by the environment
  */
 ulong logfsnow(void);
-void *logfsrealloc(void *p, ulong size);
-void logfsfreemem(void *p);
+void *logfsrealloc(void*, ulong);
+void logfsfreemem(void*);
+int	nrand(int);
+
+extern char Eio[];
+extern char Ebadarg[];
+extern char Eperm[];

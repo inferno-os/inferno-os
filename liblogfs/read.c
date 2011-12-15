@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 #include "fcall.h"
@@ -73,7 +73,7 @@ drsread(DirReadState *drs, uchar *buf, u32int buflen, u32int *rcount)
 		uint len = GBIT16(p) + BIT16SZ;
 		if(len > buflen)
 			break;
-		memcpy(buf, p, len);
+		memmove(buf, p, len);
 		drs->lastoffset += len;
 		*rcount += len;
 		buf += len;
@@ -146,7 +146,7 @@ reader(void *magic, u32int baseoffset, u32int limitoffset, Extent *e, u32int ext
 			/*
 			 * it hasn't made it to disk yet
 			 */
-			memcpy(s->buf + baseoffset, seg->pagebuf + offset, limitoffset - baseoffset);
+			memmove(s->buf + baseoffset, seg->pagebuf + offset, limitoffset - baseoffset);
 			goto done;
 		}
 		if(seq < seg->unsweptblockindex) {

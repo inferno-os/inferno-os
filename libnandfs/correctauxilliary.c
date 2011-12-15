@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "nandfs.h"
 #include "local.h"
@@ -60,7 +60,7 @@ _nandfscorrectauxiliary(NandfsAuxiliary *hdr)
 	else {
 		if (hdr->tag != LogfsTnone) {
 			ulong tmp = getbig4(hdr->parth);
-			if (tmp != 0xfffffffff && _nandfshamming31_26correct(&tmp)) {
+			if (tmp != 0xffffffff && _nandfshamming31_26correct(&tmp)) {
 				putbig4(hdr->parth, tmp);
 				if (e != LogfsLowLevelReadResultOk)	
 					e = LogfsLowLevelReadResultSoftError;

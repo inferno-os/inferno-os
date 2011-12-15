@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -30,9 +30,9 @@ logfshashstring(void *s, int n)
 }
 
 static int
-compare(char *entry, char *key)
+compare(void *entry, void *key)
 {
-	return strcmp(entry, key) == 0;
+	return strcmp((char*)entry, (char*)key) == 0;
 }
 
 static int
@@ -44,7 +44,7 @@ allocsize(void *key)
 char *
 logfsustnew(Ust **ustp)
 {
-	return logfsmapnew(USTMOD, logfshashstring, (int (*)(void *, void *))compare, allocsize, nil, ustp);
+	return logfsmapnew(USTMOD, logfshashstring, compare, allocsize, nil, ustp);
 }
 
 char *
@@ -53,12 +53,12 @@ logfsustadd(Ust *ust, char *s)
 	char *errmsg;
 	char *ep;
 	ep = logfsmapfindentry(ust, s);
-	if(ep) {
+	if(ep != nil) {
 //		print("ust: found %s\n", s);
 		return ep;
 	}
 	errmsg = logfsmapnewentry(ust, s, &ep);
-	if(errmsg)
+	if(errmsg != nil)
 		return errmsg;
 //	print("ust: new %s\n", s);
 	return strcpy(ep, s);

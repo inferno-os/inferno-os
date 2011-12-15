@@ -1,26 +1,27 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
-typedef struct AllocState {
+typedef struct AllocState AllocState;
+struct AllocState {
 	long oldblock;
 	int markbad;
-} AllocState;
+};
 
-u32int
+Pageset
 logfsdatapagemask(int pages, int base)
 {
-	if(pages == 32)
-		return 0xffffffff;
-	return (((u32int)1 << pages) - 1) << (32 - base - pages);
+	if(pages == BITSPERSET)
+		return ~(Pageset)0;
+	return (((Pageset)1 << pages) - 1) << (BITSPERSET - base - pages);
 }
 
-static u32int
-fastgap(u32int w, u32int n)
+static Pageset
+fastgap(Pageset w, uint n)
 {
-	u32int s;
+	Pageset s;
 //print("fastgap(0x%.8ux, %d)\n", w, n);
-	if(w == 0 || n < 1 || n > 32)
+	if(w == 0 || n < 1 || n > BITSPERSET)
 		return 0;
 /*
 #	unroll the following loop 5 times:
@@ -43,33 +44,27 @@ fastgap(u32int w, u32int n)
 	w &= w << s;
 	n -= s;
 	s = n >> 1;
+	if(BITSPERSET == 64){	/* extra time if 64 bits */
+		w &= w << s;
+		n -= s;
+		s = n >> 1;
+	}
 	return w & (w << s);
 }
 
-static u32int
-page0gap(u32int w, u32int n)
-{
-	int p;
-	for(p = 1; p <= n; p++) {
-		u32int m = logfsdatapagemask(p, 0);
-		if((w & m) != m)
-			return logfsdatapagemask(p - 1, 0);
-	}
-	return 0;
-}
-
-int
-nlz(u32int x)
+static int
+nlz(Pageset x)
 {
 	int n, c;
+
 	if(x == 0)
-		return 32;
-	if(x & 0x80000000)
-		return (~x >> 26) & 0x20;
-	n = 32;
-	c = 16;
+		return BITSPERSET;
+	if(x & PAGETOP)
+		return 0;
+	n = BITSPERSET;
+	c = BITSPERSET/2;
 	do {
-		u32int y;
+		Pageset y;
 		y = x >> c;
 		if(y != 0) {
 			n -= c;
@@ -79,10 +74,11 @@ nlz(u32int x)
 	return n - x;
 }
 
-static u32int
-findgap(u32int w, u32int n)
+static Pageset
+findgap(Pageset w, uint n)
 {
-	u32int m;
+	Pageset m;
+
 	do {
 		m  = fastgap(w, n);
 		if(m)
@@ -95,11 +91,13 @@ findgap(u32int w, u32int n)
 }
 
 static int
-bitcount(ulong mask)
+bitcount(Pageset mask)
 {
-	ulong m;
+	Pageset m;
 	int rv;
-	for(rv = 0, m = 0x80000000; m; m >>= 1)
+
+	rv = 0;
+	for(m = PAGETOP; m != 0; m >>= 1)
 		if(mask & m)
 			rv++;
 	return rv;
@@ -174,7 +172,7 @@ allocdatapages(LogfsServer *server, u32int count, int *countp, long *blockindexp
 				b = logfsfindfreeblock(ll, AllocReasonTransfer);
 			}
 			else {
-				u32int available;
+				Pageset available;
 				/*
 				 * if page0 is free, then we must ensure that we use it otherwise
 				 * in tagged storage such as nand, the block tag is not written
@@ -186,6 +184,8 @@ allocdatapages(LogfsServer *server, u32int count, int *countp, long *blockindexp
 				state->oldblock = oldblock;
 				state->markbad = llrr != LogfsLowLevelReadResultOk;
 				available = db->free & ~db->dirty;
+				if(available & PAGETOP)
+					available = logfsdatapagemask(nlz(~available), 0);
 				gapmask = findgap(available, pages);
 				goto done;
 			}
@@ -243,8 +243,8 @@ done:
 	if(server->trace > 1)
 		print("allocdatapages: block %ld(%ld) pages %d mask 0x%.8ux pagebase %d apages %d\n",
 			blockindex, db->block, pages, gapmask, pagebase, apages);
-//	db->free &= ~gapmask;
-//	db->dirty |= gapmask;
+	db->free &= ~gapmask;
+	db->dirty |= gapmask;
 	*pagep = pagebase;
 	*blockindexp = blockindex;
 	*flashaddr = logfsspo2flashaddr(server, blockindex, pagebase, 0);
@@ -309,7 +309,7 @@ deltapages(DataStructure *ds, LogfsLowLevel *ll, u32int baseflashaddr, int range
 
 //print("deltapages(%ud, %ud, %d, %d)\n", baseflashaddr, limitflashaddr, add, delta);
 	logfsflashaddr2spo(ds->server, baseflashaddr, &seq, &page, &offset);
-	pages = (range + (1 << ll->l2pagesize) - 1) >> ll->l2pagesize;
+	pages = (offset + range + (1 << ll->l2pagesize) - 1) >> ll->l2pagesize;
 	pageaddr = (seq << ll->l2pagesperblock) + page;
  	for(x = 0; x < pages; x++, pageaddr++)
 		if(!deltapage(ds, pageaddr, add, delta))
@@ -360,11 +360,12 @@ static char *
 zappages(LogfsServer *server, Entry *e, u32int min, u32int max)
 {
 	DataStructure ds;
-	int x, rv;
+	long seq;
+	int x, rv, page;
+	Page *p;
 
 	if(min >= e->u.file.length)
-		/* no checks necessary */
-		return nil;
+		return nil;		/* no checks necessary */
 	if(min == 0 && max >= e->u.file.length) {
 		/* replacing entire file */
 		logfsextentlistwalk(e->u.file.extent, logfsunconditionallymarkfreeanddirty, server);
@@ -383,30 +384,31 @@ zappages(LogfsServer *server, Entry *e, u32int min, u32int max)
 	ds.maxentries = 0;
 	ds.array = nil;
 	rv = logfsextentlistwalkrange(e->u.file.extent, findpageset, &ds, min, max);
-/*
-	print("pass 1\n");
-	for(x = 0; x < ds.nentries; x++)
-		print("block %ud page %ud ref %d\n", ds.array[x].pageaddr / server->ll->pagesperblock,
-			ds.array[x].pageaddr % server->ll->pagesperblock, ds.array[x].ref);
-*/
-	if(rv >= 0) {
-		Page *p;
-		if(ds.nentries == 0)
-			print("pass 2 cancelled\n");
-		else {
-			rv = logfsextentlistwalk(e->u.file.extent, addpagereferences, &ds);
-//			print("pass 2\n");
-			for(x = 0, p = ds.array; x < ds.nentries; x++, p++) {
-//				print("block %ud page %ud ref %d\n", p->pageaddr / server->ll->pagesperblock,
-//					p->pageaddr % server->ll->pagesperblock, p->ref);
-				if(rv >= 0 && p->ref == 0) {
-					long seq = p->pageaddr >> server->ll->l2pagesperblock;
-					int page = p->pageaddr & ((1 << server->ll->l2pagesperblock) - 1);
-					logfsfreedatapages(server, seq, 1 << (31 - page));
-				}
-			}
+	if(rv < 0 || ds.nentries == 0)
+		goto Out;
+	if(server->trace > 1){
+		print("pass 1\n");
+		for(x = 0; x < ds.nentries; x++){
+			p = &ds.array[x];
+			seq = p->pageaddr >> server->ll->l2pagesperblock;
+			page = p->pageaddr & ((1 << server->ll->l2pagesperblock) - 1);
+			print("block %lud page %ud ref %d\n", seq, page, p->ref);
+		}
+		print("pass 2\n");
+	}
+	rv = logfsextentlistwalk(e->u.file.extent, addpagereferences, &ds);
+	if(rv >= 0){
+		for(x = 0; x < ds.nentries; x++){
+			p = &ds.array[x];
+			seq = p->pageaddr >> server->ll->l2pagesperblock;
+			page = p->pageaddr & ((1 << server->ll->l2pagesperblock) - 1);
+			if(server->trace > 1)
+				print("block %lud page %ud ref %d\n", seq, page, p->ref);
+			if(p->ref == 0)
+				logfsfreedatapages(server, seq, logfsdatapagemask(1, page));
 		}
 	}
+Out:
 	logfsfreemem(ds.array);
 	return rv < 0 ? Enomem : nil;
 }

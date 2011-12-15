@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "nandfs.h"
 #include "nandecc.h"
@@ -46,7 +46,7 @@ nandfsreadpagerange(Nandfs *nandfs, void *buf, long block, int page, int offset,
 	uchar tmpbuf[NandfsPageSize];
 	errmsg = nandfsreadpage(nandfs, tmpbuf, nil, block, page, 1, result);
 	if (errmsg == nil)
-		memcpy(buf, tmpbuf + offset, count);
+		memmove(buf, tmpbuf + offset, count);
 	return errmsg;
 }
 

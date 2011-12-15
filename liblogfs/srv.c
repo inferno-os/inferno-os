@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "fcall.h"
 #include "local.h"
@@ -260,23 +260,23 @@ logfsflattenentry(LogfsIdentityStore *is, uchar *buf, u32int limit, Entry *e)
 					PBIT32(p, e->u.file.length); p += BIT32SZ;
 					PBIT32(p, 0); p += BIT32SZ;
 				}
-	/* name */	PBIT16(p, namelen); p += BIT16SZ; memcpy(p, e->name, namelen); p+= namelen;
+	/* name */	PBIT16(p, namelen); p += BIT16SZ; memmove(p, e->name, namelen); p+= namelen;
 	/* uid */		PBIT16(p, unamelen + unamebad); p += BIT16SZ;
 				if(unamebad)
 					*p++ = '(';
-				memcpy(p, uname, unamelen + unamebad); p+= unamelen;
+				memmove(p, uname, unamelen + unamebad); p+= unamelen;
 				if(unamebad)
 					*p++ = ')';
 	/* gid */		PBIT16(p, gnamelen + gnamebad); p += BIT16SZ;
 				if(gnamebad)
 					*p++ = '(';
-				memcpy(p, gname, gnamelen); p+= gnamelen;
+				memmove(p, gname, gnamelen); p+= gnamelen;
 				if(gnamebad)
 					*p++ = ')';
 	/* muid */	PBIT16(p, munamelen + munamebad); p += BIT16SZ;
 				if(munamebad)
 					*p++ = '(';
-				memcpy(p, muname, munamelen); p+= munamelen;
+				memmove(p, muname, munamelen); p+= munamelen;
 				if(munamebad)
 					*p = ')';
 //print("len %ud p - buf %ld\n", len, p - buf);
@@ -296,7 +296,7 @@ logfsserverstat(LogfsServer *server, u32int fid, uchar *buf, u32int bufsize, ush
 		return Eio;
 	*nstat = logfsflattenentry(server->is, buf, bufsize, f->entry);
 	if(*nstat == 0)
-		return Emsgsize;
+		return Eshortstat;
 	return nil;
 }
 

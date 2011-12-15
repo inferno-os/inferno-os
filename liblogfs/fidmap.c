@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -12,9 +12,14 @@ logfshashulong(void *v, int size)
 	return (ulong)v % size;
 }
 
+/*
+ * TO DO: assumes map.c always passes sought key value as b, and value in map as a
+ */
 static int
-compare(Fid *f, ulong fid)
+compare(void *a, void *b)
 {
+	Fid *f = a;
+	ulong fid = (ulong)b;	/* sic */
 //print("fidcompare(%ld, %ld)\n", f->fid, fid);
 	return f->fid == fid;
 }
@@ -26,23 +31,24 @@ allocsize(void *key)
 	return sizeof(Fid);
 }
 
-void
-fidfree(Fid *f)
+static void
+fidfree(void *a)
 {
+	Fid *f = a;
 	logfsdrsfree(&f->drs);
 }
 
 char *
 logfsfidmapnew(FidMap **fidmapp)
 {
-	return logfsmapnew(FIDMOD, logfshashulong, (int (*)(void *, void *))compare, allocsize, (void (*)(void *))fidfree, fidmapp);
+	return logfsmapnew(FIDMOD, logfshashulong, compare, allocsize, fidfree, fidmapp);
 }
 
 int
 logfsfidmapclunk(FidMap *m, ulong fid)
 {
 	Fid *f = logfsfidmapfindentry(m, fid);
-	if(f) {
+	if(f != nil){
 		logfsentryclunk(f->entry);
 		logfsmapdeleteentry(m, (void *)fid);
 		return 1;
@@ -54,7 +60,7 @@ char *
 logfsfidmapnewentry(FidMap *m, ulong fid, Fid **fidmapp)
 {
 	char *errmsg;
-	errmsg = logfsmapnewentry(m, (void *)fid, fidmapp);
+	errmsg = logfsmapnewentry(m, (void*)fid, fidmapp);
 	if(errmsg)
 		return errmsg;
 	if(*fidmapp == nil)
@@ -63,4 +69,3 @@ logfsfidmapnewentry(FidMap *m, ulong fid, Fid **fidmapp)
 	(*fidmapp)->openmode = -1;
 	return nil;
 }
-

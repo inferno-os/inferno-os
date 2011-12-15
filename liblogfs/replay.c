@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 #include "fcall.h"
@@ -171,7 +171,7 @@ rewstat(LogfsServer *server, LogMessage *s, int *ok)
 	ustgid = nil;
 	ustmuid = nil;
 	if(s->u.wstat.name) {
-		cname = strdup(s->u.wstat.name);
+		cname = logfsstrdup(s->u.wstat.name);
 		if(cname == nil) {
 		memerror:
 			errmsg = Enomem;
@@ -299,7 +299,7 @@ map(void *magic, Extent *x, int hole)
 	long seq;
 	int page;
 	int offset;
-	u32int mask;
+	Pageset mask;
 	DataBlock *db;
 
 	if(hole || (x->flashaddr & LogAddr) != 0)
@@ -314,8 +314,8 @@ map(void *magic, Extent *x, int hole)
 	mask = logfsdatapagemask((x->max - x->min + offset + (1 << ll->l2pagesize) - 1) >> ll->l2pagesize, page);
 //print("mask 0x%.8ux free 0x%.8ux dirty 0x%.8ux\n", mask, db->free, db->dirty);
 	if((db->free & mask) != mask)
-		print("huntfordata: data referenced more than once: block %ld(%ld) free 0x%.8ux mask 0x%.8ux\n",
-			seq, db->block, db->free, mask);
+		print("huntfordata: data referenced more than once: block %ld(%ld) free 0x%.8llux mask 0x%.8llux\n",
+			seq, db->block, (u64int)db->free, (u64int)mask);
 	db->free &= ~mask;
 	db->dirty |= mask;
 	return 1;
@@ -380,7 +380,7 @@ logfsreplayfinddata(LogfsServer *server)
 		for(i = 0, db = server->datablock; i < server->ndatablocks; i++, db++) {
 			logfsfreeanddirtydatablockcheck(server, i);
 			if(db->block >= 0)
-				print("%4ld: free 0x%.8ux dirty 0x%.8ux\n", i, server->datablock[i].free, server->datablock[i].dirty);
+				print("%4ld: free 0x%.8llux dirty 0x%.8llux\n", i, (u64int)server->datablock[i].free, (u64int)server->datablock[i].dirty);
 		}
 	}
 }

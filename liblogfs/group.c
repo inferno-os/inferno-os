@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -7,14 +7,18 @@ enum {
 };
 
 static int
-groupcompare(Group *g, char *uid)
+groupcompare(void *a, void *b)
 {
+	Group *g = a;
+	char *uid = b;
 	return g->uid == uid;
 }
 
 static int
-unamecompare(Uname *u, char *uname)
+unamecompare(void *a, void *b)
 {
+	Uname *u = a;
+	char *uname = b;
 	return u->uname == uname;
 }
 
@@ -36,12 +40,10 @@ char *
 logfsgroupmapnew(GroupMap **groupmapp, UnameMap **unamemapp)
 {
 	char *errmsg;
-	errmsg = logfsmapnew(GROUPMOD, logfshashulong, (int (*)(void *, void *))groupcompare,
-		groupallocsize, nil, groupmapp);
+	errmsg = logfsmapnew(GROUPMOD, logfshashulong, groupcompare, groupallocsize, nil, groupmapp);
 	if(errmsg)
 		return errmsg;
-	errmsg = logfsmapnew(GROUPMOD, logfshashulong, (int (*)(void *, void *))unamecompare,
-		unameallocsize, nil, unamemapp);
+	errmsg = logfsmapnew(GROUPMOD, logfshashulong, unamecompare, unameallocsize, nil, unamemapp);
 	if(errmsg)
 		logfsmapfree(groupmapp);
 	return errmsg;
@@ -54,18 +56,22 @@ logfsgroupmapnewentry(GroupMap *gm, UnameMap *um, char *uid, char *uname, Group 
 	errmsg = logfsmapnewentry(gm, uid, groupp);
 	if(errmsg)
 		return errmsg;
+	if(*groupp == nil)
+		return "uid already exists";
+	(*groupp)->uid = uid;
 	errmsg = logfsgroupsetnew(&(*groupp)->members);
 	if(errmsg) {
 		logfsmapdeleteentry(gm, uid);
 		return errmsg;
 	}
 	errmsg = logfsmapnewentry(um, uname, unamep);
+	if(errmsg == nil && *unamep == nil)
+		errmsg = "uname already exists";
 	if(errmsg) {
 		logfsgroupsetfree(&(*groupp)->members);
 		logfsmapdeleteentry(gm, uid);
 		return errmsg;
 	}
-	(*groupp)->uid = uid;
 	(*groupp)->uname = uname;
 	(*unamep)->uname = uname;
 	(*unamep)->g = *groupp;

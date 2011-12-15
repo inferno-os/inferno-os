@@ -1,4 +1,4 @@
-#include "lib9.h"
+#include "logfsos.h"
 #include "logfs.h"
 #include "local.h"
 
@@ -44,8 +44,8 @@ logfsgroupsetadd(GroupSet *gs, Group *g)
 		if(gs->entry[x] == g)
 			return 1;
 	if(gs->nentries >= gs->maxentries) {
-		Group **ne = logfsrealloc(gs->entry, sizeof(Group *) + (gs->maxentries * 2));
-		if(ne)
+		Group **ne = logfsrealloc(gs->entry, sizeof(Group*)*(gs->maxentries * 2));
+		if(ne == nil)
 			return 0;
 		gs->entry = ne;
 		gs->maxentries *= 2;
