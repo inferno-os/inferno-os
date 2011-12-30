@@ -438,7 +438,14 @@ quotes.
 They cannot extend across source lines.
 The same escape sequences listed above for character
 constants are usable within string constants.
-Strings have type
+.PP
+Raw (uninterpreted) string constants are sequences of Unicode characters
+contained in backquotes.
+They can extend across source lines and thus include newlines.
+They contain no character escapes.
+The only character that cannot appear inside an uninterpreted string is a backquote, because that delimits the string.
+.PP
+Both forms of string constant have type
 .CW string .
 .NH 3
 The nil constant

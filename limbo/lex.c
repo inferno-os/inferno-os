@@ -815,37 +815,57 @@ escchar(void)
 }
 
 void
-lexstring(void)
+lexstring(int israw)
 {
 	char *str;
-	int c;
+	int c, t, startlno;
 	Rune r;
 	int len, alloc;
 
 	alloc = 32;
 	len = 0;
 	str = allocmem(alloc * sizeof(str));
+	startlno = lineno;
 	for(;;){
 		c = getrune();
-		switch(c){
-		case '\\':
-			c = escchar();
-			if(c != Beof)
+		if(israw){
+			switch(c){
+			case '`':
+				yylval.tok.v.idval = enterstring(str, len);
+				return;
+			case '\n':
+				lineno++;
+				linepos = Linestart;
 				break;
-			/* fall through */
-		case Beof:
-			yyerror("end of file in string constant");
-			yylval.tok.v.idval = enterstring(str, len);
-			return;
-		case '\n':
-			yyerror("newline in string constant");
-			lineno++;
-			linepos = Linestart;
-			yylval.tok.v.idval = enterstring(str, len);
-			return;
-		case '"':
-			yylval.tok.v.idval = enterstring(str, len);
-			return;
+			case Beof:
+				t = lineno;
+				lineno = startlno;
+				yyerror("end of file in raw string constant");
+				lineno = t;
+				yylval.tok.v.idval = enterstring(str, len);
+				return;
+			}
+		}else{
+			switch(c){
+			case '\\':
+				c = escchar();
+				if(c != Beof)
+					break;
+				/* fall through */
+			case Beof:
+				yyerror("end of file in string constant");
+				yylval.tok.v.idval = enterstring(str, len);
+				return;
+			case '\n':
+				yyerror("newline in string constant");
+				lineno++;
+				linepos = Linestart;
+				yylval.tok.v.idval = enterstring(str, len);
+				return;
+			case '"':
+				yylval.tok.v.idval = enterstring(str, len);
+				return;
+			}
 		}
 		while(len+UTFmax+1 >= alloc){
 			alloc += 32;
@@ -893,7 +913,10 @@ loop:
 	case '\f':
 		goto loop;
 	case '"':
-		lexstring();
+		lexstring(0);
+		return Lsconst;
+	case '`':
+		lexstring(1);
 		return Lsconst;
 	case '\'':
 		c = getrune();

@@ -736,7 +736,8 @@ lexstring()
 {
 	s := "";
 	i := 0;
-loop:	for(;;){
+Loop:
+	for(;;){
 		case c := getc(){
 		'\\' =>
 			c = escchar();
@@ -744,14 +745,41 @@ loop:	for(;;){
 				s[i++] = c;
 		Bufio->EOF =>
 			yyerror("end of file in string constant");
-			break loop;
+			break Loop;
 		'\n' =>
 			yyerror("newline in string constant");
 			lineno++;
 			linepos = Linestart;
-			break loop;
+			break Loop;
 		'"' =>
-			break loop;
+			break Loop;
+		* =>
+			s[i++] = c;
+		}
+	}
+	yyctxt.lval.tok.v.idval = enterstring(s);
+}
+
+lexrawstring()
+{
+	s := "";
+	i := 0;
+	startlno := lineno;
+Loop:
+	for(;;){
+		case c := getc(){
+		Bufio->EOF =>
+			t := lineno;
+			lineno = startlno;
+			yyerror("end of file in raw string constant");
+			lineno = t;
+			break Loop;
+		'\n' =>
+			s[i++] = c;
+			lineno++;
+			linepos = Linestart;
+		'`' =>
+			break Loop;
 		* =>
 			s[i++] = c;
 		}
@@ -786,6 +814,9 @@ lex(): int
 			;
 		'"' =>
 			lexstring();
+			return Lsconst;
+		'`' =>
+			lexrawstring();
 			return Lsconst;
 		'\'' =>
 			c = getc();

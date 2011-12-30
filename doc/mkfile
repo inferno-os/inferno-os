@@ -61,7 +61,7 @@ title.ps:D:	title
 	troff $prereq | lp -dstdout > $target
 
 changes.ps:D:	changes.ms
-	tbl changes.ms | troff -ms | lp -d stdout >$target
+	tbl changes.ms | troff -ms | dpost >$target
 
 %.pdf: %.ps
 	ps2pdf <$stem.ps >$stem.pdf

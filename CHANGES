@@ -1,3 +1,5 @@
+20111221
+	add `...` uninterpreted string literals to limbo/lex.c, appl/cmd/limbo/lex.b
 20111215
 	liblogfs,libnandfs: use logfsos.h (added to include) to make library source independent of os
 	add fonts/vera
