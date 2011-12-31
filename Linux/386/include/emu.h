@@ -22,7 +22,7 @@ static __inline Proc *getup(void) {
 			: "=a" (p)
 	);
 	return *(Proc **)((uintptr)p & ~(KSTACK - 1));
-};
+}
 #else
 extern	Proc*	getup(void);
 #endif

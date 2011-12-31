@@ -1,3 +1,5 @@
+20111231
+	Linux/*/include/emu.h adjustments for USE_PTHREADS for non-x86 processors
 20111221
 	add `...` uninterpreted string literals to limbo/lex.c, appl/cmd/limbo/lex.b
 20111215
