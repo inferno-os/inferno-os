@@ -48,7 +48,6 @@ OFILES=\
 	s_finite.$O\
 	s_floor.$O\
 	s_ilogb.$O\
-	s_isnan.$O\
 	s_log1p.$O\
 	s_nextafter.$O\
 	s_rint.$O\

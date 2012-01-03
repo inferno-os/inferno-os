@@ -1045,7 +1045,7 @@ foldr(Node *n)
 	n->left = nil;
 	n->right = nil;
 
-	if(isnan(rv))
+	if(isNaN(rv))
 		rv = canonnan;
 
 	n->rval = rv;

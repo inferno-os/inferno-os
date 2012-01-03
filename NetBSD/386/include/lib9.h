@@ -15,7 +15,6 @@
 
 #define	getwd	infgetwd
 
-#undef isnan
 #define	round	infround
 #define	fmax	inffmax
 #define	log2	inflog2
@@ -48,6 +47,15 @@ typedef uint32_t	u32int;
 typedef uvlong u64int;
 
 typedef uintptr_t	uintptr;
+
+typedef signed char	int8;
+typedef unsigned char	uint8;
+typedef short	int16;
+typedef unsigned short	uint16;
+typedef int	int32;
+typedef unsigned int	uint32;
+typedef long long	int64;
+typedef unsigned long long	uint64;
 
 typedef unsigned short	Rune;
 typedef unsigned int	mpdigit;	/* for /sys/include/mp.h */

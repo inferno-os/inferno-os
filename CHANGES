@@ -1,3 +1,5 @@
+20120103
+	avoid re-defining isnan; use isNaN instead
 20111231
 	Linux/*/include/emu.h adjustments for USE_PTHREADS for non-x86 processors
 20111221

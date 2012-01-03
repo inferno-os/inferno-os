@@ -6,3 +6,4 @@ TARGFILES=\
 	getcallerpc-$SYSTARG-$OBJTYPE.$O\
 	getwd-posix.$O\
 	sbrk-posix.$O\
+	isnan-posix.$O\

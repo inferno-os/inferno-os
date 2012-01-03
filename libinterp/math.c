@@ -274,7 +274,7 @@ Math_isnan(void *fp)
 
 	f = fp;
 
-	*f->ret = isnan(f->x);
+	*f->ret = isNaN(f->x);
 }
 
 void
