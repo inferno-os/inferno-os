@@ -14,6 +14,14 @@
 
 #define	getwd	infgetwd
 
+/* do-it-yourself isinf and isnan */
+#ifndef isnan
+#define isnan(x) _isnan(x)
+#endif
+#ifndef isinf
+#define isinf(x) (!_finite(x))
+#endif
+
 #ifndef EMU
 typedef struct Proc Proc;
 #endif
@@ -55,6 +63,15 @@ typedef unsigned int	mpdigit;	/* for /sys/include/mp.h */
 typedef unsigned short u16int;
 typedef unsigned char u8int;
 typedef unsigned long uintptr;
+
+typedef signed char	int8;
+typedef unsigned char	uint8;
+typedef short	int16;
+typedef unsigned short	uint16;
+typedef int	int32;
+typedef unsigned int	uint32;
+typedef long long	int64;
+typedef unsigned long long	uint64;
 
 #define	USED(x)		if(x){}else{}
 #define	SET(x)
