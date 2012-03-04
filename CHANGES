@@ -1,3 +1,11 @@
+20120304
+	rabin(2) added (preliminary)
+20120213
+	styxservers: add .error operation (preliminary)
+20120116
+	lib9.h: internally rename qsort as infqsort to avoid C library clash
+	lib9/qsort.c: include lib9.h
+	lib9/mkfile: move qsort to IMPORTFILES from COMMONFILES
 20120103
 	avoid re-defining isnan; use isNaN instead
 20111231

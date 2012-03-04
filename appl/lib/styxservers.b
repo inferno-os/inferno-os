@@ -100,6 +100,11 @@ Fid.open(c: self ref Fid, mode: int, qid: Sys->Qid)
 	c.qtype = qid.qtype;
 }
 
+Styxserver.error(srv: self ref Styxserver, m: ref Tmsg, msg: string)
+{
+	srv.reply(ref Rmsg.Error(m.tag, msg));
+}
+
 Styxserver.reply(srv: self ref Styxserver, m: ref Rmsg): int
 {
 	if(debug)

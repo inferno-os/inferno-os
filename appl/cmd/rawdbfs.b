@@ -179,7 +179,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	df := bufio->open(file, Sys->ORDWR);
 	if(df == nil && empty){
-		(rc, d) := sys->stat(file);
+		(rc, nil) := sys->stat(file);
 		if(rc < 0)
 			df = bufio->create(file, Sys->ORDWR, 8r600);
 	}
@@ -246,7 +246,6 @@ Serve:
 			sys->fprint(stderr, "dbfs: fatal read error: %s\n", m.error);
 			break Serve;
 		Open =>
-			c := srv.getfid(m.fid);
 			open(srv, m);
 		Read =>
 			(c, err) := srv.canread(m);

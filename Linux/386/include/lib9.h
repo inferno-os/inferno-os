@@ -268,6 +268,8 @@ extern	double	ipow10(int);
 #define	pow10	infpow10
 extern	double	pow10(int);
 extern	vlong	strtoll(const char*, char**, int);
+#define	qsort	infqsort
+extern	void	qsort(void*, long, long, int (*)(void*, void*));
 extern	uvlong	strtoull(const char*, char**, int);
 extern	void	sysfatal(char*, ...);
 extern	int	dec64(uchar*, int, char*, int);

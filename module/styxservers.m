@@ -53,6 +53,7 @@ Styxservers: module
 		new:		fn(fd: ref Sys->FD, t: ref Navigator, rootpath: big): (chan of ref Styx->Tmsg, ref Styxserver);
 		reply:	fn(srv: self ref Styxserver, m: ref Styx->Rmsg): int;
 		replydirect:	fn(srv: self ref Styxserver, m: ref Styx->Rmsg): int;
+		error:	fn(srv: self ref Styxserver, m: ref Styx->Tmsg, msg: string);
 
 		# protocol operations
 		attach:	fn(srv: self ref Styxserver, m: ref Styx->Tmsg.Attach): ref Fid;

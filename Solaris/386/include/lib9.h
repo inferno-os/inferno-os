@@ -33,6 +33,15 @@ typedef unsigned short u16int;
 typedef unsigned char u8int;
 typedef unsigned long uintptr;
 
+typedef signed char	int8;
+typedef unsigned char	uint8;
+typedef short	int16;
+typedef unsigned short	uint16;
+typedef int	int32;
+typedef unsigned int	uint32;
+typedef long long	int64;
+typedef unsigned long long	uint64;
+
 #define	USED(x)		if(x);else
 #define	SET(x)
 
@@ -197,6 +206,8 @@ extern	int	(*doquote)(int);
 extern	char*	strdup(const char*);
 extern	int	tokenize(char*, char**, int);
 extern	vlong	strtoll(const char*, char**, int);
+#define	qsort	infqsort
+extern	void	qsort(void*, long, long, int (*)(void*, void*));
 
 extern	int	isNaN(double);
 extern	int	isInf(double, int);

@@ -94,6 +94,8 @@ extern	int	cistrcmp(char*, char*);
 extern	char*	cistrstr(char*, char*);
 extern	int	tokenize(char*, char**, int);
 extern	vlong	strtoll(const char*, char**, int);
+#define	qsort	infqsort
+extern	void	qsort(void*, long, long, int (*)(void*, void*));
 extern	uvlong	strtoull(const char*, char**, int);
 
 enum

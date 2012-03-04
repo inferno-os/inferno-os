@@ -1,0 +1,54 @@
+.TH RABIN 2
+.SH NAME
+rabin \- rabin fingerprinting
+.SH SYNOPSIS
+.EX
+include "rabin.m";
+rabin := load Rabin Rabin->PATH;
+Rcfg, Rfile: import rabin;
+
+init:	fn(bufio: Bufio);
+open:	fn(rcfg: ref Rcfg, b: ref Iobuf, min, max: int): (ref Rfile, string);
+
+Rcfg: adt {
+	mk:	fn(prime, width, mod: int): (ref Rcfg, string);
+};
+
+Rfile: adt {
+	read:	fn(r: self ref Rfile): (array of byte, big, string);
+};
+.EE
+.SH DESCRIPTION
+.B Rabin
+implements a data fingerprinting algorithm.  A rolling checksum is calculated while reading data.  Certain checksum values are taken to be data boundaries and used to split the data into chunks.
+.PP
+.B Rcfg
+represents the parameters to the algorithm;
+.B Rcfg.mk
+creates a new instance.
+.I Prime
+should be a prime number.
+.I Width
+is the width of the rolling checksum window in bytes.  A wider window results in more diverse boundary patterns.  A window of 30 bytes should be reasonable for most uses.
+.I Mod
+effectively sets the mean desired chunk size.  The rolling checksum is calculated modulo
+.IR mod .
+All three parameters influence where chunk boundaries will be found.
+.PP
+.B Rfile
+represents a file to read chunks from.
+.B Open 
+returns an initialised Rfile or an error string.
+.I Min
+and
+.I max
+are the minimum and maximum size in bytes of chunks that will be returned.  Only the last chunk in a file can be smaller than the minimum chunk size.  Note that the mean chunk size may be off due to these parameters.
+Data is read from
+.B Iobuf
+.IR b .
+.B Rfile.read
+returns subsequent chunks of data and the file offset at which they were found, or an error message.  After end of file, the returned chunks are zero bytes long.
+.SH SOURCE
+.B /appl/lib/rabin.b
+.SH AUTHOR
+Mechiel Lukkien, during GSoC 2007

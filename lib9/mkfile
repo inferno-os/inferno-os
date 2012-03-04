@@ -11,7 +11,6 @@ COMMONFILES=\
 	convM2S.$O\
 	convS2M.$O\
 	fcallfmt.$O\
-	qsort.$O\
 	runestrlen.$O\
 	strtoll.$O\
 	strtoull.$O\
@@ -46,6 +45,7 @@ IMPORTFILES=\
 	nulldir.$O\
 	pow10.$O\
 	print.$O\
+	qsort.$O\
 	readn.$O\
 	rerrstr.$O\
 	runeseprint.$O\

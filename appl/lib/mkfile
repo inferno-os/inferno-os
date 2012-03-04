@@ -91,6 +91,7 @@ TARG=\
 	profile.dis\
 	pslib.dis\
 	quicktime.dis\
+	rabin.dis\
 	rand.dis\
 	random.dis\
 	readdir.dis\
