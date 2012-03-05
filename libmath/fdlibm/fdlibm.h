@@ -15,10 +15,10 @@
 
 
 #ifdef USE_FPdbleword
-#define __HI(x) (int)((FPdbleword*)&x)->hi
-#define __LO(x) (int)((FPdbleword*)&x)->lo
-#define __HIp(x) (int)((FPdbleword*)x)->hi
-#define __LOp(x) (int)((FPdbleword*)x)->lo
+#define __HI(x) ((FPdbleword*)&x)->hi
+#define __LO(x) ((FPdbleword*)&x)->lo
+#define __HIp(x) ((FPdbleword*)x)->hi
+#define __LOp(x) ((FPdbleword*)x)->lo
 #else
 #ifdef __LITTLE_ENDIAN
 #define __HI(x) *(1+(int*)&x)
