@@ -12,7 +12,7 @@ AS=		qa
 ASFLAGS=
 
 CC=		qc
-CFLAGS=		-wFV -I$ROOT/Inferno/power/include -I$ROOT/include
+CFLAGS=		-wFV -I$ROOT/Inferno/$OBJTYPE/include -I$ROOT/Inferno/include -I$ROOT/include
 ANSICPP= -p
 
 LD=		ql

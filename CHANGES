@@ -1,3 +1,7 @@
+20120305
+	add -I$ROOT/(Plan9|Inferno)/include to CFLAGS in mkfiles/^(mkfile-Plan9* mkfile-Inferno*)
+		change specific object type to $OBJTYPE in the same
+	libmath/fdlibm/fdlibm.h and libmath/dtoa.c, if USE_FPdbleword defined, use FPdbleword to crack doubles into integers
 20120304
 	rabin(2) added (preliminary)
 20120213
