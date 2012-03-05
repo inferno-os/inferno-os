@@ -27,12 +27,12 @@
 #define Sign_Extend(a,b) if (b < 0) a |= 0xffff0000;
 
 #ifdef USE_FPdbleword
-#define word0(x) ((unsigned  long *)&x)->hi
-#define word1(x) ((unsigned  long *)&x)->lo
+#define word0(x) ((FPdbleword*)&x)->hi
+#define word1(x) ((FPdbleword*)&x)->lo
 #else
 #ifdef __LITTLE_ENDIAN
-#define word0(x) ((FPdbleword*)&x)[1]
-#define word1(x) ((FPdbleword*)&x)[0]
+#define word0(x) ((unsigned  long *)&x)[1]
+#define word1(x) ((unsigned  long *)&x)[0]
 #else
 #define word0(x) ((unsigned  long *)&x)[0]
 #define word1(x) ((unsigned  long *)&x)[1]
