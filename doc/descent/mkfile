@@ -1,0 +1,15 @@
+<../fonts.pal
+
+descent.pdf:D:	descent.ps
+
+descent.ps:D:	descent.ms f1.ps f2.ps f3.ps mkfile
+	{echo $FONTS; cat descent.ms} | tbl | troff -mpm -mpictures | dpost >$target
+
+%.ps:	%.gif
+	dpost <$stem.gif >$stem.ps
+
+%.ps:	%.bit
+	aux/p9bitpost -b100 <$stem.bit >$stem.ps
+
+%.pdf: %.ps
+	ps2pdf <$stem.ps >$stem.pdf

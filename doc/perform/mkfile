@@ -1,0 +1,15 @@
+<../fonts.pal
+
+%.ps:D:	%.ms
+	{ echo $FONTS; cat $stem.ms } | grap | pic | tbl | troff -mpm | lp -dstdout > $target
+
+FILES = \
+	perform.ps \
+
+all:V: $FILES
+
+perform.ps:D: perform.ms x0base.gr x0baseo.gr \
+		x0baseh.gr x0baseho.gr \
+		x9gc.gr x9gc200.gr \
+		x31.gr x27base.gr x27base200.gr \
+		x28base.gr x28basehd.gr x29basehd.gr
