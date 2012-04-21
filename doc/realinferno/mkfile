@@ -1,0 +1,12 @@
+<../fonts.pal
+
+real.ps:D:	real.ms real.ref
+	{echo $FONTS; eqn real.ms} | troff -mpm | dpost >$target
+
+real.ref:D:	real.ms
+	{echo $FONTS; eqn real.ms} | troff -rZ1 -mpm >/dev/null >[2]real.tmp
+	{echo .rm ]C; echo .de ]C; sed 's/(.*) (.*)/.if "\\\\$1"\1" .nr ]R \2/'; echo '[\\n(]R]'; echo ..} <real.tmp >real.ref
+	rm -f real.tmp
+
+clean:N:
+	rm -f real.ref
