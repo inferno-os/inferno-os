@@ -22,6 +22,8 @@ mywait(int *s)
 int
 mydup(int f1, int f2)
 {
+	if(f2 < 0)
+		return dup(f1);
 	return dup2(f1,f2);
 }
 

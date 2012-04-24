@@ -14,12 +14,13 @@ Bprint(Biobuf *bp, char *fmt, ...)
 	out = vseprint(ip, ep, fmt, ap);
 	va_end(ap);
 	if(out == nil || out >= ep-5) {
-		Bflush(bp);
+		if(Bflush(bp) < 0)
+			return Beof;
 		ip = ep + bp->ocount;
 		va_start(ap, fmt);
 		out = vseprint(ip, ep, fmt, ap);
 		va_end(ap);
-		if(out >= ep-5)
+		if(out == nil || out >= ep-5)
 			return Beof;
 	}
 	n = out-ip;

@@ -1,3 +1,6 @@
+20120424
+	utils/cc/Posix.c and utils/c2l/Posix.c: correct definition of mydup for POSIX dup/dup2
+	libbio/bprint.c error handling if flush or print fails
 20120305
 	add -I$ROOT/(Plan9|Inferno)/include to CFLAGS in mkfiles/^(mkfile-Plan9* mkfile-Inferno*)
 		change specific object type to $OBJTYPE in the same
