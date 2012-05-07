@@ -1,3 +1,6 @@
+20120507
+	mkfiles/mkfile-MacOSX-386 change cc to gcc
+	emu/MacOSX/win.c null out drawcursor
 20120424
 	utils/cc/Posix.c and utils/c2l/Posix.c: correct definition of mydup for POSIX dup/dup2
 	libbio/bprint.c error handling if flush or print fails
