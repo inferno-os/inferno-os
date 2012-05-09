@@ -15,7 +15,7 @@
 #define	REGSIZE		sizeof(struct Ureg)
 #define FP_CTL(x)	(REGSIZE+4*(x))
 #define FP_REG(x)	(FP_CTL(7)+10*(x))
-#define	FPREGSIZE	(6*4+8*10)
+#define	FPREGSIZE	(7*4+8*10)
 
 Reglist i386reglist[] = {
 	{"DI",		REGOFF(di),	RINT, 'X'},
@@ -44,14 +44,14 @@ Reglist i386reglist[] = {
 	{"E4",		FP_CTL(4),	RFLT, 'X'},
 	{"E5",		FP_CTL(5),	RFLT, 'X'},
 	{"E6",		FP_CTL(6),	RFLT, 'X'},
-	{"F0",		FP_REG(7),	RFLT, '3'},
-	{"F1",		FP_REG(6),	RFLT, '3'},
-	{"F2",		FP_REG(5),	RFLT, '3'},
-	{"F3",		FP_REG(4),	RFLT, '3'},
-	{"F4",		FP_REG(3),	RFLT, '3'},
-	{"F5",		FP_REG(2),	RFLT, '3'},
-	{"F6",		FP_REG(1),	RFLT, '3'},
-	{"F7",		FP_REG(0),	RFLT, '3'},
+	{"F0",		FP_REG(0),	RFLT, '3'},
+	{"F1",		FP_REG(1),	RFLT, '3'},
+	{"F2",		FP_REG(2),	RFLT, '3'},
+	{"F3",		FP_REG(3),	RFLT, '3'},
+	{"F4",		FP_REG(4),	RFLT, '3'},
+	{"F5",		FP_REG(5),	RFLT, '3'},
+	{"F6",		FP_REG(6),	RFLT, '3'},
+	{"F7",		FP_REG(7),	RFLT, '3'},
 	{  0 }
 };
 
@@ -69,7 +69,8 @@ Mach mi386 =
 	0,		/* static base register value */
 	0x1000,		/* page size */
 	0x80100000,	/* kernel base */
-	0,		/* kernel text mask */
+	0x80000000,		/* kernel text mask */
+	0x7FFFFFFF,		/* user stack top */
 	1,		/* quantization of pc */
 	4,		/* szaddr */
 	4,		/* szreg */

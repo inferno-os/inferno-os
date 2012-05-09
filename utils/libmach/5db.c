@@ -60,7 +60,7 @@ static	int	arminstlen(Map*, uvlong);
  */
 Machdata armmach =
 {
-	{0, 0, 0, 0xD},		/* break point */
+	{0x70, 0x00, 0x20, 0xD1},		/* break point */	/* D1200070 */
 	4,			/* break point size */
 
 	leswab,			/* short to local byte order */
