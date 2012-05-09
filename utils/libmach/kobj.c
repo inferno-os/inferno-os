@@ -3,6 +3,7 @@
  */
 #include <lib9.h>
 #include <bio.h>
+#include <mach.h>
 #include "kc/k.out.h"
 #include "obj.h"
 

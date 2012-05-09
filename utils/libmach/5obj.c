@@ -3,6 +3,7 @@
  */
 #include <lib9.h>
 #include <bio.h>
+#include <mach.h>
 #include "5c/5.out.h"
 #include "obj.h"
 
