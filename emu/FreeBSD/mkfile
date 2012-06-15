@@ -12,6 +12,8 @@ CLEANCONFLIST=
 
 INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is installed
 
+X11LIBS= -lX11 -lXext
+
 #end configurable parameters
 
 <$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
@@ -29,7 +31,7 @@ OBJ=\
 HFILES=\
 
 CFLAGS='-DROOT="'$ROOT'"' -DEMU -I. -I../port -I$ROOT/$SYSTARG/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp $CTHREADFLAGS $CFLAGS $EMUOPTIONS
-SYSLIBS= -lm -lX11 -lXext
+SYSLIBS= -lm $X11LIBS
 KERNDATE=`{$NDATE}
 
 default:V:	$O.$CONF

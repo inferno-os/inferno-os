@@ -1,3 +1,5 @@
+20120615
+	add configuration emu/FreeBSD/emu-g [powerman]
 20120509
 	utils/libmach: add missing user stack top initialisers, minor changes to sync with 9
 20120507
