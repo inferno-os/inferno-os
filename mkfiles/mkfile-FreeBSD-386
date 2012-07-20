@@ -8,10 +8,10 @@ OS=		o
 AR=		ar
 ARFLAGS=	ruvs
 
-AS=		cc -c
+AS=		cc -c -m32
 ASFLAGS=
 
-CC=		cc -c
+CC=		cc -c -m32
 CFLAGS=		-g\
 		-O\
 		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit\
@@ -22,7 +22,7 @@ CFLAGS=		-g\
 		-DFREEBSD_386
 
 ANSICPP=
-LD=		cc
+LD=		cc -m32
 LDFLAGS=	-L/usr/openwin/lib\
 		-L/usr/local/lib\
 		-L/usr/X11R6/lib\
