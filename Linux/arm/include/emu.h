@@ -13,9 +13,9 @@ struct FPU
 	uchar	env[28];
 };
 
-#define KSTACK (16 * 1024)
 
 #ifndef USE_PTHREADS
+#define KSTACK (16 * 1024)	/* must be power of two */
 static __inline Proc *getup(void) {
 	Proc *p;
 	__asm__(	"mov	%0, %%sp;" 
@@ -24,6 +24,7 @@ static __inline Proc *getup(void) {
 	return *(Proc **)((uintptr)p & ~(KSTACK - 1));
 }
 #else
+#define KSTACK (32 * 1024)	/* need not be power of two */
 extern	Proc*	getup(void);
 #endif
 
