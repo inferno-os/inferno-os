@@ -1011,6 +1011,7 @@ protoclone(Proto *p, char *user, int nfd)
 	c->lport = 0;
 	c->rport = 0;
 	c->restricted = 0;
+	c->headers = 0;
 	c->sfd = nfd;
 	if(nfd == -1)
 		c->sfd = so_socket(p->stype);
@@ -1066,7 +1067,9 @@ Dev ipdevtab = {
 	'I',
 	"ip",
 
+	devreset,
 	ipinit,
+	devshutdown,
 	ipattach,
 	ipwalk,
 	ipstat,
