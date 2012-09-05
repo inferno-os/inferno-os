@@ -1067,9 +1067,7 @@ Dev ipdevtab = {
 	'I',
 	"ip",
 
-	devreset,
 	ipinit,
-	devshutdown,
 	ipattach,
 	ipwalk,
 	ipstat,
