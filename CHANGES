@@ -1,3 +1,5 @@
+20120918
+	remove unused/unusable debug/setdebug from appl/lib/auth9.b and replace Keyring by Crypt
 20120820
 	emu/port/devip.c reset headers flag in Conv
 20120725

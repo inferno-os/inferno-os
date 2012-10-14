@@ -9,20 +9,15 @@ implement Auth9;
 include "sys.m";
 	sys: Sys;
 
-include "keyring.m";
+include "ipints.m";
+
+include "crypt.m";
 
 include "auth9.m";
-
-debug := 0;
 
 init()
 {
 	sys = load Sys Sys->PATH;
-}
-
-setdebug(i: int)
-{
-	debug = i;
 }
 
 put2(a: array of byte, v: int)
@@ -253,35 +248,35 @@ encrypt(key: array of byte, data: array of byte, n: int)
 {
 	if(n < 8)
 		return;
-	kr := load Keyring Keyring->PATH;
-	ds := kr->dessetup(des56to64(key), nil);
+	crypt := load Crypt Crypt->PATH;
+	ds := crypt->dessetup(des56to64(key), nil);
 	n--;
 	r := n % 7;
 	n /= 7;
 	j := 0;
 	for(i := 0; i < n; i++){
-		kr->desecb(ds, data[j:], 8, Keyring->Encrypt);
+		crypt->desecb(ds, data[j:], 8, Crypt->Encrypt);
 		j += 7;
 	}
 	if(r)
-		kr->desecb(ds, data[j-7+r:], 8, Keyring->Encrypt);
+		crypt->desecb(ds, data[j-7+r:], 8, Crypt->Encrypt);
 }
 
 decrypt(key: array of byte, data: array of byte, n: int)
 {
 	if(n < 8)
 		return;
-	kr := load Keyring Keyring->PATH;
-	ds := kr->dessetup(des56to64(key), nil);
+	crypt := load Crypt Crypt->PATH;
+	ds := crypt->dessetup(des56to64(key), nil);
 	n--;
 	r := n % 7;
 	n /= 7;
 	j := n*7;
 	if(r)
-		kr->desecb(ds, data[j-7+r:], 8, Keyring->Decrypt);
+		crypt->desecb(ds, data[j-7+r:], 8, Crypt->Decrypt);
 	for(i := 0; i < n; i++){
 		j -= 7;
-		kr->desecb(ds, data[j:], 8, Keyring->Decrypt);
+		crypt->desecb(ds, data[j:], 8, Crypt->Decrypt);
 	}
 }
 
