@@ -1,6 +1,6 @@
 .TH LISTS 2
 .SH NAME
-lists: allsat, anysat, append, combine, concat, delete, filter, find, ismember, last, map, pair, partition, rev, unpair\- list operations
+lists: allsat, anysat, append, combine, concat, delete, filter, find, ismember, last, map, pair, partition, reverse, unpair\- list operations
 .SH SYNOPSIS
 .EX
 include "lists.m"
