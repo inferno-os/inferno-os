@@ -10,7 +10,7 @@ clean:V: clean-$SHELLTYPE
 		if { ftest -d $j } {
 			echo 'cd' $j '; mk' $MKFLAGS $stem
 			cd $j; mk $MKFLAGS $stem; cd ..
-		} else {
-			! { ftest -e $j }
+		} {
+			! ftest -e $j || raise $j^' not a directory'
 		}
 	}

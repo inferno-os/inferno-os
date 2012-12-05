@@ -1,3 +1,7 @@
+20121205
+	appl/cmd/mk/mksubdirs [issue 290 change suggested by powerman]
+20120918
+	remove unused/unusable debug/setdebug from appl/lib/auth9.b; use crypt not keyring
 20120820
 	emu/port/devip.c reset headers flag in Conv
 20120725
