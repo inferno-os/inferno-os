@@ -1,7 +1,7 @@
 .TH TV 3
 .SH NAME
 tv \- Hauppage TV device
-.SH NAME
+.SH SYNOPSIS
 .B
 bind -b #V /dev
 .PP
