@@ -48,10 +48,10 @@ read.
 .I Read
 prints a diagnostic and returns a non-empty exit
 status
-.CW fail:error
+.L fail:error
 on an I/O error;
 it quietly returns status
-.CW fail:eof
+.L fail:eof
 if the read returns zero bytes (conventionally, end of file).
 .SH SEE ALSO
 .IR cat (1),
