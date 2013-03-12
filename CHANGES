@@ -1,3 +1,5 @@
+20121210
+	utils/awk/run.c - prevent free of pointer still in use [cinap]
 20121205
 	appl/cmd/mk/mksubdirs [issue 290 change suggested by powerman]
 20120918
