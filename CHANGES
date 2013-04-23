@@ -1,3 +1,5 @@
+20130423
+	mkfiles/mkfile-MacOSX-386: set 32-bit mode, and macosx-version-min to 10.6 [via http://debu.gs/entries/interlude-inferno-at-work]
 20121210
 	utils/awk/run.c - prevent free of pointer still in use [cinap]
 20121205
