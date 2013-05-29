@@ -1,3 +1,5 @@
+20130529
+	appl/cmd/cpu.b: use Dial, and neither test /dev/draw/new nor bind #d (which is wrong anyway, it's #i for drawing now)
 20130423
 	mkfiles/mkfile-MacOSX-386: set 32-bit mode, and macosx-version-min to 10.6 [via http://debu.gs/entries/interlude-inferno-at-work]
 20121210
