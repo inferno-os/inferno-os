@@ -13,7 +13,6 @@ ALWAYS=\
 	5coff\
 	5cv\
 	sqz\
-	tc\
 	acid\
 	srclist\
 	ftl\
