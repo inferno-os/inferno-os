@@ -8,7 +8,7 @@ struct cvlist
 {
 	char	*ld;		/* must be seen before using this conversion */
 	char	*si;		/* options for last input characters */
-	Rune	*so;		/* the corresponding Rune for each si entry */
+	void	*so;		/* the corresponding Rune for each si entry */
 } latintab[] = {
 #include "../port/latin1.h"
 	0,	0,		0
@@ -69,7 +69,7 @@ latin1(Rune *k, int n)
 				c = k[2];
 			for(p=l->si; *p!=0; p++)
 				if(*p == c)
-					return l->so[p - l->si];
+					return ((Rune*)l->so)[p - l->si];
 			return -1;
 		}
 	return -1;
