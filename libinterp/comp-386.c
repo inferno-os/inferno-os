@@ -1424,7 +1424,7 @@ comp(Inst *i)
 		gen2((0<<6)|(RBX<<3)|RAX, O(String, data));
 		gen2(Ojmpb, 5);
 		genb(0x0f);
-		gen2(Omovzxw, (1<<6)|(0<<3)|4);		/* movzwx 12(AX)(RBX*4), RAX */
+		gen2(Omovzxw, (1<<6)|(0<<3)|4);		/* movzwx 12(AX)(RBX*2), RAX */
 		gen2((1<<6)|(RBX<<3)|RAX, O(String, data));
 		opwst(i, Ostw, RAX);
 		break;
