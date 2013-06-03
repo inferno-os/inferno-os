@@ -1,7 +1,7 @@
 #include	<lib9.h>
 #include	<bio.h>
 #include	"../vc/v.out.h"
-#include	"../8l/elf.h"
+#include	"../ld/elf.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
