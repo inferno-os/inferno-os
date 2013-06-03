@@ -232,7 +232,7 @@ nextinit(void)
 			a->cstring++;
 		}
 		if(a->op == OLSTRING) {
-			b->vconst = convvtox(*a->rstring, TUSHORT);
+			b->vconst = convvtox(*a->rstring, TRUNE);
 			a->rstring++;
 		}
 		a->type->width -= b->type->width;
@@ -519,7 +519,7 @@ newlist(Node *l, Node *r)
 }
 
 void
-suallign(Type *t)
+sualign(Type *t)
 {
 	Type *l;
 	long o, w;
@@ -540,8 +540,8 @@ suallign(Type *t)
 				}
 				l->offset = o;
 			} else {
-				if(l->width <= 0)
-				if(l->down != T)
+				if(l->width < 0 ||
+				   l->width == 0 && l->down != T)
 					if(l->sym)
 						diag(Z, "incomplete structure element: %s",
 							l->sym->name);
@@ -581,7 +581,7 @@ suallign(Type *t)
 		return;
 
 	default:
-		diag(Z, "unknown type in suallign: %T", t);
+		diag(Z, "unknown type in sualign: %T", t);
 		break;
 	}
 }

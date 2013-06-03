@@ -266,7 +266,7 @@ void
 newio(void)
 {
 	Io *i;
-	static pushdepth = 0;
+	static int pushdepth = 0;
 
 	i = iofree;
 	if(i == I) {
@@ -1206,7 +1206,7 @@ cinit(void)
 	if(mygetwd(pathname, 99) == 0) {
 		pathname = allocn(pathname, 100, 900);
 		if(mygetwd(pathname, 999) == 0)
-			strcpy(pathname, "/???");
+			strcpy(pathname, "/?");
 	}
 
 	fmtinstall('f', gfltconv);

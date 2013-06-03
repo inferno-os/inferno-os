@@ -80,8 +80,10 @@ enum {
 	S370 = 9,		/* Amdhal	*/
 	SPARC64 = 18,		/* Sun SPARC v9 */
 	POWER = 20,		/* PowerPC */
-	ARM = 40,			/* ARM */
+	POWER64 = 21,		/* PowerPC64 */
+	ARM = 40,		/* ARM */
 	AMD64 = 62,		/* Amd64 */
+	ARM64 = 183,		/* ARM64 */
 
 	NO_VERSION = 0,		/* version, ident[VERSION] */
 	CURRENT = 1,

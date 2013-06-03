@@ -317,7 +317,8 @@ membername(char *s, int fd, char *sz)
 		t = atol(sz);
 		if(t&01) t++;
 		stab = malloc(t);
-		read(fd, stab, t);
+		if(read(fd, stab, t) != t)
+			{}
 		return nil;
 	}
 	else if(s[0] == '/' && stab != nil)	{	/* index into string table */

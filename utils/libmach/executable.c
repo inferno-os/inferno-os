@@ -60,7 +60,6 @@ extern	Mach	mmips;
 extern	Mach	mmips2le;
 extern	Mach	mmips2be;
 extern	Mach	msparc;
-extern	Mach	m68020;
 extern	Mach	mi386;
 extern	Mach	mamd64;
 extern	Mach	marm;
@@ -141,24 +140,6 @@ ExecTable exectab[] =
 		sizeof(struct sparcexec),
 		beswal,
 		sparcboot },
-	{ A_MAGIC,			/* 68020 2.out & boot image */
-		"68020 plan 9 executable",
-		"68020 plan 9 dlm",
-		F68020,
-		1,
-		&m68020,
-		sizeof(Exec),
-		beswal,
-		common },
-	{ 0xFEEDFACE,			/* Next boot image */
-		"next plan 9 boot image",
-		nil,
-		FNEXTB,
-		0,
-		&m68020,
-		sizeof(struct nextexec),
-		beswal,
-		nextboot },
 	{ I_MAGIC,			/* I386 8.out & boot image */
 		"386 plan 9 executable",
 		"386 plan 9 dlm",
@@ -364,12 +345,6 @@ commonboot(Fhdr *fp)
 		fp->name = "ARM plan 9 boot image";
 		fp->dataddr = _round(fp->txtaddr+fp->txtsz, mach->pgsize);
 		return;
-	case FALPHA:
-		fp->type = FALPHAB;
-		fp->txtaddr = (u32int)fp->entry;
-		fp->name = "alpha plan 9 boot image";
-		fp->dataddr = fp->txtaddr+fp->txtsz;
-		break;
 	case FPOWER:
 		fp->type = FPOWERB;
 		fp->txtaddr = (u32int)fp->entry;
@@ -600,6 +575,10 @@ elfdotout(int fd, Fhdr *fp, ExecHdr *hp)
 	case AMD64:
 		mach = &mamd64;
 		fp->type = FAMD64;
+		break;
+	case ARM:
+		mach = &marm;
+		fp->type = FARM;
 		break;
 	default:
 		return 0;

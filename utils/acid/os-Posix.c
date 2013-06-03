@@ -9,6 +9,7 @@
 #define	Extern extern
 #include "acid.h"
 #include <signal.h>
+#include <sys/wait.h>
 
 static void
 setraw(int fd, int baud)

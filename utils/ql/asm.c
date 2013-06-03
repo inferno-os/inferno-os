@@ -1,6 +1,5 @@
 #include	"l.h"
 
-#define	KMASK	0xF0000000
 #define JMPSZ	sizeof(u32int)		/* size of bootstrap jump section */
 
 #define	LPUT(c)\
@@ -45,6 +44,14 @@ entryvalue(void)
 	return s->value;
 }
 
+static void
+elf32jmp(Putl putl)
+{
+	/* describe a tiny text section at end with jmp to start; see below */
+	elf32phdr(putl, PT_LOAD, HEADR+textsize-JMPSZ, 0xFFFFFFFC, 0xFFFFFFFC,
+		JMPSZ, JMPSZ, R|X, 0);	/* text */
+}
+
 void
 asmb(void)
 {
@@ -86,17 +93,13 @@ asmb(void)
 		if (prevpc & (1<<31) && (pc & (1<<31)) == 0) {
 			char *tn;
 
-			tn = "?none?";
+			tn = "??none??";
 			if(curtext != P && curtext->from.sym != S)
 				tn = curtext->from.sym->name;
 			Bprint(&bso, "%s: warning: text segment wrapped past 0\n", tn);
 		}
 		prevpc = pc;
 	}
-	/* for virtex 4, inject a jmp instruction after other text */
-	if(HEADTYPE == 6)
-		/* branch to absolute entry address (0xfffe2100) */
-		lput((18 << 26) | (0x03FFFFFC & entryvalue()) | 2);
 
 	if(debug['a'])
 		Bprint(&bso, "\n");
@@ -107,7 +110,13 @@ asmb(void)
 	curtext = P;
 	switch(HEADTYPE) {
 	case 6:
+		/*
+		 * but first, for virtex 4, inject a jmp instruction after
+		 * other text: branch to absolute entry address (0xfffe2100).
+		 */
+		lput((18 << 26) | (0x03FFFFFC & entryvalue()) | 2);
 		textsize += JMPSZ;
+		cflush();
 		/* fall through */
 	case 0:
 	case 1:
@@ -315,180 +324,16 @@ asmb(void)
 		break;
 	case 5:
 		/*
-		 * customised for blue/gene,
-		 * notably the alignment and KMASK masking.
+		 * intended for blue/gene
 		 */
-		strnput("\177ELF", 4);		/* e_ident */
-		CPUT(1);			/* class = 32 bit */
-		CPUT(2);			/* data = MSB */
-		CPUT(1);			/* version = CURRENT */
-		strnput("", 9);
-		lput((2L<<16)|20L);		/* type = EXEC; machine = PowerPC */
-		lput(1L);			/* version = CURRENT */
-		lput(entryvalue() & ~KMASK);	/* entry vaddr */
-		lput(52L);			/* offset to first phdr */
-
-		if(debug['S']){
-			lput(HEADR+textsize+datsize+symsize);	/* offset to first shdr */
-			lput(0L);		/* flags = PPC */
-			lput((52L<<16)|32L);	/* Ehdr & Phdr sizes*/
-			lput((3L<<16)|40L);	/* # Phdrs & Shdr size */
-			lput((3L<<16)|2L);	/* # Shdrs & shdr string size */
-		}
-		else{
-			lput(0L);
-			lput(0L);		/* flags = PPC */
-			lput((52L<<16)|32L);	/* Ehdr & Phdr sizes*/
-			lput((3L<<16)|0L);	/* # Phdrs & Shdr size */
-			lput((3L<<16)|0L);	/* # Shdrs & shdr string size */
-		}
-
-		lput(1L);			/* text - type = PT_LOAD */
-		lput(HEADR);			/* file offset */
-		lput(INITTEXT & ~KMASK);	/* vaddr */
-		lput(INITTEXT);			/* paddr */
-		lput(textsize);			/* file size */
-		lput(textsize);			/* memory size */
-		lput(0x05L);			/* protections = RX */
-		lput(0x10000L);			/* alignment */
-
-		lput(1L);			/* data - type = PT_LOAD */
-		lput(HEADR+textsize);		/* file offset */
-		lput(INITDAT & ~KMASK);		/* vaddr */
-		lput(INITDAT);			/* paddr */
-		lput(datsize);			/* file size */
-		lput(datsize);			/* memory size */
-		lput(0x07L);			/* protections = RWX */
-		lput(0x10000L);			/* alignment */
-
-		lput(0L);			/* data - type = PT_NULL */
-		lput(HEADR+textsize+datsize);	/* file offset */
-		lput(0L);			/* vaddr */
-		lput(0L);			/* paddr */
-		lput(symsize);			/* symbol table size */
-		lput(lcsize);			/* line number size */
-		lput(0x04L);			/* protections = R */
-		lput(0x04L);			/* alignment code?? */
-		cflush();
-
-		if(!debug['S'])
-			break;
-
-		seek(cout, HEADR+textsize+datsize+symsize, 0);
-		lput(1);			/* Section name (string tbl index) */
-		lput(1);			/* Section type */
-		lput(2|4);			/* Section flags */
-		lput(INITTEXT & ~KMASK);	/* Section virtual addr at execution */
-		lput(HEADR);			/* Section file offset */
-		lput(textsize);			/* Section size in bytes */
-		lput(0);			/* Link to another section */
-		lput(0);			/* Additional section information */
-		lput(0x10000L);			/* Section alignment */
-		lput(0);			/* Entry size if section holds table */
-
-		lput(7);			/* Section name (string tbl index) */
-		lput(1);			/* Section type */
-		lput(2|1);			/* Section flags */
-		lput(INITDAT & ~KMASK);		/* Section virtual addr at execution */
-		lput(HEADR+textsize);		/* Section file offset */
-		lput(datsize);			/* Section size in bytes */
-		lput(0);			/* Link to another section */
-		lput(0);			/* Additional section information */
-		lput(0x10000L);			/* Section alignment */
-		lput(0);			/* Entry size if section holds table */
-
-		/* string section header */
-		lput(12);			/* Section name (string tbl index) */
-		lput(3);			/* Section type */
-		lput(1 << 5);			/* Section flags */
-		lput(0);			/* Section virtual addr at execution */
-		lput(HEADR+textsize+datsize+symsize+3*40);	/* Section file offset */
-		lput(14);			/* Section size in bytes */
-		lput(0);			/* Link to another section */
-		lput(0);			/* Additional section information */
-		lput(1);			/* Section alignment */
-		lput(0);			/* Entry size if section holds table */
-
-		/* string table */
-		cput(0);
-		strnput(".text", 5);
-		cput(0);
-		strnput(".data", 5);
-		cput(0);
-		strnput(".strtab", 7);
-		cput(0);
-		cput(0);
-
+		elf32(POWER, ELFDATA2MSB, 0, nil);
 		break;
 	case 6:
 		/*
-		 * customised for virtex 4 boot,
-		 * notably the alignment and KMASK masking.
+		 * intended for virtex 4 boot
 		 */
-		strnput("\177ELF", 4);		/* e_ident */
-		CPUT(1);			/* class = 32 bit */
-		CPUT(2);			/* data = MSB */
-		CPUT(1);			/* version = CURRENT */
-		strnput("", 9);
-		lput((2L<<16)|20L);		/* type = EXEC; machine = PowerPC */
-		lput(1L);			/* version = CURRENT */
-		lput(entryvalue());		/* entry vaddr */
-		lput(52L);			/* offset to first phdr */
-
-		debug['S'] = 1;			/* no symbol table */
-		if(debug['S']){
-			lput(HEADR+textsize+datsize+symsize);	/* offset to first shdr */
-			lput(0L);		/* flags = PPC */
-			lput((52L<<16)|32L);	/* Ehdr & Phdr sizes*/
-			lput((4L<<16)|40L);	/* # Phdrs & Shdr size */
-			lput((4L<<16)|2L);	/* # Shdrs & shdr string size */
-		}
-		else{
-			lput(0L);
-			lput(0L);		/* flags = PPC */
-			lput((52L<<16)|32L);	/* Ehdr & Phdr sizes*/
-			lput((4L<<16)|0L);	/* # Phdrs & Shdr size */
-			lput((4L<<16)|0L);	/* # Shdrs & shdr string size */
-		}
-
-		lput(1L);			/* text - type = PT_LOAD */
-		lput(HEADR);			/* file offset */
-		lput(INITTEXT);			/* vaddr */
-		lput(INITTEXT);			/* paddr */
-		lput(textsize-JMPSZ);		/* file size */
-		lput(textsize-JMPSZ);		/* memory size */
-		lput(0x05L);			/* protections = RX */
-		lput(0);			/* alignment */
-
-		lput(1L);			/* data - type = PT_LOAD */
-		lput(HEADR+textsize);		/* file offset */
-		lput(INITDAT);			/* vaddr */
-		lput(INITDAT);			/* paddr */
-		lput(datsize);			/* file size */
-		lput(datsize+bsssize);		/* memory size */
-		lput(0x07L);			/* protections = RWX */
-		lput(0);			/* alignment */
-
-		lput(0L);			/* data - type = PT_NULL */
-		lput(HEADR+textsize+datsize);	/* file offset */
-		lput(0L);			/* vaddr */
-		lput(0L);			/* paddr */
-		lput(symsize);			/* symbol table size */
-		lput(lcsize);			/* line number size */
-		lput(0x04L);			/* protections = R */
-		lput(0x04L);			/* alignment code?? */
-
-		/* add tiny text section at end with jmp to start */
-		lput(1L);			/* text - type = PT_LOAD */
-		lput(HEADR+textsize-JMPSZ);	/* file offset */
-		lput(0xFFFFFFFC);		/* vaddr */
-		lput(0xFFFFFFFC);		/* paddr */
-		lput(JMPSZ);			/* file size */
-		lput(JMPSZ);			/* memory size */
-		lput(0x05L);			/* protections = RX */
-		lput(0);			/* disable alignment */
-
-		cflush();
+		debug['S'] = 1;			/* symbol table */
+		elf32(POWER, ELFDATA2MSB, 1, elf32jmp);
 		break;
 	}
 	cflush();
@@ -523,10 +368,47 @@ wput(long l)
 }
 
 void
+wputl(long l)
+{
+	cbp[0] = l;
+	cbp[1] = l>>8;
+	cbp += 2;
+	cbc -= 2;
+	if(cbc <= 0)
+		cflush();
+}
+
+void
 lput(long l)
 {
-
 	LPUT(l);
+}
+
+void
+lputl(long c)
+{
+	cbp[0] = (c);
+	cbp[1] = (c)>>8;
+	cbp[2] = (c)>>16;
+	cbp[3] = (c)>>24;
+	cbp += 4;
+	cbc -= 4;
+	if(cbc <= 0)
+		cflush();
+}
+
+void
+llput(vlong v)
+{
+	lput(v>>32);
+	lput(v);
+}
+
+void
+llputl(vlong v)
+{
+	lputl(v);
+	lputl(v>>32);
 }
 
 void
@@ -665,12 +547,12 @@ asmlc(void)
 		if(p->line == oldlc || p->as == ATEXT || p->as == ANOP) {
 			if(p->as == ATEXT)
 				curtext = p;
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			continue;
 		}
-		if(debug['L'])
+		if(debug['V'])
 			Bprint(&bso, "\t\t%6ld", lcsize);
 		v = (p->pc - oldpc) / MINLC;
 		while(v) {
@@ -678,7 +560,7 @@ asmlc(void)
 			if(v < 127)
 				s = v;
 			CPUT(s+128);	/* 129-255 +pc */
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, " pc+%ld*%d(%ld)", s, MINLC, s+128);
 			v -= s;
 			lcsize++;
@@ -692,7 +574,7 @@ asmlc(void)
 			CPUT(s>>16);
 			CPUT(s>>8);
 			CPUT(s);
-			if(debug['L']) {
+			if(debug['V']) {
 				if(s > 0)
 					Bprint(&bso, " lc+%ld(%d,%ld)\n",
 						s, 0, s);
@@ -707,14 +589,14 @@ asmlc(void)
 		}
 		if(s > 0) {
 			CPUT(0+s);	/* 1-64 +lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc+%ld(%ld)\n", s, 0+s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			}
 		} else {
 			CPUT(64-s);	/* 65-128 -lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc%ld(%ld)\n", s, 64-s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
@@ -727,7 +609,7 @@ asmlc(void)
 		CPUT(s);
 		lcsize++;
 	}
-	if(debug['v'] || debug['L'])
+	if(debug['v'] || debug['V'])
 		Bprint(&bso, "lcsize = %ld\n", lcsize);
 	Bflush(&bso);
 }

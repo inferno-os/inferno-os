@@ -56,14 +56,6 @@ Pconv(Fmt *fp)
 		sprint(str, "(%ld)	%A%C	%D/%d,%D",
 			p->line, a, p->scond, &p->from, p->reg, &p->to);
 		break;
-
-	case AWORD:
-		sprint(str, "WORD %ld", p->to.offset);
-		break;
-
-	case ADWORD:
-		sprint(str, "DWORD %ld %ld", p->from.offset, p->to.offset);
-		break;
 	}
 	return fmtstrcpy(fp, str);
 }
@@ -75,7 +67,7 @@ Aconv(Fmt *fp)
 	int a;
 
 	a = va_arg(fp->args, int);
-	s = "???";
+	s = "?";
 	if(a >= AXXX && a < ALAST)
 		s = anames[a];
 	return fmtstrcpy(fp, s);

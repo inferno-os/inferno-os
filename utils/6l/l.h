@@ -1,6 +1,7 @@
 #include	<lib9.h>
 #include	<bio.h>
 #include	"../6c/6.out.h"
+#include	"../8l/elf.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
@@ -13,6 +14,8 @@
 	{ *cbp++ = c;\
 	if(--cbc <= 0)\
 		cflush(); }
+
+#define	LIBNAMELEN	300
 
 typedef	struct	Adr	Adr;
 typedef	struct	Prog	Prog;
@@ -226,7 +229,7 @@ EXTERN union
 {
 	struct
 	{
-		char	obuf[MAXIO];			/* output buffer */
+		uchar	obuf[MAXIO];			/* output buffer */
 		uchar	ibuf[MAXIO];			/* input buffer */
 	} u;
 	char	dbuf[1];
@@ -235,22 +238,26 @@ EXTERN union
 #define	cbuf	u.obuf
 #define	xbuf	u.ibuf
 
+#pragma	varargck	type	"A"	int
 #pragma	varargck	type	"A"	uint
 #pragma	varargck	type	"D"	Adr*
 #pragma	varargck	type	"P"	Prog*
 #pragma	varargck	type	"R"	int
 #pragma	varargck	type	"S"	char*
 
+#pragma	varargck	argpos	diag 1
+
 EXTERN	long	HEADR;
 EXTERN	long	HEADTYPE;
 EXTERN	vlong	INITDAT;
 EXTERN	long	INITRND;
 EXTERN	vlong	INITTEXT;
+EXTERN	vlong	INITTEXTP;
 EXTERN	char*	INITENTRY;		/* entry point */
 EXTERN	Biobuf	bso;
 EXTERN	long	bsssize;
 EXTERN	int	cbc;
-EXTERN	char*	cbp;
+EXTERN	uchar*	cbp;
 EXTERN	char*	pcstr;
 EXTERN	int	cout;
 EXTERN	Auto*	curauto;
@@ -323,6 +330,7 @@ int	Pconv(Fmt*);
 int	Rconv(Fmt*);
 int	Sconv(Fmt*);
 void	addhist(long, int);
+void	addlibpath(char*);
 Prog*	appendp(Prog*);
 void	asmb(void);
 void	asmdyn(void);
@@ -349,8 +357,10 @@ void	dynreloc(Sym*, ulong, int);
 vlong	entryvalue(void);
 void	errorexit(void);
 void	export(void);
+int	fileexists(char*);
 int	find1(long, int);
 int	find2(long, int);
+char*	findlib(char*);
 void	follow(void);
 void	gethunk(void);
 void	histtoauto(void);
@@ -361,6 +371,8 @@ void	ldobj(int, long, char*);
 void	loadlib(void);
 void	listinit(void);
 Sym*	lookup(char*, int);
+void	llput(vlong v);
+void	llputl(vlong v);
 void	lput(long);
 void	lputl(long);
 void	main(int, char*[]);
@@ -376,17 +388,13 @@ int	relinv(int);
 long	reuse(Prog*, Sym*);
 vlong	rnd(vlong, vlong);
 void	span(void);
+void	strnput(char*, int);
 void	undef(void);
 void	undefsym(Sym*);
 vlong	vaddr(Adr*);
-void	wput(ushort);
+void	wput(long);
+void	wputl(long);
 void	xdefine(char*, int, vlong);
 void	xfol(Prog*);
 int	zaddr(uchar*, Adr*, Sym*[]);
 void	zerosig(char*);
-
-#pragma	varargck	type	"D"	Adr*
-#pragma	varargck	type	"P"	Prog*
-#pragma	varargck	type	"R"	int
-#pragma	varargck	type	"A"	int
-#pragma	varargck	argpos	diag 1

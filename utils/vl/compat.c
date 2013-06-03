@@ -4,7 +4,7 @@
  * fake malloc
  */
 void*
-malloc(long n)
+malloc(ulong n)
 {
 	void *p;
 
@@ -25,7 +25,7 @@ free(void *p)
 }
 
 void*
-calloc(long m, long n)
+calloc(ulong m, ulong n)
 {
 	void *p;
 
@@ -36,9 +36,9 @@ calloc(long m, long n)
 }
 
 void*
-realloc(void *p, long n)
+realloc(void*, ulong)
 {
-	fprint(2, "realloc called\n", p, n);
+	fprint(2, "realloc called\n");
 	abort();
 	return 0;
 }
@@ -47,4 +47,19 @@ void*
 mysbrk(ulong size)
 {
 	return sbrk(size);
+}
+
+void
+setmalloctag(void *v, ulong pc)
+{
+	USED(v, pc);
+}
+
+int
+fileexists(char *s)
+{
+	uchar dirbuf[400];
+
+	/* it's fine if stat result doesn't fit in dirbuf, since even then the file exists */
+	return stat(s, dirbuf, sizeof(dirbuf)) >= 0;
 }

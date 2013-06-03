@@ -9,8 +9,8 @@ swit1(C1 *q, int nc, long def, Node *n)
 
 	if(nc < 5) {
 		for(i=0; i<nc; i++) {
-			if(debug['W'])
-				print("case = %.8lux\n", q->val);
+			if(debug['K'])
+				print("case = %.8llux\n", q->val);
 			gopcode(OEQ, n->type, n, nodconst(q->val));
 			patch(p, q->label);
 			q++;
@@ -21,8 +21,8 @@ swit1(C1 *q, int nc, long def, Node *n)
 	}
 	i = nc / 2;
 	r = q+i;
-	if(debug['W'])
-		print("case > %.8lux\n", r->val);
+	if(debug['K'])
+		print("case > %.8llux\n", r->val);
 	gopcode(OGT, n->type, n, nodconst(r->val));
 	sp = p;
 	gbranch(OGOTO);
@@ -30,8 +30,8 @@ swit1(C1 *q, int nc, long def, Node *n)
 	patch(p, r->label);
 	swit1(q, i, def, n);
 
-	if(debug['W'])
-		print("case < %.8lux\n", r->val);
+	if(debug['K'])
+		print("case < %.8llux\n", r->val);
 	patch(sp, pc);
 	swit1(r+1, nc-i-1, def, n);
 }
@@ -125,23 +125,6 @@ outstring(char *s, long n)
 		n--;
 	}
 	return r;
-}
-
-void
-sextern(Sym *s, Node *a, long o, long w)
-{
-	long e, lw;
-
-	for(e=0; e<w; e+=NSNAME) {
-		lw = NSNAME;
-		if(w-e < lw)
-			lw = w-e;
-		gpseudo(ADATA, s, nodconst(0L));
-		p->from.offset += o+e;
-		p->from.scale = lw;
-		p->to.type = D_SCONST;
-		memmove(p->to.sval, a->cstring+e, lw);
-	}
 }
 
 void
@@ -512,8 +495,8 @@ align(long i, Type *t, int op)
 long
 maxround(long max, long v)
 {
-	v += SZ_LONG-1;
+	v = round(v, SZ_LONG);
 	if(v > max)
-		max = round(v, SZ_LONG);
+		return v;
 	return max;
 }

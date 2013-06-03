@@ -3,6 +3,7 @@
 int
 machcap(Node *n)
 {
+//	return 0;
 
 	if(n == Z)
 		return 1;	/* test */
@@ -15,6 +16,8 @@ machcap(Node *n)
 		if(typechl[n->type->etype])
 			return 1;
 		if(typev[n->type->etype]) {
+//		if(typev[n->type->etype] && n->right->op == OCONST) {
+//			if(hi64v(n->right) == 0)
 				return 1;
 		}
 		break;
@@ -50,6 +53,7 @@ machcap(Node *n)
 	case OANDAND:
 	case OOROR:
 	case ONOT:
+	case ODOT:
 		return 1;
 
 	case OASADD:
@@ -80,6 +84,7 @@ machcap(Node *n)
 	case OHS:
 	case OLO:
 	case OLS:
+//print("%O\n", n->op);
 		return 1;
 	}
 	return 0;

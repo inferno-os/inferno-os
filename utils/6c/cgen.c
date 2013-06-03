@@ -439,9 +439,10 @@ cgen(Node *n, Node *nn)
 			if(o == OLDIV || o == OLMOD)
 				zeroregm(&nod1);
 			if(r->addable < INDEXED || r->op == OCONST) {
-				regsalloc(&nod3, r);
+				regalloc(&nod3, r, Z);
 				cgen(r, &nod3);
 				gopcode(o, n->type, &nod3, Z);
+				regfree(&nod3);
 			} else
 				gopcode(o, n->type, r, Z);
 		} else {
@@ -573,7 +574,7 @@ cgen(Node *n, Node *nn)
 				reglcgen(&nod, l, Z);
 			else
 				nod = *l;
-			if(o != OASMUL && o != OASADD) {
+			if(o != OASMUL && o != OASADD || !typefd[l->type->etype]) {
 				regalloc(&nod2, r, Z);
 				gmove(&nod, &nod2);
 				gopcode(o, r->type, &nod1, &nod2);
@@ -1595,7 +1596,7 @@ copy:
 		regsalloc(&nod2, nn);
 		nn->type = t;
 
-		gins(AMOVL, &nod1, &nod2);
+		gins(AMOVQ, &nod1, &nod2);
 		regfree(&nod1);
 
 		nod2.type = typ(TIND, t);
@@ -1696,7 +1697,7 @@ copy:
 	c = 0;
 	if(n->complex > nn->complex) {
 		t = n->type;
-		n->type = types[TLONG];
+		n->type = types[TIND];
 		nodreg(&nod1, n, D_SI);
 		if(reg[D_SI]) {
 			gins(APUSHQ, &nod1, Z);
@@ -1707,7 +1708,7 @@ copy:
 		n->type = t;
 
 		t = nn->type;
-		nn->type = types[TLONG];
+		nn->type = types[TIND];
 		nodreg(&nod2, nn, D_DI);
 		if(reg[D_DI]) {
 warn(Z, "DI botch");
@@ -1719,7 +1720,7 @@ warn(Z, "DI botch");
 		nn->type = t;
 	} else {
 		t = nn->type;
-		nn->type = types[TLONG];
+		nn->type = types[TIND];
 		nodreg(&nod2, nn, D_DI);
 		if(reg[D_DI]) {
 warn(Z, "DI botch");
@@ -1731,7 +1732,7 @@ warn(Z, "DI botch");
 		nn->type = t;
 
 		t = n->type;
-		n->type = types[TLONG];
+		n->type = types[TIND];
 		nodreg(&nod1, n, D_SI);
 		if(reg[D_SI]) {
 			gins(APUSHQ, &nod1, Z);

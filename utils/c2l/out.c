@@ -603,7 +603,7 @@ prstr(char *s)
 }
 
 void
-prlstr(ushort *s)
+prlstr(Rune *s)
 {
 	lprint("\"");
 	while(*s != 0)

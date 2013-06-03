@@ -84,6 +84,12 @@ long	BADOFFSET	=	-1;
 	}
 
 void
+cput(long l)
+{
+	CPUT(l);
+}
+
+void
 objput(long l)	/* emit long in byte order appropriate to object machine */
 {
 	LPUT(l);
@@ -96,9 +102,53 @@ objhput(short s)
 }
 
 void
+wput(long l)
+{
+
+	cbp[0] = l>>8;
+	cbp[1] = l;
+	cbp += 2;
+	cbc -= 2;
+	if(cbc <= 0)
+		cflush();
+}
+
+void
+wputl(long l)
+{
+
+	cbp[0] = l;
+	cbp[1] = l>>8;
+	cbp += 2;
+	cbc -= 2;
+	if(cbc <= 0)
+		cflush();
+}
+
+void
 lput(long l)		/* emit long in big-endian byte order */
 {
 	LBEPUT(l);
+}
+
+void
+lputl(long l)		/* emit long in big-endian byte order */
+{
+	LLEPUT(l);
+}
+
+void
+llput(vlong v)
+{
+	lput(v>>32);
+	lput(v);
+}
+
+void
+llputl(vlong v)
+{
+	lputl(v);
+	lputl(v>>32);
 }
 
 long
@@ -391,64 +441,7 @@ asmb(void)
 		lput(0x80L);			/* flags */
 		break;
 	case 5:
-		/* first part of ELF is byte-wide parts, thus no byte-order issues */
-		strnput("\177ELF", 4);		/* e_ident */
-		CPUT(1);			/* class = 32 bit */
-		CPUT(little? 1: 2);		/* data: 1 = LSB, 2 = MSB */
-		CPUT(1);			/* version = 1 */
-		strnput("", 9);			/* reserved for expansion */
-		/* entire remainder of ELF file is in target byte order */
-
-		/* file header part of ELF header */
-		objhput(2);			/* type = EXEC */
-		objhput(8);			/* machine = MIPS */
-		objput(1L);			/* version = CURRENT */
-		objput(entryvalue());		/* entry vaddr */
-		objput(52L);			/* offset to first phdr */
-		objput(0L);			/* offset to first shdr */
-		objput(0L);			/* flags (no MIPS flags defined) */
-		objhput(52);			/* Ehdr size */
-		objhput(32);			/* Phdr size */
-		objhput(3);			/* # of Phdrs */
-		objhput(0);			/* Shdr size */
-		objhput(0);			/* # of Shdrs */
-		objhput(0);			/* Shdr string size */
-
-		/* "Program headers" - one per chunk of file to load */
-
-		/*
-		 * include ELF headers in text -- 8l doesn't,
-		 * but in theory it aids demand loading.
-		 */
-		objput(1L);			/* text: type = PT_LOAD */
-		objput(0L);			/* file offset */
-		objput(INITTEXT-HEADR);		/* vaddr */
-		objput(INITTEXT-HEADR);		/* paddr */
-		objput(HEADR+textsize);		/* file size */
-		objput(HEADR+textsize);		/* memory size */
-		objput(0x05L);			/* protections = RX */
-		objput(0x1000L);		/* page-align text off's & vaddrs */
-
-		objput(1L);			/* data: type = PT_LOAD */
-		objput(HEADR+textsize);		/* file offset */
-		objput(INITDAT);		/* vaddr */
-		objput(INITDAT);		/* paddr */
-		objput(datsize);		/* file size */
-		objput(datsize+bsssize);	/* memory size */
-		objput(0x06L);			/* protections = RW */
-		if(INITDAT % 4096 == 0 && (HEADR + textsize) % 4096 == 0)
-			objput(0x1000L);	/* page-align data off's & vaddrs */
-		else
-			objput(0L);		/* do not claim alignment */
-
-		objput(0L);			/* P9 symbols: type = PT_NULL */
-		objput(HEADR+textsize+datsize);	/* file offset */
-		objput(0L);
-		objput(0L);
-		objput(symsize);		/* symbol table size */
-		objput(lcsize);			/* line number size */
-		objput(0x04L);			/* protections = R */
-		objput(0L);			/* do not claim alignment */
+		elf32(MIPS, little? ELFDATA2LSB: ELFDATA2MSB, 0, nil);
 		break;
 	case 6:
 		break;
@@ -616,12 +609,12 @@ asmlc(void)
 		if(p->line == oldlc || p->as == ATEXT || p->as == ANOP) {
 			if(p->as == ATEXT)
 				curtext = p;
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			continue;
 		}
-		if(debug['L'])
+		if(debug['V'])
 			Bprint(&bso, "\t\t%6ld", lcsize);
 		v = (p->pc - oldpc) / MINLC;
 		while(v) {
@@ -629,7 +622,7 @@ asmlc(void)
 			if(v < 127)
 				s = v;
 			CPUT(s+128);	/* 129-255 +pc */
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, " pc+%ld*%d(%ld)", s, MINLC, s+128);
 			v -= s;
 			lcsize++;
@@ -643,7 +636,7 @@ asmlc(void)
 			CPUT(s>>16);
 			CPUT(s>>8);
 			CPUT(s);
-			if(debug['L']) {
+			if(debug['V']) {
 				if(s > 0)
 					Bprint(&bso, " lc+%ld(%d,%ld)\n",
 						s, 0, s);
@@ -658,14 +651,14 @@ asmlc(void)
 		}
 		if(s > 0) {
 			CPUT(0+s);	/* 1-64 +lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc+%ld(%ld)\n", s, 0+s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			}
 		} else {
 			CPUT(64-s);	/* 65-128 -lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc%ld(%ld)\n", s, 64-s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
@@ -678,7 +671,7 @@ asmlc(void)
 		CPUT(s);
 		lcsize++;
 	}
-	if(debug['v'] || debug['L'])
+	if(debug['v'] || debug['V'])
 		Bprint(&bso, "lcsize = %ld\n", lcsize);
 	Bflush(&bso);
 }

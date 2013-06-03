@@ -284,7 +284,7 @@ analyse(ulong *prog, int nw, Squeeze *sq3, Squeeze *sq4, Word **top)
 }
 
 static int
-wdcmp(const void *a, const void *b)
+wdcmp(void *a, void *b)
 {
 	return (*(Word**)b)->freq - (*(Word**)a)->freq;
 }
@@ -308,7 +308,7 @@ collate(Word **tab, int nv)
 }
 
 static int
-tabcmp(const void *a, const void *b)
+tabcmp(void *a, void *b)
 {
 	ulong av, bv;
 

@@ -309,7 +309,7 @@ acom(Node *n)
 }
 
 int
-acomcmp1(const void *a1, const void *a2)
+acomcmp1(void *a1, void *a2)
 {
 	vlong c1, c2;
 	Term *t1, *t2;
@@ -340,7 +340,7 @@ acomcmp1(const void *a1, const void *a2)
 }
 
 int
-acomcmp2(const void *a1, const void *a2)
+acomcmp2(void *a1, void *a2)
 {
 	vlong c1, c2;
 	Term *t1, *t2;

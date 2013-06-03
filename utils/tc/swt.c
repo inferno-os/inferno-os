@@ -1,7 +1,7 @@
 #include "gc.h"
 
 int
-swcmp(const void *a1, const void *a2)
+swcmp(void *a1, void *a2)
 {
 	C1 *p1, *p2;
 

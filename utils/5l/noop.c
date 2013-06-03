@@ -5,76 +5,11 @@ static	Sym*	sym_divu;
 static	Sym*	sym_mod;
 static	Sym*	sym_modu;
 
-static void setdiv(int);
-
-static Prog *
-movrr(Prog *q, int rs, int rd, Prog *p)
-{
-	if(q == nil)
-		q = prg();
-	q->as = AMOVW;
-	q->line = p->line;
-	q->from.type = D_REG;
-	q->from.reg = rs;
-	q->to.type = D_REG;
-	q->to.reg = rd;
-	q->link = p->link;
-	return q;
-}
-
-static Prog *
-fnret(Prog *q, int rs, int foreign, Prog *p)
-{
-	q = movrr(q, rs, REGPC, p);
-	if(foreign){	// BX rs
-		q->as = ABXRET;
-		q->from.type = D_NONE;
-		q->from.reg = NREG;
-		q->to.reg = rs;
-	}
-	return q;
-}
-
-static Prog *
-aword(long w, Prog *p)
-{
-	Prog *q;
-
-	q = prg();
-	q->as = AWORD;
-	q->line = p->line;
-	q->from.type = D_NONE;
-	q->reg = NREG;
-	q->to.type = D_CONST;
-	q->to.offset = w;
-	q->link = p->link;
-	p->link = q;
-	return q;
-}
-
-static Prog *
-adword(long w1, long w2, Prog *p)
-{
-	Prog *q;
-
-	q = prg();
-	q->as = ADWORD;
-	q->line = p->line;
-	q->from.type = D_CONST;
-	q->from.offset = w1;
-	q->reg = NREG;
-	q->to.type = D_CONST;
-	q->to.offset = w2;
-	q->link = p->link;
-	p->link = q;
-	return q;
-}
-
 void
 noops(void)
 {
-	Prog *p, *q, *q1, *q2;
-	int o, curframe, curbecome, maxbecome, foreign;
+	Prog *p, *q, *q1;
+	int o, curframe, curbecome, maxbecome;
 
 	/*
 	 * find leaf subroutines
@@ -96,7 +31,6 @@ noops(void)
 
 	q = P;
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 
 		/* find out how much arg space is used in this TEXT */
 		if(p->to.type == D_OREG && p->to.reg == REGSP)
@@ -134,7 +68,6 @@ noops(void)
 				initdiv();
 			if(curtext != P)
 				curtext->mark &= ~LEAF;
-			setdiv(p->as);
 			continue;
 
 		case ANOP:
@@ -144,7 +77,6 @@ noops(void)
 			continue;
 
 		case ABL:
-		case ABX:
 			if(curtext != P)
 				curtext->mark &= ~LEAF;
 
@@ -193,13 +125,11 @@ noops(void)
 
 	curtext = 0;
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 		switch(p->as) {
 		case ATEXT:
 			curtext = p;
 			break;
 		case ABL:
-		// case ABX:
 			if(curtext != P && curtext->from.sym != S && curtext->to.offset >= 0) {
 				o = maxbecome - curtext->from.sym->frame;
 				if(o <= 0)
@@ -219,7 +149,6 @@ noops(void)
 	}
 
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 		o = p->as;
 		switch(o) {
 		case ATEXT:
@@ -238,16 +167,7 @@ noops(void)
 				Bflush(&bso);
 				curtext->mark |= LEAF;
 			}
-#ifdef CALLEEBX
-			if(p->from.sym->foreign){
-				if(thumb)
-					// don't allow literal pool to seperate these
-					p = adword(0xe28f7001, 0xe12fff17, p); // arm add 1, pc, r7 and bx r7
-					// p = aword(0xe12fff17, aword(0xe28f7001, p)); // arm add 1, pc, r7 and bx r7
-				else
-					p = aword(0x4778, p);	// thumb bx pc and 2 bytes padding
-			}
-#endif
+
 			if(curtext->mark & LEAF) {
 				if(curtext->from.sym)
 					curtext->from.sym->type = SLEAF;
@@ -271,36 +191,6 @@ noops(void)
 #endif
 			}
 
-			if(thumb){
-				if(!(curtext->mark & LEAF)){
-					q = movrr(nil, REGLINK, REGTMPT-1, p);
-					p->link = q;
-					q1 = prg();
-					q1->as = AMOVW;
-					q1->line = p->line;
-					q1->from.type = D_REG;
-					q1->from.reg = REGTMPT-1;
-					q1->to.type = D_OREG;
-					q1->to.name = D_NONE;
-					q1->to.reg = REGSP;
-					q1->to.offset = 0;
-					q1->link = q->link;
-					q->link = q1;
-				}
-				if(autosize){
-					q2 = prg();
-					q2->as = ASUB;
-					q2->line = p->line;
-					q2->from.type = D_CONST;
-					q2->from.offset = autosize;
-					q2->to.type = D_REG;
-					q2->to.reg = REGSP;
-					q2->link = p->link;
-					p->link = q2;
-				}
-				break;
-			}
-
 			q1 = prg();
 			q1->as = AMOVW;
 			q1->scond |= C_WBIT;
@@ -310,24 +200,18 @@ noops(void)
 			q1->to.type = D_OREG;
 			q1->to.offset = -autosize;
 			q1->to.reg = REGSP;
+
 			q1->link = p->link;
 			p->link = q1;
 			break;
 
 		case ARET:
 			nocache(p);
-			foreign = seenthumb && curtext->from.sym != S && (curtext->from.sym->foreign || curtext->from.sym->fnptr);
-// print("%s %d %d\n", curtext->from.sym->name, curtext->from.sym->foreign, curtext->from.sym->fnptr);
 			if(p->from.type == D_CONST)
 				goto become;
 			if(curtext->mark & LEAF) {
 				if(!autosize) {
-					if(thumb){
-						p = fnret(p, REGLINK, foreign, p);
-						break;
-					}
-// if(foreign) print("ABXRET 1 %s\n", curtext->from.sym->name);
-					p->as = foreign ? ABXRET : AB;
+					p->as = AB;
 					p->from = zprg.from;
 					p->to.type = D_OREG;
 					p->to.offset = 0;
@@ -341,13 +225,9 @@ noops(void)
 				p->from.offset = autosize;
 				p->to.type = D_REG;
 				p->to.reg = REGSP;
-				if(thumb){
-					p->link = fnret(nil, REGLINK, foreign, p);
-					break;
-				}
+
 				q = prg();
-// if(foreign) print("ABXRET 2 %s\n", curtext->from.sym->name);
-				q->as = foreign ? ABXRET : AB;
+				q->as = AB;
 				q->scond = p->scond;
 				q->line = p->line;
 				q->to.type = D_OREG;
@@ -360,100 +240,16 @@ noops(void)
 				break;
 #endif
 			}
-			if(thumb){
-				if(curtext->mark & LEAF){
-					if(autosize){
-						p->as = AADD;
-						p->from.type = D_CONST;
-						p->from.offset = autosize;
-						p->to.type = D_REG;
-						p->to.reg = REGSP;
-						q = nil;
-					}
-					else
-						q = p;
-					q = fnret(q, REGLINK, foreign, p);
-					if(q != p)
-						p->link = q;
-				}
-				else{
-					p->as = AMOVW;
-					p->from.type = D_OREG;
-					p->from.name = D_NONE;
-					p->from.reg = REGSP;
-					p->from.offset = 0;
-					p->to.type = D_REG;
-					p->to.reg = REGTMPT-1;
-					if(autosize){
-						q = prg();
-						q->as = AADD;
-						q->from.type = D_CONST;
-						q->from.offset = autosize;
-						q->to.type = D_REG;
-						q->to.reg = REGSP;
-						q->link = p->link;
-						p->link = 	q;
-					}
-					else
-						q = p;
-					q1 = fnret(nil, REGTMPT-1, foreign, p);
-					q1->link = q->link;
-					q->link = q1;
-				}
-				break;
-			}
-			if(foreign) {
-// if(foreign) print("ABXRET 3 %s\n", curtext->from.sym->name);
-#define	R	1
-				p->as = AMOVW;
-				p->from.type = D_OREG;
-				p->from.name = D_NONE;
-				p->from.reg = REGSP;
-				p->from.offset = 0;
-				p->to.type = D_REG;
-				p->to.reg = R;
-				q = prg();
-				q->as = AADD;
-				q->scond = p->scond;
-				q->line = p->line;
-				q->from.type = D_CONST;
-				q->from.offset = autosize;
-				q->to.type = D_REG;
-				q->to.reg = REGSP;
-				q->link = p->link;
-				p->link = q;
-				q1 = prg();
-				q1->as = ABXRET;
-				q1->scond = p->scond;
-				q1->line = p->line;
-				q1->to.type = D_OREG;
-				q1->to.offset = 0;
-				q1->to.reg = R;
-				q1->link = q->link;
-				q->link = q1;
-#undef	R
-			}
-			else {
-				p->as = AMOVW;
-				p->scond |= C_PBIT;
-				p->from.type = D_OREG;
-				p->from.offset = autosize;
-				p->from.reg = REGSP;
-				p->to.type = D_REG;
-				p->to.reg = REGPC;
-			}
+			p->as = AMOVW;
+			p->scond |= C_PBIT;
+			p->from.type = D_OREG;
+			p->from.offset = autosize;
+			p->from.reg = REGSP;
+			p->to.type = D_REG;
+			p->to.reg = REGPC;
 			break;
 
 		become:
-			if(foreign){
-				diag("foreign become - help");
-				break;
-			}
-			if(thumb){
-				diag("thumb become - help");
-				break;
-			}
-			print("arm become\n");
 			if(curtext->mark & LEAF) {
 
 				if(!autosize) {
@@ -493,29 +289,7 @@ noops(void)
 			q->cond = p->cond;
 			q->link = p->link;
 			p->link = q;
-			if(thumb){
-				q1 = prg();
-				q1->line = p->line;
-				q1->as = AADD;
-				q1->from.type = D_CONST;
-				q1->from.offset = autosize;
-				q1->to.type = D_REG;
-				q1->to.reg = REGSP;
-				p->as = AMOVW;
-				p->line = p->line;
-				p->from.type = D_OREG;
-				p->from.name = D_NONE;
-				p->from.reg = REGSP;
-				p->from.offset = 0;
-				p->to.type = D_REG;
-				p->to.reg = REGTMPT-1;
-				q1->link = q;
-				p->link = q1;
-				q2 = movrr(nil, REGTMPT-1, REGLINK, p);
-				q2->link = q;
-				q1->link = q2;
-				break;
-			}
+
 			p->as = AMOVW;
 			p->scond |= C_PBIT;
 			p->from = zprg.from;
@@ -526,6 +300,30 @@ noops(void)
 			p->to.type = D_REG;
 			p->to.reg = REGLINK;
 
+			break;
+
+		/*
+		 * 5c code generation for unsigned -> double made the
+		 * unfortunate assumption that single and double floating
+		 * point registers are aliased - true for emulated 7500
+		 * but not for vfp.  Now corrected, but this test is
+		 * insurance against old 5c compiled code in libraries.
+		 */
+		case AMOVWD:
+			if((q = p->link) != P && q->as == ACMP)
+			if((q = q->link) != P && q->as == AMOVF)
+			if((q1 = q->link) != P && q1->as == AADDF)
+			if(q1->to.type == D_FREG && q1->to.reg == p->to.reg) {
+				q1->as = AADDD;
+				q1 = prg();
+				q1->scond = q->scond;
+				q1->line = q->line;
+				q1->as = AMOVFD;
+				q1->from = q->to;
+				q1->to = q1->from;
+				q1->link = q->link;
+				q->link = q1;
+			}
 			break;
 
 		case ADIV:
@@ -567,7 +365,7 @@ noops(void)
 			if(q1->reg == NREG)
 				p->from.reg = q1->to.reg;
 			p->to.type = D_REG;
-			p->to.reg = prog_div != UP && prog_div->from.sym->thumb ? REGTMPT : REGTMP;
+			p->to.reg = REGTMP;
 			p->to.offset = 0;
 
 			/* CALL appropriate */
@@ -576,14 +374,7 @@ noops(void)
 			p->link = q;
 			p = q;
 
-#ifdef CALLEEBX
 			p->as = ABL;
-#else
-			if(prog_div != UP && prog_div->from.sym->thumb)
-				p->as = thumb ? ABL : ABX;
-			else
-				p->as = thumb ? ABX : ABL;
-#endif
 			p->line = q1->line;
 			p->to.type = D_BRANCH;
 			p->cond = p;
@@ -615,7 +406,7 @@ noops(void)
 			p->as = AMOVW;
 			p->line = q1->line;
 			p->from.type = D_REG;
-			p->from.reg = prog_div != UP && prog_div->from.sym->thumb ? REGTMPT : REGTMP;
+			p->from.reg = REGTMP;
 			p->from.offset = 0;
 			p->to.type = D_REG;
 			p->to.reg = q1->to.reg;
@@ -642,145 +433,6 @@ noops(void)
 			q1->reg = NREG;
 			q1->to.type = D_REG;
 			q1->to.reg = REGSP;
-
-			break;
-		case AMOVW:
-			if(thumb){
-				Adr *a = &p->from;
-
-				if(a->type == D_CONST && ((a->name == D_NONE && a->reg == REGSP) || a->name == D_AUTO || a->name == D_PARAM) && (a->offset & 3))
-					diag("SP offset not multiple of 4");
-			}
-			break;
-		case AMOVB:
-		case AMOVBU:
-		case AMOVH:
-		case AMOVHU:
-			if(thumb){
-				if(p->from.type == D_OREG && (p->from.name == D_AUTO || p->from.name == D_PARAM || (p->from.name == D_CONST && p->from.reg == REGSP))){
-					q = prg();
-					*q = *p;
-					if(p->from.name == D_AUTO)
-						q->from.offset += autosize;
-					else if(p->from.name == D_PARAM)
-						q->from.offset += autosize+4;
-					q->from.name = D_NONE;
-					q->from.reg = REGTMPT;
-					p = movrr(p, REGSP, REGTMPT, p);
-					q->link = p->link;
-					p->link = q;
-				}
-				if(p->to.type == D_OREG && (p->to.name == D_AUTO || p->to.name == D_PARAM || (p->to.name == D_CONST && p->to.reg == REGSP))){
-					q = prg();
-					*q = *p;
-					if(p->to.name == D_AUTO)
-						q->to.offset += autosize;
-					else if(p->to.name == D_PARAM)
-						q->to.offset += autosize+4;
-					q->to.name = D_NONE;
-					q->to.reg = REGTMPT;
-					p = movrr(p, REGSP, REGTMPT, p);
-					q->link = p->link;
-					p->link = q;
-					if(q->to.offset < 0 || q->to.offset > 255){	// complicated
-						p->to.reg = REGTMPT+1;			// mov sp, r8
-						q1 = prg();
-						q1->line = p->line;
-						q1->as = AMOVW;
-						q1->from.type = D_CONST;
-						q1->from.offset = q->to.offset;
-						q1->to.type = D_REG;
-						q1->to.reg = REGTMPT;			// mov $o, r7
-						p->link = q1;
-						q1->link = q;
-						q1 = prg();
-						q1->line = p->line;
-						q1->as = AADD;
-						q1->from.type = D_REG;
-						q1->from.reg = REGTMPT+1;
-						q1->to.type = D_REG;
-						q1->to.reg = REGTMPT;			// add r8, r7
-						p->link->link = q1;
-						q1->link = q;
-						q->to.offset = 0;				// mov* r, 0(r7)
-						/* phew */
-					}
-				}
-			}
-			break;
-		case AMOVM:
-			if(thumb){
-				if(p->from.type == D_OREG){
-					if(p->from.offset == 0)
-						p->from.type = D_REG;
-					else
-						diag("non-zero AMOVM offset");
-				}
-				else if(p->to.type == D_OREG){
-					if(p->to.offset == 0)
-						p->to.type = D_REG;
-					else
-						diag("non-zero AMOVM offset");
-				}
-			}
-			break;
-		case AB:
-			if(thumb && p->to.type == D_OREG){
-				if(p->to.offset == 0){
-					p->as = AMOVW;
-					p->from.type = D_REG;
-					p->from.reg = p->to.reg;
-					p->to.type = D_REG;
-					p->to.reg = REGPC;
-				}
-				else{
-					p->as = AADD;
-					p->from.type = D_CONST;
-					p->from.offset = p->to.offset;
-					p->reg = p->to.reg;
-					p->to.type = D_REG;
-					p->to.reg = REGTMPT-1;
-					q = prg();
-					q->as = AMOVW;
-					q->line = p->line;
-					q->from.type = D_REG;
-					q->from.reg = REGTMPT-1;
-					q->to.type = D_REG;
-					q->to.reg = REGPC;
-					q->link = p->link;
-					p->link = q;
-				}
-			}
-			if(seenthumb && !thumb && p->to.type == D_OREG && p->to.reg == REGLINK){	
-				// print("warn %s:	b	(R%d)	assuming a return\n", curtext->from.sym->name, p->to.reg);
-				p->as = ABXRET;
-			}
-			break;
-		case ABL:
-		case ABX:
-			if(thumb && p->to.type == D_OREG){
-				if(p->to.offset == 0){
-					p->as = o;
-					p->from.type = D_NONE;
-					p->to.type = D_REG;
-				}
-				else{
-					p->as = AADD;
-					p->from.type = D_CONST;
-					p->from.offset = p->to.offset;
-					p->reg = p->to.reg;
-					p->to.type = D_REG;
-					p->to.reg = REGTMPT-1;
-					q = prg();
-					q->as = o;
-					q->line = p->line;
-					q->from.type = D_NONE;
-					q->to.type = D_REG;
-					q->to.reg = REGTMPT-1;
-					q->link = p->link;
-					p->link = q;
-				}
-			}
 			break;
 		}
 	}
@@ -868,21 +520,6 @@ initdiv(void)
 		diag("undefined: %s", s5->name);
 		prog_modu = curtext;
 	}
-}
-
-static void
-setdiv(int as)
-{
-	Prog *p = nil;
-
-	switch(as){
-	case ADIV: p = prog_div; break;
-	case ADIVU: p = prog_divu; break;
-	case AMOD: p = prog_mod; break;
-	case AMODU: p = prog_modu; break;
-	}
-	if(p != UP && thumb != p->from.sym->thumb)
-		p->from.sym->foreign = 1;
 }
 
 void

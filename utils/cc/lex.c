@@ -80,7 +80,8 @@ main(int argc, char *argv[])
 
 	case 'I':
 		p = ARGF();
-		setinclude(p);
+		if(p)
+			setinclude(p);
 		break;
 	} ARGEND
 	if(argc < 1 && outfile == 0) {
@@ -242,14 +243,10 @@ compile(char *file, char **defs, int ndef)
 			close(fd[1]);
 			av[0] = CPP;
 			i = 1;
-			if(debug['.']){
-				sprint(opt, "-.");
-				av[i++] = strdup(opt);
-			}
-			if(debug['+']) {
-				sprint(opt, "-+");
-				av[i++] = strdup(opt);
-			}
+			if(debug['.'])
+				av[i++] = strdup("-.");
+			/* 1999 ANSI C requires recognising // comments */
+			av[i++] = strdup("-+");
 			for(c = 0; c < ndef; c++) {
 				sprint(opt, "-D%s", defs[c]);
 				av[i++] = strdup(opt);
@@ -469,7 +466,7 @@ l1:
 				yyerror("missing '");
 				peekc = c1;
 			}
-			yylval.vval = convvtox(c, TUSHORT);
+			yylval.vval = convvtox(c, TRUNE);
 			return LUCONST;
 		}
 		if(c == '"') {
@@ -543,15 +540,15 @@ l1:
 			c = escchar('"', 1, 0);
 			if(c == EOF)
 				break;
-			cp = allocn(cp, c1, sizeof(ushort));
-			*(ushort*)(cp + c1) = c;
-			c1 += sizeof(ushort);
+			cp = allocn(cp, c1, sizeof(TRune));
+			*(TRune*)(cp + c1) = c;
+			c1 += sizeof(TRune);
 		}
 		yylval.sval.l = c1;
 		do {
-			cp = allocn(cp, c1, sizeof(ushort));
-			*(ushort*)(cp + c1) = 0;
-			c1 += sizeof(ushort);
+			cp = allocn(cp, c1, sizeof(TRune));
+			*(TRune*)(cp + c1) = 0;
+			c1 += sizeof(TRune);
 		} while(c1 & MAXALIGN);
 		yylval.sval.s = cp;
 		return LLSTRING;
@@ -1028,7 +1025,7 @@ getnsc(void)
 	} else
 		c = GETC();
 	for(;;) {
-		if(!isspace(c))
+		if(c >= Runeself || !isspace(c))
 			return c;
 		if(c == '\n') {
 			lineno++;
@@ -1072,7 +1069,7 @@ loop:
 		 */
 		i = 2;
 		if(longflg)
-			i = 4;
+			i = 6;
 		l = 0;
 		for(; i>0; i--) {
 			c = getc();
@@ -1102,7 +1099,7 @@ loop:
 		 */
 		i = 2;
 		if(longflg)
-			i = 5;
+			i = 8;
 		l = c - '0';
 		for(; i>0; i--) {
 			c = getc();
@@ -1238,7 +1235,7 @@ cinit(void)
 	if(mygetwd(pathname, 99) == 0) {
 		pathname = allocn(pathname, 100, 900);
 		if(mygetwd(pathname, 999) == 0)
-			strcpy(pathname, "/???");
+			strcpy(pathname, "/?");
 	}
 
 	fmtinstall('O', Oconv);

@@ -70,7 +70,7 @@ Aconv(Fmt *fp)
 	int a;
 
 	a = va_arg(fp->args, int);
-	s = "???";
+	s = "?";
 	if(a >= AXXX && a <= ALAST)
 		s = anames[a];
 	return fmtstrcpy(fp, s);

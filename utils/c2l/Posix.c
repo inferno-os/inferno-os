@@ -1,4 +1,5 @@
 #include	"cc.h"
+#include	<sys/wait.h>
 
 void*
 mysbrk(ulong size)

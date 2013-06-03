@@ -1,5 +1,7 @@
 #include "gc.h"
 
+static	char	resvreg[nelem(reg)];
+
 void
 ginit(void)
 {
@@ -80,6 +82,16 @@ ginit(void)
 	com64init();
 
 	memset(reg, 0, sizeof(reg));
+	/* don't allocate */
+	reg[REGTMP] = 1;
+	reg[REGSB] = 1;
+	reg[REGSP] = 1;
+	reg[REGLINK] = 1;
+	reg[REGPC] = 1;
+	/* keep two external registers */
+	reg[REGEXT] = 1;
+	reg[REGEXT-1] = 1;
+	memmove(resvreg, reg, sizeof(reg));
 }
 
 void
@@ -89,10 +101,10 @@ gclean(void)
 	Sym *s;
 
 	for(i=0; i<NREG; i++)
-		if(reg[i])
+		if(reg[i] && !resvreg[i])
 			diag(Z, "reg %d left allocated", i);
 	for(i=NREG; i<NREG+NFREG; i++)
-		if(reg[i])
+		if(reg[i] && !resvreg[i])
 			diag(Z, "freg %d left allocated", i-NREG);
 	while(mnstring)
 		outstring("", 1L);
@@ -283,7 +295,7 @@ regalloc(Node *n, Node *tn, Node *o)
 		for(i=REGRET+1; i<NREG; i++) {
 			if(j >= NREG)
 				j = REGRET+1;
-			if(reg[j] == 0) {
+			if(reg[j] == 0 && resvreg[j] == 0) {
 				i = j;
 				goto out;
 			}
@@ -319,7 +331,7 @@ err:
 	return;
 out:
 	reg[i]++;
-/* 	lasti++;	*** StrongARM does register forwarding */	
+	lasti++;
 	if(lasti >= 5)
 		lasti = 0;
 	nodreg(n, tn, i);
@@ -549,7 +561,8 @@ void
 gmove(Node *f, Node *t)
 {
 	int ft, tt, a;
-	Node nod;
+	Node nod, nod1;
+	Prog *p1;
 
 	ft = f->type->etype;
 	tt = t->type->etype;
@@ -678,21 +691,58 @@ gmove(Node *f, Node *t)
 		}
 		break;
 	case TUINT:
-	case TINT:
 	case TULONG:
+		if(tt == TFLOAT || tt == TDOUBLE) {
+			// ugly and probably longer than necessary,
+			// but vfp has a single instruction for this,
+			// so hopefully it won't last long.
+			//
+			//	tmp = f
+			//	tmp1 = tmp & 0x80000000
+			//	tmp ^= tmp1
+			//	t = float(int32(tmp))
+			//	if(tmp1)
+			//		t += 2147483648.
+			//
+			regalloc(&nod, f, Z);
+			regalloc(&nod1, f, Z);
+			gins(AMOVW, f, &nod);
+			gins(AMOVW, &nod, &nod1);
+			gins(AAND, nodconst(0x80000000), &nod1);
+			gins(AEOR, &nod1, &nod);
+			if(tt == TFLOAT)
+				gins(AMOVWF, &nod, t);
+			else
+				gins(AMOVWD, &nod, t);
+			gins(ACMP, nodconst(0), Z);
+			raddr(&nod1, p);
+			gins(ABEQ, Z, Z);
+			regfree(&nod);
+			regfree(&nod1);
+			p1 = p;
+			regalloc(&nod, t, Z);
+			if(tt == TFLOAT) {
+				gins(AMOVF, nodfconst(2147483648.), &nod);
+				gins(AADDF, &nod, t);
+			} else {
+				gins(AMOVD, nodfconst(2147483648.), &nod);
+				gins(AADDD, &nod, t);
+			}
+			regfree(&nod);
+			patch(p1, pc);
+			return;
+		}
+		// fall through
+
+	case TINT:
 	case TLONG:
 	case TIND:
 		switch(tt) {
 		case TDOUBLE:
-		case TVLONG:
 			gins(AMOVWD, f, t);
-			if(ft == TULONG) {
-			}
 			return;
 		case TFLOAT:
 			gins(AMOVWF, f, t);
-			if(ft == TULONG) {
-			}
 			return;
 		case TINT:
 		case TUINT:
@@ -710,7 +760,6 @@ gmove(Node *f, Node *t)
 	case TSHORT:
 		switch(tt) {
 		case TDOUBLE:
-		case TVLONG:
 			regalloc(&nod, f, Z);
 			gins(AMOVH, f, &nod);
 			gins(AMOVWD, &nod, t);
@@ -740,7 +789,6 @@ gmove(Node *f, Node *t)
 	case TUSHORT:
 		switch(tt) {
 		case TDOUBLE:
-		case TVLONG:
 			regalloc(&nod, f, Z);
 			gins(AMOVHU, f, &nod);
 			gins(AMOVWD, &nod, t);
@@ -770,7 +818,6 @@ gmove(Node *f, Node *t)
 	case TCHAR:
 		switch(tt) {
 		case TDOUBLE:
-		case TVLONG:
 			regalloc(&nod, f, Z);
 			gins(AMOVB, f, &nod);
 			gins(AMOVWD, &nod, t);
@@ -800,7 +847,6 @@ gmove(Node *f, Node *t)
 	case TUCHAR:
 		switch(tt) {
 		case TDOUBLE:
-		case TVLONG:
 			regalloc(&nod, f, Z);
 			gins(AMOVBU, f, &nod);
 			gins(AMOVWD, &nod, t);
@@ -1015,7 +1061,8 @@ gopcode(int o, Node *f1, Node *f2, Node *t)
 		nextpc();
 		p->as = a;
 		naddr(f1, &p->from);
-		if(a == ACMP && f1->op == OCONST && p->from.offset < 0) {
+		if(a == ACMP && f1->op == OCONST && p->from.offset < 0 &&
+		    p->from.offset != 0x80000000) {
 			p->as = ACMN;
 			p->from.offset = -p->from.offset;
 		}
@@ -1185,9 +1232,12 @@ exreg(Type *t)
 	long o;
 
 	if(typechlp[t->etype]) {
-		if(exregoffset <= REGEXT-4)
+		if(exregoffset <= REGEXT-2)
 			return 0;
 		o = exregoffset;
+		if(reg[o] && !resvreg[o])
+			return 0;
+		resvreg[o] = reg[o] = 1;
 		exregoffset--;
 		return o;
 	}
@@ -1195,6 +1245,9 @@ exreg(Type *t)
 		if(exfregoffset <= NFREG-1)
 			return 0;
 		o = exfregoffset + NREG;
+		if(reg[o] && !resvreg[o])
+			return 0;
+		resvreg[o] = reg[o] = 1;
 		exfregoffset--;
 		return o;
 	}

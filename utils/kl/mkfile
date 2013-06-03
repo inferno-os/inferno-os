@@ -1,6 +1,6 @@
 <../../mkconfig
 
-CFLAGS=$CFLAGS -I../include
+CFLAGS=$CFLAGS -I../include -I.
 
 TARG=kl
 
@@ -29,3 +29,6 @@ BIN=$ROOT/$OBJDIR/bin
 
 enam.$O:	../kc/enam.c
 	$CC $CFLAGS ../kc/enam.c
+
+$TARGMODEL.$O:	../ld/$TARGMODEL.c
+	$CC $CFLAGS ../ld/$TARGMODEL.c

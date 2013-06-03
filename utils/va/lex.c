@@ -462,7 +462,7 @@ cinit(void)
 	if(mygetwd(pathname, 99) == 0) {
 		pathname = allocn(pathname, 100, 900);
 		if(mygetwd(pathname, 999) == 0)
-			strcpy(pathname, "/???");
+			strcpy(pathname, "/?");
 	}
 }
 

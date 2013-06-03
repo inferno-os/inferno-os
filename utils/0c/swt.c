@@ -1,7 +1,7 @@
 #include "gc.h"
 
 int
-swcmp(const void *a1, const void *a2)
+swcmp(void *a1, void *a2)
 {
 	C1 *p1, *p2;
 
@@ -198,7 +198,7 @@ outstring(char *s, long n)
 }
 
 long
-outlstring(ushort *s, long n)
+outlstring(TRune *s, long n)
 {
 	char buf[2];
 	int c;
@@ -323,22 +323,6 @@ nullwarn(Node *l, Node *r)
 		cgen(r, Z);
 }
 
-void
-sextern(Sym *s, Node *a, long o, long w)
-{
-	long e, lw;
-
-	for(e=0; e<w; e+=NSNAME) {
-		lw = NSNAME;
-		if(w-e < lw)
-			lw = w-e;
-		gpseudo(ADATA, s, nodconst(0));
-		p->from.offset += o+e;
-		p->reg = lw;
-		p->to.type = D_SCONST;
-		memmove(p->to.sval, a->cstring+e, lw);
-	}
-}
 
 void
 gextern(Sym *s, Node *a, long o, long w)

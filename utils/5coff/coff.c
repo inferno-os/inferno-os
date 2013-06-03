@@ -482,7 +482,6 @@ coffsym(void)
 	bf = defsym(DOTBF, STEXT, 0);
 	ef = defsym(DOTEF, STEXT, 0);
 	for(p = firstp; p != P; p = p->link){
-		setarch(p);
 		if(p->as != ATEXT){
 			if(p->line != 0)
 				lno = lineno(p->line);
@@ -593,7 +592,6 @@ cofflc(void)
 	/* opc = INITTEXT; */
 	olc = 0;
 	for(p = firstp; p != P; p = p->link){
-		setarch(p);
 		if(p->as == ATEXT){
 			curtext = p;
 			s = p->from.sym;

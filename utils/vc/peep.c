@@ -403,6 +403,7 @@ copy1(Adr *v1, Adr *v2, Reg *r, int f)
  * 4 if set and used
  * 0 otherwise (not touched)
  */
+int
 copyu(Prog *p, Adr *v, Adr *s)
 {
 
@@ -569,7 +570,6 @@ copyu(Prog *p, Adr *v, Adr *s)
 				return 3;
 		return 0;
 	}
-	/* not reached */
 }
 
 int

@@ -17,17 +17,19 @@ typedef	struct	Term	Term;
 typedef	struct	Init	Init;
 typedef	struct	Bits	Bits;
 
+typedef	Rune	TRune;	/* target system type */
+
 #define	NHUNK		50000L
 #define	BUFSIZ		8192
-#define	NSYMB		500
+#define	NSYMB		1500
 #define	NHASH		1024
 #define	STRINGSZ	200
 #define	HISTSZ		20
-#define YYMAXDEPTH	500
+#define YYMAXDEPTH	1500
 #define	NTERM		10
 #define	MAXALIGN	7
 
-#define	SIGN(n)		((vlong)1<<(n-1))
+#define	SIGN(n)		((uvlong)1<<(n-1))
 #define	MASK(n)		(SIGN(n)|(SIGN(n)-1))
 
 #define	BITS	5
@@ -48,7 +50,7 @@ struct	Node
 	double	fconst;		/* fp constant */
 	vlong	vconst;		/* non fp const */
 	char*	cstring;	/* character string */
-	ushort*	rstring;	/* rune string */
+	TRune*	rstring;	/* rune string */
 
 	Sym*	sym;
 	Type*	type;
@@ -292,6 +294,7 @@ enum
 	OINDEX,
 	OFAS,
 	OREGPAIR,
+	OEXREG,
 
 	OEND
 };
@@ -333,6 +336,9 @@ enum
 	TFILE,
 	TOLD,
 	NALLTYPES,
+
+	/* adapt size of Rune to target system's size */
+	TRUNE = sizeof(TRune)==4? TUINT: TUSHORT,
 };
 enum
 {
@@ -475,6 +481,7 @@ EXTERN	int	packflg;
 EXTERN	int	fproundflg;
 EXTERN	int	profileflg;
 EXTERN	int	ncontin;
+EXTERN	int	newvlongcode;
 EXTERN	int	canreach;
 EXTERN	int	warnreach;
 EXTERN	Bits	zbits;
@@ -504,6 +511,7 @@ extern	char	typechlv[];
 extern	char	typechlvp[];
 extern	char	typechlp[];
 extern	char	typechlpfd[];
+EXTERN	char*	typeswitch;
 
 EXTERN	char*	typeword;
 EXTERN	char*	typecmplx;
@@ -617,7 +625,7 @@ int	rsametype(Type*, Type*, int, int);
 int	sametype(Type*, Type*);
 ulong	sign(Sym*);
 ulong	signature(Type*);
-void	suallign(Type*);
+void	sualign(Type*);
 void	tmerge(Type*, Sym*);
 void	walkparam(Node*, int);
 void	xdecl(int, Type*, Sym*);
@@ -635,6 +643,8 @@ int	tcomo(Node*, int);
 int	tcomx(Node*);
 int	tlvalue(Node*);
 void	constas(Node*, Type*, Type*);
+Node*	uncomma(Node*);
+Node*	uncomargs(Node*);
 
 /*
  * con.c
@@ -642,8 +652,8 @@ void	constas(Node*, Type*, Type*);
 void	acom(Node*);
 void	acom1(vlong, Node*);
 void	acom2(Node*, Type*);
-int	acomcmp1(const void*, const void*);
-int	acomcmp2(const void*, const void*);
+int	acomcmp1(void*, void*);
+int	acomcmp2(void*, void*);
 int	addo(Node*);
 void	evconst(Node*);
 
@@ -657,6 +667,7 @@ void	dclfunct(Type*, Sym*);
  * sub.c
  */
 void	arith(Node*, int);
+int	castucom(Node*);
 int	deadheads(Node*);
 Type*	dotsearch(Sym*, Type*, Node*, long*);
 long	dotoffset(Type*, Type*, Node*);
@@ -738,8 +749,7 @@ void	gclean(void);
 void	gextern(Sym*, Node*, long, long);
 void	ginit(void);
 long	outstring(char*, long);
-long	outlstring(ushort*, long);
-void	sextern(Sym*, Node*, long, long);
+long	outlstring(TRune*, long);
 void	xcom(Node*);
 long	exreg(Type*);
 long	align(long, Type*, int);

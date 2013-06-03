@@ -1,10 +1,13 @@
 #include	<lib9.h>
 #include	<bio.h>
 #include	"../vc/v.out.h"
+#include	"../8l/elf.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
 #endif
+
+#define	LIBNAMELEN	300
 
 typedef	struct	Adr	Adr;
 typedef	struct	Sym	Sym;
@@ -186,6 +189,7 @@ EXTERN	int	HEADTYPE;		/* type of header */
 EXTERN	long	INITDAT;		/* data location */
 EXTERN	long	INITRND;		/* data round above text location */
 EXTERN	long	INITTEXT;		/* text location */
+EXTERN	long	INITTEXTP;		/* text location (physical) */
 EXTERN	char*	INITENTRY;		/* entry point */
 EXTERN	long	autosize;
 EXTERN	Biobuf	bso;
@@ -266,6 +270,7 @@ int	Pconv(Fmt*);
 int	Sconv(Fmt*);
 int	aclass(Adr*);
 void	addhist(long, int);
+void	addlibpath(char*);
 void	addnop(Prog*);
 void	append(Prog*, Prog*);
 void	asmb(void);
@@ -278,6 +283,7 @@ void	buildop(void);
 void	buildrep(int, int);
 void	cflush(void);
 int	cmp(int, int);
+void	cput(long);
 int	compound(Prog*);
 double	cputime(void);
 void	datblk(long, long, int);
@@ -288,7 +294,9 @@ void	doprof2(void);
 long	entryvalue(void);
 void	errorexit(void);
 void	exchange(Prog*);
+int	fileexists(char*);
 int	find1(long, int);
+char*	findlib(char*);
 void	follow(void);
 void	gethunk(void);
 void	histtoauto(void);
@@ -299,7 +307,10 @@ void	ldobj(int, long, char*);
 void	loadlib(void);
 void	listinit(void);
 Sym*	lookup(char*, int);
+void	llput(vlong);
+void	llputl(vlong);
 void	lput(long);
+void	lputl(long);
 void	bput(long);
 void	mkfwd(void);
 void*	mysbrk(ulong);
@@ -308,7 +319,7 @@ void	nocache(Prog*);
 void	noops(void);
 void	nuxiinit(void);
 void	objfile(char*);
-int	ocmp(const void*, const void*);
+int	ocmp(void*, void*);
 long	opirr(int);
 Optab*	oplook(Prog*);
 long	oprrr(int);
@@ -325,6 +336,8 @@ void	sched(Prog*, Prog*);
 void	span(void);
 void	strnput(char*, int);
 void	undef(void);
+void	wput(long);
+void	wputl(long);
 void	xdefine(char*, int, long);
 void	xfol(Prog*);
 void	xfol(Prog*);

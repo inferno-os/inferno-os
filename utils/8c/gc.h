@@ -61,7 +61,7 @@ struct	Prog
 struct	Case
 {
 	Case*	link;
-	long	val;
+	vlong	val;
 	long	label;
 	char	def;
 	char isv;
@@ -70,7 +70,7 @@ struct	Case
 
 struct	C1
 {
-	long	val;
+	vlong	val;
 	long	label;
 };
 
@@ -240,6 +240,7 @@ void	nextpc(void);
 void	gargs(Node*, Node*, Node*);
 void	garg1(Node*, Node*, Node*, int, Node**);
 Node*	nodconst(long);
+int	nareg(int);
 Node*	nodfconst(double);
 int	nodreg(Node*, Node*, int);
 int	isreg(Node*, int);
@@ -266,7 +267,7 @@ void	gpseudo(int, Sym*, Node*);
 /*
  * swt.c
  */
-int	swcmp(const void*, const void*);
+int	swcmp(void*, void*);
 void	doswit(Node*);
 void	swit1(C1*, int, long, Node*);
 void	casf(void);
@@ -274,7 +275,6 @@ void	bitload(Node*, Node*, Node*, Node*, Node*);
 void	bitstore(Node*, Node*, Node*, Node*, Node*);
 long	outstring(char*, long);
 void	nullwarn(Node*, Node*);
-void	sextern(Sym*, Node*, long, long);
 void	gextern(Sym*, Node*, long, long);
 void	outcode(void);
 void	ieeedtod(Ieee*, double);
@@ -295,10 +295,10 @@ int	Bconv(Fmt*);
  * reg.c
  */
 Reg*	rega(void);
-int	rcmp(const void*, const void*);
+int	rcmp(void*, void*);
 void	regopt(Prog*);
 void	addmove(Reg*, int, int, int);
-Bits	mkvar(Reg*, Adr*);
+Bits	mkvar(Reg*, Adr*, int);
 void	prop(Reg*, Bits, Bits);
 void	loopit(Reg*, long);
 void	synch(Reg*, Bits);
@@ -334,11 +334,6 @@ int	BtoF(long);
 
 #define	D_HI	D_NONE
 #define	D_LO	D_NONE
-
-/*
- * bound
- */
-void	comtarg(void);
 
 /*
  * com64

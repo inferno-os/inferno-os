@@ -2018,7 +2018,7 @@ prinstr(Instr *ip, char *fmt)
 			if (ip->reg < 4 || ip->reg == 6 || ip->reg == 7)
 				bprint(ip, "DR%d",ip->reg);
 			else
-				bprint(ip, "???");
+				bprint(ip, "?");
 			break;
 		case 'I':
 			bprint(ip, "$");
@@ -2057,7 +2057,7 @@ prinstr(Instr *ip, char *fmt)
 			if (ip->reg == 6 || ip->reg == 7)
 				bprint(ip, "TR%d",ip->reg);
 			else
-				bprint(ip, "???");
+				bprint(ip, "?");
 			break;
 		case 'W':
 			if (ip->osize == 'Q' || ip->osize == 'L' && ip->rex & REXW)
@@ -2094,7 +2094,7 @@ prinstr(Instr *ip, char *fmt)
 			if (ip->reg < 6)
 				bprint(ip,"%s",sreg[ip->reg]);
 			else
-				bprint(ip,"???");
+				bprint(ip,"?");
 			break;
 		case 'p':
 			/*

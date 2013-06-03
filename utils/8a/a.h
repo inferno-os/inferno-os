@@ -2,7 +2,6 @@
 #include <bio.h>
 #include "../8c/8.out.h"
 
-
 #ifndef	EXTERN
 #define	EXTERN	extern
 #endif
@@ -72,6 +71,7 @@ struct	Gen
 	double	dval;
 	char	sval[8];
 	long	offset;
+	long	offset2;
 	Sym*	sym;
 	short	type;
 	short	index;
@@ -174,7 +174,7 @@ void	setinclude(char*);
 int	assemble(char*);
 
 /*
- *	Posix.c/Inferno.c/Nt.c
+ *	system-dependent stuff from ../cc/compat.c
  */
 enum	/* keep in synch with ../cc/cc.h */
 {

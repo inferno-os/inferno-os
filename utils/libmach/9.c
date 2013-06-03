@@ -5,7 +5,7 @@
 #include <lib9.h>
 #include <bio.h>
 #include "ureg9.h"
-#include <mach.h>
+#include "mach.h"
 
 
 #define	REGOFF(x)	offsetof(struct Ureg, x)

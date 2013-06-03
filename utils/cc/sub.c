@@ -85,7 +85,10 @@ prtree1(Node *n, int d, int f)
 		break;
 
 	case OLSTRING:
-		print(" \"%S\"", n->rstring);
+		if(sizeof(TRune) == sizeof(Rune))
+			print(" \"%S\"", (Rune*)n->rstring);
+		else
+			print(" \"...\"");
 		i = 0;
 		break;
 
@@ -914,6 +917,10 @@ loop:
 	case ONOT:
 	case OADDR:
 	case OIND:
+	case OCOM:
+	case ONEG:
+	case OPOS:
+	case OTST:
 		n = n->left;
 		goto loop;
 
@@ -1187,12 +1194,15 @@ warn(Node *n, char *fmt, ...)
 	char buf[STRINGSZ];
 	va_list arg;
 
-	if(debug['w']) {
-		Bprint(&diagbuf, "warning: ");
+	if(debug['w'] || debug['W']) {
 		va_start(arg, fmt);
 		vseprint(buf, buf+sizeof(buf), fmt, arg);
 		va_end(arg);
-		Bprint(&diagbuf, "%L %s\n", (n==Z)? nearln: n->lineno, buf);
+		if(debug['W']) {
+			diag(n, "%s", buf);
+			return;
+		}
+		Bprint(&diagbuf, "warning: %L %s\n", (n==Z)? nearln: n->lineno, buf);
 
 		if(n != Z)
 		if(debug['v'])
@@ -1485,6 +1495,7 @@ Init	onamesinit[] =
 	OINDEX,		0,	"INDEX",
 	OFAS,		0,	"FAS",
 	OREGPAIR,	0,	"REGPAIR",
+	OEXREG,		0,	"EXREG",
 	OEND,		0,	"END",
 	-1,		0,	0,
 };
@@ -1951,6 +1962,7 @@ tinit(void)
 	
 	/* 32-bit defaults */
 	typeword = typechlp;
+	typeswitch = typechl;
 	typecmplx = typesuv;
 }
 
@@ -2021,4 +2033,22 @@ int
 mixedasop(Type *l, Type *r)
 {
 	return !typefd[l->etype] && typefd[r->etype];
+}
+
+
+/*
+ * (uvlong)~ul creates a ul mask with top bits zero, which is usually wrong
+ * an explicit cast to ulong after ~ suppresses the diagnostic
+ */
+int
+castucom(Node *r)
+{
+	Node *rl;
+
+	if(r->op == OCAST &&
+	   (rl = r->left)->op == OCOM &&
+	   (r->type->etype == TVLONG || r->type->etype == TUVLONG) &&
+	   typeu[rl->type->etype] && typechl[rl->type->etype])
+		return 1;
+	return 0;
 }

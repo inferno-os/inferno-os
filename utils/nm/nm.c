@@ -147,7 +147,7 @@ dofile(Biobuf *bp)
  *	this screws up on 'z' records when aflag == 1
  */
 int
-cmp(const void *vs, const void *vt)
+cmp(void *vs, void *vt)
 {
 	Sym **s, **t;
 

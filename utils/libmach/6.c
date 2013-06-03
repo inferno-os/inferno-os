@@ -104,8 +104,8 @@ Mach mamd64=
 	0,			/* link register */
 	"setSB",		/* static base register name (bogus anyways) */
 	0,			/* static base register value */
-	0x1000,			/* page size */
-	0xFFFFFFFF80110000U,	/* kernel base */
+	0x200000,			/* page size */
+	0xFFFFFFFFF0110000U,	/* kernel base */
 	0xFFFF800000000000U,	/* kernel text mask */
 	0x00007FFFFFFFF000U,	/* user stack top */
 	1,			/* quantization of pc */

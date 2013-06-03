@@ -1263,7 +1263,7 @@ static int hasbrk(Node*);
 static int isgen(char*);
 static int simple(Node*);
 static void pfmt(char*);
-static void lpfmt(ushort*);
+static void lpfmt(Rune*);
 static int lline(Node*);
 static void args(Node*);
 static void addmodn(Sym*);
@@ -2095,6 +2095,7 @@ etseq(Syml *syml)
 	pio = io = ARITH|GEOM;
 	e = 0;
 	dd = 0;
+	d = 0;
 	for(sl = syml; sl != nil; sl = sl->nxt){
 		s = sl->sym;
 		if(isreal(s->tenum) || s->tenum->etype == TIND)
@@ -2782,7 +2783,7 @@ stob(Node *n)
 {
 	int m;
 	char *s = nil, buf[UTFmax];
-	ushort *u = nil;
+	Rune *u = nil;
 
 	while(n->op == ONAME)
 		n = n->sym->nconst;
@@ -4689,9 +4690,9 @@ pfmt(char *s)
 }
 
 static void
-lpfmt(ushort *s)
+lpfmt(Rune *s)
 {
-	 ushort*t = s;
+	 Rune*t = s;
 
 	while(*s != '\0'){
 		if(*s == '%'){

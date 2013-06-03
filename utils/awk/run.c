@@ -1653,7 +1653,7 @@ char *filename(FILE *fp)
 	for (i = 0; i < FOPEN_MAX; i++)
 		if (fp == files[i].fp)
 			return files[i].fname;
-	return "???";
+	return "?";
 }
 
 Cell *closefile(Node **a, int n)

@@ -1,6 +1,5 @@
 <../../mkconfig
 
-TARG=6ca
 TARG=6c
 
 OFILES=\

@@ -188,8 +188,6 @@ syminit(int fd, Fhdr *fp)
 		}
 		pclineend = pcline+fp->lnpcsz;
 	}
-	if(fp->type == FARM)	/* thumb pc table */
-		thumbpctab(&b, fp);
 	return nsym;
 }
 

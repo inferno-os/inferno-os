@@ -18,7 +18,7 @@ rega(void)
 }
 
 int
-rcmp(const void *a1, const void *a2)
+rcmp(void *a1, void *a2)
 {
 	Rgn *p1, *p2;
 	int c1, c2;
@@ -1125,7 +1125,7 @@ RtoB(int r)
 int
 BtoR(long b)
 {
-	b &= 0x01fcL;
+	b &= 0x01fcL;	// excluded R9 and R10 for extern registers
 	if(b == 0)
 		return 0;
 	return bitno(b);

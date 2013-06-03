@@ -15,10 +15,10 @@ struct machtab
 	Machdata	*machdata;		/* machine functions */
 };
 
-extern	Mach		mmips, msparc, m68020, mi386, mamd64,
-			marm, mmips2be, mmips2le, mpower, mpower64, malpha, msparc64;
-extern	Machdata	mipsmach, sparcmach, m68020mach, i386mach,
-			armmach, mipsmach2le, powermach, alphamach, sparc64mach;
+extern	Mach		mmips, msparc, mi386, mamd64,
+			marm, mmips2be, mmips2le, mpower, mpower64;
+extern	Machdata	mipsmach, sparcmach, i386mach,
+			armmach, mipsmach2le, powermach;
 
 /*
  *	machine selection table.  machines with native disassemblers should
@@ -27,18 +27,6 @@ extern	Machdata	mipsmach, sparcmach, m68020mach, i386mach,
  */
 Machtab	machines[] =
 {
-	{	"68020",			/*68020*/
-		F68020,
-		F68020B,
-		A68020,
-		&m68020,
-		&m68020mach,	},
-	{	"68020",			/*Next 68040 bootable*/
-		F68020,
-		FNEXTB,
-		A68020,
-		&m68020,
-		&m68020mach,	},
 	{	"mips2LE",			/*plan 9 mips2 little endian*/
 		FMIPS2LE,
 		0,

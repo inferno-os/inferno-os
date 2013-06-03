@@ -835,11 +835,11 @@ ocand(Node *n, Node *res)
 {
 	Node l, r;
 
-	res->nstore.fmt = l.nstore.fmt;
 	res->op = OCONST;
 	res->type = TINT;
 	res->nstore.u0.sival = 0;
 	expr(n->left, &l);
+	res->nstore.fmt = l.nstore.fmt;
 	if(bool(&l) == 0)
 		return;
 	expr(n->right, &r);

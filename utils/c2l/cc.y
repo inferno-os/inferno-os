@@ -887,8 +887,8 @@ slstring:
 	{
 		$$ = new(OLSTRING, Z, Z);
 		$$->type = typ(TARRAY, types[TUSHORT]);
-		$$->type->width = $1.l + sizeof(ushort);
-		$$->rstring = (ushort*)$1.s;
+		$$->type->width = $1.l + sizeof(TRune);
+		$$->rstring = (TRune*)$1.s;
 		$$->sym = symstring;
 	}
 
@@ -902,19 +902,19 @@ lstring:
 		char *s;
 		int n1, n2;
 
-		n1 = $1->type->width - sizeof(ushort);
-		n2 = $2->type->width - sizeof(ushort);
+		n1 = $1->type->width - sizeof(TRune);
+		n2 = $2->type->width - sizeof(TRune);
 		s = alloc(n1+n2+MAXALIGN);
 
 		memcpy(s, $1->rstring, n1);
 		memcpy(s+n1, $2->rstring, n2);
-		*(ushort*)(s+n1+n2) = 0;
+		*(TRune*)(s+n1+n2) = 0;
 
 		$1->left = new(OCAT, ncopy($1), $2);
 
 		$$ = $1;
 		$$->type->width += n2;
-		$$->rstring = (ushort*)s;
+		$$->rstring = (TRune*)s;
 	}
 
 zelist:

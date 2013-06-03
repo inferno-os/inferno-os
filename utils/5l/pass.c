@@ -24,11 +24,6 @@ dodata(void)
 		if(v > s->value)
 			diag("initialize bounds (%ld): %s\n%P",
 				s->value, s->name, p);
-		if((s->type == SBSS || s->type == SDATA) && (p->to.type == D_CONST || p->to.type == D_OCONST) && (p->to.name == D_EXTERN || p->to.name == D_STATIC)){
-			s = p->to.sym;
-			if(s != S && (s->type == STEXT || s->type == SLEAF || s->type == SCONST || s->type == SXREF))
-				s->fnptr = 1;
-		}
 	}
 
 	if(debug['t']) {
@@ -187,7 +182,6 @@ xfol(Prog *p)
 loop:
 	if(p == P)
 		return;
-	setarch(p);
 	a = p->as;
 	if(a == ATEXT)
 		curtext = p;
@@ -260,7 +254,7 @@ loop:
 		return;
 	}
 	if(p->cond != P)
-	if(a != ABL && a != ABX && p->link != P) {
+	if(a != ABL && p->link != P) {
 		q = brchain(p->link);
 		if(a != ATEXT && a != ABCASE)
 		if(q != P && (q->mark&FOLL)) {
@@ -288,7 +282,7 @@ patch(void)
 {
 	long c, vexit;
 	Prog *p, *q;
-	Sym *s, *s1;
+	Sym *s;
 	int a;
 
 	if(debug['v'])
@@ -298,17 +292,10 @@ patch(void)
 	s = lookup("exit", 0);
 	vexit = s->value;
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 		a = p->as;
 		if(a == ATEXT)
 			curtext = p;
-		if(seenthumb && a == ABL){
-			// if((s = p->to.sym) != S && (s1 = curtext->from.sym) != S)
-			//	print("%s calls %s\n", s1->name, s->name);
-			 if((s = p->to.sym) != S && (s1 = curtext->from.sym) != S && s->thumb != s1->thumb)
-				s->foreign = 1;
-		}
-		if((a == ABL || a == ABX || a == AB || a == ARET) &&
+		if((a == ABL || a == AB || a == ARET) &&
 		   p->to.type != D_BRANCH && p->to.sym != S) {
 			s = p->to.sym;
 			switch(s->type) {
@@ -351,21 +338,8 @@ patch(void)
 	}
 
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
-		a = p->as;
 		if(p->as == ATEXT)
 			curtext = p;
-		if(seenthumb && a == ABL) {
-#ifdef CALLEEBX
-			if(0)
-				{}
-#else
-			if((s = p->to.sym) != S && (s->foreign || s->fnptr))
-				p->as = ABX;
-#endif
-			else if(p->to.type == D_OREG)
-				p->as = ABX;
-		}
 		if(p->cond != P && p->cond != UP) {
 			p->cond = brloop(p->cond);
 			if(p->cond != P)
@@ -481,327 +455,6 @@ rnd(long v, long r)
 		c += r;
 	v -= c;
 	return v;
-}
-
-#define Reachable(n)	if((s = lookup(n, 0)) != nil) s->used++
-
-static void
-rused(Adr *a)
-{
-	Sym *s = a->sym;
-
-	if(s == S)
-		return;
-	if(a->type == D_OREG || a->type == D_OCONST || a->type == D_CONST){
-		if(a->name == D_EXTERN || a->name == D_STATIC){
-			if(s->used == 0)
-				s->used = 1;
-		}
-	}
-	else if(a->type == D_BRANCH){
-		if(s->used == 0)
-			s->used = 1;
-	}
-}
-
-void
-reachable()
-{
-	Prog *p, *prev, *prevt, *nextt, *q;
-	Sym *s, *s0;
-	int i, todo;
-	char *a;
-
-	Reachable("_div");
-	Reachable("_divu");
-	Reachable("_mod");
-	Reachable("_modu");
-	a = INITENTRY;
-	if(*a >= '0' && *a <= '9')
-		return;
-	s = lookup(a, 0);
-	if(s == nil)
-		return;
-	if(s->type == 0){
-		s->used = 1;	// to stop asm complaining
-		for(p = firstp; p != P && p->as != ATEXT; p = p->link)
-			;
-		if(p == nil)
-			return;
-		s = p->from.sym;
-	}	
-	s->used = 1;
-	do{
-		todo = 0;
-		for(p = firstp; p != P; p = p->link){
-			if(p->as == ATEXT && (s0 = p->from.sym)->used == 1){
-				todo = 1;
-				for(q = p->link; q != P && q->as != ATEXT; q = q->link){
-					rused(&q->from);
-					rused(&q->to);
-				}
-				s0->used = 2;
-			}
-		}
-		for(p = datap; p != P; p = p->link){
-			if((s0 = p->from.sym)->used == 1){
-				todo = 1;
-				for(q = p; q != P; q = q->link){	// data can be scattered
-					if(q->from.sym == s0)
-						rused(&q->to);
-				}
-				s0->used = 2;
-			}
-		}
-	}while(todo);
-	prev = nil;
-	prevt = nextt = nil;
-	for(p = firstp; p != P; ){
-		if(p->as == ATEXT){
-			prevt = nextt;
-			nextt = p;
-		}
-		if(p->as == ATEXT && (s0 = p->from.sym)->used == 0){
-			s0->type = SREMOVED;
-			for(q = p->link; q != P && q->as != ATEXT; q = q->link)
-				;
-			if(q != p->cond)
-				diag("bad ptr in reachable()");
-			if(prev == nil)
-				firstp = q;
-			else
-				prev->link = q;
-			if(q == nil)
-				lastp = prev;
-			if(prevt == nil)
-				textp = q;
-			else
-				prevt->cond = q;
-			if(q == nil)
-				etextp = prevt;
-			nextt = prevt;
-			if(debug['V'])
-				print("%s unused\n", s0->name);
-			p = q;
-		}
-		else{
-			prev = p;
-			p = p->link;
-		}
-	}
-	prevt = nil;
-	for(p = datap; p != nil; ){
-		if((s0 = p->from.sym)->used == 0){
-			s0->type = SREMOVED;
-			prev = prevt;
-			for(q = p; q != nil; q = q->link){
-				if(q->from.sym == s0){
-					if(prev == nil)
-						datap = q->link;
-					else
-						prev->link = q->link;
-				}
-				else
-					prev = q;
-			}
-			if(debug['V'])
-				print("%s unused (data)\n", s0->name);
-			p = prevt->link;
-		}
-		else{
-			prevt = p;
-			p = p->link;
-		}
-	}
-	for(i=0; i<NHASH; i++){
-		for(s = hash[i]; s != S; s = s->link){
-			if(s->used == 0)
-				s->type = SREMOVED;
-		}
-	}
-}
-
-static void
-fused(Adr *a, Prog *p, Prog *ct)
-{
-	Sym *s = a->sym;
-	Use *u;
-
-	if(s == S)
-		return;
-	if(a->type == D_OREG || a->type == D_OCONST || a->type == D_CONST){
-		if(a->name == D_EXTERN || a->name == D_STATIC){
-			u = malloc(sizeof(Use));
-			u->p = p;
-			u->ct = ct;
-			u->link = s->use;
-			s->use = u;
-		}
-	}
-	else if(a->type == D_BRANCH){
-		u = malloc(sizeof(Use));
-		u->p = p;
-		u->ct = ct;
-		u->link = s->use;
-		s->use = u;
-	}
-}
-
-static int
-ckfpuse(Prog *p, Prog *ct, Sym *fp, Sym *r)
-{
-	int reg;
-
-	USED(fp);
-	USED(ct);
-	if(p->from.sym == r && p->as == AMOVW && (p->from.type == D_CONST || p->from.type == D_OREG) && p->reg == NREG && p->to.type == D_REG){
-		reg = p->to.reg;
-		for(p = p->link; p != P && p->as != ATEXT; p = p->link){
-			if((p->as == ABL || p->as == ABX) && p->to.type == D_OREG && p->to.reg == reg)
-				return 1;
-			if(!debug['F'] && (isbranch(p) || p->as == ARET)){
-				// print("%s: branch %P in %s\n", fp->name, p, ct->from.sym->name);
-				return 0;
-			}
-			if((p->from.type == D_REG || p->from.type == D_OREG) && p->from.reg == reg){
-				if(!debug['F'] && p->to.type != D_REG){
-					// print("%s: store %P in %s\n", fp->name, p, ct->from.sym->name);
-					return 0;
-				}
-				reg = p->to.reg;
-			}
-		}
-	}
-	// print("%s: no MOVW O(R), R\n", fp->name);
-	return debug['F'];
-}
-
-static void
-setfpuse(Prog *p, Sym *fp, Sym *r)
-{
-	int reg;
-
-	if(p->from.sym == r && p->as == AMOVW && (p->from.type == D_CONST || p->from.type == D_OREG) && p->reg == NREG && p->to.type == D_REG){
-		reg = p->to.reg;
-		for(p = p->link; p != P && p->as != ATEXT; p = p->link){
-			if((p->as == ABL || p->as == ABX) && p->to.type == D_OREG && p->to.reg == reg){
-				fp->fnptr = 0;
-				p->as = ABL;	// safe to do so
-// print("simplified %s call\n", fp->name);
-				break;
-			}
-			if(!debug['F'] && (isbranch(p) || p->as == ARET))
-				diag("bad setfpuse call");
-			if((p->from.type == D_REG || p->from.type == D_OREG) && p->from.reg == reg){
-				if(!debug['F'] && p->to.type != D_REG)
-					diag("bad setfpuse call");
-				reg = p->to.reg;
-			}
-		}
-	}
-}
-
-static int
-cksymuse(Sym *s, int t)
-{
-	Prog *p;
-
-	for(p = datap; p != P; p = p->link){
-		if(p->from.sym == s && p->to.sym != nil && strcmp(p->to.sym->name, ".string") != 0 && p->to.sym->thumb != t){
-			// print("%s %s %d %d ", p->from.sym->name, p->to.sym->name, p->to.sym->thumb, t);
-			return 0;
-		}
-	}
-	return 1;
-}
-
-/* check the use of s at the given point */
-static int
-ckuse(Sym *s, Sym *s0, Use *u)
-{
-	Sym *s1;
-
-	s1 = u->p->from.sym;
-// print("ckuse %s %s %s\n", s->name, s0->name, s1 ? s1->name : "nil");
-	if(u->ct == nil){	/* in data area */
-		if(s0 == s && !cksymuse(s1, s0->thumb)){
-			// print("%s: cksymuse fails\n", s0->name);
-			return 0;
-		}
-		for(u = s1->use; u != U; u = u->link)
-			if(!ckuse(s1, s0, u))
-				return 0;
-	}
-	else{		/* in text area */
-		if(u->ct->from.sym->thumb != s0->thumb){
-			// print("%s(%d): foreign call %s(%d)\n", s0->name, s0->thumb, u->ct->from.sym->name, u->ct->from.sym->thumb);
-			return 0;
-		}
-		return ckfpuse(u->p, u->ct, s0, s);
-	}
-	return 1;
-}
-		
-static void
-setuse(Sym *s, Sym *s0, Use *u)
-{
-	Sym *s1;
-
-	s1 = u->p->from.sym;
-	if(u->ct == nil){	/* in data area */
-		for(u = s1->use; u != U; u = u->link)
-			setuse(s1, s0, u);
-	}
-	else{		/* in text area */
-		setfpuse(u->p, s0, s);
-	}
-}
-		
-/* detect BX O(R) which can be done as BL O(R) */
-void
-fnptrs()
-{
-	int i;
-	Sym *s;
-	Prog *p;
-	Use *u;
-	
-	for(i=0; i<NHASH; i++){
-		for(s = hash[i]; s != S; s = s->link){
-			if(s->fnptr && (s->type == STEXT || s->type == SLEAF || s->type == SCONST)){
-				// print("%s : fnptr %d %d\n", s->name, s->thumb, s->foreign);
-			}
-		}
-	}	
-	/* record use of syms */
-	for(p = firstp; p != P; p = p->link){
-		if(p->as == ATEXT)
-			curtext = p;
-		else{
-			fused(&p->from, p, curtext);
-			fused(&p->to, p, curtext);
-		}
-	}
-	for(p = datap; p != P; p = p->link)
-		fused(&p->to, p, nil);
-
-	/* now look for fn ptrs */
-	for(i=0; i<NHASH; i++){
-		for(s = hash[i]; s != S; s = s->link){
-			if(s->fnptr && (s->type == STEXT || s->type == SLEAF || s->type == SCONST)){
-				for(u = s->use; u != U; u = u->link){
-					if(!ckuse(s, s, u))
-						break;
-				}
-				if(u == U){		// can simplify
-					for(u = s->use; u != U; u = u->link)
-						setuse(s, s, u);
-				}
-			}	
-		}
-	}
-
-	/*  now free Use structures */
 }
 
 void

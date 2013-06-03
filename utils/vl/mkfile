@@ -13,6 +13,7 @@ OFILES=\
 	span.$O\
 	enam.$O\
 	$TARGMODEL.$O\
+	elf.$O\
 
 HFILES=\
 	l.h\
@@ -25,7 +26,12 @@ BIN=$ROOT/$OBJDIR/bin
 
 <$ROOT/mkfiles/mkone-$SHELLTYPE
 
-CFLAGS=	$CFLAGS -I../include
+CFLAGS=	$CFLAGS -I../include -I.
 
 enam.$O:	../vc/enam.c
 	$CC $CFLAGS ../vc/enam.c
+elf.$O:	../ld/elf.c
+	$CC $CFLAGS ../ld/elf.c
+
+$TARGMODEL.$O:	../ld/$TARGMODEL.c
+	$CC $CFLAGS ../ld/$TARGMODEL.c

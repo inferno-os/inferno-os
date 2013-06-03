@@ -12,7 +12,7 @@ OFILES=\
 	span.$O\
 	enam.$O\
 	$TARGMODEL.$O\
-	thumb.$O\
+	elf.$O\
 
 HFILES=\
 	l.h\
@@ -21,7 +21,7 @@ HFILES=\
 
 LIBS=bio 9			# order is important
 
-CFLAGS=$CFLAGS -I../include
+CFLAGS=$CFLAGS -I../include -I.
 
 BIN=$ROOT/$OBJDIR/bin
 
@@ -30,3 +30,8 @@ BIN=$ROOT/$OBJDIR/bin
 enam.$O:	../5c/enam.c
 	$CC $CFLAGS ../5c/enam.c
 
+elf.$O:	../ld/elf.c
+	$CC $CFLAGS ../ld/elf.c
+
+$TARGMODEL.$O:	../ld/$TARGMODEL.c
+	$CC $CFLAGS ../ld/$TARGMODEL.c

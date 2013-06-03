@@ -16,6 +16,8 @@ typedef	struct	Term	Term;
 typedef	struct	Init	Init;
 typedef	struct	Bits	Bits;
 
+typedef	Rune	TRune;
+
 #define	NHUNK		50000L
 #define	BUFSIZ		8192
 #define	NSYMB		500
@@ -26,7 +28,7 @@ typedef	struct	Bits	Bits;
 #define	NTERM		10
 #define	MAXALIGN	7
 
-#define	SIGN(n)		((vlong)1<<(n-1))
+#define	SIGN(n)		((uvlong)1<<(n-1))
 #define	MASK(n)		(SIGN(n)|(SIGN(n)-1))
 
 #define	BITS	5
@@ -54,7 +56,7 @@ struct	Node
 	double	fconst;		/* fp constant */
 	vlong	vconst;		/* non fp const */
 	char*	cstring;	/* character string */
-	ushort*	rstring;	/* rune string */
+	Rune*	rstring;	/* rune string */
 
 	Sym*	sym;
 	Type*	type;
@@ -665,8 +667,8 @@ void	constas(Node*, Type*, Type*);
 void	acom(Node*);
 void	acom1(vlong, Node*);
 void	acom2(Node*, Type*);
-int	acomcmp1(const void*, const void*);
-int	acomcmp2(const void*, const void*);
+int	acomcmp1(void*, void*);
+int	acomcmp2(void*, void*);
 int	addo(Node*);
 void	evconst(Node*);
 
@@ -744,7 +746,7 @@ void	gclean(void);
 void	gextern(Sym*, Node*, long, long);
 void	ginit(void);
 long	outstring(char*, long);
-long	outlstring(ushort*, long);
+long	outlstring(Rune*, long);
 void	sextern(Sym*, Node*, long, long);
 void	xcom(Node*);
 long	exreg(Type*);
@@ -779,7 +781,7 @@ vlong	convvtox(vlong, int);
 
 void prline(char*);
 void prstr(char *);
-void prlstr(ushort *);
+void prlstr(Rune *);
 void prkeywd(char *);
 void prid(char *);
 void	prsym(Sym*, int);

@@ -41,7 +41,7 @@ char *typenames[] =
 };
 
 int
-cmp(const void *a, const void *b)
+cmp(void *a, void *b)
 {
 	return strcmp(*(char**)a, *(char**)b);
 }

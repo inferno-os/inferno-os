@@ -672,7 +672,7 @@ static	char	ir2[] = "R%a,R%d";		/* reverse of IBM order */
 static	char	ir3[] = "R%b,R%a,R%d";
 static	char	ir3r[] = "R%a,R%b,R%d";
 static	char	il3[] = "R%b,R%s,R%a";
-static	char	il2u[] = "%I,R%a,R%d";
+static	char	il2u[] = "%I,R%d,R%a";
 static	char	il3s[] = "$%k,R%s,R%a";
 static	char	il2[] = "R%s,R%a";
 static	char	icmp3[] = "R%a,R%b,%D";
@@ -857,6 +857,8 @@ static Opcode opcodes[] = {
 	{31,	659,	ALL,	"MOVW",		gen,	"SEG(R%b),R%d"},
 	{31,	323,	ALL,	"MOVW",		gen,	"DCR(%Q),R%d"},
 	{31,	451,	ALL,	"MOVW",		gen,	"R%s,DCR(%Q)"},
+	{31,	259,	ALL,	"MOVW",		gen,	"DCR(R%a),R%d"},
+	{31,	387,	ALL,	"MOVW",		gen,	"R%s,DCR(R%a)"},
 	{31,	144,	ALL,	"MOVFL",	gen,	"R%s,%m,CR"},
 	{63,	70,	ALL,	"MTFSB0%C",	gencc,	"%D"},
 	{63,	38,	ALL,	"MTFSB1%C",	gencc,	"%D"},

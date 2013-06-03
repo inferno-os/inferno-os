@@ -91,8 +91,10 @@ dodata(void)
 		s->value = bsssize + datsize;
 		bsssize += t;
 	}
+	xdefine("bdata", SDATA, 0L);
 	xdefine("edata", SBSS, datsize);
 	xdefine("end", SBSS, bsssize + datsize);
+	/* etext is defined in span.c */
 }
 
 Prog*
@@ -308,7 +310,8 @@ patch(void)
 					Bprint(&bso, "%s calls %s\n", TNAME, s->name);
 				switch(s->type) {
 				default:
-					diag("undefined: %s in %s", s->name, TNAME);
+					/* diag prints TNAME first */
+					diag("undefined: %s", s->name);
 					s->type = STEXT;
 					s->value = vexit;
 					break;	/* or fall through to set offset? */

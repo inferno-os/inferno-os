@@ -10,19 +10,6 @@ ALWAYS=\
 	libregexp\
 	iar\
 	cc\
-	0a\
-	0c\
-	0l\
-	1a\
-	1c\
-	1l\
-	2a\
-	2c\
-	2l\
-	5a\
-	5c\
-	5l\
-#	5i\
 	5coff\
 	5cv\
 	sqz\
@@ -44,6 +31,9 @@ ALWAYS=\
 #
 NOTPLAN9=\
 	iyacc\
+	5a\
+	5c\
+	5l\
 	8a\
 	8c\
 	8l\
@@ -78,6 +68,14 @@ NTONLY=\
 	sed\
 	test\
 	tr\
+
+#
+# Thumb-1
+#
+OBSOLETE=\
+	ta\
+	tc\
+	tl\
 
 all:QV:		all-$TARGMODEL
 clean:QV:	clean-$TARGMODEL

@@ -11,6 +11,10 @@ char	symname[]	= SYMDEF;
 char	thechar		= 'v';
 char	*thestring 	= "mips";
 
+char**	libdir;
+int	nlibdir	= 0;
+static	int	maxlibdir = 0;
+
 /*
  *	-H0 -T0x40004C -D0x10000000	is abbrev unix
  *	-H1 -T0x80020000 -R4		is bootp() format for 3k
@@ -24,10 +28,18 @@ char	*thestring 	= "mips";
 int little;
 
 void
+usage(void)
+{
+	diag("usage: %s [-options] objects", argv0);
+	errorexit();
+}
+
+void
 main(int argc, char *argv[])
 {
 	int c;
 	char *a;
+	char name[LIBNAMELEN];
 
 	Binit(&bso, 1, OWRITE);
 	cout = -1;
@@ -37,6 +49,7 @@ main(int argc, char *argv[])
 	curtext = P;
 	HEADTYPE = -1;
 	INITTEXT = -1;
+	INITTEXTP = -1;
 	INITDAT = -1;
 	INITRND = -1;
 	INITENTRY = 0;
@@ -55,7 +68,7 @@ main(int argc, char *argv[])
 		if(a)
 			INITENTRY = a;
 		break;
-	case  'L':			/* for little-endian mips */
+	case  'm':			/* for little-endian mips */
 		thechar = '0';
 		thestring = "spim";
 		little = 1;
@@ -64,6 +77,11 @@ main(int argc, char *argv[])
 		a = ARGF();
 		if(a)
 			INITTEXT = atolwhex(a);
+		break;
+	case 'P':
+		a = ARGF();
+		if(a)
+			INITTEXTP = atolwhex(a);
 		break;
 	case 'D':
 		a = ARGF();
@@ -81,16 +99,27 @@ main(int argc, char *argv[])
 			HEADTYPE = atolwhex(a);
 		/* do something about setting INITTEXT */
 		break;
+	case 'L':
+		addlibpath(EARGF(usage()));
+		break;
 	} ARGEND
 
 	USED(argc);
 
-	if(*argv == 0) {
-		diag("usage: %cl [-options] objects", thechar);
-		errorexit();
-	}
+	if(*argv == 0)
+		usage();
 	if(!debug['9'] && !debug['U'] && !debug['B'])
 		debug[DEFAULT] = 1;
+	a = getenv("ccroot");
+	if(a != nil && *a != '\0') {
+		if(!fileexists(a)) {
+			diag("nonexistent $ccroot: %s", a);
+			errorexit();
+		}
+	}else
+		a = "";
+	snprint(name, sizeof(name), "%s/%s/lib", a, thestring);
+	addlibpath(name);
 	if(HEADTYPE == -1) {
 		if(debug['U'])
 			HEADTYPE = 0;
@@ -150,7 +179,7 @@ main(int argc, char *argv[])
 			INITRND = 0;
 		break;
 	case 5:	/* sgi unix elf executable */
-		HEADR = rnd(52L+3*32L, 16);
+		HEADR = rnd(Ehdr32sz+3*Phdr32sz, 16);
 		if(INITTEXT == -1)
 			INITTEXT = 0x00400000L+HEADR;
 		if(INITDAT == -1)
@@ -168,6 +197,8 @@ main(int argc, char *argv[])
 			INITRND = 4096;
 		break;
 	}
+	if (INITTEXTP == -1)
+		INITTEXTP = INITTEXT;
 	if(INITDAT != 0 && INITRND != 0)
 		print("warning: -D0x%lux is ignored because of -R0x%lux\n",
 			INITDAT, INITRND);
@@ -195,7 +226,7 @@ main(int argc, char *argv[])
 	}
 	cout = create(outfile, 1, 0775);
 	if(cout < 0) {
-		diag("%s: cannot create", outfile);
+		diag("cannot create %s: %r", outfile);
 		errorexit();
 	}
 	nuxiinit();
@@ -212,7 +243,7 @@ main(int argc, char *argv[])
 			INITENTRY = "_mainp";
 		if(!debug['l'])
 			lookup(INITENTRY, 0)->type = SXREF;
-	} else
+	} else if(!(*INITENTRY >= '0' && *INITENTRY <= '9'))
 		lookup(INITENTRY, 0)->type = SXREF;
 
 	while(*argv)
@@ -246,6 +277,42 @@ out:
 	}
 	Bflush(&bso);
 	errorexit();
+}
+
+void
+addlibpath(char *arg)
+{
+	char **p;
+
+	if(nlibdir >= maxlibdir) {
+		if(maxlibdir == 0)
+			maxlibdir = 8;
+		else
+			maxlibdir *= 2;
+		p = malloc(maxlibdir*sizeof(*p));
+		if(p == nil) {
+			diag("out of memory");
+			errorexit();
+		}
+		memmove(p, libdir, nlibdir*sizeof(*p));
+		free(libdir);
+		libdir = p;
+	}
+	libdir[nlibdir++] = strdup(arg);
+}
+
+char*
+findlib(char *file)
+{
+	int i;
+	char name[LIBNAMELEN];
+
+	for(i = 0; i < nlibdir; i++) {
+		snprint(name, sizeof(name), "%s/%s", libdir[i], file);
+		if(fileexists(name))
+			return libdir[i];
+	}
+	return nil;
 }
 
 void
@@ -367,7 +434,8 @@ objfile(char *file)
 			l |= (e[3] & 0xff) << 16;
 			l |= (e[4] & 0xff) << 24;
 			seek(f, l, 0);
-			l = read(f, &arhdr, SAR_HDR);
+			/* need readn to read the dumps (at least) */
+			l = readn(f, &arhdr, SAR_HDR);
 			if(l != SAR_HDR)
 				goto bad;
 			if(strncmp(arhdr.fmag, ARFMAG, sizeof(arhdr.fmag)))
@@ -394,7 +462,7 @@ int
 zaddr(uchar *p, Adr *a, Sym *h[])
 {
 	int i, c;
-	long l;
+	int l;
 	Sym *s;
 	Auto *u;
 
@@ -498,25 +566,24 @@ zaddr(uchar *p, Adr *a, Sym *h[])
 void
 addlib(char *obj)
 {
-	char name[1024], comp[256], *p;
-	int i;
+	char fn1[LIBNAMELEN], fn2[LIBNAMELEN], comp[LIBNAMELEN], *p, *name;
+	int i, search;
 
 	if(histfrogp <= 0)
 		return;
 
+	name = fn1;
+	search = 0;
 	if(histfrog[0]->name[1] == '/') {
 		sprint(name, "");
 		i = 1;
-	} else
-	if(histfrog[0]->name[1] == '.') {
+	} else if(histfrog[0]->name[1] == '.') {
 		sprint(name, ".");
 		i = 0;
 	} else {
-		if(debug['9'])
-			sprint(name, "/%s/lib", thestring);
-		else
-			sprint(name, "/usr/%clib", thechar);
+		sprint(name, "");
 		i = 0;
+		search = 1;
 	}
 
 	for(; i<histfrogp; i++) {
@@ -539,13 +606,25 @@ addlib(char *obj)
 			memmove(p+strlen(thestring), p+2, strlen(p+2)+1);
 			memmove(p, thestring, strlen(thestring));
 		}
-		if(strlen(name) + strlen(comp) + 3 >= sizeof(name)) {
+		if(strlen(fn1) + strlen(comp) + 3 >= sizeof(fn1)) {
 			diag("library component too long");
 			return;
 		}
-		strcat(name, "/");
-		strcat(name, comp);
+		if(i > 0 || !search)
+			strcat(fn1, "/");
+		strcat(fn1, comp);
 	}
+
+	cleanname(name);
+
+	if(search){
+		p = findlib(name);
+		if(p != nil){
+			snprint(fn2, sizeof(fn2), "%s/%s", p, name);
+			name = fn2;
+		}
+	}
+
 	for(i=0; i<libraryp; i++)
 		if(strcmp(name, library[i]) == 0)
 			return;
@@ -1017,8 +1096,7 @@ lookup(char *symb, int v)
 	for(p=symb; c = *p; p++)
 		h = h+h+h + c;
 	l = (p - symb) + 1;
-	if(h < 0)
-		h = ~h;
+	h &= 0xffffff;
 	h %= NHASH;
 	for(s = hash[h]; s != S; s = s->link)
 		if(s->version == v)
@@ -1332,6 +1410,7 @@ nuxiinit(void)
 	Bflush(&bso);
 }
 
+int
 find1(long l, int c)
 {
 	char *p;

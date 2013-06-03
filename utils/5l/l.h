@@ -1,13 +1,17 @@
 #include	<lib9.h>
 #include	<bio.h>
 #include	"../5c/5.out.h"
+#include	"../8l/elf.h"
 
 #ifndef	EXTERN
 #define	EXTERN	extern
 #endif
 
-/* do not undefine this - code will be removed eventually */
-#define	CALLEEBX
+#define	LIBNAMELEN	300
+
+void	addlibpath(char*);
+int	fileexists(char*);
+char*	findlib(char*);
 
 typedef	struct	Adr	Adr;
 typedef	struct	Sym	Sym;
@@ -17,11 +21,9 @@ typedef	struct	Optab	Optab;
 typedef	struct	Oprang	Oprang;
 typedef	uchar	Opcross[32][2][32];
 typedef	struct	Count	Count;
-typedef	struct	Use	Use;
 
 #define	P		((Prog*)0)
 #define	S		((Sym*)0)
-#define	U		((Use*)0)
 #define	TNAME		(curtext&&curtext->from.sym?curtext->from.sym->name:noname)
 
 struct	Adr
@@ -68,7 +70,6 @@ struct	Prog
 	uchar	as;
 	uchar	scond;
 	uchar	reg;
-	uchar	align;
 };
 #define	regused	u0.u0regused
 #define	forwd	u0.u0forwd
@@ -81,14 +82,10 @@ struct	Sym
 	short	become;
 	short	frame;
 	uchar	subtype;
+	uchar	used;
 	ushort	file;
 	long	value;
 	long	sig;
-	uchar	used;
-	uchar	thumb;	// thumb code
-	uchar	foreign;	// called by arm if thumb, by thumb if arm
-	uchar	fnptr;	// used as fn ptr
-	Use*		use;
 	Sym*	link;
 };
 
@@ -122,12 +119,6 @@ struct	Count
 	long	count;
 	long	outof;
 };
-struct	Use
-{
-	Prog*	p;	/* use */
-	Prog*	ct;	/* curtext */
-	Use*		link;
-};
 
 enum
 {
@@ -141,7 +132,6 @@ enum
 	SCONST,
 	SSTRING,
 	SUNDEF,
-	SREMOVED,
 
 	SIMPORT,
 	SEXPORT,
@@ -150,6 +140,7 @@ enum
 	LTO		= 1<<1,
 	LPOOL		= 1<<2,
 	V4		= 1<<3,	/* arm v4 arch */
+	VFP		= 1<<4,	/* arm vfpv3 floating point */
 
 	C_NONE		= 0,
 	C_REG,
@@ -162,22 +153,17 @@ enum
 	C_RCON,		/* 0xff rotated */
 	C_NCON,		/* ~RCON */
 	C_SCON,		/* 0xffff */
-	C_BCON,		/* thumb */
 	C_LCON,
 	C_FCON,
-	C_GCON,		/* thumb */
 
 	C_RACON,
-	C_SACON,	/* thumb */
 	C_LACON,
-	C_GACON,	/* thumb */
 
 	C_RECON,
 	C_LECON,
 
 	C_SBRA,
 	C_LBRA,
-	C_GBRA,		/* thumb */
 
 	C_HAUTO,	/* halfword insn offset (-0xff to 0xff) */
 	C_FAUTO,	/* float insn offset (0 to 0x3fc, word aligned) */
@@ -198,12 +184,6 @@ enum
 	C_ROREG,
 	C_SROREG,	/* both S and R */
 	C_LOREG,
-	C_GOREG,		/* thumb */
-
-	C_PC,
-	C_SP,
-	C_HREG,
-	C_OFFPC,		/* thumb */
 
 	C_ADDR,		/* relocatable address */
 
@@ -240,9 +220,6 @@ EXTERN union
 #define	cbuf	u.obuf
 #define	xbuf	u.ibuf
 
-#define	setarch(p)		if((p)->as==ATEXT) thumb=(p)->reg&ALLTHUMBS
-#define	setthumb(p)	if((p)->as==ATEXT) seenthumb|=(p)->reg&ALLTHUMBS
-
 #ifndef COFFCVT
 
 EXTERN	long	HEADR;			/* length of header */
@@ -250,6 +227,7 @@ EXTERN	int	HEADTYPE;		/* type of header */
 EXTERN	long	INITDAT;		/* data location */
 EXTERN	long	INITRND;		/* data round above text location */
 EXTERN	long	INITTEXT;		/* text location */
+EXTERN	long	INITTEXTP;		/* text location (physical) */
 EXTERN	char*	INITENTRY;		/* entry point */
 EXTERN	long	autosize;
 EXTERN	Biobuf	bso;
@@ -289,7 +267,6 @@ EXTERN	long	nhunk;
 EXTERN	long	instoffset;
 EXTERN	Opcross	opcross[8];
 EXTERN	Oprang	oprange[ALAST];
-EXTERN	Oprang	thumboprange[ALAST];
 EXTERN	char*	outfile;
 EXTERN	long	pc;
 EXTERN	uchar	repop[ALAST];
@@ -302,9 +279,7 @@ EXTERN	char	xcmp[C_GOK+1][C_GOK+1];
 EXTERN	Prog	zprg;
 EXTERN	int	dtype;
 EXTERN	int	armv4;
-EXTERN	int	thumb;
-EXTERN	int	seenthumb;
-EXTERN	int	armsize;
+EXTERN	int vfp;
 
 EXTERN	int	doexp, dlm;
 EXTERN	int	imports, nimports;
@@ -316,7 +291,6 @@ EXTERN	Prog	undefp;
 
 extern	char*	anames[];
 extern	Optab	optab[];
-extern	Optab	thumboptab[];
 
 void	addpool(Prog*, Adr*);
 EXTERN	Prog*	blitrl;
@@ -329,11 +303,14 @@ EXTERN	Prog*	prog_mod;
 EXTERN	Prog*	prog_modu;
 
 #pragma	varargck	type	"A"	int
+#pragma	varargck	type	"A"	uint
 #pragma	varargck	type	"C"	int
 #pragma	varargck	type	"D"	Adr*
 #pragma	varargck	type	"N"	Adr*
 #pragma	varargck	type	"P"	Prog*
 #pragma	varargck	type	"S"	char*
+
+#pragma	varargck	argpos	diag 1
 
 int	Aconv(Fmt*);
 int	Cconv(Fmt*);
@@ -342,20 +319,17 @@ int	Nconv(Fmt*);
 int	Pconv(Fmt*);
 int	Sconv(Fmt*);
 int	aclass(Adr*);
-int	thumbaclass(Adr*, Prog*);
 void	addhist(long, int);
+void	addlibpath(char*);
 void	append(Prog*, Prog*);
 void	asmb(void);
 void	asmdyn(void);
 void	asmlc(void);
-void	asmthumbmap(void);
 void	asmout(Prog*, Optab*);
-void	thumbasmout(Prog*, Optab*);
 void	asmsym(void);
 long	atolwhex(char*);
 Prog*	brloop(Prog*);
 void	buildop(void);
-void	thumbbuildop(void);
 void	buildrep(int, int);
 void	cflush(void);
 void	ckoff(Sym*, long);
@@ -374,11 +348,12 @@ long	entryvalue(void);
 void	errorexit(void);
 void	exchange(Prog*);
 void	export(void);
+int	fileexists(char*);
 int	find1(long, int);
+char*	findlib(char*);
 void	follow(void);
 void	gethunk(void);
 void	histtoauto(void);
-void	hputl(int);
 double	ieeedtod(Ieee*);
 long	ieeedtof(Ieee*);
 void	import(void);
@@ -388,7 +363,8 @@ void	loadlib(void);
 void	listinit(void);
 Sym*	lookup(char*, int);
 void	cput(int);
-void	hput(long);
+void	llput(vlong);
+void	llputl(vlong);
 void	lput(long);
 void	lputl(long);
 void	mkfwd(void);
@@ -397,10 +373,11 @@ void	names(void);
 void	nocache(Prog*);
 void	nuxiinit(void);
 void	objfile(char*);
-int	ocmp(const void*, const void*);
+int	ocmp(void*, void*);
 long	opirr(int);
 Optab*	oplook(Prog*);
 long	oprrr(int, int);
+long	opvfprrr(int, int);
 long	olr(long, int, int, int);
 long	olhr(long, int, int, int);
 long	olrr(int, int, int, int);
@@ -426,6 +403,7 @@ void	strnput(char*, int);
 void	undef(void);
 void	undefsym(Sym*);
 void	wput(long);
+void	wputl(long);
 void	xdefine(char*, int, long);
 void	xfol(Prog*);
 void	zerosig(char*);
@@ -433,12 +411,5 @@ void	noops(void);
 long	immrot(ulong);
 long	immaddr(long);
 long	opbra(int, int);
-int	brextra(Prog*);
-int	isbranch(Prog*);
-int	fnpinc(Sym *);
-int	fninc(Sym *);
-void	thumbcount(void);
-void reachable(void);
-void fnptrs(void);
 
 #endif

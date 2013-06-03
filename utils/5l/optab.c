@@ -29,13 +29,10 @@ Optab	optab[] =
 
 	{ AB,		C_NONE,	C_NONE,	C_SBRA,		 5, 4, 0,	LPOOL },
 	{ ABL,		C_NONE,	C_NONE,	C_SBRA,		 5, 4, 0 },
-	{ ABX,		C_NONE,	C_NONE,	C_SBRA,		 74, 20, 0 },
 	{ ABEQ,		C_NONE,	C_NONE,	C_SBRA,		 5, 4, 0 },
 
 	{ AB,		C_NONE,	C_NONE,	C_ROREG,	 6, 4, 0,	LPOOL },
 	{ ABL,		C_NONE,	C_NONE,	C_ROREG,	 7, 8, 0 },
-	{ ABX,		C_NONE,	C_NONE,	C_ROREG,	 75, 12, 0 },
-	{ ABXRET,		C_NONE,	C_NONE,	C_ROREG,	 76, 4, 0 },
 
 	{ ASLL,		C_RCON,	C_REG,	C_REG,		 8, 4, 0 },
 	{ ASLL,		C_RCON,	C_NONE,	C_REG,		 8, 4, 0 },
@@ -47,7 +44,6 @@ Optab	optab[] =
 	{ ASWI,		C_NONE,	C_NONE,	C_LOREG,	10, 4, 0 },
 
 	{ AWORD,	C_NONE,	C_NONE,	C_LCON,		11, 4, 0 },
-	{ AWORD,	C_NONE,	C_NONE,	C_GCON,		11, 4, 0 },
 	{ AWORD,	C_NONE,	C_NONE,	C_LEXT,		11, 4, 0 },
 	{ AWORD,	C_NONE,	C_NONE,	C_ADDR,		11, 4, 0 },
 
@@ -214,6 +210,14 @@ Optab	optab[] =
 
 	{ ACASE,	C_REG,	C_NONE,	C_NONE,		62, 4, 0 },
 	{ ABCASE,	C_NONE, C_NONE, C_SBRA,		63, 4, 0 },
+
+	{ AADDF,	C_FREG,	C_NONE,	C_FREG,		74, 4, 0, VFP },
+	{ AADDF,	C_FREG,	C_REG,	C_FREG,		74, 4, 0, VFP },
+	{ AMOVF,	C_FREG, C_NONE, C_FREG,		74, 4, 0, VFP },
+	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		75, 8, 0, VFP },
+	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		75, 8, 0, VFP },
+	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		76, 8, 0, VFP },
+	{ AMOVFW,	C_REG,	C_NONE,	C_FREG,		76, 8, 0, VFP },
 
 	{ AMOVH,	C_REG,	C_NONE,	C_HEXT,		70, 4, REGSB,	V4 },
 	{ AMOVH,	C_REG,	C_NONE, C_HAUTO,	70, 4, REGSP,	V4 },

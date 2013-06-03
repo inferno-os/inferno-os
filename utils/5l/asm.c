@@ -43,7 +43,6 @@ asmb(void)
 	seek(cout, OFFSET, 0);
 	pc = INITTEXT;
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 		if(p->as == ATEXT) {
 			curtext = p;
 			autosize = p->to.offset + 4;
@@ -57,15 +56,8 @@ asmb(void)
 		}
 		curp = p;
 		o = oplook(p);	/* could probably avoid this call */
-		if(thumb)
-			thumbasmout(p, o);
-		else
-			asmout(p, o);
+		asmout(p, o);
 		pc += o->size;
-	}
-	while(pc-INITTEXT < textsize) {
-		cput(0);
-		pc++;
 	}
 
 	if(debug['a'])
@@ -88,10 +80,12 @@ asmb(void)
 	case 1:
 	case 2:
 	case 5:
+	case 7:
 		OFFSET = HEADR+textsize;
 		seek(cout, OFFSET, 0);
 		break;
 	case 3:
+	case 6:	/* no header, padded segments */
 		OFFSET = rnd(HEADR+textsize, 4096);
 		seek(cout, OFFSET, 0);
 		break;
@@ -108,7 +102,6 @@ asmb(void)
 		else
 			datblk(t, datsize-t, 0);
 	}
-	cflush();
 
 	symsize = 0;
 	lcsize = 0;
@@ -128,8 +121,11 @@ asmb(void)
 			seek(cout, OFFSET, 0);
 			break;
 		case 3:
+		case 6:	/* no header, padded segments */
 			OFFSET += rnd(datsize, 4096);
 			seek(cout, OFFSET, 0);
+			break;
+		case 7:
 			break;
 		}
 		if(!debug['s'])
@@ -139,8 +135,6 @@ asmb(void)
 		Bflush(&bso);
 		if(!debug['s'])
 			asmlc();
-		if(!debug['s'])
-			asmthumbmap();
 		if(dlm)
 			asmdyn();
 		cflush();
@@ -151,7 +145,6 @@ asmb(void)
 		cflush();
 	}
 
-	curtext = P;
 	if(debug['v'])
 		Bprint(&bso, "%5.2f header\n", cputime());
 	Bflush(&bso);
@@ -159,6 +152,7 @@ asmb(void)
 	seek(cout, OFFSET, 0);
 	switch(HEADTYPE) {
 	case 0:	/* no header */
+	case 6:	/* no header, padded segments */
 		break;
 	case 1:	/* aif for risc os */
 		lputl(0xe1a00000);		/* NOP - decompress code */
@@ -221,16 +215,12 @@ asmb(void)
 		lputl(0xe3300000);		/* nop */
 		lputl(0xe3300000);		/* nop */
 		break;
+	case 7:	/* elf */
+		debug['S'] = 1;			/* symbol table */
+		elf32(ARM, ELFDATA2LSB, 0, nil);
+		break;
 	}
 	cflush();
-	if(debug['c']){
-		print("textsize=%ld\n", textsize);
-		print("datsize=%ld\n", datsize);
-		print("bsssize=%ld\n", bsssize);
-		print("symsize=%ld\n", symsize);
-		print("lcsize=%ld\n", lcsize);
-		print("total=%ld\n", textsize+datsize+bsssize+symsize+lcsize);
-	}
 }
 
 void
@@ -254,16 +244,6 @@ cput(int c)
 		cflush();
 }
 
-/*
-void
-cput(long c)
-{
-	*cbp++ = c;
-	if(--cbc <= 0)
-		cflush();
-}
-*/
-
 void
 wput(long l)
 {
@@ -277,11 +257,11 @@ wput(long l)
 }
 
 void
-hput(long l)
+wputl(long l)
 {
 
-	cbp[0] = l>>8;
-	cbp[1] = l;
+	cbp[0] = l;
+	cbp[1] = l>>8;
 	cbp += 2;
 	cbc -= 2;
 	if(cbc <= 0)
@@ -317,11 +297,24 @@ lputl(long l)
 }
 
 void
+llput(vlong v)
+{
+	lput(v>>32);
+	lput(v);
+}
+
+void
+llputl(vlong v)
+{
+	lputl(v);
+	lputl(v>>32);
+}
+
+void
 cflush(void)
 {
 	int n;
 
-	/* no bug if cbc < 0 since obuf(cbuf) followed by ibuf in buf! */
 	n = sizeof(buf.cbuf) - cbc;
 	if(n)
 		write(cout, buf.cbuf, n);
@@ -463,16 +456,15 @@ asmlc(void)
 	oldpc = INITTEXT;
 	oldlc = 0;
 	for(p = firstp; p != P; p = p->link) {
-		setarch(p);
 		if(p->line == oldlc || p->as == ATEXT || p->as == ANOP) {
 			if(p->as == ATEXT)
 				curtext = p;
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			continue;
 		}
-		if(debug['L'])
+		if(debug['V'])
 			Bprint(&bso, "\t\t%6ld", lcsize);
 		v = (p->pc - oldpc) / MINLC;
 		while(v) {
@@ -480,7 +472,7 @@ asmlc(void)
 			if(v < 127)
 				s = v;
 			cput(s+128);	/* 129-255 +pc */
-			if(debug['L'])
+			if(debug['V'])
 				Bprint(&bso, " pc+%ld*%d(%ld)", s, MINLC, s+128);
 			v -= s;
 			lcsize++;
@@ -494,7 +486,7 @@ asmlc(void)
 			cput(s>>16);
 			cput(s>>8);
 			cput(s);
-			if(debug['L']) {
+			if(debug['V']) {
 				if(s > 0)
 					Bprint(&bso, " lc+%ld(%d,%ld)\n",
 						s, 0, s);
@@ -509,14 +501,14 @@ asmlc(void)
 		}
 		if(s > 0) {
 			cput(0+s);	/* 1-64 +lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc+%ld(%ld)\n", s, 0+s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
 			}
 		} else {
 			cput(64-s);	/* 65-128 -lc */
-			if(debug['L']) {
+			if(debug['V']) {
 				Bprint(&bso, " lc%ld(%ld)\n", s, 64-s);
 				Bprint(&bso, "%6lux %P\n",
 					p->pc, p);
@@ -529,60 +521,9 @@ asmlc(void)
 		cput(s);
 		lcsize++;
 	}
-	if(debug['v'] || debug['L'])
+	if(debug['v'] || debug['V'])
 		Bprint(&bso, "lcsize = %ld\n", lcsize);
 	Bflush(&bso);
-}
-
-static void
-outt(long f, long l)
-{
-	if(debug['L'])
-		Bprint(&bso, "tmap: %lux-%lux\n", f, l);
-	lput(f);
-	lput(l);
-}
-
-void
-asmthumbmap(void)
-{
-	long pc, lastt;
-	Prog *p;
-
-	if(!seenthumb)
-		return;
-	pc = 0;
-	lastt = -1;
-	for(p = firstp; p != P; p = p->link){
-		pc = p->pc - INITTEXT;
-		if(p->as == ATEXT){
-			setarch(p);
-			if(thumb){
-				if(p->from.sym->foreign){	// 8 bytes of ARM first
-					if(lastt >= 0){
-						outt(lastt, pc-1);
-						lastt = -1;
-					}
-					pc += 8;
-				}
-				if(lastt < 0)
-					lastt = pc;
-			}
-			else{
-				if(p->from.sym->foreign){	// 4 bytes of THUMB first
-					if(lastt < 0)
-						lastt = pc;
-					pc += 4;
-				}
-				if(lastt >= 0){
-					outt(lastt, pc-1);
-					lastt = -1;
-				}
-			}
-		}
-	}
-	if(lastt >= 0)
-		outt(lastt, pc+1);
 }
 
 void
@@ -661,25 +602,14 @@ datblk(long s, long n, int str)
 				switch(v->type) {
 				case SUNDEF:
 					ckoff(v, d);
-					d += v->value;
-					break;
 				case STEXT:
 				case SLEAF:
-					d += v->value;
-#ifdef CALLEEBX
-					d += fnpinc(v);
-#else
-					if(v->thumb)
-						d++;		// T bit
-#endif
-					break;
 				case SSTRING:
-					d += v->value;
+					d += p->to.sym->value;
 					break;
 				case SDATA:
 				case SBSS:
-					d += v->value + INITDAT;
-					break;
+					d += p->to.sym->value + INITDAT;
 				}
 				if(dlm)
 					dynreloc(v, a+INITDAT, 1);
@@ -728,8 +658,6 @@ PP = p;
 	o4 = 0;
 	o5 = 0;
 	o6 = 0;
-	armsize += o->size;
-if(debug['P']) print("%ulx: %P	type %d\n", (ulong)(p->pc), p, o->type);
 	switch(o->type) {
 	default:
 		diag("unknown asm %d", o->type);
@@ -737,7 +665,6 @@ if(debug['P']) print("%ulx: %P	type %d\n", (ulong)(p->pc), p, o->type);
 		break;
 
 	case 0:		/* pseudo ops */
-if(debug['G']) print("%ulx: %s: arm %d %d %d %d\n", (ulong)(p->pc), p->from.sym->name, p->from.sym->thumb, p->from.sym->foreign, p->from.sym->fnptr, p->from.sym->used);
 		break;
 
 	case 1:		/* op R,[R],R */
@@ -807,10 +734,6 @@ if(debug['G']) print("%ulx: %s: arm %d %d %d %d\n", (ulong)(p->pc), p->from.sym-
 		}
 		else if(p->cond != P)
 			v = (p->cond->pc - pc) - 8;
-#ifdef CALLEEBX
-		if(p->as == ABL)
-			v += fninc(p->to.sym);
-#endif
 		o1 = opbra(p->as, p->scond);
 		o1 |= (v >> 2) & 0xffffff;
 		break;
@@ -1237,6 +1160,7 @@ if(debug['G']) print("%ulx: %s: arm %d %d %d %d\n", (ulong)(p->pc), p->from.sym-
 			o1 |= rf | (rt<<12);
 		break;
 
+	/* old arm 7500 fp using coproc 1 (1<<8) */
 	case 56:	/* move to FP[CS]R */
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->to.reg+1)<<21) | (p->from.reg << 12);
@@ -1417,48 +1341,57 @@ if(debug['G']) print("%ulx: %s: arm %d %d %d %d\n", (ulong)(p->pc), p->from.sym-
 		else if(p->as == AMOVH)
 			o2 ^= (1<<6);
 		break;
-	case 74:	/* bx $I */
-#ifdef CALLEEBX
-		diag("bx $i case (arm)");
-#endif
-		if(!seenthumb)
-			diag("ABX $I and seenthumb==0");
-		v = p->cond->pc;
-		if(p->to.sym->thumb)
-			v |= 1;	// T bit
-		o1 = olr(8, REGPC, REGTMP, p->scond&C_SCOND);	// mov 8(PC), Rtmp
-		o2 = 	oprrr(AADD, p->scond) | immrot(8) | (REGPC<<16) | (REGLINK<<12);	// add 8,PC, LR
-		o3 = ((p->scond&C_SCOND)<<28) | (0x12fff<<8) | (1<<4) | REGTMP;		// bx Rtmp
-		o4 = opbra(AB, 14);	// B over o6
-		o5 = v;
+
+	/* VFP ops: */
+	case 74:	/* vfp floating point arith */
+		o1 = opvfprrr(p->as, p->scond);
+		rf = p->from.reg;
+		if(p->from.type == D_FCONST) {
+			diag("invalid floating-point immediate\n%P", p);
+			rf = 0;
+		}
+		rt = p->to.reg;
+		r = p->reg;
+		if(r == NREG)
+			r = rt;
+		o1 |= rt<<12;
+		if(((o1>>20)&0xf) == 0xb)
+			o1 |= rf<<0;
+		else
+			o1 |= r<<16 | rf<<0;
 		break;
-	case 75:	/* bx O(R) */
-		aclass(&p->to);
-		if(instoffset != 0)
-			diag("non-zero offset in ABX");
-/*
-		o1 = 	oprrr(AADD, p->scond) | immrot(0) | (REGPC<<16) | (REGLINK<<12);	// mov PC, LR
-		o2 = ((p->scond&C_SCOND)<<28) | (0x12fff<<8) | (1<<4) | p->to.reg;		// BX R
-*/
-		// p->to.reg may be REGLINK
-		o1 = oprrr(AADD, p->scond);
-		o1 |= immrot(instoffset);
-		o1 |= p->to.reg << 16;
-		o1 |= REGTMP << 12;
-		o2 = 	oprrr(AADD, p->scond) | immrot(0) | (REGPC<<16) | (REGLINK<<12);	// mov PC, LR
-		o3 = ((p->scond&C_SCOND)<<28) | (0x12fff<<8) | (1<<4) | REGTMP;		// BX Rtmp
+	case 75:	/* vfp floating point compare */
+		o1 = opvfprrr(p->as, p->scond);
+		rf = p->from.reg;
+		if(p->from.type == D_FCONST) {
+			if(p->from.ieee->h != 0 || p->from.ieee->l != 0)
+				diag("invalid floating-point immediate\n%P", p);
+			o1 |= 1<<16;
+			rf = 0;
+		}
+		rt = p->reg;
+		o1 |= rt<<12 | rf<<0;
+		o2 = 0x0ef1fa10;	/* MRS APSR_nzcv, FPSCR */
+		o2 |= (p->scond & C_SCOND) << 28;
 		break;
-	case 76:	/* bx O(R) when returning from fn*/
-		if(!seenthumb)
-			diag("ABXRET and seenthumb==0");
-		aclass(&p->to);
-// print("ARM BXRET %d(R%d)\n", instoffset, p->to.reg);
-		if(instoffset != 0)
-			diag("non-zero offset in ABXRET");
-		// o1 = olr(instoffset, p->to.reg, REGTMP, p->scond);	// mov O(R), Rtmp
-		o1 = ((p->scond&C_SCOND)<<28) | (0x12fff<<8) | (1<<4) | p->to.reg;		// BX R
+	case 76:	/* vfp floating point fix and float */
+		o1 = opvfprrr(p->as, p->scond);
+		rf = p->from.reg;
+		rt = p->to.reg;
+		if(p->from.type == D_REG) {
+			o2 = o1 | rt<<12 | rt<<0;
+			o1 = 0x0e000a10;	/* VMOV F,R */
+			o1 |= (p->scond & C_SCOND) << 28 | rt<<16 | rf<<12;
+		} else {
+			o1 |= FREGTMP<<12 | rf<<0;
+			o2 = 0x0e100a10;	/* VMOV R,F */
+			o2 |= (p->scond & C_SCOND) << 28 | FREGTMP<<16 | rt<<12;
+		}
 		break;
 	}
+
+	if(debug['a'] > 1)
+		Bprint(&bso, "%2d ", o->type);
 
 	v = p->pc;
 	switch(o->size) {
@@ -1556,6 +1489,7 @@ oprrr(int a, int sc)
 	case ASRA:	return o | (0xd<<21) | (2<<5);
 	case ASWI:	return o | (0xf<<24);
 
+	/* old arm 7500 fp using coproc 1 (1<<8) */
 	case AADDD:	return o | (0xe<<24) | (0x0<<20) | (1<<8) | (1<<7);
 	case AADDF:	return o | (0xe<<24) | (0x0<<20) | (1<<8);
 	case AMULD:	return o | (0xe<<24) | (0x1<<20) | (1<<8) | (1<<7);
@@ -1578,6 +1512,40 @@ oprrr(int a, int sc)
 	case AMOVDW:	return o | (0xe<<24) | (1<<20) | (1<<8) | (1<<4) | (1<<7);
 	}
 	diag("bad rrr %d", a);
+	prasm(curp);
+	return 0;
+}
+
+long
+opvfprrr(int a, int sc)
+{
+	long o;
+
+	o = (sc & C_SCOND) << 28;
+	if(sc & (C_SBIT|C_PBIT|C_WBIT))
+		diag(".S/.P/.W on vfp instruction");
+	o |= 0xe<<24;
+	switch(a) {
+	case AMOVWD:	return o | 0xb<<8 | 0xb<<20 | 1<<6 | 0x8<<16 | 1<<7;
+	case AMOVWF:	return o | 0xa<<8 | 0xb<<20 | 1<<6 | 0x8<<16 | 1<<7;
+	case AMOVDW:	return o | 0xb<<8 | 0xb<<20 | 1<<6 | 0xD<<16 | 1<<7;
+	case AMOVFW:	return o | 0xa<<8 | 0xb<<20 | 1<<6 | 0xD<<16 | 1<<7;
+	case AMOVFD:	return o | 0xa<<8 | 0xb<<20 | 1<<6 | 0x7<<16 | 1<<7;
+	case AMOVDF:	return o | 0xb<<8 | 0xb<<20 | 1<<6 | 0x7<<16 | 1<<7;
+	case AMOVF:	return o | 0xa<<8 | 0xb<<20 | 1<<6 | 0x0<<16 | 0<<7;
+	case AMOVD:	return o | 0xb<<8 | 0xb<<20 | 1<<6 | 0x0<<16 | 0<<7;
+	case ACMPF:	return o | 0xa<<8 | 0xb<<20 | 1<<6 | 0x4<<16 | 0<<7;
+	case ACMPD:	return o | 0xb<<8 | 0xb<<20 | 1<<6 | 0x4<<16 | 0<<7;
+	case AADDF:	return o | 0xa<<8 | 0x3<<20;
+	case AADDD:	return o | 0xb<<8 | 0x3<<20;
+	case ASUBF:	return o | 0xa<<8 | 0x3<<20 | 1<<6;
+	case ASUBD:	return o | 0xb<<8 | 0x3<<20 | 1<<6;
+	case AMULF:	return o | 0xa<<8 | 0x2<<20;
+	case AMULD:	return o | 0xb<<8 | 0x2<<20;
+	case ADIVF:	return o | 0xa<<8 | 0x8<<20;
+	case ADIVD:	return o | 0xb<<8 | 0x8<<20;
+	}
+	diag("bad vfp rrr %d", a);
 	prasm(curp);
 	return 0;
 }
@@ -1637,7 +1605,7 @@ olr(long v, int b, int r, int sc)
 		o ^= 1 << 23;
 	}
 	if(v >= (1<<12))
-		diag("literal span too large: %d (R%d)\n%P", v, b, PP);
+		diag("literal span too large: %ld (R%d)\n%P", v, b, PP);
 	o |= v;
 	o |= b << 16;
 	o |= r << 12;
@@ -1662,7 +1630,7 @@ olhr(long v, int b, int r, int sc)
 		o ^= 1 << 23;
 	}
 	if(v >= (1<<8))
-		diag("literal span too large: %d (R%d)\n%P", v, b, PP);
+		diag("literal span too large: %ld (R%d)\n%P", v, b, PP);
 	o |= (v&0xf)|((v>>4)<<8)|(1<<22);
 	o |= b << 16;
 	o |= r << 12;
@@ -1717,10 +1685,45 @@ olhrr(int i, int b, int r, int sc)
 }
 
 long
+ovfpmem(int a, int r, long v, int b, int sc, Prog *p)
+{
+	long o;
+
+	if(sc & (C_SBIT|C_PBIT|C_WBIT))
+		diag(".S/.P/.W on VLDR/VSTR instruction");
+	o = (sc & C_SCOND) << 28;
+	o |= 0xd<<24 | (1<<23);
+	if(v < 0) {
+		v = -v;
+		o ^= 1 << 23;
+	}
+	if(v & 3)
+		diag("odd offset for floating point op: %ld\n%P", v, p);
+	else if(v >= (1<<10))
+		diag("literal span too large: %ld\n%P", v, p);
+	o |= (v>>2) & 0xFF;
+	o |= b << 16;
+	o |= r << 12;
+	switch(a) {
+	default:
+		diag("bad fst %A", a);
+	case AMOVD:
+		o |= 0xb<<8;
+		break;
+	case AMOVF:
+		o |= 0xa<<8;
+		break;
+	}
+	return o;
+}
+
+long
 ofsr(int a, int r, long v, int b, int sc, Prog *p)
 {
 	long o;
 
+	if(vfp)
+		return ovfpmem(a, r, v, b, sc, p);
 	if(sc & C_SBIT)
 		diag(".S on FLDR/FSTR instruction");
 	o = (sc & C_SCOND) << 28;
@@ -1734,9 +1737,9 @@ ofsr(int a, int r, long v, int b, int sc, Prog *p)
 		o ^= 1 << 23;
 	}
 	if(v & 3)
-		diag("odd offset for floating point op: %d\n%P", v, p);
+		diag("odd offset for floating point op: %ld\n%P", v, p);
 	else if(v >= (1<<10))
-		diag("literal span too large: %d\n%P", v, p);
+		diag("literal span too large: %ld\n%P", v, p);
 	o |= (v>>2) & 0xFF;
 	o |= b << 16;
 	o |= r << 12;
@@ -1792,6 +1795,8 @@ chipfloat(Ieee *e)
 	Ieee *p;
 	int n;
 
+	if(vfp)
+		return -1;
 	for(n = sizeof(chipfloats)/sizeof(chipfloats[0]); --n >= 0;){
 		p = &chipfloats[n];
 		if(p->l == e->l && p->h == e->h)

@@ -1036,6 +1036,7 @@ gopcode2(int o, Node *f1, Node *f2, Node *t)
 	// regfree(&nod);
 }
 
+int
 samaddr(Node *f, Node *t)
 {
 

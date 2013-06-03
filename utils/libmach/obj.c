@@ -3,6 +3,7 @@
  * routines universal to all object files
  */
 #include <lib9.h>
+#include <ctype.h>
 #include <bio.h>
 #include <ar.h>
 #include "mach.h"
@@ -19,19 +20,16 @@ enum
 	HASHMUL	= 79L,
 };
 
-int	_is2(char*),		/* in [$OS].c */
-	_is5(char*),
+/* in [$OS].c */
+int	_is5(char*),
 	_is6(char*),
-	_is7(char*),
 	_is8(char*),
 	_is9(char*),
 	_isk(char*),
 	_isq(char*),
 	_isv(char*),
-	_read2(Biobuf*, Prog*),
 	_read5(Biobuf*, Prog*),
 	_read6(Biobuf*, Prog*),
-	_read7(Biobuf*, Prog*),
 	_read8(Biobuf*, Prog*),
 	_read9(Biobuf*, Prog*),
 	_readk(Biobuf*, Prog*),
@@ -50,7 +48,7 @@ struct	Obj		/* functions to handle each intermediate (.$O) file */
 
 static Obj	obj[] =
 {			/* functions to identify and parse each type of obj */
-	/*[Obj68020]*/	"68020 .2",	_is2, _read2,
+	/*[Obj68020]*/	{0, 0,},
 	/*[ObjSparc]*/	"sparc .k",	_isk, _readk,
 	/*[ObjMips]*/	"mips .v",	_isv, _readv,
 	/*[Obj386]*/	"386 .8",	_is8, _read8,

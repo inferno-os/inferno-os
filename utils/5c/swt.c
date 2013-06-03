@@ -25,8 +25,8 @@ swit2(C1 *q, int nc, long def, Node *n, Node *tn)
 	}
 	if(nc < 5) {
 		for(i=0; i<nc; i++) {
-			if(debug['W'])
-				print("case = %.8lux\n", q->val);
+			if(debug['K'])
+				print("case = %.8llux\n", q->val);
 			gopcode(OEQ, nodconst(q->val), n, Z);
 			patch(p, q->label);
 			q++;
@@ -38,16 +38,16 @@ swit2(C1 *q, int nc, long def, Node *n, Node *tn)
 
 	i = nc / 2;
 	r = q+i;
-	if(debug['W'])
-		print("case > %.8lux\n", r->val);
+	if(debug['K'])
+		print("case > %.8llux\n", r->val);
 	gopcode(OGT, nodconst(r->val), n, Z);
 	sp = p;
 	gopcode(OEQ, nodconst(r->val), n, Z);	/* just gen the B.EQ */
 	patch(p, r->label);
 	swit2(q, i, def, n, tn);
 
-	if(debug['W'])
-		print("case < %.8lux\n", r->val);
+	if(debug['K'])
+		print("case < %.8llux\n", r->val);
 	patch(sp, pc);
 	swit2(r+1, nc-i-1, def, n, tn);
 	return;
@@ -59,8 +59,8 @@ direct:
 	gopcode(OCASE, nodconst((q+nc-1)->val - v), n, Z);
 	patch(p, def);
 	for(i=0; i<nc; i++) {
-		if(debug['W'])
-			print("case = %.8lux\n", q->val);
+		if(debug['K'])
+			print("case = %.8llux\n", q->val);
 		while(q->val != v) {
 			nextpc();
 			p->as = ABCASE;
@@ -266,23 +266,6 @@ loop:
 	}
 	p += 2;
 	goto loop;
-}
-
-void
-sextern(Sym *s, Node *a, long o, long w)
-{
-	long e, lw;
-
-	for(e=0; e<w; e+=NSNAME) {
-		lw = NSNAME;
-		if(w-e < lw)
-			lw = w-e;
-		gpseudo(ADATA, s, nodconst(0));
-		p->from.offset += o+e;
-		p->reg = lw;
-		p->to.type = D_SCONST;
-		memmove(p->to.sval, a->cstring+e, lw);
-	}
 }
 
 void
@@ -579,7 +562,7 @@ align(long i, Type *t, int op)
 			w = packflg;
 		break;
 
-	case Ael1:	/* initial allign of struct element */
+	case Ael1:	/* initial align of struct element */
 		for(v=t; v->etype==TARRAY; v=v->link)
 			;
 		w = ewidth[v->etype];
@@ -600,7 +583,7 @@ align(long i, Type *t, int op)
 		}
 		break;
 
-	case Aarg1:	/* initial allign of parameter */
+	case Aarg1:	/* initial align of parameter */
 		w = ewidth[t->etype];
 		if(w <= 0 || w >= SZ_LONG) {
 			w = SZ_LONG;
@@ -614,7 +597,7 @@ align(long i, Type *t, int op)
 		w = SZ_LONG;
 		break;
 
-	case Aaut3:	/* total allign of automatic */
+	case Aaut3:	/* total align of automatic */
 		o = align(o, t, Ael2);
 		o = align(o, t, Ael1);
 		w = SZ_LONG;	/* because of a pun in cc/dcl.c:contig() */

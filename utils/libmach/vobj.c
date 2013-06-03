@@ -3,7 +3,7 @@
  */
 #include <lib9.h>
 #include <bio.h>
-#include <mach.h>
+#include "mach.h"
 #include "vc/v.out.h"
 #include "obj.h"
 
@@ -41,7 +41,7 @@ _readv(Biobuf *bp, Prog *p)
 	if(as == ANAME || as == ASIGNAME){
 		if(as == ASIGNAME){
 			Bread(bp, &p->sig, 4);
-			p->sig = beswal(p->sig);
+			p->sig = leswal(p->sig);
 		}
 		p->kind = aName;
 		p->type = type2char(Bgetc(bp));		/* type */

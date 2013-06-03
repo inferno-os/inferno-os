@@ -734,7 +734,7 @@ storea(Instr *i, char *m)		/* page 74 */
 	if(i->i == 0)
 		bprint(i, "%s\tR%d, (R%d+R%d, %d)", m, i->rd, i->rs1, i->rs2, i->asi);
 	else
-		bprint(i, "%s\tR%d, %d(R%d, %d), ???", m, i->rd, i->simm13, i->rs1, i->asi);
+		bprint(i, "%s\tR%d, %d(R%d, %d), ?", m, i->rd, i->simm13, i->rs1, i->asi);
 }
 
 static void

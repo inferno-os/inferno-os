@@ -25,6 +25,12 @@ cgen(Node *n, Node *nn)
 	l = n->left;
 	r = n->right;
 	o = n->op;
+// Go's version does the following, but it's the wrong place: doesn't allow assignment
+//	if(o == OEXREG || nn != Z && nn->op == OEXREG) {
+//		gmove(n, nn);
+//		return;
+//	}
+
 	if(n->addable >= INDEXED) {
 		if(nn == Z) {
 			switch(o) {
@@ -244,7 +250,7 @@ cgen(Node *n, Node *nn)
 		if(n->op == OADD && l->op == OASHL && l->right->op == OCONST
 		&& (r->op != OCONST || r->vconst < -128 || r->vconst > 127)) {
 			c = l->right->vconst;
-			if(c > 0 && c <= 3) {
+			if(c > 0 && c <= 3 && nareg(1) >= 4) {
 				if(l->left->complex >= r->complex) {
 					regalloc(&nod, l->left, nn);
 					cgen(l->left, &nod);
@@ -309,7 +315,7 @@ cgen(Node *n, Node *nn)
 		if(typefd[n->type->etype])
 			goto fop;
 		if(r->op == OCONST) {
-			SET(v);
+			v = 0;
 			switch(o) {
 			case ODIV:
 			case OMOD:
@@ -361,20 +367,27 @@ cgen(Node *n, Node *nn)
 				t = l;
 				l = r;
 				r = t;
+				goto imula;
 			}
-			/* should favour AX */
-			regalloc(&nod, l, nn);
-			cgen(l, &nod);
-			if(r->addable < INDEXED) {
+			else if(r->addable >= INDEXED) {
+			imula:
+/* should favour AX */
+				regalloc(&nod, l, nn);
+				cgen(l, &nod);
+				gopcode(OMUL, n->type, r, &nod);
+			}
+			else {
+/* should favour AX */
+				regalloc(&nod, l, nn);
+				cgen(l, &nod);
 				regalloc(&nod1, r, Z);
 				cgen(r, &nod1);
 				gopcode(OMUL, n->type, &nod1, &nod);
 				regfree(&nod1);
-			}else
-				gopcode(OMUL, n->type, r, &nod);	/* addressible */
+			}
 			gmove(&nod, nn);
 			regfree(&nod);
-			break;
+			goto done;
 		}
 
 		/*
@@ -427,21 +440,33 @@ cgen(Node *n, Node *nn)
 		}
 		reg[D_AX]++;
 
-		if(r->op == OCONST && (o == ODIV || o == OLDIV)) {
-			reg[D_DX]++;
-			if(l->addable < INDEXED) {
-				regalloc(&nod2, l, Z);
-				cgen(l, &nod2);
-				l = &nod2;
-			}
-			if(o == ODIV)
+		if(r->op == OCONST) {
+			switch(o) {
+			case ODIV:
+				reg[D_DX]++;
+				if(l->addable < INDEXED) {
+					regalloc(&nod2, l, Z);
+					cgen(l, &nod2);
+					l = &nod2;
+				}
 				sdivgen(l, r, &nod, &nod1);
-			else
+				gmove(&nod1, nn);
+				if(l == &nod2)
+					regfree(l);
+				goto freeaxdx;
+			case OLDIV:
+				reg[D_DX]++;
+				if(l->addable < INDEXED) {
+					regalloc(&nod2, l, Z);
+					cgen(l, &nod2);
+					l = &nod2;
+				}
 				udivgen(l, r, &nod, &nod1);
-			gmove(&nod1, nn);
-			if(l == &nod2)
-				regfree(l);
-			goto freeaxdx;
+				gmove(&nod1, nn);
+				if(l == &nod2)
+					regfree(l);
+				goto freeaxdx;
+			}
 		}
 
 		if(l->complex >= r->complex) {
@@ -572,7 +597,7 @@ cgen(Node *n, Node *nn)
 		if(typefd[n->type->etype]||typefd[r->type->etype])
 			goto asfop;
 		if(r->op == OCONST) {
-			SET(v);
+			v = 0;
 			switch(o) {
 			case OASDIV:
 			case OASMOD:
@@ -631,7 +656,7 @@ cgen(Node *n, Node *nn)
 		}
 
 		if(o == OASMUL) {
-			/* should favour AX */
+/* should favour AX */
 			regalloc(&nod, l, nn);
 			if(r->complex >= FNX) {
 				regalloc(&nod1, r, Z);
@@ -661,7 +686,7 @@ cgen(Node *n, Node *nn)
 			regfree(&nod);
 			if(hardleft)
 				regfree(&nod2);
-			break;
+			goto done;
 		}
 
 		/*
@@ -868,6 +893,7 @@ cgen(Node *n, Node *nn)
 		break;
 
 	case OFUNC:
+		l = uncomma(l);
 		if(l->complex >= FNX) {
 			if(l->op != OIND)
 				diag(n, "bad function call");
@@ -1617,7 +1643,6 @@ copy:
 		case OASMUL:
 		case OASLMUL:
 
-
 		case OASASHL:
 		case OASASHR:
 		case OASLSHR:
@@ -1806,6 +1831,12 @@ copy:
 	gins(ACLD, Z, Z);
 	gins(AREP, Z, Z);
 	gins(AMOVSL, Z, Z);
+	if(w & (SZ_LONG-1)) {
+		/* odd length of packed structure */
+		gins(AMOVL, nodconst(w & (SZ_LONG-1)), &nod3);
+		gins(AREP, Z, Z);
+		gins(AMOVSB, Z, Z);
+	}
 	if(c & 4) {
 		gins(APOPL, Z, &nod3);
 		reg[D_CX]--;

@@ -24,7 +24,10 @@ BIN=$ROOT/$OBJDIR/bin
 
 <$ROOT/mkfiles/mkone-$SHELLTYPE
 
-CFLAGS=	$CFLAGS -I ../include
+CFLAGS=	$CFLAGS -I ../include -I.
 
 enam.$O:	../0c/enam.c
 	$CC $CFLAGS ../0c/enam.c
+
+$TARGMODEL.$O:	../ld/$TARGMODEL.c
+	$CC $CFLAGS ../ld/$TARGMODEL.c
