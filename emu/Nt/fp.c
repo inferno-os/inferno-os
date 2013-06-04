@@ -100,8 +100,3 @@ setfsr(ulong m)
 {
 	FPstatus(m, ~0);
 }
-
-
-
-
-

@@ -7,6 +7,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include	"r16.h"
 #include	<lm.h>
 
 /* TODO: try using / in place of \ in path names */
@@ -42,7 +43,7 @@ struct Fsinfo
 	vlong	offset;
 	QLock	oq;
 	char*	spec;
-	Rune*	srv;
+	Rune16*	srv;
 	Cname*	name;	/* Windows' idea of the file name */
 	ushort	usesec;
 	ushort	checksec;
@@ -64,8 +65,8 @@ struct User
 {
 	QLock	lk;		/* locks the gotgroup and group fields */
 	SID	*sid;
-	Rune	*name;
-	Rune	*dom;
+	Rune16	*name;
+	Rune16	*dom;
 	int	type;		/* the type of sid, ie SidTypeUser, SidTypeAlias, ... */
 	int	gotgroup;	/* tried to add group */
 	Gmem	*group;		/* global and local groups to which this user or group belongs. */
@@ -136,11 +137,11 @@ modetomask[] =
 
 extern	DWORD	PlatformId;
 	char    rootdir[MAXROOT] = "\\inferno";
-	Rune	rootname[] = L"inferno-server";
+	Rune16	rootname[] = L"inferno-server";
 static	Qid	rootqid;
 static	User	*fsnone;
 static	User	*fsuser;
-static	Rune	*ntsrv;
+static	Rune16	*ntsrv;
 static	int	usesec;
 static	int	checksec;
 static	int	isserver;
@@ -202,33 +203,27 @@ static	void		fssettime(char*, long, long);
 static	long		unixtime(FILETIME);
 static	FILETIME	wintime(ulong);
 static	void		secinit(void);
-static	int		secstat(Dir*, char*, Rune*);
-static	int		secsize(char*, Rune*);
-static	void		seccheck(char*, ulong, Rune*);
-static	int		sechasperm(char*, ulong, Rune*);
+static	int		secstat(Dir*, char*, Rune16*);
+static	int		secsize(char*, Rune16*);
+static	void		seccheck(char*, ulong, Rune16*);
+static	int		sechasperm(char*, ulong, Rune16*);
 static	SECURITY_DESCRIPTOR* secsd(char*, char[SD_ROCK]);
-static	int		secsdhasperm(SECURITY_DESCRIPTOR*, ulong, Rune*);
-static	int		secsdstat(SECURITY_DESCRIPTOR*, Stat*, Rune*);
+static	int		secsdhasperm(SECURITY_DESCRIPTOR*, ulong, Rune16*);
+static	int		secsdstat(SECURITY_DESCRIPTOR*, Stat*, Rune16*);
 static	SECURITY_DESCRIPTOR* secmksd(char[SD_ROCK], Stat*, ACL*, int);
 static	SID		*dupsid(SID*);
-static	int		ismembersid(Rune*, User*, SID*);
+static	int		ismembersid(Rune16*, User*, SID*);
 static	int		ismember(User*, User*);
-static	User		*sidtouser(Rune*, SID*);
-static	User		*domnametouser(Rune*, Rune*, Rune*);
-static	User		*nametouser(Rune*, Rune*);
-static	User		*unametouser(Rune*, char*);
+static	User		*sidtouser(Rune16*, SID*);
+static	User		*domnametouser(Rune16*, Rune16*, Rune16*);
+static	User		*nametouser(Rune16*, Rune16*);
+static	User		*unametouser(Rune16*, char*);
 static	void		addgroups(User*, int);
-static	User		*mkuser(SID*, int, Rune*, Rune*);
-static	Rune		*domsrv(Rune *, Rune[MAX_PATH]);
-static	Rune		*filesrv(char*);
+static	User		*mkuser(SID*, int, Rune16*, Rune16*);
+static	Rune16		*domsrv(Rune16 *, Rune16[MAX_PATH]);
+static	Rune16		*filesrv(char*);
 static	int		fsacls(char*);
 static	User		*secuser(void);
-
-	int		runeslen(Rune*);
-	Rune*		runesdup(Rune*);
-	Rune*		utftorunes(Rune*, char*, int);
-	char*		runestoutf(char*, Rune*, int);
-	int		runescmp(Rune*, Rune*);
 
 
 int
@@ -1686,7 +1681,7 @@ secuser(void)
 }
 
 static int
-secstat(Dir *dir, char *file, Rune *srv)
+secstat(Dir *dir, char *file, Rune16 *srv)
 {
 	int ok, n;
 	Stat st;
@@ -1724,7 +1719,7 @@ secstat(Dir *dir, char *file, Rune *srv)
 }
 
 static int
-secsize(char *file, Rune *srv)
+secsize(char *file, Rune16 *srv)
 {
 	int ok;
 	Stat st;
@@ -1750,14 +1745,14 @@ secsize(char *file, Rune *srv)
  * verify that u had access to file
  */
 static void
-seccheck(char *file, ulong access, Rune *srv)
+seccheck(char *file, ulong access, Rune16 *srv)
 {
 	if(!sechasperm(file, access, srv))
 		error(Eperm);
 }
 
 static int
-sechasperm(char *file, ulong access, Rune *srv)
+sechasperm(char *file, ulong access, Rune16 *srv)
 {
 	int ok;
 	char sdrock[SD_ROCK];
@@ -1815,7 +1810,7 @@ secsd(char *file, char sdrock[SD_ROCK])
 }
 
 static int
-secsdstat(SECURITY_DESCRIPTOR *sd, Stat *st, Rune *srv)
+secsdstat(SECURITY_DESCRIPTOR *sd, Stat *st, Rune16 *srv)
 {
 	ACL *acl;
 	BOOL hasacl, b;
@@ -1924,7 +1919,7 @@ secsdstat(SECURITY_DESCRIPTOR *sd, Stat *st, Rune *srv)
 }
 
 static int
-secsdhasperm(SECURITY_DESCRIPTOR *sd, ulong access, Rune *srv)
+secsdhasperm(SECURITY_DESCRIPTOR *sd, ulong access, Rune16 *srv)
 {
 	User *u;
 	ACL *acl;
@@ -2052,10 +2047,10 @@ secmksd(char *sdrock, Stat *st, ACL *dacl, int isdir)
  * just make it easier to deal with user identities
  */
 static User*
-sidtouser(Rune *srv, SID *s)
+sidtouser(Rune16 *srv, SID *s)
 {
 	SID_NAME_USE type;
-	Rune aname[100], dname[100];
+	Rune16 aname[100], dname[100];
 	DWORD naname, ndname;
 	User *u;
 
@@ -2077,7 +2072,7 @@ sidtouser(Rune *srv, SID *s)
 }
 
 static User*
-domnametouser(Rune *srv, Rune *name, Rune *dom)
+domnametouser(Rune16 *srv, Rune16 *name, Rune16 *dom)
 {
 	User *u;
 
@@ -2092,12 +2087,12 @@ domnametouser(Rune *srv, Rune *name, Rune *dom)
 }
 
 static User*
-nametouser(Rune *srv, Rune *name)
+nametouser(Rune16 *srv, Rune16 *name)
 {
 	char sidrock[MAX_SID];
 	SID *sid;
 	SID_NAME_USE type;
-	Rune dom[MAX_PATH];
+	Rune16 dom[MAX_PATH];
 	DWORD nsid, ndom;
 
 	sid = (SID*)sidrock;
@@ -2113,9 +2108,9 @@ nametouser(Rune *srv, Rune *name)
  * this mapping could be cached
  */
 static User*
-unametouser(Rune *srv, char *name)
+unametouser(Rune16 *srv, char *name)
 {
-	Rune rname[MAX_PATH];
+	Rune16 rname[MAX_PATH];
 
 	utftorunes(rname, name, MAX_PATH);
 	return nametouser(srv, rname);
@@ -2125,7 +2120,7 @@ unametouser(Rune *srv, char *name)
  * make a user structure and add it to the global cache.
  */
 static User*
-mkuser(SID *sid, int type, Rune *name, Rune *dom)
+mkuser(SID *sid, int type, Rune16 *name, Rune16 *dom)
 {
 	User *u;
 
@@ -2179,7 +2174,7 @@ mkuser(SID *sid, int type, Rune *name, Rune *dom)
  * which might be a group.
  */
 static int
-ismembersid(Rune *srv, User *u, SID *gsid)
+ismembersid(Rune16 *srv, User *u, SID *gsid)
 {
 	User *g;
 
@@ -2235,7 +2230,7 @@ addgroups(User *u, int force)
 	DWORD i, n, rem;
 	User *gu;
 	Gmem *g, *next;
-	Rune *srv, srvrock[MAX_PATH];
+	Rune16 *srv, srvrock[MAX_PATH];
 
 	if(force){
 		u->gotgroup = 0;
@@ -2303,11 +2298,11 @@ dupsid(SID *sid)
 /*
  * return the name of the server machine for file
  */
-static Rune*
+static Rune16*
 filesrv(char *file)
 {
 	int n;
-	Rune *srv;
+	Rune16 *srv;
 	char *p, uni[MAX_PATH], mfile[MAX_PATH];
 	wchar_t vol[3];
 
@@ -2337,7 +2332,7 @@ filesrv(char *file)
 	memmove(uni, file, n);
 	uni[n] = '\0';
 
-	srv = malloc((n + 1) * sizeof(Rune));
+	srv = malloc((n + 1) * sizeof(Rune16));
 	if(srv == nil)
 		panic("filesrv: no memory");
 	utftorunes(srv, uni, n+1);
@@ -2386,10 +2381,10 @@ fsacls(char *file)
  * trust the domain anyway, and vice versa, so it's not
  * clear what benifit we would gain by getting the answer "right".
  */
-static Rune*
-domsrv(Rune *dom, Rune srv[MAX_PATH])
+static Rune16*
+domsrv(Rune16 *dom, Rune16 srv[MAX_PATH])
 {
-	Rune *psrv;
+	Rune16 *psrv;
 	int n, r;
 
 	if(dom[0] == 0)
@@ -2400,92 +2395,13 @@ domsrv(Rune *dom, Rune srv[MAX_PATH])
 		n = runeslen(psrv);
 		if(n >= MAX_PATH)
 			n = MAX_PATH-1;
-		memmove(srv, psrv, n*sizeof(Rune));
+		memmove(srv, psrv, n*sizeof(Rune16));
 		srv[n] = 0;
 		net.ApiBufferFree(psrv);
 		return srv;
 	}
 
 	return nil;
-}
-
-Rune*
-runesdup(Rune *r)
-{
-	int n;
-	Rune *s;
-
-	n = runeslen(r) + 1;
-	s = malloc(n * sizeof(Rune));
-	if(s == nil)
-		error(Enomem);
-	memmove(s, r, n * sizeof(Rune));
-	return s;
-}
-
-int
-runeslen(Rune *r)
-{
-	int n;
-
-	n = 0;
-	while(*r++ != 0)
-		n++;
-	return n;
-}
-
-char*
-runestoutf(char *p, Rune *r, int nc)
-{
-	char *op, *ep;
-	int n, c;
-
-	op = p;
-	ep = p + nc;
-	while(c = *r++) {
-		n = 1;
-		if(c >= Runeself)
-			n = runelen(c);
-		if(p + n >= ep)
-			break;
-		if(c < Runeself)
-			*p++ = c;
-		else
-			p += runetochar(p, r-1);
-	}
-	*p = '\0';
-	return op;
-}
-
-Rune*
-utftorunes(Rune *r, char *p, int nc)
-{
-	Rune *or, *er;
-
-	or = r;
-	er = r + nc;
-	while(*p != '\0' && r + 1 < er)
-		p += chartorune(r++, p);
-	*r = '\0';
-	return or;
-}
-
-int
-runescmp(Rune *s1, Rune *s2)
-{
-	Rune r1, r2;
-
-	for(;;) {
-		r1 = *s1++;
-		r2 = *s2++;
-		if(r1 != r2) {
-			if(r1 > r2)
-				return 1;
-			return -1;
-		}
-		if(r1 == 0)
-			return 0;
-	}
 }
 
 Dev fsdevtab = {

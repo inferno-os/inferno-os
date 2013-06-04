@@ -9,6 +9,8 @@
 #include	"fns.h"
 #include	"error.h"
 
+#include	"r16.h"
+
 int	SYS_SLEEP = 2;
 int SOCK_SELECT = 3;
 #define	MAXSLEEPERS	1500
@@ -24,14 +26,6 @@ static	HANDLE	errh = INVALID_HANDLE_VALUE;
 static	int	donetermset = 0;
 static	int sleepers = 0;
 
-	wchar_t	*widen(char *s);
-	char		*narrowen(wchar_t *ws);
-	int		widebytes(wchar_t *ws);
-	int		runeslen(Rune*);
-	Rune*	runesdup(Rune*);
-	Rune*	utftorunes(Rune*, char*, int);
-	char*	runestoutf(char*, Rune*, int);
-	int		runescmp(Rune*, Rune*);
 
 __declspec(thread)       Proc    *up;
 

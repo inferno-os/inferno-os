@@ -8,6 +8,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include	"r16.h"
 #include	"ieplugin.h"
 
 extern int	SYS_SLEEP = 2;
@@ -25,15 +26,6 @@ static HANDLE	conh = INVALID_HANDLE_VALUE;
 static int		sleepers;
 
 static ulong erendezvous(void*, ulong);
-
-	wchar_t	*widen(char *s);
-	char		*narrowen(wchar_t *ws);
-	int		widebytes(wchar_t *ws);
-	int		runeslen(Rune*);
-	Rune*	runesdup(Rune*);
-	Rune*	utftorunes(Rune*, char*, int);
-	char*	runestoutf(char*, Rune*, int);
-	int		runescmp(Rune*, Rune*);
 
 __declspec(thread)       Proc    *up;
 
