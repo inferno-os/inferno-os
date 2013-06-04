@@ -156,35 +156,6 @@ static	void		fsremove(Chan*);
 
 static char Etoolong[] = "file name too long";
 
-/*
- * these lan manager functions are not supplied
- * on windows95, so we have to load the dll by hand
- */
-static struct {
-	NET_API_STATUS (NET_API_FUNCTION *UserGetLocalGroups)(
-		LPWSTR servername,
-		LPWSTR username,
-		DWORD level,
-		DWORD flags,
-		LPBYTE *bufptr,
-		DWORD prefmaxlen,
-		LPDWORD entriesread,
-		LPDWORD totalentries);
-	NET_API_STATUS (NET_API_FUNCTION *UserGetGroups)(
-		LPWSTR servername,
-		LPWSTR username,
-		DWORD level,
-		LPBYTE *bufptr,
-		DWORD prefmaxlen,
-		LPDWORD entriesread,
-		LPDWORD totalentries);
-	NET_API_STATUS (NET_API_FUNCTION *GetAnyDCName)(
-		LPCWSTR ServerName,
-		LPCWSTR DomainName,
-		LPBYTE *Buffer);
-	NET_API_STATUS (NET_API_FUNCTION *ApiBufferFree)(LPVOID Buffer);
-} net;
-
 extern	int		nth2fd(HANDLE);
 extern	HANDLE		ntfd2h(int);
 static	int		cnisroot(Cname*);
@@ -1582,32 +1553,12 @@ wintime(ulong t)
 static void
 secinit(void)
 {
-	HMODULE lib;
 	HANDLE token;
 	TOKEN_PRIVILEGES *priv;
 	char privrock[sizeof(TOKEN_PRIVILEGES) + 1*sizeof(LUID_AND_ATTRIBUTES)];
 	SID_IDENTIFIER_AUTHORITY id = SECURITY_CREATOR_SID_AUTHORITY;
 	SID_IDENTIFIER_AUTHORITY wid = SECURITY_WORLD_SID_AUTHORITY;
 	SID_IDENTIFIER_AUTHORITY ntid = SECURITY_NT_AUTHORITY;
-
-	lib = LoadLibraryA("netapi32");
-	if(lib == 0) {
-		usesec = 0;
-		return;
-	}
-
-	net.UserGetGroups = (void*)GetProcAddress(lib, "NetUserGetGroups");
-	if(net.UserGetGroups == 0)
-		panic("bad netapi32 library");
-	net.UserGetLocalGroups = (void*)GetProcAddress(lib, "NetUserGetLocalGroups");
-	if(net.UserGetLocalGroups == 0)
-		panic("bad netapi32 library");
-	net.GetAnyDCName = (void*)GetProcAddress(lib, "NetGetAnyDCName");
-	if(net.GetAnyDCName == 0)
-		panic("bad netapi32 library");
-	net.ApiBufferFree = (void*)GetProcAddress(lib, "NetApiBufferFree");
-	if(net.ApiBufferFree == 0)
-		panic("bad netapi32 library");
 
 	if(!AllocateAndInitializeSid(&id, 1,
 		SECURITY_CREATOR_OWNER_RID,
@@ -2246,7 +2197,7 @@ addgroups(User *u, int force)
 
 	n = 0;
 	srv = domsrv(u->dom, srvrock);
-	i = net.UserGetGroups(srv, u->name, 0,
+	i = NetUserGetGroups(srv, u->name, 0,
 		(BYTE**)&grp, MAX_PREFERRED_LENGTH, &n, &rem);
 	if(i == NERR_Success || i == ERROR_MORE_DATA){
 		for(i = 0; i < n; i++){
@@ -2260,11 +2211,11 @@ addgroups(User *u, int force)
 			g->next = u->group;
 			u->group = g;
 		}
-		net.ApiBufferFree(grp);
+		NetApiBufferFree(grp);
 	}
 
 	n = 0;
-	i = net.UserGetLocalGroups(srv, u->name, 0, LG_INCLUDE_INDIRECT,
+	i = NetUserGetLocalGroups(srv, u->name, 0, LG_INCLUDE_INDIRECT,
 		(BYTE**)&loc, MAX_PREFERRED_LENGTH, &n, &rem);
 	if(i == NERR_Success || i == ERROR_MORE_DATA){
 		for(i = 0; i < n; i++){
@@ -2278,7 +2229,7 @@ addgroups(User *u, int force)
 			g->next = u->group;
 			u->group = g;
 		}
-		net.ApiBufferFree(loc);
+		NetApiBufferFree(loc);
 	}
 }
 
@@ -2390,14 +2341,14 @@ domsrv(Rune16 *dom, Rune16 srv[MAX_PATH])
 	if(dom[0] == 0)
 		return nil;
 
-	r = net.GetAnyDCName(NULL, dom, (LPBYTE*)&psrv);
+	r = NetGetAnyDCName(NULL, dom, (LPBYTE*)&psrv);
 	if(r == NERR_Success) {
 		n = runeslen(psrv);
 		if(n >= MAX_PATH)
 			n = MAX_PATH-1;
 		memmove(srv, psrv, n*sizeof(Rune16));
 		srv[n] = 0;
-		net.ApiBufferFree(psrv);
+		NetApiBufferFree(psrv);
 		return srv;
 	}
 

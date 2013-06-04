@@ -36,7 +36,7 @@ HFILES=\
 	r16.h\
 
 CFLAGS='-DROOT="'$ROOT'"' -DEMU -I. -I../port -I$ROOT/$SYSTARG/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp $CTHREADFLAGS $CFLAGS $EMUOPTIONS
-SYSLIBS=	$SYSLIBS wsock32.lib user32.lib gdi32.lib advapi32.lib winmm.lib mpr.lib
+SYSLIBS=	$SYSLIBS netapi32.lib wsock32.lib user32.lib gdi32.lib advapi32.lib winmm.lib mpr.lib
 KERNDATE=`{$NDATE}
 
 default:V:	i$CONF.exe
