@@ -1564,8 +1564,13 @@ comp(Inst *i)
 				BCKI(i->reg, RA0);
 		} else {
 			LDRB(GE, RA1, RA3, 0, RA2);
-			DP(LT, Mov, 0, RA2, (1<<3), RA2);
-			LDRH(LT, RA1, RA3, RA2);
+			if(sizeof(Rune) == 4){
+				DP(LT, Mov, 0, RA2, (2<<3), RA2);
+				LDRW(LT, RA1, RA3, RA2);
+			}else{
+				DP(LT, Mov, 0, RA2, (1<<3), RA2);
+				LDRH(LT, RA1, RA3, RA2);
+			}
 			if(bflag)
 				BCK(RA2, RA0);
 		}

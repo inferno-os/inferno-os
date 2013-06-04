@@ -184,6 +184,7 @@ enum
 	DBRAN	= (1<<5),	/* dest is branch */
 	THREOP	= (1<<6),
 
+	Lg2Rune	= sizeof(Rune)==4? 2: 1,
 	ANDAND	= 1,
 	OROR,
 	EQAND,
@@ -1557,10 +1558,13 @@ comp(Inst *i)
 		cp = code;
 		br(Obge, 0);
 		if((i->add&ARM) != AXIMM){
-			SLWI(Ro2, Ro2, 1);
-			ARRR(Olhzx, Ro3, Ro1, Ro2);
+			SLWI(Ro2, Ro2, Lg2Rune);
+			if(sizeof(Rune) == 4)
+				ARRR(Olwz, Ro3, Ro1, Ro2);
+			else
+				ARRR(Olhzx, Ro3, Ro1, Ro2);
 		} else
-			mem(Olhz, (short)i->reg<<1, Ro1, Ro3);
+			mem(Olhz, (short)i->reg<<Lg2Rune, Ro1, Ro3);	/* BUG: TO DO: 16-bit signed displacement */
 		gen(Ob | (2*4));	// skip
 		PATCH(cp);
 		if((i->add&ARM) != AXIMM)
