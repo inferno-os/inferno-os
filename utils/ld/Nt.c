@@ -93,7 +93,7 @@ fileexists(char *name)
 {
 	int fd;
 
-	fd = open(f, OREAD);
+	fd = open(name, OREAD);
 	if(fd < 0)
 		return 0;
 	close(fd);
