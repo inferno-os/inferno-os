@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <lib9.h>
 
 /*
  *	We can't include l.h, because Windoze wants to use some names
