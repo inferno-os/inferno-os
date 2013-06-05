@@ -1,6 +1,7 @@
 syntax: glob
-*.[8qkv596]
-[8qkv965].out
-*.o
-o.out
-utils/*/y.tab.[ch]
+*.[8qkv596o]
+[8qkv965o].out
+**/y.output
+**/y.tab.[ch]
+appl/**.dis
+appl/**.sbl
