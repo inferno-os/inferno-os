@@ -1,0 +1,6 @@
+syntax: glob
+*.[8qkv596]
+[8qkv965].out
+*.o
+o.out
+utils/*/y.tab.[ch]
