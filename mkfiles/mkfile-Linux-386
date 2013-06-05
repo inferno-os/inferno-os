@@ -14,7 +14,7 @@ ASFLAGS=
 CC=		cc -c -m32
 CFLAGS=		-g\
 		-O\
-		-Wuninitialized -Wunused -Wreturn-type -Wimplicit\
+		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-I$ROOT/Linux/386/include\
 		-I$ROOT/include\
  		-I/usr/X11R6/include\
