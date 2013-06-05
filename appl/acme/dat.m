@@ -75,6 +75,9 @@ Dat : module {
 	ALPHA_GREEK: con '*';
 	ALPHA_CYRILLIC: con '@';
 
+	Kscrollup: con 16re050;
+	Kscrolldown: con 16re051;
+
 	Astring : adt {
 		s : string;
 	};
