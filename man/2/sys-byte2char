@@ -49,7 +49,7 @@ is placed in successive bytes starting at
 .IR n ].
 The longest UTF sequence for a single Unicode character is
 .B Sys->UTFmax
-(3) bytes.
+(4) bytes.
 If the translation succeeds,
 .B char2byte
 returns the number of bytes placed in the buffer.
