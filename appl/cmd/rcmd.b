@@ -26,14 +26,14 @@ init(nil: ref Draw->Context, argv: list of string)
 	doauth := 1;
 	exportpath := "/";
 	keyfile: string;
-	arg->setusage("rcmd [-A] [-f keyfile] [-a alg] [-e exportpath] tcp!mach cmd");
+	arg->setusage("rcmd [-A] [-f keyfile] [-e alg] [-x exportpath] tcp!mach cmd");
 	while((o := arg->opt()) != 0)
 		case o {
-		'a' =>
+		'e' or 'a' =>
 			alg = arg->earg();
 		'A' =>
 			doauth = 0;
-		'e' =>
+		'x' =>
 			exportpath = arg->earg();
 			(n, nil) := sys->stat(exportpath);
 			if (n == -1 || exportpath == nil)

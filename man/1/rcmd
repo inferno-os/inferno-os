@@ -4,10 +4,10 @@ rcmd \- remote command execution
 .SH SYNOPSIS
 .B rcmd
 [
-.B -C
+.B -e
 .I cryptoalg
 ] [
-.B -e
+.B -x
 .I exportpath
 ]
 .I host
@@ -44,7 +44,7 @@ if it exists, and otherwise it will use the certificate in
 .BI /usr/ username /keyring/default .
 .PP
 The
-.B -C
+.B -e
 option sets the algorithm
 .I cryptoalg
 to be used following authentication for digesting or encryption.
@@ -57,7 +57,7 @@ The default is
 is not used after authentication.
 .PP
 The
-.B -e
+.B -x
 option sets the path to be exported as root from the local machine (defaults to
 .B /
 if not specified).
