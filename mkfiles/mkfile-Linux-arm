@@ -13,6 +13,7 @@ ASFLAGS=
 
 CC=		arm-gcc -c 
 CFLAGS=		-O\
+		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-I$ROOT/Linux/arm/include\
 		-I$ROOT/include\
 		-DLINUX_ARM
