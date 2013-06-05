@@ -112,7 +112,7 @@ Sys: module
 	EXPWAIT:	con 0;
 	EXPASYNC:	con 1;
 
-	UTFmax:		con 3;
+	UTFmax:		con 4;
 	UTFerror:	con 16r80;
 
 	announce:	fn(addr: string): (int, Connection);
