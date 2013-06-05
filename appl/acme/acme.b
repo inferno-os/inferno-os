@@ -570,6 +570,19 @@ mousetask()
 					row.qlock.unlock();
 					break;
 				}
+				if(w != nil && (mouse.buttons &(8|16))){
+					if(mouse.buttons & 8)
+						but = Dat->Kscrollup;
+					else
+						but = Dat->Kscrolldown;
+					w.lock('M');
+					t.eq0 = ~0;
+					t.typex(but, 0);
+					w.unlock();
+					bflush();
+					row.qlock.unlock();
+					break;
+				}
 				if(mouse.xy.in(t.scrollr)){
 					if(but){
 						if(t.what == Columntag)

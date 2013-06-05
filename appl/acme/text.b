@@ -689,7 +689,19 @@ Text.typex(t : self ref Text, r : int, echomode : int)
 	}
 	if(t.what!=Body && r=='\n')
 		return;
-	case(r){
+	case r {
+		Dat->Kscrolldown=>
+			if(t.what == Body){
+				q0 = t.org+frcharofpt(t.frame, (t.frame.r.min.x, t.frame.r.min.y+2*t.frame.font.height));
+				t.setorigin(q0, FALSE);
+			}
+			return;
+		Dat->Kscrollup=>
+			if(t.what == Body){
+				q0 = t.backnl(t.org, 4);
+				t.setorigin(q0, FALSE);
+			}
+			return;		
 		Kdown or Keyboard->Down =>
 			n = t.frame.maxlines/2;
 			q0 = t.org+frcharofpt(t.frame, (t.frame.r.min.x, t.frame.r.min.y+n*t.frame.font.height));
