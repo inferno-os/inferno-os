@@ -10,6 +10,7 @@ TARG=\
 	countersigner.dis\
 	convpasswd.dis\
 	createsignerkey.dis\
+	dsagen.dis\
 	keyfs.dis\
 	keysrv.dis\
 	getpk.dis\
