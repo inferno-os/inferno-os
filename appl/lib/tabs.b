@@ -25,7 +25,7 @@ TABSXslant : con 5;
 TABSXoff : con 5;
 TABSYheight : con 35;
 TABSYtop : con 10;
-TABSBord : con 3;
+TABSBord : con 1;
 
 init()
 {
@@ -70,15 +70,15 @@ mktabs(t: ref Tk->Toplevel, dot: string, tabs: array of (string, string), dflt: 
 		cmd(t, dot+" create polygon " + x1+y1 + x2+y2 + x3+y2 + x4+y1 +
 			" -fill "+back+" -tags "+tag);
 		cmd(t, dot+" create line " + x3+y2 + x4+y1 +
-			" -fill "+dark+" -width 3 -tags "+tag);
+			" -fill "+dark+" -width 1 -tags "+tag);
 		cmd(t, dot+" create line " + x1+y1 + x2+y2 + x3+y2 +
-			" -fill "+light+" -width 3 -tags "+tag);
+			" -fill "+light+" -width 1 -tags "+tag);
 
 		x1 = " "+string(xs+2);
 		x4 = " "+string(r.max.x + TABSXslant - 2);
 		y1 = " "+string(TABSYheight);
 		cmd(t, dot+" create line " + x1+y1 + x4+y1 +
-			" -fill "+back+" -width 5 -tags "+sel);
+			" -fill "+back+" -width 2 -tags "+sel);
 
 		cmd(t, dot+" raise "+v);
 		cmd(t, dot+" bind "+tag+" <ButtonRelease-1> 'send "+
@@ -109,13 +109,13 @@ mktabs(t: ref Tk->Toplevel, dot: string, tabs: array of (string, string), dflt: 
 	h += 2*TABSBord + TABSYheight;
 
 	cmd(t, dot+" create line 0 "+string TABSYheight+
-		" "+string w+" "+string TABSYheight+" -width 3 -fill "+light);
+		" "+string w+" "+string TABSYheight+" -width 2 -fill "+light);
 	cmd(t, dot+" create line 1 "+string TABSYheight+
-		" 1 "+string(h-1)+" -width 3 -fill "+light);
+		" 1 "+string(h-1)+" -width 2 -fill "+light);
 	cmd(t, dot+" create line  0 "+string(h-1)+
-		" "+string w+" "+string(h-1)+" -width 3 -fill "+dark);
+		" "+string w+" "+string(h-1)+" -width 2 -fill "+dark);
 	cmd(t, dot+" create line "+string(w-1)+" "+string TABSYheight+
-		" "+string(w-1)+" "+string(h-1)+" -width 3 -fill "+dark);
+		" "+string(w-1)+" "+string(h-1)+" -width 2 -fill "+dark);
 
 	cmd(t, dot+" configure -width "+string w+" -height "+string h);
 	cmd(t, dot+" configure -scrollregion {0 0 "+string w+" "+string h+"}");

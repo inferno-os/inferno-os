@@ -46,7 +46,7 @@ REPLACEALL,
 NOSEE : con iota;
 
 ed_config := array[] of {
-	"frame .m -relief raised -bd 2",
+	"frame .m -relief raised",
 	"frame .b",
 	"menubutton .m.file -text File -menu .m.file.menu",
 	"menubutton .m.edit -text Edit -menu .m.edit.menu",
