@@ -11,7 +11,9 @@ COMMONFILES=\
 	convM2S.$O\
 	convS2M.$O\
 	fcallfmt.$O\
+	runestrchr.$O\
 	runestrlen.$O\
+	runetype.$O\
 	strtoll.$O\
 	strtoull.$O\
 	rune.$O\
