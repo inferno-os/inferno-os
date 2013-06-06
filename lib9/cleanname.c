@@ -1,4 +1,4 @@
-#include <lib9.h>
+#include "lib9.h"
 
 /*
  * In place, rewrite name to compress multiple /, eliminate ., and process ..
@@ -8,9 +8,10 @@ char*
 cleanname(char *name)
 {
 	char *p, *q, *dotdot;
-	int rooted;
+	int rooted, erasedprefix;
 
 	rooted = name[0] == '/';
+	erasedprefix = 0;
 
 	/*
 	 * invariants:
@@ -23,9 +24,11 @@ cleanname(char *name)
 	while(*p) {
 		if(p[0] == '/')	/* null element */
 			p++;
-		else if(p[0] == '.' && SEP(p[1]))
+		else if(p[0] == '.' && SEP(p[1])) {
+			if(p == name)
+				erasedprefix = 1;
 			p += 1;	/* don't count the separator in case it is nul */
-		else if(p[0] == '.' && p[1] == '.' && SEP(p[2])) {
+		} else if(p[0] == '.' && p[1] == '.' && SEP(p[2])) {
 			p += 2;
 			if(q > dotdot) {	/* can backtrack */
 				while(--q > dotdot && *q != '/')
@@ -37,6 +40,8 @@ cleanname(char *name)
 				*q++ = '.';
 				dotdot = q;
 			}
+			if(q == name)
+				erasedprefix = 1;	/* erased entire path via dotdot */
 		} else {	/* real path element */
 			if(q != name+rooted)
 				*q++ = '/';
@@ -47,5 +52,11 @@ cleanname(char *name)
 	if(q == name)	/* empty string is really ``.'' */
 		*q++ = '.';
 	*q = '\0';
+	if(erasedprefix && name[0] == '#'){	
+		/* this was not a #x device path originally - make it not one now */
+		memmove(name+2, name, strlen(name)+1);
+		name[0] = '.';
+		name[1] = '/';
+	}
 	return name;
 }
