@@ -1,10 +1,10 @@
 #include	"lib9.h"
 #include	<bio.h>
 
-long
-Bseek(Biobuf *bp, long offset, int base)
+vlong
+Bseek(Biobuf *bp, vlong offset, int base)
 {
-	long n, d;
+	vlong n, d;
 
 	switch(bp->state) {
 	default:
@@ -27,15 +27,16 @@ Bseek(Biobuf *bp, long offset, int base)
 		 * try to seek within buffer
 		 */
 		if(base == 0) {
+			/*
+			 * if d is too large for an int, icount may wrap,
+			 * so we need to ensure that icount hasn't wrapped
+			 * and points within the buffer's valid data.
+			 */
 			d = n - Boffset(bp);
 			bp->icount += d;
-			if(d >= 0) {
-				if(bp->icount <= 0)
-					return n;
-			} else {
-				if(bp->ebuf - bp->gbuf >= -bp->icount)
-					return n;
-			}
+			if(d <= bp->bsize && bp->icount <= 0 &&
+			    bp->ebuf - bp->gbuf >= -bp->icount)
+				return n;
 		}
 
 		/*

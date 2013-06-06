@@ -1,10 +1,10 @@
 #include	"lib9.h"
 #include	<bio.h>
 
-long
+vlong
 Boffset(Biobuf *bp)
 {
-	long n;
+	vlong n;
 
 	switch(bp->state) {
 	default:

@@ -4,26 +4,11 @@
 int
 Bprint(Biobuf *bp, char *fmt, ...)
 {
-	va_list	ap;
-	char *ip, *ep, *out;
+	va_list arg;
 	int n;
 
-	ep = (char*)bp->ebuf;
-	ip = ep + bp->ocount;
-	va_start(ap, fmt);
-	out = vseprint(ip, ep, fmt, ap);
-	va_end(ap);
-	if(out == nil || out >= ep-5) {
-		if(Bflush(bp) < 0)
-			return Beof;
-		ip = ep + bp->ocount;
-		va_start(ap, fmt);
-		out = vseprint(ip, ep, fmt, ap);
-		va_end(ap);
-		if(out == nil || out >= ep-5)
-			return Beof;
-	}
-	n = out-ip;
-	bp->ocount += n;
+	va_start(arg, fmt);
+	n = Bvprint(bp, fmt, arg);
+	va_end(arg);
 	return n;
 }

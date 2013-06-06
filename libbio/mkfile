@@ -14,8 +14,10 @@ OFILES=\
 	bputrune.$O\
 	bputc.$O\
 	brdline.$O\
+	brdstr.$O\
 	bread.$O\
 	bseek.$O\
+	bvprint.$O\
 	bwrite.$O\
 
 HFILES=	$ROOT/include/bio.h
