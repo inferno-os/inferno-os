@@ -112,8 +112,10 @@ Sys: module
 	EXPWAIT:	con 0;
 	EXPASYNC:	con 1;
 
-	UTFmax:		con 4;
-	UTFerror:	con 16r80;
+	UTFmax:		con 4;	# maximum bytes per rune in UTF-8
+	UTFerror:	con 16rFFFD;	# decoding error in UTF
+	Runemax:	con 16r10FFFF;	# 21-bit rune
+	Runemask:	con 16r1FFFFF;	# bits used by runes
 
 	announce:	fn(addr: string): (int, Connection);
 	aprint:		fn(s: string, *): array of byte;
