@@ -64,7 +64,7 @@ void
 dismod(Decl *m)
 {
 	char name[8*NAMELEN];
-	ulong fileoff;
+	vlong fileoff;
 
 	fileoff = Boffset(bout);
 	strncpy(name, m->sym->name, NAMELEN);
@@ -95,7 +95,7 @@ if(debug['v']) print("Dfn: %s %d %p\n", m->sym->name, m->refs, m);
 		}
 	}
 	if(debug['s'])
-		print("%ld linkage bytes start %ld\n", Boffset(bout) - fileoff, fileoff);
+		print("%lld linkage bytes start %lld\n", Boffset(bout) - fileoff, fileoff);
 }
 
 void
@@ -122,7 +122,7 @@ disentry(Decl *e)
 void
 disdesc(Desc *d)
 {
-	ulong fileoff;
+	vlong fileoff;
 
 	fileoff = Boffset(bout);
 	for(; d != nil; d = d->next){
@@ -132,13 +132,13 @@ disdesc(Desc *d)
 		Bwrite(bout, d->map, d->nmap);
 	}
 	if(debug['s'])
-		print("%ld type descriptor bytes start %ld\n", Boffset(bout) - fileoff, fileoff);
+		print("%lld type descriptor bytes start %lld\n", Boffset(bout) - fileoff, fileoff);
 }
 
 void
 disvar(long size, Decl *d)
 {
-	ulong fileoff;
+	vlong fileoff;
 
 	fileoff = Boffset(bout);
 	USED(size);
@@ -156,7 +156,7 @@ disvar(long size, Decl *d)
 	Bputc(bout, 0);
 
 	if(debug['s'])
-		print("%ld data bytes start %ld\n", Boffset(bout) - fileoff, fileoff);
+		print("%lld data bytes start %lld\n", Boffset(bout) - fileoff, fileoff);
 }
 
 void
@@ -550,7 +550,7 @@ static	int	nibuf;
 void
 disinst(Inst *in)
 {
-	ulong fileoff;
+	vlong fileoff;
 
 	fileoff = Boffset(bout);
 	ibuf = allocmem(NIBUF);
@@ -577,7 +577,7 @@ disinst(Inst *in)
 	ibuf = nil;
 
 	if(debug['s'])
-		print("%ld instruction bytes start %ld\n", Boffset(bout) - fileoff, fileoff);
+		print("%lld instruction bytes start %lld\n", Boffset(bout) - fileoff, fileoff);
 }
 
 void
