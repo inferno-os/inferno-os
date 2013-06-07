@@ -951,8 +951,10 @@ struct F_Sys_wstat
 #define Sys_FORKENV 128
 #define Sys_EXPWAIT 0
 #define Sys_EXPASYNC 1
-#define Sys_UTFmax 3
-#define Sys_UTFerror 128
+#define Sys_UTFmax 4
+#define Sys_UTFerror 65533
+#define Sys_Runemax 1114111
+#define Sys_Runemask 2097151
 void Rect_Xrect(void*);
 typedef struct F_Rect_Xrect F_Rect_Xrect;
 struct F_Rect_Xrect
