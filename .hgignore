@@ -1,7 +1,18 @@
 syntax: glob
 *.[8qkv596o]
 [8qkv965o].out
-**/y.output
-**/y.tab.[ch]
-appl/**.dis
-appl/**.sbl
+y.output
+y.tab.[ch]
+y.debug
+
+syntax: regexp
+^appl/.*.dis
+^appl/.*.sbl
+^fonts/lucida/.*
+^fonts/lucidasans/.*
+^fonts/lucm/.*
+^tmp/.*
+^contrib/.*
+^fonts/lucida/.*
+^usr/\.*
+^grid/.*
