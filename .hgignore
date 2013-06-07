@@ -1,9 +1,13 @@
 syntax: glob
 *.[8qkv596o]
 [8qkv965o].out
+[8qkv965o].emu
 y.output
 y.tab.[ch]
 y.debug
+*.a
+emu/*/*.root.[ch]
+emu/*/errstr.h
 
 syntax: regexp
 ^appl/.*.dis
@@ -16,3 +20,6 @@ syntax: regexp
 ^fonts/lucida/.*
 ^usr/\.*
 ^grid/.*
+^libinterp/cryptmod.h
+^libinterp/ipintsmod.h
+^libinterp/keyringif.h
