@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <setjmp.h>
 #include <float.h>
+#include <time.h>
 #include <endian.h>
 
 #define	getwd	infgetwd
