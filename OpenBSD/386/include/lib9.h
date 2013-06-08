@@ -38,7 +38,7 @@ typedef struct Proc Proc;
 typedef unsigned char	uchar;
 typedef signed char	schar;
 //typedef unsigned long	ulong;
-typedef unsigned short	Rune;
+typedef unsigned int Rune;
 typedef long long int	vlong;
 typedef unsigned long long int	uvlong;
 typedef unsigned int u32int;

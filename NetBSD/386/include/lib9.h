@@ -57,7 +57,7 @@ typedef unsigned int	uint32;
 typedef long long	int64;
 typedef unsigned long long	uint64;
 
-typedef unsigned short	Rune;
+typedef unsigned int Rune;
 typedef unsigned int	mpdigit;	/* for /sys/include/mp.h */
 
 

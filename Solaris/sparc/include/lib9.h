@@ -29,7 +29,7 @@ typedef unsigned int	uint;
 typedef unsigned long	ulong;
 typedef signed char	schar;
 typedef unsigned short	ushort;
-typedef unsigned short	Rune;
+typedef unsigned int Rune;
 typedef long long int	vlong;
 typedef unsigned long long int	uvlong;
 typedef unsigned int u32int;
