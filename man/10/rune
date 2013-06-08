@@ -1,6 +1,6 @@
 .TH RUNE 10.2
 .SH NAME
-runetochar, chartorune, runelen, fullrune, utflen, utfrune, utfrrune, utfutf \- rune/UTF conversion
+runetochar, chartorune, runelen, runenlen, fullrune, utfecpy, utflen, utfnlen, utfrune, utfrrune, utfutf \- rune/UTF conversion
 .SH SYNOPSIS
 .ta \w'\fLchar*xx'u
 .PP
@@ -14,12 +14,20 @@ int	chartorune(Rune *r, char *s)
 int	runelen(long r)
 .PP
 .B
+int	runenlen(Rune *r, int n)
+.PP
+.B
 int	fullrune(char *s, int n)
+.PP
+.B
+char*	utfecpy(char *s1, char *es1, char *s2)
 .PP
 .B
 int	utflen(char *s)
 .PP
 .B
+int	utfnlen(char *s, long n)
+.PP
 char*	utfrune(char *s, long c)
 .PP
 .B
@@ -42,7 +50,7 @@ bytes starting at
 and returns the number of bytes copied.
 .BR UTFmax ,
 defined as
-.B 3
+.B 4
 in
 .BR <libc.h> ,
 is the maximum number of bytes required to represent a rune.
@@ -59,11 +67,22 @@ If the input is not exactly in
 .SM UTF
 format,
 .I chartorune
-will convert to 0x80 and return 1.
+will convert to
+.B Runeerror
+(0xFFFD) and return 1.
 .PP
 .I Runelen
 returns the number of bytes
 required to convert
+.I r
+into
+.SM UTF.
+.PP
+.I Runenlen
+returns the number of bytes
+required to convert the
+.I n
+runes pointed to by
 .I r
 into
 .SM UTF.
@@ -101,6 +120,20 @@ are represented by the
 .SM UTF
 string
 .IR s .
+.PP
+.I Utfnlen
+returns the number of complete runes that
+are represented by the first
+.I n
+bytes of
+.SM UTF
+string
+.IR s .
+If the last few bytes of the string contain an incompletely coded rune,
+.I utfnlen
+will not count them; in this way, it differs from
+.IR utflen ,
+which includes every byte of the string.
 .PP
 .I Utfrune
 .RI ( utfrrune )
