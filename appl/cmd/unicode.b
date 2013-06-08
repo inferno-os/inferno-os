@@ -95,7 +95,7 @@ range(argv: list of string)
 			return;
 		}
 		(min, q) = str->toint(q,16);
-		if(min<0 || min>16rFFFF || len q==0 || q[0]!='-'){
+		if(min<0 || min>Sys->Runemax || len q==0 || q[0]!='-'){
 			badrange(hd argv);
 			return;
 		}
@@ -105,7 +105,7 @@ range(argv: list of string)
 			return;
 		}
 		(max, q) = str->toint(q,16);
-		if(max<0 || max>16rFFFF || max<min || len q>0){
+		if(max<0 || max>Sys->Runemax || max<min || len q>0){
 			badrange(hd argv);
 			return;
 		}
@@ -150,7 +150,7 @@ chars(argv: list of string)
 			return;
 		}
 		(m, q) = str->toint(q, 16);
-		if(m<0 || m>16rFFFF || len q>0){
+		if(m<0 || m>Sys->Runemax || len q>0){
 			badvalue(hd argv);
 			return;
 		}
