@@ -7,7 +7,7 @@ typedef	unsigned int	uint;
 typedef	signed char	schar;
 typedef	long long	vlong;
 typedef	unsigned long long uvlong;
-typedef	ushort		Rune;
+typedef	uint		Rune;
 typedef 	union FPdbleword FPdbleword;
 typedef long	jmp_buf[2];
 #define	JMPBUFSP	0
