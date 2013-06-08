@@ -1,5 +1,4 @@
-#include	<u.h>
-#include	<libc.h>
+#include	"lib9.h"
 
 Rune*_runebsearch(Rune c, Rune *t, int n, int ne);
 
