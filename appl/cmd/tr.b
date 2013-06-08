@@ -251,7 +251,7 @@ Pcb.getc(p: self ref Pcb): int
 		n := 0;
 		if ((r = p.spec[s]) == 'x') {
 			s++;
-			for (i := 0; i < 4 && s < p.end; i++) {
+			for (i := 0; i < 6 && s < p.end; i++) {
 				p.current = s;
 				r = p.spec[s++];
 				if ('0' <= r && r <= '9')
