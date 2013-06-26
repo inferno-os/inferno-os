@@ -29,8 +29,15 @@ Bvprint(Biobuf *bp, char *fmt, va_list arg)
 	f.flush = fmtBflush;
 	f.farg = bp;
 	f.nfmt = 0;
+#ifdef va_copy
+	va_copy(f.args, arg);
+#else
 	f.args = arg;
+#endif
 	n = dofmt(&f, fmt);
+#ifdef va_copy
+	va_end(f.args);
+#endif
 	bp->ocount = (char*)f.to - (char*)f.stop;
 	return n;
 }
