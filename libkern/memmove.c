@@ -27,17 +27,3 @@ memmove(void *a1, void *a2, ulong n)
 	}
 	return a1;
 }
-
-/*
-void
-memset(void *a1, int c, ulong n)
-{
-	int m = (int)n;
-	uchar *d;
-
-	d = a1;
-	while(--m >= 0)
-		*d++ = c;
-}
-*/
-	

@@ -1,3 +1,5 @@
+20130906
+	remove redundant code
 20130529
 	appl/cmd/cpu.b: use Dial, and neither test /dev/draw/new nor bind #d (which is wrong anyway, it's #i for drawing now)
 20130423
