@@ -63,7 +63,7 @@ init(nil: ref Draw->Context, argv: list of string)
 
 	user := user();
 	path := keyname;
-	if(path[0] != '/' || len path < 2 || path[0:2] != "./")
+	if(path[0] != '/' && (len path < 2 || path[0:2] != "./"))
 		path = "/usr/" + user + "/keyring/" + keyname;
 
 	signer := defaultsigner();
@@ -74,7 +74,6 @@ init(nil: ref Draw->Context, argv: list of string)
 
 	passwd := "";
 	save := "yes";
-	redo := "yes";
 	for(;;) {
 		signer = promptstring("use signer", signer, RAWOFF);
 		user = promptstring("remote user name", user, RAWOFF);
@@ -144,7 +143,7 @@ infofile(fileio: ref Sys->FileIO, sync: chan of int)
 	sync <-= 1;
 
 	for(;;) alt {
-	(off, nbytes, fid, rc) := <-fileio.read =>
+	(off, nbytes, nil, rc) := <-fileio.read =>
 		if(rc == nil)
 			break;
 		if(off > len infodata){
@@ -155,7 +154,7 @@ infofile(fileio: ref Sys->FileIO, sync: chan of int)
 			rc <-= (infodata[off:off+nbytes], nil);
 		}
 
-	(off, data, fid, wc) := <-fileio.write =>
+	(off, data, nil, wc) := <-fileio.write =>
 		if(wc == nil)
 			break;
 

@@ -1,3 +1,5 @@
+20140105
+	incorrect check on keyname in getauthinfo [issue 306]
 20130906
 	remove redundant code
 20130529
