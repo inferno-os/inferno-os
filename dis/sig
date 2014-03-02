@@ -8,7 +8,7 @@ x=$*
 *=`{echo $x | tr A-Z a-z | tr -dc 'a-z0-9_ \012'} # fold case, delete funny chars
 if {no $*} {
 	echo Usage: sig function ... >[1=2]
-	exit 1
+	raise 'usage'
 }
 
 for i in $* {
@@ -29,4 +29,4 @@ for i in $* {
 	}
 }
 
-exit 0
+exit
