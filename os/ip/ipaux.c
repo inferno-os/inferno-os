@@ -283,7 +283,6 @@ eipfmt(Fmt *f)
 	case 'E':		/* Ethernet address */
 		p = va_arg(f->args, uchar*);
 		return fmtprint(f, efmt, p[0], p[1], p[2], p[3], p[4], p[5]);
-		return fmtstrcpy(f, buf);
 
 	case 'I':		/* Ip address */
 		p = va_arg(f->args, uchar*);

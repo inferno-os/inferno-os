@@ -343,6 +343,8 @@ pcmpin(int slot, int type)
 		return slot==0? 17: 10;
 	case PCMstschng:
 		return -1;
+	default:
+		return -1;
 	}
 }
 

@@ -656,6 +656,9 @@ uartwrite(Chan *c, void *buf, long n, vlong offset)
 		cmd[n] = 0;
 		uartctl(p, cmd);
 		return n;
+	default:
+		error(Egreg);
+		return 0;
 	}
 }
 
