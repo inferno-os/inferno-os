@@ -17,6 +17,8 @@ dns, dnsquery \- domain name service
 [
 .BI -x " net"
 ] [
+.BI -s " server"
+] [
 .I "address ..."
 ]
 .SH DESCRIPTION
@@ -59,7 +61,7 @@ will query them first for all addresses, before resorting to external DNS server
 queries the given
 .I server
 (default:
-.BR /net/cs )
+.BR /net/dns )
 for a translation of each
 .I address
 and prints the results, one per line.
