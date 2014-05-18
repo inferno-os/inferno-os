@@ -119,7 +119,6 @@ Pgrp*	newpgrp(void);
 Proc*	newproc(void);
 void		nexterror(void);
 void		notkilled(void);
-int		nrand(int);
 int		openmode(ulong);
 void		osblock(void);
 void*		oscmd(char**, int, char*, int*);

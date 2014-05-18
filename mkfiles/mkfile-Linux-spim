@@ -14,8 +14,6 @@ ASFLAGS=
 CC=		mipsel-linux-uclibc-gcc -c -mips32
 CFLAGS=		-g\
 		-Os\
-		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
-		-Wno-unused-result\
 		-I$ROOT/Linux/spim/include\
 		-I$ROOT/include\
  		-I/usr/X11R6/include

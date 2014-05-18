@@ -13,6 +13,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include <fpuctl.h>
 
 #include <semaphore.h>
 

@@ -15,7 +15,6 @@ CC=		cc -c -m32
 CFLAGS=		-g\
 		-O\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
-		-Wno-unused-result\
 		-I$ROOT/Linux/power/include\
 		-I$ROOT/include\
 		-I/usr/X11R6/include
