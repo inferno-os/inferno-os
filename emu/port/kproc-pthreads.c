@@ -7,6 +7,7 @@
 
 #include	<unistd.h>
 #include	<signal.h>
+#define	__USE_GNU
 #include 	<pthread.h>
 #include	<limits.h>
 #include	<errno.h>

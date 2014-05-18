@@ -1,3 +1,15 @@
+20140518
+	sh(2): exec -> run [issue 311]
+20140501
+	add -s option to dns in cs(8) [issue 310]
+	don't send nil soa to dnscache [issue 309]
+20140309
+	temporarily remove warnings about unused results
+	define NaN for lib9/charstod.c
+	define nrand for libmp
+	move fpu control to lib9 from fpuctl.h
+	move fpu definitions to lib9.h from fpuctl.h (should possibly add back arch-specific u.h)
+	define __USE_GNU for extra pthreads definitions in emu/port/kproc-pthreads.c
 20140302
 	utils/cc/funct.c - remove out-of-bounds reference
 	os/ipaq1110, ip/ipaux.c, os/sa1110 - add default cases to keep compiler happy

@@ -98,7 +98,7 @@ command contained in
 .I s
 and returns its result. It catches any exceptions raised by the command.
 Almost as simple is
-.BR exec ,
+.BR run ,
 which runs
 .I argv
 as a command, taking the first word as the command to be

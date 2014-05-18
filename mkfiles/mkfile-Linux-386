@@ -15,6 +15,7 @@ CC=		cc -c -m32
 CFLAGS=		-g\
 		-O\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
+		-Wno-unused-result\
 		-I$ROOT/Linux/386/include\
 		-I$ROOT/include\
 		-DLINUX_386

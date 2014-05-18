@@ -21,6 +21,7 @@ CTHREADFLAGS=
 CFLAGS= 	-arch i386 -m32\
 		-mmacosx-version-min=10.6\
 		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit -Wno-four-char-constants -Wno-unknown-pragmas\
+		-Wno-unused-result\
 		-pipe\
 		-fno-strict-aliasing\
 		-no-cpp-precomp\
