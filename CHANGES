@@ -1,3 +1,10 @@
+20140524
+	utflen in styx.b (probably ought to be in Sys) supporting 21-bit unicode (issue 314)
+20140518
+	sh(2): exec -> run [issue 311]
+20140501
+	add -s option to dns in cs(8) [issue 310]
+	don't send nil soa to dnscache [issue 309]
 20140302
 	utils/cc/funct.c - remove out-of-bounds reference
 	os/ipaq1110, ip/ipaux.c, os/sa1110 - add default cases to keep compiler happy
