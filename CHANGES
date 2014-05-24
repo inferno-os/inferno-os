@@ -1,5 +1,6 @@
 20140524
 	utflen in styx.b (probably ought to be in Sys) supporting 21-bit unicode (issue 314)
+	allow slashes in anames [fixed by kristofwyzc, issue 312]
 20140518
 	sh(2): exec -> run [issue 311]
 20140501
