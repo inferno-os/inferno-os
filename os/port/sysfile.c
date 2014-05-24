@@ -309,7 +309,7 @@ kfauth(int fd, char *aname)
 	if(waserror())
 		return -1;
 
-	validname(aname, 0);
+	validname(aname, 1);
 	c = fdtochan(up->env->fgrp, fd, ORDWR, 0, 1);
 	if(waserror()){
 		cclose(c);

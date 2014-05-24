@@ -66,6 +66,10 @@ mount(fd: ref Sys->FD, mnt: string, flags: int, aname: string, keyspec: string):
 {
 	ai: ref Authinfo;
 	afd := sys->fauth(fd, aname);
+	if(debug && afd == nil){
+		sys->print("fauth %s: %r\n", aname);
+		return (-1, nil);
+	}
 	if(afd != nil){
 		ai = proxy(afd, open(), "proto=p9any role=client "+keyspec);
 		if(debug && ai == nil){
