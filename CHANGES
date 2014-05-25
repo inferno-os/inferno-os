@@ -1,3 +1,5 @@
+20140525
+	implement & in replacement text in sed
 20140524
 	utflen in styx.b (probably ought to be in Sys) supporting 21-bit unicode (issue 314)
 	allow slashes in anames [fixed by kristofwyzc, issue 312]
