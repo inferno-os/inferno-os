@@ -28,12 +28,12 @@ bool: type int;
 
 Addr: adt {
 	pick {
-		None =>
-		Dollar =>
-		Line =>
-			line: int;
-		Regex =>
-			re: Re;
+	None =>
+	Dollar =>
+	Line =>
+		line: int;
+	Regex =>
+		re: Re;
 	}
 };
 
@@ -776,10 +776,7 @@ arout()
 
 match(re: Re, s: string) : bool
 {
-	if (re != nil && regex->execute(re, s) != nil)
-		return true;
-	else
-		return false;
+	return re != nil && regex->execute(re, s) != nil;
 }
 
 substitute(c: ref Sedcom.S, s: string) : (bool, string)
@@ -797,9 +794,12 @@ substitute(c: ref Sedcom.S, s: string) : (bool, string)
 		(l, r) := m[0];
 		rep := "";
 		for (i := 0; i < len c.rhs; i++){
-			if (c.rhs[i] != '\\' )
-				rep[len rep] = c.rhs[i];
-			else {
+			if (c.rhs[i] != '\\'  || i+1 == len c.rhs){
+				if (c.rhs[i] == '&')
+					rep += s[l: r];
+				else
+					rep[len rep] = c.rhs[i];
+			}else {
 				i++;
 				case c.rhs[i] {
 				'0' to '9' =>
