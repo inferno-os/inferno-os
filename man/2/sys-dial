@@ -18,6 +18,14 @@ dial:     fn(addr, local: string):    (int, Connection);
 listen:   fn(c: Connection):          (int, Connection);
 .EE
 .SH DESCRIPTION
+These routines in the
+.B Sys
+module are still used by some existing code.
+They are deprecated, and new applications should use the
+.B Dial
+module described in
+.IR dial (2).
+.PP
 These routines establish network connections.
 Their description uses the following definitions:
 .TF network
