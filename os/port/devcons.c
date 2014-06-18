@@ -487,7 +487,7 @@ isdbgkey(Rune r)
 	else
 		ctrlt = 0;
 	if(echoctrlt){
-		char buf[3];
+		char buf[UTFmax];
 
 		buf[0] = 0x14;
 		while(--echoctrlt >= 0){
@@ -555,7 +555,7 @@ int
 kbdputc(Queue *q, int ch)
 {
 	int n;
-	char buf[3];
+	char buf[UTFmax];
 	Rune r;
 	static Rune kc[15];
 	static int nk, collecting = 0;
