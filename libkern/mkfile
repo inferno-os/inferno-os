@@ -72,6 +72,7 @@ COMMONFILES=\
 <mkfile-$OBJTYPE		#sets $TARGFILES
 
 OFILES=	$COMMONFILES $TARGFILES
+HFILES=	fmtdef.h
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE
 
