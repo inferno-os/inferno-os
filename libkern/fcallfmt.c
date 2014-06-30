@@ -1,12 +1,18 @@
 /*
- * Copyright © 2001, 2002 Lucent Technologies Inc.  All rights reserved.
- * Use, distribution etc are subject to the terms of the
- * Lucent Technologies Inc. Plan 9 Open Source Licence Agreement
- * available at http://plan9.bell-labs.com/plan9dist/license.html
+ *              Copyright (c) 2002 by Lucent Technologies.
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose without fee is hereby granted, provided that this entire notice
+ * is included in all copies of any software which is or includes a copy
+ * or modification of this software and in all copies of the supporting
+ * documentation for such software.
+ * THIS SOFTWARE IS BEING PROVIDED "AS IS", WITHOUT ANY EXPRESS OR IMPLIED
+ * WARRANTY.  IN PARTICULAR, NEITHER THE AUTHORS NOR LUCENT TECHNOLOGIES MAKE ANY
+ * REPRESENTATION OR WARRANTY OF ANY KIND CONCERNING THE MERCHANTABILITY
+ * OF THIS SOFTWARE OR ITS FITNESS FOR ANY PARTICULAR PURPOSE.
  */
 
 #include <lib9.h>
-#include <fcall.h>
+#include "fcall.h"
 
 static uint dumpsome(char*, char*, char*, long);
 static void fdirconv(char*, char*, Dir*);

@@ -1,4 +1,4 @@
-#include <lib9.h>
+#include "lib9.h"
 
 int
 utflen(char *s)
@@ -18,5 +18,4 @@ utflen(char *s)
 			s += chartorune(&rune, s);
 		n++;
 	}
-	return 0;
 }
