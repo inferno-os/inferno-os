@@ -6,7 +6,7 @@ xml \- XML navigation
 include "xml.m";
 
 xml := load Xml Xml->PATH;
-Parser, Item, Location, Attributes, Mark: import xml;
+Parser, Item, Locator, Attributes, Mark: import xml;
 
 init:   fn(): string;
 open: fn(f: string, warning: chan of (Locator, string),
@@ -264,6 +264,8 @@ no longer be valid.
 .SH SEE ALSO
 ``Extensible Markup Language (XML) 1.0 (Second Edition)'',
 .B http://www.w3.org/TR/REC-xml
+.PP
+``Navigating Large XML Documents on Small Devices'' in Volume 2.
 .SH BUGS
 XML's definition makes it tricky to handle leading and trailing white space
 efficiently;
