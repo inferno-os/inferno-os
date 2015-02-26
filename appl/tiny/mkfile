@@ -1,6 +1,8 @@
 <../../mkconfig
 
 TARG=\
+	broke.dis\
+	kill.dis\
 	rm.dis\
 	sh.dis\
 
