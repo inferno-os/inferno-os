@@ -43,7 +43,7 @@ badmodule(p: string)
 usage(s: string)
 {
 	sys->fprint(stderr, "mprof: %s\n", s);
-	sys->fprint(stderr, "usage: mprof [-bcMflnve] [-m modname]... [cmd arg ...]");
+	sys->fprint(stderr, "usage: mprof [-bcMflnve] [-m modname]... [cmd arg ...]\n");
 	exits("usage");
 }
 
