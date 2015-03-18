@@ -28,7 +28,7 @@ Wmmprof: module{
 usage(s: string)
 {
 	sys->fprint(sys->fildes(2), "wm/mprof: %s\n", s);
-	sys->fprint(sys->fildes(2), "usage: wm/mprof [-e] [-m modname]... cmd [arg ... ]");
+	sys->fprint(sys->fildes(2), "usage: wm/mprof [-e] [-m modname]... cmd [arg ... ]\n");
 	exit;
 }
 
