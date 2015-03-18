@@ -214,6 +214,7 @@ wm/cprof -m /dis/math/sieve.dis
 .br
 .B /appl/wm/cprof.b
 .SH SEE ALSO
+.IR mprof (1),
 .IR prof (1),
 .IR prof (2),
 .IR prof (3)
