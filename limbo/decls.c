@@ -52,7 +52,6 @@ static	Decl	*scopes[MaxScope];
 static	Decl	*tails[MaxScope];
 static	Node *scopenode[MaxScope];
 static	uchar scopekind[MaxScope];
-static	Decl	zdecl;
 
 static	void	freeloc(Decl*);
 
