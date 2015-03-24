@@ -1933,8 +1933,6 @@ win2inf(char *s)
 	return s;
 }
 
-static char *cd;
-
 /*
 static char *
 pwd(void)
@@ -1943,6 +1941,7 @@ pwd(void)
 	Dir d;
 	char *p;
 	char hd[64], buf[128], path[256];
+	static char *cd;
 
 	if(cd != nil)
 		return cd;
