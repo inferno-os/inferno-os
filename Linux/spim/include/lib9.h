@@ -236,6 +236,7 @@ extern	ulong	ntruerand(ulong);
  * math
  */
 extern	int	isNaN(double);
+extern	double	NaN(void);
 extern	int	isInf(double, int);
 
 /*
@@ -464,3 +465,32 @@ extern char *argv0;
 
 #define	setbinmode()
 
+
+extern	void	setfcr(ulong);
+extern	void	setfsr(ulong);
+extern	ulong	getfcr(void);
+extern	ulong	getfsr(void);
+
+/* FCR */
+#define	FCRBITS	0x00000F83
+#define	FPINEX	(1<<7)
+#define	FPUNFL	(1<<8)
+#define	FPOVFL	(1<<9)
+#define	FPZDIV	(1<<10)
+#define	FPINVAL	(1<<11)
+#define	FPRNR	(0<<0)
+#define	FPRZ	(1<<0)
+#define	FPRPINF	(2<<0)
+#define	FPRNINF	(3<<0)
+#define	FPRMASK	(3<<0)
+#define	FPPEXT	0
+#define	FPPSGL	0
+#define	FPPDBL	0
+#define	FPPMASK	0
+/* FSR */
+#define	FSRBITS	0x0003F07C
+#define	FPAINEX	(1<<2)
+#define	FPAOVFL	(1<<4)
+#define	FPAUNFL	(1<<3)
+#define	FPAZDIV	(1<<5)
+#define	FPAINVAL	(1<<6)
