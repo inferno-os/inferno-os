@@ -316,7 +316,7 @@ chgtime(char *name)
 
 	if(access(name, AEXIST) >= 0) {
 		nulldir(&sbuf);
-		sbuf.mtime = time((long *)0);
+		sbuf.mtime = time(0);
 		return dirwstat(name, &sbuf);
 	}
 	return close(create(name, OWRITE, 0666));
