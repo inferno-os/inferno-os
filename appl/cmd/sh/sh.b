@@ -175,6 +175,10 @@ loop: while (argv != nil && hd argv != nil && (hd argv)[0] == '-') {
 		sys->pctl(Sys->FORKNS, nil);
 	ctxt := Context.new(drawcontext);
 	ctxt.setoptions(opts.ctxtflags, 1);
+
+	# if login shell, run standard init script
+	if (opts.lflag)
+		runscript(ctxt, LIBSHELLRC, nil, 0);
 	if (opts.carg != nil) {
 		status := ctxt.run(stringlist2list("{" + opts.carg + "}" :: argv), !interactive);
 		if (!interactive) {
@@ -184,11 +188,6 @@ loop: while (argv != nil && hd argv != nil && (hd argv)[0] == '-') {
 		}
 		setstatus(ctxt, status);
 	}
-
-	# if login shell, run standard init script
-	if (opts.lflag)
-		runscript(ctxt, LIBSHELLRC, nil, 0);
-
 	if (argv == nil) {
 		if (isconsole(sys->fildes(0)))
 			interactive |= ctxt.INTERACTIVE;
