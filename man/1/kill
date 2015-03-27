@@ -54,7 +54,7 @@ finds all such processes owned by
 (default: the current user), and
 prints
 .I sh (1)
-commands to them.
+commands to kill them.
 The commands can be piped to the shell or selectively run,
 releasing back to the system any resources owned by those processes.
 .SH FILES
