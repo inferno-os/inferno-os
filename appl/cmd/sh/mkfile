@@ -49,6 +49,7 @@ DISBIN=$ROOT/dis/sh
 all:V:		$TARG
 
 install:V:	$INS
+	cp $DISBIN/sh.dis $DISBIN/..
 
 nuke:V: clean
 	rm -f $INS
