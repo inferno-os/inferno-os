@@ -655,7 +655,7 @@ fsqid(struct stat *st)
 
 	dev = (u16int)st->st_dev;
 	if(dev & 0x8000){
-		static int aware;
+		static int aware = 1;
 		if(aware==0){
 			aware = 1;
 			fprint(2, "fs: fsqid: top-bit dev: %#4.4ux\n", dev);
