@@ -280,7 +280,7 @@ usage(void)
 {
 	long t;
 
-	time(&t);
+	t = time(0);
 	if(tick)
 		tslot[nrunning] += (t-tick);
 	tick = t;
