@@ -34,7 +34,6 @@ TARG=\
 	basename.dis\
 	bind.dis\
 	# bit2gif.dis\
-	broke.dis\
 	bytes.dis\
 	cal.dis\
 	calc.dis\
