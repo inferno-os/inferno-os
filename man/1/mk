@@ -480,13 +480,6 @@ immediately followed by
 and another colon.
 The attributes are:
 .TP
-.B <
-The standard output of the recipe is read by
-.I mk
-as an additional
-.IR mkfile .
-.PD 0
-.TP
 .B D
 If the recipe exits with a non-null status, the target is deleted.
 .TP
