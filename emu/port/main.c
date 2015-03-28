@@ -227,6 +227,11 @@ putenvqv(char *name, char **v, int n, int conf)
 	free(val);
 }
 
+static void
+noop(void)
+{
+}
+
 void
 main(int argc, char *argv[])
 {
@@ -234,6 +239,8 @@ main(int argc, char *argv[])
 	char *enva[20];
 	int envc;
 
+	if(coherence == nil)
+		coherence = noop;
 	quotefmtinstall();
 	savestartup(argc, argv);
 	/* set default root now, so either $EMU or -r can override it later */

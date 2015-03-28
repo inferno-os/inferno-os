@@ -585,6 +585,7 @@ xcurslock(void)
 static void
 xcursunlock(void)
 {
+	coherence();
 	icursor.inuse = 0;
 }
 

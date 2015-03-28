@@ -20,6 +20,7 @@ Dir*		chandirstat(Chan*);
 void		cinit(void);
 char*	clipread(void);
 int		clipwrite(char*);
+void	(*coherence)(void);
 void		copen(Chan*);
 void		cmderror(Cmdbuf*, char*);
 Block*	concatblock(Block*);
