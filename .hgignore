@@ -8,6 +8,8 @@ y.debug
 *.a
 emu/*/*.root.[ch]
 emu/*/errstr.h
+emu/*/srv.h
+emu/*/srvm.h
 
 syntax: regexp
 ^appl/.*.dis
