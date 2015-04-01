@@ -594,7 +594,7 @@ ipread(Chan *ch, void *a, long n, vlong off)
 				error(Ebadarg);
 			p = a;
 			r = so_recv(c->sfd, p + c->headers, n - c->headers, p, c->headers);
-			if(r > 0)
+			if(r >= 0)
 				r += c->headers;
 		} else
 			r = so_recv(c->sfd, a, n, nil, 0);
