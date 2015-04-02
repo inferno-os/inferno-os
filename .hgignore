@@ -4,6 +4,8 @@ syntax: glob
 [8qkv965o].out
 [8qkv965o].emu
 obj.out
+obj.map
+vc*.pdb
 y.output
 y.tab.[ch]
 y.debug
