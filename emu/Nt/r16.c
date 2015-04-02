@@ -76,7 +76,7 @@ utftorunes16(Rune16 *r, char *p, int nc)
 }
 
 int
-runescmp(Rune16 *s1, Rune16 *s2)
+runes16cmp(Rune16 *s1, Rune16 *s2)
 {
 	Rune16 r1, r2;
 

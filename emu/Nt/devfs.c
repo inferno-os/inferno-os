@@ -209,7 +209,7 @@ winfilematch(char *path, WIN32_FIND_DATA *data)
 		--p;
 	wpath = widen(p);
 	r = (data->cFileName[0] == '.' && runes16len(data->cFileName) == 1)
-			|| runescmp(data->cFileName, wpath) == 0;
+			|| runes16cmp(data->cFileName, wpath) == 0;
 	free(wpath);
 	return r;
 }
@@ -941,7 +941,7 @@ fswstat(Chan *c, uchar *buf, int n)
 		}
 	}
 	wpath = widen(dir.name);
-	nmatch = runescmp(wpath, data.cFileName);
+	nmatch = runes16cmp(wpath, data.cFileName);
 	free(wpath);
 	if(!emptystr(dir.name) && nmatch != 0){
 		if(!okelem(dir.name, 1))
@@ -1001,7 +1001,7 @@ fswstat(Chan *c, uchar *buf, int n)
 
 	/* do last so path is valid throughout */
 	wpath = widen(dir.name);
-	nmatch = runescmp(wpath, data.cFileName);
+	nmatch = runes16cmp(wpath, data.cFileName);
 	free(wpath);
 	if(!emptystr(dir.name) && nmatch != 0) {
 		ph = fswalkpath(FS(c)->name, "..", 1);
@@ -1596,7 +1596,7 @@ secinit(void)
 	fsuser = secuser();
 	if(fsuser == nil)
 		fsuser = fsnone;
-	else if(runescmp(fsuser->name, rootname) == 0
+	else if(runes16cmp(fsuser->name, rootname) == 0
 	     && OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)){
 		priv = (TOKEN_PRIVILEGES*)privrock;
 		priv->PrivilegeCount = 1;
@@ -2029,7 +2029,7 @@ domnametouser(Rune16 *srv, Rune16 *name, Rune16 *dom)
 
 	qlock(&users.lk);
 	for(u = users.u; u != 0; u = u->next)
-		if(runescmp(name, u->name) == 0 && runescmp(dom, u->dom) == 0)
+		if(runes16cmp(name, u->name) == 0 && runes16cmp(dom, u->dom) == 0)
 			break;
 	qunlock(&users.lk);
 	if(u == 0)
