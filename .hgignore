@@ -1,5 +1,6 @@
 syntax: glob
 *.[8qkv5967o]
+*.obj
 [8qkv965o].out
 [8qkv965o].emu
 y.output
