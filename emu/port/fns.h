@@ -119,6 +119,7 @@ Mount*	newmount(Mhead*, Chan*, int, char*);
 Pgrp*	newpgrp(void);
 Proc*	newproc(void);
 void		nexterror(void);
+void		nofence(void);
 void		notkilled(void);
 int		openmode(ulong);
 void		osblock(void);
