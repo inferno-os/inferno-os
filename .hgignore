@@ -11,6 +11,22 @@ emu/*/*.root.[ch]
 emu/*/errstr.h
 emu/*/srv.h
 emu/*/srvm.h
+emu/*/*/bin/?[acl]
+emu/*/*/bin/5coff
+emu/*/*/bin/5cv
+emu/*/*/bin/acid
+emu/*/*/bin/asm
+emu/*/*/bin/data2s
+emu/*/*/bin/emu
+emu/*/*/bin/limbo
+emu/Nt/*/bin/?[acl].exe
+emu/Nt/*/bin/5coff.exe
+emu/Nt/*/bin/5cv.exe
+emu/Nt/*/bin/acid.exe
+emu/Nt/*/bin/asm.exe
+emu/Nt/*/bin/data2s.exe
+emu/Nt/*/bin/emu.exe
+emu/Nt/*/bin/limbo.exe
 
 syntax: regexp
 ^appl/.*.dis
