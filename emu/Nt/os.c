@@ -34,6 +34,7 @@ int	nth2fd(HANDLE);
 void	termrestore(void);
 char *hosttype = "Nt";
 char *cputype = "386";
+void	(*coherence)(void) = nofence;
 
 static void
 pfree(Proc *p)
