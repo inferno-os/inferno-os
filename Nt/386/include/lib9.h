@@ -455,6 +455,7 @@ extern	int	errstr(char*, uint);
 extern	long	readn(int, void*, long);
 extern	void	rerrstr(char*, uint);
 extern	vlong	seek(int, vlong, int);
+extern	int	segflush(void*, ulong);
 extern	void	werrstr(char*, ...);
 
 extern char *argv0;
