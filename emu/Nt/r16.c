@@ -10,12 +10,12 @@
 #include	"r16.h"
 
 Rune16*
-runesdup(Rune16 *r)
+runes16dup(Rune16 *r)
 {
 	int n;
 	Rune16 *s;
 
-	n = runeslen(r) + 1;
+	n = runes16len(r) + 1;
 	s = malloc(n * sizeof(Rune16));
 	if(s == nil)
 		error(Enomem);
@@ -24,7 +24,7 @@ runesdup(Rune16 *r)
 }
 
 int
-runeslen(Rune16 *r)
+runes16len(Rune16 *r)
 {
 	int n;
 
@@ -35,7 +35,7 @@ runeslen(Rune16 *r)
 }
 
 char*
-runestoutf(char *p, Rune16 *r, int nc)
+runes16toutf(char *p, Rune16 *r, int nc)
 {
 	char *op, *ep;
 	int n, c;
@@ -60,7 +60,7 @@ runestoutf(char *p, Rune16 *r, int nc)
 }
 
 Rune16*
-utftorunes(Rune16 *r, char *p, int nc)
+utftorunes16(Rune16 *r, char *p, int nc)
 {
 	Rune16 *or, *er;
 	Rune rc;
@@ -91,4 +91,40 @@ runescmp(Rune16 *s1, Rune16 *s2)
 		if(r1 == 0)
 			return 0;
 	}
+}
+
+wchar_t *
+widen(char *s)
+{
+	int n;
+	wchar_t *ws;
+
+	n = utflen(s) + 1;
+	ws = smalloc(n*sizeof(wchar_t));
+	utftorunes16(ws, s, n);
+	return ws;
+}
+
+
+char *
+narrowen(wchar_t *ws)
+{
+	char *s;
+	int n;
+
+	n = widebytes(ws);
+	s = smalloc(n);
+	runes16toutf(s, ws, n);
+	return s;
+}
+
+
+int
+widebytes(wchar_t *ws)
+{
+	int n = 0;
+
+	while (*ws)
+		n += runelen(*ws++);
+	return n+1;
 }

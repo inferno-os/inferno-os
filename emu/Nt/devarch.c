@@ -13,7 +13,6 @@
 #include	"error.h"
 #include	"r16.h"
 
-
 enum{
 	Qdir,
 	Qarchctl,
@@ -38,8 +37,7 @@ struct Value {
 	union {
 		ulong	w;
 		vlong	q;
-		Rune	utf[1];	/* more allocated as required */
-		char	data[1];
+		char	data[1];	/* utf-8 */
 	};
 };
 
@@ -66,8 +64,7 @@ static struct {
 
 static	QLock	reglock;
 
-extern wchar_t	*widen(char*);
-static	Value*	getregistry(HKEY, Rune*, Rune*);
+static	Value*	getregistry(HKEY, Rune16*, Rune16*);
 static int nprocs(void);
 
 static void
@@ -78,7 +75,7 @@ archinit(void)
 
 	v = getregistry(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", L"ProcessorNameString");
 	if(v != nil){
-		snprint(arch.cpu, sizeof(arch.cpu), "%S", v->utf);
+		snprint(arch.cpu, sizeof(arch.cpu), "%s", v->data);
 		if((p = strrchr(arch.cpu, ' ')) != nil)
 			for(; p >= arch.cpu && *p == ' '; p--)
 				*p = '\0';
@@ -86,7 +83,7 @@ archinit(void)
 	}else{
 		v = getregistry(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", L"VendorIdentifier");
 		if(v != nil){
-			snprint(arch.cpu, sizeof(arch.cpu), "%S", v->utf);
+			snprint(arch.cpu, sizeof(arch.cpu), "%s", v->data);
 			free(v);
 		}else
 			snprint(arch.cpu, sizeof(arch.cpu), "unknown");
@@ -104,7 +101,7 @@ nprocs(void)
 {
 	int n;
 	char *p;
-	Rune *r;
+	Rune16 *r;
 	Value *v;
 	n = 0;
 	for(;;){
@@ -207,18 +204,18 @@ archread(Chan* c, void* a, long n, vlong offset)
 #endif
 		case REG_SZ:
 		case REG_EXPAND_SZ:
-			if(v->utf[0])
-				snprint(p, READSTR, "str %Q", v->utf);
+			if(v->data[0])
+				snprint(p, READSTR, "str %q", v->data);
 			n = readstr(offset, a, n, p);
 			break;
 		case REG_MULTI_SZ:
 			l = snprint(p, READSTR, "str");
 			for(i=0;;){
-				l += snprint(p+l, READSTR-l, " %Q", v->utf+i);
-				while(v->utf[i++] != 0){
+				l += snprint(p+l, READSTR-l, " %q", v->data+i);
+				while(v->data[i++] != 0){
 					/* skip */
 				}
-				if(v->utf[i] == 0)
+				if(v->data[i] == 0)
 					break;	/* final terminator */
 			}
 			n = readstr(offset, a, n, p);
@@ -273,7 +270,7 @@ archwrite(Chan* c, void* a, long n, vlong offset)
 	Value *v;
 	int i;
 	Cmdbuf *cb;
-	Rune *key, *item;
+	Rune16 *key, *item;
 
 	if((ulong)c->qid.path != Qregquery)
 		error(Eperm);
@@ -339,22 +336,27 @@ Dev archdevtab = {
 static void
 regerr(int rc)
 {
-	Rune err[64];
+	Rune16 err[64];
+	char emsg[sizeof(err)*UTFmax+1];
 
 	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
 		0, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
 		err, sizeof(err), 0);
-	errorf("%S", err);
+	runes16toutf(emsg, err, nelem(err));
+	error(emsg);
 }
 
 static Value*
-getregistry(HKEY root, Rune *keyname, Rune *name)
+getregistry(HKEY root, Rune16 *keyname, Rune16 *name)
 {
 	long res;
 	HKEY key;
 	DWORD dtype, n;
+	int i, l, nb;
 	void* vp;
+	char *p;
 	Value *val;
+	Rune16 *rb;
 
 	qlock(&reglock);
 	if(waserror()){
@@ -372,13 +374,22 @@ getregistry(HKEY root, Rune *keyname, Rune *name)
 	res = RegQueryValueEx(key, name, NULL, &dtype, NULL, &n);
 	if(res != ERROR_SUCCESS)
 		regerr(res);
-	val = smalloc(sizeof(Value)+n);
+	nb = n;
+	if(dtype == REG_SZ || dtype == REG_EXPAND_SZ || dtype == REG_MULTI_SZ){
+		nb = n*UTFmax + 1;
+		rb = smalloc((n+2)*sizeof(Rune16));
+		memset(rb, 0, (n+2)*sizeof(Rune16));
+	}else
+		rb = nil;
+	if(waserror()){
+		free(rb);
+		nexterror();
+	}
+	val = smalloc(sizeof(Value)+nb);
 	if(waserror()){
 		free(val);
 		nexterror();
 	}
-	if(0)
-		fprint(2, "%S\\%S: %d %d\n", keyname, name, dtype, n);
 	val->type = dtype;
 	val->size = n;
 	switch(dtype){
@@ -393,7 +404,7 @@ getregistry(HKEY root, Rune *keyname, Rune *name)
 	case REG_SZ:
 	case REG_EXPAND_SZ:
 	case REG_MULTI_SZ:
-		vp = val->utf;
+		vp = rb;
 		break;
 	case REG_BINARY:
 	case REG_NONE:
@@ -406,6 +417,22 @@ getregistry(HKEY root, Rune *keyname, Rune *name)
 	res = RegQueryValueEx(key, name, NULL, NULL, vp, &n);
 	if(res != ERROR_SUCCESS)
 		regerr(res);
+	poperror();
+	if(rb != nil){
+		if(dtype == REG_MULTI_SZ){
+			p = val->data;
+			for(i=0;;){
+				l = runes16len(rb+i);
+				runes16toutf(p, rb+i, l);
+				i += l+1;
+				if(rb[i] == 0)
+					break;
+				p += strlen(p)+1;
+			}
+		}else
+			runes16toutf(val->data, rb, n);
+		free(rb);
+	}
 	poperror();
 	poperror();
 	RegCloseKey(key);

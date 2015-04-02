@@ -208,7 +208,7 @@ winfilematch(char *path, WIN32_FIND_DATA *data)
 	while(p > path && p[-1] != '\\')
 		--p;
 	wpath = widen(p);
-	r = (data->cFileName[0] == '.' && runeslen(data->cFileName) == 1)
+	r = (data->cFileName[0] == '.' && runes16len(data->cFileName) == 1)
 			|| runescmp(data->cFileName, wpath) == 0;
 	free(wpath);
 	return r;
@@ -314,7 +314,7 @@ fsinit(void)
 	}
 	n = GetFullPathName(wpath, MAXROOT, wrootdir, &last);
 	free(wpath);	
-	runestoutf(rootdir, wrootdir, MAXROOT);
+	runes16toutf(rootdir, wrootdir, MAXROOT);
 	if(n >= MAXROOT || n == 0)
 		panic("illegal root path");
 
@@ -789,7 +789,7 @@ fsstat(Chan *c, uchar *buf, int n)
 		data.ftLastWriteTime = wintime(time(0));
 		data.nFileSizeHigh = 0;
 		data.nFileSizeLow = 0;
-		utftorunes(data.cFileName, ".", MAX_PATH);
+		utftorunes16(data.cFileName, ".", MAX_PATH);
 	} else {
 		HANDLE h = INVALID_HANDLE_VALUE;
 
@@ -821,7 +821,7 @@ fsstat(Chan *c, uchar *buf, int n)
 			}
 			FindClose(h);
 		}
-		utftorunes(data.cFileName, fslastelem(FS(c)->name), MAX_PATH);
+		utftorunes16(data.cFileName, fslastelem(FS(c)->name), MAX_PATH);
 	}
 
 	return fsdirset(buf, n, &data, path, c, 0);
@@ -849,14 +849,14 @@ fswstat(Chan *c, uchar *buf, int n)
 		error(Eshortstat);
 
 	last = fspath(FS(c)->name, 0, path, FS(c)->spec);
-	utftorunes(wspath, path, MAX_PATH);
+	utftorunes16(wspath, path, MAX_PATH);
 
 	if(fsisroot(c)){
 		if(dir.atime != ~0)
 			data.ftLastAccessTime = wintime(dir.atime);
 		if(dir.mtime != ~0)
 			data.ftLastWriteTime = wintime(dir.mtime);
-		utftorunes(data.cFileName, ".", MAX_PATH);
+		utftorunes16(data.cFileName, ".", MAX_PATH);
 	}else{
 		h = FindFirstFile(wspath, &data);
 		if(h == INVALID_HANDLE_VALUE)
@@ -953,7 +953,7 @@ fswstat(Chan *c, uchar *buf, int n)
 		}
 		ph = fswalkpath(ph, dir.name, 0);
 		fspath(ph, 0, newpath, FS(c)->spec);
-		utftorunes(wsnewpath, newpath, MAX_PATH);
+		utftorunes16(wsnewpath, newpath, MAX_PATH);
 		if(GetFileAttributes(wpath) != 0xffffffff && !winfileclash(newpath))
 			error("file already exists");
 		if(fsisroot(c))
@@ -1011,7 +1011,7 @@ fswstat(Chan *c, uchar *buf, int n)
 		}
 		ph = fswalkpath(ph, dir.name, 0);
 		fspath(ph, 0, newpath, FS(c)->spec);
-		utftorunes(wsnewpath, newpath, MAX_PATH);
+		utftorunes16(wsnewpath, newpath, MAX_PATH);
 		/*
 		 * can't rename if it is open: if this process has it open, close it temporarily.
 		 */
@@ -1059,7 +1059,7 @@ fsremove(Chan *c)
 	if(fsisroot(c))
 		error(Eperm);
 	p = fspath(FS(c)->name, 0, path, FS(c)->spec);
-	utftorunes(wspath, path, MAX_PATH);
+	utftorunes16(wspath, path, MAX_PATH);
 	if(FS(c)->checksec){
 		*p = '\0';
 		seccheck(path, WMODE, FS(c)->srv);
@@ -1296,7 +1296,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 				FS(c)->offset = o;
 				return 0;
 			}
-			runestoutf(p, de->cFileName, &path[MAX_PATH]-p);
+			runes16toutf(p, de->cFileName, &path[MAX_PATH]-p);
 			path[MAX_PATH-1] = '\0';
 			o += fsdirsize(de, path, c);
 		}
@@ -1311,7 +1311,7 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 			if(de == nil)
 				break;
 		}
-		runestoutf(p, de->cFileName, &path[MAX_PATH]-p);
+		runes16toutf(p, de->cFileName, &path[MAX_PATH]-p);
 		path[MAX_PATH-1] = '\0';
 		r = fsdirset(va+i, count-i, de, path, c, 1);
 		if(r <= 0){
@@ -1659,12 +1659,12 @@ secstat(Dir *dir, char *file, Rune16 *srv)
 		free(sd);
 	if(ok){
 		dir->mode = st.mode;
-		n = runenlen(st.owner->name, runeslen(st.owner->name));
+		n = runenlen(st.owner->name, runes16len(st.owner->name));
 		dir->uid = smalloc(n+1);
-		runestoutf(dir->uid, st.owner->name, n+1);
-		n = runenlen(st.group->name, runeslen(st.group->name));
+		runes16toutf(dir->uid, st.owner->name, n+1);
+		n = runenlen(st.group->name, runes16len(st.group->name));
 		dir->gid = smalloc(n+1);
-		runestoutf(dir->gid, st.group->name, n+1);
+		runes16toutf(dir->gid, st.group->name, n+1);
 	}
 	return ok;
 }
@@ -1688,7 +1688,7 @@ secsize(char *file, Rune16 *srv)
 	if(sd != (void*)sdrock)
 		free(sd);
 	if(ok)
-		return runenlen(st.owner->name, runeslen(st.owner->name))+runenlen(st.group->name, runeslen(st.group->name));
+		return runenlen(st.owner->name, runes16len(st.owner->name))+runenlen(st.group->name, runes16len(st.group->name));
 	return -1;
 }
 
@@ -2063,7 +2063,7 @@ unametouser(Rune16 *srv, char *name)
 {
 	Rune16 rname[MAX_PATH];
 
-	utftorunes(rname, name, MAX_PATH);
+	utftorunes16(rname, name, MAX_PATH);
 	return nametouser(srv, rname);
 }
 
@@ -2108,10 +2108,10 @@ mkuser(SID *sid, int type, Rune16 *name, Rune16 *dom)
 	u->type = type;
 	u->name = nil;
 	if(name != nil)
-		u->name = runesdup(name);
+		u->name = runes16dup(name);
 	u->dom = nil;
 	if(dom != nil)
-		u->dom = runesdup(dom);
+		u->dom = runes16dup(dom);
 
 	u->next = users.u;
 	users.u = u;
@@ -2268,7 +2268,7 @@ filesrv(char *file)
 		n = sizeof(uni);
 		if(WNetGetUniversalName(vol, UNIVERSAL_NAME_INFO_LEVEL, uni, &n) != NO_ERROR)
 			return nil;
-		runestoutf(mfile, ((UNIVERSAL_NAME_INFO*)uni)->lpUniversalName, MAX_PATH);
+		runes16toutf(mfile, ((UNIVERSAL_NAME_INFO*)uni)->lpUniversalName, MAX_PATH);
 		file = mfile;
 	}
 	file += 2;
@@ -2286,7 +2286,7 @@ filesrv(char *file)
 	srv = malloc((n + 1) * sizeof(Rune16));
 	if(srv == nil)
 		panic("filesrv: no memory");
-	utftorunes(srv, uni, n+1);
+	utftorunes16(srv, uni, n+1);
 	return srv;
 }
 
@@ -2318,7 +2318,7 @@ fsacls(char *file)
 		else
 			p[1] = 0;
 	}
-	utftorunes(wpath, path, MAX_PATH);
+	utftorunes16(wpath, path, MAX_PATH);
 	if(!GetVolumeInformation(wpath, NULL, 0, NULL, NULL, &flags, NULL, 0))
 		return 0;
 
@@ -2343,7 +2343,7 @@ domsrv(Rune16 *dom, Rune16 srv[MAX_PATH])
 
 	r = NetGetAnyDCName(NULL, dom, (LPBYTE*)&psrv);
 	if(r == NERR_Success) {
-		n = runeslen(psrv);
+		n = runes16len(psrv);
 		if(n >= MAX_PATH)
 			n = MAX_PATH-1;
 		memmove(srv, psrv, n*sizeof(Rune16));

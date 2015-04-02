@@ -789,39 +789,3 @@ segflush(void *a, ulong n)
 {
 	return 0;
 }
-
-wchar_t *
-widen(char *s)
-{
-	int n;
-	wchar_t *ws;
-
-	n = utflen(s) + 1;
-	ws = smalloc(n*sizeof(wchar_t));
-	utftorunes(ws, s, n);
-	return ws;
-}
-
-
-char *
-narrowen(wchar_t *ws)
-{
-	char *s;
-	int n;
-
-	n = widebytes(ws);
-	s = smalloc(n);
-	runestoutf(s, ws, n);
-	return s;
-}
-
-
-int
-widebytes(wchar_t *ws)
-{
-	int n = 0;
-
-	while (*ws)
-		n += runelen(*ws++);
-	return n+1;
-}

@@ -35,7 +35,7 @@
 
 extern ulong displaychan;
 
-extern	char*	runestoutf(char*, Rune*, int);
+extern	char*	runes16toutf(char*, Rune*, int);
 extern	int	bytesperline(Rectangle, int);
 extern	int	main(int argc, char **argv);
 static	void	dprint(char*, ...);
@@ -706,7 +706,7 @@ clipreadunicode(HANDLE h)
 	n = runenlen(p, runestrlen(p)+1);
 	q = malloc(n);
 	if(q != nil)
-		runestoutf(q, p, n);
+		runes16toutf(q, p, n);
 	GlobalUnlock(h);
 
 	if(q == nil)
