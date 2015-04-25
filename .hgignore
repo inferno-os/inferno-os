@@ -45,6 +45,13 @@ Nt/*/bin/ntsrv.exe
 Nt/*/bin/sqz.exe
 Nt/*/bin/srclist.exe
 Nt/*/bin/styxtest.exe
+emu/Nt/*.map
+emu/Nt/*.exe
+keydb/keys
+keydb/countersigned
+keydb/signed
+keydb/signerkey
+tmp/*
 
 syntax: regexp
 ^appl/.*.dis
