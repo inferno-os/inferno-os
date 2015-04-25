@@ -1,4 +1,4 @@
-.TH ASM 1E
+.TH ASM 1
 .SH NAME
 asm, disdump \- Dis assembler, Dis disassembler
 .SH SYNOPSIS
@@ -38,7 +38,7 @@ instructions in each of its Dis
 .I file
 arguments.
 .SH SOURCE
-.B /asm
+.B /appl/cmd/asm
 .br
 .B /appl/cmd/disdump.b
 .SH "SEE ALSO"
@@ -46,8 +46,3 @@ arguments.
 .IR limbo (1)
 .PP
 ``The Dis Virtual Machine'' in Volume 2.
-.SH BUGS
-There isn't a Limbo version of
-.IR asm ,
-which is therefore available only as a host command;
-but then again it is hardly used.
