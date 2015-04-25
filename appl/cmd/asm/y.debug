@@ -1,0 +1,230 @@
+yytoknames = array[] of {
+	"$end",
+	"error",
+	"$unk",
+	" |",
+	" ^",
+	" &",
+	" <",
+	" >",
+	" +",
+	" -",
+	" *",
+	" /",
+	" %",
+	"TOKI0",
+	"TOKI1",
+	"TOKI2",
+	"TOKI3",
+	"TCONST",
+	"TOKSB",
+	"TOKFP",
+	"TOKHEAP",
+	"TOKDB",
+	"TOKDW",
+	"TOKDL",
+	"TOKDF",
+	"TOKDS",
+	"TOKVAR",
+	"TOKEXT",
+	"TOKMOD",
+	"TOKLINK",
+	"TOKENTRY",
+	"TOKARRAY",
+	"TOKINDIR",
+	"TOKAPOP",
+	"TOKLDTS",
+	"TOKEXCS",
+	"TOKEXC",
+	"TOKETAB",
+	"TOKSRC",
+	"TID",
+	"TFCONST",
+	"TSTRING",
+	" :",
+	" ,",
+	" $",
+	" (",
+	" )",
+	" ~",
+};
+yystates = array [] of {
+	nil, #0
+	"$accept:  prog.$end \n", #1/
+	nil, #2
+	nil, #3
+	"label:  TID.: inst \n", #4/
+	"label:  TOKHEAP.heapid , expr ptrs \n", #5/
+	nil, #6
+	nil, #7
+	"data:  TOKDB.expr , elist \n", #8/
+	"data:  TOKDW.expr , elist \n", #9/
+	"data:  TOKDL.expr , elist \n", #10/
+	"data:  TOKDF.expr , TCONST \ndata:  TOKDF.expr , TFCONST \ndata:  TOKDF.expr , TID \ndata:  TOKDF.expr , - TCONST \ndata:  TOKDF.expr , - TFCONST \ndata:  TOKDF.expr , - TID \n", #11/
+	"data:  TOKDS.expr , TSTRING \n", #12/
+	"data:  TOKVAR.TID , expr \n", #13/
+	"data:  TOKEXT.expr , expr , TSTRING \n", #14/
+	"data:  TOKLINK.expr , expr , expr , TSTRING \n", #15/
+	"data:  TOKMOD.TID \n", #16/
+	"data:  TOKENTRY.expr , expr \n", #17/
+	"data:  TOKARRAY.expr , heapid , expr \n", #18/
+	"data:  TOKINDIR.expr , expr \n", #19/
+	nil, #20
+	"data:  TOKLDTS.TID , expr \n", #21/
+	"data:  TOKEXCS.expr \n", #22/
+	"data:  TOKEXC.expr , expr , expr , expr , expr , expr \n", #23/
+	"data:  TOKETAB.TSTRING , expr \ndata:  TOKETAB.* , expr \n", #24/
+	"data:  TOKSRC.TSTRING \n", #25/
+	"inst:  TOKI3.addr , addr \ninst:  TOKI3.addr , raddr , addr \n", #26/
+	"inst:  TOKI2.addr , addr \n", #27/
+	"inst:  TOKI1.addr \n", #28/
+	nil, #29
+	"label:  TID :.inst \n", #30/
+	"label:  TOKHEAP heapid., expr ptrs \n", #31/
+	"heapid:  $.expr \n", #32/
+	nil, #33
+	"data:  TOKDB expr., elist \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #34/
+	nil, #35
+	nil, #36
+	nil, #37
+	"con:  -.con \n", #38/
+	"con:  +.con \n", #39/
+	"con:  ~.con \n", #40/
+	"con:  (.expr ) \n", #41/
+	"data:  TOKDW expr., elist \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #42/
+	"data:  TOKDL expr., elist \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #43/
+	"data:  TOKDF expr., TCONST \ndata:  TOKDF expr., TFCONST \ndata:  TOKDF expr., TID \ndata:  TOKDF expr., - TCONST \ndata:  TOKDF expr., - TFCONST \ndata:  TOKDF expr., - TID \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #44/
+	"data:  TOKDS expr., TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #45/
+	"data:  TOKVAR TID., expr \n", #46/
+	"data:  TOKEXT expr., expr , TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #47/
+	"data:  TOKLINK expr., expr , expr , TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #48/
+	nil, #49
+	"data:  TOKENTRY expr., expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #50/
+	"data:  TOKARRAY expr., heapid , expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #51/
+	"data:  TOKINDIR expr., expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #52/
+	"data:  TOKLDTS TID., expr \n", #53/
+	nil, #54
+	"data:  TOKEXC expr., expr , expr , expr , expr , expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #55/
+	"data:  TOKETAB TSTRING., expr \n", #56/
+	"data:  TOKETAB *., expr \n", #57/
+	nil, #58
+	"inst:  TOKI3 addr., addr \ninst:  TOKI3 addr., raddr , addr \n", #59/
+	"addr:  $.expr \n", #60/
+	nil, #61
+	nil, #62
+	"mem:  *.roff \n", #63/
+	"mem:  expr.( roff ) \nroff:  expr.( TOKSB ) \nroff:  expr.( TOKFP ) \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #64/
+	nil, #65
+	"inst:  TOKI2 addr., addr \n", #66/
+	nil, #67
+	nil, #68
+	"label:  TOKHEAP heapid ,.expr ptrs \n", #69/
+	nil, #70
+	"data:  TOKDB expr ,.elist \n", #71/
+	"expr:  expr +.expr \n", #72/
+	"expr:  expr -.expr \n", #73/
+	"expr:  expr *.expr \n", #74/
+	"expr:  expr /.expr \n", #75/
+	"expr:  expr %.expr \n", #76/
+	"expr:  expr <.< expr \n", #77/
+	"expr:  expr >.> expr \n", #78/
+	"expr:  expr &.expr \n", #79/
+	"expr:  expr ^.expr \n", #80/
+	"expr:  expr |.expr \n", #81/
+	nil, #82
+	nil, #83
+	nil, #84
+	"con:  ( expr.) \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #85/
+	"data:  TOKDW expr ,.elist \n", #86/
+	"data:  TOKDL expr ,.elist \n", #87/
+	"data:  TOKDF expr ,.TCONST \ndata:  TOKDF expr ,.TFCONST \ndata:  TOKDF expr ,.TID \ndata:  TOKDF expr ,.- TCONST \ndata:  TOKDF expr ,.- TFCONST \ndata:  TOKDF expr ,.- TID \n", #88/
+	"data:  TOKDS expr ,.TSTRING \n", #89/
+	"data:  TOKVAR TID ,.expr \n", #90/
+	"data:  TOKEXT expr ,.expr , TSTRING \n", #91/
+	"data:  TOKLINK expr ,.expr , expr , TSTRING \n", #92/
+	"data:  TOKENTRY expr ,.expr \n", #93/
+	"data:  TOKARRAY expr ,.heapid , expr \n", #94/
+	"data:  TOKINDIR expr ,.expr \n", #95/
+	"data:  TOKLDTS TID ,.expr \n", #96/
+	"data:  TOKEXC expr ,.expr , expr , expr , expr , expr \n", #97/
+	"data:  TOKETAB TSTRING ,.expr \n", #98/
+	"data:  TOKETAB * ,.expr \n", #99/
+	"inst:  TOKI3 addr ,.addr \ninst:  TOKI3 addr ,.raddr , addr \n", #100/
+	nil, #101
+	nil, #102
+	"roff:  expr.( TOKSB ) \nroff:  expr.( TOKFP ) \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #103/
+	"mem:  expr (.roff ) \nroff:  expr (.TOKSB ) \nroff:  expr (.TOKFP ) \n", #104/
+	"inst:  TOKI2 addr ,.addr \n", #105/
+	nil, #106
+	nil, #107
+	nil, #108
+	nil, #109
+	nil, #110
+	nil, #111
+	nil, #112
+	nil, #113
+	"expr:  expr < <.expr \n", #114/
+	"expr:  expr > >.expr \n", #115/
+	nil, #116
+	nil, #117
+	nil, #118
+	nil, #119
+	nil, #120
+	nil, #121
+	nil, #122
+	nil, #123
+	nil, #124
+	"data:  TOKDF expr , -.TCONST \ndata:  TOKDF expr , -.TFCONST \ndata:  TOKDF expr , -.TID \n", #125/
+	nil, #126
+	nil, #127
+	"data:  TOKEXT expr , expr., TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #128/
+	"data:  TOKLINK expr , expr., expr , TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #129/
+	nil, #130
+	"data:  TOKARRAY expr , heapid., expr \n", #131/
+	nil, #132
+	nil, #133
+	"data:  TOKEXC expr , expr., expr , expr , expr , expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #134/
+	nil, #135
+	nil, #136
+	nil, #137
+	"inst:  TOKI3 addr , raddr., addr \n", #138/
+	"raddr:  $.expr \naddr:  $.expr \n", #139/
+	nil, #140
+	"roff:  expr (.TOKSB ) \nroff:  expr (.TOKFP ) \n", #141/
+	"mem:  expr ( roff.) \n", #142/
+	"roff:  expr ( TOKSB.) \n", #143/
+	"roff:  expr ( TOKFP.) \n", #144/
+	nil, #145
+	nil, #146
+	"ptrs:  ,.TSTRING \n", #147/
+	"elist:  elist ,.expr \n", #148/
+	nil, #149
+	nil, #150
+	nil, #151
+	nil, #152
+	nil, #153
+	"data:  TOKEXT expr , expr ,.TSTRING \n", #154/
+	"data:  TOKLINK expr , expr ,.expr , TSTRING \n", #155/
+	"data:  TOKARRAY expr , heapid ,.expr \n", #156/
+	"data:  TOKEXC expr , expr ,.expr , expr , expr , expr \n", #157/
+	"inst:  TOKI3 addr , raddr ,.addr \n", #158/
+	nil, #159
+	nil, #160
+	nil, #161
+	nil, #162
+	nil, #163
+	nil, #164
+	nil, #165
+	"data:  TOKLINK expr , expr , expr., TSTRING \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #166/
+	nil, #167
+	"data:  TOKEXC expr , expr , expr., expr , expr , expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #168/
+	nil, #169
+	"data:  TOKLINK expr , expr , expr ,.TSTRING \n", #170/
+	"data:  TOKEXC expr , expr , expr ,.expr , expr , expr \n", #171/
+	nil, #172
+	"data:  TOKEXC expr , expr , expr , expr., expr , expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #173/
+	"data:  TOKEXC expr , expr , expr , expr ,.expr , expr \n", #174/
+	"data:  TOKEXC expr , expr , expr , expr , expr., expr \nexpr:  expr.+ expr \nexpr:  expr.- expr \nexpr:  expr.* expr \nexpr:  expr./ expr \nexpr:  expr.% expr \nexpr:  expr.< < expr \nexpr:  expr.> > expr \nexpr:  expr.& expr \nexpr:  expr.^ expr \nexpr:  expr.| expr \n", #175/
+	"data:  TOKEXC expr , expr , expr , expr , expr ,.expr \n", #176/
+	nil, #177
+};

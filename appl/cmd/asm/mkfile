@@ -1,0 +1,27 @@
+<../../../mkconfig
+
+TARG=asm.dis
+
+YFILES=	asm.y
+
+MODULES=\
+	../limbo/disoptab.m\
+	../limbo/isa.m\
+	../limbo/opname.m\
+	asm.b\
+
+SYSMODULES=\
+	arg.m\
+	bufio.m\
+	draw.m\
+	keyring.m\
+	math.m\
+	string.m\
+	sys.m\
+
+DISBIN=$ROOT/dis
+
+<$ROOT/mkfiles/mkdis
+
+#asm.b:	asm.y
+#	yacc -D1 -o asm.b asm.y
