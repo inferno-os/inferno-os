@@ -23,7 +23,6 @@ EMUDIRS=\
 	libmemdraw\
 	libmemlayer\
 	libdynld\
-	asm\
 	utils/data2c\
 	utils/ndate\
 	emu\
