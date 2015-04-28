@@ -47,8 +47,8 @@ sortby:	int;
 out: ref Bufio->Iobuf;
 stderr: ref FD;
 
-dwIndex: int;
-dwQueue: array of Dir;
+delaydir: array of ref Dir;
+delayindex: int;
 
 badmodule(p: string)
 {
@@ -139,65 +139,65 @@ init(nil: ref Context, argv: list of string)
 		popt++;
 	}
 
+	errs := 0;
 	for(; argv != nil; argv = tl argv)
-		ls(hd argv);
-	delayWrite();
+		errs |= !ls(hd argv);
+	delaywrite();
 	out.flush();
+	if(errs != 0)
+		raise "fail:errors";
 }
 
-ls(file: string)
+ls(file: string): int
 {
 	dir: Dir;
  	ok: int;
 
 	(ok, dir) = sys->stat(file);
 	if(ok == -1) {
-		sys->fprint(stderr, "ls: stat %s: %r\n", file);
-		return;
+		sys->fprint(stderr, "ls: %s: %r\n", file);
+		return 0;
 	}
 	if(dopt || (dir.mode & Sys->DMDIR) == 0) {
 		# delay write: save it in the queue to sort by sortby
-		if(dwIndex == 0) 
-			dwQueue = array[30] of Dir;
-		else if(len dwQueue == dwIndex) {
-			# expand dwQueue
-			tmp := array[2 * dwIndex] of Dir;
-			tmp[0:] = dwQueue;
-			dwQueue = tmp;
+		if(delayindex == 0) 
+			delaydir = array[30] of ref Dir;
+		else if(len delaydir == delayindex) {
+			tmp := array[2 * delayindex] of ref Dir;
+			tmp[0:] = delaydir;
+			delaydir = tmp;
 		}
 		(dirname, filename) := str->splitstrr(file, "/");
 		if(dirname != "") {
 			dir.name = dirname + filename;
 			dir.dev |= PREFIX;
 		}
-		dwQueue[dwIndex++] = dir; 
-		return;
+		delaydir[delayindex++] = ref dir; 
+		return 1;
 	}
 
-	delayWrite();
+	delaywrite();
 
 	(d, n) := readdir->init(file, sortby);
-	if( n < 0)
-		sys->fprint(stderr, "ls: Readdir: %s: %r\n", file);
-	else
-		lsprint(file, d[0:n]);
+	if(n < 0){
+		sys->fprint(stderr, "ls: %s: %r\n", file);
+		return 0;
+	}
+	lsprint(file, d[0:n]);
+	return 1;
 }
 
-delayWrite() 
+delaywrite() 
 {
-	if(dwIndex == 0)
+	if(delayindex == 0)
 		return;
 	
-	a := array[dwIndex] of ref Dir;
-	for (i := 0; i < dwIndex; i++)
-		a[i] = ref dwQueue[i];
-	(b, n) := readdir->sortdir(a, sortby);
+	(b, n) := readdir->sortdir(delaydir[0:delayindex], sortby);
 
 	lsprint("", b[0:n]);
 	
-	# reset dwIndex
-	dwIndex = 0;
-	dwQueue = nil;
+	delayindex = 0;
+	delaydir = nil;
 }
 
 Widths: adt {
