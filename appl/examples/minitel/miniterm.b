@@ -13,6 +13,8 @@ include "tk.m";
 	tk: Tk;
 include "tkclient.m";
 	tkclient: Tkclient;
+include "dial.m";
+	dial: Dial;
 
 include "miniterm.m";
 
@@ -139,6 +141,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	tkclient = load Tkclient Tkclient->PATH;
 	tkclient->init();
 	draw = load Draw Draw->PATH;
+	dial = load Dial Dial->PATH;
 	stderr = sys->fildes(2);
 	pgrp = sys->pctl(Sys->NEWPGRP|Sys->FORKNS, nil);
 

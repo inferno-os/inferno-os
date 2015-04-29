@@ -133,8 +133,8 @@ Runloop:
 						S.msg("Connexion au serveur ...");
 						if(debug['m'] > 0 || debug['M'] > 0)
 							sys->print("dial(%s)\n", m.dialstr);
-						(ok, cx) := sys->dial(m.dialstr, "");
-						if (ok == -1){
+						cx := dial->dial(m.dialstr, "");
+						if (cx == nil){
 							S.msg("Echec de la connexion");
 							T.state = Local;
 							send(ref Event.Eproto(Pscreen, Mmodem, Cindicators, "",0,0,0));
@@ -142,7 +142,7 @@ Runloop:
 								sys->print("can't dial %s: %r\n", m.dialstr);
 							break;
 						}
-						m.fd = sys->open(cx.dir + "/data", Sys->ORDWR);
+						m.fd = cx.dfd;
 						m.cfd = cx.cfd;
 						if(len m.dialstr >= 3 && m.dialstr[0:3] == "tcp")
 							m.addparity = 0;	# Internet gateway apparently doesn't require parity
