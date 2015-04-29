@@ -114,7 +114,7 @@ find(filter: list of list of (string, string)): list of ref Service
 	else {
 		for (; filter != nil; filter = tl filter) {
 			attr := hd filter;
-			(s, err) := reg.find(attr);		
+			(s, nil) := reg.find(attr);		
 			for (; s != nil; s = tl s)
 				lsrv = hd s :: lsrv;
 		}

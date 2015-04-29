@@ -9,6 +9,8 @@ include "sys.m";
 	sys: Sys;
 include "draw.m";
 include "sh.m";
+include "dial.m";
+	dial: Dial;
 include "registries.m";
 	registries: Registries;
 	Registry, Attributes, Service: import registries;
@@ -26,6 +28,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
 	sys->pctl(sys->FORKNS | sys->NEWPGRP, nil);
+	dial = load Dial Dial->PATH;
+	if (dial == nil)
+		badmod(Dial->PATH);
 	registries = load Registries Registries->PATH;
 	if (registries == nil)
 		badmod(Registries->PATH);
@@ -75,18 +80,18 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if (reg == nil)
 		error(sys->sprint("Could not find registry: %r\nMake sure that ndb/cs has been started and there is a registry announcing on the machine specified in /lib/ndb/local"));
 
-	c : sys->Connection;
+	c : ref Sys->Connection;
 	if (myaddr == nil) {
 		(addr, conn) := announce->announce();
 		if (addr == nil)
 			error(sys->sprint("cannot announce: %r"));
 		myaddr = addr;
-		c = *conn;
+		c = conn;
 	}
 	else {
 		n: int;
-		(n, c) = sys->announce(myaddr);
-		if (n == -1)
+		c = dial->announce(myaddr);
+		if (c == nil)
 			error(sys->sprint("cannot announce: %r"));
 		(n, nil) = sys->tokenize(myaddr, "*");
 		if (n > 1) {
@@ -107,16 +112,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	spawn listener(c, mountfd, maxusers);
 }
 
-listener(c: Sys->Connection, mountfd: ref sys->FD, maxusers: int)
+listener(c: ref Sys->Connection, mountfd: ref sys->FD, maxusers: int)
 {
 	for (;;) {
-		(n, nc) := sys->listen(c);
-		if (n == -1)
+		nc := dial->listen(c);
+		if (nc == nil)
 			error(sys->sprint("listen failed: %r"));
-		dfd := sys->open(nc.dir + "/data", Sys->ORDWR);
-		if (maxusers != -1 && nusers >= maxusers)
+		if (maxusers != -1 && nusers >= maxusers) {
 			sys->fprint(stderr(), "register: maxusers (%d) exceeded!\n", nusers);
-		else if (dfd != nil) {
+			dial->reject(nc, "server overloaded");
+		}else if ((dfd := dial->accept(nc)) != nil) {
 			sync := chan of int;
 			addr := readfile(nc.dir + "/remote");
 			if (addr == nil)

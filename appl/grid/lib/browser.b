@@ -62,8 +62,6 @@ Browse.new(top: ref Tk->Toplevel, tkchanname, root, rlabel: string, nopanes: int
 	tkcmds(top, pane1scr);
 	tkcmd(top, "bind .fbrowse.lmov <Button-1> {send "+b.tkchan+" movdiv %X}");
 
-	size := tkcmd(top, "grid size .fbrowse");
-	p := isat(size, " ");
 	tkcmd(top, "label .fbrowse.l -text { }  -anchor w -width 0" +
 		" -font /fonts/charon/plain.normal.font");
 	tkcmd(top, ".fbrowse.l configure -height "+tkcmd(top, ".fbrowse.l cget -height"));
@@ -179,8 +177,8 @@ Browse.changeview(b: self ref Browse, nopanes: int)
 {
 	if (b.nopanes == nopanes)
 		return;
-	w := int tkcmd(b.top, ".fbrowse cget -actwidth");
-	ws := int tkcmd(b.top, ".fbrowse.sy1 cget -width");
+#	w := int tkcmd(b.top, ".fbrowse cget -actwidth");
+#	ws := int tkcmd(b.top, ".fbrowse.sy1 cget -width");
 	if (nopanes == 1) {
 		b.pane0width = tkcmd(b.top, ".fbrowse.c1 cget -actwidth") + " " +
 						tkcmd(b.top, ".fbrowse.c2 cget -actwidth");
@@ -270,8 +268,6 @@ Browse.gotopath(b: self ref Browse, file: File, openfinal: int): (File, string)
 	trackbacklist : list of (string, list of string, list of string) = nil;
 	trackback := 0;
 	enddir := "";
-	endfile := "";
-	filetkpath := "";
 	if (file.path[len file.path - 1] != '/') {
 		# i.e. is not a directory
 		p := isatback(file.path, "/");
@@ -369,7 +365,6 @@ Browse.getpath(b: self ref Browse, f: string): ref File
 	tkpath := ".fbrowse.fl.f0";
 	path := b.root;
 	lst = tl tl lst;
-	started := 0;
 #	sys->print("getpath: %s %s\n",tkpath, path);
 	qid := "";
 	for (; lst != nil; lst = tl lst) {
@@ -1041,8 +1036,6 @@ Select.defaultaction(s: self ref Select, lst: list of string)
 
 Select.getselected(s: self ref Select, fname: string): string
 {
-	retlist : list of (int, list of ref Parameter) = nil;
-	row := 1;
 	f := getframe(s, fname);
 	return f.selected;
 }
@@ -1058,7 +1051,6 @@ Select.getselection(s: self ref Select, fname: string): list of (string, list of
 		if (slaves == nil || slaves[0] == '!')
 			break;
 		(nil, lst) := sys->tokenize(slaves, " ");
-		pos := isatback(hd lst, "l");
 		tkpath := hd lst;
 		lst = tl lst;
 		lp : list of ref Parameter = nil;

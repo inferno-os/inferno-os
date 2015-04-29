@@ -1,6 +1,8 @@
 implement Announce;
 include "sys.m";
 	sys:	Sys;
+include "dial.m";
+	dial: Dial;
 include "grid/announce.m";
 
 init()
@@ -11,8 +13,8 @@ init()
 announce(): (string, ref Sys->Connection)
 {
 	sysname := readfile("/dev/sysname");
-	(ok, c) := sys->announce("tcp!*!0");
-	if(ok == -1)
+	c := dial->announce("tcp!*!0");
+	if(c == nil)
 		return (nil, nil);
 	local := readfile(c.dir + "/local");
 	if(local == nil)
@@ -25,7 +27,7 @@ announce(): (string, ref Sys->Connection)
 		return (nil, nil);
 	if(port[len port - 1] == '\n')
 		port = port[0:len port - 1];
-	return ("tcp!" + sysname + "!" + port, ref c);
+	return ("tcp!" + sysname + "!" + port, c);
 }
 
 

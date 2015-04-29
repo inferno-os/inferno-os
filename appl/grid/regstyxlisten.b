@@ -14,6 +14,8 @@ include "security.m";
 include "registries.m";
 	registries: Registries;
 	Registry, Service, Attributes: import registries;
+include "dial.m";
+	dial: Dial;
 include "arg.m";
 include "sh.m";
 
@@ -41,6 +43,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	keyring = load Keyring Keyring->PATH;
 	if (keyring == nil)
 		badmodule(Keyring->PATH);
+	dial = load Dial Dial->PATH;
+	if (dial == nil)
+		badmodule(Dial->PATH);
 
 	arg := load Arg Arg->PATH;
 	if (arg == nil)
@@ -61,7 +66,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		'v' =>
 			verbose = 1;
 		'a' =>
-			alg := arg->earg() :: algs;
+			algs = arg->earg() :: algs;
 		'f' =>
 			keyfile = arg->earg();
 			if (! (keyfile[0] == '/' || (len keyfile > 2 &&  keyfile[0:2] == "./")))
@@ -91,7 +96,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if (doauth && algs == nil)
 		algs = getalgs();
-	addr := netmkaddr(hd argv, "tcp", "styx");
+	addr := dial->netmkaddr(hd argv, "tcp", "styx");
 	cmd := tl argv;
 
 	authinfo: ref Keyring->Authinfo;
@@ -103,8 +108,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			error(sys->sprint("cannot read %s: %r", keyfile));
 	}
 
-	(ok, c) := sys->announce(addr);
-	if (ok == -1)
+	c := dial->announce(addr);
+	if (dial == nil)
 		error(sys->sprint("cannot announce on %s: %r", addr));
 
 	if(regattrs != nil){
@@ -130,17 +135,17 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		spawn listener(c, popen(ctxt, cmd, lsync), authinfo, algs, lsync);
 }
 
-listener(c: Sys->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
+listener(c: ref Sys->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
 {
 	lsync <-= sys->pctl(0, nil);
 	for (;;) {
-		(n, nc) := sys->listen(c);
-		if (n == -1)
+		nc := dial->listen(c);
+		if (nc == nil)
 			error(sys->sprint("listen failed: %r"));
 		if (verbose)
 			sys->fprint(stderr(), "styxlisten: got connection from %s",
 					readfile(nc.dir + "/remote"));
-		dfd := sys->open(nc.dir + "/data", Sys->ORDWR);
+		dfd := dial->accept(nc);
 		if (dfd != nil) {
 			if (algs == nil) {
 				sync := chan of int;
@@ -261,19 +266,4 @@ getalgs(): list of string
 stderr(): ref Sys->FD
 {
 	return sys->fildes(2);
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, l) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }

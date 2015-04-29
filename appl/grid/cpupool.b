@@ -17,6 +17,8 @@ include "styxservers.m";
 	nametree: Nametree;
 	Tree: import nametree;
 include "draw.m";
+include "dial.m";
+	dial: Dial;
 include "sh.m";
 include "arg.m";
 include "registries.m";
@@ -74,6 +76,9 @@ init(nil : ref Draw->Context, argv: list of string)
 	daytime = load Daytime Daytime->PATH;
 	if (daytime == nil)
 		badmod(Daytime->PATH);
+	dial = load Dial Dial->PATH;
+	if (dial == nil)
+		badmod(Dial->PATH);
 	styx = load Styx Styx->PATH;
 	if (styx == nil)
 		badmod(Styx->PATH);
@@ -149,7 +154,7 @@ init(nil : ref Draw->Context, argv: list of string)
 	poolchanin = chan of string;
 	poolchanout = chan of int;
 	userchan := chan of int;
-	spawn listener(*c);
+	spawn listener(c);
 	spawn cpupoolloop(poolchanin, poolchanout);
 }
 
@@ -428,13 +433,13 @@ badmod(path: string)
 	exit;
 }
 
-listener(c: Sys->Connection)
+listener(c: ref Sys->Connection)
 {
 	for (;;) {
-		(n, nc) := sys->listen(c);
-		if (n == -1)
+		nc := dial->listen(c);
+		if (nc == nil)
 			error(sys->sprint("listen failed: %r"));
-		dfd := sys->open(nc.dir + "/data", Sys->ORDWR);
+		dfd := dial->accept(nc);
 		if (dfd != nil) {
 			sync := chan of int;
 			sys->print("got new connection!\n");

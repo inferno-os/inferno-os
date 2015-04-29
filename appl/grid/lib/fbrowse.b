@@ -89,8 +89,6 @@ init(ctxt : ref Draw->Context, title, root, currdir: string): string
 	released := 1;
 	title = "";
 	
-	menudata := ("", "");
-
 	tkclient->onscreen(top, nil);
 	resize(top, ctxt.display.image);
 	tkclient->startinput(top, "kbd"::"ptr"::nil);
@@ -272,7 +270,6 @@ openfile(ctxt: ref draw->Context, file, title: string, writeable: int)
 	(w,h) := fopensize;
 	if (w != "" && h != "")
 		tkcmd(top, ". configure -width "+w+" -height "+h);
-	errors := 0;
 	killpid := -1;
 	fd := sys->open(file, sys->OREAD);
 	if (fd != nil) {
@@ -369,7 +366,7 @@ actionbutton(top: ref Tk->Toplevel, path, tkpath: string)
 
 getext(file: string): string
 {
-	(n, lst) := sys->tokenize(file, ".");
+	(nil, lst) := sys->tokenize(file, ".");
 	for (; tl lst != nil; lst = tl lst)
 		;
 	return hd lst;

@@ -18,6 +18,8 @@ include "tkclient.m";
 	tkclient: Tkclient;
 include "arg.m";
 include "sh.m";
+include "dial.m";
+	dial: Dial;
 include "newns.m";
 include "keyring.m";
 	keyring: Keyring;
@@ -95,6 +97,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	tkclient->init();
 	login = checkload(load Login Login->PATH, Login->PATH);
 	keyring = checkload(load Keyring Keyring->PATH, Keyring->PATH);
+	dial = checkload(load Dial Dial->PATH, Dial->PATH);
 	registries = checkload(load Registries Registries->PATH, Registries->PATH);
 	registries->init();
 
@@ -251,8 +254,8 @@ createuser(top: ref Tk->Toplevel, user, passwd: string, signerpkhash: string): i
 		return 0;
 	}
 	addr := (hd svcs).addr;
-	(ok, c) := sys->dial(addr, nil);
-	if(ok == -1){
+	c := dial->dial(addr, nil);
+	if(c == nil){
 		notice(top, sys->sprint("cannot dial %s: %r", addr));
 		return 0;
 	}
