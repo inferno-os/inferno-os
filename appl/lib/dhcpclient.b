@@ -17,6 +17,9 @@ include "ip.m";
 include "keyring.m";
 include "security.m";	# for Random
 
+include "dial.m";
+	dial: Dial;
+
 include "dhcp.m";
 
 debug := 0;
@@ -32,6 +35,7 @@ init()
 	else
 		xidgen = sys->pctl(0, nil)*sys->millisec();
 	random = nil;
+	dial = load Dial Dial->PATH;
 	ip = load IP IP->PATH;
 	ip->init();
 }
@@ -435,8 +439,8 @@ udpannounce(net: string): (ref Sys->FD, string)
 {
 	if(net == nil)
 		net = "/net";
-	(ok, conn) := sys->announce(net+"/udp!*!68");
-	if(ok < 0)
+	conn := dial->announce(net+"/udp!*!68");
+	if(conn == nil)
 		return (nil, sys->sprint("can't announce dhcp port: %r"));
 	if(sys->fprint(conn.cfd, "headers") < 0)
 		return (nil, sys->sprint("can't set headers mode on dhcp port: %r"));
