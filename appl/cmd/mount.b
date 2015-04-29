@@ -5,6 +5,8 @@ include "sys.m";
 include "draw.m";
 include "keyring.m";
 include "security.m";
+include "dial.m";
+	dial: Dial;
 include "factotum.m";
 include "styxconv.m";
 include "styxpersist.m";
@@ -140,7 +142,7 @@ connect(ctxt: ref Draw->Context, dest: string): ref Sys->FD
 	svc := "styx";
 	if(do9)
 		svc = "9fs";
-	dest = netmkaddr(dest, "net", svc);
+	dest = dial->netmkaddr(dest, "net", svc);
 	if(persist){
 		styxpersist := load Styxpersist Styxpersist->PATH;
 		if(styxpersist == nil)
@@ -152,8 +154,8 @@ connect(ctxt: ref Draw->Context, dest: string): ref Sys->FD
 		spawn dialler(c, dest);
 		return p[1];
 	}
-	(ok, c) := sys->dial(dest, nil);
-	if(ok < 0)
+	c := dial->dial(dest, nil);
+	if(c == nil)
 			fail("dial failed",  sys->sprint("can't dial %s: %r", dest));
 	return c.dfd;
 }
@@ -163,8 +165,8 @@ dialler(dialc: chan of chan of ref Sys->FD, dest: string)
 	while((reply := <-dialc) != nil){
 		if(verbose)
 			sys->print("dialling %s\n", addr);
-		(ok, c) := sys->dial(dest, nil);
-		if(ok == -1){
+		c := dial->dial(dest, nil);
+		if(c == nil){
 			reply <-= nil;
 			continue;
 		}
@@ -237,7 +239,7 @@ authenticate(keyfile, alg: string, dfd: ref Sys->FD, addr: string): (ref Sys->FD
 
 	kd := "/usr/" + user() + "/keyring/";
 	if(keyfile == nil) {
-		cert = kd + netmkaddr(addr, "tcp", "");
+		cert = kd + dial->netmkaddr(addr, "tcp", "");
 		(ok, nil) := sys->stat(cert);
 		if (ok < 0)
 			cert = kd + "default";
@@ -277,21 +279,6 @@ user(): string
 		return "";
 
 	return string buf[0:n]; 
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 kill(pid: int)

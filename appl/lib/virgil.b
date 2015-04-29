@@ -5,6 +5,8 @@ include "sys.m";
 include "string.m";
 include "keyring.m";
 include "draw.m";
+include "dial.m";
+	dial: Dial;
 include "security.m";
 include "ip.m";
 	ip: IP;
@@ -29,6 +31,11 @@ virgil(argv: list of string): string
 		return nil;
 	done = 0;
 	sys = load Sys Sys->PATH;
+	dial = load Dial Dial->PATH;
+	if(dial == nil){
+		cantload(Dial->PATH);
+		return nil;
+	}
 	str := load String String->PATH;
 	if(str == nil){
 		cantload(String->PATH);
@@ -70,8 +77,8 @@ virgil(argv: list of string): string
 		return nil;
 	question = hd argv;
 
-	(ok, c) := sys->announce("udp!*!0");
-	if(ok < 0)
+	c := dial->announce("udp!*!0");
+	if(c == nil)
 		return nil;
 	if(sys->fprint(c.cfd, "headers") < 0)
 		return nil;

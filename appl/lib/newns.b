@@ -24,6 +24,9 @@ include "bufio.m";
 	bio: Bufio;
 	Iobuf: import bio;
 
+include "dial.m";
+	dial: Dial;
+
 include "newns.m";
 
 #include "sh.m";
@@ -254,16 +257,22 @@ mount(argv: list of string, facfd: ref Sys->FD): string
 	if(len r.argv < 2)
 		return ig(r, "mount: too few args");
 
+	if(dial == nil){
+		dial = load Dial Dial->PATH;
+		if(dial == nil)
+			return ig(r, "mount: can't load Dial");
+	}
+
 	addr := hd r.argv;
 	r.argv = tl r.argv;
-	dest := netmkaddr(addr, "net", "styx");
+	dest := dial->netmkaddr(addr, "net", "styx");
 	dir := hd r.argv;
 	r.argv = tl r.argv;
 	if(r.argv != nil)
 		spec := hd r.argv;
 
-	(ok, c) := sys->dial(dest, nil);
-	if(ok < 0)
+	c := dial->dial(dest, nil);
+	if(c == nil)
 		return ig(r, sys->sprint("dial: %s: %r", dest));
 	
 	if(r.use9){
@@ -286,16 +295,12 @@ mount(argv: list of string, facfd: ref Sys->FD): string
 		cert = r.keyfile;
 		if (cert[0] != '/')
 			cert = kd + cert;
-		(ok, nil) = sys->stat(cert);
-		if (ok<0)
+		if(sys->stat(cert).t0 < 0)
 			return ig(r, sys->sprint("cannot find certificate %q: %r", cert));
 	} else {
 		cert = kd + addr;
-		(ok, nil) = sys->stat(cert);
-		if(ok < 0){
+		if(sys->stat(cert).t0 < 0)
 			cert = kd + "default";
-			(ok, nil) = sys->stat(cert);
-		}
 	}
 	ai := kr->readauthinfo(cert);
 	if(ai == nil)
@@ -335,9 +340,16 @@ import9(argv: list of string, facfd: ref Sys->FD): string
 	dir := rdir;
 	if(r.argv != nil)
 		dir = hd r.argv;
-	dest := netmkaddr(addr, "net", "17007");	# exportfs; might not be in inferno's ndb yet
-	(ok, c) := sys->dial(dest, nil);
-	if(ok < 0)
+
+	if(dial == nil){
+		dial = load Dial Dial->PATH;
+		if(dial == nil)
+			return ig(r, "import: can't load Dial");
+	}
+
+	dest := dial->netmkaddr(addr, "net", "17007");	# exportfs; might not be in inferno's ndb yet
+	c := dial->dial(dest, nil);
+	if(c == nil)
 		return ig(r, sys->sprint("import: %s: %r", dest));
 	fd := c.dfd;
 	if(factotum->proxy(fd, facfd, "proto=p9any role=client") == nil)
@@ -426,21 +438,6 @@ setenv(name: string, val: string)
 	fd := sys->create("#e/"+name, Sys->OWRITE, 8r664);
 	if(fd != nil)
 		sys->fprint(fd, "%s", val);
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 newuser(user: string, cap: string, nsfile: string): string

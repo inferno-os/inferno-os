@@ -23,6 +23,9 @@ include "url.m";
 	U: Url;
 	ParsedUrl: import U;
 
+include "dial.m";
+	DI: Dial;
+
 include "webget.m";
 
 include "wgutils.m";
@@ -122,6 +125,7 @@ init(w: WebgetUtils)
 	S = W->S;
 	B = W->B;
 	U = W->U;
+	DI = W->DI;
 	ssl3 = nil;	# load on demand
 	readconfig();
 }
@@ -232,11 +236,11 @@ connect(c: ref Fid, r: ref Req, donec: chan of ref Fid)
 				else
 					port = HTTPD;
 			}
-			addr := "tcp!" + dialu.host + "!" + port;
+			addr := DI->netmkaddr(dialu.host, "tcp", port);
 
 			W->log(c, sys->sprint("http: dialing %s", addr));
-			(ok, net) := sys->dial(addr, nil);
-			if(ok < 0) {
+			net := DI->dial(addr, nil);
+			if(net == nil) {
 				mrep = W->usererr(r, sys->sprint("%r"));
 				break redirloop;
 			}

@@ -17,6 +17,8 @@ include "keyring.m";
 
 include "security.m";
 
+include "dial.m";
+
 include "string.m";
 
 # see login(6)
@@ -35,16 +37,16 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 	if(rand == nil)
 		return nomod(Random->PATH);
 
+	dial := load Dial Dial->PATH;
+	if(dial == nil)
+		return nomod(Dial->PATH);
+
 	if(dest == nil)
 		dest = "$SIGNER";
-	for(j:=0; j<len dest && dest[j] != '!'; j++)
-		break;
-	if(j >= len dest)
-		dest = "net!"+dest+"!inflogin";	# BUG: must do better
-
-	(ok, lc) := sys->dial(dest, nil);
-	if(ok < 0)
-		return (sys->sprint("can't contact login service: %r"), nil);
+	dest = dial->netmkaddr(dest, "net", "inflogin");
+	lc := dial->dial(dest, nil);
+	if(lc == nil)
+		return (sys->sprint("can't contact login service: %s: %r", dest), nil);
 
 	# push ssl, leave in clear mode for now
 	(err, c) := ssl->connect(lc.dfd);

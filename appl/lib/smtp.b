@@ -4,6 +4,8 @@ include "sys.m";
 	sys : Sys;
 include "bufio.m";
 	bufio : Bufio;
+include "dial.m";
+	dial: Dial;
 include "smtp.m";
 
 FD, Connection: import sys;
@@ -25,14 +27,17 @@ open(server : string): (int, string)
 	if (!init) {
 		sys = load Sys Sys->PATH;
 		bufio = load Bufio Bufio->PATH;
+		dial = load Dial Dial->PATH;
 		init = 1;
 	}
 	if (conn)
 		return (-1, "connection is already open");
 	if (server == nil)
 		server = "$smtp";
-	(ok, c) := sys->dial ("tcp!" + server + "!25", nil);
-	if (ok < 0)
+	else
+		server = dial->netmkaddr(server, "tcp", "25");
+	c := dial->dial(server, nil);
+	if (c == nil)
 		return (-1, "dialup failed");
 	ibuf = bufio->fopen(c.dfd, Bufio->OREAD);
 	obuf = bufio->fopen(c.dfd, Bufio->OWRITE);
@@ -41,6 +46,7 @@ open(server : string): (int, string)
 	cread = chan of (int, string);
 	spawn mreader(cread);
 	(rpid, nil) = <- cread;
+	ok: int;
  	(ok, s) = mread();
 	if (ok < 0)
 		return (-1, s);

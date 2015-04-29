@@ -48,6 +48,9 @@ include "string.m";
 include "bufio.m";
 	B: Bufio;
 
+include "dial.m";
+	DI: Dial;
+
 include "message.m";
 	M: Message;
 	Msg: import M;
@@ -158,7 +161,7 @@ start(ctl: chan of int)
 		ctl <-= 0;
 		return;
 	}
-	W->init(M, S, B, U, log);
+	W->init(M, S, B, U, DI, log);
 
 	loadtransmod();
 

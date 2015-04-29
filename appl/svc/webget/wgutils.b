@@ -9,6 +9,8 @@ include "string.m";
 
 include "bufio.m";
 
+include "dial.m";
+
 include "imagefile.m";	
 	readgif, readjpg, readxbitmap: RImagefile;
 
@@ -98,7 +100,7 @@ mnames := array[] of {
 	"text/xml"
 };
 
-init(m: Message, s: String, b: Bufio, u: Url, lfd: ref Sys->FD)
+init(m: Message, s: String, b: Bufio, u: Url, di: Dial, lfd: ref Sys->FD)
 {
 	sys = load Sys Sys->PATH;
 
@@ -106,6 +108,7 @@ init(m: Message, s: String, b: Bufio, u: Url, lfd: ref Sys->FD)
 	S = s;
 	B = b;
 	U = u;
+	DI = di;
 	logfd = lfd;
 	T = load StringIntTab StringIntTab->PATH;
 	readgif = load RImagefile RImagefile->READGIFPATH;

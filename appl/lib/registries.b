@@ -9,6 +9,8 @@ include "string.m";
 	str: String;
 include "keyring.m";
 	keyring: Keyring;
+include "dial.m";
+	dial: Dial;
 include "security.m";
 	auth: Auth;
 include "keyset.m";
@@ -22,6 +24,7 @@ init()
 	keyring = checkload(load Keyring Keyring->PATH, Keyring->PATH);
 	str = checkload(load String String->PATH, String->PATH);
 	keyset = checkload(load Keyset Keyset->PATH, Keyset->PATH);
+	dial = checkload(load Dial Dial->PATH, Dial->PATH);
 	auth = checkload(load Auth Auth->PATH, Auth->PATH);
 	e := keyset->init();
 	if(e != nil)
@@ -208,8 +211,8 @@ Service.attach(svc: self ref Service, localuser, keydir: string): ref Attached
 	#	auth.crypt		type of encryption to push (as accepted by ssl(3)'s "alg" operation)
 	#	auth.signer	hash of service's certificate's signer's public key
 
-	(ok, c) := sys->dial(svc.addr, nil);
-	if(ok == -1){
+	c := dial->dial(svc.addr, nil);
+	if(c == nil){
 		sys->werrstr(sys->sprint("cannot dial: %r"));
 		return nil;
 	}

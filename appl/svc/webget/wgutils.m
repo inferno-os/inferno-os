@@ -33,6 +33,7 @@ WebgetUtils: module
 	B: Bufio;
 	S: String;
 	U: Url;
+	DI: Dial;
 
 	# media types (must track mnames array in wgutils.b)
 	UnknownType,
@@ -43,7 +44,7 @@ WebgetUtils: module
 	AudioBasic,
 	VideoMpeg, VideoQuicktime, Soap, TextXml: con iota;
 
-	init : fn(m: Message, s: String, b: Bufio, u: Url, logfd: ref Sys->FD);
+	init : fn(m: Message, s: String, b: Bufio, u: Url, di: Dial, logfd: ref Sys->FD);
 	usererr: fn(r: ref Req, msg: string) : ref Message->Msg;
 	okprefix: fn(r: ref Req, mrep: ref Message->Msg);
 	getdata: fn(io: ref Bufio->Iobuf, m: ref Message->Msg,

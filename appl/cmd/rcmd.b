@@ -4,6 +4,7 @@ include "sys.m";
 include "draw.m";
 include "arg.m";
 include "keyring.m";
+include "dial.m";
 include "security.m";
 
 Rcmd: module
@@ -14,10 +15,14 @@ Rcmd: module
 DEFAULTALG := "none";
 sys: Sys;
 auth: Auth;
+dial: Dial;
 
 init(nil: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
+	dial = load Dial Dial->PATH;
+	if(dial == nil)
+		badmodule(Dial->PATH);
 	arg := load Arg Arg->PATH;
 	if(arg == nil)
 		badmodule(Arg->PATH);
@@ -78,9 +83,9 @@ init(nil: ref Draw->Context, argv: list of string)
 			keyfile = "/usr/" + user() + "/keyring/default";
 	}
 
-	(ok, c) := sys->dial(netmkaddr(addr, "tcp", "rstyx"), nil);
-	if(ok < 0)
-		error(sys->sprint("dial server failed: %r"));
+	c := dial->dial(dial->netmkaddr(addr, "tcp", "rstyx"), nil);
+	if(c == nil)
+		error(sys->sprint("dial %s failed: %r", addr));
 
 	fd := c.dfd;
 	if (doauth) {
@@ -135,21 +140,6 @@ user(): string
 		return "";
 
 	return string buf[0:n];	
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 stderr(): ref Sys->FD

@@ -6,6 +6,8 @@ FD, Connection: import Sys;
 include "draw.m";
 draw: Draw;
 Display, Rect, Image: import draw;
+include "dial.m";
+dial: Dial;
 include "mpeg.m";
 
 Chroma: con 16r05;
@@ -17,12 +19,13 @@ getenv()
 
 	sys = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
+	dial = load Dial Dial->PATH;
 }
 
 copy(files: list of string, notify: chan of string, mpctl, mpdata: ref FD)
 {
-	ok, n: int;
-	c: Connection;
+	n: int;
+	c: ref Connection;
 	name: list of string;	
 
 	while(files != nil) {
@@ -37,8 +40,8 @@ copy(files: list of string, notify: chan of string, mpctl, mpdata: ref FD)
 				return;
 			}
 		2 =>
-			(ok, c) = sys->dial(hd tl name, nil);
-			if(ok < 0) {
+			c = dial->dial(hd tl name, nil);
+			if(c == nil) {
 				notify <-= "dial:" + hd tl name;
 				return;
 			}
