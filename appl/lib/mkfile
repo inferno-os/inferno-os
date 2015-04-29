@@ -52,7 +52,6 @@ TARG=\
 	fsfilter.dis\
 	fslib.dis\
 	fsproto.dis\
-	gamer.dis\
 	hash.dis\
 	html.dis\
 	imageremap.dis\
