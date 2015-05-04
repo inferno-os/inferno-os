@@ -145,9 +145,6 @@ kernel/&-Plan9:QV:
 
 # Convenience targets
 
-Hp-% hp-%:V:
-	mk 'SYSHOST=Hp' 'OBJTYPE=s800' $stem
-
 Inferno-% inferno-% Inferno-386-% inferno-386-%:V:
 	mk 'SYSHOST=Inferno' 'OBJTYPE=386' $stem
 
