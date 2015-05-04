@@ -100,7 +100,6 @@ TARG=\
 	readpng.dis\
 	readxbitmap.dis\
 	regex.dis\
-	regexutils.dis\
 	registries.dis\
 	rfc822.dis\
 	riff.dis\
