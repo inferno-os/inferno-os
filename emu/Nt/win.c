@@ -771,7 +771,7 @@ clipwrite(char *buf)
 	if(h == NULL)
 		error(Enovmem);
 	rp = GlobalLock(h);
-	utftorunes16(rp, buf, (n+1)*sizeof(Rune));
+	utftorunes16(rp, buf, n+1);
 	GlobalUnlock(h);
 
 	SetClipboardData(CF_UNICODETEXT, h);
