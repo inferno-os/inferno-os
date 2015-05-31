@@ -752,7 +752,7 @@ int
 clipwrite(char *buf)
 {
 	HANDLE h;
-	char *p, *e;
+	char *p;
 	Rune *rp;
 	int n;
 
@@ -771,11 +771,7 @@ clipwrite(char *buf)
 	if(h == NULL)
 		error(Enovmem);
 	rp = GlobalLock(h);
-	p = buf;
-	e = p+n;
-	while(p<e)
-		p += chartorune(rp++, p);
-	*rp = 0;
+	utftorunes16(rp, buf, n+1);
 	GlobalUnlock(h);
 
 	SetClipboardData(CF_UNICODETEXT, h);
