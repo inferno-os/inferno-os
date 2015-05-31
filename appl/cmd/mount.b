@@ -45,6 +45,9 @@ nomod(mod: string)
 init(ctxt: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
+        dial = load Dial Dial->PATH;
+        if(dial == nil)
+                 nomod(Dial->PATH);
 	arg := load Arg Arg->PATH;
 	if(arg == nil)
 		nomod(Arg->PATH);
