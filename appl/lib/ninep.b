@@ -847,6 +847,21 @@ Rmsg.read(fd: ref Sys->FD, msglim: int): ref Rmsg
 	return m;
 }
 
+Rmsg.write(m: self ref Rmsg, fd: ref Sys->FD, msize: int): int
+{
+	if(msize == 0)
+		m = ref Rmsg.Error(m.tag, "Tversion not seen");
+	d := m.pack();
+	if(msize != 0 && len d > msize){
+		m = ref Rmsg.Error(m.tag, "9P reply didn't fit");
+		d = m.pack();
+	}
+	n := len d;
+	if(sys->write(fd, d, n) != n)
+		return -1;
+	return 0;
+}
+
 dir2text(d: Sys->Dir): string
 {
 	return sys->sprint("Dir(\"%s\",\"%s\",\"%s\",%s,8r%uo,%d,%d,%bd,16r%ux,%d)",

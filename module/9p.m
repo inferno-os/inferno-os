@@ -159,6 +159,7 @@ Ninep: module
 		packedsize:	fn(nil: self ref Rmsg): int;
 		text:	fn(nil: self ref Rmsg): string;
 		mtype: fn(nil: self ref Rmsg): int;
+		write: fn(nil: self ref Rmsg, fd: ref Sys->FD, msize: int): int;
 	};
 
 	init:	fn();

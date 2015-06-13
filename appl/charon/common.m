@@ -8,6 +8,7 @@ include "keyring.m";
 include "asn1.m";
 include "pkcs.m";
 include "x509.m";
+include "dial.m";
 include "sslsession.m";
 include "ssl3.m";
 include "convcs.m";

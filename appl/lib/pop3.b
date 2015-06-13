@@ -9,8 +9,9 @@ include "dial.m";
 	dial: Dial;
 include "pop3.m";
 
-FD, Connection: import sys;
+FD: import sys;
 Iobuf : import bufio;
+Connection: import dial;
 
 ibuf, obuf : ref Bufio->Iobuf;
 conn : int = 0;

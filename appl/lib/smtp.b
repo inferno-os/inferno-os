@@ -8,8 +8,9 @@ include "dial.m";
 	dial: Dial;
 include "smtp.m";
 
-FD, Connection: import sys;
-Iobuf : import bufio;
+FD: import sys;
+Iobuf: import bufio;
+Connection: import dial;
 
 ibuf, obuf : ref Bufio->Iobuf;
 conn : int = 0;

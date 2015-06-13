@@ -52,6 +52,7 @@ U: Url;
 S: String;
 C: Ctype;
 T: StringIntTab;
+DI: Dial;
 CU: CharonUtils;
 	Netconn, ByteSource, Header, config, Nameval : import CU;
 
@@ -251,6 +252,7 @@ init(cu: CharonUtils)
 	U = load Url Url->PATH; 
 	if (U != nil)
 		U->init();
+	DI = cu->DI;
 	C = cu->C;
 	T = load StringIntTab StringIntTab->PATH;
 #	D = load Date CU->loadpath(Date->PATH);
@@ -280,13 +282,12 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 		if(config.httpproxy.port != "")
 			dialport = config.httpproxy.port;
 	}
-	addr := "tcp!" + dialhost + "!" + dialport;
+	addr := DI->netmkaddr(dialhost, "net", dialport);
 	err := "";
 	if(dbg)
 		sys->print("http %d: dialing %s\n", nc.id, addr);
-	rv: int;
-	(rv, nc.conn) = sys->dial(addr, nil);
-	if(rv < 0) {
+	nc.conn = DI->dial(addr, nil);
+	if(nc.conn == nil) {
 		syserr := sys->sprint("%r");
 		if(S->prefix("cs: dialup", syserr))
 			err = syserr[4:];
@@ -352,7 +353,7 @@ vers = 3;
 	}
 }
 
-constate(msg: string, conn: Sys->Connection)
+constate(msg: string, conn: ref Dial->Connection)
 {
 	fd := conn.dfd;
 	fdfd := -1;

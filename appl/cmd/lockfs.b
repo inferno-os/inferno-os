@@ -735,21 +735,6 @@ doreq(greq: ref Ureq): (ref Sys->FD, string)
 	return (fd, err);
 }
 
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
-}
-
 user(): string
 {
 	fd := sys->open("/dev/user", sys->OREAD);

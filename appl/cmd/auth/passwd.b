@@ -8,6 +8,9 @@ include "draw.m";
 include "keyring.m";
 	kr: Keyring;
 
+include "dial.m";
+	dial: Dial;
+
 include "security.m";
 	auth: Auth;
 
@@ -39,6 +42,9 @@ init(nil: ref Draw->Context, args: list of string)
 	kr = load Keyring Keyring->PATH;
 	if(kr == nil)
 		noload(Keyring->PATH);
+	dial = load Dial Dial->PATH;
+	if(dial == nil)
+		noload(Dial->PATH);
 	auth = load Auth Auth->PATH;
 	if(auth == nil)
 		noload(Auth->PATH);
@@ -156,8 +162,8 @@ err(s: string)
 
 mountsrv(ai: ref Keyring->Authinfo): string
 {
-	(rc, c) := sys->dial(netmkaddr(signer, "net", "infkey"), nil);
-	if(rc < 0)
+	c := dial->dial(dial->netmkaddr(signer, "net", "infkey"), nil);
+	if(c == nil)
 		err(sys->sprint("can't dial %s: %r", signer));
 	(fd, id_or_err) := auth->client("sha1/rc4_256", ai, c.dfd);
 	if(fd == nil)
@@ -218,21 +224,6 @@ putsecret(oldhash: array of byte, secret: array of byte): string
 	if(sys->write(fd, buf, len buf) < 0)
 		return sys->sprint("%r");
 	return nil;
-}
-
-netmkaddr(addr, net, svc: string): string
-{
-	if(net == nil)
-		net = "net";
-	(n, nil) := sys->tokenize(addr, "!");
-	if(n <= 1){
-		if(svc== nil)
-			return sys->sprint("%s!%s", net, addr);
-		return sys->sprint("%s!%s!%s", net, addr, svc);
-	}
-	if(svc == nil || n > 2)
-		return addr;
-	return sys->sprint("%s!%s", addr, svc);
 }
 
 readline(io: ref Sys->FD, mode: string): (int, string)

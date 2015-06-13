@@ -433,7 +433,7 @@ save()
 	ix := getallcookies(doms, cka, 0);
 	mergesort(cka, nil, SORT_TOUCHED);
 
-	for (i := 0; i < ncookies; i++) {
+	for (i := 0; i < ix; i++) {
 		ck := cka[i];
 		if (ck.expire > now)
 			sys->fprint(fd, "%s\n", cookie2str(cka[i]));

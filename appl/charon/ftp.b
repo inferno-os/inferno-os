@@ -8,6 +8,7 @@ sys: Sys;
 U: Url;
 	Parsedurl: import U;
 S: String;
+DI: Dial;
 CU: CharonUtils;
 	Netconn, ByteSource, Header, config: import CU;
 
@@ -27,6 +28,7 @@ init(c: CharonUtils)
 	U = load Url Url->PATH;
 	if (U != nil)
 		U->init();
+	DI = CU->DI;
 	dbg = int (CU->config).dbg['n'];
 }
 
@@ -35,14 +37,13 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 	port := nc.port;
 	if(port == 0)
 		port = FTPPORT;
-	addr := "tcp!" + nc.host + "!" + string port;
+	addr := DI->netmkaddr(nc.host, "net", string port);
 	if(dbg)
 		sys->print("ftp %d: dialing %s\n", nc.id, addr);
 	err := "";
 	ctlfd : ref sys->FD = nil;
-	rv : int;
-	(rv, nc.conn) = sys->dial(addr, nil);
-	if(rv < 0) {
+	nc.conn = DI->dial(addr, nil);
+	if(nc.conn == nil) {
 		syserr := sys->sprint("%r");
 		if(S->prefix("cs: dialup", syserr))
 			err = syserr[4:];
@@ -113,11 +114,11 @@ dialdata(nc: ref Netconn, ctlfd: ref sys->FD) : string
 	if(paddr == "")
 		return "passive mode protocol botch: " + msg;
 	# dial data port
-	daddr := "tcp!" + paddr + "!" + pport;
+	daddr := DI->netmkaddr(paddr, "net", pport);
 	if(dbg)
 		sys->print("ftp %d: dialing data %s", nc.id, daddr);
-	(ok, dnet) := sys->dial(daddr, nil);
-	if(ok < 0)
+	dnet := DI->dial(daddr, nil);
+	if(dnet == nil)
 		return "data dial error";
 	nc.conn.dfd = dnet.dfd;
 	return "";

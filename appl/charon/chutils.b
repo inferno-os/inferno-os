@@ -201,6 +201,10 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 		return Url->PATH;
 	U->init();
 
+	DI = load Dial Dial->PATH;
+	if(DI == nil)
+		return Dial->PATH;
+
 	T = load StringIntTab StringIntTab->PATH;
 	if(T == nil)
 		return StringIntTab->PATH;
@@ -801,7 +805,7 @@ Netconn.new(id: int) : ref Netconn
 			"",		# host
 			0,		# port
 			"",		# scheme
-			sys->Connection(nil, nil, ""),	# conn
+			ref Dial->Connection(nil, nil, ""),	# conn
 			nil,		# ssl context
 			0,		# undetermined ssl version
 			NCfree,	# state

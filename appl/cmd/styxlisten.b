@@ -108,7 +108,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		spawn listener(c, popen(ctxt, cmd, lsync), authinfo, algs, lsync);
 }
 
-listener(c: ref Sys->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
+listener(c: ref Dial->Connection, mfd: ref Sys->FD, authinfo: ref Keyring->Authinfo, algs: list of string, lsync: chan of int)
 {
 	lsync <-= sys->pctl(0, nil);
 	for (;;) {

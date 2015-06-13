@@ -15,7 +15,7 @@ implement Newns;
 #
 include "sys.m";
 	sys: Sys;
-	FD, FileIO, Connection: import Sys;
+	FD, FileIO: import Sys;
 	stderr: ref FD;
 
 include "draw.m";
@@ -26,6 +26,7 @@ include "bufio.m";
 
 include "dial.m";
 	dial: Dial;
+	Connection: import dial;
 
 include "newns.m";
 

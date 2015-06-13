@@ -13,6 +13,7 @@ CharonUtils: module
 	J: Script;
 	CH: Charon;
 	CK: Cookiesrv;
+	DI: Dial;
 
 	# HTTP methods
 	HGet, HPost : con iota;
@@ -234,7 +235,7 @@ CharonUtils: module
 		host:	string;			# host name
 		port:	int;			# port number
 		scheme: string;		# Url scheme ("http", "file", etc.)
-		conn:	Sys->Connection;	# fds, etc.
+		conn:	ref Dial->Connection;	# fds, etc.
  		sslx:	ref SSL3->Context;	# ssl connection
  		vers:	int;			# ssl version
 		state:	int;			# NCfree, etc.

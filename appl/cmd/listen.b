@@ -151,12 +151,12 @@ listen1(drawctxt: ref Draw->Context, addr: string, argv: list of string,
 	}
 
 	sync <-= nil;
-	listench := chan of (int, ref Sys->Connection);
-	authch := chan of (string, ref Sys->Connection);
+	listench := chan of (int, ref Dial->Connection);
+	authch := chan of (string, ref Dial->Connection);
 	spawn listener(listench, acon, addr);
 	for (;;) {
 		user := "";
-		ccon: ref Sys->Connection;
+		ccon: ref Dial->Connection;
 		alt {
 		(lok, c) := <-listench =>
 			if (lok == -1){
@@ -187,7 +187,7 @@ listen1(drawctxt: ref Draw->Context, addr: string, argv: list of string,
 	}
 }
 
-listener(listench: chan of (int, ref Sys->Connection), c: ref Sys->Connection, addr: string)
+listener(listench: chan of (int, ref Dial->Connection), c: ref Dial->Connection, addr: string)
 {
 	for (;;) {
 		nc := dial->listen(c);
@@ -210,8 +210,8 @@ listener(listench: chan of (int, ref Sys->Connection), c: ref Sys->Connection, a
 	}
 }
 
-authenticator(authch: chan of (string, ref Sys->Connection),
-		c: ref Sys->Connection, algs: list of string, addr: string)
+authenticator(authch: chan of (string, ref Dial->Connection),
+		c: ref Dial->Connection, algs: list of string, addr: string)
 {
 	err: string;
 	(c.dfd, err) = auth->server(algs, serverkey, c.dfd, 0);

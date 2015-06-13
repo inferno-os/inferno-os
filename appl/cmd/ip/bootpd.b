@@ -18,6 +18,9 @@ include "attrdb.m";
 	attrdb: Attrdb;
 	Attr, Db, Dbentry, Tuples: import attrdb;
 
+include "dial.m";
+	dial: Dial;
+
 include "ip.m";
 	ip: IP;
 	IPaddr, Udphdr: import ip;
@@ -63,6 +66,9 @@ init(nil: ref Draw->Context, args: list of string)
 	if(attrdb == nil)
 		loadfail(Attrdb->PATH);
 	attrdb->init();
+	dial = load Dial Dial->PATH;
+	if(dial == nil)
+		loadfail(Dial->PATH);
 	ip = load IP IP->PATH;
 	if(ip == nil)
 		loadfail(IP->PATH);
@@ -120,8 +126,8 @@ init(nil: ref Draw->Context, args: list of string)
 		addr = net+"/udp!*!499";
 	if(debug)
 		sys->fprint(stderr, "bootpd: announcing %s\n", addr);
-	(ok, c) := sys->announce(addr);
-	if(ok < 0)
+	c := dial->announce(addr);
+	if(c == nil)
 		error(sys->sprint("can't announce %s: %r", addr));
 	if(sys->fprint(c.cfd, "headers") < 0)
 		error(sys->sprint("can't set headers mode: %r"));
@@ -146,7 +152,7 @@ error(s: string)
 	raise "fail:error";
 }
 
-server(c: Sys->Connection)
+server(c: ref Sys->Connection)
 {
 	buf := array[2048] of byte;
 	badread := 0;
@@ -298,12 +304,12 @@ send(hdr: ref Udphdr, msg: array of byte)
 	lport := "67";
 	if(testing)
 		lport = "499";
-	(n, c) := sys->dial(replyaddr, lport);
-	if(n < 0) {
+	c := dial->dial(replyaddr, lport);
+	if(c == nil) {
 		sys->fprint(stderr, "bootpd: can't dial %s for reply: %r\n", replyaddr);
 		return;
 	}
-	n = sys->write(c.dfd, msg, len msg);
+	n := sys->write(c.dfd, msg, len msg);
 	if(n != len msg)
 		sys->fprint(stderr, "bootpd: udp write error: %r\n");
 }

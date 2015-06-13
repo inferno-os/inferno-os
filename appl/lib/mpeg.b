@@ -2,12 +2,13 @@ implement Mpeg;
 
 include "sys.m";
 sys: Sys;
-FD, Connection: import Sys;
+FD: import Sys;
 include "draw.m";
 draw: Draw;
 Display, Rect, Image: import draw;
 include "dial.m";
 dial: Dial;
+Connection: import dial;
 include "mpeg.m";
 
 Chroma: con 16r05;
