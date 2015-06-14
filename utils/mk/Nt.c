@@ -339,7 +339,7 @@ catchnotes()
 char*
 maketmp(void)
 {
-	static char temp[] = "mkargXXX.XXX";
+	static char temp[] = "mkargsXXXXXXXXXXX";
 
 	mktemp(temp);
 	return temp;
@@ -348,7 +348,7 @@ maketmp(void)
 Dir*
 mkdirstat(char *name)
 {
-	int c, n, ret;
+	int c, n;
 	Dir *buf;
 
 	n = strlen(name)-1;

@@ -303,7 +303,7 @@ catchnotes()
 char*
 maketmp(void)
 {
-	static char temp[] = "/tmp/mkargXXXXXX";
+	static char temp[] = "/tmp/mkargXXXXXXXXXXX";
 
 	mktemp(temp);
 	return temp;
