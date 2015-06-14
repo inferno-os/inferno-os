@@ -1659,10 +1659,10 @@ secstat(Dir *dir, char *file, Rune16 *srv)
 		free(sd);
 	if(ok){
 		dir->mode = st.mode;
-		n = runenlen(st.owner->name, runes16len(st.owner->name));
+		n = rune16nlen(st.owner->name, runes16len(st.owner->name));
 		dir->uid = smalloc(n+1);
 		runes16toutf(dir->uid, st.owner->name, n+1);
-		n = runenlen(st.group->name, runes16len(st.group->name));
+		n = rune16nlen(st.group->name, runes16len(st.group->name));
 		dir->gid = smalloc(n+1);
 		runes16toutf(dir->gid, st.group->name, n+1);
 	}
@@ -1688,7 +1688,7 @@ secsize(char *file, Rune16 *srv)
 	if(sd != (void*)sdrock)
 		free(sd);
 	if(ok)
-		return runenlen(st.owner->name, runes16len(st.owner->name))+runenlen(st.group->name, runes16len(st.group->name));
+		return rune16nlen(st.owner->name, runes16len(st.owner->name))+rune16nlen(st.group->name, runes16len(st.group->name));
 	return -1;
 }
 

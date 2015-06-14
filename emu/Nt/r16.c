@@ -9,6 +9,28 @@
 #include	"error.h"
 #include	"r16.h"
 
+#define Bit(i) (7-(i))
+/* N 0's preceded by i 1's, T(Bit(2)) is 1100 0000 */
+#define T(i) (((1 << (Bit(i)+1))-1) ^ 0xFF)
+/* 0000 0000 0000 0111 1111 1111 */
+#define	RuneX(i) ((1 << (Bit(i) + ((i)-1)*Bitx))-1)
+
+enum
+{
+	Bitx	= Bit(1),
+
+	Tx	= T(1),			/* 1000 0000 */
+	Rune1 = (1<<(Bit(0)+0*Bitx))-1,	/* 0000 0000 0000 0000 0111 1111 */
+
+	Maskx	= (1<<Bitx)-1,		/* 0011 1111 */
+	Testx	= Maskx ^ 0xFF,		/* 1100 0000 */
+
+	SurrogateMin	= 0xD800,
+	SurrogateMax	= 0xDFFF,
+
+	Bad	= Runeerror,
+};
+
 Rune16*
 runes16dup(Rune16 *r)
 {
@@ -57,6 +79,28 @@ runes16toutf(char *p, Rune16 *r, int nc)
 	}
 	*p = '\0';
 	return op;
+}
+
+int
+rune16nlen(Rune16 *r, int nrune)
+{
+	int nb, i;
+	Rune c;
+
+	nb = 0;
+	while(nrune--) {
+		c = *r++;
+		if(c <= Rune1){
+			nb++;
+		} else {
+			for(i = 2; i < UTFmax + 1; i++)
+				if(c <= RuneX(i) || i == UTFmax){
+					nb += i;
+					break;
+				}
+		}
+	}
+	return nb;
 }
 
 Rune16*
