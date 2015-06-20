@@ -17,9 +17,11 @@ X11LIBS= -lX11 -lXext	# can remove or override using env section in config files
 <$ROOT/mkfiles/mkfile-$SYSTARG-$OBJTYPE	#set vars based on target system
 
 <| $SHELLNAME ../port/mkdevlist $CONF	#sets $IP, $DEVS, $PORT, $LIBS
+<mkfile-$OBJTYPE	# sets $ARCHFILES
 
 OBJ=\
 	asm-$OBJTYPE.$O\
+	$ARCHFILES\
 	os.$O\
 	kproc-pthreads.$O\
 	segflush-$OBJTYPE.$O\
