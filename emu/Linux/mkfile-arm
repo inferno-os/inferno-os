@@ -1,0 +1,2 @@
+ARCHFILES=\
+	arm-tas-v7.$O\
