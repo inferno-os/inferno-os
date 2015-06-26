@@ -1,14 +1,14 @@
 FreeBSD/386/lib
 Inferno/386/bin
+Inferno/386/lib
 Inferno/arm/bin
+Inferno/arm/lib
 Inferno/mips/bin
 Inferno/mips/lib
 Inferno/power/bin
 Inferno/power/lib
 Inferno/sparc/bin
 Inferno/sparc/lib
-Inferno/thumb/bin
-Inferno/thumb/lib
 Irix/mips/lib
 Linux/386/lib
 Linux/arm/bin
