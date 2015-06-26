@@ -38,7 +38,7 @@ KERNEL_DIRS=\
 
 DIRS=\
 	$EMUDIRS\
-	appl\
+#	appl\
 
 foo:QV:
 	echo mk all, clean, install, installall or nuke
