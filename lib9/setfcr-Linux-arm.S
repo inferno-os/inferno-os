@@ -3,8 +3,8 @@
 #define	RET	bx lr
 #ifdef USEVFP
 	.fpu	vfp
-#define	VMSR(f,r)	f,r
-#define	VMRS(r,f)	r,f
+#define	VMSR(f,r)	vmsr	f,r
+#define	VMRS(r,f)		vmrs	r,f
 #else
 	.fpu	softvfp
 #define	VMSR(f,r)
@@ -19,7 +19,7 @@ FN(setfcr):
 
 FN(getfcr):
 	ENT
-	VMRS(fpscr, r0)
+	VMRS(r0, fpscr)
 	RET
 
 FN(getfsr):
@@ -29,5 +29,5 @@ FN(getfsr):
 
 FN(setfsr):
 	ENT
-	VMRS(r0, fpscr)
+	VMSR(fpscr, r0)
 	RET
