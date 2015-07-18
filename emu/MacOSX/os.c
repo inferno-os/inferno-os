@@ -10,7 +10,6 @@
 #include	"error.h"
 
 #include <raise.h>
-#include <fpuctl.h>
 
 #undef _POSIX_C_SOURCE 
 #undef getwd

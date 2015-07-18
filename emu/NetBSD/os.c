@@ -185,7 +185,6 @@ trapSEGV(int signo)
 	disfault(nil, "Segmentation violation");
 }
 
-#include <fpuctl.h>
 static void
 trapFPE(int signo)
 {

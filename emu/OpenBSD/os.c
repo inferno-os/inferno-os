@@ -15,7 +15,6 @@
 #include	<pwd.h>
 #include	<errno.h>
 #include	<unistd.h>
-#include	<fpuctl.h>
 
 enum
 {
