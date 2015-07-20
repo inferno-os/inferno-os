@@ -24,7 +24,6 @@ CFLAGS= 	-arch i386 -m32\
 		-pipe\
 		-fno-strict-aliasing\
 		-no-cpp-precomp\
-		-mno-fused-madd\
 		-I$ROOT/MacOSX/386/include\
 		-I$ROOT/include\
 		$COPTFLAGS $CDEBUGFLAGS\
