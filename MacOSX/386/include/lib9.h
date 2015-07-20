@@ -511,5 +511,5 @@ extern char *argv0;
 
 extern	void	setfcr(ulong);
 extern	void	setfsr(ulong);
-extern	ulong	getfcr(void):
+extern	ulong	getfcr(void);
 extern	ulong	getfsr(void);
