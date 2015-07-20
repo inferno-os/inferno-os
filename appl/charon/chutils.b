@@ -826,9 +826,7 @@ Netconn.makefree(nc: self ref Netconn)
 		sys->print("NC %d: free\n", nc.id);
 	nc.state = NCfree;
 	nc.host = "";
-	nc.conn.dfd = nil;
-	nc.conn.cfd = nil;
-	nc.conn.dir = "";
+	nc.conn = nil;
 	nc.qlen = 0;
 	nc.gocur = 0;
 	nc.ngcur = 0;

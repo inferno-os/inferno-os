@@ -977,9 +977,7 @@ defaultport(scheme: string) : int
 
 closeconn(nc: ref Netconn)
 {
-	nc.conn.dfd = nil;
-	nc.conn.cfd = nil;
-	nc.conn.dir = "";
+	nc.conn = nil;
 	nc.connected = 0;
 	nc.sslx = nil;
 }
