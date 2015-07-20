@@ -1564,7 +1564,7 @@ comp(Inst *i)
 			else
 				ARRR(Olhzx, Ro3, Ro1, Ro2);
 		} else
-			mem(Olhz, (short)i->reg<<Lg2Rune, Ro1, Ro3);	/* BUG: TO DO: 16-bit signed displacement */
+			mem(Olwz, (short)i->reg<<Lg2Rune, Ro1, Ro3);	/* BUG: TO DO: 16-bit signed displacement */
 		gen(Ob | (2*4));	// skip
 		PATCH(cp);
 		if((i->add&ARM) != AXIMM)
