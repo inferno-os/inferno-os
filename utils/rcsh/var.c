@@ -2,6 +2,7 @@
 #include "y.tab.h"
 
 extern char **_environ;
+extern char **environ;
 
 typedef struct Kw	Kw;
 
