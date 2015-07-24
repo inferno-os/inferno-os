@@ -2062,7 +2062,7 @@ tuplrcom(Node *n, Node *nto)
  * fall through when condition == true
  */
 Inst*
-bcom(Node *n, int true, Inst *b)
+bcom(Node *n, int iftrue, Inst *b)
 {
 	Inst *bb;
 	Node tl, tr, *t, *left, *right, *tn;
@@ -2071,13 +2071,13 @@ bcom(Node *n, int true, Inst *b)
 	if(n->op == Ocomma){
 		tn = n->left->left;
 		ecom(&n->left->src, nil, n->left);
-		bb = bcom(n->right, true, b);
+		bb = bcom(n->right, iftrue, b);
 		tfree(tn);
 		return bb;
 	}
 
 	if(debug['b'])
-		print("bcom %n %d\n", n, true);
+		print("bcom %n %d\n", n, iftrue);
 
 	left = n->left;
 	right = n->right;
@@ -2087,15 +2087,15 @@ bcom(Node *n, int true, Inst *b)
 	case Onothing:
 		return b;
 	case Onot:
-		return bcom(n->left, !true, b);
+		return bcom(n->left, !iftrue, b);
 	case Oandand:
-		if(!true)
-			return oror(n, true, b);
-		return andand(n, true, b);
+		if(!iftrue)
+			return oror(n, iftrue, b);
+		return andand(n, iftrue, b);
 	case Ooror:
-		if(!true)
-			return andand(n, true, b);
-		return oror(n, true, b);
+		if(!iftrue)
+			return andand(n, iftrue, b);
+		return oror(n, iftrue, b);
 	case Ogt:
 	case Ogeq:
 	case Oneq:
@@ -2115,7 +2115,7 @@ bcom(Node *n, int true, Inst *b)
 		return b;
 	}
 
-	if(true)
+	if(iftrue)
 		op = oprelinvert[op];
 
 	if(left->addable < right->addable){
@@ -2146,24 +2146,24 @@ bcom(Node *n, int true, Inst *b)
 }
 
 Inst*
-andand(Node *n, int true, Inst *b)
+andand(Node *n, int iftrue, Inst *b)
 {
 	if(debug['b'])
 		print("andand %n\n", n);
-	b = bcom(n->left, true, b);
-	b = bcom(n->right, true, b);
+	b = bcom(n->left, iftrue, b);
+	b = bcom(n->right, iftrue, b);
 	return b;
 }
 
 Inst*
-oror(Node *n, int true, Inst *b)
+oror(Node *n, int iftrue, Inst *b)
 {
 	Inst *bb;
 
 	if(debug['b'])
 		print("oror %n\n", n);
-	bb = bcom(n->left, !true, nil);
-	b = bcom(n->right, true, b);
+	bb = bcom(n->left, !iftrue, nil);
+	b = bcom(n->right, iftrue, b);
 	patch(bb, nextinst());
 	return b;
 }
