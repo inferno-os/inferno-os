@@ -129,18 +129,18 @@ execute(Node *n)
 	case OIF:
 		expr(l, &res);
 		if(r && r->op == OELSE) {
-			if(bool(&res))
+			if(boolx(&res))
 				execute(r->left);
 			else
 				execute(r->right);
 		}
-		else if(bool(&res))
+		else if(boolx(&res))
 			execute(r);
 		break;
 	case OWHILE:
 		for(;;) {
 			expr(l, &res);
-			if(!bool(&res))
+			if(!boolx(&res))
 				break;
 			execute(r);
 		}
@@ -161,9 +161,9 @@ execute(Node *n)
 }
 
 int
-bool(Node *n)
+boolx(Node *n)
 {
-	int true = 0;
+	int truef = 0;
 
 	if(n->op != OCONST)
 		fatal("bool: not const");
@@ -171,22 +171,22 @@ bool(Node *n)
 	switch(n->type) {
 	case TINT:
 		if(n->nstore.u0.sival != 0)
-			true = 1;
+			truef = 1;
 		break;
 	case TFLOAT:
 		if(n->nstore.u0.sfval != 0.0)
-			true = 1;
+			truef = 1;
 		break;
 	case TSTRING:
 		if(n->nstore.u0.sstring->len)
-			true = 1;
+			truef = 1;
 		break;
 	case TLIST:
 		if(n->nstore.u0.sl)
-			true = 1;
+			truef = 1;
 		break;
 	}
-	return true;
+	return truef;
 }
 
 void

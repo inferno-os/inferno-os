@@ -178,7 +178,7 @@ List*	addlist(List*, List*);
 List*	al(int);
 Node*	an(int, Node*, Node*);
 void	append(Node*, Node*, Node*);
-int	bool(Node*);
+int	boolx(Node*);
 void	build(Node*);
 void	call(char*, Node*, Node*, Node*, Node*);
 void	checkqid(int, int);
