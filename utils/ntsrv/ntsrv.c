@@ -66,7 +66,7 @@ static SERVICE_STATUS_HANDLE	statush;
 static HANDLE	emujob;		/* win32 job object for emu session */
 static DWORD	emugroup;		/* process group ID for emu session */
 static HANDLE emuin;		/* stdin pipe of emu */
-static HANDLE logf;
+static HANDLE logfile;
 
 HANDLE openlog(char*);
 void logmsg(char*, ...);
@@ -186,7 +186,7 @@ infmain(ulong argc, char *argv[])
 	argc--;
 	argv++;
 	cmd = smprint("%s\\%s", root, LOGFILE);
-	logf = openlog(cmd);
+	logfile = openlog(cmd);
 	free(cmd);
 	statush = RegisterServiceCtrlHandler(name, infctl);
 	if (statush == 0)
@@ -209,7 +209,7 @@ infmain(ulong argc, char *argv[])
 		}
 	
 		cp.in = emu.stdout;
-		cp.out = logf;
+		cp.out = logfile;
 		cpt = CreateThread(NULL, 0, copy, (void*)&cp, 0, &tid);
 		if (cpt == NULL) {
 			logmsg("failed to create copy thread: %r");
@@ -253,8 +253,8 @@ infmain(ulong argc, char *argv[])
 		SleepEx(10000, FALSE);
 	}
 	logmsg("infmain done");
-	if (logf)
-		CloseHandle(logf);
+	if (logfile)
+		CloseHandle(logfile);
 	status.dwCurrentState = SERVICE_STOPPED;
 	SetServiceStatus(statush, &status);
 	return;
@@ -387,15 +387,15 @@ logmsg(char *fmt, ...)
 	int n;
 	char *p;
 	va_list args;
-	if(logf == 0)
+	if(logfile == 0)
 		return;
 	va_start(args, fmt);
 	p = vsmprint(fmt, args);
 	va_end(args);
 	n = strlen(p);
 	if (n)
-		WriteFile(logf, p, n, &n, NULL);
-	WriteFile(logf, "\n", 1, &n, NULL);
+		WriteFile(logfile, p, n, &n, NULL);
+	WriteFile(logfile, "\n", 1, &n, NULL);
 }
 
 Emu
