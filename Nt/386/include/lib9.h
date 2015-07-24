@@ -16,6 +16,7 @@
 #define	strtod	infstrtod
 #define	strtoll	infstrtoll
 #define	strtoull	infstrtoull
+#undef environ
 
 /* do-it-yourself isinf and isnan */
 #ifndef isnan
