@@ -14,6 +14,8 @@
 
 #define	getwd	infgetwd
 #define	strtod	infstrtod
+#define	strtoll	infstrtoll
+#define	strtoull	infstrtoull
 
 /* do-it-yourself isinf and isnan */
 #ifndef isnan
