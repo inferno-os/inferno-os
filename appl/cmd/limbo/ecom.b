@@ -1871,20 +1871,20 @@ tuplrcom(n: ref Node, nto: ref Node)
 # boolean compiler
 # fall through when condition == true
 #
-bcom(n: ref Node, true: int, b: ref Inst): ref Inst
+bcom(n: ref Node, iftrue: int, b: ref Inst): ref Inst
 {
 	tleft, tright: ref Node;
 
 	if(n.op == Ocomma){
 		tn := n.left.left;
 		ecom(n.left.src, nil, n.left);
-		b = bcom(n.right, true, b);
+		b = bcom(n.right, iftrue, b);
 		tfree(tn);
 		return b;
 	}
 
 	if(debug['b'])
-		print("bcom %s %d\n", nodeconv(n), true);
+		print("bcom %s %d\n", nodeconv(n), iftrue);
 
 	left := n.left;
 	right := n.right;
@@ -1893,15 +1893,15 @@ bcom(n: ref Node, true: int, b: ref Inst): ref Inst
 	Onothing =>
 		return b;
 	Onot =>
-		return bcom(n.left, !true, b);
+		return bcom(n.left, !iftrue, b);
 	Oandand =>
-		if(!true)
-			return oror(n, true, b);
-		return andand(n, true, b);
+		if(!iftrue)
+			return oror(n, iftrue, b);
+		return andand(n, iftrue, b);
 	Ooror =>
-		if(!true)
-			return andand(n, true, b);
-		return oror(n, true, b);
+		if(!iftrue)
+			return andand(n, iftrue, b);
+		return oror(n, iftrue, b);
 	Ogt or
 	Ogeq or
 	Oneq or
@@ -1921,7 +1921,7 @@ bcom(n: ref Node, true: int, b: ref Inst): ref Inst
 		return b;
 	}
 
-	if(true)
+	if(iftrue)
 		op = oprelinvert[op];
 
 	if(left.addable < right.addable){
@@ -1949,21 +1949,21 @@ bcom(n: ref Node, true: int, b: ref Inst): ref Inst
 	return bb;
 }
 
-andand(n: ref Node, true: int, b: ref Inst): ref Inst
+andand(n: ref Node, iftrue: int, b: ref Inst): ref Inst
 {
 	if(debug['b'])
 		print("andand %s\n", nodeconv(n));
-	b = bcom(n.left, true, b);
-	b = bcom(n.right, true, b);
+	b = bcom(n.left, iftrue, b);
+	b = bcom(n.right, iftrue, b);
 	return b;
 }
 
-oror(n: ref Node, true: int, b: ref Inst): ref Inst
+oror(n: ref Node, iftrue: int, b: ref Inst): ref Inst
 {
 	if(debug['b'])
 		print("oror %s\n", nodeconv(n));
-	bb := bcom(n.left, !true, nil);
-	b = bcom(n.right, true, b);
+	bb := bcom(n.left, !iftrue, nil);
+	b = bcom(n.right, iftrue, b);
 	patch(bb, nextinst());
 	return b;
 }
