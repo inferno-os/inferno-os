@@ -840,10 +840,10 @@ ocand(Node *n, Node *res)
 	res->nstore.u0.sival = 0;
 	expr(n->left, &l);
 	res->nstore.fmt = l.nstore.fmt;
-	if(bool(&l) == 0)
+	if(boolx(&l) == 0)
 		return;
 	expr(n->right, &r);
-	if(bool(&r) == 0)
+	if(boolx(&r) == 0)
 		return;
 	res->nstore.u0.sival = 1;
 }
@@ -857,7 +857,7 @@ onot(Node *n, Node *res)
 	res->type = TINT;
 	res->nstore.u0.sival = 0;
 	expr(n->left, &l);
-	if(bool(&l) == 0)
+	if(boolx(&l) == 0)
 		res->nstore.u0.sival = 1;
 }
 
@@ -870,12 +870,12 @@ ocor(Node *n, Node *res)
 	res->type = TINT;
 	res->nstore.u0.sival = 0;
 	expr(n->left, &l);
-	if(bool(&l)) {
+	if(boolx(&l)) {
 		res->nstore.u0.sival = 1;
 		return;
 	}
 	expr(n->right, &r);
-	if(bool(&r)) {
+	if(boolx(&r)) {
 		res->nstore.u0.sival = 1;
 		return;
 	}
