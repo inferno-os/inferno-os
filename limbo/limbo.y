@@ -1933,45 +1933,6 @@ win2inf(char *s)
 	return s;
 }
 
-/*
-static char *
-pwd(void)
-{
-	int ok, qid, l1, l2;
-	Dir d;
-	char *p;
-	char hd[64], buf[128], path[256];
-	static char *cd;
-
-	if(cd != nil)
-		return cd;
-	*hd = *path = '\0';
-	qid = -1;
-	strcpy(buf, ".");
-	for(;;){
-		ok = dirstat(buf, &d);
-		if(ok < 0)
-			return "";
-		if(d.qid.path == qid && strcmp(d.name, hd) == 0)
-			break;
-		l1 = strlen(d.name);
-		l2 = strlen(path);
-		memmove(path+l1+1, path, l2+1);
-		memcpy(path+1, d.name, l1);
-		path[0] = '/';
-		strcpy(hd, d.name);
-		qid = d.qid.path;
-		strcat(buf, "/..");
-	}
-	p = win2inf(path);
-	while(*p == '/' && p[1] == '/')
-		p++;
-	cd = malloc(strlen(p)+1);
-	strcpy(cd, p);
-	return cd;
-}
-*/
-
 static char *
 cleann(char *s)
 {
@@ -1982,7 +1943,6 @@ cleann(char *s)
 	strcpy(t, s);
 	t = win2inf(t);
 	if(*t != '/'){
-		/* p = pwd(); */
 		p = win2inf(getwd(buf, sizeof(buf)));
 		s = malloc(strlen(p)+strlen(t)+2);
 		strcpy(s, p);
