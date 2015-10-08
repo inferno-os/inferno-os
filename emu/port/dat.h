@@ -96,7 +96,7 @@ enum
 
 	COPEN	= 0x0001,		/* for i/o */
 	CMSG	= 0x0002,		/* the message channel for a mount */
-/*rsc	CCREATE	= 0x0004,		/* permits creation if c->mnt */
+/*rsc	CCREATE	= 0x0004,		*//* permits creation if c->mnt */
 	CCEXEC	= 0x0008,		/* close on exec */
 	CFREE	= 0x0010,		/* not in use */
 	CRCLOSE	= 0x0020,		/* remove on close */
