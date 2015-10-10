@@ -9,17 +9,20 @@ AR=		ar
 ARFLAGS=	ruvs
 A=		a
 
-AS=		cc -c -arch i386 -m32
-ASFLAGS= -mmacosx-version-min=10.6
+MACVER=	10.5
 
-ISYSROOT=	-isysroot /Developer/SDKs/MacOSX10.6.sdk
+
+AS=		cc -c -arch i386 -m32
+ASFLAGS= -mmacosx-version-min=$MACVER
+
+ISYSROOT=	-isysroot /Developer/SDKs/MacOSX$MACVER.sdk
 
 CC=		cc -c -m32
 COPTFLAGS=	-Os
 CDEBUGFLAGS=
 CTHREADFLAGS=
 CFLAGS= 	-arch i386 -m32\
-		-mmacosx-version-min=10.6\
+		-mmacosx-version-min=$MACVER\
 		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit -Wno-four-char-constants -Wno-unknown-pragmas\
 		-Wno-main-return-type \
 		-Wno-logical-op-parentheses \
@@ -38,7 +41,7 @@ CFLAGS= 	-arch i386 -m32\
 
 LD=		cc -arch i386 -m32
 LDFLAGS=\
-		-mmacosx-version-min=10.6\
+		-mmacosx-version-min=$MACVER\
 		-multiply_defined suppress
 
 SYSLIBS=
