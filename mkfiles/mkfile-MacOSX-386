@@ -28,6 +28,7 @@ CFLAGS= 	-arch i386 -m32\
 		-Wno-parentheses \
 		-Wno-switch \
 		-Wno-tautological-compare \
+		-Wno-string-plus-int \
 		-pipe\
 		-fno-strict-aliasing\
 		-no-cpp-precomp\
