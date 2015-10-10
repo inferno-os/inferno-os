@@ -136,10 +136,10 @@ flushproc(void *a)
 	for(;;) {
 		if(needflush) {
 			drawqlock();
+			needflush = false;
 			QDBeginCGContext(GetWindowPort(theWindow), &context);
 			CGContextFlush(context);
 			QDEndCGContext(GetWindowPort(theWindow), &context);
-			needflush = false;
  			drawqunlock();
 		}
 		usleep(33333);
