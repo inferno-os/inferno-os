@@ -282,7 +282,7 @@ static long
 consread(Chan *c, void *va, long n, vlong offset)
 {
 	int send;
-	char *p, buf[64], ch;
+	char buf[64], ch;
 
 	if(c->qid.type & QTDIR)
 		return devdirread(c, va, n, contab, nelem(contab), devgen);
