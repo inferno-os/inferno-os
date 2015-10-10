@@ -151,7 +151,7 @@ fswstat(Qid qid, Dir *d)
 	if(d->mode != ~0 && d->mode != f->d.mode){
 		if(!owner)
 			return Eperm;
-		if(d->mode&DMDIR != f->d.mode&DMDIR)
+		if((d->mode&DMDIR) != (f->d.mode&DMDIR))
 			return Eperm;	/* cannot change file->directory or vice-verse */
 		f->d.mode = d->mode;
 	}
@@ -180,6 +180,7 @@ Styxops ops = {
 	fswstat,		/* wstat */
 };
 
+void
 main(int argc, char **argv)
 {
 	Styxserver s;
@@ -193,6 +194,5 @@ main(int argc, char **argv)
 		styxwait(&s);
 		styxprocess(&s);
 	}
-	return 0;
+	exits(nil);
 }
-
