@@ -19,7 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-// #include "math.h"
+#include "math.h"
 #include <fcntl.h>
 #include <setjmp.h>
 #include <float.h>
@@ -257,6 +257,7 @@ extern	ulong	ntruerand(ulong);
  * math
  */
 extern	int	isNaN(double);
+extern	double	NaN(void);
 extern	int	isInf(double, int);
 extern	double	pow(double, double);
 
@@ -464,7 +465,7 @@ extern char *argv0;
 #define	ARGBEGIN	for((argv0||(argv0=*argv)),argv++,argc--;\
 			    argv[0] && argv[0][0]=='-' && argv[0][1];\
 			    argc--, argv++) {\
-				char *_args, *_argt;\
+				char *_args, *_argt=0;\
 				Rune _argc;\
 				_args = &argv[0][1];\
 				if(_args[0]=='-' && _args[1]==0){\
