@@ -65,7 +65,8 @@ int
 styxaccept(Styxserver *server)
 {
 	struct sockaddr_in sin;
-	int len, s;
+	int s;
+	socklen_t len;
 
 	len = sizeof(sin);
 	memset(&sin, 0, sizeof(sin));
