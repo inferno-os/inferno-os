@@ -22,6 +22,11 @@
 #include <IOKit/serial/IOSerialKeys.h>
 #include <IOKit/IOBSD.h>
 
+#include <sys/ioctl.h>
+#include <sys/ttycom.h>
+
+#undef nil
+
 #define B14400	14400
 #define B28800	28800
 #define B57600	57600
@@ -31,100 +36,11 @@
 
 extern int vflag;
 
-#define MAXDEV 8
+#define MAXDEV 16
 static char *sysdev[MAXDEV];
-
-#include <sys/ioctl.h>
-#include <sys/ttycom.h>
 
 static void _buildsysdev(void);
 #define	buildsysdev()	_buildsysdev()	/* for devfs-posix.c */
-
-static void
-_buildsysdev(void)
-{
-    kern_return_t           kernResult;
-    mach_port_t             masterPort;
-    CFMutableDictionaryRef  classesToMatch;
-    io_iterator_t           serialPortIterator;
-    io_object_t             serialDevice;
-    CFMutableArrayRef       array;
-    CFIndex                 idx;
-
-    kernResult = IOMasterPort(MACH_PORT_NULL, &masterPort);
-    if (KERN_SUCCESS != kernResult)
-    {
-        printf("IOMasterPort returned %d\n", kernResult);
-    } else {
-        classesToMatch = IOServiceMatching(kIOSerialBSDServiceValue);
-        if (classesToMatch == NULL)
-        {
-            printf("IOServiceMatching returned a NULL dictionary.\n");
-        } else {
-            CFDictionarySetValue(classesToMatch,
-                                 CFSTR(kIOSerialBSDTypeKey),
-                                 CFSTR(kIOSerialBSDAllTypes));
-        }
-        
-        kernResult = IOServiceGetMatchingServices(masterPort, classesToMatch, &serialPortIterator);
-        if (KERN_SUCCESS != kernResult)
-        {
-            printf("IOServiceGetMatchingServices returned %d\n", kernResult);
-        } else {
-            array = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
-            
-            while ((serialDevice = IOIteratorNext(serialPortIterator))) {
-                CFTypeRef	bsdPathAsCFString;
-                bsdPathAsCFString = IORegistryEntryCreateCFProperty(serialDevice,
-                                                                    CFSTR(kIOCalloutDeviceKey),
-                                                                    kCFAllocatorDefault,
-                                                                    0);
-                if (bsdPathAsCFString) {
-                    CFArrayAppendValue(array, bsdPathAsCFString);
-                }
-                
-                (void) IOObjectRelease(serialDevice);
-            }
-            
-            idx = CFArrayGetCount(array);
-            if (idx > 0) {
-                Boolean result;
-                char 	bsdPath[MAXPATHLEN];
-                char 	*tmpsysdev[idx+1];
-                CFIndex i;
-                
-                for (i=0; i<idx; i++) {
-                    result = CFStringGetCString(CFArrayGetValueAtIndex(array, i),
-                                                bsdPath,
-                                                sizeof(bsdPath),
-                                                kCFStringEncodingASCII);
-                    if (result) {
-                        int len = strlen(bsdPath);
-                        tmpsysdev[i] = (char *)malloc((len+1)*sizeof(char));
-                        strcpy(tmpsysdev[i], bsdPath);
-                    }
-                }
-                tmpsysdev[idx] = NULL;
-                for (i=0; i < idx; i++) {
-                    sysdev[i] = tmpsysdev[i];
-                    if (vflag)
-                        printf("BSD path: '%s'\n", sysdev[i]);
-                }
-            }
-            
-            CFRelease(array);
-        }
-    }
-	
-    if (serialPortIterator)
-        IOObjectRelease(serialPortIterator);
-    if (masterPort)
-        mach_port_deallocate(mach_task_self(), masterPort);
-
-    return;
-}
-
-#undef nil
 
 #include "deveia-posix.c"
 #include "deveia-bsd.c"
@@ -152,3 +68,56 @@ static struct tcdef_t bps[] = {
     {230400,	B230400},
     {0,		-1}
 };
+
+static void
+_buildsysdev(void)
+{
+	mach_port_t port;
+	CFMutableDictionaryRef classesToMatch;
+	io_iterator_t serialPortIterator;
+	io_object_t serialDevice;
+	CFMutableArrayRef paths;
+	CFTypeRef path;
+	char	eiapath[MAXPATHLEN];
+	CFIndex i, o, npath;
+
+	if(IOMasterPort(MACH_PORT_NULL, &port) != KERN_SUCCESS)
+		return;
+	classesToMatch = IOServiceMatching(kIOSerialBSDServiceValue);
+	if(classesToMatch == NULL){
+		printf("IOServiceMatching returned a NULL dictionary.\n");
+		goto Failed;
+	}
+	CFDictionarySetValue(classesToMatch,
+		CFSTR(kIOSerialBSDTypeKey),
+		CFSTR(kIOSerialBSDAllTypes));
+
+	if(IOServiceGetMatchingServices(port, classesToMatch, &serialPortIterator) != KERN_SUCCESS)
+		goto Failed;
+
+	paths = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+	while((serialDevice = IOIteratorNext(serialPortIterator)) != 0){
+		path = IORegistryEntryCreateCFProperty(serialDevice, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
+		if(path != NULL)
+			CFArrayAppendValue(paths, path);
+		IOObjectRelease(serialDevice);
+	}
+
+	npath = CFArrayGetCount(paths);
+	o = 0;
+	for(i = 0; i < npath && i < nelem(sysdev); i++){
+		if(CFStringGetCString(CFArrayGetValueAtIndex(paths, i), eiapath, sizeof(eiapath), kCFStringEncodingUTF8)){
+			sysdev[o] = strdup(eiapath);
+			if(vflag)
+				print("BSD path: '%s'\n", sysdev[o]);
+			o++;
+		}
+	}
+
+	CFRelease(paths);
+	IOObjectRelease(serialPortIterator);
+
+Failed:
+	mach_port_deallocate(mach_task_self(), port);
+}
+
