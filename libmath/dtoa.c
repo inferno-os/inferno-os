@@ -1,6 +1,11 @@
 /* derived from /netlib/fp/dtoa.c assuming IEEE, Standard C */
 /* kudos to dmg@bell-labs.com, gripes to ehg@bell-labs.com */
 #include "lib9.h"
+
+#ifdef __APPLE__
+#pragma clang diagnostic ignored "-Wlogical-op-parentheses"
+#pragma clang diagnostic ignored "-Wparentheses"
+#endif
 #define ACQUIRE_DTOA_LOCK(n)	/*nothing*/
 #define FREE_DTOA_LOCK(n)	/*nothing*/
 
