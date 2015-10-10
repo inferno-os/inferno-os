@@ -108,7 +108,7 @@ _buildsysdev(void)
 	for(i = 0; i < npath && i < nelem(sysdev); i++){
 		if(CFStringGetCString(CFArrayGetValueAtIndex(paths, i), eiapath, sizeof(eiapath), kCFStringEncodingUTF8)){
 			sysdev[o] = strdup(eiapath);
-			if(vflag)
+			if(vflag > 1)
 				print("BSD path: '%s'\n", sysdev[o]);
 			o++;
 		}
