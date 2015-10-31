@@ -1272,7 +1272,7 @@ Constant
 .CW adt
 members follow the same rules as ordinary constants (§6.2).
 .PP
-The
+The obsolete
 .CW cyclic
 modifier will be discussed in §11.1.
 .NH 3
@@ -4071,59 +4071,39 @@ to itself, or to another
 even if the second
 .CW adt
 has not yet been declared.
-Unless a special notation is used, such
-references are restricted:
-all mutual or self references among
-.CW adt
-are checked statically throughout all the
-.CW adt
-visible in a module to determine which
-members refer to other
-.CW adt .
-Any member of an
-.CW adt
-of
-.CW ref
-.CW adt
-type that refers directly, or indirectly through a chain of references,
-back to its own underlying type may not be assigned to individually;
-it can gain a value only by an assignment to the
-.CW adt
-as a whole.
-For example, in
+.PP
+For example, a tree structure where nodes contain references to children can be declared and created as follows:
 .P1
 	Tree: adt {
 		l: ref Tree;
 		r: ref Tree;
-		t: ref Ntree;
-	};
-	Ntree: adt {
-		t: ref Tree;
+		v: int;
 	};
 
-	t1 := Tree(nil, nil, nil);	# OK
-	t2 := Tree(ref t1, ref t1, nil);	# OK
-	t1 = Tree(ref t1, ref t2, nil);	# OK
-	t1.l = ... ;	# not OK
-
-	nt := ref Ntree(nil);	# OK
-	nt.t = ...	# not OK
+	t1a := ref Tree(nil, nil, 0);
+	t1b := ref Tree(nil, nil, 1);
+	t1c := ref Tree(nil, nil, 2);
+	t2 := Tree(t1a, t1b, 0);
+	t2.l = t1c;	# replace reference to t1a by reference to t1c
 .P2
-the first three assignments are correct, but
-any assignment to
-.CW t1.l
-is forbidden, because it is self-referential.
-The situation is the same with the mutually
-referential fields of the
-.CW Tree
-and
-.CW Ntree
-.CW adt .
+The tree structure resulting above is non-circular, since no
+.CW adt
+value refers back to itself directly or indireclty.
+Circular data structures can also be created. For example,
+.P1
+	Graph: adt {
+		next: ref Graph;
+		v: int;
+	};
+
+	g1 := ref Graph(nil, 0);
+	g2 := ref Graph(g1, 1);
+	g1.next = g2;
+.P2
+creates a pair of nodes that refer to each other.
 .PP
-These restrictions suffice
-to prevent the creation of circular data structures.
 Limbo implementations guarantee to
-destroy all data objects not involved in such circularity
+destroy all data objects not involved in circular data structures
 immediately after they become non-referenced by active
 tasks, whether because
 their names go out of scope or because they are assigned new values.
@@ -4134,38 +4114,16 @@ In particular, if a reference to such a resource is held only within an
 then that resource too is destroyed when the
 .CW adt
 is.
-.PP
-The default rules are burdensome because they impede the construction even
-of harmless structures like trees.
-Therefore an escape is provided: using the word
-.CW cyclic
-before the type in an
-.CW adt
-member removes the circular-reference restriction for that member.
-For example,
-.P1
-	Tree: adt {
-		l: cyclic ref Tree;
-		r: cyclic ref Tree;
-		t: ref Ntree;
-	};
-	Ntree: adt {
-		t: cyclic ref Tree;
-	};
-
-	t1 := Tree(nil, nil, nil);	# OK
-	t2 := Tree(ref t1, ref t1, nil);	# OK
-	t1 = Tree(ref t1, ref t2, nil);	# OK
-	t1.l = ... ;	#  OK now
-
-	nt := ref Ntree(nil);	# OK
-	nt.t = ...	# OK now
-.P2
-With the use of
-.CW cyclic ,
-circular data structures can be created.
+Circular data structures can also be created.
 When they become unreferenced except by themselves, they will
 be garbage-collected eventually, but not instantly.
+.PP
+An earlier version of the language required circular references to be annoted by the word
+.CW cyclic ,
+but that is no longer required.
+The notation can still be seen in some system source code, because the
+.CW cyclic
+qualifier is taken into account in type checking, as described below, and some instances remain to provide backward compatibility.
 .NH 2
 Type equality and compatibility
 .PP
