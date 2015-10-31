@@ -1875,7 +1875,7 @@ circlval(n, lval: ref Node): int
 	Oname =>
 		break;
 	Odot =>
-		if(n.right.decl.cycle != byte 0 && n.right.decl.cyc == byte 0){
+		if(oldcycles && n.right.decl.cycle != byte 0 && n.right.decl.cyc == byte 0){
 			nerror(lval, "cannot assign to "+expconv(lval)+" because field '"+n.right.decl.sym.name
 					+"' of "+expconv(n.left)+" could complete a cycle to "+expconv(n.left));
 			return -1;
@@ -1883,7 +1883,7 @@ circlval(n, lval: ref Node): int
 		return 1;
 	Oind =>
 		for(id := n.ty.ids; id != nil; id = id.next){
-			if(id.cycle != byte 0 && id.cyc == byte 0){
+			if(oldcycles && id.cycle != byte 0 && id.cyc == byte 0){
 				nerror(lval, "cannot assign to "+expconv(lval)+" because field '"+id.sym.name
 					+"' of "+expconv(n)+" could complete a cycle to "+expconv(n));
 				return -1;

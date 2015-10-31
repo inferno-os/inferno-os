@@ -33,6 +33,7 @@ include "draw.m";
 	noline:		Line;
 	nosrc:		Src;
 	arrayz:		int;
+	oldcycles:	int;
 	emitcode:	string;			# emit stub routines for system module functions
 	emitdyn: int;				# emit as above but for dynamic modules
 	emitsbl:	string;			# emit symbol file for sysm modules
@@ -1630,7 +1631,8 @@ tpoly	: ids Llabs
 
 %%
 
-include "keyring.m";
+include "ipints.m";
+include "crypt.m";
 
 sys:	Sys;
 	print, fprint, sprint: import sys;
@@ -1640,8 +1642,8 @@ bufio:	Bufio;
 
 str:		String;
 
-keyring:Keyring;
-	md5: import keyring;
+crypt:Crypt;
+	md5: import crypt;
 
 math:	Math;
 	import_real, export_real, isnan: import math;
@@ -1681,7 +1683,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	s: string;
 
 	sys = load Sys Sys->PATH;
-	keyring = load Keyring Keyring->PATH;
+	crypt = load Crypt Crypt->PATH;
 	math = load Math Math->PATH;
 	bufio = load Bufio Bufio->PATH;
 	if(bufio == nil){
@@ -1810,6 +1812,8 @@ init(nil: ref Draw->Context, argv: list of string)
 			signdump = arg.arg();
 		'z' =>
 			arrayz = 1;
+		'y' =>
+			oldcycles = 1;
 		* =>
 			usage();
 		}
