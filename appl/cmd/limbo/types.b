@@ -3189,10 +3189,10 @@ sign(d: ref Decl): int
 		print("%s\n", string sig[:sigend]);
 	}
 
-	md5sig := array[Keyring->MD5dlen] of {* => byte 0};
+	md5sig := array[Crypt->MD5dlen] of {* => byte 0};
 	md5(sig, sigend, md5sig, nil);
 
-	for(i := 0; i < Keyring->MD5dlen; i += 4)
+	for(i := 0; i < Crypt->MD5dlen; i += 4)
 		t.sig ^= int md5sig[i+0] | (int md5sig[i+1]<<8) | (int md5sig[i+2]<<16) | (int md5sig[i+3]<<24);
 
 	if(debug['S'])
