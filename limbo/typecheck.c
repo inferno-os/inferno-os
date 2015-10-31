@@ -2155,13 +2155,15 @@ circlval(Node *n, Node *lval)
 	case Oname:
 		break;
 	case Odot:
-		if(n->right->decl->cycle && !n->right->decl->cyc){
+		if(oldcycles && n->right->decl->cycle && !n->right->decl->cyc){
 			nerror(lval, "cannot assign to %V because field '%s' of %V could complete a cycle to %V",
 				lval, n->right->decl->sym->name, n->left, n->left);
 			return -1;
 		}
 		return 1;
 	case Oind:
+		if(!oldcycles)
+			return 1;
 		for(id = n->ty->ids; id != nil; id = id->next){
 			if(id->cycle && !id->cyc){
 				nerror(lval, "cannot assign to %V because field '%s' of %V could complete a cycle to %V",

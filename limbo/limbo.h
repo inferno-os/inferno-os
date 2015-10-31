@@ -625,6 +625,7 @@ Extern	int	maxerr;
 Extern	int	maxlabdep;		/* maximum nesting of breakable/continuable statements */
 Extern	long	maxstack;		/* max size of a stack frame called */
 Extern	int	mustcompile;		/* dis header flag */
+Extern	int	oldcycles;
 Extern	int	nadts;
 Extern	int	newfnptr;		/* ISELF and -ve indices */
 Extern	int	nfns;

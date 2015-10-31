@@ -1774,6 +1774,9 @@ main(int argc, char *argv[])
 	case 'X':
 		signdump = ARGF();
 		break;
+	case 'y':
+		oldcycles = 1;
+		break;
 	case 'z':
 		arrayz = 1;
 		break;
