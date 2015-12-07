@@ -18,10 +18,13 @@ _tas:
 tas1:
 	ldrex	r0, [r1]
 	cmp	r0, #0
-	bxne	lr
-	strex	r4, r2, [r1]
-	cmp	r4, #0
+	bne	lockbusy
+	strex	r3, r2, [r1]
+	cmp	r3, #0
 	bne	tas1
 	DMB
+	bx	lr
+lockbusy:
+	clrex
 	bx	lr
 	.size	_tas, .-_tas
