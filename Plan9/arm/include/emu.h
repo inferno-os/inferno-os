@@ -14,7 +14,7 @@ typedef	struct	FPU	FPU;
  */
 struct FPU
 {
-	int dummy[1];	/* XXX what goes here? */
+	int	fpcsr;
 };
 
 typedef jmp_buf osjmpbuf;
