@@ -692,7 +692,7 @@ Syntax:		indb	src1, dst, src2
 		indw	src1, dst, src2
 		indf	src1, dst, src2
 		indl	src1, dst, src2
-Function:	dst = src1[src2]
+Function:	dst = &src1[src2]
 .P2
 The 
 .CW "indb" , 
@@ -706,7 +706,7 @@ operand must be an array created by the
 .CW "newa"
 instruction. The 
 .CW "src2"
-operand must be a non-negative integer index less than the array size. The value of the element at the index is loaded into the 
+operand must be a non-negative integer index less than the array size. The effective address of the element at the index is stored in the 
 .CW "dst"
 operand.
 .SH
@@ -726,7 +726,7 @@ the string's length.)
 The
 .CW "src1"
 operand must be a string (or nil).
-The character to insert must be a valid 16-bit unicode value represented as a word.
+The character to insert must be a valid 21-bit unicode value represented as a word.
 .SH
 jmp \- Branch always
 .P1
@@ -1743,7 +1743,7 @@ of bytes (of appropriate length) in big-endian form, converted to native
 format before being stored in the data space.
 The `string' code takes a UTF-encoded sequence of
 .CW count
-bytes, which is converted to an array of 16-bit Unicode values stored in an
+bytes, which is converted to an array of 21-bit Unicode values stored in an
 implementation-dependent structure on
 the heap; a 4-byte pointer to the string descriptor is stored in the data space.
 The `array' code takes two 4-byte operands: the first is the index of the array's type
