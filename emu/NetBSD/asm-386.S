@@ -5,7 +5,7 @@
  * executeonnewstack(void *tos, void (*tramp)(void *arg), void *arg)
  */
 
-	.type	 ournewstack,@function
+	.type	executeonnewstack,@function
 	.global	executeonnewstack
 executeonnewstack:
 	pushl	%ebp
