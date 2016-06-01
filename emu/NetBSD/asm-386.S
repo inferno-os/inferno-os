@@ -23,7 +23,7 @@ executeonnewstack:
 	popl	%eax		/* recover the tramp address */
 	call	*%eax		/* and jump to it (ho ho) */
 
-	/* if we return here, tramp didn't do it's job */
+	/* if we return here, tramp didn't do its job */
 
 	addl	$8, %esp	/* clean up for pose value */
 
