@@ -29,7 +29,9 @@ OBJ=\
 HFILES=\
 
 CFLAGS='-DROOT="'$ROOT'"' -DEMU -I. -I../port -I$ROOT/$SYSTARG/$OBJTYPE/include -I$ROOT/include -I$ROOT/libinterp $CTHREADFLAGS $CFLAGS $EMUOPTIONS
-SYSLIBS= -lXext -lX11 -lossaudio -lm
+# can remove or override X11LIBS using env section in config files
+X11LIBS= -lXext -lX11
+SYSLIBS= ${X11LIBS} -lossaudio -lm
 KERNDATE=`{$NDATE}
 
 default:V:	$O.$CONF
