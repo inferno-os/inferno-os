@@ -27,6 +27,10 @@ extern	int	mflag;
 	ulong	displaychan;
 char *cputype;
 
+/* For dynamic linking init/fini code that needs malloc */
+void	(*coherence)(void) = nofence;
+
+
 static void
 usage(void)
 {
