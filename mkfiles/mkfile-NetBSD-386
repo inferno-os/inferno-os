@@ -21,7 +21,7 @@ CFLAGS=		-g\
 
 ANSICPP=
 LD=		cc
-LDFLAGS=	-L/usr/X11R7/lib -R/usr/X11R7/lib
+LDFLAGS=
 
 SYSLIBS=
 
