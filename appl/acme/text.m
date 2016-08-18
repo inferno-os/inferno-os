@@ -42,7 +42,7 @@ Textm : module {
 		select3 : fn(t : self ref Text, p: int, q : int) : (int, int, int);
 		setselect : fn(t : self ref Text, p : int, q : int);
 		setselect0 : fn(t : self ref Text, p : int, q : int);
-		show : fn(t : self ref Text, p : int, q : int);
+		show : fn(t : self ref Text, p : int, q : int, dosel : int);
 		fill : fn(t : self ref Text);
 		commit : fn(t : self ref Text, n : int);
 		setorigin : fn(t : self ref Text, p : int, q : int);

@@ -772,7 +772,7 @@ nl_cmd(t: ref Text, cp: ref Cmd): int
 			addr = lineaddr(1, a, 1);
 		}
 	}
-	t.show(addr.r.q0, addr.r.q1);
+	t.show(addr.r.q0, addr.r.q1, TRUE);
 	return TRUE;
 }
 

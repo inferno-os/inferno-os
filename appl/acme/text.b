@@ -130,7 +130,9 @@ KF : con 16rF000;
 Kup : con KF | 16r0E;
 Kleft : con KF | 16r11;
 Kright : con KF | 16r12;
+Kend : con KF | 16r18;
 Kdown : con 16r80;
+
 
 nulltext : Text;
 
@@ -181,7 +183,7 @@ Text.redraw(t : self ref Text, r : Rect, f : ref Draw->Font, b : ref Image, odx 
 		if(t.frame.maxlines > 0){
 			t.reset();
 			t.columnate(t.w.dlp,  t.w.ndl);
-			t.show(0, 0);
+			t.show(0, 0, TRUE);
 		}
 	}else{
 		t.fill();
@@ -712,19 +714,27 @@ Text.typex(t : self ref Text, r : int, echomode : int)
 			q0 = t.backnl(t.org, n);
 			t.setorigin(q0, FALSE);
 			return;
+		Keyboard->Home =>
+			t.commit(TRUE);
+			t.show(0, 0, FALSE);
+			return;
+		Kend or Keyboard->End =>
+			t.commit(TRUE);
+			t.show(t.file.buf.nc, t.file.buf.nc, FALSE);
+			return;
 		Kleft or Keyboard->Left =>
 			t.commit(TRUE);
 			if(t.q0 != t.q1)
-				t.show(t.q0, t.q0);
+				t.show(t.q0, t.q0, TRUE);
 			else if(t.q0 != 0)
-				t.show(t.q0-1, t.q0-1);
+				t.show(t.q0-1, t.q0-1, TRUE);
 			return;
 		Kright or Keyboard->Right =>
 			t.commit(TRUE);
 			if(t.q0 != t.q1)
-				t.show(t.q1, t.q1);
+				t.show(t.q1, t.q1, TRUE);
 			else if(t.q1 != t.file.buf.nc)
-				t.show(t.q1+1, t.q1+1);
+				t.show(t.q1+1, t.q1+1, TRUE);
 			return;
 	}
 	if(t.what == Body){
@@ -737,11 +747,11 @@ Text.typex(t : self ref Text, r : int, echomode : int)
 		exec->cut(t, t, TRUE, TRUE);
 		t.eq0 = ~0;
 		if (r == 16r08 || r == 16r7f){	# erase character : odd if a char then erased
-			t.show(t.q0, t.q0);
+			t.show(t.q0, t.q0,TRUE);
 			return;
 		}
 	}
-	t.show(t.q0, t.q0);
+	t.show(t.q0, t.q0, TRUE);
 	case(r){
 	16r1B =>
 		if(t.eq0 != ~0)
@@ -1007,17 +1017,21 @@ Text.select(t : self ref Text, double : int)
 	}
 }
 
-Text.show(t : self ref Text, q0 : int, q1 : int)
+Text.show(t : self ref Text, q0 : int, q1 : int, doselect : int)
 {
 	qe : int;
 	nl : int;
 	q : int;
 
-	if(t.what != Body)
+	if(t.what != Body){
+		if(doselect)
+			t.setselect(q0, q1);
 		return;
+	}
 	if(t.w!=nil && t.frame.maxlines==0)
 		t.col.grow(t.w, 1, 0);
-	t.setselect(q0, q1);
+	if(doselect)
+		t.setselect(q0, q1);
 	qe = t.org+t.frame.nchars;
 	if(t.org<=q0 && (q0<qe || (q0==qe && qe==t.file.buf.nc+t.ncache)))
 		scrdraw(t);
