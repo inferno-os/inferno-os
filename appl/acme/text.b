@@ -705,12 +705,22 @@ Text.typex(t : self ref Text, r : int, echomode : int)
 			}
 			return;		
 		Kdown or Keyboard->Down =>
-			n = t.frame.maxlines/2;
+			n = t.frame.maxlines/3;
+			q0 = t.org+frcharofpt(t.frame, (t.frame.r.min.x, t.frame.r.min.y+n*t.frame.font.height));
+			t.setorigin(q0, FALSE);
+			return;
+		Keyboard->Pgdown =>
+			n = 2*t.frame.maxlines/3;
 			q0 = t.org+frcharofpt(t.frame, (t.frame.r.min.x, t.frame.r.min.y+n*t.frame.font.height));
 			t.setorigin(q0, FALSE);
 			return;
 		Kup or Keyboard->Up =>
-			n = t.frame.maxlines/2;
+			n = t.frame.maxlines/3;
+			q0 = t.backnl(t.org, n);
+			t.setorigin(q0, FALSE);
+			return;
+		Keyboard->Pgup =>
+			n = 2*t.frame.maxlines/3;
 			q0 = t.backnl(t.org, n);
 			t.setorigin(q0, FALSE);
 			return;
