@@ -746,6 +746,21 @@ Text.typex(t : self ref Text, r : int, echomode : int)
 			else if(t.q1 != t.file.buf.nc)
 				t.show(t.q1+1, t.q1+1, TRUE);
 			return;
+		1 =>  	# ^A: beginning of line
+			t.commit(TRUE);
+			# go to where ^U would erase, if not already at BOL
+			nnb = 0;
+			if(t.q0>0 && t.readc(t.q0-1)!='\n')
+				nnb = t.bswidth(16r15);
+			t.show(t.q0-nnb, t.q0-nnb, TRUE);
+			return;
+		5 =>  	# ^E: end of line
+			t.commit(TRUE);
+			q0 = t.q0;
+			while(q0<t.file.buf.nc && t.readc(q0)!='\n')
+				q0++;
+			t.show(q0, q0, TRUE);
+			return;
 	}
 	if(t.what == Body){
 		seq++;
