@@ -267,7 +267,7 @@ Window.undo(w : self ref Window, isundo : int)
 	w.utflastqid = -1;
 	body = w.body;
 	(body.q0, body.q1) = body.file.undo(isundo, body.q0, body.q1);
-	body.show(body.q0, body.q1);
+	body.show(body.q0, body.q1, TRUE);
 	f = body.file;
 	for(i=0; i<f.ntext; i++){
 		v = f.text[i].w;

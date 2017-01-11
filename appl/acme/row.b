@@ -714,7 +714,7 @@ Row.loadx(row : self ref Row, file : string, initing : int)
 				}
 				if(q0>w.body.file.buf.nc || q1>w.body.file.buf.nc || q0>q1)
 					q0 = q1 = 0;
-				w.body.show(q0, q1);
+				w.body.show(q0, q1, TRUE);
 				w.maxlines = min(w.body.frame.nlines, max(w.maxlines, w.body.frame.maxlines));
 			}
 			b.close();

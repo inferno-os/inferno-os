@@ -273,7 +273,7 @@ search(ct : ref Text, r : string, n : int) : int
 		}
 		if(n <= nb && s.s[b:b+n] == r[0:n]){
 			if(ct.w != nil){
-				ct.show(q, q+n);
+				ct.show(q, q+n, TRUE);
 				ct.w.settag();
 			}else{
 				ct.q0 = q;
@@ -698,7 +698,7 @@ openfile(t : ref Text, e : Expand) : (ref Window, Expand)
 		r.q0 = t.q0;
 		r.q1 = t.q1;
 	}
-	t.show(r.q0, r.q1);
+	t.show(r.q0, r.q1, TRUE);
 	t.w.settag();
 	seltext = t;
 	if(e.jump)

@@ -321,7 +321,7 @@ Xfid.close(x : self ref Xfid)
 			t :=w.body;
 			# before: only did this if !w->noscroll, but that didn't seem right in practice
 			t.show(min(w.wrselrange.q0, t.file.buf.nc),
-				    min(w.wrselrange.q1, t.file.buf.nc));
+				    min(w.wrselrange.q1, t.file.buf.nc), TRUE);
 			scrdraw(t);
 		QWconsctl=>
 			w.echomode = EM_NORMAL;
@@ -535,7 +535,7 @@ Xfid.write(x : self ref Xfid)
 		if(tq1 >= q0)
 			tq1 += nr;
 		if(!t.w.noscroll)
-			t.show(tq0, tq1);
+			t.show(tq0, tq1, TRUE);
 		scrdraw(t);
 		w.settag();
 		r = nil;
@@ -586,7 +586,7 @@ Xfid.write(x : self ref Xfid)
 				}
 				(q0, nr) = t.bsinsert(q0, r, nr, TRUE);
 				if(qid!=QWwrsel && !t.w.noscroll)
-					t.show(q0+nr, q0+nr);
+					t.show(q0+nr, q0+nr, TRUE);
 				scrdraw(t);
 			}else
 				t.insert(q0, r, nr, TRUE, 0);
@@ -642,7 +642,7 @@ loop :
 		}else
 		if(strncmp(p, "show", 4) == 0){	# show dot
 			t = w.body;
-			t.show(t.q0, t.q1);
+			t.show(t.q0, t.q1, TRUE);
 			m = 4;
 		}else
 		if(strncmp(p, "name ", 5) == 0){	# set file name

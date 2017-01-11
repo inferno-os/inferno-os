@@ -536,7 +536,7 @@ warning(md : ref Mntdir, s : string)
 		w.owner = 'E';
 	w.commit(t);
 	(q0, n) = t.bsinsert(t.file.buf.nc, s, len s, TRUE);
-	t.show(q0, q0+n);
+	t.show(q0, q0+n, TRUE);
 	t.w.settag();
 	scrl->scrdraw(t);
 	w.owner = owner;
