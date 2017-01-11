@@ -13,6 +13,10 @@
 #include	"fns.h"
 #include	"error.h"
 
+/* For dynamic linking init/fini code that needs malloc */
+void (*coherence)(void) = nofence;
+
+
 enum
 {
 	DELETE	= 0x7f,
