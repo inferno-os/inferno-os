@@ -2,14 +2,14 @@
 
 ENTRY_NOPROFILE(getfcr)
 	mffs	%f0
-	stfdu	%f0,-16(%r1)
+	stfd	%f0,-16(%r1)
 	lwz	%r3,-12(%r1)
 	blr
 	END(getfcr)
 
 ENTRY_NOPROFILE(getfsr)
 	mffs	%f0
-	stfdu	%f0,-16(%r1)
+	stfd	%f0,-16(%r1)
 	lwz	%r3,-12(%r1)
 	blr
 	END(getfsr)
