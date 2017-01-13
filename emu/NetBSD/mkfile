@@ -1,8 +1,6 @@
 SYSTARG=NetBSD
-OBJTYPE=386
 <../../mkconfig
 SYSTARG=NetBSD
-OBJTYPE=386
 
 #Configurable parameters
 
