@@ -14,6 +14,7 @@ ASFLAGS=
 CC=		cc -c
 CFLAGS=		-g\
 		-O\
+		-fno-strict-aliasing\
 		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit\
 		-I$ROOT/NetBSD/386/include\
 		-I$ROOT/include\
