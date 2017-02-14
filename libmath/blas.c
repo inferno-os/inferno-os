@@ -58,5 +58,5 @@ norm2(int n, double *x)
 		sum += *x * *x;
 		x++;
 	}
-	return sum;
+	return sqrt(sum);
 }
