@@ -308,6 +308,7 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	LPMINMAXINFO mmi;
 	LONG x, y, w, h, b;
 	HCURSOR dcurs;
+	POINT m;
 
 	switch(msg) {
 	case WM_SETCURSOR:
@@ -320,6 +321,15 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		dcurs = LoadCursor(NULL, IDC_ARROW);
 		SetCursor(dcurs);
 		break;
+	case WM_MOUSEWHEEL:
+		if((int)wparam>0)
+			b = 8;
+		else
+			b = 16;
+		m.x = LOWORD(lparam);
+		m.y = HIWORD(lparam);
+		ScreenToClient(hwnd, &m);
+		goto mok;
 	case WM_LBUTTONDBLCLK:
 		b = (1<<8) | 1;
 		goto process;
@@ -338,8 +348,9 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 	case WM_RBUTTONDOWN:
 		b = 0;
 	process:
-		x = LOWORD(lparam);
-		y = HIWORD(lparam);
+		m.x = LOWORD(lparam);
+		m.y = HIWORD(lparam);
+	mok:
 		if(wparam & MK_LBUTTON)
 			b |= 1;
 		if(wparam & MK_MBUTTON)
@@ -350,7 +361,7 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			else
 				b |= 4;  //right button
 		}
-		mousetrack(b, x, y, 0);
+		mousetrack(b, m.x, m.y, 0);
 		break;
 	case WM_SYSKEYDOWN:
 		if(gkscanq)
@@ -446,10 +457,6 @@ WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 		gkbdputc(gkbdq, wparam);
 		break;
 	case WM_CLOSE:
-		// no longer used?
-		//m.b = 128;
-		//m.modify = 1;
-		//mousetrack(128, 0, 0, 1);
 		DestroyWindow(hwnd);
 		break;
 	case WM_DESTROY:
