@@ -9,26 +9,16 @@
 #include	"error.h"
 #include	"r16.h"
 
-#define Bit(i) (7-(i))
-/* N 0's preceded by i 1's, T(Bit(2)) is 1100 0000 */
-#define T(i) (((1 << (Bit(i)+1))-1) ^ 0xFF)
-/* 0000 0000 0000 0111 1111 1111 */
-#define	RuneX(i) ((1 << (Bit(i) + ((i)-1)*Bitx))-1)
-
 enum
 {
-	Bitx	= Bit(1),
+	Bits10 = 0x03ff,		/* 0011 1111 1111 */
 
-	Tx	= T(1),			/* 1000 0000 */
-	Rune1 = (1<<(Bit(0)+0*Bitx))-1,	/* 0000 0000 0000 0000 0111 1111 */
+	R16self = 0x10000,
 
-	Maskx	= (1<<Bitx)-1,		/* 0011 1111 */
-	Testx	= Maskx ^ 0xFF,		/* 1100 0000 */
-
-	SurrogateMin	= 0xD800,
-	SurrogateMax	= 0xDFFF,
-
-	Bad	= Runeerror,
+	HSurrogateMin = 0xd800,
+	HSurrogateMax = 0xdbff,
+	LSurrogateMin = 0xdc00,
+	LSurrogateMax = 0xdfff,
 };
 
 Rune16*
@@ -60,22 +50,27 @@ char*
 runes16toutf(char *p, Rune16 *r, int nc)
 {
 	char *op, *ep;
-	int n, c;
-	Rune rc;
+	int n;
+	Rune c, lc;
 
 	op = p;
 	ep = p + nc;
 	while(c = *r++) {
-		n = 1;
-		if(c >= Runeself)
-			n = runelen(c);
+		if(c > Runemax)
+			c = Runeerror;
+		if(c >= LSurrogateMin && c <= LSurrogateMax)
+			c = Runeerror;
+		if(c >= HSurrogateMin && c<= HSurrogateMax){
+			lc = *r++;
+			if(lc >= LSurrogateMin || lc <= LSurrogateMax)
+				c = (c&Bits10)<<10 | (lc&Bits10) + R16self;
+			else
+				c = Runeerror;
+		}
+		n = runelen(c);
 		if(p + n >= ep)
 			break;
-		rc = c;
-		if(c < Runeself)
-			*p++ = c;
-		else
-			p += runetochar(p, &rc);
+		p += runetochar(p, &c);
 	}
 	*p = '\0';
 	return op;
@@ -84,20 +79,18 @@ runes16toutf(char *p, Rune16 *r, int nc)
 int
 rune16nlen(Rune16 *r, int nrune)
 {
-	int nb, i;
+	int nb;
 	Rune c;
 
 	nb = 0;
 	while(nrune--) {
 		c = *r++;
-		if(c <= Rune1){
-			nb++;
-		} else {
-			for(i = 2; i < UTFmax + 1; i++)
-				if(c <= RuneX(i) || i == UTFmax){
-					nb += i;
-					break;
-				}
+		if(c < R16self)
+			nb += runelen(c);
+		else {
+			c -= R16self;
+			nb += runelen(HSurrogateMin | (c>>10));
+			nb += runelen(LSurrogateMin | (c&Bits10));
 		}
 	}
 	return nb;
@@ -113,7 +106,17 @@ utftorunes16(Rune16 *r, char *p, int nc)
 	er = r + nc;
 	while(*p != '\0' && r + 1 < er){
 		p += chartorune(&rc, p);
-		*r++ = rc;	/* we'll ignore surrogate pairs */
+		if(rc < R16self){
+			*r++ = rc;
+			continue;
+		}
+		if(rc > Runemax || er-r < 2){
+			*r++ = Runeerror;
+			continue;
+		}
+		rc -= R16self;
+		*r++ = HSurrogateMin | (rc>>10);
+		*r++ = LSurrogateMin | (rc&Bits10);
 	}
 	*r = '\0';
 	return or;
@@ -167,8 +170,17 @@ int
 widebytes(wchar_t *ws)
 {
 	int n = 0;
+	wchar_t c;
 
-	while (*ws)
-		n += runelen(*ws++);
+	while (*ws){
+		c = *ws++;
+		if(c < R16self)
+			n += runelen(c);
+		else {
+			c -= R16self;
+			n += runelen(HSurrogateMin | (c>>10));
+			n += runelen(LSurrogateMin | (c&Bits10));
+		}
+	}
 	return n+1;
 }
