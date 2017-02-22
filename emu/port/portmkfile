@@ -51,21 +51,21 @@ i$CONF.acid:	i$CONF
 lib%.a:V:	$SHELLTYPE-lib%.a
 
 rc-lib%.a nt-lib%.a:VQ:
-		echo '@{builtin cd' $ROOT/lib$stem '; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install}'
-		@{builtin cd $ROOT/lib$stem; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install}
+		echo '@{builtin cd' $ROOT/lib$stem '; mk $MKFLAGS SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install}'
+		@{builtin cd $ROOT/lib$stem; mk $MKFLAGS 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install}
 
 sh-lib%.a:VQ:
-		echo "(cd $ROOT/lib$stem ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)"
-		(cd $ROOT/lib$stem; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install)
+		echo "(cd $ROOT/lib$stem ; mk $MKFLAGS SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE install)"
+		(cd $ROOT/lib$stem; mk $MKFLAGS 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE install)
 
 %-rc %-nt:V:
 		for(i in $CONFLIST)
-			mk 'CONF='$i $stem
+			mk 'CONF='$i $MKFLAGS $stem
 
 %-sh:V:
 		for i in $CONFLIST
 		do
-			mk 'CONF='$i $stem
+			mk 'CONF='$i $MKFLAGS $stem
 		done
 
 clean:V:	cleanconf-$SHELLTYPE
@@ -88,15 +88,15 @@ cleanconf-nt:V:
 nuke-sh:QV:
 		for i in $LIBDIRS
 		do
-			echo "(cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke)"
-			(cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke)
+			echo "(cd $ROOT/lib$i ; mk $MKFLAGS SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke)"
+			(cd $ROOT/lib$i; mk $MKFLAGS 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke)
 		done
 
 nuke-rc nuke-nt:QV:
 		for (i in $LIBDIRS)
 		{
-			echo '@{cd $ROOT/lib$i ; mk SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke}'
-			@{cd $ROOT/lib$i; mk 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke}
+			echo '@{cd $ROOT/lib$i ; mk $MKFLAGS SHELLTYPE=$SHELLTYPE SYSTARG=$SYSTARG OBJTYPE=$OBJTYPE nuke}'
+			@{cd $ROOT/lib$i; mk $MKFLAGS 'SHELLTYPE='$SHELLTYPE 'SYSTARG='$SYSTARG 'OBJTYPE='$OBJTYPE nuke}
 		}
 
 nuke:V:		clean nuke-$SHELLTYPE
