@@ -304,7 +304,7 @@ copy32to32(Rectangle r)
 		lp = dp + width;
 		while(dp < lp){
 			v = *dp++;
-			w = infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
+			w = v&(0xff<<24)|infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
 			*wp++ = w;
 		}
 		dp += dx;
