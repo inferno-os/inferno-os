@@ -1,0 +1,25 @@
+TARGMODEL=	Posix
+TARGSHTYPE=	sh
+CPUS=		power
+
+O=		o
+OS=		o
+
+AR=		ar
+ARFLAGS=	crvs
+
+AS=		xlc -c
+ASFLAGS=
+
+CC=		xlc_r -c
+CFLAGS=	-q32 -g -O -qsuppress=1506-224\
+	-I$ROOT/$SYSTARG/$OBJTYPE/include\
+	-I$ROOT/include\
+
+ANSICPP=
+LD=		xlc_r
+LDFLAGS=	-bmaxdata:0x80000000
+SYSLIBS=	-lm
+
+YACC=		iyacc
+YFLAGS=		-d

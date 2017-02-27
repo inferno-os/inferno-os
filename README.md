@@ -4,6 +4,6 @@ The use of a high-level language and virtual machine is sensible but mundane. Th
 
 The system can be used to build portable client and server applications. It makes it straightforward to build lean applications that share all manner of resources over a network, without the cruft of much of the 'Grid' software one sees.
 
-Inferno can run 'native' on various ARM, PowerPC, SPARC and x86 platforms but also 'hosted', under an existing operating system (including FreeBSD, Irix, Linux, MacOS X, Plan 9, and Solaris), again on various processor types.
+Inferno can run 'native' on various ARM, PowerPC, SPARC and x86 platforms but also 'hosted', under an existing operating system (including AIX, FreeBSD, Irix, Linux, MacOS X, Plan 9, and Solaris), again on various processor types.
 
 This Bitbucket project includes source for the basic applications, Inferno itself (hosted and native), all supporting software, including the native compiler suite, essential executables and supporting files.
