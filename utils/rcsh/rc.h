@@ -1,3 +1,4 @@
+#define INFERNO_KEEPENVIRON
 #include	<lib9.h>
 
 #define	Lock	Rclock
