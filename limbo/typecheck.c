@@ -873,9 +873,11 @@ exname(Decl *d)
 
 	n = 0;
 	sprint(buf, "%d", scope-ScopeGlobal);
-	m = impmods->sym;
+	m = nil;
 	if(d->dot)
 		m = d->dot->sym;
+	else if(impmods)
+		m = impmods->sym;
 	if(m)
 		n += strlen(m->name)+1;
 	if(fndec)
