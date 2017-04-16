@@ -4,7 +4,7 @@
 #define Rect _Rect
 
 #include <Carbon/Carbon.h>
-#include <QuickTime/QuickTime.h> // for full screen
+//#include <QuickTime/QuickTime.h> // for full screen
 
 #undef Rect
 #undef Point
