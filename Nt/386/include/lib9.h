@@ -16,7 +16,11 @@
 #define	strtod	infstrtod
 #define	strtoll	infstrtoll
 #define	strtoull	infstrtoull
+#ifndef INFERNO_KEEPENVIRON
+/* environ is perfectly legal as the name of a local, field name or struct, but windows redefines it */
+/* the extern char** environ is only needed by two programs, so #undef it for everything else */
 #undef environ
+#endif
 
 /* do-it-yourself isinf and isnan */
 #ifndef isnan

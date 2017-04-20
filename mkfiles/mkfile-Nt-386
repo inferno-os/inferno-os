@@ -24,7 +24,7 @@ CFLAGS=		-c\
 		-W3\
 		-Zi\
 		-MT\
-		-D_WIN32_WINNT=0x0400\
+		-D_WIN32_WINNT=0x0600\
 		-I$ROOT/Nt/386/include\
 		-I$ROOT/include\
 		$XCFLAGS\

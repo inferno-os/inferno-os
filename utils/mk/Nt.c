@@ -1,3 +1,4 @@
+#define INFERNO_KEEPENVIRON
 #include	"mk.h"
 #include	<signal.h>
 #include	<sys/utime.h>

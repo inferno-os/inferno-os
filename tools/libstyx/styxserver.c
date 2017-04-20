@@ -72,9 +72,9 @@ styxfatal(char *fmt, ...)
 }
 
 static void
-styxassert(int true, char *reason)
+styxassert(int vtrue, char *reason)
 {
-	if(!true)
+	if(!vtrue)
 		styxfatal("assertion failed: %s\n", reason);
 }
 
