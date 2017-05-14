@@ -3466,7 +3466,7 @@ expandtype(Type *t, Type *instt, Decl *adtt, Tpair **tp)
 
 	if(t == nil)
 		return nil;
-if(debug['w']) print("expandtype %d %lux %T\n", t->kind, (ulong)t, t);
+if(debug['w']) print("expandtype %d %#p %T\n", t->kind, t, t);
 	if(!toccurs(t, tp))
 		return t;
 if(debug['w']) print("\texpanding\n");
