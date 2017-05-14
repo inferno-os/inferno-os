@@ -2023,7 +2023,7 @@ cycfield(Type *base, Decl *id)
 			error(base->src.start, "illegal type cycle without a reference in field %s of %t",
 				id->sym->name, base);
 		id->cycerr = 1;
-	}else if(arc & ArcCyc){
+	}else if(arc & ArcCyc && oldcycles){
 		if((arc & ArcArray) && id->cyc == 0 && !(arc & ArcPolycyc)){
 			if(id->cycerr == 0)
 				error(base->src.start, "illegal circular reference to type %T in field %s of %t",
