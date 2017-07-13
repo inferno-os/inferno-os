@@ -195,7 +195,7 @@ EXTERN union
 		uchar	obuf[MAXIO];			/* output buffer */
 		uchar	ibuf[MAXIO];			/* input buffer */
 	} u;
-	char	dbuf[1];
+	char	dbuf[MAXIO];
 } buf;
 
 #define	cbuf	u.obuf
