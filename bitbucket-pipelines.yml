@@ -1,0 +1,10 @@
+image: i386/gcc:6.1
+
+pipelines:
+  default:
+    - step:
+        script:
+          - PATH=$PATH:$PWD/Linux/386/bin MKFLAGS='SYSHOST=Linux OBJTYPE=386 ROOT='$PWD 
+          - mk $MKFLAGS mkdirs
+          - mk $MKFLAGS emuinstall
+          - emu cat /dev/sysctl || echo ' -' exited with status $? '(ignored)'

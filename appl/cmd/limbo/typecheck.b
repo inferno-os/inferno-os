@@ -759,9 +759,11 @@ concheck(n: ref Node, isglobal: int)
 exname(d: ref Decl): string
 {
 	s := "";
-	m := impmods.sym;
+	m: ref Sym;
 	if(d.dot != nil)
 		m = d.dot.sym;
+	else if(impmods != nil)
+		m = impmods.sym;
 	if(m != nil)
 		s += m.name+".";
 	if(fndec != nil)

@@ -1,36 +1,6 @@
-#include "syscall.h"
 #include <sys/asm.h>
 #include <sys/regdef.h>
 #include <asm/cachectl.h>
-
-/*
- * executeonnewstack(void *tos, void (*tramp)(void *arg), void *arg)
- */
-
-LEAF(executeonnewstack)
-	and		a0,a0,~7
-	addu		sp,a0,-16
-	move	a0,a2
-	move	t9,a1
-	jalr	t9
-
-	li	v0,SYS_exit
-	li	a0,0
-	syscall
-
-	END(executeonnewstack)
-
-/*
- * unlockandexit(int *key)
- */
-
-LEAF(unlockandexit)
-	lw	a1,0(a0)
-	li	v0,SYS_exit
-	li	a0,0
-	sw	a0,0(a1)
-	syscall
-	END(unlockandexit)
 
 LEAF(FPsave)
 	cfc1	t0, $31

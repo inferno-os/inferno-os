@@ -1,58 +1,5 @@
 	.file	"asm-Linux-arm.S"
-#include "syscall.h"
 	.text
-
-/*
- * void executeonnewstack(void *tos, void (*tramp)(void *arg), void *arg)
- */
-
-        .align  2
-        .global executeonnewstack
-        .type   executeonnewstack, %function
-executeonnewstack:
-        @ args = 0, pretend = 0, frame = 12
-        @ frame_needed = 1, uses_anonymous_args = 0
-        mov     ip, sp
-        stmfd   sp!, {fp, ip, lr, pc}
-        sub     fp, ip, #4
-        sub     sp, sp, #12
-        str     r0, [fp, #-16] /* store tos */
-        str     r1, [fp, #-20] /* store tramp */
-        str     r2, [fp, #-24] /* store arg */
-        ldr     r0, [fp, #-24] /* get arg */
-        ldr     r2, [fp, #-16] /* get tos */
-        mov     sp, r2         /* set new stack */
-        mov     lr, pc
-        blx     r1             /* call tramp*/
-
-        /* if we return here, tramp didn't do it's job */
-	mov	r0, #0
-	mov	r7, #SYS_exit
-	swi	0x0
-        ldmea   fp, {fp, sp, pc}
-        .size   executeonnewstack, .-executeonnewstack
-
-/*
- * void unlockandexit(int *key)
- */
-
-        .align  2
-        .global unlockandexit
-        .type   unlockandexit, %function
-unlockandexit:
-        @ args = 0, pretend = 0, frame = 4
-        @ frame_needed = 1, uses_anonymous_args = 0
-        mov     ip, sp
-        stmfd   sp!, {fp, ip, lr, pc}
-        sub     fp, ip, #4
-        sub     sp, sp, #4
-        mov     r1, #0
-        str     r1, [r0]
-	mov	r0, #0
-	mov	r7, #SYS_exit
-	swi	0x0
-        ldmea   fp, {fp, sp, pc}
-        .size   unlockandexit, .-unlockandexit
 
 /*
  * ulong umult(ulong m1, ulong m2, ulong *hi)

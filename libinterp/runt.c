@@ -376,7 +376,7 @@ Sys_char2byte(void *fp)
 	c = f->c;
 	if(a == H || (UWORD)n>=a->len)
 		error(exBounds);
-	if(c<0 || c>=(1<<16))
+	if(c<0 || c>=Runemax)
 		c = Runeerror;
 	if(c < Runeself){
 		a->data[n] = c;
