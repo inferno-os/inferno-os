@@ -36,13 +36,13 @@ KERNDATE=`{$NDATE}
 
 default:V:	$O.$CONF
 
-<../port/portmkfile
-
 $O.$CONF:	$OBJ $CONF.c $CONF.root.h $LIBFILES
 	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
 	$LD $LDFLAGS -o $target $OBJ $CONF.$O $LIBFILES $SYSLIBS
 
 install:V: $O.$CONF
 	cp $O.$CONF $INSTALLDIR/$CONF
+
+<../port/portmkfile
 
 devfs.$O:	../port/devfs-posix.c
