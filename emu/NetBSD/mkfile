@@ -22,6 +22,7 @@ X11LIBS= -L/usr/X11R7/lib -R/usr/X11R7/lib -lXext -lX11
 OBJ=\
 	asm-$OBJTYPE.$O\
 	os.$O\
+	segflush-$OBJTYPE.$O\
 	$CONF.root.$O\
 	lock.$O\
 	$DEVS\
