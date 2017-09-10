@@ -12,6 +12,13 @@
 #include	<errno.h>
 #include	<semaphore.h>
 
+#ifdef __NetBSD__
+#include	<sched.h>
+#define pthread_yield() (sched_yield())
+#define PTHREAD_STACK_MIN ((size_t)sysconf(_SC_THREAD_STACK_MIN))
+#endif
+
+
 typedef struct Osdep Osdep;
 struct Osdep {
 	sem_t	sem;
