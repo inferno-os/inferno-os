@@ -91,7 +91,7 @@ Draw: module
 	RGB15: con Chans(((CIgnore<<4)|1)<<24 | ((CRed<<4)|5)<<16 | ((CGreen<<4)|5)<<8 | ((CBlue<<4)|5));
 	RGB16: con Chans(((CRed<<4)|5)<<16 | ((CGreen<<4)|6)<<8 | ((CBlue<<4)|5));
 	RGB24: con Chans(((CRed<<4)|8)<<16 | ((CGreen<<4)|8)<<8 | ((CBlue<<4)|8));
-	RGBA32: con Chans((((CRed<<4)|8)<<16 | ((CGreen<<4)|8)<<8 | ((CBlue<<4)|8))<<8 | ((CAlpha<<4)|8));
+	RGBA32: con Chans((((CRed<<4)|8)<<24 | ((CGreen<<4)|8)<<16 | ((CBlue<<4)|8))<<8 | ((CAlpha<<4)|8));
 	ARGB32: con Chans(((CAlpha<<4)|8)<<24 | ((CRed<<4)|8)<<16 | ((CGreen<<4)|8)<<8 | ((CBlue<<4)|8));	# stupid VGAs
 	XRGB32: con Chans(((CIgnore<<4)|8)<<24 | ((CRed<<4)|8)<<16 | ((CGreen<<4)|8)<<8 | ((CBlue<<4)|8));	# stupid VGAs
 
