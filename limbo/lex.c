@@ -1434,7 +1434,7 @@ allocmem(ulong n)
 {
 	void *p;
 
-	p = malloc(n);
+	p = malloc(n != 0? n: 1);
 	if(p == nil)
 		fatal("out of memory");
 	return p;

@@ -189,6 +189,7 @@ There are currently four main variants of hosted Inferno: Plan 9, Unix (and clon
 The source is held in directory
 .CW emu ,
 with a subdirectory for each hosted platform:
+.CW AIX ,
 .CW FreeBSD ,
 .CW Irix ,
 .CW Linux ,
@@ -246,6 +247,7 @@ threads efficiently.
 .PP
 There are working emu versions
 for
+AIX/power,
 FreeBSD/386,
 Irix/mips,
 Linux/386,

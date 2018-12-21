@@ -61,5 +61,14 @@ syntax: regexp
 ^usr/\.*
 ^grid/.*
 ^libinterp/cryptmod.h
+^libinterp/drawmod.h
+^libinterp/freetypemod.h
 ^libinterp/ipintsmod.h
+^libinterp/keyring.h
 ^libinterp/keyringif.h
+^libinterp/loadermod.h
+^libinterp/mathmod.h
+^libinterp/runt.h
+^libinterp/sysmod.h
+^libinterp/tkmod.h
+^limbo/runt.h

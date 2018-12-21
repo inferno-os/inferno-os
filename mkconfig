@@ -14,8 +14,8 @@ TKSTYLE=std
 #
 #	Except for building kernels, SYSTARG must always be the same as SYSHOST
 #
-SYSHOST=Plan9		# build system OS type (Hp, Inferno, Irix, Linux, MacOSX, Nt, Plan9, Solaris)
-SYSTARG=$SYSHOST		# target system OS type (Hp, Inferno, Irix, Linux, Nt, Plan9, Solaris)
+SYSHOST=Plan9		# build system OS type (AIX, Hp, Inferno, Irix, Linux, MacOSX, Nt, Plan9, Solaris)
+SYSTARG=$SYSHOST		# target system OS type (AIX, Hp, Inferno, Irix, Linux, Nt, Plan9, Solaris)
 
 #
 #	specify the architecture of the target system - Plan 9 imports it from the
