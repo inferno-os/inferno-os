@@ -1,8 +1,7 @@
-	.file	"getcallerpc-NetBSD-386.S"
+#include <machine/asm.h>
 
-	.type	getcallerpc,@function
-	.global	getcallerpc
-getcallerpc:
+NENTRY(getcallerpc)
 	movl	4(%esp), %eax
 	movl	-4(%eax), %eax
 	ret
+	END(getcallerpc)

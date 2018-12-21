@@ -70,6 +70,10 @@ port
 	uqid
 
 code
+	#ifdef __powerpc__
+	int macjit = 1; /* tell compiler it's not plan9 abi */
+	#endif
+
 	void setpointer(int x, int y){USED(x); USED(y);}
 	ulong strtochan(char *s){USED(s); return ~0;}
 

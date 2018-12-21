@@ -81,6 +81,9 @@ port
 	uqid
 
 code
+	#ifdef __powerpc__
+	int macjit = 1; /* tell compiler it's not plan9 abi */
+	#endif
 
 init
 	emuinit
