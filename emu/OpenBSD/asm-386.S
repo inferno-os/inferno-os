@@ -3,8 +3,6 @@
 #include <sys/syscall.h>
 #include <machine/asm.h>
 
-#include "rfork_thread.S"
-
 /*
  * executeonnewstack(void *tos, void (*tramp)(void *arg), void *arg)
  */
