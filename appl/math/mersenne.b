@@ -3,9 +3,9 @@ implement Mersenne;
 include "sys.m";
 	sys : Sys;
 include "draw.m";
-include "keyring.m";
-	keyring: Keyring;
-	IPint: import keyring;
+include "ipints.m";
+	ipints: IPints;
+	IPint: import ipints;
 
 # Test primality of Mersenne numbers
 
@@ -17,7 +17,7 @@ Mersenne: module
 init(nil: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
-	keyring = load Keyring Keyring->PATH;
+	ipints = load IPints IPints->PATH;
 	p := 3;
 	if(tl argv != nil)
 		p = int hd tl argv;
