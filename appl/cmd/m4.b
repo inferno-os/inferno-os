@@ -52,8 +52,11 @@ lquote := '`';
 rquote := '\'';
 initcom := "#";
 endcom := "\n";
+prefix := "";
 bout: ref Iobuf;
 sh: Sh;
+stderr: ref Sys->FD;
+tracing := 0;
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -61,8 +64,26 @@ init(nil: ref Draw->Context, args: list of string)
 	bufio = load Bufio Bufio->PATH;
 
 	bout = bufio->fopen(sys->fildes(1), Sys->OWRITE);
+	stderr = sys->fildes(2);
 
 	define("inferno", "inferno", 0);
+
+	arg := load Arg Arg->PATH;
+	arg->setusage("m4 [-t] [-pprefix] [-Dname[=value]] [-Qname[=value]] [-Uname] [file ...]");
+	arg->init(args);
+
+	while((o := arg->opt()) != 0){
+		case o {
+		'D' or 'Q' or 'U' =>
+			;	# for second pass
+		'p' =>
+			prefix = arg->earg();
+		't' =>
+			tracing = 1;
+		* =>
+			arg->usage();
+		}
+	}
 
 	builtin("changecom", dochangecom);
 	builtin("changequote", dochangequote);
@@ -88,11 +109,9 @@ init(nil: ref Draw->Context, args: list of string)
 	builtin("undefine", doundefine);
 	builtin("undivert", doundivert);
 
-	arg := load Arg Arg->PATH;
-	arg->setusage("m4 [-Dname[=value]] [-Qname[=value]] [-Uname] [file ...]");
 	arg->init(args);
 
-	while((o := arg->opt()) != 0){
+	while((o = arg->opt()) != 0){
 		case o {
 		'D' =>
 			argdefine(arg->earg(), 0);
@@ -100,6 +119,10 @@ init(nil: ref Draw->Context, args: list of string)
 			argdefine(arg->earg(), 1);
 		'U' =>
 			undefine(arg->earg());
+		'p' =>
+			arg->earg();
+		't' =>
+			;
 		* =>
 			arg->usage();
 		}
@@ -157,7 +180,8 @@ error(s: string)
 		ios := hd instack;
 		where = sys->sprint(" %s:%d:", ios.name, ios.line);
 	}
-	sys->fprint(sys->fildes(2), "m4:%s %s\n", where, s);
+	bout.flush();
+	sys->fprint(stderr, "m4:%s %s\n", where, s);
 	raise "fail:error";
 }
 
@@ -191,9 +215,12 @@ called(c: int)
 	curarg = ref Param("");
 	nesting := 0;	# () depth
 	skipws();
+	mark := instack;
 	for(;;){
-		if((c = getc()) < 0)
+		if((c = getc()) < 0) {
+			instack = mark;
 			error("EOF in parameters");
+		}
 		if(isalpha(c))
 			called(c);
 		else if(c == lquote)
@@ -228,9 +255,12 @@ called(c: int)
 quoted()
 {
 	nesting :=0;
+	mark := instack;
 	while((c := getc()) != rquote || nesting > 0){
-		if(c < 0)
+		if(c < 0) {
+			instack = mark;
 			error("EOF in string");
+		}
 		if(c == rquote)
 			nesting--;
 		else if(c == lquote)
@@ -276,19 +306,9 @@ isspace(c: int): int
 	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
-isname(s: string): int
-{
-	if(s == nil || !isalpha(s[0]))
-		return 0;
-	for(i := 1; i < len s; i++)
-		if(!(isalpha(s[i]) || s[i]>='0' && s[i]<='9'))
-			return 0;
-	return 1;
-}
-
 isalpha(c: int): int
 {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0;
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0 && c != lquote && c != rquote;
 }
 
 hash(name: string): int
@@ -300,6 +320,13 @@ hash(name: string): int
 }
 
 builtin(name: string, impl: ref fn(nil: array of string))
+{
+	if(prefix != "")
+		name = prefix+name;
+	ibuiltin(name, impl);
+}
+
+ibuiltin(name: string, impl: ref fn(nil: array of string))
 {
 	h := hash(name);
 	n := ref Name(name, nil, impl, 0, 0);
@@ -418,6 +445,12 @@ putc(c: int)
 
 expand(def: ref Name, args: array of string)
 {
+	if(tracing){
+		sys->fprint(stderr, "expand %s [%s]", args[0], def.name);
+		for(i := 1; i < len args; i++)
+			sys->fprint(stderr, " %d: [%s]", i, args[i]);
+		sys->fprint(stderr, "\n");
+	}
 	if(def.impl != nil){
 		def.impl(args);
 		return;
@@ -474,7 +507,7 @@ docopydef(args: array of string)
 			if(n.impl == nil)
 				define(args[2], n.repl, n.asis);
 			else
-				builtin(args[2], n.impl);
+				ibuiltin(args[2], n.impl);
 		}else
 			define(args[2], "", 0);
 	}
@@ -524,12 +557,12 @@ doundivert(args: array of string)
 
 doifdef(args: array of string)
 {
-	if(len args < 2)
+	if(len args < 3)
 		return;
 	n := lookup(args[1]);
 	if(n != nil)
 		pushs(args[2]);
-	else if(len args > 2)
+	else if(len args > 3)
 		pushs(args[3]);
 }
 
@@ -642,7 +675,7 @@ doerrprint(args: array of string)
 	for(i := 1; i < len args; i++)
 		s += " "+args[i];
 	if(s != nil)
-		sys->fprint(sys->fildes(2), "m4:%s\n", s);
+		sys->fprint(stderr, "m4:%s\n", s);
 }
 
 dolen(args: array of string)

@@ -4,6 +4,12 @@ m4 \- macro processor
 .SH SYNOPSIS
 .B m4
 [
+.BI -p prefix
+]
+[
+.B -t
+]
+[
 .BI -D name = value
 ] [
 .BI -Q name = value
@@ -236,7 +242,20 @@ Text may be undiverted into another diversion.
 Undiverting discards the diverted text.
 .PD
 .PP
+The
+.B -p
+option causes
+.I m4
+to add the given prefix character to the names of predefined macros;
+typically the
+.I prefix
+is a Unicode character, to reduce the chance of a clash with macro names in the input text.
+The
+.B -t
+option produces a trace on standard error.
+.PP
 .I M4
+otherwise
 interprets its command line options after installing the predefined macro set.
 The
 .B -D
