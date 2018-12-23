@@ -3,13 +3,13 @@
 
 FN(getfcr):
 	mffs	%f0
-	stfdu	%f0,-16(%r1)
+	stfd	%f0,-16(%r1)
 	lw	%r3,-12(%r1)
 	blr
 
 FN(getfsr):
 	mffs	%f0
-	stfdu	%f0,-16(%r1)
+	stfd	%f0,-16(%r1)
 	lw	%r3,-12(%r1)
 	blr
 
