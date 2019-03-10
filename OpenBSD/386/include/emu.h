@@ -15,6 +15,7 @@ struct FPU
 
 #define KSTACK (32 * 1024)
 
+#ifndef USE_PTHREADS
 static __inline Proc *getup(void) {
 	Proc *p;
 	__asm__(	"movl	%%esp, %%eax\n\t"
@@ -22,6 +23,9 @@ static __inline Proc *getup(void) {
 	);
 	return *(Proc **)((unsigned long)p & ~(KSTACK - 1));
 };
+#else
+extern	Proc*	getup(void);
+#endif
 
 #define	up	(getup())
 

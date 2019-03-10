@@ -304,8 +304,35 @@ copy32to32(Rectangle r)
 		lp = dp + width;
 		while(dp < lp){
 			v = *dp++;
-			w = infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
+			w = v&(0xff<<24)|infernortox11[(v>>16)&0xff]<<16|infernogtox11[(v>>8)&0xff]<<8|infernobtox11[(v>>0)&0xff]<<0;
 			*wp++ = w;
+		}
+		dp += dx;
+		wp += dx;
+	}
+}
+
+static void
+copy16to16(Rectangle r)
+{
+	int dx, width;
+	u16int *dp, *wp, *edp, *lp;
+
+	width = Dx(r);
+	dx = Xsize - width;
+	dp = (u16int*)(gscreendata + ((r.min.y * Xsize) + r.min.x) * 2);
+	wp = (u16int*)(xscreendata + ((r.min.y * Xsize) + r.min.x) * 2);
+	edp = (u16int*)(gscreendata + ((r.max.y * Xsize) + r.max.x) * 2);
+
+	/* The pixel format should be the same as the underlying X display (see
+	   the xtruevisual function) unless a different channel format is
+	   explicitly specified on the command line, so just copy the pixel data
+	   without any processing. */
+
+	while(dp < edp) {
+		lp = dp + width;
+		while(dp < lp){
+			*wp++ = *dp++;
 		}
 		dp += dx;
 		wp += dx;
@@ -435,6 +462,17 @@ flushmemscreen(Rectangle r)
 	case 32:
 		copy32to32(r);
 		break;
+    case 16:
+        switch(xscreendepth){
+        case 16:
+            copy16to16(r);
+            break;
+        default:
+		    fprint(2, "emu: bad display depth %d chan %s xscreendepth %d\n", displaydepth,
+			    chantostr(chanbuf, displaychan), xscreendepth);
+		    cleanexit(0);
+        }
+        break;
 	case 8:
 		switch(xscreendepth){
 		case 24:

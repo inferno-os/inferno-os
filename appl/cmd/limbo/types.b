@@ -1775,7 +1775,7 @@ cycfield(base: ref Type, id: ref Decl)
 				+id.sym.name+" of "+stypeconv(base));
 		id.cycerr = byte 1;
 	}else if(arc & ArcCyc){
-		if((arc & ArcArray) && id.cyc == byte 0 && !(arc & ArcPolycyc)){
+		if((arc & ArcArray) && oldcycles && id.cyc == byte 0 && !(arc & ArcPolycyc)){
 			if(id.cycerr == byte 0)
 				error(base.src.start, "illegal circular reference to type "+typeconv(id.ty)
 					+" in field "+id.sym.name+" of "+stypeconv(base));

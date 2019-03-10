@@ -582,13 +582,13 @@ ftype	: nids ':' type
 	{
 		$$ = mkids(&$1->src, enter("junk", 0), $3, nil);
 		$$->store = Darg;
-		yyerror("illegal argument declaraion");
+		yyerror("illegal argument declaration");
 	}
 	| idterms ':' adtk
 	{
 		$$ = mkids(&$1->src, enter("junk", 0), $3, nil);
 		$$->store = Darg;
-		yyerror("illegal argument declaraion");
+		yyerror("illegal argument declaration");
 	}
 	;
 

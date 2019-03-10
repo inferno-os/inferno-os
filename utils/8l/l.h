@@ -195,7 +195,7 @@ EXTERN union
 		uchar	obuf[MAXIO];			/* output buffer */
 		uchar	ibuf[MAXIO];			/* input buffer */
 	} u;
-	char	dbuf[1];
+	char	dbuf[2*MAXIO];
 } buf;
 
 #define	cbuf	u.obuf
@@ -236,8 +236,8 @@ EXTERN	char	debug[128];
 EXTERN	char	literal[32];
 EXTERN	Prog*	etextp;
 EXTERN	Prog*	firstp;
-EXTERN	char	fnuxi8[8];
-EXTERN	char	fnuxi4[4];
+EXTERN	uchar	fnuxi8[8];
+EXTERN	uchar	fnuxi4[4];
 EXTERN	Sym*	hash[NHASH];
 EXTERN	Sym*	histfrog[MAXHIST];
 EXTERN	int	histfrogp;
@@ -247,9 +247,9 @@ EXTERN	char*	libraryobj[50];
 EXTERN	int	libraryp;
 EXTERN	int	xrefresolv;
 EXTERN	char*	hunk;
-EXTERN	char	inuxi1[1];
-EXTERN	char	inuxi2[2];
-EXTERN	char	inuxi4[4];
+EXTERN	uchar	inuxi1[1];
+EXTERN	uchar	inuxi2[2];
+EXTERN	uchar	inuxi4[4];
 EXTERN	char	ycover[Ymax*Ymax];
 EXTERN	uchar*	andptr;
 EXTERN	uchar	and[30];

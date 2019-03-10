@@ -2024,7 +2024,7 @@ cycfield(Type *base, Decl *id)
 				id->sym->name, base);
 		id->cycerr = 1;
 	}else if(arc & ArcCyc){
-		if((arc & ArcArray) && id->cyc == 0 && !(arc & ArcPolycyc)){
+		if((arc & ArcArray) && oldcycles && id->cyc == 0 && !(arc & ArcPolycyc)){
 			if(id->cycerr == 0)
 				error(base->src.start, "illegal circular reference to type %T in field %s of %t",
 					id->ty, id->sym->name, base);
@@ -3466,7 +3466,7 @@ expandtype(Type *t, Type *instt, Decl *adtt, Tpair **tp)
 
 	if(t == nil)
 		return nil;
-if(debug['w']) print("expandtype %d %lux %T\n", t->kind, (ulong)t, t);
+if(debug['w']) print("expandtype %d %#p %T\n", t->kind, t, t);
 	if(!toccurs(t, tp))
 		return t;
 if(debug['w']) print("\texpanding\n");

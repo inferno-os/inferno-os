@@ -1,10 +1,15 @@
 /* define _BSD_SOURCE to use ISO C, POSIX, and 4.3BSD things. */
+#define	USE_PTHREADS
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
 /* these aren't really needed because OpenBSD does the right thing and makes off_t 64 bits, full stop */
 #define _LARGEFILE64_SOURCE	1
 #define _FILE_OFFSET_BITS 64
+
+#ifdef USE_PTHREADS
+#define	_REENTRANT	1
+#endif
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -473,3 +478,29 @@ extern char *argv0;
 
 #define	setbinmode()
 
+/* FCR */
+#define FPINEX  (1<<5)
+#define FPUNFL  ((1<<4)|(1<<1))
+#define FPOVFL  (1<<3)
+#define FPZDIV  (1<<2)
+#define FPINVAL (1<<0)
+#define FPRNR   (0<<10)
+#define FPRZ    (3<<10)
+#define FPRPINF (2<<10)
+#define FPRNINF (1<<10)
+#define FPRMASK (3<<10)
+#define FPPEXT  (3<<8)
+#define FPPSGL  (0<<8)
+#define FPPDBL  (2<<8)
+#define FPPMASK (3<<8)
+/* FSR */
+#define FPAINEX FPINEX
+#define FPAOVFL FPOVFL
+#define FPAUNFL FPUNFL
+#define FPAZDIV FPZDIV
+#define FPAINVAL        FPINVAL
+
+extern  void    setfcr(ulong);
+extern  void    setfsr(ulong);
+extern  ulong   getfcr(void);
+extern  ulong   getfsr(void);

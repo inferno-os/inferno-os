@@ -31,6 +31,10 @@
 #define	MFSPR(s, d)	gen(XO(31,339) | ((d)<<21) | ((s)<<11))
 #define	MTSPR(s, d)	gen(XO(31,467) | ((s)<<21) | ((d)<<11));
 
+#define	MFCR(d)		gen(XO(31,19) | ((d)<<21))
+#define	MTCRF(s, mask)	gen(XO(31,144) | ((s)<<21) | ((mask)<<12))
+#define	MTCR(s)		MTCRF(s, 0xff)
+
 #define	SLWI(d,a,n)	gen(slw((d),(a),(n),0))
 #define	LRET()	gen(Oblr)
 
@@ -1636,7 +1640,7 @@ comp(Inst *i)
 }
 
 enum {
-	PREFLEN = 20,	/* max instruction words in comvec */
+	PREFLEN = 64,	/* max instruction words in comvec */
 };
 
 static void
@@ -1649,6 +1653,45 @@ preamble(void)
 	s = code = malloc(PREFLEN*sizeof(*code));
 	if(s == nil)
 		error(exNomem);
+
+#ifdef __ELF__
+	if(macjit) {
+		ulong *cp;
+		int r;
+
+		/*
+		 * ELF frame:
+		 *  0(%sp) - back chain
+		 *  4(%sp) - callee's LR save slot
+		 *  8(%sp) to 36(%sp) - 8 words of parameter list area
+		 * 40(%sp) to 48(%sp) - pad to 16 byte alignment/local vars
+		 */
+		mfspr(Ro1, Rlr);
+		AIRR(Ostw, Ro1, Rsp,4);
+		AIRR(Ostwu, Rsp, Rsp,-128);
+
+		MFCR(Ro1);
+		AIRR(Ostw, Ro1, Rsp,52);
+		for (r = 14; r < 32; ++r)
+			AIRR(Ostw, r, Rsp,r*4);
+
+		cp = code;
+		gen(Ob | Lk);
+
+		AIRR(Olwz, Ro1, Rsp,52);
+		MTCR(Ro1);
+		for (r = 14; r < 32; ++r)
+			AIRR(Olwz, r, Rsp,r*4);
+		AIRR(Oaddi, Rsp, Rsp, 128);
+
+		AIRR(Olwz, Ro1, Rsp,4);
+		mtspr(Rlr, Ro1);
+		LRET();
+
+		PATCH(cp);
+	}
+#endif	/* __ELF__ */
+
 	ldc((ulong)&R, Rreg);
 	SETR0();
 	mfspr(Rlink, Rlr);

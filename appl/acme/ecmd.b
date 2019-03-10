@@ -1192,7 +1192,7 @@ filematch(f: ref File, r: ref String): int
 {
 	buf: string;
 	w: ref Window;
-	match, i, dirty: int;
+	match, dirty: int;
 	s: Rangeset;
 
 	# compile expr first so if we get an error, we haven't allocated anything
@@ -1203,7 +1203,7 @@ filematch(f: ref File, r: ref String): int
 	dirty = !w.isdir && !w.isscratch && f.mod;
 	buf = sprint("%c%c%c %s\n", " '"[dirty],
 		'+', " ."[curtext!=nil && curtext.file==f], f.name);
-	(match, s) = rxexecute(nil, buf, 0, i);
+	(match, s) = rxexecute(nil, buf, 0, len buf);
 	buf = nil;
 	return match;
 }

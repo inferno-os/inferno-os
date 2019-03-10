@@ -244,6 +244,7 @@ extern	ulong	ntruerand(ulong);
  * math
  */
 extern	int	isNaN(double);
+extern	double	NaN(void);
 extern	int	isInf(double, int);
 extern	double	pow(double, double);
 
