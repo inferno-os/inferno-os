@@ -75,7 +75,11 @@ enum {
 
 /* tracing */
 enum {
+#ifdef __NetBSD__
+	Npadlong	= 4,	/* XXX: preserve 16-byte alignment */
+#else
 	Npadlong	= 2,
+#endif
 	MallocOffset = 0,
 	ReallocOffset = 1
 };

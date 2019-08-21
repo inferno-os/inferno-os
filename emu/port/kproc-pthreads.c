@@ -12,6 +12,13 @@
 #include	<errno.h>
 #include	<semaphore.h>
 
+#ifdef __NetBSD__
+#include	<sched.h>
+#define pthread_yield() (sched_yield())
+#define PTHREAD_STACK_MIN ((size_t)sysconf(_SC_THREAD_STACK_MIN))
+#endif
+
+
 typedef struct Osdep Osdep;
 struct Osdep {
 	sem_t	sem;
@@ -115,6 +122,12 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 		panic("kproc: no memory");
 	os->self = 0;	/* set by tramp */
 	sem_init(&os->sem, 0, 0);
+#if defined(__NetBSD__) && defined(__powerpc__)
+	{ /* XXX: Work around a problem on macppc with kernel semaphores. */
+		int val;
+		sem_getvalue(&os->sem, &val);
+	}
+#endif
 	p->os = os;
 
 	if(flags & KPDUPPG) {

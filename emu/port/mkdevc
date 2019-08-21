@@ -10,7 +10,7 @@ BEGIN{
 /^#/{
 		next;
 }
-collect && /^[^	\t]/{
+collect && /^[^ \t]/{
 		collect = 0;
 }
 collect && section ~ "dev"{

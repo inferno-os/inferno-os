@@ -58,34 +58,3 @@ ENTRY_NOPROFILE(_tas)
 	sync
 	blr
 	END(_tas)
-
-/*
- * void
- * executeonnewstack(void *tos, void (*tramp)(void *arg), void *arg)
- */
-ENTRY_NOPROFILE(executeonnewstack)
-	mr	%r1,%r3		/* change stacks */
-	stwu 	%lr,-16(%r1)	/* save lr to aid the traceback */
-	li	%r0,0
-	stw 	%r0,20(%r1)
-	mr	%r3,%r5
-	mtctr 	%r4
-	bctrl	/* tramp(arg) */
-	br
-	END(executeonnewstack)
-
-/*
- * void unlockandexit(int *key)
- *
- * NB: the return status may be garbaged if the stack is reused
- *	between the unlock and the system call, but this should
- *	not matter since no task is waiting for the result
- */
-ENTRY_NOPROFILE(unlockandexit)
-	li	%r0,0x0
-	stw	%r0,0(%r3)	/* unlock */
-	li	%r0,1		/* sys exit; 234 is exit group */
-	li	%r3,0		/* exit status */
-	sc
-	br
-	END(unlockandexit)
