@@ -17,7 +17,7 @@ typedef struct {
 			uvlong hdr[1];
 		} exechdr64;
 		Ehdr elfhdr32;			/* elf.h */
-		struct mipsexec mips;	/* bootexec.h */
+		struct mipsexec mips32;	/* bootexec.h */
 		struct mips4kexec mips4k;	/* bootexec.h */
 		struct sparcexec sparc;	/* bootexec.h */
 		struct nextexec next;	/* bootexec.h */
@@ -425,22 +425,22 @@ mipsboot(int fd, Fhdr *fp, ExecHdr *hp)
 {
 	USED(fd);
 	fp->type = FMIPSB;
-	switch(hp->e.mips.amagic) {
+	switch(hp->e.mips32.amagic) {
 	default:
 	case 0407:	/* some kind of mips */
-		settext(fp, (u32int)hp->e.mips.mentry, (u32int)hp->e.mips.text_start,
-			hp->e.mips.tsize, sizeof(struct mipsexec)+4);
-		setdata(fp, (u32int)hp->e.mips.data_start, hp->e.mips.dsize,
-			fp->txtoff+hp->e.mips.tsize, hp->e.mips.bsize);
+		settext(fp, (u32int)hp->e.mips32.mentry, (u32int)hp->e.mips32.text_start,
+			hp->e.mips32.tsize, sizeof(struct mipsexec)+4);
+		setdata(fp, (u32int)hp->e.mips32.data_start, hp->e.mips32.dsize,
+			fp->txtoff+hp->e.mips32.tsize, hp->e.mips32.bsize);
 		break;
 	case 0413:	/* some kind of mips */
-		settext(fp, (u32int)hp->e.mips.mentry, (u32int)hp->e.mips.text_start,
-			hp->e.mips.tsize, 0);
-		setdata(fp, (u32int)hp->e.mips.data_start, hp->e.mips.dsize,
-			hp->e.mips.tsize, hp->e.mips.bsize);
+		settext(fp, (u32int)hp->e.mips32.mentry, (u32int)hp->e.mips32.text_start,
+			hp->e.mips32.tsize, 0);
+		setdata(fp, (u32int)hp->e.mips32.data_start, hp->e.mips32.dsize,
+			hp->e.mips32.tsize, hp->e.mips32.bsize);
 		break;
 	}
-	setsym(fp, hp->e.mips.nsyms, 0, hp->e.mips.pcsize, hp->e.mips.symptr);
+	setsym(fp, hp->e.mips32.nsyms, 0, hp->e.mips32.pcsize, hp->e.mips32.symptr);
 	fp->hdrsz = 0;			/* header stripped */
 	return 1;
 }
