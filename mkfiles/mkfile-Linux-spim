@@ -5,23 +5,22 @@ CPUS=		spim
 O=		o
 OS=		o
 
-AR=		mipsel-linux-uclibc-ar
+AR=		mipsel-linux-gnu-ar
 ARFLAGS=	crvs
 
-AS=		mipsel-linux-uclibc-gcc -c -mips32
+AS=		mipsel-linux-gnu-gcc -c -mips32
 ASFLAGS=
 
-CC=		mipsel-linux-uclibc-gcc -c -mips32
+CC=		mipsel-linux-gnu-gcc -c -mips32
 CFLAGS=		-g\
 		-Os\
 		-I$ROOT/Linux/spim/include\
 		-I$ROOT/include\
- 		-I/usr/X11R6/include
+ 		-I/usr/include/X11
 
 ANSICPP=
-LD=		mipsel-linux-uclibc-gcc
-LDFLAGS=	-L/usr/openwin/lib\
-		-L/usr/X11R6/lib\
+LD=		mipsel-linux-gnu-gcc
+LDFLAGS=	-L/usr/lib/X11
 
 SYSLIBS=
 
