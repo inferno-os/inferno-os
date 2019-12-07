@@ -1172,6 +1172,10 @@ exp	: monexp
 	{
 		$$ = mkbin(Osnd, $1, $4);
 	}
+	| exp Lcomm exp
+	{
+		$$ = mkbin(Osnd, $1, $3);
+	}
 	| exp Ldeclas exp
 	{
 		$$ = mkbin(Odas, $1, $3);
