@@ -102,7 +102,7 @@ std, if, while, ~, no, !, apply, getlines, status, pctl, fn, and, or, raise, res
 .IB list }
 .br
 .B ${parse
-.IB arg ]
+.IB arg }
 .br
 .B ${pipe
 (
