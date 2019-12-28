@@ -17,7 +17,7 @@ logon \- log on to Inferno
 .I Logon
 logs a user in to the Inferno environment.
 It requires
-.I wm (1)
+.IR wm (1)
 to be started first.
 If no
 .I user

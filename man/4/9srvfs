@@ -16,7 +16,7 @@ It uses
 to make an Inferno service
 .I source
 available to Plan 9 applications via the Plan 9 service registry.
-.I Srv9 (3)
+.IR Srv9 (3)
 must previously have been bound to
 .B /srv
 in the current name space, with

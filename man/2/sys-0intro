@@ -195,7 +195,7 @@ An offset can also be passed as a parameter to
 and
 .B pwrite
 (see
-.I sys-read (2)).
+.IR sys-read (2)).
 .PP
 Inferno provides no guarantee of consistency should
 several processes access a file concurrently.

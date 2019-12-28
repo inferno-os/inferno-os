@@ -181,7 +181,7 @@ for keyboard events, and
 for pointer events.
 .PP
 The simplest well-behaved
-.I wm (1)
+.IR wm (1)
 client will therefore contain:
 .PP
 .EX

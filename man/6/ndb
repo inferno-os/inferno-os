@@ -114,7 +114,7 @@ accepted by
 Network applications might use other attributes of their own,
 which they document on their own pages.
 .PP
-.I Cs (8)
+.IR Cs (8)
 interprets a host name of the form
 .BI $ server
 as referring to the set of names and addresses that are values

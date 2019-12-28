@@ -99,7 +99,7 @@ Selection: adt {
 .I Cardlib
 provides facilities to help in the implementation
 of
-.I spree (2)
+.IR spree (2)
 engines that implement the
 .IR spree-cards (4)
 interface.
