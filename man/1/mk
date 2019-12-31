@@ -159,7 +159,7 @@ might be:
 .IP
 .EX
 %.dis:    %.b
-        limbo $stem.b
+	limbo $stem.b
 	cp $stem.dis /dis
 .EE
 .PP

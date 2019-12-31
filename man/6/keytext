@@ -84,7 +84,7 @@ and then encoded in base-64 (as by
 Each value labelled
 .RI ` -name '
 is
-.I utf (6)
+.IR utf (6)
 text not containing a newline;
 it is interpreted by an application and need not be a name.
 The expiry time
