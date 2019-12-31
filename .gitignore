@@ -54,6 +54,10 @@ y.debug
 # initial mk from makemk.sh
 /utils/mk/mk
 
+# no binaries are committed for any of the netbsd ports
+# can be deleted if wildcard from the comment below is enabled
+/NetBSD/*/bin/
+
 # preserve the patterns from .hgignore, though perhaps all binaries
 # should be deleted and ignored with:
 # /[A-Z]*/*/bin/
