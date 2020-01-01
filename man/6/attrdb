@@ -9,7 +9,7 @@ For instance,
 Inferno uses an attribute data base
 .IR ndb (6)
 to organise network configuration data.
-.I Attrdb (2)
+.IR Attrdb (2)
 is typically used by applications to search the data.
 .PP
 Each entry in the data base consists of one or more lines containing

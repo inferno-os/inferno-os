@@ -96,7 +96,7 @@ A Dis module will be executed only if it
 implements the
 .B Command
 interface (see
-.IR sh (1));
+.IR command (2));
 a script file will be executed only if it
 starts with the characters
 .RB `` #! ''

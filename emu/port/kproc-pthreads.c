@@ -122,12 +122,6 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 		panic("kproc: no memory");
 	os->self = 0;	/* set by tramp */
 	sem_init(&os->sem, 0, 0);
-#if defined(__NetBSD__) && defined(__powerpc__)
-	{ /* XXX: Work around a problem on macppc with kernel semaphores. */
-		int val;
-		sem_getvalue(&os->sem, &val);
-	}
-#endif
 	p->os = os;
 
 	if(flags & KPDUPPG) {

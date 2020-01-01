@@ -42,7 +42,7 @@ are allowed on directories only to seek to the start.
 In general, several calls to
 .B dirread
 will be needed to read the whole directory.
-.I Readdir (2)
+.IR Readdir (2)
 provides functions that return all the directory entries at once,
 optionally sorted.
 .SH SEE ALSO
