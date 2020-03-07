@@ -1613,11 +1613,11 @@ if(0) iprint("xselect target=%d requestor=%d property=%d selection=%d\n",
 			8, PropModeReplace, (uchar*)clip.buf, strlen(clip.buf));
 		qunlock(&clip.lk);
 	}else{
-		iprint("get %d\n", xe->target);
 		name = XGetAtomName(xd, xe->target);
 		if(name == nil)
-			iprint("XGetAtomName failed\n");
-		else if(strcmp(name, "TIMESTAMP") != 0)
+			name = "<XGetAtomName failed>";
+		if(strcmp(name, "TIMESTAMP") != 0
+			&& strcmp(name, "x-special/gnome-copied-files") != 0)
 			iprint("%s: cannot handle selection request for '%s' (%d)\n", argv0, name, (int)xe->target);
 		r.xselection.property = None;
 	}
