@@ -902,13 +902,15 @@ PP = p;
 			r = o->param;
 		o1 = olr(instoffset, r, p->to.reg, p->scond);
 
-		o2 = oprrr(ASLL, p->scond);
-		o3 = oprrr(ASRA, p->scond);
 		r = p->to.reg;
 		if(p->as == AMOVB) {
+			o2 = oprrr(ASLL, p->scond & ~C_PBIT);
+			o3 = oprrr(ASRA, p->scond & ~C_PBIT);
 			o2 |= (24<<7)|(r)|(r<<12);
 			o3 |= (24<<7)|(r)|(r<<12);
 		} else {
+			o2 = oprrr(ASLL, p->scond);
+			o3 = oprrr(ASRA, p->scond);
 			o2 |= (16<<7)|(r)|(r<<12);
 			if(p->as == AMOVHU)
 				o3 = oprrr(ASRL, p->scond);
@@ -1195,15 +1197,18 @@ PP = p;
 			o1 |= 1<<22;
 		break;
 
-	case 60:	/* movb R(R),R -> ldrsb indexed */
+	case 60:	/* movb R(R),R -> ldrb indexed */
 		if(p->from.reg == NREG) {
 			diag("byte MOV from shifter operand");
 			goto mov;
 		}
 		if(p->from.offset&(~0xf))
-			diag("bad shift in LDRSB");
-		o1 = olhrr(p->from.offset, p->from.reg, p->to.reg, p->scond);
-		o1 ^= (1<<5)|(1<<6);
+			diag("bad shift in LDRB");
+		o1 = olr(p->from.offset, p->from.reg, p->to.reg, p->scond);
+		if(p->as == AMOVB) {
+			o1 |= 1<<22; /* B */
+			o1 ^= 1<<25; /* instruction with Rm */
+                }
 		break;
 
 	case 61:	/* movw/b/bu R,R<<[IR](R) -> str indexed */
