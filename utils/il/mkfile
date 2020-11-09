@@ -1,0 +1,39 @@
+<../../mkconfig
+
+TARG=il		# also makes jl (for riscv64)
+
+OFILES=\
+	asm.$O\
+	compress.$O\
+	list.$O\
+	noop.$O\
+	obj.$O\
+	optab.$O\
+	pass.$O\
+	span.$O\
+	enam.$O\
+	$TARGMODEL.$O\
+	elf.$O\
+
+HFILES=\
+	l.h\
+	../ic/i.out.h\
+	../ld/elf.h\
+
+LIBS=bio 9			# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS -I../include -I.
+
+enam.$O:	../ic/enam.c
+	$CC $CFLAGS ../ic/enam.c
+elf.$O:	../ld/elf.c
+	$CC $CFLAGS ../ld/elf.c
+
+$TARGMODEL.$O:	../ld/$TARGMODEL.c
+	$CC $CFLAGS ../ld/$TARGMODEL.c
+
+install:V:	$BIN/jl

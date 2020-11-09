@@ -1,0 +1,48 @@
+<../../mkconfig
+
+TARG=ic		# also makes jc (for riscv64)
+
+OFILES=\
+	cgen.$O\
+	enam.$O\
+	list.$O\
+	mul.$O\
+	peep.$O\
+	pgen.$O\
+	pswt.$O\
+	reg.$O\
+	sgen.$O\
+	swt.$O\
+	txt.$O\
+	lex.$O\
+	machcap.$O\
+
+HFILES=\
+	gc.h\
+	i.out.h\
+	../cc/cc.h\
+
+LIBS=cc bio 9		# order is important
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
+
+CFLAGS=	$CFLAGS -I../include
+
+$ROOT/$OBJDIR/lib/libcc.a:
+	cd ../cc
+	mk $MKFLAGS install
+	mk $MKFLAGS clean
+
+../cc/y.tab.h: ../cc/cc.y
+	cd ../cc
+	mk $MKFLAGS y.tab.h
+
+lex.$O: ../cc/lex.c ../cc/y.tab.h
+	$CC -Dmain'='ccmain $CFLAGS ../cc/lex.c
+
+%.$O: ../cc/%.c
+	$CC -I. $CFLAGS ../cc/$stem.c
+
+install:V:	$BIN/jc
