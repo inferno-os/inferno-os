@@ -65,6 +65,8 @@ extern	Mach	mamd64;
 extern	Mach	marm;
 extern	Mach	mpower;
 extern	Mach	mpower64;
+extern	Mach	mriscv;
+extern	Mach	mriscv64;
 
 ExecTable exectab[] =
 {
@@ -203,6 +205,24 @@ ExecTable exectab[] =
 		sizeof(Exec),
 		leswal,
 		armdotout },
+	{ Z_MAGIC,			/* riscv i.out */
+		"riscv executable",
+		nil,
+		FRISCV,
+		0,
+		&mriscv,
+		sizeof(Exec),
+		beswal,
+		common },
+	{ Y_MAGIC,			/* riscv j.out */
+		"riscv64 executable",
+		nil,
+		FRISCV64,
+		0,
+		&mriscv64,
+		sizeof(Exec),
+		beswal,
+		common },
 	{ 0 },
 };
 
@@ -357,6 +377,12 @@ commonboot(Fhdr *fp)
 		fp->name = "amd64 plan 9 boot image";
 		fp->dataddr = _round(fp->txtaddr+fp->txtsz, mach->pgsize);
 		break;
+	case FRISCV:
+		fp->type = FRISCVB;
+		fp->txtaddr = (u32int)fp->entry;
+		fp->name = "riscv plan 9 boot image";
+		fp->dataddr = _round(fp->txtaddr+fp->txtsz, mach->pgsize);
+  		break;
 	default:
 		return;
 	}
@@ -579,6 +605,10 @@ elfdotout(int fd, Fhdr *fp, ExecHdr *hp)
 	case ARM:
 		mach = &marm;
 		fp->type = FARM;
+		break;
+	case RISCV:
+		mach = &mriscv;
+		fp->type = FRISCV;
 		break;
 	default:
 		return 0;

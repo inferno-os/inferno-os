@@ -7,12 +7,15 @@ OFILES=\
 	6.$O\
 	8.$O\
 	9.$O\
+	i.$O\
+	j.$O\
 	k.$O\
 	q.$O\
 	t.$O\
 	v.$O\
 	5db.$O\
 	8db.$O\
+	idb.$O\
 	kdb.$O\
 	qdb.$O\
 	tdb.$O\
@@ -21,6 +24,7 @@ OFILES=\
 	6obj.$O\
 	8obj.$O\
 	9obj.$O\
+	iobj.$O\
 	kobj.$O\
 	qobj.$O\
 	vobj.$O\
