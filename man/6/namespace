@@ -82,7 +82,7 @@ are the same as for
 .BR bind,
 option
 .BR A
-are the same for mount
+is the same for mount
 The tokens
 .I dir
 and
