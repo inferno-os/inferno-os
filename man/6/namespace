@@ -65,7 +65,7 @@ This is equivalent to passing a value of
 to
 .IR sys-pctl (2).
 .TP
-.B "mount [-abc9i] [-k \f2keyfile\fP] [-C \f2alg\fP] [\f2net\fP!]\f2machine\fP[!\f2svc\fP] \f2dir\fP [\f2spec\fP]"
+.B "mount [-abc9iA] [-k \f2keyfile\fP] [-C \f2alg\fP] [\f2net\fP!]\f2machine\fP[!\f2svc\fP] \f2dir\fP [\f2spec\fP]"
 Mount the file tree of
 .I machine
 upon directory
@@ -79,7 +79,10 @@ Options
 and
 . B i
 are the same as for
-.BR bind .
+.BR bind,
+option
+.BR A
+are the same for mount
 The tokens
 .I dir
 and
