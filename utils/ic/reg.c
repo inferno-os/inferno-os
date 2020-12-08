@@ -536,6 +536,8 @@ addmove(Reg *r, int bn, int rn, int f)
 			p1->as = AMOVBU;
 		if(v->etype == TUSHORT)
 			p1->as = AMOVHU;
+		if(thechar == 'j' && v->etype == TUINT)
+			p1->as = AMOVWU;
 	}
 	if(debug['R'])
 		print("%P\t.a%P\n", p, p1);
