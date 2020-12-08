@@ -68,6 +68,8 @@ dodata(void)
 		orig += v;
 		s->type = SDATA1;
 	}
+	while(orig & 7)
+		orig++;
 	orig1 = orig;
 
 	/*
