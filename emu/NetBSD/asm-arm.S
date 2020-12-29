@@ -19,16 +19,16 @@ ENTRY(_tas)
 	DMB
 	mov	r1, r0
 	mov	r2, #0xaa
-tas1:
+.Loop:
 	ldrex	r0, [r1]
 	cmp	r0, #0
-	bne	lockbusy
+	bne	.Lockbusy
 	strex	r3, r2, [r1]
 	cmp	r3, #0
-	bne	tas1
+	bne	.Loop
 	DMB
 	bx	lr
-lockbusy:
+.Lockbusy:
 	clrex
 	bx	lr
 	END(_tas)
