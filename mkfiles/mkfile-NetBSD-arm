@@ -26,5 +26,8 @@ LDFLAGS=
 
 SYSLIBS=
 
+# disable PaX mprotect(2) restrictions for JIT
+PAXCTL= 	paxctl +m
+
 YACC=		iyacc
 YFLAGS=		-d

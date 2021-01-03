@@ -26,5 +26,7 @@ LDFLAGS=
 
 SYSLIBS=
 
+PAXCTL=		:
+
 YACC=		iyacc
 YFLAGS=		-d
