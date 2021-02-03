@@ -443,11 +443,11 @@ parsetext[T](state: ref ParseState[T], t: string): list of Text
 			case t[i] {
 			'-' or '.' or '\\' =>
 				ch = t[i];
-			' '  =>
+			' ' or '0'  =>
 				ch = ' ';
 			'e' =>
 				ch = '\\';
-			'|' or '&' =>
+			'|' or '&' or '^' =>
 				continue;
 			'(' =>
 				if (width > 3)
