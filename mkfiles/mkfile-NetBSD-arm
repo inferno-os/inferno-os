@@ -1,6 +1,6 @@
 TARGMODEL=	Posix
 TARGSHTYPE=	sh
-CPUS=		386
+CPUS=		arm
 
 O=		o
 OS=		o
@@ -16,7 +16,7 @@ CFLAGS=		-g\
 		-O\
 		-fno-strict-aliasing\
 		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit\
-		-I$ROOT/NetBSD/386/include\
+		-I$ROOT/NetBSD/arm/include\
 		-I$ROOT/include\
 		-I/usr/X11R7/include
 
@@ -26,7 +26,8 @@ LDFLAGS=
 
 SYSLIBS=
 
-PAXCTL=		:
+# disable PaX mprotect(2) restrictions for JIT
+PAXCTL= 	paxctl +m
 
 YACC=		iyacc
 YFLAGS=		-d

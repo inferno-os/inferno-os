@@ -40,6 +40,7 @@ default:V:	$O.$CONF
 $O.$CONF:	$OBJ $CONF.c $CONF.root.h $LIBFILES
 	$CC $CFLAGS '-DKERNDATE='$KERNDATE $CONF.c
 	$LD $LDFLAGS -o $target $OBJ $CONF.$O $LIBFILES $SYSLIBS
+	$PAXCTL $target
 
 install:V: $O.$CONF
 	cp $O.$CONF $INSTALLDIR/$CONF
