@@ -196,11 +196,12 @@ Moptres: adt {
 	keyfile: string;
 	ignore: int;
 	use9: int;
+	doauth: int;
 };
 
 mopt(argv: list of string): (ref Moptres, string)
 {
-	r := ref Moptres(nil, 0, "none", nil, 0, 0);
+	r := ref Moptres(nil, 0, "none", nil, 0, 0, 1);
 
 	arg->init(argv);
 	while ((opt := arg->opt()) != 0) {
@@ -218,6 +219,8 @@ mopt(argv: list of string): (ref Moptres, string)
 				return (nil, "mount: missing arg to -C option");
 		'9' =>
 			r.use9 = 1;
+		'A' =>
+			r.doauth = 0;
 		 *  =>
 			return (nil, sys->sprint("mount: bad option -%c", opt));
 		}
@@ -275,6 +278,12 @@ mount(argv: list of string, facfd: ref Sys->FD): string
 	c := dial->dial(dest, nil);
 	if(c == nil)
 		return ig(r, sys->sprint("dial: %s: %r", dest));
+
+	if(r.doauth != 1){
+		if(sys->mount(c.dfd, nil, dir, r.flags, spec) < 0)
+			return ig(r, sys->sprint("mount %q %q: %r", addr, dir));
+		return nil;
+	}
 	
 	if(r.use9){
 		factotum := load Factotum Factotum->PATH;
