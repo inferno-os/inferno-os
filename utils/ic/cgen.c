@@ -179,11 +179,21 @@ cgen(Node *n, Node *nn)
 			cgen(r, &nod1);
 			gopcode(o, &nod1, Z, &nod);
 		} else {
-			regalloc(&nod, r, nn);
-			cgen(r, &nod);
-			regalloc(&nod1, l, Z);
-			cgen(l, &nod1);
-			gopcode(o, &nod, &nod1, &nod);
+			if(typev[n->type->etype] &&
+			   (o == OLSHR || o == OASHL || o == OASHR)){
+				/* vlong shifts: result has type of l, not type of r */
+				regalloc(&nod1, r, Z);
+				cgen(r, &nod1);
+				regalloc(&nod, l, nn);
+				cgen(l, &nod);
+				gopcode(o, &nod1, Z, &nod);
+			}else{
+				regalloc(&nod, r, nn);
+				cgen(r, &nod);
+				regalloc(&nod1, l, Z);
+				cgen(l, &nod1);
+				gopcode(o, &nod, &nod1, &nod);
+			}
 		}
 		gopcode(OAS, &nod, Z, nn);
 		regfree(&nod);
