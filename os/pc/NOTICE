@@ -1,8 +1,10 @@
-Most of these files have been issued at some time under the Lucent Public License 1.02,
-except devbench.c, fpi387.c, flashzpc.c, devtv.c, devmouse.c, devmpeg.c (which are Vita Nuova MIT-template).
+Most of these files are adapted from Plan 9
+	Copyright © 2002 Lucent Technologies Inc
+	Copyright © 2021 Plan 9 Foundation
+This software was originally authored by employees of Bell Laboratories,
+a unit of Nokia Corporation.
 
-The copyright is not necessarily Lucent's in all cases (eg, ether83815.c, sd53c8xx.c,
-and much of the USB and wavelan support) because some things were written outside Lucent.
-A more accurate summary will appear here shortly.
-Meanwhile, if you'd like to use the software in some other program,
-you can always ask us to work out the detailed appropriate copyright notice.
+devbench.c, fpi387.c, and flashzpc.c are
+	Copyright © 1999-2005 Vita Nuova Holdings Ltd
+
+All of them are covered by the MIT licence (see /NOTICE).

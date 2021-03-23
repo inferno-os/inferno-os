@@ -1,20 +1,29 @@
 This Inferno® distribution includes software from various sources and
 different portions are therefore subject to different licence terms.
 The bulk of the tree is covered by the permissive MIT licence reproduced below.
-Individual components might have their own NOTICE and licence files (LICENCE
-or COPYING) that cover their content.  All of them allow modification and redistribution.
-They are all compatible with the GPLv2.
+Individual components might have their own NOTICE and LICENCE files
+that cover their content. Specifically, FreeType is used under the FreeType licence.
+With the exception of various Bigelow & Holmes fonts,
+all software licences used allow modification and redistribution.
+Any fonts that are copyright Bigelow & Holmes allow redistribution only as part of an Inferno
+or Plan 9 distribution (see fonts/LICENCE).
+
+Inferno and Limbo are registered trademarks of Vita Nuova Holdings Limited in the USA and other countries.
+Plan 9 is a registered trademark of Southsuite Inc in the USA.
+
+This software was originally authored by employees of Bell Laboratories,
+a unit of Nokia Corporation.
 
 The following copyright notice covers the contents of this
 distribution unless otherwise specified by a given file, directory or
 directory tree:
 
-Inferno Copyright © 1996-1999 Lucent Technologies Inc.
-Revisions Copyright © 1997-1999 Vita Nuova Limited.
-Revisions Copyright © 2000-2015 Vita Nuova Holdings Limited.
-Inferno Copyright © 2000-2015 Vita Nuova Holdings Limited.
-
-Inferno, Dis and Limbo are registered trademarks of Vita Nuova Holdings Limited in the USA and other countries.
+Inferno Copyright © 1996-1999 Lucent Technologies Inc
+Revisions Copyright © 1997-1999 Vita Nuova Limited
+Revisions Copyright © 2000-2015 Vita Nuova Holdings Limited
+Inferno Copyright © 2000-2015 Vita Nuova Holdings Limited
+Plan 9 Copyright © 2002 Lucent Technologies Inc
+Plan 9 Copyright © 2021 Plan 9 Foundation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
