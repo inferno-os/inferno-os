@@ -1,6 +1,6 @@
 <../../mkconfig
 
-TARG=5l
+TARG=tl
 
 OFILES=\
 	asm.$O\
