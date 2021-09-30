@@ -40,16 +40,6 @@ built on any processor type, in the usual way for Plan 9.
      Otherwise, as distributed,  emu for a platform can only
 be built when running on that platform.
 
-     One unusual variant makes the whole of Inferno a  plug-
-in  for Microsoft's Internet Explorer, giving the same envi-
-ronment for Inferno applications running in an HTML page  as
-is  provided by hosted or native Inferno.  That is, there is
-not a distinct `applet' environment with special programming
-interfaces.   The  source for the various plug-in components
-is found in  /tools/plugin and    /usr/internet  within  the
-Inferno  tree;  they  use the version of  emu defined by the
-configuration file  /emu/Nt/ie.
-
 Build steps
 
      All the libraries and executables can  be  built  in  a
