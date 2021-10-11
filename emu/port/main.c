@@ -15,7 +15,6 @@ int	tkstylus;	/* libinterp/tk.c */
 extern	int	mflag;
 	int	dflag;
 	int vflag;
-	int	vflag;
 	Procs	procs;
 	char	*eve;
 	int	Xsize	= 640;
