@@ -109,7 +109,7 @@ _buildsysdev(void)
 		if(CFStringGetCString(CFArrayGetValueAtIndex(paths, i), eiapath, sizeof(eiapath), kCFStringEncodingUTF8)){
 			sysdev[o] = strdup(eiapath);
 			if(vflag > 1)
-				print("BSD path: '%s'\n", sysdev[o]);
+				print("deveia path: eia%d -> '%s'\n", o, sysdev[o]);
 			o++;
 		}
 	}
