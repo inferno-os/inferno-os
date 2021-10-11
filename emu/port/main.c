@@ -182,7 +182,7 @@ option(int argc, char *argv[], void (*badusage)(void))
 		tkstylus = 1;
 		break;
 	case 'v':
-		vflag = 1;	/* print startup messages */
+		vflag++;	/* print startup messages */
 		break;
 	} ARGEND
 }
