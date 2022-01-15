@@ -1485,6 +1485,7 @@ static void
 puntfp(Prog *p)
 {
 	USED(p);
+        return;
 	/* floating point - punt for now */
 	curtext->reg = NREG;	/* ARM */
 	curtext->from.sym->thumb = 0;
