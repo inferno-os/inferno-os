@@ -678,7 +678,6 @@ thumbbuildop()
 
 /* Map chipfloat indices to high and low immediate constant values for VMOV */
 static int thumbfloatmap[] = {
-    0x7fffffff, /* Placeholder for zero */
     0x00000007, /* 1 = 2**0 * 1 */
     0x00000000, /* 2 = 2**1 * 1 */
     0x00080000, /* 3 = 2**1 * 1.5 */
@@ -1246,7 +1245,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                         } else {
                             /* VMOV immediate (ARMv7-M ARM, A7.7.236) */
                             o1 ^= 1 << 22;
-                            o1 |= thumbfloatmap[rf];
+                            o1 |= thumbfloatmap[rf - 1];
                         }
                     } else {
                         /* VMOV register (ARMv7-M ARM, A7.7.237) */
