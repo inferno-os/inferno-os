@@ -2,6 +2,7 @@
 
 static long thumboprr(int);
 static long thumboprrr(int, int);
+static long thumbopfp(int, int);
 static long thumbopirr(int , int);
 static long thumbopri(int);
 static long thumbophh(int);
@@ -153,7 +154,6 @@ thumbaclass(Adr *a, Prog *p)
 		diag("D_SHIFT in thumbaclass");
 		return C_SHIFT;
 	case D_FREG:
-		diag("D_FREG in thumbaclass");
 		return C_FREG;
 	case D_FPCR:
 		diag("D_FPCR in thumbaclass");
@@ -221,7 +221,6 @@ thumbaclass(Adr *a, Prog *p)
 		}
 		return C_GOK;
 	case D_FCONST:
-		diag("D_FCONST in thumbaclass");
 		return C_FCON;
 	case D_CONST:
 		switch(a->name) {
@@ -450,42 +449,45 @@ Optab thumboptab[] =
 	{ AMOVHU,	C_REG,		C_NONE,		C_LEXT,		31,	4,	0,	LTO },
 	{ AMOVBU,	C_REG,		C_NONE,		C_LEXT,		31,	4,	0,	LTO },
 
-	{ AMOVF,	C_FREG,	C_NONE,	C_FEXT,		50, 4, REGSB },
-	{ AMOVF,	C_FREG,	C_NONE,	C_FAUTO,	50, 4, REGSP },
-	{ AMOVF,	C_FREG,	C_NONE,	C_FOREG,	50, 4, 0 },
+	{ AMOVF,	C_FREG,	C_NONE,	C_FEXT,		52, 4, REGSB },
+	{ AMOVF,	C_FREG,	C_NONE,	C_FAUTO,	52, 4, REGSP },
+	{ AMOVF,	C_FREG,	C_NONE,	C_FOREG,	52, 4, 0 },
 
-	{ AMOVF,	C_FEXT,	C_NONE,	C_FREG,		51, 4, REGSB },
-	{ AMOVF,	C_FAUTO,C_NONE,	C_FREG,		51, 4, REGSP },
-	{ AMOVF,	C_FOREG,C_NONE,	C_FREG,		51, 4, 0 },
+	{ AMOVF,	C_FEXT,	C_NONE,	C_FREG,		53, 4, REGSB },
+	{ AMOVF,	C_FAUTO,C_NONE,	C_FREG,		53, 4, REGSP },
+	{ AMOVF,	C_FOREG,C_NONE,	C_FREG,		53, 4, 0 },
 
-	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		52, 12, REGSB,	LTO },
-	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	52, 12, REGSP,	LTO },
-	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	52, 12, 0,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 12, REGSB,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	54, 12, REGSP,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	54, 12, 0,	LTO },
 
-	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		53, 12, REGSB,	LFROM },
-	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		53, 12, REGSP,	LFROM },
-	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		53, 12, 0,	LFROM },
+	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 12, REGSB,	LFROM },
+	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		55, 12, REGSP,	LFROM },
+	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		55, 12, 0,	LFROM },
 
 	{ AMOVF,	C_FREG,	C_NONE,	C_ADDR,		68, 8, 0,	LTO },
 	{ AMOVF,	C_ADDR,	C_NONE,	C_FREG,		69, 8, 0,	LFROM },
 
-	{ AADDF,	C_FREG,	C_NONE,	C_FREG,		54, 4, 0 },
-	{ AADDF,	C_FREG,	C_REG,	C_FREG,		54, 4, 0 },
-	{ AADDF,	C_FCON,	C_NONE,	C_FREG,		54, 4, 0 },
-	{ AADDF,	C_FCON,	C_REG,	C_FREG,		54, 4, 0 },
-	{ AMOVF,	C_FCON,	C_NONE,	C_FREG,		54, 4, 0 },
-	{ AMOVF,	C_FREG, C_NONE, C_FREG,		54, 4, 0 },
+	{ AADDF,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AADDF,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
+	{ AADDF,	C_FCON,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AADDF,	C_FCON,	C_REG,	C_FREG,		56, 4, 0 },
+	{ AMOVF,	C_FCON,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AMOVF,	C_FREG, C_NONE, C_FREG,		56, 4, 0 },
 
-	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		54, 4, 0 },
-	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		54, 4, 0 },
+	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		56, 4, 0 },
+	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
 
-	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		55, 4, 0 },
-	{ AMOVFW,	C_REG,	C_NONE,	C_FREG,		55, 4, 0 },
+	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
+	{ AMOVFW,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
+
+	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		58, 4, 0 },
+	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		59, 4, 0 },
 
 	{ AXXX,		C_NONE,		C_NONE,		C_NONE,		0,	2,	0 },
 };
 
-#define OPCNTSZ	52
+#define OPCNTSZ	60
 int opcount[OPCNTSZ];
 
 // is this too pessimistic ?
@@ -673,6 +675,18 @@ thumbbuildop()
 		}
 	}
 }
+
+/* Map chipfloat indices to high and low immediate constant values for VMOV */
+static int thumbfloatmap[] = {
+    0x7fffffff, /* Placeholder for zero */
+    0x00000007, /* 1 = 2**0 * 1 */
+    0x00000000, /* 2 = 2**1 * 1 */
+    0x00080000, /* 3 = 2**1 * 1.5 */
+    0x00000001, /* 4 = 2**2 * 1 */
+    0x00040001, /* 5 = 2**2 * 1.25 */
+    0x00000006, /* 0.5 = 2**-1 * 1 */
+    0x00040002, /* 10 = 2**3 * 1.25 */
+};
 
 void
 thumbasmout(Prog *p, Optab *o)
@@ -1157,6 +1171,117 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		o1 = mvlh(REGPC, REGLINK);	// mov pc, lr
 		o2 = mvlh(rt, REGPC);		// mov r, pc
 		break;
+
+	case 52:	/* floating point store */
+		v = regoff(&p->to);
+		r = p->to.reg;
+		if(r == NREG)
+			r = o->param;
+		o1 = ofsr(p->as, p->from.reg, v, r, p->scond, p);
+		break;
+
+	case 53:	/* floating point load */
+		v = regoff(&p->from);
+		r = p->from.reg;
+		if(r == NREG)
+			r = o->param;
+		o1 = ofsr(p->as, p->to.reg, v, r, p->scond, p) | (1<<20);
+		break;
+
+	case 54:	/* floating point store, long offset UGLY */
+		o1 = omvl(p, &p->to, REGTMP);
+		if(!o1)
+			break;
+		r = p->to.reg;
+		if(r == NREG)
+			r = o->param;
+		o2 = oprrr(AADD, p->scond) | (REGTMP << 12) | (REGTMP << 16) | r;
+		o3 = ofsr(p->as, p->from.reg, 0, REGTMP, p->scond, p);
+		break;
+
+	case 55:	/* floating point load, long offset UGLY */
+		o1 = omvl(p, &p->from, REGTMP);
+		if(!o1)
+			break;
+		r = p->from.reg;
+		if(r == NREG)
+			r = o->param;
+		o2 = oprrr(AADD, p->scond) | (REGTMP << 12) | (REGTMP << 16) | r;
+		o3 = ofsr(p->as, p->to.reg, 0, REGTMP, p->scond, p) | (1<<20);
+		break;
+
+	case 56:	/* floating point arith */
+		o1 = thumbopfp(p->as, p->scond);
+		if(p->from.type == D_FCONST) {
+			rf = chipfloat(p->from.ieee);
+			if(rf < 0){
+				diag("invalid floating-point immediate\n%P", p);
+				rf = 0;
+			}
+		} else
+			rf = p->from.reg;
+
+		rt = p->to.reg;
+		r = p->reg;
+		if(p->to.type == D_NONE)
+			rt = 0;	/* CMP[FD] */
+		else if(r == NREG)
+			r = rt;
+
+                switch (p->as) {
+                case AADDF:
+                    /* VADD (ARMv7-M ARM, A7.7.222) */
+		    o1 |= (rf >> 1) | ((rf & 1) << 23) |        /* Vn */
+                          ((r & 0x1e)<<15) | ((r & 1)<<21) |    /* Vm */
+                          ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+                    break;
+                case AMOVF:
+		    if(p->from.type == D_FCONST) {
+			if (rf == 0) {
+                            /* Float constant was zero */
+                            /* VSUB rt, rt, rt (ARMv7-M ARM, A7.7.257) */
+                            o1 ^= 1 << 7;
+                            o1 |= (rt >> 1) | ((rt & 1) << 23);     /* Vn */
+                            o1 |= ((rt & 0x1e)<<15) | ((rt & 1)<<21); /* Vm */
+                        } else {
+                            /* VMOV immediate (ARMv7-M ARM, A7.7.236) */
+                            o1 ^= 1 << 22;
+                            o1 |= thumbfloatmap[rf];
+                        }
+                    } else {
+                        /* VMOV register (ARMv7-M ARM, A7.7.237) */
+		        o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21); /* Vm */
+                    }
+		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+                }
+                /* Encode the 32-bit instruction as two 16-bit ones */
+                o2 = o1 >> 16;
+                o1 = o1 & 0xffff;
+		break;
+
+	case 57:	/* floating point fix and float */
+		o1 = oprrr(p->as, p->scond);
+		rf = p->from.reg;
+		rt = p->to.reg;
+		if(p->to.type == D_NONE){
+			rt = 0;
+			diag("to.type==D_NONE (asm/fp)");
+		}
+		if(p->from.type == D_REG)
+			o1 |= (rf<<12) | (rt<<16);
+		else
+			o1 |= rf | (rt<<12);
+		break;
+
+	case 58:	/* move to FP[CS]R */
+		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
+		o1 |= ((p->to.reg+1)<<21) | (p->from.reg << 12);
+		break;
+
+	case 59:	/* move from FP[CS]R */
+		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
+		o1 |= ((p->from.reg+1)<<21) | (p->to.reg<<12) | (1<<20);
+		break;
 	}
 
 	v = p->pc;
@@ -1305,6 +1430,38 @@ thumboprrr(int a, int ld)
 		}
 	}
 	diag("bad thumbop oprrr %d", a);
+	prasm(curp);
+	return 0;
+}
+
+long
+thumbopfp(int a, int sc)
+{
+	long o = 0;
+
+	switch(a) {
+	case AADDD:	return o | (0xe<<24) | (0x0<<20) | (1<<8) | (1<<7);
+	case AADDF:	return o | (0x0a<<24) | (0x0<<16) | (0xee<<8) | 0x30;
+	case AMULD:	return o | (0xe<<24) | (0x1<<20) | (1<<8) | (1<<7);
+	case AMULF:	return o | (0xe<<24) | (0x1<<20) | (1<<8);
+	case ASUBD:	return o | (0xe<<24) | (0x2<<20) | (1<<8) | (1<<7);
+	case ASUBF:	return o | (0xe<<24) | (0x2<<20) | (1<<8);
+	case ADIVD:	return o | (0xe<<24) | (0x4<<20) | (1<<8) | (1<<7);
+	case ADIVF:	return o | (0xe<<24) | (0x4<<20) | (1<<8);
+	case ACMPD:
+	case ACMPF:	return o | (0xe<<24) | (0x9<<20) | (0xF<<12) | (1<<8) | (1<<4);	/* arguably, ACMPF should expand to RNDF, CMPD */
+
+	case AMOVF:
+	case AMOVDF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb0;
+	case AMOVD:
+	case AMOVFD:	return o | (0xe<<24) | (0x0<<20) | (1<<15) | (1<<8) | (1<<7);
+
+	case AMOVWF:	return o | (0xe<<24) | (0<<20) | (1<<8) | (1<<4);
+	case AMOVWD:	return o | (0xe<<24) | (0<<20) | (1<<8) | (1<<4) | (1<<7);
+	case AMOVFW:	return o | (0xe<<24) | (1<<20) | (1<<8) | (1<<4);
+	case AMOVDW:	return o | (0xe<<24) | (1<<20) | (1<<8) | (1<<4) | (1<<7);
+	}
+	diag("bad fp %d", a);
 	prasm(curp);
 	return 0;
 }
