@@ -3,6 +3,8 @@
 static long thumboprr(int);
 static long thumboprrr(int, int);
 static long thumbopfp(int, int);
+static long thumbomvl(Prog *p, Adr *a, int dr);
+static long thumbofsr(int a, int r, long v, int b, Prog *p);
 static long thumbopirr(int , int);
 static long thumbopri(int);
 static long thumbophh(int);
@@ -13,6 +15,11 @@ static void mult(Prog *, int, int);
 static void numr(Prog *, int, int, int);
 static void regis(Prog *, int, int, int);
 static void dis(int, int);
+
+/* Encode the 32-bit instructions as two 16-bit ones */
+#define SPLIT_INS(filled, empty) \
+    empty = filled >> 16; \
+    filled = filled & 0xffff;
 
 // build a constant using neg, add and shift - only worth it if < 6 bytes */
 static int
@@ -49,7 +56,7 @@ immoreg(int off, Prog *p)
 
 	if(off < 0)
 		return C_GOREG;
-	if(as == AMOVW)
+	if(as == AMOVW || as == AMOVF)
 		v = 4;
 	else if(as == AMOVH || as == AMOVHU)
 		v = 2;
@@ -81,8 +88,8 @@ immacon(int off, Prog *p, int t1, int t2)
 static int
 immauto(int off, Prog *p)
 {
-	if(p->as != AMOVW)
-		diag("bad op in immauto");
+	if(p->as != AMOVW && p->as != AMOVF)
+		diag("bad op %d in immauto", p->as);
 	mult(p, off, 4);
 	if(off >= 0 && off <= 1020)
 		return C_SAUTO;
@@ -457,13 +464,13 @@ Optab thumboptab[] =
 	{ AMOVF,	C_FAUTO,C_NONE,	C_FREG,		53, 4, REGSP },
 	{ AMOVF,	C_FOREG,C_NONE,	C_FREG,		53, 4, 0 },
 
-	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 12, REGSB,	LTO },
-	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	54, 12, REGSP,	LTO },
-	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	54, 12, 0,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 8, REGSB,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	54, 8, REGSP,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	54, 8, 0,	LTO },
 
-	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 12, REGSB,	LFROM },
-	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		55, 12, REGSP,	LFROM },
-	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		55, 12, 0,	LFROM },
+	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 8, REGSB,	LFROM },
+	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		55, 8, REGSP,	LFROM },
+	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		55, 8, 0,	LFROM },
 
 	{ AMOVF,	C_FREG,	C_NONE,	C_ADDR,		68, 8, 0,	LTO },
 	{ AMOVF,	C_ADDR,	C_NONE,	C_FREG,		69, 8, 0,	LFROM },
@@ -1176,7 +1183,10 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;
-		o1 = ofsr(p->as, p->from.reg, v, r, p->scond, p);
+		o1 = thumbofsr(p->as, p->from.reg, v, r, p);
+                /* Encode the 32-bit instruction as two 16-bit ones */
+/*                o2 = o1 >> 16;
+                o1 = o1 & 0xffff;*/
 		break;
 
 	case 53:	/* floating point load */
@@ -1184,29 +1194,33 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
-		o1 = ofsr(p->as, p->to.reg, v, r, p->scond, p) | (1<<20);
+		o1 = ofsr(p->as, p->to.reg, v, r, p->scond, p) | (1<<4);
 		break;
 
 	case 54:	/* floating point store, long offset UGLY */
-		o1 = omvl(p, &p->to, REGTMP);
+		o1 = thumbomvl(p, &p->to, REGTMPT);
 		if(!o1)
 			break;
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;
-		o2 = oprrr(AADD, p->scond) | (REGTMP << 12) | (REGTMP << 16) | r;
-		o3 = ofsr(p->as, p->from.reg, 0, REGTMP, p->scond, p);
+                /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
+		o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
+		o3 = thumbofsr(p->as, p->from.reg, 0, REGTMPT, p);
+                SPLIT_INS(o3, o4)
 		break;
 
 	case 55:	/* floating point load, long offset UGLY */
-		o1 = omvl(p, &p->from, REGTMP);
+		o1 = thumbomvl(p, &p->from, REGTMPT);
 		if(!o1)
 			break;
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
-		o2 = oprrr(AADD, p->scond) | (REGTMP << 12) | (REGTMP << 16) | r;
-		o3 = ofsr(p->as, p->to.reg, 0, REGTMP, p->scond, p) | (1<<20);
+                /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
+		o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
+		o3 = thumbofsr(p->as, p->to.reg, 0, REGTMPT, p) | (1<<4);
+                SPLIT_INS(o3, o4)
 		break;
 
 	case 56:	/* floating point arith */
@@ -1259,7 +1273,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		break;
 
 	case 57:	/* floating point fix and float */
-		o1 = oprrr(p->as, p->scond);
+		o1 = thumbopfp(p->as, p->scond);
 		rf = p->from.reg;
 		rt = p->to.reg;
 		if(p->to.type == D_NONE){
@@ -1466,6 +1480,39 @@ thumbopfp(int a, int sc)
 }
 
 static long
+thumbofsr(int a, int r, long v, int b, Prog *p)
+{
+	long o;
+
+        /* VSTR (ARMv7-M ARM, A7.7.256), encoding T2 */
+        o = 0x0a00ed00 | (1 << 7); /* Set U (add offset) by default */
+	if(v < 0) {
+		v = -v;
+		o ^= 1 << 7; /* clear U if offset is negative */
+	}
+	if(v & 3)
+		diag("odd offset for floating point op: %d\n%P", v, p);
+	else if(v >= (1<<10))
+		diag("literal span too large: %d\n%P", v, p);
+	o |= ((v>>2) & 0xFF) << 16;                 /* offset */
+	o |= b;                                     /* Rn */
+	o |= ((r & 0x1e) << 27) | ((r & 1) << 6);   /* Vd */
+
+	switch(a) {
+	default:
+		diag("bad fst %A", a);
+	case AMOVD:
+		diag("bad fst %A", a);
+	case AMOVF:
+		break;
+	}
+
+        /* The caller will OR the result with 1 << 4 to create a load, if required */
+        /* VLDR (ARMv7-M ARM, A7.7.233), encoding T2 */
+	return o;
+}
+
+static long
 thumbopri(int a)
 {
 	switch(a) {
@@ -1534,6 +1581,30 @@ thumbopmv(int a, int ld)
 	diag("bad thumbop opmv %d", a);
 	prasm(curp);
 	return 0;
+}
+
+static long
+thumbomvl(Prog *p, Adr *a, int dr)
+{
+	long v, o1;
+	if(!p->cond) {
+		thumbaclass(a, p);
+		v = immrot(~instoffset);
+		if(v == 0) {
+			diag("missing literal");
+			prasm(p);
+			return 0;
+		}
+                print("omvl: %d\n", dr);
+		o1 = thumboprrr(AMVN, dr);
+		o1 |= v;
+	} else {
+		v = p->cond->pc - p->pc - 4;
+                /* A PC-relative load into dr */
+                //o1 = 0x4800 | (dr << 8) | (v >> 1);
+                o1 = mv(p, dr, v);
+	}
+	return o1;
 }
 
 static void 
