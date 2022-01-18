@@ -464,11 +464,11 @@ Optab thumboptab[] =
 	{ AMOVF,	C_FAUTO,C_NONE,	C_FREG,		53, 4, REGSP },
 	{ AMOVF,	C_FOREG,C_NONE,	C_FREG,		53, 4, 0 },
 
-	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 8, REGSB,	LTO },
+	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 6, REGSB,	LTO },
 	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	54, 8, REGSP,	LTO },
 	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	54, 8, 0,	LTO },
 
-	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 8, REGSB,	LFROM },
+	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 6, REGSB,	LFROM },
 	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		55, 8, REGSP,	LFROM },
 	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		55, 8, 0,	LFROM },
 
@@ -1202,29 +1202,47 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		break;
 
 	case 54:	/* floating point store, long offset UGLY */
+                /* Load an address or offset from a PC-relative address */
 		o1 = thumbomvl(p, &p->to, REGTMPT);
 		if(!o1)
 			break;
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;
-                /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
-		o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
-		o3 = thumbofsr(p->as, p->from.reg, 0, REGTMPT, p);
-                SPLIT_INS(o3, o4)
+                if (o->param == REGSB) {
+                    /* Store directly to the address */
+		    o2 = thumbofsr(p->as, p->from.reg, 0, REGTMPT, p);
+                    SPLIT_INS(o2, o3)
+                } else {
+                    /* Add the offset to the stack pointer */
+                    /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
+		    o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
+                    /* Store to the calculated address */
+		    o3 = thumbofsr(p->as, p->from.reg, 0, REGTMPT, p);
+                    SPLIT_INS(o3, o4)
+                }
 		break;
 
 	case 55:	/* floating point load, long offset UGLY */
+                /* Load an address or offset from a PC-relative address */
 		o1 = thumbomvl(p, &p->from, REGTMPT);
 		if(!o1)
 			break;
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
-                /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
-		o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
-		o3 = thumbofsr(p->as, p->to.reg, 0, REGTMPT, p) | (1<<4);
-                SPLIT_INS(o3, o4)
+                if (o->param == REGSB) {
+                    /* Load directly from the address */
+		    o2 = thumbofsr(p->as, p->to.reg, 0, REGTMPT, p) | (1<<4);
+                    SPLIT_INS(o2, o3)
+                } else {
+                    /* Add the offset to the stack pointer */
+                    /* ADD (ARM ARM Thumb-2 Supplement, 4.6.4), T2 */
+		    o2 = 0x4400 | ((REGTMPT & 0x8) << 4) | (r << 3) | (REGTMPT & 0x7);
+                    /* Load from the calculated address */
+		    o3 = thumbofsr(p->as, p->to.reg, 0, REGTMPT, p) | (1<<4);
+                    SPLIT_INS(o3, o4)
+                }
 		break;
 
 	case 56:	/* floating point arith */
