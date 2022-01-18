@@ -541,9 +541,11 @@ brextra(Prog *p)
 static long
 mv(Prog *p, int r, int off)
 {
+//    print("mv %d %x\n", r, off);
 	int v, o;
 	if(p != nil && p->cond != nil){	// in literal pool
 		v = p->cond->pc - p->pc - 4;
+                print("%x %x\n", p->cond->pc, p->pc);
 		if(p->cond->pc & 3)
 			diag("mv: bad literal pool alignment");
 		if(v & 3)
@@ -557,6 +559,7 @@ mv(Prog *p, int r, int off)
 		numr(p, off, 0, 255);
 		o = 0x4<<11;
 	}
+//    print("MV %d %.8lux\n", off, o);
 	o |= (r<<8) | off;
 	return o;
 }
@@ -1179,22 +1182,23 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		break;
 
 	case 52:	/* floating point store */
+                diag("52", p);
 		v = regoff(&p->to);
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;
 		o1 = thumbofsr(p->as, p->from.reg, v, r, p);
-                /* Encode the 32-bit instruction as two 16-bit ones */
-/*                o2 = o1 >> 16;
-                o1 = o1 & 0xffff;*/
+                SPLIT_INS(o1, o2);
 		break;
 
 	case 53:	/* floating point load */
+                diag("53", p);
 		v = regoff(&p->from);
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
-		o1 = ofsr(p->as, p->to.reg, v, r, p->scond, p) | (1<<4);
+		o1 = thumbofsr(p->as, p->to.reg, v, r, p) | (1<<4);
+                SPLIT_INS(o1, o2);
 		break;
 
 	case 54:	/* floating point store, long offset UGLY */
@@ -1267,9 +1271,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                     }
 		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
                 }
-                /* Encode the 32-bit instruction as two 16-bit ones */
-                o2 = o1 >> 16;
-                o1 = o1 & 0xffff;
+                SPLIT_INS(o1, o2);
 		break;
 
 	case 57:	/* floating point fix and float */
@@ -1281,17 +1283,20 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 			diag("to.type==D_NONE (asm/fp)");
 		}
 		if(p->from.type == D_REG)
-			o1 |= (rf<<12) | (rt<<16);
+			o1 |= (rf<<28) | ((rt & 1)<<23) | ((rt & 0x1e)>>1);
 		else
-			o1 |= rf | (rt<<12);
+			o1 |= (rt<<28) | ((rf & 1)<<23) | ((rf & 0x1e)>>1);
+                SPLIT_INS(o1, o2);
 		break;
 
 	case 58:	/* move to FP[CS]R */
+                diag("58", p);
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->to.reg+1)<<21) | (p->from.reg << 12);
 		break;
 
 	case 59:	/* move from FP[CS]R */
+                diag("59", p);
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->from.reg+1)<<21) | (p->to.reg<<12) | (1<<20);
 		break;
@@ -1469,10 +1474,10 @@ thumbopfp(int a, int sc)
 	case AMOVD:
 	case AMOVFD:	return o | (0xe<<24) | (0x0<<20) | (1<<15) | (1<<8) | (1<<7);
 
-	case AMOVWF:	return o | (0xe<<24) | (0<<20) | (1<<8) | (1<<4);
-	case AMOVWD:	return o | (0xe<<24) | (0<<20) | (1<<8) | (1<<4) | (1<<7);
-	case AMOVFW:	return o | (0xe<<24) | (1<<20) | (1<<8) | (1<<4);
-	case AMOVDW:	return o | (0xe<<24) | (1<<20) | (1<<8) | (1<<4) | (1<<7);
+	case AMOVWF:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (0<<4);
+	case AMOVWD:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (0<<4);
+	case AMOVFW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<4);
+	case AMOVDW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (1<<4);
 	}
 	diag("bad fp %d", a);
 	prasm(curp);
