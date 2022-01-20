@@ -486,7 +486,7 @@ Optab thumboptab[] =
 	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
 
 	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
-	{ AMOVFW,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
+	{ AMOVWF,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
 
 	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		58, 4, 0 },
 	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		59, 4, 0 },
@@ -1492,8 +1492,10 @@ thumbopfp(int a, int sc)
 	case AMOVD:
 	case AMOVFD:	return o | (0xe<<24) | (0x0<<20) | (1<<15) | (1<<8) | (1<<7);
 
+        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=0 */
 	case AMOVWF:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (0<<4);
 	case AMOVWD:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (0<<4);
+        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=1 */
 	case AMOVFW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<4);
 	case AMOVDW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (1<<4);
 	}
