@@ -771,6 +771,7 @@ Optab*
 oplook(Prog *p)
 {
 	int a1, a2, a3, r;
+        int oa1, oa2, oa3;
 	char *c1, *c3;
 	Optab *o, *e;
 	Optab *otab;
@@ -808,6 +809,9 @@ oplook(Prog *p)
 	a2 = C_NONE;
 	if(p->reg != NREG)
 		a2 = C_REG;
+
+        oa1 = a1; oa2 = a2; oa3 = a3;
+
 	r = p->as;
 	o = orange[r].start;
 	if(o == 0) {
@@ -834,7 +838,7 @@ oplook(Prog *p)
 			return o;
 		}
 	diag("illegal combination %A %d %d %d",
-		p->as, a1, a2, a3);
+		p->as, oa1, oa2, oa3);
 	prasm(p);
 	if(o == 0)
 		o = otab;
