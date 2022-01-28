@@ -503,26 +503,26 @@ Optab thumboptab[] =
 	{ AMOVD,	C_FREG, C_NONE, C_FREG,		56, 4, 0 },
 	{ AMOVD,	C_FCON,	C_NONE,	C_FREG,		56, 4, 0 },
 
-	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		56, 4, 0 },
-	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
+	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		57, 8, 0 },
+	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		57, 8, 0 },
 
-	{ ACMPD,	C_FREG,	C_REG,	C_NONE,		56, 4, 0 },
-	{ ACMPD,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
+	{ ACMPD,	C_FREG,	C_REG,	C_NONE,		57, 8, 0 },
+	{ ACMPD,	C_FCON,	C_REG,	C_NONE,		57, 8, 0 },
 
-	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
-	{ AMOVWF,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
-	{ AMOVWD,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
-	{ AMOVDW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
-	{ AMOVFD,	C_FREG,	C_NONE,	C_FREG,		57, 4, 0 },
-	{ AMOVDF,	C_FREG,	C_NONE,	C_FREG,		57, 4, 0 },
+	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		58, 4, 0 },
+	{ AMOVWF,	C_REG,	C_NONE,	C_FREG,		58, 4, 0 },
+	{ AMOVWD,	C_REG,	C_NONE,	C_FREG,		58, 4, 0 },
+	{ AMOVDW,	C_FREG,	C_NONE,	C_REG,		58, 4, 0 },
+	{ AMOVFD,	C_FREG,	C_NONE,	C_FREG,		58, 4, 0 },
+	{ AMOVDF,	C_FREG,	C_NONE,	C_FREG,		58, 4, 0 },
 
-	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		58, 4, 0 },
-	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		59, 4, 0 },
+	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		59, 4, 0 },
+	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		60, 4, 0 },
 
 	{ AXXX,		C_NONE,		C_NONE,		C_NONE,		0,	2,	0 },
 };
 
-#define OPCNTSZ	60
+#define OPCNTSZ	61
 int opcount[OPCNTSZ];
 
 // is this too pessimistic ?
@@ -1281,9 +1281,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 
 		rt = p->to.reg;
 		r = p->reg;
-		if(p->to.type == D_NONE)
-			rt = 0;	/* CMP[FD] */
-		else if(r == NREG)
+		if(r == NREG)
 			r = rt;
 
                 switch (p->as) {
@@ -1312,14 +1310,32 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		        o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21); /* Vm */
                     }
 		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+                    break;
                 default:
+                    print("%A %d %d %d\n", p->as, rf, r, rt);
                     diag("not implemented: %A", p->as);
                     break;
                 }
                 SPLIT_INS(o1, o2);
 		break;
 
-	case 57:	/* floating point fix and float */
+	case 57:	/* floating point compare */
+		o1 = thumbopfp(p->as, p->scond);
+		rf = p->from.reg;
+		rt = p->reg;
+
+                /* VCMP (ARMv7-M ARM, A7.7.223) */
+                o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21) |  /* Vm */
+                      ((r & 0x1e)<<27) | ((r & 1)<<6);      /* Vd */
+
+                /* VMRS (ARMv7-M ARM, A7.7.243) with Rt=15 (for flags) */
+                o3 = 0x0a10eef1 | (15 << 28);
+
+                SPLIT_INS(o1, o2);
+                SPLIT_INS(o3, o4);
+		break;
+
+	case 58:	/* floating point fix and float */
 		o1 = thumbopfp(p->as, p->scond);
 		rf = p->from.reg;
 		rt = p->to.reg;
@@ -1334,14 +1350,14 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                 SPLIT_INS(o1, o2);
 		break;
 
-	case 58:	/* move to FP[CS]R */
-                diag("58", p);
+	case 59:	/* move to FP[CS]R */
+                diag("59", p);
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->to.reg+1)<<21) | (p->from.reg << 12);
 		break;
 
-	case 59:	/* move from FP[CS]R */
-                diag("59", p);
+	case 60:	/* move from FP[CS]R */
+                diag("60", p);
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->from.reg+1)<<21) | (p->to.reg<<12) | (1<<20);
 		break;
