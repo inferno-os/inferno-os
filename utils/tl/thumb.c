@@ -56,7 +56,7 @@ immoreg(int off, Prog *p)
 
 	if(off < 0)
 		return C_GOREG;
-	if(as == AMOVW || as == AMOVF)
+	if(as == AMOVW || as == AMOVF || as == AMOVD)
 		v = 4;
 	else if(as == AMOVH || as == AMOVHU)
 		v = 2;
@@ -88,11 +88,12 @@ immacon(int off, Prog *p, int t1, int t2)
 static int
 immauto(int off, Prog *p)
 {
-	if(p->as != AMOVW && p->as != AMOVF)
+	if(p->as != AMOVW && p->as != AMOVF && p->as != AMOVD)
 		diag("bad op %d in immauto", p->as);
 	mult(p, off, 4);
 	if(off >= 0 && off <= 1020)
 		return C_SAUTO;
+
 	return C_LAUTO;
 }
 
@@ -460,17 +461,27 @@ Optab thumboptab[] =
 	{ AMOVF,	C_FREG,	C_NONE,	C_FAUTO,	52, 4, REGSP },
 	{ AMOVF,	C_FREG,	C_NONE,	C_FOREG,	52, 4, 0 },
 
+	{ AMOVD,	C_FREG,	C_NONE,	C_SAUTO,	52, 4, REGSP },
+	{ AMOVD,	C_FREG,	C_NONE,	C_SOREG,	52, 4, 0 },
+
 	{ AMOVF,	C_FEXT,	C_NONE,	C_FREG,		53, 4, REGSB },
 	{ AMOVF,	C_FAUTO,C_NONE,	C_FREG,		53, 4, REGSP },
 	{ AMOVF,	C_FOREG,C_NONE,	C_FREG,		53, 4, 0 },
+
+	{ AMOVD,	C_SAUTO,C_NONE,	C_FREG,		53, 4, REGSP },
+	{ AMOVD,	C_SOREG,C_NONE,	C_FREG,		53, 4, 0 },
 
 	{ AMOVF,	C_FREG,	C_NONE,	C_LEXT,		54, 6, REGSB,	LTO },
 	{ AMOVF,	C_FREG,	C_NONE,	C_LAUTO,	54, 8, REGSP,	LTO },
 	{ AMOVF,	C_FREG,	C_NONE,	C_LOREG,	54, 8, 0,	LTO },
 
+	{ AMOVD,	C_FREG,	C_NONE,	C_LEXT,		54, 6, REGSB,	LTO },
+
 	{ AMOVF,	C_LEXT,	C_NONE,	C_FREG,		55, 6, REGSB,	LFROM },
 	{ AMOVF,	C_LAUTO,C_NONE,	C_FREG,		55, 8, REGSP,	LFROM },
 	{ AMOVF,	C_LOREG,C_NONE,	C_FREG,		55, 8, 0,	LFROM },
+
+	{ AMOVD,	C_LEXT,	C_NONE,	C_FREG,		55, 6, REGSB,	LFROM },
 
 	{ AMOVF,	C_FREG,	C_NONE,	C_ADDR,		68, 8, 0,	LTO },
 	{ AMOVF,	C_ADDR,	C_NONE,	C_FREG,		69, 8, 0,	LFROM },
@@ -482,11 +493,28 @@ Optab thumboptab[] =
 	{ AMOVF,	C_FCON,	C_NONE,	C_FREG,		56, 4, 0 },
 	{ AMOVF,	C_FREG, C_NONE, C_FREG,		56, 4, 0 },
 
+	{ AADDD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AADDD,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
+	{ ASUBD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ ASUBD,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
+	{ ADIVD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AMULD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+
+	{ AMOVD,	C_FREG, C_NONE, C_FREG,		56, 4, 0 },
+	{ AMOVD,	C_FCON,	C_NONE,	C_FREG,		56, 4, 0 },
+
 	{ ACMPF,	C_FREG,	C_REG,	C_NONE,		56, 4, 0 },
 	{ ACMPF,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
 
+	{ ACMPD,	C_FREG,	C_REG,	C_NONE,		56, 4, 0 },
+	{ ACMPD,	C_FCON,	C_REG,	C_NONE,		56, 4, 0 },
+
 	{ AMOVFW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
 	{ AMOVWF,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
+	{ AMOVWD,	C_REG,	C_NONE,	C_FREG,		57, 4, 0 },
+	{ AMOVDW,	C_FREG,	C_NONE,	C_REG,		57, 4, 0 },
+	{ AMOVFD,	C_FREG,	C_NONE,	C_FREG,		57, 4, 0 },
+	{ AMOVDF,	C_FREG,	C_NONE,	C_FREG,		57, 4, 0 },
 
 	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		58, 4, 0 },
 	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		59, 4, 0 },
@@ -541,11 +569,9 @@ brextra(Prog *p)
 static long
 mv(Prog *p, int r, int off)
 {
-//    print("mv %d %x\n", r, off);
 	int v, o;
 	if(p != nil && p->cond != nil){	// in literal pool
 		v = p->cond->pc - p->pc - 4;
-                print("%x %x\n", p->cond->pc, p->pc);
 		if(p->cond->pc & 3)
 			diag("mv: bad literal pool alignment");
 		if(v & 3)
@@ -559,7 +585,6 @@ mv(Prog *p, int r, int off)
 		numr(p, off, 0, 255);
 		o = 0x4<<11;
 	}
-//    print("MV %d %.8lux\n", off, o);
 	o |= (r<<8) | off;
 	return o;
 }
@@ -1182,7 +1207,6 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		break;
 
 	case 52:	/* floating point store */
-                diag("52", p);
 		v = regoff(&p->to);
 		r = p->to.reg;
 		if(r == NREG)
@@ -1192,7 +1216,6 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		break;
 
 	case 53:	/* floating point load */
-                diag("53", p);
 		v = regoff(&p->from);
 		r = p->from.reg;
 		if(r == NREG)
@@ -1271,6 +1294,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                           ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
                     break;
                 case AMOVF:
+                case AMOVD: /* TODO: actually use double precision */
 		    if(p->from.type == D_FCONST) {
 			if (rf == 0) {
                             /* Float constant was zero */
@@ -1288,6 +1312,9 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		        o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21); /* Vm */
                     }
 		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+                default:
+                    diag("not implemented: %A", p->as);
+                    break;
                 }
                 SPLIT_INS(o1, o2);
 		break;
@@ -1484,9 +1511,12 @@ thumbopfp(int a, int sc)
 	case ASUBF:	return o | (0xe<<24) | (0x2<<20) | (1<<8);
 	case ADIVD:	return o | (0xe<<24) | (0x4<<20) | (1<<8) | (1<<7);
 	case ADIVF:	return o | (0xe<<24) | (0x4<<20) | (1<<8);
+        /* VCMP (ARMv7-M ARM, A7.7.223), encoding T1 */
 	case ACMPD:
-	case ACMPF:	return o | (0xe<<24) | (0x9<<20) | (0xF<<12) | (1<<8) | (1<<4);	/* arguably, ACMPF should expand to RNDF, CMPD */
+	case ACMPF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb4;
+        /* arguably, ACMPF should expand to RNDF, CMPD */
 
+        /* VMOV (register) (ARMv7-M ARM, A7.7.237) */
 	case AMOVF:
 	case AMOVDF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb0;
 	case AMOVD:
@@ -1527,7 +1557,9 @@ thumbofsr(int a, int r, long v, int b, Prog *p)
 	default:
 		diag("bad fst %A", a);
 	case AMOVD:
-		diag("bad fst %A", a);
+                /* Make the encoding T1 instead of T2 for double precision */
+                o &= ~(1 << 24);
+		break;
 	case AMOVF:
 		break;
 	}
