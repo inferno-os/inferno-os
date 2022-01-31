@@ -495,9 +495,13 @@ Optab thumboptab[] =
 
 	{ AADDD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
 	{ AADDD,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
+	{ ASUBF,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ ASUBF,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
 	{ ASUBD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
 	{ ASUBD,	C_FREG,	C_REG,	C_FREG,		56, 4, 0 },
 	{ ADIVD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ ADIVF,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
+	{ AMULF,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
 	{ AMULD,	C_FREG,	C_NONE,	C_FREG,		56, 4, 0 },
 
 	{ AMOVD,	C_FREG, C_NONE, C_FREG,		56, 4, 0 },
@@ -1212,6 +1216,8 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		if(r == NREG)
 			r = o->param;
 		o1 = thumbofsr(p->as, p->from.reg, v, r, p);
+                if (p->as == AMOVD)
+                    o1 |= 1 << 24;
                 SPLIT_INS(o1, o2);
 		break;
 
@@ -1286,9 +1292,15 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 
                 switch (p->as) {
                 case AADDF:
-                    /* VADD (ARMv7-M ARM, A7.7.222) */
-		    o1 |= (rf >> 1) | ((rf & 1) << 23) |        /* Vn */
-                          ((r & 0x1e)<<15) | ((r & 1)<<21) |    /* Vm */
+                case AADDD:
+                case ADIVF:
+                case ADIVD:
+                case AMULF:
+                case AMULD:
+                case ASUBF:
+                case ASUBD:
+		    o1 |= (r >> 1) | ((r & 1) << 23) |          /* Vn */
+                          ((rf & 0x1e)<<15) | ((rf & 1)<<21) |  /* Vm */
                           ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
                     break;
                 case AMOVF:
@@ -1310,6 +1322,8 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		        o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21); /* Vm */
                     }
 		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+                    if (p->as == AMOVD)
+                        o1 |= 1 << 24;
                     break;
                 default:
                     print("%A %d %d %d\n", p->as, rf, r, rt);
@@ -1519,14 +1533,18 @@ thumbopfp(int a, int sc)
 	long o = 0;
 
 	switch(a) {
-	case AADDD:	return o | (0xe<<24) | (0x0<<20) | (1<<8) | (1<<7);
-	case AADDF:	return o | (0x0a<<24) | (0x0<<16) | (0xee<<8) | 0x30;
-	case AMULD:	return o | (0xe<<24) | (0x1<<20) | (1<<8) | (1<<7);
-	case AMULF:	return o | (0xe<<24) | (0x1<<20) | (1<<8);
-	case ASUBD:	return o | (0xe<<24) | (0x2<<20) | (1<<8) | (1<<7);
-	case ASUBF:	return o | (0xe<<24) | (0x2<<20) | (1<<8);
-	case ADIVD:	return o | (0xe<<24) | (0x4<<20) | (1<<8) | (1<<7);
-	case ADIVF:	return o | (0xe<<24) | (0x4<<20) | (1<<8);
+        /* VADD (ARMv7-M ARM, A7.7.222) */
+	case AADDD:	return o | (0x0b<<24) | (0xee<<8) | 0x30;
+	case AADDF:	return o | (0x0a<<24) | (0xee<<8) | 0x30;
+        /* VMUL (ARMv7-M ARM, A7.7.245) */
+	case AMULD:	return o | (0x0b<<24) | (0xee<<8) | 0x20;
+	case AMULF:	return o | (0x0a<<24) | (0xee<<8) | 0x20;
+        /* VSUB (ARMv7-M ARM, A7.7.257) */
+	case ASUBD:	return o | (0x0b<<24) | (0x4<<20) | (0xee<<8) | 0x30;
+	case ASUBF:	return o | (0x0a<<24) | (0x4<<20) | (0xee<<8) | 0x30;
+        /* VDIV (ARMv7-M ARM, A7.7.229) */
+	case ADIVD:	return o | (0x0b<<24) | (0xee<<8) | 0x80;
+	case ADIVF:	return o | (0x0a<<24) | (0xee<<8) | 0x80;
         /* VCMP (ARMv7-M ARM, A7.7.223), encoding T1 */
 	case ACMPD:
 	case ACMPF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb4;
@@ -1574,7 +1592,7 @@ thumbofsr(int a, int r, long v, int b, Prog *p)
 		diag("bad fst %A", a);
 	case AMOVD:
                 /* Make the encoding T1 instead of T2 for double precision */
-                o &= ~(1 << 24);
+                o |= 1 << 24;
 		break;
 	case AMOVF:
 		break;
@@ -1674,7 +1692,6 @@ thumbomvl(Prog *p, Adr *a, int dr)
 	} else {
 		v = p->cond->pc - p->pc - 4;
                 /* A PC-relative load into dr */
-                //o1 = 0x4800 | (dr << 8) | (v >> 1);
                 o1 = mv(p, dr, v);
 	}
 	return o1;
