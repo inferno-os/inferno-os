@@ -1533,35 +1533,34 @@ thumbopfp(int a, int sc)
 	long o = 0;
 
 	switch(a) {
-        /* VADD (ARMv7-M ARM, A7.7.222) */
-	case AADDD:	return o | (0x0b<<24) | (0xee<<8) | 0x30;
-	case AADDF:	return o | (0x0a<<24) | (0xee<<8) | 0x30;
-        /* VMUL (ARMv7-M ARM, A7.7.245) */
-	case AMULD:	return o | (0x0b<<24) | (0xee<<8) | 0x20;
-	case AMULF:	return o | (0x0a<<24) | (0xee<<8) | 0x20;
-        /* VSUB (ARMv7-M ARM, A7.7.257) */
-	case ASUBD:	return o | (0x0b<<24) | (0x4<<20) | (0xee<<8) | 0x30;
-	case ASUBF:	return o | (0x0a<<24) | (0x4<<20) | (0xee<<8) | 0x30;
-        /* VDIV (ARMv7-M ARM, A7.7.229) */
-	case ADIVD:	return o | (0x0b<<24) | (0xee<<8) | 0x80;
-	case ADIVF:	return o | (0x0a<<24) | (0xee<<8) | 0x80;
+        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=0 */
+	case AMOVWD:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (0<<4);
+	case AMOVWF:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (0<<4);
+        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=1 */
+	case AMOVDW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (1<<4);
+	case AMOVFW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<4);
+        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1 */
+	case AMOVFD:	return o | (0x0a<<24) | (0xc0<<16) | (0xee<<8) | 0xb7;
+	case AMOVDF:	return o | (0x0b<<24) | (0xc0<<16) | (0xee<<8) | 0xb7;
+        /* VMOV (register) (ARMv7-M ARM, A7.7.237) */
+	case AMOVD:     return o | (0x0b<<24) | (0x40<<16) | (0xee<<8) | 0xb0;
+	case AMOVF:     return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb0;
         /* VCMP (ARMv7-M ARM, A7.7.223), encoding T1 */
 	case ACMPD:
 	case ACMPF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb4;
         /* arguably, ACMPF should expand to RNDF, CMPD */
-
-        /* VMOV (register) (ARMv7-M ARM, A7.7.237) */
-	case AMOVF:
-	case AMOVDF:	return o | (0x0a<<24) | (0x40<<16) | (0xee<<8) | 0xb0;
-	case AMOVD:
-	case AMOVFD:	return o | (0xe<<24) | (0x0<<20) | (1<<15) | (1<<8) | (1<<7);
-
-        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=0 */
-	case AMOVWF:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (0<<4);
-	case AMOVWD:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (0<<4);
-        /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=1 */
-	case AMOVFW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<4);
-	case AMOVDW:	return o | (0x0a<<24) | (1<<20) | (0xee<<8) | (1<<6) | (1<<4);
+        /* VADD (ARMv7-M ARM, A7.7.222) */
+	case AADDD:	return o | (0x0b<<24) | (0xee<<8) | 0x30;
+	case AADDF:	return o | (0x0a<<24) | (0xee<<8) | 0x30;
+        /* VSUB (ARMv7-M ARM, A7.7.257) */
+	case ASUBD:	return o | (0x0b<<24) | (0x4<<20) | (0xee<<8) | 0x30;
+	case ASUBF:	return o | (0x0a<<24) | (0x4<<20) | (0xee<<8) | 0x30;
+        /* VMUL (ARMv7-M ARM, A7.7.245) */
+	case AMULD:	return o | (0x0b<<24) | (0xee<<8) | 0x20;
+	case AMULF:	return o | (0x0a<<24) | (0xee<<8) | 0x20;
+        /* VDIV (ARMv7-M ARM, A7.7.229) */
+	case ADIVD:	return o | (0x0b<<24) | (0xee<<8) | 0x80;
+	case ADIVF:	return o | (0x0a<<24) | (0xee<<8) | 0x80;
 	}
 	diag("bad fp %d", a);
 	prasm(curp);
