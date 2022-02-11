@@ -346,7 +346,6 @@ Optab thumboptab[] =
 	{ AADD,		C_SCON,		C_REG,		C_REG,		3,	2,	0 },
 	{ AADD,		C_LCON,		C_REG,		C_REG,		49,	4,	0 },
 	{ AADD,		C_GCON,		C_REG,		C_REG,		36,	4,	0,	LFROM },
-	// { AADD,		C_LCON,		C_NONE,		C_REG,		3,	2,	0,	LFROM },
 	{ ASRL,		C_SCON,		C_REG,		C_REG,		4,	2,	0 },
 	{ ASRL,		C_SCON,		C_NONE,		C_REG,		4,	2,	0 },
 	{ AADD,		C_SCON,		C_NONE,		C_REG,		5,	2,	0 },
@@ -357,6 +356,8 @@ Optab thumboptab[] =
 	{ AMOVW,		C_SCON,		C_NONE,		C_REG,		5,	2,	0 },
 	{ AMOVW,		C_BCON,		C_NONE,		C_REG,		47,	4,	0 },
 	{ AMOVW,		C_LCON,		C_NONE,		C_REG,		38,	2,	0,	LFROM },
+//	{ AMVN,		C_LCON,		C_NONE,		C_REG,		61,	4,	0 },
+//	{ AMVN,		C_LCON,		C_REG,		C_REG,		61,	4,	0 },
 	// { AADD,		C_LCON,		C_PC,		C_REG,		6,	2,	0,	LFROM },
 	// { AADD,		C_LCON,		C_SP,		C_REG,		6,	2,	0,	LFROM },
 	{ AADD,		C_SCON,		C_NONE,		C_SP,		7,	2,	0 },
@@ -526,7 +527,7 @@ Optab thumboptab[] =
 	{ AXXX,		C_NONE,		C_NONE,		C_NONE,		0,	2,	0 },
 };
 
-#define OPCNTSZ	61
+#define OPCNTSZ	62
 int opcount[OPCNTSZ];
 
 // is this too pessimistic ?
@@ -1375,6 +1376,27 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		o1 = ((p->scond & C_SCOND) << 28) | (0xe << 24) | (1<<8) | (1<<4);
 		o1 |= ((p->from.reg+1)<<21) | (p->to.reg<<12) | (1<<20);
 		break;
+
+        case 61:    /* op $c, r */
+                rt = p->to.reg;
+                if (p->reg == NREG)
+                    r = rt;
+                else
+                    r = p->reg;
+
+                switch (p->as) {
+                case AAND:
+                    o1 = 0x0000f000 | r | (rt<<24) | ((instoffset & 0xff)<<16) |
+                                      ((instoffset & 0x700) << 20) |
+                                      ((instoffset & 0x800) >> 1);
+                    break;
+                default:
+                    print("%A %d %d %d\n", p->as, instoffset, p->reg, p->to.reg);
+                    diag("not implemented: %A", p->as);
+                    break;
+                }
+                SPLIT_INS(o1, o2);
+                break;
 	}
 
 	v = p->pc;
