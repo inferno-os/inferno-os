@@ -322,12 +322,6 @@ void	addpool(Prog*, Adr*);
 EXTERN	Prog*	blitrl;
 EXTERN	Prog*	elitrl;
 
-void	initdiv(void);
-EXTERN	Prog*	prog_div;
-EXTERN	Prog*	prog_divu;
-EXTERN	Prog*	prog_mod;
-EXTERN	Prog*	prog_modu;
-
 #pragma	varargck	type	"A"	int
 #pragma	varargck	type	"C"	int
 #pragma	varargck	type	"D"	Adr*
@@ -365,7 +359,6 @@ int	compound(Prog*);
 double	cputime(void);
 void	datblk(long, long, int);
 void	diag(char*, ...);
-void	divsig(void);
 void	dodata(void);
 void	doprof1(void);
 void	doprof2(void);

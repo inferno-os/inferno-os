@@ -512,10 +512,6 @@ reachable()
 	int i, todo;
 	char *a;
 
-	Reachable("_div");
-	Reachable("_divu");
-	Reachable("_mod");
-	Reachable("_modu");
 	a = INITENTRY;
 	if(*a >= '0' && *a <= '9')
 		return;
