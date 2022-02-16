@@ -356,8 +356,9 @@ Optab thumboptab[] =
 	{ AMOVW,		C_SCON,		C_NONE,		C_REG,		5,	2,	0 },
 	{ AMOVW,		C_BCON,		C_NONE,		C_REG,		47,	4,	0 },
 	{ AMOVW,		C_LCON,		C_NONE,		C_REG,		38,	2,	0,	LFROM },
-//	{ AMVN,		C_LCON,		C_NONE,		C_REG,		61,	4,	0 },
-//	{ AMVN,		C_LCON,		C_REG,		C_REG,		61,	4,	0 },
+	{ AMVN,		C_LCON,		C_NONE,		C_REG,		61,	4,	0 },
+	{ AMVN,		C_LCON,		C_REG,		C_REG,		61,	4,	0 },
+	{ ARSB,		C_LCON,		C_REG,		C_REG,		61,	4,	0 },
 	// { AADD,		C_LCON,		C_PC,		C_REG,		6,	2,	0,	LFROM },
 	// { AADD,		C_LCON,		C_SP,		C_REG,		6,	2,	0,	LFROM },
 	{ AADD,		C_SCON,		C_NONE,		C_SP,		7,	2,	0 },
@@ -524,10 +525,15 @@ Optab thumboptab[] =
 	{ AMOVW,	C_REG,	C_NONE,	C_FCR,		59, 4, 0 },
 	{ AMOVW,	C_FCR,	C_NONE,	C_REG,		60, 4, 0 },
 
+	{ ADIV,		C_REG,	C_NONE,	C_REG,		62, 4, 0 },
+	{ ADIVU,	C_REG,	C_NONE,	C_REG,		62, 4, 0 },
+	{ AMOD,		C_REG,	C_NONE,	C_REG,		63, 10, 0 },
+	{ AMODU,	C_REG,	C_NONE,	C_REG,		64, 10, 0 },
+
 	{ AXXX,		C_NONE,		C_NONE,		C_NONE,		0,	2,	0 },
 };
 
-#define OPCNTSZ	62
+#define OPCNTSZ	65
 int opcount[OPCNTSZ];
 
 // is this too pessimistic ?
@@ -1384,18 +1390,108 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                 else
                     r = p->reg;
 
+		thumbaclass(&p->from, p);
+
                 switch (p->as) {
                 case AAND:
-                    o1 = 0x0000f000 | r | (rt<<24) | ((instoffset & 0xff)<<16) |
-                                      ((instoffset & 0x700) << 20) |
-                                      ((instoffset & 0x800) >> 1);
+                    o1 = 0x0000f000;
+                    break;
+                case AORR:
+                    o1 = 0x0000f040;
+                    break;
+                case ARSB:
+                    o1 = 0x0000f1c0;
                     break;
                 default:
                     print("%A %d %d %d\n", p->as, instoffset, p->reg, p->to.reg);
                     diag("not implemented: %A", p->as);
                     break;
                 }
+                o1 |= r | (rt<<24) | ((instoffset & 0xff)<<16) |
+                                     ((instoffset & 0x700) << 20) |
+                                     ((instoffset & 0x800) >> 1);
                 SPLIT_INS(o1, o2);
+                break;
+
+        case 62:    /* div(u) */
+                rf = p->from.reg;
+                rt = p->to.reg;
+                if (p->reg == NREG)
+                    r = rt;
+                else
+                    r = p->reg;
+
+                switch (p->as) {
+                case ADIV:
+                    /* SDIV (4.6.126, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                    o1 = 0xf0f0fb90;
+                    break;
+                case ADIVU:
+                    /* UDIV (4.6.198, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                    o1 = 0xf0f0fbb0;
+                    break;
+                default:
+                    print("%A %d %d %d\n", p->as, rf, r, rt);
+                    diag("not implemented: %A", p->as);
+                    break;
+                }
+
+                o1 |= r | (rf<<16) | (rt<<24);
+                SPLIT_INS(o1, o2);
+                break;
+
+        case 63:    /* mod */
+                rf = p->from.reg;
+                rt = p->to.reg;
+		lowreg(p, rf);
+		lowreg(p, rt);
+                if (p->reg == NREG)
+                    r = rt;
+                else
+                    r = p->reg;
+
+                /* rf is Rm in the manual, which is the second operand */
+
+                /* From ARM Architecture Reference Manual Thumb-2 Supplement, A-16:
+                   x MOD y = x - y * (x DIV y) */
+                /* TMP = N SDIV D   or  TMP = r / rf */
+                o1 = 0xf0f0fb90 | (REGTMPT<<24) | r | (rf<<16);
+                /* MUL (4.6.84, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                /* TMP = D * (N DIV D)  or  TMP = TMP * rf */
+                o3 = 0xf000fb00 | (REGTMPT<<24) | (rf<<16) | REGTMPT;
+                /* SUB (4.6.177, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                /* Q = N - D * (N DIV D) */
+                o5 = 0x1a00 | (REGTMPT<<6) | (r<<3) | rt;
+
+                SPLIT_INS(o1, o2);
+                SPLIT_INS(o3, o4);
+                break;
+
+        case 64:    /* modu */
+                rf = p->from.reg;
+                rt = p->to.reg;
+		lowreg(p, rf);
+		lowreg(p, rt);
+                if (p->reg == NREG)
+                    r = rt;
+                else
+                    r = p->reg;
+
+                /* rf is Rm in the manual, which is the second operand */
+
+                /* From ARM Architecture Reference Manual Thumb-2 Supplement, A-16:
+                   x MOD y = x - y * (x DIV y) */
+                /* TMP = N UDIV D   or  TMP = r / rf */
+                o1 = 0xf0f0fbb0 | (REGTMPT<<24) | r | (rf<<16);
+                /* MUL (4.6.84, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                /* TMP = D * (N DIV D)  or  TMP = TMP * rf */
+                o3 = 0xf000fb00 | (REGTMPT<<24) | (rf<<16) | REGTMPT;
+                /* SUB (4.6.177, ARM Architecture Reference Manual Thumb-2 Supplement) */
+                /* Q = N - D * (N DIV D) */
+                o5 = 0x1a00 | (REGTMPT<<6) | (r<<3) | rt;
+
+                SPLIT_INS(o1, o2);
+                SPLIT_INS(o3, o4);
                 break;
 	}
 
