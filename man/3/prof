@@ -71,7 +71,7 @@ allows finer control of the profiling of a module. It is not used at present.
 The read-only file
 .B histogram
 contains statistics about the profiled module. The file contains a list of pairs
-of integers seperated by a space. The first number of the pair is a program counter
+of integers separated by a space. The first number of the pair is a program counter
 value representing the address of a dis instruction. Addresses start from 0 and the
 list is in order of increasing address. The
 second number is the frequency with which this address was sampled. Each read

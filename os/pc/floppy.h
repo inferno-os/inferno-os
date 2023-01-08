@@ -37,7 +37,7 @@ struct FDrive
  */
 struct FController
 {
-	QLock;			/* exclusive access to the contoller */
+	QLock;			/* exclusive access to the controller */
 
 	int	ndrive;
 	FDrive	*d;		/* the floppy drives */
@@ -47,7 +47,7 @@ struct FController
 	int	ncmd;		/* # command bytes */
 	uchar	stat[14];	/* command status */
 	int	nstat;		/* # status bytes */
-	int	confused;	/* controler needs to be reset */
+	int	confused;	/* controller needs to be reset */
 	Rendez	r;		/* wait here for command termination */
 	int	motor;		/* bit mask of spinning disks */
 };

@@ -73,7 +73,7 @@
     stream->pathname = pathname;
     stream->pos      = 0;
     
-    FT_TRACE1(( "iso.stream.init: opened '%s' (%ld bytes) succesfully\n",
+    FT_TRACE1(( "iso.stream.init: opened '%s' (%ld bytes) successfully\n",
                  pathname, FT_STREAM__SIZE(stream) ));
   }                 
 

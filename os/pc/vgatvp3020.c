@@ -12,7 +12,7 @@
 #include "screen.h"
 
 /*
- * TVP3020 Viewpoint Video Interface Pallette.
+ * TVP3020 Viewpoint Video Interface Palette.
  * Assumes hooked up to an S3 86C928.
  */
 enum {

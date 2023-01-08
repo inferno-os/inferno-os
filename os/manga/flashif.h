@@ -52,7 +52,7 @@ void	archflashwp(void *archdata, int);
  */
 
 /*
- * do any device spcific initialisation
+ * do any device specific initialisation
  */
 void archnand_init(void *archdata);
 

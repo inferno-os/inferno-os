@@ -241,7 +241,7 @@ noops(void)
 #ifdef CALLEEBX
 			if(p->from.sym->foreign){
 				if(thumb)
-					// don't allow literal pool to seperate these
+					// don't allow literal pool to separate these
 					p = adword(0xe28f7001, 0xe12fff17, p); // arm add 1, pc, r7 and bx r7
 					// p = aword(0xe12fff17, aword(0xe28f7001, p)); // arm add 1, pc, r7 and bx r7
 				else

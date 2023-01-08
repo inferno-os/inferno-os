@@ -814,7 +814,7 @@ typephymode(Ctlr* ctlr, uchar* block, int wait)
 		return -1;
 
 	/*
-	 * Snarf the media capabilities, nway advertisment,
+	 * Snarf the media capabilities, nway advertisement,
 	 * FDX and TTM bitmaps.
 	 */
 	p = &block[5+len*block[3]+len*block[4+len*block[3]]];
@@ -862,7 +862,7 @@ typephymode(Ctlr* ctlr, uchar* block, int wait)
 
 	/*
 	 * Turn off auto-negotiation, set the auto-negotiation
-	 * advertisment register then start the auto-negotiation
+	 * advertisement register then start the auto-negotiation
 	 * process again.
 	 */
 	miiw(ctlr, ctlr->curphyad, Bmcr, 0);
@@ -1302,7 +1302,7 @@ static uchar leafpnic[] = {
 	0x00,				/* GPR sequence length */
 	0x00,				/* reset sequence length */
 	0x00, 0x78,			/* media capabilities */
-	0xE0, 0x01,			/* Nway advertisment */
+	0xE0, 0x01,			/* Nway advertisement */
 	0x00, 0x50,			/* FDX bitmap */
 	0x00, 0x18,			/* TTM bitmap */
 };
@@ -1363,7 +1363,7 @@ srom(Ctlr* ctlr)
 	/*
 	 * Fake up the SROM for the PNIC.
 	 * It looks like a 21140 with a PHY.
-	 * The MAC address is byte-swapped in the orginal SROM data.
+	 * The MAC address is byte-swapped in the original SROM data.
 	 */
 	if(ctlr->id == Pnic){
 		memmove(&ctlr->srom[20], leafpnic, sizeof(leafpnic));

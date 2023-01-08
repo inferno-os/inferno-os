@@ -148,7 +148,7 @@ BUILTINPATH: con "/dis/sh";
 
 DEBUG: con 0;
 
-ENVSEP: con 0;				# word seperator in external environment
+ENVSEP: con 0;				# word separator in external environment
 ENVHASHSIZE: con 7;		# XXX profile usage of this...
 OAPPEND: con 16r80000;		# make sure this doesn't clash with O* constants in sys.m
 OMASK: con 7;

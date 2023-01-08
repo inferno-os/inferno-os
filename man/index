@@ -51529,8 +51529,8 @@ separators	/man/2/dial
 separators	/man/2/prefab-compound
 separators	/man/2/prefab-element
 sepchar	/man/2/bufio
-seperated	/man/1/math-misc
-seperated	/man/3/prof
+separated	/man/1/math-misc
+separated	/man/3/prof
 seprint	/man/10/print
 sepstring	/man/2/bufio
 seq	/man/1/sh-expr

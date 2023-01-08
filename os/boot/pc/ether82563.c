@@ -47,7 +47,7 @@ enum {
 	Fcal		= 0x00000028,	/* Flow Control Address Low */
 	Fcah		= 0x0000002C,	/* Flow Control Address High */
 	Fct		= 0x00000030,	/* Flow Control Type */
-	Kumctrlsta	= 0x00000034,	/* Kumeran Controll and Status Register */
+	Kumctrlsta	= 0x00000034,	/* Kumeran Control and Status Register */
 	Vet		= 0x00000038,	/* VLAN EtherType */
 	Fcttv		= 0x00000170,	/* Flow Control Transmit Timer Value */
 	Txcw		= 0x00000178,	/* Transmit Configuration Word */
@@ -293,10 +293,10 @@ enum {					/* Tctl */
 	CtSHIFT		= 4,
 	ColdMASK	= 0x003FF000,	/* Collision Distance */
 	ColdSHIFT	= 12,
-	Swxoff		= 0x00400000,	/* Sofware XOFF Transmission */
+	Swxoff		= 0x00400000,	/* Software XOFF Transmission */
 	Pbe		= 0x00800000,	/* Packet Burst Enable */
 	Rtlc		= 0x01000000,	/* Re-transmit on Late Collision */
-	Nrtu		= 0x02000000,	/* No Re-transmit on Underrrun */
+	Nrtu		= 0x02000000,	/* No Re-transmit on Underrun */
 };
 
 enum {					/* [RT]xdctl */

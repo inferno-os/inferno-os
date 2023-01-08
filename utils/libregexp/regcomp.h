@@ -27,7 +27,7 @@ extern Reprog	RePrOg;
 #define	RBRA		0201	/* Right bracket, ) */
 #define	LBRA		0202	/* Left bracket, ( */
 #define	OR		0203	/* Alternation, | */
-#define	CAT		0204	/* Concatentation, implicit operator */
+#define	CAT		0204	/* Concatenation, implicit operator */
 #define	STAR		0205	/* Closure, * */
 #define	PLUS		0206	/* a+ == aa* */
 #define	QUEST		0207	/* a? == a|nothing, i.e. 0 or 1 a's */

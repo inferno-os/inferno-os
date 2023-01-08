@@ -28,13 +28,13 @@
 .etx		text		x-setext	-		# [Mosaic]
 .exe		application	octet-stream	-		# DOS executable
 .executable	application	octet-stream	-		# DOS executable
-.exz		application	octet-stream	x-gzip		# gziped DOS executable
+.exz		application	octet-stream	x-gzip		# gzipped DOS executable
 .f		text		plain		-		# fortran-77 program
 .flc		video		x-flc		-
 .fli		video		x-fli		-
 .gif		image		gif		-
 .gtar		application	x-gtar		-		# [Mosaic]
-.gz		-		-		x-gzip		# gziped file
+.gz		-		-		x-gzip		# gzipped file
 .h		text		plain		-		# C header file
 .hdf		application	x-hdf		-
 .hqx		application	octet-stream	-		# Mac BinHex

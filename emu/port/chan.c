@@ -1332,7 +1332,7 @@ skipslash(char *name)
  *  a) is in valid memory.
  *  b) is shorter than 2^16 bytes, so it can fit in a 9P string field.
  *  c) contains no frogs.
- * The first byte is known to be addressible by the requester, so the
+ * The first byte is known to be addressable by the requester, so the
  * routine works for kernel and user memory both.
  * The parameter slashok flags whether a slash character is an error
  * or a valid character.

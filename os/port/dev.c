@@ -199,7 +199,7 @@ devwalk(Chan *c, Chan *nc, char **name, int nname, Dirtab *tab, int ntab, Devgen
 	}
 	/*
 	 * We processed at least one name, so will return some data.
-	 * If we didn't process all nname entries succesfully, we drop
+	 * If we didn't process all nname entries successfully, we drop
 	 * the cloned channel and return just the Qids of the walks.
 	 */
 Done:

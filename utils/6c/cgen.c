@@ -358,7 +358,7 @@ cgen(Node *n, Node *nn)
 				gopcode(OMUL, n->type, &nod1, &nod);
 				regfree(&nod1);
 			}else
-				gopcode(OMUL, n->type, r, &nod);	/* addressible */
+				gopcode(OMUL, n->type, r, &nod);	/* addressable */
 			gmove(&nod, nn);
 			regfree(&nod);
 			break;
@@ -1013,7 +1013,7 @@ cgen(Node *n, Node *nn)
 		sugen(l, nodrat, l->type->width);
 		if(nn == Z)
 			break;
-		warn(n, "non-interruptable temporary");
+		warn(n, "non-interruptible temporary");
 		nod = *nodrat;
 		if(!r || r->op != OCONST) {
 			diag(n, "DOT and no offset");
@@ -1424,7 +1424,7 @@ sugen(Node *n, Node *nn, long w)
 		sugen(l, nodrat, l->type->width);
 		if(nn == Z)
 			break;
-		warn(n, "non-interruptable temporary");
+		warn(n, "non-interruptible temporary");
 		nod1 = *nodrat;
 		r = n->right;
 		if(!r || r->op != OCONST) {
@@ -1519,7 +1519,7 @@ sugen(Node *n, Node *nn, long w)
 		}
 
 		sugen(n->right, nodrat, w);
-		warn(n, "non-interruptable temporary");
+		warn(n, "non-interruptible temporary");
 		sugen(nodrat, n->left, w);
 		sugen(nodrat, nn, w);
 		break;

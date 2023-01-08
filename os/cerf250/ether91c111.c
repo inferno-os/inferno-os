@@ -844,7 +844,7 @@ ether91c111reset(Ether* ether)
 	ctlr->bank = -1;
 
 	/*
-	 * do architecture dependent intialisation
+	 * do architecture dependent initialisation
 	 */
 	adinit(ether);
 

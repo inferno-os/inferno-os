@@ -447,7 +447,7 @@ cmddone(void *a)
 
 /*
  * Wait for the controller to be ready to accept a command.
- * This is protected from intereference by ataclock() by
+ * This is protected from interference by ataclock() by
  * setting dp->usetime before it is called.
  */
 static void
@@ -662,7 +662,7 @@ struct Ident
 	ushort	reserved0;
 	ushort	heads;		/* # of heads (default) */
 	ushort	b2t;		/* unformatted bytes/track */
-	ushort	b2s;		/* unformated bytes/sector */
+	ushort	b2s;		/* unformatted bytes/sector */
 	ushort	s2t;		/* sectors/track (default) */
 	ushort	reserved1[3];
 /* 10 */

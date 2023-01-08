@@ -27,7 +27,7 @@ atimeof(int force, char *name)
 	}
 	else{
 		atimes(archive);
-		/* mark the aggegate as having been done */
+		/* mark the aggregate as having been done */
 		symlook(strdup(archive), S_AGG, "")->value = (void *)t;
 	}
 		/* truncate long member name to sizeof of name field in archive header */

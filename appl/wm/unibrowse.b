@@ -732,7 +732,7 @@ categname(s: string): string
 
 
 fields(s: string, sep: int): list of string
-# seperator can't be '^' (see string(2))
+# separator can't be '^' (see string(2))
 {
 	cl := ""; cl[0] = sep;
 	ret: list of string;

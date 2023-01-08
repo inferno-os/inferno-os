@@ -25,7 +25,7 @@ enum
 	EsphdrSize	= 28,	// includes IP header
 	IphdrSize	= 20,	// options have been striped
 	EsptailSize	= 2,	// does not include pad or auth data
-	UserhdrSize	= 4,	// user visable header size - if enabled
+	UserhdrSize	= 4,	// user visible header size - if enabled
 };
 
 struct Esphdr

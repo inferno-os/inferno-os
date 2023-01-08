@@ -188,9 +188,9 @@ enum {
 	  Brom_dis=	1<<2,	/* disable boot rom interface */
 	  Bem=		1<<0,	/* big-endian mode */
 	Rmear=	0x08,		/* eeprom access */
-	  Mdc=		1<<6,	/* MII mangement check */
+	  Mdc=		1<<6,	/* MII management check */
 	  Mddir=	1<<5,	/* MII management direction */
-	  Mdio=		1<<4,	/* MII mangement data */
+	  Mdio=		1<<4,	/* MII management data */
 	  Eesel=	1<<3,	/* EEPROM chip select */
 	  Eeclk=	1<<2,	/* EEPROM clock */
 	  Eedo=		1<<1,	/* EEPROM data out (from chip) */

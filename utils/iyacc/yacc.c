@@ -2274,7 +2274,7 @@ go2out(void)
 {
 	int i, j, k, best, count, cbest, times;
 
-	/* mark begining of gotos */
+	/* mark beginning of gotos */
 	Bprint(ftemp, "$\n");
 	for(i = 1; i <= nnonter; i++) {
 		go2gen(i);

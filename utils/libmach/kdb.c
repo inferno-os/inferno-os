@@ -438,7 +438,7 @@ sparcinst(Map *map, uvlong pc, char modifier, char *buf, int n)
 {
 	static int fmtinstalled = 0;
 
-		/* a modifier of 'I' toggles the dissassembler type */
+		/* a modifier of 'I' toggles the disassembler type */
 	if (!fmtinstalled) {
 		fmtinstalled = 1;
 		fmtinstall('T', Tfmt);

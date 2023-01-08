@@ -136,7 +136,7 @@ TEXT	origin(SB),$0
  */
 /*
  *	relocate everything to a half meg and jump there
- *	- looks wierd because it is being assembled by a 32 bit
+ *	- looks weird because it is being assembled by a 32 bit
  *	  assembler for a 16 bit world
  */
 	MOVL	$0,BX
@@ -173,7 +173,7 @@ TEXT	lowcore(SB),$0
 	MOVL	AX,CR0
 
 /*
- *	clear prefetch queue (wierd code to avoid optimizations)
+ *	clear prefetch queue (weird code to avoid optimizations)
  */
 	CLC
 	JCC	flush

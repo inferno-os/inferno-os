@@ -634,7 +634,7 @@ floppyrecal(FDrive *dp)
 
 /*
  *  if the controller or a specific drive is in a confused state,
- *  reset it and get back to a kown state
+ *  reset it and get back to a known state
  */
 static void
 floppyrevive(void)

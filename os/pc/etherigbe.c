@@ -317,10 +317,10 @@ enum {					/* Tctl */
 	CtSHIFT		= 4,
 	ColdMASK	= 0x003FF000,	/* Collision Distance */
 	ColdSHIFT	= 12,
-	Swxoff		= 0x00400000,	/* Sofware XOFF Transmission */
+	Swxoff		= 0x00400000,	/* Software XOFF Transmission */
 	Pbe		= 0x00800000,	/* Packet Burst Enable */
 	Rtlc		= 0x01000000,	/* Re-transmit on Late Collision */
-	Nrtu		= 0x02000000,	/* No Re-transmit on Underrrun */
+	Nrtu		= 0x02000000,	/* No Re-transmit on Underrun */
 };
 
 enum {					/* [RT]xdctl */

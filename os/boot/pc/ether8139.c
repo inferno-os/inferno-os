@@ -475,7 +475,7 @@ rtl8139interrupt(Ureg*, void* arg)
 		 * Only Serr|Timer should be left by now.
 		 * Should anything be done to tidy up? TimerInt isn't
 		 * used so that can be cleared. A PCI bus error is indicated
-		 * by Serr, that's pretty serious; is there anyhing to do
+		 * by Serr, that's pretty serious; is there anything to do
 		 * other than try to reinitialise the chip?
 		 */
 		if((isr & (Serr|Timer)) != 0){

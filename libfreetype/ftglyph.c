@@ -592,7 +592,7 @@
 
     clazz = glyph->clazz;
 
-    /* when called with a bitmap glyph, do nothing and return succesfully */
+    /* when called with a bitmap glyph, do nothing and return successfully */
     if ( clazz == &ft_bitmap_glyph_class )
       goto Exit;
 

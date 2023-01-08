@@ -669,7 +669,7 @@ struct Ident
 	ushort	reserved0;
 	ushort	heads;		/* # of heads (default) */
 	ushort	b2t;		/* unformatted bytes/track */
-	ushort	b2s;		/* unformated bytes/sector */
+	ushort	b2s;		/* unformatted bytes/sector */
 	ushort	s2t;		/* sectors/track (default) */
 	ushort	reserved1[3];
 /* 10 */

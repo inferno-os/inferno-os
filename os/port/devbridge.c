@@ -1066,7 +1066,7 @@ fragment(Etherpkt *epkt, int n)
 	if(n < IPHDR)
 		return 0;
 
-	// check it is ok IP packet - I don't handle IP options for the momment
+	// check it is ok IP packet - I don't handle IP options for the moment
 	if(iphdr->vihl != (IP_VER|IP_HLEN))
 		return 0;
 

@@ -155,7 +155,7 @@ struct TimerReg {
  *	PC compatibility support for PCMCIA drivers
  */
 
-extern ulong ins(ulong);		/* return ulong to prevent unecessary compiler shifting */
+extern ulong ins(ulong);		/* return ulong to prevent unnecessary compiler shifting */
 void outs(ulong, int);
 #define inb(addr)	(*((uchar*)(addr)))
 #define inl(addr)	(*((ulong*)(addr)))
