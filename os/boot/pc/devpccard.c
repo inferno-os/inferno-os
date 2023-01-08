@@ -1304,7 +1304,7 @@ microvolt(Cisdat *cis)
 			return 0;
 		switch(c){
 		case 0x7d:
-			break;		/* high impedence when sleeping */
+			break;		/* high impedance when sleeping */
 		case 0x7e:
 		case 0x7f:
 			microvolts = 0;	/* no connection */

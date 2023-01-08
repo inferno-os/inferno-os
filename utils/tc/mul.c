@@ -63,7 +63,7 @@ mulcon0(long v)
 	mulval = v;
 
 	/*
-	 * look in execption hint table
+	 * look in exception hint table
 	 */
 	a1 = 0;
 	a2 = hintabsize;

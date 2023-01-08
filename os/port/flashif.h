@@ -118,7 +118,7 @@ void	flashput(Flash*, ulong, int);
  */
 
 /*
- * do any device spcific initialisation
+ * do any device specific initialisation
  */
 void archnand_init(Flash*);
 

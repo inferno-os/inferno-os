@@ -37,7 +37,7 @@ typedef	struct Direntry Direntry;
 
 #define	NSTATUS	64			/* length of status (from plan 9) */
 
-#define	IWS	0x01	/* inter word seperator when word lists are stored in env variables */
+#define	IWS	0x01	/* inter word separator when word lists are stored in env variables */
 
 /*
  * Glob character escape in strings:

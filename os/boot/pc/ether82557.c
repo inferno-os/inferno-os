@@ -151,7 +151,7 @@ enum {					/* action command */
 	CbC		= 0x00008000,	/* execution Complete */
 
 	CbNOP		= 0x00000000,
-	CbIAS		= 0x00010000,	/* Indvidual Address Setup */
+	CbIAS		= 0x00010000,	/* Individual Address Setup */
 	CbConfigure	= 0x00020000,
 	CbMAS		= 0x00030000,	/* Multicast Address Setup */
 	CbTransmit	= 0x00040000,

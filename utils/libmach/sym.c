@@ -25,7 +25,7 @@ struct file {				/* Per input file header to history stack */
 	uvlong	addr;			/* address of first text sym */
 	/* union { */
 		Txtsym	*txt;		/* first text symbol */
-		Sym	*sym;		/* only during initilization */
+		Sym	*sym;		/* only during initialization */
 	/* }; */
 	int	n;			/* size of history stack */
 	Hist	*hist;			/* history stack */

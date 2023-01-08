@@ -319,7 +319,7 @@ START	  : con		16r10000;	# Start, used for marker on stack
 RBRA	  : con		16r10001;	# Right bracket, ) 
 LBRA	  : con		16r10002;	# Left bracket, ( 
 OR		  : con		16r10003;	# Alternation, | 
-CAT		  : con		16r10004;	# Concatentation, implicit operator 
+CAT		  : con		16r10004;	# Concatenation, implicit operator 
 STAR	  : con		16r10005;	# Closure, * 
 PLUS		  : con		16r10006;	# a+ == aa* 
 QUEST	  : con		16r10007;	# a? == a|nothing, i.e. 0 or 1 a's 

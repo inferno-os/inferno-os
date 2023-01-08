@@ -86,7 +86,7 @@ usage()
 
 /* (from rcsh)
  * windows quoting rules - I think
- * Words are seperated by space or tab
+ * Words are separated by space or tab
  * Words containing a space or tab can be quoted using "
  * 2N backslashes + " ==> N backslashes and end quote
  * 2N+1 backslashes + " ==> N backslashes + literal "

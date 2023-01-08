@@ -74,7 +74,7 @@ struct Etherparam {
 	ulong	c_pres;		/* preset CRC */
 	ulong	c_mask;		/* constant mask for CRC */
 	ulong	crcec;		/* CRC error counter */
-	ulong	alec;		/* alighnment error counter */
+	ulong	alec;		/* alignment error counter */
 	ulong	disfc;		/* discard frame counter */
 	ushort	pads;		/* short frame PAD characters */
 	ushort	ret_lim;	/* retry limit threshold */

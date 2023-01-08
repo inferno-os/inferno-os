@@ -396,7 +396,7 @@ struct Proc
 	Rendez	sleep;		/* place to sleep */
 	int		killed;		/* by swiproc */
 	int	swipend;	/* software interrupt pending for Prog */
-	int	syscall;	/* set true under sysio for interruptable syscalls */
+	int	syscall;	/* set true under sysio for interruptible syscalls */
 	int	intwait;	/* spin wait for note to turn up */
 	int	sigid;		/* handle used for signal/note/exception */
 	Lock	sysio;		/* note handler lock */
@@ -501,7 +501,7 @@ enum
 	Qmsg		= (1<<1),	/* message stream */
 	Qclosed		= (1<<2),	/* queue has been closed/hungup */
 	Qflow		= (1<<3),	/* producer flow controlled */
-	Qcoalesce	= (1<<4),	/* coallesce packets on read */
+	Qcoalesce	= (1<<4),	/* coalesce packets on read */
 	Qkick		= (1<<5),	/* always call the kick routine after qwrite */
 };
 

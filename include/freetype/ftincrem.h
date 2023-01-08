@@ -116,7 +116,7 @@ FT_BEGIN_HEADER
   *   FreeType error code.  0 means success.
   *
   * @note:
-  *   If this function returns succesfully the method
+  *   If this function returns successfully the method
   *   @FT_Incremental_FreeGlyphDataFunc will be called later to release
   *   the data bytes.
   *

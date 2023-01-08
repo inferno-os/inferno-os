@@ -173,7 +173,7 @@ fileaddr(Dosfile *fp, long ltarget)
 	 *  anything else requires a walk through the fat
 	 */
 	if(ltarget >= fp->lcurrent && fp->pcurrent){
-		/* start at the currrent point */
+		/* start at the current point */
 		l = fp->lcurrent;
 		p = fp->pcurrent;
 	} else {

@@ -107,7 +107,7 @@ waitup(int echildok, int *retstatus)
 	Process *p;
 	extern int runerrs;
 
-	/* first check against the proces slist */
+	/* first check against the process slist */
 	if(retstatus)
 		for(p = phead; p; p = p->f)
 			if(p->pid == *retstatus){

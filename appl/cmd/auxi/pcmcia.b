@@ -274,7 +274,7 @@ volt(name: string)
 			return;
 		case c {
 		16r7d =>
-			break;		# high impedence when sleeping
+			break;		# high impedance when sleeping
 		16r7e or 16r7f =>
 			microv = 0;	# no connection
 		* =>

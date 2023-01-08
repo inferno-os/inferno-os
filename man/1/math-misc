@@ -119,7 +119,7 @@ and user defined exceptions.
 Fits a polynomial of degree
 .I deg
 to a set of points (x, y) where x is the independent variable, y the dependent one.
-All x and y values should be seperated by white space
+All x and y values should be separated by white space
 and can be real or integer. The values are read from
 .IR file
 or standard input if none is given. The

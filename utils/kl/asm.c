@@ -847,7 +847,7 @@ asmout(Prog *p, Optab *o, int aflag)
 		break;
 
 	case 42:	/* ldd -> ldf,ldf */
-		/* note should be ldd with proper allignment */
+		/* note should be ldd with proper alignment */
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
@@ -873,7 +873,7 @@ asmout(Prog *p, Optab *o, int aflag)
 		break;
 
 	case 44:	/* std -> stf,stf */
-		/* note should be std with proper allignment */
+		/* note should be std with proper alignment */
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;
@@ -893,7 +893,7 @@ asmout(Prog *p, Optab *o, int aflag)
 		break;
 
 	case 46:	/* ldd lorg -> ldf,ldf */
-		/* note should be ldd with proper allignment */
+		/* note should be ldd with proper alignment */
 		r = p->from.reg;
 		if(r == NREG)
 			r = o->param;
@@ -915,7 +915,7 @@ asmout(Prog *p, Optab *o, int aflag)
 		break;
 
 	case 48:	/* std lorg -> stf,stf */
-		/* note should be std with proper allignment */
+		/* note should be std with proper alignment */
 		r = p->to.reg;
 		if(r == NREG)
 			r = o->param;

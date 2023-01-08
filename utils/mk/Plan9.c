@@ -97,7 +97,7 @@ exportenv(Envy *e)
 			hasvalue = 0;
 		else
 			hasvalue = 1;
-		if(sy == 0 && !hasvalue)	/* non-existant null symbol */
+		if(sy == 0 && !hasvalue)	/* non-existent null symbol */
 			continue;
 		sprint(nam, "/env/%s", e->name);
 		if (sy != 0 && !hasvalue) {	/* Remove from environment */

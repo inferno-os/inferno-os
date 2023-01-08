@@ -274,7 +274,7 @@ ftlgen(Chan *c, char*, Dirtab*, int, int i, Dir *dp)
 				i--;
 			}
 		if(i != 0){
-			print("wierd\n");
+			print("weird\n");
 			return -1;
 		}
 		devdir(c, (Qid){Qdata + 1 + n, 0, QTFILE}, ftls->part[n].name, ftls->part[n].size, eve, 0660, dp);

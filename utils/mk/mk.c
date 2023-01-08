@@ -87,7 +87,7 @@ work(Node *node, Node *p, Arc *parc)
 		}else
 			return(did);
 	}
-	/* consider no prerequsite case */
+	/* consider no prerequisite case */
 	if(node->prereqs == 0){
 		if(node->time == 0){
 			fprint(2, "mk: don't know how to make '%s'\n", node->name);

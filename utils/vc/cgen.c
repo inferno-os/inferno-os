@@ -403,7 +403,7 @@ cgen(Node *n, Node *nn)
 	case ODOT:
 		sugen(l, nodrat, l->type->width);
 		if(nn != Z) {
-			warn(n, "non-interruptable temporary");
+			warn(n, "non-interruptible temporary");
 			nod = *nodrat;
 			if(!r || r->op != OCONST) {
 				diag(n, "DOT and no offset");
@@ -915,7 +915,7 @@ sugen(Node *n, Node *nn, long w)
 		l = n->left;
 		sugen(l, nodrat, l->type->width);
 		if(nn != Z) {
-			warn(n, "non-interruptable temporary");
+			warn(n, "non-interruptible temporary");
 			nod1 = *nodrat;
 			r = n->right;
 			if(!r || r->op != OCONST) {
@@ -1008,7 +1008,7 @@ sugen(Node *n, Node *nn, long w)
 			break;
 		}
 		sugen(n->right, nodrat, w);
-		warn(n, "non-interruptable temporary");
+		warn(n, "non-interruptible temporary");
 		sugen(nodrat, n->left, w);
 		sugen(nodrat, nn, w);
 		break;

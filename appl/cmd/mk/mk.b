@@ -709,7 +709,7 @@ work(node: ref Node, p: ref Node, parc: ref Arc): int
 		else
 			return did;
 	}
-	#  consider no prerequsite case 
+	#  consider no prerequisite case 
 	if(node.prereqs == nil){
 		if(node.time == 0){
 			sys->fprint(sys->fildes(2), "mk: don't know how to make '%s'\n", libc0->ab2s(node.name));
@@ -1580,7 +1580,7 @@ waitup(echildok: int, retstatus: array of int): int
 	p: ref Process;
 	runerrs: int;
 
-	#  first check against the proces slist 
+	#  first check against the process slist 
 	if(retstatus != nil)
 		for(p = phead; p != nil; p = p.f)
 			if(p.pid == retstatus[0]){
@@ -3113,7 +3113,7 @@ exportenv(e: array of Envy)
 			hasvalue = 0;
 		else
 			hasvalue = 1;
-		if(sy == nil && !hasvalue)	#  non-existant null symbol 
+		if(sy == nil && !hasvalue)	#  non-existent null symbol 
 			continue;
 		stob(nam, sys->sprint("/env/%s", libc0->ab2s(e[i].name)));
 		if(sy != nil && !hasvalue){	#  Remove from environment 
@@ -3953,7 +3953,7 @@ atimeof(force: int, name: array of byte): int
 	}
 	else{
 		atimes(archive);
-		#  mark the aggegate as having been done 
+		#  mark the aggregate as having been done 
 		symlooks(libc0->strdup(archive), S_AGG, libc0->s2ab("")).ivalue = t;
 	}
 	#  truncate long member name to sizeof of name field in archive header 
