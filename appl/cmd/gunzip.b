@@ -34,7 +34,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	if (bufio == nil)
 		fatal(sys->sprint("cannot load %s: %r", Bufio->PATH));
 	str = load String String->PATH;
-	if (bufio == nil)
+	if (str == nil)
 		fatal(sys->sprint("cannot load %s: %r", String->PATH));
 	inflate = load Filter INFLATEPATH;
 	if (inflate == nil)
