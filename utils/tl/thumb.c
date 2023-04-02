@@ -1407,9 +1407,24 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                     diag("not implemented: %A", p->as);
                     break;
                 }
-                o1 |= r | (rt<<24) | ((instoffset & 0xff)<<16) |
-                                     ((instoffset & 0x700) << 20) |
-                                     ((instoffset & 0x800) >> 1);
+
+                /* Only certain ranges of constants are supported. */
+                if ((instoffset & 0xff) == instoffset) {
+                    o1 |= r | (rt<<24) | (instoffset << 16);
+                } else if (((instoffset & 0xff00ff) == instoffset) &&
+                           ((instoffset & 0xff) == ((instoffset >> 16) & 0xff))) {
+                    o1 |= r | (rt<<24) | ((instoffset & 0xff) << 16) | (1 << 28);
+                } else if (((instoffset & 0xff00ff00) == instoffset) &&
+                           (((instoffset >> 8) & 0xff) == ((instoffset >> 24) & 0xff))) {
+                    o1 |= r | (rt<<24) | ((instoffset & 0xff) << 16) | (2 << 28);
+                } else if (((instoffset & 0xff) == ((instoffset >> 8) & 0xff)) &&
+                           ((instoffset & 0xff) == ((instoffset >> 16) & 0xff)) &&
+                           ((instoffset & 0xff) == ((instoffset >> 24) & 0xff))) {
+                    o1 |= r | (rt<<24) | ((instoffset & 0xff) << 16) | (3 << 28);
+                } else {
+                    print("%A %d %d %d\n", p->as, instoffset, p->reg, p->to.reg);
+                    diag("constant not supported: %ux", instoffset);
+                }
                 SPLIT_INS(o1, o2);
                 break;
 
