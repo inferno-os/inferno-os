@@ -350,6 +350,7 @@ span(void)
 		 * add strings to text segment
 		 */
 		c = rnd(c, 8);
+		INITRODAT = c;
 		for(i=0; i<NHASH; i++)
 		for(s = hash[i]; s != S; s = s->link) {
 			if(s->type != SSTRING)
@@ -358,6 +359,7 @@ span(void)
 			while(v & 3)
 				v++;
 			s->value = c;
+			s->base = -INITDAT; // compensate for assumptions in thumb.c
 			c += v;
 		}
 	}

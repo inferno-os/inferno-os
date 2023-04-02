@@ -90,6 +90,7 @@ struct	Sym
 	uchar	fnptr;	// used as fn ptr
 	Use*		use;
 	Sym*	link;
+	long	base;
 };
 
 #define SIGNINTERN	(1729*325*1729)
@@ -248,6 +249,7 @@ EXTERN union
 EXTERN	long	HEADR;			/* length of header */
 EXTERN	int	HEADTYPE;		/* type of header */
 EXTERN	long	INITDAT;		/* data location */
+EXTERN	long	INITRODAT;		/* read-only data location */
 EXTERN	long	INITRND;		/* data round above text location */
 EXTERN	long	INITTEXT;		/* text location */
 EXTERN	char*	INITENTRY;		/* entry point */

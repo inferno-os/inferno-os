@@ -63,6 +63,25 @@ asmb(void)
 			asmout(p, o);
 		pc += o->size;
 	}
+
+	/* output strings in text segment */
+	while (pc < INITRODAT) {
+		cput(0); pc++;
+	}
+
+	Bflush(&bso);
+	cflush();
+
+	etext = INITTEXT + textsize;
+	for(t = pc; t < etext; t += sizeof(buf)-100) {
+		if(etext-t > sizeof(buf)-100)
+			datblk(t, sizeof(buf)-100, 1);
+		else
+			datblk(t, etext-t, 1);
+	}
+
+	pc = t;
+
 	while(pc-INITTEXT < textsize) {
 		cput(0);
 		pc++;
@@ -72,15 +91,6 @@ asmb(void)
 		Bprint(&bso, "\n");
 	Bflush(&bso);
 	cflush();
-
-	/* output strings in text segment */
-	etext = INITTEXT + textsize;
-	for(t = pc; t < etext; t += sizeof(buf)-100) {
-		if(etext-t > sizeof(buf)-100)
-			datblk(t, sizeof(buf)-100, 1);
-		else
-			datblk(t, etext-t, 1);
-	}
 
 	curtext = P;
 	switch(HEADTYPE) {
