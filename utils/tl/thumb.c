@@ -181,7 +181,7 @@ thumbaclass(Adr *a, Prog *p)
 					a->sym->name, TNAME);
 				a->sym->type = SDATA;
 			}
-			instoffset = a->sym->value + a->offset + INITDAT;
+			instoffset = a->sym->value + a->offset + INITDAT + a->sym->base;
 			return C_LEXT;	/* INITDAT unknown at this stage */
 			// return immacon(instoffset, p, C_SEXT, C_LEXT);
 		case D_AUTO:
@@ -213,7 +213,7 @@ thumbaclass(Adr *a, Prog *p)
 					s->name, TNAME);
 				s->type = SDATA;
 			}
-			instoffset = s->value + a->offset + INITDAT;
+			instoffset = s->value + a->offset + INITDAT + s->base;
 			if(s->type == STEXT || s->type == SLEAF){
 				instoffset = s->value + a->offset;
 #ifdef CALLEEBX
@@ -262,7 +262,7 @@ thumbaclass(Adr *a, Prog *p)
 #endif
 				return C_LCON;
 			}
-			instoffset = s->value + a->offset + INITDAT;
+			instoffset = s->value + a->offset + INITDAT + s->base;
 			return C_LCON;	/* INITDAT unknown at this stage */
 			// return immcon(instoffset, p);
 		case D_AUTO:
