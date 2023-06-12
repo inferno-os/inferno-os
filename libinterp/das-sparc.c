@@ -11,9 +11,6 @@ struct opcode
 	int	flag;
 };
 
-static	char FRAMENAME[] = ".frame";
-
-
 struct instr
 {
 	uchar	op;		/* bits 31-30 */
