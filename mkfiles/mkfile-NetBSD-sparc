@@ -1,0 +1,33 @@
+TARGMODEL=	Posix
+TARGSHTYPE=	sh
+CPUS=		sparc
+
+O=		o
+OS=		o
+
+AR=		ar
+ARFLAGS=	ruvs
+
+AS=		cc -m32 -c
+ASFLAGS=
+
+CC=		cc -m32 -c
+CFLAGS=		-g\
+		-O\
+		-fcommon\
+		-fno-strict-aliasing\
+		-Wno-deprecated-declarations -Wuninitialized -Wunused -Wreturn-type -Wimplicit\
+		-I$ROOT/NetBSD/sparc/include\
+		-I$ROOT/include\
+		-I/usr/X11R7/include
+
+ANSICPP=
+LD=		cc -m32
+LDFLAGS=
+
+SYSLIBS=
+
+PAXCTL=		:
+
+YACC=		iyacc
+YFLAGS=		-d
