@@ -4,6 +4,11 @@
 #include	"mach.h"
 #include	"elf.h"
 
+/* gcc predefines -Dsparc=1 */
+#ifdef sparc
+#undef sparc
+#endif
+
 /*
  *	All a.out header types.  The dummy entry allows canonical
  *	processing of the union as a sequence of longs
