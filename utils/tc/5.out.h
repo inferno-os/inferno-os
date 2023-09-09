@@ -18,8 +18,8 @@
 #define	REGSP		13
 #define	REGLINK		14
 #define	REGPC		15
-	
-#define	NFREG		8
+
+#define	NFREG		8       /* number of double precision registers */
 #define	FREGRET		0
 #define	FREGEXT		7
 /* compiler allocates register variables F0 up */

@@ -1345,9 +1345,10 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		rf = p->from.reg;
 		rt = p->reg;
 
-                /* VCMP (ARMv7-M ARM, A7.7.223) */
-                o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21) |  /* Vm */
-                      ((r & 0x1e)<<27) | ((r & 1)<<6);      /* Vd */
+                if (rf != 16) // VCMP (ARMv7-M ARM, A7.7.223, T1)
+                    o1 |= ((rf & 0x0f)<<16) | ((r & 0x0f)<<28); /* Vm, Vd */
+                else // VCMP (ARMv7-M ARM, A7.7.223, T2) compare to 0.0
+                    o1 |= ((r & 0x0f) << 28) | 0x1;
 
                 /* VMRS (ARMv7-M ARM, A7.7.243) with Rt=15 (for flags) */
                 o3 = 0x0a10eef1 | (15 << 28);
@@ -1665,15 +1666,17 @@ thumbopfp(int a, int sc)
 {
 	long o = 0;
 
-        o |= 0xee << 8;
+        o |= 0xee00;    // Prepare the first half-word in the sequence.
 
 	switch(a) {
         /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=0 */
-	case AMOVWD:	return o | (0x0a<<24) | (1<<20) | (1<<6) | (0<<4);
 	case AMOVWF:	return o | (0x0a<<24) | (1<<20) | (0<<4);
         /* VMOV (ARMv7-M ARM, A7.7.240), encoding T1, op=1 */
-	case AMOVDW:	return o | (0x0a<<24) | (1<<20) | (1<<6) | (1<<4);
 	case AMOVFW:	return o | (0x0a<<24) | (1<<20) | (1<<4);
+        /* VMOV (ARMv7-M ARM, A7.7.242), encoding T1, op=0 */
+	case AMOVWD:	return o | (0x0b<<24) | (1<<20) | (1<<6) | (0<<4);
+        /* VMOV (ARMv7-M ARM, A7.7.242), encoding T1, op=1 */
+	case AMOVDW:	return o | (0x0b<<24) | (1<<20) | (1<<6) | (1<<4);
         /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1 */
 	case AMOVFD:	return o | (0x0a<<24) | (0xc0<<16) | 0xb7;
 	case AMOVDF:	return o | (0x0b<<24) | (0xc0<<16) | 0xb7;
