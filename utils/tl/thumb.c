@@ -1357,7 +1357,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                 SPLIT_INS(o3, o4);
 		break;
 
-	case 58:	/* floating point fix and float */
+	case 58:	/* floating point fix and float (MOVDW/MOVWD) */
 		o1 = thumbopfp(p->as, p->scond);
 		rf = p->from.reg;
 		rt = p->to.reg;
@@ -1365,10 +1365,11 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 			rt = 0;
 			diag("to.type==D_NONE (asm/fp)");
 		}
+                // ### Check that this use of register pairs is valid.
 		if(p->from.type == D_REG)
-			o1 |= (rf<<28) | ((rt & 1)<<23) | ((rt & 0x1e)>>1);
+			o1 |= ((rt & 0x0f)<<16) | ((rf & 0x0f)<<28) | ((rf+1) & 0x0f);
 		else
-			o1 |= (rt<<28) | ((rf & 1)<<23) | ((rf & 0x1e)>>1);
+			o1 |= ((rf & 0x0f)<<16) | ((rt & 0x0f)<<28) | ((rt+1) & 0x0f);
                 SPLIT_INS(o1, o2);
 		break;
 
