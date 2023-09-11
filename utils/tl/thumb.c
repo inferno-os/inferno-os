@@ -1306,9 +1306,9 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                 case AMULD:
                 case ASUBF:
                 case ASUBD:
-		    o1 |= (r >> 1) | ((r & 1) << 23) |          /* Vn */
-                          ((rf & 0x1e)<<15) | ((rf & 1)<<21) |  /* Vm */
-                          ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+		    o1 |= (r & 0xf) |           /* Vn */
+                          ((rf & 0xf)<<16) |    /* Vm */
+                          ((rt & 0xf)<<28);     /* Vd */
                     break;
                 case AMOVF:
                 case AMOVD: /* TODO: actually use double precision */
@@ -1317,8 +1317,8 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                             /* Float constant was zero */
                             /* VSUB rt, rt, rt (ARMv7-M ARM, A7.7.257) */
                             o1 ^= 1 << 7;
-                            o1 |= (rt >> 1) | ((rt & 1) << 23);     /* Vn */
-                            o1 |= ((rt & 0x1e)<<15) | ((rt & 1)<<21); /* Vm */
+                            o1 |= (rt & 0xf);       /* Vn */
+                            o1 |= ((rt & 0xf)<<16); /* Vm */
                         } else {
                             /* VMOV immediate (ARMv7-M ARM, A7.7.236) */
                             o1 ^= 1 << 22;
@@ -1326,9 +1326,9 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                         }
                     } else {
                         /* VMOV register (ARMv7-M ARM, A7.7.237) */
-		        o1 |= ((rf & 0x1e)<<15) | ((rf & 1)<<21); /* Vm */
+		        o1 |= ((rf & 0xf)<<16); /* Vm */
                     }
-		    o1 |= ((rt & 0x1e)<<27) | ((rt & 1)<<6);    /* Vd */
+		    o1 |= ((rt & 0xf)<<28);     /* Vd */
                     if (p->as == AMOVD)
                         o1 |= 1 << 24;
                     break;
@@ -1720,9 +1720,9 @@ thumbofsr(int a, int r, long v, int b, Prog *p)
 		diag("odd offset for floating point op: %d\n%P", v, p);
 	else if(v >= (1<<10))
 		diag("literal span too large: %d\n%P", v, p);
-	o |= ((v>>2) & 0xFF) << 16;                 /* offset */
-	o |= b;                                     /* Rn */
-	o |= ((r & 0x1e) << 27) | ((r & 1) << 6);   /* Vd */
+	o |= ((v>>2) & 0xFF) << 16;     /* offset */
+	o |= b;                         /* Rn */
+	o |= ((r & 0x0f) << 28);        /* Vd */
 
 	switch(a) {
 	default:
