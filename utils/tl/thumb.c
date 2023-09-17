@@ -1349,10 +1349,16 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		rf = p->from.reg;
 		rt = p->reg;
 
-                if (rf != NREG) // VCMP (ARMv7-M ARM, A7.7.223, T1)
-                    o1 |= ((rf & 0x0f)<<16) | ((r & 0x0f)<<28); /* Vm, Vd */
-                else // VCMP (ARMv7-M ARM, A7.7.223, T2) compare to 0.0
-                    o1 |= ((r & 0x0f) << 28) | 0x1;
+                if(p->from.type == D_FCONST) {
+		    if(p->from.ieee->h != 0 || p->from.ieee->l != 0)
+                        diag("invalid floating-point immediate\n%P", p);
+                    // VCMP (ARMv7-M ARM, A7.7.223, T2) compare to 0.0
+                    o1 |= 1;
+                    rf = 0;
+		}
+
+                // VCMP (ARMv7-M ARM, A7.7.223, T1)
+                o1 |= ((rf & 0x0f)<<16) | ((rt & 0x0f)<<28); /* Vm, Vd */
 
                 /* VMRS (ARMv7-M ARM, A7.7.243) with Rt=15 (for flags) */
                 o3 = 0x0a10eef1 | (15 << 28);
@@ -1698,15 +1704,21 @@ thumbopfp(int a, int sc)
 
         o |= 0xee00;    // Prepare the first half-word in the sequence.
 
+        // VCVT opc2 bits are to_int,0,signed
+
 	switch(a) {
-        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1 */
-	case AMOVWF:	return o | (0x0a << 24) | (0xc0 << 16) | 0xb8;
-        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1 */
-	case AMOVFW:	return o | (0x0a << 24) | (0xc0 << 16) | 0xbd;
-        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1 */
-	case AMOVWD:	return o | (0x0b << 24) | (0xc0 << 16) | 0xb8;
-        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1 */
-	case AMOVDW:	return o | (0x0b << 24) | (0xc0 << 16) | 0xbd;
+	case AMOVWF:
+        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1, sz=0, opc2=b_000 */
+        return o | (0x0a << 24) | (0xc0 << 16) | 0xb8;
+	case AMOVFW:
+        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1, sz=0, opc2=b_101 */
+        return o | (0x0a << 24) | (0xc0 << 16) | 0xbd;
+	case AMOVWD:
+        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1, sz=1, opc2=b_000 */
+        return o | (0x0b << 24) | (0xc0 << 16) | 0xb8;
+	case AMOVDW:
+        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1, op=1, sz=1, opc2=b_101 */
+        return o | (0x0b << 24) | (0xc0 << 16) | 0xbd;
         /* VCVT (ARMv7-M ARM, A7.7.227), encoding T1 */
 	case AMOVFD:	return o | (0x0a<<24) | (0xc0<<16) | 0xb7;
 	case AMOVDF:	return o | (0x0b<<24) | (0xc0<<16) | 0xb7;
