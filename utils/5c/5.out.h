@@ -25,7 +25,7 @@
 #define	NFREG		8
 #define	FREGRET		0
 #define	FREGEXT		7
-#define	FREGTMP		15
+#define	FREGTMP		7
 /* compiler allocates register variables F0 up */
 /* compiler allocates external registers F7 down */
 
