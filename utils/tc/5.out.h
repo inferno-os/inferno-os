@@ -22,6 +22,7 @@
 #define	NFREG		8       /* number of double precision registers */
 #define	FREGRET		0
 #define	FREGEXT		7
+#define	FREGTMP		7
 /* compiler allocates register variables F0 up */
 /* compiler allocates external registers F7 down */
 
