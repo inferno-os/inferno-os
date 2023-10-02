@@ -196,7 +196,7 @@ outstring(char *s, long n)
 }
 
 long
-outlstring(ushort *s, long n)
+outlstring(TRune *s, long n)
 {
 	char buf[2];
 	int c;
