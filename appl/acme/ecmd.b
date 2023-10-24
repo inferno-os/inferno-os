@@ -596,7 +596,6 @@ u_cmd(t: ref Text, cp: ref Cmd): int
 	oseq = -1;
 	while(n-->0 && t.file.seq!=0 && t.file.seq!=oseq){
 		oseq = t.file.seq;
-warning(nil, sprint("seq %d\n", t.file.seq));
 		undo(t, flag);
 	}
 	return TRUE;
