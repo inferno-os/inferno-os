@@ -969,7 +969,7 @@ xinitscreen(int xsize, int ysize, ulong reqchan, ulong *chan, int *d)
 	}
 
 	clipboard = XInternAtom(xmcon, "CLIPBOARD", False);
-	utf8string = XInternAtom(xmcon, "UTF8_STRING", False);
+	utf8string = XInternAtom(xmcon, "UTF8_STRING", True);
 	targets = XInternAtom(xmcon, "TARGETS", False);
 	text = XInternAtom(xmcon, "TEXT", False);
 	compoundtext = XInternAtom(xmcon, "COMPOUND_TEXT", False);
@@ -1523,7 +1523,7 @@ _xgetsnarf(XDisplay *xd)
 	 */
 	prop = 1;
 	XChangeProperty(xd, xdrawable, prop, XA_STRING, 8, PropModeReplace, (uchar*)"", 0);
-	XConvertSelection(xd, clipboard, XA_STRING, prop, xdrawable, CurrentTime);
+	XConvertSelection(xd, clipboard, utf8string, prop, xdrawable, CurrentTime);
 	XFlush(xd);
 	lastlen = 0;
 	for(i=0; i<10 || (lastlen!=0 && i<30); i++){
