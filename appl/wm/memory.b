@@ -109,9 +109,9 @@ realinit(ctxt: ref Draw->Context)
 				maxx+x,
 				a[i].y + 8);
 			cmd(t, s);
-			s = sys->sprint(".c itemconfigure %s -text '%s", a[i].tagsz, string a[i].size);
+			s = sys->sprint(".c itemconfigure %s -text '%s", a[i].tagsz, sizestr(a[i].size));
 			cmd(t, s);
-			s = sys->sprint(".c itemconfigure %s -text '%d", a[i].tagiu, a[i].allocs-a[i].frees);
+			s = sys->sprint(".c itemconfigure %s -text '%s", a[i].tagiu, sizestr(a[i].allocs-a[i].frees));
 			cmd(t, s);
 		}
 		cmd(t, "update");
@@ -163,7 +163,7 @@ initdraw(n: int): int
 
 sizestr(n: int): string
 {
-	if ((n / 1024) % 1024 == 0)
+	if ((n / 1024) % 1024 == 0 || n > (100 * 1024 * 1024))
 		return string (n / (1024 * 1024)) + "M";
 	return string (n / 1024) + "K";
 }
