@@ -86,7 +86,7 @@ $ROOT/dis/charon.dis:	charon.dis
 charon.dis:	$MODULES $SYS_MODULES
 
 img.dis:	img.b $MODULE $SYS_MODULE
-	limbo $LIMBOFLAGS -c -gw img.b
+	limbo $LIMBOFLAGS -gw img.b
 
 nuke:V:
 	rm -f $ROOT/dis/charon.dis
