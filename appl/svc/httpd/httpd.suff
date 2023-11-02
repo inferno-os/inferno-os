@@ -15,6 +15,7 @@
 .bcpio		application	x-bcpio		-		# [Mosaic]
 .bib		text		plain		-		# BibTex input
 .c		text		plain		-		# C program
+.css	text		css		-	# CSS
 .c++		text		plain		-		# C++ program
 .cc		text		plain		-		# [Mosaic]
 .cdf		application	x-netcdf	-
@@ -76,6 +77,7 @@
 .rfr		text		plain		-		# refer
 .rgb		image		x-rgb		-		# [Mosaic]
 .roff		application	x-troff		-		# [Mosaic]
+.rss		application	rss+xml		-		# RSS feeds
 .rtf		application	rtf		-		# [Mosaic]
 .rtx		text		richtext 	-	# MIME richtext	  [Mosaic]
 .sh		application	x-shar		-
@@ -83,6 +85,7 @@
 .snd		audio		basic		-
 .sv4cpio	application	x-sv4cpio	-		# [Mosaic]
 .sv4crc		application	x-sv4crc	-		# [Mosaic]
+.svg		image	svg+xml		-		# SVG images
 .t		application	x-troff		-		# [Mosaic]
 .tar		application	x-tar		-		# [Mosaic]
 .taz		application	x-tar		x-compress
