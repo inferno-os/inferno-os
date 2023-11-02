@@ -178,11 +178,40 @@ readimages(file: string, errdiff: int) : (array of ref Image, array of ref Image
 
 		# if transparency is enabled, errdiff==1 is probably a mistake,
 		# but there's no easy solution.
-		(ims[i], err2) = imageremap->remap(ai[i], display, errdiff);
+		(ims[i], err2) = remap(ai[i], display, errdiff);
 		if(ims[i] == nil)
 			return(nil, nil, err2);
 	}
 	return (ims, masks, nil);
+}
+
+remap(raw: ref RImagefile->Rawimage, display: ref Draw->Display, errdiff: int): (ref Draw->Image, string)
+{
+	case raw.chandesc { 
+	RImagefile->CRGB =>
+		r := chanstopix(raw.chans, raw.r.dx(), raw.r.dy());
+		im := display.newimage(raw.r, Draw->RGB24, 0, Draw->White);
+		im.writepixels(im.r, r);
+		return (im, "");
+	* =>
+		return imageremap->remap(raw, display, errdiff);
+	}
+}
+
+chanstopix(chans : array of array of byte, width, height: int): array of byte
+{
+	r := chans[0];
+	g := chans[1];
+	b := chans[2];
+
+	rgb := array [3*len r] of byte;
+	bix := 0;
+	for (i := 0; i < len r ; i++) {
+		rgb[bix++] = b[i];
+		rgb[bix++] = g[i];
+		rgb[bix++] = r[i];
+	}
+	return rgb;
 }
 
 viewcfg := array[] of {
@@ -212,7 +241,7 @@ timer(dt: int, ticks, pidc: chan of int)
 view(ctxt: ref Context, ims, masks: array of ref Image, file: string)
 {
 	file = lastcomponent(file);
-	(t, titlechan) := tkclient->toplevel(ctxt, "", "view: "+file, Tkclient->Hide);
+	(t, titlechan) := tkclient->toplevel(ctxt, "", "view: "+file, Tkclient->Appl);
 
 	cmd := chan of string;
 	tk->namechan(t, cmd, "cmd");
