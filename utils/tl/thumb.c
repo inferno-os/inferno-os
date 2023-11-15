@@ -1444,6 +1444,9 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
                     break;
                 }
 
+                if (p->scond & C_SBIT)
+                    o1 |= (1 << 4);
+
                 /* Only certain ranges of constants are supported. */
                 if ((instoffset & 0xff) == instoffset) {
                     o1 |= r | (rt<<24) | (instoffset << 16);
