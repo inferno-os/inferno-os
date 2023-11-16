@@ -17,6 +17,7 @@
 #define pthread_yield() (sched_yield())
 #define PTHREAD_STACK_MIN ((size_t)sysconf(_SC_THREAD_STACK_MIN))
 #endif
+#define pthread_yield() (sched_yield())
 
 
 typedef struct Osdep Osdep;

@@ -30,7 +30,7 @@ canlock(Lock *l)
 {
 	return _tas(&l->val) == 0;
 }
-
+void	(*coherence)(void);
 void
 unlock(Lock *l)
 {
