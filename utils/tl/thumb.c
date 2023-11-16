@@ -1299,13 +1299,17 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 
                 switch (p->as) {
                 case AADDF:
-                case AADDD:
                 case ADIVF:
-                case ADIVD:
                 case AMULF:
-                case AMULD:
                 case ASUBF:
-                case ASUBD:
+//		    o1 |= ((r >> 1) & 0xf) | ((r & 1) << 23) |          /* Vn */
+//                          (((rf >> 1) & 0xf)<<16) | ((rf & 1) << 21) |  /* Vm */
+//                          (((rt >> 1) & 0xf)<<28) | ((rt & 1) << 6);    /* Vd */
+//                    break;
+                case AADDD:
+                case ADIVD:
+                case AMULD:
+                case ASUBD: // assume that NFREG < 16
 		    o1 |= (r & 0xf) |           /* Vn */
                           ((rf & 0xf)<<16) |    /* Vm */
                           ((rt & 0xf)<<28);     /* Vd */
@@ -1345,7 +1349,7 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 		rf = p->from.reg;
 		rt = p->reg;
 
-                if (rf != 16) // VCMP (ARMv7-M ARM, A7.7.223, T1)
+                if (rf != NREG) // VCMP (ARMv7-M ARM, A7.7.223, T1)
                     o1 |= ((rf & 0x0f)<<16) | ((r & 0x0f)<<28); /* Vm, Vd */
                 else // VCMP (ARMv7-M ARM, A7.7.223, T2) compare to 0.0
                     o1 |= ((r & 0x0f) << 28) | 0x1;
@@ -1365,11 +1369,20 @@ if(debug['G']) print("%ulx: %s: thumb\n", (ulong)(p->pc), p->from.sym->name);
 			rt = 0;
 			diag("to.type==D_NONE (asm/fp)");
 		}
-                // ### Check that this use of register pairs is valid.
-		if(p->from.type == D_REG)
-			o1 |= ((rt & 0x0f)<<16) | ((rf & 0x0f)<<28) | ((rf+1) & 0x0f);
-		else
-			o1 |= ((rf & 0x0f)<<16) | ((rt & 0x0f)<<28) | ((rt+1) & 0x0f);
+                if ((p->as == AMOVWD) || (p->as == AMOVDW)) {
+                    // ### Check that this use of register pairs is valid.
+		    if(p->from.type == D_REG)
+			    o1 |= ((rt & 0x0f)<<16) | ((rf & 0x0f)<<28) | ((rf+1) & 0x0f);
+		    else
+			    o1 |= ((rf & 0x0f)<<16) | ((rt & 0x0f)<<28) | ((rt+1) & 0x0f);
+
+                } else if (p->as == AMOVDF) {
+                    // Vd:D M:Vm - only support 16 registers
+                    o1 |= ((rt & 1) << 6) | ((rt & 0xe) << 27) | ((rf & 0x0f) << 16);
+                } else {
+                    // MOVFD: D:Vd Vm:M - only support 16 registers
+		    o1 |= ((rt & 0x0f)<<28) | ((rf & 1) << 21) | ((rf & 0x0e) << 16);
+                }
                 SPLIT_INS(o1, o2);
 		break;
 
@@ -1678,7 +1691,7 @@ thumbopfp(int a, int sc)
 	case AMOVWD:	return o | (0x0b<<24) | (1<<20) | (1<<6) | (0<<4);
         /* VMOV (ARMv7-M ARM, A7.7.242), encoding T1, op=1 */
 	case AMOVDW:	return o | (0x0b<<24) | (1<<20) | (1<<6) | (1<<4);
-        /* VCVT (ARMv7-M ARM, A7.7.225), encoding T1 */
+        /* VCVT (ARMv7-M ARM, A7.7.227), encoding T1 */
 	case AMOVFD:	return o | (0x0a<<24) | (0xc0<<16) | 0xb7;
 	case AMOVDF:	return o | (0x0b<<24) | (0xc0<<16) | 0xb7;
         /* VMOV (register) (ARMv7-M ARM, A7.7.237) */
