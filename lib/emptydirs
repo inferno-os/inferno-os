@@ -10,6 +10,7 @@ Inferno/power/bin
 Inferno/power/lib
 Inferno/sparc/bin
 Inferno/sparc/lib
+Inferno/thumb/lib
 Irix/mips/lib
 Linux/386/lib
 Linux/arm/bin

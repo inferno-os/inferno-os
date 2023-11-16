@@ -242,15 +242,12 @@ main(int argc, char *argv[])
 		zerosig("edata");
 		zerosig("end");
 		if(dlm){
-			initdiv();
 			import();
 			HEADTYPE = 2;
 			INITTEXT = INITDAT = 0;
 			INITRND = 8;
 			INITENTRY = EXPTAB;
 		}
-		else
-			divsig();
 		export();
 	}
 	patch();
@@ -1485,6 +1482,7 @@ static void
 puntfp(Prog *p)
 {
 	USED(p);
+        return;
 	/* floating point - punt for now */
 	curtext->reg = NREG;	/* ARM */
 	curtext->from.sym->thumb = 0;
