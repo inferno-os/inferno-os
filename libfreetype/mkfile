@@ -1,0 +1,87 @@
+<../mkconfig
+
+LIB=libfreetype.a
+
+OFILES=\
+	freetype.$O\
+	autofit.$O\
+	cff.$O\
+	ftbase.$O\
+	ftbitmap.$O\
+	ftdebug.$O\
+	ftgzip.$O\
+	ftinit.$O\
+	ftsystem_inf.$O\
+	pcf.$O\
+	pfr.$O\
+	psaux.$O\
+	pshinter.$O\
+	psnames.$O\
+	raster.$O\
+	sfnt.$O\
+	smooth.$O\
+	truetype.$O\
+	type1.$O\
+	type42.$O\
+	type1cid.$O\
+	winfnt.$O\
+
+%.$O: libfreetype/src/autofit/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/base/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/cff/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/cid/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/gzip/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pcf/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pfr/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pshinter/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/psaux/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/psnames/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/raster/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/sfnt/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/smooth/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/truetype/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type1/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type1cid/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type42/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/winfonts/%.c
+	$CC $CFLAGS -o $target $prereq
+
+<$ROOT/mkfiles/mksyslib-$SHELLTYPE
+
+CFLAGS= $ANSICPP $CFLAGS -DFT2_BUILD_LIBRARY
+
+freetype.$O:	$ROOT/include/freetype.h
