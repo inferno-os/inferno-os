@@ -1,0 +1,6 @@
+[submodule "freetype2"]
+	path = libfreetype2
+	url = https://github.com/freetype/freetype.git
+[submodule "libfreetype/libfreetype"]
+	path = libfreetype/libfreetype
+	url = https://github.com/freetype/freetype.git
