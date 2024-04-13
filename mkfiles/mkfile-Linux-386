@@ -8,21 +8,23 @@ OS=		o
 AR=		ar
 ARFLAGS=	ruvs
 
-AS=		cc -c -m32
+AS=		gcc -c -m32
 ASFLAGS=
 
-CC=		cc -c -m32
+CC=		gcc -c -m32
 CFLAGS=		-g\
-		-O\
+		-O0\
 		-fno-strict-aliasing\
 		-fno-aggressive-loop-optimizations\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-I$ROOT/Linux/386/include\
 		-I$ROOT/include\
+        -D_GNU_SOURCE \
+        -fcommon \
 		-DLINUX_386
 
 ANSICPP=
-LD=		cc -m32
+LD=		gcc -m32
 LDFLAGS=
 
 SYSLIBS=
