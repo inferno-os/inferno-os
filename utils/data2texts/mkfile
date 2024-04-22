@@ -1,0 +1,13 @@
+<../../mkconfig
+
+TARG=data2texts
+
+OFILES=	data2texts.$O\
+
+HFILES=../../include/bio.h
+
+LIBS=bio 9			#order matters
+
+BIN=$ROOT/$OBJDIR/bin
+
+<$ROOT/mkfiles/mkone-$SHELLTYPE
