@@ -506,8 +506,8 @@ senddir(g: ref Private_info,vers,uri: string, fd: ref FD, mydir: ref Dir)
 	g.bout.puts("<table>\n");
 	for(i := 0; i < n; i++){
 		(typ, enc) := classify(a[i]);
-		g.bout.puts(sys->sprint("<tr><td><a href=\"%s%s\">%s</A></td>",
-			myname, a[i].name, a[i].name));
+		g.bout.puts(sys->sprint("<tr><td><a href=\"%s\">%s</A></td>",
+			a[i].name, a[i].name));
 		if(typ != nil){
 			if(typ.generic!=nil)
 				g.bout.puts(sys->sprint("<td>%s", typ.generic));
