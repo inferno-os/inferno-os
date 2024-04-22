@@ -4,11 +4,18 @@ LIB=libfreetype.a
 
 OFILES=\
 	freetype.$O\
-	autohint.$O\
-	ftbase.$O\
-	ftglyph.$O\
+	autofit.$O\
 	cff.$O\
+	ftbase.$O\
+	ftbitmap.$O\
+	ftdebug.$O\
+	ftgzip.$O\
+	ftinit.$O\
+	ftsystem_inf.$O\
+	pcf.$O\
+	pfr.$O\
 	psaux.$O\
+	pshinter.$O\
 	psnames.$O\
 	raster.$O\
 	sfnt.$O\
@@ -16,34 +23,65 @@ OFILES=\
 	truetype.$O\
 	type1.$O\
 	type42.$O\
-	ftsystem_inf.$O\
-	ftinit.$O\
-	pshinter.$O\
-	pfr.$O\
+	type1cid.$O\
+	winfnt.$O\
 
-# optional modules - see include/freetype/config/ftmodule.h
-#	type1cid.$O\
-#	winfnt.$O\
+%.$O: libfreetype/src/autofit/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/base/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/cff/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/cid/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/gzip/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pcf/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pfr/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/pshinter/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/psaux/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/psnames/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/raster/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/sfnt/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/smooth/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/truetype/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type1/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type1cid/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/type42/%.c
+	$CC $CFLAGS -o $target $prereq
+
+%.$O: libfreetype/src/winfonts/%.c
+	$CC $CFLAGS -o $target $prereq
 
 <$ROOT/mkfiles/mksyslib-$SHELLTYPE
 
-CFLAGS= $ANSICPP $CFLAGS -I$ROOT/include/freetype -I.
+CFLAGS= $ANSICPP $CFLAGS -DFT2_BUILD_LIBRARY
 
 freetype.$O:	$ROOT/include/freetype.h
-
-# FreeType is organised by #include of .c files
-# here are the necessary depenencies
-
-autohint.$O:	ahangles.c ahglyph.c ahglobal.c ahhint.c ahmodule.c
-ftbase.$O:	ftutil.c ftdbgmem.c ftstream.c ftcalc.c fttrigon.c ftoutln.c ftgloadr.c ftobjs.c ftnames.c
-cff.$O:	cffdrivr.c cffparse.c cffload.c cffobjs.c cffgload.c cffcmap.c
-psaux.$O:	psobjs.c psauxmod.c t1decode.c t1cmap.c
-psnames.$O:	psmodule.c
-raster.$O:	ftraster.c ftrend1.c
-sfnt.$O:	ttload.c ttcmap.c ttcmap0.c sfobjs.c sfdriver.c
-smooth.$O:	ftgrays.c ftsmooth.c
-truetype.$O:	ttdriver.c ttpload.c ttgload.c ttobjs.c
-type1.$O:	t1parse.c t1load.c t1objs.c t1driver.c t1gload.c
-type42.$O:	t42objs.c t42parse.c t42drivr.c
-pshinter.$O:	pshrec.c pshglob.c pshalgo1.c pshalgo2.c pshalgo3.c pshmod.c
-pfr.$O:	pfrload.c pfrgload.c pfrcmap.c pfrobjs.c pfrdrivr.c pfrsbit.c
