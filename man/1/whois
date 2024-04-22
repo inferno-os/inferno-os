@@ -1,0 +1,40 @@
+.TH WHOIS 1
+.SH NAME
+whois \- query whois databases
+.SH SYNOPSIS
+.B whois
+[
+.B -a
+.I server
+]
+[
+.B -n
+]
+.I host
+.SH DESCRIPTION
+.I Whois
+queries whois servers to find owner information for domain names and
+network addresses.  By default, it looks for referrals to other whois
+database servers and queries the next server in the chain if it finds
+one.
+
+.TP
+.B -a
+Specify a different server to start the query.  (Default:
+.I tcp!whois.iana.org!43
+)
+.TP
+.B -n
+Do not attempt to follow referrals.
+.SH EXAMPLE
+To query for the owner of a domain and then an IP address, using a
+specific server while ignoring referrals to other servers:
+.IP
+.EX
+whois inferno-os.org
+whois -a whois.ripe.net -n 148.251.6.120
+.EE
+.SH SOURCE
+.B /appl/cmd/whois.b
+.SH "SEE ALSO"
+.IR RFC3912

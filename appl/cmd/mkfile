@@ -170,6 +170,7 @@ TARG=\
 	wav2iaf.dis\
 	wc.dis\
 	webgrab.dis\
+	whois.dis\
 	wish.dis\
 	wmexport.dis\
 	wmimport.dis\
