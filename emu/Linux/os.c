@@ -18,6 +18,9 @@
 
 #include	<raise.h>
 
+/* For dynamic linking init/fini code that needs malloc */
+void (*coherence)(void) = nofence;
+
 /* glibc 2.3.3-NTPL messes up getpid() by trying to cache the result, so we'll do it ourselves */
 #include	<sys/syscall.h>
 #define	getpid()	syscall(SYS_getpid)
