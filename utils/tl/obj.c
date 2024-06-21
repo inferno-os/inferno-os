@@ -1482,7 +1482,9 @@ static void
 puntfp(Prog *p)
 {
 	USED(p);
-        return;
+	// Don't punt on Thumb-2 floating point.
+	if(debug['2']) return;
+
 	/* floating point - punt for now */
 	curtext->reg = NREG;	/* ARM */
 	curtext->from.sym->thumb = 0;
