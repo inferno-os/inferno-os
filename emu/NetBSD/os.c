@@ -2,6 +2,7 @@
 #include	<time.h>
 #include	<termios.h>
 #include	<signal.h>
+#include	<ucontext.h>
 #include 	<pwd.h>
 #include	<sched.h>
 #include	<sys/resource.h>
@@ -34,20 +35,24 @@ int	uidnobody = -1;
 static struct 	termios tinit;
 
 static void
-sysfault(char *what, void *addr)
+sysfault(char *what, void *addr, const ucontext_t *uc)
 {
 	char buf[64];
 
-	snprint(buf, sizeof(buf), "sys: %s%#p", what, addr);
+	if (uc)
+		snprint(buf, sizeof(buf), "sys: %s%#p pc=%#p", what, addr,
+			_UC_MACHINE_PC(uc));
+	else
+		snprint(buf, sizeof(buf), "sys: %s%#p", what, addr);
 	disfault(nil, buf);
 }
 
 static void
-trapILL(int signo, siginfo_t *si, void *a)
+trapILL(int signo, siginfo_t *si, void *ctx)
 {
 	USED(signo);
-	USED(a);
-	sysfault("illegal instruction pc=", si->si_addr);
+	USED(ctx);
+	sysfault("illegal instruction pc=", si->si_addr, NULL);
 }
 
 static int
@@ -57,26 +62,27 @@ isnilref(siginfo_t *si)
 }
 
 static void
-trapmemref(int signo, siginfo_t *si, void *a)
+trapmemref(int signo, siginfo_t *si, void *ctx)
 {
-	USED(a);	/* ucontext_t*, could fetch pc in machine-dependent way */
 	if(isnilref(si))
 		disfault(nil, exNilref);
 	else if(signo == SIGBUS)
-		sysfault("bad address addr=", si->si_addr);	/* eg, misaligned */
+		sysfault("bad address addr=", si->si_addr, ctx); /* eg, misaligned */
 	else
-		sysfault("segmentation violation addr=", si->si_addr);
+		sysfault("segmentation violation addr=", si->si_addr, ctx);
 }
 
 static void
-trapFPE(int signo, siginfo_t *si, void *a)
+trapFPE(int signo, siginfo_t *si, void *ctx)
 {
 	char buf[64];
 
 	USED(signo);
-	USED(a);
+	USED(ctx);
 	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux pc=%#p", getfsr(), si->si_addr);
+	USED(buf);
 	disfault(nil, buf);
+
 }
 
 static void
