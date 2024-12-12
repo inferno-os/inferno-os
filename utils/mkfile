@@ -54,6 +54,9 @@ NOTPLAN9=\
 	md5sum\
 	mkext\
 	ndate\
+	ta\
+	tc\
+	tl\
 
 #
 #	Utils we build on Nt, for build environment compatibility.
@@ -76,9 +79,6 @@ NTONLY=\
 # Thumb-1
 #
 OBSOLETE=\
-	ta\
-	tc\
-	tl\
 
 all:QV:		all-$TARGMODEL
 clean:QV:	clean-$TARGMODEL

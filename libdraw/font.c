@@ -355,6 +355,8 @@ fontresize(Font *f, int wid, int ncache, int depth)
 	d = f->display;
 	if(depth <= 0)
 		depth = 1;
+	if(wid == 0)
+		wid = 1;
 
 	new = allocimage(d, Rect(0, 0, ncache*wid, f->height), CHAN1(CGrey, depth), 0, 0);
 	if(new == nil){
