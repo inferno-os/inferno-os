@@ -1780,21 +1780,23 @@ preamble(void)
 	if(comvec)
 		return;
 
-	comvec = malloc(10 * sizeof(*code));
+	comvec = malloc(12 * sizeof(*code));
 	if(comvec == nil)
 		error(exNomem);
 	code = (ulong*)comvec;
 
+	*code++ = 0xe92d4bf0;	/* push {r4-r9, r11, lr} */
 	con((ulong)&R, RREG, 0);
-	mem(Stw, O(REG, xpc), RREG, RLINK);
 	mem(Ldw, O(REG, FP), RREG, RFP);
 	mem(Ldw, O(REG, MP), RREG, RMP);
+	mem(Stw, O(REG, xpc), RREG, R15); /* return to pop below */
 	mem(Ldw, O(REG, PC), RREG, R15);
+	*code++ = 0xe8bd8bf0;	/* pop {r4-r9, r11, pc} */
 	pass++;
 	flushcon(0);
 	pass--;
 
-	segflush(comvec, 10 * sizeof(*code));
+	segflush(comvec, 12 * sizeof(*code));
 }
 
 static void
