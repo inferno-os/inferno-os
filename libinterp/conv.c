@@ -72,8 +72,14 @@ Dconv(Fmt *f)
 		sprint(buf, "%s", opnam[i->op]);
 		break;
 	case TOKI1:
-		d.a = i->d;
-		d.mode = UDST(i->add);
+		if (i->op == IRAISE) {
+			/* cf. appl/cmd/asm/asm.b */
+			d.a = i->s;
+			d.mode = USRC(i->add);
+		} else {
+			d.a = i->d;
+			d.mode = UDST(i->add);
+		}
 		sprint(buf, "%s\t%a", opnam[i->op], &d);
 		break;
 	case TOKI3:
