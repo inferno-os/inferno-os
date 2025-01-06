@@ -2169,7 +2169,7 @@ compile(Module *m, int size, Modlink *ml)
 	ulong *s, *tmp;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), 0);
+	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	tmp = malloc(4096*sizeof(ulong));
 	if(tinit == nil || patch == nil || tmp == nil)
@@ -2178,16 +2178,16 @@ compile(Module *m, int size, Modlink *ml)
 	preamble();
 
 	mod = m;
-	n = 0;
 	pass = 0;
 	nlit = 0;
 
+	patch[0] = n = 0;
 	for(i = 0; i < size; i++) {
 		codeoff = n;
 		code = tmp;
 		comp(&m->prog[i]);
-		patch[i] = n;
 		n += code - tmp;
+		patch[i+1] = n;
 	}
 
 	for(i = 0; i < nelem(mactab); i++) {
@@ -2218,12 +2218,12 @@ compile(Module *m, int size, Modlink *ml)
 	for(i = 0; i < size; i++) {
 		s = code;
 		comp(&m->prog[i]);
-		if(patch[i] != n) {
+		n += code - s;
+		if(patch[i+1] != n) {
 			print("%3d %D\n", i, &m->prog[i]);
-			print("%lud != %d\n", patch[i], n);
+			print("%lud != %d\n", patch[i+1], n);
 			urk("phase error");
 		}
-		n += code - s;
 		if(cflag > 4) {
 			print("%3d %D\n", i, &m->prog[i]);
 			das(s, code-s);
