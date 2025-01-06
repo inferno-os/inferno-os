@@ -704,8 +704,6 @@ nullity(void)
 static void
 punt(Inst *i, int m, void (*fn)(void))
 {
-	ulong pc;
-
 	if(m & SRCOP) {
 		if(UXSRC(i->add) == SRC(AIMM))
 			literal(i->s.imm, O(REG, s));
@@ -724,8 +722,7 @@ punt(Inst *i, int m, void (*fn)(void))
 		mem(Stw, O(REG, PC), RREG, RA0);
 	}
 	if(m & DBRAN) {
-		pc = patch[i->d.ins-mod->prog];
-		literal((ulong)(base+pc), O(REG, d));
+		literal(RELPC(i->d.ins-mod->prog), O(REG, d));
 	}
 
 	switch(i->add&ARM) {
