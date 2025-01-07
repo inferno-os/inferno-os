@@ -1786,7 +1786,7 @@ compile(Module *m, int size, Modlink *ml)
 	ulong *s, *tmp;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), 0);
+	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	tmp = mallocz(1024*sizeof(ulong), 0);
 	if(tinit == nil || patch == nil || tmp == nil)
@@ -1795,15 +1795,15 @@ compile(Module *m, int size, Modlink *ml)
 	preamble();
 
 	mod = m;
-	n = 0;
 	pass = 0;
 	nlit = 0;
 
+	patch[0] = n = 0;
 	for(i = 0; i < size; i++) {
 		code = tmp;
 		comp(&m->prog[i]);
-		patch[i] = n;
 		n += code - tmp;
+		patch[i+1] = n;
 	}
 
 	for(i = 0; i < nelem(mactab); i++) {
