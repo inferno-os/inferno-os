@@ -2176,12 +2176,12 @@ patchex(Module *m, ulong *p)
 	if((h = m->htab) == nil)
 		return;
 	for( ; h->etab != nil; h++){
-		h->pc1 = p[h->pc1];
-		h->pc2 = p[h->pc2];
+		h->pc1 = p[h->pc1] * 4;
+		h->pc2 = p[h->pc2] * 4;
 		for(e = h->etab; e->s != nil; e++)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 		if(e->pc != -1)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 	}
 }
 
