@@ -1309,7 +1309,7 @@ comp(Inst *i)
 		}
 		tinit[i->s.imm] = 1;
 		con((ulong)mod->type[i->s.imm], RA3, 1);
-		CALL(base+macro[MacFRAM]);
+		CALLMAC(AL, MacFRAM);
 		opwst(i, Stw, RA2);
 		break;
 	case INEWCB:
@@ -2069,7 +2069,7 @@ comd(Type *t)
 		for(m = 0x80; m != 0; m >>= 1) {
 			if(c & m) {
 				mem(Ldw, j, RFP, RA0);
-				CALL(base+macro[MacFRP]);
+				CALLMAC(AL, MacFRP);
 			}
 			j += sizeof(WORD*);
 		}
