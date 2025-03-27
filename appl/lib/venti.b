@@ -323,6 +323,10 @@ Session.new(fd: ref Sys->FD): ref Session
 
 Session.read(s: self ref Session, score: Score, etype: int, maxn: int): array of byte
 {
+	if (Score.eq(score, Score.zero()) {
+		return array[0] of byte;
+	}
+
 	(gm, err) := s.rpc(ref Vmsg.Tread(1, 0, score, etype, maxn));
 	if(gm == nil){
 		sys->werrstr(err);
