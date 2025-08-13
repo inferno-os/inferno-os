@@ -69,7 +69,7 @@ geom(char *val)
 {
 	char *p;
 	int x, y;
-	if (val == '\0' || (*val < '0' || *val > '9')) 
+	if (*val == '\0' || (*val < '0' || *val > '9'))
 		return 0;
 	x = strtoul(val, &p, 0);
 	if(x >= 64) 
