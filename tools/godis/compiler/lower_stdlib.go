@@ -1,7 +1,7 @@
 package compiler
 
-// lower_stdlib.go — stdlib lowering implementations for new packages/functions.
-// These are methods on *funcLowerer that are called from dispatchers in lower.go.
+// lower_stdlib.go — stdlib lowering implementations for packages beyond the
+// core set. These are methods on *funcLowerer registered via the stdlib registry.
 
 import (
 	"go/types"
@@ -12,6 +12,72 @@ import (
 
 	"github.com/NERVsystems/infernode/tools/godis/dis"
 )
+
+func init() {
+	RegisterStdlibLowerer("unicode", (*funcLowerer).lowerUnicodeCall)
+	RegisterStdlibLowerer("unicode/utf8", (*funcLowerer).lowerUTF8Call)
+	RegisterStdlibLowerer("unicode/utf16", (*funcLowerer).lowerUnicodeUTF16Call)
+	RegisterStdlibLowerer("path", (*funcLowerer).lowerPathCall)
+	RegisterStdlibLowerer("path/filepath", (*funcLowerer).lowerFilepathCall)
+	RegisterStdlibLowerer("math/bits", (*funcLowerer).lowerMathBitsCall)
+	RegisterStdlibLowerer("math/rand", (*funcLowerer).lowerMathRandCall)
+	RegisterStdlibLowerer("math/big", (*funcLowerer).lowerMathBigCall)
+	RegisterStdlibLowerer("bytes", (*funcLowerer).lowerBytesCall)
+	RegisterStdlibLowerer("encoding/hex", (*funcLowerer).lowerEncodingHexCall)
+	RegisterStdlibLowerer("encoding/base64", (*funcLowerer).lowerEncodingBase64Call)
+	RegisterStdlibLowerer("encoding/json", (*funcLowerer).lowerEncodingJSONCall)
+	RegisterStdlibLowerer("encoding/binary", (*funcLowerer).lowerEncodingBinaryCall)
+	RegisterStdlibLowerer("encoding/csv", (*funcLowerer).lowerEncodingCSVCall)
+	RegisterStdlibLowerer("encoding/xml", (*funcLowerer).lowerEncodingXMLCall)
+	RegisterStdlibLowerer("encoding/pem", (*funcLowerer).lowerEncodingPEMCall)
+	RegisterStdlibLowerer("slices", (*funcLowerer).lowerSlicesCall)
+	RegisterStdlibLowerer("maps", (*funcLowerer).lowerMapsCall)
+	RegisterStdlibLowerer("io", (*funcLowerer).lowerIOCall)
+	RegisterStdlibLowerer("io/ioutil", (*funcLowerer).lowerIOUtilCall)
+	RegisterStdlibLowerer("io/fs", (*funcLowerer).lowerIOFSCall)
+	RegisterStdlibLowerer("cmp", (*funcLowerer).lowerCmpCall)
+	RegisterStdlibLowerer("context", (*funcLowerer).lowerContextCall)
+	RegisterStdlibLowerer("sync/atomic", (*funcLowerer).lowerSyncAtomicCall)
+	RegisterStdlibLowerer("bufio", (*funcLowerer).lowerBufioCall)
+	RegisterStdlibLowerer("net/url", (*funcLowerer).lowerNetURLCall)
+	RegisterStdlibLowerer("net/http", (*funcLowerer).lowerNetHTTPCall)
+	RegisterStdlibLowerer("runtime", (*funcLowerer).lowerRuntimeCall)
+	RegisterStdlibLowerer("reflect", (*funcLowerer).lowerReflectCall)
+	RegisterStdlibLowerer("os/exec", (*funcLowerer).lowerOsExecCall)
+	RegisterStdlibLowerer("os/signal", (*funcLowerer).lowerOsSignalCall)
+	RegisterStdlibLowerer("regexp", (*funcLowerer).lowerRegexpCall)
+	RegisterStdlibLowerer("log/slog", (*funcLowerer).lowerLogSlogCall)
+	RegisterStdlibLowerer("embed", (*funcLowerer).lowerEmbedCall)
+	RegisterStdlibLowerer("flag", (*funcLowerer).lowerFlagCall)
+	RegisterStdlibLowerer("crypto/sha256", (*funcLowerer).lowerCryptoSHA256Call)
+	RegisterStdlibLowerer("crypto/md5", (*funcLowerer).lowerCryptoMD5Call)
+	RegisterStdlibLowerer("text/template", (*funcLowerer).lowerTextTemplateCall)
+	RegisterStdlibLowerer("hash", (*funcLowerer).lowerHashCall)
+	RegisterStdlibLowerer("hash/crc32", (*funcLowerer).lowerHashCall)
+	RegisterStdlibLowerer("net", (*funcLowerer).lowerNetCall)
+	RegisterStdlibLowerer("crypto/rand", (*funcLowerer).lowerCryptoRandCall)
+	RegisterStdlibLowerer("crypto/hmac", (*funcLowerer).lowerCryptoHMACCall)
+	RegisterStdlibLowerer("crypto/aes", (*funcLowerer).lowerCryptoAESCall)
+	RegisterStdlibLowerer("crypto/cipher", (*funcLowerer).lowerCryptoCipherCall)
+	RegisterStdlibLowerer("crypto/tls", (*funcLowerer).lowerCryptoTLSCall)
+	RegisterStdlibLowerer("crypto/x509", (*funcLowerer).lowerCryptoX509Call)
+	RegisterStdlibLowerer("crypto/elliptic", (*funcLowerer).lowerCryptoEllipticCall)
+	RegisterStdlibLowerer("crypto/ecdsa", (*funcLowerer).lowerCryptoECDSACall)
+	RegisterStdlibLowerer("crypto/rsa", (*funcLowerer).lowerCryptoRSACall)
+	RegisterStdlibLowerer("crypto/ed25519", (*funcLowerer).lowerCryptoEd25519Call)
+	RegisterStdlibLowerer("database/sql", (*funcLowerer).lowerDatabaseSQLCall)
+	RegisterStdlibLowerer("archive/zip", (*funcLowerer).lowerArchiveZipCall)
+	RegisterStdlibLowerer("archive/tar", (*funcLowerer).lowerArchiveTarCall)
+	RegisterStdlibLowerer("compress/gzip", (*funcLowerer).lowerCompressGzipCall)
+	RegisterStdlibLowerer("compress/flate", (*funcLowerer).lowerCompressFlateCall)
+	RegisterStdlibLowerer("html", (*funcLowerer).lowerHTMLCall)
+	RegisterStdlibLowerer("html/template", (*funcLowerer).lowerHTMLTemplateCall)
+	RegisterStdlibLowerer("mime", (*funcLowerer).lowerMIMECall)
+	RegisterStdlibLowerer("mime/multipart", (*funcLowerer).lowerMIMEMultipartCall)
+	RegisterStdlibLowerer("net/mail", (*funcLowerer).lowerNetMailCall)
+	RegisterStdlibLowerer("net/textproto", (*funcLowerer).lowerNetTextprotoCall)
+	RegisterStdlibLowerer("net/http/httputil", (*funcLowerer).lowerNetHTTPUtilCall)
+}
 
 // ============================================================
 // strings package — new functions
