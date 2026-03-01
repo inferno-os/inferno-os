@@ -97,6 +97,9 @@ TARG=\
 	lstar.dis\
 	lucibridge.dis\
 	lucifer.dis\
+	luciconv.dis\
+	lucictx.dis\
+	lucipres.dis\
 	luciuisrv.dis\
 	m4.dis\
 	man2html.dis\

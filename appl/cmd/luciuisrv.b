@@ -1171,6 +1171,27 @@ presctl(a: ref Activity, data: string): string
 		pushevent(a.id, "presentation current");
 		return nil;
 	}
+	if(hasprefix(data, "delete ")) {
+		attrs := parseattrs(data[len "delete ":]);
+		id := getattr(attrs, "id");
+		if(id == nil || id == "")
+			return "missing id";
+		idx := findartidx(a, id);
+		if(idx < 0)
+			return "unknown artifact: " + id;
+		# Shift remaining artifacts left (same pattern as gap resolve).
+		# NOTE: open fids holding stale SUBID values will reference wrong
+		# artifacts after this shift.  Safe in practice: all tools close
+		# fids immediately after writing.
+		a.artifacts[idx:] = a.artifacts[idx+1:a.nart];
+		a.nart--;
+		a.artifacts[a.nart] = nil;
+		if(a.currentArtifact == id)
+			a.currentArtifact = "";
+		vers++;
+		pushevent(a.id, "presentation delete " + id);
+		return nil;
+	}
 	return "unknown presentation command: " + data;
 }
 

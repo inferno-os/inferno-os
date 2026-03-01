@@ -67,6 +67,7 @@ doc(): string
 		"                          Create a presentation artifact\n" +
 		"  write <id> <content>    Write content (use \\\\n for newlines)\n" +
 		"  center <id>             Make artifact the active/focused view\n" +
+		"  delete <id>             Remove artifact from presentation zone\n" +
 		"  list                    List artifacts in current activity\n" +
 		"  status                  Show current activity and centered artifact\n\n" +
 		"Artifact types:\n" +
@@ -128,12 +129,14 @@ exec(args: string): string
 		return doappend(rest);
 	"center" =>
 		return docenter(rest);
+	"delete" =>
+		return dodelete(rest);
 	"list" =>
 		return dolist();
 	"status" =>
 		return dostatus();
 	* =>
-		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, list, status", cmd);
+		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, list, status", cmd);
 	}
 }
 
@@ -252,6 +255,25 @@ docenter(args: string): string
 		return "error: " + err;
 
 	return sys->sprint("centered '%s'", id);
+}
+
+# Delete an artifact by id
+dodelete(args: string): string
+{
+	id := strip(args);
+	if(id == "")
+		return "error: usage: delete <id>";
+
+	actid := currentactid();
+	if(actid < 0)
+		return "error: no active activity";
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+	err := writefile(pctl, "delete id=" + id);
+	if(err != nil)
+		return "error: " + err;
+
+	return sys->sprint("deleted artifact '%s'", id);
 }
 
 # List artifacts in current activity

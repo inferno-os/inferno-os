@@ -770,7 +770,7 @@ tooldesc(name: string): string
 	"git"    => return "Run a git command";
 	"say"    => return "Speak text aloud via text-to-speech";
 	"xenith"   => return "Issue a command to the Xenith text editor";
-	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=text], write <id> <content-or-path>, center <id>, list, status. For mermaid: write raw Mermaid syntax (NOT fenced code blocks). Supported mermaid diagram types: flowchart, sequenceDiagram, gantt, pie, xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram, stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph, quadrantChart, journey, requirementDiagram, block-beta. For pdf/image: write the file path.";
+	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=text], write <id> <content-or-path>, center <id>, delete <id>, list, status. For mermaid: write raw Mermaid syntax (NOT fenced code blocks). Supported mermaid diagram types: flowchart, sequenceDiagram, gantt, pie, xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram, stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph, quadrantChart, journey, requirementDiagram, block-beta. For pdf/image: write the file path.";
 	"spawn"    => return "Spawn a parallel subagent with its own namespace";
 	"todo"   => return "Manage a persistent task list";
 	"http"   => return "Make an HTTP request";
