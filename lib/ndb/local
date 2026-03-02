@@ -5,6 +5,11 @@ database=
 	file=/lib/ndb/common
 
 #
+# NERVsystems hosts (ZeroTier overlay)
+#
+ip=10.243.169.78	sys=hephaestus
+
+#
 # default site-wide resources
 #
 infernosite=
