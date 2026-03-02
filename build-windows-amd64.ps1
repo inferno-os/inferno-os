@@ -670,7 +670,8 @@ Write-Host "=== Building Dis Bytecode ===" -ForegroundColor Cyan
 $LIMBO = "$BinDir\limbo.exe"
 $MODULE = "$ROOT\module"
 
-# Helper: compile all .b files in a source dir to a target dis dir
+# Helper: compile all .b files in a source dir to a target dis dir.
+# Compiles to a temp file first to avoid clobbering existing .dis on failure.
 function Build-DisDir {
     param(
         [string]$SrcDir,
@@ -683,8 +684,14 @@ function Build-DisDir {
     $ErrorActionPreference = "SilentlyContinue"
     Get-ChildItem -Path $SrcDir -Filter "*.b" -File | ForEach-Object {
         $name = $_.BaseName
-        $output = & $LIMBO -I $MODULE -o "$DisDir\$name.dis" $_.FullName 2>&1
-        if ($LASTEXITCODE -eq 0) { $count++ }
+        $tmpDis = "$DisDir\$name.dis.tmp"
+        $output = & $LIMBO -I $MODULE -o $tmpDis $_.FullName 2>&1
+        if ($LASTEXITCODE -eq 0 -and (Test-Path $tmpDis)) {
+            Move-Item -Force $tmpDis "$DisDir\$name.dis"
+            $count++
+        } else {
+            Remove-Item -Force $tmpDis -ErrorAction SilentlyContinue
+        }
     }
     $ErrorActionPreference = $prevPref
     return $count
