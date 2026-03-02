@@ -91,6 +91,52 @@ display: ref Display;
 win: ref Wmclient->Window;
 mainwin: ref Image;		# the main window image (full frame)
 
+# wmsrv channel (module-level so launchapp can use it)
+wmchan: chan of (string, chan of (string, ref Wmcontext));
+
+# App slot tracking
+#
+# Each GUI app launched into the presentation zone gets one AppSlot.
+# The slot tracks the app's artifact ID and its wmsrv Client handle.
+# The Client is populated by preswmloop when the app sends its first join.
+#
+# Z-order management (show/hide):
+#   Each app window is allocated ONCE at first !reshape and lives forever
+#   until killapp().  Visibility is managed via Client.top() / Client.bottom()
+#   which move the window up or down the Screen's z-stack without reallocating.
+#
+#   Client.hide() and Client.unhide() are empty stubs in wmsrv.b — do NOT call them.
+#
+# TODO: replace this flat slot array + appjoinch protocol with per-app wmsrv instances.
+#   Currently all apps share one wmsrv (preswmloop) and the appjoinch channel provides
+#   a fragile ordering guarantee: launchapp() pushes the ID *before* spawning, so
+#   preswmloop sees the ID waiting when the app's first join arrives.  This breaks if
+#   two apps are launched faster than the buffered channel can absorb (capacity = 4),
+#   or if an app connects to wmsrv from a different goroutine family than expected.
+#   Per-app wmsrv: each launchapp() calls wmsrv->init() independently, gets its own
+#   (join, req) pair, spawns a dedicated bridge goroutine.  No global appjoinch needed.
+AppSlot: adt {
+	id:     string;
+	client: ref Client;
+};
+MAXAPPSLOTS: con 16;
+appslots: array of ref AppSlot;
+nappslots := 0;
+activeappid: string;	# artifact id of currently-visible app ("" = lucipres showing)
+
+# appjoinch: ordering signal from launchapp() to preswmloop's join handler.
+#
+# Protocol:
+#   1. launchapp() pushes id onto appjoinch (non-blocking alt — capacity 4)
+#   2. launchapp() spawns the GUI app process
+#   3. app calls wmlib->connect() → wmsrv join fires in preswmloop
+#   4. preswmloop reads the id from appjoinch and links client → AppSlot
+#
+# Capacity-4 buffer: safe for sequential launches.  Concurrent launches of >4 apps
+# before any join fires would corrupt the id→client mapping.
+# TODO: eliminate this channel by using per-app wmsrv instances (see AppSlot TODO above).
+appjoinch: chan of string;
+
 # Colors (header only)
 bgcol: ref Image;
 bordercol: ref Image;
@@ -319,7 +365,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	wmsrv = load Wmsrv Wmsrv->PATH;
 	if(wmsrv == nil)
 		nomod(Wmsrv->PATH);
-	(wmchan, join, req) := wmsrv->init();
+	(wmc, join, req) := wmsrv->init();
+	wmchan = wmc;
 
 	# Screen for pres zone (backed by pres sub-image)
 	pressubimg = mainscr.newwindow(presr, Draw->Refbackup, Draw->Nofill);
@@ -328,9 +375,11 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Publish pressubimg by name so namedimage() works cross-connection
 	pressubimg.name("lucifer-pres", 1);
 
-	# GUI app launch: poll /tmp/veltro/pres-launch written by exec.b.
-	# file2chan at /n doesn't work cross-process; use a real file instead.
-	spawn preslaunchpoll(wmchan);
+	# Init app slot infrastructure
+	appslots = array[MAXAPPSLOTS] of ref AppSlot;
+	nappslots = 0;
+	activeappid = "";
+	appjoinch = chan[4] of string;
 
 	# Build Draw->Context for lucipres (pres sub-screen + wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, wmchan);
@@ -456,6 +505,45 @@ drawchrome(r: Rect)
 }
 
 # --- preswmloop — mini WM for presentation zone ---
+#
+# Architecture:
+#   preswmloop is a hand-rolled WM server for the presentation zone.  It multiplexes
+#   exactly one wmsrv instance across two kinds of clients:
+#
+#   1. lucipres (first join):
+#      Gets the full zone rect.  Draws the tab strip + artifact content.
+#      Always present; its window is at z-order bottom (z=1).
+#
+#   2. GUI app clients (subsequent joins, one per app):
+#      Gets the content-area rect (below the tab strip) so the tab strip stays visible.
+#      Each app window is allocated ONCE at first !reshape.
+#      Visibility is controlled by Client.top() / Client.bottom() (z-order), never by
+#      recreating windows.  Creating a new window via Screen.newwindow() for every
+#      show/hide causes accumulating ghost windows (old windows linger under GC) that
+#      overdraw lucipres content — this was the original "clock floating on mermaid" bug.
+#
+# Mouse routing:
+#   Tab strip (top mainfont.height+13 pixels) → always lucipres (tab clicks/scrolls)
+#   Content area → active app if one is showing, otherwise lucipres
+#
+# Keyboard routing:
+#   Currently all keyboard events go to the conv zone (convKbdCh).
+#   TODO: route keyboard to active app when an app is foregrounded.
+#         This requires preswmloop to hold a presKbdCh ref and check activeappid.
+#
+# Resize:
+#   handleresize() sends a new Rect on rszch.  preswmloop reallocates ALL client
+#   windows (lucipres + every app slot).  This is correct but creates new windows
+#   rather than resizing in-place — see newwindow() note above.
+#   TODO: Screen.newwindow() returns a fresh window; old window should be explicitly
+#         flushed (e.g. fill with bg color) before replace, to avoid resize flicker.
+#
+# Limitations (known fragile points):
+#   - Only one wmsrv instance is shared by all apps; app context menus, iconify, etc.
+#     are not meaningfully supported (all req messages get a generic OK reply).
+#   - appjoinch is a 4-slot buffer; launching >4 apps faster than joins arrive corrupts
+#     the id→client mapping.
+#   - Client.hide() / Client.unhide() in wmsrv.b are empty stubs — never call them.
 
 preswmloop(scr: ref Screen, zoner: Rect,
            presMouseCh: chan of ref Pointer,
@@ -463,48 +551,120 @@ preswmloop(scr: ref Screen, zoner: Rect,
            req:  chan of (ref Client, array of byte, Sys->Rwrite),
            rszch: chan of Rect)
 {
-	client: ref Client;
+	lucipresclient: ref Client;
 	curzone := zoner;
 	for(;;) alt {
 	(c, rc) := <-join =>
-		client = c;
+		if(lucipresclient == nil) {
+			# First join = lucipres
+			lucipresclient = c;
+		} else {
+			# Subsequent join = an app; register its client in the app slot
+			appid2 := "";
+			alt { appid2 = <-appjoinch => ; * => ; }
+			if(appid2 != "") {
+				for(asi := 0; asi < nappslots; asi++) {
+					if(appslots[asi] != nil && appslots[asi].id == appid2) {
+						appslots[asi].client = c;
+						break;
+					}
+				}
+			}
+		}
 		rc <-= nil;
 	(c, data, rc) := <-req =>
 		if(rc == nil) {
-			# Client disconnected
-			client = nil;
+			# Client disconnected — clear from lucipres slot or app slot
+			if(c == lucipresclient)
+				lucipresclient = nil;
+			else {
+				for(asi2 := 0; asi2 < nappslots; asi2++) {
+					if(appslots[asi2] != nil && appslots[asi2].client == c) {
+						appslots[asi2].client = nil;
+						break;
+					}
+				}
+			}
 			break;
 		}
 		s := string data;
 		n := len data;
 		err: string;
-		# Handle reshape: always give the full pres zone
+		# !reshape: allocate window on first connect only.
+		# Subsequent reshapes for apps are ignored (z-order managed via top/bottom).
 		if(len s >= 8 && s[0:8] == "!reshape") {
-			img := scr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
-			if(img == nil) {
-				err = "window creation failed";
-				n = -1;
-			} else {
-				c.setimage("app", img);
+			if(c == lucipresclient) {
+				img := scr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
+				if(img == nil) {
+					err = "window creation failed";
+					n = -1;
+				} else
+					c.setimage("app", img);
+			} else if(c.image("app") == nil) {
+				# First reshape for this app: allocate content-area window
+				tabh2 := 0;
+				if(mainfont != nil) tabh2 = mainfont.height + 13;
+				appr := Rect((curzone.min.x, curzone.min.y + tabh2), curzone.max);
+				img := scr.newwindow(appr, Draw->Refbackup, Draw->Nofill);
+				if(img == nil) {
+					err = "window creation failed";
+					n = -1;
+				} else
+					c.setimage("app", img);
+				# App starts at top; handleprescurrent() will call bottom() if needed
 			}
+			# else: app already has a window — ignore re-reshape
 		}
-		# "start ptr", "start kbd", "raise", etc. — just reply OK
+		# All other req messages ("start ptr", "start kbd", "raise", etc.) — reply OK
 		alt { rc <-= (n, err) => ; * => ; }
 	newzoner := <-rszch =>
 		curzone = newzoner;
-		if(client != nil) {
-			# presscr (module global) was updated by handleresize before it
-			# sent to this channel — channel ordering guarantees we see the
-			# new Screen backed by the new mainwin.
+		# Resize lucipres window (full zone)
+		if(lucipresclient != nil) {
+			# presscr (module global) was updated by handleresize before sending
 			img := presscr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
 			if(img != nil) {
-				client.setimage("app", img);
-				client.ctl <-= sys->sprint("!reshape app -1 %s", r2s(curzone));
+				lucipresclient.setimage("app", img);
+				lucipresclient.ctl <-= sys->sprint("!reshape app -1 %s", r2s(curzone));
+			}
+		}
+		# Resize app windows (content area)
+		tabh3 := 0;
+		if(mainfont != nil) tabh3 = mainfont.height + 13;
+		appr2 := Rect((curzone.min.x, curzone.min.y + tabh3), curzone.max);
+		for(asi3 := 0; asi3 < nappslots; asi3++) {
+			if(appslots[asi3] != nil && appslots[asi3].client != nil) {
+				img3 := presscr.newwindow(appr2, Draw->Refbackup, Draw->Nofill);
+				if(img3 != nil) {
+					appslots[asi3].client.setimage("app", img3);
+					appslots[asi3].client.ctl <-= sys->sprint("!reshape app -1 %s", r2s(appr2));
+				}
 			}
 		}
 	p := <-presMouseCh =>
-		if(client != nil)
-			client.ptr <-= p;
+		# Tab strip (top N px) always routes to lucipres;
+		# content area routes to active app or lucipres.
+		tabh_m := 0;
+		if(mainfont != nil) tabh_m = mainfont.height + 13;
+		if(p.xy.y < curzone.min.y + tabh_m) {
+			# Tab strip: always deliver to lucipres
+			if(lucipresclient != nil)
+				lucipresclient.ptr <-= p;
+		} else {
+			# Content area: active app or lucipres
+			actclient: ref Client;
+			for(masi := 0; masi < nappslots; masi++) {
+				if(appslots[masi] != nil && appslots[masi].id == activeappid &&
+						appslots[masi].client != nil) {
+					actclient = appslots[masi].client;
+					break;
+				}
+			}
+			if(actclient == nil)
+				actclient = lucipresclient;
+			if(actclient != nil)
+				actclient.ptr <-= p;
+		}
 	}
 }
 
@@ -609,8 +769,21 @@ nslistener()
 		} else if(ev == "catalog" || hasprefix(ev, "context ")) {
 			alt { ctxEvCh <-= ev => ; * => ; }
 		} else if(hasprefix(ev, "presentation ")) {
+			# Always deliver to lucipres for tab/artifact updates
 			if(lucipres_g != nil)
 				lucipres_g->deliverevent(ev);
+			# Additional handling for app lifecycle events
+			if(hasprefix(ev, "presentation new ")) {
+				newid := strip(ev[len "presentation new ":]);
+				if(newid != "")
+					checklaunchapp(newid);
+			} else if(hasprefix(ev, "presentation kill ")) {
+				killid := strip(ev[len "presentation kill ":]);
+				if(killid != "")
+					killapp(killid);
+			} else if(ev == "presentation current") {
+				handleprescurrent();
+			}
 		}
 	}
 }
@@ -819,74 +992,198 @@ presKbdSrv(io: ref Sys->FileIO)
 	}
 }
 
-# presLaunchSrv: serve /n/pres-launch — receives .dis path, loads and spawns GUI app
-# Creates a fresh Draw->Context backed by the current presscr for each launched app.
-presLaunchSrv(io: ref Sys->FileIO, wm: chan of (string, chan of (string, ref Wmcontext)))
+
+# --- App lifecycle management ---
+
+# writetofile: write a string to a file path
+writetofile(path, data: string): string
 {
-	for(;;) alt {
-	(off, wdata, fid, wc) := <-io.write =>
-		if(wc != nil) {
-			if(len wdata == 0) {
-				wc <-= (0, nil);
-			} else {
-				path := strip(string wdata);
-				# Extract .dis path (first word of command)
-				dispath := path;
-				for(i := 0; i < len path; i++) {
-					if(path[i] == ' ' || path[i] == '\t') {
-						dispath = path[0:i];
-						break;
-					}
-				}
-				guimod := load GuiApp dispath;
-				if(guimod == nil)
-					wc <-= (0, sys->sprint("cannot load %s: %r", dispath));
-				else {
-					newctxt := ref Draw->Context(display, presscr, wm);
-					spawn guimod->init(newctxt, dispath :: nil);
-					wc <-= (len wdata, nil);
-				}
-			}
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil)
+		return sys->sprint("cannot open %s: %r", path);
+	b := array of byte data;
+	n := sys->write(fd, b, len b);
+	if(n < 0)
+		return sys->sprint("write failed: %r");
+	return nil;
+}
+
+# writeappstatus: write appstatus to luciuisrv ctl and deliver event to lucipres
+writeappstatus(id, status: string)
+{
+	if(actid < 0) return;
+	writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, actid),
+		"appstatus id=" + id + " status=" + status);
+	if(lucipres_g != nil)
+		lucipres_g->deliverevent("presentation app " + id + " status=" + status);
+}
+
+# checklaunchapp: called when nslistener sees "presentation new <id>"
+#
+# If the new artifact has type=app, reads dispath and launches the GUI app.
+# Also auto-centers the artifact so handleprescurrent() fires and hides all
+# other apps — without this, the newly-launched app window starts at z-top
+# but activeappid is never set, so subsequent "center mermaid" calls call
+# hideapp("") which is a no-op, leaving the app window floating over content.
+checklaunchapp(id: string)
+{
+	if(actid < 0) return;
+	base := sys->sprint("%s/activity/%d/presentation/%s", mountpt, actid, id);
+	atype := readfile(base + "/type");
+	if(atype != nil) atype = strip(atype);
+	if(atype != "app") return;
+	dispath := readfile(base + "/dispath");
+	if(dispath != nil) dispath = strip(dispath);
+	if(dispath == "") return;
+	launchapp(id, dispath);
+	# Auto-center the new app so handleprescurrent() hides other apps
+	if(actid >= 0)
+		writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, actid),
+			"center id=" + id);
+}
+
+# launchapp: allocate AppSlot, queue id for preswmloop, then spawn the GUI app.
+#
+# Ordering is critical:
+#   1. Push id to appjoinch BEFORE spawning, so preswmloop sees the id waiting
+#      when the app's first join arrives.  The app can only join after spawn, so
+#      the push always happens-before the join.
+#   2. If load fails, drain appjoinch so the stale id doesn't mis-label the
+#      next app that successfully joins.
+#
+# TODO: eliminate the appjoinch protocol by giving each app its own wmsrv instance.
+launchapp(id, dispath: string)
+{
+	# Allocate AppSlot (client filled in later by preswmloop join handler)
+	if(nappslots < MAXAPPSLOTS) {
+		appslots[nappslots] = ref AppSlot(id, nil);
+		nappslots++;
+	}
+	# Signal preswmloop: next join belongs to this id
+	alt { appjoinch <-= id => ; * => ; }
+	# Load the GUI app module; drain appjoinch if load fails
+	guimod := load GuiApp dispath;
+	if(guimod == nil) {
+		sys->fprint(stderr, "lucifer: cannot load %s: %r\n", dispath);
+		# Drain the appjoinch entry so the next app isn't misidentified
+		alt { <-appjoinch => ; * => ; }
+		writeappstatus(id, "dead");
+		return;
+	}
+	# Spawn app with presscr context so it connects to our wmsrv (wmchan)
+	newctxt := ref Draw->Context(display, presscr, wmchan);
+	spawn guimod->init(newctxt, dispath :: nil);
+	writeappstatus(id, "running");
+}
+
+# showapp: bring app window to front of the Screen z-stack (in front of lucipres).
+#
+# Uses Client.top() — the correct Inferno WM z-order primitive.
+# Do NOT use Client.unhide() — it is an empty stub in wmsrv.b.
+# Do NOT create a new window via Screen.newwindow() — each app has exactly ONE
+# window allocated at first !reshape; creating more causes ghost windows.
+showapp(id: string)
+{
+	if(id == "") return;
+	for(si := 0; si < nappslots; si++) {
+		if(appslots[si] != nil && appslots[si].id == id) {
+			if(appslots[si].client != nil)
+				appslots[si].client.top();
+			return;
 		}
-	(off, cnt, fid, rc) := <-io.read =>
-		if(rc != nil) rc <-= (array[0] of byte, nil);
 	}
 }
 
-# preslaunchpoll: poll /tmp/veltro/pres-launch for GUI app launch requests from exec.b/launch.b.
-# exec.b/launch.b write the .dis path there; we load and spawn the app with a Draw->Context
-# backed by the presentation zone screen.
-# NOTE: tools9p namespace restricts /tmp to /tmp/veltro/ only — writers use /tmp/veltro/pres-launch.
-preslaunchpoll(wm: chan of (string, chan of (string, ref Wmcontext)))
+# hideapp: send app window to the bottom of the Screen z-stack (behind lucipres).
+#
+# Uses Client.bottom() — the correct Inferno WM z-order primitive.
+# Do NOT use Client.hide() — it is an empty stub in wmsrv.b.
+# Do NOT use a 1×1 offscreen rect — Screen.newwindow() checks that the rect fits
+# within the backing image; coordinates outside pressubimg.r return nil.
+hideapp(id: string)
 {
-	for(;;) {
-		sys->sleep(200);
-		fd := sys->open("/tmp/veltro/pres-launch", Sys->ORDWR);
-		if(fd == nil)
-			continue;
-		buf := array[4096] of byte;
-		n := sys->read(fd, buf, len buf);
-		fd = nil;
-		sys->remove("/tmp/veltro/pres-launch");
-		if(n <= 0)
-			continue;
-		path := strip(string buf[0:n]);
-		# Extract .dis path (first word only)
-		dispath := path;
-		for(i := 0; i < len path; i++) {
-			if(path[i] == ' ' || path[i] == '\t') {
-				dispath = path[0:i];
-				break;
+	if(id == "") return;
+	for(si := 0; si < nappslots; si++) {
+		if(appslots[si] != nil && appslots[si].id == id) {
+			if(appslots[si].client != nil)
+				appslots[si].client.bottom();
+			return;
+		}
+	}
+}
+
+# killapp: terminate the app process and free its AppSlot.
+#
+# Sends bottom() first so the app window disappears immediately while the
+# "exit" message is in flight.  "exit" causes wmsrv to disconnect the client;
+# the req handler in preswmloop clears appslots[].client on disconnect.
+#
+# TODO: when an app crashes (no orderly exit), its client may linger in appslots
+#       with client != nil but the goroutine dead.  Add a watchdog that clears
+#       dead slots by detecting that client.ctl is closed (rc == nil in req).
+killapp(id: string)
+{
+	if(id == "") return;
+	for(si := 0; si < nappslots; si++) {
+		if(appslots[si] != nil && appslots[si].id == id) {
+			if(appslots[si].client != nil) {
+				# Send to back before exit so it's invisible immediately
+				appslots[si].client.bottom();
+				alt { appslots[si].client.ctl <-= "exit" => ; * => ; }
 			}
+			appslots[si] = nil;
+			# Compact slot array (preserve ordering for appjoinch protocol)
+			for(ci := si; ci + 1 < nappslots; ci++)
+				appslots[ci] = appslots[ci + 1];
+			nappslots--;
+			if(activeappid == id)
+				activeappid = "";
+			return;
 		}
-		if(len dispath == 0)
-			continue;
-		guimod := load GuiApp dispath;
-		if(guimod == nil) {
-			sys->fprint(stderr, "lucifer: preslaunch: cannot load %s: %r\n", dispath);
-			continue;
+	}
+}
+
+# handleprescurrent: called when "presentation current" event fires.
+#
+# Reads the artifact id from /presentation/current and determines whether
+# it's a GUI app or a standard artifact (mermaid, markdown, etc.).
+#
+# App tab selected:
+#   Hide all OTHER running apps (bottom()), show the selected one (top()),
+#   update activeappid.  Mouse events in the content area go to activeappid's
+#   client (see preswmloop mouse routing).
+#
+# Non-app tab selected (mermaid, markdown, pdf, …):
+#   Hide ALL running apps.  lucipres draws the artifact in the content area.
+#   activeappid is cleared so mouse events go to lucipres.
+#
+# Critical: MUST iterate all appslots, not just activeappid.  Before this was
+# fixed, centering mermaid called hideapp("") which is a no-op, leaving whichever
+# app was last-top still floating over the presentation content.
+handleprescurrent()
+{
+	if(actid < 0) return;
+	s := readfile(sys->sprint("%s/activity/%d/presentation/current", mountpt, actid));
+	if(s == nil) return;
+	newid := strip(s);
+	# Check type of newly-centered artifact
+	atype := readfile(sys->sprint("%s/activity/%d/presentation/%s/type",
+		mountpt, actid, newid));
+	if(atype != nil) atype = strip(atype);
+	if(atype == "app") {
+		if(newid != activeappid) {
+			# Hide all apps except the newly-centered one
+			for(hsi := 0; hsi < nappslots; hsi++)
+				if(appslots[hsi] != nil && appslots[hsi].id != newid)
+					hideapp(appslots[hsi].id);
+			showapp(newid);
+			activeappid = newid;
 		}
-		newctxt := ref Draw->Context(display, presscr, wm);
-		spawn guimod->init(newctxt, dispath :: nil);
+	} else {
+		# Non-app centered: hide ALL running apps so lucipres is fully visible
+		for(hsi2 := 0; hsi2 < nappslots; hsi2++)
+			if(appslots[hsi2] != nil && appslots[hsi2].id != "")
+				hideapp(appslots[hsi2].id);
+		activeappid = "";
 	}
 }

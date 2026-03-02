@@ -102,6 +102,8 @@ Qbgdir:		con 28;	# background/
 Qbgentry:	con 29;
 Qcatalogdir:	con 30;	# catalog/   (global, not per-activity)
 Qcatalogentry:	con 31;
+Qartdispath:	con 32;	# presentation/<id>/dispath  (app type only)
+Qartappstatus:	con 33;	# presentation/<id>/appstatus (app type only)
 
 # --- QID encoding ---
 # 64-bit path: [activity_id:16][sub_id:16][unused:24][filetype:8]
@@ -138,10 +140,12 @@ ConvMsg: adt {
 
 Artifact: adt {
 	id:	string;
-	atype:	string;		# table | chart | map | doc | ...
+	atype:	string;		# table | chart | map | doc | app | ...
 	label:	string;
 	data:	string;		# structured content
 	idx:	int;		# index in artifacts array
+	dispath:   string;	# "/dis/wm/clock.dis"  (type=app only)
+	appstatus: string;	# "launching"|"running"|"dead"  (type=app only)
 };
 
 Resource: adt {
@@ -471,7 +475,7 @@ addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 		na[0:] = a.artifacts[0:a.nart];
 		a.artifacts = na;
 	}
-	art := ref Artifact(id, atype, label, "", a.nart);
+	art := ref Artifact(id, atype, label, "", a.nart, "", "");
 	a.artifacts[a.nart++] = art;
 	vers++;
 	return art;
@@ -790,6 +794,22 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		}
 		srv.reply(styxservers->readbytes(m, array of byte a.artifacts[subid].data));
 
+	Qartdispath =>
+		a := findactivity(actid);
+		if(a == nil || subid >= a.nart) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		srv.reply(styxservers->readbytes(m, array of byte (a.artifacts[subid].dispath + "\n")));
+
+	Qartappstatus =>
+		a := findactivity(actid);
+		if(a == nil || subid >= a.nart) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		srv.reply(styxservers->readbytes(m, array of byte (a.artifacts[subid].appstatus + "\n")));
+
 	Qresentry =>
 		a := findactivity(actid);
 		if(a == nil || subid >= a.nres) {
@@ -993,6 +1013,18 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 		pushevent(actid, "presentation " + a.artifacts[subid].id);
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
+	Qartappstatus =>
+		a := findactivity(actid);
+		subid := SUBID(c.path);
+		if(a == nil || subid >= a.nart) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		a.artifacts[subid].appstatus = data;
+		vers++;
+		pushevent(actid, "presentation app " + a.artifacts[subid].id + " status=" + data);
+		srv.reply(ref Rmsg.Write(m.tag, len m.data));
+
 	Qctxctl =>
 		a := findactivity(actid);
 		if(a == nil) {
@@ -1109,6 +1141,7 @@ presctl(a: ref Activity, data: string): string
 		id := getattr(attrs, "id");
 		atype := getattr(attrs, "type");
 		label := getattr(attrs, "label");
+		dispath := getattr(attrs, "dis");
 		if(id == nil || id == "")
 			return "missing id";
 		if(atype == nil || atype == "")
@@ -1117,7 +1150,11 @@ presctl(a: ref Activity, data: string): string
 			label = id;
 		if(findartifact(a, id) != nil)
 			return "artifact already exists: " + id;
-		addartifact(a, id, atype, label);
+		art := addartifact(a, id, atype, label);
+		if(dispath != nil && dispath != "")
+			art.dispath = dispath;
+		if(atype == "app")
+			art.appstatus = "launching";
 		pushevent(a.id, "presentation new " + id);
 		return nil;
 	}
@@ -1190,6 +1227,43 @@ presctl(a: ref Activity, data: string): string
 			a.currentArtifact = "";
 		vers++;
 		pushevent(a.id, "presentation delete " + id);
+		return nil;
+	}
+	if(hasprefix(data, "kill ")) {
+		attrs := parseattrs(data[len "kill ":]);
+		id := getattr(attrs, "id");
+		if(id == nil || id == "")
+			return "missing id";
+		if(findartifact(a, id) == nil)
+			return "unknown artifact: " + id;
+		# Emit kill event first so lucifer can terminate the process
+		pushevent(a.id, "presentation kill " + id);
+		# Then delete the artifact slot
+		idx := findartidx(a, id);
+		if(idx >= 0) {
+			a.artifacts[idx:] = a.artifacts[idx+1:a.nart];
+			a.nart--;
+			a.artifacts[a.nart] = nil;
+			if(a.currentArtifact == id)
+				a.currentArtifact = "";
+			vers++;
+			pushevent(a.id, "presentation delete " + id);
+		}
+		return nil;
+	}
+	if(hasprefix(data, "appstatus ")) {
+		attrs := parseattrs(data[len "appstatus ":]);
+		id := getattr(attrs, "id");
+		status := getattr(attrs, "status");
+		if(id == nil || id == "")
+			return "missing id";
+		art := findartifact(a, id);
+		if(art == nil)
+			return "unknown artifact: " + id;
+		if(status != nil)
+			art.appstatus = status;
+		vers++;
+		pushevent(a.id, "presentation app " + id + " status=" + art.appstatus);
 		return nil;
 	}
 	return "unknown presentation command: " + data;
@@ -1566,6 +1640,10 @@ dirgen(p: big): (ref Sys->Dir, string)
 		return (dir(Qid(p, vers, Sys->QTFILE), "label", big 0, 8r444), nil);
 	Qartdata =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "data", big 0, 8r666), nil);
+	Qartdispath =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "dispath", big 0, 8r444), nil);
+	Qartappstatus =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "appstatus", big 0, 8r644), nil);
 	Qctxdir =>
 		return (dir(Qid(p, vers, Sys->QTDIR), "context", big 0, 8r755), nil);
 	Qctxctl =>
@@ -1722,6 +1800,10 @@ navigator(navops: chan of ref Navop)
 					n.path = MKPATH(actid, subid, Qartlabel);
 				"data" =>
 					n.path = MKPATH(actid, subid, Qartdata);
+				"dispath" =>
+					n.path = MKPATH(actid, subid, Qartdispath);
+				"appstatus" =>
+					n.path = MKPATH(actid, subid, Qartappstatus);
 				* =>
 					n.reply <-= (nil, Enotfound);
 					continue;
@@ -1821,7 +1903,7 @@ navigator(navops: chan of ref Navop)
 						n.path = MKPATH(actid, 0, Qconvdir);
 					Qpresctl or Qprescurrent =>
 						n.path = MKPATH(actid, 0, Qpresdir);
-					Qarttype or Qartlabel or Qartdata =>
+					Qarttype or Qartlabel or Qartdata or Qartdispath or Qartappstatus =>
 						n.path = MKPATH(actid, subid, Qartdir);
 					Qctxctl =>
 						n.path = MKPATH(actid, 0, Qctxdir);
@@ -1955,6 +2037,8 @@ navigator(navops: chan of ref Navop)
 					MKPATH(actid, SUBID(m.path), Qarttype),
 					MKPATH(actid, SUBID(m.path), Qartlabel),
 					MKPATH(actid, SUBID(m.path), Qartdata),
+					MKPATH(actid, SUBID(m.path), Qartdispath),
+					MKPATH(actid, SUBID(m.path), Qartappstatus),
 				};
 				i := n.offset;
 				for(; i < len entries && n.count > 0; i++) {

@@ -19,6 +19,9 @@ include "sys.m";
 
 include "draw.m";
 
+include "string.m";
+	str: String;
+
 include "../tool.m";
 
 ToolLaunch: module {
@@ -28,11 +31,16 @@ ToolLaunch: module {
 	exec: fn(args: string): string;
 };
 
+UI_MOUNT: con "/n/ui";
+
 init(): string
 {
 	sys = load Sys Sys->PATH;
 	if(sys == nil)
 		return "cannot load Sys";
+	str = load String String->PATH;
+	if(str == nil)
+		return "cannot load String";
 	return nil;
 }
 
@@ -115,25 +123,67 @@ exec(args: string): string
 		return "error: " + appname + " not found (tried " + dispath + ")\n" +
 			"Use 'Launch list' to see available apps";
 
-	# Signal lucifer's preslaunchpoll goroutine
-	pfd := sys->open("/n/pres-launch", Sys->OWRITE);
-	if(pfd == nil) {
-		pfd = sys->create("/tmp/veltro/pres-launch", Sys->OWRITE, 8r644);
-		if(pfd == nil) {
-			# Collect diagnostics to expose the actual failure reason
-			creerr := sys->sprint("%r");
-			(tok, nil) := sys->stat("/tmp");
-			(vok, nil) := sys->stat("/tmp/veltro");
-			return sys->sprint("error: cannot reach presentation zone (stat /tmp=%d /tmp/veltro=%d create: %s)",
-				tok, vok, creerr);
-		}
+	# Register app with luciuisrv via presentation/ctl
+	actid := currentactid();
+	if(actid < 0)
+		return "error: cannot reach presentation zone (is luciuisrv running?)";
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+
+	# Create app slot (will trigger lucifer to launch the app)
+	cmd := sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
+	fd := sys->open(pctl, Sys->OWRITE);
+	if(fd == nil)
+		return sys->sprint("error: cannot open presentation/ctl: %r");
+	b := array of byte cmd;
+	sys->write(fd, b, len b);
+	fd = nil;
+
+	# Center the new app tab
+	fd = sys->open(pctl, Sys->OWRITE);
+	if(fd != nil) {
+		b = array of byte ("center id=" + appname);
+		sys->write(fd, b, len b);
+		fd = nil;
 	}
 
-	data := array of byte dispath;
-	sys->write(pfd, data, len data);
-	pfd = nil;
-
 	return "launched " + appname + " in presentation zone";
+}
+
+# Read current activity ID from namespace
+currentactid(): int
+{
+	s := readfile(UI_MOUNT + "/activity/current");
+	if(s == nil)
+		return -1;
+	s = strip(s);
+	(n, nil) := str->toint(s, 10);
+	return n;
+}
+
+readfile(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[256] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	return string buf[0:n];
+}
+
+strip(s: string): string
+{
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	j := len s;
+	while(j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n'))
+		j--;
+	if(i >= j)
+		return "";
+	return s[i:j];
 }
 
 # List available (non-Tk) apps from /dis/wm/

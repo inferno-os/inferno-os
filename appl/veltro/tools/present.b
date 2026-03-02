@@ -68,6 +68,7 @@ doc(): string
 		"  write <id> <content>    Write content (use \\\\n for newlines)\n" +
 		"  center <id>             Make artifact the active/focused view\n" +
 		"  delete <id>             Remove artifact from presentation zone\n" +
+		"  kill <id>              Terminate a running GUI app and remove its tab\n" +
 		"  list                    List artifacts in current activity\n" +
 		"  status                  Show current activity and centered artifact\n\n" +
 		"Artifact types:\n" +
@@ -131,12 +132,14 @@ exec(args: string): string
 		return docenter(rest);
 	"delete" =>
 		return dodelete(rest);
+	"kill" =>
+		return dokill(rest);
 	"list" =>
 		return dolist();
 	"status" =>
 		return dostatus();
 	* =>
-		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, list, status", cmd);
+		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, kill, list, status", cmd);
 	}
 }
 
@@ -255,6 +258,25 @@ docenter(args: string): string
 		return "error: " + err;
 
 	return sys->sprint("centered '%s'", id);
+}
+
+# Kill a GUI app by id (terminates the running app process and removes its tab)
+dokill(args: string): string
+{
+	id := strip(args);
+	if(id == "")
+		return "error: usage: kill <id>";
+
+	actid := currentactid();
+	if(actid < 0)
+		return "error: no active activity";
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+	err := writefile(pctl, "kill id=" + id);
+	if(err != nil)
+		return "error: " + err;
+
+	return sys->sprint("killed app '%s'", id);
 }
 
 # Delete an artifact by id

@@ -61,6 +61,7 @@ Artifact: adt {
 	pdfpage: int;
 	rendering: int;
 	zoom:	int;
+	appstatus: string;	# "launching"|"running"|"dead" (type=app only)
 };
 
 TabRect: adt {
@@ -381,10 +382,51 @@ handleevent(ev: string)
 		id := strip(ev[len "presentation new ":]);
 		if(id != "")
 			loadartifact(id);
+	} else if(hasprefix(ev, "presentation kill ")) {
+		# "presentation kill <id>" — app was killed; remove its tab.
+		#
+		# MUST be handled BEFORE the catch-all "presentation " branch below.
+		# Without this case, "presentation kill clock" falls through to:
+		#   updateartifact("kill clock") → loadartifact("kill clock")
+		# which creates a bogus "kill clock" tab in the tab bar.
+		#
+		# luciuisrv emits both "presentation kill <id>" and then
+		# "presentation delete <id>" when the kill ctl command is processed.
+		# Handling kill here is belt-and-suspenders — delete will also fire.
+		id := strip(ev[len "presentation kill ":]);
+		if(id != "")
+			deleteartifact(id);
 	} else if(hasprefix(ev, "presentation delete ")) {
 		id := strip(ev[len "presentation delete ":]);
 		if(id != "")
 			deleteartifact(id);
+	} else if(hasprefix(ev, "presentation app ")) {
+		# "presentation app <id> status=<s>" — update appstatus field
+		rest := ev[len "presentation app ":] ;
+		# split rest into first word (id) and remainder (attrs)
+		sppos := 0;
+		for(; sppos < len rest && rest[sppos] != ' ' && rest[sppos] != '	'; sppos++)
+			;
+		appid := strip(rest[0:sppos]);
+		attrs2 := "";
+		if(sppos < len rest)
+			attrs2 = strip(rest[sppos:]);
+		status := "";
+		needle := "status=";
+		for(si := 0; si + len needle <= len attrs2; si++) {
+			if(attrs2[si:si + len needle] == needle) {
+				status = strip(attrs2[si + len needle:]);
+				break;
+			}
+		}
+		if(appid != "" && status != "") {
+			for(aal := artifacts; aal != nil; aal = tl aal) {
+				if((hd aal).id == appid) {
+					(hd aal).appstatus = status;
+					break;
+				}
+			}
+		}
 	} else if(hasprefix(ev, "presentation ")) {
 		id := strip(ev[len "presentation ":]);
 		if(id != "")
@@ -466,6 +508,17 @@ drawpresentation(zone: Rect)
 				accentcol, nil, (0, 0));
 		}
 		mainwin.text((tx, tabr.min.y + 6), tcol, (0, 0), mainfont, art.label);
+		# Status dot for app tabs
+		if(art.atype == "app") {
+			dotcol: ref Image;
+			if(art.appstatus == "running")
+				dotcol = display_g.color(Draw->Green);
+			else
+				dotcol = dimcol;
+			dotx := tx + tw + 4;
+			doty := tabr.min.y + (tabr.dy() - 5) / 2;
+			mainwin.draw(Rect((dotx, doty), (dotx + 5, doty + 5)), dotcol, nil, (0, 0));
+		}
 		if(ntabs < len tablayout)
 			tablayout[ntabs++] = ref TabRect(
 				Rect((tx, tabr.min.y), (tx + tw + 20, tabr.max.y)), art.id);
@@ -733,6 +786,11 @@ drawpresentation(zone: Rect)
 				}
 			}
 		}
+	"app" =>
+		# App window is at higher z-order covering the content area;
+		# show placeholder only while the app is still launching.
+		if(centart.appstatus != "running")
+			drawcentertext(contentr, "Launching " + centart.label + "...");
 	* =>
 		if(centart.atype != "") {
 			mainwin.text((contentr.min.x + pad, contenty),
@@ -781,6 +839,18 @@ handlecontextmenu(p: ref Pointer)
 		return;
 
 	art := findartifact(artid);
+	# App type: Kill menu
+	if(art != nil && art.atype == "app") {
+		killitems := array[] of {"Kill"};
+		killpop := menumod->new(killitems);
+		killresult := killpop.show(mainwin, p.xy, win.ctxt.ptr);
+		if(killresult == 0 && actid_g >= 0)
+			writetofile(
+				sys->sprint("%s/activity/%d/presentation/ctl",
+					mountpt_g, actid_g),
+				"kill id=" + artid);
+		return;
+	}
 	items: array of string;
 	if(art != nil && (art.atype == "pdf" || art.atype == "image"))
 		items = array[] of {"Close", "Zoom In", "Zoom Out", "Export"};
@@ -844,10 +914,13 @@ loadpresentation()
 			label := readfile(artbase + "/label");
 			if(label != nil) label = strip(label);
 			data := readfile(artbase + "/data");
+			appstatus := readfile(artbase + "/appstatus");
 			if(atype == nil || atype == "") atype = "text";
 			if(label == nil || label == "") label = nm;
 			if(data == nil) data = "";
-			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0);
+			if(appstatus == nil) appstatus = "";
+			else appstatus = strip(appstatus);
+			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0, appstatus);
 			artifacts = art :: artifacts;
 			nart++;
 		}
@@ -863,10 +936,13 @@ loadartifact(id: string)
 	label := readfile(base + "/label");
 	if(label != nil) label = strip(label);
 	data := readfile(base + "/data");
+	appstatus2 := readfile(base + "/appstatus");
 	if(atype == nil || atype == "") atype = "text";
 	if(label == nil || label == "") label = id;
 	if(data == nil) data = "";
-	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0);
+	if(appstatus2 == nil) appstatus2 = "";
+	else appstatus2 = strip(appstatus2);
+	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0, appstatus2);
 	artifacts = appendart(artifacts, art);
 	nart++;
 }

@@ -471,8 +471,19 @@ agentturn(input: string)
 				writefile(ctxpath, "resource update path=" + nm + " status=active");
 				log("context: active " + nm);
 
+				# extractargs: unwrap {"args":"<value>"} JSON envelope from Anthropic
+				# native tool_use protocol before forwarding to tools9p.
+				#
+				# Bug history: when the native tool_use protocol was introduced,
+				# extractargs() was added but only called for the local "say" intercept.
+				# All other tools received the raw JSON wrapper as their args string.
+				# tools9p's exec tool then saw '{"args":' as the first command word →
+				# "error: unknown command" for every tool call.  Fixed here by always
+				# extracting args before calltool() and filepathof().
+				eargs := extractargs(args);
+
 				# Surface the file/dir this tool is accessing
-				fpath := filepathof(args);
+				fpath := filepathof(eargs);
 				if(fpath != nil) {
 					base := pathbase(fpath);
 					ftype := "file";
@@ -484,7 +495,7 @@ agentturn(input: string)
 					log("context: file " + fpath + " via " + nm);
 				}
 
-				result := agentlib->calltool(name, args);
+				result := agentlib->calltool(name, eargs);
 				writefile(ctxpath, "resource update path=" + nm + " status=idle");
 				if(fpath != nil)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
