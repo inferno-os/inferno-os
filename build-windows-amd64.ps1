@@ -254,7 +254,10 @@ Remove-Item -Force *.obj -ErrorAction SilentlyContinue
 
 $secSrc = @(
     "des.c", "desmodes.c", "desECB.c", "desCBC.c", "des3ECB.c", "des3CBC.c",
-    "aes.c", "blowfish.c", "idea.c",
+    "aes.c", "aesctr.c", "aesgcm.c", "blowfish.c",
+    "chacha.c", "poly1305.c", "ccpoly.c",
+    "x25519.c", "ecc.c",
+    "idea.c",
     "hmac.c", "md5.c", "md5block.c", "md4.c", "sha1.c", "sha1block.c",
     "sha2.c", "sha256block.c", "sha512block.c",
     "sha1pickle.c", "md5pickle.c", "rc4.c",
@@ -437,7 +440,8 @@ $interpSrc = @(
     "alt.c", "conv.c", "crypt.c", "dec.c", "draw.c", "gc.c", "geom.c",
     "heap.c", "heapaudit.c", "ipint.c", "link.c", "load.c", "math.c",
     "raise.c", "readmod.c", "runt.c", "sign.c", "stack.c", "tk.c",
-    "validstk.c", "xec.c", "das-amd64.c", "keyring.c", "string.c"
+    "validstk.c", "xec.c", "das-amd64.c", "keyring.c", "string.c",
+    "gpu-stub.c"
 )
 $interpFlags = @(
     "/DEMU", "/I.", "/I$ROOT\include",
