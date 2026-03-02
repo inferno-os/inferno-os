@@ -98,8 +98,15 @@ restrictdir(target: string, allowed: list of string, writable: int): string
 					dfd = nil;
 			}
 
-			# Bind original into shadow
-			if(sys->bind(srcpath, dstpath, Sys->MREPL) < 0)
+			# Bind original into shadow.
+			# When the outer target is writable, inner binds also need MCREATE
+			# so that file creation inside subdirectories is permitted.
+			# Without MCREATE on the inner bind, the kernel returns
+			# "mounted directory forbids creation" for any create inside that subdir.
+			innerbindflags := Sys->MREPL;
+			if(writable)
+				innerbindflags |= Sys->MCREATE;
+			if(sys->bind(srcpath, dstpath, innerbindflags) < 0)
 				return sys->sprint("cannot bind %s: %r", srcpath);
 		}
 	}

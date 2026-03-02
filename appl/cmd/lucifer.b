@@ -853,9 +853,10 @@ presLaunchSrv(io: ref Sys->FileIO, wm: chan of (string, chan of (string, ref Wmc
 	}
 }
 
-# preslaunchpoll: poll /tmp/veltro/pres-launch for GUI app launch requests from exec.b.
-# exec.b writes the .dis path there; we load and spawn the app with a Draw->Context
+# preslaunchpoll: poll /tmp/veltro/pres-launch for GUI app launch requests from exec.b/launch.b.
+# exec.b/launch.b write the .dis path there; we load and spawn the app with a Draw->Context
 # backed by the presentation zone screen.
+# NOTE: tools9p namespace restricts /tmp to /tmp/veltro/ only — writers use /tmp/veltro/pres-launch.
 preslaunchpoll(wm: chan of (string, chan of (string, ref Wmcontext)))
 {
 	for(;;) {

@@ -117,10 +117,17 @@ exec(args: string): string
 
 	# Signal lucifer's preslaunchpoll goroutine
 	pfd := sys->open("/n/pres-launch", Sys->OWRITE);
-	if(pfd == nil)
+	if(pfd == nil) {
 		pfd = sys->create("/tmp/veltro/pres-launch", Sys->OWRITE, 8r644);
-	if(pfd == nil)
-		return "error: cannot reach presentation zone";
+		if(pfd == nil) {
+			# Collect diagnostics to expose the actual failure reason
+			creerr := sys->sprint("%r");
+			(tok, nil) := sys->stat("/tmp");
+			(vok, nil) := sys->stat("/tmp/veltro");
+			return sys->sprint("error: cannot reach presentation zone (stat /tmp=%d /tmp/veltro=%d create: %s)",
+				tok, vok, creerr);
+		}
+	}
 
 	data := array of byte dispath;
 	sys->write(pfd, data, len data);
