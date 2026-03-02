@@ -223,10 +223,8 @@ readkbd(void)
 	DWORD r;
 	char buf[1];
 
-	if(ReadFile(kbdh, buf, sizeof(buf), &r, 0) == FALSE)
-		panic("keyboard fail");
-	if (r == 0)
-		panic("keyboard EOF");
+	if(ReadFile(kbdh, buf, sizeof(buf), &r, 0) == FALSE || r == 0)
+		pexit("keyboard thread", 0);
 
 	if (buf[0] == 0x03) {
 		// INTR (CTRL+C)

@@ -34,7 +34,11 @@ canlock(Lock *l)
 void
 unlock(Lock *l)
 {
+#ifdef _MSC_VER
+	_InterlockedExchange(&l->val, 0);
+#else
 	__atomic_store_n(&l->val, 0, __ATOMIC_RELEASE);
+#endif
 }
 
 void
