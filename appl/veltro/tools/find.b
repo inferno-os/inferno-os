@@ -63,16 +63,17 @@ name(): string
 doc(): string
 {
 	return "Find - Find files by glob pattern\n\n" +
-		"Usage:\n" +
-		"  Find <pattern>              # Search from current directory\n" +
-		"  Find <pattern> <path>       # Search from specified path\n\n" +
+		"Accepts both native and Unix-style syntax:\n" +
+		"  Find <pattern> [path]            # native: pattern first\n" +
+		"  Find [path] -name <pattern>      # Unix: path then -name pattern\n\n" +
 		"Patterns:\n" +
 		"  *     - Match any characters\n" +
 		"  ?     - Match single character\n" +
 		"  [abc] - Match character class\n\n" +
 		"Examples:\n" +
-		"  Find *.b /appl\n" +
-		"  Find mkfile\n" +
+		"  Find *.dis /dis/wm\n" +
+		"  Find /dis/wm -name *.dis\n" +
+		"  Find / -name *tetris*\n" +
 		"  Find *_test.b /tests\n\n" +
 		"Returns list of matching file paths (max 100 results).";
 }
@@ -85,17 +86,43 @@ exec(args: string): string
 	if(filepat == nil)
 		return "error: cannot load filepat module";
 
-	# Parse arguments
+	# Parse arguments — accept two calling conventions:
+	#   Tool-native:  Find <pattern> [path]       e.g. Find *tetris* /dis
+	#   Unix-compat:  Find [path] -name <pattern>  e.g. Find /dis -name *tetris*
 	(n, argv) := sys->tokenize(args, " \t");
 	if(n < 1)
 		return "error: usage: Find <pattern> [path]";
 
-	pattern := hd argv;
-	argv = tl argv;
-
+	pattern := "";
 	basepath := ".";
-	if(argv != nil)
-		basepath = hd argv;
+
+	# Detect Unix-style: scan for -name flag
+	nameflag := 0;
+	patharg := "";
+	patarg := "";
+	for(a := argv; a != nil; a = tl a) {
+		tok := hd a;
+		if(nameflag) {
+			patarg = tok;
+			nameflag = 0;
+		} else if(tok == "-name" || tok == "-iname") {
+			nameflag = 1;
+		} else if(len tok > 0 && tok[0] != '-') {
+			patharg = tok;
+		}
+	}
+	if(patarg != "") {
+		# Unix-style found
+		pattern = patarg;
+		if(patharg != "")
+			basepath = patharg;
+	} else {
+		# Tool-native: pattern first, optional path second
+		pattern = hd argv;
+		argv = tl argv;
+		if(argv != nil)
+			basepath = hd argv;
+	}
 
 	# Collect results
 	results: list of string;

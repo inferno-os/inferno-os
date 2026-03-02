@@ -72,6 +72,10 @@ LuciPres: module {
 	deliverevent: fn(ev: string);
 };
 
+GuiApp: module {
+	init: fn(ctxt: ref Draw->Context, args: list of string);
+};
+
 # --- Color constants (for header only) ---
 COLBG:		con int 16r080808FF;
 COLBORDER:	con int 16r131313FF;
@@ -182,6 +186,23 @@ init(ctxt: ref Draw->Context, args: list of string)
 		hse := sys->open("/dev/hoststderr", Sys->OWRITE);
 		if(hse != nil)
 			sys->fprint(hse, "lucifer: INIT BUILD=20260301a (hoststderr)\n");
+	}
+
+	# Remove stale wmready sentinel from a previous run, then immediately
+	# write the new one.  The sentinel only signals "lucifer process is alive";
+	# tools9p and lucibridge must start regardless of display/WM setup outcome.
+	#
+	# Use /usr/inferno/tmp/ (emu root filesystem, not trfs-backed /tmp).
+	# trfs has a negative lookup cache: after sys->remove deletes the old
+	# sentinel, subsequent cat calls can get a cached "not found" even after
+	# sys->create writes the new one.  The emu root filesystem has no such
+	# cache — reads and writes are immediately coherent.
+	sys->remove("/usr/inferno/tmp/lucifer-wmready");
+	{
+		rfd := sys->create("/usr/inferno/tmp/lucifer-wmready", Sys->OWRITE, 8r644);
+		if(rfd == nil)
+			sys->fprint(sys->fildes(2), "lucifer: warning: cannot create wmready sentinel: %r\n");
+		rfd = nil;
 	}
 
 	draw = load Draw Draw->PATH;
@@ -303,6 +324,13 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Screen for pres zone (backed by pres sub-image)
 	pressubimg = mainscr.newwindow(presr, Draw->Refbackup, Draw->Nofill);
 	presscr = Screen.allocate(pressubimg, bgcol, 0);
+
+	# Publish pressubimg by name so namedimage() works cross-connection
+	pressubimg.name("lucifer-pres", 1);
+
+	# GUI app launch: poll /tmp/veltro/pres-launch written by exec.b.
+	# file2chan at /n doesn't work cross-process; use a real file instead.
+	spawn preslaunchpoll(wmchan);
 
 	# Build Draw->Context for lucipres (pres sub-screen + wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, wmchan);
@@ -512,6 +540,7 @@ handleresize()
 	ctximg  = mainscr.newwindow(ctxr,  Draw->Refbackup, Draw->Nofill);
 	pressubimg = mainscr.newwindow(presr, Draw->Refbackup, Draw->Nofill);
 	presscr = Screen.allocate(pressubimg, bgcol, 0);
+	pressubimg.name("lucifer-pres", 1);
 
 	# Redraw chrome after zone allocation so separators are visible
 	drawchrome(r);
@@ -733,4 +762,130 @@ strtoint(s: string): int
 	if(len s == 0)
 		return -1;
 	return n;
+}
+
+# --- Presentation zone WM namespace goroutines ---
+
+# presWMns: serve /n/pres-clone and /n/pres-winname (connect/identity protocol)
+presWMns(cloneIO, winnameIO: ref Sys->FileIO)
+{
+	for(;;) alt {
+	(off, cnt, fid, rc) := <-cloneIO.read =>
+		if(rc != nil) {
+			data := array of byte "ready";
+			if(off < len data)
+				rc <-= (data[off:], nil);
+			else
+				rc <-= (array[0] of byte, nil);
+		}
+	(off, wdata, fid, wc) := <-cloneIO.write =>
+		if(wc != nil) wc <-= (len wdata, nil);
+	(off, cnt, fid, rc) := <-winnameIO.read =>
+		if(rc != nil) {
+			data := array of byte "lucifer-pres";
+			if(off < len data)
+				rc <-= (data[off:], nil);
+			else
+				rc <-= (array[0] of byte, nil);
+		}
+	(off, wdata, fid, wc) := <-winnameIO.write =>
+		if(wc != nil) wc <-= (len wdata, nil);
+	}
+}
+
+# presPointerSrv: serve /n/pres-pointer — blocks until mouse event, encodes it
+presPointerSrv(io: ref Sys->FileIO)
+{
+	for(;;) {
+		(off, cnt, fid, rc) := <-io.read;
+		if(rc == nil)
+			continue;
+		p := <-presMouseCh;
+		s := sys->sprint("m%11d %11d %11d %11d",
+			p.xy.x, p.xy.y, p.buttons, p.msec);
+		alt { rc <-= (array of byte s, nil) => ; * => ; }
+	}
+}
+
+# presKbdSrv: serve /n/pres-keyboard — blocks until key event, returns UTF-8 rune
+presKbdSrv(io: ref Sys->FileIO)
+{
+	for(;;) {
+		(off, cnt, fid, rc) := <-io.read;
+		if(rc == nil)
+			continue;
+		k := <-presKbdCh;
+		alt { rc <-= (array of byte string(k), nil) => ; * => ; }
+	}
+}
+
+# presLaunchSrv: serve /n/pres-launch — receives .dis path, loads and spawns GUI app
+# Creates a fresh Draw->Context backed by the current presscr for each launched app.
+presLaunchSrv(io: ref Sys->FileIO, wm: chan of (string, chan of (string, ref Wmcontext)))
+{
+	for(;;) alt {
+	(off, wdata, fid, wc) := <-io.write =>
+		if(wc != nil) {
+			if(len wdata == 0) {
+				wc <-= (0, nil);
+			} else {
+				path := strip(string wdata);
+				# Extract .dis path (first word of command)
+				dispath := path;
+				for(i := 0; i < len path; i++) {
+					if(path[i] == ' ' || path[i] == '\t') {
+						dispath = path[0:i];
+						break;
+					}
+				}
+				guimod := load GuiApp dispath;
+				if(guimod == nil)
+					wc <-= (0, sys->sprint("cannot load %s: %r", dispath));
+				else {
+					newctxt := ref Draw->Context(display, presscr, wm);
+					spawn guimod->init(newctxt, dispath :: nil);
+					wc <-= (len wdata, nil);
+				}
+			}
+		}
+	(off, cnt, fid, rc) := <-io.read =>
+		if(rc != nil) rc <-= (array[0] of byte, nil);
+	}
+}
+
+# preslaunchpoll: poll /tmp/veltro/pres-launch for GUI app launch requests from exec.b.
+# exec.b writes the .dis path there; we load and spawn the app with a Draw->Context
+# backed by the presentation zone screen.
+preslaunchpoll(wm: chan of (string, chan of (string, ref Wmcontext)))
+{
+	for(;;) {
+		sys->sleep(200);
+		fd := sys->open("/tmp/veltro/pres-launch", Sys->ORDWR);
+		if(fd == nil)
+			continue;
+		buf := array[4096] of byte;
+		n := sys->read(fd, buf, len buf);
+		fd = nil;
+		sys->remove("/tmp/veltro/pres-launch");
+		if(n <= 0)
+			continue;
+		path := strip(string buf[0:n]);
+		# Extract .dis path (first word only)
+		dispath := path;
+		for(i := 0; i < len path; i++) {
+			if(path[i] == ' ' || path[i] == '\t') {
+				dispath = path[0:i];
+				break;
+			}
+		}
+		if(len dispath == 0)
+			continue;
+		guimod := load GuiApp dispath;
+		if(guimod == nil) {
+			sys->fprint(stderr, "lucifer: preslaunch: cannot load %s: %r\n", dispath);
+			continue;
+		}
+		newctxt := ref Draw->Context(display, presscr, wm);
+		spawn guimod->init(newctxt, dispath :: nil);
+	}
 }

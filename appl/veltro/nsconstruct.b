@@ -132,13 +132,20 @@ restrictns(caps: ref Capabilities): string
 	mkdirp(SHADOW_BASE);
 	mkdirp(AUDIT_DIR);
 
-	# 1. Restrict /dis to: lib/, veltro/ (plus shell+cmd if exec tool is loaded)
+	# 1. Restrict /dis to: lib/, veltro/ (plus shell+cmd if exec tool is loaded,
+	#    plus any /dis/ subdirectories granted via caps.paths e.g. "/dis/wm")
 	disallow := "lib" :: "veltro" :: nil;
 	if(inlist("exec", caps.tools) || caps.shellcmds != nil) {
 		# exec tool needs sh.dis (shell interpreter) to run commands
 		disallow = "sh.dis" :: disallow;
 		for(c := caps.shellcmds; c != nil; c = tl c)
 			disallow = (hd c) + ".dis" :: disallow;
+	}
+	# Expose /dis/ subdirectories listed in caps.paths (e.g. "/dis/wm" → "wm")
+	for(dp := filterpaths(caps.paths, "/dis/"); dp != nil; dp = tl dp) {
+		(first, nil) := splitfirst(hd dp);
+		if(first != "" && !inlist(first, disallow))
+			disallow = first :: disallow;
 	}
 	err := restrictdir("/dis", disallow, 0);
 	if(err != nil)
@@ -161,6 +168,12 @@ restrictns(caps: ref Capabilities): string
 		return sys->sprint("restrict /dev: %s", err);
 
 	# 4-5. Restrict /n to allowed entries (llm, mcp, speech, optionally local)
+	# SECURITY REVIEW NEEDED: The /n/ allowlist is stat-based — entries are
+	# auto-exposed to the agent if they exist on the host, not if explicitly
+	# granted via caps.paths.  This is consistent within itself but diverges
+	# from the caps.paths-driven model used for /dis/ and /n/local/.
+	# Future direction: all /n/ entries should be caps.paths-driven.
+	# See: appl/veltro/nsconstruct.b restrictns() /n/ block.
 	(nok, nil) := sys->stat("/n");
 	if(nok >= 0) {
 		nallow: list of string;
@@ -186,6 +199,15 @@ restrictns(caps: ref Capabilities): string
 		(uiok, nil) := sys->stat("/n/ui");
 		if(uiok >= 0)
 			nallow = "ui" :: nallow;
+		# Keep /n/pres-* if lucifer exported WM namespace (needed by exec for GUI apps)
+		(presok, nil) := sys->stat("/n/pres-clone");
+		if(presok >= 0) {
+			nallow = "pres-launch" :: nallow;
+			nallow = "pres-keyboard" :: nallow;
+			nallow = "pres-pointer" :: nallow;
+			nallow = "pres-winname" :: nallow;
+			nallow = "pres-clone" :: nallow;
+		}
 		# Check if any caps.paths grant /n/local/ subpaths
 		localpaths := filterpaths(caps.paths, "/n/local/");
 		if(localpaths != nil)

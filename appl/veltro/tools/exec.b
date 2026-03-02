@@ -69,19 +69,30 @@ name(): string
 doc(): string
 {
 	return "Exec - Run a program in the Inferno namespace\n\n" +
-		"Runs a compiled Limbo program (.dis) that exists in the agent namespace.\n" +
-		"The namespace is restricted: standard Unix commands (echo, cat, ls, cp)\n" +
+		"For GUI/WM programs, Exec launches them in the presentation zone\n" +
+		"automatically. All three forms work (no wm/wm wrapper, no & suffix):\n" +
+		"  Exec wm/clock            (short name)\n" +
+		"  Exec /dis/wm/clock       (absolute path, .dis optional)\n" +
+		"  Exec /dis/wm/clock.dis   (full path)\n\n" +
+		"Available draw-based GUI apps (these work):\n" +
+		"  clock, bounce, coffee, colors, date, view, rt, lens\n\n" +
+		"IMPORTANT GUI launch rules:\n" +
+		"  - Do NOT wrap with 'wm/wm' (wrong: 'exec wm/wm wm/clock')\n" +
+		"  - Do NOT add '&' — background launch is handled automatically\n\n" +
+		"Apps that do NOT work (require Tk, which is not available):\n" +
+		"  task, edit, about, tetris, sh, ftree — do not attempt these\n\n" +
+		"For non-GUI programs:\n" +
+		"  Exec /dis/bind.dis -a /mnt/foo /n/bar\n" +
+		"  Exec /dis/veltro/tools/someprogram.dis args\n\n" +
+		"The namespace is restricted: standard Unix commands (echo, cat, ls)\n" +
 		"are NOT available. Use the dedicated tools instead:\n" +
 		"  read/write/edit  - file I/O\n" +
 		"  list             - directory listing\n" +
 		"  find/search/grep - search\n\n" +
-		"Exec is for running programs that exist in the namespace, e.g.:\n" +
-		"  /dis/bind.dis -a /mnt/foo /n/bar\n" +
-		"  /dis/veltro/tools/someprogram.dis args\n\n" +
 		"IMPORTANT: Inferno shell syntax, not POSIX:\n" +
 		"  - No &&, ||; use ; to sequence\n" +
 		"  - Single quotes for strings\n\n" +
-		"Returns program output, or error message.\n" +
+		"Returns program output (CLI), or 'launched ... in presentation zone' (GUI).\n" +
 		"Default timeout: 5 seconds (max 30s).";
 }
 
@@ -112,12 +123,66 @@ exec(args: string): string
 			cmd = cmd[1:len cmd - 1];
 	}
 
+	# Strip trailing & — model sometimes appends it for "background" but
+	# exec handles GUI launch asynchronously; & breaks firstword detection
+	while(len cmd > 0 && cmd[len cmd - 1] == '&')
+		cmd = cmd[0:len cmd - 1];
+	while(len cmd > 0 && (cmd[len cmd - 1] == ' ' || cmd[len cmd - 1] == '\t'))
+		cmd = cmd[0:len cmd - 1];
+
 	if(cmd == "")
 		return "error: usage: Exec <command>";
 
 	# Convert double quotes to single quotes for Inferno shell compatibility
 	# Inferno's sh uses single quotes for literal strings, not double quotes
 	cmd = convertquotes(cmd);
+
+	# For GUI programs in /dis/wm/, route to the presentation zone.
+	# Detects /dis/wm/ programs three ways:
+	#   1. Full .dis path:  exec /dis/wm/clock.dis
+	#   2. Absolute no-ext: exec /dis/wm/clock    → tries /dis/wm/clock.dis
+	#   3. Short name:      exec wm/clock          → tries /dis/wm/clock.dis
+	# Only /dis/wm/* programs are routed to pres zone; CLI tools fall through.
+	if(len cmd > 0) {
+		firstword := cmd;
+		for(i := 0; i < len firstword; i++) {
+			if(firstword[i] == ' ' || firstword[i] == '\t') {
+				firstword = firstword[0:i];
+				break;
+			}
+		}
+		dispath := "";
+		if(len firstword > 4 && firstword[len firstword - 4:] == ".dis") {
+			# Already has .dis extension
+			dispath = firstword;
+		} else if(len firstword > 0 && firstword[0] == '/') {
+			# Absolute path without .dis extension — try appending .dis
+			trypath := firstword + ".dis";
+			(pok, nil) := sys->stat(trypath);
+			if(pok >= 0)
+				dispath = trypath;
+		} else {
+			# Short/relative name — try /dis/<firstword>.dis
+			trypath := "/dis/" + firstword + ".dis";
+			(pok, nil) := sys->stat(trypath);
+			if(pok >= 0)
+				dispath = trypath;
+		}
+		# Only route /dis/wm/* apps to presentation zone (wmclient apps)
+		if(len dispath > 8 && dispath[0:8] == "/dis/wm/") {
+			# Try /n/pres-launch (file2chan, if lucifer exported it).
+			# Fall back to /tmp/veltro/pres-launch which lucifer polls every 200ms.
+			pfd := sys->open("/n/pres-launch", Sys->OWRITE);
+			if(pfd == nil)
+				pfd = sys->create("/tmp/veltro/pres-launch", Sys->OWRITE, 8r644);
+			if(pfd != nil) {
+				data := array of byte dispath;
+				sys->write(pfd, data, len data);
+				pfd = nil;
+				return "launched " + dispath + " in presentation zone";
+			}
+		}
+	}
 
 	# Create pipe for capturing output
 	fds := array[2] of ref Sys->FD;
