@@ -59,6 +59,23 @@ createsession(): string
 	return id;
 }
 
+# Close an LLM session by writing "close" to its ctl file.
+# This decrements the server-side self-reference (refs 1→0), freeing the
+# session immediately rather than waiting for a server restart.
+closesession(id: string)
+{
+	path := "/n/llm/" + id + "/ctl";
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil) {
+		if(verbose)
+			sys->fprint(stderr, "agentlib: cannot open %s: %r\n", path);
+		return;
+	}
+	data := array of byte "close";
+	sys->write(fd, data, len data);
+	fd = nil;
+}
+
 # Set prefill on session-specific path
 # (from veltro.b — has verbose logging on failure)
 setprefillpath(path, prefill: string)

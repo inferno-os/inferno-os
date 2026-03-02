@@ -18,6 +18,7 @@ AgentLib: module {
 
 	# LLM session management
 	createsession: fn(): string;
+	closesession: fn(id: string);
 	setprefillpath: fn(path, prefill: string);
 	queryllmfd: fn(fd: ref Sys->FD, prompt: string): string;
 	setsystemprompt: fn(path, prompt: string);
