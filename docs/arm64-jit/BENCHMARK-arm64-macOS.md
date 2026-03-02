@@ -1,8 +1,9 @@
 # ARM64 JIT Benchmark Results — macOS
 
 ## Platform
-- **Hardware:** Apple Mac Studio (M2 Max)
-- **CPU:** Apple M2 Max (Avalanche P-cores + Blizzard E-cores)
+- **Hardware:** Apple MacBook Pro (Mac16,1)
+- **CPU:** Apple M4 (4 Performance + 6 Efficiency cores)
+- **RAM:** 32 GB
 - **OS:** macOS 15.4 (Darwin 24.6.0, arm64)
 
 ---
@@ -95,7 +96,7 @@ ARM64 instructions, eliminating interpreter dispatch overhead. Uses
 
 ## Cross-Platform Comparison (Rewrite JIT)
 
-| Metric                    | Jetson Orin (A78AE) | Apple M2 Max | M2 vs Jetson |
+| Metric                    | Jetson Orin (A78AE) | Apple M4 | M2 vs Jetson |
 |---------------------------|---------------------|--------------|--------------|
 | jitbench v1 interp        |          38,320 ms  |   16,697 ms  | 2.29x faster |
 | jitbench v1 JIT (avg)     |           4,615 ms  |    1,735 ms  | 2.66x faster |
@@ -109,7 +110,7 @@ platform-specific difference is memory allocation: macOS uses `mmap(MAP_JIT)`
 with `pthread_jit_write_protect_np()` for W^X compliance; Linux uses plain
 `mmap(MAP_ANON)`.
 
-Apple M2 Max is roughly 2.3-2.7x faster in absolute terms due to higher
+Apple M4 is roughly 2.3-2.7x faster in absolute terms due to higher
 clock speed and wider execution pipelines. JIT-over-interpreter speedup is
 comparable (8-10x on v1), confirming the JIT generates efficient code on
 both microarchitectures.

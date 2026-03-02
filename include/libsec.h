@@ -30,6 +30,115 @@ struct AESstate
 void	setupAESstate(AESstate *s, uchar key[], int keybytes, uchar *ivec);
 void	aesCBCencrypt(uchar *p, int len, AESstate *s);
 void	aesCBCdecrypt(uchar *p, int len, AESstate *s);
+void	aesEncryptBlock(AESstate *s, uchar pt[16], uchar ct[16]);
+
+/*/////////////////////////////////////////////////////// */
+/* AES-CTR */
+/*/////////////////////////////////////////////////////// */
+void	aesCTRencrypt(uchar *p, int len, AESstate *s);
+void	aesCTRdecrypt(uchar *p, int len, AESstate *s);
+
+/*/////////////////////////////////////////////////////// */
+/* AES-GCM */
+/*/////////////////////////////////////////////////////// */
+typedef struct AESGCMstate AESGCMstate;
+struct AESGCMstate
+{
+	AESstate	a;
+	uchar	hkey[AESbsize];		/* GHASH subkey */
+	uchar	J0[AESbsize];		/* pre-counter block */
+	u64int	htable[16*2];		/* precomputed GHASH table */
+};
+
+void	setupAESGCMstate(AESGCMstate *s, uchar *key, int keylen, uchar *iv, int ivlen);
+int	aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
+		uchar tag[16], AESGCMstate *s);
+int	aesgcm_decrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
+		uchar tag[16], AESGCMstate *s);
+
+/*/////////////////////////////////////////////////////// */
+/* ChaCha20 */
+/*/////////////////////////////////////////////////////// */
+enum {
+	ChachaBsize = 64,
+	ChachaKeylen = 32
+};
+
+typedef struct ChaChastate ChaChastate;
+struct ChaChastate
+{
+	u32int state[16];
+	uchar buf[ChachaBsize];
+	int blen;
+	int rounds;
+};
+
+void	setupChaChastate(ChaChastate*, uchar *key, int keylen, uchar *nonce, int noncelen, int rounds);
+void	chacha_encrypt(uchar *src, int n, ChaChastate *s);
+void	chacha_setctr(ChaChastate *s, u32int ctr);
+
+/*/////////////////////////////////////////////////////// */
+/* Poly1305 */
+/*/////////////////////////////////////////////////////// */
+typedef struct Poly1305state Poly1305state;
+struct Poly1305state
+{
+	u32int r[5];	/* clamped key */
+	u32int h[5];	/* accumulator */
+	u32int pad[4];	/* final key */
+	int mlen;
+	uchar mbuf[16];
+};
+
+void	setupPoly1305(Poly1305state*, uchar key[32]);
+void	poly1305_update(Poly1305state*, uchar *msg, int len);
+void	poly1305_finish(uchar tag[16], Poly1305state*);
+
+/*/////////////////////////////////////////////////////// */
+/* ChaCha20-Poly1305 AEAD (RFC 8439) */
+/*/////////////////////////////////////////////////////// */
+void	ccpoly_encrypt(uchar *dat, int ndat, uchar *aad, int naad,
+		uchar tag[16], uchar key[32], uchar nonce[12]);
+int	ccpoly_decrypt(uchar *dat, int ndat, uchar *aad, int naad,
+		uchar tag[16], uchar key[32], uchar nonce[12]);
+
+/*/////////////////////////////////////////////////////// */
+/* X25519 (Curve25519 ECDH, RFC 7748) */
+/*/////////////////////////////////////////////////////// */
+void	x25519(uchar out[32], uchar scalar[32], uchar point[32]);
+void	x25519_base(uchar out[32], uchar scalar[32]);
+
+/*/////////////////////////////////////////////////////// */
+/* Ed25519 (RFC 8032) raw sign/verify */
+/*/////////////////////////////////////////////////////// */
+void	ed25519_raw_sign(uchar sig[64], const uchar seed[32], const uchar *msg, ulong msglen);
+int	ed25519_raw_verify(const uchar sig[64], const uchar pk[32], const uchar *msg, ulong msglen);
+void	ed25519_raw_pubkey(uchar pk[32], const uchar seed[32]);
+
+/*/////////////////////////////////////////////////////// */
+/* P-256 (secp256r1) ECDH + ECDSA */
+/*/////////////////////////////////////////////////////// */
+typedef struct ECpoint ECpoint;
+struct ECpoint {
+	uchar x[32];
+	uchar y[32];
+};
+
+int	p256_keygen(uchar priv[32], ECpoint *pub);
+int	p256_ecdh(uchar shared[32], uchar priv[32], ECpoint *peerpub);
+int	p256_ecdsa_sign(uchar sig[64], uchar priv[32], uchar *hash, int hashlen);
+int	p256_ecdsa_verify(uchar sig[64], ECpoint *pub, uchar *hash, int hashlen);
+
+/*/////////////////////////////////////////////////////// */
+/* P-384 (secp384r1) ECDSA verify only */
+/*/////////////////////////////////////////////////////// */
+typedef struct ECpoint384 ECpoint384;
+struct ECpoint384 {
+	uchar x[48];
+	uchar y[48];
+};
+
+int	p384_ecdsa_verify(uchar sig[96], ECpoint384 *pub, uchar *hash, int hashlen);
 
 /*/////////////////////////////////////////////////////// */
 /* Blowfish Definitions */
@@ -184,6 +293,9 @@ DigestState* sha384(uchar*, ulong, uchar*, DigestState*);
 DigestState* sha512(uchar*, ulong, uchar*, DigestState*);
 DigestState* hmac_md5(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
 DigestState* hmac_sha1(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
+DigestState* hmac_sha256(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
+DigestState* hmac_sha384(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
+DigestState* hmac_sha512(uchar*, ulong, uchar*, ulong, uchar*, DigestState*);
 char* md5pickle(MD5state*);
 MD5state* md5unpickle(char*);
 char* sha1pickle(SHA1state*);

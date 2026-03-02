@@ -67,6 +67,21 @@ static int mouse_x = 0;
 static int mouse_y = 0;
 static int mouse_buttons = 0;
 
+/*
+ * Event-based button state tracking.
+ *
+ * SDL_GetMouseState() returns the instantaneous button state at the time
+ * of the call, NOT the state at the time a queued event was generated.
+ * When a fast click produces both BUTTON_DOWN and BUTTON_UP events before
+ * the event loop runs, SDL_GetMouseState() during BUTTON_DOWN processing
+ * already shows the button released — the click is silently lost.
+ *
+ * This variable tracks button state from events: BUTTON_DOWN sets bits,
+ * BUTTON_UP clears them, mirroring how the X11 backend (win-x11a.c)
+ * derives state from the event structure.
+ */
+static Uint32 sdl_button_state = 0;
+
 /* HiDPI state - for coordinate conversion */
 static float display_scale = 1.0f;
 
@@ -170,20 +185,23 @@ window_to_texture_coords(float win_x, float win_y, int *tex_x, int *tex_y)
 }
 
 /*
- * Get mouse button state with modifier key emulation for single-button mice.
+ * Map raw SDL button state to Inferno button mask with modifier key emulation.
  * On macOS laptops without a three-button mouse:
  *   - Option + Left Click  = Button 2 (middle click)
  *   - Command + Left Click = Button 3 (right click)
  * This follows Plan 9 / Acme conventions.
+ *
+ * Takes the raw SDL button bitmask (from event-based tracking) rather than
+ * polling SDL_GetMouseState(), which can miss fast clicks due to a race
+ * between event queuing and state polling.
  */
 static int
-get_mouse_buttons(void)
+map_buttons(Uint32 state)
 {
 	int buttons = 0;
-	Uint32 state = SDL_GetMouseState(NULL, NULL);
 	SDL_Keymod mods = SDL_GetModState();
 
-	/* Check for physical buttons first */
+	/* Check for physical buttons */
 	int left = (state & SDL_BUTTON_LMASK) ? 1 : 0;
 	int middle = (state & SDL_BUTTON_MMASK) ? 1 : 0;
 	int right = (state & SDL_BUTTON_RMASK) ? 1 : 0;
@@ -208,6 +226,21 @@ get_mouse_buttons(void)
 		buttons |= 4;
 
 	return buttons;
+}
+
+/*
+ * Update tracked button state from an SDL mouse button event.
+ * Returns the SDL button mask bit for the event's button.
+ */
+static Uint32
+button_event_mask(Uint8 button)
+{
+	switch (button) {
+	case SDL_BUTTON_LEFT:   return SDL_BUTTON_LMASK;
+	case SDL_BUTTON_MIDDLE: return SDL_BUTTON_MMASK;
+	case SDL_BUTTON_RIGHT:  return SDL_BUTTON_RMASK;
+	default:                return 0;
+	}
 }
 
 /* Forward declarations */
@@ -575,9 +608,7 @@ sdl_pollevents(void)
 				window_to_texture_coords(event.motion.x, event.motion.y,
 					&mouse_x, &mouse_y);
 
-				/* Get button state with modifier key emulation */
-				mouse_buttons = get_mouse_buttons();
-
+				mouse_buttons = map_buttons(sdl_button_state);
 				mousetrack(mouse_buttons, mouse_x, mouse_y, 0);
 			}
 			break;
@@ -586,15 +617,21 @@ sdl_pollevents(void)
 		case SDL_EVENT_MOUSE_BUTTON_UP:
 			{
 				/*
-				 * Transform window coordinates to texture coordinates.
-				 * This handles letterboxing offset and scaling.
+				 * Track button state from events to avoid race with
+				 * SDL_GetMouseState().  A fast click queues both DOWN
+				 * and UP before we poll; polling would show the button
+				 * already released during DOWN processing, losing it.
 				 */
+				Uint32 mask = button_event_mask(event.button.button);
+				if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+					sdl_button_state |= mask;
+				else
+					sdl_button_state &= ~mask;
+
 				window_to_texture_coords(event.button.x, event.button.y,
 					&mouse_x, &mouse_y);
 
-				/* Get button state with modifier key emulation */
-				mouse_buttons = get_mouse_buttons();
-
+				mouse_buttons = map_buttons(sdl_button_state);
 				mousetrack(mouse_buttons, mouse_x, mouse_y, 0);
 			}
 			break;
@@ -1030,18 +1067,21 @@ sdl3_mainloop(void)
 				break;
 
 			case SDL_EVENT_MOUSE_MOTION:
+				window_to_texture_coords(event.motion.x, event.motion.y, &mouse_x, &mouse_y);
+				mousetrack(map_buttons(sdl_button_state), mouse_x, mouse_y, 0);
+				break;
+
 			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			case SDL_EVENT_MOUSE_BUTTON_UP:
 				{
-					/*
-					 * Transform window coordinates to texture coordinates.
-					 * This handles letterboxing offset and scaling.
-					 * Update global mouse_x, mouse_y for scroll wheel events.
-					 */
-					window_to_texture_coords(event.button.x, event.button.y, &mouse_x, &mouse_y);
+					Uint32 mask = button_event_mask(event.button.button);
+					if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+						sdl_button_state |= mask;
+					else
+						sdl_button_state &= ~mask;
 
-					/* Get button state with modifier key emulation */
-					mousetrack(get_mouse_buttons(), mouse_x, mouse_y, 0);
+					window_to_texture_coords(event.button.x, event.button.y, &mouse_x, &mouse_y);
+					mousetrack(map_buttons(sdl_button_state), mouse_x, mouse_y, 0);
 				}
 				break;
 

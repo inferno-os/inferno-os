@@ -5,23 +5,38 @@ DIRS=\
 
 TARG=\
 	9p_export_test.dis\
+	agentlib_test.dis\
 	agent_test.dis\
+	tooluse_test.dis\
 	asyncio_test.dis\
 	crypto_test.dis\
 	edit_test.dis\
 	example_test.dis\
+	git_test.dis\
+	gpu_test.dis\
 	hello_test.dis\
+	imap_test.dis\
+	jit_test.dis\
+	outlinefont_test.dis\
+	pdf_conformance_test.dis\
+	pdf_test.dis\
+	real_test.dis\
 	runner.dis\
 	sdl3_test.dis\
 	spawn_test.dis\
+	ssl_transport_test.dis\
 	stderr_test.dis\
 	tcp_test.dis\
 	tempfile_test.dis\
-	todo9p_test.dis\
+	tls_crypto_test.dis\
+	tls_live_test.dis\
+	tls_protocol_test.dis\
+	webclient_test.dis\
 	veltro_concurrent_test.dis\
 	veltro_security_test.dis\
 	veltro_test.dis\
 	veltro_tools_test.dis\
+	x509_test.dis\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\
 
@@ -29,16 +44,40 @@ MODULES=
 
 SYSMODULES=\
 	arg.m\
+	dial.m\
+	factotum.m\
+	imap.m\
+	asn1.m\
 	bufio.m\
+	daytime.m\
 	draw.m\
+	git.m\
+	gpu.m\
 	keyring.m\
+	math.m\
 	nsconstruct.m\
+	outlinefont.m\
+	pdf.m\
+	pkcs.m\
 	readdir.m\
+	security.m\
 	sh.m\
+	string.m\
 	sys.m\
 	testing.m\
+	tls.m\
+	webclient.m\
+	x509.m\
 
 DISBIN=$ROOT/dis/tests
 
 <$ROOT/mkfiles/mkdis
 <$ROOT/mkfiles/mksubdirs
+
+# agentlib_test needs -I for appl/veltro/agentlib.m
+agentlib_test.dis: agentlib_test.b $ROOT/appl/veltro/agentlib.m
+	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw agentlib_test.b
+
+# tooluse_test needs -I for appl/veltro/agentlib.m
+tooluse_test.dis: tooluse_test.b $ROOT/appl/veltro/agentlib.m
+	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw tooluse_test.b

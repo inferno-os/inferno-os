@@ -2,6 +2,9 @@ implement Asyncio;
 
 include "common.m";
 
+include "webclient.m";
+	webclient: Webclient;
+
 sys: Sys;
 dat: Dat;
 utils: Utils;
@@ -15,6 +18,10 @@ nextopid: int;
 
 # Chunk size for reads
 CHUNKSIZE: con 8*1024;
+
+# Max content to load into heap — files larger than this get a header-only read
+# (renderers like pdfrender stream directly from the file path)
+MAXCONTENTLOAD: con 4*1024*1024;
 
 init(mods: ref Dat->Mods)
 {
@@ -253,6 +260,168 @@ imagetask(op: ref AsyncOp, path: string, winid: int)
 		}
 		break;
 	}
+	op.active = 0;
+}
+
+asyncloadcontent(path: string, winid: int): ref AsyncOp
+{
+	op := ref AsyncOp;
+	op.opid = nextopid++;
+	op.ctl = chan[1] of int;
+	op.path = path;
+	op.active = 1;
+	op.winid = winid;
+
+	spawn contenttask(op, path, winid);
+	return op;
+}
+
+# Check if path is a URL
+isurlpath(path: string): int
+{
+	if(len path >= 8 && path[0:8] == "https://")
+		return 1;
+	if(len path >= 7 && path[0:7] == "http://")
+		return 1;
+	return 0;
+}
+
+# Load raw content bytes (same I/O as imagetask, different message type)
+# For URLs (http:// or https://), fetches via webclient instead of local file.
+contenttask(op: ref AsyncOp, path: string, winid: int)
+{
+	alt {
+		<-op.ctl =>
+			alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, "cancelled") => ; * => ; }
+			op.active = 0;
+			return;
+		* => ;
+	}
+
+	# URL fetch path — use webclient for http:// and https://
+	if(isurlpath(path)) {
+		contenttask_url(op, path, winid);
+		return;
+	}
+
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil) {
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, sys->sprint("can't open: %r")) => ; * => ; }
+		op.active = 0;
+		return;
+	}
+
+	(ok, dir) := sys->fstat(fd);
+	if(ok != 0) {
+		fd = nil;
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, "can't stat file") => ; * => ; }
+		op.active = 0;
+		return;
+	}
+	fsize := int dir.length;
+	if(fsize <= 0) {
+		fd = nil;
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, "empty file") => ; * => ; }
+		op.active = 0;
+		return;
+	}
+
+	# For large files, read only a header for format detection.
+	# Renderers stream from the file path (hint) for actual I/O.
+	readsize := fsize;
+	if(readsize > MAXCONTENTLOAD)
+		readsize = 8192;
+
+	data := array[readsize] of byte;
+	total := 0;
+	while(total < readsize) {
+		alt {
+			<-op.ctl =>
+				fd = nil;
+				alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, "cancelled") => ; * => ; }
+				op.active = 0;
+				return;
+			* => ;
+		}
+
+		n := sys->read(fd, data[total:], readsize - total);
+		if(n <= 0)
+			break;
+		total += n;
+	}
+	fd = nil;
+
+	if(total < readsize) {
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, nil, "short read") => ; * => ; }
+		op.active = 0;
+		return;
+	}
+
+	for(;;) {
+		alt {
+			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, path, data, nil) => ;
+			<-op.ctl =>
+				op.active = 0;
+				return;
+			* =>
+				sys->sleep(1);
+				continue;
+		}
+		break;
+	}
+	op.active = 0;
+}
+
+# Fetch URL content via webclient and send as ContentData
+contenttask_url(op: ref AsyncOp, url: string, winid: int)
+{
+	stderr := sys->fildes(2);
+
+	# Load webclient lazily
+	if(webclient == nil) {
+		webclient = load Webclient Webclient->PATH;
+		if(webclient == nil) {
+			sys->fprint(stderr, "webfetch: can't load webclient\n");
+			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "can't load webclient");
+			op.active = 0;
+			return;
+		}
+		err := webclient->init();
+		if(err != nil) {
+			sys->fprint(stderr, "webfetch: webclient init: %s\n", err);
+			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "webclient init: " + err);
+			op.active = 0;
+			return;
+		}
+	}
+
+	# Check for cancellation before fetch
+	alt {
+		<-op.ctl =>
+			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "cancelled");
+			op.active = 0;
+			return;
+		* => ;
+	}
+
+	sys->fprint(stderr, "webfetch: fetching %s\n", url);
+	(resp, err) := webclient->get(url);
+	if(err != nil) {
+		sys->fprint(stderr, "webfetch: fetch error: %s\n", err);
+		dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "fetch: " + err);
+		op.active = 0;
+		return;
+	}
+
+	sys->fprint(stderr, "webfetch: got %d bytes\n", len resp.body);
+	if(resp.body == nil || len resp.body == 0) {
+		dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "empty response");
+		op.active = 0;
+		return;
+	}
+
+	# Send response body as content data
+	dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, resp.body, nil);
 	op.active = 0;
 }
 

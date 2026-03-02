@@ -375,7 +375,7 @@ gen3(uchar o1, uchar o2, uchar o3)
 static void
 genw(ulong o)
 {
-	*(ulong*)code = o;
+	*(u32int*)code = (u32int)o;
 	code += 4;
 }
 
@@ -711,6 +711,36 @@ literal(uvlong imm, int roff)
 }
 
 /*
+ * Generate conditional skip over bounds error block.
+ * Emits: Jcc <skip> / save R.FP, R.PC / call bounds()
+ * Uses backpatch for Jcc and fixed 10-byte MOVABS for R.PC
+ * to ensure phase consistency between pass 0 and pass 1.
+ *
+ * R.PC is set to base+patch[i]+1 because handler() in
+ * exception.c does pc-- after computing pc = R.PC - m->prog.
+ * The +1 ensures pc-- lands at patch[i] (start of instruction i),
+ * which falls within the handler's [pc1, pc2) range.
+ */
+static void
+jnebounds(int cc, Inst *i)
+{
+	uchar *patch_loc;
+	uvlong pc;
+
+	gen2(cc, 0);			/* Jcc with placeholder rel8 */
+	patch_loc = code - 1;
+	modrm(Ostw, O(REG, FP), RLINK, RRFP);		/* 4 bytes */
+	/* Always use 10-byte MOVABS for phase consistency */
+	pc = (uvlong)base + patch[i - mod->prog] + 1;
+	genb(REXW);
+	genb(Omovimm + (RAX & 7));
+	genq(pc);						/* 10 bytes total */
+	modrm(Ostw, O(REG, PC), RLINK, RAX);		/* 3 bytes */
+	bra((uvlong)bounds, Ocall);			/* 5 bytes */
+	*patch_loc = code - (patch_loc + 1);		/* backpatch rel8 */
+}
+
+/*
  * Punt an operation to the interpreter
  */
 static void
@@ -765,12 +795,15 @@ punt(Inst *i, int m, void (*fn)(void))
 	}
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 
+	/* Align stack for C function call (RSP must be 0 mod 16 before CALL) */
+	genb(Opushq+RAX);
 	bra((uvlong)fn, Ocall);
+	genb(Opopq+RCX);	/* restore stack alignment */
 
 	if(m & TCHECK) {
 		modrm(Ocmpi, O(REG, t), RLINK, 7);
 		genb(0x00);
-		gen2(Ojeqb, 0x11);	/* JEQ .+17 */
+		gen2(Ojeqb, 0x08);	/* JEQ over exit: 2+2+2+1+1 = 8 bytes */
 		/* Restore callee-saved and return */
 		genb(REX|REXB); genb(Opopq+R15-R8);
 		genb(REX|REXB); genb(Opopq+R14-R8);
@@ -1032,7 +1065,13 @@ comcase(Inst *i, int w)
 	if(w != 0) {
 		opwld(i, Oldw, RAX);		/* v */
 		genb(Opushq+RSI);
-		opwst(i, Olea, RSI);		/* table */
+		/*
+		 * Use origmp address directly for case table.
+		 * comcase() patches JIT addresses into origmp, but
+		 * newmp() may not propagate them to Modlink->MP.
+		 * origmp is stable for the module's lifetime.
+		 */
+		con64((uvlong)(mod->origmp+i->d.ind), RSI);
 		rbra(macro[MacCASE], Ojmp);
 	}
 
@@ -1442,6 +1481,7 @@ comp(Inst *i)
 		break;
 	case IHEADF:
 		opwld(i, Oldw, RAX);
+		gen2(0xDB, 0xE3);	/* FNINIT: reset x87 FPU state */
 		modrm(Omovf, OA(List, data), RAX, 0);
 		opwst(i, Omovf, 3);
 		break;
@@ -1467,25 +1507,33 @@ comp(Inst *i)
 		opwst(i, Ostw, RDI);
 		rbra(macro[MacFRP], Ocall);
 		break;
-	case ILENA:
+	case ILENA: {
+		uchar *skip;
 		opwld(i, Oldw, RDI);
 		con64(0, RAX);
 		cmpl64(RDI, (uvlong)H);
-		gen2(Ojeqb, 0x04);
+		gen2(Ojeqb, 0);
+		skip = code - 1;
 		modrm32(Oldw, O(Array, len), RDI, RAX);
+		*skip = code - (skip + 1);
 		opwst(i, Ostw, RAX);
 		break;
-	case ILENC:
+	}
+	case ILENC: {
+		uchar *skip;
 		opwld(i, Oldw, RDI);
 		con64(0, RAX);
 		cmpl64(RDI, (uvlong)H);
-		gen2(Ojeqb, 0x0c);
+		gen2(Ojeqb, 0);
+		skip = code - 1;
 		modrm32(Oldw, O(String, len), RDI, RAX);
 		cmpl64(RAX, 0);
 		gen2(Ojgeb, 0x03);
 		modrr(Oneg, RAX, 3);
+		*skip = code - (skip + 1);
 		opwst(i, Ostw, RAX);
 		break;
+	}
 	case ILENL: {
 		uchar *looptop, *loopend;
 		con64(0, RAX);
@@ -1595,10 +1643,12 @@ comp(Inst *i)
 		shift(i, Oldb, Ostb, 0xd2, 5);
 		break;
 	case IMOVF:
+		gen2(0xDB, 0xE3);	/* FNINIT: reset x87 FPU state */
 		opwld(i, Omovf, 0);
 		opwst(i, Omovf, 3);
 		break;
 	case INEGF:
+		gen2(0xDB, 0xE3);	/* FNINIT: reset x87 FPU state */
 		opwld(i, Omovf, 0);
 		genb(0xd9);
 		genb(0xe0);
@@ -1706,11 +1756,12 @@ comp(Inst *i)
 		break;
 	case IINDX:
 		opwld(i, Oldw, RRTMP);
+		cmpl64(RRTMP, (uvlong)H);
+		jnebounds(Ojneb, i);
 		if(bflag) {
 			opwst(i, Oldw, RAX);
 			modrm32(0x3b, O(Array, len), RRTMP, RAX);
-			gen2(0x72, 5);
-			bra((uvlong)bounds, Ocall);
+			jnebounds(0x72, i);
 			modrm(Oldw, O(Array, t), RRTMP, RRTA);
 			modrm32(0xf7, O(Type, size), RRTA, 5);
 		} else {
@@ -1741,10 +1792,11 @@ comp(Inst *i)
 	idx:
 		opwld(i, Oldw, RAX);
 		opwst(i, Oldw, RRTMP);
+		cmpl64(RAX, (uvlong)H);
+		jnebounds(Ojneb, i);
 		if(bflag) {
 			modrm32(0x3b, O(Array, len), RAX, RRTMP);
-			gen2(0x72, 5);
-			bra((uvlong)bounds, Ocall);
+			jnebounds(0x72, i);
 		}
 		modrm(Oldw, O(Array, data), RAX, RAX);
 		/* LEA (RAX)(RRTMP*scale), RAX */
@@ -1927,10 +1979,10 @@ maccase(void)
 	modrm(Oldw, 0, RSI, RDX);
 	modrm(Olea, sizeof(WORD), RSI, RSI);
 
-	/* BX = n*3 (for table indexing) */
+	/* RDI = n*3 (for table indexing) */
 	modrr(Oldw, RDX, RDI);
-	modrr(0x01, RDI, RDI);		/* RDI = n*2 */
-	modrr(0x01, RDX, RDI);		/* RDI = n*3 */
+	modrr(0x01, RDI, RDI);		/* ADD RDI, RDI → RDI = n*2 */
+	modrr(0x01, RDI, RDX);		/* ADD RDI, RDX → RDI = n*3 (RDX preserved) */
 
 	/* Push default address */
 	genb(REXW);
@@ -1948,8 +2000,8 @@ maccase(void)
 
 	/* RDI = n2 * 3 */
 	modrr(Oldw, RCX, RDI);
-	modrr(0x01, RDI, RDI);
-	modrr(0x01, RCX, RDI);
+	modrr(0x01, RDI, RDI);		/* ADD RDI, RDI → RDI = n2*2 */
+	modrr(0x01, RDI, RCX);		/* ADD RDI, RCX → RDI = n2*3 (RCX preserved) */
 
 	/* Compare: RAX vs t[n2*3] */
 	genb(REXW);
@@ -2077,6 +2129,10 @@ macret(void)
 	gen2(Ocallrm, (3<<6)|(2<<3)|RAX);
 	modrm(Ostw, O(REG, SP), RLINK, RRFP);
 	modrm(Oldw, O(Frame, lr), RRFP, RAX);
+	/* Check Frame.lr != nil before jumping to it */
+	genb(REXW);
+	gen2(0x85, (3<<6)|(RAX<<3)|RAX);	/* TEST RAX, RAX */
+	gen2(Ojeqb, lpunt-(code-s));		/* JZ lpunt */
 	modrm(Oldw, O(Frame, fp), RRFP, RRFP);
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 	genb(REXW);
@@ -2381,7 +2437,7 @@ compile(Module *m, int size, Modlink *ml)
 		return 0;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), 0);
+	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	/*
 	 * tmp is used for pass 0 size estimation. On AMD64, it must be
@@ -2415,6 +2471,7 @@ compile(Module *m, int size, Modlink *ml)
 		patch[i] = n;
 		n += code - tmp;
 	}
+	patch[size] = n;	/* sentinel: offset past last instruction */
 
 	for(i = 0; i < nelem(mactab); i++) {
 		code = tmp;
@@ -2453,13 +2510,22 @@ compile(Module *m, int size, Modlink *ml)
 	litpool = (uvlong*)(base+n);
 	code = base;
 
+	{
+	int nn = 0;
 	for(i = 0; i < size; i++) {
 		s = code;
 		comp(&m->prog[i]);
+		if(patch[i] != nn) {
+			print("amd64 jit phase error: instr %d %D: pass0=%lud pass1=%d\n",
+				i, &m->prog[i], patch[i], nn);
+			urk();
+		}
+		nn += code - s;
 		if(cflag > 4) {
-			print("%D\n", &m->prog[i]);
+			print("[%d] +0x%lux: %D\n", i, (ulong)nn, &m->prog[i]);
 			das(s, code-s);
 		}
+	}
 	}
 
 	for(i = 0; i < nelem(mactab); i++)

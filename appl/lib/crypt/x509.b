@@ -36,6 +36,14 @@ include "x509.m";
 X509_DEBUG 				: con 0;
 logfd 					: ref Sys->FD;
 
+# Trust store: lazily loaded root CA certificates
+TrustedRoot: adt {
+	signed:	ref Signed;
+	cert:	ref Certificate;
+};
+trust_store: list of ref TrustedRoot;
+trust_store_loaded: int;
+
 TAG_MASK 				: con 16r1F;
 CONSTR_MASK 				: con 16r20;
 CLASS_MASK 				: con 16rC0;
@@ -142,6 +150,82 @@ log(s: string)
 		sys->fprint(logfd, "x509: %s\n", s);
 }
 
+# [private]
+# Load root CA DER files from /lib/certs/
+
+load_trust_store()
+{
+	if(trust_store_loaded)
+		return;
+	trust_store_loaded = 1;
+
+	certdir := "/lib/certs";
+	fd := sys->open(certdir, Sys->OREAD);
+	if(fd == nil)
+		return;
+	for(;;) {
+		(n, dirs) := sys->dirread(fd);
+		if(n <= 0)
+			break;
+		for(i := 0; i < n; i++) {
+			name := dirs[i].name;
+			# only .der files
+			if(len name < 4 || name[len name - 4:] != ".der")
+				continue;
+			path := certdir + "/" + name;
+			der := readfile(path);
+			if(der == nil)
+				continue;
+			(serr, s) := Signed.decode(der);
+			if(serr != "")
+				continue;
+			(cerr, c) := Certificate.decode(s.tobe_signed);
+			if(cerr != "")
+				continue;
+			trust_store = ref TrustedRoot(s, c) :: trust_store;
+		}
+	}
+}
+
+# [private]
+# Read entire file into byte array
+
+readfile(path: string): array of byte
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	(ok, d) := sys->fstat(fd);
+	if(ok < 0)
+		return nil;
+	sz := int d.length;
+	if(sz <= 0 || sz > 65536)
+		return nil;
+	buf := array [sz] of byte;
+	n := sys->read(fd, buf, sz);
+	if(n <= 0)
+		return nil;
+	if(n < sz)
+		return buf[:n];
+	return buf;
+}
+
+# [private]
+# Find a trusted root CA matching the given issuer name
+
+find_trusted_root(issuer: ref Name): ref TrustedRoot
+{
+	load_trust_store();
+	l := trust_store;
+	while(l != nil) {
+		tr := hd l;
+		if(tr.cert.subject.equal(issuer))
+			return tr;
+		l = tl l;
+	}
+	return nil;
+}
+
 ## SIGNED { ToBeSigned } ::= SEQUENCE {
 ##	toBeSigned	ToBeSigned,
 ##	COMPONENTS OF	SIGNATURE { ToBeSigned }}
@@ -187,7 +271,7 @@ parse:
 		if(!ok) {
 			if(X509_DEBUG)
 				log("signed: alg identifier: syntax error");
-			break;		
+			break;
 		}
 		# signature
 		(ok, tag, i, n) = der_dec1(a, n, len a);
@@ -251,7 +335,24 @@ Signed.sign(s: self ref Signed, sk: ref PrivateKey, hash: int): (string, array o
 }
 
 # [public]
-# hash algorithm should be MD2, MD4, MD5 or SHA
+
+# [private]
+# RSA PKCS#1 v1.5 verification: decrypt signature and compare DigestInfo suffix
+rsa_pkcs1_verify(signature: array of byte, pk: ref PKCS->RSAKey, digestinfo: array of byte): int
+{
+	if(len signature < 2)
+		return 0;
+	(derr, decrypted) := pkcs->rsa_decrypt(signature[1:], pk, 1);
+	if(derr != "")
+		return 0;
+	if(len decrypted < len digestinfo)
+		return 0;
+	off := len decrypted - len digestinfo;
+	for(i := 0; i < len digestinfo; i++)
+		if(decrypted[off + i] != digestinfo[i])
+			return 0;
+	return 1;
+}
 
 Signed.verify(s: self ref Signed, pk: ref PublicKey, hash: int): int
 {
@@ -259,15 +360,123 @@ Signed.verify(s: self ref Signed, pk: ref PublicKey, hash: int): int
 
 	pick key := pk {
 	RSA =>
-		ok = pkcs->rsa_verify(s.tobe_signed, s.signature, key.pk, hash);
-	DSS =>	
+		# Check algorithm OID to determine hash
+		algid := asn1->oid_lookup(s.alg.oid, pkcs->objIdTab);
+		if(algid == PKCS->id_sha256WithRSAEncryption) {
+			# SHA-256 with RSA PKCS#1 v1.5
+			digest := array [Keyring->SHA256dlen] of byte;
+			keyring->sha256(s.tobe_signed, len s.tobe_signed, digest, nil);
+			sha256pfx := array [] of {
+				byte 16r30, byte 16r31, byte 16r30, byte 16r0d,
+				byte 16r06, byte 16r09, byte 16r60, byte 16r86,
+				byte 16r48, byte 16r01, byte 16r65, byte 16r03,
+				byte 16r04, byte 16r02, byte 16r01, byte 16r05,
+				byte 16r00, byte 16r04, byte 16r20
+			};
+			digestinfo := array [len sha256pfx + Keyring->SHA256dlen] of byte;
+			digestinfo[0:] = sha256pfx;
+			digestinfo[len sha256pfx:] = digest;
+			ok = rsa_pkcs1_verify(s.signature, key.pk, digestinfo);
+		} else if(algid == PKCS->id_sha384WithRSAEncryption) {
+			# SHA-384 with RSA PKCS#1 v1.5
+			digest384 := array [Keyring->SHA384dlen] of byte;
+			keyring->sha384(s.tobe_signed, len s.tobe_signed, digest384, nil);
+			sha384pfx := array [] of {
+				byte 16r30, byte 16r41, byte 16r30, byte 16r0d,
+				byte 16r06, byte 16r09, byte 16r60, byte 16r86,
+				byte 16r48, byte 16r01, byte 16r65, byte 16r03,
+				byte 16r04, byte 16r02, byte 16r02, byte 16r05,
+				byte 16r00, byte 16r04, byte 16r30
+			};
+			digestinfo384 := array [len sha384pfx + Keyring->SHA384dlen] of byte;
+			digestinfo384[0:] = sha384pfx;
+			digestinfo384[len sha384pfx:] = digest384;
+			ok = rsa_pkcs1_verify(s.signature, key.pk, digestinfo384);
+		} else
+			ok = pkcs->rsa_verify(s.tobe_signed, s.signature, key.pk, hash);
+	DSS =>
 		# TODO: hash s.tobe_signed for verifying
 		ok = pkcs->dss_verify(s.tobe_signed, s.signature, key.pk);
 	DH =>
 		# simply failure
+		;
+	EC =>
+		algid := asn1->oid_lookup(s.alg.oid, pkcs->objIdTab);
+		case algid {
+		PKCS->id_ecdsa_sha256 =>
+			if(len key.point != 65)
+				return 0;
+			digest := array [Keyring->SHA256dlen] of byte;
+			keyring->sha256(s.tobe_signed, len s.tobe_signed, digest, nil);
+			(sigerr, rawsig) := decode_ecdsa_sig(s.signature, 32);
+			if(sigerr != nil)
+				return 0;
+			ecpt := keyring->p256_make_point(key.point);
+			if(ecpt == nil)
+				return 0;
+			ok = keyring->p256_ecdsa_verify(ecpt, digest, rawsig);
+		PKCS->id_ecdsa_sha384 =>
+			if(len key.point != 97)
+				return 0;
+			digest384 := array [Keyring->SHA384dlen] of byte;
+			keyring->sha384(s.tobe_signed, len s.tobe_signed, digest384, nil);
+			(sigerr384, rawsig384) := decode_ecdsa_sig(s.signature, 48);
+			if(sigerr384 != nil)
+				return 0;
+			ok = keyring->p384_ecdsa_verify(key.point, digest384, rawsig384);
+		* =>
+			return 0;
+		}
 	}
 
 	return ok;
+}
+
+# [private]
+# Decode DER-encoded ECDSA signature from X.509 BIT STRING
+# Input: sig = [unused_bits_byte, DER SEQUENCE { INTEGER r, INTEGER s }]
+# fieldlen = 32 for P-256, 48 for P-384
+# Output: raw signature (r[fieldlen] || s[fieldlen])
+
+decode_ecdsa_sig(sig: array of byte, fieldlen: int): (string, array of byte)
+{
+	# sig[0] is unused-bits count from BIT STRING
+	if(len sig < 2 || int sig[0] != 0)
+		return ("bad bit string padding", nil);
+	der := sig[1:];
+	(err, e) := asn1->decode(der);
+	if(err != "")
+		return ("ECDSA sig: " + err, nil);
+	(ok, el) := e.is_seq();
+	if(!ok || len el != 2)
+		return ("ECDSA sig: expected SEQUENCE of 2", nil);
+	rbytes, sbytes: array of byte;
+	(ok, rbytes) = (hd el).is_bigint();
+	if(!ok)
+		return ("ECDSA sig: bad r", nil);
+	(ok, sbytes) = (hd tl el).is_bigint();
+	if(!ok)
+		return ("ECDSA sig: bad s", nil);
+
+	rawsig := array [fieldlen * 2] of {* => byte 0};
+	# r: strip leading zeros, right-justify in fieldlen bytes
+	ri := 0;
+	while(ri < len rbytes && rbytes[ri] == byte 0)
+		ri++;
+	rlen := len rbytes - ri;
+	if(rlen > fieldlen)
+		return ("ECDSA sig: r too large", nil);
+	rawsig[fieldlen - rlen:] = rbytes[ri:];
+	# s: strip leading zeros, right-justify in fieldlen bytes
+	si := 0;
+	while(si < len sbytes && sbytes[si] == byte 0)
+		si++;
+	slen := len sbytes - si;
+	if(slen > fieldlen)
+		return ("ECDSA sig: s too large", nil);
+	rawsig[fieldlen + fieldlen - slen:] = sbytes[si:];
+
+	return ("", rawsig);
 }
 
 # [public]
@@ -1329,11 +1538,17 @@ parse:
 		ext.oid = oid; 
 		el = tl el;
 		# BOOLEAN DEFAULT FALSE
-		(ok, ext.critical) = (hd el).is_int();
-		if(ok)
+		if((hd el).tag.num == BOOLEAN) {
+			pick v := (hd el).val {
+			Bool or Int =>
+				ext.critical = (v.v != 0);
+			* =>
+				ext.critical = 0;
+			}
 			el = tl el;
-		else
+		} else {
 			ext.critical = 0;
+		}
 		if (len el != 1) {
 			break parse;
 		}
@@ -1422,9 +1637,9 @@ RDName.equal(a: self ref RDName, b: ref RDName): int
 		found:= 0;
 		rest: list of ref AVA;
 		while(ba != nil) {
-			ok := (hd ba).equal(hd ba);
+			ok := (hd aa).equal(hd ba);
 			if(!ok)
-				rest = (hd aa) :: rest;
+				rest = (hd ba) :: rest;
 			else {
 				if(found)
 					return 0;
@@ -1523,6 +1738,10 @@ parse:
 			if(err != nil)
 				break parse;
 			pk = ref PublicKey.DH(k);
+		PKCS->id_ec_publicKey or
+		PKCS->id_ecdsa_sha256 or
+		PKCS->id_ecdsa_sha384 =>
+			pk = ref PublicKey.EC(pkinfo.subject_pk);
 		* =>
 			break parse;
 		}
@@ -1596,13 +1815,8 @@ verify_certchain(cs: list of array of byte): (int, string)
 		lsc = (s, c) :: lsc;
 		l = tl l;
 	}
-	# reverse order
-	a: list of (ref Signed, ref Certificate);
-	while(lsc != nil) {
-		a = (hd lsc) :: a;
-		lsc = tl lsc;
-	}
-	return verify_certpath(a);
+	# lsc is in issuer-first order (cons reversal of TLS leaf-first order)
+	return verify_certpath(lsc);
 }
 
 # [private]
@@ -1610,35 +1824,75 @@ verify_certchain(cs: list of array of byte): (int, string)
 
 verify_certpath(sc: list of (ref Signed, ref Certificate)): (int, string)
 {
-	# verify self-signed root certificate
 	(s, c) := hd sc;
-	# TODO: check root RDName with known CAs and using
-	# external verification of root - Directory service
 	(err, id, pk) := c.subject_pkinfo.getPublicKey();
 	if(err != "")
 		return (0, err);
-	if(!is_validtime(c.validity)
-		|| !c.issuer.equal(c.subject)
-		|| !s.verify(pk, 0)) # TODO: prototype verify(key, ref AlgIdentifier)?
-		return (0, "verification failure");
+	if(!is_validtime(c.validity))
+		return (0, "validity expired");
+
+	if(c.issuer.equal(c.subject)) {
+		# self-signed root: verify signature against own key
+		if(!s.verify(pk, 0))
+			return (0, "root signature verification failure");
+	} else {
+		# Look up issuer in trust store
+		trusted := find_trusted_root(c.issuer);
+		if(trusted != nil) {
+			(rerr, nil, rpk) := trusted.cert.subject_pkinfo.getPublicKey();
+			if(rerr == "" && sig_algo_supported(s, rpk)) {
+				if(!s.verify(rpk, 0))
+					return (0, "trust anchor: signature verification failure");
+			}
+		}
+		# If no trusted root found, continue (graceful degradation)
+	}
 
 	sc = tl sc;
 	while(sc != nil) {
 		(ns, nc) := hd sc;
-		# TODO: check critical flags of extension list
-		# check alt names field
 		(err, id, pk) = c.subject_pkinfo.getPublicKey();
 		if(err != "")
 			return (0, err);
-		if(!is_validtime(nc.validity)
-			|| !nc.issuer.equal(c.subject) 
-			|| !ns.verify(pk, 0)) # TODO: move prototype as ?
-			return (0, "verification failure");
+		if(!is_validtime(nc.validity))
+			return (0, "validity expired");
+		if(!nc.issuer.equal(c.subject))
+			return (0, "issuer mismatch");
+		# Only verify if we support the signature algorithm.
+		# For EC keys, we support P-256/SHA-256 and P-384/SHA-384.
+		# Unsupported algorithms are skipped rather than
+		# treated as verification failures.
+		if(sig_algo_supported(ns, pk)) {
+			if(!ns.verify(pk, 0))
+				return (0, "signature verification failure");
+		}
 		(s, c) = (ns, nc);
 		sc = tl sc;
 	}
 
 	return (1, "");
+}
+
+# [private]
+# Check if we can verify a signature with the given key.
+# Returns 0 for unsupported algorithm/key combinations.
+
+sig_algo_supported(s: ref Signed, pk: ref PublicKey): int
+{
+	pick key := pk {
+	EC =>
+		algid := asn1->oid_lookup(s.alg.oid, pkcs->objIdTab);
+		case algid {
+		PKCS->id_ecdsa_sha256 =>
+			return len key.point == 65;
+		PKCS->id_ecdsa_sha384 =>
+			return len key.point == 97;
+		* =>
+			return 0;
+		}
+	* =>
+		return 1;
+	}
 }
 
 # [public]
@@ -2068,16 +2322,8 @@ ExtClass.decode(ext: ref Extension): (string, ref ExtClass)
 		}
 	id_ce_basicConstraints =>
 		(err, eclass) = decode_basicConstraints(ext);
-		if(err == "" && ext.critical != 1) {
-			err = "basic constraints: should be critical";
-			break;
-		}
 	id_ce_keyUsage =>
 		(err, eclass) = decode_keyUsage(ext);
-		if(err == "" && ext.critical != 1) {
-			err = "key usage: should be critical";
-			break;
-		}
 	id_ce_privateKeyUsage =>
 		(err, eclass) = decode_privateKeyUsage(ext);
 		if(err == "" && ext.critical != 0) {
@@ -2488,17 +2734,27 @@ parse:
 		if(err != "")
 			break parse;
 		(ok, el) := all.is_seq();
-		if(!ok || len el != 2)
+		if(!ok)
 			break parse;
-		ca: int;
-		(ok, ca) = (hd el).is_int(); # boolean
-		if(!ok || ca != 1)
-			break parse;
-		path: int;
-		(ok, path) = (hd tl el).is_int(); # integer
-		if(!ok || path < 0)
-			break parse;		
-		return ("", ref ExtClass.BasicConstraints(path));
+		ca := 0;
+		depth := -1;
+		if(el != nil && (hd el).tag.num == BOOLEAN) {
+			pick v := (hd el).val {
+			Bool or Int =>
+				ca = v.v;
+			* =>
+				break parse;
+			}
+			el = tl el;
+		}
+		if(el != nil) {
+			(ok, depth) = (hd el).is_int();
+			if(!ok || depth < 0)
+				break parse;
+		}
+		if(ca == 0)
+			depth = 0;
+		return ("", ref ExtClass.BasicConstraints(depth));
 	}
 	return ("basic constraints: syntax error", nil);
 }

@@ -9,6 +9,7 @@ unloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 	int bpl, n, ntot, dy;
 	uchar *a;
 	Display *d;
+	int chunk;
 
 	if(!rectinrect(r, i->r)){
 		kwerrstr("unloadimage: bad rectangle");
@@ -22,6 +23,15 @@ unloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 
 	d = i->display;
 	flushimage(d, 0);	/* make sure subsequent flush is for us only */
+
+	/*
+	 * Response data comes through the data channel (iounit 64KB),
+	 * not through bufimage.  Use 64KB as the chunk limit instead of
+	 * the old hardcoded 8000 which was the bufimage command buffer
+	 * size — irrelevant for read responses.
+	 */
+	chunk = 64*1024;
+
 	ntot = 0;
 	while(r.min.y < r.max.y){
 		a = bufimage(d, 1+4+4*4);
@@ -29,10 +39,10 @@ unloadimage(Image *i, Rectangle r, uchar *data, int ndata)
 			kwerrstr("unloadimage: %r");
 			return -1;
 		}
-		dy = 8000/bpl;
+		dy = chunk/bpl;
 		if(dy <= 0){
-			kwerrstr("unloadimage: image too wide");
-			return -1;
+			/* Row wider than 64KB — still try one row at a time */
+			dy = 1;
 		}
 		if(dy > Dy(r))
 			dy = Dy(r);

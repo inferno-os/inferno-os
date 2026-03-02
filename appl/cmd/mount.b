@@ -22,6 +22,7 @@ persist := 0;
 showstyx := 0;
 
 alg := "none";
+algset := 0;
 keyfile: string;
 spec: string;
 addr: string;
@@ -57,6 +58,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 			flags |= Sys->MCREATE;
 		'C' =>
 			alg = arg->earg();
+			algset = 1;
 		'k' or
 		'f' =>
 			keyfile = arg->earg();
@@ -84,6 +86,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	arg = nil;
 	addr = hd args;
 	mountpoint := hd tl args;
+
+	# default to encryption when authenticating
+	if(keyfile != nil && !algset)
+		alg = "aes_256_cbc sha256";
 
 	fd := connect(ctxt, addr);
 	ok: int;

@@ -22,4 +22,4 @@ esac
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
 
 cd "$INFERNODE_ROOT/emu/MacOSX"
-exec "$EMU" -c1 -r../.. sh -l -c 'xenith -t dark'
+exec "$EMU" -c1 -pheap=128m -pmain=128m -pimage=128m -r../.. sh -l -c 'xenith -t dark' 

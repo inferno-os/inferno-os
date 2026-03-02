@@ -6,12 +6,14 @@ LIMBOFLAGS=-I$MODDIR -I.
 DISBIN=$ROOT/dis/veltro
 
 MAIN=\
+    agentlib.dis\
     veltro.dis\
     repl.dis\
     tools9p.dis\
     nsconstruct.dis\
     subagent.dis\
     mc9p.dis\
+    speech9p.dis\
 
 TOOLS=\
     tools/read.dis\
@@ -29,12 +31,23 @@ TOOLS=\
     tools/ask.dis\
     tools/http.dis\
     tools/git.dis\
+    tools/grep.dis\
     tools/memory.dis\
+    tools/todo.dis\
+    tools/say.dis\
+    tools/hear.dis\
+    tools/websearch.dis\
+    tools/mail.dis\
+    tools/browse.dis\
+    tools/gpu.dis\
 
 all:V: $MAIN $TOOLS
 
 # Main programs
-veltro.dis: veltro.b tool.m nsconstruct.m
+agentlib.dis: agentlib.b agentlib.m
+	limbo $LIMBOFLAGS -gw agentlib.b
+
+veltro.dis: veltro.b agentlib.m tool.m nsconstruct.m
 	limbo $LIMBOFLAGS -gw veltro.b
 
 tools9p.dis: tools9p.b tool.m
@@ -46,11 +59,14 @@ nsconstruct.dis: nsconstruct.b nsconstruct.m
 subagent.dis: subagent.b subagent.m tool.m
 	limbo $LIMBOFLAGS -gw subagent.b
 
-repl.dis: repl.b
+repl.dis: repl.b agentlib.m
 	limbo $LIMBOFLAGS -gw repl.b
 
 mc9p.dis: mc9p.b
 	limbo $LIMBOFLAGS -gw mc9p.b
+
+speech9p.dis: speech9p.b
+	limbo $LIMBOFLAGS -gw speech9p.b
 
 # Tools
 tools/read.dis: tools/read.b tool.m
@@ -99,12 +115,40 @@ tools/http.dis: tools/http.b tool.m
 tools/git.dis: tools/git.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/git.dis tools/git.b
 
+tools/grep.dis: tools/grep.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/grep.dis tools/grep.b
+
 tools/memory.dis: tools/memory.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/memory.dis tools/memory.b
 
+tools/todo.dis: tools/todo.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/todo.dis tools/todo.b
+
+# Speech tools
+tools/say.dis: tools/say.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/say.dis tools/say.b
+
+tools/hear.dis: tools/hear.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/hear.dis tools/hear.b
+
+tools/websearch.dis: tools/websearch.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/websearch.dis tools/websearch.b
+
+# Mail tool
+tools/mail.dis: tools/mail.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/mail.dis tools/mail.b
+
+# Browse tool
+tools/browse.dis: tools/browse.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/browse.dis tools/browse.b
+
+# GPU tool
+tools/gpu.dis: tools/gpu.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/gpu.dis tools/gpu.b
+
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools
-	cp veltro.dis repl.dis tools9p.dis nsconstruct.dis subagent.dis mc9p.dis $DISBIN/
+	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis subagent.dis mc9p.dis speech9p.dis $DISBIN/
 	cp tools/*.dis $DISBIN/tools/
 
 clean:V:

@@ -5,6 +5,7 @@ DIRS=\
 	crypt\
 	ecmascript\
 	encoding\
+	git\
 	ida\
 	spki\
 	w3c\
@@ -49,6 +50,7 @@ TARG=\
 	fsproto.dis\
 	hash.dis\
 	html.dis\
+	imap.dis\
 	imageremap.dis\
 	inflate.dis\
 	ip.dis\
@@ -116,6 +118,9 @@ TARG=\
 	wait.dis\
 	watchvars.dis\
 	web.dis\
+	outlinefont.dis\
+	pdf.dis\
+	webclient.dis\
 	winplace.dis\
 	wmclient.dis\
 	wmlib.dis\
@@ -165,6 +170,7 @@ SYSMODULES=\
 	fsproto.m\
 	hash.m\
 	html.m\
+	imap.m\
 	imagefile.m\
 	ip.m\
 	ipattr.m\
@@ -179,6 +185,8 @@ SYSMODULES=\
 	man.m\
 	math.m\
 	memfs.m\
+	outlinefont.m\
+	pdf.m\
 	menuhit.m\
 	midi.m\
 	msgio.m\
@@ -230,6 +238,7 @@ SYSMODULES=\
 	wait.m\
 	watchvars.m\
 	web.m\
+	webclient.m\
 	webget.m\
 	winplace.m\
 	wmclient.m\

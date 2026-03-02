@@ -157,6 +157,8 @@ X509: module {
 			pk		: ref PKCS->DSSPublicKey;
 		DH =>
 			pk		: ref PKCS->DHPublicKey;
+		EC =>
+			point		: array of byte;
 		}
 	};
 

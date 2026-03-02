@@ -37,6 +37,73 @@ skipped := 0;
 # Source file path for clickable error addresses
 SRCFILE: con "/tests/crypto_test.b";
 
+# Convert hex string to byte array
+hexdecode(s: string): array of byte
+{
+	if(len s % 2 != 0)
+		return nil;
+	buf := array[len s / 2] of byte;
+	for(i := 0; i < len buf; i++) {
+		hi := hexval(s[2*i]);
+		lo := hexval(s[2*i+1]);
+		if(hi < 0 || lo < 0)
+			return nil;
+		buf[i] = byte (hi * 16 + lo);
+	}
+	return buf;
+}
+
+hexval(c: int): int
+{
+	if(c >= '0' && c <= '9')
+		return c - '0';
+	if(c >= 'a' && c <= 'f')
+		return c - 'a' + 10;
+	if(c >= 'A' && c <= 'F')
+		return c - 'A' + 10;
+	return -1;
+}
+
+# Convert byte array to hex string
+hexencode(buf: array of byte): string
+{
+	if(buf == nil)
+		return "nil";
+	s := "";
+	for(i := 0; i < len buf; i++)
+		s += sys->sprint("%02x", int buf[i]);
+	return s;
+}
+
+# Compare two byte arrays
+byteseq(a, b: array of byte): int
+{
+	if(a == nil && b == nil)
+		return 1;
+	if(a == nil || b == nil)
+		return 0;
+	if(len a != len b)
+		return 0;
+	for(i := 0; i < len a; i++)
+		if(a[i] != b[i])
+			return 0;
+	return 1;
+}
+
+# Assert byte arrays equal, showing hex on failure
+assertbytes(t: ref T, got, want: array of byte, msg: string)
+{
+	if(!byteseq(got, want)) {
+		ghex := hexencode(got);
+		whex := hexencode(want);
+		if(len ghex > 80)
+			ghex = ghex[0:80] + "...";
+		if(len whex > 80)
+			whex = whex[0:80] + "...";
+		t.error(sys->sprint("%s:\n  got  %s\n  want %s", msg, ghex, whex));
+	}
+}
+
 # Helper to run a test and track results
 run(name: string, testfn: ref fn(t: ref T))
 {
@@ -555,6 +622,142 @@ testEd25519Stress(t: ref T)
 		t.log(sys->sprint("All %d iterations passed", iterations));
 }
 
+#
+# Ed25519 RFC 8032 Test Vector 1: empty message
+# Tests both verify (known-answer) and sign+verify round-trip
+#
+testEd25519RFC8032Vec1(t: ref T)
+{
+	t.log("RFC 8032 §7.1 Test Vector 1: empty message...");
+
+	seed := hexdecode("9d61b19deffd5a60ba844af492ec2cc4"
+		+ "4449c5697b326919703bac031cae7f60");
+	pk := hexdecode("d75a980182b10ab7d54bfed3c964073a"
+		+ "0ee172f3daa62325af021a68f707511a");
+	rfcsig := hexdecode(
+		"e5564300c360ac729086e2cc806e828a"
+		+ "84877f1eb8e5d974d873e06522490155"
+		+ "5fb8821590a33bacc61e39701cf9b46b"
+		+ "d25bf5f0595bbe24655141438e7a100b");
+	msg := array[0] of byte;
+
+	# Verify RFC signature (known-answer)
+	t.asserteq(kr->ed25519_verify(pk, msg, rfcsig), 1, "RFC 8032 Vec1 verify known sig");
+
+	# Sign + verify round-trip
+	sig := kr->ed25519_sign(seed, msg);
+	if(sig == nil) {
+		t.fatal("ed25519_sign returned nil");
+		return;
+	}
+	t.asserteq(kr->ed25519_verify(pk, msg, sig), 1, "RFC 8032 Vec1 sign+verify");
+
+	# Compare exact signature
+	assertbytes(t, sig, rfcsig, "RFC 8032 Vec1 signature match");
+}
+
+#
+# Ed25519 RFC 8032 Test Vector 2: 1-byte message (0x72)
+#
+testEd25519RFC8032Vec2(t: ref T)
+{
+	t.log("RFC 8032 §7.1 Test Vector 2: 1-byte message...");
+
+	seed := hexdecode("4ccd089b28ff96da9db6c346ec114e0f"
+		+ "5b8a319f35aba624da8cf6ed4fb8a6fb");
+	pk := hexdecode("3d4017c3e843895a92b70aa74d1b7ebc"
+		+ "9c982ccf2ec4968cc0cd55f12af4660c");
+	rfcsig := hexdecode(
+		"92a009a9f0d4cab8720e820b5f642540"
+		+ "a2b27b5416503f8fb3762223ebdb69da"
+		+ "085ac1e43e15996e458f3613d0f11d8c"
+		+ "387b2eaeb4302aeeb00d291612bb0c00");
+	msg := hexdecode("72");
+
+	# Verify RFC signature (known-answer)
+	t.asserteq(kr->ed25519_verify(pk, msg, rfcsig), 1, "RFC 8032 Vec2 verify known sig");
+
+	# Sign + verify round-trip
+	sig := kr->ed25519_sign(seed, msg);
+	if(sig == nil) {
+		t.fatal("ed25519_sign returned nil");
+		return;
+	}
+	t.asserteq(kr->ed25519_verify(pk, msg, sig), 1, "RFC 8032 Vec2 sign+verify");
+
+	# Compare exact signature
+	assertbytes(t, sig, rfcsig, "RFC 8032 Vec2 signature match");
+}
+
+#
+# Ed25519 RFC 8032 Test Vector 3: 2-byte message (0xaf82)
+#
+testEd25519RFC8032Vec3(t: ref T)
+{
+	t.log("RFC 8032 §7.1 Test Vector 3: 2-byte message...");
+
+	seed := hexdecode("c5aa8df43f9f837bedb7442f31dcb7b1"
+		+ "66d38535076f094b85ce3a2e0b4458f7");
+	pk := hexdecode("fc51cd8e6218a1a38da47ed00230f058"
+		+ "0816ed13ba3303ac5deb911548908025");
+	rfcsig := hexdecode(
+		"6291d657deec24024827e69c3abe01a3"
+		+ "0ce548a284743a445e3680d7db5ac3ac"
+		+ "18ff9b538d16f290ae67f760984dc659"
+		+ "4a7c15e9716ed28dc027beceea1ec40a");
+	msg := hexdecode("af82");
+
+	# Verify RFC signature (known-answer)
+	t.asserteq(kr->ed25519_verify(pk, msg, rfcsig), 1, "RFC 8032 Vec3 verify known sig");
+
+	# Sign + verify round-trip
+	sig := kr->ed25519_sign(seed, msg);
+	if(sig == nil) {
+		t.fatal("ed25519_sign returned nil");
+		return;
+	}
+	t.asserteq(kr->ed25519_verify(pk, msg, sig), 1, "RFC 8032 Vec3 sign+verify");
+
+	# Compare exact signature
+	assertbytes(t, sig, rfcsig, "RFC 8032 Vec3 signature match");
+}
+
+#
+# Ed25519 rejection test: verify rejects flipped bits
+#
+testEd25519RFC8032Reject(t: ref T)
+{
+	t.log("Testing Ed25519 rejection of invalid data...");
+
+	pk := hexdecode("d75a980182b10ab7d54bfed3c964073a"
+		+ "0ee172f3daa62325af021a68f707511a");
+	sig := hexdecode(
+		"e5564300c360ac729086e2cc806e828a"
+		+ "84877f1eb8e5d974d873e06522490155"
+		+ "5fb8821590a33bacc61e39701cf9b46b"
+		+ "d25bf5f0595bbe24655141438e7a100b");
+	msg := array[0] of byte;
+
+	# Valid signature should verify
+	t.asserteq(kr->ed25519_verify(pk, msg, sig), 1, "valid sig verifies");
+
+	# Flipped bit in signature
+	badsig := array[64] of byte;
+	badsig[0:] = sig;
+	badsig[0] ^= byte 16r01;
+	t.asserteq(kr->ed25519_verify(pk, msg, badsig), 0, "rejects modified sig");
+
+	# Flipped bit in public key
+	badpk := array[32] of byte;
+	badpk[0:] = pk;
+	badpk[0] ^= byte 16r01;
+	t.asserteq(kr->ed25519_verify(badpk, msg, sig), 0, "rejects modified pk");
+
+	# Wrong message
+	wrongmsg := hexdecode("ff");
+	t.asserteq(kr->ed25519_verify(pk, wrongmsg, sig), 0, "rejects wrong message");
+}
+
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
@@ -593,6 +796,10 @@ init(nil: ref Draw->Context, args: list of string)
 	run("DH/2048bit", testDHParams);
 	run("MultiAlgorithm/Interop", testMultipleAlgorithms);
 	run("Ed25519/Stress", testEd25519Stress);
+	run("Ed25519/RFC8032/Vec1", testEd25519RFC8032Vec1);
+	run("Ed25519/RFC8032/Vec2", testEd25519RFC8032Vec2);
+	run("Ed25519/RFC8032/Vec3", testEd25519RFC8032Vec3);
+	run("Ed25519/RFC8032/Reject", testEd25519RFC8032Reject);
 
 	# Print summary
 	if(testing->summary(passed, failed, skipped) > 0)

@@ -1,0 +1,11 @@
+# GPU enabled (NVIDIA Jetson with TensorRT/CUDA)
+# Requires: CUDA toolkit, TensorRT, and gpu.c in libinterp.
+# Build libinterp with gpu.$O instead of gpu-stub.$O before enabling.
+GPUFLAGS=-I/usr/local/cuda/include
+GPULIBS=\
+	$ROOT/libinterp/trt-wrapper.$O\
+	-L/usr/local/cuda/lib64\
+	-L/usr/lib/aarch64-linux-gnu\
+	-lcudart\
+	-lnvinfer\
+	-lstdc++\

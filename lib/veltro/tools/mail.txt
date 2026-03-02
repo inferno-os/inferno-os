@@ -1,0 +1,36 @@
+mail - IMAP email client
+
+Usage:
+  mail config <server>              Connect to IMAP server (TLS, port 993)
+  mail check                        Check inbox message/unseen count
+  mail list [N]                     List last N messages (default 10)
+  mail read <N>                     Fetch and display message N
+  mail search <terms>               Server-side IMAP SEARCH
+  mail flag <N> seen|unseen|flagged|unflagged  Set/clear flags
+  mail send <to> <subject> <body>   Send email via SMTP
+  mail folders                      List available mailboxes
+
+Arguments:
+  server - IMAP server hostname (e.g. imap.gmail.com, imap.fastmail.com)
+  N      - Message sequence number
+  terms  - IMAP SEARCH criteria (FROM smith, SUBJECT report, UNSEEN, etc.)
+
+Credentials:
+  Uses factotum: proto=pass service=imap dom=<server>
+  For Gmail, use an App Password.
+
+Examples:
+  mail config imap.fastmail.com
+  mail check
+  mail list 5
+  mail read 42
+  mail search FROM alice SUBJECT meeting
+  mail flag 42 seen
+  mail send bob@example.com "Hello" "How are you?"
+  mail folders
+
+Notes:
+  - Requires /net access (trusted agents only)
+  - Connection persists across commands; auto-reconnects if dropped
+  - Returns concise text summaries, not raw IMAP protocol data
+  - Send requires a working SMTP server (may need separate config)

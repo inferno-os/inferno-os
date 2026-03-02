@@ -19,6 +19,7 @@ ASN1: module {
 	REAL : con 9;
 	ENUMERATED : con 10;
 	EMBEDDED_PDV : con 11;
+	UTF8String : con 12;
 	SEQUENCE : con 16;		# also SEQUENCE OF
 	SET : con 17;			# also SET  OF
 	NumericString : con 18;

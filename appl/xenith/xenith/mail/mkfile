@@ -2,6 +2,7 @@
 
 TARG=\
 	Mail.dis\
+	MailIMAP.dis\
 	Mailpop3.dis\
 	mkbox.dis\
 
@@ -15,6 +16,7 @@ SYSMODULES=\
 	draw.m\
 	encoding.m\
 	factotum.m\
+	imap.m\
 	pop3.m\
 	sh.m\
 	sys.m\

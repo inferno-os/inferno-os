@@ -52,9 +52,9 @@ struct
 	3,
 	{
 		/* quanta must be 127 for 64-bit (5 pointers + allocpc/reallocpc = 64 bytes min) */
-		{ "main",  0, 	32*1024*1024, 127,  512*1024, 0, 31*1024*1024 },
-		{ "heap",  1, 	32*1024*1024, 127,  512*1024, 0, 31*1024*1024 },
-		{ "image", 2,   64*1024*1024+256, 127, 4*1024*1024, 1, 63*1024*1024 },
+		{ "main",  0, 	512*1024*1024, 127,  512*1024, 0, 511*1024*1024 },
+		{ "heap",  1, 	512*1024*1024, 127,  512*1024, 0, 511*1024*1024 },
+		{ "image", 2,   256*1024*1024+256, 127, 4*1024*1024, 1, 255*1024*1024 },
 	}
 };
 
@@ -786,6 +786,27 @@ msize(void *v)
 	if(v == nil)
 		return 0;
 	return poolmsize(mainmem, (ulong*)v-Npadlong)-Npadlong*sizeof(ulong);
+}
+
+/*
+ * Override glibc's malloc_usable_size.
+ *
+ * The emu interposes malloc/free/realloc, so all heap allocations
+ * go through the pool allocator.  But glibc's malloc_usable_size
+ * expects glibc chunk metadata.  If a dlopen'd library (e.g.
+ * libnss_systemd) calls malloc_usable_size on a pool-allocated
+ * pointer, glibc reads garbage metadata and crashes.
+ *
+ * Returning 0 is safe: callers use it to check whether realloc
+ * is needed, so they'll just realloc (which goes to our version).
+ * ARM64 UDIV with 0 dividend returns 0 (no trap).
+ */
+size_t
+malloc_usable_size(void *v)
+{
+	if(v == nil)
+		return 0;
+	return msize(v);
 }
 
 void*

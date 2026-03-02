@@ -659,11 +659,34 @@ Image_lineop(void *fp)
 	drawline(fp, f->op);
 }
 
+/*
+ * Convert Draw_Point array (WORD-sized coords) to C Point array (int-sized).
+ * On LP64, Draw_Point is 16 bytes (two 8-byte WORDs), while Point is 8 bytes
+ * (two 4-byte ints).  The old "sleazy" cast (Point*)data only works on
+ * 32-bit systems where WORD == int.
+ */
+static Point*
+cvtpoints(Draw_Point *dp, int n)
+{
+	Point *pp;
+	int i;
+
+	pp = malloc(n * sizeof(Point));
+	if(pp == nil)
+		return nil;
+	for(i = 0; i < n; i++){
+		pp[i].x = (int)dp[i].x;
+		pp[i].y = (int)dp[i].y;
+	}
+	return pp;
+}
+
 static void
 drawsplinepoly(void *fp, int smooth, int op)
 {
 	F_Image_poly *f;
 	Image *d, *s;
+	Point *pp;
 	int locked;
 
 	f = fp;
@@ -671,17 +694,20 @@ drawsplinepoly(void *fp, int smooth, int op)
 	s = checkimage(f->src);
 	if(d->display != s->display|| f->radius < 0)
 		return;
+	pp = cvtpoints((Draw_Point*)f->p->data, f->p->len);
+	if(pp == nil)
+		return;
 	locked = lockdisplay(d->display);
-	/* sleazy: we know that Draw_Points have same shape as Points */
 	if(smooth)
-		bezsplineop(d, (Point*)f->p->data, f->p->len,
+		bezsplineop(d, pp, f->p->len,
 			f->end0, f->end1, f->radius, s, IPOINT(f->sp), op);
 	else
-		polyop(d, (Point*)f->p->data, f->p->len, f->end0,
+		polyop(d, pp, f->p->len, f->end0,
 			f->end1, f->radius, s, IPOINT(f->sp), op);
 	checkflush(f->dst);
 	if(locked)
 		unlockdisplay(d->display);
+	free(pp);
 }
 
 void
@@ -789,6 +815,7 @@ drawfillsplinepoly(void *fp, int smooth, int op)
 {
 	F_Image_fillpoly *f;
 	Image *d, *s;
+	Point *pp;
 	int locked;
 
 	f = fp;
@@ -796,17 +823,20 @@ drawfillsplinepoly(void *fp, int smooth, int op)
 	s = checkimage(f->src);
 	if(d->display != s->display)
 		return;
+	pp = cvtpoints((Draw_Point*)f->p->data, f->p->len);
+	if(pp == nil)
+		return;
 	locked = lockdisplay(d->display);
-	/* sleazy: we know that Draw_Points have same shape as Points */
 	if(smooth)
-		fillbezsplineop(d, (Point*)f->p->data, f->p->len,
+		fillbezsplineop(d, pp, f->p->len,
 			f->wind, s, IPOINT(f->sp), op);
 	else
-		fillpolyop(d, (Point*)f->p->data, f->p->len,
+		fillpolyop(d, pp, f->p->len,
 			f->wind, s, IPOINT(f->sp), op);
 	checkflush(f->dst);
 	if(locked)
 		unlockdisplay(d->display);
+	free(pp);
 }
 
 void

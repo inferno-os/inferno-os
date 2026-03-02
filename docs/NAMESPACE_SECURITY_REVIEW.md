@@ -614,4 +614,86 @@ construct(ess: ref Essentials, caps: ref Capabilities): string
 
 ---
 
-*Document prepared for security review. Last updated: 2026-02-01*
+---
+
+## 11. Resolution: Namespace v3 — FORKNS + Bind-Replace
+
+### 11.1 The Third Approach
+
+Neither NEWNS+Build nor FORKNS+Unmount was implemented. Instead, we found a third approach that combines the best properties of both:
+
+**FORKNS + bind-replace (MREPL)**
+
+```limbo
+restrictdir(target, allowed)
+{
+    shadow := create_shadow_dir();
+    for(item in allowed)
+        bind(target+"/"+item, shadow+"/"+item, MREPL);
+    bind(shadow, target, MREPL);  // Replace entire target
+}
+```
+
+### 11.2 Why This Supersedes Both Approaches
+
+| Criterion | NEWNS+Build (A) | FORKNS+Unmount (B) | FORKNS+Bind-Replace (v3) |
+|-----------|-----------------|---------------------|--------------------------|
+| Default stance | Deny all | Allow all | Deny all |
+| Bootstrap | Chicken-and-egg | No problem | No problem |
+| Completeness | By construction | Must enumerate all | By replacement |
+| File copying | Required | Not needed | Not needed |
+| Cleanup | Required | Not needed | Not needed |
+| Failure mode | Can't run | Too much access | Item not visible |
+
+### 11.3 Key Insight
+
+`bind(shadow, target, MREPL)` achieves allowlist semantics without NEWNS:
+- **Allowlist**: only items in the shadow are visible (like NEWNS+Build)
+- **No bootstrap**: namespace already exists (like FORKNS+Unmount)
+- **No enumeration**: don't need to know what to remove
+- **Idempotent**: can be applied multiple times to narrow further
+
+### 11.4 Device Access Resolution
+
+The #U device access concern (Section 7) is resolved by:
+1. `restrictdir("/", safe)` — replaces root union, hiding #U-exposed project files
+2. `restrictdir("/n", allowed)` — hides `/n/local` (host filesystem mount)
+3. `pctl(NODEVS)` — blocks `#X` device naming (child only)
+4. Parent doesn't need NODEVS because bind-replace hides unrestricted content
+
+### 11.5 Implementation Details
+
+**Core module**: `nsconstruct.b` (~455 lines, was ~863 in v2)
+
+Three entry points apply restriction:
+- **tools9p serveloop**: FORKNS after mount() completes, via non-blocking alt on buffered channel
+- **repl init**: FORKNS after mount checks, before LLM session
+- **spawn child**: FORKNS in runchild(), with full NEWPGRP/NEWENV/NEWFD/NODEVS sequence
+
+**Restriction policy** (`restrictns()`):
+1. `/dis` → `lib/`, `veltro/` (+ shell commands if granted)
+2. `/dis/veltro/tools` → only granted tool .dis files
+3. `/dev` → `cons`, `null`
+4. `/n` → `llm/` (if mounted), `speech/` (if mounted), `mcp/` (if mc9p)
+5. `/n/local` → only granted subpaths (recursive drill-down)
+6. `/lib` → `veltro/`
+7. `/tmp` → `veltro/`
+8. `/` → 13 safe Inferno system directories (hides .env, .git, CLAUDE.md, source tree)
+
+**Implementation challenges solved**:
+- **Root restriction**: `dirread()` returns entries from ALL union members. Individual bind-overs don't hide entries. Solution: `restrictdir("/", safe)` replaces the entire root union.
+- **9P self-mount deadlock**: `stat("/tool")` in tools9p serveloop deadlocks because `/tool` is the serveloop's own 9P mount. Solution: skip stat for `target == "/"`, create mount points unconditionally.
+- **Double-slash path**: When `target == "/"`, `target + "/" + item` produces `//dev`. Solution: special-case for root target.
+- **Speech preservation**: `/n/speech` must survive `/n` restriction for the `say` tool. Solution: auto-detect via stat and include in allowlist.
+
+**Subagent architecture**: Children use pre-loaded tool modules directly (not tools9p). The `spawn` tool calls `preloadmodules()` before `spawn runchild()`, loading Tool modules and their dependencies while `/dis` is unrestricted. The child's `subagent->runloop()` calls `mod->exec(args)` on module references already in memory.
+
+**Verification**: `verifyns()` performs both positive assertions (expected paths accessible) and negative assertions (`stat()` on `/.env`, `/.git`, `/CLAUDE.md`, `/n/local` must fail).
+
+See `appl/veltro/SECURITY.md` for the full security model documentation.
+
+*v3 implemented: 2026-02-13*
+
+---
+
+*Document prepared for security review. Last updated: 2026-02-13*

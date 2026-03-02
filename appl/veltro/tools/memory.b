@@ -4,7 +4,7 @@ implement ToolMemory;
 # memory - Agent memory/persistence tool for Veltro agent
 #
 # Provides persistent key-value storage for agent context.
-# Data persists across sessions in /tmp/.veltro/memory/{agentid}/
+# Data persists across sessions in /tmp/veltro/memory/{agentid}/
 #
 # Usage:
 #   memory save <key> <value>     # Store a value
@@ -45,7 +45,7 @@ ToolMemory: module {
 
 # Memory storage base path
 # Agent ID is determined from sandbox path or generated
-MEMORY_BASE: con "/tmp/.veltro/memory";
+MEMORY_BASE: con "/tmp/veltro/memory";
 DEFAULT_AGENT: con "default";
 
 # Current agent ID (set on first use)

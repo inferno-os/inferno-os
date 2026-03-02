@@ -286,9 +286,9 @@ freetype(Type *t)
 	if(t == nil || --t->ref > 0)
 		return;
 
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__x86_64__))
-	/* JIT typecom() uses mmap(MAP_JIT); skip free() to avoid pool panic.
-	 * This leaks type code on module unload — matches AMD64 JIT behavior. */
+#if defined(__aarch64__) || defined(__x86_64__)
+	/* JIT typecom() uses mmap for type code; skip free() to avoid pool panic.
+	 * This leaks type code on module unload. */
 	if(t->initialize == nil)
 #endif
 	free(t->initialize);

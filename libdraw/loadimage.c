@@ -39,8 +39,52 @@ loadimage(Image *i, Rectangle r, uchar *data, int ndata)
 		if(dy*llen > chunk)
 			dy = chunk/llen;
 		if(dy <= 0){
-			kwerrstr("loadimage: image too wide for buffer");
-			return -1;
+			/*
+			 * Single row wider than the command buffer.
+			 * Split each row into horizontal strips that fit.
+			 */
+			int sx, ex, soff, eoff, striplen;
+			int maxpix;
+			uchar *rowdata;
+
+			maxpix = (chunk - 21) * 8 / i->depth;
+			if(maxpix <= 0)
+				maxpix = 1;
+
+			dy = 1;
+			rowdata = data;
+			while(dstr.min.y < dstr.max.y){
+				sx = dstr.min.x;
+				while(sx < dstr.max.x){
+					ex = sx + maxpix;
+					if(ex > dstr.max.x)
+						ex = dstr.max.x;
+
+					soff = (sx * i->depth) >> 3;
+					eoff = (ex * i->depth + 7) >> 3;
+					striplen = eoff - soff;
+
+					a = bufimage(i->display, 21 + striplen);
+					if(a == nil){
+						kwerrstr("bufimage failed");
+						return -1;
+					}
+					a[0] = 'y';
+					BPLONG(a+1, i->id);
+					BPLONG(a+5, sx);
+					BPLONG(a+9, dstr.min.y);
+					BPLONG(a+13, ex);
+					BPLONG(a+17, dstr.min.y + 1);
+					memmove(a + 21, rowdata + (soff - dstroff), striplen);
+					ndata += striplen;
+					sx = ex;
+				}
+				dstr.min.y++;
+				rowdata += bpl;
+			}
+			if(flushimage(i->display, 0) < 0)
+				return -1;
+			return ndata;
 		}
 		n = dy*llen;
 		a = bufimage(i->display, 21+n);
@@ -67,4 +111,3 @@ loadimage(Image *i, Rectangle r, uchar *data, int ndata)
 		return -1;
 	return ndata;
 }
-

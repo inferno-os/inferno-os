@@ -241,7 +241,7 @@ loadpng(fd: ref Iobuf, path: string): (ref Image, string)
 	# Seek back to beginning for decode
 	fd.seek(big 0, Bufio->SEEKSTART);
 
-	# For small images or factor=1, use the standard reader (faster)
+	# For small images, use system reader (fast, handles all PNG variants)
 	if(subsample == 1){
 		if(readpng == nil){
 			readpng = load RImagefile RImagefile->READPNGPATH;
@@ -272,7 +272,7 @@ loadpng(fd: ref Iobuf, path: string): (ref Image, string)
 		return (im, nil);
 	}
 
-	# Large image: use subsampling decoder
+	# Large images: use streaming decoder with subsampling
 	return loadpngsubsample(fd, width, height, subsample);
 }
 
@@ -425,6 +425,7 @@ loadpngsubsample(fd: ref Iobuf, width, height, subsample: int): (ref Image, stri
 	# Process chunks
 	rq: chan of ref Filter->Rq;
 	inflateStarted := 0;
+	inflateFinished := 0;
 	firstIDAT := 1;
 
 	while(png.error == nil && !png.done){
@@ -464,7 +465,7 @@ loadpngsubsample(fd: ref Iobuf, width, height, subsample: int): (ref Image, stri
 				firstIDAT = 0;
 			}
 
-			while(remaining > 0 && png.error == nil){
+			while(remaining > 0 && png.error == nil && !inflateFinished){
 				pick m := <-rq {
 				Fill =>
 					toread := len m.buf;
@@ -484,7 +485,7 @@ loadpngsubsample(fd: ref Iobuf, width, height, subsample: int): (ref Image, stri
 					png_processdata(png, im, dstrowdata, palette, m.buf);
 
 				Finished =>
-					png.done = 1;
+					inflateFinished = 1;
 
 				Error =>
 					png.error = "inflate error";
@@ -506,19 +507,20 @@ loadpngsubsample(fd: ref Iobuf, width, height, subsample: int): (ref Image, stri
 		}
 	}
 
-	# Drain inflate
-	while(inflateStarted && !png.done){
-		pick m := <-rq {
-		Fill =>
-			m.reply <-= -1;
-			png.done = 1;
-		Result =>
-			m.reply <-= 0;
-			png_processdata(png, im, dstrowdata, palette, m.buf);
-		Finished =>
-			png.done = 1;
-		Error =>
-			png.done = 1;
+	# Drain inflate — process any remaining Results after all IDAT data fed
+	if(inflateStarted && !inflateFinished){
+		while(!inflateFinished){
+			pick m := <-rq {
+			Fill =>
+				m.reply <-= -1;
+			Result =>
+				m.reply <-= 0;
+				png_processdata(png, im, dstrowdata, palette, m.buf);
+			Finished =>
+				inflateFinished = 1;
+			Error =>
+				inflateFinished = 1;
+			}
 		}
 	}
 
@@ -677,15 +679,17 @@ png_outputrow(png: ref SPng, im: ref Image, dstrow, palette: array of byte)
 			dstrow[dstoff+1] = v;
 			dstrow[dstoff+2] = v;
 		2 or 6 =>  # RGB (with or without alpha)
-			dstrow[dstoff] = srcdata[srcoff];
+			# RGB24 byte order: B=byte[0], G=byte[1], R=byte[2]
+			dstrow[dstoff] = srcdata[srcoff+2];
 			dstrow[dstoff+1] = srcdata[srcoff+1];
-			dstrow[dstoff+2] = srcdata[srcoff+2];
+			dstrow[dstoff+2] = srcdata[srcoff];
 		3 =>  # Indexed
 			idx := int srcdata[srcoff];
 			if(palette != nil && idx*3+2 < len palette){
-				dstrow[dstoff] = palette[idx*3];
+				# Palette stores RGB; RGB24 needs BGR
+				dstrow[dstoff] = palette[idx*3+2];
 				dstrow[dstoff+1] = palette[idx*3+1];
-				dstrow[dstoff+2] = palette[idx*3+2];
+				dstrow[dstoff+2] = palette[idx*3];
 			}
 		}
 	}
@@ -753,15 +757,17 @@ png_outputrow_interlaced(png: ref SPng, palette: array of byte)
 			png.imgbuf[dstoff+1] = v;
 			png.imgbuf[dstoff+2] = v;
 		2 or 6 =>  # RGB (with or without alpha)
-			png.imgbuf[dstoff] = srcdata[srcoff];
+			# RGB24 byte order: B=byte[0], G=byte[1], R=byte[2]
+			png.imgbuf[dstoff] = srcdata[srcoff+2];
 			png.imgbuf[dstoff+1] = srcdata[srcoff+1];
-			png.imgbuf[dstoff+2] = srcdata[srcoff+2];
+			png.imgbuf[dstoff+2] = srcdata[srcoff];
 		3 =>  # Indexed
 			idx := int srcdata[srcoff];
 			if(palette != nil && idx*3+2 < len palette){
-				png.imgbuf[dstoff] = palette[idx*3];
+				# Palette stores RGB; RGB24 needs BGR
+				png.imgbuf[dstoff] = palette[idx*3+2];
 				png.imgbuf[dstoff+1] = palette[idx*3+1];
-				png.imgbuf[dstoff+2] = palette[idx*3+2];
+				png.imgbuf[dstoff+2] = palette[idx*3];
 			}
 		}
 	}
@@ -944,9 +950,10 @@ loadppm(fd: ref Iobuf, path: string): (ref Image, string)
 			# Subsample horizontally: copy every Nth pixel
 			for(dstx := 0; dstx < dstwidth; dstx++){
 				srcx := dstx * subsample;
-				dstrowdata[dstx*3 + 0] = srcrowdata[srcx*3 + 0];
+				# PPM stores RGB; RGB24 needs BGR
+				dstrowdata[dstx*3 + 0] = srcrowdata[srcx*3 + 2];
 				dstrowdata[dstx*3 + 1] = srcrowdata[srcx*3 + 1];
-				dstrowdata[dstx*3 + 2] = srcrowdata[srcx*3 + 2];
+				dstrowdata[dstx*3 + 2] = srcrowdata[srcx*3 + 0];
 			}
 
 			# Write subsampled row to image
@@ -1205,6 +1212,7 @@ loadpngsubsampleprogressive(fd: ref Iobuf, width, height, subsample: int,
 	# Process chunks
 	rq: chan of ref Filter->Rq;
 	inflateStarted := 0;
+	inflateFinished := 0;
 	firstIDAT := 1;
 
 	while(png.error == nil && !png.done){
@@ -1243,7 +1251,7 @@ loadpngsubsampleprogressive(fd: ref Iobuf, width, height, subsample: int,
 				firstIDAT = 0;
 			}
 
-			while(remaining > 0 && png.error == nil){
+			while(remaining > 0 && png.error == nil && !inflateFinished){
 				pick m := <-rq {
 				Fill =>
 					toread := len m.buf;
@@ -1272,7 +1280,7 @@ loadpngsubsampleprogressive(fd: ref Iobuf, width, height, subsample: int,
 					}
 
 				Finished =>
-					png.done = 1;
+					inflateFinished = 1;
 
 				Error =>
 					png.error = "inflate error";
@@ -1293,19 +1301,20 @@ loadpngsubsampleprogressive(fd: ref Iobuf, width, height, subsample: int,
 		}
 	}
 
-	# Drain inflate
-	while(inflateStarted && !png.done){
-		pick m := <-rq {
-		Fill =>
-			m.reply <-= -1;
-			png.done = 1;
-		Result =>
-			m.reply <-= 0;
-			png_processdata(png, im, dstrowdata, palette, m.buf);
-		Finished =>
-			png.done = 1;
-		Error =>
-			png.done = 1;
+	# Drain inflate — process any remaining Results after all IDAT data fed
+	if(inflateStarted && !inflateFinished){
+		while(!inflateFinished){
+			pick m := <-rq {
+			Fill =>
+				m.reply <-= -1;
+			Result =>
+				m.reply <-= 0;
+				png_processdata(png, im, dstrowdata, palette, m.buf);
+			Finished =>
+				inflateFinished = 1;
+			Error =>
+				inflateFinished = 1;
+			}
 		}
 	}
 

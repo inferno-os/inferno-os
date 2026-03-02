@@ -1,0 +1,11 @@
+grep - Search file contents
+
+  grep <pattern> <path>      Search file (non-recursive)
+  grep -r <pattern> <path>   Recursive
+  grep -l <pattern> <path>   List matching files only
+  grep -i <pattern> <path>   Case-insensitive
+
+Plan 9 ERE: \d \w \s match literal letters — NOT character classes.
+Use [0-9] not \d, [a-z] not \w, [ \t] not \s.
+
+  grep -r '[0-9]+' /appl/veltro

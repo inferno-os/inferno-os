@@ -135,9 +135,45 @@ The rewrite is **2.28x faster** than the original JIT overall, with the
 largest gains in nested loops (10.36x) and function calls (8.75x) due
 to full inline compilation eliminating interpreter dispatch.
 
+## Cross-Language Comparison (jitbench v1)
+
+**Date:** 2026-02-11
+
+Best of 3 runs. All languages run the same 6 benchmarks with the same
+iteration counts.
+
+| Benchmark              | C -O2 | C -O0 |    Go | Python 3.12 | Limbo JIT | Limbo Interp |
+|------------------------|------:|------:|------:|------------:|----------:|-------------:|
+| Integer Arithmetic     |  39ms | 105ms |  40ms |     9,379ms |     122ms |        856ms |
+| Loop with Array Access | 518ms |2,892ms| 523ms |    39,996ms |   3,655ms |     33,259ms |
+| Function Calls         |   0ms |   3ms |   1ms |       163ms |       5ms |         38ms |
+| Fibonacci (recursive)  |  26ms |  49ms |  36ms |     1,522ms |     627ms |      1,710ms |
+| Sieve of Eratosthenes  |   5ms |  13ms |   4ms |        74ms |      16ms |        136ms |
+| Nested Loops           |   0ms | 136ms |  32ms |     4,317ms |     169ms |      1,887ms |
+| **TOTAL**              |**588ms**|**3,198ms**|**637ms**|**55,451ms**|**4,594ms**|**37,886ms**|
+
+### Speedup vs C -O0
+
+| Language     | Speedup |
+|--------------|--------:|
+| C -O2        |   5.43x |
+| Go           |   5.02x |
+| Limbo JIT    |   0.69x |
+| Limbo Interp |   0.08x |
+| Python 3.12  |   0.05x |
+
+### Limbo JIT vs Interpreter: 8.24x
+
+The ARM64 JIT achieves **69% of C -O0 throughput** and is **12x faster
+than Python**. It sits between Python and unoptimized C, which is
+strong for a bytecode VM with a simple single-pass JIT compiler.
+
+---
+
 ## Notes
 - Run-to-run variation: < 0.3%
 - System was idle during benchmarks (no competing workloads)
 - Benchmarks: `dis/jitbench.dis`, `dis/jitbench2.dis`
 - Source: `appl/cmd/jitbench.b`, `appl/cmd/jitbench2.b`
 - Interpreter: `emu -c0`, JIT: `emu -c1`
+- Cross-language: `benchmarks/run-comparison.sh`

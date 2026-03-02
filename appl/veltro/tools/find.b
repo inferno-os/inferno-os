@@ -43,6 +43,7 @@ ToolFind: module {
 # Limits
 MAX_RESULTS: con 100;
 MAX_DEPTH: con 20;
+OPEN_TIMEOUT: con 3000;	# ms — skip directories that block longer than this
 
 init(): string
 {
@@ -131,7 +132,7 @@ searchdir(path, pattern: string, depth: int): (list of string, int, int)
 	if(depth > MAX_DEPTH)
 		return (nil, 0, 0);
 
-	fd := sys->open(path, Sys->OREAD);
+	fd := opentimeout(path, Sys->OREAD, OPEN_TIMEOUT);
 	if(fd == nil)
 		return (nil, 0, 0);
 
@@ -181,4 +182,34 @@ searchdir(path, pattern: string, depth: int): (list of string, int, int)
 	}
 
 	return (results, count, truncated);
+}
+
+# Open a file with timeout to skip blocked paths (e.g. macOS TCC).
+opentimeout(path: string, mode: int, ms: int): ref Sys->FD
+{
+	result := chan[1] of ref Sys->FD;
+	spawn tryopen(path, mode, result);
+
+	timeout := chan of int;
+	spawn sleeptimer(timeout, ms);
+
+	alt {
+		fd := <-result =>
+			return fd;
+		<-timeout =>
+			sys->fprint(sys->fildes(2), "find: timeout open %s (skipping)\n", path);
+			return nil;
+	}
+}
+
+tryopen(path: string, mode: int, result: chan of ref Sys->FD)
+{
+	fd := sys->open(path, mode);
+	result <-= fd;
+}
+
+sleeptimer(ch: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	ch <-= 1;
 }

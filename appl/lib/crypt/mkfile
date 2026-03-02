@@ -4,6 +4,7 @@ TARG=\
 	pkcs.dis\
 	ssl3.dis\
 	sslsession.dis\
+	tls.dis\
 	x509.dis\
 
 MODULES=
@@ -17,6 +18,7 @@ SYSMODULES= \
 	ssl3.m\
 	sslsession.m\
 	sys.m\
+	tls.m\
 	x509.m\
 
 DISBIN=$ROOT/dis/lib/crypt

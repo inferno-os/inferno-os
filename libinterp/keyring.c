@@ -18,6 +18,9 @@
 
 static Type*	TDigestState;
 static Type*	TAESstate;
+static Type*	TAESGCMstate;
+static Type*	TChaChastate;
+static Type*	TECpoint;
 static Type*	TDESstate;
 static Type*	TIDEAstate;
 static Type*	TBFstate;
@@ -45,6 +48,9 @@ enum {
 
 static uchar DigestStatemap[] = Keyring_DigestState_map;
 static uchar AESstatemap[] = Keyring_AESstate_map;
+static uchar AESGCMstatemap[] = Keyring_AESGCMstate_map;
+static uchar ChaChastatemap[] = Keyring_ChaChastate_map;
+static uchar ECpointmap[] = Keyring_ECpoint_map;
 static uchar DESstatemap[] = Keyring_DESstate_map;
 static uchar IDEAstatemap[] = Keyring_IDEAstate_map;
 static uchar BFstatemap[] = Keyring_BFstate_map;
@@ -1360,7 +1366,7 @@ keyring_hmac_x(Array *data, int n, Array *key, Array *digest, int dlen, Keyring_
 		cdata = nil;
 	}
 
-	if(key == H || key->len > 64)
+	if(key == H)
 		error(exBadKey);
 
 	if(digest != H){
@@ -1406,6 +1412,45 @@ Keyring_hmac_md5(void *fp)
 	*f->ret = H;
 	destroy(r);
 	*f->ret = keyring_hmac_x(f->data, f->n, f->key, f->digest, MD5dlen, f->state, hmac_md5);
+}
+
+void
+Keyring_hmac_sha256(void *fp)
+{
+	F_Keyring_hmac_sha256 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+	*f->ret = keyring_hmac_x(f->data, f->n, f->key, f->digest, SHA256dlen, f->state, hmac_sha256);
+}
+
+void
+Keyring_hmac_sha384(void *fp)
+{
+	F_Keyring_hmac_sha384 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+	*f->ret = keyring_hmac_x(f->data, f->n, f->key, f->digest, SHA384dlen, f->state, hmac_sha384);
+}
+
+void
+Keyring_hmac_sha512(void *fp)
+{
+	F_Keyring_hmac_sha512 *f;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+	*f->ret = keyring_hmac_x(f->data, f->n, f->key, f->digest, SHA512dlen, f->state, hmac_sha512);
 }
 
 void
@@ -2118,6 +2163,12 @@ keyringmodinit(void)
 		sizeof(DigestStatemap));
 	TAESstate = dtype(freeheap, sizeof(XAESstate), AESstatemap,
 		sizeof(AESstatemap));
+	TAESGCMstate = dtype(freeheap, sizeof(XAESGCMstate), AESGCMstatemap,
+		sizeof(AESGCMstatemap));
+	TChaChastate = dtype(freeheap, sizeof(XChaChastate), ChaChastatemap,
+		sizeof(ChaChastatemap));
+	TECpoint = dtype(freeheap, sizeof(XECpoint), ECpointmap,
+		sizeof(ECpointmap));
 	TDESstate = dtype(freeheap, sizeof(XDESstate), DESstatemap,
 		sizeof(DESstatemap));
 	TIDEAstate = dtype(freeheap, sizeof(XIDEAstate), IDEAstatemap,
@@ -2570,6 +2621,112 @@ Keyring_aescbc(void *fp)
 		aesCBCencrypt(p, f->n, &is->state);
 	else
 		aesCBCdecrypt(p, f->n, &is->state);
+}
+
+void
+Keyring_aesgcmsetup(void *fp)
+{
+	F_Keyring_aesgcmsetup *f;
+	Heap *h;
+	XAESGCMstate *is;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->key == H || f->key->len <= 0)
+		error(exBadKey);
+	if(f->iv == H || f->iv->len <= 0)
+		error(exBadIvec);
+
+	h = heap(TAESGCMstate);
+	is = H2D(XAESGCMstate*, h);
+
+	setupAESGCMstate(&is->state, f->key->data, f->key->len, f->iv->data, f->iv->len);
+
+	*f->ret = (Keyring_AESGCMstate*)is;
+}
+
+void
+Keyring_aesgcmencrypt(void *fp)
+{
+	F_Keyring_aesgcmencrypt *f;
+	XAESGCMstate *is;
+	uchar tag[16];
+	uchar *buf;
+	int ndat;
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	if(f->dat == H)
+		return;
+
+	is = checktype(f->state, TAESGCMstate, exBadState, 0);
+
+	ndat = f->dat->len;
+
+	/* copy plaintext to temp buffer, encrypt in place */
+	buf = malloc(ndat);
+	if(buf == nil)
+		error(exNomem);
+	memmove(buf, f->dat->data, ndat);
+
+	aesgcm_encrypt(buf, ndat,
+		f->aad != H ? f->aad->data : nil,
+		f->aad != H ? f->aad->len : 0,
+		tag, &is->state);
+
+	f->ret->t0 = mem2array(buf, ndat);
+	f->ret->t1 = mem2array(tag, 16);
+	free(buf);
+}
+
+void
+Keyring_aesgcmdecrypt(void *fp)
+{
+	F_Keyring_aesgcmdecrypt *f;
+	XAESGCMstate *is;
+	uchar *buf;
+	int ndat;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->dat == H)
+		return;
+	if(f->tag == H || f->tag->len != 16)
+		error(exBadDigest);
+
+	is = checktype(f->state, TAESGCMstate, exBadState, 0);
+
+	ndat = f->dat->len;
+
+	/* copy ciphertext to temp buffer, decrypt in place */
+	buf = malloc(ndat);
+	if(buf == nil)
+		error(exNomem);
+	memmove(buf, f->dat->data, ndat);
+
+	if(aesgcm_decrypt(buf, ndat,
+		f->aad != H ? f->aad->data : nil,
+		f->aad != H ? f->aad->len : 0,
+		f->tag->data, &is->state) != 0){
+		/* authentication failed - return nil */
+		free(buf);
+		return;
+	}
+
+	*f->ret = mem2array(buf, ndat);
+	free(buf);
 }
 
 void
@@ -3101,4 +3258,331 @@ Keyring_IPint_random(void *fp)
 	b = mprand(f->maxbits, genrandom, nil);
 	acquire();
 	*f->ret = newIPint(b);
+}
+
+/*
+ *  X25519 (Curve25519 ECDH)
+ */
+void
+Keyring_x25519(void *fp)
+{
+	F_Keyring_x25519 *f;
+	uchar out[32];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->scalar == H || f->scalar->len != 32)
+		error(exBadKey);
+	if(f->point == H || f->point->len != 32)
+		error(exBadKey);
+
+	x25519(out, f->scalar->data, f->point->data);
+
+	*f->ret = mem2array(out, 32);
+}
+
+void
+Keyring_x25519_base(void *fp)
+{
+	F_Keyring_x25519_base *f;
+	uchar out[32];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->scalar == H || f->scalar->len != 32)
+		error(exBadKey);
+
+	x25519_base(out, f->scalar->data);
+
+	*f->ret = mem2array(out, 32);
+}
+
+/*
+ *  ChaCha20-Poly1305 AEAD
+ */
+void
+Keyring_ccpolyencrypt(void *fp)
+{
+	F_Keyring_ccpolyencrypt *f;
+	uchar tag[16];
+	uchar *buf;
+	int ndat;
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	if(f->dat == H)
+		return;
+	if(f->key == H || f->key->len != 32)
+		error(exBadKey);
+	if(f->nonce == H || f->nonce->len != 12)
+		error(exBadIvec);
+
+	ndat = f->dat->len;
+
+	buf = malloc(ndat);
+	if(buf == nil)
+		error(exNomem);
+	memmove(buf, f->dat->data, ndat);
+
+	ccpoly_encrypt(buf, ndat,
+		f->aad != H ? f->aad->data : nil,
+		f->aad != H ? f->aad->len : 0,
+		tag, f->key->data, f->nonce->data);
+
+	f->ret->t0 = mem2array(buf, ndat);
+	f->ret->t1 = mem2array(tag, 16);
+	free(buf);
+}
+
+void
+Keyring_ccpolydecrypt(void *fp)
+{
+	F_Keyring_ccpolydecrypt *f;
+	uchar *buf;
+	int ndat;
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->dat == H)
+		return;
+	if(f->tag == H || f->tag->len != 16)
+		error(exBadDigest);
+	if(f->key == H || f->key->len != 32)
+		error(exBadKey);
+	if(f->nonce == H || f->nonce->len != 12)
+		error(exBadIvec);
+
+	ndat = f->dat->len;
+
+	buf = malloc(ndat);
+	if(buf == nil)
+		error(exNomem);
+	memmove(buf, f->dat->data, ndat);
+
+	if(ccpoly_decrypt(buf, ndat,
+		f->aad != H ? f->aad->data : nil,
+		f->aad != H ? f->aad->len : 0,
+		f->tag->data, f->key->data, f->nonce->data) != 0){
+		/* authentication failed - return nil */
+		free(buf);
+		return;
+	}
+
+	*f->ret = mem2array(buf, ndat);
+	free(buf);
+}
+
+/*
+ *  P-256 (secp256r1) ECDH + ECDSA
+ */
+void
+Keyring_p256_keygen(void *fp)
+{
+	F_Keyring_p256_keygen *f;
+	Heap *h;
+	XECpoint *ep;
+	uchar priv[32];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	h = heap(TECpoint);
+	ep = H2D(XECpoint*, h);
+
+	if(p256_keygen(priv, &ep->point) != 0){
+		destroy(ep);
+		return;
+	}
+
+	f->ret->t0 = mem2array(priv, 32);
+	f->ret->t1 = (Keyring_ECpoint*)ep;
+	memset(priv, 0, 32);
+}
+
+void
+Keyring_p256_ecdh(void *fp)
+{
+	F_Keyring_p256_ecdh *f;
+	XECpoint *ep;
+	uchar shared[32];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->priv == H || f->priv->len != 32)
+		error(exBadKey);
+	if(f->pub == H)
+		error(exBadPK);
+
+	ep = checktype(f->pub, TECpoint, exBadPK, 0);
+
+	if(p256_ecdh(shared, f->priv->data, &ep->point) != 0)
+		return;
+
+	*f->ret = mem2array(shared, 32);
+	memset(shared, 0, 32);
+}
+
+void
+Keyring_p256_ecdsa_sign(void *fp)
+{
+	F_Keyring_p256_ecdsa_sign *f;
+	uchar sig[64];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->priv == H || f->priv->len != 32)
+		error(exBadKey);
+	if(f->hash == H || f->hash->len == 0)
+		error(exBadDigest);
+
+	if(p256_ecdsa_sign(sig, f->priv->data, f->hash->data, f->hash->len) != 0)
+		return;
+
+	*f->ret = mem2array(sig, 64);
+}
+
+void
+Keyring_p256_ecdsa_verify(void *fp)
+{
+	F_Keyring_p256_ecdsa_verify *f;
+	XECpoint *ep;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->pub == H)
+		return;
+	if(f->hash == H || f->hash->len == 0)
+		return;
+	if(f->sig == H || f->sig->len != 64)
+		return;
+
+	ep = checktype(f->pub, TECpoint, exBadPK, 0);
+
+	*f->ret = p256_ecdsa_verify(f->sig->data, &ep->point, f->hash->data, f->hash->len);
+}
+
+void
+Keyring_p256_make_point(void *fp)
+{
+	F_Keyring_p256_make_point *f;
+	Heap *h;
+	XECpoint *ep;
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->pubkey == H || f->pubkey->len != 65 || f->pubkey->data[0] != 0x04)
+		return;
+
+	h = heap(TECpoint);
+	ep = H2D(XECpoint*, h);
+
+	memmove(ep->point.x, f->pubkey->data + 1, 32);
+	memmove(ep->point.y, f->pubkey->data + 33, 32);
+
+	*f->ret = (Keyring_ECpoint*)ep;
+}
+
+/*
+ *  P-384 (secp384r1) ECDSA verify only
+ *  Uses raw byte arrays instead of an ADT.
+ */
+void
+Keyring_p384_ecdsa_verify(void *fp)
+{
+	F_Keyring_p384_ecdsa_verify *f;
+	ECpoint384 pt;
+
+	f = fp;
+	*f->ret = 0;
+
+	/* pubkey must be 97 bytes: 0x04 + x[48] + y[48] */
+	if(f->pubkey == H || f->pubkey->len != 97 || f->pubkey->data[0] != 0x04)
+		return;
+	if(f->hash == H || f->hash->len == 0)
+		return;
+	if(f->sig == H || f->sig->len != 96)
+		return;
+
+	memmove(pt.x, f->pubkey->data + 1, 48);
+	memmove(pt.y, f->pubkey->data + 49, 48);
+
+	*f->ret = p384_ecdsa_verify(f->sig->data, &pt, f->hash->data, f->hash->len);
+}
+
+/*
+ *  Ed25519 raw sign (RFC 8032)
+ *  Takes 32-byte seed + message, returns 64-byte signature
+ */
+void
+Keyring_ed25519_sign(void *fp)
+{
+	F_Keyring_ed25519_sign *f;
+	uchar sig[64];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->seed == H || f->seed->len != 32)
+		return;
+
+	ed25519_raw_sign(sig, f->seed->data,
+		f->msg == H ? nil : f->msg->data,
+		f->msg == H ? 0 : f->msg->len);
+
+	*f->ret = mem2array(sig, 64);
+}
+
+/*
+ *  Ed25519 raw verify (RFC 8032)
+ *  Takes 32-byte pk + message + 64-byte signature, returns 0/1
+ */
+void
+Keyring_ed25519_verify(void *fp)
+{
+	F_Keyring_ed25519_verify *f;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->pk == H || f->pk->len != 32)
+		return;
+	if(f->sig == H || f->sig->len != 64)
+		return;
+
+	*f->ret = ed25519_raw_verify(f->sig->data, f->pk->data,
+		f->msg == H ? nil : f->msg->data,
+		f->msg == H ? 0 : f->msg->len);
 }

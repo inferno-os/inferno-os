@@ -17,6 +17,11 @@ CLEANCONFLIST=
 # Default: headless (no display, terminal only)
 GUIBACK=headless
 
+# GPU Acceleration (TensorRT/CUDA)
+# Set ENABLEGPU=1 to build with GPU support (requires CUDA + TensorRT).
+# Default: disabled. Only available on NVIDIA Jetson (arm64) at this stage.
+ENABLEGPU=0
+
 INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is installed
 
 #end configurable parameters
@@ -27,6 +32,9 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 
 # Include GUI backend configuration
 <mkfile-gui-$GUIBACK
+
+# Include GPU configuration (set ENABLEGPU=1 for Jetson TensorRT support)
+<mkfile-gpu-$ENABLEGPU
 
 OBJ=\
 	asm-$OBJTYPE.$O\
@@ -51,11 +59,12 @@ CFLAGS=\
 	-I$ROOT/$SYSTARG/$OBJTYPE/include\
 	-I$ROOT/include\
 	-I$ROOT/libinterp\
-	$CTHREADFLAGS $CFLAGS $EMUOPTIONS $GUIFLAGS\
+	$CTHREADFLAGS $CFLAGS $EMUOPTIONS $GUIFLAGS $GPUFLAGS\
 
 KERNDATE=`{$NDATE}
 
 SYSLIBS=\
+	$GPULIBS\
 	-lm\
 	-lpthread\
 

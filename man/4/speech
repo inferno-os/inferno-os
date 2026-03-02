@@ -1,0 +1,244 @@
+.TH SPEECH 4
+.SH NAME
+speech \- 9P file server for text-to-speech and speech-to-text
+.SH SYNOPSIS
+.B speech9p
+[
+.B \-D
+] [
+.B \-m
+.I mountpoint
+] [
+.B \-e
+.I engine
+] [
+.B \-k
+.I apikey
+] [
+.B \-u
+.I apiurl
+] [
+.B \-v
+.I voice
+] [
+.B \-l
+.I lang
+]
+.SH DESCRIPTION
+.I Speech9p
+is a file server that provides text-to-speech (TTS) and
+speech-to-text (STT) capabilities through a 9P filesystem interface.
+It bridges between the Inferno audio device
+.RI ( audio (3))
+and pluggable speech engine backends.
+.PP
+The server mounts a synthetic filesystem (default
+.BR /n/speech )
+containing the following files:
+.TP
+.B ctl
+Read to display the current configuration.
+Write configuration commands to change settings.
+.TP
+.B say
+Write UTF-8 text to synthesize and play through
+.BR /dev/audio .
+Read to get the status of the last synthesis operation.
+.TP
+.B hear
+Write
+.B start
+to begin recording from
+.BR /dev/audio .
+Read to get the transcribed text.
+Writing clears any previous transcription and starts a new recording.
+.TP
+.B voices
+Read to list available voices for the current engine.
+.SS Options
+.TP
+.B \-D
+Enable 9P debug tracing.
+.TP
+.BI \-m " mountpoint"
+Mount the file server at
+.I mountpoint
+(default
+.BR /n/speech ).
+.TP
+.BI \-e " engine"
+Select the speech engine backend.
+.B cmd
+(default) uses host OS commands via the cmd device
+.RI ( cmd (3)).
+.B api
+uses an HTTP API (OpenAI-compatible).
+.TP
+.BI \-k " apikey"
+API authentication key (for
+.B api
+engine).
+.TP
+.BI \-u " apiurl"
+Base URL for the API endpoint (default: https://api.openai.com/v1).
+.TP
+.BI \-v " voice"
+Default voice name.
+Platform-specific for the
+.B cmd
+engine;
+.BR alloy ,
+.BR echo ,
+.BR fable ,
+.BR nova ,
+.BR onyx ,
+or
+.B shimmer
+for the
+.B api
+engine.
+.TP
+.BI \-l " lang"
+Language code (default:
+.BR en ).
+.SS Configuration Commands
+Write to
+.B ctl
+to change settings:
+.TP
+.BI engine " name"
+Switch engine backend
+.RB ( cmd
+or
+.BR api ).
+.TP
+.BI voice " name"
+Set the voice.
+.TP
+.BI lang " code"
+Set the language.
+.TP
+.BI rate " hz"
+Set audio sample rate (8000\-48000, default 22050).
+.TP
+.BI chans " n"
+Set channels (1 or 2).
+.TP
+.BI bits " n"
+Set bits per sample (8 or 16).
+.TP
+.BI cmdtts " command"
+Set the host TTS command (for
+.B cmd
+engine).
+.TP
+.BI cmdstt " command"
+Set the host STT command (for
+.B cmd
+engine).
+.TP
+.BI apiurl " url"
+Set the API endpoint URL.
+.TP
+.BI apikey " key"
+Set the API authentication key.
+.SS Platform Support
+The
+.B cmd
+engine auto-detects the host platform:
+.TP
+.B macOS
+Uses the built-in
+.I say
+command for TTS.
+.TP
+.B Linux
+Uses
+.I espeak-ng
+for TTS (install separately).
+Alternatively, set
+.B cmdtts
+to use
+.I piper
+for neural TTS.
+.TP
+.B Windows
+Uses PowerShell
+.I System.Speech
+for TTS.
+.PP
+For STT, install
+.I whisper.cpp
+or similar and configure via:
+.IP
+.B "echo 'cmdstt whisper-cli' > /n/speech/ctl"
+.SS Veltro Integration
+To give a Veltro agent speech capabilities:
+.IP
+.EX
+# Start speech server
+speech9p -e cmd
+
+# Start tools with say and hear
+tools9p read list say hear
+
+# Run agent with speech tools
+veltro "greet the user verbally"
+.EE
+.SH EXAMPLE
+.EX
+# Start speech server with default settings
+speech9p
+
+# Configure voice
+echo 'voice samantha' > /n/speech/ctl
+
+# Speak text
+echo 'Hello from Inferno' > /n/speech/say
+
+# Listen and transcribe
+echo 'start' > /n/speech/hear
+cat /n/speech/hear
+
+# Check configuration
+cat /n/speech/ctl
+
+# Use API engine with OpenAI
+speech9p -e api -k sk-...
+echo 'voice nova' > /n/speech/ctl
+echo 'Hello from the cloud' > /n/speech/say
+.EE
+.SH FILES
+.TP
+.B /n/speech
+Default mount point.
+.TP
+.B /dev/audio
+Audio data device (see
+.IR audio (3)).
+.TP
+.B /dev/audioctl
+Audio control device.
+.TP
+.B /cmd
+Host command device (see
+.IR cmd (3)).
+.SH SOURCE
+.B /appl/veltro/speech9p.b
+.SH SEE ALSO
+.IR audio (3),
+.IR cmd (3),
+.IR auplay (1),
+.IR audio (6)
+.SH BUGS
+The audio device is exclusive-use; speech9p cannot share
+.B /dev/audio
+with other audio clients simultaneously.
+.PP
+The
+.B cmd
+engine requires host-side TTS/STT software to be installed.
+.PP
+HTTPS support requires
+.B /net/ssl
+to be available.

@@ -43,6 +43,30 @@ struct XAESstate
 	AESstate	state;
 };
 
+/* AES-GCM state */
+typedef struct XAESGCMstate XAESGCMstate;
+struct XAESGCMstate
+{
+	Keyring_AESGCMstate	x;
+	AESGCMstate	state;
+};
+
+/* ChaCha state */
+typedef struct XChaChastate XChaChastate;
+struct XChaChastate
+{
+	Keyring_ChaChastate	x;
+	ChaChastate	state;
+};
+
+/* EC point */
+typedef struct XECpoint XECpoint;
+struct XECpoint
+{
+	Keyring_ECpoint	x;
+	ECpoint	point;
+};
+
 /* DES state */
 struct XDESstate
 {

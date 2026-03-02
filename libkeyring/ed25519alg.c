@@ -287,21 +287,12 @@ ed25519_sk2pk(void *vs)
 {
 	Ed25519priv *sk = (Ed25519priv*)vs;
 	Ed25519pub *pk;
-	int i;
 
 	pk = ed25519puballoc();
 	if(pk == nil)
 		return nil;
 
-	fprint(2, "ed25519_sk2pk: sk->pk[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", sk->pk[i]);
-	fprint(2, "\n");
-
 	memmove(pk->key, sk->pk, Ed25519PublicKeyLen);
-
-	fprint(2, "ed25519_sk2pk: pk->key[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", pk->key[i]);
-	fprint(2, "\n");
 
 	return pk;
 }
@@ -355,7 +346,7 @@ ed25519_sign_hash(mpint *mp, void *key)
 	Ed25519sig *sig;
 	uchar hash[SHA512dlen];
 	uchar fullsk[Ed25519SecretKeyLen];
-	int n, i;
+	int n;
 
 	sig = ed25519sigalloc();
 	if(sig == nil)
@@ -368,28 +359,12 @@ ed25519_sign_hash(mpint *mp, void *key)
 		return nil;
 	}
 
-	fprint(2, "ed25519_sign_hash: n=%d, hash[0:8] = ", n);
-	for(i = 0; i < 8 && i < n; i++) fprint(2, "%02x", hash[i]);
-	fprint(2, "\n");
-
 	/* Create full secret key: seed || public key */
 	memmove(fullsk, sk->seed, Ed25519SeedLen);
 	memmove(fullsk + Ed25519SeedLen, sk->pk, Ed25519PublicKeyLen);
 
-	fprint(2, "ed25519_sign_hash: seed[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", sk->seed[i]);
-	fprint(2, "\ned25519_sign_hash: sk->pk[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", sk->pk[i]);
-	fprint(2, "\n");
-
 	/* Sign the hash */
 	ed25519_sign(sig->sig, hash, n, fullsk);
-
-	fprint(2, "ed25519_sign_hash: sig[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", sig->sig[i]);
-	fprint(2, "\ned25519_sign_hash: sig[32:40] = ");
-	for(i = 32; i < 40; i++) fprint(2, "%02x", sig->sig[i]);
-	fprint(2, "\n");
 
 	/* Clear sensitive data */
 	memset(fullsk, 0, sizeof(fullsk));
@@ -407,25 +382,15 @@ ed25519_verify_hash(mpint *mp, void *vsig, void *vkey)
 	Ed25519pub *pk = (Ed25519pub*)vkey;
 	Ed25519sig *sig = (Ed25519sig*)vsig;
 	uchar hash[SHA512dlen];
-	int n, ok, i;
-
-	fprint(2, "ed25519_verify_hash: called\n");
+	int n, ok;
 
 	/* Convert mpint to bytes */
 	n = mptobe(mp, hash, sizeof(hash), nil);
-	if(n < 0) {
-		fprint(2, "ed25519_verify_hash: mptobe failed\n");
+	if(n < 0)
 		return 0;
-	}
-
-	fprint(2, "ed25519_verify_hash: hash len=%d, hash[0:8] = ", n);
-	for(i = 0; i < 8 && i < n; i++) fprint(2, "%02x", hash[i]);
-	fprint(2, "\n");
 
 	/* Verify */
 	ok = ed25519_verify(sig->sig, hash, n, pk->key);
-
-	fprint(2, "ed25519_verify_hash: result=%d\n", ok);
 
 	memset(hash, 0, sizeof(hash));
 	return ok;
@@ -450,6 +415,32 @@ static void
 ed25519_freesig(void *a)
 {
 	ed25519sigfree((Ed25519sig*)a);
+}
+
+/*
+ * Raw Ed25519 sign/verify/pubkey for RFC 8032 testing via Keyring module
+ */
+void
+ed25519_raw_sign(uchar sig[64], const uchar seed[32], const uchar *msg, ulong msglen)
+{
+	uchar sk[64], pk[32];
+	ed25519_create_keypair(pk, sk, seed);
+	ed25519_sign(sig, msg, msglen, sk);
+	memset(sk, 0, sizeof(sk));
+}
+
+int
+ed25519_raw_verify(const uchar sig[64], const uchar pk[32], const uchar *msg, ulong msglen)
+{
+	return ed25519_verify(sig, msg, msglen, pk);
+}
+
+void
+ed25519_raw_pubkey(uchar pk[32], const uchar seed[32])
+{
+	uchar sk[64];
+	ed25519_create_keypair(pk, sk, seed);
+	memset(sk, 0, sizeof(sk));
 }
 
 /*
@@ -770,9 +761,9 @@ fe_mul(fe h, const fe f, const fe g)
 	i32 f5 = f[5], f6 = f[6], f7 = f[7], f8 = f[8], f9 = f[9];
 	i32 g0 = g[0], g1 = g[1], g2 = g[2], g3 = g[3], g4 = g[4];
 	i32 g5 = g[5], g6 = g[6], g7 = g[7], g8 = g[8], g9 = g[9];
-	i32 g1_19 = 19 * g1, g2_19 = 19 * g2, g3_19 = 19 * g3, g4_19 = 19 * g4, g5_19 = 19 * g5;
-	i32 g6_19 = 19 * g6, g7_19 = 19 * g7, g8_19 = 19 * g8, g9_19 = 19 * g9;
-	i32 f1_2 = 2 * f1, f3_2 = 2 * f3, f5_2 = 2 * f5, f7_2 = 2 * f7, f9_2 = 2 * f9;
+	i64 g1_19 = 19 * (i64)g1, g2_19 = 19 * (i64)g2, g3_19 = 19 * (i64)g3, g4_19 = 19 * (i64)g4, g5_19 = 19 * (i64)g5;
+	i64 g6_19 = 19 * (i64)g6, g7_19 = 19 * (i64)g7, g8_19 = 19 * (i64)g8, g9_19 = 19 * (i64)g9;
+	i64 f1_2 = 2 * (i64)f1, f3_2 = 2 * (i64)f3, f5_2 = 2 * (i64)f5, f7_2 = 2 * (i64)f7, f9_2 = 2 * (i64)f9;
 	i64 h0, h1, h2, h3, h4, h5, h6, h7, h8, h9;
 	i64 carry0, carry1, carry2, carry3, carry4;
 	i64 carry5, carry6, carry7, carry8, carry9;
@@ -1170,18 +1161,16 @@ ge_scalarmult_base(ge_p3 *h, const uchar *a)
 	fe_mul(B.T, Bx, By);
 	ge_p3_to_cached(&Bcached, &B);
 
-	/* DEBUG: one-time test of [1]B = B */
+	/* One-time self-test: verify curve arithmetic correctness */
 	if(!tested){
-		uchar one[32] = {1};  /* scalar 1 in little-endian */
+		uchar one[32] = {1};
 		uchar Benc[32], result[32];
 		ge_p3 test;
 
 		tested = 1;
 
-		/* Encode B directly */
+		/* Verify [1]B = B */
 		ge_p3_tobytes(Benc, &B);
-
-		/* Compute [1]B the hard way */
 		ge_p3_0(&test);
 		for(i = 255; i >= 0; i--){
 			ge_p3_dbl(&t, &test);
@@ -1192,40 +1181,15 @@ ge_scalarmult_base(ge_p3 *h, const uchar *a)
 			}
 		}
 		ge_p3_tobytes(result, &test);
+		if(memcmp(Benc, result, 32) != 0)
+			{ fprint(2, "ed25519: [1]B != B\n"); abort(); }
 
-		fprint(2, "SELFTEST [1]B: B_enc[0:8] = ");
-		for(i = 0; i < 8; i++) fprint(2, "%02x", Benc[i]);
-		fprint(2, "\nSELFTEST [1]B: result[0:8] = ");
-		for(i = 0; i < 8; i++) fprint(2, "%02x", result[i]);
-		fprint(2, "\nSELFTEST [1]B: match=%d\n", memcmp(Benc, result, 32) == 0);
-
-		/* Also test [0]B = identity (Y=1, X=0) */
+		/* Verify [2]B via scalar mult matches doubling */
 		{
-			uchar zero[32] = {0};
-			ge_p3 ident;
-			uchar ident_enc[32];
-
-			ge_p3_0(&ident);
-			for(i = 255; i >= 0; i--){
-				ge_p3_dbl(&t, &ident);
-				ge_p1p1_to_p3(&ident, &t);
-				/* no bit set in zero scalar */
-			}
-			ge_p3_tobytes(ident_enc, &ident);
-			fprint(2, "SELFTEST [0]B: identity_enc[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", ident_enc[i]);
-			/* Should be 0100000...00 (y=1, x=0) */
-			fprint(2, " (expected 01000000...)\n");
-		}
-
-		/* Test [2]B via scalar mult vs 2*B via ge_p3_dbl */
-		{
-			uchar two[32] = {2};  /* scalar 2 */
-			ge_p3 twoB_scalarmult;
-			ge_p3 twoB_dbl;
+			uchar two[32] = {2};
+			ge_p3 twoB_scalarmult, twoB_dbl;
 			uchar enc1[32], enc2[32];
 
-			/* Method 1: [2]B via scalar mult */
 			ge_p3_0(&twoB_scalarmult);
 			for(i = 255; i >= 0; i--){
 				ge_p3_dbl(&t, &twoB_scalarmult);
@@ -1235,170 +1199,61 @@ ge_scalarmult_base(ge_p3 *h, const uchar *a)
 					ge_p1p1_to_p3(&twoB_scalarmult, &t);
 				}
 			}
-
-			/* Method 2: 2*B via ge_p3_dbl */
 			ge_p3_dbl(&t, &B);
 			ge_p1p1_to_p3(&twoB_dbl, &t);
-
 			ge_p3_tobytes(enc1, &twoB_scalarmult);
 			ge_p3_tobytes(enc2, &twoB_dbl);
-
-			fprint(2, "SELFTEST [2]B: scalar_mult[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", enc1[i]);
-			fprint(2, "\nSELFTEST [2]B: 2*B_dbl[0:8]    = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", enc2[i]);
-			fprint(2, "\nSELFTEST [2]B: match=%d\n", memcmp(enc1, enc2, 32) == 0);
-
-			/* Also test B + B via ge_add (should use unified formula) */
-			{
-				ge_p3 twoB_add;
-				uchar enc3[32];
-				ge_add(&t, &B, &Bcached);
-				ge_p1p1_to_p3(&twoB_add, &t);
-				ge_p3_tobytes(enc3, &twoB_add);
-				fprint(2, "SELFTEST [2]B: B+B_add[0:8]    = ");
-				for(i = 0; i < 8; i++) fprint(2, "%02x", enc3[i]);
-				fprint(2, "\nSELFTEST [2]B: add_vs_dbl=%d\n", memcmp(enc2, enc3, 32) == 0);
-			}
+			if(memcmp(enc1, enc2, 32) != 0)
+				{ fprint(2, "ed25519: [2]B scalar mult != doubling\n"); abort(); }
 		}
 
-		/* Test SHA512 correctness first */
+		/* RFC 8032 Test Vector 1: verify keypair and signature */
 		{
-			/* SHA512("") = cf83e1357eefb8bdf1542850d66d8007... */
-			/* SHA512("abc") = ddaf35a193617aba... */
-			/* SHA512(32 zeros) = 1c4acf14 30f8b4c6... */
-			uchar empty_hash[64];
-			uchar abc_hash[64];
-			uchar zeros[32] = {0};
-			uchar zeros_hash[64];
-			sha512((uchar*)"", 0, empty_hash, nil);
-			sha512((uchar*)"abc", 3, abc_hash, nil);
-			sha512(zeros, 32, zeros_hash, nil);
-			fprint(2, "SELFTEST SHA512: sha512('')[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", empty_hash[i]);
-			fprint(2, " (expect cf83e135...)\n");
-			fprint(2, "SELFTEST SHA512: sha512('abc')[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", abc_hash[i]);
-			fprint(2, " (expect ddaf35a1...)\n");
-			fprint(2, "SELFTEST SHA512: sha512(32 zeros)[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", zeros_hash[i]);
-			fprint(2, " (expect 5046adc1...)\n");
-		}
-
-		/* RFC 8032 Test Vector 1: empty message */
-		{
-			/* Seed (secret key in RFC): 9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60 */
 			static const uchar rfc_seed[32] = {
 				0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60,
 				0xba, 0x84, 0x4a, 0xf4, 0x92, 0xec, 0x2c, 0xc4,
 				0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32, 0x69, 0x19,
 				0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60
 			};
-			/* Expected public key: d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a */
 			static const uchar rfc_pk[32] = {
 				0xd7, 0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7,
 				0xd5, 0x4b, 0xfe, 0xd3, 0xc9, 0x64, 0x07, 0x3a,
 				0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23, 0x25,
 				0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a
 			};
-			/* Expected clamped scalar (first 32 bytes of SHA512(seed), clamped):
-			   4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb
-			   Wait, that's test 2. For test 1 (seed 9d61...), the SHA512 is:
-			   f0760e1696cf1a4e55754bd67b1ec05a5b9edc0e0dc0095f85b84b0f5f4d7e68
-			   + more bytes, then clamped
-			*/
-			uchar test_pk[32];
+			static const uchar rfc_sig[64] = {
+				0xe5, 0x56, 0x43, 0x00, 0xc3, 0x60, 0xac, 0x72,
+				0x90, 0x86, 0xe2, 0xcc, 0x80, 0x6e, 0x82, 0x8a,
+				0x84, 0x87, 0x7f, 0x1e, 0xb8, 0xe5, 0xd9, 0x74,
+				0xd8, 0x73, 0xe0, 0x65, 0x22, 0x49, 0x01, 0x55,
+				0x5f, 0xb8, 0x82, 0x15, 0x90, 0xa3, 0x3b, 0xac,
+				0xc6, 0x1e, 0x39, 0x70, 0x1c, 0xf9, 0xb4, 0x6b,
+				0xd2, 0x5b, 0xf5, 0xf0, 0x59, 0x5b, 0xbe, 0x24,
+				0x65, 0x51, 0x41, 0x43, 0x8e, 0x7a, 0x10, 0x0b
+			};
+			uchar test_pk[32], test_sk[64], test_sig[64];
 			uchar test_hash[64];
 			ge_p3 test_A;
 
-			/* Compute public key from seed */
-			fprint(2, "SELFTEST RFC8032: seed[0:32] = ");
-			for(i = 0; i < 32; i++) fprint(2, "%02x", rfc_seed[i]);
-			fprint(2, "\n(expect 9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60)\n");
-
-			/* Copy to local array to rule out static array issues */
-			{
-				uchar seed_copy[32];
-				memmove(seed_copy, rfc_seed, 32);
-				fprint(2, "SELFTEST RFC8032: seed_copy[0:8] = ");
-				for(i = 0; i < 8; i++) fprint(2, "%02x", seed_copy[i]);
-				fprint(2, "\n");
-				sha512(seed_copy, 32, test_hash, nil);
-			}
-
-			fprint(2, "SELFTEST RFC8032: sha512(seed)[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", test_hash[i]);
-			fprint(2, "\nSELFTEST RFC8032: sha512(seed)[24:32] = ");
-			for(i = 24; i < 32; i++) fprint(2, "%02x", test_hash[i]);
-			fprint(2, "\n");
-
+			/* Verify public key derivation */
+			sha512(rfc_seed, 32, test_hash, nil);
 			test_hash[0] &= 248;
 			test_hash[31] &= 127;
 			test_hash[31] |= 64;
-
-			fprint(2, "SELFTEST RFC8032: clamped[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", test_hash[i]);
-			fprint(2, "\nSELFTEST RFC8032: clamped[24:32] = ");
-			for(i = 24; i < 32; i++) fprint(2, "%02x", test_hash[i]);
-			fprint(2, "\n");
-
 			ge_scalarmult_base(&test_A, test_hash);
 			ge_p3_tobytes(test_pk, &test_A);
+			if(memcmp(rfc_pk, test_pk, 32) != 0)
+				{ fprint(2, "ed25519: RFC 8032 pk mismatch\n"); abort(); }
 
-			fprint(2, "SELFTEST RFC8032: expected_pk[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", rfc_pk[i]);
-			fprint(2, "\nSELFTEST RFC8032: computed_pk[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", test_pk[i]);
-			fprint(2, "\nSELFTEST RFC8032: pk_match=%d\n", memcmp(rfc_pk, test_pk, 32) == 0);
+			/* Verify signature verification */
+			if(!ed25519_verify(rfc_sig, nil, 0, rfc_pk))
+				{ fprint(2, "ed25519: RFC 8032 verify failed\n"); abort(); }
 
-			/* Test RFC 8032 signature verification */
-			{
-				/* RFC 8032 Test 1 signature (message is empty):
-				   e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e065224901555fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b */
-				static const uchar rfc_sig[64] = {
-					0xe5, 0x56, 0x43, 0x00, 0xc3, 0x60, 0xac, 0x72,
-					0x90, 0x86, 0xe2, 0xcc, 0x80, 0x6e, 0x82, 0x8a,
-					0x84, 0x87, 0x7f, 0x1e, 0xb8, 0xe5, 0xd9, 0x74,
-					0xd8, 0x73, 0xe0, 0x65, 0x22, 0x49, 0x01, 0x55,
-					0x5f, 0xb8, 0x82, 0x15, 0x90, 0xa3, 0x3b, 0xac,
-					0xc6, 0x1e, 0x39, 0x70, 0x1c, 0xf9, 0xb4, 0x6b,
-					0xd2, 0x5b, 0xf5, 0xf0, 0x59, 0x5b, 0xbe, 0x24,
-					0x65, 0x51, 0x41, 0x43, 0x8e, 0x7a, 0x10, 0x0b
-				};
-				int verify_result;
-				fprint(2, "SELFTEST RFC8032 VERIFY: sig[0:8] = ");
-				for(i = 0; i < 8; i++) fprint(2, "%02x", rfc_sig[i]);
-				fprint(2, "\nSELFTEST RFC8032 VERIFY: pk[0:8] = ");
-				for(i = 0; i < 8; i++) fprint(2, "%02x", rfc_pk[i]);
-				fprint(2, "\nSELFTEST RFC8032 VERIFY: calling ed25519_verify (empty message)\n");
-				verify_result = ed25519_verify(rfc_sig, nil, 0, rfc_pk);
-				fprint(2, "SELFTEST RFC8032 VERIFY: result=%d (expected 1)\n", verify_result);
-
-				/* CRITICAL TEST: Sign with RFC 8032 key and verify signature matches */
-				{
-					uchar test_sk[64];
-					uchar test_sig[64];
-					int sig_match;
-
-					/* Create keypair from rfc_seed */
-					ed25519_create_keypair(test_pk, test_sk, rfc_seed);
-
-					/* Sign empty message */
-					ed25519_sign(test_sig, nil, 0, test_sk);
-
-					/* Compare with expected signature */
-					sig_match = (memcmp(test_sig, rfc_sig, 64) == 0);
-					fprint(2, "SELFTEST RFC8032 SIGN: produced_sig[0:8] = ");
-					for(i = 0; i < 8; i++) fprint(2, "%02x", test_sig[i]);
-					fprint(2, "\nSELFTEST RFC8032 SIGN: expected_sig[0:8] = ");
-					for(i = 0; i < 8; i++) fprint(2, "%02x", rfc_sig[i]);
-					fprint(2, "\nSELFTEST RFC8032 SIGN: produced_sig[32:40] = ");
-					for(i = 32; i < 40; i++) fprint(2, "%02x", test_sig[i]);
-					fprint(2, "\nSELFTEST RFC8032 SIGN: expected_sig[32:40] = ");
-					for(i = 32; i < 40; i++) fprint(2, "%02x", rfc_sig[i]);
-					fprint(2, "\nSELFTEST RFC8032 SIGN: sig_match=%d (MUST BE 1)\n", sig_match);
-				}
-			}
+			/* Verify signature generation */
+			ed25519_create_keypair(test_pk, test_sk, rfc_seed);
+			ed25519_sign(test_sig, nil, 0, test_sk);
+			if(memcmp(test_sig, rfc_sig, 64) != 0)
+				{ fprint(2, "ed25519: RFC 8032 sign mismatch\n"); abort(); }
 		}
 	}
 
@@ -1742,16 +1597,6 @@ ed25519_create_keypair(uchar *pk, uchar *sk, const uchar *seed)
 	ge_scalarmult_base(&A, hash);
 	ge_p3_tobytes(pk, &A);
 
-	/* DEBUG: verify pk can be decompressed */
-	{
-		ge_p3 Acheck;
-		int i;
-		int rc = ge_frombytes_negate_vartime(&Acheck, pk);
-		fprint(2, "ed25519_create_keypair: pk[0:8] = ");
-		for(i = 0; i < 8; i++) fprint(2, "%02x", pk[i]);
-		fprint(2, "\ned25519_create_keypair: ge_frombytes rc=%d\n", rc);
-	}
-
 	/* Secret key is seed || public key */
 	memmove(sk, seed, Ed25519SeedLen);
 	memmove(sk + Ed25519SeedLen, pk, Ed25519PublicKeyLen);
@@ -1765,30 +1610,6 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 	uchar r[SHA512dlen];
 	ge_p3 R;
 	DigestState *ds;
-	int dbgi;
-
-	/* DEBUG SELF-TEST: test fe_tobytes directly */
-	{
-		uchar testbytes[32];
-		static const uchar Bcompressed[32] = {
-			0x58, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-			0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-			0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66,
-			0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66, 0x66
-		};
-
-		/* Test: fe_tobytes on By directly */
-		fprint(2, "TEST By limbs: ");
-		for(dbgi = 0; dbgi < 10; dbgi++) fprint(2, "%d ", By[dbgi]);
-		fprint(2, "\n");
-
-		fe_tobytes(testbytes, By);
-		fprint(2, "TEST fe_tobytes(By) = ");
-		for(dbgi = 0; dbgi < 32; dbgi++) fprint(2, "%02x", testbytes[dbgi]);
-		fprint(2, "\nTEST expected       = ");
-		for(dbgi = 0; dbgi < 32; dbgi++) fprint(2, "%02x", Bcompressed[dbgi]);
-		fprint(2, "\nTEST match=%d\n", memcmp(testbytes, Bcompressed, 32) == 0);
-	}
 
 	/* Hash secret key half to get prefix for nonce derivation */
 	sha512(sk, Ed25519SeedLen, hash, nil);
@@ -1796,56 +1617,14 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 	hash[31] &= 127;
 	hash[31] |= 64;
 
-	/* DEBUG: verify that sk[32:] == [s]B where s is the clamped hash[0:32] */
-	{
-		ge_p3 checkA;
-		uchar checkpk[32];
-		ge_scalarmult_base(&checkA, hash);
-		ge_p3_tobytes(checkpk, &checkA);
-		fprint(2, "ed25519_sign: DEBUG pk consistency check\n");
-		fprint(2, "  sk[32:40] (stored pk) = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sk[32+dbgi]);
-		fprint(2, "\n  [s]B (computed pk)    = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", checkpk[dbgi]);
-		fprint(2, "\n  pk_match = %d\n", memcmp(sk+32, checkpk, 32) == 0);
-	}
-
 	/* Compute nonce r = H(prefix || m) */
 	ds = sha512(hash + 32, 32, nil, nil);
 	sha512(m, mlen, r, ds);
 	sc_reduce(r);
 
-	fprint(2, "ed25519_sign: r (nonce)[0:8] = ");
-	for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", r[dbgi]);
-	fprint(2, "\ned25519_sign: s (scalar)[0:8] = ");
-	for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", hash[dbgi]);
-	fprint(2, "\n");
-
 	/* Compute R = [r]B */
 	ge_scalarmult_base(&R, r);
 	ge_p3_tobytes(sig, &R);
-
-	/* DEBUG: Verify that the computed R can be recovered by [r]B */
-	{
-		ge_p3 Rcheck;
-		uchar Rcheck_enc[32];
-		ge_scalarmult_base(&Rcheck, r);
-		ge_p3_tobytes(Rcheck_enc, &Rcheck);
-		fprint(2, "ed25519_sign: R[0:8] = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sig[dbgi]);
-		fprint(2, "\ned25519_sign: Rcheck[0:8] (recomputed [r]B) = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", Rcheck_enc[dbgi]);
-		fprint(2, "\ned25519_sign: R matches recomputed = %d\n", memcmp(sig, Rcheck_enc, 32) == 0);
-	}
-
-	/* DEBUG: print R and pk */
-	fprint(2, "ed25519_sign: R[0:8] = ");
-	for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sig[dbgi]);
-	fprint(2, "\ned25519_sign: pk[0:8] = ");
-	for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sk[32+dbgi]);
-	fprint(2, "\ned25519_sign: m[0:8] = ");
-	for(dbgi = 0; dbgi < 8 && dbgi < mlen; dbgi++) fprint(2, "%02x", m[dbgi]);
-	fprint(2, " (mlen=%ld)\n", mlen);
 
 	/* Compute S = r + H(R || A || m) * s */
 	ds = sha512(sig, 32, nil, nil);
@@ -1853,109 +1632,8 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 	sha512(m, mlen, hram, ds);
 	sc_reduce(hram);
 
-	fprint(2, "ed25519_sign: hram[0:8] = ");
-	for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", hram[dbgi]);
-	fprint(2, "\n");
-
-	/* DEBUG: Print full 32-byte values for Python verification */
-	fprint(2, "MULADD_DEBUG: r_full = ");
-	for(dbgi = 0; dbgi < 32; dbgi++) fprint(2, "%02x", r[dbgi]);
-	fprint(2, "\nMULADD_DEBUG: s_full = ");
-	for(dbgi = 0; dbgi < 32; dbgi++) fprint(2, "%02x", hash[dbgi]);
-	fprint(2, "\nMULADD_DEBUG: h_full = ");
-	for(dbgi = 0; dbgi < 32; dbgi++) fprint(2, "%02x", hram[dbgi]);
-	fprint(2, "\n");
-
 	/* s * hram + r mod L -> sig[32..63] */
-	/* Use simple mpint-based muladd for correctness */
 	sc_muladd_simple(sig + 32, hram, hash, r);
-
-	fprint(2, "ed25519_sign: S (sig[32:40]) = ");
-	for(dbgi = 32; dbgi < 40; dbgi++) fprint(2, "%02x", sig[dbgi]);
-	fprint(2, "\nMULADD_DEBUG: S_full = ");
-	for(dbgi = 32; dbgi < 64; dbgi++) fprint(2, "%02x", sig[dbgi]);
-	fprint(2, "\n");
-
-	/* DEBUG: Verify S computation by checking [S]B = [r]B + [h*s]B */
-	{
-		ge_p3 SB, rB, hsB;
-		uchar SB_enc[32], rB_enc[32];
-		ge_p1p1 tt;
-		ge_cached rBcached;
-
-		/* Compute [S]B directly */
-		ge_scalarmult_base(&SB, sig + 32);
-		ge_p3_tobytes(SB_enc, &SB);
-
-		/* Compute [r]B (should match R) */
-		ge_scalarmult_base(&rB, r);
-		ge_p3_tobytes(rB_enc, &rB);
-
-		fprint(2, "ed25519_sign: DEBUG S verification:\n");
-		fprint(2, "  [S]B[0:8] = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", SB_enc[dbgi]);
-		fprint(2, "\n  [r]B[0:8] = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", rB_enc[dbgi]);
-		fprint(2, "\n  R[0:8]    = ");
-		for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sig[dbgi]);
-		fprint(2, "\n  [r]B = R: %d\n", memcmp(rB_enc, sig, 32) == 0);
-
-		/* Now compute [r]B + [h*s]B and check if it equals [S]B */
-		/* First compute [h*s]B = [h]([s]B) = [h]A */
-		{
-			ge_p3 A, hA;
-			ge_cached Acached;
-			uchar hA_enc[32], SB_minus_rB_enc[32];
-			ge_p2 SB_minus_rB_p2;
-			int i;
-
-			/* Get A = [s]B from public key */
-			ge_frombytes_negate_vartime(&A, sk + 32);  /* This gives -A */
-			/* We want +A, so negate again */
-			fe_neg(A.X, A.X);
-			fe_neg(A.T, A.T);
-
-			/* Compute [h]A */
-			ge_p3_to_cached(&Acached, &A);
-			ge_p3_0(&hA);
-			for(i = 255; i >= 0; i--){
-				ge_p3_dbl(&tt, &hA);
-				ge_p1p1_to_p3(&hA, &tt);
-				if((hram[i/8] >> (i&7)) & 1){
-					ge_add(&tt, &hA, &Acached);
-					ge_p1p1_to_p3(&hA, &tt);
-				}
-			}
-			ge_p3_tobytes(hA_enc, &hA);
-
-			fprint(2, "  [h]*A[0:8] (= [h*s]B) = ");
-			for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", hA_enc[dbgi]);
-			fprint(2, "\n");
-
-			/* Compute [r]B + [h*s]B */
-			ge_p3_to_cached(&rBcached, &rB);
-			{
-				ge_cached hAcached;
-				ge_p3 sum;
-				uchar sum_enc[32];
-
-				ge_p3_to_cached(&hAcached, &hA);
-				ge_add(&tt, &rB, &hAcached);
-				ge_p1p1_to_p3(&sum, &tt);
-				ge_p3_tobytes(sum_enc, &sum);
-
-				fprint(2, "  [r]B + [h*s]B[0:8] = ");
-				for(dbgi = 0; dbgi < 8; dbgi++) fprint(2, "%02x", sum_enc[dbgi]);
-				fprint(2, "\n  Should equal [S]B: %d\n", memcmp(sum_enc, SB_enc, 32) == 0);
-			}
-		}
-	}
-
-	/* DEBUG: Self-verify the signature we just created */
-	{
-		int selfverify = ed25519_verify(sig, m, mlen, sk + 32);
-		fprint(2, "ed25519_sign: SELF-VERIFY = %d (should be 1)\n", selfverify);
-	}
 
 	memset(hash, 0, sizeof(hash));
 	memset(r, 0, sizeof(r));
@@ -1974,23 +1652,9 @@ ed25519_verify(const uchar *sig, const uchar *m, ulong mlen, const uchar *pk)
 	DigestState *ds;
 	int i;
 
-	fprint(2, "ed25519_verify: enter, mlen=%ld\n", mlen);
-	fprint(2, "ed25519_verify: sig[0:8] = ");
-	for(i=0;i<8;i++) fprint(2, "%02x", sig[i]);
-	fprint(2, "\ned25519_verify: sig[32:40] = ");
-	for(i=32;i<40;i++) fprint(2, "%02x", sig[i]);
-	fprint(2, "\ned25519_verify: pk[0:8] = ");
-	for(i=0;i<8;i++) fprint(2, "%02x", pk[i]);
-	fprint(2, "\n");
-
 	/* Decode public key */
-	{
-		int decoderc = ge_frombytes_negate_vartime(&A, pk);
-		if(decoderc != 0) {
-			fprint(2, "ed25519_verify: ge_frombytes_negate_vartime failed, rc=%d\n", decoderc);
-			return 0;
-		}
-	}
+	if(ge_frombytes_negate_vartime(&A, pk) != 0)
+		return 0;
 
 	/* h = H(R || A || m) */
 	ds = sha512(sig, 32, nil, nil);
@@ -1998,15 +1662,10 @@ ed25519_verify(const uchar *sig, const uchar *m, ulong mlen, const uchar *pk)
 	sha512(m, mlen, h, ds);
 	sc_reduce(h);
 
-	fprint(2, "ed25519_verify: h[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", h[i]);
-	fprint(2, "\n");
-
 	/* Compute R' = [S]B - [h]A */
-	/* First compute [h]A */
 	ge_p3_to_cached(&Acached, &A);
 
-	/* Simple scalar mult for [h]A - note A is already negated */
+	/* [h](-A) via double-and-add (A is already negated) */
 	ge_p3_0(&R);
 	for(i = 255; i >= 0; i--){
 		ge_p3_dbl(&t, &R);
@@ -2017,63 +1676,12 @@ ed25519_verify(const uchar *sig, const uchar *m, ulong mlen, const uchar *pk)
 		}
 	}
 
-	/* DEBUG: print [h](-A) encoded */
-	{
-		uchar hA_enc[32];
-		ge_p3_tobytes(hA_enc, &R);
-		fprint(2, "ed25519_verify: [h](-A)[0:8] = ");
-		for(i = 0; i < 8; i++) fprint(2, "%02x", hA_enc[i]);
-		fprint(2, "\n");
-
-		/* DEBUG: Verify scalar mult loop by computing [2](-A) and comparing with doubling */
-		{
-			ge_p3 testR;
-			ge_p1p1 testT;
-			uchar two[32] = {2, 0};  /* scalar = 2 */
-			uchar dblA_enc[32], scalmultA_enc[32];
-			int ti;
-
-			/* Method 1: Direct doubling of A */
-			ge_p3_dbl(&testT, &A);
-			ge_p1p1_to_p3(&testR, &testT);
-			ge_p3_tobytes(dblA_enc, &testR);
-
-			/* Method 2: Scalar mult with h=2 */
-			ge_p3_0(&testR);
-			for(ti = 255; ti >= 0; ti--){
-				ge_p3_dbl(&testT, &testR);
-				ge_p1p1_to_p3(&testR, &testT);
-				if((two[ti/8] >> (ti&7)) & 1){
-					ge_add(&testT, &testR, &Acached);
-					ge_p1p1_to_p3(&testR, &testT);
-				}
-			}
-			ge_p3_tobytes(scalmultA_enc, &testR);
-
-			fprint(2, "ed25519_verify: DEBUG [2](-A) doubling[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", dblA_enc[i]);
-			fprint(2, "\ned25519_verify: DEBUG [2](-A) scalar_mult[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", scalmultA_enc[i]);
-			fprint(2, "\ned25519_verify: DEBUG [2](-A) match = %d\n", memcmp(dblA_enc, scalmultA_enc, 32) == 0);
-		}
-	}
-
-	/* Now compute [S]B and add to get R' */
+	/* [S]B + [h](-A) = R' */
 	{
 		ge_p3 SB;
 		ge_cached SBcached;
 
 		ge_scalarmult_base(&SB, sig + 32);
-
-		/* DEBUG: print [S]B encoded */
-		{
-			uchar SB_enc[32];
-			ge_p3_tobytes(SB_enc, &SB);
-			fprint(2, "ed25519_verify: [S]B[0:8] = ");
-			for(i = 0; i < 8; i++) fprint(2, "%02x", SB_enc[i]);
-			fprint(2, "\n");
-		}
-
 		ge_p3_to_cached(&SBcached, &SB);
 		ge_add(&t, &R, &SBcached);
 		ge_p1p1_to_p2(&Rp2, &t);
@@ -2089,23 +1697,11 @@ ed25519_verify(const uchar *sig, const uchar *m, ulong mlen, const uchar *pk)
 		Rcheck[31] ^= fe_isnegative(x) << 7;
 	}
 
-	/* DEBUG: print comparison values */
-	fprint(2, "ed25519_verify: R (sig)[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", sig[i]);
-	fprint(2, "\ned25519_verify: Rcheck[0:8]  = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", Rcheck[i]);
-	fprint(2, "\ned25519_verify: pk[0:8] = ");
-	for(i = 0; i < 8; i++) fprint(2, "%02x", pk[i]);
-	fprint(2, "\ned25519_verify: m[0:8] = ");
-	for(i = 0; i < 8 && i < mlen; i++) fprint(2, "%02x", m[i]);
-	fprint(2, " (mlen=%ld)\n", mlen);
-
 	/* Constant time comparison */
 	{
 		uchar diff = 0;
 		for(i = 0; i < 32; i++)
 			diff |= sig[i] ^ Rcheck[i];
-		fprint(2, "ed25519_verify: result=%d\n", diff == 0);
 		return diff == 0;
 	}
 }

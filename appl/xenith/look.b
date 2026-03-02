@@ -317,7 +317,26 @@ isfilec(r : int) : int
 {
 	if(isalnum(r))
 		return TRUE;
-	if(strchr(".-+/:", r) >= 0)
+	if(strchr(".-+/:?&=%#~_@", r) >= 0)
+		return TRUE;
+	return FALSE;
+}
+
+isurl(s : string) : int
+{
+	if(len s >= 8 && s[0:8] == "https://")
+		return TRUE;
+	if(len s >= 7 && s[0:7] == "http://")
+		return TRUE;
+	return FALSE;
+}
+
+# Check if character is valid in a URL (superset of isfilec)
+isurlc(r : int) : int
+{
+	if(isalnum(r))
+		return TRUE;
+	if(strchr(".-+/:?&=%#~_@!$,;*()'[]", r) >= 0)
 		return TRUE;
 	return FALSE;
 }
@@ -529,41 +548,67 @@ expandfile(t : ref Text, q0 : int, q1 : int, e : Expand) : (int, Expand)
 	n = q1-q0;
 	if(n == 0)
 		return (FALSE, e);
-	# see if it's a file name 
+	# see if it's a file name
 	r = stralloc(n);
 	t.file.buf.read(q0, r, 0, n);
-	# first, does it have bad chars? 
-	nname = -1;
-	for(i=0; i<n; i++){
-		c = r.s[i];
-		if(c==':' && nname<0){
-			if(q0+i+1<t.file.buf.nc && (i==n-1 || isaddrc(t.readc(q0+i+1))))
-				amin = q0+i;
-			else {
+
+	# Check for URL — if expanded text starts with http:// or https://,
+	# re-expand forward to include all URL-valid characters and suppress
+	# address interpretation (the : in http:// is NOT an address separator)
+	isurltext := 0;
+	if(isurl(r.s[0:n])){
+		isurltext = 1;
+		# Re-expand forward from original q1 with URL chars
+		q1 = e.q1;
+		while(q1<t.file.buf.nc && isurlc(t.readc(q1)))
+			q1++;
+		e.q1 = q1;
+		n = q1 - q0;
+		strfree(r);
+		r = stralloc(n);
+		t.file.buf.read(q0, r, 0, n);
+		colon = -1;  # suppress address interpretation
+		amax = q1;
+		amin = amax;
+	}
+
+	if(!isurltext){
+		# first, does it have bad chars?
+		nname = -1;
+		for(i=0; i<n; i++){
+			c = r.s[i];
+			if(c==':' && nname<0){
+				if(q0+i+1<t.file.buf.nc && (i==n-1 || isaddrc(t.readc(q0+i+1))))
+					amin = q0+i;
+				else {
+					strfree(r);
+					r = nil;
+					return (FALSE, e);
+				}
+				nname = i;
+			}
+		}
+		if(nname == -1)
+			nname = n;
+		for(i=0; i<nname; i++)
+			if(!isfilec(r.s[i])) {
 				strfree(r);
 				r = nil;
 				return (FALSE, e);
 			}
-			nname = i;
-		}
-	}
-	if(nname == -1)
+	} else
 		nname = n;
-	for(i=0; i<nname; i++)
-		if(!isfilec(r.s[i])) {
-			strfree(r);
-			r = nil;
-			return (FALSE, e);
-		}
 	#
 	# See if it's a file name in <>, and turn that into an include
 	# file name if so.  Should probably do it for "" too, but that's not
 	# restrictive enough syntax and checking for a #include earlier on the
 	# line would be silly.
 	#
-	 
+
 	isfile := 0;
-	if(q0>0 && t.readc(q0-1)=='<' && q1<t.file.buf.nc && t.readc(q1)=='>')
+	if(isurltext)
+		isfile = 1;  # URLs bypass include/dirname/access checks
+	else if(q0>0 && t.readc(q0-1)=='<' && q1<t.file.buf.nc && t.readc(q1)=='>')
 		(r.s, nname) = includename(t, r.s, nname);
 	else if(q0>0 && t.readc(q0-1)=='"' && q1<t.file.buf.nc && t.readc(q1)=='"')
 		(r.s, nname) = includename(t, r.s, nname);
@@ -676,12 +721,12 @@ lookid(id : int, dump : int) : ref Window
 }
 
 # Check if filename has an image extension (case-insensitive)
+# Retained as fast-path for built-in image formats.
 isimage(name: string): int
 {
 	if(name == nil || len name < 4)
 		return 0;
 
-	# Find the extension
 	dot := -1;
 	for(i := len name - 1; i >= 0; i--){
 		if(name[i] == '.'){
@@ -697,7 +742,6 @@ isimage(name: string): int
 	ext := name[dot:];
 	n := len ext;
 
-	# Check supported extensions (case-insensitive)
 	if(n == 4){
 		# .png .ppm .pgm .pbm .bit .pic
 		if(ext[0] == '.'){
@@ -711,6 +755,54 @@ isimage(name: string): int
 			if(c1 == 'b' && c2 == 'i' && c3 == 't') return 1;
 			if(c1 == 'p' && c2 == 'i' && c3 == 'c') return 1;
 		}
+	}
+	return 0;
+}
+
+# Check if filename matches any known content type.
+# Checks built-in image types and content types loadable
+# through the renderer pipeline (markdown, HTML, etc.).
+iscontent(name: string): int
+{
+	if(isimage(name))
+		return 1;
+	return isrenderable(name);
+}
+
+# Check if filename has a renderer-supported extension.
+# This is the local fast-path; the Render registry also
+# checks dynamically when loaded via Mods.
+isrenderable(name: string): int
+{
+	if(name == nil || len name < 4)
+		return 0;
+
+	dot := -1;
+	for(i := len name - 1; i >= 0; i--){
+		if(name[i] == '.'){
+			dot = i;
+			break;
+		}
+		if(name[i] == '/')
+			break;
+	}
+	if(dot < 0)
+		return 0;
+
+	ext := name[dot:];
+	# Lowercase
+	lext := "";
+	for(i = 0; i < len ext; i++){
+		c := ext[i];
+		if(c >= 'A' && c <= 'Z')
+			c += 'a' - 'A';
+		lext[len lext] = c;
+	}
+
+	# Supported content renderer extensions (text formats handled by Render command)
+	case lext {
+	".pdf" =>
+		return 1;
 	}
 	return 0;
 }
@@ -741,11 +833,27 @@ openfile(t : ref Text, e : Expand) : (ref Window, Expand)
 		t = w.body;
 		w.setname(e.name, len e.name);
 
-		# Check if this is an image file
-		if(isimage(e.bname)){
-			err := w.loadimage(e.bname);
+		# Check if this is a URL — route through content pipeline
+		# (asyncio contenttask fetches via webclient, then htmlrender
+		# detects HTML and renders to image + extracted text)
+		if(isurl(e.bname)){
+			err := w.loadcontent(e.bname);
 			if(err != nil)
-				warning(nil, sprint("can't load image %s: %s\n", e.bname, err));
+				warning(nil, sprint("can't load URL %s: %s\n", e.bname, err));
+		}
+		# Check if this is renderable content (image, PDF, etc.)
+		else if(iscontent(e.bname)){
+			# Use renderer pipeline for all content types;
+			# falls back to legacy image path for built-in formats
+			if(isimage(e.bname)){
+				err := w.loadimage(e.bname);
+				if(err != nil)
+					warning(nil, sprint("can't load image %s: %s\n", e.bname, err));
+			} else {
+				err := w.loadcontent(e.bname);
+				if(err != nil)
+					warning(nil, sprint("can't load content %s: %s\n", e.bname, err));
+			}
 		} else {
 			t.loadx(0, e.bname, 1);
 		}

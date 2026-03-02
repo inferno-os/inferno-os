@@ -7,6 +7,9 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -23,7 +26,7 @@ jobs:
       ROOT: ${{ github.workspace }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Install build dependencies
       run: sudo apt-get update && sudo apt-get install -y build-essential
@@ -55,33 +58,47 @@ jobs:
           cd "$ROOT"
         fi
 
-        # Build test runner and test files
+        # Build test runner and test files into tests/ where the runner expects them
         cd tests
         for f in *.b; do
           name="${f%.b}"
           echo "Compiling $f..."
-          "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/tests/$name.dis" "$f" 2>&1 || true
+          "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1 || true
         done
         cd "$ROOT"
 
         # Verify runner was compiled
-        test -f dis/tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+        test -f tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+
+        echo "Compiled test .dis files:"
+        ls tests/*_test.dis 2>/dev/null | wc -l
 
     - name: Run test suite
       run: |
+        # Create /tmp inside Inferno root for tmp_writable test
+        mkdir -p tmp
+
         echo "Running test suite inside Inferno emulator..."
-        timeout 120 ./emu/Linux/o.emu -r . /dis/tests/runner.dis -v 2>&1 || {
-          exitcode=$?
-          if [ $exitcode -eq 124 ]; then
-            echo "Test suite timed out"
-            exit 1
-          fi
-          # Emulator exits non-zero on 'raise "fail:..."' - check output
-          exit $exitcode
-        }
+        # The emulator doesn't exit cleanly after the test runner finishes
+        # (kernel threads keep the process alive), so we capture output and
+        # parse the result instead of relying on exit code.
+        timeout 60 ./emu/Linux/o.emu -r . /tests/runner.dis -v > test-output.txt 2>&1 || true
+
+        cat test-output.txt
+
+        # Check test results from output
+        if grep -q "^PASS$" test-output.txt; then
+          echo "Tests passed."
+        elif grep -q "^FAIL$" test-output.txt; then
+          echo "Tests failed."
+          exit 1
+        else
+          echo "No test result found in output — tests may not have run."
+          exit 1
+        fi
 
     - name: Upload Linux build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: success()
       with:
         name: infernode-linux-amd64
@@ -102,7 +119,7 @@ jobs:
       ROOT: ${{ github.workspace }}
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Build mk
       run: |
@@ -144,28 +161,48 @@ jobs:
       run: |
         LIMBO="$ROOT/MacOSX/arm64/bin/limbo"
 
-        # emuinit + shell
-        "$LIMBO" -I./module -gw appl/cmd/emuinit.b && cp emuinit.dis dis/
+        # Verify limbo works
+        echo "Using limbo: $LIMBO"
+        "$LIMBO" -w 2>&1 || true
+
+        # emuinit + shell (these must succeed)
+        echo "Compiling emuinit.b..."
+        "$LIMBO" -I./module -gw appl/cmd/emuinit.b
+        cp emuinit.dis dis/
+
+        echo "Compiling sh.b..."
         (cd appl/cmd/sh && ../../../MacOSX/arm64/bin/limbo -I../../../module -gw sh.b && cp sh.dis ../../../dis/)
 
         # Core commands
         for cmd in cat ls pwd echo date; do
-          "$LIMBO" -I./module -gw "appl/cmd/$cmd.b" && cp "$cmd.dis" dis/ || true
+          echo "Compiling $cmd.b..."
+          "$LIMBO" -I./module -gw "appl/cmd/$cmd.b" && cp "$cmd.dis" dis/ || echo "WARNING: $cmd.b compilation failed"
         done
 
         # Essential libraries
         mkdir -p dis/lib
         cd appl/lib
         for f in bufio.b string.b readdir.b arg.b; do
-          "../../MacOSX/arm64/bin/limbo" -I../../module -gw "$f" || true
+          echo "Compiling lib/$f..."
+          "../../MacOSX/arm64/bin/limbo" -I../../module -gw "$f" || echo "WARNING: $f compilation failed"
         done
         cp bufio.dis string.dis readdir.dis arg.dis ../../dis/lib/ 2>/dev/null || true
         cd "$ROOT"
 
+        # Verify critical .dis files exist (from compilation or git checkout)
+        echo "Verifying essential .dis files..."
+        for f in dis/emuinit.dis dis/sh.dis dis/cat.dis dis/ls.dis dis/pwd.dis; do
+          if [ -f "$f" ]; then
+            echo "  OK: $f ($(wc -c < "$f") bytes)"
+          else
+            echo "  MISSING: $f"
+          fi
+        done
+
     - name: Compile test suite
       run: |
         LIMBO="$ROOT/MacOSX/arm64/bin/limbo"
-        mkdir -p dis/tests
+        mkdir -p dis/lib
 
         # Build testing library
         if [ -d tests/testing ]; then
@@ -176,28 +213,49 @@ jobs:
           cd "$ROOT"
         fi
 
-        # Build test files
+        # Build test runner and test files into tests/ where the runner expects them
         cd tests
         for f in *.b; do
           name="${f%.b}"
           echo "Compiling $f..."
-          "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/tests/$name.dis" "$f" 2>&1 || true
+          "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1 || true
         done
         cd "$ROOT"
 
-        test -f dis/tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+        test -f tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+
+        echo "Compiled test .dis files:"
+        ls tests/*_test.dis 2>/dev/null | wc -l
 
     - name: Run test suite
       run: |
+        # Create /tmp inside Inferno root for tmp_writable test
+        mkdir -p tmp
+
         echo "Running test suite inside Inferno emulator..."
-        timeout 120 ./emu/MacOSX/o.emu -r . /dis/tests/runner.dis -v 2>&1 || {
-          exitcode=$?
-          if [ $exitcode -eq 124 ]; then
-            echo "Test suite timed out"
-            exit 1
-          fi
-          exit $exitcode
-        }
+        # The emulator doesn't exit cleanly after the test runner finishes
+        # (kernel threads keep the process alive), so we capture output and
+        # parse the result instead of relying on exit code.
+        # macOS doesn't have timeout; use background process with kill
+        ./emu/MacOSX/o.emu -r . /tests/runner.dis -v > test-output.txt 2>&1 &
+        EMU_PID=$!
+        ( sleep 60; kill $EMU_PID 2>/dev/null ) &
+        WATCHDOG=$!
+        wait $EMU_PID 2>/dev/null || true
+        kill $WATCHDOG 2>/dev/null || true
+
+        cat test-output.txt
+
+        # Check test results from output
+        if grep -q "^PASS$" test-output.txt; then
+          echo "Tests passed."
+        elif grep -q "^FAIL$" test-output.txt; then
+          echo "Tests failed."
+          exit 1
+        else
+          echo "No test result found in output — tests may not have run."
+          exit 1
+        fi
 
     - name: Run port verification
       run: |
@@ -205,7 +263,7 @@ jobs:
         ./verify-port.sh
 
     - name: Upload macOS build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: success()
       with:
         name: infernode-macos-arm64

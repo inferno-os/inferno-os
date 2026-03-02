@@ -4,19 +4,28 @@ implement ToolXenith;
 # xenith - Xenith UI control tool for Veltro agent
 #
 # Provides AI control over Xenith's Acme-style windowing system.
-# Windows are exposed via the file server at /mnt/xenith/.
+# Windows are exposed via the file server at /chan/.
+#
+# SECURITY (namespace-based):
+# Body reads use the process namespace as the access boundary.
+# The window's file path (from its tag) is stat'd against the
+# current (restricted) namespace. If stat fails, the file is
+# outside the agent's namespace and the body read is denied.
+# Windows created by this agent are always readable.
+# Mutations (write, append, ctl, etc.) require ownership.
+# Tag reads and list are always allowed for discovery.
 #
 # Commands:
 #   create [name]              - Create new window, returns ID
-#   write <id> body <text>     - Write text to window body
-#   write <id> tag <text>      - Write text to window tag
-#   read <id> [body|tag]       - Read window content (default: body)
-#   append <id> <text>         - Append text to body
-#   ctl <id> <commands>        - Send control commands
-#   colors <id> <settings>     - Set window colors
-#   delete <id>                - Delete window
-#   list                       - List all windows
-#   status <id> <state>        - Set visual status (ok/warn/error/info)
+#   write <id> body <text>     - Write text to window body (owned only)
+#   write <id> tag <text>      - Write text to window tag (owned only)
+#   read <id> [body|tag]       - Read window content (body: namespace check)
+#   append <id> <text>         - Append text to body (owned only)
+#   ctl <id> <commands>        - Send control commands (owned only)
+#   colors <id> <settings>     - Set window colors (owned only)
+#   delete <id>                - Delete window (owned only)
+#   list                       - List all windows (always allowed)
+#   status <id> <state>        - Set visual status (owned only)
 #
 # Status colors (for AI feedback):
 #   ok    - Green tag (success)
@@ -43,7 +52,10 @@ ToolXenith: module {
 	exec: fn(args: string): string;
 };
 
-XENITH_ROOT: con "/mnt/xenith";
+XENITH_ROOT: con "/chan";
+
+# Windows created by this agent — only these can be read/written/modified
+owned: list of string;
 
 init(): string
 {
@@ -53,6 +65,7 @@ init(): string
 	str = load String String->PATH;
 	if(str == nil)
 		return "cannot load String";
+	owned = nil;
 	return nil;
 }
 
@@ -68,13 +81,16 @@ doc(): string
 		"  create [name]              Create new window, returns ID\n" +
 		"  write <id> body <text>     Write text to window body\n" +
 		"  write <id> tag <text>      Write text to window tag  \n" +
-		"  read <id> [body|tag]       Read window content (default: body)\n" +
+		"  read <id> [body|tag]       Read window content (body: namespace check)\n" +
 		"  append <id> <text>         Append text to body\n" +
 		"  ctl <id> <commands>        Send control commands\n" +
 		"  colors <id> <settings>     Set window colors\n" +
 		"  delete <id>                Delete window\n" +
-		"  list                       List all windows\n" +
+		"  list                       List all windows (tag names visible)\n" +
 		"  status <id> <state>        Set visual status indicator\n\n" +
+		"Body reads use namespace-based access control: the window's file\n" +
+		"path must be accessible in the agent's namespace. Modifications\n" +
+		"are restricted to windows created by this agent.\n\n" +
 		"Status states: ok (green), warn (yellow), error (red), info (blue), reset\n\n" +
 		"Control commands (for ctl):\n" +
 		"  name <string>    Set window name/title\n" +
@@ -92,6 +108,71 @@ doc(): string
 		"  xenith write 3 body Hello   Write 'Hello' to window 3 body\n" +
 		"  xenith status 3 ok          Set green status on window 3\n" +
 		"  xenith ctl 3 growmax        Maximize window 3\n";
+}
+
+# Check if window was created by this agent
+isowned(winid: string): int
+{
+	for(w := owned; w != nil; w = tl w)
+		if(hd w == winid)
+			return 1;
+	return 0;
+}
+
+# Namespace-based access check for body reads.
+# The window's file path (first token in tag) is stat'd against
+# the process's restricted namespace. If the path (or its parent
+# directory for synthetic windows like +Errors) is accessible,
+# the body read is allowed. Windows created by this agent are
+# always accessible.
+checkbodyaccess(winid: string): string
+{
+	# Agent's own windows are always readable
+	if(isowned(winid))
+		return nil;
+
+	# Read the window's tag to determine what file it shows
+	tagpath := sys->sprint("%s/%s/tag", XENITH_ROOT, winid);
+	fd := sys->open(tagpath, Sys->OREAD);
+	if(fd == nil)
+		return sys->sprint("error: cannot read window %s", winid);
+
+	buf := array[4096] of byte;
+	n := sys->read(fd, buf, len buf);
+	fd = nil;
+	if(n <= 0)
+		return sys->sprint("error: cannot read window %s tag", winid);
+
+	tag := string buf[0:n];
+
+	# Extract the window name/path (first token in tag)
+	(wpath, nil) := splitfirst(tag);
+	if(wpath == "")
+		return sys->sprint("error: access denied — window %s has no path", winid);
+
+	# Check if the path is accessible in our namespace
+	(ok, nil) := sys->stat(wpath);
+	if(ok >= 0)
+		return nil;  # path accessible — allow body read
+
+	# For synthetic windows (+Errors, +Veltro, etc.), check parent dir
+	parent := dirname(wpath);
+	if(parent != wpath) {
+		(ok2, nil) := sys->stat(parent);
+		if(ok2 >= 0)
+			return nil;  # parent dir accessible — allow body read
+	}
+
+	return sys->sprint("error: access denied — %s is outside agent namespace", wpath);
+}
+
+# Extract parent directory from path
+dirname(path: string): string
+{
+	for(i := len path - 1; i > 0; i--)
+		if(path[i] == '/')
+			return path[0:i];
+	return "/";
 }
 
 exec(args: string): string
@@ -152,7 +233,11 @@ docreate(args: string): string
 	if(n <= 0)
 		return "error: failed to create window";
 
-	winid := strip(string buf[0:n]);
+	# ctl returns "id  tag  body  ..." — extract just the window ID (first token)
+	(winid, nil) := splitfirst(string buf[0:n]);
+
+	# Track ownership
+	owned = winid :: owned;
 
 	# Set name if provided
 	if(winname != "") {
@@ -175,11 +260,16 @@ dowrite(args: string): string
 	if(winid == "")
 		return "error: usage: write <id> body|tag <text>";
 
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
+
 	(target, text) := splitfirst(rest);
 	target = str->tolower(target);
 
+	if(target == "ctl")
+		return "error: use 'xenith ctl <id> <command>' instead of write";
 	if(target != "body" && target != "tag")
-		return "error: target must be 'body' or 'tag'";
+		return "error: target must be 'body' or 'tag'. Use 'xenith ctl' for control, 'xenith delete' to close";
 
 	filepath := sys->sprint("%s/%s/%s", XENITH_ROOT, winid, target);
 	fd := sys->open(filepath, Sys->OWRITE | Sys->OTRUNC);
@@ -208,8 +298,18 @@ doread(args: string): string
 		target = "body";
 	target = str->tolower(target);
 
+	if(target == "ctl")
+		return "error: use 'xenith ctl <id> <command>' for control commands";
 	if(target != "body" && target != "tag")
 		return "error: target must be 'body' or 'tag'";
+
+	# Body reads use namespace-based access control.
+	# Tag reads always allowed for discovery.
+	if(target == "body") {
+		err := checkbodyaccess(winid);
+		if(err != nil)
+			return err;
+	}
 
 	filepath := sys->sprint("%s/%s/%s", XENITH_ROOT, winid, target);
 	fd := sys->open(filepath, Sys->OREAD);
@@ -237,6 +337,9 @@ doappend(args: string): string
 	if(winid == "" || text == "")
 		return "error: usage: append <id> <text>";
 
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
+
 	filepath := sys->sprint("%s/%s/body", XENITH_ROOT, winid);
 	fd := sys->open(filepath, Sys->OWRITE);
 	if(fd == nil)
@@ -261,6 +364,9 @@ doctl(args: string): string
 	(winid, cmds) := splitfirst(args);
 	if(winid == "" || cmds == "")
 		return "error: usage: ctl <id> <commands>";
+
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
 
 	filepath := sys->sprint("%s/%s/ctl", XENITH_ROOT, winid);
 	fd := sys->open(filepath, Sys->OWRITE);
@@ -288,6 +394,9 @@ docolors(args: string): string
 	if(winid == "" || settings == "")
 		return "error: usage: colors <id> <settings>";
 
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
+
 	filepath := sys->sprint("%s/%s/colors", XENITH_ROOT, winid);
 	fd := sys->open(filepath, Sys->OWRITE);
 	if(fd == nil)
@@ -314,6 +423,9 @@ dodelete(args: string): string
 	if(winid == "")
 		return "error: usage: delete <id>";
 
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
+
 	filepath := sys->sprint("%s/%s/ctl", XENITH_ROOT, winid);
 	fd := sys->open(filepath, Sys->OWRITE);
 	if(fd == nil)
@@ -326,7 +438,7 @@ dodelete(args: string): string
 	return "ok";
 }
 
-# List all windows
+# List all windows — always allowed (shows tags, not bodies)
 dolist(): string
 {
 	filepath := XENITH_ROOT + "/index";
@@ -355,6 +467,9 @@ dostatus(args: string): string
 	(winid, state) := splitfirst(args);
 	if(winid == "" || state == "")
 		return "error: usage: status <id> ok|warn|error|info|reset";
+
+	if(!isowned(winid))
+		return sys->sprint("error: permission denied — window %s not owned by agent", winid);
 
 	state = str->tolower(strip(state));
 

@@ -1,0 +1,23 @@
+<$ROOT/mkconfig
+
+TARG=\
+	git.dis\
+
+MODULES=
+
+SYSMODULES=\
+	bufio.m\
+	dial.m\
+	encoding.m\
+	filter.m\
+	git.m\
+	hash.m\
+	keyring.m\
+	string.m\
+	sys.m\
+	url.m\
+	webclient.m\
+
+DISBIN=$ROOT/dis/lib/git
+
+<$ROOT/mkfiles/mkdis

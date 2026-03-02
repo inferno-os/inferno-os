@@ -1,5 +1,11 @@
-Git operations:
-- Check status before committing
-- Review diff before adding
-- Write clear commit messages
-- Destructive operations (--force, reset --hard) are blocked
+Git safety protocol:
+- Run 'git status' and 'git log' before any commit or push
+- NEVER force-push without explicit user permission
+- NEVER use --no-verify without explicit user permission
+- NEVER amend published commits — create NEW commits instead
+- Stage by name (git add <path>), not 'git add .' (risks exposing secrets)
+- Do NOT push unless the user explicitly asks
+- Unexpected state: investigate before deleting or overwriting
+
+Commands: status / log / add <path> / commit <msg> / fetch / checkout <branch>
+         branch-create <name> / merge <branch>

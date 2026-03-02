@@ -1,31 +1,62 @@
 # Veltro Ideas and Future Work
 
-## Completed (Phase 1)
+## Completed
 
-### Phase 1a: Per-Agent LLM Isolation ✓
+### Phase 1a: Per-Agent LLM Isolation
 - LLMConfig type in nsconstruct.m
-- Config files written to sandbox before bind
-- Parent mounts llm9p into sandbox with MBEFORE
-- Child inherits per-agent model/temperature/system settings
+- Session-specific model, temperature, system prompt, thinking budget
+- Each subagent gets its own LLM session via `/n/llm/new` clone pattern
 - 33 automated tests + 5 manual tests passing
 
-### Phase 1b: mc9p (9P-based MCP) ✓
+### Phase 1b: mc9p (9P-based MCP)
 - Filesystem-as-schema design (no JSON)
 - Domain/endpoint model via synthetic files
 - Network isolation (requires -n flag for /net access)
 - HTTP provider working
 
-### Phase 1c: New Tools ✓
+### Phase 1c: New Tools
 - **http** - HTTP client (HTTP working, HTTPS needs /net/ssl)
 - **git** - Git operations (requires /cmd device)
 - **json** - JSON parsing and path queries
 - **ask** - User prompts via console
 - **diff** - File comparison
 - **memory** - Session persistence (basic implementation)
+- **say** - Text-to-speech via speech9p
+- **hear** - Speech-to-text via speech9p
 
 ### Phase 1d: Agent Memory
 - Basic memory tool implemented
 - Full cross-session persistence not yet tested
+
+### Namespace v3: FORKNS + Bind-Replace
+- `restrictdir(target, allowed)` core primitive (455 lines replaces 863)
+- Root restriction hides project files (.env, .git, CLAUDE.md, source tree)
+- `/n/local` (host filesystem) hidden via `/n` restriction
+- `/n/speech` auto-detected and preserved for say/hear tools
+- Three entry points: tools9p serveloop, repl init, spawn child
+- tools9p restriction via non-blocking alt on buffered channel (avoids 9P deadlock)
+- Root restriction skips stat() to avoid 9P self-mount deadlock on /tool
+- Subagents use pre-loaded tool modules (not tools9p)
+- Default agent prompt rewritten for pre-loaded module architecture
+- Help file global storage fix (per-fid → global for cross-fid reads)
+- Capability attenuation: children fork restricted parent, can only narrow
+- verifyns() with positive and negative assertions
+
+### Interactive REPL
+- Xenith mode: window with Send/Voice/Clear/Reset/Delete buttons
+- Terminal mode: line-oriented stdin/stdout
+- Voice input via speech9p (record + transcribe)
+- Session management (create, reset)
+- Namespace discovery injected into each prompt
+- Context-aware reminders based on available tools
+- System prompt size guard (8KB 9P write limit)
+
+### Agent Chaining (Subagents)
+- spawn tool creates isolated children with attenuated capabilities
+- Full agent loop in subagent (LLM access via pre-opened FDs)
+- Agent type prompts: default, explore, plan, task
+- LLM config per-agent: model, temperature, thinking, system prompt
+- 2-minute timeout for multi-step agents (up to 50 steps)
 
 ---
 
@@ -59,7 +90,7 @@ veltro $*
 
 # /dis/veltro/launch/full - All tools (trusted use only)
 #!/dis/sh
-tools9p read list find search write edit exec spawn xenith &
+tools9p read list find search write edit exec spawn xenith say hear &
 sleep 1
 veltro $*
 ```
@@ -82,7 +113,7 @@ Add optional tools9p startup to profile for users who want always-available tool
 tools9p read list &
 ```
 
-**Note:** This is the user's security decision - they choose what's always available.
+**Note:** This is the user's security decision -- they choose what's always available.
 
 ---
 
@@ -97,11 +128,9 @@ tools9p read list &
 
 ### New Tools
 
-- ~~**diff** - Compare files, show differences~~ ✓ Completed
-- ~~**git** - Basic git operations (status, log, diff)~~ ✓ Completed
-- ~~**http** - Fetch URLs, make API calls~~ ✓ Completed (HTTP only)
-- ~~**json** - Parse and query JSON data~~ ✓ Completed
-- ~~**ask** - Prompt user for input via dialog~~ ✓ Completed
+- **test** - Run test suites from within agent
+- **patch** - Apply unified diffs
+- **tar** - Archive/extract files
 
 ---
 
@@ -114,7 +143,7 @@ Define standard capability profiles:
 | Level | Tools | Use Case |
 |-------|-------|----------|
 | readonly | read, list, find, search | Safe exploration |
-| ui | readonly + xenith | Display results |
+| ui | readonly + xenith, say | Display results |
 | write | ui + write, edit | Modify files |
 | exec | write + exec | Run commands |
 | full | exec + spawn | Create sub-agents |
@@ -128,33 +157,12 @@ A system-wide tools9p that runs as a service:
 
 **Security consideration:** Must not grant more than explicitly allowed.
 
-### Agent Chaining - Partially Implemented
+### Path Restriction Improvements
 
-**Current State:**
-The spawn tool creates isolated sandboxes with attenuated capabilities, but
-only executes a **single tool call** - not a full agent loop.
-
-```
-spawn tools=find,search paths=/appl -- find *.b /appl
-```
-This runs `find` tool once. The "task" is parsed as: `toolname args`
-
-**Limitation:**
-Natural language tasks like `"Find how errors are handled"` don't work
-because spawn tries to parse "Find" as a tool name.
-
-**What's needed for true sub-agents:**
-1. Run veltro.dis inside the sandbox
-2. Mount /n/llm into sandbox (Phase 1a done - LLMConfig exists)
-3. Child can then run full agent loop with LLM access
-
-**Current workaround:**
-Parent agent does the multi-step work itself rather than delegating.
-
-**Completed:**
-- ~~Parent grants subset of its own tools~~ ✓ spawn tool
-- ~~Child cannot exceed parent's capabilities~~ ✓ NEWNS isolation
-- ~~Audit trail tracks delegation chain~~ ✓ sandbox audit
+Current path restriction via `caps.paths` exposes host filesystem paths through `/n/local`. Future work:
+- Read-only vs read-write path grants
+- Time-limited path access
+- Path access logging/auditing
 
 ---
 

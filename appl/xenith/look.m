@@ -4,6 +4,7 @@ Look : module {
 	init : fn(mods : ref Dat->Mods);
 
 	isfilec: fn(r : int) : int;
+	isurl: fn(s : string) : int;
 	lookid : fn(n : int, b : int) : ref Windowm->Window;
 	lookfile : fn(s : string, n : int) : ref Windowm->Window;
 	dirname : fn(t : ref Textm->Text, r : string, n : int) : (string, int);

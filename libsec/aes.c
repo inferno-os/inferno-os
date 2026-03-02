@@ -119,6 +119,13 @@ aesCBCdecrypt(uchar *p, int len, AESstate *s)
 	}
 }
 
+/* single-block AES encrypt for use by AES-CTR and AES-GCM */
+void
+aesEncryptBlock(AESstate *s, uchar pt[16], uchar ct[16])
+{
+	rijndaelEncrypt(s->ekey, s->rounds, pt, ct);
+}
+
 /*
  * this function has been changed for plan 9.
  * Expand the cipher key into the encryption and decryption key schedules.

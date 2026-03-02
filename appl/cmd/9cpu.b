@@ -52,7 +52,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	authmethod := "p9";
 	keyspec := "";
-	ealgs := "rc4_256 sha1";
+	ealgs := "aes_256_cbc sha256";
 	wmexport := 0;
 	p9win := 0;
 	infernocmd := 0;

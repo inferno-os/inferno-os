@@ -60,15 +60,15 @@ disw(uchar **p)
 double
 canontod(ulong v[2])
 {
-	union { double d; unsigned long ul[2]; } a;
+	union { double d; u32int ul[2]; } a;
 	a.d = 1.;
 	if(a.ul[0]) {
-		a.ul[0] = v[0];
-		a.ul[1] = v[1];
+		a.ul[0] = (u32int)v[0];
+		a.ul[1] = (u32int)v[1];
 	}
 	else {
-		a.ul[1] = v[0];
-		a.ul[0] = v[1];
+		a.ul[1] = (u32int)v[0];
+		a.ul[0] = (u32int)v[1];
 	}
 	return a.d;
 }
@@ -568,7 +568,7 @@ freemod(Module *m)
 		free(m->type);
 	}
 	free(m->name);
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__x86_64__))
+#if defined(__aarch64__) || defined(__x86_64__)
 	if(!m->compiled)
 #endif
 	free(m->prog);

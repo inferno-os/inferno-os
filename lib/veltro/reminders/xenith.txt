@@ -1,27 +1,17 @@
-Xenith window workflow:
-1. CREATE a window first: xenith create name
-2. SAVE the returned ID (e.g., "4")
-3. Use the ID for all subsequent operations
-4. VERIFY content was written with: xenith read <id> body
+Xenith workspace: list open windows first to understand user context.
 
-CRITICAL: Multi-line content REQUIRES heredoc syntax!
+Commands:
+    xenith list              — list windows (do this first)
+    xenith read <id> body    — read window content
+    xenith create name       — create window (save the returned ID)
+    xenith write <id> body text — write to window (single line)
+    xenith append <id> text  — append to window body
+    xenith ctl <id> name new — rename a window
+    xenith status <id> ok    — set status: ok/warn/error/info
 
-  xenith write 4 body <<EOF
-  Line one
-  Line two
-  More content
-  EOF
-
-Without <<EOF, only the first line will be written!
-
-WRONG (loses lines 2-3):
-  xenith write 4 body Line one
-  Line two
-  Line three
-
-CORRECT (all lines written):
-  xenith write 4 body <<EOF
-  Line one
-  Line two
-  Line three
-  EOF
+CRITICAL: Multi-line content REQUIRES heredoc:
+    xenith write 4 body <<EOF
+    Line one
+    Line two
+    EOF
+Without <<EOF, only the first line is written.

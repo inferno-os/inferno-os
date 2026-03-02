@@ -46,6 +46,7 @@ ToolSearch: module {
 MAX_RESULTS: con 20;
 MAX_DEPTH: con 20;
 MAX_LINE_LEN: con 200;
+OPEN_TIMEOUT: con 3000;	# ms — skip directories that block longer than this
 
 init(): string
 {
@@ -261,12 +262,12 @@ searchdir(path: string, re: Re, depth: int): (list of ref Match, int, int)
 	if(depth > MAX_DEPTH)
 		return (nil, 0, 0);
 
-	# Check if path is a file
-	(ok, d) := sys->stat(path);
-	if(ok < 0)
+	# Check if path is a file or directory (with timeout for blocked paths)
+	isdir := isdirtimeout(path, OPEN_TIMEOUT);
+	if(isdir < 0)
 		return (nil, 0, 0);
 
-	if(!(d.mode & Sys->DMDIR)) {
+	if(isdir == 0) {
 		# It's a file, search it
 		matches := searchfile(path, re);
 		for(; matches != nil; matches = tl matches) {
@@ -278,8 +279,8 @@ searchdir(path: string, re: Re, depth: int): (list of ref Match, int, int)
 		return (results, count, 0);
 	}
 
-	# It's a directory, enumerate contents
-	fd := sys->open(path, Sys->OREAD);
+	# It's a directory, enumerate contents (with timeout)
+	fd := opentimeout(path, Sys->OREAD, OPEN_TIMEOUT);
 	if(fd == nil)
 		return (nil, 0, 0);
 
@@ -340,4 +341,64 @@ searchdir(path: string, re: Re, depth: int): (list of ref Match, int, int)
 	}
 
 	return (results, count, truncated);
+}
+
+# Check if path is a directory, with timeout to skip blocked paths.
+# Returns: 1=directory, 0=file, -1=error/timeout.
+isdirtimeout(path: string, ms: int): int
+{
+	result := chan[1] of int;
+	spawn statcheck(path, result);
+
+	timeout := chan of int;
+	spawn sleeptimer(timeout, ms);
+
+	alt {
+		v := <-result =>
+			return v;
+		<-timeout =>
+			sys->fprint(sys->fildes(2), "search: timeout stat %s (skipping)\n", path);
+			return -1;
+	}
+}
+
+statcheck(path: string, result: chan of int)
+{
+	(ok, d) := sys->stat(path);
+	if(ok < 0)
+		result <-= -1;
+	else if(d.mode & Sys->DMDIR)
+		result <-= 1;
+	else
+		result <-= 0;
+}
+
+# Open a file with timeout to skip blocked paths.
+opentimeout(path: string, mode: int, ms: int): ref Sys->FD
+{
+	result := chan[1] of ref Sys->FD;
+	spawn tryopen(path, mode, result);
+
+	timeout := chan of int;
+	spawn sleeptimer(timeout, ms);
+
+	alt {
+		fd := <-result =>
+			return fd;
+		<-timeout =>
+			sys->fprint(sys->fildes(2), "search: timeout open %s (skipping)\n", path);
+			return nil;
+	}
+}
+
+tryopen(path: string, mode: int, result: chan of ref Sys->FD)
+{
+	fd := sys->open(path, mode);
+	result <-= fd;
+}
+
+sleeptimer(ch: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	ch <-= 1;
 }

@@ -1,11 +1,10 @@
 implement VeltroConcurrentTest;
 
 #
-# Veltro Concurrent Spawn Test
+# Veltro Concurrent Namespace Test (v3)
 #
-# Tests that multiple concurrent spawn operations don't crash.
-# This specifically tests the race condition fix in nsconstruct.b
-# and spawn.b initialization.
+# Tests that concurrent namespace restriction operations don't crash.
+# Each worker forks its own namespace, so restrictions are isolated.
 #
 
 include "sys.m";
@@ -92,29 +91,29 @@ initworker(done: chan of int, errors: chan of string)
 }
 
 # ============================================================================
-# Test 2: Concurrent sandbox creation
-# Creates multiple sandboxes concurrently to test preparesandbox
+# Test 2: Concurrent restrictdir
+# Multiple threads each fork namespace and call restrictdir concurrently
 # ============================================================================
-testConcurrentSandboxCreate(t: ref T)
+testConcurrentRestrictDir(t: ref T)
 {
 	done := chan of int;
 	errors := chan of string;
-	nsandboxes := 5;
-	sandboxids: list of string;
+	nworkers := 3;
 
-	# Create sandboxes concurrently
-	for(j := 0; j < nsandboxes; j++) {
-		sandboxid := nsconstruct->gensandboxid();
-		sandboxids = sandboxid :: sandboxids;
-		spawn sandboxworker(sandboxid, done, errors);
-		# Small delay to get different IDs
-		sys->sleep(15);
-	}
+	# Create test directory with known contents
+	testdir := "/tmp/veltro/test-concurrent";
+	mkdirp(testdir);
+	mkdirp(testdir + "/a");
+	mkdirp(testdir + "/b");
+	mkdirp(testdir + "/c");
+
+	for(j := 0; j < nworkers; j++)
+		spawn restrictdirworker(testdir, done, errors);
 
 	# Collect results
 	succeeded := 0;
 	errs: list of string;
-	for(k := 0; k < nsandboxes; k++) {
+	for(k := 0; k < nworkers; k++) {
 		alt {
 		e := <-errors =>
 			errs = e :: errs;
@@ -123,87 +122,121 @@ testConcurrentSandboxCreate(t: ref T)
 		}
 	}
 
-	t.assert(succeeded == nsandboxes,
-		sys->sprint("all %d sandboxes should be created (got %d)", nsandboxes, succeeded));
+	t.assert(succeeded == nworkers,
+		sys->sprint("all %d workers should succeed (got %d)", nworkers, succeeded));
 
 	for(; errs != nil; errs = tl errs)
 		t.log(hd errs);
-
-	# Cleanup all sandboxes
-	for(ids := sandboxids; ids != nil; ids = tl ids)
-		nsconstruct->cleanupsandbox(hd ids);
 }
 
-sandboxworker(sandboxid: string, done: chan of int, errors: chan of string)
+restrictdirworker(testdir: string, done: chan of int, errors: chan of string)
 {
-	caps := ref NsConstruct->Capabilities(
-		"read" :: nil,
-		nil,
-		nil,
-		nil,
-		0 :: 1 :: 2 :: nil,
-		ref NsConstruct->Mountpoints(0, 0, 0),
-		sandboxid,
-		0,
-		nil,  # mcproviders
-		0     # memory
-	);
+	# Each worker forks its own namespace
+	sys->pctl(Sys->FORKNS, nil);
 
-	err := nsconstruct->preparesandbox(caps);
-	if(err != nil)
-		errors <-= sys->sprint("sandbox %s failed: %s", sandboxid, err);
-	else
-		done <-= 1;
-}
-
-# ============================================================================
-# Test 3: Concurrent sandbox cleanup
-# Tests that cleanup doesn't race with other operations
-# ============================================================================
-testConcurrentCleanup(t: ref T)
-{
-	# Create a sandbox
-	sandboxid := nsconstruct->gensandboxid();
-	caps := ref NsConstruct->Capabilities(
-		"read" :: nil,
-		nil,
-		nil,
-		nil,
-		0 :: 1 :: 2 :: nil,
-		ref NsConstruct->Mountpoints(0, 0, 0),
-		sandboxid,
-		0,
-		nil,  # mcproviders
-		0     # memory
-	);
-
-	err := nsconstruct->preparesandbox(caps);
+	err := nsconstruct->restrictdir(testdir, "a" :: nil);
 	if(err != nil) {
-		t.error(sys->sprint("preparesandbox failed: %s", err));
+		errors <-= sys->sprint("restrictdir failed: %s", err);
 		return;
 	}
 
-	# Cleanup from multiple threads (only one should actually do work)
-	done := chan of int;
-	nthreads := 5;
+	# Verify restriction worked
+	(ok, nil) := sys->stat(testdir + "/a");
+	if(ok < 0) {
+		errors <-= "a should be visible after restrictdir";
+		return;
+	}
 
-	for(m := 0; m < nthreads; m++)
-		spawn cleanupworker(sandboxid, done);
+	(ok2, nil) := sys->stat(testdir + "/b");
+	if(ok2 >= 0) {
+		errors <-= "b should NOT be visible after restrictdir";
+		return;
+	}
 
-	# Wait for all to complete
-	for(n := 0; n < nthreads; n++)
-		<-done;
-
-	# Verify sandbox is gone
-	sandboxdir := nsconstruct->sandboxpath(sandboxid);
-	(ok, nil) := sys->stat(sandboxdir);
-	t.assert(ok < 0, "sandbox should be removed after cleanup");
+	done <-= 1;
 }
 
-cleanupworker(sandboxid: string, done: chan of int)
+# ============================================================================
+# Test 3: Concurrent restrictns
+# Multiple threads each fork namespace and apply full restriction policy
+# ============================================================================
+testConcurrentRestrictNs(t: ref T)
 {
-	nsconstruct->cleanupsandbox(sandboxid);
+	done := chan of int;
+	errors := chan of string;
+	nworkers := 3;
+
+	for(m := 0; m < nworkers; m++)
+		spawn restrictnsworker(done, errors);
+
+	# Collect results
+	succeeded := 0;
+	errs: list of string;
+	for(n := 0; n < nworkers; n++) {
+		alt {
+		e := <-errors =>
+			errs = e :: errs;
+		<-done =>
+			succeeded++;
+		}
+	}
+
+	t.assert(succeeded == nworkers,
+		sys->sprint("all %d restrictns workers should succeed (got %d)", nworkers, succeeded));
+
+	for(; errs != nil; errs = tl errs)
+		t.log(hd errs);
+}
+
+restrictnsworker(done: chan of int, errors: chan of string)
+{
+	# Each worker forks its own namespace
+	sys->pctl(Sys->FORKNS, nil);
+
+	caps := ref NsConstruct->Capabilities(
+		"read" :: nil,
+		nil,
+		nil,
+		nil,
+		0 :: 1 :: 2 :: nil,
+		nil,
+		0,
+		0
+	);
+
+	err := nsconstruct->restrictns(caps);
+	if(err != nil) {
+		errors <-= sys->sprint("restrictns failed: %s", err);
+		return;
+	}
+
+	# Verify basic restrictions held
+	(ok, nil) := sys->stat("/dis/lib");
+	if(ok < 0) {
+		errors <-= "/dis/lib should exist after restrictns";
+		return;
+	}
+
 	done <-= 1;
+}
+
+# ============================================================================
+# Helpers
+# ============================================================================
+mkdirp(path: string)
+{
+	(ok, nil) := sys->stat(path);
+	if(ok >= 0)
+		return;
+
+	for(i := len path - 1; i > 0; i--) {
+		if(path[i] == '/') {
+			mkdirp(path[0:i]);
+			break;
+		}
+	}
+
+	sys->create(path, Sys->OREAD, Sys->DMDIR | 8r755);
 }
 
 # ============================================================================
@@ -234,8 +267,13 @@ init(nil: ref Draw->Context, args: list of string)
 	}
 
 	run("ConcurrentInit", testConcurrentInit);
-	run("ConcurrentSandboxCreate", testConcurrentSandboxCreate);
-	run("ConcurrentCleanup", testConcurrentCleanup);
+	run("ConcurrentRestrictDir", testConcurrentRestrictDir);
+
+	# Allow previous threads to fully exit and release forked namespaces
+	# before spawning new workers that do namespace operations
+	sys->sleep(200);
+
+	run("ConcurrentRestrictNs", testConcurrentRestrictNs);
 
 	if(testing->summary(passed, failed, skipped) > 0)
 		raise "fail:tests failed";

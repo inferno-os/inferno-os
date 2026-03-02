@@ -1,18 +1,18 @@
 implement SubAgent;
 
 #
-# subagent.b - Lightweight agent loop for sandboxed execution
+# subagent.b - Lightweight agent loop for restricted namespace execution
 #
 # Design:
-#   - Runs inside sandbox AFTER NEWNS
+#   - Runs inside FORKNS + bind-replace restricted namespace
 #   - Uses pre-loaded tool modules directly (no tools9p)
 #   - Receives system prompt as parameter (no /lib/veltro/ access)
-#   - LLM access via /n/llm bound into sandbox
+#   - LLM access via fd opened before namespace restriction
 #
 # Security:
 #   - Only pre-loaded tools are accessible
 #   - LLM config is immutable (set by parent)
-#   - Namespace IS the capability set
+#   - Namespace IS the capability set (restricted via bind-replace)
 #
 
 include "sys.m";
@@ -40,7 +40,7 @@ stderr: ref Sys->FD;
 loadedtools: list of Tool;
 loadedtoolnames: list of string;
 
-# LLM ask file descriptor (passed from parent, survives NEWNS)
+# LLM ask file descriptor (opened before FORKNS + bind-replace restriction)
 # Session is already created and configured - just use this fd
 llmaskfd: ref Sys->FD;
 
@@ -156,13 +156,20 @@ assembleprompt(task, ns, systemprompt: string): string
 	if(systemprompt == "")
 		systemprompt = defaultsystemprompt();
 
-	# Get tool documentation
+	# Get tool documentation — read txt files directly (upfront composition,
+	# no on-demand help). Falls back to module doc() if no txt file exists.
 	tooldocs := "";
-	for(tnames := loadedtoolnames; tnames != nil; tnames = tl tnames) {
-		toolname := hd tnames;
-		doc := calltool("help", toolname);
+	namelist := loadedtoolnames;
+	modlist := loadedtools;
+	while(namelist != nil && modlist != nil) {
+		toolname := hd namelist;
+		doc := readfile("/lib/veltro/tools/" + toolname + ".txt");
+		if(doc == "")
+			doc = (hd modlist)->doc();
 		if(doc != "" && !hasprefix(doc, "error:"))
 			tooldocs += "\n### " + toolname + "\n" + doc + "\n";
+		namelist = tl namelist;
+		modlist = tl modlist;
 	}
 
 	prompt := systemprompt + "\n\n== Your Namespace ==\n" + ns +
@@ -276,12 +283,6 @@ parseaction(response: string): (string, string)
 			}
 		}
 
-		# Also check for "help" (always available)
-		if(tool == "help") {
-			args := str->drop(rest, " \t");
-			(args, lines) = parseheredoc(args, tl lines);
-			return (first, args);
-		}
 	}
 
 	return ("", "");

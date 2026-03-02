@@ -1,7 +1,7 @@
 implement ToolSafeExec;
 
 #
-# safeexec - Safe execution tool for untrusted Veltro agents
+# safeexec - Safe execution tool for Veltro agents without shell access
 #
 # This tool runs whitelisted .dis files directly without shell interpretation.
 # Unlike the exec tool which uses the shell, safeexec:
@@ -14,7 +14,7 @@ implement ToolSafeExec;
 #   exec("cat /etc/passwd; rm -rf /")  <- shell interprets ; as command separator
 #   safeexec("cat /etc/passwd; rm -rf /")  <- "cat" is the tool, rest is args
 #
-# For untrusted agents, spawn.b uses safeexec instead of exec.
+# For agents without shellcmds, spawn.b uses safeexec instead of exec.
 #
 
 include "sys.m";

@@ -1,0 +1,5 @@
+# GPU disabled (default)
+# Uses gpu-stub.c in libinterp — gpumodinit() is a no-op.
+# No CUDA or TensorRT dependencies required.
+GPUFLAGS=
+GPULIBS=

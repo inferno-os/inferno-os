@@ -70,6 +70,8 @@ Dockerfile
 # Also exclude tests build artifacts
 /tests/**/*.dis
 /tests/**/*.sbl
+/tests/.server-b.log
+/tests/.test-*.log
 # Root-level build artifacts (stray compiles)
 /*.dis
 /*.sbl
@@ -81,6 +83,9 @@ Dockerfile
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Veltro API keys (secrets)
+lib/veltro/keys/
 
 # =========================
 # Build Artifacts
@@ -97,8 +102,6 @@ Nt/*/lib/*
 # Emulator binaries (built locally)
 emu/*/o.emu
 emu/*/o.*
-# Exception: pre-built macOS binary is tracked for clone-and-run
-!emu/MacOSX/o.emu
 
 # Generated emulator source
 emu/*/emu.c
@@ -139,6 +142,13 @@ Linux/arm64/bin/*
 Linux/amd64/bin/*
 
 
+# Benchmark build artifacts and results
+benchmarks/_build/
+benchmarks/_results/
+
+# GoDis compiled binary
+tools/godis/godis
+
 # Inferno temp files and runtime data
 tmp/*.pdfi*
 tmp/plumb.log
@@ -146,6 +156,15 @@ tmp/.veltro/
 
 # Stray files
 fprint'
+
+# Runtime / scratch directories
+dev/
+tmp/
+hello-test/
+
+# Root-level generated headers (stray builds)
+/srv.h
+/srvm.h
 
 # Inferno mount points (should never contain real files)
 tool/

@@ -54,6 +54,8 @@ init(): string
 	if(sys == nil)
 		return "cannot load Sys";
 	sh = load Sh Sh->PATH;
+	if(sh == nil)
+		return "cannot load shell module (sh.dis not accessible)";
 	return nil;
 }
 

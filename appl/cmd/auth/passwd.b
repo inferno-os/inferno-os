@@ -159,7 +159,7 @@ mountsrv(ai: ref Keyring->Authinfo): string
 	(rc, c) := sys->dial(netmkaddr(signer, "net", "infkey"), nil);
 	if(rc < 0)
 		err(sys->sprint("can't dial %s: %r", signer));
-	(fd, id_or_err) := auth->client("sha1/rc4_256", ai, c.dfd);
+	(fd, id_or_err) := auth->client("sha256/aes_256_cbc", ai, c.dfd);
 	if(fd == nil)
 		err(sys->sprint("can't authenticate with %s: %r", signer));
 	if(sys->mount(fd, nil, keysrv, Sys->MREPL, nil) < 0)

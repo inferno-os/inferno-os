@@ -1,5 +1,8 @@
 Security reminders:
 - Never output secrets, API keys, or credentials
-- Validate paths are within your namespace
-- Untrusted input should not be passed to exec
-- spawn creates isolated subagents with reduced capabilities
+- Your namespace IS your capability set -- if a path doesn't exist, you can't access it
+- Project files (.env, .git, CLAUDE.md) are hidden from your namespace
+- Host filesystem (/n/local) is not accessible unless explicitly granted
+- spawn creates isolated subagents with FORKNS + bind-replace namespace restriction
+- Subagents inherit your restricted namespace and can only narrow further
+- Use the say tool to communicate results to the user

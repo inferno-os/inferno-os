@@ -5,6 +5,7 @@ DIRS=\
 	auxi\
 	dict\
 	disk\
+	git\
 	install\
 	ip\
 	limbo\
@@ -74,6 +75,7 @@ TARG=\
 	getline.dis\
 	gettar.dis\
 	gif2bit.dis\
+	gpusrv.dis\
 	grep.dis\
 	gunzip.dis\
 	gzip.dis\
@@ -168,7 +170,7 @@ TARG=\
 	vacput.dis\
 	wav2iaf.dis\
 	wc.dis\
-	web9p.dis\
+	webfs.dis\
 	webgrab.dis\
 	wmexport.dis\
 	wmimport.dis\
@@ -198,6 +200,7 @@ SYSMODULES=\
 	filter.m\
 	fslib.m\
 	ftrans.m\
+	gpu.m\
 	hash.m\
 	imagefile.m\
 	ipints.m\

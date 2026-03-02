@@ -45,7 +45,7 @@ init(nil: ref Draw->Context, args: list of string)
 	arg->init(args);
 	arg->setusage("import [-a|-b] [-c] [-e enc digest] host file [localfile]");
 	flags := 0;
-	cryptalg := "";	# will be rc4_256 sha1
+	cryptalg := "";	# will be aes_256_cbc sha256
 	keyspec := "";
 	while((o := arg->opt()) != 0)
 		case o {

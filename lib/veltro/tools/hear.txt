@@ -1,0 +1,15 @@
+hear - Listen and transcribe speech (speech-to-text)
+
+Usage:
+  hear                       Listen and transcribe (default 5s)
+  hear <duration_ms>         Listen for specified duration
+
+Arguments:
+  duration_ms - Recording duration in milliseconds (default: 5000)
+
+Examples:
+  hear                       Listen for 5 seconds
+  hear 10000                 Listen for 10 seconds
+
+Requires /n/speech (run speech9p first).
+Configure STT engine via: echo 'engine api' > /n/speech/ctl

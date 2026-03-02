@@ -2330,7 +2330,7 @@ macmcal(void)
 	mem(Ldw, O(Modlink, MP), RA3, RMP);
 	mem(Stw, O(REG, MP), RREG, RMP);
 	mem(Ldw32, O(Modlink, compiled), RA3, RA1);
-	CBNZ_X(RA1, 4);
+	CBNZ_X(RA1, 5);	/* skip 4 insns (Stw FP, Stw PC, Ldw xpc, BR xpc) to compiled path */
 	/* Not compiled */
 	mem(Stw, O(REG, FP), RREG, RFP);
 	mem(Stw, O(REG, PC), RREG, RA0);

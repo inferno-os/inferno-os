@@ -507,7 +507,7 @@ PAKclient(conn: ref Dial->Connection, C: string, pwhash: array of byte): string
 	if(err != nil)
 		return nil;
 	erasekey(digest);
-	if(sys->fprint(conn.cfd, "alg sha1 rc4_128") < 0)
+	if(sys->fprint(conn.cfd, "alg sha256 aes_128_cbc") < 0)
 		return nil;
 	return S;
 }

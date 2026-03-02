@@ -147,10 +147,6 @@ fi
 export SHELL=/bin/sh
 export SHELLNAME=sh
 
-# Update mkconfig to use amd64 instead of arm64
-echo "Configuring mkconfig for amd64..."
-sed -i 's/OBJTYPE=arm64/OBJTYPE=amd64/' "$ROOT/mkconfig"
-
 # Create the lib directory if it doesn't exist
 mkdir -p "$ROOT/Linux/amd64/lib"
 

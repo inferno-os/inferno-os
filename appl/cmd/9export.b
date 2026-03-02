@@ -38,7 +38,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 	arg->init(args);
 	arg->setusage("9export [-aA9] [-k keyspec] [-e enc digest]");
-	cryptalg := "";	# will be rc4_256 sha1
+	cryptalg := "";	# will be aes_256_cbc sha256
 	keyspec := "";
 	noauth := 0;
 	xflag := Sys->EXPWAIT;

@@ -13,8 +13,8 @@ implement ToolWrite;
 # Use \n for explicit newlines within the content.
 #
 # Examples:
-#   Write /tmp/test.txt "Hello World"
-#   Write /tmp/script.sh "#!/bin/sh\necho hello"
+#   Write /tmp/veltro/scratch/test.txt "Hello World"
+#   Write /tmp/veltro/scratch/script.sh "#!/bin/sh\necho hello"
 #
 
 include "sys.m";
@@ -50,11 +50,11 @@ doc(): string
 		"Usage:\n" +
 		"  Write <path> <content>\n\n" +
 		"Arguments:\n" +
-		"  path    - File path to write (created if needed)\n" +
+		"  path    - File path to write (use /tmp/veltro/scratch/ for temp files)\n" +
 		"  content - Content to write (use quotes for spaces, \\n for newlines)\n\n" +
 		"Examples:\n" +
-		"  Write /tmp/test.txt \"Hello World\"\n" +
-		"  Write /tmp/script.sh \"#!/bin/sh\\necho hello\"\n\n" +
+		"  Write /tmp/veltro/scratch/test.txt \"Hello World\"\n" +
+		"  Write /tmp/veltro/scratch/script.sh \"#!/bin/sh\\necho hello\"\n\n" +
 		"Returns confirmation with bytes written, or error message.";
 }
 

@@ -42,10 +42,17 @@ Windowm : module {
 		dumpdir : string;
 		dumpid : int;
 		colorstr : string;	# per-window color overrides, nil = use global
-		imagemode : int;	# 0 = text mode, 1 = image mode
-		bodyimage : ref Draw->Image;	# loaded image for display
-		imagepath : string;	# path to current image
+		imagemode : int;	# 0 = text mode, 1 = image/content mode
+		bodyimage : ref Draw->Image;	# rendered content for display
+		imagepath : string;	# path to current content
 		imageoffset : Draw->Point;	# pan offset for large images
+		contentdata : array of byte;	# raw content bytes (for renderer commands / render mode)
+		contentrenderer : Renderer;	# active renderer module (nil = legacy image path)
+		rendering : int;	# 1 while async render in progress (debounce)
+		pendingcmd : string;	# deferred command during rendering (latest wins)
+		rendermode : int;	# 0 = raw text, 1 = formatted view (Render command toggle)
+		zoomscale : int;	# zoom percentage: 100 = fit-to-window, 200 = 2x, etc.
+		zoomedcache : ref Draw->Image;	# cached scaled page for fast pan/redraw
 		utflastqid : int;
 		utflastboff : int;
 		utflastq : int;
@@ -80,7 +87,12 @@ Windowm : module {
 		ctlprint : fn(w : self ref Window, fonts : int) : string;
 		applycolors : fn(w : self ref Window);
 		loadimage : fn(w : self ref Window, path : string) : string;
+		loadcontent : fn(w : self ref Window, path : string) : string;
 		clearimage : fn(w : self ref Window);
 		drawimage : fn(w : self ref Window);
+		prerenderzoomed : fn(w : self ref Window) : ref Draw->Image;
+		contentcommands : fn(w : self ref Window) : list of ref Renderer->Command;
+		contentcommand : fn(w : self ref Window, cmd, arg : string) : string;
+		asynccontentcommand : fn(w : self ref Window, cmd, arg : string);
 	};
 };

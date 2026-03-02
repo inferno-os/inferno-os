@@ -1,0 +1,38 @@
+<$ROOT/mkconfig
+
+TARG=\
+	rlayout.dis\
+	tlayout.dis\
+	imgrender.dis\
+	mdrender.dis\
+	htmlrender.dis\
+	pdfrender.dis\
+	mdfmt.dis\
+	htmlfmt.dis\
+
+MODULES=\
+	rlayout.m\
+	tlayout.m\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	html.m\
+	filter.m\
+	pdf.m\
+	renderer.m\
+	formatter.m\
+
+DISBIN=$ROOT/dis/xenith/render
+
+all:V:	$TARG
+
+<$ROOT/mkfiles/mkdis
+
+install:V:	$BINTARG
+
+nuke:V:
+	rm -f *.dis *.sbl
+
+clean:V:
+	rm -f *.dis *.sbl

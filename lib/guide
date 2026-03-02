@@ -1,0 +1,319 @@
+InferNode Guide
+===============
+B2 (middle-click) a command to execute it.
+B3 (right-click) a file path to open it.
+Edit commands in place before executing.
+
+Starting Up
+-----------
+# macOS (Apple Silicon)
+./emu/MacOSX/o.emu -r. -c1
+
+# macOS headless (no GUI)
+./emu/MacOSX/o.emu -r. -c1 -G
+
+# Linux x86_64
+./emu/Linux/o.emu -r. -c1
+
+# Linux ARM64 (Jetson, Pi)
+./emu/Linux/o.emu -r. -c1
+
+# Interpreter only (no JIT)
+./emu/MacOSX/o.emu -r. -c0
+
+# Memory pools — default 32MB each, grow lazily via mmap.
+# Increase for Xenith + Veltro sessions:
+#   -pheap=128m    Dis heap (objects, strings, channels)
+#   -pmain=128m    main pool (internal structures)
+#   -pimage=128m   image pool (Draw graphics)
+./emu/MacOSX/o.emu -r. -c1 -pheap=128m -pmain=128m
+
+Xenith
+------
+xenith
+xenith -t catppuccin
+xenith -t plan9
+xenith -f /fonts/vera/VeraMono/VeraMono.14.font
+
+# Tag commands (B2 any of these in a window tag)
+New Del Put Get Undo Redo Zerox
+Cut Paste Snarf Look Dump Load
+Send Clear Reset Delete
+Edit =
+
+# Open a shell window
+win
+
+# Open a new window
+New /path/to/file
+
+# Open this guide
+New /lib/guide
+
+# Plumbing: B3 any path or address
+/lib/sh/profile
+/appl/xenith/DESIGN.md
+/appl/veltro/repl.b:/^init/
+
+# Mouse chords
+B1          select text
+B2          execute selection (or word under cursor)
+B3          look: open file, search, or plumb
+B1-B2       cut
+B1-B3       paste
+B2-B1       add to search argument
+B3-B1       add to look argument
+
+Xenith Filesystem
+-----------------
+Xenith exposes its entire state as a 9P filesystem.
+Humans and AI agents use the same interface — just files.
+
+# The 9P server is mounted for child processes (win, commands).
+# Inside a win window, it appears at both /chan and /mnt/xenith.
+# From the bare emu shell (before Xenith), these are empty.
+# Use /chan — it's what Xenith itself uses internally.
+
+# Check your namespace (run inside win)
+ns
+
+# Top-level
+ls /chan
+cat /chan/index              window list (id, tag, ...)
+cat /chan/label              global label
+cat /chan/cons               console output
+
+# Create a window
+cat /chan/new/ctl            creates window, returns id + state
+
+# Per-window files (/chan/<id>/...)
+ls /chan/1
+
+cat /chan/1/ctl              window state (id, tag, dirty, ...)
+cat /chan/1/tag              tag line text
+cat /chan/1/body             body text
+cat /chan/1/addr             current address (selection)
+cat /chan/1/data             text at current address
+cat /chan/1/event            event stream (mouse, keyboard)
+cat /chan/1/colors           current color scheme
+cat /chan/1/image            body image data (PNG/PPM)
+
+# Write to a window
+echo hello > /chan/1/body
+echo 'name /lib/guide' > /chan/1/ctl
+echo 'clean' > /chan/1/ctl
+echo 'show' > /chan/1/ctl
+
+# Set window address, then read/write data
+echo '#0' > /chan/1/addr
+cat /chan/1/data
+
+# Set window colors
+echo 'tagbg #F38BA8' > /chan/1/colors
+echo 'reset' > /chan/1/colors
+
+# ctl commands
+#   name <path>    set window name
+#   clean          mark unmodified
+#   show           scroll to cursor
+#   grow           grow window in column
+#   growmax        maximum size
+#   growfull       full column height
+#   noscroll       disable auto-scroll
+#   scroll         enable auto-scroll
+
+# This is how Veltro controls Xenith — same files you see here.
+
+Editing
+-------
+win
+Edit =
+Edit ,s/old/new/g
+Edit ,x/pattern/ c/replacement/
+Edit X/.*.b/ ,s/oldname/newname/g
+
+agrep pattern files...
+adiff file1 file2
+
+|fmt
+|sort
+|wc -l
+
+Veltro (AI Agent)
+-----------------
+# Guided tour (Veltro teaches you the system)
+/dis/veltro/veltro 'read /lib/veltro/demos/tour.txt and follow the tour instructions'
+
+# Interactive chat (opens in Xenith window or terminal)
+# tools9p MUST be started first -- it controls which tools the agent has
+/dis/veltro/tools9p read list find search spawn edit write xenith say; /dis/veltro/repl
+
+# Single-shot task (use ; so tools9p mounts /tool before veltro starts)
+/dis/veltro/tools9p read list; /dis/veltro/veltro 'list the files in /appl/cmd'
+
+# Verbose mode (shows LLM steps, namespace info)
+/dis/veltro/tools9p read list find search spawn edit write xenith say; /dis/veltro/repl -v
+
+# All tools including exec and speech
+/dis/veltro/tools9p read list find search write edit exec spawn xenith say hear ask diff json http git memory todo websearch grep mail; /dis/veltro/repl -v
+
+# Security: tools9p chooses what's available.
+# Capability flows from caller to callee, never the reverse.
+# The agent's namespace is restricted automatically:
+#   - Project files (.env, .git, CLAUDE.md) hidden
+#   - Host filesystem (/n/local) hidden
+#   - Only /dis/lib and /dis/veltro visible
+#   - Only /lib/veltro visible
+
+# Agent types (for subagents via spawn tool)
+/lib/veltro/agents/default.txt
+/lib/veltro/agents/plan.txt
+/lib/veltro/agents/task.txt
+/lib/veltro/agents/explore.txt
+
+# System prompt and security model
+/lib/veltro/system.txt
+/appl/veltro/SECURITY.md
+
+# Spawn a subagent from within a session:
+#   spawn tools=read,list -- list the contents of /tmp
+#   spawn tools=read,find agenttype=explore -- find error handlers
+
+Veltro Tools
+------------
+read path             read file contents
+list path             list directory
+find pattern path     find files by pattern
+search pattern path   search file contents
+write path content    write a file
+edit path             line-based file editing
+diff file1 file2      show differences
+exec command          run shell command (requires shellcmds grant)
+spawn options -- task create isolated subagent
+xenith list           list open windows
+xenith read N body    read window N body
+xenith create name    create named window
+xenith write N body   write to window N body
+ask question          ask user for input
+memory save K V       persistent key-value store
+memory load K         retrieve stored value
+http GET url          HTTP request
+json file path        query JSON data
+git status            git operations
+say text              text-to-speech
+hear                  speech-to-text
+
+Shell
+-----
+# Inferno shell is rc-style, not POSIX
+# No && operator. Use ; to chain commands.
+
+echo hello world
+date
+pwd
+ls /appl
+cat /dev/sysctl
+cat /dev/user
+ps
+ns
+
+# Run host OS commands
+os ls -la
+os uname -a
+os 'echo $HOME'
+
+# Environment
+echo $home
+echo $user
+echo $emuhost
+echo $emuroot
+
+# Iteration (rc-style, not sh-style)
+for f in /tmp/*.b { echo $f }
+
+Namespace
+---------
+ns
+bind -a /some/dir /target
+bind -b /some/dir /target
+mount -A tcp!host!port /n/remote
+unmount /n/remote
+
+# Host filesystem
+ls /n/local/
+ls /n/local/tmp
+
+# LLM interface
+ls /n/llm
+cat /n/llm/model
+
+# Speech interface
+ls /n/speech
+
+# Xenith filesystem
+ls /mnt/xenith
+
+# Virtual devices
+bind '#C' /cmd        host command execution
+bind '#I' /net        TCP/IP networking
+bind '#U*' /n/local   host filesystem (via trfs)
+bind '#p' /prog       process info
+
+Files and Paths
+---------------
+/dis                  compiled Dis bytecode
+/appl                 Limbo application source
+/module               module interfaces (.m)
+/fonts                bitmap fonts
+/lib                  runtime data
+/lib/sh/profile       shell startup
+/lib/veltro           Veltro config and agents
+/tests                unit tests
+/docs                 documentation
+
+/appl/cmd             shell commands
+/appl/lib             library modules
+/appl/xenith          Xenith source
+/appl/veltro          Veltro agent source
+/appl/veltro/tools    Veltro tool modules
+
+Fonts
+-----
+# Fixed-width
+/fonts/vera/VeraMono/VeraMono.14.font
+/fonts/misc/unicode.6x13.font
+/fonts/misc/latin1.8x13.font
+/fonts/misc/latin1.6x13.font
+/fonts/pelm/unicode.8.font
+
+# Proportional
+/fonts/vera/Vera/unicode.14.font
+/fonts/misc/infernode.font
+
+Building
+--------
+# Set environment (from project root on host)
+export ROOT=$PWD
+export PATH=$PWD/MacOSX/arm64/bin:$PATH
+
+# Build all commands
+cd appl/cmd && mk install
+
+# Build tests
+cd tests && mk install
+
+# Build Xenith
+cd appl/xenith && mk install
+
+# Build a Veltro tool
+cd appl/veltro/tools && limbo -I$ROOT/module -I$ROOT/appl/veltro -gw -o $ROOT/dis/veltro/tools/toolname.dis toolname.b
+
+# Clean rebuild
+mk nuke && mk install
+
+# IMPORTANT: use native tools (MacOSX/arm64/bin/), not hosted limbo
+
+Testing
+-------
+# Run all tests
+./emu/MacOSX/o.emu -r. /tests/runner

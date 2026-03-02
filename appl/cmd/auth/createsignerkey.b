@@ -91,6 +91,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	myPKbuf := array of byte kr->pktostr(info.mypk);
 	state := kr->sha256(myPKbuf, len myPKbuf, nil, nil);
 	info.cert = kr->sign(info.mysk, expire, state, "sha256");
+
 	(info.alpha, info.p) = kr->dhparams(DHmodlen);
 
 	if(kr->writeauthinfo(filename, info) < 0)

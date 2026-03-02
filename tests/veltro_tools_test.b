@@ -325,6 +325,129 @@ testMemoryDelete(t: ref T)
 		"deleted key should not be found");
 }
 
+# Test todo tool - add and list
+testTodoAddList(t: ref T)
+{
+	todo := loadtool("todo");
+	if(todo == nil) {
+		t.skip("todo tool not available");
+		return;
+	}
+
+	# Start clean
+	todo->exec("clear");
+
+	# Add two items
+	r1 := todo->exec("add First task");
+	t.log("add result: " + r1);
+	t.assert(hassubstr(r1, "added item 1"), "first add should return 'added item 1'");
+
+	r2 := todo->exec("add Second task");
+	t.log("add result: " + r2);
+	t.assert(hassubstr(r2, "added item 2"), "second add should return 'added item 2'");
+
+	# List should show both
+	listed := todo->exec("list");
+	t.log("list result: " + listed);
+	t.assert(hassubstr(listed, "First task"), "list should contain first task");
+	t.assert(hassubstr(listed, "Second task"), "list should contain second task");
+	t.assert(hassubstr(listed, "pending"), "list should show pending status");
+
+	# Clean up
+	todo->exec("clear");
+}
+
+# Test todo tool - done
+testTodoDone(t: ref T)
+{
+	todo := loadtool("todo");
+	if(todo == nil) {
+		t.skip("todo tool not available");
+		return;
+	}
+
+	todo->exec("clear");
+	todo->exec("add Task A");
+	todo->exec("add Task B");
+
+	# Mark first done
+	r := todo->exec("done 1");
+	t.log("done result: " + r);
+	t.assert(hassubstr(r, "item 1 done"), "done should confirm item 1");
+	t.assert(hassubstr(r, "Task A"), "done should show task text");
+
+	# Status should reflect
+	s := todo->exec("status");
+	t.log("status: " + s);
+	t.assert(hassubstr(s, "1 pending"), "status should show 1 pending");
+	t.assert(hassubstr(s, "1 done"), "status should show 1 done");
+
+	todo->exec("clear");
+}
+
+# Test todo tool - delete and clear
+testTodoDeleteClear(t: ref T)
+{
+	todo := loadtool("todo");
+	if(todo == nil) {
+		t.skip("todo tool not available");
+		return;
+	}
+
+	todo->exec("clear");
+	todo->exec("add Alpha");
+	todo->exec("add Beta");
+	todo->exec("add Gamma");
+
+	# Delete middle item
+	r := todo->exec("delete 2");
+	t.log("delete result: " + r);
+	t.assert(hassubstr(r, "deleted item 2"), "delete should confirm item 2");
+	t.assert(hassubstr(r, "Beta"), "delete should show task text");
+
+	# List should still have Alpha and Gamma
+	listed := todo->exec("list");
+	t.assert(hassubstr(listed, "Alpha"), "list should still have Alpha");
+	t.assert(hassubstr(listed, "Gamma"), "list should still have Gamma");
+	t.assert(!hassubstr(listed, "Beta"), "list should not have Beta");
+
+	# Clear all
+	c := todo->exec("clear");
+	t.log("clear result: " + c);
+	t.assert(hassubstr(c, "cleared"), "clear should report cleared");
+
+	# List should be empty
+	empty := todo->exec("list");
+	t.assert(hassubstr(empty, "no items") || !hassubstr(empty, "pending"),
+		"list after clear should be empty");
+}
+
+# Test todo tool - status empty and error cases
+testTodoStatus(t: ref T)
+{
+	todo := loadtool("todo");
+	if(todo == nil) {
+		t.skip("todo tool not available");
+		return;
+	}
+
+	todo->exec("clear");
+
+	# Status on empty list
+	s := todo->exec("status");
+	t.log("empty status: " + s);
+	t.assert(hassubstr(s, "0 item"), "empty status should report 0 items");
+
+	# Error on bad item number
+	e := todo->exec("done 99");
+	t.assert(hassubstr(e, "error") || hassubstr(e, "not found"),
+		"done on missing item should error");
+
+	# Error on missing subcommand
+	e2 := todo->exec("");
+	t.assert(hassubstr(e2, "error"), "empty exec should return error");
+}
+
 # Helper: check if s contains substr
 hassubstr(s, sub: string): int
 {
@@ -367,6 +490,12 @@ init(nil: ref Draw->Context, args: list of string)
 	run("MemoryList", testMemoryList);
 	run("MemoryAppend", testMemoryAppend);
 	run("MemoryDelete", testMemoryDelete);
+
+	# Todo tests
+	run("TodoAddList", testTodoAddList);
+	run("TodoDone", testTodoDone);
+	run("TodoDeleteClear", testTodoDeleteClear);
+	run("TodoStatus", testTodoStatus);
 
 	if(testing->summary(passed, failed, skipped) > 0)
 		raise "fail:tests failed";

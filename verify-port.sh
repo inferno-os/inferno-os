@@ -24,12 +24,24 @@ fi
 echo "✅ Limbo compiler exists"
 
 # Check critical .dis files
+MISSING=0
 for f in dis/emuinit.dis dis/sh.dis dis/lib/readdir.dis dis/cat.dis dis/ls.dis dis/pwd.dis; do
     if [ ! -f "$f" ]; then
-        echo "❌ FAIL: $f missing"
-        exit 1
+        echo "❌ MISSING: $f"
+        MISSING=$((MISSING + 1))
+    else
+        echo "  OK: $f ($(wc -c < "$f") bytes)"
     fi
 done
+if [ "$MISSING" -gt 0 ]; then
+    echo ""
+    echo "Debugging: listing dis/ directory contents:"
+    ls -la dis/*.dis 2>/dev/null || echo "  (no .dis files in dis/)"
+    ls -la dis/lib/*.dis 2>/dev/null || echo "  (no .dis files in dis/lib/)"
+    echo ""
+    echo "❌ FAIL: $MISSING critical .dis file(s) missing"
+    exit 1
+fi
 echo "✅ Critical .dis files present"
 
 # Test simple output

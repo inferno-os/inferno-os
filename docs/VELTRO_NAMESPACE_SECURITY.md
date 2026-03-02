@@ -1,10 +1,32 @@
-# Veltro Namespace Security Model (v2)
+# Veltro Namespace Security Model (v2) -- SUPERSEDED
 
-## Overview
+> **This document describes the v2 security model (NEWNS + sandbox), which has been replaced by v3 (FORKNS + bind-replace).**
+>
+> **Current documentation: [`appl/veltro/SECURITY.md`](../appl/veltro/SECURITY.md)**
+>
+> **Design review: [`docs/NAMESPACE_SECURITY_REVIEW.md`](NAMESPACE_SECURITY_REVIEW.md) (Section 11)**
 
-Veltro uses Inferno's namespace isolation primitives to create secure sandboxes for AI agent execution. The key insight is that **NEWNS makes the current directory become the new root**, providing true capability-based security where the namespace itself IS the capability.
+This document is retained as a historical reference for understanding the design evolution.
 
-## Architecture
+---
+
+## Why v2 Was Replaced
+
+The NEWNS + sandbox approach had fundamental problems:
+
+1. **Bootstrap problem**: After `pctl(NEWNS)`, the namespace is empty -- no paths exist, so you can't bind anything without first solving how to create mount points in an empty namespace.
+
+2. **File copying**: NEWNS loses all bind mounts, so granted paths had to be physically copied into the sandbox directory. This was slow, fragile, and required cleanup.
+
+3. **Cleanup complexity**: Sandbox directories under `/tmp/.veltro/sandbox/{id}/` needed explicit cleanup via `rmrf()`, with race conditions around stale detection.
+
+4. **Code size**: ~863 lines of sandbox construction, validation, cleanup, and edge-case handling.
+
+v3 replaces all of this with `restrictdir()` (~455 lines): fork the existing namespace, then bind-replace each directory with a shadow containing only allowed items. No file copying, no cleanup, no bootstrap problem.
+
+---
+
+## v2 Architecture (Historical)
 
 ### Security Model
 
@@ -30,163 +52,26 @@ Child (after spawn):
 
 ```
 /tmp/.veltro/sandbox/{id}/
-├── dis/
-│   ├── lib/              ← Bound from /dis/lib (runtime)
-│   ├── veltro/tools/     ← Bound from /dis/veltro/tools
-│   └── sh.dis            ← Only if trusted=1
-├── dev/
-│   ├── cons              ← Bound from /dev/cons
-│   └── null              ← Bound from /dev/null
-├── tool/                 ← Mount point for tools9p
-├── tmp/                  ← Writable scratch space
-├── n/llm/                ← LLM access (if configured)
-└── [granted paths]       ← Copied from parent namespace
++-- dis/
+|   +-- lib/              bound from /dis/lib (runtime)
+|   +-- veltro/tools/     bound from /dis/veltro/tools
+|   +-- sh.dis            only if trusted=1
++-- dev/
+|   +-- cons              bound from /dev/cons
+|   +-- null              bound from /dev/null
++-- tool/                 mount point for tools9p
++-- tmp/                  writable scratch space
++-- n/llm/                LLM access (if configured)
++-- [granted paths]       copied from parent namespace
 ```
 
-### Security Properties
+### Learnings Carried Forward to v3
 
-| Property | Mechanism |
-|----------|-----------|
-| No #U escape | NODEVS blocks device naming before sandbox entry |
-| No env secrets | NEWENV creates empty environment (not FORKENV) |
-| No FD leaks | NEWFD with explicit keep-list [0,1,2,pipefd] |
-| Empty srv registry | NEWPGRP creates fresh process group |
-| Truthful namespace | Only granted paths exist after NEWNS |
-| No shell for untrusted | safeexec() loads .dis directly, no shell interpretation |
-| Race-free creation | sys->create() fails if sandbox exists |
-| Auditable | All binds logged to /tmp/.veltro/audit/{id}.ns |
+1. **Module pre-loading is essential**: Tool modules must be loaded before namespace restriction. v3 continues this pattern.
+2. **Tool init() before restriction**: Tools may load dependencies in init(). Both v2 and v3 call init() while /dis is unrestricted.
+3. **NODEVS + NEWENV + NEWPGRP together**: Full security requires all three. v3 applies these in the child spawn sequence.
+4. **NODEVS doesn't block everything**: `#e` (environment), `#s` (srv), `#|` (pipes) are still permitted. Mitigated by NEWENV and NEWPGRP.
 
-## Key Files
+---
 
-| File | Purpose |
-|------|---------|
-| `appl/veltro/nsconstruct.m` | Interface definitions (Capabilities, Mountpoints) |
-| `appl/veltro/nsconstruct.b` | Sandbox preparation, validation, cleanup |
-| `appl/veltro/tools/spawn.b` | Child process isolation and execution |
-| `appl/veltro/tool.m` | Tool interface with init() for pre-loading |
-| `appl/veltro/tools9p.b` | Tool filesystem server |
-
-## Learnings and Gotchas
-
-### 1. NEWNS Discards Binds
-
-**Problem**: After `pctl(NEWNS, nil)`, bind mounts from the parent namespace are lost. The child only sees the physical file structure.
-
-**Solution**: Copy files instead of binding for granted paths. Binds only work for paths that are physically inside the sandbox directory.
-
-```limbo
-# WRONG: This bind is lost after NEWNS
-sys->bind("/appl/veltro", sandboxdir + "/appl/veltro", Sys->MREPL);
-
-# RIGHT: Copy files so they survive NEWNS
-copytree("/appl/veltro", sandboxdir + "/appl/veltro");
-```
-
-### 2. Module Pre-loading is Essential
-
-**Problem**: After NEWNS, paths like `/dis/veltro/tools/list.dis` no longer exist. Loading modules fails.
-
-**Solution**: Pre-load all required modules BEFORE the spawn. Limbo's `spawn` creates threads that share memory, so pre-loaded modules remain accessible after NEWNS.
-
-```limbo
-# BEFORE spawn: load modules while paths exist
-preloadmodules(tools);
-
-# AFTER NEWNS: modules are in memory, use directly
-tool := findpreloaded("list");
-result := tool->exec(args);
-```
-
-### 3. Tool init() Must Happen Before NEWNS
-
-**Problem**: Tool modules may load dependencies in their `exec()` function. After NEWNS, these dependencies can't be found.
-
-**Solution**: Added `init(): string` to the Tool interface. Called during pre-loading while paths still exist.
-
-```limbo
-Tool: module {
-    init: fn(): string;  # Initialize while paths exist
-    name: fn(): string;
-    doc:  fn(): string;
-    exec: fn(args: string): string;
-};
-```
-
-### 4. Device Files Block Copy Operations
-
-**Problem**: `copytree()` trying to copy `/dev` would block forever when opening `/dev/cons` (waiting for console input).
-
-**Solution**: Skip device files during copy. Device files are bound, not copied.
-
-```limbo
-isdevicepath(path: string): int
-{
-    if(len path >= 5 && path[0:5] == "/dev/")
-        return 1;
-    if(len path > 0 && path[0] == '#')
-        return 1;
-    return 0;
-}
-```
-
-### 5. Stale Sandbox Detection Requires Wall Clock Time
-
-**Problem**: Sandbox IDs using `sys->millisec()` (boot-relative time) broke stale detection across Inferno restarts. Old sandboxes appeared newer than current time.
-
-**Solution**: Use `daytime->now()` (seconds since epoch) for sandbox timestamps.
-
-```limbo
-# WRONG: Resets to 0 on each boot
-now := sys->millisec();
-
-# RIGHT: Survives reboots
-now := daytime->now();
-```
-
-### 6. NODEVS Doesn't Block Everything
-
-**Critical**: NODEVS blocks `#U` (host filesystem), `#p` (prog), `#c` (console driver), but still permits:
-- `#e` (environment) - mitigated by NEWENV
-- `#s` (srv registry) - mitigated by NEWPGRP
-- `#|` (pipes) - needed for IPC
-- `#D` (SSL) - may be needed for secure connections
-
-The full security model requires NEWENV + NEWPGRP + NODEVS together.
-
-### 7. tools9p Has Heavy Dependencies
-
-**Problem**: tools9p.b loads styx, styxservers, and other modules. After NEWNS, these fail to load.
-
-**Solution**: Don't start tools9p in the child. Instead, use pre-loaded tool modules directly via `safeexec()`.
-
-## Testing
-
-```sh
-# Build
-export ROOT=$PWD && export PATH=$PWD/MacOSX/arm64/bin:$PATH
-cd appl/veltro && mk install
-cd tests && mk install
-
-# Run security tests (9 tests)
-./emu/MacOSX/o.emu -r. /tests/veltro_security_test.dis -v
-
-# Run spawn execution tests (4 tests)
-./emu/MacOSX/o.emu -r. /tests/spawn_exec_test.dis -v
-```
-
-## Usage Example
-
-```limbo
-# Spawn a child with limited capabilities
-result := spawn->exec("tools=list,read paths=/appl/veltro -- list /appl/veltro");
-
-# Spawn a trusted child with shell access
-result := spawn->exec("tools=read,exec paths=/tmp shellcmds=cat trusted=1 -- cat /tmp/file.txt");
-```
-
-## Future Work
-
-1. **LLM Integration**: Mount actual LLM service at /n/llm/
-2. **Network Isolation**: Control /net access for trusted agents
-3. **Resource Limits**: Add CPU/memory constraints
-4. **Deeper Integration Tests**: Verify isolation from inside spawned children
+*For the current security model, see [`appl/veltro/SECURITY.md`](../appl/veltro/SECURITY.md).*

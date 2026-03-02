@@ -408,7 +408,7 @@ Crypt_dhparams(void *fp)
 	release();
 	if(f->nbits == 1024)
 		DSAprimes(alpha, p, nil);
-	else
+	else if(!getdhparams(f->nbits, p, alpha))
 		gensafeprime(p, alpha, f->nbits, 0);
 	acquire();
 	f->ret->t0 = newIPint(alpha);

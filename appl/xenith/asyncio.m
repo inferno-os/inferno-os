@@ -39,6 +39,25 @@ Asyncio: module {
 				image: ref Draw->Image;  # Image being decoded (partial content)
 				rowsdone: int;  # Rows decoded so far
 				rowstotal: int; # Total rows
+		# Content rendering messages (renderer-based pipeline)
+		ContentData =>
+				opid: int;
+				winid: int;     # Window ID
+				path: string;   # File path
+				data: array of byte;  # Raw file bytes
+				err: string;    # nil on success
+		ContentDecoded =>
+				winid: int;     # Window ID
+				path: string;   # File path (for display in tag)
+				image: ref Draw->Image;  # Rendered image (nil on error)
+				text: string;   # Extracted text content (nil if none)
+				err: string;    # nil on success
+		ContentProgress =>
+				winid: int;     # Window ID
+				path: string;   # File path
+				image: ref Draw->Image;  # Partial render
+				done: int;      # Units completed
+				total: int;     # Total units
 		TextData =>
 				opid: int;      # Operation ID
 				winid: int;     # Window ID for the text
@@ -94,6 +113,9 @@ Asyncio: module {
 
 	# Start async image load - returns operation handle
 	asyncloadimage: fn(path: string, winid: int): ref AsyncOp;
+
+	# Start async content load (for renderer pipeline) - returns operation handle
+	asyncloadcontent: fn(path: string, winid: int): ref AsyncOp;
 
 	# Start async text file load - returns operation handle
 	asyncloadtext: fn(path: string, q0: int, winid: int): ref AsyncOp;

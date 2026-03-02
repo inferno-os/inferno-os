@@ -34,7 +34,7 @@ canlock(Lock *l)
 void
 unlock(Lock *l)
 {
-	l->val = 0;
+	__atomic_store_n(&l->val, 0, __ATOMIC_RELEASE);
 }
 
 void

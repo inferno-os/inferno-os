@@ -13,12 +13,12 @@
 #
 # Run from the infernode root directory.
 #
-# Known intermittent failures:
-#   Tests piping large stdin data may show diff due to Inferno console
-#   keyboard echo timing. The echo is non-deterministic and interleaved
-#   with program output. These affect: sort/freq/grep/md5sum/sha1sum
-#   with large inputs. Core functionality tests (small inputs, no-input
-#   programs) should be 100% reliable.
+# Large-input tests use file arguments rather than stdin piping. Inferno's
+# console input queue (kbdq) is 512 bytes — designed for interactive
+# keyboard input, not bulk data. Data beyond 512 bytes is silently dropped
+# by qproduce(), so programs receive truncated input with piped stdin.
+# File arguments bypass the console path entirely (read via devfs), which
+# is how batch processing works in Inferno and Plan 9.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -72,7 +72,9 @@ done
 # Create temp files for output comparison
 OUT0=$(mktemp)
 OUT1=$(mktemp)
-trap "rm -f $OUT0 $OUT1" EXIT
+# Temp file for passing large input via file argument (avoids stdin echo)
+INFILE="$ROOT/scratchpad/.jit_test_input"
+trap "rm -f $OUT0 $OUT1 $INFILE" EXIT
 
 run_test() {
     local desc="$1"
@@ -116,6 +118,56 @@ run_test() {
     fi
 
     # Compare outputs
+    if diff -q $OUT0 $OUT1 >/dev/null 2>&1; then
+        printf "  PASS  %-45s\n" "$desc"
+        PASS=$((PASS+1))
+    else
+        printf "  FAIL  %-45s\n" "$desc"
+        echo "    --- Interpreter output (first 5 lines) ---"
+        head -5 $OUT0 | sed 's/^/    /'
+        echo "    --- JIT output (first 5 lines) ---"
+        head -5 $OUT1 | sed 's/^/    /'
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# run_test_file: writes input to a file and passes it as a file argument.
+# Used for large-input tests that exceed kbdq's 512-byte capacity.
+# Programs read via devfs (the normal batch-processing path in Inferno).
+run_test_file() {
+    local desc="$1"
+    shift
+    local input="$1"
+    shift
+    local args="$*"
+    TOTAL=$((TOTAL+1))
+
+    printf '%s\n' "$input" > "$INFILE"
+    local infpath="../../scratchpad/.jit_test_input"
+
+    timeout $TIMEOUT_SEC $EMU -c0 $args $infpath >$OUT0 2>/dev/null
+    RC0=$?
+    timeout $TIMEOUT_SEC $EMU -c1 $args $infpath >$OUT1 2>/dev/null
+    RC1=$?
+
+    sleep 0.2
+
+    if [ $RC0 -eq 124 ] && [ $RC1 -eq 124 ]; then
+        printf "  HANG  %-45s (both modes timeout)\n" "$desc"
+        HANG=$((HANG+1))
+        return
+    fi
+    if [ $RC1 -eq 124 ] && [ $RC0 -ne 124 ]; then
+        printf "  FAIL  %-45s (JIT hangs, interp ok)\n" "$desc"
+        FAIL=$((FAIL+1))
+        return
+    fi
+    if [ $RC0 -eq 124 ] && [ $RC1 -ne 124 ]; then
+        printf "  FAIL  %-45s (interp hangs, JIT ok?!)\n" "$desc"
+        FAIL=$((FAIL+1))
+        return
+    fi
+
     if diff -q $OUT0 $OUT1 >/dev/null 2>&1; then
         printf "  PASS  %-45s\n" "$desc"
         PASS=$((PASS+1))
@@ -288,14 +340,14 @@ echo ""
 echo "--- Edge: Large data ---"
 run_test "sort 100 lines"         "$(seq 100 | sort -R)" dis/sort.dis
 run_test "wc 100 lines"           "$(seq 100)" dis/wc.dis
-run_test "freq alphabet x100"     "$(python3 -c "print('abcdefghijklmnopqrstuvwxyz' * 100, end='')" 2>/dev/null || printf '%0.sabcdefghijklmnopqrstuvwxyz' $(seq 100))" dis/freq.dis
-run_test "grep 50 lines"          "$(seq 50 | sed 's/^/line /')" dis/grep.dis "line 25"
+run_test_file "freq alphabet x100" "$(python3 -c "print('abcdefghijklmnopqrstuvwxyz' * 100, end='')" 2>/dev/null || printf '%0.sabcdefghijklmnopqrstuvwxyz' $(seq 100))" dis/freq.dis
+run_test_file "grep 50 lines"     "$(seq 50 | sed 's/^/line /')" dis/grep.dis "line 25"
 run_test "uniq many dupes"        "$(for i in $(seq 20); do echo aaa; echo aaa; echo bbb; done)" dis/uniq.dis
 
 echo ""
 echo "--- Edge: Long strings ---"
 run_test "echo long arg"          "" dis/echo.dis "$(python3 -c "print('A'*500)" 2>/dev/null || printf '%0500d' 0 | tr 0 A)"
-run_test "grep long line"         "$(python3 -c "print('A'*500 + 'NEEDLE' + 'B'*500)" 2>/dev/null || echo ANEEDLEB)" dis/grep.dis NEEDLE
+run_test_file "grep long line"    "$(python3 -c "print('A'*500 + 'NEEDLE' + 'B'*500)" 2>/dev/null || echo ANEEDLEB)" dis/grep.dis NEEDLE
 
 echo ""
 echo "--- Edge: Multi-line sort stress ---"
@@ -319,8 +371,8 @@ echo ""
 echo "--- Edge: Complex programs ---"
 run_test "md5sum empty"           "" dis/md5sum.dis
 run_test "sha1sum empty"          "" dis/sha1sum.dis
-run_test "md5sum large"           "$(seq 200)" dis/md5sum.dis
-run_test "sha1sum large"          "$(seq 200)" dis/sha1sum.dis
+run_test_file "md5sum large"      "$(seq 200)" dis/md5sum.dis
+run_test_file "sha1sum large"     "$(seq 200)" dis/sha1sum.dis
 
 echo ""
 echo "=========================================================="

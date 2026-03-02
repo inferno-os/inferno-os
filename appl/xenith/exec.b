@@ -21,6 +21,7 @@ editm: Edit;
 asyncio: Asyncio;
 
 Dir, OREAD, OWRITE : import Sys;
+formatmod : Format;
 EVENTSIZE, QWaddr, QWdata, QWevent, Astring, CHAPPEND : import dat;
 Lock, Reffont, Ref, seltext, seq, row : import dat;
 warning, error, skipbl, findbl, stralloc, strfree, strncmp, exec : import utils;
@@ -68,7 +69,7 @@ Exectab : adt {
 	flag2 : int;
 };
 
-F_ALPHABET, F_CUT, F_DEL, F_DELCOL, F_DUMP, F_EDIT, F_EXITX, F_FONTX, F_GET, F_ID, F_INCL, F_INDENT, F_KILL, F_LIMBO, F_LINENO, F_LOCAL, F_LOOK, F_NEW, F_NEWCOL, F_PASTE, F_PUT, F_PUTALL, F_UNDO, F_SEND, F_SORT, F_TAB, F_ZEROX : con iota;
+F_ALPHABET, F_CUT, F_DEL, F_DELCOL, F_DUMP, F_EDIT, F_EXITX, F_FONTX, F_GET, F_ID, F_INCL, F_INDENT, F_KILL, F_LIMBO, F_LINENO, F_LOCAL, F_LOOK, F_NEW, F_NEWCOL, F_PASTE, F_PUT, F_PUTALL, F_RENDER, F_UNDO, F_SEND, F_SORT, F_TAB, F_ZEROX : con iota;
 
 exectab := array[] of {
 	Exectab ( "Alphabet",	F_ALPHABET,	FALSE,	XXX,		XXX		),
@@ -95,6 +96,7 @@ exectab := array[] of {
 	Exectab ( "Paste",		F_PASTE,		TRUE,	TRUE,	XXX		),
 	Exectab ( "Put",			F_PUT,		FALSE,	XXX,		XXX		),
 	Exectab ( "Putall",		F_PUTALL,	FALSE,	XXX,		XXX		),
+	Exectab ( "Render",		F_RENDER,	FALSE,	XXX,		XXX		),
 	Exectab ( "Redo",		F_UNDO,		FALSE,	FALSE,	XXX		),
 	Exectab ( "Send",		F_SEND,		TRUE,	XXX,		XXX		),
 	Exectab ( "Snarf",		F_CUT,		FALSE,	TRUE,	FALSE	),
@@ -130,6 +132,7 @@ runfun(fun : int, et, t, argt : ref Text, flag1, flag2 : int, arg : string, narg
 		F_PASTE		=> paste(et, t, flag1, flag2);
 		F_PUT		=> put(et, argt, arg, narg);
 		F_PUTALL 	=> putall();
+		F_RENDER	=> renderx(et, t);
 		F_UNDO 		=> undo(et, flag1);
 		F_SEND		=> send(et, t);
 		F_SORT		=> sort(et);
@@ -246,6 +249,45 @@ execute(t : ref Text, aq0 : int, aq1 : int, external : int, argt : ref Text)
 		strfree(r);
 		r = nil;
 		return;
+	}
+
+	# Check if this is a zoom or renderer command for image mode windows
+	if(t.w != nil && t.w.imagemode){
+		(cs, cn) := skipbl(r.s, q1-q0);
+		(nil, cn) = findbl(cs, cn);
+		cn = len cs - cn;
+		cmdstr := cs[0:cn];
+		# Zoom commands are handled locally (no re-render needed)
+		if(cmdstr == "Zoom+"){
+			if(t.w.zoomscale < 400)
+				t.w.zoomscale += 25;
+			t.w.drawimage();
+			strfree(r);
+			r = nil;
+			return;
+		}
+		if(cmdstr == "Zoom-"){
+			if(t.w.zoomscale > 100)
+				t.w.zoomscale -= 25;
+			t.w.imageoffset.x = 0;
+			t.w.imageoffset.y = 0;
+			t.w.drawimage();
+			strfree(r);
+			r = nil;
+			return;
+		}
+		# Renderer commands (NextPage, PrevPage, etc.) — async re-render
+		if(t.w.contentrenderer != nil){
+			cmds := t.w.contentrenderer->commands();
+			for(; cmds != nil; cmds = tl cmds){
+				if((hd cmds).name == cmdstr){
+					t.w.asynccontentcommand(cmdstr, nil);
+					strfree(r);
+					r = nil;
+					return;
+				}
+			}
+		}
 	}
 
 	(dir, n) = dirname(t, nil, 0);
@@ -475,6 +517,9 @@ get(et : ref Text, t : ref Text, argt : ref Text, flag1 : int, arg : string, nar
 	if(flag1)
 		if(et==nil || et.w==nil)
 			return;
+	# Clear render mode before reloading file
+	if(et.w.rendermode != 0)
+		renderoff(et.w);
 	if(!et.w.isdir && (et.w.body.file.buf.nc>0 && !et.w.clean(TRUE, FALSE)))
 		return;
 	w = et.w;
@@ -660,14 +705,56 @@ put(et : ref Text, argt : ref Text, arg : string, narg : int)
 		return;
 	w = et.w;
 	f := w.body.file;
-	
+
 	name = getname(w.body, argt, arg, narg, TRUE);
 	if(name == nil){
 		warning(nil, "no file name\n");
 		return;
 	}
 	namer = name;
+
+	# If in render mode, temporarily restore raw text for save
+	wasrendered := w.rendermode;
+	saveddata : array of byte;
+	if(wasrendered && w.contentdata != nil){
+		saveddata = w.contentdata;
+		rawstr := string w.contentdata;
+		w.nomark = 1;
+		w.body.delete(0, w.body.file.buf.nc, TRUE);
+		w.body.insert(0, rawstr, len rawstr, TRUE, 0);
+		w.nomark = 0;
+		rawstr = nil;
+	}
+
 	putfile(f, 0, f.buf.nc, namer);
+
+	# Restore formatted view if was rendered
+	if(wasrendered && saveddata != nil){
+		w.contentdata = saveddata;
+		if(formatmod != nil){
+			(formatter, nil) := formatmod->find(w.body.file.name);
+			if(formatter != nil){
+				rawstr := string saveddata;
+				charwidth := 80;
+				fw := graph->strwidth(w.body.frame.font, "0");
+				if(fw > 0){
+					dx := w.body.frame.r.max.x - w.body.frame.r.min.x;
+					if(dx > 0)
+						charwidth = dx / fw;
+				}
+				if(charwidth < 20)
+					charwidth = 20;
+				formatted := formatter->format(rawstr, charwidth);
+				w.nomark = 1;
+				w.body.delete(0, w.body.file.buf.nc, TRUE);
+				w.body.insert(0, formatted, len formatted, TRUE, 0);
+				w.body.file.mod = FALSE;
+				w.nomark = 0;
+				rawstr = nil;
+			}
+		}
+	}
+
 	name = nil;
 }
 
@@ -889,6 +976,106 @@ putall()
 			a = nil;
 		}
 	}
+}
+
+renderx(et : ref Text, nil : ref Text)
+{
+	if(et==nil || et.w==nil)
+		return;
+	w := et.w;
+	if(w.rendermode == 0)
+		renderon(w);
+	else
+		renderoff(w);
+}
+
+renderon(w : ref Window)
+{
+	# Load format module on first use
+	if(formatmod == nil){
+		formatmod = load Format Format->PATH;
+		if(formatmod != nil)
+			formatmod->init();
+	}
+	if(formatmod == nil){
+		warning(nil, "can't load format module\n");
+		return;
+	}
+
+	# Find formatter for this file type
+	(formatter, err) := formatmod->find(w.body.file.name);
+	if(formatter == nil){
+		warning(nil, sprint("Render: %s\n", err));
+		return;
+	}
+
+	# Read all body text
+	nc := w.body.file.buf.nc;
+	if(nc == 0)
+		return;
+	r := stralloc(nc);
+	w.body.file.buf.read(0, r, 0, nc);
+	rawstr := r.s[0:nc];
+	strfree(r);
+	r = nil;
+
+	# Store raw bytes for 9P and restore
+	w.contentdata = array of byte rawstr;
+
+	# Compute character width from body frame
+	charwidth := 80;
+	fw := graph->strwidth(w.body.frame.font, "0");
+	if(fw > 0){
+		dx := w.body.frame.r.max.x - w.body.frame.r.min.x;
+		if(dx > 0)
+			charwidth = dx / fw;
+	}
+	if(charwidth < 20)
+		charwidth = 20;
+
+	# Format
+	formatted := formatter->format(rawstr, charwidth);
+	rawstr = nil;
+
+	# Replace body with formatted text, suppressing undo
+	savemod := w.body.file.mod;
+	w.nomark = 1;
+	w.body.delete(0, w.body.file.buf.nc, TRUE);
+	w.body.insert(0, formatted, len formatted, TRUE, 0);
+	w.body.file.mod = savemod;
+	w.nomark = 0;
+	w.rendermode = 1;
+
+	# Show top
+	w.body.setselect(0, 0);
+	w.body.show(0, 0);
+	scrl->scrdraw(w.body);
+	w.settag();
+}
+
+renderoff(w : ref Window)
+{
+	if(w.contentdata == nil)
+		return;
+
+	rawstr := string w.contentdata;
+
+	# Replace body with raw text, suppressing undo
+	savemod := w.body.file.mod;
+	w.nomark = 1;
+	w.body.delete(0, w.body.file.buf.nc, TRUE);
+	w.body.insert(0, rawstr, len rawstr, TRUE, 0);
+	w.body.file.mod = savemod;
+	w.nomark = 0;
+	w.rendermode = 0;
+	w.contentdata = nil;
+	rawstr = nil;
+
+	# Show top
+	w.body.setselect(0, 0);
+	w.body.show(0, 0);
+	scrl->scrdraw(w.body);
+	w.settag();
 }
 
 id(et : ref Text)

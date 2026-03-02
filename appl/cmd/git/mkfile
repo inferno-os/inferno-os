@@ -1,0 +1,41 @@
+<../../../mkconfig
+
+TARG=\
+	add.dis\
+	branch.dis\
+	checkout.dis\
+	clone.dis\
+	commit.dis\
+	fetch.dis\
+	fs.dis\
+	init.dis\
+	merge.dis\
+	pull.dis\
+	push.dis\
+	rm.dis\
+
+MODULES=
+
+SYSMODULES=\
+	arg.m\
+	bufio.m\
+	daytime.m\
+	draw.m\
+	encoding.m\
+	git.m\
+	keyring.m\
+	styx.m\
+	string.m\
+	styxservers.m\
+	sys.m\
+
+DISBIN=$ROOT/dis/cmd/git
+
+<$ROOT/mkfiles/mkdis
+
+installsh:V:
+	cp log.sh $DISBIN/log.sh
+	cp status.sh $DISBIN/status.sh
+	cp diff.sh $DISBIN/diff.sh
+
+install:V: installsh

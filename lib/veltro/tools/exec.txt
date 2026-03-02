@@ -1,17 +1,15 @@
-exec - Execute shell command
+exec - Run command in Inferno shell (rc-style, not POSIX)
 
-Usage:
   exec <command>
 
-IMPORTANT: Inferno shell differs from POSIX/bash:
-  - Use SINGLE quotes: echo 'hello world'
-  - Double quotes are auto-converted to single quotes
-  - Use ; to separate commands (no && or ||)
+Shell differences from bash:
+  - Single quotes (double quotes auto-converted)
+  - Use ; not && for chaining
+  - for i in $list { cmd }   (not do/done)
+  - $var not ${var}
 
 Examples:
-  exec cat /dev/sysname
   exec ls /appl
-  exec echo 'hello world'
-  exec wc -l /appl/cmd/cat.b
+  exec 'for f in *.b { echo $f }'
 
-Default timeout: 5 seconds (max 30s).
+Timeout: 5s default (max 30s).

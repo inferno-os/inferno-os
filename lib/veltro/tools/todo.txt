@@ -1,0 +1,12 @@
+todo - Task tracking
+
+  todo add <task>    Add pending item
+  todo list          Show all with status
+  todo done <n>      Mark item N done
+  todo delete <n>    Remove item N
+  todo status        "N pending, M done"
+
+MANDATORY for non-trivial tasks: add all steps before starting any work.
+Mark done after each step. Use todo status to track progress.
+
+  todo add "read file"; todo add "edit"; todo list; todo done 1

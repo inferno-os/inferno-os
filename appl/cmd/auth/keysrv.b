@@ -67,7 +67,7 @@ init(nil: ref Draw->Context, args: list of string)
 	if(ai == nil)
 		err(sys->sprint("can't read server key file %s: %r", keyfile));
 
-	(fd, id_or_err) := auth->server("sha256" :: "aes_256_cbc" :: nil, ai, sys->fildes(0), 0);
+	(fd, id_or_err) := auth->server("sha256 aes_256_cbc" :: nil, ai, sys->fildes(0), 0);
 	if(fd == nil)
 		err(sys->sprint("can't authenticate: %s", id_or_err));
 

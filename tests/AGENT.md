@@ -222,7 +222,23 @@ Study these for patterns:
 - `/tests/example_test.b` - basic test structure
 - `/tests/edit_test.b` - testing file operations
 - `/tests/spawn_test.b` - testing concurrent code
+- `/tests/veltro_security_test.b` - namespace security tests
 - `/module/testing.m` - full API reference
+
+## Veltro Namespace Security
+
+Veltro agents run in restricted namespaces. When writing code that interacts with Veltro or its tools, be aware:
+
+- **Agents cannot see**: project files (`.env`, `.git`, `CLAUDE.md`), host filesystem (`/n/local`), top-level commands in `/dis`, most of `/dev` and `/lib`
+- **Agents can see**: `/dis/lib`, `/dis/veltro`, `/lib/veltro`, `/tool`, `/n/llm`, `/n/speech`, `/tmp/veltro/scratch`
+- **Subagents** fork the parent's already-restricted namespace and can only narrow further
+- **Security model**: FORKNS + bind-replace (see `appl/veltro/SECURITY.md`)
+
+Security tests to run:
+```
+/dis/tests/veltro_security_test.dis -v
+/dis/tests/veltro_concurrent_test.dis -v
+```
 
 ## Building Tests
 

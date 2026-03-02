@@ -53,7 +53,13 @@ objIdTab = array [] of {
 	id_pkcs_challengePassword =>	Oid(array [] of {1,2,840,113549,1,9,7}),
 	id_pkcs_unstructuredAddress =>	Oid(array [] of {1,2,840,113549,1,9,8}),
 	id_pkcs_extCertAttrs =>		Oid(array [] of {1,2,840,113549,1,9,9}),
-	id_algorithm_shaWithDSS =>	Oid(array [] of {1,3,14,3,2,13})
+	id_algorithm_shaWithDSS =>	Oid(array [] of {1,3,14,3,2,13}),
+	id_ec_publicKey =>		Oid(array [] of {1,2,840,10045,2,1}),
+	id_ecdsa_sha256 =>		Oid(array [] of {1,2,840,10045,4,3,2}),
+	id_ecdsa_sha384 =>		Oid(array [] of {1,2,840,10045,4,3,3}),
+	id_prime256v1 =>		Oid(array [] of {1,2,840,10045,3,1,7}),
+	id_sha256WithRSAEncryption =>	Oid(array [] of {1,2,840,113549,1,1,11}),
+	id_sha384WithRSAEncryption =>	Oid(array [] of {1,2,840,113549,1,1,12})
 };
 
 # [public]

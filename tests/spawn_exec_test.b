@@ -143,7 +143,7 @@ testSpawnExec(t: ref T)
 		return;
 	}
 
-	# /tmp should exist in sandbox (it's created by preparesandbox)
+	# /tmp should exist in restricted namespace
 	t.assert(len result >= 0, "spawn should return a result");
 }
 

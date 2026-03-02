@@ -7,26 +7,26 @@ on:
     # Weekly on Mondays at 2am UTC
     - cron: '0 2 * * 1'
 
-# Required for Scorecard to upload results
-permissions:
-  security-events: write
-  id-token: write
-  contents: read
-  actions: read
+permissions: read-all
 
 jobs:
   scorecard:
     name: Supply Chain Security
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         persist-credentials: false
 
     - name: Run OSSF Scorecard
-      uses: ossf/scorecard-action@v2
+      uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
       with:
         results_file: scorecard-results.sarif
         results_format: sarif
@@ -34,12 +34,12 @@ jobs:
         publish_results: true
 
     - name: Upload Scorecard SARIF
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
       with:
         sarif_file: scorecard-results.sarif
 
     - name: Upload Scorecard results
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: always()
       with:
         name: scorecard-results
