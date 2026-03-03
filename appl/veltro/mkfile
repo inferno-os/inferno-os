@@ -23,9 +23,11 @@ TOOLS=\
     tools/write.dis\
     tools/edit.dis\
     tools/exec.dis\
+	tools/launch.dis\
     tools/spawn.dis\
     tools/safeexec.dis\
     tools/xenith.dis\
+    tools/present.dis\
     tools/diff.dis\
     tools/json.dis\
     tools/ask.dis\
@@ -90,6 +92,9 @@ tools/edit.dis: tools/edit.b tool.m
 tools/exec.dis: tools/exec.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/exec.dis tools/exec.b
 
+tools/launch.dis: tools/launch.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/launch.dis tools/launch.b
+
 tools/spawn.dis: tools/spawn.b tool.m nsconstruct.m subagent.m
 	limbo $LIMBOFLAGS -gw -o tools/spawn.dis tools/spawn.b
 
@@ -98,6 +103,9 @@ tools/safeexec.dis: tools/safeexec.b tool.m
 
 tools/xenith.dis: tools/xenith.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/xenith.dis tools/xenith.b
+
+tools/present.dis: tools/present.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/present.dis tools/present.b
 
 # New tools (Phase 1c)
 tools/diff.dis: tools/diff.b tool.m

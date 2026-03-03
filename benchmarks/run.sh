@@ -41,9 +41,11 @@ else
     exit 1
 fi
 
-if [ -d "$ROOT/Linux/amd64/bin" ]; then
+if [ -x "$ROOT/Linux/arm64/bin/limbo" ]; then
+    LIMBO="$ROOT/Linux/arm64/bin/limbo"
+elif [ -x "$ROOT/Linux/amd64/bin/limbo" ]; then
     LIMBO="$ROOT/Linux/amd64/bin/limbo"
-elif [ -d "$ROOT/MacOSX/arm64/bin" ]; then
+elif [ -x "$ROOT/MacOSX/arm64/bin/limbo" ]; then
     LIMBO="$ROOT/MacOSX/arm64/bin/limbo"
 else
     echo "ERROR: Cannot find limbo compiler"
@@ -266,7 +268,7 @@ run_mode() {
     local arg2="$6"
 
     printf "  %-22s " "$mode_label"
-    times=$(run_repeated "$bench" "$mode_key" "$runner" "$arg1" "$arg2" 2>/dev/null)
+    times=$(run_repeated "$bench" "$mode_key" "$runner" "$arg1" "$arg2" 2>/dev/null) || true
     if [ "$times" = "ERROR" ] || [ -z "$times" ]; then
         echo -e "${RED}ERROR${NC}"
         FAILURES="$FAILURES ${bench}:${mode_key}"

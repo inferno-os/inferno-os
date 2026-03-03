@@ -1,0 +1,38 @@
+database=
+	file=/lib/ndb/local
+	file=/lib/ndb/dns
+	file=/lib/ndb/inferno
+	file=/lib/ndb/common
+
+#
+# Site-local host entries for Inferno's ndb name service.
+#
+# Copy this file to lib/ndb/local and fill in your site-specific values.
+# lib/ndb/local is git-ignored so your private IPs and hostnames stay local.
+#
+# The ndb/cs connection server reads these entries for name resolution
+# before falling back to external DNS. Entries take the form:
+#
+#   ip=<IP-address>	sys=<hostname>
+#
+# Example: map an LLM inference server reachable over a private overlay network
+#   ip=10.x.x.x	sys=llmserver
+#
+# Then in lib/sh/profile, mount with the symbolic name:
+#   mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
+#
+
+#
+# default site-wide resources
+#
+infernosite=
+	#dnsdomain=your.domain.com
+	#dns=1.2.3.4	# resolver
+	SIGNER=your_signer_here
+	FILESERVER=your_fileserver_here
+	smtp=your_smtpserver_here
+	pop3=your_pop3server_here
+	PROXY=your_httpproxy_here
+	GAMES=your_games_server
+	registry=your_registry_server
+	gridsched=your_inferno_grid_scheduler

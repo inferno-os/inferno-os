@@ -87,6 +87,9 @@ Dockerfile
 # Veltro API keys (secrets)
 lib/veltro/keys/
 
+# Site-local NDB config (contains private IPs/hostnames — use lib/ndb/local.example as template)
+lib/ndb/local
+
 # =========================
 # Build Artifacts
 # =========================
@@ -193,3 +196,4 @@ formal-verification/cbmc/Overflow
 formal-verification/cbmc/(fd
 formal-verification/cbmc/(mnthash).log
 formal-verification/cbmc/allocation).log
+mnt/

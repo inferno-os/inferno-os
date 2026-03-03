@@ -59,6 +59,23 @@ createsession(): string
 	return id;
 }
 
+# Close an LLM session by writing "close" to its ctl file.
+# This decrements the server-side self-reference (refs 1→0), freeing the
+# session immediately rather than waiting for a server restart.
+closesession(id: string)
+{
+	path := "/n/llm/" + id + "/ctl";
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil) {
+		if(verbose)
+			sys->fprint(stderr, "agentlib: cannot open %s: %r\n", path);
+		return;
+	}
+	data := array of byte "close";
+	sys->write(fd, data, len data);
+	fd = nil;
+}
+
 # Set prefill on session-specific path
 # (from veltro.b — has verbose logging on failure)
 setprefillpath(path, prefill: string)
@@ -217,6 +234,7 @@ loadtooldocs(toollist: list of string): string
 	has_spawn := 0;
 	has_grep := 0;
 	has_todo := 0;
+	has_gap := 0;
 
 	for(t := toollist; t != nil; t = tl t) {
 		case hd t {
@@ -224,12 +242,13 @@ loadtooldocs(toollist: list of string): string
 		"spawn" => has_spawn = 1;
 		"grep"  => has_grep = 1;
 		"todo"  => has_todo = 1;
+		"gap"   => has_gap = 1;
 		}
 	}
 
 	docs := "";
 	# Priority order: exec (shell basics), grep (ERE warning),
-	# todo (MANDATORY workflow), spawn (parallel subagent syntax)
+	# todo (MANDATORY workflow), gap (user-visible blind spots), spawn (parallel subagent syntax)
 	if(has_exec) {
 		doc := readfile("/lib/veltro/tools/exec.txt");
 		if(doc != "")
@@ -245,6 +264,14 @@ loadtooldocs(toollist: list of string): string
 	}
 	if(has_todo) {
 		doc := readfile("/lib/veltro/tools/todo.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_gap) {
+		doc := readfile("/lib/veltro/tools/gap.txt");
 		if(doc != "") {
 			if(docs != "")
 				docs += "\n\n";
@@ -759,8 +786,9 @@ tooldesc(name: string): string
 	"find"   => return "Find files by name or pattern";
 	"git"    => return "Run a git command";
 	"say"    => return "Speak text aloud via text-to-speech";
-	"xenith" => return "Issue a command to the Xenith text editor";
-	"spawn"  => return "Spawn a parallel subagent with its own namespace";
+	"xenith"   => return "Issue a command to the Xenith text editor";
+	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=text], write <id> <content-or-path>, center <id>, delete <id>, list, status. For mermaid: write raw Mermaid syntax (NOT fenced code blocks). Supported mermaid diagram types: flowchart, sequenceDiagram, gantt, pie, xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram, stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph, quadrantChart, journey, requirementDiagram, block-beta. For pdf/image: write the file path.";
+	"spawn"    => return "Spawn a parallel subagent with its own namespace";
 	"todo"   => return "Manage a persistent task list";
 	"http"   => return "Make an HTTP request";
 	"ls"     => return "List directory contents";

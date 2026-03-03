@@ -31,6 +31,7 @@ TARG=\
 	daytime.dis\
 	dbm.dis\
 	debug.dis\
+	mermaid.dis\
 	deflate.dis\
 	devpointer.dis\
 	dial.dis\

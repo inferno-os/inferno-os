@@ -36,6 +36,7 @@ ToolWebsearch: module {
 };
 
 APIKEY_PATH: con "/lib/veltro/keys/brave";
+REQUEST_TIMEOUT: con 30000;	# 30 seconds
 
 init(): string
 {
@@ -90,12 +91,28 @@ exec(args: string): string
 	# URL-encode query
 	encoded := urlencode(query);
 
-	# Execute search via Webclient
+	# Execute search via Webclient with timeout
 	url := "https://api.search.brave.com/res/v1/web/search?q=" + encoded + "&count=5";
 	hdrs := Webclient->Header("Accept", "application/json") ::
 		Webclient->Header("X-Subscription-Token", apikey) :: nil;
 
-	(resp, err) := webclient->request("GET", url, hdrs, nil);
+	# Buffered capacity 1: goroutines can complete their send and exit
+	# even after the alt has moved on, preventing indefinite blocking.
+	result := chan[1] of (ref Webclient->Response, string);
+	spawn dosearch(url, hdrs, result);
+
+	timeout := chan[1] of int;
+	spawn timer(timeout, REQUEST_TIMEOUT);
+
+	resp: ref Webclient->Response;
+	err: string;
+	alt {
+	(r, e) := <-result =>
+		(resp, err) = (r, e);
+	<-timeout =>
+		return "error: search request timed out (30s)";
+	}
+
 	if(err != nil)
 		return "error: search failed: " + err;
 	if(resp.body == nil || len resp.body == 0)
@@ -325,6 +342,20 @@ findmatchbrace(s: string, start: int): int
 		}
 	}
 	return -1;
+}
+
+# Perform search in a separate goroutine (allows caller to apply a timeout)
+dosearch(url: string, hdrs: list of Webclient->Header, result: chan of (ref Webclient->Response, string))
+{
+	(resp, err) := webclient->request("GET", url, hdrs, nil);
+	result <-= (resp, err);
+}
+
+# Timer goroutine: send on ch after ms milliseconds
+timer(ch: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	ch <-= 1;
 }
 
 # Strip leading/trailing whitespace

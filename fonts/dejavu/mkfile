@@ -1,0 +1,177 @@
+# fonts/dejavu/mkfile — generate Inferno bitmap subfonts from DejaVu TTF
+#
+# PREREQUISITES (one-time setup):
+#   brew install freetype   (provides libfreetype + pkg-config entry)
+#   brew install --cask font-dejavu   (or place DejaVu TTF files in DEJAVU_DIR)
+#
+# USAGE (from the fonts/dejavu directory, after setting ROOT):
+#   export ROOT=../..
+#   mk                          (build ttf2subfont then all subfonts)
+#   mk DEJAVU_DIR=/my/path      (override font search path)
+#   mk nuke                     (remove generated subfonts + compiled tool)
+#
+# After running mk, the .font manifest files (unicode.14.font) are already
+# correct in the repo; no further changes needed.
+#
+# To inspect font metrics before bulk conversion:
+#   ./ttf2subfont -info -p 14 -r 72 -start 0 -end 0 $DEJAVU_DIR/DejaVuSans.ttf
+#
+
+ROOT=../..
+
+# Default DejaVu TTF location (Homebrew cask installs here).
+# Override: mk DEJAVU_DIR=/path/to/fonts
+DEJAVU_DIR=/opt/homebrew/Caskroom/font-dejavu/2.37/dejavu-fonts-ttf-2.37/ttf
+
+SANS_TTF=$DEJAVU_DIR/DejaVuSans.ttf
+MONO_TTF=$DEJAVU_DIR/DejaVuSansMono.ttf
+
+# Host-side C tool using FreeType2 for greyscale antialiased rendering.
+# Replaces the otf2bdf+bdf2subfont pipeline with a single direct conversion.
+TTF2SUB=./ttf2subfont
+
+# ── Subfont target lists ──────────────────────────────────────────────────────
+
+SANS_SUB=\
+	DejaVuSans/DejaVuSans.14.0000\
+	DejaVuSans/DejaVuSans.14.0100\
+	DejaVuSans/DejaVuSans.14.0200\
+	DejaVuSans/DejaVuSans.14.0300\
+	DejaVuSans/DejaVuSans.14.0400\
+	DejaVuSans/DejaVuSans.14.1E00\
+	DejaVuSans/DejaVuSans.14.2000\
+	DejaVuSans/DejaVuSans.14.2100\
+	DejaVuSans/DejaVuSans.14.2200\
+	DejaVuSans/DejaVuSans.14.2300\
+	DejaVuSans/DejaVuSans.14.2400\
+	DejaVuSans/DejaVuSans.14.2500\
+	DejaVuSans/DejaVuSans.14.2600\
+	DejaVuSans/DejaVuSans.14.2700\
+	DejaVuSans/DejaVuSans.14.FB00
+
+MONO_SUB=\
+	DejaVuSansMono/DejaVuSansMono.14.0000\
+	DejaVuSansMono/DejaVuSansMono.14.0100\
+	DejaVuSansMono/DejaVuSansMono.14.0200\
+	DejaVuSansMono/DejaVuSansMono.14.0300\
+	DejaVuSansMono/DejaVuSansMono.14.0400\
+	DejaVuSansMono/DejaVuSansMono.14.1E00\
+	DejaVuSansMono/DejaVuSansMono.14.2000\
+	DejaVuSansMono/DejaVuSansMono.14.2100\
+	DejaVuSansMono/DejaVuSansMono.14.2200\
+	DejaVuSansMono/DejaVuSansMono.14.2300\
+	DejaVuSansMono/DejaVuSansMono.14.2400\
+	DejaVuSansMono/DejaVuSansMono.14.2500\
+	DejaVuSansMono/DejaVuSansMono.14.2600\
+	DejaVuSansMono/DejaVuSansMono.14.2700\
+	DejaVuSansMono/DejaVuSansMono.14.FB00
+
+all:V: $SANS_SUB $MONO_SUB
+
+install:V: all
+
+# ── Build the host C tool ─────────────────────────────────────────────────────
+# Uses FreeType2 for greyscale antialiasing (FT_RENDER_MODE_NORMAL).
+
+$TTF2SUB: ttf2subfont.c
+	cc -O2 -o $target ttf2subfont.c `pkg-config --cflags --libs freetype2`
+
+# ── DejaVu Sans subfont blocks ───────────────────────────────────────────────
+
+DejaVuSans/DejaVuSans.14.0000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0000 -end 0x00FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.0100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0100 -end 0x01FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.0200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0200 -end 0x02FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.0300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0300 -end 0x03FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.0400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0400 -end 0x04FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.1E00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x1E00 -end 0x1EFF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2000 -end 0x20FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2100 -end 0x21FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2200 -end 0x22FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2300 -end 0x23FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2400 -end 0x24FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2500: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2500 -end 0x25FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2600: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2600 -end 0x26FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.2700: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2700 -end 0x27FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.14.FB00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0xFB00 -end 0xFB0F $SANS_TTF $target
+
+# ── DejaVu Sans Mono subfont blocks ─────────────────────────────────────────
+
+DejaVuSansMono/DejaVuSansMono.14.0000: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0000 -end 0x00FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.0100: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0100 -end 0x01FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.0200: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0200 -end 0x02FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.0300: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0300 -end 0x03FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.0400: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0400 -end 0x04FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.1E00: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x1E00 -end 0x1EFF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2000: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2000 -end 0x20FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2100: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2100 -end 0x21FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2200: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2200 -end 0x22FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2300: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2300 -end 0x23FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2400: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2400 -end 0x24FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2500: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2500 -end 0x25FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2600: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2600 -end 0x26FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.2700: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2700 -end 0x27FF $MONO_TTF $target
+
+DejaVuSansMono/DejaVuSansMono.14.FB00: $MONO_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0xFB00 -end 0xFB0F $MONO_TTF $target
+
+# ── Cleanup ──────────────────────────────────────────────────────────────────
+
+nuke:
+	rm -f $TTF2SUB
+	rm -f DejaVuSans/DejaVuSans.14.* DejaVuSansMono/DejaVuSansMono.14.*

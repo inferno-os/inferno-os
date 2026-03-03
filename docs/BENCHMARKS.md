@@ -124,11 +124,95 @@ Limbo JIT reaches 69% of unoptimized C throughput on the Jetson — closer to na
 
 **Where Limbo JIT struggles.** Recursive Fibonacci (210 ms JIT vs 9 ms Java) highlights the cost of Dis frame allocation. Each recursive call allocates a new frame, checks module pointers, and validates types. Java's HotSpot inlines these calls; the Dis JIT cannot, because frame layout is determined at compile time by the Limbo compiler, not the JIT.
 
+## Go-on-Dis Benchmark Suite
+
+16 benchmarks comparing Native Go, Go-on-Dis (via `godis` compiler), and hand-written Limbo across 5 execution modes: Native Go, Go-on-Dis JIT, Go-on-Dis Interpreter, Limbo JIT, and Limbo Interpreter. Each benchmark runs 1 warmup + 5 timed iterations; mean and stddev reported.
+
+### ARM64 Linux (Jetson AGX Orin, Cortex-A78AE, 64 GB, Linux 5.15.148-tegra)
+
+Go 1.23.4 linux/arm64. Dis VM arena 512 MB.
+
+#### Summary Table (mean ± stddev, ms)
+
+| Benchmark | Native Go | GoDis JIT | GoDis Interp | Limbo JIT | Limbo Interp |
+|-----------|-----------|-----------|--------------|-----------|--------------|
+| fib | 50 ± 11 | 547 ± 6 | 2666 ± 11 | 676 ± 5 | 1971 ± 12 |
+| sieve | 19 ± 2 | 85 ± 3 | 863 ± 10 | 55 ± 7 | 415 ± 2 |
+| qsort | 29 ± 3 | 171 ± 7 | 1537 ± 11 | 128 ± 1 | 755 ± 9 |
+| strcat | 388 ± 12 | OOM | 117 ± 12 | 11 ± 0 | 25 ± 2 |
+| matrix | 36 ± 4 | 245 ± 11 | 2278 ± 6 | 173 ± 10 | 1543 ± 2 |
+| channel | 11 ± 1 | 6 ± 1 | 32 ± 6 | 4 ± 2 | 10 ± 2 |
+| nbody | 10 ± 2 | 220 ± 3 | 590 ± 12 | 187 ± 6 | 377 ± 10 |
+| spawn | 21 ± 1 | 374 ± 67 | 328 ± 59 | 351 ± 39 | 337 ± 92 |
+| bsearch | 59 ± 4 | 269 ± 7 | 2250 ± 12 | 205 ± 1 | 998 ± 3 |
+| closure | 34 ± 5 | 332 ± 9 | 1697 ± 10 | 40 ± 2 | 344 ± 6 |
+| interface | 91 ± 7 | 152 ± 4 | 741 ± 6 | 344 ± 3 | 614 ± 6 |
+| map_ops | 2 ± 1 | 43 ± 2 | 91 ± 8 | 10 ± 3 | 21 ± 1 |
+| binary_trees | 187 ± 13 | 529 ± 7 | 1035 ± 8 | 472 ± 6 | 793 ± 46 |
+| spectral_norm | 48 ± 4 | 720 ± 4 | 3894 ± 9 | 295 ± 6 | 1901 ± 3 |
+| fannkuch | 68 ± 9 | 413 ± 10 | 4187 ± 3 | 274 ± 3 | 2515 ± 4 |
+| mandelbrot | 71 ± 11 | 295 ± 3 | 2976 ± 10 | 258 ± 12 | 1771 ± 4 |
+
+#### JIT Speedup (JIT time / Interpreter time, lower = JIT faster)
+
+| Benchmark | GoDis JIT/Interp | Limbo JIT/Interp |
+|-----------|-----------------|-----------------|
+| fib | 0.21 | 0.34 |
+| sieve | 0.10 | 0.13 |
+| qsort | 0.11 | 0.17 |
+| matrix | 0.11 | 0.11 |
+| channel | 0.17 | 0.45 |
+| nbody | 0.37 | 0.50 |
+| spawn | 1.14 | 1.04 |
+| bsearch | 0.12 | 0.21 |
+| closure | 0.20 | 0.12 |
+| interface | 0.21 | 0.56 |
+| map_ops | 0.47 | 0.49 |
+| binary_trees | 0.51 | 0.59 |
+| spectral_norm | 0.19 | 0.16 |
+| fannkuch | 0.10 | 0.11 |
+| mandelbrot | 0.10 | 0.15 |
+
+#### Speedup vs Go-on-Dis Interpreter (higher = faster)
+
+| Benchmark | Native Go | GoDis JIT | Limbo JIT | Limbo Interp |
+|-----------|-----------|-----------|-----------|--------------|
+| fib | 53.7x | 4.9x | 3.9x | 1.4x |
+| sieve | 45.9x | 10.2x | 15.7x | 2.1x |
+| qsort | 52.3x | 9.0x | 12.0x | 2.0x |
+| matrix | 62.6x | 9.3x | 13.2x | 1.5x |
+| channel | 2.8x | 5.7x | 7.3x | 3.3x |
+| nbody | 61.5x | 2.7x | 3.2x | 1.6x |
+| spawn | 15.5x | 0.9x | 0.9x | 1.0x |
+| bsearch | 38.1x | 8.4x | 11.0x | 2.3x |
+| closure | 49.9x | 5.1x | 42.9x | 4.9x |
+| interface | 8.2x | 4.9x | 2.2x | 1.2x |
+| map_ops | 50.3x | 2.1x | 8.9x | 4.4x |
+| binary_trees | 5.5x | 2.0x | 2.2x | 1.3x |
+| spectral_norm | 81.1x | 5.4x | 13.2x | 2.0x |
+| fannkuch | 61.8x | 10.1x | 15.3x | 1.7x |
+| mandelbrot | 41.9x | 10.1x | 11.5x | 1.7x |
+
+#### Analysis
+
+**Go-on-Dis JIT vs Interpreter.** The JIT provides 2x-10x speedup on compute-bound benchmarks. Median JIT/Interp ratio is 0.17 (roughly 6x speedup). The strongest gains are on tight-loop benchmarks: sieve (0.10), fannkuch (0.10), mandelbrot (0.10), qsort (0.11), matrix (0.11). The weakest gains are on allocation-heavy workloads: binary_trees (0.51), map_ops (0.47), nbody (0.37). Spawn shows no JIT benefit (1.14) because it is dominated by thread scheduling overhead.
+
+**Go-on-Dis vs Limbo (same VM).** Hand-written Limbo JIT consistently outperforms Go-on-Dis JIT by 1.1x-8.5x. The `godis` compiler translates Go SSA to Dis bytecode, but the generated code is less optimal than what the Limbo compiler produces: more temporaries, less register reuse, and no peephole optimization. The gap is smallest on interface dispatch (Go-on-Dis 152 ms vs Limbo 344 ms — Go-on-Dis is actually 2.3x *faster* here) because `godis` maps Go interfaces directly to Dis ADT dispatch, which is efficient. The closure benchmark shows a large gap (332 ms vs 40 ms = 8.3x) because `godis` uses a dispatch chain for dynamic closures rather than Limbo's native fn references.
+
+**Go-on-Dis vs Native Go.** Native Go is 3x-82x faster than Go-on-Dis JIT (median ~10x). The gap is smallest on channel operations (11 ms native vs 6 ms Go-on-Dis JIT — the Dis VM's channel implementation is actually faster) and interface dispatch (91 ms vs 152 ms = 1.7x). The gap is largest on floating-point (spectral_norm: 48 ms vs 720 ms = 15x) and compute-intensive loops (fib: 50 ms vs 547 ms = 11x) where Native Go's register allocator and optimization passes dominate.
+
+**Channel operations.** Notably, Go-on-Dis JIT (6 ms) *beats* Native Go (11 ms) on channel benchmarks. The Dis VM's channel implementation (from the Inferno kernel) uses lightweight thread scheduling that outperforms Go's goroutine scheduler for simple send/receive patterns. Limbo JIT is even faster (4 ms).
+
+**strcat OOM.** Go-on-Dis JIT exhausted the 512 MB Dis arena on string concatenation. The `godis` compiler generates intermediate string allocations that the Dis GC cannot collect fast enough. Go-on-Dis interpreter (117 ms) and Limbo (11 ms JIT) handle this fine — Limbo's string implementation is more memory-efficient.
+
+**spawn (goroutine creation).** All Dis modes cluster around 330-374 ms with high variance (±39-92 ms), far slower than Native Go (21 ms). Dis thread creation involves frame allocation, module loading, and scheduler enqueue — heavier than Go's goroutine spawn.
+
 ## Methodology
 
-- **Protocol:** Best-of-N reported (N=3 or N=4 depending on suite). System idle during runs.
+- **Protocol:** Best-of-N reported (N=3 or N=4 depending on suite) for v1/v2/cross-language. Mean ± stddev over 5 timed runs (1 warmup discarded) for Go-on-Dis suite. System idle during runs.
 - **JIT benchmarks:** `appl/cmd/jitbench.b` (v1, 6 benchmarks), `appl/cmd/jitbench2.b` (v2, 26 benchmarks). Run via `emu -c0` (interpreter) and `emu -c1` (JIT).
 - **Cross-language:** `benchmarks/run-comparison.sh`. Same algorithms with matched parameters and 64-bit integers. C compiled with `cc` (Apple Clang on macOS, GCC on Linux). Go, Java HotSpot (where available), CPython. Run on Apple M4 and Jetson AGX Orin.
+- **Go-on-Dis:** `benchmarks/run.sh`. 16 benchmarks in Go (compiled via `godis`), Limbo, and Native Go. 5 execution modes. Statistics computed per benchmark/mode.
 - **Correctness:** 181/181 JIT correctness tests pass on all three platforms. Benchmark result values match between JIT and interpreter.
 - **Variation:** JIT run-to-run variance <5% on macOS, <1% on Linux. Interpreter variance <5% on all platforms.
 

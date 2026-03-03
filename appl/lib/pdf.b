@@ -144,8 +144,8 @@ display: ref Display;
 colorcache: list of ref ColorCacheEntry;
 
 # Font paths
-SANSFONT: con "/fonts/vera/Vera/unicode.14.font";
-MONOFONT: con "/fonts/vera/VeraMono/VeraMono.14.font";
+SANSFONT: con "/fonts/dejavu/DejaVuSans/unicode.14.font";
+MONOFONT: con "/fonts/dejavu/DejaVuSansMono/unicode.14.font";
 
 sansfont: ref Font;
 monofont: ref Font;
@@ -1918,8 +1918,9 @@ skiptjarray(data: array of byte, pos: int): int
 }
 
 # Expand typographic characters that the bitmap font may lack
-# to ASCII equivalents. Characters the Vera unicode font HAS
-# (bullet U+2022, fi/fl ligatures U+FB01-02) are kept as-is.
+# to ASCII equivalents. DejaVu covers the full FB00 block
+# (fi/fl/ffi/ffl ligatures U+FB01-04 all present), so only
+# truly obscure ligatures need substitution.
 expandligatures(s: string): string
 {
 	# Quick check: if all chars are basic Latin, skip
@@ -1932,14 +1933,7 @@ expandligatures(s: string): string
 	out := "";
 	for(i = 0; i < len s; i++){
 		c := s[i];
-		case c {
-		16rFB03 =>	# ffi ligature (Vera lacks this)
-			out += "ffi";
-		16rFB04 =>	# ffl ligature (Vera lacks this)
-			out += "ffl";
-		* =>
-			out[len out] = c;
-		}
+		out[len out] = c;
 	}
 	return out;
 }

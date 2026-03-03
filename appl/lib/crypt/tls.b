@@ -1527,10 +1527,22 @@ rsapss_verify(msghash, sig: array of byte, rsakey: ref RSAKey): string
 	hashlen := Keyring->SHA256dlen;	# 32 bytes for SHA-256
 	saltlen := hashlen;		# salt length = hash length (typical)
 
-	# Step 1: RSA public key operation (decrypt with public key)
-	(decerr, em) := pkcs->rsa_decrypt(sig, rsakey, 1);
-	if(decerr != nil)
-		return "RSA decrypt: " + decerr;
+	# Step 1: raw RSA public-key operation (modular exponentiation).
+	# Do NOT use pkcs->rsa_decrypt — that strips PKCS#1 v1.5 padding,
+	# which PSS-encoded messages do not have.  RFC 8017 §8.1.2 step 2.
+	em: array of byte;
+	{
+		x := IPint.bebytestoip(sig);
+		y := x.expmod(rsakey.exponent, rsakey.modulus);
+		ybytes := y.iptobebytes();
+		k := rsakey.modlen;
+		ylen := len ybytes;
+		if(ylen < k) {
+			em = array[k] of {* => byte 0};
+			em[k-ylen:] = ybytes[0:];
+		} else
+			em = ybytes;
+	}
 
 	embits := rsakey.modlen * 8 - 1;
 	emlen := (embits + 7) / 8;

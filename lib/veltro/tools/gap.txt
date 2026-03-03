@@ -1,0 +1,28 @@
+gap - Knowledge gap tracking (user-visible)
+
+  gap list                     Show all current gaps
+  gap add "desc" [relevance]   Surface a blind spot (high/medium/low)
+  gap resolve "desc"           Remove when information is obtained
+
+Gaps appear in the user's Lucifer context zone in real time.
+They are signals TO the user — not a private note to yourself.
+
+Use gap add when:
+- You lack data needed to answer accurately
+- You are about to proceed on an assumption the user should know about
+- You cannot find required information after reasonable search effort
+
+Use gap resolve when:
+- The user provides the missing information
+- You find the answer via search or file access
+- The gap is no longer relevant
+
+WORKFLOW for tasks with unknowns:
+  gap list                                    # always check first to avoid duplicates
+  gap add "No test coverage data" high        # surface what's missing
+  gap add "API rate limits unknown" medium
+  [search / ask / research...]
+  gap resolve "No test coverage data"         # resolve as each gap is filled
+
+Relevance guides urgency: high = blocks correct action; medium = affects quality;
+low = would be nice to know.

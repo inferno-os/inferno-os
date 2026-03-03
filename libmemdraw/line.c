@@ -311,6 +311,83 @@ arrowend(Point tip, Point *pp, int end, int sin, int cos, int radius)
 	pp->y = tip.y+((2*radius+1)*cos/2-x1*sin);
 }
 
+/*
+ * Wu anti-aliased thin line.  Fixed-point only (no float).
+ * Called for radius==0, Endsquare both ends, truly diagonal lines.
+ * Uses a static 1×1 GREY8 wumask; all compositing is via memimagedraw()
+ * so format-specific blending is handled automatically.
+ */
+static void
+wumemimageline(Memimage *dst, Point p0, Point p1, Memimage *src,
+               Point sp, Rectangle clipr, int op)
+{
+	static Memimage *wumask;
+	int dx, dy, steep, t, going_up;
+	ulong gradient;		/* dy/dx, 16.16 fixed-point */
+	ulong intery;		/* current y intercept, 16.16 */
+	ulong ifrac;
+	int x, y0p;
+	uchar *mp;
+	Point p, d;
+	Rectangle r;
+
+	if(wumask == nil){
+		wumask = allocmemimage(Rect(0,0,1,1), GREY8);
+		if(wumask == nil) return;
+	}
+
+	d = subpt(sp, p0);	/* src offset: addpt(pixel, d) == src pixel for that dst pixel */
+
+	dx = p1.x - p0.x;  if(dx < 0) dx = -dx;
+	dy = p1.y - p0.y;  if(dy < 0) dy = -dy;
+	steep = dy > dx;
+
+	if(steep){
+		t = p0.x; p0.x = p0.y; p0.y = t;
+		t = p1.x; p1.x = p1.y; p1.y = t;
+	}
+	if(p0.x > p1.x){
+		t = p0.x; p0.x = p1.x; p1.x = t;
+		t = p0.y; p0.y = p1.y; p1.y = t;
+	}
+
+	dx = p1.x - p0.x;
+	dy = p1.y - p0.y;
+	going_up = (dy < 0);		/* y decreases as x increases after normalization */
+	if(dy < 0) dy = -dy;
+
+	gradient = (dx == 0) ? 65536 : ((ulong)dy << 16) / dx;
+	intery = (ulong)p0.y << 16;	/* exact y at p0.x; no initial step offset */
+
+	mp = byteaddr(wumask, Pt(0, 0));
+
+	for(x = p0.x; x <= p1.x; x++){
+		y0p = (int)(intery >> 16);
+		ifrac = intery & 0xFFFF;	/* fractional part, 0..65535 */
+
+		/* pixel at floor(y): coverage = 1 - frac */
+		p = steep ? Pt(y0p, x) : Pt(x, y0p);
+		if(ptinrect(p, clipr)){
+			*mp = (uchar)(255 - (ifrac >> 8));
+			r = Rect(p.x, p.y, p.x+1, p.y+1);
+			memimagedraw(dst, r, src, addpt(p, d), wumask, Pt(0,0), op);
+		}
+
+		/* pixel at floor(y)+1: coverage = frac */
+		p = steep ? Pt(y0p+1, x) : Pt(x, y0p+1);
+		if(ptinrect(p, clipr)){
+			*mp = (uchar)(ifrac >> 8);
+			r = Rect(p.x, p.y, p.x+1, p.y+1);
+			memimagedraw(dst, r, src, addpt(p, d), wumask, Pt(0,0), op);
+		}
+
+		if(going_up)
+			intery -= gradient;
+		else
+			intery += gradient;
+	}
+}
+
 void
 _memimageline(Memimage *dst, Point p0, Point p1, int end0, int end1, int radius, Memimage *src, Point sp, Rectangle clipr, int op)
 {
@@ -367,6 +444,14 @@ _memimageline(Memimage *dst, Point p0, Point p1, int end0, int end1, int radius,
 		sp = addpt(r.min, d);
 		memimagedraw(dst, r, src, sp, memopaque, sp, op);
 		dst->clipr = oclipr;
+		return;
+	}
+
+	/* Wu anti-aliased thin diagonal line */
+	if(radius == 0
+	&& (end0&0x1F) == Endsquare && (end1&0x1F) == Endsquare
+	&& p0.x != p1.x && p0.y != p1.y){
+		wumemimageline(dst, p0, p1, src, sp, clipr, op);
 		return;
 	}
 

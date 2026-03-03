@@ -71,6 +71,7 @@ init(nil: ref Draw->Context, nil: list of string)
 	test_control_flow();
 	test_move_operations();
 	test_edge_cases();
+	test_large_switch();
 
 	sys->print("\n=== Results: %d/%d passed", passed, total);
 	if (failed > 0)
@@ -816,4 +817,99 @@ deep_nest(a, b, c: int): int
 		return a;
 	}
 	return 0;
+}
+
+#
+# Test 21: Large switch / many branch targets
+#
+# Exercises bradis() (ARM64 JIT unconditional B emitter) with many targets.
+# Each case arm ends with an implicit IJMP to after the switch, emitted via
+# bradis(). The overflow check in bradis() (±128MB) guards against silent
+# displacement truncation that caused Bus errors (PC=misaligned address).
+#
+# This regression test ensures:
+#   (a) all 30 switch arms produce correct values
+#   (b) the default arm fires for out-of-range inputs
+#   (c) JIT compiles and executes the dense branch table correctly
+#
+test_large_switch()
+{
+	sys->print("--- Large Switch (bradis regression) ---\n");
+
+	# 30-case switch: forces JIT to emit 30+ B_IMM instructions via bradis()
+	# Each case maps n -> n*n (perfect squares 0..29)
+	errors := 0;
+	for (i := 0; i < 30; i++) {
+		got := bigswitch(i);
+		expected := i * i;
+		if (got != expected) {
+			errors++;
+			sys->print("FAIL: bigswitch(%d): got %d, expected %d\n", i, got, expected);
+			failed++;
+		} else
+			passed++;
+	}
+	total += 30;
+
+	# Default arm
+	check("switch default -1", bigswitch(-1), -1);
+	check("switch default 30", bigswitch(30), -1);
+	check("switch default 100", bigswitch(100), -1);
+
+	# Verify deep call chain still works after large switch compilation
+	# (tests that bradis() branches don't corrupt surrounding code)
+	check("callsum(15)", callsum(15), 120);	# 15+14+...+1 = 120
+	check("callsum(25)", callsum(25), 325);	# 25*26/2 = 325
+
+	if (errors == 0)
+		sys->print("  large switch: done\n");
+	else
+		sys->print("  large switch: %d ERRORS\n", errors);
+}
+
+# 30-case switch mapping n to n*n; default returns -1
+bigswitch(n: int): int
+{
+	case n {
+	0  => return 0;
+	1  => return 1;
+	2  => return 4;
+	3  => return 9;
+	4  => return 16;
+	5  => return 25;
+	6  => return 36;
+	7  => return 49;
+	8  => return 64;
+	9  => return 81;
+	10 => return 100;
+	11 => return 121;
+	12 => return 144;
+	13 => return 169;
+	14 => return 196;
+	15 => return 225;
+	16 => return 256;
+	17 => return 289;
+	18 => return 324;
+	19 => return 361;
+	20 => return 400;
+	21 => return 441;
+	22 => return 484;
+	23 => return 529;
+	24 => return 576;
+	25 => return 625;
+	26 => return 676;
+	27 => return 729;
+	28 => return 784;
+	29 => return 841;
+	*  => return -1;
+	}
+}
+
+# Recursive sum 1..n — tests call/return across many stack frames
+# after large switch compilation (verifies no code corruption).
+callsum(n: int): int
+{
+	if (n <= 0)
+		return 0;
+	return n + callsum(n - 1);
 }

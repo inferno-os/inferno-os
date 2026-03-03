@@ -26,6 +26,7 @@ TARG=\
 	archfs.dis\
 	auplay.dis\
 	basename.dis\
+	bdf2subfont.dis\
 	bind.dis\
 	bit2gif.dis\
 	broke.dis\
@@ -94,6 +95,12 @@ TARG=\
 	look.dis\
 	ls.dis\
 	lstar.dis\
+	lucibridge.dis\
+	lucifer.dis\
+	luciconv.dis\
+	lucictx.dis\
+	lucipres.dis\
+	luciuisrv.dis\
 	m4.dis\
 	man2html.dis\
 	man2txt.dis\
@@ -242,6 +249,9 @@ SYSMODULES=\
 DISBIN=$ROOT/dis
 
 <$ROOT/mkfiles/mkdis
+
+# lucibridge.b needs agentlib.m from appl/veltro
+LIMBOFLAGS=$LIMBOFLAGS -I$ROOT/appl/veltro
 <$ROOT/mkfiles/mksubdirs
 
 auhdr.dis: auplay.dis
