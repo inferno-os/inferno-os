@@ -1,0 +1,30 @@
+# Inferno OS text files must use LF line endings.
+# Inferno's font parser, shell, and other tools don't handle CRLF.
+
+# Default: auto-detect text files and normalize to LF
+* text=auto eol=lf
+
+# Binary files that must not be modified
+*.dis binary
+*.sbl binary
+*.0000 binary
+*.0106 binary
+*.02c6 binary
+*.2013 binary
+*.2122 binary
+*.222b binary
+*.25ca binary
+*.fb01 binary
+*.16 binary
+*.18.* binary
+fonts/10646/**/* binary
+fonts/jis/**/* binary
+fonts/pelm/**/* binary
+fonts/misc/*.6x10 binary
+fonts/misc/*.6x13 binary
+fonts/misc/*.8x13 binary
+fonts/misc/*.5x7 binary
+
+# Windows-specific files can use CRLF (but LF works too)
+*.ps1 text eol=lf
+*.bat text eol=crlf

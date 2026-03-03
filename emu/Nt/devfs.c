@@ -238,7 +238,7 @@ winfilematch(char *path, WIN32_FIND_DATA *data)
 		--p;
 	wpath = widen(p);
 	r = (data->cFileName[0] == '.' && runeslen(data->cFileName) == 1)
-			|| runescmp(data->cFileName, wpath) == 0;
+			|| _wcsicmp(data->cFileName, wpath) == 0;
 	free(wpath);
 	return r;
 }
