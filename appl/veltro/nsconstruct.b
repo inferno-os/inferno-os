@@ -181,6 +181,10 @@ restrictns(caps: ref Capabilities): string
 		(gitok, nil) := sys->stat("/n/git");
 		if(gitok >= 0)
 			nallow = "git" :: nallow;
+		# Keep /n/ui if luciuisrv is mounted (needed by present tool)
+		(uiok, nil) := sys->stat("/n/ui");
+		if(uiok >= 0)
+			nallow = "ui" :: nallow;
 		# Check if any caps.paths grant /n/local/ subpaths
 		localpaths := filterpaths(caps.paths, "/n/local/");
 		if(localpaths != nil)

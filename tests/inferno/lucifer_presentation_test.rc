@@ -1,0 +1,75 @@
+#!/dis/sh
+# lucifer_presentation_test.rc
+#
+# Inject test presentation artifacts into a running Inferno session.
+# Assumes luciuisrv is mounted at /n/ui and activity 0 exists.
+#
+# Run from inside a second Inferno shell while lucifer is running:
+#   sh /tests/inferno/lucifer_presentation_test.rc
+
+load std
+
+ACTID = 0
+PCTL = /n/ui/activity/$ACTID/presentation/ctl
+PDIR = /n/ui/activity/$ACTID/presentation
+
+# Verify prerequisite
+if {! test -f $PCTL} {
+	echo 'error: '$PCTL' not found — is luciuisrv running?'
+	raise fail:prereq
+}
+
+echo 'creating test artifacts...'
+
+# Create 3 artifacts
+echo 'create id=readme type=markdown label=README' > $PCTL
+echo 'create id=notes type=text label=Notes' > $PCTL
+echo 'create id=sheet type=table label=Data' > $PCTL
+
+# Write markdown content to readme
+echo '# Welcome to InferNode
+
+This is a **markdown** document rendered by **rlayout**.
+
+## Features
+
+- Rich text with *italic* and **bold**
+- `inline code` support
+- Tables, code blocks, blockquotes
+
+### Code Block
+
+```
+fn greet(name: string) {
+    say "Hello, " + name;
+}
+```
+
+> This is a blockquote in the presentation zone.
+
+More text at the bottom of the document.' > $PDIR/readme/data
+
+# Write plain text content to notes
+echo 'Session Notes
+
+These are plain text notes for the current session.
+The text wraps automatically at the zone width.
+
+- Point one
+- Point two
+- Point three' > $PDIR/notes/data
+
+# Write table-formatted content to sheet
+echo '| Name  | Value | Status  |
+|-------|-------|---------|
+| Alpha |    42 | active  |
+| Beta  |    17 | idle    |
+| Gamma |    99 | error   |
+| Delta |     5 | pending |' > $PDIR/sheet/data
+
+# Center the markdown artifact (it will be active tab)
+echo 'center id=readme' > $PCTL
+
+echo 'done.'
+echo 'switch tabs: echo center id=notes > '$PCTL
+echo 'switch tabs: echo center id=sheet > '$PCTL

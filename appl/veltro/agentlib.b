@@ -759,8 +759,9 @@ tooldesc(name: string): string
 	"find"   => return "Find files by name or pattern";
 	"git"    => return "Run a git command";
 	"say"    => return "Speak text aloud via text-to-speech";
-	"xenith" => return "Issue a command to the Xenith text editor";
-	"spawn"  => return "Spawn a parallel subagent with its own namespace";
+	"xenith"   => return "Issue a command to the Xenith text editor";
+	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code] [label=text], write <id> <content>, center <id>, list, status";
+	"spawn"    => return "Spawn a parallel subagent with its own namespace";
 	"todo"   => return "Manage a persistent task list";
 	"http"   => return "Make an HTTP request";
 	"ls"     => return "List directory contents";

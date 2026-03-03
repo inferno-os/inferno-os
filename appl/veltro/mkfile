@@ -26,6 +26,7 @@ TOOLS=\
     tools/spawn.dis\
     tools/safeexec.dis\
     tools/xenith.dis\
+    tools/present.dis\
     tools/diff.dis\
     tools/json.dis\
     tools/ask.dis\
@@ -98,6 +99,9 @@ tools/safeexec.dis: tools/safeexec.b tool.m
 
 tools/xenith.dis: tools/xenith.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/xenith.dis tools/xenith.b
+
+tools/present.dis: tools/present.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/present.dis tools/present.b
 
 # New tools (Phase 1c)
 tools/diff.dis: tools/diff.b tool.m

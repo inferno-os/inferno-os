@@ -94,6 +94,9 @@ TARG=\
 	look.dis\
 	ls.dis\
 	lstar.dis\
+	lucibridge.dis\
+	lucifer.dis\
+	luciuisrv.dis\
 	m4.dis\
 	man2html.dis\
 	man2txt.dis\
@@ -242,6 +245,9 @@ SYSMODULES=\
 DISBIN=$ROOT/dis
 
 <$ROOT/mkfiles/mkdis
+
+# lucibridge.b needs agentlib.m from appl/veltro
+LIMBOFLAGS=$LIMBOFLAGS -I$ROOT/appl/veltro
 <$ROOT/mkfiles/mksubdirs
 
 auhdr.dis: auplay.dis
