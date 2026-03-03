@@ -44,6 +44,7 @@
 
 | Document | Description |
 |----------|-------------|
+| [WINDOWS-BUILD.md](WINDOWS-BUILD.md) | Building and running on Windows (prerequisites, SDL3 GUI, troubleshooting) |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | **Start here** - Critical fixes and pitfalls for porters |
 | [PORTING-ARM64.md](PORTING-ARM64.md) | ARM64 technical implementation details |
 | [COMPILATION-LOG.md](COMPILATION-LOG.md) | Build process walkthrough |
