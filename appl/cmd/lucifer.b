@@ -850,6 +850,774 @@ kbdproc()
 	}
 }
 
+sendinput(text: string)
+{
+	if(actid < 0)
+		return;
+	# Show the human message immediately without waiting for lucibridge echo
+	messages = appendmsg(messages, ref ConvMsg("human", text, nil, nil));
+	nmsg++;
+	scrollpx = 0;
+	alt { uievent <-= 1 => ; * => ; }
+	# Send to lucibridge (it will echo back as role=human; loadmessage deduplicates)
+	path := sys->sprint("%s/activity/%d/conversation/input", mountpt, actid);
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil) {
+		sys->fprint(stderr, "lucifer: can't open %s: %r\n", path);
+		return;
+	}
+	b := array of byte text;
+	sys->write(fd, b, len b);
+}
+
+# --- Drawing ---
+
+redraw()
+{
+	if(mainwin == nil)
+		return;
+
+	r := mainwin.r;
+	w := r.dx();
+
+	# Fill background
+	mainwin.draw(r, bgcol, nil, (0, 0));
+
+	# Header bar (40px)
+	headerh := 40;
+	headerr := Rect((r.min.x, r.min.y), (r.max.x, r.min.y + headerh));
+	mainwin.draw(headerr, headercol, nil, (0, 0));
+
+	# Header text and logo
+	if(mainfont != nil) {
+		title := "InferNode";
+		if(actlabel != nil && actlabel != "")
+			title += " | " + actlabel;
+		if(actstatus != nil && actstatus != "" && actstatus != "idle")
+			title += " [" + actstatus + "]";
+		texty := headerr.min.y + (headerh - mainfont.height) / 2;
+		# Accent bar (4px left edge)
+		mainwin.draw(Rect((r.min.x, r.min.y), (r.min.x + 4, r.min.y + headerh)),
+			accentcol, nil, (0, 0));
+		# Logo (after accent bar, before title)
+		textx := r.min.x + 16;
+		if(logoimg != nil) {
+			lw := logoimg.r.dx();
+			lh := logoimg.r.dy();
+			logoy := headerr.min.y + (headerh - lh) / 2;
+			logodst := Rect((textx, logoy), (textx + lw, logoy + lh));
+			mainwin.draw(logodst, logoimg, nil, (0, 0));
+			textx = textx + lw + 8;
+		}
+		# Title
+		mainwin.text((textx, texty), textcol, (0, 0), mainfont, title);
+	}
+
+	# Zone layout below header
+	zonety := r.min.y + headerh + 1;
+	# Draw header/zone separator
+	mainwin.draw(Rect((r.min.x, zonety - 1), (r.max.x, zonety)), bordercol, nil, (0, 0));
+
+	# Zone widths: conversation ~30%, presentation ~45%, context ~25%
+	convw := w * 30 / 100;
+	presw := w * 45 / 100;
+
+	convx := r.min.x;
+	presx := convx + convw;
+	ctxx := presx + presw;
+
+	# Draw zone separators (1px vertical lines)
+	mainwin.draw(Rect((presx, zonety), (presx + 1, r.max.y)), bordercol, nil, (0, 0));
+	mainwin.draw(Rect((ctxx, zonety), (ctxx + 1, r.max.y)), bordercol, nil, (0, 0));
+
+	# Record presentation zone x-boundaries for scroll and click routing
+	pres_zone_minx = presx + 2;
+	pres_zone_maxx = ctxx - 1;
+
+	if(mainfont != nil) {
+		contenty := zonety + 4;
+
+		# Draw the three zones
+		drawconversation(Rect((convx, contenty), (presx - 1, r.max.y)));
+		drawpresentation(Rect((presx + 2, contenty), (ctxx - 1, r.max.y)));
+		drawcontext(Rect((ctxx + 2, contenty), (r.max.x, r.max.y)));
+	}
+
+	mainwin.flush(Draw->Flushnow);
+}
+
+# --- Conversation zone ---
+
+drawconversation(zone: Rect)
+{
+	pad := 8;
+	inputh := mainfont.height + 2 * pad;
+	msgy := zone.max.y - inputh - 2;	# bottom of message area
+
+	# Draw input field at bottom
+	inputr := Rect((zone.min.x + pad, zone.max.y - inputh),
+		(zone.max.x - pad, zone.max.y));
+	mainwin.draw(inputr, inputcol, nil, (0, 0));
+
+	# Input text
+	itext := inputbuf;
+	itx := inputr.min.x + pad;
+	ity := inputr.min.y + (inputh - mainfont.height) / 2;
+	maxitw := inputr.dx() - 2 * pad - 8;	# leave room for cursor
+
+	# Truncate from left if too wide
+	while(len itext > 0 && mainfont.width(itext) > maxitw)
+		itext = itext[1:];
+	mainwin.text((itx, ity), textcol, (0, 0), mainfont, itext);
+
+	# Block cursor after text
+	cw := 8;
+	ch := mainfont.height;
+	cx := itx + mainfont.width(itext);
+	cy := ity;
+	mainwin.draw(Rect((cx, cy), (cx + cw, cy + ch)), cursorcol, nil, (0, 0));
+
+	# Draw messages bottom-up from msgy
+	if(messages == nil) {
+		drawcentertext(Rect((zone.min.x, zone.min.y), (zone.max.x, msgy)),
+			"No messages yet");
+		return;
+	}
+
+	# Reset tile layout for this frame
+	tilelayout = array[nmsg + 1] of ref TileRect;
+	ntiles = 0;
+
+	# Tile layout parameters
+	tilegap := 4;
+	tpadv := 3;			# vertical padding only — no horizontal indent
+	tilew := zone.dx() - 2 * pad;	# full width, both roles
+	tilex := zone.min.x + pad;	# same left edge for both roles
+
+	# Invalidate rlayout image cache when tile width changes (e.g. resize)
+	if(tilew != lastrendw) {
+		for(ml := messages; ml != nil; ml = tl ml)
+			(hd ml).rendimg = nil;
+		lastrendw = tilew;
+	}
+
+	# Get messages as array for indexed access
+	marr := msgstoarray(messages, nmsg);
+
+	# Pass 1: Estimate heights without calling rlayout (fast path).
+	# Use cached image height for rendered messages; wraptext estimate otherwise.
+	harr := array[nmsg] of int;
+	total_h := 0;
+	for(pi := 0; pi < nmsg; pi++) {
+		imgh: int;
+		if(marr[pi].rendimg != nil)
+			imgh = marr[pi].rendimg.r.dy();
+		else {
+			ls := wraptext(marr[pi].text, tilew - 8);
+			n := 0;
+			for(wl := ls; wl != nil; wl = tl wl)
+				n++;
+			imgh = n * mainfont.height;
+		}
+		harr[pi] = mainfont.height + imgh + 2 * tpadv;
+		total_h += harr[pi] + tilegap;
+	}
+
+	# Update viewport height and pixel scroll bounds using estimated heights.
+	viewport_h = msgy - zone.min.y;
+	newmax := total_h - viewport_h;
+	if(newmax < 0)
+		newmax = 0;
+	maxscrollpx = newmax;
+	if(scrollpx > maxscrollpx)
+		scrollpx = maxscrollpx;
+
+	# Pass 2: Render only messages visible in the current viewport.
+	# Walk bottom-up to find visible range, then call rlayout only for those.
+	codebg := display.color(int 16r1A1A2AFF);
+	ey := msgy + scrollpx;
+	for(ri := nmsg - 1; ri >= 0; ri--) {
+		tiletop_e := ey - harr[ri] - tilegap;
+		# Below viewport — skip
+		if(tiletop_e >= msgy) {
+			ey = tiletop_e;
+			continue;
+		}
+		# Above viewport — stop
+		if(tiletop_e + harr[ri] <= zone.min.y)
+			break;
+		# In viewport — render if not yet cached
+		if(marr[ri].rendimg == nil && rlay != nil) {
+			human_r := marr[ri].role == "human";
+			bgc_r: ref Image;
+			if(human_r) bgc_r = humancol; else bgc_r = veltrocol;
+			style_r := ref Rlayout->Style(
+				tilew, 4,
+				mainfont, monofont,
+				textcol, bgc_r, accentcol, codebg,
+				100
+			);
+			(img, nil) := rlay->render(rlay->parsemd(marr[ri].text), style_r);
+			marr[ri].rendimg = img;
+			# Update height estimate with actual rendered height
+			if(img != nil) {
+				harr[ri] = mainfont.height + img.r.dy() + 2 * tpadv;
+			}
+		}
+		ey = tiletop_e;
+	}
+
+	# Draw messages bottom-up using pixel offset
+	y := msgy + scrollpx;		# effective viewport floor
+	for(i := nmsg - 1; i >= 0; i--) {
+		tileh := harr[i];
+		tiletop := y - tileh - tilegap;
+
+		# Completely below visible area — skip
+		if(tiletop >= msgy) {
+			y = tiletop;
+			continue;
+		}
+		# Completely above visible area — stop
+		if(tiletop + tileh <= zone.min.y)
+			break;
+
+		msg := marr[i];
+		human := msg.role == "human";
+		tilecol: ref Image;
+		rolecol: ref Image;
+		if(human) {
+			tilecol = humancol;
+			rolecol = text2col;
+		} else {
+			tilecol = veltrocol;
+			rolecol = accentcol;
+		}
+
+		# Draw tile background clamped to visible area
+		drawtop := tiletop;
+		if(drawtop < zone.min.y) drawtop = zone.min.y;
+		drawbot := tiletop + tileh;
+		if(drawbot > msgy) drawbot = msgy;
+		if(drawtop < drawbot) {
+			tiler := Rect((tilex, drawtop), (tilex + tilew, drawbot));
+			mainwin.draw(tiler, tilecol, nil, (0, 0));
+		}
+		if(ntiles < len tilelayout)
+			tilelayout[ntiles++] = ref TileRect(Rect((tilex, tiletop), (tilex + tilew, tiletop + tileh)), msg);
+
+		# Role label (skip if outside visible area)
+		ty := tiletop + tpadv;
+		rolelabel := msg.role;
+		if(human)
+			rolelabel = username;
+		if(ty >= zone.min.y && ty + mainfont.height <= msgy) {
+			if(human)
+				mainwin.text((tilex + tilew - mainfont.width(rolelabel), ty), rolecol, (0, 0), mainfont, rolelabel);
+			else
+				mainwin.text((tilex, ty), rolecol, (0, 0), mainfont, rolelabel);
+		}
+		ty += mainfont.height;
+
+		# Composite the rlayout-rendered markdown image (clipped to viewport)
+		if(msg.rendimg != nil) {
+			imgh := msg.rendimg.r.dy();
+			srcy := 0;
+			dsty := ty;
+			if(dsty < zone.min.y) {
+				srcy = zone.min.y - dsty;
+				dsty = zone.min.y;
+			}
+			enddsty := ty + imgh;
+			if(enddsty > msgy) enddsty = msgy;
+			if(dsty < enddsty)
+				mainwin.draw(Rect((tilex, dsty), (tilex + tilew, enddsty)),
+					msg.rendimg, nil, (0, srcy));
+		}
+
+		y = tiletop;
+	}
+}
+
+# --- Presentation zone ---
+
+drawpresentation(zone: Rect)
+{
+	pad := 8;
+	al: list of ref Artifact;
+	centart: ref Artifact;
+
+	# Find the centered artifact
+	centart = nil;
+	for(al = artifacts; al != nil; al = tl al) {
+		if((hd al).id == centeredart) {
+			centart = hd al;
+			break;
+		}
+	}
+	# Default to first artifact when none is centered
+	if(centart == nil) {
+		if(artifacts != nil)
+			centart = hd artifacts;
+	}
+
+	if(centart == nil) {
+		drawcentertext(zone, "No artifacts");
+		return;
+	}
+
+	# Tab strip at top (artifact labels as navigation tabs)
+	tabh := mainfont.height + 12;
+	tabr := Rect((zone.min.x, zone.min.y), (zone.max.x, zone.min.y + tabh));
+	mainwin.draw(tabr, headercol, nil, (0, 0));
+
+	# Reset tab hit layout for this frame
+	tablayout = array[nart + 1] of ref TabRect;
+	ntabs = 0;
+
+	tx := zone.min.x + pad;
+	for(al = artifacts; al != nil; al = tl al) {
+		art := hd al;
+		tw := mainfont.width(art.label);
+		if(tx + tw + pad > zone.max.x)
+			break;
+		active := 0;
+		if(art.id == centart.id)
+			active = 1;
+		tcol := text2col;
+		if(active) {
+			tcol = textcol;
+			# Accent underline for active tab
+			mainwin.draw(Rect((tx, tabr.max.y - 3), (tx + tw, tabr.max.y - 1)),
+				accentcol, nil, (0, 0));
+		}
+		mainwin.text((tx, tabr.min.y + 6), tcol, (0, 0), mainfont, art.label);
+		# Record tab hit rect (full tab-bar height, label width + inter-tab gap)
+		if(ntabs < len tablayout)
+			tablayout[ntabs++] = ref TabRect(
+				Rect((tx, tabr.min.y), (tx + tw + 20, tabr.max.y)), art.id);
+		tx += tw + 20;
+	}
+
+	# Separator line below tab strip
+	mainwin.draw(Rect((zone.min.x, tabr.max.y), (zone.max.x, tabr.max.y + 1)),
+		bordercol, nil, (0, 0));
+
+	# Content area below tab strip
+	contentr := Rect((zone.min.x, tabr.max.y + 1), (zone.max.x, zone.max.y));
+	contentw := contentr.dx() - 2 * pad;
+
+	# Invalidate all render caches when zone width changes (e.g. window resize)
+	if(contentw != artrendw) {
+		for(al = artifacts; al != nil; al = tl al)
+			(hd al).rendimg = nil;
+		artrendw = contentw;
+	}
+
+	contenty := contentr.min.y + pad;
+
+	# Update viewport height for presentation scroll bounds
+	pres_viewport_h = contentr.dy() - 2 * pad;
+
+	case centart.atype {
+	"markdown" or "doc" =>
+		# Render with rlayout for rich markdown content
+		if(centart.rendimg == nil)
+		if(rlay != nil)
+		if(centart.data != "") {
+			codebg := display.color(int 16r1A1A2AFF);
+			style := ref Rlayout->Style(
+				contentw, 4,
+				mainfont, monofont,
+				textcol, bgcol, accentcol, codebg,
+				100
+			);
+			(img, nil) := rlay->render(rlay->parsemd(centart.data), style);
+			centart.rendimg = img;
+		}
+		if(centart.rendimg != nil) {
+			imgh := centart.rendimg.r.dy();
+			newmax := imgh - pres_viewport_h;
+			if(newmax < 0) newmax = 0;
+			maxpresscrollpx = newmax;
+			if(presscrollpx > maxpresscrollpx)
+				presscrollpx = maxpresscrollpx;
+			srcy := presscrollpx;
+			dsty := contentr.min.y + pad;
+			enddsty := dsty + (imgh - srcy);
+			if(enddsty > contentr.max.y) enddsty = contentr.max.y;
+			if(dsty < enddsty)
+				mainwin.draw(
+					Rect((contentr.min.x + pad, dsty),
+					     (contentr.min.x + pad + contentw, enddsty)),
+					centart.rendimg, nil, (0, srcy));
+		} else
+			drawcentertext(contentr, "(empty)");
+	"text" or "code" =>
+		# Direct monofont rendering — preserves whitespace and line structure
+		if(centart.atype == "code") {
+			codebg2 := display.color(int 16r1A1A2AFF);
+			mainwin.draw(contentr, codebg2, nil, (0, 0));
+		}
+		ls := splitlines(centart.data);
+		total_h := listlen(ls) * monofont.height;
+		newmax2 := total_h - pres_viewport_h;
+		if(newmax2 < 0) newmax2 = 0;
+		maxpresscrollpx = newmax2;
+		if(presscrollpx > maxpresscrollpx)
+			presscrollpx = maxpresscrollpx;
+		y2 := contenty - presscrollpx;
+		wl: list of string;
+		for(wl = ls; wl != nil; wl = tl wl) {
+			if(y2 + monofont.height > contentr.max.y)
+				break;
+			if(y2 >= contentr.min.y)
+				mainwin.text((contentr.min.x + pad, y2),
+					textcol, (0, 0), monofont, hd wl);
+			y2 += monofont.height;
+		}
+		if(centart.data == "")
+			drawcentertext(contentr, "(empty)");
+	"pdf" =>
+		# Render PDF file — centart.data is the file path; page 0 cached in rendimg
+		if(centart.rendimg == nil)
+			centart.rendimg = renderpdfpage(centart.data);
+		if(centart.rendimg != nil) {
+			imgh3 := centart.rendimg.r.dy();
+			newmax3 := imgh3 - pres_viewport_h;
+			if(newmax3 < 0) newmax3 = 0;
+			maxpresscrollpx = newmax3;
+			if(presscrollpx > maxpresscrollpx)
+				presscrollpx = maxpresscrollpx;
+			srcy3 := presscrollpx;
+			dsty3 := contentr.min.y + pad;
+			enddsty3 := dsty3 + (imgh3 - srcy3);
+			if(enddsty3 > contentr.max.y) enddsty3 = contentr.max.y;
+			if(dsty3 < enddsty3)
+				mainwin.draw(
+					Rect((contentr.min.x + pad, dsty3),
+					     (contentr.min.x + pad + contentw, enddsty3)),
+					centart.rendimg, nil, (0, srcy3));
+		} else
+			drawcentertext(contentr, "cannot render PDF");
+	"image" =>
+		# Render image file (PNG) — centart.data is the file path; cached in rendimg
+		if(centart.rendimg == nil) {
+			bufio2 := load Bufio Bufio->PATH;
+			readpng2 := load RImagefile RImagefile->READPNGPATH;
+			remap2 := load Imageremap Imageremap->PATH;
+			if(bufio2 != nil && readpng2 != nil && remap2 != nil) {
+				readpng2->init(bufio2);
+				remap2->init(display);
+				fd2 := bufio2->open(centart.data, Bufio->OREAD);
+				if(fd2 != nil) {
+					(raw2, nil) := readpng2->read(fd2);
+					if(raw2 != nil)
+						(centart.rendimg, nil) = remap2->remap(raw2, display, 0);
+				}
+			}
+		}
+		if(centart.rendimg != nil) {
+			imgh4 := centart.rendimg.r.dy();
+			newmax4 := imgh4 - pres_viewport_h;
+			if(newmax4 < 0) newmax4 = 0;
+			maxpresscrollpx = newmax4;
+			if(presscrollpx > maxpresscrollpx)
+				presscrollpx = maxpresscrollpx;
+			srcy4 := presscrollpx;
+			dsty4 := contentr.min.y + pad;
+			enddsty4 := dsty4 + (imgh4 - srcy4);
+			if(enddsty4 > contentr.max.y) enddsty4 = contentr.max.y;
+			if(dsty4 < enddsty4)
+				mainwin.draw(
+					Rect((contentr.min.x + pad, dsty4),
+					     (contentr.min.x + pad + contentw, enddsty4)),
+					centart.rendimg, nil, (0, srcy4));
+		} else
+			drawcentertext(contentr, "cannot render image");
+	* =>
+		# Other types: show type badge + wrapped plain text (no scroll)
+		if(centart.atype != "") {
+			mainwin.text((contentr.min.x + pad, contenty),
+				labelcol, (0, 0), mainfont, "[" + centart.atype + "]");
+			contenty += mainfont.height + 4;
+		}
+		if(centart.data == "")
+			drawcentertext(contentr, "(empty)");
+		else {
+			ls2 := wraptext(centart.data, contentw);
+			wl2: list of string;
+			for(wl2 = ls2; wl2 != nil; wl2 = tl wl2) {
+				if(contenty + mainfont.height > contentr.max.y)
+					break;
+				mainwin.text((contentr.min.x + pad, contenty),
+					textcol, (0, 0), mainfont, hd wl2);
+				contenty += mainfont.height;
+			}
+		}
+	}
+}
+
+# --- Context zone ---
+
+drawcontext(zone: Rect)
+{
+	pad := 8;
+	y := zone.min.y + pad;
+	secgap := 12;
+	indw := 10;	# status indicator width
+	indh := 10;	# status indicator height
+
+	# --- Resources section ---
+	if(resources != nil) {
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Resources");
+		y += mainfont.height + 4;
+
+		for(r := resources; r != nil; r = tl r) {
+			res := hd r;
+			if(y + mainfont.height > zone.max.y)
+				break;
+
+			# Status indicator (small filled rect)
+			indcol := dimcol;
+			if(res.status == "streaming")
+				indcol = greencol;
+			else if(res.status == "stale")
+				indcol = yellowcol;
+			else if(res.status == "offline" || res.status == "error")
+				indcol = redcol;
+
+			indy := y + (mainfont.height - indh) / 2;
+			mainwin.draw(Rect(
+				(zone.min.x + pad, indy),
+				(zone.min.x + pad + indw, indy + indh)),
+				indcol, nil, (0, 0));
+
+			# Label
+			label := res.label;
+			if(label == nil || label == "")
+				label = res.path;
+			mainwin.text((zone.min.x + pad + indw + 6, y),
+				text2col, (0, 0), mainfont, label);
+			y += mainfont.height + 2;
+		}
+		y += secgap;
+	}
+
+	# --- Gaps section ---
+	if(gaps != nil) {
+		if(y + mainfont.height > zone.max.y)
+			return;
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Gaps");
+		y += mainfont.height + 4;
+
+		for(g := gaps; g != nil; g = tl g) {
+			gap := hd g;
+			if(y + mainfont.height > zone.max.y)
+				break;
+			desc := gap.desc;
+			if(gap.relevance != nil && gap.relevance != "")
+				desc += " [" + gap.relevance + "]";
+			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, desc);
+			y += mainfont.height + 2;
+		}
+		y += secgap;
+	}
+
+	# --- Background tasks section ---
+	if(bgtasks != nil) {
+		if(y + mainfont.height > zone.max.y)
+			return;
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Background");
+		y += mainfont.height + 4;
+
+		barh := 6;
+		for(b := bgtasks; b != nil; b = tl b) {
+			bg := hd b;
+			if(y + mainfont.height + barh + 4 > zone.max.y)
+				break;
+
+			# Task label + status
+			label := bg.label;
+			if(bg.status != nil && bg.status != "")
+				label += " [" + bg.status + "]";
+			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, label);
+			y += mainfont.height + 2;
+
+			# Progress bar
+			if(bg.progress != nil && bg.progress != "") {
+				pct := strtoint(bg.progress);
+				if(pct < 0)
+					pct = 0;
+				if(pct > 100)
+					pct = 100;
+				barw := zone.dx() - 2 * pad;
+				bary := y;
+				# Background
+				mainwin.draw(Rect(
+					(zone.min.x + pad, bary),
+					(zone.min.x + pad + barw, bary + barh)),
+					progbgcol, nil, (0, 0));
+				# Fill
+				fillw := barw * pct / 100;
+				if(fillw > 0)
+					mainwin.draw(Rect(
+						(zone.min.x + pad, bary),
+						(zone.min.x + pad + fillw, bary + barh)),
+						progfgcol, nil, (0, 0));
+				y += barh + 4;
+			}
+		}
+	}
+
+	# Empty state
+	if(resources == nil && gaps == nil && bgtasks == nil)
+		drawcentertext(zone, "No context");
+}
+
+drawcentertext(r: Rect, text: string)
+{
+	tw := mainfont.width(text);
+	tx := r.min.x + (r.dx() - tw) / 2;
+	ty := r.min.y + (r.dy() - mainfont.height) / 2;
+	mainwin.text((tx, ty), dimcol, (0, 0), mainfont, text);
+}
+
+# --- Word wrapping ---
+
+wraptext(text: string, maxw: int): list of string
+{
+	if(text == nil || text == "")
+		return "" :: nil;
+
+	lines: list of string;
+	line := "";
+
+	i := 0;
+	while(i < len text) {
+		# Find next word
+		while(i < len text && (text[i] == ' ' || text[i] == '\t'))
+			i++;
+		if(i >= len text)
+			break;
+		wstart := i;
+		while(i < len text && text[i] != ' ' && text[i] != '\t' && text[i] != '\n')
+			i++;
+		word := text[wstart:i];
+
+		# Handle newline
+		if(i < len text && text[i] == '\n') {
+			if(line != "")
+				line += " " + word;
+			else
+				line = word;
+			lines = line :: lines;
+			line = "";
+			i++;
+			continue;
+		}
+
+		# Check if word fits on current line
+		candidate: string;
+		if(line != "")
+			candidate = line + " " + word;
+		else
+			candidate = word;
+
+		if(mainfont.width(candidate) > maxw && line != "") {
+			# Wrap: current line is done, start new with word
+			lines = line :: lines;
+			line = word;
+		} else {
+			line = candidate;
+		}
+	}
+	if(line != "")
+		lines = line :: lines;
+	if(lines == nil)
+		return "" :: nil;
+
+	# Reverse to correct order
+	rev: list of string;
+	for(; lines != nil; lines = tl lines)
+		rev = hd lines :: rev;
+	return rev;
+}
+
+# --- Attribute parsing ---
+# Same format as luciuisrv: "key1=val1 key2=val2"
+
+Attr: adt {
+	key: string;
+	val: string;
+};
+
+parseattrs(s: string): list of ref Attr
+{
+	kstarts := array[32] of int;
+	eqposs := array[32] of int;
+	nkp := 0;
+
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t'))
+		i++;
+
+	j := i;
+	while(j < len s) {
+		if(s[j] == '=') {
+			kstart := j - 1;
+			while(kstart > i && s[kstart - 1] != ' ' && s[kstart - 1] != '\t')
+				kstart--;
+			if(kstart >= 0 && kstart < j) {
+				if(kstart == 0 || kstart == i || s[kstart - 1] == ' ' || s[kstart - 1] == '\t') {
+					if(nkp >= len kstarts) {
+						nks := array[len kstarts * 2] of int;
+						nks[0:] = kstarts[0:nkp];
+						kstarts = nks;
+						neq := array[len eqposs * 2] of int;
+						neq[0:] = eqposs[0:nkp];
+						eqposs = neq;
+					}
+					kstarts[nkp] = kstart;
+					eqposs[nkp] = j;
+					nkp++;
+				}
+			}
+		}
+		j++;
+	}
+
+	attrs: list of ref Attr;
+	for(k := 0; k < nkp; k++) {
+		key := s[kstarts[k]:eqposs[k]];
+		vstart := eqposs[k] + 1;
+		vend: int;
+		if(k + 1 < nkp) {
+			vend = kstarts[k + 1];
+			while(vend > vstart && (s[vend - 1] == ' ' || s[vend - 1] == '\t'))
+				vend--;
+		} else
+			vend = len s;
+		val := "";
+		if(vstart < vend)
+			val = s[vstart:vend];
+		attrs = ref Attr(key, val) :: attrs;
+	}
+
+	rev: list of ref Attr;
+	for(; attrs != nil; attrs = tl attrs)
+		rev = hd attrs :: rev;
+	return rev;
+}
+
+getattr(attrs: list of ref Attr, key: string): string
+{
+	for(; attrs != nil; attrs = tl attrs)
+		if((hd attrs).key == key)
+			return (hd attrs).val;
+	return nil;
+}
+
 # --- WM size tracking ---
 
 startwmsize(): chan of Rect
