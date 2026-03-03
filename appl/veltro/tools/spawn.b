@@ -442,9 +442,11 @@ parsespecsection(section: string): (ref SubSpec, string)
 # Sends a ResultMsg to resultchan when done (result or timeout error).
 collectorwithTimeout(readfd: ref Sys->FD, resultchan: chan of ref ResultMsg, timeout_ms, idx: int)
 {
-	innerc := chan of string;
+	# Buffered capacity 1: goroutines can complete their send and exit even
+	# after the alt has moved on, preventing them from blocking indefinitely.
+	innerc := chan[1] of string;
 	spawn pipereader(readfd, innerc);
-	timeoutc := chan of int;
+	timeoutc := chan[1] of int;
 	spawn timer(timeoutc, timeout_ms);
 	result: string;
 	alt {
@@ -452,6 +454,9 @@ collectorwithTimeout(readfd: ref Sys->FD, resultchan: chan of ref ResultMsg, tim
 		;
 	<-timeoutc =>
 		result = sys->sprint("ERROR:subagent timed out after %ds", timeout_ms / 1000);
+		# Close the read end so pipereader's sys->read() returns an error,
+		# allowing it to break its loop, send to innerc (buffered), and exit.
+		readfd = nil;
 	}
 	resultchan <-= ref ResultMsg(idx, result);
 }
@@ -472,6 +477,7 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 	# Step 4: Create LLM session using /n/llm/new clone pattern.
 	# Each child gets its own session — fully isolated from parent and siblings.
 	llmaskfd: ref Sys->FD;
+	sessionid := "";  # hoisted so we can close the session after runloop
 	if(caps.llmconfig != nil) {
 		newfd := sys->open("/n/llm/new", Sys->OREAD);
 		if(newfd != nil) {
@@ -479,7 +485,7 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 			n := sys->read(newfd, buf, len buf);
 			newfd = nil;
 			if(n > 0) {
-				sessionid := string buf[0:n];
+				sessionid = string buf[0:n];
 				if(len sessionid > 0 && sessionid[len sessionid - 1] == '\n')
 					sessionid = sessionid[0:len sessionid - 1];
 				if(sessionid != "") {
@@ -491,18 +497,12 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 						modelfd = nil;
 					}
 
-					# Configure thinking
+					# Subagents always run with thinking disabled — reasoning
+					# overhead is the parent agent's responsibility.
 					thinkfd := sys->open("/n/llm/" + sessionid + "/thinking", Sys->OWRITE);
 					if(thinkfd != nil) {
-						thinkstr: string;
-						if(caps.llmconfig.thinking == 0)
-							thinkstr = "off";
-						else if(caps.llmconfig.thinking < 0)
-							thinkstr = "max";
-						else
-							thinkstr = string caps.llmconfig.thinking;
-						thinkdata := array of byte thinkstr;
-						sys->write(thinkfd, thinkdata, len thinkdata);
+						offdata := array of byte "off";
+						sys->write(thinkfd, offdata, len offdata);
 						thinkfd = nil;
 					}
 
@@ -561,6 +561,18 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 
 	writeresult(pipefd, result);
 	pipefd = nil;
+
+	# Release the LLM session. The ctl "close" decrements the self-reference
+	# (refs 1→0), allowing the server to free the session immediately rather
+	# than waiting for a server restart.
+	if(sessionid != "") {
+		ctlfd := sys->open("/n/llm/" + sessionid + "/ctl", Sys->OWRITE);
+		if(ctlfd != nil) {
+			data := array of byte "close";
+			sys->write(ctlfd, data, len data);
+			ctlfd = nil;
+		}
+	}
 }
 
 # ---- Helper functions ----

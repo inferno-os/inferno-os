@@ -1891,7 +1891,15 @@ sig_algo_supported(s: ref Signed, pk: ref PublicKey): int
 			return 0;
 		}
 	* =>
-		return 1;
+		# For RSA/DSS/DH keys: only attempt algorithms that Signed.verify()
+		# actually implements (SHA-256 and SHA-384 PKCS#1 v1.5).
+		# RSA-PSS and other unknown algorithms are skipped (not failed),
+		# matching the graceful-degradation policy used for EC keys above.
+		# Without this, modern CA certs using RSA-PSS cause spurious
+		# "signature verification failure" errors.
+		algid := asn1->oid_lookup(s.alg.oid, pkcs->objIdTab);
+		return algid == PKCS->id_sha256WithRSAEncryption ||
+		       algid == PKCS->id_sha384WithRSAEncryption;
 	}
 }
 

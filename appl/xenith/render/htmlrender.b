@@ -39,8 +39,8 @@ rlayout: Rlayout;
 display: ref Display;
 DocNode: import rlayout;
 
-PROPFONT: con "/fonts/vera/Vera/unicode.14.font";
-MONOFONT: con "/fonts/vera/VeraMono/VeraMono.14.font";
+PROPFONT: con "/fonts/dejavu/DejaVuSans/unicode.14.font";
+MONOFONT: con "/fonts/dejavu/DejaVuSansMono/unicode.14.font";
 
 propfont: ref Font;
 monofont: ref Font;

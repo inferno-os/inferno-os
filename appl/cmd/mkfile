@@ -26,6 +26,7 @@ TARG=\
 	archfs.dis\
 	auplay.dis\
 	basename.dis\
+	bdf2subfont.dis\
 	bind.dis\
 	bit2gif.dis\
 	broke.dis\
@@ -96,6 +97,9 @@ TARG=\
 	lstar.dis\
 	lucibridge.dis\
 	lucifer.dis\
+	luciconv.dis\
+	lucictx.dis\
+	lucipres.dis\
 	luciuisrv.dis\
 	m4.dis\
 	man2html.dis\

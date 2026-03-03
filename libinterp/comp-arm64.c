@@ -434,6 +434,11 @@ bradis(int dispc)
 		return;
 	}
 	off = ((long)(IA(patch, dispc)) - (long)(code + codeoff)) >> 2;
+	if(off > 0x1FFFFFF || off < -0x2000000) {
+		print("bradis overflow: off=%ld base=%p code=%p codeoff=%lud dispc=%d\n",
+			off, base, code, codeoff, dispc);
+		urk("bradis: branch too far");
+	}
 	B_IMM(off);
 }
 

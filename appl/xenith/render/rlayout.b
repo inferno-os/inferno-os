@@ -364,6 +364,68 @@ renderblockquote(ls: ref Lstate, node: ref DocNode)
 	ls.y += ls.style.font.height / 4;
 }
 
+# Render a single table cell with inline bold (**...**) support.
+# cx, y:     top-left corner of the cell's text area.
+# colw:      pixel width of the column (text is clipped at cx+colw-4).
+# cell:      raw cell text (may contain **...**).
+# isheader:  non-zero → accent color + double-draw plain text too.
+rendertablecell(ls: ref Lstate, cx, y, colw: int, cell: string, isheader: int)
+{
+	font := ls.style.font;
+	col := ls.style.fgcolor;
+	if(isheader) {
+		col = ls.style.linkcolor;
+		if(col == nil)
+			col = ls.style.fgcolor;
+	}
+	maxright := cx + colw - 4;
+	x := cx;
+
+	i := 0;
+	n := len cell;
+	while(i < n && x < maxright) {
+		# Check for bold span: **...**
+		if(i + 1 < n && cell[i] == '*' && cell[i+1] == '*') {
+			j := i + 2;
+			while(j + 1 < n && !(cell[j] == '*' && cell[j+1] == '*'))
+				j++;
+			if(j + 1 < n && cell[j] == '*' && cell[j+1] == '*') {
+				# Valid bold span: cell[i+2:j]
+				bold := cell[i+2:j];
+				while(len bold > 0 && x + font.width(bold) + 1 > maxright)
+					bold = bold[:len bold - 1];
+				if(len bold > 0) {
+					ls.img.text(Point(x, y), col, Point(0, 0), font, bold);
+					ls.img.text(Point(x+1, y), col, Point(0, 0), font, bold);
+					x += font.width(bold) + 1;
+				}
+				i = j + 2;
+			} else {
+				# No closing ** — skip the opening * and retry
+				i++;
+			}
+		} else {
+			# Plain text: collect up to the next ** marker
+			j := i;
+			while(j < n) {
+				if(j + 1 < n && cell[j] == '*' && cell[j+1] == '*')
+					break;
+				j++;
+			}
+			plain := cell[i:j];
+			while(len plain > 0 && x + font.width(plain) > maxright)
+				plain = plain[:len plain - 1];
+			if(len plain > 0) {
+				ls.img.text(Point(x, y), col, Point(0, 0), font, plain);
+				if(isheader)
+					ls.img.text(Point(x+1, y), col, Point(0, 0), font, plain);
+				x += font.width(plain);
+			}
+			i = j;
+		}
+	}
+}
+
 # Render a table node.
 # node.text = rows separated by \n; each row has cells separated by |.
 # First row is the header. node.aux = number of columns.
@@ -404,26 +466,14 @@ rendertable(ls: ref Lstate, node: ref DocNode)
 			ls.img.draw(bgr, ls.style.codebgcolor, nil, Point(0, 0));
 		}
 
-		# Draw each cell
+		# Draw each cell with inline bold support
 		cx := x0 + colpad;
 		for(ci := 0; ci < len cells && ci < ncols; ci++){
 			cell := cells[ci];
 			if(cell == nil)
 				cell = "";
 			cell = pmd_stripws(cell);
-			# Truncate cell text to fit column width
-			while(len cell > 0 && font.width(cell) > colw - 2)
-				cell = cell[: len cell - 1];
-			if(ri == 0){
-				# Header: faux-bold in accent color
-				col := ls.style.linkcolor;
-				if(col == nil)
-					col = ls.style.fgcolor;
-				ls.img.text(Point(cx, ls.y + 2), col, Point(0, 0), font, cell);
-				ls.img.text(Point(cx + 1, ls.y + 2), col, Point(0, 0), font, cell);
-			} else {
-				ls.img.text(Point(cx, ls.y + 2), ls.style.fgcolor, Point(0, 0), font, cell);
-			}
+			rendertablecell(ls, cx, ls.y + 2, colw, cell, ri == 0);
 			cx += colw + colpad;
 		}
 

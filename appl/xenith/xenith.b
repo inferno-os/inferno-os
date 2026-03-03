@@ -187,8 +187,8 @@ fontcache : array of ref Reffont;
 nfontcache : int;
 reffonts : array of ref Reffont;
 deffontnames := array[2] of {
-	"/fonts/vera/Vera/unicode.14.font",
-	"/fonts/vera/VeraMono/VeraMono.14.font",
+	"/fonts/dejavu/DejaVuSans/unicode.14.font",
+	"/fonts/dejavu/DejaVuSansMono/unicode.14.font",
 };
 
 # Theme definitions: (env-var-suffix, color-value)

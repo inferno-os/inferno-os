@@ -63,21 +63,38 @@ doc(): string
 {
 	return "Present - Manage Lucifer presentation zone\n\n" +
 		"Commands:\n" +
-		"  create <id> [type=markdown|text|table|code] [label=<text>]\n" +
+		"  create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=<text>]\n" +
 		"                          Create a presentation artifact\n" +
 		"  write <id> <content>    Write content (use \\\\n for newlines)\n" +
 		"  center <id>             Make artifact the active/focused view\n" +
+		"  delete <id>             Remove artifact from presentation zone\n" +
+		"  kill <id>              Terminate a running GUI app and remove its tab\n" +
 		"  list                    List artifacts in current activity\n" +
 		"  status                  Show current activity and centered artifact\n\n" +
 		"Artifact types:\n" +
 		"  markdown  Rich text with headings, bold, code, tables (default)\n" +
 		"  text      Plain wrapped text\n" +
 		"  table     Pipe-delimited table (| Col | Col | format)\n" +
-		"  code      Monospace code listing\n\n" +
+		"  code      Monospace code listing (dark background)\n" +
+		"  pdf       PDF document; data= is the file path. < > buttons navigate pages\n" +
+		"  image     PNG/JPEG/GIF image; data= is the file path\n" +
+		"  mermaid   Mermaid diagram; data= is the Mermaid syntax (native renderer)\n" +
+		"            Types: flowchart, sequenceDiagram, classDiagram, stateDiagram-v2,\n" +
+		"                   erDiagram, mindmap, timeline, gitGraph, quadrantChart,\n" +
+		"                   journey, requirementDiagram, block-beta, pie, gantt,\n" +
+		"                   xychart-beta (bar/line charts — do NOT use 'barChart')\n\n" +
 		"Examples:\n" +
 		"  present create summary type=markdown label=\"Session Summary\"\n" +
 		"  present write summary \"# Summary\\n\\n- Key finding 1\\n- Key finding 2\"\n" +
-		"  present center summary\n" +
+		"  present center summary\n\n" +
+		"  present create report type=pdf label=Report\n" +
+		"  present write report /tmp/veltro/mnt/local-files/analysis.pdf\n" +
+		"  present center report\n\n" +
+		"  present create arch type=image label=Architecture\n" +
+		"  present write arch /tmp/veltro/scratch/arch.png\n\n" +
+		"  present create flow type=mermaid label=Workflow\n" +
+		"  present write flow \"graph TD\\n  A[Start] --> B{Decision}\\n  B -->|Yes| C[End]\"\n" +
+		"  present center flow\n\n" +
 		"  present list";
 }
 
@@ -113,12 +130,16 @@ exec(args: string): string
 		return doappend(rest);
 	"center" =>
 		return docenter(rest);
+	"delete" =>
+		return dodelete(rest);
+	"kill" =>
+		return dokill(rest);
 	"list" =>
 		return dolist();
 	"status" =>
 		return dostatus();
 	* =>
-		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, list, status", cmd);
+		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, kill, list, status", cmd);
 	}
 }
 
@@ -237,6 +258,44 @@ docenter(args: string): string
 		return "error: " + err;
 
 	return sys->sprint("centered '%s'", id);
+}
+
+# Kill a GUI app by id (terminates the running app process and removes its tab)
+dokill(args: string): string
+{
+	id := strip(args);
+	if(id == "")
+		return "error: usage: kill <id>";
+
+	actid := currentactid();
+	if(actid < 0)
+		return "error: no active activity";
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+	err := writefile(pctl, "kill id=" + id);
+	if(err != nil)
+		return "error: " + err;
+
+	return sys->sprint("killed app '%s'", id);
+}
+
+# Delete an artifact by id
+dodelete(args: string): string
+{
+	id := strip(args);
+	if(id == "")
+		return "error: usage: delete <id>";
+
+	actid := currentactid();
+	if(actid < 0)
+		return "error: no active activity";
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+	err := writefile(pctl, "delete id=" + id);
+	if(err != nil)
+		return "error: " + err;
+
+	return sys->sprint("deleted artifact '%s'", id);
 }
 
 # List artifacts in current activity

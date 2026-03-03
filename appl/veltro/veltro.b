@@ -735,6 +735,7 @@ runagent(task: string)
 	}
 
 	agentloop(llmfd, llmsessionid, prompt);
+	agentlib->closesession(llmsessionid);
 }
 
 # ---- Resume session ----
@@ -804,4 +805,5 @@ runresume(name, extra: string)
 	prompt := buildresumecontext(task, plan, logcontent, extra);
 
 	agentloop(llmfd, llmsessionid, prompt);
+	agentlib->closesession(llmsessionid);
 }

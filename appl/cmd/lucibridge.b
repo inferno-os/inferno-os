@@ -132,6 +132,14 @@ initsession(): string
 	}
 	sysprompt += BRIDGE_SUFFIX;
 
+	# Open ask fd first so the session stays alive (refs >= 1) while we write
+	# system and tools.  Without this, Limbo's GC finalizes each setup fd
+	# concurrently and can drop refs to 0 between writes, deleting the session.
+	askpath := "/n/llm/" + sessionid + "/ask";
+	llmfd = sys->open(askpath, Sys->ORDWR);
+	if(llmfd == nil)
+		return sys->sprint("cannot open %s: %r", askpath);
+
 	systempath := "/n/llm/" + sessionid + "/system";
 	agentlib->setsystemprompt(systempath, sysprompt);
 
@@ -151,10 +159,17 @@ initsession(): string
 	}
 	agentlib->initsessiontools(sessionid, toollist);
 
-	askpath := "/n/llm/" + sessionid + "/ask";
-	llmfd = sys->open(askpath, Sys->ORDWR);
-	if(llmfd == nil)
-		return sys->sprint("cannot open %s: %r", askpath);
+	# Register each available tool as a context resource so the context zone
+	# can display and track which tools the agent is using.
+	nreg := 0;
+	for(t := toollist; t != nil; t = tl t) {
+		nm := str->tolower(hd t);
+		r := writefile(sys->sprint("/n/ui/activity/%d/context/ctl", actid),
+			"resource add path=" + nm + " label=" + hd t + " type=tool status=idle");
+		if(r >= 0)
+			nreg++;
+	}
+	log(sys->sprint("context: registered %d tools as resources", nreg));
 
 	log(sys->sprint("session %s, prompt %d bytes", sessionid, len array of byte sysprompt));
 	return nil;
@@ -300,13 +315,20 @@ writellmfd(fd: ref Sys->FD, prompt: string)
 
 # Read complete LLM response from the ask fd at offset 0.
 # Blocks until the background generation goroutine completes.
+# Uses chunked reads to avoid a 1MB pool allocation per LLM call.
 readllmfd(fd: ref Sys->FD): string
 {
-	buf := array[1048576] of byte;
-	n := sys->pread(fd, buf, len buf, big 0);
-	if(n <= 0)
-		return "";
-	return string buf[0:n];
+	result := "";
+	buf := array[8192] of byte;
+	offset := big 0;
+	for(;;) {
+		n := sys->pread(fd, buf, len buf, offset);
+		if(n <= 0)
+			break;
+		result += string buf[0:n];
+		offset += big n;
+	}
+	return result;
 }
 
 # Update an existing conversation message in place (for streaming token display).
@@ -316,6 +338,34 @@ updateliveconvmsg(idx: int, text: string)
 	msg := "update idx=" + string idx + " text=" + text;
 	if(writefile(path, msg) < 0)
 		sys->fprint(stderr, "lucibridge: updateliveconvmsg failed: %r\n");
+}
+
+# Find the first Inferno path (starts with /) in tool args.
+# Generic — decoupled from which tool is being called or its arg order.
+filepathof(args: string): string
+{
+	(nil, toks) := sys->tokenize(args, " \t\n");
+	for(t := toks; t != nil; t = tl t) {
+		tok := hd t;
+		if(len tok > 1 && tok[0] == '/')
+			return tok;
+	}
+	return nil;
+}
+
+# Return the last path component (basename).
+pathbase(path: string): string
+{
+	n := len path;
+	while(n > 1 && path[n-1] == '/')
+		n--;
+	path = path[0:n];
+	i := n - 1;
+	while(i > 0 && path[i] != '/')
+		i--;
+	if(path[i] == '/')
+		return path[i+1:];
+	return path;
 }
 
 # Run the agent loop for one human turn using native tool_use protocol.
@@ -341,13 +391,11 @@ agentturn(input: string)
 		streampath := streambase + "/stream";
 		streamfd := sys->open(streampath, Sys->OREAD);
 
-		# placeholder_idx >= 0 means we're in streaming mode.
+		# placeholder_idx >= 0 means we created a streaming placeholder bubble.
+		# We defer creation until the first chunk so tool-only steps (0 chunks,
+		# empty text) produce no bubble at all instead of a blank one.
 		placeholder_idx := -1;
 		if(streamfd != nil) {
-			# STREAMING MODE: reserve a placeholder, stream tokens into it.
-			placeholder_idx = convcount;
-			writemsg("veltro", "▌");
-
 			log("stream: reading " + streampath);
 			buf := array[512] of byte;
 			growing := "";
@@ -358,8 +406,25 @@ agentturn(input: string)
 					break;
 				growing += string buf[0:n];
 				nchunks++;
-				updateliveconvmsg(placeholder_idx, growing + "▌");
+				# Create placeholder on the first chunk, seeded with actual text
+				# so the message never shows bare ▌ without content.
+				if(placeholder_idx < 0) {
+					placeholder_idx = convcount;
+					writemsg("veltro", growing + "▌");
+				}
+				# Batch UI updates: update every 4 chunks to reduce
+				# allocation churn and rlayout re-render frequency.
+				# Sleep after each update so the draw loop has time to
+				# render the intermediate state — prevents "all at once"
+				# appearance when llm9p pre-buffers all chunks.
+				if((nchunks & 3) == 0) {
+					updateliveconvmsg(placeholder_idx, growing + "▌");
+					sys->sleep(50);
+				}
 			}
+			# Final update with accumulated content (no cursor)
+			if(placeholder_idx >= 0 && nchunks > 0)
+				updateliveconvmsg(placeholder_idx, growing + "▌");
 			log(sys->sprint("stream: done (%d chunks, %d bytes)", nchunks, len growing));
 			streamfd = nil;
 		} else {
@@ -399,7 +464,41 @@ agentturn(input: string)
 				writemsg("veltro", extractargs(args));
 				results = (id, "said") :: results;
 			} else {
-				result := agentlib->calltool(name, args);
+				# Mark the tool as active in the context zone for the full duration.
+				nm := str->tolower(name);
+				ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+				writefile(ctxpath, "resource activity " + nm);
+				writefile(ctxpath, "resource update path=" + nm + " status=active");
+				log("context: active " + nm);
+
+				# extractargs: unwrap {"args":"<value>"} JSON envelope from Anthropic
+				# native tool_use protocol before forwarding to tools9p.
+				#
+				# Bug history: when the native tool_use protocol was introduced,
+				# extractargs() was added but only called for the local "say" intercept.
+				# All other tools received the raw JSON wrapper as their args string.
+				# tools9p's exec tool then saw '{"args":' as the first command word →
+				# "error: unknown command" for every tool call.  Fixed here by always
+				# extracting args before calltool() and filepathof().
+				eargs := extractargs(args);
+
+				# Surface the file/dir this tool is accessing
+				fpath := filepathof(eargs);
+				if(fpath != nil) {
+					base := pathbase(fpath);
+					ftype := "file";
+					if(fpath[len fpath - 1] == '/')
+						ftype = "dir";
+					writefile(ctxpath, "resource upsert path=" + fpath +
+						" label=" + base + " type=" + ftype +
+						" via=" + nm + " status=active");
+					log("context: file " + fpath + " via " + nm);
+				}
+
+				result := agentlib->calltool(name, eargs);
+				writefile(ctxpath, "resource update path=" + nm + " status=idle");
+				if(fpath != nil)
+					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
 				log("tool " + name + ": " + agentlib->truncate(result, 100));
 				if(len result > AgentLib->STREAM_THRESHOLD) {
 					scratch := agentlib->writescratch(result, step);

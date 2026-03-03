@@ -98,8 +98,15 @@ restrictdir(target: string, allowed: list of string, writable: int): string
 					dfd = nil;
 			}
 
-			# Bind original into shadow
-			if(sys->bind(srcpath, dstpath, Sys->MREPL) < 0)
+			# Bind original into shadow.
+			# When the outer target is writable, inner binds also need MCREATE
+			# so that file creation inside subdirectories is permitted.
+			# Without MCREATE on the inner bind, the kernel returns
+			# "mounted directory forbids creation" for any create inside that subdir.
+			innerbindflags := Sys->MREPL;
+			if(writable)
+				innerbindflags |= Sys->MCREATE;
+			if(sys->bind(srcpath, dstpath, innerbindflags) < 0)
 				return sys->sprint("cannot bind %s: %r", srcpath);
 		}
 	}
@@ -132,13 +139,20 @@ restrictns(caps: ref Capabilities): string
 	mkdirp(SHADOW_BASE);
 	mkdirp(AUDIT_DIR);
 
-	# 1. Restrict /dis to: lib/, veltro/ (plus shell+cmd if exec tool is loaded)
+	# 1. Restrict /dis to: lib/, veltro/ (plus shell+cmd if exec tool is loaded,
+	#    plus any /dis/ subdirectories granted via caps.paths e.g. "/dis/wm")
 	disallow := "lib" :: "veltro" :: nil;
 	if(inlist("exec", caps.tools) || caps.shellcmds != nil) {
 		# exec tool needs sh.dis (shell interpreter) to run commands
 		disallow = "sh.dis" :: disallow;
 		for(c := caps.shellcmds; c != nil; c = tl c)
 			disallow = (hd c) + ".dis" :: disallow;
+	}
+	# Expose /dis/ subdirectories listed in caps.paths (e.g. "/dis/wm" → "wm")
+	for(dp := filterpaths(caps.paths, "/dis/"); dp != nil; dp = tl dp) {
+		(first, nil) := splitfirst(hd dp);
+		if(first != "" && !inlist(first, disallow))
+			disallow = first :: disallow;
 	}
 	err := restrictdir("/dis", disallow, 0);
 	if(err != nil)
@@ -154,12 +168,19 @@ restrictns(caps: ref Capabilities): string
 			return sys->sprint("restrict /dis/veltro/tools: %s", err);
 	}
 
-	# 3. Restrict /dev to: cons, null
-	err = restrictdir("/dev", "cons" :: "null" :: nil, 0);
+	# 3. Restrict /dev to: cons, null, time
+	# time is read-only clock; required by daytime->now() for TLS cert validation.
+	err = restrictdir("/dev", "cons" :: "null" :: "time" :: nil, 0);
 	if(err != nil)
 		return sys->sprint("restrict /dev: %s", err);
 
 	# 4-5. Restrict /n to allowed entries (llm, mcp, speech, optionally local)
+	# SECURITY REVIEW NEEDED: The /n/ allowlist is stat-based — entries are
+	# auto-exposed to the agent if they exist on the host, not if explicitly
+	# granted via caps.paths.  This is consistent within itself but diverges
+	# from the caps.paths-driven model used for /dis/ and /n/local/.
+	# Future direction: all /n/ entries should be caps.paths-driven.
+	# See: appl/veltro/nsconstruct.b restrictns() /n/ block.
 	(nok, nil) := sys->stat("/n");
 	if(nok >= 0) {
 		nallow: list of string;
@@ -185,6 +206,15 @@ restrictns(caps: ref Capabilities): string
 		(uiok, nil) := sys->stat("/n/ui");
 		if(uiok >= 0)
 			nallow = "ui" :: nallow;
+		# Keep /n/pres-* if lucifer exported WM namespace (needed by exec for GUI apps)
+		(presok, nil) := sys->stat("/n/pres-clone");
+		if(presok >= 0) {
+			nallow = "pres-launch" :: nallow;
+			nallow = "pres-keyboard" :: nallow;
+			nallow = "pres-pointer" :: nallow;
+			nallow = "pres-winname" :: nallow;
+			nallow = "pres-clone" :: nallow;
+		}
 		# Check if any caps.paths grant /n/local/ subpaths
 		localpaths := filterpaths(caps.paths, "/n/local/");
 		if(localpaths != nil)
@@ -194,6 +224,16 @@ restrictns(caps: ref Capabilities): string
 		if(err != nil)
 			return sys->sprint("restrict /n: %s", err);
 
+		# Option A: restrict /n/ui to only /n/ui/activity/.
+		# Prevents agent from writing to /n/ui/ctl (namespace manipulation)
+		# or reading /n/ui/catalog/ (resource enumeration).
+		# present and gap tools write to /n/ui/activity/{id}/... which remains accessible.
+		if(uiok >= 0) {
+			uerr := restrictdir("/n/ui", "activity" :: nil, 0);
+			if(uerr != nil)
+				return sys->sprint("restrict /n/ui: %s", uerr);
+		}
+
 		# If local paths are granted, drill down to expose only those
 		if(localpaths != nil) {
 			lerr := restrictlocal(localpaths);
@@ -202,10 +242,11 @@ restrictns(caps: ref Capabilities): string
 		}
 	}
 
-	# 6. Restrict /lib to: veltro/ (read-only data for agents)
+	# 6. Restrict /lib to: veltro/, certs/
+	# certs/ is the TLS root CA store; required by x509->verify_certchain().
 	(libok, nil) := sys->stat("/lib");
 	if(libok >= 0) {
-		err = restrictdir("/lib", "veltro" :: nil, 0);
+		err = restrictdir("/lib", "veltro" :: "certs" :: nil, 0);
 		if(err != nil)
 			return sys->sprint("restrict /lib: %s", err);
 	}
