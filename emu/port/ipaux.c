@@ -487,7 +487,7 @@ parsemac(uchar *to, char *from, int len)
 }
 
 void
-hnputl(void *p, unsigned long v)
+hnputl(void *p, ulong v)
 {
 	unsigned char *a;
 
@@ -508,7 +508,7 @@ hnputs(void *p, unsigned short v)
 	a[1] = v;
 }
 
-unsigned long
+ulong
 nhgetl(void *p)
 {
 	unsigned char *a;

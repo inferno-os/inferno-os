@@ -4,11 +4,28 @@
  *
  * Based on curve25519-donna-c64 (public domain, Adam Langley).
  * Uses 128-bit integers via __int128 GCC extension (native on ARM64).
+ * On MSVC, a struct-based emulation with _umul128() is used instead.
  */
 #include "os.h"
 #include <libsec.h>
+#include "uint128.h"
 
-typedef unsigned __int128 uint128_t;
+typedef u128 uint128_t;
+
+/*
+ * x25519 uses 51-bit limbs, so we need a general shift-right.
+ * ecc.c only shifts by 64, but here we shift by 51.
+ */
+#ifdef _MSC_VER
+static __forceinline u64int
+shr128_n(u128 v, int n)
+{
+	return (v.hi << (64 - n)) | (v.lo >> n);
+}
+#else
+#define shr128_n(v, n) ((u64int)((v) >> (n)))
+#endif
+
 typedef u64int felem[5];  /* field element: 5 limbs, 51 bits each */
 
 #define MASK51 ((1ULL<<51)-1)
@@ -92,26 +109,26 @@ fmul(felem out, const felem a, const felem b)
 
 	b19_1 = 19*b[1]; b19_2 = 19*b[2]; b19_3 = 19*b[3]; b19_4 = 19*b[4];
 
-	t[0] = (uint128_t)a[0]*b[0] + (uint128_t)a[4]*b19_1
-	     + (uint128_t)a[1]*b19_4 + (uint128_t)a[3]*b19_2 + (uint128_t)a[2]*b19_3;
-	t[1] = (uint128_t)a[0]*b[1] + (uint128_t)a[1]*b[0]
-	     + (uint128_t)a[4]*b19_2 + (uint128_t)a[2]*b19_4 + (uint128_t)a[3]*b19_3;
-	t[2] = (uint128_t)a[0]*b[2] + (uint128_t)a[2]*b[0] + (uint128_t)a[1]*b[1]
-	     + (uint128_t)a[4]*b19_3 + (uint128_t)a[3]*b19_4;
-	t[3] = (uint128_t)a[0]*b[3] + (uint128_t)a[3]*b[0] + (uint128_t)a[1]*b[2] + (uint128_t)a[2]*b[1]
-	     + (uint128_t)a[4]*b19_4;
-	t[4] = (uint128_t)a[0]*b[4] + (uint128_t)a[4]*b[0] + (uint128_t)a[1]*b[3]
-	     + (uint128_t)a[3]*b[1] + (uint128_t)a[2]*b[2];
+	t[0] = ADD128(ADD128(MUL128(a[0],b[0]), MUL128(a[4],b19_1)),
+	       ADD128(ADD128(MUL128(a[1],b19_4), MUL128(a[3],b19_2)), MUL128(a[2],b19_3)));
+	t[1] = ADD128(ADD128(MUL128(a[0],b[1]), MUL128(a[1],b[0])),
+	       ADD128(ADD128(MUL128(a[4],b19_2), MUL128(a[2],b19_4)), MUL128(a[3],b19_3)));
+	t[2] = ADD128(ADD128(MUL128(a[0],b[2]), MUL128(a[2],b[0])),
+	       ADD128(MUL128(a[1],b[1]), ADD128(MUL128(a[4],b19_3), MUL128(a[3],b19_4))));
+	t[3] = ADD128(ADD128(MUL128(a[0],b[3]), MUL128(a[3],b[0])),
+	       ADD128(ADD128(MUL128(a[1],b[2]), MUL128(a[2],b[1])), MUL128(a[4],b19_4)));
+	t[4] = ADD128(ADD128(MUL128(a[0],b[4]), MUL128(a[4],b[0])),
+	       ADD128(MUL128(a[1],b[3]), ADD128(MUL128(a[3],b[1]), MUL128(a[2],b[2]))));
 
-	r0 = (u64int)t[0] & MASK51; c = (u64int)(t[0] >> 51);
-	t[1] += c;
-	r1 = (u64int)t[1] & MASK51; c = (u64int)(t[1] >> 51);
-	t[2] += c;
-	r2 = (u64int)t[2] & MASK51; c = (u64int)(t[2] >> 51);
-	t[3] += c;
-	r3 = (u64int)t[3] & MASK51; c = (u64int)(t[3] >> 51);
-	t[4] += c;
-	r4 = (u64int)t[4] & MASK51; c = (u64int)(t[4] >> 51);
+	r0 = LO128(t[0]) & MASK51; c = shr128_n(t[0], 51);
+	t[1] = ADD128_64(t[1], c);
+	r1 = LO128(t[1]) & MASK51; c = shr128_n(t[1], 51);
+	t[2] = ADD128_64(t[2], c);
+	r2 = LO128(t[2]) & MASK51; c = shr128_n(t[2], 51);
+	t[3] = ADD128_64(t[3], c);
+	r3 = LO128(t[3]) & MASK51; c = shr128_n(t[3], 51);
+	t[4] = ADD128_64(t[4], c);
+	r4 = LO128(t[4]) & MASK51; c = shr128_n(t[4], 51);
 	r0 += c * 19; c = r0 >> 51; r0 &= MASK51;
 	r1 += c;
 
@@ -147,11 +164,11 @@ fscalar(felem out, const felem a, u64int s)
 	uint128_t t;
 	u64int c;
 
-	t = (uint128_t)a[0]*s; out[0] = (u64int)t & MASK51; c = (u64int)(t>>51);
-	t = (uint128_t)a[1]*s+c; out[1] = (u64int)t & MASK51; c = (u64int)(t>>51);
-	t = (uint128_t)a[2]*s+c; out[2] = (u64int)t & MASK51; c = (u64int)(t>>51);
-	t = (uint128_t)a[3]*s+c; out[3] = (u64int)t & MASK51; c = (u64int)(t>>51);
-	t = (uint128_t)a[4]*s+c; out[4] = (u64int)t & MASK51; c = (u64int)(t>>51);
+	t = MUL128(a[0], s); out[0] = LO128(t) & MASK51; c = shr128_n(t, 51);
+	t = ADD128_64(MUL128(a[1], s), c); out[1] = LO128(t) & MASK51; c = shr128_n(t, 51);
+	t = ADD128_64(MUL128(a[2], s), c); out[2] = LO128(t) & MASK51; c = shr128_n(t, 51);
+	t = ADD128_64(MUL128(a[3], s), c); out[3] = LO128(t) & MASK51; c = shr128_n(t, 51);
+	t = ADD128_64(MUL128(a[4], s), c); out[4] = LO128(t) & MASK51; c = shr128_n(t, 51);
 	out[0] += c*19;
 }
 

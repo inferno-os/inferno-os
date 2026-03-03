@@ -13,7 +13,7 @@ enum {
 };
 
 char *rootdir =		ROOT;
-char *shell =		"Nt/386/bin/rcsh.exe";	/* Path relative to root */
+char *shell =		"Nt/amd64/bin/rcsh.exe";	/* Path relative to root */
 
 typedef struct Child	Child;
 
@@ -24,8 +24,6 @@ struct Child {
 
 static Child child[Nchild];
 
-extern char **environ;
-
 DWORD WINAPI writecmd(LPVOID a);
 
 void
@@ -34,7 +32,7 @@ readenv(void)
 	char **p, *s;
 	Word *w;
 
-	for(p = environ; *p; p++){
+	for(p = _environ; *p; p++){
 		s = shname(*p);
 		if(*s == '=') {
 			*s = 0;

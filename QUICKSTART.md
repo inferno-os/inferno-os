@@ -15,6 +15,12 @@
 ./emu/MacOSX/o.emu -r.
 ```
 
+```powershell
+# Windows x86_64 (from x64 Native Tools Command Prompt)
+powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1
+.\emu\Nt\o.emu.exe -r .
+```
+
 ### What does `-r.` mean?
 
 The `-r` option sets the **root directory** for the Inferno® filesystem - where the emulator looks for `/dis`, `/module`, `/fonts`, and other Inferno® files.
@@ -79,6 +85,16 @@ export PATH="$PWD/MacOSX/arm64/bin:$PATH"
 mk install
 ```
 
+### Windows x86_64
+
+Requires Visual Studio 2022 Build Tools (free). Open **x64 Native Tools Command Prompt for VS 2022**, then:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1
+```
+
+This builds libraries, the `limbo` compiler, the headless emulator, and all Dis bytecode. For SDL3 GUI support, see [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md).
+
 ## Architecture Notes
 
 The emulator (`o.emu`) is a hosted Inferno® - it runs as a process on your host OS and provides:
@@ -95,4 +111,4 @@ The critical fix for 64-bit platforms was changing pool quanta from 31 to 127 in
 
 ---
 
-**Status: 64-bit Inferno® is working on x86_64 Linux, ARM64 Linux, and ARM64 macOS**
+**Status: 64-bit Inferno® is working on x86_64 Linux, ARM64 Linux, ARM64 macOS, and x86_64 Windows**

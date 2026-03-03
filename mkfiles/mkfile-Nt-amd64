@@ -1,0 +1,35 @@
+TARGMODEL=	Nt
+TARGSHTYPE=	sh
+CPUS=		amd64
+
+O=		obj
+OS=		obj
+
+AR=		lib /nologo
+ARFLAGS=
+
+AS=		ml64 /nologo /c
+ASFLAGS=
+
+CC=		cl /nologo /c
+CFLAGS=		/O2\
+		/Gy\
+		/GF\
+		/MD\
+		/W3\
+		/wd4018 /wd4244 /wd4245 /wd4068\
+		/wd4090 /wd4554 /wd4146 /wd4996\
+		/wd4305 /wd4102 /wd4761\
+		/I$ROOT/Nt/amd64/include\
+		/I$ROOT/include\
+		/D_AMD64_\
+		/DWINDOWS_AMD64
+
+ANSICPP=
+LD=		link /nologo
+LDFLAGS=
+
+SYSLIBS=	ws2_32.lib user32.lib gdi32.lib advapi32.lib winmm.lib mpr.lib kernel32.lib
+
+YACC=		yacc
+YFLAGS=		-d

@@ -160,6 +160,17 @@ tmp/.veltro/
 # Stray files
 fprint'
 
+# Windows build generated files
+emu/Nt/emu-config.c
+emu/Nt/emu-gui-config.c
+emu/Nt/SDL3.dll
+limbo/incpath.h
+utils/mk/rootpath.h
+SDL3-dev/
+emu_stderr.txt
+input.txt
+nul
+
 # Runtime / scratch directories
 dev/
 tmp/

@@ -9,8 +9,7 @@
 #include "os.h"
 #include <mp.h>
 #include <libsec.h>
-
-typedef unsigned __int128 u128;
+#include "uint128.h"
 typedef u64int fe[4];	/* field element: 4x64-bit limbs, little-endian */
 
 /* p = 2^256 - 2^224 + 2^192 + 2^96 - 1 */
@@ -102,8 +101,8 @@ fe_gte(const fe a, const fe b)
 	u64int borrow = 0;
 
 	for(i = 0; i < 4; i++){
-		u128 t = (u128)a[i] - b[i] - borrow;
-		borrow = (t >> 64) & 1;
+		u128 t = SUB128_64(SUB128(U128_FROM64(a[i]), U128_FROM64(b[i])), borrow);
+		borrow = HI128(t) & 1;
 	}
 	return borrow == 0;
 }
@@ -118,9 +117,9 @@ fe_mod(fe r, const fe a, const fe p)
 	int i;
 
 	for(i = 0; i < 4; i++){
-		u128 v = (u128)a[i] - p[i] - borrow;
-		t[i] = (u64int)v;
-		borrow = (v >> 64) & 1;
+		u128 v = SUB128_64(SUB128(U128_FROM64(a[i]), U128_FROM64(p[i])), borrow);
+		t[i] = LO128(v);
+		borrow = HI128(v) & 1;
 	}
 	/* if borrow, a < p, use a; else use t */
 	mask = (u64int)0 - borrow;
@@ -132,24 +131,24 @@ fe_mod(fe r, const fe a, const fe p)
 static void
 fe_add(fe r, const fe a, const fe b, const fe p)
 {
-	u128 c = 0;
+	u128 c = U128_FROM64(0);
 	fe t, t2;
 	int i;
 	u64int carry, borrow, mask;
 
 	for(i = 0; i < 4; i++){
-		c += (u128)a[i] + b[i];
-		t[i] = (u64int)c;
-		c >>= 64;
+		c = ADD128_64(ADD128_64(c, a[i]), b[i]);
+		t[i] = LO128(c);
+		c = U128_FROM64(SHR128_64(c));
 	}
-	carry = (u64int)c;
+	carry = LO128(c);
 
 	/* subtract p from (carry:t) */
 	borrow = 0;
 	for(i = 0; i < 4; i++){
-		u128 v = (u128)t[i] - p[i] - borrow;
-		t2[i] = (u64int)v;
-		borrow = (v >> 64) & 1;
+		u128 v = SUB128_64(SUB128(U128_FROM64(t[i]), U128_FROM64(p[i])), borrow);
+		t2[i] = LO128(v);
+		borrow = HI128(v) & 1;
 	}
 	/* underflow if carry < borrow: means (carry:t) < p, use t */
 	mask = (u64int)0 - (carry < borrow);
@@ -168,17 +167,17 @@ fe_sub(fe r, const fe a, const fe b, const fe p)
 	int i;
 
 	for(i = 0; i < 4; i++){
-		u128 v = (u128)a[i] - b[i] - borrow;
-		t[i] = (u64int)v;
-		borrow = (v >> 64) & 1;
+		u128 v = SUB128_64(SUB128(U128_FROM64(a[i]), U128_FROM64(b[i])), borrow);
+		t[i] = LO128(v);
+		borrow = HI128(v) & 1;
 	}
 	/* if borrow, add p */
 	mask = (u64int)0 - borrow;
-	c = 0;
+	c = U128_FROM64(0);
 	for(i = 0; i < 4; i++){
-		c += (u128)t[i] + (p[i] & mask);
-		r[i] = (u64int)c;
-		c >>= 64;
+		c = ADD128_64(ADD128_64(c, t[i]), p[i] & mask);
+		r[i] = LO128(c);
+		c = U128_FROM64(SHR128_64(c));
 	}
 }
 
@@ -242,17 +241,17 @@ fe_mul(fe r, const fe a, const fe b, const fe p)
 	memset(res, 0, sizeof(res));
 
 	for(i = 0; i < 4; i++){
-		acc = 0;
+		acc = U128_FROM64(0);
 		for(j = 0; j < 4; j++){
-			acc += (u128)res[i+j] + (u128)a[i] * b[j];
-			res[i+j] = (u64int)acc;
-			acc >>= 64;
+			acc = ADD128(ADD128_64(acc, res[i+j]), MUL128(a[i], b[j]));
+			res[i+j] = LO128(acc);
+			acc = U128_FROM64(SHR128_64(acc));
 		}
 		/* propagate remaining carry */
-		for(k = i+4; acc != 0 && k < 8; k++){
-			acc += res[k];
-			res[k] = (u64int)acc;
-			acc >>= 64;
+		for(k = i+4; !IS_ZERO128(acc) && k < 8; k++){
+			acc = ADD128_64(acc, res[k]);
+			res[k] = LO128(acc);
+			acc = U128_FROM64(SHR128_64(acc));
 		}
 	}
 
@@ -937,24 +936,24 @@ fe384_cswap(fe384 a, fe384 b, int bit)
 static void
 fe384_add(fe384 r, const fe384 a, const fe384 b, const fe384 p)
 {
-	u128 c = 0;
+	u128 c = U128_FROM64(0);
 	fe384 t, t2;
 	int i;
 	u64int carry, borrow, mask;
 
 	for(i = 0; i < 6; i++){
-		c += (u128)a[i] + b[i];
-		t[i] = (u64int)c;
-		c >>= 64;
+		c = ADD128_64(ADD128_64(c, a[i]), b[i]);
+		t[i] = LO128(c);
+		c = U128_FROM64(SHR128_64(c));
 	}
-	carry = (u64int)c;
+	carry = LO128(c);
 
 	/* subtract p from (carry:t) */
 	borrow = 0;
 	for(i = 0; i < 6; i++){
-		u128 v = (u128)t[i] - p[i] - borrow;
-		t2[i] = (u64int)v;
-		borrow = (v >> 64) & 1;
+		u128 v = SUB128_64(SUB128(U128_FROM64(t[i]), U128_FROM64(p[i])), borrow);
+		t2[i] = LO128(v);
+		borrow = HI128(v) & 1;
 	}
 	/* underflow if carry < borrow: means (carry:t) < p, use t */
 	mask = (u64int)0 - (carry < borrow);
@@ -973,17 +972,17 @@ fe384_sub(fe384 r, const fe384 a, const fe384 b, const fe384 p)
 	int i;
 
 	for(i = 0; i < 6; i++){
-		u128 v = (u128)a[i] - b[i] - borrow;
-		t[i] = (u64int)v;
-		borrow = (v >> 64) & 1;
+		u128 v = SUB128_64(SUB128(U128_FROM64(a[i]), U128_FROM64(b[i])), borrow);
+		t[i] = LO128(v);
+		borrow = HI128(v) & 1;
 	}
 	/* if borrow, add p */
 	mask = (u64int)0 - borrow;
-	c = 0;
+	c = U128_FROM64(0);
 	for(i = 0; i < 6; i++){
-		c += (u128)t[i] + (p[i] & mask);
-		r[i] = (u64int)c;
-		c >>= 64;
+		c = ADD128_64(ADD128_64(c, t[i]), p[i] & mask);
+		r[i] = LO128(c);
+		c = U128_FROM64(SHR128_64(c));
 	}
 }
 
@@ -1041,16 +1040,16 @@ fe384_mul(fe384 r, const fe384 a, const fe384 b, const fe384 p)
 	memset(res, 0, sizeof(res));
 
 	for(i = 0; i < 6; i++){
-		acc = 0;
+		acc = U128_FROM64(0);
 		for(j = 0; j < 6; j++){
-			acc += (u128)res[i+j] + (u128)a[i] * b[j];
-			res[i+j] = (u64int)acc;
-			acc >>= 64;
+			acc = ADD128(ADD128_64(acc, res[i+j]), MUL128(a[i], b[j]));
+			res[i+j] = LO128(acc);
+			acc = U128_FROM64(SHR128_64(acc));
 		}
-		for(k = i+6; acc != 0 && k < 12; k++){
-			acc += res[k];
-			res[k] = (u64int)acc;
-			acc >>= 64;
+		for(k = i+6; !IS_ZERO128(acc) && k < 12; k++){
+			acc = ADD128_64(acc, res[k]);
+			res[k] = LO128(acc);
+			acc = U128_FROM64(SHR128_64(acc));
 		}
 	}
 

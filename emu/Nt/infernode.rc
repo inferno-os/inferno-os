@@ -1,0 +1,32 @@
+#include <winver.h>
+
+100 ICON "..\\..\\Nt\\Infernode.ico"
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION    1,0,0,0
+    PRODUCTVERSION 1,0,0,0
+    FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+    FILEFLAGS      0
+    FILEOS         VOS_NT_WINDOWS32
+    FILETYPE       VFT_APP
+    FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName",      "NERV Systems"
+            VALUE "FileDescription",  "InferNode - Inferno OS for the AI Age"
+            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "InternalName",     "Infernode"
+            VALUE "LegalCopyright",   "Copyright 2026 NERV Systems. MIT License."
+            VALUE "OriginalFilename", "Infernode.exe"
+            VALUE "ProductName",      "InferNode"
+            VALUE "ProductVersion",   "1.0.0.0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 0x04B0
+    END
+END

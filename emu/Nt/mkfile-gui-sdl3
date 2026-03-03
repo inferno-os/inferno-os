@@ -1,0 +1,19 @@
+# SDL3 GUI backend for Windows
+# Cross-platform GUI with GPU acceleration (D3D12/OpenGL on Windows)
+
+GUISRC=\
+	draw-sdl3.$O\
+
+# SDL3 configuration for Windows
+# Install via vcpkg: vcpkg install sdl3:x64-windows
+# Or set SDL3DIR environment variable to SDL3 install path
+SDL3DIR=C:\vcpkg\installed\x64-windows
+SDL3_CFLAGS=/DGUI_SDL3 /I$SDL3DIR\include
+SDL3_LIBS=$SDL3DIR\lib\SDL3.lib
+
+GUIFLAGS=$SDL3_CFLAGS
+GUILIBS=$SDL3_LIBS
+
+# Compile SDL3 backend from port/ directory
+draw-sdl3.$O: ../port/draw-sdl3.c
+	$CC $CFLAGS $GUIFLAGS -I. ../port/draw-sdl3.c
