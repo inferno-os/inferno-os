@@ -11,25 +11,15 @@
  * Or with the TLA+ Toolbox, select this module as the model.
  ***************************************************************************)
 
-EXTENDS Namespace, NamespaceProperties, IsolationProof, TLC
+EXTENDS NamespaceProperties, IsolationProof, TLC
 
 \* =========================================================================
 \* MODEL CONSTANTS
 \* =========================================================================
 
-CONSTANTS
-    MC_MaxProcesses,
-    MC_MaxPgrps,
-    MC_MaxChannels,
-    MC_MaxPaths,
-    MC_MaxMountId
-
-\* Bind the model constants to the specification constants
-MaxProcesses == MC_MaxProcesses
-MaxPgrps == MC_MaxPgrps
-MaxChannels == MC_MaxChannels
-MaxPaths == MC_MaxPaths
-MaxMountId == MC_MaxMountId
+\* Constants are declared in Namespace.tla (imported via EXTENDS chain).
+\* Their values are assigned in the .cfg file via CONSTANT directives.
+\* No re-declaration needed here.
 
 \* =========================================================================
 \* STATE CONSTRAINT
@@ -37,17 +27,17 @@ MaxMountId == MC_MaxMountId
 
 \* Limit state space for finite model checking
 StateConstraint ==
-    /\ Cardinality(processes) <= MC_MaxProcesses
-    /\ next_pgrp_id <= MC_MaxPgrps + 1
-    /\ next_chan_id <= MC_MaxChannels + 1
+    /\ Cardinality(processes) <= MaxProcesses
+    /\ next_pgrp_id <= MaxPgrps + 1
+    /\ next_chan_id <= MaxChannels + 1
 
 \* =========================================================================
 \* ACTION CONSTRAINT
 \* =========================================================================
 
 ActionConstraint ==
-    /\ next_pgrp_id' <= MC_MaxPgrps + 1
-    /\ next_chan_id' <= MC_MaxChannels + 1
+    /\ next_pgrp_id' <= MaxPgrps + 1
+    /\ next_chan_id' <= MaxChannels + 1
 
 \* =========================================================================
 \* INVARIANTS TO CHECK
@@ -85,13 +75,13 @@ PROPERTY_Progress == Progress
 \* =========================================================================
 
 \* Process IDs are symmetric (any permutation is equivalent)
-ProcessSymmetry == Permutations(1..MC_MaxProcesses)
+ProcessSymmetry == Permutations(1..MaxProcesses)
 
 \* Channel IDs are symmetric
-ChannelSymmetry == Permutations(1..MC_MaxChannels)
+ChannelSymmetry == Permutations(1..MaxChannels)
 
 \* Path IDs are symmetric
-PathSymmetry == Permutations(1..MC_MaxPaths)
+PathSymmetry == Permutations(1..MaxPaths)
 
 \* =========================================================================
 \* DEBUG HELPERS

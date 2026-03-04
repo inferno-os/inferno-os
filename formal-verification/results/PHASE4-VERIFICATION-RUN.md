@@ -61,12 +61,62 @@ Run with: `CBMC_MNTLOG=5 ./verify-all.sh full`
 
 ## Key Findings
 
-1. **Namespace isolation is verified**: SPIN explores 128,000+ states confirming that post-copy mounts in parent/child namespaces do not leak to the other side.
+1. **Namespace isolation is verified at two levels**:
+   - **SPIN** explores 131,333 states confirming post-copy mount isolation in Promela models.
+   - **TLA+/TLC** exhaustively checks 369,414,154 states (19.3M distinct) verifying 11 safety invariants including the NamespaceIsolationTheorem, UnilateralMountNonPropagation, CopyFidelity, and PostCopyMountsSound.
 
 2. **Lock ordering is verified**: All 39,744 states of the locking protocol model confirm that `pg->ns` is always acquired before `m->lock`, with correct handling of cmount's early-release optimization.
 
 3. **Export boundary is verified**: The `exportfs` root boundary cannot be escaped via `walk("..")` sequences, including mount point confusion scenarios.
 
-4. **Three real race conditions documented**: The race model provides formal evidence for three use-after-free hazards in the emu host threading layer.
+4. **Three real race conditions documented**: The race model provides formal evidence for three use-after-free hazards in the emu host threading layer. See `TODO-RACE-CONDITIONS.md` for details and suggested fixes.
 
 5. **CBMC confirms implementation properties**: Array bounds (MOUNTH macro), integer overflow (fd allocation), and reference counting are verified on actual C code paths.
+
+## TLA+ / TLC Model Checking Results
+
+### Small Configuration (exhaustive)
+
+| Parameter | Value |
+|-----------|-------|
+| MaxProcesses | 2 |
+| MaxPgrps | 3 |
+| MaxChannels | 3 |
+| MaxPaths | 2 |
+| MaxMountId | 4 |
+
+| Metric | Value |
+|--------|-------|
+| States generated | 369,414,154 |
+| Distinct states | 19,307,332 |
+| Search depth | 27 |
+| States left on queue | 0 (complete) |
+| Time | 7 min 57 sec |
+| Workers | 16 |
+| Memory | 4 GB heap |
+
+### Invariants Verified
+
+All 11 safety invariants verified with no violations:
+
+| Invariant | Module | Description |
+|-----------|--------|-------------|
+| TypeOK | Namespace | Type safety of all state variables |
+| SafetyInvariant | NamespaceProperties | Combined safety (types + refcounts + no-UAF + bounds) |
+| RefCountNonNegative | NamespaceProperties | Reference counts never go negative |
+| NoUseAfterFree | NamespaceProperties | Freed pgrps not assigned to processes |
+| MountTableBounded | NamespaceProperties | Mount tables contain valid channel IDs |
+| NamespaceIsolation | NamespaceProperties | Post-copy mounts don't leak across namespaces |
+| NamespaceIsolationTheorem | IsolationProof | If channel in both parent+child, either from snapshot or independently mounted |
+| UnilateralMountNonPropagation | IsolationProof | Unilateral mount in one namespace never appears in the other |
+| CopyFidelity | NamespaceProperties | Fresh copy's mount table equals snapshot |
+| PostCopyMountsSound | IsolationProof | Every mount is from snapshot or tracked as post-copy |
+| NoIsolationViolation | IsolationProof | Negation of isolation violation predicate |
+
+### TLA+ Model Bug Fixed During Run
+
+**IncRefChannel unbounded refcount**: `IncRefChannel` could increment channel refcounts beyond `RefCountVal`, violating `TypeOK`. Added bound guard (`chan_refcount[cid] < MaxProcesses + MaxPgrps + MaxChannels`). This is a model-checking artifact — real refcounts are naturally bounded by the finite number of references in the system.
+
+### Operations Modeled
+
+The TLA+ spec covers 12 operations: `CreateProcess`, `ForkWithForkNS`, `ForkWithNewNS`, `ForkWithSharedNS`, `TerminateProcess`, `SetNoDevs`, `AllocChannel`, `IncRefChannel`, `DecRefChannel`, `Mount`, `Unmount`, `ChangeDir`. History variables (`copy_snapshot`, `pgrp_parent`, `post_copy_mounts`) enable non-trivial isolation verification.

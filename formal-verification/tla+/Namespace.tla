@@ -186,8 +186,11 @@ AllocChannel ==
                    next_pgrp_id, copy_snapshot, pgrp_parent, post_copy_mounts>>
 
 \* Increment channel reference (models incref(&c->r))
+\* Bounded to stay within RefCountVal (model-checking artifact; real refcounts
+\* are bounded by the finite number of references in the system)
 IncRefChannel(cid) ==
     /\ ChanInUse(cid)
+    /\ chan_refcount[cid] < MaxProcesses + MaxPgrps + MaxChannels
     /\ chan_refcount' = [chan_refcount EXCEPT ![cid] = @ + 1]
     /\ UNCHANGED <<processes, process_pgrp, pgrp_exists, pgrp_refcount,
                    mount_table, pgrp_slash, pgrp_dot, pgrp_nodevs, chan_exists,

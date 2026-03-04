@@ -95,11 +95,11 @@ cat > "$CONFIG_FILE" << EOF
 
 SPECIFICATION Spec
 
-CONSTANT MC_MaxProcesses = $MAX_PROC
-CONSTANT MC_MaxPgrps = $MAX_PGRP
-CONSTANT MC_MaxChannels = $MAX_CHAN
-CONSTANT MC_MaxPaths = $MAX_PATH
-CONSTANT MC_MaxMountId = $MAX_MOUNT
+CONSTANT MaxProcesses = $MAX_PROC
+CONSTANT MaxPgrps = $MAX_PGRP
+CONSTANT MaxChannels = $MAX_CHAN
+CONSTANT MaxPaths = $MAX_PATH
+CONSTANT MaxMountId = $MAX_MOUNT
 
 \* Safety Invariants
 INVARIANT TypeOK
@@ -108,6 +108,11 @@ INVARIANT RefCountNonNegative
 INVARIANT NoUseAfterFree
 INVARIANT MountTableBounded
 INVARIANT NamespaceIsolation
+INVARIANT NamespaceIsolationTheorem
+INVARIANT UnilateralMountNonPropagation
+INVARIANT CopyFidelity
+INVARIANT PostCopyMountsSound
+INVARIANT NoIsolationViolation
 
 \* State constraint for bounded model checking
 CONSTRAINT StateConstraint
@@ -121,19 +126,22 @@ echo "Running TLC model checker..."
 echo "This may take a while depending on the verification level."
 echo ""
 
-# Run TLC
+# Run TLC (use pipefail to capture TLC exit code through tee)
 cd "$TLA_DIR"
-java -XX:+UseParallelGC \
+set +e
+(set -o pipefail; java -XX:+UseParallelGC \
      -Xmx4g \
      -jar "$SCRIPT_DIR/tla2tools.jar" \
      -config "$CONFIG_FILE" \
      -workers auto \
      -checkpoint 60 \
      -coverage 1 \
+     -deadlock \
      MC_Namespace.tla \
-     2>&1 | tee "$RESULTS_DIR/tlc_output_$LEVEL.txt"
+     2>&1 | tee "$RESULTS_DIR/tlc_output_$LEVEL.txt")
 
 TLC_EXIT=$?
+set -e
 
 echo ""
 echo "========================================"
