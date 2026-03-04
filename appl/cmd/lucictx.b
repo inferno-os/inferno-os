@@ -29,11 +29,6 @@ LuciCtx: module
 	         req:   chan of string);
 };
 
-# Inline interface for loading tools9p
-Tools9p: module {
-	init: fn(ctxt: ref Draw->Context, args: list of string);
-};
-
 # --- Color constants ---
 COLBG:		con int 16r080808FF;
 COLACCENT:	con int 16rE8553AFF;
@@ -1337,7 +1332,6 @@ mountresource(ce: ref CatalogEntry)
 	# Notify luciuisrv
 	writetofile(mountpt_g + "/ctl",
 		"catalog mounted name=" + ce.name + " path=" + mntdir);
-	spawn spawnt9p();
 }
 
 unmountresource(ce: ref CatalogEntry)
@@ -1346,30 +1340,6 @@ unmountresource(ce: ref CatalogEntry)
 		return;
 	sys->unmount(nil, ce.mntpath);
 	writetofile(mountpt_g + "/ctl", "catalog unmounted " + ce.name);
-	spawn spawnt9p();
-}
-
-spawnt9p()
-{
-	t9p := load Tools9p "/dis/veltro/tools9p.dis";
-	if(t9p == nil) {
-		sys->fprint(stderr, "lucictx: cannot load tools9p: %r\n");
-		return;
-	}
-	base := "tools9p" :: "-m" :: "/tool" :: nil;
-	t9p->init(nil, listcat(base, activetoolset));
-}
-
-listcat(a, b: list of string): list of string
-{
-	# Build reverse of a, then prepend each element of rev_a to b
-	rev_a: list of string;
-	for(p := a; p != nil; p = tl p)
-		rev_a = hd p :: rev_a;
-	result := b;
-	for(p = rev_a; p != nil; p = tl p)
-		result = hd p :: result;
-	return result;
 }
 
 scantoolcatalog(): list of string
@@ -1427,7 +1397,7 @@ addtool(name: string)
 	activetoolset = name :: activetoolset;
 	writetofile(mountpt_g + "/ctl",
 		"resource add path=" + name + " label=" + name + " type=tool status=idle");
-	spawn spawnt9p();
+	writetofile("/tool/ctl", "add " + name);
 	loadcontext();
 	redrawctx();
 }
@@ -1440,7 +1410,7 @@ removetool(name: string)
 			newlist = hd tp :: newlist;
 	activetoolset = revstrlist(newlist);
 	writetofile(mountpt_g + "/ctl", "resource remove " + name);
-	spawn spawnt9p();
+	writetofile("/tool/ctl", "remove " + name);
 	loadcontext();
 	redrawctx();
 }
@@ -1469,7 +1439,6 @@ bindpath(srcpath: string)
 	# Register with agent context (use srcpath — original tools9p can access it)
 	writetofile(mountpt_g + "/ctl",
 		"resource add path=" + srcpath + " label=" + basename + " type=file status=idle");
-	spawn spawnt9p();
 	loadcontext();
 	redrawctx();
 }
@@ -1490,7 +1459,6 @@ unbindpath(pp: ref PinnedPath)
 	pinnedpaths = revlist;
 	# Deregister from agent context
 	writetofile(mountpt_g + "/ctl", "resource remove " + pp.label);
-	spawn spawnt9p();
 	loadcontext();
 	redrawctx();
 }

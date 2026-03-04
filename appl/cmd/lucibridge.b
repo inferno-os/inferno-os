@@ -52,6 +52,9 @@ llmfd: ref Sys->FD;
 actid := 0;
 convcount := 0;		# messages written to conversation by this bridge
 
+# Tool tracking: raw string from /tool/tools; updated when tool set changes
+currenttoolsraw := "";
+
 BRIDGE_SUFFIX: con "\n\nYou are the AI assistant in a Lucifer activity. " +
 	"The user sends messages through the UI. " +
 	"Respond naturally with text for conversational messages, greetings, and answers. " +
@@ -158,6 +161,8 @@ initsession(): string
 		}
 	}
 	agentlib->initsessiontools(sessionid, toollist);
+	if(agentlib->pathexists("/tool"))
+		currenttoolsraw = agentlib->readfile("/tool/tools");
 
 	# Register each available tool as a context resource so the context zone
 	# can display and track which tools the agent is using.
@@ -376,6 +381,24 @@ pathbase(path: string): string
 # fires before nslistener re-issues its pending read.
 agentturn(input: string)
 {
+	# If the tool set changed (via /tool/ctl), reinitialize the LLM session tools
+	# so the LLM knows about added/removed tools before processing this turn.
+	if(agentlib->pathexists("/tool")) {
+		latest := agentlib->readfile("/tool/tools");
+		if(latest != nil && latest != currenttoolsraw) {
+			currenttoolsraw = latest;
+			(nil, tls) := sys->tokenize(latest, "\n");
+			newtoollist: list of string;
+			for(t := tls; t != nil; t = tl t) {
+				nm := str->tolower(hd t);
+				if(nm != "say")
+					newtoollist = hd t :: newtoollist;
+			}
+			agentlib->initsessiontools(sessionid, newtoollist);
+			log("tools updated: " + latest);
+		}
+	}
+
 	setstatus("working");
 	prompt := input;
 	streambase := "/n/llm/" + sessionid;
