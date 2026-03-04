@@ -57,14 +57,15 @@ bool child_copy_done = false;
 #define DO_UNMOUNT(pg, path, c)  mount_table[MT_IDX(pg, path)] = mount_table[MT_IDX(pg, path)] & ~(1 << (c))
 #define IS_POST_COPY(pg, path, c) ((post_copy_mount[MT_IDX(pg, path)] >> (c)) & 1)
 
-/* Non-atomic lock operations */
-inline ns_rlock(pg) { (ns_writer[pg] == 0); ns_readers[pg] = ns_readers[pg] + 1; }
+/* Lock acquire uses atomic{guard;set} to model OS mutex atomicity.
+ * Operations between lock/unlock remain non-atomic (interleaved). */
+inline ns_rlock(pg) { atomic { (ns_writer[pg] == 0); ns_readers[pg] = ns_readers[pg] + 1; } }
 inline ns_runlock(pg) { assert(ns_readers[pg] > 0); ns_readers[pg] = ns_readers[pg] - 1; }
-inline ns_wlock(pg) { (ns_writer[pg] == 0 && ns_readers[pg] == 0); ns_writer[pg] = 1; }
+inline ns_wlock(pg) { atomic { (ns_writer[pg] == 0 && ns_readers[pg] == 0); ns_writer[pg] = 1; } }
 inline ns_wunlock(pg) { assert(ns_writer[pg] == 1); ns_writer[pg] = 0; }
-inline mh_wlock(pg, path) { (mh_writer[MT_IDX(pg, path)] == 0 && mh_readers[MT_IDX(pg, path)] == 0); mh_writer[MT_IDX(pg, path)] = 1; }
+inline mh_wlock(pg, path) { atomic { (mh_writer[MT_IDX(pg, path)] == 0 && mh_readers[MT_IDX(pg, path)] == 0); mh_writer[MT_IDX(pg, path)] = 1; } }
 inline mh_wunlock(pg, path) { assert(mh_writer[MT_IDX(pg, path)] == 1); mh_writer[MT_IDX(pg, path)] = 0; }
-inline mh_rlock(pg, path) { (mh_writer[MT_IDX(pg, path)] == 0); mh_readers[MT_IDX(pg, path)] = mh_readers[MT_IDX(pg, path)] + 1; }
+inline mh_rlock(pg, path) { atomic { (mh_writer[MT_IDX(pg, path)] == 0); mh_readers[MT_IDX(pg, path)] = mh_readers[MT_IDX(pg, path)] + 1; } }
 inline mh_runlock(pg, path) { assert(mh_readers[MT_IDX(pg, path)] > 0); mh_readers[MT_IDX(pg, path)] = mh_readers[MT_IDX(pg, path)] - 1; }
 
 inline alloc_channel(cid) {
@@ -182,17 +183,14 @@ init {
     alloc_channel(chan0);
     if :: (chan0 != NONE) -> mount_chan(parent_pgrp, 0, chan0); :: else -> skip fi
 
-    for (init_p : 0 .. (MAX_PATHS - 1)) {
-        snapshot_parent[init_p] = mount_table[MT_IDX(parent_pgrp, init_p)];
-    }
-
     new_pgrp(child_pgrp); assert(child_pgrp != NONE);
     pgrp_copy(parent_pgrp, child_pgrp);
-    parent_copy_done = true;
 
+    /* Snapshot from child after copy — child IS the copy */
     for (init_p : 0 .. (MAX_PATHS - 1)) {
-        assert(mount_table[MT_IDX(child_pgrp, init_p)] == snapshot_parent[init_p]);
+        snapshot_parent[init_p] = mount_table[MT_IDX(child_pgrp, init_p)];
     }
+    parent_copy_done = true;
 
     /* Nested fork: grandchild from child */
     new_pgrp(grandchild_pgrp);

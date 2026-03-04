@@ -174,7 +174,9 @@ struct Mhead {
 /* ====== Pgrp ====== */
 
 enum {
+#ifndef MNTLOG
     MNTLOG = 5,
+#endif
     MNTHASH = 1<<MNTLOG,
     DELTAFD = 20,
     MAXNFD = 4000

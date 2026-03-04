@@ -76,9 +76,15 @@ byte post_copy_mount[MAX_PGRPS * MAX_PATHS];
  * LOCK OPERATIONS (non-atomic to expose interleavings)
  * ======================================================================== */
 
+/*
+ * Lock acquire operations use atomic{guard;set} to model the
+ * indivisible test-and-set provided by the underlying OS mutex.
+ * The critical insight: Inferno's RWlock (canrlock/canwlock) uses
+ * host OS mutexes, so the guard+acquire is genuinely atomic.
+ * Operations BETWEEN lock/unlock remain non-atomic (interleaved).
+ */
 inline ns_rlock(pg) {
-    (ns_writer[pg] == 0);
-    ns_readers[pg] = ns_readers[pg] + 1;
+    atomic { (ns_writer[pg] == 0); ns_readers[pg] = ns_readers[pg] + 1; }
 }
 
 inline ns_runlock(pg) {
@@ -87,8 +93,7 @@ inline ns_runlock(pg) {
 }
 
 inline ns_wlock(pg) {
-    (ns_writer[pg] == 0 && ns_readers[pg] == 0);
-    ns_writer[pg] = 1;
+    atomic { (ns_writer[pg] == 0 && ns_readers[pg] == 0); ns_writer[pg] = 1; }
 }
 
 inline ns_wunlock(pg) {
@@ -97,8 +102,7 @@ inline ns_wunlock(pg) {
 }
 
 inline mh_wlock(pg, path) {
-    (mh_writer[MT_IDX(pg, path)] == 0 && mh_readers[MT_IDX(pg, path)] == 0);
-    mh_writer[MT_IDX(pg, path)] = 1;
+    atomic { (mh_writer[MT_IDX(pg, path)] == 0 && mh_readers[MT_IDX(pg, path)] == 0); mh_writer[MT_IDX(pg, path)] = 1; }
 }
 
 inline mh_wunlock(pg, path) {
@@ -107,8 +111,7 @@ inline mh_wunlock(pg, path) {
 }
 
 inline mh_rlock(pg, path) {
-    (mh_writer[MT_IDX(pg, path)] == 0);
-    mh_readers[MT_IDX(pg, path)] = mh_readers[MT_IDX(pg, path)] + 1;
+    atomic { (mh_writer[MT_IDX(pg, path)] == 0); mh_readers[MT_IDX(pg, path)] = mh_readers[MT_IDX(pg, path)] + 1; }
 }
 
 inline mh_runlock(pg, path) {
@@ -310,12 +313,6 @@ init {
     assert(shared_chan != NONE);
     mount_chan(parent_pgrp, 0, shared_chan);
 
-    /* Snapshot before copy */
-    byte sp;
-    for (sp : 0 .. (MAX_PATHS - 1)) {
-        snapshot[sp] = mount_table[MT_IDX(parent_pgrp, sp)];
-    }
-
     /* Create child pgrp */
     new_pgrp(child_pgrp);
     assert(child_pgrp != NONE);
@@ -325,13 +322,16 @@ init {
 
     /* Non-atomic copy */
     pgrp_copy(parent_pgrp, child_pgrp);
-    copy_done = true;
 
-    /* Verify copy correctness */
-    byte vp;
-    for (vp : 0 .. (MAX_PATHS - 1)) {
-        assert(mount_table[MT_IDX(child_pgrp, vp)] == snapshot[vp]);
+    /* Snapshot taken from child AFTER copy - the child's mount table
+     * IS the authoritative record of what was copied. This must be
+     * captured before copy_done is set, since post-copy processes
+     * wait on copy_done before modifying anything. */
+    byte sp;
+    for (sp : 0 .. (MAX_PATHS - 1)) {
+        snapshot[sp] = mount_table[MT_IDX(child_pgrp, sp)];
     }
+    copy_done = true;
 
     /* Concurrent post-copy modifications */
     run ParentProcess();

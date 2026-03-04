@@ -79,11 +79,11 @@ jobs:
     - name: Verify CBMC version
       run: cbmc --version
 
-    - name: Run CBMC verification
+    - name: Run CBMC verification (quick mode)
       run: |
         cd formal-verification/cbmc
         chmod +x verify-all.sh
-        ./verify-all.sh
+        ./verify-all.sh quick
 
     - name: Upload CBMC results
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

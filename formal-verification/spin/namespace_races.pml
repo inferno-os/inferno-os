@@ -221,7 +221,7 @@ done:
  */
 
 proctype namec_reader(byte proc_id; bit use_slash) {
-    byte pg, chan;
+    byte pg, ch;
 
     /* Read pgrp pointer (could be stale if concurrent FORKNS) */
     pg = process_pgrp[proc_id];
@@ -241,30 +241,30 @@ proctype namec_reader(byte proc_id; bit use_slash) {
 
     /* Read slash or dot - NO LOCK */
     if
-    :: (use_slash) -> chan = pgrp_slash[pg];
-    :: else -> chan = pgrp_dot[pg];
+    :: (use_slash) -> ch = pgrp_slash[pg];
+    :: else -> ch = pgrp_dot[pg];
     fi
 
     /* Check channel validity before incref */
     if
-    :: (chan >= NUM_CHANS) -> goto done;
+    :: (ch >= NUM_CHANS) -> goto done;
     :: else -> skip
     fi
 
     /* Try to incref - but channel might be freed! */
     if
-    :: (chan_state[chan] == CHAN_FREED) ->
+    :: (chan_state[ch] == CHAN_FREED) ->
         /* USE-AFTER-FREE: trying to incref a freed channel */
         if
         :: (use_slash) -> use_after_free_slash = true;
         :: else -> use_after_free_dot = true;
         fi
-    :: (chan_state[chan] == CHAN_VALID) ->
-        chan_refcount[chan] = chan_refcount[chan] + 1;
+    :: (chan_state[ch] == CHAN_VALID) ->
+        chan_refcount[ch] = chan_refcount[ch] + 1;
         /* Use the channel for name resolution */
         skip;
         /* Done, decref */
-        chan_refcount[chan] = chan_refcount[chan] - 1;
+        chan_refcount[ch] = chan_refcount[ch] - 1;
     :: else -> skip
     fi
 
