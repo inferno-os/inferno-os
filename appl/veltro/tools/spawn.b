@@ -478,6 +478,7 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 	# Step 4: Create LLM session using /n/llm/new clone pattern.
 	# Each child gets its own session — fully isolated from parent and siblings.
 	llmaskfd: ref Sys->FD;
+	sessionid := "";  # hoisted so we can close the session after runloop
 	if(caps.llmconfig != nil) {
 		newfd := sys->open("/n/llm/new", Sys->OREAD);
 		if(newfd != nil) {
@@ -485,7 +486,7 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 			n := sys->read(newfd, buf, len buf);
 			newfd = nil;
 			if(n > 0) {
-				sessionid := string buf[0:n];
+				sessionid = string buf[0:n];
 				if(len sessionid > 0 && sessionid[len sessionid - 1] == '\n')
 					sessionid = sessionid[0:len sessionid - 1];
 				if(sessionid != "") {
@@ -497,18 +498,12 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 						modelfd = nil;
 					}
 
-					# Configure thinking
+					# Subagents always run with thinking disabled — reasoning
+					# overhead is the parent agent's responsibility.
 					thinkfd := sys->open("/n/llm/" + sessionid + "/thinking", Sys->OWRITE);
 					if(thinkfd != nil) {
-						thinkstr: string;
-						if(caps.llmconfig.thinking == 0)
-							thinkstr = "off";
-						else if(caps.llmconfig.thinking < 0)
-							thinkstr = "max";
-						else
-							thinkstr = string caps.llmconfig.thinking;
-						thinkdata := array of byte thinkstr;
-						sys->write(thinkfd, thinkdata, len thinkdata);
+						offdata := array of byte "off";
+						sys->write(thinkfd, offdata, len offdata);
 						thinkfd = nil;
 					}
 
@@ -567,6 +562,18 @@ runchild(pipefd: ref Sys->FD, caps: ref NsConstruct->Capabilities, task: string,
 
 	writeresult(pipefd, result);
 	pipefd = nil;
+
+	# Release the LLM session. The ctl "close" decrements the self-reference
+	# (refs 1→0), allowing the server to free the session immediately rather
+	# than waiting for a server restart.
+	if(sessionid != "") {
+		ctlfd := sys->open("/n/llm/" + sessionid + "/ctl", Sys->OWRITE);
+		if(ctlfd != nil) {
+			data := array of byte "close";
+			sys->write(ctlfd, data, len data);
+			ctlfd = nil;
+		}
+	}
 }
 
 # ---- Helper functions ----

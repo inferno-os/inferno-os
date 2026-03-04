@@ -95,9 +95,9 @@ exec(args: string): string
 # Parse path and content from args
 parseargs(s: string): (string, string)
 {
-	# Skip leading whitespace
+	# Skip leading whitespace (including newlines from JSON-decoded args)
 	i := 0;
-	while(i < len s && (s[i] == ' ' || s[i] == '\t'))
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r'))
 		i++;
 
 	if(i >= len s)
@@ -116,15 +116,15 @@ parseargs(s: string): (string, string)
 		if(i < len s)
 			i++;
 	} else {
-		# Unquoted path
+		# Unquoted path — also stop at newline (LLM sends path\ncontent)
 		start := i;
-		while(i < len s && s[i] != ' ' && s[i] != '\t')
+		while(i < len s && s[i] != ' ' && s[i] != '\t' && s[i] != '\n' && s[i] != '\r')
 			i++;
 		path = s[start:i];
 	}
 
-	# Skip whitespace
-	while(i < len s && (s[i] == ' ' || s[i] == '\t'))
+	# Skip whitespace between path and content (including separator newline)
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r'))
 		i++;
 
 	if(i >= len s)

@@ -946,6 +946,198 @@ testContextResourceUpdate(t: ref T)
 }
 
 # ============================================================================
+# Test 21: testGapUpsert
+#
+# Verify gap upsert is idempotent by description: adding the same desc twice
+# should yield a single entry with the updated relevance.
+# ============================================================================
+
+testGapUpsert(t: ref T)
+{
+	if(actid < 0) {
+		t.skip("no activity");
+		return;
+	}
+
+	ctxctl := actbase() + "/context/ctl";
+	i: int;
+
+	# Count gaps before test
+	startcount := 0;
+	for(i = 0; i < 50; i++) {
+		(ok, nil) := sys->stat(actbase() + "/context/gaps/" + string i);
+		if(ok < 0) {
+			startcount = i;
+			break;
+		}
+	}
+
+	# Upsert a new gap with relevance=high
+	n := writefile(ctxctl, "gap upsert desc=test_upsert_idempotency relevance=high");
+	t.assert(n > 0, "gap upsert should succeed");
+
+	# Find and verify the gap was created
+	found := "";
+	for(i = startcount; i < startcount + 20; i++) {
+		g := readfile(actbase() + "/context/gaps/" + string i);
+		if(g == nil)
+			break;
+		if(hassubstr(g, "test_upsert_idempotency")) {
+			found = g;
+			break;
+		}
+	}
+	t.assert(found != "", "gap should exist after upsert");
+	t.log("gap after first upsert: " + found);
+	t.assert(hassubstr(found, "relevance=high"), "gap relevance should be high");
+
+	# Upsert again with same desc, different relevance — should NOT create duplicate
+	n = writefile(ctxctl, "gap upsert desc=test_upsert_idempotency relevance=low");
+	t.assert(n > 0, "second gap upsert should succeed");
+
+	# Count gaps after second upsert — should be same as after first
+	countafter := 0;
+	for(i = 0; i < 100; i++) {
+		(ok, nil) := sys->stat(actbase() + "/context/gaps/" + string i);
+		if(ok < 0) {
+			countafter = i;
+			break;
+		}
+	}
+	# Count with test gap included = startcount + 1
+	t.assert(countafter == startcount + 1,
+		sys->sprint("gap count should be %d, got %d (no duplicate created)",
+			startcount + 1, countafter));
+
+	# Verify relevance was updated
+	updated := "";
+	for(i = startcount; i < startcount + 20; i++) {
+		g := readfile(actbase() + "/context/gaps/" + string i);
+		if(g == nil)
+			break;
+		if(hassubstr(g, "test_upsert_idempotency")) {
+			updated = g;
+			break;
+		}
+	}
+	t.assert(updated != "", "gap should still exist after second upsert");
+	t.log("gap after second upsert: " + updated);
+	t.assert(hassubstr(updated, "relevance=low"), "gap relevance should be updated to low");
+	t.assert(!hassubstr(updated, "relevance=high"), "old relevance should be gone");
+}
+
+# ============================================================================
+# Test 22: testGapResolve
+#
+# Verify gap resolve removes a gap by description match.
+# ============================================================================
+
+testGapResolve(t: ref T)
+{
+	i: int;
+
+	if(actid < 0) {
+		t.skip("no activity");
+		return;
+	}
+
+	ctxctl := actbase() + "/context/ctl";
+
+	# Add a gap to resolve
+	n := writefile(ctxctl, "gap upsert desc=test_resolve_target relevance=medium");
+	t.assert(n > 0, "gap upsert for resolve test should succeed");
+
+	# Count gaps (to verify count decreases after resolve)
+	countbefore := 0;
+	for(i = 0; i < 100; i++) {
+		(ok, nil) := sys->stat(actbase() + "/context/gaps/" + string i);
+		if(ok < 0) {
+			countbefore = i;
+			break;
+		}
+	}
+
+	# Resolve by desc
+	n = writefile(ctxctl, "gap resolve desc=test_resolve_target");
+	t.assert(n > 0, "gap resolve should succeed");
+
+	# Count after resolve — should have decreased by 1
+	countafter := 0;
+	for(i = 0; i < 100; i++) {
+		(ok, nil) := sys->stat(actbase() + "/context/gaps/" + string i);
+		if(ok < 0) {
+			countafter = i;
+			break;
+		}
+	}
+	t.assert(countafter == countbefore - 1,
+		sys->sprint("gap count should decrease from %d to %d, got %d",
+			countbefore, countbefore - 1, countafter));
+
+	# Verify the resolved gap is no longer findable
+	found := 0;
+	for(i = 0; i < countafter; i++) {
+		g := readfile(actbase() + "/context/gaps/" + string i);
+		if(g == nil)
+			break;
+		if(hassubstr(g, "test_resolve_target")) {
+			found = 1;
+			break;
+		}
+	}
+	t.assert(found == 0, "resolved gap should not be findable in gaps/");
+
+	# Resolve of non-existent gap should return error (n < 0)
+	fd := sys->open(ctxctl, Sys->OWRITE);
+	if(fd != nil) {
+		cmd := array of byte "gap resolve desc=nonexistent_gap_xyz";
+		sys->write(fd, cmd, len cmd);
+		# The write should fail (server returns error)
+		# We can't easily check the error string, but we verify gaps count unchanged
+		fd = nil;
+	}
+	countfinal := 0;
+	for(i = 0; i < 100; i++) {
+		(ok, nil) := sys->stat(actbase() + "/context/gaps/" + string i);
+		if(ok < 0) {
+			countfinal = i;
+			break;
+		}
+	}
+	t.assert(countfinal == countafter, "failed resolve should not change gap count");
+}
+
+# ============================================================================
+# Test 23: testCatalogRead
+#
+# Verify catalog/ directory is served and entries are readable.
+# The catalog is populated from /lib/veltro/resources/*.resource files.
+# If the directory has no files, the test skips (non-fatal).
+# ============================================================================
+
+testCatalogRead(t: ref T)
+{
+	# Verify catalog/ directory exists in the 9P namespace
+	(st, nil) := sys->stat(TESTMNT + "/catalog");
+	t.assert(st >= 0, "catalog/ directory should exist in /n/ui namespace");
+
+	# Try to read first catalog entry
+	s := readfile(TESTMNT + "/catalog/0");
+	if(s == nil) {
+		t.skip("no catalog entries (no *.resource files in /lib/veltro/resources/)");
+		return;
+	}
+
+	t.log("catalog/0: " + s);
+	# Entry should have name= field
+	t.assert(hassubstr(s, "name="), "catalog entry should have name= field");
+	# Entry should have type= field
+	t.assert(hassubstr(s, "type="), "catalog entry should have type= field");
+	# mount= field should NOT be present (it's internal)
+	t.assert(!hassubstr(s, "mount="), "catalog entry should NOT expose mount= field");
+}
+
+# ============================================================================
 # Helpers: strtoint (local copy, no dep on luciuisrv internals)
 # ============================================================================
 
@@ -1028,6 +1220,9 @@ init(nil: ref Draw->Context, args: list of string)
 	run("ContextGapAdd", testContextGapAdd);
 	run("ContextBgTaskAdd", testContextBgTaskAdd);
 	run("ContextResourceUpdate", testContextResourceUpdate);
+	run("GapUpsert", testGapUpsert);
+	run("GapResolve", testGapResolve);
+	run("CatalogRead", testCatalogRead);
 
 	# Activity metadata tests
 	run("ActivityLabel", testActivityLabel);

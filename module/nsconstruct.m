@@ -34,7 +34,9 @@ NsConstruct: module {
 	# Capabilities to grant to an agent
 	Capabilities: adt {
 		tools:       list of string;       # Tool names to include ("read", "list")
-		paths:       list of string;       # File paths to expose
+		paths:       list of string;       # File paths to expose; prefix-routed:
+		                                   #   /dis/wm  → expose /dis/wm/ to agent
+		                                   #   /n/local/Users/pdfinn/tmp → expose that host path
 		shellcmds:   list of string;       # Shell commands for exec — if non-nil, sh.dis + these are allowed
 		llmconfig:   ref LLMConfig;        # Child's LLM settings
 		fds:         list of int;          # Explicit FD keep-list

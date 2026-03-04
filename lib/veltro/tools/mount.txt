@@ -1,0 +1,13 @@
+mount - Mount a catalog resource into the agent namespace
+
+  mount "Resource Name"   Mount by display name from the Available catalog
+
+After mounting, the resource is accessible at /tmp/veltro/mnt/<slug>/.
+Use list or read to explore the mounted service.
+
+Call gap list first — if a required resource was already noted as unavailable,
+resolve that gap after mounting succeeds.
+
+Example:
+  mount "Local Files"
+  list /tmp/veltro/mnt/local-files/

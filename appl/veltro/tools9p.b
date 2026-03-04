@@ -68,6 +68,7 @@ ToolInfo: adt {
 stderr: ref Sys->FD;
 user: string;
 tools: list of ref ToolInfo;
+extpaths: list of string;  # Extra paths from -p flags (e.g. "/dis/wm")
 vers: int;
 helpresult: array of byte;  # Last help query result (global, not per-fid)
 
@@ -83,10 +84,12 @@ TOOL_PATHS := array[] of {
 	("edit",    "/dis/veltro/tools/edit.dis"),
 	# Execution
 	("exec",    "/dis/veltro/tools/exec.dis"),
+	("launch",  "/dis/veltro/tools/launch.dis"),
 	("spawn",   "/dis/veltro/tools/spawn.dis"),
 	# UI
 	("xenith",  "/dis/veltro/tools/xenith.dis"),
 	("present", "/dis/veltro/tools/present.dis"),
+	("gap",     "/dis/veltro/tools/gap.dis"),
 	# New tools (Phase 1c)
 	("diff",    "/dis/veltro/tools/diff.dis"),
 	("json",    "/dis/veltro/tools/json.dis"),
@@ -110,14 +113,16 @@ TOOL_PATHS := array[] of {
 
 usage()
 {
-	sys->fprint(stderr, "Usage: tools9p [-D] [-m mountpoint] tool [tool ...]\n");
+	sys->fprint(stderr, "Usage: tools9p [-D] [-m mountpoint] [-p path] ... tool [tool ...]\n");
 	sys->fprint(stderr, "  -D            Enable 9P debug tracing\n");
 	sys->fprint(stderr, "  -m mountpoint Mount point (default: /tool)\n");
+	sys->fprint(stderr, "  -p path       Expose extra path to agent namespace (repeatable)\n");
+	sys->fprint(stderr, "                e.g. -p /dis/wm exposes /dis/wm/ for GUI app discovery\n");
 	sys->fprint(stderr, "\n");
 	sys->fprint(stderr, "Available tools:\n");
 	sys->fprint(stderr, "  Core:    read, list, find, search, grep, write, edit\n");
-	sys->fprint(stderr, "  Execute: exec, spawn\n");
-	sys->fprint(stderr, "  UI:      xenith, ask, present\n");
+	sys->fprint(stderr, "  Execute: exec, launch, spawn\n");
+	sys->fprint(stderr, "  UI:      xenith, ask, present, gap\n");
 	sys->fprint(stderr, "  Utils:   diff, json, http, git, memory, todo, websearch, mail\n");
 	raise "fail:usage";
 }
@@ -159,6 +164,7 @@ init(nil: ref Draw->Context, args: list of string)
 		case o {
 		'D' =>	styxservers->traceset(1);
 		'm' =>	mountpt = arg->earg();
+		'p' =>	extpaths = arg->earg() :: extpaths;
 		* =>	usage();
 		}
 	args = arg->argv();
@@ -458,7 +464,7 @@ applynsrestriction()
 	for(t := tools; t != nil; t = tl t)
 		toolnames = (hd t).name :: toolnames;
 	caps := ref NsConstruct->Capabilities(
-		toolnames, nil, nil, nil, nil, nil, 0, hasxenith, -1
+		toolnames, extpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
 	{
 		nserr := nsconstruct->restrictns(caps);

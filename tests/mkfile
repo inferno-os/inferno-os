@@ -19,6 +19,7 @@ TARG=\
 	hello_test.dis\
 	imap_test.dis\
 	jit_test.dis\
+	lucifer_flicker_test.dis\
 	luciuisrv_test.dis\
 	outlinefont_test.dis\
 	pdf_conformance_test.dis\
@@ -39,6 +40,7 @@ TARG=\
 	veltro_security_test.dis\
 	veltro_test.dis\
 	veltro_tools_test.dis\
+	pres_launch_test.dis\
 	x509_test.dis\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\
@@ -85,3 +87,7 @@ agentlib_test.dis: agentlib_test.b $ROOT/appl/veltro/agentlib.m
 # tooluse_test needs -I for appl/veltro/agentlib.m
 tooluse_test.dis: tooluse_test.b $ROOT/appl/veltro/agentlib.m
 	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw tooluse_test.b
+
+# pres_launch_test needs -I for appl/veltro/nsconstruct.m
+pres_launch_test.dis: pres_launch_test.b $ROOT/appl/veltro/nsconstruct.m
+	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw pres_launch_test.b
