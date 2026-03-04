@@ -1466,7 +1466,11 @@ bindpath(srcpath: string)
 	}
 	pp := ref PinnedPath(basename, srcpath, mntdir);
 	pinnedpaths = pp :: pinnedpaths;
+	# Register with agent context (use srcpath — original tools9p can access it)
+	writetofile(mountpt_g + "/ctl",
+		"resource add path=" + srcpath + " label=" + basename + " type=file status=idle");
 	spawn spawnt9p();
+	loadcontext();
 	redrawctx();
 }
 
@@ -1484,7 +1488,10 @@ unbindpath(pp: ref PinnedPath)
 	for(p = newlist; p != nil; p = tl p)
 		revlist = hd p :: revlist;
 	pinnedpaths = revlist;
+	# Deregister from agent context
+	writetofile(mountpt_g + "/ctl", "resource remove " + pp.label);
 	spawn spawnt9p();
+	loadcontext();
 	redrawctx();
 }
 
