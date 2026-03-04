@@ -5,7 +5,7 @@ implement LuciCtx;
 #
 # Receives a sub-Image from the WM tiler (lucifer) and renders the
 # context zone into it.  Runs as an independent goroutine.
-# Handles resource mounting/unmounting and catalog management.
+# Handles resource mounting/unmounting, tool management, and namespace binding.
 #
 
 include "sys.m";
@@ -25,7 +25,8 @@ LuciCtx: module
 	         mountpt: string, actid: int,
 	         mouse: chan of ref Draw->Pointer,
 	         evch:  chan of string,
-	         rsz:   chan of ref Draw->Image);
+	         rsz:   chan of ref Draw->Image,
+	         req:   chan of string);
 };
 
 # Inline interface for loading tools9p
@@ -50,6 +51,12 @@ COLPROGFG:	con int 16r3388CCFF;
 MNT_BASE: con "/tmp/veltro/mnt";
 
 # --- ADTs ---
+
+PinnedPath: adt {
+	label:   string;
+	srcpath: string;
+	mntdir:  string;
+};
 
 Resource: adt {
 	path:	string;
@@ -115,16 +122,61 @@ resources: list of ref Resource;
 gaps: list of ref Gap;
 bgtasks: list of ref BgTask;
 catalog: list of ref CatalogEntry;
-avail_expanded := 1;
-availhdrrect: Rect;
 
-# Button rects (populated by drawcontext each frame)
+# Section expand/collapse state
+avail_expanded := 1;
+toolsec_expanded := 1;
+toolavail_expanded := 0;
+
+# Tool management state
+activetoolset: list of string;
+knowntoolnames: list of string;
+pinnedpaths: list of ref PinnedPath;
+
+# Channel references (for filebrowser access)
+mousech_g: chan of ref Pointer;
+ctxreqch_g: chan of string;
+
+# Section header rects
+availhdrrect: Rect;
+toolsechdrrect: Rect;
+toolavailhdrrect: Rect;
+
+# Catalog button rects (populated by drawcontext each frame)
 plusrects: array of Rect;
 nplusrects := 0;
 minusrects: array of Rect;
 nminusrects := 0;
 ctxentryrects: array of Rect;
 nctxentryrects := 0;
+
+# Tool section rects
+toolminusrects: array of Rect;
+ntoolminusrects := 0;
+toolplusrects: array of Rect;
+ntoolplusrects := 0;
+toolentryrects: array of Rect;
+ntoolentryrects := 0;
+
+# Gap rects
+gapmenurects: array of Rect;
+ngapmenurects := 0;
+
+# Browse / pinned rects
+browserect: Rect;
+pinnedminusrects: array of Rect;
+npinnedminusrects := 0;
+
+# File browser state (module-level to avoid stack allocation in inner loop)
+brow_dirrects:  array of Rect;
+brow_dirnames:  array of string;
+brow_ndirs := 0;
+brow_filerects: array of Rect;
+brow_filenames: array of string;
+brow_nfiles := 0;
+brow_backrect:   Rect;
+brow_bindrect:   Rect;
+brow_cancelrect: Rect;
 
 # --- init ---
 
@@ -133,7 +185,8 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
      mountpt: string, actid: int,
      mouse: chan of ref Draw->Pointer,
      evch:  chan of string,
-     rsz:   chan of ref Draw->Image)
+     rsz:   chan of ref Draw->Image,
+     req:   chan of string)
 {
 	sys = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
@@ -144,6 +197,8 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	mainfont = font;
 	mountpt_g = mountpt;
 	actid_g = actid;
+	mousech_g = mouse;
+	ctxreqch_g = req;
 
 	# Create colors
 	bgcol = dsp.color(COLBG);
@@ -163,6 +218,16 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	if(menumod != nil)
 		menumod->init(display_g, mainfont);
 
+	# Initialize tool management state
+	activetoolset = "read" :: "list" :: "find" :: "search" ::
+		"write" :: "edit" :: "present" :: "ask" ::
+		"diff" :: "json" :: "git" :: "memory" ::
+		"websearch" :: "http" :: "mail" ::
+		"spawn" :: "gap" :: nil;
+	toolsec_expanded = 1;
+	toolavail_expanded = 0;
+	knowntoolnames = scantoolcatalog();
+	pinnedpaths = nil;
 	avail_expanded = 1;
 
 	if(actid >= 0)
@@ -179,11 +244,79 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	p := <-mouse =>
 		wasdown := prevbuttons;
 		prevbuttons = p.buttons;
+
 		# Button-1 just pressed
 		if(p.buttons == 1 && wasdown == 0) {
 			tabclicked := 0;
-			# Available section heading toggle
-			if(availhdrrect.max.x > availhdrrect.min.x &&
+
+			# Tool section header toggle
+			if(toolsechdrrect.max.x > toolsechdrrect.min.x &&
+					toolsechdrrect.contains(p.xy)) {
+				if(toolsec_expanded)
+					toolsec_expanded = 0;
+				else
+					toolsec_expanded = 1;
+				tabclicked = 1;
+				redrawctx();
+			}
+
+			# Tool available sub-section header toggle
+			if(!tabclicked && toolsec_expanded &&
+					toolavailhdrrect.max.x > toolavailhdrrect.min.x &&
+					toolavailhdrrect.contains(p.xy)) {
+				if(toolavail_expanded)
+					toolavail_expanded = 0;
+				else
+					toolavail_expanded = 1;
+				tabclicked = 1;
+				redrawctx();
+			}
+
+			# Active tool [-] click
+			if(!tabclicked && toolsec_expanded) {
+				for(pi := 0; pi < ntoolminusrects; pi++) {
+					if(toolminusrects[pi].contains(p.xy)) {
+						tidx := 0;
+						for(tp := activetoolset; tp != nil; tp = tl tp) {
+							if(tidx == pi) {
+								removetool(hd tp);
+								tabclicked = 1;
+								break;
+							}
+							tidx++;
+						}
+						break;
+					}
+				}
+			}
+
+			# Available tool [+] click
+			if(!tabclicked && toolsec_expanded && toolavail_expanded) {
+				for(pi := 0; pi < ntoolplusrects; pi++) {
+					if(toolplusrects[pi].contains(p.xy)) {
+						kidx := 0;
+						for(kp := knowntoolnames; kp != nil; kp = tl kp) {
+							kname := hd kp;
+							isact := 0;
+							for(ap := activetoolset; ap != nil; ap = tl ap)
+								if(hd ap == kname) { isact = 1; break; }
+							if(isact)
+								continue;
+							if(kidx == pi) {
+								addtool(kname);
+								tabclicked = 1;
+								break;
+							}
+							kidx++;
+						}
+						break;
+					}
+				}
+			}
+
+			# Namespaces section heading toggle
+			if(!tabclicked &&
+					availhdrrect.max.x > availhdrrect.min.x &&
 					availhdrrect.contains(p.xy)) {
 				if(avail_expanded)
 					avail_expanded = 0;
@@ -192,8 +325,39 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				tabclicked = 1;
 				redrawctx();
 			}
+
+			# Browse button click
+			if(!tabclicked && avail_expanded &&
+					browserect.max.x > browserect.min.x &&
+					browserect.contains(p.xy)) {
+				fpath := filebrowser("/");
+				if(fpath != nil && fpath != "")
+					bindpath(fpath);
+				prevbuttons = 0;
+				tabclicked = 1;
+				redrawctx();
+			}
+
+			# Pinned path [-] click
+			if(!tabclicked && avail_expanded) {
+				for(pi := 0; pi < npinnedminusrects; pi++) {
+					if(pinnedminusrects[pi].contains(p.xy)) {
+						ppidx := 0;
+						for(pp2 := pinnedpaths; pp2 != nil; pp2 = tl pp2) {
+							if(ppidx == pi) {
+								unbindpath(hd pp2);
+								tabclicked = 1;
+								break;
+							}
+							ppidx++;
+						}
+						break;
+					}
+				}
+			}
+
 			# [+] button: mount catalog entry
-			if(!tabclicked) {
+			if(!tabclicked && avail_expanded) {
 				for(pi := 0; pi < nplusrects; pi++) {
 					if(plusrects[pi].contains(p.xy)) {
 						j := 0;
@@ -212,8 +376,9 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 					}
 				}
 			}
+
 			# [-] button: unmount catalog entry
-			if(!tabclicked) {
+			if(!tabclicked && avail_expanded) {
 				for(pi := 0; pi < nminusrects; pi++) {
 					if(minusrects[pi].contains(p.xy)) {
 						j := 0;
@@ -233,24 +398,110 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 		}
-		# Button-3: context menu for catalog entries
+
+		# Button-3: context menus
 		if((p.buttons & 4) != 0 && (wasdown & 4) == 0) {
-			j := 0;
+			# Tool entry right-click
+			if(toolsec_expanded) {
+				for(tei := 0; tei < ntoolentryrects; tei++) {
+					if(toolentryrects[tei].contains(p.xy)) {
+						if(menumod != nil) {
+							titems := array[] of {"Remove"};
+							tpop := menumod->new(titems);
+							tres := tpop.show(mainwin, p.xy, mouse);
+							if(tres == 0) {
+								tidx2 := 0;
+								for(tp2 := activetoolset; tp2 != nil; tp2 = tl tp2) {
+									if(tidx2 == tei) {
+										removetool(hd tp2);
+										break;
+									}
+									tidx2++;
+								}
+							}
+							redrawctx();
+						}
+						prevbuttons = 0;
+						break;
+					}
+				}
+			}
+
+			# Gap right-click
+			for(gei := 0; gei < ngapmenurects; gei++) {
+				if(gapmenurects[gei].contains(p.xy)) {
+					gapdesc := "";
+					gidx := 0;
+					for(gp2 := gaps; gp2 != nil; gp2 = tl gp2) {
+						if(gidx == gei) {
+							gapdesc = (hd gp2).desc;
+							break;
+						}
+						gidx++;
+					}
+					if(menumod != nil) {
+						# Count inactive tools for menu size
+						nitems := 1;  # "Resolve"
+						for(kp2 := knowntoolnames; kp2 != nil; kp2 = tl kp2) {
+							kn2 := hd kp2;
+							act2 := 0;
+							for(ap2 := activetoolset; ap2 != nil; ap2 = tl ap2)
+								if(hd ap2 == kn2) { act2 = 1; break; }
+							if(!act2) nitems++;
+						}
+						nitems++;  # "Browse path..."
+
+						gitems := array[nitems] of string;
+						gitems[0] = "Resolve";
+						giidx := 1;
+						for(kp3 := knowntoolnames; kp3 != nil; kp3 = tl kp3) {
+							kn3 := hd kp3;
+							act3 := 0;
+							for(ap3 := activetoolset; ap3 != nil; ap3 = tl ap3)
+								if(hd ap3 == kn3) { act3 = 1; break; }
+							if(!act3)
+								gitems[giidx++] = "Add tool: " + kn3;
+						}
+						gitems[giidx] = "Browse path...";
+
+						gpop := menumod->new(gitems);
+						gres := gpop.show(mainwin, p.xy, mouse);
+						if(gres == 0) {
+							resolvegap(gapdesc);
+						} else if(gres > 0 && gres < nitems - 1) {
+							tname := gitems[gres][len "Add tool: ":];
+							addtool(tname);
+							resolvegap(gapdesc);
+						} else if(gres == nitems - 1) {
+							fpath2 := filebrowser("/");
+							if(fpath2 != nil && fpath2 != "") {
+								bindpath(fpath2);
+								resolvegap(gapdesc);
+							}
+						}
+						redrawctx();
+					}
+					prevbuttons = 0;
+					break;
+				}
+			}
+
+			# Catalog entry right-click
 			for(ei := 0; ei < nctxentryrects; ei++) {
 				if(ctxentryrects[ei].contains(p.xy)) {
 					k := 0;
 					for(cl := catalog; cl != nil; cl = tl cl) {
-						if(k == j) {
+						if(k == ei) {
 							ce := hd cl;
 							if(menumod != nil) {
-								items: array of string;
+								citems: array of string;
 								if(ce.mntpath == "")
-									items = array[] of {"Add"};
+									citems = array[] of {"Add"};
 								else
-									items = array[] of {"Remove"};
-								pop := menumod->new(items);
-								result := pop.show(mainwin, p.xy, mouse);
-								if(result == 0) {
+									citems = array[] of {"Remove"};
+								cpop := menumod->new(citems);
+								cres := cpop.show(mainwin, p.xy, mouse);
+								if(cres == 0) {
 									if(ce.mntpath == "")
 										mountresource(ce);
 									else
@@ -262,11 +513,10 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 						}
 						k++;
 					}
+					prevbuttons = 0;
 					break;
 				}
-				j++;
 			}
-			prevbuttons = 0;
 		}
 	ev := <-evch =>
 		handleevent(ev);
@@ -334,19 +584,36 @@ drawcontext(zone: Rect)
 	secgap := 12;
 	indw := 10;
 	indh := 10;
-
 	now := sys->millisec();
 
-	# --- Resources section ---
-	if(resources != nil) {
+	# Reset button rects and counters at start of each frame
+	ngapmenurects = 0;
+	ntoolminusrects = 0;
+	ntoolplusrects = 0;
+	ntoolentryrects = 0;
+	nctxentryrects = 0;
+	nplusrects = 0;
+	nminusrects = 0;
+	npinnedminusrects = 0;
+	toolavailhdrrect = Rect((0, 0), (0, 0));
+	browserect = Rect((0, 0), (0, 0));
+
+	# --- Resources section (non-tool entries only) ---
+	hasnontools := 0;
+	for(rchk := resources; rchk != nil; rchk = tl rchk)
+		if((hd rchk).rtype != "tool") { hasnontools = 1; break; }
+
+	if(hasnontools) {
 		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Resources");
 		y += mainfont.height + 4;
 
-		for(r := resources; r != nil; r = tl r) {
-			res := hd r;
+		for(rp := resources; rp != nil; rp = tl rp) {
+			res := hd rp;
+			if(res.rtype == "tool")
+				continue;
 			if(y + mainfont.height > zone.max.y)
 				break;
-			if(res.rtype != "tool" && res.lastused > 0 && now - res.lastused > 120000)
+			if(res.lastused > 0 && now - res.lastused > 120000)
 				continue;
 
 			indcol := dimcol;
@@ -377,6 +644,102 @@ drawcontext(zone: Rect)
 		y += secgap;
 	}
 
+	# --- Tools section ---
+	if(y + mainfont.height > zone.max.y)
+		return;
+	{
+		ind := "▸";
+		if(toolsec_expanded) ind = "▾";
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Tools " + ind);
+		toolsechdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
+		y += mainfont.height + 4;
+
+		if(toolsec_expanded) {
+			minusw := mainfont.width("[-]");
+			toolminusrects = array[64] of Rect;
+			toolentryrects = array[64] of Rect;
+
+			for(tp := activetoolset; tp != nil; tp = tl tp) {
+				tname := hd tp;
+				if(y + mainfont.height > zone.max.y)
+					break;
+
+				# Activity indicator — look up tool in resources list
+				indcol2 := dimcol;
+				for(rp2 := resources; rp2 != nil; rp2 = tl rp2) {
+					res2 := hd rp2;
+					if(res2.rtype == "tool" &&
+							(res2.path == tname || res2.label == tname)) {
+						if(res2.status == "active" ||
+								(res2.lastused > 0 && now - res2.lastused < 3000))
+							indcol2 = accentcol;
+						else if(res2.status == "streaming")
+							indcol2 = greencol;
+						break;
+					}
+				}
+
+				if(ntoolentryrects < len toolentryrects)
+					toolentryrects[ntoolentryrects++] = Rect(
+						(zone.min.x, y), (zone.max.x, y + mainfont.height));
+
+				tindy := y + (mainfont.height - indh) / 2;
+				mainwin.draw(Rect(
+					(zone.min.x + pad, tindy),
+					(zone.min.x + pad + indw, tindy + indh)),
+					indcol2, nil, (0, 0));
+				mainwin.text((zone.min.x + pad + indw + 6, y),
+					text2col, (0, 0), mainfont, tname);
+				mainwin.text((zone.max.x - pad - minusw, y),
+					dimcol, (0, 0), mainfont, "[-]");
+				if(ntoolminusrects < len toolminusrects)
+					toolminusrects[ntoolminusrects++] = Rect(
+						(zone.max.x - pad - minusw - 1, y),
+						(zone.max.x - pad + 1, y + mainfont.height));
+				y += mainfont.height + 2;
+			}
+
+			# Available sub-section
+			if(y + mainfont.height <= zone.max.y) {
+				y += 4;
+				ind2 := "▸";
+				if(toolavail_expanded) ind2 = "▾";
+				mainwin.text((zone.min.x + pad + 8, y), dimcol, (0, 0), mainfont,
+					"Available " + ind2);
+				toolavailhdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
+				y += mainfont.height + 2;
+
+				if(toolavail_expanded) {
+					plusw2 := mainfont.width("[+]");
+					toolplusrects = array[64] of Rect;
+
+					for(kp := knowntoolnames; kp != nil; kp = tl kp) {
+						kname := hd kp;
+						if(y + mainfont.height > zone.max.y)
+							break;
+						# Skip tools already active
+						isact := 0;
+						for(ap := activetoolset; ap != nil; ap = tl ap)
+							if(hd ap == kname) { isact = 1; break; }
+						if(isact)
+							continue;
+
+						mainwin.text((zone.min.x + pad + 12, y), dimcol, (0, 0),
+							mainfont, "○ " + kname);
+						mainwin.text((zone.max.x - pad - plusw2, y), dimcol, (0, 0),
+							mainfont, "[+]");
+						if(ntoolplusrects < len toolplusrects)
+							toolplusrects[ntoolplusrects++] = Rect(
+								(zone.max.x - pad - plusw2 - 1, y),
+								(zone.max.x - pad + 1, y + mainfont.height));
+						y += mainfont.height + 2;
+					}
+				}
+			}
+		}
+		y += secgap;
+	}
+
 	# --- Gaps section ---
 	if(gaps != nil) {
 		if(y + mainfont.height > zone.max.y)
@@ -384,10 +747,14 @@ drawcontext(zone: Rect)
 		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Gaps");
 		y += mainfont.height + 4;
 
-		for(g := gaps; g != nil; g = tl g) {
-			gap := hd g;
+		gapmenurects = array[32] of Rect;
+		for(gp := gaps; gp != nil; gp = tl gp) {
+			gap := hd gp;
 			if(y + mainfont.height > zone.max.y)
 				break;
+			if(ngapmenurects < len gapmenurects)
+				gapmenurects[ngapmenurects++] = Rect(
+					(zone.min.x, y), (zone.max.x, y + mainfont.height));
 			glyph := "●";
 			gcol := text2col;
 			if(gap.relevance == "high") {
@@ -412,15 +779,15 @@ drawcontext(zone: Rect)
 		y += mainfont.height + 4;
 
 		barh := 6;
-		for(b := bgtasks; b != nil; b = tl b) {
-			bg := hd b;
+		for(bp := bgtasks; bp != nil; bp = tl bp) {
+			bg := hd bp;
 			if(y + mainfont.height + barh + 4 > zone.max.y)
 				break;
 
-			label := bg.label;
+			blabel := bg.label;
 			if(bg.status != nil && bg.status != "")
-				label += " [" + bg.status + "]";
-			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, label);
+				blabel += " [" + bg.status + "]";
+			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, blabel);
 			y += mainfont.height + 2;
 
 			if(bg.progress != nil && bg.progress != "") {
@@ -444,68 +811,100 @@ drawcontext(zone: Rect)
 		}
 	}
 
-	# --- Available Resources section ---
-	nctxentryrects = 0;
-	if(y + mainfont.height <= zone.max.y) {
-		if(resources != nil || gaps != nil || bgtasks != nil)
+	# --- Namespaces section (renamed from "Available") ---
+	if(y + mainfont.height > zone.max.y)
+		return;
+	{
+		if(resources != nil || gaps != nil || bgtasks != nil || activetoolset != nil)
 			y += secgap;
-		indicator := "▸";
-		if(avail_expanded)
-			indicator = "▾";
-		hdrtext := "Available " + indicator;
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, hdrtext);
+		nind := "▸";
+		if(avail_expanded) nind = "▾";
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Namespaces " + nind);
 		availhdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
-		if(avail_expanded && catalog != nil) {
-			glyphw := mainfont.width("○ ");
-			plusw := mainfont.width("[+]");
-			minusw := mainfont.width("[-]");
-			plusrects = array[32] of Rect;
-			nplusrects = 0;
-			minusrects = array[32] of Rect;
-			nminusrects = 0;
-			ctxentryrects = array[32] of Rect;
-			nctxentryrects = 0;
-			for(cl := catalog; cl != nil; cl = tl cl) {
-				ce := hd cl;
-				if(y + mainfont.height > zone.max.y)
-					break;
-				if(nctxentryrects < len ctxentryrects)
-					ctxentryrects[nctxentryrects++] = Rect(
-						(zone.min.x, y),
-						(zone.max.x, y + mainfont.height));
-				glyph := "○";
-				gcol := dimcol;
-				if(ce.mntpath != "") {
-					glyph = "●";
-					gcol = text2col;
-				}
-				mainwin.text((zone.min.x + pad, y), gcol, (0, 0), mainfont, glyph);
-				mainwin.text((zone.min.x + pad + glyphw, y), text2col, (0, 0), mainfont, ce.name);
-				if(ce.mntpath == "") {
-					mainwin.text((zone.max.x - pad - plusw, y), dimcol, (0, 0), mainfont, "[+]");
-					if(nplusrects < len plusrects) {
-						plusrects[nplusrects] = Rect(
-							(zone.max.x - pad - plusw - 1, y),
-							(zone.max.x - pad + 1, y + mainfont.height));
-						nplusrects++;
-					}
-				} else {
-					mainwin.text((zone.max.x - pad - minusw, y), dimcol, (0, 0), mainfont, "[-]");
-					if(nminusrects < len minusrects) {
-						minusrects[nminusrects] = Rect(
-							(zone.max.x - pad - minusw - 1, y),
-							(zone.max.x - pad + 1, y + mainfont.height));
-						nminusrects++;
-					}
-				}
+		if(avail_expanded) {
+			# Browse button
+			if(y + mainfont.height <= zone.max.y) {
+				mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, "Browse...");
+				browserect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
+				y += mainfont.height + 4;
+			}
+
+			# Pinned paths
+			if(pinnedpaths != nil && y + mainfont.height <= zone.max.y) {
+				pminusw := mainfont.width("[-]");
+				pinnedminusrects = array[32] of Rect;
+				mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Pinned ─");
 				y += mainfont.height + 2;
+
+				for(pp := pinnedpaths; pp != nil; pp = tl pp) {
+					ppath := hd pp;
+					if(y + mainfont.height > zone.max.y)
+						break;
+					mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
+						"● " + ppath.label);
+					mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
+						mainfont, "[-]");
+					if(npinnedminusrects < len pinnedminusrects)
+						pinnedminusrects[npinnedminusrects++] = Rect(
+							(zone.max.x - pad - pminusw - 1, y),
+							(zone.max.x - pad + 1, y + mainfont.height));
+					y += mainfont.height + 2;
+				}
+
+				# Separator before catalog
+				if(catalog != nil && y + mainfont.height <= zone.max.y) {
+					mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Available ─");
+					y += mainfont.height + 2;
+				}
+			}
+
+			# Catalog entries
+			if(catalog != nil) {
+				glyphw := mainfont.width("○ ");
+				cplusw := mainfont.width("[+]");
+				cminusw := mainfont.width("[-]");
+				plusrects = array[32] of Rect;
+				minusrects = array[32] of Rect;
+				ctxentryrects = array[32] of Rect;
+
+				for(cl := catalog; cl != nil; cl = tl cl) {
+					ce := hd cl;
+					if(y + mainfont.height > zone.max.y)
+						break;
+					if(nctxentryrects < len ctxentryrects)
+						ctxentryrects[nctxentryrects++] = Rect(
+							(zone.min.x, y), (zone.max.x, y + mainfont.height));
+					cglyph := "○";
+					cgcol := dimcol;
+					if(ce.mntpath != "") {
+						cglyph = "●";
+						cgcol = text2col;
+					}
+					mainwin.text((zone.min.x + pad, y), cgcol, (0, 0), mainfont, cglyph);
+					mainwin.text((zone.min.x + pad + glyphw, y), text2col, (0, 0), mainfont, ce.name);
+					if(ce.mntpath == "") {
+						mainwin.text((zone.max.x - pad - cplusw, y), dimcol, (0, 0), mainfont, "[+]");
+						if(nplusrects < len plusrects)
+							plusrects[nplusrects++] = Rect(
+								(zone.max.x - pad - cplusw - 1, y),
+								(zone.max.x - pad + 1, y + mainfont.height));
+					} else {
+						mainwin.text((zone.max.x - pad - cminusw, y), dimcol, (0, 0), mainfont, "[-]");
+						if(nminusrects < len minusrects)
+							minusrects[nminusrects++] = Rect(
+								(zone.max.x - pad - cminusw - 1, y),
+								(zone.max.x - pad + 1, y + mainfont.height));
+					}
+					y += mainfont.height + 2;
+				}
 			}
 		}
 	}
 
-	if(resources == nil && gaps == nil && bgtasks == nil && catalog == nil)
+	if(resources == nil && gaps == nil && bgtasks == nil &&
+			catalog == nil && pinnedpaths == nil && activetoolset == nil)
 		drawcentertext(zone, "No context");
 }
 
@@ -515,6 +914,211 @@ drawcentertext(r: Rect, text: string)
 	tx := r.min.x + (r.dx() - tw) / 2;
 	ty := r.min.y + (r.dy() - mainfont.height) / 2;
 	mainwin.text((tx, ty), dimcol, (0, 0), mainfont, text);
+}
+
+# --- File browser ---
+
+drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
+{
+	zone := mainwin.r;
+	pad := 8;
+	lineH := mainfont.height + 2;
+	y := zone.min.y + pad;
+
+	mainwin.draw(zone, bgcol, nil, (0, 0));
+
+	# Header: [←] <path>  [Bind] [✕]
+	backw := mainfont.width("[<]");
+	cancelw := mainfont.width("[X]");
+	bindw := mainfont.width("[Bind]");
+
+	brow_backrect = Rect((zone.min.x + pad, y),
+		(zone.min.x + pad + backw, y + lineH));
+	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "[<]");
+
+	# Path display (truncate if too long to fit)
+	pathx := zone.min.x + pad + backw + 6;
+	pathend := zone.max.x - pad - cancelw - 4 - bindw - 4;
+	disp := curpath;
+	while(len disp > 1 && mainfont.width(disp) > pathend - pathx)
+		disp = disp[1:];
+	mainwin.text((pathx, y), text2col, (0, 0), mainfont, disp);
+
+	brow_bindrect = Rect(
+		(zone.max.x - pad - cancelw - 4 - bindw, y),
+		(zone.max.x - pad - cancelw - 4, y + lineH));
+	mainwin.text((zone.max.x - pad - cancelw - 4 - bindw, y),
+		greencol, (0, 0), mainfont, "[Bind]");
+
+	brow_cancelrect = Rect(
+		(zone.max.x - pad - cancelw, y),
+		(zone.max.x - pad, y + lineH));
+	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, "[X]");
+
+	y += lineH + 2;
+	# Separator
+	mainwin.draw(Rect((zone.min.x + pad, y), (zone.max.x - pad, y + 1)), dimcol, nil, (0, 0));
+	y += 4;
+
+	# Populate dir and file rect arrays
+	if(brow_dirrects == nil) {
+		brow_dirrects = array[128] of Rect;
+		brow_dirnames = array[128] of string;
+		brow_filerects = array[128] of Rect;
+		brow_filenames = array[128] of string;
+	}
+	brow_ndirs = 0;
+	brow_nfiles = 0;
+
+	idx := 0;
+	for(dl := dirs; dl != nil; dl = tl dl) {
+		dname := hd dl;
+		if(idx >= scroll && y + lineH <= zone.max.y - pad) {
+			if(brow_ndirs < len brow_dirrects) {
+				brow_dirrects[brow_ndirs] = Rect(
+					(zone.min.x, y), (zone.max.x, y + lineH));
+				brow_dirnames[brow_ndirs] = dname;
+				brow_ndirs++;
+			}
+			mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "▸ " + dname + "/");
+			y += lineH;
+		}
+		idx++;
+	}
+	for(fl := files; fl != nil; fl = tl fl) {
+		fname := hd fl;
+		if(idx >= scroll && y + lineH <= zone.max.y - pad) {
+			if(brow_nfiles < len brow_filerects) {
+				brow_filerects[brow_nfiles] = Rect(
+					(zone.min.x, y), (zone.max.x, y + lineH));
+				brow_filenames[brow_nfiles] = fname;
+				brow_nfiles++;
+			}
+			mainwin.text((zone.min.x + pad + 12, y), textcol, (0, 0), mainfont, fname);
+			y += lineH;
+		}
+		idx++;
+	}
+
+	mainwin.flush(Draw->Flushnow);
+}
+
+filebrowser(startpath: string): string
+{
+	curpath := startpath;
+	if(curpath == nil || curpath == "")
+		curpath = "/";
+
+	# Request zone expansion (non-blocking — lucifer handles it)
+	alt { ctxreqch_g <-= "expand" => ; * => ; }
+
+	scroll := 0;
+	result := "";
+	prevbut := 0;
+
+	for(;;) {
+		# Collect directory entries
+		dirs: list of string;
+		files: list of string;
+
+		fd := sys->open(curpath, Sys->OREAD);
+		if(fd != nil) {
+			for(;;) {
+				(n, ds) := sys->dirread(fd);
+				if(n <= 0)
+					break;
+				for(di := 0; di < len ds; di++) {
+					if(ds[di].mode & Sys->DMDIR)
+						dirs = ds[di].name :: dirs;
+					else
+						files = ds[di].name :: files;
+				}
+			}
+		}
+		dirs = sortstrlist(dirs);
+		files = sortstrlist(files);
+
+		# Draw browser UI (populates brow_* module-level arrays)
+		drawbrowser(curpath, dirs, files, scroll);
+
+		# Wait for mouse event
+		p := <-mousech_g;
+		wasdown2 := prevbut;
+		prevbut = p.buttons;
+
+		# Mouse wheel scroll
+		if(p.buttons & 8) {
+			if(scroll > 0) scroll--;
+			continue;
+		}
+		if(p.buttons & 16) {
+			scroll++;
+			continue;
+		}
+
+		# Button-3: cancel
+		if((p.buttons & 4) != 0 && (wasdown2 & 4) == 0) {
+			result = nil;
+			break;
+		}
+
+		# Button-1 just pressed
+		if(p.buttons == 1 && wasdown2 == 0) {
+			# Cancel button
+			if(brow_cancelrect.max.x > brow_cancelrect.min.x &&
+					brow_cancelrect.contains(p.xy)) {
+				result = nil;
+				break;
+			}
+			# Back ([<]) button
+			if(brow_backrect.max.x > brow_backrect.min.x &&
+					brow_backrect.contains(p.xy)) {
+				parent := pathparent(curpath);
+				if(parent != curpath) {
+					curpath = parent;
+					scroll = 0;
+				}
+				continue;
+			}
+			# Bind current directory
+			if(brow_bindrect.max.x > brow_bindrect.min.x &&
+					brow_bindrect.contains(p.xy)) {
+				result = curpath;
+				break;
+			}
+			# Directory entry: navigate into it
+			clicked := 0;
+			for(di2 := 0; di2 < brow_ndirs; di2++) {
+				if(brow_dirrects[di2].contains(p.xy)) {
+					if(curpath == "/")
+						curpath = "/" + brow_dirnames[di2];
+					else
+						curpath = curpath + "/" + brow_dirnames[di2];
+					scroll = 0;
+					clicked = 1;
+					break;
+				}
+			}
+			if(clicked)
+				continue;
+			# File entry: select it
+			for(fi2 := 0; fi2 < brow_nfiles; fi2++) {
+				if(brow_filerects[fi2].contains(p.xy)) {
+					if(curpath == "/")
+						result = "/" + brow_filenames[fi2];
+					else
+						result = curpath + "/" + brow_filenames[fi2];
+					break;
+				}
+			}
+			if(result != "")
+				break;
+		}
+	}
+
+	# Restore zone proportions
+	alt { ctxreqch_g <-= "restore" => ; * => ; }
+	return result;
 }
 
 # --- Namespace loading ---
@@ -622,6 +1226,37 @@ slugify(s: string): string
 	return r;
 }
 
+pathbase(s: string): string
+{
+	if(s == nil || s == "")
+		return "";
+	# Remove trailing slashes
+	while(len s > 1 && s[len s - 1] == '/')
+		s = s[0:len s - 1];
+	# Find last /
+	i := len s - 1;
+	while(i > 0 && s[i] != '/')
+		i--;
+	if(s[i] == '/')
+		return s[i + 1:];
+	return s;
+}
+
+pathparent(s: string): string
+{
+	if(s == nil || s == "" || s == "/")
+		return "/";
+	# Remove trailing slashes
+	while(len s > 1 && s[len s - 1] == '/')
+		s = s[0:len s - 1];
+	i := len s - 1;
+	while(i > 0 && s[i] != '/')
+		i--;
+	if(i == 0)
+		return "/";
+	return s[0:i];
+}
+
 ensuredir_mnt(mntdir: string)
 {
 	sys->create(MNT_BASE, Sys->OREAD, Sys->DMDIR | 8r777);
@@ -635,19 +1270,28 @@ mountresource(ce: ref CatalogEntry)
 	slug := slugify(ce.name);
 	mntdir := MNT_BASE + "/" + slug;
 	ensuredir_mnt(mntdir);
-	(ok, conn) := sys->dial(ce.dial, nil);
-	if(ok < 0) {
-		sys->fprint(stderr, "lucictx: mount '%s': %r\n", ce.name);
-		return;
-	}
-	if(sys->mount(conn.dfd, nil, mntdir, Sys->MREPL, "") < 0) {
-		sys->fprint(stderr, "lucictx: mount '%s' at %s: %r\n", ce.name, mntdir);
-		return;
+
+	if(ce.rtype == "path") {
+		# Bind a local filesystem path
+		if(sys->bind(ce.dial, mntdir, Sys->MREPL) < 0) {
+			sys->fprint(stderr, "lucictx: bind '%s' at %s: %r\n", ce.name, mntdir);
+			return;
+		}
+	} else {
+		# Network mount via dial
+		(ok, conn) := sys->dial(ce.dial, nil);
+		if(ok < 0) {
+			sys->fprint(stderr, "lucictx: mount '%s': %r\n", ce.name);
+			return;
+		}
+		if(sys->mount(conn.dfd, nil, mntdir, Sys->MREPL, "") < 0) {
+			sys->fprint(stderr, "lucictx: mount '%s' at %s: %r\n", ce.name, mntdir);
+			return;
+		}
 	}
 	# Notify luciuisrv
 	writetofile(mountpt_g + "/ctl",
 		"catalog mounted name=" + ce.name + " path=" + mntdir);
-	# Respawn tools9p
 	spawn spawnt9p();
 }
 
@@ -667,12 +1311,136 @@ spawnt9p()
 		sys->fprint(stderr, "lucictx: cannot load tools9p: %r\n");
 		return;
 	}
-	t9p->init(nil, "tools9p" :: "-m" :: "/tool" ::
-		"read" :: "list" :: "find" :: "search" ::
-		"write" :: "edit" :: "present" :: "ask" ::
-		"diff" :: "json" :: "git" :: "memory" ::
-		"websearch" :: "http" :: "mail" ::
-		"spawn" :: "gap" :: nil);
+	base := "tools9p" :: "-m" :: "/tool" :: nil;
+	t9p->init(nil, listcat(base, activetoolset));
+}
+
+listcat(a, b: list of string): list of string
+{
+	# Build reverse of a, then prepend each element of rev_a to b
+	rev_a: list of string;
+	for(p := a; p != nil; p = tl p)
+		rev_a = hd p :: rev_a;
+	result := b;
+	for(p = rev_a; p != nil; p = tl p)
+		result = hd p :: result;
+	return result;
+}
+
+scantoolcatalog(): list of string
+{
+	fd := sys->open("/dis/veltro/tools", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	result: list of string;
+	for(;;) {
+		(n, ds) := sys->dirread(fd);
+		if(n <= 0)
+			break;
+		for(i := 0; i < len ds; i++) {
+			nm := ds[i].name;
+			if(len nm > 4 && nm[len nm - 4:] == ".dis")
+				result = nm[0:len nm - 4] :: result;
+		}
+	}
+	return sortstrlist(result);
+}
+
+sortstrlist(l: list of string): list of string
+{
+	n := 0;
+	for(p := l; p != nil; p = tl p)
+		n++;
+	if(n == 0)
+		return nil;
+	a := array[n] of string;
+	i := 0;
+	for(p = l; p != nil; p = tl p)
+		a[i++] = hd p;
+	# Insertion sort
+	for(i = 1; i < n; i++) {
+		v := a[i];
+		j := i - 1;
+		while(j >= 0 && a[j] > v) {
+			a[j + 1] = a[j];
+			j--;
+		}
+		a[j + 1] = v;
+	}
+	result: list of string;
+	for(i = n - 1; i >= 0; i--)
+		result = a[i] :: result;
+	return result;
+}
+
+addtool(name: string)
+{
+	# Guard: skip if already active
+	for(tp := activetoolset; tp != nil; tp = tl tp)
+		if(hd tp == name)
+			return;
+	activetoolset = name :: activetoolset;
+	writetofile(mountpt_g + "/ctl",
+		"resource add path=" + name + " label=" + name + " type=tool status=idle");
+	spawn spawnt9p();
+	loadcontext();
+	redrawctx();
+}
+
+removetool(name: string)
+{
+	newlist: list of string;
+	for(tp := activetoolset; tp != nil; tp = tl tp)
+		if(hd tp != name)
+			newlist = hd tp :: newlist;
+	activetoolset = revstrlist(newlist);
+	writetofile(mountpt_g + "/ctl", "resource remove " + name);
+	spawn spawnt9p();
+	loadcontext();
+	redrawctx();
+}
+
+resolvegap(desc: string)
+{
+	writetofile(mountpt_g + "/ctl", "gap resolve desc=" + desc);
+	loadcontext();
+	redrawctx();
+}
+
+bindpath(srcpath: string)
+{
+	basename := pathbase(srcpath);
+	if(basename == nil || basename == "")
+		basename = "path";
+	slug := slugify(basename);
+	mntdir := MNT_BASE + "/" + slug;
+	ensuredir_mnt(mntdir);
+	if(sys->bind(srcpath, mntdir, Sys->MREPL) < 0) {
+		sys->fprint(stderr, "lucictx: bindpath '%s': %r\n", srcpath);
+		return;
+	}
+	pp := ref PinnedPath(basename, srcpath, mntdir);
+	pinnedpaths = pp :: pinnedpaths;
+	spawn spawnt9p();
+	redrawctx();
+}
+
+unbindpath(pp: ref PinnedPath)
+{
+	if(pp == nil)
+		return;
+	sys->unmount(nil, pp.mntdir);
+	newlist: list of ref PinnedPath;
+	for(p := pinnedpaths; p != nil; p = tl p)
+		if(hd p != pp)
+			newlist = hd p :: newlist;
+	# Reverse to preserve order
+	revlist: list of ref PinnedPath;
+	for(p = newlist; p != nil; p = tl p)
+		revlist = hd p :: revlist;
+	pinnedpaths = revlist;
+	spawn spawnt9p();
+	redrawctx();
 }
 
 # --- Attribute parsing ---
@@ -829,6 +1597,14 @@ revbg(l: list of ref BgTask): list of ref BgTask
 revcat(l: list of ref CatalogEntry): list of ref CatalogEntry
 {
 	r: list of ref CatalogEntry;
+	for(; l != nil; l = tl l)
+		r = hd l :: r;
+	return r;
+}
+
+revstrlist(l: list of string): list of string
+{
+	r: list of string;
 	for(; l != nil; l = tl l)
 		r = hd l :: r;
 	return r;

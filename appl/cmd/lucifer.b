@@ -63,7 +63,8 @@ LuciCtx: module {
 	         mountpt: string, actid: int,
 	         mouse: chan of ref Draw->Pointer,
 	         evch:  chan of string,
-	         rsz:   chan of ref Draw->Image);
+	         rsz:   chan of ref Draw->Image,
+	         req:   chan of string);
 };
 
 LuciPres: module {
@@ -163,6 +164,10 @@ pres_zone_minx := 0;
 pres_zone_maxx := 0;
 ctx_zone_minx := 0;
 
+# Zone layout percentages (default; modified by ctx expand/restore)
+conv_pct := 30;
+pres_pct := 45;
+
 # Zone channels
 convMouseCh: chan of ref Pointer;
 convKbdCh:   chan of int;
@@ -175,6 +180,9 @@ presKbdCh:   chan of int;
 ctxMouseCh: chan of ref Pointer;
 ctxEvCh:    chan of string;
 ctxRszCh:   chan of ref Draw->Image;
+
+# Context zone expand/restore request channel
+ctxreqch: chan of string;
 
 # Preswmloop resize channel (sends new pres zone rect when window resizes)
 presRszCh: chan of Rect;
@@ -346,6 +354,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	ctxMouseCh  = chan[16] of ref Pointer;
 	ctxEvCh     = chan[4] of string;
 	ctxRszCh    = chan[1] of ref Draw->Image;
+	ctxreqch    = chan[1] of string;
 
 	# Layout zones and allocate sub-images + wmsrv
 	r := mainwin.r;
@@ -406,7 +415,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 		mountpt, actid, convMouseCh, convKbdCh, convEvCh, convRszCh);
 
 	spawn lucictx->init(ctximg, display, mainfont,
-		mountpt, actid, ctxMouseCh, ctxEvCh, ctxRszCh);
+		mountpt, actid, ctxMouseCh, ctxEvCh, ctxRszCh, ctxreqch);
 
 	spawn lucipres->init(presCtxt,
 		"lucipres" :: mountpt :: string actid :: nil);
@@ -430,8 +439,8 @@ zonerects(r: Rect): (Rect, Rect, Rect)
 	zonety := r.min.y + headerh + 1;
 	w := r.dx();
 
-	convw := w * 30 / 100;
-	presw := w * 45 / 100;
+	convw := w * conv_pct / 100;
+	presw := w * pres_pct / 100;
 
 	convx := r.min.x;
 	presx := convx + convw;
@@ -492,8 +501,8 @@ drawchrome(r: Rect)
 
 	# Zone width calculations (must match zonerects)
 	w := r.dx();
-	convw := w * 30 / 100;
-	presw := w * 45 / 100;
+	convw := w * conv_pct / 100;
+	presw := w * pres_pct / 100;
 	presx := r.min.x + convw;
 	ctxx  := presx + presw;
 
@@ -685,7 +694,19 @@ mainloop()
 	<-uievent =>
 		# Header redraw (status/label changed)
 		drawchrome(mainwin.r);
+	req := <-ctxreqch =>
+		if(req == "expand")
+			handlectxlayout(25, 35);
+		else if(req == "restore")
+			handlectxlayout(30, 45);
 	}
+}
+
+handlectxlayout(cp, pp: int)
+{
+	conv_pct = cp;
+	pres_pct = pp;
+	handleresize();
 }
 
 handleresize()
