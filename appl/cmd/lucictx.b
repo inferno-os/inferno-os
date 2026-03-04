@@ -1369,18 +1369,20 @@ mountresource(ce: ref CatalogEntry)
 {
 	if(ce == nil || ce.dial == "")
 		return;
-	slug := slugify(ce.name);
-	mntdir := MNT_BASE + "/" + slug;
-	ensuredir_mnt(mntdir);
 
 	if(ce.rtype == "path") {
-		# Bind a local filesystem path
-		if(sys->bind(ce.dial, mntdir, Sys->MREPL) < 0) {
-			sys->fprint(stderr, "lucictx: bind '%s' at %s: %r\n", ce.name, mntdir);
-			return;
-		}
+		# Local filesystem path: route through tools9p so lucibridge
+		# binds it in the agent namespace (not lucifer's).
+		writetofile("/tool/ctl", "bindpath " + ce.dial);
+		writetofile(mountpt_g + "/ctl",
+			"catalog mounted name=" + ce.name + " path=" + ce.dial);
 	} else {
-		# Network mount via dial
+		# Network mount via dial: mount into lucifer's namespace at
+		# /tmp/veltro/mnt/<slug> (network catalog mounts are separate
+		# from agent namespace management).
+		slug := slugify(ce.name);
+		mntdir := MNT_BASE + "/" + slug;
+		ensuredir_mnt(mntdir);
 		(ok, conn) := sys->dial(ce.dial, nil);
 		if(ok < 0) {
 			sys->fprint(stderr, "lucictx: mount '%s': %r\n", ce.name);
@@ -1390,17 +1392,20 @@ mountresource(ce: ref CatalogEntry)
 			sys->fprint(stderr, "lucictx: mount '%s' at %s: %r\n", ce.name, mntdir);
 			return;
 		}
+		writetofile(mountpt_g + "/ctl",
+			"catalog mounted name=" + ce.name + " path=" + mntdir);
 	}
-	# Notify luciuisrv
-	writetofile(mountpt_g + "/ctl",
-		"catalog mounted name=" + ce.name + " path=" + mntdir);
 }
 
 unmountresource(ce: ref CatalogEntry)
 {
 	if(ce == nil || ce.mntpath == "")
 		return;
-	sys->unmount(nil, ce.mntpath);
+	if(ce.rtype == "path") {
+		writetofile("/tool/ctl", "unbindpath " + ce.mntpath);
+	} else {
+		sys->unmount(nil, ce.mntpath);
+	}
 	writetofile(mountpt_g + "/ctl", "catalog unmounted " + ce.name);
 }
 
