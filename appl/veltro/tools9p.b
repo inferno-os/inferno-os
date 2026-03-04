@@ -458,7 +458,7 @@ applynsrestriction()
 	for(t := tools; t != nil; t = tl t)
 		toolnames = (hd t).name :: toolnames;
 	caps := ref NsConstruct->Capabilities(
-		toolnames, nil, nil, nil, nil, nil, 0, hasxenith
+		toolnames, nil, nil, nil, nil, nil, 0, hasxenith, -1
 	);
 	{
 		nserr := nsconstruct->restrictns(caps);

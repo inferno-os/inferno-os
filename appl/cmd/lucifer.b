@@ -33,6 +33,9 @@ include "pdf.m";
 
 include "rlayout.m";
 
+include "readdir.m";
+	readdir: Readdir;
+
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -104,6 +107,19 @@ TileRect: adt {
 TabRect: adt {
 	r:  Rect;
 	id: string;
+};
+
+# Used for resource click hit-testing
+ResRect: adt {
+	r:    Rect;
+	path: string;
+};
+
+# Used for path browser entry hit-testing
+BrowseEntry: adt {
+	r:    Rect;
+	name: string;
+	isdir: int;
 };
 
 BgTask: adt {
@@ -198,6 +214,24 @@ pres_viewport_h := 400;
 pres_zone_minx := 0;
 pres_zone_maxx := 0;
 
+# Context zone x-boundary (set by redraw(), used by mainloop() for resource click routing)
+ctx_zone_minx := 0;
+
+# Resource hit-test layout — populated by drawcontext(), used for click handling
+reslayout: array of ref ResRect;
+nrestiles := 0;
+
+# Expanded resource path (nil = all collapsed)
+expandedres: string;
+
+# Path browser state
+pathbrowse := 0;		# 0=inactive, 1=browsing
+browsedir := "/";		# current directory in browser
+browselayout: array of ref BrowseEntry;
+nbrowseents := 0;
+addbutton_r: Rect;		# hit rect for [+] button
+addbutton_active := 0;		# 1 if [+] button is drawn and clickable
+
 # Channels
 cmouse: chan of ref Pointer;
 uievent: chan of int;	# just triggers redraw
@@ -226,6 +260,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	draw = load Draw Draw->PATH;
 	if(draw == nil)
 		nomod(Draw->PATH);
+
+	readdir = load Readdir Readdir->PATH;
 
 	wmclient = load Wmclient Wmclient->PATH;
 	if(wmclient == nil)
@@ -375,6 +411,42 @@ mainloop()
 					tabclicked = 1;
 					alt { uievent <-= 1 => ; * => ; }
 					break;
+				}
+			}
+			# Check context zone clicks (path browser, [+] button, resource toggle)
+			if(!tabclicked && p.xy.x >= ctx_zone_minx) {
+				if(pathbrowse) {
+					# Path browser mode: check browse entry clicks
+					for(bi := 0; bi < nbrowseents; bi++) {
+						if(browselayout[bi].r.contains(p.xy)) {
+							browseclick(browselayout[bi]);
+							tabclicked = 1;
+							alt { uievent <-= 1 => ; * => ; }
+							break;
+						}
+					}
+				} else {
+					# Check [+] button
+					if(addbutton_active && addbutton_r.contains(p.xy)) {
+						pathbrowse = 1;
+						browsedir = "/";
+						tabclicked = 1;
+						alt { uievent <-= 1 => ; * => ; }
+					}
+					# Check resource clicks (expand/collapse toggle)
+					if(!tabclicked) {
+						for(ri := 0; ri < nrestiles; ri++) {
+							if(reslayout[ri].r.contains(p.xy)) {
+								if(expandedres == reslayout[ri].path)
+									expandedres = nil;
+								else
+									expandedres = reslayout[ri].path;
+								tabclicked = 1;
+								alt { uievent <-= 1 => ; * => ; }
+								break;
+							}
+						}
+					}
 				}
 			}
 			# Check conversation message tile clicks (snarf to clipboard)
@@ -707,7 +779,7 @@ eventproc()
 	wmsize := startwmsize();
 	for(;;) alt {
 	wmsz := <-wmsize =>
-		win.image = win.screen.newwindow(wmsz, Draw->Refnone, Draw->Nofill);
+		win.image = win.screen.newwindow(wmsz, Draw->Refbackup, Draw->Nofill);
 		p := ref zpointer;
 		mainwin = win.image;
 		p.buttons = M_RESIZE;
@@ -789,8 +861,11 @@ kbdproc()
 				inputbuf = "";
 			}
 		27 =>
-			# Escape - clear buffer
-			inputbuf = "";
+			# Escape - close path browser or clear input buffer
+			if(pathbrowse)
+				pathbrowse = 0;
+			else
+				inputbuf = "";
 		16rF00E =>
 			# Page Up (Inferno keysym) — half viewport
 			scrollpx += viewport_h / 2;
@@ -902,9 +977,10 @@ redraw()
 	mainwin.draw(Rect((presx, zonety), (presx + 1, r.max.y)), bordercol, nil, (0, 0));
 	mainwin.draw(Rect((ctxx, zonety), (ctxx + 1, r.max.y)), bordercol, nil, (0, 0));
 
-	# Record presentation zone x-boundaries for scroll and click routing
+	# Record zone x-boundaries for scroll and click routing
 	pres_zone_minx = presx + 2;
 	pres_zone_maxx = ctxx - 1;
+	ctx_zone_minx = ctxx + 2;
 
 	# Draw the three zones (no zone labels — separators + tabs are sufficient)
 	if(mainfont != nil) {
@@ -1368,9 +1444,35 @@ drawcontext(zone: Rect)
 	indw := 10;	# status indicator width
 	indh := 10;	# status indicator height
 
+	# If path browser is active, draw it instead of normal context
+	if(pathbrowse) {
+		drawpathbrowser(zone);
+		return;
+	}
+
+	# Reset resource hit layout
+	nres := 0;
+	for(rl := resources; rl != nil; rl = tl rl)
+		nres++;
+	reslayout = array[nres + 1] of ref ResRect;
+	nrestiles = 0;
+	addbutton_active = 0;
+
 	# --- Resources section ---
-	if(resources != nil) {
+	{
+		# Header: "Resources" label + [+] button
 		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Resources");
+		pluslabel := "+";
+		plusw := mainfont.width(pluslabel) + 12;
+		plush := mainfont.height + 2;
+		plusx := zone.max.x - pad - plusw;
+		plusy := y - 1;
+		# Draw [+] button: subtle border
+		mainwin.draw(Rect((plusx, plusy), (plusx + plusw, plusy + plush)),
+			bordercol, nil, (0, 0));
+		mainwin.text((plusx + 6, plusy + 1), text2col, (0, 0), mainfont, pluslabel);
+		addbutton_r = Rect((plusx, plusy), (plusx + plusw, plusy + plush));
+		addbutton_active = 1;
 		y += mainfont.height + 4;
 
 		for(r := resources; r != nil; r = tl r) {
@@ -1393,13 +1495,33 @@ drawcontext(zone: Rect)
 				(zone.min.x + pad + indw, indy + indh)),
 				indcol, nil, (0, 0));
 
+			# Expand/collapse chevron
+			expanded := expandedres != nil && expandedres == res.path;
+			chevron := ">";
+			if(expanded)
+				chevron = "v";
+			mainwin.text((zone.min.x + pad + indw + 4, y),
+				dimcol, (0, 0), mainfont, chevron);
+
 			# Label
 			label := res.label;
 			if(label == nil || label == "")
 				label = res.path;
-			mainwin.text((zone.min.x + pad + indw + 6, y),
+			mainwin.text((zone.min.x + pad + indw + 18, y),
 				text2col, (0, 0), mainfont, label);
+
+			# Record hit rect for this resource row
+			rowtop := y;
 			y += mainfont.height + 2;
+			if(nrestiles < len reslayout)
+				reslayout[nrestiles++] = ref ResRect(
+					Rect((zone.min.x, rowtop), (zone.max.x, y)),
+					res.path);
+
+			# Draw expanded detail view
+			if(expanded) {
+				y = drawresdetail(zone, y, pad, res);
+			}
 		}
 		y += secgap;
 	}
@@ -1470,9 +1592,210 @@ drawcontext(zone: Rect)
 		}
 	}
 
-	# Empty state
-	if(resources == nil && gaps == nil && bgtasks == nil)
-		drawcentertext(zone, "No context");
+	# Empty state hint (only when no resources, gaps, or tasks)
+	if(resources == nil && gaps == nil && bgtasks == nil) {
+		if(y + mainfont.height <= zone.max.y)
+			mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont,
+				"Click + to add a workspace");
+	}
+}
+
+# Draw expanded resource detail: path, status, and type info.
+# Returns updated y position.
+drawresdetail(zone: Rect, y, pad: int, res: ref Resource): int
+{
+	indent := pad + 20;
+	lh := mainfont.height;
+
+	# Path (full)
+	if(y + lh <= zone.max.y) {
+		mainwin.text((zone.min.x + indent, y), dimcol, (0, 0), monofont, res.path);
+		y += lh;
+	}
+
+	# Type
+	if(res.rtype != nil && res.rtype != "" && y + lh <= zone.max.y) {
+		mainwin.text((zone.min.x + indent, y), dimcol, (0, 0), mainfont,
+			"type: " + res.rtype);
+		y += lh;
+	}
+
+	# Status
+	if(res.status != nil && res.status != "" && y + lh <= zone.max.y) {
+		mainwin.text((zone.min.x + indent, y), dimcol, (0, 0), mainfont,
+			"status: " + res.status);
+		y += lh;
+	}
+
+	# Draw subtle border at bottom of detail section
+	if(y < zone.max.y) {
+		mainwin.draw(Rect((zone.min.x + pad, y),
+			(zone.max.x - pad, y + 1)), bordercol, nil, (0, 0));
+		y += 4;
+	}
+
+	# Record detail area hit rect (clicking detail area also toggles)
+	if(nrestiles > 0) {
+		# Extend the last resource rect to cover the detail area
+		prev := reslayout[nrestiles - 1];
+		prev.r.max.y = y;
+	}
+
+	return y;
+}
+
+# Draw Navigator-inspired path browser for selecting workspace paths.
+drawpathbrowser(zone: Rect)
+{
+	pad := 8;
+	y := zone.min.y + pad;
+	lh := monofont.height;
+
+	# Header: current path
+	mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Select Path");
+	y += mainfont.height + 2;
+
+	# Current directory (monospace, accent color)
+	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), monofont, browsedir);
+	y += lh + 4;
+
+	# Separator
+	mainwin.draw(Rect((zone.min.x + pad, y), (zone.max.x - pad, y + 1)),
+		bordercol, nil, (0, 0));
+	y += 4;
+
+	# Read directory
+	if(readdir == nil) {
+		mainwin.text((zone.min.x + pad, y), redcol, (0, 0), mainfont, "readdir unavailable");
+		nbrowseents = 0;
+		return;
+	}
+
+	(dirs, ndirs) := readdir->init(browsedir, Readdir->NAME);
+
+	# Count entries: ".." + dirs + 2 buttons (Select, Cancel)
+	maxents := ndirs + 3;
+	browselayout = array[maxents] of ref BrowseEntry;
+	nbrowseents = 0;
+
+	# ".." entry (go up)
+	if(browsedir != "/" && y + lh <= zone.max.y) {
+		rowtop := y;
+		mainwin.text((zone.min.x + pad + 4, y), text2col, (0, 0), monofont, "../");
+		y += lh + 1;
+		browselayout[nbrowseents++] = ref BrowseEntry(
+			Rect((zone.min.x, rowtop), (zone.max.x, y)), "..", 1);
+	}
+
+	# Directory entries first, then files
+	for(pass := 0; pass < 2; pass++) {
+		for(i := 0; i < ndirs; i++) {
+			isdir := dirs[i].qid.qtype & Sys->QTDIR;
+			if(pass == 0 && !isdir)
+				continue;
+			if(pass == 1 && isdir)
+				continue;
+			if(y + lh > zone.max.y)
+				break;
+
+			name := dirs[i].name;
+			display_name := name;
+			col := dimcol;
+			if(isdir) {
+				display_name += "/";
+				col = text2col;
+			}
+
+			rowtop := y;
+			mainwin.text((zone.min.x + pad + 4, y), col, (0, 0), monofont, display_name);
+			y += lh + 1;
+
+			browselayout[nbrowseents++] = ref BrowseEntry(
+				Rect((zone.min.x, rowtop), (zone.max.x, y)),
+				name, isdir);
+		}
+	}
+
+	# Action buttons at bottom
+	y += 8;
+	if(y + mainfont.height + 4 > zone.max.y)
+		return;
+
+	# [Select] button
+	sellabel := "Select";
+	selw := mainfont.width(sellabel) + 16;
+	selh := mainfont.height + 6;
+	selx := zone.min.x + pad;
+
+	mainwin.draw(Rect((selx, y), (selx + selw, y + selh)), accentcol, nil, (0, 0));
+	mainwin.text((selx + 8, y + 3), bgcol, (0, 0), mainfont, sellabel);
+	browselayout[nbrowseents++] = ref BrowseEntry(
+		Rect((selx, y), (selx + selw, y + selh)), ":select:", 0);
+
+	# [Cancel] button
+	canx := selx + selw + 8;
+	canlabel := "Cancel";
+	canw := mainfont.width(canlabel) + 16;
+	mainwin.draw(Rect((canx, y), (canx + canw, y + selh)), bordercol, nil, (0, 0));
+	mainwin.text((canx + 8, y + 3), text2col, (0, 0), mainfont, canlabel);
+	browselayout[nbrowseents++] = ref BrowseEntry(
+		Rect((canx, y), (canx + canw, y + selh)), ":cancel:", 0);
+}
+
+# Handle a click on a path browser entry.
+browseclick(ent: ref BrowseEntry)
+{
+	if(ent.name == ":select:") {
+		# Add current browsedir as workspace resource
+		label := pathbasename(browsedir);
+		if(label == "")
+			label = browsedir;
+		if(actid >= 0)
+			writetofile(
+				sys->sprint("%s/activity/%d/context/ctl", mountpt, actid),
+				sys->sprint("resource add path=%s label=%s type=workspace status=clean",
+					browsedir, label));
+		pathbrowse = 0;
+		return;
+	}
+	if(ent.name == ":cancel:") {
+		pathbrowse = 0;
+		return;
+	}
+	if(ent.name == "..") {
+		# Go up one directory
+		i := len browsedir - 1;
+		while(i > 0 && browsedir[i] != '/')
+			i--;
+		if(i <= 0)
+			browsedir = "/";
+		else
+			browsedir = browsedir[0:i];
+		return;
+	}
+	if(ent.isdir) {
+		# Navigate into directory
+		if(browsedir == "/")
+			browsedir = "/" + ent.name;
+		else
+			browsedir = browsedir + "/" + ent.name;
+		return;
+	}
+	# Clicked a file — ignore (only directories are selectable)
+}
+
+# Extract basename from a path.
+pathbasename(path: string): string
+{
+	if(path == nil || path == "" || path == "/")
+		return path;
+	# Strip trailing slash
+	if(path[len path - 1] == '/')
+		path = path[0:len path - 1];
+	for(i := len path - 1; i >= 0; i--)
+		if(path[i] == '/')
+			return path[i+1:];
+	return path;
 }
 
 drawcentertext(r: Rect, text: string)

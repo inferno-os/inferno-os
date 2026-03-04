@@ -217,8 +217,9 @@ exec(args: string): string
 			spec.llmconfig,
 			0 :: 1 :: 2 :: nil,
 			nil,
-			0,
-			0
+			0,    # No memory
+			0,    # No xenith
+			-1    # No cowfs — subagents inherit parent's cowfs via FORKNS
 		);
 
 		pipefds := array[2] of ref Sys->FD;

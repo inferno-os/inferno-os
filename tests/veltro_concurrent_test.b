@@ -134,7 +134,7 @@ restrictdirworker(testdir: string, done: chan of int, errors: chan of string)
 	# Each worker forks its own namespace
 	sys->pctl(Sys->FORKNS, nil);
 
-	err := nsconstruct->restrictdir(testdir, "a" :: nil);
+	err := nsconstruct->restrictdir(testdir, "a" :: nil, 0);
 	if(err != nil) {
 		errors <-= sys->sprint("restrictdir failed: %s", err);
 		return;
@@ -201,7 +201,8 @@ restrictnsworker(done: chan of int, errors: chan of string)
 		0 :: 1 :: 2 :: nil,
 		nil,
 		0,
-		0
+		0,
+		-1
 	);
 
 	err := nsconstruct->restrictns(caps);

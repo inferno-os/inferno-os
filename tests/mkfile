@@ -9,6 +9,7 @@ TARG=\
 	agent_test.dis\
 	tooluse_test.dis\
 	asyncio_test.dis\
+	cowfs_test.dis\
 	crypto_test.dis\
 	edit_test.dis\
 	example_test.dis\
@@ -46,6 +47,7 @@ MODULES=
 
 SYSMODULES=\
 	arg.m\
+	cowfs.m\
 	dial.m\
 	factotum.m\
 	imap.m\

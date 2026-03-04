@@ -11,6 +11,7 @@ MAIN=\
     repl.dis\
     tools9p.dis\
     nsconstruct.dis\
+    cowfs.dis\
     subagent.dis\
     mc9p.dis\
     speech9p.dis\
@@ -54,8 +55,11 @@ veltro.dis: veltro.b agentlib.m tool.m nsconstruct.m
 tools9p.dis: tools9p.b tool.m
 	limbo $LIMBOFLAGS -gw tools9p.b
 
-nsconstruct.dis: nsconstruct.b nsconstruct.m
+nsconstruct.dis: nsconstruct.b nsconstruct.m cowfs.m
 	limbo $LIMBOFLAGS -gw nsconstruct.b
+
+cowfs.dis: cowfs.b cowfs.m
+	limbo $LIMBOFLAGS -gw cowfs.b
 
 subagent.dis: subagent.b subagent.m tool.m
 	limbo $LIMBOFLAGS -gw subagent.b
@@ -152,7 +156,7 @@ tools/gpu.dis: tools/gpu.b tool.m
 
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools
-	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis subagent.dis mc9p.dis speech9p.dis $DISBIN/
+	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis cowfs.dis subagent.dis mc9p.dis speech9p.dis $DISBIN/
 	cp tools/*.dis $DISBIN/tools/
 
 clean:V:

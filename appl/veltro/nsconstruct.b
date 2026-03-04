@@ -24,6 +24,8 @@ include "draw.m";
 
 include "nsconstruct.m";
 
+include "cowfs.m";
+
 # Shadow directories live under /tmp/veltro/.ns/ so they survive
 # the /tmp restriction (which allows only "veltro/")
 SHADOW_BASE: con "/tmp/veltro/.ns/shadow";
@@ -129,6 +131,7 @@ restrictns(caps: ref Capabilities): string
 	mkdirp("/tmp/veltro");
 	mkdirp("/tmp/veltro/scratch");
 	mkdirp("/tmp/veltro/memory");
+	mkdirp("/tmp/veltro/cow");
 	mkdirp(SHADOW_BASE);
 	mkdirp(AUDIT_DIR);
 
@@ -196,7 +199,7 @@ restrictns(caps: ref Capabilities): string
 
 		# If local paths are granted, drill down to expose only those
 		if(localpaths != nil) {
-			lerr := restrictlocal(localpaths);
+			lerr := restrictlocal(localpaths, caps.actid);
 			if(lerr != nil)
 				return sys->sprint("restrict /n/local: %s", lerr);
 		}
@@ -262,9 +265,38 @@ filterpaths(paths: list of string, prefix: string): list of string
 # Restrict /n/local to only the granted host paths.
 # Each path is relative to /n/local/ (e.g., "Users/pdfinn/tmp").
 # Drills down component by component using restrictdir().
-restrictlocal(paths: list of string): string
+# If actid >= 0, overlay each leaf path with cowfs.
+restrictlocal(paths: list of string, actid: int): string
 {
-	return restrictpath("/n/local", paths);
+	err := restrictpath("/n/local", paths);
+	if(err != nil)
+		return err;
+
+	# If actid >= 0, overlay each leaf path with cowfs
+	if(actid < 0)
+		return nil;
+
+	cowfs := load Cowfs Cowfs->PATH;
+	if(cowfs == nil)
+		return sys->sprint("cannot load cowfs: %r");
+
+	seq := 0;
+	for(p := paths; p != nil; p = tl p) {
+		fullpath := "/n/local/" + hd p;
+		overlaydir := sys->sprint("/tmp/veltro/cow/%d-%d", actid, seq);
+		seq++;
+		merr := mkdirp(overlaydir);
+		if(merr != nil)
+			return sys->sprint("cowfs overlay %s: %s", overlaydir, merr);
+
+		(mntfd, cerr) := cowfs->start(fullpath, overlaydir);
+		if(cerr != nil)
+			return sys->sprint("cowfs %s: %s", fullpath, cerr);
+
+		if(sys->mount(mntfd, nil, fullpath, Sys->MREPL, nil) < 0)
+			return sys->sprint("cowfs mount %s: %r", fullpath);
+	}
+	return nil;
 }
 
 # Recursively restrict a directory to only the granted subpaths.
