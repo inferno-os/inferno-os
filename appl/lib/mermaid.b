@@ -1169,9 +1169,7 @@ piesector(img: ref Image, cx, cy, r: int, col: ref Image, startdeg, phideg: int)
 	if(nsegs > 73) nsegs = 73;
 	pts := array[nsegs + 2] of Point;
 	pts[0] = Point(cx, cy);
-	# π via atan2 — avoids broken DEFF real-constant pool (canontod LP64 bug)
-	pi := mmath->atan2(real 0, real (-1));
-	d2r := pi / real 180;
+	d2r := 3.14159265358979 / 180.0;
 	for(k := 0; k <= nsegs; k++) {
 		adeg := startdeg + k * phideg / nsegs;
 		arad := real adeg * d2r;

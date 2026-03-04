@@ -177,48 +177,69 @@ restrictns(caps: ref Capabilities): string
 	if(err != nil)
 		return sys->sprint("restrict /dev: %s", err);
 
-	# 4-5. Restrict /n to allowed entries (llm, mcp, speech, optionally local)
-	# SECURITY REVIEW NEEDED: The /n/ allowlist is stat-based — entries are
-	# auto-exposed to the agent if they exist on the host, not if explicitly
-	# granted via caps.paths.  This is consistent within itself but diverges
-	# from the caps.paths-driven model used for /dis/ and /n/local/.
-	# Future direction: all /n/ entries should be caps.paths-driven.
-	# See: appl/veltro/nsconstruct.b restrictns() /n/ block.
+	# 4-5. Restrict /n to explicitly granted entries only.
+	# All /n/ entries are capability-driven — never auto-exposed by existence:
+	#   /n/llm    — always granted (core agent service; withheld = non-functional)
+	#   /n/mcp    — caps.mcproviders != nil
+	#   /n/speech — "/n/speech" in caps.paths
+	#   /n/git    — "/n/git" in caps.paths
+	#   /n/ui     — "present" in caps.tools
+	#   /n/pres-* — caps.xenith != 0
+	#   /n/local  — /n/local/ subpaths in caps.paths
 	(nok, nil) := sys->stat("/n");
 	if(nok >= 0) {
 		nallow: list of string;
-		# Keep /n/llm if LLM is available
+		uiok := -1;
+
+		# /n/llm — always granted (core LLM access)
 		(llmok, nil) := sys->stat("/n/llm");
 		if(llmok >= 0)
 			nallow = "llm" :: nallow;
-		# Keep /n/mcp if mc9p providers exist
+
+		# /n/mcp — only if mc9p providers configured
 		if(caps.mcproviders != nil) {
 			(mcpok, nil) := sys->stat("/n/mcp");
 			if(mcpok >= 0)
 				nallow = "mcp" :: nallow;
 		}
-		# Keep /n/speech if speech9p is mounted (needed by say tool)
-		(speechok, nil) := sys->stat("/n/speech");
-		if(speechok >= 0)
-			nallow = "speech" :: nallow;
-		# Keep /n/git if git/fs is mounted (needed by git tool)
-		(gitok, nil) := sys->stat("/n/git");
-		if(gitok >= 0)
-			nallow = "git" :: nallow;
-		# Keep /n/ui if luciuisrv is mounted (needed by present tool)
-		(uiok, nil) := sys->stat("/n/ui");
-		if(uiok >= 0)
-			nallow = "ui" :: nallow;
-		# Keep /n/pres-* if lucifer exported WM namespace (needed by exec for GUI apps)
-		(presok, nil) := sys->stat("/n/pres-clone");
-		if(presok >= 0) {
-			nallow = "pres-launch" :: nallow;
-			nallow = "pres-keyboard" :: nallow;
-			nallow = "pres-pointer" :: nallow;
-			nallow = "pres-winname" :: nallow;
-			nallow = "pres-clone" :: nallow;
+
+		# /n/speech — only if explicitly granted via caps.paths
+		if(inlist("/n/speech", caps.paths)) {
+			(speechok, nil) := sys->stat("/n/speech");
+			if(speechok >= 0)
+				nallow = "speech" :: nallow;
 		}
-		# Check if any caps.paths grant /n/local/ subpaths
+
+		# /n/git — only if explicitly granted via caps.paths
+		if(inlist("/n/git", caps.paths)) {
+			(gitok, nil) := sys->stat("/n/git");
+			if(gitok >= 0)
+				nallow = "git" :: nallow;
+		}
+
+		# /n/ui — only if "present" tool is granted
+		# (present and gap tools write to /n/ui/activity/{id}/...)
+		if(inlist("present", caps.tools)) {
+			(s, nil) := sys->stat("/n/ui");
+			if(s >= 0) {
+				nallow = "ui" :: nallow;
+				uiok = s;
+			}
+		}
+
+		# /n/pres-* — only if Xenith (GUI) access is granted
+		if(caps.xenith) {
+			(presok, nil) := sys->stat("/n/pres-clone");
+			if(presok >= 0) {
+				nallow = "pres-launch" :: nallow;
+				nallow = "pres-keyboard" :: nallow;
+				nallow = "pres-pointer" :: nallow;
+				nallow = "pres-winname" :: nallow;
+				nallow = "pres-clone" :: nallow;
+			}
+		}
+
+		# /n/local — only if /n/local/ subpaths granted via caps.paths
 		localpaths := filterpaths(caps.paths, "/n/local/");
 		if(localpaths != nil)
 			nallow = "local" :: nallow;
@@ -227,17 +248,14 @@ restrictns(caps: ref Capabilities): string
 		if(err != nil)
 			return sys->sprint("restrict /n: %s", err);
 
-		# Option A: restrict /n/ui to only /n/ui/activity/.
-		# Prevents agent from writing to /n/ui/ctl (namespace manipulation)
-		# or reading /n/ui/catalog/ (resource enumeration).
-		# present and gap tools write to /n/ui/activity/{id}/... which remains accessible.
+		# Restrict /n/ui to only /n/ui/activity/ — prevents ctl/catalog access
 		if(uiok >= 0) {
 			uerr := restrictdir("/n/ui", "activity" :: nil, 0);
 			if(uerr != nil)
 				return sys->sprint("restrict /n/ui: %s", uerr);
 		}
 
-		# If local paths are granted, drill down to expose only those
+		# Drill down /n/local to only the granted paths
 		if(localpaths != nil) {
 			lerr := restrictlocal(localpaths, caps.actid);
 			if(lerr != nil)
