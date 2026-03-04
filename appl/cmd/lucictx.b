@@ -929,27 +929,27 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 
 	mainwin.draw(zone, bgcol, nil, (0, 0));
 
-	# Header: [←] <path>  [Bind] [✕]
-	backw := mainfont.width("[<]");
+	# Header row: [<]  <path>  [Bind] [X]
+	backw   := mainfont.width("[<]");
 	cancelw := mainfont.width("[X]");
-	bindw := mainfont.width("[Bind]");
+	bindw   := mainfont.width("[Bind]");
 
 	brow_backrect = Rect((zone.min.x + pad, y),
 		(zone.min.x + pad + backw, y + lineH));
 	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "[<]");
 
-	# Path display (truncate if too long to fit)
-	pathx := zone.min.x + pad + backw + 6;
-	pathend := zone.max.x - pad - cancelw - 4 - bindw - 4;
-	disp := curpath;
+	# Path — truncate from left if too wide
+	pathx   := zone.min.x + pad + backw + 6;
+	pathend := zone.max.x - pad - cancelw - 6 - bindw - 4;
+	disp    := curpath;
 	while(len disp > 1 && mainfont.width(disp) > pathend - pathx)
 		disp = disp[1:];
 	mainwin.text((pathx, y), text2col, (0, 0), mainfont, disp);
 
 	brow_bindrect = Rect(
-		(zone.max.x - pad - cancelw - 4 - bindw, y),
-		(zone.max.x - pad - cancelw - 4, y + lineH));
-	mainwin.text((zone.max.x - pad - cancelw - 4 - bindw, y),
+		(zone.max.x - pad - cancelw - 6 - bindw, y),
+		(zone.max.x - pad - cancelw - 6, y + lineH));
+	mainwin.text((zone.max.x - pad - cancelw - 6 - bindw, y),
 		greencol, (0, 0), mainfont, "[Bind]");
 
 	brow_cancelrect = Rect(
@@ -958,48 +958,99 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, "[X]");
 
 	y += lineH + 2;
-	# Separator
 	mainwin.draw(Rect((zone.min.x + pad, y), (zone.max.x - pad, y + 1)), dimcol, nil, (0, 0));
 	y += 4;
 
-	# Populate dir and file rect arrays
-	if(brow_dirrects == nil) {
-		brow_dirrects = array[128] of Rect;
-		brow_dirnames = array[128] of string;
-		brow_filerects = array[128] of Rect;
-		brow_filenames = array[128] of string;
+	# --- Multi-column grid layout (Navigator style) ---
+	#
+	# Calculate column width from widest entry, then pack as many columns
+	# as fit in the zone.  scroll counts in rows (each row holds ncols entries).
+
+	usablew := zone.dx() - 2 * pad;
+	maxentw := 40;
+	for(dw := dirs; dw != nil; dw = tl dw) {
+		w := mainfont.width(hd dw + "/");
+		if(w > maxentw) maxentw = w;
 	}
-	brow_ndirs = 0;
+	for(fw := files; fw != nil; fw = tl fw) {
+		w := mainfont.width(hd fw);
+		if(w > maxentw) maxentw = w;
+	}
+	colw  := maxentw + 14;	# entry + inter-column gap
+	ncols := usablew / colw;
+	if(ncols < 1) ncols = 1;
+	if(ncols > 6) ncols = 6;
+
+	skip := scroll * ncols;	# entries to skip due to scroll
+
+	if(brow_dirrects == nil) {
+		brow_dirrects = array[512] of Rect;
+		brow_dirnames = array[512] of string;
+		brow_filerects = array[512] of Rect;
+		brow_filenames = array[512] of string;
+	}
+	brow_ndirs  = 0;
 	brow_nfiles = 0;
 
-	idx := 0;
+	# Layout state for visible entries
+	vcol  := 0;	# column within current visible row (0..ncols-1)
+	vcur  := y;	# y of current visible row
+
+	abs := 0;	# absolute entry index across dirs then files
+
+	# Draw directories
 	for(dl := dirs; dl != nil; dl = tl dl) {
-		dname := hd dl;
-		if(idx >= scroll && y + lineH <= zone.max.y - pad) {
-			if(brow_ndirs < len brow_dirrects) {
-				brow_dirrects[brow_ndirs] = Rect(
-					(zone.min.x, y), (zone.max.x, y + lineH));
-				brow_dirnames[brow_ndirs] = dname;
-				brow_ndirs++;
+		if(abs >= skip) {
+			cx := zone.min.x + pad + vcol * colw;
+			if(vcur + lineH <= zone.max.y - pad) {
+				if(brow_ndirs < len brow_dirrects) {
+					brow_dirrects[brow_ndirs] = Rect(
+						(cx, vcur), (cx + colw, vcur + lineH));
+					brow_dirnames[brow_ndirs] = hd dl;
+					brow_ndirs++;
+				}
+				mainwin.text((cx, vcur), text2col, (0, 0), mainfont, hd dl + "/");
 			}
-			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, "▸ " + dname + "/");
-			y += lineH;
+			vcol++;
+			if(vcol >= ncols) {
+				vcol  = 0;
+				vcur += lineH;
+			}
 		}
-		idx++;
+		abs++;
 	}
-	for(fl := files; fl != nil; fl = tl fl) {
-		fname := hd fl;
-		if(idx >= scroll && y + lineH <= zone.max.y - pad) {
-			if(brow_nfiles < len brow_filerects) {
-				brow_filerects[brow_nfiles] = Rect(
-					(zone.min.x, y), (zone.max.x, y + lineH));
-				brow_filenames[brow_nfiles] = fname;
-				brow_nfiles++;
-			}
-			mainwin.text((zone.min.x + pad + 12, y), textcol, (0, 0), mainfont, fname);
-			y += lineH;
+
+	# Separator between dirs and files
+	if(files != nil) {
+		if(vcol != 0) {
+			vcol  = 0;
+			vcur += lineH;
 		}
-		idx++;
+		if(vcur + 3 < zone.max.y - pad)
+			mainwin.draw(Rect((zone.min.x + pad, vcur + 2),
+				(zone.max.x - pad, vcur + 3)), dimcol, nil, (0, 0));
+		vcur += 6;
+
+		for(fl := files; fl != nil; fl = tl fl) {
+			if(abs >= skip) {
+				cx := zone.min.x + pad + vcol * colw;
+				if(vcur + lineH <= zone.max.y - pad) {
+					if(brow_nfiles < len brow_filerects) {
+						brow_filerects[brow_nfiles] = Rect(
+							(cx, vcur), (cx + colw, vcur + lineH));
+						brow_filenames[brow_nfiles] = hd fl;
+						brow_nfiles++;
+					}
+					mainwin.text((cx, vcur), dimcol, (0, 0), mainfont, hd fl);
+				}
+				vcol++;
+				if(vcol >= ncols) {
+					vcol  = 0;
+					vcur += lineH;
+				}
+			}
+			abs++;
+		}
 	}
 
 	mainwin.flush(Draw->Flushnow);
@@ -1010,9 +1061,6 @@ filebrowser(startpath: string): string
 	curpath := startpath;
 	if(curpath == nil || curpath == "")
 		curpath = "/";
-
-	# Request zone expansion (non-blocking — lucifer handles it)
-	alt { ctxreqch_g <-= "expand" => ; * => ; }
 
 	scroll := 0;
 	result := "";
@@ -1115,17 +1163,6 @@ filebrowser(startpath: string): string
 		}
 	}
 
-	# Restore zone proportions.
-	# Drain any stale rszch_g message so our restore isn't blocked by it,
-	# then send restore and wait for the new (smaller) ctximg.
-	alt { <-rszch_g => ; * => ; }
-	alt { ctxreqch_g <-= "restore" => ; * => ; }
-	alt {
-	newimg := <-rszch_g =>
-		mainwin = newimg;
-	* =>
-		;
-	}
 	return result;
 }
 

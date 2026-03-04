@@ -695,9 +695,7 @@ mainloop()
 		# Header redraw (status/label changed)
 		drawchrome(mainwin.r);
 	req := <-ctxreqch =>
-		if(req == "expand")
-			handlectxlayout(1, 4);
-		else if(req == "restore")
+		if(req == "restore")
 			handlectxlayout(30, 45);
 	}
 }
