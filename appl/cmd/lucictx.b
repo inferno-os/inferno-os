@@ -136,6 +136,7 @@ pinnedpaths: list of ref PinnedPath;
 # Channel references (for filebrowser access)
 mousech_g: chan of ref Pointer;
 ctxreqch_g: chan of string;
+rszch_g: chan of ref Image;
 
 # Section header rects
 availhdrrect: Rect;
@@ -199,6 +200,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	actid_g = actid;
 	mousech_g = mouse;
 	ctxreqch_g = req;
+	rszch_g = rsz;
 
 	# Create colors
 	bgcol = dsp.color(COLBG);
@@ -980,7 +982,7 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 				brow_dirnames[brow_ndirs] = dname;
 				brow_ndirs++;
 			}
-			mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "▸ " + dname + "/");
+			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, "▸ " + dname + "/");
 			y += lineH;
 		}
 		idx++;
@@ -1041,8 +1043,15 @@ filebrowser(startpath: string): string
 		# Draw browser UI (populates brow_* module-level arrays)
 		drawbrowser(curpath, dirs, files, scroll);
 
-		# Wait for mouse event
-		p := <-mousech_g;
+		# Wait for mouse event or zone resize
+		p: ref Pointer;
+		alt {
+		p = <-mousech_g =>
+			;
+		newimg := <-rszch_g =>
+			mainwin = newimg;
+			continue;
+		}
 		wasdown2 := prevbut;
 		prevbut = p.buttons;
 
