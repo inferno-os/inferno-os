@@ -7,10 +7,12 @@ implement LuciBridge;
 # (blocking read), runs the Veltro agent loop (LLM + tools), and writes
 # responses and tool activity back to the UI as role=veltro messages.
 #
-# Usage: lucibridge [-v] [-n maxsteps] [-a actid]
+# Usage: lucibridge [-v] [-n maxsteps] [-a actid] [-t tools] [-p paths]
 #   -v            verbose logging
 #   -n steps      max agent steps per turn (default: 20)
 #   -a id         activity ID (default: 0)
+#   -t tools      comma-separated initial tool list (e.g. read,list,write)
+#   -p paths      comma-separated namespace paths to expose via /n/local/
 #
 # Prerequisites:
 #   - luciuisrv running (serves /n/ui/)
@@ -54,6 +56,10 @@ convcount := 0;		# messages written to conversation by this bridge
 
 # Tool tracking: raw string from /tool/tools; updated when tool set changes
 currenttoolsraw := "";
+
+# CLI overrides from -t/-p flags
+toolargs: list of string;	# from -t flag (comma-separated tool names)
+pathargs: list of string;	# from -p flag (comma-separated paths)
 
 BRIDGE_SUFFIX: con "\n\nYou are the AI assistant in a Lucifer activity. " +
 	"The user sends messages through the UI. " +
@@ -373,6 +379,41 @@ pathbase(path: string): string
 	return path;
 }
 
+# strcontains returns 1 if name is in the list l.
+strcontains(l: list of string, name: string): int
+{
+	for(; l != nil; l = tl l)
+		if(hd l == name)
+			return 1;
+	return 0;
+}
+
+# Sync the running tools9p to match the wanted list.
+# Adds/removes tools via /tool/ctl to reconcile current state.
+synctoolset(want: list of string)
+{
+	if(!agentlib->pathexists("/tool"))
+		return;
+	cur := agentlib->readfile("/tool/tools");
+	(nil, curtl) := sys->tokenize(cur, "\n");
+	for(w := want; w != nil; w = tl w)
+		if(!strcontains(curtl, hd w))
+			writefile("/tool/ctl", "add " + hd w);
+	for(c := curtl; c != nil; c = tl c)
+		if(!strcontains(want, hd c))
+			writefile("/tool/ctl", "remove " + hd c);
+}
+
+# Bind a host path into /n/local/<basename> in the agent namespace.
+bindagentpath(p: string)
+{
+	base := pathbase(p);
+	if(base == nil || base == "")
+		base = "path";
+	tgt := "/n/local/" + base;
+	sys->bind(p, tgt, Sys->MBEFORE);
+}
+
 # Run the agent loop for one human turn using native tool_use protocol.
 # Each step starts async LLM generation. If /stream is available (new llm9p),
 # tokens are streamed into a live placeholder message. Otherwise (old llm9p,
@@ -579,8 +620,19 @@ init(nil: ref Draw->Context, args: list of string)
 			if(s == nil)
 				fatal("-a requires activity ID");
 			(actid, nil) = str->toint(s, 10);
+		't' =>
+			s := arg->arg();
+			if(s == nil)
+				fatal("-t requires tool list");
+			(nil, toolargs) = sys->tokenize(s, ",");
+		'p' =>
+			s := arg->arg();
+			if(s == nil)
+				fatal("-p requires path list");
+			(nil, pathargs) = sys->tokenize(s, ",");
 		* =>
-			sys->fprint(stderr, "usage: lucibridge [-v] [-n maxsteps] [-a actid]\n");
+			sys->fprint(stderr,
+				"usage: lucibridge [-v] [-n maxsteps] [-a actid] [-t tools] [-p paths]\n");
 			raise "fail:usage";
 		}
 	}
@@ -598,6 +650,14 @@ init(nil: ref Draw->Context, args: list of string)
 		log("tools available at /tool");
 	else
 		log("no /tool mount — running in chat-only mode");
+
+	# Apply -t tool override: sync tools9p to the specified set
+	if(toolargs != nil)
+		synctoolset(toolargs);
+
+	# Apply -p path bindings into the agent namespace
+	for(pp := pathargs; pp != nil; pp = tl pp)
+		bindagentpath(hd pp);
 
 	# Create LLM session
 	err := initsession();

@@ -163,6 +163,11 @@ browserect: Rect;
 pinnedminusrects: array of Rect;
 npinnedminusrects := 0;
 
+# Mounted catalog entry rects (catalog entries with mntpath != "" shown in Mounted section)
+catmountedminusrects: array of Rect;
+ncatmountedminusrects := 0;
+catmountedces: array of ref CatalogEntry;
+
 # File browser state (module-level to avoid stack allocation in inner loop)
 brow_dirrects:  array of Rect;
 brow_dirnames:  array of string;
@@ -215,12 +220,21 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	if(menumod != nil)
 		menumod->init(display_g, mainfont);
 
-	# Initialize tool management state
-	activetoolset = "read" :: "list" :: "find" :: "search" ::
-		"write" :: "edit" :: "present" :: "ask" ::
-		"diff" :: "json" :: "git" :: "memory" ::
-		"websearch" :: "http" :: "mail" ::
-		"spawn" :: "gap" :: nil;
+	# Initialize tool management state — sync from running tools9p if available
+	{
+		toolsraw := readfile("/tool/tools");
+		if(toolsraw != nil && len toolsraw > 0) {
+			(nil, tl0) := sys->tokenize(toolsraw, "\n");
+			activetoolset = tl0;
+		} else {
+			# Fallback if tools9p not yet running
+			activetoolset = "read" :: "list" :: "find" :: "search" ::
+				"write" :: "edit" :: "present" :: "ask" ::
+				"diff" :: "json" :: "git" :: "memory" ::
+				"websearch" :: "http" :: "mail" ::
+				"spawn" :: "gap" :: nil;
+		}
+	}
 	toolsec_expanded = 1;
 	toolavail_expanded = 0;
 	knowntoolnames = scantoolcatalog();
@@ -389,6 +403,20 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 								}
 								j++;
 							}
+						}
+						break;
+					}
+				}
+			}
+
+			# [-] button: unmount from Mounted subsection (catalog entries)
+			if(!tabclicked && avail_expanded) {
+				for(pi := 0; pi < ncatmountedminusrects; pi++) {
+					if(catmountedminusrects[pi].contains(p.xy)) {
+						if(catmountedces != nil && pi < len catmountedces &&
+								catmountedces[pi] != nil) {
+							unmountresource(catmountedces[pi]);
+							tabclicked = 1;
 						}
 						break;
 					}
@@ -592,6 +620,7 @@ drawcontext(zone: Rect)
 	nplusrects = 0;
 	nminusrects = 0;
 	npinnedminusrects = 0;
+	ncatmountedminusrects = 0;
 	toolavailhdrrect = Rect((0, 0), (0, 0));
 	browserect = Rect((0, 0), (0, 0));
 
@@ -821,6 +850,62 @@ drawcontext(zone: Rect)
 		y += mainfont.height + 4;
 
 		if(avail_expanded) {
+			pminusw := mainfont.width("[-]");
+
+			# ─ Mounted ─ subsection: pinned paths + mounted catalog entries
+			hasmounted := pinnedpaths != nil;
+			if(!hasmounted) {
+				for(mck := catalog; mck != nil; mck = tl mck)
+					if((hd mck).mntpath != "") { hasmounted = 1; break; }
+			}
+			if(hasmounted && y + mainfont.height <= zone.max.y) {
+				mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Mounted ─");
+				y += mainfont.height + 2;
+
+				# Pinned paths
+				if(pinnedpaths != nil) {
+					pinnedminusrects = array[32] of Rect;
+					for(pp := pinnedpaths; pp != nil; pp = tl pp) {
+						ppath := hd pp;
+						if(y + mainfont.height > zone.max.y)
+							break;
+						mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
+							"● " + ppath.label);
+						mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
+							mainfont, "[-]");
+						if(npinnedminusrects < len pinnedminusrects)
+							pinnedminusrects[npinnedminusrects++] = Rect(
+								(zone.max.x - pad - pminusw - 1, y),
+								(zone.max.x - pad + 1, y + mainfont.height));
+						y += mainfont.height + 2;
+					}
+				}
+
+				# Mounted catalog entries
+				catmountedminusrects = array[32] of Rect;
+				catmountedces = array[32] of ref CatalogEntry;
+				for(ml := catalog; ml != nil; ml = tl ml) {
+					mce := hd ml;
+					if(mce.mntpath == "")
+						continue;
+					if(y + mainfont.height > zone.max.y)
+						break;
+					mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
+						"● " + mce.name);
+					mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
+						mainfont, "[-]");
+					if(ncatmountedminusrects < len catmountedminusrects) {
+						catmountedminusrects[ncatmountedminusrects] = Rect(
+							(zone.max.x - pad - pminusw - 1, y),
+							(zone.max.x - pad + 1, y + mainfont.height));
+						catmountedces[ncatmountedminusrects] = mce;
+						ncatmountedminusrects++;
+					}
+					y += mainfont.height + 2;
+				}
+				y += 2;
+			}
+
 			# Browse button
 			if(y + mainfont.height <= zone.max.y) {
 				mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, "Browse...");
@@ -828,36 +913,7 @@ drawcontext(zone: Rect)
 				y += mainfont.height + 4;
 			}
 
-			# Pinned paths
-			if(pinnedpaths != nil && y + mainfont.height <= zone.max.y) {
-				pminusw := mainfont.width("[-]");
-				pinnedminusrects = array[32] of Rect;
-				mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Pinned ─");
-				y += mainfont.height + 2;
-
-				for(pp := pinnedpaths; pp != nil; pp = tl pp) {
-					ppath := hd pp;
-					if(y + mainfont.height > zone.max.y)
-						break;
-					mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
-						"● " + ppath.label);
-					mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
-						mainfont, "[-]");
-					if(npinnedminusrects < len pinnedminusrects)
-						pinnedminusrects[npinnedminusrects++] = Rect(
-							(zone.max.x - pad - pminusw - 1, y),
-							(zone.max.x - pad + 1, y + mainfont.height));
-					y += mainfont.height + 2;
-				}
-
-				# Separator before catalog
-				if(catalog != nil && y + mainfont.height <= zone.max.y) {
-					mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Available ─");
-					y += mainfont.height + 2;
-				}
-			}
-
-			# Catalog entries
+			# Catalog entries (all: mounted ● and unmounted ○)
 			if(catalog != nil) {
 				glyphw := mainfont.width("○ ");
 				cplusw := mainfont.width("[+]");
@@ -865,6 +921,11 @@ drawcontext(zone: Rect)
 				plusrects = array[32] of Rect;
 				minusrects = array[32] of Rect;
 				ctxentryrects = array[32] of Rect;
+
+				if(y + mainfont.height <= zone.max.y) {
+					mainwin.text((zone.min.x + pad, y), dimcol, (0, 0), mainfont, "─ Available ─");
+					y += mainfont.height + 2;
+				}
 
 				for(cl := catalog; cl != nil; cl = tl cl) {
 					ce := hd cl;

@@ -157,6 +157,10 @@ tmp/*.pdfi*
 tmp/plumb.log
 tmp/.veltro/
 
+# Stale build artifacts placed in wrong location (authoritative copies are in dis/)
+dis/cmd/luci*.dis
+dis/cmd/luci*.sbl
+
 # Stray files
 fprint'
 
