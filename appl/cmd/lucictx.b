@@ -924,14 +924,14 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 
 	mainwin.draw(zone, bgcol, nil, (0, 0));
 
-	# Header row: [<]  <path>  [Bind] [X]
-	backw   := mainfont.width("[<]");
-	cancelw := mainfont.width("[X]");
-	bindw   := mainfont.width("[Bind]");
+	# Header row: [up]  <path>  [bind] [close]
+	backw   := mainfont.width("[up]");
+	cancelw := mainfont.width("[close]");
+	bindw   := mainfont.width("[bind]");
 
 	brow_backrect = Rect((zone.min.x + pad, y),
 		(zone.min.x + pad + backw, y + lineH));
-	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "[<]");
+	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "[up]");
 
 	# Path — truncate from left if too wide
 	pathx   := zone.min.x + pad + backw + 6;
@@ -945,12 +945,12 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 		(zone.max.x - pad - cancelw - 6 - bindw, y),
 		(zone.max.x - pad - cancelw - 6, y + lineH));
 	mainwin.text((zone.max.x - pad - cancelw - 6 - bindw, y),
-		greencol, (0, 0), mainfont, "[Bind]");
+		greencol, (0, 0), mainfont, "[bind]");
 
 	brow_cancelrect = Rect(
 		(zone.max.x - pad - cancelw, y),
 		(zone.max.x - pad, y + lineH));
-	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, "[X]");
+	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, "[close]");
 
 	y += lineH + 2;
 	mainwin.draw(Rect((zone.min.x + pad, y), (zone.max.x - pad, y + 1)), dimcol, nil, (0, 0));
@@ -1154,7 +1154,7 @@ filebrowser(startpath: string): string
 			if(clicked)
 				continue;
 			# File entries are displayed for context but not selectable —
-			# only [Bind] (current directory) is actionable.
+			# only [bind] (current directory) is actionable.
 		}
 	}
 
