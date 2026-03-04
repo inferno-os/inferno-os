@@ -243,6 +243,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	if(actid >= 0)
 		loadcontext();
+	loadpinnedpaths();
 
 	redrawctx();
 
@@ -1485,21 +1486,9 @@ resolvegap(desc: string)
 
 bindpath(srcpath: string)
 {
-	basename := pathbase(srcpath);
-	if(basename == nil || basename == "")
-		basename = "path";
-	slug := slugify(basename);
-	mntdir := MNT_BASE + "/" + slug;
-	ensuredir_mnt(mntdir);
-	if(sys->bind(srcpath, mntdir, Sys->MREPL) < 0) {
-		sys->fprint(stderr, "lucictx: bindpath '%s': %r\n", srcpath);
-		return;
-	}
-	pp := ref PinnedPath(basename, srcpath, mntdir);
-	pinnedpaths = pp :: pinnedpaths;
-	# Register with agent context (use srcpath — original tools9p can access it)
-	writetofile(mountpt_g + "/ctl",
-		"resource add path=" + srcpath + " label=" + basename + " type=file status=idle");
+	# Register in tools9p; lucibridge reads /tool/paths and binds in its namespace.
+	writetofile("/tool/ctl", "bindpath " + srcpath);
+	loadpinnedpaths();
 	loadcontext();
 	redrawctx();
 }
@@ -1508,20 +1497,32 @@ unbindpath(pp: ref PinnedPath)
 {
 	if(pp == nil)
 		return;
-	sys->unmount(nil, pp.mntdir);
-	newlist: list of ref PinnedPath;
-	for(p := pinnedpaths; p != nil; p = tl p)
-		if(hd p != pp)
-			newlist = hd p :: newlist;
-	# Reverse to preserve order
-	revlist: list of ref PinnedPath;
-	for(p = newlist; p != nil; p = tl p)
-		revlist = hd p :: revlist;
-	pinnedpaths = revlist;
-	# Deregister from agent context
-	writetofile(mountpt_g + "/ctl", "resource remove " + pp.label);
+	writetofile("/tool/ctl", "unbindpath " + pp.srcpath);
+	loadpinnedpaths();
 	loadcontext();
 	redrawctx();
+}
+
+# Rebuild pinnedpaths from /tool/paths (authoritative source in tools9p).
+loadpinnedpaths()
+{
+	raw := readfile("/tool/paths");
+	(nil, ptl) := sys->tokenize(raw, "\n");
+	pinnedpaths = nil;
+	for(p := ptl; p != nil; p = tl p) {
+		src := hd p;
+		if(src == "")
+			continue;
+		base := pathbase(src);
+		if(base == nil || base == "")
+			base = "path";
+		pinnedpaths = ref PinnedPath(base, src, "") :: pinnedpaths;
+	}
+	# Reverse to match tools9p order (tools9p prepends, so list is reversed)
+	rev: list of ref PinnedPath;
+	for(q := pinnedpaths; q != nil; q = tl q)
+		rev = hd q :: rev;
+	pinnedpaths = rev;
 }
 
 # --- Attribute parsing ---

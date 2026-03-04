@@ -53,7 +53,7 @@ Tools9p: module {
 };
 
 # Qid types for synthetic files
-Qroot, Qtools, Qhelp, Qregistry, Qctl: con iota;
+Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths: con iota;
 Qtoolbase: con 100;  # Tool files start at 100
 
 # Tool info structure
@@ -70,6 +70,7 @@ user: string;
 tools: list of ref ToolInfo;     # active (exposed) tools
 alltools: list of ref ToolInfo;  # pre-loaded inactive tools (available for ctl-add)
 extpaths: list of string;  # Extra paths from -p flags (e.g. "/dis/wm")
+boundpaths: list of string;  # Paths registered via bindpath ctl command
 vers: int;
 helpresult: array of byte;  # Last help query result (global, not per-fid)
 
@@ -385,6 +386,26 @@ loadtool(ti: ref ToolInfo): string
 	return nil;
 }
 
+strlist_contains(l: list of string, s: string): int
+{
+	for(; l != nil; l = tl l)
+		if(hd l == s)
+			return 1;
+	return 0;
+}
+
+# Generate list of bound paths (newline-separated for /tool/paths)
+genpathlist(): string
+{
+	result := "";
+	for(p := boundpaths; p != nil; p = tl p) {
+		if(result != "")
+			result += "\n";
+		result += hd p;
+	}
+	return result;
+}
+
 # Generate list of tool names (newline-separated for /tool/tools)
 gentoollist(): string
 {
@@ -632,6 +653,9 @@ Serve:
 			Qctl =>
 				srv.reply(styxservers->readbytes(m, array of byte ""));
 
+			Qpaths =>
+				srv.reply(styxservers->readbytes(m, array of byte genpathlist()));
+
 			* =>
 				# Tool files - return buffered result
 				if(qtype >= Qtoolbase) {
@@ -672,6 +696,7 @@ Serve:
 
 			Qctl =>
 				# Dynamic tool management: "add <name>" or "remove <name>"
+				# Namespace path management: "bindpath <path>" or "unbindpath <path>"
 				if(len data > 4 && data[0:4] == "add ") {
 					cerr := ctladd(data[4:]);
 					if(cerr != nil)
@@ -681,8 +706,21 @@ Serve:
 				} else if(len data > 7 && data[0:7] == "remove ") {
 					ctlremove(data[7:]);
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 9 && data[0:9] == "bindpath ") {
+					p := data[9:];
+					if(!strlist_contains(boundpaths, p))
+						boundpaths = p :: boundpaths;
+					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 11 && data[0:11] == "unbindpath ") {
+					p := data[11:];
+					nl: list of string;
+					for(bl := boundpaths; bl != nil; bl = tl bl)
+						if(hd bl != p)
+							nl = hd bl :: nl;
+					boundpaths = nl;
+					srv.reply(ref Rmsg.Write(m.tag, len m.data));
 				} else {
-					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <toolname>"));
+					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path>"));
 				}
 
 			* =>
@@ -751,6 +789,9 @@ dirgen(p: big): (ref Sys->Dir, string)
 
 	Qctl =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "ctl", big 0, 8r644), nil);
+
+	Qpaths =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "paths", big 0, 8r444), nil);
 	}
 
 	# Check if it's a tool file
@@ -786,6 +827,8 @@ navigator(navops: chan of ref Navop)
 					n.path = big Qregistry;
 				"ctl" =>
 					n.path = big Qctl;
+				"paths" =>
+					n.path = big Qpaths;
 				* =>
 					# Check if it's a registered tool name
 					ti := findtool(n.name);
@@ -838,11 +881,18 @@ navigator(navops: chan of ref Navop)
 					i++;
 				}
 
+				# Entry 4: paths
+				if(i <= 4 && count > 0) {
+					n.reply <-= dirgen(big Qpaths);
+					count--;
+					i++;
+				}
+
 				# Remaining entries: registered tool files
 				idx := 0;
 				for(t := tools; t != nil && count > 0; t = tl t) {
 					ti := hd t;
-					if(i <= 4 + idx) {
+					if(i <= 5 + idx) {
 						n.reply <-= dirgen(big ti.qid);
 						count--;
 					}

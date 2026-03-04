@@ -57,6 +57,9 @@ convcount := 0;		# messages written to conversation by this bridge
 # Tool tracking: raw string from /tool/tools; updated when tool set changes
 currenttoolsraw := "";
 
+# Path tracking: raw string from /tool/paths; updated when path set changes
+currentpathsraw := "";
+
 # CLI overrides from -t/-p flags
 toolargs: list of string;	# from -t flag (comma-separated tool names)
 pathargs: list of string;	# from -p flag (comma-separated paths)
@@ -169,6 +172,10 @@ initsession(): string
 	agentlib->initsessiontools(sessionid, toollist);
 	if(agentlib->pathexists("/tool"))
 		currenttoolsraw = agentlib->readfile("/tool/tools");
+
+	# Bind any paths already registered in /tool/paths (e.g. from -p flag)
+	currentpathsraw = "";
+	applypathchanges();
 
 	# Register each available tool as a context resource so the context zone
 	# can display and track which tools the agent is using.
@@ -404,14 +411,97 @@ synctoolset(want: list of string)
 			writefile("/tool/ctl", "remove " + hd c);
 }
 
-# Bind a host path into /n/local/<basename> in the agent namespace.
-bindagentpath(p: string)
+# Apply path changes from /tool/paths into lucibridge's namespace.
+# Diffs current /tool/paths against currentpathsraw; binds new paths,
+# unmounts removed paths.  Called at turn start and from initsession.
+applypathchanges()
 {
-	base := pathbase(p);
-	if(base == nil || base == "")
-		base = "path";
-	tgt := "/n/local/" + base;
-	sys->bind(p, tgt, Sys->MBEFORE);
+	if(!agentlib->pathexists("/tool"))
+		return;
+	latest := agentlib->readfile("/tool/paths");
+	if(latest == currentpathsraw)
+		return;
+	(nil, newpaths) := sys->tokenize(latest, "\n");
+	(nil, oldpaths) := sys->tokenize(currentpathsraw, "\n");
+
+	# Bind newly added paths
+	for(np := newpaths; np != nil; np = tl np) {
+		p := hd np;
+		if(p == "" || strcontains(oldpaths, p))
+			continue;
+		base := pathbase(p);
+		if(base == nil || base == "")
+			base = "path";
+		tgt := "/n/local/" + base;
+		if(sys->bind(p, tgt, Sys->MBEFORE) < 0)
+			log("bindpath " + p + ": failed");
+		else
+			log("bound " + p + " -> " + tgt);
+	}
+
+	# Unmount removed paths
+	for(op := oldpaths; op != nil; op = tl op) {
+		p := hd op;
+		if(p == "" || strcontains(newpaths, p))
+			continue;
+		base := pathbase(p);
+		if(base == nil || base == "")
+			base = "path";
+		tgt := "/n/local/" + base;
+		sys->unmount(nil, tgt);
+		log("unbound " + p);
+	}
+
+	currentpathsraw = latest;
+}
+
+# Handle slash commands from the input channel.
+# Returns 1 if the command was handled (don't pass to agent), 0 otherwise.
+handleslash(cmd: string): int
+{
+	if(len cmd == 0 || cmd[0] != '/')
+		return 0;
+	rest := cmd[1:];
+	(verb, afterverb) := str->splitl(rest, " \t");
+	arg := str->drop(afterverb, " \t");
+	ack := "";
+	case verb {
+	"bind" =>
+		if(arg == "") {
+			ack = "usage: /bind <path>";
+		} else {
+			writefile("/tool/ctl", "bindpath " + arg);
+			ack = "bound: " + arg;
+		}
+	"unbind" =>
+		if(arg == "") {
+			ack = "usage: /unbind <path>";
+		} else {
+			writefile("/tool/ctl", "unbindpath " + arg);
+			ack = "unbound: " + arg;
+		}
+	"tools" =>
+		if(len arg == 0) {
+			ack = "usage: /tools +name or /tools -name";
+		} else if(arg[0] == '+') {
+			writefile("/tool/ctl", "add " + arg[1:]);
+			ack = "tool added: " + arg[1:];
+		} else if(arg[0] == '-') {
+			writefile("/tool/ctl", "remove " + arg[1:]);
+			ack = "tool removed: " + arg[1:];
+		} else {
+			ack = "usage: /tools +name or /tools -name";
+		}
+	"help" =>
+		ack = "/bind <path>  — add namespace path\n" +
+		      "/unbind <path>  — remove namespace path\n" +
+		      "/tools +name  — add tool\n" +
+		      "/tools -name  — remove tool";
+	* =>
+		return 0;	# unknown slash: pass to agent
+	}
+	writemsg("assistant", ack);
+	return 1;
 }
 
 # Run the agent loop for one human turn using native tool_use protocol.
@@ -422,6 +512,9 @@ bindagentpath(p: string)
 # fires before nslistener re-issues its pending read.
 agentturn(input: string)
 {
+	# Apply any namespace path changes (via /tool/ctl bindpath/unbindpath).
+	applypathchanges();
+
 	# If the tool set changed (via /tool/ctl), reinitialize the LLM session tools
 	# so the LLM knows about added/removed tools before processing this turn.
 	if(agentlib->pathexists("/tool")) {
@@ -655,9 +748,10 @@ init(nil: ref Draw->Context, args: list of string)
 	if(toolargs != nil)
 		synctoolset(toolargs);
 
-	# Apply -p path bindings into the agent namespace
+	# Apply -p path bindings: register in tools9p so applypathchanges() in
+	# initsession() picks them up, and lucictx can read them from /tool/paths.
 	for(pp := pathargs; pp != nil; pp = tl pp)
-		bindagentpath(hd pp);
+		writefile("/tool/ctl", "bindpath " + hd pp);
 
 	# Create LLM session
 	err := initsession();
@@ -681,6 +775,11 @@ init(nil: ref Draw->Context, args: list of string)
 			break;
 		}
 		log("human: " + human);
+
+		# Slash commands (/bind, /unbind, /tools, /help) are handled locally.
+		# They update tools9p state and reply immediately; agent is not invoked.
+		if(handleslash(human))
+			continue;
 
 		# Record human message in UI
 		writemsg("human", human);
