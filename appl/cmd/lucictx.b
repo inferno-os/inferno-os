@@ -1110,23 +1110,22 @@ filebrowser(startpath: string): string
 			}
 			if(clicked)
 				continue;
-			# File entry: select it
-			for(fi2 := 0; fi2 < brow_nfiles; fi2++) {
-				if(brow_filerects[fi2].contains(p.xy)) {
-					if(curpath == "/")
-						result = "/" + brow_filenames[fi2];
-					else
-						result = curpath + "/" + brow_filenames[fi2];
-					break;
-				}
-			}
-			if(result != "")
-				break;
+			# File entries are displayed for context but not selectable —
+			# only [Bind] (current directory) is actionable.
 		}
 	}
 
-	# Restore zone proportions
+	# Restore zone proportions.
+	# Drain any stale rszch_g message so our restore isn't blocked by it,
+	# then send restore and wait for the new (smaller) ctximg.
+	alt { <-rszch_g => ; * => ; }
 	alt { ctxreqch_g <-= "restore" => ; * => ; }
+	alt {
+	newimg := <-rszch_g =>
+		mainwin = newimg;
+	* =>
+		;
+	}
 	return result;
 }
 

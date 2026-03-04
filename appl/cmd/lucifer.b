@@ -696,7 +696,7 @@ mainloop()
 		drawchrome(mainwin.r);
 	req := <-ctxreqch =>
 		if(req == "expand")
-			handlectxlayout(25, 35);
+			handlectxlayout(1, 4);
 		else if(req == "restore")
 			handlectxlayout(30, 45);
 	}
