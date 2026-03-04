@@ -1,0 +1,94 @@
+name: Formal Verification
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'formal-verification/**'
+      - 'emu/port/pgrp.c'
+      - 'emu/port/chan.c'
+      - 'emu/port/dat.h'
+      - '.github/workflows/formal-verification.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'formal-verification/**'
+      - 'emu/port/pgrp.c'
+      - 'emu/port/chan.c'
+      - 'emu/port/dat.h'
+      - '.github/workflows/formal-verification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # SPIN Model Checking
+  # ─────────────────────────────────────────────
+  spin-verification:
+    name: SPIN Model Checking
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Install SPIN
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y spin gcc
+
+    - name: Verify SPIN version
+      run: spin -V
+
+    - name: Run SPIN verification (quick mode)
+      run: |
+        cd formal-verification/spin
+        chmod +x verify-all.sh
+        ./verify-all.sh quick
+
+    - name: Upload SPIN results
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      if: always()
+      with:
+        name: spin-results
+        path: /tmp/spin_*.log
+        retention-days: 14
+
+  # ─────────────────────────────────────────────
+  # CBMC Bounded Model Checking
+  # ─────────────────────────────────────────────
+  cbmc-verification:
+    name: CBMC Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Install CBMC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cbmc
+
+    - name: Verify CBMC version
+      run: cbmc --version
+
+    - name: Run CBMC verification
+      run: |
+        cd formal-verification/cbmc
+        chmod +x verify-all.sh
+        ./verify-all.sh
+
+    - name: Upload CBMC results
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      if: always()
+      with:
+        name: cbmc-results
+        path: /tmp/cbmc_*.log
+        retention-days: 14

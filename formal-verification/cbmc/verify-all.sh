@@ -57,6 +57,18 @@ run_verification \
     "harness_refcount.c" \
     --signed-overflow-check --pointer-check
 
+# Verify pgrpcpy namespace isolation (actual C code)
+run_verification \
+    "pgrpcpy Isolation" \
+    "harness_pgrpcpy.c" \
+    --bounds-check --pointer-check --signed-overflow-check --unwind 34
+
+# Verify pgrpcpy error path safety
+run_verification \
+    "pgrpcpy Error Paths" \
+    "harness_pgrpcpy_error.c" \
+    --bounds-check --pointer-check --signed-overflow-check --unwind 34
+
 echo "========================================"
 echo "CBMC Verification Summary"
 echo "========================================"

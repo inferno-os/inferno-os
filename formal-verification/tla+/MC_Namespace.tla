@@ -11,14 +11,11 @@
  * Or with the TLA+ Toolbox, select this module as the model.
  ***************************************************************************)
 
-EXTENDS Namespace, NamespaceProperties, TLC
+EXTENDS Namespace, NamespaceProperties, IsolationProof, TLC
 
 \* =========================================================================
 \* MODEL CONSTANTS
 \* =========================================================================
-
-\* Small values for tractable model checking
-\* These can be increased for more thorough checking at cost of time
 
 CONSTANTS
     MC_MaxProcesses,
@@ -48,7 +45,6 @@ StateConstraint ==
 \* ACTION CONSTRAINT
 \* =========================================================================
 
-\* Limit the number of objects to bound state space
 ActionConstraint ==
     /\ next_pgrp_id' <= MC_MaxPgrps + 1
     /\ next_chan_id' <= MC_MaxChannels + 1
@@ -57,24 +53,32 @@ ActionConstraint ==
 \* INVARIANTS TO CHECK
 \* =========================================================================
 
+\* Core type safety
+INVARIANT_TypeOK == TypeOK
+
 \* Primary safety invariant
 INVARIANT_Safety == SafetyInvariant
 
-\* Full correctness invariant
+\* Full correctness including isolation
 INVARIANT_Full == FullCorrectness
+
+\* Non-trivial isolation properties
+INVARIANT_Isolation == NamespaceIsolation
+INVARIANT_IsolationTheorem == NamespaceIsolationTheorem
+INVARIANT_NonPropagation == UnilateralMountNonPropagation
+INVARIANT_CopyFidelity == CopyFidelity
+INVARIANT_PostCopySoundness == PostCopyMountsSound
+INVARIANT_NoViolation == NoIsolationViolation
 
 \* =========================================================================
 \* PROPERTIES TO CHECK
 \* =========================================================================
 
-\* Type correctness (should always hold)
-PROPERTY_TypeOK == []TypeOK
+\* Mount locality (temporal)
+PROPERTY_MountLocality == MountLocalityProperty
 
-\* Namespace isolation (the main security property)
-PROPERTY_Isolation == []NamespaceIsolation
-
-\* Reference counting (memory safety)
-PROPERTY_RefCount == []RefCountNonNegative
+\* Progress
+PROPERTY_Progress == Progress
 
 \* =========================================================================
 \* SYMMETRY OPTIMIZATION
@@ -101,6 +105,12 @@ Alias == [
     pgrp_refs |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |-> pgrp_refcount[pg]],
     mounts |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |->
                     [path \in PathId |-> mount_table[pg][path]]],
+    slash |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |-> pgrp_slash[pg]],
+    dot |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |-> pgrp_dot[pg]],
+    parents |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |-> pgrp_parent[pg]],
+    post_mounts |-> [pg \in {p \in PgrpId : pgrp_exists[p]} |-> post_copy_mounts[pg]],
+    snapshots |-> [pg \in {p \in PgrpId : pgrp_exists[p] /\ pgrp_parent[p] # 0} |->
+                      copy_snapshot[pg]],
     chans |-> {c \in ChannelId : chan_exists[c]},
     chan_refs |-> [c \in {ch \in ChannelId : chan_exists[ch]} |-> chan_refcount[c]]
 ]
