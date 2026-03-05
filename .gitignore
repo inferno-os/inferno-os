@@ -77,6 +77,8 @@ Dockerfile
 /*.sbl
 # Debug symbols in runtime dis tree
 /dis/**/*.sbl
+# Compiled test bytecode in dis tree
+/dis/tests/*.dis
 # Xenith plugin build artifacts (built from appl/xenith/xenith/)
 /xenith/dis/
 .env
