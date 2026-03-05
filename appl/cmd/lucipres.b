@@ -28,6 +28,8 @@ include "rlayout.m";
 
 include "menu.m";
 
+include "viewport.m";
+
 include "plumbmsg.m";
 
 include "wmclient.m";
@@ -62,6 +64,8 @@ Artifact: adt {
 	rendering: int;
 	zoom:	int;
 	appstatus: string;	# "launching"|"running"|"dead" (type=app only)
+	panx:	int;		# horizontal pan offset (pixels)
+	pany:	int;		# vertical pan offset (pixels)
 };
 
 TabRect: adt {
@@ -86,6 +90,9 @@ mermaidmod: Mermaid;
 
 menumod: Menu;
 Popup: import menumod;
+
+vpmod: Viewport;
+View: import vpmod;
 
 plumbmod: Plumbmsg;
 Msg: import plumbmod;
@@ -116,8 +123,8 @@ artifacts: list of ref Artifact;
 nart := 0;
 centeredart: string;
 artrendw := 0;
-presscrollpx := 0;
 maxpresscrollpx := 0;
+maxpanx := 0;
 pres_viewport_h := 400;
 
 # Tab state
@@ -204,6 +211,9 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(menumod != nil)
 		menumod->init(display_g, mainfont);
 
+	# Load viewport
+	vpmod = load Viewport Viewport->PATH;
+
 	# Load plumbmsg
 	plumbmod = load Plumbmsg Plumbmsg->PATH;
 
@@ -234,11 +244,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 				if(intabstrip) {
 					if(tabscrolloff > 0)
 						tabscrolloff--;
-				} else {
-					presscrollpx -= mainfont.height * 3;
-					if(presscrollpx < 0)
-						presscrollpx = 0;
-				}
+				} else
+					prescroll(-1);
 				redrawpres();
 			} else if(p.buttons & 16) {
 				intabstrip := (tabstrip_maxy > tabstrip_miny &&
@@ -246,11 +253,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 				if(intabstrip) {
 					if(tabscrolloff < nart - 1)
 						tabscrolloff++;
-				} else {
-					presscrollpx += mainfont.height * 3;
-					if(presscrollpx > maxpresscrollpx)
-						presscrollpx = maxpresscrollpx;
-				}
+				} else
+					prescroll(1);
 				redrawpres();
 			}
 
@@ -262,7 +266,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 					if(tablayout[ti].r.contains(p.xy)) {
 						if(tablayout[ti].id != centeredart) {
 							centeredart = tablayout[ti].id;
-							presscrollpx = 0;
 							if(actid_g >= 0)
 								writetofile(
 									sys->sprint("%s/activity/%d/presentation/ctl",
@@ -282,7 +285,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 						if(pdfart != nil && pdfart.pdfpage > 0) {
 							pdfart.pdfpage--;
 							pdfart.rendimg = nil;
-							presscrollpx = 0;
+							pdfart.pany = 0;
+							pdfart.panx = 0;
 							redrawpres();
 						}
 						tabclicked = 1;
@@ -292,10 +296,19 @@ init(ctxt: ref Draw->Context, args: list of string)
 						if(pdfart != nil) {
 							pdfart.pdfpage++;
 							pdfart.rendimg = nil;
-							presscrollpx = 0;
+							pdfart.pany = 0;
+							pdfart.panx = 0;
 							redrawpres();
 						}
 						tabclicked = 1;
+					}
+				}
+				# Drag in content area
+				if(!tabclicked && prescontentr.contains(p.xy)) {
+					dart := findartifact(centeredart);
+					if(dart != nil && dart.atype != "app") {
+						handledrag(dart, p.xy);
+						prevbuttons = 0;
 					}
 				}
 			}
@@ -348,7 +361,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 			# Immediately overwrite with bgcol so no white flash reaches the display.
 			if(win.screen != nil && win.screen.image != nil)
 				win.screen.image.draw(win.screen.image.r, bgcol, nil, (0,0));
-			presscrollpx = 0;
 			for(al := artifacts; al != nil; al = tl al)
 				(hd al).rendimg = nil;
 			artrendw = 0;
@@ -373,10 +385,7 @@ handleevent(ev: string)
 		s := readfile(sys->sprint("%s/activity/%d/presentation/current",
 			mountpt_g, actid_g));
 		if(s != nil) {
-			newid := strip(s);
-			if(newid != centeredart)
-				presscrollpx = 0;
-			centeredart = newid;
+			centeredart = strip(s);
 		}
 	} else if(hasprefix(ev, "presentation new ")) {
 		id := strip(ev[len "presentation new ":]);
@@ -550,8 +559,9 @@ drawpresentation(zone: Rect)
 		if(rlay != nil)
 		if(centart.data != "") {
 			codebg := display_g.color(int 16r1A1A2AFF);
+			zw := contentw * 100 / artzoom(centart);
 			style := ref Rlayout->Style(
-				contentw, 4,
+				zw, 4,
 				mainfont, monofont_g,
 				textcol, bgcol, accentcol, codebg,
 				100
@@ -561,12 +571,19 @@ drawpresentation(zone: Rect)
 		}
 		if(centart.rendimg != nil) {
 			imgh := centart.rendimg.r.dy();
+			imgw := centart.rendimg.r.dx();
 			newmax := imgh - pres_viewport_h;
 			if(newmax < 0) newmax = 0;
 			maxpresscrollpx = newmax;
-			if(presscrollpx > maxpresscrollpx)
-				presscrollpx = maxpresscrollpx;
-			srcy := presscrollpx;
+			if(centart.pany > maxpresscrollpx)
+				centart.pany = maxpresscrollpx;
+			newmaxx := imgw - contentw;
+			if(newmaxx < 0) newmaxx = 0;
+			maxpanx = newmaxx;
+			if(centart.panx > maxpanx)
+				centart.panx = maxpanx;
+			srcy := centart.pany;
+			srcx := centart.panx;
 			dsty := contentr.min.y + pad;
 			enddsty := dsty + (imgh - srcy);
 			if(enddsty > contentr.max.y) enddsty = contentr.max.y;
@@ -574,7 +591,7 @@ drawpresentation(zone: Rect)
 				mainwin.draw(
 					Rect((contentr.min.x + pad, dsty),
 					     (contentr.min.x + pad + contentw, enddsty)),
-					centart.rendimg, nil, (0, srcy));
+					centart.rendimg, nil, (srcx, srcy));
 		} else
 			drawcentertext(contentr, "(empty)");
 	"text" or "code" =>
@@ -587,15 +604,26 @@ drawpresentation(zone: Rect)
 		newmax2 := total_h - pres_viewport_h;
 		if(newmax2 < 0) newmax2 = 0;
 		maxpresscrollpx = newmax2;
-		if(presscrollpx > maxpresscrollpx)
-			presscrollpx = maxpresscrollpx;
-		y2 := contenty - presscrollpx;
+		if(centart.pany > maxpresscrollpx)
+			centart.pany = maxpresscrollpx;
+		# Compute max horizontal pan from widest line
+		maxlinew := 0;
+		for(wlm := ls; wlm != nil; wlm = tl wlm) {
+			lw := monofont_g.width(hd wlm);
+			if(lw > maxlinew) maxlinew = lw;
+		}
+		newmaxx2 := maxlinew - contentw;
+		if(newmaxx2 < 0) newmaxx2 = 0;
+		maxpanx = newmaxx2;
+		if(centart.panx > maxpanx)
+			centart.panx = maxpanx;
+		y2 := contenty - centart.pany;
 		wl: list of string;
 		for(wl = ls; wl != nil; wl = tl wl) {
 			if(y2 + monofont_g.height > contentr.max.y)
 				break;
 			if(y2 >= contentr.min.y)
-				mainwin.text((contentr.min.x + pad, y2),
+				mainwin.text((contentr.min.x + pad - centart.panx, y2),
 					textcol, (0, 0), monofont_g, hd wl);
 			y2 += monofont_g.height;
 		}
@@ -631,12 +659,19 @@ drawpresentation(zone: Rect)
 				96 * artzoom(centart) / 100);
 		if(centart.rendimg != nil) {
 			imgh3 := centart.rendimg.r.dy();
+			imgw3 := centart.rendimg.r.dx();
 			newmax3 := imgh3 - pres_viewport_h;
 			if(newmax3 < 0) newmax3 = 0;
 			maxpresscrollpx = newmax3;
-			if(presscrollpx > maxpresscrollpx)
-				presscrollpx = maxpresscrollpx;
-			srcy3 := presscrollpx;
+			if(centart.pany > maxpresscrollpx)
+				centart.pany = maxpresscrollpx;
+			newmaxx3 := imgw3 - contentw;
+			if(newmaxx3 < 0) newmaxx3 = 0;
+			maxpanx = newmaxx3;
+			if(centart.panx > maxpanx)
+				centart.panx = maxpanx;
+			srcy3 := centart.pany;
+			srcx3 := centart.panx;
 			dsty3 := pdfcontent.min.y + pad;
 			enddsty3 := dsty3 + (imgh3 - srcy3);
 			if(enddsty3 > pdfcontent.max.y) enddsty3 = pdfcontent.max.y;
@@ -644,7 +679,7 @@ drawpresentation(zone: Rect)
 				mainwin.draw(
 					Rect((pdfcontent.min.x + pad, dsty3),
 					     (pdfcontent.min.x + pad + contentw, enddsty3)),
-					centart.rendimg, nil, (0, srcy3));
+					centart.rendimg, nil, (srcx3, srcy3));
 		} else
 			drawcentertext(pdfcontent, "cannot render PDF");
 	"image" =>
@@ -652,12 +687,19 @@ drawpresentation(zone: Rect)
 			centart.rendimg = renderimage(centart.data);
 		if(centart.rendimg != nil) {
 			imgh4 := centart.rendimg.r.dy();
+			imgw4 := centart.rendimg.r.dx();
 			newmax4 := imgh4 - pres_viewport_h;
 			if(newmax4 < 0) newmax4 = 0;
 			maxpresscrollpx = newmax4;
-			if(presscrollpx > maxpresscrollpx)
-				presscrollpx = maxpresscrollpx;
-			srcy4 := presscrollpx;
+			if(centart.pany > maxpresscrollpx)
+				centart.pany = maxpresscrollpx;
+			newmaxx4 := imgw4 - contentw;
+			if(newmaxx4 < 0) newmaxx4 = 0;
+			maxpanx = newmaxx4;
+			if(centart.panx > maxpanx)
+				centart.panx = maxpanx;
+			srcy4 := centart.pany;
+			srcx4 := centart.panx;
 			dsty4 := contentr.min.y + pad;
 			enddsty4 := dsty4 + (imgh4 - srcy4);
 			if(enddsty4 > contentr.max.y) enddsty4 = contentr.max.y;
@@ -665,14 +707,15 @@ drawpresentation(zone: Rect)
 				mainwin.draw(
 					Rect((contentr.min.x + pad, dsty4),
 					     (contentr.min.x + pad + contentw, enddsty4)),
-					centart.rendimg, nil, (0, srcy4));
+					centart.rendimg, nil, (srcx4, srcy4));
 		} else
 			drawcentertext(contentr, "cannot render image");
 	"mermaid" =>
 		if(centart.rendimg == nil) {
 			if(centart.rendering == 0 && centart.data != "") {
 				centart.rendering = 1;
-				spawn rendermermaid(centart, contentw);
+				mermw := contentw * 100 / artzoom(centart);
+				spawn rendermermaid(centart, mermw);
 			}
 			if(centart.rendering == 1)
 				drawcentertext(contentr, "Rendering diagram...");
@@ -684,9 +727,10 @@ drawpresentation(zone: Rect)
 				newmax5 := total_h3 - pres_viewport_h;
 				if(newmax5 < 0) newmax5 = 0;
 				maxpresscrollpx = newmax5;
-				if(presscrollpx > maxpresscrollpx)
-					presscrollpx = maxpresscrollpx;
-				y5 := contenty - presscrollpx;
+				if(centart.pany > maxpresscrollpx)
+					centart.pany = maxpresscrollpx;
+				maxpanx = 0;
+				y5 := contenty - centart.pany;
 				wl5: list of string;
 				for(wl5 = ls3; wl5 != nil; wl5 = tl wl5) {
 					if(y5 + monofont_g.height > contentr.max.y)
@@ -699,12 +743,19 @@ drawpresentation(zone: Rect)
 			}
 		} else {
 			imgh5 := centart.rendimg.r.dy();
+			imgw5 := centart.rendimg.r.dx();
 			newmax5b := imgh5 - pres_viewport_h;
 			if(newmax5b < 0) newmax5b = 0;
 			maxpresscrollpx = newmax5b;
-			if(presscrollpx > maxpresscrollpx)
-				presscrollpx = maxpresscrollpx;
-			srcy5 := presscrollpx;
+			if(centart.pany > maxpresscrollpx)
+				centart.pany = maxpresscrollpx;
+			newmaxx5 := imgw5 - contentw;
+			if(newmaxx5 < 0) newmaxx5 = 0;
+			maxpanx = newmaxx5;
+			if(centart.panx > maxpanx)
+				centart.panx = maxpanx;
+			srcy5 := centart.pany;
+			srcx5 := centart.panx;
 			dsty5 := contentr.min.y + pad;
 			enddsty5 := dsty5 + (imgh5 - srcy5);
 			if(enddsty5 > contentr.max.y) enddsty5 = contentr.max.y;
@@ -712,7 +763,7 @@ drawpresentation(zone: Rect)
 				mainwin.draw(
 					Rect((contentr.min.x + pad, dsty5),
 					     (contentr.min.x + pad + contentw, enddsty5)),
-					centart.rendimg, nil, (0, srcy5));
+					centart.rendimg, nil, (srcx5, srcy5));
 		}
 	"table" =>
 		trows := splitlines(centart.data);
@@ -738,15 +789,24 @@ drawpresentation(zone: Rect)
 						ci6++;
 					}
 				}
+				# Compute total table width for horizontal pan
+				tabtotalw := 0;
+				for(twi := 0; twi < ncols6; twi++)
+					tabtotalw += colw6[twi];
 				rowh6 := mainfont.height + 8;
 				nrows6 := listlen(trows);
 				total_h6 := nrows6 * rowh6;
 				newmax6 := total_h6 - pres_viewport_h;
 				if(newmax6 < 0) newmax6 = 0;
 				maxpresscrollpx = newmax6;
-				if(presscrollpx > maxpresscrollpx)
-					presscrollpx = maxpresscrollpx;
-				yt6 := contenty - presscrollpx;
+				if(centart.pany > maxpresscrollpx)
+					centart.pany = maxpresscrollpx;
+				newmaxx6 := tabtotalw - contentw;
+				if(newmaxx6 < 0) newmaxx6 = 0;
+				maxpanx = newmaxx6;
+				if(centart.panx > maxpanx)
+					centart.panx = maxpanx;
+				yt6 := contenty - centart.pany;
 				isheader6 := 1;
 				for(trl6 = trows; trl6 != nil; trl6 = tl trl6) {
 					rline6 := hd trl6;
@@ -769,7 +829,7 @@ drawpresentation(zone: Rect)
 								headercol, nil, (0, 0));
 						cells6 := tabparsecells(rline6);
 						ci6 := 0;
-						xt6 := contentr.min.x + pad;
+						xt6 := contentr.min.x + pad - centart.panx;
 						celcol6: ref Image;
 						for(; cells6 != nil && ci6 < ncols6; cells6 = tl cells6) {
 							if(isheader6) celcol6 = labelcol;
@@ -821,6 +881,96 @@ drawcentertext(r: Rect, text: string)
 	mainwin.text((tx, ty), dimcol, (0, 0), mainfont, text);
 }
 
+# --- Scroll and drag ---
+
+# Scroll the current artifact vertically.
+# dir: -1 = up, 1 = down.
+# Uses Viewport for boundary detection: when a PDF is at the bottom
+# and the user scrolls down, advance to the next page (like Xenith).
+prescroll(dir: int)
+{
+	art := findartifact(centeredart);
+	if(art == nil)
+		return;
+
+	step := mainfont.height * 3;
+	if(vpmod != nil) {
+		step = vpmod->scrollstep(pres_viewport_h);
+		v := ref View(art.panx, art.pany, 0, 0, 0, 0);
+		v.contentw = art.panx + 1;  # dummy — not clamping x here
+		v.contenth = maxpresscrollpx + pres_viewport_h;
+		v.vieww = 1;
+		v.viewh = pres_viewport_h;
+		boundary := vpmod->scrolly(v, dir, step);
+		art.pany = v.pany;
+
+		# Page navigation at boundary (PDFs)
+		if(art.atype == "pdf" && boundary != 0) {
+			if(boundary > 0) {
+				# At bottom — next page
+				art.pdfpage++;
+				art.rendimg = nil;
+				art.pany = 0;
+				art.panx = 0;
+			} else if(art.pdfpage > 0) {
+				# At top — previous page, start at bottom
+				art.pdfpage--;
+				art.rendimg = nil;
+				art.pany = 16r7FFFFFFF;  # clamped during render
+				art.panx = 0;
+			}
+		}
+	} else {
+		# Fallback without viewport module
+		if(dir > 0) {
+			art.pany += step;
+			if(art.pany > maxpresscrollpx)
+				art.pany = maxpresscrollpx;
+		} else {
+			art.pany -= step;
+			if(art.pany < 0)
+				art.pany = 0;
+		}
+	}
+}
+
+# Drag the current artifact content by mouse movement.
+# Follows the same pattern as Xenith's imagedrag(): track initial
+# position, compute delta, clamp via Viewport, redraw each move.
+handledrag(art: ref Artifact, startpt: Point)
+{
+	startpx := art.panx;
+	startpy := art.pany;
+
+	for(;;) {
+		np := <-win.ctxt.ptr;
+		if((np.buttons & 1) == 0)
+			break;
+
+		dx := startpt.x - np.xy.x;
+		dy := startpt.y - np.xy.y;
+
+		if(vpmod != nil) {
+			v := ref View(0, 0, 0, 0, 0, 0);
+			v.contentw = maxpanx + prescontentr.dx();
+			v.contenth = maxpresscrollpx + pres_viewport_h;
+			v.vieww = prescontentr.dx();
+			v.viewh = pres_viewport_h;
+			vpmod->drag(v, startpx, startpy, dx, dy);
+			art.panx = v.panx;
+			art.pany = v.pany;
+		} else {
+			art.panx = startpx + dx;
+			art.pany = startpy + dy;
+			if(art.panx < 0) art.panx = 0;
+			if(art.panx > maxpanx) art.panx = maxpanx;
+			if(art.pany < 0) art.pany = 0;
+			if(art.pany > maxpresscrollpx) art.pany = maxpresscrollpx;
+		}
+		redrawpres();
+	}
+}
+
 # --- Context menu ---
 
 handlecontextmenu(p: ref Pointer)
@@ -851,33 +1001,36 @@ handlecontextmenu(p: ref Pointer)
 				"kill id=" + artid);
 		return;
 	}
-	items: array of string;
-	if(art != nil && (art.atype == "pdf" || art.atype == "image"))
-		items = array[] of {"Close", "Zoom In", "Zoom Out", "Export"};
-	else
-		items = array[] of {"Close", "Export"};
+	# All non-app types get Zoom In/Out and Reset View
+	items := array[] of {"Close", "Zoom In", "Zoom Out", "Reset View", "Export"};
 	pop := menumod->new(items);
 	result := pop.show(mainwin, p.xy, win.ctxt.ptr);
 	case result {
 	0 =>
 		deleteartifactui(artid);
 	1 =>
-		if(len items == 2) {
-			exportartifact(findartifact(artid));
-		} else {
-			if(art != nil) {
-				art.zoom = artzoom(art) + 25;
-				if(art.zoom > 400) art.zoom = 400;
-				art.rendimg = nil;
-			}
+		# Zoom In
+		if(art != nil) {
+			art.zoom = artzoom(art) + 25;
+			if(art.zoom > 400) art.zoom = 400;
+			art.rendimg = nil;
 		}
 	2 =>
+		# Zoom Out
 		if(art != nil) {
 			art.zoom = artzoom(art) - 25;
 			if(art.zoom < 25) art.zoom = 25;
 			art.rendimg = nil;
 		}
 	3 =>
+		# Reset View — zoom to 100%, pan to origin
+		if(art != nil) {
+			art.zoom = 0;
+			art.panx = 0;
+			art.pany = 0;
+			art.rendimg = nil;
+		}
+	4 =>
 		exportartifact(art);
 	}
 }
@@ -920,7 +1073,7 @@ loadpresentation()
 			if(data == nil) data = "";
 			if(appstatus == nil) appstatus = "";
 			else appstatus = strip(appstatus);
-			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0, appstatus);
+			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0, appstatus, 0, 0);
 			artifacts = art :: artifacts;
 			nart++;
 		}
@@ -942,7 +1095,7 @@ loadartifact(id: string)
 	if(data == nil) data = "";
 	if(appstatus2 == nil) appstatus2 = "";
 	else appstatus2 = strip(appstatus2);
-	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0, appstatus2);
+	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0, appstatus2, 0, 0);
 	artifacts = appendart(artifacts, art);
 	nart++;
 }
@@ -985,7 +1138,6 @@ deleteartifact(id: string)
 			centeredart = (hd artifacts).id;
 		else
 			centeredart = "";
-		presscrollpx = 0;
 	}
 	if(tabscrolloff >= nart && nart > 0)
 		tabscrolloff = nart - 1;
