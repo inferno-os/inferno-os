@@ -42,8 +42,9 @@ ToolFind: module {
 
 # Limits
 MAX_RESULTS: con 100;
-MAX_DEPTH: con 20;
-OPEN_TIMEOUT: con 3000;	# ms — skip directories that block longer than this
+MAX_DEPTH:   con 20;
+MAX_DIRS:    con 2000;   # max directories opened per search — safety valve for huge trees
+OPEN_TIMEOUT: con 500;  # ms — skip directories that block longer than this
 
 init(): string
 {
@@ -75,7 +76,7 @@ doc(): string
 		"  Find /dis/wm -name *.dis\n" +
 		"  Find / -name *tetris*\n" +
 		"  Find *_test.b /tests\n\n" +
-		"Returns list of matching file paths (max 100 results).";
+		"Returns list of matching file paths (max 100 results, max 2000 directories).";
 }
 
 exec(args: string): string
@@ -124,16 +125,23 @@ exec(args: string): string
 			basepath = hd argv;
 	}
 
+	# dirc[0] tracks directories opened across the entire recursive search.
+	# Passed by reference (array) so all recursive calls share one counter.
+	dirc := array[1] of {* => 0};
+
 	# Collect results
 	results: list of string;
 	count := 0;
 	truncated := 0;
 
 	# Search recursively
-	(results, count, truncated) = searchdir(basepath, pattern, 0);
+	(results, count, truncated) = searchdir(basepath, pattern, 0, dirc);
 
-	if(count == 0)
+	if(count == 0) {
+		if(truncated)
+			return sys->sprint("no matches found (search stopped after %d directories)", dirc[0]);
 		return "no matches found";
+	}
 
 	# Build result string
 	result := "";
@@ -144,13 +152,14 @@ exec(args: string): string
 	}
 
 	if(truncated)
-		result += sys->sprint("\n... (truncated at %d results)", MAX_RESULTS);
+		result += sys->sprint("\n... (truncated at %d results, %d directories searched)", MAX_RESULTS, dirc[0]);
 
 	return sys->sprint("%d matches:\n%s", count, result);
 }
 
-# Recursively search directory for matching files
-searchdir(path, pattern: string, depth: int): (list of string, int, int)
+# Recursively search directory for matching files.
+# dirc is a single-element array used as a shared directory counter.
+searchdir(path, pattern: string, depth: int, dirc: array of int): (list of string, int, int)
 {
 	results: list of string;
 	count := 0;
@@ -159,9 +168,13 @@ searchdir(path, pattern: string, depth: int): (list of string, int, int)
 	if(depth > MAX_DEPTH)
 		return (nil, 0, 0);
 
+	if(dirc[0] >= MAX_DIRS)
+		return (nil, 0, 1);
+
 	fd := opentimeout(path, Sys->OREAD, OPEN_TIMEOUT);
 	if(fd == nil)
 		return (nil, 0, 0);
+	dirc[0]++;
 
 	for(;;) {
 		(nread, dir) := sys->dirread(fd);
@@ -194,9 +207,14 @@ searchdir(path, pattern: string, depth: int): (list of string, int, int)
 				count++;
 			}
 
-			# Recurse into directories
-			if(d.mode & Sys->DMDIR) {
-				(subresults, subcount, subtrunc) := searchdir(fullpath, pattern, depth + 1);
+			# Recurse into directories (skip hidden dirs — . prefix means
+			# caches, package stores, .git trees that can be enormous)
+			if((d.mode & Sys->DMDIR) && name[0] != '.') {
+				if(dirc[0] >= MAX_DIRS) {
+					truncated = 1;
+					return (results, count, truncated);
+				}
+				(subresults, subcount, subtrunc) := searchdir(fullpath, pattern, depth + 1, dirc);
 				for(; subresults != nil; subresults = tl subresults)
 					results = hd subresults :: results;
 				count += subcount;
@@ -212,12 +230,16 @@ searchdir(path, pattern: string, depth: int): (list of string, int, int)
 }
 
 # Open a file with timeout to skip blocked paths (e.g. macOS TCC).
+# IMPORTANT: timeout MUST be chan[1] (buffered) so sleeptimer() can exit
+# after sending even when nobody is receiving.  An unbuffered channel
+# causes sleeptimer() to block forever — a goroutine leak that accumulates
+# one leaked goroutine per directory visited and eventually exhausts memory.
 opentimeout(path: string, mode: int, ms: int): ref Sys->FD
 {
 	result := chan[1] of ref Sys->FD;
 	spawn tryopen(path, mode, result);
 
-	timeout := chan of int;
+	timeout := chan[1] of int;  # buffered: sleeptimer exits after send
 	spawn sleeptimer(timeout, ms);
 
 	alt {
