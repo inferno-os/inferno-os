@@ -159,6 +159,12 @@ exec(args: string): string
 
 # Recursively search directory for matching files.
 # dirc is a single-element array used as a shared directory counter.
+#
+# Files at the current level are matched BEFORE recursing into any
+# subdirectory.  This guarantees that a file sitting at /foo/bar.pdf is
+# found even when the very first subdirectory of /foo exhausts MAX_DIRS.
+# (Previous DFS approach: recurse into subdir immediately → MAX_DIRS hit →
+# early return → root-level files never checked.)
 searchdir(path, pattern: string, depth: int, dirc: array of int): (list of string, int, int)
 {
 	results: list of string;
@@ -176,16 +182,21 @@ searchdir(path, pattern: string, depth: int, dirc: array of int): (list of strin
 		return (nil, 0, 0);
 	dirc[0]++;
 
+	# Pass 1: read all entries, match files immediately, collect subdir paths.
+	# Subdirs are deferred so ALL files at this level are checked first.
+	subdirs: list of string;
+	done := 0;
 	for(;;) {
+		if(done)
+			break;
 		(nread, dir) := sys->dirread(fd);
 		if(nread <= 0)
 			break;
 
-		for(i := 0; i < nread; i++) {
+		for(i := 0; i < nread && !done; i++) {
 			d := dir[i];
 			name := d.name;
 
-			# Skip . and ..
 			if(name == "." || name == "..")
 				continue;
 
@@ -197,33 +208,39 @@ searchdir(path, pattern: string, depth: int, dirc: array of int): (list of strin
 			if(len path > 0 && path[len path - 1] == '/')
 				fullpath = path + name;
 
-			# Check if name matches pattern
+			# Match all entries (files AND dirs) against pattern
 			if(filepat->match(pattern, name)) {
 				if(count >= MAX_RESULTS) {
+					done = 1;
 					truncated = 1;
-					return (results, count, truncated);
+					continue;
 				}
 				results = fullpath :: results;
 				count++;
 			}
 
-			# Recurse into directories (skip hidden dirs — . prefix means
-			# caches, package stores, .git trees that can be enormous)
-			if((d.mode & Sys->DMDIR) && name[0] != '.') {
-				if(dirc[0] >= MAX_DIRS) {
-					truncated = 1;
-					return (results, count, truncated);
-				}
-				(subresults, subcount, subtrunc) := searchdir(fullpath, pattern, depth + 1, dirc);
-				for(; subresults != nil; subresults = tl subresults)
-					results = hd subresults :: results;
-				count += subcount;
-				if(subtrunc || count >= MAX_RESULTS) {
-					truncated = 1;
-					return (results, count, truncated);
-				}
-			}
+			# Collect non-hidden subdirs for later recursion.
+			# Skip hidden dirs (.git, .cache, .npm, etc.) which can be
+			# enormous and are rarely where user files live.
+			if((d.mode & Sys->DMDIR) && name[0] != '.')
+				subdirs = fullpath :: subdirs;
 		}
+	}
+
+	# Pass 2: recurse into collected subdirs (only after all files matched above)
+	for(s := subdirs; s != nil && !truncated; s = tl s) {
+		if(dirc[0] >= MAX_DIRS) {
+			truncated = 1;
+			break;
+		}
+		(subresults, subcount, subtrunc) := searchdir(hd s, pattern, depth + 1, dirc);
+		for(; subresults != nil; subresults = tl subresults)
+			results = hd subresults :: results;
+		count += subcount;
+		if(subtrunc)
+			truncated = 1;
+		if(count >= MAX_RESULTS)
+			truncated = 1;
 	}
 
 	return (results, count, truncated);
