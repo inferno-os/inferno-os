@@ -24,7 +24,6 @@ TARG=\
 	outlinefont_test.dis\
 	pdf_conformance_test.dis\
 	pdf_test.dis\
-	real_test.dis\
 	render_registry_test.dis\
 	runner.dis\
 	sdl3_test.dis\
@@ -41,6 +40,8 @@ TARG=\
 	veltro_security_test.dis\
 	veltro_test.dis\
 	veltro_tools_test.dis\
+	pathmanage_test.dis\
+	tools9p_test.dis\
 	pres_launch_test.dis\
 	x509_test.dis\
 	xenith_concurrency_test.dis\
