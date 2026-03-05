@@ -558,8 +558,23 @@ applynsrestriction()
 	toolnames: list of string = nil;
 	for(t := tools; t != nil; t = tl t)
 		toolnames = (hd t).name :: toolnames;
+	# Merge extpaths (from -p flags) and boundpaths (from runtime bindpath ctl)
+	# so nsconstruct exposes all user-registered paths in the restricted namespace.
+	allpaths := extpaths;
+	for(bp := boundpaths; bp != nil; bp = tl bp)
+		if(!strlist_contains(allpaths, hd bp))
+			allpaths = (hd bp) :: allpaths;
+	# If /n/local is accessible (trfs '#U*' OS mount from the user's profile),
+	# always expose it in the restricted namespace.  The user deliberately set up
+	# trfs in their profile to share OS filesystem access, and path binds via the
+	# file browser arrive after restriction is applied — so we must grant it here.
+	# This is appropriate for tools9p (personal workstation); veltro callers are
+	# unaffected because they call nsconstruct->restrictns() directly.
+	(localok, nil) := sys->stat("/n/local");
+	if(localok >= 0 && !strlist_contains(allpaths, "/n/local/"))
+		allpaths = "/n/local/" :: allpaths;
 	caps := ref NsConstruct->Capabilities(
-		toolnames, extpaths, nil, nil, nil, nil, 0, hasxenith, -1
+		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
 	{
 		nserr := nsconstruct->restrictns(caps);

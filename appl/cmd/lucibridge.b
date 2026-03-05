@@ -424,11 +424,17 @@ applypathchanges()
 	(nil, newpaths) := sys->tokenize(latest, "\n");
 	(nil, oldpaths) := sys->tokenize(currentpathsraw, "\n");
 
-	# Bind newly added paths
+	# Bind newly added paths into lucibridge's namespace.
+	# Paths already under /n/local/ are accessible via the trfs OS mount —
+	# no rebind needed (and no writable target would exist anyway).
 	for(np := newpaths; np != nil; np = tl np) {
 		p := hd np;
 		if(p == "" || strcontains(oldpaths, p))
 			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/") {
+			log("path accessible: " + p);
+			continue;
+		}
 		base := pathbase(p);
 		if(base == nil || base == "")
 			base = "path";
@@ -439,10 +445,12 @@ applypathchanges()
 			log("bound " + p + " -> " + tgt);
 	}
 
-	# Unmount removed paths
+	# Unmount removed paths (only those we actually bound, not /n/local/ pass-throughs)
 	for(op := oldpaths; op != nil; op = tl op) {
 		p := hd op;
 		if(p == "" || strcontains(newpaths, p))
+			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/")
 			continue;
 		base := pathbase(p);
 		if(base == nil || base == "")
