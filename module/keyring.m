@@ -267,6 +267,23 @@ Keyring: module
 	ed25519_sign:   fn(seed: array of byte, msg: array of byte): array of byte;
 	ed25519_verify: fn(pk: array of byte, msg: array of byte, sig: array of byte): int;
 
+	# ML-KEM (FIPS 203) post-quantum key encapsulation
+	MLKEM768_PKLEN:  con 1184;
+	MLKEM768_SKLEN:  con 2400;
+	MLKEM768_CTLEN:  con 1088;
+	MLKEM768_SSLEN:  con 32;
+	MLKEM1024_PKLEN: con 1568;
+	MLKEM1024_SKLEN: con 3168;
+	MLKEM1024_CTLEN: con 1568;
+	MLKEM1024_SSLEN: con 32;
+
+	mlkem768_keygen:  fn(): (array of byte, array of byte);	# => (pk, sk)
+	mlkem768_encaps:  fn(pk: array of byte): (array of byte, array of byte);	# => (ct, ss)
+	mlkem768_decaps:  fn(sk: array of byte, ct: array of byte): array of byte;	# => ss
+	mlkem1024_keygen: fn(): (array of byte, array of byte);	# => (pk, sk)
+	mlkem1024_encaps: fn(pk: array of byte): (array of byte, array of byte);	# => (ct, ss)
+	mlkem1024_decaps: fn(sk: array of byte, ct: array of byte): array of byte;	# => ss
+
 	DESbsize: con 8;
 
 	dessetup: fn(key: array of byte, ivec: array of byte): ref DESstate;

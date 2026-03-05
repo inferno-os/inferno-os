@@ -21,7 +21,7 @@ PKmodlen:		con 2048;
 # size in bits of modulus for diffie hellman
 DHmodlen:		con 2048;
 
-algs := array[] of {"ed25519", "rsa", "elgamal"};	# first entry is default (ed25519 for modern security)
+algs := array[] of {"ed25519", "mldsa65", "mldsa87", "rsa", "elgamal"};	# first entry is default (ed25519 for modern security)
 
 Createsignerkey: module
 {

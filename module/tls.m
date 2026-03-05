@@ -23,8 +23,9 @@ TLS: module {
 	TLS_CHACHA20_POLY1305_SHA256:			con 16r1303;
 
 	# Named groups
-	X25519:		con 16r001D;
-	SECP256R1:	con 16r0017;
+	X25519:			con 16r001D;
+	SECP256R1:		con 16r0017;
+	X25519MLKEM768:		con 16r4588;
 
 	# Signature algorithms
 	RSA_PKCS1_SHA256:		con 16r0401;

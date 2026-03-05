@@ -6,6 +6,7 @@ OFILES=\
 	dsaalg.$O\
 	ed25519alg.$O\
 	egalg.$O\
+	mldsaalg.$O\
 	rsaalg.$O
 
 HFILES=\

@@ -41,6 +41,10 @@ TARG=\
 	veltro_test.dis\
 	veltro_tools_test.dis\
 	pres_launch_test.dis\
+	sha3_test.dis\
+	mlkem_test.dis\
+	mldsa_test.dis\
+	tls_pq_test.dis\
 	x509_test.dis\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\

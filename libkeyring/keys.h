@@ -11,7 +11,7 @@ typedef struct XRC4state XRC4state;
 
 enum
 {
-	Maxbuf=	4096,
+	Maxbuf=	16384,
 	MaxBigBytes = 1024
 };
 
