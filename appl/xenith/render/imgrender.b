@@ -53,7 +53,7 @@ info(): ref RenderInfo
 {
 	return ref RenderInfo(
 		"Image",
-		".png .ppm .pgm .pbm .bit .pic",
+		".png .ppm .pgm .pbm .bit .pic .jpg .jpeg .JPG .JPEG",
 		0  # Images have no text content
 	);
 }
@@ -76,6 +76,10 @@ canrender(data: array of byte, hint: string): int
 		if(c == '3' || c == '5' || c == '6')
 			return 90;
 	}
+
+	# JPEG magic: FF D8 FF
+	if(len data >= 3 && int data[0] == 16rFF && int data[1] == 16rD8 && int data[2] == 16rFF)
+		return 95;
 
 	return 0;
 }
