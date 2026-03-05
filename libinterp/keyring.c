@@ -3619,7 +3619,7 @@ void
 Keyring_mlkem768_encaps(void *fp)
 {
 	F_Keyring_mlkem768_encaps *f;
-	uchar ct[MLKEM768_CTLEN], ss[MLKEM768_SSLEN];
+	uchar ct[MLKEM768_CTLEN], ss[MLKEM_SSLEN];
 
 	f = fp;
 	destroy(f->ret->t0);
@@ -3633,15 +3633,15 @@ Keyring_mlkem768_encaps(void *fp)
 	mlkem768_encaps(ct, ss, f->pk->data);
 
 	f->ret->t0 = mem2array(ct, MLKEM768_CTLEN);
-	f->ret->t1 = mem2array(ss, MLKEM768_SSLEN);
-	memset(ss, 0, MLKEM768_SSLEN);
+	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
 }
 
 void
 Keyring_mlkem768_decaps(void *fp)
 {
 	F_Keyring_mlkem768_decaps *f;
-	uchar ss[MLKEM768_SSLEN];
+	uchar ss[MLKEM_SSLEN];
 	void *r;
 
 	f = fp;
@@ -3656,8 +3656,8 @@ Keyring_mlkem768_decaps(void *fp)
 
 	mlkem768_decaps(ss, f->ct->data, f->sk->data);
 
-	*f->ret = mem2array(ss, MLKEM768_SSLEN);
-	memset(ss, 0, MLKEM768_SSLEN);
+	*f->ret = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
 }
 
 void
@@ -3683,7 +3683,7 @@ void
 Keyring_mlkem1024_encaps(void *fp)
 {
 	F_Keyring_mlkem1024_encaps *f;
-	uchar ct[MLKEM1024_CTLEN], ss[MLKEM1024_SSLEN];
+	uchar ct[MLKEM1024_CTLEN], ss[MLKEM_SSLEN];
 
 	f = fp;
 	destroy(f->ret->t0);
@@ -3697,15 +3697,15 @@ Keyring_mlkem1024_encaps(void *fp)
 	mlkem1024_encaps(ct, ss, f->pk->data);
 
 	f->ret->t0 = mem2array(ct, MLKEM1024_CTLEN);
-	f->ret->t1 = mem2array(ss, MLKEM1024_SSLEN);
-	memset(ss, 0, MLKEM1024_SSLEN);
+	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
 }
 
 void
 Keyring_mlkem1024_decaps(void *fp)
 {
 	F_Keyring_mlkem1024_decaps *f;
-	uchar ss[MLKEM1024_SSLEN];
+	uchar ss[MLKEM_SSLEN];
 	void *r;
 
 	f = fp;
@@ -3720,6 +3720,6 @@ Keyring_mlkem1024_decaps(void *fp)
 
 	mlkem1024_decaps(ss, f->ct->data, f->sk->data);
 
-	*f->ret = mem2array(ss, MLKEM1024_SSLEN);
-	memset(ss, 0, MLKEM1024_SSLEN);
+	*f->ret = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
 }

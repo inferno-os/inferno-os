@@ -321,8 +321,8 @@ struct SHA3state
 	int	mdlen;		/* output length (0 for XOF) */
 };
 
-void	sha3_256(uchar *in, ulong inlen, uchar out[32]);
-void	sha3_512(uchar *in, ulong inlen, uchar out[64]);
+void	sha3_256(const uchar *in, ulong inlen, uchar out[32]);
+void	sha3_512(const uchar *in, ulong inlen, uchar out[64]);
 void	shake128_init(SHA3state *s);
 void	shake128_absorb(SHA3state *s, const uchar *in, ulong inlen);
 void	shake128_finalize(SHA3state *s);

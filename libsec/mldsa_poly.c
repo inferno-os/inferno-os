@@ -400,6 +400,68 @@ mldsa_poly_unpack_t0(int32 r[MLDSA_N], const uchar *in)
 }
 
 /*
+ * Pack polynomial with coefficients in [-eta, eta].
+ * For eta=4: 4 bits per coeff (stored as eta-coeff), 128 bytes per poly.
+ * For eta=2: 3 bits per coeff (stored as eta-coeff), 96 bytes per poly.
+ */
+void
+mldsa_poly_pack_eta(uchar *out, const int32 r[MLDSA_N], int eta)
+{
+	int i;
+
+	if(eta == 4){
+		/* 4-bit packing: 2 coefficients per byte */
+		for(i = 0; i < MLDSA_N/2; i++){
+			u32int a = (u32int)(eta - r[2*i]);
+			u32int b = (u32int)(eta - r[2*i+1]);
+			out[i] = (uchar)((a & 0xF) | (b << 4));
+		}
+	} else {
+		/* eta == 2: 3-bit packing: 8 coefficients per 3 bytes */
+		for(i = 0; i < MLDSA_N/8; i++){
+			u32int t[8];
+			int j;
+			for(j = 0; j < 8; j++)
+				t[j] = (u32int)(eta - r[8*i+j]);
+			out[3*i+0] = (uchar)(t[0] | (t[1]<<3) | (t[2]<<6));
+			out[3*i+1] = (uchar)((t[2]>>2) | (t[3]<<1) | (t[4]<<4) | (t[5]<<7));
+			out[3*i+2] = (uchar)((t[5]>>1) | (t[6]<<2) | (t[7]<<5));
+		}
+	}
+}
+
+/*
+ * Unpack polynomial with coefficients in [-eta, eta].
+ */
+void
+mldsa_poly_unpack_eta(int32 r[MLDSA_N], const uchar *in, int eta)
+{
+	int i;
+
+	if(eta == 4){
+		for(i = 0; i < MLDSA_N/2; i++){
+			r[2*i]   = eta - (int32)(in[i] & 0xF);
+			r[2*i+1] = eta - (int32)(in[i] >> 4);
+		}
+	} else {
+		/* eta == 2 */
+		for(i = 0; i < MLDSA_N/8; i++){
+			u32int b0 = in[3*i+0];
+			u32int b1 = in[3*i+1];
+			u32int b2 = in[3*i+2];
+			r[8*i+0] = eta - (int32)(b0 & 7);
+			r[8*i+1] = eta - (int32)((b0>>3) & 7);
+			r[8*i+2] = eta - (int32)(((b0>>6) | (b1<<2)) & 7);
+			r[8*i+3] = eta - (int32)((b1>>1) & 7);
+			r[8*i+4] = eta - (int32)((b1>>4) & 7);
+			r[8*i+5] = eta - (int32)(((b1>>7) | (b2<<1)) & 7);
+			r[8*i+6] = eta - (int32)((b2>>2) & 7);
+			r[8*i+7] = eta - (int32)((b2>>5) & 7);
+		}
+	}
+}
+
+/*
  * Check infinity norm of polynomial against bound.
  * Returns 1 if any coefficient has |coeff| >= bound.
  * Constant-time.

@@ -41,8 +41,7 @@ static const int16 mlkem_zetas[128] = {
 	  817, 1097,  603,  610, 1322, 2044, 1864,  384,
 	 2114, 3193, 1218, 1994, 2455,  220, 2142, 1670,
 	 2144, 1799, 2051,  794, 1819, 2475, 2459,  478,
-	 3221, 3## more zetas -- filling remaining entries */
-	  221, 2616,   33, 1296, 1022, 2526,  788, 3110,
+	 3221, 3021,  996,  991,  958, 1869, 1522, 1628,
 };
 
 /*
@@ -221,6 +220,10 @@ mlkem_poly_normalize(int16 r[MLKEM_N])
 	int i;
 
 	mlkem_poly_reduce(r);
-	for(i = 0; i < MLKEM_N; i++)
+	for(i = 0; i < MLKEM_N; i++){
+		/* Barrett reduce gives (-q, q); make non-negative first */
+		r[i] += (r[i] >> 15) & MLKEM_Q;
+		/* Now in [0, 2q); subtract q if >= q */
 		r[i] = mlkem_cond_sub_q(r[i]);
+	}
 }

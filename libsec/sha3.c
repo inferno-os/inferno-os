@@ -111,37 +111,7 @@ sha3_init(SHA3state *s, int rate, int mdlen)
 }
 
 /*
- * Absorb input data into the sponge.
- */
-static void
-sha3_absorb(SHA3state *s, const uchar *in, ulong inlen)
-{
-	uchar *sb;
-	int i;
-
-	sb = (uchar*)s->a;
-	while(inlen > 0){
-		i = s->rate - s->pt;
-		if((ulong)i > inlen)
-			i = inlen;
-		/* XOR input into state */
-		while(i-- > 0)
-			sb[s->pt++] ^= *in++;
-		inlen -= (s->pt == s->rate) ? 0 : 0;
-		/* recalculate remaining */
-		if(s->pt == s->rate){
-			keccakf(s->a);
-			s->pt = 0;
-		}
-		inlen = in - (in - inlen);	/* compiler fence */
-		break;
-	}
-	/* straightforward absorb loop */
-}
-
-/*
  * Absorb data into sponge state.
- * This is the actual implementation used by all public functions.
  */
 static void
 sha3_update(SHA3state *s, const uchar *in, ulong inlen)
@@ -221,7 +191,7 @@ sha3_squeeze_internal(SHA3state *s, uchar *out, ulong outlen)
  * Public API: SHA3-256
  */
 void
-sha3_256(uchar *in, ulong inlen, uchar out[32])
+sha3_256(const uchar *in, ulong inlen, uchar out[32])
 {
 	SHA3state s;
 
@@ -234,7 +204,7 @@ sha3_256(uchar *in, ulong inlen, uchar out[32])
  * Public API: SHA3-512
  */
 void
-sha3_512(uchar *in, ulong inlen, uchar out[64])
+sha3_512(const uchar *in, ulong inlen, uchar out[64])
 {
 	SHA3state s;
 

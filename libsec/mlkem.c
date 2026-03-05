@@ -136,8 +136,10 @@ cpapke_keygen(uchar *pk, uchar *sk, const uchar seed[32], int k, int eta1)
 
 	/* t = A * s + e (in NTT domain) */
 	matvec_mul(t, a, s, k);
-	for(i = 0; i < k; i++)
+	for(i = 0; i < k; i++){
+		mlkem_poly_tomont(t[i]);
 		mlkem_poly_add(t[i], t[i], e[i]);
+	}
 
 	/* Encode public key: pk = (t_encoded || rho) */
 	for(i = 0; i < k; i++){
@@ -217,8 +219,6 @@ cpapke_enc(uchar *ct, const uchar *pk, const uchar msg[32],
 
 	/* v = t^T * r + e2 + Decompress(Decode(msg), 1) */
 	/* First: NTT domain inner product t^T * r */
-	for(i = 0; i < k; i++)
-		mlkem_poly_tomont(t[i]);
 	inner_product(v, t, r, k);
 	mlkem_invntt(v);
 	mlkem_poly_add(v, v, e2);
