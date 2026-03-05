@@ -50,6 +50,7 @@ case "$LEVEL" in
         MAX_CHAN=3
         MAX_PATH=2
         MAX_MOUNT=4
+        HEAP="${TLC_HEAP:-4g}"
         ;;
     medium)
         MAX_PROC=3
@@ -57,6 +58,7 @@ case "$LEVEL" in
         MAX_CHAN=4
         MAX_PATH=3
         MAX_MOUNT=6
+        HEAP="${TLC_HEAP:-16g}"
         ;;
     large)
         MAX_PROC=4
@@ -64,6 +66,7 @@ case "$LEVEL" in
         MAX_CHAN=5
         MAX_PATH=3
         MAX_MOUNT=8
+        HEAP="${TLC_HEAP:-32g}"
         ;;
     *)
         echo "Unknown level: $LEVEL"
@@ -130,12 +133,11 @@ echo ""
 cd "$TLA_DIR"
 set +e
 (set -o pipefail; java -XX:+UseParallelGC \
-     -Xmx4g \
+     -Xmx${HEAP} \
      -jar "$SCRIPT_DIR/tla2tools.jar" \
      -config "$CONFIG_FILE" \
      -workers auto \
      -checkpoint 60 \
-     -coverage 1 \
      -deadlock \
      MC_Namespace.tla \
      2>&1 | tee "$RESULTS_DIR/tlc_output_$LEVEL.txt")

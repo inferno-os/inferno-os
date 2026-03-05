@@ -302,15 +302,17 @@ The theorem is proved by induction over all possible state transitions:
 
 ### 4.7 TLC Model Checking Results
 
-| Configuration | MaxProc | MaxPgrp | MaxChan | MaxPath | States Gen. | Distinct | Time |
-|---------------|---------|---------|---------|---------|-------------|----------|------|
-| Small | 2 | 3 | 3 | 2 | 369,414,154 | 19,307,332 | 7m 57s |
-| Medium | 3 | 4 | 4 | 3 | *pending* | *pending* | *pending* |
-| Large | 4 | 5 | 5 | 3 | *pending* | *pending* | *pending* |
+| Configuration | MaxProc | MaxPgrp | MaxChan | MaxPath | States Gen. | Distinct | Time | Heap |
+|---------------|---------|---------|---------|---------|-------------|----------|------|------|
+| Small | 2 | 3 | 3 | 2 | 369,414,154 | 19,307,332 | 7m 57s | 4 GB |
+| Medium | 3 | 4 | 4 | 3 | 200M+ (partial) | 36M+ (partial) | >6 min | 16 GB rec. |
+| Large | 4 | 5 | 5 | 3 | pending | pending | pending | 32 GB rec. |
 
 All 11 invariants verified in the small configuration with **zero violations**
 across 19.3 million distinct states. Search depth: 27. Complete (0 states
-left on queue).
+left on queue). Medium and large require a dedicated host with sufficient
+memory; see `REMAINING-RUNS.md` for instructions. No invariant violations
+were found in any partial medium run (200M+ states generated, depth 11).
 
 ---
 
@@ -607,8 +609,9 @@ curl -L -o tla2tools.jar \
 ./cbmc/verify-all.sh quick     # CBMC quick mode (~1m)
 ./run-verification.sh small    # TLA+ small (~8m)
 
-# Full verification
-./cbmc/verify-all.sh full      # CBMC with pgrpcpy (~60m, 10GB)
-./run-verification.sh medium   # TLA+ medium (~TBD)
-./run-verification.sh large    # TLA+ large (~TBD)
+# Full verification (dedicated host, see REMAINING-RUNS.md)
+CBMC_MNTLOG=2 ./cbmc/verify-all.sh full    # CBMC pgrpcpy, MNTHASH=4 (~20m, 12GB)
+CBMC_MNTLOG=5 ./cbmc/verify-all.sh full    # CBMC pgrpcpy, MNTHASH=32 (~60m, 16GB)
+./run-verification.sh medium               # TLA+ medium (~30m, 16GB heap)
+TLC_HEAP=32g ./run-verification.sh large   # TLA+ large (~hours, 32GB heap)
 ```

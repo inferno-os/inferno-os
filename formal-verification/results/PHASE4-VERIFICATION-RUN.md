@@ -113,9 +113,23 @@ All 11 safety invariants verified with no violations:
 | PostCopyMountsSound | IsolationProof | Every mount is from snapshot or tracked as post-copy |
 | NoIsolationViolation | IsolationProof | Negation of isolation violation predicate |
 
-### TLA+ Model Bug Fixed During Run
+### Medium and Large Configurations (pending)
 
-**IncRefChannel unbounded refcount**: `IncRefChannel` could increment channel refcounts beyond `RefCountVal`, violating `TypeOK`. Added bound guard (`chan_refcount[cid] < MaxProcesses + MaxPgrps + MaxChannels`). This is a model-checking artifact — real refcounts are naturally bounded by the finite number of references in the system.
+Medium (3 proc, 4 pgrp, 4 chan, 3 path) and Large (4 proc, 5 pgrp, 5 chan,
+3 path) require a dedicated host with 16-32GB RAM and uninterrupted execution.
+See `REMAINING-RUNS.md` for instructions.
+
+Partial medium run reached 200M+ states generated, 36M distinct states at
+depth 11 before being terminated. No invariant violations were found in any
+partial run.
+
+### TLA+ Model Bugs Fixed During Run
+
+1. **IncRefChannel unbounded refcount**: `IncRefChannel` could increment channel refcounts beyond `RefCountVal`, violating `TypeOK`. Added bound guard (`chan_refcount[cid] < MaxProcesses + MaxPgrps + MaxChannels`). This is a model-checking artifact — real refcounts are naturally bounded by the finite number of references in the system.
+
+2. **NamespaceIsolation property too strict**: The original property did not account for parent `post_copy_mounts` that occurred BEFORE a fork (and are thus legitimately in the child's `copy_snapshot`). TLC found a valid counterexample in the medium configuration: parent mounts channel, then forks — the mount is in both tables but the child didn't independently mount it. Fixed by adding a `copy_snapshot` exception. The stronger `NamespaceIsolationTheorem` already handled this correctly.
+
+3. **MC_Namespace duplicate constants**: `EXTENDS Namespace` imported the constants, and `MC_Namespace` re-declared them, causing a multiply-defined symbol error. Fixed by removing the re-declarations.
 
 ### Operations Modeled
 
