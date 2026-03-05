@@ -495,8 +495,12 @@ exectool(name, args: string): string
 # Async wrapper: runs tool execution in a spawned thread so the
 # serveloop continues processing 9P messages while the tool runs.
 # The Styx reply is sent from this thread when execution completes.
+# Namespace restriction is applied HERE (not in serveloop) so each
+# invocation uses the current boundpaths at call time — essential for
+# paths bound via the GUI after the server was already running.
 asyncexec(srv: ref Styxserver, tag: int, count: int, ti: ref ToolInfo, data: string)
 {
+	applynsrestriction();
 	result := exectool(ti.name, data);
 	ti.result = array of byte result;
 	srv.reply(ref Rmsg.Write(tag, count));
@@ -558,21 +562,13 @@ applynsrestriction()
 	toolnames: list of string = nil;
 	for(t := tools; t != nil; t = tl t)
 		toolnames = (hd t).name :: toolnames;
-	# Merge extpaths (from -p flags) and boundpaths (from runtime bindpath ctl)
-	# so nsconstruct exposes all user-registered paths in the restricted namespace.
+	# Merge extpaths (from -p flags) and boundpaths (from runtime bindpath ctl).
+	# Called per-invocation from asyncexec(), so boundpaths always reflects
+	# the current state — paths bound via the GUI after startup are captured.
 	allpaths := extpaths;
 	for(bp := boundpaths; bp != nil; bp = tl bp)
 		if(!strlist_contains(allpaths, hd bp))
 			allpaths = (hd bp) :: allpaths;
-	# If /n/local is accessible (trfs '#U*' OS mount from the user's profile),
-	# always expose it in the restricted namespace.  The user deliberately set up
-	# trfs in their profile to share OS filesystem access, and path binds via the
-	# file browser arrive after restriction is applied — so we must grant it here.
-	# This is appropriate for tools9p (personal workstation); veltro callers are
-	# unaffected because they call nsconstruct->restrictns() directly.
-	(localok, nil) := sys->stat("/n/local");
-	if(localok >= 0 && !strlist_contains(allpaths, "/n/local/"))
-		allpaths = "/n/local/" :: allpaths;
 	caps := ref NsConstruct->Capabilities(
 		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
@@ -594,15 +590,12 @@ serveloop(tchan: chan of ref Tmsg, srv: ref Styxserver, pidc: chan of int, navop
 
 Serve:
 	while((gm := <-tchan) != nil) {
-		# Namespace restriction: non-blocking check for mount completion.
-		# Can't block before the loop (deadlock: mount needs serveloop for 9P).
-		# Instead, check on each message. After init signals mount is done,
-		# FORKNS captures /tool in the forked namespace, then restrict.
-		# asyncexec threads spawned after this inherit the restricted namespace.
+		# Wait for mount completion before allowing tool invocations.
+		# Restriction is applied per-invocation in asyncexec() so that
+		# paths bound after startup are always captured at call time.
 		if(!restricted) {
 			alt {
 			<-mounted =>
-				applynsrestriction();
 				restricted = 1;
 			* =>
 				;  # Mount not ready yet, continue serving
