@@ -1,0 +1,4 @@
+# TLC model checking artifacts
+states/
+*_TTrace_*.tla
+*_TTrace_*.bin
