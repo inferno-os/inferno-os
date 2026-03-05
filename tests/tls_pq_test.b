@@ -106,8 +106,8 @@ testHybridSharedSecret(t: ref T)
 	# Server side: encapsulate + generate X25519
 	(mlkem_ct, mlkem_ss_server) := kr->mlkem768_encaps(mlkem_pk);
 	server_x25519_priv := array [32] of byte;
-	for(i := 0; i < 32; i++)
-		server_x25519_priv[i] = byte (i + 42);
+	for(j := 0; j < 32; j++)
+		server_x25519_priv[j] = byte (j + 42);
 	server_x25519_pub := kr->x25519_base(server_x25519_priv);
 
 	# Server computes X25519 shared secret

@@ -414,6 +414,59 @@ void	mldsa_poly_sub(int32 r[256], const int32 a[256], const int32 b[256]);
 void	mldsa_poly_reduce(int32 r[256]);
 
 /*/////////////////////////////////////////////////////// */
+/* SLH-DSA (FIPS 205) Stateless Hash-Based Signatures */
+/*/////////////////////////////////////////////////////// */
+
+enum
+{
+	/* SLH-DSA-SHAKE-192s (NIST Level 3) */
+	SLHDSA192S_PKLEN=	48,
+	SLHDSA192S_SKLEN=	96,
+	SLHDSA192S_SIGLEN=	16224,
+
+	/* SLH-DSA-SHAKE-256s (NIST Level 5) */
+	SLHDSA256S_PKLEN=	64,
+	SLHDSA256S_SKLEN=	128,
+	SLHDSA256S_SIGLEN=	29792,
+};
+
+int	slhdsa192s_keygen(uchar *pk, uchar *sk);
+int	slhdsa192s_sign(uchar *sig, const uchar *msg, ulong msglen, const uchar *sk);
+int	slhdsa192s_verify(const uchar *sig, ulong siglen, const uchar *msg, ulong msglen, const uchar *pk);
+int	slhdsa256s_keygen(uchar *pk, uchar *sk);
+int	slhdsa256s_sign(uchar *sig, const uchar *msg, ulong msglen, const uchar *sk);
+int	slhdsa256s_verify(const uchar *sig, ulong siglen, const uchar *msg, ulong msglen, const uchar *pk);
+
+/* internal SLH-DSA functions used across slhdsa_*.c files */
+void	slhdsa_adrs_init(uchar*);
+void	slhdsa_adrs_set_layer(uchar*, u32int);
+void	slhdsa_adrs_set_tree(uchar*, u64int);
+void	slhdsa_adrs_set_type(uchar*, u32int);
+void	slhdsa_adrs_set_keypair(uchar*, u32int);
+void	slhdsa_adrs_set_chain(uchar*, u32int);
+void	slhdsa_adrs_set_hash(uchar*, u32int);
+void	slhdsa_adrs_set_height(uchar*, u32int);
+void	slhdsa_adrs_set_index(uchar*, u32int);
+void	slhdsa_adrs_copy(uchar*, const uchar*);
+void	slhdsa_F(uchar*, int, const uchar*, int, const uchar*, const uchar*, int);
+void	slhdsa_H(uchar*, int, const uchar*, int, const uchar*, const uchar*, int, const uchar*, int);
+void	slhdsa_Tl(uchar*, int, const uchar*, int, const uchar*, const uchar*, int);
+void	slhdsa_PRF(uchar*, int, const uchar*, int, const uchar*, int, const uchar*);
+void	slhdsa_PRF_msg(uchar*, int, const uchar*, int, const uchar*, int, const uchar*, ulong);
+void	slhdsa_H_msg(uchar*, int, const uchar*, int, const uchar*, int, const uchar*, int, const uchar*, ulong);
+void	slhdsa_wots_pkgen(uchar*, int, const uchar*, int, const uchar*, int, uchar*);
+void	slhdsa_wots_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, uchar*);
+void	slhdsa_wots_pk_from_sig(uchar*, int, const uchar*, const uchar*, const uchar*, int, uchar*);
+int	slhdsa_wots_len(int);
+void	slhdsa_fors_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, uchar*, int, int);
+void	slhdsa_fors_pk_from_sig(uchar*, int, const uchar*, const uchar*, const uchar*, int, uchar*, int, int);
+void	slhdsa_treehash(uchar*, uchar*, int, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
+void	slhdsa_xmss_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
+void	slhdsa_xmss_root_from_sig(uchar*, int, const uchar*, int, const uchar*, const uchar*, int, u32int, u64int, int);
+void	slhdsa_ht_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u64int, u32int, int, int);
+int	slhdsa_ht_verify(const uchar*, int, const uchar*, const uchar*, int, const uchar*, u64int, u32int, int, int);
+
+/*/////////////////////////////////////////////////////// */
 /* random number generation */
 /*/////////////////////////////////////////////////////// */
 void	genrandom(uchar *buf, int nbytes);

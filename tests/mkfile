@@ -24,7 +24,6 @@ TARG=\
 	outlinefont_test.dis\
 	pdf_conformance_test.dis\
 	pdf_test.dis\
-	real_test.dis\
 	runner.dis\
 	sdl3_test.dis\
 	spawn_test.dis\
@@ -44,6 +43,7 @@ TARG=\
 	sha3_test.dis\
 	mlkem_test.dis\
 	mldsa_test.dis\
+	slhdsa_test.dis\
 	tls_pq_test.dis\
 	x509_test.dis\
 	xenith_concurrency_test.dis\

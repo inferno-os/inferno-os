@@ -1321,6 +1321,59 @@ Keyring_sha512(void *fp)
 	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA512dlen, f->state, sha512);
 }
 
+/*
+ * SHA-3 (FIPS 202) one-shot digest functions
+ * These use SHA3state internally (not DigestState), so they
+ * are one-shot only — no incremental hashing support.
+ */
+void
+Keyring_sha3_256(void *fp)
+{
+	F_Keyring_sha3_256 *f;
+	uchar *cbuf;
+	int n;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->buf == H || f->digest == H)
+		return;
+
+	n = f->n;
+	if(n > f->buf->len)
+		n = f->buf->len;
+	if(f->digest->len < SHA3_256dlen)
+		error(exBadDigest);
+
+	cbuf = f->buf->data;
+	sha3_256(cbuf, n, f->digest->data);
+	*f->ret = SHA3_256dlen;
+}
+
+void
+Keyring_sha3_512(void *fp)
+{
+	F_Keyring_sha3_512 *f;
+	uchar *cbuf;
+	int n;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->buf == H || f->digest == H)
+		return;
+
+	n = f->n;
+	if(n > f->buf->len)
+		n = f->buf->len;
+	if(f->digest->len < SHA3_512dlen)
+		error(exBadDigest);
+
+	cbuf = f->buf->data;
+	sha3_512(cbuf, n, f->digest->data);
+	*f->ret = SHA3_512dlen;
+}
+
 void
 Keyring_md5(void *fp)
 {
@@ -2154,6 +2207,8 @@ keyringmodinit(void)
 	extern SigAlgVec* ed25519init(void);
 	extern SigAlgVec* mldsa65init(void);
 	extern SigAlgVec* mldsa87init(void);
+	extern SigAlgVec* slhdsa192sinit(void);
+	extern SigAlgVec* slhdsa256sinit(void);
 
 	ipintsmodinit();	/* in case only Keyring is configured */
 	TSigAlg = dtype(freeSigAlg, sizeof(SigAlg), SigAlgmap, sizeof(SigAlgmap));
@@ -2202,6 +2257,10 @@ keyringmodinit(void)
 	if((sav = mldsa65init()) != nil)
 		algs[nalg++] = sav;
 	if((sav = mldsa87init()) != nil)
+		algs[nalg++] = sav;
+	if((sav = slhdsa192sinit()) != nil)
+		algs[nalg++] = sav;
+	if((sav = slhdsa256sinit()) != nil)
 		algs[nalg++] = sav;
 
 	fmtinstall('U', big64conv);
