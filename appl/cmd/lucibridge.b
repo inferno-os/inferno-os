@@ -709,8 +709,10 @@ agentturn(input: string)
 							"\n... (truncated — content continues in " + eargs + ")";
 					} else {
 						scratch := agentlib->writescratch(result, step);
-						# Keep first ~40 lines inline so LLM can act on paths immediately.
-						preview := firstlines(result, 40);
+						# Keep first 3 lines inline so LLM has examples to act on immediately.
+						# IMPORTANT: stay small — TOOL_RESULTS must fit in one 9P Write (~8KB).
+						# 3 lines x ~80 bytes x 20 parallel tools < 5KB, safely under msize.
+						preview := firstlines(result, 3);
 						result = preview +
 							sys->sprint("\n... (%d total bytes — full output at %s)",
 								len result, scratch);
