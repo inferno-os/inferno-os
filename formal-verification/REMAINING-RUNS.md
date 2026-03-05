@@ -143,14 +143,38 @@ For CBMC, record:
 - VERIFICATION SUCCESSFUL / FAILED
 - Wall clock time and peak memory
 
-## Notes
+## Empirical Resource Profile
 
-- TLC medium was attempted with 4GB heap (OOM at 108M distinct states)
-  and 12GB heap (killed externally at 36M distinct states, still exploring).
-  Estimated total distinct states: 200-500M. Recommend 16-24GB heap.
+### TLC Medium
 
-- CBMC pgrpcpy with MNTLOG=2 was attempted but killed externally during
-  SAT solving after ~15 minutes at 10GB memory usage. The SAT problem
-  is tractable — it just needs uninterrupted execution time.
+- 4GB heap: OOM-killed at 108M distinct states (depth 11)
+- 12GB heap: reached 36M distinct states (depth 11) in 6 min before
+  external termination. Queue still growing (~31M states in queue).
+- Estimated total distinct states: 200-500M
+- **Recommendation**: 16-24GB heap, uninterrupted 30-60 minute run
+
+### CBMC pgrpcpy (MNTLOG=2, MNTHASH=4, unwind=6)
+
+- `harness_basic_isolation`: 77+ minutes of continuous SAT solving at
+  93% CPU, 10.5GB RAM (51% of 21GB). Still in propositional reduction
+  phase when terminated. The deep pointer chains and loop unrolling in
+  `pgrpcpy` create a massive SAT formula even with only 4 hash buckets.
+- **Recommendation**: Run on a machine with 16GB+ RAM and allow 2+ hours
+  per harness. Consider adding `--slice-formula` flag to CBMC to prune
+  irrelevant clauses.
+- Alternative: Try `CBMC_MNTLOG=1` (MNTHASH=2, unwind=4) for a faster
+  sanity check that still exercises the same code paths.
+
+### CBMC pgrpcpy (MNTLOG=5, MNTHASH=32, unwind=34)
+
+- Not yet attempted. Expected to require significantly more resources
+  than MNTLOG=2 (exponential in unwind depth).
+- **Recommendation**: 32GB+ RAM, hours per harness.
+
+### General Notes
 
 - All verification code is committed and ready to run. No code changes needed.
+- The quick verification suite (SPIN + CBMC quick + TLC small) runs in
+  ~10 minutes and is suitable for CI. It provides the core isolation proof.
+- The extended runs (TLC medium/large + CBMC full) strengthen the result
+  by exploring larger state spaces and verifying actual C code.
