@@ -191,6 +191,7 @@ No action needed - Ed25519, SHA-256, and AEAD login are the defaults.
 
 ## Related Documentation
 
+- [QUANTUM-SAFE-CRYPTO-PLAN.md](QUANTUM-SAFE-CRYPTO-PLAN.md) - Full PQ crypto design document
 - [CRYPTO-DEBUGGING-GUIDE.md](CRYPTO-DEBUGGING-GUIDE.md) - Debugging methodology
 - [ELGAMAL-PERFORMANCE.md](ELGAMAL-PERFORMANCE.md) - Detailed performance analysis
 
@@ -199,11 +200,91 @@ No action needed - Ed25519, SHA-256, and AEAD login are the defaults.
 - `850e906a` - feat(crypto): Add Ed25519 signatures and modernize cryptography
 - `172d7f7f` - Add RFC 3526 pre-computed DH params for fast ElGamal 2048-bit keygen
 
+### 8. Post-Quantum Cryptography (FIPS 203/204)
+
+Native implementations of NIST post-quantum standards, with no external dependencies.
+
+#### ML-KEM (FIPS 203) — Key Encapsulation
+
+| Parameter Set | Security Level | Public Key | Secret Key | Ciphertext | Shared Secret |
+|---------------|---------------|------------|------------|------------|---------------|
+| ML-KEM-768   | NIST Level 3  | 1184 bytes | 2400 bytes | 1088 bytes | 32 bytes      |
+| ML-KEM-1024  | NIST Level 5  | 1568 bytes | 3168 bytes | 1568 bytes | 32 bytes      |
+
+**Files created:**
+- `libsec/sha3.c` — SHA-3/SHAKE (Keccak-f[1600], prerequisite for ML-KEM/ML-DSA)
+- `libsec/mlkem_ntt.c` — NTT arithmetic (q=3329, Barrett/Montgomery reduction)
+- `libsec/mlkem_poly.c` — Polynomial operations (CBD sampling, compress/decompress)
+- `libsec/mlkem.c` — ML-KEM-768/1024 keygen/encaps/decaps (CPAPKE + FO transform)
+
+**Keyring API:** `mlkem768_keygen/encaps/decaps`, `mlkem1024_keygen/encaps/decaps` (raw byte arrays)
+
+#### ML-DSA (FIPS 204) — Digital Signatures
+
+| Parameter Set | Security Level | Public Key | Secret Key | Signature  |
+|---------------|---------------|------------|------------|------------|
+| ML-DSA-65     | NIST Level 3  | 1952 bytes | 4032 bytes | 3309 bytes |
+| ML-DSA-87     | NIST Level 5  | 2592 bytes | 4896 bytes | 4627 bytes |
+
+**Files created:**
+- `libsec/mldsa_ntt.c` — NTT arithmetic (q=8380417)
+- `libsec/mldsa_poly.c` — Polynomial operations (sampling, packing, hint/decompose)
+- `libsec/mldsa.c` — ML-DSA-65/87 keygen/sign/verify (rejection sampling)
+- `libkeyring/mldsaalg.c` — SigAlgVec registration (mldsa65, mldsa87)
+
+**Keyring API:** Registered as SigAlgVec (`genSK("mldsa65", ...)`, standard sign/verify)
+
+#### Hybrid TLS 1.3 Key Exchange
+
+X25519MLKEM768 (IANA group 0x4588) hybrid key exchange per draft-ietf-tls-ecdhe-mlkem.
+
+| Aspect | Classical | Hybrid |
+|--------|-----------|--------|
+| Client key share | 32 bytes (X25519) | 1216 bytes (ML-KEM pk + X25519) |
+| Server response | 32 bytes | 1120 bytes (ML-KEM ct + X25519) |
+| Shared secret | 32 bytes | 64 bytes (ML-KEM ss ‖ X25519 ss) |
+| Fallback | — | X25519 if server doesn't support hybrid |
+
+**Files modified:**
+- `appl/lib/crypt/tls.b` — Hybrid key exchange in TLS 1.3 handshake
+- `module/tls.m` — `X25519MLKEM768` constant
+
+#### X.509 Certificate Support
+
+ML-DSA OIDs added for certificate signing:
+- `id-ML-DSA-65`: 2.16.840.1.101.3.4.3.18
+- `id-ML-DSA-87`: 2.16.840.1.101.3.4.3.19
+
+**Files modified:**
+- `module/pkcs.m`, `appl/lib/crypt/pkcs.b` — ML-DSA OIDs
+- `appl/cmd/auth/createsignerkey.b` — `mldsa65`/`mldsa87` algorithm options
+
+#### Migration
+
+```sh
+# Generate ML-DSA-65 signer key
+auth/createsignerkey -a mldsa65 signer_name
+
+# Generate ML-DSA-87 signer key (higher security)
+auth/createsignerkey -a mldsa87 signer_name
+```
+
+TLS hybrid key exchange is automatic — clients advertise X25519MLKEM768 first with X25519 fallback.
+
+#### Testing
+
+```sh
+./emu/MacOSX/o.emu -r. /tests/sha3_test.dis
+./emu/MacOSX/o.emu -r. /tests/mlkem_test.dis
+./emu/MacOSX/o.emu -r. /tests/mldsa_test.dis
+./emu/MacOSX/o.emu -r. /tests/tls_pq_test.dis
+```
+
 ## Future Work
 
 Optional improvements not yet implemented:
 
 1. **OCSP stapling** - Online certificate status checking (alternative to CRL)
 2. **CRL auto-fetch** - Fetch CRLs from CRL Distribution Point URLs in certificates
-3. **Post-quantum cryptography** - ML-KEM (Kyber) for key encapsulation, ML-DSA (Dilithium) for signatures
-4. **TLS 1.3 for SSL3 path** - Migrate remaining SSL3 users to TLS 1.3 (already available in tls.b)
+3. **TLS 1.3 for SSL3 path** - Migrate remaining SSL3 users to TLS 1.3 (already available in tls.b)
+4. **SLH-DSA (FIPS 205)** - Stateless hash-based signatures (SPHINCS+) as additional PQ signature option

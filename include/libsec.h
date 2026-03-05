@@ -302,6 +302,118 @@ char* sha1pickle(SHA1state*);
 SHA1state* sha1unpickle(char*);
 
 /*/////////////////////////////////////////////////////// */
+/* SHA-3 / SHAKE (FIPS 202) */
+/*/////////////////////////////////////////////////////// */
+
+enum
+{
+	SHA3_256dlen=	32,
+	SHA3_512dlen=	64,
+};
+
+typedef struct SHA3state SHA3state;
+struct SHA3state
+{
+	u64int	a[25];		/* Keccak state (5x5 x 64-bit) */
+	uchar	buf[200];	/* rate buffer */
+	int	rate;		/* rate in bytes */
+	int	pt;		/* buffer position */
+	int	mdlen;		/* output length (0 for XOF) */
+};
+
+void	sha3_256(uchar *in, ulong inlen, uchar out[32]);
+void	sha3_512(uchar *in, ulong inlen, uchar out[64]);
+void	shake128_init(SHA3state *s);
+void	shake128_absorb(SHA3state *s, const uchar *in, ulong inlen);
+void	shake128_finalize(SHA3state *s);
+void	shake128_squeeze(SHA3state *s, uchar *out, ulong outlen);
+void	shake256_init(SHA3state *s);
+void	shake256_absorb(SHA3state *s, const uchar *in, ulong inlen);
+void	shake256_finalize(SHA3state *s);
+void	shake256_squeeze(SHA3state *s, uchar *out, ulong outlen);
+void	shake128(const uchar *in, ulong inlen, uchar *out, ulong outlen);
+void	shake256(const uchar *in, ulong inlen, uchar *out, ulong outlen);
+
+/*/////////////////////////////////////////////////////// */
+/* ML-KEM (FIPS 203) Key Encapsulation */
+/*/////////////////////////////////////////////////////// */
+
+enum
+{
+	/* ML-KEM-768 (NIST Level 3) */
+	MLKEM768_PKLEN=		1184,
+	MLKEM768_SKLEN=		2400,
+	MLKEM768_CTLEN=		1088,
+
+	/* ML-KEM-1024 (NIST Level 5) */
+	MLKEM1024_PKLEN=	1568,
+	MLKEM1024_SKLEN=	3168,
+	MLKEM1024_CTLEN=	1568,
+
+	MLKEM_SSLEN=		32,
+};
+
+int	mlkem768_keygen(uchar *pk, uchar *sk);
+int	mlkem768_encaps(uchar *ct, uchar *ss, const uchar *pk);
+int	mlkem768_decaps(uchar *ss, const uchar *ct, const uchar *sk);
+int	mlkem1024_keygen(uchar *pk, uchar *sk);
+int	mlkem1024_encaps(uchar *ct, uchar *ss, const uchar *pk);
+int	mlkem1024_decaps(uchar *ss, const uchar *ct, const uchar *sk);
+
+/* internal NTT/poly functions used across mlkem_*.c files */
+int16	mlkem_barrett_reduce(int16 a);
+int16	mlkem_montgomery_reduce(int32 a);
+int16	mlkem_cond_sub_q(int16 a);
+void	mlkem_ntt(int16 r[256]);
+void	mlkem_invntt(int16 r[256]);
+void	mlkem_poly_basemul(int16 r[256], const int16 a[256], const int16 b[256]);
+void	mlkem_poly_add(int16 r[256], const int16 a[256], const int16 b[256]);
+void	mlkem_poly_sub(int16 r[256], const int16 a[256], const int16 b[256]);
+void	mlkem_poly_reduce(int16 r[256]);
+void	mlkem_poly_normalize(int16 r[256]);
+void	mlkem_poly_sample_ntt(int16 r[256], const uchar seed[32], uchar x, uchar y);
+void	mlkem_poly_sample_cbd(int16 r[256], const uchar seed[32], uchar nonce, int eta);
+void	mlkem_poly_encode(uchar *out, const int16 r[256], int bits);
+void	mlkem_poly_decode(int16 r[256], const uchar *in, int bits);
+void	mlkem_poly_compress(int16 r[256], int d);
+void	mlkem_poly_decompress(int16 r[256], int d);
+void	mlkem_poly_tomont(int16 r[256]);
+
+/*/////////////////////////////////////////////////////// */
+/* ML-DSA (FIPS 204) Digital Signatures */
+/*/////////////////////////////////////////////////////// */
+
+enum
+{
+	/* ML-DSA-65 (NIST Level 3) */
+	MLDSA65_PKLEN=		1952,
+	MLDSA65_SKLEN=		4032,
+	MLDSA65_SIGLEN=		3309,
+
+	/* ML-DSA-87 (NIST Level 5) */
+	MLDSA87_PKLEN=		2592,
+	MLDSA87_SKLEN=		4896,
+	MLDSA87_SIGLEN=		4627,
+};
+
+int	mldsa65_keygen(uchar *pk, uchar *sk);
+int	mldsa65_sign(uchar *sig, const uchar *msg, ulong msglen, const uchar *sk);
+int	mldsa65_verify(const uchar *sig, const uchar *msg, ulong msglen, const uchar *pk);
+int	mldsa87_keygen(uchar *pk, uchar *sk);
+int	mldsa87_sign(uchar *sig, const uchar *msg, ulong msglen, const uchar *sk);
+int	mldsa87_verify(const uchar *sig, const uchar *msg, ulong msglen, const uchar *pk);
+
+/* internal NTT/poly functions used across mldsa_*.c files */
+int32	mldsa_barrett_reduce(int32 a);
+int32	mldsa_montgomery_reduce(int64 a);
+void	mldsa_ntt(int32 r[256]);
+void	mldsa_invntt(int32 r[256]);
+void	mldsa_poly_pointwise(int32 r[256], const int32 a[256], const int32 b[256]);
+void	mldsa_poly_add(int32 r[256], const int32 a[256], const int32 b[256]);
+void	mldsa_poly_sub(int32 r[256], const int32 a[256], const int32 b[256]);
+void	mldsa_poly_reduce(int32 r[256]);
+
+/*/////////////////////////////////////////////////////// */
 /* random number generation */
 /*/////////////////////////////////////////////////////// */
 void	genrandom(uchar *buf, int nbytes);

@@ -59,7 +59,9 @@ objIdTab = array [] of {
 	id_ecdsa_sha384 =>		Oid(array [] of {1,2,840,10045,4,3,3}),
 	id_prime256v1 =>		Oid(array [] of {1,2,840,10045,3,1,7}),
 	id_sha256WithRSAEncryption =>	Oid(array [] of {1,2,840,113549,1,1,11}),
-	id_sha384WithRSAEncryption =>	Oid(array [] of {1,2,840,113549,1,1,12})
+	id_sha384WithRSAEncryption =>	Oid(array [] of {1,2,840,113549,1,1,12}),
+	id_mldsa65 =>			Oid(array [] of {2,16,840,1,101,3,4,3,18}),
+	id_mldsa87 =>			Oid(array [] of {2,16,840,1,101,3,4,3,19})
 };
 
 # [public]
