@@ -1,6 +1,6 @@
 # Cryptographic Modernization Summary
 
-**Status:** Complete (Phase 1-3 + ElGamal fix)
+**Status:** Complete (Phase 1-5 + ElGamal fix)
 
 This document summarizes the cryptographic modernization work done on Inferno/infernode to support autonomous agent systems requiring identity verification and non-repudiation.
 
@@ -85,19 +85,64 @@ After these changes:
 - **Signatures:** Ed25519 provides 128-bit security with deterministic signatures
 - **Certificates:** SHA-256 hash prevents collision attacks
 - **Key exchange:** 2048-bit DH provides ~112-bit security
+- **Login EKE:** ChaCha20-Poly1305 AEAD with 256-bit key (replaces RC4-40)
+- **SSL3 negotiation:** Weak ciphers rejected during handshake (no downgrade)
+- **Revocation:** CRL-based certificate revocation checking
 - **Transport:** WireGuard + Rosenpass handles (external to Inferno)
+
+### 5. Login Protocol: RC4 → ChaCha20-Poly1305 (Phase 4)
+
+The login EKE protocol's temporary encryption of the DH exchange now uses ChaCha20-Poly1305 AEAD instead of RC4-40.
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Cipher | RC4-40 (40-bit key) | **ChaCha20-Poly1305 AEAD** |
+| Key derivation | SHA-256 folded to 8 bytes | **SHA-256(SHA-256(pw) \|\| salt)** = 32 bytes |
+| Authentication | None | **Poly1305 tag (16 bytes)** |
+| IV/Nonce | 8-byte IV | **32 bytes (20 salt + 12 nonce)** |
+
+**Files modified:**
+- `appl/lib/login.b` - Client-side AEAD encryption
+- `appl/cmd/auth/logind.b` - Server-side AEAD encryption
+
+**Breaking change:** Clients and servers must both be updated. Old clients cannot authenticate with new servers and vice versa.
+
+### 6. SSL3 Weak Cipher Suite Rejection (Phase 5)
+
+Weak cipher suites are now rejected during SSL3 negotiation before selection, rather than failing late during cipher activation.
+
+**Blocked categories:**
+- NULL ciphers (no encryption)
+- RC4 (biased output, practical attacks)
+- DES / DES-40 (56-bit or 40-bit keys, trivially brute-forced)
+- Export-grade ciphers (intentionally weakened)
+- Anonymous key exchange (no server authentication)
+- FORTEZZA (unsupported)
+
+**Remaining allowed suites:** 3DES-EDE-CBC and IDEA-CBC with RSA/DH/DHE key exchange and SHA-1 MAC.
+
+**Files modified:**
+- `appl/lib/crypt/ssl3.b` - Added `is_weak_suite()` filter in `find_cipher_suite()`
+
+### 7. Certificate Revocation Lists (Phase 5)
+
+X.509 certificate verification now checks CRLs loaded from `/lib/crls/*.der`.
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| Revocation checking | None | **CRL-based** |
+| CRL store | N/A | **`/lib/crls/*.der`** (DER-encoded CRLs) |
+| Check point | N/A | **During `verify_certpath()`** |
+
+**Files modified:**
+- `appl/lib/crypt/x509.b` - CRL store loading and revocation checking in cert path validation
+- `lib/crls/` - New directory for CRL DER files
 
 ## What's Not Changed
 
-### RC4 in Login Protocol
+### HMAC-SHA1 in SSL3
 
-The initial login key exchange still uses RC4 (`alg rc4`) for encrypting the DH component with the password-derived key. This is a protocol-level change requiring coordinated client/server updates.
-
-**Risk assessment:** Low - used only for brief DH exchange, not bulk data.
-
-### SSL3 Cipher Suites
-
-The SSL3 implementation retains legacy cipher support for protocol compatibility. SHA-1 usage in HMAC contexts remains (HMAC-SHA1 is still secure).
+SHA-1 usage in HMAC contexts remains (HMAC-SHA1 is still considered secure; the attacks on SHA-1 are collision attacks, not applicable to HMAC).
 
 ## Migration Guide
 
@@ -116,9 +161,17 @@ The SSL3 implementation retains legacy cipher support for protocol compatibility
    - Old certificates will fail verification (SHA-1 vs SHA-256)
    - Clients must re-authenticate to get new certificates
 
+3. **Update all clients and servers together:**
+   - Login protocol now uses ChaCha20-Poly1305 AEAD (incompatible with RC4 version)
+   - Both `login.b` (client) and `logind.b` (server) must be updated simultaneously
+
+4. **Install CRLs (optional):**
+   - Place DER-encoded CRL files in `/lib/crls/` for revocation checking
+   - CRLs are matched by issuer name against certificate issuers
+
 ### For New Deployments
 
-No action needed - Ed25519 and SHA-256 are the defaults.
+No action needed - Ed25519, SHA-256, and AEAD login are the defaults.
 
 ## Testing
 
@@ -148,8 +201,9 @@ No action needed - Ed25519 and SHA-256 are the defaults.
 
 ## Future Work
 
-Optional improvements not implemented:
+Optional improvements not yet implemented:
 
-1. **RC4 → AES in login protocol** - Requires protocol version negotiation
-2. **Disable weak SSL ciphers** - May break legacy clients
-3. **Certificate revocation** - Not currently supported
+1. **OCSP stapling** - Online certificate status checking (alternative to CRL)
+2. **CRL auto-fetch** - Fetch CRLs from CRL Distribution Point URLs in certificates
+3. **Post-quantum cryptography** - ML-KEM (Kyber) for key encapsulation, ML-DSA (Dilithium) for signatures
+4. **TLS 1.3 for SSL3 path** - Migrate remaining SSL3 users to TLS 1.3 (already available in tls.b)

@@ -64,42 +64,40 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 	if(s != id)
 		return ("unexpected reply from signer: " + s, nil);
 
-	# user->CA	ivec
-	ivec := rand->randombuf(rand->ReallyRandom, 8);
+	# user->CA	ivec (32 bytes: 20 for key derivation salt + 12 for AEAD nonce)
+	ivec := rand->randombuf(rand->ReallyRandom, 32);
 	if(kr->putbytearray(c.dfd, ivec, len ivec) < 0)
 		return (sys->sprint("can't send initialization vector: %r"), nil);
 
-	# start encrypting
+	# Derive 32-byte ChaCha20-Poly1305 key from password + IV
+	# HKDF-like: key = SHA-256(SHA-256(password) || ivec[0:20])
 	pwbuf := array of byte password;
-	digest := array[Keyring->SHA256dlen] of byte;
-	kr->sha256(pwbuf, len pwbuf, digest, nil);
-	pwbuf = array[8] of byte;
-	for(i := 0; i < 8; i++)
-		pwbuf[i] = digest[i] ^ digest[8+i];
-	for(i = 0; i < 4; i++)
-		pwbuf[i] ^= digest[16+i];
-	for(i = 0; i < 8; i++)
-		pwbuf[i] ^= ivec[i];
-	err = ssl->secret(c, pwbuf, pwbuf);
-	if(err != nil)
-		return ("can't set secret: " + err, nil);
-	if(sys->fprint(c.cfd, "alg rc4") < 0)
-		return (sys->sprint("can't push alg rc4: %r"), nil);
-	#if(sys->fprint(c.cfd, "alg desebc") < 0)
-	#	return (sys->sprint("can't push alg desecb: %r"), nil);
+	pwdigest := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(pwbuf, len pwbuf, pwdigest, nil);
+	keymaterial := array[Keyring->SHA256dlen + 20] of byte;
+	keymaterial[0:] = pwdigest;
+	keymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	aeadkey := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(keymaterial, len keymaterial, aeadkey, nil);
+	nonce := ivec[20:32];
 
-	# CA -> user	key(alpha**r0 mod p)
-	(s, err) = kr->getstring(c.dfd);
+	# CA -> user	AEAD-encrypted alpha**r0 mod p
+	# Receive ciphertext + 16-byte Poly1305 tag
+	(ciphertext, err) := kr->getbytearray(c.dfd);
 	if(err != nil){
-		if(err == "failure") # calculated secret is wrong
+		if(err == "failure")
 			return ("name or secret incorrect (alpha**r0 mod p)", nil);
 		return ("remote:" + err, nil);
 	}
+	(authtag, err) = kr->getbytearray(c.dfd);
+	if(err != nil)
+		return ("remote:" + err, nil);
 
-	# stop encrypting
-	if(sys->fprint(c.cfd, "alg clear") < 0)
-		return (sys->sprint("can't push alg clear: %r"), nil);
-	alphar0 := IPint.b64toip(s);
+	# Decrypt with ChaCha20-Poly1305 (AEAD - authenticates and decrypts)
+	plaintext := kr->ccpolydecrypt(ciphertext, nil, authtag, aeadkey, nonce);
+	if(plaintext == nil)
+		return ("name or secret incorrect (AEAD decryption failed)", nil);
+	alphar0 := IPint.b64toip(string plaintext);
 
 	# CA->user	alpha
 	(s, err) = kr->getstring(c.dfd);
