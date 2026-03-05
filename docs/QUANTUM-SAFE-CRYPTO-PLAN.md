@@ -1,8 +1,27 @@
 # Quantum-Safe Cryptography Plan for Infernode
 
-**Status:** Plan — Not yet implemented
+**Status:** Complete — All phases implemented (FIPS 203, 204, 205)
 **Date:** 2026-03-05
 **Predecessor:** [CRYPTO-MODERNIZATION.md](CRYPTO-MODERNIZATION.md) (Phases 1-5 complete)
+
+### Implementation Status
+
+| Phase | Component | Status |
+|-------|-----------|--------|
+| 0 | SHA-3/SHAKE (FIPS 202) | **Complete** |
+| 1 | ML-KEM-768/1024 primitives (FIPS 203) | **Complete** |
+| 2 | ML-KEM Keyring integration | **Complete** |
+| 3 | Hybrid X25519+ML-KEM-768 TLS 1.3 | **Complete** |
+| 4 | ML-DSA-65/87 primitives (FIPS 204) | **Complete** |
+| 5 | ML-DSA Keyring/X.509 integration | **Complete** |
+| 6 | Testing (SHA-3, ML-KEM, ML-DSA, TLS PQ) | **Complete** |
+| 7 | SLH-DSA-SHAKE-192s/256s (FIPS 205) | **Complete** |
+| 7 | SLH-DSA Keyring/X.509 integration | **Complete** |
+| 7 | SHA-3 Keyring builtins | **Complete** |
+| 7 | Comprehensive test hardening | **Complete** |
+| 7 | Documentation | **Complete** |
+
+All 8 SigAlgVec slots filled: ed25519, elgamal, rsa, dsa, mldsa65, mldsa87, slhdsa192s, slhdsa256s.
 
 ## 1. Motivation
 

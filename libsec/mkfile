@@ -19,6 +19,7 @@ CFILES = des.c desmodes.c desECB.c desCBC.c des3ECB.c des3CBC.c\
 	dsagen.c dsaalloc.c dsaprivtopub.c dsasign.c dsaverify.c \
 	mlkem.c mlkem_ntt.c mlkem_poly.c \
 	mldsa.c mldsa_ntt.c mldsa_poly.c \
+	slhdsa.c slhdsa_hash.c slhdsa_wots.c slhdsa_fors.c slhdsa_tree.c \
 
 OFILES=${CFILES:%.c=%.$O}
 

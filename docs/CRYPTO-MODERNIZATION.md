@@ -1,6 +1,6 @@
 # Cryptographic Modernization Summary
 
-**Status:** Complete (Phase 1-5 + ElGamal fix)
+**Status:** Complete (Phase 1-5 + ElGamal fix + Post-Quantum FIPS 203/204/205)
 
 This document summarizes the cryptographic modernization work done on Inferno/infernode to support autonomous agent systems requiring identity verification and non-repudiation.
 
@@ -280,6 +280,89 @@ TLS hybrid key exchange is automatic — clients advertise X25519MLKEM768 first 
 ./emu/MacOSX/o.emu -r. /tests/tls_pq_test.dis
 ```
 
+### 9. SLH-DSA (FIPS 205) — Stateless Hash-Based Signatures
+
+Conservative backup for ML-DSA — no lattice assumptions, purely hash-based (WOTS+ + FORS + hypertree). Uses SHAKE-256 from `libsec/sha3.c`.
+
+| Parameter Set | Security Level | Public Key | Secret Key | Signature |
+|---------------|---------------|------------|------------|-----------|
+| SLH-DSA-SHAKE-192s | NIST Level 3 | 48 bytes | 96 bytes | 16,224 bytes |
+| SLH-DSA-SHAKE-256s | NIST Level 5 | 64 bytes | 128 bytes | 29,792 bytes |
+
+**Architecture:** Five-layer construction:
+- `slhdsa_hash.c` — ADRS address scheme, tweakable hash functions (F, H, T_l, PRF, H_msg)
+- `slhdsa_wots.c` — WOTS+ one-time signatures (Winternitz w=16)
+- `slhdsa_fors.c` — FORS few-time signatures (k=17/22 trees of height a=14)
+- `slhdsa_tree.c` — XMSS tree and d-layer hypertree (sign/verify)
+- `slhdsa.c` — Top-level keygen/sign/verify
+
+**Files created:**
+- `libsec/slhdsa.c` — SLH-DSA keygen/sign/verify
+- `libsec/slhdsa_hash.c` — Tweakable hash functions, ADRS
+- `libsec/slhdsa_wots.c` — WOTS+ one-time signatures
+- `libsec/slhdsa_fors.c` — FORS few-time signatures
+- `libsec/slhdsa_tree.c` — Merkle tree + hypertree
+- `libkeyring/slhdsaalg.c` — SigAlgVec registration (slhdsa192s, slhdsa256s)
+
+**Keyring API:** Registered as SigAlgVec (`genSK("slhdsa192s", ...)`, standard sign/verify). Uses slots 7-8 of the 8-slot `algs[]` array (all slots now filled).
+
+**X.509 OIDs:**
+- `id-SLH-DSA-SHAKE-192s`: 2.16.840.1.101.3.4.3.22
+- `id-SLH-DSA-SHAKE-256s`: 2.16.840.1.101.3.4.3.26
+
+**Files modified:**
+- `include/libsec.h` — SLH-DSA declarations
+- `libsec/mkfile` — Add 5 SLH-DSA source files
+- `libkeyring/keys.h` — Bump Maxbuf to 49152, add init declarations
+- `libkeyring/mkfile` — Add slhdsaalg.o
+- `libinterp/keyring.c` — Register SLH-DSA algs + SHA-3 builtins
+- `module/keyring.m` — SHA3-256/512 digest functions
+- `module/pkcs.m`, `appl/lib/crypt/pkcs.b` — SLH-DSA OIDs
+- `appl/cmd/auth/createsignerkey.b` — SLH-DSA algorithm options
+
+#### SHA-3 Keyring Builtins
+
+SHA3-256 and SHA3-512 exposed to Limbo as one-shot digest functions:
+
+```limbo
+SHA3_256dlen: con 32;
+SHA3_512dlen: con 64;
+sha3_256: fn(buf: array of byte, n: int, digest: array of byte): int;
+sha3_512: fn(buf: array of byte, n: int, digest: array of byte): int;
+```
+
+#### Migration
+
+```sh
+# Generate SLH-DSA-SHAKE-192s signer key (Level 3)
+auth/createsignerkey -a slhdsa192s signer_name
+
+# Generate SLH-DSA-SHAKE-256s signer key (Level 5)
+auth/createsignerkey -a slhdsa256s signer_name
+```
+
+#### Testing
+
+```sh
+./emu/Linux/o.emu -r. /tests/slhdsa_test.dis
+./emu/Linux/o.emu -r. /tests/sha3_test.dis
+```
+
+## Security Properties (Updated)
+
+After all changes, the complete SigAlgVec registry:
+
+| Slot | Algorithm | Type | Security |
+|------|-----------|------|----------|
+| 1 | ed25519 | Classical | 128-bit |
+| 2 | elgamal | Classical | ~112-bit (2048-bit) |
+| 3 | rsa | Classical | Variable |
+| 4 | dsa | Classical | Variable |
+| 5 | mldsa65 | Post-Quantum (lattice) | NIST Level 3 |
+| 6 | mldsa87 | Post-Quantum (lattice) | NIST Level 5 |
+| 7 | slhdsa192s | Post-Quantum (hash) | NIST Level 3 |
+| 8 | slhdsa256s | Post-Quantum (hash) | NIST Level 5 |
+
 ## Future Work
 
 Optional improvements not yet implemented:
@@ -287,4 +370,3 @@ Optional improvements not yet implemented:
 1. **OCSP stapling** - Online certificate status checking (alternative to CRL)
 2. **CRL auto-fetch** - Fetch CRLs from CRL Distribution Point URLs in certificates
 3. **TLS 1.3 for SSL3 path** - Migrate remaining SSL3 users to TLS 1.3 (already available in tls.b)
-4. **SLH-DSA (FIPS 205)** - Stateless hash-based signatures (SPHINCS+) as additional PQ signature option

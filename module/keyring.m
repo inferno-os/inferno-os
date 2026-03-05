@@ -227,6 +227,20 @@ Keyring: module
 	SHA512dlen:	con 64;
 	MD5dlen:	con 16;
 	MD4dlen:	con 16;
+	SHA3_256dlen:	con 32;
+	SHA3_512dlen:	con 64;
+
+	# SHA-3 digests (FIPS 202, one-shot)
+	sha3_256: fn(buf: array of byte, n: int, digest: array of byte): int;
+	sha3_512: fn(buf: array of byte, n: int, digest: array of byte): int;
+
+	# SLH-DSA (FIPS 205) sizes
+	SLHDSA192S_PKLEN:  con 48;
+	SLHDSA192S_SKLEN:  con 96;
+	SLHDSA192S_SIGLEN: con 16224;
+	SLHDSA256S_PKLEN:  con 64;
+	SLHDSA256S_SKLEN:  con 128;
+	SLHDSA256S_SIGLEN: con 29792;
 
 	# encryption interfaces
 	Encrypt:	con 0;
