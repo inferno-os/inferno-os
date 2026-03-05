@@ -49,18 +49,24 @@ NamespaceIsolation ==
         LET pg_parent == pgrp_parent[pg_child] IN
         (PgrpInUse(pg_child) /\ pg_parent # 0 /\ PgrpInUse(pg_parent)) =>
             \* Part A: Mounts added to parent after copy don't leak to child
+            \* Note: post_copy_mounts[parent] may include mounts from BEFORE
+            \* the fork (i.e., present in the snapshot). Those are not violations.
             (\A path \in PathId, cid \in ChannelId :
                 (<<path, cid>> \in post_copy_mounts[pg_parent] /\
                  cid \in mount_table[pg_parent][path]) =>
                     (cid \in mount_table[pg_child][path] =>
-                        <<path, cid>> \in post_copy_mounts[pg_child]))
+                        (<<path, cid>> \in post_copy_mounts[pg_child] \/
+                         cid \in copy_snapshot[pg_child][path])))
             /\
             \* Part B: Mounts added to child after copy don't leak to parent
+            \* Child's post_copy_mounts are always truly post-fork (reset at copy)
+            \* but they could coincide with parent's pre-fork mounts in the snapshot.
             (\A path \in PathId, cid \in ChannelId :
                 (<<path, cid>> \in post_copy_mounts[pg_child] /\
                  cid \in mount_table[pg_child][path]) =>
                     (cid \in mount_table[pg_parent][path] =>
-                        <<path, cid>> \in post_copy_mounts[pg_parent]))
+                        (<<path, cid>> \in post_copy_mounts[pg_parent] \/
+                         cid \in copy_snapshot[pg_child][path])))
 
 (*
  * NS-ISO-2: Mount Operation Locality
