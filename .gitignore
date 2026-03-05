@@ -197,3 +197,4 @@ formal-verification/cbmc/(fd
 formal-verification/cbmc/(mnthash).log
 formal-verification/cbmc/allocation).log
 mnt/
+dis/mermaid_test.dis
