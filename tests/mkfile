@@ -16,6 +16,7 @@ TARG=\
 	goroutine_leak_test.dis\
 	gpu_test.dis\
 	hello_test.dis\
+	imgload_test.dis\
 	imap_test.dis\
 	jit_test.dis\
 	lucifer_flicker_test.dis\
