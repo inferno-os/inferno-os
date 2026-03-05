@@ -2,7 +2,7 @@ implement Renderer;
 
 #
 # Image renderer - wraps Xenith's imgload module to conform to the
-# Renderer interface.  Handles PNG, PPM, PGM, PBM, BIT, PIC formats.
+# Renderer interface.  Handles PNG, JPEG, PPM, PGM, PBM, BIT, PIC formats.
 #
 # This is the reference renderer implementation: it delegates all
 # actual decoding to imgload and adapts the progress/result types.
@@ -53,7 +53,7 @@ info(): ref RenderInfo
 {
 	return ref RenderInfo(
 		"Image",
-		".png .ppm .pgm .pbm .bit .pic",
+		".png .jpg .jpeg .ppm .pgm .pbm .bit .pic",
 		0  # Images have no text content
 	);
 }
@@ -68,6 +68,11 @@ canrender(data: array of byte, hint: string): int
 	   data[2] == byte 78 && data[3] == byte 71 &&
 	   data[4] == byte 13 && data[5] == byte 10 &&
 	   data[6] == byte 26 && data[7] == byte 10)
+		return 100;
+
+	# JPEG magic: FF D8 FF
+	if(data[0] == byte 16rFF && data[1] == byte 16rD8 &&
+	   data[2] == byte 16rFF)
 		return 100;
 
 	# PPM/PGM/PBM magic: P3, P5, P6
