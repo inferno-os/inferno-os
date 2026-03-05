@@ -386,6 +386,20 @@ pathbase(path: string): string
 	return path;
 }
 
+# firstlines returns the first n newline-terminated lines of s.
+# Used to keep a preview of large tool results inline for the LLM.
+firstlines(s: string, n: int): string
+{
+	out := "";
+	count := 0;
+	for(i := 0; i < len s && count < n; i++) {
+		out[len out] = s[i];
+		if(s[i] == '\n')
+			count++;
+	}
+	return out;
+}
+
 # strcontains returns 1 if name is in the list l.
 strcontains(l: list of string, name: string): int
 {
@@ -560,6 +574,7 @@ agentturn(input: string)
 	prompt := input;
 	streambase := "/n/llm/" + sessionid;
 
+	hitlimit := 1;
 	for(step := 0; step < maxsteps; step++) {
 		log(sys->sprint("step %d", step + 1));
 
@@ -633,8 +648,10 @@ agentturn(input: string)
 			writemsg("veltro", text);
 
 		# Plain text or end_turn: done.
-		if(stopreason != "tool_use" || tools == nil)
+		if(stopreason != "tool_use" || tools == nil) {
+			hitlimit = 0;
 			break;
+		}
 
 		# Execute tools, intercepting say locally.
 		results: list of (string, string);
@@ -681,9 +698,24 @@ agentturn(input: string)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
 				log("tool " + name + ": " + agentlib->truncate(result, 100));
 				if(len result > AgentLib->STREAM_THRESHOLD) {
-					scratch := agentlib->writescratch(result, step);
-					result = sys->sprint("(output written to %s, %d bytes)", scratch, len result);
-				}
+					# Never re-scratch reads of scratch files — creates an infinite loop
+					# where each read produces another scratch file of similar size.
+					isscratchread := nm == "read" &&
+						len eargs >= len AgentLib->SCRATCH_PATH &&
+						eargs[0:len AgentLib->SCRATCH_PATH] == AgentLib->SCRATCH_PATH;
+					if(isscratchread) {
+						# Truncate so LLM gets as much as possible inline.
+						result = result[0:AgentLib->STREAM_THRESHOLD] +
+							"\n... (truncated — content continues in " + eargs + ")";
+					} else {
+						scratch := agentlib->writescratch(result, step);
+						# Keep first ~40 lines inline so LLM can act on paths immediately.
+						preview := firstlines(result, 40);
+						result = preview +
+							sys->sprint("\n... (%d total bytes — full output at %s)",
+								len result, scratch);
+					}
+					}
 				results = (id, result) :: results;
 			}
 		}
@@ -696,6 +728,9 @@ agentturn(input: string)
 		prompt = agentlib->buildtoolresults(rev);
 	}
 
+	if(hitlimit)
+		writemsg("veltro", sys->sprint(
+			"(reached %d-step limit — send another message to continue)", maxsteps));
 	setstatus("idle");
 }
 

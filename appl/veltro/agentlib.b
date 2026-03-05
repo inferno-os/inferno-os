@@ -16,8 +16,6 @@ include "string.m";
 
 include "agentlib.m";
 
-SCRATCH_PATH: con "/tmp/veltro/scratch";
-
 verbose := 0;
 stderr: ref Sys->FD;
 
