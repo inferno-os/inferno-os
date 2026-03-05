@@ -59,6 +59,7 @@ Artifact: adt {
 	data:	string;
 	rendimg: ref Image;
 	pdfpage: int;
+	numpages: int;
 	rendering: int;
 	zoom:	int;
 	appstatus: string;	# "launching"|"running"|"dead" (type=app only)
@@ -285,7 +286,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 					if(pdfnavprev.max.x > pdfnavprev.min.x &&
 							pdfnavprev.contains(p.xy)) {
 						pdfart := findartifact(centeredart);
-						if(pdfart != nil && pdfart.pdfpage > 0) {
+						if(pdfart != nil && pdfart.pdfpage > 1) {
 							pdfart.pdfpage--;
 							pdfart.rendimg = nil;
 							pdfart.pany = 0;
@@ -296,7 +297,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 					} else if(pdfnavnext.max.x > pdfnavnext.min.x &&
 							pdfnavnext.contains(p.xy)) {
 						pdfart := findartifact(centeredart);
-						if(pdfart != nil) {
+						if(pdfart != nil && (pdfart.numpages == 0 || pdfart.pdfpage < pdfart.numpages)) {
 							pdfart.pdfpage++;
 							pdfart.rendimg = nil;
 							pdfart.pany = 0;
@@ -662,13 +663,13 @@ prescroll(dir: int)
 
 		# Page navigation at boundary (PDFs)
 		if(art.atype == "pdf" && boundary != 0) {
-			if(boundary > 0) {
+			if(boundary > 0 && (art.numpages == 0 || art.pdfpage < art.numpages)) {
 				# At bottom — next page
 				art.pdfpage++;
 				art.rendimg = nil;
 				art.pany = 0;
 				art.panx = 0;
-			} else if(art.pdfpage > 0) {
+			} else if(art.pdfpage > 1) {
 				# At top — previous page, start at bottom
 				art.pdfpage--;
 				art.rendimg = nil;
@@ -829,7 +830,7 @@ loadpresentation()
 			if(data == nil) data = "";
 			if(appstatus == nil) appstatus = "";
 			else appstatus = strip(appstatus);
-			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0, appstatus, 0, 0);
+			art := ref Artifact(nm, atype, label, data, nil, 1, 0, 0, 0, appstatus, 0, 0);
 			artifacts = art :: artifacts;
 			nart++;
 		}
@@ -851,7 +852,7 @@ loadartifact(id: string)
 	if(data == nil) data = "";
 	if(appstatus2 == nil) appstatus2 = "";
 	else appstatus2 = strip(appstatus2);
-	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0, appstatus2, 0, 0);
+	art := ref Artifact(id, atype, label, data, nil, 1, 0, 0, 0, appstatus2, 0, 0);
 	artifacts = appendart(artifacts, art);
 	nart++;
 }
@@ -974,9 +975,13 @@ artdata(art: ref Artifact): array of byte
 renderart(art: ref Artifact, contentw: int): ref Image
 {
 	# PDF special case: uses page/zoom state
-	if(art.atype == "pdf")
-		return renderpdfpage(art.data, art.pdfpage,
+	if(art.atype == "pdf") {
+		(img, np) := renderpdfpage(art.data, art.pdfpage,
 			96 * artzoom(art) / 100);
+		if(np > 0)
+			art.numpages = np;
+		return img;
+	}
 
 	hint := artypehint(art);
 	if(hint == "")
@@ -1093,7 +1098,7 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 {
 	navh := pdfnav.dy();
 	mainwin.draw(pdfnav, headercol, nil, (0, 0));
-	pagestr := sys->sprint("Page %d", art.pdfpage + 1);
+	pagestr := sys->sprint("Page %d", art.pdfpage);
 	psw := mainfont.width(pagestr);
 	psy := pdfnav.min.y + (navh - mainfont.height) / 2;
 	midx := pdfnav.min.x + pdfnav.dx() / 2;
@@ -1101,7 +1106,7 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 	prevlabel := " < ";
 	plw := mainfont.width(prevlabel);
 	plx := midx - psw/2 - plw - 8;
-	if(art.pdfpage > 0) {
+	if(art.pdfpage > 1) {
 		mainwin.text((plx, psy), accentcol, (0, 0), mainfont, prevlabel);
 		pdfnavprev = Rect((plx, pdfnav.min.y), (plx + plw, pdfnav.max.y));
 	} else
@@ -1109,8 +1114,12 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 	nextlabel := " > ";
 	nlw := mainfont.width(nextlabel);
 	nlx := midx + psw/2 + 8;
-	mainwin.text((nlx, psy), accentcol, (0, 0), mainfont, nextlabel);
-	pdfnavnext = Rect((nlx, pdfnav.min.y), (nlx + nlw, pdfnav.max.y));
+	hasnext := art.numpages == 0 || art.pdfpage < art.numpages;
+	if(hasnext) {
+		mainwin.text((nlx, psy), accentcol, (0, 0), mainfont, nextlabel);
+		pdfnavnext = Rect((nlx, pdfnav.min.y), (nlx + nlw, pdfnav.max.y));
+	} else
+		mainwin.text((nlx, psy), dimcol, (0, 0), mainfont, nextlabel);
 }
 
 # Draw fallback text when no renderer is available or rendering failed.
@@ -1221,7 +1230,8 @@ drawtable(art: ref Artifact, contentr: Rect, pad: int, contentw: int, contenty: 
 }
 
 # Render a single PDF page (uses PDF module directly for page/dpi control).
-renderpdfpage(path: string, page: int, dpi: int): ref Image
+# Returns (image, pagecount); pagecount is 0 on error.
+renderpdfpage(path: string, page: int, dpi: int): (ref Image, int)
 {
 	if(pdfmod == nil) {
 		pdfmod = load PDF PDF->PATH;
@@ -1229,18 +1239,19 @@ renderpdfpage(path: string, page: int, dpi: int): ref Image
 			pdfmod->init(display_g);
 	}
 	if(pdfmod == nil)
-		return nil;
+		return (nil, 0);
 	fdata := readfilebytes(path);
 	if(fdata == nil)
-		return nil;
+		return (nil, 0);
 	(doc, err) := pdfmod->open(fdata, "");
 	if(doc == nil) {
 		sys->fprint(stderr, "lucipres: pdf open %s: %s\n", path, err);
-		return nil;
+		return (nil, 0);
 	}
+	np := doc.pagecount();
 	(img, nil) := doc.renderpage(page, dpi);
 	doc.close();
-	return img;
+	return (img, np);
 }
 
 # --- Table rendering helpers ---

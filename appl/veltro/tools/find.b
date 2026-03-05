@@ -125,6 +125,13 @@ exec(args: string): string
 			basepath = hd argv;
 	}
 
+	# Strip shell-style quotes that LLMs sometimes add around patterns.
+	# e.g. -name "*.pdf" tokenizes as `"*.pdf"` (with literal quotes).
+	if(len pattern >= 2 &&
+	   ((pattern[0] == '"' && pattern[len pattern - 1] == '"') ||
+	    (pattern[0] == '\'' && pattern[len pattern - 1] == '\'')))
+		pattern = pattern[1:len pattern - 1];
+
 	# dirc[0] tracks directories opened across the entire recursive search.
 	# Passed by reference (array) so all recursive calls share one counter.
 	dirc := array[1] of {* => 0};
