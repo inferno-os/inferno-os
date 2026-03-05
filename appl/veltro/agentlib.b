@@ -176,6 +176,13 @@ discovernamespace(): string
 			result += paths[i] + "\n";
 	}
 
+	# Include user-bound paths from /tool/paths (registered via file browser or -p)
+	boundraw := readfile("/tool/paths");
+	if(boundraw != "") {
+		result += "\nUSER PATHS (bound by operator):\n";
+		result += boundraw + "\n";
+	}
+
 	return result;
 }
 

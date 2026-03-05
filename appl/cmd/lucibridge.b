@@ -461,6 +461,21 @@ applypathchanges()
 	}
 
 	currentpathsraw = latest;
+
+	# Refresh the system prompt so the LLM knows about the updated path set.
+	# (Mirrors the initsessiontools() call that fires when the tool set changes.)
+	if(sessionid != "") {
+		ns := agentlib->discovernamespace();
+		sysprompt := agentlib->buildsystemprompt(ns);
+		MAXWRITE: con 8000;
+		suffixbytes := array of byte BRIDGE_SUFFIX;
+		if(len array of byte sysprompt + len suffixbytes > MAXWRITE)
+			sysprompt = string (array of byte sysprompt)[0:MAXWRITE - len suffixbytes];
+		sysprompt += BRIDGE_SUFFIX;
+		systempath := "/n/llm/" + sessionid + "/system";
+		agentlib->setsystemprompt(systempath, sysprompt);
+		log("system prompt updated with new paths");
+	}
 }
 
 # Handle slash commands from the input channel.
