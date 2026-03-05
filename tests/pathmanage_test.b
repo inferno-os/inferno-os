@@ -80,7 +80,7 @@ strcontains(s, sub: string): int
 
 testBindpathCtl(t: ref T)
 {
-	if(sys->stat("/tool").t0 < 0) {
+	if(sys->stat("/tool/tools").t0 < 0) {
 		t.skip("tools9p not mounted at /tool");
 		return;
 	}
@@ -111,7 +111,7 @@ testBindpathCtl(t: ref T)
 
 testUnbindpathCtl(t: ref T)
 {
-	if(sys->stat("/tool").t0 < 0) {
+	if(sys->stat("/tool/tools").t0 < 0) {
 		t.skip("tools9p not mounted at /tool");
 		return;
 	}
@@ -131,7 +131,7 @@ testUnbindpathCtl(t: ref T)
 
 testUnbindpathNonexistent(t: ref T)
 {
-	if(sys->stat("/tool").t0 < 0) {
+	if(sys->stat("/tool/tools").t0 < 0) {
 		t.skip("tools9p not mounted at /tool");
 		return;
 	}
@@ -146,7 +146,7 @@ testUnbindpathNonexistent(t: ref T)
 
 testMultiplePaths(t: ref T)
 {
-	if(sys->stat("/tool").t0 < 0) {
+	if(sys->stat("/tool/tools").t0 < 0) {
 		t.skip("tools9p not mounted at /tool");
 		return;
 	}
