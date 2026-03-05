@@ -83,7 +83,9 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 
 	# CA -> user	AEAD-encrypted alpha**r0 mod p
 	# Receive ciphertext + 16-byte Poly1305 tag
-	(ciphertext, err) := kr->getbytearray(c.dfd);
+	ciphertext: array of byte;
+	authtag: array of byte;
+	(ciphertext, err) = kr->getbytearray(c.dfd);
 	if(err != nil){
 		if(err == "failure")
 			return ("name or secret incorrect (alpha**r0 mod p)", nil);

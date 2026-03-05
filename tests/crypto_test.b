@@ -445,7 +445,7 @@ testCCPolyAEAD(t: ref T)
 
 	# 12-byte nonce
 	nonce := array[12] of byte;
-	for(i := 0; i < 12; i++)
+	for(i = 0; i < 12; i++)
 		nonce[i] = byte (i * 3);
 
 	plaintext := array of byte "Test message for ChaCha20-Poly1305 AEAD encryption";
@@ -562,7 +562,7 @@ testLoginKeyDerivation(t: ref T)
 
 	# Keys should match
 	match := 1;
-	for(i := 0; i < Keyring->SHA256dlen; i++) {
+	for(i = 0; i < Keyring->SHA256dlen; i++) {
 		if(clientkey[i] != serverkey[i]) {
 			match = 0;
 			break;
