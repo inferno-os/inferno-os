@@ -225,6 +225,7 @@ SYSMODULES=\
 	rand.m\
 	readdir.m\
 	regex.m\
+	renderer.m\
 	security.m\
 	sh.m\
 	smtp.m\
@@ -253,6 +254,10 @@ DISBIN=$ROOT/dis
 # lucibridge.b needs agentlib.m from appl/veltro
 LIMBOFLAGS=$LIMBOFLAGS -I$ROOT/appl/veltro
 <$ROOT/mkfiles/mksubdirs
+
+# lucipres.b needs render.m from appl/xenith
+lucipres.dis: lucipres.b
+	limbo -I$ROOT/module -I$ROOT/appl/veltro -I$ROOT/appl/xenith -gw lucipres.b
 
 auhdr.dis: auplay.dis
 	rm -f auhdr.dis && cp auplay.dis auhdr.dis
