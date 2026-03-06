@@ -3,23 +3,15 @@
 # Get the directory containing this script (Contents/MacOS)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Navigate to InferNode root (MacOSX/Infernode.app/Contents/MacOS -> root)
+# Navigate to InferNode root (MacOSX/InferNode.app/Contents/MacOS -> root)
 INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-
-# Determine architecture
-case $(uname -m) in
-    arm64|aarch64)
-        OBJTYPE=arm64
-        ;;
-    x86_64)
-        OBJTYPE=amd64
-        ;;
-    *)
-        OBJTYPE=386
-        ;;
-esac
 
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
 
+# Default tool set: non-destructive tools enabled out of the box.
+# Potentially destructive tools (exec, launch, spawn, git, mail) are registered
+# in tools9p but NOT active by default — enable them via the context zone.
+LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap luciedit; lucibridge -v &; lucifer'
+
 cd "$INFERNODE_ROOT/emu/MacOSX"
-exec "$EMU" -c1 -pheap=128m -pmain=128m -pimage=128m -r../.. sh -l -c 'xenith -t dark' 
+exec "$EMU" -c1 -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"
