@@ -942,9 +942,10 @@ deleteartifactui(id: string)
 			"delete id=" + id);
 }
 
-# Export text content: write to /tmp/ file, then plumb the path.
+# Export text content: write to /tmp/ file, then open in luciedit.
 # For mermaid this exports the source; for text/code/md/table the content.
-# Falls back to snarf if file creation or plumbing fails.
+# Creates a presentation app artifact to launch luciedit in the pres zone.
+# Falls back to snarf if file creation fails.
 exportartifact(art: ref Artifact)
 {
 	if(art == nil)
@@ -971,18 +972,10 @@ exportartifact(art: ref Artifact)
 	sys->write(fd, b, len b);
 	fd = nil;
 
-	# Plumb the file so it opens in the editor
-	if(plumbmod != nil) {
-		msg := ref Msg("lucipres", "edit", "/tmp",
-			"text", nil, array of byte path);
-		if(msg.send() >= 0) {
-			sys->fprint(stderr, "lucipres: exported to %s\n", path);
-			return;
-		}
-	}
-	# Plumber unavailable — copy to snarf as fallback
-	writetosnarf(art.data);
-	sys->fprint(stderr, "lucipres: exported to %s (snarf)\n", path);
+	sys->fprint(stderr, "lucipres: exported to %s\n", path);
+
+	# Launch luciedit as a presentation zone app
+	launchexport(fname + ext, path);
 }
 
 # Export the rendered image of an artifact as a GIF file.
@@ -1017,17 +1010,10 @@ exportimage(art: ref Artifact)
 		return;
 	}
 
-	# Plumb the GIF so it opens in a viewer
-	if(plumbmod != nil) {
-		msg := ref Msg("lucipres", "edit", "/tmp",
-			"text", nil, array of byte path);
-		if(msg.send() >= 0) {
-			sys->fprint(stderr, "lucipres: exported image to %s\n", path);
-			return;
-		}
-	}
+	sys->fprint(stderr, "lucipres: exported image to %s\n", path);
+
+	# Copy path to snarf so user can paste it
 	writetosnarf(path);
-	sys->fprint(stderr, "lucipres: exported image to %s (snarf)\n", path);
 }
 
 # Convert a label to a safe filename (alphanumeric, hyphens, underscores)
@@ -1043,6 +1029,32 @@ safename(s: string): string
 			r += "-";
 	}
 	return r;
+}
+
+# Launch luciedit as a presentation zone app to edit an exported file.
+# Creates an artifact of type=app with dispath=/dis/wm/luciedit.dis
+# and data=filepath so lucifer passes it as an argument.
+exportseq := 0;
+
+launchexport(label, filepath: string)
+{
+	if(actid_g < 0)
+		return;
+	exportseq++;
+	id := sys->sprint("edit-%d", exportseq);
+	ctlpath := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
+	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/luciedit.dis",
+		id, label);
+	writetofile(ctlpath, cmd);
+	# Write the file path into the artifact's data field
+	datapath := sys->sprint("%s/activity/%d/presentation/%s/data",
+		mountpt_g, actid_g, id);
+	fd := sys->open(datapath, Sys->OWRITE);
+	if(fd != nil) {
+		b := array of byte filepath;
+		sys->write(fd, b, len b);
+		fd = nil;
+	}
 }
 
 findartifact(id: string): ref Artifact

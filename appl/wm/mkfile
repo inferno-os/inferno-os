@@ -6,6 +6,7 @@ TARG=\
 	clock.dis\
 	colors.dis\
 	lens.dis\
+	luciedit.dis\
 	view.dis\
 	wm.dis\
 
@@ -17,6 +18,7 @@ SYSMODULES=\
 	daytime.m\
 	draw.m\
 	imagefile.m\
+	keyboard.m\
 	math.m\
 	menuhit.m\
 	plumbmsg.m\
