@@ -8,11 +8,16 @@ include "wmlib.m";
 	wmlib: Wmlib;
 	qword, splitqword, s2r: import wmlib;
 include "wmclient.m";
+include "lucitheme.m";
 
 Focusnone, Focusimage, Focustitle: con iota;
 
 Bdup: con int 16rffffffff;
 Bddown: con int 16radadadff;
+
+# Border colours loaded from theme; defaults kept as fallback
+bdfocused:   int = int 16r448888ff;
+bdunfocused: int = int 16r1a1a1aff;
 
 init()
 {
@@ -24,6 +29,13 @@ init()
 		raise "fail:bad module";
 	}
 	wmlib->init();
+
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bdfocused   = th.accent;
+		bdunfocused = th.border;
+	}
 }
 
 makedrawcontext(): ref Draw->Context
@@ -139,9 +151,9 @@ drawborder(w: ref Window)
 	if(w.screen == nil)
 		return;
 	if(w.focused)
-		col := w.display.color(int 16r448888ff);
+		col := w.display.color(bdfocused);
 	else
-		col = w.display.color(int 16r9eeeeeff);
+		col = w.display.color(bdunfocused);
 	i := w.screen.image;
 	r := w.screen.image.r;
 	i.draw((r.min, (r.min.x+w.bd, r.max.y)), col, nil, (0, 0));
