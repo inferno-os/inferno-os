@@ -28,8 +28,6 @@ include "menu.m";
 
 include "viewport.m";
 
-include "plumbmsg.m";
-
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -91,9 +89,6 @@ Popup: import menumod;
 
 vpmod: Viewport;
 View: import vpmod;
-
-plumbmod: Plumbmsg;
-Msg: import plumbmod;
 
 stderr: ref Sys->FD;
 win: ref Wmclient->Window;
@@ -216,9 +211,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	# Load viewport
 	vpmod = load Viewport Viewport->PATH;
-
-	# Load plumbmsg
-	plumbmod = load Plumbmsg Plumbmsg->PATH;
 
 	# Channel for serializing events from background goroutines (renderartasync,
 	# deliverevent) to the main loop goroutine.
@@ -913,16 +905,95 @@ exportartifact(art: ref Artifact)
 {
 	if(art == nil)
 		return;
-	if(art.atype == "pdf" || art.atype == "image") {
-		if(plumbmod != nil) {
-			msg := ref Msg("lucipres", "edit", "/",
-				"text", "action=showdata", array of byte art.data);
-			if(msg.send() >= 0)
-				return;
+	case art.atype {
+	"pdf" or "image" =>
+		# Data is a file path — copy file to /tmp/ for export
+		exportfile(art.data, art.label);
+	* =>
+		# Data is text content — write to file and snarf
+		exporttext(art.data, art.label, art.atype);
+	}
+}
+
+exporttext(text, label, atype: string)
+{
+	ext := ".txt";
+	case atype {
+	"markdown" or "doc" => ext = ".md";
+	"mermaid" => ext = ".mmd";
+	"code" => ext = ".b";
+	"table" => ext = ".tsv";
+	}
+	fname := safename(label);
+	if(fname == "")
+		fname = "export";
+	path := "/tmp/" + fname + ext;
+
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	if(fd == nil) {
+		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
+		writetosnarf(text);
+		return;
+	}
+	b := array of byte text;
+	sys->write(fd, b, len b);
+
+	# Also copy to snarf for convenience
+	writetosnarf(text);
+	sys->fprint(stderr, "lucipres: exported to %s\n", path);
+}
+
+exportfile(srcpath, label: string)
+{
+	data := readfilebytes(srcpath);
+	if(data == nil) {
+		sys->fprint(stderr, "lucipres: export: cannot read %s: %r\n", srcpath);
+		writetosnarf(srcpath);
+		return;
+	}
+
+	# Extract extension from source path
+	ext := "";
+	for(i := len srcpath - 1; i >= 0; i--) {
+		if(srcpath[i] == '.') {
+			ext = srcpath[i:];
+			break;
 		}
-		writetosnarf(art.data);
-	} else
-		writetosnarf(art.data);
+		if(srcpath[i] == '/')
+			break;
+	}
+
+	fname := safename(label);
+	if(fname == "")
+		fname = "export";
+	path := "/tmp/" + fname + ext;
+
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	if(fd == nil) {
+		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
+		writetosnarf(srcpath);
+		return;
+	}
+	sys->write(fd, data, len data);
+
+	# Put export path in snarf
+	writetosnarf(path);
+	sys->fprint(stderr, "lucipres: exported to %s\n", path);
+}
+
+# Convert a label to a safe filename (alphanumeric, hyphens, underscores)
+safename(s: string): string
+{
+	r := "";
+	for(i := 0; i < len s && i < 64; i++) {
+		c := s[i];
+		if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		   (c >= '0' && c <= '9') || c == '-' || c == '_')
+			r += s[i:i+1];
+		else if(c == ' ' && len r > 0 && r[len r - 1] != '-')
+			r += "-";
+	}
+	return r;
 }
 
 findartifact(id: string): ref Artifact
