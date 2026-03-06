@@ -1,13 +1,48 @@
-implement LuciEdit;
+implement Luciedit;
 
 #
-# luciedit — simple Draw-based text editor for Lucifer
+# luciedit - Draw-based text editor with 9P interface
 #
-# A minimal editor that uses the Draw module directly (no Tk).
-# Designed to run as a GUI app in Lucifer's presentation zone.
+# A simple text editor with a Styx (9P) filesystem interface for
+# programmatic access by Veltro agents and other tools.
 #
-# Usage: luciedit [path]
-#   Opens path for editing.  If no path, starts with empty buffer.
+# The 9P filesystem is mounted at /mnt/luciedit and bound to /edit.
+# The filesystem layout uses per-document directories to support
+# future multi-document/split-view without protocol changes:
+#
+#   /edit/
+#     ctl          Global control (open, new, quit)
+#     index        List open documents
+#     1/           Per-document directory
+#       body       Read/write document text
+#       ctl        Document control (save, goto, find, etc.)
+#       event      Blocking read for editor events
+#       addr       Cursor position (line col)
+#
+# Keyboard:
+#   Type to insert text at cursor
+#   Backspace    delete char before cursor
+#   Delete       delete char at cursor
+#   Enter        insert newline
+#   Arrow keys   move cursor
+#   Home/End     start/end of line
+#   Ctrl-S       save
+#   Ctrl-Q       quit
+#   Ctrl-Z       undo last edit
+#   Ctrl-F       find (prompts in status bar)
+#   Ctrl-G       find next
+#   Ctrl-X       cut selection
+#   Ctrl-C       copy selection
+#   Ctrl-V       paste
+#   Ctrl-A       select all
+#   Ctrl-Home    go to top of file
+#   Ctrl-End     go to end of file
+#   Page Up/Down scroll by screenful
+#
+# Mouse:
+#   Button 1     place cursor / select text
+#   Button 2     paste (snarf buffer)
+#   Button 3     context menu (save, find, quit)
 #
 
 include "sys.m";
@@ -15,818 +50,1884 @@ include "sys.m";
 
 include "draw.m";
 	draw: Draw;
-	Font, Point, Rect, Image, Display, Pointer: import draw;
-
-include "keyboard.m";
-
-include "menu.m";
+	Display, Font, Image, Point, Rect: import draw;
 
 include "wmclient.m";
 	wmclient: Wmclient;
+	Window: import wmclient;
+
+include "menuhit.m";
+	menuhit: Menuhit;
+	Menu, Mousectl: import menuhit;
 
 include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
 
-LuciEdit: module
+include "string.m";
+	str: String;
+
+include "styx.m";
+	styx: Styx;
+	Tmsg, Rmsg: import styx;
+
+include "styxservers.m";
+	styxservers: Styxservers;
+	Fid, Styxserver, Navigator, Navop: import styxservers;
+
+Luciedit: module
 {
-	init: fn(ctxt: ref Draw->Context, args: list of string);
+	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
-# --- Color constants (Lucifer dark palette) ---
-COLBG:		con int 16r0D0D0DFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLCURSOR:	con int 16rE8553AFF;	# accent orange
-COLLINENO:	con int 16r444444FF;
-COLSTATUS:	con int 16r0A0A0AFF;
-COLSTATTEXT:	con int 16r999999FF;
-COLSCROLL:	con int 16r1A1A1AFF;
-COLTHUMB:	con int 16r444444FF;
-
-# --- IPC via real files in /tmp/veltro/edit/ (accessible from agent namespace) ---
-EDIT_DIR:  con "/tmp/veltro/edit";
-EDIT_INST: con "/tmp/veltro/edit/1";
-
-# --- Module state ---
-stderr: ref Sys->FD;
-display_g: ref Display;
-win: ref Wmclient->Window;
-mainwin: ref Image;
-font: ref Font;
-menumod: Menu;
-Popup: import menumod;
-quitreq := 0;
-tickch: chan of int;
-
 # Colors
-bgcol: ref Image;
-textcol: ref Image;
-cursorcol: ref Image;
-linenocol: ref Image;
-statuscol: ref Image;
-stattextcol: ref Image;
-scrollcol: ref Image;
-thumbcol: ref Image;
+BG:	con int 16rFFFDF6FF;		# warm off-white background
+FG:	con int 16r333333FF;		# dark text
+CURSORCOL: con int 16r2266CCFF;	# blue cursor
+SELCOL:	con int 16rB4D5FEFF;		# light blue selection
+LNCOL:	con int 16rBBBBBBFF;		# line number color
+STATUSBG: con int 16rE8E8E8FF;		# status bar background
+STATUSFG: con int 16r555555FF;		# status bar text
+DIRTYCOL: con int 16rCC4444FF;		# dirty indicator
 
-# Buffer: array of lines
-lines: array of string;
-nlines := 0;
-MAXLINES: con 65536;
+# Dimensions
+MARGIN: con 4;				# text margin
+LNWIDTH: con 48;			# line number gutter width
+TABSTOP: con 4;			# tab width in spaces
+SCROLLW: con 12;			# scrollbar width
 
-# Cursor position
-curline := 0;	# line index
-curcol := 0;	# column (byte offset in line)
+# Key constants (Inferno keyboard codes)
+Khome:		con 16rFF61;
+Kend:		con 16rFF57;
+Kup:		con 16rFF52;
+Kdown:		con 16rFF54;
+Kleft:		con 16rFF51;
+Kright:		con 16rFF53;
+Kpgup:		con 16rFF55;
+Kpgdown:	con 16rFF56;
+Kdel:		con 16rFF9F;
+Kins:		con 16rFF63;
+Kbs:		con 8;
+Kesc:		con 27;
 
-# Scroll offset (first visible line)
-scrolloff := 0;
+# Undo types
+UndoInsert, UndoDelete, UndoReplace, UndoJoinLine, UndoSplitLine: con iota;
+MAXUNDO: con 100;
 
-# File path
-filepath := "";
-dirty := 0;
+Undo: adt {
+	kind: int;
+	line: int;
+	col: int;
+	text: string;
+	oldtext: string;
+};
 
-# Layout constants
-LMARGIN: con 8;		# left margin for line numbers
-RMARGIN: con 4;		# right margin
-STATUSH: con 20;	# status bar height
-SCROLLW: con 12;	# scrollbar width
+# ---------- Document ADT ----------
+# All per-document state is in Doc. Today there is one Doc;
+# the per-document directory scheme (doc.id) supports future multi-doc.
 
-# Computed layout
-linenowidth := 0;	# width of line number column
-textx := 0;		# x offset where text starts
-vislines := 0;		# number of visible lines
+Doc: adt {
+	id:		int;
+	lines:		array of string;
+	nlines:		int;
+	curline:	int;
+	curcol:		int;
+	topline:	int;
+	dirty:		int;
+	filepath:	string;
 
-init(ctxt: ref Draw->Context, args: list of string)
+	# Selection
+	selactive:	int;
+	selstartline:	int;
+	selstartcol:	int;
+	selendline:	int;
+	selendcol:	int;
+
+	# Undo
+	undostack:	array of ref Undo;
+	undocount:	int;
+
+	# Find
+	searchstr:	string;
+	findmode:	int;
+	findbuf:	string;
+
+	# Snarf
+	snarf:		string;
+};
+
+newdoc(id: int): ref Doc
+{
+	d := ref Doc;
+	d.id = id;
+	d.lines = array[1024] of string;
+	d.lines[0] = "";
+	d.nlines = 1;
+	d.curline = 0;
+	d.curcol = 0;
+	d.topline = 0;
+	d.dirty = 0;
+	d.filepath = "";
+	d.selactive = 0;
+	d.selstartline = 0;
+	d.selstartcol = 0;
+	d.selendline = 0;
+	d.selendcol = 0;
+	d.undostack = array[MAXUNDO] of ref Undo;
+	d.undocount = 0;
+	d.searchstr = "";
+	d.findmode = 0;
+	d.findbuf = "";
+	d.snarf = "";
+	return d;
+}
+
+# ---------- QID encoding ----------
+# Path = (docid << 8) | filetype
+# docid=0 for global files, docid>=1 for per-document files.
+
+QSHIFT: con 8;
+
+# File types within a document directory
+Fdir, Fbody, Fctl, Fevent, Faddr: con iota;
+
+# Global file types (docid=0)
+Groot: con 0;		# root dir
+Ggctl: con 1;		# global ctl
+Gindex: con 2;		# index
+
+mkqpath(docid, ftype: int): big
+{
+	return big ((docid << QSHIFT) | ftype);
+}
+
+qiddoc(path: big): int
+{
+	return (int path) >> QSHIFT;
+}
+
+qidfile(path: big): int
+{
+	return (int path) & 16rFF;
+}
+
+# ---------- 9P ↔ Editor communication ----------
+
+Rgetbody, Rsetbody, Rgetaddr, Rsetaddr, Rdoctl, Rgetindex, Rgctl: con iota;
+
+EditReq: adt {
+	op:	int;
+	docid:	int;
+	data:	string;
+	reply:	chan of string;
+};
+
+editreq: chan of ref EditReq;
+eventch: chan of string;
+
+# ---------- Display resources (global) ----------
+display: ref Display;
+font: ref Font;
+bgcolor: ref Image;
+fgcolor: ref Image;
+cursorcolor: ref Image;
+selcolor: ref Image;
+lncolor: ref Image;
+statusbgcolor: ref Image;
+statusfgcolor: ref Image;
+dirtycolor: ref Image;
+
+w: ref Window;
+vislines: int;
+doc: ref Doc;
+stderr: ref Sys->FD;
+
+init(ctxt: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
+	wmclient = load Wmclient Wmclient->PATH;
+	menuhit = load Menuhit Menuhit->PATH;
+	bufio = load Bufio Bufio->PATH;
+	str = load String String->PATH;
 	stderr = sys->fildes(2);
 
-	wmclient = load Wmclient Wmclient->PATH;
-	if(wmclient == nil) {
-		sys->fprint(stderr, "luciedit: cannot load wmclient: %r\n");
-		return;
+	if(ctxt == nil) {
+		sys->fprint(stderr, "luciedit: no window context\n");
+		raise "fail:no context";
 	}
+
+	sys->pctl(Sys->NEWPGRP, nil);
 	wmclient->init();
 
-	bufio = load Bufio Bufio->PATH;
+	# Initialize document
+	doc = newdoc(1);
 
 	# Parse args
-	a := args;
-	if(a != nil) a = tl a;	# skip program name
-	if(a != nil) {
-		filepath = hd a;
-		a = tl a;
-	}
+	argv = tl argv;
+	if(argv != nil)
+		doc.filepath = hd argv;
 
-	if(ctxt == nil)
-		ctxt = wmclient->makedrawcontext();
-	display_g = ctxt.display;
-
-	# Colors
-	bgcol = display_g.color(COLBG);
-	textcol = display_g.color(COLTEXT);
-	cursorcol = display_g.color(COLCURSOR);
-	linenocol = display_g.color(COLLINENO);
-	statuscol = display_g.color(COLSTATUS);
-	stattextcol = display_g.color(COLSTATTEXT);
-	scrollcol = display_g.color(COLSCROLL);
-	thumbcol = display_g.color(COLTHUMB);
-
-	# Font — prefer monospace
-	font = Font.open(display_g, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
-	if(font == nil)
-		font = Font.open(display_g, "*default*");
-
-	# Context menu
-	menumod = load Menu Menu->PATH;
-	if(menumod != nil)
-		menumod->init(display_g, font);
-
-	# Init buffer
-	lines = array[MAXLINES] of string;
-	nlines = 1;
-	lines[0] = "";
-
-	# Load file if specified
-	if(filepath != "")
-		loadfile(filepath);
+	# Start 9P server before creating window (so it's available immediately)
+	editreq = chan of ref EditReq;
+	eventch = chan of string;
+	spawn startfsys();
 
 	# Create window
-	win = wmclient->window(ctxt, "Edit", Wmclient->Plain);
-	wmclient->win.reshape(((0, 0), (100, 100)));
-	wmclient->win.onscreen("max");
-	wmclient->win.startinput("kbd" :: "ptr" :: nil);
-	mainwin = win.image;
+	sys->sleep(100);
+	w = wmclient->window(ctxt, titlestr(), Wmclient->Appl);
+	display = w.display;
 
-	computelayout();
+	# Load font
+	font = Font.open(display, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
+	if(font == nil)
+		font = Font.open(display, "/fonts/10646/9x15/9x15.font");
+	if(font == nil)
+		font = Font.open(display, "*default*");
+	if(font == nil) {
+		sys->fprint(stderr, "luciedit: cannot load any font\n");
+		raise "fail:no font";
+	}
+
+	# Create color images
+	bgcolor = display.color(BG);
+	fgcolor = display.color(FG);
+	cursorcolor = display.color(CURSORCOL);
+	selcolor = display.color(SELCOL);
+	lncolor = display.color(LNCOL);
+	statusbgcolor = display.color(STATUSBG);
+	statusfgcolor = display.color(STATUSFG);
+	dirtycolor = display.color(DIRTYCOL);
+
+	# Load file if specified
+	if(doc.filepath != "")
+		loadfile(doc.filepath);
+
+	# Set up window
+	w.reshape(Rect((0, 0), (640, 480)));
+	w.startinput("kbd" :: "ptr" :: nil);
+	w.onscreen(nil);
+
+	menuhit->init(w);
+	menu := ref Menu(array[] of {"save", "find", "goto line", "select all", "cut", "copy", "paste", "exit"}, nil, 0);
+
 	redraw();
 
-	# IPC: write initial state and start command-poll ticker
-	initeditdir();
-	tickch = chan[1] of int;
-	spawn tickproc(tickch);
+	# Cursor blink timer
+	ticks := chan of int;
+	spawn timer(ticks, 500);
+	cursorvis := 1;
 
-	# Event loop
+	# Track mouse for selection
+	mousedown := 0;
+
 	for(;;) alt {
-	ctl := <-win.ctl or
-	ctl = <-win.ctxt.ctl =>
-		if(ctl == "exit")
-			return;
-		wmclient->win.wmctl(ctl);
-		if(ctl != nil && ctl[0] == '!') {
-			mainwin = win.image;
-			computelayout();
+	ctl := <-w.ctl or
+	ctl = <-w.ctxt.ctl =>
+		w.wmctl(ctl);
+		if(ctl != nil && ctl[0] == '!')
 			redraw();
+	key := <-w.ctxt.kbd =>
+		cursorvis = 1;
+		if(doc.findmode)
+			handlefindkey(key);
+		else
+			handlekey(key);
+		redraw();
+	p := <-w.ctxt.ptr =>
+		if(!w.pointer(*p)) {
+			if(p.buttons & 4) {
+				mc := ref Mousectl(w.ctxt.ptr, p.buttons, p.xy, p.msec);
+				n := menuhit->menuhit(p.buttons, mc, menu, nil);
+				case n {
+				0 => dosave();
+				1 => startfind();
+				2 => ;  # goto line (TODO)
+				3 => selectall();
+				4 => docut();
+				5 => docopy();
+				6 => dopaste();
+				7 =>
+					if(!checkdirty())
+						break;
+					postnote(1, sys->pctl(0, nil), "kill");
+					exit;
+				}
+				redraw();
+			} else if(p.buttons & 2) {
+				buf := wmclient->snarfget();
+				if(buf != "")
+					doc.snarf = buf;
+				if(doc.snarf != "") {
+					insertstring(doc.snarf);
+					doc.dirty = 1;
+				}
+				redraw();
+			} else if(p.buttons & 1) {
+				(ml, mc2) := pos2cursor(p.xy);
+				doc.curline = ml;
+				doc.curcol = mc2;
+				doc.selactive = 0;
+				doc.selstartline = ml;
+				doc.selstartcol = mc2;
+				mousedown = 1;
+				redraw();
+			} else if(mousedown) {
+				(ml, mc2) := pos2cursor(p.xy);
+				if(ml != doc.selstartline || mc2 != doc.selstartcol) {
+					doc.selactive = 1;
+					doc.selendline = ml;
+					doc.selendcol = mc2;
+					doc.curline = ml;
+					doc.curcol = mc2;
+				}
+				mousedown = 0;
+				redraw();
+			}
 		}
-	c := <-win.ctxt.kbd =>
-		handlekey(c);
-	p := <-win.ctxt.ptr =>
-		if(!wmclient->win.pointer(*p))
-			handleptr(p);
-		if(quitreq) return;
-	<-tickch =>
-		checkctlfile();
-	}
-}
-
-# --- File I/O ---
-
-loadfile(path: string)
-{
-	if(bufio == nil)
-		return;
-	fd := bufio->open(path, Bufio->OREAD);
-	if(fd == nil) {
-		sys->fprint(stderr, "luciedit: cannot open %s: %r\n", path);
-		return;
-	}
-	nlines = 0;
-	for(;;) {
-		s := fd.gets('\n');
-		if(s == nil)
-			break;
-		# Strip trailing newline
-		if(len s > 0 && s[len s - 1] == '\n')
-			s = s[0:len s - 1];
-		if(nlines >= MAXLINES)
-			break;
-		lines[nlines++] = s;
-	}
-	fd.close();
-	if(nlines == 0) {
-		nlines = 1;
-		lines[0] = "";
-	}
-	curline = 0;
-	curcol = 0;
-	scrolloff = 0;
-	dirty = 0;
-}
-
-savefile(): string
-{
-	if(filepath == "")
-		return "no file path";
-	fd := sys->create(filepath, Sys->OWRITE, 8r666);
-	if(fd == nil)
-		return sys->sprint("cannot create %s: %r", filepath);
-	for(i := 0; i < nlines; i++) {
-		b := array of byte (lines[i] + "\n");
-		if(sys->write(fd, b, len b) < 0)
-			return sys->sprint("write error: %r");
-	}
-	fd = nil;
-	dirty = 0;
-	return nil;
-}
-
-# --- Layout ---
-
-computelayout()
-{
-	if(mainwin == nil || font == nil)
-		return;
-	r := mainwin.r;
-
-	# Line number width: enough for max line number
-	digits := 1;
-	n := nlines;
-	while(n >= 10) { digits++; n /= 10; }
-	if(digits < 3) digits = 3;
-	linenowidth = font.width("0") * digits + LMARGIN * 2;
-	textx = r.min.x + linenowidth;
-
-	# Visible lines
-	texth := r.dy() - STATUSH;
-	if(texth < 0) texth = 0;
-	vislines = texth / font.height;
-	if(vislines < 1) vislines = 1;
-}
-
-# --- Drawing ---
-
-redraw()
-{
-	if(mainwin == nil || font == nil)
-		return;
-	r := mainwin.r;
-
-	# Background
-	mainwin.draw(r, bgcol, nil, (0, 0));
-
-	# Draw lines
-	for(i := 0; i < vislines && scrolloff + i < nlines; i++) {
-		li := scrolloff + i;
-		y := r.min.y + i * font.height;
-
-		# Line number
-		lnostr := string (li + 1);
-		lnow := font.width(lnostr);
-		lnox := r.min.x + linenowidth - LMARGIN - lnow;
-		mainwin.text((lnox, y), linenocol, (0, 0), font, lnostr);
-
-		# Text content
-		line := lines[li];
-		mainwin.text((textx, y), textcol, (0, 0), font, line);
-
-		# Cursor
-		if(li == curline) {
-			cc := curcol;
-			if(cc > len line) cc = len line;
-			prefix := "";
-			if(cc > 0 && cc <= len line)
-				prefix = line[0:cc];
-			cx := textx + font.width(prefix);
-			# Draw cursor bar (2px wide)
-			cr := Rect((cx, y), (cx + 2, y + font.height));
-			mainwin.draw(cr, cursorcol, nil, (0, 0));
-		}
-	}
-
-	# Scrollbar
-	drawscrollbar(r);
-
-	# Status bar
-	drawstatus(r);
-
-	mainwin.flush(Draw->Flushnow);
-
-	# Sync state files for IPC
-	if(tickch != nil)
+	<-ticks =>
+		cursorvis = !cursorvis;
+		drawcursor(cursorvis);
+		changed := checkctlfile();
 		writeeditstate();
+		if(changed)
+			redraw();
+	req := <-editreq =>
+		handleeditreq(req);
+		redraw();
+	}
 }
 
-drawscrollbar(r: Rect)
+# ---------- Handle 9P requests on the main thread ----------
+
+handleeditreq(req: ref EditReq)
 {
-	sbr := Rect((r.max.x - SCROLLW, r.min.y), (r.max.x, r.max.y - STATUSH));
-	mainwin.draw(sbr, scrollcol, nil, (0, 0));
-
-	if(nlines <= vislines)
-		return;
-
-	# Thumb
-	sbh := sbr.dy();
-	thumbh := sbh * vislines / nlines;
-	if(thumbh < 8) thumbh = 8;
-	thumby := sbr.min.y + sbh * scrolloff / nlines;
-	if(thumby + thumbh > sbr.max.y)
-		thumby = sbr.max.y - thumbh;
-	tr := Rect((sbr.min.x + 2, thumby), (sbr.max.x - 2, thumby + thumbh));
-	mainwin.draw(tr, thumbcol, nil, (0, 0));
+	case req.op {
+	Rgetbody =>
+		req.reply <-= getbodytext();
+	Rsetbody =>
+		setbodytext(req.data);
+		postevent("modified");
+		req.reply <-= "ok";
+	Rgetaddr =>
+		req.reply <-= sys->sprint("%d %d", doc.curline + 1, doc.curcol + 1);
+	Rsetaddr =>
+		(line, rest) := splitfirst(req.data);
+		(col, nil) := splitfirst(rest);
+		(ln, nil) := str->toint(line, 10);
+		(cn, nil) := str->toint(col, 10);
+		if(ln > 0) {
+			doc.curline = ln - 1;
+			if(doc.curline >= doc.nlines)
+				doc.curline = doc.nlines - 1;
+		}
+		if(cn > 0) {
+			doc.curcol = cn - 1;
+			fixcol();
+		}
+		scrolltocursor();
+		req.reply <-= "ok";
+	Rdoctl =>
+		req.reply <-= handledocctl(req.data);
+	Rgetindex =>
+		d := sys->sprint("%d %s %d\n", doc.id, doc.filepath, doc.dirty);
+		req.reply <-= d;
+	Rgctl =>
+		req.reply <-= handlegctl(req.data);
+	}
 }
 
-drawstatus(r: Rect)
+getbodytext(): string
 {
-	sr := Rect((r.min.x, r.max.y - STATUSH), r.max);
-	mainwin.draw(sr, statuscol, nil, (0, 0));
+	s := "";
+	for(i := 0; i < doc.nlines; i++) {
+		if(i > 0)
+			s += "\n";
+		s += doc.lines[i];
+	}
+	return s;
+}
 
-	if(font == nil)
-		return;
-
-	y := sr.min.y + (STATUSH - font.height) / 2;
-	status := "";
-	if(filepath != "")
-		status = filepath;
+setbodytext(text: string)
+{
+	doc.nlines = 0;
+	doc.lines = array[1024] of string;
+	start := 0;
+	for(i := 0; i < len text; i++) {
+		if(text[i] == '\n') {
+			growbuf();
+			doc.lines[doc.nlines] = text[start:i];
+			doc.nlines++;
+			start = i + 1;
+		}
+	}
+	growbuf();
+	if(start < len text)
+		doc.lines[doc.nlines] = text[start:];
 	else
-		status = "[new]";
-	if(dirty)
-		status += " [modified]";
-	status += sys->sprint("  Ln %d, Col %d", curline + 1, curcol + 1);
-
-	mainwin.text((sr.min.x + 8, y), stattextcol, (0, 0), font, status);
+		doc.lines[doc.nlines] = "";
+	doc.nlines++;
+	doc.dirty = 1;
+	doc.curline = 0;
+	doc.curcol = 0;
+	doc.topline = 0;
+	doc.selactive = 0;
+	doc.undocount = 0;
 }
 
-# --- Keyboard handling ---
-
-handlekey(c: int)
+handledocctl(cmd: string): string
 {
-	case c {
-	# Ctrl+S: save
-	16r13 =>
-		err := savefile();
-		if(err != nil)
-			sys->fprint(stderr, "luciedit: save: %s\n", err);
-		redraw();
-		return;
-
-	# Ctrl+Q: quit
-	16r11 =>
-		return;
-
-	# Backspace
-	'\b' or 16r7f =>
-		if(curcol > 0) {
-			line := lines[curline];
-			lines[curline] = line[0:curcol-1] + line[curcol:];
-			curcol--;
-			dirty = 1;
-		} else if(curline > 0) {
-			# Join with previous line
-			prev := lines[curline - 1];
-			curcol = len prev;
-			lines[curline - 1] = prev + lines[curline];
-			deleteline(curline);
-			curline--;
-			dirty = 1;
+	(op, rest) := splitfirst(cmd);
+	op = str->tolower(op);
+	case op {
+	"save" =>
+		dosave();
+		return "ok";
+	"goto" =>
+		(lns, nil) := str->toint(rest, 10);
+		if(lns > 0) {
+			doc.curline = lns - 1;
+			if(doc.curline >= doc.nlines)
+				doc.curline = doc.nlines - 1;
+			doc.curcol = 0;
+			scrolltocursor();
 		}
-		redraw();
-
-	# Enter
-	'\n' or '\r' =>
-		line := lines[curline];
-		rest := "";
-		if(curcol < len line)
-			rest = line[curcol:];
-		lines[curline] = line[0:curcol];
-		insertline(curline + 1, rest);
-		curline++;
-		curcol = 0;
-		dirty = 1;
-		ensurevisible();
-		redraw();
-
-	# Tab
-	'\t' =>
-		insertchar('\t');
-		redraw();
-
-	# Arrow keys
-	Keyboard->Up =>
-		if(curline > 0) {
-			curline--;
-			clampcolumn();
-			ensurevisible();
-			redraw();
+		return "ok";
+	"find" =>
+		if(rest != "") {
+			doc.searchstr = rest;
+			findnext();
 		}
-	Keyboard->Down =>
-		if(curline < nlines - 1) {
-			curline++;
-			clampcolumn();
-			ensurevisible();
-			redraw();
+		return "ok";
+	"name" =>
+		if(rest != "") {
+			doc.filepath = rest;
+			w.settitle(titlestr());
 		}
-	Keyboard->Left =>
-		if(curcol > 0)
-			curcol--;
-		else if(curline > 0) {
-			curline--;
-			curcol = len lines[curline];
-			ensurevisible();
+		return "ok";
+	"clean" =>
+		doc.dirty = 0;
+		return "ok";
+	"dirty" =>
+		doc.dirty = 1;
+		return "ok";
+	"insert" =>
+		# insert <line> <col> <text>
+		(ls, r2) := splitfirst(rest);
+		(cs, text) := splitfirst(r2);
+		(ln, nil) := str->toint(ls, 10);
+		(cn, nil) := str->toint(cs, 10);
+		if(ln > 0 && cn > 0) {
+			doc.curline = ln - 1;
+			doc.curcol = cn - 1;
+			if(doc.curline >= doc.nlines)
+				doc.curline = doc.nlines - 1;
+			fixcol();
+			insertstring(text);
+			doc.dirty = 1;
+			postevent("modified");
 		}
-		redraw();
-	Keyboard->Right =>
-		if(curcol < len lines[curline])
-			curcol++;
-		else if(curline < nlines - 1) {
-			curline++;
-			curcol = 0;
-			ensurevisible();
+		return "ok";
+	"delete" =>
+		# delete <startline> <startcol> <endline> <endcol>
+		(sls, r2) := splitfirst(rest);
+		(scs, r3) := splitfirst(r2);
+		(els, r4) := splitfirst(r3);
+		(ecs, nil) := splitfirst(r4);
+		(sl, nil) := str->toint(sls, 10);
+		(sc, nil) := str->toint(scs, 10);
+		(el, nil) := str->toint(els, 10);
+		(ec, nil) := str->toint(ecs, 10);
+		if(sl > 0 && sc > 0 && el > 0 && ec > 0) {
+			doc.selactive = 1;
+			doc.selstartline = sl - 1;
+			doc.selstartcol = sc - 1;
+			doc.selendline = el - 1;
+			doc.selendcol = ec - 1;
+			deletesel();
+			postevent("modified");
 		}
-		redraw();
-
-	# Home
-	Keyboard->Home =>
-		curcol = 0;
-		redraw();
-
-	# End
-	Keyboard->End =>
-		curcol = len lines[curline];
-		redraw();
-
-	# Page Up
-	Keyboard->Pgup =>
-		curline -= vislines;
-		if(curline < 0) curline = 0;
-		scrolloff -= vislines;
-		if(scrolloff < 0) scrolloff = 0;
-		clampcolumn();
-		redraw();
-
-	# Page Down
-	Keyboard->Pgdown =>
-		curline += vislines;
-		if(curline >= nlines) curline = nlines - 1;
-		scrolloff += vislines;
-		if(scrolloff > nlines - vislines)
-			scrolloff = nlines - vislines;
-		if(scrolloff < 0) scrolloff = 0;
-		clampcolumn();
-		redraw();
-
-	# Delete (Ctrl+D or Del key)
-	16r04 or Keyboard->Del =>
-		line := lines[curline];
-		if(curcol < len line) {
-			lines[curline] = line[0:curcol] + line[curcol+1:];
-			dirty = 1;
-		} else if(curline < nlines - 1) {
-			# Join with next line
-			lines[curline] = line + lines[curline + 1];
-			deleteline(curline + 1);
-			dirty = 1;
-		}
-		redraw();
-
+		return "ok";
 	* =>
-		# Printable character
-		if(c >= 16r20 && c != 16r7f) {
-			insertchar(c);
-			redraw();
+		return "error: unknown ctl command: " + op;
+	}
+}
+
+handlegctl(cmd: string): string
+{
+	(op, rest) := splitfirst(cmd);
+	op = str->tolower(op);
+	case op {
+	"open" =>
+		if(rest != "") {
+			doc.filepath = rest;
+			loadfile(doc.filepath);
+			w.settitle(titlestr());
+			postevent("opened " + doc.filepath);
+		}
+		return "ok";
+	"new" =>
+		doc.lines = array[1024] of string;
+		doc.lines[0] = "";
+		doc.nlines = 1;
+		doc.curline = 0;
+		doc.curcol = 0;
+		doc.topline = 0;
+		doc.dirty = 0;
+		doc.filepath = "";
+		doc.selactive = 0;
+		doc.undocount = 0;
+		w.settitle(titlestr());
+		postevent("new");
+		return "ok";
+	"quit" =>
+		if(checkdirty()) {
+			postevent("quit");
+			postnote(1, sys->pctl(0, nil), "kill");
+			exit;
+		}
+		return "ok";
+	* =>
+		return "error: unknown global ctl: " + op;
+	}
+}
+
+postevent(msg: string)
+{
+	# Non-blocking send — if nobody is reading events, drop it
+	alt {
+	eventch <-= msg =>
+		;
+	* =>
+		;
+	}
+}
+
+# ---------- 9P File Server ----------
+
+# --- Real-file IPC for Veltro tool access ---
+# /tmp/veltro/edit/ is inside the restricted agent namespace (/tmp/veltro/ is always granted).
+EDIT_DIR:  con "/tmp/veltro/edit";
+EDIT_INST: con "/tmp/veltro/edit/1";
+
+MNTPT: con "/mnt/luciedit";
+BINDPT: con "/edit";
+user: string;
+
+startfsys()
+{
+	# Initialise real-file state directories first
+	initeditdir();
+	styx = load Styx Styx->PATH;
+	if(styx == nil) {
+		sys->fprint(stderr, "luciedit: can't load Styx: %r\n");
+		return;
+	}
+	styx->init();
+
+	styxservers = load Styxservers Styxservers->PATH;
+	if(styxservers == nil) {
+		sys->fprint(stderr, "luciedit: can't load Styxservers: %r\n");
+		return;
+	}
+	styxservers->init(styx);
+
+	user = readf("/dev/user");
+	if(user == nil)
+		user = "inferno";
+
+	fds := array[2] of ref Sys->FD;
+	if(sys->pipe(fds) < 0) {
+		sys->fprint(stderr, "luciedit: pipe: %r\n");
+		return;
+	}
+
+	navops := chan of ref Navop;
+	spawn navigator(navops);
+
+	(tchan, srv) := Styxserver.new(fds[0], Navigator.new(navops), big 0);
+	fds[0] = nil;
+
+	pidc := chan of int;
+	spawn serveloop(tchan, srv, pidc, navops);
+	<-pidc;
+
+	# Mount and bind
+	if(sys->mount(fds[1], nil, MNTPT, Sys->MREPL|Sys->MCREATE, nil) < 0)
+		sys->fprint(stderr, "luciedit: mount %s: %r\n", MNTPT);
+	else if(sys->bind(MNTPT, BINDPT, Sys->MREPL|Sys->MCREATE) < 0)
+		sys->fprint(stderr, "luciedit: bind %s %s: %r\n", MNTPT, BINDPT);
+}
+
+# Static directory tables for the navigator
+
+PERM_DIR: con 8r755 | Sys->DMDIR;
+PERM_RW: con 8r666;
+PERM_RO: con 8r444;
+
+# File info for stat/walk
+FileInfo: adt {
+	name:	string;
+	qpath:	big;
+	qtype:	int;
+	perm:	int;
+};
+
+# Root directory entries
+# qpath values: mkqpath(docid, ftype) = big ((docid << QSHIFT) | ftype)
+# mkqpath(0, Ggctl)=big 1, mkqpath(0, Gindex)=big 2, mkqpath(1, Fdir)=big 256
+rootfiles := array[] of {
+	FileInfo("ctl",   big 1,   Sys->QTFILE, PERM_RW),
+	FileInfo("index", big 2,   Sys->QTFILE, PERM_RO),
+	FileInfo("1",     big 256, Sys->QTDIR,  PERM_DIR),
+};
+
+# Per-document directory entries
+docfiles := array[] of {
+	FileInfo("body",  big 0, Sys->QTFILE, PERM_RW),    # qpath filled in per-doc
+	FileInfo("ctl",   big 0, Sys->QTFILE, PERM_RW),
+	FileInfo("event", big 0, Sys->QTFILE, PERM_RO),
+	FileInfo("addr",  big 0, Sys->QTFILE, PERM_RW),
+};
+
+mkfilestat(fi: FileInfo, qpath: big): ref Sys->Dir
+{
+	d := ref sys->zerodir;
+	d.name = fi.name;
+	d.uid = user;
+	d.gid = user;
+	d.qid.path = qpath;
+	d.qid.vers = 0;
+	d.qid.qtype = fi.qtype;
+	d.mode = fi.perm;
+	return d;
+}
+
+mkdirstat(name: string, qpath: big): ref Sys->Dir
+{
+	d := ref sys->zerodir;
+	d.name = name;
+	d.uid = user;
+	d.gid = user;
+	d.qid.path = qpath;
+	d.qid.vers = 0;
+	d.qid.qtype = Sys->QTDIR;
+	d.mode = PERM_DIR;
+	return d;
+}
+
+navigator(navops: chan of ref Navop)
+{
+	while((m := <-navops) != nil) {
+		pick n := m {
+		Stat =>
+			n.reply <-= dostat(n.path);
+
+		Walk =>
+			did := qiddoc(n.path);
+			fid := qidfile(n.path);
+
+			if(n.name == "..") {
+				if(did > 0)
+					n.reply <-= (mkdirstat(".", big Groot), nil);
+				else
+					n.reply <-= (mkdirstat(".", big Groot), nil);
+				continue;
+			}
+
+			# Walking from root dir
+			if(did == 0 && fid == Groot) {
+				found := 0;
+				for(i := 0; i < len rootfiles; i++) {
+					if(rootfiles[i].name == n.name) {
+						n.reply <-= (mkfilestat(rootfiles[i], rootfiles[i].qpath), nil);
+						found = 1;
+						break;
+					}
+				}
+				if(!found)
+					n.reply <-= (nil, Styxservers->Enotfound);
+				continue;
+			}
+
+			# Walking from a doc dir
+			if(did > 0 && fid == Fdir) {
+				found := 0;
+				for(i := 0; i < len docfiles; i++) {
+					if(docfiles[i].name == n.name) {
+						# Compute actual qpath for this doc
+						ft: int;
+						case n.name {
+						"body"  => ft = Fbody;
+						"ctl"   => ft = Fctl;
+						"event" => ft = Fevent;
+						"addr"  => ft = Faddr;
+						* => ft = 0;
+						}
+						qp := mkqpath(did, ft);
+						fi := FileInfo(n.name, qp, docfiles[i].qtype, docfiles[i].perm);
+						n.reply <-= (mkfilestat(fi, qp), nil);
+						found = 1;
+						break;
+					}
+				}
+				if(!found)
+					n.reply <-= (nil, Styxservers->Enotfound);
+				continue;
+			}
+
+			n.reply <-= (nil, Styxservers->Enotfound);
+
+		Readdir =>
+			did := qiddoc(m.path);
+			fid := qidfile(m.path);
+
+			if(did == 0 && fid == Groot) {
+				# Root directory
+				i := n.offset;
+				count := n.count;
+				for(j := i; j < len rootfiles && count > 0; j++) {
+					n.reply <-= (mkfilestat(rootfiles[j], rootfiles[j].qpath), nil);
+					count--;
+				}
+				n.reply <-= (nil, nil);
+				continue;
+			}
+
+			if(did > 0 && fid == Fdir) {
+				# Doc directory
+				i := n.offset;
+				count := n.count;
+				for(j := i; j < len docfiles && count > 0; j++) {
+					ft: int;
+					case docfiles[j].name {
+					"body"  => ft = Fbody;
+					"ctl"   => ft = Fctl;
+					"event" => ft = Fevent;
+					"addr"  => ft = Faddr;
+					* => ft = 0;
+					}
+					qp := mkqpath(did, ft);
+					fi := FileInfo(docfiles[j].name, qp, docfiles[j].qtype, docfiles[j].perm);
+					n.reply <-= (mkfilestat(fi, qp), nil);
+					count--;
+				}
+				n.reply <-= (nil, nil);
+				continue;
+			}
+
+			n.reply <-= (nil, "not a directory");
 		}
 	}
 }
+
+dostat(path: big): (ref Sys->Dir, string)
+{
+	did := qiddoc(path);
+	fid := qidfile(path);
+
+	# Root
+	if(did == 0 && fid == Groot)
+		return (mkdirstat(".", big Groot), nil);
+
+	# Global files
+	if(did == 0) {
+		for(i := 0; i < len rootfiles; i++)
+			if(rootfiles[i].qpath == path)
+				return (mkfilestat(rootfiles[i], path), nil);
+		return (nil, Styxservers->Enotfound);
+	}
+
+	# Doc directory
+	if(fid == Fdir)
+		return (mkdirstat(string did, mkqpath(did, Fdir)), nil);
+
+	# Doc files
+	for(i := 0; i < len docfiles; i++) {
+		ft: int;
+		case docfiles[i].name {
+		"body"  => ft = Fbody;
+		"ctl"   => ft = Fctl;
+		"event" => ft = Fevent;
+		"addr"  => ft = Faddr;
+		* => ft = 0;
+		}
+		if(fid == ft) {
+			qp := mkqpath(did, ft);
+			fi := FileInfo(docfiles[i].name, qp, docfiles[i].qtype, docfiles[i].perm);
+			return (mkfilestat(fi, qp), nil);
+		}
+	}
+
+	return (nil, Styxservers->Enotfound);
+}
+
+serveloop(tchan: chan of ref Tmsg, srv: ref Styxserver,
+	pidc: chan of int, navops: chan of ref Navop)
+{
+	pidc <-= sys->pctl(Sys->FORKNS|Sys->NEWFD, 1 :: 2 :: srv.fd.fd :: nil);
+
+Serve:
+	while((gm := <-tchan) != nil) {
+		pick m := gm {
+		Readerror =>
+			break Serve;
+
+		Open =>
+			c := srv.getfid(m.fid);
+			if(c == nil) {
+				srv.open(m);
+				break;
+			}
+			mode := styxservers->openmode(m.mode);
+			if(mode < 0) {
+				srv.reply(ref Rmsg.Error(m.tag, Styxservers->Ebadarg));
+				break;
+			}
+			qid := Sys->Qid(c.path, 0, c.qtype);
+			c.open(mode, qid);
+			srv.reply(ref Rmsg.Open(m.tag, qid, srv.iounit()));
+
+		Read =>
+			(c, rerr) := srv.canread(m);
+			if(c == nil) {
+				srv.reply(ref Rmsg.Error(m.tag, rerr));
+				break;
+			}
+			if(c.qtype & Sys->QTDIR) {
+				srv.read(m);
+				break;
+			}
+			handlefsread(srv, m, c);
+
+		Write =>
+			(c, werr) := srv.canwrite(m);
+			if(c == nil) {
+				srv.reply(ref Rmsg.Error(m.tag, werr));
+				break;
+			}
+			handlefswrite(srv, m, c);
+
+		Clunk =>
+			srv.clunk(m);
+
+		* =>
+			srv.default(gm);
+		}
+	}
+	navops <-= nil;
+}
+
+handlefsread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
+{
+	did := qiddoc(c.path);
+	fid := qidfile(c.path);
+
+	# Global files
+	if(did == 0) {
+		case fid {
+		Ggctl =>
+			srv.reply(styxservers->readstr(m, "luciedit\n"));
+			return;
+		Gindex =>
+			reply := chan of string;
+			editreq <-= ref EditReq(Rgetindex, 0, "", reply);
+			data := <-reply;
+			srv.reply(styxservers->readstr(m, data));
+			return;
+		}
+		srv.reply(ref Rmsg.Error(m.tag, Styxservers->Eperm));
+		return;
+	}
+
+	# Per-doc files
+	case fid {
+	Fbody =>
+		reply := chan of string;
+		editreq <-= ref EditReq(Rgetbody, did, "", reply);
+		data := <-reply;
+		srv.reply(styxservers->readstr(m, data));
+	Fctl =>
+		srv.reply(styxservers->readstr(m, ""));
+	Fevent =>
+		# Block until an event arrives
+		ev := <-eventch;
+		srv.reply(styxservers->readstr(m, ev + "\n"));
+	Faddr =>
+		reply := chan of string;
+		editreq <-= ref EditReq(Rgetaddr, did, "", reply);
+		data := <-reply;
+		srv.reply(styxservers->readstr(m, data + "\n"));
+	* =>
+		srv.reply(ref Rmsg.Error(m.tag, Styxservers->Eperm));
+	}
+}
+
+handlefswrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
+{
+	did := qiddoc(c.path);
+	fid := qidfile(c.path);
+	data := string m.data;
+
+	# Global ctl
+	if(did == 0 && fid == Ggctl) {
+		reply := chan of string;
+		editreq <-= ref EditReq(Rgctl, 0, data, reply);
+		result := <-reply;
+		if(len result >= 6 && result[0:6] == "error:")
+			srv.reply(ref Rmsg.Error(m.tag, result));
+		else
+			srv.reply(ref Rmsg.Write(m.tag, len m.data));
+		return;
+	}
+
+	if(did == 0) {
+		srv.reply(ref Rmsg.Error(m.tag, Styxservers->Eperm));
+		return;
+	}
+
+	# Per-doc files
+	case fid {
+	Fbody =>
+		reply := chan of string;
+		editreq <-= ref EditReq(Rsetbody, did, data, reply);
+		<-reply;
+		srv.reply(ref Rmsg.Write(m.tag, len m.data));
+	Fctl =>
+		reply := chan of string;
+		editreq <-= ref EditReq(Rdoctl, did, data, reply);
+		result := <-reply;
+		if(len result >= 6 && result[0:6] == "error:")
+			srv.reply(ref Rmsg.Error(m.tag, result));
+		else
+			srv.reply(ref Rmsg.Write(m.tag, len m.data));
+	Faddr =>
+		reply := chan of string;
+		editreq <-= ref EditReq(Rsetaddr, did, data, reply);
+		<-reply;
+		srv.reply(ref Rmsg.Write(m.tag, len m.data));
+	* =>
+		srv.reply(ref Rmsg.Error(m.tag, Styxservers->Eperm));
+	}
+}
+
+# ---------- Title ----------
+
+titlestr(): string
+{
+	s := "Luciedit";
+	if(doc.filepath != "")
+		s += " " + doc.filepath;
+	else
+		s += " (new)";
+	if(doc.dirty)
+		s += " *";
+	return s;
+}
+
+# ---------- Cursor position from screen coords ----------
+
+pos2cursor(p: Point): (int, int)
+{
+	if(w.image == nil)
+		return (doc.curline, doc.curcol);
+
+	textr := textrect();
+	y := p.y - textr.min.y;
+	line := doc.topline + y / font.height;
+	if(line < 0)
+		line = 0;
+	if(line >= doc.nlines)
+		line = doc.nlines - 1;
+
+	x := p.x - textr.min.x;
+	col := 0;
+	if(line < doc.nlines) {
+		s := expandtabs(doc.lines[line]);
+		w2 := 0;
+		for(col = 0; col < len s; col++) {
+			cw := font.width(s[col:col+1]);
+			if(w2 + cw/2 > x)
+				break;
+			w2 += cw;
+		}
+		col = unexpandcol(doc.lines[line], col);
+	}
+	return (line, col);
+}
+
+textrect(): Rect
+{
+	if(w.image == nil)
+		return Rect((0,0),(0,0));
+	r := w.image.r;
+	statusheight := font.height + MARGIN * 2;
+	return Rect((r.min.x + SCROLLW + LNWIDTH, r.min.y + MARGIN),
+		    (r.max.x - MARGIN, r.max.y - statusheight));
+}
+
+# ---------- Keyboard handling ----------
+
+handlekey(key: int)
+{
+	ctrl := 0;
+	if(key >= 1 && key <= 26 && key != Kbs && key != '\n' && key != '\t')
+		ctrl = 1;
+
+	if(ctrl) {
+		case key {
+		1 =>	# Ctrl-A: select all
+			selectall();
+		3 =>	# Ctrl-C: copy
+			docopy();
+		6 =>	# Ctrl-F: find
+			startfind();
+		7 =>	# Ctrl-G: find next
+			findnext();
+		17 =>	# Ctrl-Q: quit
+			if(checkdirty()) {
+				postevent("quit");
+				postnote(1, sys->pctl(0, nil), "kill");
+				exit;
+			}
+		19 =>	# Ctrl-S: save
+			dosave();
+		22 =>	# Ctrl-V: paste
+			dopaste();
+		24 =>	# Ctrl-X: cut
+			docut();
+		26 =>	# Ctrl-Z: undo
+			doundo();
+		}
+		return;
+	}
+
+	case key {
+	Kbs =>
+		deletesel();
+		if(doc.curcol > 0) {
+			pushundo(UndoDelete, doc.curline, doc.curcol-1, doc.lines[doc.curline][doc.curcol-1:doc.curcol]);
+			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol-1] + doc.lines[doc.curline][doc.curcol:];
+			doc.curcol--;
+			doc.dirty = 1;
+		} else if(doc.curline > 0) {
+			pushundo(UndoJoinLine, doc.curline-1, len doc.lines[doc.curline-1], doc.lines[doc.curline]);
+			doc.curcol = len doc.lines[doc.curline-1];
+			doc.lines[doc.curline-1] += doc.lines[doc.curline];
+			deleteline(doc.curline);
+			doc.curline--;
+			doc.dirty = 1;
+		}
+	Kdel =>
+		deletesel();
+		if(doc.curcol < len doc.lines[doc.curline]) {
+			pushundo(UndoDelete, doc.curline, doc.curcol, doc.lines[doc.curline][doc.curcol:doc.curcol+1]);
+			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol] + doc.lines[doc.curline][doc.curcol+1:];
+			doc.dirty = 1;
+		} else if(doc.curline < doc.nlines - 1) {
+			pushundo(UndoJoinLine, doc.curline, len doc.lines[doc.curline], doc.lines[doc.curline+1]);
+			doc.lines[doc.curline] += doc.lines[doc.curline+1];
+			deleteline(doc.curline+1);
+			doc.dirty = 1;
+		}
+	'\n' =>
+		deletesel();
+		rest := "";
+		if(doc.curcol < len doc.lines[doc.curline])
+			rest = doc.lines[doc.curline][doc.curcol:];
+		pushundo(UndoSplitLine, doc.curline, doc.curcol, "");
+		doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol];
+		insertline(doc.curline+1, rest);
+		doc.curline++;
+		doc.curcol = 0;
+		doc.dirty = 1;
+	'\t' =>
+		deletesel();
+		insertchar('\t');
+		doc.dirty = 1;
+	Kup =>
+		if(doc.curline > 0) {
+			doc.curline--;
+			fixcol();
+		}
+		doc.selactive = 0;
+	Kdown =>
+		if(doc.curline < doc.nlines - 1) {
+			doc.curline++;
+			fixcol();
+		}
+		doc.selactive = 0;
+	Kleft =>
+		if(doc.curcol > 0)
+			doc.curcol--;
+		else if(doc.curline > 0) {
+			doc.curline--;
+			doc.curcol = len doc.lines[doc.curline];
+		}
+		doc.selactive = 0;
+	Kright =>
+		if(doc.curcol < len doc.lines[doc.curline])
+			doc.curcol++;
+		else if(doc.curline < doc.nlines - 1) {
+			doc.curline++;
+			doc.curcol = 0;
+		}
+		doc.selactive = 0;
+	Khome =>
+		doc.curcol = 0;
+		doc.selactive = 0;
+	Kend =>
+		doc.curcol = len doc.lines[doc.curline];
+		doc.selactive = 0;
+	Kpgup =>
+		if(vislines > 0) {
+			doc.curline -= vislines;
+			if(doc.curline < 0)
+				doc.curline = 0;
+			fixcol();
+		}
+		doc.selactive = 0;
+	Kpgdown =>
+		if(vislines > 0) {
+			doc.curline += vislines;
+			if(doc.curline >= doc.nlines)
+				doc.curline = doc.nlines - 1;
+			fixcol();
+		}
+		doc.selactive = 0;
+	Kesc =>
+		doc.selactive = 0;
+	* =>
+		if(key >= 16r20 || key == '\t') {
+			deletesel();
+			insertchar(key);
+			doc.dirty = 1;
+		}
+	}
+
+	scrolltocursor();
+}
+
+handlefindkey(key: int)
+{
+	case key {
+	'\n' =>
+		doc.findmode = 0;
+		doc.searchstr = doc.findbuf;
+		findnext();
+	Kesc =>
+		doc.findmode = 0;
+	Kbs =>
+		if(len doc.findbuf > 0)
+			doc.findbuf = doc.findbuf[0:len doc.findbuf-1];
+	* =>
+		if(key >= 16r20)
+			doc.findbuf[len doc.findbuf] = key;
+	}
+}
+
+# ---------- Buffer manipulation ----------
 
 insertchar(c: int)
 {
-	line := lines[curline];
-	ch := "";
-	ch[0] = c;
-	lines[curline] = line[0:curcol] + ch + line[curcol:];
-	curcol++;
-	dirty = 1;
+	s := "";
+	s[0] = c;
+	pushundo(UndoInsert, doc.curline, doc.curcol, s);
+	if(doc.curcol >= len doc.lines[doc.curline])
+		doc.lines[doc.curline] += s;
+	else
+		doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol] + s + doc.lines[doc.curline][doc.curcol:];
+	doc.curcol++;
 }
 
-# --- Line operations ---
+insertstring(s: string)
+{
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\n') {
+			rest := "";
+			if(doc.curcol < len doc.lines[doc.curline])
+				rest = doc.lines[doc.curline][doc.curcol:];
+			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol];
+			insertline(doc.curline+1, rest);
+			doc.curline++;
+			doc.curcol = 0;
+		} else {
+			if(doc.curcol >= len doc.lines[doc.curline])
+				doc.lines[doc.curline] += s[i:i+1];
+			else
+				doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol] + s[i:i+1] + doc.lines[doc.curline][doc.curcol:];
+			doc.curcol++;
+		}
+	}
+}
 
 insertline(at: int, s: string)
 {
-	if(nlines >= MAXLINES)
-		return;
-	# Shift lines down
-	for(i := nlines; i > at; i--)
-		lines[i] = lines[i - 1];
-	lines[at] = s;
-	nlines++;
+	growbuf();
+	for(i := doc.nlines; i > at; i--)
+		doc.lines[i] = doc.lines[i-1];
+	doc.lines[at] = s;
+	doc.nlines++;
 }
 
 deleteline(at: int)
 {
-	if(nlines <= 1)
-		return;
-	for(i := at; i < nlines - 1; i++)
-		lines[i] = lines[i + 1];
-	lines[nlines - 1] = nil;
-	nlines--;
+	for(i := at; i < doc.nlines - 1; i++)
+		doc.lines[i] = doc.lines[i+1];
+	doc.lines[doc.nlines-1] = "";
+	doc.nlines--;
+	if(doc.nlines == 0) {
+		doc.lines[0] = "";
+		doc.nlines = 1;
+	}
 }
 
-# --- Cursor helpers ---
-
-clampcolumn()
+growbuf()
 {
-	if(curline >= 0 && curline < nlines) {
-		if(curcol > len lines[curline])
-			curcol = len lines[curline];
+	if(doc.nlines >= len doc.lines) {
+		newlines := array[len doc.lines * 2] of string;
+		newlines[0:] = doc.lines;
+		doc.lines = newlines;
 	}
 }
 
-ensurevisible()
+fixcol()
 {
-	if(curline < scrolloff)
-		scrolloff = curline;
-	else if(curline >= scrolloff + vislines)
-		scrolloff = curline - vislines + 1;
-	if(scrolloff < 0)
-		scrolloff = 0;
+	if(doc.curcol > len doc.lines[doc.curline])
+		doc.curcol = len doc.lines[doc.curline];
 }
 
-# --- Mouse handling ---
-
-handleptr(p: ref Pointer)
+scrolltocursor()
 {
-	if(mainwin == nil || font == nil)
+	if(vislines <= 0)
 		return;
-	r := mainwin.r;
+	if(doc.curline < doc.topline)
+		doc.topline = doc.curline;
+	else if(doc.curline >= doc.topline + vislines)
+		doc.topline = doc.curline - vislines + 1;
+}
 
-	# Right-click: context menu
-	if(p.buttons == 4 && menumod != nil) {
-		items := array[] of {"Save", "Close"};
-		pop := menumod->new(items);
-		n := pop.show(mainwin, p.xy, win.ctxt.ptr);
-		case n {
-		0 =>
-			err := savefile();
-			if(err != nil)
-				sys->fprint(stderr, "luciedit: save: %s\n", err);
-			redraw();
-		1 =>
-			quitreq = 1;
-		}
-		return;
+# ---------- Selection ----------
+
+selectall()
+{
+	doc.selactive = 1;
+	doc.selstartline = 0;
+	doc.selstartcol = 0;
+	doc.selendline = doc.nlines - 1;
+	doc.selendcol = len doc.lines[doc.nlines - 1];
+	doc.curline = doc.selendline;
+	doc.curcol = doc.selendcol;
+}
+
+getsel(): (int, int, int, int)
+{
+	if(!doc.selactive)
+		return (0, 0, 0, 0);
+	sl := doc.selstartline;
+	sc := doc.selstartcol;
+	el := doc.selendline;
+	ec := doc.selendcol;
+	if(sl > el || (sl == el && sc > ec)) {
+		(sl, el) = (el, sl);
+		(sc, ec) = (ec, sc);
 	}
+	return (sl, sc, el, ec);
+}
 
-	# Scrollbar click
-	sbr := Rect((r.max.x - SCROLLW, r.min.y), (r.max.x, r.max.y - STATUSH));
-	if(sbr.contains(p.xy) && (p.buttons & 1)) {
-		# Click in scrollbar: jump to proportional position
-		frac := p.xy.y - sbr.min.y;
-		total := sbr.dy();
-		if(total > 0) {
-			scrolloff = nlines * frac / total;
-			if(scrolloff > nlines - vislines)
-				scrolloff = nlines - vislines;
-			if(scrolloff < 0)
-				scrolloff = 0;
-			redraw();
-		}
-		return;
+getseltext(): string
+{
+	(sl, sc, el, ec) := getsel();
+	if(!doc.selactive)
+		return "";
+	if(sl == el)
+		return doc.lines[sl][sc:ec];
+	s := doc.lines[sl][sc:];
+	for(i := sl + 1; i < el; i++)
+		s += "\n" + doc.lines[i];
+	s += "\n" + doc.lines[el][0:ec];
+	return s;
+}
+
+deletesel(): int
+{
+	if(!doc.selactive)
+		return 0;
+	(sl, sc, el, ec) := getsel();
+	if(sl == el) {
+		doc.lines[sl] = doc.lines[sl][0:sc] + doc.lines[sl][ec:];
+	} else {
+		doc.lines[sl] = doc.lines[sl][0:sc] + doc.lines[el][ec:];
+		for(i := sl + 1; i <= el; i++)
+			deleteline(sl + 1);
 	}
+	doc.curline = sl;
+	doc.curcol = sc;
+	doc.selactive = 0;
+	doc.dirty = 1;
+	return 1;
+}
 
-	# Scroll wheel (button 4 = scroll up, button 8 = scroll down)
-	if(p.buttons & 8) {
-		scrolloff += 3;
-		if(scrolloff > nlines - vislines)
-			scrolloff = nlines - vislines;
-		if(scrolloff < 0) scrolloff = 0;
-		redraw();
-		return;
-	}
-	if(p.buttons & 16) {
-		scrolloff -= 3;
-		if(scrolloff < 0) scrolloff = 0;
-		redraw();
-		return;
-	}
-
-	# Text area click: set cursor
-	if((p.buttons & 1) && p.xy.x >= textx && p.xy.x < r.max.x - SCROLLW &&
-			p.xy.y >= r.min.y && p.xy.y < r.max.y - STATUSH) {
-		# Line
-		clickline := scrolloff + (p.xy.y - r.min.y) / font.height;
-		if(clickline >= nlines)
-			clickline = nlines - 1;
-		if(clickline < 0)
-			clickline = 0;
-		curline = clickline;
-
-		# Column — find character position from x coordinate
-		line := lines[curline];
-		clickx := p.xy.x - textx;
-		col := 0;
-		for(ci := 0; ci < len line; ci++) {
-			cw := font.width(line[0:ci+1]);
-			if(cw > clickx)
-				break;
-			col = ci + 1;
-		}
-		curcol = col;
-		redraw();
+docopy()
+{
+	s := getseltext();
+	if(s != "") {
+		doc.snarf = s;
+		wmclient->snarfput(s);
 	}
 }
 
-# --- IPC: real-file state export and command poll ---
+docut()
+{
+	docopy();
+	deletesel();
+}
+
+dopaste()
+{
+	buf := wmclient->snarfget();
+	if(buf != "")
+		doc.snarf = buf;
+	if(doc.snarf != "") {
+		deletesel();
+		insertstring(doc.snarf);
+		doc.dirty = 1;
+	}
+}
+
+# ---------- Undo ----------
+
+pushundo(kind, line, col: int, text: string)
+{
+	if(doc.undocount >= MAXUNDO) {
+		for(i := 0; i < MAXUNDO - 1; i++)
+			doc.undostack[i] = doc.undostack[i+1];
+		doc.undocount = MAXUNDO - 1;
+	}
+	doc.undostack[doc.undocount] = ref Undo(kind, line, col, text, "");
+	doc.undocount++;
+}
+
+doundo()
+{
+	if(doc.undocount <= 0)
+		return;
+	doc.undocount--;
+	u := doc.undostack[doc.undocount];
+	case u.kind {
+	UndoInsert =>
+		doc.lines[u.line] = doc.lines[u.line][0:u.col] + doc.lines[u.line][u.col + len u.text:];
+		doc.curline = u.line;
+		doc.curcol = u.col;
+	UndoDelete =>
+		doc.lines[u.line] = doc.lines[u.line][0:u.col] + u.text + doc.lines[u.line][u.col:];
+		doc.curline = u.line;
+		doc.curcol = u.col + len u.text;
+	UndoJoinLine =>
+		rest := doc.lines[u.line][u.col:];
+		doc.lines[u.line] = doc.lines[u.line][0:u.col];
+		insertline(u.line + 1, rest);
+		doc.curline = u.line + 1;
+		doc.curcol = 0;
+	UndoSplitLine =>
+		if(u.line + 1 < doc.nlines) {
+			doc.lines[u.line] += doc.lines[u.line + 1];
+			deleteline(u.line + 1);
+		}
+		doc.curline = u.line;
+		doc.curcol = u.col;
+	}
+	doc.dirty = 1;
+}
+
+# ---------- Find ----------
+
+startfind()
+{
+	doc.findmode = 1;
+	doc.findbuf = doc.searchstr;
+}
+
+findnext()
+{
+	if(doc.searchstr == "")
+		return;
+	for(line := doc.curline; line < doc.nlines; line++) {
+		startcol := 0;
+		if(line == doc.curline)
+			startcol = doc.curcol + 1;
+		idx := strindex(doc.lines[line], doc.searchstr, startcol);
+		if(idx >= 0) {
+			doc.curline = line;
+			doc.curcol = idx;
+			doc.selactive = 1;
+			doc.selstartline = line;
+			doc.selstartcol = idx;
+			doc.selendline = line;
+			doc.selendcol = idx + len doc.searchstr;
+			scrolltocursor();
+			return;
+		}
+	}
+	for(line = 0; line <= doc.curline; line++) {
+		idx := strindex(doc.lines[line], doc.searchstr, 0);
+		if(idx >= 0) {
+			doc.curline = line;
+			doc.curcol = idx;
+			doc.selactive = 1;
+			doc.selstartline = line;
+			doc.selstartcol = idx;
+			doc.selendline = line;
+			doc.selendcol = idx + len doc.searchstr;
+			scrolltocursor();
+			return;
+		}
+	}
+}
+
+strindex(s, sub: string, start: int): int
+{
+	if(len sub == 0 || len s == 0)
+		return -1;
+	for(i := start; i <= len s - len sub; i++) {
+		if(s[i:i+len sub] == sub)
+			return i;
+	}
+	return -1;
+}
+
+# ---------- File I/O ----------
+
+loadfile(path: string)
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return;
+
+	(ok, d) := sys->fstat(fd);
+	if(ok < 0)
+		return;
+	if(d.mode & Sys->DMDIR)
+		return;
+
+	BLEN: con 8192;
+	buf := array[BLEN + Sys->UTFmax] of byte;
+	content := "";
+	inset := 0;
+	for(;;) {
+		n := sys->read(fd, buf[inset:], BLEN);
+		if(n <= 0)
+			break;
+		n += inset;
+		nutf := sys->utfbytes(buf, n);
+		content += string buf[0:nutf];
+		inset = n - nutf;
+		buf[0:] = buf[nutf:n];
+	}
+
+	doc.nlines = 0;
+	start := 0;
+	for(i := 0; i < len content; i++) {
+		if(content[i] == '\n') {
+			growbuf();
+			doc.lines[doc.nlines] = content[start:i];
+			doc.nlines++;
+			start = i + 1;
+		}
+	}
+	growbuf();
+	if(start < len content)
+		doc.lines[doc.nlines] = content[start:];
+	else
+		doc.lines[doc.nlines] = "";
+	doc.nlines++;
+
+	doc.curline = 0;
+	doc.curcol = 0;
+	doc.topline = 0;
+	doc.dirty = 0;
+}
+
+dosave()
+{
+	if(doc.filepath == "")
+		return;
+	savefile(doc.filepath);
+}
+
+savefile(path: string): int
+{
+	fd := sys->create(path, Sys->OWRITE, 8r664);
+	if(fd == nil)
+		return 0;
+
+	for(i := 0; i < doc.nlines; i++) {
+		data := array of byte doc.lines[i];
+		sys->write(fd, data, len data);
+		if(i < doc.nlines - 1) {
+			nl := array of byte "\n";
+			sys->write(fd, nl, len nl);
+		}
+	}
+
+	doc.dirty = 0;
+	w.settitle(titlestr());
+	postevent("save " + doc.filepath);
+	return 1;
+}
+
+checkdirty(): int
+{
+	if(!doc.dirty)
+		return 1;
+	if(doc.filepath != "") {
+		savefile(doc.filepath);
+		return 1;
+	}
+	return 1;
+}
+
+# ---------- Tab expansion ----------
+
+expandtabs(s: string): string
+{
+	result := "";
+	col := 0;
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\t') {
+			spaces := TABSTOP - (col % TABSTOP);
+			for(j := 0; j < spaces; j++) {
+				result[len result] = ' ';
+				col++;
+			}
+		} else {
+			result[len result] = s[i];
+			col++;
+		}
+	}
+	return result;
+}
+
+unexpandcol(s: string, expcol: int): int
+{
+	col := 0;
+	ecol := 0;
+	for(i := 0; i < len s && ecol < expcol; i++) {
+		if(s[i] == '\t') {
+			spaces := TABSTOP - (col % TABSTOP);
+			ecol += spaces;
+			col += spaces;
+		} else {
+			ecol++;
+			col++;
+		}
+		if(ecol >= expcol)
+			return i + 1;
+	}
+	return len s;
+}
+
+expandedcol(s: string, col: int): int
+{
+	ecol := 0;
+	for(i := 0; i < col && i < len s; i++) {
+		if(s[i] == '\t')
+			ecol += TABSTOP - (ecol % TABSTOP);
+		else
+			ecol++;
+	}
+	return ecol;
+}
+
+# ---------- Drawing ----------
+
+redraw()
+{
+	if(w.image == nil)
+		return;
+
+	screen := w.image;
+	r := screen.r;
+	statusheight := font.height + MARGIN * 2;
+
+	screen.draw(r, bgcolor, nil, Point(0, 0));
+
+	textr := textrect();
+	if(font.height > 0)
+		vislines = textr.dy() / font.height;
+	else
+		vislines = 1;
+
+	drawscrollbar(screen, Rect((r.min.x, r.min.y), (r.min.x + SCROLLW, r.max.y - statusheight)));
+
+	y := textr.min.y;
+	for(i := doc.topline; i < doc.nlines && i < doc.topline + vislines; i++) {
+		lnr := Rect((r.min.x + SCROLLW, y), (r.min.x + SCROLLW + LNWIDTH - MARGIN, y + font.height));
+
+		lns := string (i + 1);
+		lnw := font.width(lns);
+		screen.text(Point(lnr.max.x - lnw, y), lncolor, Point(0, 0), font, lns);
+
+		if(doc.selactive)
+			drawselection(screen, i, textr.min.x, y);
+
+		expanded := expandtabs(doc.lines[i]);
+		screen.text(Point(textr.min.x, y), fgcolor, Point(0, 0), font, expanded);
+
+		y += font.height;
+	}
+
+	drawcursor(1);
+	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
+	screen.flush(Draw->Flushnow);
+}
+
+drawscrollbar(screen: ref Image, r: Rect)
+{
+	screen.draw(r, statusbgcolor, nil, Point(0, 0));
+
+	if(doc.nlines <= 0 || vislines <= 0)
+		return;
+
+	totalh := r.dy();
+	thumbh := (vislines * totalh) / doc.nlines;
+	if(thumbh < 10)
+		thumbh = 10;
+	if(thumbh > totalh)
+		thumbh = totalh;
+	thumby := r.min.y;
+	if(doc.nlines > vislines)
+		thumby = r.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
+
+	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
+	screen.draw(thumbr, lncolor, nil, Point(0, 0));
+}
+
+drawselection(screen: ref Image, line, textx, y: int)
+{
+	(sl, sc, el, ec) := getsel();
+	if(line < sl || line > el)
+		return;
+
+	expanded := expandtabs(doc.lines[line]);
+	startx := textx;
+	endx := textx + font.width(expanded);
+
+	if(line == sl) {
+		ecol := expandedcol(doc.lines[line], sc);
+		prefix := "";
+		if(ecol <= len expanded)
+			prefix = expanded[0:ecol];
+		startx = textx + font.width(prefix);
+	}
+	if(line == el) {
+		ecol := expandedcol(doc.lines[line], ec);
+		prefix := "";
+		if(ecol <= len expanded)
+			prefix = expanded[0:ecol];
+		endx = textx + font.width(prefix);
+	}
+
+	selr := Rect((startx, y), (endx, y + font.height));
+	screen.draw(selr, selcolor, nil, Point(0, 0));
+}
+
+drawcursor(vis: int)
+{
+	if(w.image == nil)
+		return;
+	if(doc.curline < doc.topline || doc.curline >= doc.topline + vislines)
+		return;
+
+	textr := textrect();
+	y := textr.min.y + (doc.curline - doc.topline) * font.height;
+
+	expanded := expandtabs(doc.lines[doc.curline]);
+	ecol := expandedcol(doc.lines[doc.curline], doc.curcol);
+	prefix := "";
+	if(ecol <= len expanded)
+		prefix = expanded[0:ecol];
+	x := textr.min.x + font.width(prefix);
+
+	col := cursorcolor;
+	if(!vis)
+		col = bgcolor;
+	w.image.line(Point(x, y), Point(x, y + font.height - 1), 0, 0, 0, col, Point(0, 0));
+	w.image.flush(Draw->Flushnow);
+}
+
+drawstatus(screen: ref Image, r: Rect)
+{
+	screen.draw(r, statusbgcolor, nil, Point(0, 0));
+	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y), 0, 0, 0, lncolor, Point(0, 0));
+
+	x := r.min.x + MARGIN;
+	y := r.min.y + MARGIN;
+
+	if(doc.findmode) {
+		prompt := "Find: " + doc.findbuf + "_";
+		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
+	} else {
+		info := doc.filepath;
+		if(info == "")
+			info = "(new file)";
+		if(doc.dirty) {
+			screen.text(Point(x, y), dirtycolor, Point(0, 0), font, info + " [modified]");
+		} else {
+			screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);
+		}
+
+		pos := sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
+		pw := font.width(pos);
+		screen.text(Point(r.max.x - pw - MARGIN, y), statusfgcolor, Point(0, 0), font, pos);
+	}
+}
+
+# ---------- Helpers ----------
+
+timer(c: chan of int, ms: int)
+{
+	for(;;) {
+		sys->sleep(ms);
+		c <-= 1;
+	}
+}
+
+postnote(t: int, pid: int, note: string): int
+{
+	fd := sys->open("#p/" + string pid + "/ctl", Sys->OWRITE);
+	if(fd == nil)
+		return -1;
+	if(t == 1)
+		note += "grp";
+	sys->fprint(fd, "%s", note);
+	fd = nil;
+	return 0;
+}
+
+splitfirst(s: string): (string, string)
+{
+	# Strip leading whitespace
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	s = s[i:];
+	# Find first space
+	for(j := 0; j < len s; j++) {
+		if(s[j] == ' ' || s[j] == '\t') {
+			rest := s[j+1:];
+			# Strip leading whitespace from rest
+			k := 0;
+			while(k < len rest && (rest[k] == ' ' || rest[k] == '\t'))
+				k++;
+			return (s[0:j], rest[k:]);
+		}
+	}
+	return (s, "");
+}
+
+readf(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[256] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	s := string buf[0:n];
+	# Strip trailing newline
+	while(len s > 0 && s[len s - 1] == '\n')
+		s = s[0:len s - 1];
+	return s;
+}
+
+# ---------- Real-file IPC helpers ----------
+# /tmp/veltro/edit/ is inside the restricted agent namespace.
+# The tick loop polls command files and writes state files so the
+# Veltro luciedit tool can read/write the editor across namespace forks.
 
 initeditdir()
 {
 	mkdirq(EDIT_DIR);
 	mkdirq(EDIT_INST);
-	writeeditstate();
 }
 
 mkdirq(path: string)
 {
-	(ok, nil) := sys->stat(path);
-	if(ok < 0)
-		sys->create(path, Sys->OREAD, 8r777|Sys->DMDIR);
+	fd := sys->open(path, Sys->OREAD);
+	if(fd != nil) {
+		fd = nil;
+		return;
+	}
+	fd = sys->create(path, Sys->OREAD, Sys->DMDIR | 8r755);
+	fd = nil;
 }
 
 writeeditstate()
 {
-	# body: full buffer content
-	fd := sys->create(EDIT_INST + "/body", Sys->OWRITE, 8r666);
-	if(fd != nil) {
-		for(i := 0; i < nlines; i++) {
-			line := lines[i];
-			if(i < nlines - 1) line += "\n";
-			b := array of byte line;
-			sys->write(fd, b, len b);
-		}
-		fd = nil;
-	}
-	# addr: cursor position as "line col"
-	fd = sys->create(EDIT_INST + "/addr", Sys->OWRITE, 8r666);
-	if(fd != nil) {
-		b := array of byte sys->sprint("%d %d\n", curline + 1, curcol + 1);
-		sys->write(fd, b, len b);
-		fd = nil;
-	}
-	# index: status summary
-	fd = sys->create(EDIT_DIR + "/index", Sys->OWRITE, 8r666);
-	if(fd != nil) {
-		path := filepath;
-		if(path == "") path = "[new]";
-		b := array of byte sys->sprint("file:%s dirty:%d line:%d col:%d lines:%d\n",
-			path, dirty, curline + 1, curcol + 1, nlines);
-		sys->write(fd, b, len b);
-		fd = nil;
-	}
+	body := getbodytext();
+	writestatefile(EDIT_INST + "/body", body);
+	addr := sys->sprint("%d %d", doc.curline + 1, doc.curcol + 1);
+	writestatefile(EDIT_INST + "/addr", addr);
+	idx := sys->sprint("%d %s %d\n", doc.id, doc.filepath, doc.dirty);
+	writestatefile(EDIT_DIR + "/index", idx);
 }
 
-# tickproc: fires on tickch every 500ms for command polling
-tickproc(ch: chan of int)
+writestatefile(path, data: string)
 {
-	for(;;) {
-		sys->sleep(500);
-		alt { ch <-= 1 => ; * => ; }
-	}
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	if(fd == nil)
+		return;
+	b := array of byte data;
+	sys->write(fd, b, len b);
+	fd = nil;
 }
 
-# checkctlfile: called on each tick; processes pending commands
-checkctlfile()
+checkctlfile(): int
 {
-	# Global ctl: "open path", "quit"
-	gctl := readrmfile(EDIT_DIR + "/ctl");
-	if(gctl != nil) {
-		(op, arg) := splitword(string gctl);
-		if(op == "quit" || op == "close") {
-			quitreq = 1;
-		} else if(op == "open") {
-			arg = stripws(arg);
-			if(arg != "") {
-				filepath = arg;
-				loadfile(filepath);
-				computelayout();
-				redraw();
-			}
-		}
-	}
-	if(quitreq) return;
+	changed := 0;
 
-	# Per-instance ctl: "save", "goto N", "find str", "name path", "insert...", "delete..."
-	ctl1 := readrmfile(EDIT_INST + "/ctl");
-	if(ctl1 != nil) {
-		(op, arg) := splitword(string ctl1);
-		if(op == "save") {
-			savefile();
-		} else if(op == "goto") {
-			n := int stripws(arg);
-			if(n > 0) {
-				curline = n - 1;
-				if(curline >= nlines) curline = nlines - 1;
-				clampcolumn();
-				ensurevisible();
-			}
-			redraw();
-		} else if(op == "find") {
-			needle := stripws(arg);
-			if(needle != "")
-				findinbuf(needle);
-			redraw();
-		} else if(op == "name") {
-			filepath = stripws(arg);
-			redraw();
-		}
-		writeeditstate();
+	# Global ctl: open <path>, quit
+	gcmd := readrmfile(EDIT_DIR + "/ctl");
+	if(gcmd != nil && gcmd != "") {
+		handlegctl(gcmd);
+		changed = 1;
 	}
 
-	# body.in: replace entire buffer
-	body := readrmfile(EDIT_INST + "/body.in");
-	if(body != nil) {
-		setbodyfromtext(string body);
-		computelayout();
-		redraw();
-		writeeditstate();
+	# Per-doc ctl: save, goto <n>, find <s>, name <p>, insert, delete
+	dcmd := readrmfile(EDIT_INST + "/ctl");
+	if(dcmd != nil && dcmd != "") {
+		handledocctl(dcmd);
+		changed = 1;
 	}
+
+	# body.in: replace document body
+	newbody := readrmfile(EDIT_INST + "/body.in");
+	if(newbody != nil) {
+		setbodytext(newbody);
+		changed = 1;
+	}
+
+	return changed;
 }
 
-# readrmfile: read a file and remove it; returns nil if not found
-readrmfile(path: string): array of byte
+readrmfile(path: string): string
 {
 	fd := sys->open(path, Sys->OREAD);
-	if(fd == nil) return nil;
+	if(fd == nil)
+		return nil;
 	buf := array[65536] of byte;
-	total := 0;
-	for(;;) {
-		n := sys->read(fd, buf[total:], len buf - total);
-		if(n <= 0) break;
-		total += n;
-	}
+	n := sys->read(fd, buf, len buf);
 	fd = nil;
-	sys->remove(path);
-	if(total <= 0) return nil;
-	return buf[0:total];
-}
-
-# setbodyfromtext: replace buffer contents with newline-separated text
-setbodyfromtext(text: string)
-{
-	nlines = 0;
-	i := 0;
-	while(i <= len text) {
-		j := i;
-		while(j < len text && text[j] != '\n') j++;
-		if(nlines < MAXLINES)
-			lines[nlines++] = text[i:j];
-		i = j + 1;
-		if(i > len text) break;
-	}
-	if(nlines == 0) {
-		nlines = 1;
-		lines[0] = "";
-	}
-	curline = 0;
-	curcol = 0;
-	scrolloff = 0;
-	dirty = 1;
-}
-
-# findinbuf: search forward for needle, move cursor to first match
-findinbuf(needle: string)
-{
-	nl := len needle;
-	for(i := 1; i <= nlines; i++) {
-		li := (curline + i) % nlines;
-		line := lines[li];
-		for(j := 0; j + nl <= len line; j++) {
-			if(line[j:j+nl] == needle) {
-				curline = li;
-				curcol = j;
-				clampcolumn();
-				ensurevisible();
-				return;
-			}
-		}
-	}
-}
-
-# splitword: split "word rest" at first whitespace
-splitword(s: string): (string, string)
-{
-	s = stripws(s);
-	for(i := 0; i < len s; i++) {
-		if(s[i] == ' ' || s[i] == '\t' || s[i] == '\n')
-			return (s[0:i], s[i+1:]);
-	}
-	return (s, "");
-}
-
-# stripws: strip leading/trailing whitespace
-stripws(s: string): string
-{
-	i := 0;
-	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) i++;
-	j := len s;
-	while(j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n')) j--;
-	if(i >= j) return "";
-	return s[i:j];
+	if(n <= 0)
+		return nil;
+	s := string buf[0:n];
+	# Truncate file to consume the command
+	fd = sys->create(path, Sys->OWRITE, 8r666);
+	fd = nil;
+	# Strip trailing whitespace
+	while(len s > 0 && (s[len s - 1] == '\n' || s[len s - 1] == ' ' || s[len s - 1] == '\t'))
+		s = s[0:len s - 1];
+	return s;
 }
