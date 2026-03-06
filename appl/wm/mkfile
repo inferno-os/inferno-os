@@ -24,6 +24,8 @@ SYSMODULES=\
 	plumbmsg.m\
 	sh.m\
 	string.m\
+	styx.m\
+	styxservers.m\
 	sys.m\
 	winplace.m\
 	wmclient.m\
