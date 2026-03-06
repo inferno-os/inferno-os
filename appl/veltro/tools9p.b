@@ -121,6 +121,7 @@ TOOL_PATHS := array[] of {
 	# Vision (local GPU or Anthropic cloud API)
 	("vision",  "/dis/veltro/tools/vision.dis"),
 	("luciedit", "/dis/veltro/tools/luciedit.dis"),
+	("lucishell", "/dis/veltro/tools/lucishell.dis"),
 };
 
 usage()

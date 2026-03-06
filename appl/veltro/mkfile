@@ -29,6 +29,7 @@ TOOLS=\
     tools/safeexec.dis\
     tools/xenith.dis\
     tools/luciedit.dis\
+    tools/lucishell.dis\
     tools/present.dis\
     tools/diff.dis\
     tools/json.dis\
@@ -112,6 +113,9 @@ tools/xenith.dis: tools/xenith.b tool.m
 
 tools/luciedit.dis: tools/luciedit.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/luciedit.dis tools/luciedit.b
+
+tools/lucishell.dis: tools/lucishell.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/lucishell.dis tools/lucishell.b
 
 tools/present.dis: tools/present.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/present.dis tools/present.b

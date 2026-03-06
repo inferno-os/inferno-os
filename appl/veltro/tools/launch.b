@@ -55,11 +55,12 @@ doc(): string
 		"Usage:\n" +
 		"  Launch list           — show available apps\n" +
 		"  Launch xenith         — launch Xenith text environment\n" +
+		"  Launch lucishell      — launch shell terminal\n" +
 		"  Launch clock          — launch by short name\n" +
 		"  Launch wm/clock       — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit\n\n" +
+		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
