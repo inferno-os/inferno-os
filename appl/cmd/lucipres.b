@@ -994,7 +994,11 @@ renderart(art: ref Artifact, contentw: int): ref Image
 			return nil;
 		(renderer, nil) := rendermod->find(data, hint);
 		if(renderer != nil) {
+			# Images: bigger zoom → bigger rendered output (scale up)
+			# Text/document renderers: larger zoom → narrower layout (scale font effect)
 			w := contentw * 100 / artzoom(art);
+			if(art.atype == "image")
+				w = contentw * artzoom(art) / 100;
 			progress := chan of ref Renderer->RenderProgress;
 			# Drain progress (we don't use progressive rendering here)
 			spawn drainprogress(progress);
