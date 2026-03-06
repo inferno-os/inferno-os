@@ -1,20 +1,22 @@
 implement ToolVision;
 
 #
-# vision - AI vision tool for Veltro agent
+# vision - Dual-backend AI vision tool for Veltro agent
 #
-# Analyzes images using the Anthropic Messages API with vision.
-# Reads image files, base64-encodes them, and sends to Claude
-# for analysis. Uses Webclient for native TLS 1.3 HTTPS.
+# Analyzes images using either a local GPU (TensorRT via /mnt/gpu)
+# or the Anthropic Messages API (cloud). Auto-detects which backend
+# is available; prefers local GPU when mounted with a vision model.
 #
 # Usage:
-#   vision <imagepath>              # Describe the image
-#   vision <imagepath> <prompt>     # Analyze with specific prompt
+#   vision <imagepath> [prompt]          # Auto-detect backend
+#   vision --local <imagepath>           # Force local GPU
+#   vision --cloud <imagepath> [prompt]  # Force Anthropic API
 #
 # Examples:
 #   vision /tmp/photo.jpg
 #   vision /tmp/diagram.png What components are shown?
-#   vision /tmp/screenshot.png Extract all visible text
+#   vision --local /tmp/capture.png
+#   vision --cloud /tmp/screenshot.png Extract all visible text
 #
 
 include "sys.m";
@@ -40,6 +42,7 @@ ToolVision: module {
 	exec: fn(args: string): string;
 };
 
+# Cloud backend constants
 APIKEY_PATH: con "/lib/veltro/keys/anthropic";
 API_URL: con "https://api.anthropic.com/v1/messages";
 API_VERSION: con "2023-06-01";
@@ -47,6 +50,9 @@ MODEL: con "claude-sonnet-4-20250514";
 MAX_IMAGE_SIZE: con 5242880;	# 5MB
 MAX_TOKENS: con 4096;
 REQUEST_TIMEOUT: con 60000;	# 60 seconds
+
+# Local GPU backend constants
+GPUDIR: con "/mnt/gpu";
 
 init(): string
 {
@@ -56,6 +62,15 @@ init(): string
 	str = load String String->PATH;
 	if(str == nil)
 		return "cannot load String";
+	# Webclient and base64 loaded lazily (only needed for cloud backend)
+	return nil;
+}
+
+# Lazy-load cloud backend dependencies
+initcloud(): string
+{
+	if(webclient != nil)
+		return nil;
 	webclient = load Webclient Webclient->PATH;
 	if(webclient == nil)
 		return "cannot load Webclient";
@@ -77,17 +92,25 @@ doc(): string
 {
 	return "Vision - Analyze images using AI vision\n\n" +
 		"Usage:\n" +
-		"  vision <imagepath>              # Describe the image\n" +
-		"  vision <imagepath> <prompt>     # Analyze with specific prompt\n\n" +
+		"  vision <imagepath> [prompt]          # Auto-detect backend\n" +
+		"  vision --local <imagepath>           # Force local GPU\n" +
+		"  vision --cloud <imagepath> [prompt]  # Force Anthropic API\n\n" +
 		"Arguments:\n" +
 		"  imagepath - Path to image file (PNG, JPEG, GIF, WebP)\n" +
-		"  prompt    - Analysis prompt (default: \"Describe this image in detail.\")\n\n" +
+		"  prompt    - Analysis prompt (cloud only; default: \"Describe this image in detail.\")\n\n" +
+		"Backends:\n" +
+		"  local - Uses TensorRT via /mnt/gpu (Jetson Orin, etc.)\n" +
+		"  cloud - Uses Anthropic Messages API with Claude vision\n" +
+		"  auto  - Prefers local GPU if mounted; falls back to cloud\n\n" +
 		"Examples:\n" +
 		"  vision /tmp/photo.jpg\n" +
 		"  vision /tmp/diagram.png What components are shown?\n" +
-		"  vision /tmp/screenshot.png Extract all visible text\n\n" +
-		"Maximum image size: 5MB.\n" +
-		"Requires API key in " + APIKEY_PATH + ".";
+		"  vision --local /tmp/capture.png\n" +
+		"  vision --cloud /tmp/screenshot.png Extract all visible text\n\n" +
+		"Notes:\n" +
+		"  Maximum image size: 5MB\n" +
+		"  Cloud requires API key in " + APIKEY_PATH + "\n" +
+		"  Local requires /mnt/gpu mounted with a vision model loaded";
 }
 
 exec(args: string): string
@@ -95,15 +118,31 @@ exec(args: string): string
 	if(sys == nil)
 		init();
 
-	# Parse arguments: <imagepath> [prompt...]
+	# Parse arguments: [--local|--cloud] <imagepath> [prompt...]
 	(n, argv) := sys->tokenize(args, " \t");
 	if(n < 1)
-		return "error: usage: vision <imagepath> [prompt]";
+		return "error: usage: vision [--local|--cloud] <imagepath> [prompt]";
+
+	# Check for backend flag
+	backend := "auto";
+	first := hd argv;
+	if(first == "--local") {
+		backend = "local";
+		argv = tl argv;
+		n--;
+	} else if(first == "--cloud") {
+		backend = "cloud";
+		argv = tl argv;
+		n--;
+	}
+
+	if(n < 1)
+		return "error: usage: vision [--local|--cloud] <imagepath> [prompt]";
 
 	imagepath := hd argv;
 	argv = tl argv;
 
-	# Join remaining args as prompt
+	# Join remaining args as prompt (used by cloud backend)
 	prompt := "";
 	for(; argv != nil; argv = tl argv) {
 		if(prompt != "")
@@ -112,6 +151,112 @@ exec(args: string): string
 	}
 	if(prompt == "")
 		prompt = "Describe this image in detail.";
+
+	# Route to appropriate backend
+	case backend {
+	"cloud" =>
+		return cloudvision(imagepath, prompt);
+	"local" =>
+		if(!gpuavailable())
+			return "error: --local specified but " + GPUDIR + " not mounted";
+		model := findvisionmodel();
+		if(model == "")
+			return "error: no vision model loaded on GPU. Load a model via: echo 'load <name> <path>' > " + GPUDIR + "/ctl";
+		return gpuinfer(imagepath, model);
+	* =>
+		# Auto-detect: prefer local if available
+		if(gpuavailable()) {
+			model := findvisionmodel();
+			if(model != "")
+				return gpuinfer(imagepath, model);
+		}
+		return cloudvision(imagepath, prompt);
+	}
+}
+
+# ==================== Local GPU Backend ====================
+
+# Check if GPU filesystem is mounted and accessible
+gpuavailable(): int
+{
+	fd := sys->open(GPUDIR + "/ctl", Sys->OREAD);
+	if(fd == nil)
+		return 0;
+	buf := array[64] of byte;
+	n := sys->read(fd, buf, len buf);
+	return n > 0;
+}
+
+# Find a loaded vision model by scanning /mnt/gpu/models/
+# Returns first model name found, or "" if none loaded.
+findvisionmodel(): string
+{
+	fd := sys->open(GPUDIR + "/models", Sys->OREAD);
+	if(fd == nil)
+		return "";
+	(ndir, dirs) := sys->dirread(fd);
+	if(ndir <= 0)
+		return "";
+	# Return first model found
+	return dirs[0].name;
+}
+
+# Run inference on local GPU via /mnt/gpu session protocol.
+# Follows the clone-based session pattern from gpu.b:runinfer().
+gpuinfer(imagepath, model: string): string
+{
+	# 1. Read clone to get session ID
+	sid := readfile(GPUDIR + "/clone");
+	if(sid == "" || sid[0] == 'e')
+		return "error: failed to allocate GPU session: " + sid;
+	if(len sid > 0 && sid[len sid - 1] == '\n')
+		sid = sid[0:len sid - 1];
+
+	sessdir := GPUDIR + "/" + sid;
+
+	# 2. Set model
+	err := writefile(sessdir + "/ctl", "model " + model);
+	if(err != nil)
+		return "error: " + err;
+
+	# 3. Read and write input image
+	imgdata := readbytes(imagepath);
+	if(imgdata == nil)
+		return "error: cannot read image: " + imagepath;
+
+	if(len imgdata > MAX_IMAGE_SIZE)
+		return sys->sprint("error: image too large (%d bytes). Maximum: %d bytes", len imgdata, MAX_IMAGE_SIZE);
+
+	err = writebytes(sessdir + "/input", imgdata);
+	if(err != nil)
+		return "error: writing input: " + err;
+
+	# 4. Trigger inference
+	err = writefile(sessdir + "/ctl", "infer");
+	if(err != nil)
+		return "error: inference failed: " + err;
+
+	# 5. Check status
+	status := readfile(sessdir + "/status");
+	if(status == "" || hasprefix(status, "error"))
+		return "error: " + status;
+
+	# 6. Read output
+	output := readfile(sessdir + "/output");
+	if(output == "")
+		return "(no output)";
+	return output;
+}
+
+# ==================== Cloud Backend ====================
+
+# Analyze image via Anthropic Messages API
+cloudvision(imagepath, prompt: string): string
+{
+	# Lazy-load cloud dependencies
+	err := initcloud();
+	if(err != nil)
+		return "error: " + err;
 
 	# Read API key
 	apikey := readapikey();
@@ -153,7 +298,6 @@ exec(args: string): string
 	spawn timer(timeout, REQUEST_TIMEOUT);
 
 	resp: ref Webclient->Response;
-	err: string;
 	alt {
 	(r, e) := <-result =>
 		(resp, err) = (r, e);
@@ -299,6 +443,8 @@ extracterror(json: string): string
 	return json;
 }
 
+# ==================== I/O Helpers ====================
+
 # Read API key from file
 readapikey(): string
 {
@@ -310,6 +456,19 @@ readapikey(): string
 	if(n <= 0)
 		return "";
 	return strip(string buf[0:n]);
+}
+
+# Read entire file as text
+readfile(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return "";
+	buf := array[8192] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return "";
+	return string buf[0:n];
 }
 
 # Read entire file as bytes (chunked)
@@ -344,6 +503,31 @@ readbytes(path: string): array of byte
 	return result;
 }
 
+# Write string to file
+writefile(path, data: string): string
+{
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil)
+		return "cannot open " + path + ": " + errmsg();
+	b := array of byte data;
+	n := sys->write(fd, b, len b);
+	if(n != len b)
+		return "write failed: " + errmsg();
+	return nil;
+}
+
+# Write bytes to file
+writebytes(path: string, data: array of byte): string
+{
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil)
+		return "cannot open " + path + ": " + errmsg();
+	n := sys->write(fd, data, len data);
+	if(n != len data)
+		return "write failed: " + errmsg();
+	return nil;
+}
+
 # Perform HTTP request in a goroutine (allows timeout via alt)
 dorequest(hdrs: list of Webclient->Header, reqbody: array of byte,
 	result: chan of (ref Webclient->Response, string))
@@ -358,6 +542,8 @@ timer(ch: chan of int, ms: int)
 	sys->sleep(ms);
 	ch <-= 1;
 }
+
+# ==================== String Helpers ====================
 
 # Escape string for JSON
 jsonstr(s: string): string
@@ -419,4 +605,17 @@ findstr(s, sub: string): int
 			return i;
 	}
 	return -1;
+}
+
+# Get system error message
+errmsg(): string
+{
+	fd := sys->open("/dev/sysctl", Sys->OREAD);
+	if(fd == nil)
+		return "unknown error";
+	buf := array[256] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return "unknown error";
+	return string buf[0:n];
 }

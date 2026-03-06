@@ -1,22 +1,29 @@
 vision - Analyze images using AI vision
 
 Usage:
-  vision <imagepath>              Describe the image
-  vision <imagepath> <prompt>     Analyze with specific prompt
+  vision <imagepath> [prompt]          Auto-detect backend
+  vision --local <imagepath>           Force local GPU inference
+  vision --cloud <imagepath> [prompt]  Force Anthropic cloud API
 
 Arguments:
   imagepath - Path to image file (PNG, JPEG, GIF, WebP)
-  prompt    - Analysis prompt (default: "Describe this image in detail.")
+  prompt    - Analysis prompt (cloud only; default: "Describe this image in detail.")
+
+Backends:
+  auto  - Prefers local GPU if /mnt/gpu is mounted with a vision model;
+          falls back to Anthropic cloud API otherwise
+  local - TensorRT inference via /mnt/gpu (Jetson Orin, etc.)
+  cloud - Anthropic Messages API with Claude vision
 
 Examples:
   vision /tmp/photo.jpg
   vision /tmp/diagram.png What components are shown?
-  vision /tmp/screenshot.png Extract all visible text
-  vision /data/chart.png Summarize the data in this chart
+  vision --local /tmp/capture.png
+  vision --cloud /tmp/screenshot.png Extract all visible text
 
 Notes:
   - Maximum image size: 5MB
-  - Requires API key in /lib/veltro/keys/anthropic
-  - Requires /net access (HTTPS to Anthropic API)
-  - Returns text description/analysis of the image
-  - Uses Claude vision model for image understanding
+  - Cloud requires API key in /lib/veltro/keys/anthropic
+  - Cloud requires /net access (HTTPS to Anthropic API)
+  - Local requires /mnt/gpu mounted with a vision model loaded
+  - Local GPU can be on a remote Jetson via encrypted 9P mount
