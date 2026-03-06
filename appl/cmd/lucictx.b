@@ -680,7 +680,7 @@ drawcontext(zone: Rect)
 		y += secgap;
 	}
 
-	# --- Tools section ---
+	# --- Tools section (two-column layout) ---
 	if(y + mainfont.height > zone.max.y)
 		return;
 	{
@@ -692,74 +692,90 @@ drawcontext(zone: Rect)
 
 		if(toolsec_expanded) {
 			toolentryrects = array[64] of Rect;
+			toolplusrects = array[64] of Rect;
 
-			for(tp := activetoolset; tp != nil; tp = tl tp) {
-				tname := hd tp;
-				if(y + mainfont.height > zone.max.y)
-					break;
+			# Two-column layout: enabled on left, available on right
+			zonew := zone.dx();
+			colw := zonew / 2;
+			lcol := zone.min.x;
+			rcol := zone.min.x + colw;
 
-				# Activity indicator — look up tool in resources list
-				indcol2 := dimcol;
-				for(rp2 := resources; rp2 != nil; rp2 = tl rp2) {
-					res2 := hd rp2;
-					if(res2.rtype == "tool" &&
-							(res2.path == tname || res2.label == tname)) {
-						if(res2.status == "active" ||
-								(res2.lastused > 0 && now - res2.lastused < 3000))
-							indcol2 = accentcol;
-						else if(res2.status == "streaming")
-							indcol2 = greencol;
-						break;
-					}
-				}
+			# Column headers
+			mainwin.text((lcol + pad, y), dimcol, (0, 0), mainfont, "Enabled");
+			mainwin.text((rcol + pad, y), dimcol, (0, 0), mainfont, "Available");
+			y += mainfont.height + 2;
 
-				if(ntoolentryrects < len toolentryrects)
-					toolentryrects[ntoolentryrects++] = Rect(
-						(zone.min.x, y), (zone.max.x, y + mainfont.height));
-
-				tindy := y + (mainfont.height - indh) / 2;
-				mainwin.draw(Rect(
-					(zone.min.x + pad, tindy),
-					(zone.min.x + pad + indw, tindy + indh)),
-					indcol2, nil, (0, 0));
-				mainwin.text((zone.min.x + pad + indw + 6, y),
-					text2col, (0, 0), mainfont, tname);
-				y += mainfont.height + 2;
+			# Build available tools list (excluding active)
+			availtools: list of string;
+			for(kp := knowntoolnames; kp != nil; kp = tl kp) {
+				kname := hd kp;
+				isact := 0;
+				for(ap := activetoolset; ap != nil; ap = tl ap)
+					if(hd ap == kname) { isact = 1; break; }
+				if(!isact)
+					availtools = kname :: availtools;
 			}
+			# Reverse to preserve order
+			ravail: list of string;
+			for(; availtools != nil; availtools = tl availtools)
+				ravail = hd availtools :: ravail;
+			availtools = ravail;
 
-			# Available sub-section
-			if(y + mainfont.height <= zone.max.y) {
-				y += 4;
-				ind2 := "▸";
-				if(toolavail_expanded) ind2 = "▾";
-				mainwin.text((zone.min.x + pad + 8, y), dimcol, (0, 0), mainfont,
-					"Available " + ind2);
-				toolavailhdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
-				y += mainfont.height + 2;
+			# Render both columns in parallel, row by row
+			tp := activetoolset;
+			avp := availtools;
+			while((tp != nil || avp != nil) &&
+					y + mainfont.height <= zone.max.y) {
 
-				if(toolavail_expanded) {
-					toolplusrects = array[64] of Rect;
+				# Left column: enabled tool
+				if(tp != nil) {
+					tname := hd tp;
 
-					for(kp := knowntoolnames; kp != nil; kp = tl kp) {
-						kname := hd kp;
-						if(y + mainfont.height > zone.max.y)
+					# Activity indicator color
+					indcol2 := dimcol;
+					for(rp2 := resources; rp2 != nil; rp2 = tl rp2) {
+						res2 := hd rp2;
+						if(res2.rtype == "tool" &&
+								(res2.path == tname || res2.label == tname)) {
+							if(res2.status == "active" ||
+									(res2.lastused > 0 && now - res2.lastused < 3000))
+								indcol2 = accentcol;
+							else if(res2.status == "streaming")
+								indcol2 = greencol;
 							break;
-						# Skip tools already active
-						isact := 0;
-						for(ap := activetoolset; ap != nil; ap = tl ap)
-							if(hd ap == kname) { isact = 1; break; }
-						if(isact)
-							continue;
-
-						mainwin.text((zone.min.x + pad + 12, y), dimcol, (0, 0),
-							mainfont, "○ " + kname);
-						if(ntoolplusrects < len toolplusrects)
-							toolplusrects[ntoolplusrects++] = Rect(
-								(zone.min.x, y),
-								(zone.max.x, y + mainfont.height));
-						y += mainfont.height + 2;
+						}
 					}
+
+					if(ntoolentryrects < len toolentryrects)
+						toolentryrects[ntoolentryrects++] = Rect(
+							(lcol, y), (rcol, y + mainfont.height));
+
+					tindy := y + (mainfont.height - indh) / 2;
+					mainwin.draw(Rect(
+						(lcol + pad, tindy),
+						(lcol + pad + indw, tindy + indh)),
+						indcol2, nil, (0, 0));
+					mainwin.text((lcol + pad + indw + 6, y),
+						text2col, (0, 0), mainfont, tname);
+
+					tp = tl tp;
 				}
+
+				# Right column: available tool
+				if(avp != nil) {
+					aname := hd avp;
+
+					mainwin.text((rcol + pad, y), dimcol, (0, 0),
+						mainfont, "○ " + aname);
+					if(ntoolplusrects < len toolplusrects)
+						toolplusrects[ntoolplusrects++] = Rect(
+							(rcol, y),
+							(zone.max.x, y + mainfont.height));
+
+					avp = tl avp;
+				}
+
+				y += mainfont.height + 2;
 			}
 		}
 		y += secgap;
