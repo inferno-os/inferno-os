@@ -139,9 +139,31 @@ adiff file1 file2
 |sort
 |wc -l
 
+Lucifer (GUI)
+-------------
+# Lucifer is the three-zone GUI:
+#   Left:   Conversation — talk to Veltro
+#   Centre: Presentation — apps, documents, artifacts
+#   Right:  Context — tools, paths, gaps, background tasks
+
+# On first launch, /lib/veltro/welcome.md loads in the presentation zone.
+# Say "run the tour" in conversation for a hands-on guided demo.
+
+# Launch apps in the presentation zone (via Veltro):
+#   launch clock       — analog clock
+#   launch luciedit    — text editor
+#   launch lucishell   — shell terminal
+#   launch mand        — Mandelbrot fractal viewer
+#   launch xenith      — Xenith text environment
+
+# Toggle tools on/off in the Context zone (right side)
+# Bind host directories to give Veltro file access
+
 Veltro (AI Agent)
 -----------------
 # Guided tour (Veltro teaches you the system)
+# In Lucifer: just say "run the tour" in the conversation zone
+# In terminal/Xenith:
 /dis/veltro/veltro 'read /lib/veltro/demos/tour.txt and follow the tour instructions'
 
 # Interactive chat (opens in Xenith window or terminal)
@@ -154,8 +176,8 @@ Veltro (AI Agent)
 # Verbose mode (shows LLM steps, namespace info)
 /dis/veltro/tools9p read list find search spawn edit write xenith say; /dis/veltro/repl -v
 
-# All tools including exec and speech
-/dis/veltro/tools9p read list find search write edit exec spawn xenith say hear ask diff json http git memory todo websearch grep mail; /dis/veltro/repl -v
+# All tools including exec, speech, GUI, and more
+/dis/veltro/tools9p read list find search write edit exec spawn xenith say hear ask diff json http git memory todo websearch grep mail launch present fractal luciedit lucishell gap vision; /dis/veltro/repl -v
 
 # Security: tools9p chooses what's available.
 # Capability flows from caller to callee, never the reverse.
@@ -175,33 +197,75 @@ Veltro (AI Agent)
 /lib/veltro/system.txt
 /appl/veltro/SECURITY.md
 
+# Onboarding
+/lib/veltro/welcome.md
+/lib/veltro/demos/tour.txt
+
 # Spawn a subagent from within a session:
 #   spawn tools=read,list -- list the contents of /tmp
 #   spawn tools=read,find agenttype=explore -- find error handlers
 
 Veltro Tools
 ------------
+# Files and code
 read path             read file contents
 list path             list directory
 find pattern path     find files by pattern
 search pattern path   search file contents
+grep pattern path     regex content search
 write path content    write a file
 edit path             line-based file editing
 diff file1 file2      show differences
+
+# Execution and agents
 exec command          run shell command (requires shellcmds grant)
 spawn options -- task create isolated subagent
+
+# Xenith integration
 xenith list           list open windows
 xenith read N body    read window N body
 xenith create name    create named window
 xenith write N body   write to window N body
+
+# Lucifer presentation zone
+present create id     create artifact (markdown, text, table, code)
+present write id text write content to artifact
+present center id     focus an artifact
+launch appname        launch app (clock, luciedit, lucishell, mand, xenith)
+
+# Editor and shell
+luciedit open path    open file in editor
+luciedit read         read editor content
+luciedit write text   write to editor
+lucishell read        read shell transcript
+lucishell tail N      last N lines of shell
+
+# Fractal viewer
+fractal view          describe current view
+fractal center x y r  zoom to point with radius
+fractal julia re im   show Julia set
+fractal zoomout       go back one level
+
+# Communication
 ask question          ask user for input
+say text              text-to-speech
+hear                  speech-to-text
+mail check            check inbox
+mail read N           read message N
+
+# Knowledge and tasks
 memory save K V       persistent key-value store
 memory load K         retrieve stored value
+todo add task         task tracking
+gap add desc level    surface knowledge blind spot
+gap resolve desc      resolve a gap
+
+# Network and data
 http GET url          HTTP request
 json file path        query JSON data
 git status            git operations
-say text              text-to-speech
-hear                  speech-to-text
+vision path           image analysis (local GPU or cloud)
+websearch query       web search
 
 Shell
 -----
