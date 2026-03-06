@@ -286,6 +286,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						restart = 1;
 					}
 				Restart =>
+					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
+					stack = nil;
+					morj = 1;
+					julp = Fracpoint(0.0, 0.0);
+					kdivisor = 1;
+					fill = 1;
 					restart = 1;
 				* =>
 					;
@@ -363,7 +369,7 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 		return nil;
 	menu := menumod->new(array[] of {
 		"zoom out",
-		"restart",
+		"reset",
 		"exit"
 	});
 	n := menu.show(w.image, ptr.xy, w.ctxt.ptr);
