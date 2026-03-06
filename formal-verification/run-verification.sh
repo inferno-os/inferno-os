@@ -129,20 +129,27 @@ echo "Running TLC model checker..."
 echo "This may take a while depending on the verification level."
 echo ""
 
-# Run TLC (use pipefail to capture TLC exit code through tee)
+# Run TLC with unbuffered output to avoid losing progress data
 cd "$TLA_DIR"
 set +e
-(set -o pipefail; java -XX:+UseParallelGC \
-     -Xmx${HEAP} \
-     -jar "$SCRIPT_DIR/tla2tools.jar" \
-     -config "$CONFIG_FILE" \
-     -workers auto \
-     -checkpoint 60 \
-     -deadlock \
-     MC_Namespace.tla \
-     2>&1 | tee "$RESULTS_DIR/tlc_output_$LEVEL.txt")
+OUTPUT_FILE="$RESULTS_DIR/tlc_output_$LEVEL.txt"
 
-TLC_EXIT=$?
+# Build TLC command
+TLC_CMD="java -XX:+UseParallelGC -Xmx${HEAP} -jar $SCRIPT_DIR/tla2tools.jar -config $CONFIG_FILE -workers auto -checkpoint 60 -deadlock"
+
+# Add recovery flag if RECOVER env var is set
+if [ -n "$RECOVER" ]; then
+    TLC_CMD="$TLC_CMD -recover $RECOVER"
+    echo "Recovering from checkpoint: $RECOVER"
+    echo ""
+fi
+
+TLC_CMD="$TLC_CMD MC_Namespace.tla"
+
+# Use stdbuf to disable buffering, tee with line buffering
+stdbuf -oL $TLC_CMD 2>&1 | stdbuf -oL tee "$OUTPUT_FILE"
+
+TLC_EXIT=${PIPESTATUS[0]}
 set -e
 
 echo ""

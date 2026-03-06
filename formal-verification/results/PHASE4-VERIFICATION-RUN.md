@@ -1,6 +1,6 @@
 # Phase 4: Verification Run Results
 
-*Date: 2026-03-04*
+*Date: 2026-03-04 (updated 2026-03-07 with TLC medium results)*
 
 ## SPIN Model Checking Results
 
@@ -61,9 +61,10 @@ Run with: `CBMC_MNTLOG=5 ./verify-all.sh full`
 
 ## Key Findings
 
-1. **Namespace isolation is verified at two levels**:
+1. **Namespace isolation is verified at three levels of scale**:
    - **SPIN** explores 131,333 states confirming post-copy mount isolation in Promela models.
-   - **TLA+/TLC** exhaustively checks 369,414,154 states (19.3M distinct) verifying 11 safety invariants including the NamespaceIsolationTheorem, UnilateralMountNonPropagation, CopyFidelity, and PostCopyMountsSound.
+   - **TLA+/TLC small** exhaustively checks 369,414,154 states (19.3M distinct) verifying 11 safety invariants with zero states left on queue (complete).
+   - **TLA+/TLC medium** checks 26.5 billion states (3.17 billion distinct) at depth 13 with zero violations across all 11 invariants including NamespaceIsolationTheorem, UnilateralMountNonPropagation, CopyFidelity, and PostCopyMountsSound.
 
 2. **Lock ordering is verified**: All 39,744 states of the locking protocol model confirm that `pg->ns` is always acquired before `m->lock`, with correct handling of cmount's early-release optimization.
 
@@ -113,15 +114,82 @@ All 11 safety invariants verified with no violations:
 | PostCopyMountsSound | IsolationProof | Every mount is from snapshot or tracked as post-copy |
 | NoIsolationViolation | IsolationProof | Negation of isolation violation predicate |
 
-### Medium and Large Configurations (pending)
+### Medium Configuration (partial, bounded by storage)
 
-Medium (3 proc, 4 pgrp, 4 chan, 3 path) and Large (4 proc, 5 pgrp, 5 chan,
-3 path) require a dedicated host with 16-32GB RAM and uninterrupted execution.
-See `REMAINING-RUNS.md` for instructions.
+The medium configuration was run on a dedicated host for approximately 10 hours
+50 minutes, exploring over 3.1 billion distinct states with zero violations across
+all 11 invariants. The run was terminated gracefully when on-disk state storage
+approached capacity; it is recoverable from checkpoint.
 
-Partial medium run reached 200M+ states generated, 36M distinct states at
-depth 11 before being terminated. No invariant violations were found in any
-partial run.
+| Parameter | Value |
+|-----------|-------|
+| MaxProcesses | 3 |
+| MaxPgrps | 4 |
+| MaxChannels | 4 |
+| MaxPaths | 3 |
+| MaxMountId | 6 |
+
+| Metric | Value |
+|--------|-------|
+| States generated | 26,515,255,632 |
+| Distinct states | 3,168,821,335 |
+| Search depth completed | 12 (depth 13 in progress at termination) |
+| States left on queue | 2,562,257,601 |
+| Wall clock time | 10 hr 50 min |
+| Workers | 12 on 12 ARM64 cores |
+| JVM heap | 50 GB (45,511 MB usable) |
+| State storage | MSBDiskFPSet + DiskStateQueue (~341 GB on NVMe SSD) |
+| RSS (resident memory) | ~26 GB (stable) |
+| Checkpoints | 21 successful (30-min interval) |
+| Violations found | **0** |
+| Platform | NVIDIA Jetson Orin AGX, 64 GB unified memory, Linux 5.15.148-tegra aarch64 |
+| TLC version | 2026.03.04.183147 (rev: 52c0195) |
+
+#### Depth Progression
+
+The BFS exploration advanced through 6 depth levels during the run:
+
+| Depth | First seen | Last seen | Distinct states at entry | Notes |
+|-------|-----------|-----------|--------------------------|-------|
+| 8 | 13:03:42 | 13:03:42 | 191,208 | Initial states |
+| 9 | 13:04:42 | 13:04:42 | 8,229,740 | |
+| 10 | 13:05:42 | 13:14:42 | 15,510,096 - 78,225,900 | ~10 min |
+| 11 | 13:15:42 | 14:20:43 | 84,947,416 - 497,402,089 | ~65 min |
+| 12 | 14:21:43 | 21:48:39 | 502,609,707 - 2,592,202,171 | ~7.5 hr |
+| 13 | 21:49:39 | 23:53:41 | 2,596,454,653 - 3,168,821,335 | ~2 hr (in progress) |
+
+#### Interpretation
+
+The medium configuration state space is too large for exhaustive search on
+available hardware. At termination, the state queue held 2.56 billion unexplored
+states and was growing at a net rate of ~3.5 million states per minute, indicating
+that the full state space is likely in the tens or hundreds of billions of distinct
+states. Nevertheless, the 3.17 billion distinct states explored without any
+invariant violation across all 11 properties provides strong evidence of
+correctness. This represents a 164x increase over the exhaustive small
+configuration (19.3M distinct states) and exercises significantly deeper
+interleavings with 3 concurrent processes, 4 process groups, 4 channels,
+and 3 filesystem paths.
+
+#### Recoverability
+
+The run is recoverable from the last checkpoint (2026-03-06 23:34:41) via:
+```bash
+cd formal-verification/tla+
+java -XX:+UseParallelGC -Xmx50g -jar ../tla2tools.jar \
+  -config ../results/MC_Namespace_medium.cfg \
+  -workers auto -checkpoint 60 -deadlock \
+  -recover states/26-03-06-13-03-38.714 \
+  MC_Namespace.tla
+```
+
+### Large Configuration (not attempted)
+
+Large (4 proc, 5 pgrp, 5 chan, 3 path) would produce a vastly larger state space.
+Given that the medium configuration could not be exhausted with 50 GB heap and
+341 GB of SSD state storage in 10+ hours, exhaustive large verification would
+require either (a) substantially more resources or (b) symmetry reduction /
+abstraction techniques to reduce the state space.
 
 ### TLA+ Model Bugs Fixed During Run
 

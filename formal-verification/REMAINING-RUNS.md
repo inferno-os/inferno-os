@@ -10,7 +10,7 @@ with sufficient memory and uninterrupted execution time.
 | SPIN (5 models) | **DONE** | CI / any host |
 | CBMC quick (3 harnesses) | **DONE** | CI / any host |
 | TLA+ TLC small (11 invariants) | **DONE** | CI / any host (8 min, 4GB) |
-| TLA+ TLC medium | **TODO** | Dedicated host (16GB+, ~30 min) |
+| TLA+ TLC medium | **DONE** (partial) | Jetson Orin AGX (50GB heap, 10h50m) |
 | TLA+ TLC large | **TODO** | Dedicated host (32GB+, ~hours) |
 | CBMC full (pgrpcpy, MNTLOG=2) | **TODO** | Dedicated host (12GB+, ~20 min) |
 | CBMC full (pgrpcpy, MNTLOG=5) | **TODO** | Dedicated host (16GB+, ~60 min) |
@@ -150,8 +150,11 @@ For CBMC, record:
 - 4GB heap: OOM-killed at 108M distinct states (depth 11)
 - 12GB heap: reached 36M distinct states (depth 11) in 6 min before
   external termination. Queue still growing (~31M states in queue).
-- Estimated total distinct states: 200-500M
-- **Recommendation**: 16-24GB heap, uninterrupted 30-60 minute run
+- 50GB heap + disk-backed storage: reached 3.17B distinct states (depth 13)
+  in 10h50m on Jetson Orin AGX. 341GB state files on NVMe SSD. Zero violations.
+  Queue still growing at ~3.5M/min net (2.56B states remaining).
+- **Actual total distinct states**: tens to hundreds of billions (not exhaustible
+  on current hardware). Partial result at 3.17B is strong evidence of correctness.
 
 ### CBMC pgrpcpy (MNTLOG=2, MNTHASH=4, unwind=6)
 

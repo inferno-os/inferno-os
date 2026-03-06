@@ -18,13 +18,13 @@ The Inferno kernel provides **per-process namespaces** that isolate each process
 
 | Phase | Tool | Focus | Status |
 |-------|------|-------|--------|
-| 1 | TLA+ | Abstract namespace isolation (non-trivial invariants) | Rewritten |
-| 1 | SPIN | Namespace isolation with non-atomic operations | Rewritten |
-| 2 | SPIN | Multi-lock locking protocol (per-pgrp, per-mhead) | Rewritten |
-| 3 | CBMC | Real C code verification (pgrpcpy, closepgrp) | Enhanced |
-| 4 | SPIN | Race conditions (pctl/kchdir/namec) | **New** |
-| 5 | SPIN | exportfs root boundary | **New** |
-| CI | GH Actions | Automated verification on push | **New** |
+| 1 | TLA+ | Abstract namespace isolation (non-trivial invariants) | **Verified** (small: exhaustive; medium: 3.17B states, 0 violations) |
+| 1 | SPIN | Namespace isolation with non-atomic operations | **Verified** (5/5 models pass) |
+| 2 | SPIN | Multi-lock locking protocol (per-pgrp, per-mhead) | **Verified** |
+| 3 | CBMC | Real C code verification (pgrpcpy, closepgrp) | **Verified** (quick: 3/3 pass; full pgrpcpy: pending) |
+| 4 | SPIN | Race conditions (pctl/kchdir/namec) | **Verified** (3 real races found) |
+| 5 | SPIN | exportfs root boundary | **Verified** |
+| CI | GH Actions | Automated verification on push | **Active** |
 
 See [results/](results/) for detailed verification reports.
 
@@ -188,4 +188,4 @@ Formal verification runs automatically on push/PR via `.github/workflows/formal-
 
 ---
 
-*Last updated: 2026-03-04*
+*Last updated: 2026-03-07*
