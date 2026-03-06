@@ -1054,7 +1054,10 @@ checklaunchapp(id: string)
 	dispath := readfile(base + "/dispath");
 	if(dispath != nil) dispath = strip(dispath);
 	if(dispath == "") return;
-	launchapp(id, dispath);
+	# Read data field for app arguments (e.g., file path for luciedit)
+	appdata := readfile(base + "/data");
+	if(appdata != nil) appdata = strip(appdata);
+	launchapp(id, dispath, appdata);
 	# Auto-center the new app so handleprescurrent() hides other apps
 	if(actid >= 0)
 		writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, actid),
@@ -1071,7 +1074,7 @@ checklaunchapp(id: string)
 #      next app that successfully joins.
 #
 # TODO: eliminate the appjoinch protocol by giving each app its own wmsrv instance.
-launchapp(id, dispath: string)
+launchapp(id, dispath, appdata: string)
 {
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
 	if(nappslots < MAXAPPSLOTS) {
@@ -1091,7 +1094,11 @@ launchapp(id, dispath: string)
 	}
 	# Spawn app with presscr context so it connects to our wmsrv (wmchan)
 	newctxt := ref Draw->Context(display, presscr, wmchan);
-	spawn guimod->init(newctxt, dispath :: nil);
+	appargs: list of string;
+	appargs = dispath :: nil;
+	if(appdata != nil && appdata != "")
+		appargs = dispath :: appdata :: nil;
+	spawn guimod->init(newctxt, appargs);
 	writeappstatus(id, "running");
 }
 
