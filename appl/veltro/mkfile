@@ -58,10 +58,10 @@ veltro.dis: veltro.b agentlib.m tool.m nsconstruct.m
 tools9p.dis: tools9p.b tool.m
 	limbo $LIMBOFLAGS -gw tools9p.b
 
-nsconstruct.dis: nsconstruct.b nsconstruct.m cowfs.m
+nsconstruct.dis: nsconstruct.b nsconstruct.m
 	limbo $LIMBOFLAGS -gw nsconstruct.b
 
-cowfs.dis: cowfs.b cowfs.m
+cowfs.dis: cowfs.b
 	limbo $LIMBOFLAGS -gw cowfs.b
 
 subagent.dis: subagent.b subagent.m tool.m
