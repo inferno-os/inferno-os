@@ -50,6 +50,9 @@ TARG=\
 	mlkem_test.dis\
 	mldsa_test.dis\
 	slhdsa_test.dis\
+	mlkem_stress_test.dis\
+	mldsa_stress_test.dis\
+	pqc_fuzz_test.dis\
 	tls_pq_test.dis\
 	x509_test.dis\
 	xenith_concurrency_test.dis\

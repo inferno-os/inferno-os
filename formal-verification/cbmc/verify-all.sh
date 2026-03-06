@@ -70,6 +70,92 @@ run_verification \
     "harness" \
     --signed-overflow-check --pointer-check
 
+# ====== Crypto harnesses (constant-time + correctness) ======
+
+echo "====== Post-Quantum Crypto Verification ======"
+echo ""
+
+# Verify ML-KEM constant-time operations (FO transform)
+run_verification \
+    "ML-KEM ct_memcmp" \
+    "harness_mlkem_ct.c" \
+    "harness_ct_memcmp" \
+    --bounds-check --pointer-check
+
+run_verification \
+    "ML-KEM ct_cmov" \
+    "harness_mlkem_ct.c" \
+    "harness_ct_cmov" \
+    --bounds-check --pointer-check
+
+run_verification \
+    "ML-KEM Barrett Reduce" \
+    "harness_mlkem_ct.c" \
+    "harness_barrett_reduce" \
+    --bounds-check --signed-overflow-check
+
+run_verification \
+    "ML-KEM cond_sub_q" \
+    "harness_mlkem_ct.c" \
+    "harness_cond_sub_q" \
+    --bounds-check --signed-overflow-check
+
+run_verification \
+    "ML-KEM FO Composition" \
+    "harness_mlkem_ct.c" \
+    "harness_fo_transform_composition" \
+    --bounds-check --pointer-check
+
+# Verify ML-DSA arithmetic
+run_verification \
+    "ML-DSA Barrett Reduce" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_barrett" \
+    --bounds-check --signed-overflow-check
+
+run_verification \
+    "ML-DSA Montgomery Reduce" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_montgomery" \
+    --bounds-check --signed-overflow-check
+
+run_verification \
+    "ML-DSA Barrett No Overflow" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_barrett_no_overflow" \
+    --signed-overflow-check
+
+run_verification \
+    "ML-DSA Montgomery No Overflow" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_montgomery_no_overflow" \
+    --signed-overflow-check
+
+# Verify ML-KEM polynomial encode/decode round-trips
+run_verification \
+    "ML-KEM Encode/Decode 1-bit" \
+    "harness_mlkem_ntt.c" \
+    "harness_encode_decode_1" \
+    --bounds-check --pointer-check --unwind 258
+
+run_verification \
+    "ML-KEM Encode/Decode 4-bit" \
+    "harness_mlkem_ntt.c" \
+    "harness_encode_decode_4" \
+    --bounds-check --pointer-check --unwind 258
+
+run_verification \
+    "ML-KEM Poly Add Commutative" \
+    "harness_mlkem_ntt.c" \
+    "harness_poly_add_commutative" \
+    --bounds-check --unwind 258
+
+run_verification \
+    "ML-KEM Poly Sub Identity" \
+    "harness_mlkem_ntt.c" \
+    "harness_poly_sub_identity" \
+    --bounds-check --unwind 258
+
 # ====== Full mode: pgrpcpy harnesses (heavy, ~15 min) ======
 
 if [ "$MODE" = "full" ]; then
