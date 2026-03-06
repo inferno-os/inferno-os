@@ -799,6 +799,7 @@ tooldesc(name: string): string
 	"cat"    => return "Print file contents";
 	"python" => return "Execute a Python expression or script";
 	"curl"   => return "Transfer data from a URL";
+	"vision" => return "Analyze an image using AI vision";
 	}
 	return "Run the " + name + " tool with the given arguments";
 }

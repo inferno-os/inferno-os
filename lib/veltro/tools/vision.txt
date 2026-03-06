@@ -1,0 +1,22 @@
+vision - Analyze images using AI vision
+
+Usage:
+  vision <imagepath>              Describe the image
+  vision <imagepath> <prompt>     Analyze with specific prompt
+
+Arguments:
+  imagepath - Path to image file (PNG, JPEG, GIF, WebP)
+  prompt    - Analysis prompt (default: "Describe this image in detail.")
+
+Examples:
+  vision /tmp/photo.jpg
+  vision /tmp/diagram.png What components are shown?
+  vision /tmp/screenshot.png Extract all visible text
+  vision /data/chart.png Summarize the data in this chart
+
+Notes:
+  - Maximum image size: 5MB
+  - Requires API key in /lib/veltro/keys/anthropic
+  - Requires /net access (HTTPS to Anthropic API)
+  - Returns text description/analysis of the image
+  - Uses Claude vision model for image understanding
