@@ -168,6 +168,13 @@ exec(args: string): string
 			if(pok >= 0)
 				dispath = trypath;
 		}
+		# Xenith is a full-environment GUI app; exec cannot target the
+		# presentation zone for it and it would try to take over the display.
+		# Force the agent to use the 'launch' tool instead.
+		if(dispath != "" && len dispath >= 10 &&
+		   dispath[len dispath - 10:] == "xenith.dis") {
+			return "error: use 'launch xenith' — exec cannot target the presentation zone for xenith";
+		}
 		# Only route /dis/wm/* apps to presentation zone (wmclient apps)
 		if(len dispath > 8 && dispath[0:8] == "/dis/wm/") {
 			# Try /n/pres-launch (file2chan, if lucifer exported it).

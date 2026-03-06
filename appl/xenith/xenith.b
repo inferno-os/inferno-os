@@ -60,6 +60,7 @@ Msg : import plumbmsg;
 
 tfd : ref Sys->FD;
 lasttime : int;
+embedded := 0;	# 1 when running inside lucifer's presentation zone (not standalone)
 
 init(ctxt : ref Draw->Context, argl : list of string)
 {
@@ -266,6 +267,8 @@ main(argl : list of string)
 		loadfile = argf(arg);
 	't' =>
 		themename = argf(arg);
+	'E' =>
+		embedded = 1;
 	}
 
 	dat->home = utils->getenv("home");
@@ -444,6 +447,13 @@ xenithexit(err: string)
 	graph->cursorswitch(nil);
 	if (plumbed)
 		plumbmsg->shutdown();
+	if (embedded) {
+		# Running inside lucifer's presentation zone: exit this goroutine cleanly.
+		# Do NOT call killprocs() — it risks killing lucifer's shared resources.
+		# Do NOT call gui->killwins() — the display is owned by lucifer.
+		# Lucifer's preswmloop detects the wmclient disconnect and cleans up the tab.
+		exit;
+	}
 	killprocs();
 	gui->killwins();
 	exit;
