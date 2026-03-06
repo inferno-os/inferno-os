@@ -54,11 +54,14 @@ doc(): string
 	return "Launch - Launch a GUI app in the presentation zone\n\n" +
 		"Usage:\n" +
 		"  Launch list           — show available apps\n" +
+		"  Launch xenith         — launch Xenith text environment\n" +
 		"  Launch clock          — launch by short name\n" +
 		"  Launch wm/clock       — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
-		"Confirmed working (draw-based):\n" +
-		"  clock, bounce, coffee, colors, date, view, rt, lens\n\n" +
+		"Confirmed working (draw-based, /dis/wm/):\n" +
+		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit\n\n" +
+		"Also available (full environments, /dis/):\n" +
+		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
 		"  task, edit, about, tetris, sh, ftree, deb\n\n" +
 		"Returns 'launched <name> in presentation zone' on success.";
@@ -114,13 +117,27 @@ exec(args: string): string
 	# Reject Tk-dependent apps (Tk is not built into this emu)
 	if(istk(appname))
 		return "error: " + appname + " requires Tk which is not available.\n" +
-			"Try: clock, bounce, coffee, colors, date, view, rt, lens";
+			"Try: clock, bounce, coffee, colors, date, view, rt, lens, xenith";
 
-	# Resolve and verify
-	dispath := "/dis/wm/" + appname + ".dis";
-	(ok, nil) := sys->stat(dispath);
-	if(ok < 0)
-		return "error: " + appname + " not found (tried " + dispath + ")\n" +
+	# Resolve by searching candidate directories in order:
+	#   /dis/wm/<name>.dis   — standard WM apps
+	#   /dis/<name>.dis      — top-level apps (xenith, etc.)
+	#   /dis/xenith/<name>.dis — xenith sub-apps
+	candidates := array[] of {
+		"/dis/wm/" + appname + ".dis",
+		"/dis/" + appname + ".dis",
+		"/dis/xenith/" + appname + ".dis",
+	};
+	dispath := "";
+	for(ci := 0; ci < len candidates; ci++) {
+		(ok, nil) := sys->stat(candidates[ci]);
+		if(ok >= 0) {
+			dispath = candidates[ci];
+			break;
+		}
+	}
+	if(dispath == "")
+		return "error: " + appname + " not found\n" +
 			"Use 'Launch list' to see available apps";
 
 	# Register app with luciuisrv via presentation/ctl
@@ -186,7 +203,7 @@ strip(s: string): string
 	return s[i:j];
 }
 
-# List available (non-Tk) apps from /dis/wm/
+# List available (non-Tk) apps from /dis/wm/ plus known top-level apps.
 listapps(): string
 {
 	fd := sys->open("/dis/wm", Sys->OREAD);
@@ -211,6 +228,21 @@ listapps(): string
 			apps += "  " + nm;
 			count++;
 		}
+	}
+
+	# Also list known top-level apps (not under /dis/wm/)
+	toplevel := array[] of {
+		("xenith",  "/dis/xenith.dis"),
+	};
+	for(i := 0; i < len toplevel; i++) {
+		(nm, path) := toplevel[i];
+		(ok, nil) := sys->stat(path);
+		if(ok < 0)
+			continue;
+		if(count > 0)
+			apps += "\n";
+		apps += "  " + nm;
+		count++;
 	}
 
 	if(count == 0)
