@@ -3,6 +3,7 @@
 DIRS=\
 
 TARG=\
+	about.dis\
 	clock.dis\
 	colors.dis\
 	lens.dis\
