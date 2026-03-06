@@ -28,6 +28,8 @@ include "menu.m";
 
 include "viewport.m";
 
+include "plumbmsg.m";
+
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -89,6 +91,9 @@ Popup: import menumod;
 
 vpmod: Viewport;
 View: import vpmod;
+
+plumbmod: Plumbmsg;
+Msg: import plumbmod;
 
 stderr: ref Sys->FD;
 win: ref Wmclient->Window;
@@ -211,6 +216,13 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	# Load viewport
 	vpmod = load Viewport Viewport->PATH;
+
+	# Load plumbmsg (send-only: no input port needed)
+	plumbmod = load Plumbmsg Plumbmsg->PATH;
+	if(plumbmod != nil) {
+		if(plumbmod->init(0, nil, 0) < 0)
+			plumbmod = nil;
+	}
 
 	# Channel for serializing events from background goroutines (renderartasync,
 	# deliverevent) to the main loop goroutine.
@@ -907,15 +919,33 @@ exportartifact(art: ref Artifact)
 		return;
 	case art.atype {
 	"pdf" or "image" =>
-		# Data is a file path — copy file to /tmp/ for export
-		exportfile(art.data, art.label);
+		# Data is a file path — plumb it to open in viewer/editor
+		exportplumbfile(art.data);
 	* =>
-		# Data is text content — write to file and snarf
-		exporttext(art.data, art.label, art.atype);
+		# Data is text content — write to temp file, then plumb the file
+		exportplumbtext(art.data, art.label, art.atype);
 	}
 }
 
-exporttext(text, label, atype: string)
+# Export a file path via the plumber (action=showfile semantics).
+# The plumber routes the path to the right application.
+# Falls back to snarf if the plumber is unavailable.
+exportplumbfile(path: string)
+{
+	if(plumbmod != nil) {
+		msg := ref Msg("lucipres", "edit", "/",
+			"text", nil, array of byte path);
+		if(msg.send() >= 0)
+			return;
+	}
+	# Plumber unavailable — put path in snarf
+	writetosnarf(path);
+	sys->fprint(stderr, "lucipres: export: plumb unavailable, path in snarf: %s\n", path);
+}
+
+# Export text content: write to /tmp/ file, then plumb the path.
+# Falls back to snarf if file creation or plumbing fails.
+exportplumbtext(text, label, atype: string)
 {
 	ext := ".txt";
 	case atype {
@@ -937,48 +967,20 @@ exporttext(text, label, atype: string)
 	}
 	b := array of byte text;
 	sys->write(fd, b, len b);
+	fd = nil;
 
-	# Also copy to snarf for convenience
-	writetosnarf(text);
-	sys->fprint(stderr, "lucipres: exported to %s\n", path);
-}
-
-exportfile(srcpath, label: string)
-{
-	data := readfilebytes(srcpath);
-	if(data == nil) {
-		sys->fprint(stderr, "lucipres: export: cannot read %s: %r\n", srcpath);
-		writetosnarf(srcpath);
-		return;
-	}
-
-	# Extract extension from source path
-	ext := "";
-	for(i := len srcpath - 1; i >= 0; i--) {
-		if(srcpath[i] == '.') {
-			ext = srcpath[i:];
-			break;
+	# Plumb the file so it opens in the editor
+	if(plumbmod != nil) {
+		msg := ref Msg("lucipres", "edit", "/tmp",
+			"text", nil, array of byte path);
+		if(msg.send() >= 0) {
+			sys->fprint(stderr, "lucipres: exported to %s\n", path);
+			return;
 		}
-		if(srcpath[i] == '/')
-			break;
 	}
-
-	fname := safename(label);
-	if(fname == "")
-		fname = "export";
-	path := "/tmp/" + fname + ext;
-
-	fd := sys->create(path, Sys->OWRITE, 8r666);
-	if(fd == nil) {
-		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
-		writetosnarf(srcpath);
-		return;
-	}
-	sys->write(fd, data, len data);
-
-	# Put export path in snarf
-	writetosnarf(path);
-	sys->fprint(stderr, "lucipres: exported to %s\n", path);
+	# Plumber unavailable — copy to snarf as fallback
+	writetosnarf(text);
+	sys->fprint(stderr, "lucipres: exported to %s (snarf)\n", path);
 }
 
 # Convert a label to a safe filename (alphanumeric, hyphens, underscores)
