@@ -19,6 +19,7 @@ SYSMODULES=\
 	draw.m\
 	imagefile.m\
 	keyboard.m\
+	lucitheme.m\
 	math.m\
 	menuhit.m\
 	plumbmsg.m\

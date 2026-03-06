@@ -1,0 +1,64 @@
+# Brimstone — Lucifer dark theme
+
+# Core UI
+bg 080808
+border 131313
+header 0A0A0A
+accent E8553A
+text CCCCCC
+text2 999999
+dim 444444
+label 333333
+
+# Conversation zone
+human 1E2028
+veltro 0E1418
+input 101010
+cursor E8553A
+
+# Status / semantic
+red AA4444
+green 44AA44
+yellow AAAA44
+progbg 1A1A1A
+progfg 3388CC
+
+# Code blocks
+codebg 1A1A2A
+
+# Context menu
+menubg 0D0D0D
+menuborder 2A2A2A
+menuhilit 1E1E1E
+menutext CCCCCC
+menudim 666666
+
+# Editor
+editbg 0D0D0D
+edittext CCCCCC
+editcursor E8553A
+editlineno 444444
+editstatus 0A0A0A
+editstattext 999999
+editscroll 1A1A1A
+editthumb 444444
+
+# Mermaid diagrams
+diagbg 1E1E2E
+diagnode 313244
+diagborder 89B4FA
+diagtext CDD6F4
+diagtext2 8B949E
+diagacc 89B4FA
+diaggreen A6E3A1
+diagred F38BA8
+diagyellow F9E2AF
+diaggrid 45475A
+pie0 89B4FA
+pie1 A6E3A1
+pie2 F9E2AF
+pie3 F38BA8
+pie4 CBA6F7
+pie5 94E2D5
+pie6 FAB387
+pie7 89DCEB
