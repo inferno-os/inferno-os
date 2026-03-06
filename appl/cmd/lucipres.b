@@ -1082,7 +1082,12 @@ artypehint(art: ref Artifact): string
 	"markdown" or "doc" => return ".md";
 	"pdf" => return art.data;	# data is the file path
 	"image" => return art.data;	# data is the file path
-	"mermaid" => return ".mermaid";
+	"mermaid" or "mindmap" or "flowchart" or "sequenceDiagram" or
+	"classDiagram" or "stateDiagram" or "stateDiagram-v2" or
+	"erDiagram" or "timeline" or "gitGraph" or
+	"quadrantChart" or "journey" or "requirementDiagram" or
+	"block-beta" or "pie" or "gantt" or "xychart-beta" =>
+		return ".mermaid";
 	* => return "";
 	}
 }
@@ -1265,8 +1270,9 @@ drawfallbacktext(art: ref Artifact, contentr: Rect, pad: int, contentw: int, con
 		drawcentertext(contentr, "(empty)");
 		return;
 	}
+	hint := artypehint(art);
 	if(art.atype != "" && art.atype != "markdown" && art.atype != "doc" &&
-			art.atype != "mermaid" && art.atype != "image") {
+			hint != ".mermaid" && art.atype != "image") {
 		mainwin.text((contentr.min.x + pad, contenty),
 			labelcol, (0, 0), mainfont, "[" + art.atype + "]");
 		contenty += mainfont.height + 4;
