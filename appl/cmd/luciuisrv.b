@@ -1194,6 +1194,11 @@ presctl(a: ref Activity, data: string): string
 		art := addartifact(a, id, atype, label);
 		if(dispath != nil && dispath != "")
 			art.dispath = dispath;
+		# data= is a terminal attribute (value extends to end of string).
+		# Used to pass launch args to GUI apps (e.g. "-c 1 -E -t dark" for xenith).
+		d := getattr(attrs, "data");
+		if(d != nil && d != "")
+			art.data = d;
 		if(atype == "app")
 			art.appstatus = "launching";
 		pushevent(a.id, "presentation new " + id);
