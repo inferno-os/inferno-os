@@ -13,6 +13,7 @@ TARG=\
 	crypto_test.dis\
 	edit_test.dis\
 	example_test.dis\
+	font_format_test.dis\
 	git_test.dis\
 	goroutine_leak_test.dis\
 	gpu_test.dis\
@@ -20,6 +21,7 @@ TARG=\
 	imap_test.dis\
 	jit_test.dis\
 	lucifer_flicker_test.dis\
+	lucitheme_test.dis\
 	luciuisrv_test.dis\
 	outlinefont_test.dis\
 	pdf_conformance_test.dis\
