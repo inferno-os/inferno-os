@@ -75,12 +75,14 @@ include "styxservers.m";
 	styxservers: Styxservers;
 	Fid, Styxserver, Navigator, Navop: import styxservers;
 
+include "lucitheme.m";
+
 Luciedit: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
-# Colors
+# Colors (fallback defaults; overridden by theme at runtime)
 BG:	con int 16rFFFDF6FF;		# warm off-white background
 FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
@@ -291,15 +293,28 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		raise "fail:no font";
 	}
 
-	# Create color images
-	bgcolor = display.color(BG);
-	fgcolor = display.color(FG);
-	cursorcolor = display.color(CURSORCOL);
-	selcolor = display.color(SELCOL);
-	lncolor = display.color(LNCOL);
-	statusbgcolor = display.color(STATUSBG);
-	statusfgcolor = display.color(STATUSFG);
-	dirtycolor = display.color(DIRTYCOL);
+	# Create color images from theme (fall back to built-in constants)
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor = display.color(th.editbg);
+		fgcolor = display.color(th.edittext);
+		cursorcolor = display.color(th.editcursor);
+		selcolor = display.color(th.accent);
+		lncolor = display.color(th.editlineno);
+		statusbgcolor = display.color(th.editstatus);
+		statusfgcolor = display.color(th.editstattext);
+		dirtycolor = display.color(th.red);
+	} else {
+		bgcolor = display.color(BG);
+		fgcolor = display.color(FG);
+		cursorcolor = display.color(CURSORCOL);
+		selcolor = display.color(SELCOL);
+		lncolor = display.color(LNCOL);
+		statusbgcolor = display.color(STATUSBG);
+		statusfgcolor = display.color(STATUSFG);
+		dirtycolor = display.color(DIRTYCOL);
+	}
 
 	# Load file if specified
 	if(doc.filepath != "")

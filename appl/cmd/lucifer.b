@@ -39,6 +39,8 @@ include "wmsrv.m";
 	wmsrv: Wmsrv;
 	Client: import wmsrv;
 
+include "lucitheme.m";
+
 Lucifer: module {
 	init: fn(ctxt: ref Draw->Context, args: list of string);
 };
@@ -76,14 +78,6 @@ LuciPres: module {
 GuiApp: module {
 	init: fn(ctxt: ref Draw->Context, args: list of string);
 };
-
-# --- Color constants (for header only) ---
-COLBG:		con int 16r080808FF;
-COLBORDER:	con int 16r131313FF;
-COLHEADER:	con int 16r0A0A0AFF;
-COLACCENT:	con int 16rE8553AFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLDIM:		con int 16r444444FF;
 
 # --- Module-level state ---
 
@@ -298,13 +292,15 @@ init(ctxt: ref Draw->Context, args: list of string)
 	wmclient->win.startinput("kbd"::"ptr"::nil);
 	mainwin = win.image;
 
-	# Allocate colors (header only)
-	bgcol    = display.color(COLBG);
-	bordercol= display.color(COLBORDER);
-	headercol= display.color(COLHEADER);
-	accentcol= display.color(COLACCENT);
-	textcol  = display.color(COLTEXT);
-	dimcol   = display.color(COLDIM);
+	# Allocate colors from theme
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->gettheme();
+	bgcol    = display.color(th.bg);
+	bordercol= display.color(th.border);
+	headercol= display.color(th.header);
+	accentcol= display.color(th.accent);
+	textcol  = display.color(th.text);
+	dimcol   = display.color(th.dim);
 
 	# Load fonts
 	mainfont = Font.open(display, "/fonts/combined/unicode.sans.14.font");

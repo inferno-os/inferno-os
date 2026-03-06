@@ -1,0 +1,64 @@
+# Halo — Lucifer light theme (Plan 9 inspired)
+
+# Core UI
+bg FFFFEA
+border CCCCBB
+header EAFFFF
+accent 2266CC
+text 333333
+text2 666666
+dim AAAAAA
+label BBBBAA
+
+# Conversation zone
+human EEEEDD
+veltro E0F0FF
+input F5F5E0
+cursor 2266CC
+
+# Status / semantic
+red CC4444
+green 44AA44
+yellow AA8800
+progbg DDDDCC
+progfg 2266CC
+
+# Code blocks
+codebg EAFFEA
+
+# Context menu
+menubg FFFFEA
+menuborder BBBBAA
+menuhilit EEEEDD
+menutext 333333
+menudim 888877
+
+# Editor
+editbg FFFFEA
+edittext 333333
+editcursor 2266CC
+editlineno AAAAAA
+editstatus EAFFFF
+editstattext 666666
+editscroll EEEEDD
+editthumb AAAAAA
+
+# Mermaid diagrams
+diagbg FFFFEA
+diagnode EEEEDD
+diagborder 2266CC
+diagtext 333333
+diagtext2 888877
+diagacc 2266CC
+diaggreen 44AA44
+diagred CC4444
+diagyellow AA8800
+diaggrid CCCCBB
+pie0 4488DD
+pie1 55BB55
+pie2 CCAA33
+pie3 CC5555
+pie4 9966CC
+pie5 44AABB
+pie6 DD8844
+pie7 5599CC
