@@ -239,6 +239,8 @@ dirtycolor: ref Image;
 
 w: ref Window;
 vislines: int;
+kbdescstate: int;	# ANSI escape decode state (0=normal)
+kbdescarg:   int;
 doc: ref Doc;
 stderr: ref Sys->FD;
 
@@ -328,13 +330,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		w.wmctl(ctl);
 		if(ctl != nil && ctl[0] == '!')
 			redraw();
-	key := <-w.ctxt.kbd =>
-		cursorvis = 1;
-		if(doc.findmode)
-			handlefindkey(key);
-		else
-			handlekey(key);
-		redraw();
+	rawkey := <-w.ctxt.kbd =>
+		key := filterkbd(rawkey);
+		if(key >= 0) {
+			cursorvis = 1;
+			if(doc.findmode)
+				handlefindkey(key);
+			else
+				handlekey(key);
+			redraw();
+		}
 	p := <-w.ctxt.ptr =>
 		if(!w.pointer(*p)) {
 			if(p.buttons & 4 && menumod != nil && menu != nil) {
@@ -363,14 +368,52 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					doc.dirty = 1;
 				}
 				redraw();
+			} else if(p.buttons & 8) {
+				# Mouse wheel scroll up
+				doc.topline -= 3;
+				if(doc.topline < 0)
+					doc.topline = 0;
+				redraw();
+			} else if(p.buttons & 16) {
+				# Mouse wheel scroll down
+				doc.topline += 3;
+				maxtl := doc.nlines - vislines;
+				if(maxtl < 0) maxtl = 0;
+				if(doc.topline > maxtl) doc.topline = maxtl;
+				redraw();
 			} else if(p.buttons & 1) {
-				(ml, mc2) := pos2cursor(p.xy);
-				doc.curline = ml;
-				doc.curcol = mc2;
-				doc.selactive = 0;
-				doc.selstartline = ml;
-				doc.selstartcol = mc2;
-				mousedown = 1;
+				pr := w.image.r;
+				stath := font.height + MARGIN * 2;
+				scrollr := Rect((pr.min.x, pr.min.y), (pr.min.x + SCROLLW, pr.max.y - stath));
+				if(scrollr.contains(p.xy)) {
+					# Scrollbar click: page up/down based on thumb position
+					if(doc.nlines > 0 && vislines > 0) {
+						totalh := scrollr.dy();
+						thumbh := (vislines * totalh) / doc.nlines;
+						if(thumbh < 10) thumbh = 10;
+						if(thumbh > totalh) thumbh = totalh;
+						thumby := scrollr.min.y;
+						if(doc.nlines > vislines)
+							thumby = scrollr.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
+						if(p.xy.y < thumby) {
+							doc.topline -= vislines;
+							if(doc.topline < 0) doc.topline = 0;
+						} else if(p.xy.y > thumby + thumbh) {
+							doc.topline += vislines;
+							maxtl := doc.nlines - vislines;
+							if(maxtl < 0) maxtl = 0;
+							if(doc.topline > maxtl) doc.topline = maxtl;
+						}
+					}
+				} else {
+					(ml, mc2) := pos2cursor(p.xy);
+					doc.curline = ml;
+					doc.curcol = mc2;
+					doc.selactive = 0;
+					doc.selstartline = ml;
+					doc.selstartcol = mc2;
+					mousedown = 1;
+				}
 				redraw();
 			} else if(mousedown) {
 				(ml, mc2) := pos2cursor(p.xy);
@@ -1080,6 +1123,60 @@ textrect(): Rect
 
 # ---------- Keyboard handling ----------
 
+# filterkbd: decode ANSI escape sequences to Inferno key codes.
+# Returns the decoded key, or -1 if the character was part of an incomplete sequence.
+# Inferno key codes (>= 0xFF00) are passed through unchanged.
+filterkbd(c: int): int
+{
+	if(c >= 16rFF00)
+		return c;
+	case kbdescstate {
+	0 =>
+		if(c == 27) {
+			kbdescstate = 1;
+			return -1;
+		}
+	1 =>
+		kbdescstate = 0;
+		if(c == '[') {
+			kbdescstate = 2;
+			kbdescarg = 0;
+			return -1;
+		}
+		# bare ESC + char: deliver the char
+	2 =>
+		kbdescstate = 0;
+		if(c == 'A') return 16rFF52;	# up
+		if(c == 'B') return 16rFF54;	# down
+		if(c == 'C') return 16rFF53;	# right
+		if(c == 'D') return 16rFF51;	# left
+		if(c == 'H') return 16rFF61;	# home
+		if(c == 'F') return 16rFF57;	# end
+		if(c == '1' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8') {
+			kbdescarg = c - '0';
+			kbdescstate = 3;
+			return -1;
+		}
+		return -1;	# unknown sequence, discard
+	3 =>
+		if(c == '~') {
+			kbdescstate = 0;
+			if(kbdescarg == 1 || kbdescarg == 7) return 16rFF61;	# home
+			if(kbdescarg == 4 || kbdescarg == 8) return 16rFF57;	# end
+			if(kbdescarg == 5) return 16rFF55;			# pgup
+			if(kbdescarg == 6) return 16rFF56;			# pgdn
+			return -1;
+		}
+		if(c >= '0' && c <= '9') {
+			kbdescarg = kbdescarg * 10 + (c - '0');
+			return -1;
+		}
+		kbdescstate = 0;
+		return -1;
+	}
+	return c;
+}
+
 handlekey(key: int)
 {
 	ctrl := 0;
@@ -1693,7 +1790,7 @@ redraw()
 			start = k;
 		}
 	}
-	vislines = vrow;
+	vislines = maxvrows;
 
 	drawcursor(1);
 	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
