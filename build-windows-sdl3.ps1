@@ -157,7 +157,6 @@ $emuCFlags = @(
 Write-Host "  Compiling platform sources..."
 $ntSources = @(
     "os.c", "cmd.c", "no_win.c", "fp.c",
-    "nocomp.c",
     "devfs.c",
     "ipif6.c"
 )

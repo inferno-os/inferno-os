@@ -15,18 +15,82 @@
 #include "interp.h"
 #include "raise.h"
 
+#ifdef _WIN32
+/* Forward declarations to avoid windows.h/interp.h type conflicts */
+__declspec(dllimport) void* __stdcall VirtualAlloc(void*, size_t, unsigned long, unsigned long);
+__declspec(dllimport) int __stdcall VirtualFree(void*, size_t, unsigned long);
+#define MEM_COMMIT	0x00001000
+#define MEM_RESERVE	0x00002000
+#define MEM_RELEASE	0x00008000
+#define PAGE_READWRITE	0x04
+#define PAGE_EXECUTE_READWRITE	0x40
+#else
 #include <sys/mman.h>
+#endif
 #ifdef __APPLE__
 #include <pthread.h>
 #include <libkern/OSCacheControl.h>
 #endif
 
 /*
- * Allocate executable memory within 2GB of the text segment on Linux.
+ * Allocate executable memory within 2GB of the text segment.
  * This is needed because AMD64 JIT uses rel32 branches to C functions.
- * Tries mmap with hint addresses at decreasing distances from compile().
+ * Tries hint addresses at decreasing distances from compile().
+ * Returns NULL on failure (not MAP_FAILED).
  */
-#ifndef __APPLE__
+#ifdef _WIN32
+static void
+jitfree(void *p, size_t size)
+{
+	USED(size);
+	VirtualFree(p, 0, MEM_RELEASE);
+}
+
+static void*
+jitmalloc(size_t size)
+{
+	void *p;
+	uvlong base_addr = (uvlong)compile & ~0xFFFULL;
+	uvlong try;
+	int i;
+
+	for(i = 1; i < 1024; i++) {
+		try = base_addr - (uvlong)i * 0x10000ULL;
+		if(try < 0x10000ULL)
+			break;
+		p = VirtualAlloc((void*)try, size,
+		         MEM_COMMIT|MEM_RESERVE,
+		         PAGE_READWRITE);
+		if(p != NULL) {
+			vlong diff = (vlong)((uvlong)p - base_addr);
+			if(diff < 0) diff = -diff;
+			if(diff < 0x70000000LL)  /* within ~1.75 GB */
+				return p;
+			VirtualFree(p, 0, MEM_RELEASE);
+		}
+	}
+	for(i = 1; i < 1024; i++) {
+		try = base_addr + (uvlong)i * 0x10000ULL;
+		p = VirtualAlloc((void*)try, size,
+		         MEM_COMMIT|MEM_RESERVE,
+		         PAGE_READWRITE);
+		if(p != NULL) {
+			vlong diff = (vlong)((uvlong)p - base_addr);
+			if(diff < 0) diff = -diff;
+			if(diff < 0x70000000LL)
+				return p;
+			VirtualFree(p, 0, MEM_RELEASE);
+		}
+	}
+	return NULL;
+}
+#elif !defined(__APPLE__)
+static void
+jitfree(void *p, size_t size)
+{
+	munmap(p, size);
+}
+
 static void*
 jitmalloc(size_t size)
 {
@@ -64,13 +128,25 @@ jitmalloc(size_t size)
 			munmap(p, size);
 		}
 	}
-	return MAP_FAILED;
+	return NULL;
 }
 #endif
 
 #define DOT			((uvlong)code)
 
 #define	RESCHED 1	/* check for interpreter reschedule */
+
+/*
+ * Windows x64 ABI requires 32 bytes of shadow space above the return
+ * address for any CALL to a C function.  From JIT instruction code
+ * RSP is 8 mod 16 (after preamble pushes), so we subtract 40 (32 shadow
+ * + 8 alignment).  From JIT macro code RSP is 0 mod 16 (one extra CALL
+ * deep), so we subtract 32.
+ */
+#ifdef _WIN32
+#define	WINSHADOW_MAIN	40	/* 32 shadow + 8 alignment (from JIT main code) */
+#define	WINSHADOW_MAC	32	/* 32 shadow (from JIT macro code) */
+#endif
 
 enum
 {
@@ -267,7 +343,6 @@ rdestroy(void)
 	destroy(R.s);
 }
 
-
 static void
 rmcall(void)
 {
@@ -354,6 +429,12 @@ genb(uchar o)
 {
 	*code++ = o;
 }
+
+#ifdef _WIN32
+/* SUB RSP, n / ADD RSP, n — for Windows x64 shadow space */
+static void gen_subsp(int n) { genb(REXW); genb(0x83); genb(0xEC); genb(n); }
+static void gen_addsp(int n) { genb(REXW); genb(0x83); genb(0xC4); genb(n); }
+#endif
 
 static void
 gen2(uchar o1, uchar o2)
@@ -736,7 +817,14 @@ jnebounds(int cc, Inst *i)
 	genb(Omovimm + (RAX & 7));
 	genq(pc);						/* 10 bytes total */
 	modrm(Ostw, O(REG, PC), RLINK, RAX);		/* 3 bytes */
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAIN);			/* 4 bytes */
+#endif
 	bra((uvlong)bounds, Ocall);			/* 5 bytes */
+	/* bounds() does not return (raises exception), but keep ABI-correct */
+#ifdef _WIN32
+	gen_addsp(WINSHADOW_MAIN);			/* 4 bytes */
+#endif
 	*patch_loc = code - (patch_loc + 1);		/* backpatch rel8 */
 }
 
@@ -795,20 +883,35 @@ punt(Inst *i, int m, void (*fn)(void))
 	}
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 
-	/* Align stack for C function call (RSP must be 0 mod 16 before CALL) */
+	/* Align stack and call C function */
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAIN);
+	bra((uvlong)fn, Ocall);
+	gen_addsp(WINSHADOW_MAIN);
+#else
 	genb(Opushq+RAX);
 	bra((uvlong)fn, Ocall);
-	genb(Opopq+RCX);	/* restore stack alignment */
+	genb(Opopq+RCX);
+#endif
 
 	if(m & TCHECK) {
 		modrm(Ocmpi, O(REG, t), RLINK, 7);
 		genb(0x00);
+#ifdef _WIN32
+		gen2(Ojeqb, 0x0a);	/* JEQ over exit: 2+2+2+1+1+1+1 = 10 bytes */
+#else
 		gen2(Ojeqb, 0x08);	/* JEQ over exit: 2+2+2+1+1 = 8 bytes */
+#endif
 		/* Restore callee-saved and return */
 		genb(REX|REXB); genb(Opopq+R15-R8);
 		genb(REX|REXB); genb(Opopq+R14-R8);
 		genb(REX|REXB); genb(Opopq+R12-R8);
 		genb(Opopq+RBX);
+#ifdef _WIN32
+		/* RSI and RDI are callee-saved on Windows x64 */
+		genb(Opopq+RDI);
+		genb(Opopq+RSI);
+#endif
 		genb(Oret);
 	}
 
@@ -1933,7 +2036,7 @@ preamble(void)
 	pthread_jit_write_protect_np(0);
 #else
 	comvec = jitmalloc(128);
-	if(comvec == MAP_FAILED) {
+	if(comvec == NULL) {
 		comvec = nil;
 		return;
 	}
@@ -1942,6 +2045,11 @@ preamble(void)
 	code = (uchar*)comvec;
 
 	/* Save callee-saved registers */
+#ifdef _WIN32
+	/* RSI and RDI are callee-saved on Windows x64 but not System V */
+	genb(Opushq+RSI);
+	genb(Opushq+RDI);
+#endif
 	genb(Opushq+RBX);
 	genb(REX|REXB); genb(Opushq+(R12-R8));
 	genb(REX|REXB); genb(Opushq+(R14-R8));
@@ -1965,6 +2073,14 @@ preamble(void)
 #else
 	segflush(comvec, 128);
 #endif
+
+	if(cflag > 2) {
+		int plen = code - (uchar*)comvec;
+		print("comvec at %p len=%d:", comvec, plen);
+		for(int j = 0; j < plen; j++)
+			print(" %02x", ((uchar*)comvec)[j]);
+		print("\n");
+	}
 }
 
 /*
@@ -2070,7 +2186,13 @@ macfrp(void)
 
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 	modrm(Ostw, O(REG, s), RLINK, RAX);
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAC);
+#endif
 	bra((uvlong)rdestroy, Ocall);
+#ifdef _WIN32
+	gen_addsp(WINSHADOW_MAC);
+#endif
 	modrm(Oldw, O(REG, FP), RLINK, RRFP);
 	modrm(Oldw, O(REG, MP), RLINK, RRMP);
 	genb(Oret);
@@ -2151,6 +2273,10 @@ macret(void)
 	genb(REX|REXB); genb(Opopq+(R14-R8));
 	genb(REX|REXB); genb(Opopq+(R12-R8));
 	genb(Opopq+RBX);
+#ifdef _WIN32
+	genb(Opopq+RDI);
+	genb(Opopq+RSI);
+#endif
 	genb(Oret);
 
 	lpunt = code - s;
@@ -2199,7 +2325,13 @@ macmcal(void)
 	*mlnil = code-mlnil-1;
 	modrm(Ostw, O(REG, FP), RLINK, RCX);
 	modrm(Ostw, O(REG, dt), RLINK, RAX);
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAC);
+#endif
 	bra((uvlong)rmcall, Ocall);
+#ifdef _WIN32
+	gen_addsp(WINSHADOW_MAC);
+#endif
 	modrm(Oldw, O(REG, FP), RLINK, RRFP);
 	modrm(Oldw, O(REG, MP), RLINK, RRMP);
 	genb(Oret);
@@ -2226,6 +2358,10 @@ macmcal(void)
 	genb(REX|REXB); genb(Opopq+(R14-R8));
 	genb(REX|REXB); genb(Opopq+(R12-R8));
 	genb(Opopq+RBX);
+#ifdef _WIN32
+	genb(Opopq+RDI);
+	genb(Opopq+RSI);
+#endif
 	genb(Oret);
 }
 
@@ -2246,7 +2382,13 @@ macfram(void)
 
 	modrm(Ostw, O(REG, s), RLINK, RRTA);
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAC);
+#endif
 	bra((uvlong)extend, Ocall);
+#ifdef _WIN32
+	gen_addsp(WINSHADOW_MAC);
+#endif
 	modrm(Oldw, O(REG, FP), RLINK, RRFP);
 	modrm(Oldw, O(REG, MP), RLINK, RRMP);
 	modrm(Oldw, O(REG, s), RLINK, RCX);
@@ -2273,7 +2415,13 @@ macmfra(void)
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 	modrm(Ostw, O(REG, s), RLINK, RAX);
 	modrm(Ostw, O(REG, d), RLINK, RRTA);
+#ifdef _WIN32
+	gen_subsp(WINSHADOW_MAC);
+#endif
 	bra((uvlong)rmfram, Ocall);
+#ifdef _WIN32
+	gen_addsp(WINSHADOW_MAC);
+#endif
 	modrm(Oldw, O(REG, FP), RLINK, RRFP);
 	modrm(Oldw, O(REG, MP), RLINK, RRMP);
 	genb(Oret);
@@ -2292,6 +2440,10 @@ macrelq(void)
 	genb(REX|REXB); genb(Opopq+(R14-R8));
 	genb(REX|REXB); genb(Opopq+(R12-R8));
 	genb(Opopq+RBX);
+#ifdef _WIN32
+	genb(Opopq+RDI);
+	genb(Opopq+RSI);
+#endif
 	genb(Oret);
 }
 
@@ -2353,7 +2505,7 @@ typecom(Type *t)
 		error(exNomem);
 #else
 	tmp = jitmalloc(8192*sizeof(uchar));
-	if(tmp == MAP_FAILED)
+	if(tmp == NULL)
 		error(exNomem);
 #endif
 
@@ -2366,7 +2518,7 @@ typecom(Type *t)
 #ifdef __APPLE__
 	free(tmp);
 #else
-	munmap(tmp, 8192*sizeof(uchar));
+	jitfree(tmp, 8192*sizeof(uchar));
 #endif
 
 #ifdef __APPLE__
@@ -2379,7 +2531,7 @@ typecom(Type *t)
 	pthread_jit_write_protect_np(0);
 #else
 	code = jitmalloc(n);
-	if(code == MAP_FAILED) {
+	if(code == NULL) {
 		code = nil;
 		return;
 	}
@@ -2438,15 +2590,14 @@ compile(Module *m, int size, Modlink *ml)
 
 	base = nil;
 	patch = mallocz((size+1)*sizeof(*patch), 0);
-	tinit = malloc(m->ntype*sizeof(*tinit));
+	tinit = mallocz(m->ntype*sizeof(*tinit), 0);
 	/*
 	 * tmp is used for pass 0 size estimation. On AMD64, it must be
 	 * near the text segment so that bra() rel32 displacements to C
 	 * functions fit in 32 bits during size calculation.
 	 */
 	tmp = jitmalloc(8192*sizeof(uchar));
-	if(tinit == nil || patch == nil || tmp == MAP_FAILED) {
-		if(tmp == MAP_FAILED) tmp = nil;
+	if(tinit == nil || patch == nil || tmp == nil) {
 		goto bad;
 	}
 
@@ -2494,7 +2645,7 @@ compile(Module *m, int size, Modlink *ml)
 	pthread_jit_write_protect_np(0);
 #else
 	base = jitmalloc(n + nlit);
-	if(base == MAP_FAILED) {
+	if(base == NULL) {
 		base = nil;
 		goto bad;
 	}
@@ -2553,27 +2704,32 @@ compile(Module *m, int size, Modlink *ml)
 		if(tinit[i] != 0)
 			typecom(m->type[i]);
 	}
+
+
+
 	patchex(m, patch);
 	m->entry = (Inst*)(v+patch[mod->entry-mod->prog]);
 	free(patch);
 	free(tinit);
 	if(tmp != nil)
-		munmap(tmp, 8192*sizeof(uchar));
+		jitfree(tmp, 8192*sizeof(uchar));
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
 
 #ifndef __APPLE__
-	segflush(base, n*sizeof(*base));
+	segflush(base, n + nlit);
 #endif
 
+	print("JIT compiled %s: base=%p size=%d comvec=%p compile=%p\n",
+		m->name ? m->name : "?", base, n+nlit, comvec, compile);
 	return 1;
 bad:
 	free(patch);
 	free(tinit);
 	if(tmp != nil)
-		munmap(tmp, 8192*sizeof(uchar));
-	if(base != nil && base != MAP_FAILED)
-		munmap(base, n + nlit);
+		jitfree(tmp, 8192*sizeof(uchar));
+	if(base != nil)
+		jitfree(base, n + nlit);
 	return 0;
 }

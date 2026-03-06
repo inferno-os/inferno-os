@@ -415,7 +415,7 @@ if (-not (Test-Path "$BinDir\limbo.exe")) {
 }
 
 # =============================================
-# Build libinterp (interpreter only, no JIT)
+# Build libinterp (interpreter + AMD64 JIT compiler)
 # =============================================
 Write-Host ""
 Write-Host "=== Building libinterp ===" -ForegroundColor Cyan
@@ -440,7 +440,7 @@ $interpSrc = @(
     "alt.c", "conv.c", "crypt.c", "dec.c", "draw.c", "gc.c", "geom.c",
     "heap.c", "heapaudit.c", "ipint.c", "link.c", "load.c", "math.c",
     "raise.c", "readmod.c", "runt.c", "sign.c", "stack.c", "tk.c",
-    "validstk.c", "xec.c", "das-amd64.c", "keyring.c", "string.c",
+    "validstk.c", "xec.c", "das-amd64.c", "comp-amd64.c", "keyring.c", "string.c",
     "gpu-stub.c"
 )
 $interpFlags = @(
@@ -492,7 +492,7 @@ $emuCFlags = @(
 Write-Host "  Compiling platform sources..."
 $ntSources = @(
     "os.c", "cmd.c", "no_win.c", "fp.c",
-    "stubs-headless.c", "nocomp.c",
+    "stubs-headless.c",
     "devfs.c",
     "ipif6.c"
 )

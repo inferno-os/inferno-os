@@ -568,7 +568,7 @@ freemod(Module *m)
 		free(m->type);
 	}
 	free(m->name);
-#if defined(__aarch64__) || defined(__x86_64__)
+#if defined(__aarch64__) || defined(__x86_64__) || defined(_M_X64)
 	if(!m->compiled)
 #endif
 	free(m->prog);
