@@ -20,7 +20,7 @@ Inferno OS running as a native process on macOS ARM64, with a working JIT compil
 
 ## The Tools
 
-The agent has 20 tools registered by default:
+The agent has tools registered by default:
 
 | Category | Tools |
 |----------|-------|
@@ -30,6 +30,7 @@ The agent has 20 tools registered by default:
 | Data | `diff`, `json`, `memory`, `todo` |
 | Net | `http`, `websearch`, `mail` |
 | VCS | `git` |
+| Vision | `vision`, `gpu` |
 
 The agent calls these via native tool_use. Parallel tool calls work. Subagents (via `spawn`) get their own isolated namespace and LLM session.
 

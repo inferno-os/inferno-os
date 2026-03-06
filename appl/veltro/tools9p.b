@@ -111,6 +111,8 @@ TOOL_PATHS := array[] of {
 	# Speech tools (require /n/speech via speech9p)
 	("say",     "/dis/veltro/tools/say.dis"),
 	("hear",    "/dis/veltro/tools/hear.dis"),
+	# Vision (local GPU or Anthropic cloud API)
+	("vision",  "/dis/veltro/tools/vision.dis"),
 };
 
 usage()
@@ -126,6 +128,7 @@ usage()
 	sys->fprint(stderr, "  Execute: exec, launch, spawn\n");
 	sys->fprint(stderr, "  UI:      xenith, ask, present, gap\n");
 	sys->fprint(stderr, "  Utils:   diff, json, http, git, memory, todo, websearch, mail\n");
+	sys->fprint(stderr, "  Vision:  vision, gpu\n");
 	raise "fail:usage";
 }
 
