@@ -30,6 +30,12 @@ include "viewport.m";
 
 include "plumbmsg.m";
 
+include "bufio.m";
+	bufio: Bufio;
+	Iobuf: import bufio;
+
+include "imagefile.m";
+
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -94,6 +100,8 @@ View: import vpmod;
 
 plumbmod: Plumbmsg;
 Msg: import plumbmod;
+
+gifwriter: WImagefile;
 
 stderr: ref Sys->FD;
 win: ref Wmclient->Window;
@@ -222,6 +230,14 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(plumbmod != nil) {
 		if(plumbmod->init(0, nil, 0) < 0)
 			plumbmod = nil;
+	}
+
+	# Load bufio + GIF writer for image export
+	bufio = load Bufio Bufio->PATH;
+	if(bufio != nil) {
+		gifwriter = load WImagefile WImagefile->WRITEGIFPATH;
+		if(gifwriter != nil)
+			gifwriter->init(bufio);
 	}
 
 	# Channel for serializing events from background goroutines (renderartasync,
@@ -761,29 +777,38 @@ handlecontextmenu(p: ref Pointer)
 				"kill id=" + artid);
 		return;
 	}
-	# All non-app types get Zoom In/Out and Reset View
-	items := array[] of {"Close", "Zoom In", "Zoom Out", "Reset View", "Export"};
+	# Build menu based on artifact type
+	items: array of string;
+	case art.atype {
+	"pdf" or "image" =>
+		# Already files on disk — no export needed
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View"};
+	"mermaid" =>
+		# Rendered diagram — export source or rendered image
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View",
+			"Export Source", "Export Image"};
+	* =>
+		# Text content — export to file
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View", "Export"};
+	}
 	pop := menumod->new(items);
 	result := pop.show(mainwin, p.xy, win.ctxt.ptr);
 	case result {
 	0 =>
 		deleteartifactui(artid);
 	1 =>
-		# Zoom In
 		if(art != nil) {
 			art.zoom = artzoom(art) + 25;
 			if(art.zoom > 400) art.zoom = 400;
 			art.rendimg = nil;
 		}
 	2 =>
-		# Zoom Out
 		if(art != nil) {
 			art.zoom = artzoom(art) - 25;
 			if(art.zoom < 25) art.zoom = 25;
 			art.rendimg = nil;
 		}
 	3 =>
-		# Reset View — zoom to 100%, pan to origin
 		if(art != nil) {
 			art.zoom = 0;
 			art.panx = 0;
@@ -792,6 +817,10 @@ handlecontextmenu(p: ref Pointer)
 		}
 	4 =>
 		exportartifact(art);
+	5 =>
+		# Only reachable for mermaid: Export Image
+		if(art != nil)
+			exportimage(art);
 	}
 }
 
@@ -913,48 +942,21 @@ deleteartifactui(id: string)
 			"delete id=" + id);
 }
 
+# Export text content: write to /tmp/ file, then plumb the path.
+# For mermaid this exports the source; for text/code/md/table the content.
+# Falls back to snarf if file creation or plumbing fails.
 exportartifact(art: ref Artifact)
 {
 	if(art == nil)
 		return;
-	case art.atype {
-	"pdf" or "image" =>
-		# Data is a file path — plumb it to open in viewer/editor
-		exportplumbfile(art.data);
-	* =>
-		# Data is text content — write to temp file, then plumb the file
-		exportplumbtext(art.data, art.label, art.atype);
-	}
-}
-
-# Export a file path via the plumber (action=showfile semantics).
-# The plumber routes the path to the right application.
-# Falls back to snarf if the plumber is unavailable.
-exportplumbfile(path: string)
-{
-	if(plumbmod != nil) {
-		msg := ref Msg("lucipres", "edit", "/",
-			"text", nil, array of byte path);
-		if(msg.send() >= 0)
-			return;
-	}
-	# Plumber unavailable — put path in snarf
-	writetosnarf(path);
-	sys->fprint(stderr, "lucipres: export: plumb unavailable, path in snarf: %s\n", path);
-}
-
-# Export text content: write to /tmp/ file, then plumb the path.
-# Falls back to snarf if file creation or plumbing fails.
-exportplumbtext(text, label, atype: string)
-{
 	ext := ".txt";
-	case atype {
+	case art.atype {
 	"markdown" or "doc" => ext = ".md";
 	"mermaid" => ext = ".mmd";
 	"code" => ext = ".b";
 	"table" => ext = ".tsv";
 	}
-	fname := safename(label);
+	fname := safename(art.label);
 	if(fname == "")
 		fname = "export";
 	path := "/tmp/" + fname + ext;
@@ -962,10 +964,10 @@ exportplumbtext(text, label, atype: string)
 	fd := sys->create(path, Sys->OWRITE, 8r666);
 	if(fd == nil) {
 		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
-		writetosnarf(text);
+		writetosnarf(art.data);
 		return;
 	}
-	b := array of byte text;
+	b := array of byte art.data;
 	sys->write(fd, b, len b);
 	fd = nil;
 
@@ -979,8 +981,53 @@ exportplumbtext(text, label, atype: string)
 		}
 	}
 	# Plumber unavailable — copy to snarf as fallback
-	writetosnarf(text);
+	writetosnarf(art.data);
 	sys->fprint(stderr, "lucipres: exported to %s (snarf)\n", path);
+}
+
+# Export the rendered image of an artifact as a GIF file.
+# Used for mermaid diagrams where the user wants the graphic, not the source.
+exportimage(art: ref Artifact)
+{
+	if(art == nil)
+		return;
+	if(art.rendimg == nil) {
+		sys->fprint(stderr, "lucipres: export image: no rendered image\n");
+		return;
+	}
+	if(gifwriter == nil || bufio == nil) {
+		sys->fprint(stderr, "lucipres: export image: GIF writer not available\n");
+		return;
+	}
+
+	fname := safename(art.label);
+	if(fname == "")
+		fname = "export";
+	path := "/tmp/" + fname + ".gif";
+
+	ofd := bufio->create(path, Bufio->OWRITE, 8r666);
+	if(ofd == nil) {
+		sys->fprint(stderr, "lucipres: export image: cannot create %s: %r\n", path);
+		return;
+	}
+	err := gifwriter->writeimage(ofd, art.rendimg);
+	ofd.close();
+	if(err != nil) {
+		sys->fprint(stderr, "lucipres: export image: %s: %s\n", path, err);
+		return;
+	}
+
+	# Plumb the GIF so it opens in a viewer
+	if(plumbmod != nil) {
+		msg := ref Msg("lucipres", "edit", "/tmp",
+			"text", nil, array of byte path);
+		if(msg.send() >= 0) {
+			sys->fprint(stderr, "lucipres: exported image to %s\n", path);
+			return;
+		}
+	}
+	writetosnarf(path);
+	sys->fprint(stderr, "lucipres: exported image to %s (snarf)\n", path);
 }
 
 # Convert a label to a safe filename (alphanumeric, hyphens, underscores)
