@@ -563,6 +563,32 @@ addpending(fid, tag, ft, actid: int, m: ref Tmsg.Read)
 	pending = p;
 }
 
+# Send EOF (0-byte Rread) to any existing pending readers for the activity
+# event file of the given actid.  Called when a new reader connects so that
+# at most one goroutine is ever blocked on the event file at a time.  Stale
+# readers (e.g. leftover drain goroutines) exit with n==0 and don't steal
+# events meant for the most-recent reader.
+kickpendingevent(actid: int)
+{
+	prev: ref PendingRead;
+	p := pending;
+	empty := array[0] of byte;
+	while(p != nil) {
+		next := p.next;
+		if(p.ft == Qactevent && p.actid == actid) {
+			srv_g.reply(styxservers->readbytes(p.m, empty));
+			if(prev == nil)
+				pending = next;
+			else
+				prev.next = next;
+			p = next;
+			continue;
+		}
+		prev = p;
+		p = next;
+	}
+}
+
 cancelpending(tag: int)
 {
 	prev: ref PendingRead;
@@ -726,13 +752,17 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 
 	Qactevent =>
 		# Return buffered event immediately if available; otherwise block.
+		# Kick any stale pending readers first so only one goroutine ever
+		# waits on this file — prevents drain goroutines from stealing events.
 		a := findactivity(actid);
 		if(a != nil && a.pendingevent != nil) {
 			data := array of byte (hd a.pendingevent + "\n");
 			a.pendingevent = tl a.pendingevent;
 			srv.reply(styxservers->readbytes(m, data));
-		} else
+		} else {
+			kickpendingevent(actid);
 			addpending(m.fid, m.tag, Qactevent, actid, m);
+		}
 
 	Qconvinput =>
 		a := findactivity(actid);
@@ -859,8 +889,6 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		}
 		e := catalog[subid];
 		text := "name=" + e.name + " desc=" + e.desc + " type=" + e.rtype;
-		if(e.mount != "")
-			text += " mount=" + e.mount;
 		if(e.mntpath != "")
 			text += " mntpath=" + e.mntpath;
 		text += "\n";
@@ -909,6 +937,19 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 		currentact = id;
 		vers++;
 		pushglobalevent("activity " + data);
+		srv.reply(ref Rmsg.Write(m.tag, len m.data));
+
+	Qactevent =>
+		# Write to the event file = flush: discard buffered events and kick
+		# any pending readers so they exit.  Used by tests to ensure a clean
+		# event queue before triggering a specific event they want to observe.
+		a := findactivity(actid);
+		if(a == nil) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		a.pendingevent = nil;
+		kickpendingevent(actid);
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
 	Qactlabel =>
@@ -1614,7 +1655,7 @@ dirgen(p: big): (ref Sys->Dir, string)
 	Qactstatus =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "status", big 0, 8r644), nil);
 	Qactevent =>
-		return (dir(Qid(p, vers, Sys->QTFILE), "event", big 0, 8r444), nil);
+		return (dir(Qid(p, vers, Sys->QTFILE), "event", big 0, 8r644), nil);
 	Qconvdir =>
 		return (dir(Qid(p, vers, Sys->QTDIR), "conversation", big 0, 8r755), nil);
 	Qconvctl =>

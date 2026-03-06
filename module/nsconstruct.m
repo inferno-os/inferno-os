@@ -43,6 +43,7 @@ NsConstruct: module {
 		mcproviders: list of ref MCProvider;  # mc9p providers to spawn
 		memory:      int;                  # 1 = enable agent memory
 		xenith:      int;                  # 1 = grant /chan (Xenith 9P) access
+		actid:       int;                  # Lucifer activity ID (-1 = no cowfs)
 	};
 
 	# Initialize the module

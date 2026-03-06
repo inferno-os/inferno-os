@@ -159,6 +159,10 @@ tmp/*.pdfi*
 tmp/plumb.log
 tmp/.veltro/
 
+# Stale build artifacts placed in wrong location (authoritative copies are in dis/)
+dis/cmd/luci*.dis
+dis/cmd/luci*.sbl
+
 # Stray files
 fprint'
 
@@ -199,4 +203,7 @@ formal-verification/cbmc/(fd
 formal-verification/cbmc/(mnthash).log
 formal-verification/cbmc/allocation).log
 mnt/
+
+# Local test data
+usr/inferno/test-pdfs/
 dis/mermaid_test.dis

@@ -1,0 +1,77 @@
+# Combined font build: DejaVu + Noto CJK + Nerd Font symbols
+#
+# Produces unified unicode.14.font (mono) and unicode.sans.14.font (proportional)
+# that layer three font families by Unicode range:
+#
+#   DejaVu Sans [Mono]  — Latin, Cyrillic, Greek, symbols (14pt native)
+#   Noto Sans CJK SC    — CJK Unified, Kana, Hangul, Bopomofo (11pt, metrics forced to 16/12)
+#   Nerd Font Symbols    — PUA icons/devicons (16pt, metrics forced to 16/12)
+#
+# No emoji ranges are included.
+#
+# Prerequisites: FreeType2 (pkg-config freetype2), cc
+# Source TTFs: ../noto/NotoSansCJKsc-Regular.otf, ../nerd/SymbolsNerdFont-Regular.ttf
+# DejaVu subfonts are pre-built in ../dejavu/
+
+TTF2SUB=../dejavu/ttf2subfont
+
+NOTO=../noto/NotoSansCJKsc-Regular.otf
+NERD=../nerd/SymbolsNerdFont-Regular.ttf
+
+NOTO_OUT=../noto/NotoSansCJK
+NERD_OUT=../nerd/NerdFont
+
+# CJK blocks: 0x3000-0x33FF, 0x4E00-0x9FFF, 0xAC00-0xD7AF, 0xF900-0xFAFF
+CJK_RANGES=\
+	3000 3100 3200 3300 \
+	4E00 4F00 5000 5100 5200 5300 5400 5500 5600 5700 \
+	5800 5900 5A00 5B00 5C00 5D00 5E00 5F00 \
+	6000 6100 6200 6300 6400 6500 6600 6700 \
+	6800 6900 6A00 6B00 6C00 6D00 6E00 6F00 \
+	7000 7100 7200 7300 7400 7500 7600 7700 \
+	7800 7900 7A00 7B00 7C00 7D00 7E00 7F00 \
+	8000 8100 8200 8300 8400 8500 8600 8700 \
+	8800 8900 8A00 8B00 8C00 8D00 8E00 8F00 \
+	9000 9100 9200 9300 9400 9500 9600 9700 \
+	9800 9900 9A00 9B00 9C00 9D00 9E00 9F00 \
+	AC00 AD00 AE00 AF00 B000 B100 B200 B300 \
+	B400 B500 B600 B700 B800 B900 BA00 BB00 \
+	BC00 BD00 BE00 BF00 C000 C100 C200 C300 \
+	C400 C500 C600 C700 C800 C900 CA00 CB00 \
+	CC00 CD00 CE00 CF00 D000 D100 D200 D300 \
+	D400 D500 D600 D700 \
+	F900 FA00
+
+# Nerd Font PUA blocks (only ranges with actual glyphs)
+NERD_RANGES=\
+	E000 E200 E300 E500 E600 E700 E800 \
+	EA00 EB00 EC00 ED00 EE00 EF00 \
+	F000 F100 F200 F300 F400 F500
+
+all:V: noto nerd
+
+noto:V:
+	for r in $CJK_RANGES; do \
+		end=`printf '%04X' $((0x$r + 0xFF))`; \
+		out=$NOTO_OUT/NotoSansCJK.14.$r; \
+		if [ ! -f $out ]; then \
+			$TTF2SUB -p 11 -r 72 -height 16 -ascent 12 \
+				-start 0x$r -end 0x$end $NOTO $out; \
+		fi \
+	done
+
+nerd:V:
+	for r in $NERD_RANGES; do \
+		end=`printf '%04X' $((0x$r + 0xFF))`; \
+		out=$NERD_OUT/NerdFont.14.$r; \
+		if [ ! -f $out ]; then \
+			$TTF2SUB -p 16 -r 72 -height 16 -ascent 12 \
+				-start 0x$r -end 0x$end $NERD $out; \
+		fi \
+	done
+
+clean:V:
+	rm -f $NOTO_OUT/NotoSansCJK.14.*
+	rm -f $NERD_OUT/NerdFont.14.*
+
+nuke:V: clean

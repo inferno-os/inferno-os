@@ -63,7 +63,9 @@ TARG=\
 	lists.dis\
 	lock.dis\
 	login.dis\
+	lucitheme.dis\
 	memfs.dis\
+	menu.dis\
 	menuhit.dis\
 	midi.dis\
 	msgio.dis\
@@ -183,9 +185,11 @@ SYSMODULES=\
 	libc0.m\
 	lists.m\
 	lock.m\
+	lucitheme.m\
 	man.m\
 	math.m\
 	memfs.m\
+	menu.m\
 	outlinefont.m\
 	pdf.m\
 	menuhit.m\

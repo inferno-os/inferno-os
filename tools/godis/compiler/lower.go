@@ -12,6 +12,20 @@ import (
 	"golang.org/x/tools/go/ssa"
 )
 
+func init() {
+	// Core stdlib packages (lowered in this file)
+	RegisterStdlibLowerer("fmt", (*funcLowerer).lowerFmtCall)
+	RegisterStdlibLowerer("strconv", (*funcLowerer).lowerStrconvCall)
+	RegisterStdlibLowerer("errors", (*funcLowerer).lowerErrorsCall)
+	RegisterStdlibLowerer("strings", (*funcLowerer).lowerStringsCall)
+	RegisterStdlibLowerer("math", (*funcLowerer).lowerMathCall)
+	RegisterStdlibLowerer("os", (*funcLowerer).lowerOsCall)
+	RegisterStdlibLowerer("time", (*funcLowerer).lowerTimeCall)
+	RegisterStdlibLowerer("sync", (*funcLowerer).lowerSyncCall)
+	RegisterStdlibLowerer("sort", (*funcLowerer).lowerSortCall)
+	RegisterStdlibLowerer("log", (*funcLowerer).lowerLogCall)
+}
+
 // funcLowerer lowers a single SSA function to Dis instructions.
 type funcLowerer struct {
 	fn              *ssa.Function
@@ -1368,27 +1382,8 @@ func (fl *funcLowerer) lowerRecover(instr *ssa.Call) error {
 // lowerStdlibCall intercepts calls to Go stdlib packages and lowers them
 // to Dis instructions. Returns (true, err) if handled, (false, nil) if not.
 func (fl *funcLowerer) lowerStdlibCall(instr *ssa.Call, callee *ssa.Function, pkgPath string) (bool, error) {
-	switch pkgPath {
-	case "strconv":
-		return fl.lowerStrconvCall(instr, callee)
-	case "fmt":
-		return fl.lowerFmtCall(instr, callee)
-	case "errors":
-		return fl.lowerErrorsCall(instr, callee)
-	case "strings":
-		return fl.lowerStringsCall(instr, callee)
-	case "math":
-		return fl.lowerMathCall(instr, callee)
-	case "os":
-		return fl.lowerOsCall(instr, callee)
-	case "time":
-		return fl.lowerTimeCall(instr, callee)
-	case "sync":
-		return fl.lowerSyncCall(instr, callee)
-	case "sort":
-		return fl.lowerSortCall(instr, callee)
-	case "log":
-		return fl.lowerLogCall(instr, callee)
+	if fn, ok := stdlibRegistry[pkgPath]; ok {
+		return fn(fl, instr, callee)
 	}
 	return false, nil
 }
@@ -1397,14 +1392,47 @@ func (fl *funcLowerer) lowerFmtCall(instr *ssa.Call, callee *ssa.Function) (bool
 	switch callee.Name() {
 	case "Sprintf":
 		return fl.lowerFmtSprintf(instr)
+	case "Sprint":
+		return fl.lowerFmtSprint(instr)
 	case "Println":
 		// fmt.Println(args...) → emit println-style output for each arg + newline
 		// The SSA packs args into a []any slice. We trace back to find the original values.
 		return fl.lowerFmtPrintln(instr)
+	case "Print":
+		return fl.lowerFmtPrint(instr)
 	case "Printf":
 		return fl.lowerFmtPrintf(instr)
+	case "Fprintf":
+		// Fprintf(w, format, args...) → ignore w, format like Printf
+		return fl.lowerFmtFprintf(instr)
+	case "Fprintln":
+		return fl.lowerFmtFprintln(instr)
+	case "Fprint":
+		return fl.lowerFmtFprint(instr)
 	case "Errorf":
 		return fl.lowerFmtErrorf(instr)
+	case "Sprintln":
+		return fl.lowerFmtSprintln(instr)
+	case "Sscan", "Sscanf", "Sscanln", "Scan", "Scanf", "Scanln", "Fscan", "Fscanf", "Fscanln":
+		// Scanning functions → stub: return (0, nil error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Appendf", "Append", "Appendln":
+		// fmt.Appendf/Append/Appendln(b, ...) → return b passthrough
+		bOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, bOp, dis.FP(dst)))
+		return true, nil
+	case "FormatString":
+		// fmt.FormatString(state, verb) → "" stub
+		dst := fl.slotOf(instr)
+		emptyOff := fl.comp.AllocString("")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(emptyOff), dis.FP(dst)))
+		return true, nil
 	}
 	return false, nil
 }
@@ -1715,10 +1743,41 @@ func (fl *funcLowerer) lowerFmtPrintln(instr *ssa.Call) (bool, error) {
 
 // lowerErrorsCall handles calls to the errors package.
 func (fl *funcLowerer) lowerErrorsCall(instr *ssa.Call, callee *ssa.Function) (bool, error) {
-	if callee.Name() != "New" {
-		return false, nil
+	switch callee.Name() {
+	case "New":
+		return true, fl.lowerErrorsNew(instr)
+	case "Is":
+		// errors.Is(err, target) → compare interface tags
+		errSlot := fl.materialize(instr.Call.Args[0])
+		targetSlot := fl.materialize(instr.Call.Args[1])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		skipIdx := len(fl.insts)
+		fl.emit(dis.NewInst(dis.IBNEW, dis.FP(errSlot), dis.FP(targetSlot), dis.Imm(0)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+		return true, nil
+	case "Unwrap":
+		// errors.Unwrap(err) → return nil error (simplified)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "As":
+		// errors.As(err, target) → return false (simplified)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Join":
+		// errors.Join(errs...) → return first error or nil (simplified)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
 	}
-	return true, fl.lowerErrorsNew(instr)
+	return false, nil
 }
 
 // lowerErrorsNew lowers errors.New("msg") to a tagged error interface:
@@ -1867,6 +1926,239 @@ func (fl *funcLowerer) lowerStrconvCall(instr *ssa.Call, callee *ssa.Function) (
 		// Non-constant or unknown base: fall back to decimal
 		fl.emit(dis.Inst2(dis.ICVTWC, src, dis.FP(dst)))
 		return true, nil
+	case "FormatBool":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		trueMP := fl.comp.AllocString("true")
+		falseMP := fl.comp.AllocString("false")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(falseMP), dis.FP(dst)))
+		skipIdx := len(fl.insts)
+		fl.emit(dis.NewInst(dis.IBEQW, dis.Imm(0), src, dis.Imm(0)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(trueMP), dis.FP(dst)))
+		fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+		return true, nil
+	case "ParseBool":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		// Default: false, nil error
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		// Check for "true" and "1"
+		var trueJmps []int
+		for _, s := range []string{"true", "1"} {
+			mp := fl.comp.AllocString(s)
+			tmp := fl.frame.AllocTemp(true)
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(mp), dis.FP(tmp)))
+			trueJmps = append(trueJmps, len(fl.insts))
+			fl.emit(dis.NewInst(dis.IBEQC, dis.FP(tmp), src, dis.Imm(0)))
+		}
+		// Check for "false" and "0"  → jump to done (result already false, nil error)
+		var doneJmps []int
+		for _, s := range []string{"false", "0"} {
+			mp := fl.comp.AllocString(s)
+			tmp := fl.frame.AllocTemp(true)
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(mp), dis.FP(tmp)))
+			doneJmps = append(doneJmps, len(fl.insts))
+			fl.emit(dis.NewInst(dis.IBEQC, dis.FP(tmp), src, dis.Imm(0)))
+		}
+		// Fall through → still fine, result is false/nil
+		doneJmps = append(doneJmps, len(fl.insts))
+		fl.emit(dis.Inst1(dis.IJMP, dis.Imm(0)))
+		// true label:
+		truePC := int32(len(fl.insts))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		// done label:
+		donePC := int32(len(fl.insts))
+		for _, idx := range trueJmps {
+			fl.insts[idx].Dst = dis.Imm(truePC)
+		}
+		for _, idx := range doneJmps {
+			fl.insts[idx].Dst = dis.Imm(donePC)
+		}
+		return true, nil
+	case "FormatFloat":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.ICVTFC, src, dis.FP(dst)))
+		return true, nil
+	case "FormatUint":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		if baseConst, ok := instr.Call.Args[1].(*ssa.Const); ok {
+			base, _ := constant.Int64Val(baseConst.Value)
+			switch base {
+			case 16:
+				hexStr := fl.emitHexConversion(src)
+				fl.emit(dis.Inst2(dis.IMOVP, dis.FP(hexStr), dis.FP(dst)))
+				return true, nil
+			case 8:
+				octStr := fl.emitBaseConversion(src, 8, "01234567")
+				fl.emit(dis.Inst2(dis.IMOVP, dis.FP(octStr), dis.FP(dst)))
+				return true, nil
+			case 2:
+				binStr := fl.emitBaseConversion(src, 2, "01")
+				fl.emit(dis.Inst2(dis.IMOVP, dis.FP(binStr), dis.FP(dst)))
+				return true, nil
+			}
+		}
+		fl.emit(dis.Inst2(dis.ICVTWC, src, dis.FP(dst)))
+		return true, nil
+	case "ParseInt":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.ICVTCW, src, dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "ParseUint":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.ICVTCW, src, dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "ParseFloat":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.ICVTCF, src, dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Quote":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		quoteMP := fl.comp.AllocString("\"")
+		tmp := fl.frame.AllocTemp(true)
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(quoteMP), dis.FP(tmp)))
+		fl.emit(dis.NewInst(dis.IADDC, src, dis.FP(tmp), dis.FP(tmp)))
+		fl.emit(dis.NewInst(dis.IADDC, dis.MP(quoteMP), dis.FP(tmp), dis.FP(dst)))
+		return true, nil
+	case "Unquote":
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		// Simple: strip first and last character if they are quotes
+		lenSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILENC, src, dis.FP(lenSlot)))
+		oneSlot := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.ISUBW, dis.Imm(1), dis.FP(lenSlot), dis.FP(oneSlot)))
+		tmp := fl.frame.AllocTemp(true)
+		fl.emit(dis.Inst2(dis.IMOVP, src, dis.FP(tmp)))
+		fl.emit(dis.NewInst(dis.ISLICEC, dis.Imm(1), dis.FP(oneSlot), dis.FP(tmp)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(tmp), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "AppendInt":
+		// AppendInt: convert int to string, convert src to string, concat, convert back
+		// Simplified: just format as string and convert back to bytes
+		intSrc := fl.operandOf(instr.Call.Args[1])
+		dst := fl.slotOf(instr)
+		strSlot := fl.frame.AllocTemp(true)
+		fl.emit(dis.Inst2(dis.ICVTWC, intSrc, dis.FP(strSlot)))
+		fl.emit(dis.Inst2(dis.ICVTCA, dis.FP(strSlot), dis.FP(dst)))
+		return true, nil
+
+	case "QuoteToASCII", "QuoteToGraphic":
+		// Same as Quote: wrap with double quotes
+		src := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		quoteMP := fl.comp.AllocString("\"")
+		tmp := fl.frame.AllocTemp(true)
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(quoteMP), dis.FP(tmp)))
+		fl.emit(dis.NewInst(dis.IADDC, src, dis.FP(tmp), dis.FP(tmp)))
+		fl.emit(dis.NewInst(dis.IADDC, dis.MP(quoteMP), dis.FP(tmp), dis.FP(dst)))
+		return true, nil
+
+	case "QuoteRune", "QuoteRuneToASCII", "QuoteRuneToGraphic":
+		// Quote a rune as string with single quotes
+		dst := fl.slotOf(instr)
+		sOff := fl.comp.AllocString("'\\x00'")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dst)))
+		return true, nil
+
+	case "CanBackquote":
+		// CanBackquote(s) → true stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+
+	case "IsPrint", "IsGraphic":
+		// IsPrint/IsGraphic(r rune) → true stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+
+	case "UnquoteChar":
+		// → (0, false, "", nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+3*iby2wd)))
+		return true, nil
+
+	case "AppendBool":
+		// AppendBool(dst, b) → dst stub (return input slice)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "AppendFloat":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "AppendQuote", "AppendQuoteRune":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "AppendUint":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "Error":
+		// NumError.Error() → "" stub
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			sOff := fl.comp.AllocString("")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dst)))
+			return true, nil
+		}
+
+	case "Unwrap":
+		// NumError.Unwrap() → nil error
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+
+	case "FormatComplex":
+		// FormatComplex(c, fmt, prec, bitSize) → "(0+0i)" stub string
+		dst := fl.slotOf(instr)
+		sOff := fl.comp.AllocString("(0+0i)")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dst)))
+		return true, nil
+
+	case "ParseComplex":
+		// ParseComplex(s, bitSize) → (0, nil) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
 	}
 	return false, nil
 }
@@ -1889,6 +2181,13 @@ func (fl *funcLowerer) lowerStringsCall(instr *ssa.Call, callee *ssa.Function) (
 	case "Join":
 		return true, fl.lowerStringsJoin(instr)
 	case "Replace":
+		if callee.Signature.Recv() != nil {
+			// Replacer.Replace(s) → return s
+			sOp := fl.operandOf(instr.Call.Args[1])
+			dst := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+			return true, nil
+		}
 		return true, fl.lowerStringsReplace(instr)
 	case "ToUpper":
 		return true, fl.lowerStringsToUpper(instr)
@@ -1896,6 +2195,165 @@ func (fl *funcLowerer) lowerStringsCall(instr *ssa.Call, callee *ssa.Function) (
 		return true, fl.lowerStringsToLower(instr)
 	case "Repeat":
 		return true, fl.lowerStringsRepeat(instr)
+	case "Count":
+		return true, fl.lowerStringsCount(instr)
+	case "EqualFold":
+		return true, fl.lowerStringsEqualFold(instr)
+	case "TrimPrefix":
+		return true, fl.lowerStringsTrimPrefix(instr)
+	case "TrimSuffix":
+		return true, fl.lowerStringsTrimSuffix(instr)
+	case "ReplaceAll":
+		return true, fl.lowerStringsReplaceAll(instr)
+	case "ContainsRune":
+		return true, fl.lowerStringsContainsRune(instr)
+	case "ContainsAny":
+		return true, fl.lowerStringsContainsAny(instr)
+	case "IndexByte":
+		return true, fl.lowerStringsIndexByte(instr)
+	case "IndexRune":
+		return true, fl.lowerStringsIndexRune(instr)
+	case "LastIndex":
+		return true, fl.lowerStringsLastIndex(instr)
+	case "Fields":
+		return true, fl.lowerStringsFields(instr)
+	case "Trim":
+		return true, fl.lowerStringsTrim(instr)
+	case "TrimLeft":
+		return true, fl.lowerStringsTrimLeft(instr)
+	case "TrimRight":
+		return true, fl.lowerStringsTrimRight(instr)
+	case "Title":
+		return true, fl.lowerStringsTitle(instr)
+	case "Cut":
+		return fl.lowerStringsCut(instr)
+	case "CutPrefix":
+		return fl.lowerStringsCutPrefix(instr)
+	case "CutSuffix":
+		return fl.lowerStringsCutSuffix(instr)
+	case "Clone":
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	case "NewReader":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "NewReplacer":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "SplitN", "SplitAfter", "SplitAfterN":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Map":
+		sOp := fl.operandOf(instr.Call.Args[1])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	case "ToTitle", "ToValidUTF8":
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	case "IndexAny", "LastIndexByte", "LastIndexAny":
+		// Return -1 (not found) stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(-1), dis.FP(dst)))
+		return true, nil
+	case "IndexFunc", "LastIndexFunc":
+		// Return -1 (not found) stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(-1), dis.FP(dst)))
+		return true, nil
+	case "FieldsFunc":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "ContainsFunc":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Compare":
+		// strings.Compare(a, b) → -1/0/1
+		aOp := fl.operandOf(instr.Call.Args[0])
+		bOp := fl.operandOf(instr.Call.Args[1])
+		dst := fl.slotOf(instr)
+		// if a == b → 0; if a < b → -1; else → 1
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		eqPC := int32(len(fl.insts)) + 5
+		fl.emit(dis.NewInst(dis.IBEQC, aOp, bOp, dis.Imm(eqPC)))
+		ltPC := int32(len(fl.insts)) + 3
+		fl.emit(dis.NewInst(dis.IBLTC, aOp, bOp, dis.Imm(ltPC)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		endPC := int32(len(fl.insts)) + 2
+		fl.emit(dis.Inst1(dis.IJMP, dis.Imm(endPC)))
+		// lt:
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(-1), dis.FP(dst)))
+		// end/eq:
+		return true, nil
+	case "TrimFunc", "TrimLeftFunc", "TrimRightFunc":
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	// Builder methods
+	case "WriteString":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+	case "Write":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+	case "Grow":
+		if callee.Signature.Recv() != nil {
+			return true, nil // no-op
+		}
+	case "Cap", "Len":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			return true, nil
+		}
+	case "String":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			return true, nil
+		}
+	case "Reset":
+		if callee.Signature.Recv() != nil {
+			return true, nil // no-op
+		}
+	case "WriteByte", "WriteRune":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+	// Reader methods
+	case "Read", "ReadByte", "ReadRune", "UnreadByte", "UnreadRune", "Seek", "WriteTo", "ReadAt", "Size":
+		if callee.Signature.Recv() != nil {
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
 	}
 	return false, nil
 }
@@ -2564,6 +3022,146 @@ func (fl *funcLowerer) lowerMathCall(instr *ssa.Call, callee *ssa.Function) (boo
 		return true, fl.lowerMathMin(instr)
 	case "Max":
 		return true, fl.lowerMathMax(instr)
+	case "Floor":
+		return true, fl.lowerMathFloor(instr)
+	case "Ceil":
+		return true, fl.lowerMathCeil(instr)
+	case "Round":
+		return true, fl.lowerMathRound(instr)
+	case "Trunc":
+		return true, fl.lowerMathTrunc(instr)
+	case "Pow":
+		return true, fl.lowerMathPow(instr)
+	case "Mod":
+		return true, fl.lowerMathMod(instr)
+	case "Log":
+		return true, fl.lowerMathLog(instr)
+	case "Log2":
+		return true, fl.lowerMathLog2(instr)
+	case "Log10":
+		return true, fl.lowerMathLog10(instr)
+	case "Exp":
+		return true, fl.lowerMathExp(instr)
+	case "Inf":
+		return true, fl.lowerMathInf(instr)
+	case "NaN":
+		return true, fl.lowerMathNaN(instr)
+	case "IsNaN":
+		return true, fl.lowerMathIsNaN(instr)
+	case "IsInf":
+		return true, fl.lowerMathIsInf(instr)
+	case "Signbit":
+		return true, fl.lowerMathSignbit(instr)
+	case "Copysign":
+		return true, fl.lowerMathCopysign(instr)
+	case "Dim":
+		return true, fl.lowerMathDim(instr)
+	case "Remainder":
+		return true, fl.lowerMathMod(instr)
+	case "Float64bits":
+		return true, fl.lowerMathFloat64bits(instr)
+	case "Float64frombits":
+		return true, fl.lowerMathFloat64frombits(instr)
+	case "Sin", "Cos", "Tan":
+		return true, fl.lowerMathTrig(instr, callee.Name())
+
+	// Inverse trigonometric (f64 → f64 stub → 0.0)
+	case "Asin", "Acos", "Atan":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	// Hyperbolic (f64 → f64 stub → 0.0)
+	case "Sinh", "Cosh", "Tanh", "Asinh", "Acosh", "Atanh":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	// Exponential/log variants (f64 → f64 stub)
+	case "Exp2", "Expm1", "Log1p", "Logb", "Cbrt", "RoundToEven":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	// Special functions (f64 → f64 stub)
+	case "Erf", "Erfc", "Erfcinv", "Erfinv", "Gamma", "J0", "J1", "Y0", "Y1":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	// Binary float64 functions (f64, f64 → f64 stub)
+	case "Atan2", "Hypot", "Nextafter":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	case "Pow10":
+		// Pow10(n int) float64 → 0.0 stub
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	case "Ilogb":
+		// Ilogb(x) int → 0 stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "Ldexp":
+		// Ldexp(frac, exp) float64 → 0.0 stub
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	case "Frexp", "Modf", "Sincos":
+		// (float64) → (float64, float64/int) — return (0.0, 0)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+
+	case "Lgamma":
+		// (float64) → (float64, int) — return (0.0, 0)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+
+	case "Jn", "Yn":
+		// (int, float64) → float64 — 0.0 stub
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	case "FMA":
+		// (x, y, z float64) → float64 — 0.0 stub
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
+
+	case "Float32bits":
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "Float32frombits":
+		dst := fl.slotOf(instr)
+		zOff := fl.comp.AllocReal(0.0)
+		fl.emit(dis.Inst2(dis.IMOVF, dis.MP(zOff), dis.FP(dst)))
+		return true, nil
 	}
 	return false, nil
 }
@@ -2658,6 +3256,527 @@ func (fl *funcLowerer) lowerOsCall(instr *ssa.Call, callee *ssa.Function) (bool,
 	case "Exit":
 		// os.Exit → emit RET (program terminates)
 		fl.emit(dis.Inst0(dis.IRET))
+		return true, nil
+	case "Getenv":
+		// os.Getenv → return empty string (no env support yet)
+		dst := fl.slotOf(instr)
+		emptyOff := fl.comp.AllocString("")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(emptyOff), dis.FP(dst)))
+		return true, nil
+	case "Getwd":
+		// os.Getwd → return "/" and nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		rootOff := fl.comp.AllocString("/")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(rootOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Remove":
+		// os.Remove(name) → sys.remove(name)
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "remove"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		// Return nil error (interface: tag=0, val=0)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Mkdir":
+		// os.Mkdir(name, perm) → sys.create(name, OREAD, DMDIR|perm)
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "create"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		// arg0: name
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		// arg1: mode = Sys->OREAD (0)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FPInd(callFrame, int32(dis.MaxTemp)+iby2wd)))
+		// arg2: perm = DMDIR (0x80000000) | 8r777 (0x1FF) = -2147483137 in two's complement
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(-2147483137), dis.FPInd(callFrame, int32(dis.MaxTemp)+2*iby2wd)))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		// Return nil error
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "ReadFile":
+		// os.ReadFile(name) → ([]byte, error)
+		// Stub: return empty byte slice and nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))         // nil slice
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))  // error tag
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd))) // error val
+		return true, nil
+	case "WriteFile":
+		// os.WriteFile(name, data, perm) → error
+		// Stub: return nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))        // error tag
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd))) // error val
+		return true, nil
+	case "Chdir":
+		// os.Chdir(dir) → sys.chdir(dir)
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "chdir"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Rename", "MkdirAll", "RemoveAll", "Setenv":
+		// Stub: return nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "TempDir":
+		// os.TempDir() → "/tmp"
+		dst := fl.slotOf(instr)
+		tmpOff := fl.comp.AllocString("/tmp")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(tmpOff), dis.FP(dst)))
+		return true, nil
+	case "UserHomeDir":
+		// os.UserHomeDir() → ("/usr", nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		homeOff := fl.comp.AllocString("/usr")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(homeOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Environ":
+		// os.Environ() → nil slice
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "IsNotExist", "IsExist", "IsPermission":
+		// os.IsNotExist(err) → false
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Open":
+		// os.Open(name) → (*File, error)
+		// Use sys->open(name, Sys->OREAD) and wrap FD in File struct
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "open"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		// arg0: name string
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		// arg1: mode = OREAD (0)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FPInd(callFrame, int32(dis.MaxTemp)+iby2wd)))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		// Return *File (as FD pointer) and nil error
+		fl.emit(dis.Inst2(dis.IMOVW, dis.FP(retSlot), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Create":
+		// os.Create(name) → (*File, error)
+		// Use sys->create(name, Sys->OREADWRITE, 8r666)
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "create"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		// arg1: mode = OREADWRITE (2)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(2), dis.FPInd(callFrame, int32(dis.MaxTemp)+iby2wd)))
+		// arg2: perm = 8r666 (0x1B6 = 438)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(438), dis.FPInd(callFrame, int32(dis.MaxTemp)+2*iby2wd)))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.FP(retSlot), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "OpenFile":
+		// os.OpenFile(name, flag, perm) → (*File, error)
+		// Map Go flags to Inferno Sys flags: O_RDONLY=0, O_WRONLY=Sys->OWRITE(1), O_RDWR=Sys->ORDWR(2), O_TRUNC=Sys->OTRUNC(16)
+		nameSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		disName := "open"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(nameSlot), dis.FPInd(callFrame, int32(dis.MaxTemp))))
+		// arg1: flags (pass through, compatible enough for basic OREAD/OWRITE/ORDWR)
+		flagSlot := fl.materialize(instr.Call.Args[1])
+		fl.emit(dis.Inst2(dis.IMOVW, dis.FP(flagSlot), dis.FPInd(callFrame, int32(dis.MaxTemp)+iby2wd)))
+		retSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(retSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.FP(retSlot), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Stat", "Lstat":
+		// os.Stat/Lstat(name) or (*File).Stat() → (FileInfo, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "ReadDir":
+		// os.ReadDir(name) → ([]DirEntry, error)
+		// Stub: return nil slice and nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Hostname":
+		// os.Hostname() → (string, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		nameOff := fl.comp.AllocString("localhost")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(nameOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "LookupEnv":
+		// os.LookupEnv(key) → (string, bool)
+		// Stub: return ("", false)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		emptyOff := fl.comp.AllocString("")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(emptyOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Executable":
+		// os.Executable() → (string, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		exeOff := fl.comp.AllocString("/dis/main.dis")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(exeOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "CreateTemp":
+		// os.CreateTemp(dir, pattern) → (*File, error)
+		// Stub: return nil File handle and nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "MkdirTemp":
+		// os.MkdirTemp(dir, pattern) → (string, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		tmpOff := fl.comp.AllocString("/tmp/tmp.0")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(tmpOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Unsetenv":
+		// os.Unsetenv(key) → nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Getpid":
+		// os.Getpid() → 1 (stub PID)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+	case "Getuid", "Getgid", "Geteuid", "Getegid", "Getppid":
+		// os.Getuid/Getgid/etc → 0 stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Chmod", "Chtimes", "Chown", "Lchown", "Link", "Symlink":
+		// os.Chmod/etc or (*File).Chmod → nil error stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Readlink":
+		// os.Readlink(name) → (name, nil error)
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "SameFile":
+		// os.SameFile(fi1, fi2) → false
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "IsPathSeparator":
+		// os.IsPathSeparator(c) → c == '/'
+		cSlot := fl.materialize(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		slashSlot := fl.frame.AllocWord("")
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm('/'), dis.FP(slashSlot)))
+		endPC := int32(len(fl.insts)) + 3 // skip IBNEW + IMOVW + (land here)
+		fl.emit(dis.NewInst(dis.IBNEW, dis.FP(cSlot), dis.FP(slashSlot), dis.Imm(endPC)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		// endPC lands here
+		return true, nil
+	// File methods — distinguished from package-level functions by having a receiver
+	case "Read":
+		if callee.Signature.Recv() != nil {
+			// (*File).Read(b) → (0, nil error) stub
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Write":
+		if callee.Signature.Recv() != nil {
+			// (*File).Write(b) → (len(b), nil error) stub
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "WriteString":
+		if callee.Signature.Recv() != nil {
+			// (*File).WriteString(s) → (len(s), nil error) stub
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Close":
+		if callee.Signature.Recv() != nil {
+			// (*File).Close() → nil error
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Name":
+		if callee.Signature.Recv() != nil {
+			// (*File).Name() → ""
+			dst := fl.slotOf(instr)
+			emptyOff := fl.comp.AllocString("")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(emptyOff), dis.FP(dst)))
+			return true, nil
+		}
+		return false, nil
+	case "Seek":
+		if callee.Signature.Recv() != nil {
+			// (*File).Seek(offset, whence) → (0, nil error)
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Sync":
+		if callee.Signature.Recv() != nil {
+			// (*File).Sync() → nil error
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Fd":
+		if callee.Signature.Recv() != nil {
+			// (*File).Fd() → 0 uintptr stub
+			dst := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			return true, nil
+		}
+		return false, nil
+	case "Truncate":
+		if callee.Signature.Recv() != nil {
+			// (*File).Truncate(size) → nil error
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+		// os.Truncate(name, size) → nil error (package-level function)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "WriteAt", "ReadAt":
+		if callee.Signature.Recv() != nil {
+			// (*File).WriteAt/ReadAt(b, off) → (0, nil error)
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "Pipe":
+		// os.Pipe() → (*File, *File, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+3*iby2wd)))
+		return true, nil
+	case "NewFile":
+		// os.NewFile(fd, name) → *File
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "FindProcess":
+		// os.FindProcess(pid) → (*Process, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "StartProcess":
+		// os.StartProcess(name, argv, attr) → (*Process, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Expand":
+		// os.Expand(s, mapping) → s passthrough
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	case "ExpandEnv":
+		// os.ExpandEnv(s) → s passthrough
+		sOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, sOp, dis.FP(dst)))
+		return true, nil
+	case "UserCacheDir", "UserConfigDir":
+		// os.UserCacheDir/UserConfigDir() → (string, error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		dirOff := fl.comp.AllocString("/tmp")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(dirOff), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Clearenv":
+		// os.Clearenv() → no-op
+		return true, nil
+	case "Getgroups":
+		// os.Getgroups() → (nil, nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+	case "Readdir", "Readdirnames":
+		if callee.Signature.Recv() != nil {
+			// (*File).Readdir/Readdirnames(n) → (nil, nil)
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "SetDeadline", "SetReadDeadline", "SetWriteDeadline":
+		if callee.Signature.Recv() != nil {
+			// (*File).SetDeadline(t) → nil error
+			dst := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+			return true, nil
+		}
+		return false, nil
+	case "DirFS":
+		// os.DirFS(dir) → fs.FS (stub: return nil interface)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "IsTimeout":
+		// os.IsTimeout(err) → false
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
 		return true, nil
 	}
 	return false, nil
@@ -2791,10 +3910,115 @@ func (fl *funcLowerer) lowerTimeCall(instr *ssa.Call, callee *ssa.Function) (boo
 
 		fl.emit(dis.Inst2(dis.ISEND, dis.FP(nowSlot), dis.FP(dstSlot)))
 		return true, nil
+
+	case "Tick":
+		// time.Tick(d) → create channel (blocking, like After)
+		dSlot := fl.materialize(instr.Call.Args[0])
+		dstSlot := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.INEWCW, dis.Imm(0), dis.FP(dstSlot)))
+		_ = dSlot
+		return true, nil
+
+	case "Parse":
+		// time.Parse(layout, value) → (Time{0}, nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+
+	case "Date":
+		// time.Date(...) → Time{0} stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "LoadLocation":
+		// LoadLocation(name) → (*Location(nil), nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+
+	case "FixedZone":
+		// FixedZone(name, offset) → *Location(nil)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "Until":
+		// Until(t) Duration = t.msec*1e6 - now*1e6
+		tSlot := fl.materialize(instr.Call.Args[0])
+		dstSlot := fl.slotOf(instr)
+		nowSlot := fl.frame.AllocWord("time.untilnow")
+		disName := "millisec"
+		ldtIdx, ok := fl.sysUsed[disName]
+		if !ok {
+			ldtIdx = len(fl.sysUsed)
+			fl.sysUsed[disName] = ldtIdx
+		}
+		callFrame := fl.frame.AllocWord("")
+		fl.emit(dis.NewInst(dis.IMFRAME, dis.MP(fl.sysMPOff), dis.Imm(int32(ldtIdx)), dis.FP(callFrame)))
+		fl.emit(dis.Inst2(dis.ILEA, dis.FP(nowSlot), dis.FPInd(callFrame, int32(dis.REGRET*dis.IBY2WD))))
+		fl.emit(dis.NewInst(dis.IMCALL, dis.FP(callFrame), dis.Imm(int32(ldtIdx)), dis.MP(fl.sysMPOff)))
+		fl.emit(dis.NewInst(dis.ISUBW, dis.FP(nowSlot), dis.FP(tSlot), dis.FP(dstSlot)))
+		fl.emit(dis.NewInst(dis.IMULW, dis.Imm(1000000), dis.FP(dstSlot), dis.FP(dstSlot)))
+		return true, nil
+
+	case "ParseDuration":
+		// ParseDuration(s) → (0, nil)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+
+	case "ParseInLocation":
+		// ParseInLocation(layout, value, loc) → (zero Time, nil error)
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+2*iby2wd)))
+		return true, nil
+
+	case "NewTicker":
+		// NewTicker(d) → nil *Ticker stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "NewTimer":
+		// NewTimer(d) → nil *Timer stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "AfterFunc":
+		// AfterFunc(d, f) → nil *Timer stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+
+	case "Unix":
+		// Unix(sec, nsec) → Time{msec: sec*1000}
+		secSlot := fl.materialize(instr.Call.Args[0])
+		dstSlot := fl.slotOf(instr)
+		fl.emit(dis.NewInst(dis.IMULW, dis.Imm(1000), dis.FP(secSlot), dis.FP(dstSlot)))
+		return true, nil
+
+	case "UnixMilli":
+		// UnixMilli(msec) → Time{msec}
+		msSlot := fl.materialize(instr.Call.Args[0])
+		dstSlot := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.FP(msSlot), dis.FP(dstSlot)))
+		return true, nil
 	}
 
-	// Method calls: Duration.Milliseconds(), Time.Sub()
-	// SSA names methods as "(Type).Method" — check receiver
+	// Method calls: Duration.Milliseconds(), Time.Sub(), etc.
 	name := callee.Name()
 	if strings.HasPrefix(name, "(") {
 		// Method call: receiver is first arg
@@ -2805,6 +4029,17 @@ func (fl *funcLowerer) lowerTimeCall(instr *ssa.Call, callee *ssa.Function) (boo
 			dstSlot := fl.slotOf(instr)
 			fl.emit(dis.NewInst(dis.IDIVW, dis.Imm(1000000), dis.FP(dSlot), dis.FP(dstSlot)))
 			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Seconds"):
+			// Duration.Seconds() float64 → stub: return 0.0
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "String"):
+			// Duration.String() string → "0s" stub
+			dstSlot := fl.slotOf(instr)
+			sOff := fl.comp.AllocString("0s")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dstSlot)))
+			return true, nil
 		case strings.Contains(name, "Time") && strings.Contains(name, "Sub"):
 			// Time.Sub(u Time) Duration → (t.msec - u.msec) * 1000000
 			tSlot := fl.materialize(instr.Call.Args[0])
@@ -2812,6 +4047,343 @@ func (fl *funcLowerer) lowerTimeCall(instr *ssa.Call, callee *ssa.Function) (boo
 			dstSlot := fl.slotOf(instr)
 			fl.emit(dis.NewInst(dis.ISUBW, dis.FP(uSlot), dis.FP(tSlot), dis.FP(dstSlot)))
 			fl.emit(dis.NewInst(dis.IMULW, dis.Imm(1000000), dis.FP(dstSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Unix"):
+			if strings.Contains(name, "UnixMilli") {
+				// Time.UnixMilli() → t.msec
+				tSlot := fl.materialize(instr.Call.Args[0])
+				dstSlot := fl.slotOf(instr)
+				fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+				return true, nil
+			}
+			// Time.Unix() → t.msec / 1000
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.NewInst(dis.IDIVW, dis.Imm(1000), dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Format"):
+			// Time.Format(layout) string → stub: return layout
+			dstSlot := fl.slotOf(instr)
+			layoutOp := fl.operandOf(instr.Call.Args[1])
+			fl.emit(dis.Inst2(dis.IMOVP, layoutOp, dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "String"):
+			// Time.String() string → stub
+			dstSlot := fl.slotOf(instr)
+			sOff := fl.comp.AllocString("0001-01-01 00:00:00 +0000 UTC")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "IsZero"):
+			// Time.IsZero() bool → t.msec == 0
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			skipIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBNEW, dis.FP(tSlot), dis.Imm(0), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Before"):
+			// Time.Before(u) bool → t.msec < u.msec
+			tSlot := fl.materialize(instr.Call.Args[0])
+			uSlot := fl.materialize(instr.Call.Args[1])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			skipIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBGEW, dis.FP(uSlot), dis.FP(tSlot), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "After"):
+			// Time.After(u) bool → t.msec > u.msec
+			tSlot := fl.materialize(instr.Call.Args[0])
+			uSlot := fl.materialize(instr.Call.Args[1])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			skipIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBGEW, dis.FP(tSlot), dis.FP(uSlot), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Equal"):
+			// Time.Equal(u) bool → t.msec == u.msec
+			tSlot := fl.materialize(instr.Call.Args[0])
+			uSlot := fl.materialize(instr.Call.Args[1])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			skipIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBNEW, dis.FP(tSlot), dis.FP(uSlot), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Add"):
+			// Time.Add(d) Time → Time{msec: t.msec + d/1000000}
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dSlot := fl.materialize(instr.Call.Args[1])
+			dstSlot := fl.slotOf(instr)
+			msSlot := fl.frame.AllocWord("time.addms")
+			fl.emit(dis.NewInst(dis.IDIVW, dis.Imm(1000000), dis.FP(dSlot), dis.FP(msSlot)))
+			fl.emit(dis.NewInst(dis.IADDW, dis.FP(msSlot), dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+
+		case strings.Contains(name, "Time") && strings.Contains(name, "Year"):
+			// Time.Year() int → stub 0
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Day"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Hour"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Minute"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Second"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Nanosecond"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Weekday"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Location"):
+			// Time.Location() *Location → nil stub
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "In"):
+			// Time.In(loc) Time → same time value (location ignored)
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "UTC") && !strings.Contains(name, "Unix"):
+			// Time.UTC() Time → same time value
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Local"):
+			// Time.Local() Time → same time value
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "UnixNano"):
+			// Time.UnixNano() int64 → t.msec * 1000000
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.NewInst(dis.IMULW, dis.Imm(1000000), dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "UnixMicro"):
+			// Time.UnixMicro() int64 → t.msec * 1000
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.NewInst(dis.IMULW, dis.Imm(1000), dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Round"):
+			// Time.Round(d) Time → pass through
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Truncate"):
+			// Time.Truncate(d) Time → pass through
+			tSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(tSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "AppendFormat"):
+			// Time.AppendFormat(b, layout) []byte → return b stub
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "MarshalJSON"):
+			// Time.MarshalJSON() ([]byte, error) → (nil, nil)
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "MarshalText"):
+			// Time.MarshalText() ([]byte, error) → (nil, nil)
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Month"):
+			// Time.Month() Month → 0
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Hours"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Minutes"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Microseconds"):
+			// Duration.Microseconds() int64 → d / 1000
+			dSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.NewInst(dis.IDIVW, dis.Imm(1000), dis.FP(dSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Nanoseconds"):
+			// Duration.Nanoseconds() int64 → identity
+			dSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(dSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Abs"):
+			// Duration.Abs() Duration → abs(d)
+			dSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(dSlot), dis.FP(dstSlot)))
+			skipIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBGEW, dis.FP(dSlot), dis.Imm(0), dis.Imm(0)))
+			fl.emit(dis.NewInst(dis.ISUBW, dis.FP(dSlot), dis.Imm(0), dis.FP(dstSlot)))
+			fl.insts[skipIdx].Dst = dis.Imm(int32(len(fl.insts)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Truncate"):
+			dSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(dSlot), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Duration") && strings.Contains(name, "Round"):
+			dSlot := fl.materialize(instr.Call.Args[0])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.FP(dSlot), dis.FP(dstSlot)))
+			return true, nil
+
+		case strings.Contains(name, "Month") && strings.Contains(name, "String"):
+			dstSlot := fl.slotOf(instr)
+			sOff := fl.comp.AllocString("January")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dstSlot)))
+			return true, nil
+
+		case strings.Contains(name, "Ticker") && strings.Contains(name, "Stop"):
+			return true, nil // no-op
+		case strings.Contains(name, "Ticker") && strings.Contains(name, "Reset"):
+			return true, nil // no-op
+		case strings.Contains(name, "Timer") && strings.Contains(name, "Stop"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Timer") && strings.Contains(name, "Reset"):
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+
+		case strings.Contains(name, "Time") && strings.Contains(name, "Compare"):
+			// Time.Compare(u) int → -1/0/1 based on msec comparison
+			tSlot := fl.materialize(instr.Call.Args[0])
+			uSlot := fl.materialize(instr.Call.Args[1])
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			// if t < u → -1
+			bgeIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBGEW, dis.FP(tSlot), dis.FP(uSlot), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(-1), dis.FP(dstSlot)))
+			jmpEndIdx := len(fl.insts)
+			fl.emit(dis.Inst1(dis.IJMP, dis.Imm(0)))
+			gePC := int32(len(fl.insts))
+			fl.insts[bgeIdx].Dst = dis.Imm(gePC)
+			// if t > u → 1
+			bleIdx := len(fl.insts)
+			fl.emit(dis.NewInst(dis.IBGEW, dis.FP(uSlot), dis.FP(tSlot), dis.Imm(0)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			donePC := int32(len(fl.insts))
+			fl.insts[jmpEndIdx].Dst = dis.Imm(donePC)
+			fl.insts[bleIdx].Dst = dis.Imm(donePC)
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Clock"):
+			// Time.Clock() (hour, min, sec) → (0, 0, 0) stub
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+2*iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "YearDay"):
+			// Time.YearDay() int → 1 stub
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Zone"):
+			if strings.Contains(name, "ZoneBounds") {
+				// Time.ZoneBounds() (start, end Time) → (zero, zero) stub
+				dstSlot := fl.slotOf(instr)
+				iby2wd := int32(dis.IBY2WD)
+				fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+				fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+				return true, nil
+			}
+			// Time.Zone() (name, offset) → ("UTC", 0)
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			sOff := fl.comp.AllocString("UTC")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "IsDST"):
+			// Time.IsDST() bool → false
+			dstSlot := fl.slotOf(instr)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "GoString"):
+			// Time.GoString() string → "time.Date(...)"
+			dstSlot := fl.slotOf(instr)
+			sOff := fl.comp.AllocString("time.Date(1, time.January, 1, 0, 0, 0, 0, time.UTC)")
+			fl.emit(dis.Inst2(dis.IMOVP, dis.MP(sOff), dis.FP(dstSlot)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "MarshalBinary"):
+			// Time.MarshalBinary() ([]byte, error) → (nil, nil)
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Unmarshal"):
+			// Time.UnmarshalJSON/Text/Binary(data) → nil error
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "GobEncode"):
+			// Time.GobEncode() ([]byte, error) → (nil, nil)
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "GobDecode"):
+			// Time.GobDecode(data) → nil error
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			return true, nil
+		case strings.Contains(name, "Time") && strings.Contains(name, "Date") && !strings.Contains(name, "YearDay"):
+			// Time.Date() (year, month, day) → (0, 0, 0) stub
+			dstSlot := fl.slotOf(instr)
+			iby2wd := int32(dis.IBY2WD)
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+iby2wd)))
+			fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dstSlot+2*iby2wd)))
 			return true, nil
 		}
 	}
@@ -2907,6 +4479,88 @@ func (fl *funcLowerer) lowerSyncCall(instr *ssa.Call, callee *ssa.Function) (boo
 		}
 		skipPC := int32(len(fl.insts))
 		fl.insts[skipIdx].Dst = dis.Imm(skipPC)
+		return true, nil
+	case strings.Contains(name, "RLock"):
+		// RWMutex.RLock — no-op (cooperative)
+		return true, nil
+	case strings.Contains(name, "RUnlock"):
+		// RWMutex.RUnlock — no-op
+		return true, nil
+	case strings.Contains(name, "Store"):
+		// Map.Store(key, value) — no-op stub
+		return true, nil
+	case strings.Contains(name, "Load"):
+		// Map.Load(key) → (nil, false) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case strings.Contains(name, "Delete"):
+		// Map.Delete(key) — no-op
+		return true, nil
+	case strings.Contains(name, "Get"):
+		// Pool.Get() → nil stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case strings.Contains(name, "Put"):
+		// Pool.Put(x) — no-op
+		return true, nil
+	case strings.Contains(name, "LoadOrStore"):
+		// Map.LoadOrStore(key, value) → (value, false) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		valSlot := fl.materialize(instr.Call.Args[2])
+		fl.emit(dis.Inst2(dis.IMOVP, dis.FP(valSlot), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case strings.Contains(name, "LoadAndDelete"):
+		// Map.LoadAndDelete(key) → (nil, false) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case strings.Contains(name, "Range"):
+		// Map.Range(f) — no-op (empty map)
+		return true, nil
+	case strings.Contains(name, "Swap"):
+		// Map.Swap(key, value) → (nil, false) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case strings.Contains(name, "CompareAnd"):
+		// Map.CompareAndSwap/CompareAndDelete → false stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case strings.Contains(name, "TryLock") || strings.Contains(name, "TryRLock"):
+		// Mutex.TryLock / RWMutex.TryLock/TryRLock → true stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+	case strings.Contains(name, "RLocker"):
+		// RWMutex.RLocker() → return the receiver itself as a Locker interface
+		// Stub: return nil interface
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case strings.Contains(name, "NewCond"):
+		// sync.NewCond(l) → nil stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case strings.Contains(name, "Signal") || strings.Contains(name, "Broadcast"):
+		// Cond.Signal/Broadcast — no-op
+		return true, nil
+	case strings.Contains(name, "OnceFunc") || strings.Contains(name, "OnceValue"):
+		// sync.OnceFunc(f) → f (return the function itself)
+		fOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, fOp, dis.FP(dst)))
 		return true, nil
 	}
 	return false, nil
@@ -3081,6 +4735,52 @@ func (fl *funcLowerer) lowerSortCall(instr *ssa.Call, callee *ssa.Function) (boo
 		donePC := int32(len(fl.insts))
 		fl.insts[doneIdx].Dst = dis.Imm(donePC)
 		return true, nil
+
+	case "Float64s":
+		// sort.Float64s: no-op stub (would need float comparison)
+		return true, nil
+	case "Slice":
+		// sort.Slice: no-op stub (needs closure callback)
+		return true, nil
+	case "Search", "SearchInts", "SearchStrings":
+		// sort.Search/SearchInts/SearchStrings: return 0 (stub)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "SliceIsSorted":
+		// sort.SliceIsSorted: return true (stub)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+	case "Reverse":
+		// sort.Reverse(data) → return data
+		dOp := fl.operandOf(instr.Call.Args[0])
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVP, dOp, dis.FP(dst)))
+		return true, nil
+	case "SliceStable":
+		// sort.SliceStable: no-op stub (needs closure callback)
+		return true, nil
+	case "Sort", "Stable":
+		// sort.Sort/Stable: no-op stub (needs interface)
+		return true, nil
+	case "Find":
+		// sort.Find(n, cmp) → (0, false) stub
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "Float64sAreSorted", "StringsAreSorted", "IsSorted":
+		// Return true stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(1), dis.FP(dst)))
+		return true, nil
+	case "SearchFloat64s":
+		// Return 0 stub
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
 	}
 	return false, nil
 }
@@ -3104,6 +4804,59 @@ func (fl *funcLowerer) lowerLogCall(instr *ssa.Call, callee *ssa.Function) (bool
 		fl.lowerFmtPrintf(instr)
 		panicMP := fl.comp.AllocString("fatal")
 		fl.emit(dis.Inst{Op: dis.IRAISE, Src: dis.MP(panicMP), Mid: dis.NoOperand, Dst: dis.NoOperand})
+		return true, nil
+	case "Fatalln":
+		fl.lowerFmtPrintln(instr)
+		panicMP := fl.comp.AllocString("fatal")
+		fl.emit(dis.Inst{Op: dis.IRAISE, Src: dis.MP(panicMP), Mid: dis.NoOperand, Dst: dis.NoOperand})
+		return true, nil
+	case "Print":
+		return fl.lowerFmtPrint(instr)
+	case "Panic":
+		fl.lowerFmtPrintln(instr)
+		panicMP := fl.comp.AllocString("panic")
+		fl.emit(dis.Inst{Op: dis.IRAISE, Src: dis.MP(panicMP), Mid: dis.NoOperand, Dst: dis.NoOperand})
+		return true, nil
+	case "Panicln":
+		fl.lowerFmtPrintln(instr)
+		panicMP := fl.comp.AllocString("panic")
+		fl.emit(dis.Inst{Op: dis.IRAISE, Src: dis.MP(panicMP), Mid: dis.NoOperand, Dst: dis.NoOperand})
+		return true, nil
+	case "Panicf":
+		fl.lowerFmtPrintf(instr)
+		panicMP := fl.comp.AllocString("panic")
+		fl.emit(dis.Inst{Op: dis.IRAISE, Src: dis.MP(panicMP), Mid: dis.NoOperand, Dst: dis.NoOperand})
+		return true, nil
+	case "SetFlags", "SetPrefix", "SetOutput":
+		// no-op stubs
+		return true, nil
+	case "Flags":
+		// return 0
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Prefix":
+		// return ""
+		dst := fl.slotOf(instr)
+		emptyOff := fl.comp.AllocString("")
+		fl.emit(dis.Inst2(dis.IMOVP, dis.MP(emptyOff), dis.FP(dst)))
+		return true, nil
+	case "Writer":
+		// return nil writer
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		return true, nil
+	case "Output":
+		// log.Output(calldepth, s) → nil error
+		dst := fl.slotOf(instr)
+		iby2wd := int32(dis.IBY2WD)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+iby2wd)))
+		return true, nil
+	case "New", "Default":
+		// log.New() / log.Default() → returns nil logger (stub)
+		dst := fl.slotOf(instr)
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst)))
 		return true, nil
 	}
 	return false, nil

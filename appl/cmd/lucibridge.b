@@ -7,10 +7,12 @@ implement LuciBridge;
 # (blocking read), runs the Veltro agent loop (LLM + tools), and writes
 # responses and tool activity back to the UI as role=veltro messages.
 #
-# Usage: lucibridge [-v] [-n maxsteps] [-a actid]
+# Usage: lucibridge [-v] [-n maxsteps] [-a actid] [-t tools] [-p paths]
 #   -v            verbose logging
 #   -n steps      max agent steps per turn (default: 20)
 #   -a id         activity ID (default: 0)
+#   -t tools      comma-separated initial tool list (e.g. read,list,write)
+#   -p paths      comma-separated namespace paths to expose via /n/local/
 #
 # Prerequisites:
 #   - luciuisrv running (serves /n/ui/)
@@ -41,6 +43,7 @@ DEFAULT_MAX_STEPS: con 20;
 MAX_MAX_STEPS: con 100;
 
 verbose := 0;
+autospeak := 0;
 maxsteps := DEFAULT_MAX_STEPS;
 stderr: ref Sys->FD;
 
@@ -51,6 +54,16 @@ llmfd: ref Sys->FD;
 # Activity state
 actid := 0;
 convcount := 0;		# messages written to conversation by this bridge
+
+# Tool tracking: raw string from /tool/tools; updated when tool set changes
+currenttoolsraw := "";
+
+# Path tracking: raw string from /tool/paths; updated when path set changes
+currentpathsraw := "";
+
+# CLI overrides from -t/-p flags
+toolargs: list of string;	# from -t flag (comma-separated tool names)
+pathargs: list of string;	# from -p flag (comma-separated paths)
 
 BRIDGE_SUFFIX: con "\n\nYou are the AI assistant in a Lucifer activity. " +
 	"The user sends messages through the UI. " +
@@ -76,6 +89,25 @@ writefile(path, data: string): int
 		return -1;
 	b := array of byte data;
 	return sys->write(fd, b, len b);
+}
+
+# Speak text via speech9p (fire-and-forget, runs in spawned goroutine)
+speaktext(text: string)
+{
+	# Update context zone status
+	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+	writefile(ctxpath, "resource update path=speech status=active");
+
+	fd := sys->open("/n/speech/say", Sys->OWRITE);
+	if(fd == nil) {
+		log("speaktext: cannot open /n/speech/say");
+		writefile(ctxpath, "resource update path=speech status=idle");
+		return;
+	}
+	b := array of byte text;
+	sys->write(fd, b, len b);
+
+	writefile(ctxpath, "resource update path=speech status=idle");
 }
 
 # Read from a blocking fd, strip trailing newline
@@ -158,6 +190,12 @@ initsession(): string
 		}
 	}
 	agentlib->initsessiontools(sessionid, toollist);
+	if(agentlib->pathexists("/tool"))
+		currenttoolsraw = agentlib->readfile("/tool/tools");
+
+	# Bind any paths already registered in /tool/paths (e.g. from -p flag)
+	currentpathsraw = "";
+	applypathchanges();
 
 	# Register each available tool as a context resource so the context zone
 	# can display and track which tools the agent is using.
@@ -170,6 +208,13 @@ initsession(): string
 			nreg++;
 	}
 	log(sys->sprint("context: registered %d tools as resources", nreg));
+
+	# Register speech resource if speech9p is available
+	if(autospeak) {
+		ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+		writefile(ctxpath, "resource add path=speech label=Speech type=tool status=idle");
+		log("context: registered speech resource");
+	}
 
 	log(sys->sprint("session %s, prompt %d bytes", sessionid, len array of byte sysprompt));
 	return nil;
@@ -368,6 +413,175 @@ pathbase(path: string): string
 	return path;
 }
 
+# firstlines returns the first n newline-terminated lines of s.
+# Used to keep a preview of large tool results inline for the LLM.
+firstlines(s: string, n: int): string
+{
+	out := "";
+	count := 0;
+	for(i := 0; i < len s && count < n; i++) {
+		out[len out] = s[i];
+		if(s[i] == '\n')
+			count++;
+	}
+	return out;
+}
+
+# strcontains returns 1 if name is in the list l.
+strcontains(l: list of string, name: string): int
+{
+	for(; l != nil; l = tl l)
+		if(hd l == name)
+			return 1;
+	return 0;
+}
+
+# Sync the running tools9p to match the wanted list.
+# Adds/removes tools via /tool/ctl to reconcile current state.
+synctoolset(want: list of string)
+{
+	if(!agentlib->pathexists("/tool"))
+		return;
+	cur := agentlib->readfile("/tool/tools");
+	(nil, curtl) := sys->tokenize(cur, "\n");
+	for(w := want; w != nil; w = tl w)
+		if(!strcontains(curtl, hd w))
+			writefile("/tool/ctl", "add " + hd w);
+	for(c := curtl; c != nil; c = tl c)
+		if(!strcontains(want, hd c))
+			writefile("/tool/ctl", "remove " + hd c);
+}
+
+# Apply path changes from /tool/paths into lucibridge's namespace.
+# Diffs current /tool/paths against currentpathsraw; binds new paths,
+# unmounts removed paths.  Called at turn start and from initsession.
+applypathchanges()
+{
+	if(!agentlib->pathexists("/tool"))
+		return;
+	latest := agentlib->readfile("/tool/paths");
+	if(latest == currentpathsraw)
+		return;
+	(nil, newpaths) := sys->tokenize(latest, "\n");
+	(nil, oldpaths) := sys->tokenize(currentpathsraw, "\n");
+
+	# Bind newly added paths into lucibridge's namespace.
+	# Paths already under /n/local/ are accessible via the trfs OS mount —
+	# no rebind needed (and no writable target would exist anyway).
+	for(np := newpaths; np != nil; np = tl np) {
+		p := hd np;
+		if(p == "" || strcontains(oldpaths, p))
+			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/") {
+			log("path accessible: " + p);
+			continue;
+		}
+		base := pathbase(p);
+		if(base == nil || base == "")
+			base = "path";
+		tgt := "/n/local/" + base;
+		if(sys->bind(p, tgt, Sys->MBEFORE) < 0)
+			log("bindpath " + p + ": failed");
+		else
+			log("bound " + p + " -> " + tgt);
+	}
+
+	# Unmount removed paths (only those we actually bound, not /n/local/ pass-throughs)
+	for(op := oldpaths; op != nil; op = tl op) {
+		p := hd op;
+		if(p == "" || strcontains(newpaths, p))
+			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/")
+			continue;
+		base := pathbase(p);
+		if(base == nil || base == "")
+			base = "path";
+		tgt := "/n/local/" + base;
+		sys->unmount(nil, tgt);
+		log("unbound " + p);
+	}
+
+	currentpathsraw = latest;
+
+	# Refresh the system prompt so the LLM knows about the updated path set.
+	# (Mirrors the initsessiontools() call that fires when the tool set changes.)
+	if(sessionid != "") {
+		ns := agentlib->discovernamespace();
+		sysprompt := agentlib->buildsystemprompt(ns);
+		MAXWRITE: con 8000;
+		suffixbytes := array of byte BRIDGE_SUFFIX;
+		if(len array of byte sysprompt + len suffixbytes > MAXWRITE)
+			sysprompt = string (array of byte sysprompt)[0:MAXWRITE - len suffixbytes];
+		sysprompt += BRIDGE_SUFFIX;
+		systempath := "/n/llm/" + sessionid + "/system";
+		agentlib->setsystemprompt(systempath, sysprompt);
+		log("system prompt updated with new paths");
+	}
+}
+
+# Handle slash commands from the input channel.
+# Returns 1 if the command was handled (don't pass to agent), 0 otherwise.
+handleslash(cmd: string): int
+{
+	if(len cmd == 0 || cmd[0] != '/')
+		return 0;
+	rest := cmd[1:];
+	(verb, afterverb) := str->splitl(rest, " \t");
+	arg := str->drop(afterverb, " \t");
+	ack := "";
+	case verb {
+	"bind" =>
+		if(arg == "") {
+			ack = "usage: /bind <path>";
+		} else {
+			writefile("/tool/ctl", "bindpath " + arg);
+			ack = "bound: " + arg;
+		}
+	"unbind" =>
+		if(arg == "") {
+			ack = "usage: /unbind <path>";
+		} else {
+			writefile("/tool/ctl", "unbindpath " + arg);
+			ack = "unbound: " + arg;
+		}
+	"tools" =>
+		if(len arg == 0) {
+			ack = "usage: /tools +name or /tools -name";
+		} else if(arg[0] == '+') {
+			writefile("/tool/ctl", "add " + arg[1:]);
+			ack = "tool added: " + arg[1:];
+		} else if(arg[0] == '-') {
+			writefile("/tool/ctl", "remove " + arg[1:]);
+			ack = "tool removed: " + arg[1:];
+		} else {
+			ack = "usage: /tools +name or /tools -name";
+		}
+	"voice" =>
+		if(arg == "" || arg == "on") {
+			autospeak = 1;
+			ack = "voice: auto-speak enabled";
+		} else if(arg == "off") {
+			autospeak = 0;
+			ack = "voice: auto-speak disabled";
+		} else {
+			# Set voice name
+			writefile("/n/speech/ctl", "voice " + arg);
+			ack = "voice: set to " + arg;
+		}
+	"help" =>
+		ack = "/bind <path>  — add namespace path\n" +
+		      "/unbind <path>  — remove namespace path\n" +
+		      "/tools +name  — add tool\n" +
+		      "/tools -name  — remove tool\n" +
+		      "/voice on|off  — toggle auto-speak\n" +
+		      "/voice <name>  — change voice";
+	* =>
+		return 0;	# unknown slash: pass to agent
+	}
+	writemsg("assistant", ack);
+	return 1;
+}
+
 # Run the agent loop for one human turn using native tool_use protocol.
 # Each step starts async LLM generation. If /stream is available (new llm9p),
 # tokens are streamed into a live placeholder message. Otherwise (old llm9p,
@@ -376,10 +590,32 @@ pathbase(path: string): string
 # fires before nslistener re-issues its pending read.
 agentturn(input: string)
 {
+	# Apply any namespace path changes (via /tool/ctl bindpath/unbindpath).
+	applypathchanges();
+
+	# If the tool set changed (via /tool/ctl), reinitialize the LLM session tools
+	# so the LLM knows about added/removed tools before processing this turn.
+	if(agentlib->pathexists("/tool")) {
+		latest := agentlib->readfile("/tool/tools");
+		if(latest != nil && latest != currenttoolsraw) {
+			currenttoolsraw = latest;
+			(nil, tls) := sys->tokenize(latest, "\n");
+			newtoollist: list of string;
+			for(t := tls; t != nil; t = tl t) {
+				nm := str->tolower(hd t);
+				if(nm != "say")
+					newtoollist = hd t :: newtoollist;
+			}
+			agentlib->initsessiontools(sessionid, newtoollist);
+			log("tools updated: " + latest);
+		}
+	}
+
 	setstatus("working");
 	prompt := input;
 	streambase := "/n/llm/" + sessionid;
 
+	hitlimit := 1;
 	for(step := 0; step < maxsteps; step++) {
 		log(sys->sprint("step %d", step + 1));
 
@@ -453,8 +689,10 @@ agentturn(input: string)
 			writemsg("veltro", text);
 
 		# Plain text or end_turn: done.
-		if(stopreason != "tool_use" || tools == nil)
+		if(stopreason != "tool_use" || tools == nil) {
+			hitlimit = 0;
 			break;
+		}
 
 		# Execute tools, intercepting say locally.
 		results: list of (string, string);
@@ -501,9 +739,26 @@ agentturn(input: string)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
 				log("tool " + name + ": " + agentlib->truncate(result, 100));
 				if(len result > AgentLib->STREAM_THRESHOLD) {
-					scratch := agentlib->writescratch(result, step);
-					result = sys->sprint("(output written to %s, %d bytes)", scratch, len result);
-				}
+					# Never re-scratch reads of scratch files — creates an infinite loop
+					# where each read produces another scratch file of similar size.
+					isscratchread := nm == "read" &&
+						len eargs >= len AgentLib->SCRATCH_PATH &&
+						eargs[0:len AgentLib->SCRATCH_PATH] == AgentLib->SCRATCH_PATH;
+					if(isscratchread) {
+						# Truncate so LLM gets as much as possible inline.
+						result = result[0:AgentLib->STREAM_THRESHOLD] +
+							"\n... (truncated — content continues in " + eargs + ")";
+					} else {
+						scratch := agentlib->writescratch(result, step);
+						# Keep first 3 lines inline so LLM has examples to act on immediately.
+						# IMPORTANT: stay small — TOOL_RESULTS must fit in one 9P Write (~8KB).
+						# 3 lines x ~80 bytes x 20 parallel tools < 5KB, safely under msize.
+						preview := firstlines(result, 3);
+						result = preview +
+							sys->sprint("\n... (%d total bytes — full output at %s)",
+								len result, scratch);
+					}
+					}
 				results = (id, result) :: results;
 			}
 		}
@@ -516,6 +771,9 @@ agentturn(input: string)
 		prompt = agentlib->buildtoolresults(rev);
 	}
 
+	if(hitlimit)
+		writemsg("veltro", sys->sprint(
+			"(reached %d-step limit — send another message to continue)", maxsteps));
 	setstatus("idle");
 }
 
@@ -542,6 +800,8 @@ init(nil: ref Draw->Context, args: list of string)
 		case c {
 		'v' =>
 			verbose = 1;
+		's' =>
+			autospeak = 1;
 		'n' =>
 			s := arg->arg();
 			if(s == nil)
@@ -556,8 +816,19 @@ init(nil: ref Draw->Context, args: list of string)
 			if(s == nil)
 				fatal("-a requires activity ID");
 			(actid, nil) = str->toint(s, 10);
+		't' =>
+			s := arg->arg();
+			if(s == nil)
+				fatal("-t requires tool list");
+			(nil, toolargs) = sys->tokenize(s, ",");
+		'p' =>
+			s := arg->arg();
+			if(s == nil)
+				fatal("-p requires path list");
+			(nil, pathargs) = sys->tokenize(s, ",");
 		* =>
-			sys->fprint(stderr, "usage: lucibridge [-v] [-n maxsteps] [-a actid]\n");
+			sys->fprint(stderr,
+				"usage: lucibridge [-v] [-s] [-n maxsteps] [-a actid] [-t tools] [-p paths]\n");
 			raise "fail:usage";
 		}
 	}
@@ -575,6 +846,15 @@ init(nil: ref Draw->Context, args: list of string)
 		log("tools available at /tool");
 	else
 		log("no /tool mount — running in chat-only mode");
+
+	# Apply -t tool override: sync tools9p to the specified set
+	if(toolargs != nil)
+		synctoolset(toolargs);
+
+	# Apply -p path bindings: register in tools9p so applypathchanges() in
+	# initsession() picks them up, and lucictx can read them from /tool/paths.
+	for(pp := pathargs; pp != nil; pp = tl pp)
+		writefile("/tool/ctl", "bindpath " + hd pp);
 
 	# Create LLM session
 	err := initsession();
@@ -598,6 +878,11 @@ init(nil: ref Draw->Context, args: list of string)
 			break;
 		}
 		log("human: " + human);
+
+		# Slash commands (/bind, /unbind, /tools, /help) are handled locally.
+		# They update tools9p state and reply immediately; agent is not invoked.
+		if(handleslash(human))
+			continue;
 
 		# Record human message in UI
 		writemsg("human", human);

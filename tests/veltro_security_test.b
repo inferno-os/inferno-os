@@ -274,7 +274,8 @@ restrictNsWorker(result: chan of string)
 		0 :: 1 :: 2 :: nil,   # fds
 		nil,                  # mcproviders
 		0,                    # memory
-		0                     # xenith
+		0,                    # xenith
+		-1                    # actid
 	);
 
 	# Apply namespace restriction
@@ -349,7 +350,8 @@ shellWorker(result: chan of string)
 		0 :: 1 :: 2 :: nil,       # fds
 		nil,                      # mcproviders
 		0,                        # memory
-		0                         # xenith
+		0,                        # xenith
+		-1                        # actid
 	);
 
 	err := nsconstruct->restrictns(caps);
@@ -417,7 +419,8 @@ raceWorker(done: chan of int, errors: chan of string)
 		0 :: 1 :: 2 :: nil,
 		nil,
 		0,
-		0
+		0,
+		-1
 	);
 
 	err := nsconstruct->restrictns(caps);
@@ -449,7 +452,7 @@ verifyNsWorker(result: chan of string)
 	caps := ref NsConstruct->Capabilities(
 		nil, nil, nil, nil,
 		0 :: 1 :: 2 :: nil,
-		nil, 0, 0
+		nil, 0, 0, -1
 	);
 
 	err := nsconstruct->restrictns(caps);
@@ -582,7 +585,7 @@ tmpWritableWorker(result: chan of string)
 		"write" :: nil,
 		nil, nil, nil,
 		0 :: 1 :: 2 :: nil,
-		nil, 0, 0
+		nil, 0, 0, -1
 	);
 
 	err := nsconstruct->restrictns(caps);
@@ -634,7 +637,7 @@ execGrantsShDisWorker(result: chan of string)
 		"read" :: "exec" :: nil,
 		nil, nil, nil,
 		0 :: 1 :: 2 :: nil,
-		nil, 0, 0
+		nil, 0, 0, -1
 	);
 
 	err := nsconstruct->restrictns(caps);
@@ -704,7 +707,7 @@ pathsExposureWorker(result: chan of string)
 		grantpath :: nil,
 		nil, nil,
 		0 :: 1 :: 2 :: nil,
-		nil, 0, 0
+		nil, 0, 0, -1
 	);
 
 	err := nsconstruct->restrictns(caps);

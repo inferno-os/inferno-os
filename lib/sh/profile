@@ -40,7 +40,11 @@ if {~ $emuhost MacOSX Linux}{
 	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
 	home=$ghome
 }{
-	# Windows (Nt) and other systems
+	# Fallback to /usr/username for other systems.
+	# TODO(windows): Nt emu users need 'trfs ''#U*'' /n/local' here to
+	# expose the host filesystem for GUI file-browser path binding.
+	# The '#U' device on the Nt emu port is untested; drive letters may
+	# appear as /n/local/C:/ etc.  Investigate before enabling.
 	home=/usr/^$user
 	if {! ftest -d $home} {
 		mkdir -p $home

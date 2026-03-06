@@ -1,0 +1,30 @@
+luciedit - AI control for the Luciedit text editor
+
+Usage:
+  read [body]              Read document body text
+  read addr                Read cursor position (line col)
+  write <text>             Replace entire document body
+  append <text>            Append text to body
+  save                     Save current file
+  open <path>              Open file in editor
+  goto <line>              Move cursor to line number
+  find <string>            Search for text in document
+  addr                     Get cursor position (line col)
+  insert <ln> <col> <text> Insert text at position
+  delete <sl> <sc> <el> <ec>  Delete text range
+  name <path>              Set file path without loading
+  close                    Close editor
+  status                   Show document info (id, path, dirty)
+
+The editor must be running. Use 'launch luciedit' to start it.
+
+Examples:
+  luciedit open /usr/me/file.b    Open a file
+  luciedit read                   Read the document body
+  luciedit write Hello world      Replace body with text
+  luciedit goto 42                Jump to line 42
+  luciedit find TODO              Search for TODO
+  luciedit save                   Save to disk
+  luciedit addr                   Show cursor position
+  luciedit insert 5 1 new line    Insert at line 5 col 1
+  luciedit status                 Show doc info

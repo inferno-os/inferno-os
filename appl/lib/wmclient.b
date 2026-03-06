@@ -8,11 +8,17 @@ include "wmlib.m";
 	wmlib: Wmlib;
 	qword, splitqword, s2r: import wmlib;
 include "wmclient.m";
+include "lucitheme.m";
 
 Focusnone, Focusimage, Focustitle: con iota;
 
 Bdup: con int 16rffffffff;
 Bddown: con int 16radadadff;
+
+# Colours loaded from theme; defaults kept as fallback
+bdfocused:   int = int 16r448888ff;
+bdunfocused: int = int 16r1a1a1aff;
+screenbg:    int = int 16r000000ff;	# screen fill shown between windows
 
 init()
 {
@@ -24,6 +30,14 @@ init()
 		raise "fail:bad module";
 	}
 	wmlib->init();
+
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bdfocused   = th.accent;
+		bdunfocused = th.border;
+		screenbg    = th.bg;
+	}
 }
 
 makedrawcontext(): ref Draw->Context
@@ -101,7 +115,7 @@ putimage(w: ref Window, i: ref Image)
 	if(w.screen != nil && i == w.screen.image)
 		return;
 #	display := w.ctxt.ctxt.display;
-	w.screen = Screen.allocate(i, w.display.color(Draw->White), 0);
+	w.screen = Screen.allocate(i, w.display.color(screenbg), 0);
 	ir := i.r.inset(w.bd);
 	if(ir.dx() < 0)
 		ir.max.x = ir.min.x;
@@ -139,9 +153,9 @@ drawborder(w: ref Window)
 	if(w.screen == nil)
 		return;
 	if(w.focused)
-		col := w.display.color(int 16r448888ff);
+		col := w.display.color(bdfocused);
 	else
-		col = w.display.color(int 16r9eeeeeff);
+		col = w.display.color(bdunfocused);
 	i := w.screen.image;
 	r := w.screen.image.r;
 	i.draw((r.min, (r.min.x+w.bd, r.max.y)), col, nil, (0, 0));
