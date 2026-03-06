@@ -3,3 +3,13 @@ Inferno shell differences from POSIX:
 - No && operator - use semicolon or separate commands
 - for loops: for i in $list { cmd } not for i in $list; do cmd; done
 - Variables: $var not ${var}
+
+exec tool — Inferno programs ONLY:
+- Standard Unix commands DO NOT EXIST in the agent namespace:
+  cat, ls, echo, head, tail, wc, awk, sed, grep, find, sort, cut, tr, xargs
+- These ALL fail with "file does not exist" — do NOT attempt them via exec
+- Use dedicated tools instead:
+  read, write, edit → file I/O (replaces cat/head/tail/echo)
+  list              → directory listing (replaces ls)
+  find, grep, search → searching (replaces find/grep)
+- exec is for launching Inferno programs: /dis/wm/*, /dis/bind, etc.

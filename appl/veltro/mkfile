@@ -43,6 +43,7 @@ TOOLS=\
     tools/mail.dis\
     tools/browse.dis\
     tools/gpu.dis\
+    tools/vision.dis\
 
 all:V: $MAIN $TOOLS
 
@@ -157,6 +158,10 @@ tools/browse.dis: tools/browse.b tool.m
 # GPU tool
 tools/gpu.dis: tools/gpu.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/gpu.dis tools/gpu.b
+
+# Vision tool
+tools/vision.dis: tools/vision.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/vision.dis tools/vision.b
 
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools

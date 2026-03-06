@@ -408,7 +408,7 @@ isdirtimeout(path: string, ms: int): int
 {
 	rc := chan[1] of int;
 	spawn statcheck(path, rc);
-	tc := chan of int;
+	tc := chan[1] of int;
 	spawn sleeptimer(tc, ms);
 	alt {
 		v := <-rc =>
@@ -433,7 +433,7 @@ opentimeout(path: string, mode: int, ms: int): ref Sys->FD
 {
 	rc := chan[1] of ref Sys->FD;
 	spawn tryopen(path, mode, rc);
-	tc := chan of int;
+	tc := chan[1] of int;
 	spawn sleeptimer(tc, ms);
 	alt {
 		fd := <-rc =>

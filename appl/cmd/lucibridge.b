@@ -413,6 +413,20 @@ pathbase(path: string): string
 	return path;
 }
 
+# firstlines returns the first n newline-terminated lines of s.
+# Used to keep a preview of large tool results inline for the LLM.
+firstlines(s: string, n: int): string
+{
+	out := "";
+	count := 0;
+	for(i := 0; i < len s && count < n; i++) {
+		out[len out] = s[i];
+		if(s[i] == '\n')
+			count++;
+	}
+	return out;
+}
+
 # strcontains returns 1 if name is in the list l.
 strcontains(l: list of string, name: string): int
 {
@@ -451,11 +465,17 @@ applypathchanges()
 	(nil, newpaths) := sys->tokenize(latest, "\n");
 	(nil, oldpaths) := sys->tokenize(currentpathsraw, "\n");
 
-	# Bind newly added paths
+	# Bind newly added paths into lucibridge's namespace.
+	# Paths already under /n/local/ are accessible via the trfs OS mount —
+	# no rebind needed (and no writable target would exist anyway).
 	for(np := newpaths; np != nil; np = tl np) {
 		p := hd np;
 		if(p == "" || strcontains(oldpaths, p))
 			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/") {
+			log("path accessible: " + p);
+			continue;
+		}
 		base := pathbase(p);
 		if(base == nil || base == "")
 			base = "path";
@@ -466,10 +486,12 @@ applypathchanges()
 			log("bound " + p + " -> " + tgt);
 	}
 
-	# Unmount removed paths
+	# Unmount removed paths (only those we actually bound, not /n/local/ pass-throughs)
 	for(op := oldpaths; op != nil; op = tl op) {
 		p := hd op;
 		if(p == "" || strcontains(newpaths, p))
+			continue;
+		if(len p >= 9 && p[0:9] == "/n/local/")
 			continue;
 		base := pathbase(p);
 		if(base == nil || base == "")
@@ -480,6 +502,21 @@ applypathchanges()
 	}
 
 	currentpathsraw = latest;
+
+	# Refresh the system prompt so the LLM knows about the updated path set.
+	# (Mirrors the initsessiontools() call that fires when the tool set changes.)
+	if(sessionid != "") {
+		ns := agentlib->discovernamespace();
+		sysprompt := agentlib->buildsystemprompt(ns);
+		MAXWRITE: con 8000;
+		suffixbytes := array of byte BRIDGE_SUFFIX;
+		if(len array of byte sysprompt + len suffixbytes > MAXWRITE)
+			sysprompt = string (array of byte sysprompt)[0:MAXWRITE - len suffixbytes];
+		sysprompt += BRIDGE_SUFFIX;
+		systempath := "/n/llm/" + sessionid + "/system";
+		agentlib->setsystemprompt(systempath, sysprompt);
+		log("system prompt updated with new paths");
+	}
 }
 
 # Handle slash commands from the input channel.
@@ -578,6 +615,7 @@ agentturn(input: string)
 	prompt := input;
 	streambase := "/n/llm/" + sessionid;
 
+	hitlimit := 1;
 	for(step := 0; step < maxsteps; step++) {
 		log(sys->sprint("step %d", step + 1));
 
@@ -652,9 +690,7 @@ agentturn(input: string)
 
 		# Plain text or end_turn: done.
 		if(stopreason != "tool_use" || tools == nil) {
-			# Auto-speak the final response if enabled
-			if(autospeak && text != "")
-				spawn speaktext(text);
+			hitlimit = 0;
 			break;
 		}
 
@@ -703,9 +739,26 @@ agentturn(input: string)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
 				log("tool " + name + ": " + agentlib->truncate(result, 100));
 				if(len result > AgentLib->STREAM_THRESHOLD) {
-					scratch := agentlib->writescratch(result, step);
-					result = sys->sprint("(output written to %s, %d bytes)", scratch, len result);
-				}
+					# Never re-scratch reads of scratch files — creates an infinite loop
+					# where each read produces another scratch file of similar size.
+					isscratchread := nm == "read" &&
+						len eargs >= len AgentLib->SCRATCH_PATH &&
+						eargs[0:len AgentLib->SCRATCH_PATH] == AgentLib->SCRATCH_PATH;
+					if(isscratchread) {
+						# Truncate so LLM gets as much as possible inline.
+						result = result[0:AgentLib->STREAM_THRESHOLD] +
+							"\n... (truncated — content continues in " + eargs + ")";
+					} else {
+						scratch := agentlib->writescratch(result, step);
+						# Keep first 3 lines inline so LLM has examples to act on immediately.
+						# IMPORTANT: stay small — TOOL_RESULTS must fit in one 9P Write (~8KB).
+						# 3 lines x ~80 bytes x 20 parallel tools < 5KB, safely under msize.
+						preview := firstlines(result, 3);
+						result = preview +
+							sys->sprint("\n... (%d total bytes — full output at %s)",
+								len result, scratch);
+					}
+					}
 				results = (id, result) :: results;
 			}
 		}
@@ -718,6 +771,9 @@ agentturn(input: string)
 		prompt = agentlib->buildtoolresults(rev);
 	}
 
+	if(hitlimit)
+		writemsg("veltro", sys->sprint(
+			"(reached %d-step limit — send another message to continue)", maxsteps));
 	setstatus("idle");
 }
 
