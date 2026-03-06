@@ -43,6 +43,7 @@ DEFAULT_MAX_STEPS: con 20;
 MAX_MAX_STEPS: con 100;
 
 verbose := 0;
+autospeak := 0;
 maxsteps := DEFAULT_MAX_STEPS;
 stderr: ref Sys->FD;
 
@@ -88,6 +89,25 @@ writefile(path, data: string): int
 		return -1;
 	b := array of byte data;
 	return sys->write(fd, b, len b);
+}
+
+# Speak text via speech9p (fire-and-forget, runs in spawned goroutine)
+speaktext(text: string)
+{
+	# Update context zone status
+	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+	writefile(ctxpath, "resource update path=speech status=active");
+
+	fd := sys->open("/n/speech/say", Sys->OWRITE);
+	if(fd == nil) {
+		log("speaktext: cannot open /n/speech/say");
+		writefile(ctxpath, "resource update path=speech status=idle");
+		return;
+	}
+	b := array of byte text;
+	sys->write(fd, b, len b);
+
+	writefile(ctxpath, "resource update path=speech status=idle");
 }
 
 # Read from a blocking fd, strip trailing newline
@@ -188,6 +208,13 @@ initsession(): string
 			nreg++;
 	}
 	log(sys->sprint("context: registered %d tools as resources", nreg));
+
+	# Register speech resource if speech9p is available
+	if(autospeak) {
+		ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+		writefile(ctxpath, "resource add path=speech label=Speech type=tool status=idle");
+		log("context: registered speech resource");
+	}
 
 	log(sys->sprint("session %s, prompt %d bytes", sessionid, len array of byte sysprompt));
 	return nil;
@@ -492,11 +519,25 @@ handleslash(cmd: string): int
 		} else {
 			ack = "usage: /tools +name or /tools -name";
 		}
+	"voice" =>
+		if(arg == "" || arg == "on") {
+			autospeak = 1;
+			ack = "voice: auto-speak enabled";
+		} else if(arg == "off") {
+			autospeak = 0;
+			ack = "voice: auto-speak disabled";
+		} else {
+			# Set voice name
+			writefile("/n/speech/ctl", "voice " + arg);
+			ack = "voice: set to " + arg;
+		}
 	"help" =>
 		ack = "/bind <path>  — add namespace path\n" +
 		      "/unbind <path>  — remove namespace path\n" +
 		      "/tools +name  — add tool\n" +
-		      "/tools -name  — remove tool";
+		      "/tools -name  — remove tool\n" +
+		      "/voice on|off  — toggle auto-speak\n" +
+		      "/voice <name>  — change voice";
 	* =>
 		return 0;	# unknown slash: pass to agent
 	}
@@ -610,8 +651,12 @@ agentturn(input: string)
 			writemsg("veltro", text);
 
 		# Plain text or end_turn: done.
-		if(stopreason != "tool_use" || tools == nil)
+		if(stopreason != "tool_use" || tools == nil) {
+			# Auto-speak the final response if enabled
+			if(autospeak && text != "")
+				spawn speaktext(text);
 			break;
+		}
 
 		# Execute tools, intercepting say locally.
 		results: list of (string, string);
@@ -699,6 +744,8 @@ init(nil: ref Draw->Context, args: list of string)
 		case c {
 		'v' =>
 			verbose = 1;
+		's' =>
+			autospeak = 1;
 		'n' =>
 			s := arg->arg();
 			if(s == nil)
@@ -725,7 +772,7 @@ init(nil: ref Draw->Context, args: list of string)
 			(nil, pathargs) = sys->tokenize(s, ",");
 		* =>
 			sys->fprint(stderr,
-				"usage: lucibridge [-v] [-n maxsteps] [-a actid] [-t tools] [-p paths]\n");
+				"usage: lucibridge [-v] [-s] [-n maxsteps] [-a actid] [-t tools] [-p paths]\n");
 			raise "fail:usage";
 		}
 	}
