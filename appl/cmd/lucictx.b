@@ -127,17 +127,11 @@ availhdrrect: Rect;
 toolsechdrrect: Rect;
 toolavailhdrrect: Rect;
 
-# Catalog button rects (populated by drawcontext each frame)
-plusrects: array of Rect;
-nplusrects := 0;
-minusrects: array of Rect;
-nminusrects := 0;
+# Catalog entry rects (populated by drawcontext each frame)
 ctxentryrects: array of Rect;
 nctxentryrects := 0;
 
 # Tool section rects
-toolminusrects: array of Rect;
-ntoolminusrects := 0;
 toolplusrects: array of Rect;
 ntoolplusrects := 0;
 toolentryrects: array of Rect;
@@ -275,10 +269,10 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				redrawctx();
 			}
 
-			# Active tool [-] click
+			# Active tool click — remove on left-click anywhere on entry row
 			if(!tabclicked && toolsec_expanded) {
-				for(pi := 0; pi < ntoolminusrects; pi++) {
-					if(toolminusrects[pi].contains(p.xy)) {
+				for(pi := 0; pi < ntoolentryrects; pi++) {
+					if(toolentryrects[pi].contains(p.xy)) {
 						tidx := 0;
 						for(tp := activetoolset; tp != nil; tp = tl tp) {
 							if(tidx == pi) {
@@ -293,7 +287,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 
-			# Available tool [+] click
+			# Available tool click — add on left-click anywhere on entry row
 			if(!tabclicked && toolsec_expanded && toolavail_expanded) {
 				for(pi := 0; pi < ntoolplusrects; pi++) {
 					if(toolplusrects[pi].contains(p.xy)) {
@@ -341,7 +335,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				redrawctx();
 			}
 
-			# Pinned path [-] click
+			# Pinned path click — unbind
 			if(!tabclicked && avail_expanded) {
 				for(pi := 0; pi < npinnedminusrects; pi++) {
 					if(pinnedminusrects[pi].contains(p.xy)) {
@@ -359,49 +353,29 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 
-			# [+] button: mount catalog entry
+			# Catalog entry click — toggle mount/unmount
 			if(!tabclicked && avail_expanded) {
-				for(pi := 0; pi < nplusrects; pi++) {
-					if(plusrects[pi].contains(p.xy)) {
-						j := 0;
+				for(pi := 0; pi < nctxentryrects; pi++) {
+					if(ctxentryrects[pi].contains(p.xy)) {
+						k := 0;
 						for(cl := catalog; cl != nil; cl = tl cl) {
-							ce := hd cl;
-							if(ce.mntpath == "") {
-								if(j == pi) {
+							if(k == pi) {
+								ce := hd cl;
+								if(ce.mntpath == "")
 									mountresource(ce);
-									tabclicked = 1;
-									break;
-								}
-								j++;
-							}
-						}
-						break;
-					}
-				}
-			}
-
-			# [-] button: unmount catalog entry
-			if(!tabclicked && avail_expanded) {
-				for(pi := 0; pi < nminusrects; pi++) {
-					if(minusrects[pi].contains(p.xy)) {
-						j := 0;
-						for(cl := catalog; cl != nil; cl = tl cl) {
-							ce := hd cl;
-							if(ce.mntpath != "") {
-								if(j == pi) {
+								else
 									unmountresource(ce);
-									tabclicked = 1;
-									break;
-								}
-								j++;
+								tabclicked = 1;
+								break;
 							}
+							k++;
 						}
 						break;
 					}
 				}
 			}
 
-			# [-] button: unmount from Mounted subsection (catalog entries)
+			# Mounted catalog entry click — unmount
 			if(!tabclicked && avail_expanded) {
 				for(pi := 0; pi < ncatmountedminusrects; pi++) {
 					if(catmountedminusrects[pi].contains(p.xy)) {
@@ -500,6 +474,53 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 					}
 					prevbuttons = 0;
 					break;
+				}
+			}
+
+			# Pinned path right-click — unmount
+			if(avail_expanded) {
+				for(ppi := 0; ppi < npinnedminusrects; ppi++) {
+					if(pinnedminusrects[ppi].contains(p.xy)) {
+						if(menumod != nil) {
+							pitems := array[] of {"Remove"};
+							ppop := menumod->new(pitems);
+							pres := ppop.show(mainwin, p.xy, mouse);
+							if(pres == 0) {
+								ppidx2 := 0;
+								for(pp3 := pinnedpaths; pp3 != nil; pp3 = tl pp3) {
+									if(ppidx2 == ppi) {
+										unbindpath(hd pp3);
+										break;
+									}
+									ppidx2++;
+								}
+							}
+							redrawctx();
+						}
+						prevbuttons = 0;
+						break;
+					}
+				}
+			}
+
+			# Mounted catalog entry right-click — unmount
+			if(avail_expanded) {
+				for(mci := 0; mci < ncatmountedminusrects; mci++) {
+					if(catmountedminusrects[mci].contains(p.xy)) {
+						if(menumod != nil) {
+							mitems := array[] of {"Remove"};
+							mpop := menumod->new(mitems);
+							mres := mpop.show(mainwin, p.xy, mouse);
+							if(mres == 0) {
+								if(catmountedces != nil && mci < len catmountedces &&
+										catmountedces[mci] != nil)
+									unmountresource(catmountedces[mci]);
+							}
+							redrawctx();
+						}
+						prevbuttons = 0;
+						break;
+					}
 				}
 			}
 
@@ -603,14 +624,11 @@ drawcontext(zone: Rect)
 	indh := 10;
 	now := sys->millisec();
 
-	# Reset button rects and counters at start of each frame
+	# Reset entry rects and counters at start of each frame
 	ngapmenurects = 0;
-	ntoolminusrects = 0;
 	ntoolplusrects = 0;
 	ntoolentryrects = 0;
 	nctxentryrects = 0;
-	nplusrects = 0;
-	nminusrects = 0;
 	npinnedminusrects = 0;
 	ncatmountedminusrects = 0;
 	toolavailhdrrect = Rect((0, 0), (0, 0));
@@ -673,8 +691,6 @@ drawcontext(zone: Rect)
 		y += mainfont.height + 4;
 
 		if(toolsec_expanded) {
-			minusw := mainfont.width("[-]");
-			toolminusrects = array[64] of Rect;
 			toolentryrects = array[64] of Rect;
 
 			for(tp := activetoolset; tp != nil; tp = tl tp) {
@@ -708,12 +724,6 @@ drawcontext(zone: Rect)
 					indcol2, nil, (0, 0));
 				mainwin.text((zone.min.x + pad + indw + 6, y),
 					text2col, (0, 0), mainfont, tname);
-				mainwin.text((zone.max.x - pad - minusw, y),
-					dimcol, (0, 0), mainfont, "[-]");
-				if(ntoolminusrects < len toolminusrects)
-					toolminusrects[ntoolminusrects++] = Rect(
-						(zone.max.x - pad - minusw - 1, y),
-						(zone.max.x - pad + 1, y + mainfont.height));
 				y += mainfont.height + 2;
 			}
 
@@ -728,7 +738,6 @@ drawcontext(zone: Rect)
 				y += mainfont.height + 2;
 
 				if(toolavail_expanded) {
-					plusw2 := mainfont.width("[+]");
 					toolplusrects = array[64] of Rect;
 
 					for(kp := knowntoolnames; kp != nil; kp = tl kp) {
@@ -744,12 +753,10 @@ drawcontext(zone: Rect)
 
 						mainwin.text((zone.min.x + pad + 12, y), dimcol, (0, 0),
 							mainfont, "○ " + kname);
-						mainwin.text((zone.max.x - pad - plusw2, y), dimcol, (0, 0),
-							mainfont, "[+]");
 						if(ntoolplusrects < len toolplusrects)
 							toolplusrects[ntoolplusrects++] = Rect(
-								(zone.max.x - pad - plusw2 - 1, y),
-								(zone.max.x - pad + 1, y + mainfont.height));
+								(zone.min.x, y),
+								(zone.max.x, y + mainfont.height));
 						y += mainfont.height + 2;
 					}
 				}
@@ -842,8 +849,6 @@ drawcontext(zone: Rect)
 		y += mainfont.height + 4;
 
 		if(avail_expanded) {
-			pminusw := mainfont.width("[-]");
-
 			# ─ Mounted ─ subsection: pinned paths + mounted catalog entries
 			hasmounted := pinnedpaths != nil;
 			if(!hasmounted) {
@@ -863,12 +868,10 @@ drawcontext(zone: Rect)
 							break;
 						mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
 							"● " + ppath.label);
-						mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
-							mainfont, "[-]");
 						if(npinnedminusrects < len pinnedminusrects)
 							pinnedminusrects[npinnedminusrects++] = Rect(
-								(zone.max.x - pad - pminusw - 1, y),
-								(zone.max.x - pad + 1, y + mainfont.height));
+								(zone.min.x, y),
+								(zone.max.x, y + mainfont.height));
 						y += mainfont.height + 2;
 					}
 				}
@@ -884,12 +887,10 @@ drawcontext(zone: Rect)
 						break;
 					mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
 						"● " + mce.name);
-					mainwin.text((zone.max.x - pad - pminusw, y), dimcol, (0, 0),
-						mainfont, "[-]");
 					if(ncatmountedminusrects < len catmountedminusrects) {
 						catmountedminusrects[ncatmountedminusrects] = Rect(
-							(zone.max.x - pad - pminusw - 1, y),
-							(zone.max.x - pad + 1, y + mainfont.height));
+							(zone.min.x, y),
+							(zone.max.x, y + mainfont.height));
 						catmountedces[ncatmountedminusrects] = mce;
 						ncatmountedminusrects++;
 					}
@@ -908,10 +909,6 @@ drawcontext(zone: Rect)
 			# Catalog entries (all: mounted ● and unmounted ○)
 			if(catalog != nil) {
 				glyphw := mainfont.width("○ ");
-				cplusw := mainfont.width("[+]");
-				cminusw := mainfont.width("[-]");
-				plusrects = array[32] of Rect;
-				minusrects = array[32] of Rect;
 				ctxentryrects = array[32] of Rect;
 
 				if(y + mainfont.height <= zone.max.y) {
@@ -934,19 +931,6 @@ drawcontext(zone: Rect)
 					}
 					mainwin.text((zone.min.x + pad, y), cgcol, (0, 0), mainfont, cglyph);
 					mainwin.text((zone.min.x + pad + glyphw, y), text2col, (0, 0), mainfont, ce.name);
-					if(ce.mntpath == "") {
-						mainwin.text((zone.max.x - pad - cplusw, y), dimcol, (0, 0), mainfont, "[+]");
-						if(nplusrects < len plusrects)
-							plusrects[nplusrects++] = Rect(
-								(zone.max.x - pad - cplusw - 1, y),
-								(zone.max.x - pad + 1, y + mainfont.height));
-					} else {
-						mainwin.text((zone.max.x - pad - cminusw, y), dimcol, (0, 0), mainfont, "[-]");
-						if(nminusrects < len minusrects)
-							minusrects[nminusrects++] = Rect(
-								(zone.max.x - pad - cminusw - 1, y),
-								(zone.max.x - pad + 1, y + mainfont.height));
-					}
 					y += mainfont.height + 2;
 				}
 			}
@@ -977,14 +961,18 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 
 	mainwin.draw(zone, bgcol, nil, (0, 0));
 
-	# Header row: [up]  <path>  [bind] [close]
-	backw   := mainfont.width("[up]");
-	cancelw := mainfont.width("[close]");
-	bindw   := mainfont.width("[bind]");
+	# Header row: ↑  <path>  Bind ✕
+	# Nerd Font icons: U+EAA1 (cod-arrow_up), U+EB15 (cod-link), U+EA76 (cod-close)
+	upicon   := "\uEAA1";
+	bindlbl  := "\uEB15 Bind";
+	closeicon := "\uEA76";
+	backw   := mainfont.width(upicon);
+	cancelw := mainfont.width(closeicon);
+	bindw   := mainfont.width(bindlbl);
 
 	brow_backrect = Rect((zone.min.x + pad, y),
 		(zone.min.x + pad + backw, y + lineH));
-	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, "[up]");
+	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, upicon);
 
 	# Path — truncate from left if too wide
 	pathx   := zone.min.x + pad + backw + 6;
@@ -998,12 +986,12 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 		(zone.max.x - pad - cancelw - 6 - bindw, y),
 		(zone.max.x - pad - cancelw - 6, y + lineH));
 	mainwin.text((zone.max.x - pad - cancelw - 6 - bindw, y),
-		greencol, (0, 0), mainfont, "[bind]");
+		greencol, (0, 0), mainfont, bindlbl);
 
 	brow_cancelrect = Rect(
 		(zone.max.x - pad - cancelw, y),
 		(zone.max.x - pad, y + lineH));
-	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, "[close]");
+	mainwin.text((zone.max.x - pad - cancelw, y), redcol, (0, 0), mainfont, closeicon);
 
 	y += lineH + 2;
 	mainwin.draw(Rect((zone.min.x + pad, y), (zone.max.x - pad, y + 1)), dimcol, nil, (0, 0));
