@@ -183,7 +183,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	nhist = 0;
 	histpos = -1;
 
-	outputch = chan of string;
+	outputch = chan[32] of string;
 	eventch = chan of string;
 	sendbyteschan = chan of array of byte;
 
@@ -373,6 +373,31 @@ startshell()
 	if(consctlio != nil) {
 		if(sys->bind("/chan/consctl", "/dev/consctl", Sys->MREPL) < 0)
 			sys->fprint(stderr, "lucishell: bind consctl: %r\n");
+	}
+
+	# Fork the fd table so our redirections below do not affect the main
+	# lucishell goroutine (which still needs its original stdin/stdout/stderr).
+	sys->pctl(Sys->FORKFD, nil);
+
+	# Redirect stdin, stdout, and stderr to our synthetic /dev/cons.
+	#
+	# The shell (sh.dis) reads from sys->fildes(0) (inherited fd 0) and writes
+	# prompts to stderr (fd 2).  Without this step, those fds still point to
+	# lucifer's original stdin/stderr — the shell gets EOF on stdin and its
+	# prompts go nowhere visible.  isconsole() also fails (fd0 qid ≠ /dev/cons
+	# qid) so the shell runs non-interactively and exits on first EOF.
+	#
+	# After pctl(FORKFD) + dup:
+	#   fd 0/1/2 in this goroutine (and any it spawns) = synthetic cons
+	#   isconsole(fd0): fstat(fd0).qid == stat("/dev/cons").qid  → interactive
+	#   Shell reads input from consserver via consio.read
+	#   Shell writes output/prompts via consio.write → outputch → display
+	newcons := sys->open("/dev/cons", Sys->ORDWR);
+	if(newcons != nil) {
+		sys->dup(newcons.fd, 0);	# stdin  → synthetic cons
+		sys->dup(newcons.fd, 1);	# stdout → synthetic cons
+		sys->dup(newcons.fd, 2);	# stderr → synthetic cons (prompts go here)
+		newcons = nil;
 	}
 
 	# Start the file server for cons reads/writes
@@ -778,7 +803,7 @@ scrolltobottom()
 		topline = 0;
 		return;
 	}
-	total := nlines + 1;	# +1 for input line
+	total := nlines;	# nlines-1 transcript lines + 1 input line
 	topline = total - vislines;
 	if(topline < 0)
 		topline = 0;
@@ -789,7 +814,7 @@ scrolltobottom()
 
 getlineat(row: int): string
 {
-	if(row < nlines)
+	if(row < nlines - 1)
 		return lines[row];
 	return promptstr + inputbuf;
 }
@@ -808,7 +833,7 @@ pos2cursor(p: Point): (int, int)
 		clickrow = vy / font.height;
 
 	row := clickrow + topline;
-	total := nlines + 1;
+	total := nlines;
 	if(row >= total)
 		row = total - 1;
 	if(row < 0)
@@ -850,7 +875,7 @@ getseltext(): string
 	(sl, sc, el, ec) := getsel();
 	if(!selactive)
 		return "";
-	total := nlines + 1;
+	total := nlines;
 	if(sl == el) {
 		line := getlineat(sl);
 		if(sc > len line) sc = len line;
@@ -920,8 +945,8 @@ redraw()
 	y := textr.min.y;
 	vrow := 0;
 
-	# Draw transcript lines
-	for(i := topline; i < nlines && vrow < maxvrows; i++) {
+	# Draw transcript lines (all but the current partial line at lines[nlines-1])
+	for(i := topline; i < nlines - 1 && vrow < maxvrows; i++) {
 		if(i < 0) continue;
 		if(selactive)
 			drawselection(screen, i, textr.min.x, y);
@@ -934,7 +959,7 @@ redraw()
 	# Draw input line (prompt + inputbuf)
 	if(vrow < maxvrows) {
 		if(selactive)
-			drawselection(screen, nlines, textr.min.x, y);
+			drawselection(screen, nlines - 1, textr.min.x, y);
 		if(promptstr != "")
 			screen.text(Point(textr.min.x, y), promptcolor,
 				Point(0, 0), font, promptstr);
@@ -958,7 +983,7 @@ drawscrollbar(screen: ref Image, r: Rect)
 {
 	screen.draw(r, statusbgcolor, nil, Point(0, 0));
 
-	total := nlines + 1;
+	total := nlines;
 	if(total <= 0 || vislines <= 0)
 		return;
 
@@ -1011,8 +1036,8 @@ drawcursor(vis: int)
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	# The input line is at visual row (nlines - topline)
-	inputrow := nlines - topline;
+	# The input line is at visual row (nlines - 1 - topline)
+	inputrow := nlines - 1 - topline;
 	if(inputrow < 0 || inputrow >= maxvrows)
 		return;
 
@@ -1051,7 +1076,7 @@ drawstatus(screen: ref Image, r: Rect)
 
 handlescrollclick(p: Point, scrollr: Rect)
 {
-	total := nlines + 1;
+	total := nlines;
 	if(total <= 0 || vislines <= 0)
 		return;
 

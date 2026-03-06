@@ -54,6 +54,7 @@ TARG=\
 	x509_test.dis\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\
+	wmsrv_zorder_test.dis\
 
 MODULES=
 
