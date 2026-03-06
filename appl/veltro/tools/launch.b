@@ -119,26 +119,28 @@ exec(args: string): string
 		return "error: " + appname + " requires Tk which is not available.\n" +
 			"Try: clock, bounce, coffee, colors, date, view, rt, lens, xenith";
 
-	# Resolve by searching candidate directories in order:
-	#   /dis/wm/<name>.dis   — standard WM apps
-	#   /dis/<name>.dis      — top-level apps (xenith, etc.)
-	#   /dis/xenith/<name>.dis — xenith sub-apps
-	candidates := array[] of {
-		"/dis/wm/" + appname + ".dis",
-		"/dis/" + appname + ".dis",
-		"/dis/xenith/" + appname + ".dis",
-	};
-	dispath := "";
-	for(ci := 0; ci < len candidates; ci++) {
-		(ok, nil) := sys->stat(candidates[ci]);
-		if(ok >= 0) {
-			dispath = candidates[ci];
-			break;
+	# Reject names containing path separators — belt-and-suspenders guard
+	# against any normalization gaps that could reach outside /dis/wm/.
+	for(pi := 0; pi < len appname; pi++) {
+		if(appname[pi] == '/') {
+			return "error: app name may not contain '/'";
 		}
 	}
-	if(dispath == "")
-		return "error: " + appname + " not found\n" +
-			"Use 'Launch list' to see available apps";
+
+	# Resolve the .dis path.
+	# /dis/wm/ is the primary pool of launchable WM apps.
+	# Apps outside /dis/wm/ must be explicitly whitelisted here; no generic
+	# directory search is performed to prevent an agent from reaching
+	# arbitrary /dis/*.dis files by guessing names.
+	dispath := "/dis/wm/" + appname + ".dis";
+	(ok, nil) := sys->stat(dispath);
+	if(ok < 0) {
+		# Check explicit whitelist for apps that live outside /dis/wm/.
+		dispath = extraapp(appname);
+		if(dispath == "")
+			return "error: " + appname + " not found\n" +
+				"Use 'Launch list' to see available apps";
+	}
 
 	# Register app with luciuisrv via presentation/ctl
 	actid := currentactid();
@@ -230,12 +232,13 @@ listapps(): string
 		}
 	}
 
-	# Also list known top-level apps (not under /dis/wm/)
-	toplevel := array[] of {
-		("xenith",  "/dis/xenith.dis"),
+	# Also list whitelisted apps that live outside /dis/wm/.
+	# This mirrors extraapp() — both must stay in sync.
+	extra := array[] of {
+		("xenith", "/dis/xenith.dis"),
 	};
-	for(i := 0; i < len toplevel; i++) {
-		(nm, path) := toplevel[i];
+	for(i := 0; i < len extra; i++) {
+		(nm, path) := extra[i];
 		(ok, nil) := sys->stat(path);
 		if(ok < 0)
 			continue;
@@ -248,6 +251,29 @@ listapps(): string
 	if(count == 0)
 		return "no apps available";
 	return sys->sprint("%d apps available:\n%s", count, apps);
+}
+
+# Explicit whitelist of apps that live outside /dis/wm/.
+# Returns the full .dis path for known safe apps, or "" if not listed.
+# Add entries here only after confirming the app implements GuiApp and is safe
+# to run in lucifer's presentation zone.
+extraapp(name: string): string
+{
+	# Each entry: (short-name, absolute-dis-path)
+	# To add a new app: add a row here, review the .dis for GuiApp interface.
+	apps := array[] of {
+		("xenith", "/dis/xenith.dis"),
+	};
+	for(i := 0; i < len apps; i++) {
+		(nm, path) := apps[i];
+		if(nm == name) {
+			(ok, nil) := sys->stat(path);
+			if(ok >= 0)
+				return path;
+			return "";	# whitelisted but not installed
+		}
+	}
+	return "";
 }
 
 # Returns 1 if the app requires Tk (not available in this build)
