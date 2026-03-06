@@ -12,4 +12,5 @@ Gui: module {
 	cursorswitch: fn(c : ref Dat->Cursor);
 
 	killwins : fn();
+	signalclose : fn();	# signal wmsrv of clean exit (embedded mode only)
 };

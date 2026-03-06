@@ -448,10 +448,12 @@ xenithexit(err: string)
 	if (plumbed)
 		plumbmsg->shutdown();
 	if (embedded) {
-		# Running inside lucifer's presentation zone: exit this goroutine cleanly.
-		# Do NOT call killprocs() — it risks killing lucifer's shared resources.
-		# Do NOT call gui->killwins() — the display is owned by lucifer.
-		# Lucifer's preswmloop detects the wmclient disconnect and cleans up the tab.
+		# Running inside lucifer's presentation zone.
+		# Signal preswmloop via wmsrv so it immediately removes the tab — without
+		# this, the ghost tab persists until GC collects the gui module (which holds
+		# the wmclient fd open while xenith's background goroutines are still alive).
+		# Do NOT call gui->killwins() — it halts emu via /dev/sysctl.
+		gui->signalclose();
 		exit;
 	}
 	killprocs();

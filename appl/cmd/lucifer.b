@@ -583,18 +583,12 @@ preswmloop(scr: ref Screen, zoner: Rect,
 	(c, data, rc) := <-req =>
 		if(rc == nil) {
 			# Client disconnected — clear from lucipres slot or app slot
-			if(c == lucipresclient)
+			if(c == lucipresclient) {
 				lucipresclient = nil;
-			else {
-				for(asi2 := 0; asi2 < nappslots; asi2++) {
-					if(appslots[asi2] != nil && appslots[asi2].client == c) {
-						c.bottom();		# push white window behind lucipres immediately
-						appslots[asi2].client = nil;
-						break;
-					}
-				}
+				break;	# lucipres gone — presentation zone dead, exit loop
 			}
-			break;
+			cleanupappslot(c);
+			# App disconnected: keep preswmloop running for remaining apps
 		}
 		s := string data;
 		n := len data;
@@ -618,12 +612,23 @@ preswmloop(scr: ref Screen, zoner: Rect,
 				if(img == nil) {
 					err = "window creation failed";
 					n = -1;
-				} else
+				} else {
 					c.setimage("app", img);
-				# App starts at top; handleprescurrent() will call bottom() if needed
+					# Register c in the wmsrv z-list via top().
+					# scr.newwindow() puts the image at z-top on the Screen,
+					# but wmsrv's Client.bottom() requires c.znext != nil to
+					# actually call screen.bottom().  c.top() sets c.znext so
+					# a subsequent c.bottom() (in cleanupappslot/hideapp) works.
+					c.top();
+				}
+				# handleprescurrent() will call bottom() if another artifact is active
 			}
 			# else: app already has a window — ignore re-reshape
 		}
+		# "embedded-exit": app signals clean exit before GC closes its wmclient fd.
+		# Remove the tab immediately rather than waiting for the async fd close.
+		if(s == "embedded-exit")
+			cleanupappslot(c);
 		# All other req messages ("start ptr", "start kbd", "raise", etc.) — reply OK
 		alt { rc <-= (n, err) => ; * => ; }
 	newzoner := <-rszch =>
@@ -1085,6 +1090,38 @@ presKbdSrv(io: ref Sys->FileIO)
 
 
 # --- App lifecycle management ---
+
+# cleanupappslot: remove an app client from the slot array and delete its artifact.
+#
+# Called from two places:
+#   1. preswmloop disconnect handler (rc == nil): client fd was closed by GC.
+#   2. preswmloop req handler for "embedded-exit": app signals clean exit before
+#      its goroutines die (so the ghost tab is removed immediately, not after GC).
+#
+# Calls c.bottom() to hide the window, compacts the slot array, clears activeappid
+# if needed, and writes "delete id=<deadid>" to presentation/ctl.
+# luciuisrv fires "presentation delete <id>" which nslistener delivers to lucipres.
+cleanupappslot(c: ref Client)
+{
+	for(ci := 0; ci < nappslots; ci++) {
+		if(appslots[ci] != nil && appslots[ci].client == c) {
+			c.bottom();
+			deadid := appslots[ci].id;
+			appslots[ci] = nil;
+			for(cj := ci; cj + 1 < nappslots; cj++)
+				appslots[cj] = appslots[cj + 1];
+			nappslots--;
+			if(activeappid == deadid)
+				activeappid = "";
+			if(actid >= 0 && deadid != "")
+				writetofile(sys->sprint(
+					"%s/activity/%d/presentation/ctl",
+					mountpt, actid),
+					"delete id=" + deadid);
+			return;
+		}
+	}
+}
 
 # writetofile: write a string to a file path
 writetofile(path, data: string): string
