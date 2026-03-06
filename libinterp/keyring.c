@@ -1321,6 +1321,59 @@ Keyring_sha512(void *fp)
 	*f->ret = keyring_digest_x(f->buf, f->n, f->digest, SHA512dlen, f->state, sha512);
 }
 
+/*
+ * SHA-3 (FIPS 202) one-shot digest functions
+ * These use SHA3state internally (not DigestState), so they
+ * are one-shot only — no incremental hashing support.
+ */
+void
+Keyring_sha3_256(void *fp)
+{
+	F_Keyring_sha3_256 *f;
+	uchar *cbuf;
+	int n;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->buf == H || f->digest == H)
+		return;
+
+	n = f->n;
+	if(n > f->buf->len)
+		n = f->buf->len;
+	if(f->digest->len < SHA3_256dlen)
+		error(exBadDigest);
+
+	cbuf = f->buf->data;
+	sha3_256(cbuf, n, f->digest->data);
+	*f->ret = SHA3_256dlen;
+}
+
+void
+Keyring_sha3_512(void *fp)
+{
+	F_Keyring_sha3_512 *f;
+	uchar *cbuf;
+	int n;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->buf == H || f->digest == H)
+		return;
+
+	n = f->n;
+	if(n > f->buf->len)
+		n = f->buf->len;
+	if(f->digest->len < SHA3_512dlen)
+		error(exBadDigest);
+
+	cbuf = f->buf->data;
+	sha3_512(cbuf, n, f->digest->data);
+	*f->ret = SHA3_512dlen;
+}
+
 void
 Keyring_md5(void *fp)
 {
@@ -2152,6 +2205,10 @@ keyringmodinit(void)
 	extern SigAlgVec* rsainit(void);
 	extern SigAlgVec* dsainit(void);
 	extern SigAlgVec* ed25519init(void);
+	extern SigAlgVec* mldsa65init(void);
+	extern SigAlgVec* mldsa87init(void);
+	extern SigAlgVec* slhdsa192sinit(void);
+	extern SigAlgVec* slhdsa256sinit(void);
 
 	ipintsmodinit();	/* in case only Keyring is configured */
 	TSigAlg = dtype(freeSigAlg, sizeof(SigAlg), SigAlgmap, sizeof(SigAlgmap));
@@ -2196,6 +2253,14 @@ keyringmodinit(void)
 	if((sav = rsainit()) != nil)
 		algs[nalg++] = sav;
 	if((sav = dsainit()) != nil)
+		algs[nalg++] = sav;
+	if((sav = mldsa65init()) != nil)
+		algs[nalg++] = sav;
+	if((sav = mldsa87init()) != nil)
+		algs[nalg++] = sav;
+	if((sav = slhdsa192sinit()) != nil)
+		algs[nalg++] = sav;
+	if((sav = slhdsa256sinit()) != nil)
 		algs[nalg++] = sav;
 
 	fmtinstall('U', big64conv);
@@ -3585,4 +3650,135 @@ Keyring_ed25519_verify(void *fp)
 	*f->ret = ed25519_raw_verify(f->sig->data, f->pk->data,
 		f->msg == H ? nil : f->msg->data,
 		f->msg == H ? 0 : f->msg->len);
+}
+
+/*
+ *  ML-KEM (FIPS 203) post-quantum key encapsulation
+ */
+void
+Keyring_mlkem768_keygen(void *fp)
+{
+	F_Keyring_mlkem768_keygen *f;
+	uchar pk[MLKEM768_PKLEN], sk[MLKEM768_SKLEN];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	mlkem768_keygen(pk, sk);
+
+	f->ret->t0 = mem2array(pk, MLKEM768_PKLEN);
+	f->ret->t1 = mem2array(sk, MLKEM768_SKLEN);
+	memset(sk, 0, MLKEM768_SKLEN);
+}
+
+void
+Keyring_mlkem768_encaps(void *fp)
+{
+	F_Keyring_mlkem768_encaps *f;
+	uchar ct[MLKEM768_CTLEN], ss[MLKEM_SSLEN];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	if(f->pk == H || f->pk->len != MLKEM768_PKLEN)
+		error(exBadKey);
+
+	mlkem768_encaps(ct, ss, f->pk->data);
+
+	f->ret->t0 = mem2array(ct, MLKEM768_CTLEN);
+	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
+}
+
+void
+Keyring_mlkem768_decaps(void *fp)
+{
+	F_Keyring_mlkem768_decaps *f;
+	uchar ss[MLKEM_SSLEN];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->sk == H || f->sk->len != MLKEM768_SKLEN)
+		error(exBadKey);
+	if(f->ct == H || f->ct->len != MLKEM768_CTLEN)
+		error(exBadKey);
+
+	mlkem768_decaps(ss, f->ct->data, f->sk->data);
+
+	*f->ret = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
+}
+
+void
+Keyring_mlkem1024_keygen(void *fp)
+{
+	F_Keyring_mlkem1024_keygen *f;
+	uchar pk[MLKEM1024_PKLEN], sk[MLKEM1024_SKLEN];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	mlkem1024_keygen(pk, sk);
+
+	f->ret->t0 = mem2array(pk, MLKEM1024_PKLEN);
+	f->ret->t1 = mem2array(sk, MLKEM1024_SKLEN);
+	memset(sk, 0, MLKEM1024_SKLEN);
+}
+
+void
+Keyring_mlkem1024_encaps(void *fp)
+{
+	F_Keyring_mlkem1024_encaps *f;
+	uchar ct[MLKEM1024_CTLEN], ss[MLKEM_SSLEN];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	if(f->pk == H || f->pk->len != MLKEM1024_PKLEN)
+		error(exBadKey);
+
+	mlkem1024_encaps(ct, ss, f->pk->data);
+
+	f->ret->t0 = mem2array(ct, MLKEM1024_CTLEN);
+	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
+}
+
+void
+Keyring_mlkem1024_decaps(void *fp)
+{
+	F_Keyring_mlkem1024_decaps *f;
+	uchar ss[MLKEM_SSLEN];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->sk == H || f->sk->len != MLKEM1024_SKLEN)
+		error(exBadKey);
+	if(f->ct == H || f->ct->len != MLKEM1024_CTLEN)
+		error(exBadKey);
+
+	mlkem1024_decaps(ss, f->ct->data, f->sk->data);
+
+	*f->ret = mem2array(ss, MLKEM_SSLEN);
+	memset(ss, 0, MLKEM_SSLEN);
 }

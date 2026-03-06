@@ -71,6 +71,7 @@ EXT_KEY_SHARE:			con 51;
 # Named groups
 GROUP_SECP256R1:	con 16r0017;
 GROUP_X25519:		con 16r001D;
+GROUP_X25519MLKEM768:	con 16r4588;
 
 # Max record size
 MAXRECORD:	con 16384;
@@ -541,8 +542,11 @@ handshake(cs: ref ConnState, config: ref Config): string
 	x25519_priv := randombytes(32);
 	x25519_pub := keyring->x25519_base(x25519_priv);
 
+	# Generate ML-KEM-768 key pair for hybrid PQ key exchange
+	(mlkem_pk, mlkem_sk) := keyring->mlkem768_keygen();
+
 	# Build and send ClientHello
-	hello := buildclienthello(config, client_random, x25519_pub);
+	hello := buildclienthello(config, client_random, x25519_pub, mlkem_pk);
 	err := sendhsmsg(cs, HT_CLIENT_HELLO, hello);
 	if(err != nil)
 		return err;
@@ -555,7 +559,7 @@ handshake(cs: ref ConnState, config: ref Config): string
 		return "tls: expected ServerHello";
 
 	# Parse ServerHello
-	(server_random, server_suite, server_version, key_share_data, pherr) := parseserverhello(shdata, config);
+	(server_random, server_suite, server_version, key_share_group, key_share_data, pherr) := parseserverhello(shdata, config);
 	if(pherr != nil)
 		return pherr;
 
@@ -564,7 +568,7 @@ handshake(cs: ref ConnState, config: ref Config): string
 
 	if(cs.version == TLS13)
 		return handshake13(cs, config, client_random, server_random,
-			x25519_priv, key_share_data);
+			x25519_priv, mlkem_sk, key_share_group, key_share_data);
 	else
 		return handshake12(cs, config, client_random, server_random,
 			x25519_priv);
@@ -728,15 +732,39 @@ handshake12(cs: ref ConnState, config: ref Config,
 handshake13(cs: ref ConnState, config: ref Config,
 	client_random, server_random: array of byte,
 	x25519_priv: array of byte,
+	mlkem_sk: array of byte,
+	key_share_group: int,
 	key_share_data: array of byte): string
 {
-	# Compute shared secret via X25519
-	if(key_share_data == nil || len key_share_data != 32)
-		return "tls: invalid server key share";
+	shared_secret: array of byte;
 
-	shared_secret := keyring->x25519(x25519_priv, key_share_data);
-	if(shared_secret == nil)
-		return "tls: X25519 computation failed";
+	if(key_share_group == GROUP_X25519MLKEM768){
+		# Hybrid X25519MLKEM768: server sends mlkem_ct(1088) || x25519_pub(32)
+		if(key_share_data == nil || len key_share_data != 1120)
+			return "tls: invalid hybrid key share (expected 1120 bytes)";
+
+		mlkem_ct := key_share_data[0:1088];
+		server_x25519 := key_share_data[1088:1120];
+
+		mlkem_ss := keyring->mlkem768_decaps(mlkem_sk, mlkem_ct);
+		if(mlkem_ss == nil)
+			return "tls: ML-KEM-768 decapsulation failed";
+
+		x25519_ss := keyring->x25519(x25519_priv, server_x25519);
+		if(x25519_ss == nil)
+			return "tls: X25519 computation failed";
+
+		# Combined shared secret: mlkem_ss(32) || x25519_ss(32)
+		shared_secret = catbytes(mlkem_ss, x25519_ss);
+	} else {
+		# Plain X25519
+		if(key_share_data == nil || len key_share_data != 32)
+			return "tls: invalid server key share";
+
+		shared_secret = keyring->x25519(x25519_priv, key_share_data);
+		if(shared_secret == nil)
+			return "tls: X25519 computation failed";
+	}
 
 	hashlen := hashlength(cs.suite);
 
@@ -852,7 +880,7 @@ handshake13(cs: ref ConnState, config: ref Config,
 # ================================================================
 
 buildclienthello(config: ref Config, random: array of byte,
-	x25519_pub: array of byte): array of byte
+	x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
 {
 	# Build extensions
 	exts: array of byte;
@@ -877,8 +905,8 @@ buildclienthello(config: ref Config, random: array of byte,
 	else
 		suppver = nil;
 
-	# Key share extension
-	keyshare := buildkeyshare(x25519_pub);
+	# Key share extension (hybrid + x25519 fallback)
+	keyshare := buildkeyshare(x25519_pub, mlkem_pk);
 
 	# Concatenate extensions
 	extlist := catbytes(sni, catbytes(groups, catbytes(sigalgs,
@@ -950,13 +978,14 @@ buildsniext(name: string): array of byte
 
 buildsupportedgroups(): array of byte
 {
-	# x25519 + secp256r1
-	ext := array [4 + 2 + 4] of byte;
+	# X25519MLKEM768 (hybrid PQ) + x25519 + secp256r1
+	ext := array [4 + 2 + 6] of byte;
 	put16(ext, 0, EXT_SUPPORTED_GROUPS);
-	put16(ext, 2, 2 + 4);
-	put16(ext, 4, 4);
-	put16(ext, 6, GROUP_X25519);
-	put16(ext, 8, GROUP_SECP256R1);
+	put16(ext, 2, 2 + 6);
+	put16(ext, 4, 6);
+	put16(ext, 6, GROUP_X25519MLKEM768);
+	put16(ext, 8, GROUP_X25519);
+	put16(ext, 10, GROUP_SECP256R1);
 	return ext;
 }
 
@@ -999,17 +1028,36 @@ buildsupportedversions(config: ref Config): array of byte
 	return ext;
 }
 
-buildkeyshare(x25519_pub: array of byte): array of byte
+buildkeyshare(x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
 {
-	# Key share entry: group(2) + key_len(2) + key(32)
-	entrylen := 2 + 2 + 32;
-	ext := array [4 + 2 + entrylen] of byte;
+	# Hybrid key share: mlkem_pk(1184) || x25519_pub(32) = 1216 bytes
+	hybridlen := len mlkem_pk + len x25519_pub;	# 1216
+	hybridentry := 2 + 2 + hybridlen;		# group(2) + keylen(2) + data
+
+	# X25519 fallback key share
+	x25519entry := 2 + 2 + 32;
+
+	# Total key shares list length
+	listlen := hybridentry + x25519entry;
+
+	ext := array [4 + 2 + listlen] of byte;
 	put16(ext, 0, EXT_KEY_SHARE);
-	put16(ext, 2, 2 + entrylen);
-	put16(ext, 4, entrylen);
-	put16(ext, 6, GROUP_X25519);
-	put16(ext, 8, 32);
-	ext[10:] = x25519_pub;
+	put16(ext, 2, 2 + listlen);
+	put16(ext, 4, listlen);
+
+	# First entry: X25519MLKEM768 hybrid
+	off := 6;
+	put16(ext, off, GROUP_X25519MLKEM768);
+	put16(ext, off + 2, hybridlen);
+	ext[off + 4:] = mlkem_pk;
+	ext[off + 4 + len mlkem_pk:] = x25519_pub;
+	off += hybridentry;
+
+	# Second entry: X25519 fallback
+	put16(ext, off, GROUP_X25519);
+	put16(ext, off + 2, 32);
+	ext[off + 4:] = x25519_pub;
+
 	return ext;
 }
 
@@ -1049,10 +1097,10 @@ buildclientkeyexchange_rsa(encrypted_premaster: array of byte): array of byte
 # Handshake Message Parsing
 # ================================================================
 
-parseserverhello(data: array of byte, config: ref Config): (array of byte, int, int, array of byte, string)
+parseserverhello(data: array of byte, config: ref Config): (array of byte, int, int, int, array of byte, string)
 {
 	if(len data < 38)
-		return (nil, 0, 0, nil, "tls: ServerHello too short");
+		return (nil, 0, 0, 0, nil, "tls: ServerHello too short");
 
 	# version(2) + random(32) + session_id_len(1)...
 	off := 0;
@@ -1065,7 +1113,7 @@ parseserverhello(data: array of byte, config: ref Config): (array of byte, int, 
 	sid_len := int data[off];
 	off++;
 	if(off + sid_len + 3 > len data)
-		return (nil, 0, 0, nil, "tls: ServerHello truncated");
+		return (nil, 0, 0, 0, nil, "tls: ServerHello truncated");
 	off += sid_len;
 
 	suite := get16(data, off);
@@ -1074,10 +1122,11 @@ parseserverhello(data: array of byte, config: ref Config): (array of byte, int, 
 	compression := int data[off];
 	off++;
 	if(compression != 0)
-		return (nil, 0, 0, nil, "tls: non-null compression");
+		return (nil, 0, 0, 0, nil, "tls: non-null compression");
 
 	# Parse extensions
 	version := legacy_version;
+	key_share_group := 0;
 	key_share_data: array of byte;
 
 	if(off + 2 <= len data) {
@@ -1101,7 +1150,7 @@ parseserverhello(data: array of byte, config: ref Config): (array of byte, int, 
 			EXT_KEY_SHARE =>
 				# group(2) + key_len(2) + key
 				if(elen >= 4) {
-					# group := get16(data, off);
+					key_share_group = get16(data, off);
 					klen := get16(data, off + 2);
 					if(off + 4 + klen <= ext_end)
 						key_share_data = data[off+4:off+4+klen];
@@ -1120,13 +1169,13 @@ parseserverhello(data: array of byte, config: ref Config): (array of byte, int, 
 		}
 	}
 	if(!found)
-		return (nil, 0, 0, nil, sys->sprint("tls: server chose unsupported suite 0x%04x", suite));
+		return (nil, 0, 0, 0, nil, sys->sprint("tls: server chose unsupported suite 0x%04x", suite));
 
 	# Validate version
 	if(version != TLS12 && version != TLS13)
-		return (nil, 0, 0, nil, sys->sprint("tls: unsupported version 0x%04x", version));
+		return (nil, 0, 0, 0, nil, sys->sprint("tls: unsupported version 0x%04x", version));
 
-	return (server_random, suite, version, key_share_data, nil);
+	return (server_random, suite, version, key_share_group, key_share_data, nil);
 }
 
 parsecertificatemsg(data: array of byte): (list of array of byte, string)

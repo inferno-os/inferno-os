@@ -432,6 +432,160 @@ testDESDisabled(t: ref T)
 }
 
 #
+# Test ChaCha20-Poly1305 AEAD (used by modernized login protocol)
+#
+testCCPolyAEAD(t: ref T)
+{
+	t.log("Testing ChaCha20-Poly1305 AEAD...");
+
+	# 32-byte key
+	key := array[32] of byte;
+	for(i := 0; i < 32; i++)
+		key[i] = byte (i + 1);
+
+	# 12-byte nonce
+	nonce := array[12] of byte;
+	for(i = 0; i < 12; i++)
+		nonce[i] = byte (i * 3);
+
+	plaintext := array of byte "Test message for ChaCha20-Poly1305 AEAD encryption";
+
+	# Encrypt
+	(ciphertext, tag) := kr->ccpolyencrypt(plaintext, nil, key, nonce);
+	if(ciphertext == nil) {
+		t.fatal("ccpolyencrypt returned nil ciphertext");
+		return;
+	}
+	if(tag == nil) {
+		t.fatal("ccpolyencrypt returned nil tag");
+		return;
+	}
+	t.asserteq(len tag, 16, "Poly1305 tag should be 16 bytes");
+	t.asserteq(len ciphertext, len plaintext, "ciphertext length should match plaintext");
+
+	# Verify ciphertext differs from plaintext
+	same := 1;
+	for(i = 0; i < len plaintext; i++) {
+		if(ciphertext[i] != plaintext[i]) {
+			same = 0;
+			break;
+		}
+	}
+	t.asserteq(same, 0, "AEAD encryption should change plaintext");
+
+	# Decrypt
+	recovered := kr->ccpolydecrypt(ciphertext, nil, tag, key, nonce);
+	if(recovered == nil) {
+		t.fatal("ccpolydecrypt returned nil (decryption failed)");
+		return;
+	}
+	t.assertseq(string recovered, string plaintext, "AEAD decrypt should recover plaintext");
+
+	# Test authentication: tampered ciphertext should fail
+	tampered := array[len ciphertext] of byte;
+	tampered[0:] = ciphertext;
+	tampered[0] ^= byte 16rff;
+	bad := kr->ccpolydecrypt(tampered, nil, tag, key, nonce);
+	if(bad != nil)
+		t.error("AEAD should reject tampered ciphertext");
+	else
+		t.log("AEAD correctly rejects tampered ciphertext");
+
+	# Test authentication: tampered tag should fail
+	badtag := array[16] of byte;
+	badtag[0:] = tag;
+	badtag[0] ^= byte 16rff;
+	bad = kr->ccpolydecrypt(ciphertext, nil, badtag, key, nonce);
+	if(bad != nil)
+		t.error("AEAD should reject tampered tag");
+	else
+		t.log("AEAD correctly rejects tampered tag");
+
+	# Test with AAD (additional authenticated data)
+	aad := array of byte "associated data";
+	(ct2, tag2) := kr->ccpolyencrypt(plaintext, aad, key, nonce);
+	recovered = kr->ccpolydecrypt(ct2, aad, tag2, key, nonce);
+	if(recovered == nil) {
+		t.error("AEAD with AAD: decryption failed");
+	} else {
+		t.assertseq(string recovered, string plaintext, "AEAD with AAD round-trip");
+	}
+
+	# Wrong AAD should fail
+	bad = kr->ccpolydecrypt(ct2, array of byte "wrong aad", tag2, key, nonce);
+	if(bad != nil)
+		t.error("AEAD should reject wrong AAD");
+	else
+		t.log("AEAD correctly rejects wrong AAD");
+}
+
+#
+# Test login protocol key derivation (simulated client/server)
+#
+testLoginKeyDerivation(t: ref T)
+{
+	t.log("Testing login protocol AEAD key derivation...");
+
+	# Simulate what login.b and logind.b do:
+	# Both sides derive the same key from password + IV
+
+	password := "test-password-123";
+
+	# Client side: hash password
+	pwbuf := array of byte password;
+	pwdigest := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(pwbuf, len pwbuf, pwdigest, nil);
+
+	# Server side: stored password hash is already SHA-256
+	# (changelogin.b stores SHA-256 of password)
+	serverpw := array[Keyring->SHA256dlen] of byte;
+	serverpw[0:] = pwdigest;
+
+	# Shared IV (normally sent from client to server)
+	ivec := array[32] of byte;
+	for(i := 0; i < 32; i++)
+		ivec[i] = byte (i * 7 + 13);
+
+	# Client key derivation
+	ckeymaterial := array[Keyring->SHA256dlen + 20] of byte;
+	ckeymaterial[0:] = pwdigest;
+	ckeymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	clientkey := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(ckeymaterial, len ckeymaterial, clientkey, nil);
+
+	# Server key derivation
+	skeymaterial := array[Keyring->SHA256dlen + 20] of byte;
+	skeymaterial[0:] = serverpw[0:Keyring->SHA256dlen];
+	skeymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	serverkey := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(skeymaterial, len skeymaterial, serverkey, nil);
+
+	# Keys should match
+	match := 1;
+	for(i = 0; i < Keyring->SHA256dlen; i++) {
+		if(clientkey[i] != serverkey[i]) {
+			match = 0;
+			break;
+		}
+	}
+	t.asserteq(match, 1, "client and server derive same AEAD key");
+
+	# Nonce should be same (last 12 bytes of ivec)
+	nonce := ivec[20:32];
+	t.asserteq(len nonce, 12, "nonce is 12 bytes");
+
+	# Test that the derived key actually works for AEAD
+	plaintext := array of byte "DH-value-alpha-r0-mod-p";
+	(ciphertext, tag) := kr->ccpolyencrypt(plaintext, nil, clientkey, nonce);
+	recovered := kr->ccpolydecrypt(ciphertext, nil, tag, serverkey, nonce);
+	if(recovered == nil) {
+		t.fatal("AEAD round-trip with derived keys failed");
+		return;
+	}
+	t.assertseq(string recovered, string plaintext, "AEAD with derived keys");
+}
+
+#
 # Test AES is still available (not disabled)
 #
 testAESAvailable(t: ref T)
@@ -793,6 +947,8 @@ init(nil: ref Draw->Context, args: list of string)
 	run("RC4/Disabled", testRC4Disabled);
 	run("DES/Disabled", testDESDisabled);
 	run("AES/Available", testAESAvailable);
+	run("CCPoly/AEAD", testCCPolyAEAD);
+	run("Login/KeyDerivation", testLoginKeyDerivation);
 	run("DH/2048bit", testDHParams);
 	run("MultiAlgorithm/Interop", testMultipleAlgorithms);
 	run("Ed25519/Stress", testEd25519Stress);

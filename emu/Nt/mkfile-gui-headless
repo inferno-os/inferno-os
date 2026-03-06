@@ -1,0 +1,8 @@
+# Headless GUI backend (no display)
+# Uses stub implementations that do nothing
+
+GUISRC=\
+	stubs-headless.$O\
+
+GUIFLAGS=
+GUILIBS=

@@ -8,11 +8,11 @@ path=(/dis .)
 # Get username
 user="{cat /dev/user}
 
-# Mount namespace generator (synchronous - must complete before continuing)
-mount -ac {mntgen} /n
+# Mount namespace generator (creates /n as a synthetic mount point)
+mount -ac {mntgen} /n >[2] /dev/null
 
 # Initialize IP networking stack
-bind -a '#I' /net
+bind -a '#I' /net >[2] /dev/null
 
 # Start connection server (DNS resolution)
 ndb/cs
@@ -25,7 +25,16 @@ mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
 
 # Setup home directory based on platform
 if {~ $emuhost MacOSX Linux}{
-	# For macOS/Linux, mount host filesystem (synchronous)
+	# Start llm9p daemon if not already running, then mount
+	infraroot=`{cat /env/emuroot}
+	echo 'pgrep -qf "llm9p.*-addr" || nohup '^$infraroot^'/../llm9p/llm9p -backend cli -addr :5640 </dev/null >/dev/null 2>&1 &' | os sh >[2] /dev/null
+	sleep 1
+	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
+
+	# Start speech file server (TTS/STT via /n/speech)
+	/dis/veltro/speech9p.dis -e cmd &
+
+	# Mount host filesystem (synchronous)
 	trfs '#U*' /n/local >[2] /dev/null
 	# Get actual HOME from host
 	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
@@ -47,8 +56,11 @@ if {! ftest -d $home/tmp} {
 	mkdir -p $home/tmp
 }
 
-# Bind tmp to /tmp so applications can find it
-bind -bc $home/tmp /tmp
+# Create /tmp directly (needed on Windows where bind -bc may fail)
+mkdir -p /tmp >[2] /dev/null
+
+# Bind home tmp to /tmp so applications can find it
+bind -bc $home/tmp /tmp >[2] /dev/null
 
 # Clean up stale temp files from previous sessions
 # These accumulate when apps crash (ORCLOSE doesn't trigger on abnormal exit)

@@ -34,7 +34,7 @@ struct Fsinfo
 	int	uid;
 	int	gid;
 	int	mode;
-	int	fd;
+	HANDLE	fd;
 	vlong	offset;
 	QLock	oq;
 	char*	spec;
@@ -180,8 +180,7 @@ static struct {
 	NET_API_STATUS (NET_API_FUNCTION *ApiBufferFree)(LPVOID Buffer);
 } net;
 
-extern	int		nth2fd(HANDLE);
-extern	HANDLE		ntfd2h(int);
+/* nth2fd/ntfd2h not used here; devfs stores HANDLEs directly in Fsinfo.fd */
 static	int		cnisroot(Cname*);
 static	int		fsisroot(Chan*);
 static	int		okelem(char*, int);
@@ -239,7 +238,7 @@ winfilematch(char *path, WIN32_FIND_DATA *data)
 		--p;
 	wpath = widen(p);
 	r = (data->cFileName[0] == '.' && runeslen(data->cFileName) == 1)
-			|| runescmp(data->cFileName, wpath) == 0;
+			|| _wcsicmp(data->cFileName, wpath) == 0;
 	free(wpath);
 	return r;
 }
@@ -575,7 +574,7 @@ fsopen(Chan *c, int mode)
 
 	c->mode = openmode(mode);
 	if(isdir)
-		FS(c)->fd = nth2fd(INVALID_HANDLE_VALUE);
+		FS(c)->fd = INVALID_HANDLE_VALUE;
 	else {
 		m = fsomode(mode & 3);
 		cflag = OPEN_EXISTING;
@@ -591,7 +590,7 @@ fsopen(Chan *c, int mode)
 		free(wpath);
 		if(h == INVALID_HANDLE_VALUE)
 			oserror();
-		FS(c)->fd = nth2fd(h);
+		FS(c)->fd = h;
 	}
 
 	c->offset = 0;
@@ -666,7 +665,7 @@ fscreate(Chan *c, char *name, int mode, ulong perm)
 			oserror();
 		}
 		free(wpath);
-		FS(c)->fd = nth2fd(INVALID_HANDLE_VALUE);
+		FS(c)->fd = INVALID_HANDLE_VALUE;
 	}
 	else {
 		aflag = 0;
@@ -681,7 +680,7 @@ fscreate(Chan *c, char *name, int mode, ulong perm)
 			free(acl);
 			oserror();
 		}
-		FS(c)->fd = nth2fd(h);
+		FS(c)->fd = h;
 		c->qid.path = fsqidpath(path);
 		c->qid.type = 0;
 		c->qid.vers = 0;
@@ -703,7 +702,7 @@ fsclose(Chan *c)
 	HANDLE h;
 
 	if(c->flag & COPEN){
-		h = ntfd2h(FS(c)->fd);
+		h = FS(c)->fd;
 		if(h != INVALID_HANDLE_VALUE){
 			if(c->qid.type & QTDIR)
 				FindClose(h);
@@ -756,7 +755,7 @@ fsread(Chan *c, void *va, long n, vlong offset)
 		n2 = fsdirread(c, va, n, offset);
 	}
 	else {
-		h = ntfd2h(FS(c)->fd);
+		h = FS(c)->fd;
 		if(FS(c)->offset != offset){
 			fslseek(h, offset);
 			FS(c)->offset = offset;
@@ -781,7 +780,7 @@ fswrite(Chan *c, void *va, long n, vlong offset)
 		qunlock(&FS(c)->oq);
 		nexterror();
 	}
-	h = ntfd2h(FS(c)->fd);
+	h = FS(c)->fd;
 	if(FS(c)->offset != offset){
 		fslseek(h, offset);
 		FS(c)->offset = offset;
@@ -825,7 +824,7 @@ fsstat(Chan *c, uchar *buf, int n)
 
 		fspath(FS(c)->name, 0, path, FS(c)->spec);
 		if (c->flag & COPEN)
-			h = ntfd2h(FS(c)->fd);
+			h = FS(c)->fd;
 
 		if (h != INVALID_HANDLE_VALUE) {
 			BY_HANDLE_FILE_INFORMATION fi;
@@ -1046,10 +1045,10 @@ fswstat(Chan *c, uchar *buf, int n)
 		 * can't rename if it is open: if this process has it open, close it temporarily.
 		 */
 		if(!file_share_delete && c->flag & COPEN){
-			h = ntfd2h(FS(c)->fd);
+			h = FS(c)->fd;
 			if(h != INVALID_HANDLE_VALUE)
 				CloseHandle(h);	/* woe betide it if ORCLOSE */
-			FS(c)->fd = nth2fd(INVALID_HANDLE_VALUE);
+			FS(c)->fd = INVALID_HANDLE_VALUE;
 		}
 		if(!MoveFile(wspath, wsnewpath)) {
 			oserror();
@@ -1066,7 +1065,7 @@ fswstat(Chan *c, uchar *buf, int n)
 			h = CreateFile(wsnewpath, fsomode(c->mode & 0x3), FILE_SHARE_READ|FILE_SHARE_WRITE|file_share_delete, &sa, OPEN_EXISTING, aflag, 0);
 			if(h == INVALID_HANDLE_VALUE)
 				oserror();
-			FS(c)->fd = nth2fd(h);
+			FS(c)->fd = h;
 		}
 		cnameclose(FS(c)->name);
 		poperror();
@@ -1274,7 +1273,7 @@ fsdirent(Chan *c, char *path, Fsdir *data)
 	wchar_t *wpath;
 	HANDLE h;
 
-	h = ntfd2h(FS(c)->fd);
+	h = FS(c)->fd;
 	if(data == nil)
 		data = smalloc(sizeof(*data));
 	if(FS(c)->offset == 0){
@@ -1283,7 +1282,7 @@ fsdirent(Chan *c, char *path, Fsdir *data)
 		wpath = widen(path);
 		h = FindFirstFile(wpath, data);
 		free(wpath);
-		FS(c)->fd = nth2fd(h);
+		FS(c)->fd = h;
 		if(h == INVALID_HANDLE_VALUE){
 			free(data);
 			return nil;

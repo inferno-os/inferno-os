@@ -33,11 +33,11 @@ extern int		so_mustbind(int, int);
 extern void		so_keepalive(int, int);
 
 
-extern void		hnputl(void *p, unsigned long v);
+extern void		hnputl(void *p, ulong v);
 extern void		hnputs(void *p, ushort v);
-extern unsigned long	nhgetl(void *p);
+extern ulong	nhgetl(void *p);
 extern ushort	nhgets(void *p);
-extern unsigned long	parseip(uchar *to, char *from);
+extern ulong	parseip(uchar *to, char *from);
 extern int	parsemac(uchar *to, char *from, int len);
 extern char*	v4parseip(uchar*, char*);
 extern int		bipipe(int[]);

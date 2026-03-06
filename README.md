@@ -32,6 +32,12 @@ InferNode is a lightweight Inferno® OS designed for modern 64-bit systems. Buil
 ./emu/MacOSX/o.emu -r.
 ```
 
+```powershell
+# Windows x86_64 (from x64 Native Tools Command Prompt)
+powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1
+.\emu\Nt\o.emu.exe -r .
+```
+
 The `-r.` option tells the emulator to use the current directory as the Inferno root filesystem (the path is concatenated directly to `-r` with no space). This lets you run directly from the source tree without installing.
 
 You'll see the `;` prompt:
@@ -91,6 +97,20 @@ mk GUIBACK=sdl3 o.emu
 
 # Run window manager
 ./o.emu -r../.. wm/wm
+```
+
+```powershell
+# Windows x86_64 (from x64 Native Tools Command Prompt)
+# Download SDL3-devel-*-VC.zip from https://github.com/libsdl-org/SDL/releases
+# Extract to SDL3-dev/ in the project root
+powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1   # build libraries first
+powershell -ExecutionPolicy Bypass -File build-windows-sdl3.ps1    # build GUI emulator
+
+# Run Xenith
+.\emu\Nt\o.emu.exe -g 1024x768 -r . sh -l -c xenith
+
+# Run window manager
+.\emu\Nt\o.emu.exe -g 1024x768 -r . wm/wm
 ```
 
 **Features:**
@@ -221,6 +241,7 @@ All platforms support the Dis interpreter and JIT compiler. Run with `emu -c1` t
 | AMD64 Linux | AMD Ryzen 7 H 255 | **14.2x** | Containers, servers, workstations |
 | ARM64 macOS | Apple M4 | **9.6x** | SDL3 GUI with Metal acceleration |
 | ARM64 Linux | Cortex-A78AE (Jetson) | **8.3x** | Jetson AGX, Raspberry Pi 4/5 |
+| AMD64 Windows | Intel/AMD x86_64 | interpreter only | SDL3 GUI with D3D acceleration |
 
 Speedups are v1 suite (6 benchmarks, best-of-3). Category highlights (AMD64, v2 suite): 36x branch/control, 20x integer arithmetic, 22x memory access, 15x mixed workloads.
 
@@ -230,6 +251,7 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 
 - [docs/USER-MANUAL.md](docs/USER-MANUAL.md) - **Comprehensive user guide** (namespaces, devices, host integration)
 - [QUICKSTART.md](QUICKSTART.md) - Getting started in 3 commands
+- [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) - Building and running on Windows
 - [docs/XENITH.md](docs/XENITH.md) - Xenith text environment for AI agents
 - [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) - Veltro agent security model
 - [tools/godis/README.md](tools/godis/README.md) - GoDis compiler architecture and translation strategy
@@ -252,6 +274,13 @@ export PATH="$PWD/MacOSX/arm64/bin:$PATH"
 mk install
 ```
 
+```powershell
+# Windows x86_64 (from x64 Native Tools Command Prompt)
+powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1
+```
+
+See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instructions including SDL3 GUI setup.
+
 ## Development Status
 
 ### Working
@@ -263,13 +292,14 @@ mk install
 - **Veltro** - AI agent system with namespace-based security, interactive REPL, and sub-agent spawning
 - **Modern Cryptography** - Ed25519 signatures, updated certificate generation and authentication
 - **Limbo Test Framework** - Unit testing with clickable error addresses
+- **Windows AMD64 Port** - Headless and SDL3 GUI with Xenith, interpreter only (no JIT yet)
 - **All 630+ utilities** - Shell, networking, filesystems, development tools
 - **GitHub Actions CI** - Build verification, security scanning, supply chain scorecard
 
 ### Roadmap
 
 - Linux ARM64 SDL3 GUI support
-- Windows port
+- Windows JIT compiler
 
 ## About
 
@@ -283,6 +313,6 @@ MIT License (as per original Inferno® OS).
 
 ---
 
-**NERV InferNode** - Lightweight Inferno® OS for ARM64 and AMD64
+**NERV InferNode** - Lightweight Inferno® OS for ARM64, AMD64, and Windows
 
 <sub>Inferno® is a distributed operating system, originally developed at Bell Labs, but now maintained by trademark owner Vita Nuova®.</sub>

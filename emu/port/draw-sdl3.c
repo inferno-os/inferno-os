@@ -106,6 +106,20 @@ static int dirty_max_x = 0, dirty_max_y = 0;
 static uchar *screen_data = NULL;
 
 /*
+ * Cross-thread window creation dispatch (non-Apple platforms).
+ *
+ * On Windows (and potentially Linux), SDL3 window/renderer creation
+ * must happen on the main thread (the one that called SDL_Init).
+ * The worker thread (running emuinit/wm) signals the main thread
+ * to create the window, then waits for completion.
+ */
+#ifndef __APPLE__
+static volatile int create_window_requested = 0;
+static volatile int create_window_done = 0;
+static volatile int create_window_result = 0;
+#endif
+
+/*
  * Destination rectangle for rendering texture to window.
  * Used to maintain aspect ratio and center content when
  * window size differs from texture size (e.g., full-screen).
@@ -351,15 +365,23 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		calc_dest_rect();
 	}
 #else
-	/* Linux/Windows: Direct call */
-	sdl_window = SDL_CreateWindow(
-		"InferNode",
-		sdl_width, sdl_height,
-		SDL_WINDOW_RESIZABLE
-	);
+	/*
+	 * Linux/Windows: Dispatch window creation to the main thread.
+	 *
+	 * SDL3 on Windows requires window/renderer creation on the thread
+	 * that called SDL_Init (the main thread). Signal the main loop to
+	 * create the window and wait for completion.
+	 */
+	create_window_requested = 1;
+	create_window_done = 0;
+	create_window_result = 0;
 
-	if (!sdl_window) {
-		fprint(2, "draw-sdl3: SDL_CreateWindow failed: %s\n", SDL_GetError());
+	/* Wait for main thread to create window */
+	while (!create_window_done)
+		SDL_Delay(1);
+
+	if (!create_window_result) {
+		fprint(2, "draw-sdl3: main thread window creation failed\n");
 		return nil;
 	}
 
@@ -442,62 +464,6 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 		SDL_DestroyWindow(sdl_window);
 		return nil;
 	}
-#else
-	/* Create GPU renderer */
-	sdl_renderer = SDL_CreateRenderer(sdl_window, NULL);
-	if (!sdl_renderer) {
-		fprint(2, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
-		SDL_DestroyWindow(sdl_window);
-		SDL_Quit();
-		return nil;
-	}
-
-	/*
-	 * Disable vsync to ensure consistent rendering.
-	 */
-	SDL_SetRenderVSync(sdl_renderer, 0);
-
-	/*
-	 * Disable logical presentation scaling.
-	 * This ensures 1:1 pixel mapping from texture to display
-	 * and prevents any automatic scaling/interpolation that
-	 * could cause fuzziness when the window is "idle".
-	 */
-	SDL_SetRenderLogicalPresentation(sdl_renderer, sdl_width, sdl_height,
-		SDL_LOGICAL_PRESENTATION_DISABLED);
-
-	/*
-	 * Texture is created at native physical resolution (set above).
-	 * This gives crisp rendering on HiDPI displays.
-	 */
-
-	/* Create streaming texture for pixel buffer */
-	sdl_texture = SDL_CreateTexture(
-		sdl_renderer,
-		SDL_PIXELFORMAT_XRGB8888,  /* Match Infernode XRGB32 */
-		SDL_TEXTUREACCESS_STREAMING,
-		sdl_width, sdl_height
-	);
-
-	if (!sdl_texture) {
-		fprint(2, "SDL_CreateTexture failed: %s\n", SDL_GetError());
-		SDL_DestroyRenderer(sdl_renderer);
-		SDL_DestroyWindow(sdl_window);
-		SDL_Quit();
-		return nil;
-	}
-
-	/*
-	 * Use nearest-neighbor scaling to prevent blurry text.
-	 * Without this, SDL3 defaults to linear filtering which
-	 * causes subtle fuzziness even at native resolution.
-	 */
-	SDL_SetTextureScaleMode(sdl_texture, SDL_SCALEMODE_NEAREST);
-
-	SDL_ShowWindow(sdl_window);
-
-	/* Enable text input to receive SDL_EVENT_TEXT_INPUT events */
-	SDL_StartTextInput(sdl_window);
 #endif
 
 	sdl_running = 1;
@@ -1012,6 +978,61 @@ sdl3_mainloop(void)
 
 	/* Event loop - processes SDL events and sends to Infernode */
 	for(;;) {
+#ifndef __APPLE__
+		/*
+		 * Handle cross-thread window creation requests.
+		 * The worker thread sets create_window_requested when it needs
+		 * a window (via attachscreen). We create it here on the main thread.
+		 */
+		if (create_window_requested && !create_window_done) {
+			sdl_window = SDL_CreateWindow(
+				"InferNode",
+				sdl_width, sdl_height,
+				SDL_WINDOW_RESIZABLE
+			);
+			if (!sdl_window) {
+				fprint(2, "draw-sdl3: SDL_CreateWindow failed: %s\n", SDL_GetError());
+				create_window_result = 0;
+				create_window_done = 1;
+			} else {
+				sdl_renderer = SDL_CreateRenderer(sdl_window, NULL);
+				if (!sdl_renderer) {
+					fprint(2, "draw-sdl3: SDL_CreateRenderer failed: %s\n", SDL_GetError());
+					SDL_DestroyWindow(sdl_window);
+					sdl_window = NULL;
+					create_window_result = 0;
+					create_window_done = 1;
+				} else {
+					SDL_SetRenderVSync(sdl_renderer, 0);
+					SDL_SetRenderLogicalPresentation(sdl_renderer, sdl_width, sdl_height,
+						SDL_LOGICAL_PRESENTATION_DISABLED);
+					sdl_texture = SDL_CreateTexture(
+						sdl_renderer,
+						SDL_PIXELFORMAT_XRGB8888,
+						SDL_TEXTUREACCESS_STREAMING,
+						sdl_width, sdl_height
+					);
+					if (!sdl_texture) {
+						fprint(2, "draw-sdl3: SDL_CreateTexture failed: %s\n", SDL_GetError());
+						SDL_DestroyRenderer(sdl_renderer);
+						SDL_DestroyWindow(sdl_window);
+						sdl_renderer = NULL;
+						sdl_window = NULL;
+						create_window_result = 0;
+						create_window_done = 1;
+					} else {
+						SDL_SetTextureScaleMode(sdl_texture, SDL_SCALEMODE_NEAREST);
+						SDL_ShowWindow(sdl_window);
+						SDL_StartTextInput(sdl_window);
+						create_window_result = 1;
+						create_window_done = 1;
+					}
+				}
+			}
+			create_window_requested = 0;
+		}
+#endif
+
 		/*
 		 * BATCHED TEXTURE UPDATE AND PRESENTATION
 		 *

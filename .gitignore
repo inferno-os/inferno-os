@@ -77,6 +77,8 @@ Dockerfile
 /*.sbl
 # Debug symbols in runtime dis tree
 /dis/**/*.sbl
+# Compiled test bytecode in dis tree
+/dis/tests/*.dis
 # Xenith plugin build artifacts (built from appl/xenith/xenith/)
 /xenith/dis/
 .env
@@ -164,6 +166,17 @@ dis/cmd/luci*.sbl
 # Stray files
 fprint'
 
+# Windows build generated files
+emu/Nt/emu-config.c
+emu/Nt/emu-gui-config.c
+emu/Nt/SDL3.dll
+limbo/incpath.h
+utils/mk/rootpath.h
+SDL3-dev/
+emu_stderr.txt
+input.txt
+nul
+
 # Runtime / scratch directories
 dev/
 tmp/
@@ -193,3 +206,4 @@ mnt/
 
 # Local test data
 usr/inferno/test-pdfs/
+dis/mermaid_test.dis

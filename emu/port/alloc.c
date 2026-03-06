@@ -2,7 +2,9 @@
 #include "fns.h"
 #include "interp.h"
 #include "error.h"
+#ifndef _WIN32
 #include "sys/mman.h"
+#endif
 
 enum
 {
@@ -375,14 +377,18 @@ dopoolalloc(Pool *p, ulong asize, ulong pc)
 	}
 
 	p->nbrk++;
-	/* t = (Bhdr *)sbrk(alloc); doesn't work on Alpine Linux */
-#ifdef __APPLE__
+#ifdef _WIN32
+	/* Windows: os.c provides sbrk() via VirtualAlloc */
+	t = (Bhdr *)sbrk(alloc);
+	if(t == (void*)-1) {
+#elif defined(__APPLE__)
 	/* macOS ARM64 hardened runtime doesn't allow PROT_EXEC without entitlements */
 	t = (Bhdr *) mmap(0, alloc, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
+	if(t == (void*)-1) {
 #else
 	t = (Bhdr *) mmap(0, alloc, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-#endif
 	if(t == (void*)-1) {
+#endif
 		p->nbrk--;
 		unlock(&p->l);
 		return nil;

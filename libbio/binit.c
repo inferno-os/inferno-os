@@ -109,7 +109,11 @@ Bopen(char *name, int mode)
 		return 0;
 
 	case OREAD:
+#ifdef _WIN32
+		f = open(name, OREAD|O_BINARY);
+#else
 		f = open(name, OREAD);
+#endif
 		break;
 
 	case OWRITE:
