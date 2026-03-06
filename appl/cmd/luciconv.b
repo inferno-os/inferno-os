@@ -100,6 +100,7 @@ VOICE_PROC: con 2;
 voicestate := VOICE_IDLE;
 voicech: chan of string;
 micrect: Rect;  # Hit area for mic button
+inputrect: Rect;  # Hit area for input field
 
 # Tile layout (populated by drawconversation, used for click hit-testing)
 tilelayout: array of ref TileRect;
@@ -194,20 +195,40 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 		}
-		# Button-3 press: context menu (Copy)
+		# Button-3 press: context menu
 		if((p.buttons & 4) != 0 && (wasdown & 4) == 0) {
-			for(ti := 0; ti < ntiles; ti++) {
-				if(tilelayout[ti] != nil && tilelayout[ti].r.contains(p.xy)) {
-					msg := tilelayout[ti].msg;
-					if(msg != nil && menumod != nil) {
-						items := array[] of {"Copy"};
-						pop := menumod->new(items);
-						result := pop.show(mainwin, p.xy, mouse);
-						if(result == 0)
-							writetosnarf(msg.text);
-						redrawconv();
+			if(inputrect.dx() > 0 && inputrect.contains(p.xy)) {
+				# Input field context menu
+				if(menumod != nil) {
+					items := array[] of {"Copy", "Paste"};
+					pop := menumod->new(items);
+					result := pop.show(mainwin, p.xy, mouse);
+					if(result == 0) {
+						# Copy input buffer to snarf
+						if(len inputbuf > 0)
+							writetosnarf(inputbuf);
+					} else if(result == 1) {
+						# Paste from snarf into input buffer
+						s := readfromsnarf();
+						if(s != nil && len s > 0)
+							inputbuf += s;
 					}
-					break;
+					redrawconv();
+				}
+			} else {
+				for(ti := 0; ti < ntiles; ti++) {
+					if(tilelayout[ti] != nil && tilelayout[ti].r.contains(p.xy)) {
+						msg := tilelayout[ti].msg;
+						if(msg != nil && menumod != nil) {
+							items := array[] of {"Copy"};
+							pop := menumod->new(items);
+							result := pop.show(mainwin, p.xy, mouse);
+							if(result == 0)
+								writetosnarf(msg.text);
+							redrawconv();
+						}
+						break;
+					}
 				}
 			}
 			prevbuttons = 0;
@@ -311,6 +332,7 @@ drawconversation(zone: Rect)
 	# Draw input field at bottom
 	inputr := Rect((zone.min.x + pad, zone.max.y - inputh),
 		(zone.max.x - pad, zone.max.y));
+	inputrect = inputr;
 	mainwin.draw(inputr, inputcol, nil, (0, 0));
 
 	# Mic button at right edge of input
@@ -839,6 +861,24 @@ writetosnarf(text: string)
 		return;
 	b := array of byte text;
 	sys->write(fd, b, len b);
+}
+
+readfromsnarf(): string
+{
+	fd := sys->open("/dev/snarf", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	result := "";
+	buf := array[8192] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		result += string buf[0:n];
+	}
+	if(result == "")
+		return nil;
+	return result;
 }
 
 readfile(path: string): string
