@@ -294,6 +294,27 @@ restrictns(caps: ref Capabilities): string
 	# could read every open Xenith window regardless of namespace restriction.
 	if(caps.xenith)
 		safe = "chan" :: safe;
+
+	# Expose additional Inferno root-level directories from caps.paths.
+	# e.g. "/appl/veltro" → add "appl" to safe, then restrict /appl to "veltro".
+	# Paths under /dis/, /n/, /dev/, /lib/, /tmp/ are already handled above.
+	extradirs: list of string;
+	for(ep := caps.paths; ep != nil; ep = tl ep) {
+		p := hd ep;
+		if(len p < 2 || p[0] != '/')
+			continue;
+		(first, nil) := splitfirst(p[1:]);
+		if(first == "")
+			continue;
+		# Skip top-level dirs already in safe or handled by steps 1–7
+		if(inlist(first, safe))
+			continue;
+		if(!inlist(first, extradirs))
+			extradirs = first :: extradirs;
+	}
+	for(ed := extradirs; ed != nil; ed = tl ed)
+		safe = (hd ed) :: safe;
+
 	{
 		err = restrictdir("/", safe, 0);
 	} exception e {
@@ -302,6 +323,19 @@ restrictns(caps: ref Capabilities): string
 	}
 	if(err != nil)
 		return sys->sprint("restrict /: %s", err);
+
+	# Restrict each extra root-level dir to only the granted sub-paths.
+	# e.g. "/appl/veltro" → restrictpath("/appl", "veltro"::nil)
+	# This prevents the agent from browsing sibling dirs (e.g. /appl/cmd).
+	for(ed = extradirs; ed != nil; ed = tl ed) {
+		topdir := "/" + hd ed;
+		subpaths := filterpaths(caps.paths, topdir + "/");
+		if(subpaths != nil) {
+			ederr := restrictpath(topdir, subpaths);
+			if(ederr != nil)
+				sys->fprint(sys->fildes(2), "nsconstruct: restrict %s: %s\n", topdir, ederr);
+		}
+	}
 
 	return nil;
 }
