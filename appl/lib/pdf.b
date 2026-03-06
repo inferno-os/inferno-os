@@ -144,8 +144,8 @@ display: ref Display;
 colorcache: list of ref ColorCacheEntry;
 
 # Font paths
-SANSFONT: con "/fonts/dejavu/DejaVuSans/unicode.14.font";
-MONOFONT: con "/fonts/dejavu/DejaVuSansMono/unicode.14.font";
+SANSFONT: con "/fonts/combined/unicode.sans.14.font";
+MONOFONT: con "/fonts/combined/unicode.14.font";
 
 sansfont: ref Font;
 monofont: ref Font;

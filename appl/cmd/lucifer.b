@@ -304,10 +304,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	dimcol   = display.color(COLDIM);
 
 	# Load fonts
-	mainfont = Font.open(display, "/fonts/dejavu/DejaVuSans/unicode.14.font");
+	mainfont = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(mainfont == nil)
 		mainfont = Font.open(display, "*default*");
-	monofont = Font.open(display, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
+	monofont = Font.open(display, "/fonts/combined/unicode.14.font");
 	if(monofont == nil)
 		monofont = mainfont;
 
