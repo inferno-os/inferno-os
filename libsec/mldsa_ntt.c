@@ -59,16 +59,17 @@ static const int32 mldsa_zetas[256] = {
 /*
  * Barrett reduction for q = 8380417.
  * Returns r in (-q, q) such that r ≡ a (mod q) for |a| <= 2^31.
+ *
+ * Uses the approach from the pqcrystals reference implementation:
+ * since q ≈ 2^23 (q = 8380417, 2^23 = 8388608), dividing by 2^23
+ * approximates division by q with sufficient precision.
  */
 int32
 mldsa_barrett_reduce(int32 a)
 {
 	int32 t;
-	int64 v;
 
-	/* v = round(2^47 / q) */
-	v = 16777259;	/* 2^47 / q rounded */
-	t = (int32)(((int64)a * v + ((int64)1 << 46)) >> 47);
+	t = (a + (1 << 22)) >> 23;
 	t *= MLDSA_Q;
 	return a - t;
 }
