@@ -66,7 +66,17 @@ canrender(data: array of byte, hint: string): int
 		if(hasprefix(s[i:], "graph ") || hasprefix(s[i:], "flowchart ") ||
 		   hasprefix(s[i:], "sequenceDiagram") ||
 		   hasprefix(s[i:], "pie") || hasprefix(s[i:], "gantt") ||
-		   hasprefix(s[i:], "xychart-beta"))
+		   hasprefix(s[i:], "xychart-beta") ||
+		   hasprefix(s[i:], "mindmap") ||
+		   hasprefix(s[i:], "classDiagram") ||
+		   hasprefix(s[i:], "stateDiagram") ||
+		   hasprefix(s[i:], "erDiagram") ||
+		   hasprefix(s[i:], "timeline") ||
+		   hasprefix(s[i:], "gitGraph") ||
+		   hasprefix(s[i:], "quadrantChart") ||
+		   hasprefix(s[i:], "journey") ||
+		   hasprefix(s[i:], "requirementDiagram") ||
+		   hasprefix(s[i:], "block-beta"))
 			return 70;
 		break;
 	}

@@ -184,6 +184,17 @@ docreate(args: string): string
 
 	if(atype == nil || atype == "")
 		atype = "markdown";
+
+	# Normalize mermaid diagram subtypes to "mermaid"
+	case atype {
+	"mindmap" or "flowchart" or "sequenceDiagram" or
+	"classDiagram" or "stateDiagram" or "stateDiagram-v2" or
+	"erDiagram" or "timeline" or "gitGraph" or
+	"quadrantChart" or "journey" or "requirementDiagram" or
+	"block-beta" or "pie" or "gantt" or "xychart-beta" =>
+		atype = "mermaid";
+	}
+
 	if(label == nil || label == "")
 		label = id;
 
