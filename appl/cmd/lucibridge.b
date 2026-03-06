@@ -385,6 +385,35 @@ updateliveconvmsg(idx: int, text: string)
 		sys->fprint(stderr, "lucibridge: updateliveconvmsg failed: %r\n");
 }
 
+# Display welcome.md in the presentation zone on first launch.
+# A marker file prevents it appearing again on subsequent startups.
+showwelcome(aid: int)
+{
+	marker := "/lib/veltro/.welcome_shown";
+	(ok, nil) := sys->stat(marker);
+	if(ok >= 0)
+		return;
+
+	wfd := sys->open("/lib/veltro/welcome.md", Sys->OREAD);
+	if(wfd == nil)
+		return;
+	buf := array[65536] of byte;
+	n := sys->read(wfd, buf, len buf);
+	wfd = nil;
+	if(n <= 0)
+		return;
+	content := string buf[0:n];
+
+	pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", aid);
+	writefile(pctl, "create id=welcome type=markdown label=Welcome");
+	datapath := sys->sprint("/n/ui/activity/%d/presentation/welcome/data", aid);
+	writefile(datapath, content);
+	writefile(pctl, "center id=welcome");
+
+	fd := sys->create(marker, Sys->OWRITE, 8r644);
+	fd = nil;
+}
+
 # Find the first Inferno path (starts with /) in tool args.
 # Generic — decoupled from which tool is being called or its arg order.
 filepathof(args: string): string
@@ -860,6 +889,9 @@ init(nil: ref Draw->Context, args: list of string)
 	err := initsession();
 	if(err != nil)
 		fatal(err);
+
+	# Show welcome document on first launch
+	showwelcome(actid);
 
 	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
 
