@@ -6,6 +6,7 @@ TARG=\
 	clock.dis\
 	colors.dis\
 	lens.dis\
+	luciedit.dis\
 	view.dis\
 	wm.dis\
 
@@ -22,6 +23,8 @@ SYSMODULES=\
 	plumbmsg.m\
 	sh.m\
 	string.m\
+	styx.m\
+	styxservers.m\
 	sys.m\
 	winplace.m\
 	wmclient.m\
