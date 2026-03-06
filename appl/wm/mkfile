@@ -7,6 +7,7 @@ TARG=\
 	colors.dis\
 	lens.dis\
 	luciedit.dis\
+	mand.dis\
 	view.dis\
 	wm.dis\
 
@@ -21,6 +22,7 @@ SYSMODULES=\
 	keyboard.m\
 	lucitheme.m\
 	math.m\
+	menu.m\
 	menuhit.m\
 	plumbmsg.m\
 	sh.m\

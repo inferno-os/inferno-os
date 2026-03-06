@@ -1,0 +1,35 @@
+fractal - AI control for the Mandelbrot/Julia fractal viewer
+
+Usage:
+  state                          Read fractal state (type, coords, depth)
+  view                           Read AI-friendly view description
+  zoomin <x1> <y1> <x2> <y2>    Zoom to fractal coordinate region
+  center <re> <im> <radius>     Zoom centered on a point with radius
+  zoomout                        Go back one zoom level
+  julia <re> <im>               Show Julia set for c = re + im*i
+  mandelbrot                     Switch back to Mandelbrot set
+  depth <n>                      Set depth multiplier (1=default)
+  fill on|off                    Toggle boundary-trace fill mode
+  restart                        Restart current computation
+
+The fractal viewer must be running. Use 'launch mand' to start it.
+
+Coordinates are in the complex plane:
+  Full Mandelbrot set: x=[-2, 1] y=[-1.5, 1.5]
+
+Notable regions to explore:
+  Seahorse valley:  center -0.75 0.1 0.05
+  Elephant valley:  center 0.28 0.008 0.01
+  Mini-Mandelbrot:  center -1.768 0.002 0.01
+  Antenna tip:      center -1.788 0 0.02
+  Period-2 bulb:    center -1.0 0 0.3
+
+Examples:
+  fractal view                            See current view description
+  fractal state                           Read raw state
+  fractal zoomin -0.8 0.05 -0.7 0.15      Zoom into seahorse valley
+  fractal center -0.75 0.1 0.02           Zoom centered on point
+  fractal julia -0.4 0.6                  Show Julia set for c=-0.4+0.6i
+  fractal depth 3                          Triple the iteration depth
+  fractal zoomout                          Go back one level
+  fractal mandelbrot                       Return to Mandelbrot set
