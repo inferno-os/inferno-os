@@ -55,11 +55,12 @@ doc(): string
 		"Usage:\n" +
 		"  Launch list           — show available apps\n" +
 		"  Launch xenith         — launch Xenith text environment\n" +
+		"  Launch lucishell      — launch shell terminal\n" +
 		"  Launch clock          — launch by short name\n" +
 		"  Launch wm/clock       — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit\n\n" +
+		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
@@ -149,8 +150,23 @@ exec(args: string): string
 
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
 
-	# Create app slot (will trigger lucifer to launch the app)
-	cmd := sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
+	# Build the create command.
+	# For xenith: pass -c 1 (single-column, fits presentation zone) and -E (embedded flag
+	# so xenith skips killprocs on exit). Also pass -t dark if brimstone theme is active.
+	cmd: string;
+	if(appname == "xenith") {
+		xenithargs := "-c 1 -E";
+		theme := readfile("/lib/lucifer/theme/current");
+		if(theme != nil)
+			theme = strip(theme);
+		# Brimstone is the dark theme (and the default when no theme file exists).
+		# Halo and other light themes use xenith's default Acme colour scheme.
+		if(theme == nil || theme == "" || theme == "brimstone")
+			xenithargs += " -t dark";
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
+			appname, dispath, appname, xenithargs);
+	} else
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
 	fd := sys->open(pctl, Sys->OWRITE);
 	if(fd == nil)
 		return sys->sprint("error: cannot open presentation/ctl: %r");

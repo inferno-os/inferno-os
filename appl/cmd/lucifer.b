@@ -1167,9 +1167,13 @@ launchapp(id, dispath, appdata: string)
 	# Spawn app with presscr context so it connects to our wmsrv (wmchan)
 	newctxt := ref Draw->Context(display, presscr, wmchan);
 	appargs: list of string;
-	appargs = dispath :: nil;
-	if(appdata != nil && appdata != "")
-		appargs = dispath :: appdata :: nil;
+	if(appdata != nil && appdata != "") {
+		# Tokenize appdata so multi-flag strings like "-c 1 -t dark -E"
+		# arrive as separate list elements (argopt expects one flag per element).
+		(nil, datatl) := sys->tokenize(appdata, " \t");
+		appargs = dispath :: datatl;
+	} else
+		appargs = dispath :: nil;
 	spawn guimod->init(newctxt, appargs);
 	writeappstatus(id, "running");
 }

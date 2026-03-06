@@ -8,6 +8,7 @@ TARG=\
 	lens.dis\
 	luciedit.dis\
 	mand.dis\
+	lucishell.dis\
 	view.dis\
 	wm.dis\
 
