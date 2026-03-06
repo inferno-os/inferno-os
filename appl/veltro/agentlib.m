@@ -12,6 +12,7 @@ AgentLib: module {
 	PATH: con "/dis/veltro/agentlib.dis";
 
 	STREAM_THRESHOLD: con 4096;
+	SCRATCH_PATH: con "/tmp/veltro/scratch";
 
 	init: fn();
 	setverbose: fn(v: int);

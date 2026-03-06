@@ -16,8 +16,6 @@ include "string.m";
 
 include "agentlib.m";
 
-SCRATCH_PATH: con "/tmp/veltro/scratch";
-
 verbose := 0;
 stderr: ref Sys->FD;
 
@@ -174,6 +172,13 @@ discovernamespace(): string
 	for(i := 0; i < len paths; i++) {
 		if(pathexists(paths[i]))
 			result += paths[i] + "\n";
+	}
+
+	# Include user-bound paths from /tool/paths (registered via file browser or -p)
+	boundraw := readfile("/tool/paths");
+	if(boundraw != "") {
+		result += "\nUSER PATHS (bound by operator):\n";
+		result += boundraw + "\n";
 	}
 
 	return result;

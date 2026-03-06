@@ -30,6 +30,12 @@ include "viewport.m";
 
 include "plumbmsg.m";
 
+include "bufio.m";
+	bufio: Bufio;
+	Iobuf: import bufio;
+
+include "imagefile.m";
+
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -59,6 +65,7 @@ Artifact: adt {
 	data:	string;
 	rendimg: ref Image;
 	pdfpage: int;
+	numpages: int;
 	rendering: int;
 	zoom:	int;
 	appstatus: string;	# "launching"|"running"|"dead" (type=app only)
@@ -94,6 +101,8 @@ View: import vpmod;
 
 plumbmod: Plumbmsg;
 Msg: import plumbmod;
+
+gifwriter: WImagefile;
 
 stderr: ref Sys->FD;
 win: ref Wmclient->Window;
@@ -217,8 +226,20 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Load viewport
 	vpmod = load Viewport Viewport->PATH;
 
-	# Load plumbmsg
+	# Load plumbmsg (send-only: no input port needed)
 	plumbmod = load Plumbmsg Plumbmsg->PATH;
+	if(plumbmod != nil) {
+		if(plumbmod->init(0, nil, 0) < 0)
+			plumbmod = nil;
+	}
+
+	# Load bufio + GIF writer for image export
+	bufio = load Bufio Bufio->PATH;
+	if(bufio != nil) {
+		gifwriter = load WImagefile WImagefile->WRITEGIFPATH;
+		if(gifwriter != nil)
+			gifwriter->init(bufio);
+	}
 
 	# Channel for serializing events from background goroutines (renderartasync,
 	# deliverevent) to the main loop goroutine.
@@ -285,7 +306,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 					if(pdfnavprev.max.x > pdfnavprev.min.x &&
 							pdfnavprev.contains(p.xy)) {
 						pdfart := findartifact(centeredart);
-						if(pdfart != nil && pdfart.pdfpage > 0) {
+						if(pdfart != nil && pdfart.pdfpage > 1) {
 							pdfart.pdfpage--;
 							pdfart.rendimg = nil;
 							pdfart.pany = 0;
@@ -296,7 +317,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 					} else if(pdfnavnext.max.x > pdfnavnext.min.x &&
 							pdfnavnext.contains(p.xy)) {
 						pdfart := findartifact(centeredart);
-						if(pdfart != nil) {
+						if(pdfart != nil && (pdfart.numpages == 0 || pdfart.pdfpage < pdfart.numpages)) {
 							pdfart.pdfpage++;
 							pdfart.rendimg = nil;
 							pdfart.pany = 0;
@@ -662,13 +683,13 @@ prescroll(dir: int)
 
 		# Page navigation at boundary (PDFs)
 		if(art.atype == "pdf" && boundary != 0) {
-			if(boundary > 0) {
+			if(boundary > 0 && (art.numpages == 0 || art.pdfpage < art.numpages)) {
 				# At bottom — next page
 				art.pdfpage++;
 				art.rendimg = nil;
 				art.pany = 0;
 				art.panx = 0;
-			} else if(art.pdfpage > 0) {
+			} else if(art.pdfpage > 1) {
 				# At top — previous page, start at bottom
 				art.pdfpage--;
 				art.rendimg = nil;
@@ -757,29 +778,38 @@ handlecontextmenu(p: ref Pointer)
 				"kill id=" + artid);
 		return;
 	}
-	# All non-app types get Zoom In/Out and Reset View
-	items := array[] of {"Close", "Zoom In", "Zoom Out", "Reset View", "Export"};
+	# Build menu based on artifact type
+	items: array of string;
+	case art.atype {
+	"pdf" or "image" =>
+		# Already files on disk — no export needed
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View"};
+	"mermaid" =>
+		# Rendered diagram — export source or rendered image
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View",
+			"Export Source", "Export Image"};
+	* =>
+		# Text content — export to file
+		items = array[] of {"Close", "Zoom In", "Zoom Out", "Reset View", "Export"};
+	}
 	pop := menumod->new(items);
 	result := pop.show(mainwin, p.xy, win.ctxt.ptr);
 	case result {
 	0 =>
 		deleteartifactui(artid);
 	1 =>
-		# Zoom In
 		if(art != nil) {
 			art.zoom = artzoom(art) + 25;
 			if(art.zoom > 400) art.zoom = 400;
 			art.rendimg = nil;
 		}
 	2 =>
-		# Zoom Out
 		if(art != nil) {
 			art.zoom = artzoom(art) - 25;
 			if(art.zoom < 25) art.zoom = 25;
 			art.rendimg = nil;
 		}
 	3 =>
-		# Reset View — zoom to 100%, pan to origin
 		if(art != nil) {
 			art.zoom = 0;
 			art.panx = 0;
@@ -788,6 +818,10 @@ handlecontextmenu(p: ref Pointer)
 		}
 	4 =>
 		exportartifact(art);
+	5 =>
+		# Only reachable for mermaid: Export Image
+		if(art != nil)
+			exportimage(art);
 	}
 }
 
@@ -829,7 +863,7 @@ loadpresentation()
 			if(data == nil) data = "";
 			if(appstatus == nil) appstatus = "";
 			else appstatus = strip(appstatus);
-			art := ref Artifact(nm, atype, label, data, nil, 0, 0, 0, appstatus, 0, 0);
+			art := ref Artifact(nm, atype, label, data, nil, 1, 0, 0, 0, appstatus, 0, 0);
 			artifacts = art :: artifacts;
 			nart++;
 		}
@@ -851,7 +885,7 @@ loadartifact(id: string)
 	if(data == nil) data = "";
 	if(appstatus2 == nil) appstatus2 = "";
 	else appstatus2 = strip(appstatus2);
-	art := ref Artifact(id, atype, label, data, nil, 0, 0, 0, appstatus2, 0, 0);
+	art := ref Artifact(id, atype, label, data, nil, 1, 0, 0, 0, appstatus2, 0, 0);
 	artifacts = appendart(artifacts, art);
 	nart++;
 }
@@ -909,20 +943,119 @@ deleteartifactui(id: string)
 			"delete id=" + id);
 }
 
+# Export text content: write to /tmp/ file, then open in luciedit.
+# For mermaid this exports the source; for text/code/md/table the content.
+# Creates a presentation app artifact to launch luciedit in the pres zone.
+# Falls back to snarf if file creation fails.
 exportartifact(art: ref Artifact)
 {
 	if(art == nil)
 		return;
-	if(art.atype == "pdf" || art.atype == "image") {
-		if(plumbmod != nil) {
-			msg := ref Msg("lucipres", "edit", "/",
-				"text", "action=showdata", array of byte art.data);
-			if(msg.send() >= 0)
-				return;
-		}
+	ext := ".txt";
+	case art.atype {
+	"markdown" or "doc" => ext = ".md";
+	"mermaid" => ext = ".mmd";
+	"code" => ext = ".b";
+	"table" => ext = ".tsv";
+	}
+	fname := safename(art.label);
+	if(fname == "")
+		fname = "export";
+	path := "/tmp/" + fname + ext;
+
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	if(fd == nil) {
+		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
 		writetosnarf(art.data);
-	} else
-		writetosnarf(art.data);
+		return;
+	}
+	b := array of byte art.data;
+	sys->write(fd, b, len b);
+	fd = nil;
+
+	sys->fprint(stderr, "lucipres: exported to %s\n", path);
+
+	# Launch luciedit as a presentation zone app
+	launchexport(fname + ext, path);
+}
+
+# Export the rendered image of an artifact as a GIF file.
+# Used for mermaid diagrams where the user wants the graphic, not the source.
+exportimage(art: ref Artifact)
+{
+	if(art == nil)
+		return;
+	if(art.rendimg == nil) {
+		sys->fprint(stderr, "lucipres: export image: no rendered image\n");
+		return;
+	}
+	if(gifwriter == nil || bufio == nil) {
+		sys->fprint(stderr, "lucipres: export image: GIF writer not available\n");
+		return;
+	}
+
+	fname := safename(art.label);
+	if(fname == "")
+		fname = "export";
+	path := "/tmp/" + fname + ".gif";
+
+	ofd := bufio->create(path, Bufio->OWRITE, 8r666);
+	if(ofd == nil) {
+		sys->fprint(stderr, "lucipres: export image: cannot create %s: %r\n", path);
+		return;
+	}
+	err := gifwriter->writeimage(ofd, art.rendimg);
+	ofd.close();
+	if(err != nil) {
+		sys->fprint(stderr, "lucipres: export image: %s: %s\n", path, err);
+		return;
+	}
+
+	sys->fprint(stderr, "lucipres: exported image to %s\n", path);
+
+	# Copy path to snarf so user can paste it
+	writetosnarf(path);
+}
+
+# Convert a label to a safe filename (alphanumeric, hyphens, underscores)
+safename(s: string): string
+{
+	r := "";
+	for(i := 0; i < len s && i < 64; i++) {
+		c := s[i];
+		if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		   (c >= '0' && c <= '9') || c == '-' || c == '_')
+			r += s[i:i+1];
+		else if(c == ' ' && len r > 0 && r[len r - 1] != '-')
+			r += "-";
+	}
+	return r;
+}
+
+# Launch luciedit as a presentation zone app to edit an exported file.
+# Creates an artifact of type=app with dispath=/dis/wm/luciedit.dis
+# and data=filepath so lucifer passes it as an argument.
+exportseq := 0;
+
+launchexport(label, filepath: string)
+{
+	if(actid_g < 0)
+		return;
+	exportseq++;
+	id := sys->sprint("edit-%d", exportseq);
+	ctlpath := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
+	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/luciedit.dis",
+		id, label);
+	writetofile(ctlpath, cmd);
+	# Write the file path into the artifact's data field
+	datapath := sys->sprint("%s/activity/%d/presentation/%s/data",
+		mountpt_g, actid_g, id);
+	fd := sys->open(datapath, Sys->OWRITE);
+	if(fd != nil) {
+		b := array of byte filepath;
+		sys->write(fd, b, len b);
+		fd = nil;
+	}
 }
 
 findartifact(id: string): ref Artifact
@@ -974,9 +1107,13 @@ artdata(art: ref Artifact): array of byte
 renderart(art: ref Artifact, contentw: int): ref Image
 {
 	# PDF special case: uses page/zoom state
-	if(art.atype == "pdf")
-		return renderpdfpage(art.data, art.pdfpage,
+	if(art.atype == "pdf") {
+		(img, np) := renderpdfpage(art.data, art.pdfpage,
 			96 * artzoom(art) / 100);
+		if(np > 0)
+			art.numpages = np;
+		return img;
+	}
 
 	hint := artypehint(art);
 	if(hint == "")
@@ -989,7 +1126,11 @@ renderart(art: ref Artifact, contentw: int): ref Image
 			return nil;
 		(renderer, nil) := rendermod->find(data, hint);
 		if(renderer != nil) {
+			# Images: bigger zoom → bigger rendered output (scale up)
+			# Text/document renderers: larger zoom → narrower layout (scale font effect)
 			w := contentw * 100 / artzoom(art);
+			if(art.atype == "image")
+				w = contentw * artzoom(art) / 100;
 			progress := chan of ref Renderer->RenderProgress;
 			# Drain progress (we don't use progressive rendering here)
 			spawn drainprogress(progress);
@@ -1093,7 +1234,7 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 {
 	navh := pdfnav.dy();
 	mainwin.draw(pdfnav, headercol, nil, (0, 0));
-	pagestr := sys->sprint("Page %d", art.pdfpage + 1);
+	pagestr := sys->sprint("Page %d", art.pdfpage);
 	psw := mainfont.width(pagestr);
 	psy := pdfnav.min.y + (navh - mainfont.height) / 2;
 	midx := pdfnav.min.x + pdfnav.dx() / 2;
@@ -1101,7 +1242,7 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 	prevlabel := " < ";
 	plw := mainfont.width(prevlabel);
 	plx := midx - psw/2 - plw - 8;
-	if(art.pdfpage > 0) {
+	if(art.pdfpage > 1) {
 		mainwin.text((plx, psy), accentcol, (0, 0), mainfont, prevlabel);
 		pdfnavprev = Rect((plx, pdfnav.min.y), (plx + plw, pdfnav.max.y));
 	} else
@@ -1109,8 +1250,12 @@ drawpdfnav(pdfnav: Rect, art: ref Artifact)
 	nextlabel := " > ";
 	nlw := mainfont.width(nextlabel);
 	nlx := midx + psw/2 + 8;
-	mainwin.text((nlx, psy), accentcol, (0, 0), mainfont, nextlabel);
-	pdfnavnext = Rect((nlx, pdfnav.min.y), (nlx + nlw, pdfnav.max.y));
+	hasnext := art.numpages == 0 || art.pdfpage < art.numpages;
+	if(hasnext) {
+		mainwin.text((nlx, psy), accentcol, (0, 0), mainfont, nextlabel);
+		pdfnavnext = Rect((nlx, pdfnav.min.y), (nlx + nlw, pdfnav.max.y));
+	} else
+		mainwin.text((nlx, psy), dimcol, (0, 0), mainfont, nextlabel);
 }
 
 # Draw fallback text when no renderer is available or rendering failed.
@@ -1221,7 +1366,8 @@ drawtable(art: ref Artifact, contentr: Rect, pad: int, contentw: int, contenty: 
 }
 
 # Render a single PDF page (uses PDF module directly for page/dpi control).
-renderpdfpage(path: string, page: int, dpi: int): ref Image
+# Returns (image, pagecount); pagecount is 0 on error.
+renderpdfpage(path: string, page: int, dpi: int): (ref Image, int)
 {
 	if(pdfmod == nil) {
 		pdfmod = load PDF PDF->PATH;
@@ -1229,18 +1375,19 @@ renderpdfpage(path: string, page: int, dpi: int): ref Image
 			pdfmod->init(display_g);
 	}
 	if(pdfmod == nil)
-		return nil;
+		return (nil, 0);
 	fdata := readfilebytes(path);
 	if(fdata == nil)
-		return nil;
+		return (nil, 0);
 	(doc, err) := pdfmod->open(fdata, "");
 	if(doc == nil) {
 		sys->fprint(stderr, "lucipres: pdf open %s: %s\n", path, err);
-		return nil;
+		return (nil, 0);
 	}
+	np := doc.pagecount();
 	(img, nil) := doc.renderpage(page, dpi);
 	doc.close();
-	return img;
+	return (img, np);
 }
 
 # --- Table rendering helpers ---

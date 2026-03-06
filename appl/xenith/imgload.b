@@ -14,6 +14,7 @@ include "bufio.m";
 include "imagefile.m";
 	imageremap: Imageremap;
 	readpng: RImagefile;
+	readjpg: RImagefile;
 
 include "filter.m";
 	inflate: Filter;
@@ -179,6 +180,10 @@ readimagedata(data: array of byte, hint: string): (ref Image, string)
 	# PPM P3 (ASCII) magic: "P3"
 	if(buf[0] == byte 'P' && buf[1] == byte '3')
 		return loadppm(fd, hint);
+
+	# JPEG magic: FF D8 FF
+	if(n >= 3 && int buf[0] == 16rFF && int buf[1] == 16rD8 && int buf[2] == 16rFF)
+		return loadjpeg(fd, hint);
 
 	fd.close();
 	return (nil, "unrecognized image format");
@@ -967,6 +972,26 @@ loadppm(fd: ref Iobuf, path: string): (ref Image, string)
 	return (im, nil);
 }
 
+# Load a JPEG image using Inferno's readjpg module.
+loadjpeg(fd: ref Iobuf, path: string): (ref Image, string)
+{
+	if(readjpg == nil) {
+		readjpg = load RImagefile RImagefile->READJPGPATH;
+		if(readjpg == nil)
+			return (nil, "can't load JPEG reader");
+		readjpg->init(bufio);
+	}
+	fd.seek(big 0, Bufio->SEEKSTART);
+	(raw, err) := readjpg->read(fd);
+	fd.close();
+	if(raw == nil)
+		return (nil, "JPEG read failed: " + err);
+	if(imageremap == nil)
+		return (nil, "imageremap not available");
+	(im, err2) := imageremap->remap(raw, display, 1);
+	return (im, err2);
+}
+
 # Progressive image decode - sends progress updates during decode
 readimagedataprogressive(data: array of byte, hint: string,
                          progress: chan of ref ImgProgress): (ref Image, string)
@@ -1000,6 +1025,10 @@ readimagedataprogressive(data: array of byte, hint: string,
 	# PPM: fall back to non-progressive (simpler format, usually fast)
 	if(buf[0] == byte 'P' && (buf[1] == byte '6' || buf[1] == byte '3'))
 		return loadppm(fd, hint);
+
+	# JPEG: fall back to non-progressive (readjpg doesn't have progressive interface)
+	if(n >= 3 && int buf[0] == 16rFF && int buf[1] == 16rD8 && int buf[2] == 16rFF)
+		return loadjpeg(fd, hint);
 
 	fd.close();
 	return (nil, "unrecognized image format");

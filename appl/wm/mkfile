@@ -18,6 +18,7 @@ SYSMODULES=\
 	daytime.m\
 	draw.m\
 	imagefile.m\
+	keyboard.m\
 	math.m\
 	menuhit.m\
 	plumbmsg.m\
