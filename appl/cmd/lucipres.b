@@ -201,10 +201,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	labelcol = display_g.color(COLLABEL);
 
 	# Load fonts
-	mainfont = Font.open(display_g, "/fonts/dejavu/DejaVuSans/unicode.14.font");
+	mainfont = Font.open(display_g, "/fonts/combined/unicode.sans.14.font");
 	if(mainfont == nil)
 		mainfont = Font.open(display_g, "*default*");
-	monofont_g = Font.open(display_g, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
+	monofont_g = Font.open(display_g, "/fonts/combined/unicode.14.font");
 	if(monofont_g == nil)
 		monofont_g = mainfont;
 

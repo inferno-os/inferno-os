@@ -123,7 +123,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	thumbcol = display_g.color(COLTHUMB);
 
 	# Font — prefer monospace
-	font = Font.open(display_g, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
+	font = Font.open(display_g, "/fonts/combined/unicode.14.font");
 	if(font == nil)
 		font = Font.open(display_g, "*default*");
 
