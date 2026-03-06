@@ -98,7 +98,7 @@ testMLKEM768FuzzEncaps(t: ref T)
 		randbytes(fake_pk, iter * 7 + 13);
 
 		{
-			(ct, ss) := kr->mlkem768_encaps(fake_pk);
+			(ct, nil) := kr->mlkem768_encaps(fake_pk);
 			# Either nil return or some output is acceptable
 			# The key property: no crash
 			if(ct != nil)
@@ -241,14 +241,12 @@ testMLDSA65FuzzVerify(t: ref T)
 		if(certstr == nil)
 			continue;
 
-		# Parse and re-create with mangled data by flipping bits
-		# in the cert string (the sig field)
-		mangled := array [len certstr] of byte;
-		mangled[0:] = certstr;
-		# Flip bytes in the latter half (signature data region)
-		half := len mangled / 2;
-		for(i := half; i < len mangled; i++)
-			mangled[i] = mangled[i] ^ byte ((iter + i) & 16rff);
+		# Mangle the cert string by flipping characters in the latter half
+		cbuf := array of byte certstr;
+		half := len cbuf / 2;
+		for(i := half; i < len cbuf; i++)
+			cbuf[i] = cbuf[i] ^ byte ((iter + i) & 16rff);
+		mangled := string cbuf;
 
 		# Try to parse and verify the mangled cert
 		{
@@ -286,8 +284,9 @@ testMLDSADeserializationFuzz(t: ref T)
 		# Random bytes of various lengths
 		sizes := array [] of { 100, 1000, 4032, 4096, 10000 };
 		for(si := 0; si < len sizes; si++) {
-			garbage := array [sizes[si]] of byte;
-			randbytes(garbage, iter * 1000 + si);
+			gbuf := array [sizes[si]] of byte;
+			randbytes(gbuf, iter * 1000 + si);
+			garbage := string gbuf;
 
 			{
 				sk := kr->strtosk(garbage);
@@ -343,11 +342,11 @@ testSLHDSA192sFuzzVerify(t: ref T)
 			continue;
 
 		# Corrupt signature bytes
-		mangled := array [len certstr] of byte;
-		mangled[0:] = certstr;
-		half := len mangled / 2;
-		for(i := half; i < len mangled; i++)
-			mangled[i] = mangled[i] ^ byte 16rff;
+		cbuf2 := array of byte certstr;
+		half := len cbuf2 / 2;
+		for(i := half; i < len cbuf2; i++)
+			cbuf2[i] = cbuf2[i] ^ byte 16rff;
+		mangled := string cbuf2;
 
 		{
 			cert2 := kr->strtocert(mangled);

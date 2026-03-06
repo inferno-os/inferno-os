@@ -89,7 +89,7 @@ byteentropy(buf: array of byte): int
 	for(i := 0; i < len buf; i++)
 		counts[int buf[i]]++;
 	distinct := 0;
-	for(i := 0; i < 256; i++)
+	for(i = 0; i < 256; i++)
 		if(counts[i] > 0)
 			distinct++;
 	return distinct;
@@ -296,7 +296,7 @@ testMLKEM768SsEntropy(t: ref T)
 
 	# Check for collisions (O(n^2) but n=200 is fine)
 	collisions := 0;
-	for(i := 0; i < ITERS; i++)
+	for(i = 0; i < ITERS; i++)
 		for(j := i+1; j < ITERS; j++)
 			if(bytescmp(secrets[i], secrets[j]))
 				collisions++;
@@ -308,11 +308,11 @@ testMLKEM768SsEntropy(t: ref T)
 	lowvar := 0;
 	for(pos := 0; pos < 32; pos++) {
 		seen := array [256] of { * => 0 };
-		for(i := 0; i < ITERS; i++)
+		for(i = 0; i < ITERS; i++)
 			seen[int secrets[i][pos]]++;
 		distinct := 0;
-		for(i := 0; i < 256; i++)
-			if(seen[i] > 0)
+		for(k := 0; k < 256; k++)
+			if(seen[k] > 0)
 				distinct++;
 		# With 200 samples, each byte position should have at least 50 distinct values
 		if(distinct < 50)
@@ -344,7 +344,7 @@ testMLKEM768KeyIndependence(t: ref T)
 
 	# All public keys should be distinct
 	pk_collisions := 0;
-	for(i := 0; i < ITERS; i++)
+	for(i = 0; i < ITERS; i++)
 		for(j := i+1; j < ITERS; j++)
 			if(bytescmp(pks[i], pks[j]))
 				pk_collisions++;
@@ -354,11 +354,11 @@ testMLKEM768KeyIndependence(t: ref T)
 	# Cross-key decapsulation should never succeed
 	# Test a subset (first 10 keys against each other)
 	cross_failures := 0;
-	for(i := 0; i < 10; i++) {
+	for(i = 0; i < 10; i++) {
 		(ct, ss_enc) := kr->mlkem768_encaps(pks[i]);
 		if(ct == nil)
 			continue;
-		for(j := 0; j < 10; j++) {
+		for(j = 0; j < 10; j++) {
 			if(j == i)
 				continue;
 			ss_dec := kr->mlkem768_decaps(sks[j], ct);
