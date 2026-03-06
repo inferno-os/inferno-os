@@ -176,8 +176,8 @@ fontcache : array of ref Reffont;
 nfontcache : int;
 reffonts : array of ref Reffont;
 deffontnames := array[2] of {
-	"/fonts/dejavu/DejaVuSans/unicode.14.font",
-	"/fonts/dejavu/DejaVuSansMono/unicode.14.font",
+	"/fonts/combined/unicode.sans.14.font",
+	"/fonts/combined/unicode.14.font",
 };
 
 command : ref Command;

@@ -281,7 +281,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	display = w.display;
 
 	# Load font
-	font = Font.open(display, "/fonts/dejavu/DejaVuSansMono/unicode.14.font");
+	font = Font.open(display, "/fonts/combined/unicode.14.font");
 	if(font == nil)
 		font = Font.open(display, "/fonts/10646/9x15/9x15.font");
 	if(font == nil)
