@@ -56,9 +56,9 @@ include "wmclient.m";
 	wmclient: Wmclient;
 	Window: import wmclient;
 
-include "menuhit.m";
-	menuhit: Menuhit;
-	Menu, Mousectl: import menuhit;
+include "menu.m";
+	menumod: Menu;
+	Popup: import menumod;
 
 include "bufio.m";
 	bufio: Bufio;
@@ -247,7 +247,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	sys = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
 	wmclient = load Wmclient Wmclient->PATH;
-	menuhit = load Menuhit Menuhit->PATH;
+	menumod = load Menu Menu->PATH;
 	bufio = load Bufio Bufio->PATH;
 	str = load String String->PATH;
 	stderr = sys->fildes(2);
@@ -308,8 +308,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	w.startinput("kbd" :: "ptr" :: nil);
 	w.onscreen(nil);
 
-	menuhit->init(w);
-	menu := ref Menu(array[] of {"save", "find", "goto line", "select all", "cut", "copy", "paste", "exit"}, nil, 0);
+	if(menumod != nil)
+		menumod->init(display, font);
+	menu := menumod->new(array[] of {"save", "find", "goto line", "select all", "cut", "copy", "paste", "exit"});
 
 	redraw();
 
@@ -336,9 +337,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		redraw();
 	p := <-w.ctxt.ptr =>
 		if(!w.pointer(*p)) {
-			if(p.buttons & 4) {
-				mc := ref Mousectl(w.ctxt.ptr, p.buttons, p.xy, p.msec);
-				n := menuhit->menuhit(p.buttons, mc, menu, nil);
+			if(p.buttons & 4 && menumod != nil && menu != nil) {
+				n := menu.show(w.image, p.xy, w.ctxt.ptr);
 				case n {
 				0 => dosave();
 				1 => startfind();
@@ -1033,27 +1033,39 @@ pos2cursor(p: Point): (int, int)
 		return (doc.curline, doc.curcol);
 
 	textr := textrect();
-	y := p.y - textr.min.y;
-	line := doc.topline + y / font.height;
-	if(line < 0)
-		line = 0;
-	if(line >= doc.nlines)
-		line = doc.nlines - 1;
+	maxw := textr.dx();
 
-	x := p.x - textr.min.x;
-	col := 0;
-	if(line < doc.nlines) {
-		s := expandtabs(doc.lines[line]);
-		w2 := 0;
-		for(col = 0; col < len s; col++) {
-			cw := font.width(s[col:col+1]);
-			if(w2 + cw/2 > x)
-				break;
-			w2 += cw;
+	vy := p.y - textr.min.y;
+	if(vy < 0)
+		vy = 0;
+	clickvrow := vy / font.height;
+
+	vrow := 0;
+	for(i := doc.topline; i < doc.nlines; i++) {
+		expanded := expandtabs(doc.lines[i]);
+		start := 0;
+		first := 1;
+		while(start < len expanded || first) {
+			first = 0;
+			k := wrapend(expanded, start, maxw);
+			if(vrow == clickvrow) {
+				x := p.x - textr.min.x;
+				w2 := 0;
+				ek := start;
+				while(ek < k) {
+					cw := font.width(expanded[ek:ek+1]);
+					if(w2 + cw/2 > x)
+						break;
+					w2 += cw;
+					ek++;
+				}
+				return (i, unexpandcol(doc.lines[i], ek));
+			}
+			vrow++;
+			start = k;
 		}
-		col = unexpandcol(doc.lines[line], col);
 	}
-	return (line, col);
+	return (doc.nlines - 1, len doc.lines[doc.nlines - 1]);
 }
 
 textrect(): Rect
@@ -1653,29 +1665,35 @@ redraw()
 	screen.draw(r, bgcolor, nil, Point(0, 0));
 
 	textr := textrect();
+	maxvrows := 1;
 	if(font.height > 0)
-		vislines = textr.dy() / font.height;
-	else
-		vislines = 1;
+		maxvrows = textr.dy() / font.height;
 
 	drawscrollbar(screen, Rect((r.min.x, r.min.y), (r.min.x + SCROLLW, r.max.y - statusheight)));
 
 	y := textr.min.y;
-	for(i := doc.topline; i < doc.nlines && i < doc.topline + vislines; i++) {
-		lnr := Rect((r.min.x + SCROLLW, y), (r.min.x + SCROLLW + LNWIDTH - MARGIN, y + font.height));
-
+	vrow := 0;
+	for(i := doc.topline; i < doc.nlines && vrow < maxvrows; i++) {
 		lns := string (i + 1);
 		lnw := font.width(lns);
-		screen.text(Point(lnr.max.x - lnw, y), lncolor, Point(0, 0), font, lns);
-
-		if(doc.selactive)
-			drawselection(screen, i, textr.min.x, y);
+		screen.text(Point(r.min.x + SCROLLW + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
 
 		expanded := expandtabs(doc.lines[i]);
-		screen.text(Point(textr.min.x, y), fgcolor, Point(0, 0), font, expanded);
-
-		y += font.height;
+		start := 0;
+		first := 1;
+		while((start < len expanded || first) && vrow < maxvrows) {
+			first = 0;
+			k := wrapend(expanded, start, textr.dx());
+			chunk := expanded[start:k];
+			if(doc.selactive)
+				drawselectionchunk(screen, i, expanded, start, k, textr.min.x, y);
+			screen.text(Point(textr.min.x, y), fgcolor, Point(0, 0), font, chunk);
+			y += font.height;
+			vrow++;
+			start = k;
+		}
 	}
+	vislines = vrow;
 
 	drawcursor(1);
 	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
@@ -1736,24 +1754,52 @@ drawcursor(vis: int)
 {
 	if(w.image == nil)
 		return;
-	if(doc.curline < doc.topline || doc.curline >= doc.topline + vislines)
+	if(doc.curline < doc.topline)
 		return;
 
 	textr := textrect();
-	y := textr.min.y + (doc.curline - doc.topline) * font.height;
+	maxw := textr.dx();
 
+	# Walk visual rows from topline to find y for curline
+	y := textr.min.y;
+	for(i := doc.topline; i < doc.curline; i++) {
+		expanded := expandtabs(doc.lines[i]);
+		start := 0;
+		first := 1;
+		while(start < len expanded || first) {
+			first = 0;
+			k := wrapend(expanded, start, maxw);
+			y += font.height;
+			if(y >= textr.max.y)
+				return;
+			start = k;
+		}
+	}
+	if(y >= textr.max.y)
+		return;
+
+	# Find which wrapped chunk of curline contains the cursor
 	expanded := expandtabs(doc.lines[doc.curline]);
 	ecol := expandedcol(doc.lines[doc.curline], doc.curcol);
-	prefix := "";
-	if(ecol <= len expanded)
-		prefix = expanded[0:ecol];
-	x := textr.min.x + font.width(prefix);
-
-	col := cursorcolor;
-	if(!vis)
-		col = bgcolor;
-	w.image.line(Point(x, y), Point(x, y + font.height - 1), 0, 0, 0, col, Point(0, 0));
-	w.image.flush(Draw->Flushnow);
+	start := 0;
+	first := 1;
+	while(start < len expanded || first) {
+		first = 0;
+		k := wrapend(expanded, start, maxw);
+		if(ecol >= start && (ecol < k || k >= len expanded)) {
+			x := textr.min.x + font.width(expanded[start:ecol]);
+			col := cursorcolor;
+			if(!vis)
+				col = bgcolor;
+			w.image.line(Point(x, y), Point(x, y + font.height - 1), 0, 0, 0, col, Point(0, 0));
+			w.image.flush(Draw->Flushnow);
+			return;
+		}
+		y += font.height;
+		if(y >= textr.max.y)
+			return;
+		start = k;
+	}
 }
 
 drawstatus(screen: ref Image, r: Rect)
@@ -1840,6 +1886,59 @@ readf(path: string): string
 	while(len s > 0 && s[len s - 1] == '\n')
 		s = s[0:len s - 1];
 	return s;
+}
+
+# ---------- Word wrap helpers ----------
+
+# wrapend returns the end index (exclusive) of the next wrapped visual chunk
+# starting at position start in expanded string, fitting within maxpx pixels.
+wrapend(expanded: string, start, maxpx: int): int
+{
+	if(start >= len expanded)
+		return len expanded;
+	w2 := 0;
+	k := start;
+	while(k < len expanded) {
+		cw := font.width(expanded[k:k+1]);
+		if(w2 + cw > maxpx)
+			break;
+		w2 += cw;
+		k++;
+	}
+	if(k == start)
+		k++;		# guarantee at least one char (very wide char edge case)
+	return k;
+}
+
+# drawselectionchunk draws the selection highlight for one visual chunk [cs,ce)
+# of logical line `line`, where expanded is the tab-expanded line string.
+drawselectionchunk(screen: ref Image, line: int, expanded: string, cs, ce, textx, y: int)
+{
+	(sl, sc, el, ec) := getsel();
+	if(line < sl || line > el)
+		return;
+
+	selstart_ex := 0;
+	if(line == sl)
+		selstart_ex = expandedcol(doc.lines[line], sc);
+	selend_ex := len expanded;
+	if(line == el)
+		selend_ex = expandedcol(doc.lines[line], ec);
+
+	# Clip to this chunk
+	cselstart := selstart_ex;
+	if(cselstart < cs)
+		cselstart = cs;
+	cselend := selend_ex;
+	if(cselend > ce)
+		cselend = ce;
+	if(cselstart >= cselend)
+		return;
+
+	startx := textx + font.width(expanded[cs:cselstart]);
+	endx   := textx + font.width(expanded[cs:cselend]);
+	selr := Rect((startx, y), (endx, y + font.height));
+	screen.draw(selr, selcolor, nil, Point(0, 0));
 }
 
 # ---------- Real-file IPC helpers ----------

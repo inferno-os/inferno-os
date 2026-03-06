@@ -867,9 +867,64 @@ mouseproc()
 
 kbdproc()
 {
+	# ANSI escape sequence decoder state
+	escstate := 0;	# 0=normal, 1=saw-ESC, 2=saw-ESC[, 3=collecting-arg
+	escarg   := 0;
+
 	for(;;) {
 		c := <-win.ctxt.kbd;
-		# Focus-follows-mouse: route keyboard to the active app when mouse is in pres zone
+
+		# Decode ANSI escape sequences to Inferno key codes.
+		# Inferno key codes (>= 0xFF00) pass through unmodified.
+		if(c < 16rFF00) {
+			case escstate {
+			0 =>
+				if(c == 27) {
+					escstate = 1;
+					continue;
+				}
+			1 =>
+				escstate = 0;
+				if(c == '[') {
+					escstate = 2;
+					escarg = 0;
+					continue;
+				}
+				# Bare ESC+char: deliver char as-is (fall through to route)
+			2 =>
+				escstate = 0;
+				if(c == 'A')       c = 16rFF52;	# up
+				else if(c == 'B') c = 16rFF54;	# down
+				else if(c == 'C') c = 16rFF53;	# right
+				else if(c == 'D') c = 16rFF51;	# left
+				else if(c == 'H') c = 16rFF61;	# home
+				else if(c == 'F') c = 16rFF57;	# end
+				else if(c == '1' || c == '4' || c == '5' ||
+				        c == '6' || c == '7' || c == '8') {
+					escarg = c - '0';
+					escstate = 3;
+					continue;
+				} else
+					continue;	# unknown: discard
+			3 =>
+				if(c == '~') {
+					escstate = 0;
+					if(escarg == 1 || escarg == 7)      c = 16rFF61;	# home
+					else if(escarg == 4 || escarg == 8) c = 16rFF57;	# end
+					else if(escarg == 5)                c = 16rFF55;	# pgup
+					else if(escarg == 6)                c = 16rFF56;	# pgdn
+					else continue;
+				} else if(c >= '0' && c <= '9') {
+					escarg = escarg * 10 + (c - '0');
+					continue;
+				} else {
+					escstate = 0;
+					continue;
+				}
+			}
+		}
+
+		# Route decoded key to appropriate target
 		if(pres_zone_minx > 0 && lastmousex >= pres_zone_minx &&
 				lastmousex < pres_zone_maxx && activeappid != "") {
 			routed := 0;
