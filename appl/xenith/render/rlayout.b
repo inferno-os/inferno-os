@@ -48,7 +48,7 @@ render(doc: list of ref DocNode, style: ref Style): (ref Draw->Image, int)
 
 	# Create target image
 	r := Rect(Point(0, 0), Point(width, height));
-	img := display.newimage(r, drawm->RGB24, 0, drawm->White);
+	img := display.newimage(r, drawm->RGB24, 0, drawm->Black);
 	if(img == nil)
 		return (nil, 0);
 
