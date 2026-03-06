@@ -664,6 +664,12 @@ applynsrestriction()
 	for(bp := boundpaths; bp != nil; bp = tl bp)
 		if(!strlist_contains(allpaths, hd bp))
 			allpaths = (hd bp) :: allpaths;
+	# Auto-grant /n/speech when say or hear tool is registered.
+	# speech9p mounts /n/speech in the shared namespace; without this,
+	# restrictns() hides it entirely and say/hear tools fail silently.
+	if(findtool("say") != nil || findtool("hear") != nil)
+		if(!strlist_contains(allpaths, "/n/speech"))
+			allpaths = "/n/speech" :: allpaths;
 	caps := ref NsConstruct->Capabilities(
 		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
