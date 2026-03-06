@@ -68,6 +68,7 @@ FidState: adt {
 # Engine backends
 ENGINE_CMD: con 0;   # Host OS commands via #C (devcmd)
 ENGINE_API: con 1;   # HTTP API (OpenAI, etc.)
+ENGINE_LOCAL: con 2; # Local ML models (Piper TTS, whisper.cpp STT)
 
 # Current configuration
 engine := ENGINE_CMD;
@@ -83,6 +84,12 @@ audbits := 16;
 cmdtts := "";    # Set in initplatform()
 cmdstt := "";    # Set in initplatform()
 hearduration := 5000;  # Recording duration in ms (default 5s)
+
+# Local engine configuration (Piper TTS + whisper.cpp STT)
+piperbin := "piper";
+pipermodel := "";    # Path to .onnx voice model
+whisperbin := "whisper-cli";
+whispermodel := "";  # Path to .bin GGML model
 
 stderr: ref Sys->FD;
 user: string;
@@ -100,7 +107,7 @@ usage()
 	sys->fprint(stderr, "Usage: speech9p [-D] [-m mountpoint] [-e engine] [-k apikey]\n");
 	sys->fprint(stderr, "  -D            Enable 9P debug tracing\n");
 	sys->fprint(stderr, "  -m mountpoint Mount point (default: /n/speech)\n");
-	sys->fprint(stderr, "  -e engine     Engine: cmd (default), api\n");
+	sys->fprint(stderr, "  -e engine     Engine: cmd (default), api, local\n");
 	sys->fprint(stderr, "  -k key        API key (for api engine)\n");
 	sys->fprint(stderr, "  -u url        API base URL\n");
 	sys->fprint(stderr, "  -v voice      Default voice\n");
@@ -206,7 +213,12 @@ initplatform()
 		if(voice == "")
 			voice = "samantha";
 	"linux" =>
-		# Linux: espeak-ng or piper for TTS, whisper for STT
+		# Linux: prefer local ML engine if Piper/whisper are available
+		# On Jetson (ARM64 + GPU), these get CUDA acceleration automatically
+		if(engine == ENGINE_CMD && probelocal()) {
+			engine = ENGINE_LOCAL;
+			sys->fprint(stderr, "speech9p: detected local ML tools, using local engine\n");
+		}
 		if(cmdtts == "")
 			cmdtts = "espeak-ng --stdout";
 		if(cmdstt == "")
@@ -256,6 +268,8 @@ readconfig(): string
 	ename := "cmd";
 	if(engine == ENGINE_API)
 		ename = "api";
+	else if(engine == ENGINE_LOCAL)
+		ename = "local";
 
 	result := "engine " + ename + "\n";
 	result += "voice " + voice + "\n";
@@ -275,6 +289,13 @@ readconfig(): string
 			result += "apikey (set)\n";
 		else
 			result += "apikey (not set)\n";
+	}
+
+	if(engine == ENGINE_LOCAL) {
+		result += "piperbin " + piperbin + "\n";
+		result += "pipermodel " + pipermodel + "\n";
+		result += "whisperbin " + whisperbin + "\n";
+		result += "whispermodel " + whispermodel + "\n";
 	}
 
 	return result;
@@ -303,6 +324,7 @@ applyconfig(cmd: string): string
 		case val {
 		"cmd" =>	engine = ENGINE_CMD;
 		"api" =>	engine = ENGINE_API;
+		"local" =>	engine = ENGINE_LOCAL;
 		* =>		return "error: unknown engine: " + val;
 		}
 	"voice" =>
@@ -332,6 +354,14 @@ applyconfig(cmd: string): string
 		apiurl = val;
 	"apikey" =>
 		apikey = val;
+	"piperbin" =>
+		piperbin = val;
+	"pipermodel" =>
+		pipermodel = val;
+	"whisperbin" =>
+		whisperbin = val;
+	"whispermodel" =>
+		whispermodel = val;
 	* =>
 		return "error: unknown config key: " + key;
 	}
@@ -347,6 +377,8 @@ listvoices(): string
 		return listcmdvoices();
 	ENGINE_API =>
 		return listapivoices();
+	ENGINE_LOCAL =>
+		return listlocalvoices();
 	}
 	return "";
 }
@@ -373,6 +405,18 @@ listapivoices(): string
 	return "alloy\necho\nfable\nnova\nonyx\nshimmer\n";
 }
 
+# List voices for local engine (Piper .onnx model files)
+listlocalvoices(): string
+{
+	if(pipermodel != "")
+		return pipermodel + " (current)\n";
+	# Try to list models in common Piper model directories
+	result := runcmd("ls /opt/piper/models/*.onnx 2>/dev/null; ls /usr/share/piper-voices/*.onnx 2>/dev/null");
+	if(result == "" || hasprefix(result, "error:"))
+		return "(no local voice models found)\nhint: set pipermodel path via ctl\n";
+	return result;
+}
+
 # === TTS: Text to Speech ===
 
 # Async wrapper for TTS — runs in spawned thread so serveloop stays responsive
@@ -393,6 +437,8 @@ dosay(text: string): string
 		return saycmd(text);
 	ENGINE_API =>
 		return sayapi(text);
+	ENGINE_LOCAL =>
+		return saylocal(text);
 	}
 	return "error: no engine configured";
 }
@@ -479,6 +525,8 @@ dohear(): string
 		return hearcmd();
 	ENGINE_API =>
 		return hearapi();
+	ENGINE_LOCAL =>
+		return hearlocal();
 	}
 	return "error: no engine configured";
 }
@@ -572,6 +620,88 @@ hearapi(): string
 	url := apiurl + "/audio/transcriptions";
 	result := apitranscribe(url, audiodata);
 	return result;
+}
+
+# === Local ML engine (Piper TTS + whisper.cpp STT) ===
+
+# Probe whether local ML tools are available on the host
+probelocal(): int
+{
+	# Check for piper binary
+	result := runcmd("which piper 2>/dev/null");
+	if(result == "" || hasprefix(result, "error:"))
+		return 0;
+	# Check for whisper binary
+	result = runcmd("which whisper-cli 2>/dev/null");
+	if(result == "" || hasprefix(result, "error:"))
+		return 0;
+	return 1;
+}
+
+# TTS via Piper (local neural TTS)
+# Piper reads text from stdin and outputs raw PCM to stdout.
+# On Jetson with CUDA, Piper uses GPU acceleration automatically
+# when the onnxruntime-gpu package is installed.
+saylocal(text: string): string
+{
+	safe := sanitize(text);
+	if(safe == "")
+		return "error: no speakable text";
+
+	# Build Piper command
+	# --output-raw outputs 16-bit mono PCM at the model's sample rate (usually 22050)
+	cmd := piperbin + " --output-raw";
+	if(pipermodel != "")
+		cmd += " --model " + pipermodel;
+
+	# Pipe text to piper, get raw PCM back
+	pcmdata := runcmd_stdin(cmd, safe);
+	if(pcmdata == "" || pcmdata == "ok")
+		return "error: piper produced no audio";
+	if(hasprefix(pcmdata, "error:"))
+		return pcmdata;
+
+	# Play the raw PCM through /dev/audio
+	return playpcm(array of byte pcmdata);
+}
+
+# STT via whisper.cpp (local speech recognition)
+# On Jetson with CUDA, whisper.cpp uses GPU acceleration automatically
+# when built with CUDA support (GGML_CUDA=1).
+hearlocal(): string
+{
+	tmpfile := "/tmp/speech_stt.wav";
+	duration := string (hearduration / 1000);
+
+	platform := detectplatform();
+	reccmd: string;
+	case platform {
+	"macos" =>
+		reccmd = "ffmpeg -y -f avfoundation -i :0 -t " + duration +
+			" -ar 16000 -ac 1 -sample_fmt s16 " + tmpfile +
+			" </dev/null 2>/dev/null";
+	"linux" =>
+		reccmd = "arecord -f S16_LE -r 16000 -c 1 -d " + duration +
+			" " + tmpfile + " 2>/dev/null";
+	* =>
+		return "error: recording not supported on this platform";
+	}
+
+	result := runcmd(reccmd);
+	if(hasprefix(result, "error:"))
+		return result;
+
+	# Transcribe with whisper.cpp
+	wcmd := whisperbin + " -nt -np";
+	if(whispermodel != "")
+		wcmd += " -m " + whispermodel;
+	wcmd += " -f " + tmpfile + " 2>/dev/null";
+
+	text := strip(runcmd(wcmd));
+	if(text == "" || hasprefix(text, "error:"))
+		return "error: transcription failed";
+
+	return text;
 }
 
 # === Audio I/O helpers ===
