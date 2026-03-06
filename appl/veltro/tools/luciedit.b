@@ -40,7 +40,7 @@ ToolLuciedit: module {
 	exec: fn(args: string): string;
 };
 
-EDIT_ROOT: con "/edit";
+EDIT_ROOT: con "/tmp/veltro/edit";
 
 init(): string
 {
@@ -148,19 +148,20 @@ dowrite(text: string): string
 {
 	if(text == "")
 		return "error: usage: write <text>";
-	return writefile(sys->sprint("%s/1/body", EDIT_ROOT), text);
+	# Write to body.in — luciedit polls this and replaces its buffer
+	return writefile(sys->sprint("%s/1/body.in", EDIT_ROOT), text);
 }
 
 doappend(text: string): string
 {
 	if(text == "")
 		return "error: usage: append <text>";
-	# Read current body, append, write back
+	# Read current state, append, submit via body.in
 	body := readfile(sys->sprint("%s/1/body", EDIT_ROOT));
 	if(len body >= 6 && body[0:6] == "error:")
 		return body;
 	newbody := body + text;
-	return writefile(sys->sprint("%s/1/body", EDIT_ROOT), newbody);
+	return writefile(sys->sprint("%s/1/body.in", EDIT_ROOT), newbody);
 }
 
 dosave(): string
@@ -250,9 +251,10 @@ readfile(path: string): string
 
 writefile(path, data: string): string
 {
-	fd := sys->open(path, Sys->OWRITE);
+	# Use create to handle both new files (ctl, body.in) and existing ones
+	fd := sys->create(path, Sys->OWRITE, 8r666);
 	if(fd == nil)
-		return sys->sprint("error: cannot open %s: %r (is luciedit running?)", path);
+		return sys->sprint("error: cannot create %s: %r (is luciedit running?)", path);
 
 	b := array of byte data;
 	n := sys->write(fd, b, len b);

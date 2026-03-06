@@ -43,6 +43,10 @@ COLSTATTEXT:	con int 16r999999FF;
 COLSCROLL:	con int 16r1A1A1AFF;
 COLTHUMB:	con int 16r444444FF;
 
+# --- IPC via real files in /tmp/veltro/edit/ (accessible from agent namespace) ---
+EDIT_DIR:  con "/tmp/veltro/edit";
+EDIT_INST: con "/tmp/veltro/edit/1";
+
 # --- Module state ---
 stderr: ref Sys->FD;
 display_g: ref Display;
@@ -52,6 +56,7 @@ font: ref Font;
 menumod: Menu;
 Popup: import menumod;
 quitreq := 0;
+tickch: chan of int;
 
 # Colors
 bgcol: ref Image;
@@ -156,6 +161,11 @@ init(ctxt: ref Draw->Context, args: list of string)
 	computelayout();
 	redraw();
 
+	# IPC: write initial state and start command-poll ticker
+	initeditdir();
+	tickch = chan[1] of int;
+	spawn tickproc(tickch);
+
 	# Event loop
 	for(;;) alt {
 	ctl := <-win.ctl or
@@ -174,6 +184,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 		if(!wmclient->win.pointer(*p))
 			handleptr(p);
 		if(quitreq) return;
+	<-tickch =>
+		checkctlfile();
 	}
 }
 
@@ -298,6 +310,10 @@ redraw()
 	drawstatus(r);
 
 	mainwin.flush(Draw->Flushnow);
+
+	# Sync state files for IPC
+	if(tickch != nil)
+		writeeditstate();
 }
 
 drawscrollbar(r: Rect)
@@ -616,4 +632,201 @@ handleptr(p: ref Pointer)
 		curcol = col;
 		redraw();
 	}
+}
+
+# --- IPC: real-file state export and command poll ---
+
+initeditdir()
+{
+	mkdirq(EDIT_DIR);
+	mkdirq(EDIT_INST);
+	writeeditstate();
+}
+
+mkdirq(path: string)
+{
+	(ok, nil) := sys->stat(path);
+	if(ok < 0)
+		sys->create(path, Sys->OREAD, 8r777|Sys->DMDIR);
+}
+
+writeeditstate()
+{
+	# body: full buffer content
+	fd := sys->create(EDIT_INST + "/body", Sys->OWRITE, 8r666);
+	if(fd != nil) {
+		for(i := 0; i < nlines; i++) {
+			line := lines[i];
+			if(i < nlines - 1) line += "\n";
+			b := array of byte line;
+			sys->write(fd, b, len b);
+		}
+		fd = nil;
+	}
+	# addr: cursor position as "line col"
+	fd = sys->create(EDIT_INST + "/addr", Sys->OWRITE, 8r666);
+	if(fd != nil) {
+		b := array of byte sys->sprint("%d %d\n", curline + 1, curcol + 1);
+		sys->write(fd, b, len b);
+		fd = nil;
+	}
+	# index: status summary
+	fd = sys->create(EDIT_DIR + "/index", Sys->OWRITE, 8r666);
+	if(fd != nil) {
+		path := filepath;
+		if(path == "") path = "[new]";
+		b := array of byte sys->sprint("file:%s dirty:%d line:%d col:%d lines:%d\n",
+			path, dirty, curline + 1, curcol + 1, nlines);
+		sys->write(fd, b, len b);
+		fd = nil;
+	}
+}
+
+# tickproc: fires on tickch every 500ms for command polling
+tickproc(ch: chan of int)
+{
+	for(;;) {
+		sys->sleep(500);
+		alt { ch <-= 1 => ; * => ; }
+	}
+}
+
+# checkctlfile: called on each tick; processes pending commands
+checkctlfile()
+{
+	# Global ctl: "open path", "quit"
+	gctl := readrmfile(EDIT_DIR + "/ctl");
+	if(gctl != nil) {
+		(op, arg) := splitword(string gctl);
+		if(op == "quit" || op == "close") {
+			quitreq = 1;
+		} else if(op == "open") {
+			arg = stripws(arg);
+			if(arg != "") {
+				filepath = arg;
+				loadfile(filepath);
+				computelayout();
+				redraw();
+			}
+		}
+	}
+	if(quitreq) return;
+
+	# Per-instance ctl: "save", "goto N", "find str", "name path", "insert...", "delete..."
+	ctl1 := readrmfile(EDIT_INST + "/ctl");
+	if(ctl1 != nil) {
+		(op, arg) := splitword(string ctl1);
+		if(op == "save") {
+			savefile();
+		} else if(op == "goto") {
+			n := int stripws(arg);
+			if(n > 0) {
+				curline = n - 1;
+				if(curline >= nlines) curline = nlines - 1;
+				clampcolumn();
+				ensurevisible();
+			}
+			redraw();
+		} else if(op == "find") {
+			needle := stripws(arg);
+			if(needle != "")
+				findinbuf(needle);
+			redraw();
+		} else if(op == "name") {
+			filepath = stripws(arg);
+			redraw();
+		}
+		writeeditstate();
+	}
+
+	# body.in: replace entire buffer
+	body := readrmfile(EDIT_INST + "/body.in");
+	if(body != nil) {
+		setbodyfromtext(string body);
+		computelayout();
+		redraw();
+		writeeditstate();
+	}
+}
+
+# readrmfile: read a file and remove it; returns nil if not found
+readrmfile(path: string): array of byte
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil) return nil;
+	buf := array[65536] of byte;
+	total := 0;
+	for(;;) {
+		n := sys->read(fd, buf[total:], len buf - total);
+		if(n <= 0) break;
+		total += n;
+	}
+	fd = nil;
+	sys->remove(path);
+	if(total <= 0) return nil;
+	return buf[0:total];
+}
+
+# setbodyfromtext: replace buffer contents with newline-separated text
+setbodyfromtext(text: string)
+{
+	nlines = 0;
+	i := 0;
+	while(i <= len text) {
+		j := i;
+		while(j < len text && text[j] != '\n') j++;
+		if(nlines < MAXLINES)
+			lines[nlines++] = text[i:j];
+		i = j + 1;
+		if(i > len text) break;
+	}
+	if(nlines == 0) {
+		nlines = 1;
+		lines[0] = "";
+	}
+	curline = 0;
+	curcol = 0;
+	scrolloff = 0;
+	dirty = 1;
+}
+
+# findinbuf: search forward for needle, move cursor to first match
+findinbuf(needle: string)
+{
+	nl := len needle;
+	for(i := 1; i <= nlines; i++) {
+		li := (curline + i) % nlines;
+		line := lines[li];
+		for(j := 0; j + nl <= len line; j++) {
+			if(line[j:j+nl] == needle) {
+				curline = li;
+				curcol = j;
+				clampcolumn();
+				ensurevisible();
+				return;
+			}
+		}
+	}
+}
+
+# splitword: split "word rest" at first whitespace
+splitword(s: string): (string, string)
+{
+	s = stripws(s);
+	for(i := 0; i < len s; i++) {
+		if(s[i] == ' ' || s[i] == '\t' || s[i] == '\n')
+			return (s[0:i], s[i+1:]);
+	}
+	return (s, "");
+}
+
+# stripws: strip leading/trailing whitespace
+stripws(s: string): string
+{
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n')) i++;
+	j := len s;
+	while(j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n')) j--;
+	if(i >= j) return "";
+	return s[i:j];
 }
