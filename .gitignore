@@ -190,3 +190,6 @@ formal-verification/cbmc/(fd
 formal-verification/cbmc/(mnthash).log
 formal-verification/cbmc/allocation).log
 mnt/
+
+# Local test data
+usr/inferno/test-pdfs/
