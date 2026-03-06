@@ -164,6 +164,9 @@ pres_zone_minx := 0;
 pres_zone_maxx := 0;
 ctx_zone_minx := 0;
 
+# Last known mouse X — updated by mouseproc, used by kbdproc for focus-follows-mouse
+lastmousex := 0;
+
 # Zone layout percentages (default; modified by ctx expand/restore)
 conv_pct := 30;
 pres_pct := 45;
@@ -589,6 +592,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 			else {
 				for(asi2 := 0; asi2 < nappslots; asi2++) {
 					if(appslots[asi2] != nil && appslots[asi2].client == c) {
+						c.bottom();		# push white window behind lucipres immediately
 						appslots[asi2].client = nil;
 						break;
 					}
@@ -843,6 +847,7 @@ mouseproc()
 {
 	for(;;) {
 		p := <-win.ctxt.ptr;
+		lastmousex = p.xy.x;
 		if(wmclient->win.pointer(*p) == 0) {
 			# Route by X position
 			if(pres_zone_minx > 0 && p.xy.x >= pres_zone_minx &&
@@ -864,8 +869,24 @@ kbdproc()
 {
 	for(;;) {
 		c := <-win.ctxt.kbd;
-		# Quit shortcut (q when conv input is empty — handled in luciconv)
-		alt { convKbdCh <-= c => ; * => ; }
+		# Focus-follows-mouse: route keyboard to the active app when mouse is in pres zone
+		if(pres_zone_minx > 0 && lastmousex >= pres_zone_minx &&
+				lastmousex < pres_zone_maxx && activeappid != "") {
+			routed := 0;
+			for(ksi := 0; ksi < nappslots; ksi++) {
+				if(appslots[ksi] != nil && appslots[ksi].id == activeappid &&
+						appslots[ksi].client != nil) {
+					alt { appslots[ksi].client.kbd <-= c => ; * => ; }
+					routed = 1;
+					break;
+				}
+			}
+			if(!routed)
+				alt { presKbdCh <-= c => ; * => ; }
+		} else {
+			# Conversation zone (or no active app in pres zone)
+			alt { convKbdCh <-= c => ; * => ; }
+		}
 	}
 }
 

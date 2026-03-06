@@ -19,6 +19,8 @@ include "draw.m";
 
 include "keyboard.m";
 
+include "menu.m";
+
 include "wmclient.m";
 	wmclient: Wmclient;
 
@@ -47,6 +49,9 @@ display_g: ref Display;
 win: ref Wmclient->Window;
 mainwin: ref Image;
 font: ref Font;
+menumod: Menu;
+Popup: import menumod;
+quitreq := 0;
 
 # Colors
 bgcol: ref Image;
@@ -127,6 +132,11 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(font == nil)
 		font = Font.open(display_g, "*default*");
 
+	# Context menu
+	menumod = load Menu Menu->PATH;
+	if(menumod != nil)
+		menumod->init(display_g, font);
+
 	# Init buffer
 	lines = array[MAXLINES] of string;
 	nlines = 1;
@@ -163,6 +173,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	p := <-win.ctxt.ptr =>
 		if(!wmclient->win.pointer(*p))
 			handleptr(p);
+		if(quitreq) return;
 	}
 }
 
@@ -530,6 +541,23 @@ handleptr(p: ref Pointer)
 	if(mainwin == nil || font == nil)
 		return;
 	r := mainwin.r;
+
+	# Right-click: context menu
+	if(p.buttons == 4 && menumod != nil) {
+		items := array[] of {"Save", "Close"};
+		pop := menumod->new(items);
+		n := pop.show(mainwin, p.xy, win.ctxt.ptr);
+		case n {
+		0 =>
+			err := savefile();
+			if(err != nil)
+				sys->fprint(stderr, "luciedit: save: %s\n", err);
+			redraw();
+		1 =>
+			quitreq = 1;
+		}
+		return;
+	}
 
 	# Scrollbar click
 	sbr := Rect((r.max.x - SCROLLW, r.min.y), (r.max.x, r.max.y - STATUSH));
