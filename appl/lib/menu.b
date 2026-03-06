@@ -20,6 +20,8 @@ include "draw.m";
 	draw: Draw;
 	Display, Font, Image, Point, Rect, Pointer: import draw;
 
+include "lucitheme.m";
+
 include "menu.m";
 
 # --- Module-level state (set once by init, used by all Popup.show calls) ---
@@ -31,13 +33,6 @@ mhilit:		ref Image;	# highlighted item background
 mtext:		ref Image;	# normal item text colour
 mdim:		ref Image;	# un-highlighted item text colour
 
-# Colour constants (RGBA, matching lucifer's dark palette)
-COLMENUBG:	con int 16r0D0D0DFF;
-COLMENUBORDER:	con int 16r2A2A2AFF;
-COLMENUHILIT:	con int 16r1E1E1EFF;
-COLMENUTEXT:	con int 16rCCCCCCFF;
-COLMENUDIM:	con int 16r666666FF;
-
 init(d: ref Display, f: ref Font)
 {
 	sys  = load Sys Sys->PATH;
@@ -45,11 +40,13 @@ init(d: ref Display, f: ref Font)
 	mfont = f;
 	if(d == nil || f == nil)
 		return;
-	mbg     = d.color(COLMENUBG);
-	mborder = d.color(COLMENUBORDER);
-	mhilit  = d.color(COLMENUHILIT);
-	mtext   = d.color(COLMENUTEXT);
-	mdim    = d.color(COLMENUDIM);
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->load();
+	mbg     = d.color(th.menubg);
+	mborder = d.color(th.menuborder);
+	mhilit  = d.color(th.menuhilit);
+	mtext   = d.color(th.menutext);
+	mdim    = d.color(th.menudim);
 }
 
 new(items: array of string): ref Popup

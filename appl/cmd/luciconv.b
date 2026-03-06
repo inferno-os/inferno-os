@@ -18,6 +18,8 @@ include "bufio.m";
 
 include "rlayout.m";
 
+include "lucitheme.m";
+
 include "menu.m";
 
 LuciConv: module
@@ -31,18 +33,6 @@ LuciConv: module
 	         evch:  chan of string,
 	         rsz:   chan of ref Draw->Image);
 };
-
-# --- Color constants (same palette as lucifer.b) ---
-COLBG:		con int 16r080808FF;
-COLACCENT:	con int 16rE8553AFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLTEXT2:	con int 16r999999FF;
-COLDIM:		con int 16r444444FF;
-COLHUMAN:	con int 16r1E2028FF;
-COLVELTRO:	con int 16r0E1418FF;
-COLINPUT:	con int 16r101010FF;
-COLCURSOR:	con int 16rE8553AFF;
-COLRED:		con int 16rAA4444FF;
 
 # --- ADTs ---
 
@@ -91,6 +81,7 @@ veltrocol: ref Image;
 inputcol: ref Image;
 cursorcol: ref Image;
 redcol: ref Image;
+codebgcol_g: ref Image;
 
 # Conversation state
 messages: list of ref ConvMsg;
@@ -135,17 +126,20 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	mountpt_g = mountpt;
 	actid_g = actid;
 
-	# Create colors
-	bgcol = dsp.color(COLBG);
-	accentcol = dsp.color(COLACCENT);
-	textcol = dsp.color(COLTEXT);
-	text2col = dsp.color(COLTEXT2);
-	dimcol = dsp.color(COLDIM);
-	humancol = dsp.color(COLHUMAN);
-	veltrocol = dsp.color(COLVELTRO);
-	inputcol = dsp.color(COLINPUT);
-	cursorcol = dsp.color(COLCURSOR);
-	redcol = dsp.color(COLRED);
+	# Create colors from theme
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->load();
+	bgcol = dsp.color(th.bg);
+	accentcol = dsp.color(th.accent);
+	textcol = dsp.color(th.text);
+	text2col = dsp.color(th.text2);
+	dimcol = dsp.color(th.dim);
+	humancol = dsp.color(th.human);
+	veltrocol = dsp.color(th.veltro);
+	inputcol = dsp.color(th.input);
+	cursorcol = dsp.color(th.cursor);
+	redcol = dsp.color(th.red);
+	codebgcol_g = dsp.color(th.codebg);
 
 	# Load rlayout for markdown rendering
 	rlay = load Rlayout Rlayout->PATH;
@@ -410,7 +404,7 @@ drawconversation(zone: Rect)
 		scrollpx = maxscrollpx;
 
 	# Pass 2: render visible messages
-	codebg := display_g.color(int 16r1A1A2AFF);
+	codebg := codebgcol_g;
 	ey := msgy + scrollpx;
 	for(ri := nmsg - 1; ri >= 0; ri--) {
 		tiletop_e := ey - harr[ri] - tilegap;

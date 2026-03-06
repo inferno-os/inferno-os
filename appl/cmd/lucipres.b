@@ -24,6 +24,8 @@ include "renderer.m";
 
 include "render.m";
 
+include "lucitheme.m";
+
 include "menu.m";
 
 include "viewport.m";
@@ -45,16 +47,6 @@ LuciPres: module
 	init: fn(ctxt: ref Draw->Context, args: list of string);
 	deliverevent: fn(ev: string);
 };
-
-# --- Color constants ---
-COLBG:		con int 16r080808FF;
-COLBORDER:	con int 16r131313FF;
-COLHEADER:	con int 16r0A0A0AFF;
-COLACCENT:	con int 16rE8553AFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLTEXT2:	con int 16r999999FF;
-COLDIM:		con int 16r444444FF;
-COLLABEL:	con int 16r333333FF;
 
 # --- ADTs ---
 
@@ -124,6 +116,8 @@ textcol: ref Image;
 text2col: ref Image;
 dimcol: ref Image;
 labelcol: ref Image;
+codebgcol_g: ref Image;
+greencol_g: ref Image;
 
 # Presentation state
 artifacts: list of ref Artifact;
@@ -175,10 +169,14 @@ init(ctxt: ref Draw->Context, args: list of string)
 		ctxt = wmclient->makedrawcontext();
 	display_g = ctxt.display;
 
+	# Load theme colours
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->load();
+
 	# Allocate bgcol first — win.onscreen("max") triggers putimage() inside
 	# wmclient which fills the zone image with Draw->White.  We need bgcol
 	# ready so we can immediately overwrite that White before any flush.
-	bgcol = display_g.color(COLBG);
+	bgcol = display_g.color(th.bg);
 
 	# Create window via the wmsrv in lucifer (preswmloop)
 	# Plain: no border decoration — we're an embedded zone, not a top-level app
@@ -191,14 +189,16 @@ init(ctxt: ref Draw->Context, args: list of string)
 	wmclient->win.startinput("ptr" :: nil);
 	mainwin = win.image;
 
-	# Allocate remaining colors
-	bordercol = display_g.color(COLBORDER);
-	headercol = display_g.color(COLHEADER);
-	accentcol = display_g.color(COLACCENT);
-	textcol = display_g.color(COLTEXT);
-	text2col = display_g.color(COLTEXT2);
-	dimcol = display_g.color(COLDIM);
-	labelcol = display_g.color(COLLABEL);
+	# Allocate remaining colors from theme
+	bordercol = display_g.color(th.border);
+	headercol = display_g.color(th.header);
+	accentcol = display_g.color(th.accent);
+	textcol = display_g.color(th.text);
+	text2col = display_g.color(th.text2);
+	dimcol = display_g.color(th.dim);
+	labelcol = display_g.color(th.label);
+	codebgcol_g = display_g.color(th.codebg);
+	greencol_g = display_g.color(th.green);
 
 	# Load fonts
 	mainfont = Font.open(display_g, "/fonts/combined/unicode.sans.14.font");
@@ -545,7 +545,7 @@ drawpresentation(zone: Rect)
 		if(art.atype == "app") {
 			dotcol: ref Image;
 			if(art.appstatus == "running")
-				dotcol = display_g.color(Draw->Green);
+				dotcol = greencol_g;
 			else
 				dotcol = dimcol;
 			dotx := tx + tw + 4;
@@ -580,7 +580,7 @@ drawpresentation(zone: Rect)
 	case centart.atype {
 	"text" or "code" =>
 		if(centart.atype == "code") {
-			codebg2 := display_g.color(int 16r1A1A2AFF);
+			codebg2 := codebgcol_g;
 			mainwin.draw(contentr, codebg2, nil, (0, 0));
 		}
 		ls := splitlines(centart.data);
@@ -1148,7 +1148,7 @@ renderart(art: ref Artifact, contentw: int): ref Image
 
 	# Fallback: markdown via rlayout (when registry not loaded)
 	if((art.atype == "markdown" || art.atype == "doc") && rlay != nil) {
-		codebg := display_g.color(int 16r1A1A2AFF);
+		codebg := codebgcol_g;
 		zw := contentw * 100 / artzoom(art);
 		style := ref Rlayout->Style(
 			zw, 4,

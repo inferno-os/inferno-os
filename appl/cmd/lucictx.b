@@ -15,6 +15,8 @@ include "draw.m";
 	draw: Draw;
 	Font, Point, Rect, Image, Display, Screen, Pointer: import draw;
 
+include "lucitheme.m";
+
 include "menu.m";
 
 LuciCtx: module
@@ -28,19 +30,6 @@ LuciCtx: module
 	         rsz:   chan of ref Draw->Image,
 	         req:   chan of string);
 };
-
-# --- Color constants ---
-COLBG:		con int 16r080808FF;
-COLACCENT:	con int 16rE8553AFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLTEXT2:	con int 16r999999FF;
-COLDIM:		con int 16r444444FF;
-COLLABEL:	con int 16r333333FF;
-COLGREEN:	con int 16r44AA44FF;
-COLYELLOW:	con int 16rAAAA44FF;
-COLRED:		con int 16rAA4444FF;
-COLPROGBG:	con int 16r1A1A1AFF;
-COLPROGFG:	con int 16r3388CCFF;
 
 # Resource mounting base
 MNT_BASE: con "/tmp/veltro/mnt";
@@ -202,18 +191,20 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	ctxreqch_g = req;
 	rszch_g = rsz;
 
-	# Create colors
-	bgcol = dsp.color(COLBG);
-	accentcol = dsp.color(COLACCENT);
-	textcol = dsp.color(COLTEXT);
-	text2col = dsp.color(COLTEXT2);
-	dimcol = dsp.color(COLDIM);
-	labelcol = dsp.color(COLLABEL);
-	greencol = dsp.color(COLGREEN);
-	yellowcol = dsp.color(COLYELLOW);
-	redcol = dsp.color(COLRED);
-	progbgcol = dsp.color(COLPROGBG);
-	progfgcol = dsp.color(COLPROGFG);
+	# Create colors from theme
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->load();
+	bgcol = dsp.color(th.bg);
+	accentcol = dsp.color(th.accent);
+	textcol = dsp.color(th.text);
+	text2col = dsp.color(th.text2);
+	dimcol = dsp.color(th.dim);
+	labelcol = dsp.color(th.label);
+	greencol = dsp.color(th.green);
+	yellowcol = dsp.color(th.yellow);
+	redcol = dsp.color(th.red);
+	progbgcol = dsp.color(th.progbg);
+	progfgcol = dsp.color(th.progfg);
 
 	# Load menu module
 	menumod = load Menu Menu->PATH;

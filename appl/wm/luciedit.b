@@ -26,20 +26,12 @@ include "bufio.m";
 	bufio: Bufio;
 	Iobuf: import bufio;
 
+include "lucitheme.m";
+
 LuciEdit: module
 {
 	init: fn(ctxt: ref Draw->Context, args: list of string);
 };
-
-# --- Color constants (Lucifer dark palette) ---
-COLBG:		con int 16r0D0D0DFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLCURSOR:	con int 16rE8553AFF;	# accent orange
-COLLINENO:	con int 16r444444FF;
-COLSTATUS:	con int 16r0A0A0AFF;
-COLSTATTEXT:	con int 16r999999FF;
-COLSCROLL:	con int 16r1A1A1AFF;
-COLTHUMB:	con int 16r444444FF;
 
 # --- Module state ---
 stderr: ref Sys->FD;
@@ -112,15 +104,17 @@ init(ctxt: ref Draw->Context, args: list of string)
 		ctxt = wmclient->makedrawcontext();
 	display_g = ctxt.display;
 
-	# Colors
-	bgcol = display_g.color(COLBG);
-	textcol = display_g.color(COLTEXT);
-	cursorcol = display_g.color(COLCURSOR);
-	linenocol = display_g.color(COLLINENO);
-	statuscol = display_g.color(COLSTATUS);
-	stattextcol = display_g.color(COLSTATTEXT);
-	scrollcol = display_g.color(COLSCROLL);
-	thumbcol = display_g.color(COLTHUMB);
+	# Colors from theme
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->load();
+	bgcol = display_g.color(th.editbg);
+	textcol = display_g.color(th.edittext);
+	cursorcol = display_g.color(th.editcursor);
+	linenocol = display_g.color(th.editlineno);
+	statuscol = display_g.color(th.editstatus);
+	stattextcol = display_g.color(th.editstattext);
+	scrollcol = display_g.color(th.editscroll);
+	thumbcol = display_g.color(th.editthumb);
 
 	# Font — prefer monospace
 	font = Font.open(display_g, "/fonts/combined/unicode.14.font");

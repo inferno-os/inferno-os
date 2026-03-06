@@ -214,6 +214,7 @@ SYSMODULES=\
 	keyboard.m\
 	keyring.m\
 	libc.m\
+	lucitheme.m\
 	man.m\
 	math.m\
 	msgio.m\
