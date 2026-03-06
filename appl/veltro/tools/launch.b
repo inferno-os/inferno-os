@@ -235,7 +235,7 @@ listapps(): string
 	# Also list whitelisted apps that live outside /dis/wm/.
 	# This mirrors extraapp() — both must stay in sync.
 	extra := array[] of {
-		("xenith", "/dis/xenith.dis"),
+		("xenith", "/dis/xenith/xenith.dis"),
 	};
 	for(i := 0; i < len extra; i++) {
 		(nm, path) := extra[i];
@@ -261,8 +261,11 @@ extraapp(name: string): string
 {
 	# Each entry: (short-name, absolute-dis-path)
 	# To add a new app: add a row here, review the .dis for GuiApp interface.
+	# Note: paths must be under a /dis/ subdirectory (not top-level /dis/*.dis)
+	# so they are visible in the tool's restricted namespace when that
+	# subdirectory is listed in caps.paths (e.g. "/dis/xenith" → /dis/xenith/).
 	apps := array[] of {
-		("xenith", "/dis/xenith.dis"),
+		("xenith", "/dis/xenith/xenith.dis"),
 	};
 	for(i := 0; i < len apps; i++) {
 		(nm, path) := apps[i];
