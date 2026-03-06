@@ -405,7 +405,18 @@ init(ctxt: ref Draw->Context, argv: list of string)
 							if(doc.topline > maxtl) doc.topline = maxtl;
 						}
 					}
+				} else if(mousedown) {
+					# Drag: anchor is fixed, update selection end live
+					(ml, mc2) := pos2cursor(p.xy);
+					doc.curline = ml;
+					doc.curcol = mc2;
+					doc.selactive = (ml != doc.selstartline || mc2 != doc.selstartcol);
+					if(doc.selactive) {
+						doc.selendline = ml;
+						doc.selendcol = mc2;
+					}
 				} else {
+					# New click: set anchor
 					(ml, mc2) := pos2cursor(p.xy);
 					doc.curline = ml;
 					doc.curcol = mc2;
@@ -416,6 +427,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				}
 				redraw();
 			} else if(mousedown) {
+				# Button released: finalise selection
 				(ml, mc2) := pos2cursor(p.xy);
 				if(ml != doc.selstartline || mc2 != doc.selstartcol) {
 					doc.selactive = 1;
