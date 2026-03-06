@@ -40,6 +40,76 @@ your workspace.
 through the system interactively — opening windows, demonstrating tools,
 and letting you try things hands-on.
 
+## Setup
+
+### API key
+
+The LLM connection (`llm9p`) is configured in the shell profile and
+starts automatically. To set your Anthropic API key:
+
+```
+mkdir -p /lib/veltro/keys
+echo 'sk-ant-...' > /lib/veltro/keys/anthropic
+```
+
+For web search, add a Brave Search API key:
+
+```
+echo 'your-brave-key' > /lib/veltro/keys/brave
+```
+
+### Themes
+
+Lucifer ships with two themes:
+
+- **brimstone** — dark theme (default)
+- **halo** — light theme (Plan 9-inspired)
+
+To switch themes, write the name to the theme file:
+
+```
+echo halo > /lib/lucifer/theme/current
+```
+
+Xenith (when launched standalone) also accepts theme flags:
+
+```
+xenith -t catppuccin
+xenith -t plan9
+xenith -t dark
+```
+
+### Fonts
+
+Change Xenith's font at launch:
+
+```
+xenith -f /fonts/vera/VeraMono/VeraMono.14.font
+xenith -f /fonts/misc/unicode.6x13.font
+```
+
+### Memory pools
+
+For heavy sessions (GUI + Veltro + apps), increase pool sizes:
+
+```
+./emu/MacOSX/o.emu -r. -c1 -pheap=512m -pmain=512m -pimage=512m
+```
+
+- `-pheap` — Dis heap (objects, strings, channels)
+- `-pmain` — internal structures
+- `-pimage` — Draw graphics
+
+### Speech
+
+Speech starts automatically from the profile. To configure
+voice and language at runtime:
+
+```
+echo 'voice alloy' > /n/speech/ctl
+echo 'lang es' > /n/speech/ctl
+```
+
 ## Key concepts
 
 **Everything is a file.** Windows, the LLM, speech, tools — all exposed
