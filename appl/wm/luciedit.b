@@ -473,9 +473,10 @@ handlekey(c: int)
 insertchar(c: int)
 {
 	line := lines[curline];
-	ch := string(c);
+	ch := "";
+	ch[0] = c;
 	lines[curline] = line[0:curcol] + ch + line[curcol:];
-	curcol += len ch;
+	curcol++;
 	dirty = 1;
 }
 
