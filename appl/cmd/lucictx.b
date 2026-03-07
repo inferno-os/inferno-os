@@ -288,7 +288,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 			}
 
 			# Available tool click — add on left-click anywhere on entry row
-			if(!tabclicked && toolsec_expanded && toolavail_expanded) {
+			if(!tabclicked && toolsec_expanded) {
 				for(pi := 0; pi < ntoolplusrects; pi++) {
 					if(toolplusrects[pi].contains(p.xy)) {
 						kidx := 0;
