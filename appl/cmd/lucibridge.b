@@ -91,6 +91,53 @@ writefile(path, data: string): int
 	return sys->write(fd, b, len b);
 }
 
+# Register namespace entries (services, devices, filesystems) as non-tool
+# resources in the context zone.  Probes known paths via sys->stat() — only
+# paths present in the (possibly restricted) namespace get registered.
+registernamespace()
+{
+	paths := array[] of {
+		"/n/llm", "/n/mcp", "/n/speech", "/n/git", "/n/ui",
+		"/dev/cons", "/dev/time",
+		"/tmp/veltro", "/lib/certs", "/lib/veltro",
+		"/chan", "/n/local",
+	};
+	labels := array[] of {
+		"LLM", "MCP", "Speech", "Git", "UI",
+		"Console", "Clock",
+		"Scratch", "TLS CAs", "Veltro Data",
+		"Xenith 9P", "Local FS",
+	};
+	types := array[] of {
+		"service", "service", "service", "service", "service",
+		"device", "device",
+		"fs", "fs", "fs",
+		"service", "fs",
+	};
+	vias := array[] of {
+		"", "", "", "", "",
+		"", "",
+		"rw", "ro", "ro",
+		"", "",
+	};
+	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+	nreg := 0;
+	for(i := 0; i < len paths; i++) {
+		(ok, nil) := sys->stat(paths[i]);
+		if(ok < 0)
+			continue;
+		cmd := "resource add path=" + paths[i] +
+			" label=" + labels[i] +
+			" type=" + types[i] +
+			" status=idle";
+		if(vias[i] != "")
+			cmd += " via=" + vias[i];
+		if(writefile(ctxpath, cmd) >= 0)
+			nreg++;
+	}
+	log(sys->sprint("context: registered %d namespace entries", nreg));
+}
+
 # Speak text via speech9p (fire-and-forget, runs in spawned goroutine)
 speaktext(text: string)
 {
@@ -215,6 +262,9 @@ initsession(): string
 		writefile(ctxpath, "resource add path=speech label=Speech type=tool status=idle");
 		log("context: registered speech resource");
 	}
+
+	# Register namespace entries (services, devices, filesystems) as resources
+	registernamespace();
 
 	log(sys->sprint("session %s, prompt %d bytes", sessionid, len array of byte sysprompt));
 	return nil;
