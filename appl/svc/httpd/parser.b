@@ -343,6 +343,8 @@ atexit(g: ref Private_info)
 }
 
 
+MAXHEADERS: con 100;	# Maximum number of HTTP headers to accept
+
 httpheaders(g: ref Private_info,vers : string)
 {
 	if(vers == "")
@@ -350,9 +352,15 @@ httpheaders(g: ref Private_info,vers : string)
 	g.tok = '\n';
 	g.parse_eol = 0;
 	g.parse_eoh = 0;
+	nhdr := 0;
 	# 15 minutes to get request line
-	a := Alarm.alarm(15*1000*60); 
+	a := Alarm.alarm(15*1000*60);
 	while(lex(g) != '\n'){
+		nhdr++;
+		if(nhdr > MAXHEADERS) {
+			a.stop();
+			fail(g, BadReq, "too many headers");
+		}
 		if(g.tok == Word && lex(g) == ':'){
 			if (g.dbg_log!=nil)
 				sys->fprint(g.dbg_log,"hitting parsejump. wordval is %s\n",
@@ -978,6 +986,8 @@ urlunesc(s : string): string
 	for(i := 0;i<len s ; i++){
 		c = int s[i];
 		if(c == '%'){
+			if(i + 2 >= len s)
+				break;
 			n = int s[i+1];
 			if(n >= '0' && n <= '9')
 				n = n - '0';
@@ -1050,10 +1060,34 @@ httpunesc(g: ref Private_info,s : array of byte): string
 }
 
 
+# Escape HTML special characters to prevent XSS
+htmlescape(s: string): string
+{
+	t := "";
+	for(i := 0; i < len s; i++) {
+		case s[i] {
+		'&' =>
+			t += "&amp;";
+		'<' =>
+			t += "&lt;";
+		'>' =>
+			t += "&gt;";
+		'"' =>
+			t += "&quot;";
+		'\'' =>
+			t += "&#39;";
+		* =>
+			t[len t] = s[i];
+		}
+	}
+	return t;
+}
+
 # write a failure message to the net and exit
 fail(g: ref Private_info,reason : int, message : string)
 {
 	verb : string;
+	escmsg := htmlescape(message);
 	title:=sys->sprint("<head><title>%s</title></head>\n<body bgcolor=#ffffff>\n",
 					errormsg[reason].concise);
 	body1:=	"<h1> Error </h1>\n<P>" +
@@ -1061,12 +1095,12 @@ fail(g: ref Private_info,reason : int, message : string)
 		" the following error <P><b>";
 	#concise error
 	body2:="</b><p>for the URL\n<P><b>";
-	#message
+	#message (HTML-escaped)
 	body3:="</b><P>with the following reason:\n<P><b>";
 	#reason
 	if (str->in('%',errormsg[reason].verbose)){
 		(v1,v2):=str->splitl(errormsg[reason].verbose,"%");
-		verb=v1+message+v2[2:];
+		verb=v1+escmsg+v2[2:];
 	}else
 		verb=errormsg[reason].verbose;
 	body4:="</b><hr> This Webserver powered by  DRIED DUNG<br>"+
@@ -1074,7 +1108,7 @@ fail(g: ref Private_info,reason : int, message : string)
 		"<hr><address>\n";
 	dtime:=sys->sprint("This information processed at %s.\n",daytime->time());
 	body5:="</address>\n</body>\n";
-	strbuf:=title+body1+errormsg[reason].concise+body2+message+body3+
+	strbuf:=title+body1+errormsg[reason].concise+body2+escmsg+body3+
 		verb+body4+dtime+body5;
 	if (g.bout!=nil && reason!=2){
 		g.bufio->g.bout.puts(sys->sprint("%s %s\r\n", g.version, errormsg[reason].num));

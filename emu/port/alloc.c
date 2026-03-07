@@ -386,7 +386,7 @@ dopoolalloc(Pool *p, ulong asize, ulong pc)
 	t = (Bhdr *) mmap(0, alloc, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
 	if(t == (void*)-1) {
 #else
-	t = (Bhdr *) mmap(0, alloc, PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	t = (Bhdr *) mmap(0, alloc, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
 	if(t == (void*)-1) {
 #endif
 		p->nbrk--;
@@ -619,11 +619,14 @@ void*
 smalloc(size_t size)
 {
 	void *v;
+	int retries;
 
-	for(;;){
+	for(retries = 0;; retries++){
 		v = malloc(size);
 		if(v != nil)
 			break;
+		if(retries > 100)
+			panic("smalloc: out of memory allocating %lud bytes", (ulong)size);
 		if(0)
 			print("smalloc waiting from %lux\n", getcallerpc(&size));
 		osenter();
@@ -812,6 +815,8 @@ malloc_usable_size(void *v)
 void*
 calloc(size_t n, size_t szelem)
 {
+	if(n != 0 && szelem > (size_t)-1 / n)
+		return nil;
 	return malloc(n*szelem);
 }
 

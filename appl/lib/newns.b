@@ -48,9 +48,11 @@ newns(user: string, file: string): string
 	kr = load Keyring Keyring->PATH;
 	stderr = sys->fildes(2);
 
-	# Could do some authentication here, and bail if no good FIXME
-	if(user == nil)
-		;
+	# Validate user parameter
+	if(user == nil || user == "") {
+		sys->fprint(stderr, "newns: user must be specified\n");
+		return "newns: user must be specified";
+	}
 	bio = load Bufio Bufio->PATH;
 	if(bio == nil)
 		return sys->sprint("cannot load %s: %r", Bufio->PATH);

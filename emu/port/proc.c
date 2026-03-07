@@ -128,7 +128,9 @@ notkilled(void)
 void
 osenter(void)
 {
+	lock(&up->sysio);
 	up->syscall = 1;
+	unlock(&up->sysio);
 }
 
 void

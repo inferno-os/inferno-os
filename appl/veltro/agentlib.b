@@ -24,6 +24,8 @@ init()
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
 	str = load String String->PATH;
+	if(str == nil)
+		sys->fprint(stderr, "agentlib: warning: cannot load String: %r\n");
 }
 
 setverbose(v: int)
@@ -223,7 +225,13 @@ buildsystemprompt(ns: string): string
 	if(len data > MAXPROMPT) {
 		sys->fprint(stderr, "agentlib: WARNING: system prompt %d bytes exceeds %d limit, truncating\n",
 			len data, MAXPROMPT);
-		prompt = string data[0:MAXPROMPT];
+		# Truncate at UTF-8 character boundary: if the byte at the cut
+		# position is a continuation byte (10xxxxxx), back up to exclude
+		# the incomplete character
+		cut := MAXPROMPT;
+		while(cut > 0 && (int data[cut] & 16rC0) == 16r80)
+			cut--;
+		prompt = string data[0:cut];
 	}
 
 	return prompt;
@@ -361,8 +369,8 @@ defaultsystemprompt(): string
 # (from repl.b — has collectsaytext for multi-line say)
 parseaction(response: string): (string, string)
 {
-	# Split into lines
-	(nil, lines) := sys->tokenize(response, "\n");
+	# Split into lines (preserving empty lines for heredoc content)
+	lines := splitlines(response);
 
 	# Get available tools for matching
 	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
@@ -418,7 +426,7 @@ parseaction(response: string): (string, string)
 # Multiple tool lines execute in parallel (independent operations).
 parseactions(response: string): list of (string, string)
 {
-	(nil, lines) := sys->tokenize(response, "\n");
+	lines := splitlines(response);
 	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
 
 	result: list of (string, string);
@@ -758,9 +766,33 @@ truncate(s: string, max: int): string
 	return s[0:max] + "...";
 }
 
+# Split string into lines preserving empty lines.
+# Unlike sys->tokenize which merges consecutive delimiters, this
+# returns one entry per line including empty strings for blank lines.
+splitlines(s: string): list of string
+{
+	result: list of string;
+	start := 0;
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\n') {
+			result = s[start:i] :: result;
+			start = i + 1;
+		}
+	}
+	if(start <= len s)
+		result = s[start:] :: result;
+	# Reverse the list
+	rev: list of string;
+	for(; result != nil; result = tl result)
+		rev = hd result :: rev;
+	return rev;
+}
+
 # Find heredoc marker << in string, returns position or -1
 findheredoc(s: string): int
 {
+	if(len s < 2)
+		return -1;
 	for(i := 0; i < len s - 1; i++) {
 		if(s[i] == '<' && s[i+1] == '<') {
 			# Make sure it's not <<< (which would be different)

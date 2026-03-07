@@ -121,6 +121,11 @@ exec(args: string): string
 	if(!hasprefix(lurl, "http://") && !hasprefix(lurl, "https://"))
 		return "error: invalid URL: must start with http:// or https://";
 
+	# SSRF protection: block requests to internal/private network addresses
+	host := extracthost(url);
+	if(isblocked(host))
+		return "error: requests to internal/private network addresses are not allowed";
+
 	# Build headers
 	hdrs: list of Webclient->Header;
 	hdrs = Webclient->Header("User-Agent", "Veltro/1.0") :: hdrs;
@@ -165,6 +170,75 @@ stripquotes(s: string): string
 	   (s[0] == '\'' && s[len s - 1] == '\''))
 		return s[1:len s - 1];
 	return s;
+}
+
+# Extract host from URL (strips scheme, port, path)
+extracthost(url: string): string
+{
+	# Skip scheme
+	s := url;
+	for(i := 0; i < len s; i++) {
+		if(i + 2 < len s && s[i] == '/' && s[i+1] == '/') {
+			s = s[i+2:];
+			break;
+		}
+	}
+	# Strip path
+	for(i = 0; i < len s; i++) {
+		if(s[i] == '/') {
+			s = s[0:i];
+			break;
+		}
+	}
+	# Strip port
+	for(i = 0; i < len s; i++) {
+		if(s[i] == ':') {
+			s = s[0:i];
+			break;
+		}
+	}
+	# Strip userinfo
+	for(i = 0; i < len s; i++) {
+		if(s[i] == '@') {
+			s = s[i+1:];
+			break;
+		}
+	}
+	return str->tolower(s);
+}
+
+# Check if host is a blocked internal/private address
+isblocked(host: string): int
+{
+	# Block localhost variants
+	if(host == "localhost" || host == "127.0.0.1" || host == "::1" ||
+	   host == "0.0.0.0" || host == "[::1]" || host == "[::0]")
+		return 1;
+	# Block 10.x.x.x
+	if(hasprefix(host, "10."))
+		return 1;
+	# Block 172.16-31.x.x
+	if(hasprefix(host, "172.")) {
+		rest := host[4:];
+		for(i := 0; i < len rest; i++) {
+			if(rest[i] == '.') {
+				octet := int rest[0:i];
+				if(octet >= 16 && octet <= 31)
+					return 1;
+				break;
+			}
+		}
+	}
+	# Block 192.168.x.x
+	if(hasprefix(host, "192.168."))
+		return 1;
+	# Block 169.254.x.x (link-local)
+	if(hasprefix(host, "169.254."))
+		return 1;
+	# Block metadata endpoints
+	if(host == "metadata.google.internal" || host == "metadata")
+		return 1;
+	return 0;
 }
 
 # Check if string has prefix

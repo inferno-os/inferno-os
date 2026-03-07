@@ -52,13 +52,13 @@ OP(subb) { B(d) = B(m) - B(s); }
 OP(subw) { W(d) = W(m) - W(s); }
 OP(subl) { V(d) = V(m) - V(s); }
 OP(subf) { F(d) = F(m) - F(s); }
-OP(divb) { B(d) = B(m) / B(s); }
-OP(divw) { W(d) = W(m) / W(s); }
-OP(divl) { V(d) = V(m) / V(s); }
+OP(divb) { if(B(s) == 0) error(exZdiv); B(d) = B(m) / B(s); }
+OP(divw) { if(W(s) == 0) error(exZdiv); W(d) = W(m) / W(s); }
+OP(divl) { if(V(s) == 0) error(exZdiv); V(d) = V(m) / V(s); }
 OP(divf) { F(d) = F(m) / F(s); }
-OP(modb) { B(d) = B(m) % B(s); }
-OP(modw) { W(d) = W(m) % W(s); }
-OP(modl) { V(d) = V(m) % V(s); }
+OP(modb) { if(B(s) == 0) error(exZdiv); B(d) = B(m) % B(s); }
+OP(modw) { if(W(s) == 0) error(exZdiv); W(d) = W(m) % W(s); }
+OP(modl) { if(V(s) == 0) error(exZdiv); V(d) = V(m) % V(s); }
 OP(mulb) { B(d) = B(m) * B(s); }
 OP(mulw) { W(d) = W(m) * W(s); }
 OP(mull) { V(d) = V(m) * V(s); }
@@ -421,8 +421,8 @@ acheck(int tsz, int sz)
 {
 	if(sz < 0)
 		error(exNegsize);
-	/* test for overflow; assumes sz >>> tsz */
-	if((int)(sizeof(Array) + sizeof(Heap) + tsz*sz) < sz && tsz != 0)
+	/* check for overflow in tsz*sz using division */
+	if(tsz != 0 && (ulong)sz > ((ulong)~0 - sizeof(Array) - sizeof(Heap)) / (ulong)tsz)
 		error(exHeap);
 }
 OP(newa)
