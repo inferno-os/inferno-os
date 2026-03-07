@@ -310,7 +310,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(monofont == nil)
 		monofont = mainfont;
 
-	# Load logo
+	# Load logo — use theme-specific variant if available
 	bufio := load Bufio Bufio->PATH;
 	if(bufio != nil) {
 		readpng := load RImagefile RImagefile->READPNGPATH;
@@ -318,7 +318,18 @@ init(ctxt: ref Draw->Context, args: list of string)
 		if(readpng != nil && remap != nil) {
 			readpng->init(bufio);
 			remap->init(display);
-			fd := bufio->open("/lib/lucifer/logo.png", Bufio->OREAD);
+			logopath := "/lib/lucifer/logo.png";
+			themename := readfile("/lib/lucifer/theme/current");
+			if(themename != nil) {
+				themename = strip(themename);
+				if(themename != "brimstone" && themename != "") {
+					tpath := "/lib/lucifer/logo-" + themename + ".png";
+					tfd := sys->open(tpath, Sys->OREAD);
+					if(tfd != nil)
+						logopath = tpath;
+				}
+			}
+			fd := bufio->open(logopath, Bufio->OREAD);
 			if(fd != nil) {
 				(raw, nil) := readpng->read(fd);
 				if(raw != nil)
