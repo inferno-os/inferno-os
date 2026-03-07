@@ -673,7 +673,7 @@ sendfd(g: ref Private_info, fd: ref Sys->FD, dir:  Sys->Dir): int
 				ok = -1;
 				break breakout;
 			}
-			nw := sys->write(fd, xferbuf, n);
+			nw := sys->write(g.bout.fd, xferbuf, n);
 			if(nw != n){
 				if(nw > 0)
 					wrote += nw;
@@ -1137,6 +1137,7 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 		if(g.meth != "HEAD")
 			g.bout.puts(UNMATCHED);
 		g.bout.flush();
+		return 0;
 	}
 
 	if(g.ifmodsince >= mtime
@@ -1151,6 +1152,7 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 			g.bout.puts("Connection: Keep-Alive\r\n");
 		g.bout.puts("\r\n");
 		g.bout.flush();
+		return 0;
 	}
 	return ret;
 }
