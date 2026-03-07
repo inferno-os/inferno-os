@@ -310,19 +310,24 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(monofont == nil)
 		monofont = mainfont;
 
-	# Load logo
-	bufio := load Bufio Bufio->PATH;
-	if(bufio != nil) {
-		readpng := load RImagefile RImagefile->READPNGPATH;
-		remap := load Imageremap Imageremap->PATH;
-		if(readpng != nil && remap != nil) {
-			readpng->init(bufio);
-			remap->init(display);
-			fd := bufio->open("/lib/lucifer/logo.png", Bufio->OREAD);
-			if(fd != nil) {
-				(raw, nil) := readpng->read(fd);
-				if(raw != nil)
-					(logoimg, nil) = remap->remap(raw, display, 0);
+	# Load logo (skip on Windows — readpng hangs due to inflate filter issue)
+	emuhost := readfile("/env/emuhost");
+	if(emuhost != nil)
+		emuhost = strip(emuhost);
+	if(emuhost != "Nt") {
+		bufio := load Bufio Bufio->PATH;
+		if(bufio != nil) {
+			readpng := load RImagefile RImagefile->READPNGPATH;
+			remap := load Imageremap Imageremap->PATH;
+			if(readpng != nil && remap != nil) {
+				readpng->init(bufio);
+				remap->init(display);
+				fd := bufio->open("/lib/lucifer/logo.png", Bufio->OREAD);
+				if(fd != nil) {
+					(raw, nil) := readpng->read(fd);
+					if(raw != nil)
+						(logoimg, nil) = remap->remap(raw, display, 0);
+				}
 			}
 		}
 	}
@@ -361,6 +366,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	# Main screen — needed to create sub-windows
 	mainscr = Screen.allocate(mainwin, bgcol, 0);
+	mainwin.draw(mainwin.r, mainscr.fill, nil, mainscr.fill.r.min);
 
 	# Sub-images for conv and ctx zones
 	convimg = mainscr.newwindow(convr, Draw->Refbackup, Draw->Nofill);

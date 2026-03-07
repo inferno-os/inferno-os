@@ -267,7 +267,11 @@ $secSrc = @(
     "rsagen.c", "rsafill.c", "rsaencrypt.c", "rsadecrypt.c", "rsaalloc.c", "rsaprivtopub.c",
     "eggen.c", "egencrypt.c", "egdecrypt.c", "egalloc.c", "egprivtopub.c",
     "egsign.c", "egverify.c",
-    "dsagen.c", "dsaalloc.c", "dsaprivtopub.c", "dsasign.c", "dsaverify.c"
+    "dsagen.c", "dsaalloc.c", "dsaprivtopub.c", "dsasign.c", "dsaverify.c",
+    "sha3.c",
+    "mlkem.c", "mlkem_ntt.c", "mlkem_poly.c",
+    "mldsa.c", "mldsa_ntt.c", "mldsa_poly.c",
+    "slhdsa.c", "slhdsa_fors.c", "slhdsa_hash.c", "slhdsa_tree.c", "slhdsa_wots.c"
 )
 $secFlags = @("/I$ROOT\libsec", "/I$ROOT\libmp", "/I$ROOT\include", "/I$ROOT\Nt\amd64\include")
 Compile-CFiles -Dir "." -Sources $secSrc -ExtraFlags $secFlags

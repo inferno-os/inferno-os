@@ -724,6 +724,21 @@ OP(ret)
 	R.FP = f->fp;
 	if(R.FP == nil) {
 		R.FP = (uchar*)f;
+#ifdef _WIN32
+		/*
+		 * On Windows x64, longjmp uses RtlUnwindEx which requires
+		 * stack unwind info (.pdata/.xdata) for every frame on the
+		 * stack.  JIT code has no unwind tables, so longjmp through
+		 * JIT frames crashes.  Instead, set p->kill so the next
+		 * xec() call raises the error from C code (which has proper
+		 * unwind info), and set R.t to exit comvec via TCHECK.
+		 */
+		if(R.M->compiled) {
+			currun()->kill = "";
+			R.t = 1;
+			return;
+		}
+#endif
 		error("");
 	}
 	R.SP = (uchar*)f;

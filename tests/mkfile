@@ -22,6 +22,7 @@ TARG=\
 	imap_test.dis\
 	jit_test.dis\
 	lucifer_flicker_test.dis\
+	lucifer_winstart_test.dis\
 	lucitheme_test.dis\
 	luciuisrv_test.dis\
 	outlinefont_test.dis\

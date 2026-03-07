@@ -324,7 +324,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "  Linking o.emu.exe (SDL3 GUI)..."
 $allObjs = Get-ChildItem -Path "." -Filter "*.obj" | ForEach-Object { $_.Name }
 
-& link.exe /nologo /subsystem:console `
+& link.exe /nologo /subsystem:console /MAP `
     "/OUT:o.emu.exe" `
     @allObjs `
     "$LibDir\libinterp.lib" `

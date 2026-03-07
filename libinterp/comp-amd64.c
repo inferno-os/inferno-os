@@ -1630,9 +1630,16 @@ comp(Inst *i)
 		gen2(Ojeqb, 0);
 		skip = code - 1;
 		modrm32(Oldw, O(String, len), RDI, RAX);
-		cmpl64(RAX, 0);
-		gen2(Ojgeb, 0x03);
-		modrr(Oneg, RAX, 3);
+		/*
+		 * String.len is int (32-bit): negative means rune string.
+		 * Use 32-bit TEST/NEG — a 32-bit load zero-extends to 64 bits,
+		 * so a 64-bit CMP would see negative 32-bit values as positive.
+		 */
+		genb(0x85);		/* TEST EAX, EAX */
+		genb(0xC0);
+		gen2(Ojgeb, 0x02);	/* JGE +2 (skip NEG) */
+		genb(0xF7);		/* NEG EAX */
+		genb(0xD8);
 		*skip = code - (skip + 1);
 		opwst(i, Ostw, RAX);
 		break;
@@ -1916,7 +1923,12 @@ comp(Inst *i)
 		mid(i, Oldw, RDI);
 		if(bflag) {
 			modrm32(Oldw, O(String, len), RAX, RRTA);
-			cmpl64(RRTA, 0);
+			/*
+			 * String.len is int (32-bit): negative means rune string.
+			 * Use 32-bit TEST — a 32-bit load zero-extends to 64 bits,
+			 * so a 64-bit CMP would see negative 32-bit values as positive.
+			 */
+			modrr32(0x85, RRTA, RRTA);	/* TEST R10D, R10D */
 			gen2(Ojltb, 16);
 			modrr32(0x3b, RDI, RRTA);
 			gen2(0x72, 5);
@@ -2187,11 +2199,23 @@ macfrp(void)
 	modrm(Ostw, O(REG, FP), RLINK, RRFP);
 	modrm(Ostw, O(REG, s), RLINK, RAX);
 #ifdef _WIN32
+	/*
+	 * macfrp is called from two different stack depths:
+	 *   1. JIT instruction code (IMOVP): RSP = 0 mod 16
+	 *   2. type destructor (comd) via macret: RSP varies
+	 * Use dynamic alignment via RBP to handle both cases.
+	 */
+	genb(Opushq+RBP);
+	modrr(Oldw, RSP, RBP);		/* MOV RBP, RSP */
+	genb(REXW);
+	gen2(0x83, (3<<6)|(4<<3)|RSP);	/* AND RSP, imm8 */
+	genb(0xf0);			/* -16 (align to 16) */
 	gen_subsp(WINSHADOW_MAC);
-#endif
 	bra((uvlong)rdestroy, Ocall);
-#ifdef _WIN32
-	gen_addsp(WINSHADOW_MAC);
+	modrr(Oldw, RBP, RSP);		/* MOV RSP, RBP */
+	genb(Opopq+RBP);
+#else
+	bra((uvlong)rdestroy, Ocall);
 #endif
 	modrm(Oldw, O(REG, FP), RLINK, RRFP);
 	modrm(Oldw, O(REG, MP), RLINK, RRMP);
@@ -2218,7 +2242,20 @@ macret(void)
 	con64(0, RDI);
 	modrm(Oldw, O(Frame, t), RRFP, RAX);
 	modrr(Ocmpw, RAX, RDI);
+#ifdef _WIN32
+	/*
+	 * On Windows, macret is >127 bytes so the JEQ rel8 to lpunt
+	 * overflows.  Use JNE+JMP rel32 trampoline instead.
+	 */
+	gen2(Ojneb, 5);		/* JNE +5: skip JMP if t != nil */
+	genb(0xE9);		/* JMP rel32 */
+	{
+		long d = (long)(lpunt - (code - s) - 2);
+		genb(d); genb(d>>8); genb(d>>16); genb(d>>24);
+	}
+#else
 	gen2(Ojeqb, lpunt-(code-s));
+#endif
 
 	modrm(Oldw, O(Type, destroy), RAX, RAX);
 	modrr(Ocmpw, RAX, RDI);
@@ -2246,9 +2283,14 @@ macret(void)
 	gen2(Ojeqb, linterp-(code-s));
 
 	lnomr = code - s;
-	/* CALL *RAX */
+#ifdef _WIN32
+	gen_subsp(8);
+#endif
 	genb(REXW);
 	gen2(Ocallrm, (3<<6)|(2<<3)|RAX);
+#ifdef _WIN32
+	gen_addsp(8);
+#endif
 	modrm(Ostw, O(REG, SP), RLINK, RRFP);
 	modrm(Oldw, O(Frame, lr), RRFP, RAX);
 	/* Check Frame.lr != nil before jumping to it */
@@ -2261,8 +2303,14 @@ macret(void)
 	gen2(Ojmprm, (3<<6)|(4<<3)|RAX);
 
 	linterp = code - s;
+#ifdef _WIN32
+	gen_subsp(8);
+#endif
 	genb(REXW);
 	gen2(Ocallrm, (3<<6)|(2<<3)|RAX);
+#ifdef _WIN32
+	gen_addsp(8);
+#endif
 	modrm(Ostw, O(REG, SP), RLINK, RRFP);
 	modrm(Oldw, O(Frame, lr), RRFP, RAX);
 	modrm(Ostw, O(REG, PC), RLINK, RAX);
@@ -2679,8 +2727,18 @@ compile(Module *m, int size, Modlink *ml)
 	}
 	}
 
-	for(i = 0; i < nelem(mactab); i++)
+	for(i = 0; i < nelem(mactab); i++) {
+		s = code;
 		mactab[i].gen();
+		if(cflag > 3) {
+			int j, len = (int)(code - s);
+			print("macro[%d] at +0x%lux len=%d:",
+				mactab[i].idx, (ulong)(s - base), len);
+			for(j = 0; j < len; j++)
+				print(" %02x", s[j]);
+			print("\n");
+		}
+	}
 
 #ifdef __APPLE__
 	pthread_jit_write_protect_np(1);
