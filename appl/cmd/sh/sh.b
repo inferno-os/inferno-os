@@ -1529,21 +1529,6 @@ envstringtoval(v: string): list of ref Listnode
 	return stringlist2list(str->unquoted(v));
 }
 
-XXXenvstringtoval(v: string): list of ref Listnode
-{
-	if (len v == 0)
-		return nil;
-	start := len v;
-	val: list of ref Listnode;
-	for (i := start - 1; i >= 0; i--) {
-		if (v[i] == ENVSEP) {
-			val = ref Listnode(nil, v[i+1:start]) :: val;
-			start = i;
-		}
-	}
-	return ref Listnode(nil, v[0:start]) :: val;
-}
-
 # the correct way to set environment variables is to
 # be able to catch errors if there is a failure.
 # this is not happening and is propogating to a triple fault.

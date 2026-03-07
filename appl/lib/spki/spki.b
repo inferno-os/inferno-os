@@ -40,6 +40,8 @@ init()
 	kr = load Keyring Keyring->PATH;
 	daytime = load Daytime Daytime->PATH;
 	sexprs = load Sexprs Sexprs->PATH;
+	if(sexprs == nil)
+		raise "fail:cannot load Sexprs";
 	base16 = load Encoding Encoding->BASE16PATH;
 	base64 = load Encoding Encoding->BASE64PATH;
 

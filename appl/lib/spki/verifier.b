@@ -35,7 +35,11 @@ init()
 	kr = load Keyring Keyring->PATH;
 	bufio = load Bufio Bufio->PATH;
 	sexprs = load Sexprs Sexprs->PATH;
+	if(sexprs == nil)
+		raise "fail:cannot load Sexprs";
 	spki = load SPKI SPKI->PATH;
+	if(spki == nil)
+		raise "fail:cannot load SPKI";
 	base64 = load Encoding Encoding->BASE64PATH;
 
 	sexprs->init();

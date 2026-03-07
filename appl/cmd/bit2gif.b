@@ -49,6 +49,10 @@ init(ctx: ref Draw->Context, argv: list of string)
 	draw = load Draw Draw->PATH;
 	bufio = load Bufio Bufio->PATH;
 	imgfile := load WImagefile WImagefile->WRITEGIFPATH;
+	if(imgfile == nil){
+		sys->fprint(sys->fildes(2), "cannot load %s: %r\n", WImagefile->WRITEGIFPATH);
+		raise "fail:load";
+	}
 	imgfile->init(bufio);
 
 	# open the display
