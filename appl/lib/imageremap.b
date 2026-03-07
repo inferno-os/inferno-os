@@ -559,6 +559,30 @@ remap(i: ref RImagefile->Rawimage, d: ref Display, errdiff: int): (ref Image, st
 	if(sys == nil || draw == nil || clamp == nil || rgbvmap == nil)
 		init(d);	# temporarily do this here until all clients change to call init
 	j: int;
+
+	# RGBA images are returned as RGBA32 with alpha intact — no palette mapping
+	if(i.chandesc == RImagefile->CRGBA) {
+		if(i.nchans != 4)
+			return (nil, sys->sprint("RGBA image has %d channels", i.nchans));
+		im := d.newimage(i.r, Draw->RGBA32, 0, Draw->Transparent);
+		if(im == nil)
+			return (nil, "can't allocate RGBA32 image");
+		npix := (i.r.max.x - i.r.min.x) * (i.r.max.y - i.r.min.y);
+		buf := array[npix * 4] of byte;
+		rpic := i.chans[0];
+		gpic := i.chans[1];
+		bpic := i.chans[2];
+		apic := i.chans[3];
+		for(j = 0; j < npix; j++) {
+			buf[j*4+0] = rpic[j];
+			buf[j*4+1] = gpic[j];
+			buf[j*4+2] = bpic[j];
+			buf[j*4+3] = apic[j];
+		}
+		im.writepixels(im.r, buf);
+		return (im, "");
+	}
+
 	im := d.newimage(i.r, Draw->CMAP8, 0, Draw->Black);
 	dx := i.r.max.x-i.r.min.x;
 	dy := i.r.max.y-i.r.min.y;
