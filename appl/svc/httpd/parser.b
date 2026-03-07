@@ -344,6 +344,7 @@ atexit(g: ref Private_info)
 
 
 MAXHEADERS: con 100;	# Maximum number of HTTP headers to accept
+MAXHDRVAL: con 8192;	# Maximum header value size (8KB)
 
 httpheaders(g: ref Private_info,vers : string)
 {
@@ -463,7 +464,19 @@ http11(g: ref Private_info): int
 
 mimeboundary(nil: ref Private_info): string
 {
-	rand->init(daytime->now() << 16 | sys->pctl(0, nil));
+	# Seed from /dev/random for better entropy; fall back to time+pid
+	seed := 0;
+	rfd := sys->open("/dev/random", sys->OREAD);
+	if(rfd != nil) {
+		buf := array[4] of byte;
+		if(sys->read(rfd, buf, 4) == 4)
+			seed = (int buf[0] << 24) | (int buf[1] << 16) |
+				(int buf[2] << 8) | int buf[3];
+		rfd = nil;
+	}
+	if(seed == 0)
+		seed = daytime->now() << 16 | sys->pctl(0, nil);
+	rand->init(seed);
 	s := "upas-";
 	for(i:=5; i < 32; i++)
 		s[i] = 'a' + rand->rand(26);
@@ -904,6 +917,12 @@ lexhead(g: ref Private_info)
 			c = getc(g);
 			if(c == Bufio->EOF)
 				break;
+		}
+		if(n >= MAXHDRVAL) {
+			# Discard remaining header value to prevent memory exhaustion
+			while((c = getc(g)) != Bufio->EOF && c != '\n')
+				;
+			break;
 		}
 		g.wordval[n++] = c;
 	}

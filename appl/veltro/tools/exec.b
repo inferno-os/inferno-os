@@ -357,13 +357,14 @@ sanitizecmd(s: string): string
 		}
 		if(s[i] == '$' && i + 1 < len s && (s[i+1] == '{' || s[i+1] == '(')) {
 			# Strip ${...} and $(...) command substitution
+			open := s[i+1];
+			close := ')';
+			if(open == '{')
+				close = '}';
 			i += 2;
 			depth := 1;
-			close := '}';
-			if(s[i-1] == '(')
-				close = ')';
 			while(i < len s && depth > 0) {
-				if(s[i] == s[i-depth] && (s[i] == '{' || s[i] == '('))
+				if(s[i] == open)
 					depth++;
 				else if(s[i] == close)
 					depth--;
