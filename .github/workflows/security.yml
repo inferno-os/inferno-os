@@ -19,7 +19,7 @@ jobs:
   # ─────────────────────────────────────────────
   codeql:
     name: CodeQL Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       security-events: write
@@ -101,14 +101,14 @@ jobs:
   # ─────────────────────────────────────────────
   cppcheck:
     name: cppcheck Static Analysis
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Install cppcheck
-      run: sudo apt-get update && sudo apt-get install -y cppcheck
+      run: sudo apt-get update && sudo apt-get install -y cppcheck=2.13.0-2ubuntu3
 
     - name: Run cppcheck
       run: |
@@ -170,7 +170,7 @@ jobs:
   # ─────────────────────────────────────────────
   flawfinder:
     name: Flawfinder Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       security-events: write
@@ -230,7 +230,7 @@ jobs:
   # ─────────────────────────────────────────────
   hardening:
     name: Source Hardening Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     steps:

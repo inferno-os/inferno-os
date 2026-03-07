@@ -47,7 +47,11 @@ init(): string
 	if(sys == nil)
 		return "cannot load Sys";
 	bufio = load Bufio Bufio->PATH;
+	if(bufio == nil)
+		return "cannot load Bufio";
 	str = load String String->PATH;
+	if(str == nil)
+		return "cannot load String";
 	return nil;
 }
 
