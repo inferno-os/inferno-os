@@ -161,7 +161,7 @@ ItemSource.new(bs: ref ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemS
 		ps.literal = 1;
 		pushfontstyle(ps, FntT);
 	}
-	return ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil);
+	return ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, array[LX->Numtags] of { * => ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL)}, 0, nil);
 }
 
 ItemSource.getitems(is: self ref ItemSource) : ref Item
@@ -215,6 +215,11 @@ TokLoop:
 		}
 		# check common case first (Data), then case statement on tag
 		if(tag == LX->Data) {
+			# Capture text inside <style> blocks for CSS parsing
+			if(is.instyle) {
+				is.styletext += tok.text;
+				continue;
+			}
 			# Lexing didn't pay attention to SGML record boundary rules:
 			# \n after start tag or before end tag to be discarded.
 			# (Lex has already discarded all \r's).
@@ -373,9 +378,15 @@ TokLoop:
 				}
 				di.images = bg.image :: di.images;
 			}
+			# Apply CSS background-color and color from inline style
+			si := getstyle(is, LX->Tbody, tok);
+			if(si.bgcolor != STYLNONE)
+				bg.color = si.bgcolor;
 			di.background = ps.curbg = bg;
 			ps.curbg.image = nil;
 			di.text = color(aval(tok, LX->Atext), di.text);
+			if(si.color != STYLNONE)
+				di.text = si.color;
 			di.link = color(aval(tok, LX->Alink), di.link);
 			di.vlink = color(aval(tok, LX->Avlink), di.vlink);
 			di.alink = color(aval(tok, LX->Aalink), di.alink);
@@ -428,14 +439,39 @@ TokLoop:
 			ps = hd psstk;
 
 		LX->Tcenter or LX->Tdiv =>
-			if(tag == LX->Tcenter)
-				al := Acenter;
-			else
-				al = atabbval(tok, LX->Aalign, align_tab, ps.curjust);
-			pushjust(ps, al);
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				if(tag == LX->Tcenter)
+					al := Acenter;
+				else
+					al = atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+				# CSS text-align overrides HTML align attr
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				# Apply remaining CSS properties (color, font, etc.)
+				si.halign = Anone;	# already handled via pushjust
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
 
 		LX->Tcenter+RBRA or LX->Tdiv+RBRA =>
-			popjust(ps);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else {
+					unapplystyle(ps, di, changes);
+					popjust(ps);
+				}
+			}
+			else
+				popjust(ps);
 
 		# <!ELEMENT DD - O  %flow >
 		LX->Tdd =>
@@ -517,8 +553,15 @@ TokLoop:
 				else if(nsz != "")
 					sz = Normal + ( int nsz - 3);
 			}
-			ps.curfg = color(aval(tok, LX->Acolor), ps.curfg);
+			# CSS overrides for font element
+			fsi := getstyle(is, LX->Tfont, tok);
+			fg := color(aval(tok, LX->Acolor), ps.curfg);
+			if(fsi.color != STYLNONE)
+				fg = fsi.color;
+			ps.curfg = fg;
 			ps.fgstk = ps.curfg :: ps.fgstk;
+			if(fsi.fontsize != STYLNONE)
+				sz = fsi.fontsize;
 			pushfontsize(ps, sz);
 
 		LX->Tfont+RBRA =>
@@ -665,22 +708,41 @@ TokLoop:
 			if(ps.items == ps.lastit)
 				bramt = 0;
 			addbrk(ps, bramt, IFcleft|IFcright);
+			si := getstyle(is, tag, tok);
 			# assume Th2 = Th1+1, etc.
 			sz := Verylarge - (tag - LX->Th1);
 			if(sz < Tiny)
 				sz = Tiny;
+			if(si.fontsize != STYLNONE)
+				sz = si.fontsize;
 			pushfontsize(ps, sz);
 			sty := stackhd(ps.fntstylestk, FntR);
 			if(tag == LX->Th1)
 				sty = FntB;
+			if(si.fontstyle != STYLNONE)
+				sty = si.fontstyle;
 			pushfontstyle(ps, sty);
-			pushjust(ps, atabbval(tok, LX->Aalign, align_tab, ps.curjust));
+			al := atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+			if(si.halign != Anone)
+				al = si.halign;
+			pushjust(ps, al);
+			# Apply remaining style properties (color, underline)
+			si.halign = Anone;
+			si.fontstyle = STYLNONE;
+			si.fontsize = STYLNONE;
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
 			ps.skipwhite = 1;
 
 		LX->Th1+RBRA or LX->Th2+RBRA
 		    or LX->Th3+RBRA or LX->Th4+RBRA
 		    or LX->Th5+RBRA or LX->Th6+RBRA =>
 			addbrk(ps, 1, IFcleft|IFcright);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
 			popfontsize(ps);
 			popfontstyle(ps);
 			popjust(ps);
@@ -998,12 +1060,33 @@ TokLoop:
 
 		# <!ELEMENT P - O (%text)* >
 		LX->Tp =>
-			pushjust(ps, atabbval(tok, LX->Aalign, align_tab, ps.curjust));
+			si := getstyle(is, LX->Tp, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				al := atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				si.halign = Anone;
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
 			ps.inpar = 1;
 			ps.skipwhite = 1;
-			
+
 		LX->Tp+RBRA =>
-			;
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+				# Note: popjust for <p> is handled by blockbrk mechanism
+			}
 
 		# <!ELEMENT PARAM - O EMPTY>
 		# Do something when we do applets...
@@ -1178,12 +1261,18 @@ TokLoop:
 
 		# <!ELEMENT STYLE - - CDATA>
 		LX->Tstyle =>
-			if(warn)
-				sys->print("warning: unimplemented <STYLE>\n");
+			is.instyle = 1;
+			is.styletext = "";
 			ps.skipping = 1;
 
 		LX->Tstyle+RBRA =>
 			ps.skipping = 0;
+			if(is.instyle) {
+				is.instyle = 0;
+				if(is.styletext != "")
+					parsestyleblock(is.tagstyles, is.styletext);
+				is.styletext = nil;
+			}
 
 		# <!ELEMENT (SUB|SUP) - - (%text)*>
 		LX->Tsub or LX->Tsup =>
@@ -1226,14 +1315,17 @@ TokLoop:
 				curtab.tabletok = tok;
 				continue;
 			}
+			tabbg := color(aval(tok, LX->Abgcolor), -1);
+			tsi := getstyle(is, LX->Ttable, tok);
+			if(tsi.bgcolor != STYLNONE)
+				tabbg = tsi.bgcolor;
 			tab := Table.new(++is.ntables,	# tableid
 					makealign(tok),	# align
 					makedimen(tok, LX->Awidth),
 					aflagval(tok, LX->Aborder),
 					aintval(tok, LX->Acellspacing, TABSP),
 					aintval(tok, LX->Acellpadding, TABPAD),
-#					Background(nil, color(aval(tok, LX->Abgcolor), ps.curbg.color)),
-					Background(nil, color(aval(tok, LX->Abgcolor), -1)),
+					Background(nil, tabbg),
 					tok);
 			is.tabstk = tab :: is.tabstk;
 			di.tables = tab :: di.tables;
@@ -1336,10 +1428,17 @@ TokLoop:
 			if(tag == LX->Tth)
 				flags |= TFisth;
 			bg := Background(nil, color(aval(tok, LX->Abgcolor), tr.background.color));
+			# Apply CSS styles to table cell
+			si := getstyle(is, tag, tok);
+			if(si.bgcolor != STYLNONE)
+				bg.color = si.bgcolor;
+			al := makealign(tok);
+			if(si.halign != Anone)
+				al.halign = si.halign;
 			c := Tablecell.new(len curtab.cells + 1, # cell id
 				aintval(tok, LX->Arowspan, 1),
 				aintval(tok, LX->Acolspan, 1),
-				makealign(tok),
+				al,
 				width,
 				aintval(tok, LX->Aheight, 0),
 				bg,
@@ -1355,6 +1454,10 @@ TokLoop:
 			}
 			c.background = ps.curbg = bg;
 			ps.curbg.image = nil;
+			if(si.color != STYLNONE) {
+				ps.curfg = si.color;
+				ps.fgstk = ps.curfg :: ps.fgstk;
+			}
 			if(c.align.halign == Anone) {
 				if(tr.align.halign != Anone)
 					c.align.halign = tr.align.halign;
@@ -1437,8 +1540,12 @@ TokLoop:
 			(ps, psstk) = finishcell(curtab, psstk);
 			if(curtab.currows != nil)
 				(hd curtab.currows).flags = byte 0;
+			trbg := color(aval(tok, LX->Abgcolor), curtab.background.color);
+			trsi := getstyle(is, LX->Ttr, tok);
+			if(trsi.bgcolor != STYLNONE)
+				trbg = trsi.bgcolor;
 			tr := Tablerow.new(makealign(tok),
-					Background(nil, color(aval(tok, LX->Abgcolor), curtab.background.color)),
+					Background(nil, trbg),
 					TFparsing);
 			curtab.currows = tr :: curtab.currows;
 
@@ -1506,6 +1613,29 @@ TokLoop:
 		=>
 			;
 
+		# <!ELEMENT SPAN - - (%text)*>
+		# Inline element with CSS style support
+		LX->Tspan =>
+			si := getstyle(is, LX->Tspan, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
+
+		LX->Tspan+RBRA =>
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+			}
+
 		# Tags not implemented
 		LX->Tbdo or LX->Tbdo+RBRA
 		or LX->Tbutton or LX->Tbutton+RBRA
@@ -1517,7 +1647,6 @@ TokLoop:
 		or LX->Tlegend or LX->Tlegend+RBRA
 		or LX->Tobject or LX->Tobject+RBRA
 		or LX->Toptgroup or LX->Toptgroup+RBRA
-		or LX->Tspan or LX->Tspan+RBRA
 		=>
 			if(warn) {
 				if(tag > RBRA)
@@ -1696,7 +1825,8 @@ Pstate.new() : ref Pstate
 			nil, nil, nil,		# items, lastit, prelastit
 			nil, nil, nil, nil,	# fntstylestk, fntsizestk, fgstk, ulstk
 			nil, nil, nil, nil,	# voffstk, listtypestk, listcntstk, juststk
-			nil);			# hangstk
+			nil,			# hangstk
+			nil);			# stylestk
 	ps.items = Item.newspacer(ISPnull, 0);
 	ps.lastit = ps.items;
 	ps.prelastit = nil;
@@ -2857,4 +2987,277 @@ Kidinfo.new(isframeset: int) : ref Kidinfo
 		ki.framebd = 1;
 	}
 	return ki;
+}
+
+# CSS inline style parsing.
+# Parse a CSS style string like "color: red; font-weight: bold; display: none"
+# into a StyleInfo with the supported property values filled in.
+parsestyle(s: string) : StyleInfo
+{
+	si := StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL);
+	if(s == nil || s == "")
+		return si;
+	s = S->tolower(s);
+	# split on ';' and process each declaration
+	i := 0;
+	for(;;) {
+		# skip whitespace
+		for(i = 0; i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'); )
+			i++;
+		s = s[i:];
+		if(s == "")
+			break;
+		# find end of this declaration
+		semi := -1;
+		for(i = 0; i < len s; i++)
+			if(s[i] == ';') {
+				semi = i;
+				break;
+			}
+		decl: string;
+		if(semi >= 0) {
+			decl = s[:semi];
+			s = s[semi+1:];
+		}
+		else {
+			decl = s;
+			s = "";
+		}
+		# split on ':' into property and value
+		colon := -1;
+		for(i = 0; i < len decl; i++)
+			if(decl[i] == ':') {
+				colon = i;
+				break;
+			}
+		if(colon < 0)
+			continue;
+		prop := trim_white(decl[:colon]);
+		val := trim_white(decl[colon+1:]);
+		if(prop == "" || val == "")
+			continue;
+		applycssprop(ref si, prop, val);
+	}
+	return si;
+}
+
+applycssprop(si: ref StyleInfo, prop, val: string)
+{
+	case prop {
+	"color" =>
+		c := color(val, STYLNONE);
+		if(c != STYLNONE)
+			si.color = c;
+	"background-color" or "background" =>
+		# for "background", only handle single color value
+		c := color(val, STYLNONE);
+		if(c != STYLNONE)
+			si.bgcolor = c;
+	"text-align" =>
+		case val {
+		"left" => si.halign = Aleft;
+		"center" => si.halign = Acenter;
+		"right" => si.halign = Aright;
+		"justify" => si.halign = Ajustify;
+		}
+	"font-weight" =>
+		case val {
+		"bold" or "bolder" or "700" or "800" or "900" =>
+			si.fontstyle = FntB;
+		"normal" or "lighter" or "400" =>
+			si.fontstyle = FntR;
+		}
+	"font-style" =>
+		case val {
+		"italic" or "oblique" =>
+			si.fontstyle = FntI;
+		"normal" =>
+			si.fontstyle = FntR;
+		}
+	"font-family" =>
+		if(S->prefix("monospace", val)
+		   || S->prefix("courier", val)
+		   || S->prefix("\"courier", val))
+			si.fontstyle = FntT;
+	"font-size" =>
+		case val {
+		"xx-small" or "x-small" =>
+			si.fontsize = Tiny;
+		"small" or "smaller" =>
+			si.fontsize = Small;
+		"medium" =>
+			si.fontsize = Normal;
+		"large" or "larger" =>
+			si.fontsize = Large;
+		"x-large" or "xx-large" =>
+			si.fontsize = Verylarge;
+		}
+	"text-decoration" =>
+		if(S->prefix("underline", val))
+			si.ul = int ULunder;
+		else if(S->prefix("line-through", val))
+			si.ul = int ULmid;
+		else if(val == "none")
+			si.ul = int ULnone;
+	"display" =>
+		if(val == "none")
+			si.display = DSPNONE;
+	}
+}
+
+# Parse CSS text from <style> blocks.
+# Supports simple tag selectors: "p { color: red }" "h1 { text-align: center }"
+# Stores results in tagstyles array indexed by tag number.
+parsestyleblock(tagstyles: array of ref StyleInfo, text: string)
+{
+	if(text == nil || text == "")
+		return;
+	text = S->tolower(text);
+	i := 0;
+	n := len text;
+	for(;;) {
+		# skip whitespace and comments
+		for(; i < n && (text[i] == ' ' || text[i] == '\t' || text[i] == '\n' || text[i] == '\r'); )
+			i++;
+		if(i >= n)
+			break;
+		# skip CSS comments
+		if(i+1 < n && text[i] == '/' && text[i+1] == '*') {
+			i += 2;
+			for(; i+1 < n; i++)
+				if(text[i] == '*' && text[i+1] == '/') {
+					i += 2;
+					break;
+				}
+			continue;
+		}
+		# find selector (text before '{')
+		selstart := i;
+		for(; i < n && text[i] != '{'; )
+			i++;
+		if(i >= n)
+			break;
+		sel := trim_white(text[selstart:i]);
+		i++;	# skip '{'
+		# find declaration block (text before '}')
+		declstart := i;
+		for(; i < n && text[i] != '}'; )
+			i++;
+		if(i >= n)
+			break;
+		decls := text[declstart:i];
+		i++;	# skip '}'
+		if(sel == "" || decls == "")
+			continue;
+		# look up tag name in tagnames array
+		tagid := -1;
+		for(ti := 0; ti < LX->Numtags; ti++)
+			if(LX->tagnames[ti] == sel) {
+				tagid = ti;
+				break;
+			}
+		if(tagid < 0)
+			continue;
+		# parse declarations and merge into tagstyles
+		si := parsestyle(decls);
+		mergestyle(tagstyles[tagid], si);
+	}
+}
+
+# Merge non-STYLNONE values from src into dst
+mergestyle(dst: ref StyleInfo, src: StyleInfo)
+{
+	if(src.color != STYLNONE)
+		dst.color = src.color;
+	if(src.bgcolor != STYLNONE)
+		dst.bgcolor = src.bgcolor;
+	if(src.halign != Anone)
+		dst.halign = src.halign;
+	if(src.fontstyle != STYLNONE)
+		dst.fontstyle = src.fontstyle;
+	if(src.fontsize != STYLNONE)
+		dst.fontsize = src.fontsize;
+	if(src.ul != STYLNONE)
+		dst.ul = src.ul;
+	if(src.display == DSPNONE)
+		dst.display = DSPNONE;
+}
+
+# Apply a StyleInfo to the current parse state.
+# Pushes onto appropriate stacks so that unapplystyle can reverse it.
+# Returns number of style changes applied (for unapplystyle).
+applystyle(ps: ref Pstate, si: StyleInfo) : int
+{
+	changes := 0;
+	if(si.color != STYLNONE) {
+		ps.curfg = si.color;
+		ps.fgstk = ps.curfg :: ps.fgstk;
+		changes |= 16r1;
+	}
+	if(si.fontstyle != STYLNONE) {
+		pushfontstyle(ps, si.fontstyle);
+		changes |= 16r2;
+	}
+	if(si.fontsize != STYLNONE) {
+		pushfontsize(ps, si.fontsize);
+		changes |= 16r4;
+	}
+	if(si.halign != Anone) {
+		pushjust(ps, si.halign);
+		changes |= 16r8;
+	}
+	if(si.ul != STYLNONE) {
+		ps.curul = byte si.ul;
+		ps.ulstk = ps.curul :: ps.ulstk;
+		changes |= 16r10;
+	}
+	return changes;
+}
+
+# Reverse style changes applied by applystyle.
+unapplystyle(ps: ref Pstate, di: ref Docinfo, changes: int)
+{
+	if(changes & 16r10) {
+		if(ps.ulstk != nil)
+			ps.ulstk = tl ps.ulstk;
+		if(ps.ulstk != nil)
+			ps.curul = hd ps.ulstk;
+		else
+			ps.curul = ULnone;
+	}
+	if(changes & 16r8)
+		popjust(ps);
+	if(changes & 16r4)
+		popfontsize(ps);
+	if(changes & 16r2)
+		popfontstyle(ps);
+	if(changes & 16r1) {
+		if(ps.fgstk != nil)
+			ps.fgstk = tl ps.fgstk;
+		if(ps.fgstk != nil)
+			ps.curfg = hd ps.fgstk;
+		else
+			ps.curfg = di.text;
+	}
+}
+
+# Get the effective style for an element: merge tag stylesheet rule with inline style.
+getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
+{
+	# start with tag stylesheet rule if any
+	si := StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL);
+	if(tag < LX->Numtags && is.tagstyles[tag] != nil) {
+		ts := is.tagstyles[tag];
+		si = StyleInfo(ts.color, ts.bgcolor, ts.halign, ts.fontstyle,
+			ts.fontsize, ts.ul, ts.display);
+	}
+	# overlay inline style if present
+	if(tok != nil) {
+		sval := aval(tok, LX->Astyle);
+		if(sval != nil && sval != "") {
+			inl := parsestyle(sval);
+			mergestyle(ref si, inl);
+		}
+	}
+	return si;
 }

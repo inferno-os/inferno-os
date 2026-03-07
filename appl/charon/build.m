@@ -106,6 +106,22 @@ Genattr: adt
 	evmask: int;		# Aonblur|Aonfocus, etc. when present
 };
 
+# Parsed CSS style properties from inline style="" or <style> blocks
+STYLNONE: con -1;		# "not set" sentinel for int style properties
+DSPNORMAL: con 0;		# display: normal (default)
+DSPNONE: con 1;		# display: none
+
+StyleInfo: adt
+{
+	color: int;		# text color, STYLNONE if not set
+	bgcolor: int;		# background color, STYLNONE if not set
+	halign: byte;		# text-align (Aleft, etc.), Anone if not set
+	fontstyle: int;		# FntR/FntI/FntB/FntT, STYLNONE if not set
+	fontsize: int;		# Tiny..Verylarge, STYLNONE if not set
+	ul: int;		# ULnone/ULunder/ULmid, STYLNONE if not set
+	display: int;		# DSPNORMAL or DSPNONE
+};
+
 
 # Formfield Item: a field from a form
 
@@ -438,6 +454,7 @@ Pstate: adt {
 	listcntstk: list of int;		# list counter stack
 	juststk: list of byte;		# justification stack
 	hangstk: list of int;		# hanging stack
+	stylestk: list of int;		# CSS style change stack (bitmasks from applystyle)
 
 	new: fn() : ref Pstate;
 };
@@ -468,6 +485,9 @@ ItemSource: adt
 	reqdurl: ref Url->Parsedurl;
 	reqddata: array of byte;
 	toks: array of ref Lex->Token;
+	tagstyles: array of ref StyleInfo;	# CSS rules from <style> blocks, indexed by tag
+	instyle: int;				# true when inside <style> block
+	styletext: string;			# accumulates text inside <style> block
 
 	new: fn(bs: ref CharonUtils->ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemSource;
 	getitems: fn(is: self ref ItemSource) : ref Item;
@@ -475,4 +495,5 @@ ItemSource: adt
 
 init: fn(cu: CharonUtils);
 trim_white: fn(data: string): string;
+parsestyle: fn(s: string) : StyleInfo;
 };
