@@ -60,6 +60,7 @@ Msg : import plumbmsg;
 
 tfd : ref Sys->FD;
 lasttime : int;
+embedded := 0;	# 1 when running inside lucifer's presentation zone (not standalone)
 
 init(ctxt : ref Draw->Context, argl : list of string)
 {
@@ -187,8 +188,8 @@ fontcache : array of ref Reffont;
 nfontcache : int;
 reffonts : array of ref Reffont;
 deffontnames := array[2] of {
-	"/fonts/dejavu/DejaVuSans/unicode.14.font",
-	"/fonts/dejavu/DejaVuSansMono/unicode.14.font",
+	"/fonts/combined/unicode.sans.14.font",
+	"/fonts/combined/unicode.14.font",
 };
 
 # Theme definitions: (env-var-suffix, color-value)
@@ -266,6 +267,8 @@ main(argl : list of string)
 		loadfile = argf(arg);
 	't' =>
 		themename = argf(arg);
+	'E' =>
+		embedded = 1;
 	}
 
 	dat->home = utils->getenv("home");
@@ -444,6 +447,15 @@ xenithexit(err: string)
 	graph->cursorswitch(nil);
 	if (plumbed)
 		plumbmsg->shutdown();
+	if (embedded) {
+		# Running inside lucifer's presentation zone.
+		# Signal preswmloop via wmsrv so it immediately removes the tab — without
+		# this, the ghost tab persists until GC collects the gui module (which holds
+		# the wmclient fd open while xenith's background goroutines are still alive).
+		# Do NOT call gui->killwins() — it halts emu via /dev/sysctl.
+		gui->signalclose();
+		exit;
+	}
 	killprocs();
 	gui->killwins();
 	exit;

@@ -54,11 +54,15 @@ doc(): string
 	return "Launch - Launch a GUI app in the presentation zone\n\n" +
 		"Usage:\n" +
 		"  Launch list           — show available apps\n" +
+		"  Launch xenith         — launch Xenith text environment\n" +
+		"  Launch lucishell      — launch shell terminal\n" +
 		"  Launch clock          — launch by short name\n" +
 		"  Launch wm/clock       — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
-		"Confirmed working (draw-based):\n" +
-		"  clock, bounce, coffee, colors, date, view, rt, lens\n\n" +
+		"Confirmed working (draw-based, /dis/wm/):\n" +
+		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell, mand\n\n" +
+		"Also available (full environments, /dis/):\n" +
+		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
 		"  task, edit, about, tetris, sh, ftree, deb\n\n" +
 		"Returns 'launched <name> in presentation zone' on success.";
@@ -114,14 +118,30 @@ exec(args: string): string
 	# Reject Tk-dependent apps (Tk is not built into this emu)
 	if(istk(appname))
 		return "error: " + appname + " requires Tk which is not available.\n" +
-			"Try: clock, bounce, coffee, colors, date, view, rt, lens";
+			"Try: clock, bounce, coffee, colors, date, view, rt, lens, xenith";
 
-	# Resolve and verify
+	# Reject names containing path separators — belt-and-suspenders guard
+	# against any normalization gaps that could reach outside /dis/wm/.
+	for(pi := 0; pi < len appname; pi++) {
+		if(appname[pi] == '/') {
+			return "error: app name may not contain '/'";
+		}
+	}
+
+	# Resolve the .dis path.
+	# /dis/wm/ is the primary pool of launchable WM apps.
+	# Apps outside /dis/wm/ must be explicitly whitelisted here; no generic
+	# directory search is performed to prevent an agent from reaching
+	# arbitrary /dis/*.dis files by guessing names.
 	dispath := "/dis/wm/" + appname + ".dis";
 	(ok, nil) := sys->stat(dispath);
-	if(ok < 0)
-		return "error: " + appname + " not found (tried " + dispath + ")\n" +
-			"Use 'Launch list' to see available apps";
+	if(ok < 0) {
+		# Check explicit whitelist for apps that live outside /dis/wm/.
+		dispath = extraapp(appname);
+		if(dispath == "")
+			return "error: " + appname + " not found\n" +
+				"Use 'Launch list' to see available apps";
+	}
 
 	# Register app with luciuisrv via presentation/ctl
 	actid := currentactid();
@@ -130,8 +150,23 @@ exec(args: string): string
 
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
 
-	# Create app slot (will trigger lucifer to launch the app)
-	cmd := sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
+	# Build the create command.
+	# For xenith: pass -c 1 (single-column, fits presentation zone) and -E (embedded flag
+	# so xenith skips killprocs on exit). Also pass -t dark if brimstone theme is active.
+	cmd: string;
+	if(appname == "xenith") {
+		xenithargs := "-c 1 -E";
+		theme := readfile("/lib/lucifer/theme/current");
+		if(theme != nil)
+			theme = strip(theme);
+		# Brimstone is the dark theme (and the default when no theme file exists).
+		# Halo and other light themes use xenith's default Acme colour scheme.
+		if(theme == nil || theme == "" || theme == "brimstone")
+			xenithargs += " -t dark";
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
+			appname, dispath, appname, xenithargs);
+	} else
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
 	fd := sys->open(pctl, Sys->OWRITE);
 	if(fd == nil)
 		return sys->sprint("error: cannot open presentation/ctl: %r");
@@ -186,7 +221,7 @@ strip(s: string): string
 	return s[i:j];
 }
 
-# List available (non-Tk) apps from /dis/wm/
+# List available (non-Tk) apps from /dis/wm/ plus known top-level apps.
 listapps(): string
 {
 	fd := sys->open("/dis/wm", Sys->OREAD);
@@ -213,9 +248,51 @@ listapps(): string
 		}
 	}
 
+	# Also list whitelisted apps that live outside /dis/wm/.
+	# This mirrors extraapp() — both must stay in sync.
+	extra := array[] of {
+		("xenith", "/dis/xenith/xenith.dis"),
+	};
+	for(i := 0; i < len extra; i++) {
+		(nm, path) := extra[i];
+		(ok, nil) := sys->stat(path);
+		if(ok < 0)
+			continue;
+		if(count > 0)
+			apps += "\n";
+		apps += "  " + nm;
+		count++;
+	}
+
 	if(count == 0)
 		return "no apps available";
 	return sys->sprint("%d apps available:\n%s", count, apps);
+}
+
+# Explicit whitelist of apps that live outside /dis/wm/.
+# Returns the full .dis path for known safe apps, or "" if not listed.
+# Add entries here only after confirming the app implements GuiApp and is safe
+# to run in lucifer's presentation zone.
+extraapp(name: string): string
+{
+	# Each entry: (short-name, absolute-dis-path)
+	# To add a new app: add a row here, review the .dis for GuiApp interface.
+	# Note: paths must be under a /dis/ subdirectory (not top-level /dis/*.dis)
+	# so they are visible in the tool's restricted namespace when that
+	# subdirectory is listed in caps.paths (e.g. "/dis/xenith" → /dis/xenith/).
+	apps := array[] of {
+		("xenith", "/dis/xenith/xenith.dis"),
+	};
+	for(i := 0; i < len apps; i++) {
+		(nm, path) := apps[i];
+		if(nm == name) {
+			(ok, nil) := sys->stat(path);
+			if(ok >= 0)
+				return path;
+			return "";	# whitelisted but not installed
+		}
+	}
+	return "";
 }
 
 # Returns 1 if the app requires Tk (not available in this build)

@@ -10,9 +10,10 @@
 ### Core Functionality
 - **Image display in Xenith windows** via `echo 'image /path' > /mnt/xenith/<id>/ctl`
 - **PPM format support** (P3 ASCII, P6 binary) with subsampling for large images
+- **JPEG format support** via Inferno's `readjpg` module (baseline sequential JFIF)
 - **PNG format support** including:
-  - Standard PNG via Inferno's `readpng` module (for small images)
-  - Custom streaming decoder with subsampling (for large images)
+  - Standard PNG via Inferno's `readpng` module (all bit depths: 1/2/4/8/16-bit)
+  - Custom streaming decoder with subsampling (for large 8-bit images)
   - Adam7 interlaced PNG support
   - Progressive loading with visual feedback during decode
 
@@ -29,8 +30,11 @@
 - Streaming row-by-row processing to minimize memory footprint
 
 ### Files Modified
-- `appl/xenith/imgload.b` - Core image loading module with progressive decode
-- `appl/xenith/imgload.m` - Module interface (added ImgProgress, readimagedataprogressive)
+- `appl/xenith/imgload.b` - Core image loading: format dispatch, JPEG, PPM
+- `appl/xenith/imgload.m` - Module interface (ImgProgress, readimagedataprogressive)
+- `appl/xenith/pngload.b` - PNG-specific decoding: streaming, subsampling, Adam7
+- `appl/xenith/pngload.m` - PNG loader module interface
+- `appl/xenith/render/imgrender.b` - Renderer wrapper (PNG, JPEG, PPM magic detection)
 - `appl/xenith/asyncio.b` - Async task management (imagetask, decodetask)
 - `appl/xenith/asyncio.m` - Async message types (ImageData, ImageDecoded, ImageProgress)
 - `appl/xenith/wind.b` - Image display and scaling
@@ -104,9 +108,11 @@ For very large images (e.g., 20800x25675 interlaced PNG, 534 megapixels):
 │        │                   │                                            │
 │        ▼                   ▼                                            │
 │  ┌─────────────┐    ┌─────────────┐                                    │
-│  │ sys->read() │    │ imgload.b   │                                    │
-│  │ (I/O bound) │    │ inflate.b   │                                    │
-│  └─────────────┘    │ (CPU bound) │                                    │
+│  │ sys->read() │    │ imgload.b   │ format dispatch, JPEG, PPM         │
+│  │ (I/O bound) │    │ pngload.b   │ PNG streaming/subsample            │
+│  └─────────────┘    │ inflate.b   │ zlib decompression                 │
+│                     │ readjpg.b   │ JPEG baseline decode               │
+│                     │ (CPU bound) │                                    │
 │                     └─────────────┘                                    │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -156,7 +162,8 @@ If native zlib is too complex, add a dedicated native PNG module:
 - Bypasses Limbo entirely for image decode
 
 ### Priority 4: Format Optimization
-- Consider adding JPEG support (more common, often smaller)
+- JPEG support added (baseline sequential via readjpg)
+- Consider adding GIF support (readgif exists in appl/lib/)
 - Native Inferno image format is already fast (no compression)
 - Pre-convert large PNGs to uncompressed format for faster loading
 
@@ -166,6 +173,8 @@ If native zlib is too complex, add a dedicated native PNG module:
 - Small non-interlaced PNG: ✓
 - Small interlaced PNG (200x200 RGBA): ✓
 - PPM format: ✓
+- JPEG (baseline sequential): needs testing
+- PNG non-8-bit depths (1/2/4/16-bit): needs testing (now falls back to system reader)
 - Async loading (UI responsive during load): ✓
 - Window close during load (cancellation): ✓
 - Concurrent window drag + image load: ✓

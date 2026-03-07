@@ -15,6 +15,7 @@ TARG=\
 	file.dis\
 	fsys.dis\
 	imgload.dis\
+	pngload.dis\
 	look.dis\
 	regx.dis\
 	row.dis\
@@ -47,6 +48,7 @@ MODULES=\
 	file.m\
 	fsys.m\
 	imgload.m\
+	pngload.m\
 	look.m\
 	regx.m\
 	row.m\

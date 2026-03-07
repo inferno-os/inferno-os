@@ -3862,6 +3862,50 @@ Alert.tostring(alert: self ref Alert): string
 	return info;
 }
 
+# is_weak_suite returns 1 if the cipher suite (2 bytes) uses
+# NULL, RC4, DES, export-grade, or anonymous key exchange ciphers.
+# These are rejected during negotiation to prevent downgrade attacks.
+is_weak_suite(cs: array of byte): int
+{
+	if(cs[0] != byte 0)
+		return 0;	# non-standard suite, allow negotiation to handle it
+	id := int cs[1];
+	case id {
+	NULL_WITH_NULL_NULL or
+	RSA_WITH_NULL_MD5 or
+	RSA_WITH_NULL_SHA or
+	FORTEZZA_KEA_WITH_NULL_SHA =>
+		return 1;	# NULL cipher
+	RSA_EXPORT_WITH_RC4_40_MD5 or
+	RSA_WITH_RC4_128_MD5 or
+	RSA_WITH_RC4_128_SHA or
+	DH_anon_EXPORT_WITH_RC4_40_MD5 or
+	DH_anon_WITH_RC4_128_MD5 or
+	FORTEZZA_KEA_WITH_RC4_128_SHA =>
+		return 1;	# RC4
+	RSA_EXPORT_WITH_DES40_CBC_SHA or
+	RSA_WITH_DES_CBC_SHA or
+	DH_DSS_EXPORT_WITH_DES40_CBC_SHA or
+	DH_DSS_WITH_DES_CBC_SHA or
+	DH_RSA_EXPORT_WITH_DES40_CBC_SHA or
+	DH_RSA_WITH_DES_CBC_SHA or
+	DHE_DSS_EXPORT_WITH_DES40_CBC_SHA or
+	DHE_DSS_WITH_DES_CBC_SHA or
+	DHE_RSA_EXPORT_WITH_DES40_CBC_SHA or
+	DHE_RSA_WITH_DES_CBC_SHA or
+	DH_anon_EXPORT_WITH_DES40_CBC_SHA or
+	DH_anon_WITH_DES_CBC_SHA =>
+		return 1;	# DES / export
+	RSA_EXPORT_WITH_RC2_CBC_40_MD5 =>
+		return 1;	# export RC2
+	DH_anon_WITH_3DES_EDE_CBC_SHA =>
+		return 1;	# anonymous (no authentication)
+	FORTEZZA_KEA_WITH_FORTEZZA_CBC_SHA =>
+		return 1;	# unsupported
+	}
+	return 0;
+}
+
 find_cipher_suite(s, suites: array of byte) : array of byte
 {
 	i, j : int;
@@ -3878,10 +3922,12 @@ find_cipher_suite(s, suites: array of byte) : array of byte
 	for(i = 0; i < n; ) {
 		a = s[i:i+2];
 		i += 2;
+		if(is_weak_suite(a))
+			continue;	# skip weak suites during negotiation
 		for(j = 0; j < m; ) {
 			b = suites[j:j+2];
 			j += 2;
-			if(a[0] == b[0] && a[1] == b[1]) 
+			if(a[0] == b[0] && a[1] == b[1])
 				return b;
 		}
 	}

@@ -413,11 +413,15 @@ Client.top(c: self ref Client)
 
 Client.bottom(c: self ref Client)
 {
-	if(c.znext == nil)
-		return;
+	# Always move the screen image to z-back, regardless of z-list state.
+	# The original early return (c.znext == nil) skipped screen.bottom() for
+	# single-element lists or clients not yet in the list — causing ghost windows
+	# to remain visible when the app was the only entry in the z-list.
 	imgs := clientimages(c);
 	if(len imgs > 0)
 		imgs[0].screen.bottom(imgs);
+	if(c.znext == nil)
+		return;		# already at tail of z-list; no list reordering needed
 	prev: ref Client;
 	for(z := zorder; z != nil; (prev, z) = (z, z.znext))
 		if(z == c)

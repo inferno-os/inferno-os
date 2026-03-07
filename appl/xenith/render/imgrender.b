@@ -2,7 +2,7 @@ implement Renderer;
 
 #
 # Image renderer - wraps Xenith's imgload module to conform to the
-# Renderer interface.  Handles PNG, PPM, PGM, PBM, BIT, PIC formats.
+# Renderer interface.  Handles PNG, JPEG, PPM, PGM, PBM, BIT, PIC formats.
 #
 # This is the reference renderer implementation: it delegates all
 # actual decoding to imgload and adapts the progress/result types.
@@ -53,7 +53,7 @@ info(): ref RenderInfo
 {
 	return ref RenderInfo(
 		"Image",
-		".png .ppm .pgm .pbm .bit .pic",
+		".png .ppm .pgm .pbm .bit .pic .jpg .jpeg .JPG .JPEG",
 		0  # Images have no text content
 	);
 }
@@ -70,12 +70,21 @@ canrender(data: array of byte, hint: string): int
 	   data[6] == byte 26 && data[7] == byte 10)
 		return 100;
 
+	# JPEG magic: FF D8 FF
+	if(data[0] == byte 16rFF && data[1] == byte 16rD8 &&
+	   data[2] == byte 16rFF)
+		return 100;
+
 	# PPM/PGM/PBM magic: P3, P5, P6
 	if(data[0] == byte 'P'){
 		c := int data[1];
 		if(c == '3' || c == '5' || c == '6')
 			return 90;
 	}
+
+	# JPEG magic: FF D8 FF
+	if(len data >= 3 && int data[0] == 16rFF && int data[1] == 16rD8 && int data[2] == 16rFF)
+		return 95;
 
 	return 0;
 }
@@ -98,6 +107,10 @@ render(data: array of byte, hint: string,
 
 	# Signal end of progress
 	imgprogress <-= nil;
+
+	# Scale to requested width (for zoom support)
+	if(im != nil && width > 0 && im.r.dx() != width)
+		im = scaleimage(im, width);
 
 	# No text content for images
 	return (im, nil, err);
@@ -127,6 +140,51 @@ command(cmd: string, arg: string,
 	* =>
 		return (nil, "unknown command: " + cmd);
 	}
+}
+
+# Nearest-neighbor scale of a decoded image to the given output width.
+# Preserves aspect ratio.  Returns the original image on any error.
+scaleimage(im: ref Image, width: int): ref Image
+{
+	srcw := im.r.dx();
+	srch := im.r.dy();
+	if(srcw <= 0 || srch <= 0)
+		return im;
+	dstw := width;
+	dsth := srch * dstw / srcw;
+	if(dsth <= 0)
+		dsth = 1;
+
+	bpp := im.depth / 8;
+	if(bpp < 1)
+		return im;	# sub-byte pixel format — skip scaling
+
+	# Read all source pixels at once
+	srcbuf := array[srcw * srch * bpp] of byte;
+	n := im.readpixels(im.r, srcbuf);
+	if(n <= 0)
+		return im;
+
+	# Allocate destination image with same channel format
+	dst := display.newimage(Rect((0, 0), (dstw, dsth)), im.chans, 0, drawm->White);
+	if(dst == nil)
+		return im;
+
+	# Nearest-neighbor scale, written one row at a time
+	rowbuf := array[dstw * bpp] of byte;
+	for(dy := 0; dy < dsth; dy++) {
+		sy := dy * srch / dsth;
+		srcrowoff := sy * srcw * bpp;
+		for(dx := 0; dx < dstw; dx++) {
+			sx := dx * srcw / dstw;
+			srcoff := srcrowoff + sx * bpp;
+			dstoff := dx * bpp;
+			for(b := 0; b < bpp; b++)
+				rowbuf[dstoff + b] = srcbuf[srcoff + b];
+		}
+		dst.writepixels(Rect((0, dy), (dstw, dy + 1)), rowbuf);
+	}
+	return dst;
 }
 
 # Convert imgload progress updates to renderer progress updates

@@ -142,6 +142,28 @@ timerwait(ch: chan of int, ms: int)
 	ch <-= 1;
 }
 
+# Drain all buffered events on path until none arrive within 100ms.
+# Call at the start of event-sensitive tests to clear stale events
+# accumulated by prior tests that don't drain their own events.
+drainall(path: string)
+{
+	for(;;) {
+		ch := chan[1] of string;
+		spawn eventreader(path, ch);
+		toch := chan[1] of int;
+		spawn timerwait(toch, 100);
+		stop := 0;
+		alt {
+		<-ch =>
+			;
+		<-toch =>
+			stop = 1;
+		}
+		if(stop)
+			break;
+	}
+}
+
 # Wait for an event on path, with a 3-second timeout.
 # Returns the event string or "error:..." / "error:timeout".
 readevent(path: string): string
@@ -414,12 +436,17 @@ testConvUpdateEvent(t: ref T)
 	}
 
 	convctl := actbase() + "/conversation/ctl";
+	evpath := actbase() + "/event";
+
+	# Flush all stale events from previous tests: writing to the event file
+	# discards the pending-event queue and kicks any waiting readers.
+	writefile(evpath, "flush");
 
 	# Write a message to update
 	writefile(convctl, "role=veltro text=initial");
 
 	# Drain the "conversation N" event from writing
-	readevent(actbase() + "/event");
+	readevent(evpath);
 
 	# Find the index of this message
 	msgidx := 0;
@@ -433,7 +460,7 @@ testConvUpdateEvent(t: ref T)
 	# Now update — should fire "conversation update <idx>" event
 	writefile(convctl, sys->sprint("update idx=%d text=updated-for-event-test", msgidx));
 
-	ev := readevent(actbase() + "/event");
+	ev := readevent(evpath);
 	t.log("update event: " + ev);
 	t.assert(!hassubstr(ev, "error:"), "event should not be an error: " + ev);
 	t.assert(hassubstr(ev, "conversation update"),
@@ -617,27 +644,16 @@ testPresentationEvent(t: ref T)
 		return;
 	}
 
-	# Drain any pending event first (from previous tests)
-	# by sleeping briefly so pending reads can settle
-	sys->sleep(50);
+	evpath := actbase() + "/event";
 
-	# Read any buffered event (non-blocking style: try with 100ms timeout)
-	drainch := chan[1] of string;
-	spawn eventreader(actbase() + "/event", drainch);
-	drained := chan[1] of int;
-	spawn timerwait(drained, 100);
-	alt {
-	<-drainch =>
-		;  # consumed buffered event
-	<-drained =>
-		;  # no pending event, continue
-	}
+	# Flush all stale events from previous tests (write to event file).
+	writefile(evpath, "flush");
 
 	# Now trigger a known event
 	writefile(actbase() + "/presentation/ctl",
 		"create id=event-art type=text label=EventArt");
 
-	ev := readevent(actbase() + "/event");
+	ev := readevent(evpath);
 	t.log("presentation event: " + ev);
 	t.assert(!hassubstr(ev, "error:"), "should not get error: " + ev);
 	t.assert(hassubstr(ev, "presentation"),

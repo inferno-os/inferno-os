@@ -18,6 +18,8 @@ include "bufio.m";
 
 include "rlayout.m";
 
+include "lucitheme.m";
+
 include "menu.m";
 
 LuciConv: module
@@ -31,18 +33,6 @@ LuciConv: module
 	         evch:  chan of string,
 	         rsz:   chan of ref Draw->Image);
 };
-
-# --- Color constants (same palette as lucifer.b) ---
-COLBG:		con int 16r080808FF;
-COLACCENT:	con int 16rE8553AFF;
-COLTEXT:	con int 16rCCCCCCFF;
-COLTEXT2:	con int 16r999999FF;
-COLDIM:		con int 16r444444FF;
-COLHUMAN:	con int 16r1E2028FF;
-COLVELTRO:	con int 16r0E1418FF;
-COLINPUT:	con int 16r101010FF;
-COLCURSOR:	con int 16rE8553AFF;
-COLRED:		con int 16rAA4444FF;
 
 # --- ADTs ---
 
@@ -91,6 +81,7 @@ veltrocol: ref Image;
 inputcol: ref Image;
 cursorcol: ref Image;
 redcol: ref Image;
+codebgcol_g: ref Image;
 
 # Conversation state
 messages: list of ref ConvMsg;
@@ -101,6 +92,15 @@ maxscrollpx := 0;
 viewport_h := 400;
 lastrendw := 0;
 username := "human";
+
+# Voice input state
+VOICE_IDLE: con 0;
+VOICE_REC: con 1;
+VOICE_PROC: con 2;
+voicestate := VOICE_IDLE;
+voicech: chan of string;
+micrect: Rect;  # Hit area for mic button
+inputrect: Rect;  # Hit area for input field
 
 # Tile layout (populated by drawconversation, used for click hit-testing)
 tilelayout: array of ref TileRect;
@@ -127,17 +127,20 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	mountpt_g = mountpt;
 	actid_g = actid;
 
-	# Create colors
-	bgcol = dsp.color(COLBG);
-	accentcol = dsp.color(COLACCENT);
-	textcol = dsp.color(COLTEXT);
-	text2col = dsp.color(COLTEXT2);
-	dimcol = dsp.color(COLDIM);
-	humancol = dsp.color(COLHUMAN);
-	veltrocol = dsp.color(COLVELTRO);
-	inputcol = dsp.color(COLINPUT);
-	cursorcol = dsp.color(COLCURSOR);
-	redcol = dsp.color(COLRED);
+	# Create colors from theme
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->gettheme();
+	bgcol = dsp.color(th.bg);
+	accentcol = dsp.color(th.accent);
+	textcol = dsp.color(th.text);
+	text2col = dsp.color(th.text2);
+	dimcol = dsp.color(th.dim);
+	humancol = dsp.color(th.human);
+	veltrocol = dsp.color(th.veltro);
+	inputcol = dsp.color(th.input);
+	cursorcol = dsp.color(th.cursor);
+	redcol = dsp.color(th.red);
+	codebgcol_g = dsp.color(th.codebg);
 
 	# Load rlayout for markdown rendering
 	rlay = load Rlayout Rlayout->PATH;
@@ -151,6 +154,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	inputbuf = "";
 	username = readdevuser();
+	voicech = chan of string;
 
 	if(actid >= 0)
 		loadmessages();
@@ -175,35 +179,65 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				scrollpx = 0;
 			redrawconv();
 		}
-		# Button-1 just pressed: tile snarf
+		# Button-1 just pressed
 		if(p.buttons == 1 && wasdown == 0) {
-			for(tj := 0; tj < ntiles; tj++) {
-				if(tilelayout[tj] != nil && tilelayout[tj].r.contains(p.xy)) {
-					writetosnarf(tilelayout[tj].msg.text);
-					break;
+			# Check mic button first
+			if(micrect.dx() > 0 && micrect.contains(p.xy)) {
+				startvoice();
+				redrawconv();
+			} else {
+				# Tile snarf
+				for(tj := 0; tj < ntiles; tj++) {
+					if(tilelayout[tj] != nil && tilelayout[tj].r.contains(p.xy)) {
+						writetosnarf(tilelayout[tj].msg.text);
+						break;
+					}
 				}
 			}
 		}
-		# Button-3 press: context menu (Copy)
+		# Button-3 press: context menu
 		if((p.buttons & 4) != 0 && (wasdown & 4) == 0) {
-			for(ti := 0; ti < ntiles; ti++) {
-				if(tilelayout[ti] != nil && tilelayout[ti].r.contains(p.xy)) {
-					msg := tilelayout[ti].msg;
-					if(msg != nil && menumod != nil) {
-						items := array[] of {"Copy"};
-						pop := menumod->new(items);
-						result := pop.show(mainwin, p.xy, mouse);
-						if(result == 0)
-							writetosnarf(msg.text);
-						redrawconv();
+			if(inputrect.dx() > 0 && inputrect.contains(p.xy)) {
+				# Input field context menu
+				if(menumod != nil) {
+					items := array[] of {"Copy", "Paste"};
+					pop := menumod->new(items);
+					result := pop.show(mainwin, p.xy, mouse);
+					if(result == 0) {
+						# Copy input buffer to snarf
+						if(len inputbuf > 0)
+							writetosnarf(inputbuf);
+					} else if(result == 1) {
+						# Paste from snarf into input buffer
+						s := readfromsnarf();
+						if(s != nil && len s > 0)
+							inputbuf += s;
 					}
-					break;
+					redrawconv();
+				}
+			} else {
+				for(ti := 0; ti < ntiles; ti++) {
+					if(tilelayout[ti] != nil && tilelayout[ti].r.contains(p.xy)) {
+						msg := tilelayout[ti].msg;
+						if(msg != nil && menumod != nil) {
+							items := array[] of {"Copy"};
+							pop := menumod->new(items);
+							result := pop.show(mainwin, p.xy, mouse);
+							if(result == 0)
+								writetosnarf(msg.text);
+							redrawconv();
+						}
+						break;
+					}
 				}
 			}
 			prevbuttons = 0;
 		}
 	k := <-kbd =>
 		case k {
+		0 =>
+			# Ctrl+Space — toggle voice input
+			startvoice();
 		8 or 127 =>
 			# Backspace / Delete
 			if(len inputbuf > 0)
@@ -230,6 +264,15 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		* =>
 			if(k >= 32 && k < 16rFFFF)
 				inputbuf[len inputbuf] = k;
+		}
+		redrawconv();
+	vtext := <-voicech =>
+		# Voice transcription result received
+		voicestate = VOICE_IDLE;
+		if(vtext != nil && vtext != "" && !hasprefix(vtext, "error:")) {
+			inputbuf = vtext;
+			sendinput(inputbuf);
+			inputbuf = "";
 		}
 		redrawconv();
 	ev := <-evch =>
@@ -289,13 +332,37 @@ drawconversation(zone: Rect)
 	# Draw input field at bottom
 	inputr := Rect((zone.min.x + pad, zone.max.y - inputh),
 		(zone.max.x - pad, zone.max.y));
+	inputrect = inputr;
 	mainwin.draw(inputr, inputcol, nil, (0, 0));
+
+	# Mic button at right edge of input
+	miclabel: string;
+	miccol: ref Image;
+	case voicestate {
+	VOICE_REC =>
+		miclabel = "REC";
+		miccol = accentcol;
+	VOICE_PROC =>
+		miclabel = "...";
+		miccol = dimcol;
+	* =>
+		miclabel = "mic";
+		miccol = dimcol;
+	}
+	micw := mainfont.width(miclabel) + 2 * pad;
+	micx := inputr.max.x - micw;
+	micy := inputr.min.y;
+	micrect = Rect((micx, micy), (inputr.max.x, inputr.max.y));
+	ity := inputr.min.y + (inputh - mainfont.height) / 2;
+	mainwin.text((micx + pad, ity), miccol, (0, 0), mainfont, miclabel);
+	# Separator line between input and mic
+	mainwin.draw(Rect((micx - 1, micy + 4), (micx, inputr.max.y - 4)),
+		dimcol, nil, (0, 0));
 
 	# Input text
 	itext := inputbuf;
 	itx := inputr.min.x + pad;
-	ity := inputr.min.y + (inputh - mainfont.height) / 2;
-	maxitw := inputr.dx() - 2 * pad - 8;
+	maxitw := inputr.dx() - 2 * pad - 8 - micw;
 
 	while(len itext > 0 && mainfont.width(itext) > maxitw)
 		itext = itext[1:];
@@ -359,7 +426,7 @@ drawconversation(zone: Rect)
 		scrollpx = maxscrollpx;
 
 	# Pass 2: render visible messages
-	codebg := display_g.color(int 16r1A1A2AFF);
+	codebg := codebgcol_g;
 	ey := msgy + scrollpx;
 	for(ri := nmsg - 1; ri >= 0; ri--) {
 		tiletop_e := ey - harr[ri] - tilegap;
@@ -590,6 +657,51 @@ sendinput(text: string)
 	sys->write(fd, b, len b);
 }
 
+# --- Voice input ---
+
+startvoice()
+{
+	if(voicestate != VOICE_IDLE)
+		return;
+	# Check if speech9p is mounted
+	(ok, nil) := sys->stat("/n/speech/hear");
+	if(ok < 0) {
+		sys->fprint(stderr, "luciconv: /n/speech not mounted\n");
+		return;
+	}
+	voicestate = VOICE_REC;
+	spawn voiceworker(voicech);
+}
+
+voiceworker(ch: chan of string)
+{
+	fd := sys->open("/n/speech/hear", Sys->ORDWR);
+	if(fd == nil) {
+		ch <-= "error: cannot open /n/speech/hear";
+		return;
+	}
+
+	# Write start command to begin recording
+	cmd := array of byte "start 5000";
+	if(sys->write(fd, cmd, len cmd) < 0) {
+		ch <-= "error: write to hear failed";
+		return;
+	}
+
+	# Read transcription result (blocks until recording + STT completes)
+	sys->seek(fd, big 0, Sys->SEEKSTART);
+	result := "";
+	buf := array[8192] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		result += string buf[0:n];
+	}
+
+	ch <-= result;
+}
+
 # --- Word wrapping ---
 
 wraptext(text: string, maxw: int): list of string
@@ -749,6 +861,24 @@ writetosnarf(text: string)
 		return;
 	b := array of byte text;
 	sys->write(fd, b, len b);
+}
+
+readfromsnarf(): string
+{
+	fd := sys->open("/dev/snarf", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	result := "";
+	buf := array[8192] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		result += string buf[0:n];
+	}
+	if(result == "")
+		return nil;
+	return result;
 }
 
 readfile(path: string): string

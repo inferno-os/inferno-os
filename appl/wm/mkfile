@@ -3,9 +3,13 @@
 DIRS=\
 
 TARG=\
+	about.dis\
 	clock.dis\
 	colors.dis\
 	lens.dis\
+	luciedit.dis\
+	mand.dis\
+	lucishell.dis\
 	view.dis\
 	wm.dis\
 
@@ -17,11 +21,16 @@ SYSMODULES=\
 	daytime.m\
 	draw.m\
 	imagefile.m\
+	keyboard.m\
+	lucitheme.m\
 	math.m\
+	menu.m\
 	menuhit.m\
 	plumbmsg.m\
 	sh.m\
 	string.m\
+	styx.m\
+	styxservers.m\
 	sys.m\
 	winplace.m\
 	wmclient.m\

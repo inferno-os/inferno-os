@@ -7,6 +7,7 @@ TARG=\
 	mdrender.dis\
 	htmlrender.dis\
 	pdfrender.dis\
+	mermaidrender.dis\
 	mdfmt.dis\
 	htmlfmt.dis\
 
@@ -19,6 +20,7 @@ SYSMODULES=\
 	draw.m\
 	html.m\
 	filter.m\
+	mermaid.m\
 	pdf.m\
 	renderer.m\
 	formatter.m\

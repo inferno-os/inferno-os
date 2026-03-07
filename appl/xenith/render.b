@@ -34,6 +34,7 @@ init(d: ref Draw->Display)
 	register("/dis/xenith/render/mdrender.dis");
 	register("/dis/xenith/render/htmlrender.dis");
 	register("/dis/xenith/render/pdfrender.dis");
+	register("/dis/xenith/render/mermaidrender.dis");
 }
 
 # Load and cache a renderer module

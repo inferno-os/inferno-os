@@ -49,7 +49,11 @@ PKCS: module {
 	id_ecdsa_sha384,
 	id_prime256v1,
 	id_sha256WithRSAEncryption,
-	id_sha384WithRSAEncryption	: con iota;
+	id_sha384WithRSAEncryption,
+	id_mldsa65,
+	id_mldsa87,
+	id_slhdsa192s,
+	id_slhdsa256s			: con iota;
 
 	# PKCS1
 

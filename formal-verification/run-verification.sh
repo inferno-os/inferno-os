@@ -50,6 +50,7 @@ case "$LEVEL" in
         MAX_CHAN=3
         MAX_PATH=2
         MAX_MOUNT=4
+        HEAP="${TLC_HEAP:-4g}"
         ;;
     medium)
         MAX_PROC=3
@@ -57,6 +58,7 @@ case "$LEVEL" in
         MAX_CHAN=4
         MAX_PATH=3
         MAX_MOUNT=6
+        HEAP="${TLC_HEAP:-16g}"
         ;;
     large)
         MAX_PROC=4
@@ -64,6 +66,7 @@ case "$LEVEL" in
         MAX_CHAN=5
         MAX_PATH=3
         MAX_MOUNT=8
+        HEAP="${TLC_HEAP:-32g}"
         ;;
     *)
         echo "Unknown level: $LEVEL"
@@ -95,11 +98,11 @@ cat > "$CONFIG_FILE" << EOF
 
 SPECIFICATION Spec
 
-CONSTANT MC_MaxProcesses = $MAX_PROC
-CONSTANT MC_MaxPgrps = $MAX_PGRP
-CONSTANT MC_MaxChannels = $MAX_CHAN
-CONSTANT MC_MaxPaths = $MAX_PATH
-CONSTANT MC_MaxMountId = $MAX_MOUNT
+CONSTANT MaxProcesses = $MAX_PROC
+CONSTANT MaxPgrps = $MAX_PGRP
+CONSTANT MaxChannels = $MAX_CHAN
+CONSTANT MaxPaths = $MAX_PATH
+CONSTANT MaxMountId = $MAX_MOUNT
 
 \* Safety Invariants
 INVARIANT TypeOK
@@ -108,6 +111,11 @@ INVARIANT RefCountNonNegative
 INVARIANT NoUseAfterFree
 INVARIANT MountTableBounded
 INVARIANT NamespaceIsolation
+INVARIANT NamespaceIsolationTheorem
+INVARIANT UnilateralMountNonPropagation
+INVARIANT CopyFidelity
+INVARIANT PostCopyMountsSound
+INVARIANT NoIsolationViolation
 
 \* State constraint for bounded model checking
 CONSTRAINT StateConstraint
@@ -121,19 +129,28 @@ echo "Running TLC model checker..."
 echo "This may take a while depending on the verification level."
 echo ""
 
-# Run TLC
+# Run TLC with unbuffered output to avoid losing progress data
 cd "$TLA_DIR"
-java -XX:+UseParallelGC \
-     -Xmx4g \
-     -jar "$SCRIPT_DIR/tla2tools.jar" \
-     -config "$CONFIG_FILE" \
-     -workers auto \
-     -checkpoint 60 \
-     -coverage 1 \
-     MC_Namespace.tla \
-     2>&1 | tee "$RESULTS_DIR/tlc_output_$LEVEL.txt"
+set +e
+OUTPUT_FILE="$RESULTS_DIR/tlc_output_$LEVEL.txt"
 
-TLC_EXIT=$?
+# Build TLC command
+TLC_CMD="java -XX:+UseParallelGC -Xmx${HEAP} -jar $SCRIPT_DIR/tla2tools.jar -config $CONFIG_FILE -workers auto -checkpoint 60 -deadlock"
+
+# Add recovery flag if RECOVER env var is set
+if [ -n "$RECOVER" ]; then
+    TLC_CMD="$TLC_CMD -recover $RECOVER"
+    echo "Recovering from checkpoint: $RECOVER"
+    echo ""
+fi
+
+TLC_CMD="$TLC_CMD MC_Namespace.tla"
+
+# Use stdbuf to disable buffering, tee with line buffering
+stdbuf -oL $TLC_CMD 2>&1 | stdbuf -oL tee "$OUTPUT_FILE"
+
+TLC_EXIT=${PIPESTATUS[0]}
+set -e
 
 echo ""
 echo "========================================"

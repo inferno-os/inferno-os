@@ -141,6 +141,15 @@ killwins()
 	wmclient->win.wmctl("exit");
 }
 
+signalclose()
+{
+	# Signal preswmloop that we're exiting cleanly without halting emu.
+	# Used in embedded mode: writes "embedded-exit" to wmsrv ctl so that
+	# preswmloop can immediately remove the ghost tab without waiting for
+	# the GC to collect the gui module and close the wmclient fd.
+	wmclient->win.wmctl("embedded-exit");
+}
+
 startwmsize(): chan of Rect
 {
 	rchan := chan of Rect;

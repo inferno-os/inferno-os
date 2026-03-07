@@ -44,6 +44,14 @@ TrustedRoot: adt {
 trust_store: list of ref TrustedRoot;
 trust_store_loaded: int;
 
+# CRL store: lazily loaded certificate revocation lists
+CRLEntry: adt {
+	signed:	ref Signed;
+	crl:	ref CRL;
+};
+crl_store: list of ref CRLEntry;
+crl_store_loaded: int;
+
 TAG_MASK 				: con 16r1F;
 CONSTR_MASK 				: con 16r20;
 CLASS_MASK 				: con 16rC0;
@@ -224,6 +232,69 @@ find_trusted_root(issuer: ref Name): ref TrustedRoot
 		l = tl l;
 	}
 	return nil;
+}
+
+# [private]
+# Load CRL DER files from /lib/crls/
+
+load_crl_store()
+{
+	if(crl_store_loaded)
+		return;
+	crl_store_loaded = 1;
+
+	crldir := "/lib/crls";
+	fd := sys->open(crldir, Sys->OREAD);
+	if(fd == nil)
+		return;
+	for(;;) {
+		(n, dirs) := sys->dirread(fd);
+		if(n <= 0)
+			break;
+		for(i := 0; i < n; i++) {
+			name := dirs[i].name;
+			if(len name < 4 || name[len name - 4:] != ".der")
+				continue;
+			path := crldir + "/" + name;
+			der := readfile(path);
+			if(der == nil)
+				continue;
+			(serr, s) := Signed.decode(der);
+			if(serr != "")
+				continue;
+			(cerr, crl) := CRL.decode(s.tobe_signed);
+			if(cerr != "")
+				continue;
+			crl_store = ref CRLEntry(s, crl) :: crl_store;
+		}
+	}
+}
+
+# [private]
+# Check if a certificate is revoked by any loaded CRL from its issuer.
+# Returns (1, reason) if revoked, (0, "") if not revoked or no CRL found.
+
+check_revoked(cert: ref Certificate): (int, string)
+{
+	load_crl_store();
+	l := crl_store;
+	now := daytime->now();
+	while(l != nil) {
+		entry := hd l;
+		# Match CRL issuer to certificate issuer
+		if(entry.crl.issuer.equal(cert.issuer)) {
+			# Skip expired CRLs (next_update == 0 means no expiry)
+			if(entry.crl.next_update != 0 && entry.crl.next_update < now) {
+				l = tl l;
+				continue;
+			}
+			if(entry.crl.is_revoked(cert.serial_number))
+				return (1, "certificate revoked (serial " +
+					cert.serial_number.iptostr(16) + ")");
+		}
+		l = tl l;
+	}
+	return (0, "");
 }
 
 ## SIGNED { ToBeSigned } ::= SEQUENCE {
@@ -1866,6 +1937,10 @@ verify_certpath(sc: list of (ref Signed, ref Certificate)): (int, string)
 			if(!ns.verify(pk, 0))
 				return (0, "signature verification failure");
 		}
+		# Check certificate revocation against loaded CRLs
+		(revoked, reason) := check_revoked(nc);
+		if(revoked)
+			return (0, reason);
 		(s, c) = (ns, nc);
 		sc = tl sc;
 	}

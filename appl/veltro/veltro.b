@@ -146,11 +146,17 @@ init(nil: ref Draw->Context, args: list of string)
 		for(tl2 := toollist; tl2 != nil; tl2 = tl tl2)
 			if(hd tl2 == "xenith") { xgrant = 1; break; }
 
+		# Register -p paths in tools9p store (before FORKNS so /tool/ctl is
+		# reachable). caps.paths drives restrictns; /tool/paths gives observability.
+		if(agentlib->pathexists("/tool"))
+			for(pp := pathlist; pp != nil; pp = tl pp)
+				writefile("/tool/ctl", "bindpath " + hd pp);
+
 		# Fork namespace so caller is unaffected
 		sys->pctl(Sys->FORKNS, nil);
 
 		parent_caps := ref NsConstruct->Capabilities(
-			toollist, pathlist, nil, nil, nil, nil, 0, xgrant
+			toollist, pathlist, nil, nil, nil, nil, 0, xgrant, -1
 		);
 
 		# Apply namespace restrictions

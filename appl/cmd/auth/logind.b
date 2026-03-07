@@ -78,10 +78,12 @@ dologin(c: ref Sys->Connection): string
 	name := s;
 	kr->putstring(c.dfd, name);
 
-	# get initialization vector
+	# get initialization vector (32 bytes: 20 salt + 12 nonce)
 	(ivec, err) = kr->getbytearray(c.dfd);
 	if(err != nil)
 		return "can't get initialization vector: "+err;
+	if(len ivec != 32)
+		return "bad initialization vector length";
 
 	# lookup password
 	pw := getsecret(s);
@@ -100,28 +102,22 @@ dologin(c: ref Sys->Connection): string
 	# generate alpha0 = alpha**r0 mod p
 	alphar0 := info.alpha.expmod(r0, info.p);
 
-	# start encrypting
-	pwbuf := array[8] of byte;
-	for(i := 0; i < 8; i++)
-		pwbuf[i] = pw[i] ^ pw[8+i];
-	for(i = 0; i < 4; i++)
-		pwbuf[i] ^= pw[16+i];
-	for(i = 0; i < 8; i++)
-		pwbuf[i] ^= ivec[i];
-	err = ssl->secret(c, pwbuf, pwbuf);
-	if(err != nil)
-		return "can't set ssl secret: "+err;
+	# Derive 32-byte ChaCha20-Poly1305 key from stored password hash + IV
+	# HKDF-like: key = SHA-256(pw[0:32] || ivec[0:20])
+	keymaterial := array[Keyring->SHA256dlen + 20] of byte;
+	keymaterial[0:] = pw[0:Keyring->SHA256dlen];
+	keymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	aeadkey := array[Keyring->SHA256dlen] of byte;
+	kr->sha256(keymaterial, len keymaterial, aeadkey, nil);
+	nonce := ivec[20:32];
 
-	if(sys->fprint(c.cfd, "alg rc4") < 0)
-		return sys->sprint("can't push alg rc4: %r");
-
-	# send P(alpha**r0 mod p)
-	if(kr->putstring(c.dfd, alphar0.iptob64()) < 0)
-		return sys->sprint("can't send (alpha**r0 mod p): %r");
-
-	# stop encrypting
-	if(sys->fprint(c.cfd, "alg clear") < 0)
-		return sys->sprint("can't clear alg: %r");
+	# Send AEAD-encrypted alpha**r0 mod p using ChaCha20-Poly1305
+	plaintext := array of byte alphar0.iptob64();
+	(ciphertext, authtag) := kr->ccpolyencrypt(plaintext, nil, aeadkey, nonce);
+	if(kr->putbytearray(c.dfd, ciphertext, len ciphertext) < 0)
+		return sys->sprint("can't send encrypted (alpha**r0 mod p): %r");
+	if(kr->putbytearray(c.dfd, authtag, len authtag) < 0)
+		return sys->sprint("can't send auth tag: %r");
 
 	# send alpha, p
 	if(kr->putstring(c.dfd, info.alpha.iptob64()) < 0 ||

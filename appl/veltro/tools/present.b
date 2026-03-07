@@ -147,6 +147,9 @@ exec(args: string): string
 docreate(args: string): string
 {
 	# Parse: <id> [type=...] [label=...]
+	# Supports both key=value syntax and positional syntax:
+	#   create report type=pdf label=Report   (key=value)
+	#   create report pdf Report              (positional: type then label)
 	args = strip(args);
 	if(args == "")
 		return "error: usage: create <id> [type=markdown] [label=<text>]";
@@ -155,13 +158,43 @@ docreate(args: string): string
 	if(id == "")
 		return "error: artifact id required";
 
-	# Parse optional attributes
-	attrs := parseattrs(rest);
-	atype := getattr(attrs, "type");
-	label := getattr(attrs, "label");
+	atype := "";
+	label := "";
+
+	# Detect positional vs key=value syntax by checking if the first
+	# token after id contains '='.  Positional: "pdf Report" or "image Logo".
+	(firsttok, afterfirst) := splitfirst(rest);
+	(nil, eqpart) := str->splitl(firsttok, "=");
+	if(firsttok != "" && eqpart == "") {
+		# Positional: first token = type, remainder = label (joined)
+		atype = firsttok;
+		label = strip(afterfirst);
+		# label might still have key=value tokens mixed in; check for label=
+		(lk, lv) := splitfirst(afterfirst);
+		if(len lk > 6 && lk[0:6] == "label=")
+			label = lk[6:];
+		else if(lv != "" && len lv > 6 && lv[0:6] == "label=")
+			label = lv[6:];
+	} else {
+		# Key=value syntax: type=pdf label=Report
+		attrs := parseattrs(rest);
+		atype = getattr(attrs, "type");
+		label = getattr(attrs, "label");
+	}
 
 	if(atype == nil || atype == "")
 		atype = "markdown";
+
+	# Normalize mermaid diagram subtypes to "mermaid"
+	case atype {
+	"mindmap" or "flowchart" or "sequenceDiagram" or
+	"classDiagram" or "stateDiagram" or "stateDiagram-v2" or
+	"erDiagram" or "timeline" or "gitGraph" or
+	"quadrantChart" or "journey" or "requirementDiagram" or
+	"block-beta" or "pie" or "gantt" or "xychart-beta" =>
+		atype = "mermaid";
+	}
+
 	if(label == nil || label == "")
 		label = id;
 

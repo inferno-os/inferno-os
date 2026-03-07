@@ -24,6 +24,8 @@ include "draw.m";
 
 include "nsconstruct.m";
 
+include "cowfs.m";
+
 # Shadow directories live under /tmp/veltro/.ns/ so they survive
 # the /tmp restriction (which allows only "veltro/")
 SHADOW_BASE: con "/tmp/veltro/.ns/shadow";
@@ -136,6 +138,7 @@ restrictns(caps: ref Capabilities): string
 	mkdirp("/tmp/veltro");
 	mkdirp("/tmp/veltro/scratch");
 	mkdirp("/tmp/veltro/memory");
+	mkdirp("/tmp/veltro/cow");
 	mkdirp(SHADOW_BASE);
 	mkdirp(AUDIT_DIR);
 
@@ -174,48 +177,69 @@ restrictns(caps: ref Capabilities): string
 	if(err != nil)
 		return sys->sprint("restrict /dev: %s", err);
 
-	# 4-5. Restrict /n to allowed entries (llm, mcp, speech, optionally local)
-	# SECURITY REVIEW NEEDED: The /n/ allowlist is stat-based — entries are
-	# auto-exposed to the agent if they exist on the host, not if explicitly
-	# granted via caps.paths.  This is consistent within itself but diverges
-	# from the caps.paths-driven model used for /dis/ and /n/local/.
-	# Future direction: all /n/ entries should be caps.paths-driven.
-	# See: appl/veltro/nsconstruct.b restrictns() /n/ block.
+	# 4-5. Restrict /n to explicitly granted entries only.
+	# All /n/ entries are capability-driven — never auto-exposed by existence:
+	#   /n/llm    — always granted (core agent service; withheld = non-functional)
+	#   /n/mcp    — caps.mcproviders != nil
+	#   /n/speech — "/n/speech" in caps.paths
+	#   /n/git    — "/n/git" in caps.paths
+	#   /n/ui     — "present" in caps.tools
+	#   /n/pres-* — caps.xenith != 0
+	#   /n/local  — /n/local/ subpaths in caps.paths
 	(nok, nil) := sys->stat("/n");
 	if(nok >= 0) {
 		nallow: list of string;
-		# Keep /n/llm if LLM is available
+		uiok := -1;
+
+		# /n/llm — always granted (core LLM access)
 		(llmok, nil) := sys->stat("/n/llm");
 		if(llmok >= 0)
 			nallow = "llm" :: nallow;
-		# Keep /n/mcp if mc9p providers exist
+
+		# /n/mcp — only if mc9p providers configured
 		if(caps.mcproviders != nil) {
 			(mcpok, nil) := sys->stat("/n/mcp");
 			if(mcpok >= 0)
 				nallow = "mcp" :: nallow;
 		}
-		# Keep /n/speech if speech9p is mounted (needed by say tool)
-		(speechok, nil) := sys->stat("/n/speech");
-		if(speechok >= 0)
-			nallow = "speech" :: nallow;
-		# Keep /n/git if git/fs is mounted (needed by git tool)
-		(gitok, nil) := sys->stat("/n/git");
-		if(gitok >= 0)
-			nallow = "git" :: nallow;
-		# Keep /n/ui if luciuisrv is mounted (needed by present tool)
-		(uiok, nil) := sys->stat("/n/ui");
-		if(uiok >= 0)
-			nallow = "ui" :: nallow;
-		# Keep /n/pres-* if lucifer exported WM namespace (needed by exec for GUI apps)
-		(presok, nil) := sys->stat("/n/pres-clone");
-		if(presok >= 0) {
-			nallow = "pres-launch" :: nallow;
-			nallow = "pres-keyboard" :: nallow;
-			nallow = "pres-pointer" :: nallow;
-			nallow = "pres-winname" :: nallow;
-			nallow = "pres-clone" :: nallow;
+
+		# /n/speech — only if explicitly granted via caps.paths
+		if(inlist("/n/speech", caps.paths)) {
+			(speechok, nil) := sys->stat("/n/speech");
+			if(speechok >= 0)
+				nallow = "speech" :: nallow;
 		}
-		# Check if any caps.paths grant /n/local/ subpaths
+
+		# /n/git — only if explicitly granted via caps.paths
+		if(inlist("/n/git", caps.paths)) {
+			(gitok, nil) := sys->stat("/n/git");
+			if(gitok >= 0)
+				nallow = "git" :: nallow;
+		}
+
+		# /n/ui — only if "present" tool is granted
+		# (present and gap tools write to /n/ui/activity/{id}/...)
+		if(inlist("present", caps.tools)) {
+			(s, nil) := sys->stat("/n/ui");
+			if(s >= 0) {
+				nallow = "ui" :: nallow;
+				uiok = s;
+			}
+		}
+
+		# /n/pres-* — only if Xenith (GUI) access is granted
+		if(caps.xenith) {
+			(presok, nil) := sys->stat("/n/pres-clone");
+			if(presok >= 0) {
+				nallow = "pres-launch" :: nallow;
+				nallow = "pres-keyboard" :: nallow;
+				nallow = "pres-pointer" :: nallow;
+				nallow = "pres-winname" :: nallow;
+				nallow = "pres-clone" :: nallow;
+			}
+		}
+
+		# /n/local — only if /n/local/ subpaths granted via caps.paths
 		localpaths := filterpaths(caps.paths, "/n/local/");
 		if(localpaths != nil)
 			nallow = "local" :: nallow;
@@ -224,19 +248,16 @@ restrictns(caps: ref Capabilities): string
 		if(err != nil)
 			return sys->sprint("restrict /n: %s", err);
 
-		# Option A: restrict /n/ui to only /n/ui/activity/.
-		# Prevents agent from writing to /n/ui/ctl (namespace manipulation)
-		# or reading /n/ui/catalog/ (resource enumeration).
-		# present and gap tools write to /n/ui/activity/{id}/... which remains accessible.
+		# Restrict /n/ui to only /n/ui/activity/ — prevents ctl/catalog access
 		if(uiok >= 0) {
 			uerr := restrictdir("/n/ui", "activity" :: nil, 0);
 			if(uerr != nil)
 				return sys->sprint("restrict /n/ui: %s", uerr);
 		}
 
-		# If local paths are granted, drill down to expose only those
+		# Drill down /n/local to only the granted paths
 		if(localpaths != nil) {
-			lerr := restrictlocal(localpaths);
+			lerr := restrictlocal(localpaths, caps.actid);
 			if(lerr != nil)
 				return sys->sprint("restrict /n/local: %s", lerr);
 		}
@@ -273,6 +294,27 @@ restrictns(caps: ref Capabilities): string
 	# could read every open Xenith window regardless of namespace restriction.
 	if(caps.xenith)
 		safe = "chan" :: safe;
+
+	# Expose additional Inferno root-level directories from caps.paths.
+	# e.g. "/appl/veltro" → add "appl" to safe, then restrict /appl to "veltro".
+	# Paths under /dis/, /n/, /dev/, /lib/, /tmp/ are already handled above.
+	extradirs: list of string;
+	for(ep := caps.paths; ep != nil; ep = tl ep) {
+		p := hd ep;
+		if(len p < 2 || p[0] != '/')
+			continue;
+		(first, nil) := splitfirst(p[1:]);
+		if(first == "")
+			continue;
+		# Skip top-level dirs already in safe or handled by steps 1–7
+		if(inlist(first, safe))
+			continue;
+		if(!inlist(first, extradirs))
+			extradirs = first :: extradirs;
+	}
+	for(ed := extradirs; ed != nil; ed = tl ed)
+		safe = (hd ed) :: safe;
+
 	{
 		err = restrictdir("/", safe, 0);
 	} exception e {
@@ -281,6 +323,19 @@ restrictns(caps: ref Capabilities): string
 	}
 	if(err != nil)
 		return sys->sprint("restrict /: %s", err);
+
+	# Restrict each extra root-level dir to only the granted sub-paths.
+	# e.g. "/appl/veltro" → restrictpath("/appl", "veltro"::nil)
+	# This prevents the agent from browsing sibling dirs (e.g. /appl/cmd).
+	for(ed = extradirs; ed != nil; ed = tl ed) {
+		topdir := "/" + hd ed;
+		subpaths := filterpaths(caps.paths, topdir + "/");
+		if(subpaths != nil) {
+			ederr := restrictpath(topdir, subpaths);
+			if(ederr != nil)
+				sys->fprint(sys->fildes(2), "nsconstruct: restrict %s: %s\n", topdir, ederr);
+		}
+	}
 
 	return nil;
 }
@@ -303,9 +358,38 @@ filterpaths(paths: list of string, prefix: string): list of string
 # Restrict /n/local to only the granted host paths.
 # Each path is relative to /n/local/ (e.g., "Users/pdfinn/tmp").
 # Drills down component by component using restrictdir().
-restrictlocal(paths: list of string): string
+# If actid >= 0, overlay each leaf path with cowfs.
+restrictlocal(paths: list of string, actid: int): string
 {
-	return restrictpath("/n/local", paths);
+	err := restrictpath("/n/local", paths);
+	if(err != nil)
+		return err;
+
+	# If actid >= 0, overlay each leaf path with cowfs
+	if(actid < 0)
+		return nil;
+
+	cowfs := load Cowfs Cowfs->PATH;
+	if(cowfs == nil)
+		return sys->sprint("cannot load cowfs: %r");
+
+	seq := 0;
+	for(p := paths; p != nil; p = tl p) {
+		fullpath := "/n/local/" + hd p;
+		overlaydir := sys->sprint("/tmp/veltro/cow/%d-%d", actid, seq);
+		seq++;
+		merr := mkdirp(overlaydir);
+		if(merr != nil)
+			return sys->sprint("cowfs overlay %s: %s", overlaydir, merr);
+
+		(mntfd, cerr) := cowfs->start(fullpath, overlaydir);
+		if(cerr != nil)
+			return sys->sprint("cowfs %s: %s", fullpath, cerr);
+
+		if(sys->mount(mntfd, nil, fullpath, Sys->MREPL, nil) < 0)
+			return sys->sprint("cowfs mount %s: %r", fullpath);
+	}
+	return nil;
 }
 
 # Recursively restrict a directory to only the granted subpaths.

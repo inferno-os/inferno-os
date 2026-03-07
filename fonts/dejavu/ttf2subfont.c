@@ -6,7 +6,7 @@
  * identical in layout to bdf2subfont's k8 output but with real antialiasing.
  *
  * Usage:
- *   ttf2subfont -p PTSIZE -r DPI -start N -end N [-info] font.ttf output.subfont
+ *   ttf2subfont -p PTSIZE -r DPI -start N -end N [-height H -ascent A] [-info] font.ttf output.subfont
  *
  * Compile:
  *   cc -O2 -o ttf2subfont ttf2subfont.c $(pkg-config --cflags --libs freetype2)
@@ -63,6 +63,7 @@ int
 main(int argc, char **argv)
 {
 	int ptsize = 0, dpi = 72, start_cp = -1, end_cp = -1, infoonly = 0;
+	int force_height = 0, force_ascent = 0;
 	const char *fontpath = NULL, *outpath = NULL;
 	FT_Library  library;
 	FT_Face     face;
@@ -77,6 +78,10 @@ main(int argc, char **argv)
 			start_cp = parsenum(argv[++i]);
 		else if (strcmp(argv[i], "-end") == 0 && i+1 < argc)
 			end_cp = parsenum(argv[++i]);
+		else if (strcmp(argv[i], "-height") == 0 && i+1 < argc)
+			force_height = atoi(argv[++i]);
+		else if (strcmp(argv[i], "-ascent") == 0 && i+1 < argc)
+			force_ascent = atoi(argv[++i]);
 		else if (strcmp(argv[i], "-info") == 0)
 			infoonly = 1;
 		else if (argv[i][0] != '-') {
@@ -86,7 +91,7 @@ main(int argc, char **argv)
 			fprintf(stderr, "ttf2subfont: unknown flag: %s\n", argv[i]);
 			fprintf(stderr,
 				"usage: ttf2subfont -p SIZE -r DPI "
-				"-start N -end N [-info] font.ttf output\n");
+				"-start N -end N [-height H -ascent A] [-info] font.ttf output\n");
 			exit(1);
 		}
 	}
@@ -126,6 +131,14 @@ main(int argc, char **argv)
 		"ttf2subfont: range 0x%04X-0x%04X ptsize=%d dpi=%d "
 		"height=%d ascent=%d\n",
 		start_cp, end_cp, ptsize, dpi, height, ascent);
+
+	if (force_height > 0 && force_ascent > 0) {
+		fprintf(stderr,
+			"ttf2subfont: overriding metrics: height=%d ascent=%d\n",
+			force_height, force_ascent);
+		height = force_height;
+		ascent = force_ascent;
+	}
 
 	if (infoonly) {
 		FT_Done_Face(face);

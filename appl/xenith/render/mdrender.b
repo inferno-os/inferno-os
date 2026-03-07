@@ -20,6 +20,8 @@ include "draw.m";
 	drawm: Draw;
 	Display, Image, Font, Rect, Point: import drawm;
 
+include "lucitheme.m";
+
 include "renderer.m";
 include "rlayout.m";
 
@@ -28,8 +30,8 @@ display: ref Display;
 DocNode: import rlayout;
 
 # Font paths (Inferno standard)
-PROPFONT: con "/fonts/dejavu/DejaVuSans/unicode.14.font";
-MONOFONT: con "/fonts/dejavu/DejaVuSansMono/unicode.14.font";
+PROPFONT: con "/fonts/combined/unicode.sans.14.font";
+MONOFONT: con "/fonts/combined/unicode.14.font";
 
 propfont: ref Font;
 monofont: ref Font;
@@ -86,10 +88,12 @@ render(data: array of byte, hint: string,
 	if(width <= 0)
 		width = 800;
 
-	fgcolor := display.color(drawm->Black);
-	bgcolor := display.color(drawm->White);
-	linkcolor := display.newimage(Rect(Point(0,0), Point(1,1)), drawm->RGB24, 1, 16r2255AA);
-	codebg := display.newimage(Rect(Point(0,0), Point(1,1)), drawm->RGB24, 1, 16rF0F0F0);
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->gettheme();
+	fgcolor := display.color(th.text);
+	bgcolor := display.color(th.bg);
+	linkcolor := display.color(th.accent);
+	codebg := display.color(th.codebg);
 
 	style := ref Rlayout->Style(
 		width,      # width

@@ -19,6 +19,8 @@ include "draw.m";
 include "math.m";
 	math: Math;
 
+include "lucitheme.m";
+
 include "mermaid.m";
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -429,28 +431,30 @@ init(d: ref Display, mainfont: ref Font, monofont: ref Font)
 	if(mofont == nil)
 		mofont = mfont;
 
-	cbg    = d.color(int 16r1E1E2EFF);
-	cnode  = d.color(int 16r313244FF);
-	cbord  = d.color(int 16r89B4FAFF);
-	ctext  = d.color(int 16rCDD6F4FF);
-	ctext2 = d.color(int 16r8B949EFF);
-	cacc   = d.color(int 16r89B4FAFF);
-	cgreen = d.color(int 16rA6E3A1FF);
-	cred   = d.color(int 16rF38BA8FF);
-	cyel   = d.color(int 16rF9E2AFFF);
-	cgrid  = d.color(int 16r45475AFF);
-	csect  = d.color(int 16r45475AFF);
-	cwhite = d.color(int 16rCDD6F4FF);
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	th := lucitheme->gettheme();
+	cbg    = d.color(th.diagbg);
+	cnode  = d.color(th.diagnode);
+	cbord  = d.color(th.diagborder);
+	ctext  = d.color(th.diagtext);
+	ctext2 = d.color(th.diagtext2);
+	cacc   = d.color(th.diagacc);
+	cgreen = d.color(th.diaggreen);
+	cred   = d.color(th.diagred);
+	cyel   = d.color(th.diagyellow);
+	cgrid  = d.color(th.diaggrid);
+	csect  = d.color(th.diaggrid);
+	cwhite = d.color(th.diagtext);
 
 	cpie = array[8] of ref Image;
-	cpie[0] = d.color(int 16r89B4FAFF);	# blue
-	cpie[1] = d.color(int 16rA6E3A1FF);	# green
-	cpie[2] = d.color(int 16rF9E2AFFF);	# yellow
-	cpie[3] = d.color(int 16rF38BA8FF);	# red
-	cpie[4] = d.color(int 16rCBA6F7FF);	# mauve
-	cpie[5] = d.color(int 16r94E2D5FF);	# teal
-	cpie[6] = d.color(int 16rFAB387FF);	# peach
-	cpie[7] = d.color(int 16r89DCEBFF);	# sky
+	cpie[0] = d.color(th.pie0);
+	cpie[1] = d.color(th.pie1);
+	cpie[2] = d.color(th.pie2);
+	cpie[3] = d.color(th.pie3);
+	cpie[4] = d.color(th.pie4);
+	cpie[5] = d.color(th.pie5);
+	cpie[6] = d.color(th.pie6);
+	cpie[7] = d.color(th.pie7);
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1169,9 +1173,7 @@ piesector(img: ref Image, cx, cy, r: int, col: ref Image, startdeg, phideg: int)
 	if(nsegs > 73) nsegs = 73;
 	pts := array[nsegs + 2] of Point;
 	pts[0] = Point(cx, cy);
-	# π via atan2 — avoids broken DEFF real-constant pool (canontod LP64 bug)
-	pi := mmath->atan2(real 0, real (-1));
-	d2r := pi / real 180;
+	d2r := 3.14159265358979 / 180.0;
 	for(k := 0; k <= nsegs; k++) {
 		adeg := startdeg + k * phideg / nsegs;
 		arad := real adeg * d2r;

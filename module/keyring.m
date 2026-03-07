@@ -227,6 +227,20 @@ Keyring: module
 	SHA512dlen:	con 64;
 	MD5dlen:	con 16;
 	MD4dlen:	con 16;
+	SHA3_256dlen:	con 32;
+	SHA3_512dlen:	con 64;
+
+	# SHA-3 digests (FIPS 202, one-shot)
+	sha3_256: fn(buf: array of byte, n: int, digest: array of byte): int;
+	sha3_512: fn(buf: array of byte, n: int, digest: array of byte): int;
+
+	# SLH-DSA (FIPS 205) sizes
+	SLHDSA192S_PKLEN:  con 48;
+	SLHDSA192S_SKLEN:  con 96;
+	SLHDSA192S_SIGLEN: con 16224;
+	SLHDSA256S_PKLEN:  con 64;
+	SLHDSA256S_SKLEN:  con 128;
+	SLHDSA256S_SIGLEN: con 29792;
 
 	# encryption interfaces
 	Encrypt:	con 0;
@@ -266,6 +280,23 @@ Keyring: module
 	# Ed25519 raw sign/verify (RFC 8032)
 	ed25519_sign:   fn(seed: array of byte, msg: array of byte): array of byte;
 	ed25519_verify: fn(pk: array of byte, msg: array of byte, sig: array of byte): int;
+
+	# ML-KEM (FIPS 203) post-quantum key encapsulation
+	MLKEM768_PKLEN:  con 1184;
+	MLKEM768_SKLEN:  con 2400;
+	MLKEM768_CTLEN:  con 1088;
+	MLKEM768_SSLEN:  con 32;
+	MLKEM1024_PKLEN: con 1568;
+	MLKEM1024_SKLEN: con 3168;
+	MLKEM1024_CTLEN: con 1568;
+	MLKEM1024_SSLEN: con 32;
+
+	mlkem768_keygen:  fn(): (array of byte, array of byte);	# => (pk, sk)
+	mlkem768_encaps:  fn(pk: array of byte): (array of byte, array of byte);	# => (ct, ss)
+	mlkem768_decaps:  fn(sk: array of byte, ct: array of byte): array of byte;	# => ss
+	mlkem1024_keygen: fn(): (array of byte, array of byte);	# => (pk, sk)
+	mlkem1024_encaps: fn(pk: array of byte): (array of byte, array of byte);	# => (ct, ss)
+	mlkem1024_decaps: fn(sk: array of byte, ct: array of byte): array of byte;	# => ss
 
 	DESbsize: con 8;
 
