@@ -990,9 +990,20 @@ authorize(g: ref Private_info, file: string): int
 		for(; flds != nil; flds = tl flds){
 			user := hd flds;
 			flds = tl flds;
-			if(flds != nil && consteq(user, g.authuser) && consteq(hd flds, g.authpass))
+			if(flds != nil && consteq(user, g.authuser) && consteq(hd flds, g.authpass)){
+				# Zero password from memory after successful auth
+				for(zi := 0; zi < len g.authpass; zi++)
+					g.authpass[zi] = '\0';
+				g.authpass = nil;
 				return 1;
+			}
 		}
+	}
+	# Zero password from memory after failed auth
+	if(g.authpass != nil) {
+		for(zi := 0; zi < len g.authpass; zi++)
+			g.authpass[zi] = '\0';
+		g.authpass = nil;
 	}
 	unauthorized(g, realm);
 	return 0;

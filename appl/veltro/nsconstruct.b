@@ -579,6 +579,55 @@ readfile(path: string): string
 	return result;
 }
 
+# Clean up shadow directories for the current process
+cleanup()
+{
+	if(sys == nil)
+		init();
+
+	pid := sys->pctl(0, nil);
+	prefix := sys->sprint("%d-", pid);
+
+	fd := sys->open(SHADOW_BASE, Sys->OREAD);
+	if(fd == nil)
+		return;
+
+	for(;;) {
+		(n, dirs) := sys->dirread(fd, 100);
+		if(n <= 0)
+			break;
+		for(i := 0; i < n; i++) {
+			name := dirs[i].name;
+			if(len name >= len prefix && name[0:len prefix] == prefix) {
+				# Remove shadow directory contents then directory itself
+				rmdir(SHADOW_BASE + "/" + name);
+			}
+		}
+	}
+}
+
+# Helper: recursively remove a directory and its contents
+rmdir(path: string)
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd != nil) {
+		for(;;) {
+			(n, dirs) := sys->dirread(fd, 100);
+			if(n <= 0)
+				break;
+			for(i := 0; i < n; i++) {
+				child := path + "/" + dirs[i].name;
+				if(dirs[i].mode & Sys->DMDIR)
+					rmdir(child);
+				else
+					sys->remove(child);
+			}
+		}
+		fd = nil;
+	}
+	sys->remove(path);
+}
+
 # Helper: check if string contains substring
 contains(s, sub: string): int
 {

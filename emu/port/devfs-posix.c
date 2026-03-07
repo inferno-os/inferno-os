@@ -263,7 +263,7 @@ opensocket(char *path)
 	su.sun_family = AF_UNIX;
 	if(strlen(path)+1 > sizeof su.sun_path)
 		error("unix socket name too long");
-	strcpy(su.sun_path, path);
+	snprintf(su.sun_path, sizeof su.sun_path, "%s", path);
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0)
 		return -1;
 	if(connect(fd, (struct sockaddr*)&su, sizeof su) >= 0)
