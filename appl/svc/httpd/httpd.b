@@ -265,6 +265,8 @@ service_req(nc : Sys->Connection)
 	sys->pctl(Sys->NEWPGRP, nil);#|Sys->FORKFD
 	buf := array[64] of byte;
 	l := sys->open(nc.dir+"/remote", sys->OREAD);
+	if(l == nil)
+		return;
 	n := sys->read(l, buf, len buf);
 	if(n >= 0)
 		dprint("New client http: " + nc.dir + " " + string buf[0:n]);

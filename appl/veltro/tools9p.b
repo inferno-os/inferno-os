@@ -67,7 +67,7 @@ ToolInfo: adt {
 
 stderr: ref Sys->FD;
 user: string;
-tools: list of ref ToolInfo;     # active (exposed) tools
+tools: list of ref ToolInfo;     # active (exposed) tools; mutated by serveloop, read by asyncexec (snapshot-safe)
 alltools: list of ref ToolInfo;  # pre-loaded inactive tools (available for ctl-add)
 extpaths: list of string;  # Extra paths from -p flags (e.g. "/dis/wm")
 boundpaths: list of string;  # Paths registered via bindpath ctl command

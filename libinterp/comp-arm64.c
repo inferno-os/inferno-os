@@ -2566,6 +2566,10 @@ compile(Module *m, int size, Modlink *ml)
 	 * expand to many ARM64 instructions (especially case statements).
 	 * Use 64 ARM64 instructions per Dis instruction as upper bound,
 	 * with a minimum of 8192. */
+	if(size > 0 && (ulong)size > ((ulong)-1) / 64) {
+		/* overflow check */
+		goto bad;
+	}
 	tmpsize = size * 64;
 	if(tmpsize < 8192)
 		tmpsize = 8192;
@@ -2598,6 +2602,11 @@ compile(Module *m, int size, Modlink *ml)
 		}
 		patch[i] = n;
 		n += code - tmp;
+		/* Check for total size overflow before continuing */
+		if(n > 16*1024*1024) {
+			print("JIT: module too large for compilation (%d instructions)\n", n);
+			goto bad;
+		}
 	}
 	patch[size] = n;	/* sentinel: one past last Dis instruction */
 

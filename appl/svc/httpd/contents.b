@@ -100,6 +100,8 @@ uriclass(name : string): (ref Content, ref Content)
 	if(typ == nil && enc == nil){
 		buff := array[64] of byte;
 		fd := sys->open(uri, sys->OREAD);
+		if(fd == nil)
+			return (typ, enc);
 		n := sys->read(fd, buff, len buff);
 		if(n > 0){
 			tmp := string buff[0:n];

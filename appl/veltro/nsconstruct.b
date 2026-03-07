@@ -58,9 +58,11 @@ restrictdir(target: string, allowed: list of string, writable: int): string
 	if(sys == nil)
 		init();
 
-	# Create unique shadow dir using PID + sequence
+	# Create unique shadow dir using PID + sequence + millisec
+	# The millisec component prevents collisions from concurrent goroutines
 	pid := sys->pctl(0, nil);
-	shadowdir := sys->sprint("%s/%d-%d", SHADOW_BASE, pid, shadowseq++);
+	seq := shadowseq++;
+	shadowdir := sys->sprint("%s/%d-%d-%d", SHADOW_BASE, pid, seq, sys->millisec());
 	err := mkdirp(shadowdir);
 	if(err != nil)
 		return err;

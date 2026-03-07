@@ -148,7 +148,8 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	p->env->gid = up->env->gid;
 	kstrdup(&p->env->user, up->env->user);
 
-	strcpy(p->text, name);
+	strncpy(p->text, name, KNAMELEN-1);
+	p->text[KNAMELEN-1] = '\0';
 
 	p->func = func;
 	p->arg = arg;

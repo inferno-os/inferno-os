@@ -382,14 +382,14 @@ contenttask_url(op: ref AsyncOp, url: string, winid: int)
 		webclient = load Webclient Webclient->PATH;
 		if(webclient == nil) {
 			sys->fprint(stderr, "webfetch: can't load webclient\n");
-			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "can't load webclient");
+			alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "can't load webclient") => ; * => ; }
 			op.active = 0;
 			return;
 		}
 		err := webclient->init();
 		if(err != nil) {
 			sys->fprint(stderr, "webfetch: webclient init: %s\n", err);
-			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "webclient init: " + err);
+			alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "webclient init: " + err) => ; * => ; }
 			op.active = 0;
 			return;
 		}
@@ -398,7 +398,7 @@ contenttask_url(op: ref AsyncOp, url: string, winid: int)
 	# Check for cancellation before fetch
 	alt {
 		<-op.ctl =>
-			dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "cancelled");
+			alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "cancelled") => ; * => ; }
 			op.active = 0;
 			return;
 		* => ;
@@ -408,20 +408,20 @@ contenttask_url(op: ref AsyncOp, url: string, winid: int)
 	(resp, err) := webclient->get(url);
 	if(err != nil) {
 		sys->fprint(stderr, "webfetch: fetch error: %s\n", err);
-		dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "fetch: " + err);
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "fetch: " + err) => ; * => ; }
 		op.active = 0;
 		return;
 	}
 
 	sys->fprint(stderr, "webfetch: got %d bytes\n", len resp.body);
 	if(resp.body == nil || len resp.body == 0) {
-		dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "empty response");
+		alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, nil, "empty response") => ; * => ; }
 		op.active = 0;
 		return;
 	}
 
 	# Send response body as content data
-	dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, resp.body, nil);
+	alt { dat->casync <-= ref AsyncMsg.ContentData(op.opid, winid, url, resp.body, nil) => ; * => ; }
 	op.active = 0;
 }
 
@@ -448,7 +448,7 @@ readtask(op: ref AsyncOp, path: string, q0: int)
 {
 	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil) {
-		dat->casync <-= ref AsyncMsg.Error(op.opid, sys->sprint("can't open %s: %r", path));
+		alt { dat->casync <-= ref AsyncMsg.Error(op.opid, sys->sprint("can't open %s: %r", path)) => ; * => ; }
 		op.active = 0;
 		return;
 	}
@@ -470,7 +470,7 @@ readtask(op: ref AsyncOp, path: string, q0: int)
 		alt {
 			<-op.ctl =>
 				fd = nil;
-				dat->casync <-= ref AsyncMsg.Error(op.opid, "cancelled");
+				alt { dat->casync <-= ref AsyncMsg.Error(op.opid, "cancelled") => ; * => ; }
 				op.active = 0;
 				return;
 			* => ;
@@ -478,7 +478,7 @@ readtask(op: ref AsyncOp, path: string, q0: int)
 
 		n := sys->read(fd, buf[leftover:], CHUNKSIZE);
 		if(n < 0) {
-			dat->casync <-= ref AsyncMsg.Error(op.opid, sys->sprint("read error: %r"));
+			alt { dat->casync <-= ref AsyncMsg.Error(op.opid, sys->sprint("read error: %r")) => ; * => ; }
 			op.active = 0;
 			return;
 		}
@@ -508,17 +508,17 @@ readtask(op: ref AsyncOp, path: string, q0: int)
 		nbytes += nb;
 		nrunes += nr;
 
-		# Send chunk
-		dat->casync <-= ref AsyncMsg.Chunk(op.opid, s, offset);
+		# Send chunk (non-blocking to avoid deadlock)
+		alt { dat->casync <-= ref AsyncMsg.Chunk(op.opid, s, offset) => ; * => ; }
 		offset += nr;
 
 		# Send progress every 64KB
 		if((nbytes % (64*1024)) < CHUNKSIZE)
-			dat->casync <-= ref AsyncMsg.Progress(op.opid, nbytes, total);
+			alt { dat->casync <-= ref AsyncMsg.Progress(op.opid, nbytes, total) => ; * => ; }
 	}
 
 	fd = nil;
-	dat->casync <-= ref AsyncMsg.Complete(op.opid, nbytes, nrunes, nil);
+	alt { dat->casync <-= ref AsyncMsg.Complete(op.opid, nbytes, nrunes, nil) => ; * => ; }
 	op.active = 0;
 }
 
@@ -662,9 +662,10 @@ savetask(op: ref AsyncOp, path: string, winid: int, buf: ref Bufferm->Buffer, q0
 		ab := array of byte rp.s[0:n];
 
 		nw := sys->write(fd, ab, len ab);
+		wantlen := len ab;
 		ab = nil;
 
-		if(nw != len ab) {
+		if(nw != wantlen) {
 			fd = nil;
 			alt {
 				dat->casync <-= ref AsyncMsg.SaveComplete(op.opid, winid, path, written, 0, sys->sprint("write error: %r")) => ;
