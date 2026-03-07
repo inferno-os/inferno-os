@@ -15,7 +15,7 @@ include "styxconv.m";
 
 # todo: map fids > ffff into 16 bits
 
-DEBUG: con 1;
+DEBUG: con 0;
 
 Fid: adt
 {

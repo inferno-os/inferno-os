@@ -334,6 +334,8 @@ parseheredoc(args: string, lines: list of string): (string, list of string)
 # Find heredoc marker << in string, returns position or -1
 findheredoc(s: string): int
 {
+	if(len s < 2)
+		return -1;
 	for(i := 0; i < len s - 1; i++) {
 		if(s[i] == '<' && s[i+1] == '<') {
 			# Make sure it's not <<< (which would be different)

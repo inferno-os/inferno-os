@@ -91,6 +91,17 @@ dprint(s : string)
 		sys->fprint(dbg_log,"%s",s);
 }
 
+# Constant-time string comparison to prevent timing side-channel attacks
+consteq(a, b: string): int
+{
+	if(len a != len b)
+		return 0;
+	result := 0;
+	for(i := 0; i < len a; i++)
+		result |= a[i] ^ b[i];
+	return result == 0;
+}
+
 # Escape HTML special characters to prevent XSS
 htmlescape(s: string): string
 {
@@ -979,7 +990,7 @@ authorize(g: ref Private_info, file: string): int
 		for(; flds != nil; flds = tl flds){
 			user := hd flds;
 			flds = tl flds;
-			if((user == g.authuser) && flds != nil && (hd flds) == g.authpass)
+			if(flds != nil && consteq(user, g.authuser) && consteq(hd flds, g.authpass))
 				return 1;
 		}
 	}
@@ -1134,8 +1145,12 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 parseuri(nil: ref Private_info, uri: string): (string, string)
 {
 	urihost := "";
+	if(len uri == 0)
+		return (nil, nil);
 	if(uri[0] != '/'){
-		if(uri[0:7] == "http://")
+		if(len uri >= 7 && uri[0:7] == "http://")
+			return (nil, nil);
+		if(len uri < 6)
 			return (nil, nil);
 		uri  = uri[5:];
 	}

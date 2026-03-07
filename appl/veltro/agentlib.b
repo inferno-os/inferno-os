@@ -361,8 +361,8 @@ defaultsystemprompt(): string
 # (from repl.b — has collectsaytext for multi-line say)
 parseaction(response: string): (string, string)
 {
-	# Split into lines
-	(nil, lines) := sys->tokenize(response, "\n");
+	# Split into lines (preserving empty lines for heredoc content)
+	lines := splitlines(response);
 
 	# Get available tools for matching
 	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
@@ -418,7 +418,7 @@ parseaction(response: string): (string, string)
 # Multiple tool lines execute in parallel (independent operations).
 parseactions(response: string): list of (string, string)
 {
-	(nil, lines) := sys->tokenize(response, "\n");
+	lines := splitlines(response);
 	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
 
 	result: list of (string, string);
@@ -758,9 +758,33 @@ truncate(s: string, max: int): string
 	return s[0:max] + "...";
 }
 
+# Split string into lines preserving empty lines.
+# Unlike sys->tokenize which merges consecutive delimiters, this
+# returns one entry per line including empty strings for blank lines.
+splitlines(s: string): list of string
+{
+	result: list of string;
+	start := 0;
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\n') {
+			result = s[start:i] :: result;
+			start = i + 1;
+		}
+	}
+	if(start <= len s)
+		result = s[start:] :: result;
+	# Reverse the list
+	rev: list of string;
+	for(; result != nil; result = tl result)
+		rev = hd result :: rev;
+	return rev;
+}
+
 # Find heredoc marker << in string, returns position or -1
 findheredoc(s: string): int
 {
+	if(len s < 2)
+		return -1;
 	for(i := 0; i < len s - 1; i++) {
 		if(s[i] == '<' && s[i+1] == '<') {
 			# Make sure it's not <<< (which would be different)

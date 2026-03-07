@@ -343,6 +343,8 @@ atexit(g: ref Private_info)
 }
 
 
+MAXHEADERS: con 100;	# Maximum number of HTTP headers to accept
+
 httpheaders(g: ref Private_info,vers : string)
 {
 	if(vers == "")
@@ -350,9 +352,15 @@ httpheaders(g: ref Private_info,vers : string)
 	g.tok = '\n';
 	g.parse_eol = 0;
 	g.parse_eoh = 0;
+	nhdr := 0;
 	# 15 minutes to get request line
-	a := Alarm.alarm(15*1000*60); 
+	a := Alarm.alarm(15*1000*60);
 	while(lex(g) != '\n'){
+		nhdr++;
+		if(nhdr > MAXHEADERS) {
+			a.stop();
+			fail(g, BadReq, "too many headers");
+		}
 		if(g.tok == Word && lex(g) == ':'){
 			if (g.dbg_log!=nil)
 				sys->fprint(g.dbg_log,"hitting parsejump. wordval is %s\n",
@@ -978,6 +986,8 @@ urlunesc(s : string): string
 	for(i := 0;i<len s ; i++){
 		c = int s[i];
 		if(c == '%'){
+			if(i + 2 >= len s)
+				break;
 			n = int s[i+1];
 			if(n >= '0' && n <= '9')
 				n = n - '0';

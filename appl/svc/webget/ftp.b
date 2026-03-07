@@ -29,7 +29,7 @@ include "wgutils.m";
 include "transport.m";
 
 FTPPORT: con "21";
-DEBUG: con 1;
+DEBUG: con 0;
 
 # Return codes
 Extra, Success, Incomplete, TempFail, PermFail : con (1+iota);

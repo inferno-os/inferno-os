@@ -809,6 +809,17 @@ workcheckout(wgit: Git, repo: ref Repo, gitdir, reporoot, bname: string): string
 	if(bname == "")
 		return "error: usage: git checkout <branch>";
 
+	# Validate branch name: reject path traversal and shell metacharacters
+	for(vi := 0; vi < len bname; vi++) {
+		c := bname[vi];
+		if(c == '.' && vi + 1 < len bname && bname[vi+1] == '.')
+			return "error: invalid branch name (path traversal)";
+		if(c == '/' && vi == 0)
+			return "error: invalid branch name (absolute path)";
+		if(c == ' ' || c == '~' || c == '^' || c == ':' || c == '\\')
+			return "error: invalid branch name";
+	}
+
 	(targethash, terr) := repo.readref("refs/heads/" + bname);
 	if(terr != nil)
 		return "error: branch '" + bname + "' not found";

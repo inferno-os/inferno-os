@@ -133,6 +133,11 @@ exec(args: string): string
 	if(cmd == "")
 		return "error: usage: Exec <command>";
 
+	# Sanitize: strip backticks and ${} command substitution patterns.
+	# The namespace restriction is the primary security boundary, but
+	# defense-in-depth prevents command substitution attacks.
+	cmd = sanitizecmd(cmd);
+
 	# Convert double quotes to single quotes for Inferno shell compatibility
 	# Inferno's sh uses single quotes for literal strings, not double quotes
 	cmd = convertquotes(cmd);
@@ -331,5 +336,40 @@ convertquotes(s: string): string
 		}
 	}
 
+	return result;
+}
+
+# Sanitize command string: strip backticks and ${} command substitution
+# to prevent shell injection via LLM-generated input.
+# Semicolons are intentionally allowed (multi-command support).
+sanitizecmd(s: string): string
+{
+	result := "";
+	i := 0;
+	while(i < len s) {
+		if(s[i] == '`') {
+			# Strip backtick command substitution
+			i++;
+			continue;
+		}
+		if(s[i] == '$' && i + 1 < len s && (s[i+1] == '{' || s[i+1] == '(')) {
+			# Strip ${...} and $(...) command substitution
+			i += 2;
+			depth := 1;
+			close := '}';
+			if(s[i-1] == '(')
+				close = ')';
+			while(i < len s && depth > 0) {
+				if(s[i] == s[i-depth] && (s[i] == '{' || s[i] == '('))
+					depth++;
+				else if(s[i] == close)
+					depth--;
+				i++;
+			}
+			continue;
+		}
+		result[len result] = s[i];
+		i++;
+	}
 	return result;
 }
