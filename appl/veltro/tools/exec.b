@@ -236,6 +236,9 @@ exec(args: string): string
 		}
 	}
 
+	# Close read fd to unblock readoutput goroutine if still blocked on read
+	fds[0] = nil;
+
 	# Wait for result
 	err := "";
 	alt {

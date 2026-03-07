@@ -421,8 +421,8 @@ acheck(int tsz, int sz)
 {
 	if(sz < 0)
 		error(exNegsize);
-	/* test for overflow; assumes sz >>> tsz */
-	if((int)(sizeof(Array) + sizeof(Heap) + tsz*sz) < sz && tsz != 0)
+	/* check for overflow in tsz*sz using division */
+	if(tsz != 0 && (ulong)sz > ((ulong)~0 - sizeof(Array) - sizeof(Heap)) / (ulong)tsz)
 		error(exHeap);
 }
 OP(newa)

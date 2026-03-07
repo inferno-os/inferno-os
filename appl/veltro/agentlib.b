@@ -24,6 +24,8 @@ init()
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
 	str = load String String->PATH;
+	if(str == nil)
+		sys->fprint(stderr, "agentlib: warning: cannot load String: %r\n");
 }
 
 setverbose(v: int)
@@ -223,7 +225,13 @@ buildsystemprompt(ns: string): string
 	if(len data > MAXPROMPT) {
 		sys->fprint(stderr, "agentlib: WARNING: system prompt %d bytes exceeds %d limit, truncating\n",
 			len data, MAXPROMPT);
-		prompt = string data[0:MAXPROMPT];
+		# Truncate at UTF-8 character boundary: if the byte at the cut
+		# position is a continuation byte (10xxxxxx), back up to exclude
+		# the incomplete character
+		cut := MAXPROMPT;
+		while(cut > 0 && (int data[cut] & 16rC0) == 16r80)
+			cut--;
+		prompt = string data[0:cut];
 	}
 
 	return prompt;
