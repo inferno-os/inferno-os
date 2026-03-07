@@ -60,7 +60,7 @@ doc(): string
 		"  Launch wm/clock       — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell, mand\n\n" +
+		"  charon, clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell, mand\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
