@@ -636,6 +636,12 @@ timer(ch: chan of int, ms: int)
 # Load agent prompt from /lib/veltro/agents/<type>.txt.
 loadagentprompt(agenttype: string): string
 {
+	# Reject path traversal attempts
+	for(i := 0; i < len agenttype; i++)
+		if(agenttype[i] == '/' || agenttype[i] == '\\')
+			return "";
+	if(agenttype == ".." || agenttype == ".")
+		return "";
 	fd := sys->open("/lib/veltro/agents/" + agenttype + ".txt", Sys->OREAD);
 	if(fd == nil)
 		return "";

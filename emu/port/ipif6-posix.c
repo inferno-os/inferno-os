@@ -13,6 +13,7 @@
 #include	<arpa/inet.h>
 #include	<netdb.h>
 #include	<sys/ioctl.h>
+#include	<errno.h>
 #undef ulong
 #undef ushort
 #undef uint
@@ -230,7 +231,9 @@ so_accept(int fd, uchar *raddr, ushort *rport)
 
 	len = sizeof(*sin6);
 	osenter();
-	nfd = accept(fd, (struct sockaddr*)&sa, &len);
+	do {
+		nfd = accept(fd, (struct sockaddr*)&sa, &len);
+	} while(nfd < 0 && errno == EINTR);
 	osleave();
 	if(nfd < 0)
 		oserror();

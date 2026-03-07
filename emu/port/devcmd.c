@@ -1,6 +1,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include	<errno.h>
 
 enum
 {
@@ -393,7 +394,9 @@ cmdread(Chan *ch, void *a, long n, vlong offset)
 		}
 		qunlock(&c->l);
 		osenter();
-		n = read(c->fd[fd], a, n);
+		do {
+			n = read(c->fd[fd], a, n);
+		} while(n < 0 && errno == EINTR);
 		osleave();
 		if(n < 0)
 			oserror();
@@ -516,7 +519,9 @@ cmdwrite(Chan *ch, void *a, long n, vlong offset)
 		}
 		qunlock(&c->l);
 		osenter();
-		r = write(c->fd[0], a, n);
+		do {
+			r = write(c->fd[0], a, n);
+		} while(r < 0 && errno == EINTR);
 		osleave();
 		if(r == 0)
 			error(Ehungup);
