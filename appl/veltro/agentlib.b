@@ -805,6 +805,7 @@ tooldesc(name: string): string
 	"python" => return "Execute a Python expression or script";
 	"curl"   => return "Transfer data from a URL";
 	"vision" => return "Analyze an image using AI vision (local GPU or cloud)";
+	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
 	}
 	return "Run the " + name + " tool with the given arguments";
 }

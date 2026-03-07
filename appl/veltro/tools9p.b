@@ -113,6 +113,7 @@ TOOL_PATHS := array[] of {
 	("mail",      "/dis/veltro/tools/mail.dis"),
 	# Web browsing
 	("browse",    "/dis/veltro/tools/browse.dis"),
+	("charon",    "/dis/veltro/tools/charon.dis"),
 	# GPU inference (requires gpusrv mounted at /mnt/gpu)
 	("gpu",     "/dis/veltro/tools/gpu.dis"),
 	# Speech tools (require /n/speech via speech9p)

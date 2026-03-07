@@ -4,6 +4,7 @@ DIRS=\
 
 TARG=\
 	about.dis\
+	charon.dis\
 	clock.dis\
 	colors.dis\
 	lens.dis\
@@ -20,6 +21,8 @@ SYSMODULES=\
 	bufio.m\
 	daytime.m\
 	draw.m\
+	formatter.m\
+	html.m\
 	imagefile.m\
 	keyboard.m\
 	lucitheme.m\
@@ -32,6 +35,7 @@ SYSMODULES=\
 	styx.m\
 	styxservers.m\
 	sys.m\
+	webclient.m\
 	winplace.m\
 	wmclient.m\
 	wmsrv.m\
