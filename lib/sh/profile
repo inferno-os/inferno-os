@@ -17,18 +17,9 @@ bind -a '#I' /net >[2] /dev/null
 # Start connection server (DNS resolution)
 ndb/cs
 
-# Mount llm9p inference server (configure 'llmserver' in lib/ndb/local)
-mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
-
-# Start speech file server (TTS/STT via /n/speech)
-/dis/veltro/speech9p.dis -e cmd &
-
-# Setup home directory based on platform
+# Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
-	# Start llm9p daemon if not already running, then mount
-	infraroot=`{cat /env/emuroot}
-	echo 'pgrep -qf "llm9p.*-addr" || nohup '^$infraroot^'/../llm9p/llm9p -backend cli -addr :5640 </dev/null >/dev/null 2>&1 &' | os sh >[2] /dev/null
-	sleep 1
+	# llm9p is started by the app launcher before emu runs; just mount it.
 	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
 
 	# Start speech file server (TTS/STT via /n/speech)
@@ -40,11 +31,11 @@ if {~ $emuhost MacOSX Linux}{
 	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
 	home=$ghome
 }{
+	# Non-desktop platforms (e.g. native Inferno on embedded hardware):
+	# mount llm9p from the configured llmserver (see lib/ndb/local).
+	mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
+
 	# Fallback to /usr/username for other systems.
-	# TODO(windows): Nt emu users need 'trfs ''#U*'' /n/local' here to
-	# expose the host filesystem for GUI file-browser path binding.
-	# The '#U' device on the Nt emu port is untested; drive letters may
-	# appear as /n/local/C:/ etc.  Investigate before enabling.
 	home=/usr/^$user
 	if {! ftest -d $home} {
 		mkdir -p $home

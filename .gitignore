@@ -92,6 +92,9 @@ lib/veltro/keys/
 # Site-local NDB config (contains private IPs/hostnames — use lib/ndb/local.example as template)
 lib/ndb/local
 
+# Bundled llm9p binary (built from NERVsystems/llm9p, not checked in)
+MacOSX/InferNode.app/Contents/MacOS/llm9p
+
 # =========================
 # Build Artifacts
 # =========================
