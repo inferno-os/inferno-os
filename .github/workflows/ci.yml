@@ -83,7 +83,8 @@ jobs:
         ls tests/*_test.dis 2>/dev/null | wc -l
 
         if [ "$COMPILE_FAILURES" -gt 0 ]; then
-          echo "WARNING: $COMPILE_FAILURES test file(s) failed to compile"
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
         fi
 
     - name: Run test suite
@@ -253,7 +254,8 @@ jobs:
         ls tests/*_test.dis 2>/dev/null | wc -l
 
         if [ "$COMPILE_FAILURES" -gt 0 ]; then
-          echo "WARNING: $COMPILE_FAILURES test file(s) failed to compile"
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
         fi
 
     - name: Run test suite

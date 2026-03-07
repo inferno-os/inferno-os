@@ -449,8 +449,12 @@ fsread(Chan *c, void *va, long n, vlong offset)
 				oserror();
 		}
 		r = read(FS(c)->fd, va, n);
-		if(r < 0)
-			oserror();
+		if(r < 0){
+			if(errno == EINTR)
+				r = read(FS(c)->fd, va, n);
+			if(r < 0)
+				oserror();
+		}
 	}
 	return r;
 }
@@ -468,8 +472,12 @@ fswrite(Chan *c, void *va, long n, vlong offset)
 			oserror();
 	}
 	r = write(FS(c)->fd, va, n);
-	if(r < 0)
-		oserror();
+	if(r < 0){
+		if(errno == EINTR)
+			r = write(FS(c)->fd, va, n);
+		if(r < 0)
+			oserror();
+	}
 	return r;
 }
 

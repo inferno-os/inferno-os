@@ -16,6 +16,9 @@ CFLAGS=		-g\
 		-O\
 		-fno-strict-aliasing\
 		-fno-omit-frame-pointer\
+		-fstack-protector-strong\
+		-D_FORTIFY_SOURCE=2\
+		-fstack-clash-protection\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-Werror=return-type -Werror=implicit-function-declaration\
 		-I$ROOT/Linux/amd64/include\

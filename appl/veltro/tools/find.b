@@ -52,7 +52,11 @@ init(): string
 	if(sys == nil)
 		return "cannot load Sys";
 	filepat = load Filepat Filepat->PATH;
+	if(filepat == nil)
+		return "cannot load Filepat";
 	str = load String String->PATH;
+	if(str == nil)
+		return "cannot load String";
 	return nil;
 }
 

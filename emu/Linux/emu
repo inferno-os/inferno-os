@@ -19,7 +19,7 @@ dev
 	snarf
 	wmsz
 
-	ip	ipif-posix ipaux
+	ip	ipif6-posix ipaux
 	eia
 	audio	audio-oss
 	mem

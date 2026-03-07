@@ -167,7 +167,7 @@ lastbefore(t: int, f: string): string
 			b = sys->sprint("/n/%s/%.4d/%.2d%.2d%d%s", ndump, tm.year+1900, tm.mon+1, tm.mday, vers, f);
 		return b;
 	}
-	b = "XXX";
+	b = "";
 	return b;
 }
 

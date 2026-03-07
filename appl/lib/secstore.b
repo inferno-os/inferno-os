@@ -32,7 +32,11 @@ init()
 	ssl = load SSL SSL->PATH;
 	random = load Random Random->PATH;
 	base64 = load Encoding Encoding->BASE64PATH;
+	if(base64 == nil)
+		raise "fail:cannot load base64";
 	dialler = load Dial Dial->PATH;
+	if(dialler == nil)
+		raise "fail:cannot load Dial";
 	initPAKparams();
 }
 

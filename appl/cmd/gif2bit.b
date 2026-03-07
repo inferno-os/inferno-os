@@ -53,6 +53,10 @@ init(ctx: ref Draw->Context, argv: list of string)
 	bufio = load Bufio Bufio->PATH;
 	remap := load Imageremap Imageremap->PATH;
 	imgfile := load RImagefile RImagefile->READGIFPATH;
+	if(imgfile == nil){
+		sys->fprint(sys->fildes(2), "cannot load %s: %r\n", RImagefile->READGIFPATH);
+		raise "fail:load";
+	}
 	imgfile->init(bufio);
 
 	# open the display

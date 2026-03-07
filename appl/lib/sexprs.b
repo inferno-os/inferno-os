@@ -47,6 +47,8 @@ init()
 	base64 = load Encoding Encoding->BASE64PATH;
 	base16 = load Encoding Encoding->BASE16PATH;
 	bufio = load Bufio Bufio->PATH;
+	if(bufio == nil)
+		raise "fail:cannot load Bufio";
 	bufio->sopen("");
 }
 

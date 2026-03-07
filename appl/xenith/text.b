@@ -130,7 +130,8 @@ init(mods : ref Dat->Mods)
 	asyncio = mods.asyncio;
 
 	complete = load Complete Complete->PATH;
-	complete->init();
+	if(complete != nil)
+		complete->init();
 }
 
 TABDIR : con 3;	# width of tabs in directory windows
@@ -750,6 +751,8 @@ Text.complete(t: self ref Text): string
 		dir = dir + "/" + path;
 		(dir, nil) = lookx->cleanname(dir, len dir);
 	}
+	if(complete == nil)
+		return nil;
 	(c, err) := complete->complete(dir, str);
 	if(c == nil){
 		warning(nil, sprint("error attempting complete: %s\n", err));

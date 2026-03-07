@@ -16,6 +16,7 @@ CFLAGS=		-g\
 		-O\
 		-fno-strict-aliasing\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
+		-Werror=return-type -Werror=implicit-function-declaration\
 		-I$ROOT/MacOSX/arm64/include\
 		-I$ROOT/include\
 		-DMACOSX_ARM64

@@ -37,10 +37,15 @@ ToolSafeExec: module {
 # This is populated dynamically by reading /tool/tools
 allowedtools: list of string;
 
-init()
+init(): string
 {
 	sys = load Sys Sys->PATH;
+	if(sys == nil)
+		return "cannot load Sys";
 	str = load String String->PATH;
+	if(str == nil)
+		return "cannot load String";
+	return nil;
 }
 
 name(): string
@@ -68,8 +73,11 @@ doc(): string
 
 exec(args: string): string
 {
-	if(sys == nil)
-		init();
+	if(sys == nil) {
+		err := init();
+		if(err != nil)
+			return "error: " + err;
+	}
 
 	# Strip leading/trailing whitespace
 	args = strip(args);

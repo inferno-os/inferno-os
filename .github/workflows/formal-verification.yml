@@ -32,7 +32,7 @@ jobs:
   # ─────────────────────────────────────────────
   spin-verification:
     name: SPIN Model Checking
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -41,7 +41,7 @@ jobs:
     - name: Install SPIN
       run: |
         sudo apt-get update
-        sudo apt-get install -y spin gcc
+        sudo apt-get install -y spin=6.5.2+dfsg-1 gcc
 
     - name: Verify SPIN version
       run: spin -V
@@ -65,7 +65,7 @@ jobs:
   # ─────────────────────────────────────────────
   cbmc-verification:
     name: CBMC Verification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -74,7 +74,7 @@ jobs:
     - name: Install CBMC
       run: |
         sudo apt-get update
-        sudo apt-get install -y cbmc
+        sudo apt-get install -y cbmc=5.95.1-4ubuntu1
 
     - name: Verify CBMC version
       run: cbmc --version

@@ -10,7 +10,7 @@ echo "=== InferNode Linux x86_64 Build ==="
 echo ""
 
 # Set up environment
-export ROOT="$PWD"
+export ROOT="$(cd "$(dirname "$0")" && pwd)"
 export SYSHOST=Linux
 export OBJTYPE=amd64
 export SYSTARG=Linux
@@ -38,7 +38,7 @@ echo "Build tools found."
 echo ""
 
 # Common compiler flags
-CFLAGS="-g -O -fno-strict-aliasing -fno-omit-frame-pointer -fcommon"
+CFLAGS="-g -O -fno-strict-aliasing -fno-omit-frame-pointer -fcommon -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fstack-clash-protection"
 CFLAGS="$CFLAGS -I$ROOT/Linux/amd64/include -I$ROOT/utils/include -I$ROOT/include"
 CFLAGS="$CFLAGS -DLINUX_AMD64"
 
@@ -163,14 +163,14 @@ for lib in lib9 libbio libmp libsec libmath libfreetype libmemdraw libmemlayer l
     if [ -d "$ROOT/$lib" ]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: $lib build had issues"
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
     fi
 done
 
 echo ""
 echo "=== Building Limbo Compiler ==="
 cd "$ROOT/limbo"
-"$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: limbo build had issues"
+"$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: limbo build failed"; exit 1; }
 
 # Verify limbo was built
 if [ ! -x "$ROOT/Linux/amd64/bin/limbo" ]; then
@@ -186,7 +186,7 @@ for lib in libinterp libkeyring; do
     if [ -d "$ROOT/$lib" ]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: $lib build had issues"
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
     fi
 done
 
@@ -198,7 +198,7 @@ cd "$ROOT/emu/Linux"
 rm -f *.o *.emu emu.root.h emu.root.c emu.root.s 2>/dev/null
 
 # mkfile-g is the headless emulator config, which includes mkfile-$OBJTYPE
-"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || echo "Warning: emulator build had issues"
+"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed"; exit 1; }
 
 echo ""
 echo "=== Building Applications (Limbo -> Dis bytecode) ==="
