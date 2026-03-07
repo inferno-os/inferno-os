@@ -574,10 +574,12 @@ remap(i: ref RImagefile->Rawimage, d: ref Display, errdiff: int): (ref Image, st
 		bpic := i.chans[2];
 		apic := i.chans[3];
 		for(j = 0; j < npix; j++) {
-			buf[j*4+0] = rpic[j];
-			buf[j*4+1] = gpic[j];
-			buf[j*4+2] = bpic[j];
-			buf[j*4+3] = apic[j];
+			# RGBA32 little-endian word layout: shift[CAlpha]=0, shift[CBlue]=8, etc.
+			# Byte order in memory: A=byte[0], B=byte[1], G=byte[2], R=byte[3]
+			buf[j*4+0] = apic[j];
+			buf[j*4+1] = bpic[j];
+			buf[j*4+2] = gpic[j];
+			buf[j*4+3] = rpic[j];
 		}
 		im.writepixels(im.r, buf);
 		return (im, "");
