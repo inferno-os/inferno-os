@@ -386,10 +386,22 @@ updateliveconvmsg(idx: int, text: string)
 }
 
 # Display welcome.md in the presentation zone on first launch.
-# A marker file prevents it appearing again on subsequent startups.
+# Two-level guard prevents duplicate tabs:
+#   1. artifact check  — idempotent within a luciuisrv session (same emu run)
+#   2. marker file     — cross-session guard so it only appears once ever
 showwelcome(aid: int)
 {
-	marker := "/lib/veltro/.welcome_shown";
+	# Idempotent: if the welcome artifact is already showing (e.g. lucibridge
+	# restarted inside the same running luciuisrv), do nothing.
+	typepath := sys->sprint("/n/ui/activity/%d/presentation/welcome/type", aid);
+	(atok, nil) := sys->stat(typepath);
+	if(atok >= 0)
+		return;
+
+	# Cross-session guard.  Use a plain (non-hidden) filename: trfs on some
+	# platforms silently fails sys->stat on dot-files, causing the marker to
+	# be missed and the welcome to reappear on every launch.
+	marker := "/lib/veltro/welcome_shown";
 	(ok, nil) := sys->stat(marker);
 	if(ok >= 0)
 		return;
