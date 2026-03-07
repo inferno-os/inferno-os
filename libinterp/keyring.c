@@ -143,6 +143,8 @@ big64conv(Fmt *f)
 	n = (b->top+1)*Dbytes + 1;
 	n = ((n+3)/3)*4 + 1;
 	buf = malloc(n);
+	if(buf == nil)
+		return fmtstrcpy(f, "<nomem>");
 	bigtobase64(b, buf, n);
 	n = fmtstrcpy(f, buf);
 	free(buf);

@@ -259,7 +259,8 @@ copy(sync, done: chan of int, f, t: ref Sys->FD)
 kill(pid: int)
 {
 	fd := sys->open("#p/"+string pid+"/ctl", sys->OWRITE);
-	sys->fprint(fd, "kill");
+	if(fd != nil)
+		sys->fprint(fd, "kill");
 }
 
 fail(msg: string)

@@ -17,6 +17,7 @@ CFLAGS=		-g\
 		-fno-strict-aliasing\
 		-fno-omit-frame-pointer\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
+		-Werror=return-type -Werror=implicit-function-declaration\
 		-I$ROOT/Linux/amd64/include\
 		-I$ROOT/include\
 		-DLINUX_AMD64\

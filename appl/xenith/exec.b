@@ -1512,7 +1512,8 @@ run(win : ref Window, s : string, rdir : string, ndir : int, newns : int, argadd
 		tfd = nil;
 		if(winid > 0 && (pipechar=='|' || pipechar=='<')){
 			tfd = sys->open("/dev/cons", OWRITE);
-			sys->dup(tfd.fd, 2);
+			if(tfd != nil)
+				sys->dup(tfd.fd, 2);
 		}
 		else
 			sys->dup(1, 2);

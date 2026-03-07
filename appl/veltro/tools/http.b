@@ -210,9 +210,18 @@ extracthost(url: string): string
 # Check if host is a blocked internal/private address
 isblocked(host: string): int
 {
-	# Block localhost variants
+	# Strip brackets from IPv6 addresses
+	if(len host > 2 && host[0] == '[' && host[len host - 1] == ']')
+		host = host[1:len host - 1];
+
+	# Block localhost variants (including IPv6)
 	if(host == "localhost" || host == "127.0.0.1" || host == "::1" ||
-	   host == "0.0.0.0" || host == "[::1]" || host == "[::0]")
+	   host == "0.0.0.0" || host == "[::1]" || host == "[::0]" ||
+	   host == "0:0:0:0:0:0:0:1" || host == "::ffff:127.0.0.1" ||
+	   host == "0000:0000:0000:0000:0000:0000:0000:0001")
+		return 1;
+	# Block any address starting with :: (IPv6 shorthand for internal)
+	if(hasprefix(host, "::"))
 		return 1;
 	# Block 10.x.x.x
 	if(hasprefix(host, "10."))
@@ -232,11 +241,30 @@ isblocked(host: string): int
 	# Block 192.168.x.x
 	if(hasprefix(host, "192.168."))
 		return 1;
-	# Block 169.254.x.x (link-local)
+	# Block 169.254.x.x (link-local, cloud metadata)
 	if(hasprefix(host, "169.254."))
+		return 1;
+	# Block fd00::/8 (IPv6 ULA, used by cloud providers)
+	if(hasprefix(host, "fd") || hasprefix(host, "fc"))
+		return 1;
+	# Block fe80:: (IPv6 link-local)
+	if(hasprefix(host, "fe80"))
 		return 1;
 	# Block metadata endpoints
 	if(host == "metadata.google.internal" || host == "metadata")
+		return 1;
+	# Block numeric-only hosts (decimal IP like 2130706433 = 127.0.0.1)
+	alldigits := len host > 0;
+	for(i := 0; i < len host; i++) {
+		if(host[i] < '0' || host[i] > '9') {
+			alldigits = 0;
+			break;
+		}
+	}
+	if(alldigits)
+		return 1;
+	# Block 0x-prefixed (hex IP)
+	if(hasprefix(host, "0x") || hasprefix(host, "0X"))
 		return 1;
 	return 0;
 }
