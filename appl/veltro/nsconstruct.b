@@ -597,7 +597,7 @@ cleanup()
 		return;
 
 	for(;;) {
-		(n, dirs) := sys->dirread(fd, 100);
+		(n, dirs) := sys->dirread(fd);
 		if(n <= 0)
 			break;
 		for(i := 0; i < n; i++) {
@@ -616,7 +616,7 @@ rmdir(path: string)
 	fd := sys->open(path, Sys->OREAD);
 	if(fd != nil) {
 		for(;;) {
-			(n, dirs) := sys->dirread(fd, 100);
+			(n, dirs) := sys->dirread(fd);
 			if(n <= 0)
 				break;
 			for(i := 0; i < n; i++) {
