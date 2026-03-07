@@ -2335,9 +2335,14 @@ do_server_cert(hm: ref Handshake.Certificate, ctx: ref Context)
 		cl = tl cl;
 	}
 
-	# TODO: verify certificate chain
-	#	check if in the acceptable dnlist
-	# ctx.sel_keyx.peer_pk = x509->verify_chain(ctx.session.peer_certs);
+	# verify certificate chain
+	(vok, verr) := x509->verify_certchain(ctx.session.peer_certs);
+	if(vok == 0) {
+		if(SSL_DEBUG)
+			log("ssl3: certificate chain verification failed: " + verr);
+		fatal(SSL_HANDSHAKE_FAILURE, "certificate chain verification failed: " + verr, ctx);
+		return;
+	}
 	if(SSL_DEBUG)
 		log("ssl3: number certificates got: " + string len ctx.session.peer_certs);
 	peer_cert := hd ctx.session.peer_certs;
@@ -2645,13 +2650,17 @@ do_client_keyex(hm: ref Handshake.ClientKeyExchange, ctx: ref Context)
 do_client_cert(hm: ref Handshake.Certificate, ctx: ref Context)
 {
 	ctx.session.peer_certs = hm.cert_list;
-	
-	# verify cert chain and determine the type of cert
-	# ctx.peer_info.sk = x509->verify_chain(ctx.session.peer_certs);
-	# if(ctx.peer_info.key == nil) {
-	#	fatal(SSL_HANDSHAKE_FAILURE, "client certificate: cert verify failed", ctx);
-	#	return;
-	# }
+
+	# verify cert chain
+	if(ctx.session.peer_certs != nil) {
+		(vok, verr) := x509->verify_certchain(ctx.session.peer_certs);
+		if(vok == 0) {
+			if(SSL_DEBUG)
+				log("ssl3: client certificate chain verification failed: " + verr);
+			fatal(SSL_HANDSHAKE_FAILURE, "client certificate: chain verify failed: " + verr, ctx);
+			return;
+		}
+	}
 
 	ctx.status |= CERT_RECEIVED;
 

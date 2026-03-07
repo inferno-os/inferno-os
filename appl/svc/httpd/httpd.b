@@ -91,6 +91,29 @@ dprint(s : string)
 		sys->fprint(dbg_log,"%s",s);
 }
 
+# Escape HTML special characters to prevent XSS
+htmlescape(s: string): string
+{
+	t := "";
+	for(i := 0; i < len s; i++) {
+		case s[i] {
+		'&' =>
+			t += "&amp;";
+		'<' =>
+			t += "&lt;";
+		'>' =>
+			t += "&gt;";
+		'"' =>
+			t += "&quot;";
+		'\'' =>
+			t += "&#39;";
+		* =>
+			t[len t] = s[i];
+		}
+	}
+	return t;
+}
+
 parse_args(args : list of string)
 {
 	while(args!=nil){
@@ -372,26 +395,10 @@ domagic(g: ref Private_info,file, uri, origuri: string, req: Request)
 	dprint("looking for "+buf+"\n");
 	c:= load Cgi buf;
 	if (c==nil){
-		err := sys->sprint("%r");
-		if (nonexistent(err)) {
-			# try and run it as a shell script
-			buf = sys->sprint("%s%s", MAGICPATH, file);
-			if ((fd := sys->open(buf, Sys->OREAD)) != nil) {
-				(ok, info) := sys->fstat(fd);
-				# make permission checking more accurate later
-				if (ok == 0 
-				&& (info.mode & Sys->DMDIR) == 0
-				&& (info.mode & 8r111) != 0){
-					clf(g, 200, 0);
-					ct := newcc(g, req);
-					ct.run(ref Listnode(nil, "run") :: ref Listnode(nil, buf) :: nil, 0);
-					sys->dup(2, 0);
-					sys->dup(2, 1);
-					return;
-					
-				}
-			}
-		}
+		# Only .dis modules are supported for /magic/ handlers.
+		# Shell script fallback removed: it passed unsanitized URI
+		# components to the shell, enabling command injection.
+		;
 	}else {
 		{
 			found = 1;
@@ -707,15 +714,17 @@ senddir(g: ref Private_info,vers,uri: string, fd: ref FD, mydir: ref Dir)
 		g.bout.puts(sys->sprint("Version: %d\r\n", mydir.qid.vers));
 		g.bout.puts("\r\n");
 	}
+	escuri := htmlescape(uri[offset:]);
 	g.bout.puts(sys->sprint("<head><title>Contents of directory %s.</title></head>\n",
-		uri[offset:]));
+		escuri));
 	g.bout.puts(sys->sprint("<body><h1>Contents of directory %s.</h1>\n",
-		uri[offset:]));
+		escuri));
 	g.bout.puts("<table>\n");
 	for(i := 0; i < n; i++){
 		(typ, enc) := classify(a[i]);
+		escname := htmlescape(a[i].name);
 		g.bout.puts(sys->sprint("<tr><td><a href=\"/%s%s\">%s</A></td>",
-			myname[offset:], a[i].name, a[i].name));
+			myname[offset:], escname, escname));
 		if(typ != nil){
 			if(typ.generic != nil)
 				g.bout.puts(sys->sprint("<td>%s", typ.generic));
