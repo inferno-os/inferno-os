@@ -73,6 +73,9 @@ LNCOL:	con int 16rBBBBBBFF;		# scrollbar track
 MARGIN: con 4;
 SCROLLW: con 12;
 
+# Limits
+MAXREDIR: con 20;
+
 # Key codes
 Khome:		con 16rFF61;
 Kend:		con 16rFF57;
@@ -147,6 +150,10 @@ kbdescarg := 0;
 
 # Menu
 menu: ref Popup;
+
+# Navigation channels — serializes all navigation through a single thread
+navchan: chan of string;
+navdone: chan of ref Page;
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -250,17 +257,20 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(argv != nil)
 		starturl = hd argv;
 
+	# Init navigation channels and start navigator thread
+	navchan = chan of string;
+	navdone = chan of ref Page;
+	spawn navigator(navchan, navdone);
+
 	redraw();
 
 	# Navigate to start URL if given
 	if(starturl != "")
-		spawn navigate(starturl);
+		requestnav(starturl);
 
 	# Timer for polling filesystem commands
 	ticks := chan of int;
 	spawn timer(ticks, 500);
-
-	mousedown := 0;
 
 	# Main event loop
 	for(;;) alt {
@@ -286,10 +296,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				case n {
 				0 => goback();
 				1 => goforward();
-				2 => spawn navigate(page.url);
+				2 => requestnav(page.url);
 				3 => page.status = "ready";
 				4 => startinput(MURL);
-				5 => spawn navigate("about:blank");
+				5 => requestnav("about:blank");
 				}
 				redraw();
 			} else if(p.buttons & 2) {
@@ -297,9 +307,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				buf := wmclient->snarfget();
 				if(buf != nil && buf != "") {
 					buf = strip(buf);
-					if(hasprefix(tolower(buf), "http://") ||
-					   hasprefix(tolower(buf), "https://"))
-						spawn navigate(buf);
+					if(isallowedurl(buf))
+						requestnav(buf);
 				}
 			} else if(p.buttons & 8) {
 				# Scroll up
@@ -325,10 +334,20 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					# Check if clicking a link number
 					linkn := findlinkat(p.xy);
 					if(linkn > 0)
-						spawn followlink(linkn);
+						requestfollow(linkn);
 				}
 			}
 		}
+
+	newpage := <-navdone =>
+		# Navigation completed — atomically update all page state
+		page = newpage;
+		topline = 0;
+		if(w != nil && w.image != nil && page.title != "")
+			w.rename(page.title);
+		if(page.status == "ready" && page.url != "")
+			pushhist(page.url, page.title);
+		redraw();
 
 	<-ticks =>
 		changed := checkctlfile();
@@ -340,18 +359,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 # ---------- Navigation ----------
 
-navigate(url: string)
+# Send a navigation request to the navigator thread.
+requestnav(url: string)
 {
 	if(url == "" || url == "about:blank") {
-		page.url = "";
-		page.title = "Charon";
-		page.body = "";
-		page.lines = array[0] of string;
-		page.nlines = 0;
-		page.links = array[0] of ref Link;
-		page.nlinks = 0;
-		page.forms = "";
-		page.status = "ready";
+		page = ref Page("", "Charon", "", array[0] of string, 0,
+			array[0] of ref Link, 0, "", "ready");
 		topline = 0;
 		redraw();
 		return;
@@ -360,58 +373,74 @@ navigate(url: string)
 	page.status = "loading";
 	page.url = url;
 	redraw();
+	navchan <-= url;
+}
 
-	# Fetch URL
+# Resolve a link number and request navigation.
+requestfollow(n: int)
+{
+	if(n < 1 || n > page.nlinks)
+		return;
+	link := page.links[n - 1];
+	requestnav(link.href);
+}
+
+# Navigator thread — serializes all HTTP fetches.
+# Receives URLs from navchan, fetches them, sends completed Pages to navdone.
+navigator(req: chan of string, done: chan of ref Page)
+{
+	for(;;) {
+		url := <-req;
+		p := fetchpage(url, 0);
+		done <-= p;
+	}
+}
+
+# Fetch a URL and return a fully-constructed Page.
+# Does not touch any global state — safe to call from any thread.
+# redirs tracks redirect depth to prevent infinite loops.
+fetchpage(url: string, redirs: int): ref Page
+{
 	hdrs: list of Header;
 	hdrs = Header("User-Agent", "Charon/2.0 (Infernode)") :: hdrs;
 	hdrs = Header("Accept", "text/html, text/plain, */*") :: hdrs;
 	(resp, err) := webclient->request("GET", url, hdrs, nil);
 	if(err != nil) {
-		page.status = "error: " + err;
-		page.title = "Error";
-		page.body = "Failed to load: " + url + "\n\n" + err;
-		page.lines = splitlines(page.body);
-		page.nlines = len page.lines;
-		page.links = array[0] of ref Link;
-		page.nlinks = 0;
-		topline = 0;
-		redraw();
-		return;
+		body := "Failed to load: " + url + "\n\n" + err;
+		lines := splitlines(body);
+		return ref Page(url, "Error", body, lines, len lines,
+			array[0] of ref Link, 0, "", "error: " + err);
 	}
 
-	# Handle redirects
+	# Handle redirects with depth limit
 	if(resp.statuscode >= 300 && resp.statuscode < 400) {
+		if(redirs >= MAXREDIR) {
+			body := "Too many redirects (limit " + string MAXREDIR + ")\n\n" + url;
+			lines := splitlines(body);
+			return ref Page(url, "Error", body, lines, len lines,
+				array[0] of ref Link, 0, "", "error: too many redirects");
+		}
 		loc := resp.hdrval("Location");
 		if(loc != nil && loc != "") {
 			loc = resolveurl(url, loc);
-			navigate(loc);
-			return;
+			return fetchpage(loc, redirs + 1);
 		}
 	}
 
 	if(resp.statuscode >= 400) {
-		page.status = sys->sprint("error: HTTP %d %s", resp.statuscode, resp.status);
-		page.title = sys->sprint("Error %d", resp.statuscode);
-		page.body = sys->sprint("HTTP %d %s\n\n%s", resp.statuscode, resp.status, url);
-		page.lines = splitlines(page.body);
-		page.nlines = len page.lines;
-		page.links = array[0] of ref Link;
-		page.nlinks = 0;
-		topline = 0;
-		redraw();
-		return;
+		status := sys->sprint("error: HTTP %d %s", resp.statuscode, resp.status);
+		title := sys->sprint("Error %d", resp.statuscode);
+		body := sys->sprint("HTTP %d %s\n\n%s", resp.statuscode, resp.status, url);
+		lines := splitlines(body);
+		return ref Page(url, title, body, lines, len lines,
+			array[0] of ref Link, 0, "", status);
 	}
 
 	if(resp.body == nil || len resp.body == 0) {
-		page.status = "error: empty response";
-		page.body = "(empty response)";
-		page.lines = splitlines(page.body);
-		page.nlines = len page.lines;
-		page.links = array[0] of ref Link;
-		page.nlinks = 0;
-		topline = 0;
-		redraw();
-		return;
+		body := "(empty response)";
+		lines := splitlines(body);
+		return ref Page(url, url, body, lines, len lines,
+			array[0] of ref Link, 0, "", "error: empty response");
 	}
 
 	bodytext := string resp.body;
@@ -419,22 +448,21 @@ navigate(url: string)
 	if(ct == nil)
 		ct = "";
 
+	p := ref Page(url, url, "", array[0] of string, 0,
+		array[0] of ref Link, 0, "", "ready");
+
 	if(ishtml(ct, bodytext)) {
-		# Extract title
-		page.title = extracttitle(resp.body);
-		if(page.title == "")
-			page.title = url;
+		p.title = extracttitle(resp.body);
+		if(p.title == "")
+			p.title = url;
 
-		# Extract links from HTML
-		page.links = extractlinks(resp.body, url);
-		page.nlinks = len page.links;
-
-		# Extract forms
-		page.forms = extractforms(resp.body);
+		p.links = extractlinks(resp.body, url);
+		p.nlinks = len p.links;
+		p.forms = extractforms(resp.body);
 
 		# Format HTML to text
 		width := 80;
-		if(w.image != nil) {
+		if(w != nil && w.image != nil) {
 			textr := textrect();
 			cw := font.width("M");
 			if(cw > 0)
@@ -448,39 +476,14 @@ navigate(url: string)
 		if(formatted == nil || len formatted == 0)
 			formatted = bodytext;
 
-		# Inject link numbers into text
-		page.body = injectlinknumbers(formatted, page.links);
+		p.body = injectlinknumbers(formatted, p.links);
 	} else {
-		# Plain text
-		page.title = url;
-		page.body = bodytext;
-		page.links = array[0] of ref Link;
-		page.nlinks = 0;
-		page.forms = "";
+		p.body = bodytext;
 	}
 
-	page.lines = splitlines(page.body);
-	page.nlines = len page.lines;
-	page.status = "ready";
-	page.url = url;
-	topline = 0;
-
-	# Update window title
-	if(w != nil && w.image != nil)
-		w.rename(page.title);
-
-	# Push history
-	pushhist(url, page.title);
-
-	redraw();
-}
-
-followlink(n: int)
-{
-	if(n < 1 || n > page.nlinks)
-		return;
-	link := page.links[n - 1];
-	navigate(link.href);
+	p.lines = splitlines(p.body);
+	p.nlines = len p.lines;
+	return p;
 }
 
 goback()
@@ -492,7 +495,7 @@ goback()
 		history[histpos].scrollpos = topline;
 	histpos--;
 	h := history[histpos];
-	spawn navigate(h.url);
+	requestnav(h.url);
 }
 
 goforward()
@@ -503,7 +506,7 @@ goforward()
 		history[histpos].scrollpos = topline;
 	histpos++;
 	h := history[histpos];
-	spawn navigate(h.url);
+	requestnav(h.url);
 }
 
 pushhist(url, title: string)
@@ -522,6 +525,17 @@ pushhist(url, title: string)
 	history[nhist] = ref HistEntry(url, title, 0);
 	histpos = nhist;
 	nhist++;
+}
+
+# ---------- URL Validation ----------
+
+# Check if a URL has an allowed scheme (http or https only).
+isallowedurl(url: string): int
+{
+	lurl := tolower(url);
+	if(hasprefix(lurl, "http://") || hasprefix(lurl, "https://"))
+		return 1;
+	return 0;
 }
 
 # ---------- HTML Processing ----------
@@ -772,11 +786,18 @@ redraw()
 	drawscrollbar(screen, Rect((r.min.x, r.min.y),
 		(r.min.x + SCROLLW, r.max.y - stath)));
 
+	# Take local snapshot of page state for safe rendering
+	curpage := page;
+	curlines := curpage.lines;
+	curnlines := curpage.nlines;
+
 	# Draw text lines
 	y := textr.min.y;
 	vrow := 0;
-	for(i := topline; i < page.nlines && vrow < maxvrows; i++) {
-		line := page.lines[i];
+	for(i := topline; i < curnlines && vrow < maxvrows; i++) {
+		if(i >= len curlines)
+			break;
+		line := curlines[i];
 
 		# Detect link lines and color them
 		col := fgcolor;
@@ -801,9 +822,6 @@ islinksection(line: string): int
 		return 0;
 	if(line[0] == '[' && line[1] >= '0' && line[1] <= '9')
 		return 1;
-	if(len line >= 5 && line[0:5] == "     ")
-		# Indented URL line in link section
-		return 0;
 	return 0;
 }
 
@@ -902,6 +920,8 @@ findlinkat(xy: Point): int
 	clickrow := vy / font.height;
 	lineno := topline + clickrow;
 	if(lineno < 0 || lineno >= page.nlines)
+		return 0;
+	if(lineno >= len page.lines)
 		return 0;
 
 	line := page.lines[lineno];
@@ -1016,7 +1036,7 @@ handlekey(key: int)
 			startinput(MURL);
 		18 =>	# Ctrl-R: reload
 			if(page.url != "")
-				spawn navigate(page.url);
+				requestnav(page.url);
 		}
 		return;
 	}
@@ -1075,12 +1095,12 @@ handleinputkey(key: int)
 				if(!hasprefix(tolower(buf), "http://") &&
 				   !hasprefix(tolower(buf), "https://"))
 					buf = "https://" + buf;
-				spawn navigate(buf);
+				requestnav(buf);
 			}
 		MLINK =>
 			n := atoi(buf);
 			if(n > 0)
-				spawn followlink(n);
+				requestfollow(n);
 		}
 		return;
 	}
@@ -1110,32 +1130,38 @@ mkdirq(path: string)
 		fd = nil;
 		return;
 	}
-	fd = sys->create(path, Sys->OREAD, Sys->DMDIR | 8r755);
+	fd = sys->create(path, Sys->OREAD, Sys->DMDIR | 8r700);
 	fd = nil;
 }
 
 writebrowserstate()
 {
-	writestatefile(BROWSER_DIR + "/url", page.url);
-	writestatefile(BROWSER_DIR + "/title", page.title);
-	writestatefile(BROWSER_DIR + "/body", page.body);
-	writestatefile(BROWSER_DIR + "/status", page.status);
+	# Take local snapshot to avoid races with navigator thread
+	p := page;
+	writestatefile(BROWSER_DIR + "/url", p.url);
+	writestatefile(BROWSER_DIR + "/title", p.title);
+	writestatefile(BROWSER_DIR + "/body", p.body);
+	writestatefile(BROWSER_DIR + "/status", p.status);
 
 	# Write link index
 	linktext := "";
-	for(i := 0; i < page.nlinks; i++) {
-		l := page.links[i];
+	plinks := p.links;
+	pnlinks := p.nlinks;
+	if(pnlinks > len plinks)
+		pnlinks = len plinks;
+	for(i := 0; i < pnlinks; i++) {
+		l := plinks[i];
 		linktext += sys->sprint("%d %s %s\n", l.num, l.href, l.text);
 	}
 	writestatefile(BROWSER_DIR + "/links", linktext);
 
 	# Write forms
-	writestatefile(BROWSER_DIR + "/forms", page.forms);
+	writestatefile(BROWSER_DIR + "/forms", p.forms);
 }
 
 writestatefile(path, data: string)
 {
-	fd := sys->create(path, Sys->OWRITE, 8r666);
+	fd := sys->create(path, Sys->OWRITE, 8r600);
 	if(fd == nil)
 		return;
 	b := array of byte data;
@@ -1145,7 +1171,7 @@ writestatefile(path, data: string)
 
 checkctlfile(): int
 {
-	cmd := readrmfile(BROWSER_DIR + "/ctl");
+	cmd := readctlfile(BROWSER_DIR + "/ctl");
 	if(cmd == nil || cmd == "")
 		return 0;
 
@@ -1155,19 +1181,21 @@ checkctlfile(): int
 	case verb {
 	"navigate" or "go" =>
 		rest = strip(rest);
-		if(rest != "")
-			spawn navigate(rest);
+		if(rest != "" && isallowedurl(rest))
+			requestnav(rest);
+		else if(rest != "")
+			sys->fprint(stderr, "charon: ctl: blocked non-http URL: %s\n", rest);
 	"back" =>
 		goback();
 	"forward" =>
 		goforward();
 	"reload" =>
 		if(page.url != "")
-			spawn navigate(page.url);
+			requestnav(page.url);
 	"follow" =>
 		n := atoi(strip(rest));
 		if(n > 0)
-			spawn followlink(n);
+			requestfollow(n);
 	"stop" =>
 		page.status = "ready";
 	"search" =>
@@ -1176,20 +1204,24 @@ checkctlfile(): int
 	return 1;
 }
 
-readrmfile(path: string): string
+# Read and atomically consume the ctl file.
+# Opens with ORDWR to minimize the TOCTOU window between read and truncate.
+readctlfile(path: string): string
 {
-	fd := sys->open(path, Sys->OREAD);
+	fd := sys->open(path, Sys->ORDWR);
 	if(fd == nil)
 		return nil;
 	buf := array[65536] of byte;
 	n := sys->read(fd, buf, len buf);
-	fd = nil;
-	if(n <= 0)
+	if(n <= 0) {
+		fd = nil;
 		return nil;
+	}
 	s := string buf[0:n];
-	# Truncate file to consume the command
-	fd = sys->create(path, Sys->OWRITE, 8r666);
 	fd = nil;
+	# Truncate file to consume the command
+	tfd := sys->create(path, Sys->OWRITE, 8r600);
+	tfd = nil;
 	return strip(s);
 }
 
@@ -1204,6 +1236,8 @@ searchpage(query: string)
 		start = 0;
 	for(i := 0; i < page.nlines; i++) {
 		idx := (start + i) % page.nlines;
+		if(idx >= len page.lines)
+			continue;
 		if(contains(tolower(page.lines[idx]), lquery)) {
 			topline = idx;
 			clampscroll();
@@ -1335,11 +1369,4 @@ atoi(s: string): int
 		n = n * 10 + (c - '0');
 	}
 	return n;
-}
-
-postnote(t, pid: int, note: string)
-{
-	fd := sys->open(sys->sprint("#p/%d/ctl", pid), Sys->OWRITE);
-	if(fd != nil)
-		sys->fprint(fd, "%s", note);
 }

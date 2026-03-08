@@ -24,6 +24,8 @@ Cookie: adt {
 	path: string;
 	expire: int;		# seconds from epoch, -1 => not set, 0 => expire now
 	secure: int;
+	httponly: int;
+	samesite: int;		# 0=none, 1=lax, 2=strict
 	touched: int;
 	link: cyclic ref Cookielist;	# linkage for list of cookies in the same domain
 };
@@ -346,7 +348,7 @@ cookie2str(ck: ref Cookie): string
 	namval := sys->sprint("%s=%s", ck.name, ck.value);
 	if (len namval > MAXCKLEN)
 		namval = namval[:MAXCKLEN];
-	return sys->sprint("%s\t%s\t%d\t%d\t%s", ck.dom, ck.path, ck.expire, ck.secure, namval);
+	return sys->sprint("%s\t%s\t%d\t%d\t%d\t%d\t%s", ck.dom, ck.path, ck.expire, ck.secure, ck.httponly, ck.samesite, namval);
 }
 
 loadcookie(ckstr: string)
@@ -355,10 +357,17 @@ loadcookie(ckstr: string)
 	if (n < 5)
 		return;
 	dom, path, exp, sec, namval: string;
+	httponly := "0";
+	samesite := "0";
 	(dom, toks) = (hd toks, tl toks);
 	(path, toks) = (hd toks, tl toks);
 	(exp, toks) = (hd toks, tl toks);
 	(sec, toks) = (hd toks, tl toks);
+	# New format has httponly and samesite fields before namval
+	if (n >= 7) {
+		(httponly, toks) = (hd toks, tl toks);
+		(samesite, toks) = (hd toks, tl toks);
+	}
 	(namval, toks) = (hd toks, tl toks);
 
 	# some sanity checks
@@ -369,7 +378,13 @@ loadcookie(ckstr: string)
 	if (value == nil)
 		return;
 	value = value[1:];
-	ck := ref Cookie(name, value, dom, path, int exp, int sec, touch++, nil);
+
+	# Sanitize cookie value — reject values containing control characters
+	# that could cause HTTP header injection
+	if (!cookievalsafe(value))
+		return;
+
+	ck := ref Cookie(name, value, dom, path, int exp, int sec, int httponly, int samesite, touch++, nil);
 	setcookie(ck);
 }
 
@@ -418,9 +433,9 @@ Client.getcookies(nil: self ref Client, host, path: string, secure: int): string
 
 	mergesort(cka, nil, SORT_PATHLEN);
 
-	s := sys->sprint("%s=%s", cka[0].name, cka[0].value);
+	s := sys->sprint("%s=%s", sanitizecookieval(cka[0].name), sanitizecookieval(cka[0].value));
 	for (i = 1; i < len cka; i++)
-		s += sys->sprint("; %s=%s", cka[i].name, cka[i].value);
+		s += sys->sprint("; %s=%s", sanitizecookieval(cka[i].name), sanitizecookieval(cka[i].value));
 	return s;
 }
 
@@ -430,13 +445,13 @@ save()
 	if (fd == nil)
 		return;
 	cka := array [ncookies] of ref Cookie;
-#	ix := getallcookies(doms, cka, 0);
-	mergesort(cka, nil, SORT_TOUCHED);
+	ix := getallcookies(doms, cka, 0);
+	mergesort(cka[:ix], nil, SORT_TOUCHED);
 
-	for (i := 0; i < ncookies; i++) {
+	for (i := 0; i < ix; i++) {
 		ck := cka[i];
-		if (ck != nil && ck.expire > now)
-			sys->fprint(fd, "%s\n", cookie2str(cka[i]));
+		if (ck != nil && (ck.expire == -1 || ck.expire > now))
+			sys->fprint(fd, "%s\n", cookie2str(ck));
 	}
 }
 
@@ -456,7 +471,7 @@ parsecookie(dom, path, cookie: string): ref Cookie
 		value = value[1:];
 	value = trim(value);
 
-	ck := ref Cookie(name, value, dom, defpath, -1, 0, 0, nil);
+	ck := ref Cookie(name, value, dom, defpath, -1, 0, 0, 0, 0, nil);
 	for (; toks != nil; toks = tl toks) {
 		(name, value) = S->splitl(hd toks, "=");
 		if (value != nil && value[0] == '=')
@@ -468,20 +483,62 @@ parsecookie(dom, path, cookie: string): ref Cookie
 			ck.dom = value;
 		"expires" =>
 			ck.expire = date2sec(value);
+		"max-age" =>
+			secs := int value;
+			if (secs <= 0)
+				ck.expire = 0;
+			else
+				ck.expire = now + secs;
 		"path" =>
 			ck.path = value;
 		"secure" =>
 			ck.secure = 1;
+		"httponly" =>
+			ck.httponly = 1;
+		"samesite" =>
+			case S->tolower(value) {
+			"strict" =>
+				ck.samesite = 2;
+			"lax" =>
+				ck.samesite = 1;
+			* =>
+				ck.samesite = 0;
+			}
 		}
 	}
+	# Reject cookies with unsafe values (header injection prevention)
+	if (!cookievalsafe(ck.value))
+		return nil;
 	if (ckcookie(ck, dom, path))
 		return ck;
 	return nil;
 }
 
-# Top Level Domains as defined in Netscape cookie spec
+# Top Level Domains — expanded beyond original Netscape spec.
+# Includes original gTLDs, common new gTLDs, and effective TLDs
+# for country-code domains where second-level registration is common.
 tld := array [] of {
-	".com", ".edu", ".net", ".org", ".gov", ".mil", ".int"
+	# Original Netscape gTLDs
+	".com", ".edu", ".net", ".org", ".gov", ".mil", ".int",
+	# Common new gTLDs
+	".info", ".biz", ".name", ".pro", ".aero", ".coop", ".museum",
+	".io", ".app", ".dev", ".cloud", ".xyz", ".site", ".online",
+	".tech", ".store", ".blog", ".ai",
+	# Effective TLDs for ccTLD second-level domains
+	".co.uk", ".org.uk", ".ac.uk", ".gov.uk",
+	".co.jp", ".or.jp", ".ne.jp", ".ac.jp",
+	".com.au", ".net.au", ".org.au", ".edu.au",
+	".co.nz", ".net.nz", ".org.nz",
+	".com.br", ".org.br", ".net.br",
+	".co.in", ".net.in", ".org.in",
+	".co.kr", ".or.kr",
+	".com.cn", ".net.cn", ".org.cn",
+	".co.za", ".org.za",
+	".com.mx", ".org.mx",
+	".com.ar", ".org.ar",
+	".co.il",
+	".com.sg", ".org.sg",
+	".com.hk", ".org.hk"
 };
 
 ckcookie(ck: ref Cookie, host, path: string): int
@@ -492,7 +549,7 @@ ckcookie(ck: ref Cookie, host, path: string): int
 	if (ck.path == "" || ck.dom == "")
 		return 0;
 	if (host == "" || path == "")
-		return 1;
+		return 0;
 
 # netscape does no path check on accpeting a cookie
 # any page can set a cookie on any path within its domain.
@@ -529,6 +586,31 @@ ckcookie(ck: ref Cookie, host, path: string): int
 	if (ndots < 3)
 		return 0;
 	return 1;
+}
+
+# Check that a cookie value does not contain characters that could
+# cause HTTP header injection (\r, \n) or other control characters.
+cookievalsafe(s: string): int
+{
+	for (i := 0; i < len s; i++) {
+		c := s[i];
+		if (c == '\n' || c == '\r' || c < 16r20)
+			return 0;
+	}
+	return 1;
+}
+
+# Strip control characters from a cookie name or value for safe
+# inclusion in HTTP headers. Defense-in-depth against header injection.
+sanitizecookieval(s: string): string
+{
+	result := "";
+	for (i := 0; i < len s; i++) {
+		c := s[i];
+		if (c != '\n' && c != '\r' && c >= 16r20)
+			result[len result] = c;
+	}
+	return result;
 }
 
 trim(s: string): string

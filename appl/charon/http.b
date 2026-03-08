@@ -8,39 +8,32 @@ include "date.m";
 # sslhs: SSLHS;
 ssl3: SSL3;
 Context: import ssl3;
-# Inferno supported cipher suites:
+# Cipher suites — prefer modern authenticated suites, no EXPORT/anon/NULL.
+# Ordered by preference: AES-GCM > AES-CBC > 3DES (fallback only).
+# Removed: all EXPORT (40-bit), DES, RC4, RC2, IDEA, anonymous DH,
+# FORTEZZA, and NULL cipher suites.
 ssl_suites := array [] of {
-	byte 0, byte 16r03,	# RSA_EXPORT_WITH_RC4_40_MD5
-	byte 0, byte 16r04,	# RSA_WITH_RC4_128_MD5
-	byte 0, byte 16r05,	# RSA_WITH_RC4_128_SHA
-	byte 0, byte 16r06,	# RSA_EXPORT_WITH_RC2_CBC_40_MD5
-	byte 0, byte 16r07,	# RSA_WITH_IDEA_CBC_SHA
-	byte 0, byte 16r08,	# RSA_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r09,	# RSA_WITH_DES_CBC_SHA
-	byte 0, byte 16r0A,	# RSA_WITH_3DES_EDE_CBC_SHA
-	
-	byte 0, byte 16r0B,	# DH_DSS_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r0C,	# DH_DSS_WITH_DES_CBC_SHA
-	byte 0, byte 16r0D,	# DH_DSS_WITH_3DES_EDE_CBC_SHA
-	byte 0, byte 16r0E,	# DH_RSA_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r0F,	# DH_RSA_WITH_DES_CBC_SHA
-	byte 0, byte 16r10,	# DH_RSA_WITH_3DES_EDE_CBC_SHA
-	byte 0, byte 16r11,	# DHE_DSS_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r12,	# DHE_DSS_WITH_DES_CBC_SHA
-	byte 0, byte 16r13,	# DHE_DSS_WITH_3DES_EDE_CBC_SHA
-	byte 0, byte 16r14,	# DHE_RSA_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r15,	# DHE_RSA_WITH_DES_CBC_SHA
-	byte 0, byte 16r16,	# DHE_RSA_WITH_3DES_EDE_CBC_SHA
-	
-	byte 0, byte 16r17,	# DH_anon_EXPORT_WITH_RC4_40_MD5
-	byte 0, byte 16r18,	# DH_anon_WITH_RC4_128_MD5
-	byte 0, byte 16r19,	# DH_anon_EXPORT_WITH_DES40_CBC_SHA
-	byte 0, byte 16r1A,	# DH_anon_WITH_DES_CBC_SHA
-	byte 0, byte 16r1B,	# DH_anon_WITH_3DES_EDE_CBC_SHA
-	
-	byte 0, byte 16r1C,	# FORTEZZA_KEA_WITH_NULL_SHA
-	byte 0, byte 16r1D,	# FORTEZZA_KEA_WITH_FORTEZZA_CBC_SHA
-	byte 0, byte 16r1E,	# FORTEZZA_KEA_WITH_RC4_128_SHA
+	# TLS 1.2 AES-GCM (preferred — AEAD, no padding oracle)
+	byte 16r00, byte 16r9F,	# DHE_RSA_WITH_AES_256_GCM_SHA384
+	byte 16r00, byte 16r9E,	# DHE_RSA_WITH_AES_128_GCM_SHA256
+	byte 16r00, byte 16r9D,	# RSA_WITH_AES_256_GCM_SHA384
+	byte 16r00, byte 16r9C,	# RSA_WITH_AES_128_GCM_SHA256
+
+	# TLS 1.2 AES-CBC with SHA256/SHA384
+	byte 16r00, byte 16r6B,	# DHE_RSA_WITH_AES_256_CBC_SHA256
+	byte 16r00, byte 16r67,	# DHE_RSA_WITH_AES_128_CBC_SHA256
+	byte 16r00, byte 16r3D,	# RSA_WITH_AES_256_CBC_SHA256
+	byte 16r00, byte 16r3C,	# RSA_WITH_AES_128_CBC_SHA256
+
+	# TLS 1.0/1.1 AES-CBC with SHA1 (widely supported fallback)
+	byte 16r00, byte 16r33,	# DHE_RSA_WITH_AES_128_CBC_SHA
+	byte 16r00, byte 16r39,	# DHE_RSA_WITH_AES_256_CBC_SHA
+	byte 16r00, byte 16r2F,	# RSA_WITH_AES_128_CBC_SHA
+	byte 16r00, byte 16r35,	# RSA_WITH_AES_256_CBC_SHA
+
+	# 3DES as last resort (vulnerable to Sweet32 but better than nothing)
+	byte 16r00, byte 16r16,	# DHE_RSA_WITH_3DES_EDE_CBC_SHA
+	byte 16r00, byte 16r0A,	# RSA_WITH_3DES_EDE_CBC_SHA
 };
 
 ssl_comprs := array [] of {byte 0};
@@ -117,7 +110,7 @@ hdrnames := array[] of {
 	"Max-Forwards",
 	"Proxy-Authorization",
 	"Range",
-	"Refererer",
+	"Referer",
 	"User-Agent",
 	"Cookie",
 	"Accept-Ranges",
@@ -323,18 +316,17 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 					err = "ssl is configured off";
 				else if((config.usessl & CU->SSLV23) == CU->SSLV23)
 					vers = 23;
-	 			else if(config.usessl & CU->SSLV2)
-					vers = 2;
 	 			else if(config.usessl & CU->SSLV3)
 					vers = 3;
+				else
+					vers = 3;	# default to TLS (SSLv2 no longer supported)
 			}
  			if(err == "") {
  				nc.sslx = ssl3->Context.new();
  				if(config.devssl)
  					nc.sslx.use_devssl();
- 				info := ref SSL3->Authinfo(ssl_suites, ssl_comprs, nil, 
+ 				info := ref SSL3->Authinfo(ssl_suites, ssl_comprs, nil,
  						0, nil, nil, nil);
-vers = 3;
  				(err, nc.vers) =  nc.sslx.client(nc.conn.dfd, addr, vers, info);
  			}
 		}
@@ -375,26 +367,32 @@ constate(msg: string, conn: Sys->Connection)
 tunnel_ssl(nc: ref Netconn) : string
 {
 	httpvers: string;
-	if(nc.state&THTTP_1_0)
+	if(nc.tstate&THTTP_1_0)
 		httpvers = "1.0";
 	else
 		httpvers = "1.1";
-	req := "CONNECT " + nc.host + ":" + string nc.port + " HTTP/" + httpvers;
- 	n := sys->fprint(nc.conn.dfd, "%s\r\n\r\n", req);
+	target := nc.host + ":" + string nc.port;
+	n := sys->fprint(nc.conn.dfd, "CONNECT %s HTTP/%s\r\nHost: %s\r\n\r\n",
+		target, httpvers, target);
 	if(n < 0)
 		return sys->sprint("proxy: %r");
 	buf := array [Sys->ATOMICIO] of byte;
 	n = sys->read(nc.conn.dfd, buf, Sys->ATOMICIO);
 	if(n < 0)
-		return sys->sprint("proxy: %r");;
+		return sys->sprint("proxy: %r");
+	if(n == 0)
+		return "proxy: connection closed";
 	resp := string buf[0:n];
 	(m, s) := sys->tokenize(resp, " ");
 
 	if(m < 2)
-		return "proxy: " + resp;
-	if(hd tl s != "200"){
+		return "proxy: unexpected response: " + resp;
+	code := hd tl s;
+	if(code != "200"){
 		(nil, e) := sys->tokenize(resp, "\n\r");
-		return hd e;
+		if(e != nil)
+			return "proxy: " + hd e;
+		return "proxy: connection failed (code " + code + ")";
 	}
 	return "";
 }
