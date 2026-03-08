@@ -208,7 +208,6 @@ runchild(caps, task)
 DOES NOT EXIST (never created):
 /usr/
 /etc/
-/appl/ooda/
 /lib/
 ```
 
@@ -331,7 +330,6 @@ Same end state as Approach A:
 
 DOES NOT EXIST (unmounted):
 /usr/
-/appl/ooda/
 /lib/
 /n/
 ```
@@ -518,7 +516,7 @@ Expected: Succeeds - /appl/veltro is within parent's /appl
 ```
 Child granted: paths=[/appl/veltro]
 
-Test: Child runs "cat /appl/ooda/ooda.b"
+Test: Child runs "cat /appl/cmd/date.b"
 Expected: "file not found" (not "access denied")
 
 Test: Child runs "ls /appl"
