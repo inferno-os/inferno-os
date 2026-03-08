@@ -210,8 +210,12 @@ exec(args: string): string
 		speclist = tl speclist;
 		salist = tl salist;
 
+		# Filter out memory tool — parent agent owns memory exclusively.
+		# Subagents return results via pipe; parent persists what matters.
+		childtools := dropitem("memory", spec.tools);
+
 		caps := ref NsConstruct->Capabilities(
-			spec.tools,
+			childtools,
 			spec.paths,
 			spec.shellcmds,
 			spec.llmconfig,
@@ -705,6 +709,16 @@ inlist(needle: string, l: list of string): int
 		if(hd l == needle)
 			return 1;
 	return 0;
+}
+
+# Remove a single item from a string list.
+dropitem(item: string, l: list of string): list of string
+{
+	result: list of string;
+	for(; l != nil; l = tl l)
+		if(hd l != item)
+			result = hd l :: result;
+	return reverse(result);
 }
 
 # Reverse a list of strings.
