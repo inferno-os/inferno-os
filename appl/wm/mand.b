@@ -70,7 +70,10 @@ Calc: adt {
 	pointsdone:	int;
 };
 
-# Fixed-point constants
+# Fixed-point arithmetic: 60 bits of fraction in a 64-bit big.
+# This gives ~18 decimal digits of precision while leaving 4 bits
+# for the integer part (range roughly ±8), sufficient for the
+# Mandelbrot escape radius of 4.
 BASE:	con 60;
 HBASE:	con BASE / 2;
 SCALE:	con big 1 << BASE;
@@ -85,6 +88,7 @@ BLANK:	con 0;
 BORDER:	con 255;
 LIMIT:	con 4;
 MAXCOUNT: con 253;
+MAXDEPTH: con 20;	# cap depth multiplier to avoid freezing (20 * 253 = 5060 iterations)
 
 # Initial size
 WIDTH:	con 400;
@@ -285,6 +289,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						julp = p.p;
 						restart = 1;
 					}
+				Depth =>
+					kdivisor = u.d;
+					restart = 1;
+				Fill =>
+					fill = u.on;
+					restart = 1;
 				Restart =>
 					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
 					stack = nil;
@@ -367,8 +377,14 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 {
 	if(menumod == nil)
 		return nil;
+	fillstr := "fill on";
+	if(g_fill)
+		fillstr = "fill off";
 	menu := menumod->new(array[] of {
 		"zoom out",
+		"depth+",
+		"depth-",
+		fillstr,
 		"reset",
 		"exit"
 	});
@@ -377,8 +393,18 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 	0 =>
 		return ref Usercmd.Zoomout;
 	1 =>
-		return ref Usercmd.Restart;
+		d := g_kdivisor + 1;
+		if(d > MAXDEPTH) d = MAXDEPTH;
+		return ref Usercmd.Depth(d);
 	2 =>
+		d := g_kdivisor - 1;
+		if(d < 1) d = 1;
+		return ref Usercmd.Depth(d);
+	3 =>
+		return ref Usercmd.Fill(!g_fill);
+	4 =>
+		return ref Usercmd.Restart;
+	5 =>
 		postnote(1, sys->pctl(0, nil), "kill");
 		exit;
 	}
@@ -635,6 +661,7 @@ fillline(calc: ref Calc, x, y, d, dir, dird, col: int)
 	horizline(calc, calc.img, x0, x, y, col);
 }
 
+# Re-trace boundary and fill interior scan-lines with fillline.
 crawlt(calc: ref Calc, x, y, d, col: int)
 {
 	yinc, dyinc: int;
@@ -672,6 +699,8 @@ crawlt(calc: ref Calc, x, y, d, col: int)
 	}
 }
 
+# Trace boundary of a same-colour region, computing its signed area.
+# If the area is positive (clockwise winding), hand off to crawlt to fill.
 crawlf(calc: ref Calc, x, y, d, col: int)
 {
 	xinc, yinc, dxinc, dyinc: int;
@@ -712,6 +741,10 @@ crawlf(calc: ref Calc, x, y, d, col: int)
 		crawlt(calc, x, y, firstd, col);
 }
 
+# Boundary-trace fill: scan columns for runs of identical colour.
+# When a run of LIMIT identical pixels is found, crawlf traces the
+# boundary of the region and crawlt flood-fills the interior using
+# horizline, avoiding per-pixel computation for large solid areas.
 displayset(calc: ref Calc)
 {
 	last := BLANK;
@@ -773,6 +806,7 @@ horizline(calc: ref Calc, d: ref Image, x0, x1, y: int, col: int)
 
 initfractdir()
 {
+	mkdirq("/tmp/veltro");
 	mkdirq(FRACT_DIR);
 }
 
@@ -913,6 +947,7 @@ checkctlfile(specr: Fracrect, p: Params, stack: list of (Fracrect, Params),
 			return nil;
 		d := int hd toks;
 		if(d < 1) d = 1;
+		if(d > MAXDEPTH) d = MAXDEPTH;
 		return ref Usercmd.Depth(d);
 	"fill" =>
 		if(toks == nil)
