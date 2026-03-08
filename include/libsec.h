@@ -460,7 +460,7 @@ void	slhdsa_wots_pk_from_sig(uchar*, int, const uchar*, const uchar*, const ucha
 int	slhdsa_wots_len(int);
 void	slhdsa_fors_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, uchar*, int, int);
 void	slhdsa_fors_pk_from_sig(uchar*, int, const uchar*, const uchar*, const uchar*, int, uchar*, int, int);
-void	slhdsa_treehash(uchar*, uchar*, int, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
+int	slhdsa_treehash(uchar*, uchar*, int, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
 void	slhdsa_xmss_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
 void	slhdsa_xmss_root_from_sig(uchar*, int, const uchar*, int, const uchar*, const uchar*, int, u32int, u64int, int);
 void	slhdsa_ht_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u64int, u32int, int, int);
