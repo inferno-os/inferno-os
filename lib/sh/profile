@@ -19,7 +19,9 @@ ndb/cs
 
 # Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
-	# llm9p is started by the app launcher before emu runs; just mount it.
+	# Start llm9p if not already running (no-op when launched via app bundle).
+	infraroot=`{cat /env/emuroot}
+	os sh $infraroot^'/lib/sh/start-llm9p.sh' >[2] /dev/null
 	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
 
 	# Start speech file server (TTS/STT via /n/speech)
