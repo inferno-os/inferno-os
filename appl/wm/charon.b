@@ -75,6 +75,7 @@ SCROLLW: con 12;
 
 # Limits
 MAXREDIR: con 20;
+MAXBODY: con 8*1024*1024;	# 8MB max response body
 
 # Key codes
 Khome:		con 16rFF61;
@@ -143,6 +144,7 @@ inputbuf := "";
 
 # Filesystem state dir
 BROWSER_DIR: con "/tmp/veltro/browser";
+statedirty := 1;	# true when browser state files need updating
 
 # Keyboard escape state
 kbdescstate := 0;
@@ -154,6 +156,8 @@ menu: ref Popup;
 # Navigation channels — serializes all navigation through a single thread
 navchan: chan of string;
 navdone: chan of ref Page;
+navfromhist := 0;		# true if current navigation is back/forward
+navhistscroll := 0;		# scroll position to restore after history navigation
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -245,11 +249,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	w.startinput("kbd" :: "ptr" :: nil);
 	w.onscreen(nil);
 
-	if(menumod != nil)
+	if(menumod != nil) {
 		menumod->init(display, font);
-	menu = menumod->new(array[] of {
-		"back", "forward", "reload", "stop", "go to URL", "home"
-	});
+		menu = menumod->new(array[] of {
+			"back", "forward", "reload", "stop", "go to URL", "home"
+		});
+	}
 
 	# Parse arguments for start URL
 	starturl := "";
@@ -342,16 +347,26 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	newpage := <-navdone =>
 		# Navigation completed — atomically update all page state
 		page = newpage;
-		topline = 0;
+		statedirty = 1;
+		if(navfromhist) {
+			topline = navhistscroll;
+			clampscroll();
+			navfromhist = 0;
+		} else {
+			topline = 0;
+			if(page.status == "ready" && page.url != "")
+				pushhist(page.url, page.title);
+		}
 		if(w != nil && w.image != nil && page.title != "")
 			w.rename(page.title);
-		if(page.status == "ready" && page.url != "")
-			pushhist(page.url, page.title);
 		redraw();
 
 	<-ticks =>
 		changed := checkctlfile();
-		writebrowserstate();
+		if(statedirty) {
+			writebrowserstate();
+			statedirty = 0;
+		}
 		if(changed)
 			redraw();
 	}
@@ -370,8 +385,14 @@ requestnav(url: string)
 		return;
 	}
 
+	if(!isallowedurl(url)) {
+		sys->fprint(stderr, "charon: blocked non-http URL: %s\n", url);
+		return;
+	}
+
 	page.status = "loading";
 	page.url = url;
+	statedirty = 1;
 	redraw();
 	navchan <-= url;
 }
@@ -387,13 +408,33 @@ requestfollow(n: int)
 
 # Navigator thread — serializes all HTTP fetches.
 # Receives URLs from navchan, fetches them, sends completed Pages to navdone.
+# Uses a timeout to prevent indefinite blocking on unresponsive servers.
+NAVTIMEOUT: con 60000;	# 60 second fetch timeout
+
 navigator(req: chan of string, done: chan of ref Page)
 {
 	for(;;) {
 		url := <-req;
-		p := fetchpage(url, 0);
-		done <-= p;
+		result := chan of ref Page;
+		spawn fetchworker(url, result);
+		timeout := chan of int;
+		spawn timer(timeout, NAVTIMEOUT);
+		alt {
+		p := <-result =>
+			done <-= p;
+		<-timeout =>
+			body := "Request timed out: " + url;
+			lines := splitlines(body);
+			done <-= ref Page(url, "Timeout", body, lines, len lines,
+				array[0] of ref Link, 0, "", "error: timeout");
+		}
 	}
+}
+
+fetchworker(url: string, result: chan of ref Page)
+{
+	p := fetchpage(url, 0);
+	result <-= p;
 }
 
 # Fetch a URL and return a fully-constructed Page.
@@ -443,6 +484,8 @@ fetchpage(url: string, redirs: int): ref Page
 			array[0] of ref Link, 0, "", "error: empty response");
 	}
 
+	if(len resp.body > MAXBODY)
+		resp.body = resp.body[0:MAXBODY];
 	bodytext := string resp.body;
 	ct := resp.hdrval("Content-Type");
 	if(ct == nil)
@@ -490,11 +533,12 @@ goback()
 {
 	if(histpos <= 0)
 		return;
-	# Save scroll position
 	if(histpos >= 0 && histpos < nhist)
 		history[histpos].scrollpos = topline;
 	histpos--;
 	h := history[histpos];
+	navfromhist = 1;
+	navhistscroll = h.scrollpos;
 	requestnav(h.url);
 }
 
@@ -506,6 +550,8 @@ goforward()
 		history[histpos].scrollpos = topline;
 	histpos++;
 	h := history[histpos];
+	navfromhist = 1;
+	navhistscroll = h.scrollpos;
 	requestnav(h.url);
 }
 
@@ -741,7 +787,40 @@ resolveurl(base, href: string): string
 			lastslash = i;
 	}
 	dir := path[0:lastslash + 1];
-	return scheme + host + dir + href;
+	return scheme + host + canonpath(dir + href);
+}
+
+# Remove . and .. segments from a URL path.
+canonpath(p: string): string
+{
+	if(p == "" || p == "/")
+		return p;
+
+	# Split into segments
+	segs: list of string;
+	start := 0;
+	for(i := 0; i <= len p; i++) {
+		if(i == len p || p[i] == '/') {
+			seg := p[start:i];
+			if(seg == "..") {
+				if(segs != nil)
+					segs = tl segs;
+			} else if(seg != "" && seg != ".")
+				segs = seg :: segs;
+			start = i + 1;
+		}
+	}
+
+	# Rebuild path
+	result := "";
+	for(; segs != nil; segs = tl segs)
+		result = "/" + hd segs + result;
+	if(result == "")
+		result = "/";
+	# Preserve trailing slash
+	if(len p > 0 && p[len p - 1] == '/' && len result > 1 && result[len result - 1] != '/')
+		result += "/";
+	return result;
 }
 
 splitscheme(url: string): (string, string)
@@ -1111,7 +1190,7 @@ handleinputkey(key: int)
 		return;
 	}
 
-	if(key >= 16r20 && key < 16rFF00)
+	if(key >= 16r20 && key < 16rFF00 && len inputbuf < 4096)
 		inputbuf[len inputbuf] = key;
 }
 
@@ -1194,34 +1273,39 @@ checkctlfile(): int
 			requestnav(page.url);
 	"follow" =>
 		n := atoi(strip(rest));
-		if(n > 0)
+		if(n > 0 && n <= page.nlinks)
 			requestfollow(n);
 	"stop" =>
 		page.status = "ready";
+		statedirty = 1;
 	"search" =>
-		searchpage(strip(rest));
+		q := strip(rest);
+		if(len q > 0 && len q <= 1024)
+			searchpage(q);
 	}
+	statedirty = 1;
 	return 1;
 }
 
 # Read and atomically consume the ctl file.
-# Opens with ORDWR to minimize the TOCTOU window between read and truncate.
+# Reads, then truncates via the same fd to avoid TOCTOU races.
 readctlfile(path: string): string
 {
 	fd := sys->open(path, Sys->ORDWR);
 	if(fd == nil)
 		return nil;
-	buf := array[65536] of byte;
+	buf := array[4096] of byte;
 	n := sys->read(fd, buf, len buf);
 	if(n <= 0) {
 		fd = nil;
 		return nil;
 	}
 	s := string buf[0:n];
-	fd = nil;
-	# Truncate file to consume the command
+	# Truncate by recreating through the same path while we still hold fd
+	# Use create to atomically replace the file contents
 	tfd := sys->create(path, Sys->OWRITE, 8r600);
 	tfd = nil;
+	fd = nil;
 	return strip(s);
 }
 

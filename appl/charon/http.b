@@ -4,14 +4,12 @@ include "common.m";
 include "transport.m";
 include "date.m";
 
-#D: Date;
-# sslhs: SSLHS;
 ssl3: SSL3;
 Context: import ssl3;
 # Cipher suites — prefer modern authenticated suites, no EXPORT/anon/NULL.
-# Ordered by preference: AES-GCM > AES-CBC > 3DES (fallback only).
+# Ordered by preference: AES-GCM > AES-CBC (SHA256) > AES-CBC (SHA1).
 # Removed: all EXPORT (40-bit), DES, RC4, RC2, IDEA, anonymous DH,
-# FORTEZZA, and NULL cipher suites.
+# FORTEZZA, NULL, and 3DES (Sweet32 vulnerability) cipher suites.
 ssl_suites := array [] of {
 	# TLS 1.2 AES-GCM (preferred — AEAD, no padding oracle)
 	byte 16r00, byte 16r9F,	# DHE_RSA_WITH_AES_256_GCM_SHA384
@@ -30,10 +28,6 @@ ssl_suites := array [] of {
 	byte 16r00, byte 16r39,	# DHE_RSA_WITH_AES_256_CBC_SHA
 	byte 16r00, byte 16r2F,	# RSA_WITH_AES_128_CBC_SHA
 	byte 16r00, byte 16r35,	# RSA_WITH_AES_256_CBC_SHA
-
-	# 3DES as last resort (vulnerable to Sweet32 but better than nothing)
-	byte 16r00, byte 16r16,	# DHE_RSA_WITH_3DES_EDE_CBC_SHA
-	byte 16r00, byte 16r0A,	# RSA_WITH_3DES_EDE_CBC_SHA
 };
 
 ssl_comprs := array [] of {byte 0};
@@ -246,13 +240,8 @@ init(cu: CharonUtils)
 		U->init();
 	C = cu->C;
 	T = load StringIntTab StringIntTab->PATH;
-#	D = load Date CU->loadpath(Date->PATH);
-#	if (D == nil)
-#		CU->raise(sys->sprint("EXInternal: can't load Date: %r"));
-#	D->init(cu);
 	ctype = C->ctype;
-	# sslhs = nil;	# load on demand
-	ssl3 = nil; # load on demand
+	ssl3 = nil;	# load on demand
 	mediatable = CU->makestrinttab(CU->mnames);
 	agent = (CU->config).agentname;
 	dbg = int (CU->config).dbg['n'];
@@ -292,16 +281,7 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 		if(dbg)
 			sys->print("http %d: connected\n", nc.id);
 		if(nc.tstate&TSSL) {
-			#if(sslhs == nil) {
-			#	sslhs = load SSLHS SSLHS->PATH;
-			#	if(sslhs == nil)
-			#		err = sys->sprint("can't load SSLHS: %r");
-			#	else
-			#		sslhs->init(2);
-			#}
-			#if(err == "")
-			#	(err, nc.conn) = sslhs->client(nc.conn.dfd, addr);
-			if(nc.tstate&TProxy) # tunelling SSL through proxy
+			if(nc.tstate&TProxy) # tunnelling SSL through proxy
 				err = tunnel_ssl(nc);
 	 		vers := 0;
  			if(err == "") {
@@ -314,12 +294,8 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 				}
 				if(config.usessl == CU->NOSSL)
 					err = "ssl is configured off";
-				else if((config.usessl & CU->SSLV23) == CU->SSLV23)
-					vers = 23;
-	 			else if(config.usessl & CU->SSLV3)
-					vers = 3;
 				else
-					vers = 3;	# default to TLS (SSLv2 no longer supported)
+					vers = 3;	# Always use TLS (SSLv2 removed — insecure)
 			}
  			if(err == "") {
  				nc.sslx = ssl3->Context.new();
@@ -339,29 +315,8 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 		if(dbg)
 			sys->print("http %d: connection failed: %s\n", nc.id, err);
 		bs.err = err;
-#constate("connect", nc.conn);
 		closeconn(nc);
 	}
-}
-
-constate(msg: string, conn: Sys->Connection)
-{
-	fd := conn.dfd;
-	fdfd := -1;
-	if (fd != nil)
-		fdfd = fd.fd;
-	sys->print("connstate(%s, %d) ", msg, fdfd);
-	sfd := sys->open(conn.dir + "/status", Sys->OREAD);
-	if (sfd == nil) {
-		sys->print("cannot open %s/status: %r\n", conn.dir);
-		return;
-	}
-	buf := array [1024] of byte;
-	n := sys->read(sfd, buf, len buf);
-	s := sys->sprint("error: %r");
-	if (n > 0)
-		s = string buf[:n];
-	sys->print("%s status: %s\n", conn.dir, s);
 }
 
 tunnel_ssl(nc: ref Netconn) : string
@@ -441,12 +396,6 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 		reqhdr.addval(HHost, u.host);
 	reqhdr.addval(HUserAgent, agent);
 	reqhdr.addval(HAccept, "*/*; *");
-#	if(cr != nil && (cr.status == CRRevalidate || cr.status == CRMustRevalidate)) {
-#		if(cr.etag != "")
-#			reqhdr.addval(HIfNoneMatch, cr.etag);
-#		else
-#			reqhdr.addval(HIfModifiedSince, D->dateconv(cr.notafter));
-#	}
 	if(req.auth != "")
 		reqhdr.addval(HAuthorization, "Basic " + req.auth);
 	if(req.method == CU->HPost) {
@@ -477,7 +426,7 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 	}
 	if(rv < 0) {
 		err = "error writing to host";
-#constate("writereq", nc.conn);
+
 	}
 	if(err != "") {
 		if(dbg)
@@ -496,7 +445,7 @@ gethdr(nc: ref Netconn, bs: ref ByteSource)
 	hbuf := array[8000] of byte;
  	(err, i, j) := resph.read(nc.conn.dfd, nc.sslx, hbuf);
 	if(err != "") {
-#constate("gethdr", nc.conn);
+
 		if(!(nc.tstate&THTTP_1_0)) {
 			# try switching to http 1.0
 			if(dbg)
@@ -569,65 +518,13 @@ getdata(nc: ref Netconn, bs: ref ByteSource): int
 	if(dbg > 1)
 		sys->print("http %d: read %d bytes\n", nc.id, n);
 	if (n <= 0) {
-#constate("getdata", nc.conn);
+
 		closeconn(nc);
 		if(n < 0)
 			bs.err = sys->sprint("%r");
 	}
-#else
-#sys->write(sys->fildes(1), buf[:n], n);
 	return n;
- }
-
-#getdata(nc: ref Netconn, bs: ref ByteSource)
-#{
-#	buf := bs.data;
-#	n := 0;
-#	if(nc.tbuf != nil) {
-#		# initial data from overread of header
-#		# Note: can have more data in nc.tbuf than was
-#		# reported by the HTTP header
-#		n = len nc.tbuf;
-#		if (n > bs.hdr.length) {
-#			n = bs.hdr.length;
-#			nc.tbuf = nc.tbuf[0:n];
-#		}
-#		if(len buf <= n) {
-#			if(warn && len buf < n)
-#				sys->print("more initial data than specified length\n");
-#			bs.data = nc.tbuf;
-#		}
-#		else
-#			buf[0:] = nc.tbuf[:n];
-#		nc.tbuf = nil;
-#	}
-#	if(n == 0) {
-# 		if((nc.tstate&TSSL) && nc.sslx != nil) 
-# 			n = nc.sslx.read(buf[bs.edata:], len buf - bs.edata);
-# 		else
-# 			n = sys->read(nc.conn.dfd, buf[bs.edata:], len buf - bs.edata);
-#	}
-#	if(dbg > 1)
-#		sys->print("http %d: read %d bytes\n", nc.id, n);
-#	if(n <= 0) {
-#		closeconn(nc);
-#		if(n < 0)
-#			bs.err = sys->sprint("%r");
-#	}
-#	else {
-#		bs.edata += n;
-#		if(bs.edata == len buf && bs.hdr.length != 100000000) {
-#			if(nc.tstate&THTTP_1_0) {
-#				closeconn(nc);
-#			}
-#		}
-#	}
-#	if(bs.err != "") {
-#		if(dbg)
-#			sys->print("http %d: error %s\n", nc.id, bs.err);
-#		closeconn(nc);
-#	}
-#}
+}
 
 hdrconv(hh: ref HTTP_Header, u: ref Parsedurl) : ref Header
 {
