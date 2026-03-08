@@ -1,6 +1,8 @@
 #include	"dat.h"
 #include	"fns.h"
 
+extern void prng(uchar *buf, int nbytes);
+
 static struct
 {
 	QLock	l;
@@ -18,6 +20,7 @@ static struct
 	uchar	filled;
 	int	kprocstarted;
 	ulong	randn;
+	ulong	mixstate;	/* additional non-linear mixer state */
 	int	target;
 } rb;
 
@@ -99,6 +102,14 @@ randominit(void)
 	rb.target = 16;
 	rb.ep = rb.buf + sizeof(rb.buf);
 	rb.rp = rb.wp = rb.buf;
+
+	/*
+	 * Seed the mixer state from host OS entropy so the output
+	 * is not predictable even if the timing-based entropy is weak
+	 * (e.g. in VMs or containers with synchronized clocks).
+	 */
+	prng((uchar*)&rb.randn, sizeof(rb.randn));
+	prng((uchar*)&rb.mixstate, sizeof(rb.mixstate));
 }
 
 /*
@@ -138,11 +149,21 @@ if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 		}
 
 		/*
-		 *  beating clocks will be predictable if
-		 *  they are synchronized.  Use a cheap pseudo
-		 *  random number generator to obscure any cycles.
+		 *  Beating clocks will be predictable if
+		 *  they are synchronized.  Mix the timing entropy
+		 *  with a non-linear function seeded from host OS
+		 *  entropy at init time, so the output is not
+		 *  predictable even with weak timing sources.
+		 *
+		 *  Uses xorshift-multiply mixing (splitmix-style)
+		 *  instead of the previous weak LCG (1103515245).
 		 */
-		x = rb.randn*1103515245 ^ *r;
+		rb.mixstate += 0x9e3779b9UL;
+		x = rb.mixstate ^ *r;
+		x ^= rb.randn;
+		x ^= (x >> 13);
+		x *= 0x5bd1e995UL;	/* MurmurHash2 mixing constant */
+		x ^= (x >> 15);
 		*p++ = rb.randn = x;
 
 		if(++r == rb.ep)

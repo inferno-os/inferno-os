@@ -546,19 +546,24 @@ testLoginKeyDerivation(t: ref T)
 	for(i := 0; i < 32; i++)
 		ivec[i] = byte (i * 7 + 13);
 
-	# Client key derivation
-	ckeymaterial := array[Keyring->SHA256dlen + 20] of byte;
-	ckeymaterial[0:] = pwdigest;
-	ckeymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	# Client key derivation using HKDF (RFC 5869) with HMAC-SHA256:
+	#   Extract: PRK = HMAC-SHA256(salt=ivec[0:20], IKM=SHA-256(password))
+	#   Expand:  key = HMAC-SHA256(PRK, "infernode login aead" || 0x01)
+	salt := ivec[0:20];
+	cprk := array[Keyring->SHA256dlen] of byte;
+	kr->hmac_sha256(pwdigest, len pwdigest, salt, cprk, nil);
+	hkdfinfo := array of byte "infernode login aead";
+	expandinput := array[len hkdfinfo + 1] of byte;
+	expandinput[0:] = hkdfinfo;
+	expandinput[len hkdfinfo] = byte 1;
 	clientkey := array[Keyring->SHA256dlen] of byte;
-	kr->sha256(ckeymaterial, len ckeymaterial, clientkey, nil);
+	kr->hmac_sha256(expandinput, len expandinput, cprk, clientkey, nil);
 
-	# Server key derivation
-	skeymaterial := array[Keyring->SHA256dlen + 20] of byte;
-	skeymaterial[0:] = serverpw[0:Keyring->SHA256dlen];
-	skeymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	# Server key derivation (same HKDF, using stored password hash)
+	sprk := array[Keyring->SHA256dlen] of byte;
+	kr->hmac_sha256(serverpw[0:Keyring->SHA256dlen], Keyring->SHA256dlen, salt, sprk, nil);
 	serverkey := array[Keyring->SHA256dlen] of byte;
-	kr->sha256(skeymaterial, len skeymaterial, serverkey, nil);
+	kr->hmac_sha256(expandinput, len expandinput, sprk, serverkey, nil);
 
 	# Keys should match
 	match := 1;

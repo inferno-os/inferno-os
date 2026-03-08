@@ -28,6 +28,7 @@ ccpoly_otk(uchar otk[32], uchar key[32], uchar nonce[12])
 	memset(zeros, 0, 32);
 	chacha_encrypt(zeros, 32, &s);
 	memmove(otk, zeros, 32);
+	secureZero(&s, sizeof(s));
 }
 
 /*
@@ -65,6 +66,7 @@ ccpoly_mac(uchar tag[16], uchar *aad, int naad, uchar *ct, int nct, uchar otk[32
 	poly1305_update(&ps, lenblock, 16);
 
 	poly1305_finish(tag, &ps);
+	secureZero(&ps, sizeof(ps));
 }
 
 /*
@@ -87,6 +89,9 @@ ccpoly_encrypt(uchar *dat, int ndat, uchar *aad, int naad,
 
 	/* compute authentication tag */
 	ccpoly_mac(tag, aad, naad, dat, ndat, otk);
+
+	secureZero(&s, sizeof(s));
+	secureZero(otk, sizeof(otk));
 }
 
 /*
@@ -118,6 +123,10 @@ ccpoly_decrypt(uchar *dat, int ndat, uchar *aad, int naad,
 	setupChaChastate(&s, key, 32, nonce, 12, 20);
 	chacha_setctr(&s, 1);
 	chacha_encrypt(dat, ndat, &s);
+
+	secureZero(&s, sizeof(s));
+	secureZero(otk, sizeof(otk));
+	secureZero(computed, sizeof(computed));
 
 	return 0;
 }
