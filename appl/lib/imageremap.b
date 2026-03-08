@@ -576,10 +576,13 @@ remap(i: ref RImagefile->Rawimage, d: ref Display, errdiff: int): (ref Image, st
 		for(j = 0; j < npix; j++) {
 			# RGBA32 little-endian word layout: shift[CAlpha]=0, shift[CBlue]=8, etc.
 			# Byte order in memory: A=byte[0], B=byte[1], G=byte[2], R=byte[3]
-			buf[j*4+0] = apic[j];
-			buf[j*4+1] = bpic[j];
-			buf[j*4+2] = gpic[j];
-			buf[j*4+3] = rpic[j];
+			# Pre-multiply RGB by alpha so Inferno's alphacalc11 computes correct
+			# Porter-Duff SoverD: dst = R*A/255 + (1-A/255)*dst
+			a := int apic[j];
+			buf[j*4+0] = byte a;
+			buf[j*4+1] = byte (int bpic[j] * a / 255);
+			buf[j*4+2] = byte (int gpic[j] * a / 255);
+			buf[j*4+3] = byte (int rpic[j] * a / 255);
 		}
 		im.writepixels(im.r, buf);
 		return (im, "");

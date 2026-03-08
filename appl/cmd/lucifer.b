@@ -499,7 +499,7 @@ drawchrome(r: Rect)
 			lh := logoimg.r.dy();
 			logoy := headerr.min.y + (headerh - lh) / 2;
 			logodst := Rect((textx, logoy), (textx + lw, logoy + lh));
-			mainwin.draw(logodst, logoimg, logoimg, (0, 0));
+			mainwin.draw(logodst, logoimg, nil, (0, 0));
 			textx = textx + lw + 8;
 		}
 		mainwin.text((textx, texty), textcol, (0, 0), mainfont, title);
