@@ -290,6 +290,7 @@ flush(r: Rect)
 		mainwin.clipr = r;
 		realwin.draw(r, mainwin, nil, r.min);
 		mainwin.clipr = oclipr;
+		mainwin.flush(D->Flushnow);
 	}
 }
 
