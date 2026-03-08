@@ -5,6 +5,7 @@ DIRS=\
 
 TARG=\
 	9p_export_test.dis\
+	alpha_test.dis\
 	agentlib_test.dis\
 	agent_test.dis\
 	tooluse_test.dis\
