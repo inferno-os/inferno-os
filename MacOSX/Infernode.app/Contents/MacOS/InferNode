@@ -8,6 +8,9 @@ INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
 LLM9P="$SCRIPT_DIR/llm9p"
+
+# Augment PATH so llm9p can find the claude CLI regardless of how the app was launched.
+export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
 LLM9P_PORT=5640
 LLM9P_LOG="$HOME/Library/Logs/InferNode-llm9p.log"
 
@@ -21,8 +24,21 @@ LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools
 pkill -f "llm9p.*-addr :${LLM9P_PORT}" 2>/dev/null
 sleep 0.3
 
+# Prefer API backend (full tool_use support) when ANTHROPIC_API_KEY is available.
+# Fall back to CLI backend (Claude Max subscription, no custom tool schemas).
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    ANTHROPIC_API_KEY=$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw \
+        "$HOME/Library/LaunchAgents/com.nervsystems.llm9p.plist" 2>/dev/null)
+fi
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    export ANTHROPIC_API_KEY
+    BACKEND="api"
+else
+    BACKEND="cli"
+fi
+
 # Start the bundled llm9p in the background.
-"$LLM9P" -backend cli -addr ":${LLM9P_PORT}" >> "$LLM9P_LOG" 2>&1 &
+"$LLM9P" -backend "$BACKEND" -addr ":${LLM9P_PORT}" >> "$LLM9P_LOG" 2>&1 &
 LLM9P_PID=$!
 
 # Ensure llm9p is killed when this script exits for any reason.

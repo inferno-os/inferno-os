@@ -24,12 +24,25 @@ if pgrep -qf "llm9p.*-addr :5640" 2>/dev/null; then
     exit 0
 fi
 
-nohup "$LLM9P" -backend cli -addr :5640 \
+# Prefer API backend (full tool_use support) when ANTHROPIC_API_KEY is available.
+# Fall back to CLI backend (Claude Max subscription, no custom tool schemas).
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    ANTHROPIC_API_KEY=$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw \
+        "$HOME/Library/LaunchAgents/com.nervsystems.llm9p.plist" 2>/dev/null)
+fi
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    export ANTHROPIC_API_KEY
+    BACKEND="api"
+else
+    BACKEND="cli"
+fi
+
+nohup "$LLM9P" -backend "$BACKEND" -addr :5640 \
     </dev/null >>"$HOME/Library/Logs/InferNode-llm9p.log" 2>&1 &
 
-# Wait up to 5 seconds for llm9p to be ready.
+# Wait up to 15 seconds for llm9p to be ready.
 i=0
-while [ $i -lt 10 ]; do
+while [ $i -lt 30 ]; do
     nc -z 127.0.0.1 5640 2>/dev/null && exit 0
     sleep 0.5
     i=$((i + 1))

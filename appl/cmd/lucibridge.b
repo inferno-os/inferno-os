@@ -719,22 +719,31 @@ agentturn(input: string)
 		streamfd := sys->open(streampath, Sys->OREAD);
 
 		# placeholder_idx >= 0 means we created a streaming placeholder bubble.
-		# We defer creation until the first chunk so tool-only steps (0 chunks,
-		# empty text) produce no bubble at all instead of a blank one.
+		# For step 0 (first response to a user message) create the placeholder
+		# immediately so the user sees a ▌ cursor while waiting — llm9p's CLI
+		# backend has async writes but the /stream file currently returns 0 chunks
+		# (chunks are only available via pread from /ask after generation completes).
+		# For step > 0 (tool-execution follow-ups) defer creation to the first
+		# actual chunk, so tool-only steps produce no spurious bubble.
 		placeholder_idx := -1;
 		if(streamfd != nil) {
 			log("stream: reading " + streampath);
 			buf := array[512] of byte;
 			growing := "";
 			nchunks := 0;
+			# Show activity cursor immediately on the first step.
+			if(step == 0) {
+				placeholder_idx = convcount;
+				writemsg("veltro", "▌");
+			}
 			for(;;) {
 				n := sys->read(streamfd, buf, len buf);
 				if(n <= 0)
 					break;
 				growing += string buf[0:n];
 				nchunks++;
-				# Create placeholder on the first chunk, seeded with actual text
-				# so the message never shows bare ▌ without content.
+				# Create placeholder on the first chunk if not already created
+				# (steps > 0), seeded with actual text.
 				if(placeholder_idx < 0) {
 					placeholder_idx = convcount;
 					writemsg("veltro", growing + "▌");
