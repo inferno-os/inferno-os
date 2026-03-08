@@ -40,7 +40,7 @@ cd /Users/pdfinn/github.com/NERVsystems/nerva-9p-paper/inferno/infernode
 ./emu/MacOSX/o.emu -r.
 ```
 
-See [QUICKSTART.md](QUICKSTART.md) for details.
+See [QUICKSTART.md](../QUICKSTART.md) for details.
 
 ## For Future Reference
 
