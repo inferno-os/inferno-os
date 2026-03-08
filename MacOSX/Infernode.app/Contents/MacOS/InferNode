@@ -17,7 +17,7 @@ LLM9P_LOG="$HOME/Library/Logs/InferNode-llm9p.log"
 # Default tool set: non-destructive tools enabled out of the box.
 # Potentially destructive tools (exec, launch, spawn, git, mail) are registered
 # in tools9p but NOT active by default — enable them via the context zone.
-LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap luciedit; lucibridge -v &; lucifer'
+LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap luciedit charon; lucibridge -v &; lucifer'
 
 # --- llm9p lifecycle ---
 # Kill any stale llm9p already holding our port (e.g. leftover launchd daemon).
@@ -60,7 +60,7 @@ done
 
 # --- Launch emulator ---
 cd "$INFERNODE_ROOT/emu/MacOSX"
-echo halo > "$INFERNODE_ROOT/lib/lucifer/theme/current"
+echo brimstone > "$INFERNODE_ROOT/lib/lucifer/theme/current"
 
 # Do NOT exec — we need this shell to survive so the trap fires on exit.
 "$EMU" -c1 -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"
