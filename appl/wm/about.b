@@ -29,9 +29,9 @@ About: module
 
 ZP := Point(0, 0);
 
-WINW: con 280;
-WINH: con 320;
-PADDING: con 16;
+WINW: con 600;
+WINH: con 590;
+PADDING: con 12;
 
 init(ctxt: ref Draw->Context, nil: list of string)
 {
@@ -109,7 +109,7 @@ redraw(w: ref Window, display: ref Display)
 	y := r.min.y + PADDING;
 
 	# Load and draw logo — use theme-specific variant if available
-	logopath := "/lib/lucifer/logo.png";
+	logopath := "/lib/lucifer/about-screen.png";
 	themename := rf("/lib/lucifer/theme/current");
 	if(themename != nil) {
 		# Strip trailing whitespace/newline

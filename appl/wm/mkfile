@@ -4,6 +4,7 @@ DIRS=\
 
 TARG=\
 	about.dis\
+	logon.dis\
 	charon.dis\
 	clock.dis\
 	colors.dis\
