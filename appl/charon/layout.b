@@ -205,6 +205,20 @@ init(cu: CharonUtils)
 	B = cu->B;
 	display = G->display;
 
+	if(display == nil) {
+		# Headless mode: no display, use fixed fallback metrics.
+		# Layout still runs (building items and lines for text extraction)
+		# but font metrics are approximated with constants.
+		linespace = 15;
+		lineascent = 12;
+		charspace = 8;
+		spspace = 4;
+		ctllinespace = 15;
+		ctllineascent = 12;
+		ctlcharspace = 8;
+		ctlspspace = 4;
+		return;
+	}
 	#TODO should read from env $font or config
 	if((CU->config).doacme)
 		for(i := 0; i < len fonts; i++)
@@ -1085,6 +1099,8 @@ changelines(l, lend: ref Line)
 # Return a ref Font for font number num = (style*NumSize + size)
 getfont(num: int) : ref Font
 {
+	if(display == nil)
+		return nil;
 	f := fonts[num].f;
 	if(f == nil) {
 		f = Font.open(display, fonts[num].name);
@@ -1115,16 +1131,22 @@ measure(fr: ref Frame, items: ref Item)
 		pick t := it {
 		Itext =>
 			f := getfont(t.fnt);
-			it.width = f.width(t.s);
-			a := f.ascent;
-			h := f.height;
-			if(t.voff != byte Voffbias) {
-				a -= (int t.voff) - Voffbias;
-				if(a > h)
-					h = a;
+			if(f == nil) {
+				it.width = len(t.s) * charspace;
+				it.height = linespace;
+				it.ascent = lineascent;
+			} else {
+				it.width = f.width(t.s);
+				a := f.ascent;
+				h := f.height;
+				if(t.voff != byte Voffbias) {
+					a -= (int t.voff) - Voffbias;
+					if(a > h)
+						h = a;
+				}
+				it.height = h;
+				it.ascent = a;
 			}
-			it.height = h;
-			it.ascent = a;
 		Irule =>
 			it.height =  t.size + 2*RULESP;
 			it.ascent = t.size + RULESP;
@@ -1164,8 +1186,13 @@ measure(fr: ref Frame, items: ref Item)
 			case t.spkind {
 			ISPvline =>
 				f := getfont(t.fnt);
-				it.height = f.height;
-				it.ascent = f.ascent;
+				if(f == nil) {
+					it.height = linespace;
+					it.ascent = lineascent;
+				} else {
+					it.height = f.height;
+					it.ascent = f.ascent;
+				}
 			ISPhspace =>
 				getfont(t.fnt);
 				it.width = fonts[t.fnt].spw;

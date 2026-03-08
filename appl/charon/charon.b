@@ -404,6 +404,8 @@ start()
 redraw(resized: int)
 {
 	im := mainwin;
+	if(im == nil)
+		return;
 	if(resized) {
 #		top.r = im.r.inset(2*L->ReliefBd);
 		top.r = im.r;

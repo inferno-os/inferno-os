@@ -54,8 +54,15 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 	wmclient->init();
 	if (ctxt == nil)
 		ctxt = wmclient->makedrawcontext();
-	if(ctxt == nil)
-		CU->raisex(sys->sprint("charon: no window context\n"));
+	if(ctxt == nil) {
+		# Headless mode: no display available.
+		# Drain the progress channel so goproc never blocks on it.
+		progress = chan of Progressmsg;
+		pidc := chan of int;
+		spawn doacmeprogmon(pidc);
+		<-pidc;
+		return nil;
+	}
 
 	menuhit = load Menuhit Menuhit->PATH;
 	menu = ref Menu(array[] of {"back", "fwd", "stop", "start"}, nil, 0);
