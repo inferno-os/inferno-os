@@ -126,6 +126,8 @@ donavigate(url: string): string
 	url = strip(url);
 	if(url == "")
 		return "error: usage: navigate <url>";
+	if(!isallowedurl(url))
+		return "error: only http:// and https:// URLs are allowed";
 	err := writefile(BROWSER_DIR + "/ctl", "navigate " + url);
 	if(err != nil)
 		return err;
@@ -244,7 +246,7 @@ readfile(path: string): string
 
 writefile(path, data: string): string
 {
-	fd := sys->create(path, Sys->OWRITE, 8r666);
+	fd := sys->create(path, Sys->OWRITE, 8r600);
 	if(fd == nil)
 		return sys->sprint("error: cannot create %s: %r (is charon running?)", path);
 
@@ -286,4 +288,12 @@ splitfirst(s: string): (string, string)
 hasprefix(s, prefix: string): int
 {
 	return len s >= len prefix && s[0:len prefix] == prefix;
+}
+
+isallowedurl(url: string): int
+{
+	lurl := str->tolower(url);
+	if(hasprefix(lurl, "http://") || hasprefix(lurl, "https://"))
+		return 1;
+	return 0;
 }
