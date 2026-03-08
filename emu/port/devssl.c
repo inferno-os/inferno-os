@@ -1357,9 +1357,19 @@ checkdigestb(Dstate *s, Block *inb)
 	*p = n;
 	(*s->hf)(msgid, 4, digest, &ss);
 
-	/* requires pullupblock */
-	if(memcmp(digest, inb->rp, s->diglen) != 0)
-		error("bad digest");
+	/* requires pullupblock; use constant-time compare to prevent timing oracle */
+	{
+		int i, diff;
+		uchar *a, *b;
+
+		a = digest;
+		b = inb->rp;
+		diff = 0;
+		for(i = 0; i < s->diglen; i++)
+			diff |= a[i] ^ b[i];
+		if(diff != 0)
+			error("bad digest");
+	}
 }
 
 /* get channel associated with an fd */

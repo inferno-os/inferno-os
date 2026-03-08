@@ -15,6 +15,8 @@ CC=		cc -c -arch arm64
 CFLAGS=		-g\
 		-O\
 		-fno-strict-aliasing\
+		-fstack-protector-strong\
+		-D_FORTIFY_SOURCE=2\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-Werror=return-type -Werror=implicit-function-declaration\
 		-I$ROOT/MacOSX/arm64/include\

@@ -1598,7 +1598,15 @@ run(win : ref Window, s : string, rdir : string, ndir : int, newns : int, argadd
 	}
 
 	if(arg != nil){
-		s = sprint("%s '%s'", s, arg);	# BUG: what if quote in arg? 
+		# Escape single quotes: replace ' with '\'' (end quote, escaped quote, reopen)
+		escaped := "";
+		for(qi := 0; qi < len arg; qi++){
+			if(arg[qi] == '\'')
+				escaped += "'\\''";
+			else
+				escaped[len escaped] = arg[qi];
+		}
+		s = sprint("%s '%s'", s, escaped);
 		c.text = s;
 	}
 	av = nil;

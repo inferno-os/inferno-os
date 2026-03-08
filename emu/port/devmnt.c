@@ -1065,6 +1065,7 @@ mntralloc(Chan *c, ulong msize)
 		new->rpclen = msize;
 		new->request.tag = alloctag();
 		if(new->request.tag == NOTAG){
+			free(new->rpc);
 			free(new);
 			unlock(&mntalloc.l);
 			exhausted("rpc tags");

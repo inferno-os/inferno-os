@@ -37,8 +37,10 @@ badmod(p: string)
 	raise "fail:bad module";
 }
 
+# WARNING: This endpoint exposes server cache contents without authentication.
+# In production, restrict access via .httplogin or remove the /magic/stats binding.
 init(k : ref Private_info, req: Httpd->Request)
-{	
+{
 	sys = load Sys "$Sys";
 	draw = load Draw "$Draw";
 	

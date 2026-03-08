@@ -521,7 +521,11 @@ asyncexec(srv: ref Styxserver, tag: int, count: int, ti: ref ToolInfo, data: str
 	mypid := sys->pctl(0, nil);
 	applynsrestriction();
 	result := exectool(ti.name, data);
-	ti.result = array of byte result;
+	# Assign result before replying so it's visible for subsequent reads.
+	# NOTE: concurrent writes to the same tool will overwrite each other's
+	# result — this is a known limitation. A per-fid result map would fix it.
+	rbytes := array of byte result;
+	ti.result = rbytes;
 	srv.reply(ref Rmsg.Write(tag, count));
 	# Signal cleanup goroutine to remove this invocation's shadow dirs.
 	# Non-blocking: if buffer is full, drop (dirs cleaned at next startup).
@@ -813,6 +817,8 @@ Serve:
 			Qctl =>
 				# Dynamic tool management: "add <name>" or "remove <name>"
 				# Namespace path management: "bindpath <path>" or "unbindpath <path>"
+				# WARNING: any process with write access to /tool/ctl can escalate
+				# agent capabilities. Restrict ctl file permissions if needed.
 				if(len data > 4 && data[0:4] == "add ") {
 					cerr := ctladd(data[4:]);
 					if(cerr != nil)

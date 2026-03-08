@@ -260,9 +260,13 @@ exec(args: string): string
 	return output;
 }
 
-# Run command in separate thread
+# Run command in a separate thread with isolated fd group.
+# NEWFD prevents dup from affecting other goroutines' stdout/stderr.
 runcommand(cmd: string, outfd: ref Sys->FD, result: chan of string)
 {
+	# Isolate fd group so dup only affects this goroutine
+	sys->pctl(Sys->NEWFD, 0 :: 1 :: 2 :: outfd.fd :: nil);
+
 	# Redirect stdout/stderr to pipe
 	sys->dup(outfd.fd, 1);
 	sys->dup(outfd.fd, 2);
