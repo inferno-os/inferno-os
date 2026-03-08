@@ -54,29 +54,29 @@ Fontinfo : adt {
 };
 
 fonts := array[NumFnt] of {
-	FntR*NumSize+Tiny => Fontinfo("/fonts/charon/plain.tiny.font", nil, 0),
-	FntR*NumSize+Small => ("/fonts/charon/plain.small.font", nil, 0),
-	FntR*NumSize+Normal => ("/fonts/charon/plain.normal.font", nil, 0),
-	FntR*NumSize+Large => ("/fonts/charon/plain.large.font", nil, 0),
-	FntR*NumSize+Verylarge => ("/fonts/charon/plain.vlarge.font", nil, 0),
-	
-	FntI*NumSize+Tiny => ("/fonts/charon/italic.tiny.font", nil, 0),
-	FntI*NumSize+Small => ("/fonts/charon/italic.small.font", nil, 0),
-	FntI*NumSize+Normal => ("/fonts/charon/italic.normal.font", nil, 0),
-	FntI*NumSize+Large => ("/fonts/charon/italic.large.font", nil, 0),
-	FntI*NumSize+Verylarge => ("/fonts/charon/italic.vlarge.font", nil, 0),
-	
-	FntB*NumSize+Tiny => ("/fonts/charon/bold.tiny.font", nil, 0),
-	FntB*NumSize+Small => ("/fonts/charon/bold.small.font", nil, 0),
-	FntB*NumSize+Normal => ("/fonts/charon/bold.normal.font", nil, 0),
-	FntB*NumSize+Large => ("/fonts/charon/bold.large.font", nil, 0),
-	FntB*NumSize+Verylarge => ("/fonts/charon/bold.vlarge.font", nil, 0),
-	
-	FntT*NumSize+Tiny => ("/fonts/charon/cw.tiny.font", nil, 0),
-	FntT*NumSize+Small => ("/fonts/charon/cw.small.font", nil, 0),
-	FntT*NumSize+Normal => ("/fonts/charon/cw.normal.font", nil, 0),
-	FntT*NumSize+Large => ("/fonts/charon/cw.large.font", nil, 0),
-	FntT*NumSize+Verylarge => ("/fonts/charon/cw.vlarge.font", nil, 0)
+	FntR*NumSize+Tiny     => Fontinfo("/fonts/misc/latin1.6x10.font", nil, 0),
+	FntR*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
+	FntR*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
+	FntR*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntR*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+
+	FntI*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
+	FntI*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
+	FntI*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
+	FntI*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntI*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+
+	FntB*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
+	FntB*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
+	FntB*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
+	FntB*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntB*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+
+	FntT*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
+	FntT*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
+	FntT*NumSize+Normal   => ("/fonts/vera/VeraMono/veramono.14.font", nil, 0),
+	FntT*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntT*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
 };
 
 # Seems better to use a slightly smaller font in Controls, to match other browsers
@@ -240,7 +240,10 @@ init(cu: CharonUtils)
 
 stringwidth(s: string): int
 {
-	return fonts[DefFnt].f.width(s)/charspace;
+	f := fonts[DefFnt].f;
+	if(f == nil || charspace == 0)
+		return len(s);
+	return f.width(s)/charspace;
 }
 
 # Use bsmain to fill frame f.
