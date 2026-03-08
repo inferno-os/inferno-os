@@ -1,5 +1,3 @@
-#define _GNU_SOURCE 1
-
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
@@ -95,14 +93,6 @@ tramp(void *arg)
 	os->self = pthread_self();
 	if(pthread_setspecific(prdakey, arg))
 		panic("set specific data failed in tramp\n");
-	if(0){
-		pthread_attr_t attr;
-		memset(&attr, 0, sizeof(attr));
-		pthread_getattr_np(pthread_self(), &attr);
-		size_t s;
-		pthread_attr_getstacksize(&attr, &s);
-		print("stack size = %d\n", s);
-	}
 	p->func(p->arg);
 	pexit("{Tramp}", 0);
 	return nil;
