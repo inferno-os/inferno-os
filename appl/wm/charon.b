@@ -358,7 +358,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				pushhist(page.url, page.title);
 		}
 		if(w != nil && w.image != nil && page.title != "")
-			w.rename(page.title);
+			; # window title update not supported in this wmclient build
 		redraw();
 
 	<-ticks =>
@@ -693,16 +693,18 @@ extractforms(data: array of byte): string
 		if(tok.tag == HTML->Tform) {
 			formid++;
 			fieldid = 0;
-			(_, action) := html->attrvalue(tok.attr, "action");
-			(_, method) := html->attrvalue(tok.attr, "method");
+			(ok1, action) := html->attrvalue(tok.attr, "action");
+			(ok2, method) := html->attrvalue(tok.attr, "method");
+			ok1 = ok2;
 			if(method == "")
 				method = "GET";
 			result += sys->sprint("form%d action=%s method=%s\n",
 				formid, action, method);
 		} else if(tok.tag == HTML->Tinput && formid >= 0) {
-			(_, itype) := html->attrvalue(tok.attr, "type");
-			(_, iname) := html->attrvalue(tok.attr, "name");
-			(_, ivalue) := html->attrvalue(tok.attr, "value");
+			(ok3, itype) := html->attrvalue(tok.attr, "type");
+			(ok4, iname) := html->attrvalue(tok.attr, "name");
+			(ok5, ivalue) := html->attrvalue(tok.attr, "value");
+			ok3 = ok4; ok4 = ok5;
 			if(itype == "")
 				itype = "text";
 			result += sys->sprint("  form%d field%d %s name=%s value=%s\n",

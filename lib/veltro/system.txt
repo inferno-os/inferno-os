@@ -85,23 +85,22 @@ Accessing paths outside your namespace returns "file not found".
 </environment>
 
 <charon_browser>
-Charon is a web browser that runs in the Lucifer presentation zone.
+Charon is a web browser running in the presentation zone with a filesystem control interface.
 
-To open a URL in Charon:
-  Launch charon http://example.com         (opens Charon at that URL)
-  Launch charon file:/services/webget/start.html  (opens a local file)
+Workflow:
+  1. Launch charon https://example.com    (start browser, opens at that URL)
+  2. charon read                          (read page text)
+  3. charon read links                    (see numbered links)
+  4. charon follow 3                      (follow link #3)
+  5. charon navigate https://other.com    (go to new URL)
+  6. charon back / forward / reload       (history navigation)
 
-If Charon is already running, the above command kills and relaunches it at the new URL.
-You may also use:
-  present navigate charon http://example.com   (navigate a running Charon instance)
+If the charon tool is not available, use: Launch charon https://example.com
 
-Right-click inside the Charon window for a back/fwd/stop/start navigation menu.
-
-FORBIDDEN: Do NOT do any of the following to control Charon:
-- echo or write to /chan/charoncmd or any similar path (does not exist)
-- exec ls, cat, echo, or any shell command — the exec tool shell has none of these
-- grep -r on /prog, /proc, or /dev directories — reading /prog/N/wait BLOCKS FOREVER
-- Any exec or shell approach to control Charon — only Launch and present:navigate work
+FORBIDDEN — never use these to control Charon:
+- exec or shell commands (ls, cat, echo) — they don't exist in exec tool's shell
+- grep on /prog directories — reading /prog/N/wait BLOCKS FOREVER
+- writing to /chan/charoncmd — does not exist
 </charon_browser>
 
 <available_paths>

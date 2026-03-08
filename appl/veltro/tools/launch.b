@@ -282,9 +282,9 @@ listapps(): string
 
 	# Also list whitelisted apps that live outside /dis/wm/.
 	# This mirrors extraapp() — both must stay in sync.
+	# Note: charon is now in /dis/wm/charon.dis and appears in the main listing above.
 	extra := array[] of {
 		("xenith", "/dis/xenith/xenith.dis"),
-		("charon", "/dis/charon/charon.dis"),
 	};
 	for(i := 0; i < len extra; i++) {
 		(nm, path) := extra[i];
@@ -314,9 +314,9 @@ extraapp(name: string): string
 	# so they are visible in the tool's restricted namespace when that
 	# subdirectory is listed in caps.paths (e.g. "/dis/xenith" → /dis/xenith/).
 	# Also update lucifer.b ALLOWED_PREFIXES and listapps() extra array.
+	# charon is now /dis/wm/charon.dis — found automatically, not needed here.
 	apps := array[] of {
 		("xenith", "/dis/xenith/xenith.dis"),
-		("charon", "/dis/charon/charon.dis"),
 	};
 	for(i := 0; i < len apps; i++) {
 		(nm, path) := apps[i];
