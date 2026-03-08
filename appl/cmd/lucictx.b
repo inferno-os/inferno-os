@@ -1638,6 +1638,8 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
+		if(n > 214748364)
+			return -1;
 		n = n * 10 + (c - '0');
 	}
 	if(len s == 0)

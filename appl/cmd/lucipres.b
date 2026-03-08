@@ -244,6 +244,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Channel for serializing events from background goroutines (renderartasync,
 	# deliverevent) to the main loop goroutine.
 	preseventch = chan[8] of string;
+	renderdonech = chan[4] of ref RenderResult;
 
 	if(actid_g >= 0)
 		loadpresentation();
@@ -371,8 +372,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 			}
 		}
 	ev := <-preseventch =>
-		if(ev != "render")
-			handleevent(ev);
+		handleevent(ev);
+		redrawpres();
+	rr := <-renderdonech =>
+		handlerenderdone(rr);
 		redrawpres();
 	e := <-win.ctl or
 	e = <-win.ctxt.ctl =>
@@ -632,7 +635,7 @@ drawpresentation(zone: Rect)
 		if(centart.rendimg == nil && centart.data != "") {
 			if(centart.rendering == 0) {
 				centart.rendering = 1;
-				spawn renderartasync(centart, contentw);
+				spawn renderartasync(centart.id, centart.atype, centart.data, contentw);
 			}
 		}
 		if(centart.rendimg != nil) {
@@ -961,9 +964,10 @@ exportartifact(art: ref Artifact)
 	fname := safename(art.label);
 	if(fname == "")
 		fname = "export";
+	fname += "-" + string sys->millisec();
 	path := "/tmp/" + fname + ext;
 
-	fd := sys->create(path, Sys->OWRITE, 8r666);
+	fd := sys->create(path, Sys->OWRITE, 8r644);
 	if(fd == nil) {
 		sys->fprint(stderr, "lucipres: export: cannot create %s: %r\n", path);
 		writetosnarf(art.data);
@@ -997,9 +1001,10 @@ exportimage(art: ref Artifact)
 	fname := safename(art.label);
 	if(fname == "")
 		fname = "export";
+	fname += "-" + string sys->millisec();
 	path := "/tmp/" + fname + ".gif";
 
-	ofd := bufio->create(path, Bufio->OWRITE, 8r666);
+	ofd := bufio->create(path, Bufio->OWRITE, 8r644);
 	if(ofd == nil) {
 		sys->fprint(stderr, "lucipres: export image: cannot create %s: %r\n", path);
 		return;
@@ -1168,26 +1173,50 @@ renderart(art: ref Artifact, contentw: int): ref Image
 	return nil;
 }
 
+# Async render result: passed through renderdonech to avoid race conditions.
+# The spawned goroutine never writes to the shared Artifact directly;
+# the main event loop applies the result in handlerenderdone().
+RenderResult: adt {
+	artid: string;
+	img:   ref Image;
+	failed: int;
+};
+
+renderdonech: chan of ref RenderResult;
+
 # Async rendering for the default branch (mermaid, markdown, image, etc.)
-renderartasync(art: ref Artifact, contentw: int)
+# Passes results through renderdonech; never mutates the Artifact directly.
+renderartasync(artid, atype, data: string, contentw: int)
 {
+	# Build a temporary Artifact with just the fields renderart needs.
+	# This avoids reading shared mutable state from the spawned goroutine.
+	tmp := ref Artifact(artid, atype, "", data, nil, 1, 0, 0, 0, "", 0, 0);
 	img: ref Image;
 	{
-		img = renderart(art, contentw);
+		img = renderart(tmp, contentw);
 	} exception e {
 	"*" =>
-		sys->fprint(stderr, "lucipres: renderartasync %s: %s\n", art.atype, e);
-		art.rendering = 2;
-		alt { preseventch <-= "render" => ; * => ; }
+		sys->fprint(stderr, "lucipres: renderartasync %s: %s\n", atype, e);
+		alt { renderdonech <-= ref RenderResult(artid, nil, 1) => ; * => ; }
 		return;
 	}
-	if(img == nil) {
+	failed := 0;
+	if(img == nil)
+		failed = 1;
+	alt { renderdonech <-= ref RenderResult(artid, img, failed) => ; * => ; }
+}
+
+handlerenderdone(r: ref RenderResult)
+{
+	art := findartifact(r.artid);
+	if(art == nil)
+		return;
+	if(r.failed) {
 		art.rendering = 2;
 	} else {
-		art.rendimg = img;
+		art.rendimg = r.img;
 		art.rendering = 0;
 	}
-	alt { preseventch <-= "render" => ; * => ; }
 }
 
 drainprogress(ch: chan of ref Renderer->RenderProgress)
@@ -1675,6 +1704,8 @@ strtoint(s: string): int
 	for(i := 0; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
+			return -1;
+		if(n > 214748364)
 			return -1;
 		n = n * 10 + (c - '0');
 	}

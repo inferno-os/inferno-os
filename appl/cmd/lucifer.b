@@ -713,6 +713,8 @@ mainloop()
 	req := <-ctxreqch =>
 		if(req == "restore")
 			handlectxlayout(30, 45);
+		else if(req == "expand")
+			handlectxlayout(20, 30);
 	}
 }
 
@@ -780,18 +782,24 @@ loadstatus()
 nslistener()
 {
 	evpath := sys->sprint("%s/activity/%d/event", mountpt, actid);
+	backoff := 500;
 	for(;;) {
 		fd := sys->open(evpath, Sys->OREAD);
 		if(fd == nil) {
-			sys->sleep(1000);
+			sys->sleep(backoff);
+			if(backoff < 8000)
+				backoff *= 2;
 			continue;
 		}
 		buf := array[4096] of byte;
 		n := sys->read(fd, buf, len buf);
 		if(n <= 0) {
-			sys->sleep(500);
+			sys->sleep(backoff);
+			if(backoff < 8000)
+				backoff *= 2;
 			continue;
 		}
+		backoff = 500;	# reset on successful read
 		ev := strip(string buf[0:n]);
 		if(ev == "status") {
 			loadstatus();
@@ -1037,6 +1045,8 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
+		if(n > 214748364)
+			return -1;
 		n = n * 10 + (c - '0');
 	}
 	if(len s == 0)
@@ -1045,60 +1055,6 @@ strtoint(s: string): int
 }
 
 # --- Presentation zone WM namespace goroutines ---
-
-# presWMns: serve /n/pres-clone and /n/pres-winname (connect/identity protocol)
-presWMns(cloneIO, winnameIO: ref Sys->FileIO)
-{
-	for(;;) alt {
-	(off, cnt, fid, rc) := <-cloneIO.read =>
-		if(rc != nil) {
-			data := array of byte "ready";
-			if(off < len data)
-				rc <-= (data[off:], nil);
-			else
-				rc <-= (array[0] of byte, nil);
-		}
-	(off, wdata, fid, wc) := <-cloneIO.write =>
-		if(wc != nil) wc <-= (len wdata, nil);
-	(off, cnt, fid, rc) := <-winnameIO.read =>
-		if(rc != nil) {
-			data := array of byte "lucifer-pres";
-			if(off < len data)
-				rc <-= (data[off:], nil);
-			else
-				rc <-= (array[0] of byte, nil);
-		}
-	(off, wdata, fid, wc) := <-winnameIO.write =>
-		if(wc != nil) wc <-= (len wdata, nil);
-	}
-}
-
-# presPointerSrv: serve /n/pres-pointer — blocks until mouse event, encodes it
-presPointerSrv(io: ref Sys->FileIO)
-{
-	for(;;) {
-		(off, cnt, fid, rc) := <-io.read;
-		if(rc == nil)
-			continue;
-		p := <-presMouseCh;
-		s := sys->sprint("m%11d %11d %11d %11d",
-			p.xy.x, p.xy.y, p.buttons, p.msec);
-		alt { rc <-= (array of byte s, nil) => ; * => ; }
-	}
-}
-
-# presKbdSrv: serve /n/pres-keyboard — blocks until key event, returns UTF-8 rune
-presKbdSrv(io: ref Sys->FileIO)
-{
-	for(;;) {
-		(off, cnt, fid, rc) := <-io.read;
-		if(rc == nil)
-			continue;
-		k := <-presKbdCh;
-		alt { rc <-= (array of byte string(k), nil) => ; * => ; }
-	}
-}
-
 
 # --- App lifecycle management ---
 
@@ -1194,8 +1150,38 @@ checklaunchapp(id: string)
 #      next app that successfully joins.
 #
 # TODO: eliminate the appjoinch protocol by giving each app its own wmsrv instance.
+# Allowed dis paths for GUI app launch.  Prevents arbitrary module execution
+# via crafted artifact dispath fields from the LLM agent.
+ALLOWED_DIS: con "/dis/wm/";
+
+validdispath(path: string): int
+{
+	if(path == nil || len path == 0)
+		return 0;
+	# Must start with the allowed prefix
+	if(len path < len ALLOWED_DIS || path[0:len ALLOWED_DIS] != ALLOWED_DIS)
+		return 0;
+	# Must end with .dis
+	if(len path < 4 || path[len path - 4:] != ".dis")
+		return 0;
+	# No path traversal (.. or //)
+	for(i := 0; i < len path - 1; i++) {
+		if(path[i] == '.' && path[i+1] == '.')
+			return 0;
+		if(path[i] == '/' && path[i+1] == '/')
+			return 0;
+	}
+	return 1;
+}
+
 launchapp(id, dispath, appdata: string)
 {
+	# Validate dispath against whitelist
+	if(!validdispath(dispath)) {
+		sys->fprint(stderr, "lucifer: blocked load of %s: not in allowed path\n", dispath);
+		writeappstatus(id, "dead");
+		return;
+	}
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
 	if(nappslots < MAXAPPSLOTS) {
 		appslots[nappslots] = ref AppSlot(id, nil);

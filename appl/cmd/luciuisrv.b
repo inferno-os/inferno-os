@@ -112,7 +112,7 @@ Qartappstatus:	con 33;	# presentation/<id>/appstatus (app type only)
 
 MKPATH(actid, subid, ft: int): big
 {
-	return big ((actid << 32) | (subid << 16) | ft);
+	return (big actid << 32) | big (subid << 16) | big ft;
 }
 
 ACTID(path: big): int
@@ -405,6 +405,8 @@ newactivity(label: string): ref Activity
 		nil					# pendingevent
 	);
 
+	if(nact >= MAX_ACTIVITIES)
+		return nil;
 	if(nact >= len activities) {
 		na := array[len activities * 2] of ref Activity;
 		na[0:] = activities[0:nact];
@@ -437,8 +439,18 @@ findactidx(id: int): int
 
 # --- Conversation ---
 
+# Upper bounds to prevent unbounded memory growth from malicious clients.
+MAX_MESSAGES: con 10000;
+MAX_ARTIFACTS: con 256;
+MAX_RESOURCES: con 256;
+MAX_GAPS: con 64;
+MAX_BGTASKS: con 64;
+MAX_ACTIVITIES: con 64;
+
 addmessage(a: ref Activity, role, text, using: string): int
 {
+	if(a.nmsg >= MAX_MESSAGES)
+		return -1;
 	if(a.nmsg >= len a.messages) {
 		nm := array[len a.messages * 2] of ref ConvMsg;
 		nm[0:] = a.messages[0:a.nmsg];
@@ -470,6 +482,8 @@ findartidx(a: ref Activity, id: string): int
 
 addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 {
+	if(a.nart >= MAX_ARTIFACTS)
+		return nil;
 	if(a.nart >= len a.artifacts) {
 		na := array[len a.artifacts * 2] of ref Artifact;
 		na[0:] = a.artifacts[0:a.nart];
@@ -1120,6 +1134,8 @@ globalctl(data: string): string
 	if(hasprefix(data, "activity create ")) {
 		label := data[len "activity create ":];
 		a := newactivity(label);
+		if(a == nil)
+			return "too many activities";
 		pushglobalevent("activity new " + string a.id);
 		return nil;
 	}
@@ -1180,6 +1196,8 @@ presctl(a: ref Activity, data: string): string
 		rest := data[len "create ":];
 		attrs := parseattrs(rest);
 		id := getattr(attrs, "id");
+		if(id != nil && !validid(id))
+			return "invalid artifact id: " + id;
 		atype := getattr(attrs, "type");
 		label := getattr(attrs, "label");
 		dispath := getattr(attrs, "dis");
@@ -1192,6 +1210,8 @@ presctl(a: ref Activity, data: string): string
 		if(findartifact(a, id) != nil)
 			return "artifact already exists: " + id;
 		art := addartifact(a, id, atype, label);
+		if(art == nil)
+			return "too many artifacts";
 		if(dispath != nil && dispath != "")
 			art.dispath = dispath;
 		# data= is a terminal attribute (value extends to end of string).
@@ -1348,6 +1368,8 @@ ctxctl(a: ref Activity, data: string): string
 			rtype = "unknown";
 		if(status == nil)
 			status = "idle";
+		if(a.nres >= MAX_RESOURCES)
+			return "too many resources";
 		if(a.nres >= len a.resources) {
 			nr := array[len a.resources * 2] of ref Resource;
 			nr[0:] = a.resources[0:a.nres];
@@ -1423,6 +1445,8 @@ ctxctl(a: ref Activity, data: string): string
 			if(label == nil) label = path;
 			if(rtype == nil) rtype = "unknown";
 			if(status == nil) status = "idle";
+			if(a.nres >= MAX_RESOURCES)
+				return "too many resources";
 			if(a.nres >= len a.resources) {
 				nr := array[len a.resources * 2] of ref Resource;
 				nr[0:] = a.resources[0:a.nres];
@@ -1487,6 +1511,8 @@ ctxctl(a: ref Activity, data: string): string
 			return "missing desc";
 		if(relevance == nil)
 			relevance = "medium";
+		if(a.ngaps >= MAX_GAPS)
+			return "too many gaps";
 		if(a.ngaps >= len a.gaps) {
 			ng := array[len a.gaps * 2] of ref Gap;
 			ng[0:] = a.gaps[0:a.ngaps];
@@ -1531,6 +1557,8 @@ ctxctl(a: ref Activity, data: string): string
 			a.gaps[found].relevance = relevance;
 		} else {
 			# Append new gap
+			if(a.ngaps >= MAX_GAPS)
+				return "too many gaps";
 			if(a.ngaps >= len a.gaps) {
 				ng := array[len a.gaps * 2] of ref Gap;
 				ng[0:] = a.gaps[0:a.ngaps];
@@ -1573,6 +1601,8 @@ ctxctl(a: ref Activity, data: string): string
 			return "missing label";
 		if(status == nil)
 			status = "idle";
+		if(a.nbg >= MAX_BGTASKS)
+			return "too many background tasks";
 		if(a.nbg >= len a.bgtasks) {
 			nb := array[len a.bgtasks * 2] of ref BgTask;
 			nb[0:] = a.bgtasks[0:a.nbg];
@@ -2293,6 +2323,8 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
+		if(n > 214748364)
+			return -1;
 		n = n * 10 + (c - '0');
 	}
 	if(len s == 0)
@@ -2303,6 +2335,22 @@ strtoint(s: string): int
 hasprefix(s, prefix: string): int
 {
 	return len s >= len prefix && s[0:len prefix] == prefix;
+}
+
+# Validate artifact/activity IDs: only alphanumeric, hyphens, underscores.
+# Rejects empty strings, path separators, dots, and control characters.
+validid(id: string): int
+{
+	if(id == nil || len id == 0 || len id > 128)
+		return 0;
+	for(i := 0; i < len id; i++) {
+		c := id[i];
+		if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		   (c >= '0' && c <= '9') || c == '-' || c == '_')
+			continue;
+		return 0;
+	}
+	return 1;
 }
 
 appendstr(l: list of string, s: string): list of string

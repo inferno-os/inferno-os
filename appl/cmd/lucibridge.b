@@ -751,7 +751,7 @@ agentturn(input: string)
 			}
 			# Final update with accumulated content (no cursor)
 			if(placeholder_idx >= 0 && nchunks > 0)
-				updateliveconvmsg(placeholder_idx, growing + "▌");
+				updateliveconvmsg(placeholder_idx, growing);
 			log(sys->sprint("stream: done (%d chunks, %d bytes)", nchunks, len growing));
 			streamfd = nil;
 		} else {
