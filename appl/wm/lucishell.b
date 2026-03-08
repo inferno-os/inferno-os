@@ -144,11 +144,11 @@ kbdescarg: int;
 
 # Channels
 outputch: chan of string;	# shell output arrives here
-eventch: chan of string;	# events for external readers
 sendbyteschan: chan of array of byte;	# keyboard → consserver
 
 # Shell dir for Veltro read-only access
 SHELL_DIR: con "/tmp/veltro/shell";
+shellstatedirty: int;	# set when transcript changes, cleared after writing state
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -184,7 +184,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	histpos = -1;
 
 	outputch = chan[32] of string;
-	eventch = chan of string;
 	sendbyteschan = chan of array of byte;
 
 	# Start file-based IPC directory
@@ -258,6 +257,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		if(key >= 0) {
 			cursorvis = 1;
 			handlekey(key);
+			shellstatedirty = 1;
 			redraw();
 		}
 	p := <-w.ctxt.ptr =>
@@ -338,6 +338,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		appendoutput(output);
 		if(atbottom)
 			scrolltobottom();
+		shellstatedirty = 1;
 		redraw();
 	}
 }
@@ -422,11 +423,19 @@ startshell()
 # User keyboard → sendbyteschan → shell reads.
 consserver(consio, consctlio: ref Sys->FileIO)
 {
-	# Pending shell read requests (shell wants to read input)
-	rdqueue: list of Sys->Rread;
+	# Pending shell read requests: (nbytes, reply channel) pairs
+	rdqueue: list of (int, Sys->Rread);
 
 	# Pending input bytes (user typed, shell hasn't read yet)
 	inputqueue: list of array of byte;
+
+	# Channel for rawon state changes (communicated to main goroutine)
+	rawch := chan of int;
+	spawn rawstateforwarder(rawch);
+
+	if(consctlio != nil) {
+		spawn consctlserver(consctlio, rawch);
+	}
 
 	for(;;) alt {
 	(nil, nbytes, nil, rc) := <-consio.read =>
@@ -440,7 +449,7 @@ consserver(consio, consctlio: ref Sys->FileIO)
 				data = data[0:nbytes];
 			rc <-= (data, nil);
 		} else {
-			rdqueue = rc :: rdqueue;
+			rdqueue = (nbytes, rc) :: rdqueue;
 		}
 
 	(nil, data, nil, wc) := <-consio.write =>
@@ -451,6 +460,40 @@ consserver(consio, consctlio: ref Sys->FileIO)
 		wc <-= (len data, nil);
 		outputch <-= s;
 
+	ibytes := <-sendbyteschan =>
+		# Try to satisfy pending shell read requests
+		if(rdqueue != nil) {
+			# Reverse to deliver in FIFO order
+			rds: list of (int, Sys->Rread);
+			for(rl := rdqueue; rl != nil; rl = tl rl)
+				rds = (hd rl) :: rds;
+			rdqueue = nil;
+
+			for(; rds != nil && len ibytes > 0; rds = tl rds) {
+				(rnb, rq) := hd rds;
+				chunk := ibytes;
+				if(len chunk > rnb)
+					chunk = chunk[0:rnb];
+				rq <-= (chunk, nil);
+				if(len chunk < len ibytes)
+					ibytes = ibytes[len chunk:];
+				else
+					ibytes = nil;
+			}
+			# Re-queue unserviced reads
+			for(; rds != nil; rds = tl rds)
+				rdqueue = (hd rds) :: rdqueue;
+		}
+		if(ibytes != nil && len ibytes > 0)
+			inputqueue = ibytes :: inputqueue;
+	}
+}
+
+# consctlserver handles /dev/consctl reads and writes in a separate goroutine,
+# preventing nil dereference when consctlio is nil and avoiding blocking consserver.
+consctlserver(consctlio: ref Sys->FileIO, rawch: chan of int)
+{
+	for(;;) alt {
 	(nil, nil, nil, rc) := <-consctlio.read =>
 		if(rc == nil)
 			continue;
@@ -461,31 +504,20 @@ consserver(consio, consctlio: ref Sys->FileIO)
 			continue;
 		s := string data;
 		if(s == "rawon")
-			rawon = 1;
+			rawch <-= 1;
 		else if(s == "rawoff")
-			rawon = 0;
+			rawch <-= 0;
 		wc <-= (len data, nil);
+	}
+}
 
-	ibytes := <-sendbyteschan =>
-		# Try to satisfy pending shell read requests
-		if(rdqueue != nil) {
-			# Reverse to deliver in FIFO order
-			rds: list of Sys->Rread;
-			for(rl := rdqueue; rl != nil; rl = tl rl)
-				rds = (hd rl) :: rds;
-			rdqueue = nil;
-
-			for(; rds != nil && len ibytes > 0; rds = tl rds) {
-				rq := hd rds;
-				rq <-= (ibytes, nil);
-				ibytes = nil;
-			}
-			# Re-queue unserviced reads
-			for(; rds != nil; rds = tl rds)
-				rdqueue = (hd rds) :: rdqueue;
-		}
-		if(ibytes != nil && len ibytes > 0)
-			inputqueue = ibytes :: inputqueue;
+# rawstateforwarder receives rawon state changes and updates the shared variable.
+# This serialises access to rawon through a single goroutine.
+rawstateforwarder(rawch: chan of int)
+{
+	for(;;) {
+		v := <-rawch;
+		rawon = v;
 	}
 }
 
@@ -571,7 +603,7 @@ handlekey(key: int)
 			inputbuf = "";
 			inputcol = 0;
 			appendoutput("^C\n");
-			postevent("interrupt");
+			;
 		4 =>	# Ctrl-D: EOF
 			if(inputbuf == "") {
 				s := "";
@@ -602,7 +634,7 @@ handlekey(key: int)
 		sendinput(line);
 		if(atbottom)
 			scrolltobottom();
-		postevent("input");
+		;
 	Kbs =>
 		if(inputcol > 0) {
 			inputbuf = inputbuf[0:inputcol-1] + inputbuf[inputcol:];
@@ -684,7 +716,7 @@ insertinput(s: string)
 			inputbuf = "";
 			inputcol = 0;
 			sendinput(line);
-			postevent("input");
+			;
 		} else {
 			if(inputcol >= len inputbuf)
 				inputbuf += s[i:i+1];
@@ -777,6 +809,8 @@ trimtranscript()
 	}
 }
 
+# growlines is a safety net: trimtranscript keeps nlines < len lines,
+# but this prevents a crash if the trim logic is ever changed.
 growlines()
 {
 	if(nlines >= len lines) {
@@ -794,7 +828,7 @@ clearscreen()
 	nlines = 1;
 	topline = 0;
 	atbottom = 1;
-	postevent("clear");
+	;
 }
 
 scrolltobottom()
@@ -1103,22 +1137,11 @@ handlescrollclick(p: Point, scrollr: Rect)
 	}
 }
 
-# ---------- Events ----------
-
-postevent(msg: string)
-{
-	alt {
-	eventch <-= msg =>
-		;
-	* =>
-		;
-	}
-}
-
 # ---------- Real-file IPC ----------
 
 initshelldirs()
 {
+	mkdirq("/tmp/veltro");
 	mkdirq(SHELL_DIR);
 }
 
@@ -1135,11 +1158,14 @@ mkdirq(path: string)
 
 writeshellstate()
 {
+	if(!shellstatedirty)
+		return;
 	# Write transcript body (read-only for Veltro)
 	body := getbodytext();
 	writestatefile(SHELL_DIR + "/body", body);
 	# Write current input line
 	writestatefile(SHELL_DIR + "/input", inputbuf);
+	shellstatedirty = 0;
 }
 
 getbodytext(): string
@@ -1155,7 +1181,7 @@ getbodytext(): string
 
 writestatefile(path, data: string)
 {
-	fd := sys->create(path, Sys->OWRITE, 8r444);
+	fd := sys->create(path, Sys->OWRITE, 8r644);
 	if(fd == nil)
 		return;
 	b := array of byte data;

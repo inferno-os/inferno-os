@@ -154,6 +154,10 @@ Doc: adt {
 	findmode:	int;
 	findbuf:	string;
 
+	# Goto line
+	gotomode:	int;
+	gotobuf:	string;
+
 	# Snarf
 	snarf:		string;
 };
@@ -180,6 +184,8 @@ newdoc(id: int): ref Doc
 	d.searchstr = "";
 	d.findmode = 0;
 	d.findbuf = "";
+	d.gotomode = 0;
+	d.gotobuf = "";
 	d.snarf = "";
 	return d;
 }
@@ -245,6 +251,7 @@ kbdescstate: int;	# ANSI escape decode state (0=normal)
 kbdescarg:   int;
 doc: ref Doc;
 stderr: ref Sys->FD;
+statedirty: int;	# set when doc changes, cleared after writing state files
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -255,6 +262,23 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	bufio = load Bufio Bufio->PATH;
 	str = load String String->PATH;
 	stderr = sys->fildes(2);
+
+	if(wmclient == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Wmclient: %r\n");
+		raise "fail:cannot load Wmclient";
+	}
+	if(menumod == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Menu: %r\n");
+		raise "fail:cannot load Menu";
+	}
+	if(bufio == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Bufio: %r\n");
+		raise "fail:cannot load Bufio";
+	}
+	if(str == nil) {
+		sys->fprint(stderr, "luciedit: cannot load String: %r\n");
+		raise "fail:cannot load String";
+	}
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "luciedit: no window context\n");
@@ -351,8 +375,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			cursorvis = 1;
 			if(doc.findmode)
 				handlefindkey(key);
+			else if(doc.gotomode)
+				handlegotokey(key);
 			else
 				handlekey(key);
+			statedirty = 1;
 			redraw();
 		}
 	p := <-w.ctxt.ptr =>
@@ -362,7 +389,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				case n {
 				0 => dosave();
 				1 => startfind();
-				2 => ;  # goto line (TODO)
+				2 => startgoto();
 				3 => selectall();
 				4 => docut();
 				5 => docopy();
@@ -459,11 +486,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorvis = !cursorvis;
 		drawcursor(cursorvis);
 		changed := checkctlfile();
+		if(changed)
+			statedirty = 1;
 		writeeditstate();
 		if(changed)
 			redraw();
 	req := <-editreq =>
 		handleeditreq(req);
+		statedirty = 1;
 		redraw();
 	}
 }
@@ -1020,8 +1050,16 @@ handlefsread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 	Fctl =>
 		srv.reply(styxservers->readstr(m, ""));
 	Fevent =>
-		# Block until an event arrives
-		ev := <-eventch;
+		# Non-blocking receive with timeout to avoid deadlocking serveloop
+		ev := "";
+		timeout := chan of int;
+		spawn evtimeout(timeout, 5000);
+		alt {
+		ev = <-eventch =>
+			;
+		<-timeout =>
+			ev = "";
+		}
 		srv.reply(styxservers->readstr(m, ev + "\n"));
 	Faddr =>
 		reply := chan of string;
@@ -1240,8 +1278,9 @@ handlekey(key: int)
 
 	case key {
 	Kbs =>
-		deletesel();
-		if(doc.curcol > 0) {
+		if(deletesel())
+			;
+		else if(doc.curcol > 0) {
 			pushundo(UndoDelete, doc.curline, doc.curcol-1, doc.lines[doc.curline][doc.curcol-1:doc.curcol]);
 			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol-1] + doc.lines[doc.curline][doc.curcol:];
 			doc.curcol--;
@@ -1255,8 +1294,9 @@ handlekey(key: int)
 			doc.dirty = 1;
 		}
 	Kdel =>
-		deletesel();
-		if(doc.curcol < len doc.lines[doc.curline]) {
+		if(deletesel())
+			;
+		else if(doc.curcol < len doc.lines[doc.curline]) {
 			pushundo(UndoDelete, doc.curline, doc.curcol, doc.lines[doc.curline][doc.curcol:doc.curcol+1]);
 			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol] + doc.lines[doc.curline][doc.curcol+1:];
 			doc.dirty = 1;
@@ -1359,6 +1399,38 @@ handlefindkey(key: int)
 	* =>
 		if(key >= 16r20)
 			doc.findbuf[len doc.findbuf] = key;
+	}
+}
+
+startgoto()
+{
+	doc.gotomode = 1;
+	doc.gotobuf = "";
+}
+
+handlegotokey(key: int)
+{
+	case key {
+	'\n' =>
+		doc.gotomode = 0;
+		if(doc.gotobuf != "") {
+			(ln, nil) := str->toint(doc.gotobuf, 10);
+			if(ln > 0) {
+				doc.curline = ln - 1;
+				if(doc.curline >= doc.nlines)
+					doc.curline = doc.nlines - 1;
+				doc.curcol = 0;
+				scrolltocursor();
+			}
+		}
+	Kesc =>
+		doc.gotomode = 0;
+	Kbs =>
+		if(len doc.gotobuf > 0)
+			doc.gotobuf = doc.gotobuf[0:len doc.gotobuf-1];
+	* =>
+		if(key >= '0' && key <= '9')
+			doc.gotobuf[len doc.gotobuf] = key;
 	}
 }
 
@@ -1490,6 +1562,9 @@ deletesel(): int
 	if(!doc.selactive)
 		return 0;
 	(sl, sc, el, ec) := getsel();
+	# Save selected text for undo
+	seltext := getseltext();
+	pushundo(UndoReplace, sl, sc, seltext);
 	if(sl == el) {
 		doc.lines[sl] = doc.lines[sl][0:sc] + doc.lines[sl][ec:];
 	} else {
@@ -1559,6 +1634,11 @@ doundo()
 		doc.lines[u.line] = doc.lines[u.line][0:u.col] + u.text + doc.lines[u.line][u.col:];
 		doc.curline = u.line;
 		doc.curcol = u.col + len u.text;
+	UndoReplace =>
+		# Re-insert the deleted selection text at (u.line, u.col)
+		doc.curline = u.line;
+		doc.curcol = u.col;
+		insertstring(u.text);
 	UndoJoinLine =>
 		rest := doc.lines[u.line][u.col:];
 		doc.lines[u.line] = doc.lines[u.line][0:u.col];
@@ -1637,8 +1717,11 @@ strindex(s, sub: string, start: int): int
 loadfile(path: string)
 {
 	fd := sys->open(path, Sys->OREAD);
-	if(fd == nil)
+	if(fd == nil) {
+		sys->fprint(stderr, "luciedit: cannot open %s: %r\n", path);
+		doc.filepath = "";
 		return;
+	}
 
 	(ok, d) := sys->fstat(fd);
 	if(ok < 0)
@@ -1697,14 +1780,27 @@ savefile(path: string): int
 	if(fd == nil)
 		return 0;
 
+	err := 0;
 	for(i := 0; i < doc.nlines; i++) {
 		data := array of byte doc.lines[i];
-		sys->write(fd, data, len data);
+		n := sys->write(fd, data, len data);
+		if(n != len data) {
+			err = 1;
+			break;
+		}
 		if(i < doc.nlines - 1) {
 			nl := array of byte "\n";
-			sys->write(fd, nl, len nl);
+			n = sys->write(fd, nl, len nl);
+			if(n != len nl) {
+				err = 1;
+				break;
+			}
 		}
 	}
+	fd = nil;
+
+	if(err)
+		return 0;
 
 	doc.dirty = 0;
 	w.settitle(titlestr());
@@ -1716,11 +1812,10 @@ checkdirty(): int
 {
 	if(!doc.dirty)
 		return 1;
-	if(doc.filepath != "") {
-		savefile(doc.filepath);
-		return 1;
-	}
-	return 1;
+	if(doc.filepath != "")
+		return savefile(doc.filepath);
+	# Dirty unnamed file: refuse to quit (user must save or discard)
+	return 0;
 }
 
 # ---------- Tab expansion ----------
@@ -1845,35 +1940,6 @@ drawscrollbar(screen: ref Image, r: Rect)
 	screen.draw(thumbr, lncolor, nil, Point(0, 0));
 }
 
-drawselection(screen: ref Image, line, textx, y: int)
-{
-	(sl, sc, el, ec) := getsel();
-	if(line < sl || line > el)
-		return;
-
-	expanded := expandtabs(doc.lines[line]);
-	startx := textx;
-	endx := textx + font.width(expanded);
-
-	if(line == sl) {
-		ecol := expandedcol(doc.lines[line], sc);
-		prefix := "";
-		if(ecol <= len expanded)
-			prefix = expanded[0:ecol];
-		startx = textx + font.width(prefix);
-	}
-	if(line == el) {
-		ecol := expandedcol(doc.lines[line], ec);
-		prefix := "";
-		if(ecol <= len expanded)
-			prefix = expanded[0:ecol];
-		endx = textx + font.width(prefix);
-	}
-
-	selr := Rect((startx, y), (endx, y + font.height));
-	screen.draw(selr, selcolor, nil, Point(0, 0));
-}
-
 drawcursor(vis: int)
 {
 	if(w.image == nil)
@@ -1937,6 +2003,9 @@ drawstatus(screen: ref Image, r: Rect)
 	if(doc.findmode) {
 		prompt := "Find: " + doc.findbuf + "_";
 		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
+	} else if(doc.gotomode) {
+		prompt := "Go to line: " + doc.gotobuf + "_";
+		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
 	} else {
 		info := doc.filepath;
 		if(info == "")
@@ -1961,6 +2030,12 @@ timer(c: chan of int, ms: int)
 		sys->sleep(ms);
 		c <-= 1;
 	}
+}
+
+evtimeout(c: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	c <-= 1;
 }
 
 postnote(t: int, pid: int, note: string): int
@@ -2072,6 +2147,7 @@ drawselectionchunk(screen: ref Image, line: int, expanded: string, cs, ce, textx
 
 initeditdir()
 {
+	mkdirq("/tmp/veltro");
 	mkdirq(EDIT_DIR);
 	mkdirq(EDIT_INST);
 }
@@ -2089,12 +2165,15 @@ mkdirq(path: string)
 
 writeeditstate()
 {
+	if(!statedirty)
+		return;
 	body := getbodytext();
 	writestatefile(EDIT_INST + "/body", body);
 	addr := sys->sprint("%d %d", doc.curline + 1, doc.curcol + 1);
 	writestatefile(EDIT_INST + "/addr", addr);
 	idx := sys->sprint("%d %s %d\n", doc.id, doc.filepath, doc.dirty);
 	writestatefile(EDIT_DIR + "/index", idx);
+	statedirty = 0;
 }
 
 writestatefile(path, data: string)
@@ -2137,16 +2216,20 @@ checkctlfile(): int
 
 readrmfile(path: string): string
 {
-	fd := sys->open(path, Sys->OREAD);
+	# Open for read+write so we can atomically read and truncate
+	fd := sys->open(path, Sys->ORDWR);
 	if(fd == nil)
 		return nil;
 	buf := array[65536] of byte;
 	n := sys->read(fd, buf, len buf);
-	fd = nil;
-	if(n <= 0)
+	if(n <= 0) {
+		fd = nil;
 		return nil;
+	}
 	s := string buf[0:n];
-	# Truncate file to consume the command
+	# Truncate the file by seeking to start and writing zero bytes
+	# Use create to replace contents atomically
+	fd = nil;
 	fd = sys->create(path, Sys->OWRITE, 8r666);
 	fd = nil;
 	# Strip trailing whitespace
