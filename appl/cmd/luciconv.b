@@ -673,6 +673,8 @@ startvoice()
 	spawn voiceworker(voicech);
 }
 
+VOICE_TIMEOUT_MS: con 30000;
+
 voiceworker(ch: chan of string)
 {
 	fd := sys->open("/n/speech/hear", Sys->ORDWR);
@@ -688,8 +690,24 @@ voiceworker(ch: chan of string)
 		return;
 	}
 
-	# Read transcription result (blocks until recording + STT completes)
+	# Read transcription result with timeout
 	sys->seek(fd, big 0, Sys->SEEKSTART);
+	resultch := chan of string;
+	spawn voiceread(fd, resultch);
+
+	timeoutch := chan of int;
+	spawn voicetimeout(timeoutch, VOICE_TIMEOUT_MS);
+
+	alt {
+		result := <-resultch =>
+			ch <-= result;
+		<-timeoutch =>
+			ch <-= "error: voice recognition timed out";
+	}
+}
+
+voiceread(fd: ref Sys->FD, ch: chan of string)
+{
 	result := "";
 	buf := array[8192] of byte;
 	for(;;) {
@@ -698,8 +716,13 @@ voiceworker(ch: chan of string)
 			break;
 		result += string buf[0:n];
 	}
-
 	ch <-= result;
+}
+
+voicetimeout(ch: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	ch <-= 1;
 }
 
 # --- Word wrapping ---
@@ -752,30 +775,6 @@ wraptext(text: string, maxw: int): list of string
 	if(lines == nil)
 		return "" :: nil;
 
-	rev: list of string;
-	for(; lines != nil; lines = tl lines)
-		rev = hd lines :: rev;
-	return rev;
-}
-
-# --- Split lines ---
-
-splitlines(text: string): list of string
-{
-	if(text == nil || text == "")
-		return "" :: nil;
-	lines: list of string;
-	i := 0;
-	linestart := 0;
-	while(i < len text) {
-		if(text[i] == '\n') {
-			lines = text[linestart:i] :: lines;
-			linestart = i + 1;
-		}
-		i++;
-	}
-	if(linestart < len text)
-		lines = text[linestart:] :: lines;
 	rev: list of string;
 	for(; lines != nil; lines = tl lines)
 		rev = hd lines :: rev;
@@ -929,6 +928,8 @@ strtoint(s: string): int
 	for(i := 0; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
+			return -1;
+		if(n > 214748364)
 			return -1;
 		n = n * 10 + (c - '0');
 	}
