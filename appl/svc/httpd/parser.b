@@ -931,11 +931,17 @@ lexhead(g: ref Private_info)
 	g.wordval= g.wordval[0:n];
 }
 
+MAXWORD: con 16384;  # Maximum word length to prevent DoS
+
 word(g: ref Private_info,stop : string)
 {
 	c : int;
 	n := 0;
 	while((c = getc(g)) != Bufio->EOF){
+		if(n >= MAXWORD){
+			g.wordval = g.wordval[0:n];
+			return;
+		}
 		if(c == '\r')
 			c = wordcr(g);
 		else if(c == '\n')

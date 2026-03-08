@@ -645,6 +645,8 @@ portno(char *p)
 	n = strtoul(p, &e, 0);
 	if(p == e)
 		error("non-numeric port number");
+	if(n > 65535)
+		error("port number out of range");
 	return n;
 }
 

@@ -91,14 +91,19 @@ dprint(s : string)
 		sys->fprint(dbg_log,"%s",s);
 }
 
-# Constant-time string comparison to prevent timing side-channel attacks
+# Constant-time string comparison to prevent timing side-channel attacks.
+# Always iterates over the full length to avoid leaking length information.
 consteq(a, b: string): int
 {
-	if(len a != len b)
-		return 0;
-	result := 0;
-	for(i := 0; i < len a; i++)
-		result |= a[i] ^ b[i];
+	alen := len a;
+	blen := len b;
+	# Use the longer length so we don't leak which is shorter
+	n := alen;
+	if(blen > n)
+		n = blen;
+	result := alen ^ blen;
+	for(i := 0; i < n; i++)
+		result |= a[i % alen] ^ b[i % blen];
 	return result == 0;
 }
 
@@ -814,11 +819,14 @@ getword(g: ref Private_info): string
 	if(c == '\n')
 		return nil;
 	buf := "";
+	MAXWORD: con 16384;
 	for(;;){
 		case c{
 		' ' or '\t' or '\r' or '\n' =>
 			return buf;
 		}
+		if(len buf >= MAXWORD)
+			return buf;
 		buf[len buf] = c;
 		c = getc(g);
 	}
@@ -974,6 +982,9 @@ okheaders(g : ref Private_info)
 	g.bout.puts("Date: " + daytime->time() + "\r\n");
 }
 
+# WARNING: .httplogin stores passwords in plaintext.
+# This httpd should only be deployed behind a TLS-terminating reverse proxy.
+# Future improvement: hash passwords with a key derivation function.
 authorize(g: ref Private_info, file: string): int
 {
 	(p, nil) := str->splitr(file, "/");

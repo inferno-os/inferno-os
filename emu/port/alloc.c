@@ -99,8 +99,7 @@ int
 memusehigh(void)
 {
 	return 	mainmem->cursize > mainmem->ressize ||
-			heapmem->cursize > heapmem->ressize ||
-			0 && imagmem->cursize > imagmem->ressize;
+			heapmem->cursize > heapmem->ressize;
 }
 
 int
@@ -720,8 +719,10 @@ realloc(void *v, size_t size)
 {
 	void *nv;
 
-	if(size == 0)
-		return malloc(size);	/* temporary change until realloc calls can be checked */
+	if(size == 0){
+		free(v);
+		return nil;
+	}
 	if(v != nil)
 		v = (ulong*)v-Npadlong;
 	if(Npadlong!=0 && size!=0)

@@ -35,8 +35,10 @@ AUDIT_DIR: con "/tmp/veltro/.ns/audit";
 DIR_MODE: con 8r700 | Sys->DMDIR;  # rwx------ directory
 FILE_MODE: con 8r600;              # rw------- file
 
-# Per-process shadow sequence counter
-# Uses PID prefix to avoid collisions between parent and child processes
+# Per-process shadow sequence counter.
+# Combined with PID + millisec to avoid collisions between concurrent goroutines.
+# Limbo has no atomic increment, but the ++ is on an int in a single goroutine
+# context — callers that may race should coordinate externally.
 shadowseq := 0;
 
 # Thread-safe initialization

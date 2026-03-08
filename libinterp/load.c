@@ -276,7 +276,7 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 	}
 	for(i = 0; i < hsize; i++) {
 		id = operand(isp);
-		if(id > hsize) {
+		if(id < 0 || id > hsize) {
 			kwerrstr("heap id range");
 			goto bad;
 		}
@@ -452,6 +452,10 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 			}
 			for(j = 0; j < n; j++, i1++){
 				i1->sig = disw(isp);
+				if(memchr(istream, 0, codeend - istream) == nil){
+					kwerrstr("bad dis import name");
+					goto bad;
+				}
 				i1->name = strdup((char*)istream);
 				if(i1->name == nil){
 					kwerrstr(exNomem);

@@ -24,8 +24,10 @@ init()
 	sys = load Sys Sys->PATH;
 	stderr = sys->fildes(2);
 	str = load String String->PATH;
-	if(str == nil)
-		sys->fprint(stderr, "agentlib: warning: cannot load String: %r\n");
+	if(str == nil){
+		sys->fprint(stderr, "agentlib: cannot load String: %r\n");
+		raise "fail:agentlib: cannot load String module";
+	}
 }
 
 setverbose(v: int)
@@ -976,7 +978,7 @@ parsellmresponse(response: string): (string, list of (string, string, string), s
 	if(!hasprefix(response, "STOP:"))
 		return ("", nil, response);
 
-	(nil, lines) := sys->tokenize(response, "\n");
+	lines := splitlines(response);
 	if(lines == nil)
 		return ("", nil, "");
 

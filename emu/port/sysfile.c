@@ -278,8 +278,8 @@ kfd2path(int fd)
 			error(Enomem);
 		}
 		memmove(s, c->name->s, c->name->len+1);
-		cclose(c);
 	}
+	cclose(c);
 	poperror();
 	return s;
 }
@@ -757,7 +757,7 @@ kseek(int fd, vlong off, int whence)
 		break;
 	}
 	poperror();
-	c->dri = 0;
+	c->dri = 0;	/* clear before cclose to avoid write-after-free */
 	cclose(c);
 	poperror();
 	return off;

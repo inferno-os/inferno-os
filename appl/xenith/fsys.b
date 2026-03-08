@@ -827,13 +827,12 @@ allocfid(fid : int) : ref Fid
 	return f;
 }
 
-cbuf := array[32] of byte;
-
 getclock() : int
 {
+	buf := array[32] of byte;
 	sys->seek(clockfd, big 0, 0);
-	n := sys->read(clockfd, cbuf, len cbuf);
-	return int string cbuf[0:n];
+	n := sys->read(clockfd, buf, len buf);
+	return int string buf[0:n];
 }
 
 dostat(id : int, dir : Dirtab, clock : int) : Sys->Dir
