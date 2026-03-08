@@ -770,6 +770,10 @@ workbranchcreate(wgit: Git, repo: ref Repo, gitdir, bname: string): string
 	if(bname == "")
 		return "error: usage: git branch-create <name>";
 
+	verr := validatebranchname(bname);
+	if(verr != nil)
+		return verr;
+
 	# Check if already exists
 	(nil, terr) := repo.readref("refs/heads/" + bname);
 	if(terr == nil)
@@ -792,6 +796,10 @@ workbranchdelete(nil: Git, gitdir, bname: string): string
 	if(bname == "")
 		return "error: usage: git branch-delete <name>";
 
+	verr := validatebranchname(bname);
+	if(verr != nil)
+		return verr;
+
 	refpath := gitdir + "/refs/heads/" + bname;
 	(ok, nil) := sys->stat(refpath);
 	if(ok < 0)
@@ -809,16 +817,9 @@ workcheckout(wgit: Git, repo: ref Repo, gitdir, reporoot, bname: string): string
 	if(bname == "")
 		return "error: usage: git checkout <branch>";
 
-	# Validate branch name: reject path traversal and shell metacharacters
-	for(vi := 0; vi < len bname; vi++) {
-		c := bname[vi];
-		if(c == '.' && vi + 1 < len bname && bname[vi+1] == '.')
-			return "error: invalid branch name (path traversal)";
-		if(c == '/' && vi == 0)
-			return "error: invalid branch name (absolute path)";
-		if(c == ' ' || c == '~' || c == '^' || c == ':' || c == '\\')
-			return "error: invalid branch name";
-	}
+	verr := validatebranchname(bname);
+	if(verr != nil)
+		return verr;
 
 	(targethash, terr) := repo.readref("refs/heads/" + bname);
 	if(terr != nil)
@@ -1221,4 +1222,20 @@ shorthash(h: string): string
 	if(len h >= 8)
 		return h[0:8];
 	return h;
+}
+
+# Validate branch name: reject path traversal and dangerous characters.
+# Used by checkout, branch-create, and branch-delete.
+validatebranchname(bname: string): string
+{
+	for(vi := 0; vi < len bname; vi++) {
+		c := bname[vi];
+		if(c == '.' && vi + 1 < len bname && bname[vi+1] == '.')
+			return "error: invalid branch name (path traversal)";
+		if(c == '/' && vi == 0)
+			return "error: invalid branch name (absolute path)";
+		if(c == ' ' || c == '~' || c == '^' || c == ':' || c == '\\')
+			return "error: invalid branch name";
+	}
+	return nil;
 }

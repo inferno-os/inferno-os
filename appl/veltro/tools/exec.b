@@ -346,38 +346,93 @@ convertquotes(s: string): string
 	return result;
 }
 
-# Sanitize command string: strip backticks and ${} command substitution
-# to prevent shell injection via LLM-generated input.
-# Semicolons are intentionally allowed (multi-command support).
+# Sanitize command string for Inferno sh(1).
+#
+# Inferno shell metacharacters (from sh(1) man page):
+#   # ; & | ^ $ ` ' { } ( ) < > " =
+#
+# Command substitution forms in Inferno sh:
+#   `{cmd}   — backtick with braces (output split by $ifs)
+#   "{cmd}   — double-quote with brace (output as single string)
+#   ${name}  — substitution builtin invocation
+#   $var     — variable expansion
+#   <{cmd}   — process substitution (read end)
+#   >{cmd}   — process substitution (write end)
+#
+# Note: Inferno does NOT support bash's $() syntax or bare backticks.
+# Semicolons and pipes are intentionally allowed (multi-command support;
+# namespace restriction is the primary security boundary).
 sanitizecmd(s: string): string
 {
 	result := "";
 	i := 0;
 	while(i < len s) {
-		if(s[i] == '`') {
-			# Strip backtick command substitution
+		c := s[i];
+
+		# Strip backtick command substitution: `{cmd}
+		if(c == '`') {
+			if(i + 1 < len s && s[i+1] == '{') {
+				i = skipbraced(s, i + 1);
+				continue;
+			}
+			# Bare backtick — strip it regardless
 			i++;
 			continue;
 		}
-		if(s[i] == '$' && i + 1 < len s && (s[i+1] == '{' || s[i+1] == '(')) {
-			# Strip ${...} and $(...) command substitution
-			open := s[i+1];
-			close := ')';
-			if(open == '{')
-				close = '}';
-			i += 2;
-			depth := 1;
-			while(i < len s && depth > 0) {
-				if(s[i] == open)
-					depth++;
-				else if(s[i] == close)
-					depth--;
-				i++;
-			}
+
+		# Strip double-quote command substitution: "{cmd}
+		if(c == '"' && i + 1 < len s && s[i+1] == '{') {
+			i = skipbraced(s, i + 1);
 			continue;
 		}
-		result[len result] = s[i];
+
+		# Strip $ variable/substitution references
+		if(c == '$') {
+			if(i + 1 < len s && s[i+1] == '{') {
+				# ${builtin args} — skip entire braced block
+				i = skipbraced(s, i + 1);
+				continue;
+			}
+			# $varname — strip $ and the variable name
+			i++;
+			while(i < len s && isnamec(s[i]))
+				i++;
+			continue;
+		}
+
+		# Strip process substitution: <{cmd} and >{cmd}
+		if((c == '<' || c == '>') && i + 1 < len s && s[i+1] == '{') {
+			i = skipbraced(s, i + 1);
+			continue;
+		}
+
+		result[len result] = c;
 		i++;
 	}
 	return result;
+}
+
+# Skip past a balanced {}-block starting at s[pos] == '{'.
+# Returns index after the closing '}'.
+skipbraced(s: string, pos: int): int
+{
+	if(pos >= len s || s[pos] != '{')
+		return pos + 1;
+	pos++;
+	depth := 1;
+	while(pos < len s && depth > 0) {
+		if(s[pos] == '{')
+			depth++;
+		else if(s[pos] == '}')
+			depth--;
+		pos++;
+	}
+	return pos;
+}
+
+# Is c a valid Inferno variable name character?
+isnamec(c: int): int
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+	       (c >= '0' && c <= '9') || c == '_';
 }
