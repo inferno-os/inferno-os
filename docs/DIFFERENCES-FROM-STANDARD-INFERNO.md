@@ -55,7 +55,8 @@
 ### Present in infernode, NOT in Standard Inferno®
 
 **Custom Additions:**
-- `appl/nerv/` - Custom infernode applications
+- `appl/veltro/` - Veltro AI agent system
+- `appl/xenith/` - Xenith text environment
 - `docs/` - ARM64 porting documentation (our addition)
 - Various test programs (test-*.b)
 
