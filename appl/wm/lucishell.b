@@ -123,7 +123,8 @@ inputcol: int;		# cursor position within inputbuf
 promptstr: string;
 
 # Shell I/O
-rawon: int;
+rawon: int;			# written only by rawstateforwarder; reads are word-atomic in Dis
+rawlock: chan of int;
 
 # Selection
 selactive: int;
@@ -177,6 +178,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	inputcol = 0;
 	promptstr = "";
 	rawon = 0;
+	rawlock = chan[1] of int;
+	rawlock <-= 1;
 	selactive = 0;
 	snarf = "";
 	history = array[MAXHIST] of string;
@@ -517,7 +520,9 @@ rawstateforwarder(rawch: chan of int)
 {
 	for(;;) {
 		v := <-rawch;
+		<-rawlock;
 		rawon = v;
+		rawlock <-= 1;
 	}
 }
 
@@ -586,7 +591,10 @@ handlekey(key: int)
 	if(key >= 1 && key <= 26 && key != Kbs && key != '\n' && key != '\t')
 		ctrl = 1;
 
-	if(rawon) {
+	<-rawlock;
+	israw := rawon;
+	rawlock <-= 1;
+	if(israw) {
 		# In raw mode, send every keystroke directly to shell
 		s := "";
 		s[0] = key;
@@ -1096,8 +1104,11 @@ drawstatus(screen: ref Image, r: Rect)
 	x := r.min.x + MARGIN;
 	y := r.min.y + MARGIN;
 
+	<-rawlock;
+	israw_s := rawon;
+	rawlock <-= 1;
 	mode := "cooked";
-	if(rawon)
+	if(israw_s)
 		mode = "raw";
 	info := sys->sprint("Shell (%s)  %d lines", mode, nlines);
 	screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);

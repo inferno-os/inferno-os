@@ -84,7 +84,7 @@ redcol: ref Image;
 codebgcol_g: ref Image;
 
 # Conversation state
-messages: list of ref ConvMsg;
+msgstore: array of ref ConvMsg;
 nmsg := 0;
 inputbuf: string;
 scrollpx := 0;
@@ -155,6 +155,8 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	inputbuf = "";
 	username = readdevuser();
 	voicech = chan of string;
+	msgstore = array[32] of ref ConvMsg;
+	nmsg = 0;
 
 	if(actid >= 0)
 		loadmessages();
@@ -281,8 +283,8 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	newimg := <-rsz =>
 		mainwin = newimg;
 		# Invalidate render caches on resize
-		for(ml := messages; ml != nil; ml = tl ml)
-			(hd ml).rendimg = nil;
+		for(ri := 0; ri < nmsg; ri++)
+			msgstore[ri].rendimg = nil;
 		lastrendw = 0;
 		redrawconv();
 	}
@@ -375,7 +377,7 @@ drawconversation(zone: Rect)
 	cy := ity;
 	mainwin.draw(Rect((cx, cy), (cx + cw, cy + ch)), cursorcol, nil, (0, 0));
 
-	if(messages == nil) {
+	if(nmsg == 0) {
 		drawcentertext(Rect((zone.min.x, zone.min.y), (zone.max.x, msgy)),
 			"No messages yet");
 		return;
@@ -392,12 +394,12 @@ drawconversation(zone: Rect)
 
 	# Invalidate render cache on width change
 	if(tilew != lastrendw) {
-		for(ml := messages; ml != nil; ml = tl ml)
-			(hd ml).rendimg = nil;
+		for(ci := 0; ci < nmsg; ci++)
+			msgstore[ci].rendimg = nil;
 		lastrendw = tilew;
 	}
 
-	marr := msgstoarray(messages, nmsg);
+	marr := msgstore;
 
 	# Pass 1: estimate heights
 	harr := array[nmsg] of int;
@@ -566,8 +568,8 @@ drawcentertext(r: Rect, text: string)
 
 loadmessages()
 {
-	messages = nil;
 	nmsg = 0;
+	msgstore = array[32] of ref ConvMsg;
 	base := sys->sprint("%s/activity/%d/conversation", mountpt_g, actid_g);
 	for(i := 0; ; i++) {
 		s := readfile(sys->sprint("%s/%d", base, i));
@@ -580,10 +582,8 @@ loadmessages()
 		using := getattr(attrs, "using");
 		if(role == nil) role = "?";
 		if(text == nil) text = "";
-		messages = ref ConvMsg(role, text, using, nil) :: messages;
-		nmsg++;
+		appendmsg(ref ConvMsg(role, text, using, nil));
 	}
-	messages = revmsgs(messages);
 }
 
 loadmessage(idx: int)
@@ -600,23 +600,19 @@ loadmessage(idx: int)
 	if(role == nil) role = "?";
 	if(text == nil) text = "";
 	if(idx < nmsg) {
-		marr := msgstoarray(messages, nmsg);
-		marr[idx].role = role;
-		marr[idx].text = text;
-		marr[idx].using = using;
-		marr[idx].rendimg = nil;
+		msgstore[idx].role = role;
+		msgstore[idx].text = text;
+		msgstore[idx].using = using;
+		msgstore[idx].rendimg = nil;
 		return;
 	}
 	msg := ref ConvMsg(role, text, using, nil);
-	if(role == "human" && messages != nil) {
-		last: ref ConvMsg = nil;
-		for(l := messages; l != nil; l = tl l)
-			last = hd l;
-		if(last != nil && last.role == "human" && last.text == text)
+	if(role == "human" && nmsg > 0) {
+		last := msgstore[nmsg - 1];
+		if(last.role == "human" && last.text == text)
 			return;
 	}
-	messages = appendmsg(messages, msg);
-	nmsg++;
+	appendmsg(msg);
 	scrollpx = 0;
 }
 
@@ -633,19 +629,17 @@ updatemessage(idx: int)
 	text := getattr(attrs, "text");
 	if(text == nil) text = "";
 	role := getattr(attrs, "role");
-	marr := msgstoarray(messages, nmsg);
 	if(role != nil && role != "")
-		marr[idx].role = role;
-	marr[idx].text = text;
-	marr[idx].rendimg = nil;
+		msgstore[idx].role = role;
+	msgstore[idx].text = text;
+	msgstore[idx].rendimg = nil;
 }
 
 sendinput(text: string)
 {
 	if(actid_g < 0)
 		return;
-	messages = appendmsg(messages, ref ConvMsg("human", text, nil, nil));
-	nmsg++;
+	appendmsg(ref ConvMsg("human", text, nil, nil));
 	scrollpx = 0;
 	path := sys->sprint("%s/activity/%d/conversation/input", mountpt_g, actid_g);
 	fd := sys->open(path, Sys->OWRITE);
@@ -702,6 +696,8 @@ voiceworker(ch: chan of string)
 		result := <-resultch =>
 			ch <-= result;
 		<-timeoutch =>
+			# Close fd to unblock the voiceread goroutine's sys->read()
+			fd = nil;
 			ch <-= "error: voice recognition timed out";
 	}
 }
@@ -924,8 +920,13 @@ strip(s: string): string
 
 strtoint(s: string): int
 {
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	if(i >= len s)
+		return -1;
 	n := 0;
-	for(i := 0; i < len s; i++) {
+	for(; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
@@ -933,8 +934,6 @@ strtoint(s: string): int
 			return -1;
 		n = n * 10 + (c - '0');
 	}
-	if(len s == 0)
-		return -1;
 	return n;
 }
 
@@ -951,35 +950,18 @@ listlen(l: list of string): int
 	return n;
 }
 
-# --- List reversal / append helpers ---
+# --- Message store ---
 
-revmsgs(l: list of ref ConvMsg): list of ref ConvMsg
+appendmsg(m: ref ConvMsg)
 {
-	r: list of ref ConvMsg;
-	for(; l != nil; l = tl l)
-		r = hd l :: r;
-	return r;
-}
-
-appendmsg(l: list of ref ConvMsg, m: ref ConvMsg): list of ref ConvMsg
-{
-	if(l == nil)
-		return m :: nil;
-	r: list of ref ConvMsg;
-	for(; l != nil; l = tl l)
-		r = hd l :: r;
-	r = m :: r;
-	result: list of ref ConvMsg;
-	for(; r != nil; r = tl r)
-		result = hd r :: result;
-	return result;
-}
-
-msgstoarray(l: list of ref ConvMsg, n: int): array of ref ConvMsg
-{
-	a := array[n] of ref ConvMsg;
-	i := 0;
-	for(; l != nil && i < n; l = tl l)
-		a[i++] = hd l;
-	return a;
+	# O(1) append using array-backed store
+	if(nmsg >= len msgstore) {
+		newcap := len msgstore * 2;
+		if(newcap < 32)
+			newcap = 32;
+		ns := array[newcap] of ref ConvMsg;
+		ns[0:] = msgstore[0:nmsg];
+		msgstore = ns;
+	}
+	msgstore[nmsg++] = m;
 }
