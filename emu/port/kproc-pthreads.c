@@ -1,8 +1,10 @@
+#define _GNU_SOURCE 1
+
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
 
-#undef _POSIX_C_SOURCE 
+#undef _POSIX_C_SOURCE
 #undef getwd
 
 #include	<unistd.h>
