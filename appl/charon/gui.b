@@ -153,7 +153,7 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 		p := <-w.ctxt.ptr =>
 			if(w.pointer(*p))
 				continue;
-			if(p.buttons & 2){
+			if(p.buttons & 4){
 				mc := ref Mousectl(w.ctxt.ptr, p.buttons, p.xy, p.msec);
 				n := menuhit->menuhit(p.buttons, mc, menu, nil);
 				if(n == 0)

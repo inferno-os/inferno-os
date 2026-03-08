@@ -53,12 +53,19 @@ doc(): string
 {
 	return "Launch - Launch a GUI app in the presentation zone\n\n" +
 		"Usage:\n" +
-		"  Launch list           — show available apps\n" +
-		"  Launch xenith         — launch Xenith text environment\n" +
-		"  Launch lucishell      — launch shell terminal\n" +
-		"  Launch clock          — launch by short name\n" +
-		"  Launch wm/clock       — launch with wm/ prefix\n" +
-		"  Launch /dis/wm/clock  — launch by full path (.dis optional)\n\n" +
+		"  Launch list                    — show available apps\n" +
+		"  Launch xenith                  — launch Xenith text environment\n" +
+		"  Launch lucishell               — launch shell terminal\n" +
+		"  Launch clock                   — launch by short name\n" +
+		"  Launch wm/clock                — launch with wm/ prefix\n" +
+		"  Launch /dis/wm/clock           — launch by full path (.dis optional)\n" +
+		"  Launch charon <url>            — launch Charon browser at the given URL\n" +
+		"  Launch charon file:/path/to/file — open a local file in Charon\n\n" +
+		"Navigating Charon:\n" +
+		"  Launch charon http://example.com  — opens Charon at example.com\n" +
+		"  If Charon is already running, it is killed and relaunched at the new URL.\n" +
+		"  Right-click inside Charon for back/fwd/stop/start menu.\n" +
+		"  Do NOT use exec or shell commands to control Charon.\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
 		"  charon, clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell, mand\n\n" +
 		"Also available (full environments, /dis/):\n" +
@@ -82,13 +89,24 @@ exec(args: string): string
 	if(args == "" || args == "list")
 		return listapps();
 
-	# Take first word as app argument
+	# Take first word as app argument; capture the rest for optional data
 	apparg := args;
 	for(i := 0; i < len apparg; i++) {
 		if(apparg[i] == ' ' || apparg[i] == '\t') {
 			apparg = apparg[0:i];
 			break;
 		}
+	}
+
+	# Everything after the first word is extra data (e.g. a URL for charon)
+	extradata := "";
+	if(len apparg < len args) {
+		rest := args[len apparg:];
+		while(len rest > 0 && (rest[0] == ' ' || rest[0] == '\t'))
+			rest = rest[1:];
+		while(len rest > 0 && (rest[len rest-1] == ' ' || rest[len rest-1] == '\t' || rest[len rest-1] == '\n'))
+			rest = rest[0:len rest-1];
+		extradata = rest;
 	}
 
 	# Normalize to bare app name:
@@ -153,6 +171,8 @@ exec(args: string): string
 	# Build the create command.
 	# For xenith: pass -c 1 (single-column, fits presentation zone) and -E (embedded flag
 	# so xenith skips killprocs on exit). Also pass -t dark if brimstone theme is active.
+	# For other apps with extradata (e.g. a URL for charon): kill any existing instance
+	# first, then relaunch with data=<extradata> so the app receives the URL as its starturl.
 	cmd: string;
 	if(appname == "xenith") {
 		xenithargs := "-c 1 -E";
@@ -165,6 +185,16 @@ exec(args: string): string
 			xenithargs += " -t dark";
 		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
 			appname, dispath, appname, xenithargs);
+	} else if(extradata != "") {
+		# Navigation: kill any running instance, then relaunch with the new URL/data.
+		killfd := sys->open(pctl, Sys->OWRITE);
+		if(killfd != nil) {
+			kb := array of byte ("kill id=" + appname);
+			sys->write(killfd, kb, len kb);
+			killfd = nil;
+		}
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
+			appname, dispath, appname, extradata);
 	} else
 		cmd = sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
 	fd := sys->open(pctl, Sys->OWRITE);
@@ -182,6 +212,8 @@ exec(args: string): string
 		fd = nil;
 	}
 
+	if(extradata != "")
+		return "launched " + appname + " with url " + extradata + " in presentation zone";
 	return "launched " + appname + " in presentation zone";
 }
 
