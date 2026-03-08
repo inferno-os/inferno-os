@@ -120,6 +120,8 @@ warn := 0;
 dbgres := 0;
 doscripts := 0;
 
+BROWSER_DIR: con "/tmp/veltro/browser";
+
 top, curframe: ref Frame;
 mainwin: ref Image;
 p0 := Point(0,0);
@@ -153,6 +155,7 @@ init(ctxt: ref Draw->Context, argl: list of string)
 initc(ctxt: ref Context)
 {
 	sys = load Sys Sys->PATH;
+	initbrowserdir();
 
 	if (ctxt == nil)
 		fatalerror("bad args\n");
@@ -242,6 +245,7 @@ initc(ctxt: ref Context)
 	}
 	spawn plumbwatch();
 	spawn go(g);
+	spawn ctlproc();
 
 	sendopener("B");
 
@@ -747,6 +751,9 @@ goproc(g: ref GoSpec)
 	G->progress <-= (-1, G->Pstart, 0, "");
 	err := "";
 	status := "Done";
+	writestatefile(BROWSER_DIR + "/status", "loading");
+	if(g.url != nil)
+		writestatefile(BROWSER_DIR + "/url", g.url.tostring());
 
 	if((origkind == GoNormal || origkind == GoReplace || origkind == GoLink) && g.url.frag != "" 
 			&& f.doc != nil && f.doc.src != nil && CU->urlequal(g.url, f.doc.src))
@@ -767,7 +774,7 @@ goproc(g: ref GoSpec)
 		G->progress <-= (-1, G->Pdone, 0, nil);
 		
 	G->setstatus(status);
-	spawn dumptext();
+	spawn writebrowserstate(err);
 	checkrefresh(f);
 }
 
@@ -2208,6 +2215,306 @@ gettop(): ref Layout->Frame
 {
 	return top;
 }
+
+# ---------- Filesystem Interface ----------
+
+initbrowserdir()
+{
+	mkdirq("/tmp");
+	mkdirq("/tmp/veltro");
+	mkdirq(BROWSER_DIR);
+	writestatefile(BROWSER_DIR + "/url", "");
+	writestatefile(BROWSER_DIR + "/title", "");
+	writestatefile(BROWSER_DIR + "/body", "");
+	writestatefile(BROWSER_DIR + "/links", "");
+	writestatefile(BROWSER_DIR + "/status", "ready");
+	writestatefile(BROWSER_DIR + "/forms", "");
+	writestatefile(BROWSER_DIR + "/ctl", "");
+}
+
+mkdirq(path: string)
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd != nil) {
+		fd = nil;
+		return;
+	}
+	fd = sys->create(path, Sys->OREAD, Sys->DMDIR | 8r700);
+	fd = nil;
+}
+
+writestatefile(path, data: string)
+{
+	fd := sys->create(path, Sys->OWRITE, 8r600);
+	if(fd == nil)
+		return;
+	b := array of byte data;
+	sys->write(fd, b, len b);
+	fd = nil;
+}
+
+readctlfile(path: string): string
+{
+	fd := sys->open(path, Sys->ORDWR);
+	if(fd == nil)
+		return nil;
+	buf := array[4096] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0) {
+		fd = nil;
+		return nil;
+	}
+	s := string buf[0:n];
+	tfd := sys->create(path, Sys->OWRITE, 8r600);
+	tfd = nil;
+	fd = nil;
+	return browserstrip(s);
+}
+
+browserstrip(s: string): string
+{
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r'))
+		i++;
+	j := len s;
+	while(j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n' || s[j-1] == '\r'))
+		j--;
+	if(i >= j)
+		return "";
+	return s[i:j];
+}
+
+browsersplitfirst(s: string): (string, string)
+{
+	s = browserstrip(s);
+	for(i := 0; i < len s; i++) {
+		if(s[i] == ' ' || s[i] == '\t')
+			return (s[0:i], browserstrip(s[i:]));
+	}
+	return (s, "");
+}
+
+browsertolower(s: string): string
+{
+	result := "";
+	for(i := 0; i < len s; i++) {
+		c := s[i];
+		if(c >= 'A' && c <= 'Z')
+			c += 'a' - 'A';
+		result[len result] = c;
+	}
+	return result;
+}
+
+browseratoi(s: string): int
+{
+	s = browserstrip(s);
+	n := 0;
+	for(i := 0; i < len s; i++) {
+		c := s[i];
+		if(c < '0' || c > '9')
+			break;
+		n = n * 10 + (c - '0');
+	}
+	return n;
+}
+
+followlink(n: int): ref Event
+{
+	if(top == nil || top.doc == nil)
+		return nil;
+	idx := 0;
+	for(al := top.doc.anchors; al != nil; al = tl al) {
+		a := hd al;
+		if(a.href == nil)
+			continue;
+		idx++;
+		if(idx == n) {
+			href := a.href.tostring();
+			url := CU->makeabsurl(href);
+			if(url == nil)
+				return nil;
+			return ref Event.Ego(href, "_top", 0, E->EGnormal);
+		}
+	}
+	return nil;
+}
+
+ctlproc()
+{
+	sys->pctl(Sys->NEWPGRP, nil);
+	for(;;) {
+		sys->sleep(200);
+		cmd := readctlfile(BROWSER_DIR + "/ctl");
+		if(cmd == nil || cmd == "")
+			continue;
+		(verb, rest) := browsersplitfirst(cmd);
+		verb = browsertolower(verb);
+		ev: ref Event = nil;
+		case verb {
+		"navigate" or "go" =>
+			rest = browserstrip(rest);
+			if(rest != "") {
+				url := CU->makeabsurl(rest);
+				if(url != nil)
+					ev = ref Event.Ego(rest, "_top", 0, E->EGnormal);
+			}
+		"back" =>
+			ev = ref Event.Eback(0);
+		"forward" or "fwd" =>
+			ev = ref Event.Efwd(0);
+		"reload" =>
+			ev = ref Event.Ego("", "_top", 0, E->EGreload);
+		"stop" =>
+			ev = ref Event.Estop(0);
+		"follow" =>
+			n := browseratoi(rest);
+			if(n > 0)
+				ev = followlink(n);
+		}
+		if(ev != nil)
+			E->evchan <-= ev;
+	}
+}
+
+writebrowserstate(err: string)
+{
+	sys->pctl(Sys->NEWPGRP, nil);
+	f := top;
+	if(f == nil) {
+		writestatefile(BROWSER_DIR + "/status", "ready");
+		return;
+	}
+
+	url := "";
+	title := "";
+	if(f.doc != nil) {
+		if(f.doc.src != nil)
+			url = f.doc.src.tostring();
+		title = f.doc.doctitle;
+	}
+	writestatefile(BROWSER_DIR + "/url", url);
+	writestatefile(BROWSER_DIR + "/title", title);
+
+	status := "ready";
+	if(err != nil && err != "")
+		status = "error: " + err;
+	writestatefile(BROWSER_DIR + "/status", status);
+
+	body := extractbody(f);
+	writestatefile(BROWSER_DIR + "/body", body);
+
+	links := extractlinks(f);
+	writestatefile(BROWSER_DIR + "/links", links);
+
+	writestatefile(BROWSER_DIR + "/forms", "");
+}
+
+extractbody(f: ref Frame): string
+{
+	if(f == nil || f.layout == nil)
+		return "";
+	return extractlay(f, f.layout);
+}
+
+extractlay(f: ref Frame, lay: ref L->Lay): string
+{
+	if(lay == nil)
+		return "";
+	s := "";
+	for(l := lay.start; l != nil; l = l.next)
+		s += extractitems(f, l.items);
+	return s;
+}
+
+extractitems(f: ref Frame, it: ref Item): string
+{
+	s := "";
+	for(k := it; k != nil; k = k.next) {
+		pick a := k {
+		Itext =>
+			if(a.state & Build->IFbrksp)
+				s += "\n";
+			s += a.s;
+			if(k.anchorid > 0)
+				s += i2suf(k.anchorid);
+		Irule =>
+			s += "\n-------------\n";
+		Iimage =>
+			s += " [img: " + a.altrep + "] ";
+			if(k.anchorid > 0)
+				s += i2suf(k.anchorid);
+		Iformfield =>
+			ff := a.formfield;
+			if(ff != nil && ff.ftype != Build->Fhidden)
+				s += " [" + ff.value + "] ";
+		Itable =>
+			tab := a.table;
+			if(f.sublays != nil) {
+				for(cl := tab.cells; cl != nil; cl = tl cl) {
+					layid := (hd cl).layid;
+					if(layid >= 0 && layid < len f.sublays)
+						s += extractlay(f, f.sublays[layid]);
+				}
+			}
+		Ifloat =>
+			s += extractitems(f, a.item);
+		Ispacer =>
+			s += " ";
+		}
+	}
+	s += "\n";
+	return s;
+}
+
+extractlinks(f: ref Frame): string
+{
+	if(f == nil || f.doc == nil)
+		return "";
+	s := "";
+	idx := 0;
+	for(al := f.doc.anchors; al != nil; al = tl al) {
+		a := hd al;
+		if(a.href == nil)
+			continue;
+		idx++;
+		label := findanchortext(f, a.index);
+		s += sys->sprint("%d %s %s\n", idx, a.href.tostring(), label);
+	}
+	return s;
+}
+
+findanchortext(f: ref Frame, anchorid: int): string
+{
+	if(f == nil || f.layout == nil)
+		return "";
+	s := "";
+	for(l := f.layout.start; l != nil; l = l.next)
+		s += collectanchortext(l.items, anchorid);
+	return browserstrip(s);
+}
+
+
+collectanchortext(it: ref Item, anchorid: int): string
+{
+	s := "";
+	for(k := it; k != nil; k = k.next) {
+		if(k.anchorid != anchorid)
+			continue;
+		pick a := k {
+		Itext =>
+			s += a.s;
+		Iimage =>
+			if(a.altrep != "")
+				s += a.altrep;
+		* =>
+			;
+		}
+	}
+	return s;
+}
+
+# ---------- End Filesystem Interface ----------
 
 sync: chan of int;
 pid: int;
