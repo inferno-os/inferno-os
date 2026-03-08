@@ -1,7 +1,7 @@
 #!/bin/sh
 # Launch Lucifer UI with Veltro agent bridge
 # Run from anywhere: sh /path/to/run-lucifer.sh
-ROOT=/Users/pdfinn/github.com/NERVsystems/infernode
+ROOT="$(cd "$(dirname "$0")" && pwd)"
 exec "$ROOT/emu/MacOSX/o.emu" -c1 -pheap=512m -pmain=512m -pimage=512m "-r$ROOT/emu/MacOSX/../.." sh -l -c '
 luciuisrv
 echo activity create Main > /n/ui/ctl

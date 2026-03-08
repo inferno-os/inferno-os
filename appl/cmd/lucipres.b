@@ -920,12 +920,17 @@ updateartifact(id: string)
 deleteartifact(id: string)
 {
 	nal: list of ref Artifact;
-	for(al := artifacts; al != nil; al = tl al)
+	found := 0;
+	for(al := artifacts; al != nil; al = tl al) {
 		if((hd al).id != id)
 			nal = (hd al) :: nal;
+		else
+			found = 1;
+	}
+	if(!found)
+		return;	# not present — avoid decrementing nart spuriously
 	artifacts = revarts(nal);
 	nart--;
-	if(nart < 0) nart = 0;
 	if(centeredart == id) {
 		if(artifacts != nil)
 			centeredart = (hd artifacts).id;
@@ -1700,8 +1705,13 @@ strip(s: string): string
 
 strtoint(s: string): int
 {
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	if(i >= len s)
+		return -1;
 	n := 0;
-	for(i := 0; i < len s; i++) {
+	for(; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
@@ -1709,8 +1719,6 @@ strtoint(s: string): int
 			return -1;
 		n = n * 10 + (c - '0');
 	}
-	if(len s == 0)
-		return -1;
 	return n;
 }
 

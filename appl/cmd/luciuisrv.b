@@ -446,6 +446,7 @@ MAX_RESOURCES: con 256;
 MAX_GAPS: con 64;
 MAX_BGTASKS: con 64;
 MAX_ACTIVITIES: con 64;
+MAX_DATA_SIZE: con 1048576;	# 1MB max per write to prevent memory exhaustion
 
 addmessage(a: ref Activity, role, text, using: string): int
 {
@@ -496,16 +497,18 @@ addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 }
 
 # Append s to the end of list l (FIFO queue push).
-# Uses double-reverse so the oldest event is always at the front (hd).
+# O(1) cons to front; callers use qrev() before draining.
 qpush(l: list of string, s: string): list of string
 {
-	rev: list of string = nil;
-	for(; l != nil; l = tl l)
-		rev = hd l :: rev;
-	rev = s :: rev;
+	return s :: l;
+}
+
+# Reverse a string list (used to restore FIFO order before draining).
+qrev(l: list of string): list of string
+{
 	r: list of string = nil;
-	for(; rev != nil; rev = tl rev)
-		r = hd rev :: r;
+	for(; l != nil; l = tl l)
+		r = hd l :: r;
 	return r;
 }
 
@@ -731,6 +734,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		if(notifyq == nil) {
 			srv.reply(styxservers->readbytes(m, array[0] of byte));
 		} else {
+			notifyq = qrev(notifyq);
 			data := array of byte (hd notifyq + "\n");
 			notifyq = tl notifyq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -740,6 +744,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		if(toastq == nil) {
 			srv.reply(styxservers->readbytes(m, array[0] of byte));
 		} else {
+			toastq = qrev(toastq);
 			data := array of byte (hd toastq + "\n");
 			toastq = tl toastq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -770,6 +775,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		# waits on this file — prevents drain goroutines from stealing events.
 		a := findactivity(actid);
 		if(a != nil && a.pendingevent != nil) {
+			a.pendingevent = qrev(a.pendingevent);
 			data := array of byte (hd a.pendingevent + "\n");
 			a.pendingevent = tl a.pendingevent;
 			srv.reply(styxservers->readbytes(m, data));
@@ -788,6 +794,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 			# Blocking read
 			addpending(m.fid, m.tag, Qconvinput, actid, m);
 		} else {
+			a.inputq = qrev(a.inputq);
 			data := array of byte (hd a.inputq + "\n");
 			a.inputq = tl a.inputq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -919,6 +926,11 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 {
 	ft := FTYPE(c.path);
 	actid := ACTID(c.path);
+
+	if(len m.data > MAX_DATA_SIZE) {
+		srv.reply(ref Rmsg.Error(m.tag, "write too large"));
+		return;
+	}
 
 	data := string m.data;
 	# Strip trailing newline
@@ -2318,8 +2330,13 @@ rf(f: string): string
 
 strtoint(s: string): int
 {
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	if(i >= len s)
+		return -1;
 	n := 0;
-	for(i := 0; i < len s; i++) {
+	for(; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
@@ -2327,8 +2344,6 @@ strtoint(s: string): int
 			return -1;
 		n = n * 10 + (c - '0');
 	}
-	if(len s == 0)
-		return -1;
 	return n;
 }
 
@@ -2355,15 +2370,6 @@ validid(id: string): int
 
 appendstr(l: list of string, s: string): list of string
 {
-	# Append to end of list (order matters for queues)
-	if(l == nil)
-		return s :: nil;
-	rev: list of string;
-	for(; l != nil; l = tl l)
-		rev = hd l :: rev;
-	rev = s :: rev;
-	result: list of string;
-	for(; rev != nil; rev = tl rev)
-		result = hd rev :: result;
-	return result;
+	# O(1) cons to front; callers use qrev() before draining.
+	return s :: l;
 }

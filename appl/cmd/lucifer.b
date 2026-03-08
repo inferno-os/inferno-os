@@ -132,6 +132,12 @@ activeappid: string;	# artifact id of currently-visible app ("" = lucipres showi
 # TODO: eliminate this channel by using per-app wmsrv instances (see AppSlot TODO above).
 appjoinch: chan of string;
 
+# Mutex for appslots/nappslots/activeappid — serializes access between
+# nslistener (checklaunchapp, killapp, handleprescurrent) and preswmloop
+# (join handler, cleanupappslot, mouse routing).
+# Usage: <-applock before access, applock <-= 1 after.
+applock: chan of int;
+
 # Colors (header only)
 bgcol: ref Image;
 bordercol: ref Image;
@@ -172,7 +178,6 @@ convEvCh:    chan of string;
 convRszCh:   chan of ref Draw->Image;
 
 presMouseCh: chan of ref Pointer;
-presKbdCh:   chan of int;
 
 ctxMouseCh: chan of ref Pointer;
 ctxEvCh:    chan of string;
@@ -231,12 +236,17 @@ init(ctxt: ref Draw->Context, args: list of string)
 	sys->pctl(Sys->NEWPGRP, nil);
 	stderr = sys->fildes(2);
 
-	sys->fprint(sys->fildes(1), "lucifer: INIT BUILD=20260301a\n");
-	sys->fprint(sys->fildes(2), "lucifer: INIT BUILD=20260301a\n");
+	buildstamp := readfile("/lib/lucifer/buildstamp");
+	if(buildstamp == nil || buildstamp == "")
+		buildstamp = "dev";
+	else
+		buildstamp = strip(buildstamp);
+	sys->fprint(sys->fildes(1), "lucifer: INIT BUILD=%s\n", buildstamp);
+	sys->fprint(sys->fildes(2), "lucifer: INIT BUILD=%s\n", buildstamp);
 	{
 		hse := sys->open("/dev/hoststderr", Sys->OWRITE);
 		if(hse != nil)
-			sys->fprint(hse, "lucifer: INIT BUILD=20260301a (hoststderr)\n");
+			sys->fprint(hse, "lucifer: INIT BUILD=%s (hoststderr)\n", buildstamp);
 	}
 
 	# Remove stale wmready sentinel from a previous run, then immediately
@@ -335,6 +345,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 				if(raw != nil)
 					(logoimg, nil) = remap->remap(raw, display, 0);
 			}
+			if(logoimg == nil)
+				sys->fprint(stderr, "lucifer: warning: could not load logo from %s\n", logopath);
 		}
 	}
 
@@ -358,7 +370,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 	convRszCh   = chan[1] of ref Draw->Image;
 
 	presMouseCh = chan[16] of ref Pointer;
-	presKbdCh   = chan[16] of int;
 	presRszCh   = chan[1] of Rect;
 
 	ctxMouseCh  = chan[16] of ref Pointer;
@@ -398,7 +409,9 @@ init(ctxt: ref Draw->Context, args: list of string)
 	appslots = array[MAXAPPSLOTS] of ref AppSlot;
 	nappslots = 0;
 	activeappid = "";
-	appjoinch = chan[4] of string;
+	appjoinch = chan[16] of string;	# capacity 16 (was 4) — see item 13
+	applock = chan[1] of int;
+	applock <-= 1;			# initially unlocked
 
 	# Build Draw->Context for lucipres (pres sub-screen + wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, wmchan);
@@ -546,9 +559,8 @@ drawchrome(r: Rect)
 #   Content area → active app if one is showing, otherwise lucipres
 #
 # Keyboard routing:
-#   Currently all keyboard events go to the conv zone (convKbdCh).
-#   TODO: route keyboard to active app when an app is foregrounded.
-#         This requires preswmloop to hold a presKbdCh ref and check activeappid.
+#   Keyboard events go to the active app if mouse is in the pres zone and an app
+#   is foregrounded, otherwise to the conv zone (convKbdCh).
 #
 # Resize:
 #   handleresize() sends a new Rect on rszch.  preswmloop reallocates ALL client
@@ -582,12 +594,14 @@ preswmloop(scr: ref Screen, zoner: Rect,
 			appid2 := "";
 			alt { appid2 = <-appjoinch => ; * => ; }
 			if(appid2 != "") {
+				<-applock;
 				for(asi := 0; asi < nappslots; asi++) {
 					if(appslots[asi] != nil && appslots[asi].id == appid2) {
 						appslots[asi].client = c;
 						break;
 					}
 				}
+				applock <-= 1;
 			}
 		}
 		rc <-= nil;
@@ -647,6 +661,10 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		# Resize lucipres window (full zone)
 		if(lucipresclient != nil) {
 			# presscr (module global) was updated by handleresize before sending
+			# Fill old image with bg before replacing to prevent ghost artifacts
+			oldimg := lucipresclient.image("app");
+			if(oldimg != nil)
+				oldimg.draw(oldimg.r, bgcol, nil, (0, 0));
 			img := presscr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
 			if(img != nil) {
 				lucipresclient.setimage("app", img);
@@ -657,8 +675,13 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		tabh3 := 0;
 		if(mainfont != nil) tabh3 = mainfont.height + 13;
 		appr2 := Rect((curzone.min.x, curzone.min.y + tabh3), curzone.max);
+		<-applock;
 		for(asi3 := 0; asi3 < nappslots; asi3++) {
 			if(appslots[asi3] != nil && appslots[asi3].client != nil) {
+				# Fill old image with bg before replacing to prevent ghost artifacts
+				oldimg3 := appslots[asi3].client.image("app");
+				if(oldimg3 != nil)
+					oldimg3.draw(oldimg3.r, bgcol, nil, (0, 0));
 				img3 := presscr.newwindow(appr2, Draw->Refbackup, Draw->Nofill);
 				if(img3 != nil) {
 					appslots[asi3].client.setimage("app", img3);
@@ -666,6 +689,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 				}
 			}
 		}
+		applock <-= 1;
 	p := <-presMouseCh =>
 		# Tab strip (top N px) always routes to lucipres;
 		# content area routes to active app or lucipres.
@@ -678,6 +702,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		} else {
 			# Content area: active app or lucipres
 			actclient: ref Client;
+			<-applock;
 			for(masi := 0; masi < nappslots; masi++) {
 				if(appslots[masi] != nil && appslots[masi].id == activeappid &&
 						appslots[masi].client != nil) {
@@ -685,6 +710,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 					break;
 				}
 			}
+			applock <-= 1;
 			if(actclient == nil)
 				actclient = lucipresclient;
 			if(actclient != nil)
@@ -957,9 +983,8 @@ kbdproc()
 				}
 			}
 			if(!routed)
-				alt { presKbdCh <-= c => ; * => ; }
+				alt { convKbdCh <-= c => ; * => ; }
 		} else {
-			# Conversation zone (or no active app in pres zone)
 			alt { convKbdCh <-= c => ; * => ; }
 		}
 	}
@@ -985,7 +1010,9 @@ wmsizeproc(sync: chan of int, fd: ref Sys->FD, ptr: chan of Rect)
 {
 	sync <-= sys->pctl(0, nil);
 	b := array[Wmsize] of byte;
-	while(sys->read(fd, b, len b) > 0) {
+	while((n := sys->read(fd, b, len b)) > 0) {
+		if(n < Wmsize)
+			continue;	# short read — discard
 		p := bytes2rect(b);
 		if(p != nil)
 			ptr <-= *p;
@@ -1040,8 +1067,13 @@ strip(s: string): string
 
 strtoint(s: string): int
 {
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	if(i >= len s)
+		return -1;
 	n := 0;
-	for(i := 0; i < len s; i++) {
+	for(; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
@@ -1049,8 +1081,6 @@ strtoint(s: string): int
 			return -1;
 		n = n * 10 + (c - '0');
 	}
-	if(len s == 0)
-		return -1;
 	return n;
 }
 
@@ -1070,6 +1100,7 @@ strtoint(s: string): int
 # luciuisrv fires "presentation delete <id>" which nslistener delivers to lucipres.
 cleanupappslot(c: ref Client)
 {
+	<-applock;
 	for(ci := 0; ci < nappslots; ci++) {
 		if(appslots[ci] != nil && appslots[ci].client == c) {
 			c.bottom();
@@ -1080,6 +1111,7 @@ cleanupappslot(c: ref Client)
 			nappslots--;
 			if(activeappid == deadid)
 				activeappid = "";
+			applock <-= 1;
 			if(actid >= 0 && deadid != "")
 				writetofile(sys->sprint(
 					"%s/activity/%d/presentation/ctl",
@@ -1088,6 +1120,7 @@ cleanupappslot(c: ref Client)
 			return;
 		}
 	}
+	applock <-= 1;
 }
 
 # writetofile: write a string to a file path
@@ -1164,11 +1197,20 @@ validdispath(path: string): int
 	# Must end with .dis
 	if(len path < 4 || path[len path - 4:] != ".dis")
 		return 0;
-	# No path traversal (.. or //)
-	for(i := 0; i < len path - 1; i++) {
+	# Reject control characters and whitespace
+	for(i := 0; i < len path; i++) {
+		c := path[i];
+		if(c <= ' ' || c == 16r7F)
+			return 0;
+	}
+	# No path traversal (.., //, or /. components)
+	for(i = 0; i < len path - 1; i++) {
 		if(path[i] == '.' && path[i+1] == '.')
 			return 0;
 		if(path[i] == '/' && path[i+1] == '/')
+			return 0;
+		if(path[i] == '/' && path[i+1] == '.' &&
+				(i+2 >= len path || path[i+2] == '/'))
 			return 0;
 	}
 	return 1;
@@ -1183,12 +1225,15 @@ launchapp(id, dispath, appdata: string)
 		return;
 	}
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
+	<-applock;
 	if(nappslots < MAXAPPSLOTS) {
 		appslots[nappslots] = ref AppSlot(id, nil);
 		nappslots++;
 	}
+	applock <-= 1;
 	# Signal preswmloop: next join belongs to this id
-	alt { appjoinch <-= id => ; * => ; }
+	alt { appjoinch <-= id => ;
+		* => sys->fprint(stderr, "lucifer: appjoinch overflow for %s\n", id); }
 	# Load the GUI app module; drain appjoinch if load fails
 	guimod := load GuiApp dispath;
 	if(guimod == nil) {
@@ -1221,13 +1266,16 @@ launchapp(id, dispath, appdata: string)
 showapp(id: string)
 {
 	if(id == "") return;
+	<-applock;
 	for(si := 0; si < nappslots; si++) {
 		if(appslots[si] != nil && appslots[si].id == id) {
 			if(appslots[si].client != nil)
 				appslots[si].client.top();
+			applock <-= 1;
 			return;
 		}
 	}
+	applock <-= 1;
 }
 
 # hideapp: send app window to the bottom of the Screen z-stack (behind lucipres).
@@ -1239,13 +1287,16 @@ showapp(id: string)
 hideapp(id: string)
 {
 	if(id == "") return;
+	<-applock;
 	for(si := 0; si < nappslots; si++) {
 		if(appslots[si] != nil && appslots[si].id == id) {
 			if(appslots[si].client != nil)
 				appslots[si].client.bottom();
+			applock <-= 1;
 			return;
 		}
 	}
+	applock <-= 1;
 }
 
 # killapp: terminate the app process and free its AppSlot.
@@ -1260,6 +1311,7 @@ hideapp(id: string)
 killapp(id: string)
 {
 	if(id == "") return;
+	<-applock;
 	for(si := 0; si < nappslots; si++) {
 		if(appslots[si] != nil && appslots[si].id == id) {
 			if(appslots[si].client != nil) {
@@ -1274,9 +1326,11 @@ killapp(id: string)
 			nappslots--;
 			if(activeappid == id)
 				activeappid = "";
+			applock <-= 1;
 			return;
 		}
 	}
+	applock <-= 1;
 }
 
 # handleprescurrent: called when "presentation current" event fires.
@@ -1306,20 +1360,28 @@ handleprescurrent()
 	atype := readfile(sys->sprint("%s/activity/%d/presentation/%s/type",
 		mountpt, actid, newid));
 	if(atype != nil) atype = strip(atype);
+	# Collect IDs under lock, then call show/hide outside lock to avoid deadlock
+	# (showapp/hideapp take applock internally).
+	hideids: list of string;
+	showid := "";
+	<-applock;
 	if(atype == "app") {
 		if(newid != activeappid) {
-			# Hide all apps except the newly-centered one
 			for(hsi := 0; hsi < nappslots; hsi++)
 				if(appslots[hsi] != nil && appslots[hsi].id != newid)
-					hideapp(appslots[hsi].id);
-			showapp(newid);
+					hideids = appslots[hsi].id :: hideids;
+			showid = newid;
 			activeappid = newid;
 		}
 	} else {
-		# Non-app centered: hide ALL running apps so lucipres is fully visible
 		for(hsi2 := 0; hsi2 < nappslots; hsi2++)
 			if(appslots[hsi2] != nil && appslots[hsi2].id != "")
-				hideapp(appslots[hsi2].id);
+				hideids = appslots[hsi2].id :: hideids;
 		activeappid = "";
 	}
+	applock <-= 1;
+	for(; hideids != nil; hideids = tl hideids)
+		hideapp(hd hideids);
+	if(showid != "")
+		showapp(showid);
 }
