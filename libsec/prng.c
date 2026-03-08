@@ -37,10 +37,11 @@ prng(uchar *p, int n)
 		read(fd, p, n);
 		close(fd);
 	} else {
-		/* last resort fallback */
-		uchar *e;
-		for(e = p+n; p < e; p++)
-			*p = rand();
+		/* no secure random source available — abort rather than
+		 * silently falling back to the insecure C rand() */
+		fprint(2, "prng: no secure random source available "
+			"(/dev/urandom failed), aborting\n");
+		abort();
 	}
 #endif
 }

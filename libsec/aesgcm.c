@@ -206,10 +206,17 @@ setupAESGCMstate(AESGCMstate *s, uchar *key, int keylen, uchar *iv, int ivlen)
 }
 
 /*
+ * Maximum plaintext/ciphertext length for AES-GCM per NIST SP 800-38D:
+ * 2^32 - 2 blocks = (2^36 - 32) bytes.
+ * Beyond this the 32-bit counter wraps, causing keystream reuse.
+ */
+#define AESGCM_MAXLEN	(((u64int)1 << 36) - 32)
+
+/*
  * AES-GCM encrypt.
  * dat is plaintext on input, ciphertext on output.
  * tag receives the 16-byte authentication tag.
- * Returns 0 on success.
+ * Returns 0 on success, -1 if input exceeds GCM limits.
  */
 int
 aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
@@ -219,6 +226,9 @@ aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 	u64int Y[2];
 	uchar lenblock[16];
 	ulong i, n;
+
+	if((u64int)ndat > AESGCM_MAXLEN)
+		return -1;
 
 	/* start counter at J0 + 1 */
 	memmove(J, s->J0, AESbsize);
@@ -267,6 +277,8 @@ aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 	for(i = 0; i < 16; i++)
 		tag[i] = S[i] ^ block[i];
 
+	secureZero(J, sizeof(J));
+	secureZero(block, sizeof(block));
 	return 0;
 }
 
@@ -274,7 +286,7 @@ aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
  * AES-GCM decrypt.
  * dat is ciphertext on input, plaintext on output.
  * tag is the 16-byte authentication tag to verify.
- * Returns 0 on success, -1 on authentication failure.
+ * Returns 0 on success, -1 on authentication failure or input overflow.
  */
 int
 aesgcm_decrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
@@ -286,6 +298,9 @@ aesgcm_decrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 	uchar lenblock[16];
 	ulong i, n;
 	int diff;
+
+	if((u64int)ndat > AESGCM_MAXLEN)
+		return -1;
 
 	/* GHASH over AAD and ciphertext (before decryption) */
 	Y[0] = 0;
@@ -339,5 +354,8 @@ aesgcm_decrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 			dat[i+k] ^= block[k];
 	}
 
+	secureZero(J, sizeof(J));
+	secureZero(block, sizeof(block));
+	secureZero(computed_tag, sizeof(computed_tag));
 	return 0;
 }

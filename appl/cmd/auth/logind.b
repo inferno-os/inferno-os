@@ -103,12 +103,18 @@ dologin(c: ref Sys->Connection): string
 	alphar0 := info.alpha.expmod(r0, info.p);
 
 	# Derive 32-byte ChaCha20-Poly1305 key from stored password hash + IV
-	# HKDF-like: key = SHA-256(pw[0:32] || ivec[0:20])
-	keymaterial := array[Keyring->SHA256dlen + 20] of byte;
-	keymaterial[0:] = pw[0:Keyring->SHA256dlen];
-	keymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	# using HKDF (RFC 5869) with HMAC-SHA256:
+	#   Extract: PRK = HMAC-SHA256(salt=ivec[0:20], IKM=pw[0:32])
+	#   Expand:  key = HMAC-SHA256(PRK, "infernode login aead" || 0x01)
+	salt := ivec[0:20];
+	prk := array[Keyring->SHA256dlen] of byte;
+	kr->hmac_sha256(pw[0:Keyring->SHA256dlen], Keyring->SHA256dlen, salt, prk, nil);
+	hkdfinfo := array of byte "infernode login aead";
+	expandinput := array[len hkdfinfo + 1] of byte;
+	expandinput[0:] = hkdfinfo;
+	expandinput[len hkdfinfo] = byte 1;
 	aeadkey := array[Keyring->SHA256dlen] of byte;
-	kr->sha256(keymaterial, len keymaterial, aeadkey, nil);
+	kr->hmac_sha256(expandinput, len expandinput, prk, aeadkey, nil);
 	nonce := ivec[20:32];
 
 	# Send AEAD-encrypted alpha**r0 mod p using ChaCha20-Poly1305
@@ -183,6 +189,10 @@ signerkey(filename: string): (ref Keyring->Authinfo, string)
 		return (nil, sys->sprint("readauthinfo %r"));
 
 	# validate signer key
+	# NOTE: The Inferno Certificate adt only has an 'exp' field;
+	# unlike X.509 Validity (which has not_before/not_after),
+	# there is no notBefore check possible here.  X.509 certificates
+	# are properly validated via x509.b:is_expired() which checks both.
 	now := daytime->now();
 	if(info.cert.exp != 0 && info.cert.exp < now)
 		return (nil, sys->sprint("signer key expired"));

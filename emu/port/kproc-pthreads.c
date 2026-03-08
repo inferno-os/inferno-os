@@ -1,8 +1,12 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE	/* for pthread_getattr_np on Linux */
+#endif
+
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
 
-#undef _POSIX_C_SOURCE 
+#undef _POSIX_C_SOURCE
 #undef getwd
 
 #include	<unistd.h>
