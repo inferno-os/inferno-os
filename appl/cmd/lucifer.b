@@ -235,6 +235,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	sys = load Sys Sys->PATH;
 	sys->pctl(Sys->NEWPGRP, nil);
 	stderr = sys->fildes(2);
+	initallowed();
 
 	buildstamp := readfile("/lib/lucifer/buildstamp");
 	if(buildstamp == nil || buildstamp == "")
@@ -1183,22 +1184,39 @@ checklaunchapp(id: string)
 #      next app that successfully joins.
 #
 # TODO: eliminate the appjoinch protocol by giving each app its own wmsrv instance.
-# Allowed dis paths for GUI app launch.  Prevents arbitrary module execution
+# Allowed dis path prefixes for GUI app launch.  Prevents arbitrary module execution
 # via crafted artifact dispath fields from the LLM agent.
-ALLOWED_DIS: con "/dis/wm/";
+# Each entry must end with '/'.
+ALLOWED_PREFIXES: array of string;
+
+initallowed()
+{
+	ALLOWED_PREFIXES = array[] of {
+		"/dis/wm/",
+		"/dis/charon/",
+	};
+}
 
 validdispath(path: string): int
 {
 	if(path == nil || len path == 0)
 		return 0;
-	# Must start with the allowed prefix
-	if(len path < len ALLOWED_DIS || path[0:len ALLOWED_DIS] != ALLOWED_DIS)
+	# Must start with one of the allowed prefixes
+	ok := 0;
+	for(i := 0; i < len ALLOWED_PREFIXES; i++) {
+		pfx := ALLOWED_PREFIXES[i];
+		if(len path >= len pfx && path[0:len pfx] == pfx) {
+			ok = 1;
+			break;
+		}
+	}
+	if(!ok)
 		return 0;
 	# Must end with .dis
 	if(len path < 4 || path[len path - 4:] != ".dis")
 		return 0;
 	# Reject control characters and whitespace
-	for(i := 0; i < len path; i++) {
+	for(i = 0; i < len path; i++) {
 		c := path[i];
 		if(c <= ' ' || c == 16r7F)
 			return 0;

@@ -559,12 +559,18 @@ applypathchanges()
 	# Bind newly added paths into lucibridge's namespace.
 	# Paths already under /n/local/ are accessible via the trfs OS mount —
 	# no rebind needed (and no writable target would exist anyway).
+	# Inferno-native paths (/dis/, /lib/, /n/llm/, etc.) are already in the
+	# namespace — binding them to /n/local/<base> would fail (no such dir).
 	for(np := newpaths; np != nil; np = tl np) {
 		p := hd np;
 		if(p == "" || strcontains(oldpaths, p))
 			continue;
 		if(len p >= 9 && p[0:9] == "/n/local/") {
 			log("path accessible: " + p);
+			continue;
+		}
+		if(len p >= 5 && p[0:5] == "/dis/") {
+			log("path accessible (Inferno-native): " + p);
 			continue;
 		}
 		base := pathbase(p);
