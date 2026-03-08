@@ -151,10 +151,105 @@ This lets `agentlib` build richer system prompts and lets `lucictx` display tool
 3. **Phase 3**: Delete wrapper tool modules (`appl/veltro/tools/luciedit.b`, `fractal.b`, etc.). Apps serve their own interfaces.
 4. **Phase 4**: Add `meta` files. Update `agentlib` for richer prompt construction.
 
-## Design Note: Plan 9 Purity vs AI Pragmatism
+## Forward-Looking: GUI/Headless Duality
 
-The purist approach: each app serves its own 9P filesystem, the agent interacts via file I/O, no tool abstraction.
+The vision: every tool should be operable by the AI in both GUI and headless modes. The user may be watching (GUI) or absent (headless). The AI's interface shouldn't change.
 
-The pragmatic need: LLMs need **semantic names and documentation** to know what tools do. Raw filesystem interfaces aren't self-describing enough for AI.
+### Why the unified `/tool/{name}/` design enables this
 
-The `doc` and `meta` files bridge this -- they're the semantic layer that makes the filesystem AI-legible while keeping the architecture Plan 9-idiomatic. Use 9P for mechanism, doc/meta for semantics.
+The 9P filesystem interface is display-agnostic. When a GUI app like Charon serves `/tool/charon/exec`, the AI writes a URL, reads back rendered content. Whether Charon also draws pixels to a window is orthogonal -- it's a rendering concern, not an interface concern.
+
+This means:
+
+1. **App-backed tools become headless-capable by default** if they serve their full functionality through `/tool/{name}/`. Charon can browse, scrape, and export without a display. The fractal app can explore parameter space and export images. The tool interface is the same either way.
+
+2. **The `meta` file's `type` field** distinguishes "this tool has a visual component" from "this tool is purely headless" -- but the calling convention is identical. The AI doesn't need different code paths for GUI vs headless.
+
+3. **GUI is additive, not required.** An app starts serving its `/tool/{name}/` directory. If a display is available, it also renders. The 9P interface is the primary; the GUI is a secondary presentation layer.
+
+### What this requires from apps
+
+Apps that want to be AI-drivable headlessly must:
+- Serve their complete functionality via `/tool/{name}/` files, not just a thin control surface
+- Not assume a display is attached for core operations
+- Use the `event` file for streaming state changes the AI can consume without polling
+
+This is already natural for apps built on Inferno's `file2chan` -- the filesystem IS the API.
+
+## Forward-Looking: Auto-Coding Layer
+
+The end state: the AI can compose new tools from available Limbo modules, compile them, register them dynamically, and use them -- all without human intervention.
+
+### Why the current architecture supports this
+
+The pieces already exist:
+
+1. **`exec` tool** -- can invoke the `limbo` compiler on generated source
+2. **`/tool/ctl add`** -- dynamic tool registration at runtime
+3. **`tool.m`** -- the four-function contract is simple enough for an AI to implement
+4. **Module interfaces (`*.m`)** -- self-documenting contracts the AI can read and compose
+
+### What auto-coding looks like
+
+```
+1. AI identifies need for a new capability (e.g., "parse CSV files")
+2. AI reads relevant module interfaces (/module/bufio.m, /module/string.m)
+3. AI writes a new tool implementing tool.m: /tmp/csvparse.b
+4. AI invokes limbo compiler via exec: limbo -o /dis/veltro/tools/csvparse.dis /tmp/csvparse.b
+5. AI registers the tool: write "add csvparse" to /tool/ctl
+6. AI uses the tool: write args to /tool/csvparse, read result
+```
+
+### What the architecture needs to enable this
+
+- **Phase 1 (current)**: The AI can already write code and invoke the compiler via `exec`. Manual process.
+- **Phase 2**: A dedicated `compose` or `create` tool that handles the compile-register lifecycle, with appropriate sandboxing (the new tool's namespace is restricted by the creating agent's capabilities -- you can't escalate privileges by writing code).
+- **Phase 3**: The AI can introspect available modules, read their interfaces, and generate correct Limbo code that type-checks. The module system provides the contracts; the AI provides the composition.
+
+The security model handles this naturally: a composed tool inherits the creating agent's namespace restrictions. You can't write a tool that accesses `/n/git` if your namespace doesn't include it. Capability attenuation is preserved even through code generation.
+
+## Design Note: The Semantic Shim as Temporary Adapter
+
+### Current reality
+
+LLMs today are trained on JSON, REST APIs, and function-calling conventions. They expect:
+```json
+{"name": "read", "input": {"args": "/path/to/file"}}
+```
+
+So `agentlib.b` translates between the 9P filesystem interface and the JSON tool_use protocol. This is the **semantic shim**: `buildtooldefs()` generates JSON schemas, `calltool()` translates tool_use calls into filesystem writes, `buildtoolresults()` packages results back into JSON.
+
+### Why it should be cleanly separable
+
+A future LLM trained natively on Plan 9-style filesystem interaction wouldn't need any of this. It would simply:
+```
+open /tool/read/exec
+write /path/to/file
+read → (file contents)
+```
+
+No JSON wrapping. No tool definitions. No `agentlib` translation layer. The filesystem IS the API.
+
+### Architectural implication
+
+The semantic shim (`agentlib.b`'s tool-related functions) should be treated as a **replaceable adapter layer**, not load-bearing architecture:
+
+1. **Keep `tools9p.b` and the `/tool/` filesystem self-sufficient.** It should work perfectly without `agentlib` -- a Plan 9-native client should be able to use tools by reading and writing files directly. Don't let agentlib's needs contaminate tools9p's design.
+
+2. **Keep tool documentation in the filesystem** (`/tool/{name}/doc`), not only in agentlib's hard-coded `tooldesc()` function. The doc files serve both current LLMs (via agentlib reading them into prompts) and future LLMs (reading them directly). This is already partly true with `/lib/veltro/tools/*.txt`, but unifying into `/tool/{name}/doc` makes it filesystem-native.
+
+3. **Don't couple tool discovery to JSON generation.** Today `buildtooldefs()` both discovers tools and generates JSON. These should be separable: discovery is reading `/tool/tools`, JSON generation is the adapter's job.
+
+4. **The `/tool/` filesystem convention IS the long-term API.** Everything else -- JSON schemas, tool_use protocol, system prompt injection -- is adapter code for current-generation LLMs. Design the filesystem interface as if the adapter will be removed, because eventually it should be.
+
+### The stripping path
+
+When a Plan 9-native LLM becomes available:
+
+1. Strip `buildtooldefs()`, `buildtoolresults()`, and the tool_use parsing from `agentlib`
+2. The LLM reads `/tool/tools`, opens `/tool/{name}/doc`, writes to `/tool/{name}/exec`, reads results
+3. `tools9p.b` is unchanged -- it was always the real interface
+4. System prompts shrink dramatically (no tool schemas, no exec syntax warnings)
+5. The `reminders/` and tool docs become files the LLM reads on demand rather than content injected into prompts
+
+The cleaner the separation today, the easier this future transition becomes.
