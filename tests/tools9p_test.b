@@ -100,12 +100,12 @@ strcontains(s, sub: string): int
 }
 
 # Execute a tool via the 9P filesystem:
-#   open /tool/<name> OWRITE → write args → write returns when done
-#   then open /tool/<name> OREAD → read result
+#   open /tool/<name>/ctl OWRITE → write args → write returns when done
+#   then open /tool/<name>/ctl OREAD → read result
 # The write blocks until asyncexec completes (blocking semantics from client side).
 exectool9p(name, args: string): string
 {
-	path := TOOLMNT + "/" + name;
+	path := TOOLMNT + "/" + name + "/ctl";
 
 	# Write args — blocks until tool completes
 	fd := sys->open(path, Sys->OWRITE);
@@ -406,9 +406,9 @@ testNoResultBeforeWrite(t: ref T)
 	if(len toolname == 0)
 		toolname = "read";
 
-	# Open for read WITHOUT writing first
+	# Open ctl for read WITHOUT writing first
 	# Tools start with result = nil → server returns "error: no result (write arguments first)"
-	fd := sys->open(TOOLMNT + "/" + toolname, Sys->OREAD);
+	fd := sys->open(TOOLMNT + "/" + toolname + "/ctl", Sys->OREAD);
 	if(fd == nil) {
 		# Tool may not exist if name parsing failed — not a test failure
 		t.skip("cannot open tool file for read: " + toolname);

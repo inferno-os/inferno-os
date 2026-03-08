@@ -214,11 +214,11 @@ echo "── tool execution via 9P ──"
 # exists inside Inferno and is readable in the restricted namespace.
 # If it doesn't exist, fall back to checking that an error is well-formed.
 if emu_c "exec_read" 15 \
-    "tools9p read list & sleep 2; echo /lib/veltro/tools/read.txt > /tool/read; cat /tool/read"; then
+    "tools9p read list & sleep 2; echo /lib/veltro/tools/read.txt > /tool/read/ctl; cat /tool/read/ctl"; then
     if echo "$OUTPUT" | grep -qE "error:"; then
         # doc file missing — try to read a .dis file as a binary check
         if emu_c "exec_read_dis" 15 \
-            "tools9p read list & sleep 2; echo /dis/veltro/tools/read.dis > /tool/read; cat /tool/read 2>/dev/null"; then
+            "tools9p read list & sleep 2; echo /dis/veltro/tools/read.dis > /tool/read/ctl; cat /tool/read/ctl 2>/dev/null"; then
             RLEN=$(echo -n "$OUTPUT" | wc -c)
             if [ "$RLEN" -gt 10 ]; then
                 pass "read tool exec: returned content from .dis file ($RLEN bytes)"
@@ -238,7 +238,7 @@ fi
 
 # List tool: list /dis directory
 if emu_c "exec_list" 15 \
-    "tools9p read list & sleep 2; echo /dis > /tool/list; cat /tool/list"; then
+    "tools9p read list & sleep 2; echo /dis > /tool/list/ctl; cat /tool/list/ctl"; then
     if echo "$OUTPUT" | grep -qE "error:"; then
         fail "list tool returned error: $OUTPUT"
     elif [ -n "$OUTPUT" ]; then

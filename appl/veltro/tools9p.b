@@ -19,9 +19,14 @@ implement Tools9p;
 #
 # Filesystem structure:
 #   /tool/
-#   ├── tools        (r)  List available tool names
-#   ├── help         (rw) Write name, read documentation
-#   └── <tool>       (rw) Write args, read result (only registered tools)
+#   ├── tools        (r)   List available tool names
+#   ├── help         (rw)  Write name, read documentation
+#   ├── ctl          (rw)  add/remove tools, bind/unbind paths
+#   ├── _registry    (r)   Space-separated tool names
+#   ├── paths        (r)   Bound namespace paths
+#   └── <tool>/      (dir) Per-tool directory
+#       ├── ctl      (rw)  Write args, read result
+#       └── doc      (r)   Tool documentation
 #
 
 include "sys.m";
@@ -54,7 +59,11 @@ Tools9p: module {
 
 # Qid types for synthetic files
 Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths: con iota;
-Qtoolbase: con 100;  # Tool files start at 100
+Qtoolbase: con 100;       # Tool qid blocks start at 100
+TOOL_STRIDE: con 4;       # Qids per tool: 0=dir, 1=ctl, 2=doc, 3=reserved
+Qtool_dir: con 0;         # Offset: tool directory
+Qtool_ctl: con 1;         # Offset: ctl subfile (write args, read result)
+Qtool_doc: con 2;         # Offset: doc subfile (read-only documentation)
 
 # Tool info structure
 ToolInfo: adt {
@@ -273,7 +282,7 @@ inittools(args: list of string)
 
 		ti := ref ToolInfo(name, path, nil, qid, nil);
 		tools = ti :: tools;
-		qid++;
+		qid += TOOL_STRIDE;
 	}
 
 	# Reverse to maintain argument order
@@ -319,12 +328,15 @@ findtool(name: string): ref ToolInfo
 	return nil;
 }
 
-# Find tool by qid
+# Find tool by qid (aligns to stride base for subfile qids)
 findtoolbyqid(qid: int): ref ToolInfo
 {
+	if(qid < Qtoolbase)
+		return nil;
+	base := Qtoolbase + ((qid - Qtoolbase) / TOOL_STRIDE) * TOOL_STRIDE;
 	for(t := tools; t != nil; t = tl t) {
 		ti := hd t;
-		if(ti.qid == qid)
+		if(ti.qid == base)
 			return ti;
 	}
 	return nil;
@@ -353,12 +365,12 @@ ctladd(name: string): string
 		return "unknown tool: " + name;
 	if(ti.mod == nil)
 		return "tool module not loaded: " + name;
-	# Assign new qid (max current + 1, monotonically increasing)
-	maxqid := Qtoolbase - 1;
+	# Assign new qid block (next stride-aligned slot above max)
+	maxqid := Qtoolbase - TOOL_STRIDE;
 	for(qt := tools; qt != nil; qt = tl qt)
 		if((hd qt).qid > maxqid)
 			maxqid = (hd qt).qid;
-	ti.qid = maxqid + 1;
+	ti.qid = maxqid + TOOL_STRIDE;
 	# Remove from alltools
 	newlist: list of ref ToolInfo;
 	for(at := alltools; at != nil; at = tl at)
@@ -777,16 +789,27 @@ Serve:
 				srv.reply(styxservers->readbytes(m, array of byte genpathlist()));
 
 			* =>
-				# Tool files - return buffered result
+				# Tool directory/subfile reads
 				if(qtype >= Qtoolbase) {
+					(_, suboff) := toolqtype(qtype);
 					ti := findtoolbyqid(qtype);
 					if(ti == nil) {
 						srv.reply(ref Rmsg.Error(m.tag, Enotfound));
 						break;
 					}
-					if(ti.result == nil)
-						ti.result = array of byte "error: no result (write arguments first)";
-					srv.reply(styxservers->readbytes(m, ti.result));
+					case suboff {
+					Qtool_dir =>
+						srv.read(m);  # directory read via navigator
+					Qtool_ctl =>
+						if(ti.result == nil)
+							ti.result = array of byte "error: no result (write arguments first)";
+						srv.reply(styxservers->readbytes(m, ti.result));
+					Qtool_doc =>
+						doc := gettooldoc(ti.name);
+						srv.reply(styxservers->readbytes(m, array of byte doc));
+					* =>
+						srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+					}
 				} else {
 					srv.reply(ref Rmsg.Error(m.tag, Eperm));
 				}
@@ -846,7 +869,7 @@ Serve:
 				}
 
 			* =>
-				# Tool files - execute asynchronously to avoid blocking serveloop.
+				# Tool ctl writes - execute asynchronously to avoid blocking serveloop.
 				# Long-running tools (e.g. spawn with multi-step LLM) can take
 				# tens of seconds. Running them inline blocks ALL 9P traffic,
 				# which starves Xenith's row.qlock and freezes the UI.
@@ -854,6 +877,11 @@ Serve:
 				# client still sees blocking semantics — but the serveloop
 				# remains free to service other fids.
 				if(qtype >= Qtoolbase) {
+					(_, suboff) := toolqtype(qtype);
+					if(suboff != Qtool_ctl) {
+						srv.reply(ref Rmsg.Error(m.tag, Eperm));
+						break;
+					}
 					ti := findtoolbyqid(qtype);
 					if(ti == nil) {
 						srv.reply(ref Rmsg.Error(m.tag, Enotfound));
@@ -916,11 +944,20 @@ dirgen(p: big): (ref Sys->Dir, string)
 		return (dir(Qid(p, vers, Sys->QTFILE), "paths", big 0, 8r444), nil);
 	}
 
-	# Check if it's a tool file
+	# Check if it's a tool directory or subfile
 	if(qtype >= Qtoolbase) {
+		(_, suboff) := toolqtype(qtype);
 		ti := findtoolbyqid(qtype);
-		if(ti != nil)
-			return (dir(Qid(p, vers, Sys->QTFILE), ti.name, big 0, 8r644), nil);
+		if(ti != nil) {
+			case suboff {
+			Qtool_dir =>
+				return (dir(Qid(p, vers, Sys->QTDIR), ti.name, big 0, 8r755), nil);
+			Qtool_ctl =>
+				return (dir(Qid(p, vers, Sys->QTFILE), "ctl", big 0, 8r644), nil);
+			Qtool_doc =>
+				return (dir(Qid(p, vers, Sys->QTFILE), "doc", big 0, 8r444), nil);
+			}
+		}
 	}
 
 	return (nil, Enotfound);
@@ -936,8 +973,7 @@ navigator(navops: chan of ref Navop)
 		Walk =>
 			qtype := TYPE(n.path);
 
-			case qtype {
-			Qroot =>
+			if(qtype == Qroot) {
 				case n.name {
 				".." =>
 					;  # stay at root
@@ -958,11 +994,29 @@ navigator(navops: chan of ref Navop)
 						n.reply <-= (nil, Enotfound);
 						continue;
 					}
-					n.path = big ti.qid;
+					n.path = big ti.qid;  # tool directory qid
 				}
 				n.reply <-= dirgen(n.path);
-
-			* =>
+			} else if(qtype >= Qtoolbase) {
+				# Walk within a tool directory
+				(_, suboff) := toolqtype(qtype);
+				if(suboff != Qtool_dir) {
+					n.reply <-= (nil, "not a directory");
+					continue;
+				}
+				case n.name {
+				".." =>
+					n.path = big Qroot;
+				"ctl" =>
+					n.path = big(qtype + Qtool_ctl);
+				"doc" =>
+					n.path = big(qtype + Qtool_doc);
+				* =>
+					n.reply <-= (nil, Enotfound);
+					continue;
+				}
+				n.reply <-= dirgen(n.path);
+			} else {
 				n.reply <-= (nil, "not a directory");
 			}
 
@@ -971,7 +1025,7 @@ navigator(navops: chan of ref Navop)
 
 			case qtype {
 			Qroot =>
-				# Root contains: tools, help, _registry, and all registered tool files
+				# Root contains: tools, help, _registry, ctl, paths, and tool directories
 				i := n.offset;
 				count := n.count;
 
@@ -1010,7 +1064,7 @@ navigator(navops: chan of ref Navop)
 					i++;
 				}
 
-				# Remaining entries: registered tool files
+				# Remaining entries: registered tool directories
 				idx := 0;
 				for(t := tools; t != nil && count > 0; t = tl t) {
 					ti := hd t;
@@ -1024,7 +1078,28 @@ navigator(navops: chan of ref Navop)
 				n.reply <-= (nil, nil);
 
 			* =>
-				n.reply <-= (nil, "not a directory");
+				if(qtype >= Qtoolbase) {
+					(_, suboff) := toolqtype(qtype);
+					if(suboff != Qtool_dir) {
+						n.reply <-= (nil, "not a directory");
+					} else {
+						# Tool directory: list ctl and doc subfiles
+						i := n.offset;
+						count := n.count;
+						if(i == 0 && count > 0) {
+							n.reply <-= dirgen(big(qtype + Qtool_ctl));
+							count--;
+							i++;
+						}
+						if(i <= 1 && count > 0) {
+							n.reply <-= dirgen(big(qtype + Qtool_doc));
+							count--;
+						}
+						n.reply <-= (nil, nil);
+					}
+				} else {
+					n.reply <-= (nil, "not a directory");
+				}
 			}
 		}
 	}
@@ -1034,4 +1109,14 @@ navigator(navops: chan of ref Navop)
 TYPE(path: big): int
 {
 	return int path & 16rFFFF;
+}
+
+# Decompose a tool-range qid into (tool_base_qid, subfile_offset)
+# Returns (-1, -1) if qid is not in the tool range
+toolqtype(qid: int): (int, int)
+{
+	if(qid < Qtoolbase)
+		return (-1, -1);
+	off := qid - Qtoolbase;
+	return (Qtoolbase + (off / TOOL_STRIDE) * TOOL_STRIDE, off % TOOL_STRIDE);
 }

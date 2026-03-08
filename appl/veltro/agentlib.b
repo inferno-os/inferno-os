@@ -618,7 +618,7 @@ stripaction(response: string): string
 # Call tool via /tool filesystem
 calltool(tool, args: string): string
 {
-	path := "/tool/" + str->tolower(tool);
+	path := "/tool/" + str->tolower(tool) + "/ctl";
 
 	# Open tool file
 	fd := sys->open(path, Sys->ORDWR);
