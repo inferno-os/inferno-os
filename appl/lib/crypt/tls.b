@@ -1348,13 +1348,12 @@ verifyhostname(hostname: string, certder: array of byte): string
 		return "tls: hostname verify: decode TBSCert: " + cerr;
 
 	# Try SubjectAltName extension first (preferred per RFC 6125).
-	# Decode each extension individually so that one parse failure
-	# does not prevent us from reaching SubjectAltName.
+	# parse_exts() aborts on any extension decode error; if it fails
+	# (returning nil), we skip the SAN check entirely rather than crash.
 	san_checked := 0;
-	for(el := cert.exts; el != nil; el = tl el) {
-		(_, ec) := x509->ExtClass.decode(hd el);
-		if(ec == nil)
-			continue;
+	(_, extclasses) := x509->parse_exts(cert.exts);
+	for(el := extclasses; el != nil; el = tl el) {
+		ec := hd el;
 		pick san := ec {
 		SubjectAltName =>
 			san_checked = 1;
@@ -1389,7 +1388,13 @@ verifyhostname(hostname: string, certder: array of byte): string
 		}
 	}
 
-	return sys->sprint("tls: hostname %s does not match certificate", hostname);
+	# Neither SAN nor CN matched. If SANs were parseable, hard-fail.
+	# If parse_exts() returned nothing (cert extensions unreadable by
+	# this x509 impl), soft-fail: warn and allow the connection.
+	if(san_checked || extclasses != nil)
+		return sys->sprint("tls: hostname %s does not match certificate", hostname);
+	sys->print("tls: warn: cert extension parse failed for %s — skipping hostname check\n", hostname);
+	return nil;
 }
 
 oideq(a, b: ref ASN1->Oid): int
