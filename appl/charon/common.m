@@ -10,6 +10,7 @@ include "pkcs.m";
 include "x509.m";
 include "sslsession.m";
 include "ssl3.m";
+include "tls.m";
 include "convcs.m";
 include "cookiesrv.m";
 include "chutils.m";

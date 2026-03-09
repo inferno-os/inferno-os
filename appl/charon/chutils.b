@@ -802,8 +802,8 @@ Netconn.new(id: int) : ref Netconn
 			0,		# port
 			"",		# scheme
 			sys->Connection(nil, nil, ""),	# conn
-			nil,		# ssl context
-			0,		# undetermined ssl version
+			nil,		# tls connection
+			0,		# (unused)
 			NCfree,	# state
 			array[10] of ref ByteSource,	# queue
 			0,		# qlen

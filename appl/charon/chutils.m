@@ -236,7 +236,7 @@ CharonUtils: module
 		port:	int;			# port number
 		scheme: string;		# Url scheme ("http", "file", etc.)
 		conn:	Sys->Connection;	# fds, etc.
- 		sslx:	ref SSL3->Context;	# ssl connection
+ 		tlsconn:	ref TLS->Conn;		# tls connection
  		vers:	int;			# ssl version
 		state:	int;			# NCfree, etc.
 		queue:	cyclic array of ref ByteSource;
