@@ -207,15 +207,8 @@ makewins()
 	}
 	if(window.image == nil)
 		return;
-	screen := Screen.allocate(window.image, display.transparent, 0);
-	r := window.image.r;
-	realwin = screen.newwindow(r, D->Refnone, D->White);
-	realwin.origin(ZP, r.min);
-	if(realwin == nil)
-		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
-	mainwin = display.newimage(realwin.r, realwin.chans, 0, D->White);
-	if(mainwin == nil)
-		CU->raisex(sys->sprint("EXFatal: can't create offscreen buffer: %r"));
+	mainwin = window.image;
+	realwin = mainwin;
 }
 
 hidewins()
@@ -288,17 +281,12 @@ fwdbutton(nil: int)
 		return;
 }
 
-flush(r: Rect)
+flush(nil: Rect)
 {
 	if((CU->config).doacme)
 		return;
-	if(realwin != nil) {
-		oclipr := mainwin.clipr;
-		mainwin.clipr = r;
-		realwin.draw(r, mainwin, nil, r.min);
-		mainwin.clipr = oclipr;
+	if(mainwin != nil)
 		mainwin.flush(D->Flushnow);
-	}
 }
 
 clientfocus()

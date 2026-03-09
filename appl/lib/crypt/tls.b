@@ -542,11 +542,8 @@ handshake(cs: ref ConnState, config: ref Config): string
 	x25519_priv := randombytes(32);
 	x25519_pub := keyring->x25519_base(x25519_priv);
 
-	# Generate ML-KEM-768 key pair for hybrid PQ key exchange
-	(mlkem_pk, mlkem_sk) := keyring->mlkem768_keygen();
-
 	# Build and send ClientHello
-	hello := buildclienthello(config, client_random, x25519_pub, mlkem_pk);
+	hello := buildclienthello(config, client_random, x25519_pub);
 	err := sendhsmsg(cs, HT_CLIENT_HELLO, hello);
 	if(err != nil)
 		return err;
@@ -568,7 +565,7 @@ handshake(cs: ref ConnState, config: ref Config): string
 
 	if(cs.version == TLS13)
 		return handshake13(cs, config, client_random, server_random,
-			x25519_priv, mlkem_sk, key_share_group, key_share_data);
+			x25519_priv, key_share_group, key_share_data);
 	else
 		return handshake12(cs, config, client_random, server_random,
 			x25519_priv);
@@ -732,39 +729,20 @@ handshake12(cs: ref ConnState, config: ref Config,
 handshake13(cs: ref ConnState, config: ref Config,
 	client_random, server_random: array of byte,
 	x25519_priv: array of byte,
-	mlkem_sk: array of byte,
 	key_share_group: int,
 	key_share_data: array of byte): string
 {
 	shared_secret: array of byte;
 
-	if(key_share_group == GROUP_X25519MLKEM768){
-		# Hybrid X25519MLKEM768: server sends mlkem_ct(1088) || x25519_pub(32)
-		if(key_share_data == nil || len key_share_data != 1120)
-			return "tls: invalid hybrid key share (expected 1120 bytes)";
+	# Plain X25519 key exchange
+	if(key_share_group != GROUP_X25519)
+		return "tls: unsupported key share group";
+	if(key_share_data == nil || len key_share_data != 32)
+		return "tls: invalid server key share";
 
-		mlkem_ct := key_share_data[0:1088];
-		server_x25519 := key_share_data[1088:1120];
-
-		mlkem_ss := keyring->mlkem768_decaps(mlkem_sk, mlkem_ct);
-		if(mlkem_ss == nil)
-			return "tls: ML-KEM-768 decapsulation failed";
-
-		x25519_ss := keyring->x25519(x25519_priv, server_x25519);
-		if(x25519_ss == nil)
-			return "tls: X25519 computation failed";
-
-		# Combined shared secret: mlkem_ss(32) || x25519_ss(32)
-		shared_secret = catbytes(mlkem_ss, x25519_ss);
-	} else {
-		# Plain X25519
-		if(key_share_data == nil || len key_share_data != 32)
-			return "tls: invalid server key share";
-
-		shared_secret = keyring->x25519(x25519_priv, key_share_data);
-		if(shared_secret == nil)
-			return "tls: X25519 computation failed";
-	}
+	shared_secret = keyring->x25519(x25519_priv, key_share_data);
+	if(shared_secret == nil)
+		return "tls: X25519 computation failed";
 
 	hashlen := hashlength(cs.suite);
 
@@ -880,7 +858,7 @@ handshake13(cs: ref ConnState, config: ref Config,
 # ================================================================
 
 buildclienthello(config: ref Config, random: array of byte,
-	x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
+	x25519_pub: array of byte): array of byte
 {
 	# Build extensions
 	exts: array of byte;
@@ -905,8 +883,8 @@ buildclienthello(config: ref Config, random: array of byte,
 	else
 		suppver = nil;
 
-	# Key share extension (hybrid + x25519 fallback)
-	keyshare := buildkeyshare(x25519_pub, mlkem_pk);
+	# Key share extension (x25519 only)
+	keyshare := buildkeyshare(x25519_pub);
 
 	# Concatenate extensions
 	extlist := catbytes(sni, catbytes(groups, catbytes(sigalgs,
@@ -978,14 +956,13 @@ buildsniext(name: string): array of byte
 
 buildsupportedgroups(): array of byte
 {
-	# X25519MLKEM768 (hybrid PQ) + x25519 + secp256r1
-	ext := array [4 + 2 + 6] of byte;
+	# x25519 + secp256r1
+	ext := array [4 + 2 + 4] of byte;
 	put16(ext, 0, EXT_SUPPORTED_GROUPS);
-	put16(ext, 2, 2 + 6);
-	put16(ext, 4, 6);
-	put16(ext, 6, GROUP_X25519MLKEM768);
-	put16(ext, 8, GROUP_X25519);
-	put16(ext, 10, GROUP_SECP256R1);
+	put16(ext, 2, 2 + 4);
+	put16(ext, 4, 4);
+	put16(ext, 6, GROUP_X25519);
+	put16(ext, 8, GROUP_SECP256R1);
 	return ext;
 }
 
@@ -1028,35 +1005,19 @@ buildsupportedversions(config: ref Config): array of byte
 	return ext;
 }
 
-buildkeyshare(x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
+buildkeyshare(x25519_pub: array of byte): array of byte
 {
-	# Hybrid key share: mlkem_pk(1184) || x25519_pub(32) = 1216 bytes
-	hybridlen := len mlkem_pk + len x25519_pub;	# 1216
-	hybridentry := 2 + 2 + hybridlen;		# group(2) + keylen(2) + data
-
-	# X25519 fallback key share
-	x25519entry := 2 + 2 + 32;
-
-	# Total key shares list length
-	listlen := hybridentry + x25519entry;
+	# X25519 key share only
+	listlen := 2 + 2 + 32;	# group(2) + keylen(2) + data(32)
 
 	ext := array [4 + 2 + listlen] of byte;
 	put16(ext, 0, EXT_KEY_SHARE);
 	put16(ext, 2, 2 + listlen);
 	put16(ext, 4, listlen);
 
-	# First entry: X25519MLKEM768 hybrid
-	off := 6;
-	put16(ext, off, GROUP_X25519MLKEM768);
-	put16(ext, off + 2, hybridlen);
-	ext[off + 4:] = mlkem_pk;
-	ext[off + 4 + len mlkem_pk:] = x25519_pub;
-	off += hybridentry;
-
-	# Second entry: X25519 fallback
-	put16(ext, off, GROUP_X25519);
-	put16(ext, off + 2, 32);
-	ext[off + 4:] = x25519_pub;
+	put16(ext, 6, GROUP_X25519);
+	put16(ext, 8, 32);
+	ext[10:] = x25519_pub;
 
 	return ext;
 }
