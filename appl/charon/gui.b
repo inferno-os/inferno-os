@@ -213,9 +213,9 @@ makewins()
 	realwin.origin(ZP, r.min);
 	if(realwin == nil)
 		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
-	# Draw directly to the screen window (same as luciedit/lucishell pattern).
-	# No offscreen buffer — eliminates the blit step that caused smearing.
-	mainwin = realwin;
+	mainwin = display.newimage(realwin.r, realwin.chans, 0, D->White);
+	if(mainwin == nil)
+		CU->raisex(sys->sprint("EXFatal: can't create offscreen buffer: %r"));
 }
 
 hidewins()
@@ -288,14 +288,16 @@ fwdbutton(nil: int)
 		return;
 }
 
-flush(nil: Rect)
+flush(r: Rect)
 {
 	if((CU->config).doacme)
 		return;
 	if(realwin != nil) {
-		# mainwin == realwin: already drawn directly to screen window.
-		# Just flush to make it visible.
-		realwin.flush(D->Flushnow);
+		oclipr := mainwin.clipr;
+		mainwin.clipr = r;
+		realwin.draw(r, mainwin, nil, r.min);
+		mainwin.clipr = oclipr;
+		mainwin.flush(D->Flushnow);
 	}
 }
 
