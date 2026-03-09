@@ -151,14 +151,14 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 			w.image = w.screen.newwindow(wmsz, Draw->Refnone, Draw->Nofill);
 			makewins();
 			ev = ref Event.Ereshape(mainwin.r);
-			offset = w.image.r.min;
+			offset = ZP;
 		ctl := <-w.ctl or
 		ctl = <-w.ctxt.ctl =>
 			w.wmctl(ctl);
 			if(ctl != nil && ctl[0] == '!'){
 				makewins();
 				ev = ref Event.Ereshape(mainwin.r);
-				offset = w.image.r.min;
+				offset = ZP;
 			}
 		p := <-w.ctxt.ptr =>
 			if(w.pointer(*p))

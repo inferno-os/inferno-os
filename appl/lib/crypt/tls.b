@@ -19,7 +19,7 @@ include "pkcs.m";
 
 include "x509.m";
 	x509: X509;
-	Signed, Certificate, SubjectPKInfo, PublicKey: import x509;
+	Signed, Certificate, SubjectPKInfo, PublicKey, ExtClass: import x509;
 
 include "tls.m";
 
@@ -1347,22 +1347,23 @@ verifyhostname(hostname: string, certder: array of byte): string
 	if(cerr != nil)
 		return "tls: hostname verify: decode TBSCert: " + cerr;
 
-	# Try SubjectAltName extension first (preferred per RFC 6125)
+	# Try SubjectAltName extension first (preferred per RFC 6125).
+	# Decode each extension individually so that one parse failure
+	# does not prevent us from reaching SubjectAltName.
 	san_checked := 0;
-	if(cert.exts != nil) {
-		(_, extclasses) := x509->parse_exts(cert.exts);
-		for(el := extclasses; el != nil; el = tl el) {
-			ec := hd el;
-			pick san := ec {
-			SubjectAltName =>
-				san_checked = 1;
-				for(al := san.alias; al != nil; al = tl al) {
-					gn := hd al;
-					pick dns := gn {
-					dNSName =>
-						if(matchhostname(hostname, dns.str))
-							return nil;
-					}
+	for(el := cert.exts; el != nil; el = tl el) {
+		(_, ec) := x509->ExtClass.decode(hd el);
+		if(ec == nil)
+			continue;
+		pick san := ec {
+		SubjectAltName =>
+			san_checked = 1;
+			for(al := san.alias; al != nil; al = tl al) {
+				gn := hd al;
+				pick dns := gn {
+				dNSName =>
+					if(matchhostname(hostname, dns.str))
+						return nil;
 				}
 			}
 		}
