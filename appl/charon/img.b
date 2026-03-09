@@ -139,7 +139,7 @@ ImageSource.getmim(is: self ref ImageSource) : (int, ref MaskedImage)
 		}
 		else {
 			# slow down the spin-waiting for this image
-			sys->sleep(100);
+			sys->sleep(20);
 		}
 	}exception ex{
 	"exImageerror*" =>

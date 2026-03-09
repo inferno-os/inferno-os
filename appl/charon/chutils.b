@@ -1465,7 +1465,7 @@ setconfig(argl: list of string)
 	config.doscripts = 1;
 	config.httpminor = 1;
 	config.agentname = "Mozilla/4.08 (Charon; Inferno)";
-	config.nthreads = 4;
+	config.nthreads = 8;
 	config.offersave = 1;
 	config.charset = "utf-8";
 	config.plumbport = "web";

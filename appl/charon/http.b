@@ -367,6 +367,8 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 		reqhdr.addval(HHost, u.host);
 	reqhdr.addval(HUserAgent, agent);
 	reqhdr.addval(HAccept, "*/*; *");
+	if(!(nc.tstate&THTTP_1_0))
+		reqhdr.addval(HConnection, "keep-alive");
 	if(req.auth != "")
 		reqhdr.addval(HAuthorization, "Basic " + req.auth);
 	if(req.method == CU->HPost) {
