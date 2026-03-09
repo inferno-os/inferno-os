@@ -229,10 +229,12 @@ setstatus(nil: string)
 		return;
 }
 
-seturl(nil: string)
+seturl(url: string)
 {
 	if((CU->config).doacme)
 		return;
+	if(window != nil && url != nil && url != "")
+		window.settitle(url);
 }
 
 auth(realm: string): (int, string, string)

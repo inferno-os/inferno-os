@@ -2339,48 +2339,19 @@ drawborder(im: ref Image, r: Rect, n, color: int)
 	im.draw((Point(xr-n,y+n),Point(xr,ybi)), src, nil, zp);			# right
 }
 
-# Draw relief border just outside r, width 2 border,
-# colors white/lightgrey/darkgrey/black
-# to give raised relief (if raised != 0) or sunken.
-drawrelief(im: ref Image, r: Rect, raised: int)
+# Draw flat border just outside r, width 1px, neutral gray.
+# raised parameter retained for API compatibility but ignored.
+drawrelief(im: ref Image, r: Rect, nil: int)
 {
-	# ((x,y),(xr,yb)) == r
-	x := r.min.x;
-	x1 := x-1;
-	x2 := x-2;
-	xr := r.max.x;
-	xr1 := xr+1;
-	xr2 := xr+2;
-	y := r.min.y;
-	y1 := y-1;
-	y2 := y-2;
-	yb := r.max.y;
-	yb1 := yb+1;
-	yb2 := yb+2;
-
-	# colors for top/left outside, top/left inside, bottom/right outside, bottom/right inside
-	tlo, tli, bro, bri: ref Image;
-	if(raised) {
-		tlo = colorimage(Grey);
-		tli = colorimage(White);
-		bro = colorimage(Black);
-		bri = colorimage(DarkGrey);
-	}
-	else {
-		tlo = colorimage(DarkGrey);
-		tli = colorimage(Black);
-		bro = colorimage(White);
-		bri = colorimage(Grey);
-	}
-
-	im.draw((Point(x2,y2), Point(xr1,y1)), tlo, nil, zp);		# top outside
-	im.draw((Point(x1,y1), Point(xr,y)), tli, nil, zp);			# top inside
-	im.draw((Point(x2,y1), Point(x1,yb1)), tlo, nil, zp);		# left outside
-	im.draw((Point(x1,y), Point(x,yb)), tli, nil, zp);			# left inside
-	im.draw((Point(xr,y1),Point(xr1,yb)), bri, nil, zp);		# right inside
-	im.draw((Point(xr1,y),Point(xr2,yb1)), bro, nil, zp);		# right outside
-	im.draw((Point(x1,yb),Point(xr1,yb1)), bri, nil, zp);		# bottom inside
-	im.draw((Point(x,yb1),Point(xr2,yb2)), bro, nil, zp);		# bottom outside
+	col := colorimage(DarkGrey);
+	x := r.min.x; x1 := x-1;
+	xr := r.max.x; xr1 := xr+1;
+	y := r.min.y; y1 := y-1;
+	yb := r.max.y; yb1 := yb+1;
+	im.draw((Point(x1,y1), Point(xr1,y)), col, nil, zp);		# top
+	im.draw((Point(x1,y), Point(x,yb1)), col, nil, zp);		# left
+	im.draw((Point(xr,y1),Point(xr1,yb1)), col, nil, zp);		# right
+	im.draw((Point(x1,yb),Point(xr1,yb1)), col, nil, zp);		# bottom
 }
 
 # Fill r with color

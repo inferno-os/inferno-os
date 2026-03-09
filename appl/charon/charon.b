@@ -295,9 +295,13 @@ Forloop:
 				stop();
 			g = nil;
 		Eback =>
-			g = GoSpec.newspecial(GoHistnode, history.find(-1));
+			hn := history.find(-1);
+			if(hn != nil)
+				g = GoSpec.newspecial(GoHistnode, hn);
 		Efwd =>
-			g = GoSpec.newspecial(GoHistnode, history.find(1));
+			hn := history.find(1);
+			if(hn != nil)
+				g = GoSpec.newspecial(GoHistnode, hn);
 		Eform =>
 			formaction(e.frameid, e.formid, e.ftype, 0);
 			g = nil;
@@ -1188,7 +1192,9 @@ form_submit(fr: ref Frame, frm: ref B->Form, p: Point, submitctl: ref Control, o
 		submitfield = submitctl.ff;
 
 	if(submitctl != nil && tagof(submitctl) == tagof(Control.Centry)) {
-		# Via CR, so only submit if there is a submit button (first one is the default)
+		# Via CR: use first submit button if present (for submit button value in POST).
+		# If no <input type="submit"> exists (e.g. form uses <button> which is unimplemented),
+		# submit anyway — modern browsers do this for single-input forms.
 		firstsubmit : ref B->Formfield;
 		for(l := frm.fields; l != nil; l = tl l) {
 			f := hd l;
@@ -1197,9 +1203,7 @@ form_submit(fr: ref Frame, frm: ref B->Form, p: Point, submitctl: ref Control, o
 				break;
 			}
 		}
-		if (firstsubmit == nil)
-			return;
-		submitfield = firstsubmit;
+		submitfield = firstsubmit;	# nil is ok — form submits without submit-button value
 	}
 	if(doscripts && fr.doc.hasscripts && onsubmit && (frm.evmask & E->SEonsubmit)) {
 		c := chan of string;
