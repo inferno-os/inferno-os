@@ -148,7 +148,11 @@ init(): string
 	x509->init();
 
 	# Open entropy source once; keep fd alive for the lifetime of this module instance.
-	randomfd = sys->open("/dev/urandom", Sys->OREAD);
+	# Prefer #c/notquiterandom (arc4random_buf on macOS, getrandom on Linux) — fast.
+	# #c/random uses timing-based entropy collection: ~80ms/byte = seconds per handshake.
+	randomfd = sys->open("#c/notquiterandom", Sys->OREAD);
+	if(randomfd == nil)
+		randomfd = sys->open("/dev/urandom", Sys->OREAD);
 	if(randomfd == nil)
 		randomfd = sys->open("#c/random", Sys->OREAD);
 
@@ -2153,7 +2157,9 @@ randombuf(buf: array of byte, n: int)
 		return;
 	}
 	# randomfd not initialized (init() not called?) — open on demand.
-	fd := sys->open("/dev/urandom", Sys->OREAD);
+	fd := sys->open("#c/notquiterandom", Sys->OREAD);
+	if(fd == nil)
+		fd = sys->open("/dev/urandom", Sys->OREAD);
 	if(fd == nil)
 		fd = sys->open("#c/random", Sys->OREAD);
 	if(fd != nil) {
