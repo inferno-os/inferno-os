@@ -1,6 +1,35 @@
 #include	"dat.h"
 #include	"fns.h"
 
+/*
+ * Two entropy devices are served by the cons driver (#c):
+ *
+ *   #c/random          — timing-based hardware entropy (this file)
+ *   #c/notquiterandom  — delegates to prng() in libsec/prng.c
+ *
+ * DESIGN INTENT
+ *
+ * #c/random is the correct choice for bare-metal Inferno: it derives
+ * entropy from real clock jitter between two kernel processes running
+ * at different scheduling priorities.  It produces about one byte per
+ * 80ms (4 clock ticks × 20ms/tick) and fills a 1024-byte ring buffer.
+ * On real hardware this jitter is genuinely unpredictable.
+ *
+ * #c/notquiterandom was historically a weaker LCG.  In this codebase
+ * it has been upgraded: prng() calls arc4random_buf() on macOS and
+ * getrandom() on Linux — both are ChaCha20-based CSPRNGs seeded from
+ * the host OS hardware entropy pool.  When running under an OS, this
+ * source is faster (nanoseconds vs milliseconds) and draws from a
+ * larger entropy pool (RDRAND, /dev/hwrng, etc.).
+ *
+ * WHICH TO USE
+ *
+ * Code that runs only under emu should prefer #c/notquiterandom.
+ * Code that must also run on bare-metal Inferno should use #c/random,
+ * or open #c/notquiterandom with a fallback to #c/random (as tls.b does).
+ *
+ * See also: libsec/prng.c, appl/lib/crypt/tls.b, docs/TLS-ENTROPY.md
+ */
 extern void prng(uchar *buf, int nbytes);
 
 static struct

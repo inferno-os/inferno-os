@@ -120,6 +120,35 @@ ConnState: adt {
 	hsoff:		int;
 };
 
+# Entropy source fd, opened once in init() and reused for all randombuf() calls.
+#
+# ENTROPY SOURCE SELECTION — SECURITY NOTE
+#
+# This module runs in two distinct environments with different entropy capabilities:
+#
+#   1. emu (Inferno hosted on macOS/Linux):
+#        #c/notquiterandom  →  prng() → arc4random_buf() / getrandom()
+#        This is a full OS CSPRNG (ChaCha20) seeded from hardware entropy.
+#        Fast (nanoseconds per call) and cryptographically secure.
+#
+#   2. Bare-metal Inferno (no host OS):
+#        #c/notquiterandom is backed by libsec genrandom, which may have
+#        limited entropy on minimal hardware.
+#        #c/random uses timing jitter between two kprocs and is the
+#        traditional Inferno entropy source for bare metal.
+#
+# The open() priority order below handles both environments:
+#
+#   First:  #c/notquiterandom  — fast OS CSPRNG when running under an OS
+#   Second: /dev/urandom       — POSIX fallback (works if host /dev is bound)
+#   Third:  #c/random          — timing-based entropy; slow (~80ms/byte) but
+#                                correct for bare-metal Inferno where no OS
+#                                CSPRNG is available
+#
+# The name "#c/notquiterandom" is a historical Inferno convention from when
+# it was a simple LCG.  In this codebase it has been upgraded to delegate to
+# the OS CSPRNG via prng() in libsec/prng.c.  See emu/port/random.c and
+# docs/TLS-ENTROPY.md for the full picture.
 randomfd: ref Sys->FD;
 
 init(): string
@@ -147,9 +176,8 @@ init(): string
 		return "tls: cannot load X509";
 	x509->init();
 
-	# Open entropy source once; keep fd alive for the lifetime of this module instance.
-	# Prefer #c/notquiterandom (arc4random_buf on macOS, getrandom on Linux) — fast.
-	# #c/random uses timing-based entropy collection: ~80ms/byte = seconds per handshake.
+	# Open entropy source once; reuse fd for all subsequent randombuf() calls.
+	# See the ENTROPY SOURCE SELECTION comment above randomfd for the full rationale.
 	randomfd = sys->open("#c/notquiterandom", Sys->OREAD);
 	if(randomfd == nil)
 		randomfd = sys->open("/dev/urandom", Sys->OREAD);
