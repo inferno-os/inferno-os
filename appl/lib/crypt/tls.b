@@ -1013,16 +1013,29 @@ buildsupportedgroups(): array of byte
 
 buildsigalgsext(): array of byte
 {
-	# RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, ECDSA_SECP256R1_SHA256, RSA_PSS_RSAE_SHA256
-	nalgs := 4;
+	# Advertise in preference order:
+	#   ECDSA P-256/SHA-256 and P-384/SHA-384  (EC certificates)
+	#   RSA-PSS SHA-256 and SHA-384            (modern RSA, required for TLS 1.3)
+	#   RSA-PKCS1 SHA-256/SHA-384/SHA-512      (legacy RSA, TLS 1.2 compat)
+	#
+	# P-384 is common for certificates signed by Let's Encrypt and DigiCert
+	# using ECDSA; omitting it causes handshake_failure on those sites.
+	algs := array[] of {
+		ECDSA_SECP256R1_SHA256,
+		ECDSA_SECP384R1_SHA384,
+		RSA_PSS_RSAE_SHA256,
+		RSA_PSS_RSAE_SHA384,
+		RSA_PKCS1_SHA256,
+		RSA_PKCS1_SHA384,
+		RSA_PKCS1_SHA512,
+	};
+	nalgs := len algs;
 	ext := array [4 + 2 + nalgs * 2] of byte;
 	put16(ext, 0, EXT_SIGNATURE_ALGORITHMS);
 	put16(ext, 2, 2 + nalgs * 2);
 	put16(ext, 4, nalgs * 2);
-	put16(ext, 6, RSA_PKCS1_SHA256);
-	put16(ext, 8, RSA_PKCS1_SHA384);
-	put16(ext, 10, ECDSA_SECP256R1_SHA256);
-	put16(ext, 12, RSA_PSS_RSAE_SHA256);
+	for(i := 0; i < nalgs; i++)
+		put16(ext, 6 + i*2, algs[i]);
 	return ext;
 }
 
@@ -1574,6 +1587,22 @@ verifycertverify_hash(cs: ref ConnState, data: array of byte, certs: list of arr
 		if(!keyring->p256_ecdsa_verify(ecpt, digest, rawsig))
 			return "tls: CertificateVerify: ECDSA verification failed";
 
+	ECDSA_SECP384R1_SHA384 =>
+		# ECDSA with P-384 and SHA-384 (common for Let's Encrypt/DigiCert ECDSA certs)
+		digest := array [Keyring->SHA384dlen] of byte;
+		keyring->sha384(content, len content, digest, nil);
+
+		if(certs == nil)
+			return "tls: no certs for CertificateVerify";
+		(ecbytes384, ecerr384) := extractecpointbytes(certs);
+		if(ecbytes384 == nil)
+			return "tls: CertificateVerify: " + ecerr384;
+		rawsig384 := parse_ecdsa_der_sig(sig);
+		if(rawsig384 == nil)
+			return "tls: CertificateVerify: invalid ECDSA P-384 signature";
+		if(!keyring->p384_ecdsa_verify(ecbytes384, digest, rawsig384))
+			return "tls: CertificateVerify: ECDSA P-384 verification failed";
+
 	* =>
 		return sys->sprint("tls: unsupported CertificateVerify sig_alg 0x%04x", sig_alg);
 	}
@@ -1748,6 +1777,33 @@ extractrsakey(certs: list of array of byte): (ref RSAKey, string)
 		return (rpk.pk, nil);
 	* =>
 		return (nil, "tls: not an RSA public key");
+	}
+}
+
+# Extract raw EC public key bytes from leaf certificate (for P-384 and other curves)
+extractecpointbytes(certs: list of array of byte): (array of byte, string)
+{
+	if(certs == nil)
+		return (nil, "no certs");
+	leaf := hd certs;
+
+	(serr, signed) := x509->Signed.decode(leaf);
+	if(serr != nil)
+		return (nil, "decode cert: " + serr);
+	(cerr, cert) := x509->Certificate.decode(signed.tobe_signed);
+	if(cerr != nil)
+		return (nil, "decode TBSCert: " + cerr);
+	(pkerr, _, pk) := cert.subject_pkinfo.getPublicKey();
+	if(pkerr != nil)
+		return (nil, "getPublicKey: " + pkerr);
+	if(pk == nil)
+		return (nil, "no public key");
+
+	pick epk := pk {
+	EC =>
+		return (epk.point, nil);
+	* =>
+		return (nil, "not an EC key");
 	}
 }
 
