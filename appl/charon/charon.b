@@ -233,6 +233,13 @@ initc(ctxt: ref Context)
 		newres.since(curres).print("difference after (CU->imcache).init");
 		curres = newres;
 	}
+
+	# Render-to-file mode: layout page, write image+text, exit
+	if((CU->config).dorender) {
+		renderonce();
+		return;
+	}
+
 	start();
 	if(J != nil)
 		J->frametreechanged(top);
@@ -2146,6 +2153,76 @@ startcharon(url: string, c: chan of string)
 		sys->pctl(Sys->NEWPGRP|Sys->NEWFD, fdl);
 		ch->initc(ctxt);
 	}
+}
+
+# ---------- Render-to-file mode ----------
+
+RENDERIMG: con "/tmp/.charonrender.bit";
+RENDERTXT: con "/tmp/.charonrender.txt";
+
+renderonce()
+{
+	start();
+
+	startpage := config.starturl;
+	url := CU->makeabsurl(startpage);
+	if(url == nil) {
+		sendopener("E");
+		return;
+	}
+
+	f := top;
+	curframe = f;
+	g := GoSpec.newget(GoNormal, url, "_top");
+
+	# Start network communication loop in background
+	gopgrp = sys->pctl(sys->NEWPGRP, nil);
+	spawn rendernetget();
+
+	# Fetch and layout synchronously
+	G->progress <-= (-1, G->Pstart, 0, "");
+	err := get(g, f, GoNormal, nil);
+	G->progress <-= (-1, G->Pdone, 0, "");
+
+	# Write rendered image
+	if(f != nil && f.cim != nil && f.layout != nil) {
+		w := f.layout.width;
+		h := f.layout.height;
+		if(w <= 0) w = 1;
+		if(h <= 0) h = 1;
+		# Clamp to frame content rect
+		if(w > f.cr.dx()) w = f.cr.dx();
+		if(h > f.cr.dy()) h = f.cr.dy();
+		origin := Point(f.cr.min.x, f.cr.min.y);
+		ifd := sys->create(RENDERIMG, Sys->OWRITE, 8r600);
+		if(ifd != nil) {
+			crop := context.display.newimage(
+				Rect(Point(0,0), Point(w, h)),
+				f.cim.chans, 0, D->White);
+			if(crop != nil) {
+				crop.draw(crop.r, f.cim, nil, origin);
+				context.display.writeimage(ifd, crop);
+			}
+			ifd = nil;
+		}
+	}
+
+	# Write extracted text
+	text := extractbody(f);
+	tfd := sys->create(RENDERTXT, Sys->OWRITE, 8r600);
+	if(tfd != nil) {
+		b := array of byte text;
+		sys->write(tfd, b, len b);
+		tfd = nil;
+	}
+
+	sendopener("D");
+	finish();
+}
+
+rendernetget()
+{
+	CU->netget();
 }
 
 exiting := 0;

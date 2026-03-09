@@ -5,7 +5,6 @@ DIRS=\
 TARG=\
 	about.dis\
 	logon.dis\
-	charontext.dis\
 	clock.dis\
 	colors.dis\
 	lens.dis\
@@ -46,5 +45,3 @@ DISBIN=$ROOT/dis/wm
 <$ROOT/mkfiles/mkdis
 <$ROOT/mkfiles/mksubdirs
 
-charontext.dis:	charon.b
-	limbo $LIMBOFLAGS -gw -o charontext.dis charon.b

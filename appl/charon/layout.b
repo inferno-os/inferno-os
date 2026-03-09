@@ -2057,8 +2057,8 @@ checkffsize(f: ref Frame, i: ref Item, ff: ref Formfield)
 
 drawall(f: ref Frame)
 {
-	if((CU->config).doacme)
-		return;		# in acme mode don't bother
+	if((CU->config).doacme && !(CU->config).dorender)
+		return;		# in acme mode don't bother (unless render mode)
 	oclipr := f.cim.clipr;
 	origin := f.lptosp(zp);
 	clipr := f.dirtyr.addpt(origin);

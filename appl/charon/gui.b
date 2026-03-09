@@ -40,6 +40,8 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 	D = load Draw Draw->PATH;
 	CU = cu;
 	E = cu->E;
+	if((CU->config).dorender)
+		(CU->config).doacme = 1;
 	if((CU->config).doacme){
 		display=ctxt.display;
 		makewins();

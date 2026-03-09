@@ -157,6 +157,7 @@ CharonUtils: module
 		imagecachemem: int;	# imcache.memlimit
 		docookies:	int;		# allow cookie storage/sending?
 		doacme:		int;
+		dorender:	int;		# render-to-file mode (no event loop)
 		doscripts:		int;		# allow scripts to execute?
 		httpminor:	int;		# use HTTP 1.httpminor
 		agentname:	string;	# what to send in HTTP header
