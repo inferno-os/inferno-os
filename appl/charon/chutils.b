@@ -1463,11 +1463,11 @@ setconfig(argl: list of string)
 	config.imagecachemem = 100000000;	# 100Meg, will get lowered later
 	config.docookies = 1;
 	config.doscripts = 1;
-	config.httpminor = 0;
+	config.httpminor = 1;
 	config.agentname = "Mozilla/4.08 (Charon; Inferno)";
 	config.nthreads = 4;
 	config.offersave = 1;
-	config.charset = "windows-1252";
+	config.charset = "utf-8";
 	config.plumbport = "web";
 	config.wintitle = "Charon";	# tkclient->titlebar() title, used by GUI
 	config.dbgfile = "";
