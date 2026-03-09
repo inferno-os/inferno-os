@@ -764,7 +764,9 @@ goproc(g: ref GoSpec)
 		if (g.kind == GoSettext)
 			settext(g, f, g.body);
 		else
-			err = get(g, f, origkind, hn);
+			sys->print("goproc: fetching url=%s\n", g.url.tostring());
+		err = get(g, f, origkind, hn);
+		sys->print("goproc: get() returned err=%q\n", err);
 
 		if(doscripts && J->defaultStatus != "")
 			status = J->defaultStatus;
@@ -772,7 +774,7 @@ goproc(g: ref GoSpec)
 	if(err != nil) {
 		status = err;
 		G->progress <-= (-1, G->Perr, 100, err);
-	} else 
+	} else
 		G->progress <-= (-1, G->Pdone, 0, nil);
 		
 	G->setstatus(status);

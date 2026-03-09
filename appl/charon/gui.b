@@ -10,9 +10,8 @@ sys: Sys;
 
 D: Draw;
 	Font,Point, Rect, Image, Screen, Display: import D;
-include "menuhit.m";
-	menuhit: Menuhit;
-	Menu, Mousectl: import menuhit;
+	menumod: Menu;
+	Popup: import menumod;
 
 CU: CharonUtils;
 
@@ -30,7 +29,7 @@ popup: ref Popup;
 gctl: chan of string;
 drawctxt: ref Draw->Context;
 window: ref Window;
-menu : ref Menu;
+menu: ref Menu->Popup;
 
 realwin: ref Draw->Image;
 mask: ref Draw->Image;
@@ -64,13 +63,19 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 		return nil;
 	}
 
-	menuhit = load Menuhit Menuhit->PATH;
-	menu = ref Menu(array[] of {"back", "fwd", "stop", "start"}, nil, 0);
+	menumod = load Menu Menu->PATH;
 
 	win := wmclient->window(ctxt, "charon", Wmclient->Plain);
 	window = win;
 	drawctxt = ctxt;
 	display = win.display;
+	if(menumod != nil) {
+		f := Font.open(display, "/fonts/combined/unicode.sans.14.font");
+		if(f == nil)
+			f = Font.open(display, "*default*");
+		menumod->init(display, f);
+		menu = menumod->new(array[] of {"back", "forward", "stop", "start"});
+	}
 
 	gctl = chan of string;
 #	w := (CU->config).defaultwidth;
@@ -78,8 +83,6 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 	win.reshape(Rect((0, 0), (display.image.r.dx(), display.image.r.dy())));
 	win.startinput( "kbd"::"ptr"::nil);
 	win.onscreen(nil);
-	menuhit->init(win);
-	
 	makewins();
 	mask = display.opaque;
 	progress = chan of Progressmsg;
@@ -161,16 +164,15 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 			if(w.pointer(*p))
 				continue;
 			if(p.buttons & 4){
-				mc := ref Mousectl(w.ctxt.ptr, p.buttons, p.xy, p.msec);
-				n := menuhit->menuhit(p.buttons, mc, menu, nil);
-				if(n == 0)
-					ev = ref Event.Eback;
-				else if(n == 1)
-					ev = ref Event.Efwd;
-				else if(n == 2)
-					ev = ref Event.Estop;
-				else if(n == 3)
-					ev = ref Event.Ego((CU->config).starturl, "_top", 0, E->EGnormal);
+				if(menumod == nil || menu == nil)
+					continue;
+				n := menu.show(window.image, p.xy, w.ctxt.ptr);
+				case n {
+				0 => ev = ref Event.Eback;
+				1 => ev = ref Event.Efwd;
+				2 => ev = ref Event.Estop;
+				3 => ev = ref Event.Ego((CU->config).starturl, "_top", 0, E->EGnormal);
+				}
 			}else if(p.buttons & (8|16)) {
 				if(p.buttons & 8)
 					ev = ref Event.Escrollr(0, Point(0, -50));
@@ -206,16 +208,14 @@ makewins()
 	if(window.image == nil)
 		return;
 	screen := Screen.allocate(window.image, display.transparent, 0);
-#	offset = tk->rect(tktop, ".f", 0).min;
 	r := window.image.r;
 	realwin = screen.newwindow(r, D->Refnone, D->White);
 	realwin.origin(ZP, r.min);
 	if(realwin == nil)
 		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
-
-	mainwin = display.newimage(realwin.r, realwin.chans, 0, D->White);
-	if(mainwin == nil)
-		CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));
+	# Draw directly to the screen window (same as luciedit/lucishell pattern).
+	# No offscreen buffer — eliminates the blit step that caused smearing.
+	mainwin = realwin;
 }
 
 hidewins()
@@ -288,16 +288,14 @@ fwdbutton(nil: int)
 		return;
 }
 
-flush(r: Rect)
+flush(nil: Rect)
 {
 	if((CU->config).doacme)
 		return;
 	if(realwin != nil) {
-		oclipr := mainwin.clipr;
-		mainwin.clipr = r;
-		realwin.draw(r, mainwin, nil, r.min);
-		mainwin.clipr = oclipr;
-		mainwin.flush(D->Flushnow);
+		# mainwin == realwin: already drawn directly to screen window.
+		# Just flush to make it visible.
+		realwin.flush(D->Flushnow);
 	}
 }
 
@@ -317,30 +315,19 @@ tkupdate()
 {
 }
 
-getpopup(nil: Rect): ref Popup
+getpopup(nil: Rect): ref Menu->Popup
 {
 	return nil;
 }
 
 cancelpopup(): int
 {
-	pu := popup;
-	if (pu == nil)
+	if (popup == nil)
 		return 0;
-	pu.image = nil;
-	pu.window = nil;
-	pu = nil;
 	popup = nil;
 	return 1;
 }
 
-Popup.flush(p: self ref Popup, r: Rect)
-{
-	win := p.window;
-	img := p.image;
-	if (win != nil && img != nil)
-		win.draw(r, img, nil, r.min);
-}
 
 startwmsize(): chan of Rect
 {

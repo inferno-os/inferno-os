@@ -116,7 +116,7 @@ Control: adt {
 	ff: ref Build->Formfield;
 	r: Draw->Rect;			# coords in f.cim coord system
 	flags:	int;
-	popup:	ref Gui->Popup;
+	popup:	ref Menu->Popup;
 	pick {
 		Cbutton =>
 			pic:		ref Draw->Image;		# picture on button (if no label)

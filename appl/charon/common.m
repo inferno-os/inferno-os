@@ -19,5 +19,6 @@ include "build.m";
 include "layout.m";
 include "img.m";
 include "event.m";
+include "menu.m";
 include "gui.m";
 include "charon.m";

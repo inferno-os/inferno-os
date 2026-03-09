@@ -20,7 +20,6 @@ J: Script;
 E: Events;
 	Event: import E;
 G: Gui;
-	Popup: import G;
 B: Build;
 
 # B : Build, declared in layout.m so main program can use it
@@ -53,30 +52,34 @@ Fontinfo : adt {
 	spw:	int;			# width of a space in this font
 };
 
+# Use combined/DejaVu k8 antialiased fonts for all sizes.
+# The old Vera and 9x15 fonts are k1 (1-bit bitmap): SDL3 bilinear upscaling
+# on HiDPI/Retina displays smears them. k8 AA fonts render correctly at any DPI.
+# We only have 14pt combined fonts; all sizes map to the same face.
 fonts := array[NumFnt] of {
-	FntR*NumSize+Tiny     => Fontinfo("/fonts/misc/latin1.6x10.font", nil, 0),
-	FntR*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
-	FntR*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
-	FntR*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
-	FntR*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntR*NumSize+Tiny     => Fontinfo("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
 
-	FntI*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
-	FntI*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
-	FntI*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
-	FntI*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
-	FntI*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntI*NumSize+Tiny     => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
 
-	FntB*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
-	FntB*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
-	FntB*NumSize+Normal   => ("/fonts/vera/Vera/Vera.14.font", nil, 0),
-	FntB*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
-	FntB*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntB*NumSize+Tiny     => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntB*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntB*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntB*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntB*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
 
-	FntT*NumSize+Tiny     => ("/fonts/misc/latin1.6x10.font", nil, 0),
-	FntT*NumSize+Small    => ("/fonts/misc/unicode.6x13.font", nil, 0),
-	FntT*NumSize+Normal   => ("/fonts/vera/VeraMono/veramono.14.font", nil, 0),
-	FntT*NumSize+Large    => ("/fonts/10646/9x15/9x15.font", nil, 0),
-	FntT*NumSize+Verylarge => ("/fonts/10646/9x15/9x15.font", nil, 0),
+	FntT*NumSize+Tiny     => ("/fonts/combined/unicode.14.font", nil, 0),
+	FntT*NumSize+Small    => ("/fonts/combined/unicode.14.font", nil, 0),
+	FntT*NumSize+Normal   => ("/fonts/combined/unicode.14.font", nil, 0),
+	FntT*NumSize+Large    => ("/fonts/combined/unicode.14.font", nil, 0),
+	FntT*NumSize+Verylarge => ("/fonts/combined/unicode.14.font", nil, 0),
 };
 
 # Seems better to use a slightly smaller font in Controls, to match other browsers
@@ -3984,19 +3987,15 @@ Control.reset(ctl: self ref Control)
 Control.draw(ctl: self ref Control, flush: int)
 {
 	win := ctl.f.cim;
-	if (ctl.popup != nil)
-		win = ctl.popup.image;
 	if (win == nil)
 		return;
 	oclipr := win.clipr;
 	clipr := oclipr;
 	any: int;
-	if (ctl.popup == nil) {
-		(clipr, any) = ctl.r.clip(ctl.f.cr);
-		if(!any && ctl != ctl.f.vscr && ctl != ctl.f.hscr)
-			return;
-		win.clipr = clipr;
-	}
+	(clipr, any) = ctl.r.clip(ctl.f.cr);
+	if(!any && ctl != ctl.f.vscr && ctl != ctl.f.hscr)
+		return;
+	win.clipr = clipr;
 	pick c := ctl {
 	Cbutton =>
 		if(c.ff != nil && c.ff.image != nil && c.pic == nil) {
@@ -4317,10 +4316,7 @@ Control.draw(ctl: self ref Control, flush: int)
 		win.text(p, colorimage(Black), zp, fonts[DefFnt].f, c.s);
 	}
 	if(flush) {
-		if (ctl.popup != nil)
-			ctl.popup.flush(ctl.r);
-		else
-			G->flush(ctl.r);
+		G->flush(ctl.r);
 	}
 	win.clipr = oclipr;
 }

@@ -8,16 +8,6 @@ Gui: module {
 		s : string;
 	};
 
-	# clients should never capture Popup.image
-	# other than during drawing operations
-	Popup: adt {
-		r: Draw->Rect;
-		image: ref Draw->Image;
-		window: ref Draw->Image;
-
-		flush: fn(p: self ref Popup, r: Draw->Rect);
-	};
-
 	# Progress states
 	Punused, Pstart, Pconnected, Psslconnected, Phavehdr,
 	Phavedata, Pdone, Perr, Paborted : con iota;
@@ -41,7 +31,7 @@ Gui: module {
 	flush: fn (r : Draw->Rect);
 	clientfocus: fn();
 
-	getpopup: fn(r: Draw->Rect): ref Popup;
+	getpopup: fn(r: Draw->Rect): ref Menu->Popup;
 	cancelpopup: fn(): int;
 
 	exitcharon: fn();
