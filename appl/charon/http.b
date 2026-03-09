@@ -241,6 +241,7 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 	err := "";
 	if(dbg)
 		sys->print("http %d: dialing %s\n", nc.id, addr);
+	ct0 := sys->millisec();
 	rv: int;
 	(rv, nc.conn) = sys->dial(addr, nil);
 	if(rv < 0) {
@@ -253,6 +254,7 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 			err = sys->sprint("couldn't connect: %s", syserr);
 	}
 	else {
+		sys->print("PERF: tcp connect %s = %dms\n", addr, sys->millisec()-ct0);
 		if(dbg)
 			sys->print("http %d: connected\n", nc.id);
 		if(nc.tstate&TSSL) {
@@ -274,7 +276,9 @@ connect(nc: ref Netconn, bs: ref ByteSource)
 				cfg.servername = nc.host;
 				if(config.devssl)
 					cfg.insecure = 1;
+				tls_t := sys->millisec();
 				(nc.tlsconn, err) = tls->client(nc.conn.dfd, cfg);
+				sys->print("PERF: tls->client %s = %dms err=%s\n", nc.host, sys->millisec()-tls_t, err);
 			}
 		}
 	}

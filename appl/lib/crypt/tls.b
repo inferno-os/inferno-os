@@ -542,6 +542,8 @@ handshake(cs: ref ConnState, config: ref Config): string
 	x25519_priv := randombytes(32);
 	x25519_pub := keyring->x25519_base(x25519_priv);
 
+	tls_t0 := sys->millisec();
+
 	# Build and send ClientHello
 	hello := buildclienthello(config, client_random, x25519_pub);
 	err := sendhsmsg(cs, HT_CLIENT_HELLO, hello);
@@ -554,6 +556,7 @@ handshake(cs: ref ConnState, config: ref Config): string
 		return sherr;
 	if(shtype != HT_SERVER_HELLO)
 		return "tls: expected ServerHello";
+	sys->print("PERF: tls ServerHello RTT = %dms\n", sys->millisec()-tls_t0);
 
 	# Parse ServerHello
 	(server_random, server_suite, server_version, key_share_group, key_share_data, pherr) := parseserverhello(shdata, config);
@@ -563,12 +566,15 @@ handshake(cs: ref ConnState, config: ref Config): string
 	cs.version = server_version;
 	cs.suite = server_suite;
 
+	e: string;
 	if(cs.version == TLS13)
-		return handshake13(cs, config, client_random, server_random,
+		e = handshake13(cs, config, client_random, server_random,
 			x25519_priv, key_share_group, key_share_data);
 	else
-		return handshake12(cs, config, client_random, server_random,
+		e = handshake12(cs, config, client_random, server_random,
 			x25519_priv);
+	sys->print("PERF: tls handshake complete = %dms (version=%d)\n", sys->millisec()-tls_t0, cs.version);
+	return e;
 }
 
 # ================================================================

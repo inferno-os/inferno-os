@@ -769,8 +769,10 @@ goproc(g: ref GoSpec)
 			settext(g, f, g.body);
 		else
 			sys->print("goproc: fetching url=%s\n", g.url.tostring());
+		t0 := sys->millisec();
 		err = get(g, f, origkind, hn);
-		sys->print("goproc: get() returned err=%q\n", err);
+		t1 := sys->millisec();
+		sys->print("goproc: get() returned err=%q total=%dms\n", err, t1-t0);
 
 		if(doscripts && J->defaultStatus != "")
 			status = J->defaultStatus;
@@ -873,6 +875,7 @@ get(g: ref GoSpec, f: ref Frame, origkind: int, hn: ref HistNode) : string
 	realm := "";
 	auth := "";
 	error := "";
+	tnet0 := sys->millisec();
 	for(nredirs := 0; ; nredirs++) {
 		bsmain = CU->startreq(ri);
 		error = bsmain.err;
@@ -936,12 +939,17 @@ get(g: ref GoSpec, f: ref Frame, origkind: int, hn: ref HistNode) : string
 		newres.since(curres).print("resources to get header");
 		curres = newres;
 	}
+	tnet1 := sys->millisec();
+	sys->print("PERF: net(+redir) for %s = %dms\n", sdest, tnet1-tnet0);
 	if(hdr.mtype == CU->TextHtml || hdr.mtype == CU->TextPlain ||
 					I->supported(hdr.mtype)) {
 		G->seturl(sdest);
 		history.add(f, g, origkind);
 		resetkeyfocus(f);
+		tlay0 := sys->millisec();
 		L->layout(f, bsmain, origkind == GoLink);
+		tlay1 := sys->millisec();
+		sys->print("PERF: layout for %s = %dms\n", sdest, tlay1-tlay0);
 		if (J != nil)
 			J->framedone(f, f.doc.hasscripts);
 		history.update(f);
