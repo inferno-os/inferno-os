@@ -120,6 +120,8 @@ ConnState: adt {
 	hsoff:		int;
 };
 
+randomfd: ref Sys->FD;
+
 init(): string
 {
 	sys = load Sys Sys->PATH;
@@ -144,6 +146,11 @@ init(): string
 	if(x509 == nil)
 		return "tls: cannot load X509";
 	x509->init();
+
+	# Open entropy source once; keep fd alive for the lifetime of this module instance.
+	randomfd = sys->open("/dev/urandom", Sys->OREAD);
+	if(randomfd == nil)
+		randomfd = sys->open("#c/random", Sys->OREAD);
 
 	return nil;
 }
@@ -532,6 +539,8 @@ isccpoly(suite: int): int
 
 handshake(cs: ref ConnState, config: ref Config): string
 {
+	tls_t0 := sys->millisec();
+
 	# Initialize handshake hash (SHA-256 for most suites)
 	cs.handhash = nil;
 
@@ -541,8 +550,6 @@ handshake(cs: ref ConnState, config: ref Config): string
 	# Generate X25519 key pair for key exchange
 	x25519_priv := randombytes(32);
 	x25519_pub := keyring->x25519_base(x25519_priv);
-
-	tls_t0 := sys->millisec();
 
 	# Build and send ClientHello
 	hello := buildclienthello(config, client_random, x25519_pub);
@@ -2141,12 +2148,17 @@ randombytes(n: int): array of byte
 
 randombuf(buf: array of byte, n: int)
 {
-	# Read from /dev/random
+	if(randomfd != nil) {
+		sys->read(randomfd, buf, n);
+		return;
+	}
+	# randomfd not initialized (init() not called?) — open on demand.
 	fd := sys->open("/dev/urandom", Sys->OREAD);
 	if(fd == nil)
 		fd = sys->open("#c/random", Sys->OREAD);
 	if(fd != nil) {
 		sys->read(fd, buf, n);
+		randomfd = fd;
 		return;
 	}
 	# Fallback: use keyring random (via IPint)
