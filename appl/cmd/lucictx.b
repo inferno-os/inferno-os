@@ -970,6 +970,8 @@ drawcentertext(r: Rect, text: string)
 
 drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 {
+	if(mainwin == nil)
+		return;
 	zone := mainwin.r;
 	pad := 8;
 	lineH := mainfont.height + 2;
@@ -1150,8 +1152,14 @@ filebrowser(startpath: string): string
 			;
 		newimg := <-rszch_g =>
 			mainwin = newimg;
+			if(mainwin == nil) {
+				result = nil;
+				break;
+			}
 			continue;
 		}
+		if(p == nil)
+			continue;
 		wasdown2 := prevbut;
 		prevbut = p.buttons;
 
