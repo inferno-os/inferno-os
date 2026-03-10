@@ -10,7 +10,7 @@
 #   mk DEJAVU_DIR=/my/path      (override font search path)
 #   mk nuke                     (remove generated subfonts + compiled tool)
 #
-# After running mk, the .font manifest files (unicode.14.font) are already
+# After running mk, the .font manifest files (unicode.*.font) are already
 # correct in the repo; no further changes needed.
 #
 # To inspect font metrics before bulk conversion:
@@ -24,11 +24,16 @@ ROOT=../..
 DEJAVU_DIR=/opt/homebrew/Caskroom/font-dejavu/2.37/dejavu-fonts-ttf-2.37/ttf
 
 SANS_TTF=$DEJAVU_DIR/DejaVuSans.ttf
+BOLD_TTF=$DEJAVU_DIR/DejaVuSans-Bold.ttf
 MONO_TTF=$DEJAVU_DIR/DejaVuSansMono.ttf
 
 # Host-side C tool using FreeType2 for greyscale antialiased rendering.
 # Replaces the otf2bdf+bdf2subfont pipeline with a single direct conversion.
 TTF2SUB=./ttf2subfont
+
+# Unicode block ranges to generate subfonts for.
+# Each face×size combination gets one subfont file per block.
+BLOCKS=0000 0100 0200 0300 0400 1E00 2000 2100 2200 2300 2400 2500 2600 2700 FB00
 
 # ── Subfont target lists ──────────────────────────────────────────────────────
 
@@ -49,6 +54,127 @@ SANS_SUB=\
 	DejaVuSans/DejaVuSans.14.2700\
 	DejaVuSans/DejaVuSans.14.FB00
 
+# DejaVu Sans at additional sizes for Charon heading rendering
+SANS_12_SUB=\
+	DejaVuSans/DejaVuSans.12.0000\
+	DejaVuSans/DejaVuSans.12.0100\
+	DejaVuSans/DejaVuSans.12.0200\
+	DejaVuSans/DejaVuSans.12.0300\
+	DejaVuSans/DejaVuSans.12.0400\
+	DejaVuSans/DejaVuSans.12.1E00\
+	DejaVuSans/DejaVuSans.12.2000\
+	DejaVuSans/DejaVuSans.12.2100\
+	DejaVuSans/DejaVuSans.12.2200\
+	DejaVuSans/DejaVuSans.12.2300\
+	DejaVuSans/DejaVuSans.12.2400\
+	DejaVuSans/DejaVuSans.12.2500\
+	DejaVuSans/DejaVuSans.12.2600\
+	DejaVuSans/DejaVuSans.12.2700\
+	DejaVuSans/DejaVuSans.12.FB00
+
+SANS_18_SUB=\
+	DejaVuSans/DejaVuSans.18.0000\
+	DejaVuSans/DejaVuSans.18.0100\
+	DejaVuSans/DejaVuSans.18.0200\
+	DejaVuSans/DejaVuSans.18.0300\
+	DejaVuSans/DejaVuSans.18.0400\
+	DejaVuSans/DejaVuSans.18.1E00\
+	DejaVuSans/DejaVuSans.18.2000\
+	DejaVuSans/DejaVuSans.18.2100\
+	DejaVuSans/DejaVuSans.18.2200\
+	DejaVuSans/DejaVuSans.18.2300\
+	DejaVuSans/DejaVuSans.18.2400\
+	DejaVuSans/DejaVuSans.18.2500\
+	DejaVuSans/DejaVuSans.18.2600\
+	DejaVuSans/DejaVuSans.18.2700\
+	DejaVuSans/DejaVuSans.18.FB00
+
+SANS_24_SUB=\
+	DejaVuSans/DejaVuSans.24.0000\
+	DejaVuSans/DejaVuSans.24.0100\
+	DejaVuSans/DejaVuSans.24.0200\
+	DejaVuSans/DejaVuSans.24.0300\
+	DejaVuSans/DejaVuSans.24.0400\
+	DejaVuSans/DejaVuSans.24.1E00\
+	DejaVuSans/DejaVuSans.24.2000\
+	DejaVuSans/DejaVuSans.24.2100\
+	DejaVuSans/DejaVuSans.24.2200\
+	DejaVuSans/DejaVuSans.24.2300\
+	DejaVuSans/DejaVuSans.24.2400\
+	DejaVuSans/DejaVuSans.24.2500\
+	DejaVuSans/DejaVuSans.24.2600\
+	DejaVuSans/DejaVuSans.24.2700\
+	DejaVuSans/DejaVuSans.24.FB00
+
+# DejaVu Sans Bold at all sizes (14pt base + 12, 18, 24 for heading sizes)
+BOLD_14_SUB=\
+	DejaVuSansBold/DejaVuSansBold.14.0000\
+	DejaVuSansBold/DejaVuSansBold.14.0100\
+	DejaVuSansBold/DejaVuSansBold.14.0200\
+	DejaVuSansBold/DejaVuSansBold.14.0300\
+	DejaVuSansBold/DejaVuSansBold.14.0400\
+	DejaVuSansBold/DejaVuSansBold.14.1E00\
+	DejaVuSansBold/DejaVuSansBold.14.2000\
+	DejaVuSansBold/DejaVuSansBold.14.2100\
+	DejaVuSansBold/DejaVuSansBold.14.2200\
+	DejaVuSansBold/DejaVuSansBold.14.2300\
+	DejaVuSansBold/DejaVuSansBold.14.2400\
+	DejaVuSansBold/DejaVuSansBold.14.2500\
+	DejaVuSansBold/DejaVuSansBold.14.2600\
+	DejaVuSansBold/DejaVuSansBold.14.2700\
+	DejaVuSansBold/DejaVuSansBold.14.FB00
+
+BOLD_12_SUB=\
+	DejaVuSansBold/DejaVuSansBold.12.0000\
+	DejaVuSansBold/DejaVuSansBold.12.0100\
+	DejaVuSansBold/DejaVuSansBold.12.0200\
+	DejaVuSansBold/DejaVuSansBold.12.0300\
+	DejaVuSansBold/DejaVuSansBold.12.0400\
+	DejaVuSansBold/DejaVuSansBold.12.1E00\
+	DejaVuSansBold/DejaVuSansBold.12.2000\
+	DejaVuSansBold/DejaVuSansBold.12.2100\
+	DejaVuSansBold/DejaVuSansBold.12.2200\
+	DejaVuSansBold/DejaVuSansBold.12.2300\
+	DejaVuSansBold/DejaVuSansBold.12.2400\
+	DejaVuSansBold/DejaVuSansBold.12.2500\
+	DejaVuSansBold/DejaVuSansBold.12.2600\
+	DejaVuSansBold/DejaVuSansBold.12.2700\
+	DejaVuSansBold/DejaVuSansBold.12.FB00
+
+BOLD_18_SUB=\
+	DejaVuSansBold/DejaVuSansBold.18.0000\
+	DejaVuSansBold/DejaVuSansBold.18.0100\
+	DejaVuSansBold/DejaVuSansBold.18.0200\
+	DejaVuSansBold/DejaVuSansBold.18.0300\
+	DejaVuSansBold/DejaVuSansBold.18.0400\
+	DejaVuSansBold/DejaVuSansBold.18.1E00\
+	DejaVuSansBold/DejaVuSansBold.18.2000\
+	DejaVuSansBold/DejaVuSansBold.18.2100\
+	DejaVuSansBold/DejaVuSansBold.18.2200\
+	DejaVuSansBold/DejaVuSansBold.18.2300\
+	DejaVuSansBold/DejaVuSansBold.18.2400\
+	DejaVuSansBold/DejaVuSansBold.18.2500\
+	DejaVuSansBold/DejaVuSansBold.18.2600\
+	DejaVuSansBold/DejaVuSansBold.18.2700\
+	DejaVuSansBold/DejaVuSansBold.18.FB00
+
+BOLD_24_SUB=\
+	DejaVuSansBold/DejaVuSansBold.24.0000\
+	DejaVuSansBold/DejaVuSansBold.24.0100\
+	DejaVuSansBold/DejaVuSansBold.24.0200\
+	DejaVuSansBold/DejaVuSansBold.24.0300\
+	DejaVuSansBold/DejaVuSansBold.24.0400\
+	DejaVuSansBold/DejaVuSansBold.24.1E00\
+	DejaVuSansBold/DejaVuSansBold.24.2000\
+	DejaVuSansBold/DejaVuSansBold.24.2100\
+	DejaVuSansBold/DejaVuSansBold.24.2200\
+	DejaVuSansBold/DejaVuSansBold.24.2300\
+	DejaVuSansBold/DejaVuSansBold.24.2400\
+	DejaVuSansBold/DejaVuSansBold.24.2500\
+	DejaVuSansBold/DejaVuSansBold.24.2600\
+	DejaVuSansBold/DejaVuSansBold.24.2700\
+	DejaVuSansBold/DejaVuSansBold.24.FB00
+
 MONO_SUB=\
 	DejaVuSansMono/DejaVuSansMono.14.0000\
 	DejaVuSansMono/DejaVuSansMono.14.0100\
@@ -66,7 +192,9 @@ MONO_SUB=\
 	DejaVuSansMono/DejaVuSansMono.14.2700\
 	DejaVuSansMono/DejaVuSansMono.14.FB00
 
-all:V: $SANS_SUB $MONO_SUB
+all:V: $SANS_SUB $SANS_12_SUB $SANS_18_SUB $SANS_24_SUB\
+       $BOLD_14_SUB $BOLD_12_SUB $BOLD_18_SUB $BOLD_24_SUB\
+       $MONO_SUB
 
 install:V: all
 
@@ -77,6 +205,7 @@ $TTF2SUB: ttf2subfont.c
 	cc -O2 -o $target ttf2subfont.c `pkg-config --cflags --libs freetype2`
 
 # ── DejaVu Sans subfont blocks ───────────────────────────────────────────────
+# 14pt (base size — Normal body text)
 
 DejaVuSans/DejaVuSans.14.0000: $SANS_TTF $TTF2SUB
 	$TTF2SUB -p 14 -r 72 -start 0x0000 -end 0x00FF $SANS_TTF $target
@@ -122,6 +251,335 @@ DejaVuSans/DejaVuSans.14.2700: $SANS_TTF $TTF2SUB
 
 DejaVuSans/DejaVuSans.14.FB00: $SANS_TTF $TTF2SUB
 	$TTF2SUB -p 14 -r 72 -start 0xFB00 -end 0xFB0F $SANS_TTF $target
+
+# ── DejaVu Sans 12pt (Tiny/Small text) ────────────────────────────────────────
+
+DejaVuSans/DejaVuSans.12.0000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0000 -end 0x00FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.0100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0100 -end 0x01FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.0200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0200 -end 0x02FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.0300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0300 -end 0x03FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.0400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0400 -end 0x04FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.1E00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x1E00 -end 0x1EFF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2000 -end 0x20FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2100 -end 0x21FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2200 -end 0x22FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2300 -end 0x23FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2400 -end 0x24FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2500: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2500 -end 0x25FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2600: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2600 -end 0x26FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.2700: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2700 -end 0x27FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.12.FB00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0xFB00 -end 0xFB0F $SANS_TTF $target
+
+# ── DejaVu Sans 18pt (Large text / h3 headings) ──────────────────────────────
+
+DejaVuSans/DejaVuSans.18.0000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0000 -end 0x00FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.0100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0100 -end 0x01FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.0200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0200 -end 0x02FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.0300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0300 -end 0x03FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.0400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0400 -end 0x04FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.1E00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x1E00 -end 0x1EFF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2000 -end 0x20FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2100 -end 0x21FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2200 -end 0x22FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2300 -end 0x23FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2400 -end 0x24FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2500: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2500 -end 0x25FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2600: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2600 -end 0x26FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.2700: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2700 -end 0x27FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.18.FB00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0xFB00 -end 0xFB0F $SANS_TTF $target
+
+# ── DejaVu Sans 24pt (Verylarge text / h1–h2 headings) ───────────────────────
+
+DejaVuSans/DejaVuSans.24.0000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0000 -end 0x00FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.0100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0100 -end 0x01FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.0200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0200 -end 0x02FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.0300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0300 -end 0x03FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.0400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0400 -end 0x04FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.1E00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x1E00 -end 0x1EFF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2000: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2000 -end 0x20FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2100: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2100 -end 0x21FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2200: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2200 -end 0x22FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2300: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2300 -end 0x23FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2400: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2400 -end 0x24FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2500: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2500 -end 0x25FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2600: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2600 -end 0x26FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.2700: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2700 -end 0x27FF $SANS_TTF $target
+
+DejaVuSans/DejaVuSans.24.FB00: $SANS_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0xFB00 -end 0xFB0F $SANS_TTF $target
+
+# ── DejaVu Sans Bold 14pt (base bold) ────────────────────────────────────────
+
+DejaVuSansBold/DejaVuSansBold.14.0000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0000 -end 0x00FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.0100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0100 -end 0x01FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.0200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0200 -end 0x02FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.0300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0300 -end 0x03FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.0400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x0400 -end 0x04FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.1E00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x1E00 -end 0x1EFF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2000 -end 0x20FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2100 -end 0x21FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2200 -end 0x22FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2300 -end 0x23FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2400 -end 0x24FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2500: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2500 -end 0x25FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2600: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2600 -end 0x26FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.2700: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0x2700 -end 0x27FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.14.FB00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 14 -r 72 -start 0xFB00 -end 0xFB0F $BOLD_TTF $target
+
+# ── DejaVu Sans Bold 12pt ────────────────────────────────────────────────────
+
+DejaVuSansBold/DejaVuSansBold.12.0000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0000 -end 0x00FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.0100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0100 -end 0x01FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.0200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0200 -end 0x02FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.0300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0300 -end 0x03FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.0400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x0400 -end 0x04FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.1E00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x1E00 -end 0x1EFF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2000 -end 0x20FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2100 -end 0x21FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2200 -end 0x22FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2300 -end 0x23FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2400 -end 0x24FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2500: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2500 -end 0x25FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2600: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2600 -end 0x26FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.2700: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0x2700 -end 0x27FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.12.FB00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 12 -r 72 -start 0xFB00 -end 0xFB0F $BOLD_TTF $target
+
+# ── DejaVu Sans Bold 18pt (Large bold / h3 bold headings) ────────────────────
+
+DejaVuSansBold/DejaVuSansBold.18.0000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0000 -end 0x00FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.0100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0100 -end 0x01FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.0200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0200 -end 0x02FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.0300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0300 -end 0x03FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.0400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x0400 -end 0x04FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.1E00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x1E00 -end 0x1EFF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2000 -end 0x20FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2100 -end 0x21FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2200 -end 0x22FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2300 -end 0x23FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2400 -end 0x24FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2500: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2500 -end 0x25FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2600: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2600 -end 0x26FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.2700: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0x2700 -end 0x27FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.18.FB00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 18 -r 72 -start 0xFB00 -end 0xFB0F $BOLD_TTF $target
+
+# ── DejaVu Sans Bold 24pt (Verylarge bold / h1–h2 bold headings) ─────────────
+
+DejaVuSansBold/DejaVuSansBold.24.0000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0000 -end 0x00FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.0100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0100 -end 0x01FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.0200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0200 -end 0x02FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.0300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0300 -end 0x03FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.0400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x0400 -end 0x04FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.1E00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x1E00 -end 0x1EFF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2000: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2000 -end 0x20FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2100: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2100 -end 0x21FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2200: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2200 -end 0x22FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2300: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2300 -end 0x23FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2400: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2400 -end 0x24FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2500: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2500 -end 0x25FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2600: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2600 -end 0x26FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.2700: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0x2700 -end 0x27FF $BOLD_TTF $target
+
+DejaVuSansBold/DejaVuSansBold.24.FB00: $BOLD_TTF $TTF2SUB
+	$TTF2SUB -p 24 -r 72 -start 0xFB00 -end 0xFB0F $BOLD_TTF $target
 
 # ── DejaVu Sans Mono subfont blocks ─────────────────────────────────────────
 
@@ -174,4 +632,6 @@ DejaVuSansMono/DejaVuSansMono.14.FB00: $MONO_TTF $TTF2SUB
 
 nuke:
 	rm -f $TTF2SUB
-	rm -f DejaVuSans/DejaVuSans.14.* DejaVuSansMono/DejaVuSansMono.14.*
+	rm -f DejaVuSans/DejaVuSans.12.* DejaVuSans/DejaVuSans.14.* DejaVuSans/DejaVuSans.18.* DejaVuSans/DejaVuSans.24.*
+	rm -f DejaVuSansBold/DejaVuSansBold.12.* DejaVuSansBold/DejaVuSansBold.14.* DejaVuSansBold/DejaVuSansBold.18.* DejaVuSansBold/DejaVuSansBold.24.*
+	rm -f DejaVuSansMono/DejaVuSansMono.14.*

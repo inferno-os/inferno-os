@@ -71,28 +71,35 @@ Fontinfo : adt {
 	spw:	int;			# width of a space in this font
 };
 
-# Use combined/DejaVu k8 antialiased fonts for all sizes.
-# The old Vera and 9x15 fonts are k1 (1-bit bitmap): SDL3 bilinear upscaling
-# on HiDPI/Retina displays smears them. k8 AA fonts render correctly at any DPI.
-# We only have 14pt combined fonts; all sizes map to the same face.
+# Use combined/DejaVu k8 antialiased fonts with size and weight variants.
+# k8 AA fonts render correctly at any DPI (unlike k1 bitmap fonts).
+#
+# Size mapping:
+#   Tiny/Small = 12pt, Normal = 14pt, Large = 18pt, Verylarge = 24pt
+#
+# Weight mapping:
+#   FntR/FntI = regular weight, FntB = bold weight (DejaVuSans-Bold)
+#
+# After a fresh clone, run `cd fonts/dejavu && mk` to generate the
+# bold and multi-size subfonts from DejaVuSans-Bold.ttf.
 fonts := array[NumFnt] of {
-	FntR*NumSize+Tiny     => Fontinfo("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntR*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Tiny     => Fontinfo("/fonts/combined/unicode.sans.12.font", nil, 0),
+	FntR*NumSize+Small    => ("/fonts/combined/unicode.sans.12.font", nil, 0),
 	FntR*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntR*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntR*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntR*NumSize+Large    => ("/fonts/combined/unicode.sans.18.font", nil, 0),
+	FntR*NumSize+Verylarge => ("/fonts/combined/unicode.sans.24.font", nil, 0),
 
-	FntI*NumSize+Tiny     => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntI*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Tiny     => ("/fonts/combined/unicode.sans.12.font", nil, 0),
+	FntI*NumSize+Small    => ("/fonts/combined/unicode.sans.12.font", nil, 0),
 	FntI*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntI*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntI*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntI*NumSize+Large    => ("/fonts/combined/unicode.sans.18.font", nil, 0),
+	FntI*NumSize+Verylarge => ("/fonts/combined/unicode.sans.24.font", nil, 0),
 
-	FntB*NumSize+Tiny     => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntB*NumSize+Small    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntB*NumSize+Normal   => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntB*NumSize+Large    => ("/fonts/combined/unicode.sans.14.font", nil, 0),
-	FntB*NumSize+Verylarge => ("/fonts/combined/unicode.sans.14.font", nil, 0),
+	FntB*NumSize+Tiny     => ("/fonts/combined/unicode.sans.bold.12.font", nil, 0),
+	FntB*NumSize+Small    => ("/fonts/combined/unicode.sans.bold.12.font", nil, 0),
+	FntB*NumSize+Normal   => ("/fonts/combined/unicode.sans.bold.14.font", nil, 0),
+	FntB*NumSize+Large    => ("/fonts/combined/unicode.sans.bold.18.font", nil, 0),
+	FntB*NumSize+Verylarge => ("/fonts/combined/unicode.sans.bold.24.font", nil, 0),
 
 	FntT*NumSize+Tiny     => ("/fonts/combined/unicode.14.font", nil, 0),
 	FntT*NumSize+Small    => ("/fonts/combined/unicode.14.font", nil, 0),
