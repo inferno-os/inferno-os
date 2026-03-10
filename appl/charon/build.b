@@ -4459,7 +4459,7 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 
 	# Check if this is a simple single selector (no combinators)
 	if(tl sel == nil) {
-		(_, simplesel) := hd sel;
+		(nil, simplesel) := hd sel;
 		if(simplesel == nil)
 			return;
 		s := hd simplesel;

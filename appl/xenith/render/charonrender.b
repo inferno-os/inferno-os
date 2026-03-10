@@ -27,7 +27,7 @@ RENDERIMG: con "/tmp/.charonrender.bit";
 RENDERTXT: con "/tmp/.charonrender.txt";
 RENDERHTML: con "/tmp/.charonrender.html";
 
-Command: module {
+CharonMod: module {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
@@ -100,7 +100,7 @@ render(data: array of byte, hint: string,
 	sys->remove(RENDERTXT);
 
 	# Load Charon
-	ch := load Command "/dis/charon.dis";
+	ch := load CharonMod "/dis/charon.dis";
 	if(ch == nil)
 		return (nil, nil, sys->sprint("cannot load charon: %r"));
 
@@ -173,7 +173,7 @@ command(cmd: string, arg: string,
 
 # ---- Internal helpers ----
 
-charonthread(done: chan of int, ch: Command, ctxt: ref drawm->Context, args: list of string)
+charonthread(done: chan of int, ch: CharonMod, ctxt: ref drawm->Context, args: list of string)
 {
 	pid := sys->pctl(Sys->NEWPGRP, nil);
 	{

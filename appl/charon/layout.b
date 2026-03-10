@@ -5277,7 +5277,7 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 }
 
 # Draw an Ibox item: box-shadow, background, borders, then content via sublayout
-drawbox(f: ref Frame, lay: ref Lay, origin: Point, box: ref Item.Ibox)
+drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 {
 	im := f.cim;
 	cs := box.cstyle;
@@ -5455,8 +5455,6 @@ drawroundedfill(im: ref Image, r: Rect, color: int, radii: array of int)
 	if(rbr > hh) rbr = hh;
 	if(rbl > hw) rbl = hw;
 	if(rbl > hh) rbl = hh;
-	maxrl := max(rtl, rbl);
-	maxrr := max(rtr, rbr);
 	maxrt := max(rtl, rtr);
 	maxrb := max(rbl, rbr);
 	# Fill center horizontal band

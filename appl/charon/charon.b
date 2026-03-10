@@ -2232,7 +2232,7 @@ renderonce()
 
 	# Fetch and layout synchronously
 	G->progress <-= (-1, G->Pstart, 0, "");
-	err := get(g, f, GoNormal, nil);
+	get(g, f, GoNormal, nil);
 	G->progress <-= (-1, G->Pdone, 0, "");
 
 	# Write rendered image
