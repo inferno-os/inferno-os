@@ -149,7 +149,9 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	# Load menu module
 	menumod = load Menu Menu->PATH;
-	if(menumod != nil)
+	if(menumod == nil)
+		sys->fprint(stderr, "luciconv: cannot load menu: %r\n");
+	else
 		menumod->init(display_g, mainfont);
 
 	inputbuf = "";
