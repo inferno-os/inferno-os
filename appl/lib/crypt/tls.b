@@ -776,12 +776,12 @@ handshake12(cs: ref ConnState, config: ref Config,
 	}
 
 	# Derive keys using TLS 1.2 PRF
-	master := tls12_prf(premaster,
+	master := tls12_prf(cs.suite, premaster,
 		s2b("master secret"),
 		catbytes(client_random, server_random),
 		48);
 
-	keyblock := tls12_prf(master,
+	keyblock := tls12_prf(cs.suite, master,
 		s2b("key expansion"),
 		catbytes(server_random, client_random),
 		keyblocklen(cs.suite));
@@ -805,7 +805,7 @@ handshake12(cs: ref ConnState, config: ref Config,
 	cs.writeiv = writeiv;
 
 	# Send Finished (now encrypted, seq=0).
-	verify_data := tls12_prf(master,
+	verify_data := tls12_prf(cs.suite, master,
 		s2b("client finished"),
 		hashfinish(cs),
 		12);
@@ -843,7 +843,7 @@ handshake12(cs: ref ConnState, config: ref Config,
 		return "tls: expected Finished";
 
 	# Verify server Finished using hash that excludes server Finished itself.
-	expected := tls12_prf(master,
+	expected := tls12_prf(cs.suite, master,
 		s2b("server finished"),
 		pre_server_finished,
 		12);
@@ -2110,8 +2110,8 @@ hash_empty(cs: ref ConnState): array of byte
 # Key Derivation
 # ================================================================
 
-# TLS 1.2 PRF (P_SHA256)
-tls12_prf(secret, label, seed: array of byte, n: int): array of byte
+# TLS 1.2 PRF — RFC 5246 §5: P_hash where hash is suite's PRF hash (SHA-256 or SHA-384)
+tls12_prf(suite: int, secret, label, seed: array of byte, n: int): array of byte
 {
 	labelseed := catbytes(label, seed);
 	result := array [n] of byte;
@@ -2120,8 +2120,8 @@ tls12_prf(secret, label, seed: array of byte, n: int): array of byte
 	# A(0) = seed, A(i) = HMAC(secret, A(i-1))
 	a := labelseed;
 	while(off < n) {
-		a = hmac256(secret, a);
-		p := hmac256(secret, catbytes(a, labelseed));
+		a = hmac_hash(suite, secret, a);
+		p := hmac_hash(suite, secret, catbytes(a, labelseed));
 		m := len p;
 		if(off + m > n)
 			m = n - off;
