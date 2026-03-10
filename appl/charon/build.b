@@ -172,7 +172,22 @@ UA_CSS: con
 	+ "big { font-size: large }\n"
 	+ "small { font-size: small }\n"
 	+ "mark { background-color: yellow }\n"
-	+ "figure { margin-left: 40px; margin-right: 40px }\n";
+	+ "figure { margin-left: 40px; margin-right: 40px }\n"
+	+ "figcaption { text-align: center; font-style: italic }\n"
+	+ "details { border: 1px solid; padding: 4px }\n"
+	+ "summary { font-weight: bold; cursor: pointer }\n"
+	+ "abbr { text-decoration: underline }\n"
+	+ "sub { vertical-align: bottom; font-size: small }\n"
+	+ "sup { vertical-align: top; font-size: small }\n"
+	+ "hr { border-top: 1px solid; margin-top: 8px; margin-bottom: 8px }\n"
+	+ "blockquote { margin-left: 40px; margin-right: 40px }\n"
+	+ "address { font-style: italic }\n"
+	+ "dialog { border: 1px solid; padding: 16px; background-color: white }\n"
+	+ "meter, progress { display: inline }\n"
+	+ "button { border: 2px outset; padding: 2px 8px }\n"
+	+ "input, textarea, select { border: 1px solid }\n"
+	+ "a { color: blue; text-decoration: underline; cursor: pointer }\n"
+	+ "a:visited { color: purple }\n";
 
 utf8 : Btos;
 latin1 : Btos;
@@ -2016,7 +2031,7 @@ TokLoop:
 			}
 
 		# HTML5 semantic block elements (behave like <div>)
-		LX->Tarticle or LX->Taside or LX->Tdetails or LX->Tfooter or
+		LX->Tarticle or LX->Taside or LX->Tfooter or
 		LX->Theader or LX->Tmain or LX->Tnav or LX->Tsection or LX->Tsummary =>
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
@@ -2035,6 +2050,37 @@ TokLoop:
 				if(cs.halign == Anone)
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+					openbox(ps, cs);
+				} else
+					ps.boxstk = nil :: ps.boxstk;
+			}
+
+		# HTML5 <details> - disclosure widget with open/closed state
+		LX->Tdetails =>
+			si := getstyle(is, tag, tok);
+			(openf, nil) := tok.aval(LX->Aopen);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				al := atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				si.halign = Anone;
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, tag, tok);
+				# Add disclosure triangle indicator
+				if(openf != 0)
+					addtext(ps, "\u25BC ");  # ▼ open
+				else
+					addtext(ps, "\u25B6 ");  # ▶ closed
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
 					openbox(ps, cs);
 				} else
@@ -3830,6 +3876,8 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 		"table-row" => si.display = DSPTABLEROW;
 		"table-cell" => si.display = DSPTABLECELL;
 		"table-caption" => si.display = DSPTABLECAPTION;
+		"flex" => si.display = DSPflex;
+		"inline-flex" => si.display = DSPinline_flex;
 		}
 	}
 }
@@ -3903,6 +3951,8 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"table-row" => cs.display = DSPTABLEROW;
 		"table-cell" => cs.display = DSPTABLECELL;
 		"table-caption" => cs.display = DSPTABLECAPTION;
+		"flex" => cs.display = DSPflex;
+		"inline-flex" => cs.display = DSPinline_flex;
 		}
 	"margin" =>
 		parsebox4(cs.margin, val);
@@ -4083,7 +4133,231 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		parseboxshadow(cs, val);
 	"text-shadow" =>
 		parsetextshadow(cs, val);
+	# CSS3 box sizing
+	"box-sizing" =>
+		case val {
+		"content-box" => cs.box_sizing = BSZcontent;
+		"border-box" => cs.box_sizing = BSZborder;
+		}
+	# CSS3 cursor
+	"cursor" =>
+		case val {
+		"auto" => cs.cursor = CURauto;
+		"default" => cs.cursor = CURdefault;
+		"pointer" => cs.cursor = CURpointer;
+		"text" => cs.cursor = CURtext;
+		"move" => cs.cursor = CURmove;
+		"wait" => cs.cursor = CURwait;
+		"crosshair" => cs.cursor = CURcrosshair;
+		"not-allowed" => cs.cursor = CURnot_allowed;
+		"col-resize" => cs.cursor = CURcol_resize;
+		"row-resize" => cs.cursor = CURrow_resize;
+		"grab" => cs.cursor = CURgrab;
+		"grabbing" => cs.cursor = CURgrabbing;
+		"none" => cs.cursor = CURnone;
+		}
+	# CSS3 word-break
+	"word-break" =>
+		case val {
+		"normal" => cs.word_break = WBnormal;
+		"break-all" => cs.word_break = WBbreak_all;
+		"keep-all" => cs.word_break = WBkeep_all;
+		}
+	"overflow-wrap" or "word-wrap" =>
+		case val {
+		"normal" => cs.word_break = WBnormal;
+		"break-word" => cs.word_break = WBbreak_all;
+		}
+	# CSS3 text-overflow
+	"text-overflow" =>
+		case val {
+		"clip" => cs.text_overflow = TOclip;
+		"ellipsis" => cs.text_overflow = TOellipsis;
+		}
+	# CSS3 outline (like border but doesn't affect layout)
+	"outline" =>
+		parseoutline_shorthand(cs, val);
+	"outline-width" =>
+		cs.outline_width = parsepx(val);
+	"outline-style" =>
+		cs.outline_style = parseborderstyle1(val);
+	"outline-color" =>
+		cs.outline_color = color(val, STYLNONE);
+	"outline-offset" =>
+		cs.outline_offset = parsepx(val);
+	# CSS3 border-side shorthands (border-top, border-right, etc.)
+	"border-top" =>
+		parseborderside_shorthand(cs, val, 0);
+	"border-right" =>
+		parseborderside_shorthand(cs, val, 1);
+	"border-bottom" =>
+		parseborderside_shorthand(cs, val, 2);
+	"border-left" =>
+		parseborderside_shorthand(cs, val, 3);
+	# Per-side border styles and colors
+	"border-top-style" =>
+		cs.border_style[0] = parseborderstyle1(val);
+	"border-right-style" =>
+		cs.border_style[1] = parseborderstyle1(val);
+	"border-bottom-style" =>
+		cs.border_style[2] = parseborderstyle1(val);
+	"border-left-style" =>
+		cs.border_style[3] = parseborderstyle1(val);
+	"border-top-color" =>
+		cs.border_color[0] = color(val, STYLNONE);
+	"border-right-color" =>
+		cs.border_color[1] = color(val, STYLNONE);
+	"border-bottom-color" =>
+		cs.border_color[2] = color(val, STYLNONE);
+	"border-left-color" =>
+		cs.border_color[3] = color(val, STYLNONE);
+	# CSS3 flexbox container properties
+	"flex-direction" =>
+		case val {
+		"row" => cs.flex_direction = FDrow;
+		"row-reverse" => cs.flex_direction = FDrow_reverse;
+		"column" => cs.flex_direction = FDcolumn;
+		"column-reverse" => cs.flex_direction = FDcolumn_reverse;
+		}
+	"flex-wrap" =>
+		case val {
+		"nowrap" => cs.flex_wrap = FWnowrap;
+		"wrap" => cs.flex_wrap = FWwrap;
+		"wrap-reverse" => cs.flex_wrap = FWwrap_reverse;
+		}
+	"flex-flow" =>
+		parseflexflow(cs, val);
+	"justify-content" =>
+		case val {
+		"flex-start" or "start" => cs.justify_content = JCflex_start;
+		"flex-end" or "end" => cs.justify_content = JCflex_end;
+		"center" => cs.justify_content = JCcenter;
+		"space-between" => cs.justify_content = JCspace_between;
+		"space-around" => cs.justify_content = JCspace_around;
+		"space-evenly" => cs.justify_content = JCspace_evenly;
+		}
+	"align-items" =>
+		case val {
+		"flex-start" or "start" => cs.align_items = AIflex_start;
+		"flex-end" or "end" => cs.align_items = AIflex_end;
+		"center" => cs.align_items = AIcenter;
+		"stretch" => cs.align_items = AIstretch;
+		"baseline" => cs.align_items = AIbaseline;
+		}
+	# CSS3 flexbox item properties
+	"flex-grow" =>
+		cs.flex_grow = parsepxfrac(val);
+	"flex-shrink" =>
+		cs.flex_shrink = parsepxfrac(val);
+	"flex-basis" =>
+		cs.flex_basis = parsedimen(val);
+	"flex" =>
+		parseflex_shorthand(cs, val);
+	"order" =>
+		cs.order = parsepx(val);
+	"gap" or "row-gap" or "column-gap" =>
+		cs.gap = parsepx(val);
+	# CSS3 transforms and transitions (store raw values)
+	"transform" =>
+		cs.transform = val;
+	"transition" =>
+		cs.transition = val;
 	}
+}
+
+# Parse "outline: 1px solid red" shorthand
+parseoutline_shorthand(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.outline_width = 0;
+		cs.outline_style = BSnone;
+		cs.outline_color = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.outline_style = bs;
+		}
+		else if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			cs.outline_width = parsepx(w);
+		}
+		else {
+			c := color(w, STYLNONE);
+			if(c != STYLNONE)
+				cs.outline_color = c;
+		}
+	}
+}
+
+# Parse "border-top: 1px solid red" shorthand for a single side
+parseborderside_shorthand(cs: ref ComputedStyle, val: string, side: int)
+{
+	if(val == "none") {
+		cs.border_width[side] = 0;
+		cs.border_style[side] = BSnone;
+		cs.border_color[side] = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.border_style[side] = bs;
+		}
+		else if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			cs.border_width[side] = parsepx(w);
+		}
+		else {
+			c := color(w, STYLNONE);
+			if(c != STYLNONE)
+				cs.border_color[side] = c;
+		}
+	}
+}
+
+# Parse "flex-flow: row wrap" shorthand
+parseflexflow(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		case parts[i] {
+		"row" => cs.flex_direction = FDrow;
+		"row-reverse" => cs.flex_direction = FDrow_reverse;
+		"column" => cs.flex_direction = FDcolumn;
+		"column-reverse" => cs.flex_direction = FDcolumn_reverse;
+		"nowrap" => cs.flex_wrap = FWnowrap;
+		"wrap" => cs.flex_wrap = FWwrap;
+		"wrap-reverse" => cs.flex_wrap = FWwrap_reverse;
+		}
+	}
+}
+
+# Parse "flex: grow shrink basis" shorthand
+parseflex_shorthand(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.flex_grow = 0;
+		cs.flex_shrink = 0;
+		cs.flex_basis = Dimen.make(Dnone, 0);
+		return;
+	}
+	if(val == "auto") {
+		cs.flex_grow = 100;
+		cs.flex_shrink = 100;
+		cs.flex_basis = Dimen.make(Dnone, 0);
+		return;
+	}
+	parts := splitwords(val);
+	if(len parts >= 1)
+		cs.flex_grow = parsepxfrac(parts[0]);
+	if(len parts >= 2)
+		cs.flex_shrink = parsepxfrac(parts[1]);
+	if(len parts >= 3)
+		cs.flex_basis = parsedimen(parts[2]);
 }
 
 # Parse a pixel value from a CSS string like "10px", "2em", or bare "10"
@@ -4761,7 +5035,26 @@ ComputedStyle.new() : ref ComputedStyle
 		0, 0, 0, STYLNONE,	# box_shadow x, y, blur, color
 		0, 0, 0, STYLNONE,	# text_shadow x, y, blur, color
 		OVvisible,		# overflow
-		VISvisible		# visibility
+		VISvisible,		# visibility
+		BSZcontent,		# box_sizing
+		CURauto,		# cursor
+		WBnormal,		# word_break
+		TOclip,			# text_overflow
+		0,			# outline_width
+		BSnone,			# outline_style
+		STYLNONE,		# outline_color
+		0,			# outline_offset
+		FDrow,			# flex_direction
+		FWnowrap,		# flex_wrap
+		JCflex_start,		# justify_content
+		AIflex_start,		# align_items (note: CSS default is stretch, but start is safer)
+		0,			# flex_grow (0 = default)
+		100,			# flex_shrink (1.0 * 100)
+		Dimen.make(Dnone, 0),	# flex_basis
+		STYLNONE,		# order
+		0,			# gap
+		nil,			# transform
+		nil			# transition
 	);
 }
 
@@ -4855,6 +5148,30 @@ selmatchone(sp: ref SelectorPart, el: ref ElementCtx) : int
 		return el.id == sp.name;
 	SPany =>
 		return 1;
+	SPpseudo =>
+		case sp.name {
+		"first-child" =>
+			return el.child_index == 0;
+		"last-child" =>
+			# Approximate: can't know total siblings, accept any
+			return 1;
+		"hover" or "active" or "focus" or "visited" =>
+			# Dynamic pseudo-classes: can't match statically
+			return 0;
+		"link" =>
+			return el.tag < LX->Numtags && LX->tagnames[el.tag] == "a";
+		"root" =>
+			return el.parent == nil;
+		"empty" =>
+			# Would require content inspection; approximate
+			return 0;
+		"first-of-type" =>
+			return el.child_index == 0;
+		"nth-child" =>
+			# Would need arg parsing (e.g., nth-child(2n+1))
+			return 0;
+		}
+		return 0;
 	}
 	return 0;
 }
@@ -4880,6 +5197,23 @@ selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
 		case sp.combinator {
 		'>' =>
 			# Child combinator: must match immediate parent
+			cur = cur.parent;
+			if(cur == nil || !selmatchone(sp, cur))
+				return 0;
+		'+' =>
+			# Adjacent sibling combinator: must match previous sibling
+			# Previous sibling has same parent and child_index - 1
+			if(cur.parent == nil || cur.child_index < 1)
+				return 0;
+			# We don't have a sibling pointer, so check parent relationship.
+			# The adjacent sibling must match the selector part.
+			# Since we track child_index, use parent to represent the sibling context.
+			cur = cur.parent;
+			if(cur == nil || !selmatchone(sp, cur))
+				return 0;
+		'~' =>
+			# General sibling combinator: any preceding sibling
+			# Simplified: walk up to parent (acts like child for our tree model)
 			cur = cur.parent;
 			if(cur == nil || !selmatchone(sp, cur))
 				return 0;
