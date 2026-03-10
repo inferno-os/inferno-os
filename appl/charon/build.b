@@ -188,12 +188,80 @@ UA_CSS: con
 	+ "input, textarea, select { border: 1px solid }\n"
 	+ "a { color: blue; text-decoration: underline; cursor: pointer }\n"
 	+ "a:visited { color: purple }\n"
-	# Wikipedia fallback styles -- low-specificity defaults for common MediaWiki classes.
+	# Wikipedia / MediaWiki fallback styles.
 	# These ensure readable display even if external stylesheets fail to load.
 	# Author stylesheets will override these via normal cascade.
+	#
+	# == Vector 2022 skin chrome: hide navigation elements ==
+	# These are Wikipedia's UI elements (sidebar, tabs, tools, search, settings)
+	# that render as raw bulleted lists without the Vector CSS.
+	+ ".vector-header { display: none }\n"
+	+ ".vector-sticky-header { display: none }\n"
+	+ ".vector-column-start { display: none }\n"
+	+ ".vector-column-end { display: none }\n"
+	+ ".vector-main-menu { display: none }\n"
+	+ ".vector-main-menu-container { display: none }\n"
+	+ ".vector-page-toolbar { display: none }\n"
+	+ ".vector-page-tools { display: none }\n"
+	+ ".vector-settings { display: none }\n"
+	+ ".vector-dropdown { display: none }\n"
+	+ ".vector-menu-tabs { display: none }\n"
+	+ ".vector-menu-content { display: none }\n"
+	+ ".vector-toc-landmark { display: none }\n"
+	+ ".vector-toc { display: none }\n"
+	+ ".vector-pinnable-header { display: none }\n"
+	+ ".vector-body-before-content { display: none }\n"
+	+ ".mw-sidebar-button { display: none }\n"
+	+ ".cdx-button { display: none }\n"
+	+ ".cdx-text-input { display: none }\n"
+	+ ".cdx-search-input { display: none }\n"
+	#
+	# == MediaWiki UI chrome ==
+	+ ".mw-jump-link { display: none }\n"
+	+ ".noprint { display: none }\n"
+	+ ".mw-editsection { display: none }\n"
+	+ ".mw-indicators { display: none }\n"
+	+ ".mw-portlet { display: none }\n"
+	+ ".mw-logo { display: none }\n"
+	+ ".mw-search-toggle-button { display: none }\n"
+	+ ".mw-header { display: none }\n"
+	+ ".mw-page-tools { display: none }\n"
+	+ ".mw-table-of-contents { display: none }\n"
+	+ ".mw-page-container-inner { display: block }\n"
+	# Older skins / fallback navigation IDs
+	+ "#mw-navigation { display: none }\n"
+	+ "#mw-head { display: none }\n"
+	+ "#mw-panel { display: none }\n"
+	+ "#p-personal { display: none }\n"
+	+ "#p-navigation { display: none }\n"
+	+ "#p-search { display: none }\n"
+	+ "#p-interaction { display: none }\n"
+	+ "#p-tb { display: none }\n"
+	+ "#p-lang { display: none }\n"
+	+ "#p-cactions { display: none }\n"
+	+ "#p-views { display: none }\n"
+	+ "#p-namespaces { display: none }\n"
+	+ "#jump-to-nav { display: none }\n"
+	+ "#siteSub { display: none }\n"
+	+ "#contentSub { display: none }\n"
+	+ "#catlinks { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px 8px; margin-top: 16px }\n"
+	# Skip-to links and screen-reader-only content
+	+ ".mw-jump { display: none }\n"
+	+ ".screen-reader-text { display: none }\n"
+	#
+	# == Article content styles ==
+	+ ".mw-body { display: block; padding: 8px }\n"
+	+ ".mw-body-content { display: block; line-height: 1 }\n"
+	+ ".mw-parser-output { display: block; line-height: 1 }\n"
+	+ ".mw-content-text { display: block }\n"
+	+ ".mw-heading { display: block }\n"
+	#
+	# == Wikitables ==
 	+ ".wikitable { border-collapse: collapse; border: 1px solid #a2a9b1; margin: 8px 0 }\n"
 	+ ".wikitable th { background-color: #eaecf0; border: 1px solid #a2a9b1; padding: 4px 8px; font-weight: bold }\n"
 	+ ".wikitable td { border: 1px solid #a2a9b1; padding: 4px 8px }\n"
+	#
+	# == Infoboxes ==
 	+ ".infobox { float: right; clear: right; margin: 0 0 8px 16px; border: 1px solid #a2a9b1; border-collapse: collapse; background-color: #f8f9fa }\n"
 	+ ".infobox th { background-color: #e0e0e0; padding: 4px 8px; text-align: center }\n"
 	+ ".infobox td { padding: 4px 8px }\n"
@@ -201,24 +269,110 @@ UA_CSS: con
 	+ ".infobox-title { font-weight: bold; text-align: center; font-size: large }\n"
 	+ ".infobox-image { text-align: center }\n"
 	+ ".infobox-label { font-weight: bold }\n"
+	#
+	# == Table of contents (legacy and modern) ==
 	+ ".toc { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 8px; display: block; margin: 8px 0 }\n"
 	+ ".toc ul { list-style-type: none }\n"
 	+ ".tocnumber { margin-right: 4px }\n"
+	+ ".toctitle { font-weight: bold; text-align: center }\n"
+	#
+	# == Thumbnails and figures ==
 	+ ".thumb { margin: 8px; float: right; clear: right }\n"
 	+ ".thumbinner { border: 1px solid #c8ccd1; padding: 3px; background-color: #f8f9fa }\n"
 	+ ".thumbcaption { font-size: small; padding: 4px; text-align: center }\n"
 	+ ".tleft { float: left; clear: left; margin-right: 16px }\n"
 	+ ".tright { float: right; clear: right; margin-left: 16px }\n"
+	#
+	# == References ==
 	+ ".reflist { font-size: small }\n"
 	+ ".reference { font-size: small; vertical-align: top }\n"
-	+ ".mw-editsection { font-size: small; font-weight: normal }\n"
-	+ ".navbox { border: 1px solid #a2a9b1; background-color: #fdfdfd; margin: 8px 0; padding: 2px }\n"
-	+ ".catlinks { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px; margin-top: 16px }\n"
-	+ ".mw-jump-link { display: none }\n"
-	+ ".noprint { display: none }\n"
-	+ ".mw-indicators { float: right }\n"
-	+ ".mw-body-content { line-height: 1 }\n"
-	+ ".mw-parser-output { line-height: 1 }\n";
+	+ ".mw-references-wrap { font-size: small }\n"
+	#
+	# == Navboxes ==
+	+ ".navbox { border: 1px solid #a2a9b1; background-color: #fdfdfd; margin: 8px 0; padding: 0; border-collapse: collapse }\n"
+	+ ".navbox-inner { border-collapse: collapse }\n"
+	+ ".navbox-title { background-color: #ccccff; padding: 2px 4px; text-align: center; font-weight: bold }\n"
+	+ ".navbox-group { background-color: #ddf; padding: 2px 8px; font-weight: bold; white-space: nowrap }\n"
+	+ ".navbox-list { padding: 2px 4px }\n"
+	+ ".navbox-even { background-color: #f7f7f7 }\n"
+	+ ".navbox-odd { background-color: transparent }\n"
+	+ ".navbox-subgroup { border-collapse: collapse }\n"
+	+ ".navbox-abovebelow { background-color: #e6e6ff; padding: 2px 4px; text-align: center }\n"
+	#
+	# == Categories ==
+	+ ".catlinks { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px 8px; margin-top: 16px; display: block }\n"
+	+ ".mw-normal-catlinks { display: block }\n"
+	+ ".mw-hidden-catlinks { display: none }\n"
+	#
+	# == Footer ==
+	+ ".mw-footer { border-top: 1px solid #a2a9b1; margin-top: 16px; padding: 8px 0; font-size: small; color: #54595d }\n"
+	+ ".footer-info { display: block; margin-bottom: 4px }\n"
+	+ ".footer-places { display: block }\n"
+	+ ".footer-icons { display: none }\n"
+	#
+	# == Sidebar boxes and portals ==
+	+ ".sistersitebox { display: none }\n"
+	+ ".portal-bar { display: none }\n"
+	+ ".portal { display: none }\n"
+	#
+	# == Hatnotes and disambiguation ==
+	+ ".hatnote { font-style: italic; padding-left: 16px; margin-bottom: 8px }\n"
+	+ ".mw-empty-elt { display: none }\n"
+	#
+	# == Ambox (article message boxes) ==
+	+ ".ambox { border: 1px solid #a2a9b1; background-color: #fbfbfb; margin: 4px 0; padding: 4px }\n"
+	#
+	# == Hidden and collapsed elements ==
+	+ ".mw-collapsible-content { display: block }\n"
+	+ ".autocollapse { display: block }\n"
+	#
+	# == Main page layout ==
+	# Wikipedia main page uses table-based columns with these IDs
+	+ "#mp-upper { width: 100% }\n"
+	+ "#mp-left { vertical-align: top; padding: 0 8px 0 0 }\n"
+	+ "#mp-right { vertical-align: top; padding: 0 0 0 8px }\n"
+	+ "#mp-lower { width: 100% }\n"
+	# Main page section headings (gray background bars)
+	+ ".mp-h2 { background-color: #ccc; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold; border: 1px solid #a2a9b1 }\n"
+	+ ".MainPageBG { padding: 4px }\n"
+	#
+	# == Sister projects (main page) ==
+	+ ".sister-project { display: inline-block; vertical-align: top; padding: 4px 8px; margin: 4px }\n"
+	+ ".other-project { display: inline-block; vertical-align: top; padding: 4px 8px; margin: 4px }\n"
+	#
+	# == Plainlist (remove bullets) ==
+	+ ".plainlist ul { list-style-type: none; padding: 0; margin: 0 }\n"
+	+ ".plainlist li { margin-bottom: 2px }\n"
+	+ ".hlist ul { list-style-type: none; padding: 0; margin: 0 }\n"
+	+ ".hlist li { display: inline }\n"
+	+ ".plainlinks { display: inline }\n"
+	#
+	# == Columns (multi-column lists) ==
+	+ ".div-col { display: block }\n"
+	+ ".columns-list { display: block }\n"
+	+ ".column-width { display: block }\n"
+	#
+	# == Sidebar (article sidebars) ==
+	+ ".sidebar { float: right; clear: right; margin: 0 0 8px 16px; border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px }\n"
+	+ ".sidebar-title { font-weight: bold; text-align: center; padding: 4px }\n"
+	+ ".sidebar-content { padding: 2px 4px }\n"
+	+ ".sidebar-heading { font-weight: bold; padding: 2px 4px }\n"
+	#
+	# == Quotebox ==
+	+ ".quotebox { float: right; clear: right; margin: 8px 0 8px 16px; border: 1px solid #a2a9b1; padding: 8px; background-color: #f8f9fa }\n"
+	#
+	# == Succession boxes ==
+	+ ".succession-box { border: 1px solid #a2a9b1; margin: 8px 0; padding: 0 }\n"
+	#
+	# == Gallery ==
+	+ ".gallery { display: block; margin: 4px 0 }\n"
+	+ ".gallerybox { display: inline-block; vertical-align: top; margin: 4px }\n"
+	+ ".gallerytext { font-size: small; text-align: center; padding: 2px }\n"
+	#
+	# == Metadata and hidden content ==
+	+ ".metadata { display: none }\n"
+	+ ".mbox-small { display: none }\n"
+	+ ".hide-when-compact { display: none }\n";
 
 utf8 : Btos;
 latin1 : Btos;
