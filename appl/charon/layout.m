@@ -215,6 +215,13 @@ Lay: adt
 	just: byte;				# default line justification
 	flags: byte;			# Lchanged
 
+	# CSS text properties (inherited from enclosing Ibox's ComputedStyle)
+	text_indent: int;		# first-line indent in pixels (0 = none)
+	line_height: int;		# minimum line height in pixels (-1 = not set)
+	letter_spacing: int;		# extra letter spacing in pixels (-1 = not set)
+	word_spacing: int;		# extra word spacing in pixels (-1 = not set)
+	white_space: byte;		# WSnormal, WSpre, WSnowrap, WS_prewrap
+
 	new: fn(targetwidth: int, just: byte, margin: int, bg: Build->Background) : ref Lay;
 };
 
