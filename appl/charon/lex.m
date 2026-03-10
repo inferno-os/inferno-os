@@ -2,21 +2,21 @@ Lex: module
 {
 	PATH: con "/dis/charon/lex.dis";
 
-	# HTML 4.0 tags (blink, nobr)
-	# sorted in lexical order; used as array indices
+	# HTML tags sorted in lexical order; used as array indices
+	# HTML 4.0 + HTML5 semantic elements
 	Notfound, Comment,
-	Ta, Tabbr, Tacronym, Taddress, Tapplet, Tarea, Tb,
+	Ta, Tabbr, Tacronym, Taddress, Tapplet, Tarea, Tarticle, Taside, Tb,
 		Tbase, Tbasefont, Tbdo, Tbig, Tblink, Tblockquote, Tbody,
 		Tbq, Tbr, Tbutton, Tcaption, Tcenter, Tcite, Tcode, Tcol, Tcolgroup,
-		Tdd, Tdel, Tdfn, Tdir, Tdiv, Tdl, Tdt, Tem,
-		Tfieldset, Tfont, Tform, Tframe, Tframeset,
-		Th1, Th2, Th3, Th4, Th5, Th6, Thead, Thr, Thtml, Ti, Tiframe, Timage,
-		Timg, Tinput, Tins, Tisindex, Tkbd, Tlabel, Tlegend, Tli, Tlink, Tmap,
-		Tmenu, Tmeta, Tnobr, Tnoframes, Tnoscript,
-		Tobject, Tol, Toptgroup, Toption, Tp, Tparam, Tpre,
-		Tq, Ts, Tsamp, Tscript, Tselect, Tsmall, Tspan, Tstrike, Tstrong,
-		Tstyle, Tsub, Tsup, Ttable, Ttbody, Ttd, Ttextarea, Ttfoot, Tth,
-		Tthead, Ttitle, Ttr, Ttt, Tu, Tul, Tvar, Txmp,
+		Tdd, Tdel, Tdetails, Tdfn, Tdir, Tdiv, Tdl, Tdt, Tem,
+		Tfieldset, Tfigcaption, Tfigure, Tfont, Tfooter, Tform, Tframe, Tframeset,
+		Th1, Th2, Th3, Th4, Th5, Th6, Thead, Theader, Thr, Thtml, Ti, Tiframe, Timage,
+		Timg, Tinput, Tins, Tisindex, Tkbd, Tlabel, Tlegend, Tli, Tlink,
+		Tmain, Tmap, Tmark, Tmenu, Tmeta, Tnav, Tnobr, Tnoframes, Tnoscript,
+		Tobject, Tol, Toptgroup, Toption, Toutput, Tp, Tparam, Tpre,
+		Tq, Ts, Tsamp, Tscript, Tsection, Tselect, Tsmall, Tspan, Tstrike, Tstrong,
+		Tstyle, Tsub, Tsummary, Tsup, Ttable, Ttbody, Ttd, Ttextarea, Ttfoot, Tth,
+		Tthead, Ttime, Ttitle, Ttr, Ttt, Tu, Tul, Tvar, Twbr, Txmp,
 		Numtags
 			: con iota;
 	RBRA : con Numtags;

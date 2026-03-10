@@ -72,14 +72,20 @@ SPAfter: con byte 4;
 BL: con byte 1;
 BLBA: con BL|SPBefore|SPAfter;
 blockbrk := array[LX->Numtags] of {
-	LX->Taddress => BLBA, LX->Tblockquote => BLBA, LX->Tcenter => BL,
-	LX->Tdir => BLBA, LX->Tdiv => BL, LX->Tdd => BL, LX->Tdl => BLBA,
-	LX->Tdt => BL, LX->Tform => BLBA,
+	LX->Taddress => BLBA, LX->Tarticle => BL, LX->Taside => BL,
+	LX->Tblockquote => BLBA, LX->Tcenter => BL,
+	LX->Tdetails => BL, LX->Tdir => BLBA, LX->Tdiv => BL, LX->Tdd => BL,
+	LX->Tdl => BLBA, LX->Tdt => BL,
+	LX->Tfigcaption => BL, LX->Tfigure => BLBA,
+	LX->Tfooter => BL, LX->Tform => BLBA,
 	# headings and tables get breaks added manually
 	LX->Th1 => BL, LX->Th2 => BL, LX->Th3 => BL,
 	LX->Th4 => BL, LX->Th5 => BL, LX->Th6 => BL,
-	LX->Thr => BL, LX->Tisindex => BLBA, LX->Tli => BL, LX->Tmenu => BLBA,
+	LX->Theader => BL, LX->Thr => BL,
+	LX->Tisindex => BLBA, LX->Tli => BL,
+	LX->Tmain => BL, LX->Tmenu => BLBA, LX->Tnav => BL,
 	LX->Tol => BLBA, LX->Tp => BLBA, LX->Tpre => BLBA,
+	LX->Tsection => BL, LX->Tsummary => BL,
 	LX->Tul => BLBA, LX->Txmp => BLBA,
 	* => byte 0
 };
@@ -124,9 +130,12 @@ UA_CSS: con
 	"html, body, div, p, blockquote, pre, address, form, fieldset, "
 	+ "dl, dt, dd, ul, ol, menu, dir, center, isindex, hr, "
 	+ "h1, h2, h3, h4, h5, h6 { display: block }\n"
+	+ "article, aside, details, figcaption, figure, footer, "
+	+ "header, main, nav, section, summary { display: block }\n"
 	+ "span, a, em, strong, b, i, u, s, strike, tt, code, kbd, samp, "
 	+ "var, dfn, cite, abbr, acronym, q, sub, sup, big, small, "
 	+ "label, font, basefont, bdo, del, ins { display: inline }\n"
+	+ "mark, time, output { display: inline }\n"
 	+ "li { display: list-item }\n"
 	+ "table { display: table }\n"
 	+ "tr { display: table-row }\n"
@@ -148,7 +157,9 @@ UA_CSS: con
 	+ "fieldset { border: 2px groove }\n"
 	+ "legend { font-weight: bold }\n"
 	+ "big { font-size: large }\n"
-	+ "small { font-size: small }\n";
+	+ "small { font-size: small }\n"
+	+ "mark { background-color: yellow }\n"
+	+ "figure { margin-left: 40px; margin-right: 40px }\n";
 
 utf8 : Btos;
 latin1 : Btos;
@@ -1974,6 +1985,153 @@ TokLoop:
 				else
 					unapplystyle(ps, di, changes);
 			}
+
+		# HTML5 semantic block elements (behave like <div>)
+		LX->Tarticle or LX->Taside or LX->Tdetails or LX->Tfooter or
+		LX->Theader or LX->Tmain or LX->Tnav or LX->Tsection or LX->Tsummary =>
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				al := atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				si.halign = Anone;
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, tag, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+					openbox(ps, cs);
+				} else
+					ps.boxstk = nil :: ps.boxstk;
+			}
+
+		LX->Tarticle+RBRA or LX->Taside+RBRA or LX->Tdetails+RBRA or LX->Tfooter+RBRA or
+		LX->Theader+RBRA or LX->Tmain+RBRA or LX->Tnav+RBRA or LX->Tsection+RBRA or LX->Tsummary+RBRA =>
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else {
+					if(ps.boxstk != nil) {
+						bctx := hd ps.boxstk;
+						if(bctx != nil)
+							closebox(ps);
+						else
+							ps.boxstk = tl ps.boxstk;
+					}
+					popelemctx(is);
+					unapplystyle(ps, di, changes);
+					popjust(ps);
+				}
+			}
+			else
+				popjust(ps);
+
+		# HTML5 <figure> - block with default indentation (like <blockquote>)
+		LX->Tfigure =>
+			pushelemctx(is, tag, tok);
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+				openbox(ps, cs);
+			} else {
+				ps.boxstk = nil :: ps.boxstk;
+				changeindent(ps, BQTAB);
+			}
+
+		LX->Tfigure+RBRA =>
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else {
+					ps.boxstk = tl ps.boxstk;
+					changeindent(ps, -BQTAB);
+				}
+			}
+			popelemctx(is);
+
+		# HTML5 <figcaption> - block element (like <div>)
+		LX->Tfigcaption =>
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				al := ps.curjust;
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				si.halign = Anone;
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, tag, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+					openbox(ps, cs);
+				} else
+					ps.boxstk = nil :: ps.boxstk;
+			}
+
+		LX->Tfigcaption+RBRA =>
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else {
+					if(ps.boxstk != nil) {
+						bctx := hd ps.boxstk;
+						if(bctx != nil)
+							closebox(ps);
+						else
+							ps.boxstk = tl ps.boxstk;
+					}
+					popelemctx(is);
+					unapplystyle(ps, di, changes);
+					popjust(ps);
+				}
+			}
+			else
+				popjust(ps);
+
+		# HTML5 inline elements: <mark>, <time>, <output>
+		LX->Tmark or LX->Ttime or LX->Toutput =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
+
+		LX->Tmark+RBRA or LX->Ttime+RBRA or LX->Toutput+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+			}
+
+		# HTML5 <wbr> - word break opportunity (void element)
+		LX->Twbr =>
+			additem(ps, Item.newspacer(ISPnull, ps.curfont), tok);
 
 		* =>
 			if(warn)
