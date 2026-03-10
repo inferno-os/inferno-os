@@ -18,6 +18,7 @@ include "lex.m";
 include "css.m";
 include "script.m";
 include "build.m";
+include "widget.m";
 include "layout.m";
 include "img.m";
 include "event.m";

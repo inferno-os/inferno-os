@@ -158,6 +158,7 @@ Control: adt {
 			deltaval: int;
 			ctl:		cyclic ref Control;	# if non-nil, scrolls this control
 			holdstate: (int, int);
+			wsb:		ref Widget->Scrollbar;	# widget.m scrollbar (frame vscr only)
 		Canimimage =>
 			cim:		ref CharonUtils->CImage;
 			cur:		int;				# current frame

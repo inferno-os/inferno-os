@@ -9,7 +9,7 @@ CU: CharonUtils;
 	White, Black, Grey, DarkGrey, LightGrey, Blue, Navy, Red, Green, DarkRed: import CU;
 
 D: Draw;
-	Point, Rect, Font, Image, Display: import D;
+	Point, Rect, Font, Image, Display, Pointer: import D;
 S: String;
 T: StringIntTab;
 U: Url;
@@ -21,6 +21,8 @@ E: Events;
 	Event: import E;
 G: Gui;
 B: Build;
+W: Widget;
+	Scrollbar: import W;
 
 # B : Build, declared in layout.m so main program can use it
 	Item, ItemSource,
@@ -214,6 +216,7 @@ init(cu: CharonUtils)
 	J = cu->J;
 	B = cu->B;
 	display = G->display;
+	W = load Widget Widget->PATH;
 
 	if(display == nil) {
 		# Headless mode: no display, use fixed fallback metrics.
@@ -246,6 +249,8 @@ init(cu: CharonUtils)
 	ctllineascent = fnt.ascent;
 	ctlcharspace = fnt.width("a");
 	ctlspspace = fonts[CtlFnt].spw;
+	if(W != nil)
+		W->init(display, fonts[DefFnt].f);
 }
 
 stringwidth(s: string): int
@@ -547,6 +552,12 @@ createvscroll(f: ref Frame)
 	f.cr.max.x -= breadth;
 	if(f.cr.dx() <= 2*f.marginw)
 		CU->raisex("EXInternal: frame too small for layout");
+	if(W != nil) {
+		pick sc := f.vscr {
+		Cscrollbar =>
+			sc.wsb = Scrollbar.new(f.vscr.r);
+		}
+	}
 	f.vscr.draw(1);
 }
 
@@ -3300,7 +3311,7 @@ Control.newscroll(f: ref Frame, isvert, length, breadth: int) : ref Control
 	}
 	else
 		maxpt = Point(length, breadth);
-	return ref Control.Cscrollbar(f, nil, Rect(zp,maxpt), flags, nil, 0, 0, 1, 0, nil, (0, 0));
+	return ref Control.Cscrollbar(f, nil, Rect(zp,maxpt), flags, nil, 0, 0, 1, 0, nil, (0, 0), nil);
 }
 
 Control.newentry(f: ref Frame, nh, nv, linewrap: int) : ref Control
@@ -3544,6 +3555,12 @@ Control.scrollset(c: self ref Control, v1, v2, vmax, nsteps, draw: int)
 			v2 = vmax;
 		if(v1 > v2)
 			v1 = v2;
+		# Update widget.m scrollbar if present
+		if(sc.wsb != nil) {
+			sc.wsb.total = vmax;
+			sc.wsb.visible = v2 - v1;
+			sc.wsb.origin = v1;
+		}
 		if(v1 == 0 && v2 == vmax) {
 			sc.mindelta = 1;
 			sc.deltaval = 0;
@@ -3883,6 +3900,33 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			}
 		}
 	Cscrollbar =>
+		# Widget.m scrollbar for frame-level vertical scrollbars
+		if(c.wsb != nil && c.ctl == nil) {
+			# Synthesize a Pointer from Charon's mouse event
+			buttons := 0;
+			if(down || drag)
+				buttons = 1;
+			ptr := ref Pointer(buttons, p, 0);
+			newo := -1;
+			if(c.wsb.isactive()) {
+				newo = c.wsb.track(ptr);
+				if(newo >= 0) {
+					newgrab = c;
+					changed = 1;
+				}
+			} else if(down) {
+				newo = c.wsb.event(ptr);
+				if(newo >= 0) {
+					newgrab = c;
+					changed = 1;
+				}
+			}
+			if(newo >= 0) {
+				c.f.yscroll(CAscrollabs, newo);
+				changed = 1;
+			}
+		} else {
+		# Legacy scrollbar logic for form controls
 		val := 0;
 		v, vmin, vmax: int;
 		if(c.flags&CFscrvert) {
@@ -3895,7 +3939,6 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			vmin = c.r.min.x;
 			vmax = c.r.max.x;
 		}
-		# Flat scrollbar: no arrow buttons, full trough
 		vsltop := vmin+c.top;
 		vslbot := vmax-c.bot;
 		actflags := 0;
@@ -3909,18 +3952,15 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			holdval := 0;
 			repeat := 1;
 			if (v >= vsltop && v < vslbot) {
-				# On thumb — start drag
 				holdval = v - vsltop;
 				actflags = CFactive;
 				repeat = 0;
 			}
 			else if(v < vsltop) {
-				# Above thumb — page up
 				holdval = -1;
 				actflags = CFscracttr1;
 			}
 			else if(v >= vslbot) {
-				# Below thumb — page down
 				holdval = 1;
 				actflags = CFscracttr2;
 			}
@@ -3932,7 +3972,6 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 		if (drag) {
 			(actflags, val) = c.holdstate;
 			if (actflags == CFactive) {
-				# dragging main scroll widget (relative to top of drag block)
 				val = (v - vsltop) - val;
 				if(abs(val) >= c.mindelta) {
 					ans = CAscrolldelta;
@@ -3943,8 +3982,6 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			}
 		}
 		if (up || hold) {
-			# set the action according to the hold state
-			# Note: main widget (case CFactive) handled by drag
 			act := 0;
 			(act, val) = c.holdstate;
 			case act {
@@ -3957,7 +3994,7 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			}
 			if (up) {
 				c.holdstate = (0, 0);
-			} else { # hold
+			} else {
 				(actflags, nil) = c.holdstate;
 				if (ans != CAnone) {
 					E->autorepeat(ref (Event.Emouse)(p, E->Mhold), ARTICK, ARTICK);
@@ -3979,12 +4016,7 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 					CAscrollline =>
 						topline += val;
 					CAscrolldelta =>
-#						# insufficient for large number of lines
 						topline += val;
-#						if(val > 0)
-#							topline++;
-#						else
-#							topline--;
 					}
 					if (topline+ny >= nlines)
 						topline = (nlines-1) - ny;
@@ -4002,12 +4034,7 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 					CAscrollline =>
 						newfirst += val;
 					CAscrolldelta =>
-#						# insufficient for very long select lists
 						newfirst += val;
-#						if(val > 0)
-#							newfirst++;
-#						else
-#							newfirst--;
 					}
 					newfirst = max(0, min(newfirst, len cff.options - cff.nvis));
 					cff.first = newfirst;
@@ -4025,15 +4052,10 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 							newfirst += val;
 						CAscrolldelta =>
 							newfirst += val;
-#							if(val > 0)
-#								newfirst++;
-#							else
-#								newfirst--;
 						}
 						newfirst = max(0, min(newfirst, len cff.options - cff.nvis));
 						cff.first = newfirst;
 						c.scrollset(newfirst, newfirst+cff.nvis, len cff.options, 0, 1);
-						# TODO: need redraw only vscr and content
 					}
 					else {
 						hw := cff.maxcol;
@@ -4056,7 +4078,6 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 							newstart = max(0, min(newstart, hw - w));
 						cff.start = newstart;
 						c.scrollset(newstart, w+newstart, hw, 0, 1);
-						# TODO: need redraw only hscr and content
 					}
 					cff.draw(1);
 					return (ans, newgrab);
@@ -4073,6 +4094,7 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 		else if(actflags != oldactflags) {
 			changed = 1;
 		}
+		} # end legacy scrollbar
 	}
 	if(changed)
 		ctl.draw(1);
@@ -4431,38 +4453,39 @@ Control.draw(ctl: self ref Control, flush: int)
 		drawrelief(win, insetr, ReliefSunk);
 
 	Cscrollbar =>
-		# Flat scrollbar: track + thumb, no arrows or relief.
-		# Matches widget.m scrollbar aesthetic.
-		SCRTRACK: con 16rE8E8E8;	# light grey track
-		SCRTHUMB: con 16rBBBBBB;	# medium grey thumb
-		x := c.r.min.x;
-		y := c.r.min.y;
-		rs: Rect;
-		if(c.flags&CFscrvert) {
-			l := c.r.max.y - c.r.min.y;
-			b := c.r.max.x - c.r.min.x;
-			# Fill entire track
-			win.draw(c.r, colorimage(SCRTRACK), nil, zp);
-			# Compute thumb position (no arrow buttons)
-			if(l > MINSCR) {
-				ys := y + c.top;
-				yt2 := y + l - c.bot;
-				# Inset thumb 2px from edges
-				rs = Rect(Point(x+2, ys), Point(x+b-2, yt2));
-				if(rs.dy() >= MINSCR)
-					win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+		if(c.wsb != nil) {
+			# Delegate to widget.m scrollbar
+			c.wsb.draw(win);
+		} else {
+			# Flat scrollbar fallback for form controls
+			SCRTRACK: con 16rE8E8E8;
+			SCRTHUMB: con 16rBBBBBB;
+			x := c.r.min.x;
+			y := c.r.min.y;
+			rs: Rect;
+			if(c.flags&CFscrvert) {
+				l := c.r.max.y - c.r.min.y;
+				b := c.r.max.x - c.r.min.x;
+				win.draw(c.r, colorimage(SCRTRACK), nil, zp);
+				if(l > MINSCR) {
+					ys := y + c.top;
+					yt2 := y + l - c.bot;
+					rs = Rect(Point(x+2, ys), Point(x+b-2, yt2));
+					if(rs.dy() >= MINSCR)
+						win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+				}
 			}
-		}
-		else {
-			l := c.r.max.x - c.r.min.x;
-			b := c.r.max.y - c.r.min.y;
-			win.draw(c.r, colorimage(SCRTRACK), nil, zp);
-			if(l > MINSCR) {
-				xs := x + c.top;
-				xt2 := x + l - c.bot;
-				rs = Rect(Point(xs, y+2), Point(xt2, y+b-2));
-				if(rs.dx() >= MINSCR)
-					win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+			else {
+				l := c.r.max.x - c.r.min.x;
+				b := c.r.max.y - c.r.min.y;
+				win.draw(c.r, colorimage(SCRTRACK), nil, zp);
+				if(l > MINSCR) {
+					xs := x + c.top;
+					xt2 := x + l - c.bot;
+					rs = Rect(Point(xs, y+2), Point(xt2, y+b-2));
+					if(rs.dx() >= MINSCR)
+						win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+				}
 			}
 		}
 	Canimimage =>

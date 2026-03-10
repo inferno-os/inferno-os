@@ -6,7 +6,6 @@ include "wmclient.m";
 	wmclient: Wmclient;
 	Window: import wmclient;
 
-include "widget.m";
 	widgetmod: Widget;
 	Scrollbar, Statusbar: import widgetmod;
 
