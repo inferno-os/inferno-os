@@ -267,6 +267,7 @@ SelectorPart: adt
 {
 	stype: int;			# SPelement, SPclass, etc.
 	name: string;			# tag name, class name, or id
+	combinator: int;		# 0=subject, ' '=descendant, '>'=child, '+'=adjacent
 };
 
 # Selector part types
@@ -610,8 +611,16 @@ Pstate: adt {
 	juststk: list of byte;		# justification stack
 	hangstk: list of int;		# hanging stack
 	stylestk: list of int;		# CSS style change stack (bitmasks from applystyle)
+	boxstk: list of ref BoxCtx;	# stack of open CSS box model elements
 
 	new: fn() : ref Pstate;
+};
+
+# Context for an open CSS box model element (div, blockquote, etc.)
+BoxCtx: adt
+{
+	splicepoint: ref Item;		# item before the box content started
+	cs: ref ComputedStyle;		# computed style for the box
 };
 
 

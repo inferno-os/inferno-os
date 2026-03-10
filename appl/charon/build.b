@@ -317,6 +317,7 @@ TokLoop:
 		# Anchors are not supposed to be nested, but you sometimes see
 		# href anchors inside destination anchors.
 		LX->Ta =>
+			pushelemctx(is, tag, tok);
 			if(ps.curanchor != 0) {
 				if(warn)
 					sys->print("warning: nested <A> or missing </A>\n");
@@ -351,6 +352,7 @@ TokLoop:
 			}
 
 		LX->Ta+RBRA =>
+			popelemctx(is);
 			endanchor(ps, di.text);
 
 		# <!ELEMENT APPLET - - (PARAM | %text)* >
@@ -408,13 +410,31 @@ TokLoop:
 
 		# <!ELEMENT BLOCKQUOTE - - %body.content>
 		LX->Tblockquote =>
-			changeindent(ps, BQTAB);
+			pushelemctx(is, tag, tok);
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+				openbox(ps, cs);
+			} else {
+				ps.boxstk = nil :: ps.boxstk;
+				changeindent(ps, BQTAB);
+			}
 
 		LX->Tblockquote+RBRA =>
-			changeindent(ps, -BQTAB);
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else {
+					ps.boxstk = tl ps.boxstk;
+					changeindent(ps, -BQTAB);
+				}
+			} else
+				changeindent(ps, -BQTAB);
+			popelemctx(is);
 
 		# <!ELEMENT BODY O O %body.content>
 		LX->Tbody =>
+			pushelemctx(is, tag, tok);
 			ps.skipping = 0;
 			bg := Background(nil, color(aval(tok, LX->Abgcolor), di.background.color));
 			bgurl := aurlval(tok, LX->Abackground, nil, di.base);
@@ -450,6 +470,7 @@ TokLoop:
 			}
 
 		LX->Tbody+RBRA =>
+			popelemctx(is);
 			# HTML spec says ignore things after </body>,
 			# but IE and Netscape don't
 			# ps.skipping = 1;
@@ -504,6 +525,15 @@ TokLoop:
 				si.halign = Anone;	# already handled via pushjust
 				changes := applystyle(ps, si);
 				ps.stylestk = changes :: ps.stylestk;
+				# CSS box model: wrap content in Ibox if non-default box properties
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, tag, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+					openbox(ps, cs);
+				} else
+					ps.boxstk = nil :: ps.boxstk;
 			}
 
 		LX->Tcenter+RBRA or LX->Tdiv+RBRA =>
@@ -513,6 +543,15 @@ TokLoop:
 				if(changes == -1)
 					ps.skipping = 0;
 				else {
+					# Close box if one was opened
+					if(ps.boxstk != nil) {
+						bctx := hd ps.boxstk;
+						if(bctx != nil)
+							closebox(ps);
+						else
+							ps.boxstk = tl ps.boxstk;
+					}
+					popelemctx(is);
 					unapplystyle(ps, di, changes);
 					popjust(ps);
 				}
@@ -537,6 +576,7 @@ TokLoop:
 		#<!ELEMENT (DIR|MENU) - - (LI)+ -(%block) >
 		#<!ELEMENT (OL|UL) - - (LI)+>
 		LX->Tdir or LX->Tmenu or LX->Tol or LX->Tul =>
+			pushelemctx(is, tag, tok);
 			changeindent(ps, LISTTAB);
 			if(tag == LX->Tol)
 				tydef := LT1;
@@ -557,9 +597,11 @@ TokLoop:
 			ps.listtypestk = tl ps.listtypestk;
 			ps.listcntstk = tl ps.listcntstk;
 			changeindent(ps, -LISTTAB);
+			popelemctx(is);
 
 		# <!ELEMENT DL - - (DT|DD)+ >
 		LX->Tdl =>
+			pushelemctx(is, tag, tok);
 			changeindent(ps, LISTTAB);
 			ps.hangstk = 0 :: ps.hangstk;
 
@@ -573,6 +615,7 @@ TokLoop:
 			if(hd ps.hangstk != 0)
 				changehang(ps, -10*LISTTAB);
 			ps.hangstk = tl ps.hangstk;
+			popelemctx(is);
 
 		# <!ELEMENT DT - O (%text)* >
 		LX->Tdt =>
@@ -626,6 +669,7 @@ TokLoop:
 
 		# <!ELEMENT FORM - - %body.content -(FORM) >
 		LX->Tform =>
+			pushelemctx(is, tag, tok);
 			if(is.curform != nil) {
 				if(warn)
 					sys->print("warning: <FORM> nested inside another\n");
@@ -657,6 +701,7 @@ TokLoop:
 			is.curform = frm;
 
 		LX->Tform+RBRA =>
+			popelemctx(is);
 			if(is.curform == nil) {
 				if(warn)
 					sys->print("warning: unexpected </FORM>\n");
@@ -780,10 +825,25 @@ TokLoop:
 			changes := applystyle(ps, si);
 			ps.stylestk = changes :: ps.stylestk;
 			ps.skipwhite = 1;
+			# CSS box model for headings
+			pushelemctx(is, tag, tok);
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+				openbox(ps, cs);
+			else
+				ps.boxstk = nil :: ps.boxstk;
 
 		LX->Th1+RBRA or LX->Th2+RBRA
 		    or LX->Th3+RBRA or LX->Th4+RBRA
 		    or LX->Th5+RBRA or LX->Th6+RBRA =>
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else
+					ps.boxstk = tl ps.boxstk;
+			}
+			popelemctx(is);
 			addbrk(ps, 1, IFcleft|IFcright);
 			if(ps.stylestk != nil) {
 				changes := hd ps.stylestk;
@@ -979,6 +1039,13 @@ TokLoop:
 
 		# <!ELEMENT LI - O %flow>
 		LX->Tli =>
+			# Pop previous <li> elemctx if any (implicit close)
+			if(is.elemstk != nil) {
+				ectx := hd is.elemstk;
+				if(ectx != nil && ectx.tag == LX->Tli)
+					popelemctx(is);
+			}
+			pushelemctx(is, tag, tok);
 			if(ps.listtypestk == nil) {
 				if(warn)
 					sys->print("<LI> not in list\n");
@@ -1120,6 +1187,15 @@ TokLoop:
 				si.halign = Anone;
 				changes := applystyle(ps, si);
 				ps.stylestk = changes :: ps.stylestk;
+				# CSS box model for <p>
+				cs := getcomputedstyle(is, LX->Tp, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, LX->Tp, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+					openbox(ps, cs);
+				else
+					ps.boxstk = nil :: ps.boxstk;
 			}
 			ps.inpar = 1;
 			ps.skipwhite = 1;
@@ -1130,8 +1206,17 @@ TokLoop:
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
 					ps.skipping = 0;
-				else
+				else {
+					if(ps.boxstk != nil) {
+						bctx := hd ps.boxstk;
+						if(bctx != nil)
+							closebox(ps);
+						else
+							ps.boxstk = tl ps.boxstk;
+					}
+					popelemctx(is);
 					unapplystyle(ps, di, changes);
+				}
 				# Note: popjust for <p> is handled by blockbrk mechanism
 			}
 
@@ -1146,8 +1231,22 @@ TokLoop:
 			ps.literal = 1;
 			ps.skipwhite = 0;
 			pushfontstyle(ps, FntT);
+			pushelemctx(is, tag, tok);
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+				openbox(ps, cs);
+			else
+				ps.boxstk = nil :: ps.boxstk;
 
 		LX->Tpre+RBRA =>
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else
+					ps.boxstk = tl ps.boxstk;
+			}
+			popelemctx(is);
 			ps.curstate |= IFwrap;
 			if(ps.literal) {
 				popfontstyle(ps);
@@ -1763,8 +1862,21 @@ TokLoop:
 			si := getstyle(is, tag, tok);
 			changes := applystyle(ps, si);
 			ps.stylestk = changes :: ps.stylestk;
+			# CSS box model: fieldset naturally has border
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+				openbox(ps, cs);
+			else
+				ps.boxstk = nil :: ps.boxstk;
 
 		LX->Tfieldset+RBRA =>
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else
+					ps.boxstk = tl ps.boxstk;
+			}
 			popelemctx(is);
 			addbrk(ps, 1, 0);
 			if(ps.stylestk != nil) {
@@ -2089,6 +2201,50 @@ additem(ps: ref Pstate, it: ref Item, tok: ref LX->Token)
 	ps.prelastit = ps.lastit;
 	ps.lastit.next = it;
 	ps.lastit = it;
+}
+
+# Begin collecting items for a CSS box model element.
+# Saves the current item list position so we can later splice out the
+# box content and wrap it in an Ibox.
+openbox(ps: ref Pstate, cs: ref ComputedStyle)
+{
+	addbrk(ps, 0, 0);
+	ps.boxstk = ref BoxCtx(ps.lastit, cs) :: ps.boxstk;
+}
+
+# End a CSS box model element.
+# Collects all items added since openbox(), wraps them in an Ibox item,
+# and splices the Ibox into the item list.
+closebox(ps: ref Pstate)
+{
+	if(ps.boxstk == nil)
+		return;
+	bctx := hd ps.boxstk;
+	ps.boxstk = tl ps.boxstk;
+
+	splice := bctx.splicepoint;
+	content := splice.next;
+	if(content == nil) {
+		# Empty box — still emit it for background/border rendering
+		addbrk(ps, 0, 0);
+		boxit := Item.newbox(nil, bctx.cs);
+		boxit.state |= IFbrk;
+		additem(ps, boxit, nil);
+		addbrk(ps, 0, 0);
+		return;
+	}
+
+	# Detach box content from main item list
+	splice.next = nil;
+	ps.lastit = splice;
+	ps.prelastit = nil;	# can't easily track; set nil (safe)
+
+	# Emit the box item with collected content
+	addbrk(ps, 0, 0);
+	boxit := Item.newbox(content, bctx.cs);
+	boxit.state |= IFbrk;
+	additem(ps, boxit, nil);
+	addbrk(ps, 0, 0);
 }
 
 getgenattr(tok: ref LX->Token) : ref Genattr
@@ -3526,6 +3682,14 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"static" => cs.position = POSstatic;
 		"relative" => cs.position = POSrelative;
 		}
+	"top" =>
+		cs.rel_top = parsepx(val);
+	"left" =>
+		cs.rel_left = parsepx(val);
+	"right" =>
+		cs.rel_left = -parsepx(val);
+	"bottom" =>
+		cs.rel_top = -parsepx(val);
 	"float" =>
 		case val {
 		"none" => cs.float_ = FLnone;
@@ -3810,40 +3974,73 @@ parsestyleblock_css(is: ref ItemSource, sheet: ref CSS->Stylesheet)
 # Apply a CSS rule for a given selector
 applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 {
-	# For now, handle simple selectors: element, .class, #id
-	# A CSS->Selector is list of (int, Simplesel)
-	# A Simplesel is list of ref Select
+	# Convert CSS->Selector into a list of SelectorParts and store in StyleStore.
+	# A CSS->Selector is list of (combinator, Simplesel) — rightmost (subject) first.
+	# For simple single-element selectors with no combinators, fall back to the
+	# fast tag-indexed path for backward compatibility.
 	if(sel == nil)
 		return;
-	(_, simplesel) := hd sel;
-	if(simplesel == nil)
-		return;
-	s := hd simplesel;
-	pick sp := s {
-	Element =>
-		# Tag selector: look up tag name
-		tagid := -1;
-		for(ti := 0; ti < LX->Numtags; ti++)
-			if(LX->tagnames[ti] == sp.name) {
-				tagid = ti;
-				break;
-			}
-		if(tagid >= 0) {
-			applycssprop(is.tagstyles[tagid], prop, val);
+
+	# Check if this is a simple single selector (no combinators)
+	if(tl sel == nil) {
+		(_, simplesel) := hd sel;
+		if(simplesel == nil)
+			return;
+		s := hd simplesel;
+		pick sp := s {
+		Element =>
+			# Simple tag selector: use fast tag-indexed path
+			tagid := -1;
+			for(ti := 0; ti < LX->Numtags; ti++)
+				if(LX->tagnames[ti] == sp.name) {
+					tagid = ti;
+					break;
+				}
+			if(tagid >= 0)
+				applycssprop(is.tagstyles[tagid], prop, val);
+			return;
+		Any =>
+			# Universal selector: apply to all tags
+			for(ti := 0; ti < LX->Numtags; ti++)
+				applycssprop(is.tagstyles[ti], prop, val);
+			return;
 		}
-	Class =>
-		# Store class rules in StyleStore
-		rule := ref StyleRule(10, ref SelectorPart(SPclass, sp.name) :: nil, prop, val, 0);
-		addstylerule(is.styles, rule);
-	ID =>
-		# Store ID rules in StyleStore
-		rule := ref StyleRule(100, ref SelectorPart(SPid, sp.name) :: nil, prop, val, 0);
-		addstylerule(is.styles, rule);
-	Any =>
-		# Universal selector: apply to all tags
-		for(ti := 0; ti < LX->Numtags; ti++)
-			applycssprop(is.tagstyles[ti], prop, val);
 	}
+
+	# Complex selector (with combinators) or class/ID — store full chain
+	parts: list of ref SelectorPart;
+	specificity := 0;
+	for(sl := sel; sl != nil; sl = tl sl) {
+		(comb, simplesel) := hd sl;
+		if(simplesel == nil)
+			continue;
+		for(ssl := simplesel; ssl != nil; ssl = tl ssl) {
+			s := hd ssl;
+			pick sp := s {
+			Element =>
+				parts = ref SelectorPart(SPelement, sp.name, comb) :: parts;
+				specificity += 1;
+			Class =>
+				parts = ref SelectorPart(SPclass, sp.name, comb) :: parts;
+				specificity += 10;
+			ID =>
+				parts = ref SelectorPart(SPid, sp.name, comb) :: parts;
+				specificity += 100;
+			Any =>
+				parts = ref SelectorPart(SPany, "*", comb) :: parts;
+			Pseudo =>
+				parts = ref SelectorPart(SPpseudo, sp.name, comb) :: parts;
+				specificity += 10;
+			}
+		}
+	}
+	# Reverse parts to get subject-first order
+	rparts: list of ref SelectorPart;
+	for(; parts != nil; parts = tl parts)
+		rparts = hd parts :: rparts;
+
+	rule := ref StyleRule(specificity, rparts, prop, val, 0);
+	addstylerule(is.styles, rule);
 }
 
 # Add a style rule to the store
@@ -4162,26 +4359,71 @@ StyleStore.match(ss: self ref StyleStore, el: ref ElementCtx) : ref ComputedStyl
 	return cs;
 }
 
-# Check if a selector matches an element context
-selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
+# Check if a single selector part matches an element
+selmatchone(sp: ref SelectorPart, el: ref ElementCtx) : int
 {
-	if(sparts == nil || el == nil)
+	if(sp == nil || el == nil)
 		return 0;
-	sp := hd sparts;
 	case sp.stype {
 	SPelement =>
-		if(el.tag < LX->Numtags && LX->tagnames[el.tag] == sp.name)
-			return 1;
+		return el.tag < LX->Numtags && LX->tagnames[el.tag] == sp.name;
 	SPclass =>
-		if(el.class != nil && hasword(el.class, sp.name))
-			return 1;
+		return el.class != nil && hasword(el.class, sp.name);
 	SPid =>
-		if(el.id == sp.name)
-			return 1;
+		return el.id == sp.name;
 	SPany =>
 		return 1;
 	}
 	return 0;
+}
+
+# Check if a selector chain matches an element context, walking up parents.
+# sparts is subject-first: first part must match el, subsequent parts must
+# match ancestors according to their combinator.
+selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
+{
+	if(sparts == nil || el == nil)
+		return 0;
+
+	# First part (subject) must match the element
+	sp := hd sparts;
+	if(!selmatchone(sp, el))
+		return 0;
+	sparts = tl sparts;
+
+	# Walk remaining selector parts up the parent chain
+	cur := el;
+	for(; sparts != nil; sparts = tl sparts) {
+		sp = hd sparts;
+		case sp.combinator {
+		'>' =>
+			# Child combinator: must match immediate parent
+			cur = cur.parent;
+			if(cur == nil || !selmatchone(sp, cur))
+				return 0;
+		' ' =>
+			# Descendant combinator: walk up until match or nil
+			cur = cur.parent;
+			while(cur != nil) {
+				if(selmatchone(sp, cur))
+					break;
+				cur = cur.parent;
+			}
+			if(cur == nil)
+				return 0;
+		* =>
+			# Unknown combinator or 0 — treat as descendant
+			cur = cur.parent;
+			while(cur != nil) {
+				if(selmatchone(sp, cur))
+					break;
+				cur = cur.parent;
+			}
+			if(cur == nil)
+				return 0;
+		}
+	}
+	return 1;
 }
 
 # Check if word appears in space-separated class string
@@ -4215,6 +4457,11 @@ matchclassid(ss: ref StyleStore, si: ref StyleInfo, id, class: string)
 			if(rule.selectors == nil)
 				continue;
 			sp := hd rule.selectors;
+			# Only match simple (single-part) class/ID selectors here.
+			# Complex selectors with combinators are handled by
+			# StyleStore.match() via selectormatch() using ElementCtx.
+			if(tl rule.selectors != nil)
+				continue;
 			matched := 0;
 			case sp.stype {
 			SPclass =>
@@ -4261,6 +4508,23 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 {
 	si := getstyle(is, tag, tok);
 	cs := ComputedStyle.fromstyleinfo(si);
+
+	# Apply complex selectors (with combinators) from StyleStore via ElementCtx
+	if(is.elemstk != nil && is.styles != nil) {
+		el := hd is.elemstk;
+		for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
+			sheet := hd sheets;
+			for(rules := sheet.rules; rules != nil; rules = tl rules) {
+				rule := hd rules;
+				# Only match rules with combinators (multi-part selectors)
+				if(rule.selectors != nil && tl rule.selectors != nil) {
+					if(selectormatch(rule.selectors, el))
+						applycssprop_cs(cs, rule.property, rule.value);
+				}
+			}
+		}
+	}
+
 	# Apply extended CSS properties from inline style
 	if(tok != nil) {
 		sval := aval(tok, LX->Astyle);

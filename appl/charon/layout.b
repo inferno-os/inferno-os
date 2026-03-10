@@ -859,6 +859,9 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 	linehang := hang;
 	hangtogo := hang;
 	indent := ((state&IFindentmask)>>IFindentshift)*TABPIX;
+	# CSS text-indent: apply to first line of block
+	if(lay.text_indent != 0 && lprev == lay.start)
+		indent += lay.text_indent;
 	just := (state&(IFcjust|IFrjust));
 	if(just == 0 && lay.just != Aleft) {
 		if(lay.just == byte Acenter)
@@ -893,6 +896,9 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 		}
 		state = it.state;
 		wrapping := int (state&IFwrap);
+		# CSS white-space: nowrap disables line wrapping
+		if(lay.white_space == B->WSnowrap)
+			wrapping = 0;
 		if(anystuff && (state&IFbrk))
 			break;
 		checkw := 1;
@@ -960,6 +966,20 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 		}
 		if(checkw) {
 			iw := it.width;
+			# CSS letter-spacing / word-spacing: adjust text item widths
+			pick ti := it {
+			Itext =>
+				if(lay.letter_spacing != STYLNONE && lay.letter_spacing != 0 && len ti.s > 1)
+					iw += lay.letter_spacing * (len ti.s - 1);
+				if(lay.word_spacing != STYLNONE && lay.word_spacing != 0) {
+					nsp := 0;
+					for(si := 0; si < len ti.s; si++)
+						if(ti.s[si] == ' ')
+							nsp++;
+					iw += lay.word_spacing * nsp;
+				}
+				it.width = iw;
+			}
 			if(wrapping && w + iw > lwid) {
 				# it doesn't fit; see if it can be broken
 				takeit: int;
@@ -1061,6 +1081,12 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 			l.items.printlist("final line items");
 	}
 	l.pos.x = x;
+	# CSS line-height: enforce minimum line height
+	if(lay.line_height != STYLNONE && lineh < lay.line_height) {
+		extra := lay.line_height - lineh;
+		linea += extra / 2;	# center content vertically in line
+		lineh = lay.line_height;
+	}
 	l.height = lineh;
 	l.ascent = linea;
 	l.flags &= ~Lchanged;
@@ -1554,6 +1580,11 @@ sizetable(f: ref Frame, tab: ref Table, availwidth: int)
 		return;
 	if(tab.availw == availwidth && (tab.flags&Lchanged) == byte 0)
 		return;
+	# table-layout: fixed — use first row/col specs for widths, skip content measuring
+	if(tab.table_layout == byte 1 && tab.width.kind() != Dnone) {
+		sizetable_fixed(f, tab, availwidth);
+		return;
+	}
 	(hsp, vsp, pad, bd, cbd, hsep, vsep) := tableparams(tab);
 	totw := widthfromspec(tab.width, availwidth);
 	# reduce totw by spacing, padding, and rule widths
@@ -1789,6 +1820,151 @@ sizetable(f: ref Frame, tab: ref Table, availwidth: int)
 	if(dbgtab)
 		sys->print("\ndone sizetable %d, availwidth %d, totw=%d, toth=%d\n\n",
 			tab.tableid, availwidth, totw, toth);
+}
+
+# Fixed table layout: column widths from col specs and first-row cells only.
+# Much faster than auto layout for large tables.
+sizetable_fixed(f: ref Frame, tab: ref Table, availwidth: int)
+{
+	(hsp, vsp, pad, bd, cbd, hsep, vsep) := tableparams(tab);
+	totw := widthfromspec(tab.width, availwidth);
+	totw -= (tab.ncol-1)*hsep + 2*(hsp+bd+pad+cbd);
+	if(totw <= 0)
+		totw = 1;
+
+	# Determine column widths from col specs or first-row cells
+	colw := array[tab.ncol] of { * => 0 };
+	assigned := 0;
+	remaining := totw;
+
+	# First pass: explicit col specs
+	for(ci := 0; ci < tab.ncol; ci++) {
+		if(ci < len tab.cols && tab.cols[ci].width > 0) {
+			colw[ci] = tab.cols[ci].width;
+			assigned++;
+			remaining -= colw[ci];
+		}
+	}
+
+	# Second pass: first-row cell widths for unassigned columns
+	if(tab.nrow > 0) {
+		row := tab.rows[0];
+		for(rcl := row.cells; rcl != nil; rcl = tl rcl) {
+			c := hd rcl;
+			if(c.colspan == 1 && c.col < tab.ncol && colw[c.col] == 0) {
+				if(c.wspec.kind() == Dpixels) {
+					colw[c.col] = c.wspec.spec();
+					assigned++;
+					remaining -= colw[c.col];
+				} else if(c.wspec.kind() == Dpercent) {
+					colw[c.col] = totw * c.wspec.spec() / 100;
+					assigned++;
+					remaining -= colw[c.col];
+				}
+			}
+		}
+	}
+
+	# Distribute remaining width equally among unassigned columns
+	unassigned := tab.ncol - assigned;
+	if(unassigned > 0 && remaining > 0) {
+		share := remaining / unassigned;
+		for(ci = 0; ci < tab.ncol; ci++)
+			if(colw[ci] == 0)
+				colw[ci] = share;
+	}
+
+	# Set final column widths
+	for(ci = 0; ci < tab.ncol; ci++)
+		tab.cols[ci].width = colw[ci];
+
+	# Recalculate totw from actual column widths
+	totw = 0;
+	for(ci = 0; ci < tab.ncol; ci++)
+		totw += tab.cols[ci].width;
+	totw += (tab.ncol-1)*hsep + 2*(hsp+bd+pad+cbd);
+
+	# Layout all cells at fixed widths
+	for(cl := tab.cells; cl != nil; cl = tl cl) {
+		c := hd cl;
+		wd := cellwidth(tab, c, hsep);
+		if(c.layid < 0) {
+			c.layid = sublayout(f, wd, c.align.halign, c.background, c.content);
+			c.content = nil;
+		} else
+			relayout(f, f.sublays[c.layid], wd, c.align.halign);
+	}
+
+	# Set row heights (same logic as auto layout)
+	for(ri := 0; ri < tab.nrow; ri++) {
+		row := tab.rows[ri];
+		h := 0;
+		for(rcl := row.cells; rcl != nil; rcl = tl rcl) {
+			c := hd rcl;
+			if(c.rowspan > 1 || c.layid < 0)
+				continue;
+			clay := f.sublays[c.layid];
+			if(clay.height > h)
+				h = clay.height;
+		}
+		row.height = h;
+		row.ascent = 0;
+	}
+
+	# Handle rowspan > 1
+	for(cl = tab.cells; cl != nil; cl = tl cl) {
+		c := hd cl;
+		if(c.rowspan > 1 && c.layid >= 0) {
+			spanht := 0;
+			for(i := 0; i < c.rowspan && c.row+i < tab.nrow; i++)
+				spanht += tab.rows[c.row+i].height;
+			clay := f.sublays[c.layid];
+			ht := clay.height - (c.rowspan-1)*vsep;
+			if(ht > spanht) {
+				extra := ht - spanht;
+				for(i = 0; i < c.rowspan && c.row+i < tab.nrow; i++) {
+					h := extra / (c.rowspan - i);
+					tab.rows[c.row+i].height += h;
+					extra -= h;
+				}
+			}
+		}
+	}
+
+	# Set column positions
+	x := hsp + bd + pad + cbd;
+	for(ci = 0; ci < tab.ncol; ci++) {
+		tab.cols[ci].pos.x = x;
+		x += tab.cols[ci].width + hsep;
+	}
+
+	# Caption
+	toth := vsp + bd;
+	if(tab.caption != nil) {
+		tab.caption_lay = sublayout(f, availwidth, Aleft, Background(nil, -1), tab.caption);
+		caplay := f.sublays[tab.caption_lay];
+		tab.caph = caplay.height + CAPSEP;
+		tab.caption = nil;
+	} else if(tab.caption_lay >= 0) {
+		caplay := f.sublays[tab.caption_lay];
+		if(tab.availw != availwidth || (caplay.flags&Lchanged) != byte 0) {
+			relayout(f, caplay, availwidth, Aleft);
+			tab.caph = caplay.height + CAPSEP;
+		}
+	}
+	if(tab.caption_place == Atop)
+		toth += tab.caph;
+	for(ri = 0; ri < tab.nrow; ri++) {
+		tab.rows[ri].pos.y = toth;
+		toth += tab.rows[ri].height + vsep;
+	}
+	toth = toth - (cbd+pad) + bd;
+	if(tab.caption_place == Abottom)
+		toth += tab.caph;
+	tab.totw = totw;
+	tab.toth = toth;
+	tab.availw = availwidth;
+	tab.flags &= ~Lchanged;
 }
 
 # Calculate various table spacing parameters
@@ -2235,8 +2411,15 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			drawtable(f, lay, Point(x,y), i.table);
 		Ibox =>
 			# Draw box with CSS box model
+			# Apply relative positioning offset (visual only, doesn't affect flow)
+			ox := x;
+			oy := y;
+			if(i.cstyle != nil && i.cstyle.position == B->POSrelative) {
+				ox += i.cstyle.rel_left;
+				oy += i.cstyle.rel_top;
+			}
 			if(inview)
-				drawbox(f, lay, Point(x,y), i);
+				drawbox(f, lay, Point(ox,oy), i);
 		Ifloat =>
 			xx := layorigin.x + lay.margin;
 			if(i.side == Aright) {
@@ -4659,7 +4842,8 @@ entrywrapcalc(e: ref Control.Centry) : (array of string, array of int, int, int)
 Lay.new(targwidth: int, just: byte, margin: int, bg: Background) : ref Lay
 {
 	ans := ref Lay(Line.new(), Line.new(),
-			targwidth, 0, 0, margin, nil, bg, just, byte 0);
+			targwidth, 0, 0, margin, nil, bg, just, byte 0,
+			0, STYLNONE, STYLNONE, STYLNONE, byte 0);
 	if(ans.targetwidth < 0)
 		ans.targetwidth = 0;
 	ans.start.pos = Point(margin, margin);
@@ -4892,6 +5076,34 @@ animproc(f: ref Frame)
 	}
 }
 
+# Apply CSS text-transform to all Itext items in an item list
+applytexttransform(items: ref Item, tt: byte)
+{
+	for(it := items; it != nil; it = it.next) {
+		pick t := it {
+		Itext =>
+			if(t.s == nil || len t.s == 0)
+				continue;
+			case int tt {
+			int B->TTuppercase =>
+				t.s = S->toupper(t.s);
+			int B->TTlowercase =>
+				t.s = S->tolower(t.s);
+			int B->TTcapitalize =>
+				s := t.s;
+				capnext := 1;
+				for(i := 0; i < len s; i++) {
+					c := s[i];
+					if(capnext && c >= 'a' && c <= 'z')
+						s[i] = c - ('a' - 'A');
+					capnext = (c == ' ' || c == '\t' || c == '\n');
+				}
+				t.s = s;
+			}
+		}
+	}
+}
+
 # Size an Ibox item using a sublayout, similar to how table cells work.
 # The box gets its own Lay where content is laid out.
 checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
@@ -4932,6 +5144,14 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 	else if(cs != nil && cs.width.kind() == Dpercent && avail > 0)
 		contentw = avail * cs.width.spec() / 100 - extraw;
 
+	# Apply min/max width constraints to content width before sublayout
+	if(cs != nil) {
+		if(cs.max_width.kind() == Dpixels && contentw > cs.max_width.spec())
+			contentw = cs.max_width.spec();
+		if(cs.min_width.kind() == Dpixels && contentw < cs.min_width.spec())
+			contentw = cs.min_width.spec();
+	}
+
 	# Create sublayout for box content
 	bg := Background(nil, -1);
 	if(cs != nil && cs.bgcolor != STYLNONE)
@@ -4949,6 +5169,28 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 	slay := f.sublays[box.layid];
 	slay.targetwidth = contentw;
 	slay.background = bg;
+
+	# Propagate CSS text properties from ComputedStyle to sublayout
+	if(cs != nil) {
+		slay.text_indent = cs.text_indent;
+		slay.line_height = cs.line_height;
+		slay.letter_spacing = cs.letter_spacing;
+		slay.word_spacing = cs.word_spacing;
+		slay.white_space = cs.white_space;
+		if(cs.halign != Anone) {
+			if(cs.halign == Acenter)
+				slay.just = Acenter;
+			else if(cs.halign == Aright)
+				slay.just = Aright;
+			else
+				slay.just = Aleft;
+		}
+	}
+
+	# CSS text-transform: transform text content before layout
+	if(cs != nil && cs.text_transform != B->TTnone)
+		applytexttransform(box.content, cs.text_transform);
+
 	layalistitems(f, slay, box.content);
 
 	it.width = slay.width + extraw;
@@ -4960,6 +5202,18 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 		spech := cs.height.spec() + extrah;
 		if(spech > it.height)
 			it.height = spech;
+	}
+
+	# Enforce min/max constraints on final dimensions
+	if(cs != nil) {
+		if(cs.min_width.kind() == Dpixels && it.width < cs.min_width.spec() + extraw)
+			it.width = cs.min_width.spec() + extraw;
+		if(cs.max_width.kind() == Dpixels && it.width > cs.max_width.spec() + extraw)
+			it.width = cs.max_width.spec() + extraw;
+		if(cs.min_height.kind() == Dpixels && it.height < cs.min_height.spec() + extrah)
+			it.height = cs.min_height.spec() + extrah;
+		if(cs.max_height.kind() == Dpixels && it.height > cs.max_height.spec() + extrah)
+			it.height = cs.max_height.spec() + extrah;
 	}
 }
 
