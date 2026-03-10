@@ -326,7 +326,7 @@ layout(f: ref Frame, bsmain: ref ByteSource, linkclick: int) : array of byte
 	}
 	else {
 		# for now, must be supported image type
-		if(!I->supported(hdr.mtype)) {
+		if(I == nil || !I->supported(hdr.mtype)) {
 			sys->print("Need to implement something: source isn't supported image type\n");
 			return nil;
 		}
@@ -458,7 +458,7 @@ layout(f: ref Frame, bsmain: ref ByteSource, linkclick: int) : array of byte
 						}
 						if(s.ci.mims[0] == mim)
 							haveimage(f, s.ci, s.itl);
-						if(bs.eof && bs.lim == bs.edata)
+						if(bs.eof && bs.lim == bs.edata && CU->imcache != nil)
 							(CU->imcache).add(s.ci);
 					}
 					if(!freeit && bs.eof && bs.lim == bs.edata)
@@ -492,7 +492,7 @@ addsubords(sources: ref Sources, di: ref Docinfo, auth: string) : int
 		it := hd il;
 		pick i := it {
 		Iimage =>
-			if(i.ci.mims == nil) {
+			if(i.ci.mims == nil && CU->imcache != nil) {
 				cachedci := (CU->imcache).look(i.ci);
 				if(cachedci != nil) {
 					i.ci = cachedci;
@@ -542,6 +542,8 @@ addsubords(sources: ref Sources, di: ref Docinfo, auth: string) : int
 
 startimreq(s: ref Source.Simage, auth: string)
 {
+	if(I == nil)
+		return;
 	if(dbgev)
 		CU->event(sys->sprint("LAYOUT STARTREQ %s", s.ci.src.tostring()), 0);
 	bs := CU->startreq(ref CU->ReqInfo(s.ci.src, CU->HGet, nil, auth, ""));
@@ -2317,6 +2319,8 @@ checkffsize(f: ref Frame, i: ref Item, ff: ref Formfield)
 
 drawall(f: ref Frame)
 {
+	if(display == nil)
+		return;		# headless mode: no rendering
 	if((CU->config).doacme && !(CU->config).dorender)
 		return;		# in acme mode don't bother (unless render mode)
 	oclipr := f.cim.clipr;
@@ -3253,6 +3257,8 @@ Frame.swapimage(f: self ref Frame, im: ref Item.Iimage, src: string)
 	u = U->mkabs(u, f.doc.base);
 	# width=height=0 finds u if in cache
 	newci := CImage.new(u, nil, 0, 0);
+	if(CU->imcache == nil)
+		return;
 	cachedci := (CU->imcache).look(newci);
 	if(cachedci == nil || cachedci.mims == nil)
 		return;
