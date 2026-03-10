@@ -5752,7 +5752,6 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	else {
 		# Column direction: items flow vertically
 		avail := lay.targetwidth;
-		totalgap := gap * (nitems - 1);
 		# For column, "remaining" is vertical remaining space.
 		# We don't know the container height, so just stack items.
 		y := 0;

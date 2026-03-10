@@ -4258,7 +4258,7 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		parseflex_shorthand(cs, val);
 	"order" =>
 		cs.order = parsepx(val);
-	"gap" or "row-gap" or "column-gap" =>
+	"gap" or "row-gap" =>
 		cs.gap = parsepx(val);
 	# CSS3 transforms and transitions (store raw values)
 	"transform" =>
