@@ -35,4 +35,13 @@ Gui: module {
 	cancelpopup: fn(): int;
 
 	exitcharon: fn();
+
+	# Statusbar support
+	MNONE, MURL, MLINK: con iota;
+	linkcount: int;
+	statusbarheight: fn(): int;
+	drawstatusbar: fn(dst: ref Draw->Image);
+	startinput: fn(mode: int);
+	inputmode: fn(): int;
+	snarfget: fn(): string;
 };

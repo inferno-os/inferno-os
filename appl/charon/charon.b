@@ -63,7 +63,7 @@ DocConfig: adt {
 	title: string;
 	initconfig: int;			# true unless this is a frameset and some subframe changed
 	gospec: cyclic ref GoSpec;
-	# TODO: add current y pos and form field values
+	scrollpos: Point;		# saved scroll position for history restore
 
 	equal: fn(a: self ref DocConfig, b: ref DocConfig) : int;
 	equalarray: fn(a1: array of ref DocConfig, a2: array of ref DocConfig) : int;
@@ -272,12 +272,27 @@ Forloop:
 				curframe.yscroll(L->CAscrollpage, 1);
 			E->Khome =>
 				curframe.yscroll(L->CAscrollpage, -10000);
-			E->Kend => 
-				curframe.yscroll(L->CAscrollpage, 10000);	
+			E->Kend =>
+				curframe.yscroll(L->CAscrollpage, 10000);
 			E->Kaup =>
 				curframe.yscroll(L->CAscrollline, -1);
-			E->Kadown => 
-				curframe.yscroll(L->CAscrollline, 1);	
+			E->Kadown =>
+				curframe.yscroll(L->CAscrollline, 1);
+			E->Kpgup =>
+				curframe.yscroll(L->CAscrollpage, 1);
+			E->Kpgdown =>
+				curframe.yscroll(L->CAscrollpage, -1);
+			12 =>	# Ctrl-L: enter URL
+				G->startinput(G->MURL);
+			7 =>	# Ctrl-G: follow link by number
+				G->startinput(G->MLINK);
+			18 =>	# Ctrl-R: reload
+				g = GoSpec.newspecial(GoHistnode, history.find(0));
+			' ' =>
+				if(keyfocus == nil)
+					curframe.yscroll(L->CAscrollpage, -1);
+				else
+					handlekey(e);
 			* =>
 				handlekey(e);
 			}
@@ -359,6 +374,11 @@ Forloop:
 				setfocus(popupctl.donepopup());
 			popupctl = nil;
 			grabctl = nil;
+		Efollow =>
+			fev := followlink(e.linknum);
+			if(fev != nil)
+				E->evchan <-= fev;
+			g = nil;
 		}
 
 		if (g == nil)
@@ -410,19 +430,16 @@ redraw(resized: int)
 	im := mainwin;
 	if(im == nil)
 		return;
+	sth := G->statusbarheight();
 	if(resized) {
-#		top.r = im.r.inset(2*L->ReliefBd);
-		top.r = im.r;
+		top.r = Rect(im.r.min, Point(im.r.max.x, im.r.max.y - sth));
 		top.cim = mainwin;
 		top.reset();
 		(CU->imcache).resetlimits();
 	}
 	im.clipr = im.r;
-#	L->drawrelief(im, top.r.inset(-L->ReliefBd), L->ReliefRaised);
-#	L->drawrelief(im, top.r, L->ReliefSunk);
 	L->drawfill(im, top.r, CU->White);
 	G->flush(im.r);
-#	im.clipr = top.r;
 }
 
 # Return a Loc representing a control in the frame f
@@ -569,6 +586,24 @@ mainwinmouse(e: ref Event.Emouse) : (ref GoSpec, ref Control)
 			ctl = loc.le[n1].control;
 		}
 	}
+
+	# B2 click not on anchor: paste snarf as URL
+	if(g == nil && ctl == nil && e.mtype == E->Mmbuttonup) {
+		snarf := G->snarfget();
+		if(snarf != nil && snarf != "") {
+			# Strip whitespace
+			while(len snarf > 0 && (snarf[0] == ' ' || snarf[0] == '\t' || snarf[0] == '\n'))
+				snarf = snarf[1:];
+			while(len snarf > 0 && (snarf[len snarf - 1] == ' ' || snarf[len snarf - 1] == '\t' || snarf[len snarf - 1] == '\n'))
+				snarf = snarf[0:len snarf - 1];
+			if(len snarf > 0) {
+				url := CU->makeabsurl(snarf);
+				if(url != nil)
+					g = GoSpec.newget(GoNormal, url, "_top");
+			}
+		}
+	}
+
 	if (ctl != nil)
 		newgrab = ctlmouse(e, ctl, nil);
 	if(newgrab == nil && domouseout && doscripts) {
@@ -780,9 +815,16 @@ goproc(g: ref GoSpec)
 	if(err != nil) {
 		status = err;
 		G->progress <-= (-1, G->Perr, 100, err);
-	} else
+	} else {
 		G->progress <-= (-1, G->Pdone, 0, nil);
-		
+		# Restore scroll position for back/forward navigation
+		if(origkind == GoHistnode && hn != nil) {
+			sp := hn.topconfig.scrollpos;
+			if(sp.x != 0 || sp.y != 0)
+				f.scrollabs(sp);
+		}
+	}
+
 	G->setstatus(status);
 	spawn writebrowserstate(err);
 	checkrefresh(f);
@@ -1672,7 +1714,10 @@ History.add(h: self ref History, f: ref Frame, g: ref GoSpec, navkind: int)
 	oldcur : ref HistNode;
 	if(h.n > 0)
 		oldcur = h.h[h.n-1];
-	dc := ref DocConfig(f.name, g.url.tostring(), navkind != GoHistnode, g);
+	# Save scroll position of previous page before navigating away
+	if(h.n > 0 && top != nil)
+		h.h[h.n-1].topconfig.scrollpos = top.viewr.min;
+	dc := ref DocConfig(f.name, g.url.tostring(), navkind != GoHistnode, g, Point(0, 0));
 	hnode := ref HistNode(dc, nil, nil, nil, -1, nil);
 	if(f == top) {
 		g.target = "_top";
@@ -1744,7 +1789,7 @@ History.update(h: self ref History, f: ref Frame)
 			for(l := f.kids; l != nil; l = tl l) {
 				kf := hd l;
 				if(kf.src != nil)
-					kc[i] = ref DocConfig(kf.name, kf.src.tostring(), 1,  GoSpec.newget(GoNormal, kf.src, "_self"));
+					kc[i] = ref DocConfig(kf.name, kf.src.tostring(), 1, GoSpec.newget(GoNormal, kf.src, "_self"), Point(0, 0));
 				i++;
 			}
 			hnode.kidconfigs = kc;
@@ -2422,6 +2467,17 @@ writebrowserstate(err: string)
 
 	links := extractlinks(f);
 	writestatefile(BROWSER_DIR + "/links", links);
+
+	# Update link count for statusbar display
+	nlnk := 0;
+	if(f.doc != nil) {
+		for(al := f.doc.anchors; al != nil; al = tl al) {
+			a := hd al;
+			if(a.href != nil)
+				nlnk++;
+		}
+	}
+	G->linkcount = nlnk;
 
 	writestatefile(BROWSER_DIR + "/forms", "");
 }

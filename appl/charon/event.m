@@ -49,6 +49,8 @@ Events: module {
 				dummy: int;
 			Edismisspopup =>		# popup window has been dismissed by gui
 				dummy: int;
+			Efollow =>			# follow link by number
+				linknum: int;
 		}
 
 		tostring: fn(e: self ref Event) : string;
@@ -77,7 +79,7 @@ Events: module {
 		SEonreset, SEonresize, SEonselect, SEonsubmit, SEonunload, SEscript, SEinterval, SEnone : con 1 << iota;
 
 	# some special keychars (use Unicode Private Area)
-	Kup, Kdown, Khome, Kleft, Kright, Kend, Kaup, Kadown : con (iota + 16rF000);
+	Kup, Kdown, Khome, Kleft, Kright, Kend, Kaup, Kadown, Kpgup, Kpgdown : con (iota + 16rF000);
 
 	# Mouse event subtypes
 	Mmove, Mlbuttondown, Mlbuttonup, Mldrag, Mldrop,

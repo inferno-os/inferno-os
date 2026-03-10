@@ -367,9 +367,12 @@ Statusbar.key(sb: self ref Statusbar, c: int): (int, string)
 			sb.buf = sb.buf[0:len sb.buf - 1];
 		return (0, nil);
 	* =>
-		# Printable character
-		if(c >= 32 && c < 16rFF00)
-			sb.buf += string c;
+		# Printable character — append as Unicode char (not decimal)
+		if(c >= 32 && c < 16rFF00) {
+			ch := "x";
+			ch[0] = c;
+			sb.buf += ch;
+		}
 		return (0, nil);
 	}
 }

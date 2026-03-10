@@ -3551,18 +3551,15 @@ Control.scrollset(c: self ref Control, v1, v2, vmax, nsteps, draw: int)
 			sc.bot = 0;
 		}
 		else {
-			length, breadth: int;
-			if(sc.flags&CFscrvert) {
+			length: int;
+			if(sc.flags&CFscrvert)
 				length = sc.r.max.y - sc.r.min.y;
-				breadth = sc.r.max.x - sc.r.min.x;
-			}
-			else {
+			else
 				length = sc.r.max.x - sc.r.min.x;
-				breadth = sc.r.max.y - sc.r.min.y;
-			}
-			l := length - (2*breadth + MINSCR);
+			# Flat scrollbar: no arrow buttons, full track is trough
+			l := length - MINSCR;
 			if(l < 0)
-				CU->raisex("EXInternal: negative scrollbar trough");
+				l = 0;
 			sc.top = l*v1/vmax;
 			sc.bot = l*(vmax-v2)/vmax;
 			if (nsteps == 0)
@@ -3887,21 +3884,20 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 		}
 	Cscrollbar =>
 		val := 0;
-		v, vmin, vmax, b: int;
+		v, vmin, vmax: int;
 		if(c.flags&CFscrvert) {
 			v = p.y;
 			vmin = c.r.min.y;
 			vmax = c.r.max.y;
-			b = c.r.dx();
 		}
 		else {
 			v = p.x;
 			vmin = c.r.min.x;
 			vmax = c.r.max.x;
-			b = c.r.dy();
 		}
-		vsltop := vmin+b+c.top;
-		vslbot := vmax-b-c.bot;
+		# Flat scrollbar: no arrow buttons, full trough
+		vsltop := vmin+c.top;
+		vslbot := vmax-c.bot;
 		actflags := 0;
 		oldactflags := c.flags&CFscrallact;
 
@@ -3913,23 +3909,18 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			holdval := 0;
 			repeat := 1;
 			if (v >= vsltop && v < vslbot) {
+				# On thumb — start drag
 				holdval = v - vsltop;
 				actflags = CFactive;
 				repeat = 0;
 			}
-			if(v < vmin+b) {
-				holdval = -1;
-				actflags = CFscracta1;
-			}
 			else if(v < vsltop) {
+				# Above thumb — page up
 				holdval = -1;
 				actflags = CFscracttr1;
 			}
-			else if(v >= vmax-b) {
-				holdval = 1;
-				actflags = CFscracta2;
-			}
 			else if(v >= vslbot) {
+				# Below thumb — page down
 				holdval = 1;
 				actflags = CFscracttr2;
 			}
@@ -4440,61 +4431,40 @@ Control.draw(ctl: self ref Control, flush: int)
 		drawrelief(win, insetr, ReliefSunk);
 
 	Cscrollbar =>
-		# Scrollbar components: arrow 1 (a1), trough 1 (t1), slider (s), trough 2 (t2), arrow 2 (a2)
+		# Flat scrollbar: track + thumb, no arrows or relief.
+		# Matches widget.m scrollbar aesthetic.
+		SCRTRACK: con 16rE8E8E8;	# light grey track
+		SCRTHUMB: con 16rBBBBBB;	# medium grey thumb
 		x := c.r.min.x;
 		y := c.r.min.y;
-		ra1, rt1, rs, rt2, ra2: Rect;
-		b, l, a1kind, a2kind: int;
+		rs: Rect;
 		if(c.flags&CFscrvert) {
-			l = c.r.max.y - c.r.min.y;
-			b = c.r.max.x - c.r.min.x;
-			xr := x+b;
-			yt1 := y+b;
-			ys := yt1+c.top;
-			yb := y+l;
-			ya2 := yb-b;
-			yt2 := ya2-c.bot;
-			ra1 = Rect(Point(x,y),Point(xr,yt1));
-			rt1 = Rect(Point(x,yt1),Point(xr,ys));
-			rs = Rect(Point(x,ys),Point(xr,yt2));
-			rt2 = Rect(Point(x,yt2),Point(xr,ya2));
-			ra2 = Rect(Point(x,ya2),Point(xr,yb));
-			a1kind = TRIup;
-			a2kind = TRIdown;
+			l := c.r.max.y - c.r.min.y;
+			b := c.r.max.x - c.r.min.x;
+			# Fill entire track
+			win.draw(c.r, colorimage(SCRTRACK), nil, zp);
+			# Compute thumb position (no arrow buttons)
+			if(l > MINSCR) {
+				ys := y + c.top;
+				yt2 := y + l - c.bot;
+				# Inset thumb 2px from edges
+				rs = Rect(Point(x+2, ys), Point(x+b-2, yt2));
+				if(rs.dy() >= MINSCR)
+					win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+			}
 		}
 		else {
-			l = c.r.max.x - c.r.min.x;
-			b = c.r.max.y - c.r.min.y;
-			yb := y+b;
-			xt1 := x+b;
-			xs := xt1+c.top;
-			xr := x+l;
-			xa2 := xr-b;
-			xt2 := xa2-c.bot;
-			ra1 = Rect(Point(x,y),Point(xt1,yb));
-			rt1 = Rect(Point(xt1,y),Point(xs,yb));
-			rs = Rect(Point(xs,y),Point(xt2,yb));
-			rt2 = Rect(Point(xt2,y),Point(xa2,yb));
-			ra2 = Rect(Point(xa2,y),Point(xr,yb));
-			a1kind = TRIleft;
-			a2kind = TRIright;
+			l := c.r.max.x - c.r.min.x;
+			b := c.r.max.y - c.r.min.y;
+			win.draw(c.r, colorimage(SCRTRACK), nil, zp);
+			if(l > MINSCR) {
+				xs := x + c.top;
+				xt2 := x + l - c.bot;
+				rs = Rect(Point(xs, y+2), Point(xt2, y+b-2));
+				if(rs.dx() >= MINSCR)
+					win.draw(rs, colorimage(SCRTHUMB), nil, zp);
+			}
 		}
-		a1relief := ReliefRaised;
-		if(c.flags&CFscracta1)
-			a1relief = ReliefSunk;
-		a2relief := ReliefRaised;
-		if(c.flags&CFscracta2)
-			a2relief = ReliefSunk;
-		drawtriangle(win, ra1, a1kind, a1relief);
-		drawtriangle(win, ra2, a2kind, a2relief);
-		drawfill(win, rt1, Grey);
-		rs = rs.inset(2);
-		drawfill(win, rs, Grey);
-		rsrelief := ReliefRaised;
-		if(c.flags&CFactive)
-			rsrelief = ReliefSunk;
-		drawrelief(win, rs, rsrelief);
-		drawfill(win, rt2, Grey);
 	Canimimage =>
 		i := c.cur;
 		if(c.redraw)
