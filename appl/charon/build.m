@@ -54,6 +54,10 @@ Item: adt
 		Ispacer =>
 			spkind: int;		# ISPnone, etc.
 			fnt: int;			# font number
+		Ibox =>
+			content: cyclic ref Item;	# child items
+			cstyle: ref ComputedStyle;	# computed CSS properties
+			layid: int;			# sublayout id
 	}
 
 	newtext: fn(s: string, fnt, fg, voff: int, ul: byte) : ref Item;
@@ -65,6 +69,7 @@ Item: adt
 	newtable: fn(t: ref Table) : ref Item;
 	newfloat: fn(i: ref Item, side: byte) : ref Item;
 	newspacer: fn(spkind, font: int) : ref Item;
+	newbox: fn(content: ref Item, cs: ref ComputedStyle) : ref Item;
 
 	revlist: fn(itl: list of ref Item) : list of ref Item;
 	print: fn(it: self ref Item);
@@ -110,6 +115,41 @@ Genattr: adt
 STYLNONE: con -1;		# "not set" sentinel for int style properties
 DSPNORMAL: con 0;		# display: normal (default)
 DSPNONE: con 1;		# display: none
+DSPBLOCK: con 2;		# display: block
+DSPINLINE: con 3;		# display: inline
+DSPINLINEBLOCK: con 4;	# display: inline-block
+DSPLISTITEM: con 5;		# display: list-item
+DSPTABLE: con 6;		# display: table
+DSPTABLEROW: con 7;		# display: table-row
+DSPTABLECELL: con 8;		# display: table-cell
+DSPTABLECAPTION: con 9;	# display: table-caption
+
+# Border styles
+BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset: con byte iota;
+
+# Position types
+POSstatic, POSrelative: con byte iota;
+
+# Float types
+FLnone, FLleft, FLright: con byte iota;
+
+# Clear types
+CLnone, CLleft, CLright, CLboth: con byte iota;
+
+# White-space types
+WSnormal, WSpre, WSnowrap, WS_prewrap: con byte iota;
+
+# Text-transform types
+TTnone, TTuppercase, TTlowercase, TTcapitalize: con byte iota;
+
+# Overflow types
+OVvisible, OVhidden, OVscroll, OVauto: con byte iota;
+
+# List-style-position types
+LSPoutside, LSPinside: con byte iota;
+
+# Visibility types
+VISvisible, VIShidden, VIScollapse: con byte iota;
 
 StyleInfo: adt
 {
@@ -121,6 +161,116 @@ StyleInfo: adt
 	ul: int;		# ULnone/ULunder/ULmid, STYLNONE if not set
 	display: int;		# DSPNORMAL or DSPNONE
 };
+
+# Extended CSS computed style for HTML 4.01 box model
+ComputedStyle: adt
+{
+	# Text (overlaps with StyleInfo for compatibility)
+	color: int;			# text color, STYLNONE if not set
+	bgcolor: int;			# background color, STYLNONE if not set
+	halign: byte;			# text-align, Anone if not set
+	fontstyle: int;			# FntR/FntI/FntB/FntT, STYLNONE if not set
+	fontsize: int;			# Tiny..Verylarge, STYLNONE if not set
+	ul: int;			# ULnone/ULunder/ULmid, STYLNONE if not set
+	display: int;			# DSPNORMAL..DSPTABLECAPTION
+
+	# Box model
+	margin: array of int;		# [top, right, bottom, left] in pixels; STYLNONE = not set
+	padding: array of int;		# [top, right, bottom, left] in pixels
+	border_width: array of int;	# [top, right, bottom, left] in pixels
+	border_style: array of byte;	# [top, right, bottom, left] BSnone..BSoutset
+	border_color: array of int;	# [top, right, bottom, left] colors
+
+	# Dimensions
+	width: Dimen;			# element width
+	height: Dimen;			# element height
+	min_width: Dimen;		# minimum width
+	max_width: Dimen;		# maximum width
+	min_height: Dimen;		# minimum height
+	max_height: Dimen;		# maximum height
+
+	# Text properties
+	white_space: byte;		# WSnormal..WS_prewrap
+	text_transform: byte;		# TTnone..TTcapitalize
+	line_height: int;		# line height in pixels, STYLNONE if not set
+	text_indent: int;		# first-line indent in pixels
+	letter_spacing: int;		# extra spacing between letters, STYLNONE if not set
+	word_spacing: int;		# extra spacing between words, STYLNONE if not set
+	vertical_align: byte;		# Anone, Atop, Amiddle, etc.
+
+	# List
+	list_style_type: byte;		# LTdisc, LTsquare, etc.
+	list_style_position: byte;	# LSPoutside or LSPinside
+
+	# Table
+	border_collapse: byte;		# 0=separate, 1=collapse
+	border_spacing: int;		# spacing between cells in pixels
+	empty_cells: byte;		# 0=show, 1=hide
+	table_layout: byte;		# 0=auto, 1=fixed
+
+	# Positioning
+	position: byte;			# POSstatic or POSrelative
+	float_: byte;			# FLnone, FLleft, FLright
+	clear: byte;			# CLnone..CLboth
+	rel_top: int;			# relative position offset top
+	rel_left: int;			# relative position offset left
+
+	# Other
+	overflow: byte;			# OVvisible..OVauto
+	visibility: byte;		# VISvisible..VIScollapse
+
+	new: fn() : ref ComputedStyle;
+	tostyleinfo: fn(cs: self ref ComputedStyle) : StyleInfo;
+	fromstyleinfo: fn(si: StyleInfo) : ref ComputedStyle;
+	hasboxmodel: fn(cs: self ref ComputedStyle) : int;
+};
+
+# Element context for CSS selector matching
+ElementCtx: adt
+{
+	tag: int;				# tag number (LX->Ta, etc.)
+	id: string;				# element id attribute
+	class: string;			# element class attribute
+	parent: cyclic ref ElementCtx;	# parent element
+	child_index: int;			# index among siblings
+
+	new: fn(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx;
+};
+
+# CSS stylesheet store -- replaces simple tag-indexed array
+StyleStore: adt
+{
+	sheets: list of ref Stylesheet;		# parsed stylesheets in document order
+	tagstyles: array of ref StyleInfo;	# legacy tag-indexed styles (fallback)
+
+	new: fn() : ref StyleStore;
+	addsheet: fn(ss: self ref StyleStore, sheet: ref Stylesheet);
+	match: fn(ss: self ref StyleStore, el: ref ElementCtx) : ref ComputedStyle;
+};
+
+# CSS Stylesheet and related types (mirrors css.m for storage)
+Stylesheet: adt
+{
+	rules: list of ref StyleRule;	# flattened rules from parsed CSS
+};
+
+StyleRule: adt
+{
+	specificity: int;		# CSS specificity for cascade ordering
+	selectors: list of ref SelectorPart;	# selector chain
+	property: string;		# CSS property name
+	value: string;			# CSS property value string
+	important: int;			# !important flag
+};
+
+SelectorPart: adt
+{
+	stype: int;			# SPelement, SPclass, etc.
+	name: string;			# tag name, class name, or id
+};
+
+# Selector part types
+SPelement, SPclass, SPid, SPpseudo, SPany: con iota;
 
 
 # Formfield Item: a field from a form
@@ -159,6 +309,7 @@ Option: adt {
 	selected: int;		# true if selected initially
 	value: string;		# value attr
 	display: string;	# display string
+	optgroup: string;	# optgroup label, or nil
 };
 
 # Form holds info about a form
@@ -200,6 +351,10 @@ Table: adt
 	border: int;			# border attr
 	cellspacing: int;		# cellspacing attr
 	cellpadding: int;		# cellpadding attr
+	border_collapse: byte;		# 0=separate (default), 1=collapse
+	border_spacing: int;		# CSS border-spacing (overrides cellspacing when set)
+	empty_cells: byte;		# 0=show (default), 1=hide
+	table_layout: byte;		# 0=auto (default), 1=fixed
 	background: Background;	# table background
 	caption: cyclic ref Item;	# linked list of Items, giving caption
 	caption_place: byte;		# Atop or Abottom
@@ -486,6 +641,8 @@ ItemSource: adt
 	reqddata: array of byte;
 	toks: array of ref Lex->Token;
 	tagstyles: array of ref StyleInfo;	# CSS rules from <style> blocks, indexed by tag
+	styles: ref StyleStore;			# CSS stylesheet store (class/id selectors)
+	elemstk: list of ref ElementCtx;	# element context stack for CSS matching
 	instyle: int;				# true when inside <style> block
 	styletext: string;			# accumulates text inside <style> block
 
@@ -496,4 +653,5 @@ ItemSource: adt
 init: fn(cu: CharonUtils);
 trim_white: fn(data: string): string;
 parsestyle: fn(s: string) : StyleInfo;
+newcstyle: fn() : ref ComputedStyle;
 };

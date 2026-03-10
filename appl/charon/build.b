@@ -17,6 +17,7 @@ LX: Lex;
 U: Url;
 	Parsedurl: import U;
 J: Script;
+CSSM: CSS;
 
 ctype: array of byte;
 
@@ -116,6 +117,39 @@ dbg := 0;
 warn := 0;
 doscripts := 0;
 
+# HTML 4.01 User Agent default stylesheet
+ua_stylesheet: ref CSS->Stylesheet;
+
+UA_CSS: con
+	"html, body, div, p, blockquote, pre, address, form, fieldset, "
+	+ "dl, dt, dd, ul, ol, menu, dir, center, isindex, hr, "
+	+ "h1, h2, h3, h4, h5, h6 { display: block }\n"
+	+ "span, a, em, strong, b, i, u, s, strike, tt, code, kbd, samp, "
+	+ "var, dfn, cite, abbr, acronym, q, sub, sup, big, small, "
+	+ "label, font, basefont, bdo, del, ins { display: inline }\n"
+	+ "li { display: list-item }\n"
+	+ "table { display: table }\n"
+	+ "tr { display: table-row }\n"
+	+ "td, th { display: table-cell }\n"
+	+ "caption { display: table-caption }\n"
+	+ "h1 { font-size: xx-large; font-weight: bold }\n"
+	+ "h2 { font-size: x-large; font-weight: bold }\n"
+	+ "h3 { font-size: large; font-weight: bold }\n"
+	+ "h4 { font-weight: bold }\n"
+	+ "h5 { font-size: small; font-weight: bold }\n"
+	+ "h6 { font-size: x-small; font-weight: bold }\n"
+	+ "b, strong { font-weight: bold }\n"
+	+ "i, em, cite, dfn, var { font-style: italic }\n"
+	+ "tt, code, kbd, samp { font-family: monospace }\n"
+	+ "u, ins { text-decoration: underline }\n"
+	+ "s, strike, del { text-decoration: line-through }\n"
+	+ "pre { white-space: pre }\n"
+	+ "center { text-align: center }\n"
+	+ "fieldset { border: 2px groove }\n"
+	+ "legend { font-weight: bold }\n"
+	+ "big { font-size: large }\n"
+	+ "small { font-size: small }\n";
+
 utf8 : Btos;
 latin1 : Btos;
 
@@ -133,6 +167,13 @@ init(cu: CharonUtils)
 	J = cu->J;
 	LX = cu->LX;
 	ctype = C->ctype;
+	CSSM = load CSS CSS->PATH;
+	if(CSSM != nil) {
+		CSSM->init(0);
+		# Parse the HTML 4.01 UA default stylesheet
+		(sheet, nil) := CSSM->parse(UA_CSS);
+		ua_stylesheet = sheet;
+	}
 	utf8 = CU->getconv("utf8");
 	latin1 = CU->getconv("latin1");
 	if (utf8 == nil || latin1 == nil) {
@@ -161,7 +202,13 @@ ItemSource.new(bs: ref ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemS
 		ps.literal = 1;
 		pushfontstyle(ps, FntT);
 	}
-	return ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, array[LX->Numtags] of { * => ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL)}, 0, nil);
+	tagstyles := array[LX->Numtags] of { * => ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL)};
+	ss := StyleStore.new();
+	isrc := ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, tagstyles, ss, nil, 0, nil);
+	# Apply UA default stylesheet
+	if(ua_stylesheet != nil)
+		parsestyleblock_css(isrc, ua_stylesheet);
+	return isrc;
 }
 
 ItemSource.getitems(is: self ref ItemSource) : ref Item
@@ -1270,7 +1317,7 @@ TokLoop:
 			if(is.instyle) {
 				is.instyle = 0;
 				if(is.styletext != "")
-					parsestyleblock(is.tagstyles, is.styletext);
+					parsestyleblock(is, is.styletext);
 				is.styletext = nil;
 			}
 
@@ -1327,6 +1374,12 @@ TokLoop:
 					aintval(tok, LX->Acellpadding, TABPAD),
 					Background(nil, tabbg),
 					tok);
+			# Apply CSS table properties
+			tabcs := getcomputedstyle(is, LX->Ttable, tok);
+			tab.border_collapse = tabcs.border_collapse;
+			tab.border_spacing = tabcs.border_spacing;
+			tab.empty_cells = tabcs.empty_cells;
+			tab.table_layout = tabcs.table_layout;
 			is.tabstk = tab :: is.tabstk;
 			di.tables = tab :: di.tables;
 			curtab = tab;
@@ -1588,9 +1641,7 @@ TokLoop:
 
 		# Tags that have empty action
 
-		LX->Tabbr or LX->Tabbr+RBRA
-		or LX->Tacronym or LX->Tacronym+RBRA
-		or LX->Tarea+RBRA
+		LX->Tarea+RBRA
 		or LX->Tbase+RBRA
 		or LX->Tbasefont+RBRA
 		or LX->Tbr+RBRA
@@ -1613,9 +1664,184 @@ TokLoop:
 		=>
 			;
 
-		# <!ELEMENT SPAN - - (%text)*>
+		# <!ELEMENT ABBR - - (%inline)*>
+		# <!ELEMENT ACRONYM - - (%inline)*>
+		# Inline elements -- store title for tooltip, apply CSS
+		LX->Tabbr or LX->Tacronym =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tabbr+RBRA or LX->Tacronym+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT DEL - - (%flow)*>
+		# Deleted text -- render with strikethrough
+		LX->Tdel =>
+			pushelemctx(is, tag, tok);
+			ps.curul = ULmid;
+			ps.ulstk = ps.curul :: ps.ulstk;
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tdel+RBRA =>
+			popelemctx(is);
+			if(ps.ulstk != nil)
+				ps.ulstk = tl ps.ulstk;
+			if(ps.ulstk != nil)
+				ps.curul = hd ps.ulstk;
+			else
+				ps.curul = ULnone;
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT INS - - (%flow)*>
+		# Inserted text -- render with underline
+		LX->Tins =>
+			pushelemctx(is, tag, tok);
+			ps.curul = ULunder;
+			ps.ulstk = ps.curul :: ps.ulstk;
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tins+RBRA =>
+			popelemctx(is);
+			if(ps.ulstk != nil)
+				ps.ulstk = tl ps.ulstk;
+			if(ps.ulstk != nil)
+				ps.curul = hd ps.ulstk;
+			else
+				ps.curul = ULnone;
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT Q - - (%inline)*>
+		# Inline quotation -- wrap content in quotation marks
+		LX->Tq =>
+			pushelemctx(is, tag, tok);
+			addtext(ps, "\u201c");
+
+		LX->Tq+RBRA =>
+			popelemctx(is);
+			addtext(ps, "\u201d");
+
+		# <!ELEMENT LABEL - - (%inline)*>
+		# Form label -- store 'for' attr in genattr, apply CSS
+		LX->Tlabel =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tlabel+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT FIELDSET - - (%flow)*>
+		# Form grouping with visible border
+		LX->Tfieldset =>
+			pushelemctx(is, tag, tok);
+			addbrk(ps, 1, 0);
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tfieldset+RBRA =>
+			popelemctx(is);
+			addbrk(ps, 1, 0);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT LEGEND - - (%inline)*>
+		# Legend for fieldset
+		LX->Tlegend =>
+			pushelemctx(is, tag, tok);
+			pushfontstyle(ps, FntB);
+
+		LX->Tlegend+RBRA =>
+			popelemctx(is);
+			popfontstyle(ps);
+			addbrk(ps, 0, 0);
+
+		# <!ELEMENT BUTTON - - (%flow)*>
+		# Button element
+		LX->Tbutton =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			changes := applystyle(ps, si);
+			ps.stylestk = changes :: ps.stylestk;
+
+		LX->Tbutton+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				unapplystyle(ps, di, changes);
+			}
+
+		# <!ELEMENT OPTGROUP - - (OPTION)+>
+		# Option group in select
+		LX->Toptgroup =>
+			pushelemctx(is, tag, tok);
+
+		LX->Toptgroup+RBRA =>
+			popelemctx(is);
+
+		# <!ELEMENT BDO - - (%inline)*>
+		# Bidirectional override -- render content normally (full BiDi deferred)
+		LX->Tbdo =>
+			pushelemctx(is, tag, tok);
+
+		LX->Tbdo+RBRA =>
+			popelemctx(is);
+
+		# <!ELEMENT OBJECT - - (PARAM | %flow)*>
+		# Embedded object -- show fallback content
+		LX->Tobject =>
+			pushelemctx(is, tag, tok);
+
+		LX->Tobject+RBRA =>
+			popelemctx(is);
+
+		# <!ELEMENT IFRAME - - (%flow)*>
+		# Inline frame -- show fallback content for now
+		LX->Tiframe =>
+			pushelemctx(is, tag, tok);
+
+		LX->Tiframe+RBRA =>
+			popelemctx(is);
+
+		# <!ELEMENT COL - O EMPTY>
+		# Table column specification
+		LX->Tcol or LX->Tcol+RBRA
+		or LX->Tcolgroup or LX->Tcolgroup+RBRA =>
+			;	# handled during table parsing
+
+		# <!ELEMENT SPAN - - (%inline)*>
 		# Inline element with CSS style support
 		LX->Tspan =>
+			pushelemctx(is, tag, tok);
 			si := getstyle(is, LX->Tspan, tok);
 			if(si.display == DSPNONE) {
 				ps.skipping = 1;
@@ -1627,6 +1853,7 @@ TokLoop:
 			}
 
 		LX->Tspan+RBRA =>
+			popelemctx(is);
 			if(ps.stylestk != nil) {
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
@@ -1634,24 +1861,6 @@ TokLoop:
 					ps.skipping = 0;
 				else
 					unapplystyle(ps, di, changes);
-			}
-
-		# Tags not implemented
-		LX->Tbdo or LX->Tbdo+RBRA
-		or LX->Tbutton or LX->Tbutton+RBRA
-		or LX->Tdel or LX->Tdel+RBRA
-		or LX->Tfieldset or LX->Tfieldset+RBRA
-		or LX->Tiframe or LX->Tiframe+RBRA
-		or LX->Tins or LX->Tins+RBRA
-		or LX->Tlabel or LX->Tlabel+RBRA
-		or LX->Tlegend or LX->Tlegend+RBRA
-		or LX->Tobject or LX->Tobject+RBRA
-		or LX->Toptgroup or LX->Toptgroup+RBRA
-		=>
-			if(warn) {
-				if(tag > RBRA)
-					tag -= RBRA;
-				sys->print("warning: unimplemented HTML tag: %s\n", LX->tagnames[tag]);
 			}
 
 		* =>
@@ -2787,6 +2996,11 @@ Item.newspacer(spkind, font: int) : ref Item
 	return ref Item.Ispacer(nil, 0, 0, 0, 0, 0, nil, spkind, font);
 }
 
+Item.newbox(content: ref Item, cs: ref ComputedStyle) : ref Item
+{
+	return ref Item.Ibox(nil, 0, 0, 0, 0, IFbrk, nil, content, cs, -1);
+}
+
 Item.revlist(itl: list of ref Item) : list of ref Item
 {
 	ans : list of ref Item = nil;
@@ -2850,6 +3064,11 @@ Item.print(it: self ref Item)
 			s = "hspace";
 		}
 		sys->print("Spacer %s ", s);
+	Ibox =>
+		sys->print("Box layid=%d\n", a.layid);
+		if(a.content != nil)
+			a.content.printlist("\tBox content:");
+		sys->print("\tEnd of Box");
 	}
 	sys->print(" w=%d, h=%d, a=%d, anchor=%d\n", it.width, it.height, it.ascent, it.anchorid);
 }
@@ -2880,7 +3099,9 @@ Table.new(tableid: int, align: Align, width: Dimen,
 {
 	return ref Table(tableid,
 			0, 0, 0,		# nrow, ncol, ncell
-			align, width, border, cellspacing, cellpadding, bg,
+			align, width, border, cellspacing, cellpadding,
+			byte 0, 0, byte 0, byte 0,	# border_collapse, border_spacing, empty_cells, table_layout
+			bg,
 			nil, Abottom, -1,	# caption, caption_place, caption_lay
 			nil, nil, nil,	nil,	# currows, cols, rows, cells
 			0, 0, 0, 0,		# totw, toth, caph, availw
@@ -3100,18 +3321,572 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 		else if(val == "none")
 			si.ul = int ULnone;
 	"display" =>
-		if(val == "none")
-			si.display = DSPNONE;
+		case val {
+		"none" => si.display = DSPNONE;
+		"block" => si.display = DSPBLOCK;
+		"inline" => si.display = DSPINLINE;
+		"inline-block" => si.display = DSPINLINEBLOCK;
+		"list-item" => si.display = DSPLISTITEM;
+		"table" => si.display = DSPTABLE;
+		"table-row" => si.display = DSPTABLEROW;
+		"table-cell" => si.display = DSPTABLECELL;
+		"table-caption" => si.display = DSPTABLECAPTION;
+		}
 	}
 }
 
+# Apply a CSS property to a ComputedStyle (extended properties)
+applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
+{
+	case prop {
+	"color" =>
+		c := color(val, STYLNONE);
+		if(c != STYLNONE)
+			cs.color = c;
+	"background-color" or "background" =>
+		c := color(val, STYLNONE);
+		if(c != STYLNONE)
+			cs.bgcolor = c;
+	"text-align" =>
+		case val {
+		"left" => cs.halign = Aleft;
+		"center" => cs.halign = Acenter;
+		"right" => cs.halign = Aright;
+		"justify" => cs.halign = Ajustify;
+		}
+	"font-weight" =>
+		case val {
+		"bold" or "bolder" or "700" or "800" or "900" =>
+			cs.fontstyle = FntB;
+		"normal" or "lighter" or "400" =>
+			cs.fontstyle = FntR;
+		}
+	"font-style" =>
+		case val {
+		"italic" or "oblique" =>
+			cs.fontstyle = FntI;
+		"normal" =>
+			cs.fontstyle = FntR;
+		}
+	"font-family" =>
+		if(S->prefix("monospace", val)
+		   || S->prefix("courier", val)
+		   || S->prefix("\"courier", val))
+			cs.fontstyle = FntT;
+	"font-size" =>
+		case val {
+		"xx-small" or "x-small" =>
+			cs.fontsize = Tiny;
+		"small" or "smaller" =>
+			cs.fontsize = Small;
+		"medium" =>
+			cs.fontsize = Normal;
+		"large" or "larger" =>
+			cs.fontsize = Large;
+		"x-large" or "xx-large" =>
+			cs.fontsize = Verylarge;
+		}
+	"text-decoration" =>
+		if(S->prefix("underline", val))
+			cs.ul = int ULunder;
+		else if(S->prefix("line-through", val))
+			cs.ul = int ULmid;
+		else if(val == "none")
+			cs.ul = int ULnone;
+	"display" =>
+		case val {
+		"none" => cs.display = DSPNONE;
+		"block" => cs.display = DSPBLOCK;
+		"inline" => cs.display = DSPINLINE;
+		"inline-block" => cs.display = DSPINLINEBLOCK;
+		"list-item" => cs.display = DSPLISTITEM;
+		"table" => cs.display = DSPTABLE;
+		"table-row" => cs.display = DSPTABLEROW;
+		"table-cell" => cs.display = DSPTABLECELL;
+		"table-caption" => cs.display = DSPTABLECAPTION;
+		}
+	"margin" =>
+		parsebox4(cs.margin, val);
+	"margin-top" =>
+		cs.margin[0] = parsepx(val);
+	"margin-right" =>
+		cs.margin[1] = parsepx(val);
+	"margin-bottom" =>
+		cs.margin[2] = parsepx(val);
+	"margin-left" =>
+		cs.margin[3] = parsepx(val);
+	"padding" =>
+		parsebox4(cs.padding, val);
+	"padding-top" =>
+		cs.padding[0] = parsepx(val);
+	"padding-right" =>
+		cs.padding[1] = parsepx(val);
+	"padding-bottom" =>
+		cs.padding[2] = parsepx(val);
+	"padding-left" =>
+		cs.padding[3] = parsepx(val);
+	"border" =>
+		parseborder_shorthand(cs, val);
+	"border-width" =>
+		parsebox4(cs.border_width, val);
+	"border-style" =>
+		parseborderstyle4(cs.border_style, val);
+	"border-color" =>
+		parsebordercolor4(cs.border_color, val);
+	"border-top-width" =>
+		cs.border_width[0] = parsepx(val);
+	"border-right-width" =>
+		cs.border_width[1] = parsepx(val);
+	"border-bottom-width" =>
+		cs.border_width[2] = parsepx(val);
+	"border-left-width" =>
+		cs.border_width[3] = parsepx(val);
+	"border-collapse" =>
+		case val {
+		"collapse" => cs.border_collapse = byte 1;
+		"separate" => cs.border_collapse = byte 0;
+		}
+	"border-spacing" =>
+		cs.border_spacing = parsepx(val);
+	"empty-cells" =>
+		case val {
+		"hide" => cs.empty_cells = byte 1;
+		"show" => cs.empty_cells = byte 0;
+		}
+	"table-layout" =>
+		case val {
+		"fixed" => cs.table_layout = byte 1;
+		"auto" => cs.table_layout = byte 0;
+		}
+	"width" =>
+		cs.width = parsedimen(val);
+	"height" =>
+		cs.height = parsedimen(val);
+	"min-width" =>
+		cs.min_width = parsedimen(val);
+	"max-width" =>
+		cs.max_width = parsedimen(val);
+	"min-height" =>
+		cs.min_height = parsedimen(val);
+	"max-height" =>
+		cs.max_height = parsedimen(val);
+	"white-space" =>
+		case val {
+		"normal" => cs.white_space = WSnormal;
+		"pre" => cs.white_space = WSpre;
+		"nowrap" => cs.white_space = WSnowrap;
+		"pre-wrap" => cs.white_space = WS_prewrap;
+		}
+	"text-transform" =>
+		case val {
+		"none" => cs.text_transform = TTnone;
+		"uppercase" => cs.text_transform = TTuppercase;
+		"lowercase" => cs.text_transform = TTlowercase;
+		"capitalize" => cs.text_transform = TTcapitalize;
+		}
+	"text-indent" =>
+		cs.text_indent = parsepx(val);
+	"line-height" =>
+		cs.line_height = parsepx(val);
+	"letter-spacing" =>
+		if(val == "normal")
+			cs.letter_spacing = STYLNONE;
+		else
+			cs.letter_spacing = parsepx(val);
+	"word-spacing" =>
+		if(val == "normal")
+			cs.word_spacing = STYLNONE;
+		else
+			cs.word_spacing = parsepx(val);
+	"vertical-align" =>
+		case val {
+		"baseline" => cs.vertical_align = Abaseline;
+		"top" => cs.vertical_align = Atop;
+		"middle" => cs.vertical_align = Amiddle;
+		"bottom" => cs.vertical_align = Abottom;
+		}
+	"list-style-type" =>
+		case val {
+		"disc" => cs.list_style_type = LTdisc;
+		"square" => cs.list_style_type = LTsquare;
+		"circle" => cs.list_style_type = LTcircle;
+		"decimal" => cs.list_style_type = LT1;
+		"lower-alpha" or "lower-latin" => cs.list_style_type = LTa;
+		"upper-alpha" or "upper-latin" => cs.list_style_type = LTA;
+		"lower-roman" => cs.list_style_type = LTi;
+		"upper-roman" => cs.list_style_type = LTI;
+		}
+	"list-style-position" =>
+		case val {
+		"outside" => cs.list_style_position = LSPoutside;
+		"inside" => cs.list_style_position = LSPinside;
+		}
+	"position" =>
+		case val {
+		"static" => cs.position = POSstatic;
+		"relative" => cs.position = POSrelative;
+		}
+	"float" =>
+		case val {
+		"none" => cs.float_ = FLnone;
+		"left" => cs.float_ = FLleft;
+		"right" => cs.float_ = FLright;
+		}
+	"clear" =>
+		case val {
+		"none" => cs.clear = CLnone;
+		"left" => cs.clear = CLleft;
+		"right" => cs.clear = CLright;
+		"both" => cs.clear = CLboth;
+		}
+	"overflow" =>
+		case val {
+		"visible" => cs.overflow = OVvisible;
+		"hidden" => cs.overflow = OVhidden;
+		"scroll" => cs.overflow = OVscroll;
+		"auto" => cs.overflow = OVauto;
+		}
+	"visibility" =>
+		case val {
+		"visible" => cs.visibility = VISvisible;
+		"hidden" => cs.visibility = VIShidden;
+		"collapse" => cs.visibility = VIScollapse;
+		}
+	}
+}
+
+# Parse a pixel value from a CSS string like "10px", "2em", or bare "10"
+parsepx(val: string) : int
+{
+	if(val == nil || val == "")
+		return 0;
+	n := 0;
+	neg := 0;
+	i := 0;
+	if(i < len val && val[i] == '-') {
+		neg = 1;
+		i++;
+	}
+	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
+		n = n * 10 + (val[i] - '0');
+	# handle em units (approximate: 1em ≈ 16px)
+	if(i+1 < len val && val[i] == 'e' && val[i+1] == 'm')
+		n = n * 16;
+	if(neg)
+		n = -n;
+	return n;
+}
+
+# Parse a CSS dimension value into a Dimen
+parsedimen(val: string) : Dimen
+{
+	if(val == nil || val == "" || val == "auto")
+		return Dimen.make(Dnone, 0);
+	n := 0;
+	i := 0;
+	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
+		n = n * 10 + (val[i] - '0');
+	if(i < len val && val[i] == '%')
+		return Dimen.make(Dpercent, n);
+	return Dimen.make(Dpixels, n);
+}
+
+# Parse a CSS shorthand box value (margin, padding, border-width)
+# Supports 1, 2, 3, or 4 values
+parsebox4(a: array of int, val: string)
+{
+	parts := splitwords(val);
+	np := len parts;
+	if(np == 0)
+		return;
+	if(np == 1) {
+		v := parsepx(parts[0]);
+		a[0] = v; a[1] = v; a[2] = v; a[3] = v;
+	}
+	else if(np == 2) {
+		tb := parsepx(parts[0]);
+		lr := parsepx(parts[1]);
+		a[0] = tb; a[1] = lr; a[2] = tb; a[3] = lr;
+	}
+	else if(np == 3) {
+		a[0] = parsepx(parts[0]);
+		a[1] = parsepx(parts[1]);
+		a[2] = parsepx(parts[2]);
+		a[3] = a[1];
+	}
+	else {
+		a[0] = parsepx(parts[0]);
+		a[1] = parsepx(parts[1]);
+		a[2] = parsepx(parts[2]);
+		a[3] = parsepx(parts[3]);
+	}
+}
+
+# Parse border-style shorthand into 4-element array
+parseborderstyle4(a: array of byte, val: string)
+{
+	parts := splitwords(val);
+	np := len parts;
+	if(np == 0)
+		return;
+	bs0 := parseborderstyle1(parts[0]);
+	if(np == 1) {
+		a[0] = bs0; a[1] = bs0; a[2] = bs0; a[3] = bs0;
+	}
+	else if(np == 2) {
+		bs1 := parseborderstyle1(parts[1]);
+		a[0] = bs0; a[1] = bs1; a[2] = bs0; a[3] = bs1;
+	}
+	else if(np == 3) {
+		bs1 := parseborderstyle1(parts[1]);
+		bs2 := parseborderstyle1(parts[2]);
+		a[0] = bs0; a[1] = bs1; a[2] = bs2; a[3] = bs1;
+	}
+	else {
+		a[0] = bs0;
+		a[1] = parseborderstyle1(parts[1]);
+		a[2] = parseborderstyle1(parts[2]);
+		a[3] = parseborderstyle1(parts[3]);
+	}
+}
+
+parseborderstyle1(val: string) : byte
+{
+	case val {
+	"none" => return BSnone;
+	"solid" => return BSsolid;
+	"dotted" => return BSdotted;
+	"dashed" => return BSdashed;
+	"double" => return BSdouble;
+	"groove" => return BSgroove;
+	"ridge" => return BSridge;
+	"inset" => return BSinset;
+	"outset" => return BSoutset;
+	}
+	return BSnone;
+}
+
+# Parse border-color shorthand
+parsebordercolor4(a: array of int, val: string)
+{
+	parts := splitwords(val);
+	np := len parts;
+	if(np == 0)
+		return;
+	c0 := color(parts[0], STYLNONE);
+	if(np == 1) {
+		a[0] = c0; a[1] = c0; a[2] = c0; a[3] = c0;
+	}
+	else if(np == 2) {
+		c1 := color(parts[1], STYLNONE);
+		a[0] = c0; a[1] = c1; a[2] = c0; a[3] = c1;
+	}
+	else if(np == 3) {
+		c1 := color(parts[1], STYLNONE);
+		c2 := color(parts[2], STYLNONE);
+		a[0] = c0; a[1] = c1; a[2] = c2; a[3] = c1;
+	}
+	else {
+		a[0] = c0;
+		a[1] = color(parts[1], STYLNONE);
+		a[2] = color(parts[2], STYLNONE);
+		a[3] = color(parts[3], STYLNONE);
+	}
+}
+
+# Parse "border: 2px solid red" shorthand
+parseborder_shorthand(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		# try as border-style
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.border_style[0] = bs;
+			cs.border_style[1] = bs;
+			cs.border_style[2] = bs;
+			cs.border_style[3] = bs;
+			continue;
+		}
+		# try as color
+		c := color(w, STYLNONE);
+		if(c != STYLNONE) {
+			cs.border_color[0] = c;
+			cs.border_color[1] = c;
+			cs.border_color[2] = c;
+			cs.border_color[3] = c;
+			continue;
+		}
+		# assume it's a width
+		px := parsepx(w);
+		cs.border_width[0] = px;
+		cs.border_width[1] = px;
+		cs.border_width[2] = px;
+		cs.border_width[3] = px;
+	}
+}
+
+# Split a string into whitespace-separated words
+splitwords(s: string) : array of string
+{
+	words: list of string;
+	i := 0;
+	for(;;) {
+		for(; i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r'); )
+			i++;
+		if(i >= len s)
+			break;
+		start := i;
+		for(; i < len s && s[i] != ' ' && s[i] != '\t' && s[i] != '\n' && s[i] != '\r'; )
+			i++;
+		words = s[start:i] :: words;
+	}
+	n := 0;
+	for(wl := words; wl != nil; wl = tl wl)
+		n++;
+	a := array[n] of string;
+	for(wl = words; wl != nil; wl = tl wl)
+		a[--n] = hd wl;
+	return a;
+}
+
 # Parse CSS text from <style> blocks.
-# Supports simple tag selectors: "p { color: red }" "h1 { text-align: center }"
-# Stores results in tagstyles array indexed by tag number.
-parsestyleblock(tagstyles: array of ref StyleInfo, text: string)
+# Uses css.m parser when available for full selector support (class, ID, etc.);
+# falls back to simple tag-only selector parsing otherwise.
+parsestyleblock(is: ref ItemSource, text: string)
 {
 	if(text == nil || text == "")
 		return;
+	# Try css.m parser first for full selector support
+	if(CSSM != nil) {
+		(sheet, err) := CSSM->parse(text);
+		if(sheet != nil && err == nil) {
+			parsestyleblock_css(is, sheet);
+			return;
+		}
+		if(warn && err != nil)
+			sys->print("warning: CSS parse error: %s\n", err);
+	}
+	# Fallback: simple tag-only selector parsing
+	parsestyleblock_legacy(is.tagstyles, text);
+}
+
+# Parse a CSS stylesheet using css.m and apply rules
+parsestyleblock_css(is: ref ItemSource, sheet: ref CSS->Stylesheet)
+{
+	for(stmts := sheet.statements; stmts != nil; stmts = tl stmts) {
+		stmt := hd stmts;
+		pick s := stmt {
+		Ruleset =>
+			for(decls := s.decls; decls != nil; decls = tl decls) {
+				d := hd decls;
+				prop := d.property;
+				val := cssvalue_tostring(d.values);
+				# Apply to each selector
+				for(sels := s.selectors; sels != nil; sels = tl sels) {
+					sel := hd sels;
+					applyselector_rule(is, sel, prop, val);
+				}
+			}
+		Media =>
+			# Process @media rules - apply all for now (no media query matching)
+			for(rules := s.rules; rules != nil; rules = tl rules) {
+				r := hd rules;
+				for(decls := r.decls; decls != nil; decls = tl decls) {
+					d := hd decls;
+					prop := d.property;
+					val := cssvalue_tostring(d.values);
+					for(sels := r.selectors; sels != nil; sels = tl sels) {
+						sel := hd sels;
+						applyselector_rule(is, sel, prop, val);
+					}
+				}
+			}
+		}
+	}
+}
+
+# Apply a CSS rule for a given selector
+applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
+{
+	# For now, handle simple selectors: element, .class, #id
+	# A CSS->Selector is list of (int, Simplesel)
+	# A Simplesel is list of ref Select
+	if(sel == nil)
+		return;
+	(_, simplesel) := hd sel;
+	if(simplesel == nil)
+		return;
+	s := hd simplesel;
+	pick sp := s {
+	Element =>
+		# Tag selector: look up tag name
+		tagid := -1;
+		for(ti := 0; ti < LX->Numtags; ti++)
+			if(LX->tagnames[ti] == sp.name) {
+				tagid = ti;
+				break;
+			}
+		if(tagid >= 0) {
+			applycssprop(is.tagstyles[tagid], prop, val);
+		}
+	Class =>
+		# Store class rules in StyleStore
+		rule := ref StyleRule(10, ref SelectorPart(SPclass, sp.name) :: nil, prop, val, 0);
+		addstylerule(is.styles, rule);
+	ID =>
+		# Store ID rules in StyleStore
+		rule := ref StyleRule(100, ref SelectorPart(SPid, sp.name) :: nil, prop, val, 0);
+		addstylerule(is.styles, rule);
+	Any =>
+		# Universal selector: apply to all tags
+		for(ti := 0; ti < LX->Numtags; ti++)
+			applycssprop(is.tagstyles[ti], prop, val);
+	}
+}
+
+# Add a style rule to the store
+addstylerule(ss: ref StyleStore, rule: ref StyleRule)
+{
+	if(ss.sheets == nil)
+		ss.sheets = ref Stylesheet(rule :: nil) :: nil;
+	else {
+		sheet := hd ss.sheets;
+		sheet.rules = rule :: sheet.rules;
+	}
+}
+
+# Convert css.m Value list to a simple string
+cssvalue_tostring(values: list of ref CSS->Value) : string
+{
+	s := "";
+	for(; values != nil; values = tl values) {
+		v := hd values;
+		if(s != "")
+			s += " ";
+		pick vv := v {
+		String or Number or Percentage or Url or Unicoderange =>
+			s += vv.value;
+		Hexcolour =>
+			s += "#" + vv.value;
+		RGB =>
+			(r, g, b) := vv.rgb;
+			s += sys->sprint("#%02x%02x%02x", r, g, b);
+		Ident =>
+			s += vv.name;
+		Unit =>
+			s += vv.value + vv.units;
+		Function =>
+			s += vv.name + "(...)";
+		}
+	}
+	return s;
+}
+
+# Legacy simple tag-only selector parsing (fallback when css.m unavailable)
+parsestyleblock_legacy(tagstyles: array of ref StyleInfo, text: string)
+{
 	text = S->tolower(text);
 	i := 0;
 	n := len text;
@@ -3242,6 +4017,7 @@ unapplystyle(ps: ref Pstate, di: ref Docinfo, changes: int)
 }
 
 # Get the effective style for an element: merge tag stylesheet rule with inline style.
+# Also checks StyleStore for class/ID selector matches.
 getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
 {
 	# start with tag stylesheet rule if any
@@ -3250,6 +4026,13 @@ getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
 		ts := is.tagstyles[tag];
 		si = StyleInfo(ts.color, ts.bgcolor, ts.halign, ts.fontstyle,
 			ts.fontsize, ts.ul, ts.display);
+	}
+	# check StyleStore for class/ID selector matches
+	if(tok != nil && is.styles != nil && is.styles.sheets != nil) {
+		ga := getgenattr(tok);
+		if(ga != nil) {
+			matchclassid(is.styles, ref si, ga.id, ga.class);
+		}
 	}
 	# overlay inline style if present
 	if(tok != nil) {
@@ -3260,4 +4043,274 @@ getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
 		}
 	}
 	return si;
+}
+
+# ComputedStyle constructor
+ComputedStyle.new() : ref ComputedStyle
+{
+	return ref ComputedStyle(
+		STYLNONE, STYLNONE,	# color, bgcolor
+		Anone,			# halign
+		STYLNONE, STYLNONE, STYLNONE,	# fontstyle, fontsize, ul
+		DSPNORMAL,		# display
+		array[4] of { * => STYLNONE },	# margin
+		array[4] of { * => 0 },		# padding
+		array[4] of { * => 0 },		# border_width
+		array[4] of { * => BSnone },	# border_style
+		array[4] of { * => STYLNONE },	# border_color
+		Dimen.make(Dnone, 0),	# width
+		Dimen.make(Dnone, 0),	# height
+		Dimen.make(Dnone, 0),	# min_width
+		Dimen.make(Dnone, 0),	# max_width
+		Dimen.make(Dnone, 0),	# min_height
+		Dimen.make(Dnone, 0),	# max_height
+		WSnormal,		# white_space
+		TTnone,			# text_transform
+		STYLNONE,		# line_height
+		0,			# text_indent
+		STYLNONE,		# letter_spacing
+		STYLNONE,		# word_spacing
+		Anone,			# vertical_align
+		LTdisc,			# list_style_type
+		LSPoutside,		# list_style_position
+		byte 0,			# border_collapse
+		0,			# border_spacing
+		byte 0,			# empty_cells
+		byte 0,			# table_layout
+		POSstatic,		# position
+		FLnone,			# float_
+		CLnone,			# clear
+		0, 0,			# rel_top, rel_left
+		OVvisible,		# overflow
+		VISvisible		# visibility
+	);
+}
+
+newcstyle() : ref ComputedStyle
+{
+	return ComputedStyle.new();
+}
+
+# Convert ComputedStyle to StyleInfo (for backward compatibility)
+ComputedStyle.tostyleinfo(cs: self ref ComputedStyle) : StyleInfo
+{
+	return StyleInfo(cs.color, cs.bgcolor, cs.halign, cs.fontstyle,
+		cs.fontsize, cs.ul, cs.display);
+}
+
+# Create ComputedStyle from StyleInfo
+ComputedStyle.fromstyleinfo(si: StyleInfo) : ref ComputedStyle
+{
+	cs := ComputedStyle.new();
+	cs.color = si.color;
+	cs.bgcolor = si.bgcolor;
+	cs.halign = si.halign;
+	cs.fontstyle = si.fontstyle;
+	cs.fontsize = si.fontsize;
+	cs.ul = si.ul;
+	cs.display = si.display;
+	return cs;
+}
+
+# Check if this ComputedStyle has any box model properties set
+ComputedStyle.hasboxmodel(cs: self ref ComputedStyle) : int
+{
+	for(i := 0; i < 4; i++) {
+		if(cs.margin[i] != STYLNONE && cs.margin[i] != 0)
+			return 1;
+		if(cs.padding[i] != 0)
+			return 1;
+		if(cs.border_width[i] != 0)
+			return 1;
+	}
+	return 0;
+}
+
+# ElementCtx constructor
+ElementCtx.new(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx
+{
+	ci := 0;
+	if(parent != nil)
+		ci = parent.child_index + 1;
+	return ref ElementCtx(tag, id, class, parent, ci);
+}
+
+# StyleStore constructor
+StyleStore.new() : ref StyleStore
+{
+	return ref StyleStore(nil, nil);
+}
+
+# Add a stylesheet to the store
+StyleStore.addsheet(ss: self ref StyleStore, sheet: ref Stylesheet)
+{
+	ss.sheets = sheet :: ss.sheets;
+}
+
+# Match element context against stored rules and return a ComputedStyle
+StyleStore.match(ss: self ref StyleStore, el: ref ElementCtx) : ref ComputedStyle
+{
+	cs := ComputedStyle.new();
+	for(sheets := ss.sheets; sheets != nil; sheets = tl sheets) {
+		sheet := hd sheets;
+		for(rules := sheet.rules; rules != nil; rules = tl rules) {
+			rule := hd rules;
+			if(selectormatch(rule.selectors, el))
+				applycssprop_cs(cs, rule.property, rule.value);
+		}
+	}
+	return cs;
+}
+
+# Check if a selector matches an element context
+selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
+{
+	if(sparts == nil || el == nil)
+		return 0;
+	sp := hd sparts;
+	case sp.stype {
+	SPelement =>
+		if(el.tag < LX->Numtags && LX->tagnames[el.tag] == sp.name)
+			return 1;
+	SPclass =>
+		if(el.class != nil && hasword(el.class, sp.name))
+			return 1;
+	SPid =>
+		if(el.id == sp.name)
+			return 1;
+	SPany =>
+		return 1;
+	}
+	return 0;
+}
+
+# Check if word appears in space-separated class string
+hasword(classes, word: string) : int
+{
+	i := 0;
+	n := len classes;
+	for(;;) {
+		for(; i < n && (classes[i] == ' ' || classes[i] == '\t'); )
+			i++;
+		if(i >= n)
+			break;
+		start := i;
+		for(; i < n && classes[i] != ' ' && classes[i] != '\t'; )
+			i++;
+		if(classes[start:i] == word)
+			return 1;
+	}
+	return 0;
+}
+
+# Match class/ID rules from StyleStore against element attributes
+matchclassid(ss: ref StyleStore, si: ref StyleInfo, id, class: string)
+{
+	if(id == nil && class == nil)
+		return;
+	for(sheets := ss.sheets; sheets != nil; sheets = tl sheets) {
+		sheet := hd sheets;
+		for(rules := sheet.rules; rules != nil; rules = tl rules) {
+			rule := hd rules;
+			if(rule.selectors == nil)
+				continue;
+			sp := hd rule.selectors;
+			matched := 0;
+			case sp.stype {
+			SPclass =>
+				if(class != nil && hasword(class, sp.name))
+					matched = 1;
+			SPid =>
+				if(id != nil && id == sp.name)
+					matched = 1;
+			}
+			if(matched)
+				applycssprop(si, rule.property, rule.value);
+		}
+	}
+}
+
+# Push element context onto stack
+pushelemctx(is: ref ItemSource, tag: int, tok: ref LX->Token)
+{
+	id := "";
+	class := "";
+	if(tok != nil) {
+		ga := getgenattr(tok);
+		if(ga != nil) {
+			id = ga.id;
+			class = ga.class;
+		}
+	}
+	parent: ref ElementCtx;
+	if(is.elemstk != nil)
+		parent = hd is.elemstk;
+	ctx := ElementCtx.new(tag, id, class, parent);
+	is.elemstk = ctx :: is.elemstk;
+}
+
+# Pop element context from stack
+popelemctx(is: ref ItemSource)
+{
+	if(is.elemstk != nil)
+		is.elemstk = tl is.elemstk;
+}
+
+# Get the computed style for an element, using full CSS matching
+getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref ComputedStyle
+{
+	si := getstyle(is, tag, tok);
+	cs := ComputedStyle.fromstyleinfo(si);
+	# Apply extended CSS properties from inline style
+	if(tok != nil) {
+		sval := aval(tok, LX->Astyle);
+		if(sval != nil && sval != "")
+			parsecstyle(cs, sval);
+	}
+	return cs;
+}
+
+# Parse a CSS style string into a ComputedStyle
+parsecstyle(cs: ref ComputedStyle, s: string)
+{
+	if(s == nil || s == "")
+		return;
+	s = S->tolower(s);
+	i := 0;
+	for(;;) {
+		for(; i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'); )
+			i++;
+		if(i >= len s)
+			break;
+		# find end of this declaration
+		semi := -1;
+		for(j := i; j < len s; j++)
+			if(s[j] == ';') {
+				semi = j;
+				break;
+			}
+		decl: string;
+		if(semi >= 0) {
+			decl = s[i:semi];
+			i = semi + 1;
+		}
+		else {
+			decl = s[i:];
+			i = len s;
+		}
+		# split on ':' into property and value
+		colon := -1;
+		for(j := 0; j < len decl; j++)
+			if(decl[j] == ':') {
+				colon = j;
+				break;
+			}
+		if(colon < 0)
+			continue;
+		prop := trim_white(decl[:colon]);
+		val := trim_white(decl[colon+1:]);
+		if(prop == "" || val == "")
+			continue;
+		applycssprop_cs(cs, prop, val);
+	}
 }
