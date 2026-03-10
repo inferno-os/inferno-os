@@ -51,6 +51,10 @@ include "sh.m";
 
 include "lucitheme.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Scrollbar, Statusbar: import widgetmod;
+
 Lucishell: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -63,12 +67,8 @@ FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
 SELCOL:	con int 16rB4D5FEFF;		# light blue selection
 PROMPTCOL: con int 16r555555FF;	# prompt (slightly dimmer than body text)
-STATUSBG: con int 16rE8E8E8FF;		# status bar background
-STATUSFG: con int 16r555555FF;		# status bar text
-
 # Dimensions
 MARGIN: con 4;
-SCROLLW: con 12;
 TABSTOP: con 8;
 
 # Key constants (Inferno keyboard codes)
@@ -102,8 +102,8 @@ fgcolor: ref Image;
 cursorcolor: ref Image;
 selcolor: ref Image;
 promptcolor: ref Image;
-statusbgcolor: ref Image;
-statusfgcolor: ref Image;
+scrollbar: ref Scrollbar;
+statbar: ref Statusbar;
 
 w: ref Window;
 vislines: int;
@@ -158,7 +158,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	wmclient = load Wmclient Wmclient->PATH;
 	menumod = load Menu Menu->PATH;
 	str = load String String->PATH;
+	widgetmod = load Widget Widget->PATH;
 	stderr = sys->fildes(2);
+	if(widgetmod == nil) {
+		sys->fprint(stderr, "lucishell: cannot load Widget: %r\n");
+		raise "fail:cannot load Widget";
+	}
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "lucishell: no window context\n");
@@ -219,17 +224,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display_g.color(th.editcursor);
 		selcolor = display_g.color(th.accent);
 		promptcolor = display_g.color(th.dim);
-		statusbgcolor = display_g.color(th.editstatus);
-		statusfgcolor = display_g.color(th.editstattext);
 	} else {
 		bgcolor = display_g.color(BG);
 		fgcolor = display_g.color(FG);
 		cursorcolor = display_g.color(CURSORCOL);
 		selcolor = display_g.color(SELCOL);
 		promptcolor = display_g.color(PROMPTCOL);
-		statusbgcolor = display_g.color(STATUSBG);
-		statusfgcolor = display_g.color(STATUSFG);
 	}
+	widgetmod->init(display_g, font);
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)));
+	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Set up window
 	w.reshape(Rect((0, 0), (640, 480)));
@@ -287,27 +291,42 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				if(snarf != "")
 					insertinput(snarf);
 				redraw();
-			} else if(p.buttons & 8) {
-				topline -= 3;
-				if(topline < 0) topline = 0;
-				atbottom = 0;
+			} else if(p.buttons & 24) {
+				# Mouse wheel scroll
+				scrollbar.total = nlines;
+				scrollbar.visible = vislines;
+				scrollbar.origin = topline;
+				topline = scrollbar.wheel(p.buttons, 3);
+				atbottom = (topline >= nlines - vislines);
 				redraw();
-			} else if(p.buttons & 16) {
-				topline += 3;
-				maxtl := nlines - vislines;
-				if(maxtl < 0) maxtl = 0;
-				if(topline > maxtl) topline = maxtl;
-				if(topline >= nlines - vislines)
-					atbottom = 1;
+			} else if(scrollbar.isactive()) {
+				# Continue scrollbar drag
+				scrollbar.total = nlines;
+				scrollbar.visible = vislines;
+				newo := scrollbar.track(p);
+				if(newo >= 0) {
+					topline = newo;
+					atbottom = (topline >= nlines - vislines);
+				}
 				redraw();
-			} else if(p.buttons & 1) {
+			} else if(p.buttons & 3) {
+				# B1 or B2 in scrollbar area
 				pr := w.image.r;
-				stath := font.height + MARGIN * 2;
+				sth := widgetmod->statusheight();
+				sw := widgetmod->scrollwidth();
 				scrollr := Rect((pr.min.x, pr.min.y),
-					(pr.min.x + SCROLLW, pr.max.y - stath));
+					(pr.min.x + sw, pr.max.y - sth));
 				if(scrollr.contains(p.xy)) {
-					handlescrollclick(p.xy, scrollr);
-				} else if(mousedown) {
+					scrollbar.total = nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0) {
+						topline = newo;
+						atbottom = (topline >= nlines - vislines);
+					}
+					redraw();
+				} else if(p.buttons & 1 && mousedown) {
 					(ml, mc) := pos2cursor(p.xy);
 					selendline = ml;
 					selendcol = mc;
@@ -961,7 +980,8 @@ textrect(): Rect
 		return Rect((0,0),(0,0));
 	r := w.image.r;
 	statusheight := font.height + MARGIN * 2;
-	return Rect((r.min.x + SCROLLW + MARGIN, r.min.y + MARGIN),
+	sw := widgetmod->scrollwidth();
+	return Rect((r.min.x + sw + MARGIN, r.min.y + MARGIN),
 		    (r.max.x - MARGIN, r.max.y - statusheight));
 }
 
@@ -981,8 +1001,13 @@ redraw()
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	drawscrollbar(screen, Rect((r.min.x, r.min.y),
-		(r.min.x + SCROLLW, r.max.y - statusheight)));
+	sw := widgetmod->scrollwidth();
+	scrollbar.resize(Rect((r.min.x, r.min.y),
+		(r.min.x + sw, r.max.y - statusheight)));
+	scrollbar.total = nlines;
+	scrollbar.visible = vislines;
+	scrollbar.origin = topline;
+	scrollbar.draw(screen);
 
 	y := textr.min.y;
 	vrow := 0;
@@ -1017,28 +1042,20 @@ redraw()
 	vislines = maxvrows;
 
 	drawcursor(1);
-	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
+	# Status bar
+	statbar.resize(Rect((r.min.x, r.max.y - statusheight), r.max));
+	<-rawlock;
+	israw_s := rawon;
+	rawlock <-= 1;
+	mode := "cooked";
+	if(israw_s)
+		mode = "raw";
+	statbar.prompt = nil;
+	statbar.left = sys->sprint("Shell (%s)  %d lines", mode, nlines);
+	statbar.right = sys->sprint("Ln %d", nlines);
+	statbar.leftcolor = nil;
+	statbar.draw(screen);
 	screen.flush(Draw->Flushnow);
-}
-
-drawscrollbar(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-
-	total := nlines;
-	if(total <= 0 || vislines <= 0)
-		return;
-
-	totalh := r.dy();
-	thumbh := (vislines * totalh) / total;
-	if(thumbh < 10) thumbh = 10;
-	if(thumbh > totalh) thumbh = totalh;
-	thumby := r.min.y;
-	if(total > vislines)
-		thumby = r.min.y + (topline * (totalh - thumbh)) / (total - vislines);
-
-	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
-	screen.draw(thumbr, fgcolor, nil, Point(0, 0));
 }
 
 drawselection(screen: ref Image, linenum, textx, y: int)
@@ -1093,59 +1110,6 @@ drawcursor(vis: int)
 	w.image.line(Point(x, y), Point(x, y + font.height - 1),
 		0, 0, 0, col, Point(0, 0));
 	w.image.flush(Draw->Flushnow);
-}
-
-drawstatus(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y),
-		0, 0, 0, fgcolor, Point(0, 0));
-
-	x := r.min.x + MARGIN;
-	y := r.min.y + MARGIN;
-
-	<-rawlock;
-	israw_s := rawon;
-	rawlock <-= 1;
-	mode := "cooked";
-	if(israw_s)
-		mode = "raw";
-	info := sys->sprint("Shell (%s)  %d lines", mode, nlines);
-	screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);
-
-	pos := sys->sprint("Ln %d", nlines);
-	pw := font.width(pos);
-	screen.text(Point(r.max.x - pw - MARGIN, y), statusfgcolor,
-		Point(0, 0), font, pos);
-}
-
-handlescrollclick(p: Point, scrollr: Rect)
-{
-	total := nlines;
-	if(total <= 0 || vislines <= 0)
-		return;
-
-	totalh := scrollr.dy();
-	thumbh := (vislines * totalh) / total;
-	if(thumbh < 10) thumbh = 10;
-	if(thumbh > totalh) thumbh = totalh;
-	thumby := scrollr.min.y;
-	if(total > vislines)
-		thumby = scrollr.min.y + (topline * (totalh - thumbh))
-			/ (total - vislines);
-
-	if(p.y < thumby) {
-		topline -= vislines;
-		if(topline < 0) topline = 0;
-		atbottom = 0;
-	} else if(p.y > thumby + thumbh) {
-		topline += vislines;
-		maxtl := total - vislines;
-		if(maxtl < 0) maxtl = 0;
-		if(topline > maxtl) topline = maxtl;
-		if(topline >= total - vislines)
-			atbottom = 1;
-	}
 }
 
 # ---------- Real-file IPC ----------

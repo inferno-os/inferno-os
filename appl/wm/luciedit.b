@@ -77,6 +77,10 @@ include "styxservers.m";
 
 include "lucitheme.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Scrollbar, Statusbar: import widgetmod;
+
 Luciedit: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -88,15 +92,12 @@ FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
 SELCOL:	con int 16rB4D5FEFF;		# light blue selection
 LNCOL:	con int 16rBBBBBBFF;		# line number color
-STATUSBG: con int 16rE8E8E8FF;		# status bar background
-STATUSFG: con int 16r555555FF;		# status bar text
 DIRTYCOL: con int 16rCC4444FF;		# dirty indicator
 
 # Dimensions
 MARGIN: con 4;				# text margin
 LNWIDTH: con 48;			# line number gutter width
 TABSTOP: con 4;			# tab width in spaces
-SCROLLW: con 12;			# scrollbar width
 
 # Key constants (Inferno keyboard codes)
 Khome:		con 16rFF61;
@@ -241,9 +242,9 @@ fgcolor: ref Image;
 cursorcolor: ref Image;
 selcolor: ref Image;
 lncolor: ref Image;
-statusbgcolor: ref Image;
-statusfgcolor: ref Image;
 dirtycolor: ref Image;
+scrollbar: ref Scrollbar;
+statbar: ref Statusbar;
 
 w: ref Window;
 vislines: int;
@@ -278,6 +279,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(str == nil) {
 		sys->fprint(stderr, "luciedit: cannot load String: %r\n");
 		raise "fail:cannot load String";
+	}
+	widgetmod = load Widget Widget->PATH;
+	if(widgetmod == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Widget: %r\n");
+		raise "fail:cannot load Widget";
 	}
 
 	if(ctxt == nil) {
@@ -326,8 +332,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display.color(th.editcursor);
 		selcolor = display.color(th.accent);
 		lncolor = display.color(th.editlineno);
-		statusbgcolor = display.color(th.editstatus);
-		statusfgcolor = display.color(th.editstattext);
 		dirtycolor = display.color(th.red);
 	} else {
 		bgcolor = display.color(BG);
@@ -335,10 +339,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display.color(CURSORCOL);
 		selcolor = display.color(SELCOL);
 		lncolor = display.color(LNCOL);
-		statusbgcolor = display.color(STATUSBG);
-		statusfgcolor = display.color(STATUSFG);
 		dirtycolor = display.color(DIRTYCOL);
 	}
+	widgetmod->init(display, font);
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)));
+	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Load file if specified
 	if(doc.filepath != "")
@@ -373,11 +378,35 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		key := filterkbd(rawkey);
 		if(key >= 0) {
 			cursorvis = 1;
-			if(doc.findmode)
-				handlefindkey(key);
-			else if(doc.gotomode)
-				handlegotokey(key);
-			else
+			if(doc.findmode) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.findmode = 0;
+					doc.searchstr = val;
+					findnext();
+				} else if(done < 0)
+					doc.findmode = 0;
+				else
+					doc.findbuf = statbar.buf;
+			} else if(doc.gotomode) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.gotomode = 0;
+					if(val != "") {
+						(ln, nil) := str->toint(val, 10);
+						if(ln > 0) {
+							doc.curline = ln - 1;
+							if(doc.curline >= doc.nlines)
+								doc.curline = doc.nlines - 1;
+							doc.curcol = 0;
+							scrolltocursor();
+						}
+					}
+				} else if(done < 0)
+					doc.gotomode = 0;
+				else
+					doc.gotobuf = statbar.buf;
+			} else
 				handlekey(key);
 			statedirty = 1;
 			redraw();
@@ -410,44 +439,36 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					doc.dirty = 1;
 				}
 				redraw();
-			} else if(p.buttons & 8) {
-				# Mouse wheel scroll up
-				doc.topline -= 3;
-				if(doc.topline < 0)
-					doc.topline = 0;
+			} else if(p.buttons & 24) {
+				# Mouse wheel scroll
+				scrollbar.total = doc.nlines;
+				scrollbar.visible = vislines;
+				scrollbar.origin = doc.topline;
+				doc.topline = scrollbar.wheel(p.buttons, 3);
 				redraw();
-			} else if(p.buttons & 16) {
-				# Mouse wheel scroll down
-				doc.topline += 3;
-				maxtl := doc.nlines - vislines;
-				if(maxtl < 0) maxtl = 0;
-				if(doc.topline > maxtl) doc.topline = maxtl;
+			} else if(scrollbar.isactive()) {
+				# Continue scrollbar drag
+				scrollbar.total = doc.nlines;
+				scrollbar.visible = vislines;
+				newo := scrollbar.track(p);
+				if(newo >= 0)
+					doc.topline = newo;
 				redraw();
-			} else if(p.buttons & 1) {
+			} else if(p.buttons & 3) {
+				# B1 or B2 in scrollbar area
 				pr := w.image.r;
-				stath := font.height + MARGIN * 2;
-				scrollr := Rect((pr.min.x, pr.min.y), (pr.min.x + SCROLLW, pr.max.y - stath));
+				sth := widgetmod->statusheight();
+				sw := widgetmod->scrollwidth();
+				scrollr := Rect((pr.min.x, pr.min.y), (pr.min.x + sw, pr.max.y - sth));
 				if(scrollr.contains(p.xy)) {
-					# Scrollbar click: page up/down based on thumb position
-					if(doc.nlines > 0 && vislines > 0) {
-						totalh := scrollr.dy();
-						thumbh := (vislines * totalh) / doc.nlines;
-						if(thumbh < 10) thumbh = 10;
-						if(thumbh > totalh) thumbh = totalh;
-						thumby := scrollr.min.y;
-						if(doc.nlines > vislines)
-							thumby = scrollr.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
-						if(p.xy.y < thumby) {
-							doc.topline -= vislines;
-							if(doc.topline < 0) doc.topline = 0;
-						} else if(p.xy.y > thumby + thumbh) {
-							doc.topline += vislines;
-							maxtl := doc.nlines - vislines;
-							if(maxtl < 0) maxtl = 0;
-							if(doc.topline > maxtl) doc.topline = maxtl;
-						}
-					}
-				} else if(mousedown) {
+					scrollbar.total = doc.nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = doc.topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0)
+						doc.topline = newo;
+					redraw();
+				} else if(p.buttons & 1 && mousedown) {
 					# Drag: anchor is fixed, update selection end live
 					(ml, mc2) := pos2cursor(p.xy);
 					doc.curline = ml;
@@ -1181,9 +1202,10 @@ textrect(): Rect
 	if(w.image == nil)
 		return Rect((0,0),(0,0));
 	r := w.image.r;
-	statusheight := font.height + MARGIN * 2;
-	return Rect((r.min.x + SCROLLW + LNWIDTH, r.min.y + MARGIN),
-		    (r.max.x - MARGIN, r.max.y - statusheight));
+	sth := widgetmod->statusheight();
+	sw := widgetmod->scrollwidth();
+	return Rect((r.min.x + sw + LNWIDTH, r.min.y + MARGIN),
+		    (r.max.x - MARGIN, r.max.y - sth));
 }
 
 # ---------- Keyboard handling ----------
@@ -1384,54 +1406,12 @@ handlekey(key: int)
 	scrolltocursor();
 }
 
-handlefindkey(key: int)
-{
-	case key {
-	'\n' =>
-		doc.findmode = 0;
-		doc.searchstr = doc.findbuf;
-		findnext();
-	Kesc =>
-		doc.findmode = 0;
-	Kbs =>
-		if(len doc.findbuf > 0)
-			doc.findbuf = doc.findbuf[0:len doc.findbuf-1];
-	* =>
-		if(key >= 16r20)
-			doc.findbuf[len doc.findbuf] = key;
-	}
-}
-
 startgoto()
 {
 	doc.gotomode = 1;
 	doc.gotobuf = "";
-}
-
-handlegotokey(key: int)
-{
-	case key {
-	'\n' =>
-		doc.gotomode = 0;
-		if(doc.gotobuf != "") {
-			(ln, nil) := str->toint(doc.gotobuf, 10);
-			if(ln > 0) {
-				doc.curline = ln - 1;
-				if(doc.curline >= doc.nlines)
-					doc.curline = doc.nlines - 1;
-				doc.curcol = 0;
-				scrolltocursor();
-			}
-		}
-	Kesc =>
-		doc.gotomode = 0;
-	Kbs =>
-		if(len doc.gotobuf > 0)
-			doc.gotobuf = doc.gotobuf[0:len doc.gotobuf-1];
-	* =>
-		if(key >= '0' && key <= '9')
-			doc.gotobuf[len doc.gotobuf] = key;
-	}
+	statbar.prompt = "Go to line: ";
+	statbar.buf = "";
 }
 
 # ---------- Buffer manipulation ----------
@@ -1662,6 +1642,8 @@ startfind()
 {
 	doc.findmode = 1;
 	doc.findbuf = doc.searchstr;
+	statbar.prompt = "Find: ";
+	statbar.buf = doc.findbuf;
 }
 
 findnext()
@@ -1888,14 +1870,19 @@ redraw()
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	drawscrollbar(screen, Rect((r.min.x, r.min.y), (r.min.x + SCROLLW, r.max.y - statusheight)));
+	sw := widgetmod->scrollwidth();
+	scrollbar.resize(Rect((r.min.x, r.min.y), (r.min.x + sw, r.max.y - statusheight)));
+	scrollbar.total = doc.nlines;
+	scrollbar.visible = vislines;
+	scrollbar.origin = doc.topline;
+	scrollbar.draw(screen);
 
 	y := textr.min.y;
 	vrow := 0;
 	for(i := doc.topline; i < doc.nlines && vrow < maxvrows; i++) {
 		lns := string (i + 1);
 		lnw := font.width(lns);
-		screen.text(Point(r.min.x + SCROLLW + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
+		screen.text(Point(r.min.x + sw + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
 
 		expanded := expandtabs(doc.lines[i]);
 		start := 0;
@@ -1915,29 +1902,32 @@ redraw()
 	vislines = maxvrows;
 
 	drawcursor(1);
-	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
+	# Status bar
+	statbar.resize(Rect((r.min.x, r.max.y - statusheight), r.max));
+	if(doc.findmode) {
+		statbar.prompt = "Find: ";
+		statbar.buf = doc.findbuf;
+		statbar.leftcolor = nil;
+	} else if(doc.gotomode) {
+		statbar.prompt = "Go to line: ";
+		statbar.buf = doc.gotobuf;
+		statbar.leftcolor = nil;
+	} else {
+		statbar.prompt = nil;
+		info := doc.filepath;
+		if(info == "")
+			info = "(new file)";
+		if(doc.dirty) {
+			statbar.left = info + " [modified]";
+			statbar.leftcolor = dirtycolor;
+		} else {
+			statbar.left = info;
+			statbar.leftcolor = nil;
+		}
+		statbar.right = sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
+	}
+	statbar.draw(screen);
 	screen.flush(Draw->Flushnow);
-}
-
-drawscrollbar(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-
-	if(doc.nlines <= 0 || vislines <= 0)
-		return;
-
-	totalh := r.dy();
-	thumbh := (vislines * totalh) / doc.nlines;
-	if(thumbh < 10)
-		thumbh = 10;
-	if(thumbh > totalh)
-		thumbh = totalh;
-	thumby := r.min.y;
-	if(doc.nlines > vislines)
-		thumby = r.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
-
-	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
-	screen.draw(thumbr, lncolor, nil, Point(0, 0));
 }
 
 drawcursor(vis: int)
@@ -1989,36 +1979,6 @@ drawcursor(vis: int)
 		if(y >= textr.max.y)
 			return;
 		start = k;
-	}
-}
-
-drawstatus(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y), 0, 0, 0, lncolor, Point(0, 0));
-
-	x := r.min.x + MARGIN;
-	y := r.min.y + MARGIN;
-
-	if(doc.findmode) {
-		prompt := "Find: " + doc.findbuf + "_";
-		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
-	} else if(doc.gotomode) {
-		prompt := "Go to line: " + doc.gotobuf + "_";
-		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
-	} else {
-		info := doc.filepath;
-		if(info == "")
-			info = "(new file)";
-		if(doc.dirty) {
-			screen.text(Point(x, y), dirtycolor, Point(0, 0), font, info + " [modified]");
-		} else {
-			screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);
-		}
-
-		pos := sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
-		pw := font.width(pos);
-		screen.text(Point(r.max.x - pw - MARGIN, y), statusfgcolor, Point(0, 0), font, pos);
 	}
 }
 
