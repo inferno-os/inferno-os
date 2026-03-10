@@ -79,6 +79,9 @@ Dockerfile
 /dis/**/*.sbl
 # Compiled test bytecode in dis tree
 /dis/tests/*.dis
+/dis/lib/testing_test.dis
+# CI/local test output
+test-output.txt
 # Xenith plugin build artifacts (built from appl/xenith/xenith/)
 /xenith/dis/
 .env
