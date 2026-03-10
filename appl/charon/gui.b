@@ -356,6 +356,10 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 					if(mainwin != nil)
 						drawstatusbar(mainwin);
 				}
+				if(ev != nil) {
+					evchan <-= ev;
+					ev = nil;
+				}
 				continue;
 			}
 

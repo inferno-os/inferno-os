@@ -2960,7 +2960,7 @@ Frame.scrollabs(f : self ref Frame, p : Point)
 	margin := 0;
 	if (lay != nil)
 		margin = lay.margin;
-	x = max(0, min(x, f.totalr.max.x));
+	x = max(0, min(x, f.totalr.max.x + margin - f.cr.dx()));
 	y = max(0, min(y, f.totalr.max.y + margin - f.cr.dy()));
 	(oldx, oldy) := f.viewr.min;
 	if (oldx != x || oldy != y) {
