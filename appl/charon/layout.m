@@ -222,6 +222,8 @@ Lay: adt
 	letter_spacing: int;		# extra letter spacing in pixels (-1 = not set)
 	word_spacing: int;		# extra word spacing in pixels (-1 = not set)
 	white_space: byte;		# WSnormal, WSpre, WSnowrap, WS_prewrap
+	word_break: byte;		# WBnormal, WBbreak_all, WBkeep_all
+	text_overflow: byte;		# TOclip, TOellipsis
 
 	new: fn(targetwidth: int, just: byte, margin: int, bg: Build->Background) : ref Lay;
 };

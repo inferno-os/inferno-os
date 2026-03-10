@@ -53,7 +53,15 @@ W: Widget;
 	FLnone, FLleft, FLright,
 	CLnone, CLleft, CLright, CLboth,
 	VISvisible, VIShidden,
-	FFrequired, FFautofocus
+	FFrequired, FFautofocus,
+	BSZcontent, BSZborder,
+	WBnormal, WBbreak_all,
+	TOclip, TOellipsis,
+	DSPflex, DSPinline_flex,
+	FDrow, FDrow_reverse, FDcolumn, FDcolumn_reverse,
+	FWnowrap, FWwrap, FWwrap_reverse,
+	JCflex_start, JCflex_end, JCcenter, JCspace_between, JCspace_around, JCspace_evenly,
+	AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline
     : import B;
 
 # font stuff
@@ -4902,7 +4910,8 @@ Lay.new(targwidth: int, just: byte, margin: int, bg: Background) : ref Lay
 {
 	ans := ref Lay(Line.new(), Line.new(),
 			targwidth, 0, 0, margin, nil, bg, just, byte 0,
-			0, STYLNONE, STYLNONE, STYLNONE, byte 0);
+			0, STYLNONE, STYLNONE, STYLNONE, byte 0,
+			WBnormal, TOclip);
 	if(ans.targetwidth < 0)
 		ans.targetwidth = 0;
 	ans.start.pos = Point(margin, margin);
@@ -5198,8 +5207,12 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 		contentw = 10;
 
 	# Use width spec from computed style if present
-	if(cs != nil && cs.width.kind() == Dpixels)
-		contentw = cs.width.spec();
+	if(cs != nil && cs.width.kind() == Dpixels) {
+		if(cs.box_sizing == BSZborder)
+			contentw = cs.width.spec() - extraw;
+		else
+			contentw = cs.width.spec();
+	}
 	else if(cs != nil && cs.width.kind() == Dpercent && avail > 0)
 		contentw = avail * cs.width.spec() / 100 - extraw;
 
@@ -5236,6 +5249,8 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 		slay.letter_spacing = cs.letter_spacing;
 		slay.word_spacing = cs.word_spacing;
 		slay.white_space = cs.white_space;
+		slay.word_break = cs.word_break;
+		slay.text_overflow = cs.text_overflow;
 		if(cs.halign != Anone) {
 			if(cs.halign == Acenter)
 				slay.just = Acenter;
@@ -5250,7 +5265,11 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 	if(cs != nil && cs.text_transform != B->TTnone)
 		applytexttransform(box.content, cs.text_transform);
 
-	layalistitems(f, slay, box.content);
+	# Flexbox layout or normal flow
+	if(cs != nil && (cs.display == DSPflex || cs.display == DSPinline_flex))
+		layflexitems(f, slay, box.content, cs);
+	else
+		layalistitems(f, slay, box.content);
 
 	it.width = slay.width + extraw;
 	it.height = slay.height + extrah;
@@ -5258,7 +5277,11 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 
 	# Apply height spec if present
 	if(cs != nil && cs.height.kind() == Dpixels) {
-		spech := cs.height.spec() + extrah;
+		spech: int;
+		if(cs.box_sizing == BSZborder)
+			spech = cs.height.spec();
+		else
+			spech = cs.height.spec() + extrah;
 		if(spech > it.height)
 			it.height = spech;
 	}
@@ -5342,6 +5365,21 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 			contentorigin := Point(origin.x + bdl + padl, origin.y + bdt + padt);
 			drawlay(f, slay, contentorigin);
 		}
+	}
+
+	# Draw outline (outside the border, doesn't affect layout)
+	if(cs != nil && cs.outline_width > 0 && cs.outline_style != BSnone) {
+		ow := cs.outline_width;
+		ooff := cs.outline_offset;
+		oc := cs.outline_color;
+		if(oc == STYLNONE)
+			oc = cs.color;
+		if(oc == STYLNONE)
+			oc = 16r000000;	# default to black
+		outliner := Rect(
+			Point(origin.x - ow - ooff, origin.y - ow - ooff),
+			Point(origin.x + box.width + ow + ooff, origin.y + box.height + ow + ooff));
+		drawborder(im, outliner, ow, oc);
 	}
 }
 
@@ -5588,5 +5626,197 @@ layalistitems(f: ref Frame, lay: ref Lay, items: ref Item)
 		h := l.pos.y + l.height;
 		if(h > lay.height)
 			lay.height = h;
+	}
+}
+
+# Flexbox layout: arrange items according to flex-direction and justify-content.
+# This is a simplified implementation that handles the most common flexbox patterns.
+layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
+{
+	measure(f, items);
+
+	# Clear existing lines
+	for(l := lay.start; l.next != lay.end; ) {
+		nl := l.next;
+		l.next = nl.next;
+	}
+	lay.start.next = lay.end;
+	lay.end.prev = lay.start;
+	lay.width = 0;
+	lay.height = 0;
+
+	# Collect all flex items into a list and count them
+	nitems := 0;
+	totalw := 0;
+	maxh := 0;
+	totalh := 0;
+	maxw := 0;
+	for(it := items; it != nil; it = it.next) {
+		nitems++;
+		totalw += it.width;
+		totalh += it.height;
+		if(it.height > maxh)
+			maxh = it.height;
+		if(it.width > maxw)
+			maxw = it.width;
+	}
+
+	if(nitems == 0)
+		return;
+
+	isrow := cs.flex_direction == FDrow || cs.flex_direction == FDrow_reverse;
+	gap := cs.gap;
+
+	if(isrow) {
+		# Row direction: items flow horizontally
+		avail := lay.targetwidth;
+		totalgap := gap * (nitems - 1);
+		remaining := avail - totalw - totalgap;
+		if(remaining < 0)
+			remaining = 0;
+
+		# Calculate starting x based on justify-content
+		x := 0;
+		spacing := 0;
+		case int cs.justify_content {
+		int JCflex_end =>
+			x = remaining;
+		int JCcenter =>
+			x = remaining / 2;
+		int JCspace_between =>
+			if(nitems > 1)
+				spacing = remaining / (nitems - 1);
+		int JCspace_around =>
+			if(nitems > 0) {
+				spacing = remaining / nitems;
+				x = spacing / 2;
+			}
+		int JCspace_evenly =>
+			if(nitems > 0) {
+				spacing = remaining / (nitems + 1);
+				x = spacing;
+			}
+		}
+
+		if(cs.flex_direction == FDrow_reverse)
+			x = avail - x;
+
+		# Place each item on its own line at the computed position
+		for(it = items; it != nil; ) {
+			nit := it.next;
+			it.next = nil;
+
+			nl := Line.new();
+			nl.items = it;
+
+			# Align item vertically based on align-items
+			iy := 0;
+			case int cs.align_items {
+			int AIcenter =>
+				if(it.height < maxh)
+					iy = (maxh - it.height) / 2;
+			int AIflex_end =>
+				if(it.height < maxh)
+					iy = maxh - it.height;
+			int AIstretch =>
+				it.height = maxh;
+				it.ascent = maxh;
+			}
+
+			if(cs.flex_direction == FDrow_reverse) {
+				x -= it.width;
+				nl.pos = Point(x, iy);
+				x -= gap + spacing;
+			}
+			else {
+				nl.pos = Point(x, iy);
+				x += it.width + gap + spacing;
+			}
+			nl.width = it.width;
+			nl.height = it.height;
+			nl.ascent = it.ascent;
+			nl.flags |= Lchanged;
+
+			# Insert line
+			nl.prev = lay.end.prev;
+			nl.next = lay.end;
+			lay.end.prev.next = nl;
+			lay.end.prev = nl;
+
+			it = nit;
+		}
+
+		lay.width = avail;
+		lay.height = maxh;
+	}
+	else {
+		# Column direction: items flow vertically
+		avail := lay.targetwidth;
+		totalgap := gap * (nitems - 1);
+		# For column, "remaining" is vertical remaining space.
+		# We don't know the container height, so just stack items.
+		y := 0;
+
+		for(it = items; it != nil; ) {
+			nit := it.next;
+			it.next = nil;
+
+			nl := Line.new();
+			nl.items = it;
+
+			# Align item horizontally based on align-items
+			ix := 0;
+			case int cs.align_items {
+			int AIcenter =>
+				if(it.width < avail)
+					ix = (avail - it.width) / 2;
+			int AIflex_end =>
+				if(it.width < avail)
+					ix = avail - it.width;
+			int AIstretch =>
+				it.width = avail;
+			}
+
+			if(cs.flex_direction == FDcolumn_reverse) {
+				nl.pos = Point(ix, 0);
+			}
+			else {
+				nl.pos = Point(ix, y);
+				y += it.height + gap;
+			}
+			nl.width = it.width;
+			nl.height = it.height;
+			nl.ascent = it.ascent;
+			nl.flags |= Lchanged;
+
+			nl.prev = lay.end.prev;
+			nl.next = lay.end;
+			lay.end.prev.next = nl;
+			lay.end.prev = nl;
+
+			it = nit;
+		}
+
+		lay.width = avail;
+		if(cs.flex_direction == FDcolumn_reverse) {
+			# Reverse the y positions
+			totalh = 0;
+			for(l = lay.start.next; l != lay.end; l = l.next)
+				totalh += l.height + gap;
+			if(totalh > 0)
+				totalh -= gap;
+			cy := 0;
+			for(l = lay.end.prev; l != lay.start; l = l.prev) {
+				l.pos.y = cy;
+				cy += l.height + gap;
+			}
+			lay.height = totalh;
+		}
+		else {
+			if(y > 0)
+				lay.height = y - gap;
+			else
+				lay.height = 0;
+		}
 	}
 }

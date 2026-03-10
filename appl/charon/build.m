@@ -151,6 +151,42 @@ LSPoutside, LSPinside: con byte iota;
 # Visibility types
 VISvisible, VIShidden, VIScollapse: con byte iota;
 
+# Box-sizing types
+BSZcontent, BSZborder: con byte iota;
+
+# Word-break types
+WBnormal, WBbreak_all, WBkeep_all: con byte iota;
+
+# Text-overflow types
+TOclip, TOellipsis: con byte iota;
+
+# Cursor types
+CURauto, CURdefault, CURpointer, CURtext, CURmove, CURwait,
+	CURcrosshair, CURnot_allowed, CURcol_resize, CURrow_resize,
+	CURgrab, CURgrabbing, CURnone: con byte iota;
+
+# Flex direction types
+FDrow, FDrow_reverse, FDcolumn, FDcolumn_reverse: con byte iota;
+
+# Flex wrap types
+FWnowrap, FWwrap, FWwrap_reverse: con byte iota;
+
+# Justify-content types
+JCflex_start, JCflex_end, JCcenter, JCspace_between, JCspace_around, JCspace_evenly: con byte iota;
+
+# Align-items types
+AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline: con byte iota;
+
+# Display extension for flexbox
+DSPflex: con 10;
+DSPinline_flex: con 11;
+
+# Text-decoration style types
+TDSsolid, TDSdotted, TDSdashed, TDSdouble, TDSwavy: con byte iota;
+
+# Font-variant types
+FVnormal, FVsmall_caps: con byte iota;
+
 StyleInfo: adt
 {
 	color: int;		# text color, STYLNONE if not set
@@ -233,6 +269,48 @@ ComputedStyle: adt
 	# Other
 	overflow: byte;			# OVvisible..OVauto
 	visibility: byte;		# VISvisible..VIScollapse
+	box_sizing: byte;		# BSZcontent or BSZborder
+	cursor: byte;			# CURauto..CURnone
+	word_break: byte;		# WBnormal..WBkeep_all
+	text_overflow: byte;		# TOclip or TOellipsis
+	outline_width: int;		# outline width in pixels
+	outline_style: byte;		# BSnone..BSoutset (reuse border styles)
+	outline_color: int;		# outline color
+	outline_offset: int;		# outline offset in pixels
+
+	# Flexbox
+	flex_direction: byte;		# FDrow..FDcolumn_reverse
+	flex_wrap: byte;		# FWnowrap..FWwrap_reverse
+	justify_content: byte;		# JCflex_start..JCspace_evenly
+	align_items: byte;		# AIflex_start..AIbaseline
+	flex_grow: int;			# flex-grow * 100 (fixed-point)
+	flex_shrink: int;		# flex-shrink * 100 (fixed-point)
+	flex_basis: Dimen;		# flex-basis dimension
+	order: int;			# flex order (STYLNONE if not set)
+	gap: int;			# gap between flex items in pixels
+
+	# CSS3 transforms (stored for future rendering)
+	transform: string;		# raw transform value (e.g. "rotate(45deg)")
+	transition: string;		# raw transition value
+
+	# Generated content (::before / ::after pseudo-elements)
+	content_before: string;		# text to insert before element
+	content_after: string;		# text to insert after element
+
+	# Multi-column layout
+	column_count: int;		# number of columns (STYLNONE if not set)
+	column_width: int;		# column width in pixels (STYLNONE if not set)
+	column_gap: int;		# gap between columns in pixels
+	column_rule_width: int;		# column rule line width
+	column_rule_style: byte;	# column rule style (BSnone..BSoutset)
+	column_rule_color: int;		# column rule color
+
+	# Text decoration extensions
+	text_decoration_style: byte;	# TDSsolid, TDSdotted, TDSdashed, TDSdouble, TDSwavy
+	text_decoration_color: int;	# STYLNONE if not set (uses text color)
+
+	# Font variant
+	font_variant: byte;		# FVnormal, FVsmall_caps
 
 	new: fn() : ref ComputedStyle;
 	tostyleinfo: fn(cs: self ref ComputedStyle) : StyleInfo;
@@ -248,6 +326,7 @@ ElementCtx: adt
 	class: string;			# element class attribute
 	parent: cyclic ref ElementCtx;	# parent element
 	child_index: int;			# index among siblings
+	attrs: list of (string, string);	# (name, value) pairs for attribute selectors
 
 	new: fn(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx;
 };
@@ -283,10 +362,12 @@ SelectorPart: adt
 	stype: int;			# SPelement, SPclass, etc.
 	name: string;			# tag name, class name, or id
 	combinator: int;		# 0=subject, ' '=descendant, '>'=child, '+'=adjacent
+	attrop: string;			# for SPattrib: "=" "~=" "|=" "^=" "$=" "*="
+	attrval: string;		# for SPattrib: value to match
 };
 
 # Selector part types
-SPelement, SPclass, SPid, SPpseudo, SPany: con iota;
+SPelement, SPclass, SPid, SPpseudo, SPany, SPattrib: con iota;
 
 
 # Formfield Item: a field from a form

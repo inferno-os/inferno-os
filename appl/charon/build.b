@@ -172,7 +172,22 @@ UA_CSS: con
 	+ "big { font-size: large }\n"
 	+ "small { font-size: small }\n"
 	+ "mark { background-color: yellow }\n"
-	+ "figure { margin-left: 40px; margin-right: 40px }\n";
+	+ "figure { margin-left: 40px; margin-right: 40px }\n"
+	+ "figcaption { text-align: center; font-style: italic }\n"
+	+ "details { border: 1px solid; padding: 4px }\n"
+	+ "summary { font-weight: bold; cursor: pointer }\n"
+	+ "abbr { text-decoration: underline }\n"
+	+ "sub { vertical-align: bottom; font-size: small }\n"
+	+ "sup { vertical-align: top; font-size: small }\n"
+	+ "hr { border-top: 1px solid; margin-top: 8px; margin-bottom: 8px }\n"
+	+ "blockquote { margin-left: 40px; margin-right: 40px }\n"
+	+ "address { font-style: italic }\n"
+	+ "dialog { border: 1px solid; padding: 16px; background-color: white }\n"
+	+ "meter, progress { display: inline }\n"
+	+ "button { border: 2px outset; padding: 2px 8px }\n"
+	+ "input, textarea, select { border: 1px solid }\n"
+	+ "a { color: blue; text-decoration: underline; cursor: pointer }\n"
+	+ "a:visited { color: purple }\n";
 
 utf8 : Btos;
 latin1 : Btos;
@@ -2016,7 +2031,7 @@ TokLoop:
 			}
 
 		# HTML5 semantic block elements (behave like <div>)
-		LX->Tarticle or LX->Taside or LX->Tdetails or LX->Tfooter or
+		LX->Tarticle or LX->Taside or LX->Tfooter or
 		LX->Theader or LX->Tmain or LX->Tnav or LX->Tsection or LX->Tsummary =>
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
@@ -2035,6 +2050,40 @@ TokLoop:
 				if(cs.halign == Anone)
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+					openbox(ps, cs);
+				} else
+					ps.boxstk = nil :: ps.boxstk;
+				# ::before pseudo-element content
+				if(cs.content_before != nil)
+					addtext(ps, cs.content_before);
+			}
+
+		# HTML5 <details> - disclosure widget with open/closed state
+		LX->Tdetails =>
+			si := getstyle(is, tag, tok);
+			(openf, nil) := tok.aval(LX->Aopen);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				al := atabbval(tok, LX->Aalign, align_tab, ps.curjust);
+				if(si.halign != Anone)
+					al = si.halign;
+				pushjust(ps, al);
+				si.halign = Anone;
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.halign == Anone)
+					cs.halign = al;
+				pushelemctx(is, tag, tok);
+				# Add disclosure triangle indicator
+				if(openf != 0)
+					addtext(ps, "\u25BC ");  # ▼ open
+				else
+					addtext(ps, "\u25B6 ");  # ▶ closed
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
 					openbox(ps, cs);
 				} else
@@ -3830,6 +3879,8 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 		"table-row" => si.display = DSPTABLEROW;
 		"table-cell" => si.display = DSPTABLECELL;
 		"table-caption" => si.display = DSPTABLECAPTION;
+		"flex" => si.display = DSPflex;
+		"inline-flex" => si.display = DSPinline_flex;
 		}
 	}
 }
@@ -3903,6 +3954,8 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"table-row" => cs.display = DSPTABLEROW;
 		"table-cell" => cs.display = DSPTABLECELL;
 		"table-caption" => cs.display = DSPTABLECAPTION;
+		"flex" => cs.display = DSPflex;
+		"inline-flex" => cs.display = DSPinline_flex;
 		}
 	"margin" =>
 		parsebox4(cs.margin, val);
@@ -4083,14 +4136,357 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		parseboxshadow(cs, val);
 	"text-shadow" =>
 		parsetextshadow(cs, val);
+	# CSS3 box sizing
+	"box-sizing" =>
+		case val {
+		"content-box" => cs.box_sizing = BSZcontent;
+		"border-box" => cs.box_sizing = BSZborder;
+		}
+	# CSS3 cursor
+	"cursor" =>
+		case val {
+		"auto" => cs.cursor = CURauto;
+		"default" => cs.cursor = CURdefault;
+		"pointer" => cs.cursor = CURpointer;
+		"text" => cs.cursor = CURtext;
+		"move" => cs.cursor = CURmove;
+		"wait" => cs.cursor = CURwait;
+		"crosshair" => cs.cursor = CURcrosshair;
+		"not-allowed" => cs.cursor = CURnot_allowed;
+		"col-resize" => cs.cursor = CURcol_resize;
+		"row-resize" => cs.cursor = CURrow_resize;
+		"grab" => cs.cursor = CURgrab;
+		"grabbing" => cs.cursor = CURgrabbing;
+		"none" => cs.cursor = CURnone;
+		}
+	# CSS3 word-break
+	"word-break" =>
+		case val {
+		"normal" => cs.word_break = WBnormal;
+		"break-all" => cs.word_break = WBbreak_all;
+		"keep-all" => cs.word_break = WBkeep_all;
+		}
+	"overflow-wrap" or "word-wrap" =>
+		case val {
+		"normal" => cs.word_break = WBnormal;
+		"break-word" => cs.word_break = WBbreak_all;
+		}
+	# CSS3 text-overflow
+	"text-overflow" =>
+		case val {
+		"clip" => cs.text_overflow = TOclip;
+		"ellipsis" => cs.text_overflow = TOellipsis;
+		}
+	# CSS3 outline (like border but doesn't affect layout)
+	"outline" =>
+		parseoutline_shorthand(cs, val);
+	"outline-width" =>
+		cs.outline_width = parsepx(val);
+	"outline-style" =>
+		cs.outline_style = parseborderstyle1(val);
+	"outline-color" =>
+		cs.outline_color = color(val, STYLNONE);
+	"outline-offset" =>
+		cs.outline_offset = parsepx(val);
+	# CSS3 border-side shorthands (border-top, border-right, etc.)
+	"border-top" =>
+		parseborderside_shorthand(cs, val, 0);
+	"border-right" =>
+		parseborderside_shorthand(cs, val, 1);
+	"border-bottom" =>
+		parseborderside_shorthand(cs, val, 2);
+	"border-left" =>
+		parseborderside_shorthand(cs, val, 3);
+	# Per-side border styles and colors
+	"border-top-style" =>
+		cs.border_style[0] = parseborderstyle1(val);
+	"border-right-style" =>
+		cs.border_style[1] = parseborderstyle1(val);
+	"border-bottom-style" =>
+		cs.border_style[2] = parseborderstyle1(val);
+	"border-left-style" =>
+		cs.border_style[3] = parseborderstyle1(val);
+	"border-top-color" =>
+		cs.border_color[0] = color(val, STYLNONE);
+	"border-right-color" =>
+		cs.border_color[1] = color(val, STYLNONE);
+	"border-bottom-color" =>
+		cs.border_color[2] = color(val, STYLNONE);
+	"border-left-color" =>
+		cs.border_color[3] = color(val, STYLNONE);
+	# CSS3 flexbox container properties
+	"flex-direction" =>
+		case val {
+		"row" => cs.flex_direction = FDrow;
+		"row-reverse" => cs.flex_direction = FDrow_reverse;
+		"column" => cs.flex_direction = FDcolumn;
+		"column-reverse" => cs.flex_direction = FDcolumn_reverse;
+		}
+	"flex-wrap" =>
+		case val {
+		"nowrap" => cs.flex_wrap = FWnowrap;
+		"wrap" => cs.flex_wrap = FWwrap;
+		"wrap-reverse" => cs.flex_wrap = FWwrap_reverse;
+		}
+	"flex-flow" =>
+		parseflexflow(cs, val);
+	"justify-content" =>
+		case val {
+		"flex-start" or "start" => cs.justify_content = JCflex_start;
+		"flex-end" or "end" => cs.justify_content = JCflex_end;
+		"center" => cs.justify_content = JCcenter;
+		"space-between" => cs.justify_content = JCspace_between;
+		"space-around" => cs.justify_content = JCspace_around;
+		"space-evenly" => cs.justify_content = JCspace_evenly;
+		}
+	"align-items" =>
+		case val {
+		"flex-start" or "start" => cs.align_items = AIflex_start;
+		"flex-end" or "end" => cs.align_items = AIflex_end;
+		"center" => cs.align_items = AIcenter;
+		"stretch" => cs.align_items = AIstretch;
+		"baseline" => cs.align_items = AIbaseline;
+		}
+	# CSS3 flexbox item properties
+	"flex-grow" =>
+		cs.flex_grow = parsepxfrac(val);
+	"flex-shrink" =>
+		cs.flex_shrink = parsepxfrac(val);
+	"flex-basis" =>
+		cs.flex_basis = parsedimen(val);
+	"flex" =>
+		parseflex_shorthand(cs, val);
+	"order" =>
+		cs.order = parsepx(val);
+	"gap" or "row-gap" or "column-gap" =>
+		cs.gap = parsepx(val);
+	# CSS3 transforms and transitions (store raw values)
+	"transform" =>
+		cs.transform = val;
+	"transition" =>
+		cs.transition = val;
+	# CSS content property (for ::before / ::after pseudo-elements)
+	"content" =>
+		if(val != "none" && val != "normal")
+			cs.content_before = parsecontent_value(val);
+	# CSS multi-column layout
+	"column-count" =>
+		if(val == "auto")
+			cs.column_count = STYLNONE;
+		else
+			cs.column_count = parsepx(val);
+	"column-width" =>
+		if(val == "auto")
+			cs.column_width = STYLNONE;
+		else
+			cs.column_width = parsepx(val);
+	"column-gap" =>
+		if(val == "normal")
+			cs.column_gap = 16;	# default 1em
+		else
+			cs.column_gap = parsepx(val);
+	"columns" =>
+		parsecolumns_shorthand(cs, val);
+	"column-rule" =>
+		parsecolumnrule_shorthand(cs, val);
+	"column-rule-width" =>
+		cs.column_rule_width = parsepx(val);
+	"column-rule-style" =>
+		cs.column_rule_style = parseborderstyle1(val);
+	"column-rule-color" =>
+		cs.column_rule_color = color(val, STYLNONE);
+	# CSS3 text-decoration extensions
+	"text-decoration-style" =>
+		case val {
+		"solid" => cs.text_decoration_style = TDSsolid;
+		"dotted" => cs.text_decoration_style = TDSdotted;
+		"dashed" => cs.text_decoration_style = TDSdashed;
+		"double" => cs.text_decoration_style = TDSdouble;
+		"wavy" => cs.text_decoration_style = TDSwavy;
+		}
+	"text-decoration-color" =>
+		cs.text_decoration_color = color(val, STYLNONE);
+	# Font variant
+	"font-variant" =>
+		case val {
+		"normal" => cs.font_variant = FVnormal;
+		"small-caps" => cs.font_variant = FVsmall_caps;
+		}
 	}
 }
 
-# Parse a pixel value from a CSS string like "10px", "2em", or bare "10"
+# Parse "columns: 3 200px" shorthand (count and width)
+parsecolumns_shorthand(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		if(w == "auto")
+			continue;
+		if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			# Could be count or width - if it has units, it's width
+			hasunit := 0;
+			for(j := 0; j < len w; j++)
+				if((w[j] >= 'a' && w[j] <= 'z') || w[j] == '%') {
+					hasunit = 1;
+					break;
+				}
+			if(hasunit)
+				cs.column_width = parsepx(w);
+			else
+				cs.column_count = parsepx(w);
+		}
+	}
+}
+
+# Parse "column-rule: 1px solid gray" shorthand
+parsecolumnrule_shorthand(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.column_rule_style = bs;
+		}
+		else if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			cs.column_rule_width = parsepx(w);
+		}
+		else {
+			c := color(w, STYLNONE);
+			if(c != STYLNONE)
+				cs.column_rule_color = c;
+		}
+	}
+}
+
+# Parse CSS content value: strip quotes, handle basic escapes
+parsecontent_value(val: string) : string
+{
+	if(val == nil || val == "")
+		return nil;
+	# Strip surrounding quotes
+	n := len val;
+	if(n >= 2 && ((val[0] == '"' && val[n-1] == '"') || (val[0] == '\'' && val[n-1] == '\'')))
+		return val[1:n-1];
+	# Handle special values
+	case val {
+	"none" or "normal" or "inherit" =>
+		return nil;
+	"open-quote" =>
+		return "\u201C";
+	"close-quote" =>
+		return "\u201D";
+	"no-open-quote" or "no-close-quote" =>
+		return nil;
+	}
+	return val;
+}
+
+# Parse "outline: 1px solid red" shorthand
+parseoutline_shorthand(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.outline_width = 0;
+		cs.outline_style = BSnone;
+		cs.outline_color = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.outline_style = bs;
+		}
+		else if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			cs.outline_width = parsepx(w);
+		}
+		else {
+			c := color(w, STYLNONE);
+			if(c != STYLNONE)
+				cs.outline_color = c;
+		}
+	}
+}
+
+# Parse "border-top: 1px solid red" shorthand for a single side
+parseborderside_shorthand(cs: ref ComputedStyle, val: string, side: int)
+{
+	if(val == "none") {
+		cs.border_width[side] = 0;
+		cs.border_style[side] = BSnone;
+		cs.border_color[side] = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		w := parts[i];
+		bs := parseborderstyle1(w);
+		if(bs != BSnone || w == "none") {
+			cs.border_style[side] = bs;
+		}
+		else if(len w > 0 && w[0] >= '0' && w[0] <= '9') {
+			cs.border_width[side] = parsepx(w);
+		}
+		else {
+			c := color(w, STYLNONE);
+			if(c != STYLNONE)
+				cs.border_color[side] = c;
+		}
+	}
+}
+
+# Parse "flex-flow: row wrap" shorthand
+parseflexflow(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	for(i := 0; i < len parts; i++) {
+		case parts[i] {
+		"row" => cs.flex_direction = FDrow;
+		"row-reverse" => cs.flex_direction = FDrow_reverse;
+		"column" => cs.flex_direction = FDcolumn;
+		"column-reverse" => cs.flex_direction = FDcolumn_reverse;
+		"nowrap" => cs.flex_wrap = FWnowrap;
+		"wrap" => cs.flex_wrap = FWwrap;
+		"wrap-reverse" => cs.flex_wrap = FWwrap_reverse;
+		}
+	}
+}
+
+# Parse "flex: grow shrink basis" shorthand
+parseflex_shorthand(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.flex_grow = 0;
+		cs.flex_shrink = 0;
+		cs.flex_basis = Dimen.make(Dnone, 0);
+		return;
+	}
+	if(val == "auto") {
+		cs.flex_grow = 100;
+		cs.flex_shrink = 100;
+		cs.flex_basis = Dimen.make(Dnone, 0);
+		return;
+	}
+	parts := splitwords(val);
+	if(len parts >= 1)
+		cs.flex_grow = parsepxfrac(parts[0]);
+	if(len parts >= 2)
+		cs.flex_shrink = parsepxfrac(parts[1]);
+	if(len parts >= 3)
+		cs.flex_basis = parsedimen(parts[2]);
+}
+
+# Parse a pixel value from a CSS string like "10px", "2em", "1rem", or bare "10"
+# Also handles calc() expressions with simple + and - operations
 parsepx(val: string) : int
 {
 	if(val == nil || val == "")
 		return 0;
+	# Handle calc() expression
+	if(len val > 5 && val[:5] == "calc(")
+		return parsecalc(val);
 	n := 0;
 	neg := 0;
 	i := 0;
@@ -4100,12 +4496,103 @@ parsepx(val: string) : int
 	}
 	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
 		n = n * 10 + (val[i] - '0');
-	# handle em units (approximate: 1em ≈ 16px)
+	# Handle fractional part for accurate rounding
+	if(i < len val && val[i] == '.') {
+		i++;
+		frac := 0;
+		div := 1;
+		for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++) {
+			frac = frac * 10 + (val[i] - '0');
+			div *= 10;
+		}
+		if(frac * 2 >= div)
+			n++;  # round up
+	}
+	# handle em/rem units (approximate: 1em ≈ 16px)
 	if(i+1 < len val && val[i] == 'e' && val[i+1] == 'm')
 		n = n * 16;
+	else if(i+2 < len val && val[i] == 'r' && val[i+1] == 'e' && val[i+2] == 'm')
+		n = n * 16;
+	# handle pt units (approximate: 1pt ≈ 1.33px)
+	else if(i+1 < len val && val[i] == 'p' && val[i+1] == 't')
+		n = n * 4 / 3;
+	# handle vw/vh (approximate: treat as percentage of 800px/600px viewport)
+	else if(i+1 < len val && val[i] == 'v' && val[i+1] == 'w')
+		n = n * 8;
+	else if(i+1 < len val && val[i] == 'v' && val[i+1] == 'h')
+		n = n * 6;
 	if(neg)
 		n = -n;
 	return n;
+}
+
+# Parse a basic calc() expression: calc(100px - 20px), calc(50% + 10px)
+# Supports +, -, simple values. Percentages are approximated as portion of 800px.
+parsecalc(val: string) : int
+{
+	# Strip "calc(" and ")"
+	inner := "";
+	if(len val > 5 && val[:5] == "calc(") {
+		end := len val;
+		if(end > 0 && val[end-1] == ')')
+			end--;
+		inner = val[5:end];
+	}
+	else
+		return 0;
+
+	# Tokenize into numbers and operators
+	result := 0;
+	op := '+';
+	i := 0;
+	n := len inner;
+	for(;;) {
+		# skip whitespace
+		for(; i < n && (inner[i] == ' ' || inner[i] == '\t'); )
+			i++;
+		if(i >= n)
+			break;
+		# check for operator
+		if(inner[i] == '+' || inner[i] == '-') {
+			if(i > 0) {  # don't treat leading sign as operator
+				op = inner[i];
+				i++;
+				continue;
+			}
+		}
+		# parse a value
+		term := 0;
+		neg := 0;
+		if(i < n && inner[i] == '-') {
+			neg = 1;
+			i++;
+		}
+		for(; i < n && inner[i] >= '0' && inner[i] <= '9'; i++)
+			term = term * 10 + (inner[i] - '0');
+		# check units
+		if(i < n && inner[i] == '%') {
+			term = term * 800 / 100;  # approximate viewport width
+			i++;
+		}
+		else if(i+1 < n && inner[i] == 'p' && inner[i+1] == 'x')
+			i += 2;
+		else if(i+1 < n && inner[i] == 'e' && inner[i+1] == 'm') {
+			term = term * 16;
+			i += 2;
+		}
+		else if(i+2 < n && inner[i] == 'r' && inner[i+1] == 'e' && inner[i+2] == 'm') {
+			term = term * 16;
+			i += 3;
+		}
+		if(neg)
+			term = -term;
+		if(op == '+')
+			result += term;
+		else if(op == '-')
+			result -= term;
+		op = '+';
+	}
+	return result;
 }
 
 # Parse a fractional number value (e.g. "0.6", "75")
@@ -4222,6 +4709,9 @@ parsedimen(val: string) : Dimen
 {
 	if(val == nil || val == "" || val == "auto")
 		return Dimen.make(Dnone, 0);
+	# Handle calc() - resolve to pixels
+	if(len val > 5 && val[:5] == "calc(")
+		return Dimen.make(Dpixels, parsecalc(val));
 	n := 0;
 	i := 0;
 	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
@@ -4494,18 +4984,32 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 			s := hd ssl;
 			pick sp := s {
 			Element =>
-				parts = ref SelectorPart(SPelement, sp.name, comb) :: parts;
+				parts = ref SelectorPart(SPelement, sp.name, comb, nil, nil) :: parts;
 				specificity += 1;
 			Class =>
-				parts = ref SelectorPart(SPclass, sp.name, comb) :: parts;
+				parts = ref SelectorPart(SPclass, sp.name, comb, nil, nil) :: parts;
 				specificity += 10;
 			ID =>
-				parts = ref SelectorPart(SPid, sp.name, comb) :: parts;
+				parts = ref SelectorPart(SPid, sp.name, comb, nil, nil) :: parts;
 				specificity += 100;
 			Any =>
-				parts = ref SelectorPart(SPany, "*", comb) :: parts;
+				parts = ref SelectorPart(SPany, "*", comb, nil, nil) :: parts;
 			Pseudo =>
-				parts = ref SelectorPart(SPpseudo, sp.name, comb) :: parts;
+				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil) :: parts;
+				specificity += 10;
+			Attrib =>
+				aval := "";
+				if(sp.value != nil) {
+					pick av := sp.value {
+					Ident => aval = av.name;
+					String => aval = av.value;
+					}
+				}
+				parts = ref SelectorPart(SPattrib, sp.name, comb, sp.op, aval) :: parts;
+				specificity += 10;
+			Pseudofn =>
+				# Functional pseudo-class like :nth-child(2n+1)
+				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil) :: parts;
 				specificity += 10;
 			}
 		}
@@ -4761,7 +5265,37 @@ ComputedStyle.new() : ref ComputedStyle
 		0, 0, 0, STYLNONE,	# box_shadow x, y, blur, color
 		0, 0, 0, STYLNONE,	# text_shadow x, y, blur, color
 		OVvisible,		# overflow
-		VISvisible		# visibility
+		VISvisible,		# visibility
+		BSZcontent,		# box_sizing
+		CURauto,		# cursor
+		WBnormal,		# word_break
+		TOclip,			# text_overflow
+		0,			# outline_width
+		BSnone,			# outline_style
+		STYLNONE,		# outline_color
+		0,			# outline_offset
+		FDrow,			# flex_direction
+		FWnowrap,		# flex_wrap
+		JCflex_start,		# justify_content
+		AIflex_start,		# align_items (note: CSS default is stretch, but start is safer)
+		0,			# flex_grow (0 = default)
+		100,			# flex_shrink (1.0 * 100)
+		Dimen.make(Dnone, 0),	# flex_basis
+		STYLNONE,		# order
+		0,			# gap
+		nil,			# transform
+		nil,			# transition
+		nil,			# content_before
+		nil,			# content_after
+		STYLNONE,		# column_count
+		STYLNONE,		# column_width
+		0,			# column_gap
+		0,			# column_rule_width
+		BSnone,			# column_rule_style
+		STYLNONE,		# column_rule_color
+		TDSsolid,		# text_decoration_style
+		STYLNONE,		# text_decoration_color
+		FVnormal		# font_variant
 	);
 }
 
@@ -4811,7 +5345,7 @@ ElementCtx.new(tag: int, id, class: string, parent: ref ElementCtx) : ref Elemen
 	ci := 0;
 	if(parent != nil)
 		ci = parent.child_index + 1;
-	return ref ElementCtx(tag, id, class, parent, ci);
+	return ref ElementCtx(tag, id, class, parent, ci, nil);
 }
 
 # StyleStore constructor
@@ -4855,6 +5389,92 @@ selmatchone(sp: ref SelectorPart, el: ref ElementCtx) : int
 		return el.id == sp.name;
 	SPany =>
 		return 1;
+	SPpseudo =>
+		case sp.name {
+		"first-child" =>
+			return el.child_index == 0;
+		"last-child" =>
+			# Approximate: can't know total siblings, accept any
+			return 1;
+		"hover" or "active" or "focus" or "visited" =>
+			# Dynamic pseudo-classes: can't match statically
+			return 0;
+		"link" =>
+			return el.tag < LX->Numtags && LX->tagnames[el.tag] == "a";
+		"root" =>
+			return el.parent == nil;
+		"empty" =>
+			# Would require content inspection; approximate
+			return 0;
+		"first-of-type" =>
+			return el.child_index == 0;
+		"nth-child" =>
+			# Would need arg parsing (e.g., nth-child(2n+1))
+			return 0;
+		}
+		return 0;
+	SPattrib =>
+		return attrmatch(el, sp);
+	}
+	return 0;
+}
+
+# Match an attribute selector against element attributes
+attrmatch(el: ref ElementCtx, sp: ref SelectorPart) : int
+{
+	if(el == nil || sp == nil)
+		return 0;
+	attrname := sp.name;
+	# Search for the attribute in the element's attribute list
+	for(al := el.attrs; al != nil; al = tl al) {
+		(name, value) := hd al;
+		if(name != attrname)
+			continue;
+		# Attribute exists - check operator
+		if(sp.attrop == nil || sp.attrop == "")
+			return 1;	# [attr] - just presence check
+		case sp.attrop {
+		"=" =>
+			# Exact match
+			return value == sp.attrval;
+		"~=" =>
+			# Space-separated word match
+			return hasword(value, sp.attrval);
+		"|=" =>
+			# Starts with value or value-
+			return value == sp.attrval
+				|| (len value > len sp.attrval
+					&& value[:len sp.attrval] == sp.attrval
+					&& value[len sp.attrval] == '-');
+		"^=" =>
+			# Starts with
+			return len value >= len sp.attrval
+				&& value[:len sp.attrval] == sp.attrval;
+		"$=" =>
+			# Ends with
+			return len value >= len sp.attrval
+				&& value[len value - len sp.attrval:] == sp.attrval;
+		"*=" =>
+			# Contains substring
+			return strcontains(value, sp.attrval);
+		}
+		return 0;
+	}
+	return 0;	# attribute not found
+}
+
+# Check if s contains sub as a substring
+strcontains(s, sub: string) : int
+{
+	slen := len s;
+	sublen := len sub;
+	if(sublen == 0)
+		return 1;
+	if(sublen > slen)
+		return 0;
+	for(i := 0; i <= slen - sublen; i++) {
+		if(s[i:i+sublen] == sub)
+			return 1;
 	}
 	return 0;
 }
@@ -4880,6 +5500,23 @@ selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
 		case sp.combinator {
 		'>' =>
 			# Child combinator: must match immediate parent
+			cur = cur.parent;
+			if(cur == nil || !selmatchone(sp, cur))
+				return 0;
+		'+' =>
+			# Adjacent sibling combinator: must match previous sibling
+			# Previous sibling has same parent and child_index - 1
+			if(cur.parent == nil || cur.child_index < 1)
+				return 0;
+			# We don't have a sibling pointer, so check parent relationship.
+			# The adjacent sibling must match the selector part.
+			# Since we track child_index, use parent to represent the sibling context.
+			cur = cur.parent;
+			if(cur == nil || !selmatchone(sp, cur))
+				return 0;
+		'~' =>
+			# General sibling combinator: any preceding sibling
+			# Simplified: walk up to parent (acts like child for our tree model)
 			cur = cur.parent;
 			if(cur == nil || !selmatchone(sp, cur))
 				return 0;
@@ -4975,6 +5612,14 @@ pushelemctx(is: ref ItemSource, tag: int, tok: ref LX->Token)
 	if(is.elemstk != nil)
 		parent = hd is.elemstk;
 	ctx := ElementCtx.new(tag, id, class, parent);
+	# Collect all token attributes for CSS attribute selector matching
+	if(tok != nil) {
+		for(al := tok.attr; al != nil; al = tl al) {
+			a := hd al;
+			if(a.attid >= 0 && a.attid < LX->Numattrs)
+				ctx.attrs = (LX->attrnames[a.attid], a.value) :: ctx.attrs;
+		}
+	}
 	is.elemstk = ctx :: is.elemstk;
 }
 
@@ -5012,6 +5657,38 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 		sval := aval(tok, LX->Astyle);
 		if(sval != nil && sval != "")
 			parsecstyle(cs, sval);
+	}
+
+	# Look for ::before/::after pseudo-element rules
+	if(is.elemstk != nil && is.styles != nil) {
+		el := hd is.elemstk;
+		for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
+			sheet := hd sheets;
+			for(rules := sheet.rules; rules != nil; rules = tl rules) {
+				rule := hd rules;
+				if(rule.selectors == nil)
+					continue;
+				sp := hd rule.selectors;
+				if(sp.stype == SPpseudo && (sp.name == "before" || sp.name == "after")) {
+					# Check if the rest of the selector matches this element
+					rest := tl rule.selectors;
+					matched := 0;
+					if(rest == nil)
+						matched = 1;	# bare ::before applies to all
+					else
+						matched = selectormatch(rest, el);
+					if(matched && rule.property == "content") {
+						cval := parsecontent_value(rule.value);
+						if(cval != nil) {
+							if(sp.name == "before")
+								cs.content_before = cval;
+							else
+								cs.content_after = cval;
+						}
+					}
+				}
+			}
+		}
 	}
 	return cs;
 }

@@ -41,6 +41,7 @@ Lex: module
 		Aid, Aismap, Alabel, Alang, Alanguage, Alink, Alist, Alongdesc, Alowsrc,
 		Amarginheight, Amarginwidth, Amax, Amaxlength, Amedia, Amethod, Amin, Amultiple,
 		Aname, Anohref, Anoresize, Anoshade, Anovalidate, Anowrap, Aobject,
+		Aopen,
 		Aonabort, Aonblur, Aonchange, Aonclick, Aondblclick,
 		Aonerror, Aonfocus, Aonkeydown, Aonkeypress, Aonkeyup, Aonload,
 		Aonmousedown, Aonmousemove, Aonmouseout, Aonmouseover,

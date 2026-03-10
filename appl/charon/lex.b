@@ -223,6 +223,7 @@ attrnames = array[] of {
 	"novalidate",
 	"nowrap",
 	"object",
+	"open",
 	"onabort",
 	"onblur",
 	"onchange",
