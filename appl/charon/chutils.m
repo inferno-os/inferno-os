@@ -345,6 +345,8 @@ CharonUtils: module
 	abortgo: fn(gopgrp: int);
 	netget: fn();
 
+	fetchurl_text: fn(url: ref Url->Parsedurl) : string;
+
 	# Miscellaneous utility functions
 	kill: fn(pid: int, dogroup: int);
 	getline: fn(fd: ref Sys->FD, buf: array of byte, bstart, bend: int) :

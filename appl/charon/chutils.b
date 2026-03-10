@@ -363,6 +363,66 @@ freebs(bs: ref ByteSource)
 	<-anschan;
 }
 
+# Fetch a URL synchronously and return the response body as a string.
+# Returns nil on error or empty response.
+fetchurl_text(url: ref Parsedurl) : string
+{
+	if(url == nil)
+		return nil;
+	ri := ref ReqInfo(url, HGet, nil, nil, nil);
+	bs := startreq(ri);
+	if(bs.err != "") {
+		freebs(bs);
+		return nil;
+	}
+	# Wait for header
+	waitreq(bs :: nil);
+	if(bs.err != "") {
+		freebs(bs);
+		return nil;
+	}
+	# Handle redirects (up to 5)
+	for(nredir := 0; nredir < 5 && !bs.eof; nredir++) {
+		if(bs.hdr == nil) {
+			waitreq(bs :: nil);
+			if(bs.err != "")
+				break;
+			continue;
+		}
+		(use, nil, nil, newurl) := hdraction(bs, 0, nredir);
+		if(use)
+			break;
+		if(newurl != nil) {
+			freebs(bs);
+			ri = ref ReqInfo(newurl, HGet, nil, nil, nil);
+			bs = startreq(ri);
+			if(bs.err != "") {
+				freebs(bs);
+				return nil;
+			}
+			waitreq(bs :: nil);
+			if(bs.err != "") {
+				freebs(bs);
+				return nil;
+			}
+		} else
+			break;
+	}
+	# Wait for all data
+	while(!bs.eof) {
+		waitreq(bs :: nil);
+		if(bs.err != "") {
+			freebs(bs);
+			return nil;
+		}
+	}
+	result := "";
+	if(bs.edata > 0)
+		result = string bs.data[0:bs.edata];
+	freebs(bs);
+	return result;
+}
+
 abortgo(gopgrp: int)
 {
 	if(int config.dbg['d'])

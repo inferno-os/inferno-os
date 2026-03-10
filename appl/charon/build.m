@@ -327,6 +327,7 @@ ElementCtx: adt
 	parent: cyclic ref ElementCtx;	# parent element
 	child_index: int;			# index among siblings
 	attrs: list of (string, string);	# (name, value) pairs for attribute selectors
+	prev_sibling: cyclic ref ElementCtx;	# previous sibling for + and ~ combinators
 
 	new: fn(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx;
 };
@@ -364,6 +365,7 @@ SelectorPart: adt
 	combinator: int;		# 0=subject, ' '=descendant, '>'=child, '+'=adjacent
 	attrop: string;			# for SPattrib: "=" "~=" "|=" "^=" "$=" "*="
 	attrval: string;		# for SPattrib: value to match
+	arg: string;			# for SPpseudo functional: e.g. "odd", "2n+1"
 };
 
 # Selector part types
@@ -754,6 +756,7 @@ ItemSource: adt
 	tagstyles: array of ref StyleInfo;	# CSS rules from <style> blocks, indexed by tag
 	styles: ref StyleStore;			# CSS stylesheet store (class/id selectors)
 	elemstk: list of ref ElementCtx;	# element context stack for CSS matching
+	lastpopped: ref ElementCtx;		# last popped element (for sibling tracking)
 	instyle: int;				# true when inside <style> block
 	styletext: string;			# accumulates text inside <style> block
 
