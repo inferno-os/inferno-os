@@ -619,16 +619,34 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		s := string data;
 		n := len data;
 		err: string;
-		# !reshape: allocate window on first connect only.
+		# !reshape / !onscreen: allocate window on first connect only.
 		# Subsequent reshapes for apps are ignored (z-order managed via top/bottom).
-		if(len s >= 8 && s[0:8] == "!reshape") {
+		# !onscreen is the first !-prefixed call from wmclient (gui.b init calls
+		# win.onscreen before evhandle is spawned); wmlib blocks on <-wm.images
+		# after any !-prefixed write, so we must send back an image here too.
+		if(len s >= 8 && s[0:8] == "!reshape" ||
+		   len s >= 9 && s[0:9] == "!onscreen") {
 			if(c == lucipresclient) {
 				img := scr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
 				if(img == nil) {
 					err = "window creation failed";
 					n = -1;
-				} else
+				} else {
 					c.setimage("app", img);
+					# scr.newwindow() places the new lucipres window at the TOP of
+					# presscr by default, pushing any active app window behind it.
+					# Re-raise the active app so it stays in front of lucipres.
+					<-applock;
+					for(rasi := 0; rasi < nappslots; rasi++) {
+						if(appslots[rasi] != nil &&
+						   appslots[rasi].id == activeappid &&
+						   appslots[rasi].client != nil) {
+							appslots[rasi].client.top();
+							break;
+						}
+					}
+					applock <-= 1;
+				}
 			} else if(c.image("app") == nil) {
 				# First reshape for this app: allocate content-area window
 				tabh2 := 0;
