@@ -3579,6 +3579,29 @@ Keyring_p256_make_point(void *fp)
 	*f->ret = (Keyring_ECpoint*)ep;
 }
 
+void
+Keyring_p256_point_bytes(void *fp)
+{
+	F_Keyring_p256_point_bytes *f;
+	XECpoint *ep;
+	uchar outbuf[65];
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->pub == H)
+		return;
+
+	ep = checktype(f->pub, TECpoint, exBadPK, 0);
+
+	outbuf[0] = 0x04;
+	memmove(outbuf + 1, ep->point.x, 32);
+	memmove(outbuf + 33, ep->point.y, 32);
+
+	*f->ret = mem2array(outbuf, 65);
+}
+
 /*
  *  P-384 (secp384r1) ECDSA verify only
  *  Uses raw byte arrays instead of an ADT.

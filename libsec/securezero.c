@@ -7,15 +7,17 @@
 #include "os.h"
 #include <libsec.h>
 
-#if defined(__APPLE__) || defined(__linux__)
-/* Both macOS and glibc/musl provide explicit_bzero */
+#if defined(__linux__)
+/* Linux glibc/musl provide explicit_bzero */
+extern void explicit_bzero(void *, size_t);
 void
 secureZero(void *p, ulong n)
 {
 	explicit_bzero(p, n);
 }
 #else
-/* Volatile function pointer prevents dead-store elimination */
+/* Volatile function pointer prevents dead-store elimination.
+ * Used on macOS and other platforms. */
 static void
 securezero_fallback(void *p, ulong n)
 {

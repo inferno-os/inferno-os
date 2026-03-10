@@ -273,6 +273,7 @@ Keyring: module
 	p256_ecdsa_sign:   fn(priv: array of byte, hash: array of byte): array of byte;
 	p256_ecdsa_verify: fn(pub: ref ECpoint, hash: array of byte, sig: array of byte): int;
 	p256_make_point:   fn(pubkey: array of byte): ref ECpoint;
+	p256_point_bytes:  fn(pub: ref ECpoint): array of byte;
 
 	# P-384 ECDSA verify (raw byte arrays, no ADT)
 	p384_ecdsa_verify: fn(pubkey: array of byte, hash: array of byte, sig: array of byte): int;
