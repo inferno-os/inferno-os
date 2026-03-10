@@ -147,7 +147,7 @@ testMultiProducer(t: ref T)
 	}
 
 	t.asserteq(count, n, "received all producer messages");
-	for(i := 0; i < n; i++)
+	for(i = 0; i < n; i++)
 		t.asserteq(received[i], 1, sys->sprint("received from producer %d", i));
 }
 

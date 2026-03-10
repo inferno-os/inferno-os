@@ -210,7 +210,7 @@ testHMACSHA256(t: ref T)
 	key := array of byte "secret";
 	msg := array of byte "hello world";
 	digest := array[Keyring->SHA256dlen] of byte;
-	kr->hmac_sha256(msg, len msg, key, len key, digest, nil);
+	kr->hmac_sha256(msg, len msg, key, digest, nil);
 	hex := hexencode(digest);
 	t.asserteq(len hex, 64, "hmac-sha256 length");
 	t.assertnotnil(hex, "hmac-sha256 non-empty");
@@ -221,7 +221,7 @@ testHMACSHA1(t: ref T)
 	key := array of byte "key";
 	msg := array of byte "message";
 	digest := array[Keyring->SHA1dlen] of byte;
-	kr->hmac_sha1(msg, len msg, key, len key, digest, nil);
+	kr->hmac_sha1(msg, len msg, key, digest, nil);
 	hex := hexencode(digest);
 	t.asserteq(len hex, 40, "hmac-sha1 length");
 }
@@ -231,7 +231,7 @@ testHMACMD5(t: ref T)
 	key := array of byte "key";
 	msg := array of byte "message";
 	digest := array[Keyring->MD5dlen] of byte;
-	kr->hmac_md5(msg, len msg, key, len key, digest, nil);
+	kr->hmac_md5(msg, len msg, key, digest, nil);
 	hex := hexencode(digest);
 	t.asserteq(len hex, 32, "hmac-md5 length");
 }
@@ -250,8 +250,8 @@ testIPintBasic(t: ref T)
 	neg := IPint.inttoip(-1);
 	t.asserteq(neg.iptoint(), -1, "iptoint -1");
 
-	big := IPint.inttoip(1000000);
-	t.asserteq(big.iptoint(), 1000000, "iptoint 1000000");
+	bignum := IPint.inttoip(1000000);
+	t.asserteq(bignum.iptoint(), 1000000, "iptoint 1000000");
 }
 
 testIPintArithmetic(t: ref T)
@@ -339,7 +339,7 @@ testAESCBC(t: ref T)
 	for(i := 0; i < len key; i++)
 		key[i] = byte i;
 	iv := array[16] of byte;
-	for(i := 0; i < len iv; i++)
+	for(i = 0; i < len iv; i++)
 		iv[i] = byte 0;
 
 	# Encrypt
@@ -349,7 +349,7 @@ testAESCBC(t: ref T)
 		return;
 	}
 	plain := array[32] of byte;
-	for(i := 0; i < len plain; i++)
+	for(i = 0; i < len plain; i++)
 		plain[i] = byte (i * 3);
 	cipher := array[32] of byte;
 	cipher[:] = plain;
@@ -357,7 +357,7 @@ testAESCBC(t: ref T)
 
 	# Verify ciphertext differs from plaintext
 	same := 1;
-	for(i := 0; i < len cipher; i++)
+	for(i = 0; i < len cipher; i++)
 		if(cipher[i] != plain[i]) {
 			same = 0;
 			break;
@@ -366,7 +366,7 @@ testAESCBC(t: ref T)
 
 	# Decrypt
 	iv2 := array[16] of byte;
-	for(i := 0; i < len iv2; i++)
+	for(i = 0; i < len iv2; i++)
 		iv2[i] = byte 0;
 	dstate := kr->aessetup(key, iv2);
 	if(dstate == nil) {
@@ -393,7 +393,7 @@ testAES256(t: ref T)
 		return;
 	}
 	data := array[48] of byte;
-	for(i := 0; i < len data; i++)
+	for(i = 0; i < len data; i++)
 		data[i] = byte 'A';
 	orig := array[48] of byte;
 	orig[:] = data;
@@ -451,29 +451,29 @@ testKeySerialization(t: ref T)
 	pk := kr->sktopk(sk);
 
 	# PK round-trip
-	pkstr := kr->pktostr(pk, "rsa");
+	pkstr := kr->pktostr(pk);
 	t.assertnotnil(pkstr, "pktostr non-empty");
 
-	pk2 := kr->strtopk(pkstr, "rsa");
+	pk2 := kr->strtopk(pkstr);
 	if(pk2 == nil) {
 		t.error("strtopk returned nil");
 		return;
 	}
 
 	# Re-serialize and compare
-	pkstr2 := kr->pktostr(pk2, "rsa");
+	pkstr2 := kr->pktostr(pk2);
 	t.assertseq(pkstr, pkstr2, "PK serialize roundtrip");
 
 	# SK round-trip
-	skstr := kr->sktostr(sk, "rsa");
+	skstr := kr->sktostr(sk);
 	t.assertnotnil(skstr, "sktostr non-empty");
 
-	sk2 := kr->strtosk(skstr, "rsa");
+	sk2 := kr->strtosk(skstr);
 	if(sk2 == nil) {
 		t.error("strtosk returned nil");
 		return;
 	}
-	skstr2 := kr->sktostr(sk2, "rsa");
+	skstr2 := kr->sktostr(sk2);
 	t.assertseq(skstr, skstr2, "SK serialize roundtrip");
 }
 
@@ -635,7 +635,7 @@ testDESCBC(t: ref T)
 
 	# DES-CBC needs blocks of 8
 	plain := array[16] of byte;
-	for(i := 0; i < len plain; i++)
+	for(i = 0; i < len plain; i++)
 		plain[i] = byte (i * 5);
 	cipher := array[16] of byte;
 	cipher[:] = plain;
