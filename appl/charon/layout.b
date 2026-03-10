@@ -57,6 +57,7 @@ W: Widget;
 	BSZcontent, BSZborder,
 	WBnormal, WBbreak_all,
 	TOclip, TOellipsis,
+	DSPINLINEBLOCK,
 	DSPflex, DSPinline_flex,
 	FDrow, FDrow_reverse, FDcolumn, FDcolumn_reverse,
 	FWnowrap, FWwrap, FWwrap_reverse,
@@ -989,7 +990,7 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 				i.table.width.kindspec = kindspec;
 		Ibox =>
 			# Size box using sublayout, like a table cell
-			checkboxsize(f, i, i);
+			checkboxsize(f, i, i, lwid-w);
 		Irule =>
 			avail := lwid-w;
 			# When just doing layout for cell dimensions, don't
@@ -1259,7 +1260,7 @@ measure(fr: ref Frame, items: ref Item)
 			Ibox =>
 				# float containing a box
 				measure(fr, i.content);
-				checkboxsize(fr, t, i);
+				checkboxsize(fr, t, i, TABLEFLOATTARGET);
 			* =>
 				CU->assert(0);
 			}
@@ -1334,7 +1335,12 @@ lgeom(H, A: int, it: ref Item) : (int, int)
 	Itable =>
 		atype = Atop;
 	Ibox =>
-		atype = Atop;
+		# inline-block with vertical-align uses specified alignment
+		if(i.cstyle != nil && i.cstyle.display == DSPINLINEBLOCK
+		    && i.cstyle.vertical_align != Anone)
+			atype = i.cstyle.vertical_align;
+		else
+			atype = Atop;
 	Ifloat =>
 		return (H, A);
 	}
@@ -5187,7 +5193,9 @@ applytexttransform(items: ref Item, tt: byte)
 
 # Size an Ibox item using a sublayout, similar to how table cells work.
 # The box gets its own Lay where content is laid out.
-checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
+# availwidth is the available line width for sizing (used for inline-block
+# shrink-to-fit and percentage width calculations).
+checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 {
 	cs := box.cstyle;
 	padl := 0;
@@ -5212,9 +5220,18 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 	extrah := padt + padb + bdt + bdb;
 
 	# Calculate available width for content
-	avail := it.width;
-	if(avail <= 0)
-		avail = 600;	# reasonable default
+	isinline := cs != nil && cs.display == DSPINLINEBLOCK;
+	avail: int;
+	if(isinline) {
+		# inline-block: use available line width for shrink-to-fit
+		avail = availwidth;
+		if(avail <= 0)
+			avail = 400;
+	} else {
+		avail = it.width;
+		if(avail <= 0)
+			avail = 600;	# reasonable default
+	}
 	contentw := avail - extraw;
 	if(contentw < 10)
 		contentw = 10;
