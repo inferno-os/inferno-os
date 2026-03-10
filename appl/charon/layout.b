@@ -555,7 +555,7 @@ createvscroll(f: ref Frame)
 	if(W != nil) {
 		pick sc := f.vscr {
 		Cscrollbar =>
-			sc.wsb = Scrollbar.new(f.vscr.r);
+			sc.wsb = Scrollbar.new(f.vscr.r, 1);
 		}
 	}
 	f.vscr.draw(1);
@@ -573,6 +573,12 @@ createhscroll(f: ref Frame)
 	f.cr.max.y -= breadth;
 	if(f.cr.dy() <= 2*f.marginh)
 		CU->raisex("EXInternal: frame too small for layout");
+	if(W != nil) {
+		pick sc := f.hscr {
+		Cscrollbar =>
+			sc.wsb = Scrollbar.new(f.hscr.r, 0);
+		}
+	}
 	f.hscr.draw(1);
 }
 
@@ -3901,12 +3907,17 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 			}
 		}
 	Cscrollbar =>
-		# Widget.m scrollbar for frame-level vertical scrollbars
+		# Widget.m scrollbar for frame-level scrollbars
 		if(c.wsb != nil && c.ctl == nil) {
-			# Synthesize a Pointer from Charon's mouse event
+			# Decode B2 events alongside B1
+			b2down := (mtype == E->Mmbuttondown);
+			b2drag := (mtype == E->Mmdrag);
+			# Synthesize a Pointer with correct button mask
 			buttons := 0;
 			if(down || drag)
 				buttons = 1;
+			else if(b2down || b2drag)
+				buttons = 2;
 			ptr := ref Pointer(buttons, p, 0);
 			newo := -1;
 			if(c.wsb.isactive()) {
@@ -3915,7 +3926,7 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 					newgrab = c;
 					changed = 1;
 				}
-			} else if(down) {
+			} else if(down || b2down) {
 				newo = c.wsb.event(ptr);
 				if(newo >= 0) {
 					newgrab = c;
@@ -3923,7 +3934,10 @@ Control.domouse(ctl: self ref Control, p: Point, mtype: int, oldgrab : ref Contr
 				}
 			}
 			if(newo >= 0) {
-				c.f.yscroll(CAscrollabs, newo);
+				if(c.flags&CFscrvert)
+					c.f.yscroll(CAscrollabs, newo);
+				else
+					c.f.xscroll(CAscrollabs, newo);
 				changed = 1;
 			}
 		} else {

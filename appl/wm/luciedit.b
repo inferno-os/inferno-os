@@ -342,7 +342,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		dirtycolor = display.color(DIRTYCOL);
 	}
 	widgetmod->init(display, font);
-	scrollbar = Scrollbar.new(Rect((0,0),(0,0)));
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Load file if specified

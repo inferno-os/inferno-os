@@ -232,7 +232,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		promptcolor = display_g.color(PROMPTCOL);
 	}
 	widgetmod->init(display_g, font);
-	scrollbar = Scrollbar.new(Rect((0,0),(0,0)));
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Set up window

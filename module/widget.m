@@ -65,9 +65,11 @@ Widget: module
 		total:   int;           # total content units
 		visible: int;           # visible content units
 		origin:  int;           # current top/left position
+		vert:    int;           # 1 = vertical, 0 = horizontal
 
 		# Create a scrollbar for the given rectangle.
-		new:     fn(r: Draw->Rect): ref Scrollbar;
+		# vert: 1 for vertical (default), 0 for horizontal.
+		new:     fn(r: Draw->Rect, vert: int): ref Scrollbar;
 
 		# Draw the scrollbar into dst.
 		# Caller must update total/visible/origin before calling.

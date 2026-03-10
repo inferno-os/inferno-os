@@ -22,7 +22,7 @@ include "widget.m";
 
 SCROLLW: con 12;	# scrollbar width in pixels
 MARGIN:  con 4;		# text padding in status bar
-MINTHUMB: con 10;	# minimum thumb height in pixels
+MINTHUMB: con 10;	# minimum thumb size in pixels
 
 wfont:    ref Font;
 
@@ -105,25 +105,52 @@ statusheight(): int
 
 # ── Scrollbar ─────────────────────────────────────────────────
 
+# Return the primary-axis length and the pointer coordinate on that axis.
+sblength(sb: ref Scrollbar): int
+{
+	if(sb.vert)
+		return sb.r.dy();
+	return sb.r.dx();
+}
+
+sbpos(sb: ref Scrollbar, p: Point): int
+{
+	if(sb.vert)
+		return p.y;
+	return p.x;
+}
+
+sbmin(sb: ref Scrollbar): int
+{
+	if(sb.vert)
+		return sb.r.min.y;
+	return sb.r.min.x;
+}
+
 # Compute thumb rectangle within scrollbar rect.
 thumbrect(sb: ref Scrollbar): Rect
 {
 	r := sb.r;
-	totalh := r.dy();
-	if(sb.total <= 0 || sb.visible <= 0 || totalh <= 0)
-		return Rect((r.min.x + 2, r.min.y), (r.max.x - 2, r.min.y));
+	tlen := sblength(sb);
+	if(sb.total <= 0 || sb.visible <= 0 || tlen <= 0) {
+		if(sb.vert)
+			return Rect((r.min.x + 2, r.min.y), (r.max.x - 2, r.min.y));
+		return Rect((r.min.x, r.min.y + 2), (r.min.x, r.max.y - 2));
+	}
 
-	thumbh := (sb.visible * totalh) / sb.total;
-	if(thumbh < MINTHUMB)
-		thumbh = MINTHUMB;
-	if(thumbh > totalh)
-		thumbh = totalh;
+	thumbsz := (sb.visible * tlen) / sb.total;
+	if(thumbsz < MINTHUMB)
+		thumbsz = MINTHUMB;
+	if(thumbsz > tlen)
+		thumbsz = tlen;
 
-	thumby := r.min.y;
+	tpos := sbmin(sb);
 	if(sb.total > sb.visible)
-		thumby = r.min.y + (sb.origin * (totalh - thumbh)) / (sb.total - sb.visible);
+		tpos = sbmin(sb) + (sb.origin * (tlen - thumbsz)) / (sb.total - sb.visible);
 
-	return Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
+	if(sb.vert)
+		return Rect((r.min.x + 2, tpos), (r.max.x - 2, tpos + thumbsz));
+	return Rect((tpos, r.min.y + 2), (tpos + thumbsz, r.max.y - 2));
 }
 
 # Clamp origin to valid range.
@@ -140,19 +167,18 @@ clamporigin(sb: ref Scrollbar): int
 	return o;
 }
 
-# Convert a y coordinate in the track to an absolute origin.
-ytoorigin(sb: ref Scrollbar, y: int): int
+# Convert a coordinate on the primary axis to an absolute origin.
+postoorigin(sb: ref Scrollbar, v: int): int
 {
-	r := sb.r;
-	totalh := r.dy();
-	if(totalh <= 0 || sb.total <= 0)
+	tlen := sblength(sb);
+	if(tlen <= 0 || sb.total <= 0)
 		return 0;
-	frac := y - r.min.y;
+	frac := v - sbmin(sb);
 	if(frac < 0)
 		frac = 0;
-	if(frac > totalh)
-		frac = totalh;
-	o := (frac * sb.total) / totalh;
+	if(frac > tlen)
+		frac = tlen;
+	o := (frac * sb.total) / tlen;
 	maxtl := sb.total - sb.visible;
 	if(maxtl < 0)
 		maxtl = 0;
@@ -161,9 +187,9 @@ ytoorigin(sb: ref Scrollbar, y: int): int
 	return o;
 }
 
-Scrollbar.new(r: Rect): ref Scrollbar
+Scrollbar.new(r: Rect, vert: int): ref Scrollbar
 {
-	return ref Scrollbar(r, 0, 0, 0);
+	return ref Scrollbar(r, 0, 0, 0, vert);
 }
 
 Scrollbar.draw(sb: self ref Scrollbar, dst: ref Image)
@@ -192,12 +218,14 @@ Scrollbar.event(sb: self ref Scrollbar, p: ref Pointer): int
 	if(sb.total <= 0 || sb.visible <= 0)
 		return -1;
 
+	v := sbpos(sb, p.xy);
+
 	# B2: absolute position jump — start tracking
 	if(p.buttons & 2) {
 		activesb = sb;
 		dragoffset = 0;
 		dragbutton = 2;
-		o := ytoorigin(sb, p.xy.y);
+		o := postoorigin(sb, v);
 		sb.origin = o;
 		return o;
 	}
@@ -205,20 +233,22 @@ Scrollbar.event(sb: self ref Scrollbar, p: ref Pointer): int
 	# B1: page up/down or thumb drag
 	if(p.buttons & 1) {
 		tr := thumbrect(sb);
-		if(p.xy.y >= tr.min.y && p.xy.y < tr.max.y) {
+		trmin := sbpos(sb, tr.min);
+		trmax := sbpos(sb, tr.max);
+		if(v >= trmin && v < trmax) {
 			# Pointer is on thumb — start drag
 			activesb = sb;
-			dragoffset = p.xy.y - tr.min.y;
+			dragoffset = v - trmin;
 			dragbutton = 1;
 			return sb.origin;
 		}
-		# Above thumb — page up
-		if(p.xy.y < tr.min.y) {
+		# Before thumb — page up/left
+		if(v < trmin) {
 			sb.origin -= sb.visible;
 			sb.origin = clamporigin(sb);
 			return sb.origin;
 		}
-		# Below thumb — page down
+		# After thumb — page down/right
 		sb.origin += sb.visible;
 		sb.origin = clamporigin(sb);
 		return sb.origin;
@@ -242,31 +272,32 @@ Scrollbar.track(sb: self ref Scrollbar, p: ref Pointer): int
 		return -1;
 	}
 
-	r := sb.r;
-	totalh := r.dy();
-	if(totalh <= 0 || sb.total <= sb.visible)
+	tlen := sblength(sb);
+	if(tlen <= 0 || sb.total <= sb.visible)
 		return sb.origin;
+
+	v := sbpos(sb, p.xy);
 
 	if(dragbutton == 2) {
 		# B2: absolute position tracking
-		o := ytoorigin(sb, p.xy.y);
+		o := postoorigin(sb, v);
 		sb.origin = o;
 		return o;
 	}
 
 	# B1: thumb drag — compute origin from pointer position
-	thumbh := (sb.visible * totalh) / sb.total;
-	if(thumbh < MINTHUMB)
-		thumbh = MINTHUMB;
-	if(thumbh > totalh)
-		thumbh = totalh;
+	thumbsz := (sb.visible * tlen) / sb.total;
+	if(thumbsz < MINTHUMB)
+		thumbsz = MINTHUMB;
+	if(thumbsz > tlen)
+		thumbsz = tlen;
 
-	available := totalh - thumbh;
+	available := tlen - thumbsz;
 	if(available <= 0)
 		return sb.origin;
 
-	# Where the top of the thumb should be
-	thumbtop := p.xy.y - dragoffset - r.min.y;
+	# Where the leading edge of the thumb should be
+	thumbtop := v - dragoffset - sbmin(sb);
 	if(thumbtop < 0)
 		thumbtop = 0;
 	if(thumbtop > available)
