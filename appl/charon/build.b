@@ -5193,7 +5193,7 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 		s := hd simplesel;
 		pick sp := s {
 		Element =>
-			# Simple tag selector: use fast tag-indexed path
+			# Simple tag selector: apply basic StyleInfo properties via fast path
 			tagid := -1;
 			for(ti := 0; ti < LX->Numtags; ti++)
 				if(LX->tagnames[ti] == sp.name) {
@@ -5202,12 +5202,12 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 				}
 			if(tagid >= 0)
 				applycssprop(is.tagstyles[tagid], prop, val);
-			return;
+			# Fall through to also store in StyleStore for ComputedStyle matching
 		Any =>
-			# Universal selector: apply to all tags
+			# Universal selector: apply basic StyleInfo to all tags
 			for(ti := 0; ti < LX->Numtags; ti++)
 				applycssprop(is.tagstyles[ti], prop, val);
-			return;
+			# Fall through to also store in StyleStore for ComputedStyle matching
 		}
 	}
 
@@ -5566,6 +5566,8 @@ ComputedStyle.fromstyleinfo(si: StyleInfo) : ref ComputedStyle
 # Check if this ComputedStyle has any box model properties set
 ComputedStyle.hasboxmodel(cs: self ref ComputedStyle) : int
 {
+	if(cs.float_ != FLnone)
+		return 1;
 	for(i := 0; i < 4; i++) {
 		if(cs.margin[i] != STYLNONE && cs.margin[i] != 0)
 			return 1;
@@ -5937,6 +5939,54 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 {
 	si := getstyle(is, tag, tok);
 	cs := ComputedStyle.fromstyleinfo(si);
+
+	# Apply simple class/ID/tag selector rules to ComputedStyle.
+	# matchclassid() already applied these to StyleInfo, but StyleInfo only
+	# carries basic properties (color, font, display).  Box-model properties
+	# (width, float, margin, padding, border, etc.) live exclusively on
+	# ComputedStyle and must be applied here for single-part selectors too.
+	if(is.styles != nil) {
+		id := "";
+		class := "";
+		if(tok != nil) {
+			ga := getgenattr(tok);
+			if(ga != nil) {
+				id = ga.id;
+				class = ga.class;
+			}
+		}
+		tagname := "";
+		if(tag >= 0 && tag < LX->Numtags)
+			tagname = LX->tagnames[tag];
+		for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
+			sheet := hd sheets;
+			for(rules := sheet.rules; rules != nil; rules = tl rules) {
+				rule := hd rules;
+				if(rule.selectors == nil)
+					continue;
+				sp := hd rule.selectors;
+				if(tl rule.selectors == nil) {
+					# Single-part selector: match against current element
+					matched := 0;
+					case sp.stype {
+					SPclass =>
+						if(class != nil && hasword(class, sp.name))
+							matched = 1;
+					SPid =>
+						if(id != nil && id == sp.name)
+							matched = 1;
+					SPelement =>
+						if(tagname == sp.name)
+							matched = 1;
+					SPany =>
+						matched = 1;
+					}
+					if(matched)
+						applycssprop_cs(cs, rule.property, rule.value);
+				}
+			}
+		}
+	}
 
 	# Apply complex selectors (with combinators) from StyleStore via ElementCtx
 	if(is.elemstk != nil && is.styles != nil) {
