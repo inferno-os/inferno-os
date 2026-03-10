@@ -337,8 +337,8 @@ UA_CSS: con
 	+ ".MainPageBG { padding: 4px }\n"
 	#
 	# == Sister projects (main page) ==
-	+ ".sister-project { display: inline-block; vertical-align: top; padding: 4px 8px; margin: 4px }\n"
-	+ ".other-project { display: inline-block; vertical-align: top; padding: 4px 8px; margin: 4px }\n"
+	+ ".sister-project { display: inline-block; vertical-align: top; width: 30%; padding: 4px 8px; margin: 4px }\n"
+	+ ".other-project { display: inline-block; vertical-align: top; width: 30%; padding: 4px 8px; margin: 4px }\n"
 	#
 	# == Plainlist (remove bullets) ==
 	+ ".plainlist ul { list-style-type: none; padding: 0; margin: 0 }\n"
@@ -754,7 +754,8 @@ TokLoop:
 				if(cs.halign == Anone)
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
-				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE
+				    || cs.display == DSPINLINEBLOCK) {
 					openbox(ps, cs);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
@@ -1719,6 +1720,9 @@ TokLoop:
 			tab.border_spacing = tabcs.border_spacing;
 			tab.empty_cells = tabcs.empty_cells;
 			tab.table_layout = tabcs.table_layout;
+			# CSS width overrides HTML width attribute
+			if(tabcs.width.kind() != Dnone)
+				tab.width = tabcs.width;
 			is.tabstk = tab :: is.tabstk;
 			di.tables = tab :: di.tables;
 			curtab = tab;
@@ -1835,6 +1839,10 @@ TokLoop:
 				aintval(tok, LX->Aheight, 0),
 				bg,
 				flags);
+			# CSS width overrides HTML width attribute on cells
+			cellcs := getcomputedstyle(is, tag, tok);
+			if(cellcs.width.kind() != Dnone)
+				c.wspec = cellcs.width;
 
 			bgurl := aurlval(tok, LX->Abackground, nil, di.base);
 			if(bgurl != nil) {
@@ -2798,7 +2806,10 @@ additem(ps: ref Pstate, it: ref Item, tok: ref LX->Token)
 # box content and wrap it in an Ibox.
 openbox(ps: ref Pstate, cs: ref ComputedStyle)
 {
-	addbrk(ps, 0, 0);
+	# inline-block and floated boxes don't need a break before them
+	isfloat := cs != nil && (cs.float_ == FLleft || cs.float_ == FLright);
+	if(!isfloat && (cs == nil || cs.display != DSPINLINEBLOCK))
+		addbrk(ps, 0, 0);
 	ps.boxstk = ref BoxCtx(ps.lastit, cs) :: ps.boxstk;
 }
 
@@ -2812,15 +2823,29 @@ closebox(ps: ref Pstate)
 	bctx := hd ps.boxstk;
 	ps.boxstk = tl ps.boxstk;
 
+	isinline := bctx.cs != nil && bctx.cs.display == DSPINLINEBLOCK;
+	isfloat := bctx.cs != nil
+		&& (bctx.cs.float_ == FLleft || bctx.cs.float_ == FLright);
 	splice := bctx.splicepoint;
 	content := splice.next;
 	if(content == nil) {
 		# Empty box — still emit it for background/border rendering
-		addbrk(ps, 0, 0);
+		if(!isinline)
+			addbrk(ps, 0, 0);
 		boxit := Item.newbox(nil, bctx.cs);
-		boxit.state |= IFbrk;
-		additem(ps, boxit, nil);
-		addbrk(ps, 0, 0);
+		if(!isinline)
+			boxit.state |= IFbrk;
+		else
+			boxit.state |= IFwrap;
+		if(isfloat) {
+			side := Aleft;
+			if(bctx.cs.float_ == FLright)
+				side = Aright;
+			additem(ps, Item.newfloat(boxit, side), nil);
+		} else
+			additem(ps, boxit, nil);
+		if(!isinline)
+			addbrk(ps, 0, 0);
 		return;
 	}
 
@@ -2830,11 +2855,24 @@ closebox(ps: ref Pstate)
 	ps.prelastit = nil;	# can't easily track; set nil (safe)
 
 	# Emit the box item with collected content
-	addbrk(ps, 0, 0);
 	boxit := Item.newbox(content, bctx.cs);
-	boxit.state |= IFbrk;
-	additem(ps, boxit, nil);
-	addbrk(ps, 0, 0);
+	if(isfloat) {
+		# CSS float: wrap box in an Ifloat item
+		boxit.state |= IFwrap;
+		side := Aleft;
+		if(bctx.cs.float_ == FLright)
+			side = Aright;
+		additem(ps, Item.newfloat(boxit, side), nil);
+	} else if(isinline) {
+		# inline-block: flow with surrounding content, allow line wrapping
+		boxit.state |= IFwrap;
+		additem(ps, boxit, nil);
+	} else {
+		addbrk(ps, 0, 0);
+		boxit.state |= IFbrk;
+		additem(ps, boxit, nil);
+		addbrk(ps, 0, 0);
+	}
 }
 
 getgenattr(tok: ref LX->Token) : ref Genattr
