@@ -2660,6 +2660,35 @@ fieldinstant(ex : ref Exec, field: ref Build->Formfield, oform: ref Obj) : ref V
 		options.host = me;
 	Build->Ftextarea =>
 		ty = "textarea";
+	Build->Femail =>
+		ty = "email";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Furl =>
+		ty = "url";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Fnumber =>
+		ty = "number";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Ftel =>
+		ty = "tel";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Fsearch =>
+		ty = "search";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Fdate =>
+		ty = "date";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Ftime =>
+		ty = "time";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Fcolor =>
+		ty = "color";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	Build->Frange =>
+		ty = "range";
+		reinitprop(ofield, "value", ES->strval(field.value));
+	* =>
+		ty = "text";
 	}
 	reinitprop(ofield, "type", ES->strval(ty));
 	for(el := field.events; el != nil; el = tl el) {

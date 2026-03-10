@@ -40,14 +40,23 @@ align_tab := array[] of { T->StringInt
 input_tab := array[] of { T->StringInt
 	("button",		Fbutton),
 	("checkbox",	Fcheckbox),
+	("color",		Fcolor),
+	("date",		Fdate),
+	("email",		Femail),
 	("file",		Ffile),
 	("hidden",		Fhidden),
 	("image",		Fimage),
+	("number",		Fnumber),
 	("password",	Fpassword),
 	("radio",		Fradio),
+	("range",		Frange),
 	("reset",		Freset),
+	("search",		Fsearch),
 	("submit",		Fsubmit),
+	("tel",		Ftel),
 	("text",		Ftext),
+	("time",		Ftime),
+	("url",		Furl),
 };
 
 clear_tab := array[] of { T->StringInt
@@ -73,8 +82,10 @@ BL: con byte 1;
 BLBA: con BL|SPBefore|SPAfter;
 blockbrk := array[LX->Numtags] of {
 	LX->Taddress => BLBA, LX->Tarticle => BL, LX->Taside => BL,
-	LX->Tblockquote => BLBA, LX->Tcenter => BL,
-	LX->Tdetails => BL, LX->Tdir => BLBA, LX->Tdiv => BL, LX->Tdd => BL,
+	LX->Taudio => BL,
+	LX->Tblockquote => BLBA, LX->Tcanvas => BL, LX->Tcenter => BL,
+	LX->Tdetails => BL, LX->Tdialog => BL,
+	LX->Tdir => BLBA, LX->Tdiv => BL, LX->Tdd => BL,
 	LX->Tdl => BLBA, LX->Tdt => BL,
 	LX->Tfigcaption => BL, LX->Tfigure => BLBA,
 	LX->Tfooter => BL, LX->Tform => BLBA,
@@ -86,7 +97,7 @@ blockbrk := array[LX->Numtags] of {
 	LX->Tmain => BL, LX->Tmenu => BLBA, LX->Tnav => BL,
 	LX->Tol => BLBA, LX->Tp => BLBA, LX->Tpre => BLBA,
 	LX->Tsection => BL, LX->Tsummary => BL,
-	LX->Tul => BLBA, LX->Txmp => BLBA,
+	LX->Tul => BLBA, LX->Tvideo => BL, LX->Txmp => BLBA,
 	* => byte 0
 };
 
@@ -132,10 +143,12 @@ UA_CSS: con
 	+ "h1, h2, h3, h4, h5, h6 { display: block }\n"
 	+ "article, aside, details, figcaption, figure, footer, "
 	+ "header, main, nav, section, summary { display: block }\n"
+	+ "audio, video, canvas, dialog { display: block }\n"
+	+ "template, datalist { display: none }\n"
 	+ "span, a, em, strong, b, i, u, s, strike, tt, code, kbd, samp, "
 	+ "var, dfn, cite, abbr, acronym, q, sub, sup, big, small, "
 	+ "label, font, basefont, bdo, del, ins { display: inline }\n"
-	+ "mark, time, output { display: inline }\n"
+	+ "mark, time, output, meter, progress { display: inline }\n"
 	+ "li { display: list-item }\n"
 	+ "table { display: table }\n"
 	+ "tr { display: table-row }\n"
@@ -975,11 +988,27 @@ TokLoop:
 					aintval(tok, LX->Amaxlength, 1000));
 			if(aboolval(tok, LX->Achecked))
 				field.flags = FFchecked;
+			# HTML5 attributes
+			field.placeholder = aval(tok, LX->Aplaceholder);
+			field.pattern = aval(tok, LX->Apattern);
+			if(aboolval(tok, LX->Arequired))
+				field.flags |= FFrequired;
+			if(aboolval(tok, LX->Aautofocus))
+				field.flags |= FFautofocus;
 
 			case field.ftype {
-				Ftext or Fpassword or Ffile =>
+				Ftext or Fpassword or Ffile
+				or Femail or Furl or Fnumber or Ftel or Fsearch or Fdate or Ftime =>
 					if(field.size == 0)
 						field.size = 20;
+				Fcolor =>
+					if(field.size == 0)
+						field.size = 8;
+					if(field.value == "")
+						field.value = "#000000";
+				Frange =>
+					if(field.size == 0)
+						field.size = 12;
 				Fcheckbox =>
 					if(field.name == "") {
 						if(warn)
@@ -2132,6 +2161,161 @@ TokLoop:
 		# HTML5 <wbr> - word break opportunity (void element)
 		LX->Twbr =>
 			additem(ps, Item.newspacer(ISPnull, ps.curfont), tok);
+
+		# HTML5 <progress> - progress bar (rendered as text fallback)
+		LX->Tprogress =>
+			pushelemctx(is, tag, tok);
+			# Show value as text: "[===     ] 60%"
+			val := aval(tok, LX->Avalue);
+			maxval := astrval(tok, LX->Amax, "1");
+			if(val != "") {
+				v := parsepxfrac(val);
+				m := parsepxfrac(maxval);
+				if(m <= 0)
+					m = 100;
+				pct := v * 100 / m;
+				if(pct > 100)
+					pct = 100;
+				filled := pct / 10;
+				bar := "[";
+				for(bi := 0; bi < 10; bi++) {
+					if(bi < filled)
+						bar += "=";
+					else
+						bar += " ";
+				}
+				bar += "] " + string pct + "%";
+				additem(ps, textit(ps, bar), tok);
+			}
+		LX->Tprogress+RBRA =>
+			popelemctx(is);
+
+		# HTML5 <meter> - scalar measurement (rendered as text fallback)
+		LX->Tmeter =>
+			pushelemctx(is, tag, tok);
+			val := aval(tok, LX->Avalue);
+			minval := astrval(tok, LX->Amin, "0");
+			maxval := astrval(tok, LX->Amax, "1");
+			if(val != "") {
+				v := parsepxfrac(val);
+				lo := parsepxfrac(minval);
+				hi := parsepxfrac(maxval);
+				if(hi <= lo)
+					hi = lo + 100;
+				pct := (v - lo) * 100 / (hi - lo);
+				if(pct < 0) pct = 0;
+				if(pct > 100) pct = 100;
+				filled := pct / 10;
+				bar := "[";
+				for(bi := 0; bi < 10; bi++) {
+					if(bi < filled)
+						bar += "|";
+					else
+						bar += " ";
+				}
+				bar += "] " + string pct + "%";
+				additem(ps, textit(ps, bar), tok);
+			}
+		LX->Tmeter+RBRA =>
+			popelemctx(is);
+
+		# HTML5 <datalist> - hidden by default; options used for input autocomplete
+		LX->Tdatalist =>
+			pushelemctx(is, tag, tok);
+			ps.skipping = 1;
+		LX->Tdatalist+RBRA =>
+			ps.skipping = 0;
+			popelemctx(is);
+
+		# HTML5 <dialog> - dialog box (block element, hidden by default unless open attr)
+		LX->Tdialog =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
+			addbrk(ps, 0, 0);
+		LX->Tdialog+RBRA =>
+			addbrk(ps, 0, 0);
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+			}
+
+		# HTML5 <template> - hidden content template (not rendered)
+		LX->Ttemplate =>
+			pushelemctx(is, tag, tok);
+			ps.skipping = 1;
+		LX->Ttemplate+RBRA =>
+			ps.skipping = 0;
+			popelemctx(is);
+
+		# HTML5 <audio>, <video> - media elements (show fallback content)
+		LX->Taudio or LX->Tvideo =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+				src := aval(tok, LX->Asrc);
+				if(src != "") {
+					label := "[Audio: " + src + "]";
+					if(tag == LX->Tvideo)
+						label = "[Video: " + src + "]";
+					additem(ps, textit(ps, label), tok);
+				}
+			}
+		LX->Taudio+RBRA or LX->Tvideo+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+			}
+
+		# HTML5 <source>, <track> - void media children (ignored by renderer)
+		LX->Tsource or LX->Ttrack =>
+			;
+
+		# HTML5 <canvas> - drawing surface (show fallback content)
+		LX->Tcanvas =>
+			pushelemctx(is, tag, tok);
+			si := getstyle(is, tag, tok);
+			if(si.display == DSPNONE) {
+				ps.skipping = 1;
+				ps.stylestk = -1 :: ps.stylestk;
+			}
+			else {
+				changes := applystyle(ps, si);
+				ps.stylestk = changes :: ps.stylestk;
+			}
+		LX->Tcanvas+RBRA =>
+			popelemctx(is);
+			if(ps.stylestk != nil) {
+				changes := hd ps.stylestk;
+				ps.stylestk = tl ps.stylestk;
+				if(changes == -1)
+					ps.skipping = 0;
+				else
+					unapplystyle(ps, di, changes);
+			}
 
 		* =>
 			if(warn)
@@ -3401,7 +3585,7 @@ Item.printlist(items: self ref Item, msg: string)
 Formfield.new(ftype, fieldid: int, form: ref Form, name, value: string, size, maxlength: int) : ref Formfield
 {
 	return ref Formfield(ftype, fieldid, form, name, value, size,
-				maxlength, 0, 0, byte 0, nil, nil, -1, nil, 0);
+				maxlength, 0, 0, byte 0, nil, nil, -1, nil, 0, "", "");
 }
 
 Form.new(formid: int, name: string, action: ref Parsedurl, target: string, method: int, events: list of Lex->Attr) : ref Form
@@ -3840,15 +4024,22 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		case val {
 		"static" => cs.position = POSstatic;
 		"relative" => cs.position = POSrelative;
+		"absolute" => cs.position = POSabsolute;
+		"fixed" => cs.position = POSfixed;
 		}
 	"top" =>
 		cs.rel_top = parsepx(val);
 	"left" =>
 		cs.rel_left = parsepx(val);
 	"right" =>
-		cs.rel_left = -parsepx(val);
+		cs.pos_right = parsepx(val);
 	"bottom" =>
-		cs.rel_top = -parsepx(val);
+		cs.pos_bottom = parsepx(val);
+	"z-index" =>
+		if(val == "auto")
+			cs.zindex = STYLNONE;
+		else
+			cs.zindex = parsepx(val);
 	"float" =>
 		case val {
 		"none" => cs.float_ = FLnone;
@@ -3875,6 +4066,23 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"hidden" => cs.visibility = VIShidden;
 		"collapse" => cs.visibility = VIScollapse;
 		}
+	# CSS3 Visual Effects
+	"opacity" =>
+		cs.opacity = parseopacity(val);
+	"border-radius" =>
+		parsebox4(cs.border_radius, val);
+	"border-top-left-radius" =>
+		cs.border_radius[0] = parsepx(val);
+	"border-top-right-radius" =>
+		cs.border_radius[1] = parsepx(val);
+	"border-bottom-right-radius" =>
+		cs.border_radius[2] = parsepx(val);
+	"border-bottom-left-radius" =>
+		cs.border_radius[3] = parsepx(val);
+	"box-shadow" =>
+		parseboxshadow(cs, val);
+	"text-shadow" =>
+		parsetextshadow(cs, val);
 	}
 }
 
@@ -3898,6 +4106,115 @@ parsepx(val: string) : int
 	if(neg)
 		n = -n;
 	return n;
+}
+
+# Parse a fractional number value (e.g. "0.6", "75")
+# Returns integer (for "0.6" returns 60 when used as percentage base)
+parsepxfrac(val: string) : int
+{
+	if(val == nil || val == "")
+		return 0;
+	n := 0;
+	neg := 0;
+	i := 0;
+	if(i < len val && val[i] == '-') {
+		neg = 1;
+		i++;
+	}
+	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
+		n = n * 10 + (val[i] - '0');
+	# handle decimal part
+	if(i < len val && val[i] == '.') {
+		i++;
+		frac := 0;
+		div := 1;
+		for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++) {
+			frac = frac * 10 + (val[i] - '0');
+			div *= 10;
+		}
+		# Scale: treat 0.6 as 60 (multiply by 100)
+		n = n * 100 + frac * 100 / div;
+	}
+	else
+		n = n * 100;
+	if(neg)
+		n = -n;
+	return n;
+}
+
+# Parse CSS opacity value "0.0" to "1.0" into 0-255 range
+parseopacity(val: string) : int
+{
+	if(val == nil || val == "")
+		return STYLNONE;
+	# Parse as fraction: 0.0-1.0
+	n := parsepxfrac(val);  # returns 0-100
+	if(n < 0) n = 0;
+	if(n > 100) n = 100;
+	return n * 255 / 100;
+}
+
+# Parse box-shadow: <x> <y> [blur] [color]
+parseboxshadow(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.box_shadow_x = 0;
+		cs.box_shadow_y = 0;
+		cs.box_shadow_blur = 0;
+		cs.box_shadow_color = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	np := len parts;
+	if(np < 2)
+		return;
+	cs.box_shadow_x = parsepx(parts[0]);
+	cs.box_shadow_y = parsepx(parts[1]);
+	if(np >= 3) {
+		# Check if third part is a number (blur) or color
+		if(len parts[2] > 0 && (parts[2][0] >= '0' && parts[2][0] <= '9' || parts[2][0] == '-')) {
+			cs.box_shadow_blur = parsepx(parts[2]);
+			if(np >= 4)
+				cs.box_shadow_color = color(parts[3], STYLNONE);
+		}
+		else
+			cs.box_shadow_color = color(parts[2], STYLNONE);
+	}
+}
+
+# Parse text-shadow: <x> <y> [blur] [color]
+parsetextshadow(cs: ref ComputedStyle, val: string)
+{
+	if(val == "none") {
+		cs.text_shadow_x = 0;
+		cs.text_shadow_y = 0;
+		cs.text_shadow_blur = 0;
+		cs.text_shadow_color = STYLNONE;
+		return;
+	}
+	parts := splitwords(val);
+	np := len parts;
+	if(np < 2)
+		return;
+	# text-shadow can start with color: "red 1px 1px"
+	off := 0;
+	if(len parts[0] > 0 && !(parts[0][0] >= '0' && parts[0][0] <= '9') && parts[0][0] != '-') {
+		cs.text_shadow_color = color(parts[0], STYLNONE);
+		off = 1;
+	}
+	if(off + 2 > np)
+		return;
+	cs.text_shadow_x = parsepx(parts[off]);
+	cs.text_shadow_y = parsepx(parts[off+1]);
+	if(off + 2 < np) {
+		if(len parts[off+2] > 0 && (parts[off+2][0] >= '0' && parts[off+2][0] <= '9' || parts[off+2][0] == '-')) {
+			cs.text_shadow_blur = parsepx(parts[off+2]);
+			if(off + 3 < np && cs.text_shadow_color == STYLNONE)
+				cs.text_shadow_color = color(parts[off+3], STYLNONE);
+		}
+		else if(cs.text_shadow_color == STYLNONE)
+			cs.text_shadow_color = color(parts[off+2], STYLNONE);
+	}
 }
 
 # Parse a CSS dimension value into a Dimen
@@ -4437,6 +4754,12 @@ ComputedStyle.new() : ref ComputedStyle
 		FLnone,			# float_
 		CLnone,			# clear
 		0, 0,			# rel_top, rel_left
+		STYLNONE, STYLNONE,	# pos_right, pos_bottom
+		STYLNONE,		# zindex
+		STYLNONE,		# opacity
+		array[4] of { * => 0 },	# border_radius
+		0, 0, 0, STYLNONE,	# box_shadow x, y, blur, color
+		0, 0, 0, STYLNONE,	# text_shadow x, y, blur, color
 		OVvisible,		# overflow
 		VISvisible		# visibility
 	);

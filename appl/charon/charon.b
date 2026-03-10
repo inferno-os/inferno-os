@@ -712,7 +712,11 @@ handlekey(e: ref Event.Ekey)
 						found = 1;
 						continue;
 					}
-					if (ff.ftype == B->Ftext || ff.ftype == B->Fpassword) {
+					if (ff.ftype == B->Ftext || ff.ftype == B->Fpassword
+				    || ff.ftype == B->Femail || ff.ftype == B->Furl
+				    || ff.ftype == B->Fnumber || ff.ftype == B->Ftel
+				    || ff.ftype == B->Fsearch || ff.ftype == B->Fdate
+				    || ff.ftype == B->Ftime) {
 						if (nextff == nil || found)
 							nextff = ff;
 						if (found)
@@ -1274,7 +1278,9 @@ floop:
 		if(f.ctlid >= 0)
 			c = fr.controls[f.ctlid];
 		case f.ftype {
-			B->Ftext or B->Fpassword or B->Ftextarea =>
+			B->Ftext or B->Fpassword or B->Ftextarea
+			or B->Femail or B->Furl or B->Fnumber or B->Ftel
+			or B->Fsearch or B->Fdate or B->Ftime or B->Frange =>
 				if(c != nil)
 					pick e := c {
 					Centry =>
@@ -1467,9 +1473,9 @@ formfield_click(f: ref Frame, frm: ref B->Form, ff: ref B->Formfield)
 formfield_select(f: ref Frame, ff: ref B->Formfield)
 {
 	case ff.ftype {
-	B->Ftext or
-	B->Fselect or
-	B->Ftextarea =>
+	B->Ftext or B->Fselect or B->Ftextarea
+	or B->Femail or B->Furl or B->Fnumber or B->Ftel
+	or B->Fsearch or B->Fdate or B->Ftime or B->Frange =>
 		ctl := f.controls[ff.ctlid];
 		pick c := ctl {
 		Centry =>
