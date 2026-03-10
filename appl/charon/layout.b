@@ -42,7 +42,14 @@ B: Build;
 	Tiny, Small, Normal, Large, Verylarge, NumSize, NumFnt, DefFnt,
 	ULnone, ULunder, ULmid,
 	FRnoresize, FRnoscroll, FRhscroll, FRvscroll,
-	FRhscrollauto, FRvscrollauto
+	FRhscrollauto, FRvscrollauto,
+	ComputedStyle, STYLNONE,
+	BSnone, BSsolid, BSdotted, BSdashed, BSgroove, BSridge, BSinset, BSoutset,
+	OVvisible, OVhidden,
+	POSstatic, POSrelative,
+	FLnone, FLleft, FLright,
+	CLnone, CLleft, CLright, CLboth,
+	VISvisible
     : import B;
 
 # font stuff
@@ -938,6 +945,9 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 			checktabsize(f, i, lwid-w);
 			if(kindspec != 0)
 				i.table.width.kindspec = kindspec;
+		Ibox =>
+			# Size box using sublayout, like a table cell
+			checkboxsize(f, i, i);
 		Irule =>
 			avail := lwid-w;
 			# When just doing layout for cell dimensions, don't
@@ -1184,9 +1194,35 @@ measure(fr: ref Frame, items: ref Item)
 				it.height = t.item.height;
 			Itable =>
 				checktabsize(fr, i, TABLEFLOATTARGET);
+			Ibox =>
+				# float containing a box
+				measure(fr, i.content);
+				checkboxsize(fr, t, i);
 			* =>
 				CU->assert(0);
 			}
+			it.ascent = it.height;
+		Ibox =>
+			# Box with CSS box model
+			measure(fr, t.content);
+			# Estimate box size from content (will be refined in fixlinegeom)
+			contentw := 0;
+			contenth := 0;
+			for(ci := t.content; ci != nil; ci = ci.next) {
+				contentw += ci.width;
+				if(ci.height > contenth)
+					contenth = ci.height;
+			}
+			# Add padding and border
+			cs := t.cstyle;
+			padw := 0;
+			padh := 0;
+			if(cs != nil) {
+				padw = cs.padding[1] + cs.padding[3] + cs.border_width[1] + cs.border_width[3];
+				padh = cs.padding[0] + cs.padding[2] + cs.border_width[0] + cs.border_width[2];
+			}
+			it.width = contentw + padw;
+			it.height = contenth + padh;
 			it.ascent = it.height;
 		Ispacer =>
 			case t.spkind {
@@ -1234,6 +1270,8 @@ lgeom(H, A: int, it: ref Item) : (int, int)
 	Iimage =>
 		atype = i.align;
 	Itable =>
+		atype = Atop;
+	Ibox =>
 		atype = Atop;
 	Ifloat =>
 		return (H, A);
@@ -1754,16 +1792,35 @@ sizetable(f: ref Frame, tab: ref Table, availwidth: int)
 }
 
 # Calculate various table spacing parameters
+# Handles CSS border-collapse and border-spacing
 tableparams(tab: ref Table) : (int, int, int, int, int, int, int)
 {
 	bd := tab.border;
 	hsp := tab.cellspacing;
 	vsp := hsp;
 	pad := tab.cellpadding;
+
+	# CSS border-spacing overrides cellspacing when set
+	if(tab.border_spacing > 0) {
+		hsp = tab.border_spacing;
+		vsp = tab.border_spacing;
+	}
+
+	# border-collapse: collapse eliminates inter-cell spacing
+	if(tab.border_collapse == byte 1) {
+		hsp = 0;
+		vsp = 0;
+	}
+
 	if(bd != 0)
 		cbd := 1;
 	else
 		cbd = 0;
+
+	# In collapsed mode, no cell border distinction
+	if(tab.border_collapse == byte 1)
+		cbd = 0;
+
 	hsep := 2*(cbd+pad)+hsp;
 	vsep := 2*(cbd+pad)+vsp;
 	return (hsp, vsp, pad, bd, cbd, hsep, vsep);
@@ -2176,6 +2233,10 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 		Itable =>
 			# don't check inview - table can contain images
 			drawtable(f, lay, Point(x,y), i.table);
+		Ibox =>
+			# Draw box with CSS box model
+			if(inview)
+				drawbox(f, lay, Point(x,y), i);
 		Ifloat =>
 			xx := layorigin.x + lay.margin;
 			if(i.side == Aright) {
@@ -2195,6 +2256,8 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 				drawimg(f, Point(xx, layorigin.y + i.y + (int fi.border + int fi.vspace)), fi);
 			Itable =>
 				drawtable(f, lay, Point(xx, layorigin.y + i.y), fi.table);
+			Ibox =>
+				drawbox(f, lay, Point(xx, layorigin.y + i.y), fi);
 			}
 		}
 		x += it.width;
@@ -2286,8 +2349,10 @@ drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
 		clay := f.sublays[c.layid];
 		if(clay == nil)
 			continue;
+		# empty-cells: hide - skip border/background for empty cells
+		if(tab.empty_cells == byte 1 && clay.height == 0)
+			continue;
 		cx := x + tab.cols[c.col].pos.x;
-		cy := y + tab.rows[c.row].pos.y;
 		wd := cellwidth(tab, c, hsep);
 		ht := cellheight(tab, c, vsep);
 		if(c.background.image != nil && c.background.image.ci != nil && c.background.image.ci.mims != nil) {
@@ -2388,6 +2453,9 @@ markchanges(loc: ref Loc)
 			pick it := loc.le[i].item {
 			Itable =>
 				it.table.flags |= Lchanged;
+			Ibox =>
+				# box sublayout will be redone on relayout
+				;
 			Ifloat =>
 				# whole layout will be redone if layout changes
 				# and there are any floats
@@ -4821,5 +4889,253 @@ animproc(f: ref Frame)
 			}
 		}
 		del = newdel;
+	}
+}
+
+# Size an Ibox item using a sublayout, similar to how table cells work.
+# The box gets its own Lay where content is laid out.
+checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
+{
+	cs := box.cstyle;
+	padl := 0;
+	padr := 0;
+	padt := 0;
+	padb := 0;
+	bdl := 0;
+	bdr := 0;
+	bdt := 0;
+	bdb := 0;
+	if(cs != nil) {
+		padl = cs.padding[3];
+		padr = cs.padding[1];
+		padt = cs.padding[0];
+		padb = cs.padding[2];
+		bdl = cs.border_width[3];
+		bdr = cs.border_width[1];
+		bdt = cs.border_width[0];
+		bdb = cs.border_width[2];
+	}
+	extraw := padl + padr + bdl + bdr;
+	extrah := padt + padb + bdt + bdb;
+
+	# Calculate available width for content
+	avail := it.width;
+	if(avail <= 0)
+		avail = 600;	# reasonable default
+	contentw := avail - extraw;
+	if(contentw < 10)
+		contentw = 10;
+
+	# Use width spec from computed style if present
+	if(cs != nil && cs.width.kind() == Dpixels)
+		contentw = cs.width.spec();
+	else if(cs != nil && cs.width.kind() == Dpercent && avail > 0)
+		contentw = avail * cs.width.spec() / 100 - extraw;
+
+	# Create sublayout for box content
+	bg := Background(nil, -1);
+	if(cs != nil && cs.bgcolor != STYLNONE)
+		bg.color = cs.bgcolor;
+	if(box.layid < 0) {
+		slay := Lay.new(contentw, Aleft, 0, bg);
+		box.layid = f.sublayid++;
+		if(box.layid >= len f.sublays) {
+			newsublays := array[box.layid + 10] of ref Lay;
+			newsublays[:] = f.sublays;
+			f.sublays = newsublays;
+		}
+		f.sublays[box.layid] = slay;
+	}
+	slay := f.sublays[box.layid];
+	slay.targetwidth = contentw;
+	slay.background = bg;
+	layalistitems(f, slay, box.content);
+
+	it.width = slay.width + extraw;
+	it.height = slay.height + extrah;
+	it.ascent = it.height;
+
+	# Apply height spec if present
+	if(cs != nil && cs.height.kind() == Dpixels) {
+		spech := cs.height.spec() + extrah;
+		if(spech > it.height)
+			it.height = spech;
+	}
+}
+
+# Draw an Ibox item: background, borders, then content via sublayout
+drawbox(f: ref Frame, lay: ref Lay, origin: Point, box: ref Item.Ibox)
+{
+	im := f.cim;
+	cs := box.cstyle;
+	bdt := 0; bdr := 0; bdb := 0; bdl := 0;
+	padt := 0; padr := 0; padb := 0; padl := 0;
+	if(cs != nil) {
+		bdt = cs.border_width[0];
+		bdr = cs.border_width[1];
+		bdb = cs.border_width[2];
+		bdl = cs.border_width[3];
+		padt = cs.padding[0];
+		padr = cs.padding[1];
+		padb = cs.padding[2];
+		padl = cs.padding[3];
+	}
+
+	# Draw background (padding box)
+	if(cs != nil && cs.bgcolor != STYLNONE && cs.bgcolor != -1) {
+		bgr := Rect(
+			Point(origin.x + bdl, origin.y + bdt),
+			Point(origin.x + box.width - bdr, origin.y + box.height - bdb));
+		drawfill(im, bgr, cs.bgcolor);
+	}
+
+	# Draw borders
+	if(cs != nil) {
+		drawboxborders(im, origin, box.width, box.height, cs);
+	}
+
+	# Draw content via sublayout
+	if(box.layid >= 0 && box.layid < len f.sublays) {
+		slay := f.sublays[box.layid];
+		if(slay != nil) {
+			contentorigin := Point(origin.x + bdl + padl, origin.y + bdt + padt);
+			drawlay(f, slay, contentorigin);
+		}
+	}
+}
+
+# Draw CSS box borders with per-side width, style, and color
+drawboxborders(im: ref Image, origin: Point, w, h: int, cs: ref ComputedStyle)
+{
+	x := origin.x;
+	y := origin.y;
+	xr := x + w;
+	yb := y + h;
+
+	# Top border
+	if(cs.border_width[0] > 0 && cs.border_style[0] != BSnone) {
+		c := cs.border_color[0];
+		if(c == STYLNONE)
+			c = Black;
+		n := cs.border_width[0];
+		drawborderedge(im, Rect(Point(x,y), Point(xr,y+n)), c, cs.border_style[0]);
+	}
+	# Right border
+	if(cs.border_width[1] > 0 && cs.border_style[1] != BSnone) {
+		c := cs.border_color[1];
+		if(c == STYLNONE)
+			c = Black;
+		n := cs.border_width[1];
+		drawborderedge(im, Rect(Point(xr-n,y), Point(xr,yb)), c, cs.border_style[1]);
+	}
+	# Bottom border
+	if(cs.border_width[2] > 0 && cs.border_style[2] != BSnone) {
+		c := cs.border_color[2];
+		if(c == STYLNONE)
+			c = Black;
+		n := cs.border_width[2];
+		drawborderedge(im, Rect(Point(x,yb-n), Point(xr,yb)), c, cs.border_style[2]);
+	}
+	# Left border
+	if(cs.border_width[3] > 0 && cs.border_style[3] != BSnone) {
+		c := cs.border_color[3];
+		if(c == STYLNONE)
+			c = Black;
+		n := cs.border_width[3];
+		drawborderedge(im, Rect(Point(x,y), Point(x+n,yb)), c, cs.border_style[3]);
+	}
+}
+
+# Draw a single border edge with style
+drawborderedge(im: ref Image, r: Rect, color: int, style: byte)
+{
+	src := colorimage(color);
+	case style {
+	BSsolid or BSinset or BSoutset or BSgroove or BSridge =>
+		im.draw(r, src, nil, zp);
+	BSdotted =>
+		# Draw dotted by alternating filled/empty segments
+		if(r.dx() > r.dy()) {
+			# horizontal edge
+			step := max(r.dy(), 2);
+			for(x := r.min.x; x < r.max.x; x += step*2)
+				im.draw(Rect(Point(x, r.min.y), Point(min(x+step, r.max.x), r.max.y)), src, nil, zp);
+		}
+		else {
+			# vertical edge
+			step := max(r.dx(), 2);
+			for(y := r.min.y; y < r.max.y; y += step*2)
+				im.draw(Rect(Point(r.min.x, y), Point(r.max.x, min(y+step, r.max.y))), src, nil, zp);
+		}
+	BSdashed =>
+		# Draw dashed by alternating segments (3:1 ratio)
+		if(r.dx() > r.dy()) {
+			step := max(r.dy()*3, 6);
+			gap := max(r.dy(), 2);
+			for(x := r.min.x; x < r.max.x; x += step+gap)
+				im.draw(Rect(Point(x, r.min.y), Point(min(x+step, r.max.x), r.max.y)), src, nil, zp);
+		}
+		else {
+			step := max(r.dx()*3, 6);
+			gap := max(r.dx(), 2);
+			for(y := r.min.y; y < r.max.y; y += step+gap)
+				im.draw(Rect(Point(r.min.x, y), Point(r.max.x, min(y+step, r.max.y))), src, nil, zp);
+		}
+	BSdouble =>
+		# Draw double border: two lines with gap between
+		if(r.dx() > r.dy()) {
+			# horizontal: split height into thirds
+			n := max(r.dy()/3, 1);
+			im.draw(Rect(r.min, Point(r.max.x, r.min.y+n)), src, nil, zp);
+			im.draw(Rect(Point(r.min.x, r.max.y-n), r.max), src, nil, zp);
+		}
+		else {
+			n := max(r.dx()/3, 1);
+			im.draw(Rect(r.min, Point(r.min.x+n, r.max.y)), src, nil, zp);
+			im.draw(Rect(Point(r.max.x-n, r.min.y), r.max), src, nil, zp);
+		}
+	}
+}
+
+# Layout a list of items into a Lay (used for Ibox sublayouts)
+layalistitems(f: ref Frame, lay: ref Lay, items: ref Item)
+{
+	measure(f, items);
+	for(l := lay.start; l.next != lay.end; ) {
+		nl := l.next;
+		l.next = nl.next;
+	}
+	lay.start.next = lay.end;
+	lay.end.prev = lay.start;
+	lay.width = 0;
+	lay.height = 0;
+	for(it := items; it != nil; ) {
+		l := Line.new();
+		l.items = it;
+		# Find end of this line (next break or end)
+		lastit := it;
+		nit := it.next;
+		for(; nit != nil; nit = nit.next) {
+			if(nit.state & IFbrk)
+				break;
+			lastit = nit;
+		}
+		lastit.next = nil;
+		it = nit;
+		# Insert line before lay.end
+		l.prev = lay.end.prev;
+		l.next = lay.end;
+		lay.end.prev.next = l;
+		lay.end.prev = l;
+		l.flags |= Lchanged;
+		fixlinegeom(f, lay, l);
+	}
+	# Calculate lay dimensions
+	for(l := lay.start.next; l != lay.end; l = l.next) {
+		if(l.pos.x + l.width > lay.width)
+			lay.width = l.pos.x + l.width;
+		h := l.pos.y + l.height;
+		if(h > lay.height)
+			lay.height = h;
 	}
 }
