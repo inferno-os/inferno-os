@@ -1928,7 +1928,7 @@ updateffopts(ex: ref Exec, oform, oformfield: ref Obj, ix: int)
 		sel := ES->get(ex, oopt, "selected") == ES->true;
 		val := ES->toString(ex, ES->get(ex, oopt, "value"));
 		text := ES->toString(ex, ES->get(ex, oopt, "text"));
-		option := ref B->Option(sel, val, text);
+		option := ref B->Option(sel, val, text, "");
 		optl = option :: optl;
 		if (noptl++ == 0) {
 			firstobj = oopt;

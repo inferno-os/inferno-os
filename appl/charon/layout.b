@@ -46,7 +46,7 @@ W: Widget;
 	FRnoresize, FRnoscroll, FRhscroll, FRvscroll,
 	FRhscrollauto, FRvscrollauto,
 	ComputedStyle, STYLNONE,
-	BSnone, BSsolid, BSdotted, BSdashed, BSgroove, BSridge, BSinset, BSoutset,
+	BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset,
 	OVvisible, OVhidden,
 	POSstatic, POSrelative,
 	FLnone, FLleft, FLright,
@@ -2547,6 +2547,7 @@ drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
 		if(tab.empty_cells == byte 1 && clay.height == 0)
 			continue;
 		cx := x + tab.cols[c.col].pos.x;
+		cy := boxy + tab.rows[c.row].pos.y;
 		wd := cellwidth(tab, c, hsep);
 		ht := cellheight(tab, c, vsep);
 		if(c.background.image != nil && c.background.image.ci != nil && c.background.image.ci.mims != nil) {
@@ -5297,10 +5298,10 @@ drawboxborders(im: ref Image, origin: Point, w, h: int, cs: ref ComputedStyle)
 drawborderedge(im: ref Image, r: Rect, color: int, style: byte)
 {
 	src := colorimage(color);
-	case style {
-	BSsolid or BSinset or BSoutset or BSgroove or BSridge =>
+	case int style {
+	int BSsolid or int BSinset or int BSoutset or int BSgroove or int BSridge =>
 		im.draw(r, src, nil, zp);
-	BSdotted =>
+	int BSdotted =>
 		# Draw dotted by alternating filled/empty segments
 		if(r.dx() > r.dy()) {
 			# horizontal edge
@@ -5314,7 +5315,7 @@ drawborderedge(im: ref Image, r: Rect, color: int, style: byte)
 			for(y := r.min.y; y < r.max.y; y += step*2)
 				im.draw(Rect(Point(r.min.x, y), Point(r.max.x, min(y+step, r.max.y))), src, nil, zp);
 		}
-	BSdashed =>
+	int BSdashed =>
 		# Draw dashed by alternating segments (3:1 ratio)
 		if(r.dx() > r.dy()) {
 			step := max(r.dy()*3, 6);
@@ -5328,7 +5329,7 @@ drawborderedge(im: ref Image, r: Rect, color: int, style: byte)
 			for(y := r.min.y; y < r.max.y; y += step+gap)
 				im.draw(Rect(Point(r.min.x, y), Point(r.max.x, min(y+step, r.max.y))), src, nil, zp);
 		}
-	BSdouble =>
+	int BSdouble =>
 		# Draw double border: two lines with gap between
 		if(r.dx() > r.dy()) {
 			# horizontal: split height into thirds
@@ -5357,8 +5358,8 @@ layalistitems(f: ref Frame, lay: ref Lay, items: ref Item)
 	lay.width = 0;
 	lay.height = 0;
 	for(it := items; it != nil; ) {
-		l := Line.new();
-		l.items = it;
+		nl := Line.new();
+		nl.items = it;
 		# Find end of this line (next break or end)
 		lastit := it;
 		nit := it.next;
@@ -5370,15 +5371,15 @@ layalistitems(f: ref Frame, lay: ref Lay, items: ref Item)
 		lastit.next = nil;
 		it = nit;
 		# Insert line before lay.end
-		l.prev = lay.end.prev;
-		l.next = lay.end;
-		lay.end.prev.next = l;
-		lay.end.prev = l;
-		l.flags |= Lchanged;
-		fixlinegeom(f, lay, l);
+		nl.prev = lay.end.prev;
+		nl.next = lay.end;
+		lay.end.prev.next = nl;
+		lay.end.prev = nl;
+		nl.flags |= Lchanged;
+		fixlinegeom(f, lay, nl);
 	}
 	# Calculate lay dimensions
-	for(l := lay.start.next; l != lay.end; l = l.next) {
+	for(l = lay.start.next; l != lay.end; l = l.next) {
 		if(l.pos.x + l.width > lay.width)
 			lay.width = l.pos.x + l.width;
 		h := l.pos.y + l.height;

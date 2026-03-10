@@ -1176,7 +1176,7 @@ TokLoop:
 			}
 			val := aval(tok, LX->Avalue);
 			option := ref Option(aboolval(tok, LX->Aselected),
-						val, "");
+						val, "", "");
 			field.options = option :: field.options;
 			(option.display, toki) = getpcdata(toks, toki);
 			option.display = optiontext(option.display);
@@ -2305,7 +2305,8 @@ Pstate.new() : ref Pstate
 			nil, nil, nil, nil,	# fntstylestk, fntsizestk, fgstk, ulstk
 			nil, nil, nil, nil,	# voffstk, listtypestk, listcntstk, juststk
 			nil,			# hangstk
-			nil);			# stylestk
+			nil,			# stylestk
+			nil);			# boxstk
 	ps.items = Item.newspacer(ISPnull, 0);
 	ps.lastit = ps.items;
 	ps.prelastit = nil;
@@ -4722,7 +4723,7 @@ parsecstyle(cs: ref ComputedStyle, s: string)
 		}
 		# split on ':' into property and value
 		colon := -1;
-		for(j := 0; j < len decl; j++)
+		for(j = 0; j < len decl; j++)
 			if(decl[j] == ':') {
 				colon = j;
 				break;
