@@ -102,7 +102,7 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 		guifont = Font.open(display, "*default*");
 	if(menumod != nil) {
 		menumod->init(display, guifont);
-		menu = menumod->new(array[] of {"back", "forward", "reload", "stop", "go to URL", "home"});
+		menu = menumod->new(array[] of {"back", "forward", "reload", "stop", "copy URL", "paste URL", "go to URL", "home"});
 	}
 
 	# Initialise widget toolkit for statusbar
@@ -261,8 +261,24 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 				1 => ev = ref Event.Efwd;
 				2 => ev = ref Event.Ego("", "_top", 0, E->EGreload);
 				3 => ev = ref Event.Estop;
-				4 => startinput(MURL);
-				5 => ev = ref Event.Ego("about:blank", "_top", 0, E->EGnormal);
+				4 =>
+					# copy URL — put current URL into snarf buffer
+					if(cururl != nil && cururl != "")
+						snarfput(cururl);
+				5 =>
+					# paste URL — get from snarf buffer and navigate
+					snarf := snarfget();
+					if(snarf != nil && snarf != "") {
+						snarf = guistrip(snarf);
+						if(snarf != "") {
+							if(!hasprefix(guitolower(snarf), "http://") &&
+							   !hasprefix(guitolower(snarf), "https://"))
+								snarf = "https://" + snarf;
+							ev = ref Event.Ego(snarf, "_top", 0, E->EGnormal);
+						}
+					}
+				6 => startinput(MURL);
+				7 => ev = ref Event.Ego("about:blank", "_top", 0, E->EGnormal);
 				}
 			}else if(p.buttons & (8|16)) {
 				if(p.buttons & 8)
@@ -370,10 +386,12 @@ hidewins()
 		return;
 }
 
-snarfput(nil: string)
+snarfput(s: string)
 {
 	if((CU->config).doacme)
 		return;
+	if(wmclient != nil)
+		wmclient->snarfput(s);
 }
 
 snarfget(): string
