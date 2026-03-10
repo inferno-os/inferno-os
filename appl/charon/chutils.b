@@ -1635,6 +1635,8 @@ setopt(key: string, val: string) : int
 		config.docookies = v;
 	"doacme" =>
 		config.doacme = v;
+	"render" =>
+		config.dorender = v;
 	"doscripts" =>
 		config.doscripts = v;
 	"http" =>
