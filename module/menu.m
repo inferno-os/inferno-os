@@ -7,6 +7,14 @@
 #   - While held, cursor movement highlights items.
 #   - Release over an item → selects it; release outside → -1.
 #
+# Hybrid UX:
+#   - Hold button-3 and release over item → Plan 9 style
+#   - Quick right-click → menu stays visible; button-1 selects (macOS style)
+#
+# For long item lists (>20 or exceeding window height),
+# the menu scrolls, showing a subset of items with
+# up/down scroll indicators.
+#
 Menu: module
 {
 	PATH:	con "/dis/lib/menu.dis";
@@ -14,6 +22,7 @@ Menu: module
 	# Contextual popup menu.
 	Popup: adt {
 		items:	array of string;
+		lasthit: int;		# previous selection (default highlight)
 
 		# Draw menu at position `at`, block on `ptr` until button-3 UP.
 		# Returns selected item index (0-based), or -1 if dismissed.

@@ -56,6 +56,10 @@ include "formatter.m";
 
 include "lucitheme.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Scrollbar, Statusbar: import widgetmod;
+
 Charon: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -65,13 +69,9 @@ Charon: module
 BG:	con int 16rFFFDF6FF;		# warm off-white
 FG:	con int 16r333333FF;		# dark text
 LINKFG:	con int 16r2266CCFF;		# blue links
-URLBG:	con int 16rE8E8E8FF;		# status bar
-URLFG:	con int 16r555555FF;		# status bar text
-LNCOL:	con int 16rBBBBBBFF;		# scrollbar track
 
 # Dimensions
 MARGIN: con 4;
-SCROLLW: con 12;
 
 # Limits
 MAXREDIR: con 20;
@@ -123,7 +123,8 @@ w: ref Window;
 display: ref Draw->Display;
 font: ref Font;
 bgcolor, fgcolor, linkcolor: ref Image;
-urlbgcolor, urlfgcolor, lncolor: ref Image;
+scrollbar: ref Scrollbar;
+statbar: ref Statusbar;
 htmlfmt: Formatter;
 stderr: ref Sys->FD;
 
@@ -166,7 +167,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	wmclient = load Wmclient Wmclient->PATH;
 	menumod = load Menu Menu->PATH;
 	str = load String String->PATH;
+	widgetmod = load Widget Widget->PATH;
 	stderr = sys->fildes(2);
+	if(widgetmod == nil) {
+		sys->fprint(stderr, "charon: cannot load Widget: %r\n");
+		raise "fail:cannot load Widget";
+	}
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "charon: no window context\n");
@@ -232,17 +238,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		bgcolor = display.color(th.editbg);
 		fgcolor = display.color(th.edittext);
 		linkcolor = display.color(16r2266CCFF);
-		urlbgcolor = display.color(th.editstatus);
-		urlfgcolor = display.color(th.editstattext);
-		lncolor = display.color(th.editlineno);
 	} else {
 		bgcolor = display.color(BG);
 		fgcolor = display.color(FG);
 		linkcolor = display.color(LINKFG);
-		urlbgcolor = display.color(URLBG);
-		urlfgcolor = display.color(URLFG);
-		lncolor = display.color(LNCOL);
 	}
+	widgetmod->init(display, font);
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)));
+	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Set up window
 	w.reshape(Rect((0, 0), (800, 600)));
@@ -315,27 +318,37 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					if(isallowedurl(buf))
 						requestnav(buf);
 				}
-			} else if(p.buttons & 8) {
-				# Scroll up
-				topline -= 3;
-				if(topline < 0)
-					topline = 0;
+			} else if(p.buttons & 24) {
+				# Mouse wheel scroll
+				scrollbar.total = page.nlines;
+				scrollbar.visible = vislines;
+				scrollbar.origin = topline;
+				topline = scrollbar.wheel(p.buttons, 3);
 				redraw();
-			} else if(p.buttons & 16) {
-				# Scroll down
-				topline += 3;
-				clampscroll();
+			} else if(scrollbar.isactive()) {
+				# Continue scrollbar drag
+				scrollbar.total = page.nlines;
+				scrollbar.visible = vislines;
+				newo := scrollbar.track(p);
+				if(newo >= 0)
+					topline = newo;
 				redraw();
-			} else if(p.buttons & 1) {
-				# Button 1: check scrollbar or click link
+			} else if(p.buttons & 3) {
+				# B1 or B2 in scrollbar area
 				r := w.image.r;
-				stath := font.height + MARGIN * 2;
+				sth := widgetmod->statusheight();
+				sw := widgetmod->scrollwidth();
 				scrollr := Rect((r.min.x, r.min.y),
-					(r.min.x + SCROLLW, r.max.y - stath));
+					(r.min.x + sw, r.max.y - sth));
 				if(scrollr.contains(p.xy)) {
-					handlescrollclick(scrollr, p.xy);
+					scrollbar.total = page.nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0)
+						topline = newo;
 					redraw();
-				} else {
+				} else if(p.buttons & 1) {
 					# Check if clicking a link number
 					linkn := findlinkat(p.xy);
 					if(linkn > 0)
@@ -842,7 +855,8 @@ textrect(): Rect
 		return Rect((0, 0), (0, 0));
 	r := w.image.r;
 	stath := font.height + MARGIN * 2;
-	return Rect((r.min.x + SCROLLW + MARGIN, r.min.y + MARGIN),
+	sw := widgetmod->scrollwidth();
+	return Rect((r.min.x + sw + MARGIN, r.min.y + MARGIN),
 		(r.max.x - MARGIN, r.max.y - stath));
 }
 
@@ -864,8 +878,13 @@ redraw()
 		maxvrows = textr.dy() / font.height;
 
 	# Draw scrollbar
-	drawscrollbar(screen, Rect((r.min.x, r.min.y),
-		(r.min.x + SCROLLW, r.max.y - stath)));
+	sw := widgetmod->scrollwidth();
+	scrollbar.resize(Rect((r.min.x, r.min.y),
+		(r.min.x + sw, r.max.y - stath)));
+	scrollbar.total = page.nlines;
+	scrollbar.visible = vislines;
+	scrollbar.origin = topline;
+	scrollbar.draw(screen);
 
 	# Take local snapshot of page state for safe rendering
 	curpage := page;
@@ -892,7 +911,30 @@ redraw()
 	vislines = maxvrows;
 
 	# Draw status bar
-	drawstatus(screen, Rect((r.min.x, r.max.y - stath), r.max));
+	statbar.resize(Rect((r.min.x, r.max.y - stath), r.max));
+	if(inputmode == MURL) {
+		statbar.prompt = "URL: ";
+		statbar.buf = inputbuf;
+	} else if(inputmode == MLINK) {
+		statbar.prompt = "Link #: ";
+		statbar.buf = inputbuf;
+	} else {
+		statbar.prompt = nil;
+		info := page.url;
+		if(info == "")
+			info = "(no page loaded)";
+		if(page.status == "loading")
+			info = "Loading: " + info;
+		else if(hasprefix(page.status, "error:"))
+			info = page.status;
+		statbar.left = info;
+		statbar.leftcolor = nil;
+		if(page.nlinks > 0)
+			statbar.right = sys->sprint("%d links", page.nlinks);
+		else
+			statbar.right = "";
+	}
+	statbar.draw(screen);
 
 	screen.flush(Draw->Flushnow);
 }
@@ -906,87 +948,6 @@ islinksection(line: string): int
 	return 0;
 }
 
-drawscrollbar(screen: ref Image, r: Rect)
-{
-	screen.draw(r, urlbgcolor, nil, Point(0, 0));
-
-	if(page.nlines <= 0 || vislines <= 0)
-		return;
-
-	totalh := r.dy();
-	thumbh := (vislines * totalh) / page.nlines;
-	if(thumbh < 10)
-		thumbh = 10;
-	if(thumbh > totalh)
-		thumbh = totalh;
-	thumby := r.min.y;
-	if(page.nlines > vislines)
-		thumby = r.min.y + (topline * (totalh - thumbh)) / (page.nlines - vislines);
-
-	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
-	screen.draw(thumbr, lncolor, nil, Point(0, 0));
-}
-
-drawstatus(screen: ref Image, r: Rect)
-{
-	screen.draw(r, urlbgcolor, nil, Point(0, 0));
-	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y),
-		0, 0, 0, lncolor, Point(0, 0));
-
-	x := r.min.x + MARGIN;
-	y := r.min.y + MARGIN;
-
-	case inputmode {
-	MURL =>
-		prompt := "URL: " + inputbuf + "_";
-		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
-	MLINK =>
-		prompt := "Link #: " + inputbuf + "_";
-		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
-	* =>
-		# Show status and URL
-		info := page.url;
-		if(info == "")
-			info = "(no page loaded)";
-		if(page.status == "loading")
-			info = "Loading: " + info;
-		else if(hasprefix(page.status, "error:"))
-			info = page.status;
-
-		screen.text(Point(x, y), urlfgcolor, Point(0, 0), font, info);
-
-		# Show link count on right
-		if(page.nlinks > 0) {
-			linfo := sys->sprint("%d links", page.nlinks);
-			lw := font.width(linfo);
-			screen.text(Point(r.max.x - lw - MARGIN, y),
-				urlfgcolor, Point(0, 0), font, linfo);
-		}
-	}
-}
-
-handlescrollclick(scrollr: Rect, xy: Point)
-{
-	if(page.nlines <= 0 || vislines <= 0)
-		return;
-
-	totalh := scrollr.dy();
-	thumbh := (vislines * totalh) / page.nlines;
-	if(thumbh < 10) thumbh = 10;
-	if(thumbh > totalh) thumbh = totalh;
-	thumby := scrollr.min.y;
-	if(page.nlines > vislines)
-		thumby = scrollr.min.y + (topline * (totalh - thumbh)) /
-			(page.nlines - vislines);
-
-	if(xy.y < thumby) {
-		topline -= vislines;
-		if(topline < 0) topline = 0;
-	} else if(xy.y > thumby + thumbh) {
-		topline += vislines;
-		clampscroll();
-	}
-}
 
 # Find link number at a screen position.
 # Looks at formatted text for [N] pattern on the clicked line.
@@ -1151,49 +1112,47 @@ startinput(mode: int)
 {
 	inputmode = mode;
 	inputbuf = "";
-	if(mode == MURL && page.url != "")
-		inputbuf = page.url;
+	if(mode == MURL) {
+		statbar.prompt = "URL: ";
+		statbar.buf = "";
+		if(page.url != "") {
+			inputbuf = page.url;
+			statbar.buf = page.url;
+		}
+	} else if(mode == MLINK) {
+		statbar.prompt = "Link #: ";
+		statbar.buf = "";
+	}
 }
 
 handleinputkey(key: int)
 {
-	if(key == Kesc) {
-		inputmode = MNONE;
-		inputbuf = "";
-		return;
-	}
-
-	if(key == '\n') {
-		buf := inputbuf;
+	(done, val) := statbar.key(key);
+	if(done == 1) {
 		mode := inputmode;
 		inputmode = MNONE;
 		inputbuf = "";
 
 		case mode {
 		MURL =>
-			buf = strip(buf);
-			if(buf != "") {
-				if(!hasprefix(tolower(buf), "http://") &&
-				   !hasprefix(tolower(buf), "https://"))
-					buf = "https://" + buf;
-				requestnav(buf);
+			val = strip(val);
+			if(val != "") {
+				if(!hasprefix(tolower(val), "http://") &&
+				   !hasprefix(tolower(val), "https://"))
+					val = "https://" + val;
+				requestnav(val);
 			}
 		MLINK =>
-			n := atoi(buf);
+			n := atoi(val);
 			if(n > 0)
 				requestfollow(n);
 		}
-		return;
+	} else if(done < 0) {
+		inputmode = MNONE;
+		inputbuf = "";
+	} else {
+		inputbuf = statbar.buf;
 	}
-
-	if(key == Kbs) {
-		if(len inputbuf > 0)
-			inputbuf = inputbuf[0:len inputbuf - 1];
-		return;
-	}
-
-	if(key >= 16r20 && key < 16rFF00 && len inputbuf < 4096)
-		inputbuf[len inputbuf] = key;
 }
 
 # ---------- Filesystem Interface ----------
