@@ -216,6 +216,15 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	# build directory version if dbg['u'] is set)
 
 	setconfig(argl);
+
+	# Headless mode: force lightweight settings
+	if(config.headless) {
+		config.imagelvl = ImgNone;
+		config.imagecachenum = 0;
+		config.imagecachemem = 0;
+		config.doscripts = 0;
+	}
+
 	dbg = int config.dbg['d'];
 
 	G = load Gui loadpath(Gui->PATH);
@@ -230,8 +239,12 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	if(E == nil)
 		return loadpath(Events->PATH);
 
-	J = load Script loadpath(Script->JSCRIPTPATH);
-	# don't report an error loading JavaScript, handled elsewhere
+	# In headless mode, skip Script and Img modules to save memory.
+	# These are only needed for GUI rendering and JavaScript execution.
+	if(!config.headless) {
+		J = load Script loadpath(Script->JSCRIPTPATH);
+		# don't report an error loading JavaScript, handled elsewhere
+	}
 
 	LX = load Lex loadpath(Lex->PATH);
 	if(LX == nil)
@@ -241,9 +254,11 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	if(B == nil)
 		return loadpath(Build->PATH);
 
-	I = load Img loadpath(Img->PATH);
-	if(I == nil)
-		return loadpath(Img->PATH);
+	if(!config.headless) {
+		I = load Img loadpath(Img->PATH);
+		if(I == nil)
+			return loadpath(Img->PATH);
+	}
 
 	L = load Layout loadpath(Layout->PATH);
 	if(L == nil)
@@ -263,7 +278,8 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	# be inited after that, because it needs G's display to allocate fonts)
 
 	E->init(evc);
-	I->init(me);
+	if(I != nil)
+		I->init(me);
 	err := convcs->init(nil);
 	if (err != nil)
 		return err;
@@ -298,7 +314,8 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	gettransport("file");
 
 	progresschan = chan of (int, int, int, string);
-	imcache = ref ImageCache;
+	if(!config.headless)
+		imcache = ref ImageCache;
 	ctype = C->ctype;
 	dbgproto = int config.dbg['p'];
 	ngchan = chan of (int, list of ref ByteSource, ref Netconn, chan of ref ByteSource);
@@ -1518,6 +1535,7 @@ setconfig(argl: list of string)
 	config.y = -1;
 	config.nocache = 0;
 	config.maxstale = 0;
+	config.headless = 0;
 	config.imagelvl = ImgFull;
 	config.imagecachenum = 120;
 	config.imagecachemem = 100000000;	# 100Meg, will get lowered later
@@ -1697,6 +1715,8 @@ setopt(key: string, val: string) : int
 		config.doacme = v;
 	"render" =>
 		config.dorender = v;
+	"headless" =>
+		config.headless = v;
 	"doscripts" =>
 		config.doscripts = v;
 	"http" =>

@@ -227,11 +227,13 @@ initc(ctxt: ref Context)
 		newres.since(curres).print("difference after L->init (loaded Build, Lex)");
 		curres = newres;
 	}
-	(CU->imcache).init();
-	if(dbgres) {
-		newres = ResourceState.cur();
-		newres.since(curres).print("difference after (CU->imcache).init");
-		curres = newres;
+	if(!(CU->config).headless) {
+		(CU->imcache).init();
+		if(dbgres) {
+			newres = ResourceState.cur();
+			newres.since(curres).print("difference after (CU->imcache).init");
+			curres = newres;
+		}
 	}
 
 	# Render-to-file mode: layout page, write image+text, exit
@@ -442,7 +444,8 @@ redraw(resized: int)
 		top.r = Rect(im.r.min, Point(im.r.max.x, im.r.max.y - sth));
 		top.cim = mainwin;
 		top.reset();
-		(CU->imcache).resetlimits();
+		if(CU->imcache != nil)
+			(CU->imcache).resetlimits();
 	}
 	im.clipr = im.r;
 	L->drawfill(im, top.r, CU->White);
@@ -916,7 +919,8 @@ get(g: ref GoSpec, f: ref Frame, origkind: int, hn: ref HistNode) : string
 {
 	curres, newres: ResourceState;
 	if(dbgres) {
-		(CU->imcache).clear();
+		if(CU->imcache != nil)
+			(CU->imcache).clear();
 		curres = ResourceState.cur();
 	}
 	sdest := g.url.tostring();
@@ -995,7 +999,7 @@ get(g: ref GoSpec, f: ref Frame, origkind: int, hn: ref HistNode) : string
 	tnet1 := sys->millisec();
 	sys->print("PERF: net(+redir) for %s = %dms\n", sdest, tnet1-tnet0);
 	if(hdr.mtype == CU->TextHtml || hdr.mtype == CU->TextPlain ||
-					I->supported(hdr.mtype)) {
+					(I != nil && I->supported(hdr.mtype))) {
 		G->seturl(sdest);
 		history.add(f, g, origkind);
 		resetkeyfocus(f);
