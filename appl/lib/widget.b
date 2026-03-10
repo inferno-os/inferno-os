@@ -318,10 +318,17 @@ Scrollbar.isactive(sb: self ref Scrollbar): int
 
 Scrollbar.wheel(sb: self ref Scrollbar, button: int, step: int): int
 {
-	if(button & 8)
-		sb.origin -= step;
-	else if(button & 16)
-		sb.origin += step;
+	if(sb.vert) {
+		if(button & 8)
+			sb.origin -= step;
+		else if(button & 16)
+			sb.origin += step;
+	} else {
+		if(button & 32)
+			sb.origin -= step;
+		else if(button & 64)
+			sb.origin += step;
+	}
 	sb.origin = clamporigin(sb);
 	return sb.origin;
 }

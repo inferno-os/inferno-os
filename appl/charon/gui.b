@@ -287,6 +287,11 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 					ev = ref Event.Escrollr(0, Point(0, -60));
 				else
 					ev = ref Event.Escrollr(0, Point(0, 60));
+			}else if(p.buttons & (32|64)) {
+				if(p.buttons & 32)
+					ev = ref Event.Escrollr(0, Point(-60, 0));
+				else
+					ev = ref Event.Escrollr(0, Point(60, 0));
 			}else {
 				pt := p.xy;
 				pt = pt.sub(offset);

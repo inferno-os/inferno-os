@@ -603,11 +603,15 @@ sdl_pollevents(void)
 			break;
 
 		case SDL_EVENT_MOUSE_WHEEL:
-			/* Scroll wheel as buttons 4 & 5 */
+			/* Scroll wheel: y = buttons 4/5, x = buttons 6/7 */
 			if (event.wheel.y > 0)
 				mouse_buttons = 8;   /* scroll up */
 			else if (event.wheel.y < 0)
 				mouse_buttons = 16;  /* scroll down */
+			else if (event.wheel.x > 0)
+				mouse_buttons = 64;  /* scroll right */
+			else if (event.wheel.x < 0)
+				mouse_buttons = 32;  /* scroll left */
 			mousetrack(mouse_buttons, mouse_x, mouse_y, 0);
 			mouse_buttons = 0;  /* Release scroll button */
 			break;
@@ -1107,11 +1111,15 @@ sdl3_mainloop(void)
 				break;
 
 			case SDL_EVENT_MOUSE_WHEEL:
-				/* Scroll wheel as buttons 4 & 5 - use tracked mouse position */
+				/* Scroll wheel: y = buttons 4/5, x = buttons 6/7 */
 				if (event.wheel.y > 0)
 					mousetrack(8, mouse_x, mouse_y, 0);   /* scroll up = button 4 */
 				else if (event.wheel.y < 0)
 					mousetrack(16, mouse_x, mouse_y, 0);  /* scroll down = button 5 */
+				else if (event.wheel.x > 0)
+					mousetrack(64, mouse_x, mouse_y, 0);  /* scroll right = button 7 */
+				else if (event.wheel.x < 0)
+					mousetrack(32, mouse_x, mouse_y, 0);  /* scroll left = button 6 */
 				break;
 
 			case SDL_EVENT_TEXT_INPUT:
