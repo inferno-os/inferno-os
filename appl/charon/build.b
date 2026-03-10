@@ -187,7 +187,38 @@ UA_CSS: con
 	+ "button { border: 2px outset; padding: 2px 8px }\n"
 	+ "input, textarea, select { border: 1px solid }\n"
 	+ "a { color: blue; text-decoration: underline; cursor: pointer }\n"
-	+ "a:visited { color: purple }\n";
+	+ "a:visited { color: purple }\n"
+	# Wikipedia fallback styles -- low-specificity defaults for common MediaWiki classes.
+	# These ensure readable display even if external stylesheets fail to load.
+	# Author stylesheets will override these via normal cascade.
+	+ ".wikitable { border-collapse: collapse; border: 1px solid #a2a9b1; margin: 8px 0 }\n"
+	+ ".wikitable th { background-color: #eaecf0; border: 1px solid #a2a9b1; padding: 4px 8px; font-weight: bold }\n"
+	+ ".wikitable td { border: 1px solid #a2a9b1; padding: 4px 8px }\n"
+	+ ".infobox { float: right; clear: right; margin: 0 0 8px 16px; border: 1px solid #a2a9b1; border-collapse: collapse; background-color: #f8f9fa }\n"
+	+ ".infobox th { background-color: #e0e0e0; padding: 4px 8px; text-align: center }\n"
+	+ ".infobox td { padding: 4px 8px }\n"
+	+ ".infobox-above { font-weight: bold; text-align: center; font-size: large }\n"
+	+ ".infobox-title { font-weight: bold; text-align: center; font-size: large }\n"
+	+ ".infobox-image { text-align: center }\n"
+	+ ".infobox-label { font-weight: bold }\n"
+	+ ".toc { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 8px; display: block; margin: 8px 0 }\n"
+	+ ".toc ul { list-style-type: none }\n"
+	+ ".tocnumber { margin-right: 4px }\n"
+	+ ".thumb { margin: 8px; float: right; clear: right }\n"
+	+ ".thumbinner { border: 1px solid #c8ccd1; padding: 3px; background-color: #f8f9fa }\n"
+	+ ".thumbcaption { font-size: small; padding: 4px; text-align: center }\n"
+	+ ".tleft { float: left; clear: left; margin-right: 16px }\n"
+	+ ".tright { float: right; clear: right; margin-left: 16px }\n"
+	+ ".reflist { font-size: small }\n"
+	+ ".reference { font-size: small; vertical-align: top }\n"
+	+ ".mw-editsection { font-size: small; font-weight: normal }\n"
+	+ ".navbox { border: 1px solid #a2a9b1; background-color: #fdfdfd; margin: 8px 0; padding: 2px }\n"
+	+ ".catlinks { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px; margin-top: 16px }\n"
+	+ ".mw-jump-link { display: none }\n"
+	+ ".noprint { display: none }\n"
+	+ ".mw-indicators { float: right }\n"
+	+ ".mw-body-content { line-height: 1 }\n"
+	+ ".mw-parser-output { line-height: 1 }\n";
 
 utf8 : Btos;
 latin1 : Btos;
@@ -243,7 +274,7 @@ ItemSource.new(bs: ref ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemS
 	}
 	tagstyles := array[LX->Numtags] of { * => ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL)};
 	ss := StyleStore.new();
-	isrc := ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, tagstyles, ss, nil, 0, nil);
+	isrc := ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, tagstyles, ss, nil, nil, 0, nil);
 	# Apply UA default stylesheet
 	if(ua_stylesheet != nil)
 		parsestyleblock_css(isrc, ua_stylesheet);
@@ -1809,7 +1840,7 @@ TokLoop:
 		or LX->Tinput+RBRA
 		or LX->Tisindex+RBRA
 		or LX->Tli+RBRA
-		or LX->Tlink or LX->Tlink+RBRA
+		or LX->Tlink+RBRA
 		or LX->Tmeta+RBRA
 		or LX->Toption+RBRA
 		or LX->Tparam+RBRA
@@ -1817,6 +1848,19 @@ TokLoop:
 		or LX->Ttitle+RBRA
 		=>
 			;
+
+		# <!ELEMENT LINK - O EMPTY>
+		# External stylesheet: fetch and apply CSS
+		LX->Tlink =>
+			rel := aval(tok, LX->Arel);
+			if(rel != nil && S->tolower(rel) == "stylesheet") {
+				href := aval(tok, LX->Ahref);
+				if(href != nil && href != "") {
+					media := aval(tok, LX->Amedia);
+					if(media == nil || media == "" || mediaok(media))
+						fetchandapplycss(is, href);
+				}
+			}
 
 		# <!ELEMENT ABBR - - (%inline)*>
 		# <!ELEMENT ACRONYM - - (%inline)*>
@@ -4920,7 +4964,9 @@ parsestyleblock_css(is: ref ItemSource, sheet: ref CSS->Stylesheet)
 				}
 			}
 		Media =>
-			# Process @media rules - apply all for now (no media query matching)
+			# Filter @media rules: only apply screen-compatible media
+			if(!medialistok(s.media))
+				continue;
 			for(rules := s.rules; rules != nil; rules = tl rules) {
 				r := hd rules;
 				for(decls := r.decls; decls != nil; decls = tl decls) {
@@ -4984,18 +5030,18 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 			s := hd ssl;
 			pick sp := s {
 			Element =>
-				parts = ref SelectorPart(SPelement, sp.name, comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPelement, sp.name, comb, nil, nil, nil) :: parts;
 				specificity += 1;
 			Class =>
-				parts = ref SelectorPart(SPclass, sp.name, comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPclass, sp.name, comb, nil, nil, nil) :: parts;
 				specificity += 10;
 			ID =>
-				parts = ref SelectorPart(SPid, sp.name, comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPid, sp.name, comb, nil, nil, nil) :: parts;
 				specificity += 100;
 			Any =>
-				parts = ref SelectorPart(SPany, "*", comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPany, "*", comb, nil, nil, nil) :: parts;
 			Pseudo =>
-				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil, nil) :: parts;
 				specificity += 10;
 			Attrib =>
 				aval := "";
@@ -5005,11 +5051,11 @@ applyselector_rule(is: ref ItemSource, sel: CSS->Selector, prop, val: string)
 					String => aval = av.value;
 					}
 				}
-				parts = ref SelectorPart(SPattrib, sp.name, comb, sp.op, aval) :: parts;
+				parts = ref SelectorPart(SPattrib, sp.name, comb, sp.op, aval, nil) :: parts;
 				specificity += 10;
 			Pseudofn =>
 				# Functional pseudo-class like :nth-child(2n+1)
-				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil) :: parts;
+				parts = ref SelectorPart(SPpseudo, sp.name, comb, nil, nil, sp.arg) :: parts;
 				specificity += 10;
 			}
 		}
@@ -5345,7 +5391,7 @@ ElementCtx.new(tag: int, id, class: string, parent: ref ElementCtx) : ref Elemen
 	ci := 0;
 	if(parent != nil)
 		ci = parent.child_index + 1;
-	return ref ElementCtx(tag, id, class, parent, ci, nil);
+	return ref ElementCtx(tag, id, class, parent, ci, nil, nil);
 }
 
 # StyleStore constructor
@@ -5409,14 +5455,71 @@ selmatchone(sp: ref SelectorPart, el: ref ElementCtx) : int
 		"first-of-type" =>
 			return el.child_index == 0;
 		"nth-child" =>
-			# Would need arg parsing (e.g., nth-child(2n+1))
-			return 0;
+			return nthchildmatch(sp.arg, el.child_index);
 		}
 		return 0;
 	SPattrib =>
 		return attrmatch(el, sp);
 	}
 	return 0;
+}
+
+# Match :nth-child() pseudo-class.
+# Supports "odd", "even", bare number, and An+B form.
+# child_index is 0-based; CSS nth-child is 1-based.
+nthchildmatch(arg: string, child_index: int) : int
+{
+	if(arg == nil || arg == "")
+		return 0;
+	n := child_index + 1;	# CSS nth-child is 1-based
+	a := S->tolower(arg);
+	if(a == "odd")
+		return n % 2 == 1;
+	if(a == "even")
+		return n % 2 == 0;
+	# Try bare number
+	(val, rest) := S->toint(a, 10);
+	if(rest == nil || rest == "")
+		return n == val;
+	# Parse An+B form: look for 'n'
+	ni := 0;
+	for(; ni < len a && a[ni] != 'n'; )
+		ni++;
+	if(ni >= len a)
+		return 0;	# no 'n' found, can't parse
+	# A is the part before 'n'
+	astep := 1;
+	if(ni > 0) {
+		if(a[0:ni] == "-")
+			astep = -1;
+		else if(a[0:ni] == "+")
+			astep = 1;
+		else {
+			(astep, nil) = S->toint(a[0:ni], 10);
+			if(astep == 0)
+				return 0;
+		}
+	}
+	# B is the part after 'n'
+	boff := 0;
+	if(ni + 1 < len a) {
+		rest = a[ni+1:];
+		# Skip whitespace around +/-
+		j := 0;
+		for(; j < len rest && (rest[j] == ' ' || rest[j] == '+'); )
+			j++;
+		if(j < len rest) {
+			(boff, nil) = S->toint(rest[j:], 10);
+		}
+	}
+	# Check if n matches An+B for some non-negative integer k
+	if(astep == 0)
+		return n == boff;
+	diff := n - boff;
+	if(diff % astep != 0)
+		return 0;
+	k := diff / astep;
+	return k >= 0;
 }
 
 # Match an attribute selector against element attributes
@@ -5505,20 +5608,20 @@ selectormatch(sparts: list of ref SelectorPart, el: ref ElementCtx) : int
 				return 0;
 		'+' =>
 			# Adjacent sibling combinator: must match previous sibling
-			# Previous sibling has same parent and child_index - 1
-			if(cur.parent == nil || cur.child_index < 1)
+			if(cur.prev_sibling == nil)
 				return 0;
-			# We don't have a sibling pointer, so check parent relationship.
-			# The adjacent sibling must match the selector part.
-			# Since we track child_index, use parent to represent the sibling context.
-			cur = cur.parent;
-			if(cur == nil || !selmatchone(sp, cur))
+			cur = cur.prev_sibling;
+			if(!selmatchone(sp, cur))
 				return 0;
 		'~' =>
 			# General sibling combinator: any preceding sibling
-			# Simplified: walk up to parent (acts like child for our tree model)
-			cur = cur.parent;
-			if(cur == nil || !selmatchone(sp, cur))
+			cur = cur.prev_sibling;
+			while(cur != nil) {
+				if(selmatchone(sp, cur))
+					break;
+				cur = cur.prev_sibling;
+			}
+			if(cur == nil)
 				return 0;
 		' ' =>
 			# Descendant combinator: walk up until match or nil
@@ -5612,6 +5715,11 @@ pushelemctx(is: ref ItemSource, tag: int, tok: ref LX->Token)
 	if(is.elemstk != nil)
 		parent = hd is.elemstk;
 	ctx := ElementCtx.new(tag, id, class, parent);
+	# Set previous sibling: if the last popped element shares the same parent,
+	# it is the immediately preceding sibling of this new element.
+	if(is.lastpopped != nil && is.lastpopped.parent == parent)
+		ctx.prev_sibling = is.lastpopped;
+	is.lastpopped = nil;	# consumed
 	# Collect all token attributes for CSS attribute selector matching
 	if(tok != nil) {
 		for(al := tok.attr; al != nil; al = tl al) {
@@ -5626,8 +5734,10 @@ pushelemctx(is: ref ItemSource, tag: int, tok: ref LX->Token)
 # Pop element context from stack
 popelemctx(is: ref ItemSource)
 {
-	if(is.elemstk != nil)
+	if(is.elemstk != nil) {
+		is.lastpopped = hd is.elemstk;
 		is.elemstk = tl is.elemstk;
+	}
 }
 
 # Get the computed style for an element, using full CSS matching
@@ -5736,4 +5846,92 @@ parsecstyle(cs: ref ComputedStyle, s: string)
 			continue;
 		applycssprop_cs(cs, prop, val);
 	}
+}
+
+# Check if a media attribute string (from <link> tag) is screen-compatible.
+# Accepts "all", "screen", or comma-separated lists containing either.
+# Empty/nil means "all media" and is accepted.
+mediaok(media: string) : int
+{
+	if(media == nil || media == "")
+		return 1;
+	m := S->tolower(media);
+	# Check comma-separated list
+	i := 0;
+	n := len m;
+	for(;;) {
+		# Skip whitespace
+		for(; i < n && (m[i] == ' ' || m[i] == '\t' || m[i] == ','); )
+			i++;
+		if(i >= n)
+			break;
+		start := i;
+		for(; i < n && m[i] != ','; )
+			i++;
+		# Trim trailing whitespace
+		end := i;
+		for(; end > start && (m[end-1] == ' ' || m[end-1] == '\t'); )
+			end--;
+		word := m[start:end];
+		if(word == "all" || word == "screen")
+			return 1;
+	}
+	return 0;
+}
+
+# Check if a list of media type strings (from @media rule) is screen-compatible.
+medialistok(media: list of string) : int
+{
+	if(media == nil)
+		return 1;	# no media specified = applies to all
+	for(ml := media; ml != nil; ml = tl ml) {
+		m := S->tolower(hd ml);
+		if(m == "all" || m == "screen")
+			return 1;
+	}
+	return 0;	# only had print/speech/etc.
+}
+
+# Fetch an external CSS stylesheet and apply its rules.
+# Handles @import rules one level deep.
+fetchandapplycss(is: ref ItemSource, href: string)
+{
+	url := U->parse(href);
+	if(url == nil)
+		return;
+	url = U->mkabs(url, is.doc.base);
+	if(url == nil)
+		return;
+	if(dbg)
+		sys->print("fetching stylesheet: %s\n", url.tostring());
+	text := CU->fetchurl_text(url);
+	if(text == nil || text == "")
+		return;
+	# Parse with css.m and handle @import
+	if(CSSM != nil) {
+		(sheet, nil) := CSSM->parse(text);
+		if(sheet != nil) {
+			# Process @import rules (1 level deep, no recursion)
+			for(imports := sheet.imports; imports != nil; imports = tl imports) {
+				imp := hd imports;
+				if(imp.media == nil || medialistok(imp.media)) {
+					impurl := U->parse(imp.name);
+					if(impurl != nil) {
+						impurl = U->mkabs(impurl, url);
+						if(impurl != nil) {
+							if(dbg)
+								sys->print("fetching @import: %s\n", impurl.tostring());
+							imptext := CU->fetchurl_text(impurl);
+							if(imptext != nil && imptext != "")
+								parsestyleblock(is, imptext);
+						}
+					}
+				}
+			}
+			parsestyleblock_css(is, sheet);
+			return;
+		}
+	}
+	# Fallback: parse as raw CSS text
+	parsestyleblock(is, text);
 }
