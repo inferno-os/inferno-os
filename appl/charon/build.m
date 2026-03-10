@@ -128,7 +128,7 @@ DSPTABLECAPTION: con 9;	# display: table-caption
 BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset: con byte iota;
 
 # Position types
-POSstatic, POSrelative: con byte iota;
+POSstatic, POSrelative, POSabsolute, POSfixed: con byte iota;
 
 # Float types
 FLnone, FLleft, FLright: con byte iota;
@@ -209,11 +209,26 @@ ComputedStyle: adt
 	table_layout: byte;		# 0=auto, 1=fixed
 
 	# Positioning
-	position: byte;			# POSstatic or POSrelative
+	position: byte;			# POSstatic..POSfixed
 	float_: byte;			# FLnone, FLleft, FLright
 	clear: byte;			# CLnone..CLboth
-	rel_top: int;			# relative position offset top
-	rel_left: int;			# relative position offset left
+	rel_top: int;			# position offset top
+	rel_left: int;			# position offset left
+	pos_right: int;			# position offset right (STYLNONE if not set)
+	pos_bottom: int;		# position offset bottom (STYLNONE if not set)
+	zindex: int;			# z-index stacking order (STYLNONE if not set)
+
+	# Visual effects
+	opacity: int;			# 0-255 (255=opaque), STYLNONE if not set
+	border_radius: array of int;	# [tl, tr, br, bl] in pixels
+	box_shadow_x: int;		# box-shadow horizontal offset
+	box_shadow_y: int;		# box-shadow vertical offset
+	box_shadow_blur: int;		# box-shadow blur radius
+	box_shadow_color: int;		# box-shadow color
+	text_shadow_x: int;		# text-shadow horizontal offset
+	text_shadow_y: int;		# text-shadow vertical offset
+	text_shadow_blur: int;		# text-shadow blur radius
+	text_shadow_color: int;		# text-shadow color
 
 	# Other
 	overflow: byte;			# OVvisible..OVauto
@@ -278,7 +293,9 @@ SPelement, SPclass, SPid, SPpseudo, SPany: con iota;
 
 # form field types (ints because often case on them)
 Ftext, Fpassword, Fcheckbox, Fradio, Fsubmit, Fhidden, Fimage,
-		Freset, Ffile, Fbutton, Fselect, Ftextarea: con iota;
+		Freset, Ffile, Fbutton, Fselect, Ftextarea,
+		Femail, Furl, Fnumber, Ftel, Fsearch, Fdate,
+		Ftime, Fcolor, Frange: con iota;
 
 Formfield: adt
 {
@@ -297,6 +314,8 @@ Formfield: adt
 	ctlid: int;			# identifies control for this field in layout
 	events: list of Lex->Attr;	# same as genattr.events of containing item
 	evmask: int;
+	placeholder: string;	# HTML5 placeholder text
+	pattern: string;	# HTML5 validation pattern
 
 	new: fn(ftype, fieldid: int, form: ref Form, name, value: string, size, maxlength: int) : ref Formfield;
 };
@@ -304,6 +323,8 @@ Formfield: adt
 # Form flags
 FFchecked: con byte (1<<7);
 FFmultiple: con byte (1<<6);
+FFrequired: con byte (1<<5);
+FFautofocus: con byte (1<<4);
 
 # Option holds info about an option in a "select" form field
 Option: adt {

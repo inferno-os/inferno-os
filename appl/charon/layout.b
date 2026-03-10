@@ -39,6 +39,7 @@ W: Widget;
 	Dnone, Dpixels, Dpercent, Drelative,
 	Ftext, Fpassword, Fcheckbox, Fradio, Fsubmit, Fhidden, Fimage,
 	Freset, Ffile, Fbutton, Fselect, Ftextarea,
+	Femail, Furl, Fnumber, Ftel, Fsearch, Fdate, Ftime, Fcolor, Frange,
 	Background,
 	FntR, FntI, FntB, FntT, NumStyle,
 	Tiny, Small, Normal, Large, Verylarge, NumSize, NumFnt, DefFnt,
@@ -48,10 +49,11 @@ W: Widget;
 	ComputedStyle, STYLNONE,
 	BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset,
 	OVvisible, OVhidden,
-	POSstatic, POSrelative,
+	POSstatic, POSrelative, POSabsolute, POSfixed,
 	FLnone, FLleft, FLright,
 	CLnone, CLleft, CLright, CLboth,
-	VISvisible
+	VISvisible, VIShidden,
+	FFrequired, FFautofocus
     : import B;
 
 # font stuff
@@ -2422,12 +2424,45 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			drawtable(f, lay, Point(x,y), i.table);
 		Ibox =>
 			# Draw box with CSS box model
-			# Apply relative positioning offset (visual only, doesn't affect flow)
+			# Apply positioning offsets
 			ox := x;
 			oy := y;
-			if(i.cstyle != nil && i.cstyle.position == B->POSrelative) {
-				ox += i.cstyle.rel_left;
-				oy += i.cstyle.rel_top;
+			if(i.cstyle != nil) {
+				case int i.cstyle.position {
+				int POSrelative =>
+					if(i.cstyle.rel_left != 0)
+						ox += i.cstyle.rel_left;
+					else if(i.cstyle.pos_right != STYLNONE)
+						ox -= i.cstyle.pos_right;
+					if(i.cstyle.rel_top != 0)
+						oy += i.cstyle.rel_top;
+					else if(i.cstyle.pos_bottom != STYLNONE)
+						oy -= i.cstyle.pos_bottom;
+				int POSabsolute =>
+					# Position relative to containing block (frame content area)
+					ox = f.cr.min.x;
+					oy = f.cr.min.y;
+					if(i.cstyle.rel_left != 0)
+						ox += i.cstyle.rel_left;
+					else if(i.cstyle.pos_right != STYLNONE)
+						ox = f.cr.max.x - i.width - i.cstyle.pos_right;
+					if(i.cstyle.rel_top != 0)
+						oy += i.cstyle.rel_top;
+					else if(i.cstyle.pos_bottom != STYLNONE)
+						oy = f.cr.max.y - i.height - i.cstyle.pos_bottom;
+				int POSfixed =>
+					# Position relative to viewport (frame rect)
+					ox = f.r.min.x;
+					oy = f.r.min.y;
+					if(i.cstyle.rel_left != 0)
+						ox += i.cstyle.rel_left;
+					else if(i.cstyle.pos_right != STYLNONE)
+						ox = f.r.max.x - i.width - i.cstyle.pos_right;
+					if(i.cstyle.rel_top != 0)
+						oy += i.cstyle.rel_top;
+					else if(i.cstyle.pos_bottom != STYLNONE)
+						oy = f.r.max.y - i.height - i.cstyle.pos_bottom;
+				}
 			}
 			if(inview)
 				drawbox(f, lay, Point(ox,oy), i);
@@ -3236,7 +3271,8 @@ Control.newff(f: ref Frame, ff: ref B->Formfield) : ref Control
 {
 	ans : ref Control = nil;
 	case ff.ftype {
-	Ftext or Fpassword or Ftextarea =>
+	Ftext or Fpassword or Ftextarea
+	or Femail or Furl or Fnumber or Ftel or Fsearch or Fdate or Ftime =>
 		nh := ff.size;
 		nv := 1;
 		linewrap := 0;
@@ -3249,6 +3285,16 @@ Control.newff(f: ref Frame, ff: ref B->Formfield) : ref Control
 		if(ff.ftype == Fpassword)
 			ans.flags |= CFsecure;
 		ans.entryset(ff.value);
+	Fcolor =>
+		# Color input: render as a button with the current color value
+		ans = Control.newbutton(f, nil, nil, ff.value, nil, 0, 1);
+	Frange =>
+		# Range input: render as a text entry showing the value
+		ans = Control.newentry(f, ff.size, 1, 0);
+		val := ff.value;
+		if(val == "")
+			val = "50";
+		ans.entryset(val);
 	Fcheckbox or Fradio =>
 		ans = Control.newcheckbox(f, ff.ftype==Fradio);
 		if((ff.flags&B->FFchecked) != byte 0)
@@ -4358,6 +4404,11 @@ Control.draw(ctl: self ref Control, flush: int)
 			}
 			q = (p.x, q.y + ctllinespace);
 		}
+		# HTML5 placeholder text: show when entry is empty and has no focus
+		if(c.s == "" && c.ff != nil && c.ff.placeholder != "" && !(c.flags & CFhasfocus)) {
+			phcolor := colorimage(DarkGrey);
+			win.text(p, phcolor, zp, fnt, c.ff.placeholder);
+		}
 	Ccheckbox=>
 		win.draw(c.r, colorimage(White), nil, zp);
 		if(c.isradio) {
@@ -5211,7 +5262,7 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox)
 	}
 }
 
-# Draw an Ibox item: background, borders, then content via sublayout
+# Draw an Ibox item: box-shadow, background, borders, then content via sublayout
 drawbox(f: ref Frame, lay: ref Lay, origin: Point, box: ref Item.Ibox)
 {
 	im := f.cim;
@@ -5229,17 +5280,45 @@ drawbox(f: ref Frame, lay: ref Lay, origin: Point, box: ref Item.Ibox)
 		padl = cs.padding[3];
 	}
 
-	# Draw background (padding box)
+	# Skip rendering if visibility is hidden
+	if(cs != nil && cs.visibility == VIShidden)
+		return;
+
+	# Draw box-shadow (behind everything)
+	if(cs != nil && cs.box_shadow_color != STYLNONE) {
+		sx := cs.box_shadow_x;
+		sy := cs.box_shadow_y;
+		blur := cs.box_shadow_blur;
+		shadowr := Rect(
+			Point(origin.x + sx, origin.y + sy),
+			Point(origin.x + box.width + sx, origin.y + box.height + sy));
+		# Approximate blur by expanding shadow rect
+		if(blur > 0)
+			shadowr = shadowr.inset(-blur/2);
+		drawfill(im, shadowr, cs.box_shadow_color);
+	}
+
+	# Draw background (padding box) with border-radius support
 	if(cs != nil && cs.bgcolor != STYLNONE && cs.bgcolor != -1) {
 		bgr := Rect(
 			Point(origin.x + bdl, origin.y + bdt),
 			Point(origin.x + box.width - bdr, origin.y + box.height - bdb));
-		drawfill(im, bgr, cs.bgcolor);
+		hasradius := cs.border_radius[0] > 0 || cs.border_radius[1] > 0
+			|| cs.border_radius[2] > 0 || cs.border_radius[3] > 0;
+		if(hasradius)
+			drawroundedfill(im, bgr, cs.bgcolor, cs.border_radius);
+		else
+			drawfill(im, bgr, cs.bgcolor);
 	}
 
 	# Draw borders
 	if(cs != nil) {
-		drawboxborders(im, origin, box.width, box.height, cs);
+		hasradius := cs.border_radius[0] > 0 || cs.border_radius[1] > 0
+			|| cs.border_radius[2] > 0 || cs.border_radius[3] > 0;
+		if(hasradius)
+			drawroundedborders(im, origin, box.width, box.height, cs);
+		else
+			drawboxborders(im, origin, box.width, box.height, cs);
 	}
 
 	# Draw content via sublayout
@@ -5342,6 +5421,118 @@ drawborderedge(im: ref Image, r: Rect, color: int, style: byte)
 			im.draw(Rect(r.min, Point(r.min.x+n, r.max.y)), src, nil, zp);
 			im.draw(Rect(Point(r.max.x-n, r.min.y), r.max), src, nil, zp);
 		}
+	}
+}
+
+# Draw a filled rectangle with rounded corners using corner arcs
+drawroundedfill(im: ref Image, r: Rect, color: int, radii: array of int)
+{
+	src := colorimage(color);
+	# Fill the center rectangles (cross shape)
+	rtl := radii[0]; rtr := radii[1]; rbr := radii[2]; rbl := radii[3];
+	# Clamp radii to half the rect dimensions
+	hw := r.dx() / 2;
+	hh := r.dy() / 2;
+	if(rtl > hw) rtl = hw;
+	if(rtl > hh) rtl = hh;
+	if(rtr > hw) rtr = hw;
+	if(rtr > hh) rtr = hh;
+	if(rbr > hw) rbr = hw;
+	if(rbr > hh) rbr = hh;
+	if(rbl > hw) rbl = hw;
+	if(rbl > hh) rbl = hh;
+	maxrl := max(rtl, rbl);
+	maxrr := max(rtr, rbr);
+	maxrt := max(rtl, rtr);
+	maxrb := max(rbl, rbr);
+	# Fill center horizontal band
+	im.draw(Rect(Point(r.min.x, r.min.y+maxrt), Point(r.max.x, r.max.y-maxrb)), src, nil, zp);
+	# Fill top band (between corners)
+	im.draw(Rect(Point(r.min.x+rtl, r.min.y), Point(r.max.x-rtr, r.min.y+maxrt)), src, nil, zp);
+	# Fill bottom band (between corners)
+	im.draw(Rect(Point(r.min.x+rbl, r.max.y-maxrb), Point(r.max.x-rbr, r.max.y)), src, nil, zp);
+	# Fill corner arcs using ellipse
+	if(rtl > 0)
+		im.fillellipse(Point(r.min.x+rtl, r.min.y+rtl), rtl, rtl, src, zp);
+	if(rtr > 0)
+		im.fillellipse(Point(r.max.x-rtr, r.min.y+rtr), rtr, rtr, src, zp);
+	if(rbr > 0)
+		im.fillellipse(Point(r.max.x-rbr, r.max.y-rbr), rbr, rbr, src, zp);
+	if(rbl > 0)
+		im.fillellipse(Point(r.min.x+rbl, r.max.y-rbl), rbl, rbl, src, zp);
+}
+
+# Draw rounded borders (outline arcs at corners + straight edges between)
+drawroundedborders(im: ref Image, origin: Point, w, h: int, cs: ref ComputedStyle)
+{
+	x := origin.x;
+	y := origin.y;
+	xr := x + w;
+	yb := y + h;
+	rtl := cs.border_radius[0];
+	rtr := cs.border_radius[1];
+	rbr := cs.border_radius[2];
+	rbl := cs.border_radius[3];
+	# Clamp radii
+	hw := w / 2;
+	hh := h / 2;
+	if(rtl > hw) rtl = hw;
+	if(rtl > hh) rtl = hh;
+	if(rtr > hw) rtr = hw;
+	if(rtr > hh) rtr = hh;
+	if(rbr > hw) rbr = hw;
+	if(rbr > hh) rbr = hh;
+	if(rbl > hw) rbl = hw;
+	if(rbl > hh) rbl = hh;
+
+	# Top border (between TL and TR corners)
+	if(cs.border_width[0] > 0 && cs.border_style[0] != BSnone) {
+		c := cs.border_color[0];
+		if(c == STYLNONE) c = Black;
+		n := cs.border_width[0];
+		src := colorimage(c);
+		im.draw(Rect(Point(x+rtl, y), Point(xr-rtr, y+n)), src, nil, zp);
+		# Draw corner arcs
+		if(rtl > 0)
+			im.arc(Point(x+rtl, y+rtl), rtl, rtl, n-1, src, zp, 45, 90);
+		if(rtr > 0)
+			im.arc(Point(xr-rtr, y+rtr), rtr, rtr, n-1, src, zp, 0, 45);
+	}
+	# Right border
+	if(cs.border_width[1] > 0 && cs.border_style[1] != BSnone) {
+		c := cs.border_color[1];
+		if(c == STYLNONE) c = Black;
+		n := cs.border_width[1];
+		src := colorimage(c);
+		im.draw(Rect(Point(xr-n, y+rtr), Point(xr, yb-rbr)), src, nil, zp);
+		if(rtr > 0)
+			im.arc(Point(xr-rtr, y+rtr), rtr, rtr, n-1, src, zp, 315, 45);
+		if(rbr > 0)
+			im.arc(Point(xr-rbr, yb-rbr), rbr, rbr, n-1, src, zp, 270, 45);
+	}
+	# Bottom border
+	if(cs.border_width[2] > 0 && cs.border_style[2] != BSnone) {
+		c := cs.border_color[2];
+		if(c == STYLNONE) c = Black;
+		n := cs.border_width[2];
+		src := colorimage(c);
+		im.draw(Rect(Point(x+rbl, yb-n), Point(xr-rbr, yb)), src, nil, zp);
+		if(rbr > 0)
+			im.arc(Point(xr-rbr, yb-rbr), rbr, rbr, n-1, src, zp, 225, 45);
+		if(rbl > 0)
+			im.arc(Point(x+rbl, yb-rbl), rbl, rbl, n-1, src, zp, 180, 45);
+	}
+	# Left border
+	if(cs.border_width[3] > 0 && cs.border_style[3] != BSnone) {
+		c := cs.border_color[3];
+		if(c == STYLNONE) c = Black;
+		n := cs.border_width[3];
+		src := colorimage(c);
+		im.draw(Rect(Point(x, y+rtl), Point(x+n, yb-rbl)), src, nil, zp);
+		if(rtl > 0)
+			im.arc(Point(x+rtl, y+rtl), rtl, rtl, n-1, src, zp, 135, 45);
+		if(rbl > 0)
+			im.arc(Point(x+rbl, yb-rbl), rbl, rbl, n-1, src, zp, 180, 45);
 	}
 }
 
