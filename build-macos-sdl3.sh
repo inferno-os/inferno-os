@@ -56,7 +56,7 @@ mk clean 2>/dev/null || true
 echo "Building SDL3 GUI emulator..."
 mk GUIBACK=sdl3
 
-if [ -f o.emu ]; then
+if [[ -f o.emu ]]; then
     echo ""
     echo "=== Build Successful ==="
     ls -lh o.emu

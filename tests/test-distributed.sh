@@ -31,7 +31,7 @@ SERVER_PID=""
 KEYFILE="$ROOT/usr/inferno/keyring/default"
 
 # Colors (if terminal supports them)
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
 	RED='\033[0;31m'
 	GREEN='\033[0;32m'
 	YELLOW='\033[0;33m'
@@ -48,7 +48,7 @@ fi
 pass() { echo -e "${GREEN}PASS${NC}: $1"; }
 fail() { echo -e "${RED}FAIL${NC}: $1"; }
 warn() { echo -e "${YELLOW}WARN${NC}: $1"; }
-info() { [ "$VERBOSE" -eq 1 ] && echo "  $1" || true; }
+info() { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
 
 passed=0
 failed=0
@@ -76,7 +76,7 @@ if ! command -v timeout >/dev/null 2>&1; then
 fi
 
 cleanup() {
-	if [ -n "$SERVER_PID" ]; then
+	if [[ -n "$SERVER_PID" ]]; then
 		info "Killing Instance B (pid $SERVER_PID)"
 		kill "$SERVER_PID" 2>/dev/null || true
 		wait "$SERVER_PID" 2>/dev/null || true
@@ -92,7 +92,7 @@ echo ""
 
 echo -e "${BOLD}Phase 1: Prerequisites${NC}"
 
-if [ ! -x "$EMU" ]; then
+if [[ ! -x "$EMU" ]]; then
 	echo "ERROR: Emulator not found at $EMU"
 	echo "Build first: cd emu/MacOSX && mk install"
 	exit 1
@@ -110,12 +110,12 @@ pass "llm9p running on port $LLM9P_PORT"
 # Check required .dis files
 MISSING=0
 for f in dis/auth/createsignerkey.dis dis/listen.dis dis/export.dis dis/mount.dis dis/sh.dis; do
-	if [ ! -f "$ROOT/$f" ]; then
+	if [[ ! -f "$ROOT/$f" ]]; then
 		fail "Missing $f"
 		MISSING=1
 	fi
 done
-if [ "$MISSING" -eq 1 ]; then
+if [[ "$MISSING" -eq 1 ]]; then
 	echo "ERROR: Missing .dis files. Build with: cd appl/cmd && mk install"
 	exit 1
 fi
@@ -127,7 +127,7 @@ echo ""
 
 echo -e "${BOLD}Phase 2: Key Generation${NC}"
 
-if [ -f "$KEYFILE" ] && [ "$FORCE_KEYS" -eq 0 ]; then
+if [[ -f "$KEYFILE" ]] && [[ "$FORCE_KEYS" -eq 0 ]]; then
 	pass "Key already exists: $KEYFILE (use -f to regenerate)"
 else
 	info "Generating Ed25519 self-signed key..."
@@ -141,7 +141,7 @@ else
 		-a ed25519 -f /usr/inferno/keyring/default testnode \
 		</dev/null >/dev/null 2>&1 || true  # timeout returns 124 if emu hangs after writing key
 
-	if [ ! -f "$KEYFILE" ] || [ ! -s "$KEYFILE" ]; then
+	if [[ ! -f "$KEYFILE" ]] || [[ ! -s "$KEYFILE" ]]; then
 		fail "Key file not created or empty: $KEYFILE"
 		echo "  Try running manually:"
 		echo "  $EMU -r$ROOT /dis/auth/createsignerkey.dis -a ed25519 -f /usr/inferno/keyring/default testnode"
@@ -181,7 +181,7 @@ WAITED=0
 while ! lsof -i ":$SERVER_PORT" -sTCP:LISTEN >/dev/null 2>&1; do
 	sleep 1
 	WAITED=$((WAITED + 1))
-	if [ "$WAITED" -ge 15 ]; then
+	if [[ "$WAITED" -ge 15 ]]; then
 		fail "Instance B failed to start listening on port $SERVER_PORT within 15s"
 		echo "Server log:"
 		cat "$ROOT/tests/.server-b.log" 2>/dev/null || true
@@ -306,7 +306,7 @@ if run_test "llm-query" 60 "$TEST3_CMDS"; then
 	OUTPUT=$(cat "$LOGFILE" 2>/dev/null)
 	info "  Output: $OUTPUT"
 	# The response should contain some text (the LLM's reply)
-	if [ -n "$OUTPUT" ]; then
+	if [[ -n "$OUTPUT" ]]; then
 		# Check if response contains "hello" (case insensitive)
 		if echo "$OUTPUT" | grep -iqE 'hello'; then
 			pass "Test 3: LLM query — response contains 'hello'"
@@ -346,7 +346,7 @@ LOGFILE="$ROOT/tests/.test-dead-port.log"
 OUTPUT=$(cat "$LOGFILE" 2>/dev/null)
 info "  Output: '$OUTPUT'"
 
-if [ -z "$OUTPUT" ]; then
+if [[ -z "$OUTPUT" ]]; then
 	pass "Test 4: Mount to dead port produced no output (as expected)"
 	passed=$((passed + 1))
 elif echo "$OUTPUT" | grep -qE '^[0-9]+$'; then
@@ -369,7 +369,7 @@ echo ""
 
 # ── Phase 5: Interactive Mode ────────────────────────────────────────
 
-if [ "$INTERACTIVE" -eq 1 ] && [ "$failed" -eq 0 ]; then
+if [[ "$INTERACTIVE" -eq 1 ]] && [[ "$failed" -eq 0 ]]; then
 	echo -e "${BOLD}Phase 5: Interactive Mode${NC}"
 	echo "Starting Instance A with authenticated + encrypted mount to Instance B..."
 	echo "Try: cat /n/llm/new"
@@ -391,7 +391,7 @@ fi
 # Clean up log files
 rm -f "$ROOT/tests/.server-b.log" "$ROOT/tests/.test-"*.log
 
-if [ "$failed" -gt 0 ]; then
+if [[ "$failed" -gt 0 ]]; then
 	exit 1
 fi
 exit 0

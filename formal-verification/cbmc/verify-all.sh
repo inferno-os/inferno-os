@@ -158,7 +158,7 @@ run_verification \
 
 # ====== Full mode: pgrpcpy harnesses (heavy, ~15 min) ======
 
-if [ "$MODE" = "full" ]; then
+if [[ "$MODE" = "full" ]]; then
     echo "====== pgrpcpy Harnesses (full mode) ======"
     echo ""
 
@@ -204,7 +204,7 @@ echo "Passed: $PASS"
 echo "Failed: $FAIL"
 echo ""
 
-if [ $FAIL -eq 0 ]; then
+if [[ $FAIL -eq 0 ]]; then
     echo "✅ ALL VERIFICATIONS PASSED"
     exit 0
 else

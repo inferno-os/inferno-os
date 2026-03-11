@@ -32,7 +32,7 @@ mk clean 2>/dev/null || true
 echo "Building headless emulator..."
 mk GUIBACK=headless
 
-if [ -f o.emu ]; then
+if [[ -f o.emu ]]; then
     echo ""
     echo "=== Build Successful ==="
     ls -lh o.emu

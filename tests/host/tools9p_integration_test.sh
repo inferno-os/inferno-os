@@ -26,7 +26,7 @@ while getopts "v" opt; do
     esac
 done
 
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
     RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
     BOLD='\033[1m'; NC='\033[0m'
 else
@@ -38,13 +38,13 @@ PASSED=0; FAILED=0; SKIPPED=0
 pass()  { echo -e "${GREEN}PASS${NC}: $1"; PASSED=$((PASSED+1)); }
 fail()  { echo -e "${RED}FAIL${NC}: $1"; FAILED=$((FAILED+1)); }
 skip()  { echo -e "${YELLOW}SKIP${NC}: $1"; SKIPPED=$((SKIPPED+1)); }
-info()  { [ "$VERBOSE" -eq 1 ] && echo "  $1" || true; }
+info()  { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
 
 echo -e "${BOLD}tools9p 9P protocol tests${NC}"
 echo ""
 
-[ -x "$EMU" ] || { echo "ERROR: emu not found at $EMU"; exit 1; }
-[ -f "$ROOT/dis/veltro/tools9p.dis" ] || {
+[[ -x "$EMU" ]] || { echo "ERROR: emu not found at $EMU"; exit 1; }
+[[ -f "$ROOT/dis/veltro/tools9p.dis" ]] || {
     skip "tools9p.dis not found (run: cd appl/cmd && mk install)";
     echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"; exit 0; }
 
@@ -58,7 +58,7 @@ emu_c() {
         </dev/null >"$log" 2>&1
     local rc=$?
     OUTPUT=$(cat "$log")
-    if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+    if [[ "$rc" -eq 0 ]] || [[ "$rc" -eq 124 ]]; then
         info "[$name] ok: $OUTPUT"
         return 0
     else
@@ -103,7 +103,7 @@ if emu_c "tools_content" 10 \
     "tools9p read list diff & sleep 2; cat /tool/tools"; then
     TOOLCOUNT=$(echo "$OUTPUT" | grep -c "^[a-z]" || echo 0)
     info "tool count: $TOOLCOUNT"
-    if [ "$TOOLCOUNT" -ge 3 ]; then
+    if [[ "$TOOLCOUNT" -ge 3 ]]; then
         pass "/tool/tools has expected tool count ($TOOLCOUNT)"
     else
         fail "/tool/tools has too few tools: $TOOLCOUNT (output: $OUTPUT)"
@@ -137,7 +137,7 @@ if emu_c "help_read" 10 \
     "tools9p read list & sleep 2; echo read > /tool/help; cat /tool/help"; then
     DOCLEN=$(echo -n "$OUTPUT" | wc -c)
     info "doc length: $DOCLEN bytes"
-    if [ "$DOCLEN" -gt 10 ]; then
+    if [[ "$DOCLEN" -gt 10 ]]; then
         pass "/tool/help returns documentation for 'read' ($DOCLEN bytes)"
     else
         fail "/tool/help returned too little documentation: '$OUTPUT'"
@@ -220,7 +220,7 @@ if emu_c "exec_read" 15 \
         if emu_c "exec_read_dis" 15 \
             "tools9p read list & sleep 2; echo /dis/veltro/tools/read.dis > /tool/read/ctl; cat /tool/read/ctl 2>/dev/null"; then
             RLEN=$(echo -n "$OUTPUT" | wc -c)
-            if [ "$RLEN" -gt 10 ]; then
+            if [[ "$RLEN" -gt 10 ]]; then
                 pass "read tool exec: returned content from .dis file ($RLEN bytes)"
             else
                 fail "read tool exec: empty result reading .dis file"
@@ -241,7 +241,7 @@ if emu_c "exec_list" 15 \
     "tools9p read list & sleep 2; echo /dis > /tool/list/ctl; cat /tool/list/ctl"; then
     if echo "$OUTPUT" | grep -qE "error:"; then
         fail "list tool returned error: $OUTPUT"
-    elif [ -n "$OUTPUT" ]; then
+    elif [[ -n "$OUTPUT" ]]; then
         pass "list tool exec: returned listing for /dis"
     else
         fail "list tool exec: empty result"
@@ -279,4 +279,4 @@ fi
 
 echo ""
 echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"
-[ "$FAILED" -eq 0 ]
+[[ "$FAILED" -eq 0 ]]
