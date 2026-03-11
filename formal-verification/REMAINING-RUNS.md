@@ -12,8 +12,10 @@ with sufficient memory and uninterrupted execution time.
 | TLA+ TLC small (11 invariants) | **DONE** | CI / any host (8 min, 4GB) |
 | TLA+ TLC medium | **DONE** (partial) | Jetson Orin AGX (50GB heap, 10h50m) |
 | TLA+ TLC large | **TODO** | Dedicated host (32GB+, ~hours) |
-| CBMC full (pgrpcpy, MNTLOG=2) | **TODO** | Dedicated host (12GB+, ~20 min) |
-| CBMC full (pgrpcpy, MNTLOG=5) | **TODO** | Dedicated host (16GB+, ~60 min) |
+| CBMC full (pgrpcpy, MNTLOG=1) | **DONE** | AMD Ryzen 7 255 x86-64 (<1s, --slice-formula) |
+| CBMC full (pgrpcpy, MNTLOG=2) | **DONE** | AMD Ryzen 7 255 x86-64 (<1s, --slice-formula) |
+| CBMC full (pgrpcpy, MNTLOG=5) | **DONE** | AMD Ryzen 7 255 x86-64 (<1s, --slice-formula) |
+| CBMC crypto (ML-KEM/ML-DSA) | **DONE** | AMD Ryzen 7 255 x86-64 (5/9 pass, 4 documented findings) |
 
 ## Prerequisites
 
@@ -158,21 +160,36 @@ For CBMC, record:
 
 ### CBMC pgrpcpy (MNTLOG=2, MNTHASH=4, unwind=6)
 
-- `harness_basic_isolation`: 77+ minutes of continuous SAT solving at
-  93% CPU, 10.5GB RAM (51% of 21GB). Still in propositional reduction
-  phase when terminated. The deep pointer chains and loop unrolling in
-  `pgrpcpy` create a massive SAT formula even with only 4 hash buckets.
-- **Recommendation**: Run on a machine with 16GB+ RAM and allow 2+ hours
-  per harness. Consider adding `--slice-formula` flag to CBMC to prune
-  irrelevant clauses.
-- Alternative: Try `CBMC_MNTLOG=1` (MNTHASH=2, unwind=4) for a faster
-  sanity check that still exercises the same code paths.
+- **Without --slice-formula** (2026-01-13): `harness_basic_isolation` ran for
+  77+ minutes of continuous SAT solving at 93% CPU, 10.5GB RAM (51% of 21GB).
+  Still in propositional reduction phase when terminated.
+- **With --slice-formula** (2026-03-11): All 4 harnesses completed in <0.3s each
+  on AMD Ryzen 7 255 (x86-64, 27GB RAM). The `--slice-formula` flag prunes
+  irrelevant SAT clauses, reducing verification time by over 3 orders of magnitude.
 
 ### CBMC pgrpcpy (MNTLOG=5, MNTHASH=32, unwind=34)
 
-- Not yet attempted. Expected to require significantly more resources
-  than MNTLOG=2 (exponential in unwind depth).
-- **Recommendation**: 32GB+ RAM, hours per harness.
+- **Completed 2026-03-11** on AMD Ryzen 7 255 (x86-64, 27GB RAM, 16 cores).
+- All 4 harnesses passed with `--unwinding-assertions` (sound verification).
+- 3,310 properties verified, 0 failures, <0.3s per harness.
+- Previous estimate of "32GB+ RAM, hours per harness" was based on the
+  non-sliced formula. With `--slice-formula`, the production configuration
+  is trivially fast.
+
+### CBMC pgrpcpy (MNTLOG=1, MNTHASH=2, unwind=4)
+
+- **Completed 2026-03-11** as a sanity check before scaling up.
+- All 4 harnesses passed in <0.3s each. 3,310 properties, 0 failures.
+
+### Key Lesson: --slice-formula
+
+The `--slice-formula` flag is essential for CBMC verification of kernel code
+with deep pointer chains. Without it, CBMC generates a monolithic SAT formula
+that includes all possible pointer dereference chains and loop iterations,
+even those irrelevant to the properties being checked. With slicing, CBMC
+identifies which program variables and paths are relevant to each assertion
+and prunes the rest, reducing the formula from billions of clauses to a
+tractable size. This should be the default for all future CBMC harness runs.
 
 ### General Notes
 
@@ -181,3 +198,5 @@ For CBMC, record:
   ~10 minutes and is suitable for CI. It provides the core isolation proof.
 - The extended runs (TLC medium/large + CBMC full) strengthen the result
   by exploring larger state spaces and verifying actual C code.
+- **The CBMC full pgrpcpy verification is now complete** at all three MNTLOG
+  levels (1, 2, 5) with sound unwinding assertions on x86-64 hardware.

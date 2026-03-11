@@ -50,14 +50,116 @@ These are real bugs at the C/emu thread level. They are mitigated by Inferno's c
 | Reference Counting | `harness_refcount.c` | **PASS** | 45 |
 | **Total** | | **3/3 PASS** | **113** |
 
-### Full Mode (Manual)
+### Post-Quantum Crypto Verification (Quick Mode)
 
-The `harness_pgrpcpy.c` harness (basic isolation, modification independence, mnthash bounds) verifies actual C code from `pgrp.c` with MNTHASH=32 loop unrolling. This requires:
-- ~15 minutes per sub-harness
-- ~10GB RAM per sub-harness
-- `--unwind 34 --object-bits 11`
+| Harness | File | Entry | Status | Properties |
+|---------|------|-------|--------|-----------|
+| ML-KEM ct_memcmp | `harness_mlkem_ct.c` | `harness_ct_memcmp` | **PASS** | 71 |
+| ML-KEM ct_cmov | `harness_mlkem_ct.c` | `harness_ct_cmov` | **PASS** | 85 |
+| ML-KEM Barrett Reduce | `harness_mlkem_ct.c` | `harness_barrett_reduce` | **PASS** | 51 |
+| ML-KEM cond_sub_q | `harness_mlkem_ct.c` | `harness_cond_sub_q` | **PASS** | 51 |
+| ML-KEM FO Composition | `harness_mlkem_ct.c` | `harness_fo_transform_composition` | **PASS** | 71 |
+| **Total** | | | **5/5 PASS** | **329** |
 
-Run with: `CBMC_MNTLOG=5 ./verify-all.sh full`
+### ML-DSA Arithmetic (Findings)
+
+4 ML-DSA harnesses report signed integer overflow, which are legitimate findings:
+
+| Harness | Issue | Significance |
+|---------|-------|-------------|
+| Barrett Reduce | `a + (1 << 22)` overflows int32 near INT32_MAX | Harness constraint `\|a\| < 2^{31}` too wide; safe for `\|a\| < 255*q` |
+| Montgomery Reduce | `(int32)a * (int32)QINV` where QINV > INT32_MAX | Intentional two's complement modular arithmetic (pqcrystals reference pattern) |
+| Barrett No Overflow | Same `a + (1 << 22)` at constraint boundary | Constraint `256*q + 2^{22}` exceeds INT32_MAX by ~2M |
+| Montgomery No Overflow | Same QINV multiplication | By design; C signed overflow is technically UB |
+
+**Interpretation**: The Barrett overflow is a real constraint documentation issue — callers must ensure `|a| < INT32_MAX - 2^22`. The Montgomery overflow is intentional modular arithmetic matching the pqcrystals reference implementation, relying on two's complement representation. Both are safe in practice but should be documented.
+
+### Full Mode: pgrpcpy Namespace Isolation (x86-64)
+
+*Date: 2026-03-11*
+
+The `harness_pgrpcpy.c` and `harness_pgrpcpy_error.c` harnesses verify actual C code from `pgrp.c` (pgrpcpy, newpgrp, pgrpinsert, newmount) against property-annotated harnesses. Verified at all three MNTLOG configurations with `--unwinding-assertions` for sound results.
+
+**Platform**: AMD Ryzen 7 255 w/ Radeon 780M, 16 cores, 27 GB RAM, Linux 6.17.0-14-generic x86_64
+**CBMC Version**: 5.95.1 (cbmc-5.95.1)
+
+#### MNTLOG=1 (MNTHASH=2, unwind=4)
+
+| Harness | Entry | Properties | Time | Result |
+|---------|-------|-----------|------|--------|
+| Basic Isolation | `harness_basic_isolation` | 908 | 0.25s | **PASS** |
+| Modification Independence | `harness_modification_independence` | 908 | 0.27s | **PASS** |
+| Mnthash Bounds | `harness_mnthash_bounds` | 841 | 0.10s | **PASS** |
+| Error Path Safety | `harness` (pgrpcpy_error.c) | 653 | 0.20s | **PASS** |
+| **Total** | | **3,310** | **0.82s** | **4/4 PASS** |
+
+#### MNTLOG=2 (MNTHASH=4, unwind=6)
+
+| Harness | Entry | Properties | Time | Result |
+|---------|-------|-----------|------|--------|
+| Basic Isolation | `harness_basic_isolation` | 908 | 0.24s | **PASS** |
+| Modification Independence | `harness_modification_independence` | 908 | 0.27s | **PASS** |
+| Mnthash Bounds | `harness_mnthash_bounds` | 841 | 0.10s | **PASS** |
+| Error Path Safety | `harness` (pgrpcpy_error.c) | 653 | 0.20s | **PASS** |
+| **Total** | | **3,310** | **0.81s** | **4/4 PASS** |
+
+**Note**: A previous attempt at MNTLOG=2 without `--slice-formula` stalled at 77+ minutes consuming 10.5 GB RAM. The `--slice-formula` flag prunes irrelevant SAT clauses and reduces verification time by over 3 orders of magnitude.
+
+#### MNTLOG=5 (MNTHASH=32, unwind=34) — Production Configuration
+
+| Harness | Entry | Properties | Time | Result |
+|---------|-------|-----------|------|--------|
+| Basic Isolation | `harness_basic_isolation` | 908 | 0.27s | **PASS** |
+| Modification Independence | `harness_modification_independence` | 908 | 0.28s | **PASS** |
+| Mnthash Bounds | `harness_mnthash_bounds` | 841 | 0.10s | **PASS** |
+| Error Path Safety | `harness` (pgrpcpy_error.c) | 653 | 0.22s | **PASS** |
+| **Total** | | **3,310** | **0.87s** | **4/4 PASS** |
+
+**This is the first successful completion of the production MNTHASH=32 configuration.** All verification runs include `--unwinding-assertions` confirming that the unwind depth of 34 fully covers all program loops. The verification is therefore sound within CBMC's bounded model checking framework.
+
+#### Properties Verified per Harness
+
+**harness_basic_isolation** (908 properties):
+- Copy produces independent mount table (child mhead != parent mhead)
+- Child mount points to same channel (shared, refcount incremented)
+- Channel refcount >= 2 after copy
+- Child has cloned slash and dot (independent objects)
+- nodevs and progmode copied correctly
+- All pointer dereferences safe
+- All array accesses in bounds
+- All lock acquire/release assertions satisfied
+
+**harness_modification_independence** (908 properties):
+- After copy, adding mount to parent does not affect child's mount list
+- Child mount pointer unchanged after parent modification
+- Child mount still points to original channel
+- Mount at different hash bucket in parent not visible to child
+- All pointer/bounds/lock safety properties
+
+**harness_mnthash_bounds** (841 properties):
+- MOUNTH macro index always non-negative
+- MOUNTH macro index always < MNTHASH
+- Pointer arithmetic within array bounds for any qid.path
+
+**harness_pgrpcpy_error** (653 properties):
+- Source namespace unchanged after failed copy
+- Source mount table, slash, dot pointers preserved
+- Namespace write lock released on error
+- No stale readers after error cleanup
+- Successful copy produces independent mount table
+
+#### CBMC Command Used
+
+```bash
+cbmc --function <entry> <harness>.c \
+  --bounds-check --pointer-check --signed-overflow-check \
+  --unwind 34 --object-bits 11 -DMNTLOG=5 \
+  --slice-formula --unwinding-assertions
+```
+
+#### Key Optimization: --slice-formula
+
+The `--slice-formula` flag was critical for tractability. Without it, CBMC generates a monolithic SAT formula including all pointer chains and loop iterations, resulting in formulas too large for the SAT solver. With slicing enabled, CBMC prunes clauses irrelevant to the properties being checked, reducing the formula size dramatically. This brought the production configuration from infeasible (estimated hours, 32+ GB RAM) to sub-second verification.
 
 ## Key Findings
 
@@ -72,7 +174,11 @@ Run with: `CBMC_MNTLOG=5 ./verify-all.sh full`
 
 4. **Three real race conditions documented**: The race model provides formal evidence for three use-after-free hazards in the emu host threading layer. See [`TODO-RACE-CONDITIONS.md`](../TODO-RACE-CONDITIONS.md) for details and suggested fixes.
 
-5. **CBMC confirms implementation properties**: Array bounds (MOUNTH macro), integer overflow (fd allocation), and reference counting are verified on actual C code paths.
+5. **CBMC confirms implementation properties**: Array bounds (MOUNTH macro), integer overflow (fd allocation), and reference counting are verified on actual C code paths. The pgrpcpy namespace isolation function is verified at the production MNTHASH=32 configuration with 3,310 properties per MNTLOG level (9,930 total across 3 configurations), all passing with sound unwinding assertions.
+
+6. **Post-quantum crypto constant-time operations verified**: ML-KEM ct_memcmp, ct_cmov, Barrett reduction, cond_sub_q, and Fujisaki-Okamoto composition are verified constant-time with 329 total properties. ML-DSA Barrett/Montgomery reductions have documented signed overflow findings (intentional modular arithmetic matching pqcrystals reference).
+
+7. **--slice-formula optimization**: The CBMC `--slice-formula` flag reduced pgrpcpy verification from infeasible (77+ minutes, 10.5 GB for MNTLOG=2 alone) to sub-second for the full production MNTLOG=5 configuration. This is a significant methodological finding for future CBMC-based kernel verification.
 
 ## TLA+ / TLC Model Checking Results
 

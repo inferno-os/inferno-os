@@ -132,29 +132,33 @@ run_verification \
     --signed-overflow-check
 
 # Verify ML-KEM polynomial encode/decode round-trips
+# These harnesses link against the actual libsec source code.
+# Extra source files are passed via flags (cbmc accepts them positionally).
+MLKEM_LINK="../../libsec/mlkem_ntt.c ../../libsec/mlkem_poly.c -I. --slice-formula --unwinding-assertions"
+
 run_verification \
     "ML-KEM Encode/Decode 1-bit" \
     "harness_mlkem_ntt.c" \
     "harness_encode_decode_1" \
-    --bounds-check --pointer-check --unwind 258
+    --bounds-check --pointer-check --unwind 258 $MLKEM_LINK
 
 run_verification \
     "ML-KEM Encode/Decode 4-bit" \
     "harness_mlkem_ntt.c" \
     "harness_encode_decode_4" \
-    --bounds-check --pointer-check --unwind 258
+    --bounds-check --pointer-check --unwind 258 $MLKEM_LINK
 
 run_verification \
     "ML-KEM Poly Add Commutative" \
     "harness_mlkem_ntt.c" \
     "harness_poly_add_commutative" \
-    --bounds-check --unwind 258
+    --bounds-check --unwind 258 $MLKEM_LINK
 
 run_verification \
     "ML-KEM Poly Sub Identity" \
     "harness_mlkem_ntt.c" \
     "harness_poly_sub_identity" \
-    --bounds-check --unwind 258
+    --bounds-check --unwind 258 $MLKEM_LINK
 
 # ====== Full mode: pgrpcpy harnesses (heavy, ~15 min) ======
 
@@ -168,33 +172,37 @@ if [[ "$MODE" = "full" ]]; then
     echo "Using MNTLOG=$MNTLOG_DEF (MNTHASH=$((1 << MNTLOG_DEF)), unwind=$UNWIND)"
     echo ""
 
+    # --slice-formula: prune irrelevant SAT clauses (essential for tractability)
+    # --unwinding-assertions: verify unwind depth is sufficient (sound verification)
+    FULL_FLAGS="--bounds-check --pointer-check --signed-overflow-check --unwind $UNWIND --object-bits 11 -DMNTLOG=$MNTLOG_DEF --slice-formula --unwinding-assertions"
+
     # Verify pgrpcpy namespace isolation - basic (actual C code)
     run_verification \
         "pgrpcpy Basic Isolation" \
         "harness_pgrpcpy.c" \
         "harness_basic_isolation" \
-        --bounds-check --pointer-check --signed-overflow-check --unwind $UNWIND --object-bits 11 -DMNTLOG=$MNTLOG_DEF
+        $FULL_FLAGS
 
     # Verify pgrpcpy modification independence
     run_verification \
         "pgrpcpy Modification Independence" \
         "harness_pgrpcpy.c" \
         "harness_modification_independence" \
-        --bounds-check --pointer-check --signed-overflow-check --unwind $UNWIND --object-bits 11 -DMNTLOG=$MNTLOG_DEF
+        $FULL_FLAGS
 
     # Verify pgrpcpy mnthash bounds
     run_verification \
         "pgrpcpy Mnthash Bounds" \
         "harness_pgrpcpy.c" \
         "harness_mnthash_bounds" \
-        --bounds-check --pointer-check --signed-overflow-check --unwind $UNWIND --object-bits 11 -DMNTLOG=$MNTLOG_DEF
+        $FULL_FLAGS
 
     # Verify pgrpcpy error path safety
     run_verification \
         "pgrpcpy Error Paths" \
         "harness_pgrpcpy_error.c" \
         "harness" \
-        --bounds-check --pointer-check --signed-overflow-check --unwind $UNWIND --object-bits 11 -DMNTLOG=$MNTLOG_DEF
+        $FULL_FLAGS
 fi
 
 echo "========================================"
