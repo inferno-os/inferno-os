@@ -4117,6 +4117,8 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 		"table-caption" => si.display = DSPTABLECAPTION;
 		"flex" => si.display = DSPflex;
 		"inline-flex" => si.display = DSPinline_flex;
+		"grid" => si.display = DSPgrid;
+		"inline-grid" => si.display = DSPinline_grid;
 		}
 	}
 }
@@ -4124,15 +4126,55 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 # Apply a CSS property to a ComputedStyle (extended properties)
 applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 {
+	# Store CSS custom properties (--*)
+	if(len prop >= 2 && prop[0] == '-' && prop[1] == '-') {
+		# Replace existing or prepend
+		newprops: list of (string, string);
+		for(pl := cs.customprops; pl != nil; pl = tl pl) {
+			(pn, nil) := hd pl;
+			if(pn != prop)
+				newprops = hd pl :: newprops;
+		}
+		cs.customprops = (prop, val) :: newprops;
+		return;
+	}
 	case prop {
 	"color" =>
 		c := color(val, STYLNONE);
 		if(c != STYLNONE)
 			cs.color = c;
-	"background-color" or "background" =>
+	"background-color" =>
 		c := color(val, STYLNONE);
 		if(c != STYLNONE)
 			cs.bgcolor = c;
+	"background" =>
+		# Shorthand: may contain color, url(), gradient, repeat, position
+		parsebg_shorthand(cs, val);
+	"background-image" =>
+		if(val == "none") {
+			cs.bgimage_url = nil;
+		} else {
+			u := extractcssurl(val);
+			if(u != nil)
+				cs.bgimage_url = u;
+			else {
+				# Try gradient fallback: extract first color
+				gc := gradient_fallback_color(val);
+				if(gc != STYLNONE)
+					cs.bgcolor = gc;
+			}
+		}
+	"background-repeat" =>
+		case val {
+		"repeat" => cs.bgrepeat = BGRrepeat;
+		"no-repeat" => cs.bgrepeat = BGRno_repeat;
+		"repeat-x" => cs.bgrepeat = BGRrepeat_x;
+		"repeat-y" => cs.bgrepeat = BGRrepeat_y;
+		}
+	"background-position" =>
+		parsebgposition(cs, val);
+	"background-size" or "background-attachment" or "background-origin" or "background-clip" =>
+		;	# recognized but not yet implemented
 	"text-align" =>
 		case val {
 		"left" => cs.halign = Aleft;
@@ -4192,6 +4234,8 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"table-caption" => cs.display = DSPTABLECAPTION;
 		"flex" => cs.display = DSPflex;
 		"inline-flex" => cs.display = DSPinline_flex;
+		"grid" => cs.display = DSPgrid;
+		"inline-grid" => cs.display = DSPinline_grid;
 		}
 	"margin" =>
 		parsebox4(cs.margin, val);
@@ -4494,8 +4538,37 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		parseflex_shorthand(cs, val);
 	"order" =>
 		cs.order = parsepx(val);
-	"gap" or "row-gap" =>
+	"gap" =>
+		gapv := parsepx(val);
+		cs.gap = gapv;
+		cs.grid_gap_row = gapv;
+		cs.grid_gap_col = gapv;
+	"row-gap" =>
 		cs.gap = parsepx(val);
+		cs.grid_gap_row = parsepx(val);
+	"grid-column-gap" =>
+		cs.grid_gap_col = parsepx(val);
+	# CSS Grid layout properties
+	"grid-template-columns" =>
+		cs.grid_template_columns = val;
+	"grid-template-rows" =>
+		cs.grid_template_rows = val;
+	"grid-column-start" =>
+		cs.grid_column_start = parsepx(val);
+	"grid-column-end" =>
+		cs.grid_column_end = parsepx(val);
+	"grid-row-start" =>
+		cs.grid_row_start = parsepx(val);
+	"grid-row-end" =>
+		cs.grid_row_end = parsepx(val);
+	"grid-column" =>
+		parsegridline(cs, val, 1);
+	"grid-row" =>
+		parsegridline(cs, val, 0);
+	"grid-gap" =>
+		ggv := parsepx(val);
+		cs.grid_gap_row = ggv;
+		cs.grid_gap_col = ggv;
 	# CSS3 transforms and transitions (store raw values)
 	"transform" =>
 		cs.transform = val;
@@ -4517,10 +4590,15 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		else
 			cs.column_width = parsepx(val);
 	"column-gap" =>
-		if(val == "normal")
+		if(val == "normal") {
 			cs.column_gap = 16;	# default 1em
-		else
-			cs.column_gap = parsepx(val);
+			cs.grid_gap_col = 16;
+		}
+		else {
+			cg := parsepx(val);
+			cs.column_gap = cg;
+			cs.grid_gap_col = cg;
+		}
 	"columns" =>
 		parsecolumns_shorthand(cs, val);
 	"column-rule" =>
@@ -4712,6 +4790,38 @@ parseflex_shorthand(cs: ref ComputedStyle, val: string)
 		cs.flex_shrink = parsepxfrac(parts[1]);
 	if(len parts >= 3)
 		cs.flex_basis = parsedimen(parts[2]);
+}
+
+# Parse grid-column or grid-row shorthand: "start / end" or just "start"
+parsegridline(cs: ref ComputedStyle, val: string, iscol: int)
+{
+	# Split on " / "
+	slash := -1;
+	for(i := 0; i < len val - 2; i++) {
+		if(val[i] == ' ' && val[i+1] == '/' && val[i+2] == ' ') {
+			slash = i;
+			break;
+		}
+	}
+	if(slash >= 0) {
+		startval := val[:slash];
+		endval := val[slash+3:];
+		gs := parsepx(startval);
+		ge := parsepx(endval);
+		if(iscol) {
+			cs.grid_column_start = gs;
+			cs.grid_column_end = ge;
+		} else {
+			cs.grid_row_start = gs;
+			cs.grid_row_end = ge;
+		}
+	} else {
+		gv := parsepx(val);
+		if(iscol)
+			cs.grid_column_start = gv;
+		else
+			cs.grid_row_start = gv;
+	}
 }
 
 # Parse a pixel value from a CSS string like "10px", "2em", "1rem", or bare "10"
@@ -5117,6 +5227,154 @@ splitwords(s: string) : array of string
 	return a;
 }
 
+# Extract a URL from a CSS url() value: url(foo.png), url("foo.png"), url('foo.png')
+extractcssurl(val: string) : string
+{
+	i := 0;
+	# Find "url("
+	for(; i + 3 < len val; i++)
+		if(val[i] == 'u' && val[i+1] == 'r' && val[i+2] == 'l' && val[i+3] == '(')
+			break;
+	if(i + 3 >= len val)
+		return nil;
+	i += 4;
+	# Skip whitespace
+	for(; i < len val && (val[i] == ' ' || val[i] == '\t'); )
+		i++;
+	if(i >= len val)
+		return nil;
+	# Check for quotes
+	quote := 0;
+	if(val[i] == '"' || val[i] == '\'') {
+		quote = val[i];
+		i++;
+	}
+	start := i;
+	if(quote) {
+		for(; i < len val && val[i] != quote; )
+			i++;
+	} else {
+		for(; i < len val && val[i] != ')' && val[i] != ' '; )
+			i++;
+	}
+	if(i <= start)
+		return nil;
+	return val[start:i];
+}
+
+# Parse background shorthand: "background: color url() repeat position"
+parsebg_shorthand(cs: ref ComputedStyle, val: string)
+{
+	# Try to extract color
+	c := color(val, STYLNONE);
+	if(c != STYLNONE)
+		cs.bgcolor = c;
+
+	# Try to extract url()
+	u := extractcssurl(val);
+	if(u != nil)
+		cs.bgimage_url = u;
+
+	# Try gradient fallback
+	if(u == nil) {
+		gc := gradient_fallback_color(val);
+		if(gc != STYLNONE && c == STYLNONE)
+			cs.bgcolor = gc;
+	}
+
+	# Check for repeat keywords
+	if(containsword(val, "no-repeat"))
+		cs.bgrepeat = BGRno_repeat;
+	else if(containsword(val, "repeat-x"))
+		cs.bgrepeat = BGRrepeat_x;
+	else if(containsword(val, "repeat-y"))
+		cs.bgrepeat = BGRrepeat_y;
+}
+
+# Check if a value string contains a word (space-separated)
+containsword(val, word: string) : int
+{
+	wl := len word;
+	for(i := 0; i + wl <= len val; i++) {
+		if(val[i:i+wl] == word) {
+			# Check word boundaries
+			if((i == 0 || val[i-1] == ' ') && (i+wl >= len val || val[i+wl] == ' '))
+				return 1;
+		}
+	}
+	return 0;
+}
+
+# Extract a fallback solid color from a CSS gradient function.
+# For "linear-gradient(to right, #333, #666)" returns color of first color stop.
+# For "linear-gradient(90deg, red, blue)" returns first color.
+gradient_fallback_color(val: string) : int
+{
+	# Check for gradient function
+	gi := -1;
+	for(i := 0; i + 8 < len val; i++) {
+		if(val[i:i+8] == "gradient") {
+			# Find the opening paren before this
+			for(j := i + 8; j < len val; j++)
+				if(val[j] == '(') {
+					gi = j + 1;
+					break;
+				}
+			break;
+		}
+	}
+	if(gi < 0)
+		return STYLNONE;
+
+	# Inside the gradient args, find color values after first comma
+	# (first arg is often direction like "to right" or "90deg")
+	comma := -1;
+	for(i := gi; i < len val; i++)
+		if(val[i] == ',') {
+			comma = i;
+			break;
+		}
+	if(comma < 0)
+		return STYLNONE;
+
+	# Try the token after first comma as a color
+	rest := stripws(val[comma+1:]);
+	# Truncate at next comma or closing paren
+	for(i := 0; i < len rest; i++) {
+		if(rest[i] == ',' || rest[i] == ')') {
+			rest = stripws(rest[:i]);
+			break;
+		}
+	}
+	# Also strip percentage/length suffixes: "red 10%" -> "red"
+	parts := splitwords(rest);
+	if(len parts > 0)
+		rest = parts[0];
+	return color(rest, STYLNONE);
+}
+
+# Parse background-position value
+parsebgposition(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	if(len parts >= 1) {
+		case parts[0] {
+		"left" => cs.bgposition_x = 0;
+		"center" => cs.bgposition_x = -1;	# special: center
+		"right" => cs.bgposition_x = -2;	# special: right
+		* => cs.bgposition_x = parsepx(parts[0]);
+		}
+	}
+	if(len parts >= 2) {
+		case parts[1] {
+		"top" => cs.bgposition_y = 0;
+		"center" => cs.bgposition_y = -1;
+		"bottom" => cs.bgposition_y = -2;
+		* => cs.bgposition_y = parsepx(parts[1]);
+		}
+	}
+}
+
 # Parse CSS text from <style> blocks.
 # Uses css.m parser when available for full selector support (class, ID, etc.);
 # falls back to simple tag-only selector parsing otherwise.
@@ -5156,8 +5414,8 @@ parsestyleblock_css(is: ref ItemSource, sheet: ref CSS->Stylesheet)
 				}
 			}
 		Media =>
-			# Filter @media rules: only apply screen-compatible media
-			if(!medialistok(s.media))
+			# Filter @media rules: evaluate media queries against viewport
+			if(!mediaqueriesok(s.queries, is))
 				continue;
 			for(rules := s.rules; rules != nil; rules = tl rules) {
 				r := hd rules;
@@ -5276,10 +5534,19 @@ addstylerule(ss: ref StyleStore, rule: ref StyleRule)
 cssvalue_tostring(values: list of ref CSS->Value) : string
 {
 	s := "";
+	first := 1;
 	for(; values != nil; values = tl values) {
 		v := hd values;
-		if(s != "")
-			s += " ";
+		if(!first) {
+			# Use the value's separator: comma, slash, or space
+			if(v.sep == ',')
+				s += ", ";
+			else if(v.sep == '/')
+				s += " / ";
+			else
+				s += " ";
+		}
+		first = 0;
 		pick vv := v {
 		String or Number or Percentage or Url or Unicoderange =>
 			s += vv.value;
@@ -5293,7 +5560,7 @@ cssvalue_tostring(values: list of ref CSS->Value) : string
 		Unit =>
 			s += vv.value + vv.units;
 		Function =>
-			s += vv.name + "(...)";
+			s += vv.name + "(" + cssvalue_tostring(vv.args) + ")";
 		}
 	}
 	return s;
@@ -5533,7 +5800,19 @@ ComputedStyle.new() : ref ComputedStyle
 		STYLNONE,		# column_rule_color
 		TDSsolid,		# text_decoration_style
 		STYLNONE,		# text_decoration_color
-		FVnormal		# font_variant
+		FVnormal,		# font_variant
+		nil,			# bgimage_url
+		BGRrepeat,		# bgrepeat
+		0, 0,			# bgposition_x, bgposition_y
+		nil,			# customprops
+		nil,			# grid_template_columns
+		nil,			# grid_template_rows
+		0,			# grid_gap_row
+		0,			# grid_gap_col
+		0,			# grid_column_start
+		0,			# grid_column_end
+		0,			# grid_row_start
+		0			# grid_row_end
 	);
 }
 
@@ -5585,7 +5864,10 @@ ElementCtx.new(tag: int, id, class: string, parent: ref ElementCtx) : ref Elemen
 	ci := 0;
 	if(parent != nil)
 		ci = parent.child_index + 1;
-	return ref ElementCtx(tag, id, class, parent, ci, nil, nil);
+	inheritedprops: list of (string, string);
+	if(parent != nil)
+		inheritedprops = parent.customprops;
+	return ref ElementCtx(tag, id, class, parent, ci, nil, nil, inheritedprops);
 }
 
 # StyleStore constructor
@@ -6042,7 +6324,191 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 			}
 		}
 	}
+
+	# Merge element's own custom properties into ElementCtx inheritance cache
+	if(is.elemstk != nil && cs.customprops != nil) {
+		el := hd is.elemstk;
+		for(pl := cs.customprops; pl != nil; pl = tl pl) {
+			(pn, pv) := hd pl;
+			# Override or add to inherited cache
+			found := 0;
+			newprops: list of (string, string);
+			for(epl := el.customprops; epl != nil; epl = tl epl) {
+				(en, ev) := hd epl;
+				if(en == pn) {
+					newprops = (pn, pv) :: newprops;
+					found = 1;
+				} else
+					newprops = (en, ev) :: newprops;
+			}
+			if(!found)
+				newprops = (pn, pv) :: newprops;
+			el.customprops = newprops;
+		}
+	}
+
+	# Resolve var() references in CSS property values.
+	# Two-pass: first resolve custom prop inter-references,
+	# then re-apply any regular rules that contained var().
+	if(is.elemstk != nil && is.styles != nil) {
+		el := hd is.elemstk;
+		if(el.customprops != nil) {
+			resolvecssvars(cs, el);
+			# Second pass: re-apply rules with var() values
+			for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
+				sheet := hd sheets;
+				for(rules := sheet.rules; rules != nil; rules = tl rules) {
+					rule := hd rules;
+					if(!containsvar(rule.value))
+						continue;
+					# Skip custom property rules (already handled)
+					if(len rule.property >= 2 && rule.property[0] == '-' && rule.property[1] == '-')
+						continue;
+					if(selectormatch(rule.selectors, el)) {
+						resolved := resolvevarstring(rule.value, el, 0);
+						if(resolved != rule.value)
+							applycssprop_cs(cs, rule.property, resolved);
+					}
+				}
+			}
+			# Also re-apply inline styles containing var()
+			if(tok != nil) {
+				sval := aval(tok, LX->Astyle);
+				if(sval != nil) {
+					svallow := S->tolower(sval);
+					if(containsvar(svallow)) {
+						resolved := resolvevarstring(svallow, el, 0);
+						parsecstyle(cs, resolved);
+					}
+				}
+			}
+		}
+	}
+
 	return cs;
+}
+
+# Re-apply CSS rules containing var() with resolved variable values
+resolvecssvars(cs: ref ComputedStyle, el: ref ElementCtx)
+{
+	# Walk all custom props on this element and resolve any var() in their values
+	# (custom properties can reference other custom properties)
+	changed := 1;
+	for(pass := 0; pass < 5 && changed; pass++) {
+		changed = 0;
+		newprops: list of (string, string);
+		for(pl := el.customprops; pl != nil; pl = tl pl) {
+			(pn, pv) := hd pl;
+			if(containsvar(pv)) {
+				rpv := resolvevarstring(pv, el, 0);
+				if(rpv != pv) {
+					newprops = (pn, rpv) :: newprops;
+					changed = 1;
+				} else
+					newprops = hd pl :: newprops;
+			} else
+				newprops = hd pl :: newprops;
+		}
+		el.customprops = newprops;
+	}
+}
+
+# Look up a custom property value from the element context inheritance chain
+lookupcustomprop(el: ref ElementCtx, name: string) : (string, int)
+{
+	# Search the pre-computed inheritance cache on the element
+	for(pl := el.customprops; pl != nil; pl = tl pl) {
+		(pn, pv) := hd pl;
+		if(pn == name)
+			return (pv, 1);
+	}
+	return (nil, 0);
+}
+
+# Resolve all var() references in a CSS value string
+resolvevarstring(val: string, el: ref ElementCtx, depth: int) : string
+{
+	if(depth > 10)
+		return val;		# prevent infinite recursion
+	result := "";
+	i := 0;
+	for(;;) {
+		# Find next var( occurrence
+		vi := -1;
+		for(j := i; j + 3 < len val; j++) {
+			if(val[j] == 'v' && val[j+1] == 'a' && val[j+2] == 'r' && val[j+3] == '(') {
+				vi = j;
+				break;
+			}
+		}
+		if(vi < 0) {
+			result += val[i:];
+			break;
+		}
+		result += val[i:vi];
+
+		# Find matching closing paren, counting nested parens
+		parencount := 1;
+		k := vi + 4;
+		for(; k < len val && parencount > 0; k++) {
+			if(val[k] == '(')
+				parencount++;
+			else if(val[k] == ')')
+				parencount--;
+		}
+		# k now points past the closing paren
+		inner := val[vi+4:k-1];	# content between var( and )
+
+		# Split on first comma for fallback: var(--name, fallback)
+		varname := "";
+		fallback := "";
+		ci := -1;
+		for(c := 0; c < len inner; c++) {
+			if(inner[c] == ',') {
+				ci = c;
+				break;
+			}
+		}
+		if(ci >= 0) {
+			varname = stripws(inner[:ci]);
+			fallback = stripws(inner[ci+1:]);
+		} else
+			varname = stripws(inner);
+
+		# Look up the variable
+		(resolved, found) := lookupcustomprop(el, varname);
+		if(found)
+			result += resolvevarstring(resolved, el, depth + 1);
+		else if(fallback != nil && fallback != "")
+			result += resolvevarstring(fallback, el, depth + 1);
+		# else: var() resolves to empty string
+
+		i = k;
+	}
+	return result;
+}
+
+# Strip leading and trailing whitespace
+stripws(s: string) : string
+{
+	i := 0;
+	for(; i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'); )
+		i++;
+	j := len s;
+	for(; j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n'); )
+		j--;
+	if(i >= j)
+		return "";
+	return s[i:j];
+}
+
+# Check if a string contains "var("
+containsvar(s: string) : int
+{
+	for(i := 0; i + 3 < len s; i++)
+		if(s[i] == 'v' && s[i+1] == 'a' && s[i+2] == 'r' && s[i+3] == '(')
+			return 1;
+	return 0;
 }
 
 # Parse a CSS style string into a ComputedStyle
@@ -6121,7 +6587,7 @@ mediaok(media: string) : int
 	return 0;
 }
 
-# Check if a list of media type strings (from @media rule) is screen-compatible.
+# Check if a list of media type strings (from @import rule) is screen-compatible.
 medialistok(media: list of string) : int
 {
 	if(media == nil)
@@ -6132,6 +6598,106 @@ medialistok(media: list of string) : int
 			return 1;
 	}
 	return 0;	# only had print/speech/etc.
+}
+
+# Evaluate a list of CSS3 media queries against the current viewport.
+# Returns 1 if any query matches (OR logic between queries).
+mediaqueriesok(queries: list of ref CSS->MediaQuery, is: ref ItemSource) : int
+{
+	if(queries == nil)
+		return 1;	# no queries = applies to all
+
+	# Get viewport dimensions from frame
+	vpw := 800;	# fallback defaults
+	vph := 600;
+	if(is.frame != nil) {
+		vpw = is.frame.cr.dx();
+		vph = is.frame.cr.dy();
+		if(vpw <= 0) vpw = 800;
+		if(vph <= 0) vph = 600;
+	}
+
+	for(ql := queries; ql != nil; ql = tl ql) {
+		q := hd ql;
+		result := evalmediaquery(q, vpw, vph);
+		if(q.negate)
+			result = !result;
+		if(result)
+			return 1;	# any matching query is sufficient
+	}
+	return 0;
+}
+
+# Evaluate a single media query
+evalmediaquery(q: ref CSS->MediaQuery, vpw, vph: int) : int
+{
+	# Check media type
+	if(q.mediatype != "" && q.mediatype != "all" && q.mediatype != "screen")
+		return 0;
+
+	# Evaluate all features (AND logic)
+	for(fl := q.features; fl != nil; fl = tl fl) {
+		f := hd fl;
+		if(!evalmediafeature(f, vpw, vph))
+			return 0;
+	}
+	return 1;
+}
+
+# Evaluate a single media feature against viewport dimensions
+evalmediafeature(f: ref CSS->MediaFeature, vpw, vph: int) : int
+{
+	if(f.value == nil || f.value == "") {
+		# Bare feature — e.g., (color) — assume true for common features
+		case f.name {
+		"color" or "grid" or "hover" or "pointer" =>
+			return 1;
+		}
+		return 1;	# unknown bare features: assume true
+	}
+
+	# Parse the feature value as pixels
+	fval := parsepx(f.value);
+
+	case f.name {
+	"width" =>
+		return vpw == fval;
+	"min-width" =>
+		return vpw >= fval;
+	"max-width" =>
+		return vpw <= fval;
+	"height" =>
+		return vph == fval;
+	"min-height" =>
+		return vph >= fval;
+	"max-height" =>
+		return vph <= fval;
+	"device-width" or "min-device-width" =>
+		return vpw >= fval;
+	"max-device-width" =>
+		return vpw <= fval;
+	"device-height" or "min-device-height" =>
+		return vph >= fval;
+	"max-device-height" =>
+		return vph <= fval;
+	"min-resolution" =>
+		return 1;	# assume we meet minimum resolution
+	"max-resolution" =>
+		return 1;
+	"orientation" =>
+		# value is "portrait" or "landscape" (not a pixel value)
+		if(f.value == "portrait")
+			return vph >= vpw;
+		if(f.value == "landscape")
+			return vpw >= vph;
+		return 1;
+	"prefers-color-scheme" =>
+		# Always match "light" for now
+		return f.value == "light";
+	"prefers-reduced-motion" =>
+		return f.value == "no-preference";
+	}
+	return 1;	# unknown features: assume true (permissive)
 }
 
 # Fetch an external CSS stylesheet and apply its rules.

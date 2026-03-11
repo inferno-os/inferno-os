@@ -181,11 +181,18 @@ AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline: con byte iota;
 DSPflex: con 10;
 DSPinline_flex: con 11;
 
+# Display extension for grid
+DSPgrid: con 12;
+DSPinline_grid: con 13;
+
 # Text-decoration style types
 TDSsolid, TDSdotted, TDSdashed, TDSdouble, TDSwavy: con byte iota;
 
 # Font-variant types
 FVnormal, FVsmall_caps: con byte iota;
+
+# Background repeat modes
+BGRrepeat, BGRno_repeat, BGRrepeat_x, BGRrepeat_y: con byte iota;
 
 StyleInfo: adt
 {
@@ -312,6 +319,25 @@ ComputedStyle: adt
 	# Font variant
 	font_variant: byte;		# FVnormal, FVsmall_caps
 
+	# CSS Background Image
+	bgimage_url: string;		# background-image URL (nil = none)
+	bgrepeat: byte;			# BGRrepeat..BGRrepeat_y
+	bgposition_x: int;		# background-position x in pixels
+	bgposition_y: int;		# background-position y in pixels
+
+	# CSS Custom Properties (var())
+	customprops: list of (string, string);	# (--name, value) pairs
+
+	# CSS Grid Layout
+	grid_template_columns: string;	# raw track list: "1fr 300px auto"
+	grid_template_rows: string;	# raw track list
+	grid_gap_row: int;		# row gap in pixels
+	grid_gap_col: int;		# column gap in pixels
+	grid_column_start: int;		# grid-column-start (1-based, 0=auto)
+	grid_column_end: int;		# grid-column-end (1-based, 0=auto)
+	grid_row_start: int;		# grid-row-start (1-based, 0=auto)
+	grid_row_end: int;		# grid-row-end (1-based, 0=auto)
+
 	new: fn() : ref ComputedStyle;
 	tostyleinfo: fn(cs: self ref ComputedStyle) : StyleInfo;
 	fromstyleinfo: fn(si: StyleInfo) : ref ComputedStyle;
@@ -328,6 +354,7 @@ ElementCtx: adt
 	child_index: int;			# index among siblings
 	attrs: list of (string, string);	# (name, value) pairs for attribute selectors
 	prev_sibling: cyclic ref ElementCtx;	# previous sibling for + and ~ combinators
+	customprops: list of (string, string);	# inherited custom properties cache
 
 	new: fn(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx;
 };
