@@ -415,6 +415,35 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 
+			# Agent NS entry right-click — unbind for pinned (user-bound) paths
+			if(agentns_expanded && menumod != nil) {
+				for(nei := 0; nei < nnsentryrects; nei++) {
+					if(nsentryrects[nei].contains(p.xy)) {
+						# Find the NsEntry at this index
+						nsi2 := 0;
+						for(nsl2 := nsmanifest; nsl2 != nil; nsl2 = tl nsl2) {
+							if(nsi2 == nei) {
+								nse := hd nsl2;
+								# Only allow unbind for pinned paths (not infrastructure)
+								pp2 := findpinnedpath(nse.path);
+								if(pp2 != nil) {
+									nitems := array[] of {"Unbind"};
+									npop := menumod->new(nitems);
+									nres := npop.show(mainwin, p.xy, mouse);
+									if(nres == 0)
+										unbindpath(pp2);
+									redrawctx();
+								}
+								break;
+							}
+							nsi2++;
+						}
+						prevbuttons = 0;
+						break;
+					}
+				}
+			}
+
 		}
 	ev := <-evch =>
 		handleevent(ev);
@@ -1076,6 +1105,7 @@ filebrowser(startpath: string): string
 						fpath = "/" + brow_filenames[fi];
 					else
 						fpath = curpath + "/" + brow_filenames[fi];
+					ensureeditor();
 					writetofile("/edit/ctl", "open " + fpath);
 					break;
 				}
@@ -1185,7 +1215,24 @@ loadmanifest()
 			mounted = 1;
 		nsmanifest = ref NsEntry(path, label, perm, mounted) :: nsmanifest;
 	}
-	# Reverse to preserve manifest order
+	# Append pinned paths (user-bound via Browse) as agent NS entries.
+	# These are paths the agent gains access to via /tool/paths → lucibridge.
+	for(pp := pinnedpaths; pp != nil; pp = tl pp) {
+		p := hd pp;
+		# Skip if already in manifest (e.g. from -p flag at startup)
+		dup := 0;
+		for(chk := nsmanifest; chk != nil; chk = tl chk)
+			if((hd chk).path == p.srcpath) { dup = 1; break; }
+		if(dup)
+			continue;
+		mounted := 0;
+		(ok2, nil) := sys->stat(p.srcpath);
+		if(ok2 >= 0)
+			mounted = 1;
+		nsmanifest = ref NsEntry(p.srcpath, p.label, "rw", mounted) :: nsmanifest;
+	}
+
+	# Reverse to preserve manifest order (pinned paths appear at end)
 	rev: list of ref NsEntry;
 	for(q := nsmanifest; q != nil; q = tl q)
 		rev = hd q :: rev;
@@ -1406,9 +1453,37 @@ openpath(path: string)
 			bindpath(fpath);
 		redrawctx();
 	} else {
-		# File: open in luciedit
+		# File: open in luciedit (ensure it's running first)
+		ensureeditor();
 		writetofile("/edit/ctl", "open " + path);
 	}
+}
+
+# Ensure luciedit is running. If /edit/ctl doesn't exist, create a
+# presentation artifact to launch it in the presentation zone.
+ensureeditor()
+{
+	fd := sys->open("/edit/ctl", Sys->OREAD);
+	if(fd != nil) {
+		fd = nil;
+		return;	# Already running
+	}
+	# Launch via presentation system
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
+	cmd := "create id=luciedit type=app dis=/dis/wm/luciedit.dis label=Luciedit";
+	writetofile(pctl, cmd);
+	writetofile(pctl, "center id=luciedit");
+	# Give luciedit time to mount /edit
+	sys->sleep(500);
+}
+
+# Find a PinnedPath matching the given source path, or nil if not found.
+findpinnedpath(path: string): ref PinnedPath
+{
+	for(pp := pinnedpaths; pp != nil; pp = tl pp)
+		if((hd pp).srcpath == path)
+			return hd pp;
+	return nil;
 }
 
 bindpath(srcpath: string)

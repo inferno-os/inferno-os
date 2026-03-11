@@ -9,7 +9,7 @@ Xenith : module {
 	M_TBS : con 8;
 	M_PLUMB : con 16;
 	M_QUIT : con 32;
-	M_HELP : con 64;
+	M_HELP : con 512;	# was 64, conflicts with SDL3 scroll-right
 	M_RESIZE : con 128;
 	M_DOUBLE : con 256;
 
