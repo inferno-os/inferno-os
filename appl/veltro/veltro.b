@@ -152,6 +152,18 @@ init(nil: ref Draw->Context, args: list of string)
 			for(pp := pathlist; pp != nil; pp = tl pp)
 				writefile("/tool/ctl", "bindpath " + hd pp);
 
+		# Write agent name before FORKNS so user process can read it.
+		# /tmp/veltro/ and .ns/ may not exist yet — create them.
+		sys->create("/tmp/veltro", Sys->OREAD, 8r700 | Sys->DMDIR);
+		sys->create("/tmp/veltro/.ns", Sys->OREAD, 8r700 | Sys->DMDIR);
+		{
+			afd := sys->create("/tmp/veltro/.ns/agentname", Sys->OWRITE, 8r644);
+			if(afd != nil) {
+				sys->fprint(afd, "Veltro");
+				afd = nil;
+			}
+		}
+
 		# Fork namespace so caller is unaffected
 		sys->pctl(Sys->FORKNS, nil);
 
@@ -163,8 +175,13 @@ init(nil: ref Draw->Context, args: list of string)
 		nserr := nsconstruct->restrictns(parent_caps);
 		if(nserr != nil)
 			sys->fprint(stderr, "veltro: namespace restriction failed: %s\n", nserr);
-		else if(verbose)
-			sys->fprint(stderr, "veltro: namespace restricted\n");
+		else {
+			if(verbose)
+				sys->fprint(stderr, "veltro: namespace restricted\n");
+			# Emit namespace manifest from the restricted namespace
+			# so stat checks reflect exactly what the agent can see
+			nsconstruct->emitmanifest(parent_caps);
+		}
 	}
 
 	if(resumename != "") {
