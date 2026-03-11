@@ -747,6 +747,9 @@ TokLoop:
 				pushjust(ps, al);
 				# Apply remaining CSS properties (color, font, etc.)
 				si.halign = Anone;	# already handled via pushjust
+				# Propagate CSS color to di.text for inheritance fallback
+				if(si.color != STYLNONE)
+					di.text = si.color;
 				changes := applystyle(ps, si);
 				ps.stylestk = changes :: ps.stylestk;
 				# CSS box model: wrap content in Ibox if non-default box properties
@@ -2250,6 +2253,9 @@ TokLoop:
 					al = si.halign;
 				pushjust(ps, al);
 				si.halign = Anone;
+				# Propagate CSS color to di.text for inheritance fallback
+				if(si.color != STYLNONE)
+					di.text = si.color;
 				changes := applystyle(ps, si);
 				ps.stylestk = changes :: ps.stylestk;
 				cs := getcomputedstyle(is, tag, tok);
@@ -5329,7 +5335,7 @@ gradient_fallback_color(val: string) : int
 	# Inside the gradient args, find color values after first comma
 	# (first arg is often direction like "to right" or "90deg")
 	comma := -1;
-	for(i := gi; i < len val; i++)
+	for(i = gi; i < len val; i++)
 		if(val[i] == ',') {
 			comma = i;
 			break;
@@ -5340,7 +5346,7 @@ gradient_fallback_color(val: string) : int
 	# Try the token after first comma as a color
 	rest := stripws(val[comma+1:]);
 	# Truncate at next comma or closing paren
-	for(i := 0; i < len rest; i++) {
+	for(i = 0; i < len rest; i++) {
 		if(rest[i] == ',' || rest[i] == ')') {
 			rest = stripws(rest[:i]);
 			break;
@@ -5551,7 +5557,8 @@ cssvalue_tostring(values: list of ref CSS->Value) : string
 		String or Number or Percentage or Url or Unicoderange =>
 			s += vv.value;
 		Hexcolour =>
-			s += "#" + vv.value;
+			(r, g, b) := vv.rgb;
+			s += sys->sprint("#%02x%02x%02x", r, g, b);
 		RGB =>
 			(r, g, b) := vv.rgb;
 			s += sys->sprint("#%02x%02x%02x", r, g, b);

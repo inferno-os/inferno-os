@@ -1929,6 +1929,11 @@ color(s: string, dflt: int) : int
 	}
 	if(s[0] == '#')
 		s = s[1:];
+	# Expand 3-digit CSS hex shorthand: #abc -> #aabbcc
+	if(len s == 3) {
+		r := s[0]; g := s[1]; b := s[2];
+		s = sys->sprint("%c%c%c%c%c%c", r, r, g, g, b, b);
+	}
 	(v, rest) := S->toint(s, 16);
 	if(rest == "")
 		return v;

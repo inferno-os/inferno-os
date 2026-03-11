@@ -602,17 +602,24 @@ sdl_pollevents(void)
 			}
 			break;
 
-		case SDL_EVENT_MOUSE_WHEEL:
-			/* Scroll wheel: y and x axes handled independently */
-			if (event.wheel.y > 0)
+		case SDL_EVENT_MOUSE_WHEEL: {
+			/* Shift+scroll converts vertical to horizontal */
+			float wx = event.wheel.x;
+			float wy = event.wheel.y;
+			if ((SDL_GetModState() & SDL_KMOD_SHIFT) && wy != 0 && wx == 0) {
+				wx = wy;
+				wy = 0;
+			}
+			if (wy > 0)
 				mousetrack(8, mouse_x, mouse_y, 0);   /* scroll up */
-			else if (event.wheel.y < 0)
+			else if (wy < 0)
 				mousetrack(16, mouse_x, mouse_y, 0);  /* scroll down */
-			if (event.wheel.x > 0)
+			if (wx > 0)
 				mousetrack(64, mouse_x, mouse_y, 0);  /* scroll right */
-			else if (event.wheel.x < 0)
+			else if (wx < 0)
 				mousetrack(32, mouse_x, mouse_y, 0);  /* scroll left */
 			break;
+		}
 
 		case SDL_EVENT_TEXT_INPUT:
 			/*
@@ -1108,17 +1115,24 @@ sdl3_mainloop(void)
 				}
 				break;
 
-			case SDL_EVENT_MOUSE_WHEEL:
-				/* Scroll wheel: y and x axes handled independently */
-				if (event.wheel.y > 0)
+			case SDL_EVENT_MOUSE_WHEEL: {
+				/* Shift+scroll converts vertical to horizontal */
+				float wx2 = event.wheel.x;
+				float wy2 = event.wheel.y;
+				if ((SDL_GetModState() & SDL_KMOD_SHIFT) && wy2 != 0 && wx2 == 0) {
+					wx2 = wy2;
+					wy2 = 0;
+				}
+				if (wy2 > 0)
 					mousetrack(8, mouse_x, mouse_y, 0);   /* scroll up */
-				else if (event.wheel.y < 0)
+				else if (wy2 < 0)
 					mousetrack(16, mouse_x, mouse_y, 0);  /* scroll down */
-				if (event.wheel.x > 0)
+				if (wx2 > 0)
 					mousetrack(64, mouse_x, mouse_y, 0);  /* scroll right */
-				else if (event.wheel.x < 0)
+				else if (wx2 < 0)
 					mousetrack(32, mouse_x, mouse_y, 0);  /* scroll left */
 				break;
+			}
 
 			case SDL_EVENT_TEXT_INPUT:
 				/*
