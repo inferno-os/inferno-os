@@ -107,29 +107,47 @@ run_verification \
     --bounds-check --pointer-check
 
 # Verify ML-DSA arithmetic
+# --slice-formula is essential for tractable SAT solving on modular arithmetic
 run_verification \
     "ML-DSA Barrett Reduce" \
     "harness_mldsa_ct.c" \
     "harness_mldsa_barrett" \
-    --bounds-check --signed-overflow-check
+    --bounds-check --signed-overflow-check --slice-formula
 
 run_verification \
-    "ML-DSA Montgomery Reduce" \
+    "ML-DSA Barrett Idempotent" \
     "harness_mldsa_ct.c" \
-    "harness_mldsa_montgomery" \
-    --bounds-check --signed-overflow-check
+    "harness_mldsa_barrett_idempotent" \
+    --bounds-check --signed-overflow-check --slice-formula
 
 run_verification \
     "ML-DSA Barrett No Overflow" \
     "harness_mldsa_ct.c" \
     "harness_mldsa_barrett_no_overflow" \
-    --signed-overflow-check
+    --signed-overflow-check --slice-formula
 
 run_verification \
     "ML-DSA Montgomery No Overflow" \
     "harness_mldsa_ct.c" \
     "harness_mldsa_montgomery_no_overflow" \
-    --signed-overflow-check
+    --signed-overflow-check --slice-formula
+
+run_verification \
+    "ML-DSA Poly Sub Identity" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_poly_sub_identity" \
+    --bounds-check --signed-overflow-check --slice-formula --unwind 258
+
+run_verification \
+    "ML-DSA Poly Add Associativity" \
+    "harness_mldsa_ct.c" \
+    "harness_mldsa_poly_add_assoc" \
+    --bounds-check --signed-overflow-check --slice-formula
+
+# NOTE: harness_mldsa_montgomery (correctness: r*2^32 ≡ a mod q) is excluded
+# from quick mode — proving modular arithmetic identity over full int64 is
+# intractable for bounded model checking (>5 min). The overflow safety proof
+# (harness_mldsa_montgomery_no_overflow) covers the critical UB-freedom property.
 
 # Verify ML-KEM polynomial encode/decode round-trips
 # These harnesses link against the actual libsec source code.

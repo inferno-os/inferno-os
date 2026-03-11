@@ -69,7 +69,7 @@ mldsa_barrett_reduce(int32 a)
 {
 	int32 t;
 
-	t = (a + (1 << 22)) >> 23;
+	t = (int32)(((int64)a + (1 << 22)) >> 23);
 	t *= MLDSA_Q;
 	return a - t;
 }
@@ -83,7 +83,7 @@ mldsa_montgomery_reduce(int64 a)
 {
 	int32 t;
 
-	t = (int32)((int32)a * (int32)MLDSA_QINV);
+	t = (int32)((u32int)(int32)a * (u32int)MLDSA_QINV);
 	t = (int32)((a - (int64)t * MLDSA_Q) >> 32);
 	return t;
 }

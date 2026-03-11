@@ -39,7 +39,7 @@ static int32
 mldsa_barrett_reduce(int32 a)
 {
 	int32 t;
-	t = (a + (1 << 22)) >> 23;
+	t = (int32)(((int64)a + (1 << 22)) >> 23);
 	return a - t * MLDSA_Q;
 }
 
@@ -53,7 +53,8 @@ static int32
 mldsa_montgomery_reduce(int64 a)
 {
 	int32 t;
-	t = (int32)((int32)a * (int32)4236238847u);
+	/* MLDSA_QINV = 58728449 = q^{-1} mod 2^32 (matching libsec/mldsa_ntt.c) */
+	t = (int32)((u32int)(int32)a * (u32int)58728449);
 	return (int32)((a - (int64)t * MLDSA_Q) >> 32);
 }
 
@@ -136,7 +137,7 @@ void harness_mldsa_barrett_no_overflow(void)
 	 * Verify within the practical range. */
 	__CPROVER_assume(a > -(256 * MLDSA_Q) && a < (256 * MLDSA_Q));
 
-	t = (a + (1 << 22)) >> 23;
+	t = (int32)(((int64)a + (1 << 22)) >> 23);
 	product = (int64)t * MLDSA_Q;
 
 	/* product fits in int64 (|t| < 2^9, q < 2^24 -> |product| < 2^33) */
@@ -164,7 +165,7 @@ void harness_mldsa_montgomery_no_overflow(void)
 	__CPROVER_assume(a > -(int64)MLDSA_Q * (1LL << 31));
 	__CPROVER_assume(a < (int64)MLDSA_Q * (1LL << 31));
 
-	t = (int32)((int32)a * (int32)4236238847u);
+	t = (int32)((u32int)(int32)a * (u32int)58728449);
 	product = (int64)t * MLDSA_Q;
 
 	/* product must fit in int64 (|t| < 2^32, q < 2^24 -> |product| < 2^56) */
