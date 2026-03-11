@@ -51,6 +51,10 @@ include "sh.m";
 
 include "lucitheme.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Scrollbar, Statusbar: import widgetmod;
+
 Lucishell: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -63,12 +67,8 @@ FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
 SELCOL:	con int 16rB4D5FEFF;		# light blue selection
 PROMPTCOL: con int 16r555555FF;	# prompt (slightly dimmer than body text)
-STATUSBG: con int 16rE8E8E8FF;		# status bar background
-STATUSFG: con int 16r555555FF;		# status bar text
-
 # Dimensions
 MARGIN: con 4;
-SCROLLW: con 12;
 TABSTOP: con 8;
 
 # Key constants (Inferno keyboard codes)
@@ -102,8 +102,8 @@ fgcolor: ref Image;
 cursorcolor: ref Image;
 selcolor: ref Image;
 promptcolor: ref Image;
-statusbgcolor: ref Image;
-statusfgcolor: ref Image;
+scrollbar: ref Scrollbar;
+statbar: ref Statusbar;
 
 w: ref Window;
 vislines: int;
@@ -123,7 +123,8 @@ inputcol: int;		# cursor position within inputbuf
 promptstr: string;
 
 # Shell I/O
-rawon: int;
+rawon: int;			# written only by rawstateforwarder; reads are word-atomic in Dis
+rawlock: chan of int;
 
 # Selection
 selactive: int;
@@ -144,11 +145,11 @@ kbdescarg: int;
 
 # Channels
 outputch: chan of string;	# shell output arrives here
-eventch: chan of string;	# events for external readers
 sendbyteschan: chan of array of byte;	# keyboard → consserver
 
 # Shell dir for Veltro read-only access
 SHELL_DIR: con "/tmp/veltro/shell";
+shellstatedirty: int;	# set when transcript changes, cleared after writing state
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -157,7 +158,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	wmclient = load Wmclient Wmclient->PATH;
 	menumod = load Menu Menu->PATH;
 	str = load String String->PATH;
+	widgetmod = load Widget Widget->PATH;
 	stderr = sys->fildes(2);
+	if(widgetmod == nil) {
+		sys->fprint(stderr, "lucishell: cannot load Widget: %r\n");
+		raise "fail:cannot load Widget";
+	}
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "lucishell: no window context\n");
@@ -177,6 +183,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	inputcol = 0;
 	promptstr = "";
 	rawon = 0;
+	rawlock = chan[1] of int;
+	rawlock <-= 1;
 	selactive = 0;
 	snarf = "";
 	history = array[MAXHIST] of string;
@@ -184,7 +192,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	histpos = -1;
 
 	outputch = chan[32] of string;
-	eventch = chan of string;
 	sendbyteschan = chan of array of byte;
 
 	# Start file-based IPC directory
@@ -217,17 +224,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display_g.color(th.editcursor);
 		selcolor = display_g.color(th.accent);
 		promptcolor = display_g.color(th.dim);
-		statusbgcolor = display_g.color(th.editstatus);
-		statusfgcolor = display_g.color(th.editstattext);
 	} else {
 		bgcolor = display_g.color(BG);
 		fgcolor = display_g.color(FG);
 		cursorcolor = display_g.color(CURSORCOL);
 		selcolor = display_g.color(SELCOL);
 		promptcolor = display_g.color(PROMPTCOL);
-		statusbgcolor = display_g.color(STATUSBG);
-		statusfgcolor = display_g.color(STATUSFG);
 	}
+	widgetmod->init(display_g, font);
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
+	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Set up window
 	w.reshape(Rect((0, 0), (640, 480)));
@@ -258,6 +264,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		if(key >= 0) {
 			cursorvis = 1;
 			handlekey(key);
+			shellstatedirty = 1;
 			redraw();
 		}
 	p := <-w.ctxt.ptr =>
@@ -284,27 +291,42 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				if(snarf != "")
 					insertinput(snarf);
 				redraw();
-			} else if(p.buttons & 8) {
-				topline -= 3;
-				if(topline < 0) topline = 0;
-				atbottom = 0;
+			} else if(p.buttons & 24) {
+				# Mouse wheel scroll
+				scrollbar.total = nlines;
+				scrollbar.visible = vislines;
+				scrollbar.origin = topline;
+				topline = scrollbar.wheel(p.buttons, 3);
+				atbottom = (topline >= nlines - vislines);
 				redraw();
-			} else if(p.buttons & 16) {
-				topline += 3;
-				maxtl := nlines - vislines;
-				if(maxtl < 0) maxtl = 0;
-				if(topline > maxtl) topline = maxtl;
-				if(topline >= nlines - vislines)
-					atbottom = 1;
+			} else if(scrollbar.isactive()) {
+				# Continue scrollbar drag
+				scrollbar.total = nlines;
+				scrollbar.visible = vislines;
+				newo := scrollbar.track(p);
+				if(newo >= 0) {
+					topline = newo;
+					atbottom = (topline >= nlines - vislines);
+				}
 				redraw();
-			} else if(p.buttons & 1) {
+			} else if(p.buttons & 3) {
+				# B1 or B2 in scrollbar area
 				pr := w.image.r;
-				stath := font.height + MARGIN * 2;
+				sth := widgetmod->statusheight();
+				sw := widgetmod->scrollwidth();
 				scrollr := Rect((pr.min.x, pr.min.y),
-					(pr.min.x + SCROLLW, pr.max.y - stath));
+					(pr.min.x + sw, pr.max.y - sth));
 				if(scrollr.contains(p.xy)) {
-					handlescrollclick(p.xy, scrollr);
-				} else if(mousedown) {
+					scrollbar.total = nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0) {
+						topline = newo;
+						atbottom = (topline >= nlines - vislines);
+					}
+					redraw();
+				} else if(p.buttons & 1 && mousedown) {
 					(ml, mc) := pos2cursor(p.xy);
 					selendline = ml;
 					selendcol = mc;
@@ -338,6 +360,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		appendoutput(output);
 		if(atbottom)
 			scrolltobottom();
+		shellstatedirty = 1;
 		redraw();
 	}
 }
@@ -422,11 +445,19 @@ startshell()
 # User keyboard → sendbyteschan → shell reads.
 consserver(consio, consctlio: ref Sys->FileIO)
 {
-	# Pending shell read requests (shell wants to read input)
-	rdqueue: list of Sys->Rread;
+	# Pending shell read requests: (nbytes, reply channel) pairs
+	rdqueue: list of (int, Sys->Rread);
 
 	# Pending input bytes (user typed, shell hasn't read yet)
 	inputqueue: list of array of byte;
+
+	# Channel for rawon state changes (communicated to main goroutine)
+	rawch := chan of int;
+	spawn rawstateforwarder(rawch);
+
+	if(consctlio != nil) {
+		spawn consctlserver(consctlio, rawch);
+	}
 
 	for(;;) alt {
 	(nil, nbytes, nil, rc) := <-consio.read =>
@@ -440,7 +471,7 @@ consserver(consio, consctlio: ref Sys->FileIO)
 				data = data[0:nbytes];
 			rc <-= (data, nil);
 		} else {
-			rdqueue = rc :: rdqueue;
+			rdqueue = (nbytes, rc) :: rdqueue;
 		}
 
 	(nil, data, nil, wc) := <-consio.write =>
@@ -451,6 +482,40 @@ consserver(consio, consctlio: ref Sys->FileIO)
 		wc <-= (len data, nil);
 		outputch <-= s;
 
+	ibytes := <-sendbyteschan =>
+		# Try to satisfy pending shell read requests
+		if(rdqueue != nil) {
+			# Reverse to deliver in FIFO order
+			rds: list of (int, Sys->Rread);
+			for(rl := rdqueue; rl != nil; rl = tl rl)
+				rds = (hd rl) :: rds;
+			rdqueue = nil;
+
+			for(; rds != nil && len ibytes > 0; rds = tl rds) {
+				(rnb, rq) := hd rds;
+				chunk := ibytes;
+				if(len chunk > rnb)
+					chunk = chunk[0:rnb];
+				rq <-= (chunk, nil);
+				if(len chunk < len ibytes)
+					ibytes = ibytes[len chunk:];
+				else
+					ibytes = nil;
+			}
+			# Re-queue unserviced reads
+			for(; rds != nil; rds = tl rds)
+				rdqueue = (hd rds) :: rdqueue;
+		}
+		if(ibytes != nil && len ibytes > 0)
+			inputqueue = ibytes :: inputqueue;
+	}
+}
+
+# consctlserver handles /dev/consctl reads and writes in a separate goroutine,
+# preventing nil dereference when consctlio is nil and avoiding blocking consserver.
+consctlserver(consctlio: ref Sys->FileIO, rawch: chan of int)
+{
+	for(;;) alt {
 	(nil, nil, nil, rc) := <-consctlio.read =>
 		if(rc == nil)
 			continue;
@@ -461,31 +526,22 @@ consserver(consio, consctlio: ref Sys->FileIO)
 			continue;
 		s := string data;
 		if(s == "rawon")
-			rawon = 1;
+			rawch <-= 1;
 		else if(s == "rawoff")
-			rawon = 0;
+			rawch <-= 0;
 		wc <-= (len data, nil);
+	}
+}
 
-	ibytes := <-sendbyteschan =>
-		# Try to satisfy pending shell read requests
-		if(rdqueue != nil) {
-			# Reverse to deliver in FIFO order
-			rds: list of Sys->Rread;
-			for(rl := rdqueue; rl != nil; rl = tl rl)
-				rds = (hd rl) :: rds;
-			rdqueue = nil;
-
-			for(; rds != nil && len ibytes > 0; rds = tl rds) {
-				rq := hd rds;
-				rq <-= (ibytes, nil);
-				ibytes = nil;
-			}
-			# Re-queue unserviced reads
-			for(; rds != nil; rds = tl rds)
-				rdqueue = (hd rds) :: rdqueue;
-		}
-		if(ibytes != nil && len ibytes > 0)
-			inputqueue = ibytes :: inputqueue;
+# rawstateforwarder receives rawon state changes and updates the shared variable.
+# This serialises access to rawon through a single goroutine.
+rawstateforwarder(rawch: chan of int)
+{
+	for(;;) {
+		v := <-rawch;
+		<-rawlock;
+		rawon = v;
+		rawlock <-= 1;
 	}
 }
 
@@ -554,7 +610,10 @@ handlekey(key: int)
 	if(key >= 1 && key <= 26 && key != Kbs && key != '\n' && key != '\t')
 		ctrl = 1;
 
-	if(rawon) {
+	<-rawlock;
+	israw := rawon;
+	rawlock <-= 1;
+	if(israw) {
 		# In raw mode, send every keystroke directly to shell
 		s := "";
 		s[0] = key;
@@ -571,7 +630,7 @@ handlekey(key: int)
 			inputbuf = "";
 			inputcol = 0;
 			appendoutput("^C\n");
-			postevent("interrupt");
+			;
 		4 =>	# Ctrl-D: EOF
 			if(inputbuf == "") {
 				s := "";
@@ -602,7 +661,7 @@ handlekey(key: int)
 		sendinput(line);
 		if(atbottom)
 			scrolltobottom();
-		postevent("input");
+		;
 	Kbs =>
 		if(inputcol > 0) {
 			inputbuf = inputbuf[0:inputcol-1] + inputbuf[inputcol:];
@@ -684,7 +743,7 @@ insertinput(s: string)
 			inputbuf = "";
 			inputcol = 0;
 			sendinput(line);
-			postevent("input");
+			;
 		} else {
 			if(inputcol >= len inputbuf)
 				inputbuf += s[i:i+1];
@@ -777,6 +836,8 @@ trimtranscript()
 	}
 }
 
+# growlines is a safety net: trimtranscript keeps nlines < len lines,
+# but this prevents a crash if the trim logic is ever changed.
 growlines()
 {
 	if(nlines >= len lines) {
@@ -794,7 +855,7 @@ clearscreen()
 	nlines = 1;
 	topline = 0;
 	atbottom = 1;
-	postevent("clear");
+	;
 }
 
 scrolltobottom()
@@ -919,7 +980,8 @@ textrect(): Rect
 		return Rect((0,0),(0,0));
 	r := w.image.r;
 	statusheight := font.height + MARGIN * 2;
-	return Rect((r.min.x + SCROLLW + MARGIN, r.min.y + MARGIN),
+	sw := widgetmod->scrollwidth();
+	return Rect((r.min.x + sw + MARGIN, r.min.y + MARGIN),
 		    (r.max.x - MARGIN, r.max.y - statusheight));
 }
 
@@ -939,8 +1001,13 @@ redraw()
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	drawscrollbar(screen, Rect((r.min.x, r.min.y),
-		(r.min.x + SCROLLW, r.max.y - statusheight)));
+	sw := widgetmod->scrollwidth();
+	scrollbar.resize(Rect((r.min.x, r.min.y),
+		(r.min.x + sw, r.max.y - statusheight)));
+	scrollbar.total = nlines;
+	scrollbar.visible = vislines;
+	scrollbar.origin = topline;
+	scrollbar.draw(screen);
 
 	y := textr.min.y;
 	vrow := 0;
@@ -975,28 +1042,20 @@ redraw()
 	vislines = maxvrows;
 
 	drawcursor(1);
-	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
+	# Status bar
+	statbar.resize(Rect((r.min.x, r.max.y - statusheight), r.max));
+	<-rawlock;
+	israw_s := rawon;
+	rawlock <-= 1;
+	mode := "cooked";
+	if(israw_s)
+		mode = "raw";
+	statbar.prompt = nil;
+	statbar.left = sys->sprint("Shell (%s)  %d lines", mode, nlines);
+	statbar.right = sys->sprint("Ln %d", nlines);
+	statbar.leftcolor = nil;
+	statbar.draw(screen);
 	screen.flush(Draw->Flushnow);
-}
-
-drawscrollbar(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-
-	total := nlines;
-	if(total <= 0 || vislines <= 0)
-		return;
-
-	totalh := r.dy();
-	thumbh := (vislines * totalh) / total;
-	if(thumbh < 10) thumbh = 10;
-	if(thumbh > totalh) thumbh = totalh;
-	thumby := r.min.y;
-	if(total > vislines)
-		thumby = r.min.y + (topline * (totalh - thumbh)) / (total - vislines);
-
-	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
-	screen.draw(thumbr, fgcolor, nil, Point(0, 0));
 }
 
 drawselection(screen: ref Image, linenum, textx, y: int)
@@ -1053,72 +1112,11 @@ drawcursor(vis: int)
 	w.image.flush(Draw->Flushnow);
 }
 
-drawstatus(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y),
-		0, 0, 0, fgcolor, Point(0, 0));
-
-	x := r.min.x + MARGIN;
-	y := r.min.y + MARGIN;
-
-	mode := "cooked";
-	if(rawon)
-		mode = "raw";
-	info := sys->sprint("Shell (%s)  %d lines", mode, nlines);
-	screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);
-
-	pos := sys->sprint("Ln %d", nlines);
-	pw := font.width(pos);
-	screen.text(Point(r.max.x - pw - MARGIN, y), statusfgcolor,
-		Point(0, 0), font, pos);
-}
-
-handlescrollclick(p: Point, scrollr: Rect)
-{
-	total := nlines;
-	if(total <= 0 || vislines <= 0)
-		return;
-
-	totalh := scrollr.dy();
-	thumbh := (vislines * totalh) / total;
-	if(thumbh < 10) thumbh = 10;
-	if(thumbh > totalh) thumbh = totalh;
-	thumby := scrollr.min.y;
-	if(total > vislines)
-		thumby = scrollr.min.y + (topline * (totalh - thumbh))
-			/ (total - vislines);
-
-	if(p.y < thumby) {
-		topline -= vislines;
-		if(topline < 0) topline = 0;
-		atbottom = 0;
-	} else if(p.y > thumby + thumbh) {
-		topline += vislines;
-		maxtl := total - vislines;
-		if(maxtl < 0) maxtl = 0;
-		if(topline > maxtl) topline = maxtl;
-		if(topline >= total - vislines)
-			atbottom = 1;
-	}
-}
-
-# ---------- Events ----------
-
-postevent(msg: string)
-{
-	alt {
-	eventch <-= msg =>
-		;
-	* =>
-		;
-	}
-}
-
 # ---------- Real-file IPC ----------
 
 initshelldirs()
 {
+	mkdirq("/tmp/veltro");
 	mkdirq(SHELL_DIR);
 }
 
@@ -1135,11 +1133,14 @@ mkdirq(path: string)
 
 writeshellstate()
 {
+	if(!shellstatedirty)
+		return;
 	# Write transcript body (read-only for Veltro)
 	body := getbodytext();
 	writestatefile(SHELL_DIR + "/body", body);
 	# Write current input line
 	writestatefile(SHELL_DIR + "/input", inputbuf);
+	shellstatedirty = 0;
 }
 
 getbodytext(): string
@@ -1155,7 +1156,7 @@ getbodytext(): string
 
 writestatefile(path, data: string)
 {
-	fd := sys->create(path, Sys->OWRITE, 8r444);
+	fd := sys->create(path, Sys->OWRITE, 8r644);
 	if(fd == nil)
 		return;
 	b := array of byte data;

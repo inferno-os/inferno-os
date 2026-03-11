@@ -112,7 +112,7 @@ Qartappstatus:	con 33;	# presentation/<id>/appstatus (app type only)
 
 MKPATH(actid, subid, ft: int): big
 {
-	return big ((actid << 32) | (subid << 16) | ft);
+	return (big actid << 32) | big (subid << 16) | big ft;
 }
 
 ACTID(path: big): int
@@ -405,6 +405,8 @@ newactivity(label: string): ref Activity
 		nil					# pendingevent
 	);
 
+	if(nact >= MAX_ACTIVITIES)
+		return nil;
 	if(nact >= len activities) {
 		na := array[len activities * 2] of ref Activity;
 		na[0:] = activities[0:nact];
@@ -437,8 +439,19 @@ findactidx(id: int): int
 
 # --- Conversation ---
 
+# Upper bounds to prevent unbounded memory growth from malicious clients.
+MAX_MESSAGES: con 10000;
+MAX_ARTIFACTS: con 256;
+MAX_RESOURCES: con 256;
+MAX_GAPS: con 64;
+MAX_BGTASKS: con 64;
+MAX_ACTIVITIES: con 64;
+MAX_DATA_SIZE: con 1048576;	# 1MB max per write to prevent memory exhaustion
+
 addmessage(a: ref Activity, role, text, using: string): int
 {
+	if(a.nmsg >= MAX_MESSAGES)
+		return -1;
 	if(a.nmsg >= len a.messages) {
 		nm := array[len a.messages * 2] of ref ConvMsg;
 		nm[0:] = a.messages[0:a.nmsg];
@@ -470,6 +483,8 @@ findartidx(a: ref Activity, id: string): int
 
 addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 {
+	if(a.nart >= MAX_ARTIFACTS)
+		return nil;
 	if(a.nart >= len a.artifacts) {
 		na := array[len a.artifacts * 2] of ref Artifact;
 		na[0:] = a.artifacts[0:a.nart];
@@ -482,16 +497,18 @@ addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 }
 
 # Append s to the end of list l (FIFO queue push).
-# Uses double-reverse so the oldest event is always at the front (hd).
+# O(1) cons to front; callers use qrev() before draining.
 qpush(l: list of string, s: string): list of string
 {
-	rev: list of string = nil;
-	for(; l != nil; l = tl l)
-		rev = hd l :: rev;
-	rev = s :: rev;
+	return s :: l;
+}
+
+# Reverse a string list (used to restore FIFO order before draining).
+qrev(l: list of string): list of string
+{
 	r: list of string = nil;
-	for(; rev != nil; rev = tl rev)
-		r = hd rev :: r;
+	for(; l != nil; l = tl l)
+		r = hd l :: r;
 	return r;
 }
 
@@ -717,6 +734,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		if(notifyq == nil) {
 			srv.reply(styxservers->readbytes(m, array[0] of byte));
 		} else {
+			notifyq = qrev(notifyq);
 			data := array of byte (hd notifyq + "\n");
 			notifyq = tl notifyq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -726,6 +744,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		if(toastq == nil) {
 			srv.reply(styxservers->readbytes(m, array[0] of byte));
 		} else {
+			toastq = qrev(toastq);
 			data := array of byte (hd toastq + "\n");
 			toastq = tl toastq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -756,6 +775,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		# waits on this file — prevents drain goroutines from stealing events.
 		a := findactivity(actid);
 		if(a != nil && a.pendingevent != nil) {
+			a.pendingevent = qrev(a.pendingevent);
 			data := array of byte (hd a.pendingevent + "\n");
 			a.pendingevent = tl a.pendingevent;
 			srv.reply(styxservers->readbytes(m, data));
@@ -774,6 +794,7 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 			# Blocking read
 			addpending(m.fid, m.tag, Qconvinput, actid, m);
 		} else {
+			a.inputq = qrev(a.inputq);
 			data := array of byte (hd a.inputq + "\n");
 			a.inputq = tl a.inputq;
 			srv.reply(styxservers->readbytes(m, data));
@@ -905,6 +926,11 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 {
 	ft := FTYPE(c.path);
 	actid := ACTID(c.path);
+
+	if(len m.data > MAX_DATA_SIZE) {
+		srv.reply(ref Rmsg.Error(m.tag, "write too large"));
+		return;
+	}
 
 	data := string m.data;
 	# Strip trailing newline
@@ -1120,6 +1146,8 @@ globalctl(data: string): string
 	if(hasprefix(data, "activity create ")) {
 		label := data[len "activity create ":];
 		a := newactivity(label);
+		if(a == nil)
+			return "too many activities";
 		pushglobalevent("activity new " + string a.id);
 		return nil;
 	}
@@ -1180,6 +1208,8 @@ presctl(a: ref Activity, data: string): string
 		rest := data[len "create ":];
 		attrs := parseattrs(rest);
 		id := getattr(attrs, "id");
+		if(id != nil && !validid(id))
+			return "invalid artifact id: " + id;
 		atype := getattr(attrs, "type");
 		label := getattr(attrs, "label");
 		dispath := getattr(attrs, "dis");
@@ -1192,6 +1222,8 @@ presctl(a: ref Activity, data: string): string
 		if(findartifact(a, id) != nil)
 			return "artifact already exists: " + id;
 		art := addartifact(a, id, atype, label);
+		if(art == nil)
+			return "too many artifacts";
 		if(dispath != nil && dispath != "")
 			art.dispath = dispath;
 		# data= is a terminal attribute (value extends to end of string).
@@ -1348,6 +1380,8 @@ ctxctl(a: ref Activity, data: string): string
 			rtype = "unknown";
 		if(status == nil)
 			status = "idle";
+		if(a.nres >= MAX_RESOURCES)
+			return "too many resources";
 		if(a.nres >= len a.resources) {
 			nr := array[len a.resources * 2] of ref Resource;
 			nr[0:] = a.resources[0:a.nres];
@@ -1423,6 +1457,8 @@ ctxctl(a: ref Activity, data: string): string
 			if(label == nil) label = path;
 			if(rtype == nil) rtype = "unknown";
 			if(status == nil) status = "idle";
+			if(a.nres >= MAX_RESOURCES)
+				return "too many resources";
 			if(a.nres >= len a.resources) {
 				nr := array[len a.resources * 2] of ref Resource;
 				nr[0:] = a.resources[0:a.nres];
@@ -1487,6 +1523,8 @@ ctxctl(a: ref Activity, data: string): string
 			return "missing desc";
 		if(relevance == nil)
 			relevance = "medium";
+		if(a.ngaps >= MAX_GAPS)
+			return "too many gaps";
 		if(a.ngaps >= len a.gaps) {
 			ng := array[len a.gaps * 2] of ref Gap;
 			ng[0:] = a.gaps[0:a.ngaps];
@@ -1531,6 +1569,8 @@ ctxctl(a: ref Activity, data: string): string
 			a.gaps[found].relevance = relevance;
 		} else {
 			# Append new gap
+			if(a.ngaps >= MAX_GAPS)
+				return "too many gaps";
 			if(a.ngaps >= len a.gaps) {
 				ng := array[len a.gaps * 2] of ref Gap;
 				ng[0:] = a.gaps[0:a.ngaps];
@@ -1573,6 +1613,8 @@ ctxctl(a: ref Activity, data: string): string
 			return "missing label";
 		if(status == nil)
 			status = "idle";
+		if(a.nbg >= MAX_BGTASKS)
+			return "too many background tasks";
 		if(a.nbg >= len a.bgtasks) {
 			nb := array[len a.bgtasks * 2] of ref BgTask;
 			nb[0:] = a.bgtasks[0:a.nbg];
@@ -2288,15 +2330,20 @@ rf(f: string): string
 
 strtoint(s: string): int
 {
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'))
+		i++;
+	if(i >= len s)
+		return -1;
 	n := 0;
-	for(i := 0; i < len s; i++) {
+	for(; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
+		if(n > 214748364)
+			return -1;
 		n = n * 10 + (c - '0');
 	}
-	if(len s == 0)
-		return -1;
 	return n;
 }
 
@@ -2305,17 +2352,24 @@ hasprefix(s, prefix: string): int
 	return len s >= len prefix && s[0:len prefix] == prefix;
 }
 
+# Validate artifact/activity IDs: only alphanumeric, hyphens, underscores.
+# Rejects empty strings, path separators, dots, and control characters.
+validid(id: string): int
+{
+	if(id == nil || len id == 0 || len id > 128)
+		return 0;
+	for(i := 0; i < len id; i++) {
+		c := id[i];
+		if((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		   (c >= '0' && c <= '9') || c == '-' || c == '_')
+			continue;
+		return 0;
+	}
+	return 1;
+}
+
 appendstr(l: list of string, s: string): list of string
 {
-	# Append to end of list (order matters for queues)
-	if(l == nil)
-		return s :: nil;
-	rev: list of string;
-	for(; l != nil; l = tl l)
-		rev = hd l :: rev;
-	rev = s :: rev;
-	result: list of string;
-	for(; rev != nil; rev = tl rev)
-		result = hd rev :: result;
-	return result;
+	# O(1) cons to front; callers use qrev() before draining.
+	return s :: l;
 }

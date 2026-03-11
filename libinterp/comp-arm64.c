@@ -2557,10 +2557,23 @@ compile(Module *m, int size, Modlink *ml)
 	/* JIT enabled */
 	ulong codesize;
 
+	ulong tmpsize;
+
 	base = nil;
 	patch = mallocz((size + 1) * sizeof(*patch), 0);
 	tinit = malloc(m->ntype * sizeof(*tinit));
-	tmp = malloc(4096 * sizeof(u32int));
+	/* Size tmp buffer proportional to module: each Dis instruction can
+	 * expand to many ARM64 instructions (especially case statements).
+	 * Use 64 ARM64 instructions per Dis instruction as upper bound,
+	 * with a minimum of 8192. */
+	if(size > 0 && (ulong)size > ((ulong)-1) / 64) {
+		/* overflow check */
+		goto bad;
+	}
+	tmpsize = size * 64;
+	if(tmpsize < 8192)
+		tmpsize = 8192;
+	tmp = malloc(tmpsize * sizeof(u32int));
 	if(tinit == nil || patch == nil || tmp == nil)
 		goto bad;
 
@@ -2582,8 +2595,18 @@ compile(Module *m, int size, Modlink *ml)
 		codeoff = n;
 		code = tmp;
 		comp(&m->prog[i]);
+		if(code - tmp >= (int)tmpsize) {
+			print("JIT: instruction %d overflow tmp buffer (%lud >= %lud)\n",
+				i, (ulong)(code - tmp), tmpsize);
+			goto bad;
+		}
 		patch[i] = n;
 		n += code - tmp;
+		/* Check for total size overflow before continuing */
+		if(n > 16*1024*1024) {
+			print("JIT: module too large for compilation (%d instructions)\n", n);
+			goto bad;
+		}
 	}
 	patch[size] = n;	/* sentinel: one past last Dis instruction */
 
@@ -2609,9 +2632,13 @@ compile(Module *m, int size, Modlink *ml)
 	}
 	pthread_jit_write_protect_np(0);
 #else
-	base = mallocz(codesize, 0);
-	if(base == nil)
+	/* Use mmap for JIT code: heap no longer has PROT_EXEC */
+	base = mmap(0, codesize, PROT_READ|PROT_WRITE|PROT_EXEC,
+			MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	if(base == MAP_FAILED) {
+		base = nil;
 		goto bad;
+	}
 #endif
 
 	{

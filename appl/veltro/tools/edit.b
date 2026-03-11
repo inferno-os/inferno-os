@@ -46,7 +46,11 @@ init(): string
 	if(sys == nil)
 		return "cannot load Sys";
 	bufio = load Bufio Bufio->PATH;
+	if(bufio == nil)
+		return "cannot load Bufio";
 	str = load String String->PATH;
+	if(str == nil)
+		return "cannot load String";
 	return nil;
 }
 
@@ -298,7 +302,9 @@ replaceall(text, old, new: string): string
 	return result;
 }
 
-# Read entire file
+# Read entire file.
+# Handles synthetic/9P files that report zero stat length by using
+# incremental reads.
 readfile(path: string): array of byte
 {
 	(ok, d) := sys->stat(path);
@@ -308,6 +314,27 @@ readfile(path: string): array of byte
 	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil)
 		return nil;
+
+	# Synthetic/9P files may report length 0; use incremental reads
+	if(int d.length == 0){
+		CHUNK: con 8192;
+		buf := array[CHUNK] of byte;
+		total := 0;
+		for(;;){
+			if(total >= len buf){
+				nb := array[len buf * 2] of byte;
+				nb[0:] = buf;
+				buf = nb;
+			}
+			n := sys->read(fd, buf[total:], len buf - total);
+			if(n <= 0)
+				break;
+			total += n;
+		}
+		if(total == 0)
+			return nil;
+		return buf[0:total];
+	}
 
 	data := array[int d.length] of byte;
 	n := sys->read(fd, data, len data);

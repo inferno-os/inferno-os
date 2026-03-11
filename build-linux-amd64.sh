@@ -10,7 +10,7 @@ echo "=== InferNode Linux x86_64 Build ==="
 echo ""
 
 # Set up environment
-export ROOT="$PWD"
+export ROOT="$(cd "$(dirname "$0")" && pwd)"
 export SYSHOST=Linux
 export OBJTYPE=amd64
 export SYSTARG=Linux
@@ -38,12 +38,12 @@ echo "Build tools found."
 echo ""
 
 # Common compiler flags
-CFLAGS="-g -O -fno-strict-aliasing -fno-omit-frame-pointer -fcommon"
+CFLAGS="-g -O -fno-strict-aliasing -fno-omit-frame-pointer -fcommon -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fstack-clash-protection"
 CFLAGS="$CFLAGS -I$ROOT/Linux/amd64/include -I$ROOT/utils/include -I$ROOT/include"
 CFLAGS="$CFLAGS -DLINUX_AMD64"
 
 # Bootstrap mk if needed
-if [ ! -x "$ROOT/Linux/amd64/bin/mk" ]; then
+if [[ ! -x "$ROOT/Linux/amd64/bin/mk" ]]; then
     echo "=== Bootstrapping mk build tool ==="
 
     # Build libregexp
@@ -86,14 +86,14 @@ if [ ! -x "$ROOT/Linux/amd64/bin/mk" ]; then
     ALL_SRC="$COMMON_SRC $IMPORT_SRC $POSIX_SRC $EXTRA_SRC"
 
     for src in $ALL_SRC; do
-        if [ -f "$src" ]; then
+        if [[ -f "$src" ]]; then
             echo "  Compiling $src..."
             gcc $CFLAGS -c "$src" -o "${src%.c}.o"
         fi
     done
 
     # Build getcallerpc assembly
-    if [ -f "getcallerpc-Linux-amd64.S" ]; then
+    if [[ -f "getcallerpc-Linux-amd64.S" ]]; then
         echo "  Assembling getcallerpc-Linux-amd64.S..."
         gcc -c getcallerpc-Linux-amd64.S -o getcallerpc-Linux-amd64.o
     fi
@@ -160,20 +160,20 @@ echo ""
 # Build order matters - dependencies first
 # Core libraries that don't need limbo
 for lib in lib9 libbio libmp libsec libmath libfreetype libmemdraw libmemlayer libdraw; do
-    if [ -d "$ROOT/$lib" ]; then
+    if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: $lib build had issues"
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
     fi
 done
 
 echo ""
 echo "=== Building Limbo Compiler ==="
 cd "$ROOT/limbo"
-"$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: limbo build had issues"
+"$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: limbo build failed"; exit 1; }
 
 # Verify limbo was built
-if [ ! -x "$ROOT/Linux/amd64/bin/limbo" ]; then
+if [[ ! -x "$ROOT/Linux/amd64/bin/limbo" ]]; then
     echo "ERROR: limbo compiler not built!"
     exit 1
 fi
@@ -183,10 +183,10 @@ echo "=== Building Libraries that need Limbo ==="
 
 # Build libinterp and libkeyring after limbo
 for lib in libinterp libkeyring; do
-    if [ -d "$ROOT/$lib" ]; then
+    if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || echo "Warning: $lib build had issues"
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
     fi
 done
 
@@ -198,7 +198,7 @@ cd "$ROOT/emu/Linux"
 rm -f *.o *.emu emu.root.h emu.root.c emu.root.s 2>/dev/null
 
 # mkfile-g is the headless emulator config, which includes mkfile-$OBJTYPE
-"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || echo "Warning: emulator build had issues"
+"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed"; exit 1; }
 
 echo ""
 echo "=== Building Applications (Limbo -> Dis bytecode) ==="
@@ -232,7 +232,7 @@ cd "$ROOT/appl/cmd/sh"
 "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/sh.dis" sh.b 2>/dev/null || true
 
 # Verify essential files
-if [ -f "$ROOT/dis/emuinit.dis" ] && [ -f "$ROOT/dis/sh.dis" ]; then
+if [[ -f "$ROOT/dis/emuinit.dis" ]] && [[ -f "$ROOT/dis/sh.dis" ]]; then
     echo "Essential boot files built successfully"
 else
     echo "Warning: Some essential files missing"
@@ -241,7 +241,7 @@ fi
 echo ""
 echo "=== Build Summary ==="
 echo ""
-if [ -x "$ROOT/emu/Linux/o.emu" ]; then
+if [[ -x "$ROOT/emu/Linux/o.emu" ]]; then
     echo "SUCCESS: Emulator built at $ROOT/emu/Linux/o.emu"
     ls -la "$ROOT/emu/Linux/o.emu"
     echo ""

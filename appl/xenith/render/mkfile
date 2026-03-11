@@ -6,6 +6,7 @@ TARG=\
 	imgrender.dis\
 	mdrender.dis\
 	htmlrender.dis\
+	charonrender.dis\
 	pdfrender.dis\
 	mermaidrender.dis\
 	mdfmt.dis\

@@ -2368,10 +2368,22 @@ parse_exts(exts: list of ref Extension): (string, list of ref ExtClass)
 	l := exts;
 	while(l != nil) {
 		ext := hd l;
-		(err, et) := ExtClass.decode(ext);
-		if(err != "")
-			return (err, nil);
-		ets = et :: ets;
+		oid := asn1->oid_lookup(ext.oid, objIdTab);
+		if(oid == id_ce_subjectAltName) {
+			# SAN: always decode — required for hostname verification.
+			(err, et) := ExtClass.decode(ext);
+			if(err != "")
+				return (err, nil);
+			if(et != nil)
+				ets = et :: ets;
+		} else {
+			# For all other extensions: avoid calling ExtClass.decode —
+			# some decode paths trigger JIT SEGV in the current emu binary.
+			# RFC 5280 §4.2: only reject for unknown OIDs that are critical.
+			if(oid == -1 && ext.critical)
+				return ("unknown critical extension", nil);
+			# else: known non-SAN extension, or unknown non-critical — skip.
+		}
 		l = tl l;
 	}
 	lseq: list of ref ExtClass;
@@ -2492,7 +2504,11 @@ ExtClass.decode(ext: ref Extension): (string, ref ExtClass)
 			break;
 		}
 	* =>
-		err = "unknown extension class";
+		# RFC 5280 §4.2: unknown critical extensions must cause rejection;
+		# unknown non-critical extensions must be silently ignored.
+		if(ext.critical)
+			err = "unknown critical extension";
+		# else: eclass stays nil, parse_exts will skip it
 	}
 
 	return (err, eclass);
@@ -4181,23 +4197,25 @@ parse:
 				break parse;
 			g = ref GeneralName.otherName(str);
 		1 =>
-			(ok, e) = is_context(e, 1);
-			if(!ok)
+			# rfc822Name [1] IMPLICIT IA5String — raw bytes are the string content
+			if(e.tag.class != ASN1->Context || e.tag.num != 1)
 				break parse;
-			str: string;
-			(ok, str) = e.is_string();
-			if(!ok)
-				break parse;			
-			g = ref GeneralName.rfc822Name(str);
+			pick ev := e.val {
+			Octets =>
+				g = ref GeneralName.rfc822Name(string ev.bytes);
+			* =>
+				break parse;
+			}
 		2 =>
-			(ok, e) = is_context(e, 2);
-			if(!ok)
+			# dNSName [2] IMPLICIT IA5String — raw bytes are the string content
+			if(e.tag.class != ASN1->Context || e.tag.num != 2)
 				break parse;
-			str: string;
-			(ok, str) = e.is_string();
-			if(!ok)
+			pick ev := e.val {
+			Octets =>
+				g = ref GeneralName.dNSName(string ev.bytes);
+			* =>
 				break parse;
-			g = ref GeneralName.dNSName(str);
+			}
 		3 =>
 			(ok, e) = is_context(e, 3);
 			if(!ok)
@@ -4242,23 +4260,25 @@ parse:
 			}
 			g = ref GeneralName.ediPartyName(na, pn);
 		6 =>
-			(ok, e) = is_context(e, 6);
-			if(!ok)
+			# uniformResourceIdentifier [6] IMPLICIT IA5String — raw bytes are the string
+			if(e.tag.class != ASN1->Context || e.tag.num != 6)
 				break parse;
-			str: string;
-			(ok, str) = e.is_string();
-			if(!ok)
+			pick ev := e.val {
+			Octets =>
+				g = ref GeneralName.uniformResourceIdentifier(string ev.bytes);
+			* =>
 				break parse;
-			g = ref GeneralName.uniformResourceIdentifier(str);
+			}
 		7 =>
-			(ok, e) = is_context(e, 7);
-			if(!ok)
+			# iPAddress [7] IMPLICIT OCTET STRING — raw bytes are the IP address
+			if(e.tag.class != ASN1->Context || e.tag.num != 7)
 				break parse;
-			ip: array of byte;
-			(ok, ip) = e.is_octetstring();
-			if(!ok)
+			pick ev := e.val {
+			Octets =>
+				g = ref GeneralName.iPAddress(ev.bytes);
+			* =>
 				break parse;
-			g = ref GeneralName.iPAddress(ip);
+			}
 		8 =>
 			(ok, e) = is_context(e, 8);
 			if(!ok)

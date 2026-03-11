@@ -2643,8 +2643,19 @@ compile(Module *m, int size, Modlink *ml)
 	 * tmp is used for pass 0 size estimation. On AMD64, it must be
 	 * near the text segment so that bra() rel32 displacements to C
 	 * functions fit in 32 bits during size calculation.
+	 * Size proportional to module: each Dis instruction can expand
+	 * to many x86 bytes (especially case statements).
 	 */
-	tmp = jitmalloc(8192*sizeof(uchar));
+	{
+		ulong tmpsize = size * 64;
+		if(tmpsize < 8192)
+			tmpsize = 8192;
+		if(tmpsize / 64 != (ulong)size && size > 0) {
+			/* overflow */
+			goto bad;
+		}
+		tmp = jitmalloc(tmpsize*sizeof(uchar));
+	}
 	if(tinit == nil || patch == nil || tmp == nil) {
 		goto bad;
 	}

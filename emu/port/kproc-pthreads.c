@@ -1,8 +1,12 @@
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE	/* for pthread_getattr_np on Linux */
+#endif
+
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
 
-#undef _POSIX_C_SOURCE 
+#undef _POSIX_C_SOURCE
 #undef getwd
 
 #include	<unistd.h>
@@ -93,14 +97,6 @@ tramp(void *arg)
 	os->self = pthread_self();
 	if(pthread_setspecific(prdakey, arg))
 		panic("set specific data failed in tramp\n");
-	if(0){
-		pthread_attr_t attr;
-		memset(&attr, 0, sizeof(attr));
-		pthread_getattr_np(pthread_self(), &attr);
-		size_t s;
-		pthread_attr_getstacksize(&attr, &s);
-		print("stack size = %d\n", s);
-	}
 	p->func(p->arg);
 	pexit("{Tramp}", 0);
 	return nil;
@@ -148,7 +144,8 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 	p->env->gid = up->env->gid;
 	kstrdup(&p->env->user, up->env->user);
 
-	strcpy(p->text, name);
+	strncpy(p->text, name, KNAMELEN-1);
+	p->text[KNAMELEN-1] = '\0';
 
 	p->func = func;
 	p->arg = arg;

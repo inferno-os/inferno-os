@@ -35,12 +35,12 @@ while getopts "vp:" opt; do
 	esac
 done
 shift $((OPTIND-1))
-if [ -n "$1" ] && echo "$1" | grep -qE '^[0-9]+$'; then
+if [[ -n "$1" ]] && echo "$1" | grep -qE '^[0-9]+$'; then
 	LLM9P_PORT="$1"
 fi
 
 # Colour output (if terminal)
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
 	RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
 	BOLD='\033[1m'; NC='\033[0m'
 else
@@ -50,7 +50,7 @@ fi
 pass()  { echo -e "${GREEN}PASS${NC}: $1"; }
 fail()  { echo -e "${RED}FAIL${NC}: $1"; FAILED=$((FAILED+1)); }
 skip()  { echo -e "${YELLOW}SKIP${NC}: $1"; SKIPPED=$((SKIPPED+1)); }
-info()  { [ "$VERBOSE" -eq 1 ] && echo "  $1" || true; }
+info()  { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
 
 PASSED=0; FAILED=0; SKIPPED=0
 
@@ -90,7 +90,7 @@ fi
 info "llm9p is listening on port $LLM9P_PORT"
 
 # Check emulator exists
-if [ ! -x "$EMU" ]; then
+if [[ ! -x "$EMU" ]]; then
 	echo "ERROR: emulator not found at $EMU"
 	exit 1
 fi
@@ -98,7 +98,7 @@ fi
 # Build tooluse_test.dis if missing or stale
 TESTDIS="$ROOT/dis/tests/tooluse_test.dis"
 TESTB="$ROOT/tests/tooluse_test.b"
-if [ ! -f "$TESTDIS" ] || [ "$TESTB" -nt "$TESTDIS" ]; then
+if [[ ! -f "$TESTDIS" ]] || [[ "$TESTB" -nt "$TESTDIS" ]]; then
 	info "Building tooluse_test.dis..."
 	PATH="$ROOT/MacOSX/arm64/bin:$PATH" \
 		ROOT="$ROOT" \
@@ -121,7 +121,7 @@ if run_emu "session-create" 15 "$CMDS1"; then
 	if echo "$OUTPUT" | grep -qE '^[0-9]+$'; then
 		pass "Test 1: session ID is numeric ($OUTPUT)"
 		PASSED=$((PASSED+1))
-	elif [ -n "$OUTPUT" ]; then
+	elif [[ -n "$OUTPUT" ]]; then
 		pass "Test 1: /n/llm/new returned: $OUTPUT"
 		PASSED=$((PASSED+1))
 	else
@@ -146,7 +146,7 @@ if run_emu "tools-write" 30 "$CMDS2"; then
 		NPASS=$(echo "$OUTPUT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo 0)
 		NSKIP=$(echo "$OUTPUT" | grep -oE '[0-9]+ skipped' | grep -oE '[0-9]+' || echo 0)
 		NFAIL=$(echo "$OUTPUT" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo 0)
-		if [ "${NFAIL:-0}" -eq 0 ]; then
+		if [[ "${NFAIL:-0}" -eq 0 ]]; then
 			pass "Test 2: Limbo tooluse_test: ${NPASS} passed, ${NSKIP} skipped, 0 failed"
 			PASSED=$((PASSED+1))
 		else
@@ -160,7 +160,7 @@ if run_emu "tools-write" 30 "$CMDS2"; then
 	fi
 else
 	fail "Test 2: Limbo tooluse_test exited non-zero"
-	[ -n "$OUTPUT" ] && echo "    Output: $OUTPUT"
+	[[ -n "$OUTPUT" ]] && echo "    Output: $OUTPUT"
 fi
 
 # ── Test 3: TOOL_RESULTS parse via shell (session_ask.go) ──────────
@@ -170,7 +170,7 @@ echo "  Test 3: TOOL_RESULTS write path (via Limbo test with /tool mounted)"
 
 # The TOOL_RESULTS test in tooluse_test.b also calls the LLM first.
 # Only run this if the user explicitly requested via -v (slow, requires claude CLI).
-if [ "$VERBOSE" -eq 1 ]; then
+if [[ "$VERBOSE" -eq 1 ]]; then
 	# Mount /tool as well to enable full toollist for BuildToolDefsAll
 	# /tool requires tools9p to be running — skip if not available
 	CMDS3="mount -A tcp!127.0.0.1!${LLM9P_PORT} /n/llm; /tests/tooluse_test.dis -v"
@@ -180,7 +180,7 @@ if [ "$VERBOSE" -eq 1 ]; then
 		PASSED=$((PASSED+1))
 	else
 		fail "Test 3: tooluse_test exited non-zero with LLM calls"
-		[ -n "$OUTPUT" ] && echo "    Output: $OUTPUT"
+		[[ -n "$OUTPUT" ]] && echo "    Output: $OUTPUT"
 	fi
 else
 	skip "Test 3: LLM-calling tests (run with -v to enable)"
@@ -195,7 +195,7 @@ echo -e "  ${RED}Failed${NC}:  $FAILED"
 echo -e "  ${YELLOW}Skipped${NC}: $SKIPPED"
 echo ""
 
-if [ "$FAILED" -gt 0 ]; then
+if [[ "$FAILED" -gt 0 ]]; then
 	exit 1
 fi
 exit 0

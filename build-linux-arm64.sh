@@ -23,7 +23,7 @@ echo ""
 
 # Check for ARM64
 ARCH=$(uname -m)
-if [ "$ARCH" != "aarch64" ]; then
+if [[ "$ARCH" != "aarch64" ]]; then
     echo "Warning: This script is intended for ARM64 systems (detected: $ARCH)"
     echo "You may need to cross-compile or adjust the build configuration."
     echo ""
@@ -38,7 +38,7 @@ echo "Building for: SYSHOST=$SYSHOST OBJTYPE=$OBJTYPE"
 echo ""
 
 # Check if mk exists
-if [ ! -x "$ROOT/Linux/arm64/bin/mk" ]; then
+if [[ ! -x "$ROOT/Linux/arm64/bin/mk" ]]; then
     echo "Note: mk not found in $ROOT/Linux/arm64/bin/"
     echo "You may need to bootstrap the build tools first."
     echo ""
@@ -48,7 +48,7 @@ if [ ! -x "$ROOT/Linux/arm64/bin/mk" ]; then
     echo ""
 
     # Try to build mk if we have a working build system
-    if command -v make &> /dev/null && [ -f "$ROOT/utils/mk/Makefile" ]; then
+    if command -v make &> /dev/null && [[ -f "$ROOT/utils/mk/Makefile" ]]; then
         echo "Attempting to bootstrap mk..."
         mkdir -p "$ROOT/Linux/arm64/bin"
         cd "$ROOT/utils/mk"
@@ -66,10 +66,10 @@ fi
 echo "=== Building Libraries ==="
 # Build order matters - dependencies first
 for lib in lib9 libbio libmp libsec libmath libfreetype libmemdraw libmemlayer libdraw libinterp libkeyring; do
-    if [ -d "$ROOT/$lib" ]; then
+    if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        mk install || echo "Warning: $lib build had issues"
+        mk install || { echo "Error: $lib build failed"; exit 1; }
     fi
 done
 
@@ -78,7 +78,7 @@ echo "=== Building Emulator (headless) ==="
 cd "$ROOT/emu/Linux"
 
 # Use mkfile-g for headless build
-if [ -f mkfile-g ]; then
+if [[ -f mkfile-g ]]; then
     mk -f mkfile-g
 else
     mk

@@ -133,6 +133,11 @@ exec(args: string): string
 	if(cmd == "")
 		return "error: usage: Exec <command>";
 
+	# Sanitize: strip backticks and ${} command substitution patterns.
+	# The namespace restriction is the primary security boundary, but
+	# defense-in-depth prevents command substitution attacks.
+	cmd = sanitizecmd(cmd);
+
 	# Convert double quotes to single quotes for Inferno shell compatibility
 	# Inferno's sh uses single quotes for literal strings, not double quotes
 	cmd = convertquotes(cmd);
@@ -231,6 +236,9 @@ exec(args: string): string
 		}
 	}
 
+	# Close read fd to unblock readoutput goroutine if still blocked on read
+	fds[0] = nil;
+
 	# Wait for result
 	err := "";
 	alt {
@@ -252,9 +260,13 @@ exec(args: string): string
 	return output;
 }
 
-# Run command in separate thread
+# Run command in a separate thread with isolated fd group.
+# NEWFD prevents dup from affecting other goroutines' stdout/stderr.
 runcommand(cmd: string, outfd: ref Sys->FD, result: chan of string)
 {
+	# Isolate fd group so dup only affects this goroutine
+	sys->pctl(Sys->NEWFD, 0 :: 1 :: 2 :: outfd.fd :: nil);
+
 	# Redirect stdout/stderr to pipe
 	sys->dup(outfd.fd, 1);
 	sys->dup(outfd.fd, 2);
@@ -332,4 +344,95 @@ convertquotes(s: string): string
 	}
 
 	return result;
+}
+
+# Sanitize command string for Inferno sh(1).
+#
+# Inferno shell metacharacters (from sh(1) man page):
+#   # ; & | ^ $ ` ' { } ( ) < > " =
+#
+# Command substitution forms in Inferno sh:
+#   `{cmd}   — backtick with braces (output split by $ifs)
+#   "{cmd}   — double-quote with brace (output as single string)
+#   ${name}  — substitution builtin invocation
+#   $var     — variable expansion
+#   <{cmd}   — process substitution (read end)
+#   >{cmd}   — process substitution (write end)
+#
+# Note: Inferno does NOT support bash's $() syntax or bare backticks.
+# Semicolons and pipes are intentionally allowed (multi-command support;
+# namespace restriction is the primary security boundary).
+sanitizecmd(s: string): string
+{
+	result := "";
+	i := 0;
+	while(i < len s) {
+		c := s[i];
+
+		# Strip backtick command substitution: `{cmd}
+		if(c == '`') {
+			if(i + 1 < len s && s[i+1] == '{') {
+				i = skipbraced(s, i + 1);
+				continue;
+			}
+			# Bare backtick — strip it regardless
+			i++;
+			continue;
+		}
+
+		# Strip double-quote command substitution: "{cmd}
+		if(c == '"' && i + 1 < len s && s[i+1] == '{') {
+			i = skipbraced(s, i + 1);
+			continue;
+		}
+
+		# Strip $ variable/substitution references
+		if(c == '$') {
+			if(i + 1 < len s && s[i+1] == '{') {
+				# ${builtin args} — skip entire braced block
+				i = skipbraced(s, i + 1);
+				continue;
+			}
+			# $varname — strip $ and the variable name
+			i++;
+			while(i < len s && isnamec(s[i]))
+				i++;
+			continue;
+		}
+
+		# Strip process substitution: <{cmd} and >{cmd}
+		if((c == '<' || c == '>') && i + 1 < len s && s[i+1] == '{') {
+			i = skipbraced(s, i + 1);
+			continue;
+		}
+
+		result[len result] = c;
+		i++;
+	}
+	return result;
+}
+
+# Skip past a balanced {}-block starting at s[pos] == '{'.
+# Returns index after the closing '}'.
+skipbraced(s: string, pos: int): int
+{
+	if(pos >= len s || s[pos] != '{')
+		return pos + 1;
+	pos++;
+	depth := 1;
+	while(pos < len s && depth > 0) {
+		if(s[pos] == '{')
+			depth++;
+		else if(s[pos] == '}')
+			depth--;
+		pos++;
+	}
+	return pos;
+}
+
+# Is c a valid Inferno variable name character?
+isnamec(c: int): int
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+	       (c >= '0' && c <= '9') || c == '_';
 }

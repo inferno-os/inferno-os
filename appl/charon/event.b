@@ -263,6 +263,8 @@ Event.tostring(ev: self ref Event) : string
 			s = "lostfocus";
 		Edismisspopup =>
 			s = "dismisspopup";
+		Efollow =>
+			s = "follow(" + string e.linknum + ")";
 	}
 	return s;
 }

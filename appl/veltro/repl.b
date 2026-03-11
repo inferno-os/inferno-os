@@ -207,6 +207,10 @@ REPL_SUFFIX: con "\n\nYou are in interactive REPL mode.\n" +
 # Create a new LLM session with REPL system prompt. Returns error string or nil.
 newsession(): string
 {
+	# Close previous session to avoid server-side leak
+	if(sessionid != "")
+		agentlib->closesession(sessionid);
+
 	sessionid = agentlib->createsession();
 	if(sessionid == "")
 		return "cannot create LLM session";

@@ -37,10 +37,15 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 
 	if(dest == nil)
 		dest = "$SIGNER";
-	for(j:=0; j<len dest && dest[j] != '!'; j++)
-		break;
-	if(j >= len dest)
-		dest = "net!"+dest+"!inflogin";	# BUG: must do better
+	# Check if dest already has dial address format (contains '!')
+	hasdelim := 0;
+	for(j := 0; j < len dest; j++)
+		if(dest[j] == '!'){
+			hasdelim = 1;
+			break;
+		}
+	if(!hasdelim)
+		dest = "net!"+dest+"!inflogin";
 
 	(ok, lc) := sys->dial(dest, nil);
 	if(ok < 0)
@@ -70,15 +75,21 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 		return (sys->sprint("can't send initialization vector: %r"), nil);
 
 	# Derive 32-byte ChaCha20-Poly1305 key from password + IV
-	# HKDF-like: key = SHA-256(SHA-256(password) || ivec[0:20])
+	# using HKDF (RFC 5869) with HMAC-SHA256:
+	#   Extract: PRK = HMAC-SHA256(salt=ivec[0:20], IKM=SHA-256(password))
+	#   Expand:  key = HMAC-SHA256(PRK, "infernode login aead" || 0x01)
 	pwbuf := array of byte password;
 	pwdigest := array[Keyring->SHA256dlen] of byte;
 	kr->sha256(pwbuf, len pwbuf, pwdigest, nil);
-	keymaterial := array[Keyring->SHA256dlen + 20] of byte;
-	keymaterial[0:] = pwdigest;
-	keymaterial[Keyring->SHA256dlen:] = ivec[0:20];
+	salt := ivec[0:20];
+	prk := array[Keyring->SHA256dlen] of byte;
+	kr->hmac_sha256(pwdigest, len pwdigest, salt, prk, nil);
+	info := array of byte "infernode login aead";
+	expandinput := array[len info + 1] of byte;
+	expandinput[0:] = info;
+	expandinput[len info] = byte 1;
 	aeadkey := array[Keyring->SHA256dlen] of byte;
-	kr->sha256(keymaterial, len keymaterial, aeadkey, nil);
+	kr->hmac_sha256(expandinput, len expandinput, prk, aeadkey, nil);
 	nonce := ivec[20:32];
 
 	# CA -> user	AEAD-encrypted alpha**r0 mod p

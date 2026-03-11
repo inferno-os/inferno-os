@@ -29,9 +29,9 @@ About: module
 
 ZP := Point(0, 0);
 
-WINW: con 280;
-WINH: con 320;
-PADDING: con 16;
+WINW: con 600;
+WINH: con 590;
+PADDING: con 12;
 
 init(ctxt: ref Draw->Context, nil: list of string)
 {
@@ -108,8 +108,21 @@ redraw(w: ref Window, display: ref Display)
 	cx := (r.min.x + r.max.x) / 2;
 	y := r.min.y + PADDING;
 
-	# Load and draw logo
-	logo := display.open("/lib/lucifer/logo.png");
+	# Load and draw logo — use theme-specific variant if available
+	logopath := "/lib/lucifer/about-screen.png";
+	themename := rf("/lib/lucifer/theme/current");
+	if(themename != nil) {
+		# Strip trailing whitespace/newline
+		while(len themename > 0 && (themename[len themename - 1] == '\n' || themename[len themename - 1] == ' '))
+			themename = themename[:len themename - 1];
+		if(themename != "brimstone" && themename != "") {
+			tpath := "/lib/lucifer/logo-" + themename + ".png";
+			tfd := sys->open(tpath, Sys->OREAD);
+			if(tfd != nil)
+				logopath = tpath;
+		}
+	}
+	logo := display.open(logopath);
 	if(logo != nil) {
 		# Scale: draw logo centered
 		lw := logo.r.dx();

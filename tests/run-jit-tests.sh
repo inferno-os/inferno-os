@@ -17,29 +17,29 @@ echo "Root: $ROOT"
 echo ""
 
 # Locate emulator
-if [ "$ARCH" = "x86_64" ]; then
+if [[ "$ARCH" = "x86_64" ]]; then
     EMU="$ROOT/emu/Linux/o.emu"
     LIMBO="$ROOT/Linux/amd64/bin/limbo"
-elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-    if [ -f "$ROOT/emu/MacOSX/o.emu" ]; then
+elif [[ "$ARCH" = "aarch64" ]] || [[ "$ARCH" = "arm64" ]]; then
+    if [[ -f "$ROOT/emu/MacOSX/o.emu" ]]; then
         EMU="$ROOT/emu/MacOSX/o.emu"
-    elif [ -f "$ROOT/emu/Linux/o.emu" ]; then
+    elif [[ -f "$ROOT/emu/Linux/o.emu" ]]; then
         EMU="$ROOT/emu/Linux/o.emu"
     fi
-    if [ -f "$ROOT/MacOSX/arm64/bin/limbo" ]; then
+    if [[ -f "$ROOT/MacOSX/arm64/bin/limbo" ]]; then
         LIMBO="$ROOT/MacOSX/arm64/bin/limbo"
-    elif [ -f "$ROOT/Linux/arm64/bin/limbo" ]; then
+    elif [[ -f "$ROOT/Linux/arm64/bin/limbo" ]]; then
         LIMBO="$ROOT/Linux/arm64/bin/limbo"
     fi
 fi
 
-if [ ! -x "$EMU" ]; then
+if [[ ! -x "$EMU" ]]; then
     echo "ERROR: Emulator not found at $EMU"
     echo "Build first with build-linux-amd64.sh or build-linux-arm64.sh"
     exit 1
 fi
 
-if [ ! -x "$LIMBO" ]; then
+if [[ ! -x "$LIMBO" ]]; then
     echo "ERROR: Limbo compiler not found at $LIMBO"
     exit 1
 fi

@@ -24,12 +24,12 @@
 #include <libsec.h>
 
 /*
- * SLH-DSA-SHAKE-192s parameters
- *   n=24, h=63, d=7, h'=9, a=8, k=14, lg(w)=4
+ * SLH-DSA-SHAKE-192s parameters (FIPS 205 Table 2)
+ *   n=24, h=63, d=7, h'=9, a=14, k=17, lg(w)=4
  *   len = 2*24 + 3 = 51  (WOTS+ chains)
  *
- * SLH-DSA-SHAKE-256s parameters
- *   n=32, h=64, d=8, h'=8, a=8, k=22, lg(w)=4
+ * SLH-DSA-SHAKE-256s parameters (FIPS 205 Table 2)
+ *   n=32, h=64, d=8, h'=8, a=14, k=22, lg(w)=4
  *   len = 2*32 + 3 = 67
  */
 enum {
@@ -66,7 +66,7 @@ extern void slhdsa_adrs_copy(uchar*, const uchar*);
 extern void slhdsa_H_msg(uchar*, int, const uchar*, int, const uchar*, int, const uchar*, int, const uchar*, ulong);
 extern void slhdsa_PRF_msg(uchar*, int, const uchar*, int, const uchar*, int, const uchar*, ulong);
 
-extern void slhdsa_treehash(uchar*, uchar*, int, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
+extern int  slhdsa_treehash(uchar*, uchar*, int, const uchar*, int, const uchar*, int, u32int, u64int, int, int);
 extern void slhdsa_fors_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, uchar*, int, int);
 extern void slhdsa_fors_pk_from_sig(uchar*, int, const uchar*, const uchar*, const uchar*, int, uchar*, int, int);
 extern void slhdsa_ht_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u64int, u32int, int, int);
@@ -144,8 +144,12 @@ slhdsa_keygen(uchar *pk, uchar *sk, int n, int hprime, int d)
 	genrandom(pkseed, n);
 
 	/* Compute root of the top XMSS tree */
-	slhdsa_treehash(root, nil, n, pkseed, n, skseed, n,
-		d - 1, 0, hprime, -1);
+	if(slhdsa_treehash(root, nil, n, pkseed, n, skseed, n,
+		d - 1, 0, hprime, -1) != 0){
+		secureZero(skseed, sizeof(skseed));
+		secureZero(skprf, sizeof(skprf));
+		return -1;
+	}
 
 	/* Assemble SK: SK.seed || SK.prf || PK.seed || PK.root */
 	memmove(sk, skseed, n);
@@ -157,8 +161,8 @@ slhdsa_keygen(uchar *pk, uchar *sk, int n, int hprime, int d)
 	memmove(pk, pkseed, n);
 	memmove(pk + n, root, n);
 
-	memset(skseed, 0, sizeof(skseed));
-	memset(skprf, 0, sizeof(skprf));
+	secureZero(skseed, sizeof(skseed));
+	secureZero(skprf, sizeof(skprf));
 
 	return 0;
 }

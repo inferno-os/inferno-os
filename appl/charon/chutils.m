@@ -157,6 +157,8 @@ CharonUtils: module
 		imagecachemem: int;	# imcache.memlimit
 		docookies:	int;		# allow cookie storage/sending?
 		doacme:		int;
+		dorender:	int;		# render-to-file mode (no event loop)
+		headless:	int;		# headless mode: skip Img, Script, heavy rendering
 		doscripts:		int;		# allow scripts to execute?
 		httpminor:	int;		# use HTTP 1.httpminor
 		agentname:	string;	# what to send in HTTP header
@@ -236,7 +238,7 @@ CharonUtils: module
 		port:	int;			# port number
 		scheme: string;		# Url scheme ("http", "file", etc.)
 		conn:	Sys->Connection;	# fds, etc.
- 		sslx:	ref SSL3->Context;	# ssl connection
+ 		tlsconn:	ref TLS->Conn;		# tls connection
  		vers:	int;			# ssl version
 		state:	int;			# NCfree, etc.
 		queue:	cyclic array of ref ByteSource;
@@ -343,6 +345,8 @@ CharonUtils: module
 	freebs: fn(bs: ref ByteSource);
 	abortgo: fn(gopgrp: int);
 	netget: fn();
+
+	fetchurl_text: fn(url: ref Url->Parsedurl) : string;
 
 	# Miscellaneous utility functions
 	kill: fn(pid: int, dogroup: int);

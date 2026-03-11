@@ -372,7 +372,8 @@ mkchoicemenu(Tk *tkb)
 
 	for(i = tkl->nvalues - 1; i >= 0; i--){
 		tkc = tknewobj(t, TKlabel, sizeof(Tk)+sizeof(TkLabel));
-		/* XXX recover from malloc failure */
+		if(tkc == nil)
+			return nil;
 		tkc->flag = Tkwest|Tkfillx|Tktop;
 		tkc->highlightwidth = 0;
 		tkc->borderwidth = 1;
@@ -386,7 +387,6 @@ mkchoicemenu(Tk *tkb)
 		tkcl->justify = Tkleft;
 		tkcl->text = strdup(tkl->values[i]);
 		tkcl->command = smprint("%s invoke %d", tkb->name->name, i);
-		/* XXX recover from malloc failure */
 		tksizelabel(tkc);
 		tkc->req.height = tkb->req.height;
 		appenditem(menu, tkc, 0);
@@ -485,7 +485,7 @@ tkchoicebutset(Tk *tk, char *arg, char **val)
 		return nil;
 	free(tkl->text);
 	tkl->text = strdup(tkl->values[v]);
-	/* XXX recover from malloc error */
+	/* strdup may fail under memory pressure */
 	tkl->check = v;
 
 	sprint(buf, "%d", v);
@@ -555,7 +555,7 @@ tkchoicebutsetvalue(Tk *tk, char *arg, char **val)
 		return TkBadvl;
 	free(tkl->text);
 	tkl->text = strdup(*v);
-	/* XXX recover from malloc error */
+	/* strdup may fail under memory pressure */
 	tkl->check = v - tkl->values;
 
 	tk->dirty = tkrect(tk, 1);
@@ -612,7 +612,7 @@ tkchoicevarchanged(Tk *tk, char *var, char *value)
 			return;		/* what else can we do? */
 		free(tkl->text);
 		tkl->text = strdup(tkl->values[v]);
-		/* XXX recover from malloc error */
+		/* strdup may fail under memory pressure */
 		tkl->check = v;
 		tk->dirty = tkrect(tk, 0);
 		tkdirty(tk);

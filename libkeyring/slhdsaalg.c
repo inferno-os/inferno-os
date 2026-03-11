@@ -107,7 +107,7 @@ slhdsaprivfree(SLHDSApriv *k)
 {
 	if(k == nil)
 		return;
-	memset(k, 0, sizeof(SLHDSApriv));	/* clear secret key */
+	secureZero(k, sizeof(SLHDSApriv));	/* clear secret key */
 	free(k);
 }
 
@@ -525,7 +525,7 @@ slhdsa_sign_hash(mpint *mp, void *key)
 	else
 		rv = slhdsa192s_sign(sig->sig, hash, n, sk->sk);
 
-	memset(hash, 0, sizeof(hash));
+	secureZero(hash, sizeof(hash));
 
 	if(rv != 0){
 		slhdsasigfree(sig);
@@ -556,7 +556,7 @@ slhdsa_verify_hash(mpint *mp, void *vsig, void *vkey)
 	else
 		ok = slhdsa192s_verify(sig->sig, sig->siglen, hash, n, pk->key);
 
-	memset(hash, 0, sizeof(hash));
+	secureZero(hash, sizeof(hash));
 	return ok;
 }
 

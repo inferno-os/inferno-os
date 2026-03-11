@@ -143,6 +143,8 @@ big64conv(Fmt *f)
 	n = (b->top+1)*Dbytes + 1;
 	n = ((n+3)/3)*4 + 1;
 	buf = malloc(n);
+	if(buf == nil)
+		return fmtstrcpy(f, "<nomem>");
 	bigtobase64(b, buf, n);
 	n = fmtstrcpy(f, buf);
 	free(buf);
@@ -3480,7 +3482,7 @@ Keyring_p256_keygen(void *fp)
 
 	f->ret->t0 = mem2array(priv, 32);
 	f->ret->t1 = (Keyring_ECpoint*)ep;
-	memset(priv, 0, 32);
+	secureZero(priv, 32);
 }
 
 void
@@ -3507,7 +3509,7 @@ Keyring_p256_ecdh(void *fp)
 		return;
 
 	*f->ret = mem2array(shared, 32);
-	memset(shared, 0, 32);
+	secureZero(shared, 32);
 }
 
 void
@@ -3575,6 +3577,29 @@ Keyring_p256_make_point(void *fp)
 	memmove(ep->point.y, f->pubkey->data + 33, 32);
 
 	*f->ret = (Keyring_ECpoint*)ep;
+}
+
+void
+Keyring_p256_point_bytes(void *fp)
+{
+	F_Keyring_p256_point_bytes *f;
+	XECpoint *ep;
+	uchar outbuf[65];
+
+	f = fp;
+	destroy(*f->ret);
+	*f->ret = H;
+
+	if(f->pub == H)
+		return;
+
+	ep = checktype(f->pub, TECpoint, exBadPK, 0);
+
+	outbuf[0] = 0x04;
+	memmove(outbuf + 1, ep->point.x, 32);
+	memmove(outbuf + 33, ep->point.y, 32);
+
+	*f->ret = mem2array(outbuf, 65);
 }
 
 /*
@@ -3671,7 +3696,7 @@ Keyring_mlkem768_keygen(void *fp)
 
 	f->ret->t0 = mem2array(pk, MLKEM768_PKLEN);
 	f->ret->t1 = mem2array(sk, MLKEM768_SKLEN);
-	memset(sk, 0, MLKEM768_SKLEN);
+	secureZero(sk, MLKEM768_SKLEN);
 }
 
 void
@@ -3693,7 +3718,7 @@ Keyring_mlkem768_encaps(void *fp)
 
 	f->ret->t0 = mem2array(ct, MLKEM768_CTLEN);
 	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
-	memset(ss, 0, MLKEM_SSLEN);
+	secureZero(ss, MLKEM_SSLEN);
 }
 
 void
@@ -3716,7 +3741,7 @@ Keyring_mlkem768_decaps(void *fp)
 	mlkem768_decaps(ss, f->ct->data, f->sk->data);
 
 	*f->ret = mem2array(ss, MLKEM_SSLEN);
-	memset(ss, 0, MLKEM_SSLEN);
+	secureZero(ss, MLKEM_SSLEN);
 }
 
 void
@@ -3735,7 +3760,7 @@ Keyring_mlkem1024_keygen(void *fp)
 
 	f->ret->t0 = mem2array(pk, MLKEM1024_PKLEN);
 	f->ret->t1 = mem2array(sk, MLKEM1024_SKLEN);
-	memset(sk, 0, MLKEM1024_SKLEN);
+	secureZero(sk, MLKEM1024_SKLEN);
 }
 
 void
@@ -3757,7 +3782,7 @@ Keyring_mlkem1024_encaps(void *fp)
 
 	f->ret->t0 = mem2array(ct, MLKEM1024_CTLEN);
 	f->ret->t1 = mem2array(ss, MLKEM_SSLEN);
-	memset(ss, 0, MLKEM_SSLEN);
+	secureZero(ss, MLKEM_SSLEN);
 }
 
 void
@@ -3780,5 +3805,5 @@ Keyring_mlkem1024_decaps(void *fp)
 	mlkem1024_decaps(ss, f->ct->data, f->sk->data);
 
 	*f->ret = mem2array(ss, MLKEM_SSLEN);
-	memset(ss, 0, MLKEM_SSLEN);
+	secureZero(ss, MLKEM_SSLEN);
 }

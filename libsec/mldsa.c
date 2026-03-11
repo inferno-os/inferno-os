@@ -106,7 +106,7 @@ sample_challenge(int32 c[MLDSA_N], const uchar *seed, int seedlen, int tau)
  * A is k x l, s is l-vector, t is k-vector.
  * Uses heap-allocated temporaries to avoid stack overflow.
  */
-static void
+static int
 matvec_mul_dsa(int32 t[][MLDSA_N],
 	const uchar rho[32], int k, int l,
 	int32 s[][MLDSA_N])
@@ -119,7 +119,7 @@ matvec_mul_dsa(int32 t[][MLDSA_N],
 	if(a_ij == nil || tmp == nil){
 		free(a_ij);
 		free(tmp);
-		return;
+		return -1;
 	}
 
 	for(i = 0; i < k; i++){
@@ -136,6 +136,7 @@ matvec_mul_dsa(int32 t[][MLDSA_N],
 
 	free(a_ij);
 	free(tmp);
+	return 0;
 }
 
 /*
@@ -212,7 +213,11 @@ mldsa_keygen_internal(uchar *pk, uchar *sk,
 		mldsa_ntt(st->s1[i]);
 
 	/* t = A * NTT(s1) */
-	matvec_mul_dsa(st->t, rho, k, l, st->s1);
+	if(matvec_mul_dsa(st->t, rho, k, l, st->s1) != 0){
+		secureZero(st, sizeof(MLDSAKeygenState));
+		free(st);
+		return -1;
+	}
 
 	/* t = INTT(t) + s2 */
 	for(i = 0; i < k; i++){
@@ -252,10 +257,10 @@ mldsa_keygen_internal(uchar *pk, uchar *sk,
 	}
 
 	/* Clear sensitive data */
-	memset(seed, 0, sizeof(seed));
-	memset(rhoprime, 0, sizeof(rhoprime));
-	memset(K, 0, sizeof(K));
-	memset(st, 0, sizeof(MLDSAKeygenState));
+	secureZero(seed, sizeof(seed));
+	secureZero(rhoprime, sizeof(rhoprime));
+	secureZero(K, sizeof(K));
+	secureZero(st, sizeof(MLDSAKeygenState));
 	free(st);
 
 	return 0;
@@ -363,7 +368,11 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 			memmove(st->yhat[i], st->y[i], sizeof(st->y[i]));
 			mldsa_ntt(st->yhat[i]);
 		}
-		matvec_mul_dsa(st->w, rho, k, l, st->yhat);
+		if(matvec_mul_dsa(st->w, rho, k, l, st->yhat) != 0){
+			secureZero(st, sizeof(MLDSASignState));
+			free(st);
+			return -1;
+		}
 
 		for(i = 0; i < k; i++){
 			mldsa_invntt(st->w[i]);
@@ -375,17 +384,21 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 			for(j = 0; j < MLDSA_N; j++)
 				st->w1[i][j] = mldsa_highbits(st->w[i][j], gamma2);
 
-		/* ctilde = H(mu || w1_encoded) */
+		/* ctilde = H(mu || w1_encoded)
+		 * FIPS 204: w1 coefficients are packed as 4-bit nibbles
+		 * for gamma2 = (q-1)/32, values in [0,15].
+		 */
 		{
 			SHA3state hs;
-			uchar w1_byte;
+			uchar w1_packed;
 
 			shake256_init(&hs);
 			shake256_absorb(&hs, mu, 64);
 			for(i = 0; i < k; i++)
-				for(j = 0; j < MLDSA_N; j++){
-					w1_byte = (uchar)(st->w1[i][j] & 0xFF);
-					shake256_absorb(&hs, &w1_byte, 1);
+				for(j = 0; j < MLDSA_N; j += 2){
+					w1_packed = (uchar)((st->w1[i][j] & 0x0F) |
+						((st->w1[i][j+1] & 0x0F) << 4));
+					shake256_absorb(&hs, &w1_packed, 1);
 				}
 			shake256_finalize(&hs);
 			shake256_squeeze(&hs, ctilde, ctildelen);
@@ -477,20 +490,21 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 	/* Pack z: gamma1_bits+1 bits per coefficient */
 	for(i = 0; i < l; i++){
 		if(gamma1_bits == 17){
+			/* 18-bit packing: 4 coefficients per 9 bytes (contiguous) */
 			for(j = 0; j < MLDSA_N/4; j++){
 				u32int t[4];
 				int jj;
 				for(jj = 0; jj < 4; jj++)
 					t[jj] = (u32int)((1 << 17) - st->z[i][4*j+jj]);
-				sig[sigoff+0] = (uchar)t[0];
-				sig[sigoff+1] = (uchar)((t[0]>>8) | (t[1]<<2));
-				sig[sigoff+2] = (uchar)((t[1]>>6) | (t[2]<<4));
-				sig[sigoff+3] = (uchar)((t[2]>>4) | (t[3]<<6));
-				sig[sigoff+4] = (uchar)(t[3]>>2);
-				sig[sigoff+5] = (uchar)((t[0]>>16) | (t[1]>>14<<2));
-				sig[sigoff+6] = (uchar)((t[1]>>14) | (t[2]>>12<<4));
-				sig[sigoff+7] = (uchar)((t[2]>>12) | (t[3]>>10<<6));
-				sig[sigoff+8] = (uchar)(t[3]>>10);
+				sig[sigoff+0] = (uchar)(t[0]);
+				sig[sigoff+1] = (uchar)(t[0] >> 8);
+				sig[sigoff+2] = (uchar)((t[0] >> 16) | (t[1] << 2));
+				sig[sigoff+3] = (uchar)(t[1] >> 6);
+				sig[sigoff+4] = (uchar)((t[1] >> 14) | (t[2] << 4));
+				sig[sigoff+5] = (uchar)(t[2] >> 4);
+				sig[sigoff+6] = (uchar)((t[2] >> 12) | (t[3] << 6));
+				sig[sigoff+7] = (uchar)(t[3] >> 2);
+				sig[sigoff+8] = (uchar)(t[3] >> 10);
 				sigoff += 9;
 			}
 		} else {
@@ -513,9 +527,9 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 	mldsa_pack_hint(sig + sigoff, omega + k, st->h, k, omega);
 
 	/* Clear sensitive data */
-	memset(K, 0, sizeof(K));
-	memset(rhoprime, 0, sizeof(rhoprime));
-	memset(st, 0, sizeof(MLDSASignState));
+	secureZero(K, sizeof(K));
+	secureZero(rhoprime, sizeof(rhoprime));
+	secureZero(st, sizeof(MLDSASignState));
 	free(st);
 
 	return 0;
@@ -552,8 +566,14 @@ mldsa_verify_internal(const uchar *sig, const uchar *msg, ulong msglen,
 	int pkoff, sigoff, i, j;
 	int result;
 
+	int expected_siglen;
+
 	USED(eta);
-	USED(siglen);
+
+	/* Validate signature length */
+	expected_siglen = ctildelen + l * (MLDSA_N * (1 + gamma1_bits) / 8) + omega + k;
+	if(siglen != expected_siglen)
+		return 0;
 
 	st = malloc(sizeof(MLDSAVerifyState));
 	if(st == nil)
@@ -603,8 +623,33 @@ mldsa_verify_internal(const uchar *sig, const uchar *msg, ulong msglen,
 				sigoff += 5;
 			}
 		} else {
-			/* gamma1_bits == 17: 18-bit unpacking */
+			/* gamma1_bits == 17: 18-bit unpacking (contiguous) */
 			for(j = 0; j < MLDSA_N/4; j++){
+				u32int t0v, t1v, t2v, t3v;
+				t0v  = (u32int)sig[sigoff+0];
+				t0v |= (u32int)sig[sigoff+1] << 8;
+				t0v |= (u32int)sig[sigoff+2] << 16;
+				t0v &= 0x3FFFF;
+
+				t1v  = (u32int)sig[sigoff+2] >> 2;
+				t1v |= (u32int)sig[sigoff+3] << 6;
+				t1v |= (u32int)sig[sigoff+4] << 14;
+				t1v &= 0x3FFFF;
+
+				t2v  = (u32int)sig[sigoff+4] >> 4;
+				t2v |= (u32int)sig[sigoff+5] << 4;
+				t2v |= (u32int)sig[sigoff+6] << 12;
+				t2v &= 0x3FFFF;
+
+				t3v  = (u32int)sig[sigoff+6] >> 6;
+				t3v |= (u32int)sig[sigoff+7] << 2;
+				t3v |= (u32int)sig[sigoff+8] << 10;
+				t3v &= 0x3FFFF;
+
+				st->z[i][4*j+0] = (1 << 17) - (int32)t0v;
+				st->z[i][4*j+1] = (1 << 17) - (int32)t1v;
+				st->z[i][4*j+2] = (1 << 17) - (int32)t2v;
+				st->z[i][4*j+3] = (1 << 17) - (int32)t3v;
 				sigoff += 9;
 			}
 		}
@@ -635,7 +680,10 @@ mldsa_verify_internal(const uchar *sig, const uchar *msg, ulong msglen,
 	mldsa_ntt(st->chat);
 
 	/* Az = A * NTT(z) */
-	matvec_mul_dsa(st->w1prime, rho, k, l, st->zhat);
+	if(matvec_mul_dsa(st->w1prime, rho, k, l, st->zhat) != 0){
+		free(st);
+		return 0;
+	}
 
 	/* w1' = Az - c * t1 * 2^d */
 	for(i = 0; i < k; i++){
@@ -653,17 +701,21 @@ mldsa_verify_internal(const uchar *sig, const uchar *msg, ulong msglen,
 			st->w1prime[i][j] = mldsa_usehint(st->h[i][j], st->w1prime[i][j], gamma2);
 	}
 
-	/* ctilde' = H(mu || w1'_encoded) */
+	/* ctilde' = H(mu || w1'_encoded)
+	 * FIPS 204: w1 coefficients are packed as 4-bit nibbles
+	 * for gamma2 = (q-1)/32, values in [0,15].
+	 */
 	{
 		SHA3state hs;
-		uchar w1_byte;
+		uchar w1_packed;
 
 		shake256_init(&hs);
 		shake256_absorb(&hs, mu, 64);
 		for(i = 0; i < k; i++)
-			for(j = 0; j < MLDSA_N; j++){
-				w1_byte = (uchar)(st->w1prime[i][j] & 0xFF);
-				shake256_absorb(&hs, &w1_byte, 1);
+			for(j = 0; j < MLDSA_N; j += 2){
+				w1_packed = (uchar)((st->w1prime[i][j] & 0x0F) |
+					((st->w1prime[i][j+1] & 0x0F) << 4));
+				shake256_absorb(&hs, &w1_packed, 1);
 			}
 		shake256_finalize(&hs);
 		shake256_squeeze(&hs, ctilde2, ctildelen);

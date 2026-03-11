@@ -202,7 +202,9 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	# Load menu module
 	menumod = load Menu Menu->PATH;
-	if(menumod != nil)
+	if(menumod == nil)
+		sys->fprint(stderr, "lucictx: cannot load menu: %r\n");
+	else
 		menumod->init(display_g, mainfont);
 
 	# Initialize tool management state — sync from running tools9p if available
@@ -288,7 +290,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 			}
 
 			# Available tool click — add on left-click anywhere on entry row
-			if(!tabclicked && toolsec_expanded && toolavail_expanded) {
+			if(!tabclicked && toolsec_expanded) {
 				for(pi := 0; pi < ntoolplusrects; pi++) {
 					if(toolplusrects[pi].contains(p.xy)) {
 						kidx := 0;
@@ -970,6 +972,8 @@ drawcentertext(r: Rect, text: string)
 
 drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 {
+	if(mainwin == nil)
+		return;
 	zone := mainwin.r;
 	pad := 8;
 	lineH := mainfont.height + 2;
@@ -1150,8 +1154,14 @@ filebrowser(startpath: string): string
 			;
 		newimg := <-rszch_g =>
 			mainwin = newimg;
+			if(mainwin == nil) {
+				result = nil;
+				break;
+			}
 			continue;
 		}
+		if(p == nil)
+			continue;
 		wasdown2 := prevbut;
 		prevbut = p.buttons;
 
@@ -1637,6 +1647,8 @@ strtoint(s: string): int
 	for(i := 0; i < len s; i++) {
 		c := s[i];
 		if(c < '0' || c > '9')
+			return -1;
+		if(n > 214748364)
 			return -1;
 		n = n * 10 + (c - '0');
 	}

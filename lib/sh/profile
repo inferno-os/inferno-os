@@ -17,18 +17,11 @@ bind -a '#I' /net >[2] /dev/null
 # Start connection server (DNS resolution)
 ndb/cs
 
-# Setup home directory based on platform
+# Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
-	# Mount llm9p inference server (configure 'llmserver' in lib/ndb/local)
-	mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
-
-	# Start speech file server (TTS/STT via /n/speech)
-	/dis/veltro/speech9p.dis -e cmd &
-
-	# Start llm9p daemon if not already running, then mount
+	# Start llm9p if not already running (no-op when launched via app bundle).
 	infraroot=`{cat /env/emuroot}
-	echo 'pgrep -qf "llm9p.*-addr" || nohup '^$infraroot^'/../llm9p/llm9p -backend cli -addr :5640 </dev/null >/dev/null 2>&1 &' | os sh >[2] /dev/null
-	sleep 1
+	os sh $infraroot^'/lib/sh/start-llm9p.sh' >[2] /dev/null
 	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
 
 	# Mount host filesystem (synchronous)
@@ -37,6 +30,11 @@ if {~ $emuhost MacOSX Linux}{
 	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
 	home=$ghome
 }{
+	# Non-desktop platforms (e.g. native Inferno on embedded hardware):
+	# mount llm9p from the configured llmserver (see lib/ndb/local).
+	mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
+
+	# Fallback to /usr/username for other systems.
 	home=/usr/^$user
 	if {! ftest -d $home} {
 		mkdir -p $home

@@ -928,18 +928,10 @@ Encalg encrypttab[] =
 {
 	{ "aes_256_cbc", 16, AESCBC, initAES256key, },
 	{ "aes_128_cbc", 16, AESCBC, initAES128key, },
-	{ "rc4_256", 1, RC4, initRC4key, },              /* DEPRECATED -- use aes */
-	{ "rc4_128", 1, RC4, initRC4key_128, },           /* DEPRECATED -- use aes */
-	{ "rc4_40", 1, RC4, initRC4key_40, },             /* DEPRECATED -- use aes */
-	{ "rc4", 1, RC4, initRC4key_40, },                /* DEPRECATED -- use aes */
 	{ "ideacbc", 8, IDEACBC, initIDEAkey, },
 	{ "ideaecb", 8, IDEAECB, initIDEAkey, },
-	{ "des_56_cbc", 8, DESCBC, initDESkey, },         /* DEPRECATED -- use aes */
-	{ "des_56_ecb", 8, DESECB, initDESkey, },         /* DEPRECATED -- use aes */
-	{ "des_40_cbc", 8, DESCBC, initDESkey_40, },      /* DEPRECATED -- use aes */
-	{ "des_40_ecb", 8, DESECB, initDESkey_40, },      /* DEPRECATED -- use aes */
-	{ "descbc", 8, DESCBC, initDESkey, },              /* DEPRECATED -- use aes */
-	{ "desecb", 8, DESECB, initDESkey, },              /* DEPRECATED -- use aes */
+	/* Deprecated weak ciphers removed: rc4_256, rc4_128, rc4_40, rc4,
+	   des_56_cbc, des_56_ecb, des_40_cbc, des_40_ecb, descbc, desecb */
 	{ 0 }
 };
 
@@ -1365,9 +1357,19 @@ checkdigestb(Dstate *s, Block *inb)
 	*p = n;
 	(*s->hf)(msgid, 4, digest, &ss);
 
-	/* requires pullupblock */
-	if(memcmp(digest, inb->rp, s->diglen) != 0)
-		error("bad digest");
+	/* requires pullupblock; use constant-time compare to prevent timing oracle */
+	{
+		int i, diff;
+		uchar *a, *b;
+
+		a = digest;
+		b = inb->rp;
+		diff = 0;
+		for(i = 0; i < s->diglen; i++)
+			diff |= a[i] ^ b[i];
+		if(diff != 0)
+			error("bad digest");
+	}
 }
 
 /* get channel associated with an fd */

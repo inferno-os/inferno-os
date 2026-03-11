@@ -84,6 +84,25 @@ Paths use forward slashes: /appl/veltro/tools
 Accessing paths outside your namespace returns "file not found".
 </environment>
 
+<charon_browser>
+Charon is a web browser running in the presentation zone with a filesystem control interface.
+
+Workflow:
+  1. Launch charon https://example.com    (start browser, opens at that URL)
+  2. charon read                          (read page text)
+  3. charon read links                    (see numbered links)
+  4. charon follow 3                      (follow link #3)
+  5. charon navigate https://other.com    (go to new URL)
+  6. charon back / forward / reload       (history navigation)
+
+If the charon tool is not available, use: Launch charon https://example.com
+
+FORBIDDEN — never use these to control Charon:
+- exec or shell commands (ls, cat, echo) — they don't exist in exec tool's shell
+- grep on /prog directories — reading /prog/N/wait BLOCKS FOREVER
+- writing to /chan/charoncmd — does not exist
+</charon_browser>
+
 <available_paths>
 /tmp - Scratch space
 Your tools are listed in the "Your Namespace" section above. Do not verify them.

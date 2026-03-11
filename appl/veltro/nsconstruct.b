@@ -35,8 +35,10 @@ AUDIT_DIR: con "/tmp/veltro/.ns/audit";
 DIR_MODE: con 8r700 | Sys->DMDIR;  # rwx------ directory
 FILE_MODE: con 8r600;              # rw------- file
 
-# Per-process shadow sequence counter
-# Uses PID prefix to avoid collisions between parent and child processes
+# Per-process shadow sequence counter.
+# Combined with PID + millisec to avoid collisions between concurrent goroutines.
+# Limbo has no atomic increment, but the ++ is on an int in a single goroutine
+# context — callers that may race should coordinate externally.
 shadowseq := 0;
 
 # Thread-safe initialization
@@ -58,9 +60,11 @@ restrictdir(target: string, allowed: list of string, writable: int): string
 	if(sys == nil)
 		init();
 
-	# Create unique shadow dir using PID + sequence
+	# Create unique shadow dir using PID + sequence + millisec
+	# The millisec component prevents collisions from concurrent goroutines
 	pid := sys->pctl(0, nil);
-	shadowdir := sys->sprint("%s/%d-%d", SHADOW_BASE, pid, shadowseq++);
+	seq := shadowseq++;
+	shadowdir := sys->sprint("%s/%d-%d-%d", SHADOW_BASE, pid, seq, sys->millisec());
 	err := mkdirp(shadowdir);
 	if(err != nil)
 		return err;
@@ -577,6 +581,55 @@ readfile(path: string): string
 		result += string buf[0:n];
 	}
 	return result;
+}
+
+# Clean up shadow directories for the current process
+cleanup()
+{
+	if(sys == nil)
+		init();
+
+	pid := sys->pctl(0, nil);
+	prefix := sys->sprint("%d-", pid);
+
+	fd := sys->open(SHADOW_BASE, Sys->OREAD);
+	if(fd == nil)
+		return;
+
+	for(;;) {
+		(n, dirs) := sys->dirread(fd);
+		if(n <= 0)
+			break;
+		for(i := 0; i < n; i++) {
+			name := dirs[i].name;
+			if(len name >= len prefix && name[0:len prefix] == prefix) {
+				# Remove shadow directory contents then directory itself
+				rmdir(SHADOW_BASE + "/" + name);
+			}
+		}
+	}
+}
+
+# Helper: recursively remove a directory and its contents
+rmdir(path: string)
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd != nil) {
+		for(;;) {
+			(n, dirs) := sys->dirread(fd);
+			if(n <= 0)
+				break;
+			for(i := 0; i < n; i++) {
+				child := path + "/" + dirs[i].name;
+				if(dirs[i].mode & Sys->DMDIR)
+					rmdir(child);
+				else
+					sys->remove(child);
+			}
+		}
+		fd = nil;
+	}
+	sys->remove(path);
 }
 
 # Helper: check if string contains substring

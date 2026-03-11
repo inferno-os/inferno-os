@@ -559,6 +559,35 @@ remap(i: ref RImagefile->Rawimage, d: ref Display, errdiff: int): (ref Image, st
 	if(sys == nil || draw == nil || clamp == nil || rgbvmap == nil)
 		init(d);	# temporarily do this here until all clients change to call init
 	j: int;
+
+	# RGBA images are returned as RGBA32 with alpha intact — no palette mapping
+	if(i.chandesc == RImagefile->CRGBA) {
+		if(i.nchans != 4)
+			return (nil, sys->sprint("RGBA image has %d channels", i.nchans));
+		im := d.newimage(i.r, Draw->RGBA32, 0, Draw->Transparent);
+		if(im == nil)
+			return (nil, "can't allocate RGBA32 image");
+		npix := (i.r.max.x - i.r.min.x) * (i.r.max.y - i.r.min.y);
+		buf := array[npix * 4] of byte;
+		rpic := i.chans[0];
+		gpic := i.chans[1];
+		bpic := i.chans[2];
+		apic := i.chans[3];
+		for(j = 0; j < npix; j++) {
+			# RGBA32 little-endian word layout: shift[CAlpha]=0, shift[CBlue]=8, etc.
+			# Byte order in memory: A=byte[0], B=byte[1], G=byte[2], R=byte[3]
+			# Pre-multiply RGB by alpha so Inferno's alphacalc11 computes correct
+			# Porter-Duff SoverD: dst = R*A/255 + (1-A/255)*dst
+			a := int apic[j];
+			buf[j*4+0] = byte a;
+			buf[j*4+1] = byte (int bpic[j] * a / 255);
+			buf[j*4+2] = byte (int gpic[j] * a / 255);
+			buf[j*4+3] = byte (int rpic[j] * a / 255);
+		}
+		im.writepixels(im.r, buf);
+		return (im, "");
+	}
+
 	im := d.newimage(i.r, Draw->CMAP8, 0, Draw->Black);
 	dx := i.r.max.x-i.r.min.x;
 	dy := i.r.max.y-i.r.min.y;

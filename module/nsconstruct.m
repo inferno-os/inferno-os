@@ -71,4 +71,8 @@ NsConstruct: module {
 	# Emit audit log of namespace restriction operations
 	# Writes to /tmp/veltro/.ns/audit/{id}.ns
 	emitauditlog: fn(id: string, ops: list of string);
+
+	# Clean up shadow directories for the current process.
+	# Call on agent exit to reclaim /tmp/veltro/.ns/shadow/{pid}-* entries.
+	cleanup: fn();
 };

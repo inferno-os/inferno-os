@@ -656,12 +656,6 @@ bufferproc(in, out: chan of string)
 
 command(ctxt: ref Draw->Context, args: list of string, sync: chan of string)
 {
-	# DEBUG: Skip shell path to test direct module loading
-	if(0 && (sh := load Sh Sh->PATH) != nil){
-		sh->run(ctxt, "{$*&}" :: args);
-		sync <-= nil;
-		return;
-	}
 	fds := list of {0, 1, 2};
 	sys->pctl(sys->NEWFD, fds);
 

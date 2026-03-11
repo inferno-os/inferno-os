@@ -38,7 +38,7 @@ extern int  slhdsa_wots_len(int);
  *
  * Algorithm 10 from FIPS 205
  */
-void
+int
 slhdsa_treehash(uchar *root, uchar *auth, int n,
 	const uchar *pkseed, int seedlen,
 	const uchar *skseed, int skseedlen,
@@ -54,7 +54,7 @@ slhdsa_treehash(uchar *root, uchar *auth, int n,
 	leaves = 1 << hprime;
 	stack = malloc((hprime + 1) * n);
 	if(stack == nil)
-		return;
+		return -1;
 
 	slhdsa_adrs_init(adrs);
 	slhdsa_adrs_set_layer(adrs, layer);
@@ -97,8 +97,9 @@ slhdsa_treehash(uchar *root, uchar *auth, int n,
 	}
 
 	memmove(root, stack + hprime*n, n);
-	memset(stack, 0, (hprime + 1) * n);
+	secureZero(stack, (hprime + 1) * n);
 	free(stack);
+	return 0;
 }
 
 /*
@@ -276,6 +277,14 @@ slhdsa_ht_verify(const uchar *sig, int n,
 		sig += xmss_siglen;
 	}
 
-	/* Compare with known root */
-	return memcmp(node, pkroot, n) == 0;
+	/* Compare with known root (constant-time) */
+	{
+		int i;
+		uchar diff;
+
+		diff = 0;
+		for(i = 0; i < n; i++)
+			diff |= node[i] ^ pkroot[i];
+		return diff == 0;
+	}
 }

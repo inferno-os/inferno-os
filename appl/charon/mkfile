@@ -77,9 +77,12 @@ all:V:	charon.dis
 
 <$ROOT/mkfiles/mkdis
 
-install:V:	$ROOT/dis/charon.dis
+install:V:	$ROOT/dis/charon.dis $ROOT/dis/wm/charon.dis
 
 $ROOT/dis/charon.dis:	charon.dis
+	rm -f $target && cp charon.dis $target
+
+$ROOT/dis/wm/charon.dis:	charon.dis
 	rm -f $target && cp charon.dis $target
 
 charon.dis:	$MODULES $SYS_MODULES
@@ -88,4 +91,4 @@ img.dis:	img.b $MODULE $SYS_MODULE
 	limbo $LIMBOFLAGS -c -gw img.b
 
 nuke:V:
-	rm -f $ROOT/dis/charon.dis
+	rm -f $ROOT/dis/charon.dis $ROOT/dis/wm/charon.dis

@@ -25,7 +25,7 @@ TLA_DIR="$SCRIPT_DIR/tla+"
 RESULTS_DIR="$SCRIPT_DIR/results"
 
 # Check for tla2tools.jar
-if [ ! -f "$SCRIPT_DIR/tla2tools.jar" ]; then
+if [[ ! -f "$SCRIPT_DIR/tla2tools.jar" ]]; then
     echo "ERROR: tla2tools.jar not found!"
     echo ""
     echo "Please download it first:"
@@ -138,7 +138,7 @@ OUTPUT_FILE="$RESULTS_DIR/tlc_output_$LEVEL.txt"
 TLC_CMD="java -XX:+UseParallelGC -Xmx${HEAP} -jar $SCRIPT_DIR/tla2tools.jar -config $CONFIG_FILE -workers auto -checkpoint 60 -deadlock"
 
 # Add recovery flag if RECOVER env var is set
-if [ -n "$RECOVER" ]; then
+if [[ -n "$RECOVER" ]]; then
     TLC_CMD="$TLC_CMD -recover $RECOVER"
     echo "Recovering from checkpoint: $RECOVER"
     echo ""
@@ -159,7 +159,7 @@ echo "========================================"
 echo ""
 echo "Results saved to: $RESULTS_DIR/tlc_output_$LEVEL.txt"
 
-if [ $TLC_EXIT -eq 0 ]; then
+if [[ $TLC_EXIT -eq 0 ]]; then
     echo "STATUS: ALL PROPERTIES VERIFIED"
     echo ""
     echo "The following properties were verified:"

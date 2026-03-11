@@ -116,10 +116,16 @@ authopen(user, password, server : string, usesslarg: int): (int, string)
 		bufio = load Bufio Bufio->PATH;
 		base64 = load Encoding Encoding->BASE64PATH;
 		attrdb = load Attrdb Attrdb->PATH;
+		if(attrdb == nil)
+			return (-1, "cannot load Attrdb");
 		attrdb->init();
 		ip = load IP IP->PATH;
+		if(ip == nil)
+			return (-1, "cannot load IP");
 		ip->init();
 		ipattr = load IPattr IPattr->PATH;
+		if(ipattr == nil)
+			return (-1, "cannot load IPattr");
 		ipattr->init(attrdb, ip);
 		db = Db.open(dbfile);
 		init = 1;

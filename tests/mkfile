@@ -5,22 +5,31 @@ DIRS=\
 
 TARG=\
 	9p_export_test.dis\
+	alpha_test.dis\
 	agentlib_test.dis\
 	agent_test.dis\
 	tooluse_test.dis\
 	asyncio_test.dis\
+	bufio_test.dis\
+	concurrency_test.dis\
 	cowfs_test.dis\
 	crypto_test.dis\
+	dial_test.dis\
 	edit_test.dis\
 	example_test.dis\
+	factotum_test.dis\
 	font_format_test.dis\
 	git_test.dis\
 	goroutine_leak_test.dis\
 	gpu_test.dis\
 	hello_test.dis\
+	html_test.dis\
 	imgload_test.dis\
 	imap_test.dis\
 	jit_test.dis\
+	json_test.dis\
+	keyring_test.dis\
+	lists_test.dis\
 	lucifer_flicker_test.dis\
 	lucifer_winstart_test.dis\
 	lucitheme_test.dis\
@@ -28,12 +37,15 @@ TARG=\
 	outlinefont_test.dis\
 	pdf_conformance_test.dis\
 	pdf_test.dis\
+	regex_test.dis\
 	render_registry_test.dis\
 	runner.dis\
 	sdl3_test.dis\
+	sort_test.dis\
 	spawn_test.dis\
 	ssl_transport_test.dis\
 	stderr_test.dis\
+	string_test.dis\
 	tcp_test.dis\
 	tempfile_test.dis\
 	tls_crypto_test.dis\
@@ -56,6 +68,7 @@ TARG=\
 	pqc_fuzz_test.dis\
 	tls_pq_test.dis\
 	x509_test.dis\
+	xml_test.dis\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\
 	wmsrv_zorder_test.dis\
@@ -67,6 +80,7 @@ SYSMODULES=\
 	cowfs.m\
 	dial.m\
 	factotum.m\
+	html.m\
 	imap.m\
 	asn1.m\
 	bufio.m\
@@ -74,22 +88,27 @@ SYSMODULES=\
 	draw.m\
 	git.m\
 	gpu.m\
+	json.m\
 	keyring.m\
+	lists.m\
 	math.m\
 	nsconstruct.m\
 	outlinefont.m\
 	pdf.m\
 	pkcs.m\
 	readdir.m\
+	regex.m\
 	renderer.m\
 	security.m\
 	sh.m\
+	sort.m\
 	string.m\
 	sys.m\
 	testing.m\
 	tls.m\
 	webclient.m\
 	x509.m\
+	xml.m\
 
 DISBIN=$ROOT/dis/tests
 

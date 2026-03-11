@@ -68,7 +68,8 @@ doc(): string
 		"  write <id> <content>    Write content (use \\\\n for newlines)\n" +
 		"  center <id>             Make artifact the active/focused view\n" +
 		"  delete <id>             Remove artifact from presentation zone\n" +
-		"  kill <id>              Terminate a running GUI app and remove its tab\n" +
+		"  kill <id>               Terminate a running GUI app and remove its tab\n" +
+		"  navigate <id> <url>     Navigate a GUI app to a new URL (kill + relaunch)\n" +
 		"  list                    List artifacts in current activity\n" +
 		"  status                  Show current activity and centered artifact\n\n" +
 		"Artifact types:\n" +
@@ -95,7 +96,12 @@ doc(): string
 		"  present create flow type=mermaid label=Workflow\n" +
 		"  present write flow \"graph TD\\n  A[Start] --> B{Decision}\\n  B -->|Yes| C[End]\"\n" +
 		"  present center flow\n\n" +
-		"  present list";
+		"  present list\n\n" +
+		"Navigating Charon browser:\n" +
+		"  Launch charon http://example.com  — preferred: launch+navigate in one step\n" +
+		"  present navigate charon http://example.com  — navigate a running Charon\n" +
+		"  Right-click inside Charon for back/fwd/stop/start menu.\n" +
+		"  Do NOT use exec or shell commands to control Charon.";
 }
 
 # Read current activity ID from namespace
@@ -134,12 +140,14 @@ exec(args: string): string
 		return dodelete(rest);
 	"kill" =>
 		return dokill(rest);
+	"navigate" =>
+		return donavigate(rest);
 	"list" =>
 		return dolist();
 	"status" =>
 		return dostatus();
 	* =>
-		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, kill, list, status", cmd);
+		return sys->sprint("error: unknown command '%s'. Use: create, write, append, center, delete, kill, navigate, list, status", cmd);
 	}
 }
 
@@ -310,6 +318,57 @@ dokill(args: string): string
 		return "error: " + err;
 
 	return sys->sprint("killed app '%s'", id);
+}
+
+# Navigate a running GUI app to a new URL (kill and relaunch with data=url)
+# Usage: navigate <id> <url>
+# The app's .dis path is read from the artifact directory so the app can be
+# relaunched. If the dis file is not readable, fall back to Launch <id> <url>.
+donavigate(args: string): string
+{
+	args = strip(args);
+	if(args == "")
+		return "error: usage: navigate <id> <url>";
+
+	(id, url) := splitfirst(args);
+	if(id == "")
+		return "error: app id required";
+	if(url == "")
+		return sys->sprint("error: url required — e.g. navigate %s http://example.com", id);
+
+	actid := currentactid();
+	if(actid < 0)
+		return "error: no active activity";
+
+	artdir := sys->sprint("%s/activity/%d/presentation/%s", UI_MOUNT, actid, id);
+
+	# Read the .dis path stored when the app was created.
+	dispath := readfile(artdir + "/dis");
+	if(dispath == nil || strip(dispath) == "")
+		return sys->sprint("error: cannot read dis path for '%s' — use Launch %s %s instead", id, id, url);
+	dispath = strip(dispath);
+
+	label := readfile(artdir + "/label");
+	if(label == nil || strip(label) == "")
+		label = id;
+	else
+		label = strip(label);
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", UI_MOUNT, actid);
+
+	# Kill the running instance (ignore errors — app may not be running)
+	writefile(pctl, "kill id=" + id);
+
+	# Relaunch with new URL as data arg
+	cmd := sys->sprint("create id=%s type=app dis=%s label=%s data=%s", id, dispath, label, url);
+	err := writefile(pctl, cmd);
+	if(err != nil)
+		return "error: " + err;
+
+	# Center the relaunched app
+	writefile(pctl, "center id=" + id);
+
+	return sys->sprint("navigated '%s' to %s", id, url);
 }
 
 # Delete an artifact by id

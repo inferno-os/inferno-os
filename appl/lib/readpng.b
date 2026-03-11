@@ -129,9 +129,9 @@ read(fd: ref Iobuf): (ref Rawimage, string)
 		png.alpha = 1;
 	6 =>
 		okcombo = (png.depth == 8 || png.depth == 16);
-		raw.nchans = 3;
-		raw.chandesc = RImagefile->CRGB;
-		png.alpha = 1;
+		raw.nchans = 4;
+		raw.chandesc = RImagefile->CRGBA;
+		png.alpha = 0;	# alpha is counted in nchans; rowsize = nchans+alpha = 4
 	* =>
 		return (nil, "invalid colortype");
 	}
@@ -431,8 +431,8 @@ processdatainitphase(png: ref Png, raw: ref Rawimage)
 
 processdatainit(png: ref Png, raw: ref Rawimage): int
 {
-	if (raw.nchans != 1&& raw.nchans != 3) {
-		png.error = "only 1 or 3 channels supported";
+	if (raw.nchans != 1 && raw.nchans != 3 && raw.nchans != 4) {
+		png.error = "only 1, 3 or 4 channels supported";
 		return 0;
 	}
 #	if (png.interlacemethod != 0) {
@@ -548,18 +548,20 @@ outputrow(png: ref Png, raw: ref Rawimage, row: array of byte)
 			stride := (png.alpha + 1) * png.depth / 8;
 			copybytes(raw.chans[0][offset + png.colstart:], png.colstep, row, stride, png.phasecols);
 		}
-	3 =>
+	3 or 4 =>
 		case (png.depth) {
 		* =>
 			png.error = "depth not supported (2)";
 			return;
 		8 or 16 =>
-			# split rgb into three channels
+			# split rgb (and optionally alpha) into separate channels
 			bytespc := png.depth / 8;
-			stride := (3  + png.alpha) * bytespc;
+			stride := (raw.nchans + png.alpha) * bytespc;
 			copybytes(raw.chans[0][offset + png.colstart:], png.colstep, row, stride, png.phasecols);
 			copybytes(raw.chans[1][offset + png.colstart:], png.colstep, row[bytespc:], stride, png.phasecols);
 			copybytes(raw.chans[2][offset + png.colstart:], png.colstep, row[bytespc * 2:], stride, png.phasecols);
+			if(raw.nchans == 4)
+				copybytes(raw.chans[3][offset + png.colstart:], png.colstep, row[bytespc * 3:], stride, png.phasecols);
 		}
 	}
 }

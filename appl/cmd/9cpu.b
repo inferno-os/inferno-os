@@ -48,6 +48,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	b64 = load Encoding Encoding->BASE64PATH;
 	arg := load Arg Arg->PATH;
 	fdrun = load FDrun FDrun->PATH;
+	if(fdrun == nil){
+		sys->fprint(sys->fildes(2), "9cpu: cannot load %s: %r\n", FDrun->PATH);
+		raise "fail:load";
+	}
 	fdrun->init();
 
 	authmethod := "p9";

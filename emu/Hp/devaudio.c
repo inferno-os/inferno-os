@@ -358,10 +358,17 @@ audiowrite(Chan* c, char *ua, long n, vlong offset)
 	switch(c->qid.path & ~CHDIR){
 	case Qaudio:
 		n &= ~1;
-		audioswab(ua, n);		/* XXX VERY BAD BUG; THIS CHANGES THE CALLER'S DATA */
-		osenter();
-		n = write(a->fd, ua, n);
-		osleave();
+		{
+			char *swbuf = malloc(n);
+			if(swbuf == nil)
+				error(Enomem);
+			memmove(swbuf, ua, n);
+			audioswab(swbuf, n);
+			osenter();
+			n = write(a->fd, swbuf, n);
+			osleave();
+			free(swbuf);
+		}
 		if (n < 0)
 			oserror();
 		break;

@@ -92,7 +92,7 @@ csdial(DS *ds)
 	/*
 	 *  ask connection server to translate
 	 */
-	sprint(buf, "%s!%s", ds->proto, ds->rem);
+	snprint(buf, sizeof(buf), "%s!%s", ds->proto, ds->rem);
 	if(kwrite(fd, buf, strlen(buf)) < 0){
 		kerrstr(err, sizeof err);
 		kclose(fd);
@@ -155,7 +155,7 @@ call(char *clone, char *dest, DS *ds)
 	name[n] = 0;
 	for(p = name; *p == ' '; p++)
 		;
-	sprint(name, "%ld", strtoul(p, 0, 0));
+	snprint(name, sizeof(name), "%ld", strtoul(p, 0, 0));
 	p = strrchr(clone, '/');
 	*p = 0;
 	if(ds->dir)
@@ -255,7 +255,7 @@ kannounce(char *addr, char *dir)
 	/*
 	 *  find out which line we have
 	 */
-	n = sprint(buf, "%.*s/", sizeof buf, netdir);
+	n = snprint(buf, sizeof(buf), "%.*s/", (int)sizeof(buf)-1, netdir);
 	m = kread(ctl, &buf[n], sizeof(buf)-n-1);
 	if(m <= 0){
 		kclose(ctl);
@@ -384,7 +384,7 @@ nettrans(char *addr, char *naddr, int na, char *file, int nf)
 	/*
 	 *  ask the connection server
 	 */
-	sprint(buf, "%s/cs", netdir);
+	snprint(buf, sizeof(buf), "%s/cs", netdir);
 	fd = kopen(buf, ORDWR);
 	if(fd < 0)
 		return identtrans(netdir, addr, naddr, na, file, nf);

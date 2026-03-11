@@ -20,10 +20,22 @@ CSS: module
 		media:	list of string;
 	};
 
+	# Media query types for @media rules
+	MediaQuery: adt {
+		mediatype:	string;		# "screen", "all", "" (implied all)
+		features:	list of ref MediaFeature;
+		negate:		int;		# 1 if "not" prefix
+	};
+
+	MediaFeature: adt {
+		name:	string;			# "max-width", "min-width", etc.
+		value:	string;			# "720px", "1024px", etc. (nil for bare features)
+	};
+
 	Statement: adt {
 		pick{
 		Media =>
-			media:	list of string;
+			queries:	list of ref MediaQuery;
 			rules:	list of ref Statement.Ruleset;
 		Page =>
 			pseudo:	string;

@@ -101,7 +101,7 @@ ed25519privfree(Ed25519priv *k)
 {
 	if(k == nil)
 		return;
-	memset(k, 0, sizeof(Ed25519priv));	/* clear secret key */
+	secureZero(k, sizeof(Ed25519priv));	/* clear secret key */
 	free(k);
 }
 
@@ -367,8 +367,8 @@ ed25519_sign_hash(mpint *mp, void *key)
 	ed25519_sign(sig->sig, hash, n, fullsk);
 
 	/* Clear sensitive data */
-	memset(fullsk, 0, sizeof(fullsk));
-	memset(hash, 0, sizeof(hash));
+	secureZero(fullsk, sizeof(fullsk));
+	secureZero(hash, sizeof(hash));
 
 	return sig;
 }
@@ -392,7 +392,7 @@ ed25519_verify_hash(mpint *mp, void *vsig, void *vkey)
 	/* Verify */
 	ok = ed25519_verify(sig->sig, hash, n, pk->key);
 
-	memset(hash, 0, sizeof(hash));
+	secureZero(hash, sizeof(hash));
 	return ok;
 }
 
@@ -426,7 +426,7 @@ ed25519_raw_sign(uchar sig[64], const uchar seed[32], const uchar *msg, ulong ms
 	uchar sk[64], pk[32];
 	ed25519_create_keypair(pk, sk, seed);
 	ed25519_sign(sig, msg, msglen, sk);
-	memset(sk, 0, sizeof(sk));
+	secureZero(sk, sizeof(sk));
 }
 
 int
@@ -440,7 +440,7 @@ ed25519_raw_pubkey(uchar pk[32], const uchar seed[32])
 {
 	uchar sk[64];
 	ed25519_create_keypair(pk, sk, seed);
-	memset(sk, 0, sizeof(sk));
+	secureZero(sk, sizeof(sk));
 }
 
 /*
@@ -1635,8 +1635,8 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 	/* s * hram + r mod L -> sig[32..63] */
 	sc_muladd_simple(sig + 32, hram, hash, r);
 
-	memset(hash, 0, sizeof(hash));
-	memset(r, 0, sizeof(r));
+	secureZero(hash, sizeof(hash));
+	secureZero(r, sizeof(r));
 }
 
 static int

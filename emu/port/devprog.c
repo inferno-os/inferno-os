@@ -9,7 +9,7 @@
  * Enable the heap device for environments that allow debugging =>
  * Must be 1 for a production environment.
  */
-int	SECURE = 0;
+int	SECURE = 1;
 
 enum
 {

@@ -295,11 +295,14 @@ parse:
 
 
 # [public]
-# generate a pair of DSS public and private keys
+# DEPRECATED: DSA key generation is not implemented and DSA is
+# deprecated by NIST (FIPS 186-5, 2023).  Use Ed25519 or ECDSA
+# via the Keyring module instead.  This stub is retained only for
+# interface compatibility.
 
 generateDSSKeyPair(strength: int): (ref DSSPublicKey, ref DSSPrivateKey)
 {
-	# TODO: need add getRandBetween in IPint
+	sys->fprint(sys->fildes(2), "pkcs: generateDSSKeyPair is deprecated and not implemented; use Ed25519\n");
 	return (nil, nil);
 }
 

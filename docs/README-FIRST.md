@@ -10,7 +10,7 @@
 
 You'll see the `;` prompt. The system works!
 
-→ See [QUICKSTART.md](QUICKSTART.md) for details
+→ See [QUICKSTART.md](../QUICKSTART.md) for details
 
 ## For Porters - Critical Information
 

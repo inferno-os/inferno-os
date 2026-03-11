@@ -158,7 +158,7 @@ run_spin_safety \
 
 # ====== LTL Properties (full mode only) ======
 
-if [ "$MODE" = "full" ]; then
+if [[ "$MODE" = "full" ]]; then
     echo "====== LTL Property Verification ======"
     echo ""
     echo "(Lock ordering is verified structurally via inline assertions)"
@@ -201,7 +201,7 @@ echo "Failed: $FAIL"
 echo "Total states explored: $TOTAL_STATES"
 echo ""
 
-if [ $FAIL -eq 0 ]; then
+if [[ $FAIL -eq 0 ]]; then
     echo "ALL VERIFICATIONS PASSED"
     exit 0
 else

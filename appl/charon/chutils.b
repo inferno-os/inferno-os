@@ -216,6 +216,15 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	# build directory version if dbg['u'] is set)
 
 	setconfig(argl);
+
+	# Headless mode: force lightweight settings
+	if(config.headless) {
+		config.imagelvl = ImgNone;
+		config.imagecachenum = 0;
+		config.imagecachemem = 0;
+		config.doscripts = 0;
+	}
+
 	dbg = int config.dbg['d'];
 
 	G = load Gui loadpath(Gui->PATH);
@@ -230,8 +239,12 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	if(E == nil)
 		return loadpath(Events->PATH);
 
-	J = load Script loadpath(Script->JSCRIPTPATH);
-	# don't report an error loading JavaScript, handled elsewhere
+	# In headless mode, skip Script and Img modules to save memory.
+	# These are only needed for GUI rendering and JavaScript execution.
+	if(!config.headless) {
+		J = load Script loadpath(Script->JSCRIPTPATH);
+		# don't report an error loading JavaScript, handled elsewhere
+	}
 
 	LX = load Lex loadpath(Lex->PATH);
 	if(LX == nil)
@@ -241,9 +254,11 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	if(B == nil)
 		return loadpath(Build->PATH);
 
-	I = load Img loadpath(Img->PATH);
-	if(I == nil)
-		return loadpath(Img->PATH);
+	if(!config.headless) {
+		I = load Img loadpath(Img->PATH);
+		if(I == nil)
+			return loadpath(Img->PATH);
+	}
 
 	L = load Layout loadpath(Layout->PATH);
 	if(L == nil)
@@ -263,7 +278,8 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	# be inited after that, because it needs G's display to allocate fonts)
 
 	E->init(evc);
-	I->init(me);
+	if(I != nil)
+		I->init(me);
 	err := convcs->init(nil);
 	if (err != nil)
 		return err;
@@ -298,7 +314,8 @@ init(ch: Charon, c: CharonUtils, argl: list of string, evc: chan of ref E->Event
 	gettransport("file");
 
 	progresschan = chan of (int, int, int, string);
-	imcache = ref ImageCache;
+	if(!config.headless)
+		imcache = ref ImageCache;
 	ctype = C->ctype;
 	dbgproto = int config.dbg['p'];
 	ngchan = chan of (int, list of ref ByteSource, ref Netconn, chan of ref ByteSource);
@@ -361,6 +378,66 @@ freebs(bs: ref ByteSource)
 	anschan := chan of ref ByteSource;
 	ngchan <-= (NGfreebs, bs::nil, nil, anschan);
 	<-anschan;
+}
+
+# Fetch a URL synchronously and return the response body as a string.
+# Returns nil on error or empty response.
+fetchurl_text(url: ref Parsedurl) : string
+{
+	if(url == nil)
+		return nil;
+	ri := ref ReqInfo(url, HGet, nil, nil, nil);
+	bs := startreq(ri);
+	if(bs.err != "") {
+		freebs(bs);
+		return nil;
+	}
+	# Wait for header
+	waitreq(bs :: nil);
+	if(bs.err != "") {
+		freebs(bs);
+		return nil;
+	}
+	# Handle redirects (up to 5)
+	for(nredir := 0; nredir < 5 && !bs.eof; nredir++) {
+		if(bs.hdr == nil) {
+			waitreq(bs :: nil);
+			if(bs.err != "")
+				break;
+			continue;
+		}
+		(use, nil, nil, newurl) := hdraction(bs, 0, nredir);
+		if(use)
+			break;
+		if(newurl != nil) {
+			freebs(bs);
+			ri = ref ReqInfo(newurl, HGet, nil, nil, nil);
+			bs = startreq(ri);
+			if(bs.err != "") {
+				freebs(bs);
+				return nil;
+			}
+			waitreq(bs :: nil);
+			if(bs.err != "") {
+				freebs(bs);
+				return nil;
+			}
+		} else
+			break;
+	}
+	# Wait for all data
+	while(!bs.eof) {
+		waitreq(bs :: nil);
+		if(bs.err != "") {
+			freebs(bs);
+			return nil;
+		}
+	}
+	result := "";
+	if(bs.edata > 0)
+		result = string bs.data[0:bs.edata];
+	freebs(bs);
+	return result;
 }
 
 abortgo(gopgrp: int)
@@ -802,8 +879,8 @@ Netconn.new(id: int) : ref Netconn
 			0,		# port
 			"",		# scheme
 			sys->Connection(nil, nil, ""),	# conn
-			nil,		# ssl context
-			0,		# undetermined ssl version
+			nil,		# tls connection
+			0,		# (unused)
 			NCfree,	# state
 			array[10] of ref ByteSource,	# queue
 			0,		# qlen
@@ -1458,16 +1535,17 @@ setconfig(argl: list of string)
 	config.y = -1;
 	config.nocache = 0;
 	config.maxstale = 0;
+	config.headless = 0;
 	config.imagelvl = ImgFull;
 	config.imagecachenum = 120;
 	config.imagecachemem = 100000000;	# 100Meg, will get lowered later
 	config.docookies = 1;
 	config.doscripts = 1;
-	config.httpminor = 0;
+	config.httpminor = 1;
 	config.agentname = "Mozilla/4.08 (Charon; Inferno)";
-	config.nthreads = 4;
+	config.nthreads = 8;
 	config.offersave = 1;
-	config.charset = "windows-1252";
+	config.charset = "utf-8";
 	config.plumbport = "web";
 	config.wintitle = "Charon";	# tkclient->titlebar() title, used by GUI
 	config.dbgfile = "";
@@ -1635,6 +1713,10 @@ setopt(key: string, val: string) : int
 		config.docookies = v;
 	"doacme" =>
 		config.doacme = v;
+	"render" =>
+		config.dorender = v;
+	"headless" =>
+		config.headless = v;
 	"doscripts" =>
 		config.doscripts = v;
 	"http" =>
@@ -1847,6 +1929,11 @@ color(s: string, dflt: int) : int
 	}
 	if(s[0] == '#')
 		s = s[1:];
+	# Expand 3-digit CSS hex shorthand: #abc -> #aabbcc
+	if(len s == 3) {
+		r := s[0]; g := s[1]; b := s[2];
+		s = sys->sprint("%c%c%c%c%c%c", r, r, g, g, b, b);
+	}
 	(v, rest) := S->toint(s, 16);
 	if(rest == "")
 		return v;

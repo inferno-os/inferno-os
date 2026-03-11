@@ -2,21 +2,21 @@ Lex: module
 {
 	PATH: con "/dis/charon/lex.dis";
 
-	# HTML 4.0 tags (blink, nobr)
-	# sorted in lexical order; used as array indices
+	# HTML tags sorted in lexical order; used as array indices
+	# HTML 4.0 + HTML5 semantic elements + HTML5 media/form/interactive
 	Notfound, Comment,
-	Ta, Tabbr, Tacronym, Taddress, Tapplet, Tarea, Tb,
+	Ta, Tabbr, Tacronym, Taddress, Tapplet, Tarea, Tarticle, Taside, Taudio, Tb,
 		Tbase, Tbasefont, Tbdo, Tbig, Tblink, Tblockquote, Tbody,
-		Tbq, Tbr, Tbutton, Tcaption, Tcenter, Tcite, Tcode, Tcol, Tcolgroup,
-		Tdd, Tdel, Tdfn, Tdir, Tdiv, Tdl, Tdt, Tem,
-		Tfieldset, Tfont, Tform, Tframe, Tframeset,
-		Th1, Th2, Th3, Th4, Th5, Th6, Thead, Thr, Thtml, Ti, Tiframe, Timage,
-		Timg, Tinput, Tins, Tisindex, Tkbd, Tlabel, Tlegend, Tli, Tlink, Tmap,
-		Tmenu, Tmeta, Tnobr, Tnoframes, Tnoscript,
-		Tobject, Tol, Toptgroup, Toption, Tp, Tparam, Tpre,
-		Tq, Ts, Tsamp, Tscript, Tselect, Tsmall, Tspan, Tstrike, Tstrong,
-		Tstyle, Tsub, Tsup, Ttable, Ttbody, Ttd, Ttextarea, Ttfoot, Tth,
-		Tthead, Ttitle, Ttr, Ttt, Tu, Tul, Tvar, Txmp,
+		Tbq, Tbr, Tbutton, Tcanvas, Tcaption, Tcenter, Tcite, Tcode, Tcol, Tcolgroup,
+		Tdatalist, Tdd, Tdel, Tdetails, Tdfn, Tdialog, Tdir, Tdiv, Tdl, Tdt, Tem,
+		Tfieldset, Tfigcaption, Tfigure, Tfont, Tfooter, Tform, Tframe, Tframeset,
+		Th1, Th2, Th3, Th4, Th5, Th6, Thead, Theader, Thr, Thtml, Ti, Tiframe, Timage,
+		Timg, Tinput, Tins, Tisindex, Tkbd, Tlabel, Tlegend, Tli, Tlink,
+		Tmain, Tmap, Tmark, Tmenu, Tmeta, Tmeter, Tnav, Tnobr, Tnoframes, Tnoscript,
+		Tobject, Tol, Toptgroup, Toption, Toutput, Tp, Tparam, Tpre, Tprogress,
+		Tq, Ts, Tsamp, Tscript, Tsection, Tselect, Tsmall, Tsource, Tspan, Tstrike, Tstrong,
+		Tstyle, Tsub, Tsummary, Tsup, Ttable, Ttbody, Ttd, Ttemplate, Ttextarea, Ttfoot, Tth,
+		Tthead, Ttime, Ttitle, Ttr, Ttrack, Ttt, Tu, Tul, Tvar, Tvideo, Twbr, Txmp,
 		Numtags
 			: con iota;
 	RBRA : con Numtags;
@@ -27,7 +27,7 @@ Lex: module
 	# HTML 4.0 tag attributes
 	# Keep sorted in lexical order
 	Aabbr, Aaccept, Aaccept_charset, Aaccesskey, Aaction,
-		Aalign, Aalink, Aalt, Aarchive, Aaxis,
+		Aalign, Aalink, Aalt, Aarchive, Aautocomplete, Aautofocus, Aaxis,
 		Abackground, Abgcolor, Aborder,
 		Acellpadding, Acellspacing, Achar, Acharoff,
 		Acharset, Achecked, Acite, Aclass, Aclassid, Aclear,
@@ -38,16 +38,17 @@ Lex: module
 		Aenctype, Aevent,
 		Aface, Afor, Aframe, Aframeborder,
 		Aheaders, Aheight, Ahref, Ahreflang, Ahspace, Ahttp_equiv,
-		Aid, Aismap, Alabel, Alang, Alanguage, Alink, Alongdesc, Alowsrc,
-		Amarginheight, Amarginwidth, Amaxlength, Amedia, Amethod, Amultiple,
-		Aname, Anohref, Anoresize, Anoshade, Anowrap, Aobject,
+		Aid, Aismap, Alabel, Alang, Alanguage, Alink, Alist, Alongdesc, Alowsrc,
+		Amarginheight, Amarginwidth, Amax, Amaxlength, Amedia, Amethod, Amin, Amultiple,
+		Aname, Anohref, Anoresize, Anoshade, Anovalidate, Anowrap, Aobject,
 		Aonabort, Aonblur, Aonchange, Aonclick, Aondblclick,
 		Aonerror, Aonfocus, Aonkeydown, Aonkeypress, Aonkeyup, Aonload,
 		Aonmousedown, Aonmousemove, Aonmouseout, Aonmouseover,
 		Aonmouseup, Aonreset, Aonresize, Aonselect, Aonsubmit, Aonunload,
-		Aprofile, Aprompt, Areadonly, Arel, Arev, Arows, Arowspan, Arules,
+		Aopen,
+		Apattern, Aplaceholder, Aprofile, Aprompt, Areadonly, Arel, Arequired, Arev, Arows, Arowspan, Arules,
 		Ascheme, Ascope, Ascrolling, Aselected, Ashape, Asize,
-		Aspan, Asrc, Astandby, Astart, Astyle, Asummary,
+		Aspan, Asrc, Astandby, Astart, Astep, Astyle, Asummary,
 		Atabindex, Atarget, Atext, Atitle, Atype, Ausemap,
 		Avalign, Avalue, Avaluetype, Aversion, Avlink, Avspace, Awidth,
 		Numattrs

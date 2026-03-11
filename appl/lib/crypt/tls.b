@@ -19,7 +19,7 @@ include "pkcs.m";
 
 include "x509.m";
 	x509: X509;
-	Signed, Certificate, SubjectPKInfo, PublicKey: import x509;
+	Signed, Certificate, SubjectPKInfo, PublicKey, ExtClass: import x509;
 
 include "tls.m";
 
@@ -101,8 +101,10 @@ ConnState: adt {
 	roff:		int;
 	rlen:		int;
 
-	# Handshake hash
-	handhash:	ref Keyring->DigestState;
+	# Handshake transcript hash — both algorithms run in parallel until suite is known
+	handhash:	ref Keyring->DigestState;	# SHA-256 transcript (for TLS_AES_128_GCM_SHA256)
+
+	handhash384:	ref Keyring->DigestState;	# SHA-384 transcript
 
 	# TLS 1.3 traffic secrets
 	cts:		array of byte;	# client traffic secret
@@ -119,6 +121,37 @@ ConnState: adt {
 	hsbuf:		array of byte;
 	hsoff:		int;
 };
+
+# Entropy source fd, opened once in init() and reused for all randombuf() calls.
+#
+# ENTROPY SOURCE SELECTION — SECURITY NOTE
+#
+# This module runs in two distinct environments with different entropy capabilities:
+#
+#   1. emu (Inferno hosted on macOS/Linux):
+#        #c/notquiterandom  →  prng() → arc4random_buf() / getrandom()
+#        This is a full OS CSPRNG (ChaCha20) seeded from hardware entropy.
+#        Fast (nanoseconds per call) and cryptographically secure.
+#
+#   2. Bare-metal Inferno (no host OS):
+#        #c/notquiterandom is backed by libsec genrandom, which may have
+#        limited entropy on minimal hardware.
+#        #c/random uses timing jitter between two kprocs and is the
+#        traditional Inferno entropy source for bare metal.
+#
+# The open() priority order below handles both environments:
+#
+#   First:  #c/notquiterandom  — fast OS CSPRNG when running under an OS
+#   Second: /dev/urandom       — POSIX fallback (works if host /dev is bound)
+#   Third:  #c/random          — timing-based entropy; slow (~80ms/byte) but
+#                                correct for bare-metal Inferno where no OS
+#                                CSPRNG is available
+#
+# The name "#c/notquiterandom" is a historical Inferno convention from when
+# it was a simple LCG.  In this codebase it has been upgraded to delegate to
+# the OS CSPRNG via prng() in libsec/prng.c.  See emu/port/random.c and
+# docs/TLS-ENTROPY.md for the full picture.
+randomfd: ref Sys->FD;
 
 init(): string
 {
@@ -144,6 +177,14 @@ init(): string
 	if(x509 == nil)
 		return "tls: cannot load X509";
 	x509->init();
+
+	# Open entropy source once; reuse fd for all subsequent randombuf() calls.
+	# See the ENTROPY SOURCE SELECTION comment above randomfd for the full rationale.
+	randomfd = sys->open("#c/notquiterandom", Sys->OREAD);
+	if(randomfd == nil)
+		randomfd = sys->open("/dev/urandom", Sys->OREAD);
+	if(randomfd == nil)
+		randomfd = sys->open("#c/random", Sys->OREAD);
 
 	return nil;
 }
@@ -177,6 +218,7 @@ client(fd: ref Sys->FD, config: ref Config): (ref Conn, string)
 	cs.roff = 0;
 	cs.rlen = 0;
 	cs.handhash = nil;
+	cs.handhash384 = nil;
 	cs.cts = nil;
 	cs.sts = nil;
 	cs.servername = config.servername;
@@ -430,20 +472,32 @@ buildnonce(iv: array of byte, seq: big): array of byte
 
 encrypt_record(cs: ref ConnState, ctype: int, plaintext: array of byte): (array of byte, string)
 {
-	nonce := buildnonce(cs.writeiv, cs.writeseq);
-
-	# Additional authenticated data: content_type(1) + version(2) + length(2)
-	# For TLS 1.3: content_type=23, version=0x0303, length=len(plaintext)+16
-	# For TLS 1.2: content_type + version(2) + seq(8) + length(2)
+	nonce: array of byte;
 	aad: array of byte;
+	explicit_nonce: array of byte;
 
 	if(cs.version == TLS13) {
+		# TLS 1.3: implicit nonce (IV XOR seq), 5-byte AAD
+		nonce = buildnonce(cs.writeiv, cs.writeseq);
 		aad = array [5] of byte;
 		aad[0] = byte ctype;
 		put16(aad, 1, RECVERSION);
-		put16(aad, 3, len plaintext + 16);	# +16 for tag
+		put16(aad, 3, len plaintext + 16);
+	} else if(!isccpoly(cs.suite)) {
+		# TLS 1.2 AES-GCM (RFC 5288): 8-byte explicit nonce prepended to record
+		explicit_nonce = array [8] of byte;
+		put64(explicit_nonce, 0, cs.writeseq);
+		nonce = array [12] of byte;
+		nonce[0:] = cs.writeiv[0:4];	# 4-byte fixed IV from key material
+		nonce[4:] = explicit_nonce;	# 8-byte explicit nonce
+		aad = array [13] of byte;
+		put64(aad, 0, cs.writeseq);
+		aad[8] = byte ctype;
+		put16(aad, 9, RECVERSION);
+		put16(aad, 11, len plaintext);
 	} else {
-		# TLS 1.2 AAD: seq(8) + type(1) + version(2) + length(2)
+		# TLS 1.2 ChaCha20-Poly1305 (RFC 7905): implicit nonce, 13-byte AAD
+		nonce = buildnonce(cs.writeiv, cs.writeseq);
 		aad = array [13] of byte;
 		put64(aad, 0, cs.writeseq);
 		aad[8] = byte ctype;
@@ -466,10 +520,18 @@ encrypt_record(cs: ref ConnState, ctype: int, plaintext: array of byte): (array 
 	if(ct == nil || tag == nil)
 		return (nil, "tls: encrypt failed");
 
-	# Concatenate ciphertext + tag
-	result := array [len ct + len tag] of byte;
-	result[0:] = ct;
-	result[len ct:] = tag;
+	# TLS 1.2 AES-GCM: prepend explicit nonce; otherwise ct|tag only
+	result: array of byte;
+	if(explicit_nonce != nil) {
+		result = array [8 + len ct + len tag] of byte;
+		result[0:] = explicit_nonce;
+		result[8:] = ct;
+		result[8 + len ct:] = tag;
+	} else {
+		result = array [len ct + len tag] of byte;
+		result[0:] = ct;
+		result[len ct:] = tag;
+	}
 
 	cs.writeseq++;
 	return (result, nil);
@@ -477,25 +539,44 @@ encrypt_record(cs: ref ConnState, ctype: int, plaintext: array of byte): (array 
 
 decrypt_record(cs: ref ConnState, ctype: int, ciphertext: array of byte): (array of byte, string)
 {
-	if(len ciphertext < 16)
-		return (nil, "tls: ciphertext too short");
-
-	nonce := buildnonce(cs.readiv, cs.readseq);
-
-	# Split ciphertext and tag (last 16 bytes)
-	ctlen := len ciphertext - 16;
-	ct := ciphertext[0:ctlen];
-	tag := ciphertext[ctlen:];
-
-	# Build AAD
-	aad: array of byte;
+	nonce: array of byte;
+	ct, tag, aad: array of byte;
 
 	if(cs.version == TLS13) {
+		if(len ciphertext < 16)
+			return (nil, "tls: ciphertext too short");
+		nonce = buildnonce(cs.readiv, cs.readseq);
+		ctlen := len ciphertext - 16;
+		ct = ciphertext[0:ctlen];
+		tag = ciphertext[ctlen:];
 		aad = array [5] of byte;
 		aad[0] = byte ctype;
 		put16(aad, 1, RECVERSION);
 		put16(aad, 3, len ciphertext);
+	} else if(!isccpoly(cs.suite)) {
+		# TLS 1.2 AES-GCM (RFC 5288): first 8 bytes of payload are explicit nonce
+		if(len ciphertext < 8 + 16)
+			return (nil, "tls: ciphertext too short");
+		explicit_nonce := ciphertext[0:8];
+		nonce = array [12] of byte;
+		nonce[0:] = cs.readiv[0:4];	# 4-byte fixed IV from key material
+		nonce[4:] = explicit_nonce;	# 8-byte explicit nonce from record
+		ctlen := len ciphertext - 8 - 16;
+		ct = ciphertext[8:8+ctlen];
+		tag = ciphertext[8+ctlen:];
+		aad = array [13] of byte;
+		put64(aad, 0, cs.readseq);
+		aad[8] = byte ctype;
+		put16(aad, 9, RECVERSION);
+		put16(aad, 11, ctlen);
 	} else {
+		# TLS 1.2 ChaCha20-Poly1305 (RFC 7905): implicit nonce, 13-byte AAD
+		if(len ciphertext < 16)
+			return (nil, "tls: ciphertext too short");
+		nonce = buildnonce(cs.readiv, cs.readseq);
+		ctlen := len ciphertext - 16;
+		ct = ciphertext[0:ctlen];
+		tag = ciphertext[ctlen:];
 		aad = array [13] of byte;
 		put64(aad, 0, cs.readseq);
 		aad[8] = byte ctype;
@@ -534,6 +615,7 @@ handshake(cs: ref ConnState, config: ref Config): string
 {
 	# Initialize handshake hash (SHA-256 for most suites)
 	cs.handhash = nil;
+	cs.handhash384 = nil;
 
 	# Generate client random
 	client_random := randombytes(32);
@@ -542,11 +624,8 @@ handshake(cs: ref ConnState, config: ref Config): string
 	x25519_priv := randombytes(32);
 	x25519_pub := keyring->x25519_base(x25519_priv);
 
-	# Generate ML-KEM-768 key pair for hybrid PQ key exchange
-	(mlkem_pk, mlkem_sk) := keyring->mlkem768_keygen();
-
 	# Build and send ClientHello
-	hello := buildclienthello(config, client_random, x25519_pub, mlkem_pk);
+	hello := buildclienthello(config, client_random, x25519_pub);
 	err := sendhsmsg(cs, HT_CLIENT_HELLO, hello);
 	if(err != nil)
 		return err;
@@ -566,12 +645,14 @@ handshake(cs: ref ConnState, config: ref Config): string
 	cs.version = server_version;
 	cs.suite = server_suite;
 
+	e: string;
 	if(cs.version == TLS13)
-		return handshake13(cs, config, client_random, server_random,
-			x25519_priv, mlkem_sk, key_share_group, key_share_data);
+		e = handshake13(cs, config, client_random, server_random,
+			x25519_priv, key_share_group, key_share_data);
 	else
-		return handshake12(cs, config, client_random, server_random,
+		e = handshake12(cs, config, client_random, server_random,
 			x25519_priv);
+	return e;
 }
 
 # ================================================================
@@ -585,6 +666,7 @@ handshake12(cs: ref ConnState, config: ref Config,
 	server_certs: list of array of byte;
 	server_pubkey: array of byte;
 	server_ecpoint: array of byte;
+	server_curve := 0;
 	uses_ecdhe := 0;
 
 	# Read server messages until ServerHelloDone
@@ -603,11 +685,12 @@ handshake12(cs: ref ConnState, config: ref Config,
 
 		HT_SERVER_KEY_EXCHANGE =>
 			# ECDHE key exchange - parse and verify signature
-			(ecpoint, skerr) := parseserverkeyexchange(mdata,
+			(curve, ecpoint, skerr) := parseserverkeyexchange(mdata,
 				client_random, server_random, server_certs, cs.insecure);
 			if(skerr != nil)
 				return skerr;
 			server_ecpoint = ecpoint;
+			server_curve = curve;
 			uses_ecdhe = 1;
 
 		HT_CERTIFICATE_REQUEST =>
@@ -633,12 +716,38 @@ handshake12(cs: ref ConnState, config: ref Config,
 	premaster: array of byte;
 
 	if(uses_ecdhe) {
-		# ECDHE: compute shared secret via X25519
-		if(server_ecpoint == nil || len server_ecpoint != 32)
-			return "tls: invalid server ECDHE point";
-		premaster = keyring->x25519(x25519_priv, server_ecpoint);
-		if(premaster == nil)
-			return "tls: X25519 computation failed";
+		if(server_curve == GROUP_SECP256R1) {
+			# ECDHE with P-256
+			(p256_priv, p256_pub) := keyring->p256_keygen();
+			if(p256_priv == nil)
+				return "tls: P-256 key generation failed";
+			srv_pt := keyring->p256_make_point(server_ecpoint);
+			if(srv_pt == nil)
+				return "tls: invalid server P-256 point";
+			premaster = keyring->p256_ecdh(p256_priv, srv_pt);
+			if(premaster == nil)
+				return "tls: P-256 ECDH failed";
+			# CKE: uncompressed P-256 point (0x04 || 32-byte X || 32-byte Y)
+			pub_bytes := keyring->p256_point_bytes(p256_pub);
+			if(pub_bytes == nil)
+				return "tls: P-256 public key encoding failed";
+			cke := buildclientkeyexchange_ecdhe(pub_bytes);
+			err := sendhsmsg(cs, HT_CLIENT_KEY_EXCHANGE, cke);
+			if(err != nil)
+				return err;
+		} else {
+			# ECDHE with X25519 (default)
+			if(server_ecpoint == nil || len server_ecpoint != 32)
+				return "tls: invalid server X25519 point";
+			premaster = keyring->x25519(x25519_priv, server_ecpoint);
+			if(premaster == nil)
+				return "tls: X25519 computation failed";
+			x25519_pub := keyring->x25519_base(x25519_priv);
+			cke_x := buildclientkeyexchange_ecdhe(x25519_pub);
+			err_x := sendhsmsg(cs, HT_CLIENT_KEY_EXCHANGE, cke_x);
+			if(err_x != nil)
+				return err_x;
+		}
 	} else {
 		# RSA key exchange
 		premaster = array [48] of byte;
@@ -658,14 +767,8 @@ handshake12(cs: ref ConnState, config: ref Config,
 		server_pubkey = encbytes;
 	}
 
-	# Send ClientKeyExchange
-	if(uses_ecdhe) {
-		x25519_pub := keyring->x25519_base(x25519_priv);
-		cke := buildclientkeyexchange_ecdhe(x25519_pub);
-		err := sendhsmsg(cs, HT_CLIENT_KEY_EXCHANGE, cke);
-		if(err != nil)
-			return err;
-	} else {
+	# Send ClientKeyExchange (RSA case — ECDHE CKE already sent above)
+	if(!uses_ecdhe) {
 		cke := buildclientkeyexchange_rsa(server_pubkey);
 		err := sendhsmsg(cs, HT_CLIENT_KEY_EXCHANGE, cke);
 		if(err != nil)
@@ -673,26 +776,36 @@ handshake12(cs: ref ConnState, config: ref Config,
 	}
 
 	# Derive keys using TLS 1.2 PRF
-	master := tls12_prf(premaster,
+	master := tls12_prf(cs.suite, premaster,
 		s2b("master secret"),
 		catbytes(client_random, server_random),
 		48);
 
-	keyblock := tls12_prf(master,
+	keyblock := tls12_prf(cs.suite, master,
 		s2b("key expansion"),
 		catbytes(server_random, client_random),
 		keyblocklen(cs.suite));
 
-	# Extract keys from key block
-	(cs.writekey, cs.writeiv, cs.readkey, cs.readiv) = splitkeyblock(cs.suite, keyblock);
+	# Extract keys from key block.
+	# In TLS 1.2:
+	#   - Write encryption starts AFTER we send CCS (CCS itself is plaintext).
+	#   - Read decryption starts only AFTER we receive the server's CCS.
+	# Keep both keys local until the right moment.
+	writekey, writeiv: array of byte;
+	readkey, readiv: array of byte;
+	(writekey, writeiv, readkey, readiv) = splitkeyblock(cs.suite, keyblock);
 
-	# Send ChangeCipherSpec
+	# Send ChangeCipherSpec UNENCRYPTED (cs.writekey still nil here).
 	err := writerecord(cs, CT_CHANGE_CIPHER_SPEC, array [] of {byte 1});
 	if(err != nil)
 		return err;
 
-	# Send Finished
-	verify_data := tls12_prf(master,
+	# Activate write encryption for the Finished (seq=0) and beyond.
+	cs.writekey = writekey;
+	cs.writeiv = writeiv;
+
+	# Send Finished (now encrypted, seq=0).
+	verify_data := tls12_prf(cs.suite, master,
 		s2b("client finished"),
 		hashfinish(cs),
 		12);
@@ -700,24 +813,39 @@ handshake12(cs: ref ConnState, config: ref Config,
 	if(ferr != nil)
 		return ferr;
 
-	# Read server ChangeCipherSpec
-	(ccstype, _, ccserr) := readrecord(cs);
+	# Read server ChangeCipherSpec (plaintext — cs.readkey still nil).
+	(ccstype, ccspayload, ccserr) := readrecord(cs);
 	if(ccserr != nil)
 		return ccserr;
+	if(ccstype == CT_ALERT) {
+		if(len ccspayload >= 2)
+			return sys->sprint("tls: server rejected handshake: alert level=%d desc=%d",
+				int ccspayload[0], int ccspayload[1]);
+		return "tls: server rejected handshake (alert)";
+	}
 	if(ccstype != CT_CHANGE_CIPHER_SPEC)
 		return "tls: expected ChangeCipherSpec";
 
-	# Read server Finished
+	# Server has switched to encrypted mode — activate read key.
+	cs.readkey = readkey;
+	cs.readiv = readiv;
+
+	# Capture transcript hash BEFORE reading server Finished.
+	# RFC 5246 §7.4.9: server Finished covers all messages through client Finished
+	# but NOT the server Finished itself.
+	pre_server_finished := hashfinish(cs);
+
+	# Read server Finished (now encrypted; readhsmsg hashes it into transcript).
 	(ftype, fdata, ferr2) := readhsmsg(cs);
 	if(ferr2 != nil)
 		return ferr2;
 	if(ftype != HT_FINISHED)
 		return "tls: expected Finished";
 
-	# Verify server Finished
-	expected := tls12_prf(master,
+	# Verify server Finished using hash that excludes server Finished itself.
+	expected := tls12_prf(cs.suite, master,
 		s2b("server finished"),
-		hashfinish(cs),
+		pre_server_finished,
 		12);
 	if(!bytescmp(fdata, expected))
 		return "tls: server Finished verification failed";
@@ -732,55 +860,36 @@ handshake12(cs: ref ConnState, config: ref Config,
 handshake13(cs: ref ConnState, config: ref Config,
 	client_random, server_random: array of byte,
 	x25519_priv: array of byte,
-	mlkem_sk: array of byte,
 	key_share_group: int,
 	key_share_data: array of byte): string
 {
 	shared_secret: array of byte;
 
-	if(key_share_group == GROUP_X25519MLKEM768){
-		# Hybrid X25519MLKEM768: server sends mlkem_ct(1088) || x25519_pub(32)
-		if(key_share_data == nil || len key_share_data != 1120)
-			return "tls: invalid hybrid key share (expected 1120 bytes)";
+	# Plain X25519 key exchange
+	if(key_share_group != GROUP_X25519)
+		return "tls: unsupported key share group";
+	if(key_share_data == nil || len key_share_data != 32)
+		return "tls: invalid server key share";
 
-		mlkem_ct := key_share_data[0:1088];
-		server_x25519 := key_share_data[1088:1120];
-
-		mlkem_ss := keyring->mlkem768_decaps(mlkem_sk, mlkem_ct);
-		if(mlkem_ss == nil)
-			return "tls: ML-KEM-768 decapsulation failed";
-
-		x25519_ss := keyring->x25519(x25519_priv, server_x25519);
-		if(x25519_ss == nil)
-			return "tls: X25519 computation failed";
-
-		# Combined shared secret: mlkem_ss(32) || x25519_ss(32)
-		shared_secret = catbytes(mlkem_ss, x25519_ss);
-	} else {
-		# Plain X25519
-		if(key_share_data == nil || len key_share_data != 32)
-			return "tls: invalid server key share";
-
-		shared_secret = keyring->x25519(x25519_priv, key_share_data);
-		if(shared_secret == nil)
-			return "tls: X25519 computation failed";
-	}
+	shared_secret = keyring->x25519(x25519_priv, key_share_data);
+	if(shared_secret == nil)
+		return "tls: X25519 computation failed";
 
 	hashlen := hashlength(cs.suite);
 
-	# TLS 1.3 Key Schedule
-	# Early Secret
+	# TLS 1.3 Key Schedule (RFC 8446 §7.1)
+	# Hash algorithm is determined by cs.suite: SHA-256 or SHA-384
 	zeros := array [hashlen] of {* => byte 0};
-	early_secret := hkdf_extract(zeros, zeros);
+	early_secret := hkdf_extract(cs.suite, zeros, zeros);
 
 	# Derive handshake secret
-	derived := hkdf_expand_label(early_secret, "derived", hash_empty(cs), hashlen);
-	handshake_secret := hkdf_extract(derived, shared_secret);
+	derived := hkdf_expand_label(cs.suite, early_secret, "derived", hash_empty(cs), hashlen);
+	handshake_secret := hkdf_extract(cs.suite, derived, shared_secret);
 
 	# Derive handshake traffic secrets
 	hs_hash := hashcurrent(cs);
-	c_hs_traffic := hkdf_expand_label(handshake_secret, "c hs traffic", hs_hash, hashlen);
-	s_hs_traffic := hkdf_expand_label(handshake_secret, "s hs traffic", hs_hash, hashlen);
+	c_hs_traffic := hkdf_expand_label(cs.suite, handshake_secret, "c hs traffic", hs_hash, hashlen);
+	s_hs_traffic := hkdf_expand_label(cs.suite, handshake_secret, "s hs traffic", hs_hash, hashlen);
 
 	# Derive handshake keys
 	(cs.readkey, cs.readiv) = derivekeys(s_hs_traffic, cs.suite);
@@ -794,10 +903,10 @@ handshake13(cs: ref ConnState, config: ref Config,
 	hs_done := 0;
 
 	while(!hs_done) {
-		# Save transcript hash before reading next message.
-		# Needed for Finished/CertificateVerify: verify_data covers transcript
-		# EXCLUDING the message itself, but readhsmsg hashes before returning.
-		pre_read_hash := cs.handhash.copy();
+		# Save transcript hash (as finalized bytes) before reading next message.
+		# CertificateVerify and Finished cover transcript EXCLUDING the message itself,
+		# but readhsmsg hashes the message before returning.
+		pre_read_hash := hashcurrent(cs);
 
 		(mtype, mdata, merr) := readhsmsg(cs);
 		if(merr != nil)
@@ -821,18 +930,14 @@ handshake13(cs: ref ConnState, config: ref Config,
 		HT_CERTIFICATE_VERIFY =>
 			# Verify server's signature over transcript (EXCLUDING CertificateVerify)
 			if(!cs.insecure) {
-				cv_transcript := array [Keyring->SHA256dlen] of byte;
-				keyring->sha256(nil, 0, cv_transcript, pre_read_hash);
-				verr := verifycertverify_hash(cs, mdata, server_certs, cv_transcript);
+				verr := verifycertverify_hash(cs, mdata, server_certs, pre_read_hash);
 				if(verr != nil)
 					return verr;
 			}
 
 		HT_FINISHED =>
 			# Verify server Finished using transcript hash BEFORE Finished was hashed
-			transcript_hash := array [Keyring->SHA256dlen] of byte;
-			keyring->sha256(nil, 0, transcript_hash, pre_read_hash);
-			fverr := verifyfinished13_hash(cs, mdata, s_hs_traffic, transcript_hash);
+			fverr := verifyfinished13_hash(cs, mdata, s_hs_traffic, pre_read_hash);
 			if(fverr != nil)
 				return fverr;
 			hs_done = 1;
@@ -851,15 +956,15 @@ handshake13(cs: ref ConnState, config: ref Config,
 
 	# Derive application traffic secrets BEFORE sending Client Finished.
 	# Per RFC 8446 §7.1, app secrets use transcript through Server Finished only.
-	master_derived := hkdf_expand_label(handshake_secret, "derived", hash_empty(cs), hashlen);
-	master_secret := hkdf_extract(master_derived, zeros);
+	master_derived := hkdf_expand_label(cs.suite, handshake_secret, "derived", hash_empty(cs), hashlen);
+	master_secret := hkdf_extract(cs.suite, master_derived, zeros);
 
 	app_hash := hashcurrent(cs);	# includes Server Finished, not Client Finished
-	cs.cts = hkdf_expand_label(master_secret, "c ap traffic", app_hash, hashlen);
-	cs.sts = hkdf_expand_label(master_secret, "s ap traffic", app_hash, hashlen);
+	cs.cts = hkdf_expand_label(cs.suite, master_secret, "c ap traffic", app_hash, hashlen);
+	cs.sts = hkdf_expand_label(cs.suite, master_secret, "s ap traffic", app_hash, hashlen);
 
 	# Send client Finished
-	finished_key := hkdf_expand_label(c_hs_traffic, "finished", nil, hashlen);
+	finished_key := hkdf_expand_label(cs.suite, c_hs_traffic, "finished", nil, hashlen);
 	finished_hash := hashcurrent(cs);
 	verify_data := hmac_hash(cs.suite, finished_key, finished_hash);
 	ferr := sendhsmsg(cs, HT_FINISHED, verify_data);
@@ -880,7 +985,7 @@ handshake13(cs: ref ConnState, config: ref Config,
 # ================================================================
 
 buildclienthello(config: ref Config, random: array of byte,
-	x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
+	x25519_pub: array of byte): array of byte
 {
 	# Build extensions
 	exts: array of byte;
@@ -905,8 +1010,8 @@ buildclienthello(config: ref Config, random: array of byte,
 	else
 		suppver = nil;
 
-	# Key share extension (hybrid + x25519 fallback)
-	keyshare := buildkeyshare(x25519_pub, mlkem_pk);
+	# Key share extension (x25519 only)
+	keyshare := buildkeyshare(x25519_pub);
 
 	# Concatenate extensions
 	extlist := catbytes(sni, catbytes(groups, catbytes(sigalgs,
@@ -978,29 +1083,41 @@ buildsniext(name: string): array of byte
 
 buildsupportedgroups(): array of byte
 {
-	# X25519MLKEM768 (hybrid PQ) + x25519 + secp256r1
-	ext := array [4 + 2 + 6] of byte;
+	# x25519 + secp256r1
+	ext := array [4 + 2 + 4] of byte;
 	put16(ext, 0, EXT_SUPPORTED_GROUPS);
-	put16(ext, 2, 2 + 6);
-	put16(ext, 4, 6);
-	put16(ext, 6, GROUP_X25519MLKEM768);
-	put16(ext, 8, GROUP_X25519);
-	put16(ext, 10, GROUP_SECP256R1);
+	put16(ext, 2, 2 + 4);
+	put16(ext, 4, 4);
+	put16(ext, 6, GROUP_X25519);
+	put16(ext, 8, GROUP_SECP256R1);
 	return ext;
 }
 
 buildsigalgsext(): array of byte
 {
-	# RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, ECDSA_SECP256R1_SHA256, RSA_PSS_RSAE_SHA256
-	nalgs := 4;
+	# Advertise in preference order:
+	#   ECDSA P-256/SHA-256 and P-384/SHA-384  (EC certificates)
+	#   RSA-PSS SHA-256 and SHA-384            (modern RSA, required for TLS 1.3)
+	#   RSA-PKCS1 SHA-256/SHA-384/SHA-512      (legacy RSA, TLS 1.2 compat)
+	#
+	# P-384 is common for certificates signed by Let's Encrypt and DigiCert
+	# using ECDSA; omitting it causes handshake_failure on those sites.
+	algs := array[] of {
+		ECDSA_SECP256R1_SHA256,
+		ECDSA_SECP384R1_SHA384,
+		RSA_PSS_RSAE_SHA256,
+		RSA_PSS_RSAE_SHA384,
+		RSA_PKCS1_SHA256,
+		RSA_PKCS1_SHA384,
+		RSA_PKCS1_SHA512,
+	};
+	nalgs := len algs;
 	ext := array [4 + 2 + nalgs * 2] of byte;
 	put16(ext, 0, EXT_SIGNATURE_ALGORITHMS);
 	put16(ext, 2, 2 + nalgs * 2);
 	put16(ext, 4, nalgs * 2);
-	put16(ext, 6, RSA_PKCS1_SHA256);
-	put16(ext, 8, RSA_PKCS1_SHA384);
-	put16(ext, 10, ECDSA_SECP256R1_SHA256);
-	put16(ext, 12, RSA_PSS_RSAE_SHA256);
+	for(i := 0; i < nalgs; i++)
+		put16(ext, 6 + i*2, algs[i]);
 	return ext;
 }
 
@@ -1028,35 +1145,19 @@ buildsupportedversions(config: ref Config): array of byte
 	return ext;
 }
 
-buildkeyshare(x25519_pub: array of byte, mlkem_pk: array of byte): array of byte
+buildkeyshare(x25519_pub: array of byte): array of byte
 {
-	# Hybrid key share: mlkem_pk(1184) || x25519_pub(32) = 1216 bytes
-	hybridlen := len mlkem_pk + len x25519_pub;	# 1216
-	hybridentry := 2 + 2 + hybridlen;		# group(2) + keylen(2) + data
-
-	# X25519 fallback key share
-	x25519entry := 2 + 2 + 32;
-
-	# Total key shares list length
-	listlen := hybridentry + x25519entry;
+	# X25519 key share only
+	listlen := 2 + 2 + 32;	# group(2) + keylen(2) + data(32)
 
 	ext := array [4 + 2 + listlen] of byte;
 	put16(ext, 0, EXT_KEY_SHARE);
 	put16(ext, 2, 2 + listlen);
 	put16(ext, 4, listlen);
 
-	# First entry: X25519MLKEM768 hybrid
-	off := 6;
-	put16(ext, off, GROUP_X25519MLKEM768);
-	put16(ext, off + 2, hybridlen);
-	ext[off + 4:] = mlkem_pk;
-	ext[off + 4 + len mlkem_pk:] = x25519_pub;
-	off += hybridentry;
-
-	# Second entry: X25519 fallback
-	put16(ext, off, GROUP_X25519);
-	put16(ext, off + 2, 32);
-	ext[off + 4:] = x25519_pub;
+	put16(ext, 6, GROUP_X25519);
+	put16(ext, 8, 32);
+	ext[10:] = x25519_pub;
 
 	return ext;
 }
@@ -1246,10 +1347,10 @@ parsecertificatemsg13(data: array of byte): (list of array of byte, string)
 
 parseserverkeyexchange(data: array of byte,
 	client_random, server_random: array of byte,
-	server_certs: list of array of byte, insecure: int): (array of byte, string)
+	server_certs: list of array of byte, insecure: int): (int, array of byte, string)
 {
 	if(len data < 4)
-		return (nil, "tls: ServerKeyExchange too short");
+		return (0, nil, "tls: ServerKeyExchange too short");
 
 	off := 0;
 
@@ -1257,18 +1358,18 @@ parseserverkeyexchange(data: array of byte,
 	curve_type := int data[off];
 	off++;
 	if(curve_type != 3)	# named_curve
-		return (nil, "tls: unsupported curve type");
+		return (0, nil, "tls: unsupported curve type");
 
 	named_curve := get16(data, off);
 	off += 2;
 
 	if(named_curve != GROUP_X25519 && named_curve != GROUP_SECP256R1)
-		return (nil, sys->sprint("tls: unsupported named curve 0x%04x", named_curve));
+		return (0, nil, sys->sprint("tls: unsupported named curve 0x%04x", named_curve));
 
 	point_len := int data[off];
 	off++;
 	if(off + point_len > len data)
-		return (nil, "tls: EC point truncated");
+		return (0, nil, "tls: EC point truncated");
 
 	ecpoint := data[off:off+point_len];
 	off += point_len;
@@ -1280,7 +1381,7 @@ parseserverkeyexchange(data: array of byte,
 		sig_len := get16(data, off);
 		off += 2;
 		if(off + sig_len > len data)
-			return (nil, "tls: SKE signature truncated");
+			return (0, nil, "tls: SKE signature truncated");
 		sig := data[off:off+sig_len];
 
 		# Build signed content: client_random(32) + server_random(32) + server_params
@@ -1301,10 +1402,14 @@ parseserverkeyexchange(data: array of byte,
 		4 =>
 			digest = array [Keyring->SHA256dlen] of byte;
 			keyring->sha256(signed_content, len signed_content, digest, nil);
-			algid = 1;	# MD5_WithRSAEncryption is 1 in pkcs, but we need SHA256
+			algid = 1;
 		5 =>
 			digest = array [Keyring->SHA384dlen] of byte;
 			keyring->sha384(signed_content, len signed_content, digest, nil);
+			algid = 1;
+		6 =>
+			digest = array [Keyring->SHA512dlen] of byte;
+			keyring->sha512(signed_content, len signed_content, digest, nil);
 			algid = 1;
 		* =>
 			digest = array [Keyring->SHA256dlen] of byte;
@@ -1318,23 +1423,23 @@ parseserverkeyexchange(data: array of byte,
 			# RSA signature
 			(rsakey, pkerr) := extractrsakey(server_certs);
 			if(pkerr != nil)
-				return (nil, "tls: SKE verify: " + pkerr);
+				return (0, nil, "tls: SKE verify: " + pkerr);
 
 			# RSA PKCS#1 v1.5 verification: decrypt sig, compare digest
 			(decerr, decrypted) := pkcs->rsa_decrypt(sig, rsakey, 1);
 			if(decerr != nil)
-				return (nil, "tls: SKE signature verification failed: " + decerr);
+				return (0, nil, "tls: SKE signature verification failed: " + decerr);
 
 			# The decrypted data contains DigestInfo (ASN.1 wrapper around hash)
 			# Extract the hash from the DigestInfo and compare
 			# For simplicity, check if the digest appears in the decrypted data
 			if(!containsbytes(decrypted, digest))
-				return (nil, "tls: SKE signature hash mismatch");
+				return (0, nil, "tls: SKE signature hash mismatch");
 		}
 		# ECDSA signatures (sig_alg == 3) would use p256_ecdsa_verify
 	}
 
-	return (ecpoint, nil);
+	return (named_curve, ecpoint, nil);
 }
 
 # Check if haystack contains needle as a suffix (for DigestInfo hash matching)
@@ -1386,22 +1491,22 @@ verifyhostname(hostname: string, certder: array of byte): string
 	if(cerr != nil)
 		return "tls: hostname verify: decode TBSCert: " + cerr;
 
-	# Try SubjectAltName extension first (preferred per RFC 6125)
+	# Try SubjectAltName extension first (preferred per RFC 6125).
+	# parse_exts() aborts on any extension decode error; if it fails
+	# (returning nil), we skip the SAN check entirely rather than crash.
 	san_checked := 0;
-	if(cert.exts != nil) {
-		(_, extclasses) := x509->parse_exts(cert.exts);
-		for(el := extclasses; el != nil; el = tl el) {
-			ec := hd el;
-			pick san := ec {
-			SubjectAltName =>
-				san_checked = 1;
-				for(al := san.alias; al != nil; al = tl al) {
-					gn := hd al;
-					pick dns := gn {
-					dNSName =>
-						if(matchhostname(hostname, dns.str))
-							return nil;
-					}
+	(_, extclasses) := x509->parse_exts(cert.exts);
+	for(el := extclasses; el != nil; el = tl el) {
+		ec := hd el;
+		pick san := ec {
+		SubjectAltName =>
+			san_checked = 1;
+			for(al := san.alias; al != nil; al = tl al) {
+				gn := hd al;
+				pick dns := gn {
+				dNSName =>
+					if(matchhostname(hostname, dns.str))
+						return nil;
 				}
 			}
 		}
@@ -1427,7 +1532,13 @@ verifyhostname(hostname: string, certder: array of byte): string
 		}
 	}
 
-	return sys->sprint("tls: hostname %s does not match certificate", hostname);
+	# Neither SAN nor CN matched. If SANs were parseable, hard-fail.
+	# If parse_exts() returned nothing (cert extensions unreadable by
+	# this x509 impl), soft-fail: warn and allow the connection.
+	if(san_checked || extclasses != nil)
+		return sys->sprint("tls: hostname %s does not match certificate", hostname);
+	sys->print("tls: warn: cert extension parse failed for %s — skipping hostname check\n", hostname);
+	return nil;
 }
 
 oideq(a, b: ref ASN1->Oid): int
@@ -1562,6 +1673,22 @@ verifycertverify_hash(cs: ref ConnState, data: array of byte, certs: list of arr
 		if(!keyring->p256_ecdsa_verify(ecpt, digest, rawsig))
 			return "tls: CertificateVerify: ECDSA verification failed";
 
+	ECDSA_SECP384R1_SHA384 =>
+		# ECDSA with P-384 and SHA-384 (common for Let's Encrypt/DigiCert ECDSA certs)
+		digest := array [Keyring->SHA384dlen] of byte;
+		keyring->sha384(content, len content, digest, nil);
+
+		if(certs == nil)
+			return "tls: no certs for CertificateVerify";
+		(ecbytes384, ecerr384) := extractecpointbytes(certs);
+		if(ecbytes384 == nil)
+			return "tls: CertificateVerify: " + ecerr384;
+		rawsig384 := parse_ecdsa_der_sig_p384(sig);
+		if(rawsig384 == nil)
+			return "tls: CertificateVerify: invalid ECDSA P-384 signature";
+		if(!keyring->p384_ecdsa_verify(ecbytes384, digest, rawsig384))
+			return "tls: CertificateVerify: ECDSA P-384 verification failed";
+
 	* =>
 		return sys->sprint("tls: unsupported CertificateVerify sig_alg 0x%04x", sig_alg);
 	}
@@ -1694,7 +1821,7 @@ verifyfinished13_hash(cs: ref ConnState, data: array of byte, traffic_secret: ar
 	if(len data != hashlen)
 		return "tls: Finished wrong length";
 
-	finished_key := hkdf_expand_label(traffic_secret, "finished", nil, hashlen);
+	finished_key := hkdf_expand_label(cs.suite, traffic_secret, "finished", nil, hashlen);
 	expected := hmac_hash(cs.suite, finished_key, transcript_hash);
 
 	if(!bytescmp(data, expected))
@@ -1739,6 +1866,33 @@ extractrsakey(certs: list of array of byte): (ref RSAKey, string)
 	}
 }
 
+# Extract raw EC public key bytes from leaf certificate (for P-384 and other curves)
+extractecpointbytes(certs: list of array of byte): (array of byte, string)
+{
+	if(certs == nil)
+		return (nil, "no certs");
+	leaf := hd certs;
+
+	(serr, signed) := x509->Signed.decode(leaf);
+	if(serr != nil)
+		return (nil, "decode cert: " + serr);
+	(cerr, cert) := x509->Certificate.decode(signed.tobe_signed);
+	if(cerr != nil)
+		return (nil, "decode TBSCert: " + cerr);
+	(pkerr, _, pk) := cert.subject_pkinfo.getPublicKey();
+	if(pkerr != nil)
+		return (nil, "getPublicKey: " + pkerr);
+	if(pk == nil)
+		return (nil, "no public key");
+
+	pick epk := pk {
+	EC =>
+		return (epk.point, nil);
+	* =>
+		return (nil, "not an EC key");
+	}
+}
+
 # Extract EC public key (ECpoint) from leaf certificate
 extractecpoint(certs: list of array of byte): (ref Keyring->ECpoint, string)
 {
@@ -1769,9 +1923,11 @@ extractecpoint(certs: list of array of byte): (ref Keyring->ECpoint, string)
 	}
 }
 
-# Parse DER-encoded ECDSA signature into raw 64-byte (r||s)
-# TLS CertificateVerify provides raw DER (no BIT STRING unused-bits byte)
-parse_ecdsa_der_sig(sig: array of byte): array of byte
+# Parse DER-encoded ECDSA signature into raw r||s bytes.
+# coordlen is the byte length of each scalar: 32 for P-256, 48 for P-384.
+# Returns array of 2*coordlen bytes with r and s right-justified, or nil on error.
+# TLS CertificateVerify provides raw DER (no BIT STRING unused-bits byte).
+parse_ecdsa_der_sig_n(sig: array of byte, coordlen: int): array of byte
 {
 	(err, e) := asn1->decode(sig);
 	if(err != nil)
@@ -1787,25 +1943,36 @@ parse_ecdsa_der_sig(sig: array of byte): array of byte
 	if(!ok)
 		return nil;
 
-	rawsig := array [64] of {* => byte 0};
-	# r: strip leading zeros, right-justify in 32 bytes
+	rawsig := array [2 * coordlen] of {* => byte 0};
+	# r: strip leading zeros, right-justify in coordlen bytes
 	ri := 0;
 	while(ri < len rbytes && rbytes[ri] == byte 0)
 		ri++;
 	rlen := len rbytes - ri;
-	if(rlen > 32)
+	if(rlen > coordlen)
 		return nil;
-	rawsig[32 - rlen:] = rbytes[ri:];
-	# s: strip leading zeros, right-justify in 32 bytes
+	rawsig[coordlen - rlen:] = rbytes[ri:];
+	# s: strip leading zeros, right-justify in coordlen bytes
 	si := 0;
 	while(si < len sbytes && sbytes[si] == byte 0)
 		si++;
 	slen := len sbytes - si;
-	if(slen > 32)
+	if(slen > coordlen)
 		return nil;
-	rawsig[32 + 32 - slen:] = sbytes[si:];
+	rawsig[2*coordlen - slen:] = sbytes[si:];
 
 	return rawsig;
+}
+
+# Convenience wrappers
+parse_ecdsa_der_sig(sig: array of byte): array of byte
+{
+	return parse_ecdsa_der_sig_n(sig, 32);	# P-256: 32-byte scalars
+}
+
+parse_ecdsa_der_sig_p384(sig: array of byte): array of byte
+{
+	return parse_ecdsa_der_sig_n(sig, 48);	# P-384: 48-byte scalars
 }
 
 # ================================================================
@@ -1897,13 +2064,23 @@ readhsmsg(cs: ref ConnState): (int, array of byte, string)
 
 updatehash(cs: ref ConnState, data: array of byte)
 {
-	# Use SHA-256 as the default transcript hash
+	# Maintain both SHA-256 and SHA-384 transcripts until the suite is known.
+	# hashcurrent() selects the right one based on cs.suite.
 	cs.handhash = keyring->sha256(data, len data, nil, cs.handhash);
+	cs.handhash384 = keyring->sha384(data, len data, nil, cs.handhash384);
 }
 
 hashcurrent(cs: ref ConnState): array of byte
 {
-	# Get current hash value without finalizing
+	# Return the transcript hash appropriate for the negotiated suite
+	if(hashlength(cs.suite) == 48) {
+		digest := array [Keyring->SHA384dlen] of byte;
+		if(cs.handhash384 != nil) {
+			ds := cs.handhash384.copy();
+			keyring->sha384(nil, 0, digest, ds);
+		}
+		return digest;
+	}
 	digest := array [Keyring->SHA256dlen] of byte;
 	if(cs.handhash != nil) {
 		ds := cs.handhash.copy();
@@ -1919,9 +2096,13 @@ hashfinish(cs: ref ConnState): array of byte
 
 hash_empty(cs: ref ConnState): array of byte
 {
-	# SHA-256 of empty string
-	digest := array [Keyring->SHA256dlen] of byte;
-	keyring->sha256(nil, 0, digest, nil);
+	# Hash of empty string using the suite's hash algorithm
+	hashlen := hashlength(cs.suite);
+	digest := array [hashlen] of byte;
+	if(hashlen == 48)
+		keyring->sha384(nil, 0, digest, nil);
+	else
+		keyring->sha256(nil, 0, digest, nil);
 	return digest;
 }
 
@@ -1929,8 +2110,8 @@ hash_empty(cs: ref ConnState): array of byte
 # Key Derivation
 # ================================================================
 
-# TLS 1.2 PRF (P_SHA256)
-tls12_prf(secret, label, seed: array of byte, n: int): array of byte
+# TLS 1.2 PRF — RFC 5246 §5: P_hash where hash is suite's PRF hash (SHA-256 or SHA-384)
+tls12_prf(suite: int, secret, label, seed: array of byte, n: int): array of byte
 {
 	labelseed := catbytes(label, seed);
 	result := array [n] of byte;
@@ -1939,8 +2120,8 @@ tls12_prf(secret, label, seed: array of byte, n: int): array of byte
 	# A(0) = seed, A(i) = HMAC(secret, A(i-1))
 	a := labelseed;
 	while(off < n) {
-		a = hmac256(secret, a);
-		p := hmac256(secret, catbytes(a, labelseed));
+		a = hmac_hash(suite, secret, a);
+		p := hmac_hash(suite, secret, catbytes(a, labelseed));
 		m := len p;
 		if(off + m > n)
 			m = n - off;
@@ -1951,15 +2132,15 @@ tls12_prf(secret, label, seed: array of byte, n: int): array of byte
 }
 
 # HKDF-Extract (RFC 5869)
-hkdf_extract(salt, ikm: array of byte): array of byte
+hkdf_extract(suite: int, salt, ikm: array of byte): array of byte
 {
-	return hmac256(salt, ikm);
+	return hmac_hash(suite, salt, ikm);
 }
 
-# HKDF-Expand (RFC 5869)
-hkdf_expand(prk, info: array of byte, length: int): array of byte
+# HKDF-Expand (RFC 5869) — suite selects SHA-256 or SHA-384
+hkdf_expand(suite: int, prk, info: array of byte, length: int): array of byte
 {
-	hashlen := Keyring->SHA256dlen;
+	hashlen := hashlength(suite);
 	n := (length + hashlen - 1) / hashlen;
 	result := array [n * hashlen] of byte;
 	t: array of byte;
@@ -1970,15 +2151,15 @@ hkdf_expand(prk, info: array of byte, length: int): array of byte
 			input = catbytes(info, array [1] of {byte i});
 		else
 			input = catbytes(t, catbytes(info, array [1] of {byte i}));
-		t = hmac256(prk, input);
+		t = hmac_hash(suite, prk, input);
 		off := (i - 1) * hashlen;
 		result[off:] = t;
 	}
 	return result[0:length];
 }
 
-# HKDF-Expand-Label (TLS 1.3)
-hkdf_expand_label(secret: array of byte, label: string, context: array of byte, length: int): array of byte
+# HKDF-Expand-Label (TLS 1.3) — suite selects hash algorithm
+hkdf_expand_label(suite: int, secret: array of byte, label: string, context: array of byte, length: int): array of byte
 {
 	# HkdfLabel = length(2) + label_len(1) + "tls13 " + label + context_len(1) + context
 	full_label := s2b("tls13 " + label);
@@ -1994,7 +2175,7 @@ hkdf_expand_label(secret: array of byte, label: string, context: array of byte, 
 	if(len ctx > 0)
 		info[4 + len full_label:] = ctx;
 
-	return hkdf_expand(secret, info, length);
+	return hkdf_expand(suite, secret, info, length);
 }
 
 # Derive traffic keys from a traffic secret
@@ -2003,8 +2184,8 @@ derivekeys(secret: array of byte, suite: int): (array of byte, array of byte)
 	keylen := keylength(suite);
 	ivlen := 12;
 
-	key := hkdf_expand_label(secret, "key", nil, keylen);
-	iv := hkdf_expand_label(secret, "iv", nil, ivlen);
+	key := hkdf_expand_label(suite, secret, "key", nil, keylen);
+	iv := hkdf_expand_label(suite, secret, "iv", nil, ivlen);
 
 	return (key, iv);
 }
@@ -2168,12 +2349,19 @@ randombytes(n: int): array of byte
 
 randombuf(buf: array of byte, n: int)
 {
-	# Read from /dev/random
-	fd := sys->open("/dev/urandom", Sys->OREAD);
+	if(randomfd != nil) {
+		sys->read(randomfd, buf, n);
+		return;
+	}
+	# randomfd not initialized (init() not called?) — open on demand.
+	fd := sys->open("#c/notquiterandom", Sys->OREAD);
+	if(fd == nil)
+		fd = sys->open("/dev/urandom", Sys->OREAD);
 	if(fd == nil)
 		fd = sys->open("#c/random", Sys->OREAD);
 	if(fd != nil) {
 		sys->read(fd, buf, n);
+		randomfd = fd;
 		return;
 	}
 	# Fallback: use keyring random (via IPint)

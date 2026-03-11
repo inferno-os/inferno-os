@@ -91,6 +91,53 @@ writefile(path, data: string): int
 	return sys->write(fd, b, len b);
 }
 
+# Register namespace entries (services, devices, filesystems) as non-tool
+# resources in the context zone.  Probes known paths via sys->stat() — only
+# paths present in the (possibly restricted) namespace get registered.
+registernamespace()
+{
+	paths := array[] of {
+		"/n/llm", "/n/mcp", "/n/speech", "/n/git", "/n/ui",
+		"/dev/cons", "/dev/time",
+		"/tmp/veltro", "/lib/certs", "/lib/veltro",
+		"/chan", "/n/local",
+	};
+	labels := array[] of {
+		"LLM", "MCP", "Speech", "Git", "UI",
+		"Console", "Clock",
+		"Scratch", "TLS CAs", "Veltro Data",
+		"Xenith 9P", "Local FS",
+	};
+	types := array[] of {
+		"service", "service", "service", "service", "service",
+		"device", "device",
+		"fs", "fs", "fs",
+		"service", "fs",
+	};
+	vias := array[] of {
+		"", "", "", "", "",
+		"", "",
+		"rw", "ro", "ro",
+		"", "",
+	};
+	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+	nreg := 0;
+	for(i := 0; i < len paths; i++) {
+		(ok, nil) := sys->stat(paths[i]);
+		if(ok < 0)
+			continue;
+		cmd := "resource add path=" + paths[i] +
+			" label=" + labels[i] +
+			" type=" + types[i] +
+			" status=idle";
+		if(vias[i] != "")
+			cmd += " via=" + vias[i];
+		if(writefile(ctxpath, cmd) >= 0)
+			nreg++;
+	}
+	log(sys->sprint("context: registered %d namespace entries", nreg));
+}
+
 # Speak text via speech9p (fire-and-forget, runs in spawned goroutine)
 speaktext(text: string)
 {
@@ -215,6 +262,9 @@ initsession(): string
 		writefile(ctxpath, "resource add path=speech label=Speech type=tool status=idle");
 		log("context: registered speech resource");
 	}
+
+	# Register namespace entries (services, devices, filesystems) as resources
+	registernamespace();
 
 	log(sys->sprint("session %s, prompt %d bytes", sessionid, len array of byte sysprompt));
 	return nil;
@@ -509,12 +559,18 @@ applypathchanges()
 	# Bind newly added paths into lucibridge's namespace.
 	# Paths already under /n/local/ are accessible via the trfs OS mount —
 	# no rebind needed (and no writable target would exist anyway).
+	# Inferno-native paths (/dis/, /lib/, /n/llm/, etc.) are already in the
+	# namespace — binding them to /n/local/<base> would fail (no such dir).
 	for(np := newpaths; np != nil; np = tl np) {
 		p := hd np;
 		if(p == "" || strcontains(oldpaths, p))
 			continue;
 		if(len p >= 9 && p[0:9] == "/n/local/") {
 			log("path accessible: " + p);
+			continue;
+		}
+		if(len p >= 5 && p[0:5] == "/dis/") {
+			log("path accessible (Inferno-native): " + p);
 			continue;
 		}
 		base := pathbase(p);
@@ -669,22 +725,31 @@ agentturn(input: string)
 		streamfd := sys->open(streampath, Sys->OREAD);
 
 		# placeholder_idx >= 0 means we created a streaming placeholder bubble.
-		# We defer creation until the first chunk so tool-only steps (0 chunks,
-		# empty text) produce no bubble at all instead of a blank one.
+		# For step 0 (first response to a user message) create the placeholder
+		# immediately so the user sees a ▌ cursor while waiting — llm9p's CLI
+		# backend has async writes but the /stream file currently returns 0 chunks
+		# (chunks are only available via pread from /ask after generation completes).
+		# For step > 0 (tool-execution follow-ups) defer creation to the first
+		# actual chunk, so tool-only steps produce no spurious bubble.
 		placeholder_idx := -1;
 		if(streamfd != nil) {
 			log("stream: reading " + streampath);
 			buf := array[512] of byte;
 			growing := "";
 			nchunks := 0;
+			# Show activity cursor immediately on the first step.
+			if(step == 0) {
+				placeholder_idx = convcount;
+				writemsg("veltro", "▌");
+			}
 			for(;;) {
 				n := sys->read(streamfd, buf, len buf);
 				if(n <= 0)
 					break;
 				growing += string buf[0:n];
 				nchunks++;
-				# Create placeholder on the first chunk, seeded with actual text
-				# so the message never shows bare ▌ without content.
+				# Create placeholder on the first chunk if not already created
+				# (steps > 0), seeded with actual text.
 				if(placeholder_idx < 0) {
 					placeholder_idx = convcount;
 					writemsg("veltro", growing + "▌");
@@ -701,7 +766,7 @@ agentturn(input: string)
 			}
 			# Final update with accumulated content (no cursor)
 			if(placeholder_idx >= 0 && nchunks > 0)
-				updateliveconvmsg(placeholder_idx, growing + "▌");
+				updateliveconvmsg(placeholder_idx, growing);
 			log(sys->sprint("stream: done (%d chunks, %d bytes)", nchunks, len growing));
 			streamfd = nil;
 		} else {

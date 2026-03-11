@@ -22,7 +22,7 @@ while getopts "v" opt; do
     esac
 done
 
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
     RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
     BOLD='\033[1m'; NC='\033[0m'
 else
@@ -34,13 +34,13 @@ PASSED=0; FAILED=0; SKIPPED=0
 pass()  { echo -e "${GREEN}PASS${NC}: $1"; PASSED=$((PASSED+1)); }
 fail()  { echo -e "${RED}FAIL${NC}: $1"; FAILED=$((FAILED+1)); }
 skip()  { echo -e "${YELLOW}SKIP${NC}: $1"; SKIPPED=$((SKIPPED+1)); }
-info()  { [ "$VERBOSE" -eq 1 ] && echo "  $1" || true; }
+info()  { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
 
 echo -e "${BOLD}Dynamic path management tests${NC}"
 echo ""
 
-[ -x "$EMU" ] || { echo "ERROR: emu not found at $EMU"; exit 1; }
-[ -f "$ROOT/dis/veltro/tools9p.dis" ] || {
+[[ -x "$EMU" ]] || { echo "ERROR: emu not found at $EMU"; exit 1; }
+[[ -f "$ROOT/dis/veltro/tools9p.dis" ]] || {
     skip "tools9p.dis not found"; echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"; exit 0; }
 
 # emu_c: run a short Inferno sh -c command; use -c to skip the profile
@@ -55,7 +55,7 @@ emu_c() {
     OUTPUT=$(cat "$log")
     # Exit 124 = timeout: expected since tools9p runs indefinitely in the background.
     # Treat 0 or 124 as success; anything else is a real error.
-    if [ "$rc" -eq 0 ] || [ "$rc" -eq 124 ]; then
+    if [[ "$rc" -eq 0 ]] || [[ "$rc" -eq 124 ]]; then
         info "[$name] ok: $OUTPUT"
         return 0
     else
@@ -95,7 +95,7 @@ fi
 if emu_c "bind_idem" 10 \
     "tools9p read & sleep 2; echo bindpath /tmp > /tool/ctl; echo bindpath /tmp > /tool/ctl; cat /tool/paths"; then
     COUNT=$(echo "$OUTPUT" | grep -c "/tmp" || echo 0)
-    if [ "$COUNT" = "1" ]; then
+    if [[ "$COUNT" = "1" ]]; then
         pass "duplicate bindpath not duplicated (count=1)"
     else
         fail "duplicate bindpath gave count=$COUNT (expected 1)"
@@ -148,4 +148,4 @@ fi
 
 echo ""
 echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"
-[ "$FAILED" -eq 0 ]
+[[ "$FAILED" -eq 0 ]]

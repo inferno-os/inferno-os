@@ -91,6 +91,45 @@ dprint(s : string)
 		sys->fprint(dbg_log,"%s",s);
 }
 
+# Constant-time string comparison to prevent timing side-channel attacks.
+# Always iterates over the full length to avoid leaking length information.
+consteq(a, b: string): int
+{
+	alen := len a;
+	blen := len b;
+	# Use the longer length so we don't leak which is shorter
+	n := alen;
+	if(blen > n)
+		n = blen;
+	result := alen ^ blen;
+	for(i := 0; i < n; i++)
+		result |= a[i % alen] ^ b[i % blen];
+	return result == 0;
+}
+
+# Escape HTML special characters to prevent XSS
+htmlescape(s: string): string
+{
+	t := "";
+	for(i := 0; i < len s; i++) {
+		case s[i] {
+		'&' =>
+			t += "&amp;";
+		'<' =>
+			t += "&lt;";
+		'>' =>
+			t += "&gt;";
+		'"' =>
+			t += "&quot;";
+		'\'' =>
+			t += "&#39;";
+		* =>
+			t[len t] = s[i];
+		}
+	}
+	return t;
+}
+
 parse_args(args : list of string)
 {
 	while(args!=nil){
@@ -231,6 +270,8 @@ service_req(nc : Sys->Connection)
 	sys->pctl(Sys->NEWPGRP, nil);#|Sys->FORKFD
 	buf := array[64] of byte;
 	l := sys->open(nc.dir+"/remote", sys->OREAD);
+	if(l == nil)
+		return;
 	n := sys->read(l, buf, len buf);
 	if(n >= 0)
 		dprint("New client http: " + nc.dir + " " + string buf[0:n]);
@@ -372,26 +413,10 @@ domagic(g: ref Private_info,file, uri, origuri: string, req: Request)
 	dprint("looking for "+buf+"\n");
 	c:= load Cgi buf;
 	if (c==nil){
-		err := sys->sprint("%r");
-		if (nonexistent(err)) {
-			# try and run it as a shell script
-			buf = sys->sprint("%s%s", MAGICPATH, file);
-			if ((fd := sys->open(buf, Sys->OREAD)) != nil) {
-				(ok, info) := sys->fstat(fd);
-				# make permission checking more accurate later
-				if (ok == 0 
-				&& (info.mode & Sys->DMDIR) == 0
-				&& (info.mode & 8r111) != 0){
-					clf(g, 200, 0);
-					ct := newcc(g, req);
-					ct.run(ref Listnode(nil, "run") :: ref Listnode(nil, buf) :: nil, 0);
-					sys->dup(2, 0);
-					sys->dup(2, 1);
-					return;
-					
-				}
-			}
-		}
+		# Only .dis modules are supported for /magic/ handlers.
+		# Shell script fallback removed: it passed unsanitized URI
+		# components to the shell, enabling command injection.
+		;
 	}else {
 		{
 			found = 1;
@@ -653,7 +678,7 @@ sendfd(g: ref Private_info, fd: ref Sys->FD, dir:  Sys->Dir): int
 				ok = -1;
 				break breakout;
 			}
-			nw := sys->write(fd, xferbuf, n);
+			nw := sys->write(g.bout.fd, xferbuf, n);
 			if(nw != n){
 				if(nw > 0)
 					wrote += nw;
@@ -707,15 +732,17 @@ senddir(g: ref Private_info,vers,uri: string, fd: ref FD, mydir: ref Dir)
 		g.bout.puts(sys->sprint("Version: %d\r\n", mydir.qid.vers));
 		g.bout.puts("\r\n");
 	}
+	escuri := htmlescape(uri[offset:]);
 	g.bout.puts(sys->sprint("<head><title>Contents of directory %s.</title></head>\n",
-		uri[offset:]));
+		escuri));
 	g.bout.puts(sys->sprint("<body><h1>Contents of directory %s.</h1>\n",
-		uri[offset:]));
+		escuri));
 	g.bout.puts("<table>\n");
 	for(i := 0; i < n; i++){
 		(typ, enc) := classify(a[i]);
+		escname := htmlescape(a[i].name);
 		g.bout.puts(sys->sprint("<tr><td><a href=\"/%s%s\">%s</A></td>",
-			myname[offset:], a[i].name, a[i].name));
+			myname[offset:], escname, escname));
 		if(typ != nil){
 			if(typ.generic != nil)
 				g.bout.puts(sys->sprint("<td>%s", typ.generic));
@@ -792,11 +819,14 @@ getword(g: ref Private_info): string
 	if(c == '\n')
 		return nil;
 	buf := "";
+	MAXWORD: con 16384;
 	for(;;){
 		case c{
 		' ' or '\t' or '\r' or '\n' =>
 			return buf;
 		}
+		if(len buf >= MAXWORD)
+			return buf;
 		buf[len buf] = c;
 		c = getc(g);
 	}
@@ -952,6 +982,9 @@ okheaders(g : ref Private_info)
 	g.bout.puts("Date: " + daytime->time() + "\r\n");
 }
 
+# WARNING: .httplogin stores passwords in plaintext.
+# This httpd should only be deployed behind a TLS-terminating reverse proxy.
+# Future improvement: hash passwords with a key derivation function.
 authorize(g: ref Private_info, file: string): int
 {
 	(p, nil) := str->splitr(file, "/");
@@ -970,9 +1003,20 @@ authorize(g: ref Private_info, file: string): int
 		for(; flds != nil; flds = tl flds){
 			user := hd flds;
 			flds = tl flds;
-			if((user == g.authuser) && flds != nil && (hd flds) == g.authpass)
+			if(flds != nil && consteq(user, g.authuser) && consteq(hd flds, g.authpass)){
+				# Zero password from memory after successful auth
+				for(zi := 0; zi < len g.authpass; zi++)
+					g.authpass[zi] = '\0';
+				g.authpass = nil;
 				return 1;
+			}
 		}
+	}
+	# Zero password from memory after failed auth
+	if(g.authpass != nil) {
+		for(zi := 0; zi < len g.authpass; zi++)
+			g.authpass[zi] = '\0';
+		g.authpass = nil;
 	}
 	unauthorized(g, realm);
 	return 0;
@@ -1104,6 +1148,7 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 		if(g.meth != "HEAD")
 			g.bout.puts(UNMATCHED);
 		g.bout.flush();
+		return 0;
 	}
 
 	if(g.ifmodsince >= mtime
@@ -1118,6 +1163,7 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 			g.bout.puts("Connection: Keep-Alive\r\n");
 		g.bout.puts("\r\n");
 		g.bout.flush();
+		return 0;
 	}
 	return ret;
 }
@@ -1125,8 +1171,12 @@ checkreq(g: ref Private_info, typ, enc: ref Content, mtime: int, etag: string): 
 parseuri(nil: ref Private_info, uri: string): (string, string)
 {
 	urihost := "";
+	if(len uri == 0)
+		return (nil, nil);
 	if(uri[0] != '/'){
-		if(uri[0:7] == "http://")
+		if(len uri >= 7 && uri[0:7] == "http://")
+			return (nil, nil);
+		if(len uri < 6)
 			return (nil, nil);
 		uri  = uri[5:];
 	}

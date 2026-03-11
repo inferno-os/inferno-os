@@ -73,8 +73,11 @@ doc(): string
 
 exec(args: string): string
 {
-	if(sys == nil)
-		init();
+	if(sys == nil) {
+		err := init();
+		if(err != nil)
+			return "error: " + err;
+	}
 
 	args = strip(args);
 	if(args == "")

@@ -77,6 +77,10 @@ include "styxservers.m";
 
 include "lucitheme.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Scrollbar, Statusbar: import widgetmod;
+
 Luciedit: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -88,15 +92,12 @@ FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
 SELCOL:	con int 16rB4D5FEFF;		# light blue selection
 LNCOL:	con int 16rBBBBBBFF;		# line number color
-STATUSBG: con int 16rE8E8E8FF;		# status bar background
-STATUSFG: con int 16r555555FF;		# status bar text
 DIRTYCOL: con int 16rCC4444FF;		# dirty indicator
 
 # Dimensions
 MARGIN: con 4;				# text margin
 LNWIDTH: con 48;			# line number gutter width
 TABSTOP: con 4;			# tab width in spaces
-SCROLLW: con 12;			# scrollbar width
 
 # Key constants (Inferno keyboard codes)
 Khome:		con 16rFF61;
@@ -154,6 +155,10 @@ Doc: adt {
 	findmode:	int;
 	findbuf:	string;
 
+	# Goto line
+	gotomode:	int;
+	gotobuf:	string;
+
 	# Snarf
 	snarf:		string;
 };
@@ -180,6 +185,8 @@ newdoc(id: int): ref Doc
 	d.searchstr = "";
 	d.findmode = 0;
 	d.findbuf = "";
+	d.gotomode = 0;
+	d.gotobuf = "";
 	d.snarf = "";
 	return d;
 }
@@ -235,9 +242,9 @@ fgcolor: ref Image;
 cursorcolor: ref Image;
 selcolor: ref Image;
 lncolor: ref Image;
-statusbgcolor: ref Image;
-statusfgcolor: ref Image;
 dirtycolor: ref Image;
+scrollbar: ref Scrollbar;
+statbar: ref Statusbar;
 
 w: ref Window;
 vislines: int;
@@ -245,6 +252,7 @@ kbdescstate: int;	# ANSI escape decode state (0=normal)
 kbdescarg:   int;
 doc: ref Doc;
 stderr: ref Sys->FD;
+statedirty: int;	# set when doc changes, cleared after writing state files
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -255,6 +263,28 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	bufio = load Bufio Bufio->PATH;
 	str = load String String->PATH;
 	stderr = sys->fildes(2);
+
+	if(wmclient == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Wmclient: %r\n");
+		raise "fail:cannot load Wmclient";
+	}
+	if(menumod == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Menu: %r\n");
+		raise "fail:cannot load Menu";
+	}
+	if(bufio == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Bufio: %r\n");
+		raise "fail:cannot load Bufio";
+	}
+	if(str == nil) {
+		sys->fprint(stderr, "luciedit: cannot load String: %r\n");
+		raise "fail:cannot load String";
+	}
+	widgetmod = load Widget Widget->PATH;
+	if(widgetmod == nil) {
+		sys->fprint(stderr, "luciedit: cannot load Widget: %r\n");
+		raise "fail:cannot load Widget";
+	}
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "luciedit: no window context\n");
@@ -302,8 +332,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display.color(th.editcursor);
 		selcolor = display.color(th.accent);
 		lncolor = display.color(th.editlineno);
-		statusbgcolor = display.color(th.editstatus);
-		statusfgcolor = display.color(th.editstattext);
 		dirtycolor = display.color(th.red);
 	} else {
 		bgcolor = display.color(BG);
@@ -311,10 +339,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display.color(CURSORCOL);
 		selcolor = display.color(SELCOL);
 		lncolor = display.color(LNCOL);
-		statusbgcolor = display.color(STATUSBG);
-		statusfgcolor = display.color(STATUSFG);
 		dirtycolor = display.color(DIRTYCOL);
 	}
+	widgetmod->init(display, font);
+	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
+	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Load file if specified
 	if(doc.filepath != "")
@@ -349,10 +378,37 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		key := filterkbd(rawkey);
 		if(key >= 0) {
 			cursorvis = 1;
-			if(doc.findmode)
-				handlefindkey(key);
-			else
+			if(doc.findmode) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.findmode = 0;
+					doc.searchstr = val;
+					findnext();
+				} else if(done < 0)
+					doc.findmode = 0;
+				else
+					doc.findbuf = statbar.buf;
+			} else if(doc.gotomode) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.gotomode = 0;
+					if(val != "") {
+						(ln, nil) := str->toint(val, 10);
+						if(ln > 0) {
+							doc.curline = ln - 1;
+							if(doc.curline >= doc.nlines)
+								doc.curline = doc.nlines - 1;
+							doc.curcol = 0;
+							scrolltocursor();
+						}
+					}
+				} else if(done < 0)
+					doc.gotomode = 0;
+				else
+					doc.gotobuf = statbar.buf;
+			} else
 				handlekey(key);
+			statedirty = 1;
 			redraw();
 		}
 	p := <-w.ctxt.ptr =>
@@ -362,7 +418,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				case n {
 				0 => dosave();
 				1 => startfind();
-				2 => ;  # goto line (TODO)
+				2 => startgoto();
 				3 => selectall();
 				4 => docut();
 				5 => docopy();
@@ -383,44 +439,36 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					doc.dirty = 1;
 				}
 				redraw();
-			} else if(p.buttons & 8) {
-				# Mouse wheel scroll up
-				doc.topline -= 3;
-				if(doc.topline < 0)
-					doc.topline = 0;
+			} else if(p.buttons & 24) {
+				# Mouse wheel scroll
+				scrollbar.total = doc.nlines;
+				scrollbar.visible = vislines;
+				scrollbar.origin = doc.topline;
+				doc.topline = scrollbar.wheel(p.buttons, 3);
 				redraw();
-			} else if(p.buttons & 16) {
-				# Mouse wheel scroll down
-				doc.topline += 3;
-				maxtl := doc.nlines - vislines;
-				if(maxtl < 0) maxtl = 0;
-				if(doc.topline > maxtl) doc.topline = maxtl;
+			} else if(scrollbar.isactive()) {
+				# Continue scrollbar drag
+				scrollbar.total = doc.nlines;
+				scrollbar.visible = vislines;
+				newo := scrollbar.track(p);
+				if(newo >= 0)
+					doc.topline = newo;
 				redraw();
-			} else if(p.buttons & 1) {
+			} else if(p.buttons & 3) {
+				# B1 or B2 in scrollbar area
 				pr := w.image.r;
-				stath := font.height + MARGIN * 2;
-				scrollr := Rect((pr.min.x, pr.min.y), (pr.min.x + SCROLLW, pr.max.y - stath));
+				sth := widgetmod->statusheight();
+				sw := widgetmod->scrollwidth();
+				scrollr := Rect((pr.min.x, pr.min.y), (pr.min.x + sw, pr.max.y - sth));
 				if(scrollr.contains(p.xy)) {
-					# Scrollbar click: page up/down based on thumb position
-					if(doc.nlines > 0 && vislines > 0) {
-						totalh := scrollr.dy();
-						thumbh := (vislines * totalh) / doc.nlines;
-						if(thumbh < 10) thumbh = 10;
-						if(thumbh > totalh) thumbh = totalh;
-						thumby := scrollr.min.y;
-						if(doc.nlines > vislines)
-							thumby = scrollr.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
-						if(p.xy.y < thumby) {
-							doc.topline -= vislines;
-							if(doc.topline < 0) doc.topline = 0;
-						} else if(p.xy.y > thumby + thumbh) {
-							doc.topline += vislines;
-							maxtl := doc.nlines - vislines;
-							if(maxtl < 0) maxtl = 0;
-							if(doc.topline > maxtl) doc.topline = maxtl;
-						}
-					}
-				} else if(mousedown) {
+					scrollbar.total = doc.nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = doc.topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0)
+						doc.topline = newo;
+					redraw();
+				} else if(p.buttons & 1 && mousedown) {
 					# Drag: anchor is fixed, update selection end live
 					(ml, mc2) := pos2cursor(p.xy);
 					doc.curline = ml;
@@ -459,11 +507,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorvis = !cursorvis;
 		drawcursor(cursorvis);
 		changed := checkctlfile();
+		if(changed)
+			statedirty = 1;
 		writeeditstate();
 		if(changed)
 			redraw();
 	req := <-editreq =>
 		handleeditreq(req);
+		statedirty = 1;
 		redraw();
 	}
 }
@@ -1020,8 +1071,16 @@ handlefsread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 	Fctl =>
 		srv.reply(styxservers->readstr(m, ""));
 	Fevent =>
-		# Block until an event arrives
-		ev := <-eventch;
+		# Non-blocking receive with timeout to avoid deadlocking serveloop
+		ev := "";
+		timeout := chan of int;
+		spawn evtimeout(timeout, 5000);
+		alt {
+		ev = <-eventch =>
+			;
+		<-timeout =>
+			ev = "";
+		}
 		srv.reply(styxservers->readstr(m, ev + "\n"));
 	Faddr =>
 		reply := chan of string;
@@ -1143,9 +1202,10 @@ textrect(): Rect
 	if(w.image == nil)
 		return Rect((0,0),(0,0));
 	r := w.image.r;
-	statusheight := font.height + MARGIN * 2;
-	return Rect((r.min.x + SCROLLW + LNWIDTH, r.min.y + MARGIN),
-		    (r.max.x - MARGIN, r.max.y - statusheight));
+	sth := widgetmod->statusheight();
+	sw := widgetmod->scrollwidth();
+	return Rect((r.min.x + sw + LNWIDTH, r.min.y + MARGIN),
+		    (r.max.x - MARGIN, r.max.y - sth));
 }
 
 # ---------- Keyboard handling ----------
@@ -1240,8 +1300,9 @@ handlekey(key: int)
 
 	case key {
 	Kbs =>
-		deletesel();
-		if(doc.curcol > 0) {
+		if(deletesel())
+			;
+		else if(doc.curcol > 0) {
 			pushundo(UndoDelete, doc.curline, doc.curcol-1, doc.lines[doc.curline][doc.curcol-1:doc.curcol]);
 			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol-1] + doc.lines[doc.curline][doc.curcol:];
 			doc.curcol--;
@@ -1255,8 +1316,9 @@ handlekey(key: int)
 			doc.dirty = 1;
 		}
 	Kdel =>
-		deletesel();
-		if(doc.curcol < len doc.lines[doc.curline]) {
+		if(deletesel())
+			;
+		else if(doc.curcol < len doc.lines[doc.curline]) {
 			pushundo(UndoDelete, doc.curline, doc.curcol, doc.lines[doc.curline][doc.curcol:doc.curcol+1]);
 			doc.lines[doc.curline] = doc.lines[doc.curline][0:doc.curcol] + doc.lines[doc.curline][doc.curcol+1:];
 			doc.dirty = 1;
@@ -1344,22 +1406,12 @@ handlekey(key: int)
 	scrolltocursor();
 }
 
-handlefindkey(key: int)
+startgoto()
 {
-	case key {
-	'\n' =>
-		doc.findmode = 0;
-		doc.searchstr = doc.findbuf;
-		findnext();
-	Kesc =>
-		doc.findmode = 0;
-	Kbs =>
-		if(len doc.findbuf > 0)
-			doc.findbuf = doc.findbuf[0:len doc.findbuf-1];
-	* =>
-		if(key >= 16r20)
-			doc.findbuf[len doc.findbuf] = key;
-	}
+	doc.gotomode = 1;
+	doc.gotobuf = "";
+	statbar.prompt = "Go to line: ";
+	statbar.buf = "";
 }
 
 # ---------- Buffer manipulation ----------
@@ -1490,6 +1542,9 @@ deletesel(): int
 	if(!doc.selactive)
 		return 0;
 	(sl, sc, el, ec) := getsel();
+	# Save selected text for undo
+	seltext := getseltext();
+	pushundo(UndoReplace, sl, sc, seltext);
 	if(sl == el) {
 		doc.lines[sl] = doc.lines[sl][0:sc] + doc.lines[sl][ec:];
 	} else {
@@ -1559,6 +1614,11 @@ doundo()
 		doc.lines[u.line] = doc.lines[u.line][0:u.col] + u.text + doc.lines[u.line][u.col:];
 		doc.curline = u.line;
 		doc.curcol = u.col + len u.text;
+	UndoReplace =>
+		# Re-insert the deleted selection text at (u.line, u.col)
+		doc.curline = u.line;
+		doc.curcol = u.col;
+		insertstring(u.text);
 	UndoJoinLine =>
 		rest := doc.lines[u.line][u.col:];
 		doc.lines[u.line] = doc.lines[u.line][0:u.col];
@@ -1582,6 +1642,8 @@ startfind()
 {
 	doc.findmode = 1;
 	doc.findbuf = doc.searchstr;
+	statbar.prompt = "Find: ";
+	statbar.buf = doc.findbuf;
 }
 
 findnext()
@@ -1637,8 +1699,11 @@ strindex(s, sub: string, start: int): int
 loadfile(path: string)
 {
 	fd := sys->open(path, Sys->OREAD);
-	if(fd == nil)
+	if(fd == nil) {
+		sys->fprint(stderr, "luciedit: cannot open %s: %r\n", path);
+		doc.filepath = "";
 		return;
+	}
 
 	(ok, d) := sys->fstat(fd);
 	if(ok < 0)
@@ -1697,14 +1762,27 @@ savefile(path: string): int
 	if(fd == nil)
 		return 0;
 
+	err := 0;
 	for(i := 0; i < doc.nlines; i++) {
 		data := array of byte doc.lines[i];
-		sys->write(fd, data, len data);
+		n := sys->write(fd, data, len data);
+		if(n != len data) {
+			err = 1;
+			break;
+		}
 		if(i < doc.nlines - 1) {
 			nl := array of byte "\n";
-			sys->write(fd, nl, len nl);
+			n = sys->write(fd, nl, len nl);
+			if(n != len nl) {
+				err = 1;
+				break;
+			}
 		}
 	}
+	fd = nil;
+
+	if(err)
+		return 0;
 
 	doc.dirty = 0;
 	w.settitle(titlestr());
@@ -1716,11 +1794,10 @@ checkdirty(): int
 {
 	if(!doc.dirty)
 		return 1;
-	if(doc.filepath != "") {
-		savefile(doc.filepath);
-		return 1;
-	}
-	return 1;
+	if(doc.filepath != "")
+		return savefile(doc.filepath);
+	# Dirty unnamed file: refuse to quit (user must save or discard)
+	return 0;
 }
 
 # ---------- Tab expansion ----------
@@ -1793,14 +1870,19 @@ redraw()
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	drawscrollbar(screen, Rect((r.min.x, r.min.y), (r.min.x + SCROLLW, r.max.y - statusheight)));
+	sw := widgetmod->scrollwidth();
+	scrollbar.resize(Rect((r.min.x, r.min.y), (r.min.x + sw, r.max.y - statusheight)));
+	scrollbar.total = doc.nlines;
+	scrollbar.visible = vislines;
+	scrollbar.origin = doc.topline;
+	scrollbar.draw(screen);
 
 	y := textr.min.y;
 	vrow := 0;
 	for(i := doc.topline; i < doc.nlines && vrow < maxvrows; i++) {
 		lns := string (i + 1);
 		lnw := font.width(lns);
-		screen.text(Point(r.min.x + SCROLLW + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
+		screen.text(Point(r.min.x + sw + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
 
 		expanded := expandtabs(doc.lines[i]);
 		start := 0;
@@ -1820,58 +1902,32 @@ redraw()
 	vislines = maxvrows;
 
 	drawcursor(1);
-	drawstatus(screen, Rect((r.min.x, r.max.y - statusheight), r.max));
+	# Status bar
+	statbar.resize(Rect((r.min.x, r.max.y - statusheight), r.max));
+	if(doc.findmode) {
+		statbar.prompt = "Find: ";
+		statbar.buf = doc.findbuf;
+		statbar.leftcolor = nil;
+	} else if(doc.gotomode) {
+		statbar.prompt = "Go to line: ";
+		statbar.buf = doc.gotobuf;
+		statbar.leftcolor = nil;
+	} else {
+		statbar.prompt = nil;
+		info := doc.filepath;
+		if(info == "")
+			info = "(new file)";
+		if(doc.dirty) {
+			statbar.left = info + " [modified]";
+			statbar.leftcolor = dirtycolor;
+		} else {
+			statbar.left = info;
+			statbar.leftcolor = nil;
+		}
+		statbar.right = sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
+	}
+	statbar.draw(screen);
 	screen.flush(Draw->Flushnow);
-}
-
-drawscrollbar(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-
-	if(doc.nlines <= 0 || vislines <= 0)
-		return;
-
-	totalh := r.dy();
-	thumbh := (vislines * totalh) / doc.nlines;
-	if(thumbh < 10)
-		thumbh = 10;
-	if(thumbh > totalh)
-		thumbh = totalh;
-	thumby := r.min.y;
-	if(doc.nlines > vislines)
-		thumby = r.min.y + (doc.topline * (totalh - thumbh)) / (doc.nlines - vislines);
-
-	thumbr := Rect((r.min.x + 2, thumby), (r.max.x - 2, thumby + thumbh));
-	screen.draw(thumbr, lncolor, nil, Point(0, 0));
-}
-
-drawselection(screen: ref Image, line, textx, y: int)
-{
-	(sl, sc, el, ec) := getsel();
-	if(line < sl || line > el)
-		return;
-
-	expanded := expandtabs(doc.lines[line]);
-	startx := textx;
-	endx := textx + font.width(expanded);
-
-	if(line == sl) {
-		ecol := expandedcol(doc.lines[line], sc);
-		prefix := "";
-		if(ecol <= len expanded)
-			prefix = expanded[0:ecol];
-		startx = textx + font.width(prefix);
-	}
-	if(line == el) {
-		ecol := expandedcol(doc.lines[line], ec);
-		prefix := "";
-		if(ecol <= len expanded)
-			prefix = expanded[0:ecol];
-		endx = textx + font.width(prefix);
-	}
-
-	selr := Rect((startx, y), (endx, y + font.height));
-	screen.draw(selr, selcolor, nil, Point(0, 0));
 }
 
 drawcursor(vis: int)
@@ -1926,33 +1982,6 @@ drawcursor(vis: int)
 	}
 }
 
-drawstatus(screen: ref Image, r: Rect)
-{
-	screen.draw(r, statusbgcolor, nil, Point(0, 0));
-	screen.line(Point(r.min.x, r.min.y), Point(r.max.x, r.min.y), 0, 0, 0, lncolor, Point(0, 0));
-
-	x := r.min.x + MARGIN;
-	y := r.min.y + MARGIN;
-
-	if(doc.findmode) {
-		prompt := "Find: " + doc.findbuf + "_";
-		screen.text(Point(x, y), fgcolor, Point(0, 0), font, prompt);
-	} else {
-		info := doc.filepath;
-		if(info == "")
-			info = "(new file)";
-		if(doc.dirty) {
-			screen.text(Point(x, y), dirtycolor, Point(0, 0), font, info + " [modified]");
-		} else {
-			screen.text(Point(x, y), statusfgcolor, Point(0, 0), font, info);
-		}
-
-		pos := sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
-		pw := font.width(pos);
-		screen.text(Point(r.max.x - pw - MARGIN, y), statusfgcolor, Point(0, 0), font, pos);
-	}
-}
-
 # ---------- Helpers ----------
 
 timer(c: chan of int, ms: int)
@@ -1961,6 +1990,12 @@ timer(c: chan of int, ms: int)
 		sys->sleep(ms);
 		c <-= 1;
 	}
+}
+
+evtimeout(c: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	c <-= 1;
 }
 
 postnote(t: int, pid: int, note: string): int
@@ -2072,6 +2107,7 @@ drawselectionchunk(screen: ref Image, line: int, expanded: string, cs, ce, textx
 
 initeditdir()
 {
+	mkdirq("/tmp/veltro");
 	mkdirq(EDIT_DIR);
 	mkdirq(EDIT_INST);
 }
@@ -2089,12 +2125,15 @@ mkdirq(path: string)
 
 writeeditstate()
 {
+	if(!statedirty)
+		return;
 	body := getbodytext();
 	writestatefile(EDIT_INST + "/body", body);
 	addr := sys->sprint("%d %d", doc.curline + 1, doc.curcol + 1);
 	writestatefile(EDIT_INST + "/addr", addr);
 	idx := sys->sprint("%d %s %d\n", doc.id, doc.filepath, doc.dirty);
 	writestatefile(EDIT_DIR + "/index", idx);
+	statedirty = 0;
 }
 
 writestatefile(path, data: string)
@@ -2137,16 +2176,20 @@ checkctlfile(): int
 
 readrmfile(path: string): string
 {
-	fd := sys->open(path, Sys->OREAD);
+	# Open for read+write so we can atomically read and truncate
+	fd := sys->open(path, Sys->ORDWR);
 	if(fd == nil)
 		return nil;
 	buf := array[65536] of byte;
 	n := sys->read(fd, buf, len buf);
-	fd = nil;
-	if(n <= 0)
+	if(n <= 0) {
+		fd = nil;
 		return nil;
+	}
 	s := string buf[0:n];
-	# Truncate file to consume the command
+	# Truncate the file by seeking to start and writing zero bytes
+	# Use create to replace contents atomically
+	fd = nil;
 	fd = sys->create(path, Sys->OWRITE, 8r666);
 	fd = nil;
 	# Strip trailing whitespace

@@ -7,8 +7,7 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,8 +19,10 @@ jobs:
   # ─────────────────────────────────────────────
   linux-amd64:
     name: Linux AMD64 Build & Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
     env:
       ROOT: ${{ github.workspace }}
 
@@ -50,10 +51,16 @@ jobs:
         mkdir -p dis/tests dis/lib
 
         # Build testing library
+        COMPILE_FAILURES=0
         if [ -d tests/testing ]; then
           cd tests/testing
           for f in *.b; do
-            [ -f "$f" ] && "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1 || true
+            if [ -f "$f" ]; then
+              if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1; then
+                echo "ERROR: Failed to compile testing/$f"
+                COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+              fi
+            fi
           done
           cd "$ROOT"
         fi
@@ -63,7 +70,10 @@ jobs:
         for f in *.b; do
           name="${f%.b}"
           echo "Compiling $f..."
-          "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1 || true
+          if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1; then
+            echo "ERROR: Failed to compile $f"
+            COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+          fi
         done
         cd "$ROOT"
 
@@ -72,6 +82,11 @@ jobs:
 
         echo "Compiled test .dis files:"
         ls tests/*_test.dis 2>/dev/null | wc -l
+
+        if [ "$COMPILE_FAILURES" -gt 0 ]; then
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
+        fi
 
     - name: Run test suite
       run: |
@@ -113,8 +128,10 @@ jobs:
   # ─────────────────────────────────────────────
   macos-arm64:
     name: macOS ARM64 Build & Test
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 30
+    permissions:
+      contents: read
     env:
       ROOT: ${{ github.workspace }}
 
@@ -147,7 +164,10 @@ jobs:
         export PATH="$ROOT/MacOSX/arm64/bin:/usr/bin:/bin"
         (cd libinterp && "$ROOT/MacOSX/arm64/bin/mk" install) || exit 1
         for dir in libkeyring libdraw libmemdraw libmemlayer; do
-          (cd $dir && "$ROOT/MacOSX/arm64/bin/mk" install) || true
+          echo "Building $dir..."
+          if ! (cd $dir && "$ROOT/MacOSX/arm64/bin/mk" install); then
+            echo "WARNING: $dir build failed (non-fatal for headless build)"
+          fi
         done
 
     - name: Build headless emulator
@@ -205,10 +225,16 @@ jobs:
         mkdir -p dis/lib
 
         # Build testing library
+        COMPILE_FAILURES=0
         if [ -d tests/testing ]; then
           cd tests/testing
           for f in *.b; do
-            [ -f "$f" ] && "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1 || true
+            if [ -f "$f" ]; then
+              if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1; then
+                echo "ERROR: Failed to compile testing/$f"
+                COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+              fi
+            fi
           done
           cd "$ROOT"
         fi
@@ -218,7 +244,10 @@ jobs:
         for f in *.b; do
           name="${f%.b}"
           echo "Compiling $f..."
-          "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1 || true
+          if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1; then
+            echo "ERROR: Failed to compile $f"
+            COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+          fi
         done
         cd "$ROOT"
 
@@ -226,6 +255,11 @@ jobs:
 
         echo "Compiled test .dis files:"
         ls tests/*_test.dis 2>/dev/null | wc -l
+
+        if [ "$COMPILE_FAILURES" -gt 0 ]; then
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
+        fi
 
     - name: Run test suite
       run: |

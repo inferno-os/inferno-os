@@ -46,7 +46,7 @@ VERBOSE=0
 FORCE_KEYS=0
 
 # Colors (if terminal supports them)
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
 	RED='\033[0;31m'
 	GREEN='\033[0;32m'
 	YELLOW='\033[0;33m'
@@ -63,7 +63,7 @@ fi
 pass() { echo -e "${GREEN}PASS${NC}: $1"; }
 fail() { echo -e "${RED}FAIL${NC}: $1"; }
 warn() { echo -e "${YELLOW}WARN${NC}: $1"; }
-info() { [ "$VERBOSE" -eq 1 ] && echo "  $1" || true; }
+info() { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
 
 passed=0
 failed=0
@@ -136,7 +136,7 @@ echo ""
 
 echo -e "${BOLD}Phase 1: Prerequisites${NC}"
 
-if [ ! -x "$EMU" ]; then
+if [[ ! -x "$EMU" ]]; then
 	echo "ERROR: Local emulator not found at $EMU"
 	exit 1
 fi
@@ -151,14 +151,14 @@ fi
 pass "SSH to $REMOTE_HOST works"
 
 # Discover remote IP if not specified
-if [ -z "$REMOTE_ADDR" ]; then
+if [[ -z "$REMOTE_ADDR" ]]; then
 	# Try to get ZeroTier address (10.243.x.x range)
 	REMOTE_ADDR=$(ssh "$REMOTE_HOST" "ip addr show 2>/dev/null | grep 'inet 10\\.243\\.' | awk '{print \$2}' | cut -d/ -f1 | head -1" 2>/dev/null)
-	if [ -z "$REMOTE_ADDR" ]; then
+	if [[ -z "$REMOTE_ADDR" ]]; then
 		# Fall back to hostname resolution
 		REMOTE_ADDR=$(ssh "$REMOTE_HOST" 'hostname -I 2>/dev/null | tr " " "\n" | head -1' 2>/dev/null)
 	fi
-	if [ -z "$REMOTE_ADDR" ]; then
+	if [[ -z "$REMOTE_ADDR" ]]; then
 		echo "ERROR: Could not determine remote IP address"
 		echo "Specify with: $0 -a <ip>"
 		exit 1
@@ -176,8 +176,8 @@ pass "Remote emulator found"
 
 # Verify network connectivity
 # macOS ping -W is in milliseconds; use 5000ms to handle high-latency links
-LATENCY=$(ping -c 1 -W 5000 "$REMOTE_ADDR" 2>/dev/null | grep 'time=' | sed 's/.*time=\([^ ]*\).*/\1/')
-if [ -z "$LATENCY" ]; then
+LATENCY=$(ping -c 1 -W 5000 "$REMOTE_ADDR" 2>/dev/null | grep 'time=' | sed 's/.*time=\([^ ]]*\).*/\1/')
+if [[ -z "$LATENCY" ]]; then
 	echo "ERROR: Cannot ping $REMOTE_ADDR"
 	echo "Check ZeroTier connectivity"
 	exit 1
@@ -202,7 +202,7 @@ echo ""
 
 echo -e "${BOLD}Phase 2: Key Generation & Distribution${NC}"
 
-if [ -f "$KEYFILE" ] && [ "$FORCE_KEYS" -eq 0 ]; then
+if [[ -f "$KEYFILE" ]] && [[ "$FORCE_KEYS" -eq 0 ]]; then
 	pass "Local key exists: $KEYFILE (use -f to regenerate)"
 else
 	info "Generating Ed25519 self-signed key..."
@@ -211,7 +211,7 @@ else
 		-a ed25519 -f /usr/inferno/keyring/default testnode \
 		</dev/null >/dev/null 2>&1 || true
 
-	if [ ! -f "$KEYFILE" ] || [ ! -s "$KEYFILE" ]; then
+	if [[ ! -f "$KEYFILE" ]] || [[ ! -s "$KEYFILE" ]]; then
 		fail "Key file not created: $KEYFILE"
 		exit 1
 	fi
@@ -221,16 +221,16 @@ fi
 # Copy key to remote if missing or forced
 REMOTE_KEYFILE="$REMOTE_ROOT/usr/inferno/keyring/default"
 NEED_KEY=0
-if [ "$FORCE_KEYS" -eq 1 ]; then
+if [[ "$FORCE_KEYS" -eq 1 ]]; then
 	NEED_KEY=1
 elif ! ssh "$REMOTE_HOST" "test -f $REMOTE_KEYFILE" 2>/dev/null; then
 	NEED_KEY=1
 fi
 
-if [ "$NEED_KEY" -eq 1 ]; then
+if [[ "$NEED_KEY" -eq 1 ]]; then
 	ssh "$REMOTE_HOST" "mkdir -p $REMOTE_ROOT/usr/inferno/keyring" 2>/dev/null
 	scp "$KEYFILE" "$REMOTE_HOST:$REMOTE_KEYFILE" >/dev/null 2>&1
-	if [ $? -ne 0 ]; then
+	if [[ $? -ne 0 ]]; then
 		fail "Could not copy key to remote"
 		exit 1
 	fi
@@ -263,10 +263,10 @@ WAITED=0
 while ! ssh "$REMOTE_HOST" "ss -tlnp sport = :$SERVER_PORT 2>/dev/null | grep -q $SERVER_PORT" 2>/dev/null; do
 	sleep 2
 	WAITED=$((WAITED + 2))
-	if [ "$WAITED" -ge 20 ]; then
+	if [[ "$WAITED" -ge 20 ]]; then
 		fail "Remote server failed to start listening within 20s"
 		SERVER_LOG=$(ssh "$REMOTE_HOST" "tmux capture-pane -t infernode-test -p 2>/dev/null" 2>/dev/null)
-		if [ -n "$SERVER_LOG" ]; then
+		if [[ -n "$SERVER_LOG" ]]; then
 			echo "  Server output: $SERVER_LOG"
 		fi
 		exit 1
@@ -288,7 +288,7 @@ echo "  Test 1: Unauthenticated mount"
 OUTPUT=$(run_emu 30 "mount -A tcp!${REMOTE_ADDR}!${SERVER_PORT} /n/remote; cat /n/remote/dev/sysname" 2>&1) || true
 info "  Output: $OUTPUT"
 
-if [ -n "$OUTPUT" ] && ! echo "$OUTPUT" | grep -q "mount:"; then
+if [[ -n "$OUTPUT" ]] && ! echo "$OUTPUT" | grep -q "mount:"; then
 	pass "Test 1: No-auth mount — sysname: $(echo "$OUTPUT" | tr -d '\n')"
 	passed=$((passed + 1))
 else
@@ -305,7 +305,7 @@ echo "  Test 2: Auth-only mount (Ed25519, no encryption)"
 OUTPUT=$(run_emu 45 "mount -C none -k /usr/inferno/keyring/default tcp!${REMOTE_ADDR}!${SERVER_PORT} /n/remote; cat /n/remote/dev/sysname" 2>&1) || true
 info "  Output: $OUTPUT"
 
-if [ -n "$OUTPUT" ] && ! echo "$OUTPUT" | grep -q "mount:\|Broken"; then
+if [[ -n "$OUTPUT" ]] && ! echo "$OUTPUT" | grep -q "mount:\|Broken"; then
 	pass "Test 2: Auth-only mount — sysname: $(echo "$OUTPUT" | tr -d '\n')"
 	passed=$((passed + 1))
 else
@@ -325,7 +325,7 @@ echo "  Test 3: Auth + encrypted mount (rc4_256 sha1)"
 OUTPUT=$(run_emu 45 "mount -C 'rc4_256 sha1' -k /usr/inferno/keyring/default tcp!${REMOTE_ADDR}!${SERVER_PORT} /n/remote; cat /n/remote/dev/sysname" 2>&1) || true
 info "  Output: $OUTPUT"
 
-if [ -n "$OUTPUT" ] && ! echo "$OUTPUT" | grep -q "mount:\|Broken"; then
+if [[ -n "$OUTPUT" ]] && ! echo "$OUTPUT" | grep -q "mount:\|Broken"; then
 	pass "Test 3: Encrypted mount — sysname: $(echo "$OUTPUT" | tr -d '\n')"
 	passed=$((passed + 1))
 else
@@ -342,7 +342,7 @@ echo "  Test 4: Read remote files through encrypted channel"
 OUTPUT=$(run_emu 45 "mount -C 'rc4_256 sha1' -k /usr/inferno/keyring/default tcp!${REMOTE_ADDR}!${SERVER_PORT} /n/remote; cat /n/remote/dev/user" 2>&1) || true
 info "  Output: $OUTPUT"
 
-if [ -n "$OUTPUT" ] && ! echo "$OUTPUT" | grep -q "mount:\|Broken\|cannot"; then
+if [[ -n "$OUTPUT" ]] && ! echo "$OUTPUT" | grep -q "mount:\|Broken\|cannot"; then
 	pass "Test 4: Read remote /dev/user — $(echo "$OUTPUT" | tr -d '\n')"
 	passed=$((passed + 1))
 else
@@ -377,7 +377,7 @@ echo "  Test 6: Mount to unreachable address fails cleanly"
 OUTPUT=$(run_emu 15 "mount -A tcp!10.255.255.254!${SERVER_PORT} /n/remote; cat /n/remote/dev/sysname" 2>&1) || true
 info "  Output: '$OUTPUT'"
 
-if [ -z "$OUTPUT" ] || echo "$OUTPUT" | grep -q "mount:\|cannot\|does not exist"; then
+if [[ -z "$OUTPUT" ]] || echo "$OUTPUT" | grep -q "mount:\|cannot\|does not exist"; then
 	pass "Test 6: Unreachable address handled gracefully"
 	passed=$((passed + 1))
 else
@@ -399,7 +399,7 @@ echo "  Connections received: $CONN_COUNT"
 echo "  Authenticated:       $AUTH_COUNT"
 echo "  Errors:              $BROKEN_COUNT"
 
-if [ "$BROKEN_COUNT" -gt 0 ]; then
+if [[ "$BROKEN_COUNT" -gt 0 ]]; then
 	warn "Server reported errors:"
 	echo "$SERVER_LOG" | grep "Broken" | sed 's/^/    /'
 fi
@@ -416,7 +416,7 @@ echo ""
 
 # ── Phase 5: Interactive Mode ────────────────────────────────────────
 
-if [ "$INTERACTIVE" -eq 1 ] && [ "$failed" -eq 0 ]; then
+if [[ "$INTERACTIVE" -eq 1 ]] && [[ "$failed" -eq 0 ]]; then
 	echo -e "${BOLD}Phase 5: Interactive Mode${NC}"
 	echo "Starting local emu with encrypted mount to $REMOTE_HOST..."
 	echo "Remote namespace mounted at /n/remote"
@@ -435,7 +435,7 @@ INTEREOF
 	rm -f "$TMPSCRIPT"
 fi
 
-if [ "$failed" -gt 0 ]; then
+if [[ "$failed" -gt 0 ]]; then
 	exit 1
 fi
 exit 0

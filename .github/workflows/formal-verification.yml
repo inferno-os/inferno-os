@@ -19,8 +19,7 @@ on:
       - '.github/workflows/formal-verification.yml'
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,8 +31,10 @@ jobs:
   # ─────────────────────────────────────────────
   spin-verification:
     name: SPIN Model Checking
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -41,7 +42,7 @@ jobs:
     - name: Install SPIN
       run: |
         sudo apt-get update
-        sudo apt-get install -y spin gcc
+        sudo apt-get install -y spin=6.5.2+dfsg-1 gcc
 
     - name: Verify SPIN version
       run: spin -V
@@ -65,8 +66,10 @@ jobs:
   # ─────────────────────────────────────────────
   cbmc-verification:
     name: CBMC Verification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -74,7 +77,7 @@ jobs:
     - name: Install CBMC
       run: |
         sudo apt-get update
-        sudo apt-get install -y cbmc
+        sudo apt-get install -y cbmc=5.95.1-4ubuntu1
 
     - name: Verify CBMC version
       run: cbmc --version

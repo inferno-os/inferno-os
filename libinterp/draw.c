@@ -165,6 +165,10 @@ cacheinstall(Cache **cache, Display *d, char *name, void *ptr, char *type)
 	c->ref = 0;	/* will be incremented by caller */
 	c->display = d;
 	c->name = strdup(name);
+	if(c->name == nil) {
+		free(c);
+		return nil;
+	}
 	c->u.ptr = ptr;
 	libqlock(cacheqlock);
 	c->next = cache[hash];
@@ -2158,7 +2162,10 @@ subfontname(char *cfname, char *fname, int maxdepth)
 		return strdup(cfname);
 	t = cfname;
 	if(t[0] != '/'){
-		strcpy(tmp2, fname);
+		if(strlen(fname) >= sizeof(tmp2))
+			return nil;
+		strncpy(tmp2, fname, sizeof(tmp2)-1);
+		tmp2[sizeof(tmp2)-1] = 0;
 		u = utfrrune(tmp2, '/');
 		if(u)
 			u[0] = 0;

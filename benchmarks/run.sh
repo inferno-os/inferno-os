@@ -32,20 +32,20 @@ TIMED_RUNS=${TIMED_RUNS:-5}
 EMU_TIMEOUT="${EMU_TIMEOUT:-300}"
 
 # Auto-detect platform
-if [ -f "$ROOT/emu/Linux/o.emu" ]; then
+if [[ -f "$ROOT/emu/Linux/o.emu" ]]; then
     EMU="$ROOT/emu/Linux/o.emu"
-elif [ -f "$ROOT/emu/MacOSX/o.emu" ]; then
+elif [[ -f "$ROOT/emu/MacOSX/o.emu" ]]; then
     EMU="$ROOT/emu/MacOSX/o.emu"
 else
     echo "ERROR: No emu binary found"
     exit 1
 fi
 
-if [ -x "$ROOT/Linux/arm64/bin/limbo" ]; then
+if [[ -x "$ROOT/Linux/arm64/bin/limbo" ]]; then
     LIMBO="$ROOT/Linux/arm64/bin/limbo"
-elif [ -x "$ROOT/Linux/amd64/bin/limbo" ]; then
+elif [[ -x "$ROOT/Linux/amd64/bin/limbo" ]]; then
     LIMBO="$ROOT/Linux/amd64/bin/limbo"
-elif [ -x "$ROOT/MacOSX/arm64/bin/limbo" ]; then
+elif [[ -x "$ROOT/MacOSX/arm64/bin/limbo" ]]; then
     LIMBO="$ROOT/MacOSX/arm64/bin/limbo"
 else
     echo "ERROR: Cannot find limbo compiler"
@@ -58,7 +58,7 @@ GODIS="$ROOT/tools/godis/godis"
 ALL_BENCHMARKS="fib sieve qsort strcat matrix channel nbody spawn bsearch closure interface map_ops binary_trees spectral_norm fannkuch mandelbrot"
 
 BENCHMARKS="$ALL_BENCHMARKS"
-if [ -n "$1" ]; then
+if [[ -n "$1" ]]; then
     BENCHMARKS="$*"
 fi
 
@@ -94,15 +94,15 @@ echo ""
 # ── Prerequisites ──────────────────────────────────────────────
 
 ERRORS=0
-if [ ! -x "$EMU" ]; then
+if [[ ! -x "$EMU" ]]; then
     echo -e "${RED}ERROR: emu not found at $EMU${NC}"
     ERRORS=1
 fi
-if [ ! -f "$GODIS" ]; then
+if [[ ! -f "$GODIS" ]]; then
     echo -e "${YELLOW}Building godis compiler...${NC}"
     (cd "$ROOT/tools/godis" && go build ./cmd/godis/) || { echo -e "${RED}ERROR: failed to build godis${NC}"; ERRORS=1; }
 fi
-if [ ! -x "$LIMBO" ]; then
+if [[ ! -x "$LIMBO" ]]; then
     echo -e "${RED}ERROR: limbo not found at $LIMBO${NC}"
     ERRORS=1
 fi
@@ -110,7 +110,7 @@ if ! command -v go &> /dev/null; then
     echo -e "${RED}ERROR: go not found${NC}"
     ERRORS=1
 fi
-if [ $ERRORS -ne 0 ]; then
+if [[ $ERRORS -ne 0 ]]; then
     echo "Fix errors above before running benchmarks."
     exit 1
 fi
@@ -124,7 +124,7 @@ compile_errors=""
 for bench in $BENCHMARKS; do
     # Native Go
     native_src="$SCRIPT_DIR/native/$bench.go"
-    if [ -f "$native_src" ]; then
+    if [[ -f "$native_src" ]]; then
         if ! go build -o "$OUTDIR/${bench}_native" "$native_src" 2>/dev/null; then
             echo -e "  ${RED}FAIL${NC} native/$bench.go"
             compile_errors="$compile_errors ${bench}:native"
@@ -133,7 +133,7 @@ for bench in $BENCHMARKS; do
 
     # Go-on-Dis
     go_src="$SCRIPT_DIR/go/$bench.go"
-    if [ -f "$go_src" ]; then
+    if [[ -f "$go_src" ]]; then
         if ! "$GODIS" -o "$OUTDIR/${bench}_go.dis" "$go_src" 2>/dev/null; then
             echo -e "  ${RED}FAIL${NC} go/$bench.go"
             compile_errors="$compile_errors ${bench}:godis"
@@ -142,7 +142,7 @@ for bench in $BENCHMARKS; do
 
     # Limbo
     limbo_src="$SCRIPT_DIR/limbo/$bench.b"
-    if [ -f "$limbo_src" ]; then
+    if [[ -f "$limbo_src" ]]; then
         if ! "$LIMBO" -I "$ROOT/module" -o "$OUTDIR/${bench}_limbo.dis" "$limbo_src" 2>/dev/null; then
             echo -e "  ${RED}FAIL${NC} limbo/$bench.b"
             compile_errors="$compile_errors ${bench}:limbo"
@@ -150,7 +150,7 @@ for bench in $BENCHMARKS; do
     fi
 done
 
-if [ -n "$compile_errors" ]; then
+if [[ -n "$compile_errors" ]]; then
     echo -e "${RED}Compilation failures:${NC}$compile_errors"
     echo ""
 fi
@@ -166,7 +166,7 @@ parse_bench_line() {
     local output="$1"
     local line
     line=$(echo "$output" | grep '^BENCH ' | head -1)
-    if [ -z "$line" ]; then
+    if [[ -z "$line" ]]; then
         echo ""
         return
     fi
@@ -207,14 +207,14 @@ run_repeated() {
     for ((r=0; r<total; r++)); do
         local result
         result=$($runner "$arg1" "$arg2")
-        if [ -z "$result" ]; then
+        if [[ -z "$result" ]]; then
             echo "ERROR"
             return 1
         fi
         local ms=$(echo "$result" | awk '{print $1}')
         local cksum=$(echo "$result" | awk '{print $2}')
 
-        if [ $r -ge $WARMUP_RUNS ]; then
+        if [[ $r -ge $WARMUP_RUNS ]]; then
             times="$times $ms"
             echo "$bench,$mode_name,$((r - WARMUP_RUNS + 1)),$ms,$cksum" >> "$CSV_FILE"
         fi
@@ -245,12 +245,12 @@ fmt_cell() {
     local key="$1"
     local m="${MEAN[$key]:-}"
     local s="${STDDEV[$key]:-}"
-    if [ -z "$m" ] || [ "$m" = "-" ]; then
+    if [[ -z "$m" ]] || [[ "$m" = "-" ]]; then
         echo "-"
     else
         local mi=$(echo "$m" | awk '{printf "%d", $1+0.5}')
         local si=$(echo "$s" | awk '{printf "%d", $1+0.5}')
-        if [ "$si" = "0" ]; then
+        if [[ "$si" = "0" ]]; then
             echo "$mi"
         else
             echo "${mi}±${si}"
@@ -269,7 +269,7 @@ run_mode() {
 
     printf "  %-22s " "$mode_label"
     times=$(run_repeated "$bench" "$mode_key" "$runner" "$arg1" "$arg2" 2>/dev/null) || true
-    if [ "$times" = "ERROR" ] || [ -z "$times" ]; then
+    if [[ "$times" = "ERROR" ]] || [[ -z "$times" ]]; then
         echo -e "${RED}ERROR${NC}"
         FAILURES="$FAILURES ${bench}:${mode_key}"
         return
@@ -297,11 +297,11 @@ for bench in $BENCHMARKS; do
     go_dis="$OUTDIR/${bench}_go.dis"
     limbo_dis="$OUTDIR/${bench}_limbo.dis"
 
-    [ -f "$native_bin" ] && run_mode "$bench" "Native Go" "native" "run_native_once" "$native_bin"
-    [ -f "$go_dis" ]     && run_mode "$bench" "Go-on-Dis JIT" "godis_jit" "run_emu_once" "$go_dis" "-c1"
-    [ -f "$go_dis" ]     && run_mode "$bench" "Go-on-Dis Interp" "godis_interp" "run_emu_once" "$go_dis" "-c0"
-    [ -f "$limbo_dis" ]  && run_mode "$bench" "Limbo JIT" "limbo_jit" "run_emu_once" "$limbo_dis" "-c1"
-    [ -f "$limbo_dis" ]  && run_mode "$bench" "Limbo Interp" "limbo_interp" "run_emu_once" "$limbo_dis" "-c0"
+    [[ -f "$native_bin" ]] && run_mode "$bench" "Native Go" "native" "run_native_once" "$native_bin"
+    [[ -f "$go_dis" ]]     && run_mode "$bench" "Go-on-Dis JIT" "godis_jit" "run_emu_once" "$go_dis" "-c1"
+    [[ -f "$go_dis" ]]     && run_mode "$bench" "Go-on-Dis Interp" "godis_interp" "run_emu_once" "$go_dis" "-c0"
+    [[ -f "$limbo_dis" ]]  && run_mode "$bench" "Limbo JIT" "limbo_jit" "run_emu_once" "$limbo_dis" "-c1"
+    [[ -f "$limbo_dis" ]]  && run_mode "$bench" "Limbo Interp" "limbo_interp" "run_emu_once" "$limbo_dis" "-c0"
 
     echo ""
 done
@@ -340,14 +340,14 @@ printf "%-16s %10s %10s %10s %10s\n" \
 
 for bench in $BENCHMARKS; do
     gi="${MEAN[${bench}_godis_interp]:-}"
-    if [ -z "$gi" ] || [ "$gi" = "-" ]; then
+    if [[ -z "$gi" ]] || [[ "$gi" = "-" ]]; then
         printf "%-16s %10s %10s %10s %10s\n" "$bench" "-" "-" "-" "-"
         continue
     fi
 
     fmt_ratio() {
         local val="$1"
-        if [ -z "$val" ] || [ "$val" = "-" ]; then
+        if [[ -z "$val" ]] || [[ "$val" = "-" ]]; then
             echo "-"
         else
             echo "$gi $val" | awk '{if($2+0>0) printf "%.1fx", $1/$2; else print "-"}'
@@ -381,7 +381,7 @@ for bench in $BENCHMARKS; do
     fmt_jit() {
         local jit="$1"
         local interp="$2"
-        if [ -z "$jit" ] || [ "$jit" = "-" ] || [ -z "$interp" ] || [ "$interp" = "-" ]; then
+        if [[ -z "$jit" ]] || [[ "$jit" = "-" ]] || [[ -z "$interp" ]] || [[ "$interp" = "-" ]]; then
             echo "-"
         else
             echo "$jit $interp" | awk '{if($2+0>0) printf "%.2f", $1/$2; else print "-"}'
@@ -397,7 +397,7 @@ echo ""
 
 # ── Output ─────────────────────────────────────────────────────
 
-if [ -n "$FAILURES" ]; then
+if [[ -n "$FAILURES" ]]; then
     echo -e "${RED}FAILURES:${NC}$FAILURES"
     echo ""
 fi

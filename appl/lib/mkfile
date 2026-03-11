@@ -124,6 +124,7 @@ TARG=\
 	outlinefont.dis\
 	pdf.dis\
 	webclient.dis\
+	widget.dis\
 	winplace.dis\
 	wmclient.dis\
 	wmlib.dis\
@@ -244,6 +245,7 @@ SYSMODULES=\
 	watchvars.m\
 	web.m\
 	webclient.m\
+	widget.m\
 	webget.m\
 	winplace.m\
 	wmclient.m\

@@ -1,6 +1,37 @@
 #include	"dat.h"
 #include	"fns.h"
 
+/*
+ * Two entropy devices are served by the cons driver (#c):
+ *
+ *   #c/random          — timing-based hardware entropy (this file)
+ *   #c/notquiterandom  — delegates to prng() in libsec/prng.c
+ *
+ * DESIGN INTENT
+ *
+ * #c/random is the correct choice for bare-metal Inferno: it derives
+ * entropy from real clock jitter between two kernel processes running
+ * at different scheduling priorities.  It produces about one byte per
+ * 80ms (4 clock ticks × 20ms/tick) and fills a 1024-byte ring buffer.
+ * On real hardware this jitter is genuinely unpredictable.
+ *
+ * #c/notquiterandom was historically a weaker LCG.  In this codebase
+ * it has been upgraded: prng() calls arc4random_buf() on macOS and
+ * getrandom() on Linux — both are ChaCha20-based CSPRNGs seeded from
+ * the host OS hardware entropy pool.  When running under an OS, this
+ * source is faster (nanoseconds vs milliseconds) and draws from a
+ * larger entropy pool (RDRAND, /dev/hwrng, etc.).
+ *
+ * WHICH TO USE
+ *
+ * Code that runs only under emu should prefer #c/notquiterandom.
+ * Code that must also run on bare-metal Inferno should use #c/random,
+ * or open #c/notquiterandom with a fallback to #c/random (as tls.b does).
+ *
+ * See also: libsec/prng.c, appl/lib/crypt/tls.b, docs/TLS-ENTROPY.md
+ */
+extern void prng(uchar *buf, int nbytes);
+
 static struct
 {
 	QLock	l;
@@ -18,6 +49,7 @@ static struct
 	uchar	filled;
 	int	kprocstarted;
 	ulong	randn;
+	ulong	mixstate;	/* additional non-linear mixer state */
 	int	target;
 } rb;
 
@@ -99,6 +131,14 @@ randominit(void)
 	rb.target = 16;
 	rb.ep = rb.buf + sizeof(rb.buf);
 	rb.rp = rb.wp = rb.buf;
+
+	/*
+	 * Seed the mixer state from host OS entropy so the output
+	 * is not predictable even if the timing-based entropy is weak
+	 * (e.g. in VMs or containers with synchronized clocks).
+	 */
+	prng((uchar*)&rb.randn, sizeof(rb.randn));
+	prng((uchar*)&rb.mixstate, sizeof(rb.mixstate));
 }
 
 /*
@@ -138,11 +178,21 @@ if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 		}
 
 		/*
-		 *  beating clocks will be predictable if
-		 *  they are synchronized.  Use a cheap pseudo
-		 *  random number generator to obscure any cycles.
+		 *  Beating clocks will be predictable if
+		 *  they are synchronized.  Mix the timing entropy
+		 *  with a non-linear function seeded from host OS
+		 *  entropy at init time, so the output is not
+		 *  predictable even with weak timing sources.
+		 *
+		 *  Uses xorshift-multiply mixing (splitmix-style)
+		 *  instead of the previous weak LCG (1103515245).
 		 */
-		x = rb.randn*1103515245 ^ *r;
+		rb.mixstate += 0x9e3779b9UL;
+		x = rb.mixstate ^ *r;
+		x ^= rb.randn;
+		x ^= (x >> 13);
+		x *= 0x5bd1e995UL;	/* MurmurHash2 mixing constant */
+		x ^= (x >> 15);
 		*p++ = rb.randn = x;
 
 		if(++r == rb.ep)

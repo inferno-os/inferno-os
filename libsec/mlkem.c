@@ -96,20 +96,32 @@ inner_product(int16 r[MLKEM_N], int16 a[][MLKEM_N],
 }
 
 /*
+ * Heap-allocated state for CPAPKE keygen/encrypt to avoid
+ * stack overflow in Inferno's 32KB thread stacks.
+ */
+typedef struct {
+	int16	a[MLKEM_MAXK][MLKEM_MAXK][MLKEM_N];
+	int16	s[MLKEM_MAXK][MLKEM_N];
+	int16	e[MLKEM_MAXK][MLKEM_N];
+	int16	t[MLKEM_MAXK][MLKEM_N];
+} MLKEMKeygenState;
+
+/*
  * K-PKE.KeyGen: Generate CPAPKE key pair.
  * Algorithm 4 in FIPS 203.
  */
-static void
+static int
 cpapke_keygen(uchar *pk, uchar *sk, const uchar seed[32], int k, int eta1)
 {
-	int16 a[MLKEM_MAXK][MLKEM_MAXK][MLKEM_N];
-	int16 s[MLKEM_MAXK][MLKEM_N];
-	int16 e[MLKEM_MAXK][MLKEM_N];
-	int16 t[MLKEM_MAXK][MLKEM_N];
+	MLKEMKeygenState *st;
 	uchar rho[32], sigma[32];
 	uchar buf[64];
 	int i, j;
 	uchar nonce;
+
+	st = malloc(sizeof(MLKEMKeygenState));
+	if(st == nil)
+		return -1;
 
 	/* G(seed) = (rho, sigma) */
 	sha3_512(seed, 32, buf);
@@ -119,131 +131,143 @@ cpapke_keygen(uchar *pk, uchar *sk, const uchar seed[32], int k, int eta1)
 	/* Generate matrix A from rho (in NTT domain) */
 	for(i = 0; i < k; i++)
 		for(j = 0; j < k; j++)
-			mlkem_poly_sample_ntt(a[i][j], rho, (uchar)j, (uchar)i);
+			mlkem_poly_sample_ntt(st->a[i][j], rho, (uchar)j, (uchar)i);
 
 	/* Sample secret s and error e from CBD */
 	nonce = 0;
 	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(s[i], sigma, nonce++, eta1);
+		mlkem_poly_sample_cbd(st->s[i], sigma, nonce++, eta1);
 	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(e[i], sigma, nonce++, eta1);
+		mlkem_poly_sample_cbd(st->e[i], sigma, nonce++, eta1);
 
 	/* NTT(s), NTT(e) */
 	for(i = 0; i < k; i++){
-		mlkem_ntt(s[i]);
-		mlkem_ntt(e[i]);
+		mlkem_ntt(st->s[i]);
+		mlkem_ntt(st->e[i]);
 	}
 
 	/* t = A * s + e (in NTT domain) */
-	matvec_mul(t, a, s, k);
+	matvec_mul(st->t, st->a, st->s, k);
 	for(i = 0; i < k; i++){
-		mlkem_poly_tomont(t[i]);
-		mlkem_poly_add(t[i], t[i], e[i]);
+		mlkem_poly_tomont(st->t[i]);
+		mlkem_poly_add(st->t[i], st->t[i], st->e[i]);
 	}
 
 	/* Encode public key: pk = (t_encoded || rho) */
 	for(i = 0; i < k; i++){
-		mlkem_poly_normalize(t[i]);
-		mlkem_poly_encode(pk + i * 384, t[i], 12);
+		mlkem_poly_normalize(st->t[i]);
+		mlkem_poly_encode(pk + i * 384, st->t[i], 12);
 	}
 	memmove(pk + k * 384, rho, 32);
 
 	/* Encode secret key: sk = s_encoded */
 	for(i = 0; i < k; i++){
-		mlkem_poly_normalize(s[i]);
-		mlkem_poly_encode(sk + i * 384, s[i], 12);
+		mlkem_poly_normalize(st->s[i]);
+		mlkem_poly_encode(sk + i * 384, st->s[i], 12);
 	}
 
 	/* Clear sensitive data */
-	memset(sigma, 0, sizeof(sigma));
-	memset(s, 0, sizeof(s));
-	memset(e, 0, sizeof(e));
+	secureZero(sigma, sizeof(sigma));
+	secureZero(st, sizeof(MLKEMKeygenState));
+	free(st);
+	return 0;
 }
+
+/*
+ * Heap-allocated state for CPAPKE encryption.
+ */
+typedef struct {
+	int16	a[MLKEM_MAXK][MLKEM_MAXK][MLKEM_N];
+	int16	t[MLKEM_MAXK][MLKEM_N];
+	int16	r[MLKEM_MAXK][MLKEM_N];
+	int16	e1[MLKEM_MAXK][MLKEM_N];
+	int16	e2[MLKEM_N];
+	int16	u[MLKEM_MAXK][MLKEM_N];
+	int16	v[MLKEM_N];
+	int16	m[MLKEM_N];
+} MLKEMEncState;
 
 /*
  * K-PKE.Encrypt: CPAPKE encryption.
  * Algorithm 5 in FIPS 203.
  */
-static void
+static int
 cpapke_enc(uchar *ct, const uchar *pk, const uchar msg[32],
 	const uchar coins[32], int k, int eta1, int eta2, int du, int dv)
 {
-	int16 a[MLKEM_MAXK][MLKEM_MAXK][MLKEM_N];
-	int16 t[MLKEM_MAXK][MLKEM_N];
-	int16 r[MLKEM_MAXK][MLKEM_N];
-	int16 e1[MLKEM_MAXK][MLKEM_N];
-	int16 e2[MLKEM_N];
-	int16 u[MLKEM_MAXK][MLKEM_N];
-	int16 v[MLKEM_N];
-	int16 m[MLKEM_N];
+	MLKEMEncState *st;
 	uchar rho[32];
 	int i, j;
 	uchar nonce;
 	int du_bytes, dv_bytes;
 
+	st = malloc(sizeof(MLKEMEncState));
+	if(st == nil)
+		return -1;
+
 	/* Decode public key */
 	for(i = 0; i < k; i++)
-		mlkem_poly_decode(t[i], pk + i * 384, 12);
+		mlkem_poly_decode(st->t[i], pk + i * 384, 12);
 	memmove(rho, pk + k * 384, 32);
 
 	/* Regenerate matrix A from rho (same as keygen) */
 	for(i = 0; i < k; i++)
 		for(j = 0; j < k; j++)
-			mlkem_poly_sample_ntt(a[i][j], rho, (uchar)j, (uchar)i);
+			mlkem_poly_sample_ntt(st->a[i][j], rho, (uchar)j, (uchar)i);
 
 	/* Sample r, e1, e2 */
 	nonce = 0;
 	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(r[i], coins, nonce++, eta1);
+		mlkem_poly_sample_cbd(st->r[i], coins, nonce++, eta1);
 	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(e1[i], coins, nonce++, eta2);
-	mlkem_poly_sample_cbd(e2, coins, nonce++, eta2);
+		mlkem_poly_sample_cbd(st->e1[i], coins, nonce++, eta2);
+	mlkem_poly_sample_cbd(st->e2, coins, nonce++, eta2);
 
 	/* NTT(r) */
 	for(i = 0; i < k; i++)
-		mlkem_ntt(r[i]);
+		mlkem_ntt(st->r[i]);
 
 	/* u = A^T * r + e1 */
 	/* Note: A^T means we swap i,j indices */
 	for(i = 0; i < k; i++){
 		int16 tmp[MLKEM_N];
-		mlkem_poly_basemul(u[i], a[0][i], r[0]);
+		mlkem_poly_basemul(st->u[i], st->a[0][i], st->r[0]);
 		for(j = 1; j < k; j++){
-			mlkem_poly_basemul(tmp, a[j][i], r[j]);
-			mlkem_poly_add(u[i], u[i], tmp);
+			mlkem_poly_basemul(tmp, st->a[j][i], st->r[j]);
+			mlkem_poly_add(st->u[i], st->u[i], tmp);
 		}
-		mlkem_poly_reduce(u[i]);
-		mlkem_invntt(u[i]);
-		mlkem_poly_add(u[i], u[i], e1[i]);
+		mlkem_poly_reduce(st->u[i]);
+		mlkem_invntt(st->u[i]);
+		mlkem_poly_add(st->u[i], st->u[i], st->e1[i]);
 	}
 
 	/* v = t^T * r + e2 + Decompress(Decode(msg), 1) */
 	/* First: NTT domain inner product t^T * r */
-	inner_product(v, t, r, k);
-	mlkem_invntt(v);
-	mlkem_poly_add(v, v, e2);
+	inner_product(st->v, st->t, st->r, k);
+	mlkem_invntt(st->v);
+	mlkem_poly_add(st->v, st->v, st->e2);
 
 	/* Decode message as polynomial */
-	mlkem_poly_decode(m, msg, 1);
-	mlkem_poly_decompress(m, 1);
-	mlkem_poly_add(v, v, m);
+	mlkem_poly_decode(st->m, msg, 1);
+	mlkem_poly_decompress(st->m, 1);
+	mlkem_poly_add(st->v, st->v, st->m);
 
 	/* Compress and encode u */
 	du_bytes = du * MLKEM_N / 8;
 	for(i = 0; i < k; i++){
-		mlkem_poly_compress(u[i], du);
-		mlkem_poly_encode(ct + i * du_bytes, u[i], du);
+		mlkem_poly_compress(st->u[i], du);
+		mlkem_poly_encode(ct + i * du_bytes, st->u[i], du);
 	}
 
 	/* Compress and encode v */
 	dv_bytes = dv * MLKEM_N / 8;
-	mlkem_poly_compress(v, dv);
-	mlkem_poly_encode(ct + k * du_bytes, v, dv);
+	mlkem_poly_compress(st->v, dv);
+	mlkem_poly_encode(ct + k * du_bytes, st->v, dv);
 
 	/* Clear sensitive data */
-	memset(r, 0, sizeof(r));
-	memset(e1, 0, sizeof(e1));
-	memset(e2, 0, sizeof(e2));
+	secureZero(st, sizeof(MLKEMEncState));
+	free(st);
+	return 0;
 }
 
 /*
@@ -289,7 +313,7 @@ cpapke_dec(uchar msg[32], const uchar *ct, const uchar *sk,
 	mlkem_poly_encode(msg, w, 1);
 
 	/* Clear sensitive data */
-	memset(s, 0, sizeof(s));
+	secureZero(s, sizeof(s));
 }
 
 /*
@@ -348,7 +372,10 @@ mlkem_keygen_internal(uchar *pk, uchar *sk, int k, int eta1,
 	genrandom(seed+32, 32);
 
 	/* Generate CPAPKE key pair */
-	cpapke_keygen(pk, sk, seed, k, eta1);
+	if(cpapke_keygen(pk, sk, seed, k, eta1) != 0){
+		secureZero(seed, sizeof(seed));
+		return -1;
+	}
 
 	/* Full secret key: sk_cpapke || pk || H(pk) || z */
 	skoff = sklen_inner;		/* after CPAPKE secret key */
@@ -361,7 +388,7 @@ mlkem_keygen_internal(uchar *pk, uchar *sk, int k, int eta1,
 
 	memmove(sk + skoff, seed+32, 32);	/* z */
 
-	memset(seed, 0, sizeof(seed));
+	secureZero(seed, sizeof(seed));
 	return 0;
 }
 
@@ -395,14 +422,19 @@ mlkem_encaps_internal(uchar *ct, uchar *ss, const uchar *pk,
 	r = g_output + 32;		/* second 32 bytes */
 
 	/* ct = Encrypt(pk, m, r) */
-	cpapke_enc(ct, pk, m, r, k, eta1, eta2, du, dv);
+	if(cpapke_enc(ct, pk, m, r, k, eta1, eta2, du, dv) != 0){
+		secureZero(m, sizeof(m));
+		secureZero(g_input, sizeof(g_input));
+		secureZero(g_output, sizeof(g_output));
+		return -1;
+	}
 
 	/* ss = K */
 	memmove(ss, Kbar, 32);
 
-	memset(m, 0, sizeof(m));
-	memset(g_input, 0, sizeof(g_input));
-	memset(g_output, 0, sizeof(g_output));
+	secureZero(m, sizeof(m));
+	secureZero(g_input, sizeof(g_input));
+	secureZero(g_output, sizeof(g_output));
 	return 0;
 }
 
@@ -444,7 +476,13 @@ mlkem_decaps_internal(uchar *ss, const uchar *ct, const uchar *sk,
 	r = g_output + 32;
 
 	/* ct' = Encrypt(pk, m', r') */
-	cpapke_enc(ct2, pk, m, r, k, eta1, eta2, du, dv);
+	if(cpapke_enc(ct2, pk, m, r, k, eta1, eta2, du, dv) != 0){
+		secureZero(m, sizeof(m));
+		secureZero(g_input, sizeof(g_input));
+		secureZero(g_output, sizeof(g_output));
+		secureZero(Krej, sizeof(Krej));
+		return -1;
+	}
 
 	/* Implicit rejection: K_reject = J(z || ct) */
 	shake256_init(&js);
@@ -459,11 +497,11 @@ mlkem_decaps_internal(uchar *ss, const uchar *ct, const uchar *sk,
 
 	memmove(ss, Kbar, 32);
 
-	memset(m, 0, sizeof(m));
-	memset(g_input, 0, sizeof(g_input));
-	memset(g_output, 0, sizeof(g_output));
-	memset(Krej, 0, sizeof(Krej));
-	memset(ct2, 0, sizeof(ct2));
+	secureZero(m, sizeof(m));
+	secureZero(g_input, sizeof(g_input));
+	secureZero(g_output, sizeof(g_output));
+	secureZero(Krej, sizeof(Krej));
+	secureZero(ct2, sizeof(ct2));
 	return 0;
 }
 
