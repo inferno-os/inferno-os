@@ -33,6 +33,10 @@ include "menu.m";
 	menumod: Menu;
 	Popup: import menumod;
 
+include "widget.m";
+	widget: Widget;
+	Statusbar: import widget;
+
 Mand: module
 {
 	init: fn(nil: ref Draw->Context, argv: list of string);
@@ -43,6 +47,7 @@ w: ref Window;
 display: ref Display;
 font: ref Font;
 colours: array of ref Image;
+sbar: ref Statusbar;
 
 # Current fractal state (global for Veltro IPC)
 g_specr: Fracrect;
@@ -180,8 +185,22 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(menumod != nil)
 		menumod->init(display, font);
 
+	widget = load Widget Widget->PATH;
+	if(widget != nil)
+		widget->init(display, font);
+
 	# Initialize Veltro IPC
 	initfractdir();
+
+	# Create statusbar at bottom of window
+	if(widget != nil) {
+		wr := w.imager(w.image.r);
+		sh := widget->statusheight();
+		sbr := Rect((wr.min.x, wr.max.y - sh), wr.max);
+		sbar = Statusbar.new(sbr);
+		sbar.left = "Mandelbrot";
+		sbar.right = "depth 1";
+	}
 
 	canvr := canvposn();
 	specr := Fracrect((-2.0, -1.5), (1.0, 1.5));
@@ -223,6 +242,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	spawn timer(ticks, 500);
 
 	writefractstate();
+	updatesbar();
 
 	for(;;) {
 		restart := 0;
@@ -342,16 +362,24 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				restart = 1;
 			}
 			writefractstate();
+			updatesbar();
 		<-sync =>
 			w.image.flush(Draw->Flushon);
 			pid = -1;
 			g_computing = 0;
 			writefractstate();
+			updatesbar();
 		}
 		if(restart) {
 			if(pid != -1)
 				kill(pid);
 			w.image.flush(Draw->Flushoff);
+			# Reposition statusbar on resize
+			if(sbar != nil) {
+				wr := w.imager(w.image.r);
+				sh := widget->statusheight();
+				sbar.resize(Rect((wr.min.x, wr.max.y - sh), wr.max));
+			}
 			wr := canvposn();
 			if(!isempty(wr)) {
 				p = Params(correctratio(specr, wr), julp, morj, kdivisor, fill);
@@ -368,6 +396,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				pid = <-sync;
 				imgch <-= (w.image, wr);
 				writefractstate();
+				updatesbar();
 			}
 		}
 	}
@@ -409,6 +438,21 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 		exit;
 	}
 	return nil;
+}
+
+updatesbar()
+{
+	if(sbar == nil)
+		return;
+	ftype := "Mandelbrot";
+	if(!g_morj)
+		ftype = "Julia";
+	sbar.left = ftype;
+	status := "ready";
+	if(g_computing)
+		status = "computing...";
+	sbar.right = sys->sprint("depth %d | %s", g_kdivisor, status);
+	sbar.draw(w.image);
 }
 
 winreq(ctl: string, imgch: chan of (ref Image, Rect), terminated: chan of int): int
@@ -458,7 +502,14 @@ pt2real(pt: Point, r: Fracrect): Fracpoint
 
 canvposn(): Rect
 {
-	return w.imager(w.image.r);
+	r := w.imager(w.image.r);
+	if(sbar != nil) {
+		sh := widget->statusheight();
+		r.max.y -= sh;
+		if(r.max.y < r.min.y)
+			r.max.y = r.min.y;
+	}
+	return r;
 }
 
 canvsize(): Point
