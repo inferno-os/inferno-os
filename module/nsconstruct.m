@@ -62,6 +62,11 @@ NsConstruct: module {
 	# Returns nil on success, error string on failure
 	restrictns: fn(caps: ref Capabilities): string;
 
+	# Emit namespace manifest for the UI to display.
+	# Writes to /tmp/veltro/.ns/manifest — one entry per line.
+	# Must be called AFTER restrictns() from the restricted namespace.
+	emitmanifest: fn(caps: ref Capabilities);
+
 	# Verify namespace matches expected security policy
 	# Reads /prog/$pid/ns and checks for dangerous paths
 	# expected: list of paths that should be accessible

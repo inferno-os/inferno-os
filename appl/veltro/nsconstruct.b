@@ -455,6 +455,100 @@ splitfirst(p: string): (string, string)
 	return (p, "");
 }
 
+# Emit namespace manifest for the UI to display.
+# Writes to /tmp/veltro/.ns/manifest — one entry per line:
+#   path=/dev/time label=System Clock perm=ro
+# Must be called AFTER restrictns() from the restricted namespace
+# so stat checks reflect exactly what the agent can access.
+emitmanifest(caps: ref Capabilities)
+{
+	if(sys == nil)
+		init();
+
+	mkdirp("/tmp/veltro/.ns");
+
+	fd := sys->create("/tmp/veltro/.ns/manifest", Sys->OWRITE, FILE_MODE);
+	if(fd == nil)
+		return;
+
+	# Infrastructure paths — always checked
+	infra := array[] of {
+		# (path, label, default-perm)
+		("/dev/time",      "System Clock",     "ro"),
+		("/dev/cons",      "Console",          "rw"),
+		("/dev/null",      "Null Device",      "rw"),
+		("/lib/certs",     "Certificates",     "ro"),
+		("/lib/veltro",    "Veltro Config",    "ro"),
+		("/dis/veltro",    "Veltro Tools",     "ro"),
+		("/tmp/veltro",    "Veltro Workspace", "rw"),
+	};
+
+	for(i := 0; i < len infra; i++) {
+		(path, label, perm) := infra[i];
+		(ok, nil) := sys->stat(path);
+		if(ok >= 0)
+			sys->fprint(fd, "path=%s label=%s perm=%s\n", path, label, perm);
+	}
+
+	# /n entries — capability-driven
+	nentries := array[] of {
+		("/n/llm",    "LLM Service",      "rw"),
+		("/n/mcp",    "MCP Providers",    "rw"),
+		("/n/speech", "Speech",           "rw"),
+		("/n/git",    "Git",              "rw"),
+		("/n/ui",     "UI Service",       "rw"),
+	};
+
+	for(i = 0; i < len nentries; i++) {
+		(path, label, perm) := nentries[i];
+		(ok, nil) := sys->stat(path);
+		if(ok >= 0)
+			sys->fprint(fd, "path=%s label=%s perm=%s\n", path, label, perm);
+	}
+
+	# /n/local subpaths from caps.paths
+	localpaths := filterpaths(caps.paths, "/n/local/");
+	for(lp := localpaths; lp != nil; lp = tl lp) {
+		fullpath := "/n/local/" + hd lp;
+		(ok, nil) := sys->stat(fullpath);
+		perm := "ro";
+		if(caps.actid >= 0)
+			perm = "cow";  # copy-on-write overlay
+		if(ok >= 0)
+			sys->fprint(fd, "path=%s label=%s perm=%s\n", fullpath, hd lp, perm);
+	}
+
+	# Xenith-related entries
+	if(caps.xenith) {
+		xpaths := array[] of {
+			("/chan",          "Xenith Windows",  "rw"),
+		};
+		for(i = 0; i < len xpaths; i++) {
+			(path, label, perm) := xpaths[i];
+			(ok, nil) := sys->stat(path);
+			if(ok >= 0)
+				sys->fprint(fd, "path=%s label=%s perm=%s\n", path, label, perm);
+		}
+	}
+
+	# Extra root-level dirs from caps.paths (e.g. /appl/veltro)
+	for(ep := caps.paths; ep != nil; ep = tl ep) {
+		p := hd ep;
+		if(len p < 2 || p[0] != '/')
+			continue;
+		# Skip paths handled above
+		(first, nil) := splitfirst(p[1:]);
+		if(first == "dis" || first == "dev" || first == "lib" ||
+		   first == "tmp" || first == "n")
+			continue;
+		(ok, nil) := sys->stat(p);
+		if(ok >= 0)
+			sys->fprint(fd, "path=%s label=%s perm=ro\n", p, p[1:]);
+	}
+
+	fd = nil;
+}
+
 # Verify namespace matches expected security policy
 # Checks both positive (expected paths accessible) and negative
 # (dangerous paths inaccessible) assertions.
