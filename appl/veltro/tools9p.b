@@ -89,6 +89,7 @@ SHADOW_BASE: con "/tmp/veltro/.ns/shadow";
 # Buffered channel for async shadow dir cleanup; asyncexec sends PID when done
 cleanupchan: chan of int;
 helpresult: array of byte;  # Last help query result (global, not per-fid)
+manifest_written := 0;  # Set after first emitmanifest() call
 
 # Mapping from tool name to .dis path
 # Veltro tools are in /dis/veltro/tools/
@@ -214,6 +215,18 @@ init(nil: ref Draw->Context, args: list of string)
 	cleanshadows();
 	spawn shadowcleanloop();
 
+	# Write agent name file so the UI can display it.
+	# Done before FORKNS so the file is visible from the user's process.
+	sys->create("/tmp/veltro", Sys->OREAD, 8r700 | Sys->DMDIR);
+	sys->create("/tmp/veltro/.ns", Sys->OREAD, 8r700 | Sys->DMDIR);
+	{
+		afd := sys->create("/tmp/veltro/.ns/agentname", Sys->OWRITE, 8r644);
+		if(afd != nil) {
+			sys->fprint(afd, "Veltro");
+			afd = nil;
+		}
+	}
+
 	sys->pctl(Sys->FORKFD, nil);
 
 	user = rf("/dev/user");
@@ -247,6 +260,11 @@ init(nil: ref Draw->Context, args: list of string)
 
 	# Signal serveloop that mount is complete — safe to FORKNS now
 	mounted <-= 1;
+
+	# Emit namespace manifest immediately so the UI shows the agent's
+	# namespace before any tool calls. Spawned goroutine does FORKNS +
+	# restrictns + emitmanifest — its namespace is discarded after.
+	spawn emitmanifestnow();
 }
 
 # Look up tool path by name
@@ -654,6 +672,48 @@ ensuredir(path: string)
 		sys->fprint(stderr, "tools9p: cannot create directory %s: %r\n", path);
 }
 
+# Write namespace manifest at startup so the UI shows the agent's
+# namespace before any tool calls happen. Runs in a throwaway goroutine
+# with its own FORKNS — the restricted namespace is discarded after
+# emitmanifest completes.
+emitmanifestnow()
+{
+	nsconstruct := load NsConstruct NsConstruct->PATH;
+	if(nsconstruct == nil)
+		return;
+	nsconstruct->init();
+	sys->pctl(Sys->FORKNS, nil);
+
+	hasxenith := 0;
+	if(findtool("xenith") != nil)
+		hasxenith = 1;
+	toolnames: list of string = nil;
+	for(t := tools; t != nil; t = tl t)
+		toolnames = (hd t).name :: toolnames;
+	allpaths := extpaths;
+	for(bp := boundpaths; bp != nil; bp = tl bp)
+		if(!strlist_contains(allpaths, hd bp))
+			allpaths = (hd bp) :: allpaths;
+	if(findtool("say") != nil || findtool("hear") != nil)
+		if(!strlist_contains(allpaths, "/n/speech"))
+			allpaths = "/n/speech" :: allpaths;
+	caps := ref NsConstruct->Capabilities(
+		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
+	);
+	{
+		nserr := nsconstruct->restrictns(caps);
+		if(nserr != nil)
+			sys->fprint(stderr, "tools9p: manifest restrictns failed: %s\n", nserr);
+		else {
+			nsconstruct->emitmanifest(caps);
+			manifest_written = 1;
+		}
+	} exception e {
+	"*" =>
+		sys->fprint(stderr, "tools9p: manifest exception: %s\n", e);
+	}
+}
+
 # Apply namespace restriction in serveloop thread.
 # Called after mount() completes so FORKNS captures /tool.
 applynsrestriction()
@@ -697,6 +757,10 @@ applynsrestriction()
 		nserr := nsconstruct->restrictns(caps);
 		if(nserr != nil)
 			sys->fprint(stderr, "tools9p: restrictns failed: %s\n", nserr);
+		else if(!manifest_written) {
+			nsconstruct->emitmanifest(caps);
+			manifest_written = 1;
+		}
 	} exception e {
 	"*" =>
 		sys->fprint(stderr, "tools9p: restrictns exception: %s\n", e);

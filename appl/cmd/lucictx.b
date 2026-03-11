@@ -362,34 +362,6 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 
-			# Catalog entry click — toggle mount/unmount
-			if(!tabclicked && agentns_expanded) {
-				for(pi := 0; pi < nctxentryrects; pi++) {
-					if(ctxentryrects[pi].contains(p.xy)) {
-						# Find the catalog entry at this index (skipping those in manifest)
-						cidx := 0;
-						for(cl := catalog; cl != nil; cl = tl cl) {
-							ce := hd cl;
-							inmanifest := 0;
-							for(nse := nsmanifest; nse != nil; nse = tl nse)
-								if((hd nse).label == ce.name) { inmanifest = 1; break; }
-							if(inmanifest)
-								continue;
-							if(cidx == pi) {
-								if(ce.mntpath == "")
-									mountresource(ce);
-								else
-									unmountresource(ce);
-								tabclicked = 1;
-								break;
-							}
-							cidx++;
-						}
-						break;
-					}
-				}
-			}
-
 			# User Namespace header toggle
 			if(!tabclicked &&
 					usernshdrrect.max.x > usernshdrrect.min.x &&
@@ -443,42 +415,6 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				}
 			}
 
-			# Catalog entry right-click
-			for(ei := 0; ei < nctxentryrects; ei++) {
-				if(ctxentryrects[ei].contains(p.xy)) {
-					cidx2 := 0;
-					for(cl := catalog; cl != nil; cl = tl cl) {
-						ce := hd cl;
-						inmanifest := 0;
-						for(nse := nsmanifest; nse != nil; nse = tl nse)
-							if((hd nse).label == ce.name) { inmanifest = 1; break; }
-						if(inmanifest)
-							continue;
-						if(cidx2 == ei) {
-							if(menumod != nil) {
-								citems: array of string;
-								if(ce.mntpath == "")
-									citems = array[] of {"Add"};
-								else
-									citems = array[] of {"Remove"};
-								cpop := menumod->new(citems);
-								cres := cpop.show(mainwin, p.xy, mouse);
-								if(cres == 0) {
-									if(ce.mntpath == "")
-										mountresource(ce);
-									else
-										unmountresource(ce);
-								}
-								redrawctx();
-							}
-							break;
-						}
-						cidx2++;
-					}
-					prevbuttons = 0;
-					break;
-				}
-			}
 		}
 	ev := <-evch =>
 		handleevent(ev);
@@ -491,17 +427,36 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 ctxtimer(evch: chan of string)
 {
+	# Poll interval: fast (1s) while waiting for manifest to appear,
+	# slower (5s) once it's loaded and only resource activity needs refresh.
 	for(;;) {
-		sys->sleep(1000);
+		interval := 5000;
+		if(nsmanifest == nil)
+			interval = 1000;	# poll faster until manifest appears
+
+		sys->sleep(interval);
+
 		needtick := 0;
-		now := sys->millisec();
-		for(r := resources; r != nil; r = tl r) {
-			res := hd r;
-			if(res.status == "active" || (res.lastused > 0 && now - res.lastused < 4000)) {
+
+		# Always tick if manifest hasn't loaded yet
+		if(nsmanifest == nil) {
+			(ok, nil) := sys->stat("/tmp/veltro/.ns/manifest");
+			if(ok >= 0)
 				needtick = 1;
-				break;
+		}
+
+		# Also tick for resource activity animation
+		if(!needtick) {
+			now := sys->millisec();
+			for(r := resources; r != nil; r = tl r) {
+				res := hd r;
+				if(res.status == "active" || (res.lastused > 0 && now - res.lastused < 4000)) {
+					needtick = 1;
+					break;
+				}
 			}
 		}
+
 		if(needtick)
 			alt { evch <-= "tick" => ; * => ; }
 	}
@@ -516,6 +471,7 @@ handleevent(ev: string)
 	if(hasprefix(ev, "context") || ev == "tick") {
 		loadcontext();
 		loadmanifest();
+		loadagentname();
 	}
 }
 
@@ -683,35 +639,13 @@ drawcontext(zone: Rect)
 				}
 			}
 
-			# Unmounted catalog entries that aren't in the manifest
-			ctxentryrects = array[32] of Rect;
-			for(cl := catalog; cl != nil; cl = tl cl) {
-				ce := hd cl;
-				# Skip if already in manifest
-				inmanifest := 0;
-				for(nse2 := nsmanifest; nse2 != nil; nse2 = tl nse2) {
-					if((hd nse2).label == ce.name) {
-						inmanifest = 1;
-						break;
-					}
+			# If manifest is empty, show a waiting hint
+			if(nsmanifest == nil) {
+				if(y + mainfont.height <= zone.max.y) {
+					mainwin.text((zone.min.x + pad, y), dimcol, (0, 0),
+						mainfont, "(waiting for agent)");
+					y += mainfont.height + 2;
 				}
-				if(inmanifest)
-					continue;
-				if(y + mainfont.height > zone.max.y)
-					break;
-				if(nctxentryrects < len ctxentryrects)
-					ctxentryrects[nctxentryrects++] = Rect(
-						(zone.min.x, y), (zone.max.x, y + mainfont.height));
-				cglyph := "○";
-				cgcol := dimcol;
-				if(ce.mntpath != "") {
-					cglyph = "●";
-					cgcol = text2col;
-				}
-				mainwin.text((zone.min.x + pad, y), cgcol, (0, 0), mainfont, cglyph);
-				mainwin.text((zone.min.x + pad + glyphw, y), text2col, (0, 0),
-					mainfont, ce.name);
-				y += mainfont.height + 2;
 			}
 		}
 		y += secgap;
