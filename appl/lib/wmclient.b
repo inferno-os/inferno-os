@@ -12,9 +12,6 @@ include "lucitheme.m";
 
 Focusnone, Focusimage, Focustitle: con iota;
 
-Bdup: con int 16rffffffff;
-Bddown: con int 16radadadff;
-
 # Colours loaded from theme; defaults kept as fallback
 bdfocused:   int = int 16r448888ff;
 bdunfocused: int = int 16r1a1a1aff;
@@ -60,7 +57,7 @@ window(ctxt: ref Draw->Context, nil: string, buts: int): ref Window
 	if(ctxt.wm == nil)
 		buts &= ~(Resize|Hide);
 
-	w.bd = 4;
+	w.bd = 1;
 
 	w.wmctl("fixedorigin");
 	return w;
