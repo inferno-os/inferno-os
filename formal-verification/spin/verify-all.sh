@@ -37,9 +37,11 @@ run_spin_safety() {
     gcc -o pan pan.c -DSAFETY -DCOLLAPSE $extra_flags -O2 -w 2>/dev/null
 
     # Run verification
-    if ./pan -m"$limit" 2>&1 | tee /tmp/spin_${name// /_}.log | grep -q "errors: 0"; then
+    local logname
+    logname=$(echo "$name" | tr ' ()/' '____')
+    if ./pan -m"$limit" 2>&1 | tee "/tmp/spin_${logname}.log" | grep -q "errors: 0"; then
         local states
-        states=$(grep "states, stored" /tmp/spin_${name// /_}.log | head -1 | awk '{print $1}')
+        states=$(grep "states, stored" "/tmp/spin_${logname}.log" | head -1 | awk '{print $1}')
         echo "PASS: $name ($states states explored)"
         TOTAL_STATES=$((TOTAL_STATES + ${states:-0}))
         PASS=$((PASS + 1))
@@ -72,7 +74,9 @@ run_spin_ltl() {
     # Compile for acceptance cycle checking
     gcc -o pan pan.c -DCOLLAPSE -O2 -w 2>/dev/null
 
-    if ./pan -m"$limit" -a 2>&1 | tee /tmp/spin_ltl_${name// /_}.log | grep -q "errors: 0"; then
+    local logname
+    logname=$(echo "$name" | tr ' ()/' '____')
+    if ./pan -m"$limit" -a 2>&1 | tee "/tmp/spin_ltl_${logname}.log" | grep -q "errors: 0"; then
         echo "PASS: $name (LTL)"
         PASS=$((PASS + 1))
     else
@@ -99,7 +103,9 @@ run_spin_ltl_expect_violation() {
     spin -a "$model" 2>/dev/null
     gcc -o pan pan.c -DCOLLAPSE -O2 -w 2>/dev/null
 
-    if ./pan -m"$limit" -a -N "$property" 2>&1 | tee /tmp/spin_race_${name// /_}.log | grep -q "errors: 0"; then
+    local logname
+    logname=$(echo "$name" | tr ' ()/' '____')
+    if ./pan -m"$limit" -a -N "$property" 2>&1 | tee "/tmp/spin_race_${logname}.log" | grep -q "errors: 0"; then
         echo "NOTE: $name - no race detected (property holds)"
         PASS=$((PASS + 1))
     else
