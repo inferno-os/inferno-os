@@ -34,7 +34,9 @@ NsConstruct: module {
 	# Capabilities to grant to an agent
 	Capabilities: adt {
 		tools:       list of string;       # Tool names to include ("read", "list")
-		paths:       list of string;       # File paths to expose
+		paths:       list of string;       # File paths to expose; prefix-routed:
+		                                   #   /dis/wm  → expose /dis/wm/ to agent
+		                                   #   /n/local/Users/pdfinn/tmp → expose that host path
 		shellcmds:   list of string;       # Shell commands for exec — if non-nil, sh.dis + these are allowed
 		llmconfig:   ref LLMConfig;        # Child's LLM settings
 		fds:         list of int;          # Explicit FD keep-list
@@ -60,6 +62,11 @@ NsConstruct: module {
 	# Returns nil on success, error string on failure
 	restrictns: fn(caps: ref Capabilities): string;
 
+	# Emit namespace manifest for the UI to display.
+	# Writes to /tmp/veltro/.ns/manifest — one entry per line.
+	# Must be called AFTER restrictns() from the restricted namespace.
+	emitmanifest: fn(caps: ref Capabilities);
+
 	# Verify namespace matches expected security policy
 	# Reads /prog/$pid/ns and checks for dangerous paths
 	# expected: list of paths that should be accessible
@@ -69,4 +76,8 @@ NsConstruct: module {
 	# Emit audit log of namespace restriction operations
 	# Writes to /tmp/veltro/.ns/audit/{id}.ns
 	emitauditlog: fn(id: string, ops: list of string);
+
+	# Clean up shadow directories for the current process.
+	# Call on agent exit to reclaim /tmp/veltro/.ns/shadow/{pid}-* entries.
+	cleanup: fn();
 };
