@@ -115,7 +115,10 @@ testConstructors(t: ref T)
 
 testArray(t: ref T)
 {
-	elems := array[] of {json->jvint(1), json->jvint(2), json->jvint(3)};
+	elems := array[3] of ref JValue;
+	elems[0] = json->jvint(1);
+	elems[1] = json->jvint(2);
+	elems[2] = json->jvint(3);
 	a := json->jvarray(elems);
 	t.assert(a.isarray(), "jvarray isarray");
 	t.assert(!a.isobject(), "jvarray not isobject");

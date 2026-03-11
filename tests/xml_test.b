@@ -18,6 +18,7 @@ include "bufio.m";
 
 include "xml.m";
 	xml: Xml;
+	Parser, Attributes: import xml;
 
 include "testing.m";
 	testing: Testing;

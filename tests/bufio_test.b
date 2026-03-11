@@ -231,7 +231,7 @@ testFilePutbGetb(t: ref T)
 		t.fatal(sys->sprint("cannot open %s: %r", TESTFILE));
 		return;
 	}
-	for(i := 0; i < 256; i++) {
+	for(i = 0; i < 256; i++) {
 		v := rb.getb();
 		if(!t.asserteq(v, i, sys->sprint("byte %d", i)))
 			break;
