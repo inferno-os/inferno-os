@@ -267,7 +267,11 @@ $secSrc = @(
     "rsagen.c", "rsafill.c", "rsaencrypt.c", "rsadecrypt.c", "rsaalloc.c", "rsaprivtopub.c",
     "eggen.c", "egencrypt.c", "egdecrypt.c", "egalloc.c", "egprivtopub.c",
     "egsign.c", "egverify.c",
-    "dsagen.c", "dsaalloc.c", "dsaprivtopub.c", "dsasign.c", "dsaverify.c"
+    "dsagen.c", "dsaalloc.c", "dsaprivtopub.c", "dsasign.c", "dsaverify.c",
+    "sha3.c",
+    "mlkem.c", "mlkem_ntt.c", "mlkem_poly.c",
+    "mldsa.c", "mldsa_ntt.c", "mldsa_poly.c",
+    "slhdsa.c", "slhdsa_fors.c", "slhdsa_hash.c", "slhdsa_tree.c", "slhdsa_wots.c"
 )
 $secFlags = @("/I$ROOT\libsec", "/I$ROOT\libmp", "/I$ROOT\include", "/I$ROOT\Nt\amd64\include")
 Compile-CFiles -Dir "." -Sources $secSrc -ExtraFlags $secFlags
@@ -415,7 +419,7 @@ if (-not (Test-Path "$BinDir\limbo.exe")) {
 }
 
 # =============================================
-# Build libinterp (interpreter only, no JIT)
+# Build libinterp (interpreter + AMD64 JIT compiler)
 # =============================================
 Write-Host ""
 Write-Host "=== Building libinterp ===" -ForegroundColor Cyan
@@ -440,7 +444,7 @@ $interpSrc = @(
     "alt.c", "conv.c", "crypt.c", "dec.c", "draw.c", "gc.c", "geom.c",
     "heap.c", "heapaudit.c", "ipint.c", "link.c", "load.c", "math.c",
     "raise.c", "readmod.c", "runt.c", "sign.c", "stack.c", "tk.c",
-    "validstk.c", "xec.c", "das-amd64.c", "keyring.c", "string.c",
+    "validstk.c", "xec.c", "das-amd64.c", "comp-amd64.c", "keyring.c", "string.c",
     "gpu-stub.c"
 )
 $interpFlags = @(
@@ -492,7 +496,7 @@ $emuCFlags = @(
 Write-Host "  Compiling platform sources..."
 $ntSources = @(
     "os.c", "cmd.c", "no_win.c", "fp.c",
-    "stubs-headless.c", "nocomp.c",
+    "stubs-headless.c",
     "devfs.c",
     "ipif6.c"
 )

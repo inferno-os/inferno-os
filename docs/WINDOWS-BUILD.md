@@ -87,6 +87,21 @@ Or with the shell profile loaded (sets up PATH, creates `/tmp`, etc.):
 .\emu\Nt\o.emu.exe -g 1024x768 -r . sh -l -c xenith
 ```
 
+### Lucifer (GUI build)
+
+Lucifer is a three-zone AI interface (conversation, presentation, context) designed for human-AI collaboration. Launch it with:
+
+```powershell
+.\run-lucifer.ps1
+.\run-lucifer.ps1 -Width 1920 -Height 1080    # custom resolution
+```
+
+Or manually:
+
+```powershell
+.\emu\Nt\o.emu.exe -g 1280x800 -pheap=512m -pmain=512m -pimage=512m -r . sh -l -c 'luciuisrv; echo activity create Main > /n/ui/ctl; lucifer'
+```
+
 ### Common Flags
 
 | Flag | Description |

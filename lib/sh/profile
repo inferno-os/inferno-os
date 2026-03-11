@@ -24,9 +24,6 @@ if {~ $emuhost MacOSX Linux}{
 	os sh $infraroot^'/lib/sh/start-llm9p.sh' >[2] /dev/null
 	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
 
-	# Start speech file server (TTS/STT via /n/speech)
-	/dis/veltro/speech9p.dis -e cmd &
-
 	# Mount host filesystem (synchronous)
 	trfs '#U*' /n/local >[2] /dev/null
 	# Get actual HOME from host

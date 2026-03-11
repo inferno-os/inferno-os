@@ -239,7 +239,7 @@ readkbd(void)
 void
 cleanexit(int x)
 {
-	sleep(2);		/* give user a chance to see message */
+	sleep(2);
 	termrestore();
 	ExitProcess(x);
 }
@@ -283,6 +283,31 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 
 	code = ureg->ExceptionRecord->ExceptionCode;
 	// pc = ureg->ContextRecord->Eip;
+
+#ifdef _AMD64_
+	if(code == EXCEPTION_ACCESS_VIOLATION) {
+		ULONG_PTR *info = ureg->ExceptionRecord->ExceptionInformation;
+		CONTEXT *ctx = ureg->ContextRecord;
+		print("ACCESS VIOLATION: %s addr=%p RIP=%p\n",
+			info[0] == 0 ? "read" : info[0] == 1 ? "write" : "exec",
+			(void*)info[1], (void*)ctx->Rip);
+		print("  RAX=%p RBX=%p RCX=%p RDX=%p\n",
+			(void*)ctx->Rax, (void*)ctx->Rbx, (void*)ctx->Rcx, (void*)ctx->Rdx);
+		print("  R10=%p R12=%p R14=%p R15=%p\n",
+			(void*)ctx->R10, (void*)ctx->R12, (void*)ctx->R14, (void*)ctx->R15);
+		print("  RSP=%p RBP=%p RSI=%p RDI=%p\n",
+			(void*)ctx->Rsp, (void*)ctx->Rbp, (void*)ctx->Rsi, (void*)ctx->Rdi);
+		/* Dump top of x86 stack to trace call chain */
+		{
+			ULONG_PTR *sp = (ULONG_PTR*)ctx->Rsp;
+			int j;
+			print("  Stack:");
+			for(j = 0; j < 12; j++)
+				print(" [%d]=%p", j, (void*)sp[j]);
+			print("\n");
+		}
+	}
+#endif
 
 	name = nil;
 	for(i = 0; i < nelem(ecodes); i++) {
@@ -794,6 +819,11 @@ link(char *path, char *next)
 int
 segflush(void *a, ulong n)
 {
+	DWORD old;
+
+	/* Make JIT code executable (W^X: was PAGE_READWRITE during generation) */
+	VirtualProtect(a, n, PAGE_EXECUTE_READ, &old);
+	FlushInstructionCache(GetCurrentProcess(), a, n);
 	return 0;
 }
 

@@ -5,12 +5,13 @@
 | Platform | CPU | Cores | RAM | OS |
 |----------|-----|-------|-----|-----|
 | **AMD64 Linux** | AMD Ryzen 7 H 255 | 16 | 21 GB | Linux 6.14.0 (x86_64) |
+| **AMD64 Windows** | AMD Ryzen 7 255 | 16 | 28 GB | Windows 11 Pro 10.0.26100 |
 | **ARM64 macOS** | Apple M4 | 10 (4P+6E) | 32 GB | macOS 15.4 (Darwin 24.6.0) |
 | **ARM64 Linux** | ARM Cortex-A78AE | 12 | 64 GB | Linux 5.15.148-tegra (Jetson AGX Orin) |
 
 ## JIT Compiler Performance
 
-Both AMD64 and ARM64 JIT compilers translate Dis VM bytecode to native machine code at module load time. The AMD64 JIT (`comp-amd64.c`) targets x86-64 with System V ABI. The ARM64 JIT (`comp-arm64.c`) targets ARMv8-A with AAPCS64 ABI. On macOS, JIT code buffers use `mmap(MAP_JIT)` with `pthread_jit_write_protect_np()` for W^X compliance; Linux uses `mmap(MAP_ANON)`.
+Both AMD64 and ARM64 JIT compilers translate Dis VM bytecode to native machine code at module load time. The AMD64 JIT (`comp-amd64.c`) targets x86-64 with System V ABI on Linux/macOS and Windows x64 ABI on Windows. The ARM64 JIT (`comp-arm64.c`) targets ARMv8-A with AAPCS64 ABI. On macOS, JIT code buffers use `mmap(MAP_JIT)` with `pthread_jit_write_protect_np()` for W^X compliance; Linux uses `mmap(MAP_ANON)`; Windows uses `VirtualAlloc(PAGE_READWRITE)` with `VirtualProtect(PAGE_EXECUTE_READ)` for W^X.
 
 ### Cross-Platform Summary
 
@@ -19,10 +20,11 @@ Two benchmark suites measure JIT speedup: **v1** (6 compute-intensive benchmarks
 | Platform | v1 Interp | v1 JIT | v1 Speedup | v2 Interp | v2 JIT | v2 Speedup |
 |----------|-----------|--------|------------|-----------|--------|------------|
 | AMD64 Linux | 21,255 ms | 1,500 ms | **14.2x** | 1,504 ms | 263 ms | **5.7x** |
+| AMD64 Windows | 19,115 ms | 1,437 ms | **13.3x** | 1,464 ms | 261 ms | **5.6x** |
 | ARM64 macOS | 16,697 ms | 1,735 ms | **9.6x** | 1,086 ms | 413 ms | **2.6x** |
 | ARM64 Linux | 38,320 ms | 4,615 ms | **8.3x** | 2,743 ms | 938 ms | **2.9x** |
 
-The AMD64 JIT achieves the highest speedup ratios (14.2x on v1) due to efficient x86-64 instruction encoding for the Dis VM's register-based bytecode. In absolute terms, AMD64 and Apple M4 JIT performance are comparable (1,500 ms vs 1,735 ms on v1) despite different architectures. The Jetson Cortex-A78AE is roughly 2.5x slower in absolute terms but achieves similar JIT-over-interpreter ratios, confirming the ARM64 JIT generates efficient code on both microarchitectures.
+The AMD64 JIT achieves the highest speedup ratios (14.2x on v1) due to efficient x86-64 instruction encoding for the Dis VM's register-based bytecode. AMD64 Windows matches Linux within 3% on JIT absolute performance (1,437 ms vs 1,500 ms on v1) despite different ABIs and W^X mechanisms, confirming the Windows x64 ABI adaptation (callee-saved RSI/RDI, shadow space) introduces no measurable overhead. In absolute terms, AMD64 and Apple M4 JIT performance are comparable (~1,500 ms vs 1,735 ms on v1) despite different architectures. The Jetson Cortex-A78AE is roughly 2.5x slower in absolute terms but achieves similar JIT-over-interpreter ratios, confirming the ARM64 JIT generates efficient code on both microarchitectures.
 
 The v1-to-v2 speedup reduction reflects benchmark composition: v2 includes function calls (recursive Fibonacci, mutual recursion) where the JIT must still pay runtime overhead for frame allocation, type checking, and garbage collector interaction. v1 is dominated by tight loops where eliminating interpreter dispatch yields the greatest gains.
 
@@ -213,14 +215,15 @@ Go 1.23.4 linux/arm64. Dis VM arena 512 MB.
 - **JIT benchmarks:** `appl/cmd/jitbench.b` (v1, 6 benchmarks), `appl/cmd/jitbench2.b` (v2, 26 benchmarks). Run via `emu -c0` (interpreter) and `emu -c1` (JIT).
 - **Cross-language:** `benchmarks/run-comparison.sh`. Same algorithms with matched parameters and 64-bit integers. C compiled with `cc` (Apple Clang on macOS, GCC on Linux). Go, Java HotSpot (where available), CPython. Run on Apple M4 and Jetson AGX Orin.
 - **Go-on-Dis:** `benchmarks/run.sh`. 16 benchmarks in Go (compiled via `godis`), Limbo, and Native Go. 5 execution modes. Statistics computed per benchmark/mode.
-- **Correctness:** 181/181 JIT correctness tests pass on all three platforms. Benchmark result values match between JIT and interpreter.
-- **Variation:** JIT run-to-run variance <5% on macOS, <1% on Linux. Interpreter variance <5% on all platforms.
+- **Correctness:** 181/181 JIT correctness tests pass on Linux and macOS; 216/216 on Windows. Benchmark result values match between JIT and interpreter on all platforms.
+- **Variation:** JIT run-to-run variance <5% on macOS and Windows, <1% on Linux. Interpreter variance <5% on all platforms. Windows system timer resolution (~15.6 ms) limits per-benchmark precision for fast tests; totals and longer benchmarks are unaffected.
 
 ## Detailed Results
 
 Per-platform breakdowns with all individual runs and v2 per-benchmark data:
 
 - [AMD64 Linux](arm64-jit/BENCHMARK-amd64-Linux.md)
+- [AMD64 Windows](arm64-jit/BENCHMARK-amd64-Windows.md)
 - [ARM64 macOS](arm64-jit/BENCHMARK-arm64-macOS.md)
 - [ARM64 Linux](arm64-jit/BENCHMARK-arm64-Linux.md)
 

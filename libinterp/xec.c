@@ -724,6 +724,21 @@ OP(ret)
 	R.FP = f->fp;
 	if(R.FP == nil) {
 		R.FP = (uchar*)f;
+#ifdef _WIN32
+		/*
+		 * On Windows x64, longjmp uses RtlUnwindEx which requires
+		 * stack unwind info (.pdata/.xdata) for every frame on the
+		 * stack.  JIT code has no unwind tables, so longjmp through
+		 * JIT frames crashes.  Instead, set p->kill so the next
+		 * xec() call raises the error from C code (which has proper
+		 * unwind info), and set R.t to exit comvec via TCHECK.
+		 */
+		if(R.M->compiled) {
+			currun()->kill = "";
+			R.t = 1;
+			return;
+		}
+#endif
 		error("");
 	}
 	R.SP = (uchar*)f;
@@ -852,13 +867,6 @@ OP(mcall)
 	R.MP = R.M->MP;
 	R.PC = l->pc;
 	R.t = 1;
-
-	if(cflag > 1) {
-		print("mcall: o=%d ml=%p ml->compiled=%d ml->prog=%p\n",
-			o, ml, ml->compiled, ml->prog);
-		print("mcall: R.PC=%p (l->pc) caller_compiled=%d\n",
-			R.PC, f->mr->compiled);
-	}
 
 	if(f->mr->compiled != R.M->compiled)
 		R.IC = 1;
@@ -1752,29 +1760,6 @@ xec(Prog *p)
 		do {
 		dec[R.PC->add]();
 		op = R.PC->op;
-		if(op >= 256 || optab[op] == badop) {
-			Frame *df;
-			int depth;
-			fprint(2, "BADOP in xec: op=%d PC=%p\n", op, (void*)R.PC);
-			fprint(2, "  R.M=%p compiled=%d prog=%p\n",
-				(void*)R.M, R.M->compiled, (void*)R.M->prog);
-			if(R.M->m)
-				fprint(2, "  Module: name=%s compiled=%d prog=%p\n",
-					R.M->m->name ? R.M->m->name : "(nil)",
-					R.M->m->compiled, (void*)R.M->m->prog);
-			fprint(2, "  R.FP=%p R.MP=%p R.SP=%p R.IC=%d R.t=%d\n",
-				(void*)R.FP, (void*)R.MP, (void*)R.SP, R.IC, R.t);
-			/* Walk frame chain to find the transition that caused this */
-			df = (Frame*)R.FP;
-			for(depth = 0; depth < 8 && df != nil && df->fp != nil; depth++) {
-				fprint(2, "  frame[%d]: lr=%p fp=%p mr=%p",
-					depth, (void*)df->lr, (void*)df->fp, (void*)df->mr);
-				if(df->mr && df->mr->m)
-					fprint(2, " (%s c=%d)", df->mr->m->name ? df->mr->m->name : "?", df->mr->compiled);
-				fprint(2, "\n");
-				df = (Frame*)df->fp;
-			}
-		}
 		R.PC++;
 		optab[op]();
 	} while(--R.IC != 0);

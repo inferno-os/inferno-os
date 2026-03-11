@@ -129,7 +129,7 @@ freearray(Heap *h, int swept)
 		}
 	}
 	if(t->ref-- == 1) {
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__x86_64__))
+#if defined(__aarch64__) || defined(__x86_64__) || defined(_M_X64)
 		if(t->initialize == nil)
 #endif
 		free(t->initialize);
@@ -152,7 +152,7 @@ freelist(Heap *h, int swept)
 			freeptrs(l->data, t);
 		t->ref--;
 		if(t->ref == 0) {
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__x86_64__))
+#if defined(__aarch64__) || defined(__x86_64__) || defined(_M_X64)
 			if(t->initialize == nil)
 #endif
 			free(t->initialize);
@@ -173,7 +173,7 @@ freelist(Heap *h, int swept)
 				freeptrs(l->data, t);
 			t->ref--;
 			if(t->ref == 0) {
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__x86_64__))
+#if defined(__aarch64__) || defined(__x86_64__) || defined(_M_X64)
 				if(t->initialize == nil)
 #endif
 				free(t->initialize);
@@ -286,8 +286,8 @@ freetype(Type *t)
 	if(t == nil || --t->ref > 0)
 		return;
 
-#if defined(__aarch64__) || defined(__x86_64__)
-	/* JIT typecom() uses mmap for type code; skip free() to avoid pool panic.
+#if defined(__aarch64__) || defined(__x86_64__) || defined(_M_X64)
+	/* JIT typecom() uses mmap/VirtualAlloc for type code; skip free() to avoid pool panic.
 	 * This leaks type code on module unload. */
 	if(t->initialize == nil)
 #endif
