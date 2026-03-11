@@ -181,6 +181,10 @@ AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline: con byte iota;
 DSPflex: con 10;
 DSPinline_flex: con 11;
 
+# Display extension for grid
+DSPgrid: con 12;
+DSPinline_grid: con 13;
+
 # Text-decoration style types
 TDSsolid, TDSdotted, TDSdashed, TDSdouble, TDSwavy: con byte iota;
 
@@ -323,6 +327,16 @@ ComputedStyle: adt
 
 	# CSS Custom Properties (var())
 	customprops: list of (string, string);	# (--name, value) pairs
+
+	# CSS Grid Layout
+	grid_template_columns: string;	# raw track list: "1fr 300px auto"
+	grid_template_rows: string;	# raw track list
+	grid_gap_row: int;		# row gap in pixels
+	grid_gap_col: int;		# column gap in pixels
+	grid_column_start: int;		# grid-column-start (1-based, 0=auto)
+	grid_column_end: int;		# grid-column-end (1-based, 0=auto)
+	grid_row_start: int;		# grid-row-start (1-based, 0=auto)
+	grid_row_end: int;		# grid-row-end (1-based, 0=auto)
 
 	new: fn() : ref ComputedStyle;
 	tostyleinfo: fn(cs: self ref ComputedStyle) : StyleInfo;

@@ -4117,6 +4117,8 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 		"table-caption" => si.display = DSPTABLECAPTION;
 		"flex" => si.display = DSPflex;
 		"inline-flex" => si.display = DSPinline_flex;
+		"grid" => si.display = DSPgrid;
+		"inline-grid" => si.display = DSPinline_grid;
 		}
 	}
 }
@@ -4232,6 +4234,8 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"table-caption" => cs.display = DSPTABLECAPTION;
 		"flex" => cs.display = DSPflex;
 		"inline-flex" => cs.display = DSPinline_flex;
+		"grid" => cs.display = DSPgrid;
+		"inline-grid" => cs.display = DSPinline_grid;
 		}
 	"margin" =>
 		parsebox4(cs.margin, val);
@@ -4534,8 +4538,37 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		parseflex_shorthand(cs, val);
 	"order" =>
 		cs.order = parsepx(val);
-	"gap" or "row-gap" =>
+	"gap" =>
+		gapv := parsepx(val);
+		cs.gap = gapv;
+		cs.grid_gap_row = gapv;
+		cs.grid_gap_col = gapv;
+	"row-gap" =>
 		cs.gap = parsepx(val);
+		cs.grid_gap_row = parsepx(val);
+	"grid-column-gap" =>
+		cs.grid_gap_col = parsepx(val);
+	# CSS Grid layout properties
+	"grid-template-columns" =>
+		cs.grid_template_columns = val;
+	"grid-template-rows" =>
+		cs.grid_template_rows = val;
+	"grid-column-start" =>
+		cs.grid_column_start = parsepx(val);
+	"grid-column-end" =>
+		cs.grid_column_end = parsepx(val);
+	"grid-row-start" =>
+		cs.grid_row_start = parsepx(val);
+	"grid-row-end" =>
+		cs.grid_row_end = parsepx(val);
+	"grid-column" =>
+		parsegridline(cs, val, 1);
+	"grid-row" =>
+		parsegridline(cs, val, 0);
+	"grid-gap" =>
+		ggv := parsepx(val);
+		cs.grid_gap_row = ggv;
+		cs.grid_gap_col = ggv;
 	# CSS3 transforms and transitions (store raw values)
 	"transform" =>
 		cs.transform = val;
@@ -4557,10 +4590,15 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		else
 			cs.column_width = parsepx(val);
 	"column-gap" =>
-		if(val == "normal")
+		if(val == "normal") {
 			cs.column_gap = 16;	# default 1em
-		else
-			cs.column_gap = parsepx(val);
+			cs.grid_gap_col = 16;
+		}
+		else {
+			cg := parsepx(val);
+			cs.column_gap = cg;
+			cs.grid_gap_col = cg;
+		}
 	"columns" =>
 		parsecolumns_shorthand(cs, val);
 	"column-rule" =>
@@ -4752,6 +4790,38 @@ parseflex_shorthand(cs: ref ComputedStyle, val: string)
 		cs.flex_shrink = parsepxfrac(parts[1]);
 	if(len parts >= 3)
 		cs.flex_basis = parsedimen(parts[2]);
+}
+
+# Parse grid-column or grid-row shorthand: "start / end" or just "start"
+parsegridline(cs: ref ComputedStyle, val: string, iscol: int)
+{
+	# Split on " / "
+	slash := -1;
+	for(i := 0; i < len val - 2; i++) {
+		if(val[i] == ' ' && val[i+1] == '/' && val[i+2] == ' ') {
+			slash = i;
+			break;
+		}
+	}
+	if(slash >= 0) {
+		startval := val[:slash];
+		endval := val[slash+3:];
+		gs := parsepx(startval);
+		ge := parsepx(endval);
+		if(iscol) {
+			cs.grid_column_start = gs;
+			cs.grid_column_end = ge;
+		} else {
+			cs.grid_row_start = gs;
+			cs.grid_row_end = ge;
+		}
+	} else {
+		gv := parsepx(val);
+		if(iscol)
+			cs.grid_column_start = gv;
+		else
+			cs.grid_row_start = gv;
+	}
 }
 
 # Parse a pixel value from a CSS string like "10px", "2em", "1rem", or bare "10"
@@ -5734,7 +5804,15 @@ ComputedStyle.new() : ref ComputedStyle
 		nil,			# bgimage_url
 		BGRrepeat,		# bgrepeat
 		0, 0,			# bgposition_x, bgposition_y
-		nil			# customprops
+		nil,			# customprops
+		nil,			# grid_template_columns
+		nil,			# grid_template_rows
+		0,			# grid_gap_row
+		0,			# grid_gap_col
+		0,			# grid_column_start
+		0,			# grid_column_end
+		0,			# grid_row_start
+		0			# grid_row_end
 	);
 }
 

@@ -59,6 +59,7 @@ W: Widget;
 	TOclip, TOellipsis,
 	DSPINLINEBLOCK,
 	DSPflex, DSPinline_flex,
+	DSPgrid, DSPinline_grid,
 	FDrow, FDrow_reverse, FDcolumn, FDcolumn_reverse,
 	FWnowrap, FWwrap, FWwrap_reverse,
 	JCflex_start, JCflex_end, JCcenter, JCspace_between, JCspace_around, JCspace_evenly,
@@ -5295,8 +5296,10 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 	if(cs != nil && cs.text_transform != B->TTnone)
 		applytexttransform(box.content, cs.text_transform);
 
-	# Flexbox layout or normal flow
-	if(cs != nil && (cs.display == DSPflex || cs.display == DSPinline_flex))
+	# Grid, flexbox, or normal flow layout
+	if(cs != nil && (cs.display == DSPgrid || cs.display == DSPinline_grid))
+		laygriditems(f, slay, box.content, cs);
+	else if(cs != nil && (cs.display == DSPflex || cs.display == DSPinline_flex))
 		layflexitems(f, slay, box.content, cs);
 	else
 		layalistitems(f, slay, box.content);
@@ -5848,4 +5851,367 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 				lay.height = 0;
 		}
 	}
+}
+
+# CSS Grid layout: arrange items into a grid defined by grid-template-columns/rows.
+# Supports fr units, auto, and fixed (px) track sizes.
+laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
+{
+	measure(f, items);
+
+	# Clear existing lines
+	for(l := lay.start; l.next != lay.end; ) {
+		nl := l.next;
+		l.next = nl.next;
+	}
+	lay.start.next = lay.end;
+	lay.end.prev = lay.start;
+	lay.width = 0;
+	lay.height = 0;
+
+	# Count items
+	nitems := 0;
+	for(it := items; it != nil; it = it.next)
+		nitems++;
+	if(nitems == 0)
+		return;
+
+	avail := lay.targetwidth;
+	colgap := cs.grid_gap_col;
+	rowgap := cs.grid_gap_row;
+
+	# Parse column tracks
+	ncols := 0;
+	colwidths: array of int;
+	if(cs.grid_template_columns != nil && cs.grid_template_columns != "")
+		colwidths = parsegridtracks(cs.grid_template_columns, avail, colgap, items);
+	if(colwidths == nil) {
+		# No columns specified: single column
+		colwidths = array[1] of { * => avail };
+	}
+	ncols = len colwidths;
+
+	# Calculate number of rows needed
+	nrows := (nitems + ncols - 1) / ncols;
+
+	# Layout each item into its grid cell to determine row heights
+	rowheights := array[nrows] of { * => 0 };
+
+	# Place items into grid: row by row, left to right (auto placement)
+	itemarray := array[nitems] of ref Item;
+	i := 0;
+	for(it = items; it != nil; it = it.next) {
+		itemarray[i] = it;
+		i++;
+	}
+
+	# Layout each item at its column width to get actual heights
+	for(i = 0; i < nitems; i++) {
+		col := i % ncols;
+		row := i / ncols;
+		it = itemarray[i];
+
+		# For Ibox items, re-layout at the column width
+		pick box := it {
+		Ibox =>
+			if(box.layid >= 0 && box.layid < len f.sublays) {
+				slay := f.sublays[box.layid];
+				slay.targetwidth = colwidths[col];
+				# Re-layout box content
+				bcs := box.cstyle;
+				if(bcs != nil && (bcs.display == DSPflex || bcs.display == DSPinline_flex))
+					layflexitems(f, slay, box.content, bcs);
+				else if(bcs != nil && (bcs.display == DSPgrid || bcs.display == DSPinline_grid))
+					laygriditems(f, slay, box.content, bcs);
+				else
+					layalistitems(f, slay, box.content);
+				it.width = colwidths[col];
+				it.height = slay.height;
+				it.ascent = it.height;
+			}
+		* =>
+			it.width = colwidths[col];
+		}
+
+		if(it.height > rowheights[row])
+			rowheights[row] = it.height;
+	}
+
+	# Parse row tracks if specified
+	if(cs.grid_template_rows != nil && cs.grid_template_rows != "") {
+		totalh := 0;
+		for(r := 0; r < nrows; r++)
+			totalh += rowheights[r];
+		totalh += rowgap * (nrows - 1);
+		specrows := parsegridtracks(cs.grid_template_rows, totalh, rowgap, nil);
+		if(specrows != nil) {
+			for(r := 0; r < len specrows && r < nrows; r++)
+				if(specrows[r] > rowheights[r])
+					rowheights[r] = specrows[r];
+		}
+	}
+
+	# Position each item and create lines
+	y := 0;
+	for(row := 0; row < nrows; row++) {
+		x := 0;
+		for(col := 0; col < ncols; col++) {
+			idx := row * ncols + col;
+			if(idx >= nitems)
+				break;
+
+			it = itemarray[idx];
+			it.next = nil;
+
+			nl := Line.new();
+			nl.items = it;
+			nl.pos = Point(x, y);
+			nl.width = colwidths[col];
+			nl.height = rowheights[row];
+			nl.ascent = it.ascent;
+			nl.flags |= Lchanged;
+
+			# Stretch item height to fill row
+			it.height = rowheights[row];
+			it.ascent = rowheights[row];
+
+			# Insert line
+			nl.prev = lay.end.prev;
+			nl.next = lay.end;
+			lay.end.prev.next = nl;
+			lay.end.prev = nl;
+
+			x += colwidths[col] + colgap;
+		}
+		y += rowheights[row] + rowgap;
+	}
+
+	lay.width = avail;
+	if(y > rowgap)
+		lay.height = y - rowgap;
+	else
+		lay.height = 0;
+}
+
+# Parse a CSS grid track list like "1fr 300px auto 2fr" and return pixel widths.
+# Handles: fixed px values, fr fractional units, auto (min-content from items), percentages.
+parsegridtracks(spec: string, available, gap: int, items: ref Item) : array of int
+{
+	# Expand repeat() functions: repeat(3, 1fr) => 1fr 1fr 1fr
+	spec = expandrepeat(spec);
+
+	# Split spec by whitespace
+	parts: list of string;
+	nparts := 0;
+	i := 0;
+	for(;;) {
+		# Skip whitespace
+		for(; i < len spec && (spec[i] == ' ' || spec[i] == '\t'); i++)
+			;
+		if(i >= len spec)
+			break;
+		# Read token (handle repeat() and minmax() by tracking parens)
+		start := i;
+		depth := 0;
+		for(; i < len spec; i++) {
+			if(spec[i] == '(')
+				depth++;
+			else if(spec[i] == ')')
+				depth--;
+			else if((spec[i] == ' ' || spec[i] == '\t') && depth == 0)
+				break;
+		}
+		parts = spec[start:i] :: parts;
+		nparts++;
+	}
+
+	# Reverse parts list into array
+	tracks := array[nparts] of string;
+	j := nparts - 1;
+	for(; parts != nil; parts = tl parts) {
+		tracks[j] = hd parts;
+		j--;
+	}
+
+	if(nparts == 0)
+		return nil;
+
+	widths := array[nparts] of { * => 0 };
+	totalfr := 0;
+	fixedtotal := 0;
+	totalgap := gap * (nparts - 1);
+
+	# First pass: resolve fixed sizes and count fr units
+	for(i = 0; i < nparts; i++) {
+		t := tracks[i];
+		if(len t > 2 && t[len t - 2:] == "fr") {
+			# fr unit: parse the number before "fr"
+			frval := parsefloatstr(t[:len t - 2]);
+			if(frval <= 0)
+				frval = 1;
+			# Store fr*100 temporarily as negative to distinguish
+			widths[i] = -(frval);
+			totalfr += frval;
+		} else if(t == "auto") {
+			# Auto: use item's natural width if available
+			w := 0;
+			if(items != nil) {
+				# Find the item in this column
+				it := items;
+				for(k := 0; k < i && it != nil; k++)
+					it = it.next;
+				if(it != nil)
+					w = it.width;
+			}
+			if(w == 0)
+				w = 50;	# minimum auto width
+			widths[i] = w;
+			fixedtotal += w;
+		} else if(len t > 1 && t[len t - 1] == '%') {
+			pct := parsefloatstr(t[:len t - 1]);
+			widths[i] = (available * pct) / 100;
+			fixedtotal += widths[i];
+		} else {
+			# Fixed size (px, em, etc.)
+			widths[i] = parsepxval(t);
+			fixedtotal += widths[i];
+		}
+	}
+
+	# Second pass: distribute remaining space among fr tracks
+	if(totalfr > 0) {
+		remaining := available - fixedtotal - totalgap;
+		if(remaining < 0)
+			remaining = 0;
+		for(i = 0; i < nparts; i++) {
+			if(widths[i] < 0) {
+				frval := -widths[i];
+				widths[i] = (remaining * frval) / totalfr;
+			}
+		}
+	}
+
+	return widths;
+}
+
+# Parse a float-like string and return integer value (for fr units and percentages)
+parsefloatstr(s: string) : int
+{
+	if(s == nil || s == "")
+		return 0;
+	neg := 0;
+	i := 0;
+	if(i < len s && s[i] == '-') {
+		neg = 1;
+		i++;
+	}
+	n := 0;
+	for(; i < len s && s[i] >= '0' && s[i] <= '9'; i++)
+		n = n * 10 + s[i] - '0';
+	# Handle decimal part
+	if(i < len s && s[i] == '.') {
+		i++;
+		# Just get first digit after decimal for rounding
+		if(i < len s && s[i] >= '0' && s[i] <= '9') {
+			if(s[i] >= '5')
+				n++;
+		}
+	}
+	if(n == 0 && neg == 0)
+		n = 1;	# minimum 1 for fr values
+	if(neg)
+		return -n;
+	return n;
+}
+
+# Parse a pixel value from a track size string
+parsepxval(s: string) : int
+{
+	if(s == nil || s == "")
+		return 0;
+	neg := 0;
+	i := 0;
+	if(i < len s && s[i] == '-') {
+		neg = 1;
+		i++;
+	}
+	n := 0;
+	for(; i < len s && s[i] >= '0' && s[i] <= '9'; i++)
+		n = n * 10 + s[i] - '0';
+	# Handle decimal
+	if(i < len s && s[i] == '.') {
+		i++;
+		if(i < len s && s[i] >= '0' && s[i] <= '9') {
+			if(s[i] >= '5')
+				n++;
+		}
+	}
+	# em/rem: approximate at 16px/em
+	if(i < len s - 1 && (s[i] == 'e' || s[i] == 'r'))
+		n = n * 16;
+	if(neg)
+		return -n;
+	return n;
+}
+
+# Expand repeat() in grid track specifications.
+# repeat(3, 1fr) => "1fr 1fr 1fr"
+# repeat(2, 100px 1fr) => "100px 1fr 100px 1fr"
+expandrepeat(spec: string) : string
+{
+	# Quick check: no repeat() means nothing to do
+	hasrepeat := 0;
+	for(k := 0; k + 6 < len spec; k++) {
+		if(spec[k:k+7] == "repeat(") {
+			hasrepeat = 1;
+			break;
+		}
+	}
+	if(hasrepeat == 0)
+		return spec;
+
+	result := "";
+	i := 0;
+	for(; i < len spec; ) {
+		# Check for "repeat("
+		if(i + 7 <= len spec && spec[i:i+7] == "repeat(") {
+			i += 7;
+			# Parse count
+			count := 0;
+			for(; i < len spec && spec[i] >= '0' && spec[i] <= '9'; i++)
+				count = count * 10 + spec[i] - '0';
+			if(count <= 0)
+				count = 1;
+			if(count > 20)
+				count = 20;	# sanity limit
+			# Skip comma and whitespace
+			for(; i < len spec && (spec[i] == ',' || spec[i] == ' ' || spec[i] == '\t'); i++)
+				;
+			# Read until closing paren
+			start := i;
+			depth := 0;
+			for(; i < len spec; i++) {
+				if(spec[i] == '(')
+					depth++;
+				else if(spec[i] == ')') {
+					if(depth == 0)
+						break;
+					depth--;
+				}
+			}
+			pattern := spec[start:i];
+			if(i < len spec)
+				i++;	# skip ')'
+			# Expand
+			for(c := 0; c < count; c++) {
+				if(len result > 0)
+					result += " ";
+				result += pattern;
+			}
+		} else {
+			result += spec[i:i+1];
+			i++;
+		}
+	}
+	return result;
 }
