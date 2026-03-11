@@ -5168,8 +5168,8 @@ parsestyleblock_css(is: ref ItemSource, sheet: ref CSS->Stylesheet)
 				}
 			}
 		Media =>
-			# Filter @media rules: only apply screen-compatible media
-			if(!medialistok(s.media))
+			# Filter @media rules: evaluate media queries against viewport
+			if(!mediaqueriesok(s.queries, is))
 				continue;
 			for(rules := s.rules; rules != nil; rules = tl rules) {
 				r := hd rules;
@@ -6330,7 +6330,7 @@ mediaok(media: string) : int
 	return 0;
 }
 
-# Check if a list of media type strings (from @media rule) is screen-compatible.
+# Check if a list of media type strings (from @import rule) is screen-compatible.
 medialistok(media: list of string) : int
 {
 	if(media == nil)
@@ -6341,6 +6341,106 @@ medialistok(media: list of string) : int
 			return 1;
 	}
 	return 0;	# only had print/speech/etc.
+}
+
+# Evaluate a list of CSS3 media queries against the current viewport.
+# Returns 1 if any query matches (OR logic between queries).
+mediaqueriesok(queries: list of ref CSS->MediaQuery, is: ref ItemSource) : int
+{
+	if(queries == nil)
+		return 1;	# no queries = applies to all
+
+	# Get viewport dimensions from frame
+	vpw := 800;	# fallback defaults
+	vph := 600;
+	if(is.frame != nil) {
+		vpw = is.frame.cr.dx();
+		vph = is.frame.cr.dy();
+		if(vpw <= 0) vpw = 800;
+		if(vph <= 0) vph = 600;
+	}
+
+	for(ql := queries; ql != nil; ql = tl ql) {
+		q := hd ql;
+		result := evalmediaquery(q, vpw, vph);
+		if(q.negate)
+			result = !result;
+		if(result)
+			return 1;	# any matching query is sufficient
+	}
+	return 0;
+}
+
+# Evaluate a single media query
+evalmediaquery(q: ref CSS->MediaQuery, vpw, vph: int) : int
+{
+	# Check media type
+	if(q.mediatype != "" && q.mediatype != "all" && q.mediatype != "screen")
+		return 0;
+
+	# Evaluate all features (AND logic)
+	for(fl := q.features; fl != nil; fl = tl fl) {
+		f := hd fl;
+		if(!evalmediafeature(f, vpw, vph))
+			return 0;
+	}
+	return 1;
+}
+
+# Evaluate a single media feature against viewport dimensions
+evalmediafeature(f: ref CSS->MediaFeature, vpw, vph: int) : int
+{
+	if(f.value == nil || f.value == "") {
+		# Bare feature — e.g., (color) — assume true for common features
+		case f.name {
+		"color" or "grid" or "hover" or "pointer" =>
+			return 1;
+		}
+		return 1;	# unknown bare features: assume true
+	}
+
+	# Parse the feature value as pixels
+	fval := parsepx(f.value);
+
+	case f.name {
+	"width" =>
+		return vpw == fval;
+	"min-width" =>
+		return vpw >= fval;
+	"max-width" =>
+		return vpw <= fval;
+	"height" =>
+		return vph == fval;
+	"min-height" =>
+		return vph >= fval;
+	"max-height" =>
+		return vph <= fval;
+	"device-width" or "min-device-width" =>
+		return vpw >= fval;
+	"max-device-width" =>
+		return vpw <= fval;
+	"device-height" or "min-device-height" =>
+		return vph >= fval;
+	"max-device-height" =>
+		return vph <= fval;
+	"min-resolution" =>
+		return 1;	# assume we meet minimum resolution
+	"max-resolution" =>
+		return 1;
+	"orientation" =>
+		# value is "portrait" or "landscape" (not a pixel value)
+		if(f.value == "portrait")
+			return vph >= vpw;
+		if(f.value == "landscape")
+			return vpw >= vph;
+		return 1;
+	"prefers-color-scheme" =>
+		# Always match "light" for now
+		return f.value == "light";
+	"prefers-reduced-motion" =>
+		return f.value == "no-preference";
+	}
+	return 1;	# unknown features: assume true (permissive)
 }
 
 # Fetch an external CSS stylesheet and apply its rules.

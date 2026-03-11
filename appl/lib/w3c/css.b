@@ -178,8 +178,8 @@ stylesheet(p: ref Cparse): (ref Stylesheet, string)
 	do{
 		while((c := p.get()) == ATKEYWORD)
 			case p.value {
-			"@media" =>	# medium[,medium]* { ruleset*}
-				media := medialist(p);
+			"@media" =>	# media_query_list { ruleset* }
+				queries := mediaquerylist(p);
 				if(!itisa(p, '{')){
 					p.synerr("bad @media");
 					skipatrule("@media", p);
@@ -191,7 +191,7 @@ stylesheet(p: ref Cparse): (ref Stylesheet, string)
 					if(rule != nil)
 						rules = rule :: rules;
 				}while(!itisa(p, '}') && !p.eof);
-				stmts = ref Statement.Media(media, rev(rules)) :: stmts;
+				stmts = ref Statement.Media(queries, rev(rules)) :: stmts;
 			"@page" =>	# [:ident]? { declaration [; declaration]* }
 				pseudo: string;
 				if(itisa(p, PSEUDO))
@@ -248,6 +248,155 @@ medialist(p: ref Cparse): list of string
 		media = p.value :: media;
 	}while(itisa(p, ','));
 	return rev(media);
+}
+
+# Parse a CSS3 media query list: query [, query]*
+# Each query: [not|only]? mediatype [and (feature[:value])]* | (feature[:value]) [and ...]*
+mediaquerylist(p: ref Cparse): list of ref MediaQuery
+{
+	queries: list of ref MediaQuery;
+	do {
+		q := mediaquery(p);
+		if(q != nil)
+			queries = q :: queries;
+	} while(itisa(p, ','));
+	# reverse to preserve order
+	ql := queries;
+	queries = nil;
+	for(; ql != nil; ql = tl ql)
+		queries = hd ql :: queries;
+	return queries;
+}
+
+# Parse a single media query
+mediaquery(p: ref Cparse): ref MediaQuery
+{
+	negate := 0;
+	mediatype := "";
+	features: list of ref MediaFeature;
+
+	c := p.get();
+	if(c == '(') {
+		# Starts with (feature) — no media type
+		p.unget(c);
+		f := mediafeature(p);
+		if(f != nil)
+			features = f :: features;
+	} else if(c == IDENT) {
+		val := lowercase(p.value);
+		if(val == "not") {
+			negate = 1;
+			c = p.get();
+			if(c != IDENT) {
+				p.unget(c);
+				return ref MediaQuery("all", nil, negate);
+			}
+			mediatype = lowercase(p.value);
+		} else if(val == "only") {
+			# "only" is ignored (compatibility keyword)
+			c = p.get();
+			if(c != IDENT) {
+				p.unget(c);
+				return ref MediaQuery("all", nil, 0);
+			}
+			mediatype = lowercase(p.value);
+		} else {
+			mediatype = val;
+		}
+	} else {
+		p.unget(c);
+		return ref MediaQuery("all", nil, 0);
+	}
+
+	# Parse optional "and (feature)" clauses
+	for(;;) {
+		c = p.get();
+		if(c != IDENT || lowercase(p.value) != "and") {
+			p.unget(c);
+			break;
+		}
+		f := mediafeature(p);
+		if(f != nil)
+			features = f :: features;
+	}
+
+	# Reverse features to preserve order
+	fl := features;
+	features = nil;
+	for(; fl != nil; fl = tl fl)
+		features = hd fl :: features;
+
+	return ref MediaQuery(mediatype, features, negate);
+}
+
+# Parse a single media feature: ( name [: value] )
+mediafeature(p: ref Cparse): ref MediaFeature
+{
+	if(!itisa(p, '('))
+		return nil;
+
+	c := p.get();
+	if(c != IDENT) {
+		# Skip to closing paren
+		p.unget(c);
+		skipto_paren(p);
+		return nil;
+	}
+	fname := lowercase(p.value);
+	fval: string;
+
+	c = p.get();
+	if(c == ':') {
+		# Read value tokens until )
+		fval = "";
+		for(;;) {
+			c = p.get();
+			if(c == ')' || c < 0)
+				break;
+			if(fval != "")
+				fval += " ";
+			case c {
+			NUMBER =>
+				fval += p.value;
+			UNIT =>
+				fval += p.value + p.suffix;
+			PERCENTAGE =>
+				fval += p.value + "%";
+			IDENT =>
+				fval += p.value;
+			* =>
+				# Unknown token in feature value
+				fval += sys->sprint("%c", c);
+			}
+		}
+		# c should be ')' here; if not, we consumed past it
+	} else if(c == ')') {
+		# Bare feature name, no value
+		;
+	} else {
+		p.unget(c);
+		skipto_paren(p);
+	}
+
+	return ref MediaFeature(fname, fval);
+}
+
+# Skip tokens until matching closing paren
+skipto_paren(p: ref Cparse)
+{
+	depth := 1;
+	for(;;) {
+		c := p.get();
+		if(c < 0)
+			return;
+		if(c == '(')
+			depth++;
+		else if(c == ')') {
+			depth--;
+			if(depth <= 0)
+				return;
+		}
+	}
 }
 
 itisa(p: ref Cparse, expect: int): int
