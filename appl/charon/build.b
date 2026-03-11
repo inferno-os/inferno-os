@@ -4141,10 +4141,38 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		c := color(val, STYLNONE);
 		if(c != STYLNONE)
 			cs.color = c;
-	"background-color" or "background" =>
+	"background-color" =>
 		c := color(val, STYLNONE);
 		if(c != STYLNONE)
 			cs.bgcolor = c;
+	"background" =>
+		# Shorthand: may contain color, url(), gradient, repeat, position
+		parsebg_shorthand(cs, val);
+	"background-image" =>
+		if(val == "none") {
+			cs.bgimage_url = nil;
+		} else {
+			u := extractcssurl(val);
+			if(u != nil)
+				cs.bgimage_url = u;
+			else {
+				# Try gradient fallback: extract first color
+				gc := gradient_fallback_color(val);
+				if(gc != STYLNONE)
+					cs.bgcolor = gc;
+			}
+		}
+	"background-repeat" =>
+		case val {
+		"repeat" => cs.bgrepeat = BGRrepeat;
+		"no-repeat" => cs.bgrepeat = BGRno_repeat;
+		"repeat-x" => cs.bgrepeat = BGRrepeat_x;
+		"repeat-y" => cs.bgrepeat = BGRrepeat_y;
+		}
+	"background-position" =>
+		parsebgposition(cs, val);
+	"background-size" or "background-attachment" or "background-origin" or "background-clip" =>
+		;	# recognized but not yet implemented
 	"text-align" =>
 		case val {
 		"left" => cs.halign = Aleft;
@@ -5129,6 +5157,154 @@ splitwords(s: string) : array of string
 	return a;
 }
 
+# Extract a URL from a CSS url() value: url(foo.png), url("foo.png"), url('foo.png')
+extractcssurl(val: string) : string
+{
+	i := 0;
+	# Find "url("
+	for(; i + 3 < len val; i++)
+		if(val[i] == 'u' && val[i+1] == 'r' && val[i+2] == 'l' && val[i+3] == '(')
+			break;
+	if(i + 3 >= len val)
+		return nil;
+	i += 4;
+	# Skip whitespace
+	for(; i < len val && (val[i] == ' ' || val[i] == '\t'); )
+		i++;
+	if(i >= len val)
+		return nil;
+	# Check for quotes
+	quote := 0;
+	if(val[i] == '"' || val[i] == '\'') {
+		quote = val[i];
+		i++;
+	}
+	start := i;
+	if(quote) {
+		for(; i < len val && val[i] != quote; )
+			i++;
+	} else {
+		for(; i < len val && val[i] != ')' && val[i] != ' '; )
+			i++;
+	}
+	if(i <= start)
+		return nil;
+	return val[start:i];
+}
+
+# Parse background shorthand: "background: color url() repeat position"
+parsebg_shorthand(cs: ref ComputedStyle, val: string)
+{
+	# Try to extract color
+	c := color(val, STYLNONE);
+	if(c != STYLNONE)
+		cs.bgcolor = c;
+
+	# Try to extract url()
+	u := extractcssurl(val);
+	if(u != nil)
+		cs.bgimage_url = u;
+
+	# Try gradient fallback
+	if(u == nil) {
+		gc := gradient_fallback_color(val);
+		if(gc != STYLNONE && c == STYLNONE)
+			cs.bgcolor = gc;
+	}
+
+	# Check for repeat keywords
+	if(containsword(val, "no-repeat"))
+		cs.bgrepeat = BGRno_repeat;
+	else if(containsword(val, "repeat-x"))
+		cs.bgrepeat = BGRrepeat_x;
+	else if(containsword(val, "repeat-y"))
+		cs.bgrepeat = BGRrepeat_y;
+}
+
+# Check if a value string contains a word (space-separated)
+containsword(val, word: string) : int
+{
+	wl := len word;
+	for(i := 0; i + wl <= len val; i++) {
+		if(val[i:i+wl] == word) {
+			# Check word boundaries
+			if((i == 0 || val[i-1] == ' ') && (i+wl >= len val || val[i+wl] == ' '))
+				return 1;
+		}
+	}
+	return 0;
+}
+
+# Extract a fallback solid color from a CSS gradient function.
+# For "linear-gradient(to right, #333, #666)" returns color of first color stop.
+# For "linear-gradient(90deg, red, blue)" returns first color.
+gradient_fallback_color(val: string) : int
+{
+	# Check for gradient function
+	gi := -1;
+	for(i := 0; i + 8 < len val; i++) {
+		if(val[i:i+8] == "gradient") {
+			# Find the opening paren before this
+			for(j := i + 8; j < len val; j++)
+				if(val[j] == '(') {
+					gi = j + 1;
+					break;
+				}
+			break;
+		}
+	}
+	if(gi < 0)
+		return STYLNONE;
+
+	# Inside the gradient args, find color values after first comma
+	# (first arg is often direction like "to right" or "90deg")
+	comma := -1;
+	for(i := gi; i < len val; i++)
+		if(val[i] == ',') {
+			comma = i;
+			break;
+		}
+	if(comma < 0)
+		return STYLNONE;
+
+	# Try the token after first comma as a color
+	rest := stripws(val[comma+1:]);
+	# Truncate at next comma or closing paren
+	for(i := 0; i < len rest; i++) {
+		if(rest[i] == ',' || rest[i] == ')') {
+			rest = stripws(rest[:i]);
+			break;
+		}
+	}
+	# Also strip percentage/length suffixes: "red 10%" -> "red"
+	parts := splitwords(rest);
+	if(len parts > 0)
+		rest = parts[0];
+	return color(rest, STYLNONE);
+}
+
+# Parse background-position value
+parsebgposition(cs: ref ComputedStyle, val: string)
+{
+	parts := splitwords(val);
+	if(len parts >= 1) {
+		case parts[0] {
+		"left" => cs.bgposition_x = 0;
+		"center" => cs.bgposition_x = -1;	# special: center
+		"right" => cs.bgposition_x = -2;	# special: right
+		* => cs.bgposition_x = parsepx(parts[0]);
+		}
+	}
+	if(len parts >= 2) {
+		case parts[1] {
+		"top" => cs.bgposition_y = 0;
+		"center" => cs.bgposition_y = -1;
+		"bottom" => cs.bgposition_y = -2;
+		* => cs.bgposition_y = parsepx(parts[1]);
+		}
+	}
+}
+
 # Parse CSS text from <style> blocks.
 # Uses css.m parser when available for full selector support (class, ID, etc.);
 # falls back to simple tag-only selector parsing otherwise.
@@ -5555,6 +5731,9 @@ ComputedStyle.new() : ref ComputedStyle
 		TDSsolid,		# text_decoration_style
 		STYLNONE,		# text_decoration_color
 		FVnormal,		# font_variant
+		nil,			# bgimage_url
+		BGRrepeat,		# bgrepeat
+		0, 0,			# bgposition_x, bgposition_y
 		nil			# customprops
 	);
 }

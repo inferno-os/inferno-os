@@ -187,6 +187,9 @@ TDSsolid, TDSdotted, TDSdashed, TDSdouble, TDSwavy: con byte iota;
 # Font-variant types
 FVnormal, FVsmall_caps: con byte iota;
 
+# Background repeat modes
+BGRrepeat, BGRno_repeat, BGRrepeat_x, BGRrepeat_y: con byte iota;
+
 StyleInfo: adt
 {
 	color: int;		# text color, STYLNONE if not set
@@ -311,6 +314,12 @@ ComputedStyle: adt
 
 	# Font variant
 	font_variant: byte;		# FVnormal, FVsmall_caps
+
+	# CSS Background Image
+	bgimage_url: string;		# background-image URL (nil = none)
+	bgrepeat: byte;			# BGRrepeat..BGRrepeat_y
+	bgposition_x: int;		# background-position x in pixels
+	bgposition_y: int;		# background-position y in pixels
 
 	# CSS Custom Properties (var())
 	customprops: list of (string, string);	# (--name, value) pairs
