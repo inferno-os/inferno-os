@@ -29,7 +29,7 @@ for arg in "$@"; do
     esac
 done
 
-if [ "$SUITE" = "v2" ]; then
+if [[ "$SUITE" = "v2" ]]; then
     BENCH_DIS="dis/jitbench2.dis"
     BENCH_SRC="appl/cmd/jitbench2.b"
 else
@@ -63,13 +63,13 @@ detect_platform() {
     # Find emulator binary
     EMU=""
     for name in o.emu Infernode; do
-        if [ -x "$ROOT/emu/$EMUHOST/$name" ]; then
+        if [[ -x "$ROOT/emu/$EMUHOST/$name" ]]; then
             EMU="$ROOT/emu/$EMUHOST/$name"
             break
         fi
     done
 
-    if [ -z "$EMU" ]; then
+    if [[ -z "$EMU" ]]; then
         echo "ERROR: No emulator binary found in emu/$EMUHOST/"
         echo "Build with: cd emu/$EMUHOST && ROOT=../.. OBJTYPE=$OBJTYPE ../../${EMUHOST}/${OBJTYPE}/bin/mk"
         exit 1
@@ -89,7 +89,7 @@ detect_cpu() {
 
 detect_platform
 
-if [ ! -f "$ROOT/$BENCH_DIS" ]; then
+if [[ ! -f "$ROOT/$BENCH_DIS" ]]; then
     echo "ERROR: $BENCH_DIS not found"
     echo "Compile: limbo -I module -o $BENCH_DIS $BENCH_SRC"
     exit 1
@@ -135,7 +135,7 @@ for run in $(seq 1 $RUNS); do
 
     echo "  Interpreter: ${INTERP_TOTAL} ms"
     echo "  JIT:         ${JIT_TOTAL} ms"
-    if [ "$JIT_TOTAL" -gt 0 ] && [ "$INTERP_TOTAL" -gt 0 ]; then
+    if [[ "$JIT_TOTAL" -gt 0 ]] && [[ "$INTERP_TOTAL" -gt 0 ]]; then
         SPEEDUP_X100=$(( (INTERP_TOTAL * 100) / JIT_TOTAL ))
         printf "  Speedup:     %d.%02dx\n" $((SPEEDUP_X100 / 100)) $((SPEEDUP_X100 % 100))
     fi
@@ -161,10 +161,10 @@ printf "  %-30s %12s %12s %10s\n" "------------------------------" "------------
 if grep -q "Result:.*Time:" "$JIT_OUT" 2>/dev/null; then
     # v1 format
     grep -B1 "Time:" "$JIT_OUT" | grep -v "Time:" | grep -v "^--$" | grep -v "Total" | sed 's/^[0-9]*\. //' | while IFS= read -r bench; do
-        [ -z "$bench" ] && continue
+        [[ -z "$bench" ]] && continue
         IT=$(grep -A1 "$bench" "$INTERP_OUT" | grep "Time:" | grep -o '[0-9]* ms' | grep -o '[0-9]*' || echo "?")
         JT=$(grep -A1 "$bench" "$JIT_OUT" | grep "Time:" | grep -o '[0-9]* ms' | grep -o '[0-9]*' || echo "?")
-        if [ "$IT" != "?" ] && [ "$JT" != "?" ] && [ "$JT" -gt 0 ]; then
+        if [[ "$IT" != "?" ]] && [[ "$JT" != "?" ]] && [[ "$JT" -gt 0 ]]; then
             SP_X100=$(( (IT * 100) / JT ))
             printf "  %-30s %12s %12s %7d.%02dx\n" "$bench" "$IT" "$JT" $((SP_X100 / 100)) $((SP_X100 % 100))
         else
@@ -175,11 +175,11 @@ else
     # v2 format: "  name  N ms  (result: X)"
     grep '[0-9]* ms' "$JIT_OUT" | grep -v "Total\|===" | while IFS= read -r line; do
         bench=$(echo "$line" | sed 's/^ *//' | sed 's/  *[0-9]* ms.*//')
-        [ -z "$bench" ] && continue
+        [[ -z "$bench" ]] && continue
         JT=$(echo "$line" | grep -o '[0-9]* ms' | grep -o '[0-9]*' || echo "?")
         iline=$(grep "$bench" "$INTERP_OUT" || echo "")
         IT=$(echo "$iline" | grep -o '[0-9]* ms' | grep -o '[0-9]*' || echo "?")
-        if [ "$IT" != "?" ] && [ "$JT" != "?" ] && [ "$JT" -gt 0 ]; then
+        if [[ "$IT" != "?" ]] && [[ "$JT" != "?" ]] && [[ "$JT" -gt 0 ]]; then
             SP_X100=$(( (IT * 100) / JT ))
             printf "  %-30s %12s %12s %7d.%02dx\n" "$bench" "$IT" "$JT" $((SP_X100 / 100)) $((SP_X100 % 100))
         else
@@ -201,14 +201,14 @@ for i in $(seq 0 $(( RUNS - 1 ))); do
     JT=${jit_totals[$i]}
     SUM_I=$(( SUM_I + IT ))
     SUM_J=$(( SUM_J + JT ))
-    if [ "$JT" -gt 0 ]; then
+    if [[ "$JT" -gt 0 ]]; then
         SP_X100=$(( (IT * 100) / JT ))
         printf "  %-6d %12d %12d %7d.%02dx\n" $((i+1)) $IT $JT $((SP_X100 / 100)) $((SP_X100 % 100))
     fi
 done
 
 echo ""
-if [ "$SUM_J" -gt 0 ]; then
+if [[ "$SUM_J" -gt 0 ]]; then
     AVG_I=$(( SUM_I / RUNS ))
     AVG_J=$(( SUM_J / RUNS ))
     SP_X100=$(( (AVG_I * 100) / AVG_J ))

@@ -55,7 +55,7 @@ detect_cpu() {
 find_emulator() {
     EMU=""
     for name in o.emu Infernode; do
-        if [ -x "$ROOT/emu/$EMUHOST/$name" ]; then
+        if [[ -x "$ROOT/emu/$EMUHOST/$name" ]]; then
             EMU="$ROOT/emu/$EMUHOST/$name"
             break
         fi
@@ -89,7 +89,7 @@ done
 
 find_emulator
 HAVE_EMU=0
-if [ -n "$EMU" ] && [ -f "$ROOT/dis/jitbench.dis" ]; then
+if [[ -n "$EMU" ]] && [[ -f "$ROOT/dis/jitbench.dis" ]]; then
     HAVE_EMU=1
 fi
 
@@ -127,7 +127,7 @@ else
 fi
 
 echo -n "Go:    "
-if [ "$HAVE_GO" -eq 1 ]; then
+if [[ "$HAVE_GO" -eq 1 ]]; then
     if go build -o "$TMPDIR/jitbench_go" "$SCRIPT_DIR/jitbench.go" 2>/dev/null; then
         echo "OK"
     else
@@ -139,7 +139,7 @@ else
 fi
 
 echo -n "Java:  "
-if [ "$HAVE_JAVA" -eq 1 ]; then
+if [[ "$HAVE_JAVA" -eq 1 ]]; then
     if javac -d "$TMPDIR" "$SCRIPT_DIR/JITBench.java" 2>/dev/null; then
         echo "OK"
     else
@@ -151,17 +151,17 @@ else
 fi
 
 echo -n "Python:"
-if [ "$HAVE_PYTHON" -eq 1 ]; then
+if [[ "$HAVE_PYTHON" -eq 1 ]]; then
     echo " OK ($($PYTHON --version 2>&1))"
 else
     echo " SKIPPED (python3 not found)"
 fi
 
 echo -n "Limbo: "
-if [ "$HAVE_EMU" -eq 1 ]; then
+if [[ "$HAVE_EMU" -eq 1 ]]; then
     echo "OK ($EMU)"
 else
-    if [ -z "$EMU" ]; then
+    if [[ -z "$EMU" ]]; then
         echo "SKIPPED (no emulator binary)"
     else
         echo "SKIPPED (dis/jitbench.dis not found)"
@@ -224,7 +224,7 @@ run_contestant() {
             local total
             total=$(grep "Total Time:" "$outfile" | grep -o '[0-9]*' || echo "999999999")
             echo "${total} ms"
-            if [ "$total" -lt "$best_total" ]; then
+            if [[ "$total" -lt "$best_total" ]]; then
                 best_total=$total
                 best_file=$outfile
             fi
@@ -235,7 +235,7 @@ run_contestant() {
     done
 
     BEST_TOTAL=$best_total
-    if [ -n "$best_file" ]; then
+    if [[ -n "$best_file" ]]; then
         BEST_FILE="$best_file"
     else
         BEST_FILE=""
@@ -249,37 +249,37 @@ echo ""
 
 C_O0_FILE=""; C_O2_FILE=""; GO_FILE=""; JAVA_FILE=""; PYTHON_FILE=""; JIT_FILE=""; INTERP_FILE=""
 
-if [ "$HAVE_C_O0" -eq 1 ]; then
+if [[ "$HAVE_C_O0" -eq 1 ]]; then
     run_contestant "C_O0" "$TMPDIR/jitbench_O0"
     C_O0_FILE=$BEST_FILE
     echo ""
 fi
 
-if [ "$HAVE_C_O2" -eq 1 ]; then
+if [[ "$HAVE_C_O2" -eq 1 ]]; then
     run_contestant "C_O2" "$TMPDIR/jitbench_O2"
     C_O2_FILE=$BEST_FILE
     echo ""
 fi
 
-if [ "$HAVE_GO" -eq 1 ]; then
+if [[ "$HAVE_GO" -eq 1 ]]; then
     run_contestant "Go" "$TMPDIR/jitbench_go"
     GO_FILE=$BEST_FILE
     echo ""
 fi
 
-if [ "$HAVE_JAVA" -eq 1 ]; then
+if [[ "$HAVE_JAVA" -eq 1 ]]; then
     run_contestant "Java" java -cp "$TMPDIR" JITBench
     JAVA_FILE=$BEST_FILE
     echo ""
 fi
 
-if [ "$HAVE_PYTHON" -eq 1 ]; then
+if [[ "$HAVE_PYTHON" -eq 1 ]]; then
     run_contestant "Python" "$PYTHON" "$SCRIPT_DIR/jitbench.py"
     PYTHON_FILE=$BEST_FILE
     echo ""
 fi
 
-if [ "$HAVE_EMU" -eq 1 ]; then
+if [[ "$HAVE_EMU" -eq 1 ]]; then
     EMUROOT="-r$ROOT"
 
     # The emulator doesn't exit after running a dis file, so use a shorter
@@ -305,13 +305,13 @@ C_O0_V="$TMPDIR/vals_c_o0"; C_O2_V="$TMPDIR/vals_c_o2"; GO_V="$TMPDIR/vals_go"
 JAVA_V="$TMPDIR/vals_java"; PYTHON_V="$TMPDIR/vals_python"
 JIT_V="$TMPDIR/vals_jit"; INTERP_V="$TMPDIR/vals_interp"
 
-if [ -n "$C_O0_FILE" ] && [ -f "$C_O0_FILE" ]; then parse_to_file "$C_O0_FILE" "$C_O0_V"; else make_empty_vals "$C_O0_V"; fi
-if [ -n "$C_O2_FILE" ] && [ -f "$C_O2_FILE" ]; then parse_to_file "$C_O2_FILE" "$C_O2_V"; else make_empty_vals "$C_O2_V"; fi
-if [ -n "$GO_FILE" ] && [ -f "$GO_FILE" ]; then parse_to_file "$GO_FILE" "$GO_V"; else make_empty_vals "$GO_V"; fi
-if [ -n "$JAVA_FILE" ] && [ -f "$JAVA_FILE" ]; then parse_to_file "$JAVA_FILE" "$JAVA_V"; else make_empty_vals "$JAVA_V"; fi
-if [ -n "$PYTHON_FILE" ] && [ -f "$PYTHON_FILE" ]; then parse_to_file "$PYTHON_FILE" "$PYTHON_V"; else make_empty_vals "$PYTHON_V"; fi
-if [ -n "$JIT_FILE" ] && [ -f "$JIT_FILE" ]; then parse_to_file "$JIT_FILE" "$JIT_V"; else make_empty_vals "$JIT_V"; fi
-if [ -n "$INTERP_FILE" ] && [ -f "$INTERP_FILE" ]; then parse_to_file "$INTERP_FILE" "$INTERP_V"; else make_empty_vals "$INTERP_V"; fi
+if [[ -n "$C_O0_FILE" ]] && [[ -f "$C_O0_FILE" ]]; then parse_to_file "$C_O0_FILE" "$C_O0_V"; else make_empty_vals "$C_O0_V"; fi
+if [[ -n "$C_O2_FILE" ]] && [[ -f "$C_O2_FILE" ]]; then parse_to_file "$C_O2_FILE" "$C_O2_V"; else make_empty_vals "$C_O2_V"; fi
+if [[ -n "$GO_FILE" ]] && [[ -f "$GO_FILE" ]]; then parse_to_file "$GO_FILE" "$GO_V"; else make_empty_vals "$GO_V"; fi
+if [[ -n "$JAVA_FILE" ]] && [[ -f "$JAVA_FILE" ]]; then parse_to_file "$JAVA_FILE" "$JAVA_V"; else make_empty_vals "$JAVA_V"; fi
+if [[ -n "$PYTHON_FILE" ]] && [[ -f "$PYTHON_FILE" ]]; then parse_to_file "$PYTHON_FILE" "$PYTHON_V"; else make_empty_vals "$PYTHON_V"; fi
+if [[ -n "$JIT_FILE" ]] && [[ -f "$JIT_FILE" ]]; then parse_to_file "$JIT_FILE" "$JIT_V"; else make_empty_vals "$JIT_V"; fi
+if [[ -n "$INTERP_FILE" ]] && [[ -f "$INTERP_FILE" ]]; then parse_to_file "$INTERP_FILE" "$INTERP_V"; else make_empty_vals "$INTERP_V"; fi
 
 # --- Results table ---
 
@@ -330,22 +330,22 @@ echo ""
 
 # Header
 printf "  %-24s" "Benchmark"
-[ "$HAVE_C_O2" -eq 1 ] && printf " %10s" "C -O2"
-[ "$HAVE_C_O0" -eq 1 ] && printf " %10s" "C -O0"
-[ "$HAVE_GO" -eq 1 ] && printf " %10s" "Go"
-[ "$HAVE_JAVA" -eq 1 ] && printf " %10s" "Java"
-[ "$HAVE_PYTHON" -eq 1 ] && printf " %10s" "Python"
-[ "$HAVE_EMU" -eq 1 ] && printf " %12s %12s" "Limbo JIT" "Limbo Interp"
+[[ "$HAVE_C_O2" -eq 1 ]] && printf " %10s" "C -O2"
+[[ "$HAVE_C_O0" -eq 1 ]] && printf " %10s" "C -O0"
+[[ "$HAVE_GO" -eq 1 ]] && printf " %10s" "Go"
+[[ "$HAVE_JAVA" -eq 1 ]] && printf " %10s" "Java"
+[[ "$HAVE_PYTHON" -eq 1 ]] && printf " %10s" "Python"
+[[ "$HAVE_EMU" -eq 1 ]] && printf " %12s %12s" "Limbo JIT" "Limbo Interp"
 echo ""
 
 # Separator
 printf "  %-24s" "------------------------"
-[ "$HAVE_C_O2" -eq 1 ] && printf " %10s" "----------"
-[ "$HAVE_C_O0" -eq 1 ] && printf " %10s" "----------"
-[ "$HAVE_GO" -eq 1 ] && printf " %10s" "----------"
-[ "$HAVE_JAVA" -eq 1 ] && printf " %10s" "----------"
-[ "$HAVE_PYTHON" -eq 1 ] && printf " %10s" "----------"
-[ "$HAVE_EMU" -eq 1 ] && printf " %12s %12s" "------------" "------------"
+[[ "$HAVE_C_O2" -eq 1 ]] && printf " %10s" "----------"
+[[ "$HAVE_C_O0" -eq 1 ]] && printf " %10s" "----------"
+[[ "$HAVE_GO" -eq 1 ]] && printf " %10s" "----------"
+[[ "$HAVE_JAVA" -eq 1 ]] && printf " %10s" "----------"
+[[ "$HAVE_PYTHON" -eq 1 ]] && printf " %10s" "----------"
+[[ "$HAVE_EMU" -eq 1 ]] && printf " %12s %12s" "------------" "------------"
 echo ""
 
 # Per-benchmark rows (lines 1-6)
@@ -353,12 +353,12 @@ line=0
 echo "$BENCH_NAMES" | while IFS= read -r bench; do
     line=$((line + 1))
     printf "  %-24s" "$bench"
-    [ "$HAVE_C_O2" -eq 1 ] && printf " %8s ms" "$(val "$C_O2_V" $line)"
-    [ "$HAVE_C_O0" -eq 1 ] && printf " %8s ms" "$(val "$C_O0_V" $line)"
-    [ "$HAVE_GO" -eq 1 ] && printf " %8s ms" "$(val "$GO_V" $line)"
-    [ "$HAVE_JAVA" -eq 1 ] && printf " %8s ms" "$(val "$JAVA_V" $line)"
-    [ "$HAVE_PYTHON" -eq 1 ] && printf " %8s ms" "$(val "$PYTHON_V" $line)"
-    if [ "$HAVE_EMU" -eq 1 ]; then
+    [[ "$HAVE_C_O2" -eq 1 ]] && printf " %8s ms" "$(val "$C_O2_V" $line)"
+    [[ "$HAVE_C_O0" -eq 1 ]] && printf " %8s ms" "$(val "$C_O0_V" $line)"
+    [[ "$HAVE_GO" -eq 1 ]] && printf " %8s ms" "$(val "$GO_V" $line)"
+    [[ "$HAVE_JAVA" -eq 1 ]] && printf " %8s ms" "$(val "$JAVA_V" $line)"
+    [[ "$HAVE_PYTHON" -eq 1 ]] && printf " %8s ms" "$(val "$PYTHON_V" $line)"
+    if [[ "$HAVE_EMU" -eq 1 ]]; then
         printf " %10s ms" "$(val "$JIT_V" $line)"
         printf " %10s ms" "$(val "$INTERP_V" $line)"
     fi
@@ -368,12 +368,12 @@ done
 # Total row (line 7)
 echo ""
 printf "  %-24s" "TOTAL"
-[ "$HAVE_C_O2" -eq 1 ] && printf " %8s ms" "$(val "$C_O2_V" 7)"
-[ "$HAVE_C_O0" -eq 1 ] && printf " %8s ms" "$(val "$C_O0_V" 7)"
-[ "$HAVE_GO" -eq 1 ] && printf " %8s ms" "$(val "$GO_V" 7)"
-[ "$HAVE_JAVA" -eq 1 ] && printf " %8s ms" "$(val "$JAVA_V" 7)"
-[ "$HAVE_PYTHON" -eq 1 ] && printf " %8s ms" "$(val "$PYTHON_V" 7)"
-if [ "$HAVE_EMU" -eq 1 ]; then
+[[ "$HAVE_C_O2" -eq 1 ]] && printf " %8s ms" "$(val "$C_O2_V" 7)"
+[[ "$HAVE_C_O0" -eq 1 ]] && printf " %8s ms" "$(val "$C_O0_V" 7)"
+[[ "$HAVE_GO" -eq 1 ]] && printf " %8s ms" "$(val "$GO_V" 7)"
+[[ "$HAVE_JAVA" -eq 1 ]] && printf " %8s ms" "$(val "$JAVA_V" 7)"
+[[ "$HAVE_PYTHON" -eq 1 ]] && printf " %8s ms" "$(val "$PYTHON_V" 7)"
+if [[ "$HAVE_EMU" -eq 1 ]]; then
     printf " %10s ms" "$(val "$JIT_V" 7)"
     printf " %10s ms" "$(val "$INTERP_V" 7)"
 fi
@@ -383,41 +383,41 @@ echo ""
 # --- Speedup ratios vs C -O0 (if available) ---
 
 c_o0_total=$(val "$C_O0_V" 7)
-if [ "$HAVE_C_O0" -eq 1 ] && [ "$c_o0_total" != "—" ] && [ "$c_o0_total" -gt 0 ] 2>/dev/null; then
+if [[ "$HAVE_C_O0" -eq 1 ]] && [[ "$c_o0_total" != "—" ]] && [[ "$c_o0_total" -gt 0 ]] 2>/dev/null; then
     echo "Speedup vs C -O0 (total):"
 
     v=$(val "$C_O2_V" 7)
-    if [ "$HAVE_C_O2" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_C_O2" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  C -O2:        %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
 
     v=$(val "$GO_V" 7)
-    if [ "$HAVE_GO" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_GO" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  Go:           %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
 
     v=$(val "$JAVA_V" 7)
-    if [ "$HAVE_JAVA" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_JAVA" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  Java:         %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
 
     v=$(val "$PYTHON_V" 7)
-    if [ "$HAVE_PYTHON" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_PYTHON" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  Python:       %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
 
     v=$(val "$JIT_V" 7)
-    if [ "$HAVE_EMU" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_EMU" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  Limbo JIT:    %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
 
     v=$(val "$INTERP_V" 7)
-    if [ "$HAVE_EMU" -eq 1 ] && [ "$v" != "—" ] && [ "$v" -gt 0 ] 2>/dev/null; then
+    if [[ "$HAVE_EMU" -eq 1 ]] && [[ "$v" != "—" ]] && [[ "$v" -gt 0 ]] 2>/dev/null; then
         sp=$(( (c_o0_total * 100) / v ))
         printf "  Limbo Interp: %d.%02dx\n" $((sp / 100)) $((sp % 100))
     fi
@@ -429,8 +429,8 @@ fi
 
 jit_total=$(val "$JIT_V" 7)
 interp_total=$(val "$INTERP_V" 7)
-if [ "$HAVE_EMU" -eq 1 ] && [ "$jit_total" != "—" ] && [ "$interp_total" != "—" ] \
-   && [ "$jit_total" -gt 0 ] 2>/dev/null && [ "$interp_total" -gt 0 ] 2>/dev/null; then
+if [[ "$HAVE_EMU" -eq 1 ]] && [[ "$jit_total" != "—" ]] && [[ "$interp_total" != "—" ]] \
+   && [[ "$jit_total" -gt 0 ]] 2>/dev/null && [[ "$interp_total" -gt 0 ]] 2>/dev/null; then
     sp=$(( (interp_total * 100) / jit_total ))
     printf "Limbo JIT vs Interpreter: %d.%02dx speedup\n" $((sp / 100)) $((sp % 100))
     echo ""
