@@ -9,8 +9,7 @@ on:
     # Weekly on Sundays at midnight UTC
     - cron: '0 0 * * 0'
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   # ─────────────────────────────────────────────
@@ -103,6 +102,8 @@ jobs:
     name: cppcheck Static Analysis
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -232,6 +233,8 @@ jobs:
     name: Source Hardening Checks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

@@ -167,8 +167,8 @@ cpapke_keygen(uchar *pk, uchar *sk, const uchar seed[32], int k, int eta1)
 	}
 
 	/* Clear sensitive data */
-	memset(sigma, 0, sizeof(sigma));
-	memset(st, 0, sizeof(MLKEMKeygenState));
+	secureZero(sigma, sizeof(sigma));
+	secureZero(st, sizeof(MLKEMKeygenState));
 	free(st);
 	return 0;
 }
@@ -265,7 +265,7 @@ cpapke_enc(uchar *ct, const uchar *pk, const uchar msg[32],
 	mlkem_poly_encode(ct + k * du_bytes, st->v, dv);
 
 	/* Clear sensitive data */
-	memset(st, 0, sizeof(MLKEMEncState));
+	secureZero(st, sizeof(MLKEMEncState));
 	free(st);
 	return 0;
 }
@@ -313,7 +313,7 @@ cpapke_dec(uchar msg[32], const uchar *ct, const uchar *sk,
 	mlkem_poly_encode(msg, w, 1);
 
 	/* Clear sensitive data */
-	memset(s, 0, sizeof(s));
+	secureZero(s, sizeof(s));
 }
 
 /*
@@ -373,7 +373,7 @@ mlkem_keygen_internal(uchar *pk, uchar *sk, int k, int eta1,
 
 	/* Generate CPAPKE key pair */
 	if(cpapke_keygen(pk, sk, seed, k, eta1) != 0){
-		memset(seed, 0, sizeof(seed));
+		secureZero(seed, sizeof(seed));
 		return -1;
 	}
 
@@ -388,7 +388,7 @@ mlkem_keygen_internal(uchar *pk, uchar *sk, int k, int eta1,
 
 	memmove(sk + skoff, seed+32, 32);	/* z */
 
-	memset(seed, 0, sizeof(seed));
+	secureZero(seed, sizeof(seed));
 	return 0;
 }
 
@@ -423,18 +423,18 @@ mlkem_encaps_internal(uchar *ct, uchar *ss, const uchar *pk,
 
 	/* ct = Encrypt(pk, m, r) */
 	if(cpapke_enc(ct, pk, m, r, k, eta1, eta2, du, dv) != 0){
-		memset(m, 0, sizeof(m));
-		memset(g_input, 0, sizeof(g_input));
-		memset(g_output, 0, sizeof(g_output));
+		secureZero(m, sizeof(m));
+		secureZero(g_input, sizeof(g_input));
+		secureZero(g_output, sizeof(g_output));
 		return -1;
 	}
 
 	/* ss = K */
 	memmove(ss, Kbar, 32);
 
-	memset(m, 0, sizeof(m));
-	memset(g_input, 0, sizeof(g_input));
-	memset(g_output, 0, sizeof(g_output));
+	secureZero(m, sizeof(m));
+	secureZero(g_input, sizeof(g_input));
+	secureZero(g_output, sizeof(g_output));
 	return 0;
 }
 
@@ -477,10 +477,10 @@ mlkem_decaps_internal(uchar *ss, const uchar *ct, const uchar *sk,
 
 	/* ct' = Encrypt(pk, m', r') */
 	if(cpapke_enc(ct2, pk, m, r, k, eta1, eta2, du, dv) != 0){
-		memset(m, 0, sizeof(m));
-		memset(g_input, 0, sizeof(g_input));
-		memset(g_output, 0, sizeof(g_output));
-		memset(Krej, 0, sizeof(Krej));
+		secureZero(m, sizeof(m));
+		secureZero(g_input, sizeof(g_input));
+		secureZero(g_output, sizeof(g_output));
+		secureZero(Krej, sizeof(Krej));
 		return -1;
 	}
 
@@ -497,11 +497,11 @@ mlkem_decaps_internal(uchar *ss, const uchar *ct, const uchar *sk,
 
 	memmove(ss, Kbar, 32);
 
-	memset(m, 0, sizeof(m));
-	memset(g_input, 0, sizeof(g_input));
-	memset(g_output, 0, sizeof(g_output));
-	memset(Krej, 0, sizeof(Krej));
-	memset(ct2, 0, sizeof(ct2));
+	secureZero(m, sizeof(m));
+	secureZero(g_input, sizeof(g_input));
+	secureZero(g_output, sizeof(g_output));
+	secureZero(Krej, sizeof(Krej));
+	secureZero(ct2, sizeof(ct2));
 	return 0;
 }
 

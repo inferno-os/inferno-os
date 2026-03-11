@@ -96,7 +96,7 @@ mldsaprivfree(MLDSApriv *k)
 {
 	if(k == nil)
 		return;
-	memset(k, 0, sizeof(MLDSApriv));	/* clear secret key */
+	secureZero(k, sizeof(MLDSApriv));	/* clear secret key */
 	free(k);
 }
 
@@ -511,7 +511,7 @@ mldsa_sign_hash(mpint *mp, void *key)
 	else
 		rv = mldsa65_sign(sig->sig, hash, n, sk->sk);
 
-	memset(hash, 0, sizeof(hash));
+	secureZero(hash, sizeof(hash));
 
 	if(rv != 0){
 		mldsasigfree(sig);
@@ -542,7 +542,7 @@ mldsa_verify_hash(mpint *mp, void *vsig, void *vkey)
 	else
 		ok = mldsa65_verify(sig->sig, hash, n, pk->key);
 
-	memset(hash, 0, sizeof(hash));
+	secureZero(hash, sizeof(hash));
 	return ok;
 }
 

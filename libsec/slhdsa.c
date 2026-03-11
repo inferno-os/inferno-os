@@ -146,8 +146,8 @@ slhdsa_keygen(uchar *pk, uchar *sk, int n, int hprime, int d)
 	/* Compute root of the top XMSS tree */
 	if(slhdsa_treehash(root, nil, n, pkseed, n, skseed, n,
 		d - 1, 0, hprime, -1) != 0){
-		memset(skseed, 0, sizeof(skseed));
-		memset(skprf, 0, sizeof(skprf));
+		secureZero(skseed, sizeof(skseed));
+		secureZero(skprf, sizeof(skprf));
 		return -1;
 	}
 
@@ -161,8 +161,8 @@ slhdsa_keygen(uchar *pk, uchar *sk, int n, int hprime, int d)
 	memmove(pk, pkseed, n);
 	memmove(pk + n, root, n);
 
-	memset(skseed, 0, sizeof(skseed));
-	memset(skprf, 0, sizeof(skprf));
+	secureZero(skseed, sizeof(skseed));
+	secureZero(skprf, sizeof(skprf));
 
 	return 0;
 }

@@ -7,7 +7,7 @@ on:
     # Weekly on Mondays at 2am UTC
     - cron: '0 2 * * 1'
 
-permissions: read-all
+permissions: {}
 
 jobs:
   scorecard:

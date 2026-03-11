@@ -72,7 +72,7 @@ fors_leaf(uchar *out, int n,
 	slhdsa_adrs_set_index(adrs, idx);
 	slhdsa_F(out, n, pkseed, seedlen, adrs, sk, n);
 
-	memset(sk, 0, sizeof(sk));
+	secureZero(sk, sizeof(sk));
 }
 
 /*
@@ -129,7 +129,7 @@ fors_treehash(uchar *root, int n,
 	}
 
 	memmove(root, stack + a*n, n);
-	memset(stack, 0, (a + 1) * n);
+	secureZero(stack, (a + 1) * n);
 	free(stack);
 }
 
@@ -214,7 +214,7 @@ slhdsa_fors_sign(uchar *sig, int n,
 		sig = auth;
 	}
 
-	memset(nodes, 0, leaves * n);
+	secureZero(nodes, leaves * n);
 	free(nodes);
 }
 

@@ -156,8 +156,8 @@ slhdsa_wots_pkgen(uchar *pk, int n,
 
 	slhdsa_Tl(pk, n, pkseed, seedlen, pkadrs, tmp, len * n);
 
-	memset(sk, 0, sizeof(sk));
-	memset(tmp, 0, len * n);
+	secureZero(sk, sizeof(sk));
+	secureZero(tmp, len * n);
 	free(tmp);
 }
 
@@ -200,7 +200,7 @@ slhdsa_wots_sign(uchar *sig, int n,
 		wots_chain(sig + i*n, sk, n, 0, digits[i], pkseed, seedlen, adrs);
 	}
 
-	memset(sk, 0, sizeof(sk));
+	secureZero(sk, sizeof(sk));
 	free(digits);
 }
 
@@ -249,6 +249,6 @@ slhdsa_wots_pk_from_sig(uchar *pk, int n,
 	slhdsa_Tl(pk, n, pkseed, seedlen, pkadrs, tmp, len * n);
 
 	free(digits);
-	memset(tmp, 0, len * n);
+	secureZero(tmp, len * n);
 	free(tmp);
 }

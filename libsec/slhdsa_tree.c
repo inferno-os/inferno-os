@@ -97,7 +97,7 @@ slhdsa_treehash(uchar *root, uchar *auth, int n,
 	}
 
 	memmove(root, stack + hprime*n, n);
-	memset(stack, 0, (hprime + 1) * n);
+	secureZero(stack, (hprime + 1) * n);
 	free(stack);
 	return 0;
 }

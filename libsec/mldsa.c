@@ -214,7 +214,7 @@ mldsa_keygen_internal(uchar *pk, uchar *sk,
 
 	/* t = A * NTT(s1) */
 	if(matvec_mul_dsa(st->t, rho, k, l, st->s1) != 0){
-		memset(st, 0, sizeof(MLDSAKeygenState));
+		secureZero(st, sizeof(MLDSAKeygenState));
 		free(st);
 		return -1;
 	}
@@ -257,10 +257,10 @@ mldsa_keygen_internal(uchar *pk, uchar *sk,
 	}
 
 	/* Clear sensitive data */
-	memset(seed, 0, sizeof(seed));
-	memset(rhoprime, 0, sizeof(rhoprime));
-	memset(K, 0, sizeof(K));
-	memset(st, 0, sizeof(MLDSAKeygenState));
+	secureZero(seed, sizeof(seed));
+	secureZero(rhoprime, sizeof(rhoprime));
+	secureZero(K, sizeof(K));
+	secureZero(st, sizeof(MLDSAKeygenState));
 	free(st);
 
 	return 0;
@@ -369,7 +369,7 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 			mldsa_ntt(st->yhat[i]);
 		}
 		if(matvec_mul_dsa(st->w, rho, k, l, st->yhat) != 0){
-			memset(st, 0, sizeof(MLDSASignState));
+			secureZero(st, sizeof(MLDSASignState));
 			free(st);
 			return -1;
 		}
@@ -527,9 +527,9 @@ mldsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 	mldsa_pack_hint(sig + sigoff, omega + k, st->h, k, omega);
 
 	/* Clear sensitive data */
-	memset(K, 0, sizeof(K));
-	memset(rhoprime, 0, sizeof(rhoprime));
-	memset(st, 0, sizeof(MLDSASignState));
+	secureZero(K, sizeof(K));
+	secureZero(rhoprime, sizeof(rhoprime));
+	secureZero(st, sizeof(MLDSASignState));
 	free(st);
 
 	return 0;
