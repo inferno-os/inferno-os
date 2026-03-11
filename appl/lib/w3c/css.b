@@ -487,7 +487,10 @@ declaration(p: ref Cparse): (ref Decl, string)
 		p.unget(c);
 		return (nil, nil);
 	}
-	prop := lowercase(p.value);
+	prop := p.value;
+	# Custom properties (--*) are case-sensitive per CSS spec
+	if(len prop < 2 || prop[0] != '-' || prop[1] != '-')
+		prop = lowercase(prop);
 	c = p.get();
 	if(c != ':'){
 		p.unget(c);
@@ -709,8 +712,25 @@ csslex(cs: ref Clex): (int, string, string)
 				break;		# <!-- ignore HTML comment start (CDO)
 			return (c, nil, nil);
 		'-' =>
-			if(seq(cs, "->"))
-				break;		# --> ignore HTML comment end (CDC)
+			c2 := cs.getc();
+			if(c2 == '-') {
+				# Could be CDC (-->) or custom property (--name)
+				c3 := cs.getc();
+				if(c3 == '>') {
+					break;	# --> ignore HTML comment end (CDC)
+				}
+				if(isnamec(c3, 0)) {
+					# CSS custom property identifier: --name
+					return (IDENT, "--" + name(cs, c3), nil);
+				}
+				cs.ungetc(c3);
+				cs.ungetc(c2);
+			} else if(c2 == '>') {
+				# single -> not a valid CDC, ignore
+				cs.ungetc(c2);
+			} else {
+				cs.ungetc(c2);
+			}
 			return (c, nil, nil);
 		':' =>
 			c = cs.getc();

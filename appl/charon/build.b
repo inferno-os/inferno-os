@@ -4124,6 +4124,18 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 # Apply a CSS property to a ComputedStyle (extended properties)
 applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 {
+	# Store CSS custom properties (--*)
+	if(len prop >= 2 && prop[0] == '-' && prop[1] == '-') {
+		# Replace existing or prepend
+		newprops: list of (string, string);
+		for(pl := cs.customprops; pl != nil; pl = tl pl) {
+			(pn, nil) := hd pl;
+			if(pn != prop)
+				newprops = hd pl :: newprops;
+		}
+		cs.customprops = (prop, val) :: newprops;
+		return;
+	}
 	case prop {
 	"color" =>
 		c := color(val, STYLNONE);
@@ -5276,10 +5288,19 @@ addstylerule(ss: ref StyleStore, rule: ref StyleRule)
 cssvalue_tostring(values: list of ref CSS->Value) : string
 {
 	s := "";
+	first := 1;
 	for(; values != nil; values = tl values) {
 		v := hd values;
-		if(s != "")
-			s += " ";
+		if(!first) {
+			# Use the value's separator: comma, slash, or space
+			if(v.sep == ',')
+				s += ", ";
+			else if(v.sep == '/')
+				s += " / ";
+			else
+				s += " ";
+		}
+		first = 0;
 		pick vv := v {
 		String or Number or Percentage or Url or Unicoderange =>
 			s += vv.value;
@@ -5293,7 +5314,7 @@ cssvalue_tostring(values: list of ref CSS->Value) : string
 		Unit =>
 			s += vv.value + vv.units;
 		Function =>
-			s += vv.name + "(...)";
+			s += vv.name + "(" + cssvalue_tostring(vv.args) + ")";
 		}
 	}
 	return s;
@@ -5533,7 +5554,8 @@ ComputedStyle.new() : ref ComputedStyle
 		STYLNONE,		# column_rule_color
 		TDSsolid,		# text_decoration_style
 		STYLNONE,		# text_decoration_color
-		FVnormal		# font_variant
+		FVnormal,		# font_variant
+		nil			# customprops
 	);
 }
 
@@ -5585,7 +5607,10 @@ ElementCtx.new(tag: int, id, class: string, parent: ref ElementCtx) : ref Elemen
 	ci := 0;
 	if(parent != nil)
 		ci = parent.child_index + 1;
-	return ref ElementCtx(tag, id, class, parent, ci, nil, nil);
+	inheritedprops: list of (string, string);
+	if(parent != nil)
+		inheritedprops = parent.customprops;
+	return ref ElementCtx(tag, id, class, parent, ci, nil, nil, inheritedprops);
 }
 
 # StyleStore constructor
@@ -6042,7 +6067,191 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 			}
 		}
 	}
+
+	# Merge element's own custom properties into ElementCtx inheritance cache
+	if(is.elemstk != nil && cs.customprops != nil) {
+		el := hd is.elemstk;
+		for(pl := cs.customprops; pl != nil; pl = tl pl) {
+			(pn, pv) := hd pl;
+			# Override or add to inherited cache
+			found := 0;
+			newprops: list of (string, string);
+			for(epl := el.customprops; epl != nil; epl = tl epl) {
+				(en, ev) := hd epl;
+				if(en == pn) {
+					newprops = (pn, pv) :: newprops;
+					found = 1;
+				} else
+					newprops = (en, ev) :: newprops;
+			}
+			if(!found)
+				newprops = (pn, pv) :: newprops;
+			el.customprops = newprops;
+		}
+	}
+
+	# Resolve var() references in CSS property values.
+	# Two-pass: first resolve custom prop inter-references,
+	# then re-apply any regular rules that contained var().
+	if(is.elemstk != nil && is.styles != nil) {
+		el := hd is.elemstk;
+		if(el.customprops != nil) {
+			resolvecssvars(cs, el);
+			# Second pass: re-apply rules with var() values
+			for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
+				sheet := hd sheets;
+				for(rules := sheet.rules; rules != nil; rules = tl rules) {
+					rule := hd rules;
+					if(!containsvar(rule.value))
+						continue;
+					# Skip custom property rules (already handled)
+					if(len rule.property >= 2 && rule.property[0] == '-' && rule.property[1] == '-')
+						continue;
+					if(selectormatch(rule.selectors, el)) {
+						resolved := resolvevarstring(rule.value, el, 0);
+						if(resolved != rule.value)
+							applycssprop_cs(cs, rule.property, resolved);
+					}
+				}
+			}
+			# Also re-apply inline styles containing var()
+			if(tok != nil) {
+				sval := aval(tok, LX->Astyle);
+				if(sval != nil) {
+					svallow := S->tolower(sval);
+					if(containsvar(svallow)) {
+						resolved := resolvevarstring(svallow, el, 0);
+						parsecstyle(cs, resolved);
+					}
+				}
+			}
+		}
+	}
+
 	return cs;
+}
+
+# Re-apply CSS rules containing var() with resolved variable values
+resolvecssvars(cs: ref ComputedStyle, el: ref ElementCtx)
+{
+	# Walk all custom props on this element and resolve any var() in their values
+	# (custom properties can reference other custom properties)
+	changed := 1;
+	for(pass := 0; pass < 5 && changed; pass++) {
+		changed = 0;
+		newprops: list of (string, string);
+		for(pl := el.customprops; pl != nil; pl = tl pl) {
+			(pn, pv) := hd pl;
+			if(containsvar(pv)) {
+				rpv := resolvevarstring(pv, el, 0);
+				if(rpv != pv) {
+					newprops = (pn, rpv) :: newprops;
+					changed = 1;
+				} else
+					newprops = hd pl :: newprops;
+			} else
+				newprops = hd pl :: newprops;
+		}
+		el.customprops = newprops;
+	}
+}
+
+# Look up a custom property value from the element context inheritance chain
+lookupcustomprop(el: ref ElementCtx, name: string) : (string, int)
+{
+	# Search the pre-computed inheritance cache on the element
+	for(pl := el.customprops; pl != nil; pl = tl pl) {
+		(pn, pv) := hd pl;
+		if(pn == name)
+			return (pv, 1);
+	}
+	return (nil, 0);
+}
+
+# Resolve all var() references in a CSS value string
+resolvevarstring(val: string, el: ref ElementCtx, depth: int) : string
+{
+	if(depth > 10)
+		return val;		# prevent infinite recursion
+	result := "";
+	i := 0;
+	for(;;) {
+		# Find next var( occurrence
+		vi := -1;
+		for(j := i; j + 3 < len val; j++) {
+			if(val[j] == 'v' && val[j+1] == 'a' && val[j+2] == 'r' && val[j+3] == '(') {
+				vi = j;
+				break;
+			}
+		}
+		if(vi < 0) {
+			result += val[i:];
+			break;
+		}
+		result += val[i:vi];
+
+		# Find matching closing paren, counting nested parens
+		parencount := 1;
+		k := vi + 4;
+		for(; k < len val && parencount > 0; k++) {
+			if(val[k] == '(')
+				parencount++;
+			else if(val[k] == ')')
+				parencount--;
+		}
+		# k now points past the closing paren
+		inner := val[vi+4:k-1];	# content between var( and )
+
+		# Split on first comma for fallback: var(--name, fallback)
+		varname := "";
+		fallback := "";
+		ci := -1;
+		for(c := 0; c < len inner; c++) {
+			if(inner[c] == ',') {
+				ci = c;
+				break;
+			}
+		}
+		if(ci >= 0) {
+			varname = stripws(inner[:ci]);
+			fallback = stripws(inner[ci+1:]);
+		} else
+			varname = stripws(inner);
+
+		# Look up the variable
+		(resolved, found) := lookupcustomprop(el, varname);
+		if(found)
+			result += resolvevarstring(resolved, el, depth + 1);
+		else if(fallback != nil && fallback != "")
+			result += resolvevarstring(fallback, el, depth + 1);
+		# else: var() resolves to empty string
+
+		i = k;
+	}
+	return result;
+}
+
+# Strip leading and trailing whitespace
+stripws(s: string) : string
+{
+	i := 0;
+	for(; i < len s && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n'); )
+		i++;
+	j := len s;
+	for(; j > i && (s[j-1] == ' ' || s[j-1] == '\t' || s[j-1] == '\n'); )
+		j--;
+	if(i >= j)
+		return "";
+	return s[i:j];
+}
+
+# Check if a string contains "var("
+containsvar(s: string) : int
+{
+	for(i := 0; i + 3 < len s; i++)
+		if(s[i] == 'v' && s[i+1] == 'a' && s[i+2] == 'r' && s[i+3] == '(')
+			return 1;
+	return 0;
 }
 
 # Parse a CSS style string into a ComputedStyle

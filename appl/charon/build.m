@@ -312,6 +312,9 @@ ComputedStyle: adt
 	# Font variant
 	font_variant: byte;		# FVnormal, FVsmall_caps
 
+	# CSS Custom Properties (var())
+	customprops: list of (string, string);	# (--name, value) pairs
+
 	new: fn() : ref ComputedStyle;
 	tostyleinfo: fn(cs: self ref ComputedStyle) : StyleInfo;
 	fromstyleinfo: fn(si: StyleInfo) : ref ComputedStyle;
@@ -328,6 +331,7 @@ ElementCtx: adt
 	child_index: int;			# index among siblings
 	attrs: list of (string, string);	# (name, value) pairs for attribute selectors
 	prev_sibling: cyclic ref ElementCtx;	# previous sibling for + and ~ combinators
+	customprops: list of (string, string);	# inherited custom properties cache
 
 	new: fn(tag: int, id, class: string, parent: ref ElementCtx) : ref ElementCtx;
 };
