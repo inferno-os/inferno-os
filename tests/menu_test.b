@@ -132,8 +132,7 @@ testNewGen(t: ref T)
 		return;
 	}
 
-	gen := ref genfunc;
-	p := menumod->newgen(gen);
+	p := menumod->newgen(genfunc);
 	t.assert(p != nil, "newgen() returns non-nil Popup");
 	t.assert(p.items == nil, "items nil before generator runs");
 	t.assert(p.gen != nil, "gen is set");
@@ -160,11 +159,11 @@ testGeneratorPopulates(t: ref T)
 	}
 
 	gencalls = 0;
-	gen := ref genfunc;
-	p := menumod->newgen(gen);
+	p := menumod->newgen(genfunc);
 
 	# Simulate what show() does: call the generator
-	(*p.gen)(p);
+	genfn := p.gen;
+	genfn(p);
 
 	t.asserteq(gencalls, 1, "generator called once");
 	t.assert(p.items != nil, "items populated by generator");
@@ -181,11 +180,11 @@ testGeneratorWithSubs(t: ref T)
 		return;
 	}
 
-	gen := ref subgenfunc;
-	p := menumod->newgen(gen);
+	p := menumod->newgen(subgenfunc);
 
 	# Simulate what show() does
-	(*p.gen)(p);
+	genfn := p.gen;
+	genfn(p);
 
 	t.asserteq(len p.items, 3, "parent has 3 items");
 	t.assert(p.subs != nil, "subs array created");
