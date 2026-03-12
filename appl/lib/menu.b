@@ -16,6 +16,10 @@ implement Menu;
 # a subset is shown with up/down scroll indicators.  Mouse hover
 # at top/bottom indicators scrolls the visible window.
 #
+# Submenus: items with a non-nil entry in subs[] open a child
+# popup to the right when hovered.  The child is drawn and tracked
+# within the same event loop.
+#
 
 include "sys.m";
 	sys: Sys;
@@ -64,6 +68,20 @@ new(items: array of string): ref Popup
 	p.items = array[len items] of string;
 	p.items[0:] = items;
 	p.lasthit = 0;
+	p.gen = nil;
+	p.subs = nil;
+	p.lastsub = -1;
+	return p;
+}
+
+newgen(gen: Generator): ref Popup
+{
+	p := ref Popup;
+	p.items = nil;
+	p.lasthit = 0;
+	p.gen = gen;
+	p.subs = nil;
+	p.lastsub = -1;
 	return p;
 }
 
@@ -124,13 +142,37 @@ drawallitems(win: ref Image, mr: Rect, items: array of string,
 		drawitem(win, mr, items[off + i], itemh, i, 0, yoff);
 }
 
+# Draw a menu frame (1px border).
+drawframe(win: ref Image, r: Rect)
+{
+	win.draw(r, mbg, nil, (0, 0));
+	win.draw(Rect(r.min, (r.max.x, r.min.y + 1)), mborder, nil, (0, 0));
+	win.draw(Rect((r.min.x, r.max.y - 1), r.max), mborder, nil, (0, 0));
+	win.draw(Rect(r.min, (r.min.x + 1, r.max.y)), mborder, nil, (0, 0));
+	win.draw(Rect((r.max.x - 1, r.min.y), r.max), mborder, nil, (0, 0));
+}
+
+# Check whether absolute item index has a submenu.
+hassub(m: ref Popup, absidx: int): int
+{
+	if(m.subs == nil || absidx < 0 || absidx >= len m.subs)
+		return 0;
+	return m.subs[absidx] != nil;
+}
+
 # --- Popup.show ---
 
 Popup.show(m: self ref Popup, win: ref Image, at: Point,
 	ptr: chan of ref Pointer): int
 {
+	# Generator: rebuild items/subs from current app state before posting.
+	if(m.gen != nil)
+		(*m.gen)(m);
+
 	if(mfont == nil || len m.items == 0)
 		return -1;
+
+	m.lastsub = -1;
 
 	nitems := len m.items;
 	lpad := 4;	# top/bottom item padding
@@ -192,11 +234,7 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 		yoff = indh;
 
 	# Draw menu frame.
-	win.draw(mr, mbg, nil, (0, 0));
-	win.draw(Rect(mr.min, (mr.max.x, mr.min.y + 1)), mborder, nil, (0, 0));
-	win.draw(Rect((mr.min.x, mr.max.y - 1), mr.max), mborder, nil, (0, 0));
-	win.draw(Rect(mr.min, (mr.min.x + 1, mr.max.y)), mborder, nil, (0, 0));
-	win.draw(Rect((mr.max.x - 1, mr.min.y), mr.max), mborder, nil, (0, 0));
+	drawframe(win, mr);
 
 	# Draw items
 	drawallitems(win, mr, m.items, itemh, off, nvis, yoff);
@@ -215,6 +253,15 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 	b3held  := 0;
 	prevb   := 4;		# button-3 was down when show() was called
 	scrolltick := 0;	# counter for scroll repeat
+
+	# Submenu state
+	activesub := -1;	# absolute item index with open submenu
+	subhover  := -1;	# visual hover index in submenu
+	submr     := Rect((0, 0), (0, 0));	# submenu rectangle
+	subsave:	ref Image;	# saved screen behind submenu
+	subitems:	array of string;	# submenu items
+	subnvis   := 0;		# visible submenu items
+	insub     := 0;		# pointer inside open submenu
 
 	for(;;) {
 		ev := <-ptr;
@@ -247,6 +294,13 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 				scrolled = 1;
 			}
 			if(scrolled) {
+				# Close submenu on scroll — visual position would be stale.
+				if(activesub >= 0) {
+					if(subsave != nil)
+						win.draw(submr, subsave, nil, submr.min);
+					activesub = -1;
+					subhover = -1;
+				}
 				drawallitems(win, mr, m.items, itemh, off, nvis, yoff);
 				drawindic(win, mr, mr.min.y + 1, indh, 1);
 				drawindic(win, mr, mr.max.y - 1 - indh, indh, 0);
@@ -256,6 +310,11 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 				continue;
 			}
 		}
+
+		# Is pointer inside the open submenu?
+		insub = activesub >= 0 &&
+			ev.xy.x >= submr.min.x && ev.xy.x < submr.max.x &&
+			ev.xy.y >= submr.min.y && ev.xy.y < submr.max.y;
 
 		# Compute hovered item (visual index within visible window).
 		# Content area: [mr.min.y+1+yoff, mr.min.y+1+yoff+nvis*itemh)
@@ -271,15 +330,106 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 				newhover = -1;
 		}
 
-		# Redraw only changed item row.
+		# --- Submenu management ---
+		absidx := -1;
+		if(newhover >= 0)
+			absidx = off + newhover;
+
+		# Which item wants its submenu open?
+		wantsub := -1;
+		if(absidx >= 0 && hassub(m, absidx))
+			wantsub = absidx;
+
+		# Close submenu if hover moved to a different item (and not inside sub)
+		if(activesub >= 0 && wantsub != activesub && !insub) {
+			# Restore screen behind submenu
+			if(subsave != nil)
+				win.draw(submr, subsave, nil, submr.min);
+			activesub = -1;
+			subhover = -1;
+		}
+
+		# Open submenu if hovering a cascade item that isn't already open
+		if(wantsub >= 0 && wantsub != activesub) {
+			sub := m.subs[wantsub];
+			# Run submenu's generator if present
+			if(sub.gen != nil)
+				(*sub.gen)(sub);
+			subitems = sub.items;
+			if(len subitems > 0) {
+				subnvis = len subitems;
+				if(subnvis > MAXVISIBLE)
+					subnvis = MAXVISIBLE;
+
+				# Compute submenu rect
+				subw := menuwidth(subitems);
+				subh := subnvis * itemh + 2;
+
+				# Position: right of parent, aligned with hovered row
+				sy := contentstart + newhover * itemh;
+				sx := mr.max.x - 1;	# 1px overlap for visual connection
+				submr = Rect((sx, sy), (sx + subw, sy + subh));
+
+				# Clamp to window bounds
+				if(submr.max.x > winr.max.x) {
+					# Flip to left side of parent if no room on right
+					submr = Rect((mr.min.x + 1 - subw, sy),
+						(mr.min.x + 1, sy + subh));
+				}
+				if(submr.max.y > winr.max.y)
+					submr = submr.subpt((0, submr.max.y - winr.max.y));
+				if(submr.min.x < winr.min.x)
+					submr = submr.subpt((submr.min.x - winr.min.x, 0));
+				if(submr.min.y < winr.min.y)
+					submr = submr.subpt((0, submr.min.y - winr.min.y));
+
+				# Save screen behind submenu
+				subsave = nil;
+				if(d != nil)
+					subsave = d.newimage(submr, win.chans, 0, Draw->Nofill);
+				if(subsave != nil)
+					subsave.draw(subsave.r, win, nil, submr.min);
+
+				# Draw submenu frame and items
+				drawframe(win, submr);
+				drawallitems(win, submr, subitems, itemh, 0, subnvis, 0);
+
+				activesub = wantsub;
+				subhover = -1;
+			}
+		}
+
+		# Track hover in submenu
+		newsubhover := -1;
+		if(insub) {
+			subcontentstart := submr.min.y + 1;
+			if(ev.xy.y >= subcontentstart &&
+			   ev.xy.y < subcontentstart + subnvis * itemh) {
+				newsubhover = (ev.xy.y - subcontentstart) / itemh;
+				if(newsubhover < 0 || newsubhover >= subnvis)
+					newsubhover = -1;
+			}
+		}
+		if(newsubhover != subhover) {
+			if(subhover >= 0)
+				drawitem(win, submr, subitems[subhover],
+					itemh, subhover, 0, 0);
+			if(newsubhover >= 0)
+				drawitem(win, submr, subitems[newsubhover],
+					itemh, newsubhover, 1, 0);
+			subhover = newsubhover;
+		}
+
+		# Redraw only changed parent item row.
 		if(newhover != hover) {
 			if(hover >= 0)
 				drawitem(win, mr, m.items[off + hover], itemh, hover, 0, yoff);
 			if(newhover >= 0)
 				drawitem(win, mr, m.items[off + newhover], itemh, newhover, 1, yoff);
 			hover = newhover;
-			win.flush(Draw->Flushnow);
 		}
+
+		win.flush(Draw->Flushnow);
 
 		# In persistent mode: second button-3 press dismisses.
 		if(persistent && (ev.buttons & 4) && !(prevb & 4))
@@ -290,27 +440,56 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 			b3held = 1;
 
 		# Button-3 UP edge:
-		#   - If held (or hovering): select now (Plan 9 style).
+		#   - Submenu hover: select from submenu.
+		#   - Parent hover on leaf: select.
+		#   - Parent hover on cascade: enter persistent mode (let user explore sub).
 		#   - Quick click with no hover: enter persistent mode.
 		if(!(ev.buttons & 4) && (prevb & 4)) {
-			if(b3held || hover >= 0)
+			if(insub && subhover >= 0)
 				break;
-			persistent = 1;
+			if(b3held || hover >= 0) {
+				if(hover >= 0 && hassub(m, off + hover)) {
+					# Released on cascade item — keep menu open
+					persistent = 1;
+				} else
+					break;
+			} else if(!persistent)
+				persistent = 1;
 		}
 
 		# Button-1 DOWN edge: select (if hovering) or dismiss.
-		if((ev.buttons & 1) && !(prevb & 1))
-			break;
+		if((ev.buttons & 1) && !(prevb & 1)) {
+			if(insub && subhover >= 0)
+				break;
+			if(hover >= 0 && hassub(m, off + hover)) {
+				# Clicked cascade item — don't select, sub should be open
+				;
+			} else
+				break;
+		}
 
 		prevb = ev.buttons;
 	}
 
-	# Compute absolute item index from visual hover.
+	# Compute result.
 	result := -1;
-	if(hover >= 0) {
+	m.lastsub = -1;
+	if(insub && subhover >= 0 && activesub >= 0) {
+		# Selected from submenu
+		result = activesub;
+		m.lasthit = activesub;
+		m.lastsub = subhover;
+		if(m.subs[activesub] != nil)
+			m.subs[activesub].lasthit = subhover;
+	} else if(hover >= 0 && !hassub(m, off + hover)) {
+		# Selected a leaf item
 		result = off + hover;
 		m.lasthit = result;
 	}
+
+	# Restore region behind submenu first (it's on top).
+	if(activesub >= 0 && subsave != nil)
+		win.draw(submr, subsave, nil, submr.min);
 
 	# Restore region behind menu.
 	if(savebuf != nil)

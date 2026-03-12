@@ -44,7 +44,7 @@ include "wmclient.m";
 
 include "menu.m";
 	menumod: Menu;
-	Popup: import menumod;
+	Popup, Generator: import menumod;
 
 include "string.m";
 	str: String;
@@ -356,7 +356,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if(menumod != nil)
 		menumod->init(display_g, font);
-	menu := makemenu();
+	menu := menumod->newgen(menuitems);
 
 	# Initialize plumbing
 	plumbmod = load Plumbmsg Plumbmsg->PATH;
@@ -405,7 +405,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			if(p.buttons & 4 && menumod != nil && menu != nil) {
 				n := menu.show(w.image, p.xy, w.ctxt.ptr);
 				domenu(n);
-				menu = makemenu();
 				redraw();
 			} else if(p.buttons & 2) {
 				buf := wmclient->snarfget();
@@ -529,18 +528,19 @@ updatetitle()
 
 # ---------- Context menu ----------
 
-makemenu(): ref Popup
+menuitems(m: ref Popup)
 {
 	scrolllabel := "noscroll";
 	if(!scrolling)
 		scrolllabel = "scroll";
 	if(plumbed)
-		return menumod->new(array[] of {
+		m.items = array[] of {
 			"cut", "snarf", "paste", "send",
-			"plumb", scrolllabel, "clear", "exit"});
-	return menumod->new(array[] of {
-		"cut", "snarf", "paste", "send",
-		scrolllabel, "clear", "exit"});
+			"plumb", scrolllabel, "clear", "exit"};
+	else
+		m.items = array[] of {
+			"cut", "snarf", "paste", "send",
+			scrolllabel, "clear", "exit"};
 }
 
 domenu(n: int)
