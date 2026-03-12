@@ -99,7 +99,7 @@ install:V:	$ROOT/dis/xenith.dis
 $ROOT/dis/xenith.dis:	xenith.dis
 	rm -f $target && cp xenith.dis $target
 
-xenith.dis:	$MODULES $SYS_MODULES
+xenith.dis:	$MODULES $SYS_MODULE
 
 nuke:V:
 	rm -f $ROOT/dis/xenith.dis

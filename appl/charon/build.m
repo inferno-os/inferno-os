@@ -325,7 +325,7 @@ ComputedStyle: adt
 
 	# CSS Background Image
 	bgimage_url: string;		# background-image URL (nil = none)
-	bgimage_ci: ref CImage;	# CImage for async fetch (nil until request started)
+	bgimage_ci: ref CharonUtils->CImage;	# CImage for async fetch (nil until request started)
 	bgrepeat: byte;			# BGRrepeat..BGRrepeat_y
 	bgposition_x: int;		# background-position x in pixels
 	bgposition_y: int;		# background-position y in pixels
