@@ -137,6 +137,10 @@ mousech_g: chan of ref Pointer;
 ctxreqch_g: chan of string;
 rszch_g: chan of ref Image;
 
+# Scroll state for context zone
+ctx_scroll := 0;		# pixel offset from top (0 = no scroll)
+ctx_content_height := 0;	# total content height in pixels (set by drawcontext)
+
 # Section header rects
 agentnshdrrect: Rect;
 toolsechdrrect: Rect;
@@ -266,6 +270,28 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	p := <-mouse =>
 		wasdown := prevbuttons;
 		prevbuttons = p.buttons;
+
+		# Mouse wheel: scroll context zone
+		if(p.buttons & 8) {
+			scrollstep := mainfont.height + 2;
+			if(ctx_scroll >= scrollstep)
+				ctx_scroll -= scrollstep;
+			else
+				ctx_scroll = 0;
+			redrawctx();
+			continue;
+		}
+		if(p.buttons & 16) {
+			scrollstep := mainfont.height + 2;
+			maxscroll := ctx_content_height - mainwin.r.dy();
+			if(maxscroll < 0)
+				maxscroll = 0;
+			ctx_scroll += scrollstep;
+			if(ctx_scroll > maxscroll)
+				ctx_scroll = maxscroll;
+			redrawctx();
+			continue;
+		}
 
 		# Button-1 just pressed
 		if(p.buttons == 1 && wasdown == 0) {
@@ -465,6 +491,12 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		redrawctx();
 	newimg := <-rsz =>
 		mainwin = newimg;
+		# Clamp scroll for new window size
+		maxscroll := ctx_content_height - mainwin.r.dy();
+		if(maxscroll < 0)
+			maxscroll = 0;
+		if(ctx_scroll > maxscroll)
+			ctx_scroll = maxscroll;
 		redrawctx();
 	}
 }
@@ -555,11 +587,17 @@ redrawctx()
 drawcontext(zone: Rect)
 {
 	pad := 8;
-	y := zone.min.y + pad;
+	y := zone.min.y + pad - ctx_scroll;
 	secgap := 12;
 	indw := 10;
 	indh := 10;
 	now := sys->millisec();
+
+	# Helper: test whether a row at y with given height is visible
+	# Draw commands to off-screen coordinates are clipped by the image,
+	# but we skip them explicitly to avoid wasted work.
+	vis_top := zone.min.y;
+	vis_bot := zone.max.y;
 
 	# Reset entry rects and counters at start of each frame
 	ntoolplusrects = 0;
@@ -577,21 +615,19 @@ drawcontext(zone: Rect)
 
 	# --- Activity section (background tasks) ---
 	if(bgtasks != nil) {
-		if(y + mainfont.height > zone.max.y)
-			return;
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Activity");
+		if(y + mainfont.height > vis_top && y < vis_bot)
+			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Activity");
 		y += mainfont.height + 4;
 
 		barh := 6;
 		for(bp := bgtasks; bp != nil; bp = tl bp) {
 			bg := hd bp;
-			if(y + mainfont.height + barh + 4 > zone.max.y)
-				break;
 
 			blabel := bg.label;
 			if(bg.status != nil && bg.status != "")
 				blabel += " [" + bg.status + "]";
-			mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, blabel);
+			if(y + mainfont.height > vis_top && y < vis_bot)
+				mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont, blabel);
 			y += mainfont.height + 2;
 
 			if(bg.progress != nil && bg.progress != "") {
@@ -600,16 +636,18 @@ drawcontext(zone: Rect)
 				if(pct > 100) pct = 100;
 				barw := zone.dx() - 2 * pad;
 				bary := y;
-				mainwin.draw(Rect(
-					(zone.min.x + pad, bary),
-					(zone.min.x + pad + barw, bary + barh)),
-					progbgcol, nil, (0, 0));
-				fillw := barw * pct / 100;
-				if(fillw > 0)
+				if(bary + barh > vis_top && bary < vis_bot) {
 					mainwin.draw(Rect(
 						(zone.min.x + pad, bary),
-						(zone.min.x + pad + fillw, bary + barh)),
-						progfgcol, nil, (0, 0));
+						(zone.min.x + pad + barw, bary + barh)),
+						progbgcol, nil, (0, 0));
+					fillw := barw * pct / 100;
+					if(fillw > 0)
+						mainwin.draw(Rect(
+							(zone.min.x + pad, bary),
+							(zone.min.x + pad + fillw, bary + barh)),
+							progfgcol, nil, (0, 0));
+				}
 				y += barh + 4;
 			}
 		}
@@ -617,13 +655,12 @@ drawcontext(zone: Rect)
 	}
 
 	# --- Agent Namespace section ---
-	if(y + mainfont.height > zone.max.y)
-		return;
 	{
 		nind := "▸";
 		if(agentns_expanded) nind = "▾";
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont,
-			agentname + " Namespace " + nind);
+		if(y + mainfont.height > vis_top && y < vis_bot)
+			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont,
+				agentname + " Namespace " + nind);
 		agentnshdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
@@ -634,8 +671,8 @@ drawcontext(zone: Rect)
 
 			for(nse := nsmanifest; nse != nil; nse = tl nse) {
 				entry := hd nse;
-				if(y + mainfont.height > zone.max.y)
-					break;
+
+				visible := y + mainfont.height > vis_top && y < vis_bot;
 
 				# Store full row rect for hit-testing
 				if(nnsentryrects < len nsentryrects) {
@@ -650,16 +687,19 @@ drawcontext(zone: Rect)
 					glyph = "○";
 					gcol = dimcol;
 				}
-				mainwin.text((zone.min.x + pad, y), gcol, (0, 0), mainfont, glyph);
+				if(visible)
+					mainwin.text((zone.min.x + pad, y), gcol, (0, 0), mainfont, glyph);
 
 				# Label
 				labelx := zone.min.x + pad + glyphw;
-				mainwin.text((labelx, y), text2col, (0, 0), mainfont, entry.label);
+				if(visible)
+					mainwin.text((labelx, y), text2col, (0, 0), mainfont, entry.label);
 
 				# Path (dimmer, clickable) — right of label
 				labelw := mainfont.width(entry.label);
 				pathx := labelx + labelw + 8;
-				mainwin.text((pathx, y), dimcol, (0, 0), mainfont, entry.path);
+				if(visible)
+					mainwin.text((pathx, y), dimcol, (0, 0), mainfont, entry.path);
 
 				# Store path rect for click-to-open
 				pathw := mainfont.width(entry.path);
@@ -669,7 +709,7 @@ drawcontext(zone: Rect)
 				}
 
 				# Permission badge [ro]/[rw]/[cow] — right-aligned
-				if(entry.mounted) {
+				if(entry.mounted && visible) {
 					badge := "[" + entry.perm + "]";
 					badgew := mainfont.width(badge);
 					badgex := zone.max.x - pad - badgew;
@@ -686,33 +726,30 @@ drawcontext(zone: Rect)
 
 				# If not mounted, show hint on next line
 				if(!entry.mounted) {
-					if(y + mainfont.height <= zone.max.y) {
+					if(y + mainfont.height > vis_top && y < vis_bot)
 						mainwin.text((zone.min.x + pad + glyphw, y),
 							dimcol, (0, 0), mainfont, "(not mounted)");
-						y += mainfont.height + 2;
-					}
+					y += mainfont.height + 2;
 				}
 			}
 
 			# If manifest is empty, show a waiting hint
 			if(nsmanifest == nil) {
-				if(y + mainfont.height <= zone.max.y) {
+				if(y + mainfont.height > vis_top && y < vis_bot)
 					mainwin.text((zone.min.x + pad, y), dimcol, (0, 0),
 						mainfont, "(waiting for agent)");
-					y += mainfont.height + 2;
-				}
+				y += mainfont.height + 2;
 			}
 		}
 		y += secgap;
 	}
 
 	# --- Tools section (two-column layout) ---
-	if(y + mainfont.height > zone.max.y)
-		return;
 	{
 		ind := "▸";
 		if(toolsec_expanded) ind = "▾";
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Tools " + ind);
+		if(y + mainfont.height > vis_top && y < vis_bot)
+			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Tools " + ind);
 		toolsechdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
@@ -727,8 +764,10 @@ drawcontext(zone: Rect)
 			rcol := zone.min.x + colw;
 
 			# Column headers
-			mainwin.text((lcol + pad, y), dimcol, (0, 0), mainfont, "Enabled");
-			mainwin.text((rcol + pad, y), dimcol, (0, 0), mainfont, "Available");
+			if(y + mainfont.height > vis_top && y < vis_bot) {
+				mainwin.text((lcol + pad, y), dimcol, (0, 0), mainfont, "Enabled");
+				mainwin.text((rcol + pad, y), dimcol, (0, 0), mainfont, "Available");
+			}
 			y += mainfont.height + 2;
 
 			# Build available tools list (excluding active)
@@ -750,8 +789,8 @@ drawcontext(zone: Rect)
 			# Render both columns in parallel, row by row
 			tp := activetoolset;
 			avp := availtools;
-			while((tp != nil || avp != nil) &&
-					y + mainfont.height <= zone.max.y) {
+			while(tp != nil || avp != nil) {
+				visible := y + mainfont.height > vis_top && y < vis_bot;
 
 				# Left column: enabled tool
 				if(tp != nil) {
@@ -776,13 +815,15 @@ drawcontext(zone: Rect)
 						toolentryrects[ntoolentryrects++] = Rect(
 							(lcol, y), (rcol, y + mainfont.height));
 
-					tindy := y + (mainfont.height - indh) / 2;
-					mainwin.draw(Rect(
-						(lcol + pad, tindy),
-						(lcol + pad + indw, tindy + indh)),
-						indcol2, nil, (0, 0));
-					mainwin.text((lcol + pad + indw + 6, y),
-						text2col, (0, 0), mainfont, tname);
+					if(visible) {
+						tindy := y + (mainfont.height - indh) / 2;
+						mainwin.draw(Rect(
+							(lcol + pad, tindy),
+							(lcol + pad + indw, tindy + indh)),
+							indcol2, nil, (0, 0));
+						mainwin.text((lcol + pad + indw + 6, y),
+							text2col, (0, 0), mainfont, tname);
+					}
 
 					tp = tl tp;
 				}
@@ -791,8 +832,9 @@ drawcontext(zone: Rect)
 				if(avp != nil) {
 					aname := hd avp;
 
-					mainwin.text((rcol + pad, y), dimcol, (0, 0),
-						mainfont, "○ " + aname);
+					if(visible)
+						mainwin.text((rcol + pad, y), dimcol, (0, 0),
+							mainfont, "○ " + aname);
 					if(ntoolplusrects < len toolplusrects)
 						toolplusrects[ntoolplusrects++] = Rect(
 							(rcol, y),
@@ -810,12 +852,13 @@ drawcontext(zone: Rect)
 	# ============================================================
 	# DIVIDER: horizontal rule separating agent world from user world
 	# ============================================================
-	if(y + 8 <= zone.max.y) {
+	{
 		divy := y + 3;
-		mainwin.draw(Rect(
-			(zone.min.x + pad, divy),
-			(zone.max.x - pad, divy + 1)),
-			dimcol, nil, (0, 0));
+		if(divy + 1 > vis_top && divy < vis_bot)
+			mainwin.draw(Rect(
+				(zone.min.x + pad, divy),
+				(zone.max.x - pad, divy + 1)),
+				dimcol, nil, (0, 0));
 		y += 8;
 	}
 
@@ -824,43 +867,47 @@ drawcontext(zone: Rect)
 	# ============================================================
 
 	# --- User Namespace section ---
-	if(y + mainfont.height > zone.max.y)
-		return;
 	{
 		uind := "▸";
 		if(userns_expanded) uind = "▾";
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont,
-			username + " Namespace " + uind);
+		if(y + mainfont.height > vis_top && y < vis_bot)
+			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont,
+				username + " Namespace " + uind);
 		usernshdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
 		if(userns_expanded) {
 			# Browse button — clicking opens filebrowser
-			if(y + mainfont.height <= zone.max.y) {
+			if(y + mainfont.height > vis_top && y < vis_bot) {
 				mainwin.text((zone.min.x + pad, y), text2col, (0, 0), mainfont,
 					"Browse...");
-				browserect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
-				y += mainfont.height + 4;
 			}
+			browserect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
+			y += mainfont.height + 4;
 
 			# Show pinned paths
 			if(pinnedpaths != nil) {
 				for(pp := pinnedpaths; pp != nil; pp = tl pp) {
 					ppath := hd pp;
-					if(y + mainfont.height > zone.max.y)
-						break;
-					mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
-						"● " + ppath.label);
-					mainwin.text((zone.min.x + pad + mainfont.width("● " + ppath.label) + 8, y),
-						dimcol, (0, 0), mainfont, ppath.srcpath);
+					if(y + mainfont.height > vis_top && y < vis_bot) {
+						mainwin.text((zone.min.x + pad, y), greencol, (0, 0), mainfont,
+							"● " + ppath.label);
+						mainwin.text((zone.min.x + pad + mainfont.width("● " + ppath.label) + 8, y),
+							dimcol, (0, 0), mainfont, ppath.srcpath);
+					}
 					y += mainfont.height + 2;
 				}
 			}
 		}
 	}
 
-	if(nsmanifest == nil && bgtasks == nil && catalog == nil && activetoolset == nil)
-		drawcentertext(zone, "No context");
+	if(nsmanifest == nil && bgtasks == nil && catalog == nil && activetoolset == nil) {
+		if(ctx_scroll == 0)
+			drawcentertext(zone, "No context");
+	}
+
+	# Record total content height for scroll clamping
+	ctx_content_height = y - (zone.min.y - ctx_scroll) + pad;
 }
 
 drawcentertext(r: Rect, text: string)
