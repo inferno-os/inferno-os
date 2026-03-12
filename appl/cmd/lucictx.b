@@ -1097,7 +1097,7 @@ filebrowser(startpath: string): string
 			}
 			if(clicked)
 				continue;
-			# File entry click: open in edit
+			# File entry click: launch .dis apps or open in edit
 			for(fi := 0; fi < brow_nfiles; fi++) {
 				if(brow_filerects[fi].contains(p.xy)) {
 					fpath: string;
@@ -1105,8 +1105,14 @@ filebrowser(startpath: string): string
 						fpath = "/" + brow_filenames[fi];
 					else
 						fpath = curpath + "/" + brow_filenames[fi];
-					has9p := ensureeditor();
-					openineditor(fpath, has9p);
+					if(islaunchabledis(fpath))
+						launchdisapp(fpath);
+					else if(len fpath > 4 && fpath[len fpath - 4:] == ".dis")
+						sys->fprint(sys->fildes(2), "lucictx: skipping non-launchable .dis: %s\n", fpath);
+					else {
+						has9p := ensureeditor();
+						openineditor(fpath, has9p);
+					}
 					break;
 				}
 			}
@@ -1454,11 +1460,58 @@ openpath(path: string)
 		if(fpath != nil && fpath != "")
 			bindpath(fpath);
 		redrawctx();
+	} else if(islaunchabledis(path)) {
+		# Launchable .dis app: run in presentation zone
+		launchdisapp(path);
+	} else if(len path > 4 && path[len path - 4:] == ".dis") {
+		# Non-launchable .dis bytecode: skip (not useful in editor)
+		sys->fprint(sys->fildes(2), "lucictx: skipping non-launchable .dis: %s\n", path);
 	} else {
 		# File: open in edit (ensure it's running first)
 		has9p := ensureeditor();
 		openineditor(path, has9p);
 	}
+}
+
+# Allowed dis path prefixes for GUI app launch from context zone.
+# Must match the whitelist in lucifer.b.
+ALLOWED_DIS_PREFIXES: con "/dis/wm/:/dis/charon/:/dis/xenith/";
+
+# Check if path is a launchable .dis app (ends in .dis, under allowed prefix).
+islaunchabledis(path: string): int
+{
+	if(len path < 5 || path[len path - 4:] != ".dis")
+		return 0;
+	# Check allowed prefixes
+	prefixes := "/dis/wm/" :: "/dis/charon/" :: "/dis/xenith/" :: nil;
+	for(pl := prefixes; pl != nil; pl = tl pl) {
+		pfx := hd pl;
+		if(len path >= len pfx && path[0:len pfx] == pfx)
+			return 1;
+	}
+	return 0;
+}
+
+# Launch a .dis app into the presentation zone.
+# Derives a short id from the filename (e.g. "/dis/wm/clock.dis" -> "clock").
+launchdisapp(path: string)
+{
+	# Extract app name from path for artifact id
+	name := path;
+	for(i := len path - 1; i >= 0; i--) {
+		if(path[i] == '/') {
+			name = path[i+1:];
+			break;
+		}
+	}
+	# Strip .dis suffix
+	if(len name > 4 && name[len name - 4:] == ".dis")
+		name = name[0:len name - 4];
+
+	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
+	cmd := sys->sprint("create id=%s type=app label=%s dis=%s", name, name, path);
+	writetofile(pctl, cmd);
+	writetofile(pctl, "center id=" + name);
 }
 
 # Send "open <path>" to edit. Use 9P if available, else real-file IPC.
