@@ -35,10 +35,10 @@ fi
 
 PASSED=0; FAILED=0; SKIPPED=0
 
-pass()  { echo -e "${GREEN}PASS${NC}: $1"; PASSED=$((PASSED+1)); }
-fail()  { echo -e "${RED}FAIL${NC}: $1"; FAILED=$((FAILED+1)); }
-skip()  { echo -e "${YELLOW}SKIP${NC}: $1"; SKIPPED=$((SKIPPED+1)); }
-info()  { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
+pass()  { local msg="$1"; echo -e "${GREEN}PASS${NC}: $msg"; PASSED=$((PASSED+1)); return 0; }
+fail()  { local msg="$1"; echo -e "${RED}FAIL${NC}: $msg"; FAILED=$((FAILED+1)); return 0; }
+skip()  { local msg="$1"; echo -e "${YELLOW}SKIP${NC}: $msg"; SKIPPED=$((SKIPPED+1)); return 0; }
+info()  { local msg="$1"; [[ "$VERBOSE" -eq 1 ]] && echo "  $msg" || true; }
 
 echo -e "${BOLD}tools9p 9P protocol tests${NC}"
 echo ""

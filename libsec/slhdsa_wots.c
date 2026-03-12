@@ -49,7 +49,6 @@ slhdsa_wots_len(int n)
 	 * For n=24: len1=48, 48*15=720, log_16(720)=2.37, len2=3
 	 * For n=32: len1=64, 64*15=960, log_16(960)=2.48, len2=3
 	 */
-	USED(n);
 	return len1 + 3;	/* len2=3 for both 192s and 256s */
 }
 

@@ -191,10 +191,14 @@ mldsa_keygen_internal(uchar *pk, uchar *sk,
 
 	/* Sample s1 (l polynomials) and s2 (k polynomials) */
 	nonce = 0;
-	for(i = 0; i < l; i++)
-		mldsa_poly_uniform_eta(st->s1[i], rhoprime, nonce++, eta);
-	for(i = 0; i < k; i++)
-		mldsa_poly_uniform_eta(st->s2[i], rhoprime, nonce++, eta);
+	for(i = 0; i < l; i++){
+		mldsa_poly_uniform_eta(st->s1[i], rhoprime, nonce, eta);
+		nonce++;
+	}
+	for(i = 0; i < k; i++){
+		mldsa_poly_uniform_eta(st->s2[i], rhoprime, nonce, eta);
+		nonce++;
+	}
 
 	/* Pack s1, s2 into sk BEFORE NTT (eta-dependent bit packing) */
 	eta_bytes = (eta == 4) ? 128 : 96;

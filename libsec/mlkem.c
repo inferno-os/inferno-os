@@ -135,10 +135,14 @@ cpapke_keygen(uchar *pk, uchar *sk, const uchar seed[32], int k, int eta1)
 
 	/* Sample secret s and error e from CBD */
 	nonce = 0;
-	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(st->s[i], sigma, nonce++, eta1);
-	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(st->e[i], sigma, nonce++, eta1);
+	for(i = 0; i < k; i++){
+		mlkem_poly_sample_cbd(st->s[i], sigma, nonce, eta1);
+		nonce++;
+	}
+	for(i = 0; i < k; i++){
+		mlkem_poly_sample_cbd(st->e[i], sigma, nonce, eta1);
+		nonce++;
+	}
 
 	/* NTT(s), NTT(e) */
 	for(i = 0; i < k; i++){
@@ -217,11 +221,16 @@ cpapke_enc(uchar *ct, const uchar *pk, const uchar msg[32],
 
 	/* Sample r, e1, e2 */
 	nonce = 0;
-	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(st->r[i], coins, nonce++, eta1);
-	for(i = 0; i < k; i++)
-		mlkem_poly_sample_cbd(st->e1[i], coins, nonce++, eta2);
-	mlkem_poly_sample_cbd(st->e2, coins, nonce++, eta2);
+	for(i = 0; i < k; i++){
+		mlkem_poly_sample_cbd(st->r[i], coins, nonce, eta1);
+		nonce++;
+	}
+	for(i = 0; i < k; i++){
+		mlkem_poly_sample_cbd(st->e1[i], coins, nonce, eta2);
+		nonce++;
+	}
+	mlkem_poly_sample_cbd(st->e2, coins, nonce, eta2);
+	nonce++;
 
 	/* NTT(r) */
 	for(i = 0; i < k; i++)

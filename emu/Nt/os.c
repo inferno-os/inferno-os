@@ -288,8 +288,15 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 	if(code == EXCEPTION_ACCESS_VIOLATION) {
 		ULONG_PTR *info = ureg->ExceptionRecord->ExceptionInformation;
 		CONTEXT *ctx = ureg->ContextRecord;
+		const char *vtype;
+		if(info[0] == 0)
+			vtype = "read";
+		else if(info[0] == 1)
+			vtype = "write";
+		else
+			vtype = "exec";
 		print("ACCESS VIOLATION: %s addr=%p RIP=%p\n",
-			info[0] == 0 ? "read" : info[0] == 1 ? "write" : "exec",
+			vtype,
 			(void*)info[1], (void*)ctx->Rip);
 		print("  RAX=%p RBX=%p RCX=%p RDX=%p\n",
 			(void*)ctx->Rax, (void*)ctx->Rbx, (void*)ctx->Rcx, (void*)ctx->Rdx);

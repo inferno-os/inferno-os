@@ -90,50 +90,6 @@ fors_node(uchar *out, int n,
 }
 
 /*
- * Compute FORS tree root using treehash
- * Builds the tree bottom-up
- */
-static void
-fors_treehash(uchar *root, int n,
-	const uchar *pkseed, int seedlen,
-	const uchar *skseed, int skseedlen,
-	uchar adrs[32], int a, u32int tree_idx)
-{
-	uchar *stack;
-	uchar node[64]; /* current node (max n=32) */
-	uchar tmp[64];
-	int i, j, leaves;
-	u32int base;
-
-	leaves = 1 << a;
-	/* Stack: max height a+1 entries of n bytes */
-	stack = malloc((a + 1) * n);
-	if(stack == nil)
-		return;
-
-	base = tree_idx * leaves;
-
-	for(i = 0; i < leaves; i++){
-		fors_leaf(node, n, pkseed, seedlen, skseed, skseedlen,
-			adrs, base + i);
-
-		/* Merge up: stack[j] is left child, node is right child */
-		for(j = 0; (i >> j) & 1; j++){
-			fors_node(tmp, n,
-				stack + j*n, node,
-				pkseed, seedlen,
-				adrs, j + 1, (base + i) >> (j + 1));
-			memmove(node, tmp, n);
-		}
-		memmove(stack + j*n, node, n);
-	}
-
-	memmove(root, stack + a*n, n);
-	secureZero(stack, (a + 1) * n);
-	free(stack);
-}
-
-/*
  * Generate FORS signature
  *
  * Algorithm 16 from FIPS 205

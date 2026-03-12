@@ -101,10 +101,9 @@ split_digest(const uchar *digest, int digestlen,
 	treev = 0;
 	for(i = 0; i < tree_bits && i < 64; i++){
 		byte_off = (bit_off + i) / 8;
-		if(byte_off < digestlen){
-			if(digest[byte_off] & (1 << (7 - ((bit_off + i) % 8))))
-				treev |= (1ULL << (tree_bits - 1 - i));
-		}
+		if(byte_off < digestlen
+		&& (digest[byte_off] & (1 << (7 - ((bit_off + i) % 8)))))
+			treev |= (1ULL << (tree_bits - 1 - i));
 	}
 
 	/* Extract leaf index */
@@ -112,10 +111,9 @@ split_digest(const uchar *digest, int digestlen,
 	leafv = 0;
 	for(i = 0; i < leaf_bits; i++){
 		byte_off = (bit_off + i) / 8;
-		if(byte_off < digestlen){
-			if(digest[byte_off] & (1 << (7 - ((bit_off + i) % 8))))
-				leafv |= (1U << (leaf_bits - 1 - i));
-		}
+		if(byte_off < digestlen
+		&& (digest[byte_off] & (1 << (7 - ((bit_off + i) % 8)))))
+			leafv |= (1U << (leaf_bits - 1 - i));
 	}
 
 	*idx_tree = treev;
