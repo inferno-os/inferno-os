@@ -180,7 +180,8 @@ slhdsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 {
 	const uchar *skseed, *skprf, *pkseed, *pkroot;
 	uchar adrs[32];
-	uchar *R, *opt_rand;
+	uchar *R;
+	const uchar *opt_rand;
 	uchar *digest;
 	int digestlen;
 	int fors_siglen;
@@ -196,7 +197,7 @@ slhdsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 	R = sig;
 
 	/* opt_rand = PK.seed for deterministic signing */
-	opt_rand = (uchar*)pkseed;
+	opt_rand = pkseed;
 
 	/* R = PRF_msg(SK.prf, opt_rand, M) */
 	slhdsa_PRF_msg(R, n, skprf, n, opt_rand, n, msg, msglen);

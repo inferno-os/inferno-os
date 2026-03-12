@@ -40,6 +40,7 @@ for bench in fib sieve sort loop; do
         sieve) go_dis="sieve_go.dis";  limbo_dis="sieve_limbo.dis";;
         sort)  go_dis="sort_go.dis";   limbo_dis="sort_limbo.dis";;
         loop)  go_dis="loop_go.dis";   limbo_dis="loop_limbo.dis";;
+        *)     echo "unknown benchmark: $bench" >&2; continue;;
     esac
 
     echo "--- $bench ---"
