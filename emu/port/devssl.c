@@ -1362,6 +1362,8 @@ checkdigestb(Dstate *s, Block *inb)
 		int i, diff;
 		uchar *a, *b;
 
+		if(inb == nil)
+			error("missing digest block");
 		a = digest;
 		b = inb->rp;
 		diff = 0;

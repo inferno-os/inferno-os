@@ -138,8 +138,10 @@ kproc(char *name, void (*func)(void*), void *arg, int flags)
 		}
 	}
 
-	if(i==MAXSPROC)
-		return -1;
+	if(i==MAXSPROC) {
+		unlock(&procs.l);
+		return;
+	}
 
 	sproctbl[i] = -i - 1; /* temporary hold of table index outside of lock */
 

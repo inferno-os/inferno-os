@@ -20,7 +20,7 @@ static __inline Proc *getup(void) {
 	__asm__(	"movl	%%esp, %%eax\n\t"
 			: "=a" (p)
 	);
-	return *(Proc **)((unsigned long)p & ~(KSTACK - 1));
+	return *(Proc **)((uintptr)p & ~(KSTACK - 1));
 };
 
 #define	up	(getup())

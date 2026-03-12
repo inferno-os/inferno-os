@@ -58,8 +58,8 @@ pexit(char *msg, int)
 		closepgrp(e->pgrp);
 		closeegrp(e->egrp);
 		closesigs(e->sigs);
+		free(e->user);
 	}
-	free(e->user);
 	free(up->prog);
 	up->prog = nil;
 	up->type = Moribund;

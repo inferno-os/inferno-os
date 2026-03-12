@@ -148,6 +148,7 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	volatile int alloc;
 	Walkqid *wq;
 	struct stat st;
+	int gotstat;
 	char *n;
 	Cname *next;
 	Cname *volatile current;
@@ -157,6 +158,7 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 		isdir(c);
 
 	alloc = 0;
+	gotstat = 0;
 	current = nil;
 	wq = smalloc(sizeof(Walkqid)+(nname-1)*sizeof(Qid));
 	if(waserror()){
@@ -188,6 +190,7 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 			incref(&next->r);
 			next = addelem(current, n);
 			//print("** ufs walk '%s' -> %s [%s]\n", current->s, n, next->s);
+			gotstat = 1;
 			if(xstat(next->s, &st) < 0){
 				cnameclose(next);
 				if(j == 0)
@@ -210,7 +213,7 @@ fswalk(Chan *c, Chan *nc, char **name, int nname)
 	}else if(wq->clone){
 		nc->aux = smalloc(sizeof(Fsinfo));
 		nc->type = c->type;
-		if(nname > 0) {
+		if(nname > 0 && gotstat) {
 			FS(nc)->gid = st.st_gid;
 			FS(nc)->uid = st.st_uid;
 			FS(nc)->mode = st.st_mode;

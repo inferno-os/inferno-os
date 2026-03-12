@@ -1313,11 +1313,11 @@ fsdirread(Chan *c, uchar *va, int count, vlong offset)
 	p++;
 	de = nil;
 	if(FS(c)->offset != offset){
-		de = FS(c)->de;
 		if(FS(c)->de != nil){
 			free(FS(c)->de);
 			FS(c)->de = nil;
 		}
+		de = nil;
 		FS(c)->offset = 0;
 		for(o = 0; o < offset;){
 			de = fsdirent(c, path, de);
@@ -1510,11 +1510,12 @@ fssettime(char *path, long at, long mt)
 		return;
 	mtime = wintime(mt);
 	atime = wintime(at);
-	if(!SetFileTime(h, 0, &atime, &mtime)){
+	if(SetFileTime(h, 0, &atime, &mtime)){
+		CloseHandle(h);
+	}else{
 		CloseHandle(h);
 		oserror();
 	}
-	CloseHandle(h);
 }
 
 static int

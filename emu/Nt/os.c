@@ -79,8 +79,8 @@ pfree(Proc *p)
 		closepgrp(e->pgrp);
 		closeegrp(e->egrp);
 		closesigs(e->sigs);
+		free(e->user);
 	}
-	free(e->user);
 	free(p->prog);
 	CloseHandle((HANDLE)p->os);
 	free(p);
