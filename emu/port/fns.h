@@ -90,6 +90,7 @@ int		kannounce(char*, char*);
 int		kdial(char*, char*, char*, int*);
 void		kproc(char*, void (*)(void*), void*, int);
 void	kprocinit(Proc*);
+void	kprocsetup(Proc*);
 int		kfgrpclose(Fgrp*, int);
 void		ksetenv(char*, char*, int);
 void		kstrcpy(char*, char*, int);

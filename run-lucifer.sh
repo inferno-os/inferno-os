@@ -2,12 +2,26 @@
 # Launch Lucifer UI with Veltro agent bridge
 # Run from anywhere: sh /path/to/run-lucifer.sh
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-exec "$ROOT/emu/MacOSX/o.emu" -c1 -pheap=512m -pmain=512m -pimage=512m "-r$ROOT/emu/MacOSX/../.." sh -l -c '
+
+# Auto-detect platform
+case "$(uname -s)" in
+    Darwin) EMUDIR="$ROOT/emu/MacOSX" ;;
+    Linux)  EMUDIR="$ROOT/emu/Linux" ;;
+    *)      echo "Unsupported platform: $(uname -s)"; exit 1 ;;
+esac
+
+if [ ! -x "$EMUDIR/o.emu" ]; then
+    echo "ERROR: $EMUDIR/o.emu not found. Build first."
+    exit 1
+fi
+
+exec "$EMUDIR/o.emu" -c1 -pheap=512m -pmain=512m -pimage=512m "-r$EMUDIR/../.." sh -l -c '
 luciuisrv
 echo activity create Main > /n/ui/ctl
+llmsrv &
 speech9p &
 sleep 1
-/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep write edit exec launch spawn xenith ask diff json http git memory todo websearch mail present say hear
+/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep write edit exec launch spawn xenith ask diff json http git memory todo websearch mail present say hear editor
 lucibridge -s &
 lucifer
 '

@@ -1,12 +1,20 @@
 #!/bin/bash
 #
 # Build script for Linux x86_64 (amd64)
-# Run this on any x86_64 Linux system
+# Builds Infernode with SDL3 GUI (Lucifer) by default.
+# Run this on any x86_64 Linux system.
+#
+# Usage:
+#   ./build-linux-amd64.sh           # Build with SDL3 GUI (default)
+#   ./build-linux-amd64.sh headless  # Build headless (no display)
 #
 
 set -e
 
+GUIMODE="${1:-sdl3}"
+
 echo "=== InferNode Linux x86_64 Build ==="
+echo "GUI backend: $GUIMODE"
 echo ""
 
 # Set up environment
@@ -32,6 +40,20 @@ if ! command -v gcc &> /dev/null; then
     echo "ERROR: gcc not found. Install build-essential:"
     echo "  sudo apt-get install build-essential"
     exit 1
+fi
+
+if [[ "$GUIMODE" == "sdl3" ]]; then
+    if pkg-config --exists sdl3 2>/dev/null; then
+        echo "SDL3 found: $(pkg-config --modversion sdl3)"
+    elif [[ -f /usr/local/lib/libSDL3.so ]] && [[ -d /usr/local/include/SDL3 ]]; then
+        echo "SDL3 found: /usr/local/lib/libSDL3.so"
+    else
+        echo "WARNING: SDL3 not found."
+        echo "  Run: ./install-sdl3.sh"
+        echo ""
+        echo "Falling back to headless build."
+        GUIMODE=headless
+    fi
 fi
 
 echo "Build tools found."
@@ -143,9 +165,10 @@ if [[ ! -x "$ROOT/Linux/amd64/bin/mk" ]]; then
     echo ""
 fi
 
-# Set SHELL for mk
+# Set SHELL and AWK for mk
 export SHELL=/bin/sh
 export SHELLNAME=sh
+export AWK=awk
 
 # Create the lib directory if it doesn't exist
 mkdir -p "$ROOT/Linux/amd64/lib"
@@ -191,52 +214,85 @@ for lib in libinterp libkeyring; do
 done
 
 echo ""
-echo "=== Building Emulator ==="
+echo "=== Building Emulator ($GUIMODE) ==="
 cd "$ROOT/emu/Linux"
 
 # Clean any previous build artifacts
 rm -f *.o *.emu emu.root.h emu.root.c emu.root.s 2>/dev/null
 
-# mkfile-g is the headless emulator config, which includes mkfile-$OBJTYPE
-"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed" >&2; exit 1; }
+if [[ "$GUIMODE" == "headless" ]]; then
+    # Headless build: use mkfile-g (hardcoded headless, no GUI dependencies)
+    "$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed" >&2; exit 1; }
+else
+    # SDL3 GUI build: main mkfile defaults to GUIBACK=sdl3
+    rm -f emu.c errstr.h 2>/dev/null
+    "$ROOT/Linux/amd64/bin/mk" 2>&1 || { echo "ERROR: emulator build failed" >&2; exit 1; }
+fi
 
 echo ""
 echo "=== Building Applications (Limbo -> Dis bytecode) ==="
 
-# Create dis directories
-mkdir -p "$ROOT/dis" "$ROOT/dis/lib"
-
-LIMBO="$ROOT/Linux/amd64/bin/limbo"
+MK="$ROOT/Linux/amd64/bin/mk"
 
 # Build library modules
 echo "Building library modules..."
 cd "$ROOT/appl/lib"
-for f in *.b; do
-    name="${f%.b}"
-    "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/$name.dis" "$f" 2>/dev/null || true
-done
-echo "  Built $(ls "$ROOT/dis/lib/"*.dis 2>/dev/null | wc -l) library modules"
+$MK install 2>&1 || { echo "WARNING: some library modules failed to build"; }
 
-# Build core commands
+# Build core commands (includes lucifer, luciuisrv, lucibridge, etc.)
 echo "Building command utilities..."
 cd "$ROOT/appl/cmd"
-for f in *.b; do
-    name="${f%.b}"
-    "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/$name.dis" "$f" 2>/dev/null || true
-done
-echo "  Built $(ls "$ROOT/dis/"*.dis 2>/dev/null | wc -l) command utilities"
+$MK install 2>&1 || { echo "WARNING: some commands failed to build"; }
 
-# Build shell components
-echo "Building shell..."
+# Build window manager components (luciedit, lucishell, wm, etc.)
+echo "Building wm components..."
+cd "$ROOT/appl/wm"
+$MK install 2>&1 || { echo "WARNING: some wm modules failed to build"; }
+
+# Build shell modules
+echo "Building shell modules..."
 cd "$ROOT/appl/cmd/sh"
-"$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/sh.dis" sh.b 2>/dev/null || true
+$MK install 2>&1 || { echo "WARNING: some shell modules failed to build"; }
+
+# Build Veltro agent system (tools9p, agentlib, etc.)
+echo "Building Veltro agent system..."
+cd "$ROOT/appl/veltro"
+$MK install 2>&1 || { echo "WARNING: some veltro modules failed to build"; }
 
 # Verify essential files
-if [[ -f "$ROOT/dis/emuinit.dis" ]] && [[ -f "$ROOT/dis/sh.dis" ]]; then
-    echo "Essential boot files built successfully"
-else
-    echo "Warning: Some essential files missing"
-fi
+echo ""
+echo "=== Verifying Lucifer components ==="
+MISSING=0
+for f in emuinit.dis sh.dis lucifer.dis luciuisrv.dis lucibridge.dis luciconv.dis lucipres.dis lucictx.dis llmsrv.dis; do
+    if [[ -f "$ROOT/dis/$f" ]]; then
+        echo "  OK: dis/$f"
+    else
+        echo "  MISSING: dis/$f"
+        MISSING=$((MISSING + 1))
+    fi
+done
+
+for f in edit.dis lucishell.dis; do
+    if [[ -f "$ROOT/dis/wm/$f" ]]; then
+        echo "  OK: dis/wm/$f"
+    else
+        echo "  MISSING: dis/wm/$f"
+        MISSING=$((MISSING + 1))
+    fi
+done
+
+for f in tools9p.dis agentlib.dis lucibridge.dis; do
+    # tools9p and agentlib go to dis/veltro/
+    if [[ "$f" == "lucibridge.dis" ]]; then
+        continue  # lucibridge is in dis/, checked above
+    fi
+    if [[ -f "$ROOT/dis/veltro/$f" ]]; then
+        echo "  OK: dis/veltro/$f"
+    else
+        echo "  MISSING: dis/veltro/$f"
+        MISSING=$((MISSING + 1))
+    fi
+done
 
 echo ""
 echo "=== Build Summary ==="
@@ -245,9 +301,19 @@ if [[ -x "$ROOT/emu/Linux/o.emu" ]]; then
     echo "SUCCESS: Emulator built at $ROOT/emu/Linux/o.emu"
     ls -la "$ROOT/emu/Linux/o.emu"
     echo ""
-    echo "To run:"
-    echo "  cd $ROOT"
-    echo "  ./emu/Linux/o.emu -r."
+    echo "GUI backend: $GUIMODE"
+    if [[ $MISSING -gt 0 ]]; then
+        echo "WARNING: $MISSING Lucifer component(s) missing"
+    fi
+    echo ""
+    if [[ "$GUIMODE" == "sdl3" ]]; then
+        echo "To launch Lucifer:"
+        echo "  ./run-lucifer-linux.sh"
+    else
+        echo "To run (headless):"
+        echo "  cd $ROOT/emu/Linux"
+        echo "  ./o.emu -r../.. sh -l"
+    fi
 else
     echo "Emulator binary not found. Checking for build output..."
     ls -la "$ROOT/emu/Linux/"*.emu 2>/dev/null || echo "No emulator binary found"

@@ -699,6 +699,39 @@ mallocz(ulong size, int clr)
 	return v;
 }
 
+/*
+ * Check whether v (after Npadlong adjustment) is inside one of our pools.
+ * Returns 1 if it is, 0 if it belongs to the C library or another allocator.
+ */
+static int
+inpool(void *v)
+{
+	Pool *p;
+	Bhdr *bc, *ec;
+
+	for(p = &table.pool[0]; p < &table.pool[nelem(table.pool)]; p++){
+		lock(&p->l);
+		for(bc = p->chain; bc != nil; bc = bc->clink){
+			ec = B2LIMIT(bc);
+			if((Bhdr*)v >= bc && (Bhdr*)v < ec){
+				unlock(&p->l);
+				return 1;
+			}
+		}
+		unlock(&p->l);
+	}
+	return 0;
+}
+
+/*
+ * On hosted platforms, shared libraries (Mesa, LLVM, etc.) may call
+ * free() with pointers from the C library's malloc.  Detect these
+ * and forward them to the real C library free via __libc_free.
+ */
+#if defined(__linux__)
+extern void __libc_free(void*);
+#endif
+
 void
 free(void *v)
 {
@@ -707,6 +740,14 @@ free(void *v)
 	if(v != nil) {
 		if(Npadlong)
 			v = (ulong*)v-Npadlong;
+#if defined(__linux__)
+		if(!inpool(v)){
+			if(Npadlong)
+				v = (ulong*)v+Npadlong;
+			__libc_free(v);
+			return;
+		}
+#endif
 		D2B(b, v);
 		ML(v, 0, 0);
 		MM(1<<8|0, getcallerpc(&v), (ulong)((ulong*)v+Npadlong), b->size);

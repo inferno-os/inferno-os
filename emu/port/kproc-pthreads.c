@@ -214,6 +214,26 @@ kprocinit(Proc *p)
 		panic("set specific thread data failed");
 }
 
+/*
+ * Set thread-local Proc for a new thread (prdakey must already exist).
+ * Used by GUI worker threads that need their own Proc.
+ */
+void
+kprocsetup(Proc *p)
+{
+	Osdep *os;
+
+	os = malloc(sizeof(*os));
+	if(os == nil)
+		panic("kprocsetup: no memory");
+	os->self = pthread_self();
+	sem_init(&os->sem, 0, 0);
+	p->os = os;
+
+	if(pthread_setspecific(prdakey, p))
+		panic("kprocsetup: pthread_setspecific failed");
+}
+
 void
 osyield(void)
 {

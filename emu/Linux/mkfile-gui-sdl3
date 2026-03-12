@@ -1,17 +1,16 @@
 # SDL3 GUI backend for Linux
 # Cross-platform GUI with GPU acceleration (Vulkan/OpenGL on Linux)
+#
+# Variable definitions only - build rule is in the main mkfile
+# to avoid overriding the default target.
 
 GUISRC=\
 	draw-sdl3.$O\
 
-# SDL3 configuration via pkg-config or sdl3-config
-# Install with: sudo apt install libsdl3-dev (or build from source)
-SDL3_CFLAGS=`pkg-config --cflags sdl3 2>/dev/null || sdl3-config --cflags 2>/dev/null || echo "-I/usr/local/include/SDL3"`
-SDL3_LIBS=`pkg-config --libs sdl3 2>/dev/null || sdl3-config --libs 2>/dev/null || echo "-L/usr/local/lib -lSDL3"`
+# SDL3 configuration
+# Install with: sudo apt install libsdl3-dev (or ./install-sdl3.sh)
+SDL3_CFLAGS=-I/usr/local/include
+SDL3_LIBS=-L/usr/local/lib -lSDL3
 
 GUIFLAGS=-DGUI_SDL3 $SDL3_CFLAGS
 GUILIBS=$SDL3_LIBS
-
-# Compile SDL3 backend from port/ directory
-draw-sdl3.$O: ../port/draw-sdl3.c
-	$CC $CFLAGS $GUIFLAGS -I. ../port/draw-sdl3.c

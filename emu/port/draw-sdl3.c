@@ -346,7 +346,7 @@ sdl3_preinit(void)
 	SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, "Operating System");
 
 	driver = SDL_GetCurrentVideoDriver();
-	USED(driver);
+	/* SDL init succeeded */
 
 	/* Register cleanup handler to ensure window closes on exit */
 	atexit(sdl_atexit_handler);
@@ -372,6 +372,7 @@ uchar*
 attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 {
 	/* SDL3 should already be initialized from main thread */
+	/* attachscreen called from worker thread */
 	if (!sdl_initialized)
 		return nil;
 
@@ -746,6 +747,8 @@ sdl3_mainloop(void)
 	static Uint64 last_refresh = 0;
 	Uint64 now;
 
+	/* mainloop running on main thread */
+
 	/* Event loop - processes SDL events and sends to Infernode */
 	for(;;) {
 #ifndef __APPLE__
@@ -755,6 +758,7 @@ sdl3_mainloop(void)
 		 * a window (via attachscreen). We create it here on the main thread.
 		 */
 		if (create_window_requested && !create_window_done) {
+			/* creating window on main thread */
 			sdl_window = SDL_CreateWindow(
 				"InferNode",
 				sdl_width, sdl_height,

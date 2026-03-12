@@ -14,8 +14,8 @@ CLEANCONFLIST=
 
 # GUI Backend Selection
 # Options: headless, sdl3
-# Default: headless (no display, terminal only)
-GUIBACK=headless
+# Default: sdl3 (Lucifer GUI via SDL3)
+GUIBACK=sdl3
 
 # GPU Acceleration (TensorRT/CUDA)
 # Set ENABLEGPU=1 to build with GPU support (requires CUDA + TensorRT).
@@ -30,11 +30,12 @@ INSTALLDIR=$ROOT/$SYSTARG/$OBJTYPE/bin	#path of directory where kernel is instal
 <| AWK=$AWK $SHELLNAME ../port/mkdevlist  $CONF	#sets $IP, $DEVS, $PORT, $LIBS
 <mkfile-$OBJTYPE	# sets $ARCHFILES
 
-# Include GUI backend configuration
-<mkfile-gui-$GUIBACK
-
 # Include GPU configuration (set ENABLEGPU=1 for Jetson TensorRT support)
 <mkfile-gpu-$ENABLEGPU
+
+# GUI backend variables (GUISRC, GUIFLAGS, GUILIBS)
+# Included here for variable definitions only; build rules are below default target.
+<mkfile-gui-$GUIBACK
 
 OBJ=\
 	asm-$OBJTYPE.$O\
@@ -61,7 +62,7 @@ CFLAGS=\
 	-I$ROOT/libinterp\
 	$CTHREADFLAGS $CFLAGS $EMUOPTIONS $GUIFLAGS $GPUFLAGS\
 
-KERNDATE=`{$NDATE}
+KERNDATE=0
 
 SYSLIBS=\
 	$GPULIBS\
@@ -80,3 +81,7 @@ install:V: $O.$CONF
 <../port/portmkfile
 
 devfs.$O:	../port/devfs-posix.c
+
+# SDL3 backend compile rule (must be after default target)
+draw-sdl3.$O: ../port/draw-sdl3.c
+	$CC $CFLAGS $GUIFLAGS -I. ../port/draw-sdl3.c

@@ -16,8 +16,9 @@ mount -ac {mntgen} /n >[2] /dev/null
 bind -a '#I' /net >[2] /dev/null
 ndb/cs
 
-# Mount llm9p if running on localhost
-mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
+# Start native LLM server (self-mounts at /n/llm)
+llmsrv &
+sleep 1
 
 # Set up home directory
 home=/usr/^$user
