@@ -23,6 +23,7 @@ include "bufio.m";
 
 include "tls.m";
 	tlsmod: TLS;
+	Conn: import tlsmod;
 
 include "json.m";
 	json: JSON;
