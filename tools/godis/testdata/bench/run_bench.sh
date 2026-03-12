@@ -27,6 +27,7 @@ run_bench() {
     done
     rm -f "$ROOT/$dis"
     printf "%-20s %-6s %-8s  result=%-12s  times=%s ms\n" "$label" "$modename" "$dis" "$result" "$times"
+    return 0
 }
 
 echo "=== Benchmark: Go-on-Dis vs Limbo-on-Dis ==="

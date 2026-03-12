@@ -54,6 +54,7 @@ run_spin_safety() {
     # Cleanup
     rm -f pan pan.* _spin_nvr.tmp 2>/dev/null
     echo ""
+    return 0
 }
 
 run_spin_ltl() {
@@ -86,6 +87,7 @@ run_spin_ltl() {
 
     rm -f pan pan.* _spin_nvr.tmp 2>/dev/null
     echo ""
+    return 0
 }
 
 run_spin_ltl_expect_violation() {
@@ -115,6 +117,7 @@ run_spin_ltl_expect_violation() {
 
     rm -f pan pan.* _spin_nvr.tmp 2>/dev/null
     echo ""
+    return 0
 }
 
 echo "=== Inferno Namespace SPIN Verification ==="

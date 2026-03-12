@@ -353,6 +353,7 @@ print('NOCHECK')
 			WRONG)    fail "2f: assistant content blocks in WRONG order (tool_use before text)" ;;
 			NOCHECK)  skip "2f: no text+tool_use combo to check ordering" ;;
 			PARSEERR) skip "2f: could not parse request dump" ;;
+			*)        fail "2f: unexpected ordering result: $ORDERING" ;;
 		esac
 	else
 		skip "2f: no debug dump in output"

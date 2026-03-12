@@ -224,7 +224,7 @@ static inline int waserror(void) {
 
 static inline void poperror(void) { /* no-op in stub */ }
 static inline void nexterror(void) { /* model as assertion failure path */ }
-static inline void error(char *msg) { /* model as raising error */ }
+static inline void error(char *msg) { (void)msg; /* model as raising error */ }
 
 /* ====== Memory Allocation ====== */
 
