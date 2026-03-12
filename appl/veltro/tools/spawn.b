@@ -87,6 +87,7 @@ ResultMsg: adt {
 MAX_SUBAGENTS:      con 5;
 DEFAULT_TIMEOUT_MS: con 300000;   # 5 minutes
 RESULT_END:         con "\n<<EOF>>\n";
+UI_MOUNT:           con "/n/ui";
 
 inited := 0;
 
@@ -197,6 +198,17 @@ exec(args: string): string
 	if(toolerr != "")
 		return "error: " + toolerr;
 
+	# Register sub-agents as background tasks in the Activity section.
+	actid := currentactid();
+	bgbase := -1;
+	if(actid >= 0) {
+		bgbase = countbgtasks(actid);
+		for(ss := specs; ss != nil; ss = tl ss) {
+			label := tasksummary((hd ss).task);
+			bgadd(actid, label);
+		}
+	}
+
 	# Result channel: buffered N so collector goroutines never block.
 	resultchan := chan[N] of ref ResultMsg;
 
@@ -245,6 +257,13 @@ exec(args: string): string
 	for(i := 0; i < N; i++) {
 		msg := <-resultchan;
 		results[msg.idx] = msg.result;
+		# Update background task status as each result arrives
+		if(actid >= 0 && bgbase >= 0) {
+			status := "done";
+			if(hasprefix(msg.result, "ERROR:"))
+				status = "error";
+			bgupdatestatus(actid, bgbase + msg.idx, status);
+		}
 	}
 
 	# Format output
@@ -763,6 +782,71 @@ tasksummary(task: string): string
 	if(len task <= 50)
 		return task;
 	return task[0:47] + "...";
+}
+
+# --- Activity / background task helpers ---
+
+# Get the current activity ID from luciuisrv.
+currentactid(): int
+{
+	s := readfile(UI_MOUNT + "/activity/current");
+	if(s == nil)
+		return -1;
+	s = strip(s);
+	(n, nil) := str->toint(s, 10);
+	return n;
+}
+
+# Count existing background tasks for an activity.
+countbgtasks(actid: int): int
+{
+	base := sys->sprint("%s/activity/%d/context/background", UI_MOUNT, actid);
+	for(i := 0; ; i++) {
+		s := readfile(sys->sprint("%s/%d", base, i));
+		if(s == nil)
+			return i;
+	}
+	return 0;  # unreachable
+}
+
+# Add a background task to the activity.
+bgadd(actid: int, label: string)
+{
+	ctxctl := sys->sprint("%s/activity/%d/context/ctl", UI_MOUNT, actid);
+	cmd := "bg add label=" + label + " status=live";
+	writefile(ctxctl, cmd);
+}
+
+# Update a background task's status.
+bgupdatestatus(actid, idx: int, status: string)
+{
+	ctxctl := sys->sprint("%s/activity/%d/context/ctl", UI_MOUNT, actid);
+	cmd := sys->sprint("bg update %d status=%s progress=100", idx, status);
+	writefile(ctxctl, cmd);
+}
+
+writefile(path, data: string): string
+{
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd == nil)
+		return sys->sprint("cannot open %s: %r", path);
+	b := array of byte data;
+	n := sys->write(fd, b, len b);
+	if(n < 0)
+		return sys->sprint("write to %s failed: %r", path);
+	return nil;
+}
+
+readfile(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[8192] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	return string buf[0:n];
 }
 
 # Strip surrounding single or double quotes from a string.
