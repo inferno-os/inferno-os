@@ -153,7 +153,7 @@ Lucifer (GUI)
 #   launch clock       — analog clock
 #   launch edit        — text editor
 #   launch shell       — shell terminal
-#   launch mand        — Mandelbrot fractal viewer
+#   launch fractals    — Mandelbrot/Julia fractal viewer
 #   launch xenith      — Xenith text environment
 
 # Toggle tools on/off in the Context zone (right side)
@@ -231,7 +231,7 @@ xenith write N body   write to window N body
 present create id     create artifact (markdown, text, table, code)
 present write id text write content to artifact
 present center id     focus an artifact
-launch appname        launch app (clock, edit, shell, mand, xenith)
+launch appname        launch app (clock, edit, shell, fractals, xenith)
 
 # Editor and shell
 editor open path      open file in editor
