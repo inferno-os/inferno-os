@@ -4970,14 +4970,12 @@ parsefontsize(val: string, parentsize: int) : int
 		px100 = px100 * ppx / 100;
 	}
 	else if(i+1 < n && val[i] == 'e' && val[i+1] == 'm') {
-		# em: relative to parent
+		# em: relative to parent — px100 is value×100, result is px×100
 		px100 = px100 * ppx;
-		px100 = px100 / 100;
 	}
 	else if(i+2 < n && val[i] == 'r' && val[i+1] == 'e' && val[i+2] == 'm') {
 		# rem: relative to root (14px)
 		px100 = px100 * 14;
-		px100 = px100 / 100;
 	}
 	else if(i+1 < n && val[i] == 'p' && val[i+1] == 't') {
 		# pt: 1pt ≈ 1.33px
