@@ -48,10 +48,12 @@ TARG=\
 	string_test.dis\
 	tcp_test.dis\
 	tempfile_test.dis\
+	textwidget_test.dis\
 	tls_crypto_test.dis\
 	tls_live_test.dis\
 	tls_protocol_test.dis\
 	webclient_test.dis\
+	widget_kbdfilter_test.dis\
 	veltro_concurrent_test.dis\
 	veltro_security_test.dis\
 	veltro_test.dis\
@@ -105,8 +107,10 @@ SYSMODULES=\
 	string.m\
 	sys.m\
 	testing.m\
+	textwidget.m\
 	tls.m\
 	webclient.m\
+	widget.m\
 	x509.m\
 	xml.m\
 

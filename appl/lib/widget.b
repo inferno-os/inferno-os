@@ -65,6 +65,8 @@ retheme(display: ref Display)
 
 loadcolors(display: ref Display)
 {
+	if(display == nil)
+		return;
 	lucitheme := load Lucitheme Lucitheme->PATH;
 	if(lucitheme == nil) {
 		# Fallback to hardcoded defaults

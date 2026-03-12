@@ -49,6 +49,8 @@ Tabulator.expand(tab: self ref Tabulator, s: string): string
 
 Tabulator.unexpandcol(tab: self ref Tabulator, s: string, expcol: int): int
 {
+	if(expcol <= 0)
+		return 0;
 	col := 0;
 	ecol := 0;
 	for(i := 0; i < len s && ecol < expcol; i++) {
