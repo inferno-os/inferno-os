@@ -637,7 +637,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			} else {
 				ps.boxstk = nil :: ps.boxstk;
 				changeindent(ps, BQTAB);
@@ -759,7 +759,7 @@ TokLoop:
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE
 				    || cs.display == DSPINLINEBLOCK) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -1057,7 +1057,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -1437,7 +1437,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, LX->Tp, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -1478,7 +1478,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -2129,7 +2129,7 @@ TokLoop:
 			# CSS box model: fieldset naturally has border
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -2263,7 +2263,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 				# ::before pseudo-element content
@@ -2297,7 +2297,7 @@ TokLoop:
 				else
 					addtext(ps, "\u25B6 ");  # ▶ closed
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -2330,7 +2330,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			} else {
 				ps.boxstk = nil :: ps.boxstk;
 				changeindent(ps, BQTAB);
@@ -2368,7 +2368,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -2812,11 +2812,45 @@ additem(ps: ref Pstate, it: ref Item, tok: ref LX->Token)
 # box content and wrap it in an Ibox.
 openbox(ps: ref Pstate, cs: ref ComputedStyle)
 {
+	openbox_di(ps, cs, nil);
+}
+
+openbox_di(ps: ref Pstate, cs: ref ComputedStyle, di: ref Docinfo)
+{
 	# inline-block and floated boxes don't need a break before them
 	isfloat := cs != nil && (cs.float_ == FLleft || cs.float_ == FLright);
 	if(!isfloat && (cs == nil || cs.display != DSPINLINEBLOCK))
 		addbrk(ps, 0, 0);
-	ps.boxstk = ref BoxCtx(ps.lastit, cs) :: ps.boxstk;
+	ps.boxstk = ref BoxCtx(ps.lastit, cs, di) :: ps.boxstk;
+}
+
+# Start loading a CSS background-image if bgimage_url is set.
+# Creates a CImage, a phantom Iimage (IFbkg), and adds it to di.images
+# so the async image pipeline picks it up.
+startbgimageload(cs: ref ComputedStyle, di: ref Docinfo)
+{
+	if(cs == nil || cs.bgimage_url == nil || cs.bgimage_url == "" || di == nil)
+		return;
+	if(cs.bgimage_ci != nil)
+		return;  # already started
+
+	# Resolve URL relative to document base
+	bgurl := U->parse(cs.bgimage_url);
+	if(bgurl == nil)
+		return;
+	bgurl = U->mkabs(bgurl, di.base);
+	if(bgurl == nil)
+		return;
+
+	# Create phantom Iimage (IFbkg) via newimage — this also creates a CImage
+	bgit := Item.newimage(di, bgurl, nil, "", Anone, 0, 0, 0, 0, 0, 0, 1, nil, nil, nil);
+	pick ni := bgit {
+	Iimage =>
+		# Store the CImage in ComputedStyle so drawbox() can access it
+		cs.bgimage_ci = ni.ci;
+	}
+	# Add to di.images — the async pipeline in layout.b picks this up
+	di.images = bgit :: di.images;
 }
 
 # End a CSS box model element.
@@ -2839,6 +2873,7 @@ closebox(ps: ref Pstate)
 		if(!isinline)
 			addbrk(ps, 0, 0);
 		boxit := Item.newbox(nil, bctx.cs);
+		startbgimageload(bctx.cs, bctx.di);
 		if(!isinline)
 			boxit.state |= IFbrk;
 		else
@@ -2862,6 +2897,7 @@ closebox(ps: ref Pstate)
 
 	# Emit the box item with collected content
 	boxit := Item.newbox(content, bctx.cs);
+	startbgimageload(bctx.cs, bctx.di);
 	if(isfloat) {
 		# CSS float: wrap box in an Ifloat item
 		boxit.state |= IFwrap;
@@ -6061,8 +6097,10 @@ ComputedStyle.new() : ref ComputedStyle
 		STYLNONE,		# text_decoration_color
 		FVnormal,		# font_variant
 		nil,			# bgimage_url
+		nil,			# bgimage_ci
 		BGRrepeat,		# bgrepeat
 		0, 0,			# bgposition_x, bgposition_y
+		0, 0,			# bgsize_w, bgsize_h
 		nil,			# customprops
 		nil,			# grid_template_columns
 		nil,			# grid_template_rows

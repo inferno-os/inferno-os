@@ -325,7 +325,7 @@ ComputedStyle: adt
 
 	# CSS Background Image
 	bgimage_url: string;		# background-image URL (nil = none)
-	bgimage: ref Draw->Image;	# decoded background image (nil until fetched)
+	bgimage_ci: ref CImage;	# CImage for async fetch (nil until request started)
 	bgrepeat: byte;			# BGRrepeat..BGRrepeat_y
 	bgposition_x: int;		# background-position x in pixels
 	bgposition_y: int;		# background-position y in pixels
@@ -759,6 +759,7 @@ BoxCtx: adt
 {
 	splicepoint: ref Item;		# item before the box content started
 	cs: ref ComputedStyle;		# computed style for the box
+	di: ref Docinfo;		# document info (for bg image loading)
 };
 
 

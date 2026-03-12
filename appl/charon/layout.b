@@ -2698,7 +2698,9 @@ drawfill(im: ref Image, r: Rect, color: int)
 # Draw a CSS background image into the given rectangle with repeat and position
 drawbgimage(im: ref Image, bgr: Rect, cs: ref ComputedStyle)
 {
-	bgi := cs.bgimage;
+	if(cs.bgimage_ci == nil || cs.bgimage_ci.mims == nil)
+		return;
+	bgi := cs.bgimage_ci.mims[0].im;
 	if(bgi == nil)
 		return;
 
@@ -5476,7 +5478,7 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 	}
 
 	# Draw background image (in padding box, after bgcolor, before borders)
-	if(cs != nil && cs.bgimage != nil) {
+	if(cs != nil && cs.bgimage_ci != nil && cs.bgimage_ci.mims != nil) {
 		bgr := Rect(
 			Point(origin.x + bdl, origin.y + bdt),
 			Point(origin.x + box.width - bdr, origin.y + box.height - bdb));
