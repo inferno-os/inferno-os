@@ -28,6 +28,7 @@ TARG=\
 	imap_test.dis\
 	jit_test.dis\
 	json_test.dis\
+	llmsrv_test.dis\
 	keyring_test.dis\
 	lists_test.dis\
 	lucifer_flicker_test.dis\
@@ -89,6 +90,7 @@ SYSMODULES=\
 	git.m\
 	gpu.m\
 	json.m\
+	llmclient.m\
 	keyring.m\
 	lists.m\
 	math.m\

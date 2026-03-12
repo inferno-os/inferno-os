@@ -77,6 +77,7 @@ TARG=\
 	gettar.dis\
 	gif2bit.dis\
 	gpusrv.dis\
+	llmsrv.dis\
 	grep.dis\
 	gunzip.dis\
 	gzip.dis\
@@ -208,6 +209,7 @@ SYSMODULES=\
 	fslib.m\
 	ftrans.m\
 	gpu.m\
+	llmclient.m\
 	hash.m\
 	imagefile.m\
 	ipints.m\
