@@ -1599,6 +1599,7 @@ bindpath(srcpath: string)
 	# Register in tools9p; lucibridge reads /tool/paths and binds in its namespace.
 	writetofile("/tool/ctl", "bindpath " + srcpath);
 	loadpinnedpaths();
+	loadmanifest();
 	loadcontext();
 	redrawctx();
 }
@@ -1609,6 +1610,7 @@ unbindpath(pp: ref PinnedPath)
 		return;
 	writetofile("/tool/ctl", "unbindpath " + pp.srcpath);
 	loadpinnedpaths();
+	loadmanifest();
 	loadcontext();
 	redrawctx();
 }
