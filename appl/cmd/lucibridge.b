@@ -561,26 +561,31 @@ applypathchanges()
 	# no rebind needed (and no writable target would exist anyway).
 	# Inferno-native paths (/dis/, /lib/, /n/llm/, etc.) are already in the
 	# namespace — binding them to /n/local/<base> would fail (no such dir).
+	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
 	for(np := newpaths; np != nil; np = tl np) {
 		p := hd np;
 		if(p == "" || strcontains(oldpaths, p))
 			continue;
 		if(len p >= 9 && p[0:9] == "/n/local/") {
 			log("path accessible: " + p);
-			continue;
-		}
-		if(len p >= 5 && p[0:5] == "/dis/") {
+		} else if(len p >= 5 && p[0:5] == "/dis/") {
 			log("path accessible (Inferno-native): " + p);
-			continue;
+		} else {
+			base := pathbase(p);
+			if(base == nil || base == "")
+				base = "path";
+			tgt := "/n/local/" + base;
+			if(sys->bind(p, tgt, Sys->MBEFORE) < 0)
+				log("bindpath " + p + ": failed");
+			else
+				log("bound " + p + " -> " + tgt);
 		}
+		# Push resource event so namespace view updates immediately
 		base := pathbase(p);
 		if(base == nil || base == "")
-			base = "path";
-		tgt := "/n/local/" + base;
-		if(sys->bind(p, tgt, Sys->MBEFORE) < 0)
-			log("bindpath " + p + ": failed");
-		else
-			log("bound " + p + " -> " + tgt);
+			base = p;
+		writefile(ctxpath, "resource upsert path=" + p +
+			" label=" + base + " type=fs status=idle via=bound");
 	}
 
 	# Unmount removed paths (only those we actually bound, not /n/local/ pass-throughs)
@@ -588,14 +593,16 @@ applypathchanges()
 		p := hd op;
 		if(p == "" || strcontains(newpaths, p))
 			continue;
-		if(len p >= 9 && p[0:9] == "/n/local/")
-			continue;
-		base := pathbase(p);
-		if(base == nil || base == "")
-			base = "path";
-		tgt := "/n/local/" + base;
-		sys->unmount(nil, tgt);
-		log("unbound " + p);
+		if(!(len p >= 9 && p[0:9] == "/n/local/")) {
+			base := pathbase(p);
+			if(base == nil || base == "")
+				base = "path";
+			tgt := "/n/local/" + base;
+			sys->unmount(nil, tgt);
+			log("unbound " + p);
+		}
+		# Push resource event so namespace view updates immediately
+		writefile(ctxpath, "resource remove " + p);
 	}
 
 	currentpathsraw = latest;
@@ -632,6 +639,13 @@ handleslash(cmd: string): int
 			ack = "usage: /bind <path>";
 		} else {
 			writefile("/tool/ctl", "bindpath " + arg);
+			# Push context event so the namespace view updates immediately
+			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+			base := pathbase(arg);
+			if(base == nil || base == "")
+				base = arg;
+			writefile(ctxpath, "resource upsert path=" + arg +
+				" label=" + base + " type=fs status=idle via=bound");
 			ack = "bound: " + arg;
 		}
 	"unbind" =>
@@ -639,6 +653,9 @@ handleslash(cmd: string): int
 			ack = "usage: /unbind <path>";
 		} else {
 			writefile("/tool/ctl", "unbindpath " + arg);
+			# Push context event so the namespace view updates immediately
+			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
+			writefile(ctxpath, "resource remove " + arg);
 			ack = "unbound: " + arg;
 		}
 	"tools" =>
