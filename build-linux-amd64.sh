@@ -254,6 +254,11 @@ echo "Building shell modules..."
 cd "$ROOT/appl/cmd/sh"
 $MK install 2>&1 || { echo "WARNING: some shell modules failed to build"; }
 
+# Build Charon web browser
+echo "Building Charon web browser..."
+cd "$ROOT/appl/charon"
+$MK install 2>&1 || { echo "WARNING: some charon modules failed to build"; }
+
 # Build Veltro agent system (tools9p, agentlib, etc.)
 echo "Building Veltro agent system..."
 cd "$ROOT/appl/veltro"

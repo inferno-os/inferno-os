@@ -86,9 +86,9 @@ $ROOT/dis/charon.dis:	charon.dis
 $ROOT/dis/wm/charon.dis:	charon.dis
 	rm -f $target && cp charon.dis $target
 
-charon.dis:	$MODULES $SYS_MODULES
+charon.dis:	$MODULES $SYS_MODULE
 
-img.dis:	img.b $MODULE $SYS_MODULE
+img.dis:	img.b $MODULES $SYS_MODULE
 	limbo $LIMBOFLAGS -c -gw img.b
 
 nuke:V:
