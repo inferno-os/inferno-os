@@ -128,6 +128,9 @@ activetoolset: list of string;
 knowntoolnames: list of string;
 pinnedpaths: list of ref PinnedPath;
 
+# Path change tracking for timer-based namespace refresh
+lastpathsraw := "";
+
 # Channel references (for filebrowser access)
 mousech_g: chan of ref Pointer;
 ctxreqch_g: chan of string;
@@ -245,6 +248,11 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		loadcontext();
 	loadpinnedpaths();
 	loadmanifest();
+
+	# Snapshot current paths so timer detects future changes
+	raw := readfile("/tool/paths");
+	if(raw == nil) raw = "";
+	lastpathsraw = raw;
 
 	redrawctx();
 
@@ -472,6 +480,17 @@ ctxtimer(evch: chan of string)
 			(ok, nil) := sys->stat("/tmp/veltro/.ns/manifest");
 			if(ok >= 0)
 				needtick = 1;
+		}
+
+		# Tick if /tool/paths changed (namespace bind/unbind from any source)
+		if(!needtick) {
+			curpaths := readfile("/tool/paths");
+			if(curpaths == nil)
+				curpaths = "";
+			if(curpaths != lastpathsraw) {
+				lastpathsraw = curpaths;
+				needtick = 1;
+			}
 		}
 
 		# Also tick for resource activity animation
