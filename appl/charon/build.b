@@ -637,7 +637,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			} else {
 				ps.boxstk = nil :: ps.boxstk;
 				changeindent(ps, BQTAB);
@@ -759,7 +759,7 @@ TokLoop:
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE
 				    || cs.display == DSPINLINEBLOCK) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -1057,7 +1057,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -1437,7 +1437,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, LX->Tp, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -1478,7 +1478,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -2129,7 +2129,7 @@ TokLoop:
 			# CSS box model: fieldset naturally has border
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE)
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			else
 				ps.boxstk = nil :: ps.boxstk;
 
@@ -2263,7 +2263,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 				# ::before pseudo-element content
@@ -2297,7 +2297,7 @@ TokLoop:
 				else
 					addtext(ps, "\u25B6 ");  # ▶ closed
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -2330,7 +2330,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			cs := getcomputedstyle(is, tag, tok);
 			if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-				openbox(ps, cs);
+				openbox_di(ps, cs, di);
 			} else {
 				ps.boxstk = nil :: ps.boxstk;
 				changeindent(ps, BQTAB);
@@ -2368,7 +2368,7 @@ TokLoop:
 					cs.halign = al;
 				pushelemctx(is, tag, tok);
 				if(cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
-					openbox(ps, cs);
+					openbox_di(ps, cs, di);
 				} else
 					ps.boxstk = nil :: ps.boxstk;
 			}
@@ -2812,11 +2812,45 @@ additem(ps: ref Pstate, it: ref Item, tok: ref LX->Token)
 # box content and wrap it in an Ibox.
 openbox(ps: ref Pstate, cs: ref ComputedStyle)
 {
+	openbox_di(ps, cs, nil);
+}
+
+openbox_di(ps: ref Pstate, cs: ref ComputedStyle, di: ref Docinfo)
+{
 	# inline-block and floated boxes don't need a break before them
 	isfloat := cs != nil && (cs.float_ == FLleft || cs.float_ == FLright);
 	if(!isfloat && (cs == nil || cs.display != DSPINLINEBLOCK))
 		addbrk(ps, 0, 0);
-	ps.boxstk = ref BoxCtx(ps.lastit, cs) :: ps.boxstk;
+	ps.boxstk = ref BoxCtx(ps.lastit, cs, di) :: ps.boxstk;
+}
+
+# Start loading a CSS background-image if bgimage_url is set.
+# Creates a CImage, a phantom Iimage (IFbkg), and adds it to di.images
+# so the async image pipeline picks it up.
+startbgimageload(cs: ref ComputedStyle, di: ref Docinfo)
+{
+	if(cs == nil || cs.bgimage_url == nil || cs.bgimage_url == "" || di == nil)
+		return;
+	if(cs.bgimage_ci != nil)
+		return;  # already started
+
+	# Resolve URL relative to document base
+	bgurl := U->parse(cs.bgimage_url);
+	if(bgurl == nil)
+		return;
+	bgurl = U->mkabs(bgurl, di.base);
+	if(bgurl == nil)
+		return;
+
+	# Create phantom Iimage (IFbkg) via newimage — this also creates a CImage
+	bgit := Item.newimage(di, bgurl, nil, "", Anone, 0, 0, 0, 0, 0, 0, 1, nil, nil, nil);
+	pick ni := bgit {
+	Iimage =>
+		# Store the CImage in ComputedStyle so drawbox() can access it
+		cs.bgimage_ci = ni.ci;
+	}
+	# Add to di.images — the async pipeline in layout.b picks this up
+	di.images = bgit :: di.images;
 }
 
 # End a CSS box model element.
@@ -2839,6 +2873,7 @@ closebox(ps: ref Pstate)
 		if(!isinline)
 			addbrk(ps, 0, 0);
 		boxit := Item.newbox(nil, bctx.cs);
+		startbgimageload(bctx.cs, bctx.di);
 		if(!isinline)
 			boxit.state |= IFbrk;
 		else
@@ -2862,6 +2897,7 @@ closebox(ps: ref Pstate)
 
 	# Emit the box item with collected content
 	boxit := Item.newbox(content, bctx.cs);
+	startbgimageload(bctx.cs, bctx.di);
 	if(isfloat) {
 		# CSS float: wrap box in an Ifloat item
 		boxit.state |= IFwrap;
@@ -4179,7 +4215,36 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		}
 	"background-position" =>
 		parsebgposition(cs, val);
-	"background-size" or "background-attachment" or "background-origin" or "background-clip" =>
+	"background-size" =>
+		case val {
+		"cover" =>
+			cs.bgsize_w = BGSZcover;
+			cs.bgsize_h = BGSZcover;
+		"contain" =>
+			cs.bgsize_w = BGSZcontain;
+			cs.bgsize_h = BGSZcontain;
+		"auto" =>
+			cs.bgsize_w = 0;
+			cs.bgsize_h = 0;
+		* =>
+			# Parse "width height" or single value
+			parts := splitwords(val);
+			if(len parts >= 1) {
+				if(parts[0] == "auto")
+					cs.bgsize_w = 0;
+				else
+					cs.bgsize_w = parsepx(parts[0]);
+			}
+			if(len parts >= 2) {
+				if(parts[1] == "auto")
+					cs.bgsize_h = 0;
+				else
+					cs.bgsize_h = parsepx(parts[1]);
+			}
+			else
+				cs.bgsize_h = 0;  # auto
+		}
+	"background-attachment" or "background-origin" or "background-clip" =>
 		;	# recognized but not yet implemented
 	"text-align" =>
 		case val {
@@ -4219,6 +4284,9 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 			cs.fontsize = Large;
 		"x-large" or "xx-large" =>
 			cs.fontsize = Verylarge;
+		* =>
+			# Numeric font-size: px, em, rem, pt, or %
+			cs.fontsize = parsefontsize(val, cs.fontsize);
 		}
 	"text-decoration" =>
 		if(S->prefix("underline", val))
@@ -4365,6 +4433,7 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"relative" => cs.position = POSrelative;
 		"absolute" => cs.position = POSabsolute;
 		"fixed" => cs.position = POSfixed;
+		"sticky" => cs.position = POSsticky;
 		}
 	"top" =>
 		cs.rel_top = parsepx(val);
@@ -4830,8 +4899,104 @@ parsegridline(cs: ref ComputedStyle, val: string, iscol: int)
 	}
 }
 
+# Convert font size enum to approximate pixel value
+fontsize_to_px(sz: int) : int
+{
+	case sz {
+	Tiny => return 10;
+	Small => return 12;
+	Normal => return 14;
+	Large => return 18;
+	Verylarge => return 24;
+	}
+	return 14;  # default
+}
+
+# Map a pixel value to the nearest discrete font size
+px_to_fontsize(px: int) : int
+{
+	if(px <= 10)
+		return Tiny;
+	if(px <= 13)
+		return Small;
+	if(px <= 16)
+		return Normal;
+	if(px <= 21)
+		return Large;
+	return Verylarge;
+}
+
+# Parse a numeric CSS font-size value (px, em, rem, pt, %)
+# parentsize is the inherited font size enum (Tiny..Verylarge), used for em/% units.
+# Returns a font size enum value, or parentsize if parsing fails.
+parsefontsize(val: string, parentsize: int) : int
+{
+	if(val == nil || val == "")
+		return parentsize;
+	ppx := fontsize_to_px(parentsize);
+	i := 0;
+	n := len val;
+	neg := 0;
+	if(i < n && val[i] == '-') {
+		neg = 1;
+		i++;
+	}
+	# Parse integer part
+	ival := 0;
+	hasdigits := 0;
+	for(; i < n && val[i] >= '0' && val[i] <= '9'; i++) {
+		ival = ival * 10 + (val[i] - '0');
+		hasdigits = 1;
+	}
+	if(!hasdigits)
+		return parentsize;
+	# Parse fractional part (x100 for precision)
+	frac := 0;
+	if(i < n && val[i] == '.') {
+		i++;
+		fdiv := 1;
+		fval := 0;
+		for(; i < n && val[i] >= '0' && val[i] <= '9'; i++) {
+			fval = fval * 10 + (val[i] - '0');
+			fdiv *= 10;
+		}
+		frac = fval * 100 / fdiv;
+	}
+	px100 := ival * 100 + frac;  # value x100 for decimal precision
+
+	# Apply unit
+	if(i < n && val[i] == '%') {
+		# Percentage of parent font size
+		px100 = px100 * ppx / 100;
+	}
+	else if(i+1 < n && val[i] == 'e' && val[i+1] == 'm') {
+		# em: relative to parent
+		px100 = px100 * ppx;
+		px100 = px100 / 100;
+	}
+	else if(i+2 < n && val[i] == 'r' && val[i+1] == 'e' && val[i+2] == 'm') {
+		# rem: relative to root (14px)
+		px100 = px100 * 14;
+		px100 = px100 / 100;
+	}
+	else if(i+1 < n && val[i] == 'p' && val[i+1] == 't') {
+		# pt: 1pt ≈ 1.33px
+		px100 = px100 * 4 / 3;
+	}
+	# else: px or bare number, px100 is already correct
+
+	px := px100 / 100;
+	if(px100 % 100 >= 50)
+		px++;  # round
+	if(neg)
+		px = -px;
+	if(px < 1)
+		px = 1;
+	return px_to_fontsize(px);
+}
+
 # Parse a pixel value from a CSS string like "10px", "2em", "1rem", or bare "10"
-# Also handles calc() expressions with simple + and - operations
+# Also handles calc() expressions
 parsepx(val: string) : int
 {
 	if(val == nil || val == "")
@@ -4878,11 +5043,20 @@ parsepx(val: string) : int
 	return n;
 }
 
-# Parse a basic calc() expression: calc(100px - 20px), calc(50% + 10px)
-# Supports +, -, simple values. Percentages are approximated as portion of 800px.
+# Parse a calc() expression with full arithmetic: +, -, *, /
+# Supports nested calc(), parentheses, decimal numbers, and mixed units.
+# Uses fixed-point arithmetic (x100) internally for decimal precision.
+# contextw is the available width for resolving percentages (0 = use default 800).
 parsecalc(val: string) : int
 {
-	# Strip "calc(" and ")"
+	return parsecalc_ctx(val, 0);
+}
+
+parsecalc_ctx(val: string, contextw: int) : int
+{
+	if(contextw <= 0)
+		contextw = 800;
+	# Strip outer "calc(" and ")"
 	inner := "";
 	if(len val > 5 && val[:5] == "calc(") {
 		end := len val;
@@ -4893,58 +5067,172 @@ parsecalc(val: string) : int
 	else
 		return 0;
 
-	# Tokenize into numbers and operators
-	result := 0;
-	op := '+';
-	i := 0;
-	n := len inner;
+	(result, nil) := calcexpr(inner, 0, contextw);
+	return result / 100;  # fixed-point to pixels
+}
+
+# Parse additive expression: term (('+' | '-') term)*
+# Values are in fixed-point (x100). Returns (value, next_pos).
+calcexpr(s: string, pos, contextw: int) : (int, int)
+{
+	(left, pos) = calcterm(s, pos, contextw);
+	n := len s;
 	for(;;) {
-		# skip whitespace
-		for(; i < n && (inner[i] == ' ' || inner[i] == '\t'); )
-			i++;
-		if(i >= n)
+		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+			pos++;
+		if(pos >= n)
 			break;
-		# check for operator
-		if(inner[i] == '+' || inner[i] == '-') {
-			if(i > 0) {  # don't treat leading sign as operator
-				op = inner[i];
-				i++;
-				continue;
-			}
+		# '+' and '-' in calc must be surrounded by whitespace per spec,
+		# but we also handle adjacent signs for robustness
+		if(s[pos] == '+') {
+			pos++;
+			(right, pos) := calcterm(s, pos, contextw);
+			left += right;
 		}
-		# parse a value
-		term := 0;
-		neg := 0;
-		if(i < n && inner[i] == '-') {
-			neg = 1;
-			i++;
+		else if(s[pos] == '-') {
+			# Distinguish operator '-' from negative number:
+			# If preceded by whitespace and followed by whitespace+digit, it's an operator
+			pos++;
+			(right, pos) := calcterm(s, pos, contextw);
+			left -= right;
 		}
-		for(; i < n && inner[i] >= '0' && inner[i] <= '9'; i++)
-			term = term * 10 + (inner[i] - '0');
-		# check units
-		if(i < n && inner[i] == '%') {
-			term = term * 800 / 100;  # approximate viewport width
-			i++;
-		}
-		else if(i+1 < n && inner[i] == 'p' && inner[i+1] == 'x')
-			i += 2;
-		else if(i+1 < n && inner[i] == 'e' && inner[i+1] == 'm') {
-			term = term * 16;
-			i += 2;
-		}
-		else if(i+2 < n && inner[i] == 'r' && inner[i+1] == 'e' && inner[i+2] == 'm') {
-			term = term * 16;
-			i += 3;
-		}
-		if(neg)
-			term = -term;
-		if(op == '+')
-			result += term;
-		else if(op == '-')
-			result -= term;
-		op = '+';
+		else
+			break;
 	}
-	return result;
+	return (left, pos);
+}
+
+# Parse multiplicative expression: primary (('*' | '/') primary)*
+calcterm(s: string, pos, contextw: int) : (int, int)
+{
+	(left, pos) = calcprimary(s, pos, contextw);
+	n := len s;
+	for(;;) {
+		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+			pos++;
+		if(pos >= n)
+			break;
+		if(s[pos] == '*') {
+			pos++;
+			(right, pos) := calcprimary(s, pos, contextw);
+			left = left * right / 100;  # fixed-point multiply
+		}
+		else if(s[pos] == '/') {
+			pos++;
+			(right, pos) := calcprimary(s, pos, contextw);
+			if(right == 0)
+				left = 0;
+			else
+				left = left * 100 / right;  # fixed-point divide
+		}
+		else
+			break;
+	}
+	return (left, pos);
+}
+
+# Parse primary: number with unit, nested calc(), or parenthesized expression
+calcprimary(s: string, pos, contextw: int) : (int, int)
+{
+	n := len s;
+	# skip whitespace
+	for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+		pos++;
+	if(pos >= n)
+		return (0, pos);
+
+	# Nested calc()
+	if(pos+5 <= n && s[pos:pos+5] == "calc(") {
+		# Find matching close paren
+		depth := 1;
+		start := pos + 5;
+		end := start;
+		for(; end < n && depth > 0; end++) {
+			if(s[end] == '(') depth++;
+			else if(s[end] == ')') depth--;
+		}
+		inner := s[start:end-1];
+		(val, nil) := calcexpr(inner, 0, contextw);
+		return (val, end);
+	}
+
+	# Parenthesized expression
+	if(pos < n && s[pos] == '(') {
+		pos++;
+		(val, pos) := calcexpr(s, pos, contextw);
+		# skip closing paren
+		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+			pos++;
+		if(pos < n && s[pos] == ')')
+			pos++;
+		return (val, pos);
+	}
+
+	# Number with optional unit
+	neg := 0;
+	if(pos < n && s[pos] == '-') {
+		neg = 1;
+		pos++;
+		# skip whitespace after sign
+		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+			pos++;
+	}
+	else if(pos < n && s[pos] == '+') {
+		pos++;
+		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
+			pos++;
+	}
+
+	# Parse integer part
+	ival := 0;
+	for(; pos < n && s[pos] >= '0' && s[pos] <= '9'; pos++)
+		ival = ival * 10 + (s[pos] - '0');
+
+	# Parse fractional part (keep as fixed-point x100)
+	frac := 0;
+	if(pos < n && s[pos] == '.') {
+		pos++;
+		fdiv := 1;
+		fval := 0;
+		for(; pos < n && s[pos] >= '0' && s[pos] <= '9'; pos++) {
+			fval = fval * 10 + (s[pos] - '0');
+			fdiv *= 10;
+		}
+		frac = fval * 100 / fdiv;
+	}
+	val := ival * 100 + frac;  # fixed-point x100
+
+	# Parse unit
+	if(pos < n && s[pos] == '%') {
+		pos++;
+		val = val * contextw / 100;
+	}
+	else if(pos+1 < n && s[pos] == 'p' && s[pos+1] == 'x')
+		pos += 2;
+	else if(pos+1 < n && s[pos] == 'e' && s[pos+1] == 'm') {
+		val = val * 16;
+		pos += 2;
+	}
+	else if(pos+2 < n && s[pos] == 'r' && s[pos+1] == 'e' && s[pos+2] == 'm') {
+		val = val * 16;
+		pos += 3;
+	}
+	else if(pos+1 < n && s[pos] == 'p' && s[pos+1] == 't') {
+		val = val * 4 / 3;
+		pos += 2;
+	}
+	else if(pos+1 < n && s[pos] == 'v' && s[pos+1] == 'w') {
+		val = val * contextw / 100;
+		pos += 2;
+	}
+	else if(pos+1 < n && s[pos] == 'v' && s[pos+1] == 'h') {
+		val = val * 600 / 100;
+		pos += 2;
+	}
+
+	if(neg)
+		val = -val;
+	return (val, pos);
 }
 
 # Parse a fractional number value (e.g. "0.6", "75")
@@ -5809,8 +6097,10 @@ ComputedStyle.new() : ref ComputedStyle
 		STYLNONE,		# text_decoration_color
 		FVnormal,		# font_variant
 		nil,			# bgimage_url
+		nil,			# bgimage_ci
 		BGRrepeat,		# bgrepeat
 		0, 0,			# bgposition_x, bgposition_y
+		0, 0,			# bgsize_w, bgsize_h
 		nil,			# customprops
 		nil,			# grid_template_columns
 		nil,			# grid_template_rows
