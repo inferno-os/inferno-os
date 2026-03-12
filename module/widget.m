@@ -38,6 +38,51 @@ Widget: module
 	# Status bar height in pixels (font.height + padding).
 	statusheight: fn(): int;
 
+	# ── Key constants ─────────────────────────────────────────
+	#
+	# Standard Inferno keyboard codes for special keys.
+	# Shared by all Draw-based apps (editor, shell, etc.).
+	#
+	Khome:   con 16rFF61;
+	Kend:    con 16rFF57;
+	Kup:     con 16rFF52;
+	Kdown:   con 16rFF54;
+	Kleft:   con 16rFF51;
+	Kright:  con 16rFF53;
+	Kpgup:   con 16rFF55;
+	Kpgdown: con 16rFF56;
+	Kdel:    con 16rFF9F;
+	Kins:    con 16rFF63;
+	Kbs:     con 8;
+	Kesc:    con 27;
+
+	# ── Kbdfilter ─────────────────────────────────────────────
+	#
+	# Decodes ANSI escape sequences from hosted keyboard input
+	# into Inferno key constants.  Each instance maintains its
+	# own state machine, so multiple apps can decode independently.
+	#
+	# Usage:
+	#   kf := Kbdfilter.new();
+	#   ...
+	#   key := kf.filter(rawkey);
+	#   if(key >= 0)
+	#       handlekey(key);
+	#
+	Kbdfilter: adt {
+		state: int;		# escape decode state (0 = ground)
+		arg:   int;		# numeric argument accumulator
+
+		# Create a new keyboard filter in ground state.
+		new:    fn(): ref Kbdfilter;
+
+		# Filter a raw key code.  Returns the decoded key,
+		# or -1 if the character is part of an incomplete
+		# escape sequence.  Inferno key codes (>= 0xFF00)
+		# pass through unchanged.
+		filter: fn(kf: self ref Kbdfilter, c: int): int;
+	};
+
 	# ── Scrollbar ──────────────────────────────────────────────
 	#
 	# Flat, subdued scrollbar.  Operates on abstract units —

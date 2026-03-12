@@ -46,7 +46,7 @@ The tour shows Veltro using its tools to demonstrate:
 2. **Everything is a file** — Namespace exploration (/tool, /n/llm, /n/ui)
 3. **Launching apps** — Clock, editor, shell, fractal viewer in the presentation zone
 4. **The fractal viewer** — Mandelbrot/Julia exploration driven by AI
-5. **The text editor** — Luciedit for collaborative editing
+5. **The text editor** — Edit for collaborative editing
 6. **Finding and reading files** — Code navigation with find, read, search, grep
 7. **The Context zone** — Tool toggles, path binding, knowledge gaps
 8. **Persistence** — Memory across sessions
@@ -64,7 +64,7 @@ On first launch, Lucifer displays `/lib/veltro/welcome.md` in the presentation z
 
 The tour script is at: `/lib/veltro/demos/tour.txt`
 
-Veltro reads this script and executes it interactively, using `present`, `launch`, `say`, `fractal`, `luciedit`, `list`, `read`, `find`, `search`, `exec`, `memory`, `gap`, and `ask` tools to demonstrate the system live.
+Veltro reads this script and executes it interactively, using `present`, `launch`, `say`, `fractal`, `editor`, `list`, `read`, `find`, `search`, `exec`, `memory`, `gap`, and `ask` tools to demonstrate the system live.
 
 ## Requirements
 

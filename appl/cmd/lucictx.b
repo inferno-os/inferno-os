@@ -1097,7 +1097,7 @@ filebrowser(startpath: string): string
 			}
 			if(clicked)
 				continue;
-			# File entry click: open in luciedit
+			# File entry click: open in edit
 			for(fi := 0; fi < brow_nfiles; fi++) {
 				if(brow_filerects[fi].contains(p.xy)) {
 					fpath: string;
@@ -1455,13 +1455,13 @@ openpath(path: string)
 			bindpath(fpath);
 		redrawctx();
 	} else {
-		# File: open in luciedit (ensure it's running first)
+		# File: open in edit (ensure it's running first)
 		has9p := ensureeditor();
 		openineditor(path, has9p);
 	}
 }
 
-# Send "open <path>" to luciedit. Use 9P if available, else real-file IPC.
+# Send "open <path>" to edit. Use 9P if available, else real-file IPC.
 openineditor(path: string, has9p: int)
 {
 	cmd := "open " + path;
@@ -1475,7 +1475,7 @@ openineditor(path: string, has9p: int)
 		}
 		sys->fprint(sys->fildes(2), "lucictx: openineditor 9P failed, using real-file: %r\n");
 	}
-	# Real-file IPC: luciedit polls /tmp/veltro/edit/ctl on timer ticks
+	# Real-file IPC: edit polls /tmp/veltro/edit/ctl on timer ticks
 	wfd := sys->create("/tmp/veltro/edit/ctl", Sys->OWRITE, 8r666);
 	if(wfd != nil) {
 		b := array of byte cmd;
@@ -1483,7 +1483,7 @@ openineditor(path: string, has9p: int)
 	}
 }
 
-# Ensure luciedit is running. If /edit/ctl doesn't exist, create a
+# Ensure edit is running. If /edit/ctl doesn't exist, create a
 # presentation artifact to launch it in the presentation zone.
 ensureeditor(): int
 {
@@ -1494,11 +1494,11 @@ ensureeditor(): int
 		return 1;	# 9P available
 	}
 	# Launch via presentation system (harmless if already running)
-	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching luciedit\n");
+	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching edit\n");
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
-	cmd := "create id=luciedit type=app dis=/dis/wm/luciedit.dis label=Luciedit";
+	cmd := "create id=edit type=app dis=/dis/wm/edit.dis label=Edit";
 	writetofile(pctl, cmd);
-	writetofile(pctl, "center id=luciedit");
+	writetofile(pctl, "center id=edit");
 	# Poll until /edit/ctl appears
 	for(i := 0; i < 20; i++) {
 		sys->sleep(250);

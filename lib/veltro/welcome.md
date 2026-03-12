@@ -27,7 +27,7 @@ your workspace.
 **Talk to me.** Ask a question, give me a task, or just say hello.
 
 **Launch an app.** Ask me to:
-- `launch luciedit` — a text editor in the presentation zone
+- `launch edit` — a text editor in the presentation zone
 - `launch lucishell` — a shell terminal
 - `launch mand` — the Mandelbrot fractal viewer (I can drive it too)
 - `launch clock` — a clock

@@ -7,7 +7,7 @@ Three categories of AI-accessible capabilities exist:
 | Category | Examples | Interface | Discovery | Security |
 |----------|----------|-----------|-----------|----------|
 | **Headless tools** | exec, grep, read, write, git | `tool.m` (init/name/doc/exec) | `/tool/tools` listing | Namespace restriction on `/dis/veltro/tools/` |
-| **App-backed tools** | lucishell, luciedit, charon, fractal | Tool wraps 9P filesystem at `/tmp/veltro/{app}/` | Same `/tool/tools` listing | Tool registration + app must be running |
+| **App-backed tools** | lucishell, edit, charon, fractal | Tool wraps 9P filesystem at `/tmp/veltro/{app}/` | Same `/tool/tools` listing | Tool registration + app must be running |
 | **Lucifer zone apps** | luciconv, lucipres, lucictx | 9P at `/n/ui/` | Implicit (always present) | Part of Lucifer lifecycle |
 
 ## What Works Well
@@ -16,7 +16,7 @@ Three categories of AI-accessible capabilities exist:
 
 2. **Namespace = capability** is elegant -- `nsconstruct.b`'s shadow-directory approach and the `Capabilities` ADT are architecturally sound. Removing a tool from `/dis/veltro/tools/` makes it invisible to the agent.
 
-3. **9P as the IPC layer** follows Plan 9 philosophy correctly -- luciedit's filesystem at `/edit/` and lucishell's at `/tmp/veltro/shell/` let the AI read/write files while apps render/react.
+3. **9P as the IPC layer** follows Plan 9 philosophy correctly -- edit's filesystem at `/edit/` and lucishell's at `/tmp/veltro/shell/` let the AI read/write files while apps render/react.
 
 4. **tools9p.b as a tool server** is smart -- exposing tools as a synthetic filesystem means the agent interacts with tools through file I/O, the same mechanism used for everything else.
 
@@ -34,7 +34,7 @@ Two architectural patterns do similar things:
 
 2. **Duplicated naming/discovery** -- The app lives in `/dis/wm/lucishell.dis`, the tool in `/dis/veltro/tools/lucishell.dis`, and the 9P mount at `/tmp/veltro/shell/`. Three places to know about one thing.
 
-3. **Inconsistent filesystem conventions** -- luciedit mounts at `/mnt/luciedit` (bound to `/edit/`), lucishell at `/tmp/veltro/shell/`, charon at `/tmp/veltro/browser/`, fractal at `/tmp/veltro/fractal/`. No consistent pattern.
+3. **Inconsistent filesystem conventions** -- edit mounts at `/mnt/edit` (bound to `/edit/`), lucishell at `/tmp/veltro/shell/`, charon at `/tmp/veltro/browser/`, fractal at `/tmp/veltro/fractal/`. No consistent pattern.
 
 4. **Wrapper boilerplate** -- Tools like `fractal.b` are essentially `read /tmp/veltro/fractal/ctl` and `write /tmp/veltro/fractal/ctl`. The tool.m wrapper adds indirection without value beyond semantic naming and doc strings.
 
@@ -63,18 +63,18 @@ This replaces both `tool.m` (Limbo module interface) and the ad-hoc 9P mounts. `
 
 **For headless tools** (grep, exec, read): tools9p creates the directory and routes writes to `exec()` as today. The `doc` file serves documentation. No `event` file.
 
-**For app-backed tools** (luciedit, charon): The app serves its own `/tool/{name}/` subtree via `file2chan`, or tools9p bind-mounts the app's 9P interface into `/tool/`. The app registers *directly* rather than going through a wrapper module.
+**For app-backed tools** (edit, charon): The app serves its own `/tool/{name}/` subtree via `file2chan`, or tools9p bind-mounts the app's 9P interface into `/tool/`. The app registers *directly* rather than going through a wrapper module.
 
 ### 2. Eliminate Wrapper Tool Modules
 
 Instead of:
 ```
-luciedit app → /mnt/luciedit/ (9P) → luciedit tool.m → /tool/luciedit (tools9p)
+edit app → /mnt/edit/ (9P) → edit tool.m → /tool/edit (tools9p)
 ```
 
 Do:
 ```
-luciedit app → /tool/luciedit/ (direct bind or file2chan)
+edit app → /tool/edit/ (direct bind or file2chan)
 ```
 
 The app provides `doc`, `ctl`, `exec` files. When started, it registers into `/tool/`. When stopped, it unregisters. No proxy layer. Clean lifecycle.
@@ -86,7 +86,7 @@ All capabilities under `/tool/{name}/`:
 ```
 /tool/
     grep/doc, grep/exec                                        # headless
-    luciedit/doc, luciedit/ctl, luciedit/exec, luciedit/event  # app-backed
+    edit/doc, edit/ctl, edit/exec, edit/event  # app-backed
     charon/doc, charon/ctl, charon/exec                        # app-backed
     fractal/doc, fractal/ctl                                   # app-backed
     tools                                                      # listing
@@ -94,7 +94,7 @@ All capabilities under `/tool/{name}/`:
     _registry                                                  # internal
 ```
 
-No more `/tmp/veltro/shell/`, `/tmp/veltro/fractal/`, `/mnt/luciedit/`.
+No more `/tmp/veltro/shell/`, `/tmp/veltro/fractal/`, `/mnt/edit/`.
 
 ### 4. App Registration Protocol
 
@@ -102,13 +102,13 @@ Apps register with tools9p:
 
 ```
 # App writes to /tool/ctl:
-register luciedit /mnt/luciedit
+register edit /mnt/edit
 
-# tools9p bind-mounts /mnt/luciedit into /tool/luciedit
-# and adds "luciedit" to the active tool list
+# tools9p bind-mounts /mnt/edit into /tool/edit
+# and adds "edit" to the active tool list
 
 # On app exit:
-unregister luciedit
+unregister edit
 ```
 
 Or more idiomatically: apps serve file2chan entries directly under `/tool/{name}/` if tools9p supports union mounts.
@@ -119,9 +119,9 @@ Or more idiomatically: apps serve file2chan entries directly under `/tool/{name}
 |------|-------------|----------|-------------|
 | **utility** | Headless, stateless, request/response | grep, read, write, exec, git | No |
 | **service** | Headless, stateful, long-running | memory, todo, spawn | Optional |
-| **app** | Has GUI, user-visible, collaborative | luciedit, lucishell, charon, fractal | Yes |
+| **app** | Has GUI, user-visible, collaborative | edit, lucishell, charon, fractal | Yes |
 
-The `meta` file carries the type so the AI can distinguish "using luciedit will show the user something" from "using grep won't." Same calling convention regardless.
+The `meta` file carries the type so the AI can distinguish "using edit will show the user something" from "using grep won't." Same calling convention regardless.
 
 ### 6. Capability Metadata in the Filesystem
 
@@ -148,7 +148,7 @@ This lets `agentlib` build richer system prompts and lets `lucictx` display tool
 
 1. **Phase 1**: Extend `tools9p.b` to serve directories instead of flat files. Existing `tool.m` modules work unchanged via wrapping.
 2. **Phase 2**: Standardise app mounts under `/tool/{name}/`. Add `register`/`unregister` to `/tool/ctl`.
-3. **Phase 3**: Delete wrapper tool modules (`appl/veltro/tools/luciedit.b`, `fractal.b`, etc.). Apps serve their own interfaces.
+3. **Phase 3**: Delete wrapper tool modules (`appl/veltro/tools/edit.b`, `fractal.b`, etc.). Apps serve their own interfaces.
 4. **Phase 4**: Add `meta` files. Update `agentlib` for richer prompt construction.
 
 ## Forward-Looking: GUI/Headless Duality

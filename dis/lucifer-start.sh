@@ -40,7 +40,7 @@ luciuisrv
 echo activity create Main > /n/ui/ctl
 
 # Register tools
-/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap luciedit
+/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap editor
 
 # Start bridge (background)
 lucibridge -v &

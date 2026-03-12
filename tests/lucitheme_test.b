@@ -5,7 +5,7 @@ implement LucithemeTest;
 #
 # Covers:
 #   - Lucitheme->gettheme() renamed from load() (Limbo reserved keyword fix)
-#   - Brimstone default colour values used by wmclient and luciedit
+#   - Brimstone default colour values used by wmclient and edit
 #   - wmclient border colour fix: accent (not hardcoded teal 0x448888FF)
 #   - wmclient border colour fix: border (not hardcoded cyan 0x9EEEEEFF)
 #   - wmclient background fix: bg is not white (no white flash on window close)
@@ -74,7 +74,7 @@ testBrimstoneColors(t: ref T)
 	t.asserteq(th.accent, int 16rE8553AFF, "accent is orange (0xE8553AFF)");
 	t.asserteq(th.text,   int 16rCCCCCCFF, "text is light grey (0xCCCCCCFF)");
 
-	# Editor colours (luciedit theme integration)
+	# Editor colours (edit theme integration)
 	t.asserteq(th.editbg,     int 16r0D0D0DFF, "editbg is near-black (0x0D0D0DFF)");
 	t.asserteq(th.edittext,   int 16rCCCCCCFF, "edittext is light grey (0xCCCCCCFF)");
 	t.asserteq(th.editcursor, int 16rE8553AFF, "editcursor is orange/accent (0xE8553AFF)");

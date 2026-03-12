@@ -14,6 +14,7 @@ TARG=\
 	acmewin.dis\
 	arg.dis\
 	testing.dis\
+	textwidget.dis\
 	xenithwin.dis\
 	asn1.dis\
 	attrdb.dis\
@@ -234,6 +235,7 @@ SYSMODULES=\
 	sys.m\
 	tables.m\
 	testing.m\
+	textwidget.m\
 	tftp.m\
 	timers.m\
 	titlebar.m\

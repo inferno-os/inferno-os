@@ -106,7 +106,7 @@ If you see smeared text:
 | App | File | Fixed | Note |
 |-----|------|-------|------|
 | lucifer | `appl/cmd/lucifer.b` | early 2026-03 | acb4bcd5 — wrong Vera-Roman path |
-| luciedit | `appl/wm/luciedit.b` | 2026-03 | c5c9568a — switched to combined fonts |
+| edit | `appl/wm/edit.b` | 2026-03 | c5c9568a — switched to combined fonts |
 | lucishell | `appl/wm/lucishell.b` | 2026-03 | c5c9568a — switched to combined fonts |
 | xenith/acme/pdf/renderers | various | 2026-03 | c5c9568a — switched to combined fonts |
 | charon page text | `appl/charon/layout.b` | 2026-03 | fonts array: all sizes → combined |

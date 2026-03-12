@@ -55,7 +55,7 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar: import widgetmod;
+	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
 
 include "arg.m";
 	arg: Arg;
@@ -73,7 +73,7 @@ Lucishell: module
 };
 
 # Colors (fallback defaults; overridden by theme at runtime)
-# Same palette as luciedit — no "terminal green" affectation.
+# Same palette as edit — no "terminal green" affectation.
 BG:	con int 16rFFFDF6FF;		# warm off-white background
 FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
@@ -84,7 +84,7 @@ HOLDCOL: con int 16rCC8800FF;		# hold-mode text color
 MARGIN: con 4;
 TABSTOP: con 8;
 
-# Key constants (Inferno keyboard codes)
+# Key constants (Inferno keyboard codes — canonical defs in Widget)
 Khome:		con 16rFF61;
 Kend:		con 16rFF57;
 Kup:		con 16rFF52;
@@ -159,8 +159,7 @@ nhist: int;
 histpos: int;
 
 # ANSI escape decode state
-kbdescstate: int;
-kbdescarg: int;
+kbdfilter: ref Kbdfilter;
 
 # Channels
 outputch: chan of string;	# shell output arrives here
@@ -346,6 +345,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	fgcolor = fgcolor_normal;
 
 	widgetmod->init(display_g, font);
+	kbdfilter = Kbdfilter.new();
 	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
@@ -383,12 +383,22 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			handlectl(ctl);
 		}
 	rawkey := <-w.ctxt.kbd =>
-		key := filterkbd(rawkey);
-		if(key >= 0) {
+		# Intercept bare ESC before the ANSI filter eats it.
+		# In windowed mode arrows arrive as 0xFF5x, so ESC (27)
+		# is always a genuine ESC keypress.
+		if(rawkey == Kesc) {
 			cursorvis = 1;
-			handlekey(key);
+			handlekey(Kesc);
 			shellstatedirty = 1;
 			redraw();
+		} else {
+			key := kbdfilter.filter(rawkey);
+			if(key >= 0) {
+				cursorvis = 1;
+				handlekey(key);
+				shellstatedirty = 1;
+				redraw();
+			}
 		}
 	p := <-w.ctxt.ptr =>
 		if(!w.pointer(*p)) {
@@ -913,60 +923,6 @@ sendinput(s: string)
 }
 
 # ---------- Keyboard handling ----------
-
-filterkbd(c: int): int
-{
-	if(c >= 16rFF00)
-		return c;
-	case kbdescstate {
-	0 =>
-		if(c == 27) {
-			# In windowed mode, arrow keys arrive as 0xFF5x codes,
-			# not ANSI sequences.  Deliver bare ESC directly so
-			# it can toggle hold mode.
-			return Kesc;
-		}
-	1 =>
-		kbdescstate = 0;
-		if(c == '[') {
-			kbdescstate = 2;
-			kbdescarg = 0;
-			return -1;
-		}
-		return c;
-	2 =>
-		kbdescstate = 0;
-		if(c == 'A') return Kup;
-		if(c == 'B') return Kdown;
-		if(c == 'C') return Kright;
-		if(c == 'D') return Kleft;
-		if(c == 'H') return Khome;
-		if(c == 'F') return Kend;
-		if(c == '1' || c == '4' || c == '5' || c == '6'
-		    || c == '7' || c == '8') {
-			kbdescarg = c - '0';
-			kbdescstate = 3;
-			return -1;
-		}
-		return -1;
-	3 =>
-		if(c == '~') {
-			kbdescstate = 0;
-			if(kbdescarg == 1 || kbdescarg == 7) return Khome;
-			if(kbdescarg == 4 || kbdescarg == 8) return Kend;
-			if(kbdescarg == 5) return Kpgup;
-			if(kbdescarg == 6) return Kpgdown;
-			return -1;
-		}
-		if(c >= '0' && c <= '9') {
-			kbdescarg = kbdescarg * 10 + (c - '0');
-			return -1;
-		}
-		kbdescstate = 0;
-		return -1;
-	}
-	return c;
-}
 
 handlekey(key: int)
 {
