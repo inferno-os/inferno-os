@@ -333,18 +333,16 @@ identtrans(char *netdir, char *addr, char *naddr, int na, char *file, int nf)
 	USED(nf);
 
 	/* parse the protocol */
-	strncpy(proto, addr, sizeof(proto));
-	proto[sizeof(proto)-1] = 0;
+	snprint(proto, sizeof(proto), "%s", addr);
 	p = strchr(proto, '!');
 	if(p)
 		*p++ = 0;
 
 	snprint(file, nf, "%s/%s/clone", netdir, proto);
 	if(p != nil)
-		strncpy(naddr, p, na);
+		snprint(naddr, na, "%s", p);
 	else
-		strncpy(naddr, "", na);
-	naddr[na-1] = 0;
+		naddr[0] = '\0';
 
 	return 1;
 }
