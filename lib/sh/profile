@@ -22,19 +22,15 @@ if {! ftest -f /mnt/factotum/proto}{
 	auth/factotum
 }
 
-# Provision API keys from host environment into factotum
-apikey=`{cat /env/ANTHROPIC_API_KEY >[2] /dev/null}
-if {! ~ $apikey ''} {
-	echo 'key proto=pass service=anthropic !password='^$apikey > /mnt/factotum/ctl
-}
+# Provision API keys into factotum
+# Build the full factotum key line on the host side (bash handles conditionals)
+factotumkey=`{os sh -c 'k=${ANTHROPIC_API_KEY:-$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw ~/Library/LaunchAgents/com.nervsystems.llm9p.plist 2>/dev/null)}; if [ -n "$k" ]; then echo "key proto=pass service=anthropic user=apikey !password=$k"; fi'}
+echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 
 # Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
-	# Start llm9p if not already running (no-op when launched via app bundle).
-	# Derive host infernode root from the emu working directory (emu/MacOSX/).
-	infraroot=`{os sh -c 'cd ../.. && pwd'}
-	os sh $infraroot^'/lib/sh/start-llm9p.sh' >[2] /dev/null
-	mount -A 'tcp!127.0.0.1!5640' /n/llm >[2] /dev/null
+	# Start native LLM service (reads API key from factotum)
+	llmsrv >[2] /dev/null &
 
 	# Start speech file server (TTS/STT via /n/speech)
 	/dis/veltro/speech9p.dis -e cmd &

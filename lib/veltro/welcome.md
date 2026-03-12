@@ -20,7 +20,7 @@ I am **Veltro**, the AI agent native to this system. I can read and
 write files, search code, launch apps, speak aloud, remember things
 across sessions, browse the web, send email, draw fractals, and more.
 Everything I do is visible — my tools are files, my actions show up in
-your workspace.
+your workspace. 
 
 ## Things to try
 
@@ -28,8 +28,8 @@ your workspace.
 
 **Launch an app.** Ask me to:
 - `launch edit` — a text editor in the presentation zone
-- `launch shell` — a shell terminal
-- `launch fractals` — the Mandelbrot/Julia fractal viewer (I can drive it too)
+- `launch lucishell` — a shell terminal
+- `launch mand` — the Mandelbrot fractal viewer (I can drive it too)
 - `launch clock` — a clock
 - `launch xenith` — the full Xenith text environment (Acme descendant)
 

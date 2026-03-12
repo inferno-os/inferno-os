@@ -81,7 +81,7 @@ Same process as x86_64, but for ARM64 platforms like Jetson or Raspberry Pi.
 ### macOS ARM64
 
 ```bash
-export PATH="$PWD/MacOSX/arm64/bin:$PATH"
+export PATH="$PWD/X/arm64/bin:$PATH"
 mk install
 ```
 
