@@ -78,6 +78,7 @@ TARG=\
 	spawn_helpers_test.dis\
 	shell_tool_test.dis\
 	fractal_tool_test.dis\
+	menu_test.dis\
 
 MODULES=
 
@@ -99,6 +100,7 @@ SYSMODULES=\
 	keyring.m\
 	lists.m\
 	math.m\
+	menu.m\
 	nsconstruct.m\
 	outlinefont.m\
 	pdf.m\

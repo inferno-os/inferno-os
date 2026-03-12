@@ -194,6 +194,7 @@ SYSMODULES=\
 	arg.m\
 	bufio.m\
 	convcs.m\
+	menu.m\
 	crc.m\
 	daytime.m\
 	debug.m\
