@@ -90,6 +90,11 @@ exec(args: string): string
 	if(old == "")
 		return "error: no search text specified";
 
+	# Check if path is under a read-only bound namespace
+	roerr := checkreadonly(path);
+	if(roerr != nil)
+		return roerr;
+
 	# Process escape sequences
 	old = unescape(old);
 	new = unescape(new);
@@ -342,4 +347,50 @@ readfile(path: string): array of byte
 		return nil;
 
 	return data[0:n];
+}
+
+# Check if a path falls under a read-only bound namespace path.
+# Reads /tool/paths to find bound paths and their permissions.
+# Returns error string if path is read-only, nil if writable.
+checkreadonly(path: string): string
+{
+	fd := sys->open("/tool/paths", Sys->OREAD);
+	if(fd == nil)
+		return nil;  # can't check — allow (fail-open)
+	buf := array[4096] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	raw := string buf[0:n];
+
+	# Parse "path perm" lines; check if target is under any ro path
+	i := 0;
+	while(i < len raw) {
+		# Find end of line
+		j := i;
+		while(j < len raw && raw[j] != '\n')
+			j++;
+		line := raw[i:j];
+		i = j + 1;
+		if(line == "")
+			continue;
+
+		# Parse "boundpath perm" — find last space
+		sp := -1;
+		for(k := len line - 1; k > 0; k--)
+			if(line[k] == ' ') { sp = k; break; }
+		if(sp < 0)
+			continue;
+		bpath := line[0:sp];
+		perm := line[sp+1:];
+		if(perm != "ro")
+			continue;
+
+		# Check if target path is under this read-only bound path
+		if(len path >= len bpath && path[0:len bpath] == bpath) {
+			if(len path == len bpath || path[len bpath] == '/')
+				return sys->sprint("error: %s is read-only (bound with [ro] permission)", bpath);
+		}
+	}
+	return nil;
 }

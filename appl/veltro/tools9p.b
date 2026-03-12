@@ -79,7 +79,15 @@ user: string;
 tools: list of ref ToolInfo;     # active (exposed) tools; mutated by serveloop, read by asyncexec (snapshot-safe)
 alltools: list of ref ToolInfo;  # pre-loaded inactive tools (available for ctl-add)
 extpaths: list of string;  # Extra paths from -p flags (e.g. "/dis/wm")
-boundpaths: list of string;  # Paths registered via bindpath ctl command
+
+# Bound namespace paths with per-path permissions.
+# Each entry is "path perm" where perm is "ro" or "rw".
+# Default perm is "rw" for backward compatibility.
+BoundPath: adt {
+	path: string;
+	perm: string;  # "ro" or "rw"
+};
+boundpaths: list of ref BoundPath;  # Paths registered via bindpath ctl command
 vers: int;
 
 # Shadow directories for per-invocation namespace restriction
@@ -445,16 +453,48 @@ strlist_contains(l: list of string, s: string): int
 	return 0;
 }
 
-# Generate list of bound paths (newline-separated for /tool/paths)
+# Generate list of bound paths (newline-separated for /tool/paths).
+# Format: "path perm" per line (e.g. "/n/local/Users/pdfinn/tmp rw").
 genpathlist(): string
 {
 	result := "";
 	for(p := boundpaths; p != nil; p = tl p) {
+		bp := hd p;
 		if(result != "")
 			result += "\n";
-		result += hd p;
+		result += bp.path + " " + bp.perm;
 	}
 	return result;
+}
+
+# Find a BoundPath by path string, or nil if not found.
+findboundpath(path: string): ref BoundPath
+{
+	for(bp := boundpaths; bp != nil; bp = tl bp)
+		if((hd bp).path == path)
+			return hd bp;
+	return nil;
+}
+
+# Split "path [perm]" into (path, perm). Default perm is "rw".
+splitpathperm(s: string): (string, string)
+{
+	# Find last space — everything after it is perm if it's "ro" or "rw"
+	for(i := len s - 1; i > 0; i--) {
+		if(s[i] == ' ') {
+			tail := s[i+1:];
+			if(tail == "ro" || tail == "rw")
+				return (s[0:i], tail);
+			break;
+		}
+	}
+	return (s, "rw");
+}
+
+# Check if any BoundPath has the given path string.
+boundpath_contains(path: string): int
+{
+	return findboundpath(path) != nil;
 }
 
 # Generate list of tool names (newline-separated for /tool/tools)
@@ -741,9 +781,9 @@ applynsrestriction()
 	# Called per-invocation from asyncexec(), so boundpaths always reflects
 	# the current state — paths bound via the GUI after startup are captured.
 	allpaths := extpaths;
-	for(bp := boundpaths; bp != nil; bp = tl bp)
-		if(!strlist_contains(allpaths, hd bp))
-			allpaths = (hd bp) :: allpaths;
+	for(bp2 := boundpaths; bp2 != nil; bp2 = tl bp2)
+		if(!strlist_contains(allpaths, (hd bp2).path))
+			allpaths = (hd bp2).path :: allpaths;
 	# Auto-grant /n/speech when say or hear tool is registered.
 	# speech9p mounts /n/speech in the shared namespace; without this,
 	# restrictns() hides it entirely and say/hear tools fail silently.
@@ -916,20 +956,36 @@ Serve:
 					ctlremove(data[7:]);
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
 				} else if(len data > 9 && data[0:9] == "bindpath ") {
-					p := data[9:];
-					if(!strlist_contains(boundpaths, p))
-						boundpaths = p :: boundpaths;
+					# "bindpath <path> [ro|rw]" — default perm is "rw"
+					rest := data[9:];
+					(bpath, bperm) := splitpathperm(rest);
+					existing := findboundpath(bpath);
+					if(existing != nil)
+						existing.perm = bperm;  # update perm on re-bind
+					else
+						boundpaths = ref BoundPath(bpath, bperm) :: boundpaths;
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
 				} else if(len data > 11 && data[0:11] == "unbindpath ") {
 					p := data[11:];
-					nl: list of string;
+					nl: list of ref BoundPath;
 					for(bl := boundpaths; bl != nil; bl = tl bl)
-						if(hd bl != p)
+						if((hd bl).path != p)
 							nl = hd bl :: nl;
 					boundpaths = nl;
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 8 && data[0:8] == "setperm ") {
+					# "setperm <path> <ro|rw>" — change perm on existing bound path
+					rest := data[8:];
+					(spath, sperm) := splitpathperm(rest);
+					existing2 := findboundpath(spath);
+					if(existing2 != nil) {
+						existing2.perm = sperm;
+						srv.reply(ref Rmsg.Write(m.tag, len m.data));
+					} else {
+						srv.reply(ref Rmsg.Error(m.tag, "path not bound: " + spath));
+					}
 				} else {
-					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path>"));
+					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path> [ro|rw] or setperm <path> <ro|rw>"));
 				}
 
 			* =>
