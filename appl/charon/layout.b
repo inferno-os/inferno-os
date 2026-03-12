@@ -122,6 +122,13 @@ Colornode : adt {
 	next:	ref Colornode;
 };
 
+# Flex layout line (for flex-wrap partitioning)
+FlexLine : adt {
+	start:	int;		# first item index
+	count:	int;		# number of items
+	maxh:	int;		# tallest item in line
+};
+
 # Source of info for page (html, image, etc.)
 Source: adt {
 	bs:	ref ByteSource;
@@ -5883,12 +5890,6 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	if(isrow) {
 		# --- ROW DIRECTION with flex-wrap ---
 		# Partition items into flex lines
-		type FlexLine: adt {
-			start: int;		# first item index
-			count: int;		# number of items
-			maxh: int;		# tallest item in line
-		};
-
 		lines: list of ref FlexLine;
 		nlines := 0;
 		linestart := 0;
@@ -6254,9 +6255,10 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 		if(r >= nrows) {
 			nrows = r + 1;
 			ngrid := array[nrows] of array of int;
-			for(ri := 0; ri < len grid_cells; ri++)
+			ri := 0;
+			for(ri = 0; ri < len grid_cells; ri++)
 				ngrid[ri] = grid_cells[ri];
-			for(ri := len grid_cells; ri < nrows; ri++)
+			for(ri = len grid_cells; ri < nrows; ri++)
 				ngrid[ri] = array[ncols] of { * => -1 };
 			grid_cells = ngrid;
 		}
@@ -6268,9 +6270,10 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 			if(r + rowspan > nrows) {
 				nrows = r + rowspan;
 				ngrid := array[nrows] of array of int;
-				for(ri := 0; ri < len grid_cells; ri++)
+				ri := 0;
+				for(ri = 0; ri < len grid_cells; ri++)
 					ngrid[ri] = grid_cells[ri];
-				for(ri := len grid_cells; ri < nrows; ri++)
+				for(ri = len grid_cells; ri < nrows; ri++)
 					ngrid[ri] = array[ncols] of { * => -1 };
 				grid_cells = ngrid;
 			}
@@ -6370,12 +6373,13 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	# Parse row tracks if specified
 	if(cs.grid_template_rows != nil && cs.grid_template_rows != "") {
 		totalh := 0;
-		for(r := 0; r < nrows; r++)
+		r: int;
+		for(r = 0; r < nrows; r++)
 			totalh += rowheights[r];
 		totalh += rowgap * (nrows - 1);
 		specrows := parsegridtracks(cs.grid_template_rows, totalh, rowgap, nil);
 		if(specrows != nil) {
-			for(r := 0; r < len specrows && r < nrows; r++)
+			for(r = 0; r < len specrows && r < nrows; r++)
 				if(specrows[r] > rowheights[r])
 					rowheights[r] = specrows[r];
 		}
@@ -6384,7 +6388,8 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	# Compute cumulative row y-positions
 	rowy := array[nrows] of { * => 0 };
 	y := 0;
-	for(row := 0; row < nrows; row++) {
+	row := 0;
+	for(row = 0; row < nrows; row++) {
 		rowy[row] = y;
 		y += rowheights[row] + rowgap;
 	}
@@ -6392,15 +6397,16 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	# Compute cumulative column x-positions
 	colx := array[ncols] of { * => 0 };
 	x := 0;
-	for(col := 0; col < ncols; col++) {
+	col := 0;
+	for(col = 0; col < ncols; col++) {
 		colx[col] = x;
 		x += colwidths[col] + colgap;
 	}
 
 	# Position each item and create lines
 	for(i = 0; i < nitems; i++) {
-		row := item_row[i];
-		col := item_col[i];
+		row = item_row[i];
+		col = item_col[i];
 		if(row < 0 || col < 0)
 			continue;
 		colspan := item_colspan[i];

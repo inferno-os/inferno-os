@@ -5073,6 +5073,7 @@ parsecalc_ctx(val: string, contextw: int) : int
 # Values are in fixed-point (x100). Returns (value, next_pos).
 calcexpr(s: string, pos, contextw: int) : (int, int)
 {
+	left: int;
 	(left, pos) = calcterm(s, pos, contextw);
 	n := len s;
 	for(;;) {
@@ -5084,14 +5085,16 @@ calcexpr(s: string, pos, contextw: int) : (int, int)
 		# but we also handle adjacent signs for robustness
 		if(s[pos] == '+') {
 			pos++;
-			(right, pos) := calcterm(s, pos, contextw);
+			right: int;
+			(right, pos) = calcterm(s, pos, contextw);
 			left += right;
 		}
 		else if(s[pos] == '-') {
 			# Distinguish operator '-' from negative number:
 			# If preceded by whitespace and followed by whitespace+digit, it's an operator
 			pos++;
-			(right, pos) := calcterm(s, pos, contextw);
+			right: int;
+			(right, pos) = calcterm(s, pos, contextw);
 			left -= right;
 		}
 		else
@@ -5103,6 +5106,7 @@ calcexpr(s: string, pos, contextw: int) : (int, int)
 # Parse multiplicative expression: primary (('*' | '/') primary)*
 calcterm(s: string, pos, contextw: int) : (int, int)
 {
+	left: int;
 	(left, pos) = calcprimary(s, pos, contextw);
 	n := len s;
 	for(;;) {
@@ -5112,12 +5116,14 @@ calcterm(s: string, pos, contextw: int) : (int, int)
 			break;
 		if(s[pos] == '*') {
 			pos++;
-			(right, pos) := calcprimary(s, pos, contextw);
+			right: int;
+			(right, pos) = calcprimary(s, pos, contextw);
 			left = left * right / 100;  # fixed-point multiply
 		}
 		else if(s[pos] == '/') {
 			pos++;
-			(right, pos) := calcprimary(s, pos, contextw);
+			right: int;
+			(right, pos) = calcprimary(s, pos, contextw);
 			if(right == 0)
 				left = 0;
 			else
@@ -5157,7 +5163,8 @@ calcprimary(s: string, pos, contextw: int) : (int, int)
 	# Parenthesized expression
 	if(pos < n && s[pos] == '(') {
 		pos++;
-		(val, pos) := calcexpr(s, pos, contextw);
+		val: int;
+		(val, pos) = calcexpr(s, pos, contextw);
 		# skip closing paren
 		for(; pos < n && (s[pos] == ' ' || s[pos] == '\t'); )
 			pos++;
@@ -6648,7 +6655,7 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 	if(is.elemstk != nil && is.styles != nil) {
 		el := hd is.elemstk;
 		if(el.customprops != nil) {
-			resolvecssvars(cs, el);
+			resolvecssvars(el);
 			# Second pass: re-apply rules with var() values
 			for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
 				sheet := hd sheets;
@@ -6684,7 +6691,7 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 }
 
 # Re-apply CSS rules containing var() with resolved variable values
-resolvecssvars(cs: ref ComputedStyle, el: ref ElementCtx)
+resolvecssvars(el: ref ElementCtx)
 {
 	# Walk all custom props on this element and resolve any var() in their values
 	# (custom properties can reference other custom properties)
