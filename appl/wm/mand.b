@@ -229,9 +229,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	pid := -1;
 	sync := chan of int;
 	imgch := chan of (ref Image, Rect);
-	spawn docalculate(sync, p, imgch);
-	pid = <-sync;
-	imgch <-= (w.image, canvr);
+	if(!isempty(canvr)) {
+		spawn docalculate(sync, p, imgch);
+		pid = <-sync;
+		imgch <-= (w.image, canvr);
+	}
 
 	stack: list of (Fracrect, Params);
 	b1down := 0;
@@ -249,7 +251,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		alt {
 		ctl := <-w.ctl or
 		ctl = <-w.ctxt.ctl =>
-			if(ctl != nil && ctl[0] == '!') {
+			if(ctl == nil)
+				;	# ignore nil ctl (wmsrv disconnect)
+			else if(ctl[0] == '!') {
 				if(pid != -1)
 					restart = winreq(ctl, imgch, sync);
 				else {
@@ -261,7 +265,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		<-w.ctxt.kbd =>
 			;	# ignore keyboard
 		ptr := <-w.ctxt.ptr =>
-			if(w.pointer(*ptr))
+			if(ptr == nil)
+				;	# ignore nil ptr (wmsrv disconnect)
+			else if(w.pointer(*ptr))
 				;
 			else if(ptr.buttons & 1) {
 				# Button 1: start zoom drag
@@ -392,6 +398,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				g_computing = 1;
 				g_stackdepth = len stack;
 				sync = chan of int;
+				imgch = chan of (ref Image, Rect);
 				spawn docalculate(sync, p, imgch);
 				pid = <-sync;
 				imgch <-= (w.image, wr);
@@ -544,7 +551,8 @@ timer(c: chan of int, ms: int)
 
 poll(calc: ref Calc)
 {
-	calc.img.flush(Draw->Flushnow);
+	if(calc.img != nil)
+		calc.img.flush(Draw->Flushnow);
 	alt {
 	<-calc.imgch =>
 		calc.img = nil;
