@@ -1,7 +1,7 @@
-implement Lucishell;
+implement Shell;
 
 #
-# lucishell - Draw-based shell terminal with 9P interface
+# shell - Draw-based shell terminal with 9P interface
 #
 # A terminal emulator for the Inferno shell, with a file-based interface
 # for read-only access by Veltro agents.  The shell process (/dis/sh.dis)
@@ -44,7 +44,7 @@ include "wmclient.m";
 
 include "menu.m";
 	menumod: Menu;
-	Popup, Generator: import menumod;
+	Popup: import menumod;
 
 include "string.m";
 	str: String;
@@ -67,7 +67,7 @@ include "plumbmsg.m";
 	plumbmod: Plumbmsg;
 	Msg: import plumbmod;
 
-Lucishell: module
+Shell: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
@@ -213,12 +213,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	widgetmod = load Widget Widget->PATH;
 	stderr = sys->fildes(2);
 	if(widgetmod == nil) {
-		sys->fprint(stderr, "lucishell: cannot load Widget: %r\n");
+		sys->fprint(stderr, "shell: cannot load Widget: %r\n");
 		raise "fail:cannot load Widget";
 	}
 
 	if(ctxt == nil) {
-		sys->fprint(stderr, "lucishell: no window context\n");
+		sys->fprint(stderr, "shell: no window context\n");
 		raise "fail:no context";
 	}
 
@@ -230,7 +230,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	arg = load Arg Arg->PATH;
 	if(arg != nil) {
 		arg->init(argv);
-		arg->setusage("lucishell [-w width] [-h height] [-f font] [-c cmd] [-ilxvn]");
+		arg->setusage("shell [-w width] [-h height] [-f font] [-c cmd] [-ilxvn]");
 		shflags: list of string;
 		shcmd := "";
 		while((c := arg->opt()) != 0)
@@ -318,7 +318,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(font == nil)
 		font = Font.open(display_g, "*default*");
 	if(font == nil) {
-		sys->fprint(stderr, "lucishell: cannot load any font\n");
+		sys->fprint(stderr, "shell: cannot load any font\n");
 		raise "fail:no font";
 	}
 
@@ -356,7 +356,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if(menumod != nil)
 		menumod->init(display_g, font);
-	menu := menumod->newgen(menuitems);
+	menu := makemenu();
 
 	# Initialize plumbing
 	plumbmod = load Plumbmsg Plumbmsg->PATH;
@@ -405,6 +405,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			if(p.buttons & 4 && menumod != nil && menu != nil) {
 				n := menu.show(w.image, p.xy, w.ctxt.ptr);
 				domenu(n);
+				menu = makemenu();
 				redraw();
 			} else if(p.buttons & 2) {
 				buf := wmclient->snarfget();
@@ -528,19 +529,18 @@ updatetitle()
 
 # ---------- Context menu ----------
 
-menuitems(m: ref Popup)
+makemenu(): ref Popup
 {
 	scrolllabel := "noscroll";
 	if(!scrolling)
 		scrolllabel = "scroll";
 	if(plumbed)
-		m.items = array[] of {
+		return menumod->new(array[] of {
 			"cut", "snarf", "paste", "send",
-			"plumb", scrolllabel, "clear", "exit"};
-	else
-		m.items = array[] of {
-			"cut", "snarf", "paste", "send",
-			scrolllabel, "clear", "exit"};
+			"plumb", scrolllabel, "clear", "exit"});
+	return menumod->new(array[] of {
+		"cut", "snarf", "paste", "send",
+		scrolllabel, "clear", "exit"});
 }
 
 domenu(n: int)
@@ -634,7 +634,7 @@ plumbtext(text: string)
 	if(!plumbed || text == "")
 		return;
 	msg := ref Msg(
-		"Lucishell",		# src
+		"Shell",		# src
 		"",			# dst (let plumber decide)
 		cwd,			# dir
 		"text",			# kind
@@ -675,16 +675,16 @@ startshell()
 
 	# Bind #s (srv device) so file2chan works
 	if(sys->bind("#s", "/chan", Sys->MBEFORE|Sys->MCREATE) < 0) {
-		sys->fprint(stderr, "lucishell: bind #s: %r\n");
-		outputch <-= "lucishell: cannot bind #s for file2chan\n";
+		sys->fprint(stderr, "shell: bind #s: %r\n");
+		outputch <-= "shell: cannot bind #s for file2chan\n";
 		return;
 	}
 
 	# Create synthetic /dev/cons using file2chan
 	consio := sys->file2chan("/chan", "cons");
 	if(consio == nil) {
-		sys->fprint(stderr, "lucishell: file2chan cons: %r\n");
-		outputch <-= "lucishell: cannot create synthetic cons\n";
+		sys->fprint(stderr, "shell: file2chan cons: %r\n");
+		outputch <-= "shell: cannot create synthetic cons\n";
 		return;
 	}
 
@@ -696,18 +696,18 @@ startshell()
 
 	# Bind our synthetic cons over /dev/cons
 	if(sys->bind("/chan/cons", "/dev/cons", Sys->MREPL) < 0)
-		sys->fprint(stderr, "lucishell: bind cons: %r\n");
+		sys->fprint(stderr, "shell: bind cons: %r\n");
 	if(consctlio != nil) {
 		if(sys->bind("/chan/consctl", "/dev/consctl", Sys->MREPL) < 0)
-			sys->fprint(stderr, "lucishell: bind consctl: %r\n");
+			sys->fprint(stderr, "shell: bind consctl: %r\n");
 	}
 	if(shctlio != nil) {
 		if(sys->bind("/chan/shctl", "/dev/shctl", Sys->MREPL) < 0)
-			sys->fprint(stderr, "lucishell: bind shctl: %r\n");
+			sys->fprint(stderr, "shell: bind shctl: %r\n");
 	}
 
 	# Fork the fd table so our redirections below do not affect the main
-	# lucishell goroutine (which still needs its original stdin/stdout/stderr).
+	# shell goroutine (which still needs its original stdin/stdout/stderr).
 	sys->pctl(Sys->FORKFD, nil);
 
 	# Redirect stdin, stdout, and stderr to our synthetic /dev/cons.
@@ -732,8 +732,9 @@ startshell()
 	# Load and run the shell
 	sh := load Command "/dis/sh.dis";
 	if(sh == nil) {
-		sys->fprint(stderr, "lucishell: cannot load /dis/sh.dis: %r\n");
-		outputch <-= "lucishell: cannot load shell\n";
+		err := sys->sprint("%r");
+		sys->fprint(stderr, "shell: cannot load /dis/sh.dis: %s\n", err);
+		outputch <-= "shell: cannot load /dis/sh.dis: " + err + "\n";
 		return;
 	}
 

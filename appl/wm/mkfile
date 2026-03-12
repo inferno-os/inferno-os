@@ -8,9 +8,9 @@ TARG=\
 	clock.dis\
 	colors.dis\
 	lens.dis\
-	edit.dis\
+	editor.dis\
 	fractals.dis\
-	lucishell.dis\
+	shell.dis\
 	view.dis\
 	wm.dis\
 

@@ -1655,6 +1655,18 @@ ctxctl(a: ref Activity, data: string): string
 		pushevent(a.id, "context background");
 		return nil;
 	}
+	if(hasprefix(data, "bg remove ")) {
+		rest := data[len "bg remove ":];
+		idx := strtoint(rest);
+		if(idx < 0 || idx >= a.nbg)
+			return "bad bg task index";
+		a.bgtasks[idx:] = a.bgtasks[idx+1:a.nbg];
+		a.nbg--;
+		a.bgtasks[a.nbg] = nil;
+		vers++;
+		pushevent(a.id, "context background");
+		return nil;
+	}
 	return "unknown context command: " + data;
 }
 

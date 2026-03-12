@@ -1496,7 +1496,7 @@ addtool(name: string)
 		if(hd tp == name)
 			return;
 	activetoolset = name :: activetoolset;
-	writetofile(mountpt_g + "/ctl",
+	writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g),
 		"resource add path=" + name + " label=" + name + " type=tool status=idle");
 	writetofile("/tool/ctl", "add " + name);
 	loadcontext();
@@ -1510,7 +1510,7 @@ removetool(name: string)
 		if(hd tp != name)
 			newlist = hd tp :: newlist;
 	activetoolset = revstrlist(newlist);
-	writetofile(mountpt_g + "/ctl", "resource remove " + name);
+	writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "resource remove " + name);
 	writetofile("/tool/ctl", "remove " + name);
 	loadcontext();
 	redrawctx();
@@ -1518,7 +1518,7 @@ removetool(name: string)
 
 resolvegap(desc: string)
 {
-	writetofile(mountpt_g + "/ctl", "gap resolve desc=" + desc);
+	writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "gap resolve desc=" + desc);
 	loadcontext();
 	redrawctx();
 }
@@ -1625,11 +1625,11 @@ ensureeditor(): int
 		return 1;	# 9P available
 	}
 	# Launch via presentation system (harmless if already running)
-	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching edit\n");
+	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching editor\n");
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
-	cmd := "create id=edit type=app dis=/dis/wm/edit.dis label=Edit";
+	cmd := "create id=editor type=app dis=/dis/wm/editor.dis label=editor";
 	writetofile(pctl, cmd);
-	writetofile(pctl, "center id=edit");
+	writetofile(pctl, "center id=editor");
 	# Poll until /edit/ctl appears
 	for(i := 0; i < 20; i++) {
 		sys->sleep(250);

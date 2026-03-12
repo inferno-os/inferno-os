@@ -244,7 +244,7 @@ echo "Building command utilities..."
 cd "$ROOT/appl/cmd"
 $MK install 2>&1 || { echo "WARNING: some commands failed to build"; }
 
-# Build window manager components (luciedit, lucishell, wm, etc.)
+# Build window manager components (editor, shell, wm, etc.)
 echo "Building wm components..."
 cd "$ROOT/appl/wm"
 $MK install 2>&1 || { echo "WARNING: some wm modules failed to build"; }
@@ -272,7 +272,7 @@ for f in emuinit.dis sh.dis lucifer.dis luciuisrv.dis lucibridge.dis luciconv.di
     fi
 done
 
-for f in edit.dis lucishell.dis; do
+for f in editor.dis shell.dis fractals.dis; do
     if [[ -f "$ROOT/dis/wm/$f" ]]; then
         echo "  OK: dis/wm/$f"
     else

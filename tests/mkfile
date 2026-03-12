@@ -79,6 +79,7 @@ TARG=\
 	shell_tool_test.dis\
 	fractal_tool_test.dis\
 	menu_test.dis\
+	wm_apps_test.dis\
 
 MODULES=
 

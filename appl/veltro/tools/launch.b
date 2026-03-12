@@ -56,6 +56,7 @@ doc(): string
 		"  Launch list                    — show available apps\n" +
 		"  Launch xenith                  — launch Xenith text environment\n" +
 		"  Launch shell                   — launch shell terminal\n" +
+		"  Launch editor                  — launch text editor\n" +
 		"  Launch clock                   — launch by short name\n" +
 		"  Launch wm/clock                — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock           — launch by full path (.dis optional)\n" +
@@ -67,7 +68,7 @@ doc(): string
 		"  Right-click inside Charon for back/fwd/stop/start menu.\n" +
 		"  Do NOT use exec or shell commands to control Charon.\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  charon, clock, bounce, coffee, colors, date, edit, about, view, rt, lens, shell, fractals\n\n" +
+		"  charon, clock, bounce, coffee, colors, date, editor (edit), about, view, rt, lens, shell, fractals\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
@@ -138,14 +139,16 @@ exec(args: string): string
 		return "error: " + appname + " requires Tk which is not available.\n" +
 			"Try: clock, bounce, coffee, colors, date, view, rt, lens, xenith";
 
-	# Canonical name aliases: tool names that map to differently-named .dis files.
-	if(appname == "shell")
-		appname = "lucishell";
+	# User-facing label preserved before .dis resolution aliases.
+	label := appname;
+
+	# disname is the .dis filename — normally same as appname.
+	disname := appname;
 
 	# Reject names containing path separators — belt-and-suspenders guard
 	# against any normalization gaps that could reach outside /dis/wm/.
-	for(pi := 0; pi < len appname; pi++) {
-		if(appname[pi] == '/') {
+	for(pi := 0; pi < len disname; pi++) {
+		if(disname[pi] == '/') {
 			return "error: app name may not contain '/'";
 		}
 	}
@@ -155,13 +158,13 @@ exec(args: string): string
 	# Apps outside /dis/wm/ must be explicitly whitelisted here; no generic
 	# directory search is performed to prevent an agent from reaching
 	# arbitrary /dis/*.dis files by guessing names.
-	dispath := "/dis/wm/" + appname + ".dis";
+	dispath := "/dis/wm/" + disname + ".dis";
 	(ok, nil) := sys->stat(dispath);
 	if(ok < 0) {
 		# Check explicit whitelist for apps that live outside /dis/wm/.
-		dispath = extraapp(appname);
+		dispath = extraapp(disname);
 		if(dispath == "")
-			return "error: " + appname + " not found\n" +
+			return "error: " + label + " not found\n" +
 				"Use 'Launch list' to see available apps";
 	}
 
@@ -177,8 +180,10 @@ exec(args: string): string
 	# so xenith skips killprocs on exit). Also pass -t dark if brimstone theme is active.
 	# For other apps with extradata (e.g. a URL for charon): kill any existing instance
 	# first, then relaunch with data=<extradata> so the app receives the URL as its starturl.
+	# id must match the app's wmsrv registration (derived from .dis name).
+	# label is the user-facing tab name.
 	cmd: string;
-	if(appname == "xenith") {
+	if(disname == "xenith") {
 		xenithargs := "-c 1 -E";
 		theme := readfile("/lib/lucifer/theme/current");
 		if(theme != nil)
@@ -188,19 +193,19 @@ exec(args: string): string
 		if(theme == nil || theme == "" || theme == "brimstone")
 			xenithargs += " -t dark";
 		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
-			appname, dispath, appname, xenithargs);
+			disname, dispath, label, xenithargs);
 	} else if(extradata != "") {
 		# Navigation: kill any running instance, then relaunch with the new URL/data.
 		killfd := sys->open(pctl, Sys->OWRITE);
 		if(killfd != nil) {
-			kb := array of byte ("kill id=" + appname);
+			kb := array of byte ("kill id=" + disname);
 			sys->write(killfd, kb, len kb);
 			killfd = nil;
 		}
 		cmd = sys->sprint("create id=%s type=app dis=%s label=%s data=%s",
-			appname, dispath, appname, extradata);
+			disname, dispath, label, extradata);
 	} else
-		cmd = sys->sprint("create id=%s type=app dis=%s label=%s", appname, dispath, appname);
+		cmd = sys->sprint("create id=%s type=app dis=%s label=%s", disname, dispath, label);
 	fd := sys->open(pctl, Sys->OWRITE);
 	if(fd == nil)
 		return sys->sprint("error: cannot open presentation/ctl: %r");
@@ -211,14 +216,14 @@ exec(args: string): string
 	# Center the new app tab
 	fd = sys->open(pctl, Sys->OWRITE);
 	if(fd != nil) {
-		b = array of byte ("center id=" + appname);
+		b = array of byte ("center id=" + disname);
 		sys->write(fd, b, len b);
 		fd = nil;
 	}
 
 	if(extradata != "")
-		return "launched " + appname + " with url " + extradata + " in presentation zone";
-	return "launched " + appname + " in presentation zone";
+		return "launched " + label + " with url " + extradata + " in presentation zone";
+	return "launched " + label + " in presentation zone";
 }
 
 # Read current activity ID from namespace

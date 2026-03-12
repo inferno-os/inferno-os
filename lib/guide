@@ -151,7 +151,7 @@ Lucifer (GUI)
 
 # Launch apps in the presentation zone (via Veltro):
 #   launch clock       — analog clock
-#   launch edit        — text editor
+#   launch editor      — text editor
 #   launch shell       — shell terminal
 #   launch fractals    — Mandelbrot/Julia fractal viewer
 #   launch xenith      — Xenith text environment

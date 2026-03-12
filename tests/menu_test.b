@@ -28,6 +28,7 @@ include "testing.m";
 
 include "menu.m";
 	menumod: Menu;
+	Popup: import menumod;
 
 MenuTest: module
 {
@@ -132,7 +133,8 @@ testNewGen(t: ref T)
 		return;
 	}
 
-	p := menumod->newgen(genfunc);
+	gen := genfunc;
+	p := menumod->newgen(gen);
 	t.assert(p != nil, "newgen() returns non-nil Popup");
 	t.assert(p.items == nil, "items nil before generator runs");
 	t.assert(p.gen != nil, "gen is set");
@@ -159,11 +161,11 @@ testGeneratorPopulates(t: ref T)
 	}
 
 	gencalls = 0;
-	p := menumod->newgen(genfunc);
+	gen := genfunc;
+	p := menumod->newgen(gen);
 
 	# Simulate what show() does: call the generator
-	genfn := p.gen;
-	genfn(p);
+	p.gen(p);
 
 	t.asserteq(gencalls, 1, "generator called once");
 	t.assert(p.items != nil, "items populated by generator");
@@ -180,11 +182,11 @@ testGeneratorWithSubs(t: ref T)
 		return;
 	}
 
-	p := menumod->newgen(subgenfunc);
+	gen := subgenfunc;
+	p := menumod->newgen(gen);
 
 	# Simulate what show() does
-	genfn := p.gen;
-	genfn(p);
+	p.gen(p);
 
 	t.asserteq(len p.items, 3, "parent has 3 items");
 	t.assert(p.subs != nil, "subs array created");

@@ -27,7 +27,7 @@ your workspace.
 **Talk to me.** Ask a question, give me a task, or just say hello.
 
 **Launch an app.** Ask me to:
-- `launch edit` — a text editor in the presentation zone
+- `launch editor` — a text editor in the presentation zone
 - `launch shell` — a shell terminal
 - `launch fractals` — the Mandelbrot/Julia fractal viewer (I can drive it too)
 - `launch clock` — a clock

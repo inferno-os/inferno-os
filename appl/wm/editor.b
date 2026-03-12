@@ -1,7 +1,7 @@
-implement WmEdit;
+implement Editor;
 
 #
-# wm/edit - Draw-based text editor with 9P interface
+# wm/editor - Draw-based text editor with 9P interface
 #
 # A simple text editor with a Styx (9P) filesystem interface for
 # programmatic access by Veltro agents and other tools.
@@ -85,7 +85,7 @@ include "textwidget.m";
 	textwidget: Textwidget;
 	Tabulator: import textwidget;
 
-WmEdit: module
+Editor: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };

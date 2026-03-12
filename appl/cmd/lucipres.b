@@ -1044,8 +1044,8 @@ safename(s: string): string
 	return r;
 }
 
-# Launch edit as a presentation zone app to edit an exported file.
-# Creates an artifact of type=app with dispath=/dis/wm/edit.dis
+# Launch editor as a presentation zone app to edit an exported file.
+# Creates an artifact of type=app with dispath=/dis/wm/editor.dis
 # and data=filepath so lucifer passes it as an argument.
 exportseq := 0;
 
@@ -1054,9 +1054,9 @@ launchexport(label, filepath: string)
 	if(actid_g < 0)
 		return;
 	exportseq++;
-	id := sys->sprint("edit-%d", exportseq);
+	id := sys->sprint("editor-%d", exportseq);
 	ctlpath := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
-	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/edit.dis",
+	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/editor.dis",
 		id, label);
 	writetofile(ctlpath, cmd);
 	# Write the file path into the artifact's data field

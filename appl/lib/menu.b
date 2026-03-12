@@ -166,10 +166,8 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 	ptr: chan of ref Pointer): int
 {
 	# Generator: rebuild items/subs from current app state before posting.
-	if(m.gen != nil) {
-		genfn := m.gen;
-		genfn(m);
-	}
+	if(m.gen != nil)
+		m.gen(m);
 
 	if(mfont == nil || len m.items == 0)
 		return -1;
@@ -355,10 +353,8 @@ Popup.show(m: self ref Popup, win: ref Image, at: Point,
 		if(wantsub >= 0 && wantsub != activesub) {
 			sub := m.subs[wantsub];
 			# Run submenu's generator if present
-			if(sub.gen != nil) {
-				genfn := sub.gen;
-				genfn(sub);
-			}
+			if(sub.gen != nil)
+				sub.gen(sub);
 			subitems = sub.items;
 			if(len subitems > 0) {
 				subnvis = len subitems;

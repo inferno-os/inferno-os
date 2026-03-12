@@ -266,6 +266,15 @@ exec(args: string): string
 		}
 	}
 
+	# Remove completed background tasks after a brief display delay.
+	# Remove from highest index to lowest so shifting doesn't
+	# invalidate pending indices.
+	if(actid >= 0 && bgbase >= 0) {
+		sys->sleep(2000);
+		for(ri := N - 1; ri >= 0; ri--)
+			bgremove(actid, bgbase + ri);
+	}
+
 	# Format output
 	if(N == 1) {
 		r := results[0];
@@ -822,6 +831,14 @@ bgupdatestatus(actid, idx: int, status: string)
 {
 	ctxctl := sys->sprint("%s/activity/%d/context/ctl", UI_MOUNT, actid);
 	cmd := sys->sprint("bg update %d status=%s progress=100", idx, status);
+	writefile(ctxctl, cmd);
+}
+
+# Remove a background task from the activity display.
+bgremove(actid, idx: int)
+{
+	ctxctl := sys->sprint("%s/activity/%d/context/ctl", UI_MOUNT, actid);
+	cmd := sys->sprint("bg remove %d", idx);
 	writefile(ctxctl, cmd);
 }
 

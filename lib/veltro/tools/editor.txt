@@ -16,7 +16,7 @@ Usage:
   close                    Close editor
   status                   Show document info (id, path, dirty)
 
-The editor must be running. Use 'launch edit' to start it.
+The editor must be running. Use 'launch editor' to start it.
 
 Examples:
   editor open /usr/me/file.b    Open a file

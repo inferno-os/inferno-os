@@ -82,8 +82,8 @@ SECTION 5: The Fractal Viewer
 
 SECTION 6: The Text Editor
   - say: let me show you the built-in text editor
-  - launch edit
-  - editor write "Hello from Veltro.\n\nThis is the Edit text editor
+  - launch editor
+  - editor write "Hello from Veltro.\n\nThis is the text editor
     in the presentation zone.\nI can open files, navigate, and edit
     alongside you."
   - say: I can open files, jump to lines, search, and edit — all through
@@ -187,7 +187,7 @@ SECTION 14: Where to Go from Here
     **Talk to me** — just type in the conversation zone.
 
     **Launch apps:**
-      launch edit          — text editor
+      launch editor        — text editor
       launch shell        — shell terminal
       launch fractals     — fractal viewer
       launch xenith       — Xenith text environment
