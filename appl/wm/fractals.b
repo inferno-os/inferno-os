@@ -452,45 +452,20 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 	if(g_fill)
 		fillstr = "fill off";
 
-	# Build menu items depending on current mode
-	items: list of string;
+	# Build main menu items depending on current mode
+	menuarr: array of string;
 	if(g_morj) {
-		# In Mandelbrot mode: offer Julia presets
-		items = "zoom out"
-			:: "depth+"
-			:: "depth-"
-			:: fillstr
-			:: "---"
-			:: nil;
-		for(i := len juliapresets - 1; i >= 0; i--)
-			items = sys->sprint("julia: %s", juliapresets[i].label) :: items;
-		items = rev(items);
-		items = append(items, "---" :: "reset" :: "exit" :: nil);
+		# In Mandelbrot mode: offer Julia submenu
+		menuarr = array[] of {
+			"zoom out", "depth+", "depth-", fillstr,
+			"julia >", "reset", "exit"
+		};
 	} else {
 		# In Julia mode: offer switch back to Mandelbrot
-		items = "zoom out"
-			:: "depth+"
-			:: "depth-"
-			:: fillstr
-			:: "---"
-			:: "mandelbrot"
-			:: "---"
-			:: "reset"
-			:: "exit"
-			:: nil;
-	}
-
-	# Convert to array, filtering out separators
-	nitems := 0;
-	for(l := items; l != nil; l = tl l) {
-		if(hd l != "---")
-			nitems++;
-	}
-	menuarr := array[nitems] of string;
-	mi := 0;
-	for(l = items; l != nil; l = tl l) {
-		if(hd l != "---")
-			menuarr[mi++] = hd l;
+		menuarr = array[] of {
+			"zoom out", "depth+", "depth-", fillstr,
+			"mandelbrot", "reset", "exit"
+		};
 	}
 
 	menu := menumod->new(menuarr);
@@ -513,6 +488,8 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 		return ref Usercmd.Depth(d);
 	"fill on" or "fill off" =>
 		return ref Usercmd.Fill(!g_fill);
+	"julia >" =>
+		return showjuliamenu(ptr);
 	"mandelbrot" =>
 		return ref Usercmd.Mandelbrot;
 	"reset" =>
@@ -520,36 +497,25 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 	"exit" =>
 		postnote(1, sys->pctl(0, nil), "kill");
 		exit;
-	* =>
-		# Check for Julia preset selection
-		if(len sel > 7 && sel[0:7] == "julia: ") {
-			name := sel[7:];
-			for(i := 0; i < len juliapresets; i++) {
-				if(juliapresets[i].label == name)
-					return ref Usercmd.Julia(juliapresets[i].c);
-			}
-		}
 	}
 	return nil;
 }
 
-rev(l: list of string): list of string
+showjuliamenu(ptr: ref Draw->Pointer): ref Usercmd
 {
-	r: list of string;
-	for(; l != nil; l = tl l)
-		r = hd l :: r;
-	return r;
+	# Show submenu of Julia preset choices
+	items := array[len juliapresets] of string;
+	for(i := 0; i < len juliapresets; i++)
+		items[i] = juliapresets[i].label;
+
+	sub := menumod->new(items);
+	n := sub.show(w.image, ptr.xy, w.ctxt.ptr);
+	if(n < 0 || n >= len items)
+		return nil;
+
+	return ref Usercmd.Julia(juliapresets[n].c);
 }
 
-append(a, b: list of string): list of string
-{
-	if(a == nil)
-		return b;
-	r := rev(a);
-	for(; b != nil; b = tl b)
-		r = hd b :: r;
-	return rev(r);
-}
 
 updatesbar()
 {
