@@ -75,6 +75,9 @@ TARG=\
 	xenith_concurrency_test.dis\
 	xenith_exit_test.dis\
 	wmsrv_zorder_test.dis\
+	spawn_helpers_test.dis\
+	shell_tool_test.dis\
+	fractal_tool_test.dis\
 
 MODULES=
 
