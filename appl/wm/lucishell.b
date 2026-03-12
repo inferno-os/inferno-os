@@ -18,15 +18,17 @@ implement Lucishell;
 #   Ctrl-C       send interrupt (DEL) to shell
 #   Ctrl-D       send EOF to shell
 #   Ctrl-U       clear input line
+#   Ctrl-W       delete word before cursor
 #   Ctrl-L       clear screen (keep prompt)
 #   Up/Down      scroll history
 #   Page Up/Down scroll transcript
 #   Ctrl-Q       quit
+#   ESC          toggle hold mode (freeze output)
 #
 # Mouse:
 #   Button 1     place cursor / select text
 #   Button 2     paste (snarf buffer)
-#   Button 3     context menu (copy, paste, clear, exit)
+#   Button 3     context menu / plumb word
 #
 
 include "sys.m";
@@ -55,6 +57,16 @@ include "widget.m";
 	widgetmod: Widget;
 	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
 
+include "arg.m";
+	arg: Arg;
+
+include "workdir.m";
+	workdir: Workdir;
+
+include "plumbmsg.m";
+	plumbmod: Plumbmsg;
+	Msg: import plumbmod;
+
 Lucishell: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -67,6 +79,7 @@ FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
 SELCOL:	con int 16rB4D5FEFF;		# light blue selection
 PROMPTCOL: con int 16r555555FF;	# prompt (slightly dimmer than body text)
+HOLDCOL: con int 16rCC8800FF;		# hold-mode text color
 # Dimensions
 MARGIN: con 4;
 TABSTOP: con 8;
@@ -94,11 +107,17 @@ TRIMLINES: con 3000;
 # History
 MAXHIST: con 100;
 
+# Maximum dynamic buttons
+MAXBUTTONS: con 20;
+
 # --- Module-level state ---
 display_g: ref Display;
 font: ref Font;
 bgcolor: ref Image;
 fgcolor: ref Image;
+fgcolor_normal: ref Image;		# text color when focused, no hold
+fgcolor_dim: ref Image;		# text color when unfocused
+fgcolor_hold: ref Image;		# text color when holding
 cursorcolor: ref Image;
 selcolor: ref Image;
 promptcolor: ref Image;
@@ -132,7 +151,7 @@ selstartline: int;
 selstartcol: int;
 selendline: int;
 selendcol: int;
-snarf: string;
+snarfbuf: string;
 
 # History
 history: array of string;
@@ -149,6 +168,40 @@ sendbyteschan: chan of array of byte;	# keyboard → consserver
 # Shell dir for Veltro read-only access
 SHELL_DIR: con "/tmp/veltro/shell";
 shellstatedirty: int;	# set when transcript changes, cleared after writing state
+
+# Hold mode
+holding: int;			# 1 = output frozen
+holdqueue: list of string;	# output buffered while holding
+
+# Scroll mode
+scrolling: int;			# 1 = auto-scroll on output (default)
+
+# Focus tracking
+haskbdfocus: int;		# 1 = window has keyboard focus
+
+# Working directory
+cwd: string;
+
+# Plumbing
+plumbed: int;			# 1 = plumbing available
+
+# Shell argv (built from command-line flags)
+shellargv: list of string;
+
+# Dynamic button bar
+Button: adt {
+	label: string;
+	cmd: string;		# text to send as input
+};
+buttons: array of ref Button;
+nbuttons: int;
+
+# shctl channel
+shctlch: chan of string;
+
+# Window geometry (from command-line flags)
+initwidth: int;
+initheight: int;
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -169,8 +222,52 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		raise "fail:no context";
 	}
 
+	# Parse command-line arguments
+	initwidth = 640;
+	initheight = 480;
+	fontpath := "";
+	shellargv = "sh" :: "-i" :: nil;
+	arg = load Arg Arg->PATH;
+	if(arg != nil) {
+		arg->init(argv);
+		arg->setusage("lucishell [-w width] [-h height] [-f font] [-c cmd] [-ilxvn]");
+		shflags: list of string;
+		shcmd := "";
+		while((c := arg->opt()) != 0)
+			case c {
+			'w' => initwidth = int arg->earg();
+			'h' => initheight = int arg->earg();
+			'f' => fontpath = arg->earg();
+			'c' =>
+				shcmd = arg->earg();
+			'i' or 'l' or 'x' or 'v' or 'n' =>
+				s := "";
+				s[0] = c;
+				shflags = ("-" + s) :: shflags;
+			* => arg->usage();
+			}
+		if(shcmd != "") {
+			shellargv = "sh" :: "-c" :: shcmd :: nil;
+		} else {
+			shellargv = "sh" :: "-i" :: nil;
+			# shflags is reversed from parsing; append each
+			# to build correct order via listappend
+			for(fl := shflags; fl != nil; fl = tl fl)
+				shellargv = listappend(shellargv, hd fl);
+			for(ra := arg->argv(); ra != nil; ra = tl ra)
+				shellargv = listappend(shellargv, hd ra);
+		}
+	}
+
 	sys->pctl(Sys->NEWPGRP, nil);
 	wmclient->init();
+
+	# Get working directory
+	workdir = load Workdir Workdir->PATH;
+	if(workdir != nil)
+		cwd = workdir->init();
+	if(cwd == nil || cwd == "")
+		cwd = "/";
 
 	# Initialize state
 	lines = array[MAXLINES] of string;
@@ -185,10 +282,17 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	rawlock = chan[1] of int;
 	rawlock <-= 1;
 	selactive = 0;
-	snarf = "";
+	snarfbuf = "";
 	history = array[MAXHIST] of string;
 	nhist = 0;
 	histpos = -1;
+	holding = 0;
+	scrolling = 1;
+	haskbdfocus = 1;
+	plumbed = 0;
+	buttons = array[MAXBUTTONS] of ref Button;
+	nbuttons = 0;
+	shctlch = chan[8] of string;
 
 	outputch = chan[32] of string;
 	sendbyteschan = chan of array of byte;
@@ -200,11 +304,15 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	spawn startshell();
 
 	# Create window
-	w = wmclient->window(ctxt, "Shell", Wmclient->Appl);
+	title := "Shell " + cwd;
+	w = wmclient->window(ctxt, title, Wmclient->Appl);
 	display_g = w.display;
 
 	# Load font
-	font = Font.open(display_g, "/fonts/combined/unicode.14.font");
+	if(fontpath != "")
+		font = Font.open(display_g, fontpath);
+	if(font == nil)
+		font = Font.open(display_g, "/fonts/combined/unicode.14.font");
 	if(font == nil)
 		font = Font.open(display_g, "/fonts/10646/9x15/9x15.font");
 	if(font == nil)
@@ -219,31 +327,43 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(lucitheme != nil) {
 		th := lucitheme->gettheme();
 		bgcolor = display_g.color(th.editbg);
-		fgcolor = display_g.color(th.edittext);
+		fgcolor_normal = display_g.color(th.edittext);
+		fgcolor_dim = display_g.color(th.dim);
+		fgcolor_hold = display_g.color(th.yellow);
 		cursorcolor = display_g.color(th.editcursor);
 		selcolor = display_g.color(th.accent);
 		promptcolor = display_g.color(th.dim);
 	} else {
 		bgcolor = display_g.color(BG);
-		fgcolor = display_g.color(FG);
+		fgcolor_normal = display_g.color(FG);
+		fgcolor_dim = display_g.color(PROMPTCOL);
+		fgcolor_hold = display_g.color(HOLDCOL);
 		cursorcolor = display_g.color(CURSORCOL);
 		selcolor = display_g.color(SELCOL);
 		promptcolor = display_g.color(PROMPTCOL);
 	}
+	fgcolor = fgcolor_normal;
+
 	widgetmod->init(display_g, font);
 	kbdfilter = Kbdfilter.new();
 	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Set up window
-	w.reshape(Rect((0, 0), (640, 480)));
+	w.reshape(Rect((0, 0), (initwidth, initheight)));
 	w.startinput("kbd" :: "ptr" :: nil);
 	w.onscreen(nil);
 
 	if(menumod != nil)
 		menumod->init(display_g, font);
-	menu := menumod->new(array[] of {
-		"copy", "paste", "clear", "scroll top", "scroll bottom", "exit"});
+	menu := makemenu();
+
+	# Initialize plumbing
+	plumbmod = load Plumbmsg Plumbmsg->PATH;
+	if(plumbmod != nil) {
+		if(plumbmod->init(0, nil, 0) >= 0)
+			plumbed = 1;
+	}
 
 	redraw();
 
@@ -257,39 +377,42 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	ctl := <-w.ctl or
 	ctl = <-w.ctxt.ctl =>
 		w.wmctl(ctl);
-		if(ctl != nil && ctl[0] == '!')
+		if(ctl != nil && ctl[0] == '!') {
 			redraw();
+		} else if(ctl != nil) {
+			handlectl(ctl);
+		}
 	rawkey := <-w.ctxt.kbd =>
-		key := kbdfilter.filter(rawkey);
-		if(key >= 0) {
+		# Intercept bare ESC before the ANSI filter eats it.
+		# In windowed mode arrows arrive as 0xFF5x, so ESC (27)
+		# is always a genuine ESC keypress.
+		if(rawkey == Kesc) {
 			cursorvis = 1;
-			handlekey(key);
+			handlekey(Kesc);
 			shellstatedirty = 1;
 			redraw();
+		} else {
+			key := kbdfilter.filter(rawkey);
+			if(key >= 0) {
+				cursorvis = 1;
+				handlekey(key);
+				shellstatedirty = 1;
+				redraw();
+			}
 		}
 	p := <-w.ctxt.ptr =>
 		if(!w.pointer(*p)) {
 			if(p.buttons & 4 && menumod != nil && menu != nil) {
 				n := menu.show(w.image, p.xy, w.ctxt.ptr);
-				case n {
-				0 => docopy();
-				1 => dopaste();
-				2 => clearscreen();
-				3 =>
-					topline = 0;
-					atbottom = 0;
-				4 => scrolltobottom();
-				5 =>
-					postnote(1, sys->pctl(0, nil), "kill");
-					exit;
-				}
+				domenu(n);
+				menu = makemenu();
 				redraw();
 			} else if(p.buttons & 2) {
 				buf := wmclient->snarfget();
 				if(buf != "")
-					snarf = buf;
-				if(snarf != "")
-					insertinput(snarf);
+					snarfbuf = buf;
+				if(snarfbuf != "")
+					insertinput(snarfbuf);
 				redraw();
 			} else if(p.buttons & 24) {
 				# Mouse wheel scroll
@@ -310,7 +433,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				}
 				redraw();
 			} else if(p.buttons & 3) {
-				# B1 or B2 in scrollbar area
+				# B1 or B2 in scrollbar area or button bar
 				pr := w.image.r;
 				sth := widgetmod->statusheight();
 				sw := widgetmod->scrollwidth();
@@ -325,6 +448,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						topline = newo;
 						atbottom = (topline >= nlines - vislines);
 					}
+					redraw();
+				} else if(p.buttons & 1 && nbuttons > 0 && buttonhit(p.xy)) {
 					redraw();
 				} else if(p.buttons & 1 && mousedown) {
 					(ml, mc) := pos2cursor(p.xy);
@@ -357,12 +482,188 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		drawcursor(cursorvis);
 		writeshellstate();
 	output := <-outputch =>
-		appendoutput(output);
-		if(atbottom)
-			scrolltobottom();
-		shellstatedirty = 1;
+		if(holding) {
+			holdqueue = output :: holdqueue;
+		} else {
+			appendoutput(output);
+			if(atbottom && scrolling)
+				scrolltobottom();
+			shellstatedirty = 1;
+			redraw();
+		}
+	cmd := <-shctlch =>
+		handleshctl(cmd);
 		redraw();
 	}
+}
+
+# ---------- Window control messages ----------
+
+handlectl(ctl: string)
+{
+	# Parse "haskbdfocus N"
+	if(len ctl > 13 && ctl[0:13] == "haskbdfocus ") {
+		haskbdfocus = int ctl[13:];
+		updatefgcolor();
+		redraw();
+	}
+}
+
+updatefgcolor()
+{
+	if(holding)
+		fgcolor = fgcolor_hold;
+	else if(haskbdfocus)
+		fgcolor = fgcolor_normal;
+	else
+		fgcolor = fgcolor_dim;
+}
+
+updatetitle()
+{
+	title := "Shell " + cwd;
+	if(holding)
+		title += " (holding)";
+	w.settitle(title);
+}
+
+# ---------- Context menu ----------
+
+makemenu(): ref Popup
+{
+	scrolllabel := "noscroll";
+	if(!scrolling)
+		scrolllabel = "scroll";
+	if(plumbed)
+		return menumod->new(array[] of {
+			"cut", "snarf", "paste", "send",
+			"plumb", scrolllabel, "clear", "exit"});
+	return menumod->new(array[] of {
+		"cut", "snarf", "paste", "send",
+		scrolllabel, "clear", "exit"});
+}
+
+domenu(n: int)
+{
+	if(plumbed) {
+		# Menu: cut snarf paste send plumb scroll clear exit
+		case n {
+		0 => docut();
+		1 => dosnarf();
+		2 => dopaste();
+		3 => dosend();
+		4 => doplumb();
+		5 => scrolling = !scrolling;
+		6 => clearscreen();
+		7 =>
+			postnote(1, sys->pctl(0, nil), "kill");
+			exit;
+		}
+	} else {
+		# Menu: cut snarf paste send scroll clear exit
+		case n {
+		0 => docut();
+		1 => dosnarf();
+		2 => dopaste();
+		3 => dosend();
+		4 => scrolling = !scrolling;
+		5 => clearscreen();
+		6 =>
+			postnote(1, sys->pctl(0, nil), "kill");
+			exit;
+		}
+	}
+}
+
+docut()
+{
+	dosnarf();
+	# Delete selection from transcript (only in transcript, not input line)
+	# This is a simplified cut — it snarfs the text and clears the selection
+	selactive = 0;
+}
+
+dosnarf()
+{
+	s := getseltext();
+	if(s != "") {
+		snarfbuf = s;
+		wmclient->snarfput(s);
+	}
+}
+
+dopaste()
+{
+	buf := wmclient->snarfget();
+	if(buf != "")
+		snarfbuf = buf;
+	if(snarfbuf != "")
+		insertinput(snarfbuf);
+}
+
+doplumb()
+{
+	# Plumb selected text, or word at last click position
+	s := getseltext();
+	if(s == "" && selstartline >= 0) {
+		line := getlineat(selstartline);
+		s = wordatpos(line, selstartcol);
+	}
+	plumbtext(s);
+}
+
+dosend()
+{
+	# Send snarf buffer contents as shell input (paste + execute)
+	buf := wmclient->snarfget();
+	if(buf != "")
+		snarfbuf = buf;
+	if(snarfbuf == "")
+		return;
+	s := snarfbuf;
+	# Ensure it ends with newline
+	if(len s > 0 && s[len s - 1] != '\n')
+		s += "\n";
+	insertinput(s);
+}
+
+# ---------- Plumbing ----------
+
+plumbtext(text: string)
+{
+	if(!plumbed || text == "")
+		return;
+	msg := ref Msg(
+		"Lucishell",		# src
+		"",			# dst (let plumber decide)
+		cwd,			# dir
+		"text",			# kind
+		"",			# attr
+		array of byte text	# data
+	);
+	msg.send();
+}
+
+# Extract word at character position in a line
+wordatpos(line: string, col: int): string
+{
+	if(col >= len line)
+		return "";
+	# Find word boundaries (non-whitespace run)
+	start := col;
+	while(start > 0 && !isspace(line[start-1]))
+		start--;
+	end := col;
+	while(end < len line && !isspace(line[end]))
+		end++;
+	if(start == end)
+		return "";
+	return line[start:end];
+}
+
+isspace(c: int): int
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
 
 # ---------- Shell process ----------
@@ -390,6 +691,9 @@ startshell()
 	# Create synthetic /dev/consctl
 	consctlio := sys->file2chan("/chan", "consctl");
 
+	# Create synthetic /dev/shctl for dynamic button bar
+	shctlio := sys->file2chan("/chan", "shctl");
+
 	# Bind our synthetic cons over /dev/cons
 	if(sys->bind("/chan/cons", "/dev/cons", Sys->MREPL) < 0)
 		sys->fprint(stderr, "lucishell: bind cons: %r\n");
@@ -397,24 +701,16 @@ startshell()
 		if(sys->bind("/chan/consctl", "/dev/consctl", Sys->MREPL) < 0)
 			sys->fprint(stderr, "lucishell: bind consctl: %r\n");
 	}
+	if(shctlio != nil) {
+		if(sys->bind("/chan/shctl", "/dev/shctl", Sys->MREPL) < 0)
+			sys->fprint(stderr, "lucishell: bind shctl: %r\n");
+	}
 
 	# Fork the fd table so our redirections below do not affect the main
 	# lucishell goroutine (which still needs its original stdin/stdout/stderr).
 	sys->pctl(Sys->FORKFD, nil);
 
 	# Redirect stdin, stdout, and stderr to our synthetic /dev/cons.
-	#
-	# The shell (sh.dis) reads from sys->fildes(0) (inherited fd 0) and writes
-	# prompts to stderr (fd 2).  Without this step, those fds still point to
-	# lucifer's original stdin/stderr — the shell gets EOF on stdin and its
-	# prompts go nowhere visible.  isconsole() also fails (fd0 qid ≠ /dev/cons
-	# qid) so the shell runs non-interactively and exits on first EOF.
-	#
-	# After pctl(FORKFD) + dup:
-	#   fd 0/1/2 in this goroutine (and any it spawns) = synthetic cons
-	#   isconsole(fd0): fstat(fd0).qid == stat("/dev/cons").qid  → interactive
-	#   Shell reads input from consserver via consio.read
-	#   Shell writes output/prompts via consio.write → outputch → display
 	newcons := sys->open("/dev/cons", Sys->ORDWR);
 	if(newcons != nil) {
 		sys->dup(newcons.fd, 0);	# stdin  → synthetic cons
@@ -425,6 +721,10 @@ startshell()
 
 	# Start the file server for cons reads/writes
 	spawn consserver(consio, consctlio);
+
+	# Start the shctl server
+	if(shctlio != nil)
+		spawn shctlserver(shctlio);
 
 	# Give consserver a moment to start
 	sys->sleep(50);
@@ -437,7 +737,7 @@ startshell()
 		return;
 	}
 
-	spawn sh->init(nil, "sh" :: "-i" :: nil);
+	spawn sh->init(nil, shellargv);
 }
 
 # consserver: services reads and writes on synthetic /dev/cons and /dev/consctl.
@@ -545,6 +845,77 @@ rawstateforwarder(rawch: chan of int)
 	}
 }
 
+# shctlserver handles /dev/shctl reads and writes.
+# Commands: button "label" "cmd", cwd /dir, clear
+shctlserver(shctlio: ref Sys->FileIO)
+{
+	for(;;) alt {
+	(nil, nil, nil, rc) := <-shctlio.read =>
+		if(rc == nil)
+			continue;
+		rc <-= (nil, "permission denied");
+
+	(nil, data, nil, wc) := <-shctlio.write =>
+		if(wc == nil)
+			continue;
+		s := string data;
+		wc <-= (len data, nil);
+		shctlch <-= s;
+	}
+}
+
+handleshctl(cmd: string)
+{
+	# Strip trailing newline
+	if(len cmd > 0 && cmd[len cmd - 1] == '\n')
+		cmd = cmd[0:len cmd - 1];
+	if(len cmd == 0)
+		return;
+
+	# Parse command
+	if(len cmd > 7 && cmd[0:7] == "button ") {
+		# button "label" "cmd"
+		(label, rest) := parseshctlarg(cmd[7:]);
+		(bcmd, nil) := parseshctlarg(rest);
+		if(label != "" && nbuttons < MAXBUTTONS) {
+			buttons[nbuttons] = ref Button(label, bcmd);
+			nbuttons++;
+		}
+	} else if(len cmd > 4 && cmd[0:4] == "cwd ") {
+		cwd = cmd[4:];
+		updatetitle();
+	} else if(cmd == "clear") {
+		nbuttons = 0;
+	}
+}
+
+# Parse a quoted or unquoted argument from shctl command
+parseshctlarg(s: string): (string, string)
+{
+	# Skip whitespace
+	i := 0;
+	while(i < len s && (s[i] == ' ' || s[i] == '\t'))
+		i++;
+	if(i >= len s)
+		return ("", "");
+	if(s[i] == '"') {
+		# Quoted string
+		i++;
+		start := i;
+		while(i < len s && s[i] != '"')
+			i++;
+		val := s[start:i];
+		if(i < len s)
+			i++;	# skip closing quote
+		return (val, s[i:]);
+	}
+	# Unquoted: take until whitespace
+	start := i;
+	while(i < len s && s[i] != ' ' && s[i] != '\t')
+		i++;
+	return (s[start:i], s[i:]);
+}
+
 sendinput(s: string)
 {
 	b := array of byte s;
@@ -594,6 +965,18 @@ handlekey(key: int)
 		21 =>	# Ctrl-U: clear input line
 			inputbuf = "";
 			inputcol = 0;
+		23 =>	# Ctrl-W: delete word before cursor
+			if(inputcol > 0) {
+				j := inputcol;
+				# Skip whitespace backwards
+				while(j > 0 && isspace(inputbuf[j-1]))
+					j--;
+				# Skip non-whitespace backwards
+				while(j > 0 && !isspace(inputbuf[j-1]))
+					j--;
+				inputbuf = inputbuf[0:j] + inputbuf[inputcol:];
+				inputcol = j;
+			}
 		}
 		return;
 	}
@@ -670,7 +1053,14 @@ handlekey(key: int)
 	'\t' =>
 		insertinput("\t");
 	Kesc =>
-		selactive = 0;
+		# Toggle hold mode
+		holding = !holding;
+		if(!holding) {
+			# Flush queued output
+			flushholdqueue();
+		}
+		updatefgcolor();
+		updatetitle();
 	* =>
 		if(key >= 16r20) {
 			s := "";
@@ -704,6 +1094,23 @@ insertinput(s: string)
 	}
 }
 
+# ---------- Hold mode ----------
+
+flushholdqueue()
+{
+	# Reverse the queue (it was built in reverse order)
+	rev: list of string;
+	for(q := holdqueue; q != nil; q = tl q)
+		rev = (hd q) :: rev;
+	holdqueue = nil;
+	for(; rev != nil; rev = tl rev) {
+		appendoutput(hd rev);
+	}
+	if(atbottom && scrolling)
+		scrolltobottom();
+	shellstatedirty = 1;
+}
+
 # ---------- History ----------
 
 addhistory(line: string)
@@ -731,7 +1138,8 @@ appendoutput(s: string)
 			growlines();
 			lines[nlines-1] = "";
 		'\r' =>
-			;	# carriage return — ignore (shells use \n)
+			# Carriage return — move to start of current line
+			lines[nlines-1] = "";
 		'\b' =>
 			line := lines[nlines-1];
 			if(len line > 0)
@@ -752,6 +1160,9 @@ appendoutput(s: string)
 					      (s[i] >= 'a' && s[i] <= 'z')))
 						i++;
 				}
+			} else if(c == 0) {
+				# NUL → replacement character
+				lines[nlines-1] += "□";
 			} else if(c >= 16r20) {
 				lines[nlines-1] += s[i:i+1];
 			}
@@ -903,24 +1314,6 @@ getseltext(): string
 	return s;
 }
 
-docopy()
-{
-	s := getseltext();
-	if(s != "") {
-		snarf = s;
-		wmclient->snarfput(s);
-	}
-}
-
-dopaste()
-{
-	buf := wmclient->snarfget();
-	if(buf != "")
-		snarf = buf;
-	if(snarf != "")
-		insertinput(snarf);
-}
-
 # ---------- Drawing ----------
 
 textrect(): Rect
@@ -930,8 +1323,16 @@ textrect(): Rect
 	r := w.image.r;
 	statusheight := font.height + MARGIN * 2;
 	sw := widgetmod->scrollwidth();
+	bbarh := buttonbarheight();
 	return Rect((r.min.x + sw + MARGIN, r.min.y + MARGIN),
-		    (r.max.x - MARGIN, r.max.y - statusheight));
+		    (r.max.x - MARGIN, r.max.y - statusheight - bbarh));
+}
+
+buttonbarheight(): int
+{
+	if(nbuttons <= 0)
+		return 0;
+	return font.height + MARGIN * 2;
 }
 
 redraw()
@@ -942,6 +1343,7 @@ redraw()
 	screen := w.image;
 	r := screen.r;
 	statusheight := font.height + MARGIN * 2;
+	bbarh := buttonbarheight();
 
 	screen.draw(r, bgcolor, nil, Point(0, 0));
 
@@ -952,7 +1354,7 @@ redraw()
 
 	sw := widgetmod->scrollwidth();
 	scrollbar.resize(Rect((r.min.x, r.min.y),
-		(r.min.x + sw, r.max.y - statusheight)));
+		(r.min.x + sw, r.max.y - statusheight - bbarh)));
 	scrollbar.total = nlines;
 	scrollbar.visible = vislines;
 	scrollbar.origin = topline;
@@ -991,6 +1393,11 @@ redraw()
 	vislines = maxvrows;
 
 	drawcursor(1);
+
+	# Button bar
+	if(nbuttons > 0)
+		drawbuttonbar(screen, r, statusheight);
+
 	# Status bar
 	statbar.resize(Rect((r.min.x, r.max.y - statusheight), r.max));
 	<-rawlock;
@@ -1000,11 +1407,69 @@ redraw()
 	if(israw_s)
 		mode = "raw";
 	statbar.prompt = nil;
-	statbar.left = sys->sprint("Shell (%s)  %d lines", mode, nlines);
+	status := sys->sprint("Shell (%s)  %d lines", mode, nlines);
+	if(holding)
+		status += "  HOLD";
+	if(!scrolling)
+		status += "  noscroll";
+	statbar.left = status;
 	statbar.right = sys->sprint("Ln %d", nlines);
-	statbar.leftcolor = nil;
+	if(holding)
+		statbar.leftcolor = fgcolor_hold;
+	else
+		statbar.leftcolor = nil;
 	statbar.draw(screen);
 	screen.flush(Draw->Flushnow);
+}
+
+drawbuttonbar(screen: ref Image, r: Rect, statusheight: int)
+{
+	bbarh := buttonbarheight();
+	bbary := r.max.y - statusheight - bbarh;
+	x := r.min.x + MARGIN;
+	for(i := 0; i < nbuttons; i++) {
+		b := buttons[i];
+		tw := font.width(b.label);
+		bw := tw + MARGIN * 4;
+		br := Rect((x, bbary + 1), (x + bw, bbary + bbarh - 1));
+		# Button border
+		screen.line(br.min, Point(br.max.x, br.min.y), 0, 0, 0, fgcolor_dim, Point(0, 0));
+		screen.line(Point(br.max.x, br.min.y), br.max, 0, 0, 0, fgcolor_dim, Point(0, 0));
+		screen.line(br.max, Point(br.min.x, br.max.y), 0, 0, 0, fgcolor_dim, Point(0, 0));
+		screen.line(Point(br.min.x, br.max.y), br.min, 0, 0, 0, fgcolor_dim, Point(0, 0));
+		# Button label
+		screen.text(Point(x + MARGIN * 2, bbary + MARGIN), fgcolor_normal,
+			Point(0, 0), font, b.label);
+		x += bw + MARGIN;
+	}
+}
+
+buttonhit(p: Point): int
+{
+	if(nbuttons <= 0 || w.image == nil)
+		return 0;
+	r := w.image.r;
+	statusheight := font.height + MARGIN * 2;
+	bbarh := buttonbarheight();
+	bbary := r.max.y - statusheight - bbarh;
+	if(p.y < bbary || p.y >= bbary + bbarh)
+		return 0;
+	x := r.min.x + MARGIN;
+	for(i := 0; i < nbuttons; i++) {
+		b := buttons[i];
+		tw := font.width(b.label);
+		bw := tw + MARGIN * 4;
+		if(p.x >= x && p.x < x + bw) {
+			# Button hit — send its command as input
+			s := b.cmd;
+			if(len s > 0 && s[len s - 1] != '\n')
+				s += "\n";
+			insertinput(s);
+			return 1;
+		}
+		x += bw + MARGIN;
+	}
+	return 0;
 }
 
 drawselection(screen: ref Image, linenum, textx, y: int)
@@ -1121,6 +1586,13 @@ timer(c: chan of int, ms: int)
 		sys->sleep(ms);
 		c <-= 1;
 	}
+}
+
+listappend(l: list of string, s: string): list of string
+{
+	if(l == nil)
+		return s :: nil;
+	return (hd l) :: listappend(tl l, s);
 }
 
 postnote(t: int, pid: int, note: string): int
