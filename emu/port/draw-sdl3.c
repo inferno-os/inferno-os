@@ -199,6 +199,64 @@ window_to_texture_coords(float win_x, float win_y, int *tex_x, int *tex_y)
 }
 
 /*
+ * Read physical pixel dimensions and display scale after window creation.
+ * Updates sdl_width/sdl_height to physical pixels for crisp HiDPI rendering.
+ * Must be called after sdl_window is created and before texture creation.
+ */
+static void
+init_hidpi(void)
+{
+	int win_w, win_h, pix_w, pix_h;
+	float scale;
+
+	SDL_GetWindowSize(sdl_window, &win_w, &win_h);
+	SDL_GetWindowSizeInPixels(sdl_window, &pix_w, &pix_h);
+	scale = SDL_GetWindowDisplayScale(sdl_window);
+
+	display_scale = scale;
+	sdl_width = pix_w;
+	sdl_height = pix_h;
+	window_width = win_w;
+	window_height = win_h;
+	calc_dest_rect();
+}
+
+/*
+ * Create SDL renderer and streaming texture for the window.
+ * Must be called on the main thread (Cocoa/Windows requirement)
+ * and after init_hidpi() so sdl_width/sdl_height are physical pixels.
+ * Returns 1 on success, 0 on failure.  Sets sdl_renderer and sdl_texture.
+ */
+static int
+create_renderer_and_texture(void)
+{
+	sdl_renderer = SDL_CreateRenderer(sdl_window, NULL);
+	if (!sdl_renderer)
+		return 0;
+
+	SDL_SetRenderVSync(sdl_renderer, 0);
+	SDL_SetRenderLogicalPresentation(sdl_renderer, sdl_width, sdl_height,
+		SDL_LOGICAL_PRESENTATION_DISABLED);
+
+	sdl_texture = SDL_CreateTexture(
+		sdl_renderer,
+		SDL_PIXELFORMAT_XRGB8888,
+		SDL_TEXTUREACCESS_STREAMING,
+		sdl_width, sdl_height
+	);
+	if (!sdl_texture) {
+		SDL_DestroyRenderer(sdl_renderer);
+		sdl_renderer = NULL;
+		return 0;
+	}
+
+	SDL_SetTextureScaleMode(sdl_texture, SDL_SCALEMODE_NEAREST);
+	SDL_ShowWindow(sdl_window);
+	SDL_StartTextInput(sdl_window);
+	return 1;
+}
+
+/*
  * Map raw SDL button state to Inferno button mask with modifier key emulation.
  * On macOS laptops without a three-button mouse:
  *   - Option + Left Click  = Button 2 (middle click)
@@ -321,147 +379,51 @@ attachscreen(Rectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	sdl_width = Xsize;
 	sdl_height = Ysize;
 
-	/* Create window - dispatch to main thread on macOS */
+	/*
+	 * Create window, read HiDPI info, then create renderer + texture.
+	 * On macOS, window/renderer ops must happen on the main thread (Cocoa).
+	 * On Linux/Windows, we signal the main thread which does it all.
+	 */
 #ifdef __APPLE__
-	/* Dispatch to main thread (Cocoa requirement) */
-	__block SDL_Window *created_window = NULL;
-
 	dispatch_sync(dispatch_get_main_queue(), ^{
-		created_window = SDL_CreateWindow(
+		sdl_window = SDL_CreateWindow(
 			"InferNode",
 			sdl_width, sdl_height,
 			SDL_WINDOW_RESIZABLE
 		);
 	});
-
-	sdl_window = created_window;
 	if (!sdl_window)
 		return nil;
 
-	/* Get physical pixel dimensions for native resolution rendering */
-	{
-		int win_x, win_y, win_w, win_h, pix_w, pix_h;
-		float scale;
-		SDL_GetWindowPosition(sdl_window, &win_x, &win_y);
-		SDL_GetWindowSize(sdl_window, &win_w, &win_h);
-		SDL_GetWindowSizeInPixels(sdl_window, &pix_w, &pix_h);
-		scale = SDL_GetWindowDisplayScale(sdl_window);
+	init_hidpi();
 
-		USED(win_x);
-		USED(win_y);
-
-		/*
-		 * Use physical pixel dimensions for crisp rendering.
-		 * This fixes fuzzy/blurry graphics on HiDPI displays.
-		 * Mouse coordinates will be scaled in event handlers.
-		 */
-		display_scale = scale;
-		sdl_width = pix_w;
-		sdl_height = pix_h;
-
-		/* Initialize window tracking for centered rendering */
-		window_width = win_w;
-		window_height = win_h;
-		calc_dest_rect();
+	dispatch_sync(dispatch_get_main_queue(), ^{
+		create_renderer_and_texture();
+	});
+	if (!sdl_renderer || !sdl_texture) {
+		dispatch_sync(dispatch_get_main_queue(), ^{
+			if (sdl_renderer) SDL_DestroyRenderer(sdl_renderer);
+			SDL_DestroyWindow(sdl_window);
+		});
+		sdl_renderer = NULL;
+		sdl_window = NULL;
+		return nil;
 	}
 #else
 	/*
-	 * Linux/Windows: Dispatch window creation to the main thread.
-	 *
-	 * SDL3 on Windows requires window/renderer creation on the thread
-	 * that called SDL_Init (the main thread). Signal the main loop to
-	 * create the window and wait for completion.
+	 * Signal main thread to create window + renderer + texture.
+	 * The main loop calls init_hidpi() between window and renderer
+	 * creation so the texture gets the correct physical pixel size.
 	 */
 	create_window_requested = 1;
 	create_window_done = 0;
 	create_window_result = 0;
 
-	/* Wait for main thread to create window */
 	while (!create_window_done)
 		SDL_Delay(1);
 
 	if (!create_window_result) {
 		fprint(2, "draw-sdl3: main thread window creation failed\n");
-		return nil;
-	}
-
-	/* Get physical pixel dimensions for native resolution rendering */
-	{
-		int win_w, win_h, pix_w, pix_h;
-		float scale;
-		SDL_GetWindowSize(sdl_window, &win_w, &win_h);
-		SDL_GetWindowSizeInPixels(sdl_window, &pix_w, &pix_h);
-		scale = SDL_GetWindowDisplayScale(sdl_window);
-
-		display_scale = scale;
-		sdl_width = pix_w;
-		sdl_height = pix_h;
-
-		/* Initialize window tracking for centered rendering */
-		window_width = win_w;
-		window_height = win_h;
-		calc_dest_rect();
-	}
-#endif
-
-	/* Create renderer and texture - also needs main thread on macOS */
-#ifdef __APPLE__
-	__block SDL_Renderer *created_renderer = NULL;
-	__block SDL_Texture *created_texture = NULL;
-
-	dispatch_sync(dispatch_get_main_queue(), ^{
-		created_renderer = SDL_CreateRenderer(sdl_window, NULL);
-		if (!created_renderer)
-			return;
-
-		/*
-		 * Disable vsync to ensure consistent rendering.
-		 * VSync can cause subtle timing-related visual artifacts.
-		 */
-		SDL_SetRenderVSync(created_renderer, 0);
-
-		/*
-		 * Disable logical presentation scaling.
-		 * This ensures 1:1 pixel mapping from texture to display
-		 * and prevents any automatic scaling/interpolation that
-		 * could cause fuzziness when the window is "idle".
-		 */
-		SDL_SetRenderLogicalPresentation(created_renderer, sdl_width, sdl_height,
-			SDL_LOGICAL_PRESENTATION_DISABLED);
-
-		/*
-		 * Texture is created at native physical resolution (set above).
-		 * This gives crisp rendering on HiDPI displays.
-		 */
-
-		/* Create texture - XRGB8888 matches Infernode's XRGB32 */
-		created_texture = SDL_CreateTexture(
-			created_renderer,
-			SDL_PIXELFORMAT_XRGB8888,
-			SDL_TEXTUREACCESS_STREAMING,
-			sdl_width, sdl_height
-		);
-
-		/*
-		 * Use nearest-neighbor scaling to prevent blurry text.
-		 * Without this, SDL3 defaults to linear filtering which
-		 * causes subtle fuzziness even at native resolution.
-		 */
-		if (created_texture)
-			SDL_SetTextureScaleMode(created_texture, SDL_SCALEMODE_NEAREST);
-
-		SDL_ShowWindow(sdl_window);
-
-		/* Enable text input to receive SDL_EVENT_TEXT_INPUT events */
-		SDL_StartTextInput(sdl_window);
-	});
-
-	sdl_renderer = created_renderer;
-	sdl_texture = created_texture;
-
-	if (!sdl_renderer || !sdl_texture) {
-		if (sdl_renderer) SDL_DestroyRenderer(sdl_renderer);
-		SDL_DestroyWindow(sdl_window);
 		return nil;
 	}
 #endif
@@ -547,263 +509,7 @@ flushmemscreen(Rectangle r)
 	}
 }
 
-/*
- * Process SDL events and generate Infernode input events
- * Called periodically from main event loop
- */
-void
-sdl_pollevents(void)
-{
-	SDL_Event event;
-
-	if (!sdl_running)
-		return;
-
-	while (SDL_PollEvent(&event)) {
-		switch (event.type) {
-		case SDL_EVENT_QUIT:
-			cleanexit(0);
-			break;
-
-		case SDL_EVENT_MOUSE_MOTION:
-			{
-				/*
-				 * Transform window coordinates to texture coordinates.
-				 * This handles letterboxing offset and scaling.
-				 */
-				window_to_texture_coords(event.motion.x, event.motion.y,
-					&mouse_x, &mouse_y);
-
-				mouse_buttons = map_buttons(sdl_button_state);
-				mousetrack(mouse_buttons, mouse_x, mouse_y, 0);
-			}
-			break;
-
-		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-		case SDL_EVENT_MOUSE_BUTTON_UP:
-			{
-				/*
-				 * Track button state from events to avoid race with
-				 * SDL_GetMouseState().  A fast click queues both DOWN
-				 * and UP before we poll; polling would show the button
-				 * already released during DOWN processing, losing it.
-				 */
-				Uint32 mask = button_event_mask(event.button.button);
-				if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
-					sdl_button_state |= mask;
-				else
-					sdl_button_state &= ~mask;
-
-				window_to_texture_coords(event.button.x, event.button.y,
-					&mouse_x, &mouse_y);
-
-				mouse_buttons = map_buttons(sdl_button_state);
-				mousetrack(mouse_buttons, mouse_x, mouse_y, 0);
-			}
-			break;
-
-		case SDL_EVENT_MOUSE_WHEEL: {
-			/* Shift+scroll converts vertical to horizontal */
-			float wx = event.wheel.x;
-			float wy = event.wheel.y;
-			if ((SDL_GetModState() & SDL_KMOD_SHIFT) && wy != 0 && wx == 0) {
-				wx = wy;
-				wy = 0;
-			}
-			if (wy > 0)
-				mousetrack(8, mouse_x, mouse_y, 0);   /* scroll up */
-			else if (wy < 0)
-				mousetrack(16, mouse_x, mouse_y, 0);  /* scroll down */
-			if (wx > 0)
-				mousetrack(64, mouse_x, mouse_y, 0);  /* scroll right */
-			else if (wx < 0)
-				mousetrack(32, mouse_x, mouse_y, 0);  /* scroll left */
-			break;
-		}
-
-		case SDL_EVENT_TEXT_INPUT:
-			/*
-			 * Text input event - receives actual characters with modifiers applied.
-			 * This handles shift, caps lock, keyboard layout, and Option+key
-			 * combinations (e.g., Option+t → †) properly.
-			 * event.text.text is a UTF-8 string.
-			 *
-			 * macOS Option+key composition is handled here - the OS composes
-			 * the character and sends it via TEXT_INPUT.
-			 *
-			 * Plan 9 composition is separate: Alt release sends Latin to
-			 * enter compose mode, then regular keypresses compose.
-			 *
-			 * Skip control characters (< 0x20) - those are handled in KEY_DOWN
-			 * via Ctrl+letter detection.
-			 */
-			{
-				const unsigned char *text = (const unsigned char *)event.text.text;
-
-				/* Skip control characters - handled by Ctrl+letter in KEY_DOWN */
-				if (text[0] < 0x20 && text[0] != '\t')
-					break;
-				while (*text) {
-					int codepoint;
-					int bytes;
-
-					/* Decode UTF-8 to Unicode codepoint */
-					if ((*text & 0x80) == 0) {
-						/* 1-byte ASCII: 0xxxxxxx */
-						codepoint = *text;
-						bytes = 1;
-					} else if ((*text & 0xE0) == 0xC0) {
-						/* 2-byte: 110xxxxx 10xxxxxx */
-						if ((text[1] & 0xC0) != 0x80)
-							goto skip;
-						codepoint = ((*text & 0x1F) << 6) |
-						            (text[1] & 0x3F);
-						bytes = 2;
-					} else if ((*text & 0xF0) == 0xE0) {
-						/* 3-byte: 1110xxxx 10xxxxxx 10xxxxxx */
-						if ((text[1] & 0xC0) != 0x80 ||
-						    (text[2] & 0xC0) != 0x80)
-							goto skip;
-						codepoint = ((*text & 0x0F) << 12) |
-						            ((text[1] & 0x3F) << 6) |
-						            (text[2] & 0x3F);
-						bytes = 3;
-					} else if ((*text & 0xF8) == 0xF0) {
-						/* 4-byte: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
-						if ((text[1] & 0xC0) != 0x80 ||
-						    (text[2] & 0xC0) != 0x80 ||
-						    (text[3] & 0xC0) != 0x80)
-							goto skip;
-						codepoint = ((*text & 0x07) << 18) |
-						            ((text[1] & 0x3F) << 12) |
-						            ((text[2] & 0x3F) << 6) |
-						            (text[3] & 0x3F);
-						bytes = 4;
-					} else {
-					skip:
-						/* Invalid UTF-8, skip byte */
-						text++;
-						continue;
-					}
-
-					gkbdputc(gkbdq, codepoint);
-					text += bytes;
-				}
-			}
-			break;
-
-		case SDL_EVENT_KEY_DOWN:
-			{
-				int key = 0;
-				/*
-				 * Use event.key.mod (modifier state at event time)
-				 * instead of SDL_GetModState() (current state).
-				 */
-				SDL_Keymod mods = event.key.mod;
-				/*
-				 * Use the virtual keycode (event.key.key), not scancode.
-				 * Scancodes are physical positions and vary by keyboard.
-				 * Keycodes are logical keys: SDLK_a='a'=97, SDLK_h='h'=104, etc.
-				 */
-				SDL_Keycode kc = event.key.key;
-
-				/*
-				 * Handle Ctrl+letter -> control character (^A=1, ^H=8, etc.)
-				 * These don't generate TEXT_INPUT events, so handle here.
-				 * Use lowercase keycode range ('a' to 'z').
-				 */
-				if ((mods & SDL_KMOD_CTRL) && kc >= 'a' && kc <= 'z') {
-					key = kc - 'a' + 1;  /* 'a'->1, 'h'->8, etc. */
-				}
-
-				/*
-				 * Handle special/non-printable keys only.
-				 * Printable characters come via SDL_EVENT_TEXT_INPUT.
-				 * macOS Option+key composition also uses TEXT_INPUT.
-				 */
-				if (key == 0)
-				switch (event.key.scancode) {
-				case SDL_SCANCODE_ESCAPE:   key = 27; break;
-				case SDL_SCANCODE_RETURN:   key = '\n'; break;
-				case SDL_SCANCODE_KP_ENTER: key = '\n'; break;
-				case SDL_SCANCODE_TAB:      key = '\t'; break;
-				case SDL_SCANCODE_BACKSPACE: key = '\b'; break;
-				case SDL_SCANCODE_DELETE:   key = 0x7F; break;
-				case SDL_SCANCODE_UP:       key = Up; break;
-				case SDL_SCANCODE_DOWN:     key = Down; break;
-				case SDL_SCANCODE_LEFT:     key = Left; break;
-				case SDL_SCANCODE_RIGHT:    key = Right; break;
-				case SDL_SCANCODE_HOME:     key = Home; break;
-				case SDL_SCANCODE_END:      key = End; break;
-				case SDL_SCANCODE_PAGEUP:   key = Pgup; break;
-				case SDL_SCANCODE_PAGEDOWN: key = Pgdown; break;
-				case SDL_SCANCODE_INSERT:   key = Ins; break;
-				case SDL_SCANCODE_F1:       key = KF|1; break;
-				case SDL_SCANCODE_F2:       key = KF|2; break;
-				case SDL_SCANCODE_F3:       key = KF|3; break;
-				case SDL_SCANCODE_F4:       key = KF|4; break;
-				case SDL_SCANCODE_F5:       key = KF|5; break;
-				case SDL_SCANCODE_F6:       key = KF|6; break;
-				case SDL_SCANCODE_F7:       key = KF|7; break;
-				case SDL_SCANCODE_F8:       key = KF|8; break;
-				case SDL_SCANCODE_F9:       key = KF|9; break;
-				case SDL_SCANCODE_F10:      key = KF|10; break;
-				case SDL_SCANCODE_F11:      key = KF|11; break;
-				case SDL_SCANCODE_F12:      key = KF|12; break;
-				default:
-					break;  /* Printable chars handled by TEXT_INPUT */
-				}
-
-				if (key != 0)
-					gkbdputc(gkbdq, key);
-			}
-			break;
-
-		case SDL_EVENT_KEY_UP:
-			/*
-			 * Plan 9 latin1 composition: Alt/Option release sends Latin
-			 * to enter compose mode. User then types two characters
-			 * (without Alt held) to produce a composed glyph.
-			 *
-			 * This is separate from macOS composition where you HOLD
-			 * Option and press a key (handled via TEXT_INPUT).
-			 */
-			if (event.key.scancode == SDL_SCANCODE_LALT ||
-			    event.key.scancode == SDL_SCANCODE_RALT) {
-				gkbdputc(gkbdq, Latin);
-			}
-			break;
-
-		case SDL_EVENT_WINDOW_RESIZED:
-		case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-			{
-				int log_w, log_h;
-
-				/*
-				 * Window size changed (e.g., entering/exiting full-screen).
-				 *
-				 * We do NOT resize the texture or screen buffer here.
-				 * Infernode's display size is fixed at initialization.
-				 * Instead, we recalculate the destination rectangle
-				 * to render the texture centered with letterboxing.
-				 */
-				SDL_GetWindowSize(sdl_window, &log_w, &log_h);
-
-				fprint(2, "SDL3 resize: window=%dx%d texture=%dx%d\n",
-					log_w, log_h, sdl_width, sdl_height);
-
-				/* Update window dimensions and recalculate centered dest rect */
-				window_width = log_w;
-				window_height = log_h;
-				calc_dest_rect();
-
-				fprint(2, "SDL3: dest_rect=(%.1f,%.1f,%.1f,%.1f)\n",
-					dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h);
-			}
-			break;
-		}
-	}
-}
+/* sdl_pollevents() removed — all event handling is in sdl3_mainloop() */
 
 /*
  * Set mouse pointer position
@@ -837,16 +543,71 @@ setpointer(int x, int y)
 }
 
 /*
- * Draw cursor (Infernode's software cursor)
+ * Draw cursor (Infernode's software cursor).
+ * Convert Inferno cursor bitmap to SDL3 cursor.
+ *
+ * Inferno cursor data layout (1-bpp, MSB-first):
+ *   First h*bpl bytes: "clr" bits (white pixels)
+ *   Next  h*bpl bytes: "set" bits (black pixels)
+ *
+ * SDL3 cursor semantics (data, mask):
+ *   (1,1)=black  (0,1)=white  (0,0)=transparent  (1,0)=inverted
+ *
+ * Mapping: data = set bits, mask = set | clr bits.
  */
+enum { MaxCursorSize = 32 };
+
 void
 drawcursor(Drawcursor *c)
 {
-	/* SDL3 handles the cursor - we can implement custom cursor here if needed */
-	USED(c);
+	static SDL_Cursor *sdl_cursor = NULL;
+	uchar data[MaxCursorSize * MaxCursorSize / 8];
+	uchar mask[MaxCursorSize * MaxCursorSize / 8];
+	uchar *bc, *bs;
+	int i, j, h, w, bpl, stride;
 
-	/* For now, use default cursor */
-	/* TODO: Convert Infernode cursor to SDL cursor and set it */
+	if (c->data == nil) {
+		/* Reset to default cursor */
+		if (sdl_cursor) {
+			SDL_DestroyCursor(sdl_cursor);
+			sdl_cursor = NULL;
+		}
+		SDL_SetCursor(NULL);
+		return;
+	}
+
+	h = (c->maxy - c->miny) / 2;	/* bounds include image + mask */
+	if (h > MaxCursorSize)
+		h = MaxCursorSize;
+	bpl = bytesperline(Rect(c->minx, c->miny, c->maxx, c->maxy), 1);
+	w = bpl;
+	if (w > MaxCursorSize / 8)
+		w = MaxCursorSize / 8;
+
+	memset(data, 0, sizeof(data));
+	memset(mask, 0, sizeof(mask));
+
+	stride = MaxCursorSize / 8;
+	bc = c->data;
+	bs = c->data + h * bpl;
+	for (i = 0; i < h; i++) {
+		for (j = 0; j < w; j++) {
+			data[i * stride + j] = bs[j];
+			mask[i * stride + j] = bs[j] | bc[j];
+		}
+		bs += bpl;
+		bc += bpl;
+	}
+
+	if (sdl_cursor) {
+		SDL_DestroyCursor(sdl_cursor);
+		sdl_cursor = NULL;
+	}
+
+	sdl_cursor = SDL_CreateCursor(data, mask,
+		MaxCursorSize, MaxCursorSize, -c->hotx, -c->hoty);
+	if (sdl_cursor)
+		SDL_SetCursor(sdl_cursor);
 }
 
 /*
@@ -881,7 +642,7 @@ clipwrite(char *buf)
 	if (!sdl_running)
 		return 0;
 
-	if (SDL_SetClipboardText(buf) < 0)
+	if (!SDL_SetClipboardText(buf))
 		return 0;
 
 	return strlen(buf);
@@ -1002,42 +763,20 @@ sdl3_mainloop(void)
 			if (!sdl_window) {
 				fprint(2, "draw-sdl3: SDL_CreateWindow failed: %s\n", SDL_GetError());
 				create_window_result = 0;
-				create_window_done = 1;
 			} else {
-				sdl_renderer = SDL_CreateRenderer(sdl_window, NULL);
-				if (!sdl_renderer) {
-					fprint(2, "draw-sdl3: SDL_CreateRenderer failed: %s\n", SDL_GetError());
+				/* HiDPI before texture so texture gets physical pixel size */
+				init_hidpi();
+				if (!create_renderer_and_texture()) {
+					fprint(2, "draw-sdl3: renderer/texture creation failed: %s\n",
+						SDL_GetError());
 					SDL_DestroyWindow(sdl_window);
 					sdl_window = NULL;
 					create_window_result = 0;
-					create_window_done = 1;
 				} else {
-					SDL_SetRenderVSync(sdl_renderer, 0);
-					SDL_SetRenderLogicalPresentation(sdl_renderer, sdl_width, sdl_height,
-						SDL_LOGICAL_PRESENTATION_DISABLED);
-					sdl_texture = SDL_CreateTexture(
-						sdl_renderer,
-						SDL_PIXELFORMAT_XRGB8888,
-						SDL_TEXTUREACCESS_STREAMING,
-						sdl_width, sdl_height
-					);
-					if (!sdl_texture) {
-						fprint(2, "draw-sdl3: SDL_CreateTexture failed: %s\n", SDL_GetError());
-						SDL_DestroyRenderer(sdl_renderer);
-						SDL_DestroyWindow(sdl_window);
-						sdl_renderer = NULL;
-						sdl_window = NULL;
-						create_window_result = 0;
-						create_window_done = 1;
-					} else {
-						SDL_SetTextureScaleMode(sdl_texture, SDL_SCALEMODE_NEAREST);
-						SDL_ShowWindow(sdl_window);
-						SDL_StartTextInput(sdl_window);
-						create_window_result = 1;
-						create_window_done = 1;
-					}
+					create_window_result = 1;
 				}
 			}
+			create_window_done = 1;
 			create_window_requested = 0;
 		}
 #endif
@@ -1284,6 +1023,23 @@ sdl3_mainloop(void)
 				if (event.key.scancode == SDL_SCANCODE_LALT ||
 				    event.key.scancode == SDL_SCANCODE_RALT) {
 					gkbdputc(gkbdq, Latin);
+				}
+				break;
+
+			case SDL_EVENT_WINDOW_RESIZED:
+			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+				{
+					int log_w, log_h;
+
+					/*
+					 * Window size changed (e.g., full-screen toggle).
+					 * Recalculate dest rect for centered letterbox rendering.
+					 * Texture/buffer size stays fixed at init dimensions.
+					 */
+					SDL_GetWindowSize(sdl_window, &log_w, &log_h);
+					window_width = log_w;
+					window_height = log_h;
+					calc_dest_rect();
 				}
 				break;
 			}

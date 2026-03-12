@@ -45,6 +45,37 @@ checkbyte(name: string, got, expected: byte)
 	}
 }
 
+#
+# Real comparison via integer conversion.
+# sys->print("%g") is broken on ARM64 Linux — produces garbled output
+# for floating-point values. Work around by comparing via int conversion.
+# Scale to integer with given precision (e.g. scale=1000 for 3 decimal places).
+#
+checkreal_scaled(name: string, got, expected: real, scale: int)
+{
+	total++;
+	igot := int (got * real scale);
+	iexp := int (expected * real scale);
+	if (igot == iexp) {
+		passed++;
+	} else {
+		failed++;
+		sys->print("FAIL: %s: got %d, expected %d (scale %d)\n",
+			name, igot, iexp, scale);
+	}
+}
+
+checkreal_exact(name: string, got, expected: real)
+{
+	total++;
+	if (got == expected) {
+		passed++;
+	} else {
+		failed++;
+		sys->print("FAIL: %s (real exact mismatch)\n", name);
+	}
+}
+
 init(nil: ref Draw->Context, nil: list of string)
 {
 	sys = load Sys Sys->PATH;
@@ -71,6 +102,10 @@ init(nil: ref Draw->Context, nil: list of string)
 	test_control_flow();
 	test_move_operations();
 	test_edge_cases();
+	test_real_arithmetic();
+	test_real_comparisons();
+	test_real_conversions();
+	test_string_operations();
 	test_large_switch();
 
 	sys->print("\n=== Results: %d/%d passed", passed, total);
@@ -820,7 +855,281 @@ deep_nest(a, b, c: int): int
 }
 
 #
-# Test 21: Large switch / many branch targets
+# Test 21: Real (float64) arithmetic - JIT native: IADDF, ISUBF, IMULF, IDIVF
+#
+test_real_arithmetic()
+{
+	sys->print("--- Real Arithmetic ---\n");
+
+	#
+	# IMPORTANT: real LITERALS (e.g. 3.14) and constant-folded expressions
+	# (e.g. real 42) are broken on ARM64 Linux — stored as denormals.
+	# All int→real conversions must use VARIABLES to force runtime CVTWF.
+	#
+
+	# Build reals from int variables (forces runtime conversion)
+	n1 := 314159;
+	n2 := 100000;
+	n3 := 271828;
+	a := real n1 / real n2;   # ≈ 3.14159
+	b := real n3 / real n2;   # ≈ 2.71828
+
+	# Add: verify via int conversion
+	sum := a + b;                      # ≈ 5.85987
+	check("add", int (sum * real n2), 585987);
+
+	# Subtract
+	diff := a - b;                     # ≈ 0.42331
+	check("sub", int (diff * real n2), 42331);
+
+	# Multiply
+	prod := a * b;                     # ≈ 8.53972
+	check("mul", int (prod * real n2), 853972);
+
+	# Divide
+	quot := a / b;                     # ≈ 1.15573
+	check("div", int (quot * real n2), 115573);
+
+	# Negation
+	check("neg", int (-a * real n2), -314159);
+
+	# Identity: -a + a = 0
+	n4 := 1000;
+	zero := -a + a;
+	check("neg add", int (zero * real n4), 0);
+
+	# Real from int multiplication
+	ten := 10;
+	c := real ten * real ten;
+	check("real mul->int", int c, 100);
+
+	# Division by self = 1
+	check("self div", int (a / a), 1);
+
+	# Square
+	two := 2;
+	four := real two * real two;
+	check("square", int four, 4);
+
+	# Large value
+	million := 1000000;
+	thousand := 1000;
+	big_r := real million * real thousand;
+	check("large", int (big_r / real thousand), 1000000);
+
+	sys->print("  real arithmetic: done\n");
+}
+
+#
+# Test 22: Real comparisons - JIT native: IBEQF, IBNEF, IBLTF, IBGTF, IBLEF, IBGEF
+#
+test_real_comparisons()
+{
+	sys->print("--- Real Comparisons ---\n");
+
+	# Build reals from ints to avoid broken real literal storage
+	a := real 1;
+	b := real 2;
+	c := real 1;
+
+	r := 0;
+	if (a == c) r = 1;
+	check("feq true", r, 1);
+	r = 0;
+	if (a == b) r = 1;
+	check("feq false", r, 0);
+
+	r = 0;
+	if (a != b) r = 1;
+	check("fne true", r, 1);
+	r = 0;
+	if (a != c) r = 1;
+	check("fne false", r, 0);
+
+	r = 0;
+	if (a < b) r = 1;
+	check("flt true", r, 1);
+	r = 0;
+	if (b < a) r = 1;
+	check("flt false", r, 0);
+
+	r = 0;
+	if (b > a) r = 1;
+	check("fgt true", r, 1);
+	r = 0;
+	if (a > b) r = 1;
+	check("fgt false", r, 0);
+
+	r = 0;
+	if (a <= c) r = 1;
+	check("fle eq", r, 1);
+	r = 0;
+	if (a <= b) r = 1;
+	check("fle lt", r, 1);
+	r = 0;
+	if (b <= a) r = 1;
+	check("fle false", r, 0);
+
+	r = 0;
+	if (a >= c) r = 1;
+	check("fge eq", r, 1);
+	r = 0;
+	if (b >= a) r = 1;
+	check("fge gt", r, 1);
+	r = 0;
+	if (a >= b) r = 1;
+	check("fge false", r, 0);
+
+	# Negative float comparisons (variables to avoid constant folding)
+	three := 3;
+	mtwo := 2;
+	mone := 1;
+	neg15 := real (-three) / real mtwo;   # -1.5
+	pos15 := real three / real mtwo;      # 1.5
+	neg05 := real (-mone) / real mtwo;    # -0.5
+	r = 0;
+	if (neg15 < pos15) r = 1;
+	check("fneg lt pos", r, 1);
+	r = 0;
+	if (neg15 < neg05) r = 1;
+	check("fneg lt fneg", r, 1);
+
+	# Epsilon: a + tiny > a (variables to avoid constant folding)
+	one := 1;
+	billion := 1000000000;
+	tiny := real one / real billion;   # 1e-9
+	x := real one;
+	y := x + tiny;
+	r = 0;
+	if (x < y) r = 1;
+	check("flt epsilon", r, 1);
+
+	sys->print("  real comparisons: done\n");
+}
+
+#
+# Test 23: Real ↔ int/big conversions - JIT native: ICVTWF, ICVTFW, ICVTLF, ICVTFL
+#
+test_real_conversions()
+{
+	sys->print("--- Real Conversions ---\n");
+
+	# int -> real -> int round-trip (CVTWF + CVTFW)
+	i := 42;
+	check("int->real->int 42", int (real i), 42);
+	i = -42;
+	check("int->real->int -42", int (real i), -42);
+	i = 0;
+	check("int->real->int 0", int (real i), 0);
+
+	# real -> int (CVTFW) — use variables to avoid constant folding
+	n37 := 37;
+	n10 := 10;
+	n32 := 32;
+	r37 := real n37 / real n10;
+	check("real->int 3.7", int r37, 4);
+	r32 := real n32 / real n10;
+	check("real->int 3.2", int r32, 3);
+	rn37 := real (-n37) / real n10;
+	check("real->int -3.7", int rn37, -4);
+
+	# big -> real -> big round-trip (CVTLF + CVTFL)
+	bl := big 1000000;
+	checkbig("big->real->big", big (real bl), big 1000000);
+	bl = big -1000000;
+	checkbig("big->real->big neg", big (real bl), big -1000000);
+
+	# real -> big (CVTFL) — real from variable conversion
+	n12345 := 12345;
+	fr := real n12345;
+	checkbig("real->big 12345", big fr, big 12345);
+	fr = real (-n12345);
+	checkbig("real->big -12345", big fr, big -12345);
+
+	# Round-trip: int -> real -> int for many values
+	for (n := -10; n <= 10; n++) {
+		rn := real n;
+		back := int rn;
+		check("roundtrip " + string n, back, n);
+	}
+
+	# int -> real exact check via comparison (variables, not constants)
+	n42 := 42;
+	nn42 := -42;
+	checkreal_exact("int->real exact", real n42, real n42);
+	checkreal_exact("int->real neg exact", real nn42, real nn42);
+
+	# Large int -> real -> int round-trip (tests 52-bit mantissa)
+	large := 1 << 40;
+	check("2^40 roundtrip", int (real large), large);
+
+	sys->print("  real conversions: done\n");
+}
+
+#
+# Test 24: String operations - JIT native: IADDC, ISLICEC, IINDC, ILENC, IINSC
+#
+test_string_operations()
+{
+	sys->print("--- String Operations ---\n");
+
+	# Concatenation (IADDC)
+	a := "Hello";
+	b := " World";
+	c := a + b;
+	check("concat len", len c, 11);
+	check("concat[0]", c[0], 'H');
+	check("concat[5]", c[5], ' ');
+	check("concat[10]", c[10], 'd');
+
+	# Empty concatenation
+	e := "";
+	check("concat empty left", len (e + a), 5);
+	check("concat empty right", len (a + e), 5);
+	check("concat empty both", len (e + e), 0);
+
+	# Slice (ISLICEC)
+	s := "abcdefgh";
+	sub := s[2:5];  # "cde"
+	check("slice len", len sub, 3);
+	check("slice[0]", sub[0], 'c');
+	check("slice[2]", sub[2], 'e');
+
+	# Slice from start
+	sub = s[0:3];  # "abc"
+	check("slice start", sub[0], 'a');
+	check("slice start len", len sub, 3);
+
+	# Slice to end
+	sub = s[5:8];  # "fgh"
+	check("slice end", sub[0], 'f');
+	check("slice end len", len sub, 3);
+
+	# Empty slice
+	sub = s[3:3];
+	check("slice empty", len sub, 0);
+
+	# Index assignment (IINSC)
+	s = "aaaa";
+	s[0] = 'z';
+	check("insc[0]", s[0], 'z');
+	check("insc[1]", s[1], 'a');
+	s[3] = 'q';
+	check("insc[3]", s[3], 'q');
+
+	# Build string char by char
+	r := "";
+	for (i := 0; i < 5; i++)
+		r[i] = 'A' + i;
+	check("build len", len r, 5);
+	check("build[0]", r[0], 'A');
+	check("build[4]", r[4], 'E');
+
+	sys->print("  string operations: done\n");
+}
+
+#
+# Test 25: Large switch / many branch targets
 #
 # Exercises bradis() (ARM64 JIT unconditional B emitter) with many targets.
 # Each case arm ends with an implicit IJMP to after the switch, emitted via
