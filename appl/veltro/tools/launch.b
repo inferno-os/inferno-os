@@ -55,7 +55,7 @@ doc(): string
 		"Usage:\n" +
 		"  Launch list                    — show available apps\n" +
 		"  Launch xenith                  — launch Xenith text environment\n" +
-		"  Launch lucishell               — launch shell terminal\n" +
+		"  Launch shell                   — launch shell terminal\n" +
 		"  Launch clock                   — launch by short name\n" +
 		"  Launch wm/clock                — launch with wm/ prefix\n" +
 		"  Launch /dis/wm/clock           — launch by full path (.dis optional)\n" +
@@ -67,7 +67,7 @@ doc(): string
 		"  Right-click inside Charon for back/fwd/stop/start menu.\n" +
 		"  Do NOT use exec or shell commands to control Charon.\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  charon, clock, bounce, coffee, colors, date, edit, view, rt, lens, lucishell, mand\n\n" +
+		"  charon, clock, bounce, coffee, colors, date, edit, view, rt, lens, shell, mand\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
@@ -137,6 +137,10 @@ exec(args: string): string
 	if(istk(appname))
 		return "error: " + appname + " requires Tk which is not available.\n" +
 			"Try: clock, bounce, coffee, colors, date, view, rt, lens, xenith";
+
+	# Canonical name aliases: tool names that map to differently-named .dis files.
+	if(appname == "shell")
+		appname = "lucishell";
 
 	# Reject names containing path separators — belt-and-suspenders guard
 	# against any normalization gaps that could reach outside /dis/wm/.
