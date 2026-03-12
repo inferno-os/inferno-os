@@ -61,7 +61,7 @@ SECTION 4: Launching Apps
       clock      — analog clock
       edit       — text editor
       shell      — shell terminal
-      mand       — Mandelbrot fractal viewer
+      fractals   — Mandelbrot/Julia fractal viewer
       xenith     — full Xenith text environment
       bounce, coffee, colors, lens, view — demos
     Ask me to launch any of these at any time.
@@ -69,7 +69,7 @@ SECTION 4: Launching Apps
 
 SECTION 5: The Fractal Viewer
   - say: let me show you something beautiful
-  - launch mand
+  - launch fractals
   - say: this is the Mandelbrot set — I can drive it with the fractal tool
   - fractal center -0.75 0.1 0.05
   - say: we are zooming into seahorse valley
@@ -189,7 +189,7 @@ SECTION 14: Where to Go from Here
     **Launch apps:**
       launch edit          — text editor
       launch shell        — shell terminal
-      launch mand         — fractal viewer
+      launch fractals     — fractal viewer
       launch xenith       — Xenith text environment
 
     **Explore:**

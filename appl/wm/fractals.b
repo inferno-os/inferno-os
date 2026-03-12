@@ -1,4 +1,4 @@
-implement Mand;
+implement Fractals;
 
 #
 # Mandelbrot/Julia fractal browser
@@ -9,8 +9,8 @@ implement Mand;
 #
 # Mouse:
 #   Button 1     drag rectangle to zoom in
-#   Button 2     show Julia set at cursor point
-#   Button 3     context menu (zoom out, depth, fill, restart, exit)
+#   Button 2     show Julia set at cursor point (from Mandelbrot view)
+#   Button 3     context menu (zoom out, depth, Julia presets, etc.)
 #
 # Veltro integration:
 #   /tmp/veltro/fractal/ctl     write commands (zoomin, zoomout, julia, etc.)
@@ -37,7 +37,7 @@ include "widget.m";
 	widget: Widget;
 	Statusbar: import widget;
 
-Mand: module
+Fractals: module
 {
 	init: fn(nil: ref Draw->Context, argv: list of string);
 };
@@ -129,6 +129,7 @@ Usercmd: adt {
 		fr: Fracrect;
 	Julia =>
 		fp: Fracpoint;
+	Mandelbrot or
 	Zoomout or
 	Restart =>
 	Depth =>
@@ -136,6 +137,22 @@ Usercmd: adt {
 	Fill =>
 		on: int;
 	}
+};
+
+# Preset Julia sets with interesting visual character
+Juliapreset: adt {
+	label: string;
+	c: Fracpoint;
+};
+
+JULIA_PRESETS: con 5;
+
+juliapresets := array[JULIA_PRESETS] of {
+	Juliapreset("dendrite", Fracpoint(0.0, 1.0)),
+	Juliapreset("seahorse", Fracpoint(-0.75, 0.1)),
+	Juliapreset("spiral", Fracpoint(-0.4, 0.6)),
+	Juliapreset("rabbit", Fracpoint(-0.123, 0.745)),
+	Juliapreset("star", Fracpoint(-0.744, 0.148)),
 };
 
 init(ctxt: ref Draw->Context, argv: list of string)
@@ -147,7 +164,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	stderr = sys->fildes(2);
 
 	if(ctxt == nil) {
-		sys->fprint(stderr, "mand: no window context\n");
+		sys->fprint(stderr, "fractals: no window context\n");
 		raise "fail:no context";
 	}
 
@@ -291,7 +308,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					restart = 1;
 				}
 			} else if(ptr.buttons & 2) {
-				# Button 2: Julia set at point
+				# Button 2: Julia set at cursor point (Mandelbrot mode only)
 				if(p.m) {
 					cr := canvposn();
 					rp := ptr.xy.sub(cr.min);
@@ -320,6 +337,19 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					restart = 1;
 				Fill =>
 					fill = u.on;
+					restart = 1;
+				Julia =>
+					stack = (specr, p) :: stack;
+					julp = u.fp;
+					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
+					morj = 0;
+					restart = 1;
+				Mandelbrot =>
+					stack = (specr, p) :: stack;
+					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
+					morj = 1;
+					julp = Fracpoint(0.0, 0.0);
+					kdivisor = 1;
 					restart = 1;
 				Restart =>
 					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
@@ -351,13 +381,18 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					restart = 1;
 				}
 			Julia =>
-				if(morj) {
-					stack = (specr, p) :: stack;
-					julp = c.fp;
-					specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
-					morj = 0;
-					restart = 1;
-				}
+				stack = (specr, p) :: stack;
+				julp = c.fp;
+				specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
+				morj = 0;
+				restart = 1;
+			Mandelbrot =>
+				stack = (specr, p) :: stack;
+				specr = Fracrect((-2.0, -1.5), (1.0, 1.5));
+				morj = 1;
+				julp = Fracpoint(0.0, 0.0);
+				kdivisor = 1;
+				restart = 1;
 			Depth =>
 				kdivisor = c.d;
 				restart = 1;
@@ -416,35 +451,104 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 	fillstr := "fill on";
 	if(g_fill)
 		fillstr = "fill off";
-	menu := menumod->new(array[] of {
-		"zoom out",
-		"depth+",
-		"depth-",
-		fillstr,
-		"reset",
-		"exit"
-	});
+
+	# Build menu items depending on current mode
+	items: list of string;
+	if(g_morj) {
+		# In Mandelbrot mode: offer Julia presets
+		items = "zoom out"
+			:: "depth+"
+			:: "depth-"
+			:: fillstr
+			:: "---"
+			:: nil;
+		for(i := len juliapresets - 1; i >= 0; i--)
+			items = sys->sprint("julia: %s", juliapresets[i].label) :: items;
+		items = rev(items);
+		items = append(items, "---" :: "reset" :: "exit" :: nil);
+	} else {
+		# In Julia mode: offer switch back to Mandelbrot
+		items = "zoom out"
+			:: "depth+"
+			:: "depth-"
+			:: fillstr
+			:: "---"
+			:: "mandelbrot"
+			:: "---"
+			:: "reset"
+			:: "exit"
+			:: nil;
+	}
+
+	# Convert to array, filtering out separators
+	nitems := 0;
+	for(l := items; l != nil; l = tl l) {
+		if(hd l != "---")
+			nitems++;
+	}
+	menuarr := array[nitems] of string;
+	mi := 0;
+	for(l = items; l != nil; l = tl l) {
+		if(hd l != "---")
+			menuarr[mi++] = hd l;
+	}
+
+	menu := menumod->new(menuarr);
 	n := menu.show(w.image, ptr.xy, w.ctxt.ptr);
-	case n {
-	0 =>
+	if(n < 0 || n >= len menuarr)
+		return nil;
+
+	sel := menuarr[n];
+
+	case sel {
+	"zoom out" =>
 		return ref Usercmd.Zoomout;
-	1 =>
+	"depth+" =>
 		d := g_kdivisor + 1;
 		if(d > MAXDEPTH) d = MAXDEPTH;
 		return ref Usercmd.Depth(d);
-	2 =>
+	"depth-" =>
 		d := g_kdivisor - 1;
 		if(d < 1) d = 1;
 		return ref Usercmd.Depth(d);
-	3 =>
+	"fill on" or "fill off" =>
 		return ref Usercmd.Fill(!g_fill);
-	4 =>
+	"mandelbrot" =>
+		return ref Usercmd.Mandelbrot;
+	"reset" =>
 		return ref Usercmd.Restart;
-	5 =>
+	"exit" =>
 		postnote(1, sys->pctl(0, nil), "kill");
 		exit;
+	* =>
+		# Check for Julia preset selection
+		if(len sel > 7 && sel[0:7] == "julia: ") {
+			name := sel[7:];
+			for(i := 0; i < len juliapresets; i++) {
+				if(juliapresets[i].label == name)
+					return ref Usercmd.Julia(juliapresets[i].c);
+			}
+		}
 	}
 	return nil;
+}
+
+rev(l: list of string): list of string
+{
+	r: list of string;
+	for(; l != nil; l = tl l)
+		r = hd l :: r;
+	return r;
+}
+
+append(a, b: list of string): list of string
+{
+	if(a == nil)
+		return b;
+	r := rev(a);
+	for(; b != nil; b = tl b)
+		r = hd b :: r;
+	return rev(r);
 }
 
 updatesbar()
@@ -452,8 +556,11 @@ updatesbar()
 	if(sbar == nil)
 		return;
 	ftype := "Mandelbrot";
-	if(!g_morj)
+	if(!g_morj) {
 		ftype = "Julia";
+		# Show Julia parameter in statusbar
+		ftype += sys->sprint(" c=(%.3g, %.3g)", g_julp.x, g_julp.y);
+	}
 	sbar.left = ftype;
 	status := "ready";
 	if(g_computing)
@@ -926,6 +1033,17 @@ writefractstate()
 		view += "  Antenna tip: ~(-1.788, 0)\n";
 		view += "  Mini-Mandelbrot: ~(-1.768, 0.002)\n";
 	}
+
+	# Describe notable Julia sets when viewing Julia
+	if(!g_morj && dx > 2.5) {
+		view += "\nJulia set presets (try via menu or 'fractal julia <re> <im>'):\n";
+		view += "  Dendrite:  c = 0 + 1i (tree-like filaments)\n";
+		view += "  Seahorse:  c = -0.75 + 0.1i (spiral arms)\n";
+		view += "  Spiral:    c = -0.4 + 0.6i (connected spiral)\n";
+		view += "  Rabbit:    c = -0.123 + 0.745i (Douady's rabbit)\n";
+		view += "  Star:      c = -0.744 + 0.148i (star-shaped)\n";
+	}
+
 	writestatefile(FRACT_DIR + "/view", view);
 }
 
@@ -999,8 +1117,7 @@ checkctlfile(specr: Fracrect, p: Params, stack: list of (Fracrect, Params),
 		im := real hd toks;
 		return ref Usercmd.Julia(Fracpoint(re, im));
 	"mandelbrot" =>
-		# Return to Mandelbrot: implemented as zoomout to root
-		return ref Usercmd.Restart;
+		return ref Usercmd.Mandelbrot;
 	"depth" =>
 		if(toks == nil)
 			return nil;

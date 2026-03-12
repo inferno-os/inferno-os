@@ -12,7 +12,7 @@ Usage:
   fill on|off                    Toggle boundary-trace fill mode
   restart                        Restart current computation
 
-The fractal viewer must be running. Use 'launch mand' to start it.
+The fractal viewer must be running. Use 'launch fractals' to start it.
 
 Coordinates are in the complex plane:
   Full Mandelbrot set: x=[-2, 1] y=[-1.5, 1.5]

@@ -141,7 +141,7 @@ TOOL_PATHS := array[] of {
 	("vision",  "/dis/veltro/tools/vision.dis"),
 	("editor", "/dis/veltro/tools/editor.dis"),
 	("shell", "/dis/veltro/tools/shell.dis"),
-	# Fractal viewer control (requires mand running)
+	# Fractal viewer control (requires fractals running)
 	("fractal", "/dis/veltro/tools/fractal.dis"),
 };
 
@@ -732,8 +732,8 @@ emitmanifestnow()
 		toolnames = (hd t).name :: toolnames;
 	allpaths := extpaths;
 	for(bp := boundpaths; bp != nil; bp = tl bp)
-		if(!strlist_contains(allpaths, hd bp))
-			allpaths = (hd bp) :: allpaths;
+		if(!strlist_contains(allpaths, (hd bp).path))
+			allpaths = (hd bp).path :: allpaths;
 	if(findtool("say") != nil || findtool("hear") != nil)
 		if(!strlist_contains(allpaths, "/n/speech"))
 			allpaths = "/n/speech" :: allpaths;

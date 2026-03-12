@@ -29,7 +29,7 @@ your workspace.
 **Launch an app.** Ask me to:
 - `launch edit` — a text editor in the presentation zone
 - `launch shell` — a shell terminal
-- `launch mand` — the Mandelbrot fractal viewer (I can drive it too)
+- `launch fractals` — the Mandelbrot/Julia fractal viewer (I can drive it too)
 - `launch clock` — a clock
 - `launch xenith` — the full Xenith text environment (Acme descendant)
 

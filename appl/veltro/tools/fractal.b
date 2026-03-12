@@ -4,7 +4,7 @@ implement ToolFractal;
 # fractal - Veltro tool for controlling the Mandelbrot/Julia viewer
 #
 # Provides AI control over the fractal viewer via real-file IPC
-# at /tmp/veltro/fractal/. The viewer must be running (launch mand).
+# at /tmp/veltro/fractal/. The viewer must be running (launch fractals).
 #
 # Commands:
 #   state                          Read fractal state (type, coords, depth)
@@ -62,7 +62,7 @@ doc(): string
 		"  depth <n>                      Set depth multiplier\n" +
 		"  fill on|off                    Toggle fill mode\n" +
 		"  restart                        Restart computation\n\n" +
-		"The fractal viewer must be running. Use 'launch mand' to start it.\n\n" +
+		"The fractal viewer must be running. Use 'launch fractals' to start it.\n\n" +
 		"Coordinates are in the complex plane:\n" +
 		"  Full Mandelbrot: x=[-2, 1] y=[-1.5, 1.5]\n" +
 		"  Interesting spots:\n" +
@@ -131,7 +131,7 @@ readfile(path: string): string
 {
 	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil)
-		return sys->sprint("error: cannot open %s: %r (is mand running?)", path);
+		return sys->sprint("error: cannot open %s: %r (is fractals running?)", path);
 
 	result := "";
 	buf := array[8192] of byte;
@@ -149,7 +149,7 @@ writefile(path, data: string): string
 {
 	fd := sys->create(path, Sys->OWRITE, 8r666);
 	if(fd == nil)
-		return sys->sprint("error: cannot create %s: %r (is mand running?)", path);
+		return sys->sprint("error: cannot create %s: %r (is fractals running?)", path);
 
 	b := array of byte data;
 	n := sys->write(fd, b, len b);

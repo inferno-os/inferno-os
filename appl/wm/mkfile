@@ -9,7 +9,7 @@ TARG=\
 	colors.dis\
 	lens.dis\
 	edit.dis\
-	mand.dis\
+	fractals.dis\
 	lucishell.dis\
 	view.dis\
 	wm.dis\
