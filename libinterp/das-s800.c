@@ -433,7 +433,7 @@ das_bx(Instr *i, char *m)
 	}
 }
 
-static int
+static void
 inst(ulong *pc)
 {
 	Instr instr;

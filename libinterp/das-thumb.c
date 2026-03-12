@@ -147,6 +147,7 @@ thumbclass(long w)
 				return 3+2+2+4+16+4+1+8+6+2+2+2+4+1+1+1+1;
 		}
 	}
+	return -1;	/* unreachable: all bit patterns covered */
 }
 
 static int

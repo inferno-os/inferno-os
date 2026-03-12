@@ -2626,7 +2626,7 @@ compile(Module *m, int size, Modlink *ml)
 	uvlong v;
 	Modl *e;
 	Link *l;
-	int i, n;
+	int i, n = 0;
 	uchar *s, *tmp = nil;
 
 	if(getenv("INFERNODE_NOJIT") != nil)

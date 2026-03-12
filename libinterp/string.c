@@ -74,7 +74,7 @@ r:
 			ss->Srune[v] = r;
 		else
 		if(v == l && v < ss->max) {
-			ss->len = -(v+1);
+			ss->len = -(int)(v+1);
 			ss->Srune[v] = r;
 		}
 		else {
@@ -83,7 +83,7 @@ r:
 			ns = newstring((v + 1 + v/4)*sizeof(Rune));
 			memmove(ns->Srune, ss->Srune, -ss->len*sizeof(Rune));
 			ns->Srune[v] = r;
-			ns->len = -(v+1);
+			ns->len = -(int)(v+1);
 			ns->max /= sizeof(Rune);
 			ss = ns;
 		}
