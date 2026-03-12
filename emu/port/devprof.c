@@ -349,12 +349,12 @@ profread(Chan *c, void *va, long n, vlong offset)
 	case Qpath:
 		return readstr(offset, va, n, r->path);
 	case Qhist:
-		i = (int)c->aux;
+		i = (int)(uintptr)c->aux;
 		while(i < r->size && r->bucket[i] == 0)
 			i++;
 		if(i >= r->size)
 			return 0;
-		c->aux = (void*)(i+1);
+		c->aux = (void*)(uintptr)(i+1);
 		if(n < 20)
 			error(Etoosmall);
 		return sprint(a, "%d %lud", i, r->bucket[i]);

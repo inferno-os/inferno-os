@@ -166,6 +166,8 @@ graphicsgmap(PALETTEENTRY *pal, int d)
 	m = 1;
 	while(--d >= 0)
 		m *= 2;
+	if(m <= 1)
+		return;
 	m = 255/(m-1);
 	for(i=0; i < 256; i++){
 		j = (i>>s)*m;
@@ -207,8 +209,17 @@ attachscreen(IRectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	PALETTEENTRY *pal;
 	int bsh, bsw, sx, sy;
 
-	if(attached)
+	if(attached) {
+		c = displaychan;
+		k = 8;
+		if(c == RGB15)
+			k = 16;
+		else if(c == RGB24)
+			k = 24;
+		else if(c == XRGB32)
+			k = 32;
 		goto Return;
+	}
 
 	/* Compute bodersizes */
 	memset(&bs, 0, sizeof(bs));
@@ -281,6 +292,8 @@ attachscreen(IRectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	screen = CreateCompatibleDC(NULL);
 	if(screen == nil){
 		fprint(2, "screen dc nil\n");
+		free(bmi);
+		free(logpal);
 		return nil;
 	}
 
@@ -290,6 +303,8 @@ attachscreen(IRectangle *r, ulong *chan, int *d, int *width, int *softscreen)
 	i = RealizePalette(screen);
 	GdiFlush();
 	bits = CreateDIBSection(screen, bmi, DIB_RGB_COLORS, &data, nil, 0);
+	free(bmi);
+	free(logpal);
 	if(bits == nil){
 		fprint(2, "CreateDIBSection failed\n");
 		return nil;
@@ -710,7 +725,7 @@ drawcursor(Drawcursor* c)
 		oh = hcursor;
 		hcursor = NULL;
 		if(oh != NULL) {
-			SendMessage(window, WM_SETCURSOR, (int)window, 0);
+			SendMessage(window, WM_SETCURSOR, (WPARAM)window, 0);
 			DestroyCursor(oh);
 		}
 		return;
@@ -739,7 +754,7 @@ drawcursor(Drawcursor* c)
 	cand = and;
 	cxor = xor;
 	bc = c->data;
-	bs = c->data + h*bpl;	
+	bs = c->data + h*bpl;
 
 	for(i = 0; i < ch && i < h; i++) {
 		for(j = 0; j < cw && j < bpl; j++) {
@@ -755,7 +770,7 @@ drawcursor(Drawcursor* c)
 	if(nh != NULL) {
 		oh = hcursor;
 		hcursor = nh;
-		SendMessage(window, WM_SETCURSOR, (int)window, 0);
+		SendMessage(window, WM_SETCURSOR, (WPARAM)window, 0);
 		if(oh != NULL)
 			DestroyCursor(oh);
 	}

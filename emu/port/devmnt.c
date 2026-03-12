@@ -1147,7 +1147,7 @@ mntchk(Chan *c)
 	m = c->mchan->mux;
 
 	if(m == nil)
-		print("mntchk 2: nil mux c %s c->mchan %s \n", c2name(c), c2name(c->mchan));
+		panic("mntchk 2: nil mux c %s c->mchan %s \n", c2name(c), c2name(c->mchan));
 
 	/*
 	 * Was it closed and reused (was error(Eshutdown); now, it can't happen)

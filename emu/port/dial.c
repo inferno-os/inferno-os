@@ -340,7 +340,10 @@ identtrans(char *netdir, char *addr, char *naddr, int na, char *file, int nf)
 		*p++ = 0;
 
 	snprint(file, nf, "%s/%s/clone", netdir, proto);
-	strncpy(naddr, p, na);
+	if(p != nil)
+		strncpy(naddr, p, na);
+	else
+		strncpy(naddr, "", na);
 	naddr[na-1] = 0;
 
 	return 1;

@@ -89,11 +89,13 @@ _mulv(Vlong *r, Vlong a, Vlong b)
 void
 _d2v(Vlong *y, double d)
 {
+	union { double d; Vlong v; } u;
 	Vlong x;
 	ulong xhi, xlo, ylo, yhi;
 	int sh;
 
-	*(double*)&x = d;
+	u.d = d;
+	x = u.v;
 
 	xhi = (x.hi & 0xfffff) | 0x100000;
 	xlo = x.lo;
@@ -132,10 +134,10 @@ _d2v(Vlong *y, double d)
 	}
 	if(x.hi & SIGN(32)) {
 		if(ylo != 0) {
-			ylo = -ylo;
+			ylo = (ulong)(-(long)ylo);
 			yhi = ~yhi;
 		} else
-			yhi = -yhi;
+			yhi = (ulong)(-(long)yhi);
 	}
 
 	y->hi = yhi;
@@ -154,10 +156,10 @@ _v2d(Vlong x)
 {
 	if(x.hi & SIGN(32)) {
 		if(x.lo) {
-			x.lo = -x.lo;
+			x.lo = (ulong)(-(long)x.lo);
 			x.hi = ~x.hi;
 		} else
-			x.hi = -x.hi;
+			x.hi = (ulong)(-(long)x.hi);
 		return -((long)x.hi*4294967296. + x.lo);
 	}
 	return (long)x.hi*4294967296. + x.lo;
@@ -181,10 +183,11 @@ dodiv(Vlong num, Vlong den, Vlong *q, Vlong *r)
 	denlo = den.lo;
 
 	/*
-	 * get a divide by zero
+	 * get a divide by zero: intentional to trigger hardware trap
 	 */
 	if(denlo==0 && denhi==0) {
-		numlo = numlo / denlo;
+		volatile ulong zero = 0;
+		numlo = numlo / zero;
 	}
 
 	/*
@@ -260,10 +263,10 @@ vneg(Vlong *v)
 {
 
 	if(v->lo == 0) {
-		v->hi = -v->hi;
+		v->hi = (ulong)(-(long)v->hi);
 		return;
 	}
-	v->lo = -v->lo;
+	v->lo = (ulong)(-(long)v->lo);
 	v->hi = ~v->hi;
 }
 
@@ -529,11 +532,11 @@ _vasop(Vlong *ret, void *lv, void fn(Vlong*, Vlong, Vlong), int type, Vlong rv)
 void
 _p2v(Vlong *ret, void *p)
 {
-	long t;
+	uintptr t;
 
-	t = (ulong)p;
-	ret->lo = t;
-	ret->hi = 0;
+	t = (uintptr)p;
+	ret->lo = (ulong)t;
+	ret->hi = (sizeof(t) > 4) ? (ulong)(t >> 32) : 0;
 }
 
 void

@@ -228,7 +228,7 @@ audio_open_in(HWAVEIN* h, Audio_d* d)
 	format.cbSize = 0;
 
 	if (audioerror(
-		waveInOpen(&th, WAVE_MAPPER, &format, (DWORD)waveInProc, 0, CALLBACK_FUNCTION), 
+		waveInOpen(&th, WAVE_MAPPER, &format, (DWORD_PTR)waveInProc, 0, CALLBACK_FUNCTION),
 		AUDIOIN,
 		"cannot open microphone/line-in") == 0) {
 		*h = th;
@@ -253,7 +253,7 @@ audio_open_out(HWAVEOUT* h, Audio_d* d)
 		format.nSamplesPerSec * format.nBlockAlign;
 	format.cbSize = 0;
 
-	code = waveOutOpen(&th, WAVE_MAPPER, &format, (DWORD)waveOutProc, 0, CALLBACK_FUNCTION);
+	code = waveOutOpen(&th, WAVE_MAPPER, &format, (DWORD_PTR)waveOutProc, 0, CALLBACK_FUNCTION);
 
 	if (audioerror(code, AUDIOOUT, "cannot open speaker/line-out") == 0) {
 		out_buf_count = 0;
@@ -320,7 +320,7 @@ audio_close_out()
 {
 Again:
 	WaitForSingleObject(outlock, INFINITE);
-	while(out_buf_count > 0) {
+	if(out_buf_count > 0) {
 		ReleaseMutex(outlock);
 		sleep(0);
 		goto Again;
@@ -520,10 +520,10 @@ Draining:
 
 Filling:
 	WaitForSingleObject(inlock, INFINITE);
-	while((audio_ping.sz < 1) && (audio_pong.sz < 1)) {
+	if((audio_ping.sz < 1) && (audio_pong.sz < 1)) {
 		ReleaseMutex(inlock);
 		sleep(0);
-		goto Filling;	
+		goto Filling;
 	}
 	ReleaseMutex(inlock);
 
@@ -572,7 +572,7 @@ Again:
 
 Drain:
 	WaitForSingleObject(outlock, INFINITE);
-	while(out_buf_count > bufsz) {
+	if(out_buf_count > bufsz) {
 		ReleaseMutex(outlock);
 		sleep(0);
 		goto Drain;

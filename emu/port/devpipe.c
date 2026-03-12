@@ -69,7 +69,7 @@ pipeattach(char *spec)
 	Chan *c;
 
 	c = devattach('|', spec);
-	p = malloc(sizeof(Pipe));
+	p = mallocz(sizeof(Pipe), 1);
 	if(p == 0)
 		error(Enomem);
 	if(waserror()){

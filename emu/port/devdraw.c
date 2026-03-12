@@ -1243,51 +1243,9 @@ drawcoord(uchar *p, uchar *maxp, int oldx, int *newx)
 static void
 printmesg(char *fmt, uchar *a, int plsprnt)
 {
-	char buf[256];
-	char *p, *q;
-	int s;
-
-	if(1|| plsprnt==0){
-		SET(s); SET(q); SET(p);
-		USED(fmt); USED(a); USED(buf); USED(p); USED(q); USED(s);
-		return;
-	}
-	q = buf;
-	*q++ = *a++;
-	for(p=fmt; *p; p++){
-		switch(*p){
-		case 'l':
-			q += sprint(q, " %ld", (long)BGLONG(a));
-			a += 4;
-			break;
-		case 'L':
-			q += sprint(q, " %.8lux", (ulong)BGLONG(a));
-			a += 4;
-			break;
-		case 'R':
-			q += sprint(q, " [%d %d %d %d]", BGLONG(a), BGLONG(a+4), BGLONG(a+8), BGLONG(a+12));
-			a += 16;
-			break;
-		case 'P':
-			q += sprint(q, " [%d %d]", BGLONG(a), BGLONG(a+4));
-			a += 8;
-			break;
-		case 'b':
-			q += sprint(q, " %d", *a++);
-			break;
-		case 's':
-			q += sprint(q, " %d", BGSHORT(a));
-			a += 2;
-			break;
-		case 'S':
-			q += sprint(q, " %.4ux", BGSHORT(a));
-			a += 2;
-			break;
-		}
-	}
-	*q++ = '\n';
-	*q = 0;
-	iprint("%.*s", (int)(q-buf), buf);
+	USED(plsprnt);
+	USED(fmt);
+	USED(a);
 }
 
 void

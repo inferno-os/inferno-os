@@ -910,11 +910,13 @@ growparse(Elemlist *e)
 
 	if(e->nelems % Delta == 0){
 		new = smalloc((e->nelems+Delta) * sizeof(char*));
-		memmove(new, e->elems, e->nelems*sizeof(char*));
+		if(e->nelems > 0)
+			memmove(new, e->elems, e->nelems*sizeof(char*));
 		free(e->elems);
 		e->elems = new;
 		inew = smalloc((e->nelems+Delta+1) * sizeof(int));
-		memmove(inew, e->off, e->nelems*sizeof(int));
+		if(e->nelems > 0)
+			memmove(inew, e->off, e->nelems*sizeof(int));
 		free(e->off);
 		e->off = inew;
 	}
