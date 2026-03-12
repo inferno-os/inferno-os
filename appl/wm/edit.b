@@ -79,7 +79,11 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar: import widgetmod;
+	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
+
+include "textwidget.m";
+	textwidget: Textwidget;
+	Tabulator: import textwidget;
 
 WmEdit: module
 {
@@ -99,7 +103,7 @@ MARGIN: con 4;				# text margin
 LNWIDTH: con 48;			# line number gutter width
 TABSTOP: con 4;			# tab width in spaces
 
-# Key constants (Inferno keyboard codes)
+# Key constants (Inferno keyboard codes — canonical defs in Widget)
 Khome:		con 16rFF61;
 Kend:		con 16rFF57;
 Kup:		con 16rFF52;
@@ -248,8 +252,8 @@ statbar: ref Statusbar;
 
 w: ref Window;
 vislines: int;
-kbdescstate: int;	# ANSI escape decode state (0=normal)
-kbdescarg:   int;
+kbdfilter: ref Kbdfilter;
+tabs: ref Tabulator;
 doc: ref Doc;
 stderr: ref Sys->FD;
 statedirty: int;	# set when doc changes, cleared after writing state files
@@ -285,6 +289,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		sys->fprint(stderr, "edit: cannot load Widget: %r\n");
 		raise "fail:cannot load Widget";
 	}
+	textwidget = load Textwidget Textwidget->PATH;
+	if(textwidget == nil) {
+		sys->fprint(stderr, "edit: cannot load Textwidget: %r\n");
+		raise "fail:cannot load Textwidget";
+	}
+	textwidget->init();
+	kbdfilter = Kbdfilter.new();
+	tabs = Tabulator.new(TABSTOP);
 
 	if(ctxt == nil) {
 		sys->fprint(stderr, "edit: no window context\n");
@@ -375,7 +387,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		if(ctl != nil && ctl[0] == '!')
 			redraw();
 	rawkey := <-w.ctxt.kbd =>
-		key := filterkbd(rawkey);
+		key := kbdfilter.filter(rawkey);
 		if(key >= 0) {
 			cursorvis = 1;
 			if(doc.findmode) {
@@ -1180,12 +1192,12 @@ pos2cursor(p: Point): (int, int)
 
 	vrow := 0;
 	for(i := doc.topline; i < doc.nlines; i++) {
-		expanded := expandtabs(doc.lines[i]);
+		expanded := tabs.expand(doc.lines[i]);
 		start := 0;
 		first := 1;
 		while(start < len expanded || first) {
 			first = 0;
-			k := wrapend(expanded, start, maxw);
+			k := textwidget->wrapend(font, expanded, start, maxw);
 			if(vrow == clickvrow) {
 				x := p.x - textr.min.x;
 				w2 := 0;
@@ -1197,7 +1209,7 @@ pos2cursor(p: Point): (int, int)
 					w2 += cw;
 					ek++;
 				}
-				return (i, unexpandcol(doc.lines[i], ek));
+				return (i, tabs.unexpandcol(doc.lines[i], ek));
 			}
 			vrow++;
 			start = k;
@@ -1218,60 +1230,6 @@ textrect(): Rect
 }
 
 # ---------- Keyboard handling ----------
-
-# filterkbd: decode ANSI escape sequences to Inferno key codes.
-# Returns the decoded key, or -1 if the character was part of an incomplete sequence.
-# Inferno key codes (>= 0xFF00) are passed through unchanged.
-filterkbd(c: int): int
-{
-	if(c >= 16rFF00)
-		return c;
-	case kbdescstate {
-	0 =>
-		if(c == 27) {
-			kbdescstate = 1;
-			return -1;
-		}
-	1 =>
-		kbdescstate = 0;
-		if(c == '[') {
-			kbdescstate = 2;
-			kbdescarg = 0;
-			return -1;
-		}
-		# bare ESC + char: deliver the char
-	2 =>
-		kbdescstate = 0;
-		if(c == 'A') return 16rFF52;	# up
-		if(c == 'B') return 16rFF54;	# down
-		if(c == 'C') return 16rFF53;	# right
-		if(c == 'D') return 16rFF51;	# left
-		if(c == 'H') return 16rFF61;	# home
-		if(c == 'F') return 16rFF57;	# end
-		if(c == '1' || c == '4' || c == '5' || c == '6' || c == '7' || c == '8') {
-			kbdescarg = c - '0';
-			kbdescstate = 3;
-			return -1;
-		}
-		return -1;	# unknown sequence, discard
-	3 =>
-		if(c == '~') {
-			kbdescstate = 0;
-			if(kbdescarg == 1 || kbdescarg == 7) return 16rFF61;	# home
-			if(kbdescarg == 4 || kbdescarg == 8) return 16rFF57;	# end
-			if(kbdescarg == 5) return 16rFF55;			# pgup
-			if(kbdescarg == 6) return 16rFF56;			# pgdn
-			return -1;
-		}
-		if(c >= '0' && c <= '9') {
-			kbdescarg = kbdescarg * 10 + (c - '0');
-			return -1;
-		}
-		kbdescstate = 0;
-		return -1;
-	}
-	return c;
-}
 
 handlekey(key: int)
 {
@@ -1809,58 +1767,6 @@ checkdirty(): int
 	return 0;
 }
 
-# ---------- Tab expansion ----------
-
-expandtabs(s: string): string
-{
-	result := "";
-	col := 0;
-	for(i := 0; i < len s; i++) {
-		if(s[i] == '\t') {
-			spaces := TABSTOP - (col % TABSTOP);
-			for(j := 0; j < spaces; j++) {
-				result[len result] = ' ';
-				col++;
-			}
-		} else {
-			result[len result] = s[i];
-			col++;
-		}
-	}
-	return result;
-}
-
-unexpandcol(s: string, expcol: int): int
-{
-	col := 0;
-	ecol := 0;
-	for(i := 0; i < len s && ecol < expcol; i++) {
-		if(s[i] == '\t') {
-			spaces := TABSTOP - (col % TABSTOP);
-			ecol += spaces;
-			col += spaces;
-		} else {
-			ecol++;
-			col++;
-		}
-		if(ecol >= expcol)
-			return i + 1;
-	}
-	return len s;
-}
-
-expandedcol(s: string, col: int): int
-{
-	ecol := 0;
-	for(i := 0; i < col && i < len s; i++) {
-		if(s[i] == '\t')
-			ecol += TABSTOP - (ecol % TABSTOP);
-		else
-			ecol++;
-	}
-	return ecol;
-}
-
 # ---------- Drawing ----------
 
 redraw()
@@ -1888,20 +1794,31 @@ redraw()
 
 	y := textr.min.y;
 	vrow := 0;
+	(sl, sc, el, ec) := getsel();
 	for(i := doc.topline; i < doc.nlines && vrow < maxvrows; i++) {
 		lns := string (i + 1);
 		lnw := font.width(lns);
 		screen.text(Point(r.min.x + sw + LNWIDTH - MARGIN - lnw, y), lncolor, Point(0, 0), font, lns);
 
-		expanded := expandtabs(doc.lines[i]);
+		expanded := tabs.expand(doc.lines[i]);
 		start := 0;
 		first := 1;
 		while((start < len expanded || first) && vrow < maxvrows) {
 			first = 0;
-			k := wrapend(expanded, start, textr.dx());
+			k := textwidget->wrapend(font, expanded, start, textr.dx());
 			chunk := expanded[start:k];
-			if(doc.selactive)
-				drawselectionchunk(screen, i, expanded, start, k, textr.min.x, y);
+			if(doc.selactive && i >= sl && i <= el) {
+				selstart_ex := 0;
+				if(i == sl)
+					selstart_ex = tabs.expandedcol(doc.lines[i], sc);
+				selend_ex := len expanded;
+				if(i == el)
+					selend_ex = tabs.expandedcol(doc.lines[i], ec);
+				textwidget->drawselection(screen, font, selcolor,
+					expanded, start, k,
+					selstart_ex, selend_ex,
+					textr.min.x, y, font.height);
+			}
 			screen.text(Point(textr.min.x, y), fgcolor, Point(0, 0), font, chunk);
 			y += font.height;
 			vrow++;
@@ -1952,12 +1869,12 @@ drawcursor(vis: int)
 	# Walk visual rows from topline to find y for curline
 	y := textr.min.y;
 	for(i := doc.topline; i < doc.curline; i++) {
-		expanded := expandtabs(doc.lines[i]);
+		expanded := tabs.expand(doc.lines[i]);
 		start := 0;
 		first := 1;
 		while(start < len expanded || first) {
 			first = 0;
-			k := wrapend(expanded, start, maxw);
+			k := textwidget->wrapend(font, expanded, start, maxw);
 			y += font.height;
 			if(y >= textr.max.y)
 				return;
@@ -1968,13 +1885,13 @@ drawcursor(vis: int)
 		return;
 
 	# Find which wrapped chunk of curline contains the cursor
-	expanded := expandtabs(doc.lines[doc.curline]);
-	ecol := expandedcol(doc.lines[doc.curline], doc.curcol);
+	expanded := tabs.expand(doc.lines[doc.curline]);
+	ecol := tabs.expandedcol(doc.lines[doc.curline], doc.curcol);
 	start := 0;
 	first := 1;
 	while(start < len expanded || first) {
 		first = 0;
-		k := wrapend(expanded, start, maxw);
+		k := textwidget->wrapend(font, expanded, start, maxw);
 		if(ecol >= start && (ecol < k || k >= len expanded)) {
 			x := textr.min.x + font.width(expanded[start:ecol]);
 			col := cursorcolor;
@@ -2054,59 +1971,6 @@ readf(path: string): string
 	while(len s > 0 && s[len s - 1] == '\n')
 		s = s[0:len s - 1];
 	return s;
-}
-
-# ---------- Word wrap helpers ----------
-
-# wrapend returns the end index (exclusive) of the next wrapped visual chunk
-# starting at position start in expanded string, fitting within maxpx pixels.
-wrapend(expanded: string, start, maxpx: int): int
-{
-	if(start >= len expanded)
-		return len expanded;
-	w2 := 0;
-	k := start;
-	while(k < len expanded) {
-		cw := font.width(expanded[k:k+1]);
-		if(w2 + cw > maxpx)
-			break;
-		w2 += cw;
-		k++;
-	}
-	if(k == start)
-		k++;		# guarantee at least one char (very wide char edge case)
-	return k;
-}
-
-# drawselectionchunk draws the selection highlight for one visual chunk [cs,ce)
-# of logical line `line`, where expanded is the tab-expanded line string.
-drawselectionchunk(screen: ref Image, line: int, expanded: string, cs, ce, textx, y: int)
-{
-	(sl, sc, el, ec) := getsel();
-	if(line < sl || line > el)
-		return;
-
-	selstart_ex := 0;
-	if(line == sl)
-		selstart_ex = expandedcol(doc.lines[line], sc);
-	selend_ex := len expanded;
-	if(line == el)
-		selend_ex = expandedcol(doc.lines[line], ec);
-
-	# Clip to this chunk
-	cselstart := selstart_ex;
-	if(cselstart < cs)
-		cselstart = cs;
-	cselend := selend_ex;
-	if(cselend > ce)
-		cselend = ce;
-	if(cselstart >= cselend)
-		return;
-
-	startx := textx + font.width(expanded[cs:cselstart]);
-	endx   := textx + font.width(expanded[cs:cselend]);
-	selr := Rect((startx, y), (endx, y + font.height));
-	screen.draw(selr, selcolor, nil, Point(0, 0));
 }
 
 # ---------- Real-file IPC helpers ----------

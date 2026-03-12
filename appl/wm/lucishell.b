@@ -53,7 +53,7 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar: import widgetmod;
+	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
 
 Lucishell: module
 {
@@ -71,7 +71,7 @@ PROMPTCOL: con int 16r555555FF;	# prompt (slightly dimmer than body text)
 MARGIN: con 4;
 TABSTOP: con 8;
 
-# Key constants (Inferno keyboard codes)
+# Key constants (Inferno keyboard codes — canonical defs in Widget)
 Khome:		con 16rFF61;
 Kend:		con 16rFF57;
 Kup:		con 16rFF52;
@@ -140,8 +140,7 @@ nhist: int;
 histpos: int;
 
 # ANSI escape decode state
-kbdescstate: int;
-kbdescarg: int;
+kbdfilter: ref Kbdfilter;
 
 # Channels
 outputch: chan of string;	# shell output arrives here
@@ -232,6 +231,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		promptcolor = display_g.color(PROMPTCOL);
 	}
 	widgetmod->init(display_g, font);
+	kbdfilter = Kbdfilter.new();
 	scrollbar = Scrollbar.new(Rect((0,0),(0,0)), 1);
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
@@ -260,7 +260,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		if(ctl != nil && ctl[0] == '!')
 			redraw();
 	rawkey := <-w.ctxt.kbd =>
-		key := filterkbd(rawkey);
+		key := kbdfilter.filter(rawkey);
 		if(key >= 0) {
 			cursorvis = 1;
 			handlekey(key);
@@ -552,57 +552,6 @@ sendinput(s: string)
 }
 
 # ---------- Keyboard handling ----------
-
-filterkbd(c: int): int
-{
-	if(c >= 16rFF00)
-		return c;
-	case kbdescstate {
-	0 =>
-		if(c == 27) {
-			kbdescstate = 1;
-			return -1;
-		}
-	1 =>
-		kbdescstate = 0;
-		if(c == '[') {
-			kbdescstate = 2;
-			kbdescarg = 0;
-			return -1;
-		}
-	2 =>
-		kbdescstate = 0;
-		if(c == 'A') return Kup;
-		if(c == 'B') return Kdown;
-		if(c == 'C') return Kright;
-		if(c == 'D') return Kleft;
-		if(c == 'H') return Khome;
-		if(c == 'F') return Kend;
-		if(c == '1' || c == '4' || c == '5' || c == '6'
-		    || c == '7' || c == '8') {
-			kbdescarg = c - '0';
-			kbdescstate = 3;
-			return -1;
-		}
-		return -1;
-	3 =>
-		if(c == '~') {
-			kbdescstate = 0;
-			if(kbdescarg == 1 || kbdescarg == 7) return Khome;
-			if(kbdescarg == 4 || kbdescarg == 8) return Kend;
-			if(kbdescarg == 5) return Kpgup;
-			if(kbdescarg == 6) return Kpgdown;
-			return -1;
-		}
-		if(c >= '0' && c <= '9') {
-			kbdescarg = kbdescarg * 10 + (c - '0');
-			return -1;
-		}
-		kbdescstate = 0;
-		return -1;
-	}
-	return c;
-}
 
 handlekey(key: int)
 {

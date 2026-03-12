@@ -47,12 +47,6 @@ activesb:   ref Scrollbar;	# scrollbar currently being dragged
 dragoffset: int;		# pointer y offset within thumb at grab start
 dragbutton: int;		# which button started the drag (1 or 2)
 
-# ── Key constants ─────────────────────────────────────────────
-
-Kbs:  con 8;
-Kesc: con 27;
-Kdel: con 16rFF9F;
-
 # ── Module functions ──────────────────────────────────────────
 
 init(display: ref Display, font: ref Font)
@@ -101,6 +95,65 @@ statusheight(): int
 	if(wfont == nil)
 		return MARGIN * 2 + 14;	# reasonable fallback
 	return wfont.height + MARGIN * 2;
+}
+
+# ── Kbdfilter ─────────────────────────────────────────────────
+
+Kbdfilter.new(): ref Kbdfilter
+{
+	return ref Kbdfilter(0, 0);
+}
+
+Kbdfilter.filter(kf: self ref Kbdfilter, c: int): int
+{
+	if(c >= 16rFF00)
+		return c;
+	case kf.state {
+	0 =>
+		if(c == 27) {
+			kf.state = 1;
+			return -1;
+		}
+	1 =>
+		kf.state = 0;
+		if(c == '[') {
+			kf.state = 2;
+			kf.arg = 0;
+			return -1;
+		}
+		# bare ESC + char: deliver the char
+	2 =>
+		kf.state = 0;
+		if(c == 'A') return Kup;
+		if(c == 'B') return Kdown;
+		if(c == 'C') return Kright;
+		if(c == 'D') return Kleft;
+		if(c == 'H') return Khome;
+		if(c == 'F') return Kend;
+		if(c == '1' || c == '4' || c == '5' || c == '6'
+		    || c == '7' || c == '8') {
+			kf.arg = c - '0';
+			kf.state = 3;
+			return -1;
+		}
+		return -1;	# unknown sequence, discard
+	3 =>
+		if(c == '~') {
+			kf.state = 0;
+			if(kf.arg == 1 || kf.arg == 7) return Khome;
+			if(kf.arg == 4 || kf.arg == 8) return Kend;
+			if(kf.arg == 5) return Kpgup;
+			if(kf.arg == 6) return Kpgdown;
+			return -1;
+		}
+		if(c >= '0' && c <= '9') {
+			kf.arg = kf.arg * 10 + (c - '0');
+			return -1;
+		}
+		kf.state = 0;
+		return -1;
+	}
+	return c;
 }
 
 # ── Scrollbar ─────────────────────────────────────────────────
