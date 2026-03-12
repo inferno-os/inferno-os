@@ -163,18 +163,18 @@ for lib in lib9 libbio libmp libsec libmath libfreetype libmemdraw libmemlayer l
     if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed" >&2; exit 1; }
     fi
 done
 
 echo ""
 echo "=== Building Limbo Compiler ==="
 cd "$ROOT/limbo"
-"$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: limbo build failed"; exit 1; }
+"$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: limbo build failed" >&2; exit 1; }
 
 # Verify limbo was built
 if [[ ! -x "$ROOT/Linux/amd64/bin/limbo" ]]; then
-    echo "ERROR: limbo compiler not built!"
+    echo "ERROR: limbo compiler not built!" >&2
     exit 1
 fi
 
@@ -186,7 +186,7 @@ for lib in libinterp libkeyring; do
     if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed"; exit 1; }
+        "$ROOT/Linux/amd64/bin/mk" install 2>&1 || { echo "ERROR: $lib build failed" >&2; exit 1; }
     fi
 done
 
@@ -198,7 +198,7 @@ cd "$ROOT/emu/Linux"
 rm -f *.o *.emu emu.root.h emu.root.c emu.root.s 2>/dev/null
 
 # mkfile-g is the headless emulator config, which includes mkfile-$OBJTYPE
-"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed"; exit 1; }
+"$ROOT/Linux/amd64/bin/mk" -f mkfile-g 2>&1 || { echo "ERROR: emulator build failed" >&2; exit 1; }
 
 echo ""
 echo "=== Building Applications (Limbo -> Dis bytecode) ==="

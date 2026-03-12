@@ -816,7 +816,9 @@ malloc_usable_size(void *v)
 void*
 calloc(size_t n, size_t szelem)
 {
-	if(n != 0 && szelem > (size_t)-1 / n)
+	if(n == 0 || szelem == 0)
+		return nil;
+	if(szelem > (size_t)-1 / n)
 		return nil;
 	return malloc(n*szelem);
 }

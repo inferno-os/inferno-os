@@ -23,9 +23,9 @@ PLIST="$HOME/Library/LaunchAgents/com.nervsystems.llm9p.plist"
 PASS=0
 FAIL=0
 
-ok() { echo "PASS: $1"; PASS=$((PASS+1)); }
-fail() { echo "FAIL: $1"; FAIL=$((FAIL+1)); }
-skip() { echo "SKIP: $1"; }
+ok() { local msg="$1"; echo "PASS: $msg"; PASS=$((PASS+1)); return 0; }
+fail() { local msg="$1"; echo "FAIL: $msg"; FAIL=$((FAIL+1)); return 0; }
+skip() { local msg="$1"; echo "SKIP: $msg"; return 0; }
 
 # Test 1: ANTHROPIC_API_KEY must be obtainable
 key="$ANTHROPIC_API_KEY"

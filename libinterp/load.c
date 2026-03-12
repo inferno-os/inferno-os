@@ -407,8 +407,10 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 		kwerrstr(exNomem);
 		goto bad;
 	}
-	while(istream < codeend && *istream++)
-		;
+	while(istream < codeend && *istream != 0)
+		istream++;
+	if(istream < codeend)
+		istream++;
 
 	l = m->ext = (Link*)malloc((lsize+1)*sizeof(Link));
 	if(l == nil){
@@ -423,8 +425,10 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 		if(de != -1)
 			pt = m->type[de];
 		mlink(m, l, istream, v, pc, pt);
-		while(istream < codeend && *istream++)
-			;
+		while(istream < codeend && *istream != 0)
+			istream++;
+		if(istream < codeend)
+			istream++;
 	}
 	l->name = nil;
 

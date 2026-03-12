@@ -4,9 +4,9 @@
 typedef struct mpint mpint;
 #endif
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* AES definitions */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -32,15 +32,15 @@ void	aesCBCencrypt(uchar *p, int len, AESstate *s);
 void	aesCBCdecrypt(uchar *p, int len, AESstate *s);
 void	aesEncryptBlock(AESstate *s, uchar pt[16], uchar ct[16]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* AES-CTR */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	aesCTRencrypt(uchar *p, int len, AESstate *s);
 void	aesCTRdecrypt(uchar *p, int len, AESstate *s);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* AES-GCM */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct AESGCMstate AESGCMstate;
 struct AESGCMstate
 {
@@ -56,9 +56,9 @@ int	aesgcm_encrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 int	aesgcm_decrypt(uchar *dat, ulong ndat, uchar *aad, ulong naad,
 		uchar tag[16], AESGCMstate *s);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* ChaCha20 */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 enum {
 	ChachaBsize = 64,
 	ChachaKeylen = 32
@@ -77,9 +77,9 @@ void	setupChaChastate(ChaChastate*, uchar *key, int keylen, uchar *nonce, int no
 void	chacha_encrypt(uchar *src, int n, ChaChastate *s);
 void	chacha_setctr(ChaChastate *s, u32int ctr);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* Poly1305 */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct Poly1305state Poly1305state;
 struct Poly1305state
 {
@@ -94,30 +94,30 @@ void	setupPoly1305(Poly1305state*, uchar key[32]);
 void	poly1305_update(Poly1305state*, uchar *msg, int len);
 void	poly1305_finish(uchar tag[16], Poly1305state*);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* ChaCha20-Poly1305 AEAD (RFC 8439) */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	ccpoly_encrypt(uchar *dat, int ndat, uchar *aad, int naad,
 		uchar tag[16], uchar key[32], uchar nonce[12]);
 int	ccpoly_decrypt(uchar *dat, int ndat, uchar *aad, int naad,
 		uchar tag[16], uchar key[32], uchar nonce[12]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* X25519 (Curve25519 ECDH, RFC 7748) */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	x25519(uchar out[32], uchar scalar[32], uchar point[32]);
 void	x25519_base(uchar out[32], uchar scalar[32]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* Ed25519 (RFC 8032) raw sign/verify */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	ed25519_raw_sign(uchar sig[64], const uchar seed[32], const uchar *msg, ulong msglen);
 int	ed25519_raw_verify(const uchar sig[64], const uchar pk[32], const uchar *msg, ulong msglen);
 void	ed25519_raw_pubkey(uchar pk[32], const uchar seed[32]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* P-256 (secp256r1) ECDH + ECDSA */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct ECpoint ECpoint;
 struct ECpoint {
 	uchar x[32];
@@ -129,9 +129,9 @@ int	p256_ecdh(uchar shared[32], uchar priv[32], ECpoint *peerpub);
 int	p256_ecdsa_sign(uchar sig[64], uchar priv[32], uchar *hash, int hashlen);
 int	p256_ecdsa_verify(uchar sig[64], ECpoint *pub, uchar *hash, int hashlen);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* P-384 (secp384r1) ECDSA verify only */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct ECpoint384 ECpoint384;
 struct ECpoint384 {
 	uchar x[48];
@@ -140,9 +140,9 @@ struct ECpoint384 {
 
 int	p384_ecdsa_verify(uchar sig[96], ECpoint384 *pub, uchar *hash, int hashlen);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* Blowfish Definitions */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -169,9 +169,9 @@ void	bfCBCdecrypt(uchar*, int, BFstate*);
 void	bfECBencrypt(uchar*, int, BFstate*);
 void	bfECBdecrypt(uchar*, int, BFstate*);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* DES definitions */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -241,9 +241,9 @@ void	idea_key_setup(uchar*, ushort*);
 void	idea_cipher(ushort*, uchar*, int);
 
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* digests */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -301,9 +301,9 @@ MD5state* md5unpickle(char*);
 char* sha1pickle(SHA1state*);
 SHA1state* sha1unpickle(char*);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* SHA-3 / SHAKE (FIPS 202) */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -334,9 +334,9 @@ void	shake256_squeeze(SHA3state *s, uchar *out, ulong outlen);
 void	shake128(const uchar *in, ulong inlen, uchar *out, ulong outlen);
 void	shake256(const uchar *in, ulong inlen, uchar *out, ulong outlen);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* ML-KEM (FIPS 203) Key Encapsulation */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -379,9 +379,9 @@ void	mlkem_poly_compress(int16 r[256], int d);
 void	mlkem_poly_decompress(int16 r[256], int d);
 void	mlkem_poly_tomont(int16 r[256]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* ML-DSA (FIPS 204) Digital Signatures */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -413,9 +413,9 @@ void	mldsa_poly_add(int32 r[256], const int32 a[256], const int32 b[256]);
 void	mldsa_poly_sub(int32 r[256], const int32 a[256], const int32 b[256]);
 void	mldsa_poly_reduce(int32 r[256]);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* SLH-DSA (FIPS 205) Stateless Hash-Based Signatures */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 
 enum
 {
@@ -466,9 +466,9 @@ void	slhdsa_xmss_root_from_sig(uchar*, int, const uchar*, int, const uchar*, con
 void	slhdsa_ht_sign(uchar*, int, const uchar*, const uchar*, int, const uchar*, int, u64int, u32int, int, int);
 int	slhdsa_ht_verify(const uchar*, int, const uchar*, const uchar*, int, const uchar*, u64int, u32int, int, int);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* random number generation */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	genrandom(uchar *buf, int nbytes);
 void	_genrandomqlock(void);
 void	_genrandomqunlock(void);
@@ -476,14 +476,14 @@ void	prng(uchar *buf, int nbytes);
 ulong	fastrand(void);
 ulong	nfastrand(ulong);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* secure memory clearing */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	secureZero(void *buf, ulong nbytes);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* primes */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 void	genprime(mpint *p, int n, int accuracy); /* generate an n bit probable prime */
 void	gensafeprime(mpint *p, mpint *alpha, int n, int accuracy);	/* prime and generator */
 int	getdhparams(int bits, mpint *p, mpint *alpha);	/* get pre-computed RFC 3526 params */
@@ -492,9 +492,9 @@ void	DSAprimes(mpint *q, mpint *p, uchar seed[SHA1dlen]);
 int	probably_prime(mpint *n, int nrep);	/* miller-rabin test */
 int	smallprimetest(mpint *p);		/* returns -1 if not prime, 0 otherwise */
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* rc4 */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct RC4state RC4state;
 struct RC4state
 {
@@ -508,9 +508,9 @@ void	rc4(RC4state*, uchar*, int);
 void	rc4skip(RC4state*, int);
 void	rc4back(RC4state*, int);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* rsa */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct RSApub RSApub;
 typedef struct RSApriv RSApriv;
 typedef struct PEMChain PEMChain;
@@ -562,9 +562,9 @@ uchar*		X509req(RSApriv *priv, char *subj, int *certlen);
 char*		X509verify(uchar *cert, int ncert, RSApub *pk);
 void		X509dump(uchar *cert, int ncert);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* elgamal */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct EGpub EGpub;
 typedef struct EGpriv EGpriv;
 typedef struct EGsig EGsig;
@@ -603,9 +603,9 @@ EGsig*		egsigalloc(void);
 void		egsigfree(EGsig*);
 EGpub*		egprivtopub(EGpriv*);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* dsa */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct DSApub DSApub;
 typedef struct DSApriv DSApriv;
 typedef struct DSAsig DSAsig;
@@ -643,9 +643,9 @@ DSAsig*		dsasigalloc(void);
 void		dsasigfree(DSAsig*);
 DSApub*		dsaprivtopub(DSApriv*);
 
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 /* TLS */
-/*/////////////////////////////////////////////////////// */
+/* ===================================================== */
 typedef struct Thumbprint{
 	struct Thumbprint *next;
 	uchar sha1[SHA1dlen];

@@ -69,7 +69,7 @@ for lib in lib9 libbio libmp libsec libmath libfreetype libmemdraw libmemlayer l
     if [[ -d "$ROOT/$lib" ]]; then
         echo "Building $lib..."
         cd "$ROOT/$lib"
-        mk install || { echo "Error: $lib build failed"; exit 1; }
+        mk install || { echo "Error: $lib build failed" >&2; exit 1; }
     fi
 done
 

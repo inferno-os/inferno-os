@@ -1359,16 +1359,17 @@ checkdigestb(Dstate *s, Block *inb)
 
 	/* requires pullupblock; use constant-time compare to prevent timing oracle */
 	{
-		int i, diff;
-		uchar *a, *b;
+		int diff;
+		const uchar *da;
+		uchar *db;
 
 		if(inb == nil)
 			error("missing digest block");
-		a = digest;
-		b = inb->rp;
+		da = digest;
+		db = inb->rp;
 		diff = 0;
-		for(i = 0; i < s->diglen; i++)
-			diff |= a[i] ^ b[i];
+		for(n = 0; n < s->diglen; n++)
+			diff |= da[n] ^ db[n];
 		if(diff != 0)
 			error("bad digest");
 	}

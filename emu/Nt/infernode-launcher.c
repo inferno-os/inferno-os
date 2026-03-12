@@ -10,8 +10,8 @@
  */
 
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <tlhelp32.h>
+#include <Windows.h>
+#include <TlHelp32.h>
 #include <stdio.h>
 
 static int
@@ -63,23 +63,21 @@ WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 	/* Start llm9p if not already running */
 	_snprintf(path, sizeof(path), "%s\\llm9p.exe", dir);
-	if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) {
-		if (!is_process_running("llm9p.exe")) {
-			char cmd[MAX_PATH + 64];
-			_snprintf(cmd, sizeof(cmd),
-				"\"%s\" -backend cli -addr :5640", path);
+	if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES && !is_process_running("llm9p.exe")) {
+		char cmd[MAX_PATH + 64];
+		_snprintf(cmd, sizeof(cmd),
+			"\"%s\" -backend cli -addr :5640", path);
 
-			memset(&si, 0, sizeof(si));
-			si.cb = sizeof(si);
-			si.dwFlags = STARTF_USESHOWWINDOW;
-			si.wShowWindow = SW_HIDE;
+		memset(&si, 0, sizeof(si));
+		si.cb = sizeof(si);
+		si.dwFlags = STARTF_USESHOWWINDOW;
+		si.wShowWindow = SW_HIDE;
 
-			CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
-				CREATE_NO_WINDOW, NULL, dir, &si, &pi);
-			CloseHandle(pi.hProcess);
-			CloseHandle(pi.hThread);
-			Sleep(1000);
-		}
+		CreateProcessA(NULL, cmd, NULL, NULL, FALSE,
+			CREATE_NO_WINDOW, NULL, dir, &si, &pi);
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+		Sleep(1000);
 	}
 
 	/* Launch InferNode emu with Lucifer GUI */

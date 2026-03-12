@@ -224,8 +224,8 @@ slhdsa_ht_sign(uchar *sig, int n,
 	/* Layers 1 to d-1: each signs the root of the layer below */
 	treeidx = idx_tree;
 	for(i = 1; i < d; i++){
-		leafidx = treeidx & ((1ULL << hprime) - 1);
-		treeidx >>= hprime;
+		leafidx = treeidx & ((1ULL << (unsigned)hprime) - 1);
+		treeidx >>= (unsigned)hprime;
 
 		slhdsa_xmss_sign(sig, n, root, pkseed, seedlen, skseed, skseedlen,
 			i, treeidx, hprime, leafidx);
@@ -269,8 +269,8 @@ slhdsa_ht_verify(const uchar *sig, int n,
 	/* Layers 1 to d-1 */
 	treeidx = idx_tree;
 	for(i = 1; i < d; i++){
-		leafidx = treeidx & ((1ULL << hprime) - 1);
-		treeidx >>= hprime;
+		leafidx = treeidx & ((1ULL << (unsigned)hprime) - 1);
+		treeidx >>= (unsigned)hprime;
 
 		slhdsa_xmss_root_from_sig(node, n, sig, leafidx, node,
 			pkseed, seedlen, i, treeidx, hprime);
@@ -279,12 +279,12 @@ slhdsa_ht_verify(const uchar *sig, int n,
 
 	/* Compare with known root (constant-time) */
 	{
-		int i;
+		int j;
 		uchar diff;
 
 		diff = 0;
-		for(i = 0; i < n; i++)
-			diff |= node[i] ^ pkroot[i];
+		for(j = 0; j < n; j++)
+			diff |= node[j] ^ pkroot[j];
 		return diff == 0;
 	}
 }
