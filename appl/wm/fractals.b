@@ -31,7 +31,7 @@ include "wmclient.m";
 
 include "menu.m";
 	menumod: Menu;
-	Popup: import menumod;
+	Popup, Generator: import menumod;
 
 include "widget.m";
 	widget: Widget;
@@ -48,6 +48,8 @@ display: ref Display;
 font: ref Font;
 colours: array of ref Image;
 sbar: ref Statusbar;
+mainmenu: ref Popup;
+juliamenu: ref Popup;
 
 # Current fractal state (global for Veltro IPC)
 g_specr: Fracrect;
@@ -199,8 +201,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	w.startinput("kbd" :: "ptr" :: nil);
 	w.onscreen(nil);
 
-	if(menumod != nil)
+	if(menumod != nil) {
 		menumod->init(display, font);
+		mainmenu = menumod->newgen(mainmenuitems);
+		juliamenu = menumod->newgen(juliamenuitems);
+	}
 
 	widget = load Widget Widget->PATH;
 	if(widget != nil)
@@ -444,36 +449,42 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	}
 }
 
-showmenu(ptr: ref Draw->Pointer): ref Usercmd
+# Generator for main menu: rebuilds items from current state each time.
+mainmenuitems(): array of string
 {
-	if(menumod == nil)
-		return nil;
 	fillstr := "fill on";
 	if(g_fill)
 		fillstr = "fill off";
-
-	# Build main menu items depending on current mode
-	menuarr: array of string;
-	if(g_morj) {
-		# In Mandelbrot mode: offer Julia submenu
-		menuarr = array[] of {
+	if(g_morj)
+		return array[] of {
 			"zoom out", "depth+", "depth-", fillstr,
 			"julia >", "reset", "exit"
 		};
-	} else {
-		# In Julia mode: offer switch back to Mandelbrot
-		menuarr = array[] of {
-			"zoom out", "depth+", "depth-", fillstr,
-			"mandelbrot", "reset", "exit"
-		};
-	}
+	return array[] of {
+		"zoom out", "depth+", "depth-", fillstr,
+		"mandelbrot", "reset", "exit"
+	};
+}
 
-	menu := menumod->new(menuarr);
-	n := menu.show(w.image, ptr.xy, w.ctxt.ptr);
-	if(n < 0 || n >= len menuarr)
+# Generator for Julia preset submenu.
+juliamenuitems(): array of string
+{
+	items := array[len juliapresets] of string;
+	for(i := 0; i < len juliapresets; i++)
+		items[i] = juliapresets[i].label;
+	return items;
+}
+
+showmenu(ptr: ref Draw->Pointer): ref Usercmd
+{
+	if(mainmenu == nil)
 		return nil;
 
-	sel := menuarr[n];
+	n := mainmenu.show(w.image, ptr.xy, w.ctxt.ptr);
+	if(n < 0 || n >= len mainmenu.items)
+		return nil;
+
+	sel := mainmenu.items[n];
 
 	case sel {
 	"zoom out" =>
@@ -503,14 +514,11 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 
 showjuliamenu(ptr: ref Draw->Pointer): ref Usercmd
 {
-	# Show submenu of Julia preset choices
-	items := array[len juliapresets] of string;
-	for(i := 0; i < len juliapresets; i++)
-		items[i] = juliapresets[i].label;
+	if(juliamenu == nil)
+		return nil;
 
-	sub := menumod->new(items);
-	n := sub.show(w.image, ptr.xy, w.ctxt.ptr);
-	if(n < 0 || n >= len items)
+	n := juliamenu.show(w.image, ptr.xy, w.ctxt.ptr);
+	if(n < 0 || n >= len juliamenu.items)
 		return nil;
 
 	return ref Usercmd.Julia(juliapresets[n].c);

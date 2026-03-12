@@ -15,14 +15,28 @@
 # the menu scrolls, showing a subset of items with
 # up/down scroll indicators.
 #
+# Generator support:
+#   A Popup created with newgen() stores a generator function
+#   that is called at the start of show() to regenerate the items
+#   array.  This is the Limbo-native equivalent of TK's -postcommand:
+#   the menu contents are rebuilt from current application state
+#   each time the menu is posted, without the caller needing to
+#   manually reconstruct the Popup before every show().
+#
 Menu: module
 {
 	PATH:	con "/dis/lib/menu.dis";
+
+	# Generator function type: called before show() to produce
+	# the current item labels.  Receives no arguments; the caller
+	# closes over whatever state it needs.
+	Generator: type ref fn(): array of string;
 
 	# Contextual popup menu.
 	Popup: adt {
 		items:	array of string;
 		lasthit: int;		# previous selection (default highlight)
+		gen:	Generator;	# if non-nil, called at start of show()
 
 		# Draw menu at position `at`, block on `ptr` until button-3 UP.
 		# Returns selected item index (0-based), or -1 if dismissed.
@@ -38,6 +52,11 @@ Menu: module
 	# display and font are the window's display and main UI font.
 	init:	fn(display: ref Draw->Display, font: ref Draw->Font);
 
-	# Allocate a Popup with the given item labels.
+	# Allocate a Popup with static item labels.
 	new:	fn(items: array of string): ref Popup;
+
+	# Allocate a Popup with a generator function.
+	# The generator is called at the start of each show() to
+	# rebuild the items array from current application state.
+	newgen:	fn(gen: Generator): ref Popup;
 };

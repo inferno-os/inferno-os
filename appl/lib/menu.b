@@ -64,6 +64,16 @@ new(items: array of string): ref Popup
 	p.items = array[len items] of string;
 	p.items[0:] = items;
 	p.lasthit = 0;
+	p.gen = nil;
+	return p;
+}
+
+newgen(gen: Generator): ref Popup
+{
+	p := ref Popup;
+	p.items = nil;
+	p.lasthit = 0;
+	p.gen = gen;
 	return p;
 }
 
@@ -129,6 +139,10 @@ drawallitems(win: ref Image, mr: Rect, items: array of string,
 Popup.show(m: self ref Popup, win: ref Image, at: Point,
 	ptr: chan of ref Pointer): int
 {
+	# Generator: rebuild items from current app state before posting.
+	if(m.gen != nil)
+		m.items = (*m.gen)();
+
 	if(mfont == nil || len m.items == 0)
 		return -1;
 
