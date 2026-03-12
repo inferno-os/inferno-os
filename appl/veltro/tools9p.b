@@ -140,7 +140,7 @@ TOOL_PATHS := array[] of {
 	# Vision (local GPU or Anthropic cloud API)
 	("vision",  "/dis/veltro/tools/vision.dis"),
 	("editor", "/dis/veltro/tools/editor.dis"),
-	("lucishell", "/dis/veltro/tools/lucishell.dis"),
+	("shell", "/dis/veltro/tools/shell.dis"),
 	# Fractal viewer control (requires mand running)
 	("fractal", "/dis/veltro/tools/fractal.dis"),
 };

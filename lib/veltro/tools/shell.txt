@@ -1,0 +1,20 @@
+shell - Read-only access to the shell terminal
+
+Usage:
+  read [body]     Read the shell transcript
+  read input      Read the current input line
+  tail [n]        Read the last n lines of transcript (default 30)
+  status          Check if shell is running
+
+NOTE: This tool is READ-ONLY for safety.
+You cannot send commands to the shell.
+Instead, propose commands in Chat for the user to run.
+
+The shell must be running. Use 'launch shell' to start it.
+
+Examples:
+  shell read              Read the full transcript
+  shell tail              Last 30 lines
+  shell tail 50           Last 50 lines
+  shell read input        Current input line
+  shell status            Check shell status

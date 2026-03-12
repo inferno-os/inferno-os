@@ -1,9 +1,9 @@
-implement ToolLucishell;
+implement ToolShell;
 
 #
-# lucishell - Veltro tool for observing the Lucishell terminal
+# shell - Veltro tool for observing the shell terminal
 #
-# Provides read-only access to the Lucishell terminal via its file-based
+# Provides read-only access to the shell terminal via its file-based
 # interface at /tmp/veltro/shell/.  For safety, Veltro can only read the
 # shell transcript and current input line — it cannot send commands.
 # Instead, Veltro should propose commands in Chat for the user to run.
@@ -25,7 +25,7 @@ include "string.m";
 
 include "../tool.m";
 
-ToolLucishell: module {
+ToolShell: module {
 	init: fn(): string;
 	name: fn(): string;
 	doc:  fn(): string;
@@ -47,12 +47,12 @@ init(): string
 
 name(): string
 {
-	return "lucishell";
+	return "shell";
 }
 
 doc(): string
 {
-	return "Lucishell - Read-only access to the Lucishell terminal\n\n" +
+	return "Shell - Read-only access to the shell terminal\n\n" +
 		"Commands:\n" +
 		"  read [body]     Read the full shell transcript\n" +
 		"  read input      Read the current input line\n" +
@@ -62,13 +62,13 @@ doc(): string
 		"You cannot send commands to the shell.\n" +
 		"Instead, propose commands in Chat for the user to run.\n\n" +
 		"The shell must be running for commands to work.\n" +
-		"Use 'launch lucishell' to start it.\n\n" +
+		"Use 'launch shell' to start it.\n\n" +
 		"Examples:\n" +
-		"  lucishell read              Read transcript\n" +
-		"  lucishell tail              Last 30 lines\n" +
-		"  lucishell tail 50           Last 50 lines\n" +
-		"  lucishell read input        Current input line\n" +
-		"  lucishell status            Check shell status\n";
+		"  shell read              Read transcript\n" +
+		"  shell tail              Last 30 lines\n" +
+		"  shell tail 50           Last 50 lines\n" +
+		"  shell read input        Current input line\n" +
+		"  shell status            Check shell status\n";
 }
 
 exec(args: string): string
@@ -162,7 +162,7 @@ dostatus(): string
 {
 	body := readfile(sys->sprint("%s/body", SHELL_ROOT));
 	if(len body >= 6 && body[0:6] == "error:")
-		return "shell is not running (lucishell not started)";
+		return "shell is not running (not started)";
 	# Count lines
 	count := 1;
 	for(i := 0; i < len body; i++)
@@ -178,7 +178,7 @@ readfile(path: string): string
 {
 	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil)
-		return sys->sprint("error: cannot open %s: %r (is lucishell running?)", path);
+		return sys->sprint("error: cannot open %s: %r (is shell running?)", path);
 
 	result := "";
 	buf := array[8192] of byte;

@@ -60,7 +60,7 @@ SECTION 4: Launching Apps
     Apps I can launch:
       clock      — analog clock
       edit       — text editor
-      lucishell  — shell terminal
+      shell      — shell terminal
       mand       — Mandelbrot fractal viewer
       xenith     — full Xenith text environment
       bounce, coffee, colors, lens, view — demos
@@ -188,7 +188,7 @@ SECTION 14: Where to Go from Here
 
     **Launch apps:**
       launch edit          — text editor
-      launch lucishell    — shell terminal
+      launch shell        — shell terminal
       launch mand         — fractal viewer
       launch xenith       — Xenith text environment
 
