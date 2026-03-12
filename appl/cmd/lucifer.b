@@ -1189,7 +1189,7 @@ checklaunchapp(id: string)
 	dispath := readfile(base + "/dispath");
 	if(dispath != nil) dispath = strip(dispath);
 	if(dispath == "") return;
-	# Read data field for app arguments (e.g., file path for luciedit)
+	# Read data field for app arguments (e.g., file path for edit)
 	appdata := readfile(base + "/data");
 	if(appdata != nil) appdata = strip(appdata);
 	launchapp(id, dispath, appdata);

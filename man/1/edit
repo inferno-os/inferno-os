@@ -1,0 +1,169 @@
+.TH EDIT 1
+.SH NAME
+edit \- text editor with 9P interface
+.SH SYNOPSIS
+.B wm/edit
+.RI [ file ]
+.SH DESCRIPTION
+.I Edit
+is a Draw-based text editor for Inferno that runs under the
+.IR wm (1)
+window manager or any window manager providing a
+.IR draw (3)
+context.
+It provides keyboard and mouse editing with undo, find, goto line,
+selection, cut/copy/paste, and a scrollbar.
+.PP
+.I Edit
+also serves a 9P filesystem interface for programmatic access by
+Veltro agents and other tools.
+The filesystem is mounted at
+.B /mnt/edit
+and bound to
+.BR /edit/ .
+.PP
+If a
+.I file
+argument is given,
+.I edit
+opens it on startup.
+.SS Keyboard
+.TP
+.B Type
+Insert text at the cursor.
+.TP
+.B Backspace
+Delete character before cursor, or join with previous line.
+.TP
+.B Delete
+Delete character at cursor, or join with next line.
+.TP
+.B Enter
+Split line at cursor.
+.TP
+.B Tab
+Insert tab character.
+.TP
+.B Arrow keys
+Move cursor up, down, left, right.
+.TP
+.B Home / End
+Move to start or end of line.
+.TP
+.B Page Up / Page Down
+Scroll by screenful.
+.TP
+.B Ctrl-A
+Select all.
+.TP
+.B Ctrl-C
+Copy selection.
+.TP
+.B Ctrl-F
+Find (prompts in status bar).
+.TP
+.B Ctrl-G
+Find next occurrence.
+.TP
+.B Ctrl-Q
+Quit (saves if dirty and file has a path).
+.TP
+.B Ctrl-S
+Save.
+.TP
+.B Ctrl-V
+Paste.
+.TP
+.B Ctrl-X
+Cut selection.
+.TP
+.B Ctrl-Z
+Undo last edit.
+.TP
+.B Escape
+Cancel selection or dismiss find/goto prompt.
+.SS Mouse
+.TP
+.B Button 1
+Place cursor or drag to select text.
+.TP
+.B Button 2
+Paste from snarf buffer.
+.TP
+.B Button 3
+Context menu: undo, save, find, goto line, select all,
+cut, copy, paste, exit.
+.TP
+.B Scroll wheel
+Scroll document up or down.
+.SS Features
+.PP
+Long lines wrap visually at the window edge.
+Tab characters are displayed as 4 spaces.
+Line numbers are shown in the left gutter.
+The status bar shows the file path, modification state,
+and current line/column position.
+.PP
+The editor supports theming via
+.IR lucitheme (2).
+If a theme module is available, colours are loaded from it;
+otherwise built-in defaults are used.
+.SS 9P Filesystem
+The filesystem layout uses per-document directories:
+.PP
+.EX
+/edit/
+    ctl          Global control (open, new, quit)
+    index        List open documents
+    1/           Per-document directory
+        body     Read/write document text
+        ctl      Document control (save, goto, find, etc.)
+        event    Blocking read for editor events
+        addr     Cursor position (line col)
+.EE
+.PP
+Writing to
+.B /edit/ctl
+supports commands:
+.BR open " path,"
+.BR new ","
+.BR quit "."
+.PP
+Writing to
+.B /edit/1/ctl
+supports commands:
+.BR save ","
+.BR "goto N" ","
+.BR "find text" ","
+.BR "name path" ","
+.BR clean ","
+.BR dirty ","
+.BR "insert line col text" ","
+.BR "delete sl sc el ec" "."
+.PP
+A real-file IPC interface at
+.B /tmp/veltro/edit/
+is also maintained for cross-namespace access by the Veltro
+.I editor
+tool.
+.SH FILES
+.TP
+.B /dis/wm/edit.dis
+Compiled editor.
+.TP
+.B /mnt/edit
+9P mount point.
+.TP
+.B /edit/
+Bind point for 9P filesystem.
+.TP
+.B /tmp/veltro/edit/
+Real-file IPC directory.
+.SH SOURCE
+.B /appl/wm/edit.b
+.SH SEE ALSO
+.IR wm (1),
+.IR acme (1),
+.IR draw (3),
+.IR wmclient (2),
+.IR lucitheme (2)

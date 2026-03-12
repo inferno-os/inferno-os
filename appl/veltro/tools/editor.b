@@ -1,9 +1,9 @@
-implement ToolLuciedit;
+implement ToolEditor;
 
 #
-# luciedit - Veltro tool for controlling the Luciedit text editor
+# editor - Veltro tool for controlling the Edit text editor
 #
-# Provides AI control over the Luciedit editor via its 9P filesystem
+# Provides AI control over the Edit editor via its 9P filesystem
 # interface at /edit/. Supports reading/writing document body, cursor
 # positioning, search, and file operations.
 #
@@ -33,7 +33,7 @@ include "string.m";
 
 include "../tool.m";
 
-ToolLuciedit: module {
+ToolEditor: module {
 	init: fn(): string;
 	name: fn(): string;
 	doc:  fn(): string;
@@ -55,12 +55,12 @@ init(): string
 
 name(): string
 {
-	return "luciedit";
+	return "editor";
 }
 
 doc(): string
 {
-	return "Luciedit - AI control for the Luciedit text editor\n\n" +
+	return "Editor - AI control for the Edit text editor\n\n" +
 		"Commands:\n" +
 		"  read [body]              Read document body text\n" +
 		"  read addr                Read cursor position (line col)\n" +
@@ -77,15 +77,15 @@ doc(): string
 		"  close                    Close editor (quit)\n" +
 		"  status                   Show document info\n\n" +
 		"The editor must be running for commands to work.\n" +
-		"Use 'launch luciedit' to start it, or 'open <path>'\n" +
+		"Use 'launch edit' to start it, or 'open <path>'\n" +
 		"which sends the open command to an already-running editor.\n\n" +
 		"Examples:\n" +
-		"  luciedit open /usr/me/file.b    Open a file\n" +
-		"  luciedit read                   Read the document\n" +
-		"  luciedit write Hello world      Replace body\n" +
-		"  luciedit goto 42                Jump to line 42\n" +
-		"  luciedit find TODO              Search for TODO\n" +
-		"  luciedit save                   Save to disk\n";
+		"  editor open /usr/me/file.b    Open a file\n" +
+		"  editor read                   Read the document\n" +
+		"  editor write Hello world      Replace body\n" +
+		"  editor goto 42                Jump to line 42\n" +
+		"  editor find TODO              Search for TODO\n" +
+		"  editor save                   Save to disk\n";
 }
 
 exec(args: string): string
@@ -151,7 +151,7 @@ dowrite(text: string): string
 {
 	if(text == "")
 		return "error: usage: write <text>";
-	# Write to body.in — luciedit polls this and replaces its buffer
+	# Write to body.in — edit polls this and replaces its buffer
 	return writefile(sys->sprint("%s/1/body.in", EDIT_ROOT), text);
 }
 
@@ -238,7 +238,7 @@ readfile(path: string): string
 {
 	fd := sys->open(path, Sys->OREAD);
 	if(fd == nil)
-		return sys->sprint("error: cannot open %s: %r (is luciedit running?)", path);
+		return sys->sprint("error: cannot open %s: %r (is edit running?)", path);
 
 	result := "";
 	buf := array[8192] of byte;
@@ -257,7 +257,7 @@ writefile(path, data: string): string
 	# Use create to handle both new files (ctl, body.in) and existing ones
 	fd := sys->create(path, Sys->OWRITE, 8r666);
 	if(fd == nil)
-		return sys->sprint("error: cannot create %s: %r (is luciedit running?)", path);
+		return sys->sprint("error: cannot create %s: %r (is edit running?)", path);
 
 	b := array of byte data;
 	n := sys->write(fd, b, len b);

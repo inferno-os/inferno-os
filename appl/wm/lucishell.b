@@ -61,7 +61,7 @@ Lucishell: module
 };
 
 # Colors (fallback defaults; overridden by theme at runtime)
-# Same palette as luciedit — no "terminal green" affectation.
+# Same palette as edit — no "terminal green" affectation.
 BG:	con int 16rFFFDF6FF;		# warm off-white background
 FG:	con int 16r333333FF;		# dark text
 CURSORCOL: con int 16r2266CCFF;	# blue cursor
