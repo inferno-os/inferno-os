@@ -230,6 +230,8 @@ enum
 /* FP <-> Int Conversion */
 #define SCVTF_DX(Fd, Rn)	*code++ = (0x9E620000 | ((Rn)<<5) | (Fd))  /* int64->double */
 #define FCVTZS_XD(Rd, Fn)	*code++ = (0x9E780000 | ((Fn)<<5) | (Rd))  /* double->int64 */
+#define FMOV_D_HALF(Fd)	*code++ = (0x1E6C1000 | (Fd))              /* FMOV Dd, #0.5 */
+#define FCMP_D_ZERO(Fn)	*code++ = (0x1E602008 | ((Fn)<<5))          /* FCMP Dn, #0.0 */
 
 /* Branch */
 #define B_IMM(imm26)		*code++ = (0x14000000 | ((imm26) & 0x3FFFFFF))
@@ -1756,22 +1758,52 @@ comp(Inst *i)
 		SCVTF_DX(FA0, RA0);
 		opflst(i, Stw, FA0);
 		break;
-	case ICVTFW:
+	case ICVTFW: {
+		/* Match interpreter: W(d) = f < 0 ? f - 0.5 : f + 0.5 */
+		u32int *brpatch;
 		opflld(i, Ldw, FA0);
+		FMOV_D_HALF(FA1);           /* FA1 = 0.5 */
+		FCMP_D_ZERO(FA0);           /* compare FA0 with 0.0 */
+		brpatch = code;
+		BCOND(GE, 0);               /* if FA0 >= 0.0, skip to add */
+		FSUB_D(FA0, FA0, FA1);      /* FA0 = FA0 - 0.5 (negative) */
+		{
+			u32int *brskip = code;
+			B_IMM(0);
+			PATCH_BCOND(brpatch);   /* patch: GE lands here */
+			FADD_D(FA0, FA0, FA1);  /* FA0 = FA0 + 0.5 (positive) */
+			PATCH_B(brskip);
+		}
 		FCVTZS_XD(RA0, FA0);
 		SXTW(RA0, RA0);
 		opwst(i, Stw, RA0);
 		break;
+	}
 	case ICVTLF:
 		opwld(i, Ldw, RA0);
 		SCVTF_DX(FA0, RA0);
 		opflst(i, Stw, FA0);
 		break;
-	case ICVTFL:
+	case ICVTFL: {
+		/* Match interpreter: V(d) = f < 0 ? f - 0.5 : f + 0.5 */
+		u32int *brpatch;
 		opflld(i, Ldw, FA0);
+		FMOV_D_HALF(FA1);           /* FA1 = 0.5 */
+		FCMP_D_ZERO(FA0);           /* compare FA0 with 0.0 */
+		brpatch = code;
+		BCOND(GE, 0);               /* if FA0 >= 0.0, skip to add */
+		FSUB_D(FA0, FA0, FA1);      /* FA0 = FA0 - 0.5 (negative) */
+		{
+			u32int *brskip = code;
+			B_IMM(0);
+			PATCH_BCOND(brpatch);   /* patch: GE lands here */
+			FADD_D(FA0, FA0, FA1);  /* FA0 = FA0 + 0.5 (positive) */
+			PATCH_B(brskip);
+		}
 		FCVTZS_XD(RA0, FA0);
 		opwst(i, Stw, RA0);
 		break;
+	}
 
 	/* ---- Branches (word) ---- */
 	case IBEQW:	cbra(i, EQ);	break;
@@ -2505,8 +2537,9 @@ typecom(Type *t)
 		return;
 	pthread_jit_write_protect_np(0);
 #else
-	start = mallocz(sz, 0);
-	if(start == nil)
+	start = mmap(0, sz, PROT_READ|PROT_WRITE|PROT_EXEC,
+			MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+	if(start == MAP_FAILED)
 		return;
 #endif
 
