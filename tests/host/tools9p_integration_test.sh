@@ -43,7 +43,7 @@ info()  { local msg="$1"; [[ "$VERBOSE" -eq 1 ]] && echo "  $msg" || true; }
 echo -e "${BOLD}tools9p 9P protocol tests${NC}"
 echo ""
 
-[[ -x "$EMU" ]] || { echo "ERROR: emu not found at $EMU"; exit 1; }
+[[ -x "$EMU" ]] || { echo "ERROR: emu not found at $EMU" >&2; exit 1; }
 [[ -f "$ROOT/dis/veltro/tools9p.dis" ]] || {
     skip "tools9p.dis not found (run: cd appl/cmd && mk install)";
     echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"; exit 0; }

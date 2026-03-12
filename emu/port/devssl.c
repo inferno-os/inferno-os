@@ -1361,7 +1361,7 @@ checkdigestb(Dstate *s, Block *inb)
 	{
 		int diff;
 		const uchar *da;
-		uchar *db;
+		const uchar *db;
 
 		if(inb == nil)
 			error("missing digest block");

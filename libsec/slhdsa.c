@@ -83,7 +83,7 @@ extern int  slhdsa_wots_len(int);
  */
 static void
 split_digest(const uchar *digest, int digestlen,
-	int k, int a, int h, int hprime, int d,
+	int k, int a, int h, int hprime,
 	u64int *idx_tree, u32int *idx_leaf)
 {
 	int md_bits, tree_bits, leaf_bits;
@@ -210,7 +210,7 @@ slhdsa_sign_internal(uchar *sig, const uchar *msg, ulong msglen,
 	slhdsa_H_msg(digest, digestlen, R, n, pkseed, n, pkroot, n, msg, msglen);
 
 	/* Extract tree and leaf indices */
-	split_digest(digest, digestlen, k, a, h, hprime, d, &idx_tree, &idx_leaf);
+	split_digest(digest, digestlen, k, a, h, hprime, &idx_tree, &idx_leaf);
 
 	/* FORS signature */
 	slhdsa_adrs_init(adrs);
@@ -283,7 +283,7 @@ slhdsa_verify_internal(const uchar *sig, ulong siglen,
 	slhdsa_H_msg(digest, digestlen, R, n, pkseed, n, pkroot, n, msg, msglen);
 
 	/* Extract tree and leaf indices */
-	split_digest(digest, digestlen, k, a, h, hprime, d, &idx_tree, &idx_leaf);
+	split_digest(digest, digestlen, k, a, h, hprime, &idx_tree, &idx_leaf);
 
 	/* Compute FORS public key from signature */
 	slhdsa_adrs_init(adrs);

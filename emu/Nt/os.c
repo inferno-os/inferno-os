@@ -286,8 +286,8 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 
 #ifdef _AMD64_
 	if(code == EXCEPTION_ACCESS_VIOLATION) {
-		ULONG_PTR *info = ureg->ExceptionRecord->ExceptionInformation;
-		CONTEXT *ctx = ureg->ContextRecord;
+		const ULONG_PTR *info = ureg->ExceptionRecord->ExceptionInformation;
+		const CONTEXT *ctx = ureg->ContextRecord;
 		const char *vtype;
 		if(info[0] == 0)
 			vtype = "read";
@@ -306,7 +306,7 @@ TrapHandler(LPEXCEPTION_POINTERS ureg)
 			(void*)ctx->Rsp, (void*)ctx->Rbp, (void*)ctx->Rsi, (void*)ctx->Rdi);
 		/* Dump top of x86 stack to trace call chain */
 		{
-			ULONG_PTR *sp = (ULONG_PTR*)ctx->Rsp;
+			const ULONG_PTR *sp = (const ULONG_PTR*)ctx->Rsp;
 			int j;
 			print("  Stack:");
 			for(j = 0; j < 12; j++)

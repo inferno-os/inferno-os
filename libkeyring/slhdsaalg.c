@@ -368,7 +368,7 @@ slhdsa_sk2str(void *vk, char *buf, int len)
 {
 	SLHDSApriv *k = (SLHDSApriv*)vk;
 	char *cp = buf;
-	char *ep = buf + len - 1;
+	const char *ep = buf + len - 1;
 
 	cp += bytes2base64(k->sk, k->sklen, cp, ep - cp);
 	cp += bytes2base64(k->pk, k->pklen, cp, ep - cp);
@@ -382,7 +382,7 @@ slhdsa_pk2str(void *vk, char *buf, int len)
 {
 	SLHDSApub *k = (SLHDSApub*)vk;
 	char *cp = buf;
-	char *ep = buf + len - 1;
+	const char *ep = buf + len - 1;
 
 	cp += bytes2base64(k->key, k->keylen, cp, ep - cp);
 	*cp = 0;
@@ -395,7 +395,7 @@ slhdsa_sig2str(void *vs, char *buf, int len)
 {
 	SLHDSAsig *s = (SLHDSAsig*)vs;
 	char *cp = buf;
-	char *ep = buf + len - 1;
+	const char *ep = buf + len - 1;
 
 	cp += bytes2base64(s->sig, s->siglen, cp, ep - cp);
 	*cp = 0;
