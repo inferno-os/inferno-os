@@ -31,11 +31,11 @@
 #define word1(x) ((FPdbleword*)&x)->lo
 #else
 #ifdef __LITTLE_ENDIAN
-#define word0(x) ((unsigned  long *)&x)[1]
-#define word1(x) ((unsigned  long *)&x)[0]
+#define word0(x) ((unsigned int *)&x)[1]
+#define word1(x) ((unsigned int *)&x)[0]
 #else
-#define word0(x) ((unsigned  long *)&x)[0]
-#define word1(x) ((unsigned  long *)&x)[1]
+#define word0(x) ((unsigned int *)&x)[0]
+#define word1(x) ((unsigned int *)&x)[1]
 #endif
 #endif
 
@@ -84,7 +84,7 @@ struct
 Bigint {
 	struct Bigint *next;
 	int	k, maxwds, sign, wds;
-	unsigned  long x[1];
+	unsigned int x[1];
 };
 
 typedef struct Bigint Bigint;
@@ -102,7 +102,7 @@ Balloc(int k)
 		freelist[k] = rv->next;
 	} else {
 		x = 1 << k;
-		rv = (Bigint * )malloc(sizeof(Bigint) + (x - 1) * sizeof(unsigned  long));
+		rv = (Bigint * )malloc(sizeof(Bigint) + (x - 1) * sizeof(unsigned int));
 		if(rv == nil)
 			return nil;
 		rv->k = k;
@@ -125,14 +125,14 @@ Bfree(Bigint *v)
 }
 
 #define Bcopy(x,y) memcpy((char *)&x->sign, (char *)&y->sign, \
-y->wds*sizeof(long) + 2*sizeof(int))
+y->wds*sizeof(int) + 2*sizeof(int))
 
 static Bigint *
 multadd(Bigint *b, int m, int a)	/* multiply by m and add a */
 {
 	int	i, wds;
-	unsigned  long * x, y;
-	unsigned  long xi, z;
+	unsigned int * x, y;
+	unsigned int xi, z;
 	Bigint * b1;
 
 	wds = b->wds;
@@ -159,7 +159,7 @@ multadd(Bigint *b, int m, int a)	/* multiply by m and add a */
 }
 
 static Bigint *
-s2b(const char *s, int nd0, int nd, unsigned  long y9)
+s2b(const char *s, int nd0, int nd, unsigned int y9)
 {
 	Bigint * b;
 	int	i, k;
@@ -187,7 +187,7 @@ s2b(const char *s, int nd0, int nd, unsigned  long y9)
 }
 
 static int	
-hi0bits(register unsigned  long x)
+hi0bits(register unsigned int x)
 {
 	register int	k = 0;
 
@@ -216,10 +216,10 @@ hi0bits(register unsigned  long x)
 }
 
 static int	
-lo0bits(unsigned  long *y)
+lo0bits(unsigned int *y)
 {
 	register int	k;
-	register unsigned  long x = *y;
+	register unsigned int x = *y;
 
 	if (x & 7) {
 		if (x & 1)
@@ -274,9 +274,9 @@ mult(Bigint *a, Bigint *b)
 {
 	Bigint * c;
 	int	k, wa, wb, wc;
-	unsigned  long carry, y, z;
-	unsigned  long * x, *xa, *xae, *xb, *xbe, *xc, *xc0;
-	unsigned  long z2;
+	unsigned int carry, y, z;
+	unsigned int * x, *xa, *xae, *xb, *xbe, *xc, *xc0;
+	unsigned int z2;
 
 	if (a->wds < b->wds) {
 		c = a;
@@ -382,7 +382,7 @@ lshift(Bigint *b, int k)
 {
 	int	i, k1, n, n1;
 	Bigint * b1;
-	unsigned  long * x, *x1, *xe, z;
+	unsigned int * x, *x1, *xe, z;
 
 	n = k >> 5;
 	k1 = b->k;
@@ -416,7 +416,7 @@ lshift(Bigint *b, int k)
 static int	
 cmp(Bigint *a, Bigint *b)
 {
-	unsigned  long * xa, *xa0, *xb, *xb0;
+	unsigned int * xa, *xa0, *xb, *xb0;
 	int	i, j;
 
 	i = a->wds;
@@ -441,9 +441,9 @@ diff(Bigint *a, Bigint *b)
 {
 	Bigint * c;
 	int	i, wa, wb;
-	long borrow, y;	/* We need signed shifts here. */
-	unsigned  long * xa, *xae, *xb, *xbe, *xc;
-	long z;
+	int borrow, y;	/* We need signed shifts here. */
+	unsigned int * xa, *xae, *xb, *xbe, *xc;
+	int z;
 
 	i = cmp(a, b);
 	if (!i) {
@@ -524,7 +524,7 @@ ulp(double x)
 static double	
 b2d(Bigint *a, int *e)
 {
-	unsigned  long * xa, *xa0, w, y, z;
+	unsigned int * xa, *xa0, w, y, z;
 	int	k;
 	double	d;
 #define d0 word0(d)
@@ -561,7 +561,7 @@ d2b(double d, int *e, int *bits)
 {
 	Bigint * b;
 	int	de, i, k;
-	unsigned  long * x, y, z;
+	unsigned int * x, y, z;
 #define d0 word0(d)
 #define d1 word1(d)
 
@@ -675,7 +675,7 @@ strtod(const char *s00, char **se)
 	const char * s, *s0, *s1;
 	double	aadj, aadj1, adj, rv, rv0;
 	long L;
-	unsigned  long y, z;
+	unsigned int y, z;
 	Bigint * bb, *bb1, *bd, *bd0, *bs, *delta;
 	sign = nz0 = nz = 0;
 	rv = 0.;
@@ -1159,11 +1159,11 @@ static int
 quorem(Bigint *b, Bigint *S)
 {
 	int	n;
-	long borrow, y;
-	unsigned  long carry, q, ys;
-	unsigned  long * bx, *bxe, *sx, *sxe;
-	long z;
-	unsigned  long si, zs;
+	int borrow, y;
+	unsigned int carry, q, ys;
+	unsigned int * bx, *bxe, *sx, *sxe;
+	int z;
+	unsigned int si, zs;
 
 	n = S->wds;
 	if (b->wds < n)
@@ -1231,9 +1231,9 @@ rv_alloc(int i)
 {
 	int	j, k, *r;
 
-	j = sizeof(unsigned  long);
+	j = sizeof(unsigned int);
 	for (k = 0; 
-	    sizeof(Bigint) - sizeof(unsigned  long) - sizeof(int) + j <= i; 
+	    sizeof(Bigint) - sizeof(unsigned int) - sizeof(int) + j <= i; 
 	    j <<= 1)
 		k++;
 	r = (int * )Balloc(k);
@@ -1346,7 +1346,7 @@ dtoa(double d, int mode, int ndigits, int *decpt, int *sign, char **rve)
 	long L;
 #ifndef Sudden_Underflow
 	int	denorm;
-	unsigned  long x;
+	unsigned int x;
 #endif
 	Bigint * b, *b1, *delta, *mlo, *mhi, *S;
 	double	d2, ds, eps;
