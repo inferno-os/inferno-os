@@ -67,11 +67,11 @@ doc(): string
 		"  Right-click inside Charon for back/fwd/stop/start menu.\n" +
 		"  Do NOT use exec or shell commands to control Charon.\n\n" +
 		"Confirmed working (draw-based, /dis/wm/):\n" +
-		"  charon, clock, bounce, coffee, colors, date, view, rt, lens, luciedit, lucishell, mand\n\n" +
+		"  charon, clock, bounce, coffee, colors, date, edit, view, rt, lens, lucishell, mand\n\n" +
 		"Also available (full environments, /dis/):\n" +
 		"  xenith                — Xenith text environment (Acme-like)\n\n" +
 		"Not available (require Tk, which is not built in):\n" +
-		"  task, edit, about, tetris, sh, ftree, deb\n\n" +
+		"  task, about, tetris, sh, ftree, deb\n\n" +
 		"Returns 'launched <name> in presentation zone' on success.";
 }
 

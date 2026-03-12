@@ -8,7 +8,7 @@ TARG=\
 	clock.dis\
 	colors.dis\
 	lens.dis\
-	luciedit.dis\
+	edit.dis\
 	mand.dis\
 	lucishell.dis\
 	view.dis\

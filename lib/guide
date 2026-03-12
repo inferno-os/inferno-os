@@ -151,7 +151,7 @@ Lucifer (GUI)
 
 # Launch apps in the presentation zone (via Veltro):
 #   launch clock       — analog clock
-#   launch luciedit    — text editor
+#   launch edit        — text editor
 #   launch lucishell   — shell terminal
 #   launch mand        — Mandelbrot fractal viewer
 #   launch xenith      — Xenith text environment
@@ -177,7 +177,7 @@ Veltro (AI Agent)
 /dis/veltro/tools9p read list find search spawn edit write xenith say; /dis/veltro/repl -v
 
 # All tools including exec, speech, GUI, and more
-/dis/veltro/tools9p read list find search write edit exec spawn xenith say hear ask diff json http git memory todo websearch grep mail launch present fractal luciedit lucishell gap vision; /dis/veltro/repl -v
+/dis/veltro/tools9p read list find search write edit exec spawn xenith say hear ask diff json http git memory todo websearch grep mail launch present fractal editor lucishell gap vision; /dis/veltro/repl -v
 
 # Security: tools9p chooses what's available.
 # Capability flows from caller to callee, never the reverse.
@@ -231,12 +231,12 @@ xenith write N body   write to window N body
 present create id     create artifact (markdown, text, table, code)
 present write id text write content to artifact
 present center id     focus an artifact
-launch appname        launch app (clock, luciedit, lucishell, mand, xenith)
+launch appname        launch app (clock, edit, lucishell, mand, xenith)
 
 # Editor and shell
-luciedit open path    open file in editor
-luciedit read         read editor content
-luciedit write text   write to editor
+editor open path      open file in editor
+editor read           read editor content
+editor write text     write to editor
 lucishell read        read shell transcript
 lucishell tail N      last N lines of shell
 

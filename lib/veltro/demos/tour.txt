@@ -59,7 +59,7 @@ SECTION 4: Launching Apps
   - present write tour:
     Apps I can launch:
       clock      — analog clock
-      luciedit   — text editor
+      edit       — text editor
       lucishell  — shell terminal
       mand       — Mandelbrot fractal viewer
       xenith     — full Xenith text environment
@@ -81,13 +81,13 @@ SECTION 5: The Fractal Viewer
     (If they want deeper: fractal center -0.75 0.1 0.005)
 
 SECTION 6: The Text Editor
-  - say: let me show you luciedit — the built-in text editor
-  - launch luciedit
-  - luciedit write "Hello from Veltro.\n\nThis is luciedit — a text editor
+  - say: let me show you the built-in text editor
+  - launch edit
+  - editor write "Hello from Veltro.\n\nThis is the Edit text editor
     in the presentation zone.\nI can open files, navigate, and edit
     alongside you."
   - say: I can open files, jump to lines, search, and edit — all through
-    the luciedit tool
+    the editor tool
   - ask to continue
 
 SECTION 7: Finding and Reading Files
@@ -187,7 +187,7 @@ SECTION 14: Where to Go from Here
     **Talk to me** — just type in the conversation zone.
 
     **Launch apps:**
-      launch luciedit     — text editor
+      launch edit          — text editor
       launch lucishell    — shell terminal
       launch mand         — fractal viewer
       launch xenith       — Xenith text environment

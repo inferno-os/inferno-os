@@ -1,4 +1,4 @@
-luciedit - AI control for the Luciedit text editor
+editor - AI control for the Edit text editor
 
 Usage:
   read [body]              Read document body text
@@ -16,15 +16,15 @@ Usage:
   close                    Close editor
   status                   Show document info (id, path, dirty)
 
-The editor must be running. Use 'launch luciedit' to start it.
+The editor must be running. Use 'launch edit' to start it.
 
 Examples:
-  luciedit open /usr/me/file.b    Open a file
-  luciedit read                   Read the document body
-  luciedit write Hello world      Replace body with text
-  luciedit goto 42                Jump to line 42
-  luciedit find TODO              Search for TODO
-  luciedit save                   Save to disk
-  luciedit addr                   Show cursor position
-  luciedit insert 5 1 new line    Insert at line 5 col 1
-  luciedit status                 Show doc info
+  editor open /usr/me/file.b    Open a file
+  editor read                   Read the document body
+  editor write Hello world      Replace body with text
+  editor goto 42                Jump to line 42
+  editor find TODO              Search for TODO
+  editor save                   Save to disk
+  editor addr                   Show cursor position
+  editor insert 5 1 new line    Insert at line 5 col 1
+  editor status                 Show doc info

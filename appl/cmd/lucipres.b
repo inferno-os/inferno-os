@@ -953,9 +953,9 @@ deleteartifactui(id: string)
 			"delete id=" + id);
 }
 
-# Export text content: write to /tmp/ file, then open in luciedit.
+# Export text content: write to /tmp/ file, then open in edit.
 # For mermaid this exports the source; for text/code/md/table the content.
-# Creates a presentation app artifact to launch luciedit in the pres zone.
+# Creates a presentation app artifact to launch edit in the pres zone.
 # Falls back to snarf if file creation fails.
 exportartifact(art: ref Artifact)
 {
@@ -986,7 +986,7 @@ exportartifact(art: ref Artifact)
 
 	sys->fprint(stderr, "lucipres: exported to %s\n", path);
 
-	# Launch luciedit as a presentation zone app
+	# Launch edit as a presentation zone app
 	launchexport(fname + ext, path);
 }
 
@@ -1044,8 +1044,8 @@ safename(s: string): string
 	return r;
 }
 
-# Launch luciedit as a presentation zone app to edit an exported file.
-# Creates an artifact of type=app with dispath=/dis/wm/luciedit.dis
+# Launch edit as a presentation zone app to edit an exported file.
+# Creates an artifact of type=app with dispath=/dis/wm/edit.dis
 # and data=filepath so lucifer passes it as an argument.
 exportseq := 0;
 
@@ -1056,7 +1056,7 @@ launchexport(label, filepath: string)
 	exportseq++;
 	id := sys->sprint("edit-%d", exportseq);
 	ctlpath := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
-	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/luciedit.dis",
+	cmd := sys->sprint("create id=%s type=app label=%s dis=/dis/wm/edit.dis",
 		id, label);
 	writetofile(ctlpath, cmd);
 	# Write the file path into the artifact's data field
