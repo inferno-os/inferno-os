@@ -700,11 +700,7 @@ opwld(Inst *i, int mi, int r)
 		break;
 	}
 	modrm(Oldw, i->s.i.f, ir, RRTA);
-	if(mi == Olea) {
-		modrm(mi, i->s.i.s, RRTA, r);
-	} else {
-		modrm(mi, i->s.i.s, RRTA, r);
-	}
+	modrm(mi, i->s.i.s, RRTA, r);
 }
 
 /*
@@ -2631,7 +2627,7 @@ compile(Module *m, int size, Modlink *ml)
 	Modl *e;
 	Link *l;
 	int i, n;
-	uchar *s, *tmp;
+	uchar *s, *tmp = nil;
 
 	if(getenv("INFERNODE_NOJIT") != nil)
 		return 0;

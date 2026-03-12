@@ -542,9 +542,11 @@ tkexpandx(Tk* slave, int cavityWidth)
 		childWidth = slave->req.width + slave->borderwidth*2 +
 				slave->pad.x + slave->ipad.x;
 		if(slave->flag & (Tktop|Tkbottom)) {
-			curExpand = (cavityWidth - childWidth)/numExpand;
-			if (curExpand < minExpand)
-				minExpand = curExpand;
+			if(numExpand > 0) {
+				curExpand = (cavityWidth - childWidth)/numExpand;
+				if (curExpand < minExpand)
+					minExpand = curExpand;
+			}
 		}
 		else {
 	    		cavityWidth -= childWidth;
@@ -552,6 +554,8 @@ tkexpandx(Tk* slave, int cavityWidth)
 				numExpand++;
 		}
 	}
+	if(numExpand == 0)
+		return 0;
 	curExpand = cavityWidth/numExpand;
 	if(curExpand < minExpand)
 		minExpand = curExpand;
@@ -570,9 +574,11 @@ tkexpandy(Tk *slave, int cavityHeight)
 		childHeight = slave->req.height + slave->borderwidth*2 +
 			+ slave->pad.y + slave->ipad.y;
 		if(slave->flag & (Tkleft|Tkright)) {
-			curExpand = (cavityHeight - childHeight)/numExpand;
-			if(curExpand < minExpand)
-				minExpand = curExpand;
+			if(numExpand > 0) {
+				curExpand = (cavityHeight - childHeight)/numExpand;
+				if(curExpand < minExpand)
+					minExpand = curExpand;
+			}
 		}
 		else {
 			cavityHeight -= childHeight;
@@ -580,6 +586,8 @@ tkexpandy(Tk *slave, int cavityHeight)
 				numExpand++;
 		}
 	}
+	if(numExpand == 0)
+		return 0;
 	curExpand = cavityHeight/numExpand;
 	if(curExpand < minExpand)
 		minExpand = curExpand;

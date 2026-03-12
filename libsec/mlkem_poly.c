@@ -134,7 +134,7 @@ compress(int16 x, int d)
 
 	/* Ensure x is in [0, q) */
 	t = (u32int)(int32)x;
-	t += (MLKEM_Q & -(t >> 31));	/* if negative, add q */
+	t += (MLKEM_Q & (0u - (t >> 31)));	/* if negative, add q */
 
 	/* round((2^d * t + q/2) / q) mod 2^d */
 	t = ((t << d) + MLKEM_Q/2) / MLKEM_Q;

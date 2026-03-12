@@ -40,12 +40,12 @@ esac
 # Find emulator binary
 EMUBIN=""
 for name in o.emu Infernode; do
-    if [ -x "$ROOT/emu/$EMUHOST/$name" ]; then
+    if [[ -x "$ROOT/emu/$EMUHOST/$name" ]]; then
         EMUBIN="$ROOT/emu/$EMUHOST/$name"
         break
     fi
 done
-if [ -z "$EMUBIN" ]; then
+if [[ -z "$EMUBIN" ]]; then
     echo "ERROR: No emulator binary found in emu/$EMUHOST/"
     exit 1
 fi
@@ -85,7 +85,7 @@ run_test() {
     TOTAL=$((TOTAL+1))
 
     # Run interpreter mode
-    if [ -n "$input" ]; then
+    if [[ -n "$input" ]]; then
         printf '%s\n' "$input" | timeout $TIMEOUT_SEC $EMU -c0 $args >$OUT0 2>/dev/null
         RC0=$?
         printf '%s\n' "$input" | timeout $TIMEOUT_SEC $EMU -c1 $args >$OUT1 2>/dev/null
@@ -101,17 +101,17 @@ run_test() {
     sleep 0.2
 
     # Check for timeouts
-    if [ $RC0 -eq 124 ] && [ $RC1 -eq 124 ]; then
+    if [[ $RC0 -eq 124 ]] && [[ $RC1 -eq 124 ]]; then
         printf "  HANG  %-45s (both modes timeout)\n" "$desc"
         HANG=$((HANG+1))
         return
     fi
-    if [ $RC1 -eq 124 ] && [ $RC0 -ne 124 ]; then
+    if [[ $RC1 -eq 124 ]] && [[ $RC0 -ne 124 ]]; then
         printf "  FAIL  %-45s (JIT hangs, interp ok)\n" "$desc"
         FAIL=$((FAIL+1))
         return
     fi
-    if [ $RC0 -eq 124 ] && [ $RC1 -ne 124 ]; then
+    if [[ $RC0 -eq 124 ]] && [[ $RC1 -ne 124 ]]; then
         printf "  FAIL  %-45s (interp hangs, JIT ok?!)\n" "$desc"
         FAIL=$((FAIL+1))
         return
@@ -152,17 +152,17 @@ run_test_file() {
 
     sleep 0.2
 
-    if [ $RC0 -eq 124 ] && [ $RC1 -eq 124 ]; then
+    if [[ $RC0 -eq 124 ]] && [[ $RC1 -eq 124 ]]; then
         printf "  HANG  %-45s (both modes timeout)\n" "$desc"
         HANG=$((HANG+1))
         return
     fi
-    if [ $RC1 -eq 124 ] && [ $RC0 -ne 124 ]; then
+    if [[ $RC1 -eq 124 ]] && [[ $RC0 -ne 124 ]]; then
         printf "  FAIL  %-45s (JIT hangs, interp ok)\n" "$desc"
         FAIL=$((FAIL+1))
         return
     fi
-    if [ $RC0 -eq 124 ] && [ $RC1 -ne 124 ]; then
+    if [[ $RC0 -eq 124 ]] && [[ $RC1 -ne 124 ]]; then
         printf "  FAIL  %-45s (interp hangs, JIT ok?!)\n" "$desc"
         FAIL=$((FAIL+1))
         return
@@ -193,7 +193,7 @@ run_bench() {
 
     local t0 t1
 
-    if [ -n "$input" ]; then
+    if [[ -n "$input" ]]; then
         t0=$( { time printf '%s\n' "$input" | timeout 30 $EMU -c0 $args >/dev/null 2>/dev/null ; } 2>&1 | grep real | awk '{print $2}')
         t1=$( { time printf '%s\n' "$input" | timeout 30 $EMU -c1 $args >/dev/null 2>/dev/null ; } 2>&1 | grep real | awk '{print $2}')
     else
@@ -382,7 +382,7 @@ echo "=========================================================="
 # ============================================================
 # SECTION 4: Stress tests (--stress flag)
 # ============================================================
-if [ $DO_STRESS -eq 1 ]; then
+if [[ $DO_STRESS -eq 1 ]]; then
     echo ""
     echo "=========================================================="
     echo "  STRESS TESTS"
@@ -421,7 +421,7 @@ if [ $DO_STRESS -eq 1 ]; then
                     ;;
                 "md5sum")
                     echo "test" | timeout 5 $EMU -c1 dis/md5sum.dis >$OUT1 2>/dev/null
-                    if [ -n "$(cat $OUT1)" ]; then STRESS_PASS=$((STRESS_PASS+1)); else STRESS_FAIL=$((STRESS_FAIL+1)); fi
+                    if [[ -n "$(cat $OUT1)" ]]; then STRESS_PASS=$((STRESS_PASS+1)); else STRESS_FAIL=$((STRESS_FAIL+1)); fi
                     ;;
             esac
         done
@@ -456,7 +456,7 @@ fi
 # ============================================================
 # SECTION 5: Benchmarks (--bench flag)
 # ============================================================
-if [ $DO_BENCH -eq 1 ]; then
+if [[ $DO_BENCH -eq 1 ]]; then
     echo ""
     echo "=========================================================="
     echo "  BENCHMARK: JIT vs Interpreter"

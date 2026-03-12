@@ -63,7 +63,7 @@ ghash_precomp(uchar H[16], u64int Htable[16*2])
 	v[0] = h[0];
 	v[1] = h[1];
 	for(i = 4; i >= 1; i >>= 1){
-		r = (u64int)(-(v[1] & 1)) & ((u64int)0xe1 << 56);
+		r = (u64int)(0ULL - (v[1] & 1)) & ((u64int)0xe1 << 56);
 		v[1] = (v[1] >> 1) | (v[0] << 63);
 		v[0] = (v[0] >> 1) ^ r;
 		Htable[i*2] = v[0];

@@ -24,7 +24,7 @@ PASS=0
 FAIL=0
 
 ok() { local msg="$1"; echo "PASS: $msg"; PASS=$((PASS+1)); return 0; }
-fail() { local msg="$1"; echo "FAIL: $msg"; FAIL=$((FAIL+1)); return 0; }
+fail() { local msg="$1"; echo "FAIL: $msg"; FAIL=$((FAIL+1)); return 1; }
 skip() { local msg="$1"; echo "SKIP: $msg"; return 0; }
 
 # Test 1: ANTHROPIC_API_KEY must be obtainable
