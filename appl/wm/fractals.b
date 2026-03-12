@@ -449,30 +449,35 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	}
 }
 
-# Generator for main menu: rebuilds items from current state each time.
-mainmenuitems(): array of string
+# Generator for main menu: rebuilds items and subs from current state.
+mainmenuitems(m: ref Popup)
 {
 	fillstr := "fill on";
 	if(g_fill)
 		fillstr = "fill off";
-	if(g_morj)
-		return array[] of {
+	if(g_morj) {
+		m.items = array[] of {
 			"zoom out", "depth+", "depth-", fillstr,
 			"julia >", "reset", "exit"
 		};
-	return array[] of {
-		"zoom out", "depth+", "depth-", fillstr,
-		"mandelbrot", "reset", "exit"
-	};
+		m.subs = array[len m.items] of ref Popup;
+		m.subs[4] = juliamenu;	# cascade for "julia >"
+	} else {
+		m.items = array[] of {
+			"zoom out", "depth+", "depth-", fillstr,
+			"mandelbrot", "reset", "exit"
+		};
+		m.subs = nil;
+	}
 }
 
 # Generator for Julia preset submenu.
-juliamenuitems(): array of string
+juliamenuitems(m: ref Popup)
 {
 	items := array[len juliapresets] of string;
 	for(i := 0; i < len juliapresets; i++)
 		items[i] = juliapresets[i].label;
-	return items;
+	m.items = items;
 }
 
 showmenu(ptr: ref Draw->Pointer): ref Usercmd
@@ -500,7 +505,11 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 	"fill on" or "fill off" =>
 		return ref Usercmd.Fill(!g_fill);
 	"julia >" =>
-		return showjuliamenu(ptr);
+		# Submenu was handled by the widget; read selection from lastsub
+		si := mainmenu.lastsub;
+		if(si < 0 || si >= len juliapresets)
+			return nil;
+		return ref Usercmd.Julia(juliapresets[si].c);
 	"mandelbrot" =>
 		return ref Usercmd.Mandelbrot;
 	"reset" =>
@@ -510,18 +519,6 @@ showmenu(ptr: ref Draw->Pointer): ref Usercmd
 		exit;
 	}
 	return nil;
-}
-
-showjuliamenu(ptr: ref Draw->Pointer): ref Usercmd
-{
-	if(juliamenu == nil)
-		return nil;
-
-	n := juliamenu.show(w.image, ptr.xy, w.ctxt.ptr);
-	if(n < 0 || n >= len juliamenu.items)
-		return nil;
-
-	return ref Usercmd.Julia(juliapresets[n].c);
 }
 
 

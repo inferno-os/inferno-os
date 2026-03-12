@@ -528,18 +528,19 @@ updatetitle()
 
 # ---------- Context menu ----------
 
-menuitems(): array of string
+menuitems(m: ref Popup)
 {
 	scrolllabel := "noscroll";
 	if(!scrolling)
 		scrolllabel = "scroll";
 	if(plumbed)
-		return array[] of {
+		m.items = array[] of {
 			"cut", "snarf", "paste", "send",
 			"plumb", scrolllabel, "clear", "exit"};
-	return array[] of {
-		"cut", "snarf", "paste", "send",
-		scrolllabel, "clear", "exit"};
+	else
+		m.items = array[] of {
+			"cut", "snarf", "paste", "send",
+			scrolllabel, "clear", "exit"};
 }
 
 domenu(n: int)
