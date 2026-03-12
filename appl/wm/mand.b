@@ -381,7 +381,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				kill(pid);
 			w.image.flush(Draw->Flushoff);
 			# Reposition statusbar on resize
-			if(sbar != nil) {
+			if(sbar != nil && widget != nil) {
 				wr := w.imager(w.image.r);
 				sh := widget->statusheight();
 				sbar.resize(Rect((wr.min.x, wr.max.y - sh), wr.max));
@@ -510,7 +510,7 @@ pt2real(pt: Point, r: Fracrect): Fracpoint
 canvposn(): Rect
 {
 	r := w.imager(w.image.r);
-	if(sbar != nil) {
+	if(sbar != nil && widget != nil) {
 		sh := widget->statusheight();
 		r.max.y -= sh;
 		if(r.max.y < r.min.y)
