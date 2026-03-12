@@ -1,5 +1,0 @@
-[kernel] Parsing pgrp_simple.c (with preprocessing)
-[kernel:annot-error] pgrp_simple.c:147: Failure: 
-  comparison of incompatible types: Mhead ** and Mhead **. Ignoring loop annotation
-[kernel] User Error: warning annot-error treated as fatal error.
-[kernel] Frama-C aborted: invalid user input.

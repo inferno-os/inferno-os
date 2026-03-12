@@ -1,5 +1,0 @@
-[kernel] Parsing pgrp_annotated.c (with preprocessing)
-[kernel:annot-error] pgrp_annotated.c:117: Failure: 
-  unbound logic function decref. Ignoring logic specification of function closepgrp
-[kernel] User Error: warning annot-error treated as fatal error.
-[kernel] Frama-C aborted: invalid user input.

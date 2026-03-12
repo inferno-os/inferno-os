@@ -1,0 +1,5 @@
+# SPIN compiled verifier artifacts
+pan
+pan.*
+_spin_nvr.tmp
+*.trail
