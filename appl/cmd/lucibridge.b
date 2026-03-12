@@ -527,6 +527,50 @@ strcontains(l: list of string, name: string): int
 	return 0;
 }
 
+# Extract just the path portion from "path perm" lines.
+# "path rw" → "path"; "path" → "path" (backward compat)
+extractpaths(lines: list of string): list of string
+{
+	result: list of string;
+	for(; lines != nil; lines = tl lines) {
+		line := hd lines;
+		(p, nil) := splitpathperm(line);
+		if(p != "")
+			result = p :: result;
+	}
+	# Reverse to preserve order
+	rev: list of string;
+	for(r := result; r != nil; r = tl r)
+		rev = hd r :: rev;
+	return rev;
+}
+
+# Split "path [perm]" into (path, perm). Default perm is "rw".
+splitpathperm(s: string): (string, string)
+{
+	for(i := len s - 1; i > 0; i--) {
+		if(s[i] == ' ') {
+			tail := s[i+1:];
+			if(tail == "ro" || tail == "rw")
+				return (s[0:i], tail);
+			break;
+		}
+	}
+	return (s, "rw");
+}
+
+# Look up the permission for a path from /tool/paths lines.
+# Returns "ro" or "rw". Default is "rw" if not found.
+lookuppathperm(lines: list of string, path: string): string
+{
+	for(; lines != nil; lines = tl lines) {
+		(p, perm) := splitpathperm(hd lines);
+		if(p == path)
+			return perm;
+	}
+	return "rw";
+}
+
 # Sync the running tools9p to match the wanted list.
 # Adds/removes tools via /tool/ctl to reconcile current state.
 synctoolset(want: list of string)
@@ -546,6 +590,7 @@ synctoolset(want: list of string)
 # Apply path changes from /tool/paths into lucibridge's namespace.
 # Diffs current /tool/paths against currentpathsraw; binds new paths,
 # unmounts removed paths.  Called at turn start and from initsession.
+# /tool/paths format: "path perm" per line (e.g. "/n/local/Users/pdfinn/tmp rw").
 applypathchanges()
 {
 	if(!agentlib->pathexists("/tool"))
@@ -553,8 +598,12 @@ applypathchanges()
 	latest := agentlib->readfile("/tool/paths");
 	if(latest == currentpathsraw)
 		return;
-	(nil, newpaths) := sys->tokenize(latest, "\n");
-	(nil, oldpaths) := sys->tokenize(currentpathsraw, "\n");
+	(nil, newlines) := sys->tokenize(latest, "\n");
+	(nil, oldlines) := sys->tokenize(currentpathsraw, "\n");
+
+	# Extract just the path portion from "path perm" lines for diff comparison
+	newpaths := extractpaths(newlines);
+	oldpaths := extractpaths(oldlines);
 
 	# Bind newly added paths into lucibridge's namespace.
 	# Paths already under /n/local/ are accessible via the trfs OS mount —
@@ -636,7 +685,7 @@ handleslash(cmd: string): int
 	case verb {
 	"bind" =>
 		if(arg == "") {
-			ack = "usage: /bind <path>";
+			ack = "usage: /bind <path> [ro|rw]";
 		} else {
 			writefile("/tool/ctl", "bindpath " + arg);
 			# Push context event so the namespace view updates immediately
@@ -976,8 +1025,16 @@ init(nil: ref Draw->Context, args: list of string)
 
 	# Apply -p path bindings: register in tools9p so applypathchanges() in
 	# initsession() picks them up, and lucictx can read them from /tool/paths.
-	for(pp := pathargs; pp != nil; pp = tl pp)
-		writefile("/tool/ctl", "bindpath " + hd pp);
+	# Paths may have :ro or :rw suffix (e.g. "/n/local/Users/tmp:ro").
+	# Convert colon-suffix to space-separated format for tools9p ctl.
+	for(pp := pathargs; pp != nil; pp = tl pp) {
+		parg := hd pp;
+		if(len parg > 3 && parg[len parg - 3:] == ":ro")
+			parg = parg[0:len parg - 3] + " ro";
+		else if(len parg > 3 && parg[len parg - 3:] == ":rw")
+			parg = parg[0:len parg - 3] + " rw";
+		writefile("/tool/ctl", "bindpath " + parg);
+	}
 
 	# Create LLM session
 	err := initsession();

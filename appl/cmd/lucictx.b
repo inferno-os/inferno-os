@@ -40,6 +40,7 @@ PinnedPath: adt {
 	label:   string;
 	srcpath: string;
 	mntdir:  string;
+	perm:    string;  # "ro" or "rw" — from /tool/paths
 };
 
 Resource: adt {
@@ -435,10 +436,16 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 								# Only allow unbind for pinned paths (not infrastructure)
 								pp2 := findpinnedpath(nse.path);
 								if(pp2 != nil) {
-									nitems := array[] of {"Unbind"};
+									# Build context menu: toggle perm + unbind
+									permlabel := "Set read-only";
+									if(pp2.perm == "ro")
+										permlabel = "Set read-write";
+									nitems := array[] of {permlabel, "Unbind"};
 									npop := menumod->new(nitems);
 									nres := npop.show(mainwin, p.xy, mouse);
 									if(nres == 0)
+										togglepathperm(pp2);
+									else if(nres == 1)
 										unbindpath(pp2);
 									redrawctx();
 								}
@@ -1242,19 +1249,24 @@ loadmanifest()
 	}
 	# Append pinned paths (user-bound via Browse) as agent NS entries.
 	# These are paths the agent gains access to via /tool/paths → lucibridge.
+	# If a pinned path already appears in the manifest (from -p at startup),
+	# override its perm with the authoritative value from /tool/paths.
 	for(pp := pinnedpaths; pp != nil; pp = tl pp) {
 		p := hd pp;
-		# Skip if already in manifest (e.g. from -p flag at startup)
-		dup := 0;
+		# Check if already in manifest (e.g. from -p flag at startup)
+		existing: ref NsEntry;
 		for(chk := nsmanifest; chk != nil; chk = tl chk)
-			if((hd chk).path == p.srcpath) { dup = 1; break; }
-		if(dup)
+			if((hd chk).path == p.srcpath) { existing = hd chk; break; }
+		if(existing != nil) {
+			# Override perm from /tool/paths (authoritative)
+			existing.perm = p.perm;
 			continue;
+		}
 		mounted := 0;
 		(ok2, nil) := sys->stat(p.srcpath);
 		if(ok2 >= 0)
 			mounted = 1;
-		nsmanifest = ref NsEntry(p.srcpath, p.label, "rw", mounted) :: nsmanifest;
+		nsmanifest = ref NsEntry(p.srcpath, p.label, p.perm, mounted) :: nsmanifest;
 	}
 
 	# Reverse to preserve manifest order (pinned paths appear at end)
@@ -1615,26 +1627,60 @@ unbindpath(pp: ref PinnedPath)
 	redrawctx();
 }
 
+# Toggle a pinned path's permission between "ro" and "rw".
+# Sends "setperm <path> <newperm>" to /tool/ctl.
+togglepathperm(pp: ref PinnedPath)
+{
+	if(pp == nil)
+		return;
+	newperm := "ro";
+	if(pp.perm == "ro")
+		newperm = "rw";
+	writetofile("/tool/ctl", "setperm " + pp.srcpath + " " + newperm);
+	loadpinnedpaths();
+	loadcontext();
+	redrawctx();
+}
+
 # Rebuild pinnedpaths from /tool/paths (authoritative source in tools9p).
+# Format: "path perm" per line (e.g. "/n/local/Users/pdfinn/tmp rw").
 loadpinnedpaths()
 {
 	raw := readfile("/tool/paths");
 	(nil, ptl) := sys->tokenize(raw, "\n");
 	pinnedpaths = nil;
 	for(p := ptl; p != nil; p = tl p) {
-		src := hd p;
+		line := hd p;
+		if(line == "")
+			continue;
+		# Parse "path perm" — default perm is "rw" for backward compat
+		(src, perm) := splitpathperm(line);
 		if(src == "")
 			continue;
 		base := pathbase(src);
 		if(base == nil || base == "")
 			base = "path";
-		pinnedpaths = ref PinnedPath(base, src, "") :: pinnedpaths;
+		pinnedpaths = ref PinnedPath(base, src, "", perm) :: pinnedpaths;
 	}
 	# Reverse to match tools9p order (tools9p prepends, so list is reversed)
 	rev: list of ref PinnedPath;
 	for(q := pinnedpaths; q != nil; q = tl q)
 		rev = hd q :: rev;
 	pinnedpaths = rev;
+}
+
+# Split "path [perm]" into (path, perm). Default perm is "rw".
+splitpathperm(s: string): (string, string)
+{
+	for(i := len s - 1; i > 0; i--) {
+		if(s[i] == ' ') {
+			tail := s[i+1:];
+			if(tail == "ro" || tail == "rw")
+				return (s[0:i], tail);
+			break;
+		}
+	}
+	return (s, "rw");
 }
 
 # --- Attribute parsing ---
