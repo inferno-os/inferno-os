@@ -1105,8 +1105,8 @@ filebrowser(startpath: string): string
 						fpath = "/" + brow_filenames[fi];
 					else
 						fpath = curpath + "/" + brow_filenames[fi];
-					ensureeditor();
-					writetofile("/edit/ctl", "open " + fpath);
+					has9p := ensureeditor();
+					openineditor(fpath, has9p);
 					break;
 				}
 			}
@@ -1444,8 +1444,10 @@ openpath(path: string)
 	if(path == nil || path == "")
 		return;
 	(ok, dir) := sys->stat(path);
-	if(ok < 0)
+	if(ok < 0) {
+		sys->fprint(sys->fildes(2), "lucictx: openpath stat failed: %s: %r\n", path);
 		return;
+	}
 	if(dir.mode & Sys->DMDIR) {
 		# Directory: open file browser at this path
 		fpath := filebrowser(path);
@@ -1454,27 +1456,61 @@ openpath(path: string)
 		redrawctx();
 	} else {
 		# File: open in luciedit (ensure it's running first)
-		ensureeditor();
-		writetofile("/edit/ctl", "open " + path);
+		has9p := ensureeditor();
+		openineditor(path, has9p);
+	}
+}
+
+# Send "open <path>" to luciedit. Use 9P if available, else real-file IPC.
+openineditor(path: string, has9p: int)
+{
+	cmd := "open " + path;
+	if(has9p) {
+		fd := sys->open("/edit/ctl", Sys->OWRITE);
+		if(fd != nil) {
+			b := array of byte cmd;
+			n := sys->write(fd, b, len b);
+			if(n == len b)
+				return;
+		}
+		sys->fprint(sys->fildes(2), "lucictx: openineditor 9P failed, using real-file: %r\n");
+	}
+	# Real-file IPC: luciedit polls /tmp/veltro/edit/ctl on timer ticks
+	wfd := sys->create("/tmp/veltro/edit/ctl", Sys->OWRITE, 8r666);
+	if(wfd != nil) {
+		b := array of byte cmd;
+		sys->write(wfd, b, len b);
 	}
 }
 
 # Ensure luciedit is running. If /edit/ctl doesn't exist, create a
 # presentation artifact to launch it in the presentation zone.
-ensureeditor()
+ensureeditor(): int
 {
+	# Check 9P path first (fast, instant open)
 	fd := sys->open("/edit/ctl", Sys->OREAD);
 	if(fd != nil) {
 		fd = nil;
-		return;	# Already running
+		return 1;	# 9P available
 	}
-	# Launch via presentation system
+	# Launch via presentation system (harmless if already running)
+	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching luciedit\n");
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
 	cmd := "create id=luciedit type=app dis=/dis/wm/luciedit.dis label=Luciedit";
 	writetofile(pctl, cmd);
 	writetofile(pctl, "center id=luciedit");
-	# Give luciedit time to mount /edit
-	sys->sleep(500);
+	# Poll until /edit/ctl appears
+	for(i := 0; i < 20; i++) {
+		sys->sleep(250);
+		fd = sys->open("/edit/ctl", Sys->OREAD);
+		if(fd != nil) {
+			fd = nil;
+			sys->fprint(sys->fildes(2), "lucictx: ensureeditor: 9P ready after %dms\n", (i+1)*250);
+			return 1;
+		}
+	}
+	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: no 9P, using real-file IPC\n");
+	return 0;
 }
 
 # Find a PinnedPath matching the given source path, or nil if not found.
@@ -1620,10 +1656,16 @@ readfile(path: string): string
 writetofile(path: string, text: string)
 {
 	fd := sys->open(path, Sys->OWRITE);
-	if(fd == nil)
+	if(fd == nil) {
+		sys->fprint(sys->fildes(2), "lucictx: writetofile open failed: %s: %r\n", path);
 		return;
+	}
 	b := array of byte text;
-	sys->write(fd, b, len b);
+	n := sys->write(fd, b, len b);
+	if(n != len b)
+		sys->fprint(sys->fildes(2), "lucictx: writetofile short write: %s: wrote %d of %d: %r\n", path, n, len b);
+	else if(path == "/edit/ctl")
+		sys->fprint(sys->fildes(2), "lucictx: writetofile OK: %s <- %s\n", path, text);
 }
 
 strip(s: string): string

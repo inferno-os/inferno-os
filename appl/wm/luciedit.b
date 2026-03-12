@@ -680,9 +680,11 @@ handlegctl(cmd: string): string
 	op = str->tolower(op);
 	case op {
 	"open" =>
+		sys->fprint(stderr, "luciedit: handlegctl open: rest=%s\n", rest);
 		if(rest != "") {
 			doc.filepath = rest;
 			loadfile(doc.filepath);
+			sys->fprint(stderr, "luciedit: handlegctl open: loaded %d lines\n", doc.nlines);
 			w.settitle(titlestr());
 			postevent("opened " + doc.filepath);
 		}
@@ -773,11 +775,17 @@ startfsys()
 	spawn serveloop(tchan, srv, pidc, navops);
 	<-pidc;
 
+	# Ensure mount and bind targets exist
+	mkdirq("/mnt");
+	mkdirq(MNTPT);
+	mkdirq(BINDPT);
 	# Mount and bind
 	if(sys->mount(fds[1], nil, MNTPT, Sys->MREPL|Sys->MCREATE, nil) < 0)
 		sys->fprint(stderr, "luciedit: mount %s: %r\n", MNTPT);
 	else if(sys->bind(MNTPT, BINDPT, Sys->MREPL|Sys->MCREATE) < 0)
 		sys->fprint(stderr, "luciedit: bind %s %s: %r\n", MNTPT, BINDPT);
+	else
+		sys->fprint(stderr, "luciedit: 9P ready at %s\n", BINDPT);
 }
 
 # Static directory tables for the navigator
