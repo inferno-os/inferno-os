@@ -32,6 +32,7 @@ include "json.m";
 include "llmclient.m";
 
 stderr: ref Sys->FD;
+debugseq := 0;
 
 init()
 {
@@ -60,6 +61,15 @@ askanthropic(apikey, apiurl: string, req: ref AskRequest): (ref AskResponse, str
 		apiurl = "api.anthropic.com";
 
 	body := buildanthropicrequest(req);
+
+	# Debug: dump request body when /tmp/llm-debug exists
+	dpath := sys->sprint("/tmp/llm-req-%d.json", debugseq++);
+	debugfd := sys->create(dpath, Sys->OWRITE, 8r666);
+	if(debugfd != nil) {
+		d := array of byte body;
+		sys->write(debugfd, d, len d);
+		debugfd = nil;
+	}
 
 	headers := "Content-Type: application/json\r\n" +
 		"x-api-key: " + apikey + "\r\n" +
@@ -96,6 +106,7 @@ buildanthropicrequest(req: ref AskRequest): string
 	# Messages
 	s += ",\"messages\":[";
 	first := 1;
+	mi := 0;
 	for(ml := req.messages; ml != nil; ml = tl ml) {
 		m := hd ml;
 		if(m.role == "system")
@@ -103,7 +114,11 @@ buildanthropicrequest(req: ref AskRequest): string
 		if(!first)
 			s += ",";
 		first = 0;
-		s += buildanthropicmessage(m);
+		msg := buildanthropicmessage(m);
+		sys->fprint(stderr, "llmclient: msg[%d] role=%s sc=%d content=%d\n",
+			mi, m.role, len m.sc, len m.content);
+		s += msg;
+		mi++;
 	}
 
 	# Add new prompt or tool results
@@ -111,10 +126,12 @@ buildanthropicrequest(req: ref AskRequest): string
 		if(!first)
 			s += ",";
 		s += buildtoolresultsmessage(req.toolresults);
+		sys->fprint(stderr, "llmclient: msg[%d] appended tool_results\n", mi);
 	} else if(req.prompt != "") {
 		if(!first)
 			s += ",";
 		s += "{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":" + jquote(req.prompt) + "}]}";
+		sys->fprint(stderr, "llmclient: msg[%d] appended prompt (%d bytes)\n", mi, len req.prompt);
 	}
 
 	# Add prefill (only when no tools)
@@ -301,6 +318,12 @@ parseanthropicsse(body: string, req: ref AskRequest): (ref AskResponse, string)
 	tokens := 0;
 	stopreason := "";
 
+	# Per-tool accumulation for streaming tool_use
+	# Track current tool block's id, name, and partial input JSON
+	curtoolid := "";
+	curtoolname := "";
+	curtoolinput := "";
+
 	lines := splitlines(body);
 	for(; lines != nil; lines = tl lines) {
 		line := hd lines;
@@ -346,6 +369,10 @@ parseanthropicsse(body: string, req: ref AskRequest): (ref AskResponse, string)
 						}
 					}
 				}
+			} else if(dtypestr == "input_json_delta") {
+				pjv := delta.get("partial_json");
+				if(pjv != nil)
+					pick pv := pjv { String => curtoolinput += pv.s; }
 			}
 		"message_delta" =>
 			usagev := jv.get("usage");
@@ -377,18 +404,27 @@ parseanthropicsse(body: string, req: ref AskRequest): (ref AskResponse, string)
 					if(cbtypestr == "tool_use") {
 						idv := cb.get("id");
 						namev := cb.get("name");
-						id := "";
-						name := "";
-						if(idv != nil) pick iv := idv { String => id = iv.s; }
-						if(namev != nil) pick nv := namev { String => name = nv.s; }
-						# Tool input arrives in content_block_delta events
-						# For now capture the tool metadata
-						toollines = sys->sprint("TOOL:%s:%s:{}", id, name) :: toollines;
-						structblocks = ("{\"type\":\"tool_use\",\"id\":" + jquote(id) +
-							",\"name\":" + jquote(name) +
-							",\"input\":{}}") :: structblocks;
+						if(idv != nil) pick iv := idv { String => curtoolid = iv.s; }
+						if(namev != nil) pick nv := namev { String => curtoolname = nv.s; }
+						curtoolinput = "";
 					}
 				}
+			}
+		"content_block_stop" =>
+			# Finalize accumulated tool input
+			if(curtoolid != "") {
+				inputjson := curtoolinput;
+				if(inputjson == "")
+					inputjson = "{}";
+				args := extracttoolargs(inputjson);
+				safeargs := replaceall(args, "\n", "\\n");
+				toollines = sys->sprint("TOOL:%s:%s:%s", curtoolid, curtoolname, safeargs) :: toollines;
+				structblocks = ("{\"type\":\"tool_use\",\"id\":" + jquote(curtoolid) +
+					",\"name\":" + jquote(curtoolname) +
+					",\"input\":" + inputjson + "}") :: structblocks;
+				curtoolid = "";
+				curtoolname = "";
+				curtoolinput = "";
 			}
 		}
 	}
@@ -400,13 +436,22 @@ parseanthropicsse(body: string, req: ref AskRequest): (ref AskResponse, string)
 		return (ref AskResponse(fulltext, "", tokens), nil);
 	}
 
-	if(fulltext != "") {
-		structblocks = ("{\"type\":\"text\",\"text\":" + jquote(fulltext) + "}") :: structblocks;
-	}
-
+	# Build structjson with text BEFORE tool_use (API requires this order)
 	structjson := "";
-	if(structblocks != nil)
-		structjson = "[" + joinrev(structblocks, ",") + "]";
+	textblock := "";
+	if(fulltext != "")
+		textblock = "{\"type\":\"text\",\"text\":" + jquote(fulltext) + "}";
+	if(textblock != "" || structblocks != nil) {
+		structjson = "[";
+		if(textblock != "")
+			structjson += textblock;
+		if(structblocks != nil) {
+			if(textblock != "")
+				structjson += ",";
+			structjson += joinrev(structblocks, ",");
+		}
+		structjson += "]";
+	}
 
 	response := "";
 	if(stopreason == "tool_use")
@@ -982,7 +1027,13 @@ jsonescapestr(s: string): string
 		'\n' => result += "\\n";
 		'\r' => result += "\\r";
 		'\t' => result += "\\t";
-		* =>    result[len result] = c;
+		'\b' => result += "\\b";
+		16rc  => result += "\\f";
+		* =>
+			if(c < 16r20)
+				result += sys->sprint("\\u%04x", c);
+			else
+				result[len result] = c;
 		}
 	}
 	return result;
