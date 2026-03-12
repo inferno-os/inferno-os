@@ -64,6 +64,7 @@ SYSMODULES=\
 	debug.m\
 	draw.m\
 	ecmascript.m\
+	menu.m\
 	sh.m\
 	ssl3.m\
 	string.m\
