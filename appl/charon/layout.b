@@ -48,8 +48,8 @@ W: Widget;
 	FRhscrollauto, FRvscrollauto,
 	ComputedStyle, STYLNONE,
 	BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset,
-	OVvisible, OVhidden,
-	POSstatic, POSrelative, POSabsolute, POSfixed,
+	OVvisible, OVhidden, OVscroll, OVauto,
+	POSstatic, POSrelative, POSabsolute, POSfixed, POSsticky,
 	FLnone, FLleft, FLright,
 	CLnone, CLleft, CLright, CLboth,
 	VISvisible, VIShidden,
@@ -63,7 +63,9 @@ W: Widget;
 	FDrow, FDrow_reverse, FDcolumn, FDcolumn_reverse,
 	FWnowrap, FWwrap, FWwrap_reverse,
 	JCflex_start, JCflex_end, JCcenter, JCspace_between, JCspace_around, JCspace_evenly,
-	AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline
+	AIflex_start, AIflex_end, AIcenter, AIstretch, AIbaseline,
+	BGRrepeat, BGRno_repeat, BGRrepeat_x, BGRrepeat_y,
+	BGSZcover, BGSZcontain
     : import B;
 
 # font stuff
@@ -2494,6 +2496,12 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 						oy += i.cstyle.rel_top;
 					else if(i.cstyle.pos_bottom != STYLNONE)
 						oy = f.r.max.y - i.height - i.cstyle.pos_bottom;
+				int POSsticky =>
+					# Sticky: like relative, but clamp to viewport top when scrolled past
+					stickyoff := i.cstyle.rel_top;
+					viewtop := f.viewr.min.y;
+					if(oy < viewtop + stickyoff)
+						oy = viewtop + stickyoff;
 				}
 			}
 			if(inview)
@@ -2685,6 +2693,89 @@ drawrelief(im: ref Image, r: Rect, nil: int)
 drawfill(im: ref Image, r: Rect, color: int)
 {
 	im.draw(r, colorimage(color), nil, zp);
+}
+
+# Draw a CSS background image into the given rectangle with repeat and position
+drawbgimage(im: ref Image, bgr: Rect, cs: ref ComputedStyle)
+{
+	bgi := cs.bgimage;
+	if(bgi == nil)
+		return;
+
+	# Image natural dimensions
+	iw := bgi.r.dx();
+	ih := bgi.r.dy();
+	if(iw <= 0 || ih <= 0)
+		return;
+
+	bw := bgr.dx();
+	bh := bgr.dy();
+
+	# Apply background-size
+	dw := iw;
+	dh := ih;
+	if(cs.bgsize_w == BGSZcover) {
+		# Scale to cover entire box (maintaining aspect ratio)
+		sx := bw * 100 / iw;
+		sy := bh * 100 / ih;
+		scale := sx;
+		if(sy > scale)
+			scale = sy;
+		dw = iw * scale / 100;
+		dh = ih * scale / 100;
+	}
+	else if(cs.bgsize_w == BGSZcontain) {
+		# Scale to fit within box
+		sx := bw * 100 / iw;
+		sy := bh * 100 / ih;
+		scale := sx;
+		if(sy < scale)
+			scale = sy;
+		dw = iw * scale / 100;
+		dh = ih * scale / 100;
+	}
+	else {
+		if(cs.bgsize_w > 0)
+			dw = cs.bgsize_w;
+		if(cs.bgsize_h > 0)
+			dh = cs.bgsize_h;
+		# If one dimension specified and other is auto, maintain aspect ratio
+		if(cs.bgsize_w > 0 && cs.bgsize_h == 0)
+			dh = ih * dw / iw;
+		else if(cs.bgsize_h > 0 && cs.bgsize_w == 0)
+			dw = iw * dh / ih;
+	}
+	if(dw <= 0) dw = 1;
+	if(dh <= 0) dh = 1;
+
+	# Starting position with background-position offset
+	sx := bgr.min.x + cs.bgposition_x;
+	sy := bgr.min.y + cs.bgposition_y;
+
+	# Draw based on repeat mode
+	case int cs.bgrepeat {
+	int BGRno_repeat =>
+		dr := Rect(Point(sx, sy), Point(sx + dw, sy + dh));
+		im.draw(dr, bgi, nil, bgi.r.min);
+	int BGRrepeat_x =>
+		for(x := sx - ((sx - bgr.min.x + dw - 1) / dw) * dw; x < bgr.max.x; x += dw) {
+			dr := Rect(Point(x, sy), Point(x + dw, sy + dh));
+			im.draw(dr, bgi, nil, bgi.r.min);
+		}
+	int BGRrepeat_y =>
+		for(y := sy - ((sy - bgr.min.y + dh - 1) / dh) * dh; y < bgr.max.y; y += dh) {
+			dr := Rect(Point(sx, y), Point(sx + dw, y + dh));
+			im.draw(dr, bgi, nil, bgi.r.min);
+		}
+	* =>
+		# BGRrepeat: tile both directions
+		for(y := sy - ((sy - bgr.min.y + dh - 1) / dh) * dh; y < bgr.max.y; y += dh) {
+			for(x := sx - ((sx - bgr.min.x + dw - 1) / dw) * dw; x < bgr.max.x; x += dw) {
+				dr := Rect(Point(x, y), Point(x + dw, y + dh));
+				im.draw(dr, bgi, nil, bgi.r.min);
+			}
+		}
+	}
 }
 
 # Draw string in default font at p
@@ -5315,7 +5406,10 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 			spech = cs.height.spec();
 		else
 			spech = cs.height.spec() + extrah;
-		if(spech > it.height)
+		# When overflow is hidden/scroll/auto, clamp to spec height
+		if(cs.overflow != OVvisible && cs.overflow != byte 0)
+			it.height = spech;
+		else if(spech > it.height)
 			it.height = spech;
 	}
 
@@ -5381,6 +5475,14 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 			drawfill(im, bgr, cs.bgcolor);
 	}
 
+	# Draw background image (in padding box, after bgcolor, before borders)
+	if(cs != nil && cs.bgimage != nil) {
+		bgr := Rect(
+			Point(origin.x + bdl, origin.y + bdt),
+			Point(origin.x + box.width - bdr, origin.y + box.height - bdb));
+		drawbgimage(im, bgr, cs);
+	}
+
 	# Draw borders
 	if(cs != nil) {
 		hasradius := cs.border_radius[0] > 0 || cs.border_radius[1] > 0
@@ -5396,7 +5498,22 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 		slay := f.sublays[box.layid];
 		if(slay != nil) {
 			contentorigin := Point(origin.x + bdl + padl, origin.y + bdt + padt);
-			drawlay(f, slay, contentorigin);
+			# Clip content for overflow: hidden/scroll/auto
+			if(cs != nil && cs.overflow != OVvisible && cs.overflow != byte 0) {
+				oclipr := im.clipr;
+				contentr := Rect(
+					Point(origin.x + bdl + padl, origin.y + bdt + padt),
+					Point(origin.x + box.width - bdr - padr, origin.y + box.height - bdb - padb));
+				# Intersect with existing clip rect
+				(cr, any) := contentr.clip(oclipr);
+				if(any) {
+					im.clipr = cr;
+					drawlay(f, slay, contentorigin);
+					im.clipr = oclipr;
+				}
+			}
+			else
+				drawlay(f, slay, contentorigin);
 		}
 	}
 
@@ -5662,8 +5779,52 @@ layalistitems(f: ref Frame, lay: ref Lay, items: ref Item)
 	}
 }
 
-# Flexbox layout: arrange items according to flex-direction and justify-content.
-# This is a simplified implementation that handles the most common flexbox patterns.
+# Get flex-grow value for an item (from its Ibox cstyle, or 0)
+flexgrow(it: ref Item) : int
+{
+	pick box := it {
+	Ibox =>
+		if(box.cstyle != nil && box.cstyle.flex_grow > 0)
+			return box.cstyle.flex_grow;
+	}
+	return 0;
+}
+
+# Get flex-shrink value for an item (from its Ibox cstyle, default 100 = 1.0)
+flexshrink(it: ref Item) : int
+{
+	pick box := it {
+	Ibox =>
+		if(box.cstyle != nil && box.cstyle.flex_shrink > 0)
+			return box.cstyle.flex_shrink;
+	}
+	return 100;  # default flex-shrink: 1
+}
+
+# Get flex-basis value for an item (returns pixel value, or -1 for auto)
+flexbasis(it: ref Item) : int
+{
+	pick box := it {
+	Ibox =>
+		if(box.cstyle != nil && box.cstyle.flex_basis.kind() == Dpixels)
+			return box.cstyle.flex_basis.spec();
+	}
+	return -1;
+}
+
+# Get order value for an item (default 0)
+flexorder(it: ref Item) : int
+{
+	pick box := it {
+	Ibox =>
+		if(box.cstyle != nil && box.cstyle.order != STYLNONE)
+			return box.cstyle.order;
+	}
+	return 0;
+}
+
+# Flexbox layout: arrange items according to flex-direction, justify-content,
+# flex-wrap, flex-grow/shrink, flex-basis, and order.
 layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 {
 	measure(f, items);
@@ -5678,119 +5839,254 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	lay.width = 0;
 	lay.height = 0;
 
-	# Collect all flex items into a list and count them
+	# Collect items into array
 	nitems := 0;
-	totalw := 0;
-	maxh := 0;
-	totalh := 0;
-	maxw := 0;
-	for(it := items; it != nil; it = it.next) {
+	for(it := items; it != nil; it = it.next)
 		nitems++;
-		totalw += it.width;
-		totalh += it.height;
-		if(it.height > maxh)
-			maxh = it.height;
-		if(it.width > maxw)
-			maxw = it.width;
-	}
-
 	if(nitems == 0)
 		return;
 
+	ia := array[nitems] of ref Item;
+	i := 0;
+	for(it = items; it != nil; it = it.next) {
+		ia[i] = it;
+		i++;
+	}
+
+	# Sort by order property (insertion sort — flex containers are typically small)
+	for(i = 1; i < nitems; i++) {
+		key := ia[i];
+		ko := flexorder(key);
+		j := i - 1;
+		for(; j >= 0 && flexorder(ia[j]) > ko; j--)
+			ia[j+1] = ia[j];
+		ia[j+1] = key;
+	}
+
+	# Apply flex-basis: override natural width/height with basis if set
 	isrow := cs.flex_direction == FDrow || cs.flex_direction == FDrow_reverse;
+	for(i = 0; i < nitems; i++) {
+		basis := flexbasis(ia[i]);
+		if(basis >= 0) {
+			if(isrow)
+				ia[i].width = basis;
+			else
+				ia[i].height = basis;
+		}
+	}
+
 	gap := cs.gap;
+	avail := lay.targetwidth;
 
 	if(isrow) {
-		# Row direction: items flow horizontally
-		avail := lay.targetwidth;
-		totalgap := gap * (nitems - 1);
-		remaining := avail - totalw - totalgap;
-		if(remaining < 0)
-			remaining = 0;
+		# --- ROW DIRECTION with flex-wrap ---
+		# Partition items into flex lines
+		type FlexLine: adt {
+			start: int;		# first item index
+			count: int;		# number of items
+			maxh: int;		# tallest item in line
+		};
 
-		# Calculate starting x based on justify-content
-		x := 0;
-		spacing := 0;
-		case int cs.justify_content {
-		int JCflex_end =>
-			x = remaining;
-		int JCcenter =>
-			x = remaining / 2;
-		int JCspace_between =>
-			if(nitems > 1)
-				spacing = remaining / (nitems - 1);
-		int JCspace_around =>
-			if(nitems > 0) {
-				spacing = remaining / nitems;
-				x = spacing / 2;
+		lines: list of ref FlexLine;
+		nlines := 0;
+		linestart := 0;
+		linew := 0;
+
+		for(i = 0; i < nitems; i++) {
+			w := ia[i].width;
+			neww := linew + w;
+			if(i > linestart)
+				neww += gap;
+			if(cs.flex_wrap != FWnowrap && i > linestart && neww > avail) {
+				# Start new line
+				fl := ref FlexLine(linestart, i - linestart, 0);
+				lines = fl :: lines;
+				nlines++;
+				linestart = i;
+				linew = w;
 			}
-		int JCspace_evenly =>
-			if(nitems > 0) {
-				spacing = remaining / (nitems + 1);
-				x = spacing;
-			}
+			else
+				linew = neww;
+		}
+		# Last line
+		if(linestart < nitems) {
+			fl := ref FlexLine(linestart, nitems - linestart, 0);
+			lines = fl :: lines;
+			nlines++;
 		}
 
-		if(cs.flex_direction == FDrow_reverse)
-			x = avail - x;
+		# Reverse lines list to get correct order
+		rlines := array[nlines] of ref FlexLine;
+		li := nlines - 1;
+		for(; lines != nil; lines = tl lines) {
+			rlines[li] = hd lines;
+			li--;
+		}
 
-		# Place each item on its own line at the computed position
-		for(it = items; it != nil; ) {
-			nit := it.next;
-			it.next = nil;
+		# Process each flex line
+		y := 0;
+		for(li = 0; li < nlines; li++) {
+			fl := rlines[li];
 
-			nl := Line.new();
-			nl.items = it;
+			# Compute total width, max height, and flex-grow/shrink sums for this line
+			totalw := 0;
+			maxh := 0;
+			totalgrow := 0;
+			totalshrink := 0;
+			for(i = fl.start; i < fl.start + fl.count; i++) {
+				totalw += ia[i].width;
+				if(ia[i].height > maxh)
+					maxh = ia[i].height;
+				totalgrow += flexgrow(ia[i]);
+				totalshrink += flexshrink(ia[i]);
+			}
+			fl.maxh = maxh;
+			totalgap := gap * (fl.count - 1);
+			remaining := avail - totalw - totalgap;
 
-			# Align item vertically based on align-items
-			iy := 0;
-			case int cs.align_items {
-			int AIcenter =>
-				if(it.height < maxh)
-					iy = (maxh - it.height) / 2;
-			int AIflex_end =>
-				if(it.height < maxh)
-					iy = maxh - it.height;
-			int AIstretch =>
-				it.height = maxh;
-				it.ascent = maxh;
+			# flex-grow: distribute positive remaining space
+			if(remaining > 0 && totalgrow > 0) {
+				for(i = fl.start; i < fl.start + fl.count; i++) {
+					fg := flexgrow(ia[i]);
+					if(fg > 0) {
+						extra := remaining * fg / totalgrow;
+						ia[i].width += extra;
+					}
+				}
+				remaining = 0;
 			}
 
-			if(cs.flex_direction == FDrow_reverse) {
-				x -= it.width;
-				nl.pos = Point(x, iy);
-				x -= gap + spacing;
+			# flex-shrink: shrink items when overflowing
+			if(remaining < 0 && totalshrink > 0) {
+				overflow := -remaining;
+				for(i = fl.start; i < fl.start + fl.count; i++) {
+					fs := flexshrink(ia[i]);
+					if(fs > 0) {
+						shrink := overflow * fs / totalshrink;
+						if(shrink > ia[i].width)
+							shrink = ia[i].width;
+						ia[i].width -= shrink;
+					}
+				}
+				remaining = 0;
 			}
-			else {
-				nl.pos = Point(x, iy);
-				x += it.width + gap + spacing;
+			if(remaining < 0)
+				remaining = 0;
+
+			# Re-layout Ibox items at adjusted widths
+			for(i = fl.start; i < fl.start + fl.count; i++) {
+				pick box := ia[i] {
+				Ibox =>
+					if(box.layid >= 0 && box.layid < len f.sublays) {
+						slay := f.sublays[box.layid];
+						slay.targetwidth = ia[i].width;
+						bcs := box.cstyle;
+						if(bcs != nil && (bcs.display == DSPflex || bcs.display == DSPinline_flex))
+							layflexitems(f, slay, box.content, bcs);
+						else if(bcs != nil && (bcs.display == DSPgrid || bcs.display == DSPinline_grid))
+							laygriditems(f, slay, box.content, bcs);
+						else
+							layalistitems(f, slay, box.content);
+						ia[i].height = slay.height;
+						ia[i].ascent = ia[i].height;
+						if(ia[i].height > maxh)
+							maxh = ia[i].height;
+					}
+				* => ;
+				}
 			}
-			nl.width = it.width;
-			nl.height = it.height;
-			nl.ascent = it.ascent;
-			nl.flags |= Lchanged;
+			fl.maxh = maxh;
 
-			# Insert line
-			nl.prev = lay.end.prev;
-			nl.next = lay.end;
-			lay.end.prev.next = nl;
-			lay.end.prev = nl;
+			# Calculate starting x based on justify-content
+			x := 0;
+			spacing := 0;
+			case int cs.justify_content {
+			int JCflex_end =>
+				x = remaining;
+			int JCcenter =>
+				x = remaining / 2;
+			int JCspace_between =>
+				if(fl.count > 1)
+					spacing = remaining / (fl.count - 1);
+			int JCspace_around =>
+				if(fl.count > 0) {
+					spacing = remaining / fl.count;
+					x = spacing / 2;
+				}
+			int JCspace_evenly =>
+				if(fl.count > 0) {
+					spacing = remaining / (fl.count + 1);
+					x = spacing;
+				}
+			}
 
-			it = nit;
+			if(cs.flex_direction == FDrow_reverse)
+				x = avail - x;
+
+			# Place items in this line
+			for(i = fl.start; i < fl.start + fl.count; i++) {
+				it = ia[i];
+				it.next = nil;
+
+				nl := Line.new();
+				nl.items = it;
+
+				# Align item vertically
+				iy := 0;
+				case int cs.align_items {
+				int AIcenter =>
+					if(it.height < maxh)
+						iy = (maxh - it.height) / 2;
+				int AIflex_end =>
+					if(it.height < maxh)
+						iy = maxh - it.height;
+				int AIstretch =>
+					it.height = maxh;
+					it.ascent = maxh;
+				}
+
+				if(cs.flex_direction == FDrow_reverse) {
+					x -= it.width;
+					nl.pos = Point(x, y + iy);
+					x -= gap + spacing;
+				}
+				else {
+					nl.pos = Point(x, y + iy);
+					x += it.width + gap + spacing;
+				}
+				nl.width = it.width;
+				nl.height = it.height;
+				nl.ascent = it.ascent;
+				nl.flags |= Lchanged;
+
+				nl.prev = lay.end.prev;
+				nl.next = lay.end;
+				lay.end.prev.next = nl;
+				lay.end.prev = nl;
+			}
+
+			y += maxh + gap;
 		}
 
 		lay.width = avail;
-		lay.height = maxh;
+		if(y > gap)
+			lay.height = y - gap;
+		else
+			lay.height = 0;
+
+		# flex-wrap-reverse: reverse y positions of lines
+		if(cs.flex_wrap == FWwrap_reverse && nlines > 1) {
+			totalh := lay.height;
+			for(l = lay.start.next; l != lay.end; l = l.next)
+				l.pos.y = totalh - l.pos.y - l.height;
+		}
 	}
 	else {
-		# Column direction: items flow vertically
-		avail := lay.targetwidth;
-		# For column, "remaining" is vertical remaining space.
-		# We don't know the container height, so just stack items.
+		# --- COLUMN DIRECTION ---
 		y := 0;
 
-		for(it = items; it != nil; ) {
-			nit := it.next;
+		for(i = 0; i < nitems; i++) {
+			it = ia[i];
 			it.next = nil;
 
 			nl := Line.new();
@@ -5809,9 +6105,8 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 				it.width = avail;
 			}
 
-			if(cs.flex_direction == FDcolumn_reverse) {
+			if(cs.flex_direction == FDcolumn_reverse)
 				nl.pos = Point(ix, 0);
-			}
 			else {
 				nl.pos = Point(ix, y);
 				y += it.height + gap;
@@ -5825,14 +6120,11 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 			nl.next = lay.end;
 			lay.end.prev.next = nl;
 			lay.end.prev = nl;
-
-			it = nit;
 		}
 
 		lay.width = avail;
 		if(cs.flex_direction == FDcolumn_reverse) {
-			# Reverse the y positions
-			totalh = 0;
+			totalh := 0;
 			for(l = lay.start.next; l != lay.end; l = l.next)
 				totalh += l.height + gap;
 			if(totalh > 0)
@@ -5853,8 +6145,21 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	}
 }
 
+# Get grid placement properties for an item (from Ibox cstyle)
+# Returns (col_start, col_end, row_start, row_end) — 1-based, 0=auto
+gridplacement(it: ref Item) : (int, int, int, int)
+{
+	pick box := it {
+	Ibox =>
+		if(box.cstyle != nil)
+			return (box.cstyle.grid_column_start, box.cstyle.grid_column_end,
+				box.cstyle.grid_row_start, box.cstyle.grid_row_end);
+	}
+	return (0, 0, 0, 0);
+}
+
 # CSS Grid layout: arrange items into a grid defined by grid-template-columns/rows.
-# Supports fr units, auto, and fixed (px) track sizes.
+# Supports fr units, auto, fixed (px) track sizes, and explicit item placement.
 laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 {
 	measure(f, items);
@@ -5885,19 +6190,11 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 	colwidths: array of int;
 	if(cs.grid_template_columns != nil && cs.grid_template_columns != "")
 		colwidths = parsegridtracks(cs.grid_template_columns, avail, colgap, items);
-	if(colwidths == nil) {
-		# No columns specified: single column
+	if(colwidths == nil)
 		colwidths = array[1] of { * => avail };
-	}
 	ncols = len colwidths;
 
-	# Calculate number of rows needed
-	nrows := (nitems + ncols - 1) / ncols;
-
-	# Layout each item into its grid cell to determine row heights
-	rowheights := array[nrows] of { * => 0 };
-
-	# Place items into grid: row by row, left to right (auto placement)
+	# Collect items into array
 	itemarray := array[nitems] of ref Item;
 	i := 0;
 	for(it = items; it != nil; it = it.next) {
@@ -5905,19 +6202,150 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 		i++;
 	}
 
-	# Layout each item at its column width to get actual heights
+	# Determine grid dimensions considering explicit placements
+	# First pass: find max explicit row/col to size the grid
+	maxrow := (nitems + ncols - 1) / ncols;
 	for(i = 0; i < nitems; i++) {
-		col := i % ncols;
-		row := i / ncols;
-		it = itemarray[i];
+		(cs2, ce2, rs2, re2) := gridplacement(itemarray[i]);
+		if(rs2 > 0 && rs2 > maxrow) maxrow = rs2;
+		if(re2 > 0 && re2 - 1 > maxrow) maxrow = re2 - 1;
+		# Column spanning might need more rows
+		if(cs2 > 0 && ce2 > 0 && ce2 - cs2 > 1) {
+			# spanning item takes fewer grid cells
+			;
+		}
+	}
+	nrows := maxrow;
 
-		# For Ibox items, re-layout at the column width
+	# Build placement grid: grid_cells[row][col] = item index, -1 = empty
+	grid_cells := array[nrows] of { * => array[ncols] of { * => -1 } };
+
+	# Item placement: (row, col) for each item, and (colspan, rowspan)
+	item_row := array[nitems] of { * => -1 };
+	item_col := array[nitems] of { * => -1 };
+	item_colspan := array[nitems] of { * => 1 };
+	item_rowspan := array[nitems] of { * => 1 };
+
+	# Pass 1: Place explicitly-positioned items
+	for(i = 0; i < nitems; i++) {
+		(cs1, ce1, rs1, re1) := gridplacement(itemarray[i]);
+		if(cs1 <= 0 && rs1 <= 0)
+			continue;  # auto-placed, handle in pass 2
+
+		# Determine column (1-based to 0-based)
+		c := 0;
+		if(cs1 > 0) c = cs1 - 1;
+		if(c >= ncols) c = ncols - 1;
+
+		# Column span
+		colspan := 1;
+		if(ce1 > cs1 && cs1 > 0) {
+			colspan = ce1 - cs1;
+			if(c + colspan > ncols)
+				colspan = ncols - c;
+		}
+
+		# Determine row
+		r := 0;
+		if(rs1 > 0) r = rs1 - 1;
+		# Grow grid if needed
+		if(r >= nrows) {
+			nrows = r + 1;
+			ngrid := array[nrows] of array of int;
+			for(ri := 0; ri < len grid_cells; ri++)
+				ngrid[ri] = grid_cells[ri];
+			for(ri := len grid_cells; ri < nrows; ri++)
+				ngrid[ri] = array[ncols] of { * => -1 };
+			grid_cells = ngrid;
+		}
+
+		# Row span
+		rowspan := 1;
+		if(re1 > rs1 && rs1 > 0) {
+			rowspan = re1 - rs1;
+			if(r + rowspan > nrows) {
+				nrows = r + rowspan;
+				ngrid := array[nrows] of array of int;
+				for(ri := 0; ri < len grid_cells; ri++)
+					ngrid[ri] = grid_cells[ri];
+				for(ri := len grid_cells; ri < nrows; ri++)
+					ngrid[ri] = array[ncols] of { * => -1 };
+				grid_cells = ngrid;
+			}
+		}
+
+		# Mark cells as occupied
+		for(ri := r; ri < r + rowspan && ri < nrows; ri++)
+			for(ci := c; ci < c + colspan && ci < ncols; ci++)
+				grid_cells[ri][ci] = i;
+
+		item_row[i] = r;
+		item_col[i] = c;
+		item_colspan[i] = colspan;
+		item_rowspan[i] = rowspan;
+	}
+
+	# Pass 2: Auto-place remaining items
+	autorow := 0;
+	autocol := 0;
+	for(i = 0; i < nitems; i++) {
+		if(item_row[i] >= 0)
+			continue;  # already placed
+
+		# Find next empty cell
+		for(;;) {
+			if(autorow >= nrows) {
+				# Add a new row
+				nrows++;
+				ngrid := array[nrows] of array of int;
+				for(ri := 0; ri < nrows - 1; ri++)
+					ngrid[ri] = grid_cells[ri];
+				ngrid[nrows-1] = array[ncols] of { * => -1 };
+				grid_cells = ngrid;
+			}
+			if(grid_cells[autorow][autocol] == -1)
+				break;
+			autocol++;
+			if(autocol >= ncols) {
+				autocol = 0;
+				autorow++;
+			}
+		}
+
+		grid_cells[autorow][autocol] = i;
+		item_row[i] = autorow;
+		item_col[i] = autocol;
+
+		autocol++;
+		if(autocol >= ncols) {
+			autocol = 0;
+			autorow++;
+		}
+	}
+
+	# Layout each item at its column width to get actual heights
+	rowheights := array[nrows] of { * => 0 };
+	for(i = 0; i < nitems; i++) {
+		col := item_col[i];
+		row := item_row[i];
+		colspan := item_colspan[i];
+		if(col < 0 || row < 0)
+			continue;
+
+		# Compute item width (sum of spanned columns + gaps)
+		iw := 0;
+		for(ci := col; ci < col + colspan && ci < ncols; ci++) {
+			if(ci > col)
+				iw += colgap;
+			iw += colwidths[ci];
+		}
+
+		it = itemarray[i];
 		pick box := it {
 		Ibox =>
 			if(box.layid >= 0 && box.layid < len f.sublays) {
 				slay := f.sublays[box.layid];
-				slay.targetwidth = colwidths[col];
-				# Re-layout box content
+				slay.targetwidth = iw;
 				bcs := box.cstyle;
 				if(bcs != nil && (bcs.display == DSPflex || bcs.display == DSPinline_flex))
 					layflexitems(f, slay, box.content, bcs);
@@ -5925,12 +6353,12 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 					laygriditems(f, slay, box.content, bcs);
 				else
 					layalistitems(f, slay, box.content);
-				it.width = colwidths[col];
+				it.width = iw;
 				it.height = slay.height;
 				it.ascent = it.height;
 			}
 		* =>
-			it.width = colwidths[col];
+			it.width = iw;
 		}
 
 		if(it.height > rowheights[row])
@@ -5951,39 +6379,62 @@ laygriditems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 		}
 	}
 
-	# Position each item and create lines
+	# Compute cumulative row y-positions
+	rowy := array[nrows] of { * => 0 };
 	y := 0;
 	for(row := 0; row < nrows; row++) {
-		x := 0;
-		for(col := 0; col < ncols; col++) {
-			idx := row * ncols + col;
-			if(idx >= nitems)
-				break;
-
-			it = itemarray[idx];
-			it.next = nil;
-
-			nl := Line.new();
-			nl.items = it;
-			nl.pos = Point(x, y);
-			nl.width = colwidths[col];
-			nl.height = rowheights[row];
-			nl.ascent = it.ascent;
-			nl.flags |= Lchanged;
-
-			# Stretch item height to fill row
-			it.height = rowheights[row];
-			it.ascent = rowheights[row];
-
-			# Insert line
-			nl.prev = lay.end.prev;
-			nl.next = lay.end;
-			lay.end.prev.next = nl;
-			lay.end.prev = nl;
-
-			x += colwidths[col] + colgap;
-		}
+		rowy[row] = y;
 		y += rowheights[row] + rowgap;
+	}
+
+	# Compute cumulative column x-positions
+	colx := array[ncols] of { * => 0 };
+	x := 0;
+	for(col := 0; col < ncols; col++) {
+		colx[col] = x;
+		x += colwidths[col] + colgap;
+	}
+
+	# Position each item and create lines
+	for(i = 0; i < nitems; i++) {
+		row := item_row[i];
+		col := item_col[i];
+		if(row < 0 || col < 0)
+			continue;
+		colspan := item_colspan[i];
+		rowspan := item_rowspan[i];
+
+		it = itemarray[i];
+		it.next = nil;
+
+		# Compute spanned dimensions
+		spanw := 0;
+		for(ci := col; ci < col + colspan && ci < ncols; ci++) {
+			if(ci > col) spanw += colgap;
+			spanw += colwidths[ci];
+		}
+		spanh := 0;
+		for(ri := row; ri < row + rowspan && ri < nrows; ri++) {
+			if(ri > row) spanh += rowgap;
+			spanh += rowheights[ri];
+		}
+
+		nl := Line.new();
+		nl.items = it;
+		nl.pos = Point(colx[col], rowy[row]);
+		nl.width = spanw;
+		nl.height = spanh;
+		nl.ascent = it.ascent;
+		nl.flags |= Lchanged;
+
+		it.height = spanh;
+		it.ascent = spanh;
+		it.width = spanw;
+
+		nl.prev = lay.end.prev;
+		nl.next = lay.end;
+		lay.end.prev.next = nl;
+		lay.end.prev = nl;
 	}
 
 	lay.width = avail;

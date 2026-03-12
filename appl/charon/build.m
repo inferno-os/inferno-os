@@ -128,7 +128,7 @@ DSPTABLECAPTION: con 9;	# display: table-caption
 BSnone, BSsolid, BSdotted, BSdashed, BSdouble, BSgroove, BSridge, BSinset, BSoutset: con byte iota;
 
 # Position types
-POSstatic, POSrelative, POSabsolute, POSfixed: con byte iota;
+POSstatic, POSrelative, POSabsolute, POSfixed, POSsticky: con byte iota;
 
 # Float types
 FLnone, FLleft, FLright: con byte iota;
@@ -194,6 +194,10 @@ FVnormal, FVsmall_caps: con byte iota;
 # Background repeat modes
 BGRrepeat, BGRno_repeat, BGRrepeat_x, BGRrepeat_y: con byte iota;
 
+# Background size modes (for bgsize_w/bgsize_h: positive = pixels, 0 = auto)
+BGSZcover: con -1;
+BGSZcontain: con -2;
+
 StyleInfo: adt
 {
 	color: int;		# text color, STYLNONE if not set
@@ -252,7 +256,7 @@ ComputedStyle: adt
 	table_layout: byte;		# 0=auto, 1=fixed
 
 	# Positioning
-	position: byte;			# POSstatic..POSfixed
+	position: byte;			# POSstatic..POSsticky
 	float_: byte;			# FLnone, FLleft, FLright
 	clear: byte;			# CLnone..CLboth
 	rel_top: int;			# position offset top
@@ -321,9 +325,12 @@ ComputedStyle: adt
 
 	# CSS Background Image
 	bgimage_url: string;		# background-image URL (nil = none)
+	bgimage: ref Draw->Image;	# decoded background image (nil until fetched)
 	bgrepeat: byte;			# BGRrepeat..BGRrepeat_y
 	bgposition_x: int;		# background-position x in pixels
 	bgposition_y: int;		# background-position y in pixels
+	bgsize_w: int;			# background-size width: >0=px, 0=auto, -1=cover, -2=contain
+	bgsize_h: int;			# background-size height: >0=px, 0=auto, -1=cover, -2=contain
 
 	# CSS Custom Properties (var())
 	customprops: list of (string, string);	# (--name, value) pairs
