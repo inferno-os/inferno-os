@@ -1224,6 +1224,7 @@ qbwrite(Queue *q, Block *b)
 	if(q->len >= q->limit){
 		if(q->noblock){
 			unlock(&q->l);
+			cb.b = nil;
 			freeb(b);
 			poperror();
 			qunlock(&q->wlock);
