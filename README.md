@@ -7,15 +7,17 @@
 
 **64-bit Inferno® OS for embedded systems, servers, and AI agents**
 
-InferNode is a lightweight Inferno® OS designed for modern 64-bit systems. Built for efficiency and minimal resource usage, it provides a complete Plan 9-inspired operating environment. A portable GUI (Xenith) may be compiled in, if desired.
+InferNode is a modern Inferno® OS distribution designed for 64-bit systems. It provides a complete Plan 9-inspired operating environment with JIT compilation, namespace-based security, and an AI agent system — all in under 30 MB of RAM. A portable GUI (Xenith) may be compiled in, if desired.
 
 ## Features
 
-- **Lightweight:** 15-30 MB RAM, 2-second startup
-- **Headless:** Console-only operation, no X11 dependency
-- **Complete:** 630+ utilities, full shell environment
-- **Networked:** TCP/IP stack, 9P filesystem protocol
-- **Portable:** Host filesystem access via Plan 9 namespace
+- **Lightweight:** 15-30 MB RAM, 2-second startup, ~10 MB on disk
+- **JIT Compiled:** Native code generation on AMD64 (14x) and ARM64 (9x) — interpreter fallback everywhere
+- **AI Agents:** Namespace-isolated agents with capability-based security (Veltro + Xenith)
+- **Complete:** 780+ utilities, full shell environment, 775 Limbo source files
+- **Networked:** TCP/IP stack, 9P filesystem protocol, distributed namespaces
+- **Formally Verified:** Namespace isolation proven via TLA+, SPIN, and CBMC
+- **Headless by Default:** No GUI dependency; optional SDL3 with Metal/Vulkan/D3D
 
 ## Quick Start
 
@@ -58,26 +60,21 @@ InferNode supports an **optional SDL3 GUI backend** with **Xenith** as the defau
 
 Xenith is an Acme fork optimized for AI agents and AI-human collaboration:
 
-- **9P Filesystem Interface** - Agents interact via file operations, no SDK needed
-- **Namespace Security** - Capability-based containment for AI agents
-- **Observable** - All agent activity visible to humans
-- **Multimodal** - Text and images in the same environment
-- **Dark Mode** - Modern theming (Catppuccin) with full customization
+- **9P Filesystem Interface** — Agents interact via file operations, no SDK needed
+- **Namespace Security** — Capability-based containment for AI agents
+- **Observable** — All agent activity visible to humans
+- **Multimodal** — Text and images in the same environment
+- **Dark Mode** — Modern theming (Catppuccin) with full customization
 
 See [docs/XENITH.md](docs/XENITH.md) for details.
 
 ### UI Improvements
 
-Xenith addresses several usability issues in traditional Acme:
+Xenith replaces classic Acme's blocking I/O with an async architecture:
 
-- **Async File I/O** - Text files, images, directories, and saves run in background threads
-- **Non-Blocking UI** - UI remains responsive during file operations
-- **Progressive Display** - Text appears incrementally; images show "Loading..." indicator
-- **Buffered Channels** - Non-blocking sends prevent deadlocks during nested event loops
-- **Unicode Input** - UTF-8 text entry with Plan 9 latin1 composition (e.g., `a'` → `á`)
-- **Keyboard Handling** - Ctrl+letter support, macOS integration, compose sequences
-
-Classic Acme freezes during file operations. On high-latency connections (remote 9P mounts, slow storage) or with large files, this blocks all interaction. The async architecture allows users to open windows, switch focus, or cancel operations while background tasks run.
+- **Async File I/O** — Text, images, directories, and saves run in background threads
+- **Non-Blocking UI** — Remains responsive during file operations and on high-latency 9P mounts
+- **Unicode Input** — UTF-8 text entry with Plan 9 latin1 composition (e.g., `a'` → `á`)
 
 ### Building with GUI
 
@@ -123,36 +120,30 @@ powershell -ExecutionPolicy Bypass -File build-windows-sdl3.ps1    # build GUI e
 
 ## Veltro - AI Agent System
 
-Veltro is an AI agent that operates within InferNode's namespace. The namespace IS the capability set — if a tool isn't mounted, it doesn't exist. The caller controls what tools and paths the agent can access.
+Veltro is an AI agent system that operates within InferNode's namespace. The namespace IS the capability set — if a tool isn't mounted, it doesn't exist. The caller controls what tools and paths the agent can access.
 
 ### Quick Start
 
 ```bash
 # Inside Inferno (terminal or Xenith)
-mount -A tcp!127.0.0.1!5640 /n/llm       # Mount LLM provider
+mount -A tcp!127.0.0.1!5640 /n/llm       # Mount LLM provider via llm9p
 tools9p read list find search exec &       # Start tool server with chosen tools
 veltro "list the files in /appl"           # Single-shot task
 repl                                       # Interactive REPL
 ```
 
-### Single-Shot Mode (`veltro`)
+### Modes
 
-Runs a task to completion and exits. The agent queries the LLM, invokes tools, feeds results back, and repeats until done.
+- **Single-shot** (`veltro "task"`) — Runs a task to completion and exits. The agent queries the LLM, invokes tools, feeds results back, and repeats until done.
+- **Interactive REPL** (`repl`) — Conversational agent sessions with ongoing context. Works in both Xenith (GUI with tag buttons) and terminal (line-oriented with `veltro>` prompt) modes.
+- **Lucifer** (`lucifer`) — Three-zone tiling GUI (Conversation | Presentation | Context) for AI-human collaboration. Includes activity tracking, tool toggles, and namespace path management with per-path read/write permissions.
 
-```
-veltro [-v] [-n maxsteps] "task description"
-```
+### Key Components
 
-### Interactive REPL (`repl`)
-
-Conversational agent sessions with ongoing context. Runs in two modes:
-
-- **Xenith mode** (automatic when Xenith is running) — Window with tag buttons: `Send` `Clear` `Reset` `Delete`. Read-only transcript above, user input below.
-- **Terminal mode** (fallback) — Line-oriented stdin/stdout with `veltro>` prompt. Commands: `/reset`, `/quit`.
-
-```
-repl [-v] [-n maxsteps]
-```
+- **llm9p** — Exposes LLM providers (e.g. Anthropic API) as a 9P filesystem at `/n/llm`. Agents read and write files to interact with the model — no SDK needed.
+- **tools9p** — Serves 43 tool modules as a 9P filesystem at `/tool`. Each tool (read, list, find, search, write, edit, exec, spawn, shell, etc.) is a loadable Limbo module.
+- **Subagents** — Created via the `spawn` tool, run in isolated namespaces (`pctl(NEWNS)`) with only the tools and paths the parent grants.
+- **Security** — Flows caller-to-callee: the agent cannot self-grant capabilities. Namespace isolation formally verified with TLA+ and SPIN.
 
 ### Architecture
 
@@ -167,10 +158,6 @@ Caller                    Agent
   |                         |-- own LLM session
   |                         |-- subset of tools
 ```
-
-- **tools9p** serves tools as a 9P filesystem at `/tool`. Each tool (read, list, find, search, write, edit, exec, spawn, etc.) is a loadable Limbo module.
-- **Subagents** created via the `spawn` tool run in isolated namespaces (`pctl(NEWNS)`) with only the tools and paths the parent grants.
-- **Security** flows caller-to-callee: the agent cannot self-grant capabilities.
 
 See `appl/veltro/SECURITY.md` for the full security model.
 
@@ -197,31 +184,33 @@ go run ./cmd/godis/ testdata/hello.go
 - **Standard library** — `fmt`, `strings`, `strconv`, `math`, `errors`, `sort`, `sync`, `time`, `log`, `io` (intercepted and inlined as Dis instruction sequences)
 - **Inferno integration** — `inferno/sys` package provides direct access to Sys module functions (open, read, write, bind, pipe, pctl, etc.)
 - **Multi-package** — local package imports with transitive dependency resolution, compiled into a single `.dis` file
-- **172+ test programs** passing end-to-end on the Dis VM
+- **190+ test programs** passing end-to-end on the Dis VM
 
 ### Known Limitations
 
 No reflection, no cgo, no full standard library — stdlib calls are intercepted and inlined. Maps use sorted arrays rather than hash tables. Single-binary output (no separate compilation).
 
-See [tools/godis/README.md](tools/godis/README.md) for the full compiler architecture, translation strategy, and bug log.
+See [tools/godis/README.md](tools/godis/README.md) for the compiler architecture, translation strategy, and bug log.
 
 ## Use Cases
 
-- **Embedded Systems** - Minimal footprint (10-20 MB)
-- **Server Applications** - Lightweight, efficient
-- **AI Agents** - Namespace-isolated agents with capability-based security
-- **Development** - Fast Limbo compilation and testing; Go programs via GoDis
-- **9P Services** - Filesystem export/import over network
+- **AI Agents** — Namespace-isolated agents with capability-based security, LLM integration via 9P
+- **Embedded Systems** — Minimal footprint (~10 MB on disk, 15-30 MB RAM)
+- **Server Applications** — Lightweight services with 9P filesystem export
+- **Development** — Fast Limbo compilation and testing; Go programs via GoDis
+- **Edge Computing** — ARM64 JIT on NVIDIA Jetson, Raspberry Pi
 
 ## What's Inside
 
-- **Shell** - Interactive command environment
-- **630+ Utilities** - Standard Unix-like tools
-- **Limbo Compiler** - Fast compilation of Limbo programs
-- **Go-to-Dis Compiler** - Compile Go programs to Dis bytecode (preliminary)
-- **9P Protocol** - Distributed filesystem support
-- **Namespace Management** - Plan 9 style bind/mount
-- **TCP/IP Stack** - Full networking capabilities
+- **Shell** — Interactive rc-style command environment
+- **780+ Utilities** — Standard Unix-like tools compiled to Dis bytecode
+- **Limbo Compiler** — Fast compilation of Limbo programs
+- **Go-to-Dis Compiler** — Compile Go programs to Dis bytecode (preliminary)
+- **JIT Compilers** — AMD64 and ARM64 native code generation
+- **9P Protocol** — Distributed filesystem support
+- **Namespace Management** — Plan 9 style bind/mount with formal verification
+- **TCP/IP Stack** — Full networking capabilities
+- **Quantum-Safe Cryptography** — ML-KEM, ML-DSA, SLH-DSA (FIPS 203/204/205)
 
 ## Performance
 
@@ -249,16 +238,17 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 
 ## Documentation
 
-- [docs/USER-MANUAL.md](docs/USER-MANUAL.md) - **Comprehensive user guide** (namespaces, devices, host integration)
-- [QUICKSTART.md](QUICKSTART.md) - Getting started in 3 commands
-- [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) - Building and running on Windows
-- [docs/XENITH.md](docs/XENITH.md) - Xenith text environment for AI agents
-- [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) - Veltro agent security model
-- [tools/godis/README.md](tools/godis/README.md) - GoDis compiler architecture and translation strategy
-- [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) - Performance benchmarks
-- [docs/DIFFERENCES-FROM-STANDARD-INFERNO.md](docs/DIFFERENCES-FROM-STANDARD-INFERNO.md) - How InferNode differs
-- [formal-verification/README.md](formal-verification/README.md) - Formal verification (TLA+, SPIN, CBMC)
-- [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md) - Complete documentation index
+- [docs/USER-MANUAL.md](docs/USER-MANUAL.md) — **Comprehensive user guide** (namespaces, devices, host integration)
+- [QUICKSTART.md](QUICKSTART.md) — Getting started in 3 commands
+- [docs/XENITH.md](docs/XENITH.md) — Xenith text environment for AI agents
+- [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) — Veltro agent security model
+- [tools/godis/README.md](tools/godis/README.md) — GoDis compiler architecture and translation strategy
+- [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — Cross-language JIT benchmarks (C, Java, Limbo)
+- [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) — Performance specs and binary sizes
+- [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) — Building and running on Windows
+- [docs/DIFFERENCES-FROM-STANDARD-INFERNO.md](docs/DIFFERENCES-FROM-STANDARD-INFERNO.md) — How InferNode differs from standard Inferno
+- [formal-verification/README.md](formal-verification/README.md) — Formal verification (TLA+, SPIN, CBMC)
+- [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md) — Complete documentation index (100+ docs)
 
 ## Building
 
@@ -285,27 +275,29 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 
 ### Working
 
-- **Dis Virtual Machine** - Interpreter and JIT compiler on all platforms. See `docs/arm64-jit/`.
-- **GoDis Compiler** - Preliminary Go-to-Dis compiler; 172+ test programs passing. See `tools/godis/`.
-- **SDL3 GUI Backend** - Cross-platform graphics with Metal/Vulkan/D3D
-- **Xenith** - AI-native text environment with async I/O
-- **Veltro** - AI agent system with namespace-based security, interactive REPL, and sub-agent spawning
-- **Modern Cryptography** - Ed25519 signatures, updated certificate generation and authentication
-- **Limbo Test Framework** - Unit testing with clickable error addresses
-- **Windows AMD64 Port** - Headless and SDL3 GUI with Xenith, interpreter only (no JIT yet)
-- **All 630+ utilities** - Shell, networking, filesystems, development tools
-- **GitHub Actions CI** - Build verification, security scanning, supply chain scorecard
+- **Dis Virtual Machine** — Interpreter and JIT compiler on AMD64 and ARM64. See `docs/arm64-jit/`.
+- **GoDis Compiler** — Preliminary Go-to-Dis compiler; 190+ test programs passing. See `tools/godis/`.
+- **SDL3 GUI Backend** — Cross-platform graphics with Metal/Vulkan/D3D (macOS, Windows)
+- **Xenith** — AI-native text environment with async I/O, dark mode, image support
+- **Lucifer** — Three-zone tiling GUI for AI-human collaboration
+- **Veltro** — AI agent system with namespace-based security, 43 tool modules, REPL, and sub-agent spawning
+- **llm9p** — LLM providers exposed as 9P filesystem
+- **Quantum-Safe Cryptography** — FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA)
+- **Modern Cryptography** — Ed25519 signatures, updated certificate generation and authentication
+- **Formal Verification** — Namespace isolation verified via TLA+ (3.17B states), SPIN, and CBMC
+- **Limbo Test Framework** — Unit testing with clickable error addresses
+- **Windows AMD64 Port** — Headless and SDL3 GUI with Xenith, interpreter only (no JIT yet)
+- **All 780+ utilities** — Shell, networking, filesystems, development tools
+- **GitHub Actions CI** — Build verification, security scanning, supply chain scorecard
 
 ### Roadmap
 
-- Linux ARM64 SDL3 GUI support
+- Linux ARM64 SDL3 GUI support (backend 95% complete, build system integration remaining)
 - Windows JIT compiler
 
 ## About
 
-InferNode is a GPL-free Inferno® OS distribution developed by NERV Systems, focused on headless operation and modern 64-bit platforms. It provides a complete Inferno® OS environment optimized for embedded systems, servers, and AI agent applications. InferNode's namespace model provides a capability-based security architecture well-suited for AI agent isolation.
-
-Inspired by the concept of standalone Inferno® environments, InferNode builds on the MIT-licensed Inferno® OS codebase to deliver a lightweight, headless-capable system.
+InferNode is a GPL-free Inferno® OS distribution developed by NERV Systems. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
 
 ## License
 
@@ -313,6 +305,6 @@ MIT License (as per original Inferno® OS).
 
 ---
 
-**NERV InferNode** - Lightweight Inferno® OS for ARM64, AMD64, and Windows
+**NERV InferNode** — Lightweight Inferno® OS for AMD64, ARM64, and Windows
 
 <sub>Inferno® is a distributed operating system, originally developed at Bell Labs, but now maintained by trademark owner Vita Nuova®.</sub>
