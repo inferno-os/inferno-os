@@ -942,7 +942,10 @@ drawbrowser(curpath: string, dirs, files: list of string, scroll: int)
 
 	brow_backrect = Rect((zone.min.x + pad, y),
 		(zone.min.x + pad + backw, y + lineH));
-	mainwin.text((zone.min.x + pad, y), accentcol, (0, 0), mainfont, upicon);
+	upcol := accentcol;
+	if(curpath == "/")
+		upcol = dimcol;
+	mainwin.text((zone.min.x + pad, y), upcol, (0, 0), mainfont, upicon);
 
 	# Path — truncate from left if too wide
 	pathx   := zone.min.x + pad + backw + 6;
