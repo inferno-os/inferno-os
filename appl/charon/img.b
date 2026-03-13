@@ -154,11 +154,16 @@ ImageSource.getmim(is: self ref ImageSource) : (int, ref MaskedImage)
 			# slow down the spin-waiting for this image
 			sys->sleep(20);
 		}
-	}exception ex{
+	}exception exc{
 	"exImageerror*" =>
 		ret = Mimerror;
 		if(dbg)
-			sys->print("getmim got err: %s: %s\n", ex, is.err);
+			sys->print("getmim got err: %s: %s\n", exc, is.err);
+	"*" =>
+		ret = Mimerror;
+		is.err = exc;
+		if(warn)
+			sys->print("getmim exception: %s\n", exc);
 	}
 	if(dbg)
 		sys->print("img: getmim returns (%d,%x)\n", ret, ans);
