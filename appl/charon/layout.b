@@ -702,6 +702,9 @@ haveimage(f: ref Frame, ci: ref CImage, itl: list of ref Item)
 										fit.height = fit.item.height;
 									Itable =>
 										checktabsize(f, xi, TABLEFLOATTARGET);
+									Ibox =>
+										checkboxsize(f, fit, xi, TABLEFLOATTARGET);
+										fit.height = fit.item.height;
 									}
 								}
 							}
@@ -1535,6 +1538,8 @@ floatw(ymin, ymax: int, flist: list of ref Item.Ifloat, side: byte) : int
 			continue;
 		fymin := fl.y;
 		fymax := fymin + fl.item.height;
+		if(fl.item.height == 0)
+			fymax++;	# assume float will have some height later
 		if((fymin <= ymin && ymin < fymax) ||
 		   (ymin <= fymin && fymin < ymax)) {
 			w := fl.x;

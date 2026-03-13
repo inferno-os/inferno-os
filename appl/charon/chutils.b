@@ -1542,7 +1542,7 @@ setconfig(argl: list of string)
 	config.docookies = 1;
 	config.doscripts = 1;
 	config.httpminor = 1;
-	config.agentname = "Mozilla/4.08 (Charon; Inferno)";
+	config.agentname = "Mozilla/5.0 (compatible; Charon/1.0; Inferno)";
 	config.nthreads = 8;
 	config.offersave = 1;
 	config.charset = "utf-8";
