@@ -829,6 +829,7 @@ tooldesc(name: string): string
 	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=text], write <id> <content-or-path>, center <id>, delete <id>, list, status. For mermaid: write raw Mermaid syntax (NOT fenced code blocks). Supported mermaid diagram types: flowchart, sequenceDiagram, gantt, pie, xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram, stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph, quadrantChart, journey, requirementDiagram, block-beta. For pdf/image: write the file path.";
 	"spawn"    => return "Spawn a parallel subagent with its own namespace";
 	"todo"   => return "Manage a persistent task list";
+	"plan"   => return "Create and manage structured plans for complex tasks. Workflow: create → goal → approach → step(s) → approve → progress → complete. MANDATORY for non-trivial multi-step work.";
 	"http"   => return "Make an HTTP request";
 	"ls"     => return "List directory contents";
 	"mkdir"  => return "Create a directory";

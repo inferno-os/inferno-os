@@ -50,6 +50,7 @@ TOOLS=\
     tools/fractal.dis\
     tools/task.dis\
     tools/gap.dis\
+    tools/plan.dis\
 
 all:V: $MAIN $TOOLS
 
@@ -190,6 +191,10 @@ tools/task.dis: tools/task.b tool.m
 # Gap tool
 tools/gap.dis: tools/gap.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/gap.dis tools/gap.b
+
+# Plan tool
+tools/plan.dis: tools/plan.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/plan.dis tools/plan.b
 
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools

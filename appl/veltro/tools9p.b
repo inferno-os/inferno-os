@@ -146,6 +146,8 @@ TOOL_PATHS := array[] of {
 	("fractal", "/dis/veltro/tools/fractal.dis"),
 	# Task delegation (requires luciuisrv)
 	("task",    "/dis/veltro/tools/task.dis"),
+	# Structured planning
+	("plan",    "/dis/veltro/tools/plan.dis"),
 };
 
 usage()

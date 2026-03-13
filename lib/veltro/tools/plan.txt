@@ -1,0 +1,24 @@
+plan - Structured planning for complex tasks
+
+  plan create <title>           Create a new plan (becomes active)
+  plan goal <text>              Set the goal/objective
+  plan approach <text>          Set the approach/strategy
+  plan step <text>              Add a step to the plan
+  plan context <text>           Add context/notes
+  plan show                     Show the active plan
+  plan approve                  Mark plan as approved (ready to execute)
+  plan progress <n>             Mark step N as done
+  plan skip <n> [reason]        Skip step N
+  plan revise <n> <text>        Revise step N text
+  plan addstep <after_n> <text> Insert step after position N
+  plan complete                 Mark plan as complete
+  plan abandon [reason]         Abandon the active plan
+  plan list                     List all plans
+  plan switch <id>              Switch active plan
+  plan export-todo              Export pending steps to todo
+  plan export-memory <key>      Save plan summary to memory
+
+Workflow: create → goal → approach → step(s) → approve → progress → complete
+
+MANDATORY for complex tasks: create a plan BEFORE starting work.
+Use 'plan show' to review progress. Use with memory and todo tools.
