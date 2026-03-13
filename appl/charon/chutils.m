@@ -24,7 +24,8 @@ CharonUtils: module
 
 	Audio32kadpcm, AudioBasic,
 
-	ImageCgm, ImageG3fax, ImageGif, ImageIef, ImageJpeg, ImagePng, ImageTiff,
+	ImageAvif, ImageCgm, ImageG3fax, ImageGif, ImageIef, ImageJpeg, ImagePng,
+	ImageSvg, ImageTiff, ImageWebP,
 	ImageXBit, ImageXBit2, ImageXBitmulti, ImageXInfernoBit, ImageXXBitmap,
 
 	ModelVrml,
