@@ -599,8 +599,8 @@ mknavobj(ex: ref Exec) : ref Obj
 	reinitprop(navobj, "appName", ES->strval("Netscape"));
 #	reinitprop(navobj, "appVersion", ES->strval("3.0 (Inferno, U)"));
 #	reinitprop(navobj, "userAgent", ES->strval("Mozilla/3.0 (Inferno; U)"));
-	reinitprop(navobj, "appVersion", ES->strval("4.08 (Charon; Inferno)"));
-	reinitprop(navobj, "userAgent", ES->strval("Mozilla/4.08 (Charon; Inferno)"));
+	reinitprop(navobj, "appVersion", ES->strval("5.0 (compatible; Charon/1.0; Inferno)"));
+	reinitprop(navobj, "userAgent", ES->strval("Mozilla/5.0 (compatible; Charon/1.0; Inferno)"));
 
 	omty := getobj(ex, navobj, "mimeTypes");
 	for(i := 0; i < len mimespecs; i++) {
