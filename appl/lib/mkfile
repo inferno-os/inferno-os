@@ -86,10 +86,13 @@ TARG=\
 	rand.dis\
 	random.dis\
 	readdir.dis\
+	readavif.dis\
 	readgif.dis\
 	readjpg.dis\
 	readpicfile.dis\
 	readpng.dis\
+	readsvg.dis\
+	readwebp.dis\
 	readxbitmap.dis\
 	regex.dis\
 	regexutils.dis\

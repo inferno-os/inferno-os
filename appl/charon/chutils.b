@@ -69,13 +69,16 @@ mnames = array[] of {
 	"application/x-unknown",
 	"audio/32kadpcm",
 	"audio/basic",
+	"image/avif",
 	"image/cgm",
 	"image/g3fax",
 	"image/gif",
 	"image/ief",
 	"image/jpeg",
 	"image/png",
+	"image/svg+xml",
 	"image/tiff",
+	"image/webp",
 	"image/x-bit",
 	"image/x-bit2",
 	"image/x-bitmulti",
@@ -159,6 +162,8 @@ hcphrase(code: int) : string
 fileexttable := array[] of { T->StringInt
 	("ai", ApplPostscript),
 	("au", AudioBasic),
+	("avif", ImageAvif),
+	("avifs", ImageAvif),
 # ("bit", ImageXBit),
 	("bit", ImageXInfernoBit),
 	("bit2", ImageXBit2),
@@ -175,10 +180,12 @@ fileexttable := array[] of { T->StringInt
 	("png", ImagePng),
 	("ps", ApplPostscript),
 	("shtml", TextHtml),
+	("svg", ImageSvg),
 	("text", TextPlain),
 	("tif", ImageTiff),
 	("tiff", ImageTiff),
 	("txt", TextPlain),
+	("webp", ImageWebP),
 	("zip", ApplOctets)
 };
 
@@ -1198,6 +1205,12 @@ Header.new() : ref Header
 jpmagic := array[] of {byte 16rFF, byte 16rD8, byte 16rFF, byte 16rE0,
 		byte 0, byte 0, byte 'J', byte 'F', byte 'I', byte 'F', byte 0};
 pngsig := array[] of { byte 137, byte 80, byte 78, byte 71, byte 13, byte 10, byte 26, byte 10 };
+webpmagic := array[] of { byte 'R', byte 'I', byte 'F', byte 'F' };
+webpsig := array[] of { byte 'W', byte 'E', byte 'B', byte 'P' };
+avifsig := array[] of { byte 'f', byte 't', byte 'y', byte 'p' };
+avifbrand1 := array[] of { byte 'a', byte 'v', byte 'i', byte 'f' };
+avifbrand2 := array[] of { byte 'm', byte 'i', byte 'f', byte '1' };
+avifbrand3 := array[] of { byte 'a', byte 'v', byte 'i', byte 's' };
 
 # Set the mtype (and possibly chset) fields of h based on (in order):
 #	first bytes of file, if unambigous
@@ -1244,6 +1257,21 @@ Header.setmediatype(h: self ref Header, name: string, first: array of byte)
 						break;
 				if (i == len pngsig)
 					mt = ImagePng;
+			} else if (n >= 12 && first[0] == webpmagic[0] && first[1] == webpmagic[1]
+					&& first[2] == webpmagic[2] && first[3] == webpmagic[3]
+					&& first[8] == webpsig[0] && first[9] == webpsig[1]
+					&& first[10] == webpsig[2] && first[11] == webpsig[3]) {
+				mt = ImageWebP;
+			} else if (n >= 12 && first[4] == avifsig[0] && first[5] == avifsig[1]
+					&& first[6] == avifsig[2] && first[7] == avifsig[3]) {
+				# ISOBMFF ftyp box: check brand at offset 8
+				if ((first[8] == avifbrand1[0] && first[9] == avifbrand1[1]
+					&& first[10] == avifbrand1[2] && first[11] == avifbrand1[3])
+				   || (first[8] == avifbrand2[0] && first[9] == avifbrand2[1]
+					&& first[10] == avifbrand2[2] && first[11] == avifbrand2[3])
+				   || (first[8] == avifbrand3[0] && first[9] == avifbrand3[1]
+					&& first[10] == avifbrand3[2] && first[11] == avifbrand3[3]))
+					mt = ImageAvif;
 			}
 		}
 	}

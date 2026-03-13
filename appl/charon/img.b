@@ -6,6 +6,10 @@ include "common.m";
 include "filter.m";
 include "crc.m";
 
+# headers for hot-loadable image format decoders (WebP, AVIF, SVG)
+include "bufio.m";
+include "imagefile.m";
+
 # big tables in separate files
 include "rgb.inc";
 include "ycbcr.inc";
@@ -58,7 +62,10 @@ supported(mtype: int) : int
 	CU->ImageGif or
 	CU->ImageXXBitmap or
 	CU->ImageXInfernoBit or
-	CU->ImagePng =>
+	CU->ImagePng or
+	CU->ImageWebP or
+	CU->ImageAvif or
+	CU->ImageSvg =>
 		return 1;
 	}
 	return 0;
@@ -129,6 +136,12 @@ ImageSource.getmim(is: self ref ImageSource) : (int, ref MaskedImage)
 				ans = getbitmim(is);
 			CU->ImagePng =>
 				ans = getpngmim(is);
+			CU->ImageWebP =>
+				ans = getwebpmim(is);
+			CU->ImageAvif =>
+				ans = getavifmim(is);
+			CU->ImageSvg =>
+				ans = getsvgmim(is);
 			* =>
 				is.err = sys->sprint("unsupported image type %s", (CU->mnames)[is.mtype]);
 				ret = Mimerror;
@@ -3603,4 +3616,219 @@ png_chunk_header(is: ref ImageSource, chunk: ref Chunk): int
 		return 0;
 #	sys->print("%s(%d)\n", chunk.typ, chunk.size);
 	return 1;
+}
+
+################# WebP ###################
+
+# Hot-load the WebP decoder module and convert to MaskedImage
+getwebpmim(is: ref ImageSource) : ref MaskedImage
+{
+	if(dbg)
+		sys->print("getwebpmim\n");
+	if(dbgev)
+		CU->event("IMAGE_GETWEBPMIM", 0);
+
+	return hotload_decode(is, "/dis/lib/readwebp.dis", "WebP");
+}
+
+################# AVIF ###################
+
+# Hot-load the AVIF decoder module and convert to MaskedImage
+getavifmim(is: ref ImageSource) : ref MaskedImage
+{
+	if(dbg)
+		sys->print("getavifmim\n");
+	if(dbgev)
+		CU->event("IMAGE_GETAVIFMIM", 0);
+
+	return hotload_decode(is, "/dis/lib/readavif.dis", "AVIF");
+}
+
+################# SVG ###################
+
+# Hot-load the SVG renderer module and convert to MaskedImage
+getsvgmim(is: ref ImageSource) : ref MaskedImage
+{
+	if(dbg)
+		sys->print("getsvgmim\n");
+	if(dbgev)
+		CU->event("IMAGE_GETSVGMIM", 0);
+
+	return hotload_decode(is, "/dis/lib/readsvg.dis", "SVG");
+}
+
+################# Hot-load decoder ###################
+
+# Common hot-loading pattern for new image format decoders.
+# Loads the RImagefile module at the given path, wraps the
+# ByteSource data into a Bufio Iobuf, decodes the image,
+# remaps to display format, and returns a MaskedImage.
+hotload_decode(is: ref ImageSource, modpath, fmtname: string) : ref MaskedImage
+{
+	bimod := load Bufio Bufio->PATH;
+	if(bimod == nil)
+		imgerror(is, fmtname + ": cannot load bufio");
+
+	imgmod := load RImagefile modpath;
+	if(imgmod == nil)
+		imgerror(is, fmtname + ": cannot load decoder " + modpath);
+
+	imgmod->init(bimod);
+
+	# Wrap raw data into a memory Iobuf
+	data := is.bs.data[0:];
+	fd := bimod->aopen(data);
+	if(fd == nil)
+		imgerror(is, fmtname + ": cannot create buffer");
+
+	# Try multi-frame first (for animated WebP)
+	(raws, err) := imgmod->readmulti(fd);
+	if(raws == nil || len raws == 0)
+		imgerror(is, fmtname + ": " + err);
+
+	raw := raws[0];
+	width := raw.r.dx();
+	height := raw.r.dy();
+	if(width <= 0 || height <= 0)
+		imgerror(is, fmtname + ": invalid dimensions");
+
+	is.origw = width;
+	is.origh = height;
+	setdims(is);
+
+	# Handle RGBA (with alpha channel)
+	if(raw.chandesc == RImagefile->CRGBA && raw.nchans == 4) {
+		return hotload_decode_rgba(is, raw, fmtname);
+	}
+
+	# Handle RGB
+	if(raw.chandesc == RImagefile->CRGB && raw.nchans == 3) {
+		# Remap to RGB24 image
+		npix := width * height;
+		rgb := array[npix * 3] of byte;
+		for(i := 0; i < npix; i++) {
+			rgb[i*3] = raw.chans[0][i];
+			rgb[i*3+1] = raw.chans[1][i];
+			rgb[i*3+2] = raw.chans[2][i];
+		}
+		if(is.width != is.origw || is.height != is.origh) {
+			# Resample each channel separately then recombine
+			r := array[npix] of byte;
+			g := array[npix] of byte;
+			b := array[npix] of byte;
+			for(i = 0; i < npix; i++) {
+				r[i] = raw.chans[0][i];
+				g[i] = raw.chans[1][i];
+				b[i] = raw.chans[2][i];
+			}
+			r = resample(r, is.origw, is.origh, is.width, is.height);
+			g = resample(g, is.origw, is.origh, is.width, is.height);
+			b = resample(b, is.origw, is.origh, is.width, is.height);
+			npix2 := is.width * is.height;
+			rgb = array[npix2 * 3] of byte;
+			for(i = 0; i < npix2; i++) {
+				rgb[i*3] = r[i];
+				rgb[i*3+1] = g[i];
+				rgb[i*3+2] = b[i];
+			}
+		}
+		im := newimage24(is, is.width, is.height);
+		im.writepixels(im.r, rgb);
+		if(dbgev)
+			CU->event("IMAGE_GET" + fmtname + "MIM_END", 0);
+		return newmi(im);
+	}
+
+	# Handle greyscale
+	if(raw.chandesc == RImagefile->CY && raw.nchans == 1) {
+		pixels := raw.chans[0];
+		if(is.width != is.origw || is.height != is.origh)
+			pixels = resample(pixels, is.origw, is.origh, is.width, is.height);
+		im := newimagegrey(is, is.width, is.height);
+		im.writepixels(im.r, pixels);
+		return newmi(im);
+	}
+
+	# Handle palette
+	if(raw.chandesc == RImagefile->CRGB1 && raw.nchans == 1) {
+		remap1(raw.chans[0], width, height, raw.cmap);
+		pixels := raw.chans[0];
+		if(is.width != is.origw || is.height != is.origh)
+			pixels = resample(pixels, is.origw, is.origh, is.width, is.height);
+		im := newimage(is, is.width, is.height);
+		im.writepixels(im.r, pixels);
+		return newmi(im);
+	}
+
+	imgerror(is, fmtname + ": unsupported channel format");
+	return nil;
+}
+
+# Decode RGBA image with alpha mask
+hotload_decode_rgba(is: ref ImageSource, raw: ref RImagefile->Rawimage, fmtname: string) : ref MaskedImage
+{
+	width := raw.r.dx();
+	height := raw.r.dy();
+	npix := width * height;
+
+	# Build RGB24 pixel data and separate alpha mask
+	rgb := array[npix * 3] of byte;
+	mpic := array[npix] of byte;
+	has_transparency := 0;
+	for(i := 0; i < npix; i++) {
+		a := int raw.chans[3][i];
+		r := int raw.chans[0][i];
+		g := int raw.chans[1][i];
+		b := int raw.chans[2][i];
+		# Pre-multiply alpha for display
+		if(a < 255) {
+			has_transparency = 1;
+			r = (r * a) / 255;
+			g = (g * a) / 255;
+			b = (b * a) / 255;
+		}
+		rgb[i*3] = byte r;
+		rgb[i*3+1] = byte g;
+		rgb[i*3+2] = byte b;
+		mpic[i] = byte a;
+	}
+
+	if(is.width != is.origw || is.height != is.origh) {
+		rc := array[npix] of byte;
+		gc := array[npix] of byte;
+		bc := array[npix] of byte;
+		for(i = 0; i < npix; i++) {
+			rc[i] = rgb[i*3];
+			gc[i] = rgb[i*3+1];
+			bc[i] = rgb[i*3+2];
+		}
+		rc = resample(rc, is.origw, is.origh, is.width, is.height);
+		gc = resample(gc, is.origw, is.origh, is.width, is.height);
+		bc = resample(bc, is.origw, is.origh, is.width, is.height);
+		mpic = resample(mpic, is.origw, is.origh, is.width, is.height);
+		npix2 := is.width * is.height;
+		rgb = array[npix2 * 3] of byte;
+		for(i = 0; i < npix2; i++) {
+			rgb[i*3] = rc[i];
+			rgb[i*3+1] = gc[i];
+			rgb[i*3+2] = bc[i];
+		}
+	}
+
+	im := newimage24(is, is.width, is.height);
+	im.writepixels(im.r, rgb);
+	mi := newmi(im);
+
+	# Create alpha mask if needed
+	if(has_transparency) {
+		mask := display.newimage(((0,0),(is.width,is.height)), D->GREY8, 0, D->Opaque);
+		if(mask != nil) {
+			mask.writepixels(mask.r, mpic);
+			mi.mask = mask;
+		}
+	}
+
+	if(dbgev)
+		CU->event("IMAGE_GET" + fmtname + "MIM_END", 0);
+	return mi;
 }

@@ -5,6 +5,9 @@ RImagefile: module
 	READXBMPATH:	con "/dis/lib/readxbitmap.dis";
 	READPICPATH:	con "/dis/lib/readpicfile.dis";
 	READPNGPATH:	con "/dis/lib/readpng.dis";
+	READWEBPPATH:	con "/dis/lib/readwebp.dis";
+	READAVIFPATH:	con "/dis/lib/readavif.dis";
+	READSVGPATH:	con "/dis/lib/readsvg.dis";
 
 	Rawimage: adt
 	{
