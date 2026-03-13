@@ -783,6 +783,8 @@ handlecontextmenu(p: ref Pointer)
 				"kill id=" + artid);
 		return;
 	}
+	if(art == nil)
+		return;
 	# Build menu based on artifact type
 	items: array of string;
 	case art.atype {
