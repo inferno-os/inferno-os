@@ -1,0 +1,400 @@
+.TH AWK 1
+.SH NAME
+awk \- pattern-directed scanning and processing language
+.SH SYNOPSIS
+.B awk
+[
+.BI -F " fs"
+] [
+.BI -v " var=value"
+] [
+.B -safe
+] [
+.BI -f " progfile"
+] [
+.I 'prog'
+] [
+.IR file ...
+]
+.SH DESCRIPTION
+.I Awk
+scans each input
+.I file
+for lines that match any of a set of patterns.
+With each pattern there can be an associated action that will be
+performed when a line of a
+.I file
+matches the pattern.
+Each line is matched against the pattern portion
+of every pattern-action statement;
+the associated action is performed for each matched pattern.
+The file name
+.B -
+means the standard input.
+.PP
+An input line is made up of fields separated by
+white space, or by the field separator
+.I fs
+specified by the
+.B -F
+option.
+Fields are denoted
+.BR $1 ,
+.BR $2 ,
+\&... ;
+.B $0
+refers to the entire line.
+.PP
+A pattern-action statement has the form
+.IP
+.IB pattern " { " action " }"
+.PP
+A missing action means print the line;
+a missing pattern always matches.
+Pattern-action statements are separated by newlines or semicolons.
+.PP
+An action is a sequence of statements.
+Statements include:
+.IP
+.B "if ("
+.I expr
+.B )
+.I stmt
+[
+.B else
+.IR stmt ]
+.br
+.B "while ("
+.I expr
+.B )
+.I stmt
+.br
+.B "for ("
+.I expr
+.B ;
+.I expr
+.B ;
+.I expr
+.B )
+.I stmt
+.br
+.B "for ("
+.I var
+.B in
+.I array
+.B )
+.I stmt
+.br
+.B "do"
+.I stmt
+.B "while ("
+.I expr
+.B )
+.br
+.B break
+.br
+.B continue
+.br
+.BI { " stmt ..."  }
+.br
+.I expr
+.br
+.B print
+[
+.IR expr-list ]
+[
+.BI > file
+]
+.br
+.B printf
+.I fmt
+[
+.BI , " expr-list"
+]
+[
+.BI > file
+]
+.br
+.B return
+[
+.I expr
+]
+.br
+.BI next
+.br
+.BI exit " [expr]"
+.br
+.BI delete " array[expr]"
+.PP
+Statements are terminated by semicolons, newlines, or right braces.
+.PP
+Patterns are arbitrary Boolean combinations
+(with
+.BR "! || &&" )
+of regular expressions and relational expressions.
+Regular expressions are delimited by slashes
+and are as defined in
+.IR regex (2).
+The special patterns
+.B BEGIN
+and
+.B END
+may be used to capture control before the first input
+line is read and after the last.
+.B BEGIN
+and
+.B END
+do not combine with other patterns.
+A pattern may consist of two patterns
+separated by a comma; in this case, the action is
+performed for all lines from an occurrence of the
+first pattern to an occurrence of the second.
+.PP
+Regular expressions may contain the character classes
+.BR [...] ,
+complemented by
+.BR [^...] .
+.PP
+A relational expression is one of the following:
+.IP
+.I "expr matchop regexp"
+.br
+.I "expr relop expr"
+.PP
+where a
+.I relop
+is any of the six relational operators in C, and a
+.I matchop
+is either
+.B ~
+(matches) or
+.B !~
+(does not match).
+.PP
+The mathematical functions
+.BR exp ,
+.BR log ,
+.BR sqrt ,
+.BR sin ,
+.BR cos ,
+and
+.BR atan2
+are built in.
+Other built-in functions:
+.TP
+.BI length( s )
+the length of its argument taken as a string,
+or of
+.B $0
+if no argument.
+.TP
+.BI rand()
+random number on [0,1)
+.TP
+.BI srand( expr )
+sets seed for
+.B rand
+and returns the previous seed.
+.TP
+.BI int( x )
+truncates to an integer value
+.TP
+.BI substr( s ", " m  [ ", " n ] )
+the at most
+.IR n -character
+substring of
+.I s
+starting at position
+.IR m ,
+counted from 1. If
+.I n
+is omitted, the rest of the string is used.
+.TP
+.BI index( s ", " t )
+the position in
+.I s
+where the string
+.I t
+occurs, 0 if it does not.
+.TP
+.BI match( s ", " r )
+the position in
+.I s
+where the regular expression
+.I r
+occurs, or 0 if it does not.
+The variables
+.B RSTART
+and
+.B RLENGTH
+are set to the position and length of the matched string.
+.TP
+.BI split( s ", " a  [ ", " fs ] )
+splits the string
+.I s
+into array elements
+.IB a [1] ,
+.IB a [2] ,
+\&...,
+.IB a [ n ] ,
+and returns
+.IR n .
+The separation is done with the field separator
+.I fs
+or with the regular expression
+.I fs
+if it is given,
+otherwise with the one in effect at the time of execution of
+.BR split .
+.TP
+.BI sub( r ", " t  [ ", " s ] )
+substitutes
+.I t
+for the first occurrence of the regular expression
+.I r
+in the string
+.IR s .
+If
+.I s
+is not given,
+.B $0
+is used.
+An ampersand
+.RB ( & )
+in
+.I t
+is replaced by the matched substring of
+.IR s .
+Returns the number of substitutions.
+.TP
+.BI gsub( r ", " t  [ ", " s ] )
+same as
+.B sub
+except that all occurrences of the regular expression
+are replaced.
+Returns the number of substitutions.
+.TP
+.BI sprintf( fmt ", " expr ", " ... )
+the string resulting from formatting the expressions
+according to the
+.IR sys-print (2)
+format string
+.IR fmt .
+.TP
+.BI system( cmd )
+executes
+.I cmd
+and returns its exit status.
+Not available in
+.B -safe
+mode.
+.TP
+.BI tolower( str )
+returns a copy of
+.I str
+with all upper-case characters converted to lower-case.
+.TP
+.BI toupper( str )
+returns a copy of
+.I str
+with all lower-case characters converted to upper-case.
+.PP
+The input/output function
+.B getline
+sets
+.B $0
+to the next input record from the current input file;
+.B "getline x"
+sets variable
+.I x
+instead.
+.B "getline < file"
+reads from
+.IR file .
+.PP
+The
+.B print
+statement writes on the standard output (or on a
+file if
+.BI > file
+or
+.BI >> file
+is present, or on a pipe if
+.BI | cmd
+is present).
+.PP
+The
+.B printf
+statement formats its expression list according to the format (see
+.IR sys-print (2)).
+.PP
+User-defined functions may be declared with the syntax:
+.IP
+.B "function"
+.IB name ( args ") {" " stmts" " }"
+.PP
+Function arguments are passed by value if scalar and by
+reference if array name.
+.PP
+The options are:
+.TP
+.BI -F " fs"
+Set the input field separator to the string or regular expression
+.IR fs .
+.TP
+.BI -v " var=value"
+Assign
+.I value
+to variable
+.I var
+before the program is executed.
+May be specified multiple times.
+.TP
+.BI -f " progfile"
+Read the awk program from
+.I progfile
+instead of the command line.
+.TP
+.B -safe
+Disable
+.B system
+and I/O redirection to prevent access to the
+underlying operating system.
+.PP
+The special variable
+.B ENVIRON
+is an array of environment variables; the subscripts are names.
+It is not available in
+.B -safe
+mode.
+.SH EXAMPLES
+.LP
+Print second field of each line:
+.IP
+.B "awk '{ print $2 }'"
+.LP
+Add up first column, print sum and average:
+.IP
+.B "awk '{ s += $1 } END { print ""sum"", s, ""average"", s/NR }'"
+.LP
+Print fields in reverse order:
+.IP
+.B "awk '{ for (i = NF; i > 0; i--) printf ""%s "", $i; printf ""\\n"" }'"
+.LP
+Print lines longer than 72 characters:
+.IP
+.B "awk 'length > 72'"
+.SH SOURCE
+.B /appl/cmd/awk.b
+.SH SEE ALSO
+.IR cut (1),
+.IR sed (1),
+.IR grep (1),
+.IR regex (2)
+.SH BUGS
+Input is limited to the available memory.
+There are no explicit conversions between numbers and strings.
+To force an expression to be treated as a number add 0 to it;
+to force it to be treated as a string concatenate
+.B ""
+to it.

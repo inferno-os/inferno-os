@@ -1,0 +1,101 @@
+.TH CUT 1
+.SH NAME
+cut \- cut selected fields or characters from lines
+.SH SYNOPSIS
+.B cut
+.B -c
+.I list
+[
+.IR file ...
+]
+.br
+.B cut
+.B -f
+.I list
+[
+.B -d
+.I delim
+] [
+.B -s
+] [
+.IR file ...
+]
+.SH DESCRIPTION
+.I Cut
+writes selected fields or character positions from each line
+of each
+.I file
+(default: standard input)
+to standard output.
+.PP
+If the
+.B -f
+option is given, the selection is by field;
+if
+.B -c
+is given, it is by character position.
+.PP
+The
+.I list
+specifies the fields or character positions to select.
+It is a comma-separated list of numbers and ranges:
+.TP
+.I N
+Select field or character
+.IR N .
+.TP
+.IB N - M
+Select fields or characters
+.I N
+through
+.IR M .
+.TP
+.IB N -
+Select from field or character
+.I N
+to end of line.
+.TP
+.BI - M
+Select from beginning to field or character
+.IR M .
+.PP
+Fields and characters are numbered from 1.
+.PP
+The options are:
+.TP
+.BI -d " delim"
+Use
+.I delim
+as the field delimiter character (default: tab).
+Only valid with
+.BR -f .
+.TP
+.B -s
+Suppress lines that do not contain the delimiter.
+Without
+.BR -s ,
+lines without the delimiter are passed through unchanged.
+Only valid with
+.BR -f .
+.TP
+.B -n
+Accepted but ignored.
+Inferno is natively UTF-8; character boundaries are always respected.
+.SH EXAMPLES
+.LP
+Print the second field of a colon-separated file:
+.IP
+.B "cut -d: -f2 /etc/passwd"
+.LP
+Print characters 1 through 10:
+.IP
+.B "cut -c1-10 file"
+.LP
+Print fields 1, 3, and 5 onward:
+.IP
+.B "cut -f1,3,5- file"
+.SH SOURCE
+.B /appl/cmd/cut.b
+.SH SEE ALSO
+.IR awk (1),
+.IR tr (1)
