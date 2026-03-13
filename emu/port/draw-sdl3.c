@@ -216,8 +216,8 @@ init_hidpi(void)
 	display_scale = scale;
 	sdl_width = pix_w;
 	sdl_height = pix_h;
-	window_width = win_w;
-	window_height = win_h;
+	window_width = pix_w;
+	window_height = pix_h;
 	calc_dest_rect();
 }
 
@@ -920,7 +920,8 @@ sdl3_mainloop(void)
 				break;
 
 			case SDL_EVENT_MOUSE_MOTION:
-				window_to_texture_coords(event.motion.x, event.motion.y, &mouse_x, &mouse_y);
+				/* SDL reports mouse in logical (window) coords; scale to physical (renderer) coords */
+				window_to_texture_coords(event.motion.x * display_scale, event.motion.y * display_scale, &mouse_x, &mouse_y);
 				mousetrack(map_buttons(sdl_button_state), mouse_x, mouse_y, 0);
 				break;
 
@@ -933,7 +934,7 @@ sdl3_mainloop(void)
 					else
 						sdl_button_state &= ~mask;
 
-					window_to_texture_coords(event.button.x, event.button.y, &mouse_x, &mouse_y);
+					window_to_texture_coords(event.button.x * display_scale, event.button.y * display_scale, &mouse_x, &mouse_y);
 					mousetrack(map_buttons(sdl_button_state), mouse_x, mouse_y, 0);
 				}
 				break;
@@ -975,11 +976,18 @@ sdl3_mainloop(void)
 			case SDL_EVENT_WINDOW_RESIZED:
 			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 				{
-					int log_w, log_h;
+					int pix_w, pix_h;
 
-					SDL_GetWindowSize(sdl_window, &log_w, &log_h);
-					window_width = log_w;
-					window_height = log_h;
+					/*
+					 * Window size changed (e.g., full-screen toggle).
+					 * Recalculate dest rect for centered letterbox rendering.
+					 * Use physical pixel dimensions to match renderer coordinate space.
+					 * Texture/buffer size stays fixed at init dimensions.
+					 */
+					SDL_GetWindowSizeInPixels(sdl_window, &pix_w, &pix_h);
+					window_width = pix_w;
+					window_height = pix_h;
+					display_scale = SDL_GetWindowDisplayScale(sdl_window);
 					calc_dest_rect();
 				}
 				break;
