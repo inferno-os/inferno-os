@@ -1557,7 +1557,7 @@ setconfig(argl: list of string)
 	config.noproxydoms = nil;
 	config.buttons = "help,resize,hide,exit";
 	config.framework = "all";
-	config.defaultwidth = 640;
+	config.defaultwidth = 1024;
 	config.defaultheight = 480;
 	config.x = -1;
 	config.y = -1;

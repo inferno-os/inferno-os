@@ -149,6 +149,25 @@ actid := -1;
 actlabel: string;
 actstatus: string;
 
+# Task tile state
+TileInfo: adt {
+	id:       int;
+	label:    string;
+	status:   string;
+	urgency:  int;
+	x:        int;		# left pixel (cached for hit testing)
+	w:        int;		# width in pixels
+};
+tiles: array of ref TileInfo;
+ntiles := 0;
+tilescrollx := 0;		# horizontal scroll offset for tile strip
+blinkon := 0;			# toggled by tileblinker goroutine
+
+# Urgency colors (allocated from theme)
+yellowcol: ref Image;
+redcol: ref Image;
+greencol: ref Image;
+
 # Zone boundaries (set on every layout pass, used by mouseproc)
 pres_zone_minx := 0;
 pres_zone_maxx := 0;
@@ -302,6 +321,9 @@ init(ctxt: ref Draw->Context, args: list of string)
 	accentcol= display.color(th.accent);
 	textcol  = display.color(th.text);
 	dimcol   = display.color(th.dim);
+	yellowcol= display.color(th.yellow);
+	redcol   = display.color(th.red);
+	greencol = display.color(th.green);
 
 	# Load fonts
 	mainfont = Font.open(display, "/fonts/combined/unicode.sans.14.font");
@@ -355,6 +377,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 		loadlabel();
 		loadstatus();
 	}
+	tiles = array[8] of ref TileInfo;
+	loadtiles();
 
 	# Allocate channels
 	cmouse      = chan of ref Pointer;
@@ -373,6 +397,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	ctxEvCh     = chan[4] of string;
 	ctxRszCh    = chan[1] of ref Draw->Image;
 	ctxreqch    = chan[1] of string;
+	switchch    = chan[1] of int;
 
 	# Layout zones and allocate sub-images + wmsrv
 	r := mainwin.r;
@@ -448,6 +473,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	spawn kbdproc();
 	if(actid >= 0)
 		spawn nslistener();
+	spawn globallistener();
+	spawn tileblinker();
 
 	# Main loop (header redraws + quit/resize)
 	mainloop();
@@ -495,15 +522,10 @@ drawchrome(r: Rect)
 	mainwin.draw(headerr, headercol, nil, (0, 0));
 
 	if(mainfont != nil) {
-		title := "InferNode";
-		if(actlabel != nil && actlabel != "")
-			title += " | " + actlabel;
-		if(actstatus != nil && actstatus != "" && actstatus != "idle")
-			title += " [" + actstatus + "]";
-		texty := headerr.min.y + (headerh - mainfont.height) / 2;
 		# Accent bar (4px left edge)
 		mainwin.draw(Rect((r.min.x, r.min.y), (r.min.x + 4, r.min.y + headerh)),
 			accentcol, nil, (0, 0));
+
 		# Logo
 		textx := r.min.x + 16;
 		if(logoimg != nil) {
@@ -514,7 +536,96 @@ drawchrome(r: Rect)
 			mainwin.draw(logodst, logoimg, nil, (0, 0));
 			textx = textx + lw + 8;
 		}
-		mainwin.text((textx, texty), textcol, (0, 0), mainfont, title);
+
+		# Task tiles — scrollable strip after logo
+		tileh := 28;
+		tiley := headerr.min.y + (headerh - tileh) / 2;
+		tilepad := 8;	# horizontal text padding per side
+		tilegap := 4;	# gap between tiles
+		tilestripx := textx;	# start of tile strip (after logo)
+
+		if(ntiles > 0) {
+			tx := tilestripx - tilescrollx;
+			for(i := 0; i < ntiles; i++) {
+				t := tiles[i];
+				tlabel := t.label;
+				if(tlabel == nil || tlabel == "")
+					tlabel = string t.id;
+				tw := mainfont.width(tlabel) + tilepad * 2;
+				if(tw < 60)
+					tw = 60;
+
+				# Cache position for mouse hit testing (screen coords)
+				t.x = tx;
+				t.w = tw;
+
+				# Only draw if visible in the strip
+				if(tx + tw > tilestripx && tx < r.max.x) {
+					# Determine tile colors
+					tilefg: ref Image;
+					tilebg: ref Image;
+
+					if(t.urgency > 0 && blinkon) {
+						# Blinking urgency state
+						if(t.urgency >= 2) {
+							tilebg = redcol;
+							tilefg = textcol;
+						} else {
+							tilebg = yellowcol;
+							tilefg = headercol;
+						}
+					} else if(t.id == actid) {
+						# Active tile: accent background
+						tilebg = accentcol;
+						tilefg = headercol;
+					} else if(t.status == "working") {
+						# Working tile: subtle accent underline
+						tilebg = headercol;
+						tilefg = textcol;
+					} else if(t.status == "done") {
+						tilebg = headercol;
+						tilefg = greencol;
+					} else {
+						# Normal/idle tile
+						tilebg = headercol;
+						tilefg = dimcol;
+					}
+
+					# Draw tile background
+					tiler := Rect((tx, tiley), (tx + tw, tiley + tileh));
+					mainwin.draw(tiler, tilebg, nil, (0, 0));
+
+					# Draw 1px border for non-active tiles
+					if(t.id != actid || (t.urgency > 0 && blinkon)) {
+						mainwin.draw(Rect((tx, tiley), (tx + tw, tiley + 1)), bordercol, nil, (0, 0));
+						mainwin.draw(Rect((tx, tiley + tileh - 1), (tx + tw, tiley + tileh)), bordercol, nil, (0, 0));
+						mainwin.draw(Rect((tx, tiley), (tx + 1, tiley + tileh)), bordercol, nil, (0, 0));
+						mainwin.draw(Rect((tx + tw - 1, tiley), (tx + tw, tiley + tileh)), bordercol, nil, (0, 0));
+					}
+
+					# Working tile: accent bottom border
+					if(t.status == "working" && t.id != actid)
+						mainwin.draw(Rect((tx, tiley + tileh - 2), (tx + tw, tiley + tileh)), accentcol, nil, (0, 0));
+
+					# Draw label text centered in tile
+					textw := mainfont.width(tlabel);
+					ltx := tx + (tw - textw) / 2;
+					lty := tiley + (tileh - mainfont.height) / 2;
+					mainwin.text((ltx, lty), tilefg, (0, 0), mainfont, tlabel);
+				}
+
+				tx += tw + tilegap;
+			}
+		} else {
+			# No tiles: fall back to simple title text
+			title := "InferNode";
+			if(actlabel != nil && actlabel != "")
+				title += " | " + actlabel;
+			if(actstatus != nil && actstatus != "" && actstatus != "idle")
+				title += " [" + actstatus + "]";
+			texty := headerr.min.y + (headerh - mainfont.height) / 2;
+			mainwin.text((textx, texty), textcol, (0, 0), mainfont, title);
+		}
 	}
 
 	# Header/zone separator
@@ -757,7 +868,37 @@ mainloop()
 			handlectxlayout(30, 45);
 		else if(req == "expand")
 			handlectxlayout(20, 30);
+	newact := <-switchch =>
+		switchactivity(newact);
 	}
+}
+
+# Switch channel — globallistener sends new activity id
+switchch: chan of int;
+
+switchactivity(newid: int)
+{
+	if(newid == actid)
+		return;
+
+	actid = newid;
+	loadlabel();
+	loadstatus();
+
+	# Clear urgency on the newly focused activity
+	writefile(sys->sprint("%s/activity/%d/urgency", mountpt, newid), "0");
+	updatetile(newid, "urgency", "0");
+
+	# Signal zone modules to switch to new activity
+	ev := "switchactivity " + string newid;
+	alt { convEvCh <-= ev => ; * => ; }
+	alt { ctxEvCh <-= ev => ; * => ; }
+	if(lucipres_g != nil)
+		lucipres_g->deliverevent(ev);
+
+	# Reload tiles and redraw header
+	loadtiles();
+	drawchrome(mainwin.r);
 }
 
 handlectxlayout(cp, pp: int)
@@ -821,6 +962,192 @@ loadstatus()
 		actstatus = "";
 }
 
+# Read all activities from /n/ui/ and populate tile state
+loadtiles()
+{
+	info := readfile(mountpt + "/info");
+	if(info == nil)
+		return;
+	info = strip(info);
+
+	# Parse "activities: id1 id2 ..." line
+	ids: list of int;
+	nids := 0;
+	lines := splitlines(info);
+	for(; lines != nil; lines = tl lines) {
+		line := hd lines;
+		if(hasprefix(line, "activities:")) {
+			rest := strip(line[len "activities:":]);
+			if(rest != "") {
+				words := splitwords(rest);
+				for(; words != nil; words = tl words) {
+					id := strtoint(hd words);
+					if(id >= 0) {
+						ids = id :: ids;
+						nids++;
+					}
+				}
+			}
+		}
+	}
+
+	# Reverse to preserve order
+	rids: list of int;
+	for(; ids != nil; ids = tl ids)
+		rids = hd ids :: rids;
+	ids = rids;
+
+	# Allocate tiles array
+	if(tiles == nil || len tiles < nids)
+		tiles = array[nids + 4] of ref TileInfo;
+	ntiles = 0;
+
+	for(; ids != nil; ids = tl ids) {
+		id := hd ids;
+		label := readfile(sys->sprint("%s/activity/%d/label", mountpt, id));
+		status := readfile(sys->sprint("%s/activity/%d/status", mountpt, id));
+		urgstr := readfile(sys->sprint("%s/activity/%d/urgency", mountpt, id));
+		if(label != nil)
+			label = strip(label);
+		if(status != nil)
+			status = strip(status);
+		else
+			status = "";
+		if(status == "hidden")
+			continue;
+		urg := 0;
+		if(urgstr != nil)
+			urg = strtoint(strip(urgstr));
+		if(ntiles >= len tiles) {
+			na := array[len tiles * 2] of ref TileInfo;
+			na[0:] = tiles[0:ntiles];
+			tiles = na;
+		}
+		tiles[ntiles++] = ref TileInfo(id, label, status, urg, 0, 0);
+	}
+}
+
+# Update a single tile field without full reload
+updatetile(id: int, field, val: string)
+{
+	for(i := 0; i < ntiles; i++) {
+		if(tiles[i].id == id) {
+			if(field == "status")
+				tiles[i].status = val;
+			else if(field == "label")
+				tiles[i].label = val;
+			else if(field == "urgency")
+				tiles[i].urgency = strtoint(val);
+			return;
+		}
+	}
+}
+
+# Split string into lines on \n
+splitlines(s: string): list of string
+{
+	result: list of string;
+	start := 0;
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\n') {
+			if(i > start)
+				result = s[start:i] :: result;
+			start = i + 1;
+		}
+	}
+	if(start < len s)
+		result = s[start:] :: result;
+	# reverse
+	rev: list of string;
+	for(; result != nil; result = tl result)
+		rev = hd result :: rev;
+	return rev;
+}
+
+# Split string into whitespace-separated words
+splitwords(s: string): list of string
+{
+	result: list of string;
+	i := 0;
+	for(;;) {
+		# skip whitespace
+		while(i < len s && (s[i] == ' ' || s[i] == '\t'))
+			i++;
+		if(i >= len s)
+			break;
+		start := i;
+		while(i < len s && s[i] != ' ' && s[i] != '\t')
+			i++;
+		result = s[start:i] :: result;
+	}
+	# reverse
+	rev: list of string;
+	for(; result != nil; result = tl result)
+		rev = hd result :: rev;
+	return rev;
+}
+
+# Listen for global events (activity new/delete/switch/urgency)
+globallistener()
+{
+	evpath := mountpt + "/event";
+	backoff := 500;
+	for(;;) {
+		fd := sys->open(evpath, Sys->OREAD);
+		if(fd == nil) {
+			sys->sleep(backoff);
+			if(backoff < 8000)
+				backoff *= 2;
+			continue;
+		}
+		buf := array[4096] of byte;
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0) {
+			sys->sleep(backoff);
+			if(backoff < 8000)
+				backoff *= 2;
+			continue;
+		}
+		backoff = 500;
+		ev := strip(string buf[0:n]);
+		if(hasprefix(ev, "activity ")) {
+			# Check if this is a switch event (format: "activity {id}")
+			rest := strip(ev[len "activity ":]);
+			if(!hasprefix(rest, "new ") && !hasprefix(rest, "delete ") && !hasprefix(rest, "urgency ")) {
+				# Pure switch event: "activity {id}"
+				newid := strtoint(rest);
+				if(newid >= 0 && newid != actid)
+					alt { switchch <-= newid => ; * => ; }
+			}
+			# Any activity event: reload tiles and redraw header
+			loadtiles();
+			alt { uievent <-= 1 => ; * => ; }
+		}
+	}
+}
+
+# Toggle blink state for urgency tiles
+tileblinker()
+{
+	for(;;) {
+		sys->sleep(500);
+		# Check if any tile has urgency > 0
+		hasurgency := 0;
+		for(i := 0; i < ntiles; i++) {
+			if(tiles[i].urgency > 0) {
+				hasurgency = 1;
+				break;
+			}
+		}
+		if(hasurgency) {
+			blinkon = 1 - blinkon;
+			alt { uievent <-= 1 => ; * => ; }
+		} else {
+			blinkon = 0;
+		}
+	}
+}
+
 nslistener()
 {
 	evpath := sys->sprint("%s/activity/%d/event", mountpt, actid);
@@ -845,9 +1172,16 @@ nslistener()
 		ev := strip(string buf[0:n]);
 		if(ev == "status") {
 			loadstatus();
+			updatetile(actid, "status", actstatus);
 			alt { uievent <-= 1 => ; * => ; }
 		} else if(ev == "label") {
 			loadlabel();
+			updatetile(actid, "label", actlabel);
+			alt { uievent <-= 1 => ; * => ; }
+		} else if(ev == "urgency") {
+			s := readfile(sys->sprint("%s/activity/%d/urgency", mountpt, actid));
+			if(s != nil)
+				updatetile(actid, "urgency", strip(s));
 			alt { uievent <-= 1 => ; * => ; }
 		} else if(hasprefix(ev, "conversation ")) {
 			alt { convEvCh <-= ev => ; * => ; }
@@ -907,11 +1241,37 @@ eventproc()
 
 mouseproc()
 {
+	headerh := 40;
 	for(;;) {
 		p := <-win.ctxt.ptr;
 		lastmousex = p.xy.x;
 		if(wmclient->win.pointer(*p) == 0) {
-			# Route by X position
+			# Header area: tile clicks and scroll
+			if(p.xy.y < mainwin.r.min.y + headerh) {
+				if(p.buttons & 1) {
+					# Button-1: click on tile to switch activity
+					for(i := 0; i < ntiles; i++) {
+						t := tiles[i];
+						if(p.xy.x >= t.x && p.xy.x < t.x + t.w) {
+							if(t.id != actid)
+								writefile(mountpt + "/activity/current", string t.id);
+							break;
+						}
+					}
+				} else if(p.buttons & 8) {
+					# Scroll up (left)
+					tilescrollx -= 40;
+					if(tilescrollx < 0)
+						tilescrollx = 0;
+					alt { uievent <-= 1 => ; * => ; }
+				} else if(p.buttons & 16) {
+					# Scroll down (right)
+					tilescrollx += 40;
+					alt { uievent <-= 1 => ; * => ; }
+				}
+				continue;
+			}
+			# Route by X position to zones
 			if(pres_zone_minx > 0 && p.xy.x >= pres_zone_minx &&
 					p.xy.x < pres_zone_maxx) {
 				# Presentation zone
@@ -1067,6 +1427,13 @@ readfile(path: string): string
 	if(result == "")
 		return nil;
 	return result;
+}
+
+writefile(path, data: string)
+{
+	fd := sys->open(path, Sys->OWRITE);
+	if(fd != nil)
+		sys->write(fd, array of byte data, len array of byte data);
 }
 
 hasprefix(s, pfx: string): int

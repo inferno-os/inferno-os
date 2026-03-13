@@ -552,6 +552,15 @@ ctxtimer(evch: chan of string)
 
 handleevent(ev: string)
 {
+	if(hasprefix(ev, "switchactivity ")) {
+		newid := strtoint(ev[len "switchactivity ":]);
+		if(newid >= 0) {
+			actid_g = newid;
+			loadcontext();
+			loadcatalog();
+		}
+		return;
+	}
 	if(ev == "catalog" || ev == "tick")
 		loadcatalog();
 	if(ev == "catalog")
@@ -746,11 +755,15 @@ drawcontext(zone: Rect)
 	}
 
 	# --- Tools section (two-column layout) ---
+	# Activity 0 shows "Budget" instead of "Tools"
+	toolseclabel := "Tools";
+	if(actid_g == 0)
+		toolseclabel = "Budget";
 	{
 		ind := "▸";
 		if(toolsec_expanded) ind = "▾";
 		if(y + mainfont.height > vis_top && y < vis_bot)
-			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Tools " + ind);
+			mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, toolseclabel + " " + ind);
 		toolsechdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
@@ -1569,9 +1582,14 @@ addtool(name: string)
 		if(hd tp == name)
 			return;
 	activetoolset = name :: activetoolset;
-	writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g),
-		"resource add path=" + name + " label=" + name + " type=tool status=idle");
-	writetofile("/tool/ctl", "add " + name);
+	if(actid_g == 0) {
+		# Budget mode: add to delegation budget
+		writetofile("/tool/ctl", "budget-add " + name);
+	} else {
+		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g),
+			"resource add path=" + name + " label=" + name + " type=tool status=idle");
+		writetofile("/tool/ctl", "add " + name);
+	}
 	loadcontext();
 	redrawctx();
 }
@@ -1583,8 +1601,13 @@ removetool(name: string)
 		if(hd tp != name)
 			newlist = hd tp :: newlist;
 	activetoolset = revstrlist(newlist);
-	writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "resource remove " + name);
-	writetofile("/tool/ctl", "remove " + name);
+	if(actid_g == 0) {
+		# Budget mode: remove from delegation budget
+		writetofile("/tool/ctl", "budget-remove " + name);
+	} else {
+		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "resource remove " + name);
+		writetofile("/tool/ctl", "remove " + name);
+	}
 	loadcontext();
 	redrawctx();
 }

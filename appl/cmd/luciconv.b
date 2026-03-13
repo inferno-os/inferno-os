@@ -294,7 +294,13 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 handleevent(ev: string)
 {
-	if(hasprefix(ev, "conversation update ")) {
+	if(hasprefix(ev, "switchactivity ")) {
+		newid := strtoint(ev[len "switchactivity ":]);
+		if(newid >= 0) {
+			actid_g = newid;
+			loadmessages();
+		}
+	} else if(hasprefix(ev, "conversation update ")) {
 		idx := strtoint(ev[len "conversation update ":]);
 		if(idx >= 0)
 			updatemessage(idx);

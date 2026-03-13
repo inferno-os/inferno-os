@@ -380,7 +380,11 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 makewins()
 {
 	if((CU->config).doacme){
-		mainwin = display.newimage(Rect(display.image.r.min, ((CU->config).defaultwidth, display.image.r.max.y)), display.image.chans, 0, D->White);
+		# Use actual display width (lucifer zone) rather than defaultwidth
+		dw := display.image.r.dx();
+		if(dw < (CU->config).defaultwidth)
+			dw = (CU->config).defaultwidth;
+		mainwin = display.newimage(Rect(display.image.r.min, (dw, display.image.r.max.y)), display.image.chans, 0, D->White);
 		return;
 		if(mainwin == nil)
 			CU->raisex(sys->sprint("EXFatal: can't initialize windows: %r"));

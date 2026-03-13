@@ -5011,7 +5011,8 @@ parsepx(val: string) : int
 	}
 	for(; i < len val && val[i] >= '0' && val[i] <= '9'; i++)
 		n = n * 10 + (val[i] - '0');
-	# Handle fractional part for accurate rounding
+	# Handle fractional part using fixed-point (x1000) for unit-aware rounding
+	fp := n * 1000;	# fixed-point: integer part * 1000
 	if(i < len val && val[i] == '.') {
 		i++;
 		frac := 0;
@@ -5020,22 +5021,22 @@ parsepx(val: string) : int
 			frac = frac * 10 + (val[i] - '0');
 			div *= 10;
 		}
-		if(frac * 2 >= div)
-			n++;  # round up
+		fp += frac * 1000 / div;
 	}
 	# handle em/rem units (approximate: 1em ≈ 16px)
 	if(i+1 < len val && val[i] == 'e' && val[i+1] == 'm')
-		n = n * 16;
+		fp = fp * 16;
 	else if(i+2 < len val && val[i] == 'r' && val[i+1] == 'e' && val[i+2] == 'm')
-		n = n * 16;
+		fp = fp * 16;
 	# handle pt units (approximate: 1pt ≈ 1.33px)
 	else if(i+1 < len val && val[i] == 'p' && val[i+1] == 't')
-		n = n * 4 / 3;
+		fp = fp * 4 / 3;
 	# handle vw/vh (approximate: treat as percentage of 800px/600px viewport)
 	else if(i+1 < len val && val[i] == 'v' && val[i+1] == 'w')
-		n = n * 8;
+		fp = fp * 8;
 	else if(i+1 < len val && val[i] == 'v' && val[i+1] == 'h')
-		n = n * 6;
+		fp = fp * 6;
+	n = (fp + 500) / 1000;	# round to nearest integer
 	if(neg)
 		n = -n;
 	return n;

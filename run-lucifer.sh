@@ -21,7 +21,9 @@ echo activity create Main > /n/ui/ctl
 llmsrv &
 speech9p &
 sleep 1
-/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep write edit exec launch spawn xenith ask diff json http git memory todo websearch mail present say hear editor shell
-lucibridge -s &
+/dis/veltro/tools9p -m /tool -b "read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,http,git,websearch,mail" -p /dis/wm read list find present ask say hear task todo memory gap editor shell
+lucibridge -a 0 -s &
+sleep 1
+echo "create id=tasks type=taskboard label=Tasks" > /n/ui/activity/0/presentation/ctl
 lucifer
 '

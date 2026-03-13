@@ -1273,7 +1273,23 @@ measure(fr: ref Frame, items: ref Item)
 			Ibox =>
 				# float containing a box
 				measure(fr, i.content);
-				checkboxsize(fr, t, i, TABLEFLOATTARGET);
+				checkboxsize(fr, t.item, i, TABLEFLOATTARGET);
+				# Include CSS margins in float dimensions for text wrapping
+				if(i.cstyle != nil) {
+					ml := i.cstyle.margin[3];
+					mr := i.cstyle.margin[1];
+					mt := i.cstyle.margin[0];
+					mb := i.cstyle.margin[2];
+					if(ml > 0)
+						t.item.width += ml;
+					if(mr > 0)
+						t.item.width += mr;
+					if(mt > 0)
+						t.item.height += mt;
+					if(mb > 0)
+						t.item.height += mb;
+				}
+				it.height = t.item.height;
 			* =>
 				CU->assert(0);
 			}
@@ -2538,7 +2554,16 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			Itable =>
 				drawtable(f, lay, Point(xx, layorigin.y + i.y), fi.table);
 			Ibox =>
-				drawbox(f, lay, Point(xx, layorigin.y + i.y), fi);
+				# Offset by CSS margins (included in float dimensions)
+				bxx := xx;
+				byy := layorigin.y + i.y;
+				if(fi.cstyle != nil) {
+					if(fi.cstyle.margin[3] > 0)
+						bxx += fi.cstyle.margin[3];
+					if(fi.cstyle.margin[0] > 0)
+						byy += fi.cstyle.margin[0];
+				}
+				drawbox(f, lay, Point(bxx, byy), fi);
 			}
 		}
 		x += it.width;
