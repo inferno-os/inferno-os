@@ -28,9 +28,26 @@ The native tools are located at:
 - `MacOSX/arm64/bin/mk` - Plan 9 mk (Inferno's build tool)
 - `MacOSX/arm64/bin/limbo` - Limbo compiler
 
-### Build Artifacts Not in Git
+### Dis Files: What's Tracked and What's Not
 
-**Important:** `.dis` files (compiled Limbo bytecode) are not tracked in git. After a fresh clone, basic commands like `cat`, `echo`, `ls` won't exist until you build them.
+The `dis/` directory (the Inferno runtime tree) **is tracked in git**. This is intentional — Inferno is a self-hosting OS, and `dis/` is its `/usr/bin`. Without pre-built `.dis` files, a fresh clone can't boot: no shell, no `cat`, no `ls`. Upstream Inferno OS tracks them for the same reason.
+
+However, **build artifacts in source directories are not tracked**:
+- `appl/**/*.dis` — intermediate build outputs (`.gitignore`d)
+- `tests/**/*.dis` — compiled tests (`.gitignore`d)
+- `dis/tests/*.dis` — test bytecode in the runtime tree (`.gitignore`d)
+
+This means: the runtime tree ships pre-built, but you never commit `.dis` files from `appl/` or `tests/`.
+
+**The stale bytecode problem:** When a `.m` interface file changes (e.g. `module/widget.m`), every `.dis` compiled against the old interface becomes stale. The Dis VM rejects stale modules at load time with `link typecheck` errors — apps show blank tabs, commands fail to load, and everything looks broken even though the source is fine. This is the most common class of post-pull breakage.
+
+**The solution:** A `post-merge` git hook automatically detects which `.m` and `.b` files changed after `git pull` and rebuilds the affected `.dis` directories. Install it once after cloning:
+
+```sh
+./hooks/install.sh
+```
+
+After that, every `git pull` triggers an automatic rebuild of stale bytecode. See `hooks/post-merge` for details.
 
 ### Build Commands
 
@@ -323,6 +340,7 @@ infernode/
 ├── libinterp/           # Dis VM interpreter and JIT compilers
 ├── docs/                # Technical documentation (100+ files)
 ├── formal-verification/ # CBMC, TLA+, SPIN verification
+├── hooks/               # Git hooks (run ./hooks/install.sh after clone)
 ├── mkfiles/             # Shared mk build rules
 ├── mkconfig             # Build configuration (auto-detects platform)
 ├── .github/workflows/   # CI/CD (ci, security, scorecard)

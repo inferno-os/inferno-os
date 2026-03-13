@@ -31,6 +31,24 @@ The `-r` option sets the **root directory** for the Inferno® filesystem - where
 
 Using `-r.` lets you run directly from the source tree without installing anywhere.
 
+## After Cloning
+
+Install the post-merge git hook to prevent stale bytecode after pulls:
+
+```bash
+./hooks/install.sh
+```
+
+This hook runs automatically after every `git pull` or `git merge`. It detects which `.m` (interface) and `.b` (source) files changed and rebuilds the affected `.dis` files. Without it, pulling interface changes can leave you with stale `.dis` files that fail at load time with `link typecheck` errors.
+
+### Why are `.dis` files in git?
+
+Inferno is a self-hosting OS — the `dis/` directory is its runtime, like `/usr/bin` on Unix. Without pre-built `.dis` files, a fresh clone has no shell, no `cat`, no `ls`. The runtime tree (`dis/`) is tracked so the system boots immediately after clone.
+
+Build artifacts in source directories (`appl/**/*.dis`, `tests/**/*.dis`) are **not** tracked — only the runtime tree.
+
+The trade-off: tracked `.dis` files can go stale when `.m` interfaces change between commits. The post-merge hook closes that gap automatically.
+
 ## First Steps
 
 You'll see the `;` prompt. Try these commands:
@@ -58,7 +76,7 @@ After building (see Building section below):
 - **Network**: mntgen, trfs, os
 - **Utilities**: du, wc, grep, ftest, echo
 
-**Note:** `.dis` files are not tracked in git. After a fresh clone, run `mk install` in `appl/cmd` to build these commands.
+**Note:** The runtime `.dis` files in `dis/` are tracked in git, so basic commands work after clone. If you see `link typecheck` errors, run `./hooks/install.sh` and pull again, or rebuild manually with `mk install` in the affected `appl/` subdirectory.
 
 ## Building
 
