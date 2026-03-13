@@ -48,6 +48,8 @@ TOOLS=\
     tools/gpu.dis\
     tools/vision.dis\
     tools/fractal.dis\
+    tools/task.dis\
+    tools/gap.dis\
 
 all:V: $MAIN $TOOLS
 
@@ -180,6 +182,14 @@ tools/vision.dis: tools/vision.b tool.m
 # Fractal tool
 tools/fractal.dis: tools/fractal.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/fractal.dis tools/fractal.b
+
+# Task delegation tool
+tools/task.dis: tools/task.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/task.dis tools/task.b
+
+# Gap tool
+tools/gap.dis: tools/gap.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/gap.dis tools/gap.b
 
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools

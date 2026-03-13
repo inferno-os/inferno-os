@@ -70,6 +70,13 @@ BRIDGE_SUFFIX: con "\n\nYou are the AI assistant in a Lucifer activity. " +
 	"Respond naturally with text for conversational messages, greetings, and answers. " +
 	"Use tools only when the user asks you to perform a specific task.";
 
+META_SUFFIX: con "\n\nYou are the Chief of Staff — the meta-agent managing tasks for the user. " +
+	"Create tasks with the 'task' tool to delegate work to isolated sub-agents. " +
+	"Monitor task status and close completed tasks. " +
+	"Set appropriate urgency levels to get the user's attention when tasks need review. " +
+	"Use 'present' to update the task dashboard. " +
+	"The user sees your conversation and can interact with you directly.";
+
 log(msg: string)
 {
 	if(verbose)
@@ -188,6 +195,12 @@ setstatus(status: string)
 	writefile(path, status);
 }
 
+seturgency(level: int)
+{
+	path := sys->sprint("/n/ui/activity/%d/urgency", actid);
+	writefile(path, string level);
+}
+
 # Create LLM session with system prompt
 initsession(): string
 {
@@ -199,9 +212,12 @@ initsession(): string
 	ns := agentlib->discovernamespace();
 	sysprompt := agentlib->buildsystemprompt(ns);
 
-	# Append bridge suffix, truncating base if needed
+	# Append bridge/meta suffix, truncating base if needed
+	suffix := BRIDGE_SUFFIX;
+	if(actid == 0)
+		suffix = META_SUFFIX;
 	MAXWRITE: con 8000;
-	suffixbytes := array of byte BRIDGE_SUFFIX;
+	suffixbytes := array of byte suffix;
 	basebytes := array of byte sysprompt;
 	if(len basebytes + len suffixbytes > MAXWRITE) {
 		room := MAXWRITE - len suffixbytes;
@@ -209,7 +225,7 @@ initsession(): string
 			room = 0;
 		sysprompt = string basebytes[0:room];
 	}
-	sysprompt += BRIDGE_SUFFIX;
+	sysprompt += suffix;
 
 	# Open ask fd first so the session stays alive (refs >= 1) while we write
 	# system and tools.  Without this, Limbo's GC finalizes each setup fd
@@ -605,11 +621,14 @@ applypathchanges()
 	if(sessionid != "") {
 		ns := agentlib->discovernamespace();
 		sysprompt := agentlib->buildsystemprompt(ns);
+		sfx := BRIDGE_SUFFIX;
+		if(actid == 0)
+			sfx = META_SUFFIX;
 		MAXWRITE: con 8000;
-		suffixbytes := array of byte BRIDGE_SUFFIX;
+		suffixbytes := array of byte sfx;
 		if(len array of byte sysprompt + len suffixbytes > MAXWRITE)
 			sysprompt = string (array of byte sysprompt)[0:MAXWRITE - len suffixbytes];
-		sysprompt += BRIDGE_SUFFIX;
+		sysprompt += sfx;
 		systempath := "/n/llm/" + sessionid + "/system";
 		agentlib->setsystemprompt(systempath, sysprompt);
 		log("system prompt updated with new paths");
@@ -665,18 +684,126 @@ handleslash(cmd: string): int
 			writefile("/n/speech/ctl", "voice " + arg);
 			ack = "voice: set to " + arg;
 		}
+	"diff" =>
+		ack = cowdiff();
+	"promote" =>
+		ack = cowpromote(arg);
+	"revert" =>
+		ack = cowrevert(arg);
 	"help" =>
 		ack = "/bind <path>  — add namespace path\n" +
 		      "/unbind <path>  — remove namespace path\n" +
 		      "/tools +name  — add tool\n" +
 		      "/tools -name  — remove tool\n" +
 		      "/voice on|off  — toggle auto-speak\n" +
-		      "/voice <name>  — change voice";
+		      "/voice <name>  — change voice\n" +
+		      "/diff  — show cowfs changes\n" +
+		      "/promote [path]  — promote cowfs changes\n" +
+		      "/revert [path]  — revert cowfs changes";
 	* =>
 		return 0;	# unknown slash: pass to agent
 	}
 	writemsg("assistant", ack);
 	return 1;
+}
+
+# --- Cowfs slash command helpers ---
+
+Cowfs: module {
+	PATH: con "/dis/veltro/cowfs.dis";
+	diff:        fn(overlaydir: string): list of string;
+	promote:     fn(basepath, overlaydir: string): (int, string);
+	revert:      fn(overlaydir: string): string;
+	promotefile: fn(basepath, overlaydir, relpath: string): string;
+	revertfile:  fn(overlaydir, relpath: string): string;
+};
+
+cowfindoverlay(): string
+{
+	# Overlay dir is /tmp/veltro/cow/{actid}-*
+	prefix := sys->sprint("/tmp/veltro/cow/%d-", actid);
+	fd := sys->open("/tmp/veltro/cow", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	for(;;) {
+		(n, dirs) := sys->dirread(fd);
+		if(n <= 0)
+			break;
+		for(i := 0; i < n; i++) {
+			nm := dirs[i].name;
+			full := "/tmp/veltro/cow/" + nm;
+			if(len nm >= len sys->sprint("%d-", actid) &&
+			   nm[0:len sys->sprint("%d-", actid)] == sys->sprint("%d-", actid))
+				return full;
+		}
+	}
+	return nil;
+}
+
+cowdiff(): string
+{
+	cowfs := load Cowfs Cowfs->PATH;
+	if(cowfs == nil)
+		return "error: cannot load cowfs module";
+	overlay := cowfindoverlay();
+	if(overlay == nil)
+		return "no cowfs overlay for this activity";
+	changes := cowfs->diff(overlay);
+	if(changes == nil)
+		return "no changes";
+	result := "";
+	for(; changes != nil; changes = tl changes) {
+		if(result != "")
+			result += "\n";
+		result += hd changes;
+	}
+	return result;
+}
+
+cowpromote(arg: string): string
+{
+	cowfs := load Cowfs Cowfs->PATH;
+	if(cowfs == nil)
+		return "error: cannot load cowfs module";
+	overlay := cowfindoverlay();
+	if(overlay == nil)
+		return "no cowfs overlay for this activity";
+	# Read basepath from .cowmeta
+	basepath := readfile(overlay + "/.cowmeta");
+	if(basepath != nil)
+		basepath = strip(basepath);
+	if(basepath == nil || basepath == "")
+		return "error: cannot determine base path";
+	if(arg != "") {
+		err := cowfs->promotefile(basepath, overlay, arg);
+		if(err != nil)
+			return "error: " + err;
+		return "promoted: " + arg;
+	}
+	(n, err) := cowfs->promote(basepath, overlay);
+	if(err != nil)
+		return "error: " + err;
+	return sys->sprint("promoted %d file(s)", n);
+}
+
+cowrevert(arg: string): string
+{
+	cowfs := load Cowfs Cowfs->PATH;
+	if(cowfs == nil)
+		return "error: cannot load cowfs module";
+	overlay := cowfindoverlay();
+	if(overlay == nil)
+		return "no cowfs overlay for this activity";
+	if(arg != "") {
+		err := cowfs->revertfile(overlay, arg);
+		if(err != nil)
+			return "error: " + err;
+		return "reverted: " + arg;
+	}
+	err := cowfs->revert(overlay);
+	if(err != nil)
+		return "error: " + err;
+	return "all changes reverted";
 }
 
 # Run the agent loop for one human turn using native tool_use protocol.
@@ -877,10 +1004,17 @@ agentturn(input: string)
 		prompt = agentlib->buildtoolresults(rev);
 	}
 
-	if(hitlimit)
+	if(hitlimit) {
 		writemsg("veltro", sys->sprint(
 			"(reached %d-step limit — send another message to continue)", maxsteps));
-	setstatus("idle");
+		setstatus("idle");
+	} else {
+		# Agent turn completed normally.  For spawned tasks (actid > 0),
+		# signal the user that this task is done and may need review.
+		setstatus("idle");
+		if(actid > 0)
+			seturgency(1);
+	}
 }
 
 init(nil: ref Draw->Context, args: list of string)

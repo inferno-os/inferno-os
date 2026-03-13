@@ -18,6 +18,7 @@ implement Luciuisrv;
 #           {id}/
 #               label                read/write
 #               status               read/write
+#               urgency              read/write (0=normal, 1=attention, 2=urgent)
 #               event                per-activity blocking read
 #               conversation/
 #                   ctl              write new messages
@@ -104,6 +105,7 @@ Qcatalogdir:	con 30;	# catalog/   (global, not per-activity)
 Qcatalogentry:	con 31;
 Qartdispath:	con 32;	# presentation/<id>/dispath  (app type only)
 Qartappstatus:	con 33;	# presentation/<id>/appstatus (app type only)
+Qacturgency:	con 34;	# /activity/{id}/urgency
 
 # --- QID encoding ---
 # 64-bit path: [activity_id:16][sub_id:16][unused:24][filetype:8]
@@ -182,6 +184,7 @@ Activity: adt {
 	id:	int;
 	label:	string;
 	status:	string;		# active | working | idle
+	urgency: int;		# 0=normal, 1=attention, 2=urgent
 
 	# Conversation
 	messages: array of ref ConvMsg;
@@ -397,6 +400,7 @@ newactivity(label: string): ref Activity
 	id := nextactid++;
 	a := ref Activity(
 		id, label, "active",
+		0,					# urgency
 		array[32] of ref ConvMsg, 0, nil,	# conversation
 		"", array[16] of ref Artifact, 0,	# presentation
 		array[16] of ref Resource, 0,		# resources
@@ -769,6 +773,14 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		}
 		srv.reply(styxservers->readbytes(m, array of byte (a.status + "\n")));
 
+	Qacturgency =>
+		a := findactivity(actid);
+		if(a == nil) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		srv.reply(styxservers->readbytes(m, array of byte (string a.urgency + "\n")));
+
 	Qactevent =>
 		# Return buffered event immediately if available; otherwise block.
 		# Kick any stale pending readers first so only one goroutine ever
@@ -998,6 +1010,20 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 		a.status = data;
 		vers++;
 		pushevent(actid, "status");
+		srv.reply(ref Rmsg.Write(m.tag, len m.data));
+
+	Qacturgency =>
+		a := findactivity(actid);
+		if(a == nil) {
+			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
+			break;
+		}
+		a.urgency = strtoint(data);
+		if(a.urgency < 0) a.urgency = 0;
+		if(a.urgency > 2) a.urgency = 2;
+		vers++;
+		pushevent(actid, "urgency");
+		pushglobalevent("activity urgency " + string actid);
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
 	Qconvctl =>
@@ -1701,6 +1727,8 @@ dirgen(p: big): (ref Sys->Dir, string)
 		return (dir(Qid(p, vers, Sys->QTFILE), "label", big 0, 8r644), nil);
 	Qactstatus =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "status", big 0, 8r644), nil);
+	Qacturgency =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "urgency", big 0, 8r644), nil);
 	Qactevent =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "event", big 0, 8r644), nil);
 	Qconvdir =>
@@ -1820,6 +1848,8 @@ navigator(navops: chan of ref Navop)
 					n.path = MKPATH(actid, 0, Qactlabel);
 				"status" =>
 					n.path = MKPATH(actid, 0, Qactstatus);
+				"urgency" =>
+					n.path = MKPATH(actid, 0, Qacturgency);
 				"event" =>
 					n.path = MKPATH(actid, 0, Qactevent);
 				"conversation" =>
@@ -1985,7 +2015,7 @@ navigator(navops: chan of ref Navop)
 						n.path = big Qroot;
 					Qactcurrent =>
 						n.path = MKPATH(0, 0, Qactdir);
-					Qactlabel or Qactstatus or Qactevent =>
+					Qactlabel or Qactstatus or Qacturgency or Qactevent =>
 						n.path = MKPATH(actid, 0, Qact);
 					Qconvctl or Qconvinput or Qconvmsg =>
 						n.path = MKPATH(actid, 0, Qconvdir);
@@ -2054,6 +2084,7 @@ navigator(navops: chan of ref Navop)
 				entries := array[] of {
 					MKPATH(actid, 0, Qactlabel),
 					MKPATH(actid, 0, Qactstatus),
+					MKPATH(actid, 0, Qacturgency),
 					MKPATH(actid, 0, Qactevent),
 					MKPATH(actid, 0, Qconvdir),
 					MKPATH(actid, 0, Qpresdir),

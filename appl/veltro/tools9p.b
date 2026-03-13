@@ -58,7 +58,7 @@ Tools9p: module {
 };
 
 # Qid types for synthetic files
-Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths: con iota;
+Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths, Qbudget: con iota;
 Qtoolbase: con 100;       # Tool qid blocks start at 100
 TOOL_STRIDE: con 4;       # Qids per tool: 0=dir, 1=ctl, 2=doc, 3=reserved
 Qtool_dir: con 0;         # Offset: tool directory
@@ -80,6 +80,7 @@ tools: list of ref ToolInfo;     # active (exposed) tools; mutated by serveloop,
 alltools: list of ref ToolInfo;  # pre-loaded inactive tools (available for ctl-add)
 extpaths: list of string;  # Extra paths from -p flags (e.g. "/dis/wm")
 boundpaths: list of string;  # Paths registered via bindpath ctl command
+budget: list of string;    # Tools delegatable to child tasks (-b flag)
 vers: int;
 
 # Shadow directories for per-invocation namespace restriction
@@ -134,6 +135,8 @@ TOOL_PATHS := array[] of {
 	("lucishell", "/dis/veltro/tools/lucishell.dis"),
 	# Fractal viewer control (requires mand running)
 	("fractal", "/dis/veltro/tools/fractal.dis"),
+	# Task delegation (requires luciuisrv)
+	("task",    "/dis/veltro/tools/task.dis"),
 };
 
 usage()
@@ -191,6 +194,12 @@ init(nil: ref Draw->Context, args: list of string)
 		'D' =>	styxservers->traceset(1);
 		'm' =>	mountpt = arg->earg();
 		'p' =>	extpaths = arg->earg() :: extpaths;
+		'b' =>
+			# Parse comma-separated budget tools
+			barg := arg->earg();
+			(btoks, nil) := sys->tokenize(barg, ",");
+			for(; btoks != nil; btoks = tl btoks)
+				budget = hd btoks :: budget;
 		* =>	usage();
 		}
 	args = arg->argv();
@@ -435,6 +444,18 @@ genpathlist(): string
 		if(result != "")
 			result += "\n";
 		result += hd p;
+	}
+	return result;
+}
+
+# Generate list of delegatable budget tools (newline-separated for /tool/budget)
+genbudgetlist(): string
+{
+	result := "";
+	for(b := budget; b != nil; b = tl b) {
+		if(result != "")
+			result += "\n";
+		result += hd b;
 	}
 	return result;
 }
@@ -788,6 +809,9 @@ Serve:
 			Qpaths =>
 				srv.reply(styxservers->readbytes(m, array of byte genpathlist()));
 
+			Qbudget =>
+				srv.reply(styxservers->readbytes(m, array of byte genbudgetlist()));
+
 			* =>
 				# Tool directory/subfile reads
 				if(qtype >= Qtoolbase) {
@@ -864,8 +888,21 @@ Serve:
 							nl = hd bl :: nl;
 					boundpaths = nl;
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 11 && data[0:11] == "budget-add ") {
+					bname := data[11:];
+					if(!strlist_contains(budget, bname))
+						budget = bname :: budget;
+					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 14 && data[0:14] == "budget-remove ") {
+					bname := data[14:];
+					nbl: list of string;
+					for(bbl := budget; bbl != nil; bbl = tl bbl)
+						if(hd bbl != bname)
+							nbl = hd bbl :: nbl;
+					budget = nbl;
+					srv.reply(ref Rmsg.Write(m.tag, len m.data));
 				} else {
-					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path>"));
+					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path> or budget-add|budget-remove <tool>"));
 				}
 
 			* =>
@@ -942,6 +979,9 @@ dirgen(p: big): (ref Sys->Dir, string)
 
 	Qpaths =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "paths", big 0, 8r444), nil);
+
+	Qbudget =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "budget", big 0, 8r444), nil);
 	}
 
 	# Check if it's a tool directory or subfile
@@ -987,6 +1027,8 @@ navigator(navops: chan of ref Navop)
 					n.path = big Qctl;
 				"paths" =>
 					n.path = big Qpaths;
+				"budget" =>
+					n.path = big Qbudget;
 				* =>
 					# Check if it's a registered tool name
 					ti := findtool(n.name);
@@ -1064,11 +1106,18 @@ navigator(navops: chan of ref Navop)
 					i++;
 				}
 
+				# Entry 5: budget
+				if(i <= 5 && count > 0) {
+					n.reply <-= dirgen(big Qbudget);
+					count--;
+					i++;
+				}
+
 				# Remaining entries: registered tool directories
 				idx := 0;
 				for(t := tools; t != nil && count > 0; t = tl t) {
 					ti := hd t;
-					if(i <= 5 + idx) {
+					if(i <= 6 + idx) {
 						n.reply <-= dirgen(big ti.qid);
 						count--;
 					}

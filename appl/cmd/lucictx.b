@@ -587,6 +587,15 @@ ctxtimer(evch: chan of string)
 
 handleevent(ev: string)
 {
+	if(hasprefix(ev, "switchactivity ")) {
+		newid := strtoint(ev[len "switchactivity ":]);
+		if(newid >= 0) {
+			actid_g = newid;
+			loadcontext();
+			loadcatalog();
+		}
+		return;
+	}
 	if(ev == "catalog" || ev == "tick")
 		loadcatalog();
 	if(ev == "catalog")
@@ -683,12 +692,16 @@ drawcontext(zone: Rect)
 	}
 
 	# --- Tools section (two-column layout) ---
+	# Activity 0 shows "Budget" instead of "Tools"
+	toolseclabel := "Tools";
+	if(actid_g == 0)
+		toolseclabel = "Budget";
 	if(y + mainfont.height > zone.max.y)
 		return;
 	{
 		ind := "▸";
 		if(toolsec_expanded) ind = "▾";
-		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, "Tools " + ind);
+		mainwin.text((zone.min.x + pad, y), labelcol, (0, 0), mainfont, toolseclabel + " " + ind);
 		toolsechdrrect = Rect((zone.min.x, y), (zone.max.x, y + mainfont.height));
 		y += mainfont.height + 4;
 
@@ -1467,9 +1480,14 @@ addtool(name: string)
 		if(hd tp == name)
 			return;
 	activetoolset = name :: activetoolset;
-	writetofile(mountpt_g + "/ctl",
-		"resource add path=" + name + " label=" + name + " type=tool status=idle");
-	writetofile("/tool/ctl", "add " + name);
+	if(actid_g == 0) {
+		# Budget mode: add to delegation budget
+		writetofile("/tool/ctl", "budget-add " + name);
+	} else {
+		writetofile(mountpt_g + "/ctl",
+			"resource add path=" + name + " label=" + name + " type=tool status=idle");
+		writetofile("/tool/ctl", "add " + name);
+	}
 	loadcontext();
 	redrawctx();
 }
@@ -1481,8 +1499,13 @@ removetool(name: string)
 		if(hd tp != name)
 			newlist = hd tp :: newlist;
 	activetoolset = revstrlist(newlist);
-	writetofile(mountpt_g + "/ctl", "resource remove " + name);
-	writetofile("/tool/ctl", "remove " + name);
+	if(actid_g == 0) {
+		# Budget mode: remove from delegation budget
+		writetofile("/tool/ctl", "budget-remove " + name);
+	} else {
+		writetofile(mountpt_g + "/ctl", "resource remove " + name);
+		writetofile("/tool/ctl", "remove " + name);
+	}
 	loadcontext();
 	redrawctx();
 }

@@ -118,6 +118,7 @@ dimcol: ref Image;
 labelcol: ref Image;
 codebgcol_g: ref Image;
 greencol_g: ref Image;
+yellowcol_g: ref Image;
 
 # Presentation state
 artifacts: list of ref Artifact;
@@ -199,6 +200,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	labelcol = display_g.color(th.label);
 	codebgcol_g = display_g.color(th.codebg);
 	greencol_g = display_g.color(th.green);
+	yellowcol_g = display_g.color(th.yellow);
 
 	# Load fonts
 	mainfont = Font.open(display_g, "/fonts/combined/unicode.sans.14.font");
@@ -410,6 +412,14 @@ deliverevent(ev: string)
 
 handleevent(ev: string)
 {
+	if(hasprefix(ev, "switchactivity ")) {
+		newid := strtoint(ev[len "switchactivity ":]);
+		if(newid >= 0) {
+			actid_g = newid;
+			loadpresentation();
+		}
+		return;
+	}
 	if(ev == "presentation current") {
 		s := readfile(sys->sprint("%s/activity/%d/presentation/current",
 			mountpt_g, actid_g));
@@ -632,6 +642,10 @@ drawpresentation(zone: Rect)
 	"app" =>
 		if(centart.appstatus != "running")
 			drawcentertext(contentr, "Launching " + centart.label + "...");
+	"taskboard" =>
+		drawtaskboard(contentr, pad);
+	"diff" =>
+		drawdiff(centart, contentr, pad, contentw, contenty);
 	* =>
 		# All other renderable types: markdown, doc, image, mermaid, etc.
 		if(centart.rendimg == nil && centart.data != "") {
@@ -1404,6 +1418,168 @@ drawtable(art: ref Artifact, contentr: Rect, pad: int, contentw: int, contenty: 
 		}
 		if(isheader) isheader = 0;
 		yt += rowh;
+	}
+}
+
+# Render task dashboard — grid of task cards reading from /n/ui/
+drawtaskboard(contentr: Rect, pad: int)
+{
+	info := readfile(mountpt_g + "/info");
+	if(info == nil) {
+		drawcentertext(contentr, "No tasks");
+		return;
+	}
+
+	# Parse activity list
+	type TaskCard: adt {
+		id: int;
+		label: string;
+		status: string;
+		urgency: int;
+	};
+	cards: list of ref TaskCard;
+	ncards := 0;
+
+	lines := splitlines(strip(info));
+	for(; lines != nil; lines = tl lines) {
+		line := hd lines;
+		if(hasprefix(line, "activities:")) {
+			rest := strip(line[len "activities:":]);
+			(toks, nil) := sys->tokenize(rest, " ");
+			for(; toks != nil; toks = tl toks) {
+				id := strtoint(hd toks);
+				if(id <= 0) continue;	# skip activity 0 (meta) and invalid
+				label := readfile(sys->sprint("%s/activity/%d/label", mountpt_g, id));
+				status := readfile(sys->sprint("%s/activity/%d/status", mountpt_g, id));
+				urgstr := readfile(sys->sprint("%s/activity/%d/urgency", mountpt_g, id));
+				if(label != nil) label = strip(label); else label = string id;
+				if(status != nil) status = strip(status); else status = "?";
+				if(status == "hidden") continue;
+				urg := 0;
+				if(urgstr != nil) urg = strtoint(strip(urgstr));
+				cards = ref TaskCard(id, label, status, urg) :: cards;
+				ncards++;
+			}
+		}
+	}
+
+	if(ncards == 0) {
+		drawcentertext(contentr, "No active tasks");
+		return;
+	}
+
+	# Reverse to preserve order
+	rev: list of ref TaskCard;
+	for(; cards != nil; cards = tl cards)
+		rev = hd cards :: rev;
+	cards = rev;
+
+	# Layout: cards in a wrapping grid
+	cardw := 200;
+	cardh := 60;
+	gap := 8;
+	cols := (contentr.dx() - 2 * pad + gap) / (cardw + gap);
+	if(cols < 1) cols = 1;
+
+	cx := contentr.min.x + pad;
+	cy := contentr.min.y + pad;
+	col := 0;
+
+	for(; cards != nil; cards = tl cards) {
+		card := hd cards;
+		cr := Rect((cx, cy), (cx + cardw, cy + cardh));
+		if(cr.max.y > contentr.max.y)
+			break;	# off-screen
+
+		# Card background and border
+		mainwin.draw(cr, headercol, nil, (0, 0));
+
+		# Status indicator — left accent bar
+		indicol := dimcol;
+		if(card.status == "working")
+			indicol = accentcol;
+		else if(card.status == "done")
+			indicol = greencol_g;
+		else if(card.urgency > 0)
+			indicol = yellowcol_g;
+		mainwin.draw(Rect((cx, cy), (cx + 3, cy + cardh)), indicol, nil, (0, 0));
+
+		# Border
+		mainwin.draw(Rect((cx, cy), (cx + cardw, cy + 1)), bordercol, nil, (0, 0));
+		mainwin.draw(Rect((cx, cy + cardh - 1), (cx + cardw, cy + cardh)), bordercol, nil, (0, 0));
+		mainwin.draw(Rect((cx, cy), (cx + 1, cy + cardh)), bordercol, nil, (0, 0));
+		mainwin.draw(Rect((cx + cardw - 1, cy), (cx + cardw, cy + cardh)), bordercol, nil, (0, 0));
+
+		# Label
+		mainwin.text((cx + 8, cy + 4), textcol, (0, 0), mainfont, card.label);
+
+		# Status text (smaller, dimmer)
+		stext := "[" + card.status + "]";
+		if(card.urgency > 0)
+			stext += " !";
+		mainwin.text((cx + 8, cy + 4 + mainfont.height + 2), dimcol, (0, 0), mainfont, stext);
+
+		col++;
+		if(col >= cols) {
+			col = 0;
+			cx = contentr.min.x + pad;
+			cy += cardh + gap;
+		} else {
+			cx += cardw + gap;
+		}
+	}
+}
+
+# Render diff artifact — monospace with color-coded lines
+redcol_g: ref Image;
+
+drawdiff(art: ref Artifact, contentr: Rect, pad: int, contentw: int, contenty: int)
+{
+	if(art.data == "") {
+		drawcentertext(contentr, "(no changes)");
+		return;
+	}
+	# Allocate red color lazily
+	if(redcol_g == nil && display_g != nil) {
+		lucitheme := load Lucitheme Lucitheme->PATH;
+		if(lucitheme != nil) {
+			th := lucitheme->gettheme();
+			redcol_g = display_g.color(th.red);
+		}
+	}
+
+	ls := splitlines(art.data);
+	total_h := listlen(ls) * monofont_g.height;
+	newmax := total_h - pres_viewport_h;
+	if(newmax < 0) newmax = 0;
+	maxpresscrollpx = newmax;
+	if(art.pany > maxpresscrollpx)
+		art.pany = maxpresscrollpx;
+
+	y := contenty - art.pany;
+	for(wl := ls; wl != nil; wl = tl wl) {
+		line := hd wl;
+		if(y + monofont_g.height > contentr.max.y)
+			break;
+		if(y >= contentr.min.y) {
+			col := dimcol;
+			if(len line > 0) {
+				if(line[0] == '+')
+					col = greencol_g;
+				else if(line[0] == '-') {
+					col = dimcol;
+					if(redcol_g != nil)
+						col = redcol_g;
+				}
+				else if(line[0] == '@')
+					col = accentcol;
+				else
+					col = textcol;
+			}
+			mainwin.text((contentr.min.x + pad - art.panx, y),
+				col, (0, 0), monofont_g, line);
+		}
+		y += monofont_g.height;
 	}
 }
 

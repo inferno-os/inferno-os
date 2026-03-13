@@ -149,6 +149,12 @@ doadd(args: string): string
 	if(err != nil)
 		return "error: " + err;
 
+	# Signal urgency when a high-relevance gap is raised
+	if(relevance == "high") {
+		urgpath := sys->sprint("%s/activity/%d/urgency", UI_MOUNT, actid);
+		writefile(urgpath, "1");
+	}
+
 	return sys->sprint("gap '%s' [%s]", desc, relevance);
 }
 
