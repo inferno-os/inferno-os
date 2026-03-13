@@ -15,7 +15,7 @@ implement Editor;
 #     index        List open documents
 #     1/           Per-document directory
 #       body       Read/write document text
-#       ctl        Document control (save, goto, find, etc.)
+#       ctl        Document control (save, saveas, goto, find, etc.)
 #       event      Blocking read for editor events
 #       addr       Cursor position (line col)
 #
@@ -26,7 +26,7 @@ implement Editor;
 #   Enter        insert newline
 #   Arrow keys   move cursor
 #   Home/End     start/end of line
-#   Ctrl-S       save
+#   Ctrl-S       save (prompts for path if unnamed)
 #   Ctrl-Q       quit
 #   Ctrl-Z       undo last edit
 #   Ctrl-F       find (prompts in status bar)
@@ -42,7 +42,7 @@ implement Editor;
 # Mouse:
 #   Button 1     place cursor / select text
 #   Button 2     paste (snarf buffer)
-#   Button 3     context menu (undo, save, find, goto, ...)
+#   Button 3     context menu (undo, save, save as, find, goto, ...)
 #
 
 include "sys.m";
@@ -163,6 +163,10 @@ Doc: adt {
 	gotomode:	int;
 	gotobuf:	string;
 
+	# Save as
+	saveasmode:	int;
+	saveasbuf:	string;
+
 	# Snarf
 	snarf:		string;
 };
@@ -191,6 +195,8 @@ newdoc(id: int): ref Doc
 	d.findbuf = "";
 	d.gotomode = 0;
 	d.gotobuf = "";
+	d.saveasmode = 0;
+	d.saveasbuf = "";
 	d.snarf = "";
 	return d;
 }
@@ -368,7 +374,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if(menumod != nil)
 		menumod->init(display, font);
-	menu := menumod->new(array[] of {"undo", "save", "find", "goto line", "select all", "cut", "copy", "paste", "exit"});
+	menu := menumod->new(array[] of {"undo", "save", "save as", "find", "goto line", "select all", "cut", "copy", "paste", "exit"});
 
 	redraw();
 
@@ -418,6 +424,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					doc.gotomode = 0;
 				else
 					doc.gotobuf = statbar.buf;
+			} else if(doc.saveasmode) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.saveasmode = 0;
+					if(val != "")
+						dosaveas(val);
+				} else if(done < 0)
+					doc.saveasmode = 0;
+				else
+					doc.saveasbuf = statbar.buf;
 			} else
 				handlekey(key);
 			statedirty = 1;
@@ -430,13 +446,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				case n {
 				0 => doundo();
 				1 => dosave();
-				2 => startfind();
-				3 => startgoto();
-				4 => selectall();
-				5 => docut();
-				6 => docopy();
-				7 => dopaste();
-				8 =>
+				2 => startsaveas();
+				3 => startfind();
+				4 => startgoto();
+				5 => selectall();
+				6 => docut();
+				7 => docopy();
+				8 => dopaste();
+				9 =>
 					if(!checkdirty())
 						break;
 					postnote(1, sys->pctl(0, nil), "kill");
@@ -632,6 +649,10 @@ handledocctl(cmd: string): string
 			doc.searchstr = rest;
 			findnext();
 		}
+		return "ok";
+	"saveas" =>
+		if(rest != "")
+			dosaveas(rest);
 		return "ok";
 	"name" =>
 		if(rest != "") {
@@ -1381,6 +1402,21 @@ startgoto()
 	statbar.buf = "";
 }
 
+startsaveas()
+{
+	doc.saveasmode = 1;
+	doc.saveasbuf = doc.filepath;
+	statbar.prompt = "Save as: ";
+	statbar.buf = doc.saveasbuf;
+}
+
+dosaveas(path: string)
+{
+	doc.filepath = path;
+	if(savefile(doc.filepath))
+		w.settitle(titlestr());
+}
+
 # ---------- Buffer manipulation ----------
 
 insertchar(c: int)
@@ -1718,8 +1754,10 @@ loadfile(path: string)
 
 dosave()
 {
-	if(doc.filepath == "")
+	if(doc.filepath == "") {
+		startsaveas();
 		return;
+	}
 	savefile(doc.filepath);
 }
 
@@ -1837,6 +1875,10 @@ redraw()
 	} else if(doc.gotomode) {
 		statbar.prompt = "Go to line: ";
 		statbar.buf = doc.gotobuf;
+		statbar.leftcolor = nil;
+	} else if(doc.saveasmode) {
+		statbar.prompt = "Save as: ";
+		statbar.buf = doc.saveasbuf;
 		statbar.leftcolor = nil;
 	} else {
 		statbar.prompt = nil;
@@ -2030,7 +2072,7 @@ checkctlfile(): int
 		changed = 1;
 	}
 
-	# Per-doc ctl: save, goto <n>, find <s>, name <p>, insert, delete
+	# Per-doc ctl: save, saveas <p>, goto <n>, find <s>, name <p>, insert, delete
 	dcmd := readrmfile(EDIT_INST + "/ctl");
 	if(dcmd != nil && dcmd != "") {
 		handledocctl(dcmd);
