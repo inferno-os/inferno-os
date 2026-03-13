@@ -343,7 +343,7 @@ extraapp(name: string): string
 istk(name: string): int
 {
 	tkapps := array[] of {
-		"task", "tetris", "sh", "ftree", "deb", "wm",
+		"task", "tetris", "sh", "ftree", "deb",
 	};
 	for(i := 0; i < len tkapps; i++) {
 		if(name == tkapps[i])
