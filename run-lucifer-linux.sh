@@ -36,13 +36,9 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo "  export ANTHROPIC_API_KEY=sk-ant-..."
 fi
 
-# Tool list: non-destructive tools enabled by default.
-# Potentially destructive tools (exec, launch, spawn, git, mail) are registered
-# in tools9p but NOT active by default — enable them via the context zone.
-#
 # llmsrv is the native Limbo Styx server for LLM access — it self-mounts at
 # /n/llm and uses factotum for API key retrieval. No external Go process needed.
-LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; llmsrv &; sleep 1; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap editor charon; lucibridge -v &; lucifer'
+LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; llmsrv &; sleep 1; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep write edit exec launch spawn xenith ask diff json http git memory todo websearch mail present gap editor shell charon; lucibridge -v &; lucifer'
 
 # --- Launch emulator ---
 cd "$ROOT/emu/Linux"
