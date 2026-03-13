@@ -102,14 +102,10 @@ wmchan: chan of (string, chan of (string, ref Wmcontext));
 #
 #   Client.hide() and Client.unhide() are empty stubs in wmsrv.b — do NOT call them.
 #
-# TODO: replace this flat slot array + appjoinch protocol with per-app wmsrv instances.
-#   Currently all apps share one wmsrv (preswmloop) and the appjoinch channel provides
-#   a fragile ordering guarantee: launchapp() pushes the ID *before* spawning, so
-#   preswmloop sees the ID waiting when the app's first join arrives.  This breaks if
-#   two apps are launched faster than the buffered channel can absorb (capacity = 4),
-#   or if an app connects to wmsrv from a different goroutine family than expected.
-#   Per-app wmsrv: each launchapp() calls wmsrv->init() independently, gets its own
-#   (join, req) pair, spawns a dedicated bridge goroutine.  No global appjoinch needed.
+# Each app gets a per-app wmchan relay (appwmrelay goroutine) that intercepts
+# the wmlib registration, records a token→id mapping, then forwards to the
+# shared wmsrv.  preswmloop's join handler looks up c.token to find the
+# artifact id, so the mapping is independent of join order.
 AppSlot: adt {
 	id:     string;
 	client: ref Client;
@@ -119,18 +115,12 @@ appslots: array of ref AppSlot;
 nappslots := 0;
 activeappid: string;	# artifact id of currently-visible app ("" = lucipres showing)
 
-# appjoinch: ordering signal from launchapp() to preswmloop's join handler.
-#
-# Protocol:
-#   1. launchapp() pushes id onto appjoinch (non-blocking alt — capacity 4)
-#   2. launchapp() spawns the GUI app process
-#   3. app calls wmlib->connect() → wmsrv join fires in preswmloop
-#   4. preswmloop reads the id from appjoinch and links client → AppSlot
-#
-# Capacity-4 buffer: safe for sequential launches.  Concurrent launches of >4 apps
-# before any join fires would corrupt the id→client mapping.
-# TODO: eliminate this channel by using per-app wmsrv instances (see AppSlot TODO above).
-appjoinch: chan of string;
+# Token-to-ID map: populated by appwmrelay before forwarding the wmreq,
+# consumed by preswmloop's join handler via poppending(c.token).
+MAXTOKENPENDING: con 16;
+pendingtokens: array of int;
+pendingids: array of string;
+npendingtokens := 0;
 
 # Mutex for appslots/nappslots/activeappid — serializes access between
 # nslistener (checklaunchapp, killapp, handleprescurrent) and preswmloop
@@ -417,7 +407,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	appslots = array[MAXAPPSLOTS] of ref AppSlot;
 	nappslots = 0;
 	activeappid = "";
-	appjoinch = chan[16] of string;	# capacity 16 (was 4) — see item 13
+	pendingtokens = array[MAXTOKENPENDING] of int;
+	pendingids = array[MAXTOKENPENDING] of string;
 	applock = chan[1] of int;
 	applock <-= 1;			# initially unlocked
 
@@ -580,8 +571,8 @@ drawchrome(r: Rect)
 # Limitations (known fragile points):
 #   - Only one wmsrv instance is shared by all apps; app context menus, iconify, etc.
 #     are not meaningfully supported (all req messages get a generic OK reply).
-#   - appjoinch is a 4-slot buffer; launching >4 apps faster than joins arrive corrupts
-#     the id→client mapping.
+#   - Token-to-ID pending map is bounded to 16 entries (more than enough for
+#     concurrent launches).
 #   - Client.hide() / Client.unhide() in wmsrv.b are empty stubs — never call them.
 
 preswmloop(scr: ref Screen, zoner: Rect,
@@ -598,19 +589,18 @@ preswmloop(scr: ref Screen, zoner: Rect,
 			# First join = lucipres
 			lucipresclient = c;
 		} else {
-			# Subsequent join = an app; register its client in the app slot
-			appid2 := "";
-			alt { appid2 = <-appjoinch => ; * => ; }
+			# Subsequent join = an app; look up token→id to find the right slot
+			<-applock;
+			appid2 := poppending(c.token);
 			if(appid2 != "") {
-				<-applock;
 				for(asi := 0; asi < nappslots; asi++) {
 					if(appslots[asi] != nil && appslots[asi].id == appid2) {
 						appslots[asi].client = c;
 						break;
 					}
 				}
-				applock <-= 1;
 			}
+			applock <-= 1;
 		}
 		rc <-= nil;
 	(c, data, rc) := <-req =>
@@ -1199,16 +1189,12 @@ checklaunchapp(id: string)
 			"center id=" + id);
 }
 
-# launchapp: allocate AppSlot, queue id for preswmloop, then spawn the GUI app.
+# launchapp: allocate AppSlot, then spawn the GUI app with a per-app wmchan relay.
 #
-# Ordering is critical:
-#   1. Push id to appjoinch BEFORE spawning, so preswmloop sees the id waiting
-#      when the app's first join arrives.  The app can only join after spawn, so
-#      the push always happens-before the join.
-#   2. If load fails, drain appjoinch so the stale id doesn't mis-label the
-#      next app that successfully joins.
-#
-# TODO: eliminate the appjoinch protocol by giving each app its own wmsrv instance.
+# Each app gets its own proxy wmchan.  appwmrelay intercepts the wmlib
+# registration, records a token→id mapping, then forwards to the shared wmsrv.
+# preswmloop's join handler looks up c.token to find the artifact id, so the
+# mapping is correct regardless of the order apps happen to join.
 # Allowed dis path prefixes for GUI app launch.  Prevents arbitrary module execution
 # via crafted artifact dispath fields from the LLM agent.
 # Each entry must end with '/'.
@@ -1275,20 +1261,17 @@ launchapp(id, dispath, appdata: string)
 		nappslots++;
 	}
 	applock <-= 1;
-	# Signal preswmloop: next join belongs to this id
-	alt { appjoinch <-= id => ;
-		* => sys->fprint(stderr, "lucifer: appjoinch overflow for %s\n", id); }
-	# Load the GUI app module; drain appjoinch if load fails
+	# Load the GUI app module
 	guimod := load GuiApp dispath;
 	if(guimod == nil) {
 		sys->fprint(stderr, "lucifer: cannot load %s: %r\n", dispath);
-		# Drain the appjoinch entry so the next app isn't misidentified
-		alt { <-appjoinch => ; * => ; }
 		writeappstatus(id, "dead");
 		return;
 	}
-	# Spawn app with presscr context so it connects to our wmsrv (wmchan)
-	newctxt := ref Draw->Context(display, presscr, wmchan);
+	# Create per-app proxy wmchan; the relay registers token→id before forwarding
+	appwm := chan of (string, chan of (string, ref Wmcontext));
+	spawn appwmrelay(id, appwm);
+	newctxt := ref Draw->Context(display, presscr, appwm);
 	appargs: list of string;
 	if(appdata != nil && appdata != "") {
 		# Tokenize appdata so multi-flag strings like "-c 1 -t dark -E"
@@ -1299,6 +1282,48 @@ launchapp(id, dispath, appdata: string)
 		appargs = dispath :: nil;
 	spawn guimod->init(newctxt, appargs);
 	writeappstatus(id, "running");
+}
+
+# appwmrelay: per-app goroutine that intercepts the single wmlib registration
+# (token string, reply channel) from the app's proxy wmchan, records a
+# token→id mapping under applock, then forwards the registration to the
+# shared wmchan so wmsrv processes the join as usual.
+appwmrelay(id: string, appwm: chan of (string, chan of (string, ref Wmcontext)))
+{
+	(tokenstr, rc) := <-appwm;
+	tok := int tokenstr;
+	<-applock;
+	addpending(tok, id);
+	applock <-= 1;
+	wmchan <-= (tokenstr, rc);
+}
+
+# addpending: register a token→id mapping (caller must hold applock).
+addpending(token: int, id: string)
+{
+	if(npendingtokens < MAXTOKENPENDING) {
+		pendingtokens[npendingtokens] = token;
+		pendingids[npendingtokens] = id;
+		npendingtokens++;
+	}
+}
+
+# poppending: look up and remove a token→id mapping (caller must hold applock).
+# Returns "" if no mapping found.
+poppending(token: int): string
+{
+	for(i := 0; i < npendingtokens; i++) {
+		if(pendingtokens[i] == token) {
+			id := pendingids[i];
+			for(j := i; j < npendingtokens - 1; j++) {
+				pendingtokens[j] = pendingtokens[j+1];
+				pendingids[j] = pendingids[j+1];
+			}
+			npendingtokens--;
+			return id;
+		}
+	}
+	return "";
 }
 
 # showapp: bring app window to front of the Screen z-stack (in front of lucipres).
@@ -1364,7 +1389,7 @@ killapp(id: string)
 				alt { appslots[si].client.ctl <-= "exit" => ; * => ; }
 			}
 			appslots[si] = nil;
-			# Compact slot array (preserve ordering for appjoinch protocol)
+			# Compact slot array
 			for(ci := si; ci + 1 < nappslots; ci++)
 				appslots[ci] = appslots[ci + 1];
 			nappslots--;
