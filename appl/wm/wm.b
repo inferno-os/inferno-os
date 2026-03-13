@@ -69,7 +69,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		badmodule(Winplace->PATH);
 	winplace->init();
 
-	sys->pctl(Sys->NEWPGRP|Sys->FORKNS, nil);
+	sys->pctl(Sys->NEWPGRP, nil);
 	if (ctxt == nil)
 		ctxt = wmclient->makedrawcontext();
 	display = ctxt.display;
@@ -98,6 +98,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	wmrectIO := sys->file2chan("/chan", "wmrect");
 	if(wmrectIO == nil)
 		fatal(sys->sprint("cannot make /chan/wmrect: %r"));
+
+	# Export /chan (wmctl, wmrect) at /mnt/wm so external processes
+	# like Veltro can access the wm interface without being in this namespace.
+	spawn exportchan();
 
 	sync := chan of string;
 	argv = tl argv;
@@ -141,9 +145,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				mc := ref Mousectl(win.ctxt.ptr, p.buttons, p.xy, p.msec);
 				n := menuhit->menuhit(p.buttons, mc, menu, nil);
 				if(n >= 0 && n < len menu.item){
-					csync := chan of string;
-					spawn command(clientctxt, menu.item[n] :: nil, csync);
-					<-csync;
+					spawn command(clientctxt, menu.item[n] :: nil, nil);
 				}
 				break;
 			}	
@@ -400,10 +402,18 @@ reshaped(win: ref Wmclient->Window)
 			w.img = screen.newwindow(nr, Draw->Refbackup, Draw->Nofill);
 			# XXX check for creation failure
 			w.r = nr;
-			z.ctl <-= sys->sprint("!reshape %q -1 %s", w.tag, r2s(nr));
-			z.ctl <-= "rect " + r2s(newr);
+			spawn reshapenotify(z.ctl, sys->sprint("!reshape %q -1 %s", w.tag, r2s(nr)), "rect " + r2s(newr));
 		}
 	}
+}
+
+# Send reshape and rect notifications to a client without blocking the
+# main event loop.  The childminder goroutine buffers these via its Squeue,
+# so the sends will complete once the scheduler runs it.
+reshapenotify(ctl: chan of string, reshape, rect: string)
+{
+	ctl <-= reshape;
+	ctl <-= rect;
 }
 
 controlevent(e: string)
@@ -562,16 +572,24 @@ setkbdfocus(new: ref Client)
 	old := kbdfocus;
 	if(old == new || (new != nil && (new.flags & Kbdstarted) == 0))
 		return;
-	if(old != nil){
-		old.ctl <-= "haskbdfocus 0";
-	}
-	
+	if(old != nil)
+		spawn sendctl(old.ctl, "haskbdfocus 0");
 	if(new != nil){
-		new.ctl <-= "raise";
-		new.ctl <-= "haskbdfocus 1";
+		spawn sendctl2(new.ctl, "raise", "haskbdfocus 1");
 		kbdfocus = new;
 	} else
 		kbdfocus = nil;
+}
+
+sendctl(ctl: chan of string, msg: string)
+{
+	ctl <-= msg;
+}
+
+sendctl2(ctl: chan of string, msg1, msg2: string)
+{
+	ctl <-= msg1;
+	ctl <-= msg2;
 }
 
 makescreen(img: ref Image): ref Screen
@@ -674,11 +692,15 @@ command(ctxt: ref Draw->Context, args: list of string, sync: chan of string)
 				err = sys->sprint("%r");
 		}
 		if(c == nil){
-			sync <-= sys->sprint("%s: %s\n", cmd, err);
+			if(sync != nil)
+				sync <-= sys->sprint("%s: %s\n", cmd, err);
+			else
+				sys->fprint(sys->fildes(2), "wm: %s: %s\n", cmd, err);
 			exit;
 		}
 	}
-	sync <-= nil;
+	if(sync != nil)
+		sync <-= nil;
 	c->init(ctxt, args);
 }
 
@@ -717,5 +739,27 @@ bytes2rect(b: array of byte): ref Rect
 #	but := int string b[25:37];
 #	msec := int string b[37:49];
 	return ref Rect((0,0), (x, y));
+}
+
+# Export /chan at /mnt/wm via sys->export so that processes outside this
+# namespace group (e.g. Veltro) can access wmctl and wmrect.
+exportchan()
+{
+	fds := array[2] of ref Sys->FD;
+	if(sys->pipe(fds) < 0){
+		sys->fprint(sys->fildes(2), "wm: pipe for /mnt/wm export: %r\n");
+		return;
+	}
+	spawn exportproc(fds[0]);
+	# Ensure /mnt/wm exists as a mount point.
+	sys->create("/mnt/wm", Sys->OREAD, Sys->DMDIR | 8r755);
+	if(sys->mount(fds[1], nil, "/mnt/wm", Sys->MREPL, nil) < 0)
+		sys->fprint(sys->fildes(2), "wm: mount /mnt/wm: %r\n");
+}
+
+exportproc(fd: ref Sys->FD)
+{
+	sys->pctl(Sys->NEWFD, fd.fd :: nil);
+	sys->export(fd, "/chan", Sys->EXPWAIT);
 }
 

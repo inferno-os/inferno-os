@@ -100,25 +100,25 @@ registernamespace()
 		"/n/llm", "/n/mcp", "/n/speech", "/n/git", "/n/ui",
 		"/dev/cons", "/dev/time",
 		"/tmp/veltro", "/lib/certs", "/lib/veltro",
-		"/chan", "/n/local",
+		"/chan", "/n/local", "/mnt/wm",
 	};
 	labels := array[] of {
 		"LLM", "MCP", "Speech", "Git", "UI",
 		"Console", "Clock",
 		"Scratch", "TLS CAs", "Veltro Data",
-		"Xenith 9P", "Local FS",
+		"Xenith 9P", "Local FS", "Window Manager",
 	};
 	types := array[] of {
 		"service", "service", "service", "service", "service",
 		"device", "device",
 		"fs", "fs", "fs",
-		"service", "fs",
+		"service", "fs", "service",
 	};
 	vias := array[] of {
 		"", "", "", "", "",
 		"", "",
 		"rw", "ro", "ro",
-		"", "",
+		"", "", "",
 	};
 	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
 	nreg := 0;
