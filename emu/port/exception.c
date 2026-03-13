@@ -62,7 +62,7 @@ newestring(char *estr)
 	return s;
 }
 
-#define NOPC	0xffffffff
+#define NOPC	((ulong)-1)
 
 #define FRTYPE(f)	((f)->t == nil ? SEXTYPE(f)->reg.TR : (f)->t)
 
@@ -120,7 +120,8 @@ handler(char *estr)
 				for(e = h->etab, ne = h->ne; e->s != nil; e++, ne--){
 					if(ematch(e->s, estr) && (str && ne <= 0 || !str && ne > 0)){
 						newpc = e->pc;
-						goto found;
+						if(newpc != NOPC)
+							goto found;
 					}
 				}
 				newpc = e->pc;
@@ -202,9 +203,12 @@ found:
 		D2H(p->exval)->ref++;
 		*eadr = p->exval;
 	}
-	if(m->compiled)
+	if(m->compiled) {
 		R.PC = (Inst*)((ulong)m->prog+newpc);
-	else
+		if((ulong)R.PC & 3)
+			print("BUG: handler: misaligned R.PC=%p prog=%p newpc=%lud module=%s estr=%s\n",
+				R.PC, (void*)m->prog, newpc, m->m ? m->m->name : "?", estr);
+	} else
 		R.PC = m->prog+newpc;
 	memmove(&p->R, &R, sizeof(R));
 	p->kill = nil;

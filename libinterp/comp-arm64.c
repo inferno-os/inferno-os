@@ -1254,7 +1254,7 @@ comp(Inst *i)
 		comgoto(i);
 		return;
 	case IMOVPC:
-		con((uvlong)&mod->prog[i->s.imm], RA0);
+		con(RELPC(patch[i->s.imm]), RA0);
 		opwst(i, Stw, RA0);
 		return;
 
@@ -2578,7 +2578,8 @@ patchex(Module *m, ulong *p)
 		h->pc1 = p[h->pc1] * sizeof(u32int);
 		h->pc2 = p[h->pc2] * sizeof(u32int);
 		for(e = h->etab; e->s != nil; e++)
-			e->pc = p[e->pc] * sizeof(u32int);
+			if(e->pc != (ulong)-1)
+				e->pc = p[e->pc] * sizeof(u32int);
 		if(e->pc != (ulong)-1)
 			e->pc = p[e->pc] * sizeof(u32int);
 	}
@@ -2690,10 +2691,10 @@ compile(Module *m, int size, Modlink *ml)
 	{
 		static int ncompiled;
 		ncompiled++;
-		if(cflag > 1)
-			print("[%d] dis=%5d arm64=%5d mmap=%5lud base=%.8p end=%.8p: %s\n",
+		if(cflag > 0)
+			print("[%d] dis=%5d arm64=%5d mmap=%5lud base=%.8p end=%.8p lit=%.8p: %s\n",
 				ncompiled, size, n, (ulong)codesize,
-				(void*)base, (void*)(base + n), m->name);
+				(void*)base, (void*)(base + n), (void*)litpool, m->name);
 	}
 
 	pass = 1;

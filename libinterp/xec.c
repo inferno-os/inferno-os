@@ -571,6 +571,10 @@ OP(icase)
 	}
 	if(R.M->compiled) {
 		R.PC = (Inst*)d;
+		if((ulong)R.PC & 3)
+			print("BUG: icase: misaligned PC=%p d=%lx module=%s prog=%p\n",
+				R.PC, (ulong)d, R.M->m ? R.M->m->name : "?",
+				(void*)R.M->m->prog);
 		return;
 	}
 	R.PC = R.M->prog + d;
@@ -602,6 +606,10 @@ OP(casel)
 	}
 	if(R.M->compiled) {
 		R.PC = (Inst*)d;
+		if((ulong)R.PC & 3)
+			print("BUG: casel: misaligned PC=%p d=%lx module=%s prog=%p\n",
+				R.PC, (ulong)d, R.M->m ? R.M->m->name : "?",
+				(void*)R.M->m->prog);
 		return;
 	}
 	R.PC = R.M->prog + d;
@@ -661,6 +669,10 @@ OP(casec)
 found:
 	if(R.M->compiled) {
 		R.PC = (Inst*)*t;
+		if((ulong)R.PC & 3)
+			print("BUG: casec: misaligned PC=%p t=%p *t=%lx module=%s prog=%p\n",
+				R.PC, t, (ulong)*t, R.M->m ? R.M->m->name : "?",
+				(void*)R.M->m->prog);
 		return;
 	}
 	R.PC = R.M->prog + t[0];
@@ -672,6 +684,10 @@ OP(igoto)
 	t = (WORD*)((WORD)R.d + (W(s) * IBY2WD));
 	if(R.M->compiled) {
 		R.PC = (Inst*)t[0];
+		if((ulong)R.PC & 3)
+			print("BUG: igoto: misaligned PC=%p module=%s prog=%p\n",
+				R.PC, R.M->m ? R.M->m->name : "?",
+				(void*)R.M->m->prog);
 		return;
 	}
 	R.PC = R.M->prog + t[0];
@@ -744,6 +760,14 @@ OP(ret)
 	R.SP = (uchar*)f;
 	R.PC = f->lr;
 	m = f->mr;
+
+	if(R.M->compiled && m != nil && m->compiled && ((ulong)R.PC & 3)) {
+		print("BUG: ret: misaligned f->lr=%p\n", R.PC);
+		print("  returning to %s compiled=%d prog=%p\n",
+			m->m ? m->m->name : "?", m->compiled,
+			m->m ? (void*)m->m->prog : nil);
+		print("  from %s\n", R.M->m ? R.M->m->name : "?");
+	}
 
 	if(f->t == nil)
 		unextend(f);
@@ -867,6 +891,14 @@ OP(mcall)
 	R.MP = R.M->MP;
 	R.PC = l->pc;
 	R.t = 1;
+
+	if((ulong)R.PC & 3) {
+		print("mcall: BAD PC=%p module=%s o=%d compiled=%d\n",
+			R.PC, R.M->m ? R.M->m->name : "?", o, R.M->compiled);
+		print("  caller=%s l=%p l->pc=%p\n",
+			f->mr->m ? f->mr->m->name : "?", l, l->pc);
+		error("misaligned PC in mcall");
+	}
 
 	if(f->mr->compiled != R.M->compiled)
 		R.IC = 1;
@@ -1754,6 +1786,23 @@ xec(Prog *p)
 	}
 
 	if(R.M->compiled) {
+		if((ulong)R.PC & 3) {
+			Frame *xf = (Frame*)R.FP;
+			print("BUG: misaligned R.PC=%p before comvec\n", R.PC);
+			print("  module=%s compiled=%d prog=%p\n",
+				R.M->m ? R.M->m->name : "?", R.M->compiled,
+				R.M->m ? (void*)R.M->m->prog : nil);
+			print("  R.FP=%p R.MP=%p R.M=%p\n", R.FP, R.MP, (void*)R.M);
+			if(xf != nil) {
+				print("  frame: lr=%p fp=%p mr=%p\n",
+					xf->lr, xf->fp, (void*)xf->mr);
+				if(xf->mr != nil && xf->mr->m != nil)
+					print("  caller: %s compiled=%d prog=%p\n",
+						xf->mr->m->name, xf->mr->compiled,
+						(void*)xf->mr->m->prog);
+			}
+			error("misaligned PC in compiled module");
+		}
 		comvec();
 	}
 	else {
@@ -1765,5 +1814,24 @@ xec(Prog *p)
 	} while(--R.IC != 0);
 	}
 
+	if(R.M->compiled && ((ulong)R.PC & 3)) {
+		print("BUG: misaligned R.PC=%p AFTER comvec return\n", R.PC);
+		print("  module=%s prog=%p\n",
+			R.M->m ? R.M->m->name : "?",
+			R.M->m ? (void*)R.M->m->prog : nil);
+		print("  R.FP=%p R.MP=%p R.t=%d R.IC=%d\n",
+			R.FP, R.MP, R.t, R.IC);
+		{
+			Frame *xf = (Frame*)R.FP;
+			if(xf != nil) {
+				print("  frame: lr=%p fp=%p mr=%p\n",
+					xf->lr, xf->fp, (void*)xf->mr);
+				if(xf->mr != nil && xf->mr->m != nil)
+					print("  frame.mr: %s compiled=%d prog=%p\n",
+						xf->mr->m->name, xf->mr->compiled,
+						(void*)xf->mr->m->prog);
+			}
+		}
+	}
 	p->R = R;
 }

@@ -8,6 +8,7 @@
 #include	"dat.h"
 #include	"fns.h"
 #include	"error.h"
+#include	"interp.h"
 
 #undef _POSIX_C_SOURCE 
 #undef getwd
@@ -106,6 +107,7 @@ pexit(char *msg, int t)
 void
 trapBUS(int signo, siginfo_t *info, void *context)
 {
+    extern REG R;
     USED(signo);
     if(info != nil) {
         fprint(2, "BUS: addr=%p code=%d\n", info->si_addr, info->si_code);
@@ -127,6 +129,9 @@ trapBUS(int signo, siginfo_t *info, void *context)
                 (void*)uc->uc_mcontext->__ss.__sp);
         }
 #endif
+        if(R.M != nil && R.M->m != nil && R.M->m->name != nil)
+            fprint(2, "  module=%s compiled=%d R.PC=%p prog=%p\n",
+                R.M->m->name, R.M->compiled, R.PC, R.M->m->prog);
     }
     disfault(nil, "Bus error");
 }
