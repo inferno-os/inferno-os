@@ -714,7 +714,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		if(p.xy.y < curzone.min.y + tabh_m) {
 			# Tab strip: always deliver to lucipres
 			if(lucipresclient != nil)
-				lucipresclient.ptr <-= p;
+				alt { lucipresclient.ptr <-= p => ; * => ; }
 		} else {
 			# Content area: active app or lucipres
 			actclient: ref Client;
@@ -730,7 +730,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 			if(actclient == nil)
 				actclient = lucipresclient;
 			if(actclient != nil)
-				actclient.ptr <-= p;
+				alt { actclient.ptr <-= p => ; * => ; }
 		}
 	}
 }
