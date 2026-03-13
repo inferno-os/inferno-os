@@ -8367,6 +8367,14 @@ func (fl *funcLowerer) emit(inst dis.Inst) int32 {
 	return pc
 }
 
+// emitZeroWords emits count consecutive IMOVW(0) instructions starting at dst.
+func (fl *funcLowerer) emitZeroWords(dst int32, count int32) {
+	iby2wd := int32(dis.IBY2WD)
+	for i := int32(0); i < count; i++ {
+		fl.emit(dis.Inst2(dis.IMOVW, dis.Imm(0), dis.FP(dst+i*iby2wd)))
+	}
+}
+
 func (fl *funcLowerer) slotOf(v ssa.Value) int32 {
 	if off, ok := fl.valueMap[v]; ok {
 		return off

@@ -694,34 +694,35 @@ func (c *Compiler) collectPackageFuncs(ssaProg *ssa.Program, ssaPkg *ssa.Package
 			if !seen[m] && m.Name() != "init" && len(m.Blocks) > 0 {
 				*allFuncs = append(*allFuncs, m)
 				seen[m] = true
-				// User-defined init functions appear as init#1, init#2, etc.
 				if strings.HasPrefix(m.Name(), "init#") {
 					c.initFuncs = append(c.initFuncs, m)
 				}
 			}
 		case *ssa.Type:
-			// Collect methods on named types
 			nt, ok := m.Type().(*types.Named)
 			if !ok {
 				continue
 			}
-			for i := 0; i < nt.NumMethods(); i++ {
-				method := ssaProg.FuncValue(nt.Method(i))
-				if method != nil && !seen[method] && len(method.Blocks) > 0 {
-					*allFuncs = append(*allFuncs, method)
-					seen[method] = true
-					// Register in methodMap for interface dispatch
-					typeName := nt.Obj().Name()
-					key := typeName + "." + method.Name()
-					c.methodMap[key] = method
-					// Register in ifaceDispatch with type tag
-					tag := c.AllocTypeTag(typeName)
-					c.ifaceDispatch[method.Name()] = append(
-						c.ifaceDispatch[method.Name()],
-						ifaceImpl{tag: tag, fn: method})
-				}
-			}
+			c.collectTypeMethods(ssaProg, nt, allFuncs, seen)
 		}
+	}
+}
+
+func (c *Compiler) collectTypeMethods(ssaProg *ssa.Program, nt *types.Named, allFuncs *[]*ssa.Function, seen map[*ssa.Function]bool) {
+	for i := 0; i < nt.NumMethods(); i++ {
+		method := ssaProg.FuncValue(nt.Method(i))
+		if method == nil || seen[method] || len(method.Blocks) == 0 {
+			continue
+		}
+		*allFuncs = append(*allFuncs, method)
+		seen[method] = true
+		typeName := nt.Obj().Name()
+		key := typeName + "." + method.Name()
+		c.methodMap[key] = method
+		tag := c.AllocTypeTag(typeName)
+		c.ifaceDispatch[method.Name()] = append(
+			c.ifaceDispatch[method.Name()],
+			ifaceImpl{tag: tag, fn: method})
 	}
 }
 
@@ -755,30 +756,35 @@ func (c *Compiler) scanSysCallsMulti(ssaProg *ssa.Program, userPkgs map[*ssa.Pac
 	// Always register print at index 0 (used by println builtin)
 	c.sysUsed["print"] = 0
 
-	// Scan all functions (including methods) for sys module calls
 	allFns := ssautil.AllFunctions(ssaProg)
 	for fn := range allFns {
 		if fn.Package() == nil || !userPkgs[fn.Package()] {
 			continue
 		}
-		for _, block := range fn.Blocks {
-			for _, instr := range block.Instrs {
-				call, ok := instr.(*ssa.Call)
-				if !ok {
-					continue
-				}
-				callee, ok := call.Call.Value.(*ssa.Function)
-				if !ok {
-					continue
-				}
-				if callee.Package() != nil && callee.Package().Pkg.Path() == "inferno/sys" {
-					disName, ok := sysGoToDisName[callee.Name()]
-					if ok {
-						if _, exists := c.sysUsed[disName]; !exists {
-							c.sysUsed[disName] = len(c.sysUsed)
-						}
-					}
-				}
+		c.scanFuncForSysCalls(fn)
+	}
+}
+
+func (c *Compiler) scanFuncForSysCalls(fn *ssa.Function) {
+	for _, block := range fn.Blocks {
+		for _, instr := range block.Instrs {
+			call, ok := instr.(*ssa.Call)
+			if !ok {
+				continue
+			}
+			callee, ok := call.Call.Value.(*ssa.Function)
+			if !ok {
+				continue
+			}
+			if callee.Package() == nil || callee.Package().Pkg.Path() != "inferno/sys" {
+				continue
+			}
+			disName, ok := sysGoToDisName[callee.Name()]
+			if !ok {
+				continue
+			}
+			if _, exists := c.sysUsed[disName]; !exists {
+				c.sysUsed[disName] = len(c.sysUsed)
 			}
 		}
 	}
@@ -873,44 +879,37 @@ func (c *Compiler) processEmbedDirectives(files []*ast.File, fset *token.FileSet
 	for _, file := range files {
 		for _, decl := range file.Decls {
 			gd, ok := decl.(*ast.GenDecl)
-			if !ok || gd.Tok != token.VAR {
+			if !ok || gd.Tok != token.VAR || gd.Doc == nil {
 				continue
 			}
-			// Check comment group directly above this declaration
-			if gd.Doc == nil {
+			c.processEmbedDecl(gd)
+		}
+	}
+}
+
+func (c *Compiler) processEmbedDecl(gd *ast.GenDecl) {
+	for _, comment := range gd.Doc.List {
+		if !strings.HasPrefix(comment.Text, "//go:embed ") {
+			continue
+		}
+		pattern := strings.TrimSpace(strings.TrimPrefix(comment.Text, "//go:embed "))
+		data, err := os.ReadFile(filepath.Join(c.BaseDir, pattern))
+		if err != nil {
+			c.errors = append(c.errors, fmt.Sprintf("go:embed: %v", err))
+			continue
+		}
+		content := string(data)
+		c.AllocString(content)
+		for _, spec := range gd.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok {
 				continue
 			}
-			for _, comment := range gd.Doc.List {
-				text := comment.Text
-				if !strings.HasPrefix(text, "//go:embed ") {
-					continue
-				}
-				pattern := strings.TrimPrefix(text, "//go:embed ")
-				pattern = strings.TrimSpace(pattern)
-
-				// Read the embedded file
-				filePath := filepath.Join(c.BaseDir, pattern)
-				data, err := os.ReadFile(filePath)
-				if err != nil {
-					c.errors = append(c.errors, fmt.Sprintf("go:embed: %v", err))
-					continue
-				}
-
-				// Get the variable name from the spec
-				for _, spec := range gd.Specs {
-					vs, ok := spec.(*ast.ValueSpec)
-					if !ok {
-						continue
-					}
-					for _, ident := range vs.Names {
-						content := string(data)
-						c.AllocString(content)
-						c.embedInits = append(c.embedInits, embedInit{
-							globalName: ident.Name,
-							content:    content,
-						})
-					}
-				}
+			for _, ident := range vs.Names {
+				c.embedInits = append(c.embedInits, embedInit{
+					globalName: ident.Name,
+					content:    content,
+				})
 			}
 		}
 	}

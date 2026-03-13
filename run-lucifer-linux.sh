@@ -27,6 +27,7 @@ for arg in "$@"; do
     case "$arg" in
         -g) shift; GEOMETRY="-g $1"; shift ;;
         -g*) GEOMETRY="$arg"; shift ;;
+        *) ;;
     esac
 done
 

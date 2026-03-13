@@ -10,6 +10,12 @@ import (
 	"go/types"
 )
 
+const (
+	pkgGoConstant = "go/constant"
+	pkgGoToken    = "go/token"
+	pkgGoTypes    = "go/types"
+)
+
 func init() {
 	RegisterPackage("archive/tar", buildArchiveTarPackage)
 	RegisterPackage("archive/zip", buildArchiveZipPackage)
@@ -34,7 +40,7 @@ func init() {
 	RegisterPackage("go/ast", buildGoASTPackage)
 	RegisterPackage("go/build/constraint", buildGoBuildConstraintPackage)
 	RegisterPackage("go/build", buildGoBuildPackage)
-	RegisterPackage("go/constant", buildGoConstantPackage)
+	RegisterPackage(pkgGoConstant, buildGoConstantPackage)
 	RegisterPackage("go/doc/comment", buildGoDocCommentPackage)
 	RegisterPackage("go/doc", buildGoDocPackage)
 	RegisterPackage("go/format", buildGoFormatPackage)
@@ -42,8 +48,8 @@ func init() {
 	RegisterPackage("go/parser", buildGoParserPackage)
 	RegisterPackage("go/printer", buildGoPrinterPackage)
 	RegisterPackage("go/scanner", buildGoScannerPackage)
-	RegisterPackage("go/token", buildGoTokenPackage)
-	RegisterPackage("go/types", buildGoTypesPackage)
+	RegisterPackage(pkgGoToken, buildGoTokenPackage)
+	RegisterPackage(pkgGoTypes, buildGoTypesPackage)
 	RegisterPackage("go/version", buildGoVersionPackage)
 	RegisterPackage("html", buildHTMLPackage)
 	RegisterPackage("html/template", buildHTMLTemplatePackage)
@@ -4420,7 +4426,7 @@ func buildGoBuildPackage() *types.Package {
 }
 
 func buildGoConstantPackage() *types.Package {
-	pkg := types.NewPackage("go/constant", "constant")
+	pkg := types.NewPackage(pkgGoConstant, "constant")
 	scope := pkg.Scope()
 	kindType := types.NewNamed(types.NewTypeName(token.NoPos, pkg, "Kind", nil), types.Typ[types.Int], nil)
 	scope.Insert(kindType.Obj())
@@ -5222,7 +5228,7 @@ func buildGoScannerPackage() *types.Package {
 }
 
 func buildGoTokenPackage() *types.Package {
-	pkg := types.NewPackage("go/token", "token")
+	pkg := types.NewPackage(pkgGoToken, "token")
 	scope := pkg.Scope()
 
 	// type Token int
@@ -5478,7 +5484,7 @@ func buildGoTokenPackage() *types.Package {
 }
 
 func buildGoTypesPackage() *types.Package {
-	pkg := types.NewPackage("go/types", "types")
+	pkg := types.NewPackage(pkgGoTypes, "types")
 	scope := pkg.Scope()
 	errType := types.Universe.Lookup("error").Type()
 

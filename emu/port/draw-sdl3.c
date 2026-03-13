@@ -736,6 +736,160 @@ sdl_shutdown(void)
 }
 
 /*
+ * Handle cross-thread window creation request.
+ * The worker thread sets create_window_requested when it needs
+ * a window (via attachscreen). We create it here on the main thread.
+ */
+#ifndef __APPLE__
+static void
+handle_window_creation(void)
+{
+	if (!create_window_requested || create_window_done)
+		return;
+
+	sdl_window = SDL_CreateWindow(
+		"InferNode",
+		sdl_width, sdl_height,
+		SDL_WINDOW_RESIZABLE
+	);
+	if (!sdl_window) {
+		fprint(2, "draw-sdl3: SDL_CreateWindow failed: %s\n", SDL_GetError());
+		create_window_result = 0;
+	} else {
+		init_hidpi();
+		if (!create_renderer_and_texture()) {
+			fprint(2, "draw-sdl3: renderer/texture creation failed: %s\n",
+				SDL_GetError());
+			SDL_DestroyWindow(sdl_window);
+			sdl_window = NULL;
+			create_window_result = 0;
+		} else {
+			create_window_result = 1;
+		}
+	}
+	create_window_done = 1;
+	create_window_requested = 0;
+}
+#endif
+
+/*
+ * Upload accumulated dirty region to GPU and present.
+ * Called at ~60Hz from the main loop.  Returns the new last_refresh time,
+ * or the old value if no present was needed.
+ */
+static Uint64
+update_and_present(Uint64 now, Uint64 last_refresh)
+{
+	if (!sdl_running || !sdl_renderer || !sdl_texture || !screen_data)
+		return last_refresh;
+
+	if (!dirty_pending && (now - last_refresh <= 250))
+		return last_refresh;
+
+	if (dirty_pending) {
+		SDL_Rect dirty;
+		uchar *src;
+		int pitch;
+
+		dirty.x = dirty_min_x;
+		dirty.y = dirty_min_y;
+		dirty.w = dirty_max_x - dirty_min_x;
+		dirty.h = dirty_max_y - dirty_min_y;
+
+		pitch = sdl_width * 4;
+		src = screen_data + (dirty_min_y * pitch) + (dirty_min_x * 4);
+
+		SDL_UpdateTexture(sdl_texture, &dirty, src, pitch);
+		dirty_pending = 0;
+	}
+
+	SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
+	SDL_RenderClear(sdl_renderer);
+	SDL_RenderTexture(sdl_renderer, sdl_texture, NULL, &dest_rect);
+	SDL_RenderPresent(sdl_renderer);
+	return now;
+}
+
+/*
+ * Handle SDL_EVENT_TEXT_INPUT.
+ * Decodes UTF-8 text to Unicode codepoints and sends to keyboard queue.
+ * Skips control characters (handled by Ctrl+letter in KEY_DOWN).
+ */
+static void
+handle_text_input(const char *text)
+{
+	Rune r;
+	int n;
+
+	if ((uchar)text[0] < 0x20 && text[0] != '\t')
+		return;
+
+	while (*text) {
+		n = chartorune(&r, (char*)text);
+		if (r == Runeerror) {
+			text++;
+			continue;
+		}
+		gkbdputc(gkbdq, r);
+		text += n;
+	}
+}
+
+/*
+ * Handle SDL_EVENT_KEY_DOWN.
+ * Maps special keys and Ctrl+letter to Plan 9 key codes.
+ * Printable characters are handled by TEXT_INPUT, not here.
+ */
+static void
+handle_key_down(SDL_Event *event)
+{
+	int key = 0;
+	SDL_Keymod mods = event->key.mod;
+	SDL_Keycode kc = event->key.key;
+
+	/* Ctrl+letter -> control character (^A=1, ^H=8, etc.) */
+	if ((mods & SDL_KMOD_CTRL) && kc >= 'a' && kc <= 'z')
+		key = kc - 'a' + 1;
+
+	/* Special/non-printable keys only */
+	if (key == 0)
+	switch (event->key.scancode) {
+	case SDL_SCANCODE_ESCAPE:   key = 27; break;
+	case SDL_SCANCODE_RETURN:   key = '\n'; break;
+	case SDL_SCANCODE_KP_ENTER: key = '\n'; break;
+	case SDL_SCANCODE_TAB:      key = '\t'; break;
+	case SDL_SCANCODE_BACKSPACE: key = '\b'; break;
+	case SDL_SCANCODE_DELETE:   key = 0x7F; break;
+	case SDL_SCANCODE_UP:       key = Up; break;
+	case SDL_SCANCODE_DOWN:     key = Down; break;
+	case SDL_SCANCODE_LEFT:     key = Left; break;
+	case SDL_SCANCODE_RIGHT:    key = Right; break;
+	case SDL_SCANCODE_HOME:     key = Home; break;
+	case SDL_SCANCODE_END:      key = End; break;
+	case SDL_SCANCODE_PAGEUP:   key = Pgup; break;
+	case SDL_SCANCODE_PAGEDOWN: key = Pgdown; break;
+	case SDL_SCANCODE_INSERT:   key = Ins; break;
+	case SDL_SCANCODE_F1:       key = KF|1; break;
+	case SDL_SCANCODE_F2:       key = KF|2; break;
+	case SDL_SCANCODE_F3:       key = KF|3; break;
+	case SDL_SCANCODE_F4:       key = KF|4; break;
+	case SDL_SCANCODE_F5:       key = KF|5; break;
+	case SDL_SCANCODE_F6:       key = KF|6; break;
+	case SDL_SCANCODE_F7:       key = KF|7; break;
+	case SDL_SCANCODE_F8:       key = KF|8; break;
+	case SDL_SCANCODE_F9:       key = KF|9; break;
+	case SDL_SCANCODE_F10:      key = KF|10; break;
+	case SDL_SCANCODE_F11:      key = KF|11; break;
+	case SDL_SCANCODE_F12:      key = KF|12; break;
+	default:
+		break;
+	}
+
+	if (key != 0)
+		gkbdputc(gkbdq, key);
+}
+
+/*
  * Main thread event loop for SDL3/Cocoa
  * This function runs on the TRUE main thread and never returns
  * Worker threads communicate via dispatch_sync()
@@ -752,85 +906,11 @@ sdl3_mainloop(void)
 	/* Event loop - processes SDL events and sends to Infernode */
 	for(;;) {
 #ifndef __APPLE__
-		/*
-		 * Handle cross-thread window creation requests.
-		 * The worker thread sets create_window_requested when it needs
-		 * a window (via attachscreen). We create it here on the main thread.
-		 */
-		if (create_window_requested && !create_window_done) {
-			/* creating window on main thread */
-			sdl_window = SDL_CreateWindow(
-				"InferNode",
-				sdl_width, sdl_height,
-				SDL_WINDOW_RESIZABLE
-			);
-			if (!sdl_window) {
-				fprint(2, "draw-sdl3: SDL_CreateWindow failed: %s\n", SDL_GetError());
-				create_window_result = 0;
-			} else {
-				/* HiDPI before texture so texture gets physical pixel size */
-				init_hidpi();
-				if (!create_renderer_and_texture()) {
-					fprint(2, "draw-sdl3: renderer/texture creation failed: %s\n",
-						SDL_GetError());
-					SDL_DestroyWindow(sdl_window);
-					sdl_window = NULL;
-					create_window_result = 0;
-				} else {
-					create_window_result = 1;
-				}
-			}
-			create_window_done = 1;
-			create_window_requested = 0;
-		}
+		handle_window_creation();
 #endif
 
-		/*
-		 * BATCHED TEXTURE UPDATE AND PRESENTATION
-		 *
-		 * This is the ONLY place where SDL texture/render operations happen.
-		 * flushmemscreen() just accumulates dirty rectangles with no sync.
-		 * We batch all updates into a single GPU upload per frame (~60Hz).
-		 *
-		 * This eliminates the massive dispatch_sync overhead that was
-		 * causing multi-second delays for directory listings.
-		 */
 		now = SDL_GetTicks();
-		if (sdl_running && sdl_renderer && sdl_texture && screen_data) {
-			/*
-			 * Update and present if:
-			 * 1. Dirty regions accumulated (dirty_pending), OR
-			 * 2. 250ms elapsed (keep display fresh, prevent macOS idle optimizations)
-			 */
-			if (dirty_pending || (now - last_refresh > 250)) {
-				if (dirty_pending) {
-					/*
-					 * Upload the accumulated dirty region to GPU texture.
-					 * This is the ONLY SDL_UpdateTexture call per frame.
-					 */
-					SDL_Rect dirty;
-					uchar *src;
-					int pitch;
-
-					dirty.x = dirty_min_x;
-					dirty.y = dirty_min_y;
-					dirty.w = dirty_max_x - dirty_min_x;
-					dirty.h = dirty_max_y - dirty_min_y;
-
-					pitch = sdl_width * 4;
-					src = screen_data + (dirty_min_y * pitch) + (dirty_min_x * 4);
-
-					SDL_UpdateTexture(sdl_texture, &dirty, src, pitch);
-					dirty_pending = 0;
-				}
-
-				SDL_SetRenderDrawColor(sdl_renderer, 0, 0, 0, 255);
-				SDL_RenderClear(sdl_renderer);
-				SDL_RenderTexture(sdl_renderer, sdl_texture, NULL, &dest_rect);
-				SDL_RenderPresent(sdl_renderer);
-				last_refresh = now;
-			}
-		}
+		last_refresh = update_and_present(now, last_refresh);
 
 		/* Poll for events (non-blocking) */
 		while (SDL_PollEvent(&event)) {
@@ -878,152 +958,14 @@ sdl3_mainloop(void)
 			}
 
 			case SDL_EVENT_TEXT_INPUT:
-				/*
-				 * Text input event - receives actual characters with modifiers applied.
-				 * This handles shift, caps lock, keyboard layout, and Option+key
-				 * combinations (e.g., Option+t → †) properly.
-				 * event.text.text is a UTF-8 string.
-				 *
-				 * macOS Option+key composition is handled here - the OS composes
-				 * the character and sends it via TEXT_INPUT.
-				 *
-				 * Plan 9 composition is separate: Alt release sends Latin to
-				 * enter compose mode, then regular keypresses compose.
-				 *
-				 * Skip control characters (< 0x20) - those are handled in KEY_DOWN
-				 * via Ctrl+letter detection.
-				 */
-				{
-					const unsigned char *text = (const unsigned char *)event.text.text;
-
-					/* Skip control characters - handled by Ctrl+letter in KEY_DOWN */
-					if (text[0] < 0x20 && text[0] != '\t')
-						break;
-					while (*text) {
-						int codepoint;
-						int bytes;
-
-						/* Decode UTF-8 to Unicode codepoint */
-						if ((*text & 0x80) == 0) {
-							/* 1-byte ASCII: 0xxxxxxx */
-							codepoint = *text;
-							bytes = 1;
-						} else if ((*text & 0xE0) == 0xC0) {
-							/* 2-byte: 110xxxxx 10xxxxxx */
-							if ((text[1] & 0xC0) != 0x80)
-								goto skip_mainloop;
-							codepoint = ((*text & 0x1F) << 6) |
-							            (text[1] & 0x3F);
-							bytes = 2;
-						} else if ((*text & 0xF0) == 0xE0) {
-							/* 3-byte: 1110xxxx 10xxxxxx 10xxxxxx */
-							if ((text[1] & 0xC0) != 0x80 ||
-							    (text[2] & 0xC0) != 0x80)
-								goto skip_mainloop;
-							codepoint = ((*text & 0x0F) << 12) |
-							            ((text[1] & 0x3F) << 6) |
-							            (text[2] & 0x3F);
-							bytes = 3;
-						} else if ((*text & 0xF8) == 0xF0) {
-							/* 4-byte: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
-							if ((text[1] & 0xC0) != 0x80 ||
-							    (text[2] & 0xC0) != 0x80 ||
-							    (text[3] & 0xC0) != 0x80)
-								goto skip_mainloop;
-							codepoint = ((*text & 0x07) << 18) |
-							            ((text[1] & 0x3F) << 12) |
-							            ((text[2] & 0x3F) << 6) |
-							            (text[3] & 0x3F);
-							bytes = 4;
-						} else {
-						skip_mainloop:
-							/* Invalid UTF-8, skip byte */
-							text++;
-							continue;
-						}
-
-						gkbdputc(gkbdq, codepoint);
-						text += bytes;
-					}
-				}
+				handle_text_input(event.text.text);
 				break;
 
 			case SDL_EVENT_KEY_DOWN:
-				{
-					int key = 0;
-					/*
-					 * Use event.key.mod (modifier state at event time)
-					 * instead of SDL_GetModState() (current state).
-					 */
-					SDL_Keymod mods = event.key.mod;
-					/*
-					 * Use the virtual keycode (event.key.key), not scancode.
-					 * Scancodes are physical positions and vary by keyboard.
-					 * Keycodes are logical keys: SDLK_a='a'=97, SDLK_h='h'=104, etc.
-					 */
-					SDL_Keycode kc = event.key.key;
-
-					/*
-					 * Handle Ctrl+letter -> control character (^A=1, ^H=8, etc.)
-					 * These don't generate TEXT_INPUT events, so handle here.
-					 * Use lowercase keycode range ('a' to 'z').
-					 */
-					if ((mods & SDL_KMOD_CTRL) && kc >= 'a' && kc <= 'z') {
-						key = kc - 'a' + 1;  /* 'a'->1, 'h'->8, etc. */
-					}
-
-					/*
-					 * Handle special/non-printable keys only.
-					 * Printable characters come via SDL_EVENT_TEXT_INPUT.
-					 * macOS Option+key composition also uses TEXT_INPUT.
-					 */
-					if (key == 0)
-					switch (event.key.scancode) {
-					case SDL_SCANCODE_ESCAPE:   key = 27; break;
-					case SDL_SCANCODE_RETURN:   key = '\n'; break;
-					case SDL_SCANCODE_KP_ENTER: key = '\n'; break;
-					case SDL_SCANCODE_TAB:      key = '\t'; break;
-					case SDL_SCANCODE_BACKSPACE: key = '\b'; break;
-					case SDL_SCANCODE_DELETE:   key = 0x7F; break;
-					case SDL_SCANCODE_UP:       key = Up; break;
-					case SDL_SCANCODE_DOWN:     key = Down; break;
-					case SDL_SCANCODE_LEFT:     key = Left; break;
-					case SDL_SCANCODE_RIGHT:    key = Right; break;
-					case SDL_SCANCODE_HOME:     key = Home; break;
-					case SDL_SCANCODE_END:      key = End; break;
-					case SDL_SCANCODE_PAGEUP:   key = Pgup; break;
-					case SDL_SCANCODE_PAGEDOWN: key = Pgdown; break;
-					case SDL_SCANCODE_INSERT:   key = Ins; break;
-					case SDL_SCANCODE_F1:       key = KF|1; break;
-					case SDL_SCANCODE_F2:       key = KF|2; break;
-					case SDL_SCANCODE_F3:       key = KF|3; break;
-					case SDL_SCANCODE_F4:       key = KF|4; break;
-					case SDL_SCANCODE_F5:       key = KF|5; break;
-					case SDL_SCANCODE_F6:       key = KF|6; break;
-					case SDL_SCANCODE_F7:       key = KF|7; break;
-					case SDL_SCANCODE_F8:       key = KF|8; break;
-					case SDL_SCANCODE_F9:       key = KF|9; break;
-					case SDL_SCANCODE_F10:      key = KF|10; break;
-					case SDL_SCANCODE_F11:      key = KF|11; break;
-					case SDL_SCANCODE_F12:      key = KF|12; break;
-					default:
-						break;  /* Printable chars handled by TEXT_INPUT */
-					}
-
-					if (key != 0)
-						gkbdputc(gkbdq, key);
-				}
+				handle_key_down(&event);
 				break;
 
 			case SDL_EVENT_KEY_UP:
-				/*
-				 * Plan 9 latin1 composition: Alt/Option release sends Latin
-				 * to enter compose mode. User then types two characters
-				 * (without Alt held) to produce a composed glyph.
-				 *
-				 * This is separate from macOS composition where you HOLD
-				 * Option and press a key (handled via TEXT_INPUT).
-				 */
 				if (event.key.scancode == SDL_SCANCODE_LALT ||
 				    event.key.scancode == SDL_SCANCODE_RALT) {
 					gkbdputc(gkbdq, Latin);
@@ -1035,11 +977,6 @@ sdl3_mainloop(void)
 				{
 					int log_w, log_h;
 
-					/*
-					 * Window size changed (e.g., full-screen toggle).
-					 * Recalculate dest rect for centered letterbox rendering.
-					 * Texture/buffer size stays fixed at init dimensions.
-					 */
 					SDL_GetWindowSize(sdl_window, &log_w, &log_h);
 					window_width = log_w;
 					window_height = log_h;
