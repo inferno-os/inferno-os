@@ -1,0 +1,132 @@
+#!/bin/sh
+#
+# post-merge — rebuild stale .dis files after git pull/merge
+#
+# Detects which .m (interface) and .b (source) files changed in the
+# merge and rebuilds the affected .dis directories.  This prevents
+# "link typecheck" errors from stale bytecode.
+#
+# The hook is conservative: if ANY .m file in module/ changed, it
+# rebuilds everything, because .m changes can affect any consumer.
+# If only .b files changed, it rebuilds only the affected directories.
+#
+
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+export ROOT
+
+# Detect platform and set up build tools
+case "$(uname -s)" in
+    Darwin) SYSHOST=MacOSX ;;
+    *)      SYSHOST=Linux ;;
+esac
+case "$(uname -m)" in
+    x86_64)       OBJTYPE=amd64 ;;
+    aarch64|arm64) OBJTYPE=arm64 ;;
+    *)            OBJTYPE=amd64 ;;
+esac
+
+MK="$ROOT/$SYSHOST/$OBJTYPE/bin/mk"
+LIMBO="$ROOT/$SYSHOST/$OBJTYPE/bin/limbo"
+export PATH="$ROOT/$SYSHOST/$OBJTYPE/bin:$PATH"
+
+# Bail if native tools aren't available
+if [ ! -x "$MK" ]; then
+    echo "post-merge: mk not found at $MK, skipping rebuild" >&2
+    exit 0
+fi
+
+# Get list of files changed in this merge
+# ORIG_HEAD is set by git merge/pull to the pre-merge HEAD
+CHANGED=$(git diff --name-only ORIG_HEAD HEAD 2>/dev/null || true)
+if [ -z "$CHANGED" ]; then
+    exit 0
+fi
+
+# Check what categories of files changed
+M_CHANGED=0      # module/*.m interface files
+LIB_CHANGED=0    # appl/lib/*.b
+CMD_CHANGED=0    # appl/cmd/*.b
+WM_CHANGED=0     # appl/wm/*.b
+VELTRO_CHANGED=0 # appl/veltro/*.b
+CHARON_CHANGED=0 # appl/charon/*.b
+XENITH_CHANGED=0 # appl/xenith/*.b
+
+for f in $CHANGED; do
+    case "$f" in
+        module/*.m)          M_CHANGED=1 ;;
+        appl/lib/*.b|appl/lib/*.m)       LIB_CHANGED=1 ;;
+        appl/cmd/*.b)        CMD_CHANGED=1 ;;
+        appl/wm/*.b)         WM_CHANGED=1 ;;
+        appl/veltro/*.b|appl/veltro/*.m|appl/veltro/tools/*.b) VELTRO_CHANGED=1 ;;
+        appl/charon/*.b|appl/charon/*.m) CHARON_CHANGED=1 ;;
+        appl/xenith/*.b|appl/xenith/*.m) XENITH_CHANGED=1 ;;
+    esac
+done
+
+# If no source files changed, nothing to rebuild
+if [ $M_CHANGED -eq 0 ] && [ $LIB_CHANGED -eq 0 ] && [ $CMD_CHANGED -eq 0 ] && \
+   [ $WM_CHANGED -eq 0 ] && [ $VELTRO_CHANGED -eq 0 ] && [ $CHARON_CHANGED -eq 0 ] && \
+   [ $XENITH_CHANGED -eq 0 ]; then
+    exit 0
+fi
+
+echo "post-merge: source files changed, rebuilding .dis files..."
+
+# If .m interface files changed, rebuild everything — any consumer could be stale
+if [ $M_CHANGED -eq 1 ]; then
+    echo "post-merge: module interfaces changed — full rebuild"
+    LIB_CHANGED=1
+    CMD_CHANGED=1
+    WM_CHANGED=1
+    VELTRO_CHANGED=1
+    CHARON_CHANGED=1
+    XENITH_CHANGED=1
+fi
+
+# Library changes can affect downstream consumers
+if [ $LIB_CHANGED -eq 1 ]; then
+    CMD_CHANGED=1
+    WM_CHANGED=1
+    VELTRO_CHANGED=1
+    CHARON_CHANGED=1
+fi
+
+FAILURES=0
+
+if [ $LIB_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/lib..."
+    (cd "$ROOT/appl/lib" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $CMD_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/cmd..."
+    (cd "$ROOT/appl/cmd" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $WM_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/wm..."
+    (cd "$ROOT/appl/wm" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $VELTRO_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/veltro..."
+    (cd "$ROOT/appl/veltro" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $CHARON_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/charon..."
+    (cd "$ROOT/appl/charon" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $XENITH_CHANGED -eq 1 ]; then
+    echo "post-merge: rebuilding appl/xenith..."
+    (cd "$ROOT/appl/xenith" && "$MK" -k install 2>&1) || FAILURES=$((FAILURES + 1))
+fi
+
+if [ $FAILURES -gt 0 ]; then
+    echo "post-merge: WARNING: $FAILURES build(s) had errors (used -k to continue)"
+else
+    echo "post-merge: rebuild complete"
+fi

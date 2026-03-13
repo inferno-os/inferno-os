@@ -152,7 +152,7 @@ readarray(fd: ref Iobuf, multi: int): (array of ref Rawimage, string)
 		return (nil, "WebP: not a WebP file");
 
 	if(int riffsize + 8 > len data)
-		riffsize = len data - 8;
+		riffsize = big (len data - 8);
 
 	# Parse chunks
 	off := 12;
@@ -390,8 +390,8 @@ vp8l_decode_image(bits: ref Bits, width, height: int): (array of int, string)
 		return (nil, derr);
 
 	# Apply inverse transforms in reverse order
-	for(tl := transforms; tl != nil; tl = tl tl) {
-		xf := hd tl;
+	for(txl := transforms; txl != nil; txl = tl txl) {
+		xf := hd txl;
 		(argb, err) = vp8l_apply_inverse_transform(xf, argb, width, height);
 		if(err != nil)
 			return (nil, err);
@@ -1267,13 +1267,13 @@ vp8_decode_frame(data: array of byte, first_part_size, width, height: int): (arr
 				if(booldec_read(bd, 128) != 0)
 					booldec_readlit(bd, 7 + 1);
 			}
-			for(i := 0; i < 4; i++) {
+			for(j := 0; j < 4; j++) {
 				if(booldec_read(bd, 128) != 0)
 					booldec_readlit(bd, 6 + 1);
 			}
 		}
 		if(update_map != 0) {
-			for(i := 0; i < 3; i++) {
+			for(k := 0; k < 3; k++) {
 				if(booldec_read(bd, 128) != 0)
 					booldec_readlit(bd, 8);
 			}
@@ -1406,10 +1406,10 @@ vp8_decode_frame(data: array of byte, first_part_size, width, height: int): (arr
 
 			# Apply basic DC prediction to UV planes
 			uvoff := mby * 8 * uvw + mbx * 8;
-			for(py := 0; py < 8 && mby*8+py < uvh; py++)
-				for(px := 0; px < 8 && mbx*8+px < uvw; px++) {
-					uplane[uvoff + py * uvw + px] = byte 128;
-					vplane[uvoff + py * uvw + px] = byte 128;
+			for(upy := 0; upy < 8 && mby*8+upy < uvh; upy++)
+				for(upx := 0; upx < 8 && mbx*8+upx < uvw; upx++) {
+					uplane[uvoff + upy * uvw + upx] = byte 128;
+					vplane[uvoff + upy * uvw + upx] = byte 128;
 				}
 		}
 	}

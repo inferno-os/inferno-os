@@ -210,8 +210,8 @@ parse_svg(parser: ref Parser): (ref Canvas, string)
 # Create a new canvas from SVG attributes
 new_canvas(attrs: Attributes): ref Canvas
 {
-	width := parse_length(attrs.get("width"), DEFAULT_WIDTH);
-	height := parse_length(attrs.get("height"), DEFAULT_HEIGHT);
+	width := parse_length(attrs.get("width"), real DEFAULT_WIDTH);
+	height := parse_length(attrs.get("height"), real DEFAULT_HEIGHT);
 
 	c := ref Canvas;
 	c.width = int width;

@@ -147,9 +147,21 @@ osleave(void)
 	up->syscall = 0;
 	unlock(&up->sysio);
 
-	/* Cleared by the signal/note/exception handler */
-	while(up->intwait)
-		osyield();
+	/* Cleared by the signal/note/exception handler.
+	 * The signal should arrive almost immediately; if it hasn't
+	 * after a bounded number of yields, force-clear to avoid
+	 * permanent busy-wait (seen on macOS ARM64 when the signal
+	 * handler returns early due to type != Interp or races).
+	 */
+	if(up->intwait) {
+		int i;
+		for(i = 0; i < 1000; i++) {
+			if(!up->intwait)
+				break;
+			osyield();
+		}
+		up->intwait = 0;
+	}
 
 	if(r != 0)
 		error(Eintr);
