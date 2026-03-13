@@ -273,6 +273,7 @@ static	int	pass;
 static	Module*	mod;
 static	uchar*	tinit;
 static	ulong*	litpool;
+static	ulong*	litlimit;	/* end of literal pool (bounds check) */
 static	int	nlit;
 static	ulong	macro[NMACRO];
 	void	(*comvec)(void);
@@ -780,6 +781,10 @@ literal(uvlong imm, int roff)
 	mem(Stw, roff, RREG, RTA);
 	if(pass == 0)
 		return;
+	if(litpool >= litlimit) {
+		print("JIT: literal pool overflow (nlit=%d)\n", nlit);
+		urk("literal pool overflow");
+	}
 	*litpool = imm;
 	litpool++;
 }
@@ -2585,7 +2590,7 @@ compile(Module *m, int size, Modlink *ml)
 	Link *l;
 	Modl *e;
 	int i, n;
-	u32int *s, *tmp;
+	u32int *s, *tmp = nil;
 
 	/* JIT enabled */
 	ulong codesize;
@@ -2654,7 +2659,15 @@ compile(Module *m, int size, Modlink *ml)
 		n += code - tmp;
 	}
 
-	codesize = n * sizeof(u32int) + nlit * sizeof(ulong);
+	/* Add 25% safety margin on literal pool for Phase 0/1 divergence */
+	codesize = n * sizeof(u32int) + (nlit + nlit/4 + 16) * sizeof(ulong);
+
+	/* Round up to page boundary + guard page for safety */
+	{
+		ulong pagesz = 16384;	/* ARM64 macOS uses 16KB pages */
+		codesize = (codesize + pagesz - 1) & ~(pagesz - 1);
+		codesize += pagesz;	/* extra guard page */
+	}
 
 #ifdef __APPLE__
 	base = mmap(0, codesize, PROT_READ|PROT_WRITE|PROT_EXEC,
@@ -2686,6 +2699,7 @@ compile(Module *m, int size, Modlink *ml)
 	pass = 1;
 	nlit = 0;
 	litpool = (ulong*)(base + n);
+	litlimit = (ulong*)((uchar*)base + codesize);
 	code = base;
 	n = 0;
 	codeoff = 0;
