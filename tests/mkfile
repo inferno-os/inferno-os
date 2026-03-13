@@ -9,10 +9,12 @@ TARG=\
 	agentlib_test.dis\
 	agent_test.dis\
 	tooluse_test.dis\
+	awk_test.dis\
 	asyncio_test.dis\
 	bufio_test.dis\
 	concurrency_test.dis\
 	cowfs_test.dis\
+	cut_test.dis\
 	crypto_test.dis\
 	dial_test.dis\
 	edit_test.dis\

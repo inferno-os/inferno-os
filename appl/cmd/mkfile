@@ -25,6 +25,7 @@ TARG=\
 	ar.dis\
 	archfs.dis\
 	auplay.dis\
+	awk.dis\
 	basename.dis\
 	bdf2subfont.dis\
 	bind.dis\
@@ -45,6 +46,7 @@ TARG=\
 	cp.dis\
 	cprof.dis\
 	cpu.dis\
+	cut.dis\
 	crypt.dis\
 	date.dis\
 	dbfs.dis\
