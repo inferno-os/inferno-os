@@ -196,6 +196,43 @@ else
     fail "global event test (emu error)"
 fi
 
+# ── Message index integrity (convcount sync regression) ──
+echo ""
+echo "── message index integrity ──"
+
+# Regression: child lucibridge's convcount starts at 0, but the task tool
+# already wrote message 0 (role=system context injection) before the child
+# started.  This caused placeholder_idx to point at the wrong slot, so
+# streaming updates overwrote the user's input with the agent's text while
+# keeping role=human.  The fix: convcount is initialized from existing messages.
+#
+# Verify that writing multiple messages with different roles preserves
+# each role correctly at its index — no cross-contamination.
+if emu_c "idx_roles" 8 \
+    "luciuisrv; sleep 1; echo 'activity create Task' > /n/ui/ctl; echo 'role=system text=context injection' > /n/ui/activity/0/conversation/ctl; echo 'role=human text=user typed this' > /n/ui/activity/0/conversation/ctl; echo 'role=veltro text=agent response' > /n/ui/activity/0/conversation/ctl; echo IDX0:; cat /n/ui/activity/0/conversation/0; echo IDX1:; cat /n/ui/activity/0/conversation/1; echo IDX2:; cat /n/ui/activity/0/conversation/2"; then
+    if echo "$OUTPUT" | grep "IDX0:" -A1 | grep -q "role=system" &&
+       echo "$OUTPUT" | grep "IDX1:" -A1 | grep -q "role=human" &&
+       echo "$OUTPUT" | grep "IDX2:" -A1 | grep -q "role=veltro"; then
+        pass "message roles preserved at correct indices"
+    else
+        fail "message index roles (output: $OUTPUT)"
+    fi
+else
+    fail "message index test (emu error)"
+fi
+
+# Verify in-place update preserves original role (streaming update regression)
+if emu_c "update_role" 8 \
+    "luciuisrv; sleep 1; echo 'activity create Task' > /n/ui/ctl; echo 'role=veltro text=placeholder' > /n/ui/activity/0/conversation/ctl; echo 'update idx=0 text=final response' > /n/ui/activity/0/conversation/ctl; cat /n/ui/activity/0/conversation/0"; then
+    if echo "$OUTPUT" | grep -q "role=veltro" && echo "$OUTPUT" | grep -q "final response"; then
+        pass "in-place update preserves original role"
+    else
+        fail "in-place update role (output: $OUTPUT)"
+    fi
+else
+    fail "in-place update test (emu error)"
+fi
+
 # ── Presentation artifacts per-activity ──
 echo ""
 echo "── presentation per-activity ──"

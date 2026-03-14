@@ -54,6 +54,7 @@ llmfd: ref Sys->FD;
 # Activity state
 actid := 0;
 convcount := 0;		# messages written to conversation by this bridge
+userinteracted := 0;	# set after user sends a message (suppresses urgency)
 
 # Tool tracking: raw string from /tool/tools; updated when tool set changes
 currenttoolsraw := "";
@@ -965,9 +966,15 @@ agentturn(input: string)
 					sys->sleep(50);
 				}
 			}
-			# Final update with accumulated content (no cursor)
-			if(placeholder_idx >= 0 && nchunks > 0)
-				updateliveconvmsg(placeholder_idx, growing);
+			# Final update with accumulated content (no cursor).
+			# When nchunks == 0 (CLI backend, no streaming), clear the
+			# cursor so it doesn't look stuck while pread blocks.
+			if(placeholder_idx >= 0) {
+				if(nchunks > 0)
+					updateliveconvmsg(placeholder_idx, growing);
+				else
+					updateliveconvmsg(placeholder_idx, "…");
+			}
 			log(sys->sprint("stream: done (%d chunks, %d bytes)", nchunks, len growing));
 			streamfd = nil;
 		} else {
@@ -1087,9 +1094,12 @@ agentturn(input: string)
 		setstatus("idle");
 	} else {
 		# Agent turn completed normally.  For spawned tasks (actid > 0),
-		# signal the user that this task is done and may need review.
+		# signal the user only for the initial autonomous turn (before
+		# the user has interacted).  Once the user has sent a message,
+		# further completions don't raise urgency — the user is already
+		# engaged and the blinking tile is distracting.
 		setstatus("idle");
-		if(actid > 0)
+		if(actid > 0 && !userinteracted)
 			seturgency(1);
 	}
 }
@@ -1195,9 +1205,21 @@ init(nil: ref Draw->Context, args: list of string)
 	# Show welcome document on first launch
 	showwelcome(actid);
 
+	# Sync convcount with messages already in the conversation (e.g. the
+	# task tool injects a system context message before we start).
+	# Without this, placeholder_idx is off-by-one and streaming updates
+	# overwrite the wrong message slot, mixing up roles.
+	convbase := sys->sprint("/n/ui/activity/%d/conversation", actid);
+	for(convcount = 0; ; convcount++) {
+		(cok, nil) := sys->stat(sys->sprint("%s/%d", convbase, convcount));
+		if(cok < 0)
+			break;
+	}
+
 	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
 
-	log(sys->sprint("ready — activity %d, session %s, max %d steps", actid, sessionid, maxsteps));
+	log(sys->sprint("ready — activity %d, session %s, max %d steps, %d existing msgs",
+		actid, sessionid, maxsteps, convcount));
 
 	# Main loop: re-open input fd each iteration because 9P offset
 	# advances after read, causing subsequent reads to return EOF.
@@ -1220,6 +1242,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 		# Record human message in UI
 		writemsg("human", human);
+		userinteracted = 1;
 
 		# Run agent turn
 		agentturn(human);

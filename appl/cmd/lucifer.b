@@ -893,6 +893,17 @@ switchactivity(newid: int)
 	writefile(sys->sprint("%s/activity/%d/urgency", mountpt, newid), "0");
 	updatetile(newid, "urgency", "0");
 
+	# Hide all app windows from the outgoing activity.  App windows live
+	# in the shared wmsrv Screen z-stack; without this, the previous
+	# activity's editor/app "ghosts" over the new activity's presentation.
+	<-applock;
+	for(sai := 0; sai < nappslots; sai++) {
+		if(appslots[sai] != nil && appslots[sai].client != nil)
+			appslots[sai].client.bottom();
+	}
+	activeappid = "";
+	applock <-= 1;
+
 	# Kill and respawn nslistener so it reads events for the new activity.
 	# nslistener blocks on sys->read() of the per-activity event file;
 	# killing it is the only way to redirect it to the new activity.
