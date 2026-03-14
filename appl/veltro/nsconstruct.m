@@ -63,9 +63,9 @@ NsConstruct: module {
 	restrictns: fn(caps: ref Capabilities): string;
 
 	# Emit namespace manifest for the UI to display.
-	# Writes to /tmp/veltro/.ns/manifest — one entry per line.
+	# Writes to mpath — one entry per line.
 	# Must be called AFTER restrictns() from the restricted namespace.
-	emitmanifest: fn(caps: ref Capabilities);
+	emitmanifest: fn(caps: ref Capabilities, mpath: string);
 
 	# Verify namespace matches expected security policy
 	# Reads /prog/$pid/ns and checks for dangerous paths

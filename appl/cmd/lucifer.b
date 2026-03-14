@@ -180,6 +180,9 @@ lastmousex := 0;
 conv_pct := 30;
 pres_pct := 45;
 
+# nslistener process ID — killed and respawned on activity switch
+nslistenerpid := -1;
+
 # Zone channels
 convMouseCh: chan of ref Pointer;
 convKbdCh:   chan of int;
@@ -861,7 +864,8 @@ mainloop()
 			handleresize();
 		}
 	<-uievent =>
-		# Header redraw (status/label changed)
+		# Activity changed — reload tiles then redraw header
+		loadtiles();
 		drawchrome(mainwin.r);
 	req := <-ctxreqch =>
 		if(req == "restore")
@@ -888,6 +892,16 @@ switchactivity(newid: int)
 	# Clear urgency on the newly focused activity
 	writefile(sys->sprint("%s/activity/%d/urgency", mountpt, newid), "0");
 	updatetile(newid, "urgency", "0");
+
+	# Kill and respawn nslistener so it reads events for the new activity.
+	# nslistener blocks on sys->read() of the per-activity event file;
+	# killing it is the only way to redirect it to the new activity.
+	if(nslistenerpid >= 0) {
+		fd := sys->open("/prog/" + string nslistenerpid + "/ctl", Sys->OWRITE);
+		if(fd != nil)
+			sys->fprint(fd, "kill");
+	}
+	spawn nslistener();
 
 	# Signal zone modules to switch to new activity
 	ev := "switchactivity " + string newid;
@@ -965,7 +979,7 @@ loadstatus()
 # Read all activities from /n/ui/ and populate tile state
 loadtiles()
 {
-	info := readfile(mountpt + "/info");
+	info := readfile(mountpt + "/ctl");
 	if(info == nil)
 		return;
 	info = strip(info);
@@ -1119,8 +1133,7 @@ globallistener()
 				if(newid >= 0 && newid != actid)
 					alt { switchch <-= newid => ; * => ; }
 			}
-			# Any activity event: reload tiles and redraw header
-			loadtiles();
+			# Any activity event: signal main loop to reload tiles and redraw
 			alt { uievent <-= 1 => ; * => ; }
 		}
 	}
@@ -1150,6 +1163,7 @@ tileblinker()
 
 nslistener()
 {
+	nslistenerpid = sys->pctl(0, nil);
 	evpath := sys->sprint("%s/activity/%d/event", mountpt, actid);
 	backoff := 500;
 	for(;;) {

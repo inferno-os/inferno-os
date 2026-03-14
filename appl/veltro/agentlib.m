@@ -16,6 +16,7 @@ AgentLib: module {
 
 	init: fn();
 	setverbose: fn(v: int);
+	settoolmount: fn(path: string);
 
 	# LLM session management
 	createsession: fn(): string;

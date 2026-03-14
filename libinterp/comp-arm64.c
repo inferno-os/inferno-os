@@ -2691,7 +2691,7 @@ compile(Module *m, int size, Modlink *ml)
 	{
 		static int ncompiled;
 		ncompiled++;
-		if(cflag > 0)
+		if(cflag > 3)
 			print("[%d] dis=%5d arm64=%5d mmap=%5lud base=%.8p end=%.8p lit=%.8p: %s\n",
 				ncompiled, size, n, (ulong)codesize,
 				(void*)base, (void*)(base + n), (void*)litpool, m->name);

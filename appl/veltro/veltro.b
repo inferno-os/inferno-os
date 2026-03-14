@@ -180,7 +180,7 @@ init(nil: ref Draw->Context, args: list of string)
 				sys->fprint(stderr, "veltro: namespace restricted\n");
 			# Emit namespace manifest from the restricted namespace
 			# so stat checks reflect exactly what the agent can see
-			nsconstruct->emitmanifest(parent_caps);
+			nsconstruct->emitmanifest(parent_caps, "/tmp/veltro/.ns/manifest");
 		}
 	}
 

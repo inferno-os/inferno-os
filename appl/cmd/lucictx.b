@@ -126,11 +126,13 @@ userns_expanded := 0;
 
 # Tool management state
 activetoolset: list of string;
+toolmount_g: string;		# "/tool" for activity 0, "/tool.N" for child N
 knowntoolnames: list of string;
 pinnedpaths: list of ref PinnedPath;
 
-# Path change tracking for timer-based namespace refresh
+# Path and tool change tracking for timer-based namespace refresh
 lastpathsraw := "";
+lasttoolsraw := "";
 
 # Channel references (for filebrowser access)
 mousech_g: chan of ref Pointer;
@@ -222,20 +224,16 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	else
 		menumod->init(display_g, mainfont);
 
-	# Initialize tool management state — sync from running tools9p if available
-	{
-		toolsraw := readfile("/tool/tools");
-		if(toolsraw != nil && len toolsraw > 0) {
-			(nil, tl0) := sys->tokenize(toolsraw, "\n");
-			activetoolset = tl0;
-		} else {
-			# Fallback if tools9p not yet running
-			activetoolset = "read" :: "list" :: "find" :: "search" ::
-				"write" :: "edit" :: "present" :: "ask" ::
-				"diff" :: "json" :: "git" :: "memory" ::
-				"websearch" :: "http" :: "mail" ::
-				"spawn" :: "gap" :: nil;
-		}
+	# Initialize tool management state — sync from running tools9p
+	updatetoolmount();
+	reloadtools();
+	if(activetoolset == nil) {
+		# Fallback if tools9p not yet running
+		activetoolset = "read" :: "list" :: "find" :: "search" ::
+			"write" :: "edit" :: "present" :: "ask" ::
+			"diff" :: "json" :: "git" :: "memory" ::
+			"websearch" :: "http" :: "mail" ::
+			"spawn" :: "gap" :: nil;
 	}
 	toolsec_expanded = 1;
 	toolavail_expanded = 0;
@@ -255,10 +253,13 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	loadpinnedpaths();
 	loadmanifest();
 
-	# Snapshot current paths so timer detects future changes
-	raw := readfile("/tool/paths");
+	# Snapshot current paths and tools so timer detects future changes
+	raw := readfile(toolmount_g + "/paths");
 	if(raw == nil) raw = "";
 	lastpathsraw = raw;
+	traw := readfile(toolmount_g + "/tools");
+	if(traw == nil) traw = "";
+	lasttoolsraw = traw;
 
 	redrawctx();
 
@@ -517,18 +518,32 @@ ctxtimer(evch: chan of string)
 
 		# Always tick if manifest hasn't loaded yet
 		if(nsmanifest == nil) {
-			(ok, nil) := sys->stat("/tmp/veltro/.ns/manifest");
+			mp := "/tmp/veltro/.ns/manifest";
+			if(actid_g > 0)
+				mp = "/tmp/veltro/.ns/manifest." + string actid_g;
+			(ok, nil) := sys->stat(mp);
 			if(ok >= 0)
 				needtick = 1;
 		}
 
 		# Tick if /tool/paths changed (namespace bind/unbind from any source)
 		if(!needtick) {
-			curpaths := readfile("/tool/paths");
+			curpaths := readfile(toolmount_g + "/paths");
 			if(curpaths == nil)
 				curpaths = "";
 			if(curpaths != lastpathsraw) {
 				lastpathsraw = curpaths;
+				needtick = 1;
+			}
+		}
+
+		# Tick if /tool/tools changed (tool add/remove via ctl)
+		if(!needtick) {
+			curtools := readfile(toolmount_g + "/tools");
+			if(curtools == nil)
+				curtools = "";
+			if(curtools != lasttoolsraw) {
+				lasttoolsraw = curtools;
 				needtick = 1;
 			}
 		}
@@ -550,14 +565,56 @@ ctxtimer(evch: chan of string)
 	}
 }
 
+# Return the tools9p mount point for the current activity.
+# Activity 0 → "/tool", activity N → "/tool.N"
+updatetoolmount()
+{
+	if(actid_g <= 0)
+		toolmount_g = "/tool";
+	else
+		toolmount_g = "/tool." + string actid_g;
+}
+
+# Check if the current activity's tools9p is mounted and ready.
+toolmount_ready(): int
+{
+	(ok, nil) := sys->stat(toolmount_g + "/ctl");
+	return ok >= 0;
+}
+
+# Re-read the active tool list from the current activity's tools9p.
+# This is the ONLY source of truth for what the agent can access.
+reloadtools()
+{
+	toolsraw := readfile(toolmount_g + "/tools");
+	if(toolsraw != nil && len toolsraw > 0) {
+		(nil, tl0) := sys->tokenize(toolsraw, "\n");
+		activetoolset = tl0;
+	} else {
+		activetoolset = nil;
+	}
+}
+
 handleevent(ev: string)
 {
 	if(hasprefix(ev, "switchactivity ")) {
 		newid := strtoint(ev[len "switchactivity ":]);
 		if(newid >= 0) {
 			actid_g = newid;
+			editor_launched = 0;
+			updatetoolmount();
+			reloadtools();
 			loadcontext();
 			loadcatalog();
+			loadpinnedpaths();
+			loadmanifest();
+			# Snapshot new activity's state so timer detects changes
+			raw2 := readfile(toolmount_g + "/paths");
+			if(raw2 == nil) raw2 = "";
+			lastpathsraw = raw2;
+			traw2 := readfile(toolmount_g + "/tools");
+			if(traw2 == nil) traw2 = "";
+			lasttoolsraw = traw2;
 		}
 		return;
 	}
@@ -566,7 +623,10 @@ handleevent(ev: string)
 	if(ev == "catalog")
 		return;
 	if(hasprefix(ev, "context") || ev == "tick") {
+		# Reload tools on every tick — detects add/remove via /tool/ctl
+		reloadtools();
 		loadcontext();
+		loadpinnedpaths();
 		loadmanifest();
 		loadagentname();
 	}
@@ -1359,7 +1419,13 @@ loadagentname()
 loadmanifest()
 {
 	nsmanifest = nil;
-	raw := readfile("/tmp/veltro/.ns/manifest");
+	# Each activity's tools9p writes its own manifest file.
+	# Activity 0 → /tmp/veltro/.ns/manifest
+	# Activity N → /tmp/veltro/.ns/manifest.N
+	mpath := "/tmp/veltro/.ns/manifest";
+	if(actid_g > 0)
+		mpath = "/tmp/veltro/.ns/manifest." + string actid_g;
+	raw := readfile(mpath);
 	if(raw == nil)
 		return;
 	(nil, lines) := sys->tokenize(raw, "\n");
@@ -1373,12 +1439,10 @@ loadmanifest()
 		if(label == nil) label = path;
 		perm := getattr(attrs, "perm");
 		if(perm == nil) perm = "ro";
-		# Check if path is currently accessible (in user namespace)
-		mounted := 0;
-		(ok, nil) := sys->stat(path);
-		if(ok >= 0)
-			mounted = 1;
-		nsmanifest = ref NsEntry(path, label, perm, mounted) :: nsmanifest;
+		# Manifest entries are generated from INSIDE the restricted namespace
+		# (emitmanifest runs after FORKNS + restrictns). If a path is in the
+		# manifest, it IS accessible to the agent's tools. Always show mounted.
+		nsmanifest = ref NsEntry(path, label, perm, 1) :: nsmanifest;
 	}
 	# Append pinned paths (user-bound via Browse) as agent NS entries.
 	# These are paths the agent gains access to via /tool/paths → lucibridge.
@@ -1493,7 +1557,7 @@ mountresource(ce: ref CatalogEntry)
 	if(ce.rtype == "path") {
 		# Local filesystem path: route through tools9p so lucibridge
 		# binds it in the agent namespace (not lucifer's).
-		writetofile("/tool/ctl", "bindpath " + ce.dial);
+		writetofile(toolmount_g + "/ctl", "bindpath " + ce.dial);
 		writetofile(mountpt_g + "/ctl",
 			"catalog mounted name=" + ce.name + " path=" + ce.dial);
 	} else {
@@ -1522,7 +1586,7 @@ unmountresource(ce: ref CatalogEntry)
 	if(ce == nil || ce.mntpath == "")
 		return;
 	if(ce.rtype == "path") {
-		writetofile("/tool/ctl", "unbindpath " + ce.mntpath);
+		writetofile(toolmount_g + "/ctl", "unbindpath " + ce.mntpath);
 	} else {
 		sys->unmount(nil, ce.mntpath);
 	}
@@ -1581,33 +1645,35 @@ addtool(name: string)
 	for(tp := activetoolset; tp != nil; tp = tl tp)
 		if(hd tp == name)
 			return;
-	activetoolset = name :: activetoolset;
+	if(!toolmount_ready())
+		return;
 	if(actid_g == 0) {
 		# Budget mode: add to delegation budget
-		writetofile("/tool/ctl", "budget-add " + name);
+		writetofile(toolmount_g + "/ctl", "budget-add " + name);
 	} else {
+		writetofile(toolmount_g + "/ctl", "add " + name);
 		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g),
 			"resource add path=" + name + " label=" + name + " type=tool status=idle");
-		writetofile("/tool/ctl", "add " + name);
 	}
+	# Re-read from tools9p to confirm the change took effect
+	reloadtools();
 	loadcontext();
 	redrawctx();
 }
 
 removetool(name: string)
 {
-	newlist: list of string;
-	for(tp := activetoolset; tp != nil; tp = tl tp)
-		if(hd tp != name)
-			newlist = hd tp :: newlist;
-	activetoolset = revstrlist(newlist);
+	if(!toolmount_ready())
+		return;
 	if(actid_g == 0) {
 		# Budget mode: remove from delegation budget
-		writetofile("/tool/ctl", "budget-remove " + name);
+		writetofile(toolmount_g + "/ctl", "budget-remove " + name);
 	} else {
+		writetofile(toolmount_g + "/ctl", "remove " + name);
 		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "resource remove " + name);
-		writetofile("/tool/ctl", "remove " + name);
 	}
+	# Re-read from tools9p to confirm the change took effect
+	reloadtools();
 	loadcontext();
 	redrawctx();
 }
@@ -1712,15 +1778,24 @@ openineditor(path: string, has9p: int)
 
 # Ensure edit is running. If /edit/ctl doesn't exist, create a
 # presentation artifact to launch it in the presentation zone.
+# Guards against re-entry: once we've tried to launch, don't retry
+# until the activity changes (switchactivity resets the flag).
+editor_launched := 0;	# 1 = already attempted launch for this activity
+
 ensureeditor(): int
 {
 	# Check 9P path first (fast, instant open)
 	fd := sys->open("/edit/ctl", Sys->OREAD);
 	if(fd != nil) {
 		fd = nil;
+		editor_launched = 1;
 		return 1;	# 9P available
 	}
-	# Launch via presentation system (harmless if already running)
+	# If we already tried launching, don't spam creation attempts
+	if(editor_launched)
+		return 0;
+	editor_launched = 1;
+	# Launch via presentation system
 	sys->fprint(sys->fildes(2), "lucictx: ensureeditor: launching editor\n");
 	pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
 	cmd := "create id=editor type=app dis=/dis/wm/editor.dis label=editor";
@@ -1751,8 +1826,10 @@ findpinnedpath(path: string): ref PinnedPath
 
 bindpath(srcpath: string)
 {
+	if(!toolmount_ready())
+		return;
 	# Register in tools9p; lucibridge reads /tool/paths and binds in its namespace.
-	writetofile("/tool/ctl", "bindpath " + srcpath);
+	writetofile(toolmount_g + "/ctl", "bindpath " + srcpath);
 	loadpinnedpaths();
 	loadmanifest();
 	loadcontext();
@@ -1763,7 +1840,7 @@ unbindpath(pp: ref PinnedPath)
 {
 	if(pp == nil)
 		return;
-	writetofile("/tool/ctl", "unbindpath " + pp.srcpath);
+	writetofile(toolmount_g + "/ctl", "unbindpath " + pp.srcpath);
 	loadpinnedpaths();
 	loadmanifest();
 	loadcontext();
@@ -1779,17 +1856,17 @@ togglepathperm(pp: ref PinnedPath)
 	newperm := "ro";
 	if(pp.perm == "ro")
 		newperm = "rw";
-	writetofile("/tool/ctl", "setperm " + pp.srcpath + " " + newperm);
+	writetofile(toolmount_g + "/ctl", "setperm " + pp.srcpath + " " + newperm);
 	loadpinnedpaths();
 	loadcontext();
 	redrawctx();
 }
 
-# Rebuild pinnedpaths from /tool/paths (authoritative source in tools9p).
+# Rebuild pinnedpaths from tools9p /paths (authoritative source).
 # Format: "path perm" per line (e.g. "/n/local/Users/pdfinn/tmp rw").
 loadpinnedpaths()
 {
-	raw := readfile("/tool/paths");
+	raw := readfile(toolmount_g + "/paths");
 	(nil, ptl) := sys->tokenize(raw, "\n");
 	pinnedpaths = nil;
 	for(p := ptl; p != nil; p = tl p) {

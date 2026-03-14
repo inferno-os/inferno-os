@@ -89,6 +89,8 @@ BoundPath: adt {
 };
 boundpaths: list of ref BoundPath;  # Paths registered via bindpath ctl command
 budget: list of string;    # Tools delegatable to child tasks (-b flag)
+mountpt_g := "/tool";      # This instance's mount point (set from -m flag)
+verbose := 0;              # Verbose logging (-v flag); forwarded to child lucibridge
 vers: int;
 
 # Shadow directories for per-invocation namespace restriction
@@ -152,8 +154,9 @@ TOOL_PATHS := array[] of {
 
 usage()
 {
-	sys->fprint(stderr, "Usage: tools9p [-D] [-m mountpoint] [-p path] ... tool [tool ...]\n");
+	sys->fprint(stderr, "Usage: tools9p [-Dv] [-m mountpoint] [-p path] ... tool [tool ...]\n");
 	sys->fprint(stderr, "  -D            Enable 9P debug tracing\n");
+	sys->fprint(stderr, "  -v            Verbose logging (forwarded to child lucibridge)\n");
 	sys->fprint(stderr, "  -m mountpoint Mount point (default: /tool)\n");
 	sys->fprint(stderr, "  -p path       Expose extra path to agent namespace (repeatable)\n");
 	sys->fprint(stderr, "                e.g. -p /dis/wm exposes /dis/wm/ for GUI app discovery\n");
@@ -203,6 +206,7 @@ init(nil: ref Draw->Context, args: list of string)
 	while((o := arg->opt()) != 0)
 		case o {
 		'D' =>	styxservers->traceset(1);
+		'v' =>	verbose = 1;
 		'm' =>	mountpt = arg->earg();
 		'p' =>	extpaths = arg->earg() :: extpaths;
 		'b' =>
@@ -215,10 +219,14 @@ init(nil: ref Draw->Context, args: list of string)
 		}
 	args = arg->argv();
 	arg = nil;
+	mountpt_g = mountpt;
 
 	# Remaining args are tool names to register
 	if(args == nil)
 		usage();  # Need at least one tool
+
+	if(verbose)
+		sys->fprint(stderr, "tools9p[%s]: starting with %d tool args\n", mountpt, len args);
 
 	# Build tool registry from args
 	inittools(args);
@@ -283,7 +291,9 @@ init(nil: ref Draw->Context, args: list of string)
 	# Emit namespace manifest immediately so the UI shows the agent's
 	# namespace before any tool calls. Spawned goroutine does FORKNS +
 	# restrictns + emitmanifest — its namespace is discarded after.
-	spawn emitmanifestnow();
+	# Each tools9p writes to its own manifest path so activities don't
+	# overwrite each other's namespace descriptions.
+	spawn emitmanifestnow(manifestpath(mountpt));
 }
 
 # Look up tool path by name
@@ -332,17 +342,22 @@ inittools(args: list of string)
 	# Tools like exec need to load sh.dis which won't be visible
 	# after restrictns() restricts /dis. Loading eagerly here ensures
 	# all tool dependencies are resolved while /dis is unrestricted.
+	if(verbose)
+		sys->fprint(stderr, "tools9p[%s]: loading %d active tools\n", mountpt_g, len tools);
 	for(t = tools; t != nil; t = tl t) {
 		ti := hd t;
 		err := loadtool(ti);
 		if(err != nil)
 			sys->fprint(stderr, "tools9p: warning: %s\n", err);
+		else if(verbose)
+			sys->fprint(stderr, "tools9p[%s]: loaded %s\n", mountpt_g, ti.name);
 	}
 
 	# Pre-load ALL remaining known tools into alltools (inactive pool).
 	# This must happen before namespace restriction so /dis is accessible.
 	# Later ctl-add can activate these without needing to load new modules.
 	alltools = nil;
+	nall := 0;
 	for(i := 0; i < len TOOL_PATHS; i++) {
 		(pnm, ppath) := TOOL_PATHS[i];
 		if(findtool(pnm) != nil)  # already in active set
@@ -350,7 +365,10 @@ inittools(args: list of string)
 		ati := ref ToolInfo(pnm, ppath, nil, 0, nil);
 		loadtool(ati);  # ignore error (hardware tools may not load)
 		alltools = ati :: alltools;
+		nall++;
 	}
+	if(verbose)
+		sys->fprint(stderr, "tools9p[%s]: pre-loaded %d inactive tools\n", mountpt_g, nall);
 }
 
 # Find tool by name
@@ -735,11 +753,148 @@ ensuredir(path: string)
 		sys->fprint(stderr, "tools9p: cannot create directory %s: %r\n", path);
 }
 
+# Provision a child task: spawn tools9p + lucibridge in the UNRESTRICTED
+# parent namespace.  Called from serveloop via "provision" ctl command.
+# args format: "<id> [tools=<csv>] [paths=<csv>]"
+ShCommand: module {
+	init: fn(ctxt: ref Draw->Context, args: list of string);
+};
+
+provisiontask(args: string)
+{
+	# Parse id and optional key=value attrs
+	(nil, toks) := sys->tokenize(args, " ");
+	if(toks == nil) {
+		sys->fprint(stderr, "tools9p: provision: no activity id\n");
+		return;
+	}
+	idstr := hd toks;
+	toks = tl toks;
+	(id, nil) := str->toint(idstr, 10);
+	if(id < 0) {
+		sys->fprint(stderr, "tools9p: provision: invalid id %s\n", idstr);
+		return;
+	}
+
+	# Parse optional tools= and paths= attrs
+	toolsarg := "";
+	pathsarg := "";
+	for(; toks != nil; toks = tl toks) {
+		tok := hd toks;
+		if(len tok > 6 && tok[0:6] == "tools=")
+			toolsarg = tok[6:];
+		else if(len tok > 6 && tok[0:6] == "paths=")
+			pathsarg = tok[6:];
+	}
+
+	# Build tool list: start with requested or budget tools
+	toollist: list of string;
+	if(toolsarg != "") {
+		(nil, ttoks) := sys->tokenize(toolsarg, ",");
+		for(; ttoks != nil; ttoks = tl ttoks)
+			toollist = hd ttoks :: toollist;
+	} else {
+		# Default: delegate all budget tools
+		for(b := budget; b != nil; b = tl b)
+			toollist = hd b :: toollist;
+	}
+
+	# Ensure basic tools are always included — every child agent needs these
+	# for fundamental capability (navigation, memory, presentation, planning)
+	basics := "read" :: "list" :: "find" :: "memory" :: "todo" :: "plan" :: "present" :: "gap" :: nil;
+	for(bl := basics; bl != nil; bl = tl bl)
+		if(!strlist_contains(toollist, hd bl))
+			toollist = hd bl :: toollist;
+
+	# Build tools9p args list (reversed, then flip at end)
+	mpt := "/tool." + string id;
+	rargs: list of string;
+	# Tool names go last — prepend in reverse
+	for(tl2 := toollist; tl2 != nil; tl2 = tl tl2)
+		rargs = hd tl2 :: rargs;
+	# Paths go before tools: explicit paths from task create
+	if(pathsarg != "") {
+		(nil, ptoks) := sys->tokenize(pathsarg, ",");
+		for(; ptoks != nil; ptoks = tl ptoks) {
+			rargs = hd ptoks :: rargs;
+			rargs = "-p" :: rargs;
+		}
+	}
+	# Inherit parent's extpaths (e.g. /dis/wm for app discovery).
+	# Without these, the child's restrictns() hides paths the parent
+	# exposes, breaking tools like launch that need /dis/wm access.
+	for(ep := extpaths; ep != nil; ep = tl ep) {
+		rargs = hd ep :: rargs;
+		rargs = "-p" :: rargs;
+	}
+	# Mount point, verbose, and program name go first
+	rargs = mpt :: rargs;
+	rargs = "-m" :: rargs;
+	if(verbose)
+		rargs = "-v" :: rargs;
+	rargs = "tools9p" :: rargs;
+
+	sys->fprint(stderr, "tools9p: provisioning activity %d at %s\n", id, mpt);
+
+	# Load and spawn child tools9p as a module (new data segment per load).
+	# This avoids the unreliable shell-based approach — direct module loading
+	# guarantees the server starts and we can poll for mount readiness.
+	t9p := load ShCommand "/dis/veltro/tools9p.dis";
+	if(t9p == nil) {
+		sys->fprint(stderr, "tools9p: provision: cannot load tools9p.dis: %r\n");
+		return;
+	}
+	spawn t9p->init(nil, rargs);
+
+	# Poll for mount readiness — wait until /tool.N/ctl exists
+	ctlpath := mpt + "/ctl";
+	ready := 0;
+	for(i := 0; i < 20; i++) {
+		sys->sleep(500);
+		(ok, nil) := sys->stat(ctlpath);
+		if(ok >= 0) {
+			ready = 1;
+			break;
+		}
+	}
+	if(!ready) {
+		sys->fprint(stderr, "tools9p: provision: %s did not mount after 10s\n", mpt);
+		return;
+	}
+
+	sys->fprint(stderr, "tools9p: provision: %s mounted, starting lucibridge\n", mpt);
+
+	# Load and start lucibridge — this blocks (runs agent loop),
+	# which is fine since provisiontask is already a spawned goroutine.
+	lb := load ShCommand "/dis/lucibridge.dis";
+	if(lb == nil) {
+		sys->fprint(stderr, "tools9p: provision: cannot load lucibridge.dis: %r\n");
+		return;
+	}
+	lbargs := "lucibridge" :: "-a" :: string id :: "-s" :: nil;
+	if(verbose)
+		lbargs = "lucibridge" :: "-v" :: "-a" :: string id :: "-s" :: nil;
+	lb->init(nil, lbargs);
+}
+
+# Return manifest file path for a given tools9p mount point.
+# /tool → /tmp/veltro/.ns/manifest
+# /tool.N → /tmp/veltro/.ns/manifest.N
+manifestpath(mpt: string): string
+{
+	if(mpt == "/tool")
+		return "/tmp/veltro/.ns/manifest";
+	# Extract suffix after "/tool."
+	if(len mpt > 6 && mpt[0:6] == "/tool.")
+		return "/tmp/veltro/.ns/manifest." + mpt[6:];
+	return "/tmp/veltro/.ns/manifest";
+}
+
 # Write namespace manifest at startup so the UI shows the agent's
 # namespace before any tool calls happen. Runs in a throwaway goroutine
 # with its own FORKNS — the restricted namespace is discarded after
 # emitmanifest completes.
-emitmanifestnow()
+emitmanifestnow(mpath: string)
 {
 	nsconstruct := load NsConstruct NsConstruct->PATH;
 	if(nsconstruct == nil)
@@ -768,7 +923,7 @@ emitmanifestnow()
 		if(nserr != nil)
 			sys->fprint(stderr, "tools9p: manifest restrictns failed: %s\n", nserr);
 		else {
-			nsconstruct->emitmanifest(caps);
+			nsconstruct->emitmanifest(caps, mpath);
 			manifest_written = 1;
 		}
 	} exception e {
@@ -821,7 +976,7 @@ applynsrestriction()
 		if(nserr != nil)
 			sys->fprint(stderr, "tools9p: restrictns failed: %s\n", nserr);
 		else if(!manifest_written) {
-			nsconstruct->emitmanifest(caps);
+			nsconstruct->emitmanifest(caps, manifestpath(mountpt_g));
 			manifest_written = 1;
 		}
 	} exception e {
@@ -1023,8 +1178,14 @@ Serve:
 							nbl = hd bbl :: nbl;
 					budget = nbl;
 					srv.reply(ref Rmsg.Write(m.tag, len m.data));
+				} else if(len data > 10 && data[0:10] == "provision ") {
+					# "provision <id> [tools=<csv>] [paths=<csv>]"
+					# Spawn child tools9p + lucibridge in the UNRESTRICTED
+					# parent namespace (serveloop runs before any restrictns).
+					spawn provisiontask(data[10:]);
+					srv.reply(ref Rmsg.Write(m.tag, len m.data));
 				} else {
-					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path> [ro|rw] or setperm <path> <ro|rw> or budget-add|budget-remove <tool>"));
+					srv.reply(ref Rmsg.Error(m.tag, "usage: add|remove <tool> or bindpath|unbindpath <path> [ro|rw] or setperm <path> <ro|rw> or budget-add|budget-remove <tool> or provision <id>"));
 				}
 
 			* =>

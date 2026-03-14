@@ -60,32 +60,30 @@ name(): string
 
 doc(): string
 {
-	return "Editor - AI control for the Edit text editor\n\n" +
-		"Commands:\n" +
+	return "editor - AI remote control for the Editor app\n\n" +
+		"NOTE: This tool does NOT launch the editor. To START the editor,\n" +
+		"use the launch tool: 'launch editor'. This tool sends commands\n" +
+		"to an editor that is already visible in the presentation zone.\n\n" +
+		"If the user says 'launch the editor' or 'open the editor',\n" +
+		"use the launch tool, not this tool.\n\n" +
+		"Commands (only work after 'launch editor'):\n" +
 		"  read [body]              Read document body text\n" +
-		"  read addr                Read cursor position (line col)\n" +
+		"  read addr                Read cursor position\n" +
 		"  write <text>             Replace entire document body\n" +
 		"  append <text>            Append text to body\n" +
 		"  save                     Save current file\n" +
 		"  open <path>              Open file in editor\n" +
-		"  goto <line>              Move cursor to line number\n" +
-		"  find <string>            Search for text in document\n" +
-		"  addr                     Get cursor position (line col)\n" +
+		"  goto <line>              Move cursor to line\n" +
+		"  find <string>            Search for text\n" +
 		"  insert <ln> <col> <text> Insert text at position\n" +
 		"  delete <sl> <sc> <el> <ec>  Delete range\n" +
-		"  name <path>              Set file path without loading\n" +
 		"  close                    Close editor (quit)\n" +
 		"  status                   Show document info\n\n" +
-		"The editor must be running for commands to work.\n" +
-		"Use 'launch edit' to start it, or 'open <path>'\n" +
-		"which sends the open command to an already-running editor.\n\n" +
 		"Examples:\n" +
-		"  editor open /usr/me/file.b    Open a file\n" +
-		"  editor read                   Read the document\n" +
-		"  editor write Hello world      Replace body\n" +
-		"  editor goto 42                Jump to line 42\n" +
-		"  editor find TODO              Search for TODO\n" +
-		"  editor save                   Save to disk\n";
+		"  launch editor                  FIRST: start the editor\n" +
+		"  editor open /usr/me/file.b     Then: open a file\n" +
+		"  editor read                    Read the document\n" +
+		"  editor write Hello world       Replace body\n";
 }
 
 exec(args: string): string

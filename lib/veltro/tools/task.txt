@@ -1,8 +1,10 @@
 task - Create and manage delegated AI tasks
 
-  task create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>]
+  task create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>] [brief=<text>]
       Create new task with isolated conversation and tools.
       Tools validated against delegation budget (/tool/budget).
+      brief= sets the initial context message for the task agent.
+      If omitted, a default prompt is generated from the label.
       Returns activity ID.
 
   task status <id>     Show task status, urgency, label
@@ -13,12 +15,17 @@ Each task gets its own activity tile in the header bar, its own
 conversation, tools, and filesystem overlay. Use for work that
 should happen in parallel or needs security isolation.
 
-IMPORTANT: Only delegate tools that are in the budget. Use
-"task list" to monitor progress. Close tasks when done.
+Every child task automatically gets basic tools (read, list, find,
+memory, todo, plan, present, gap). Use tools= to add task-specific
+tools from the budget. Only budget tools may be delegated.
+
+Use "task list" to monitor progress. Close tasks when done.
 
 Examples:
-  task create label=Review tools=read,list,find,grep
-  task create label=Draft tools=read,write,edit urgency=1
+  task create label=Review tools=grep,search
+  task create label=Draft tools=write,edit urgency=1
+  task create label=Research tools=grep,search,websearch
+  task create label="Poetry" brief="Help the user write and refine poems"
   task list
   task status 2
   task close 2

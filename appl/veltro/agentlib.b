@@ -18,6 +18,7 @@ include "agentlib.m";
 
 verbose := 0;
 stderr: ref Sys->FD;
+toolmount_g := "/tool";
 
 init()
 {
@@ -33,6 +34,11 @@ init()
 setverbose(v: int)
 {
 	verbose = v;
+}
+
+settoolmount(path: string)
+{
+	toolmount_g = path;
 }
 
 #
@@ -164,7 +170,7 @@ discovernamespace(): string
 	result := "TOOLS:\n";
 
 	# Read available tools
-	tools := readfile("/tool/tools");
+	tools := readfile(toolmount_g + "/tools");
 	if(tools != "")
 		result += tools;
 	else
@@ -172,14 +178,14 @@ discovernamespace(): string
 
 	# List accessible paths
 	result += "\n\nPATHS:\n";
-	paths := array[] of {"/", "/tool", "/n", "/tmp"};
+	paths := array[] of {"/", toolmount_g, "/n", "/tmp"};
 	for(i := 0; i < len paths; i++) {
 		if(pathexists(paths[i]))
 			result += paths[i] + "\n";
 	}
 
 	# Include user-bound paths from /tool/paths (registered via file browser or -p)
-	boundraw := readfile("/tool/paths");
+	boundraw := readfile(toolmount_g + "/paths");
 	if(boundraw != "") {
 		result += "\nUSER PATHS (bound by operator):\n";
 		result += boundraw + "\n";
@@ -204,7 +210,7 @@ buildsystemprompt(ns: string): string
 	if(base == "")
 		base = defaultsystemprompt();
 
-	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
+	(nil, toollist) := sys->tokenize(readfile(toolmount_g + "/tools"), "\n");
 
 	# Load context-specific reminders based on available tools (priority order)
 	reminders := loadreminders(toollist);
@@ -375,7 +381,7 @@ parseaction(response: string): (string, string)
 	lines := splitlines(response);
 
 	# Get available tools for matching
-	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
+	(nil, toollist) := sys->tokenize(readfile(toolmount_g + "/tools"), "\n");
 
 	# Look for tool invocation
 	for(; lines != nil; lines = tl lines) {
@@ -429,7 +435,7 @@ parseaction(response: string): (string, string)
 parseactions(response: string): list of (string, string)
 {
 	lines := splitlines(response);
-	(nil, toollist) := sys->tokenize(readfile("/tool/tools"), "\n");
+	(nil, toollist) := sys->tokenize(readfile(toolmount_g + "/tools"), "\n");
 
 	result: list of (string, string);
 	found_first := 0;
@@ -618,7 +624,7 @@ stripaction(response: string): string
 # Call tool via /tool filesystem
 calltool(tool, args: string): string
 {
-	path := "/tool/" + str->tolower(tool) + "/ctl";
+	path := toolmount_g + "/" + str->tolower(tool) + "/ctl";
 
 	# Open tool file
 	fd := sys->open(path, Sys->ORDWR);

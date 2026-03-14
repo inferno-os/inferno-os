@@ -93,6 +93,7 @@ exec(args: string): string
 }
 
 # Parse key=value attributes from argument string
+# Handles quoted values: label="Write poetry" tools=read,list
 parseattrs(s: string): list of (string, string)
 {
 	result: list of (string, string);
@@ -115,11 +116,23 @@ parseattrs(s: string): list of (string, string)
 		}
 		key := s[kstart:i];
 		i++;	# skip =
-		# find value
-		vstart := i;
-		while(i < len s && s[i] != ' ')
-			i++;
-		val := s[vstart:i];
+		# find value — handle quoted strings
+		val := "";
+		if(i < len s && (s[i] == '"' || s[i] == '\'')) {
+			q := s[i];
+			i++;	# skip opening quote
+			vstart := i;
+			while(i < len s && s[i] != q)
+				i++;
+			val = s[vstart:i];
+			if(i < len s)
+				i++;	# skip closing quote
+		} else {
+			vstart := i;
+			while(i < len s && s[i] != ' ')
+				i++;
+			val = s[vstart:i];
+		}
 		result = (key, val) :: result;
 	}
 	return result;
@@ -166,9 +179,9 @@ docreate(args: string): string
 		return "error: " + err;
 
 	# Read back the new activity id (last activity in list)
-	info := readfile(UI_MOUNT + "/info");
+	info := readfile(UI_MOUNT + "/ctl");
 	if(info == nil)
-		return "error: cannot read /n/ui/info after create";
+		return "error: cannot read /n/ui/ctl after create";
 
 	# Parse "activities: id1 id2 ... idN" — idN is the newest
 	newid := -1;
@@ -194,55 +207,32 @@ docreate(args: string): string
 		writefile(sys->sprint("%s/activity/%d/urgency", UI_MOUNT, newid), urgstr);
 	}
 
-	# Spawn tools9p + lucibridge for the new activity
-	spawn provisiontask(newid, toolsarg, getattr(attrs, "paths"));
+	# Inject initial context into the TA's conversation queue.
+	# The message is queued in luciuisrv and delivered when the child
+	# lucibridge starts reading from input.  This seeds the TA with
+	# its task context so it knows what it's supposed to do.
+	# Use role=system so it displays as a system directive, not as
+	# a message from the user.
+	brief := getattr(attrs, "brief");
+	if(brief == "")
+		brief = "You have been assigned to: " + label + ". Greet the user and ask how you can help with this task.";
+	convctl := sys->sprint("%s/activity/%d/conversation/ctl", UI_MOUNT, newid);
+	writefile(convctl, "role=system text=" + brief);
+
+	# Delegate provisioning to the unrestricted parent serveloop.
+	# We cannot spawn tools9p/lucibridge from here because asyncexec()
+	# restricts our namespace — /dis is hidden.  Writing to /tool/ctl
+	# routes to the serveloop which runs in the full namespace.
+	provcmd := "provision " + string newid;
+	if(toolsarg != "")
+		provcmd += " tools=" + toolsarg;
+	if(getattr(attrs, "paths") != "")
+		provcmd += " paths=" + getattr(attrs, "paths");
+	perr := writefile("/tool/ctl", provcmd);
+	if(perr != nil)
+		sys->fprint(sys->fildes(2), "task: provision warning: %s\n", perr);
 
 	return sys->sprint("created activity %d: %s", newid, label);
-}
-
-provisiontask(id: int, toolsarg, pathsarg: string)
-{
-	# Build tools9p command
-	cmd := "tools9p -m /tool." + string id;
-	if(pathsarg != "") {
-		(nil, ptoks) := sys->tokenize(pathsarg, ",");
-		for(; ptoks != nil; ptoks = tl ptoks)
-			cmd += " -p " + hd ptoks;
-	}
-	# Add tool names
-	if(toolsarg != "") {
-		(nil, ttoks) := sys->tokenize(toolsarg, ",");
-		for(; ttoks != nil; ttoks = tl ttoks)
-			cmd += " " + hd ttoks;
-	} else {
-		# Default: delegate all budget tools
-		bstr := readfile("/tool/budget");
-		if(bstr != nil) {
-			bstr = strip(bstr);
-			(nil, btoks) := sys->tokenize(bstr, "\n");
-			for(; btoks != nil; btoks = tl btoks)
-				cmd += " " + hd btoks;
-		}
-	}
-
-	# Run tools9p in background via sh
-	shfd := sys->open("/dev/null", Sys->OREAD);
-	sys->fprint(sys->fildes(2), "task: provisioning activity %d: %s\n", id, cmd);
-
-	# Use sh to run the tools9p and lucibridge pipeline
-	shcmd := cmd + " ; sleep 1 ; lucibridge -a " + string id + " -s";
-	spawn runsh(shcmd);
-}
-
-runsh(cmd: string)
-{
-	fd := sys->open("/dev/null", Sys->OREAD);
-	sh := load Command "/dis/sh.dis";
-	if(sh == nil) {
-		sys->fprint(sys->fildes(2), "task: cannot load sh: %r\n");
-		return;
-	}
-	sh->init(nil, "sh" :: "-c" :: cmd :: nil);
 }
 
 dostatus(args: string): string
@@ -269,7 +259,7 @@ dostatus(args: string): string
 
 dolist(): string
 {
-	info := readfile(UI_MOUNT + "/info");
+	info := readfile(UI_MOUNT + "/ctl");
 	if(info == nil)
 		return "no activities";
 
@@ -318,10 +308,6 @@ doclose(args: string): string
 }
 
 # --- Utility functions ---
-
-Command: module {
-	init: fn(ctxt: ref Draw->Context, args: list of string);
-};
 
 readfile(path: string): string
 {

@@ -252,9 +252,13 @@ restrictns(caps: ref Capabilities): string
 		if(err != nil)
 			return sys->sprint("restrict /n: %s", err);
 
-		# Restrict /n/ui to only /n/ui/activity/ — prevents ctl/catalog access
+		# Restrict /n/ui — allow activity/ always; allow ctl/info if task tool is granted
 		if(uiok >= 0) {
-			uerr := restrictdir("/n/ui", "activity" :: nil, 0);
+			uiallow := "activity" :: nil;
+			if(inlist("task", caps.tools)) {
+				uiallow = "ctl" :: uiallow;
+			}
+			uerr := restrictdir("/n/ui", uiallow, 0);
 			if(uerr != nil)
 				return sys->sprint("restrict /n/ui: %s", uerr);
 		}
@@ -296,20 +300,8 @@ restrictns(caps: ref Capabilities): string
 	# Only include /chan (Xenith 9P filesystem) if explicitly granted.
 	# /chan exposes ALL window contents — without this gate, any agent
 	# could read every open Xenith window regardless of namespace restriction.
-	# Also include /chan if wm is running (detected via /chan/wmctl),
-	# so Veltro can communicate with the window manager.
 	if(caps.xenith)
 		safe = "chan" :: safe;
-	else {
-		(wmok, nil) := sys->stat("/chan/wmctl");
-		if(wmok >= 0)
-			safe = "chan" :: safe;
-	}
-
-	# Include /mnt for wmexport's /mnt/wm interface if wm is running.
-	(wmntok, nil) := sys->stat("/mnt/wm");
-	if(wmntok >= 0)
-		safe = "mnt" :: safe;
 
 	# Expose additional Inferno root-level directories from caps.paths.
 	# e.g. "/appl/veltro" → add "appl" to safe, then restrict /appl to "veltro".
@@ -472,14 +464,14 @@ splitfirst(p: string): (string, string)
 #   path=/dev/time label=System Clock perm=ro
 # Must be called AFTER restrictns() from the restricted namespace
 # so stat checks reflect exactly what the agent can access.
-emitmanifest(caps: ref Capabilities)
+emitmanifest(caps: ref Capabilities, mpath: string)
 {
 	if(sys == nil)
 		init();
 
 	mkdirp("/tmp/veltro/.ns");
 
-	fd := sys->create("/tmp/veltro/.ns/manifest", Sys->OWRITE, FILE_MODE);
+	fd := sys->create(mpath, Sys->OWRITE, FILE_MODE);
 	if(fd == nil)
 		return;
 

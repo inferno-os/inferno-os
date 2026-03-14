@@ -57,6 +57,7 @@ convcount := 0;		# messages written to conversation by this bridge
 
 # Tool tracking: raw string from /tool/tools; updated when tool set changes
 currenttoolsraw := "";
+toolmount := "/tool";	# "/tool" for activity 0, "/tool.N" for child N
 
 # Path tracking: raw string from /tool/paths; updated when path set changes
 currentpathsraw := "";
@@ -204,13 +205,17 @@ seturgency(level: int)
 # Create LLM session with system prompt
 initsession(): string
 {
+	log("initsession: creating LLM session");
 	sessionid = agentlib->createsession();
 	if(sessionid == "")
 		return "cannot create LLM session";
+	log("initsession: session " + sessionid);
 
 	# Build system prompt from namespace discovery
 	ns := agentlib->discovernamespace();
+	log("initsession: namespace discovered");
 	sysprompt := agentlib->buildsystemprompt(ns);
+	log(sys->sprint("initsession: system prompt %d bytes", len array of byte sysprompt));
 
 	# Append bridge/meta suffix, truncating base if needed
 	suffix := BRIDGE_SUFFIX;
@@ -243,8 +248,8 @@ initsession(): string
 	# avoiding the tool-call→acknowledgement loop that produces spurious "..." replies.
 	# Tools come from /tool/tools if available (task tools only).
 	toollist: list of string;
-	if(agentlib->pathexists("/tool")) {
-		tools := agentlib->readfile("/tool/tools");
+	if(agentlib->pathexists(toolmount)) {
+		tools := agentlib->readfile(toolmount + "/tools");
 		(nil, tls) := sys->tokenize(tools, "\n");
 		for(t := tls; t != nil; t = tl t) {
 			nm := str->tolower(hd t);
@@ -253,8 +258,8 @@ initsession(): string
 		}
 	}
 	agentlib->initsessiontools(sessionid, toollist);
-	if(agentlib->pathexists("/tool"))
-		currenttoolsraw = agentlib->readfile("/tool/tools");
+	if(agentlib->pathexists(toolmount))
+		currenttoolsraw = agentlib->readfile(toolmount + "/tools");
 
 	# Bind any paths already registered in /tool/paths (e.g. from -p flag)
 	currentpathsraw = "";
@@ -591,16 +596,16 @@ lookuppathperm(lines: list of string, path: string): string
 # Adds/removes tools via /tool/ctl to reconcile current state.
 synctoolset(want: list of string)
 {
-	if(!agentlib->pathexists("/tool"))
+	if(!agentlib->pathexists(toolmount))
 		return;
-	cur := agentlib->readfile("/tool/tools");
+	cur := agentlib->readfile(toolmount + "/tools");
 	(nil, curtl) := sys->tokenize(cur, "\n");
 	for(w := want; w != nil; w = tl w)
 		if(!strcontains(curtl, hd w))
-			writefile("/tool/ctl", "add " + hd w);
+			writefile(toolmount + "/ctl", "add " + hd w);
 	for(c := curtl; c != nil; c = tl c)
 		if(!strcontains(want, hd c))
-			writefile("/tool/ctl", "remove " + hd c);
+			writefile(toolmount + "/ctl", "remove " + hd c);
 }
 
 # Apply path changes from /tool/paths into lucibridge's namespace.
@@ -609,9 +614,9 @@ synctoolset(want: list of string)
 # /tool/paths format: "path perm" per line (e.g. "/n/local/Users/pdfinn/tmp rw").
 applypathchanges()
 {
-	if(!agentlib->pathexists("/tool"))
+	if(!agentlib->pathexists(toolmount))
 		return;
-	latest := agentlib->readfile("/tool/paths");
+	latest := agentlib->readfile(toolmount + "/paths");
 	if(latest == currentpathsraw)
 		return;
 	(nil, newlines) := sys->tokenize(latest, "\n");
@@ -706,7 +711,7 @@ handleslash(cmd: string): int
 		if(arg == "") {
 			ack = "usage: /bind <path> [ro|rw]";
 		} else {
-			writefile("/tool/ctl", "bindpath " + arg);
+			writefile(toolmount + "/ctl", "bindpath " + arg);
 			# Push context event so the namespace view updates immediately
 			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
 			base := pathbase(arg);
@@ -720,7 +725,7 @@ handleslash(cmd: string): int
 		if(arg == "") {
 			ack = "usage: /unbind <path>";
 		} else {
-			writefile("/tool/ctl", "unbindpath " + arg);
+			writefile(toolmount + "/ctl", "unbindpath " + arg);
 			# Push context event so the namespace view updates immediately
 			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
 			writefile(ctxpath, "resource remove " + arg);
@@ -730,10 +735,10 @@ handleslash(cmd: string): int
 		if(len arg == 0) {
 			ack = "usage: /tools +name or /tools -name";
 		} else if(arg[0] == '+') {
-			writefile("/tool/ctl", "add " + arg[1:]);
+			writefile(toolmount + "/ctl", "add " + arg[1:]);
 			ack = "tool added: " + arg[1:];
 		} else if(arg[0] == '-') {
-			writefile("/tool/ctl", "remove " + arg[1:]);
+			writefile(toolmount + "/ctl", "remove " + arg[1:]);
 			ack = "tool removed: " + arg[1:];
 		} else {
 			ack = "usage: /tools +name or /tools -name";
@@ -888,8 +893,8 @@ agentturn(input: string)
 
 	# If the tool set changed (via /tool/ctl), reinitialize the LLM session tools
 	# so the LLM knows about added/removed tools before processing this turn.
-	if(agentlib->pathexists("/tool")) {
-		latest := agentlib->readfile("/tool/tools");
+	if(agentlib->pathexists(toolmount)) {
+		latest := agentlib->readfile(toolmount + "/tools");
 		if(latest != nil && latest != currenttoolsraw) {
 			currenttoolsraw = latest;
 			(nil, tls) := sys->tokenize(latest, "\n");
@@ -910,7 +915,7 @@ agentturn(input: string)
 
 	hitlimit := 1;
 	for(step := 0; step < maxsteps; step++) {
-		log(sys->sprint("step %d", step + 1));
+		log(sys->sprint("step %d: writing %d bytes to LLM", step + 1, len array of byte prompt));
 
 		# Start async generation — returns immediately with new llm9p,
 		# blocks until done with old llm9p.
@@ -971,7 +976,9 @@ agentturn(input: string)
 		}
 
 		# Pread complete formatted response (blocks until generation done).
+		log("step " + string (step + 1) + ": waiting for LLM response...");
 		response := readllmfd(llmfd);
+		log(sys->sprint("step %d: LLM response %d bytes", step + 1, len array of byte response));
 		if(response == "") {
 			if(placeholder_idx >= 0)
 				updateliveconvmsg(placeholder_idx, "(no response from LLM)");
@@ -1035,11 +1042,12 @@ agentturn(input: string)
 					log("context: file " + fpath + " via " + nm);
 				}
 
+				log("tool " + name + ": calling with " + string len eargs + " bytes");
 				result := agentlib->calltool(name, eargs);
 				writefile(ctxpath, "resource update path=" + nm + " status=idle");
 				if(fpath != nil)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
-				log("tool " + name + ": " + agentlib->truncate(result, 100));
+				log("tool " + name + ": done, " + agentlib->truncate(result, 100));
 				if(len result > AgentLib->STREAM_THRESHOLD) {
 					# Never re-scratch reads of scratch files — creates an infinite loop
 					# where each read produces another scratch file of similar size.
@@ -1105,6 +1113,7 @@ init(nil: ref Draw->Context, args: list of string)
 	agentlib->init();
 
 	arg->init(args);
+	# NOTE: settoolmount() is called after arg parsing sets actid (below)
 	while((c := arg->opt()) != 0) {
 		case c {
 		'v' =>
@@ -1144,6 +1153,11 @@ init(nil: ref Draw->Context, args: list of string)
 
 	agentlib->setverbose(verbose);
 
+	# Set tools9p mount point based on activity ID
+	if(actid > 0)
+		toolmount = "/tool." + string actid;
+	agentlib->settoolmount(toolmount);
+
 	# Verify prerequisites
 	if(sys->open("/n/ui/ctl", Sys->OREAD) == nil)
 		fatal("/n/ui/ not mounted — start luciuisrv first");
@@ -1151,10 +1165,10 @@ init(nil: ref Draw->Context, args: list of string)
 		fatal("/n/llm/ not mounted — mount llm9p first");
 
 	# Tools are optional — bridge works as simple chat relay without them
-	if(agentlib->pathexists("/tool"))
-		log("tools available at /tool");
+	if(agentlib->pathexists(toolmount))
+		log("tools available at " + toolmount);
 	else
-		log("no /tool mount — running in chat-only mode");
+		log("no " + toolmount + " mount — running in chat-only mode");
 
 	# Apply -t tool override: sync tools9p to the specified set
 	if(toolargs != nil)
@@ -1170,7 +1184,7 @@ init(nil: ref Draw->Context, args: list of string)
 			parg = parg[0:len parg - 3] + " ro";
 		else if(len parg > 3 && parg[len parg - 3:] == ":rw")
 			parg = parg[0:len parg - 3] + " rw";
-		writefile("/tool/ctl", "bindpath " + parg);
+		writefile(toolmount + "/ctl", "bindpath " + parg);
 	}
 
 	# Create LLM session
