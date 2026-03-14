@@ -248,6 +248,29 @@ else
     fail "presentation in activity 1 (emu error)"
 fi
 
+# ── Namespace manifest reflects extpaths ──
+echo ""
+echo "── namespace manifest ──"
+
+# Regression: emitmanifest() previously skipped /dis subpaths from caps.paths,
+# so /dis/wm never appeared in the manifest even though the agent had access.
+# The Resource view must show every path in the agent's actual namespace.
+[[ -f "$ROOT/dis/veltro/tools9p.dis" ]] || {
+    skip "tools9p.dis not found for manifest test"; }
+
+if [[ -f "$ROOT/dis/veltro/tools9p.dis" ]]; then
+    if emu_c "manifest_diswm" 12 \
+        "tools9p -v -m /tool -p /dis/wm read &sleep 4; cat /tmp/veltro/.ns/manifest"; then
+        if echo "$OUTPUT" | grep -q "path=/dis/wm"; then
+            pass "manifest includes /dis/wm from extpaths"
+        else
+            fail "manifest missing /dis/wm (output: $OUTPUT)"
+        fi
+    else
+        fail "manifest test (emu error)"
+    fi
+fi
+
 echo ""
 echo "Total: $PASSED passed, $FAILED failed, $SKIPPED skipped"
 [[ "$FAILED" -eq 0 ]]

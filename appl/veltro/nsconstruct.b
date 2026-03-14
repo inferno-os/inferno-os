@@ -535,15 +535,27 @@ emitmanifest(caps: ref Capabilities, mpath: string)
 		}
 	}
 
-	# Extra root-level dirs from caps.paths (e.g. /appl/veltro)
+	# Extra dirs from caps.paths (e.g. /dis/wm, /appl/veltro).
+	# These are explicitly granted namespace paths — they MUST appear
+	# in the manifest so the Resource view reflects the actual namespace.
+	# Skip paths already handled above.
+	emitted: list of string;
+	for(ii := 0; ii < len infra; ii++) {
+		(ip, nil, nil) := infra[ii];
+		emitted = ip :: emitted;
+	}
+	for(ii = 0; ii < len nentries; ii++) {
+		(np, nil, nil) := nentries[ii];
+		emitted = np :: emitted;
+	}
 	for(ep := caps.paths; ep != nil; ep = tl ep) {
 		p := hd ep;
 		if(len p < 2 || p[0] != '/')
 			continue;
-		# Skip paths handled above
-		(first, nil) := splitfirst(p[1:]);
-		if(first == "dis" || first == "dev" || first == "lib" ||
-		   first == "tmp" || first == "n")
+		# Skip /n/local subpaths (handled above with cow logic)
+		if(len p > 9 && p[0:9] == "/n/local/")
+			continue;
+		if(inlist(p, emitted))
 			continue;
 		(ok, nil) := sys->stat(p);
 		if(ok >= 0)

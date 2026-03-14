@@ -100,50 +100,99 @@ writefile(path, data: string): int
 	return sys->write(fd, b, len b);
 }
 
-# Register namespace entries (services, devices, filesystems) as non-tool
-# resources in the context zone.  Probes known paths via sys->stat() — only
-# paths present in the (possibly restricted) namespace get registered.
+# Extract value for key from "key1=val1 key2=val2 ..." string
+getkv(line, key: string): string
+{
+	target := key + "=";
+	tlen := len target;
+	i := 0;
+	while(i <= len line - tlen) {
+		if(line[i:i+tlen] == target) {
+			# Found key= at position i
+			start := i + tlen;
+			end := start;
+			while(end < len line && line[end] != ' ' && line[end] != '\t')
+				end++;
+			return line[start:end];
+		}
+		# Skip to next whitespace-separated token
+		while(i < len line && line[i] != ' ' && line[i] != '\t')
+			i++;
+		while(i < len line && (line[i] == ' ' || line[i] == '\t'))
+			i++;
+	}
+	return "";
+}
+
+# Register namespace entries from the manifest written by tools9p.
+# The manifest reflects the agent's actual restricted namespace — it is
+# the single source of truth.  No hardcoded path lists.
 registernamespace()
 {
-	paths := array[] of {
-		"/n/llm", "/n/mcp", "/n/speech", "/n/git", "/n/ui",
-		"/dev/cons", "/dev/time",
-		"/tmp/veltro", "/lib/certs", "/lib/veltro",
-		"/chan", "/n/local", "/mnt/wm",
-	};
-	labels := array[] of {
-		"LLM", "MCP", "Speech", "Git", "UI",
-		"Console", "Clock",
-		"Scratch", "TLS CAs", "Veltro Data",
-		"Xenith 9P", "Local FS", "Window Manager",
-	};
-	types := array[] of {
-		"service", "service", "service", "service", "service",
-		"device", "device",
-		"fs", "fs", "fs",
-		"service", "fs", "service",
-	};
-	vias := array[] of {
-		"", "", "", "", "",
-		"", "",
-		"rw", "ro", "ro",
-		"", "", "",
-	};
+	# Read the manifest written by tools9p — it reflects the agent's
+	# actual restricted namespace.  This is the single source of truth;
+	# no hardcoded path lists.
+	mpath: string;
+	if(actid == 0)
+		mpath = "/tmp/veltro/.ns/manifest";
+	else
+		mpath = "/tmp/veltro/.ns/manifest." + string actid;
+
 	ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
 	nreg := 0;
-	for(i := 0; i < len paths; i++) {
-		(ok, nil) := sys->stat(paths[i]);
-		if(ok < 0)
-			continue;
-		cmd := "resource add path=" + paths[i] +
-			" label=" + labels[i] +
-			" type=" + types[i] +
-			" status=idle";
-		if(vias[i] != "")
-			cmd += " via=" + vias[i];
-		if(writefile(ctxpath, cmd) >= 0)
-			nreg++;
+
+	mdata := agentlib->readfile(mpath);
+	if(mdata != "") {
+		# Manifest format: path=X label=Y perm=Z (one per line)
+		(nil, lines) := sys->tokenize(mdata, "\n");
+		for(; lines != nil; lines = tl lines) {
+			line := agentlib->strip(hd lines);
+			if(line == "")
+				continue;
+			# Parse key=value pairs from manifest line
+			path := getkv(line, "path");
+			label := getkv(line, "label");
+			perm := getkv(line, "perm");
+			if(path == "")
+				continue;
+			if(label == "")
+				label = path;
+			# Classify: /n/* and /dev/* are services/devices, rest are fs
+			atype := "fs";
+			if(len path > 3 && path[0:3] == "/n/")
+				atype = "service";
+			else if(len path > 5 && path[0:5] == "/dev/")
+				atype = "device";
+			cmd := "resource add path=" + path +
+				" label=" + label +
+				" type=" + atype +
+				" status=idle";
+			if(perm != "")
+				cmd += " via=" + perm;
+			if(writefile(ctxpath, cmd) >= 0)
+				nreg++;
+		}
+	} else {
+		log("context: manifest not found at " + mpath);
 	}
+
+	# Also register speech if available but not already in manifest
+	hasspeech := 0;
+	if(mdata != "") {
+		(nil, sl) := sys->tokenize(mdata, "\n");
+		for(; sl != nil; sl = tl sl)
+			if(agentlib->hasprefix(hd sl, "path=/n/speech"))
+				hasspeech = 1;
+	}
+	if(!hasspeech) {
+		(speechok, nil) := sys->stat("/n/speech");
+		if(speechok >= 0) {
+			cmd := "resource add path=/n/speech label=Speech type=service status=idle";
+			if(writefile(ctxpath, cmd) >= 0)
+				nreg++;
+		}
+	}
+
 	log(sys->sprint("context: registered %d namespace entries", nreg));
 }
 
