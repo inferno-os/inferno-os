@@ -41,6 +41,8 @@ include "wmsrv.m";
 
 include "lucitheme.m";
 
+include "menu.m";
+
 Lucifer: module {
 	init: fn(ctxt: ref Draw->Context, args: list of string);
 };
@@ -167,6 +169,10 @@ blinkon := 0;			# toggled by tileblinker goroutine
 yellowcol: ref Image;
 redcol: ref Image;
 greencol: ref Image;
+
+# Menu module
+menumod: Menu;
+Popup: import menumod;
 
 # Zone boundaries (set on every layout pass, used by mouseproc)
 pres_zone_minx := 0;
@@ -335,6 +341,11 @@ init(ctxt: ref Draw->Context, args: list of string)
 	monofont = Font.open(display, "/fonts/combined/unicode.14.font");
 	if(monofont == nil)
 		monofont = mainfont;
+
+	# Load menu module
+	menumod = load Menu Menu->PATH;
+	if(menumod != nil)
+		menumod->init(display, mainfont);
 
 	# Load logo (skip on Windows — readpng hangs due to inflate filter issue)
 	emuhost := readfile("/env/emuhost");
@@ -1138,12 +1149,21 @@ globallistener()
 		if(hasprefix(ev, "activity ")) {
 			# Check if this is a switch event (format: "activity {id}")
 			rest := strip(ev[len "activity ":]);
-			if(!hasprefix(rest, "new ") && !hasprefix(rest, "delete ") && !hasprefix(rest, "urgency ")) {
+			if(hasprefix(rest, "delete ")) {
+				# If the deleted activity is the current one, switch to activity 0
+				delrest := strip(rest[len "delete ":]);
+				delid := strtoint(delrest);
+				if(delid >= 0 && delid == actid)
+					alt { switchch <-= 0 => ; * => ; }
+			} else if(!hasprefix(rest, "new ") && !hasprefix(rest, "urgency ")) {
 				# Pure switch event: "activity {id}"
 				newid := strtoint(rest);
 				if(newid >= 0 && newid != actid)
 					alt { switchch <-= newid => ; * => ; }
 			}
+			# Notify lucipres so taskboard redraws with updated activities
+			if(lucipres_g != nil)
+				lucipres_g->deliverevent(ev);
 			# Any activity event: signal main loop to reload tiles and redraw
 			alt { uievent <-= 1 => ; * => ; }
 		}
@@ -1280,6 +1300,22 @@ mouseproc()
 						if(p.xy.x >= t.x && p.xy.x < t.x + t.w) {
 							if(t.id != actid)
 								writefile(mountpt + "/activity/current", string t.id);
+							break;
+						}
+					}
+				} else if(p.buttons & 4) {
+					# Button-3: right-click context menu on tile
+					for(i := 0; i < ntiles; i++) {
+						t := tiles[i];
+						if(p.xy.x >= t.x && p.xy.x < t.x + t.w) {
+							if(t.id != 0 && menumod != nil) {
+								mitems := array[] of {"End Task"};
+								mpop := menumod->new(mitems);
+								mres := mpop.show(mainwin, p.xy, win.ctxt.ptr);
+								if(mres == 0)
+									writefile(mountpt + "/ctl", "activity delete " + string t.id);
+								alt { uievent <-= 1 => ; * => ; }
+							}
 							break;
 						}
 					}

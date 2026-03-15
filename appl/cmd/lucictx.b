@@ -257,7 +257,10 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	raw := readfile(toolmount_g + "/paths");
 	if(raw == nil) raw = "";
 	lastpathsraw = raw;
-	traw := readfile(toolmount_g + "/tools");
+	toolsrc := toolmount_g + "/tools";
+	if(actid_g == 0)
+		toolsrc = toolmount_g + "/budget";
+	traw := readfile(toolsrc);
 	if(traw == nil) traw = "";
 	lasttoolsraw = traw;
 
@@ -586,7 +589,11 @@ toolmount_ready(): int
 # This is the ONLY source of truth for what the agent can access.
 reloadtools()
 {
-	toolsraw := readfile(toolmount_g + "/tools");
+	# MA (activity 0) displays the delegation budget, not its own tool set
+	src := toolmount_g + "/tools";
+	if(actid_g == 0)
+		src = toolmount_g + "/budget";
+	toolsraw := readfile(src);
 	if(toolsraw != nil && len toolsraw > 0) {
 		(nil, tl0) := sys->tokenize(toolsraw, "\n");
 		activetoolset = tl0;
@@ -612,7 +619,10 @@ handleevent(ev: string)
 			raw2 := readfile(toolmount_g + "/paths");
 			if(raw2 == nil) raw2 = "";
 			lastpathsraw = raw2;
-			traw2 := readfile(toolmount_g + "/tools");
+			toolsrc2 := toolmount_g + "/tools";
+			if(actid_g == 0)
+				toolsrc2 = toolmount_g + "/budget";
+			traw2 := readfile(toolsrc2);
 			if(traw2 == nil) traw2 = "";
 			lasttoolsraw = traw2;
 		}

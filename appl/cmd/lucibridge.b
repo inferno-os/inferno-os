@@ -1265,9 +1265,9 @@ init(nil: ref Draw->Context, args: list of string)
 			break;
 	}
 
-	# For child TAs (actid > 0): read the task brief from the brief file
-	# written by the task tool.  Append it to the LLM system prompt inside
-	# <task> tags so the TA knows its assignment.  No visible chat message.
+	# For child TAs (actid > 0): read the task brief and optional instructions
+	# written by the task tool.  Append them to the LLM system prompt inside
+	# <task> and <instructions> tags so the TA knows its assignment.
 	taskbrief := "";
 	if(actid > 0) {
 		briefpath := sys->sprint("/tmp/veltro/brief.%d", actid);
@@ -1276,14 +1276,28 @@ init(nil: ref Draw->Context, args: list of string)
 			taskbrief = agentlib->strip(taskbrief);
 		else
 			taskbrief = "";
-		if(taskbrief != "") {
+
+		instrpath := sys->sprint("/tmp/veltro/instructions.%d", actid);
+		taskinstr := agentlib->readfile(instrpath);
+		if(taskinstr != nil)
+			taskinstr = agentlib->strip(taskinstr);
+		else
+			taskinstr = "";
+
+		if(taskbrief != "" || taskinstr != "") {
 			systempath := "/n/llm/" + sessionid + "/system";
 			cursys := agentlib->readfile(systempath);
 			if(cursys == nil)
 				cursys = "";
-			agentlib->setsystemprompt(systempath,
-				cursys + "\n\n<task>" + taskbrief + "</task>");
+			injection := "";
+			if(taskbrief != "")
+				injection += "\n\n<task>" + taskbrief + "</task>";
+			if(taskinstr != "")
+				injection += "\n\n<instructions>" + taskinstr + "</instructions>";
+			agentlib->setsystemprompt(systempath, cursys + injection);
 			log("injected task brief into system prompt: " + agentlib->truncate(taskbrief, 100));
+			if(taskinstr != "")
+				log("injected instructions: " + agentlib->truncate(taskinstr, 100));
 		}
 	}
 

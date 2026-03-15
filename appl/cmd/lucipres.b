@@ -82,6 +82,11 @@ TaskCard: adt {
 	urgency: int;
 };
 
+CardHit: adt {
+	r: Rect;
+	id: int;
+};
+
 # --- Module state ---
 
 rlay: Rlayout;
@@ -143,6 +148,10 @@ tabscrolloff := 0;
 tabstrip_miny := 0;
 tabstrip_maxy := 0;
 prescontentr: Rect;
+
+# Dashboard card hit-test
+cardhits: array of ref CardHit;
+ncardhits := 0;
 
 # PDF nav rects
 pdfnavprev: Rect;
@@ -260,6 +269,18 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(actid_g >= 0)
 		loadpresentation();
 
+	# Auto-create taskboard artifact for meta-agent if none exist
+	if(actid_g == 0 && artifacts == nil) {
+		pctl := sys->sprint("%s/activity/%d/presentation/ctl", mountpt_g, actid_g);
+		pfd := sys->open(pctl, Sys->OWRITE);
+		if(pfd != nil) {
+			cmd := array of byte "create id=tasks type=taskboard label=Tasks";
+			sys->write(pfd, cmd, len cmd);
+			pfd = nil;
+		}
+		loadpresentation();
+	}
+
 	redrawpres();
 
 	# Event loop
@@ -337,6 +358,20 @@ init(ctxt: ref Draw->Context, args: list of string)
 							redrawpres();
 						}
 						tabclicked = 1;
+					}
+				}
+				# Dashboard card click — switch to that activity
+				if(!tabclicked && prescontentr.contains(p.xy)) {
+					cart := findartifact(centeredart);
+					if(cart != nil && cart.atype == "taskboard") {
+						for(ci := 0; ci < ncardhits; ci++) {
+							if(cardhits[ci].r.contains(p.xy)) {
+								writetofile(mountpt_g + "/activity/current",
+									string cardhits[ci].id);
+								tabclicked = 1;
+								break;
+							}
+						}
 					}
 				}
 				# Drag in content area
@@ -425,6 +460,10 @@ handleevent(ev: string)
 			actid_g = newid;
 			loadpresentation();
 		}
+		return;
+	}
+	if(hasprefix(ev, "activity ")) {
+		# Activity created or deleted — redraw taskboard if visible
 		return;
 	}
 	if(ev == "presentation current") {
@@ -778,6 +817,26 @@ handledrag(art: ref Artifact, startpt: Point)
 
 handlecontextmenu(p: ref Pointer)
 {
+	# Dashboard card right-click — "End Task" menu
+	if(prescontentr.contains(p.xy)) {
+		tbart := findartifact(centeredart);
+		if(tbart != nil && tbart.atype == "taskboard") {
+			for(ci := 0; ci < ncardhits; ci++) {
+				if(cardhits[ci].r.contains(p.xy)) {
+					cid := cardhits[ci].id;
+					mitems := array[] of {"End Task"};
+					mpop := menumod->new(mitems);
+					mres := mpop.show(mainwin, p.xy, win.ctxt.ptr);
+					if(mres == 0)
+						writetofile(mountpt_g + "/ctl",
+							"activity delete " + string cid);
+					return;
+				}
+			}
+			return;	# clicked in taskboard area but not on a card
+		}
+	}
+
 	artid := "";
 	for(ti := 0; ti < ntabs; ti++)
 		if(tablayout[ti].r.contains(p.xy)) {
@@ -901,6 +960,9 @@ loadpresentation()
 
 loadartifact(id: string)
 {
+	# Deduplicate: skip if already loaded
+	if(findartifact(id) != nil)
+		return;
 	base := sys->sprint("%s/activity/%d/presentation/%s", mountpt_g, actid_g, id);
 	atype := readfile(base + "/type");
 	if(atype != nil) atype = strip(atype);
@@ -1433,7 +1495,10 @@ drawtable(art: ref Artifact, contentr: Rect, pad: int, contentw: int, contenty: 
 # Render task dashboard — grid of task cards reading from /n/ui/
 drawtaskboard(contentr: Rect, pad: int)
 {
-	info := readfile(mountpt_g + "/info");
+	ncardhits = 0;
+
+	# Always use interactive card grid — reads from /n/ui/ directly
+	info := readfile(mountpt_g + "/ctl");
 	if(info == nil) {
 		drawcentertext(contentr, "No tasks");
 		return;
@@ -1478,21 +1543,28 @@ drawtaskboard(contentr: Rect, pad: int)
 	cards = rev;
 
 	# Layout: cards in a wrapping grid
-	cardw := 200;
+	mincardw := 200;
 	cardh := 60;
 	gap := 8;
-	cols := (contentr.dx() - 2 * pad + gap) / (cardw + gap);
+	avail := contentr.dx() - 2 * pad;
+	cols := (avail + gap) / (mincardw + gap);
 	if(cols < 1) cols = 1;
+	if(cols > ncards) cols = ncards;
+	cardw := (avail - (cols - 1) * gap) / cols;
 
 	cx := contentr.min.x + pad;
 	cy := contentr.min.y + pad;
 	col := 0;
+	cardhits = array[ncards] of ref CardHit;
+	ncardhits = 0;
 
 	for(; cards != nil; cards = tl cards) {
 		card := hd cards;
 		cr := Rect((cx, cy), (cx + cardw, cy + cardh));
 		if(cr.max.y > contentr.max.y)
 			break;	# off-screen
+
+		cardhits[ncardhits++] = ref CardHit(cr, card.id);
 
 		# Card background and border
 		mainwin.draw(cr, headercol, nil, (0, 0));

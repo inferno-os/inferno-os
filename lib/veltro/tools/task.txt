@@ -1,10 +1,13 @@
 task - Create and manage delegated AI tasks
 
-  task create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>] [brief=<text>]
+  task create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>] [brief=<text>] [instructions=<text>]
       Create new task with isolated conversation and tools.
       Tools validated against delegation budget (/tool/budget).
       brief= sets the initial context message for the task agent.
       If omitted, a default prompt is generated from the label.
+      instructions= sets structured directives injected into the
+      TA system prompt via <instructions> tags. Use for specific
+      procedural guidance the task agent should follow.
       Returns activity ID.
 
   task status <id>     Show task status, urgency, label
@@ -26,6 +29,8 @@ Examples:
   task create label=Draft tools=write,edit urgency=1
   task create label=Research tools=grep,search,websearch
   task create label="Poetry" brief="Help the user write and refine poems"
+  task create label=Editor instructions="Open /lib/veltro/system.txt and suggest improvements"
+  task create label=Refactor tools=read,edit,grep instructions="Refactor all uses of foo() to bar()"
   task list
   task status 2
   task close 2

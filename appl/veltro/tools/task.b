@@ -7,7 +7,7 @@ implement ToolTask;
 # Each task gets its own activity, tools9p, and lucibridge.
 #
 # Commands:
-#   create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>]
+#   create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>] [instructions=<text>] [category=<text>]
 #   status <id>
 #   list
 #   close <id>
@@ -52,9 +52,10 @@ doc(): string
 {
 	return "task - Create and manage delegated AI tasks\n\n" +
 		"Commands:\n" +
-		"  create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>]\n" +
+		"  create label=<name> [tools=<csv>] [paths=<csv>] [urgency=<0-2>] [instructions=<text>]\n" +
 		"      Create new task with isolated tools and conversation.\n" +
 		"      Tools validated against delegation budget.\n" +
+		"      instructions= sets structured directives injected into the TA system prompt.\n" +
 		"  status <id>     Show task status and urgency\n" +
 		"  list            List all active tasks\n" +
 		"  close <id>      Archive a completed task\n\n" +
@@ -62,6 +63,7 @@ doc(): string
 		"Use for work that should happen in parallel or needs isolation.\n\n" +
 		"Examples:\n" +
 		"  task create label=Review tools=read,list,find,grep\n" +
+		"  task create label=Editor instructions=\"Open /lib/veltro/system.txt and edit it\"\n" +
 		"  task list\n" +
 		"  task status 2\n" +
 		"  task close 2";
@@ -218,6 +220,31 @@ docreate(args: string): string
 		bb := array of byte brief;
 		sys->write(bfd, bb, len bb);
 		bfd = nil;
+	}
+
+	# Write structured instructions if provided
+	instructions := getattr(attrs, "instructions");
+	if(instructions != "") {
+		instrpath := sys->sprint("/tmp/veltro/instructions.%d", newid);
+		ifd := sys->create(instrpath, Sys->OWRITE, 8r644);
+		if(ifd != nil) {
+			ib := array of byte instructions;
+			sys->write(ifd, ib, len ib);
+			ifd = nil;
+		}
+	}
+
+	# Push metadata to dashboard if available
+	dashctl := "/n/dashboard/ctl";
+	dfd := sys->open(dashctl, Sys->OWRITE);
+	if(dfd != nil) {
+		dfd = nil;
+		writefile(dashctl, "synopsis " + string newid + " " + label);
+		category := getattr(attrs, "category");
+		if(category != "")
+			writefile(dashctl, "categorize " + string newid + " " + category);
+		if(instructions != "")
+			writefile(dashctl, "instructions " + string newid + " " + instructions);
 	}
 
 	# Delegate provisioning to the unrestricted parent serveloop.
