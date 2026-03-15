@@ -72,12 +72,7 @@ BRIDGE_SUFFIX: con "\n\nYou are the AI assistant in a Lucifer activity. " +
 	"Respond naturally with text for conversational messages, greetings, and answers. " +
 	"Use tools only when the user asks you to perform a specific task.";
 
-META_SUFFIX: con "\n\nYou are the Chief of Staff — the meta-agent managing tasks for the user. " +
-	"Create tasks with the 'task' tool to delegate work to isolated sub-agents. " +
-	"Monitor task status and close completed tasks. " +
-	"Set appropriate urgency levels to get the user's attention when tasks need review. " +
-	"Use 'present' to update the task dashboard. " +
-	"The user sees your conversation and can interact with you directly.";
+META_PROMPT_PATH: con "/lib/veltro/meta.txt";
 
 log(msg: string)
 {
@@ -269,9 +264,12 @@ initsession(): string
 
 	# Append bridge/meta suffix, truncating base if needed
 	suffix := BRIDGE_SUFFIX;
-	if(actid == 0)
-		suffix = META_SUFFIX;
-	MAXWRITE: con 8000;
+	if(actid == 0) {
+		meta := agentlib->readfile(META_PROMPT_PATH);
+		if(meta != nil)
+			suffix = "\n\n" + agentlib->strip(meta);
+	}
+	MAXWRITE: con 65000;
 	suffixbytes := array of byte suffix;
 	basebytes := array of byte sysprompt;
 	if(len basebytes + len suffixbytes > MAXWRITE) {
@@ -733,9 +731,12 @@ applypathchanges()
 		ns := agentlib->discovernamespace();
 		sysprompt := agentlib->buildsystemprompt(ns);
 		sfx := BRIDGE_SUFFIX;
-		if(actid == 0)
-			sfx = META_SUFFIX;
-		MAXWRITE: con 8000;
+		if(actid == 0) {
+			meta := agentlib->readfile(META_PROMPT_PATH);
+			if(meta != nil)
+				sfx = "\n\n" + agentlib->strip(meta);
+		}
+		MAXWRITE: con 65000;
 		suffixbytes := array of byte sfx;
 		if(len array of byte sysprompt + len suffixbytes > MAXWRITE)
 			sysprompt = string (array of byte sysprompt)[0:MAXWRITE - len suffixbytes];
@@ -754,63 +755,63 @@ handleslash(cmd: string): int
 		return 0;
 	rest := cmd[1:];
 	(verb, afterverb) := str->splitl(rest, " \t");
-	arg := str->drop(afterverb, " \t");
+	cmdarg := str->drop(afterverb, " \t");
 	ack := "";
 	case verb {
 	"bind" =>
-		if(arg == "") {
+		if(cmdarg == "") {
 			ack = "usage: /bind <path> [ro|rw]";
 		} else {
-			writefile(toolmount + "/ctl", "bindpath " + arg);
+			writefile(toolmount + "/ctl", "bindpath " + cmdarg);
 			# Push context event so the namespace view updates immediately
 			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
-			base := pathbase(arg);
+			base := pathbase(cmdarg);
 			if(base == nil || base == "")
-				base = arg;
-			writefile(ctxpath, "resource upsert path=" + arg +
+				base = cmdarg;
+			writefile(ctxpath, "resource upsert path=" + cmdarg +
 				" label=" + base + " type=fs status=idle via=bound");
-			ack = "bound: " + arg;
+			ack = "bound: " + cmdarg;
 		}
 	"unbind" =>
-		if(arg == "") {
+		if(cmdarg == "") {
 			ack = "usage: /unbind <path>";
 		} else {
-			writefile(toolmount + "/ctl", "unbindpath " + arg);
+			writefile(toolmount + "/ctl", "unbindpath " + cmdarg);
 			# Push context event so the namespace view updates immediately
 			ctxpath := sys->sprint("/n/ui/activity/%d/context/ctl", actid);
-			writefile(ctxpath, "resource remove " + arg);
-			ack = "unbound: " + arg;
+			writefile(ctxpath, "resource remove " + cmdarg);
+			ack = "unbound: " + cmdarg;
 		}
 	"tools" =>
-		if(len arg == 0) {
+		if(len cmdarg == 0) {
 			ack = "usage: /tools +name or /tools -name";
-		} else if(arg[0] == '+') {
-			writefile(toolmount + "/ctl", "add " + arg[1:]);
-			ack = "tool added: " + arg[1:];
-		} else if(arg[0] == '-') {
-			writefile(toolmount + "/ctl", "remove " + arg[1:]);
-			ack = "tool removed: " + arg[1:];
+		} else if(cmdarg[0] == '+') {
+			writefile(toolmount + "/ctl", "add " + cmdarg[1:]);
+			ack = "tool added: " + cmdarg[1:];
+		} else if(cmdarg[0] == '-') {
+			writefile(toolmount + "/ctl", "remove " + cmdarg[1:]);
+			ack = "tool removed: " + cmdarg[1:];
 		} else {
 			ack = "usage: /tools +name or /tools -name";
 		}
 	"voice" =>
-		if(arg == "" || arg == "on") {
+		if(cmdarg == "" || cmdarg == "on") {
 			autospeak = 1;
 			ack = "voice: auto-speak enabled";
-		} else if(arg == "off") {
+		} else if(cmdarg == "off") {
 			autospeak = 0;
 			ack = "voice: auto-speak disabled";
 		} else {
 			# Set voice name
-			writefile("/n/speech/ctl", "voice " + arg);
-			ack = "voice: set to " + arg;
+			writefile("/n/speech/ctl", "voice " + cmdarg);
+			ack = "voice: set to " + cmdarg;
 		}
 	"diff" =>
 		ack = cowdiff();
 	"promote" =>
-		ack = cowpromote(arg);
+		ack = cowpromote(cmdarg);
 	"revert" =>
-		ack = cowrevert(arg);
+		ack = cowrevert(cmdarg);
 	"help" =>
 		ack = "/bind <path>  — add namespace path\n" +
 		      "/unbind <path>  — remove namespace path\n" +
@@ -842,7 +843,7 @@ Cowfs: module {
 cowfindoverlay(): string
 {
 	# Overlay dir is /tmp/veltro/cow/{actid}-*
-	prefix := sys->sprint("/tmp/veltro/cow/%d-", actid);
+	prefix := sys->sprint("%d-", actid);
 	fd := sys->open("/tmp/veltro/cow", Sys->OREAD);
 	if(fd == nil)
 		return nil;
@@ -852,10 +853,8 @@ cowfindoverlay(): string
 			break;
 		for(i := 0; i < n; i++) {
 			nm := dirs[i].name;
-			full := "/tmp/veltro/cow/" + nm;
-			if(len nm >= len sys->sprint("%d-", actid) &&
-			   nm[0:len sys->sprint("%d-", actid)] == sys->sprint("%d-", actid))
-				return full;
+			if(len nm >= len prefix && nm[0:len prefix] == prefix)
+				return "/tmp/veltro/cow/" + nm;
 		}
 	}
 	return nil;

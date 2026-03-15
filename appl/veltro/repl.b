@@ -220,7 +220,7 @@ newsession(): string
 
 	# Append REPL suffix. If total exceeds 9P write limit, truncate
 	# the base prompt to make room — the suffix is essential.
-	MAXWRITE: con 8000;
+	MAXWRITE: con 65000;
 	suffixbytes := array of byte REPL_SUFFIX;
 	basebytes := array of byte sysprompt;
 	if(len basebytes + len suffixbytes > MAXWRITE) {

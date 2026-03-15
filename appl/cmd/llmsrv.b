@@ -241,6 +241,7 @@ init(nil: ref Draw->Context, args: list of string)
 	spawn navigator(navops);
 
 	(tchan, srv) := Styxserver.new(fds[0], Navigator.new(navops), big Qroot);
+	srv.msize = 65536 + Styx->IOHDRSZ;
 	fds[0] = nil;
 
 	pidc := chan of int;

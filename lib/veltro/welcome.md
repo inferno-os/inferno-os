@@ -1,11 +1,11 @@
-# Welcome to Infernode
+# Welcome to InferNode
 
-You are running **Infernode** — a modern fork of Bell Labs' Inferno OS
+You are running **InferNode** — a modern fork of Bell Labs' Inferno OS
 with an AI agent and a graphical environment built in.
 
 ## What you are looking at
 
-**Lucifer** is the three-zone interface in front of you:
+**Lucia** is the three-zone interface in front of you:
 
 - **Left — Conversation.** This is where you talk to me. Type a message
   and press Enter (or click Send).
@@ -30,7 +30,6 @@ your workspace.
 - `launch editor` — a text editor in the presentation zone
 - `launch shell` — a shell terminal
 - `launch fractals` — the Mandelbrot/Julia fractal viewer (I can drive it too)
-- `launch clock` — a clock
 - `launch xenith` — the full Xenith text environment (Acme descendant)
 
 **Explore the system.** Ask me to show you what's in `/appl` or

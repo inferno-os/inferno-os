@@ -201,9 +201,9 @@ buildsystemprompt(ns: string): string
 {
 	# NOTE: The system prompt may be written to /n/llm/{id}/system via a single
 	# 9P Twrite. llm9p's MaxMessageSize is 8192 bytes, and each write
-	# REPLACES the content (offset is ignored). If the prompt exceeds ~8KB,
-	# the kernel splits into multiple Twrites and only the LAST survives.
-	MAXPROMPT: con 8000;
+	# REPLACES the content (offset is ignored). If the prompt exceeds the
+	# 9P msize, the kernel splits into multiple Twrites and only the LAST survives.
+	MAXPROMPT: con 65000;
 
 	# Read base system prompt (behavioral policies only — no tool API docs)
 	base := readfile("/lib/veltro/system.txt");
