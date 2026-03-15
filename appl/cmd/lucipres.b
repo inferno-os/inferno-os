@@ -168,6 +168,12 @@ init(ctxt: ref Draw->Context, args: list of string)
 	draw = load Draw Draw->PATH;
 	stderr = sys->fildes(2);
 
+	# Initialize event channels FIRST — lucifer's nslistener can call
+	# deliverevent() as soon as lucipres_g is set (before init completes).
+	# alt send on a nil channel is a fatal "dereference of nil" in Dis.
+	preseventch = chan[8] of string;
+	renderdonech = chan[4] of ref RenderResult;
+
 	wmclient = load Wmclient Wmclient->PATH;
 	if(wmclient == nil) {
 		sys->fprint(sys->fildes(2), "lucipres: cannot load wmclient: %r\n");
@@ -185,9 +191,17 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(ctxt == nil)
 		ctxt = wmclient->makedrawcontext();
 	display_g = ctxt.display;
+	if(display_g == nil) {
+		sys->fprint(stderr, "lucipres: display is nil\n");
+		return;
+	}
 
 	# Load theme colours
 	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil) {
+		sys->fprint(stderr, "lucipres: cannot load lucitheme: %r\n");
+		return;
+	}
 	th := lucitheme->gettheme();
 
 	# Allocate bgcol first — win.onscreen("max") triggers putimage() inside
@@ -198,6 +212,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Create window via the wmsrv in lucifer (preswmloop)
 	# Plain: no border decoration — we're an embedded zone, not a top-level app
 	win = wmclient->window(ctxt, "Presentation", Wmclient->Plain);
+	if(win == nil) {
+		sys->fprint(stderr, "lucipres: wmclient->window returned nil\n");
+		return;
+	}
 	wmclient->win.reshape(((0, 0), (100, 100)));
 	wmclient->win.onscreen("max");
 	# putimage() just filled the pres sub-image with White.  Overwrite now.
@@ -205,6 +223,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 		win.screen.image.draw(win.screen.image.r, bgcol, nil, (0, 0));
 	wmclient->win.startinput("ptr" :: nil);
 	mainwin = win.image;
+	if(mainwin == nil) {
+		sys->fprint(stderr, "lucipres: win.image is nil after onscreen\n");
+		return;
+	}
 
 	# Allocate remaining colors from theme
 	bordercol = display_g.color(th.border);
@@ -222,6 +244,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	mainfont = Font.open(display_g, "/fonts/combined/unicode.sans.14.font");
 	if(mainfont == nil)
 		mainfont = Font.open(display_g, "*default*");
+	if(mainfont == nil) {
+		sys->fprint(stderr, "lucipres: cannot load any font\n");
+		return;
+	}
 	monofont_g = Font.open(display_g, "/fonts/combined/unicode.14.font");
 	if(monofont_g == nil)
 		monofont_g = mainfont;
@@ -260,11 +286,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 		if(gifwriter != nil)
 			gifwriter->init(bufio);
 	}
-
-	# Channel for serializing events from background goroutines (renderartasync,
-	# deliverevent) to the main loop goroutine.
-	preseventch = chan[8] of string;
-	renderdonech = chan[4] of ref RenderResult;
 
 	if(actid_g >= 0)
 		loadpresentation();
@@ -532,7 +553,7 @@ handleevent(ev: string)
 
 redrawpres()
 {
-	if(mainwin == nil)
+	if(mainwin == nil || display_g == nil)
 		return;
 	mr := mainwin.r;
 	if(backbuf == nil || backbuf.r.dx() != mr.dx() || backbuf.r.dy() != mr.dy() ||
@@ -1573,7 +1594,7 @@ drawtaskboard(contentr: Rect, pad: int)
 		indicol := dimcol;
 		if(card.status == "working")
 			indicol = accentcol;
-		else if(card.status == "done")
+		else if(card.status == "done" || card.status == "complete")
 			indicol = greencol_g;
 		else if(card.urgency > 0)
 			indicol = yellowcol_g;
