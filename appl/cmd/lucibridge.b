@@ -1146,7 +1146,11 @@ agentturn(input: string)
 		# the user has interacted).  Once the user has sent a message,
 		# further completions don't raise urgency — the user is already
 		# engaged and the blinking tile is distracting.
-		setstatus("idle");
+		# "complete" tells the MA this TA finished its autonomous assignment.
+		if(actid > 0 && !userinteracted)
+			setstatus("complete");
+		else
+			setstatus("idle");
 		if(actid > 0 && !userinteracted)
 			seturgency(1);
 	}
@@ -1331,6 +1335,9 @@ init(nil: ref Draw->Context, args: list of string)
 
 		# Record human message in UI
 		writemsg("human", human);
+		# Revert "complete" → "idle" once the human engages this TA.
+		if(!userinteracted)
+			setstatus("idle");
 		userinteracted = 1;
 
 		# Run agent turn
