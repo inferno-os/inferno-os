@@ -104,10 +104,15 @@ doc(): string
 		"  Do NOT use exec or shell commands to control Charon.";
 }
 
-# Read current activity ID from namespace
+# Read this tool's activity ID from its tools9p instance.
+# /tool/activity is served by the tools9p that loaded this tool,
+# returning the activity ID set at provisioning time (-a flag).
+# Falls back to the globally focused activity if unavailable.
 currentactid(): int
 {
-	s := readfile(UI_MOUNT + "/activity/current");
+	s := readfile("/tool/activity");
+	if(s == nil)
+		s = readfile(UI_MOUNT + "/activity/current");
 	if(s == nil)
 		return -1;
 	s = strip(s);

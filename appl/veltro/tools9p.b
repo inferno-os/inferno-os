@@ -58,7 +58,7 @@ Tools9p: module {
 };
 
 # Qid types for synthetic files
-Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths, Qbudget: con iota;
+Qroot, Qtools, Qhelp, Qregistry, Qctl, Qpaths, Qbudget, Qactivity: con iota;
 Qtoolbase: con 100;       # Tool qid blocks start at 100
 TOOL_STRIDE: con 4;       # Qids per tool: 0=dir, 1=ctl, 2=doc, 3=reserved
 Qtool_dir: con 0;         # Offset: tool directory
@@ -89,6 +89,7 @@ BoundPath: adt {
 };
 boundpaths: list of ref BoundPath;  # Paths registered via bindpath ctl command
 budget: list of string;    # Tools delegatable to child tasks (-b flag)
+activityid := 0;           # Activity ID this tools9p serves (-a flag)
 mountpt_g := "/tool";      # This instance's mount point (set from -m flag)
 verbose := 0;              # Verbose logging (-v flag); forwarded to child lucibridge
 vers: int;
@@ -153,7 +154,7 @@ TOOL_PATHS := array[] of {
 
 usage()
 {
-	sys->fprint(stderr, "Usage: tools9p [-Dv] [-m mountpoint] [-p path] ... tool [tool ...]\n");
+	sys->fprint(stderr, "Usage: tools9p [-Dv] [-a activityid] [-m mountpoint] [-p path] ... tool [tool ...]\n");
 	sys->fprint(stderr, "  -D            Enable 9P debug tracing\n");
 	sys->fprint(stderr, "  -v            Verbose logging (forwarded to child lucibridge)\n");
 	sys->fprint(stderr, "  -m mountpoint Mount point (default: /tool)\n");
@@ -208,6 +209,10 @@ init(nil: ref Draw->Context, args: list of string)
 		'v' =>	verbose = 1;
 		'm' =>	mountpt = arg->earg();
 		'p' =>	extpaths = arg->earg() :: extpaths;
+		'a' =>
+			aarg := arg->earg();
+			(aid, nil) := str->toint(aarg, 10);
+			activityid = aid;
 		'b' =>
 			# Parse comma-separated budget tools
 			barg := arg->earg();
@@ -630,6 +635,10 @@ asyncexec(srv: ref Styxserver, tag: int, count: int, ti: ref ToolInfo, data: str
 {
 	mypid := sys->pctl(0, nil);
 	applynsrestriction();
+	# After FORKNS, bind our mount point over /tool so tools that hardcode
+	# /tool/ (present, write, edit, task) see THIS instance, not the parent.
+	if(mountpt_g != "/tool")
+		sys->bind(mountpt_g, "/tool", Sys->MREPL);
 	result := exectool(ti.name, data);
 	# Assign result before replying so it's visible for subsequent reads.
 	# NOTE: concurrent writes to the same tool will overwrite each other's
@@ -826,9 +835,11 @@ provisiontask(args: string)
 		rargs = hd ep :: rargs;
 		rargs = "-p" :: rargs;
 	}
-	# Mount point, verbose, and program name go first
+	# Mount point, activity id, verbose, and program name go first
 	rargs = mpt :: rargs;
 	rargs = "-m" :: rargs;
+	rargs = string id :: rargs;
+	rargs = "-a" :: rargs;
 	if(verbose)
 		rargs = "-v" :: rargs;
 	rargs = "tools9p" :: rargs;
@@ -1072,6 +1083,9 @@ Serve:
 			Qbudget =>
 				srv.reply(styxservers->readbytes(m, array of byte genbudgetlist()));
 
+			Qactivity =>
+				srv.reply(styxservers->readbytes(m, array of byte string activityid));
+
 			* =>
 				# Tool directory/subfile reads
 				if(qtype >= Qtoolbase) {
@@ -1264,6 +1278,9 @@ dirgen(p: big): (ref Sys->Dir, string)
 
 	Qbudget =>
 		return (dir(Qid(p, vers, Sys->QTFILE), "budget", big 0, 8r444), nil);
+
+	Qactivity =>
+		return (dir(Qid(p, vers, Sys->QTFILE), "activity", big 0, 8r444), nil);
 	}
 
 	# Check if it's a tool directory or subfile
@@ -1311,6 +1328,8 @@ navigator(navops: chan of ref Navop)
 					n.path = big Qpaths;
 				"budget" =>
 					n.path = big Qbudget;
+				"activity" =>
+					n.path = big Qactivity;
 				* =>
 					# Check if it's a registered tool name
 					ti := findtool(n.name);
@@ -1395,11 +1414,18 @@ navigator(navops: chan of ref Navop)
 					i++;
 				}
 
+				# Entry 6: activity
+				if(i <= 6 && count > 0) {
+					n.reply <-= dirgen(big Qactivity);
+					count--;
+					i++;
+				}
+
 				# Remaining entries: registered tool directories
 				idx := 0;
 				for(t := tools; t != nil && count > 0; t = tl t) {
 					ti := hd t;
-					if(i <= 6 + idx) {
+					if(i <= 7 + idx) {
 						n.reply <-= dirgen(big ti.qid);
 						count--;
 					}
