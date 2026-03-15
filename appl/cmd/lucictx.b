@@ -839,8 +839,8 @@ drawcontext(zone: Rect)
 
 			# Column headers
 			if(y + mainfont.height > vis_top && y < vis_bot) {
-				mainwin.text((lcol + pad, y), dimcol, (0, 0), mainfont, "Enabled");
-				mainwin.text((rcol + pad, y), dimcol, (0, 0), mainfont, "Available");
+				mainwin.text((lcol + pad, y), dimcol, (0, 0), mainfont, "Active");
+				mainwin.text((rcol + pad, y), dimcol, (0, 0), mainfont, "Loadable");
 			}
 			y += mainfont.height + 2;
 

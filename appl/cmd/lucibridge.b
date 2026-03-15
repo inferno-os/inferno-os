@@ -1265,10 +1265,37 @@ init(nil: ref Draw->Context, args: list of string)
 			break;
 	}
 
+	# For child TAs (actid > 0): read the task brief from the brief file
+	# written by the task tool.  Append it to the LLM system prompt inside
+	# <task> tags so the TA knows its assignment.  No visible chat message.
+	taskbrief := "";
+	if(actid > 0) {
+		briefpath := sys->sprint("/tmp/veltro/brief.%d", actid);
+		taskbrief = agentlib->readfile(briefpath);
+		if(taskbrief != nil)
+			taskbrief = agentlib->strip(taskbrief);
+		else
+			taskbrief = "";
+		if(taskbrief != "") {
+			systempath := "/n/llm/" + sessionid + "/system";
+			cursys := agentlib->readfile(systempath);
+			if(cursys == nil)
+				cursys = "";
+			agentlib->setsystemprompt(systempath,
+				cursys + "\n\n<task>" + taskbrief + "</task>");
+			log("injected task brief into system prompt: " + agentlib->truncate(taskbrief, 100));
+		}
+	}
+
 	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
 
 	log(sys->sprint("ready — activity %d, session %s, max %d steps, %d existing msgs",
 		actid, sessionid, maxsteps, convcount));
+
+	# Autonomous first turn for TAs: the task brief is in the system prompt,
+	# now send a short trigger so the LLM responds based on its assignment.
+	if(taskbrief != "")
+		agentturn("Begin.");
 
 	# Main loop: re-open input fd each iteration because 9P offset
 	# advances after read, causing subsequent reads to return EOF.

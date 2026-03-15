@@ -207,17 +207,18 @@ docreate(args: string): string
 		writefile(sys->sprint("%s/activity/%d/urgency", UI_MOUNT, newid), urgstr);
 	}
 
-	# Inject initial context into the TA's conversation queue.
-	# The message is queued in luciuisrv and delivered when the child
-	# lucibridge starts reading from input.  This seeds the TA with
-	# its task context so it knows what it's supposed to do.
-	# Use role=system so it displays as a system directive, not as
-	# a message from the user.
+	# Write task brief to a file that lucibridge reads at startup.
+	# This goes into the LLM system prompt only — no visible chat message.
 	brief := getattr(attrs, "brief");
 	if(brief == "")
 		brief = "You have been assigned to: " + label + ". Greet the user and ask how you can help with this task.";
-	convctl := sys->sprint("%s/activity/%d/conversation/ctl", UI_MOUNT, newid);
-	writefile(convctl, "role=system text=" + brief);
+	briefpath := sys->sprint("/tmp/veltro/brief.%d", newid);
+	bfd := sys->create(briefpath, Sys->OWRITE, 8r644);
+	if(bfd != nil) {
+		bb := array of byte brief;
+		sys->write(bfd, bb, len bb);
+		bfd = nil;
+	}
 
 	# Delegate provisioning to the unrestricted parent serveloop.
 	# We cannot spawn tools9p/lucibridge from here because asyncexec()
