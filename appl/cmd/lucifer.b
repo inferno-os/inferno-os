@@ -1146,6 +1146,41 @@ globallistener()
 		}
 		backoff = 500;
 		ev := strip(string buf[0:n]);
+		if(hasprefix(ev, "newtask ")) {
+			# Direct task creation from lucipres "+" button.
+			# Provision with full budget (no tools= → default) and
+			# inherit bound paths so the new task has the same access.
+			newid := strtoint(strip(ev[len "newtask ":]));
+			if(newid > 0) {
+				# Remove stale brief/instructions from previous sessions
+				# so lucibridge doesn't inject an old agenda
+				sys->remove("/tmp/veltro/brief." + string newid);
+				sys->remove("/tmp/veltro/instructions." + string newid);
+				provision := "provision " + string newid;
+				# Pass user-bound paths
+				paths := readfile("/tool/paths");
+				if(paths != nil && paths != "") {
+					pcsv := "";
+					(nil, ptoks) := sys->tokenize(strip(paths), "\n");
+					for(; ptoks != nil; ptoks = tl ptoks) {
+						p := strip(hd ptoks);
+						if(p == "") continue;
+						if(pcsv != "")
+							pcsv += ",";
+						pcsv += p;
+					}
+					if(pcsv != "")
+						provision += " paths=" + pcsv;
+				}
+				writefile("/tool/ctl", provision);
+				# Switch to new activity
+				alt { switchch <-= newid => ; * => ; }
+			}
+			# Also update tiles/taskboard
+			if(lucipres_g != nil)
+				lucipres_g->deliverevent("activity new " + string newid);
+			alt { uievent <-= 1 => ; * => ; }
+		}
 		if(hasprefix(ev, "activity ")) {
 			# Check if this is a switch event (format: "activity {id}")
 			rest := strip(ev[len "activity ":]);

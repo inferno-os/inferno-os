@@ -1169,6 +1169,13 @@ globalctl(data: string): string
 			pushevent(activities[0].id, "catalog");
 		return nil;
 	}
+	if(data == "newtask") {
+		a := newactivity("New task");
+		if(a == nil)
+			return "too many activities";
+		pushglobalevent("newtask " + string a.id);
+		return nil;
+	}
 	if(hasprefix(data, "activity create ")) {
 		label := data[len "activity create ":];
 		a := newactivity(label);

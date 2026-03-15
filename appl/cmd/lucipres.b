@@ -302,6 +302,15 @@ init(ctxt: ref Draw->Context, args: list of string)
 		loadpresentation();
 	}
 
+	# Auto-center on first artifact if nothing is centered
+	# (handles external creation, e.g., shell launch scripts)
+	if(centeredart == "" && artifacts != nil) {
+		centeredart = (hd artifacts).id;
+		if(actid_g >= 0)
+			writetofile(sys->sprint("%s/activity/%d/presentation/ctl",
+				mountpt_g, actid_g), "center id=" + centeredart);
+	}
+
 	redrawpres();
 
 	# Event loop
@@ -381,14 +390,20 @@ init(ctxt: ref Draw->Context, args: list of string)
 						tabclicked = 1;
 					}
 				}
-				# Dashboard card click — switch to that activity
+				# Dashboard card click — switch to activity or create new task
 				if(!tabclicked && prescontentr.contains(p.xy)) {
 					cart := findartifact(centeredart);
 					if(cart != nil && cart.atype == "taskboard") {
 						for(ci := 0; ci < ncardhits; ci++) {
 							if(cardhits[ci].r.contains(p.xy)) {
-								writetofile(mountpt_g + "/activity/current",
-									string cardhits[ci].id);
+								if(cardhits[ci].id == -1) {
+									# "+" card — request new task
+									writetofile(mountpt_g + "/ctl",
+										"newtask");
+								} else {
+									writetofile(mountpt_g + "/activity/current",
+										string cardhits[ci].id);
+								}
 								tabclicked = 1;
 								break;
 							}
@@ -1552,31 +1567,27 @@ drawtaskboard(contentr: Rect, pad: int)
 		}
 	}
 
-	if(ncards == 0) {
-		drawcentertext(contentr, "No active tasks");
-		return;
-	}
-
 	# Reverse to preserve order
 	rev: list of ref TaskCard;
 	for(; cards != nil; cards = tl cards)
 		rev = hd cards :: rev;
 	cards = rev;
 
-	# Layout: cards in a wrapping grid
+	# Layout: cards in a wrapping grid (ncards + 1 for the "+" card)
+	totalcards := ncards + 1;
 	mincardw := 200;
 	cardh := 60;
 	gap := 8;
 	avail := contentr.dx() - 2 * pad;
 	cols := (avail + gap) / (mincardw + gap);
 	if(cols < 1) cols = 1;
-	if(cols > ncards) cols = ncards;
+	if(cols > totalcards) cols = totalcards;
 	cardw := (avail - (cols - 1) * gap) / cols;
 
 	cx := contentr.min.x + pad;
 	cy := contentr.min.y + pad;
 	col := 0;
-	cardhits = array[ncards] of ref CardHit;
+	cardhits = array[totalcards] of ref CardHit;
 	ncardhits = 0;
 
 	for(; cards != nil; cards = tl cards) {
@@ -1623,6 +1634,25 @@ drawtaskboard(contentr: Rect, pad: int)
 		} else {
 			cx += cardw + gap;
 		}
+	}
+
+	# "+" card — new task shortcut (id -1 triggers newtask in click handler)
+	cr := Rect((cx, cy), (cx + cardw, cy + cardh));
+	if(cr.max.y <= contentr.max.y) {
+		cardhits[ncardhits++] = ref CardHit(cr, -1);
+
+		# Dashed-style border (dimmer than real cards)
+		mainwin.draw(Rect((cx, cy), (cx + cardw, cy + 1)), dimcol, nil, (0, 0));
+		mainwin.draw(Rect((cx, cy + cardh - 1), (cx + cardw, cy + cardh)), dimcol, nil, (0, 0));
+		mainwin.draw(Rect((cx, cy), (cx + 1, cy + cardh)), dimcol, nil, (0, 0));
+		mainwin.draw(Rect((cx + cardw - 1, cy), (cx + cardw, cy + cardh)), dimcol, nil, (0, 0));
+
+		# Centered "+" label
+		pluslabel := "+ New Task";
+		tw := mainfont.width(pluslabel);
+		tx := cx + (cardw - tw) / 2;
+		ty := cy + (cardh - mainfont.height) / 2;
+		mainwin.text((tx, ty), dimcol, (0, 0), mainfont, pluslabel);
 	}
 }
 
