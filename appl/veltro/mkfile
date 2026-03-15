@@ -33,7 +33,6 @@ TOOLS=\
     tools/present.dis\
     tools/diff.dis\
     tools/json.dis\
-    tools/ask.dis\
     tools/http.dis\
     tools/git.dis\
     tools/grep.dis\
@@ -131,9 +130,6 @@ tools/diff.dis: tools/diff.b tool.m
 
 tools/json.dis: tools/json.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/json.dis tools/json.b
-
-tools/ask.dis: tools/ask.b tool.m
-	limbo $LIMBOFLAGS -gw -o tools/ask.dis tools/ask.b
 
 tools/http.dis: tools/http.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/http.dis tools/http.b

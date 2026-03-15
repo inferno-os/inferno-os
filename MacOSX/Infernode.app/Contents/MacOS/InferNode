@@ -17,7 +17,8 @@ LLM9P_LOG="$HOME/Library/Logs/InferNode-llm9p.log"
 # Default tool set: non-destructive tools enabled out of the box.
 # Potentially destructive tools (exec, launch, spawn, git, mail) are registered
 # in tools9p but NOT active by default — enable them via the context zone.
-LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap editor charon; lucibridge -v &; lucifer'
+# The -b flag sets the budget of tools delegatable to child task agents.
+LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,websearch,present,gap -p /dis/wm read list find present say hear task todo memory gap editor charon; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
 # --- llm9p lifecycle ---
 # Kill any stale llm9p already holding our port (e.g. leftover launchd daemon).

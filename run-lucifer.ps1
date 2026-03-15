@@ -40,6 +40,7 @@ if (-not $llm9pRunning) {
 # Default tool set: non-destructive tools enabled out of the box.
 # Potentially destructive tools (exec, launch, spawn, git, mail) are registered
 # in tools9p but NOT active by default — enable them via the context zone.
+# The startup script handles tool registration, MA bridge, and task dashboard.
 #
 # The llm9p mount is done here (not in profile) because the Nt emu's TCP
 # stack crashes on DNS lookups for unknown hostnames like 'llmserver'.

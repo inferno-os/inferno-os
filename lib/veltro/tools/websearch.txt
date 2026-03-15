@@ -1,0 +1,15 @@
+== websearch — Web Search ==
+
+Research chain: websearch finds sources → http fetches full content → you synthesize.
+
+Usage: websearch <query>
+Returns: titles, URLs, and snippets for matching results.
+
+Workflow:
+1. Search with specific, targeted queries (not vague questions)
+2. Fetch promising URLs with http to get full content
+3. Synthesize across multiple sources before answering
+4. Cite URLs you actually fetched — never cite a URL you haven't read
+
+For broad research, issue multiple websearch calls with different queries in parallel.
+Cross-reference results — a single source may be wrong or outdated.

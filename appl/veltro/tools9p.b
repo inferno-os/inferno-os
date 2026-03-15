@@ -123,7 +123,6 @@ TOOL_PATHS := array[] of {
 	# New tools (Phase 1c)
 	("diff",    "/dis/veltro/tools/diff.dis"),
 	("json",    "/dis/veltro/tools/json.dis"),
-	("ask",     "/dis/veltro/tools/ask.dis"),
 	("http",    "/dis/veltro/tools/http.dis"),
 	("git",     "/dis/veltro/tools/git.dis"),
 	("grep",    "/dis/veltro/tools/grep.dis"),

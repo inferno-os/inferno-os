@@ -15,4 +15,9 @@ For multi-line content, use heredoc:
     Line two
     EOF
 
+Chain tool results: use output from one tool as input to the next.
+- find/grep → read: locate a file, then read it
+- search → read → summarize: find matches, read context, report findings
+- read → write: read current content, then write modified version
+
 Do what was asked; nothing more, nothing less.

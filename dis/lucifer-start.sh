@@ -40,11 +40,15 @@ luciuisrv
 # Create default activity
 echo activity create Main > /n/ui/ctl
 
-# Register tools
-/dis/veltro/tools9p -m /tool -p /dis/wm read list find search grep ask diff json memory websearch http write edit present todo gap editor
+# Register tools with budget for task delegation
+/dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,websearch,present,gap -p /dis/wm read list find present task todo memory gap editor
 
-# Start bridge (background)
-lucibridge -v &
+# Start bridge with MA support (background)
+lucibridge -a 0 -v -s &
+sleep 1
+
+# Create task dashboard
+echo 'create id=tasks type=taskboard label=Tasks' > /n/ui/activity/0/presentation/ctl
 
 # Launch Lucifer GUI (blocks)
 lucifer

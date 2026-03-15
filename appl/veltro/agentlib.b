@@ -256,14 +256,24 @@ loadtooldocs(toollist: list of string): string
 	has_grep := 0;
 	has_todo := 0;
 	has_gap := 0;
+	has_websearch := 0;
+	has_http := 0;
+	has_plan := 0;
+	has_task := 0;
+	has_memory := 0;
 
 	for(t := toollist; t != nil; t = tl t) {
 		case hd t {
-		"exec"  => has_exec = 1;
-		"spawn" => has_spawn = 1;
-		"grep"  => has_grep = 1;
-		"todo"  => has_todo = 1;
-		"gap"   => has_gap = 1;
+		"exec"      => has_exec = 1;
+		"spawn"     => has_spawn = 1;
+		"grep"      => has_grep = 1;
+		"todo"      => has_todo = 1;
+		"gap"       => has_gap = 1;
+		"websearch" => has_websearch = 1;
+		"http"      => has_http = 1;
+		"plan"      => has_plan = 1;
+		"task"      => has_task = 1;
+		"memory"    => has_memory = 1;
 		}
 	}
 
@@ -301,6 +311,46 @@ loadtooldocs(toollist: list of string): string
 	}
 	if(has_spawn) {
 		doc := readfile("/lib/veltro/tools/spawn.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_websearch) {
+		doc := readfile("/lib/veltro/tools/websearch.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_http) {
+		doc := readfile("/lib/veltro/tools/http.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_plan) {
+		doc := readfile("/lib/veltro/tools/plan.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_task) {
+		doc := readfile("/lib/veltro/tools/task.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_memory) {
+		doc := readfile("/lib/veltro/tools/memory.txt");
 		if(doc != "") {
 			if(docs != "")
 				docs += "\n\n";
@@ -846,6 +896,9 @@ tooldesc(name: string): string
 	"python" => return "Execute a Python expression or script";
 	"curl"   => return "Transfer data from a URL";
 	"vision" => return "Analyze an image using AI vision (local GPU or cloud)";
+	"websearch" => return "Search the web for information. Returns a list of results with titles, URLs, and snippets. Use http to fetch full page content from result URLs.";
+	"memory" => return "Read and write persistent memory entries that survive across sessions";
+	"task"   => return "Create and manage child task agents with isolated namespaces. Each task gets its own tools, paths, and LLM session.";
 	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
 	}
 	return "Run the " + name + " tool with the given arguments";
