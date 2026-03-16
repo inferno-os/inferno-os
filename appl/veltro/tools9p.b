@@ -635,12 +635,17 @@ exectool(name, args: string): string
 # paths bound via the GUI after the server was already running.
 asyncexec(srv: ref Styxserver, tag: int, count: int, ti: ref ToolInfo, data: string)
 {
-	mypid := sys->pctl(0, nil);
-	applynsrestriction();
-	# After FORKNS, bind our mount point over /tool so tools that hardcode
-	# /tool/ (present, write, edit, task) see THIS instance, not the parent.
+	mypid := sys->pctl(Sys->FORKNS, nil);
+	# Bind our mount point over /tool BEFORE namespace restriction.
+	# /tool.N is still visible in the inherited namespace at this point.
+	# restrictdir("/", safe) preserves "tool" and captures the current
+	# binding — so /tool (now pointing to /tool.N) survives restriction.
+	# If this bind were AFTER restriction, /tool.N would already be hidden
+	# (not in the safe list) and the bind would fail silently, leaving
+	# /tool pointing to the parent instance (wrong activity ID).
 	if(mountpt_g != "/tool")
 		sys->bind(mountpt_g, "/tool", Sys->MREPL);
+	applynsrestriction();
 	result := exectool(ti.name, data);
 	# Assign result before replying so it's visible for subsequent reads.
 	# NOTE: concurrent writes to the same tool will overwrite each other's
@@ -945,15 +950,15 @@ emitmanifestnow(mpath: string)
 	}
 }
 
-# Apply namespace restriction in serveloop thread.
-# Called after mount() completes so FORKNS captures /tool.
+# Apply namespace restriction to the current (already-forked) namespace.
+# Caller (asyncexec) is responsible for FORKNS and the /tool bind
+# BEFORE calling this — that ordering ensures /tool.N survives restriction.
 applynsrestriction()
 {
 	nsconstruct := load NsConstruct NsConstruct->PATH;
 	if(nsconstruct == nil)
 		return;
 	nsconstruct->init();
-	sys->pctl(Sys->FORKNS, nil);
 	# Grant /chan access only if the xenith tool was registered.
 	# Without this, the restricted namespace hides /chan entirely,
 	# so even the xenith tool can't read other windows.
