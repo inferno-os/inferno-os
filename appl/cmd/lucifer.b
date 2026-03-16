@@ -110,6 +110,7 @@ wmchan: chan of (string, chan of (string, ref Wmcontext));
 # artifact id, so the mapping is independent of join order.
 AppSlot: adt {
 	id:     string;
+	owneract: int;		# activity that created this app (immutable after alloc)
 	client: ref Client;
 };
 MAXAPPSLOTS: con 16;
@@ -786,8 +787,20 @@ preswmloop(scr: ref Screen, zoner: Rect,
 					# actually call screen.bottom().  c.top() sets c.znext so
 					# a subsequent c.bottom() (in cleanupappslot/hideapp) works.
 					c.top();
+					# If this app belongs to a non-focused activity, hide it
+					# immediately.  Without this, a background task agent's
+					# app window appears over the currently-viewed activity.
+					<-applock;
+					for(oai := 0; oai < nappslots; oai++) {
+						if(appslots[oai] != nil &&
+						   appslots[oai].client == c &&
+						   appslots[oai].owneract != actid) {
+							c.bottom();
+							break;
+						}
+					}
+					applock <-= 1;
 				}
-				# handleprescurrent() will call bottom() if another artifact is active
 			}
 			# else: app already has a window — ignore re-reshape
 		}
@@ -907,15 +920,32 @@ switchactivity(newid: int)
 	writefile(sys->sprint("%s/activity/%d/urgency", mountpt, newid), "0");
 	updatetile(newid, "urgency", "0");
 
-	# Hide all app windows from the outgoing activity.  App windows live
-	# in the shared wmsrv Screen z-stack; without this, the previous
-	# activity's editor/app "ghosts" over the new activity's presentation.
+	# Hide apps from OTHER activities; show the new activity's current app
+	# (if any).  All apps live on the shared presscr z-stack, so visibility
+	# is purely z-order: top() = visible, bottom() = hidden.
+	curid := "";
+	s := readfile(sys->sprint("%s/activity/%d/presentation/current", mountpt, newid));
+	if(s != nil) {
+		curid = strip(s);
+		at := readfile(sys->sprint("%s/activity/%d/presentation/%s/type",
+			mountpt, newid, curid));
+		if(at != nil) at = strip(at);
+		if(at != "app")
+			curid = "";	# current artifact isn't an app
+	}
 	<-applock;
 	for(sai := 0; sai < nappslots; sai++) {
-		if(appslots[sai] != nil && appslots[sai].client != nil)
-			appslots[sai].client.bottom();
+		if(appslots[sai] != nil && appslots[sai].client != nil) {
+			if(appslots[sai].owneract == newid && appslots[sai].id == curid) {
+				appslots[sai].client.top();
+				activeappid = curid;
+			} else {
+				appslots[sai].client.bottom();
+			}
+		}
 	}
-	activeappid = "";
+	if(curid == "")
+		activeappid = "";
 	applock <-= 1;
 
 	# Kill and respawn nslistener so it reads events for the new activity.
@@ -1737,7 +1767,7 @@ launchapp(id, dispath, appdata: string, targetact: int)
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
 	<-applock;
 	if(nappslots < MAXAPPSLOTS) {
-		appslots[nappslots] = ref AppSlot(id, nil);
+		appslots[nappslots] = ref AppSlot(id, targetact, nil);
 		nappslots++;
 	}
 	applock <-= 1;
