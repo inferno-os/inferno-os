@@ -150,6 +150,8 @@ TOOL_PATHS := array[] of {
 	("task",    "/dis/veltro/tools/task.dis"),
 	# Structured planning
 	("plan",    "/dis/veltro/tools/plan.dis"),
+	# Credential management (launches GUI, no key access)
+	("keyring", "/dis/veltro/tools/keyring.dis"),
 };
 
 usage()

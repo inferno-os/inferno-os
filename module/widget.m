@@ -145,6 +145,123 @@ Widget: module
 			    button: int, step: int): int;
 	};
 
+	# ── Textfield ──────────────────────────────────────────────
+	#
+	# Single-line text input field with optional label and
+	# secret mode (shows dots instead of characters).
+	#
+	# The field handles its own cursor, selection, and key
+	# events.  The caller is responsible for routing keyboard
+	# focus to exactly one Textfield at a time.
+	#
+	# Usage:
+	#   tf := Textfield.mk(r, "Password", 1);
+	#   ...
+	#   if(tf.contains(p.xy)) { focused = tf; }
+	#   rc := tf.key(k);   # 1 = Enter pressed
+	#
+	Textfield: adt {
+		r:       Draw->Rect;    # field rectangle (includes label)
+		text:    string;        # current value
+		cursor:  int;           # cursor position in text
+		secret:  int;           # 1 = show dots instead of chars
+		focused: int;           # 1 = has keyboard focus
+		label:   string;        # label drawn to the left
+
+		# Create a text field for the given rectangle.
+		# label: text drawn before the input area.
+		# secret: 1 for password fields.
+		mk:      fn(r: Draw->Rect, label: string, secret: int): ref Textfield;
+
+		# Draw the field into dst.
+		draw:    fn(tf: self ref Textfield, dst: ref Draw->Image);
+
+		# Update rectangle (e.g. on window resize).
+		resize:  fn(tf: self ref Textfield, r: Draw->Rect);
+
+		# Handle a key press.
+		# Returns 1 if Enter was pressed, 0 otherwise.
+		key:     fn(tf: self ref Textfield, c: int): int;
+
+		# Handle a pointer click (for cursor placement).
+		click:   fn(tf: self ref Textfield, p: Draw->Point);
+
+		# Test whether a point is inside the field.
+		contains: fn(tf: self ref Textfield, p: Draw->Point): int;
+
+		# Get/set the current text value.
+		value:   fn(tf: self ref Textfield): string;
+		setval:  fn(tf: self ref Textfield, s: string);
+	};
+
+	# ── Listbox ────────────────────────────────────────────────
+	#
+	# Scrollable single-selection list.  Each item is a single
+	# line of text.  Click to select; the caller reads .selected
+	# to know which item is highlighted (-1 = none).
+	#
+	# Usage:
+	#   lb := Listbox.mk(r);
+	#   lb.setitems(arr);
+	#   ...
+	#   if(lb.contains(p.xy)) { sel := lb.click(p.xy); }
+	#   lb.draw(dst);
+	#
+	Listbox: adt {
+		r:        Draw->Rect;    # list rectangle (excludes scrollbar)
+		items:    array of string;
+		selected: int;           # selected index (-1 = none)
+		top:      int;           # scroll offset (first visible item)
+		scroll:   ref Scrollbar; # attached scrollbar
+
+		# Create a listbox for the given rectangle.
+		mk:       fn(r: Draw->Rect): ref Listbox;
+
+		# Draw the list into dst.
+		draw:     fn(lb: self ref Listbox, dst: ref Draw->Image);
+
+		# Update rectangle (e.g. on window resize).
+		resize:   fn(lb: self ref Listbox, r: Draw->Rect);
+
+		# Handle a pointer click.  Returns the newly selected index.
+		click:    fn(lb: self ref Listbox, p: Draw->Point): int;
+
+		# Handle mouse wheel.  Returns new top.
+		wheel:    fn(lb: self ref Listbox, button: int): int;
+
+		# Test whether a point is inside the listbox area
+		# (including its scrollbar).
+		contains: fn(lb: self ref Listbox, p: Draw->Point): int;
+
+		# Replace the item list.  Resets selection to -1.
+		setitems: fn(lb: self ref Listbox, items: array of string);
+
+		# Number of visible rows that fit.
+		visible:  fn(lb: self ref Listbox): int;
+	};
+
+	# ── Button ─────────────────────────────────────────────────
+	#
+	# Simple clickable button with a text label.
+	#
+	Button: adt {
+		r:       Draw->Rect;    # button rectangle
+		label:   string;        # button text
+		pressed: int;           # 1 while pointer is held down on it
+
+		# Create a button.
+		mk:      fn(r: Draw->Rect, label: string): ref Button;
+
+		# Draw the button into dst.
+		draw:    fn(b: self ref Button, dst: ref Draw->Image);
+
+		# Update rectangle.
+		resize:  fn(b: self ref Button, r: Draw->Rect);
+
+		# Test whether a point is inside the button.
+		contains: fn(b: self ref Button, p: Draw->Point): int;
+	};
+
 	# ── Statusbar ──────────────────────────────────────────────
 	#
 	# Horizontal info bar at the bottom of a window.  Displays
