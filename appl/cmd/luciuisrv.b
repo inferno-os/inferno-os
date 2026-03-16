@@ -1264,8 +1264,13 @@ presctl(a: ref Activity, data: string): string
 		d := getattr(attrs, "data");
 		if(d != nil && d != "")
 			art.data = d;
-		if(atype == "app")
+		if(atype == "app") {
 			art.appstatus = "launching";
+			# Global event carries the activity ID so lucifer can
+			# launch the app in the correct activity regardless of
+			# which activity the user is currently viewing.
+			pushglobalevent("applaunch " + string a.id + " " + id);
+		}
 		pushevent(a.id, "presentation new " + id);
 		return nil;
 	}

@@ -1184,6 +1184,19 @@ globallistener()
 				lucipres_g->deliverevent("activity new " + string newid);
 			alt { uievent <-= 1 => ; * => ; }
 		}
+		if(hasprefix(ev, "applaunch ")) {
+			# "applaunch <activityid> <artifactid>"
+			# Launch the app in the EXACT activity that created it,
+			# regardless of which activity the user is viewing.
+			rest := strip(ev[len "applaunch ":]);
+			(nil, toks) := sys->tokenize(rest, " \t");
+			if(toks != nil && tl toks != nil) {
+				targetact := strtoint(hd toks);
+				appid := hd tl toks;
+				if(targetact >= 0 && appid != "")
+					checklaunchapp(appid, targetact);
+			}
+		}
 		if(hasprefix(ev, "activity ")) {
 			# Check if this is a switch event (format: "activity {id}")
 			rest := strip(ev[len "activity ":]);
@@ -1274,12 +1287,10 @@ nslistener()
 			# Always deliver to lucipres for tab/artifact updates
 			if(lucipres_g != nil)
 				lucipres_g->deliverevent(ev);
-			# Additional handling for app lifecycle events
-			if(hasprefix(ev, "presentation new ")) {
-				newid := strip(ev[len "presentation new ":]);
-				if(newid != "")
-					checklaunchapp(newid);
-			} else if(hasprefix(ev, "presentation kill ")) {
+			# App launches are handled by globallistener via "applaunch"
+			# events — never via nslistener — so apps always target the
+			# correct activity regardless of which activity is focused.
+			if(hasprefix(ev, "presentation kill ")) {
 				killid := strip(ev[len "presentation kill ":]);
 				if(killid != "")
 					killapp(killid);
@@ -1618,27 +1629,30 @@ writetofile(path, data: string): string
 	return nil;
 }
 
-# writeappstatus: write appstatus to luciuisrv ctl and deliver event to lucipres
-writeappstatus(id, status: string)
+# writeappstatus: write appstatus to luciuisrv ctl and deliver event to lucipres.
+# Takes explicit targetact so status updates go to the correct activity.
+writeappstatus(id, status: string, targetact: int)
 {
-	if(actid < 0) return;
-	writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, actid),
+	if(targetact < 0) return;
+	writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, targetact),
 		"appstatus id=" + id + " status=" + status);
 	if(lucipres_g != nil)
 		lucipres_g->deliverevent("presentation app " + id + " status=" + status);
 }
 
-# checklaunchapp: called when nslistener sees "presentation new <id>"
+# checklaunchapp: called when globallistener sees "applaunch <actid> <id>"
 #
 # If the new artifact has type=app, reads dispath and launches the GUI app.
+# Uses the explicit targetact parameter — NEVER the global actid — so that
+# apps always launch in the activity that created them.
 # Also auto-centers the artifact so handleprescurrent() fires and hides all
 # other apps — without this, the newly-launched app window starts at z-top
 # but activeappid is never set, so subsequent "center mermaid" calls call
 # hideapp("") which is a no-op, leaving the app window floating over content.
-checklaunchapp(id: string)
+checklaunchapp(id: string, targetact: int)
 {
-	if(actid < 0) return;
-	base := sys->sprint("%s/activity/%d/presentation/%s", mountpt, actid, id);
+	if(targetact < 0) return;
+	base := sys->sprint("%s/activity/%d/presentation/%s", mountpt, targetact, id);
 	atype := readfile(base + "/type");
 	if(atype != nil) atype = strip(atype);
 	if(atype != "app") return;
@@ -1648,10 +1662,10 @@ checklaunchapp(id: string)
 	# Read data field for app arguments (e.g., file path for edit)
 	appdata := readfile(base + "/data");
 	if(appdata != nil) appdata = strip(appdata);
-	launchapp(id, dispath, appdata);
+	launchapp(id, dispath, appdata, targetact);
 	# Auto-center the new app so handleprescurrent() hides other apps
-	if(actid >= 0)
-		writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, actid),
+	if(targetact >= 0)
+		writetofile(sys->sprint("%s/activity/%d/presentation/ctl", mountpt, targetact),
 			"center id=" + id);
 }
 
@@ -1712,12 +1726,12 @@ validdispath(path: string): int
 	return 1;
 }
 
-launchapp(id, dispath, appdata: string)
+launchapp(id, dispath, appdata: string, targetact: int)
 {
 	# Validate dispath against whitelist
 	if(!validdispath(dispath)) {
 		sys->fprint(stderr, "lucifer: blocked load of %s: not in allowed path\n", dispath);
-		writeappstatus(id, "dead");
+		writeappstatus(id, "dead", targetact);
 		return;
 	}
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
@@ -1731,7 +1745,7 @@ launchapp(id, dispath, appdata: string)
 	guimod := load GuiApp dispath;
 	if(guimod == nil) {
 		sys->fprint(stderr, "lucifer: cannot load %s: %r\n", dispath);
-		writeappstatus(id, "dead");
+		writeappstatus(id, "dead", targetact);
 		return;
 	}
 	# Create per-app proxy wmchan; the relay registers token→id before forwarding
@@ -1747,7 +1761,7 @@ launchapp(id, dispath, appdata: string)
 	} else
 		appargs = dispath :: nil;
 	spawn guimod->init(newctxt, appargs);
-	writeappstatus(id, "running");
+	writeappstatus(id, "running", targetact);
 }
 
 # appwmrelay: per-app goroutine that intercepts the single wmlib registration
