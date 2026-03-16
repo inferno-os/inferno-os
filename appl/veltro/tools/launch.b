@@ -226,10 +226,14 @@ exec(args: string): string
 	return "launched " + label + " in presentation zone";
 }
 
-# Read current activity ID from namespace
+# Read this tool's own activity ID from tools9p.
+# /tool/activity is served by the tools9p instance this tool belongs to.
+# Falls back to /n/ui/activity/current for backward compatibility.
 currentactid(): int
 {
-	s := readfile(UI_MOUNT + "/activity/current");
+	s := readfile("/tool/activity");
+	if(s == nil)
+		s = readfile(UI_MOUNT + "/activity/current");
 	if(s == nil)
 		return -1;
 	s = strip(s);

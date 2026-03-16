@@ -810,8 +810,9 @@ provisiontask(args: string)
 	}
 
 	# Ensure basic tools are always included — every child agent needs these
-	# for fundamental capability (navigation, memory, presentation, planning)
-	basics := "read" :: "list" :: "find" :: "memory" :: "todo" :: "plan" :: "present" :: "gap" :: nil;
+	# for fundamental capability (navigation, memory, presentation, planning,
+	# search, and delegation via spawn)
+	basics := "read" :: "list" :: "find" :: "search" :: "grep" :: "memory" :: "todo" :: "plan" :: "spawn" :: "present" :: "gap" :: nil;
 	for(bl := basics; bl != nil; bl = tl bl)
 		if(!strlist_contains(toollist, hd bl))
 			toollist = hd bl :: toollist;

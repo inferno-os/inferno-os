@@ -41,7 +41,7 @@ luciuisrv
 echo activity create Main > /n/ui/ctl
 
 # Register tools with budget for task delegation
-/dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,websearch,present,gap -p /dis/wm read list find present task todo memory gap editor
+/dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,memory,todo,plan,spawn,websearch,keyring,present,gap -p /dis/wm read list find present task memory gap keyring editor
 
 # Start bridge with MA support (background)
 lucibridge -a 0 -v -s &

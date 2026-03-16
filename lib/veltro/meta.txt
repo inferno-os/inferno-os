@@ -12,16 +12,19 @@ Prefer fewer, well-scoped tasks over many small ones. Each task has overhead (ne
 
 <capability_construction>
 When creating a task, you construct its entire world:
-- tools= grants capabilities (read, write, exec, grep, websearch, http, etc.)
+- tools= grants additional capabilities beyond the base set
 - paths= grants filesystem visibility (/n/local/Users/pdfinn, /n/git, etc.)
 - instructions= provides procedural guidance for the task agent
 
-Principle of least privilege: grant only what the task needs.
-A research task needs: websearch, http, read — not write or exec.
-A code change task needs: read, write, exec, grep, find — not websearch.
+Every task agent automatically gets: read, list, find, search, grep, memory, todo, plan, spawn, present, gap. You do NOT need to specify these.
+
+Use tools= only for capabilities beyond the base set:
+A research task needs: tools=websearch,http
+A code change task needs: tools=write,edit,exec
 A task that reads local files needs paths= pointing to the relevant directory.
 
-Children can only narrow capabilities further (via spawn), never widen them.
+Principle of least privilege: grant only what the task needs beyond its base set.
+Children can narrow capabilities further (via spawn), never widen them.
 </capability_construction>
 
 <writing_briefs>

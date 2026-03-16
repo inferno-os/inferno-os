@@ -733,8 +733,7 @@ Listbox.click(lb: self ref Listbox, p: Point): int
 
 	# Check scrollbar first
 	if(lb.scroll != nil && lb.scroll.r.contains(p)) {
-		pp := ref Pointer(p.buttons, p, 0);
-		pp.buttons = 1;
+		pp := ref Pointer(1, p, 0);
 		newo := lb.scroll.event(pp);
 		if(newo >= 0)
 			lb.top = newo;

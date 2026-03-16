@@ -21,7 +21,7 @@ echo activity create Main > /n/ui/ctl
 llmsrv &
 speech9p &
 sleep 1
-/dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,http,git,websearch,mail,present,gap -p /dis/wm read list find present say hear task todo memory gap editor shell
+/dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,http,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell
 lucibridge -a 0 -v -s &
 sleep 1
 echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl

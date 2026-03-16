@@ -1657,11 +1657,11 @@ addtool(name: string)
 			return;
 	if(!toolmount_ready())
 		return;
+	writetofile(toolmount_g + "/ctl", "add " + name);
 	if(actid_g == 0) {
-		# Budget mode: add to delegation budget
+		# MA: also add to delegation budget so child tasks can use it
 		writetofile(toolmount_g + "/ctl", "budget-add " + name);
 	} else {
-		writetofile(toolmount_g + "/ctl", "add " + name);
 		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g),
 			"resource add path=" + name + " label=" + name + " type=tool status=idle");
 	}
@@ -1675,11 +1675,11 @@ removetool(name: string)
 {
 	if(!toolmount_ready())
 		return;
+	writetofile(toolmount_g + "/ctl", "remove " + name);
 	if(actid_g == 0) {
-		# Budget mode: remove from delegation budget
+		# MA: also remove from delegation budget
 		writetofile(toolmount_g + "/ctl", "budget-remove " + name);
 	} else {
-		writetofile(toolmount_g + "/ctl", "remove " + name);
 		writetofile(sys->sprint("%s/activity/%d/context/ctl", mountpt_g, actid_g), "resource remove " + name);
 	}
 	# Re-read from tools9p to confirm the change took effect

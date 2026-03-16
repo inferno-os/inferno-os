@@ -897,6 +897,9 @@ switchactivity(newid: int)
 		return;
 
 	actid = newid;
+	# Tell luciuisrv which activity is focused so tools (e.g. launch)
+	# that read /n/ui/activity/current get the correct id.
+	writefile(sys->sprint("%s/activity/current", mountpt), string newid);
 	loadlabel();
 	loadstatus();
 

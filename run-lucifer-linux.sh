@@ -38,7 +38,7 @@ fi
 
 # llmsrv is the native Limbo Styx server for LLM access — it self-mounts at
 # /n/llm and uses factotum for API key retrieval. No external Go process needed.
-LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; llmsrv &; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,http,git,websearch,mail,present,gap -p /dis/wm read list find present say hear task todo memory gap xenith editor shell charon; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
+LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; llmsrv &; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,http,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring xenith editor shell charon; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
 # --- Launch emulator ---
 cd "$ROOT/emu/Linux"
