@@ -21,7 +21,7 @@ trans : Translate;
 dict : ref Dict;
 
 NCTimeout : con 100000;		# free NC slot after 100 seconds
-UBufsize : con 40*1024;		# initial buffer size for unknown lengths
+UBufsize : con 128*1024;	# initial buffer size for unknown lengths
 UEBufsize : con 1024;		# initial buffer size for unknown lengths, error responses
 
 botchexception := "EXInternal: ByteSource protocol botch";
@@ -1570,7 +1570,7 @@ setconfig(argl: list of string)
 	config.docookies = 1;
 	config.doscripts = 1;
 	config.httpminor = 1;
-	config.agentname = "Mozilla/5.0 (compatible; Charon/1.0; Inferno)";
+	config.agentname = "Mozilla/5.0 (compatible; Inferno; Dis) Charon/1.0 (https://github.com/psilva261/infernode)";
 	config.nthreads = 8;
 	config.offersave = 1;
 	config.charset = "utf-8";

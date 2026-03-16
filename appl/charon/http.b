@@ -371,6 +371,8 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 		reqhdr.addval(HHost, u.host);
 	reqhdr.addval(HUserAgent, agent);
 	reqhdr.addval(HAccept, "text/html, application/xhtml+xml, image/webp, image/png, image/jpeg, image/svg+xml, image/gif, */*;q=0.1");
+	reqhdr.addval(HAcceptLanguage, "en-US,en;q=0.9");
+	reqhdr.addval(HAcceptEncoding, "identity");
 	if(!(nc.tstate&THTTP_1_0))
 		reqhdr.addval(HConnection, "keep-alive");
 	if(req.auth != "")
@@ -528,10 +530,10 @@ hdrconv(hh: ref HTTP_Header, u: ref Parsedurl) : ref Header
 	hdr.refresh = hh.getval(HRefresh);
 	hdr.chal = hh.getval(HWWWAuthenticate);
 	s = hh.getval(HContentEncoding);
-	if(s != "") {
+	if(s != "" && s != "identity") {
 		if(warn)
 			sys->print("warning: unhandled content encoding: %s\n", s);
-		# force "save as" dialog
+		# force "save as" dialog for encodings we can't decode
 		hdr.mtype = CU->UnknownType;
 	}
 	hdr.warn = hh.getval(HWarning);
