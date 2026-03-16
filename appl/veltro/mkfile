@@ -55,6 +55,7 @@ TOOLS=\
     tools/task.dis\
     tools/gap.dis\
     tools/plan.dis\
+    tools/keyring.dis\
 
 all:V: $MAIN $TOOLS $SOURCES
 
@@ -206,6 +207,10 @@ tools/gap.dis: tools/gap.b tool.m
 # Plan tool
 tools/plan.dis: tools/plan.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/plan.dis tools/plan.b
+
+# Keyring tool (credential management)
+tools/keyring.dis: tools/keyring.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/keyring.dis tools/keyring.b
 
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools $DISBIN/sources

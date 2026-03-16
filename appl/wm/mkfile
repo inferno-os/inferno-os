@@ -7,6 +7,7 @@ TARG=\
 	logon.dis\
 	clock.dis\
 	colors.dis\
+	keyring.dis\
 	lens.dis\
 	editor.dis\
 	fractals.dis\
@@ -21,6 +22,7 @@ SYSMODULES=\
 	bufio.m\
 	daytime.m\
 	draw.m\
+	factotum.m\
 	formatter.m\
 	html.m\
 	imagefile.m\
@@ -36,6 +38,7 @@ SYSMODULES=\
 	styxservers.m\
 	sys.m\
 	webclient.m\
+	widget.m\
 	winplace.m\
 	wmclient.m\
 	wmsrv.m\

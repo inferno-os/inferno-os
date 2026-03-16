@@ -23,8 +23,11 @@ include "widget.m";
 SCROLLW: con 12;	# scrollbar width in pixels
 MARGIN:  con 4;		# text padding in status bar
 MINTHUMB: con 10;	# minimum thumb size in pixels
+FIELDPAD: con 3;	# internal padding in text fields
+LABELGAP: con 6;	# gap between label and input area
 
 wfont:    ref Font;
+wdisplay: ref Display;	# cached for colour allocation
 
 # Cached colour images (created from theme in init/retheme)
 trackcolor:  ref Image;
@@ -33,6 +36,19 @@ statusbg:    ref Image;
 statusfg:    ref Image;
 sepcolor:    ref Image;
 promptfg:    ref Image;	# text colour in prompt mode (edittext)
+fieldbg:     ref Image;	# text field background
+fieldborder: ref Image;	# text field border
+fieldfocus:  ref Image;	# focused field border
+fieldtext:   ref Image;	# text field text colour
+fieldlabel:  ref Image;	# label text colour
+fieldcursor: ref Image;	# text cursor colour
+listsel:     ref Image;	# list selection highlight
+listtext:    ref Image;	# list item text
+listbg:      ref Image;	# list background
+btnbg:       ref Image;	# button background
+btnborder:   ref Image;	# button border
+btntext:     ref Image;	# button text
+btnpress:    ref Image;	# button pressed background
 
 # ── Internal scrollbar drag state ─────────────────────────────
 #
@@ -54,6 +70,7 @@ init(display: ref Display, font: ref Font)
 	sys  = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
 	wfont = font;
+	wdisplay = display;
 	activesb = nil;
 	loadcolors(display);
 }
@@ -67,24 +84,51 @@ loadcolors(display: ref Display)
 {
 	if(display == nil)
 		return;
+	wdisplay = display;
 	lucitheme := load Lucitheme Lucitheme->PATH;
 	if(lucitheme == nil) {
 		# Fallback to hardcoded defaults
-		trackcolor = display.color(int 16rE8E8E8FF);
-		thumbcolor = display.color(int 16rBBBBBBFF);
-		statusbg   = display.color(int 16rE8E8E8FF);
-		statusfg   = display.color(int 16r555555FF);
-		sepcolor   = display.color(int 16rBBBBBBFF);
-		promptfg   = display.color(int 16r333333FF);
+		trackcolor  = display.color(int 16rE8E8E8FF);
+		thumbcolor  = display.color(int 16rBBBBBBFF);
+		statusbg    = display.color(int 16rE8E8E8FF);
+		statusfg    = display.color(int 16r555555FF);
+		sepcolor    = display.color(int 16rBBBBBBFF);
+		promptfg    = display.color(int 16r333333FF);
+		fieldbg     = display.color(int 16rFFFFFFFF);
+		fieldborder = display.color(int 16rBBBBBBFF);
+		fieldfocus  = display.color(int 16r2266CCFF);
+		fieldtext   = display.color(int 16r333333FF);
+		fieldlabel  = display.color(int 16r666666FF);
+		fieldcursor = display.color(int 16r2266CCFF);
+		listsel     = display.color(int 16rB4D5FEFF);
+		listtext    = display.color(int 16r333333FF);
+		listbg      = display.color(int 16rFFFFFFFF);
+		btnbg       = display.color(int 16rE8E8E8FF);
+		btnborder   = display.color(int 16rBBBBBBFF);
+		btntext     = display.color(int 16r333333FF);
+		btnpress    = display.color(int 16rCCCCCCFF);
 		return;
 	}
 	th := lucitheme->gettheme();
-	trackcolor = display.color(th.editscroll);
-	thumbcolor = display.color(th.editthumb);
-	statusbg   = display.color(th.editstatus);
-	statusfg   = display.color(th.editstattext);
-	sepcolor   = display.color(th.editlineno);
-	promptfg   = display.color(th.edittext);
+	trackcolor  = display.color(th.editscroll);
+	thumbcolor  = display.color(th.editthumb);
+	statusbg    = display.color(th.editstatus);
+	statusfg    = display.color(th.editstattext);
+	sepcolor    = display.color(th.editlineno);
+	promptfg    = display.color(th.edittext);
+	fieldbg     = display.color(th.editbg);
+	fieldborder = display.color(th.editlineno);
+	fieldfocus  = display.color(th.editcursor);
+	fieldtext   = display.color(th.edittext);
+	fieldlabel  = display.color(th.dim);
+	fieldcursor = display.color(th.editcursor);
+	listsel     = display.color(th.accent);
+	listtext    = display.color(th.edittext);
+	listbg      = display.color(th.editbg);
+	btnbg       = display.color(th.editstatus);
+	btnborder   = display.color(th.editlineno);
+	btntext     = display.color(th.editstattext);
+	btnpress    = display.color(th.editscroll);
 }
 
 scrollwidth(): int
@@ -468,4 +512,318 @@ Statusbar.key(sb: self ref Statusbar, c: int): (int, string)
 		}
 		return (0, nil);
 	}
+}
+
+# ── Textfield ────────────────────────────────────────────────
+
+# Compute the input area rectangle (excludes label).
+tfinputr(tf: ref Textfield): Rect
+{
+	if(wfont == nil || tf.label == nil || len tf.label == 0)
+		return tf.r;
+	lw := wfont.width(tf.label) + LABELGAP;
+	return Rect((tf.r.min.x + lw, tf.r.min.y), tf.r.max);
+}
+
+# Return the display string (dots for secret fields).
+tfdisplay(tf: ref Textfield): string
+{
+	if(!tf.secret)
+		return tf.text;
+	s := "";
+	for(i := 0; i < len tf.text; i++)
+		s += "*";
+	return s;
+}
+
+Textfield.mk(r: Rect, label: string, secret: int): ref Textfield
+{
+	return ref Textfield(r, "", 0, secret, 0, label);
+}
+
+Textfield.draw(tf: self ref Textfield, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+
+	# Draw label
+	if(tf.label != nil && len tf.label > 0) {
+		ly := tf.r.min.y + FIELDPAD;
+		dst.text(Point(tf.r.min.x, ly), fieldlabel, Point(0, 0), wfont, tf.label);
+	}
+
+	# Input area
+	ir := tfinputr(tf);
+
+	# Background
+	dst.draw(ir, fieldbg, nil, Point(0, 0));
+
+	# Border (1px)
+	bcol := fieldborder;
+	if(tf.focused)
+		bcol = fieldfocus;
+	# Top
+	dst.draw(Rect(ir.min, (ir.max.x, ir.min.y + 1)), bcol, nil, Point(0, 0));
+	# Bottom
+	dst.draw(Rect((ir.min.x, ir.max.y - 1), ir.max), bcol, nil, Point(0, 0));
+	# Left
+	dst.draw(Rect(ir.min, (ir.min.x + 1, ir.max.y)), bcol, nil, Point(0, 0));
+	# Right
+	dst.draw(Rect((ir.max.x - 1, ir.min.y), ir.max), bcol, nil, Point(0, 0));
+
+	# Text
+	tx := ir.min.x + FIELDPAD + 1;
+	ty := ir.min.y + FIELDPAD;
+	ds := tfdisplay(tf);
+	dst.text(Point(tx, ty), fieldtext, Point(0, 0), wfont, ds);
+
+	# Cursor
+	if(tf.focused) {
+		cpos := tf.cursor;
+		if(cpos > len ds)
+			cpos = len ds;
+		pre := ds[0:cpos];
+		cx := tx + wfont.width(pre);
+		cy1 := ir.min.y + 2;
+		cy2 := ir.max.y - 2;
+		dst.line(Point(cx, cy1), Point(cx, cy2),
+			 0, 0, 0, fieldcursor, Point(0, 0));
+	}
+}
+
+Textfield.resize(tf: self ref Textfield, r: Rect)
+{
+	tf.r = r;
+}
+
+Textfield.key(tf: self ref Textfield, c: int): int
+{
+	if(!tf.focused)
+		return 0;
+
+	case c {
+	'\n' =>
+		return 1;
+	Kbs =>
+		if(tf.cursor > 0) {
+			tf.text = tf.text[0:tf.cursor-1] + tf.text[tf.cursor:];
+			tf.cursor--;
+		}
+	Kdel =>
+		if(tf.cursor < len tf.text)
+			tf.text = tf.text[0:tf.cursor] + tf.text[tf.cursor+1:];
+	Kleft =>
+		if(tf.cursor > 0)
+			tf.cursor--;
+	Kright =>
+		if(tf.cursor < len tf.text)
+			tf.cursor++;
+	Khome =>
+		tf.cursor = 0;
+	Kend =>
+		tf.cursor = len tf.text;
+	* =>
+		if(c >= 32 && c < 16rFF00) {
+			ch := "x";
+			ch[0] = c;
+			tf.text = tf.text[0:tf.cursor] + ch + tf.text[tf.cursor:];
+			tf.cursor++;
+		}
+	}
+	return 0;
+}
+
+Textfield.click(tf: self ref Textfield, p: Point)
+{
+	if(wfont == nil)
+		return;
+	ir := tfinputr(tf);
+	tx := ir.min.x + FIELDPAD + 1;
+	ds := tfdisplay(tf);
+	# Find character position closest to click
+	best := 0;
+	bestdist := p.x - tx;
+	if(bestdist < 0)
+		bestdist = -bestdist;
+	for(i := 1; i <= len ds; i++) {
+		cx := tx + wfont.width(ds[0:i]);
+		d := p.x - cx;
+		if(d < 0)
+			d = -d;
+		if(d < bestdist) {
+			bestdist = d;
+			best = i;
+		}
+	}
+	tf.cursor = best;
+}
+
+Textfield.contains(tf: self ref Textfield, p: Point): int
+{
+	return tf.r.contains(p);
+}
+
+Textfield.value(tf: self ref Textfield): string
+{
+	return tf.text;
+}
+
+Textfield.setval(tf: self ref Textfield, s: string)
+{
+	tf.text = s;
+	tf.cursor = len s;
+}
+
+# ── Listbox ──────────────────────────────────────────────────
+
+Listbox.mk(r: Rect): ref Listbox
+{
+	# Scrollbar on the left (Plan 9 convention)
+	sbr := Rect(r.min, (r.min.x + SCROLLW, r.max.y));
+	sb := Scrollbar.new(sbr, 1);
+	return ref Listbox(Rect((r.min.x + SCROLLW, r.min.y), r.max),
+			   nil, -1, 0, sb);
+}
+
+Listbox.draw(lb: self ref Listbox, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+
+	# Background
+	dst.draw(lb.r, listbg, nil, Point(0, 0));
+
+	# Draw items
+	rowh := wfont.height + MARGIN;
+	vis := lb.visible();
+	y := lb.r.min.y;
+	for(i := 0; i < vis && lb.top + i < len lb.items; i++) {
+		idx := lb.top + i;
+		rowr := Rect((lb.r.min.x, y), (lb.r.max.x, y + rowh));
+		if(idx == lb.selected)
+			dst.draw(rowr, listsel, nil, Point(0, 0));
+		tx := lb.r.min.x + MARGIN;
+		ty := y + MARGIN / 2;
+		dst.text(Point(tx, ty), listtext, Point(0, 0), wfont, lb.items[idx]);
+		y += rowh;
+	}
+
+	# Scrollbar
+	if(lb.scroll != nil) {
+		lb.scroll.total = len lb.items;
+		lb.scroll.visible = vis;
+		lb.scroll.origin = lb.top;
+		lb.scroll.draw(dst);
+	}
+}
+
+Listbox.resize(lb: self ref Listbox, r: Rect)
+{
+	if(lb.scroll != nil) {
+		sbr := Rect(r.min, (r.min.x + SCROLLW, r.max.y));
+		lb.scroll.resize(sbr);
+	}
+	lb.r = Rect((r.min.x + SCROLLW, r.min.y), r.max);
+}
+
+Listbox.click(lb: self ref Listbox, p: Point): int
+{
+	if(wfont == nil || lb.items == nil)
+		return -1;
+
+	# Check scrollbar first
+	if(lb.scroll != nil && lb.scroll.r.contains(p)) {
+		pp := ref Pointer(p.buttons, p, 0);
+		pp.buttons = 1;
+		newo := lb.scroll.event(pp);
+		if(newo >= 0)
+			lb.top = newo;
+		return lb.selected;
+	}
+
+	if(!lb.r.contains(p))
+		return -1;
+
+	rowh := wfont.height + MARGIN;
+	row := (p.y - lb.r.min.y) / rowh;
+	idx := lb.top + row;
+	if(idx >= 0 && idx < len lb.items)
+		lb.selected = idx;
+	return lb.selected;
+}
+
+Listbox.wheel(lb: self ref Listbox, button: int): int
+{
+	if(lb.scroll == nil)
+		return lb.top;
+	lb.scroll.total = len lb.items;
+	lb.scroll.visible = lb.visible();
+	lb.scroll.origin = lb.top;
+	lb.top = lb.scroll.wheel(button, 3);
+	return lb.top;
+}
+
+Listbox.contains(lb: self ref Listbox, p: Point): int
+{
+	if(lb.scroll != nil && lb.scroll.r.contains(p))
+		return 1;
+	return lb.r.contains(p);
+}
+
+Listbox.setitems(lb: self ref Listbox, items: array of string)
+{
+	lb.items = items;
+	lb.selected = -1;
+	lb.top = 0;
+}
+
+Listbox.visible(lb: self ref Listbox): int
+{
+	if(wfont == nil)
+		return 0;
+	rowh := wfont.height + MARGIN;
+	if(rowh <= 0)
+		return 0;
+	return lb.r.dy() / rowh;
+}
+
+# ── Button ───────────────────────────────────────────────────
+
+Button.mk(r: Rect, label: string): ref Button
+{
+	return ref Button(r, label, 0);
+}
+
+Button.draw(b: self ref Button, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+
+	bg := btnbg;
+	if(b.pressed)
+		bg = btnpress;
+
+	dst.draw(b.r, bg, nil, Point(0, 0));
+
+	# Border
+	dst.draw(Rect(b.r.min, (b.r.max.x, b.r.min.y + 1)), btnborder, nil, Point(0, 0));
+	dst.draw(Rect((b.r.min.x, b.r.max.y - 1), b.r.max), btnborder, nil, Point(0, 0));
+	dst.draw(Rect(b.r.min, (b.r.min.x + 1, b.r.max.y)), btnborder, nil, Point(0, 0));
+	dst.draw(Rect((b.r.max.x - 1, b.r.min.y), b.r.max), btnborder, nil, Point(0, 0));
+
+	# Centered label
+	tw := wfont.width(b.label);
+	tx := b.r.min.x + (b.r.dx() - tw) / 2;
+	ty := b.r.min.y + (b.r.dy() - wfont.height) / 2;
+	dst.text(Point(tx, ty), btntext, Point(0, 0), wfont, b.label);
+}
+
+Button.resize(b: self ref Button, r: Rect)
+{
+	b.r = r;
+}
+
+Button.contains(b: self ref Button, p: Point): int
+{
+	return b.r.contains(p);
 }
