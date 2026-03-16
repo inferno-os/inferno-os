@@ -372,7 +372,78 @@ UA_CSS: con
 	# == Metadata and hidden content ==
 	+ ".metadata { display: none }\n"
 	+ ".mbox-small { display: none }\n"
-	+ ".hide-when-compact { display: none }\n";
+	+ ".hide-when-compact { display: none }\n"
+	#
+	# == Wikipedia Main Page: additional classes ==
+	# Featured article / Did you know / On this day / In the news boxes
+	+ "#mp-tfa { padding: 4px }\n"	# Today's featured article
+	+ "#mp-dyk { padding: 4px }\n"	# Did you know
+	+ "#mp-itn { padding: 4px }\n"	# In the news
+	+ "#mp-otd { padding: 4px }\n"	# On this day
+	+ "#mp-tfl { padding: 4px }\n"	# Today's featured list
+	+ "#mp-tfp { padding: 4px }\n"	# Today's featured picture
+	# Main page welcome banner and heading
+	+ "#mp-topbanner { text-align: center; padding: 4px; margin-bottom: 8px }\n"
+	+ "#mp-welcome { font-size: large; text-align: center; padding: 8px 0 }\n"
+	#
+	# == Wikipedia layout: additional Vector 2022 classes ==
+	+ ".mw-page-container { display: block; max-width: 100% }\n"
+	+ ".mw-content-container { display: block }\n"
+	+ ".mw-header-container { display: none }\n"
+	+ ".mw-footer-container { display: block }\n"
+	+ ".vector-feature-page-tools-disabled { display: block }\n"
+	#
+	# == Additional MediaWiki content classes ==
+	+ ".mw-headline { display: inline }\n"
+	+ ".mw-headline-number { margin-right: 4px }\n"
+	+ ".mw-redirect { display: inline }\n"
+	+ ".mw-selflink { font-weight: bold }\n"
+	+ ".mw-disambig { font-style: italic }\n"
+	+ ".mw-cite-backlink { display: inline }\n"
+	+ ".reference-text { display: inline }\n"
+	#
+	# == Shortdescription and page status ==
+	+ ".shortdescription { display: none }\n"
+	+ ".mw-page-title-main { font-size: xx-large; font-weight: bold }\n"
+	#
+	# == IPA pronunciation and language annotations ==
+	+ ".IPA { font-family: monospace }\n"
+	+ ".Unicode { font-family: monospace }\n"
+	#
+	# == Horizontal description lists ==
+	+ ".hlist dd { display: inline }\n"
+	+ ".hlist dt { display: inline; font-weight: bold }\n"
+	#
+	# == Nowrap utility ==
+	+ ".nowrap { white-space: nowrap }\n"
+	+ ".nowraplinks { display: inline }\n"
+	#
+	# == Compact list styles ==
+	+ ".portalbox { display: none }\n"
+	+ ".portal-bar { display: none }\n"
+	+ ".noviewer { display: inline }\n"
+	+ ".geo-nondefault { display: none }\n"
+	+ ".geo-default { display: inline }\n"
+	+ ".geo-dec { display: inline }\n"
+	+ ".geo-dms { display: none }\n"
+	#
+	# == Image and media containers ==
+	+ ".mw-file-element { display: inline }\n"
+	+ ".mw-file-description { display: inline }\n"
+	+ ".mw-default-size { display: inline }\n"
+	+ ".mw-halign-right { float: right; clear: right; margin: 0 0 8px 16px }\n"
+	+ ".mw-halign-left { float: left; clear: left; margin: 0 16px 8px 0 }\n"
+	+ ".mw-halign-center { text-align: center; margin: 8px auto }\n"
+	+ ".mw-halign-none { display: inline }\n"
+	#
+	# == Misc cleanup ==
+	+ ".printfooter { display: none }\n"
+	+ ".mw-data-after-content { display: none }\n"
+	+ ".mw-cartographic-map { display: none }\n"
+	+ ".noresize { display: inline }\n"
+	#
+	# == Accessibility: hide aria-hidden elements ==
+	+ "[aria-hidden=\"true\"] { display: none }\n";
 
 utf8 : Btos;
 latin1 : Btos;
@@ -1136,6 +1207,12 @@ TokLoop:
 				dfltbd = 2;
 			src := aurlval(tok, LX->Asrc, nil, di.base);
 			if(src == nil) {
+				# Try srcset fallback (Wikipedia uses srcset for responsive images)
+				srcset := aval(tok, LX->Asrcset);
+				if(srcset != nil && srcset != "")
+					src = srcset_pick(srcset, di.base);
+			}
+			if(src == nil) {
 				if(warn)
 					sys->print("warning: <img> has no src attribute\n");
 				ps.curanchor = oldcuranchor;
@@ -1333,6 +1410,15 @@ TokLoop:
 		LX->Tmeta =>
 			if(ps.skipping)
 				continue;
+			# HTML5 <meta charset="UTF-8"> support
+			metacs := aval(tok, LX->Acharset);
+			if(metacs != nil && metacs != "") {
+				btos := CU->getconv(metacs);
+				if(btos != nil)
+					is.ts.setchset(btos);
+				else if(warn)
+					sys->print("cannot set charset %s\n", metacs);
+			}
 			(fnd, equiv) := tok.aval(LX->Ahttp_equiv);
 			if(fnd) {
 				v := aval(tok, LX->Acontent);
@@ -1359,10 +1445,9 @@ TokLoop:
 						nvs := Nameval.namevals(parms[1:], ';');
 						(got, s) := Nameval.find(nvs, "charset");
 						if (got) {
-# sys->print("HTTP-EQUIV charset: %s\n", s);
-							btos := CU->getconv(s);
-							if (btos != nil)
-								is.ts.setchset(btos);
+							btos2 := CU->getconv(s);
+							if (btos2 != nil)
+								is.ts.setchset(btos2);
 							else if (warn)
 								sys->print("cannot set charset %s\n", s);
 						}
@@ -3609,6 +3694,68 @@ stripwhite(s: string) : string
 	if(j < n)
 		s = s[0:j];
 	return s;
+}
+
+# Pick the best URL from an HTML srcset attribute value.
+# srcset is a comma-separated list of "url [descriptor]" entries.
+# We pick the 1x candidate if present, otherwise the first entry.
+# Returns a parsed URL, or nil if srcset is empty/unparseable.
+srcset_pick(srcset: string, base: ref Parsedurl): ref Parsedurl
+{
+	# Split on commas
+	best := "";
+	bestw := 0;
+	rest := srcset;
+	while(rest != nil && rest != "") {
+		# Split off next candidate
+		candidate: string;
+		for(i := 0; i < len rest; i++) {
+			if(rest[i] == ',') {
+				candidate = rest[:i];
+				rest = rest[i+1:];
+				break;
+			}
+		}
+		if(candidate == "") {
+			candidate = rest;
+			rest = "";
+		}
+		# Trim whitespace
+		candidate = S->drop(candidate, whitespace);
+		if(candidate == "")
+			continue;
+		# Split "url descriptor"
+		(curl, desc) := S->splitl(candidate, whitespace);
+		if(curl == "")
+			continue;
+		desc = S->drop(desc, whitespace);
+		# Score: prefer 1x, then smaller widths, then first
+		if(best == "") {
+			best = curl;
+			bestw = 1;
+		}
+		if(desc == "" || desc == "1x") {
+			# Exact 1x match — use it
+			best = curl;
+			break;
+		}
+		# If descriptor is a width (e.g. "320w"), track the smallest
+		# reasonable image (>= 200px) as fallback
+		n := len desc;
+		if(n > 1 && (desc[n-1] == 'w' || desc[n-1] == 'W')) {
+			w := int desc[:n-1];
+			if(w >= 200 && (bestw == 1 || w < bestw)) {
+				best = curl;
+				bestw = w;
+			}
+		}
+	}
+	if(best == "")
+		return nil;
+	url := U->parse(stripwhite(best));
+	if(url != nil && base != nil)
+		url = U->mkabs(url, base);
+	return url;
 }
 
 # Presence of attribute implies true, omission implies false.
