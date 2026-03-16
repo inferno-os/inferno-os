@@ -15,6 +15,11 @@ MAIN=\
     subagent.dis\
     mc9p.dis\
     speech9p.dis\
+    msg9p.dis\
+    msgwatch.dis\
+
+SOURCES=\
+    sources/email.dis\
 
 TOOLS=\
     tools/read.dis\
@@ -51,7 +56,7 @@ TOOLS=\
     tools/gap.dis\
     tools/plan.dis\
 
-all:V: $MAIN $TOOLS
+all:V: $MAIN $TOOLS $SOURCES
 
 # Main programs
 agentlib.dis: agentlib.b agentlib.m
@@ -80,6 +85,16 @@ mc9p.dis: mc9p.b
 
 speech9p.dis: speech9p.b
 	limbo $LIMBOFLAGS -gw speech9p.b
+
+msg9p.dis: msg9p.b
+	limbo $LIMBOFLAGS -gw msg9p.b
+
+msgwatch.dis: msgwatch.b agentlib.m
+	limbo $LIMBOFLAGS -gw msgwatch.b
+
+# Sources
+sources/email.dis: sources/email.b
+	limbo $LIMBOFLAGS -gw -o sources/email.dis sources/email.b
 
 # Tools
 tools/read.dis: tools/read.b tool.m
@@ -193,12 +208,13 @@ tools/plan.dis: tools/plan.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/plan.dis tools/plan.b
 
 install:V: all
-	mkdir -p $DISBIN $DISBIN/tools
-	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis cowfs.dis subagent.dis mc9p.dis speech9p.dis $DISBIN/
+	mkdir -p $DISBIN $DISBIN/tools $DISBIN/sources
+	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis cowfs.dis subagent.dis mc9p.dis speech9p.dis msg9p.dis msgwatch.dis $DISBIN/
 	cp tools/*.dis $DISBIN/tools/
+	cp sources/*.dis $DISBIN/sources/
 
 clean:V:
-	rm -f *.dis *.sbl tools/*.dis tools/*.sbl
+	rm -f *.dis *.sbl tools/*.dis tools/*.sbl sources/*.dis sources/*.sbl
 
 nuke:V: clean
 	rm -rf $DISBIN

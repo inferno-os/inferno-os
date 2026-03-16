@@ -77,6 +77,7 @@ doc(): string
 		"  mail search <terms>               Server-side IMAP SEARCH\n" +
 		"  mail flag <N> seen|unseen|flagged|unflagged  Set/clear flags\n" +
 		"  mail send <to> <subject> <body>   Send email via SMTP\n" +
+		"  mail reply <N> <body>             Reply to message N\n" +
 		"  mail folders                      List available mailboxes\n\n" +
 		"Arguments:\n" +
 		"  server - IMAP server hostname (e.g. imap.gmail.com)\n" +
@@ -116,11 +117,13 @@ exec(args: string): string
 		return doflag(argv);
 	"send" =>
 		return dosend(argv);
+	"reply" =>
+		return doreply(argv);
 	"folders" =>
 		return dofolders();
 	* =>
 		return "error: unknown command: " + cmd +
-			"\nCommands: config, check, list, read, search, flag, send, folders";
+			"\nCommands: config, check, list, read, search, flag, send, reply, folders";
 	}
 }
 
@@ -466,6 +469,101 @@ dosend(argv: list of string): string
 		return "error: send failed: " + serr;
 
 	return "Sent to " + rcpt;
+}
+
+# Reply to a message with proper threading
+doreply(argv: list of string): string
+{
+	if(smtp == nil)
+		return "error: SMTP module not available";
+
+	if(argv == nil || tl argv == nil)
+		return "error: usage: mail reply <N> <body>";
+
+	err := ensureconnected();
+	if(err != nil)
+		return err;
+
+	seq := int hd argv;
+	if(seq <= 0)
+		return "error: invalid message number";
+
+	# Fetch original message envelope for threading
+	(msgs, merr) := imap->msglist(seq, seq);
+	if(merr != nil)
+		return "error: fetch envelope: " + merr;
+	if(msgs == nil)
+		return "error: message " + string seq + " not found";
+
+	orig := hd msgs;
+	if(orig.envelope == nil)
+		return "error: no envelope for message " + string seq;
+
+	# Extract threading info
+	origmsgid := orig.envelope.messageid;
+	origsubject := orig.envelope.subject;
+	origfrom := orig.envelope.sender;
+
+	if(origfrom == nil)
+		return "error: no sender address on original message";
+
+	# Build reply subject
+	replysubject := origsubject;
+	if(replysubject == nil)
+		replysubject = "Re: (no subject)";
+	else if(!hasprefix(str->tolower(replysubject), "re:"))
+		replysubject = "Re: " + replysubject;
+
+	# Join remaining args as body
+	argv = tl argv;
+	body := "";
+	for(; argv != nil; argv = tl argv) {
+		if(body != "")
+			body += " ";
+		body += hd argv;
+	}
+
+	# Get sender from /dev/user
+	sender := readfile("/dev/user");
+	if(sender == nil)
+		sender = "inferno";
+
+	# Build message with threading headers
+	msg: list of string;
+	if(origmsgid != nil)
+		msg = "In-Reply-To: " + origmsgid :: msg;
+	if(origmsgid != nil)
+		msg = "References: " + origmsgid :: msg;
+	msg = "Subject: " + replysubject :: msg;
+	msg = "To: " + origfrom :: msg;
+	msg = "From: " + sender :: msg;
+	msg = "" :: msg;
+	msg = body :: msg;
+
+	# Reverse since we built in reverse order
+	rmsg: list of string;
+	for(; msg != nil; msg = tl msg)
+		rmsg = hd msg :: rmsg;
+
+	# Use IMAP server for SMTP if no explicit SMTP server
+	smtpserver := imapserver;
+	if(smtpserver == nil)
+		smtpserver = "$smtp";
+
+	(ok, serr) := smtp->open(smtpserver);
+	if(ok < 0)
+		return "error: SMTP connect: " + serr;
+
+	(ok, serr) = smtp->sendmail(sender, origfrom :: nil, nil, rmsg);
+	smtp->close();
+
+	if(ok < 0)
+		return "error: reply failed: " + serr;
+
+	# Mark original as answered
+	imap->store(seq, Imap->FANSWERED, 1);
+
+	return "Reply sent to " + origfrom;
 }
 
 # List mailbox folders
