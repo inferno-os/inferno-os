@@ -370,7 +370,7 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 	else
 		reqhdr.addval(HHost, u.host);
 	reqhdr.addval(HUserAgent, agent);
-	reqhdr.addval(HAccept, "text/html, application/xhtml+xml, image/png, image/jpeg, image/gif, */*;q=0.1");
+	reqhdr.addval(HAccept, "text/html, application/xhtml+xml, image/webp, image/png, image/jpeg, image/svg+xml, image/gif, */*;q=0.1");
 	if(!(nc.tstate&THTTP_1_0))
 		reqhdr.addval(HConnection, "keep-alive");
 	if(req.auth != "")
