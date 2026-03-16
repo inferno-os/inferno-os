@@ -442,6 +442,47 @@ UA_CSS: con
 	+ ".mw-cartographic-map { display: none }\n"
 	+ ".noresize { display: inline }\n"
 	#
+	# == Wikipedia Main Page: section heading variants ==
+	# The Main Page uses numbered heading classes for different colored bars
+	+ ".mp-h2 h2 { font-size: large; margin: 0; padding: 0; border: none }\n"
+	+ "#mp-tfa-h2 { background-color: #cef2e0; border: 1px solid #a3bfb1; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	+ "#mp-dyk-h2 { background-color: #cee0f2; border: 1px solid #a3b0bf; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	+ "#mp-itn-h2 { background-color: #cedff2; border: 1px solid #a3b0bf; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	+ "#mp-otd-h2 { background-color: #f2cee0; border: 1px solid #bfa3b0; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	#
+	# == Wikipedia Main Page: "more" links and bottom sections ==
+	+ ".mp-footer { text-align: center; font-size: small; margin-top: 8px }\n"
+	+ ".mp-2012-b { display: block }\n"
+	+ ".mp-2012-c { display: block }\n"
+	+ "#mp-other { padding: 4px }\n"
+	+ "#mp-sister { padding: 4px }\n"
+	#
+	# == Wikipedia: language count and subtitle ==
+	+ ".language-count { text-align: center; font-size: small }\n"
+	+ "#articlecount { text-align: center; font-size: small; margin: 4px 0 }\n"
+	+ ".hlist.noprint { display: none }\n"
+	#
+	# == Wikipedia: additional Vector 2022 skin elements ==
+	+ ".vector-body { display: block }\n"
+	+ ".vector-feature-zebra-design-disabled { display: block }\n"
+	+ ".skin-vector-2022 { display: block }\n"
+	+ ".vector-menu { display: none }\n"
+	+ ".vector-menu-heading { display: none }\n"
+	+ ".cdx-button--fake-button { display: none }\n"
+	+ ".cdx-button--icon-only { display: none }\n"
+	+ ".citizen-header { display: none }\n"
+	+ ".citizen-footer { display: block }\n"
+	#
+	# == Wikipedia: page action links ==
+	+ "#ca-talk { display: none }\n"
+	+ "#ca-edit { display: none }\n"
+	+ "#ca-history { display: none }\n"
+	+ "#ca-viewsource { display: none }\n"
+	+ "#ca-nstab-main { display: none }\n"
+	+ "#pt-login { display: none }\n"
+	+ "#pt-createaccount { display: none }\n"
+	+ "#pt-anoncontribs { display: none }\n"
+	#
 	# == Accessibility: hide aria-hidden elements ==
 	+ "[aria-hidden=\"true\"] { display: none }\n";
 
