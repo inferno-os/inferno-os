@@ -658,7 +658,7 @@ DefFnt: con (FntR*NumSize+Normal);
 ULnone, ULunder, ULmid: con byte iota;
 
 # List number types
-LTdisc, LTsquare, LTcircle, LT1, LTa, LTA, LTi, LTI: con byte iota;
+LTnone, LTdisc, LTsquare, LTcircle, LT1, LTa, LTA, LTi, LTI: con byte iota;
 
 # Kidinfo flags
 FRnoresize, FRnoscroll, FRhscroll, FRvscroll, FRhscrollauto, FRvscrollauto: con (1<<iota);
