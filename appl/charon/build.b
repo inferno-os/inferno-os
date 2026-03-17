@@ -328,12 +328,12 @@ UA_CSS: con
 	#
 	# == Main page layout ==
 	# Wikipedia main page uses table-based columns with these IDs
-	+ "#mp-upper { width: 100% }\n"
-	+ "#mp-left { vertical-align: top; padding: 0 8px 0 0 }\n"
-	+ "#mp-right { vertical-align: top; padding: 0 0 0 8px }\n"
-	+ "#mp-lower { width: 100% }\n"
-	# Main page section headings (gray background bars)
-	+ ".mp-h2 { background-color: #ccc; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold; border: 1px solid #a2a9b1 }\n"
+	+ "#mp-upper { width: 100%; border-collapse: collapse }\n"
+	+ "#mp-left { vertical-align: top; padding: 0 8px 0 0; width: 50% }\n"
+	+ "#mp-right { vertical-align: top; padding: 0 0 0 8px; width: 50% }\n"
+	+ "#mp-lower { width: 100%; border-collapse: collapse }\n"
+	# Main page section headings (colored background bars)
+	+ ".mp-h2 { background-color: #cef2e0; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold; border: 1px solid #a3bfb1 }\n"
 	+ ".MainPageBG { padding: 4px }\n"
 	#
 	# == Sister projects (main page) ==
@@ -344,7 +344,9 @@ UA_CSS: con
 	+ ".plainlist ul { list-style-type: none; padding: 0; margin: 0 }\n"
 	+ ".plainlist li { margin-bottom: 2px }\n"
 	+ ".hlist ul { list-style-type: none; padding: 0; margin: 0 }\n"
+	+ ".hlist ol { list-style-type: none; padding: 0; margin: 0 }\n"
 	+ ".hlist li { display: inline }\n"
+	+ ".hlist li::before { content: \" \u00B7 \" }\n"
 	+ ".plainlinks { display: inline }\n"
 	#
 	# == Columns (multi-column lists) ==
@@ -449,6 +451,8 @@ UA_CSS: con
 	+ "#mp-dyk-h2 { background-color: #cee0f2; border: 1px solid #a3b0bf; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
 	+ "#mp-itn-h2 { background-color: #cedff2; border: 1px solid #a3b0bf; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
 	+ "#mp-otd-h2 { background-color: #f2cee0; border: 1px solid #bfa3b0; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	+ "#mp-tfl-h2 { background-color: #cedff2; border: 1px solid #a3b0bf; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
+	+ "#mp-tfp-h2 { background-color: #fff; border: 1px solid #a2a9b1; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold }\n"
 	#
 	# == Wikipedia Main Page: "more" links and bottom sections ==
 	+ ".mp-footer { text-align: center; font-size: small; margin-top: 8px }\n"
@@ -917,11 +921,17 @@ TokLoop:
 		#<!ELEMENT (OL|UL) - - (LI)+>
 		LX->Tdir or LX->Tmenu or LX->Tol or LX->Tul =>
 			pushelemctx(is, tag, tok);
+			ulcs := getcomputedstyle(is, tag, tok);
 			changeindent(ps, LISTTAB);
 			if(tag == LX->Tol)
 				tydef := LT1;
 			else
 				tydef = LTdisc;
+			# CSS list-style-type on parent overrides HTML default
+			if(ulcs.list_style_type == LTnone)
+				tydef = LTnone;
+			else if(ulcs.list_style_type != LTdisc)
+				tydef = ulcs.list_style_type;
 			start := aintval(tok, LX->Astart, 1);
 			ps.listtypestk = listtyval(tok, tydef) :: ps.listtypestk;
 			ps.listcntstk = start :: ps.listcntstk;
@@ -932,6 +942,16 @@ TokLoop:
 				if(warn)
 					sys->print("warning: %s ended no list\n", tok.tostring());
 				continue;
+			}
+			# Close last <li> if still open (apply ::after content)
+			if(is.elemstk != nil) {
+				ectx := hd is.elemstk;
+				if(ectx != nil && ectx.tag == LX->Tli) {
+					lics := getcomputedstyle(is, LX->Tli, nil);
+					if(lics.content_after != nil)
+						addtext(ps, lics.content_after);
+					popelemctx(is);
+				}
 			}
 			addbrk(ps, 0, 0);
 			ps.listtypestk = tl ps.listtypestk;
@@ -1402,32 +1422,65 @@ TokLoop:
 		# <!ELEMENT LI - O %flow>
 		LX->Tli =>
 			# Pop previous <li> elemctx if any (implicit close)
+			hadprev := 0;
 			if(is.elemstk != nil) {
 				ectx := hd is.elemstk;
-				if(ectx != nil && ectx.tag == LX->Tli)
+				if(ectx != nil && ectx.tag == LX->Tli) {
+					hadprev = 1;
+					# Apply ::after content from previous li
+					prevcs := getcomputedstyle(is, ectx.tag, nil);
+					if(prevcs.content_after != nil)
+						addtext(ps, prevcs.content_after);
 					popelemctx(is);
+				}
 			}
 			pushelemctx(is, tag, tok);
-			if(ps.listtypestk == nil) {
-				if(warn)
-					sys->print("<LI> not in list\n");
-				continue;
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.display == DSPINLINE) {
+				# Inline list item (e.g. .hlist li): no marker, no indent
+				# Skip ::before separator for first item in list
+				if(cs.content_before != nil && hadprev)
+					addtext(ps, cs.content_before);
+				if(ps.listtypestk != nil) {
+					v := aintval(tok, LX->Avalue, hd ps.listcntstk);
+					ps.listcntstk = (v+1) :: (tl ps.listcntstk);
+				}
+			} else {
+				if(ps.listtypestk == nil) {
+					if(warn)
+						sys->print("<LI> not in list\n");
+					continue;
+				}
+				ty := hd ps.listtypestk;
+				# Check CSS list-style-type override
+				if(cs.list_style_type == LTnone)
+					ty = LTnone;
+				else if(cs.list_style_type != LTdisc)
+					ty = cs.list_style_type;
+				ty2 := listtyval(tok, ty);
+				if(ty != ty2) {
+					ty = ty2;
+					ps.listtypestk = ty2 :: tl ps.listtypestk;
+				}
+				v := aintval(tok, LX->Avalue, hd ps.listcntstk);
+				if(ty == LTnone) {
+					# list-style-type: none — no marker
+					;
+				} else if(ty == LTdisc || ty == LTsquare || ty == LTcircle) {
+					hang := 10*LISTTAB - 3;
+					changehang(ps, hang);
+					addtext(ps, listmark(ty, v));
+					changehang(ps, -hang);
+				} else {
+					hang := 10*LISTTAB - 1;
+					changehang(ps, hang);
+					addtext(ps, listmark(ty, v));
+					changehang(ps, -hang);
+				}
+				ps.listcntstk = (v+1) :: (tl ps.listcntstk);
+				if(cs.content_before != nil)
+					addtext(ps, cs.content_before);
 			}
-			ty := hd ps.listtypestk;
-			ty2 := listtyval(tok, ty);
-			if(ty != ty2) {
-				ty = ty2;
-				ps.listtypestk = ty2 :: tl ps.listtypestk;
-			}
-			v := aintval(tok, LX->Avalue, hd ps.listcntstk);
-			if(ty == LTdisc || ty == LTsquare || ty == LTcircle)
-				hang := 10*LISTTAB - 3;
-			else
-				hang = 10*LISTTAB - 1;
-			changehang(ps, hang);
-			addtext(ps, listmark(ty, v));
-			ps.listcntstk = (v+1) :: (tl ps.listcntstk);
-			changehang(ps, -hang);
 			ps.skipwhite = 1;
 
 		# <!ELEMENT MAP - - (AREA)+>
@@ -2130,7 +2183,6 @@ TokLoop:
 		or LX->Timg+RBRA
 		or LX->Tinput+RBRA
 		or LX->Tisindex+RBRA
-		or LX->Tli+RBRA
 		or LX->Tlink+RBRA
 		or LX->Tmeta+RBRA
 		or LX->Toption+RBRA
@@ -2139,6 +2191,18 @@ TokLoop:
 		or LX->Ttitle+RBRA
 		=>
 			;
+
+		# </li> - apply ::after pseudo-element content
+		LX->Tli+RBRA =>
+			if(is.elemstk != nil) {
+				ectx := hd is.elemstk;
+				if(ectx != nil && ectx.tag == LX->Tli) {
+					lics := getcomputedstyle(is, LX->Tli, nil);
+					if(lics.content_after != nil)
+						addtext(ps, lics.content_after);
+					popelemctx(is);
+				}
+			}
 
 		# <!ELEMENT LINK - O EMPTY>
 		# External stylesheet: fetch and apply CSS
@@ -2436,6 +2500,15 @@ TokLoop:
 				if(changes == -1)
 					ps.skipping = 0;
 				else {
+					# ::after pseudo-element content
+					if(is.elemstk != nil) {
+						ectx := hd is.elemstk;
+						if(ectx != nil) {
+							acs := getcomputedstyle(is, ectx.tag, nil);
+							if(acs.content_after != nil)
+								addtext(ps, acs.content_after);
+						}
+					}
 					if(ps.boxstk != nil) {
 						bctx := hd ps.boxstk;
 						if(bctx != nil)
@@ -3526,6 +3599,8 @@ listmark(ty: byte, n: int) : string
 {
 	s := "";
 	case int ty {
+		int LTnone =>
+			return "";
 		int LTdisc =>
 			s = "•";
 		int LTsquare =>
@@ -4601,6 +4676,7 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		}
 	"list-style-type" =>
 		case val {
+		"none" => cs.list_style_type = LTnone;
 		"disc" => cs.list_style_type = LTdisc;
 		"square" => cs.list_style_type = LTsquare;
 		"circle" => cs.list_style_type = LTcircle;
