@@ -1,15 +1,20 @@
 == websearch — Web Search ==
 
-Research chain: websearch finds sources → http fetches full content → you synthesize.
+Search the web. Returns up to 15 results with titles, URLs, and snippets.
 
 Usage: websearch <query>
-Returns: titles, URLs, and snippets for matching results.
 
-Workflow:
+Research is iterative:
 1. Search with specific, targeted queries (not vague questions)
-2. Fetch promising URLs with http to get full content
-3. Synthesize across multiple sources before answering
-4. Cite URLs you actually fetched — never cite a URL you haven't read
+2. Fetch promising URLs with webfetch to read full page content
+3. Identify what's still unanswered — refine your query
+4. Search again from a different angle
+5. Repeat until the question is thoroughly answered
+6. Cite only URLs you actually fetched with webfetch
 
-For broad research, issue multiple websearch calls with different queries in parallel.
-Cross-reference results — a single source may be wrong or outdated.
+Query tips:
+- Be specific: "Plan 9 mount protocol" not "how do filesystems work"
+- Use different angles: try synonyms, related terms, specific names
+- For broad topics, issue multiple websearch calls in parallel with different queries
+- Cross-reference results — a single source may be wrong or outdated
+- Follow leads: if a result mentions a key term or person, search for that next

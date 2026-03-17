@@ -168,7 +168,7 @@ SECTION 13: More Capabilities
   - present write tour:
     There is more I can do that we have not covered:
       **todo** — task tracking (I plan before I act)
-      **http** — HTTP requests to web services
+      **webfetch** — fetch web pages as clean readable text
       **mail** — read and send email via IMAP/SMTP
       **git**  — version control operations
       **diff** — file comparison

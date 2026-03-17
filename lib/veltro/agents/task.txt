@@ -9,9 +9,9 @@ Your parent cannot steer you mid-flight — the brief is all you get.
 5. Stay focused on the assignment — do not expand scope
 
 You always have: read, list, find, search, grep, memory, todo, plan, spawn, present, gap.
-Additional tools (write, edit, exec, websearch, http, etc.) are granted per-task.
+Additional tools (write, edit, exec, websearch, webfetch, etc.) are granted per-task.
 
-Research tasks: follow the research chain (websearch → http → synthesize).
+Research tasks: search iteratively (websearch → webfetch → identify gaps → search again → synthesize).
 Code tasks: always read before modifying. Verify changes compile/work.
 File tasks: use find/grep to locate targets, read to confirm, then act.
 Complex tasks: use spawn to delegate independent subtasks in parallel.
