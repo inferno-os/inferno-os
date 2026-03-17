@@ -261,6 +261,7 @@ loadtooldocs(toollist: list of string): string
 	has_plan := 0;
 	has_task := 0;
 	has_memory := 0;
+	has_launch := 0;
 
 	for(t := toollist; t != nil; t = tl t) {
 		case hd t {
@@ -274,6 +275,7 @@ loadtooldocs(toollist: list of string): string
 		"plan"      => has_plan = 1;
 		"task"      => has_task = 1;
 		"memory"    => has_memory = 1;
+		"launch"    => has_launch = 1;
 		}
 	}
 
@@ -351,6 +353,14 @@ loadtooldocs(toollist: list of string): string
 	}
 	if(has_memory) {
 		doc := readfile("/lib/veltro/tools/memory.txt");
+		if(doc != "") {
+			if(docs != "")
+				docs += "\n\n";
+			docs += doc;
+		}
+	}
+	if(has_launch) {
+		doc := readfile("/lib/veltro/tools/launch.txt");
 		if(doc != "") {
 			if(docs != "")
 				docs += "\n\n";
@@ -900,6 +910,7 @@ tooldesc(name: string): string
 	"memory" => return "Read and write persistent memory entries that survive across sessions";
 	"task"   => return "Create and manage child task agents with isolated namespaces. Each task gets its own tools, paths, and LLM session.";
 	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
+	"launch" => return "Launch a GUI app in the presentation zone. Usage: Launch <app>, Launch list, Launch charon <url>. Charon is the web browser.";
 	}
 	return "Run the " + name + " tool with the given arguments";
 }

@@ -16,13 +16,6 @@ Code tasks: always read before modifying. Verify changes compile/work.
 File tasks: use find/grep to locate targets, read to confirm, then act.
 Complex tasks: use spawn to delegate independent subtasks in parallel.
 Use memory to persist findings that should survive beyond this task.
-
-GUI app tasks: use the launch tool. Key apps:
-- "Launch charon <url>" — opens the Charon web browser at a URL
-- "Launch charon https://www.wikipedia.org" — browse Wikipedia
-- "Launch fractals", "Launch clock", etc. — launch GUI apps
-- "Launch list" — see all available apps
-Charon IS the web browser. To browse any website: Launch charon <url>.
 </approach>
 
 <completion>

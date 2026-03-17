@@ -1,0 +1,16 @@
+Launch — Launch a GUI app in the presentation zone.
+
+Usage:
+  Launch list                     — show available apps
+  Launch <appname>                — launch app by name
+  Launch charon <url>             — open Charon web browser at URL
+
+Charon is the built-in web browser. To browse any website:
+  Launch charon https://www.wikipedia.org
+  Launch charon https://example.com
+If Charon is already running, it is killed and relaunched at the new URL.
+
+Other confirmed apps: clock, bounce, coffee, colors, date, editor,
+about, view, rt, lens, shell, fractals, keyring, xenith.
+
+Apps requiring Tk (not available): task, tetris, sh, ftree, deb.
