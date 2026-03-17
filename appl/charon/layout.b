@@ -665,6 +665,8 @@ haveimage(f: ref Frame, ci: ref CImage, itl: list of ref Item)
 	if(dbg)
 		sys->print("\nHAVEIMAGE src=%s w=%d h=%d\n", ci.src.tostring(), ci.width, ci.height);
 	# make all base images repl'd - makes handling backgrounds much easier
+	if(ci.mims == nil || ci.mims[0] == nil || ci.mims[0].im == nil)
+		return;
 	im := ci.mims[0].im;
 	im.repl = 1;
 	im.clipr = Rect((-16rFFFFFFF, -16r3FFFFFFF), (16r3FFFFFFF, 16r3FFFFFFF));
@@ -2326,7 +2328,7 @@ checkffsize(f: ref Frame, i: ref Item, ff: ref Formfield)
 	if(ff.ftype == Fimage && ff.image != nil) {
 		pick imi := ff.image {
 		Iimage =>
-			if(imi.ci.mims != nil && ff.ctlid >= 0) {
+			if(imi.ci.mims != nil && len imi.ci.mims > 0 && imi.ci.mims[0] != nil && imi.ci.mims[0].im != nil && ff.ctlid >= 0) {
 				pick b := f.controls[ff.ctlid] {
 				Cbutton =>
 					if(b.pic == nil) {
@@ -2594,9 +2596,14 @@ drawimg(f: ref Frame, iorigin: Point, i: ref Item.Iimage)
 			}
 		}
 		else if (inview) {
-			mim := ci.mims[0];
-			iorigin = iorigin.add(mim.origin);
-			im.draw(r, mim.im, mim.mask, zp);
+			mims := ci.mims;
+			if(mims != nil) {
+				mim := mims[0];
+				if(mim != nil && mim.im != nil) {
+					iorigin = iorigin.add(mim.origin);
+					im.draw(r, mim.im, mim.mask, zp);
+				}
+			}
 		}
 		if(inview && i.border != byte 0) {
 			if(i.anchorid != 0)
@@ -2665,9 +2672,15 @@ drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
 		if(c.background.image != nil && c.background.image.ci != nil && c.background.image.ci.mims != nil) {
 			cellr := Rect((cx-pad,cy-pad),(cx+wd+pad,cy+ht+pad));
 			ci := c.background.image.ci;
-			bgi := ci.mims[0].im;
-			bgmask := ci.mims[0].mask;
-			im.draw(cellr, bgi, bgmask, bgi.r.min);
+			mims := ci.mims;
+			if(mims != nil && mims[0] != nil && mims[0].im != nil) {
+				bgi := mims[0].im;
+				bgmask := mims[0].mask;
+				im.draw(cellr, bgi, bgmask, bgi.r.min);
+			} else if(c.background.color != -1 && c.background.color != tab.background.color) {
+				bgi := colorimage(c.background.color);
+				im.draw(cellr, bgi, nil, zp);
+			}
 		} else if(c.background.color != -1 && c.background.color != tab.background.color) {
 			bgi := colorimage(c.background.color);
 			im.draw(((cx-pad,cy-pad),(cx+wd+pad,cy+ht+pad)),
@@ -2737,9 +2750,10 @@ drawbgimage(im: ref Image, bgr: Rect, cs: ref ComputedStyle)
 {
 	if(cs.bgimage_ci == nil || cs.bgimage_ci.mims == nil)
 		return;
-	bgi := cs.bgimage_ci.mims[0].im;
-	if(bgi == nil)
+	mims := cs.bgimage_ci.mims;
+	if(mims == nil || mims[0] == nil || mims[0].im == nil)
 		return;
+	bgi := mims[0].im;
 
 	# Image natural dimensions
 	iw := bgi.r.dx();
@@ -2905,7 +2919,7 @@ fillbg(f: ref Frame, r: Rect)
 {
 	bgi: ref Image;
 	ii := f.doc.background.image;
-	if (ii != nil && ii.ci != nil && ii.ci.mims != nil)
+	if (ii != nil && ii.ci != nil && ii.ci.mims != nil && ii.ci.mims[0] != nil)
 		bgi = ii.ci.mims[0].im;
 	if(bgi == nil)
 		bgi = colorimage(f.doc.background.color);
@@ -3470,7 +3484,7 @@ Control.newff(f: ref Frame, ff: ref B->Formfield) : ref Control
 			pick i := ff.image {
 			Iimage =>
 				pic, picmask : ref Image;
-				if(i.ci.mims != nil) {
+				if(i.ci.mims != nil && len i.ci.mims > 0 && i.ci.mims[0] != nil && i.ci.mims[0].im != nil) {
 					pic = i.ci.mims[0].im;
 					picmask = i.ci.mims[0].mask;
 				}
@@ -4458,7 +4472,7 @@ Control.draw(ctl: self ref Control, flush: int)
 			# this code is only for when the HTML specified the dimensions)
 			pick imi := c.ff.image {
 			Iimage =>
-				if(imi.ci.mims != nil) {
+				if(imi.ci.mims != nil && len imi.ci.mims > 0 && imi.ci.mims[0] != nil && imi.ci.mims[0].im != nil) {
 					c.pic = imi.ci.mims[0].im;
 					c.picmask = imi.ci.mims[0].mask;
 				}
@@ -4728,7 +4742,7 @@ Control.draw(ctl: self ref Control, flush: int)
 			}
 		}
 		bgi := colorimage(c.bg.color);
-		if(c.bg.image != nil && c.bg.image.ci != nil && len c.bg.image.ci.mims > 0)
+		if(c.bg.image != nil && c.bg.image.ci != nil && c.bg.image.ci.mims != nil && len c.bg.image.ci.mims > 0 && c.bg.image.ci.mims[0] != nil && c.bg.image.ci.mims[0].im != nil)
 			bgi = c.bg.image.ci.mims[0].im;
 		for( ; i <= c.cur; i++) {
 			mim := c.cim.mims[i];
@@ -5235,7 +5249,7 @@ animproc(f: ref Frame)
 		pick i := it {
 		Iimage =>
 			ms := i.ci.mims;
-			if(len ms > 1) {
+			if(ms != nil && len ms > 1) {
 				loc := f.find(zp, it);
 				if(loc == nil) {
 					# could be background, I suppose -- don't animate it
