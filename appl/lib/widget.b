@@ -530,6 +530,56 @@ Checkbox.value(cb: self ref Checkbox): int
 	return cb.checked;
 }
 
+# ── Radio ─────────────────────────────────────────────────────
+
+RADIOR: con 6;		# circle radius in pixels
+RADIOGAP: con 6;	# gap between circle and label
+
+Radio.mk(r: Rect, label: string, selected: int): ref Radio
+{
+	return ref Radio(r, label, selected);
+}
+
+Radio.draw(rb: self ref Radio, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+
+	# Centre circle vertically within row
+	cy := rb.r.min.y + rb.r.dy() / 2;
+	cx := rb.r.min.x + RADIOR + 1;
+	c := Point(cx, cy);
+
+	# Outer circle (border)
+	dst.ellipse(c, RADIOR, RADIOR, 0, fieldborder, Point(0, 0));
+
+	# Fill with background
+	dst.fillellipse(c, RADIOR - 1, RADIOR - 1, fieldbg, Point(0, 0));
+
+	# Inner filled dot when selected
+	if(rb.selected) {
+		inner := RADIOR - 3;
+		if(inner < 2)
+			inner = 2;
+		dst.fillellipse(c, inner, inner, fieldfocus, Point(0, 0));
+	}
+
+	# Label text
+	tx := rb.r.min.x + RADIOR * 2 + RADIOGAP;
+	ty := rb.r.min.y + (rb.r.dy() - wfont.height) / 2;
+	dst.text(Point(tx, ty), fieldtext, Point(0, 0), wfont, rb.label);
+}
+
+Radio.resize(rb: self ref Radio, r: Rect)
+{
+	rb.r = r;
+}
+
+Radio.contains(rb: self ref Radio, p: Point): int
+{
+	return rb.r.contains(p);
+}
+
 # ── Statusbar ─────────────────────────────────────────────────
 
 Statusbar.new(r: Rect): ref Statusbar

@@ -46,7 +46,7 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Radio, Kbdfilter: import widgetmod;
 
 Settings: module
 {
@@ -60,8 +60,8 @@ NCATS: con 6;
 
 catnames := array[] of {
 	"Theme",
-	"Active Tools",
-	"Delegation Budget",
+	"Initial Active Tools",
+	"Delegatable Tools",
 	"Namespace Paths",
 	"Agent Prompts",
 	"Startup Profile",
@@ -82,7 +82,7 @@ bgcolor:   ref Image;
 divcolor:  ref Image;
 
 # Theme panel
-theme_checks: array of ref Checkbox;
+theme_radios: array of ref Radio;
 theme_names:  array of string;
 
 # Tools panel
@@ -252,7 +252,7 @@ layoutcontent()
 	ch := font.height + 6;	# checkbox row height
 
 	# Clear old panel state
-	theme_checks = nil;
+	theme_radios = nil;
 	tool_checks = nil;
 	budget_checks = nil;
 	path_list = nil;
@@ -285,54 +285,59 @@ layouttheme(cx, cy, cw, ch: int)
 	theme_names = readthemes();
 	current := readcurrenttheme();
 
-	theme_checks = array[len theme_names] of ref Checkbox;
+	theme_radios = array[len theme_names] of ref Radio;
 	for(i := 0; i < len theme_names; i++) {
-		checked := 0;
+		sel := 0;
 		if(theme_names[i] == current)
-			checked = 1;
-		theme_checks[i] = Checkbox.mk(
+			sel = 1;
+		theme_radios[i] = Radio.mk(
 			Rect((cx, cy), (cw, cy + ch)),
-			theme_names[i], checked);
+			theme_names[i], sel);
 		cy += ch + FIELD_SPACING;
 	}
 }
 
 layouttools(cx, cy, cw, cbottom, ch: int)
 {
-	# Read all known tools (active + inactive from registry)
+	# Read all known tools from registry (space-separated)
+	# and active tools from /tool/tools (newline-separated)
 	active := readlines("/tool/tools");
-	all := readlines("/tool/_registry");
+	all := readtokens("/tool/_registry");
 	if(all == nil || len all == 0)
 		all = active;
 
 	tool_names = all;
-	tool_checks = array[len all] of ref Checkbox;
-	for(i := 0; i < len all; i++) {
-		checked := inlist(all[i], active);
-		r := Rect((cx, cy), (cw, cy + ch));
+	n := len all;
+	tool_checks = array[n] of ref Checkbox;
+	for(i := 0; i < n; i++) {
 		if(cy + ch > cbottom)
-			break;	# don't overflow
-		tool_checks[i] = Checkbox.mk(r, all[i], checked);
+			break;
+		checked := inlist(all[i], active);
+		tool_checks[i] = Checkbox.mk(
+			Rect((cx, cy), (cw, cy + ch)),
+			all[i], checked);
 		cy += ch + FIELD_SPACING;
 	}
 }
 
 layoutbudget(cx, cy, cw, cbottom, ch: int)
 {
-	# Read current budget and all known tools
+	# Read current budget (newline-separated) and all known tools (space-separated)
 	budgeted := readlines("/tool/budget");
-	all := readlines("/tool/_registry");
+	all := readtokens("/tool/_registry");
 	if(all == nil || len all == 0)
 		all = budgeted;
 
 	budget_names = all;
-	budget_checks = array[len all] of ref Checkbox;
-	for(i := 0; i < len all; i++) {
-		checked := inlist(all[i], budgeted);
-		r := Rect((cx, cy), (cw, cy + ch));
+	n := len all;
+	budget_checks = array[n] of ref Checkbox;
+	for(i := 0; i < n; i++) {
 		if(cy + ch > cbottom)
 			break;
-		budget_checks[i] = Checkbox.mk(r, all[i], checked);
+		checked := inlist(all[i], budgeted);
+		budget_checks[i] = Checkbox.mk(
+			Rect((cx, cy), (cw, cy + ch)),
+			all[i], checked);
 		cy += ch + FIELD_SPACING;
 	}
 }
@@ -479,6 +484,27 @@ readlines(path: string): array of string
 	return result;
 }
 
+# Read space-or-newline separated tokens from a file.
+# /tool/_registry returns space-separated on one line.
+readtokens(path: string): array of string
+{
+	s := readfile(path);
+	if(s == nil)
+		return nil;
+	(nil, toks) := sys->tokenize(s, " \t\n");
+	if(toks == nil)
+		return nil;
+	# Count
+	n := 0;
+	for(t := toks; t != nil; t = tl t)
+		n++;
+	result := array[n] of string;
+	i := 0;
+	for(t = toks; t != nil; t = tl t)
+		result[i++] = hd t;
+	return result;
+}
+
 inlist(s: string, arr: array of string): int
 {
 	if(arr == nil)
@@ -514,7 +540,7 @@ redraw()
 	# Content
 	case category {
 	CatTheme =>
-		drawchecks(theme_checks);
+		drawradios(theme_radios);
 	CatTools =>
 		drawchecks(tool_checks);
 	CatBudget =>
@@ -532,18 +558,31 @@ redraw()
 		sbar.left = catnames[category];
 		case category {
 		CatTheme =>
-			sbar.right = "click to select theme";
-		CatTools or CatBudget =>
-			sbar.right = "click to toggle";
+			sbar.right = "restart for full effect";
+		CatTools =>
+			sbar.right = "applied immediately";
+		CatBudget =>
+			sbar.right = "applied immediately";
 		CatPaths =>
-			sbar.right = "bind/unbind paths";
-		CatPrompts or CatProfile =>
-			sbar.right = "opens in editor app";
+			sbar.right = "applied immediately";
+		CatPrompts =>
+			sbar.right = "takes effect next session";
+		CatProfile =>
+			sbar.right = "restart required";
 		}
 		sbar.draw(w.image);
 	}
 
 	w.image.flush(Draw->Flushnow);
+}
+
+drawradios(radios: array of ref Radio)
+{
+	if(radios == nil)
+		return;
+	for(i := 0; i < len radios; i++)
+		if(radios[i] != nil)
+			radios[i].draw(w.image);
 }
 
 drawchecks(checks: array of ref Checkbox)
@@ -681,14 +720,14 @@ handleptr(ptr: ref Pointer)
 
 clicktheme(ptr: ref Pointer)
 {
-	if(theme_checks == nil)
+	if(theme_radios == nil)
 		return;
-	for(i := 0; i < len theme_checks; i++) {
-		if(theme_checks[i] != nil && theme_checks[i].contains(ptr.xy)) {
-			# Radio behaviour: uncheck all, check this one
-			for(j := 0; j < len theme_checks; j++)
-				theme_checks[j].checked = 0;
-			theme_checks[i].checked = 1;
+	for(i := 0; i < len theme_radios; i++) {
+		if(theme_radios[i] != nil && theme_radios[i].contains(ptr.xy)) {
+			# Mutual exclusion: deselect all, select this one
+			for(j := 0; j < len theme_radios; j++)
+				theme_radios[j].selected = 0;
+			theme_radios[i].selected = 1;
 			applytheme(theme_names[i]);
 			dirty = 1;
 			return;
@@ -901,12 +940,19 @@ dounbindpath()
 
 openineditor(path: string)
 {
+	# Check if the file is accessible first
+	(ok, nil) := sys->stat(path);
+	if(ok < 0) {
+		flashstatus(path + " not accessible — check namespace paths");
+		return;
+	}
+
 	# Write to presentation ctl to launch editor with the file
 	actid := readfile("/tool/activity");
 	if(actid == nil)
 		actid = readfile("/n/ui/activity/current");
 	if(actid == nil) {
-		flashstatus("error: cannot determine activity");
+		flashstatus("cannot reach presentation zone — launch from Lucifer");
 		return;
 	}
 	aid := strip(actid);
@@ -914,20 +960,27 @@ openineditor(path: string)
 
 	# Kill existing editor, launch with file path
 	fd := sys->open(pctl, Sys->OWRITE);
-	if(fd != nil) {
-		kb := array of byte "kill id=editor";
-		sys->write(fd, kb, len kb);
-		fd = nil;
+	if(fd == nil) {
+		flashstatus("cannot open presentation — launch from Lucifer");
+		return;
 	}
+	kb := array of byte "kill id=editor";
+	sys->write(fd, kb, len kb);
+	fd = nil;
+
 	fd = sys->open(pctl, Sys->OWRITE);
 	if(fd == nil) {
-		flashstatus("error: cannot open presentation");
+		flashstatus("cannot open presentation — launch from Lucifer");
 		return;
 	}
 	cmd := sys->sprint("create id=editor type=app dis=/dis/wm/editor.dis label=editor data=%s", path);
 	b := array of byte cmd;
-	sys->write(fd, b, len b);
+	n := sys->write(fd, b, len b);
 	fd = nil;
+	if(n < 0) {
+		flashstatus(sys->sprint("editor launch failed: %r"));
+		return;
+	}
 
 	# Center it
 	fd = sys->open(pctl, Sys->OWRITE);

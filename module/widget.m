@@ -320,6 +320,35 @@ Widget: module
 		value:   fn(cb: self ref Checkbox): int;
 	};
 
+	# ── Radio ──────────────────────────────────────────────────
+	#
+	# Radio button — circle indicator with a text label.
+	# Visually distinct from Checkbox (circle vs square).
+	# The caller manages mutual exclusion (uncheck others).
+	#
+	# Usage:
+	#   rb := Radio.mk(r, "Dark theme", 1);
+	#   ...
+	#   if(rb.contains(p.xy)) { unselectall(); rb.selected = 1; }
+	#
+	Radio: adt {
+		r:        Draw->Rect;    # full rectangle (circle + label)
+		label:    string;        # text label
+		selected: int;           # 1 = selected, 0 = unselected
+
+		# Create a radio button.
+		mk:       fn(r: Draw->Rect, label: string, selected: int): ref Radio;
+
+		# Draw the radio button into dst.
+		draw:     fn(rb: self ref Radio, dst: ref Draw->Image);
+
+		# Update rectangle.
+		resize:   fn(rb: self ref Radio, r: Draw->Rect);
+
+		# Test whether a point is inside the radio area.
+		contains: fn(rb: self ref Radio, p: Draw->Point): int;
+	};
+
 	# ── Statusbar ──────────────────────────────────────────────
 	#
 	# Horizontal info bar at the bottom of a window.  Displays
