@@ -221,6 +221,17 @@ exec(args: string): string
 		fd = nil;
 	}
 
+	# Auto-activate the corresponding control tool (if one exists).
+	# Convention: if a pre-loaded tool shares the app's name, activate it
+	# so the agent can interact with the app on subsequent turns.
+	# ctladd silently fails if no such tool exists — no error handling needed.
+	ctlfd := sys->open("/tool/ctl", Sys->OWRITE);
+	if(ctlfd != nil) {
+		ab := array of byte ("add " + appname);
+		sys->write(ctlfd, ab, len ab);
+		ctlfd = nil;
+	}
+
 	if(extradata != "")
 		return "launched " + label + " with url " + extradata + " in presentation zone";
 	return "launched " + label + " in presentation zone";
