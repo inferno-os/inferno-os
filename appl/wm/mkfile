@@ -9,6 +9,7 @@ TARG=\
 	colors.dis\
 	keyring.dis\
 	lens.dis\
+	settings.dis\
 	editor.dis\
 	fractals.dis\
 	shell.dis\
