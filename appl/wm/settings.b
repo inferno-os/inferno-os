@@ -944,50 +944,65 @@ openineditor(path: string)
 	(ok, nil) := sys->stat(path);
 	if(ok < 0) {
 		flashstatus(path + " not accessible — check namespace paths");
+		sys->fprint(stderr, "settings: stat %s failed: %r\n", path);
 		return;
 	}
 
-	# Write to presentation ctl to launch editor with the file
-	actid := readfile("/tool/activity");
-	if(actid == nil)
-		actid = readfile("/n/ui/activity/current");
+	# Write to presentation ctl to launch editor with the file.
+	# /tool/activity exists only in agent namespaces; from a GUI app
+	# launched by lucifer we read /n/ui/activity/current instead.
+	actid := readfile("/n/ui/activity/current");
 	if(actid == nil) {
-		flashstatus("cannot reach presentation zone — launch from Lucifer");
+		flashstatus("cannot reach presentation zone — is luciuisrv running?");
+		sys->fprint(stderr, "settings: cannot read /n/ui/activity/current\n");
 		return;
 	}
 	aid := strip(actid);
 	pctl := sys->sprint("/n/ui/activity/%s/presentation/ctl", aid);
+	sys->fprint(stderr, "settings: openineditor %s → pctl=%s\n", path, pctl);
 
-	# Kill existing editor, launch with file path
+	# Kill existing editor first (ignore error — may not exist)
 	fd := sys->open(pctl, Sys->OWRITE);
 	if(fd == nil) {
-		flashstatus("cannot open presentation — launch from Lucifer");
+		flashstatus("cannot open presentation ctl — launch from Lucifer");
+		sys->fprint(stderr, "settings: cannot open %s: %r\n", pctl);
 		return;
 	}
 	kb := array of byte "kill id=editor";
-	sys->write(fd, kb, len kb);
+	kn := sys->write(fd, kb, len kb);
+	sys->fprint(stderr, "settings: kill id=editor → %d\n", kn);
 	fd = nil;
 
+	# Small delay for kill to propagate
+	sys->sleep(100);
+
+	# Create editor artifact with file path as data
 	fd = sys->open(pctl, Sys->OWRITE);
 	if(fd == nil) {
-		flashstatus("cannot open presentation — launch from Lucifer");
+		flashstatus("cannot open presentation ctl");
+		sys->fprint(stderr, "settings: cannot reopen %s: %r\n", pctl);
 		return;
 	}
 	cmd := sys->sprint("create id=editor type=app dis=/dis/wm/editor.dis label=editor data=%s", path);
 	b := array of byte cmd;
 	n := sys->write(fd, b, len b);
+	sys->fprint(stderr, "settings: create → %d (%s)\n", n, cmd);
 	fd = nil;
 	if(n < 0) {
 		flashstatus(sys->sprint("editor launch failed: %r"));
 		return;
 	}
 
-	# Center it
+	# Center the editor tab
 	fd = sys->open(pctl, Sys->OWRITE);
 	if(fd != nil) {
 		b = array of byte "center id=editor";
-		sys->write(fd, b, len b);
+		cn := sys->write(fd, b, len b);
+		sys->fprint(stderr, "settings: center id=editor → %d\n", cn);
+		fd = nil;
 	}
+
+	flashstatus("opened " + path + " in editor");
 }
 
 # ── Helpers ───────────────────────────────────────────────────
