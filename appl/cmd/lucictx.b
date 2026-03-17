@@ -854,6 +854,50 @@ drawcontext(zone: Rect)
 			}
 			y += mainfont.height + 2;
 
+			# Sort active tools by lastused descending (most recently used first).
+			# Tools with no resource match or lastused==0 sink to the bottom.
+			{
+				ntools := 0;
+				for(ct := activetoolset; ct != nil; ct = tl ct)
+					ntools++;
+				if(ntools > 1) {
+					tnames := array[ntools] of string;
+					tlast  := array[ntools] of int;
+					idx := 0;
+					for(ct = activetoolset; ct != nil; ct = tl ct) {
+						tnames[idx] = hd ct;
+						tlast[idx] = 0;
+						for(rp := resources; rp != nil; rp = tl rp) {
+							res := hd rp;
+							if(res.rtype == "tool" &&
+									(res.path == hd ct || res.label == hd ct)) {
+								tlast[idx] = res.lastused;
+								break;
+							}
+						}
+						idx++;
+					}
+					# Insertion sort descending by lastused
+					for(i := 1; i < ntools; i++) {
+						tn := tnames[i];
+						lval := tlast[i];
+						j := i - 1;
+						while(j >= 0 && tlast[j] < lval) {
+							tnames[j + 1] = tnames[j];
+							tlast[j + 1] = tlast[j];
+							j--;
+						}
+						tnames[j + 1] = tn;
+						tlast[j + 1] = lval;
+					}
+					# Rebuild list
+					sorted: list of string;
+					for(i = ntools - 1; i >= 0; i--)
+						sorted = tnames[i] :: sorted;
+					activetoolset = sorted;
+				}
+			}
+
 			# Build available tools list (excluding active)
 			availtools: list of string;
 			for(kp := knowntoolnames; kp != nil; kp = tl kp) {
