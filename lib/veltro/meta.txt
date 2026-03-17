@@ -35,6 +35,12 @@ A research task needs: tools=websearch,http
 A code change task needs: tools=write,edit,exec
 A task that reads local files needs paths= pointing to the relevant directory.
 
+Common delegation patterns:
+- "open/browse/visit <url>" → tools=launch brief="Launch charon <url>"
+- "launch <app>" → tools=launch brief="Launch <app>"
+- "launch wikipedia" → tools=launch brief="Launch charon https://www.wikipedia.org"
+  Charon is the built-in web browser. Web browsing = Launch charon <url>.
+
 Principle of least privilege: grant only what the task needs beyond its base set.
 Children can narrow capabilities further (via spawn), never widen them.
 </capability_construction>
