@@ -1047,10 +1047,27 @@ agentturn(input: string)
 		(stopreason, tools, text) := agentlib->parsellmresponse(response);
 
 		# Display response: update placeholder (streaming) or add new message (legacy).
-		if(placeholder_idx >= 0)
-			updateliveconvmsg(placeholder_idx, text);
-		else if(text != "")
-			writemsg("veltro", text);
+		# When text is empty during tool_use, the LLM emitted only tool calls
+		# with no accompanying text — show tool names instead of an empty tile.
+		if(text != "") {
+			if(placeholder_idx >= 0)
+				updateliveconvmsg(placeholder_idx, text);
+			else
+				writemsg("veltro", text);
+		} else if(placeholder_idx >= 0 && stopreason == "tool_use" && tools != nil) {
+			# Build a summary of which tools are being called
+			toolsummary := "";
+			for(ts := tools; ts != nil; ts = tl ts) {
+				(nil, tname, nil) := hd ts;
+				if(toolsummary != "")
+					toolsummary += ", ";
+				toolsummary += tname;
+			}
+			updateliveconvmsg(placeholder_idx, "[" + toolsummary + "]");
+		} else if(placeholder_idx >= 0) {
+			# Non-tool_use with no text and a placeholder: clear cursor
+			updateliveconvmsg(placeholder_idx, "");
+		}
 
 		# Plain text or end_turn: done.
 		if(stopreason != "tool_use" || tools == nil) {

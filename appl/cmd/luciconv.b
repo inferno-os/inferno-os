@@ -413,6 +413,11 @@ drawconversation(zone: Rect)
 	harr := array[nmsg] of int;
 	total_h := 0;
 	for(pi := 0; pi < nmsg; pi++) {
+		# Skip empty messages (e.g. tool_use responses with no text content)
+		if(strip(marr[pi].text) == "") {
+			harr[pi] = 0;
+			continue;
+		}
 		imgh: int;
 		if(marr[pi].rendimg != nil)
 			imgh = marr[pi].rendimg.r.dy();
@@ -439,6 +444,8 @@ drawconversation(zone: Rect)
 	codebg := codebgcol_g;
 	ey := msgy + scrollpx;
 	for(ri := nmsg - 1; ri >= 0; ri--) {
+		if(harr[ri] == 0)
+			continue;
 		tiletop_e := ey - harr[ri] - tilegap;
 		if(tiletop_e >= msgy) {
 			ey = tiletop_e;
@@ -469,6 +476,8 @@ drawconversation(zone: Rect)
 	y := msgy + scrollpx;
 	for(i := nmsg - 1; i >= 0; i--) {
 		tileh := harr[i];
+		if(tileh == 0)
+			continue;
 		tiletop := y - tileh - tilegap;
 
 		if(tiletop >= msgy) {
