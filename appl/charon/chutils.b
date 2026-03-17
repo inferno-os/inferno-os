@@ -1110,9 +1110,15 @@ ImageCache.deletelru(ic: self ref ImageCache)
 		}
 		else
 			ic.memused -= ci.bytes();
-		for(i := 0; i < len ci.mims; i++)
-			ci.mims[i].free();
-		ci.mims = nil;
+		# Do NOT call ci.mims[i].free() here.
+		# Other Items may still reference this CImage via shared ci pointers
+		# (set in addsubords: i.ci = cachedci / i.ci = s.ci).
+		# Freeing mims while Items hold references causes a use-after-free
+		# race: the drawing code can dereference .im after it's been nil'd
+		# and the underlying Image/Memimage has been GC'd, leading to SEGV.
+		# Instead, just unlink from the cache and let the GC collect
+		# the MaskedImages when all Item references are gone.
+		ci.next = nil;
 		ic.n--;
 	}
 }
