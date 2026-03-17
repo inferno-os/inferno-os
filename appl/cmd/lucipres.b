@@ -860,6 +860,8 @@ handlecontextmenu(p: ref Pointer)
 			for(ci := 0; ci < ncardhits; ci++) {
 				if(cardhits[ci].r.contains(p.xy)) {
 					cid := cardhits[ci].id;
+					if(cid == -1)
+						return;	# "+ New Task" button — no context menu
 					mitems := array[] of {"End Task"};
 					mpop := menumod->new(mitems);
 					mres := mpop.show(mainwin, p.xy, win.ctxt.ptr);
