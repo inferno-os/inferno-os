@@ -262,6 +262,64 @@ Widget: module
 		contains: fn(b: self ref Button, p: Draw->Point): int;
 	};
 
+	# ── Label ──────────────────────────────────────────────────
+	#
+	# Static text display.  No interaction — just themed text
+	# for section headers, descriptions, and captions.
+	#
+	Label: adt {
+		r:     Draw->Rect;    # label rectangle
+		text:  string;        # display text
+		dim:   int;           # 1 = dim/secondary colour, 0 = normal
+
+		# Create a label.
+		# dim: 1 for secondary/description text, 0 for normal.
+		mk:    fn(r: Draw->Rect, text: string, dim: int): ref Label;
+
+		# Draw the label into dst.
+		draw:  fn(l: self ref Label, dst: ref Draw->Image);
+
+		# Update rectangle.
+		resize: fn(l: self ref Label, r: Draw->Rect);
+
+		# Set display text.
+		settext: fn(l: self ref Label, s: string);
+	};
+
+	# ── Checkbox ───────────────────────────────────────────────
+	#
+	# Toggle control with a text label.  Click to toggle.
+	# The box is drawn to the left of the label text.
+	#
+	# Usage:
+	#   cb := Checkbox.mk(r, "Enable feature", 0);
+	#   ...
+	#   if(cb.contains(p.xy)) { cb.toggle(); redraw(); }
+	#
+	Checkbox: adt {
+		r:       Draw->Rect;    # full rectangle (box + label)
+		label:   string;        # text label
+		checked: int;           # 1 = checked, 0 = unchecked
+
+		# Create a checkbox.
+		mk:      fn(r: Draw->Rect, label: string, checked: int): ref Checkbox;
+
+		# Draw the checkbox into dst.
+		draw:    fn(cb: self ref Checkbox, dst: ref Draw->Image);
+
+		# Update rectangle.
+		resize:  fn(cb: self ref Checkbox, r: Draw->Rect);
+
+		# Toggle checked state.
+		toggle:  fn(cb: self ref Checkbox);
+
+		# Test whether a point is inside the checkbox area.
+		contains: fn(cb: self ref Checkbox, p: Draw->Point): int;
+
+		# Get current state.
+		value:   fn(cb: self ref Checkbox): int;
+	};
+
 	# ── Statusbar ──────────────────────────────────────────────
 	#
 	# Horizontal info bar at the bottom of a window.  Displays

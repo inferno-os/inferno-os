@@ -432,6 +432,104 @@ Scrollbar.wheel(sb: self ref Scrollbar, button: int, step: int): int
 	return sb.origin;
 }
 
+# ── Label ─────────────────────────────────────────────────────
+
+Label.mk(r: Rect, text: string, dim: int): ref Label
+{
+	return ref Label(r, text, dim);
+}
+
+Label.draw(l: self ref Label, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+	col := fieldtext;
+	if(l.dim)
+		col = fieldlabel;
+	ty := l.r.min.y + (l.r.dy() - wfont.height) / 2;
+	dst.text(Point(l.r.min.x, ty), col, Point(0, 0), wfont, l.text);
+}
+
+Label.resize(l: self ref Label, r: Rect)
+{
+	l.r = r;
+}
+
+Label.settext(l: self ref Label, s: string)
+{
+	l.text = s;
+}
+
+# ── Checkbox ──────────────────────────────────────────────────
+
+CHECKBOXSZ: con 14;	# box size in pixels
+CHECKBOXGAP: con 6;	# gap between box and label
+
+Checkbox.mk(r: Rect, label: string, checked: int): ref Checkbox
+{
+	return ref Checkbox(r, label, checked);
+}
+
+Checkbox.draw(cb: self ref Checkbox, dst: ref Image)
+{
+	if(wfont == nil)
+		return;
+
+	# Centre box vertically within row
+	boxy := cb.r.min.y + (cb.r.dy() - CHECKBOXSZ) / 2;
+	boxx := cb.r.min.x;
+	boxr := Rect((boxx, boxy), (boxx + CHECKBOXSZ, boxy + CHECKBOXSZ));
+
+	# Box background and border
+	dst.draw(boxr, fieldbg, nil, Point(0, 0));
+	dst.draw(Rect(boxr.min, (boxr.max.x, boxr.min.y + 1)), fieldborder, nil, Point(0, 0));
+	dst.draw(Rect((boxr.min.x, boxr.max.y - 1), boxr.max), fieldborder, nil, Point(0, 0));
+	dst.draw(Rect(boxr.min, (boxr.min.x + 1, boxr.max.y)), fieldborder, nil, Point(0, 0));
+	dst.draw(Rect((boxr.max.x - 1, boxr.min.y), boxr.max), fieldborder, nil, Point(0, 0));
+
+	# Check mark (two diagonal lines forming a tick)
+	if(cb.checked) {
+		# Inner area for the check mark
+		ix := boxr.min.x + 3;
+		iy := boxr.min.y + 3;
+		iw := CHECKBOXSZ - 6;
+		ih := CHECKBOXSZ - 6;
+		# Descending stroke: top-left to mid-bottom
+		dst.line(Point(ix, iy + ih/2),
+			 Point(ix + iw/3, iy + ih),
+			 0, 0, 0, fieldfocus, Point(0, 0));
+		# Ascending stroke: mid-bottom to top-right
+		dst.line(Point(ix + iw/3, iy + ih),
+			 Point(ix + iw, iy),
+			 0, 0, 0, fieldfocus, Point(0, 0));
+	}
+
+	# Label text
+	tx := boxx + CHECKBOXSZ + CHECKBOXGAP;
+	ty := cb.r.min.y + (cb.r.dy() - wfont.height) / 2;
+	dst.text(Point(tx, ty), fieldtext, Point(0, 0), wfont, cb.label);
+}
+
+Checkbox.resize(cb: self ref Checkbox, r: Rect)
+{
+	cb.r = r;
+}
+
+Checkbox.toggle(cb: self ref Checkbox)
+{
+	cb.checked = !cb.checked;
+}
+
+Checkbox.contains(cb: self ref Checkbox, p: Point): int
+{
+	return cb.r.contains(p);
+}
+
+Checkbox.value(cb: self ref Checkbox): int
+{
+	return cb.checked;
+}
+
 # ── Statusbar ─────────────────────────────────────────────────
 
 Statusbar.new(r: Rect): ref Statusbar
