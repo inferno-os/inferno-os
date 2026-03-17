@@ -70,7 +70,7 @@ doc(): string
 		"Examples:\n" +
 		"  websearch Inferno OS distributed system\n" +
 		"  websearch Plan 9 from Bell Labs\n\n" +
-		"Returns titles, URLs, and descriptions of top results.\n" +
+		"Returns titles, URLs, and descriptions of up to 15 results.\n" +
 		"Requires API key in /lib/veltro/keys/brave.";
 }
 
@@ -92,7 +92,7 @@ exec(args: string): string
 	encoded := urlencode(query);
 
 	# Execute search via Webclient with timeout
-	url := "https://api.search.brave.com/res/v1/web/search?q=" + encoded + "&count=5";
+	url := "https://api.search.brave.com/res/v1/web/search?q=" + encoded + "&count=15";
 	hdrs := Webclient->Header("Accept", "application/json") ::
 		Webclient->Header("X-Subscription-Token", apikey) :: nil;
 
@@ -184,7 +184,7 @@ formatresults(json: string): string
 	pos := astart + 1;
 
 	# Extract each result object
-	while(count < 5 && pos < len json) {
+	while(count < 15 && pos < len json) {
 		# Find next object start
 		ostart := findchar(json, '{', pos);
 		if(ostart < 0)

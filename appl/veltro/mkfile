@@ -38,7 +38,7 @@ TOOLS=\
     tools/present.dis\
     tools/diff.dis\
     tools/json.dis\
-    tools/http.dis\
+    tools/webfetch.dis\
     tools/git.dis\
     tools/grep.dis\
     tools/memory.dis\
@@ -147,8 +147,8 @@ tools/diff.dis: tools/diff.b tool.m
 tools/json.dis: tools/json.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/json.dis tools/json.b
 
-tools/http.dis: tools/http.b tool.m
-	limbo $LIMBOFLAGS -gw -o tools/http.dis tools/http.b
+tools/webfetch.dis: tools/webfetch.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/webfetch.dis tools/webfetch.b
 
 tools/git.dis: tools/git.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/git.dis tools/git.b

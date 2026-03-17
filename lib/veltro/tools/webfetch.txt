@@ -1,0 +1,21 @@
+== webfetch — Fetch and Read Web Pages ==
+
+Fetches a URL and returns clean, readable text. HTML is converted automatically —
+scripts, styles, navigation, and markup noise are stripped. You get the content.
+
+Usage: webfetch <url>
+
+Workflow:
+1. Use websearch to find relevant URLs
+2. Use webfetch to read the full content of promising results
+3. Identify gaps in your understanding — what's still unanswered?
+4. Search again with refined queries, fetch more sources
+5. Repeat until the topic is thoroughly covered
+6. Cite only URLs you actually fetched
+
+webfetch is your primary tool for reading web content. Use it liberally —
+read multiple sources, follow references mentioned in articles, and
+cross-reference claims. A single source may be wrong or incomplete.
+
+For pages that are too large, content is truncated at 512KB.
+Non-HTML content (JSON, plain text, etc.) is returned as-is.

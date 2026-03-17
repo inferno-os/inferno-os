@@ -257,7 +257,7 @@ loadtooldocs(toollist: list of string): string
 	has_todo := 0;
 	has_gap := 0;
 	has_websearch := 0;
-	has_http := 0;
+	has_webfetch := 0;
 	has_plan := 0;
 	has_task := 0;
 	has_memory := 0;
@@ -271,7 +271,7 @@ loadtooldocs(toollist: list of string): string
 		"todo"      => has_todo = 1;
 		"gap"       => has_gap = 1;
 		"websearch" => has_websearch = 1;
-		"http"      => has_http = 1;
+		"webfetch"  => has_webfetch = 1;
 		"plan"      => has_plan = 1;
 		"task"      => has_task = 1;
 		"memory"    => has_memory = 1;
@@ -327,8 +327,8 @@ loadtooldocs(toollist: list of string): string
 			docs += doc;
 		}
 	}
-	if(has_http) {
-		doc := readfile("/lib/veltro/tools/http.txt");
+	if(has_webfetch) {
+		doc := readfile("/lib/veltro/tools/webfetch.txt");
 		if(doc != "") {
 			if(docs != "")
 				docs += "\n\n";
@@ -896,7 +896,7 @@ tooldesc(name: string): string
 	"spawn"    => return "Spawn a parallel subagent with its own namespace";
 	"todo"   => return "Manage a persistent task list";
 	"plan"   => return "Create and manage structured plans for complex tasks. Workflow: create → goal → approach → step(s) → approve → progress → complete. MANDATORY for non-trivial multi-step work.";
-	"http"   => return "Make an HTTP request";
+	"webfetch" => return "Fetch a web page and return clean readable text. HTML is automatically converted — scripts, styles, and navigation are stripped.";
 	"ls"     => return "List directory contents";
 	"mkdir"  => return "Create a directory";
 	"rm"     => return "Remove a file or directory";
@@ -906,7 +906,7 @@ tooldesc(name: string): string
 	"python" => return "Execute a Python expression or script";
 	"curl"   => return "Transfer data from a URL";
 	"vision" => return "Analyze an image using AI vision (local GPU or cloud)";
-	"websearch" => return "Search the web for information. Returns a list of results with titles, URLs, and snippets. Use http to fetch full page content from result URLs.";
+	"websearch" => return "Search the web for information. Returns up to 15 results with titles, URLs, and snippets. Use webfetch to read full page content from result URLs.";
 	"memory" => return "Read and write persistent memory entries that survive across sessions";
 	"task"   => return "Create and manage child task agents with isolated namespaces. Each task gets its own tools, paths, and LLM session.";
 	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
