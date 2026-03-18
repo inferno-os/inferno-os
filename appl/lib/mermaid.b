@@ -572,6 +572,7 @@ detecttype(lines: list of string): int
 parseflow(lines: list of string): ref FCGraph
 {
 	g := ref FCGraph(DIRN_TD, "", nil, 0, nil, 0);
+	firstrest := "";
 	# Parse direction from first line
 	for(l := lines; l != nil; l = tl l) {
 		s := trimstr(hd l);
@@ -586,13 +587,24 @@ parseflow(lines: list of string): ref FCGraph
 			while(i < len sl && (sl[i] == ' ' || sl[i] == '\t'))
 				i++;
 			dir := sl[i:];
-			if(hasprefix(dir, "lr"))  g.dir = DIRN_LR;
-			else if(hasprefix(dir, "bt")) g.dir = DIRN_BT;
-			else if(hasprefix(dir, "rl")) g.dir = DIRN_RL;
+			if(hasprefix(dir, "lr"))      { g.dir = DIRN_LR; i += 2; }
+			else if(hasprefix(dir, "bt")) { g.dir = DIRN_BT; i += 2; }
+			else if(hasprefix(dir, "rl")) { g.dir = DIRN_RL; i += 2; }
+			else if(hasprefix(dir, "td")) { g.dir = DIRN_TD; i += 2; }
+			else if(hasprefix(dir, "tb")) { g.dir = DIRN_TD; i += 2; }
 			else g.dir = DIRN_TD;
+			# If there's content after the direction (e.g. LLM put
+			# everything on one line), capture it for parsing below.
+			rest := trimstr(s[i:]);
+			if(len rest > 0)
+				firstrest = rest;
 		}
 		break;
 	}
+
+	# Parse any content that was on the same line as "graph TD ..."
+	if(len firstrest > 0)
+		parseflowline(firstrest, g);
 
 	for(l = lines; l != nil; l = tl l) {
 		s := trimstr(hd l);
@@ -617,42 +629,54 @@ parseflowline(line: string, g: ref FCGraph)
 	sh1, sh2, estyle, ehasarrow, ni: int;
 	i := 0;
 	n := len line;
-	while(i < n && (line[i] == ' ' || line[i] == '\t'))
-		i++;
-	if(i >= n)
-		return;
 
-	# Parse first node
-	(id1, lbl1, sh1, ni) = parsefcnode(line, i);
-	i = ni;
-	if(id1 == "")
-		return;
-	addnode(g, id1, lbl1, sh1);
-
-	# Parse edge(s) and subsequent nodes
+    statement:
 	for(;;) {
-		while(i < n && (line[i] == ' ' || line[i] == '\t'))
+		while(i < n && (line[i] == ' ' || line[i] == '\t' || line[i] == ';'))
 			i++;
 		if(i >= n)
 			break;
 
-		(estyle, ehasarrow, elabel, ni) = parseedgeop(line, i);
+		# Parse first node of this statement
+		(id1, lbl1, sh1, ni) = parsefcnode(line, i);
 		i = ni;
-		if(estyle < 0)
+		if(id1 == "")
 			break;
+		addnode(g, id1, lbl1, sh1);
 
-		while(i < n && (line[i] == ' ' || line[i] == '\t'))
-			i++;
-		if(i >= n)
-			break;
+		# Parse edge(s) and subsequent nodes
+		for(;;) {
+			while(i < n && (line[i] == ' ' || line[i] == '\t'))
+				i++;
+			if(i >= n)
+				break;
+			# Semicolons separate statements
+			if(line[i] == ';')
+				continue statement;
 
-		(id2, lbl2, sh2, ni) = parsefcnode(line, i);
-		i = ni;
-		if(id2 == "")
-			break;
-		addnode(g, id2, lbl2, sh2);
-		addedge(g, id1, id2, elabel, estyle, ehasarrow);
-		id1 = id2;
+			(estyle, ehasarrow, elabel, ni) = parseedgeop(line, i);
+			i = ni;
+			if(estyle < 0) {
+				# Not an edge operator — might be a new statement
+				# (e.g. LLM put multiple statements on one line
+				# without semicolons). Try parsing as a new node.
+				continue statement;
+			}
+
+			while(i < n && (line[i] == ' ' || line[i] == '\t'))
+				i++;
+			if(i >= n)
+				break;
+
+			(id2, lbl2, sh2, ni) = parsefcnode(line, i);
+			i = ni;
+			if(id2 == "")
+				break;
+			addnode(g, id2, lbl2, sh2);
+			addedge(g, id1, id2, elabel, estyle, ehasarrow);
+			id1 = id2;
+		}
+		break;
 	}
 }
 
