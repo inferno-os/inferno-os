@@ -6,7 +6,7 @@
 #   - /tool/paths file and bindpath/unbindpath ctl commands
 #   - namespace bind/unmount plumbing
 #
-# Does NOT require llm9p.
+# Does NOT require the LLM service.
 # Run from project root: ./tests/host/pathmanage_test.sh [-v]
 #
 

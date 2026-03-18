@@ -7,12 +7,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
-LLM9P="$SCRIPT_DIR/llm9p"
-
-# Augment PATH so llm9p can find the claude CLI regardless of how the app was launched.
-export PATH="$HOME/.local/bin:/usr/local/bin:/opt/homebrew/bin:$PATH"
-LLM9P_PORT=5640
-LLM9P_LOG="$HOME/Library/Logs/InferNode-llm9p.log"
 
 # Default tool set: non-destructive tools enabled out of the box.
 # Potentially destructive tools (exec, launch, spawn, git, mail) are registered
@@ -20,48 +14,10 @@ LLM9P_LOG="$HOME/Library/Logs/InferNode-llm9p.log"
 # The -b flag sets the budget of tools delegatable to child task agents.
 LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,websearch,present,gap -p /dis/wm read list find present say hear task todo memory gap editor charon; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
-# --- llm9p lifecycle ---
-# Kill any stale llm9p already holding our port (e.g. leftover launchd daemon).
-pkill -f "llm9p.*-addr :${LLM9P_PORT}" 2>/dev/null
-sleep 0.3
-
-# Prefer API backend (full tool_use support) when ANTHROPIC_API_KEY is available.
-# Fall back to CLI backend (Claude Max subscription, no custom tool schemas).
-if [ -z "$ANTHROPIC_API_KEY" ]; then
-    ANTHROPIC_API_KEY=$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw \
-        "$HOME/Library/LaunchAgents/com.nervsystems.llm9p.plist" 2>/dev/null)
-fi
-if [ -n "$ANTHROPIC_API_KEY" ]; then
-    export ANTHROPIC_API_KEY
-    BACKEND="api"
-else
-    BACKEND="cli"
-fi
-
-# Start the bundled llm9p in the background.
-"$LLM9P" -backend "$BACKEND" -addr ":${LLM9P_PORT}" >> "$LLM9P_LOG" 2>&1 &
-LLM9P_PID=$!
-
-# Ensure llm9p is killed when this script exits for any reason.
-cleanup() {
-    kill "$LLM9P_PID" 2>/dev/null
-    wait "$LLM9P_PID" 2>/dev/null
-}
-trap cleanup EXIT INT TERM
-
-# Wait up to 5 seconds for llm9p to be ready.
-i=0
-while [ $i -lt 10 ]; do
-    if nc -z 127.0.0.1 "$LLM9P_PORT" 2>/dev/null; then
-        break
-    fi
-    sleep 0.5
-    i=$((i + 1))
-done
-
 # --- Launch emulator ---
+# LLM service (local llmsrv or remote 9P mount) is configured in lib/sh/profile
+# and managed via the Settings app. The profile runs on "sh -l" before LUCIFER_CMD.
 cd "$INFERNODE_ROOT/emu/MacOSX"
 echo brimstone > "$INFERNODE_ROOT/lib/lucifer/theme/current"
 
-# Do NOT exec — we need this shell to survive so the trap fires on exit.
-"$EMU" -c1 -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"
+exec "$EMU" -c1 -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"

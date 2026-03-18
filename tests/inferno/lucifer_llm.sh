@@ -1,7 +1,7 @@
 #!/dis/sh.dis
 load std
 
-# Mount llm9p
+# Mount LLM service
 mkdir -p /n/llm
 mount -A tcp!127.0.0.1!5640 /n/llm
 

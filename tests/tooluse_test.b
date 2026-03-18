@@ -11,7 +11,7 @@ implement ToolUseTest;
 # All tests skip gracefully when /n/llm is not mounted.
 # Tests that invoke the LLM backend are slow (~10-60s each).
 #
-# To run manually (with llm9p running on port 5640):
+# To run manually (with llmsrv running or /n/llm mounted):
 #   cd $ROOT
 #   mount -A tcp!127.0.0.1!5640 /n/llm        # inside Inferno shell
 #   /tests/tooluse_test.dis [-v]
@@ -86,7 +86,7 @@ testSessionCreate(t: ref T)
 	id := agentlib->createsession();
 	t.assertnotnil(id, "session id is non-empty");
 
-	# Session ID from llm9p is a decimal integer
+	# Session ID from llmsrv is a decimal integer
 	ok := 1;
 	for(i := 0; i < len id; i++) {
 		c := id[i];

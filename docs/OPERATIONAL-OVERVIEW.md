@@ -8,7 +8,7 @@ Inferno OS running as a native process on macOS ARM64, with a working JIT compil
 
 ## The AI Stack
 
-**llm9p** runs as a macOS LaunchAgent (stays alive, auto-restarts). It mounts at `/n/llm` inside Inferno and presents the Anthropic API as a filesystem: write a prompt to `/n/llm/{id}/ask`, read the response back. Sessions are cloned from `/n/llm/new`. It speaks native Anthropic tool_use protocol — the model gets proper JSON tool schemas and returns structured tool calls, not text it has to parse.
+**llmsrv** is the native Limbo LLM service. It runs inside the Inferno emulator, self-mounts at `/n/llm`, and presents LLM providers (Anthropic API or Ollama/OpenAI-compatible) as a 9P filesystem: write a prompt to `/n/llm/{id}/ask`, read the response back. Sessions are cloned from `/n/llm/new`. It speaks native Anthropic tool_use protocol — the model gets proper JSON tool schemas and returns structured tool calls, not text it has to parse. For remote LLM access, dial and mount a remote llmsrv via 9P instead of running one locally.
 
 **tools9p** is a 9P file server mounted at `/tool`. It registers tool modules and serves them as a filesystem: `/tool/tools` (what's active), `/tool/paths` (namespace paths), `/tool/ctl` (add/remove tools, bind/unbind paths). This is the unified configuration store — both the GUI and the agent bridge write here.
 

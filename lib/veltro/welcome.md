@@ -43,7 +43,7 @@ and letting you try things hands-on.
 
 ### API key
 
-The LLM connection (`llm9p`) is configured in the shell profile and
+The LLM service (`llmsrv`) is configured in the shell profile and
 starts automatically. To set your Anthropic API key:
 
 ```

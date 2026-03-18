@@ -1,7 +1,7 @@
 implement LuciBridge;
 
 #
-# lucibridge - Connects Lucifer UI to Veltro agent via llm9p
+# lucibridge - Connects Lucifer UI to Veltro agent via /n/llm
 #
 # Reads human messages from /n/ui/activity/{id}/conversation/input
 # (blocking read), runs the Veltro agent loop (LLM + tools), and writes
@@ -16,7 +16,7 @@ implement LuciBridge;
 #
 # Prerequisites:
 #   - luciuisrv running (serves /n/ui/)
-#   - llm9p mounted at /n/llm/
+#   - LLM service mounted at /n/llm/
 #   - tools9p running (serves /tool/) — optional but enables tool use
 #
 
@@ -930,8 +930,8 @@ cowrevert(arg: string): string
 }
 
 # Run the agent loop for one human turn using native tool_use protocol.
-# Each step starts async LLM generation. If /stream is available (new llm9p),
-# tokens are streamed into a live placeholder message. Otherwise (old llm9p,
+# Each step starts async LLM generation. If /stream is available (new llmsrv),
+# tokens are streamed into a live placeholder message. Otherwise (old llmsrv,
 # blocking write), the response is displayed directly — no placeholder needed,
 # avoiding the event-delivery race where pushevent("conversation update N")
 # fires before nslistener re-issues its pending read.
@@ -966,17 +966,17 @@ agentturn(input: string)
 	for(step := 0; step < maxsteps; step++) {
 		log(sys->sprint("step %d: writing %d bytes to LLM", step + 1, len array of byte prompt));
 
-		# Start async generation — returns immediately with new llm9p,
-		# blocks until done with old llm9p.
+		# Start async generation — returns immediately with new llmsrv,
+		# blocks until done with old llmsrv.
 		writellmfd(llmfd, prompt);
 
-		# Try to open stream file. Presence indicates new llm9p with async Write.
+		# Try to open stream file. Presence indicates new llmsrv with async Write.
 		streampath := streambase + "/stream";
 		streamfd := sys->open(streampath, Sys->OREAD);
 
 		# placeholder_idx >= 0 means we created a streaming placeholder bubble.
 		# For step 0 (first response to a user message) create the placeholder
-		# immediately so the user sees a ▌ cursor while waiting — llm9p's CLI
+		# immediately so the user sees a ▌ cursor while waiting — llmsrv's CLI
 		# backend has async writes but the /stream file currently returns 0 chunks
 		# (chunks are only available via pread from /ask after generation completes).
 		# For step > 0 (tool-execution follow-ups) defer creation to the first
@@ -1008,7 +1008,7 @@ agentturn(input: string)
 				# allocation churn and rlayout re-render frequency.
 				# Sleep after each update so the draw loop has time to
 				# render the intermediate state — prevents "all at once"
-				# appearance when llm9p pre-buffers all chunks.
+				# appearance when llmsrv pre-buffers all chunks.
 				if((nchunks & 3) == 0) {
 					updateliveconvmsg(placeholder_idx, growing + "▌");
 					sys->sleep(50);
@@ -1027,7 +1027,7 @@ agentturn(input: string)
 			streamfd = nil;
 		} else {
 			sys->fprint(stderr, "lucibridge: stream open %s failed: %r\n", streampath);
-			log("stream: not available (old llm9p); using direct display");
+			log("stream: not available (old llmsrv); using direct display");
 		}
 
 		# Pread complete formatted response (blocks until generation done).
@@ -1241,7 +1241,7 @@ init(nil: ref Draw->Context, args: list of string)
 	if(sys->open("/n/ui/ctl", Sys->OREAD) == nil)
 		fatal("/n/ui/ not mounted — start luciuisrv first");
 	if(!agentlib->pathexists("/n/llm"))
-		fatal("/n/llm/ not mounted — mount llm9p first");
+		fatal("/n/llm/ not mounted — start llmsrv or mount remote LLM");
 
 	# Tools are optional — bridge works as simple chat relay without them
 	if(agentlib->pathexists(toolmount))

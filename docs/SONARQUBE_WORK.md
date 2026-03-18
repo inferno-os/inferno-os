@@ -63,8 +63,7 @@ Focused on RELIABILITY quality, HIGH+MEDIUM severity.
 - `libsec/aesgcm.c`: `-(v[1] & 1)` → `(0ULL - (v[1] & 1))` (S876)
 - `scratchpad/jit_test.sh`: 13 `[` → `[[` conversions (S7688 — bash script
   using `#!/bin/bash` should use `[[` not `[`)
-- `tests/host/llm9p_backend_test.sh`: shell function fixes — local vars,
-  explicit returns
+- `tests/host/llm9p_backend_test.sh` (removed — Go llm9p deprecated): shell function fixes
 
 ### Batch 6 (Linux ARM64 host, commit `a003c903`)
 Continued RELIABILITY focus.

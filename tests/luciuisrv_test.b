@@ -1181,6 +1181,141 @@ strip(s: string): string
 }
 
 # ============================================================================
+# Test: testAutocenterOnKill
+#
+# Regression test for f8b46094: when the current artifact is killed,
+# luciuisrv should auto-center the next remaining artifact and fire
+# "presentation current".  Before the fix, the presentation zone went
+# blank because no artifact was re-centered.
+# ============================================================================
+
+testAutocenterOnKill(t: ref T)
+{
+	if(actid < 0) {
+		t.skip("no activity (testSetup failed)");
+		return;
+	}
+
+	presctl := actbase() + "/presentation/ctl";
+	evpath := actbase() + "/event";
+
+	# Create three artifacts: ac-a, ac-b, ac-c
+	writefile(presctl, "create id=ac-a type=text label=A");
+	writefile(presctl, "create id=ac-b type=text label=B");
+	writefile(presctl, "create id=ac-c type=text label=C");
+
+	# Center on ac-b
+	writefile(presctl, "center id=ac-b");
+	cur := strip(readfile(actbase() + "/presentation/current"));
+	t.assertseq(cur, "ac-b", "current should be ac-b after center");
+
+	# Drain stale events before the kill
+	drainall(evpath);
+
+	# Kill ac-b — autocenter should select ac-c (the artifact that
+	# slides into the deleted position) and fire "presentation current".
+	writefile(presctl, "kill id=ac-b");
+
+	# Read the current artifact — should NOT be empty
+	cur = strip(readfile(actbase() + "/presentation/current"));
+	t.assertnotnil(cur, "current should not be empty after killing centered artifact");
+	# Should be ac-c (slid into ac-b's old position) or ac-a
+	t.assert(cur == "ac-c" || cur == "ac-a",
+		"current should be ac-c or ac-a, got: " + cur);
+	t.log("autocenter selected: " + cur);
+
+	# Verify "presentation current" event was fired
+	ev := readevent(evpath);
+	# Events from kill include: "presentation kill ac-b",
+	# "presentation current", "presentation delete ac-b".
+	# We need to find "presentation current" among them.
+	found := 0;
+	for(i := 0; i < 5 && !found; i++) {
+		if(hassubstr(ev, "presentation current"))
+			found = 1;
+		else
+			ev = readevent(evpath);
+	}
+	t.assert(found != 0, "should receive 'presentation current' event after kill");
+
+	# Clean up remaining artifacts
+	writefile(presctl, "delete id=ac-a");
+	writefile(presctl, "delete id=ac-c");
+	drainall(evpath);
+}
+
+# ============================================================================
+# Test: testAutocenterOnDelete
+#
+# Same as above but for the "delete" ctl command path.
+# ============================================================================
+
+testAutocenterOnDelete(t: ref T)
+{
+	if(actid < 0) {
+		t.skip("no activity (testSetup failed)");
+		return;
+	}
+
+	presctl := actbase() + "/presentation/ctl";
+	evpath := actbase() + "/event";
+
+	# Create two artifacts
+	writefile(presctl, "create id=acd-x type=text label=X");
+	writefile(presctl, "create id=acd-y type=text label=Y");
+	writefile(presctl, "center id=acd-y");
+	cur := strip(readfile(actbase() + "/presentation/current"));
+	t.assertseq(cur, "acd-y", "current should be acd-y");
+
+	drainall(evpath);
+
+	# Delete the centered artifact
+	writefile(presctl, "delete id=acd-y");
+
+	# Autocenter should select acd-x
+	cur = strip(readfile(actbase() + "/presentation/current"));
+	t.assertseq(cur, "acd-x", "current should be acd-x after deleting acd-y");
+
+	# Clean up
+	writefile(presctl, "delete id=acd-x");
+	drainall(evpath);
+}
+
+# ============================================================================
+# Test: testAutocenterNonCurrent
+#
+# Deleting a non-current artifact should NOT change current.
+# ============================================================================
+
+testAutocenterNonCurrent(t: ref T)
+{
+	if(actid < 0) {
+		t.skip("no activity (testSetup failed)");
+		return;
+	}
+
+	presctl := actbase() + "/presentation/ctl";
+	evpath := actbase() + "/event";
+
+	# Create two artifacts and center the first
+	writefile(presctl, "create id=acnc-p type=text label=P");
+	writefile(presctl, "create id=acnc-q type=text label=Q");
+	writefile(presctl, "center id=acnc-p");
+
+	drainall(evpath);
+
+	# Delete Q (not current) — current should remain P
+	writefile(presctl, "delete id=acnc-q");
+	cur := strip(readfile(actbase() + "/presentation/current"));
+	t.assertseq(cur, "acnc-p",
+		"deleting non-current artifact should not change current");
+
+	# Clean up
+	writefile(presctl, "delete id=acnc-p");
+	drainall(evpath);
+}
+
+# ============================================================================
 # Teardown: unmount the test server
 # ============================================================================
 
@@ -1239,6 +1374,11 @@ init(nil: ref Draw->Context, args: list of string)
 	run("GapUpsert", testGapUpsert);
 	run("GapResolve", testGapResolve);
 	run("CatalogRead", testCatalogRead);
+
+	# Autocenter regression tests (f8b46094)
+	run("AutocenterOnKill", testAutocenterOnKill);
+	run("AutocenterOnDelete", testAutocenterOnDelete);
+	run("AutocenterNonCurrent", testAutocenterNonCurrent);
 
 	# Activity metadata tests
 	run("ActivityLabel", testActivityLabel);

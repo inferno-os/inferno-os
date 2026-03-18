@@ -30,7 +30,9 @@ echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 # Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
 	# Start native LLM service (reads API key from factotum)
-	llmsrv >[2] /dev/null &
+	# BEGIN LLM
+	mount -A 'tcp!hephaestus!5640' /n/llm >[2] /dev/null
+	# END LLM
 
 	# Start speech file server (TTS/STT via /n/speech)
 	/dis/veltro/speech9p.dis -e cmd &

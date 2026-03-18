@@ -55,11 +55,12 @@ Settings: module
 
 # ── Categories ─────────────────────────────────────────────────
 
-CatTheme, CatTools, CatBudget, CatPaths, CatPrompts, CatProfile: con iota;
-NCATS: con 6;
+CatTheme, CatLLM, CatTools, CatBudget, CatPaths, CatPrompts, CatProfile: con iota;
+NCATS: con 7;
 
 catnames := array[] of {
 	"Theme",
+	"LLM Service",
 	"Initial Active Tools",
 	"Delegatable Tools",
 	"Namespace Paths",
@@ -84,6 +85,25 @@ divcolor:  ref Image;
 # Theme panel
 theme_radios: array of ref Radio;
 theme_names:  array of string;
+
+# LLM panel — local or remote
+llm_mode_radios: array of ref Radio;
+llm_mode_names := array[] of { "local", "remote" };
+llm_mode_labels := array[] of { "Local", "Remote (9P)" };
+llm_backend_radios: array of ref Radio;
+llm_backend_names := array[] of { "api", "openai" };
+llm_backend_labels := array[] of { "Anthropic API", "Ollama / OpenAI-compatible" };
+llm_url_label: ref Label;
+llm_url_tf: ref Textfield;
+llm_model_label: ref Label;
+llm_model_tf: ref Textfield;
+llm_key_label: ref Label;
+llm_dial_label: ref Label;
+llm_dial_tf: ref Textfield;
+llm_apply_btn: ref Button;
+llm_save_btn: ref Button;
+llm_is_remote: int;
+llm_mode_set: int;		# 1 after first layout or click — suppresses config re-read
 
 # Tools panel
 tool_checks:  array of ref Checkbox;
@@ -253,6 +273,22 @@ layoutcontent()
 
 	# Clear old panel state
 	theme_radios = nil;
+	llm_mode_radios = nil;
+	llm_backend_radios = nil;
+	llm_url_label = nil;
+	llm_url_tf = nil;
+	llm_model_label = nil;
+	llm_model_tf = nil;
+	llm_key_label = nil;
+	llm_dial_label = nil;
+	llm_dial_tf = nil;
+	llm_apply_btn = nil;
+	llm_save_btn = nil;
+	# Reset mode tracking when leaving LLM category
+	if(category != CatLLM) {
+		llm_is_remote = 0;
+		llm_mode_set = 0;
+	}
 	tool_checks = nil;
 	budget_checks = nil;
 	path_list = nil;
@@ -267,6 +303,8 @@ layoutcontent()
 	case category {
 	CatTheme =>
 		layouttheme(cx, cy, cw, ch);
+	CatLLM =>
+		layoutllm(cx, cy, cw, fh, bh, ch);
 	CatTools =>
 		layouttools(cx, cy, cw, cbottom, ch);
 	CatBudget =>
@@ -295,6 +333,104 @@ layouttheme(cx, cy, cw, ch: int)
 			theme_names[i], sel);
 		cy += ch + FIELD_SPACING;
 	}
+}
+
+layoutllm(cx, cy, cw, fh, bh, ch: int)
+{
+	(curmode, curbackend, cururl, curmodel, curdial, haskey) := readllmconfig();
+	# On first entry, set mode from config; on re-layout after a radio
+	# click, llm_is_remote was already set by clickllm — preserve it.
+	if(!llm_mode_set)
+		llm_is_remote = curmode == "remote";
+	llm_mode_set = 1;
+	if(llm_is_remote)
+		curmode = "remote";
+	else
+		curmode = "local";
+
+	# Mode: Local vs Remote
+	llm_mode_radios = array[len llm_mode_names] of ref Radio;
+	for(i := 0; i < len llm_mode_names; i++) {
+		sel := 0;
+		if(llm_mode_names[i] == curmode)
+			sel = 1;
+		llm_mode_radios[i] = Radio.mk(
+			Rect((cx, cy), (cw, cy + ch)),
+			llm_mode_labels[i], sel);
+		cy += ch + FIELD_SPACING;
+	}
+	cy += MARGIN;
+
+	if(llm_is_remote) {
+		# Remote mode: just a dial address
+		llm_dial_label = Label.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"Dial address:", 0);
+		cy += fh;
+		llm_dial_tf = Textfield.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"", 0);
+		llm_dial_tf.setval(curdial);
+		llm_dial_tf.focused = 1;
+		cy += fh + MARGIN;
+	} else {
+		# Local mode: backend, URL, model, key status
+		llm_backend_radios = array[len llm_backend_names] of ref Radio;
+		for(i = 0; i < len llm_backend_names; i++) {
+			sel := 0;
+			if(llm_backend_names[i] == curbackend)
+				sel = 1;
+			llm_backend_radios[i] = Radio.mk(
+				Rect((cx, cy), (cw, cy + ch)),
+				llm_backend_labels[i], sel);
+			cy += ch + FIELD_SPACING;
+		}
+		cy += MARGIN;
+
+		# URL
+		llm_url_label = Label.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"Endpoint URL:", 0);
+		cy += fh;
+		llm_url_tf = Textfield.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"", 0);
+		llm_url_tf.setval(cururl);
+		cy += fh + MARGIN;
+
+		# Model
+		llm_model_label = Label.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"Model:", 0);
+		cy += fh;
+		llm_model_tf = Textfield.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			"", 0);
+		llm_model_tf.setval(curmodel);
+		llm_model_tf.focused = 1;
+		cy += fh + MARGIN;
+
+		# API key status
+		keystatus: string;
+		if(haskey)
+			keystatus = "API key: configured";
+		else
+			keystatus = "API key: not set (check factotum or ANTHROPIC_API_KEY)";
+		llm_key_label = Label.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			keystatus, 0);
+		cy += fh + MARGIN;
+	}
+
+	# Buttons
+	llm_apply_btn = Button.mk(
+		Rect((cx, cy), (cx + BTN_W, cy + bh)),
+		"Apply");
+	savew := BTN_W + 40;
+	llm_save_btn = Button.mk(
+		Rect((cx + BTN_W + MARGIN, cy),
+		     (cx + BTN_W + MARGIN + savew, cy + bh)),
+		"Save to Profile");
 }
 
 layouttools(cx, cy, cw, cbottom, ch: int)
@@ -541,6 +677,8 @@ redraw()
 	case category {
 	CatTheme =>
 		drawradios(theme_radios);
+	CatLLM =>
+		drawllm();
 	CatTools =>
 		drawchecks(tool_checks);
 	CatBudget =>
@@ -559,6 +697,11 @@ redraw()
 		case category {
 		CatTheme =>
 			sbar.right = "restart for full effect";
+		CatLLM =>
+			if(llm_is_remote)
+				sbar.right = "dial + mount on apply";
+			else
+				sbar.right = "restart required";
 		CatTools =>
 			sbar.right = "applied immediately";
 		CatBudget =>
@@ -583,6 +726,33 @@ drawradios(radios: array of ref Radio)
 	for(i := 0; i < len radios; i++)
 		if(radios[i] != nil)
 			radios[i].draw(w.image);
+}
+
+drawllm()
+{
+	drawradios(llm_mode_radios);
+	if(llm_is_remote) {
+		if(llm_dial_label != nil)
+			llm_dial_label.draw(w.image);
+		if(llm_dial_tf != nil)
+			llm_dial_tf.draw(w.image);
+	} else {
+		drawradios(llm_backend_radios);
+		if(llm_url_label != nil)
+			llm_url_label.draw(w.image);
+		if(llm_url_tf != nil)
+			llm_url_tf.draw(w.image);
+		if(llm_model_label != nil)
+			llm_model_label.draw(w.image);
+		if(llm_model_tf != nil)
+			llm_model_tf.draw(w.image);
+		if(llm_key_label != nil)
+			llm_key_label.draw(w.image);
+	}
+	if(llm_apply_btn != nil)
+		llm_apply_btn.draw(w.image);
+	if(llm_save_btn != nil)
+		llm_save_btn.draw(w.image);
 }
 
 drawchecks(checks: array of ref Checkbox)
@@ -643,6 +813,43 @@ handlekey(rawkey: int)
 	# Escape: deselect
 	if(k == 27)
 		return;
+
+	# Route to LLM textfields
+	if(category == CatLLM) {
+		if(k == '\n') {
+			applyllm();
+			return;
+		}
+		if(llm_is_remote) {
+			if(llm_dial_tf != nil) {
+				llm_dial_tf.key(k);
+				dirty = 1;
+			}
+		} else {
+			if(k == '\t') {
+				# Toggle focus between URL and model fields
+				if(llm_url_tf != nil && llm_model_tf != nil) {
+					if(llm_url_tf.focused) {
+						llm_url_tf.focused = 0;
+						llm_model_tf.focused = 1;
+					} else {
+						llm_model_tf.focused = 0;
+						llm_url_tf.focused = 1;
+					}
+					dirty = 1;
+				}
+				return;
+			}
+			if(llm_url_tf != nil && llm_url_tf.focused) {
+				llm_url_tf.key(k);
+				dirty = 1;
+			} else if(llm_model_tf != nil && llm_model_tf.focused) {
+				llm_model_tf.key(k);
+				dirty = 1;
+			}
+		}
+		return;
+	}
 
 	# Route to paths textfield if active
 	if(category == CatPaths && path_add_tf != nil) {
@@ -709,6 +916,8 @@ handleptr(ptr: ref Pointer)
 	case category {
 	CatTheme =>
 		clicktheme(ptr);
+	CatLLM =>
+		clickllm(ptr);
 	CatTools =>
 		clicktools(ptr);
 	CatBudget =>
@@ -736,6 +945,86 @@ clicktheme(ptr: ref Pointer)
 			dirty = 1;
 			return;
 		}
+	}
+}
+
+clickllm(ptr: ref Pointer)
+{
+	# Mode radios: Local / Remote
+	if(llm_mode_radios != nil) {
+		for(i := 0; i < len llm_mode_radios; i++) {
+			if(llm_mode_radios[i] != nil && llm_mode_radios[i].contains(ptr.xy)) {
+				for(j := 0; j < len llm_mode_radios; j++)
+					llm_mode_radios[j].selected = 0;
+				llm_mode_radios[i].selected = 1;
+				wasremote := llm_is_remote;
+				llm_is_remote = llm_mode_names[i] == "remote";
+				if(wasremote != llm_is_remote) {
+					# Mode changed — re-layout to show correct fields
+					layoutcontent();
+				}
+				dirty = 1;
+				return;
+			}
+		}
+	}
+
+	if(llm_is_remote) {
+		# Remote mode: dial textfield
+		if(llm_dial_tf != nil && llm_dial_tf.contains(ptr.xy)) {
+			llm_dial_tf.focused = 1;
+			llm_dial_tf.click(ptr.xy);
+			dirty = 1;
+			return;
+		}
+	} else {
+		# Local mode: backend radios, URL, model
+		if(llm_backend_radios != nil) {
+			for(i := 0; i < len llm_backend_radios; i++) {
+				if(llm_backend_radios[i] != nil && llm_backend_radios[i].contains(ptr.xy)) {
+					for(j := 0; j < len llm_backend_radios; j++)
+						llm_backend_radios[j].selected = 0;
+					llm_backend_radios[i].selected = 1;
+					# Update URL default when switching backend
+					if(llm_backend_names[i] == "openai" && llm_url_tf != nil) {
+						cur := strip(llm_url_tf.value());
+						if(cur == "" || cur == "https://api.anthropic.com")
+							llm_url_tf.setval("http://localhost:11434/v1");
+					} else if(llm_backend_names[i] == "api" && llm_url_tf != nil) {
+						cur := strip(llm_url_tf.value());
+						if(cur == "" || cur == "http://localhost:11434/v1")
+							llm_url_tf.setval("https://api.anthropic.com");
+					}
+					dirty = 1;
+					return;
+				}
+			}
+		}
+		if(llm_url_tf != nil && llm_url_tf.contains(ptr.xy)) {
+			if(llm_model_tf != nil)
+				llm_model_tf.focused = 0;
+			llm_url_tf.focused = 1;
+			llm_url_tf.click(ptr.xy);
+			dirty = 1;
+			return;
+		}
+		if(llm_model_tf != nil && llm_model_tf.contains(ptr.xy)) {
+			if(llm_url_tf != nil)
+				llm_url_tf.focused = 0;
+			llm_model_tf.focused = 1;
+			llm_model_tf.click(ptr.xy);
+			dirty = 1;
+			return;
+		}
+	}
+
+	if(llm_apply_btn != nil && llm_apply_btn.contains(ptr.xy)) {
+		trackllmapply(ptr);
+		return;
+	}
+	if(llm_save_btn != nil && llm_save_btn.contains(ptr.xy)) {
+		trackllmsave(ptr);
+		return;
 	}
 }
 
@@ -940,6 +1229,328 @@ dounbindpath()
 	else
 		path_list.setitems(array[0] of string);
 	dirty = 1;
+}
+
+trackllmapply(nil: ref Pointer)
+{
+	llm_apply_btn.pressed = 1;
+	dirty = 1;
+	redraw();
+	for(;;) {
+		p := <-w.ctxt.ptr;
+		if(p == nil || !(p.buttons & 1)) {
+			llm_apply_btn.pressed = 0;
+			if(p != nil && llm_apply_btn.contains(p.xy))
+				applyllm();
+			dirty = 1;
+			return;
+		}
+	}
+}
+
+trackllmsave(nil: ref Pointer)
+{
+	llm_save_btn.pressed = 1;
+	dirty = 1;
+	redraw();
+	for(;;) {
+		p := <-w.ctxt.ptr;
+		if(p == nil || !(p.buttons & 1)) {
+			llm_save_btn.pressed = 0;
+			if(p != nil && llm_save_btn.contains(p.xy))
+				savellmtoprofile();
+			dirty = 1;
+			return;
+		}
+	}
+}
+
+savellmtoprofile()
+{
+	# Read current profile
+	profile := readfile("/lib/sh/profile");
+	if(profile == nil) {
+		flashstatus("cannot read /lib/sh/profile");
+		return;
+	}
+
+	# Build the replacement LLM line
+	newline: string;
+	if(llm_is_remote) {
+		addr := "";
+		if(llm_dial_tf != nil)
+			addr = strip(llm_dial_tf.value());
+		if(len addr == 0) {
+			flashstatus("enter a dial address first");
+			return;
+		}
+		newline = "\tmount -A '" + addr + "' /n/llm >[2] /dev/null";
+	} else {
+		backend := "api";
+		if(llm_backend_radios != nil) {
+			for(i := 0; i < len llm_backend_radios; i++) {
+				if(llm_backend_radios[i] != nil && llm_backend_radios[i].selected) {
+					backend = llm_backend_names[i];
+					break;
+				}
+			}
+		}
+		url := "";
+		if(llm_url_tf != nil)
+			url = strip(llm_url_tf.value());
+		model := "";
+		if(llm_model_tf != nil)
+			model = strip(llm_model_tf.value());
+
+		cmd := "\tllmsrv";
+		if(backend != "api")
+			cmd += " -b " + backend;
+		if(backend == "openai" && len url > 0
+		   && url != "http://localhost:11434/v1")
+			cmd += " -u " + url;
+		else if(backend == "api" && len url > 0
+			&& url != "https://api.anthropic.com")
+			cmd += " -u " + url;
+		if(len model > 0 && model != "claude-sonnet-4-5-20250929")
+			cmd += " -M " + model;
+		cmd += " >[2] /dev/null &";
+		newline = cmd;
+	}
+
+	# Find and replace the LLM line in the profile.
+	# Strategy: look for "# BEGIN LLM" / "# END LLM" markers first
+	# (from a previous save), else find the bare llmsrv line.
+	BEGIN_MARKER: con "# BEGIN LLM";
+	END_MARKER: con "# END LLM";
+
+	out := "";
+	found := 0;
+
+	bi := strindex(profile, BEGIN_MARKER);
+	if(bi >= 0) {
+		ei := strindex(profile[bi:], END_MARKER);
+		if(ei >= 0) {
+			out = profile[0:bi];
+			out += BEGIN_MARKER + "\n" + newline + "\n\t" + END_MARKER;
+			after := bi + ei + len END_MARKER;
+			while(after < len profile && profile[after] != '\n')
+				after++;
+			if(after < len profile)
+				out += profile[after:];
+			found = 1;
+		}
+	}
+
+	if(!found) {
+		# Find the bare "llmsrv" line and wrap it with markers
+		lines: list of string;
+		rest := profile;
+		while(len rest > 0) {
+			eol := len rest;
+			for(j := 0; j < len rest; j++) {
+				if(rest[j] == '\n') {
+					eol = j;
+					break;
+				}
+			}
+			line: string;
+			if(eol < len rest) {
+				line = rest[0:eol];
+				rest = rest[eol + 1:];
+			} else {
+				line = rest;
+				rest = "";
+			}
+
+			trimmed := strip(line);
+			if(hassubstr(trimmed, "llmsrv") && !hassubstr(trimmed, "#")) {
+				lines = ("\t" + BEGIN_MARKER + "\n" + newline + "\n\t" + END_MARKER) :: lines;
+				found = 1;
+			} else
+				lines = line :: lines;
+		}
+
+		if(found) {
+			rlines: list of string;
+			for(l := lines; l != nil; l = tl l)
+				rlines = (hd l) :: rlines;
+			out = "";
+			for(l = rlines; l != nil; l = tl l) {
+				out += hd l;
+				if(tl l != nil)
+					out += "\n";
+			}
+		}
+	}
+
+	if(!found) {
+		flashstatus("could not find llmsrv line in profile");
+		return;
+	}
+
+	# Write back
+	fd := sys->open("/lib/sh/profile", Sys->OWRITE);
+	if(fd == nil) {
+		flashstatus(sys->sprint("cannot write profile: %r"));
+		return;
+	}
+	b := array of byte out;
+	sys->write(fd, b, len b);
+	flashstatus("profile updated — takes effect on restart");
+}
+
+strindex(s, sub: string): int
+{
+	slen := len s;
+	sublen := len sub;
+	if(sublen > slen)
+		return -1;
+	for(i := 0; i <= slen - sublen; i++) {
+		if(s[i:i + sublen] == sub)
+			return i;
+	}
+	return -1;
+}
+
+applyllm()
+{
+	if(llm_is_remote) {
+		# Remote mode: dial + mount at /n/llm
+		addr := "";
+		if(llm_dial_tf != nil)
+			addr = strip(llm_dial_tf.value());
+		if(len addr == 0) {
+			flashstatus("enter a dial address (e.g. tcp!host!5640)");
+			return;
+		}
+		writellmconfig("remote", "", "", "", addr);
+		mountremotellm(addr);
+		return;
+	}
+
+	# Local mode: determine selected backend
+	backend := "api";
+	if(llm_backend_radios != nil) {
+		for(i := 0; i < len llm_backend_radios; i++) {
+			if(llm_backend_radios[i] != nil && llm_backend_radios[i].selected) {
+				backend = llm_backend_names[i];
+				break;
+			}
+		}
+	}
+
+	url := "";
+	if(llm_url_tf != nil)
+		url = strip(llm_url_tf.value());
+	model := "";
+	if(llm_model_tf != nil)
+		model = strip(llm_model_tf.value());
+
+	writellmconfig("local", backend, url, model, "");
+	flashstatus("LLM config saved — restart llmsrv for backend/URL changes");
+}
+
+mountremotellm(addr: string)
+{
+	# Unmount any existing /n/llm mount first (ignore errors)
+	sys->unmount(nil, "/n/llm");
+
+	(ok, c) := sys->dial(addr, nil);
+	if(ok < 0) {
+		flashstatus(sys->sprint("dial %s failed: %r", addr));
+		return;
+	}
+
+	n := sys->mount(c.dfd, nil, "/n/llm", Sys->MREPL, "");
+	if(n < 0) {
+		flashstatus(sys->sprint("mount /n/llm failed: %r"));
+		return;
+	}
+
+	flashstatus("mounted remote LLM at /n/llm from " + addr);
+}
+
+readllmconfig(): (string, string, string, string, string, int)
+{
+	# Returns (mode, backend, url, model, dial, haskey)
+	mode := "local";
+	backend := "api";
+	url := "https://api.anthropic.com";
+	model := "claude-sonnet-4-5-20250929";
+	dial := "tcp!hephaestus!5640";
+	haskey := 0;
+
+	lines := readlines("/lib/lucifer/llm");
+	if(lines != nil) {
+		for(i := 0; i < len lines; i++) {
+			line := lines[i];
+			if(len line > 5 && line[0:5] == "mode=")
+				mode = line[5:];
+			else if(len line > 8 && line[0:8] == "backend=")
+				backend = line[8:];
+			else if(len line > 4 && line[0:4] == "url=")
+				url = line[4:];
+			else if(len line > 6 && line[0:6] == "model=")
+				model = line[6:];
+			else if(len line > 5 && line[0:5] == "dial=")
+				dial = line[5:];
+		}
+	}
+
+	# Set default URL based on backend if not specified
+	if(url == "" || url == "https://api.anthropic.com") {
+		if(backend == "openai")
+			url = "http://localhost:11434/v1";
+		else
+			url = "https://api.anthropic.com";
+	}
+
+	# Check for API key in factotum
+	fd := sys->open("/mnt/factotum/ctl", Sys->OREAD);
+	if(fd != nil) {
+		buf := array[4096] of byte;
+		n := sys->read(fd, buf, len buf);
+		if(n > 0) {
+			content := string buf[0:n];
+			if(hassubstr(content, "anthropic") || hassubstr(content, "llm"))
+				haskey = 1;
+		}
+	}
+
+	return (mode, backend, url, model, dial, haskey);
+}
+
+writellmconfig(mode, backend, url, model, dial: string)
+{
+	fd := sys->create("/lib/lucifer/llm", Sys->OWRITE, 8r666);
+	if(fd == nil) {
+		# Try creating the directory first
+		dfd := sys->create("/lib/lucifer", Sys->OREAD, Sys->DMDIR | 8r777);
+		if(dfd != nil)
+			dfd = nil;
+		fd = sys->create("/lib/lucifer/llm", Sys->OWRITE, 8r666);
+	}
+	if(fd == nil) {
+		flashstatus(sys->sprint("cannot write config: %r"));
+		return;
+	}
+	config := sys->sprint("mode=%s\nbackend=%s\nurl=%s\nmodel=%s\ndial=%s\n",
+		mode, backend, url, model, dial);
+	b := array of byte config;
+	sys->write(fd, b, len b);
+}
+
+hassubstr(s, sub: string): int
+{
+	slen := len s;
+	sublen := len sub;
+	if(sublen > slen)
+		return 0;
+	for(i := 0; i <= slen - sublen; i++) {
+		if(s[i:i+sublen] == sub)
+			return 1;
+	}
+	return 0;
 }
 
 openineditor(path: string)

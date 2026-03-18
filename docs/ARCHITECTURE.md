@@ -13,14 +13,14 @@ file" model to integrate the LLM API, tool execution, and GUI through a unified 
 ```
 macOS Host
 │
-├── llm9p LaunchAgent           ← Anthropic API as a 9P file server
-│     tcp!127.0.0.1!5640           /n/llm/{id}/ask, /n/llm/{id}/tools
+├── llmsrv (Limbo)              ← LLM providers as a 9P file server
+│     self-mounts at /n/llm        /n/llm/{id}/ask, /n/llm/{id}/tools
 │
 └── emu/MacOSX/o.emu  (ARM64 JIT)
       │
       └── Inferno namespace (rootfs = project root)
             │
-            ├── /n/llm        ← mounted from llm9p (LaunchAgent)
+            ├── /n/llm        ← served by llmsrv (local or remote)
             ├── /n/ui         ← luciuisrv (GUI state 9P server)
             ├── /tool         ← tools9p (tool execution 9P server)
             ├── /n/local/     ← agent-visible host paths (via sys->bind)
@@ -33,11 +33,11 @@ macOS Host
 
 ## Components
 
-### llm9p (macOS LaunchAgent)
+### llmsrv (native Limbo LLM service)
 
-- Binary: `~/.local/bin/llm9p`; config: `~/Library/LaunchAgents/com.nervsystems.llm9p.plist`
-- Presents the Anthropic API as a 9P file server at `tcp!127.0.0.1!5640`
-- Mounted inside Inferno at `/n/llm`
+- Source: `appl/cmd/llmsrv.b`; runs inside Inferno emulator
+- Presents LLM providers (Anthropic API or Ollama/OpenAI-compatible) as a 9P file server
+- Self-mounts at `/n/llm`; can also be accessed remotely via 9P dial+mount
 - Session lifecycle: clone from `/n/llm/new` → session directory `/n/llm/{id}/`
 - Files per session: `ask` (write prompt → read response), `tools` (write tool schemas),
   `history` (full conversation history)
@@ -231,4 +231,4 @@ accessible locally via `mount -A tcp!<host>!<port> /n/remote`.
 | veltro | `appl/veltro/veltro.b` | `dis/veltro/veltro.dis` |
 | nsconstruct | `appl/veltro/nsconstruct.b` | `dis/veltro/nsconstruct.dis` |
 | agentlib | `appl/veltro/agentlib.b` | `dis/veltro/agentlib.dis` |
-| llm9p | `llm9p/` (Go) | `~/.local/bin/llm9p` |
+| llmsrv | `appl/cmd/llmsrv.b` | `dis/llmsrv.dis` |

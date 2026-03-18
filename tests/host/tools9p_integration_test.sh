@@ -10,7 +10,7 @@
 #   - Tool execution via 9P (read, list tools)
 #   - /tool/paths plumbing
 #
-# Does NOT require llm9p.
+# Does NOT require the LLM service.
 # Run from project root: ./tests/host/tools9p_integration_test.sh [-v]
 #
 

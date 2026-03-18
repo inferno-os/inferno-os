@@ -57,6 +57,7 @@ TARG=\
 	tls_protocol_test.dis\
 	webclient_test.dis\
 	widget_kbdfilter_test.dis\
+	widget_scrollbar_test.dis\
 	veltro_concurrent_test.dis\
 	veltro_security_test.dis\
 	veltro_test.dis\

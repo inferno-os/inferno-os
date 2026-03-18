@@ -126,7 +126,7 @@ Veltro is an AI agent system that operates within InferNode's namespace. The nam
 
 ```bash
 # Inside Inferno (terminal or Xenith)
-mount -A tcp!127.0.0.1!5640 /n/llm       # Mount LLM provider via llm9p
+llmsrv &                                  # Start LLM service (self-mounts at /n/llm)
 tools9p read list find search exec &       # Start tool server with chosen tools
 veltro "list the files in /appl"           # Single-shot task
 repl                                       # Interactive REPL
@@ -140,7 +140,7 @@ repl                                       # Interactive REPL
 
 ### Key Components
 
-- **llm9p** — Exposes LLM providers (e.g. Anthropic API) as a 9P filesystem at `/n/llm`. Agents read and write files to interact with the model — no SDK needed.
+- **llmsrv** — Exposes LLM providers (Anthropic API or Ollama/OpenAI-compatible) as a 9P filesystem at `/n/llm`. Agents read and write files to interact with the model — no SDK needed. Can also mount a remote llmsrv via 9P.
 - **tools9p** — Serves 43 tool modules as a 9P filesystem at `/tool`. Each tool (read, list, find, search, write, edit, exec, spawn, shell, etc.) is a loadable Limbo module.
 - **Subagents** — Created via the `spawn` tool, run in isolated namespaces (`pctl(NEWNS)`) with only the tools and paths the parent grants.
 - **Security** — Flows caller-to-callee: the agent cannot self-grant capabilities. Namespace isolation formally verified with TLA+ and SPIN.
@@ -151,7 +151,7 @@ repl                                       # Interactive REPL
 Caller                    Agent
   |                         |
   |-- tools9p (grants) ---> /tool/read, /tool/exec, ...
-  |-- mount llm9p --------> /n/llm/
+  |-- llmsrv ------------> /n/llm/
   |-- veltro "task" ------> queries LLM, invokes tools, loops
   |                         |
   |                    spawn subagent (NEWNS isolation)
@@ -281,7 +281,7 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 - **Xenith** — AI-native text environment with async I/O, dark mode, image support
 - **Lucifer** — Three-zone tiling GUI for AI-human collaboration
 - **Veltro** — AI agent system with namespace-based security, 43 tool modules, REPL, and sub-agent spawning
-- **llm9p** — LLM providers exposed as 9P filesystem
+- **llmsrv** — LLM providers exposed as 9P filesystem
 - **Quantum-Safe Cryptography** — FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA)
 - **Modern Cryptography** — Ed25519 signatures, updated certificate generation and authentication
 - **Formal Verification** — Namespace isolation verified via TLA+ (3.17B states), SPIN, and CBMC

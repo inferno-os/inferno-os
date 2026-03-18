@@ -243,7 +243,7 @@ newsession(): string
 	agentlib->setsystemprompt(systempath, sysprompt);
 
 	# Install tool definitions for native tool_use protocol.
-	# Must happen before the first Ask so llm9p sends tools in the API request.
+	# Must happen before the first Ask so llmsrv sends tools in the API request.
 	(nil, toollist) := sys->tokenize(agentlib->readfile("/tool/tools"), "\n");
 	agentlib->initsessiontools(sessionid, toollist);
 

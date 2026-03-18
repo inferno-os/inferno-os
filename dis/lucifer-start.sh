@@ -16,9 +16,16 @@ mount -ac {mntgen} /n >[2] /dev/null
 bind -a '#I' /net >[2] /dev/null
 ndb/cs
 
-# Start native LLM server (self-mounts at /n/llm)
-llmsrv &
-sleep 1
+# LLM service: read config from /lib/lucifer/llm if it exists.
+# Settings app writes mode=local or mode=remote with dial address.
+llmmode=`{sed -n 's/^mode=//p' /lib/lucifer/llm >[2] /dev/null}
+if {~ $llmmode remote} {
+	llmdial=`{sed -n 's/^dial=//p' /lib/lucifer/llm}
+	mount -A $llmdial /n/llm >[2] /dev/null
+}{
+	llmsrv &
+	sleep 1
+}
 
 # Set up home directory
 home=/usr/^$user

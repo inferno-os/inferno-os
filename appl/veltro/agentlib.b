@@ -200,7 +200,7 @@ discovernamespace(): string
 buildsystemprompt(ns: string): string
 {
 	# NOTE: The system prompt may be written to /n/llm/{id}/system via a single
-	# 9P Twrite. llm9p's MaxMessageSize is 8192 bytes, and each write
+	# 9P Twrite. llmsrv's MaxMessageSize is 8192 bytes, and each write
 	# REPLACES the content (offset is ignored). If the prompt exceeds the
 	# 9P msize, the kernel splits into multiple Twrites and only the LAST survives.
 	MAXPROMPT: con 65000;
@@ -874,10 +874,10 @@ findheredoc(s: string): int
 #
 # ==================== Native Tool_Use Protocol ====================
 #
-# These functions support the Anthropic tool_use JSON protocol via llm9p.
+# These functions support the Anthropic tool_use JSON protocol via llmsrv.
 # Tool definitions are written to /n/llm/{id}/tools before the first Ask.
 # Responses arrive as STOP:/TOOL: formatted text (parsed from structured JSON
-# by llm9p). Results are submitted back via TOOL_RESULTS wire format.
+# by llmsrv). Results are submitted back via TOOL_RESULTS wire format.
 #
 
 # Return a short human-readable description for a known tool name.
@@ -982,7 +982,7 @@ initsessiontools(id: string, toollist: list of string)
 }
 
 # Unescape \\n → newline and \\\\ → backslash in TOOL: line args.
-# llm9p escapes newlines in args so each TOOL: fits on one line.
+# llmsrv escapes newlines in args so each TOOL: fits on one line.
 unescapenl(s: string): string
 {
 	result := "";
@@ -1034,7 +1034,7 @@ parsetoolline(s: string): (string, string, string)
 #   tool_calls:  list of (tool_use_id, name, args) — non-nil when stop_reason=="tool_use"
 #   text_content: any assistant text accompanying the response
 #
-# Response format (from llm9p):
+# Response format (from llmsrv):
 #   STOP:tool_use
 #   TOOL:<id>:<name>:<args-with-\n-escaped>
 #   [more TOOL: lines...]

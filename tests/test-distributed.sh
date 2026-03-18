@@ -9,7 +9,7 @@
 # authenticated channel, verifying the Ed25519 + SHA-256 crypto stack.
 #
 #   Instance A (emu) --[Ed25519 auth + encrypted 9P]--> Instance B (emu)
-#       --[plain 9P, localhost]--> llm9p (Go, port 5640)
+#       --[plain 9P, localhost]--> LLM 9P service (port 5640)
 #
 # Usage:
 #   ./tests/test-distributed.sh          # run automated tests
@@ -99,13 +99,13 @@ if [[ ! -x "$EMU" ]]; then
 fi
 pass "Emulator found: $EMU"
 
-# Check llm9p is running
+# Check LLM 9P service is running
 if ! lsof -i ":$LLM9P_PORT" -sTCP:LISTEN >/dev/null 2>&1; then
-	echo "ERROR: llm9p not running on port $LLM9P_PORT"
-	echo "Start it first: llm9p or your LLM 9P server"
+	echo "ERROR: LLM service not running on port $LLM9P_PORT"
+	echo "Start llmsrv or mount a remote LLM 9P server"
 	exit 1
 fi
-pass "llm9p running on port $LLM9P_PORT"
+pass "LLM service running on port $LLM9P_PORT"
 
 # Check required .dis files
 MISSING=0
@@ -156,11 +156,11 @@ echo ""
 
 echo -e "${BOLD}Phase 3: Start Instance B (LLM Proxy Server)${NC}"
 
-# Instance B: mount llm9p (unauthenticated localhost), then listen
+# Instance B: mount LLM service (unauthenticated localhost), then listen
 # for authenticated connections on SERVER_PORT.
 #
 # The shell script inside emu:
-#   1. Mount llm9p via plain 9P (localhost, no auth)
+#   1. Mount LLM service via plain 9P (localhost, no auth)
 #   2. Listen on SERVER_PORT with Ed25519 auth
 #   3. For each authenticated connection, export /n/llm
 
@@ -290,7 +290,7 @@ echo ""
 echo "  Test 3: LLM query through encrypted channel"
 
 # Clone a session, write a prompt, read the response.
-# The llm9p clone pattern: read /n/llm/new to get session ID,
+# The LLM clone pattern: read /n/llm/new to get session ID,
 # then write prompt to /n/llm/<id>/ask and read response from /n/llm/<id>/ask.
 #
 # We use a shell script that captures the session ID and uses it.

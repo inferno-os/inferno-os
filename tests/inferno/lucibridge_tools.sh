@@ -1,7 +1,7 @@
 #!/dis/sh.dis
 load std
 
-# Mount llm9p (must be running on host)
+# Mount LLM service (llmsrv must be running)
 mkdir -p /n/llm
 mount -A tcp!127.0.0.1!5640 /n/llm
 

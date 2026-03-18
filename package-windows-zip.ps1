@@ -2,11 +2,11 @@
 # Package InferNode as a portable zip for Windows
 #
 # Creates a self-contained folder that users extract and double-click
-# InferNode.exe to launch.  llm9p starts automatically in the background.
+# InferNode.exe to launch.  LLM service is handled by the native Limbo
+# llmsrv inside the emulator — no external binary needed.
 #
 # Prerequisites:
 #   - Run build-windows-sdl3.ps1 first (builds o.emu.exe + SDL3.dll)
-#   - llm9p.exe in emu\Nt\ (optional but recommended for AI features)
 #
 # Usage:
 #   .\package-windows-zip.ps1
@@ -68,14 +68,6 @@ Copy-Item $launcher "$StageDir\InferNode.exe"
 Copy-Item $emuExe "$StageDir\o.emu.exe"
 Copy-Item $sdl3Dll "$StageDir\SDL3.dll"
 
-$llm9p = "$ROOT\emu\Nt\llm9p.exe"
-if (Test-Path $llm9p) {
-    Copy-Item $llm9p "$StageDir\llm9p.exe"
-    Write-Host "  + llm9p.exe (AI inference server)" -ForegroundColor Green
-} else {
-    Write-Host "  - llm9p.exe not found (AI features will be unavailable)" -ForegroundColor Yellow
-}
-
 # --- Copy Inferno root filesystem ---
 
 $rootDirs = @("dis", "lib", "fonts", "module", "services", "locale")
@@ -107,11 +99,6 @@ $sdlSize = (Get-Item "$StageDir\SDL3.dll").Length / 1KB
 Write-Host "  InferNode.exe  $([math]::Round($exeSize, 0)) KB  (launcher)"
 Write-Host "  o.emu.exe      $([math]::Round($emuSize, 0)) KB  (emulator)"
 Write-Host "  SDL3.dll       $([math]::Round($sdlSize, 0)) KB  (graphics)"
-
-if (Test-Path "$StageDir\llm9p.exe") {
-    $llmSize = (Get-Item "$StageDir\llm9p.exe").Length / 1MB
-    Write-Host "  llm9p.exe      $([math]::Round($llmSize, 1)) MB  (AI server)"
-}
 
 foreach ($d in $rootDirs) {
     if (Test-Path "$StageDir\$d") {

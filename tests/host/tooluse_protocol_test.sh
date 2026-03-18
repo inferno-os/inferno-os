@@ -10,7 +10,7 @@
 #   - agentlib buildtooldefs / initsessiontools / parsellmresponse
 #
 # Requirements:
-#   - llm9p running on LLM9P_PORT (default 5640)
+#   - LLM 9P service running on LLM9P_PORT (default 5640)
 #   - Inferno emulator at $ROOT/emu/MacOSX/o.emu
 #
 # Usage:
@@ -75,19 +75,19 @@ run_emu() {
 }
 
 echo -e "${BOLD}Veltro tool_use protocol functional test${NC}"
-echo "  llm9p port: $LLM9P_PORT"
+echo "  LLM port: $LLM9P_PORT"
 echo ""
 
 # ── Prerequisites ──────────────────────────────────────────────────
 
-# Check llm9p is reachable
+# Check LLM 9P service is reachable
 if ! nc -z localhost "$LLM9P_PORT" 2>/dev/null; then
-	skip "llm9p not running on port $LLM9P_PORT (start with: llm9p -addr :${LLM9P_PORT} -backend cli)"
+	skip "LLM service not running on port $LLM9P_PORT (start llmsrv or mount remote)"
 	echo ""
 	echo "  Total: 0 passed, $FAILED failed, $SKIPPED skipped"
 	exit 0
 fi
-info "llm9p is listening on port $LLM9P_PORT"
+info "LLM service listening on port $LLM9P_PORT"
 
 # Check emulator exists
 if [[ ! -x "$EMU" ]]; then

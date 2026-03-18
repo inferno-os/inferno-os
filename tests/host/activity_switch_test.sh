@@ -9,7 +9,7 @@
 #      (previously nslistener stayed bound to activity 0's event file)
 #   2. Task context role: context injection must use role=system, not role=human
 #
-# Does NOT require llm9p.
+# Does NOT require the LLM service.
 # Run from project root: ./tests/host/activity_switch_test.sh [-v]
 #
 

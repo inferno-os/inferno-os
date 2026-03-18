@@ -307,7 +307,7 @@ Key considerations that may drive changes:
    a single read/write file pattern (write query, read result from same file)
    rather than separate input and output files. The current design uses separate
    files (`url` for input, `result` for output). Testing may reveal that a
-   single query-file pattern (like `ask` in llm9p) is more ergonomic for agents.
+   single query-file pattern (like `ask` in llmsrv) is more ergonomic for agents.
 
 2. **POST body format**: The current design accepts arbitrary body content for
    POST requests. In examples, JSON is shown (`{"key": "value"}`), but this may

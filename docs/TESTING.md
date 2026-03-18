@@ -4,7 +4,7 @@
 
 The test suite covers: Limbo unit tests (run inside Inferno), host-side integration tests
 (bash), and Inferno shell tests. Most Limbo tests skip gracefully when required services
-(llm9p, tools9p) are not running.
+(llmsrv, tools9p) are not running.
 
 ---
 
@@ -52,7 +52,7 @@ Run inside the Inferno emulator. All compiled to `dis/tests/*.dis`.
 | Test | What it covers | Requires |
 |------|----------------|----------|
 | `agentlib_test` | `buildtooldefs`, `parsellmresponse`, `buildtoolresults`, session creation | `/n/llm` (skips without) |
-| `tooluse_test` | End-to-end native tool_use protocol with llm9p | `/n/llm` (skips without) |
+| `tooluse_test` | End-to-end native tool_use protocol with llmsrv | `/n/llm` (skips without) |
 | `veltro_test` | Tool module loading: name(), doc(), basic exec() | nothing |
 | `veltro_tools_test` | diff, json, memory, todo tool execution | nothing |
 | `veltro_security_test` | Namespace restriction: restrictdir, restrictns, verifyns | nothing |
@@ -99,16 +99,14 @@ Run inside the Inferno emulator. All compiled to `dis/tests/*.dis`.
 
 ---
 
-## Running with llm9p
+## Running with llmsrv
 
-Tests that require the LLM (`agentlib_test`, `tooluse_test`) need llm9p running.
+Tests that require the LLM (`agentlib_test`, `tooluse_test`) need llmsrv running.
+The profile starts it automatically with `sh -l`. For manual testing:
 
 ```sh
-# Check if llm9p is running
-launchctl list | grep llm9p
-
-# Start llm9p
-launchctl kickstart -k gui/$(id -u)/com.nervsystems.llm9p
+# Run emu with profile (starts llmsrv automatically)
+./emu/MacOSX/o.emu -r. sh -l
 
 # Verify mount inside emu
 ./emu/MacOSX/o.emu -r. /dis/sh.dis
@@ -199,7 +197,7 @@ The following require manual verification or a running full Lucifer session:
 
 1. **End-to-end LLM agent turns** — full veltro session: prompt → tool calls → response.
    The `tooluse_test` covers the protocol, but a complete multi-turn agent session with
-   real tool use requires llm9p and a user prompt.
+   real tool use requires llmsrv and a user prompt.
 
 2. **GUI rendering** — lucifer's draw stack (zone layout, font rendering, PDF display)
    cannot be tested headlessly. `luciuisrv_test` covers the 9P state machine; the
@@ -207,7 +205,7 @@ The following require manual verification or a running full Lucifer session:
 
 3. **Context zone → lucibridge sync** — the full chain "user clicks [-] on tool → lucictx
    writes to /tool/ctl → lucibridge picks up change on next turn → LLM loses schema"
-   requires a running Lucifer + lucibridge + llm9p. The individual pieces are tested
+   requires a running Lucifer + lucibridge + llmsrv. The individual pieces are tested
    (luciuisrv_test, pathmanage_test, tooluse_test) but the end-to-end chain is not.
 
 4. **Cross-host 9P** — requires the Jetson to be reachable over ZeroTier.
