@@ -324,12 +324,8 @@ Widget: module
 	#
 	# Radio button — circle indicator with a text label.
 	# Visually distinct from Checkbox (circle vs square).
-	# The caller manages mutual exclusion (uncheck others).
-	#
-	# Usage:
-	#   rb := Radio.mk(r, "Dark theme", 1);
-	#   ...
-	#   if(rb.contains(p.xy)) { unselectall(); rb.selected = 1; }
+	# The caller manages mutual exclusion (uncheck others),
+	# or use RadioGroup below for automatic management.
 	#
 	Radio: adt {
 		r:        Draw->Rect;    # full rectangle (circle + label)
@@ -347,6 +343,64 @@ Widget: module
 
 		# Test whether a point is inside the radio area.
 		contains: fn(rb: self ref Radio, p: Draw->Point): int;
+	};
+
+	# ── RadioGroup ─────────────────────────────────────────────
+	#
+	# Manages a set of mutually exclusive Radio buttons.
+	# Handles hit testing and automatic deselection when a
+	# new button is clicked.  Simplifies the common pattern
+	# where the caller previously had to deselect all buttons
+	# manually.
+	#
+	# Usage:
+	#   rg := RadioGroup.mk(Point(cx, cy), width, labels, sel, rowh);
+	#   ...
+	#   if(rg.contains(p.xy)) {
+	#       i := rg.click(p.xy);
+	#       if(i >= 0) { handleselection(i); redraw(); }
+	#   }
+	#   rg.draw(dst);
+	#
+	RadioGroup: adt {
+		buttons: array of ref Radio;
+
+		# Create a group.
+		# origin: top-left of first button.
+		# width:  horizontal extent of each button row.
+		# labels: array of label strings (one per button).
+		# sel:    initially selected index (-1 = none).
+		# rowh:   height per row (button rect height; include
+		#         inter-button spacing here for natural gaps).
+		mk:       fn(origin: Draw->Point, width: int,
+			        labels: array of string, sel: int,
+			        rowh: int): ref RadioGroup;
+
+		# Draw all buttons.
+		draw:     fn(rg: self ref RadioGroup, dst: ref Draw->Image);
+
+		# Handle a pointer click.  Deselects all buttons, selects
+		# the hit one, and returns its index.
+		# Returns -1 if no button was hit.
+		click:    fn(rg: self ref RadioGroup, p: Draw->Point): int;
+
+		# Return the index of the currently selected button (-1 = none).
+		selected: fn(rg: self ref RadioGroup): int;
+
+		# Programmatically select a button by index.
+		# Pass -1 to deselect all.
+		select:   fn(rg: self ref RadioGroup, idx: int);
+
+		# Recompute button rectangles after a resize.
+		# Parameters match those of mk().
+		resize:   fn(rg: self ref RadioGroup, origin: Draw->Point,
+			        width: int, rowh: int);
+
+		# Bounding rectangle of the entire group.
+		bounds:   fn(rg: self ref RadioGroup): Draw->Rect;
+
+		# Test whether a point is inside any button in the group.
+		contains: fn(rg: self ref RadioGroup, p: Draw->Point): int;
 	};
 
 	# ── Statusbar ──────────────────────────────────────────────

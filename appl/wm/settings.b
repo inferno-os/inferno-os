@@ -46,7 +46,7 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Radio, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Radio, RadioGroup, Kbdfilter: import widgetmod;
 
 Settings: module
 {
@@ -83,16 +83,18 @@ bgcolor:   ref Image;
 divcolor:  ref Image;
 
 # Theme panel
-theme_radios: array of ref Radio;
-theme_names:  array of string;
+theme_group: ref RadioGroup;
+theme_names: array of string;
 
 # LLM panel — local or remote
-llm_mode_radios: array of ref Radio;
+llm_mode_group: ref RadioGroup;
 llm_mode_names := array[] of { "local", "remote" };
 llm_mode_labels := array[] of { "Local", "Remote (9P)" };
-llm_backend_radios: array of ref Radio;
+llm_conn_hdr: ref Label;
+llm_backend_group: ref RadioGroup;
 llm_backend_names := array[] of { "api", "openai" };
 llm_backend_labels := array[] of { "Anthropic API", "Ollama / OpenAI-compatible" };
+llm_backend_hdr: ref Label;
 llm_url_label: ref Label;
 llm_url_tf: ref Textfield;
 llm_model_label: ref Label;
@@ -272,9 +274,11 @@ layoutcontent()
 	ch := font.height + 6;	# checkbox row height
 
 	# Clear old panel state
-	theme_radios = nil;
-	llm_mode_radios = nil;
-	llm_backend_radios = nil;
+	theme_group = nil;
+	llm_mode_group = nil;
+	llm_conn_hdr = nil;
+	llm_backend_group = nil;
+	llm_backend_hdr = nil;
 	llm_url_label = nil;
 	llm_url_tf = nil;
 	llm_model_label = nil;
@@ -323,16 +327,14 @@ layouttheme(cx, cy, cw, ch: int)
 	theme_names = readthemes();
 	current := readcurrenttheme();
 
-	theme_radios = array[len theme_names] of ref Radio;
-	for(i := 0; i < len theme_names; i++) {
-		sel := 0;
-		if(theme_names[i] == current)
-			sel = 1;
-		theme_radios[i] = Radio.mk(
-			Rect((cx, cy), (cw, cy + ch)),
-			theme_names[i], sel);
-		cy += ch + FIELD_SPACING;
-	}
+	sel := -1;
+	for(i := 0; i < len theme_names; i++)
+		if(theme_names[i] == current) {
+			sel = i;
+			break;
+		}
+	rowh := ch + FIELD_SPACING;
+	theme_group = RadioGroup.mk(Point(cx, cy), cw - cx, theme_names, sel, rowh);
 }
 
 layoutllm(cx, cy, cw, fh, bh, ch: int)
@@ -348,17 +350,21 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 	else
 		curmode = "local";
 
-	# Mode: Local vs Remote
-	llm_mode_radios = array[len llm_mode_names] of ref Radio;
-	for(i := 0; i < len llm_mode_names; i++) {
-		sel := 0;
-		if(llm_mode_names[i] == curmode)
-			sel = 1;
-		llm_mode_radios[i] = Radio.mk(
-			Rect((cx, cy), (cw, cy + ch)),
-			llm_mode_labels[i], sel);
-		cy += ch + FIELD_SPACING;
-	}
+	rowh := ch + FIELD_SPACING;
+
+	# Section header: Connection
+	llm_conn_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Connection", 1);
+	cy += fh;
+
+	# Mode group: Local vs Remote
+	msel := 0;
+	for(i := 0; i < len llm_mode_names; i++)
+		if(llm_mode_names[i] == curmode) {
+			msel = i;
+			break;
+		}
+	llm_mode_group = RadioGroup.mk(Point(cx, cy), cw - cx, llm_mode_labels, msel, rowh);
+	cy += len llm_mode_names * rowh;
 	cy += MARGIN;
 
 	if(llm_is_remote) {
@@ -374,17 +380,19 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		llm_dial_tf.focused = 1;
 		cy += fh + MARGIN;
 	} else {
-		# Local mode: backend, URL, model, key status
-		llm_backend_radios = array[len llm_backend_names] of ref Radio;
-		for(i = 0; i < len llm_backend_names; i++) {
-			sel := 0;
-			if(llm_backend_names[i] == curbackend)
-				sel = 1;
-			llm_backend_radios[i] = Radio.mk(
-				Rect((cx, cy), (cw, cy + ch)),
-				llm_backend_labels[i], sel);
-			cy += ch + FIELD_SPACING;
-		}
+		# Section header: Backend
+		llm_backend_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Backend", 1);
+		cy += fh;
+
+		# Backend group: Anthropic API vs Ollama/OpenAI
+		bsel := 0;
+		for(i = 0; i < len llm_backend_names; i++)
+			if(llm_backend_names[i] == curbackend) {
+				bsel = i;
+				break;
+			}
+		llm_backend_group = RadioGroup.mk(Point(cx, cy), cw - cx, llm_backend_labels, bsel, rowh);
+		cy += len llm_backend_names * rowh;
 		cy += MARGIN;
 
 		# URL
@@ -676,7 +684,8 @@ redraw()
 	# Content
 	case category {
 	CatTheme =>
-		drawradios(theme_radios);
+		if(theme_group != nil)
+			theme_group.draw(w.image);
 	CatLLM =>
 		drawllm();
 	CatTools =>
@@ -719,25 +728,22 @@ redraw()
 	w.image.flush(Draw->Flushnow);
 }
 
-drawradios(radios: array of ref Radio)
-{
-	if(radios == nil)
-		return;
-	for(i := 0; i < len radios; i++)
-		if(radios[i] != nil)
-			radios[i].draw(w.image);
-}
-
 drawllm()
 {
-	drawradios(llm_mode_radios);
+	if(llm_conn_hdr != nil)
+		llm_conn_hdr.draw(w.image);
+	if(llm_mode_group != nil)
+		llm_mode_group.draw(w.image);
 	if(llm_is_remote) {
 		if(llm_dial_label != nil)
 			llm_dial_label.draw(w.image);
 		if(llm_dial_tf != nil)
 			llm_dial_tf.draw(w.image);
 	} else {
-		drawradios(llm_backend_radios);
+		if(llm_backend_hdr != nil)
+			llm_backend_hdr.draw(w.image);
+		if(llm_backend_group != nil)
+			llm_backend_group.draw(w.image);
 		if(llm_url_label != nil)
 			llm_url_label.draw(w.image);
 		if(llm_url_tf != nil)
@@ -933,40 +939,28 @@ handleptr(ptr: ref Pointer)
 
 clicktheme(ptr: ref Pointer)
 {
-	if(theme_radios == nil)
+	if(theme_group == nil)
 		return;
-	for(i := 0; i < len theme_radios; i++) {
-		if(theme_radios[i] != nil && theme_radios[i].contains(ptr.xy)) {
-			# Mutual exclusion: deselect all, select this one
-			for(j := 0; j < len theme_radios; j++)
-				theme_radios[j].selected = 0;
-			theme_radios[i].selected = 1;
-			applytheme(theme_names[i]);
-			dirty = 1;
-			return;
-		}
+	i := theme_group.click(ptr.xy);
+	if(i >= 0 && i < len theme_names) {
+		applytheme(theme_names[i]);
+		dirty = 1;
 	}
 }
 
 clickllm(ptr: ref Pointer)
 {
-	# Mode radios: Local / Remote
-	if(llm_mode_radios != nil) {
-		for(i := 0; i < len llm_mode_radios; i++) {
-			if(llm_mode_radios[i] != nil && llm_mode_radios[i].contains(ptr.xy)) {
-				for(j := 0; j < len llm_mode_radios; j++)
-					llm_mode_radios[j].selected = 0;
-				llm_mode_radios[i].selected = 1;
-				wasremote := llm_is_remote;
-				llm_is_remote = llm_mode_names[i] == "remote";
-				if(wasremote != llm_is_remote) {
-					# Mode changed — re-layout to show correct fields
-					layoutcontent();
-				}
-				dirty = 1;
-				return;
-			}
+	# Mode group: Local / Remote
+	if(llm_mode_group != nil && llm_mode_group.contains(ptr.xy)) {
+		i := llm_mode_group.click(ptr.xy);
+		if(i >= 0) {
+			wasremote := llm_is_remote;
+			llm_is_remote = i < len llm_mode_names && llm_mode_names[i] == "remote";
+			if(wasremote != llm_is_remote)
+				layoutcontent();
+			dirty = 1;
 		}
+		return;
 	}
 
 	if(llm_is_remote) {
@@ -978,27 +972,23 @@ clickllm(ptr: ref Pointer)
 			return;
 		}
 	} else {
-		# Local mode: backend radios, URL, model
-		if(llm_backend_radios != nil) {
-			for(i := 0; i < len llm_backend_radios; i++) {
-				if(llm_backend_radios[i] != nil && llm_backend_radios[i].contains(ptr.xy)) {
-					for(j := 0; j < len llm_backend_radios; j++)
-						llm_backend_radios[j].selected = 0;
-					llm_backend_radios[i].selected = 1;
-					# Update URL default when switching backend
-					if(llm_backend_names[i] == "openai" && llm_url_tf != nil) {
-						cur := strip(llm_url_tf.value());
-						if(cur == "" || cur == "https://api.anthropic.com")
-							llm_url_tf.setval("http://localhost:11434/v1");
-					} else if(llm_backend_names[i] == "api" && llm_url_tf != nil) {
-						cur := strip(llm_url_tf.value());
-						if(cur == "" || cur == "http://localhost:11434/v1")
-							llm_url_tf.setval("https://api.anthropic.com");
-					}
-					dirty = 1;
-					return;
+		# Local mode: backend group, URL, model
+		if(llm_backend_group != nil && llm_backend_group.contains(ptr.xy)) {
+			i := llm_backend_group.click(ptr.xy);
+			if(i >= 0 && i < len llm_backend_names) {
+				# Update URL default when switching backend
+				if(llm_backend_names[i] == "openai" && llm_url_tf != nil) {
+					cur := strip(llm_url_tf.value());
+					if(cur == "" || cur == "https://api.anthropic.com")
+						llm_url_tf.setval("http://localhost:11434/v1");
+				} else if(llm_backend_names[i] == "api" && llm_url_tf != nil) {
+					cur := strip(llm_url_tf.value());
+					if(cur == "" || cur == "http://localhost:11434/v1")
+						llm_url_tf.setval("https://api.anthropic.com");
 				}
+				dirty = 1;
 			}
+			return;
 		}
 		if(llm_url_tf != nil && llm_url_tf.contains(ptr.xy)) {
 			if(llm_model_tf != nil)
@@ -1287,13 +1277,10 @@ savellmtoprofile()
 		newline = "\tmount -A '" + addr + "' /n/llm >[2] /dev/null";
 	} else {
 		backend := "api";
-		if(llm_backend_radios != nil) {
-			for(i := 0; i < len llm_backend_radios; i++) {
-				if(llm_backend_radios[i] != nil && llm_backend_radios[i].selected) {
-					backend = llm_backend_names[i];
-					break;
-				}
-			}
+		if(llm_backend_group != nil) {
+			bi := llm_backend_group.selected();
+			if(bi >= 0 && bi < len llm_backend_names)
+				backend = llm_backend_names[bi];
 		}
 		url := "";
 		if(llm_url_tf != nil)
@@ -1430,13 +1417,10 @@ applyllm()
 
 	# Local mode: determine selected backend
 	backend := "api";
-	if(llm_backend_radios != nil) {
-		for(i := 0; i < len llm_backend_radios; i++) {
-			if(llm_backend_radios[i] != nil && llm_backend_radios[i].selected) {
-				backend = llm_backend_names[i];
-				break;
-			}
-		}
+	if(llm_backend_group != nil) {
+		bi := llm_backend_group.selected();
+		if(bi >= 0 && bi < len llm_backend_names)
+			backend = llm_backend_names[bi];
 	}
 
 	url := "";

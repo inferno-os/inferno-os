@@ -25,6 +25,7 @@ MARGIN:  con 4;		# text padding in status bar
 MINTHUMB: con 10;	# minimum thumb size in pixels
 FIELDPAD: con 3;	# internal padding in text fields
 LABELGAP: con 6;	# gap between label and input area
+LEFTPAD: con 4;		# left indent for labels, checkboxes, radios
 
 wfont:    ref Font;
 wdisplay: ref Display;	# cached for colour allocation
@@ -447,7 +448,7 @@ Label.draw(l: self ref Label, dst: ref Image)
 	if(l.dim)
 		col = fieldlabel;
 	ty := l.r.min.y + (l.r.dy() - wfont.height) / 2;
-	dst.text(Point(l.r.min.x, ty), col, Point(0, 0), wfont, l.text);
+	dst.text(Point(l.r.min.x + LEFTPAD, ty), col, Point(0, 0), wfont, l.text);
 }
 
 Label.resize(l: self ref Label, r: Rect)
@@ -477,7 +478,7 @@ Checkbox.draw(cb: self ref Checkbox, dst: ref Image)
 
 	# Centre box vertically within row
 	boxy := cb.r.min.y + (cb.r.dy() - CHECKBOXSZ) / 2;
-	boxx := cb.r.min.x;
+	boxx := cb.r.min.x + LEFTPAD;
 	boxr := Rect((boxx, boxy), (boxx + CHECKBOXSZ, boxy + CHECKBOXSZ));
 
 	# Box background and border
@@ -547,7 +548,7 @@ Radio.draw(rb: self ref Radio, dst: ref Image)
 
 	# Centre circle vertically within row
 	cy := rb.r.min.y + rb.r.dy() / 2;
-	cx := rb.r.min.x + RADIOR + 1;
+	cx := rb.r.min.x + LEFTPAD + RADIOR + 1;
 	c := Point(cx, cy);
 
 	# Outer circle (border)
@@ -565,7 +566,7 @@ Radio.draw(rb: self ref Radio, dst: ref Image)
 	}
 
 	# Label text
-	tx := rb.r.min.x + RADIOR * 2 + RADIOGAP;
+	tx := rb.r.min.x + LEFTPAD + RADIOR * 2 + RADIOGAP;
 	ty := rb.r.min.y + (rb.r.dy() - wfont.height) / 2;
 	dst.text(Point(tx, ty), fieldtext, Point(0, 0), wfont, rb.label);
 }
@@ -973,4 +974,91 @@ Button.resize(b: self ref Button, r: Rect)
 Button.contains(b: self ref Button, p: Point): int
 {
 	return b.r.contains(p);
+}
+
+# ── RadioGroup ───────────────────────────────────────────────
+
+RadioGroup.mk(origin: Point, width: int, labels: array of string, sel: int, rowh: int): ref RadioGroup
+{
+	n := len labels;
+	buttons := array[n] of ref Radio;
+	for(i := 0; i < n; i++) {
+		y := origin.y + i * rowh;
+		r := Rect((origin.x, y), (origin.x + width, y + rowh));
+		buttons[i] = Radio.mk(r, labels[i], sel == i);
+	}
+	return ref RadioGroup(buttons);
+}
+
+RadioGroup.draw(rg: self ref RadioGroup, dst: ref Image)
+{
+	if(rg.buttons == nil)
+		return;
+	for(i := 0; i < len rg.buttons; i++)
+		if(rg.buttons[i] != nil)
+			rg.buttons[i].draw(dst);
+}
+
+RadioGroup.click(rg: self ref RadioGroup, p: Point): int
+{
+	if(rg.buttons == nil)
+		return -1;
+	for(i := 0; i < len rg.buttons; i++) {
+		if(rg.buttons[i] != nil && rg.buttons[i].contains(p)) {
+			for(j := 0; j < len rg.buttons; j++)
+				rg.buttons[j].selected = 0;
+			rg.buttons[i].selected = 1;
+			return i;
+		}
+	}
+	return -1;
+}
+
+RadioGroup.selected(rg: self ref RadioGroup): int
+{
+	if(rg.buttons == nil)
+		return -1;
+	for(i := 0; i < len rg.buttons; i++)
+		if(rg.buttons[i] != nil && rg.buttons[i].selected)
+			return i;
+	return -1;
+}
+
+RadioGroup.select(rg: self ref RadioGroup, idx: int)
+{
+	if(rg.buttons == nil)
+		return;
+	for(i := 0; i < len rg.buttons; i++)
+		rg.buttons[i].selected = 0;
+	if(idx >= 0 && idx < len rg.buttons)
+		rg.buttons[idx].selected = 1;
+}
+
+RadioGroup.resize(rg: self ref RadioGroup, origin: Point, width: int, rowh: int)
+{
+	if(rg.buttons == nil)
+		return;
+	for(i := 0; i < len rg.buttons; i++) {
+		y := origin.y + i * rowh;
+		rg.buttons[i].r = Rect((origin.x, y), (origin.x + width, y + rowh));
+	}
+}
+
+RadioGroup.bounds(rg: self ref RadioGroup): Rect
+{
+	if(rg.buttons == nil || len rg.buttons == 0)
+		return Rect((0, 0), (0, 0));
+	r0 := rg.buttons[0].r;
+	rn := rg.buttons[len rg.buttons - 1].r;
+	return Rect(r0.min, rn.max);
+}
+
+RadioGroup.contains(rg: self ref RadioGroup, p: Point): int
+{
+	if(rg.buttons == nil)
+		return 0;
+	for(i := 0; i < len rg.buttons; i++)
+		if(rg.buttons[i] != nil && rg.buttons[i].contains(p))
+			return 1;
+	return 0;
 }
