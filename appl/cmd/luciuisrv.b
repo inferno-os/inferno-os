@@ -485,6 +485,22 @@ findartidx(a: ref Activity, id: string): int
 	return -1;
 }
 
+# autocenter: after deleting the artifact at oldidx, select the nearest
+# remaining artifact as current.  Fires "presentation current" so that
+# lucifer's handleprescurrent() restores the correct z-order.
+autocenter(a: ref Activity, oldidx: int)
+{
+	if(a.nart <= 0)
+		return;
+	# Prefer the artifact that slid into the deleted position (i.e. the
+	# next one), or the last one if we deleted the tail.
+	newidx := oldidx;
+	if(newidx >= a.nart)
+		newidx = a.nart - 1;
+	a.currentArtifact = a.artifacts[newidx].id;
+	pushevent(a.id, "presentation current");
+}
+
 addartifact(a: ref Activity, id, atype, label: string): ref Artifact
 {
 	if(a.nart >= MAX_ARTIFACTS)
@@ -1339,8 +1355,12 @@ presctl(a: ref Activity, data: string): string
 		a.artifacts[idx:] = a.artifacts[idx+1:a.nart];
 		a.nart--;
 		a.artifacts[a.nart] = nil;
-		if(a.currentArtifact == id)
+		if(a.currentArtifact == id) {
 			a.currentArtifact = "";
+			# Auto-center the nearest remaining artifact so the
+			# presentation zone doesn't go blank with a hidden app.
+			autocenter(a, idx);
+		}
 		vers++;
 		pushevent(a.id, "presentation delete " + id);
 		return nil;
@@ -1360,8 +1380,10 @@ presctl(a: ref Activity, data: string): string
 			a.artifacts[idx:] = a.artifacts[idx+1:a.nart];
 			a.nart--;
 			a.artifacts[a.nart] = nil;
-			if(a.currentArtifact == id)
+			if(a.currentArtifact == id) {
 				a.currentArtifact = "";
+				autocenter(a, idx);
+			}
 			vers++;
 			pushevent(a.id, "presentation delete " + id);
 		}
