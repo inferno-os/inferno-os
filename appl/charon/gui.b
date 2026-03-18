@@ -553,7 +553,13 @@ drawstatusbar(dst: ref Image)
 			statbar.right = "";
 		statbar.leftcolor = nil;
 	}
+	# The HTML renderer (layout.b) may leave dst.clipr set to f.cr, which
+	# ends exactly at the top of the status bar region.  Save and reset the
+	# clip so the status bar always draws into its own area.
+	oclipr := dst.clipr;
+	dst.clipr = dst.r;
 	statbar.draw(dst);
+	dst.clipr = oclipr;
 }
 
 startinput(mode: int)
