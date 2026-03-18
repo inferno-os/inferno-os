@@ -345,11 +345,13 @@ redraw()
 	if(keylist != nil)
 		keylist.draw(w.image);
 
-	# Divider line
+	# Divider line and form area background
 	sh := widgetmod->statusheight();
 	divy := wr.min.y + (wr.dy() - sh) * DIVIDER_Y_FRAC / 100;
 	w.image.draw(Rect((wr.min.x, divy), (wr.max.x, divy + 2)),
 		     divcolor, nil, Point(0, 0));
+	w.image.draw(Rect((wr.min.x, divy + 2), (wr.max.x, wr.max.y - sh)),
+		     formbg, nil, Point(0, 0));
 
 	# Form fields
 	if(formfields != nil) {
