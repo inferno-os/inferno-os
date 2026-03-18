@@ -731,85 +731,88 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		rc <-= nil;
 	(c, data, rc) := <-req =>
 		if(rc == nil) {
-			# Client disconnected — clear from lucipres slot or app slot
+			# Client disconnected — clear from lucipres slot or app slot.
+			# MUST NOT fall through to the reply code below: rc is nil,
+			# and alt send on a nil channel is a fatal Dis error.
 			if(c == lucipresclient) {
 				lucipresclient = nil;
 				break;	# lucipres gone — presentation zone dead, exit loop
 			}
 			cleanupappslot(c);
 			# App disconnected: keep preswmloop running for remaining apps
-		}
-		s := string data;
-		n := len data;
-		err: string;
-		# !reshape / !onscreen: allocate window on first connect only.
-		# Subsequent reshapes for apps are ignored (z-order managed via top/bottom).
-		# !onscreen is the first !-prefixed call from wmclient (gui.b init calls
-		# win.onscreen before evhandle is spawned); wmlib blocks on <-wm.images
-		# after any !-prefixed write, so we must send back an image here too.
-		if(len s >= 8 && s[0:8] == "!reshape" ||
-		   len s >= 9 && s[0:9] == "!onscreen") {
-			if(c == lucipresclient) {
-				img := scr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
-				if(img == nil) {
-					err = "window creation failed";
-					n = -1;
-				} else {
-					c.setimage("app", img);
-					# scr.newwindow() places the new lucipres window at the TOP of
-					# presscr by default, pushing any active app window behind it.
-					# Re-raise the active app so it stays in front of lucipres.
-					<-applock;
-					for(rasi := 0; rasi < nappslots; rasi++) {
-						if(appslots[rasi] != nil &&
-						   appslots[rasi].id == activeappid &&
-						   appslots[rasi].client != nil) {
-							appslots[rasi].client.top();
-							break;
+		} else {
+			s := string data;
+			n := len data;
+			err: string;
+			# !reshape / !onscreen: allocate window on first connect only.
+			# Subsequent reshapes for apps are ignored (z-order managed via top/bottom).
+			# !onscreen is the first !-prefixed call from wmclient (gui.b init calls
+			# win.onscreen before evhandle is spawned); wmlib blocks on <-wm.images
+			# after any !-prefixed write, so we must send back an image here too.
+			if(len s >= 8 && s[0:8] == "!reshape" ||
+			   len s >= 9 && s[0:9] == "!onscreen") {
+				if(c == lucipresclient) {
+					img := scr.newwindow(curzone, Draw->Refbackup, Draw->Nofill);
+					if(img == nil) {
+						err = "window creation failed";
+						n = -1;
+					} else {
+						c.setimage("app", img);
+						# scr.newwindow() places the new lucipres window at the TOP of
+						# presscr by default, pushing any active app window behind it.
+						# Re-raise the active app so it stays in front of lucipres.
+						<-applock;
+						for(rasi := 0; rasi < nappslots; rasi++) {
+							if(appslots[rasi] != nil &&
+							   appslots[rasi].id == activeappid &&
+							   appslots[rasi].client != nil) {
+								appslots[rasi].client.top();
+								break;
+							}
 						}
+						applock <-= 1;
 					}
-					applock <-= 1;
-				}
-			} else if(c.image("app") == nil) {
-				# First reshape for this app: allocate content-area window
-				tabh2 := 0;
-				if(mainfont != nil) tabh2 = mainfont.height + 13;
-				appr := Rect((curzone.min.x, curzone.min.y + tabh2), curzone.max);
-				img := scr.newwindow(appr, Draw->Refbackup, Draw->Nofill);
-				if(img == nil) {
-					err = "window creation failed";
-					n = -1;
-				} else {
-					c.setimage("app", img);
-					# Register c in the wmsrv z-list via top().
-					# scr.newwindow() puts the image at z-top on the Screen,
-					# but wmsrv's Client.bottom() requires c.znext != nil to
-					# actually call screen.bottom().  c.top() sets c.znext so
-					# a subsequent c.bottom() (in cleanupappslot/hideapp) works.
-					c.top();
-					# If this app belongs to a non-focused activity, hide it
-					# immediately.  Without this, a background task agent's
-					# app window appears over the currently-viewed activity.
-					<-applock;
-					for(oai := 0; oai < nappslots; oai++) {
-						if(appslots[oai] != nil &&
-						   appslots[oai].client == c &&
-						   appslots[oai].owneract != actid) {
-							c.bottom();
-							break;
+				} else if(c.image("app") == nil) {
+					# First reshape for this app: allocate content-area window
+					tabh2 := 0;
+					if(mainfont != nil) tabh2 = mainfont.height + 13;
+					appr := Rect((curzone.min.x, curzone.min.y + tabh2), curzone.max);
+					img := scr.newwindow(appr, Draw->Refbackup, Draw->Nofill);
+					if(img == nil) {
+						err = "window creation failed";
+						n = -1;
+					} else {
+						c.setimage("app", img);
+						# Register c in the wmsrv z-list via top().
+						# scr.newwindow() puts the image at z-top on the Screen,
+						# but wmsrv's Client.bottom() requires c.znext != nil to
+						# actually call screen.bottom().  c.top() sets c.znext so
+						# a subsequent c.bottom() (in cleanupappslot/hideapp) works.
+						c.top();
+						# If this app belongs to a non-focused activity, hide it
+						# immediately.  Without this, a background task agent's
+						# app window appears over the currently-viewed activity.
+						<-applock;
+						for(oai := 0; oai < nappslots; oai++) {
+							if(appslots[oai] != nil &&
+							   appslots[oai].client == c &&
+							   appslots[oai].owneract != actid) {
+								c.bottom();
+								break;
+							}
 						}
+						applock <-= 1;
 					}
-					applock <-= 1;
 				}
+				# else: app already has a window — ignore re-reshape
 			}
-			# else: app already has a window — ignore re-reshape
+			# "embedded-exit": app signals clean exit before GC closes its wmclient fd.
+			# Remove the tab immediately rather than waiting for the async fd close.
+			if(s == "embedded-exit")
+				cleanupappslot(c);
+			# All other req messages ("start ptr", "start kbd", "raise", etc.) — reply OK
+			alt { rc <-= (n, err) => ; * => ; }
 		}
-		# "embedded-exit": app signals clean exit before GC closes its wmclient fd.
-		# Remove the tab immediately rather than waiting for the async fd close.
-		if(s == "embedded-exit")
-			cleanupappslot(c);
-		# All other req messages ("start ptr", "start kbd", "raise", etc.) — reply OK
-		alt { rc <-= (n, err) => ; * => ; }
 	newzoner := <-rszch =>
 		curzone = newzoner;
 		# Resize lucipres window (full zone)
