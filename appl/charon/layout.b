@@ -4461,8 +4461,13 @@ Control.draw(ctl: self ref Control, flush: int)
 	clipr := oclipr;
 	any: int;
 	(clipr, any) = ctl.r.clip(ctl.f.cr);
-	if(!any && ctl != ctl.f.vscr && ctl != ctl.f.hscr)
-		return;
+	if(!any) {
+		if(ctl != ctl.f.vscr && ctl != ctl.f.hscr)
+			return;
+		# Frame scrollbars are positioned outside f.cr (to its right/below).
+		# Clip to the scrollbar's own rect so it draws in its correct column.
+		clipr = ctl.r;
+	}
 	win.clipr = clipr;
 	pick c := ctl {
 	Cbutton =>
