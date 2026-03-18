@@ -659,6 +659,20 @@ handlekey(rawkey: int)
 
 handleptr(ptr: ref Pointer)
 {
+	# Scrollbar tracking must be checked FIRST — before the button filter.
+	# track() needs to see button-release events (buttons==0) to clear
+	# the active drag state.  Without this, a scrollbar drag that starts
+	# inside Listbox.click() can never be cancelled, permanently stealing
+	# all subsequent B1 clicks.
+	if(catlist != nil && catlist.scroll != nil && catlist.scroll.isactive()) {
+		newo := catlist.scroll.track(ptr);
+		if(newo >= 0) {
+			catlist.top = newo;
+			dirty = 1;
+		}
+		return;
+	}
+
 	if(!(ptr.buttons & 1) && !(ptr.buttons & (8|16)))
 		return;
 
@@ -673,16 +687,6 @@ handleptr(ptr: ref Pointer)
 			path_list.wheel(ptr.buttons);
 			dirty = 1;
 			return;
-		}
-		return;
-	}
-
-	# Scrollbar tracking
-	if(catlist != nil && catlist.scroll != nil && catlist.scroll.isactive()) {
-		newo := catlist.scroll.track(ptr);
-		if(newo >= 0) {
-			catlist.top = newo;
-			dirty = 1;
 		}
 		return;
 	}
