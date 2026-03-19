@@ -566,6 +566,12 @@ drawchrome(r: Rect)
 				tlabel := t.label;
 				if(tlabel == nil || tlabel == "")
 					tlabel = string t.id;
+				# Show tool name on the active tile during execution
+				istool := t.status != nil && t.status != "" &&
+					t.status != "idle" && t.status != "working" &&
+					t.status != "done" && t.status != "complete";
+				if(istool)
+					tlabel += " · " + t.status;
 				tw := mainfont.width(tlabel) + tilepad * 2;
 				if(tw < 60)
 					tw = 60;
@@ -593,8 +599,8 @@ drawchrome(r: Rect)
 						# Active tile: accent background
 						tilebg = accentcol;
 						tilefg = headercol;
-					} else if(t.status == "working") {
-						# Working tile: subtle accent underline
+					} else if(t.status == "working" || istool) {
+						# Working tile (or executing a tool): accent underline
 						tilebg = headercol;
 						tilefg = textcol;
 					} else if(t.status == "done") {
@@ -619,7 +625,7 @@ drawchrome(r: Rect)
 					}
 
 					# Working tile: accent bottom border
-					if(t.status == "working" && t.id != actid)
+					if((t.status == "working" || istool) && t.id != actid)
 						mainwin.draw(Rect((tx, tiley + tileh - 2), (tx + tw, tiley + tileh)), accentcol, nil, (0, 0));
 
 					# Draw label text centered in tile
