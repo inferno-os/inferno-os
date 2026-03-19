@@ -184,9 +184,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	w = wmclient->window(ctxt, "Fractals", Wmclient->Appl);
 	display = w.display;
 
-	font = Font.open(display, "/fonts/combined/unicode.14.font");
-	if(font == nil)
-		font = Font.open(display, "/fonts/10646/9x15/9x15.font");
+	font = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(font == nil)
 		font = Font.open(display, "*default*");
 

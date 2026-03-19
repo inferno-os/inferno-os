@@ -58,7 +58,9 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	display := w.display;
 
 	# Init widget module with body font
-	bodyfont := Font.open(display, "/fonts/combined/unicode.12.font");
+	bodyfont := Font.open(display, "/fonts/combined/unicode.sans.12.font");
+	if(bodyfont == nil)
+		bodyfont = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(bodyfont == nil)
 		bodyfont = Font.open(display, "*default*");
 	widgetmod->init(display, bodyfont);
@@ -108,7 +110,9 @@ redraw(w: ref Window, display: ref Display)
 	screen.border(screen.r, 1, accent, ZP);
 
 	# Title font (larger than widget font)
-	titlefont := Font.open(display, "/fonts/combined/unicode.16.font");
+	titlefont := Font.open(display, "/fonts/combined/unicode.sans.18.font");
+	if(titlefont == nil)
+		titlefont = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(titlefont == nil)
 		titlefont = Font.open(display, "*default*");
 

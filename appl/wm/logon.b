@@ -65,7 +65,9 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	}
 
 	# Load font for prompt
-	font := Font.open(display, "/fonts/combined/unicode.16.font");
+	font := Font.open(display, "/fonts/combined/unicode.sans.18.font");
+	if(font == nil)
+		font = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(font == nil)
 		font = Font.open(display, "*default*");
 
