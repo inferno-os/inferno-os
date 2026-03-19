@@ -14,6 +14,10 @@ include "draw.m";
 	draw: Draw;
 	Display, Font, Image, Point, Rect: import draw;
 
+include "bufio.m";
+
+include "imagefile.m";
+
 include "wmclient.m";
 	wmclient: Wmclient;
 	Window: import wmclient;
@@ -120,7 +124,7 @@ redraw(w: ref Window, display: ref Display)
 	cx := (r.min.x + r.max.x) / 2;
 	y := r.min.y + PADDING;
 
-	# Load and draw logo — use theme-specific variant if available
+	# Load and draw logo via PNG decoder (display.open only handles Plan 9 format)
 	logopath := "/lib/lucifer/about-screen.png";
 	themename := rf("/lib/lucifer/theme/current");
 	if(themename != nil) {
@@ -133,7 +137,24 @@ redraw(w: ref Window, display: ref Display)
 				logopath = tpath;
 		}
 	}
-	logo := display.open(logopath);
+	logo: ref Image;
+	{
+		bufio := load Bufio Bufio->PATH;
+		if(bufio != nil) {
+			readpng := load RImagefile RImagefile->READPNGPATH;
+			remap := load Imageremap Imageremap->PATH;
+			if(readpng != nil && remap != nil) {
+				readpng->init(bufio);
+				remap->init(display);
+				fd := bufio->open(logopath, Bufio->OREAD);
+				if(fd != nil) {
+					(raw, nil) := readpng->read(fd);
+					if(raw != nil)
+						(logo, nil) = remap->remap(raw, display, 0);
+				}
+			}
+		}
+	}
 	if(logo != nil) {
 		lw := logo.r.dx();
 		lh := logo.r.dy();
@@ -147,12 +168,12 @@ redraw(w: ref Window, display: ref Display)
 				scaleblit(scaled, logo, scale);
 				screen.draw(dst, scaled, nil, dst.min);
 			}
-			y += sh + PADDING;
+			y += sh + PADDING * 2;
 		} else {
 			lx := cx - lw/2;
 			dst := Rect((lx, y), (lx + lw, y + lh));
 			screen.draw(dst, logo, nil, logo.r.min);
-			y += lh + PADDING;
+			y += lh + PADDING * 2;
 		}
 	} else
 		y += PADDING;
@@ -186,10 +207,11 @@ redraw(w: ref Window, display: ref Display)
 		("Vita Nuova Holdings", 0),
 		("", 0),
 		("InferNode fork by", 0),
-		("NERVsystems", 0),
+		("infernode-os", 0),
 		("", 0),
 		("lucent.com/inferno", 1),
-		("nervsystems.com", 1),
+		("infernode.io", 1),
+		("github.com/infernode-os", 1),
 	};
 
 	for(i := 0; i < len lines; i++) {

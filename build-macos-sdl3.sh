@@ -47,6 +47,13 @@ echo "Building for: SYSHOST=$SYSHOST OBJTYPE=$OBJTYPE"
 echo "GUI Backend: SDL3"
 echo ""
 
+# Stamp build version (matches CI workflow)
+BUILD_DATE=$(date +%Y%m%d)
+SHORT_SHA=$(git -C "$ROOT" rev-parse --short=8 HEAD 2>/dev/null || echo "local")
+sed -i '' "s|InferNode 0.1|InferNode 0.1 build ${BUILD_DATE}-${SHORT_SHA}|" "$ROOT/include/version.h"
+echo "Version: $(grep VERSION "$ROOT/include/version.h")"
+echo ""
+
 # Build emulator
 cd "$ROOT/emu/MacOSX"
 
@@ -55,6 +62,9 @@ mk clean 2>/dev/null || true
 
 echo "Building SDL3 GUI emulator..."
 mk GUIBACK=sdl3
+
+# Restore version.h so repeated builds don't accumulate stamps
+git -C "$ROOT" checkout -- "$ROOT/include/version.h" 2>/dev/null || true
 
 if [[ -f o.emu ]]; then
     echo ""
