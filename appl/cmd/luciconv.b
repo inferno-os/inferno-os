@@ -414,7 +414,9 @@ drawconversation(zone: Rect)
 	total_h := 0;
 	for(pi := 0; pi < nmsg; pi++) {
 		# Skip empty messages (e.g. tool_use responses with no text content)
-		if(strip(marr[pi].text) == "") {
+		# and stale streaming cursors ("▌", "…") left by dropped events.
+		t := strip(marr[pi].text);
+		if(t == "" || t == "▌" || t == "…") {
 			harr[pi] = 0;
 			continue;
 		}

@@ -1048,24 +1048,21 @@ agentturn(input: string)
 
 		# Display response: update placeholder (streaming) or add new message (legacy).
 		# When text is empty during tool_use, the LLM emitted only tool calls
-		# with no accompanying text — show tool names instead of an empty tile.
+		# with no accompanying text — clear the placeholder so no empty tile
+		# is visible.  Previously we showed "[toolname]" but the event that
+		# carries this update to luciconv can be dropped by the non-blocking
+		# channel send in nslistener, leaving a stale "▌" cursor that is
+		# invisible in the bitmap font → an empty tile.  Clearing to "" is
+		# reliable: even if the update event is dropped, the next event for
+		# this index (or the full loadmessages on activity switch) will read
+		# the empty text and skip the tile.
 		if(text != "") {
 			if(placeholder_idx >= 0)
 				updateliveconvmsg(placeholder_idx, text);
 			else
 				writemsg("veltro", text);
-		} else if(placeholder_idx >= 0 && stopreason == "tool_use" && tools != nil) {
-			# Build a summary of which tools are being called
-			toolsummary := "";
-			for(ts := tools; ts != nil; ts = tl ts) {
-				(nil, tname, nil) := hd ts;
-				if(toolsummary != "")
-					toolsummary += ", ";
-				toolsummary += tname;
-			}
-			updateliveconvmsg(placeholder_idx, "[" + toolsummary + "]");
 		} else if(placeholder_idx >= 0) {
-			# Non-tool_use with no text and a placeholder: clear cursor
+			# Tool-only or empty response: clear placeholder so tile is hidden
 			updateliveconvmsg(placeholder_idx, "");
 		}
 
@@ -1114,8 +1111,10 @@ agentturn(input: string)
 					log("context: file " + fpath + " via " + nm);
 				}
 
+				setstatus(nm);
 				log("tool " + name + ": calling with " + string len eargs + " bytes");
 				result := agentlib->calltool(name, eargs);
+				setstatus("working");
 				writefile(ctxpath, "resource update path=" + nm + " status=idle");
 				if(fpath != nil)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
