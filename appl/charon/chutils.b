@@ -896,7 +896,10 @@ Netconn.new(id: int) : ref Netconn
 			0,		# connected
 			0,		# tstate
 			nil,		# tbuf
-			0		# idlestart
+			0,		# idlestart
+			0,		# chunked
+			0,		# chunkrem
+			0		# chunkeof
 			);
 }
 
@@ -917,6 +920,9 @@ Netconn.makefree(nc: self ref Netconn)
 	nc.connected = 0;
 	nc.tstate = 0;
 	nc.tbuf = nil;
+	nc.chunked = 0;
+	nc.chunkrem = 0;
+	nc.chunkeof = 0;
 	for(i := 0; i < len nc.queue; i++)
 		nc.queue[i] = nil;
 }
@@ -1551,7 +1557,23 @@ setconfig(argl: list of string)
 	# Defaults, in absence of any other information
 	config.userdir = "";
 	config.srcdir = "/appl/cmd/charon";
-	config.starturl = "file:/services/webget/start.html";
+	# Select start page based on lucifer theme
+	theme := "";
+	tfd := sys->open("/lib/lucifer/theme/current", sys->OREAD);
+	if(tfd != nil) {
+		tb := array[64] of byte;
+		tn := sys->read(tfd, tb, len tb);
+		if(tn > 0) {
+			theme = string tb[0:tn];
+			# Strip trailing whitespace/newline
+			while(len theme > 0 && (theme[len theme - 1] == '\n' || theme[len theme - 1] == ' '))
+				theme = theme[0:len theme - 1];
+		}
+	}
+	if(theme == "halo")
+		config.starturl = "file:/services/webget/start_light.html";
+	else
+		config.starturl = "file:/services/webget/start_dark.html";
 	config.homeurl = config.starturl;
 	config.change_homeurl = 1;
 	config.helpurl = "file:/services/webget/help.html";

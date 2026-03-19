@@ -253,6 +253,9 @@ CharonUtils: module
 		tstate:	int;		# for use by transport
 		tbuf: 	array of byte;	# for use by transport
 		idlestart:	int;		# timestamp when went Idle
+		chunked:	int;		# 1 if response uses chunked TE
+		chunkrem:	int;		# bytes remaining in current chunk
+		chunkeof:	int;		# 1 if final zero-length chunk seen
 
 		new: fn(id: int) : ref Netconn;
 		makefree: fn(nc: self ref Netconn);

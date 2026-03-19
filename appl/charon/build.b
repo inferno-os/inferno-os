@@ -93,7 +93,7 @@ blockbrk := array[LX->Numtags] of {
 	LX->Th1 => BL, LX->Th2 => BL, LX->Th3 => BL,
 	LX->Th4 => BL, LX->Th5 => BL, LX->Th6 => BL,
 	LX->Theader => BL, LX->Thr => BL,
-	LX->Tisindex => BLBA, LX->Tli => BL,
+	LX->Tisindex => BLBA,
 	LX->Tmain => BL, LX->Tmenu => BLBA, LX->Tnav => BL,
 	LX->Tol => BLBA, LX->Tp => BLBA, LX->Tpre => BLBA,
 	LX->Tsection => BL, LX->Tsummary => BL,
@@ -192,62 +192,44 @@ UA_CSS: con
 	# These ensure readable display even if external stylesheets fail to load.
 	# Author stylesheets will override these via normal cascade.
 	#
-	# == Vector 2022 skin chrome: hide navigation elements ==
-	# These are Wikipedia's UI elements (sidebar, tabs, tools, search, settings)
-	# that render as raw bulleted lists without the Vector CSS.
-	+ ".vector-header { display: none }\n"
-	+ ".vector-sticky-header { display: none }\n"
-	+ ".vector-column-start { display: none }\n"
-	+ ".vector-column-end { display: none }\n"
-	+ ".vector-main-menu { display: none }\n"
-	+ ".vector-main-menu-container { display: none }\n"
-	+ ".vector-page-toolbar { display: none }\n"
-	+ ".vector-page-tools { display: none }\n"
-	+ ".vector-settings { display: none }\n"
-	+ ".vector-dropdown { display: none }\n"
-	+ ".vector-menu-tabs { display: none }\n"
-	+ ".vector-menu-content { display: none }\n"
-	+ ".vector-toc-landmark { display: none }\n"
-	+ ".vector-toc { display: none }\n"
-	+ ".vector-pinnable-header { display: none }\n"
-	+ ".vector-body-before-content { display: none }\n"
-	+ ".mw-sidebar-button { display: none }\n"
-	+ ".cdx-button { display: none }\n"
-	+ ".cdx-text-input { display: none }\n"
-	+ ".cdx-search-input { display: none }\n"
+	# == Vector 2022 skin chrome ==
+	# Let the external Vector CSS style the header, tabs, search, logo.
+	# Only hide elements that are broken without JavaScript (dropdown contents,
+	# pinnable sidebars, sticky headers) or accessibility-only.
 	#
-	# == MediaWiki UI chrome ==
+	# -- Hide JS-dependent dropdowns and sidebars --
+	+ ".vector-dropdown-content { display: none }\n"	# dropdown menus (need JS toggle)
+	+ ".vector-column-start { display: none }\n"		# left sidebar (pinnable, needs JS)
+	+ ".vector-column-end { display: none }\n"		# right tools/appearance panel
+	+ ".vector-sticky-header { display: none }\n"		# sticky header (JS-driven)
+	+ ".vector-pinnable-header { display: none }\n"	# pin/unpin controls
+	+ ".vector-sitenotice-container { display: none }\n"	# site notices
+	+ ".wp25eastereggs-sitenotice { display: none }\n"	# easter eggs
+	+ ".mw-aria-live-region { display: none }\n"		# ARIA live region
+	#
+	# -- Accessibility / screen-reader only --
 	+ ".mw-jump-link { display: none }\n"
+	+ ".mw-jump { display: none }\n"
+	+ ".screen-reader-text { display: none }\n"
+	+ "#jump-to-nav { display: none }\n"
+	#
+	# -- Content chrome that needs hiding --
 	+ ".noprint { display: none }\n"
 	+ ".mw-editsection { display: none }\n"
 	+ ".mw-indicators { display: none }\n"
-	+ ".mw-portlet { display: none }\n"
-	+ ".mw-logo { display: none }\n"
-	+ ".mw-search-toggle-button { display: none }\n"
-	+ ".mw-header { display: none }\n"
-	+ ".mw-page-tools { display: none }\n"
+	+ ".vector-body-before-content { display: none }\n"
+	+ ".vector-page-titlebar-blank { display: none }\n"
+	+ ".mw-subjectpageheader { display: none }\n"
 	+ ".mw-table-of-contents { display: none }\n"
-	+ ".mw-page-container-inner { display: block }\n"
-	# Older skins / fallback navigation IDs
-	+ "#mw-navigation { display: none }\n"
-	+ "#mw-head { display: none }\n"
-	+ "#mw-panel { display: none }\n"
-	+ "#p-personal { display: none }\n"
-	+ "#p-navigation { display: none }\n"
-	+ "#p-search { display: none }\n"
-	+ "#p-interaction { display: none }\n"
-	+ "#p-tb { display: none }\n"
-	+ "#p-lang { display: none }\n"
-	+ "#p-cactions { display: none }\n"
-	+ "#p-views { display: none }\n"
-	+ "#p-namespaces { display: none }\n"
-	+ "#jump-to-nav { display: none }\n"
+	+ ".vector-toc-landmark { display: none }\n"
+	+ ".vector-toc { display: none }\n"
 	+ "#siteSub { display: none }\n"
 	+ "#contentSub { display: none }\n"
+	#
+	# -- Page layout --
+	+ ".mw-page-container-inner { display: block }\n"
+	+ ".mw-body { display: block; padding: 8px }\n"
 	+ "#catlinks { border: 1px solid #a2a9b1; background-color: #f8f9fa; padding: 4px 8px; margin-top: 16px }\n"
-	# Skip-to links and screen-reader-only content
-	+ ".mw-jump { display: none }\n"
-	+ ".screen-reader-text { display: none }\n"
 	#
 	# == Article content styles ==
 	+ ".mw-body { display: block; padding: 8px }\n"
@@ -328,10 +310,10 @@ UA_CSS: con
 	#
 	# == Main page layout ==
 	# Wikipedia main page uses table-based columns with these IDs
-	+ "#mp-upper { width: 100%; border-collapse: collapse }\n"
-	+ "#mp-left { vertical-align: top; padding: 0 8px 0 0; width: 50% }\n"
-	+ "#mp-right { vertical-align: top; padding: 0 0 0 8px; width: 50% }\n"
-	+ "#mp-lower { width: 100%; border-collapse: collapse }\n"
+	+ "#mp-upper { display: block; width: 100% }\n"
+	+ "#mp-left { display: block; padding: 0 8px 0 0 }\n"
+	+ "#mp-right { display: block; padding: 0 0 0 8px }\n"
+	+ "#mp-lower { display: block; width: 100% }\n"
 	# Main page section headings (colored background bars)
 	+ ".mp-h2 { background-color: #cef2e0; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold; border: 1px solid #a3bfb1 }\n"
 	+ ".MainPageBG { padding: 4px }\n"
@@ -391,7 +373,7 @@ UA_CSS: con
 	# == Wikipedia layout: additional Vector 2022 classes ==
 	+ ".mw-page-container { display: block; max-width: 100% }\n"
 	+ ".mw-content-container { display: block }\n"
-	+ ".mw-header-container { display: none }\n"
+	+ ".mw-header-container { display: block }\n"
 	+ ".mw-footer-container { display: block }\n"
 	+ ".vector-feature-page-tools-disabled { display: block }\n"
 	#
@@ -470,21 +452,8 @@ UA_CSS: con
 	+ ".vector-body { display: block }\n"
 	+ ".vector-feature-zebra-design-disabled { display: block }\n"
 	+ ".skin-vector-2022 { display: block }\n"
-	+ ".vector-menu { display: none }\n"
-	+ ".vector-menu-heading { display: none }\n"
-	+ ".cdx-button--fake-button { display: none }\n"
-	+ ".cdx-button--icon-only { display: none }\n"
 	+ ".citizen-header { display: none }\n"
 	+ ".citizen-footer { display: block }\n"
-	#
-	# == Wikipedia: page action links ==
-	+ "#ca-talk { display: none }\n"
-	+ "#ca-edit { display: none }\n"
-	+ "#ca-history { display: none }\n"
-	+ "#ca-viewsource { display: none }\n"
-	+ "#ca-nstab-main { display: none }\n"
-	+ "#pt-login { display: none }\n"
-	+ "#pt-createaccount { display: none }\n"
 	+ "#pt-anoncontribs { display: none }\n"
 	#
 	# == Accessibility: hide aria-hidden elements ==
@@ -544,7 +513,7 @@ ItemSource.new(bs: ref ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemS
 	}
 	tagstyles := array[LX->Numtags] of { * => ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL)};
 	ss := StyleStore.new();
-	isrc := ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, tagstyles, ss, nil, nil, 0, nil);
+	isrc := ref ItemSource(ts, mtype, di, f, psstk, 0, 0, 0, 0, nil, nil, nil, nil, nil, nil, nil, tagstyles, ss, nil, nil, 0, nil, 0);
 	# Apply UA default stylesheet
 	if(ua_stylesheet != nil)
 		parsestyleblock_css(isrc, ua_stylesheet);
@@ -641,7 +610,46 @@ TokLoop:
 			if(s != "")
 				addtext(ps, s);
 		}
-		else case tag {
+		else {
+		# Global skip guard: when inside a display:none element, only allow
+		# tags whose handlers maintain ps.stylestk (for counter balance)
+		# and structural blocks (<style>, <script>).  All other tags are
+		# skipped entirely so hidden elements produce no items.
+		if(ps.skipping > 0) {
+			case tag {
+			LX->Tcenter or LX->Tdiv
+			or LX->Tcenter+RBRA or LX->Tdiv+RBRA
+			or LX->Tp or LX->Tp+RBRA
+			or LX->Tspan or LX->Tspan+RBRA
+			or LX->Tarticle or LX->Taside or LX->Tfooter
+			or LX->Theader or LX->Tmain or LX->Tnav
+			or LX->Tsection or LX->Tsummary
+			or LX->Tarticle+RBRA or LX->Taside+RBRA
+			or LX->Tdetails+RBRA or LX->Tfooter+RBRA
+			or LX->Theader+RBRA or LX->Tmain+RBRA
+			or LX->Tnav+RBRA or LX->Tsection+RBRA
+			or LX->Tsummary+RBRA
+			or LX->Tdetails
+			or LX->Tfigure or LX->Tfigure+RBRA
+			or LX->Tfigcaption or LX->Tfigcaption+RBRA
+			or LX->Tdialog or LX->Tdialog+RBRA
+			or LX->Tmark or LX->Ttime or LX->Toutput
+			or LX->Tmark+RBRA or LX->Ttime+RBRA or LX->Toutput+RBRA
+			or LX->Taudio or LX->Tvideo or LX->Tcanvas
+			or LX->Taudio+RBRA or LX->Tvideo+RBRA or LX->Tcanvas+RBRA
+			or LX->Tstyle or LX->Tstyle+RBRA
+			or LX->Tscript or LX->Tscript+RBRA
+			or LX->Tnoframes or LX->Tnoframes+RBRA
+			or LX->Tnoscript or LX->Tnoscript+RBRA
+			or LX->Tdatalist or LX->Tdatalist+RBRA
+			or LX->Ttemplate or LX->Ttemplate+RBRA
+			or LX->Tbody =>
+				;	# fall through to main case
+			* =>
+				continue;	# skip this tag entirely
+			}
+		}
+		case tag {
 		# Some abbrevs used in following DTD comments
 		# %text = #PCDATA
 		#		| TT | I | B | U | STRIKE | BIG | SMALL | SUB | SUP
@@ -849,7 +857,7 @@ TokLoop:
 		LX->Tcenter or LX->Tdiv =>
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -885,7 +893,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else {
 					# Close box if one was opened
 					if(ps.boxstk != nil) {
@@ -1446,6 +1454,7 @@ TokLoop:
 					ps.listcntstk = (v+1) :: (tl ps.listcntstk);
 				}
 			} else {
+				addbrk(ps, 0, 0);	# block list item break (was in blockbrk table)
 				if(ps.listtypestk == nil) {
 					if(warn)
 						sys->print("<LI> not in list\n");
@@ -1513,6 +1522,23 @@ TokLoop:
 				else if(warn)
 					sys->print("cannot set charset %s\n", metacs);
 			}
+			# Parse <meta name="viewport" content="width=N">
+			metaname := aval(tok, LX->Aname);
+			if(metaname != nil && S->tolower(metaname) == "viewport") {
+				vc := aval(tok, LX->Acontent);
+				if(vc != nil) {
+					# Parse "width=N" from content string
+					parts := Nameval.namevals(vc, ',');
+					for(; parts != nil; parts = tl parts) {
+						(pn, pv) := hd parts;
+						if(S->tolower(pn) == "width" && pv != "device-width") {
+							w := int pv;
+							if(w > 0)
+								is.viewportw = w;
+						}
+					}
+				}
+			}
 			(fnd, equiv) := tok.aval(LX->Ahttp_equiv);
 			if(fnd) {
 				v := aval(tok, LX->Acontent);
@@ -1559,19 +1585,19 @@ TokLoop:
 
 		# We do frames, so skip stuff in noframes
 		LX->Tnoframes =>
-			ps.skipping = 1;
+			ps.skipping++;
 
 		LX->Tnoframes+RBRA =>
-			ps.skipping = 0;
+			ps.skipping--;
 
 		# We do scripts (if enabled), so skip stuff in noscripts
 		LX->Tnoscript =>
 			if(doscripts)
-				ps.skipping = 1;
+				ps.skipping++;
 
 		LX->Tnoscript+RBRA =>
 			if(doscripts)
-				ps.skipping = 0;
+				ps.skipping--;
 
 		# <!ELEMENT OPTION - O (#PCDATA)>
 		LX->Toption =>
@@ -1599,7 +1625,7 @@ TokLoop:
 		LX->Tp =>
 			si := getstyle(is, LX->Tp, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -1628,7 +1654,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else {
 					if(ps.boxstk != nil) {
 						bctx := hd ps.boxstk;
@@ -1681,7 +1707,7 @@ TokLoop:
 			if(!doscripts) {
 				if(warn)
 					sys->print("warning: <SCRIPT> ignored\n");
-				ps.skipping = 1;
+				ps.skipping++;
 				break;
 			}
 			script := "";
@@ -1755,7 +1781,7 @@ TokLoop:
 			}
 
 		LX->Tscript+RBRA =>
-			ps.skipping = 0;
+			ps.skipping--;
 
 		# <!ELEMENT SELECT - - (OPTION+)>
 		LX->Tselect =>
@@ -1832,10 +1858,10 @@ TokLoop:
 		LX->Tstyle =>
 			is.instyle = 1;
 			is.styletext = "";
-			ps.skipping = 1;
+			ps.skipping++;
 
 		LX->Tstyle+RBRA =>
-			ps.skipping = 0;
+			ps.skipping--;
 			if(is.instyle) {
 				is.instyle = 0;
 				if(is.styletext != "")
@@ -2410,7 +2436,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			si := getstyle(is, LX->Tspan, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2424,7 +2450,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else
 					unapplystyle(ps, di, changes);
 			}
@@ -2434,7 +2460,7 @@ TokLoop:
 		LX->Theader or LX->Tmain or LX->Tnav or LX->Tsection or LX->Tsummary =>
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2466,7 +2492,7 @@ TokLoop:
 			si := getstyle(is, tag, tok);
 			(openf, nil) := tok.aval(LX->Aopen);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2498,7 +2524,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else {
 					# ::after pseudo-element content
 					if(is.elemstk != nil) {
@@ -2551,7 +2577,7 @@ TokLoop:
 		LX->Tfigcaption =>
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2577,7 +2603,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else {
 					if(ps.boxstk != nil) {
 						bctx := hd ps.boxstk;
@@ -2599,7 +2625,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2613,7 +2639,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else
 					unapplystyle(ps, di, changes);
 			}
@@ -2682,9 +2708,9 @@ TokLoop:
 		# HTML5 <datalist> - hidden by default; options used for input autocomplete
 		LX->Tdatalist =>
 			pushelemctx(is, tag, tok);
-			ps.skipping = 1;
+			ps.skipping++;
 		LX->Tdatalist+RBRA =>
-			ps.skipping = 0;
+			ps.skipping--;
 			popelemctx(is);
 
 		# HTML5 <dialog> - dialog box (block element, hidden by default unless open attr)
@@ -2692,7 +2718,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2707,7 +2733,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else
 					unapplystyle(ps, di, changes);
 			}
@@ -2715,9 +2741,9 @@ TokLoop:
 		# HTML5 <template> - hidden content template (not rendered)
 		LX->Ttemplate =>
 			pushelemctx(is, tag, tok);
-			ps.skipping = 1;
+			ps.skipping++;
 		LX->Ttemplate+RBRA =>
-			ps.skipping = 0;
+			ps.skipping--;
 			popelemctx(is);
 
 		# HTML5 <audio>, <video> - media elements (show fallback content)
@@ -2725,7 +2751,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2745,7 +2771,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else
 					unapplystyle(ps, di, changes);
 			}
@@ -2759,7 +2785,7 @@ TokLoop:
 			pushelemctx(is, tag, tok);
 			si := getstyle(is, tag, tok);
 			if(si.display == DSPNONE) {
-				ps.skipping = 1;
+				ps.skipping++;
 				ps.stylestk = -1 :: ps.stylestk;
 			}
 			else {
@@ -2772,7 +2798,7 @@ TokLoop:
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
-					ps.skipping = 0;
+					ps.skipping--;
 				else
 					unapplystyle(ps, di, changes);
 			}
@@ -2781,6 +2807,7 @@ TokLoop:
 			if(warn)
 				sys->print("warning: unknown HTML tag: %s\n", tok.text);
 		}
+		}	# close else { skip guard }
 	}
 	if (toki < tokslen)
 		is.toks = toks[toki:];
@@ -6268,17 +6295,17 @@ unapplystyle(ps: ref Pstate, di: ref Docinfo, changes: int)
 getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
 {
 	# start with tag stylesheet rule if any
-	si := StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL);
+	si := ref StyleInfo(STYLNONE, STYLNONE, Anone, STYLNONE, STYLNONE, STYLNONE, DSPNORMAL);
 	if(tag < LX->Numtags && is.tagstyles[tag] != nil) {
 		ts := is.tagstyles[tag];
-		si = StyleInfo(ts.color, ts.bgcolor, ts.halign, ts.fontstyle,
+		si = ref StyleInfo(ts.color, ts.bgcolor, ts.halign, ts.fontstyle,
 			ts.fontsize, ts.ul, ts.display);
 	}
 	# check StyleStore for class/ID selector matches
 	if(tok != nil && is.styles != nil && is.styles.sheets != nil) {
 		ga := getgenattr(tok);
 		if(ga != nil) {
-			matchclassid(is.styles, ref si, ga.id, ga.class);
+			matchclassid(is.styles, si, ga.id, ga.class);
 		}
 	}
 	# overlay inline style if present
@@ -6286,10 +6313,10 @@ getstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : StyleInfo
 		sval := aval(tok, LX->Astyle);
 		if(sval != nil && sval != "") {
 			inl := parsestyle(sval);
-			mergestyle(ref si, inl);
+			mergestyle(si, inl);
 		}
 	}
-	return si;
+	return *si;
 }
 
 # ComputedStyle constructor
@@ -7174,13 +7201,17 @@ mediaqueriesok(queries: list of ref CSS->MediaQuery, is: ref ItemSource) : int
 	if(queries == nil)
 		return 1;	# no queries = applies to all
 
-	# Get viewport dimensions from frame
+	# Get viewport dimensions from frame (or meta viewport override)
 	vpw := 800;	# fallback defaults
 	vph := 600;
-	if(is.frame != nil) {
+	if(is.viewportw > 0) {
+		vpw = is.viewportw;
+	} else if(is.frame != nil) {
 		vpw = is.frame.cr.dx();
-		vph = is.frame.cr.dy();
 		if(vpw <= 0) vpw = 800;
+	}
+	if(is.frame != nil) {
+		vph = is.frame.cr.dy();
 		if(vph <= 0) vph = 600;
 	}
 

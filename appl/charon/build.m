@@ -794,6 +794,7 @@ ItemSource: adt
 	lastpopped: ref ElementCtx;		# last popped element (for sibling tracking)
 	instyle: int;				# true when inside <style> block
 	styletext: string;			# accumulates text inside <style> block
+	viewportw: int;			# viewport width from <meta name="viewport">
 
 	new: fn(bs: ref CharonUtils->ByteSource, f: ref Layout->Frame, mtype: int) : ref ItemSource;
 	getitems: fn(is: self ref ItemSource) : ref Item;

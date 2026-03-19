@@ -562,8 +562,6 @@ startimreq(s: ref Source.Simage, auth: string)
 {
 	if(I == nil)
 		return;
-	if(dbgev)
-		CU->event(sys->sprint("LAYOUT STARTREQ %s", s.ci.src.tostring()), 0);
 	bs := CU->startreq(ref CU->ReqInfo(s.ci.src, CU->HGet, nil, auth, ""));
 	s.bs = bs;
 	s.imsrc = I->ImageSource.new(bs, s.ci.width, s.ci.height);
@@ -5860,12 +5858,18 @@ flexshrink(it: ref Item) : int
 }
 
 # Get flex-basis value for an item (returns pixel value, or -1 for auto)
-flexbasis(it: ref Item) : int
+# avail is the container width, used to resolve percentage basis values.
+flexbasis(it: ref Item, avail: int) : int
 {
 	pick box := it {
 	Ibox =>
-		if(box.cstyle != nil && box.cstyle.flex_basis.kind() == Dpixels)
-			return box.cstyle.flex_basis.spec();
+		if(box.cstyle != nil) {
+			kind := box.cstyle.flex_basis.kind();
+			if(kind == Dpixels)
+				return box.cstyle.flex_basis.spec();
+			if(kind == Dpercent && avail > 0)
+				return box.cstyle.flex_basis.spec() * avail / 100;
+		}
 	}
 	return -1;
 }
@@ -5921,10 +5925,13 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 		ia[j+1] = key;
 	}
 
+	gap := cs.gap;
+	avail := lay.targetwidth;
+
 	# Apply flex-basis: override natural width/height with basis if set
 	isrow := cs.flex_direction == FDrow || cs.flex_direction == FDrow_reverse;
 	for(i = 0; i < nitems; i++) {
-		basis := flexbasis(ia[i]);
+		basis := flexbasis(ia[i], avail);
 		if(basis >= 0) {
 			if(isrow)
 				ia[i].width = basis;
@@ -5932,9 +5939,6 @@ layflexitems(f: ref Frame, lay: ref Lay, items: ref Item, cs: ref ComputedStyle)
 				ia[i].height = basis;
 		}
 	}
-
-	gap := cs.gap;
-	avail := lay.targetwidth;
 
 	if(isrow) {
 		# --- ROW DIRECTION with flex-wrap ---

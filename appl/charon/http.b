@@ -342,6 +342,10 @@ need_proxy(h: string) : int
 
 writereq(nc: ref Netconn, bs: ref ByteSource)
 {
+	# Reset chunked state for new request on persistent connection
+	nc.chunked = 0;
+	nc.chunkrem = 0;
+	nc.chunkeof = 0;
 	#
 	# Prepare the request
 	#
@@ -370,7 +374,7 @@ writereq(nc: ref Netconn, bs: ref ByteSource)
 	else
 		reqhdr.addval(HHost, u.host);
 	reqhdr.addval(HUserAgent, agent);
-	reqhdr.addval(HAccept, "text/html, application/xhtml+xml, image/webp, image/png, image/jpeg, image/svg+xml, image/gif, */*;q=0.1");
+	reqhdr.addval(HAccept, "text/html, application/xhtml+xml, image/png, image/jpeg, image/gif, */*;q=0.1");
 	reqhdr.addval(HAcceptLanguage, "en-US,en;q=0.9");
 	reqhdr.addval(HAcceptEncoding, "identity");
 	if(!(nc.tstate&THTTP_1_0))
@@ -453,6 +457,14 @@ gethdr(nc: ref Netconn, bs: ref ByteSource)
 		else
 			nc.tbuf = nil;
 		bs.hdr = hdrconv(resph, bs.req.url);
+		# Detect chunked transfer-encoding
+		te := resph.getval(HTransferEncoding);
+		if(te != nil && S->prefix("chunked", S->tolower(te))) {
+			nc.chunked = 1;
+			nc.chunkrem = 0;
+			nc.chunkeof = 0;
+			bs.hdr.length = -1;	# unknown length
+		}
 		if(bs.hdr.length == 0 && (nc.tstate&THTTP_1_0))
 			closeconn(nc);
 	}
@@ -464,11 +476,139 @@ gethdr(nc: ref Netconn, bs: ref ByteSource)
 	}
 }
 
+# Read a single byte from connection (handles tbuf overread and TLS)
+readbyte(nc: ref Netconn) : int
+{
+	buf := array[1] of byte;
+	if(nc.tbuf != nil && len nc.tbuf > 0) {
+		buf[0] = nc.tbuf[0];
+		if(len nc.tbuf > 1)
+			nc.tbuf = nc.tbuf[1:];
+		else
+			nc.tbuf = nil;
+		return int buf[0];
+	}
+	n: int;
+	if((nc.tstate&TSSL) && nc.tlsconn != nil)
+		n = nc.tlsconn.read(buf, 1);
+	else
+		n = sys->read(nc.conn.dfd, buf, 1);
+	if(n <= 0)
+		return -1;
+	return int buf[0];
+}
+
+# Read raw bytes from connection (handles tbuf overread and TLS)
+readraw(nc: ref Netconn, buf: array of byte, n: int) : int
+{
+	if(nc.tbuf != nil && len nc.tbuf > 0) {
+		avail := len nc.tbuf;
+		if(n > avail)
+			n = avail;
+		for(k := 0; k < n; k++)
+			buf[k] = nc.tbuf[k];
+		if(n >= avail)
+			nc.tbuf = nil;
+		else
+			nc.tbuf = nc.tbuf[n:];
+		return n;
+	}
+	if((nc.tstate&TSSL) && nc.tlsconn != nil)
+		return nc.tlsconn.read(buf, n);
+	return sys->read(nc.conn.dfd, buf, n);
+}
+
+# Read chunk-decoded data for chunked transfer-encoding
+getchunkdata(nc: ref Netconn, bs: ref ByteSource) : int
+{
+	if(bs.data == nil || bs.edata >= len bs.data)
+		return 0;
+	if(nc.chunkeof)
+		return 0;
+
+	# If no data remaining in current chunk, read next chunk header
+	if(nc.chunkrem == 0) {
+		# Read chunk size line: hex-digits followed by CRLF
+		line := "";
+		for(;;) {
+			c := readbyte(nc);
+			if(c < 0)
+				return -1;
+			if(c == '\r')
+				continue;
+			if(c == '\n')
+				break;
+			# Ignore chunk extensions (;...)
+			if(c == ';') {
+				# Skip to end of line
+				for(;;) {
+					c = readbyte(nc);
+					if(c < 0)
+						return -1;
+					if(c == '\n')
+						break;
+				}
+				break;
+			}
+			line[len line] = c;
+		}
+		# Parse hex chunk size
+		size := 0;
+		for(k := 0; k < len line; k++) {
+			ch := line[k];
+			if(ch >= '0' && ch <= '9')
+				size = size * 16 + ch - '0';
+			else if(ch >= 'a' && ch <= 'f')
+				size = size * 16 + ch - 'a' + 10;
+			else if(ch >= 'A' && ch <= 'F')
+				size = size * 16 + ch - 'A' + 10;
+			else
+				break;
+		}
+		if(size == 0) {
+			nc.chunkeof = 1;
+			# Consume trailing headers + CRLF
+			for(;;) {
+				c := readbyte(nc);
+				if(c < 0 || c == '\n')
+					break;
+			}
+			return 0;
+		}
+		nc.chunkrem = size;
+	}
+
+	# Read data from current chunk
+	buf := bs.data[bs.edata:];
+	want := len buf;
+	if(want > nc.chunkrem)
+		want = nc.chunkrem;
+	n := readraw(nc, buf, want);
+	if(n <= 0) {
+		closeconn(nc);
+		if(n < 0)
+			bs.err = sys->sprint("%r");
+		return n;
+	}
+	nc.chunkrem -= n;
+
+	# Consume trailing CRLF after chunk data
+	if(nc.chunkrem == 0) {
+		c := readbyte(nc);
+		if(c == '\r')
+			c = readbyte(nc);
+		# c should be '\n'; ignore errors here
+	}
+	return n;
+}
+
 # returns number of bytes transferred to bs.data
 # 0 => EOF
 # -1 => error
 getdata(nc: ref Netconn, bs: ref ByteSource): int
 {
+	if(nc.chunked)
+		return getchunkdata(nc, bs);
 	if (bs.data == nil || bs.edata >= len bs.data) {
 		if(nc.tstate&THTTP_1_0) {
 			# hmm - when do non-eof'd HTTP1.1 connections close?
