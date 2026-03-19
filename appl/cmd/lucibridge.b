@@ -1111,8 +1111,10 @@ agentturn(input: string)
 					log("context: file " + fpath + " via " + nm);
 				}
 
+				setstatus(nm);
 				log("tool " + name + ": calling with " + string len eargs + " bytes");
 				result := agentlib->calltool(name, eargs);
+				setstatus("working");
 				writefile(ctxpath, "resource update path=" + nm + " status=idle");
 				if(fpath != nil)
 					writefile(ctxpath, "resource update path=" + fpath + " status=idle");
