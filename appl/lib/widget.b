@@ -435,9 +435,9 @@ Scrollbar.wheel(sb: self ref Scrollbar, button: int, step: int): int
 
 # ── Label ─────────────────────────────────────────────────────
 
-Label.mk(r: Rect, text: string, dim: int): ref Label
+Label.mk(r: Rect, text: string, dim: int, align: int): ref Label
 {
-	return ref Label(r, text, dim);
+	return ref Label(r, text, dim, align);
 }
 
 Label.draw(l: self ref Label, dst: ref Image)
@@ -448,7 +448,13 @@ Label.draw(l: self ref Label, dst: ref Image)
 	if(l.dim)
 		col = fieldlabel;
 	ty := l.r.min.y + (l.r.dy() - wfont.height) / 2;
-	dst.text(Point(l.r.min.x + LEFTPAD, ty), col, Point(0, 0), wfont, l.text);
+	tx: int;
+	if(l.align == CENTER) {
+		tw := wfont.width(l.text);
+		tx = l.r.min.x + (l.r.dx() - tw) / 2;
+	} else
+		tx = l.r.min.x + LEFTPAD;
+	dst.text(Point(tx, ty), col, Point(0, 0), wfont, l.text);
 }
 
 Label.resize(l: self ref Label, r: Rect)

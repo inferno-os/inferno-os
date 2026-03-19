@@ -29,6 +29,13 @@ jobs:
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+    - name: Stamp build version
+      run: |
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i "s|InferNode 0.1|InferNode 0.1 build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
     - name: Install build dependencies
       run: sudo apt-get update && sudo apt-get install -y build-essential
 
@@ -137,6 +144,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Stamp build version
+      run: |
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i '' "s|InferNode 0.1|InferNode 0.1 build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
 
     - name: Build mk
       run: |

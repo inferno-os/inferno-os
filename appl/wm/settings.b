@@ -46,7 +46,7 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Radio, RadioGroup, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Checkbox, Radio, RadioGroup, Kbdfilter, LEFT, CENTER: import widgetmod;
 
 Settings: module
 {
@@ -353,7 +353,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 	rowh := ch + FIELD_SPACING;
 
 	# Section header: Connection
-	llm_conn_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Connection", 1);
+	llm_conn_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Connection", 1, LEFT);
 	cy += fh;
 
 	# Mode group: Local vs Remote
@@ -371,7 +371,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		# Remote mode: just a dial address
 		llm_dial_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			"Dial address:", 0);
+			"Dial address:", 0, LEFT);
 		cy += fh;
 		llm_dial_tf = Textfield.mk(
 			Rect((cx, cy), (cw, cy + fh)),
@@ -381,7 +381,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		cy += fh + MARGIN;
 	} else {
 		# Section header: Backend
-		llm_backend_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Backend", 1);
+		llm_backend_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Backend", 1, LEFT);
 		cy += fh;
 
 		# Backend group: Anthropic API vs Ollama/OpenAI
@@ -398,7 +398,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		# URL
 		llm_url_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			"Endpoint URL:", 0);
+			"Endpoint URL:", 0, LEFT);
 		cy += fh;
 		llm_url_tf = Textfield.mk(
 			Rect((cx, cy), (cw, cy + fh)),
@@ -409,7 +409,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		# Model
 		llm_model_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			"Model:", 0);
+			"Model:", 0, LEFT);
 		cy += fh;
 		llm_model_tf = Textfield.mk(
 			Rect((cx, cy), (cw, cy + fh)),
@@ -426,7 +426,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 			keystatus = "API key: not set (check factotum or ANTHROPIC_API_KEY)";
 		llm_key_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			keystatus, 0);
+			keystatus, 0, LEFT);
 		cy += fh + MARGIN;
 	}
 
@@ -524,7 +524,7 @@ layoutprompts(cx, cy, cw, fh, bh: int)
 		(nil, label) := prompt_files[i];
 		prompt_labels[i] = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			label, 0);
+			label, 0, LEFT);
 		cy += fh;
 		prompt_btns[i] = Button.mk(
 			Rect((cx, cy), (cx + BTN_W + 20, cy + bh)),
@@ -538,7 +538,7 @@ layoutprofile(cx, cy, cw, bh: int)
 	fh := font.height + 8;
 	profile_label = Label.mk(
 		Rect((cx, cy), (cw, cy + fh)),
-		"Startup profile: /lib/sh/profile", 0);
+		"Startup profile: /lib/sh/profile", 0, LEFT);
 	cy += fh + FIELD_SPACING;
 	profile_btn = Button.mk(
 		Rect((cx, cy), (cx + BTN_W + 20, cy + bh)),

@@ -1,10 +1,10 @@
 implement About;
 
 #
-# About Infernode — native Draw version
+# About InferNode — native Draw + Widget version
 #
-# Displays the Infernode logo, system version, and project info
-# using native Draw primitives (no Tk dependency).
+# Displays the InferNode logo, system version, and project info
+# using Widget->Label for themed text (no Tk dependency).
 #
 
 include "sys.m";
@@ -22,6 +22,10 @@ include "lucitheme.m";
 	lucitheme: Lucitheme;
 	Theme: import lucitheme;
 
+include "widget.m";
+	widgetmod: Widget;
+	Label, CENTER: import widgetmod;
+
 About: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -32,6 +36,7 @@ ZP := Point(0, 0);
 WINW: con 600;
 WINH: con 590;
 PADDING: con 12;
+LINEH: con 18;	# line height for body labels
 
 init(ctxt: ref Draw->Context, nil: list of string)
 {
@@ -44,12 +49,19 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	draw = load Draw Draw->PATH;
 	wmclient = load Wmclient Wmclient->PATH;
 	lucitheme = load Lucitheme Lucitheme->PATH;
+	widgetmod = load Widget Widget->PATH;
 
 	sys->pctl(Sys->NEWPGRP, nil);
 	wmclient->init();
 
-	w := wmclient->window(ctxt, "About Infernode", Wmclient->Appl);
+	w := wmclient->window(ctxt, "About InferNode", Wmclient->Appl);
 	display := w.display;
+
+	# Init widget module with body font
+	bodyfont := Font.open(display, "/fonts/combined/unicode.12.font");
+	if(bodyfont == nil)
+		bodyfont = Font.open(display, "*default*");
+	widgetmod->init(display, bodyfont);
 
 	w.reshape(Rect((0, 0), (WINW, WINH)));
 	w.startinput("ptr" :: "kbd" :: nil);
@@ -87,7 +99,6 @@ redraw(w: ref Window, display: ref Display)
 
 	bg := display.color(theme.bg | 16rFF);
 	accent := display.color(theme.accent | 16rFF);
-	textcol := display.color(theme.text | 16rFF);
 	dimcol := display.color(theme.dim | 16rFF);
 
 	# Clear background
@@ -96,13 +107,10 @@ redraw(w: ref Window, display: ref Display)
 	# Draw border
 	screen.border(screen.r, 1, accent, ZP);
 
-	# Load fonts
+	# Title font (larger than widget font)
 	titlefont := Font.open(display, "/fonts/combined/unicode.16.font");
 	if(titlefont == nil)
 		titlefont = Font.open(display, "*default*");
-	bodyfont := Font.open(display, "/fonts/combined/unicode.12.font");
-	if(bodyfont == nil)
-		bodyfont = Font.open(display, "*default*");
 
 	r := screen.r;
 	cx := (r.min.x + r.max.x) / 2;
@@ -112,7 +120,6 @@ redraw(w: ref Window, display: ref Display)
 	logopath := "/lib/lucifer/about-screen.png";
 	themename := rf("/lib/lucifer/theme/current");
 	if(themename != nil) {
-		# Strip trailing whitespace/newline
 		while(len themename > 0 && (themename[len themename - 1] == '\n' || themename[len themename - 1] == ' '))
 			themename = themename[:len themename - 1];
 		if(themename != "brimstone" && themename != "") {
@@ -124,10 +131,8 @@ redraw(w: ref Window, display: ref Display)
 	}
 	logo := display.open(logopath);
 	if(logo != nil) {
-		# Scale: draw logo centered
 		lw := logo.r.dx();
 		lh := logo.r.dy();
-		# Draw at 2x if small
 		if(lw < 48) {
 			scale := 4;
 			sw := lw * scale;
@@ -135,7 +140,6 @@ redraw(w: ref Window, display: ref Display)
 			dst := Rect((cx - sw/2, y), (cx + sw/2, y + sh));
 			scaled := display.newimage(dst, screen.chans, 0, Draw->Nofill);
 			if(scaled != nil) {
-				# Nearest-neighbor scale by drawing each pixel as a block
 				scaleblit(scaled, logo, scale);
 				screen.draw(dst, scaled, nil, dst.min);
 			}
@@ -149,18 +153,18 @@ redraw(w: ref Window, display: ref Display)
 	} else
 		y += PADDING;
 
-	# Title
-	title := "Infernode";
+	# Title — uses larger font, drawn manually
+	title := "InferNode";
 	tw := titlefont.width(title);
 	screen.text(Point(cx - tw/2, y), accent, ZP, titlefont, title);
 	y += titlefont.height + 4;
 
-	# Version from sysctl
+	# Version from sysctl — Widget Label
 	version := rf("/dev/sysctl");
 	if(version != nil) {
-		vw := bodyfont.width(version);
-		screen.text(Point(cx - vw/2, y), textcol, ZP, bodyfont, version);
-		y += bodyfont.height + 4;
+		vl := Label.mk(Rect((r.min.x, y), (r.max.x, y + LINEH)), version, 0, CENTER);
+		vl.draw(screen);
+		y += LINEH;
 	}
 
 	# Separator line
@@ -169,32 +173,30 @@ redraw(w: ref Window, display: ref Display)
 		0, 0, 0, dimcol, ZP);
 	y += 12;
 
-	# Description lines
+	# Description lines — Widget Labels
+	# (text, dim) pairs: dim=1 for URLs
 	lines := array[] of {
-		"Inferno\u00AE Operating System",
-		"",
-		"Originally by Bell Labs (Lucent)",
-		"Vita Nuova Holdings",
-		"",
-		"Infernode fork by",
-		"NERVsystems",
-		"",
-		"lucent.com/inferno",
-		"nervsystems.com",
+		("Inferno\u00AE Operating System", 0),
+		("", 0),
+		("Originally by Bell Labs (Lucent)", 0),
+		("Vita Nuova Holdings", 0),
+		("", 0),
+		("InferNode fork by", 0),
+		("NERVsystems", 0),
+		("", 0),
+		("lucent.com/inferno", 1),
+		("nervsystems.com", 1),
 	};
 
 	for(i := 0; i < len lines; i++) {
-		if(lines[i] == nil || len lines[i] == 0) {
-			y += bodyfont.height / 2;
+		(text, dim) := lines[i];
+		if(text == nil || len text == 0) {
+			y += LINEH / 2;
 			continue;
 		}
-		lw := bodyfont.width(lines[i]);
-		col := textcol;
-		# Dim the URLs
-		if(i >= 8)
-			col = dimcol;
-		screen.text(Point(cx - lw/2, y), col, ZP, bodyfont, lines[i]);
-		y += bodyfont.height + 2;
+		l := Label.mk(Rect((r.min.x, y), (r.max.x, y + LINEH)), text, dim, CENTER);
+		l.draw(screen);
+		y += LINEH;
 	}
 
 	screen.flush(Draw->Flushnow);
@@ -205,18 +207,15 @@ scaleblit(dst, src: ref Image, scale: int)
 {
 	sw := src.r.dx();
 	sh := src.r.dy();
-	# Read source pixels
 	bpp := src.depth / 8;
 	if(bpp < 1)
 		bpp = 1;
 	srcbuf := array[sw * sh * bpp] of byte;
 	src.readpixels(src.r, srcbuf);
 
-	# Write scaled rows
 	dw := sw * scale;
 	rowbuf := array[dw * bpp] of byte;
 	for(sy := 0; sy < sh; sy++) {
-		# Expand one source row
 		for(sx := 0; sx < sw; sx++) {
 			for(k := 0; k < bpp; k++) {
 				v := srcbuf[(sy * sw + sx) * bpp + k];
@@ -224,11 +223,10 @@ scaleblit(dst, src: ref Image, scale: int)
 					rowbuf[((sx * scale + dx) * bpp) + k] = v;
 			}
 		}
-		# Write this row 'scale' times
 		for(dy := 0; dy < scale; dy++) {
 			ry := dst.r.min.y + sy * scale + dy;
-			r := Rect((dst.r.min.x, ry), (dst.r.min.x + dw, ry + 1));
-			dst.writepixels(r, rowbuf);
+			lr := Rect((dst.r.min.x, ry), (dst.r.min.x + dw, ry + 1));
+			dst.writepixels(lr, rowbuf);
 		}
 	}
 }
@@ -242,7 +240,6 @@ rf(name: string): string
 	n := sys->read(fd, buf, len buf);
 	if(n < 0)
 		return nil;
-	# Trim trailing whitespace
 	while(n > 0 && (buf[n-1] == byte '\n' || buf[n-1] == byte ' ' || buf[n-1] == byte '\t'))
 		n--;
 	if(n == 0)

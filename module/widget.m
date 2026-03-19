@@ -267,14 +267,20 @@ Widget: module
 	# Static text display.  No interaction — just themed text
 	# for section headers, descriptions, and captions.
 	#
+	# Alignment constants for Label.
+	LEFT:   con 0;
+	CENTER: con 1;
+
 	Label: adt {
 		r:     Draw->Rect;    # label rectangle
 		text:  string;        # display text
 		dim:   int;           # 1 = dim/secondary colour, 0 = normal
+		align: int;           # LEFT or CENTER
 
 		# Create a label.
 		# dim: 1 for secondary/description text, 0 for normal.
-		mk:    fn(r: Draw->Rect, text: string, dim: int): ref Label;
+		# align: LEFT (0) or CENTER (1).
+		mk:    fn(r: Draw->Rect, text: string, dim: int, align: int): ref Label;
 
 		# Draw the label into dst.
 		draw:  fn(l: self ref Label, dst: ref Draw->Image);

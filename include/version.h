@@ -1,1 +1,1 @@
-#define VERSION	"Fourth Edition (20120928)"
+#define VERSION	"InferNode 0.1 (based on Inferno Fourth Edition)"
