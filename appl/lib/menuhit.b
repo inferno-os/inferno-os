@@ -33,7 +33,9 @@ init(w: ref Wmclient->Window)
 	display = w.display;
 	draw = load Draw Draw->PATH;
 	sys = load Sys Sys->PATH;
-	font = draw->Font.open(display, "*default*");
+	font = draw->Font.open(display, "/fonts/combined/unicode.sans.14.font");
+	if(font == nil)
+		font = draw->Font.open(display, "*default*");
 }
 
 

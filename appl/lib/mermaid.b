@@ -427,6 +427,8 @@ init(d: ref Display, mainfont: ref Font, monofont: ref Font)
 	mfont = mainfont;
 	mofont = monofont;
 	if(mfont == nil)
+		mfont = Font.open(d, "/fonts/combined/unicode.sans.14.font");
+	if(mfont == nil)
 		mfont = Font.open(d, "*default*");
 	if(mofont == nil)
 		mofont = mfont;

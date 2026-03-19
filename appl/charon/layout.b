@@ -263,7 +263,7 @@ init(cu: CharonUtils)
 	#TODO should read from env $font or config
 	if((CU->config).doacme)
 		for(i := 0; i < len fonts; i++)
-			fonts[i] = Fontinfo("/fonts/vera/Vera/unicode.14.font", nil, 0);
+			fonts[i] = Fontinfo("/fonts/combined/unicode.sans.14.font", nil, 0);
 	# make sure default and control fonts are loaded
 	getfont(DefFnt);
 	fnt := fonts[DefFnt].f;

@@ -166,9 +166,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	w = wmclient->window(ctxt, "Settings", Wmclient->Appl);
 	display_g = w.display;
 
-	font = Font.open(display_g, "/fonts/combined/unicode.14.font");
-	if(font == nil)
-		font = Font.open(display_g, "/fonts/10646/9x15/9x15.font");
+	font = Font.open(display_g, "/fonts/combined/unicode.sans.14.font");
 	if(font == nil)
 		font = Font.open(display_g, "*default*");
 

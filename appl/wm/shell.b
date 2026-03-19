@@ -314,8 +314,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(font == nil)
 		font = Font.open(display_g, "/fonts/combined/unicode.14.font");
 	if(font == nil)
-		font = Font.open(display_g, "/fonts/10646/9x15/9x15.font");
-	if(font == nil)
 		font = Font.open(display_g, "*default*");
 	if(font == nil) {
 		sys->fprint(stderr, "shell: cannot load any font\n");
