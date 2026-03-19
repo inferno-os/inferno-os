@@ -720,6 +720,16 @@ parseopenairesponse(body: string, req: ref AskRequest): (ref AskResponse, string
 	if(tokens == 0)
 		tokens = estimatetokens(responsetext);
 
+	# Fallback: parse tool calls from text content if model didn't use structured API
+	if(toolcalls == nil && responsetext != "" && req.tooldefs != nil) {
+		(remaining, extracted) := extracttexttoolcalls(responsetext, req.tooldefs);
+		if(extracted != nil) {
+			toolcalls = extracted;
+			responsetext = strip(remaining);
+			finishreason = "tool_calls";
+		}
+	}
+
 	# Plain text mode
 	if(req.tooldefs == nil) {
 		if(req.prefill != "" && !hasprefix(responsetext, req.prefill))
@@ -881,6 +891,21 @@ parseopenaisseresponse(body: string, req: ref AskRequest): (ref AskResponse, str
 	if(tokens == 0)
 		tokens = estimatetokens(fulltext);
 
+	# Fallback: parse tool calls from text content if model didn't use structured API
+	if(tcids == nil && fulltext != "" && req.tooldefs != nil) {
+		(remaining, extracted) := extracttexttoolcalls(fulltext, req.tooldefs);
+		if(extracted != nil) {
+			for(el := extracted; el != nil; el = tl el) {
+				(eid, ename, eargs) := hd el;
+				tcids = append(tcids, eid);
+				tcnames = append(tcnames, ename);
+				tcargs = append(tcargs, eargs);
+			}
+			fulltext = strip(remaining);
+			finishreason = "tool_calls";
+		}
+	}
+
 	# Plain text mode
 	if(req.tooldefs == nil) {
 		if(req.prefill != "" && !hasprefix(fulltext, req.prefill))
@@ -928,6 +953,203 @@ parseopenaisseresponse(body: string, req: ref AskRequest): (ref AskResponse, str
 	response += joinrev(textparts, "");
 
 	return (ref AskResponse(response, structjson, tokens), nil);
+}
+
+# ==================== Fallback Text Tool Call Parser ====================
+
+# extracttexttoolcalls scans content text for tool calls embedded as text
+# when models (e.g. Ollama/Qwen) don't use the structured tool_calls API.
+# Supported formats:
+#   1. <function=name>\n<parameter=args>\nvalue\n</parameter>\n</function>
+#   2. <tool_call>\n{"name": "...", "arguments": {...}}\n</tool_call>
+#   3. <|tool_call|>\n{"name": "...", "arguments": {...}}\n<|/tool_call|>
+# Returns (remaining_text, list of (id, name, args) tuples).
+extracttexttoolcalls(content: string, tooldefs: list of ref ToolDef): (string, list of (string, string, string))
+{
+	calls: list of (string, string, string);
+	remaining := "";
+	nextid := 0;
+
+	i := 0;
+	while(i < len content) {
+		# Try <function=name> format
+		(matched, end, name, args) := tryfunctiontag(content, i);
+		if(matched) {
+			if(validtoolname(name, tooldefs)) {
+				id := sys->sprint("fallback_%d", nextid++);
+				calls = (id, name, args) :: calls;
+			}
+			i = end;
+			continue;
+		}
+
+		# Try <tool_call> format
+		(matched2, end2, name2, args2) := trytoolcalltag(content, i, "<tool_call>", "</tool_call>");
+		if(matched2) {
+			if(validtoolname(name2, tooldefs)) {
+				id := sys->sprint("fallback_%d", nextid++);
+				calls = (id, name2, args2) :: calls;
+			}
+			i = end2;
+			continue;
+		}
+
+		# Try <|tool_call|> format
+		(matched3, end3, name3, args3) := trytoolcalltag(content, i, "<|tool_call|>", "<|/tool_call|>");
+		if(matched3) {
+			if(validtoolname(name3, tooldefs)) {
+				id := sys->sprint("fallback_%d", nextid++);
+				calls = (id, name3, args3) :: calls;
+			}
+			i = end3;
+			continue;
+		}
+
+		# Not a tool call tag — accumulate as remaining text
+		remaining[len remaining] = content[i];
+		i++;
+	}
+
+	if(calls == nil)
+		return (content, nil);
+
+	count := 0;
+	for(cl := calls; cl != nil; cl = tl cl)
+		count++;
+	sys->fprint(stderr, "llmclient: fallback tool parser: extracted %d tool calls from text\n", count);
+
+	# Reverse calls to preserve original order
+	rev: list of (string, string, string);
+	for(; calls != nil; calls = tl calls)
+		rev = hd calls :: rev;
+
+	return (remaining, rev);
+}
+
+# tryfunctiontag attempts to parse <function=name>...<parameter=...>...</parameter>...</function>
+# starting at position pos in s.
+# Returns (matched, end_pos, name, args_json).
+tryfunctiontag(s: string, pos: int): (int, int, string, string)
+{
+	tag := "<function=";
+	if(pos + len tag >= len s || s[pos:pos+len tag] != tag)
+		return (0, 0, "", "");
+
+	# Find the closing > of <function=name>
+	namestart := pos + len tag;
+	nameend := namestart;
+	while(nameend < len s && s[nameend] != '>')
+		nameend++;
+	if(nameend >= len s)
+		return (0, 0, "", "");
+	name := s[namestart:nameend];
+	i := nameend + 1;
+
+	# Skip whitespace/newlines
+	while(i < len s && (s[i] == '\n' || s[i] == '\r' || s[i] == ' ' || s[i] == '\t'))
+		i++;
+
+	# Collect argument value — look for <parameter=...>value</parameter> blocks
+	argsobj := "{";
+	argfirst := 1;
+	while(i < len s) {
+		ptag := "<parameter=";
+		if(i + len ptag < len s && s[i:i+len ptag] == ptag) {
+			# Parse parameter name
+			pnamestart := i + len ptag;
+			pnameend := pnamestart;
+			while(pnameend < len s && s[pnameend] != '>')
+				pnameend++;
+			if(pnameend >= len s)
+				break;
+			pname := s[pnamestart:pnameend];
+			j := pnameend + 1;
+
+			# Skip leading newline
+			if(j < len s && s[j] == '\n')
+				j++;
+
+			# Collect value until </parameter>
+			endptag := "</parameter>";
+			pval := "";
+			while(j + len endptag <= len s && s[j:j+len endptag] != endptag) {
+				pval[len pval] = s[j];
+				j++;
+			}
+			if(j + len endptag <= len s)
+				j += len endptag;
+
+			# Strip trailing newline from value
+			while(len pval > 0 && (pval[len pval-1] == '\n' || pval[len pval-1] == '\r'))
+				pval = pval[:len pval-1];
+
+			if(!argfirst)
+				argsobj += ",";
+			argfirst = 0;
+			argsobj += jquote(pname) + ":" + jquote(pval);
+			i = j;
+		} else {
+			# Check for </function>
+			endtag := "</function>";
+			if(i + len endtag <= len s && s[i:i+len endtag] == endtag) {
+				i += len endtag;
+				break;
+			}
+			# Skip whitespace between parameters
+			i++;
+		}
+	}
+	argsobj += "}";
+
+	return (1, i, name, argsobj);
+}
+
+# trytoolcalltag attempts to parse <tool_call>...</tool_call> or <|tool_call|>...</|tool_call|>
+# JSON content, starting at position pos in s.
+# Returns (matched, end_pos, name, args_json).
+trytoolcalltag(s: string, pos: int, opentag, closetag: string): (int, int, string, string)
+{
+	if(pos + len opentag > len s || s[pos:pos+len opentag] != opentag)
+		return (0, 0, "", "");
+
+	# Find the close tag
+	j := pos + len opentag;
+	bodystart := j;
+	while(j + len closetag <= len s && s[j:j+len closetag] != closetag)
+		j++;
+	if(j + len closetag > len s)
+		return (0, 0, "", "");
+
+	body := strip(s[bodystart:j]);
+	endpos := j + len closetag;
+
+	# Parse JSON body: {"name": "...", "arguments": {...}}
+	(jv, jerr) := readjsonstring(body);
+	if(jerr != nil)
+		return (0, 0, "", "");
+
+	namev := jv.get("name");
+	name := "";
+	if(namev != nil) pick nv := namev { String => name = nv.s; }
+	if(name == "")
+		return (0, 0, "", "");
+
+	argsv := jv.get("arguments");
+	args := "{}";
+	if(argsv != nil)
+		args = argsv.text();
+
+	return (1, endpos, name, args);
+}
+
+# validtoolname checks whether name matches one of the provided tool definitions.
+validtoolname(name: string, tooldefs: list of ref ToolDef): int
+{
+	for(tl2 := tooldefs; tl2 != nil; tl2 = tl tl2) {
+		if((hd tl2).name == name)
+			return 1;
+	}
+	return 0;
 }
 
 # ==================== Public Utilities ====================
