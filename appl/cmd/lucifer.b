@@ -402,7 +402,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	convMouseCh = chan[16] of ref Pointer;
 	convKbdCh   = chan[16] of int;
-	convEvCh    = chan[4] of string;
+	convEvCh    = chan[16] of string;
 	convRszCh   = chan[1] of ref Draw->Image;
 
 	presMouseCh = chan[16] of ref Pointer;
