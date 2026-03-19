@@ -27,29 +27,32 @@ SKIPPED=0
 # check_pair SRC DIS
 #   Verify that DIS is newer than SRC.
 check_pair() {
-    src="$ROOT/$1"
-    dis="$ROOT/$2"
+    local srcrel="$1"
+    local disrel="$2"
+    src="$ROOT/$srcrel"
+    dis="$ROOT/$disrel"
 
     if [ ! -f "$src" ]; then
-        echo "  SKIP: $1 (source not found)"
+        echo "  SKIP: $srcrel (source not found)"
         SKIPPED=$((SKIPPED + 1))
-        return
+        return 0
     fi
     if [ ! -f "$dis" ]; then
-        echo "  FAIL: $2 missing (source exists at $1)"
+        echo "  FAIL: $disrel missing (source exists at $srcrel)"
         FAILED=$((FAILED + 1))
-        return
+        return 0
     fi
 
     # Compare modification times.
     # Use find -newer: if SRC is newer than DIS, it prints SRC.
     if [ -n "$(find "$src" -newer "$dis" -print 2>/dev/null)" ]; then
-        echo "  FAIL: $2 is older than $1 -- recompile needed"
+        echo "  FAIL: $disrel is older than $srcrel -- recompile needed"
         FAILED=$((FAILED + 1))
     else
-        echo "  PASS: $2 is up to date"
+        echo "  PASS: $disrel is up to date"
         PASSED=$((PASSED + 1))
     fi
+    return 0
 }
 
 # Modules affected by the k1->k8 font migration (commit 847c0c99)

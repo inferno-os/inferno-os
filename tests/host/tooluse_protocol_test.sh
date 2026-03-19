@@ -47,10 +47,10 @@ else
 	RED=''; GREEN=''; YELLOW=''; BOLD=''; NC=''
 fi
 
-pass()  { echo -e "${GREEN}PASS${NC}: $1"; }
-fail()  { echo -e "${RED}FAIL${NC}: $1"; FAILED=$((FAILED+1)); }
-skip()  { echo -e "${YELLOW}SKIP${NC}: $1"; SKIPPED=$((SKIPPED+1)); }
-info()  { [[ "$VERBOSE" -eq 1 ]] && echo "  $1" || true; }
+pass()  { local msg="$1"; echo -e "${GREEN}PASS${NC}: $msg"; return 0; }
+fail()  { local msg="$1"; echo -e "${RED}FAIL${NC}: $msg"; FAILED=$((FAILED+1)); return 0; }
+skip()  { local msg="$1"; echo -e "${YELLOW}SKIP${NC}: $msg"; SKIPPED=$((SKIPPED+1)); return 0; }
+info()  { local msg="$1"; [[ "$VERBOSE" -eq 1 ]] && echo "  $msg" || true; return 0; }
 
 PASSED=0; FAILED=0; SKIPPED=0
 
@@ -91,7 +91,7 @@ info "LLM service listening on port $LLM9P_PORT"
 
 # Check emulator exists
 if [[ ! -x "$EMU" ]]; then
-	echo "ERROR: emulator not found at $EMU"
+	echo "ERROR: emulator not found at $EMU" >&2
 	exit 1
 fi
 
@@ -105,7 +105,7 @@ if [[ ! -f "$TESTDIS" ]] || [[ "$TESTB" -nt "$TESTDIS" ]]; then
 		"$ROOT/MacOSX/arm64/bin/limbo" \
 		-I"$ROOT/module" -I"$ROOT/appl/veltro" -gw \
 		-o "$TESTDIS" "$TESTB" 2>&1 || {
-		echo "ERROR: failed to build tooluse_test.dis"
+		echo "ERROR: failed to build tooluse_test.dis" >&2
 		exit 1
 	}
 fi

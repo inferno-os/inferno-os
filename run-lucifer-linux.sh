@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 EMU="$ROOT/emu/Linux/o.emu"
 
 if [ ! -x "$EMU" ]; then
-    echo "ERROR: o.emu not found. Build with ./build-linux-amd64.sh first."
+    echo "ERROR: o.emu not found. Build with ./build-linux-amd64.sh first." >&2
     exit 1
 fi
 

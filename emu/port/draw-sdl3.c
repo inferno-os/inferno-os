@@ -825,7 +825,7 @@ handle_text_input(const char *text)
 		return;
 
 	while (*text) {
-		n = chartorune(&r, (char*)text);
+		n = chartorune(&r, (char*)text);	/* chartorune doesn't modify text; Plan 9 API lacks const */
 		if (r == Runeerror) {
 			text++;
 			continue;
@@ -976,7 +976,8 @@ sdl3_mainloop(void)
 			case SDL_EVENT_WINDOW_RESIZED:
 			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 				{
-					int pix_w, pix_h;
+					int pix_w;
+					int pix_h;
 
 					/*
 					 * Window size changed (e.g., full-screen toggle).

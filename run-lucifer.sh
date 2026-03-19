@@ -11,7 +11,7 @@ case "$(uname -s)" in
 esac
 
 if [ ! -x "$EMUDIR/o.emu" ]; then
-    echo "ERROR: $EMUDIR/o.emu not found. Build first."
+    echo "ERROR: $EMUDIR/o.emu not found. Build first." >&2
     exit 1
 fi
 

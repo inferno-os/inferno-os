@@ -26,13 +26,17 @@ FAILED=0
 PASSED=0
 
 pass() {
-    echo "  PASS: $1"
+    local msg="$1"
+    echo "  PASS: $msg"
     PASSED=$((PASSED + 1))
+    return 0
 }
 
 fail() {
-    echo "  FAIL: $1"
+    local msg="$1"
+    echo "  FAIL: $msg"
     FAILED=$((FAILED + 1))
+    return 0
 }
 
 # ---------------------------------------------------------------

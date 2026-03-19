@@ -11,7 +11,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 # ── Colours (if terminal supports them) ────────────────────────────
-if [ -t 1 ]; then
+if [[ -t 1 ]]; then
     BOLD="\033[1m"
     DIM="\033[2m"
     GREEN="\033[32m"
@@ -23,9 +23,9 @@ else
     BOLD="" DIM="" GREEN="" YELLOW="" RED="" CYAN="" RESET=""
 fi
 
-info()  { printf "${CYAN}▸${RESET} %s\n" "$*"; }
-ok()    { printf "${GREEN}✓${RESET} %s\n" "$*"; }
-warn()  { printf "${YELLOW}!${RESET} %s\n" "$*"; }
+info()  { printf "${CYAN}▸${RESET} %s\n" "$*"; return 0; }
+ok()    { printf "${GREEN}✓${RESET} %s\n" "$*"; return 0; }
+warn()  { printf "${YELLOW}!${RESET} %s\n" "$*"; return 0; }
 fail()  { printf "${RED}✗${RESET} %s\n" "$*"; exit 1; }
 
 # ── Banner ─────────────────────────────────────────────────────────
@@ -55,11 +55,11 @@ printf "\n"
 
 # ── Helper: write key file inside Inferno FS ───────────────────────
 write_key() {
-    # $1 = service name (anthropic, openai, brave)
-    # $2 = key value
+    local svc="$1" key="$2"
     mkdir -p "$ROOT/lib/veltro/keys"
-    printf "%s" "$2" > "$ROOT/lib/veltro/keys/$1"
-    chmod 600 "$ROOT/lib/veltro/keys/$1"
+    printf "%s" "$key" > "$ROOT/lib/veltro/keys/$svc"
+    chmod 600 "$ROOT/lib/veltro/keys/$svc"
+    return 0
 }
 
 # ── Path 1: Anthropic API ──────────────────────────────────────────
@@ -69,26 +69,27 @@ setup_anthropic() {
 
     # Check for existing key
     existing=""
-    if [ -n "$ANTHROPIC_API_KEY" ]; then
+    if [[ -n "$ANTHROPIC_API_KEY" ]]; then
         existing="$ANTHROPIC_API_KEY"
-    elif [ -f "$ROOT/lib/veltro/keys/anthropic" ]; then
+    elif [[ -f "$ROOT/lib/veltro/keys/anthropic" ]]; then
         existing="$(cat "$ROOT/lib/veltro/keys/anthropic" 2>/dev/null)"
     fi
 
-    if [ -n "$existing" ]; then
+    if [[ -n "$existing" ]]; then
         masked="${existing:0:8}...${existing: -4}"
         ok "Found existing API key: $masked"
         printf "  Use this key? [Y/n] "
         read -r yn
         case "$yn" in
             [Nn]*) existing="" ;;
+            *) ;;
         esac
     fi
 
-    if [ -z "$existing" ]; then
+    if [[ -z "$existing" ]]; then
         printf "  Paste your Anthropic API key (starts with sk-ant-): "
         read -r apikey
-        if [ -z "$apikey" ]; then
+        if [[ -z "$apikey" ]]; then
             fail "No API key provided."
         fi
     else
@@ -131,14 +132,14 @@ setup_anthropic() {
     case "$yn" in
         [Yy]*)
             shell_rc=""
-            if [ -f "$HOME/.zshrc" ]; then
+            if [[ -f "$HOME/.zshrc" ]]; then
                 shell_rc="$HOME/.zshrc"
-            elif [ -f "$HOME/.bash_profile" ]; then
+            elif [[ -f "$HOME/.bash_profile" ]]; then
                 shell_rc="$HOME/.bash_profile"
-            elif [ -f "$HOME/.bashrc" ]; then
+            elif [[ -f "$HOME/.bashrc" ]]; then
                 shell_rc="$HOME/.bashrc"
             fi
-            if [ -n "$shell_rc" ]; then
+            if [[ -n "$shell_rc" ]]; then
                 if ! grep -q "ANTHROPIC_API_KEY" "$shell_rc" 2>/dev/null; then
                     printf '\nexport ANTHROPIC_API_KEY="%s"\n' "$apikey" >> "$shell_rc"
                     ok "Added to $shell_rc"
@@ -150,11 +151,13 @@ setup_anthropic() {
                 printf '  export ANTHROPIC_API_KEY="%s"\n' "$apikey"
             fi
             ;;
+        *) ;;
     esac
 
     printf "\n"
     ok "Anthropic backend configured."
     printf "  Model: ${BOLD}claude-sonnet-4-5${RESET} (default, configurable at runtime)\n"
+    return 0
 }
 
 # ── Path 2: Ollama ─────────────────────────────────────────────────
@@ -179,6 +182,7 @@ setup_ollama() {
                     info "Install manually from https://ollama.com/download and re-run this script."
                     exit 0
                     ;;
+                *) ;;
             esac
             brew install ollama
         else
@@ -230,7 +234,7 @@ setup_ollama() {
             4)
                 printf "  Model name: "
                 read -r MODEL
-                [ -z "$MODEL" ] && { warn "No model name given."; continue; }
+                [[ -z "$MODEL" ]] && { warn "No model name given."; continue; }
                 break
                 ;;
             *) warn "Enter 1–4." ;;
@@ -261,6 +265,7 @@ EOF
     printf "\n"
     printf "${DIM}  Tip: Ollama must be running before you start InferNode.${RESET}\n"
     printf "${DIM}  Start it with: ollama serve${RESET}\n"
+    return 0
 }
 
 # ── Optional: Brave Search API key ─────────────────────────────────
@@ -273,18 +278,20 @@ setup_brave_search() {
     printf "\n"
     printf "  Paste your Brave Search API key (or press Enter to skip): "
     read -r bravekey
-    if [ -n "$bravekey" ]; then
+    if [[ -n "$bravekey" ]]; then
         write_key "brave" "$bravekey"
         ok "Brave Search key saved."
     else
         info "Skipped. You can add it later to lib/veltro/keys/brave"
     fi
+    return 0
 }
 
 # ── Dispatch ───────────────────────────────────────────────────────
 case "$BACKEND" in
     api)    setup_anthropic ;;
     ollama) setup_ollama    ;;
+    *) ;;
 esac
 
 setup_brave_search
@@ -298,11 +305,11 @@ printf "\n"
 
 # Detect emulator
 EMU=""
-if [ -x "$ROOT/emu/MacOSX/o.emu" ]; then
+if [[ -x "$ROOT/emu/MacOSX/o.emu" ]]; then
     EMU="./emu/MacOSX/o.emu -r."
 fi
 
-if [ -n "$EMU" ]; then
+if [[ -n "$EMU" ]]; then
     printf "Launch InferNode:\n"
     printf "  cd %s\n" "$ROOT"
     printf "  %s\n" "$EMU"
