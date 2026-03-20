@@ -83,6 +83,8 @@ TARG=\
 	fractal_tool_test.dis\
 	menu_test.dis\
 	wm_apps_test.dis\
+	lucibridge_test.dis\
+	lucifer_helpers_test.dis\
 
 MODULES=
 
