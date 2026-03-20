@@ -847,8 +847,9 @@ handle_key_down(SDL_Event *event)
 	SDL_Keymod mods = event->key.mod;
 	SDL_Keycode kc = event->key.key;
 
-	/* Ctrl+letter -> control character (^A=1, ^H=8, etc.) */
-	if ((mods & SDL_KMOD_CTRL) && kc >= 'a' && kc <= 'z')
+	/* Ctrl+letter or Cmd+letter -> control character (^A=1, ^H=8, etc.)
+	 * Cmd (GUI mod) is mapped so macOS Cmd+C/X/V work as copy/cut/paste */
+	if ((mods & (SDL_KMOD_CTRL | SDL_KMOD_GUI)) && kc >= 'a' && kc <= 'z')
 		key = kc - 'a' + 1;
 
 	/* Special/non-printable keys only */
