@@ -135,6 +135,7 @@ profile_btn:   ref Button;
 
 dirty: int;
 stderr: ref Sys->FD;
+themech: chan of int;
 
 # ── Layout constants ─────────────────────────────────────────
 
@@ -197,6 +198,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	loadcategory();
 	dirty = 1;
 
+	# Listen for live theme changes from /n/ui/event
+	themech = chan of int;
+	spawn themelistener();
+
 	# Main event loop
 	for(;;) {
 		if(dirty) {
@@ -223,6 +228,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 				;
 			else
 				handleptr(ptr);
+		<-themech =>
+			reloadcolors();
+			layoutcontent();
+			dirty = 1;
 		}
 	}
 }
@@ -703,7 +712,7 @@ redraw()
 		sbar.left = catnames[category];
 		case category {
 		CatTheme =>
-			sbar.right = "restart for full effect";
+			sbar.right = "applied immediately";
 		CatLLM =>
 			if(llm_is_remote)
 				sbar.right = "dial + mount on apply";
@@ -1612,6 +1621,35 @@ openineditor(path: string)
 	}
 
 	flashstatus("opened " + path + " in editor");
+}
+
+# ── Theme listener ─────────────────────────────────────────────
+
+themelistener()
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { themech <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor  = display_g.color(th.editbg);
+		divcolor = display_g.color(th.editlineno);
+	}
+	widgetmod->retheme(display_g);
 }
 
 # ── Helpers ───────────────────────────────────────────────────

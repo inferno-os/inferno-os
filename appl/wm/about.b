@@ -75,6 +75,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	redraw(w, display);
 
+	# Listen for live theme changes
+	themech := chan of int;
+	spawn themelistener(themech);
+
 	for(;;) alt {
 	ctl := <-w.ctl or
 	ctl = <-w.ctxt.ctl =>
@@ -87,6 +91,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	p := <-w.ctxt.ptr =>
 		w.pointer(*p);
+
+	<-themech =>
+		widgetmod->retheme(display);
+		redraw(w, display);
 	}
 }
 
@@ -254,6 +262,22 @@ scaleblit(dst, src: ref Image, scale: int)
 			lr := Rect((dst.r.min.x, ry), (dst.r.min.x + dw, ry + 1));
 			dst.writepixels(lr, rowbuf);
 		}
+	}
+}
+
+themelistener(ch: chan of int)
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { ch <-= 1 => ; * => ; }
 	}
 }
 

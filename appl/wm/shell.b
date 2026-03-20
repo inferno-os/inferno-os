@@ -127,6 +127,7 @@ statbar: ref Statusbar;
 w: ref Window;
 vislines: int;
 stderr: ref Sys->FD;
+themech: chan of int;
 
 # Transcript buffer of output lines
 lines: array of string;
@@ -371,6 +372,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	cursorvis := 1;
 	mousedown := 0;
 
+	# Listen for live theme changes
+	themech = chan of int;
+	spawn themelistener();
+
 	for(;;) alt {
 	ctl := <-w.ctl or
 	ctl = <-w.ctxt.ctl =>
@@ -491,6 +496,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		}
 	cmd := <-shctlch =>
 		handleshctl(cmd);
+		redraw();
+	<-themech =>
+		reloadcolors();
 		redraw();
 	}
 }
@@ -1578,6 +1586,41 @@ writestatefile(path, data: string)
 }
 
 # ---------- Helpers ----------
+
+themelistener()
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { themech <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor = display_g.color(th.editbg);
+		fgcolor_normal = display_g.color(th.edittext);
+		fgcolor_dim = display_g.color(th.dim);
+		fgcolor_hold = display_g.color(th.yellow);
+		cursorcolor = display_g.color(th.editcursor);
+		selcolor = display_g.color(th.accent);
+		promptcolor = display_g.color(th.dim);
+	}
+	updatefgcolor();
+	widgetmod->retheme(display_g);
+	if(menumod != nil)
+		menumod->init(display_g, font);
+}
 
 timer(c: chan of int, ms: int)
 {

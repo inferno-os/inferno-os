@@ -262,6 +262,7 @@ kbdfilter: ref Kbdfilter;
 tabs: ref Tabulator;
 doc: ref Doc;
 stderr: ref Sys->FD;
+themech: chan of int;
 statedirty: int;	# set when doc changes, cleared after writing state files
 
 init(ctxt: ref Draw->Context, argv: list of string)
@@ -386,6 +387,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	ticks := chan of int;
 	spawn timer(ticks, 500);
 	cursorvis := 1;
+
+	# Listen for live theme changes
+	themech = chan of int;
+	spawn themelistener();
 
 	# Track mouse for selection
 	mousedown := 0;
@@ -549,6 +554,9 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	req := <-editreq =>
 		handleeditreq(req);
 		statedirty = 1;
+		redraw();
+	<-themech =>
+		reloadcolors();
 		redraw();
 	}
 }
@@ -1956,6 +1964,39 @@ drawcursor(vis: int)
 }
 
 # ---------- Helpers ----------
+
+themelistener()
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { themech <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor = display.color(th.editbg);
+		fgcolor = display.color(th.edittext);
+		cursorcolor = display.color(th.editcursor);
+		selcolor = display.color(th.accent);
+		lncolor = display.color(th.editlineno);
+		dirtycolor = display.color(th.red);
+	}
+	widgetmod->retheme(display);
+	if(menumod != nil)
+		menumod->init(display, font);
+}
 
 timer(c: chan of int, ms: int)
 {
