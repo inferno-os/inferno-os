@@ -64,8 +64,9 @@ doc(): string
 		"NOTE: This tool does NOT launch the editor. To START the editor,\n" +
 		"use the launch tool: 'launch editor'. This tool sends commands\n" +
 		"to an editor that is already visible in the presentation zone.\n\n" +
-		"If the user says 'launch the editor' or 'open the editor',\n" +
-		"use the launch tool, not this tool.\n\n" +
+		"How it works: The Editor app exposes its state as files under\n" +
+		"/tmp/veltro/editor/. This tool reads and writes those files.\n" +
+		"The editor polls for commands every 500ms.\n\n" +
 		"Commands (only work after 'launch editor'):\n" +
 		"  read [body]              Read document body text\n" +
 		"  read addr                Read cursor position\n" +
@@ -79,11 +80,12 @@ doc(): string
 		"  delete <sl> <sc> <el> <ec>  Delete range\n" +
 		"  close                    Close editor (quit)\n" +
 		"  status                   Show document info\n\n" +
-		"Examples:\n" +
-		"  launch editor                  FIRST: start the editor\n" +
-		"  editor open /usr/me/file.b     Then: open a file\n" +
-		"  editor read                    Read the document\n" +
-		"  editor write Hello world       Replace body\n";
+		"Typical workflow:\n" +
+		"  launch editor                  1. Start the editor app\n" +
+		"  editor open /usr/me/file.b     2. Open a file\n" +
+		"  editor read                    3. Read the document\n" +
+		"  editor write Hello world       4. Replace body\n" +
+		"  editor save                    5. Save to disk\n";
 }
 
 exec(args: string): string

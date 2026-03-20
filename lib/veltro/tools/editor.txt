@@ -7,6 +7,11 @@ an editor that is already visible in the presentation zone.
 If the user says "launch the editor" or "open the editor", use
 the launch tool, not this tool.
 
+How it works: The Editor app exposes its state as files under
+/tmp/veltro/editor/. This tool reads and writes those files.
+The editor polls for commands every 500ms, so there is a brief
+delay between sending a command and it taking effect.
+
 Commands (only work after "launch editor"):
   read [body]              Read document body text
   read addr                Read cursor position (line col)
@@ -23,11 +28,11 @@ Commands (only work after "launch editor"):
   close                    Close editor
   status                   Show document info (id, path, dirty)
 
-Examples:
-  launch editor                  FIRST: start the editor app
-  editor open /usr/me/file.b     Then: open a file
-  editor read                    Read the document body
-  editor write Hello world       Replace body with text
-  editor goto 42                 Jump to line 42
-  editor find TODO               Search for TODO
-  editor save                    Save to disk
+Typical workflow:
+  launch editor                  1. Start the editor app
+  editor open /usr/me/file.b     2. Open a file
+  editor read                    3. Read the document body
+  editor goto 42                 4. Jump to line 42
+  editor find TODO               5. Search for text
+  editor write <new content>     6. Replace body
+  editor save                    7. Save to disk

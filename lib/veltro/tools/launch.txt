@@ -10,6 +10,11 @@ Charon is the built-in web browser. To browse any website:
   Launch charon https://example.com
 If Charon is already running, it is killed and relaunched at the new URL.
 
+When an app has a matching control tool (editor, shell, charon, fractal),
+launching the app automatically activates that tool. The app exposes its
+state as files under /tmp/veltro/<appname>/ and the control tool reads
+and writes those files on your behalf.
+
 Other confirmed apps: clock, bounce, coffee, colors, date, editor,
 about, view, rt, lens, shell, fractals, keyring, xenith.
 
