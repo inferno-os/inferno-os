@@ -1,0 +1,20 @@
+Man — Control the manual page viewer in the presentation zone.
+
+Usage:
+  man open [section] title       Open a man page (e.g. man open ls)
+  man open /man/1/ls             Open a man page by file path
+  man view                       Read the currently visible content
+  man state                      Read viewer state (page, line position)
+  man scroll up|down|top|bottom  Scroll the view
+  man scroll <n>                 Scroll to a specific line number
+  man find <text>                Search for text in the page
+
+The man viewer must be running. Use 'launch man' to start it.
+When launched, the man tool is automatically activated.
+
+Examples:
+  man open ls                    Show the ls(1) manual page
+  man open 2 sys                 Show sys in section 2
+  man view                       See what's currently displayed
+  man scroll down                Page down
+  man find FILES                 Jump to FILES section

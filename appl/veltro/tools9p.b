@@ -146,6 +146,8 @@ TOOL_PATHS := array[] of {
 	("shell", "/dis/veltro/tools/shell.dis"),
 	# Fractal viewer control (requires fractals running)
 	("fractal", "/dis/veltro/tools/fractal.dis"),
+	# Man page viewer control (requires wm/man running)
+	("man", "/dis/veltro/tools/man.dis"),
 	# Task delegation (requires luciuisrv)
 	("task",    "/dis/veltro/tools/task.dis"),
 	# Structured planning

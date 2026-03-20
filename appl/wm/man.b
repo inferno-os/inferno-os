@@ -44,6 +44,7 @@ include "menu.m";
 
 include "bufio.m";
 	bufio: Bufio;
+	Iobuf: import bufio;
 
 include "string.m";
 	str: String;
@@ -63,6 +64,9 @@ ManViewer: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
 };
+
+# Veltro IPC directory
+MAN_DIR: con "/tmp/veltro/man";
 
 # Fallback colours (overridden by theme)
 BG:	con int 16rFFFDF6FF;
@@ -96,7 +100,7 @@ V: adt {
 # Each rendered line is a list of (indent, Text) spans.
 ManLine: type list of (int, Parseman->Text);
 
-lines: array of ref ManLine;
+lines: array of ManLine;
 nlines: int;
 topline: int;
 vislines: int;
@@ -120,6 +124,9 @@ stderr: ref Sys->FD;
 
 # Search state
 searchstr := "";
+
+# Prompt mode: 0=none, 1=find, 2=open
+promptmode := 0;
 
 # Page info for title bar
 pagetitle := "man";
@@ -237,7 +244,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	statbar = Statusbar.new(Rect((0,0),(0,0)));
 
 	# Initialize with empty content
-	lines = array[4096] of ref ManLine;
+	lines = array[4096] of ManLine;
 	nlines = 0;
 	topline = 0;
 	history = nil;
@@ -249,7 +256,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	else {
 		# No args — show usage
 		pagetitle = "man";
-		statbar.left = "Usage: wm/man [section] title";
+		statbar.left = "Click here or Ctrl-O to open a man page";
 	}
 
 	w.reshape(Rect((0, 0), (680, 520)));
@@ -258,11 +265,20 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if(menumod != nil)
 		menumod->init(display, rfont);
-	menu := menumod->new(array[] of {"back", "forward", "find", "top", "bottom", "exit"});
+	menu := menumod->new(array[] of {"open", "back", "forward", "find", "top", "bottom", "exit"});
+
+	# Veltro IPC
+	initmandir();
+	writemanstate();
+	ticks := chan of int;
+	spawn timer(ticks, 500);
 
 	redraw();
 
 	for(;;) alt {
+	<-ticks =>
+		if(checkctlfile())
+			redraw();
 	ctl := <-w.ctl or
 	ctl = <-w.ctxt.ctl =>
 		w.wmctl(ctl);
@@ -273,14 +289,21 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		key := kbdfilter.filter(rawkey);
 		if(key >= 0) {
 			if(statbar.prompt != nil) {
-				# In find/input mode
+				# In find/open input mode
 				(done, val) := statbar.key(key);
 				if(done == 1) {
-					searchstr = val;
 					statbar.prompt = nil;
-					findnext(0);
-				} else if(done < 0)
+					if(promptmode == 2)
+						openbyname(val);
+					else {
+						searchstr = val;
+						findnext(0);
+					}
+					promptmode = 0;
+				} else if(done < 0) {
 					statbar.prompt = nil;
+					promptmode = 0;
+				}
 				redraw();
 			} else
 				handlekey(key);
@@ -311,24 +334,32 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			if(menu != nil) {
 				n := menu.show(w.image, p.xy, w.ctxt.ptr);
 				case n {
-				0 =>	goback();
-				1 =>	goforward();
-				2 =>	startfind();
-				3 =>	topline = 0; redraw();
-				4 =>	scrollbottom(); redraw();
-				5 =>	exit;
+				0 =>	startopen();
+				1 =>	goback();
+				2 =>	goforward();
+				3 =>	startfind();
+				4 =>	topline = 0; redraw();
+				5 =>	scrollbottom(); redraw();
+				6 =>	exit;
 				}
 			}
 		} else if(p.buttons & 3) {
-			sr := scrollrect();
-			if(sr.contains(p.xy)) {
-				scrollbar.total = nlines;
-				scrollbar.visible = vislines;
-				scrollbar.origin = topline;
-				newo := scrollbar.event(p);
-				if(newo >= 0) {
-					topline = newo;
-					redraw();
+			# Click on status bar → open prompt
+			sth := widgetmod->statusheight();
+			sbr := Rect((w.image.r.min.x, w.image.r.max.y - sth), w.image.r.max);
+			if(sbr.contains(p.xy)) {
+				startopen();
+			} else {
+				sr := scrollrect();
+				if(sr.contains(p.xy)) {
+					scrollbar.total = nlines;
+					scrollbar.visible = vislines;
+					scrollbar.origin = topline;
+					newo := scrollbar.event(p);
+					if(newo >= 0) {
+						topline = newo;
+						redraw();
+					}
 				}
 			}
 			# B1 in text area: future selection support
@@ -356,6 +387,8 @@ handlekey(key: int)
 		scrollbottom();
 	'q' or 'Q' =>
 		exit;
+	'o' & 16r1f =>	# Ctrl-O
+		startopen();
 	'f' & 16r1f =>	# Ctrl-F
 		startfind();
 	'g' & 16r1f =>	# Ctrl-G
@@ -374,9 +407,46 @@ handlekey(key: int)
 
 startfind()
 {
+	promptmode = 1;
 	statbar.prompt = "Find: ";
 	statbar.buf = "";
 	redraw();
+}
+
+startopen()
+{
+	promptmode = 2;
+	statbar.prompt = "Man: ";
+	statbar.buf = "";
+	redraw();
+}
+
+openbyname(input: string)
+{
+	if(input == nil || len input == 0)
+		return;
+	# Tokenize: optional section numbers then title
+	(nil, toks) := sys->tokenize(input, " \t");
+	if(toks == nil)
+		return;
+	secs: list of string;
+	title := "";
+	for(; toks != nil; toks = tl toks) {
+		t := hd toks;
+		if(isdir("/man/" + t))
+			secs = t :: secs;
+		else
+			title = t;
+	}
+	if(title == "") {
+		statbar.right = "no title given";
+		return;
+	}
+	found := lookupman(secs, title);
+	if(found != nil)
+		loadpage(hd found);
+	else
+		statbar.right = title + " not found";
 }
 
 findnext(reverse: int)
@@ -398,7 +468,7 @@ findnext(reverse: int)
 		line := lines[idx];
 		if(line == nil)
 			continue;
-		text := linetext(*line);
+		text := linetext(line);
 		if(contains(tolower(text), lsearch)) {
 			topline = idx;
 			clamptop();
@@ -464,12 +534,12 @@ loadpage(path: string)
 		if(line == nil)
 			break;
 		if(nlines >= len lines) {
-			newlines := array[len lines * 2] of ref ManLine;
+			newlines := array[len lines * 2] of ManLine;
 			newlines[0:] = lines;
 			lines = newlines;
 		}
 		ml := line;
-		lines[nlines] = ref ml;
+		lines[nlines] = ml;
 		nlines++;
 	}
 
@@ -497,6 +567,7 @@ loadpage(path: string)
 	w.settitle("man — " + pagetitle);
 	statbar.left = pagetitle;
 	statbar.right = sys->sprint("%d lines", nlines);
+	writemanstate();
 }
 
 goback()
@@ -566,7 +637,7 @@ redraw()
 			y += fh;
 			continue;
 		}
-		drawmanline(screen, tr, y, *line);
+		drawmanline(screen, tr, y, line);
 		y += fh;
 	}
 
@@ -589,9 +660,12 @@ redraw()
 drawmanline(screen: ref Image, tr: Rect, y: int, ml: ManLine)
 {
 	ZP := Point(0, 0);
+	x := tr.min.x;
 	for(; ml != nil; ml = tl ml) {
 		(indent, txt) := hd ml;
-		x := tr.min.x + indent;
+		# indent > 0 is an absolute position; 0 means continue from current x
+		if(indent > 0)
+			x = tr.min.x + indent;
 		if(x >= tr.max.x)
 			break;
 
@@ -626,8 +700,10 @@ drawmanline(screen: ref Image, tr: Rect, y: int, ml: ManLine)
 					break;
 				}
 			}
+			tw = f.width(text);
 		}
 		screen.text(Point(x, y), col, ZP, f, text);
+		x += tw;
 	}
 }
 
@@ -736,4 +812,174 @@ contains(s, sub: string): int
 			return 1;
 	}
 	return 0;
+}
+
+# ---------- Timer ----------
+
+timer(c: chan of int, ms: int)
+{
+	for(;;) {
+		sys->sleep(ms);
+		c <-= 1;
+	}
+}
+
+# ---------- Veltro real-file IPC ----------
+
+initmandir()
+{
+	mkdirq("/tmp/veltro");
+	mkdirq(MAN_DIR);
+}
+
+mkdirq(path: string)
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd != nil) {
+		fd = nil;
+		return;
+	}
+	fd = sys->create(path, Sys->OREAD, Sys->DMDIR | 8r755);
+	fd = nil;
+}
+
+writemanstate()
+{
+	state := sys->sprint("page %s\n", pagetitle);
+	state += sys->sprint("lines %d\n", nlines);
+	state += sys->sprint("topline %d\n", topline);
+	state += sys->sprint("visible %d\n", vislines);
+	if(searchstr != nil && len searchstr > 0)
+		state += sys->sprint("search %s\n", searchstr);
+
+	# Plain text of visible lines for AI context
+	view := sys->sprint("Man page: %s\n", pagetitle);
+	view += sys->sprint("Lines %d-%d of %d\n\n", topline + 1, min(topline + vislines, nlines), nlines);
+	end := topline + vislines;
+	if(end > nlines)
+		end = nlines;
+	for(i := topline; i < end; i++) {
+		line := lines[i];
+		if(line != nil)
+			view += linetext(line);
+		view += "\n";
+	}
+
+	writestatefile(MAN_DIR + "/state", state);
+	writestatefile(MAN_DIR + "/view", view);
+}
+
+writestatefile(path, data: string)
+{
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	if(fd == nil)
+		return;
+	b := array of byte data;
+	sys->write(fd, b, len b);
+	fd = nil;
+}
+
+checkctlfile(): int
+{
+	cmd := readrmfile(MAN_DIR + "/ctl");
+	if(cmd == nil || cmd == "")
+		return 0;
+
+	(nil, toks) := sys->tokenize(cmd, " \t\n");
+	if(toks == nil)
+		return 0;
+
+	verb := hd toks;
+	toks = tl toks;
+
+	case verb {
+	"open" =>
+		# open [section] title  OR  open /path/to/file
+		if(toks == nil)
+			return 0;
+		arg0 := hd toks;
+		if(len arg0 > 0 && arg0[0] == '/') {
+			# Direct file path
+			loadpage(arg0);
+			return 1;
+		}
+		# Look up by section + title
+		secs: list of string;
+		title := "";
+		for(; toks != nil; toks = tl toks) {
+			t := hd toks;
+			if(isdir("/man/" + t))
+				secs = t :: secs;
+			else
+				title = t;
+		}
+		if(title == "")
+			return 0;
+		found := lookupman(secs, title);
+		if(found != nil) {
+			loadpage(hd found);
+			return 1;
+		}
+	"scroll" =>
+		if(toks == nil)
+			return 0;
+		arg0 := hd toks;
+		case arg0 {
+		"up" =>
+			topline -= vislines;
+			if(topline < 0) topline = 0;
+		"down" =>
+			topline += vislines;
+			clamptop();
+		"top" =>
+			topline = 0;
+		"bottom" =>
+			scrollbottom();
+		* =>
+			# numeric line number
+			(n, nil) := str->toint(arg0, 10);
+			if(n > 0) {
+				topline = n - 1;
+				clamptop();
+			}
+		}
+		writemanstate();
+		return 1;
+	"find" =>
+		if(toks == nil)
+			return 0;
+		# Join remaining tokens as search string
+		searchstr = hd toks;
+		for(toks = tl toks; toks != nil; toks = tl toks)
+			searchstr += " " + hd toks;
+		findnext(0);
+		return 1;
+	}
+	return 0;
+}
+
+readrmfile(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[4096] of byte;
+	n := sys->read(fd, buf, len buf);
+	fd = nil;
+	if(n <= 0)
+		return nil;
+	s := string buf[0:n];
+	# Truncate file to consume the command
+	fd = sys->create(path, Sys->OWRITE, 8r666);
+	fd = nil;
+	# Strip trailing whitespace
+	while(len s > 0 && (s[len s - 1] == '\n' || s[len s - 1] == ' ' || s[len s - 1] == '\t'))
+		s = s[:len s - 1];
+	return s;
+}
+
+min(a, b: int): int
+{
+	if(a < b) return a;
+	return b;
 }
