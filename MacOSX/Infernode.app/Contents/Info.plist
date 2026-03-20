@@ -30,5 +30,7 @@
 	<true/>
 	<key>LSMinimumSystemVersion</key>
 	<string>10.13</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>InferNode uses the microphone for speech-to-text input.</string>
 </dict>
 </plist>
