@@ -376,6 +376,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	redraw();
 
+	# Write initial state so Veltro tool can read immediately after launch.
+	# Without this, body/addr/index files don't exist until the first user
+	# edit or ctl command, causing "editor read" to fail with "is edit running?".
+	statedirty = 1;
+	writeeditstate();
+
 	# Cursor blink timer
 	ticks := chan of int;
 	spawn timer(ticks, 500);
@@ -2023,6 +2029,17 @@ initeditdir()
 	mkdirq("/tmp/veltro");
 	mkdirq(EDIT_DIR);
 	mkdirq(EDIT_INST);
+	# Pre-create state files so tool reads don't fail before writeeditstate().
+	# Empty files are valid — the tool returns "" rather than an error.
+	touchfile(EDIT_INST + "/body");
+	touchfile(EDIT_INST + "/addr");
+	touchfile(EDIT_DIR + "/index");
+}
+
+touchfile(path: string)
+{
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	fd = nil;
 }
 
 mkdirq(path: string)
