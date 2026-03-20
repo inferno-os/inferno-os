@@ -369,7 +369,7 @@ fscreate(Chan *c, char *name, int mode, ulong perm)
 		if(fd < 0)
 			oserror();
 		fchmod(fd, perm);
-		fchown(fd, up->env->uid, FS(c)->gid);
+		if(fchown(fd, up->env->uid, FS(c)->gid)){/*nothing*/}
 		if(fstat(fd, &st) <0){
 			close(fd);
 			oserror();
@@ -388,7 +388,7 @@ fscreate(Chan *c, char *name, int mode, ulong perm)
 		if(fd < 0)
 			oserror();
 		fchmod(fd, perm);
-		fchown(fd, up->env->uid, FS(c)->gid);
+		if(fchown(fd, up->env->uid, FS(c)->gid)){/*nothing*/}
 		if(fstat(fd, &st) < 0){
 			close(fd);
 			oserror();

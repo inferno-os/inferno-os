@@ -53,7 +53,7 @@ write(f: string, s: string): int
 	if((fd := sys->open(f, Sys->OWRITE)) == nil)
 		return -1;
 	b := array of byte s;
-	if((n := sys->write(fd, b, len b)) != len b)
+	if(sys->write(fd, b, len b) != len b)
 		return -1;
 	return 0;
 }

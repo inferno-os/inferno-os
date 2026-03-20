@@ -121,7 +121,6 @@ runsbuiltin(ctxt: ref Sh->Context, nil: Sh,
 
 opts(ctxt: ref Context, cmd: list of ref Listnode): (list of ref Listnode, int)
 {
-	radix := 10;
 	if (cmd == nil)
 		return (nil, 10);
 	w := (hd cmd).word;

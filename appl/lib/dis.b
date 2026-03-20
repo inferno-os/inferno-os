@@ -281,7 +281,7 @@ loadobj(disfile: string): (ref Mod, string)
 	m.types = array[m.tsize] of ref Type;
 	for(i = 0; i < m.tsize; i++) {
 		h := ref Type;
-		id := operand();
+		operand();	# type id (unused)
 		h.size = operand();
 		h.np = operand();
 		h.map = disobj[disptr:disptr+h.np];
