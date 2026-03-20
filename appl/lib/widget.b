@@ -653,10 +653,34 @@ Statusbar.key(sb: self ref Statusbar, c: int): (int, string)
 		sb.prompt = nil;
 		sb.buf = "";
 		return (-1, nil);
-	Kbs or Kdel =>
-		# Backspace/Delete — remove last character
+	1 or Khome =>
+		# Ctrl-A / Home — (statusbar is append-only display, no-op)
+		return (0, nil);
+	5 or Kend =>
+		# Ctrl-E / End — (statusbar is append-only display, no-op)
+		return (0, nil);
+	Kbs =>
+		# Backspace/Ctrl-H — remove last character
 		if(len sb.buf > 0)
 			sb.buf = sb.buf[0:len sb.buf - 1];
+		return (0, nil);
+	11 =>
+		# Ctrl-K — kill to end (at end of buf, no-op)
+		return (0, nil);
+	21 =>
+		# Ctrl-U — kill whole line
+		sb.buf = "";
+		return (0, nil);
+	23 =>
+		# Ctrl-W — delete word back
+		if(len sb.buf > 0) {
+			p := len sb.buf;
+			while(p > 0 && (sb.buf[p-1] == ' ' || sb.buf[p-1] == '\t'))
+				p--;
+			while(p > 0 && sb.buf[p-1] != ' ' && sb.buf[p-1] != '\t')
+				p--;
+			sb.buf = sb.buf[0:p];
+		}
 		return (0, nil);
 	* =>
 		# Printable character — append as Unicode char (not decimal)
@@ -759,10 +783,47 @@ Textfield.key(tf: self ref Textfield, c: int): int
 	case c {
 	'\n' =>
 		return 1;
+	1 =>
+		# Ctrl-A — beginning of line
+		tf.cursor = 0;
+	2 =>
+		# Ctrl-B — back one character
+		if(tf.cursor > 0)
+			tf.cursor--;
+	4 =>
+		# Ctrl-D — delete at cursor
+		if(tf.cursor < len tf.text)
+			tf.text = tf.text[0:tf.cursor] + tf.text[tf.cursor+1:];
+	5 =>
+		# Ctrl-E — end of line
+		tf.cursor = len tf.text;
+	6 =>
+		# Ctrl-F — forward one character
+		if(tf.cursor < len tf.text)
+			tf.cursor++;
 	Kbs =>
+		# Ctrl-H / Backspace
 		if(tf.cursor > 0) {
 			tf.text = tf.text[0:tf.cursor-1] + tf.text[tf.cursor:];
 			tf.cursor--;
+		}
+	11 =>
+		# Ctrl-K — kill from cursor to end
+		tf.text = tf.text[0:tf.cursor];
+	21 =>
+		# Ctrl-U — kill whole line
+		tf.text = "";
+		tf.cursor = 0;
+	23 =>
+		# Ctrl-W — delete word back
+		if(tf.cursor > 0) {
+			p := tf.cursor;
+			while(p > 0 && (tf.text[p-1] == ' ' || tf.text[p-1] == '\t'))
+				p--;
+			while(p > 0 && tf.text[p-1] != ' ' && tf.text[p-1] != '\t')
+				p--;
+			tf.text = tf.text[0:p] + tf.text[tf.cursor:];
+			tf.cursor = p;
 		}
 	Kdel =>
 		if(tf.cursor < len tf.text)

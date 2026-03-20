@@ -87,6 +87,7 @@ codebgcol_g: ref Image;
 msgstore: array of ref ConvMsg;
 nmsg := 0;
 inputbuf: string;
+inputpos := 0;		# cursor position within inputbuf
 scrollpx := 0;
 maxscrollpx := 0;
 viewport_h := 400;
@@ -155,6 +156,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		menumod->init(display_g, mainfont);
 
 	inputbuf = "";
+	inputpos = 0;
 	username = readdevuser();
 	voicech = chan of string;
 	msgstore = array[32] of ref ConvMsg;
@@ -212,10 +214,12 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 						if(len inputbuf > 0)
 							writetosnarf(inputbuf);
 					} else if(result == 1) {
-						# Paste from snarf into input buffer
+						# Paste from snarf into input buffer at cursor
 						s := readfromsnarf();
-						if(s != nil && len s > 0)
-							inputbuf += s;
+						if(s != nil && len s > 0) {
+							inputbuf = inputbuf[0:inputpos] + s + inputbuf[inputpos:];
+							inputpos += len s;
+						}
 					}
 					redrawconv();
 				}
@@ -242,19 +246,75 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		0 =>
 			# Ctrl+Space — toggle voice input
 			startvoice();
+		1 =>
+			# Ctrl-A — beginning of line
+			inputpos = 0;
+		2 =>
+			# Ctrl-B — back one character
+			if(inputpos > 0)
+				inputpos--;
+		4 =>
+			# Ctrl-D — delete character at cursor
+			if(inputpos < len inputbuf)
+				inputbuf = inputbuf[0:inputpos] + inputbuf[inputpos+1:];
+		5 =>
+			# Ctrl-E — end of line
+			inputpos = len inputbuf;
+		6 =>
+			# Ctrl-F — forward one character
+			if(inputpos < len inputbuf)
+				inputpos++;
 		8 or 127 =>
-			# Backspace / Delete
-			if(len inputbuf > 0)
-				inputbuf = inputbuf[0:len inputbuf - 1];
+			# Backspace / Ctrl-H — delete character before cursor
+			if(inputpos > 0) {
+				inputbuf = inputbuf[0:inputpos-1] + inputbuf[inputpos:];
+				inputpos--;
+			}
+		11 =>
+			# Ctrl-K — kill from cursor to end of line
+			inputbuf = inputbuf[0:inputpos];
 		'\n' or 13 =>
 			# Enter — send input
 			if(len inputbuf > 0) {
 				sendinput(inputbuf);
 				inputbuf = "";
+				inputpos = 0;
+			}
+		21 =>
+			# Ctrl-U — kill whole line
+			inputbuf = "";
+			inputpos = 0;
+		23 =>
+			# Ctrl-W — delete word back
+			if(inputpos > 0) {
+				p := inputpos;
+				# Skip trailing whitespace
+				while(p > 0 && (inputbuf[p-1] == ' ' || inputbuf[p-1] == '\t'))
+					p--;
+				# Skip word characters
+				while(p > 0 && inputbuf[p-1] != ' ' && inputbuf[p-1] != '\t')
+					p--;
+				inputbuf = inputbuf[0:p] + inputbuf[inputpos:];
+				inputpos = p;
 			}
 		27 =>
 			# Escape — clear buffer
 			inputbuf = "";
+			inputpos = 0;
+		16rFF51 =>
+			# Left arrow
+			if(inputpos > 0)
+				inputpos--;
+		16rFF53 =>
+			# Right arrow
+			if(inputpos < len inputbuf)
+				inputpos++;
+		16rFF61 =>
+			# Home
+			inputpos = 0;
+		16rFF57 =>
+			# End
+			inputpos = len inputbuf;
 		16rF00E =>
 			# Page Up — half viewport
 			scrollpx += viewport_h / 2;
@@ -266,8 +326,12 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 			if(scrollpx < 0)
 				scrollpx = 0;
 		* =>
-			if(k >= 32 && k < 16rFFFF)
-				inputbuf[len inputbuf] = k;
+			if(k >= 32 && k < 16rFFFF) {
+				ch := "x";
+				ch[0] = k;
+				inputbuf = inputbuf[0:inputpos] + ch + inputbuf[inputpos:];
+				inputpos++;
+			}
 		}
 		redrawconv();
 	vtext := <-voicech =>
@@ -277,6 +341,7 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 			inputbuf = vtext;
 			sendinput(inputbuf);
 			inputbuf = "";
+			inputpos = 0;
 		}
 		redrawconv();
 	ev := <-evch =>
@@ -369,19 +434,36 @@ drawconversation(zone: Rect)
 	mainwin.draw(Rect((micx - 1, micy + 4), (micx, inputr.max.y - 4)),
 		dimcol, nil, (0, 0));
 
-	# Input text
-	itext := inputbuf;
+	# Input text — scroll so cursor is always visible
 	itx := inputr.min.x + pad;
 	maxitw := inputr.dx() - 2 * pad - 8 - micw;
+	cw := 8;
 
-	while(len itext > 0 && mainfont.width(itext) > maxitw)
-		itext = itext[1:];
+	# Clamp inputpos
+	if(inputpos < 0)
+		inputpos = 0;
+	if(inputpos > len inputbuf)
+		inputpos = len inputbuf;
+
+	# Find a visible window of inputbuf that keeps the cursor in view.
+	# Start by including the cursor position, then expand left/right.
+	vstart := inputpos;
+	vend := inputpos;
+
+	# Expand right first
+	while(vend < len inputbuf && mainfont.width(inputbuf[vstart:vend+1]) + cw <= maxitw)
+		vend++;
+	# Expand left
+	while(vstart > 0 && mainfont.width(inputbuf[vstart-1:vend]) + cw <= maxitw)
+		vstart--;
+
+	itext := inputbuf[vstart:vend];
 	mainwin.text((itx, ity), textcol, (0, 0), mainfont, itext);
 
-	# Block cursor after text
-	cw := 8;
+	# Block cursor at cursor position within visible text
+	pre := inputbuf[vstart:inputpos];
 	ch := mainfont.height;
-	cx := itx + mainfont.width(itext);
+	cx := itx + mainfont.width(pre);
 	cy := ity;
 	mainwin.draw(Rect((cx, cy), (cx + cw, cy + ch)), cursorcol, nil, (0, 0));
 
