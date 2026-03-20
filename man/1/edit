@@ -142,7 +142,7 @@ supports commands:
 .BR "delete sl sc el ec" "."
 .PP
 A real-file IPC interface at
-.B /tmp/veltro/edit/
+.B /tmp/veltro/editor/
 is also maintained for cross-namespace access by the Veltro
 .I editor
 tool.
@@ -157,7 +157,7 @@ Compiled editor.
 .B /edit/
 Bind point for 9P filesystem.
 .TP
-.B /tmp/veltro/edit/
+.B /tmp/veltro/editor/
 Real-file IPC directory.
 .SH SOURCE
 .B /appl/wm/edit.b

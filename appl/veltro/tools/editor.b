@@ -40,7 +40,7 @@ ToolEditor: module {
 	exec: fn(args: string): string;
 };
 
-EDIT_ROOT: con "/tmp/veltro/edit";
+EDIT_ROOT: con "/tmp/veltro/editor";
 
 init(): string
 {

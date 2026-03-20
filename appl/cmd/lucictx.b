@@ -1822,8 +1822,8 @@ openineditor(path: string, has9p: int)
 		}
 		sys->fprint(sys->fildes(2), "lucictx: openineditor 9P failed, using real-file: %r\n");
 	}
-	# Real-file IPC: edit polls /tmp/veltro/edit/ctl on timer ticks
-	wfd := sys->create("/tmp/veltro/edit/ctl", Sys->OWRITE, 8r666);
+	# Real-file IPC: edit polls /tmp/veltro/editor/ctl on timer ticks
+	wfd := sys->create("/tmp/veltro/editor/ctl", Sys->OWRITE, 8r666);
 	if(wfd != nil) {
 		b := array of byte cmd;
 		sys->write(wfd, b, len b);
