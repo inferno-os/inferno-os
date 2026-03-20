@@ -111,6 +111,7 @@ focusidx:   int;		# which field has focus
 dirty:      int;		# redraw needed
 
 stderr: ref Sys->FD;
+themech: chan of int;
 
 # ── Layout constants ─────────────────────────────────────────
 
@@ -194,6 +195,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	refreshkeys();
 	dirty = 1;
 
+	# Listen for live theme changes
+	themech = chan of int;
+	spawn themelistener();
+
 	# Main event loop
 	for(;;) {
 		if(dirty) {
@@ -220,6 +225,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 				;
 			else
 				handleptr(ptr);
+		<-themech =>
+			reloadcolors();
+			layoutwidgets();
+			dirty = 1;
 		}
 	}
 }
@@ -876,6 +885,36 @@ flashstatus(msg: string)
 		sbar.left = msg;
 		dirty = 1;
 	}
+}
+
+themelistener()
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { themech <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor  = display_g.color(th.editbg);
+		formbg   = display_g.color(th.bg);
+		divcolor = display_g.color(th.editlineno);
+	}
+	widgetmod->retheme(display_g);
+	if(menumod != nil)
+		menumod->init(display_g, font);
 }
 
 cleanup()

@@ -259,6 +259,10 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	b1down := 0;
 	b1start := Point(0, 0);
 
+	# Listen for live theme changes
+	themech := chan of int;
+	spawn themelistener(themech);
+
 	# Tick timer for Veltro IPC polling
 	ticks := chan of int;
 	spawn timer(ticks, 500);
@@ -412,6 +416,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			pid = -1;
 			g_computing = 0;
 			writefractstate();
+			updatesbar();
+		<-themech =>
+			if(widget != nil)
+				widget->retheme(display);
+			if(menumod != nil)
+				menumod->init(display, font);
 			updatesbar();
 		}
 		if(restart) {
@@ -613,6 +623,22 @@ cliprect(r, bounds: Rect): Rect
 isempty(r: Rect): int
 {
 	return r.dx() <= 0 || r.dy() <= 0;
+}
+
+themelistener(ch: chan of int)
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { ch <-= 1 => ; * => ; }
+	}
 }
 
 timer(c: chan of int, ms: int)
