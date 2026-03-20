@@ -534,12 +534,18 @@ buildopenairequestjson(req: ref AskRequest): string
 			s += "{\"role\":\"system\",\"content\":" + jquote(m.content) + "}";
 			continue;
 		}
-		if(!first) s += ",";
-		first = 0;
-		if(m.sc != "")
+		if(m.sc != "" && m.role == "assistant") {
+			if(!first) s += ",";
+			first = 0;
 			s += buildopenaitoolmessage(m);
-		else
+		} else if(m.sc != "" && m.role == "user") {
+			s += buildopenaitoolresultmessages(m, first);
+			first = 0;
+		} else {
+			if(!first) s += ",";
+			first = 0;
 			s += "{\"role\":" + jquote(m.role) + ",\"content\":" + jquote(m.content) + "}";
+		}
 	}
 
 	# New prompt or tool results
@@ -632,6 +638,53 @@ buildopenaitoolmessage(m: ref LlmMessage): string
 	if(toolcalls != "")
 		s += ",\"tool_calls\":[" + toolcalls + "]";
 	s += "}";
+	return s;
+}
+
+# Convert a user-role message with Anthropic tool_result structured content
+# into OpenAI-format {"role":"tool"} messages.  Each tool_result block becomes
+# a separate message with tool_call_id and content.
+buildopenaitoolresultmessages(m: ref LlmMessage, first: int): string
+{
+	(jv, jerr) := readjsonstring(m.sc);
+	if(jerr != nil) {
+		# Fallback: emit as plain user message
+		s := "";
+		if(!first) s += ",";
+		s += "{\"role\":\"user\",\"content\":" + jquote(m.content) + "}";
+		return s;
+	}
+
+	s := "";
+	pick a := jv {
+	Array =>
+		for(i := 0; i < len a.a; i++) {
+			block := a.a[i];
+			typev := block.get("type");
+			if(typev == nil) continue;
+			typestr := "";
+			pick tv := typev { String => typestr = tv.s; }
+			if(typestr != "tool_result")
+				continue;
+
+			idv := block.get("tool_use_id");
+			contentv := block.get("content");
+			id := "";
+			content := "";
+			if(idv != nil) pick iv := idv { String => id = iv.s; }
+			if(contentv != nil) pick cv := contentv { String => content = cv.s; }
+
+			if(!first || s != "") s += ",";
+			s += "{\"role\":\"tool\",\"content\":" + jquote(content) +
+				",\"tool_call_id\":" + jquote(id) + "}";
+		}
+	}
+
+	if(s == "") {
+		# No tool_result blocks found; emit as plain user message
+		if(!first) s += ",";
+		s += "{\"role\":\"user\",\"content\":" + jquote(m.content) + "}";
+	}
 	return s;
 }
 
@@ -753,10 +806,11 @@ parseopenairesponse(body: string, req: ref AskRequest): (ref AskResponse, string
 		revtc = hd toolcalls :: revtc;
 
 	for(; revtc != nil; revtc = tl revtc) {
-		(id, name, args) := hd revtc;
+		(id, name, rawargs) := hd revtc;
+		args := extracttoolargs(rawargs);
 		safeargs := replaceall(args, "\n", "\\n");
 		toolentries = sys->sprint("TOOL:%s:%s:%s", id, name, safeargs) :: toolentries;
-		inputjson := args;
+		inputjson := rawargs;
 		if(inputjson == "")
 			inputjson = "{}";
 		structblocks = ("{\"type\":\"tool_use\",\"id\":" + jquote(id) +
@@ -927,10 +981,11 @@ parseopenaisseresponse(body: string, req: ref AskRequest): (ref AskResponse, str
 	for(i := 0; i < n; i++) {
 		id := listget(tcids, i);
 		name := listget(tcnames, i);
-		args := listget(tcargs, i);
+		rawargs := listget(tcargs, i);
+		args := extracttoolargs(rawargs);
 		safeargs := replaceall(args, "\n", "\\n");
 		toolentries = sys->sprint("TOOL:%s:%s:%s", id, name, safeargs) :: toolentries;
-		inputjson := args;
+		inputjson := rawargs;
 		if(inputjson == "")
 			inputjson = "{}";
 		structblocks = ("{\"type\":\"tool_use\",\"id\":" + jquote(id) +

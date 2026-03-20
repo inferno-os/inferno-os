@@ -419,55 +419,6 @@ extractsay(response: string): (string, int)
 	return (nil, 0);
 }
 
-# Extract the "args" string value from {"args": "..."} JSON.
-# Returns the unescaped string, or the raw json if parsing fails.
-extractargs(json: string): string
-{
-	n := len json;
-	key := "\"args\"";
-	klen := len key;
-
-	# Find "args" key
-	i := 0;
-	found := 0;
-	for(; i <= n - klen; i++) {
-		if(json[i:i+klen] == key) {
-			found = 1;
-			i += klen;
-			break;
-		}
-	}
-	if(!found)
-		return json;
-
-	# Skip whitespace and ':'
-	for(; i < n && (json[i] == ' ' || json[i] == '\t' || json[i] == ':'); i++)
-		;
-	if(i >= n || json[i] != '"')
-		return json;
-	i++;	# skip opening '"'
-
-	# Collect string with JSON unescaping
-	result := "";
-	for(; i < n && json[i] != '"'; i++) {
-		if(json[i] == '\\' && i+1 < n) {
-			i++;
-			case json[i] {
-			'n'  => result += "\n";
-			'r'  => result += "\r";
-			't'  => result += "\t";
-			'"'  => result += "\"";
-			'\\' => result += "\\";
-			*    => result += json[i:i+1];
-			}
-		} else
-			result += json[i:i+1];
-	}
-	if(result == "")
-		return json;
-	return result;
-}
-
 # Write prompt to the LLM ask fd (non-blocking: starts background generation).
 writellmfd(fd: ref Sys->FD, prompt: string)
 {
@@ -1077,7 +1028,7 @@ agentturn(input: string)
 		for(tc := tools; tc != nil; tc = tl tc) {
 			(id, name, args) := hd tc;
 			if(str->tolower(name) == "say") {
-				writemsg("veltro", extractargs(args));
+				writemsg("veltro", args);
 				results = (id, "said") :: results;
 			} else {
 				# Mark the tool as active in the context zone for the full duration.
@@ -1087,16 +1038,7 @@ agentturn(input: string)
 				writefile(ctxpath, "resource update path=" + nm + " status=active");
 				log("context: active " + nm);
 
-				# extractargs: unwrap {"args":"<value>"} JSON envelope from Anthropic
-				# native tool_use protocol before forwarding to tools9p.
-				#
-				# Bug history: when the native tool_use protocol was introduced,
-				# extractargs() was added but only called for the local "say" intercept.
-				# All other tools received the raw JSON wrapper as their args string.
-				# tools9p's exec tool then saw '{"args":' as the first command word →
-				# "error: unknown command" for every tool call.  Fixed here by always
-				# extracting args before calltool() and filepathof().
-				eargs := extractargs(args);
+				eargs := args;
 
 				# Surface the file/dir this tool is accessing
 				fpath := filepathof(eargs);
