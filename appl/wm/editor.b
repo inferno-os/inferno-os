@@ -376,6 +376,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	redraw();
 
+	# Write initial state so Veltro tool can read immediately after launch.
+	# Without this, body/addr/index files don't exist until the first user
+	# edit or ctl command, causing "editor read" to fail with "is edit running?".
+	statedirty = 1;
+	writeeditstate();
+
 	# Cursor blink timer
 	ticks := chan of int;
 	spawn timer(ticks, 500);
@@ -761,9 +767,10 @@ postevent(msg: string)
 # ---------- 9P File Server ----------
 
 # --- Real-file IPC for Veltro tool access ---
-# /tmp/veltro/edit/ is inside the restricted agent namespace (/tmp/veltro/ is always granted).
-EDIT_DIR:  con "/tmp/veltro/edit";
-EDIT_INST: con "/tmp/veltro/edit/1";
+# /tmp/veltro/editor/ is inside the restricted agent namespace (/tmp/veltro/ is always granted).
+# Named "editor" (not "edit") to match the tool name and avoid confusion with the "edit" tool.
+EDIT_DIR:  con "/tmp/veltro/editor";
+EDIT_INST: con "/tmp/veltro/editor/1";
 
 MNTPT: con "/mnt/edit";
 BINDPT: con "/edit";
@@ -2014,7 +2021,7 @@ readf(path: string): string
 }
 
 # ---------- Real-file IPC helpers ----------
-# /tmp/veltro/edit/ is inside the restricted agent namespace.
+# /tmp/veltro/editor/ is inside the restricted agent namespace.
 # The tick loop polls command files and writes state files so the
 # Veltro editor tool can read/write the editor across namespace forks.
 
@@ -2023,6 +2030,17 @@ initeditdir()
 	mkdirq("/tmp/veltro");
 	mkdirq(EDIT_DIR);
 	mkdirq(EDIT_INST);
+	# Pre-create state files so tool reads don't fail before writeeditstate().
+	# Empty files are valid — the tool returns "" rather than an error.
+	touchfile(EDIT_INST + "/body");
+	touchfile(EDIT_INST + "/addr");
+	touchfile(EDIT_DIR + "/index");
+}
+
+touchfile(path: string)
+{
+	fd := sys->create(path, Sys->OWRITE, 8r666);
+	fd = nil;
 }
 
 mkdirq(path: string)
