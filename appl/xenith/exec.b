@@ -85,7 +85,7 @@ exectab := array[] of {
 	Exectab ( "ID",			F_ID,		FALSE,	XXX,		XXX		),
 	Exectab ( "Incl",		F_INCL,		FALSE,	XXX,		XXX		),
 	Exectab ( "Indent",		F_INDENT,	FALSE,	XXX,		XXX		),
-	Exectab ( "Stop",			F_KILL,		FALSE,	XXX,		XXX		),
+	Exectab ( "Kill",			F_KILL,		FALSE,	XXX,		XXX		),
 	Exectab ( "Limbo",		F_LIMBO,		FALSE,	XXX,		XXX   	),
 	Exectab ( "Lineno",		F_LINENO,	FALSE,	XXX,		XXX		),
 	Exectab ( "Load",		F_DUMP,		FALSE,	FALSE,	XXX		),

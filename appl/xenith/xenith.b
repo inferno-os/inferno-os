@@ -1210,7 +1210,7 @@ waittask()
 				}
 			}
 			if(!found)
-				warning(nil, sprint("Stop: no process %s\n", cmd));
+				warning(nil, sprint("Kill: no process %s\n", cmd));
 			cmd = nil;
 			break;
 		status = <-cwait =>

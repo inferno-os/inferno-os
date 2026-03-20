@@ -92,7 +92,7 @@ Row.init(row : self ref Row, r : Rect)
 	r1.min.y = r1.max.y;
 	r1.max.y += Border;
 	draw(mainwin, r1, rowbordercol, nil, (0, 0));
-	t.insert(0, "Newcol Stop Putall Dump Exit ", 29, TRUE, 0);
+	t.insert(0, "Newcol Kill Putall Dump Exit ", 29, TRUE, 0);
 	t.setselect(t.file.buf.nc, t.file.buf.nc);
 }
 
