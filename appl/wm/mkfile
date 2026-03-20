@@ -9,6 +9,7 @@ TARG=\
 	colors.dis\
 	keyring.dis\
 	lens.dis\
+	man.dis\
 	settings.dis\
 	editor.dis\
 	fractals.dis\
@@ -21,6 +22,7 @@ MODULES=\
 SYSMODULES=\
 	arg.m\
 	bufio.m\
+	man.m\
 	daytime.m\
 	draw.m\
 	factotum.m\

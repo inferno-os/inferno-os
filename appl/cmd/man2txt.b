@@ -10,7 +10,6 @@ include "bufio.m";
 	Iobuf: import bufio;
 include "env.m";
 	env: Env;
-	getenv: import env;
 include "man.m";
 include "arg.m";
 	arg: Arg;
@@ -31,6 +30,7 @@ output: ref Iobuf;
 ROMAN: con "/fonts/lucidasans/euro.8.font";
 rfont : ref Font;
 rflag := 0;
+pagew := 80;
 
 init(ctxt: ref Draw->Context, argv: list of string)
 {
@@ -40,7 +40,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	bufio = load Bufio Bufio->PATH;
 	arg = load Arg Arg->PATH;
 	if (bufio == nil) {
-		sys->print("cannot load Bufio module: %r\n");
+		sys->print("man2txt: cannot load Bufio: %r\n");
+		raise "fail:init";
+	}
+	if (arg == nil) {
+		sys->print("man2txt: cannot load Arg: %r\n");
 		raise "fail:init";
 	}
 
@@ -48,43 +52,69 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	output = bufio->fopen(stdout, Sys->OWRITE);
 
 	parser := load Parseman Parseman->PATH;
-	parser->init();
+	if (parser == nil) {
+		sys->print("man2txt: cannot load Parseman: %r\n");
+		raise "fail:init";
+	}
+	err := parser->init();
+	if (err != nil) {
+		sys->print("man2txt: %s\n", err);
+		raise "fail:init";
+	}
 	arg->init(argv);
 	while((c := arg->opt()))
 		case c {
 		'r' =>
 			rflag = 1;
+		'p' =>
+			s := arg->arg();
+			if(s != nil) {
+				(v, nil) := str2int(s);
+				if(v > 0)
+					pagew = v;
+			}
 		}
-	
-	
+
+
 	argv = arg->argv();
 	for (; argv != nil ; argv = tl argv) {
 		fname := hd argv;
 		fd := sys->open(fname, Sys->OREAD);
 		if (fd == nil) {
-			sys->print("cannot open %s: %r\n", fname);
+			sys->print("man2txt: cannot open %s: %r\n", fname);
 			continue;
 		}
-		font := getenv("font");
-		if(font == nil)
-			font = ROMAN;
+		font := ROMAN;
+		if(env != nil) {
+			efont := env->getenv("font");
+			if(efont != nil)
+				font = efont;
+		}
 		m: Parseman->Metrics;
 		datachan := chan of list of (int, Parseman->Text);
-		if(ctxt != nil && !rflag){
+		if(ctxt != nil && ctxt.display != nil && !rflag){
 			rfont = Font.open(ctxt.display, font);
-			em := rfont.width("m");
-			en := rfont.width("n");
-			m = Parseman->Metrics(490, 80, em, en, 14, 40, 20);
-			spawn parser->parseman(fd, m, 1, ref W, datachan);
+			if(rfont == nil)
+				rfont = Font.open(ctxt.display, "*default*");
+			if(rfont != nil) {
+				em := rfont.width("m");
+				en := rfont.width("n");
+				m = Parseman->Metrics(490, 80, em, en, 14, 40, 20);
+				spawn parser->parseman(fd, m, 1, ref W, datachan);
+			} else {
+				# Font open failed; fall back to text mode
+				m = Parseman->Metrics(pagew, 10, 1, 1, 1, 3, 3);
+				spawn parser->parseman(fd, m, 1, ref R, datachan);
+			}
 		}else{
-			m = Parseman->Metrics(72, 10, 1, 1, 1, 3, 3);   # RFC format
+			m = Parseman->Metrics(pagew, 10, 1, 1, 1, 3, 3);
 			spawn parser->parseman(fd, m, 1, ref R, datachan);
 		}
 		for (;;) {
 			line := <- datachan;
 			if (line == nil)
 				break;
-			if(ctxt!=nil && !rflag)
+			if(rfont != nil && ctxt != nil && !rflag)
 				setline(line);
 			else
 				osetline(line);
@@ -92,6 +122,18 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		output.flush();
 	}
 	output.close();
+}
+
+str2int(s: string): (int, string)
+{
+	n := 0;
+	for(i := 0; i < len s; i++) {
+		c := s[i];
+		if(c < '0' || c > '9')
+			return (n, s[i:]);
+		n = n * 10 + (c - '0');
+	}
+	return (n, nil);
 }
 
 W.textwidth(nil: self ref W, text: Parseman->Text): int
@@ -106,25 +148,26 @@ R.textwidth(nil: self ref R, text: Parseman->Text): int
 
 setline(line: list of (int, Parseman->Text))
 {
-#return;
 	offset := 0;
+	spacew := rfont.width(" ");
+	if(spacew < 1)
+		spacew = 1;
 	for (; line != nil; line = tl line) {
 		(indent, txt) := hd line;
 		# indent is in dots
-		indent = indent / rfont.width(" ");
+		indent = indent / spacew;
 		while (offset < indent) {
 			output.putc(' ');
 			offset++;
 		}
 		output.puts(txt.text);
-		offset += (rfont.width(txt.text) / rfont.width(" "));
+		offset += (rfont.width(txt.text) / spacew);
 	}
 	output.putc('\n');
 }
 
 osetline(line: list of (int, Parseman->Text))
 {
-#return;
 	offset := 0;
 	for (; line != nil; line = tl line) {
 		(indent, txt) := hd line;
