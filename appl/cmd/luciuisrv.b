@@ -1214,6 +1214,18 @@ globalctl(data: string): string
 		pushglobalevent("activity delete " + idstr);
 		return nil;
 	}
+	if(hasprefix(data, "theme ")) {
+		name := data[len "theme ":];
+		# Persist theme choice (truncate to avoid stale trailing bytes)
+		fd := sys->open("/lib/lucifer/theme/current", Sys->OWRITE|Sys->OTRUNC);
+		if(fd == nil)
+			return sys->sprint("cannot write theme: %r");
+		b := array of byte name;
+		sys->write(fd, b, len b);
+		# Broadcast so all zones reload colours live
+		pushglobalevent("theme " + name);
+		return nil;
+	}
 	return "unknown ctl command: " + data;
 }
 

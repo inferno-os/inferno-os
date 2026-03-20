@@ -1152,7 +1152,19 @@ trackprofilebtn(nil: ref Pointer)
 
 applytheme(name: string)
 {
-	fd := sys->open("/lib/lucifer/theme/current", Sys->OWRITE);
+	# Write to /n/ui/ctl for live theme switching across all zones.
+	# luciuisrv persists the choice to /lib/lucifer/theme/current and
+	# broadcasts a "theme <name>" global event so every zone reloads.
+	fd := sys->open("/n/ui/ctl", Sys->OWRITE);
+	if(fd != nil) {
+		cmd := "theme " + name;
+		b := array of byte cmd;
+		sys->write(fd, b, len b);
+		flashstatus("theme set to " + name);
+		return;
+	}
+	# Fallback: write directly (pre-luciuisrv or standalone mode)
+	fd = sys->open("/lib/lucifer/theme/current", Sys->OWRITE|Sys->OTRUNC);
 	if(fd == nil) {
 		flashstatus(sys->sprint("error: %r"));
 		return;

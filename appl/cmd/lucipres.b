@@ -557,11 +557,37 @@ handleevent(ev: string)
 				}
 			}
 		}
+	} else if(hasprefix(ev, "theme ")) {
+		reloadcolors();
 	} else if(hasprefix(ev, "presentation ")) {
 		id := strip(ev[len "presentation ":]);
 		if(id != "")
 			updateartifact(id);
 	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil)
+		return;
+	th := lucitheme->gettheme();
+	bgcol = display_g.color(th.bg);
+	bordercol = display_g.color(th.border);
+	headercol = display_g.color(th.header);
+	accentcol = display_g.color(th.accent);
+	textcol = display_g.color(th.text);
+	text2col = display_g.color(th.text2);
+	dimcol = display_g.color(th.dim);
+	labelcol = display_g.color(th.label);
+	codebgcol_g = display_g.color(th.codebg);
+	greencol_g = display_g.color(th.green);
+	yellowcol_g = display_g.color(th.yellow);
+	redcol_g = display_g.color(th.red);
+	# Invalidate rendered artifact caches
+	for(al := artifacts; al != nil; al = tl al)
+		(hd al).rendimg = nil;
+	artrendw = 0;
 }
 
 # --- Drawing ---

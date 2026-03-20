@@ -87,6 +87,7 @@ stderr: ref Sys->FD;
 display: ref Display;
 win: ref Wmclient->Window;
 mainwin: ref Image;		# the main window image (full frame)
+lucitheme_g: Lucitheme;		# kept for live theme reload
 
 # wmsrv channel (module-level so launchapp can use it)
 wmchan: chan of (string, chan of (string, ref Wmcontext));
@@ -323,8 +324,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	mainwin = win.image;
 
 	# Allocate colors from theme
-	lucitheme := load Lucitheme Lucitheme->PATH;
-	th := lucitheme->gettheme();
+	lucitheme_g = load Lucitheme Lucitheme->PATH;
+	th := lucitheme_g->gettheme();
 	bgcol    = display.color(th.bg);
 	bordercol= display.color(th.border);
 	headercol= display.color(th.header);
@@ -523,6 +524,56 @@ zonerects(r: Rect): (Rect, Rect, Rect)
 	presr := Rect((presx + 1, zonety), (ctxx,      r.max.y));
 	ctxr  := Rect((ctxx + 1,  zonety), (r.max.x,   r.max.y));
 	return (convr, presr, ctxr);
+}
+
+# --- Theme reload ---
+
+reloadtheme()
+{
+	if(lucitheme_g == nil)
+		return;
+	th := lucitheme_g->gettheme();
+	bgcol    = display.color(th.bg);
+	bordercol= display.color(th.border);
+	headercol= display.color(th.header);
+	accentcol= display.color(th.accent);
+	textcol  = display.color(th.text);
+	dimcol   = display.color(th.dim);
+	yellowcol= display.color(th.yellow);
+	redcol   = display.color(th.red);
+	greencol = display.color(th.green);
+	# Reload logo variant for the new theme
+	reloadlogo();
+}
+
+reloadlogo()
+{
+	bufio := load Bufio Bufio->PATH;
+	if(bufio == nil)
+		return;
+	readpng := load RImagefile RImagefile->READPNGPATH;
+	remap := load Imageremap Imageremap->PATH;
+	if(readpng == nil || remap == nil)
+		return;
+	readpng->init(bufio);
+	remap->init(display);
+	logopath := "/lib/lucifer/logo.png";
+	themename := readfile("/lib/lucifer/theme/current");
+	if(themename != nil) {
+		themename = strip(themename);
+		if(themename != "brimstone" && themename != "") {
+			tpath := "/lib/lucifer/logo-" + themename + ".png";
+			tfd := sys->open(tpath, Sys->OREAD);
+			if(tfd != nil)
+				logopath = tpath;
+		}
+	}
+	fd := bufio->open(logopath, Bufio->OREAD);
+	if(fd != nil) {
+		(raw, nil) := readpng->read(fd);
+		if(raw != nil)
+			(logoimg, nil) = remap->remap(raw, display, 0);
+	}
 }
 
 # --- Header / chrome drawing ---
@@ -1255,6 +1306,15 @@ globallistener()
 			if(lucipres_g != nil)
 				lucipres_g->deliverevent(ev);
 			# Any activity event: signal main loop to reload tiles and redraw
+			alt { uievent <-= 1 => ; * => ; }
+		}
+		if(hasprefix(ev, "theme ")) {
+			# Live theme switch: reload colours, redraw chrome, notify zones
+			reloadtheme();
+			alt { convEvCh <-= ev => ; * => ; }
+			alt { ctxEvCh <-= ev => ; * => ; }
+			if(lucipres_g != nil)
+				lucipres_g->deliverevent(ev);
 			alt { uievent <-= 1 => ; * => ; }
 		}
 	}

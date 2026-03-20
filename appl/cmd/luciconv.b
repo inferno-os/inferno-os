@@ -308,7 +308,32 @@ handleevent(ev: string)
 		idx := strtoint(ev[len "conversation ":]);
 		if(idx >= 0)
 			loadmessage(idx);
+	} else if(hasprefix(ev, "theme ")) {
+		reloadcolors();
 	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil)
+		return;
+	th := lucitheme->gettheme();
+	bgcol = display_g.color(th.bg);
+	accentcol = display_g.color(th.accent);
+	textcol = display_g.color(th.text);
+	text2col = display_g.color(th.text2);
+	dimcol = display_g.color(th.dim);
+	humancol = display_g.color(th.human);
+	veltrocol = display_g.color(th.veltro);
+	inputcol = display_g.color(th.input);
+	cursorcol = display_g.color(th.cursor);
+	redcol = display_g.color(th.red);
+	codebgcol_g = display_g.color(th.codebg);
+	# Invalidate rendered message caches so they redraw with new colours
+	for(i := 0; i < nmsg; i++)
+		msgstore[i].rendimg = nil;
+	lastrendw = 0;
 }
 
 # --- Drawing ---
