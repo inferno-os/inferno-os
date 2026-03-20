@@ -640,6 +640,27 @@ handleevent(ev: string)
 		loadmanifest();
 		loadagentname();
 	}
+	if(hasprefix(ev, "theme "))
+		reloadcolors();
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil)
+		return;
+	th := lucitheme->gettheme();
+	bgcol = display_g.color(th.bg);
+	accentcol = display_g.color(th.accent);
+	textcol = display_g.color(th.text);
+	text2col = display_g.color(th.text2);
+	dimcol = display_g.color(th.dim);
+	labelcol = display_g.color(th.label);
+	greencol = display_g.color(th.green);
+	yellowcol = display_g.color(th.yellow);
+	redcol = display_g.color(th.red);
+	progbgcol = display_g.color(th.progbg);
+	progfgcol = display_g.color(th.progfg);
 }
 
 # --- Drawing ---
