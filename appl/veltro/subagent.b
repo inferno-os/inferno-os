@@ -299,7 +299,7 @@ parseheredoc(args: string, lines: list of string): (string, list of string)
 	# Extract delimiter (word after <<)
 	aftermarker := args[markerpos + 2:];
 	aftermarker = str->drop(aftermarker, " \t");
-	(delim, _) := splitfirst(aftermarker);
+	delim := splitfirst(aftermarker).t0;
 	if(delim == "")
 		delim = "EOF";
 

@@ -693,10 +693,12 @@ void
 Math_lgamma(void *fp)
 {
 	F_Math_lgamma *f;
+	int sign;
 
 	f = fp;
 
-	f->ret->t1 = __ieee754_lgamma_r(f->x, &f->ret->t0);
+	f->ret->t1 = __ieee754_lgamma_r(f->x, &sign);
+	f->ret->t0 = sign;
 }
 
 void

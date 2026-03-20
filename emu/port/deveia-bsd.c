@@ -3,7 +3,7 @@
  * including modem line control and hardware flow control
  */
 
-static struct flagmap lines[] = {
+static struct flagmap lines[] __attribute__((unused)) = {
         {"cts",         TIOCM_CTS},
         {"dsr",         TIOCM_DSR},
         {"ring",        TIOCM_RI},

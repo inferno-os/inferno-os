@@ -1097,7 +1097,7 @@ Serve:
 			* =>
 				# Tool directory/subfile reads
 				if(qtype >= Qtoolbase) {
-					(_, suboff) := toolqtype(qtype);
+					suboff := toolqtype(qtype).t1;
 					ti := findtoolbyqid(qtype);
 					if(ti == nil) {
 						srv.reply(ref Rmsg.Error(m.tag, Enotfound));
@@ -1218,7 +1218,7 @@ Serve:
 				# client still sees blocking semantics — but the serveloop
 				# remains free to service other fids.
 				if(qtype >= Qtoolbase) {
-					(_, suboff) := toolqtype(qtype);
+					suboff := toolqtype(qtype).t1;
 					if(suboff != Qtool_ctl) {
 						srv.reply(ref Rmsg.Error(m.tag, Eperm));
 						break;
@@ -1293,7 +1293,7 @@ dirgen(p: big): (ref Sys->Dir, string)
 
 	# Check if it's a tool directory or subfile
 	if(qtype >= Qtoolbase) {
-		(_, suboff) := toolqtype(qtype);
+		suboff := toolqtype(qtype).t1;
 		ti := findtoolbyqid(qtype);
 		if(ti != nil) {
 			case suboff {
@@ -1350,7 +1350,7 @@ navigator(navops: chan of ref Navop)
 				n.reply <-= dirgen(n.path);
 			} else if(qtype >= Qtoolbase) {
 				# Walk within a tool directory
-				(_, suboff) := toolqtype(qtype);
+				suboff := toolqtype(qtype).t1;
 				if(suboff != Qtool_dir) {
 					n.reply <-= (nil, "not a directory");
 					continue;
@@ -1444,7 +1444,7 @@ navigator(navops: chan of ref Navop)
 
 			* =>
 				if(qtype >= Qtoolbase) {
-					(_, suboff) := toolqtype(qtype);
+					suboff := toolqtype(qtype).t1;
 					if(suboff != Qtool_dir) {
 						n.reply <-= (nil, "not a directory");
 					} else {

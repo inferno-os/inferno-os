@@ -164,7 +164,6 @@ ed25519_str2sk(char *str, char **strp)
 	Ed25519priv *k;
 	char *p;
 	int n;
-	uchar sk[Ed25519SecretKeyLen];
 
 	k = ed25519privalloc();
 	if(k == nil)
@@ -1236,7 +1235,7 @@ ge_scalarmult_base(ge_p3 *h, const uchar *a)
 			ge_p3 test_A;
 
 			/* Verify public key derivation */
-			sha512(rfc_seed, 32, test_hash, nil);
+			sha512((uchar*)rfc_seed, 32, test_hash, nil);
 			test_hash[0] &= 248;
 			test_hash[31] &= 127;
 			test_hash[31] |= 64;
@@ -1588,7 +1587,7 @@ ed25519_create_keypair(uchar *pk, uchar *sk, const uchar *seed)
 	uchar hash[SHA512dlen];
 
 	/* Hash seed to create secret scalar */
-	sha512(seed, Ed25519SeedLen, hash, nil);
+	sha512((uchar*)seed, Ed25519SeedLen, hash, nil);
 	hash[0] &= 248;
 	hash[31] &= 127;
 	hash[31] |= 64;
@@ -1612,14 +1611,14 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 	DigestState *ds;
 
 	/* Hash secret key half to get prefix for nonce derivation */
-	sha512(sk, Ed25519SeedLen, hash, nil);
+	sha512((uchar*)sk, Ed25519SeedLen, hash, nil);
 	hash[0] &= 248;
 	hash[31] &= 127;
 	hash[31] |= 64;
 
 	/* Compute nonce r = H(prefix || m) */
 	ds = sha512(hash + 32, 32, nil, nil);
-	sha512(m, mlen, r, ds);
+	sha512((uchar*)m, mlen, r, ds);
 	sc_reduce(r);
 
 	/* Compute R = [r]B */
@@ -1628,8 +1627,8 @@ ed25519_sign(uchar *sig, const uchar *m, ulong mlen, const uchar *sk)
 
 	/* Compute S = r + H(R || A || m) * s */
 	ds = sha512(sig, 32, nil, nil);
-	ds = sha512(sk + 32, 32, nil, ds);
-	sha512(m, mlen, hram, ds);
+	ds = sha512((uchar*)sk + 32, 32, nil, ds);
+	sha512((uchar*)m, mlen, hram, ds);
 	sc_reduce(hram);
 
 	/* s * hram + r mod L -> sig[32..63] */
@@ -1657,9 +1656,9 @@ ed25519_verify(const uchar *sig, const uchar *m, ulong mlen, const uchar *pk)
 		return 0;
 
 	/* h = H(R || A || m) */
-	ds = sha512(sig, 32, nil, nil);
-	ds = sha512(pk, 32, nil, ds);
-	sha512(m, mlen, h, ds);
+	ds = sha512((uchar*)sig, 32, nil, nil);
+	ds = sha512((uchar*)pk, 32, nil, ds);
+	sha512((uchar*)m, mlen, h, ds);
 	sc_reduce(h);
 
 	/* Compute R' = [S]B - [h]A */

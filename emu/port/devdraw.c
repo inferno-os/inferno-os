@@ -1019,8 +1019,6 @@ drawclose(Chan *c)
 long
 drawread(Chan *c, void *a, long n, vlong off)
 {
-	int index, m;
-	ulong red, green, blue;
 	Client *cl;
 	uchar *p;
 	Refresh *r;
@@ -1028,6 +1026,10 @@ drawread(Chan *c, void *a, long n, vlong off)
 	Memimage *i;
 	ulong offset = off;
 	char buf[16];
+#ifdef COLORMAP
+	int index, m;
+	ulong red, green, blue;
+#endif
 
 	USED(offset);
 	if(c->qid.type & QTDIR)
@@ -1141,10 +1143,12 @@ drawwakeall(void)
 static long
 drawwrite(Chan *c, void *a, long n, vlong off)
 {
-	char buf[128], *fields[4], *q;
 	Client *cl;
-	int i, m, red, green, blue, x;
 	ulong offset = off;
+#ifdef COLORMAP
+	char buf[128], *fields[4], *q;
+	int i, m, red, green, blue, x;
+#endif
 
 	USED(offset);
 	if(c->qid.type & QTDIR)

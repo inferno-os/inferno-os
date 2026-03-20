@@ -2957,11 +2957,9 @@ parsegitgraph(lines: list of string): (list of ref GitCommit, int, string)
 			if(p >= 0) {
 				rest := trimstr(s[p+3:]);
 				if(len rest > 0 && rest[0] == '"') {
-					(id, ep) := readuntil(rest, 1, '"');
-					c.id = id;
+					c.id = readuntil(rest, 1, '"').t0;
 				} else {
-					(id, ep2) := splitfirsttok(rest);
-					c.id = id;
+					c.id = splitfirsttok(rest).t0;
 				}
 			} else {
 				c.id = sys->sprint("c%d", nc);

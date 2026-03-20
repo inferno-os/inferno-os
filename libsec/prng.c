@@ -22,7 +22,7 @@ prng(uchar *p, int n)
 			/* fallback to /dev/urandom */
 			int fd = open("/dev/urandom", 0);
 			if(fd >= 0) {
-				read(fd, p, n);
+				if(read(fd, p, n)){/*nothing*/}
 				close(fd);
 			}
 			return;
@@ -34,7 +34,7 @@ prng(uchar *p, int n)
 	int fd;
 	fd = open("/dev/urandom", 0);
 	if(fd >= 0) {
-		read(fd, p, n);
+		if(read(fd, p, n)){/*nothing*/}
 		close(fd);
 	} else {
 		/* no secure random source available — abort rather than

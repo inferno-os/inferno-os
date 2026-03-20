@@ -487,7 +487,7 @@ readdir(n: ref Navop.Readdir, path: int)
 	# Generate directory entries
 	for(i := 0; rev != nil; rev = tl rev) {
 		if(i >= n.offset) {
-			(d, err) := dirgen(hd rev);
+			(d, nil) := dirgen(hd rev);
 			if(d != nil)
 				n.reply <-= (d, nil);
 		}

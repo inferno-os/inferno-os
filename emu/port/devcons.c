@@ -108,15 +108,15 @@ kbdslave(void *a)
 		if(kbd.raw == 0){
 			switch(b){
 			case 0x15:
-				write(1, "^U\n", 3);
+				if(write(1, "^U\n", 3)){/*nothing*/}
 				break;
 			case '\b':
 			case 0x7f:
 				/* Erase character on terminal: backspace, space, backspace */
-				write(1, "\b \b", 3);
+				if(write(1, "\b \b", 3)){/*nothing*/}
 				break;
 			default:
-				write(1, &b, 1);
+				if(write(1, &b, 1)){/*nothing*/}
 				break;
 			}
 		}
@@ -287,7 +287,7 @@ static long
 consread(Chan *c, void *va, long n, vlong offset)
 {
 	int send;
-	char *p, buf[64], ch;
+	char buf[64], ch;
 
 	if(c->qid.type & QTDIR)
 		return devdirread(c, va, n, contab, nelem(contab), devgen);
