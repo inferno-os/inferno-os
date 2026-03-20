@@ -915,11 +915,11 @@ handlecontextmenu(p: ref Pointer)
 		return;
 
 	art := findartifact(artid);
-	# App type: Kill menu
+	# App type: Close menu
 	if(art != nil && art.atype == "app") {
-		killitems := array[] of {"Kill"};
-		killpop := menumod->new(killitems);
-		killresult := killpop.show(mainwin, p.xy, win.ctxt.ptr);
+		closeitems := array[] of {"Close"};
+		closepop := menumod->new(closeitems);
+		killresult := closepop.show(mainwin, p.xy, win.ctxt.ptr);
 		if(killresult == 0 && actid_g >= 0)
 			writetofile(
 				sys->sprint("%s/activity/%d/presentation/ctl",
