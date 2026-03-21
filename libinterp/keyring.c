@@ -3630,6 +3630,122 @@ Keyring_p384_ecdsa_verify(void *fp)
 }
 
 /*
+ *  secp256k1 ECDSA (Ethereum/Bitcoin)
+ *  Uses raw byte arrays: priv[32], pub[65], sig[65]
+ */
+void
+Keyring_secp256k1_keygen(void *fp)
+{
+	F_Keyring_secp256k1_keygen *f;
+	uchar priv[32], pub[65];
+
+	f = fp;
+	destroy(f->ret->t0);
+	destroy(f->ret->t1);
+	f->ret->t0 = H;
+	f->ret->t1 = H;
+
+	if(secp256k1_keygen(priv, pub) != 0)
+		return;
+
+	f->ret->t0 = mem2array(priv, 32);
+	f->ret->t1 = mem2array(pub, 65);
+	secureZero(priv, 32);
+}
+
+void
+Keyring_secp256k1_pubkey(void *fp)
+{
+	F_Keyring_secp256k1_pubkey *f;
+	uchar pub[65];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->priv == H || f->priv->len != 32)
+		error(exBadKey);
+
+	secp256k1_pubkey(pub, f->priv->data);
+	*f->ret = mem2array(pub, 65);
+}
+
+void
+Keyring_secp256k1_sign(void *fp)
+{
+	F_Keyring_secp256k1_sign *f;
+	uchar sig[65];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->priv == H || f->priv->len != 32)
+		error(exBadKey);
+	if(f->hash == H || f->hash->len == 0)
+		error(exBadDigest);
+
+	if(secp256k1_sign(sig, f->priv->data, f->hash->data, f->hash->len) != 0)
+		return;
+
+	*f->ret = mem2array(sig, 65);
+}
+
+void
+Keyring_secp256k1_recover(void *fp)
+{
+	F_Keyring_secp256k1_recover *f;
+	uchar pub[65];
+	void *r;
+
+	f = fp;
+	r = *f->ret;
+	*f->ret = H;
+	destroy(r);
+
+	if(f->hash == H || f->hash->len == 0)
+		error(exBadDigest);
+	if(f->sig == H || f->sig->len != 65)
+		return;
+
+	if(secp256k1_recover(pub, f->hash->data, f->hash->len, f->sig->data) != 0)
+		return;
+
+	*f->ret = mem2array(pub, 65);
+}
+
+/*
+ *  Keccak-256 (Ethereum variant, domain separator 0x01)
+ */
+void
+Keyring_keccak256(void *fp)
+{
+	F_Keyring_keccak256 *f;
+	uchar *cbuf;
+	int n;
+
+	f = fp;
+	*f->ret = 0;
+
+	if(f->buf == H || f->digest == H)
+		return;
+
+	n = f->n;
+	if(n > f->buf->len)
+		n = f->buf->len;
+	if(f->digest->len < 32)
+		error(exBadDigest);
+
+	cbuf = f->buf->data;
+	keccak256(cbuf, n, f->digest->data);
+	*f->ret = 32;
+}
+
+/*
  *  Ed25519 raw sign (RFC 8032)
  *  Takes 32-byte seed + message, returns 64-byte signature
  */

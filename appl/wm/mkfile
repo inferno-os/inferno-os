@@ -8,6 +8,7 @@ TARG=\
 	clock.dis\
 	colors.dis\
 	keyring.dis\
+	wallet.dis\
 	lens.dis\
 	man.dis\
 	settings.dis\

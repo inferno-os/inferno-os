@@ -41,6 +41,8 @@ TARG=\
 	diskblocks.dis\
 	disks.dis\
 	env.dis\
+	ethcrypto.dis\
+	ethrpc.dis\
 	ether.dis\
 	exception.dis\
 	factotum.dis\
@@ -107,6 +109,7 @@ TARG=\
 	sort.dis\
 	ssl.dis\
 	string.dis\
+	stripe.dis\
 	strinttab.dis\
 	styx.dis\
 	styxflush.dis\
@@ -124,6 +127,7 @@ TARG=\
 	venti.dis\
 	virgil.dis\
 	wait.dis\
+	wallet.dis\
 	watchvars.dis\
 	web.dis\
 	outlinefont.dis\
@@ -136,6 +140,7 @@ TARG=\
 	wmsrv.dis\
 	workdir.dis\
 	writegif.dis\
+	x402.dis\
 	xml.dis\
 
 
@@ -168,6 +173,8 @@ SYSMODULES=\
 	draw.m\
 	encoding.m\
 	env.m\
+	ethcrypto.m\
+	ethrpc.m\
 	ether.m\
 	exception.m\
 	factotum.m\
@@ -229,6 +236,7 @@ SYSMODULES=\
 	ssl3.m\
 	sslsession.m\
 	string.m\
+	stripe.m\
 	strinttab.m\
 	styx.m\
 	styxflush.m\
@@ -249,6 +257,7 @@ SYSMODULES=\
 	vac.m\
 	venti.m\
 	wait.m\
+	wallet.m\
 	watchvars.m\
 	web.m\
 	webclient.m\
@@ -259,6 +268,7 @@ SYSMODULES=\
 	wmlib.m\
 	wmsrv.m\
 	workdir.m\
+	x402.m\
 	xml.m\
 
 

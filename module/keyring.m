@@ -278,6 +278,16 @@ Keyring: module
 	# P-384 ECDSA verify (raw byte arrays, no ADT)
 	p384_ecdsa_verify: fn(pubkey: array of byte, hash: array of byte, sig: array of byte): int;
 
+	# secp256k1 ECDSA (Ethereum/Bitcoin)
+	secp256k1_keygen:  fn(): (array of byte, array of byte);	# => (priv[32], pub[65])
+	secp256k1_pubkey:  fn(priv: array of byte): array of byte;	# => pub[65]
+	secp256k1_sign:    fn(priv: array of byte, hash: array of byte): array of byte;	# => sig[65] (r||s||v)
+	secp256k1_recover: fn(hash: array of byte, sig: array of byte): array of byte;	# => pub[65]
+
+	# Keccak-256 (Ethereum, pre-NIST domain separator 0x01)
+	Keccak256dlen:	con 32;
+	keccak256:	fn(buf: array of byte, n: int, digest: array of byte): int;
+
 	# Ed25519 raw sign/verify (RFC 8032)
 	ed25519_sign:   fn(seed: array of byte, msg: array of byte): array of byte;
 	ed25519_verify: fn(pk: array of byte, msg: array of byte, sig: array of byte): int;

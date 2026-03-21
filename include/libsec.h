@@ -141,6 +141,20 @@ struct ECpoint384 {
 int	p384_ecdsa_verify(uchar sig[96], ECpoint384 *pub, uchar *hash, int hashlen);
 
 /* ===================================================== */
+/* secp256k1 ECDSA (Ethereum/Bitcoin) */
+/* ===================================================== */
+int	secp256k1_keygen(uchar priv[32], uchar pub[65]);
+void	secp256k1_pubkey(uchar pub[65], uchar priv[32]);
+int	secp256k1_sign(uchar sig[65], uchar priv[32], uchar *hash, int hashlen);
+int	secp256k1_recover(uchar pub[65], uchar *hash, int hashlen, uchar sig[65]);
+int	secp256k1_verify(uchar sig[64], uchar pub[65], uchar *hash, int hashlen);
+
+/* ===================================================== */
+/* Keccak-256 (Ethereum, pre-NIST padding) */
+/* ===================================================== */
+void	keccak256(const uchar *in, ulong inlen, uchar out[32]);
+
+/* ===================================================== */
 /* Blowfish Definitions */
 /* ===================================================== */
 

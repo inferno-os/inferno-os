@@ -187,6 +187,7 @@ restrictns(caps: ref Capabilities): string
 	#   /n/mcp    — caps.mcproviders != nil
 	#   /n/speech — "/n/speech" in caps.paths
 	#   /n/git    — "/n/git" in caps.paths
+	#   /n/wallet — "/n/wallet" in caps.paths
 	#   /n/ui     — "present" in caps.tools
 	#   /n/pres-* — caps.xenith != 0
 	#   /n/local  — /n/local/ subpaths in caps.paths
@@ -219,6 +220,13 @@ restrictns(caps: ref Capabilities): string
 			(gitok, nil) := sys->stat("/n/git");
 			if(gitok >= 0)
 				nallow = "git" :: nallow;
+		}
+
+		# /n/wallet — only if explicitly granted via caps.paths
+		if(inlist("/n/wallet", caps.paths)) {
+			(walletok, nil) := sys->stat("/n/wallet");
+			if(walletok >= 0)
+				nallow = "wallet" :: nallow;
 		}
 
 		# /n/ui — only if "present" tool is granted

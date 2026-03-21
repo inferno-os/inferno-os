@@ -154,6 +154,10 @@ TOOL_PATHS := array[] of {
 	("plan",    "/dis/veltro/tools/plan.dis"),
 	# Credential management (launches GUI, no key access)
 	("keyring", "/dis/veltro/tools/keyring.dis"),
+	# Wallet operations (crypto/fiat payments via wallet9p)
+	("wallet",  "/dis/veltro/tools/wallet.dis"),
+	# Paid web fetch (x402 payment-enabled HTTP client)
+	("payfetch", "/dis/veltro/tools/payfetch.dis"),
 };
 
 usage()
