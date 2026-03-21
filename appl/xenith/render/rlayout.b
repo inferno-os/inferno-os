@@ -9,7 +9,11 @@ include "draw.m";
 
 include "rlayout.m";
 
+include "mermaid.m";
+	mermaid: Mermaid;
+
 display: ref Display;
+mermaid_tried := 0;  # lazy-load flag: 0=untried, 1=loaded or failed
 
 # Layout state used during rendering
 Lstate: adt {
@@ -102,6 +106,24 @@ measureheight(doc: list of ref DocNode, style: ref Style): int
 				if(txt[i] == '\n')
 					nlines++;
 			h += nlines * cfh + fh;  # code lines + padding + spacing
+		Nmermaid =>
+			# Estimate: mermaid diagrams typically render ~300-400px tall
+			# The actual render will determine the real height, but we
+			# need a reasonable estimate for the initial image allocation.
+			# Count lines as a rough proxy for complexity.
+			txt := "";
+			if(node.text != nil)
+				txt = node.text;
+			nlines := 1;
+			for(i := 0; i < len txt; i++)
+				if(txt[i] == '\n')
+					nlines++;
+			mh := nlines * fh * 3;  # ~3x line height per syntax line
+			if(mh < 200)
+				mh = 200;
+			if(mh > 600)
+				mh = 600;
+			h += mh + fh;  # diagram + spacing
 		Nbullet or Nnumber =>
 			txt := flattentext(node.children);
 			lines := wrapcount(txt, style.font, maxw - 24);
@@ -176,6 +198,8 @@ renderblocks(ls: ref Lstate, doc: list of ref DocNode)
 			renderheading(ls, node);
 		Ncodeblock =>
 			rendercodeblock(ls, node);
+		Nmermaid =>
+			rendermermaid(ls, node);
 		Nbullet =>
 			renderbullet(ls, node);
 		Nnumber =>
@@ -289,6 +313,68 @@ rendercodeblock(ls: ref Lstate, node: ref DocNode)
 	}
 
 	ls.y += blockh + ls.style.font.height / 3;
+	ls.x = ls.style.margin + ls.indent;
+}
+
+# Render a mermaid diagram inline within markdown.
+# Loads the Mermaid module on first use; falls back to code block on failure.
+rendermermaid(ls: ref Lstate, node: ref DocNode)
+{
+	syntax := "";
+	if(node.text != nil)
+		syntax = node.text;
+	if(len syntax == 0){
+		rendercodeblock(ls, node);
+		return;
+	}
+
+	# Lazy-load mermaid module
+	if(!mermaid_tried){
+		mermaid_tried = 1;
+		mermaid = load Mermaid Mermaid->PATH;
+		if(mermaid != nil)
+			mermaid->init(display, ls.style.font, ls.style.codefont);
+	}
+	if(mermaid == nil){
+		# Mermaid not available — fall back to code block
+		rendercodeblock(ls, node);
+		return;
+	}
+
+	# Render the diagram
+	width := ls.maxwidth - ls.indent;
+	if(width <= 0)
+		width = 400;
+	im: ref Image;
+	err: string;
+	{
+		(im, err) = mermaid->render(syntax, width);
+	} exception {
+	"*" =>
+		rendercodeblock(ls, node);
+		return;
+	}
+	if(im == nil){
+		# Render failed — fall back to code block
+		rendercodeblock(ls, node);
+		return;
+	}
+
+	# Draw the mermaid image into the layout
+	x0 := ls.style.margin + ls.indent;
+	imr := im.r;
+	imh := imr.max.y - imr.min.y;
+	imw := imr.max.x - imr.min.x;
+
+	# Center horizontally if narrower than available width
+	xoff := 0;
+	if(imw < width)
+		xoff = (width - imw) / 2;
+
+	dst := Rect(Point(x0 + xoff, ls.y), Point(x0 + xoff + imw, ls.y + imh));
+	ls.img.draw(dst, im, nil, imr.min);
+
+	ls.y += imh + ls.style.font.height / 3;
 	ls.x = ls.style.margin + ls.indent;
 }
 
@@ -817,6 +903,19 @@ pmd_parseheading(line: string): (ref DocNode, int)
 
 pmd_parsecodeblock(lines: array of string, start: int): (ref DocNode, int)
 {
+	# Extract language hint from opening fence (e.g. "```mermaid" → "mermaid")
+	lang := "";
+	fence := lines[start];
+	for(fi := 0; fi < len fence && fence[fi] == '`'; fi++)
+		;
+	if(fi < len fence){
+		# Skip whitespace after backticks
+		for(; fi < len fence && (fence[fi] == ' ' || fence[fi] == '\t'); fi++)
+			;
+		if(fi < len fence)
+			lang = fence[fi:];
+	}
+
 	i := start + 1;
 	code := "";
 
@@ -830,6 +929,10 @@ pmd_parsecodeblock(lines: array of string, start: int): (ref DocNode, int)
 		code += lines[i];
 		i++;
 	}
+
+	# ```mermaid blocks become Nmermaid nodes
+	if(lang == "mermaid")
+		return (ref DocNode(Nmermaid, code, nil, 0), i);
 
 	return (ref DocNode(Ncodeblock, code, nil, 0), i);
 }
@@ -1266,7 +1369,7 @@ totext(doc: list of ref DocNode): string
 			s += flattentext(node.children) + "\n\n";
 		Nheading =>
 			s += flattentext(node.children) + "\n\n";
-		Ncodeblock =>
+		Ncodeblock or Nmermaid =>
 			if(node.text != nil)
 				s += node.text + "\n\n";
 			else

@@ -1004,6 +1004,9 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 		Ibox =>
 			# Size box using sublayout, like a table cell
 			checkboxsize(f, i, i, lwid-w);
+			# Out-of-flow: absolutely/fixed positioned elements don't consume flow space
+			if(i.cstyle != nil && (i.cstyle.position == POSabsolute || i.cstyle.position == POSfixed))
+				checkw = 0;
 		Irule =>
 			avail := lwid-w;
 			# When just doing layout for cell dimensions, don't
@@ -1137,6 +1140,40 @@ fixlinegeom(f: ref Frame, lay: ref Lay, l: ref Line)
 		linea += extra / 2;	# center content vertically in line
 		lineh = lay.line_height;
 	}
+	# CSS2.1 margin collapsing: adjacent block siblings
+	# If this line contains only a block-level Ibox, collapse its top margin
+	# with the previous block's bottom margin.
+	boxitem : ref Item.Ibox = nil;
+	onlybox := 0;
+	pick bi := l.items {
+	Ibox =>
+		if(bi.next == nil && bi.cstyle != nil
+		    && bi.cstyle.display != DSPINLINEBLOCK) {
+			boxitem = bi;
+			onlybox = 1;
+		}
+	}
+	if(onlybox && boxitem.cstyle != nil) {
+		topmgn := boxitem.cstyle.margin[0];
+		botmgn := boxitem.cstyle.margin[2];
+		if(topmgn == B->MARGIN_AUTO) topmgn = 0;
+		if(botmgn == B->MARGIN_AUTO) botmgn = 0;
+		if(topmgn < 0) topmgn = 0;
+		if(botmgn < 0) botmgn = 0;
+		# Collapse: use max of adjacent margins instead of sum
+		if(lay.last_margin_bottom > 0 && topmgn > 0) {
+			if(topmgn > lay.last_margin_bottom)
+				collapsed := topmgn;
+			else
+				collapsed = lay.last_margin_bottom;
+			saved := lay.last_margin_bottom + topmgn - collapsed;
+			if(saved > 0)
+				l.pos.y -= saved;
+		}
+		lay.last_margin_bottom = botmgn;
+	} else
+		lay.last_margin_bottom = 0;
+
 	l.height = lineh;
 	l.ascent = linea;
 	l.flags &= ~Lchanged;
@@ -1280,13 +1317,13 @@ measure(fr: ref Frame, items: ref Item)
 					mr := i.cstyle.margin[1];
 					mt := i.cstyle.margin[0];
 					mb := i.cstyle.margin[2];
-					if(ml > 0)
+					if(ml > 0 && ml != B->MARGIN_AUTO)
 						t.item.width += ml;
-					if(mr > 0)
+					if(mr > 0 && mr != B->MARGIN_AUTO)
 						t.item.width += mr;
-					if(mt > 0)
+					if(mt > 0 && mt != B->MARGIN_AUTO)
 						t.item.height += mt;
-					if(mb > 0)
+					if(mb > 0 && mb != B->MARGIN_AUTO)
 						t.item.height += mb;
 				}
 				it.height = t.item.height;
@@ -2361,6 +2398,19 @@ checkffsize(f: ref Frame, i: ref Item, ff: ref Formfield)
 	}
 }
 
+# Resolve a CSS position offset value (top/left/right/bottom) to pixels.
+# val is the offset value, ispct indicates percentage mode, ref_size is the
+# containing block dimension to resolve percentages against.
+# Returns 0 for STYLNONE (not set).
+resolvepos(val: int, ispct: byte, ref_size: int) : int
+{
+	if(val == STYLNONE)
+		return 0;
+	if(int ispct)
+		return ref_size * val / 100;
+	return val;
+}
+
 drawall(f: ref Frame)
 {
 	if(display == nil)
@@ -2377,22 +2427,25 @@ drawall(f: ref Frame)
 			f.cr.min.x, f.cr.min.y, f.cr.max.x, f.cr.max.y,
 			f.viewr.min.x, f.viewr.min.y, f.viewr.max.x, f.viewr.max.y,
 			origin.x, origin.y);
-	if(f.layout != nil)
-		drawlay(f, f.layout, origin);
+	if(f.layout != nil) {
+		# Initial containing block = viewport (frame content area)
+		icb := ref ContainingBlock(f.cr.min, f.cr.dx(), f.cr.dy());
+		drawlay(f, f.layout, origin, icb);
+	}
 	f.cim.clipr = oclipr;
 	G->flush(f.cr);
 	f.isdirty = 0;
 }
 
-drawlay(f: ref Frame, lay: ref Lay, origin: Point)
+drawlay(f: ref Frame, lay: ref Lay, origin: Point, cb: ref ContainingBlock)
 {
 	for(l := lay.start.next; l != lay.end; l = l.next)
-		drawline(f, origin, l, lay);
+		drawline(f, origin, l, lay, cb);
 }
 
 # Draw line l in frame f, assuming that content's (0,0)
 # aligns with layorigin in f.cim.
-drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
+drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay, cb: ref ContainingBlock)
 {
 	im := f.cim;
 	o := layorigin.add(l.pos);
@@ -2483,7 +2536,7 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			}
 		Itable =>
 			# don't check inview - table can contain images
-			drawtable(f, lay, Point(x,y), i.table);
+			drawtable(f, lay, Point(x,y), i.table, cb);
 		Ibox =>
 			# Draw box with CSS box model
 			# Apply positioning offsets
@@ -2492,48 +2545,58 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			if(i.cstyle != nil) {
 				case int i.cstyle.position {
 				int POSrelative =>
-					if(i.cstyle.rel_left != 0)
-						ox += i.cstyle.rel_left;
-					else if(i.cstyle.pos_right != STYLNONE)
-						ox -= i.cstyle.pos_right;
-					if(i.cstyle.rel_top != 0)
-						oy += i.cstyle.rel_top;
-					else if(i.cstyle.pos_bottom != STYLNONE)
-						oy -= i.cstyle.pos_bottom;
+					ox += resolvepos(i.cstyle.pos_left, i.cstyle.pos_left_ispct, cb.width);
+					if(i.cstyle.pos_left == STYLNONE && i.cstyle.pos_right != STYLNONE)
+						ox -= resolvepos(i.cstyle.pos_right, i.cstyle.pos_right_ispct, cb.width);
+					oy += resolvepos(i.cstyle.pos_top, i.cstyle.pos_top_ispct, cb.height);
+					if(i.cstyle.pos_top == STYLNONE && i.cstyle.pos_bottom != STYLNONE)
+						oy -= resolvepos(i.cstyle.pos_bottom, i.cstyle.pos_bottom_ispct, cb.height);
 				int POSabsolute =>
-					# Position relative to containing block (frame content area)
-					ox = f.cr.min.x;
-					oy = f.cr.min.y;
-					if(i.cstyle.rel_left != 0)
-						ox += i.cstyle.rel_left;
+					# Position relative to containing block
+					ox = cb.origin.x;
+					oy = cb.origin.y;
+					leftv := resolvepos(i.cstyle.pos_left, i.cstyle.pos_left_ispct, cb.width);
+					rightv := resolvepos(i.cstyle.pos_right, i.cstyle.pos_right_ispct, cb.width);
+					topv := resolvepos(i.cstyle.pos_top, i.cstyle.pos_top_ispct, cb.height);
+					bottomv := resolvepos(i.cstyle.pos_bottom, i.cstyle.pos_bottom_ispct, cb.height);
+					# Horizontal: left wins; if both set with margin:auto, center
+					if(i.cstyle.pos_left != STYLNONE && i.cstyle.pos_right != STYLNONE
+					    && i.cstyle.margin[1] == B->MARGIN_AUTO && i.cstyle.margin[3] == B->MARGIN_AUTO) {
+						# CSS2.1 centering: margin:auto + both left/right set
+						ox += leftv + (cb.width - leftv - rightv - i.width) / 2;
+					} else if(i.cstyle.pos_left != STYLNONE)
+						ox += leftv;
 					else if(i.cstyle.pos_right != STYLNONE)
-						ox = f.cr.max.x - i.width - i.cstyle.pos_right;
-					if(i.cstyle.rel_top != 0)
-						oy += i.cstyle.rel_top;
+						ox = cb.origin.x + cb.width - i.width - rightv;
+					# Vertical
+					if(i.cstyle.pos_top != STYLNONE)
+						oy += topv;
 					else if(i.cstyle.pos_bottom != STYLNONE)
-						oy = f.cr.max.y - i.height - i.cstyle.pos_bottom;
+						oy = cb.origin.y + cb.height - i.height - bottomv;
 				int POSfixed =>
 					# Position relative to viewport (frame rect)
 					ox = f.r.min.x;
 					oy = f.r.min.y;
-					if(i.cstyle.rel_left != 0)
-						ox += i.cstyle.rel_left;
+					if(i.cstyle.pos_left != STYLNONE)
+						ox += resolvepos(i.cstyle.pos_left, i.cstyle.pos_left_ispct, f.r.dx());
 					else if(i.cstyle.pos_right != STYLNONE)
-						ox = f.r.max.x - i.width - i.cstyle.pos_right;
-					if(i.cstyle.rel_top != 0)
-						oy += i.cstyle.rel_top;
+						ox = f.r.max.x - i.width - resolvepos(i.cstyle.pos_right, i.cstyle.pos_right_ispct, f.r.dx());
+					if(i.cstyle.pos_top != STYLNONE)
+						oy += resolvepos(i.cstyle.pos_top, i.cstyle.pos_top_ispct, f.r.dy());
 					else if(i.cstyle.pos_bottom != STYLNONE)
-						oy = f.r.max.y - i.height - i.cstyle.pos_bottom;
+						oy = f.r.max.y - i.height - resolvepos(i.cstyle.pos_bottom, i.cstyle.pos_bottom_ispct, f.r.dy());
 				int POSsticky =>
 					# Sticky: like relative, but clamp to viewport top when scrolled past
-					stickyoff := i.cstyle.rel_top;
+					stickyoff := resolvepos(i.cstyle.pos_top, i.cstyle.pos_top_ispct, cb.height);
 					viewtop := f.viewr.min.y;
 					if(oy < viewtop + stickyoff)
 						oy = viewtop + stickyoff;
 				}
 			}
-			if(inview)
-				drawbox(f, lay, Point(ox,oy), i);
+			# Out-of-flow boxes may be on zero-height lines; always draw them
+			if(inview || (i.cstyle != nil
+			    && (i.cstyle.position == POSabsolute || i.cstyle.position == POSfixed)))
+				drawbox(f, lay, Point(ox,oy), i, cb);
 		Ifloat =>
 			xx := layorigin.x + lay.margin;
 			if(i.side == Aright) {
@@ -2552,18 +2615,18 @@ drawline(f : ref Frame, layorigin : Point, l: ref Line, lay: ref Lay)
 			Iimage =>
 				drawimg(f, Point(xx, layorigin.y + i.y + (int fi.border + int fi.vspace)), fi);
 			Itable =>
-				drawtable(f, lay, Point(xx, layorigin.y + i.y), fi.table);
+				drawtable(f, lay, Point(xx, layorigin.y + i.y), fi.table, cb);
 			Ibox =>
 				# Offset by CSS margins (included in float dimensions)
 				bxx := xx;
 				byy := layorigin.y + i.y;
 				if(fi.cstyle != nil) {
-					if(fi.cstyle.margin[3] > 0)
+					if(fi.cstyle.margin[3] > 0 && fi.cstyle.margin[3] != B->MARGIN_AUTO)
 						bxx += fi.cstyle.margin[3];
-					if(fi.cstyle.margin[0] > 0)
+					if(fi.cstyle.margin[0] > 0 && fi.cstyle.margin[0] != B->MARGIN_AUTO)
 						byy += fi.cstyle.margin[0];
 				}
-				drawbox(f, lay, Point(bxx, byy), fi);
+				drawbox(f, lay, Point(bxx, byy), fi, cb);
 			}
 		}
 		x += it.width;
@@ -2624,7 +2687,7 @@ drawimg(f: ref Frame, iorigin: Point, i: ref Item.Iimage)
 	}
 }
 
-drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
+drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table, cb: ref ContainingBlock)
 {
 	if (dbgtab)
 		sys->print("drawtable %d\n", tab.tableid);
@@ -2697,14 +2760,14 @@ drawtable(f : ref Frame, parentlay: ref Lay, torigin: Point, tab: ref Table)
 		if(dbgtab)
 			sys->print("drawtable %d cell %d at (%d,%d)\n",
 				tab.tableid, c.cellid, cx, cy);
-		drawlay(f, clay, Point(cx,cy));
+		drawlay(f, clay, Point(cx,cy), cb);
 	}
 	if(tab.caption_lay >= 0) {
 		caplay := f.sublays[tab.caption_lay];
 		capx := x;
 		if(caplay.width < tab.totw)
 			capx += (tab.totw-caplay.width) / 2;
-		drawlay(f, caplay, Point(capx,capy));
+		drawlay(f, caplay, Point(capx,capy), cb);
 	}
 }
 
@@ -3272,6 +3335,13 @@ layfind(loc: ref Loc, f: ref Frame, lay: ref Lay, origin, p: Point, it: ref Item
 			if(it == nil && o.y + l.height >= p.y)
 				break;
 		}
+		# Zero-height lines may contain out-of-flow Ibox items (position:absolute/fixed)
+		# that are drawn elsewhere — always search these for hit-testing
+		else if(it == nil && l.height == 0) {
+			lloc := linefind(loc, f, l, o, p, it);
+			if(lloc != nil)
+				return lloc;
+		}
 	}
 	return nil;
 }
@@ -3283,7 +3353,81 @@ linefind(loc: ref Loc, f: ref Frame, l: ref Line, o, p: Point, it: ref Item) : r
 	loc.le[loc.n-1].line = l;
 	x := o.x;
 	y := o.y;
+
+	# First pass: check out-of-flow Ibox items (position:absolute/fixed)
+	# These are drawn at computed positions, not flow positions
+	if(it == nil) {
+		for(i := l.items; i != nil; i = i.next) {
+			pick pi := i {
+			Ibox =>
+				if(pi.cstyle == nil)
+					continue;
+				if(pi.cstyle.position != POSabsolute && pi.cstyle.position != POSfixed)
+					continue;
+				bx := 0; by := 0;
+				bw := 0; bh := 0;
+				case int pi.cstyle.position {
+				int POSabsolute =>
+					bx = f.cr.min.x;
+					by = f.cr.min.y;
+					bw = f.cr.dx();
+					bh = f.cr.dy();
+					if(pi.cstyle.pos_left != STYLNONE)
+						bx += resolvepos(pi.cstyle.pos_left, pi.cstyle.pos_left_ispct, bw);
+					if(pi.cstyle.pos_top != STYLNONE)
+						by += resolvepos(pi.cstyle.pos_top, pi.cstyle.pos_top_ispct, bh);
+				int POSfixed =>
+					bx = f.r.min.x;
+					by = f.r.min.y;
+					bw = f.r.dx();
+					bh = f.r.dy();
+					if(pi.cstyle.pos_left != STYLNONE)
+						bx += resolvepos(pi.cstyle.pos_left, pi.cstyle.pos_left_ispct, bw);
+					if(pi.cstyle.pos_top != STYLNONE)
+						by += resolvepos(pi.cstyle.pos_top, pi.cstyle.pos_top_ispct, bh);
+				}
+				# Apply margin:auto centering (mirrors drawbox)
+				if(pi.cstyle.margin[1] == B->MARGIN_AUTO && pi.cstyle.margin[3] == B->MARGIN_AUTO) {
+					if(bw > pi.width)
+						bx += (bw - pi.width) / 2;
+				}
+				if(bx <= p.x && p.x < bx+pi.width && by <= p.y && p.y < by+pi.height) {
+					if(pi.layid >= 0 && pi.layid < len f.sublays) {
+						slay := f.sublays[pi.layid];
+						if(slay != nil) {
+							cs := pi.cstyle;
+							bdt := 0; bdl := 0; padt := 0; padl := 0;
+							if(cs != nil) {
+								bdt = cs.border_width[0]; bdl = cs.border_width[3];
+								padt = cs.padding[0]; padl = cs.padding[3];
+							}
+							corigin := Point(bx + bdl + padl, by + bdt + padt);
+							lloc := layfind(loc, f, slay, corigin, p, it);
+							if(lloc != nil)
+								return lloc;
+						}
+					}
+					# Click is in the box but not in sublayout content
+					loc.add(LEitem, Point(bx,by));
+					loc.le[loc.n-1].item = i;
+					loc.pos = p.sub(Point(bx,by));
+					return loc;
+				}
+			}
+		}
+	}
+
+	# Second pass: normal in-flow items (original logic)
 	for(i := l.items; i != nil; i = i.next) {
+		# Skip out-of-flow items in normal pass
+		pick ski := i {
+		Ibox =>
+			if(ski.cstyle != nil
+			    && (ski.cstyle.position == POSabsolute || ski.cstyle.position == POSfixed)) {
+				# Don't advance x for out-of-flow items
+				continue;
+			}
+		}
 		if(it != nil || (x <= p.x && p.x < x+i.width)) {
 			yy := y;
 			h := 0;
@@ -3325,6 +3469,33 @@ linefind(loc: ref Loc, f: ref Frame, l: ref Line, o, p: Point, it: ref Item) : r
 				if(lloc != nil)
 					return lloc;
 				# else leave h==0 so p test will fail
+			Ibox =>
+				# In-flow Ibox (static or relative position)
+				bx := x;
+				by := y;
+				if(pi.cstyle != nil && pi.cstyle.position == POSrelative) {
+					bx += resolvepos(pi.cstyle.pos_left, pi.cstyle.pos_left_ispct, f.cr.dx());
+					by += resolvepos(pi.cstyle.pos_top, pi.cstyle.pos_top_ispct, f.cr.dy());
+				}
+				if(it != nil || (bx <= p.x && p.x < bx+pi.width && by <= p.y && p.y < by+pi.height)) {
+					if(pi.layid >= 0 && pi.layid < len f.sublays) {
+						slay := f.sublays[pi.layid];
+						if(slay != nil) {
+							cs := pi.cstyle;
+							bdt := 0; bdl := 0; padt := 0; padl := 0;
+							if(cs != nil) {
+								bdt = cs.border_width[0]; bdl = cs.border_width[3];
+								padt = cs.padding[0]; padl = cs.padding[3];
+							}
+							corigin := Point(bx + bdl + padl, by + bdt + padt);
+							lloc := layfind(loc, f, slay, corigin, p, it);
+							if(lloc != nil)
+								return lloc;
+						}
+					}
+					h = pi.height;
+					yy = by;
+				}
 
 			# floats were handled separately. nulls can be picked by 'it' test
 			# leave h==0, so p test will fail
@@ -3604,7 +3775,10 @@ Control.newcheckbox(f: ref Frame, isradio: int) : ref Control
 
 Control.newselect(f: ref Frame, nvis: int, options: array of B->Option) : ref Control
 {
-	nvis = min(5, len options);
+	if(nvis <= 0)
+		nvis = min(5, len options);
+	else
+		nvis = min(nvis, len options);
 	if (nvis < 1)
 		nvis = 1;
 	fnt := fonts[CtlFnt].f;
@@ -5077,6 +5251,7 @@ Lay.new(targwidth: int, just: byte, margin: int, bg: Background) : ref Lay
 {
 	ans := ref Lay(Line.new(), Line.new(),
 			targwidth, 0, 0, margin, nil, bg, just, byte 0,
+			0,	# last_margin_bottom
 			0, STYLNONE, STYLNONE, STYLNONE, byte 0,
 			WBnormal, TOclip);
 	if(ans.targetwidth < 0)
@@ -5376,7 +5551,10 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 		if(avail <= 0)
 			avail = 400;
 	} else {
-		avail = it.width;
+		# Block-level boxes: prefer available line width, fall back to item width
+		avail = availwidth;
+		if(avail <= 0)
+			avail = it.width;
 		if(avail <= 0)
 			avail = 600;	# reasonable default
 	}
@@ -5455,6 +5633,21 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 	it.height = slay.height + extrah;
 	it.ascent = it.height;
 
+	# Enforce CSS width spec: block boxes should be at least as wide as specified
+	if(cs != nil && cs.width.kind() == Dpixels) {
+		specw: int;
+		if(cs.box_sizing == BSZborder)
+			specw = cs.width.spec();
+		else
+			specw = cs.width.spec() + extraw;
+		if(it.width < specw)
+			it.width = specw;
+	} else if(cs != nil && cs.width.kind() == Dpercent && avail > 0) {
+		specw := avail * cs.width.spec() / 100;
+		if(it.width < specw)
+			it.width = specw;
+	}
+
 	# Apply height spec if present
 	if(cs != nil && cs.height.kind() == Dpixels) {
 		spech: int;
@@ -5480,10 +5673,14 @@ checkboxsize(f: ref Frame, it: ref Item, box: ref Item.Ibox, availwidth: int)
 		if(cs.max_height.kind() == Dpixels && it.height > cs.max_height.spec() + extrah)
 			it.height = cs.max_height.spec() + extrah;
 	}
+
+	# Step 6: Background image with explicit height — use spec height even if content is empty
+	if(cs != nil && cs.bgimage_url != nil && cs.height.kind() == Dpixels && it.height < cs.height.spec() + extrah)
+		it.height = cs.height.spec() + extrah;
 }
 
 # Draw an Ibox item: box-shadow, background, borders, then content via sublayout
-drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
+drawbox(f: ref Frame, lay: ref Lay, origin: Point, box: ref Item.Ibox, cb: ref ContainingBlock)
 {
 	im := f.cim;
 	cs := box.cstyle;
@@ -5499,6 +5696,26 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 		padb = cs.padding[2];
 		padl = cs.padding[3];
 	}
+
+	# margin: auto — center block horizontally within available width
+	if(cs != nil && cs.margin[1] == B->MARGIN_AUTO && cs.margin[3] == B->MARGIN_AUTO) {
+		avail := 0;
+		if(lay != nil)
+			avail = lay.targetwidth;
+		else
+			avail = f.cr.dx();
+		if(avail > box.width) {
+			offset := (avail - box.width) / 2;
+			origin.x += offset;
+		}
+	} else if(cs != nil) {
+		# Apply non-auto left margin as offset
+		if(cs.margin[3] > 0)
+			origin.x += cs.margin[3];
+	}
+	# Apply top margin
+	if(cs != nil && cs.margin[0] > 0 && cs.margin[0] != B->MARGIN_AUTO)
+		origin.y += cs.margin[0];
 
 	# Skip rendering if visibility is hidden
 	if(cs != nil && cs.visibility == VIShidden)
@@ -5554,6 +5771,10 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 		slay := f.sublays[box.layid];
 		if(slay != nil) {
 			contentorigin := Point(origin.x + bdl + padl, origin.y + bdt + padt);
+			# Positioned boxes establish a new containing block for descendants
+			childcb := cb;
+			if(cs != nil && cs.position != POSstatic)
+				childcb = ref ContainingBlock(origin, box.width, box.height);
 			# Clip content for overflow: hidden/scroll/auto
 			if(cs != nil && cs.overflow != OVvisible && cs.overflow != byte 0) {
 				oclipr := im.clipr;
@@ -5564,12 +5785,12 @@ drawbox(f: ref Frame, nil: ref Lay, origin: Point, box: ref Item.Ibox)
 				(cr, any) := contentr.clip(oclipr);
 				if(any) {
 					im.clipr = cr;
-					drawlay(f, slay, contentorigin);
+					drawlay(f, slay, contentorigin, childcb);
 					im.clipr = oclipr;
 				}
 			}
 			else
-				drawlay(f, slay, contentorigin);
+				drawlay(f, slay, contentorigin, childcb);
 		}
 	}
 

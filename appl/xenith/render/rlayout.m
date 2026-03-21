@@ -23,7 +23,8 @@ Rlayout: module {
 	Nhrule,         # Horizontal rule
 	Nblockquote,    # Block quote
 	Nnewline,       # Explicit line break
-	Ntable          # Table (rows in text, pipe-separated cells, aux=ncols)
+	Ntable,         # Table (rows in text, pipe-separated cells, aux=ncols)
+	Nmermaid        # Mermaid diagram (text= is raw mermaid syntax, rendered as image)
 		: con iota;
 
 	# Document node: tree of content

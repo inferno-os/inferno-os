@@ -5,6 +5,13 @@ PATH: con "/dis/charon/layout.dis";
 ReliefBd: con 2;
 ReliefSunk, ReliefRaised : con iota;
 
+# Containing block for CSS2.1 positioned element resolution
+ContainingBlock: adt {
+	origin: Draw->Point;	# top-left in frame coordinates
+	width: int;
+	height: int;
+};
+
 # Frames
 
 Frame: adt
@@ -215,6 +222,9 @@ Lay: adt
 	background: Build->Background;	# background for layout
 	just: byte;				# default line justification
 	flags: byte;			# Lchanged
+
+	# CSS margin collapsing state
+	last_margin_bottom: int;	# bottom margin of previous block sibling (for collapsing)
 
 	# CSS text properties (inherited from enclosing Ibox's ComputedStyle)
 	text_indent: int;		# first-line indent in pixels (0 = none)

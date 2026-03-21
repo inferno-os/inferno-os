@@ -113,6 +113,7 @@ Genattr: adt
 
 # Parsed CSS style properties from inline style="" or <style> blocks
 STYLNONE: con -1;		# "not set" sentinel for int style properties
+MARGIN_AUTO: con -16r7FFFFFFF;	# "auto" sentinel for margin values
 DSPNORMAL: con 0;		# display: normal (default)
 DSPNONE: con 1;		# display: none
 DSPBLOCK: con 2;		# display: block
@@ -259,10 +260,14 @@ ComputedStyle: adt
 	position: byte;			# POSstatic..POSsticky
 	float_: byte;			# FLnone, FLleft, FLright
 	clear: byte;			# CLnone..CLboth
-	rel_top: int;			# position offset top
-	rel_left: int;			# position offset left
+	pos_top: int;			# position offset top (STYLNONE if not set)
+	pos_left: int;			# position offset left (STYLNONE if not set)
 	pos_right: int;			# position offset right (STYLNONE if not set)
 	pos_bottom: int;		# position offset bottom (STYLNONE if not set)
+	pos_top_ispct: byte;		# 1 if pos_top is a percentage
+	pos_left_ispct: byte;		# 1 if pos_left is a percentage
+	pos_right_ispct: byte;		# 1 if pos_right is a percentage
+	pos_bottom_ispct: byte;		# 1 if pos_bottom is a percentage
 	zindex: int;			# z-index stacking order (STYLNONE if not set)
 
 	# Visual effects

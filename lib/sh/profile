@@ -17,9 +17,13 @@ bind -a '#I' /net >[2] /dev/null
 # Start connection server (DNS resolution)
 ndb/cs
 
-# Start factotum (credential manager)
+# Start secstore server (available for cross-machine key sync)
+auth/secstored &
+
+# Start factotum with encrypted local keyfile persistence
+# For cross-machine sync: auth/factotum -S tcp!host!5356 -u user -P pass
 if {! ftest -f /mnt/factotum/proto}{
-	auth/factotum
+	auth/factotum -f /usr/inferno/keyring/factotum.keys
 }
 
 # Provision API keys into factotum
@@ -29,10 +33,14 @@ echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 
 # Setup home directory and LLM mount based on platform
 if {~ $emuhost MacOSX Linux}{
-	# Start native LLM service (reads API key from factotum)
-	# BEGIN LLM
-	mount -A 'tcp!hephaestus!5640' /n/llm >[2] /dev/null
-	# END LLM
+	# LLM service: read config from /lib/ndb/llm
+	llmmode=`{sed -n 's/^mode=//p' /lib/ndb/llm >[2] /dev/null}
+	if {~ $llmmode remote} {
+		llmdial=`{sed -n 's/^dial=//p' /lib/ndb/llm}
+		mount -A $llmdial /n/llm >[2] /dev/null
+	}{
+		llmsrv >[2] /dev/null &
+	}
 
 	# Start speech file server (TTS/STT via /n/speech)
 	/dis/veltro/speech9p.dis -e cmd &
@@ -73,4 +81,5 @@ for f in /tmp/*.????xenith /tmp/*.????acme /tmp/*.????blks {
 }
 
 # Change to home directory
+cd $homege to home directory
 cd $home

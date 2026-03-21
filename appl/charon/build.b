@@ -698,8 +698,23 @@ TokLoop:
 				ps.curstate |= brkstate;	# not quite right
 				di.dests = ref DestAnchor(++is.nanchors, name, ps.lastit) :: di.dests;
 			}
+			# CSS-driven display: <a> with display:block etc. gets a box
+			cs := getcomputedstyle(is, tag, tok);
+			if(cs.display == DSPBLOCK || cs.display == DSPINLINEBLOCK
+			    || cs.display == DSPflex || cs.display == DSPgrid
+			    || cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+				openbox_di(ps, cs, di);
+			else
+				ps.boxstk = nil :: ps.boxstk;
 
 		LX->Ta+RBRA =>
+			if(ps.boxstk != nil) {
+				bctx := hd ps.boxstk;
+				if(bctx != nil)
+					closebox(ps);
+				else
+					ps.boxstk = tl ps.boxstk;
+			}
 			popelemctx(is);
 			endanchor(ps, di.text);
 
@@ -2442,18 +2457,36 @@ TokLoop:
 			else {
 				changes := applystyle(ps, si);
 				ps.stylestk = changes :: ps.stylestk;
+				# CSS-driven display: span with display:block etc. gets a box
+				cs := getcomputedstyle(is, tag, tok);
+				if(cs.display == DSPBLOCK || cs.display == DSPINLINEBLOCK
+				    || cs.display == DSPflex || cs.display == DSPgrid
+				    || cs.hasboxmodel() || cs.bgcolor != STYLNONE)
+					openbox_di(ps, cs, di);
+				else
+					ps.boxstk = nil :: ps.boxstk;
 			}
 
 		LX->Tspan+RBRA =>
-			popelemctx(is);
 			if(ps.stylestk != nil) {
 				changes := hd ps.stylestk;
 				ps.stylestk = tl ps.stylestk;
 				if(changes == -1)
 					ps.skipping--;
-				else
+				else {
+					if(ps.boxstk != nil) {
+						bctx := hd ps.boxstk;
+						if(bctx != nil)
+							closebox(ps);
+						else
+							ps.boxstk = tl ps.boxstk;
+					}
+					popelemctx(is);
 					unapplystyle(ps, di, changes);
+				}
 			}
+			else
+				popelemctx(is);
 
 		# HTML5 semantic block elements (behave like <div>)
 		LX->Tarticle or LX->Taside or LX->Tfooter or
@@ -3141,6 +3174,35 @@ closebox(ps: ref Pstate)
 		additem(ps, boxit, nil);
 		addbrk(ps, 0, 0);
 	}
+}
+
+# Check if an inline element's ComputedStyle requires a CSS box.
+# Returns (cs, opened) — if opened=1, caller must call maybeCloseBox on close tag.
+maybeOpenBox(ps: ref Pstate, is: ref ItemSource, tag: int, tok: ref LX->Token, di: ref Docinfo) : (ref ComputedStyle, int)
+{
+	cs := getcomputedstyle(is, tag, tok);
+	if(cs.display == DSPBLOCK || cs.display == DSPINLINEBLOCK
+	    || cs.display == DSPflex || cs.display == DSPgrid
+	    || cs.hasboxmodel() || cs.bgcolor != STYLNONE) {
+		openbox_di(ps, cs, di);
+		return (cs, 1);
+	}
+	ps.boxstk = nil :: ps.boxstk;
+	return (cs, 0);
+}
+
+# Close a box opened by maybeOpenBox (or pop nil if none was opened).
+maybeCloseBox(ps: ref Pstate, is: ref ItemSource, di: ref Docinfo, changes: int)
+{
+	if(ps.boxstk != nil) {
+		bctx := hd ps.boxstk;
+		if(bctx != nil)
+			closebox(ps);
+		else
+			ps.boxstk = tl ps.boxstk;
+	}
+	popelemctx(is);
+	unapplystyle(ps, di, changes);
 }
 
 getgenattr(tok: ref LX->Token) : ref Genattr
@@ -4422,12 +4484,21 @@ applycssprop(si: ref StyleInfo, prop, val: string)
 			si.fontsize = Tiny;
 		"small" or "smaller" =>
 			si.fontsize = Small;
-		"medium" =>
+		"medium" or "100%" or "inherit" =>
 			si.fontsize = Normal;
 		"large" or "larger" =>
 			si.fontsize = Large;
 		"x-large" or "xx-large" =>
 			si.fontsize = Verylarge;
+		* =>
+			# Numeric font-size: px, em, rem, pt, or %
+			si.fontsize = parsefontsize(val, Normal);
+		}
+	"font" =>
+		# font shorthand: handle "inherit" and "normal" to reset
+		if(val == "inherit" || val == "normal") {
+			si.fontsize = Normal;
+			si.fontstyle = FntR;
 		}
 	"text-decoration" =>
 		if(S->prefix("underline", val))
@@ -4604,13 +4675,13 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 	"margin" =>
 		parsebox4(cs.margin, val);
 	"margin-top" =>
-		cs.margin[0] = parsepx(val);
+		cs.margin[0] = parsepx_or_auto(val);
 	"margin-right" =>
-		cs.margin[1] = parsepx(val);
+		cs.margin[1] = parsepx_or_auto(val);
 	"margin-bottom" =>
-		cs.margin[2] = parsepx(val);
+		cs.margin[2] = parsepx_or_auto(val);
 	"margin-left" =>
-		cs.margin[3] = parsepx(val);
+		cs.margin[3] = parsepx_or_auto(val);
 	"padding" =>
 		parsebox4(cs.padding, val);
 	"padding-top" =>
@@ -4727,13 +4798,13 @@ applycssprop_cs(cs: ref ComputedStyle, prop, val: string)
 		"sticky" => cs.position = POSsticky;
 		}
 	"top" =>
-		cs.rel_top = parsepx(val);
+		(cs.pos_top, cs.pos_top_ispct) = parsepos(val);
 	"left" =>
-		cs.rel_left = parsepx(val);
+		(cs.pos_left, cs.pos_left_ispct) = parsepos(val);
 	"right" =>
-		cs.pos_right = parsepx(val);
+		(cs.pos_right, cs.pos_right_ispct) = parsepos(val);
 	"bottom" =>
-		cs.pos_bottom = parsepx(val);
+		(cs.pos_bottom, cs.pos_bottom_ispct) = parsepos(val);
 	"z-index" =>
 		if(val == "auto")
 			cs.zindex = STYLNONE;
@@ -5659,7 +5730,7 @@ parsedimen(val: string) : Dimen
 }
 
 # Parse a CSS shorthand box value (margin, padding, border-width)
-# Supports 1, 2, 3, or 4 values
+# Supports 1, 2, 3, or 4 values; recognizes "auto" for margin centering
 parsebox4(a: array of int, val: string)
 {
 	parts := splitwords(val);
@@ -5667,26 +5738,49 @@ parsebox4(a: array of int, val: string)
 	if(np == 0)
 		return;
 	if(np == 1) {
-		v := parsepx(parts[0]);
+		v := parsepx_or_auto(parts[0]);
 		a[0] = v; a[1] = v; a[2] = v; a[3] = v;
 	}
 	else if(np == 2) {
-		tb := parsepx(parts[0]);
-		lr := parsepx(parts[1]);
+		tb := parsepx_or_auto(parts[0]);
+		lr := parsepx_or_auto(parts[1]);
 		a[0] = tb; a[1] = lr; a[2] = tb; a[3] = lr;
 	}
 	else if(np == 3) {
-		a[0] = parsepx(parts[0]);
-		a[1] = parsepx(parts[1]);
-		a[2] = parsepx(parts[2]);
+		a[0] = parsepx_or_auto(parts[0]);
+		a[1] = parsepx_or_auto(parts[1]);
+		a[2] = parsepx_or_auto(parts[2]);
 		a[3] = a[1];
 	}
 	else {
-		a[0] = parsepx(parts[0]);
-		a[1] = parsepx(parts[1]);
-		a[2] = parsepx(parts[2]);
-		a[3] = parsepx(parts[3]);
+		a[0] = parsepx_or_auto(parts[0]);
+		a[1] = parsepx_or_auto(parts[1]);
+		a[2] = parsepx_or_auto(parts[2]);
+		a[3] = parsepx_or_auto(parts[3]);
 	}
+}
+
+# Parse pixel value or "auto" — returns MARGIN_AUTO for "auto"
+parsepx_or_auto(val: string) : int
+{
+	if(val == "auto")
+		return MARGIN_AUTO;
+	return parsepx(val);
+}
+
+# Parse CSS position offset value (top/left/right/bottom).
+# Returns (value, ispct) where ispct=1 for percentages, 0 for pixels.
+# "auto" or empty returns (STYLNONE, 0).
+parsepos(val: string) : (int, byte)
+{
+	if(val == nil || val == "" || val == "auto")
+		return (STYLNONE, byte 0);
+	# Check for percentage
+	for(i := 0; i < len val; i++)
+		if(val[i] == '%') {
+			return (parsepx(val[:i]), byte 1);
+		}
+	return (parsepx(val), byte 0);
 }
 
 # Parse border-style shorthand into 4-element array
@@ -6139,8 +6233,12 @@ cssvalue_tostring(values: list of ref CSS->Value) : string
 		}
 		first = 0;
 		pick vv := v {
-		String or Number or Percentage or Url or Unicoderange =>
+		String or Number or Unicoderange =>
 			s += vv.value;
+		Percentage =>
+			s += vv.value + "%";
+		Url =>
+			s += "url(" + vv.value + ")";
 		Hexcolour =>
 			(r, g, b) := vv.rgb;
 			s += sys->sprint("#%02x%02x%02x", r, g, b);
@@ -6354,8 +6452,10 @@ ComputedStyle.new() : ref ComputedStyle
 		POSstatic,		# position
 		FLnone,			# float_
 		CLnone,			# clear
-		0, 0,			# rel_top, rel_left
+		STYLNONE, STYLNONE,	# pos_top, pos_left
 		STYLNONE, STYLNONE,	# pos_right, pos_bottom
+		byte 0, byte 0,	# pos_top_ispct, pos_left_ispct
+		byte 0, byte 0,	# pos_right_ispct, pos_bottom_ispct
 		STYLNONE,		# zindex
 		STYLNONE,		# opacity
 		array[4] of { * => 0 },	# border_radius
@@ -6440,6 +6540,12 @@ ComputedStyle.fromstyleinfo(si: StyleInfo) : ref ComputedStyle
 ComputedStyle.hasboxmodel(cs: self ref ComputedStyle) : int
 {
 	if(cs.float_ != FLnone)
+		return 1;
+	if(cs.width.kind() != Dnone || cs.height.kind() != Dnone)
+		return 1;
+	if(cs.max_width.kind() != Dnone)
+		return 1;
+	if(cs.position != POSstatic)
 		return 1;
 	for(i := 0; i < 4; i++) {
 		if(cs.margin[i] != STYLNONE && cs.margin[i] != 0)
@@ -6742,6 +6848,7 @@ matchclassid(ss: ref StyleStore, si: ref StyleInfo, id, class: string)
 {
 	if(id == nil && class == nil)
 		return;
+	dbglogo := 0;
 	for(sheets := ss.sheets; sheets != nil; sheets = tl sheets) {
 		sheet := hd sheets;
 		for(rules := sheet.rules; rules != nil; rules = tl rules) {
@@ -6821,6 +6928,11 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 	# carries basic properties (color, font, display).  Box-model properties
 	# (width, float, margin, padding, border, etc.) live exclusively on
 	# ComputedStyle and must be applied here for single-part selectors too.
+	#
+	# Two-pass application respects CSS specificity:
+	# Pass 1: element and universal selectors (specificity 0-1)
+	# Pass 2: class, ID, and pseudo selectors (specificity 10+)
+	# This ensures class rules override element rules regardless of source order.
 	if(is.styles != nil) {
 		id := "";
 		class := "";
@@ -6834,6 +6946,7 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 		tagname := "";
 		if(tag >= 0 && tag < LX->Numtags)
 			tagname = LX->tagnames[tag];
+		# Pass 1: element and universal selectors (low specificity)
 		for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
 			sheet := hd sheets;
 			for(rules := sheet.rules; rules != nil; rules = tl rules) {
@@ -6842,15 +6955,8 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 					continue;
 				sp := hd rule.selectors;
 				if(tl rule.selectors == nil) {
-					# Single-part selector: match against current element
 					matched := 0;
 					case sp.stype {
-					SPclass =>
-						if(class != nil && hasword(class, sp.name))
-							matched = 1;
-					SPid =>
-						if(id != nil && id == sp.name)
-							matched = 1;
 					SPelement =>
 						if(tagname == sp.name)
 							matched = 1;
@@ -6862,23 +6968,49 @@ getcomputedstyle(is: ref ItemSource, tag: int, tok: ref LX->Token) : ref Compute
 				}
 			}
 		}
-	}
+		# Pass 2: complex selectors (with combinators) — specificity varies
+		# but typically lower than direct class/ID selectors, so apply before them
+		if(is.elemstk != nil) {
+			el := hd is.elemstk;
+			for(sheets2 := is.styles.sheets; sheets2 != nil; sheets2 = tl sheets2) {
+				sheet2 := hd sheets2;
+				for(rules2 := sheet2.rules; rules2 != nil; rules2 = tl rules2) {
+					rule := hd rules2;
+					if(rule.selectors != nil && tl rule.selectors != nil) {
+						if(selectormatch(rule.selectors, el))
+							applycssprop_cs(cs, rule.property, rule.value);
+					}
+				}
+			}
+		}
 
-	# Apply complex selectors (with combinators) from StyleStore via ElementCtx
-	if(is.elemstk != nil && is.styles != nil) {
-		el := hd is.elemstk;
-		for(sheets := is.styles.sheets; sheets != nil; sheets = tl sheets) {
-			sheet := hd sheets;
-			for(rules := sheet.rules; rules != nil; rules = tl rules) {
-				rule := hd rules;
-				# Only match rules with combinators (multi-part selectors)
-				if(rule.selectors != nil && tl rule.selectors != nil) {
-					if(selectormatch(rule.selectors, el))
+		# Pass 3: simple class, ID selectors (high specificity — wins over combinators)
+		for(sheets3 := is.styles.sheets; sheets3 != nil; sheets3 = tl sheets3) {
+			sheet3 := hd sheets3;
+			for(rules3 := sheet3.rules; rules3 != nil; rules3 = tl rules3) {
+				rule := hd rules3;
+				if(rule.selectors == nil)
+					continue;
+				sp := hd rule.selectors;
+				if(tl rule.selectors == nil) {
+					matched := 0;
+					case sp.stype {
+					SPclass =>
+						if(class != nil && hasword(class, sp.name))
+							matched = 1;
+					SPid =>
+						if(id != nil && id == sp.name)
+							matched = 1;
+					}
+					if(matched)
 						applycssprop_cs(cs, rule.property, rule.value);
 				}
 			}
 		}
 	}
+
+	# CSS debug: uncomment to trace matched properties for specific elements
+	# if(cssdbg) { sys->print("CSS[%s] display=%d\n", cssdbgclass, cs.display); }
 
 	# Apply extended CSS properties from inline style
 	if(tok != nil) {

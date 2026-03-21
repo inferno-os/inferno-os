@@ -79,7 +79,7 @@ doc(): string
 		"  code      Monospace code listing (dark background)\n" +
 		"  pdf       PDF document; data= is the file path. < > buttons navigate pages\n" +
 		"  image     PNG/JPEG/GIF image; data= is the file path\n" +
-		"  mermaid   Mermaid diagram; data= is the Mermaid syntax (native renderer)\n" +
+		"  mermaid   Mermaid diagram; write RAW syntax (no markdown fences), one diagram per artifact\n" +
 		"            Types: flowchart, sequenceDiagram, classDiagram, stateDiagram-v2,\n" +
 		"                   erDiagram, mindmap, timeline, gitGraph, quadrantChart,\n" +
 		"                   journey, requirementDiagram, block-beta, pie, gantt,\n" +

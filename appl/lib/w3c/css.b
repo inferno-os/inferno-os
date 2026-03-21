@@ -641,7 +641,7 @@ declaration(p: ref Cparse): (ref Decl, string)
 	if(len prop < 2 || prop[0] != '-' || prop[1] != '-')
 		prop = lowercase(prop);
 	c = p.get();
-	if(c != ':'){
+	if(c != ':' && c != PSEUDO){
 		p.unget(c);
 		return (nil, "missing :");
 	}
@@ -1075,7 +1075,7 @@ islatin1(c: int): int
 
 isnamec(c: int, notfirst: int): int
 {
-	return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c == '\\' ||
+	return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c == '\\' || c == '_' ||
 		notfirst && (c >= '0' && c <= '9' || c == '-') ||
 		c >= 16rA1 && c <= 16rFF;	# printable latin-1
 }

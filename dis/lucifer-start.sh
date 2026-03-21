@@ -16,11 +16,10 @@ mount -ac {mntgen} /n >[2] /dev/null
 bind -a '#I' /net >[2] /dev/null
 ndb/cs
 
-# LLM service: read config from /lib/lucifer/llm if it exists.
-# Settings app writes mode=local or mode=remote with dial address.
-llmmode=`{sed -n 's/^mode=//p' /lib/lucifer/llm >[2] /dev/null}
+# LLM service: read config from /lib/ndb/llm
+llmmode=`{sed -n 's/^mode=//p' /lib/ndb/llm >[2] /dev/null}
 if {~ $llmmode remote} {
-	llmdial=`{sed -n 's/^dial=//p' /lib/lucifer/llm}
+	llmdial=`{sed -n 's/^dial=//p' /lib/ndb/llm}
 	mount -A $llmdial /n/llm >[2] /dev/null
 }{
 	llmsrv &
