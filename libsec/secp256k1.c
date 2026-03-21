@@ -744,7 +744,7 @@ secp256k1_keygen(uchar priv[32], uchar pub[65])
 			return -1;
 	}
 
-	memset(kbuf, 0, sizeof(kbuf));
+	secureZero(kbuf, sizeof(kbuf));
 	return 0;
 }
 
@@ -853,15 +853,15 @@ secp256k1_sign(uchar sig[65], uchar priv[32], uchar *hash, int hashlen)
 
 	mpfree(r); mpfree(s); mpfree(kinv); mpfree(t);
 	mpfree(n); mpfree(d); mpfree(e); mpfree(k); mpfree(halfn);
-	memset(kbuf, 0, sizeof(kbuf));
-	memset(hbuf, 0, sizeof(hbuf));
+	secureZero(kbuf, sizeof(kbuf));
+	secureZero(hbuf, sizeof(hbuf));
 	return 0;
 
 fail:
 	mpfree(r); mpfree(s); mpfree(kinv); mpfree(t);
 	mpfree(n); mpfree(d); mpfree(e); mpfree(k); mpfree(halfn);
-	memset(kbuf, 0, sizeof(kbuf));
-	memset(hbuf, 0, sizeof(hbuf));
+	secureZero(kbuf, sizeof(kbuf));
+	secureZero(hbuf, sizeof(hbuf));
 	return -1;
 }
 
