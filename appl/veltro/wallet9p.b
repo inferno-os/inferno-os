@@ -555,6 +555,7 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			as := ref AcctState(acct, nil, nil);
 			accounts = as :: accounts;
 			setnewstate(m.fid, name);
+			syncfactotum();
 			vers++;
 		} else if(ntoks >= 3) {
 			# eth base myaccount
@@ -573,6 +574,7 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			as := ref AcctState(acct, nil, nil);
 			accounts = as :: accounts;
 			setnewstate(m.fid, name);
+			syncfactotum();
 			vers++;
 		} else {
 			srv.reply(ref Rmsg.Error(m.tag, "usage: type chain name"));
@@ -698,6 +700,23 @@ zeroarray(a: array of byte)
 		return;
 	for(i := 0; i < len a; i++)
 		a[i] = byte 0;
+}
+
+# --- Force factotum to save keys to secstore immediately ---
+
+syncfactotum()
+{
+	fd := sys->open("/mnt/factotum/ctl", Sys->OWRITE);
+	if(fd == nil) {
+		sys->fprint(stderr, "wallet9p: sync: cannot open factotum ctl: %r\n");
+		return;
+	}
+	b := array of byte "sync";
+	n := sys->write(fd, b, len b);
+	if(n < 0)
+		sys->fprint(stderr, "wallet9p: sync failed: %r\n");
+	else
+		sys->fprint(stderr, "wallet9p: sync OK\n");
 }
 
 # --- Account restoration from factotum ---

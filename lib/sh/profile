@@ -17,13 +17,14 @@ bind -a '#I' /net >[2] /dev/null
 # Start connection server (DNS resolution)
 ndb/cs
 
-# Start secstore server (available for cross-machine key sync)
-auth/secstored &
+# Start secstore (persistent encrypted key storage)
+# Skip if already running (e.g. from a previous emu session on same port)
+auth/secstored >[2] /dev/null &
+sleep 1
 
-# Start factotum with encrypted local keyfile persistence
-# For cross-machine sync: auth/factotum -S tcp!host!5356 -u user -P pass
+# Start factotum (empty — keys loaded from secstore via login screen or console)
 if {! ftest -f /mnt/factotum/proto}{
-	auth/factotum -f /usr/inferno/keyring/factotum.keys
+	auth/factotum
 }
 
 # Provision API keys into factotum

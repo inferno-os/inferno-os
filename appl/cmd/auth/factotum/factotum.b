@@ -15,6 +15,7 @@ include "string.m";
 
 include "keyring.m";
 	kr: Keyring;
+	IPint: import kr;
 
 include "dial.m";
 
@@ -273,6 +274,49 @@ factotumsrv()
 				<-rc;
 			}
 			wc <-= (len data, nil);
+		"secstore" =>
+			# ctl line: "secstore addr user password"
+			# verb "secstore" already stripped; s = "addr user password"
+			(nil, stoks) := sys->tokenize(s, " \t");
+			if(len stoks < 3){
+				wc <-= (0, "usage: secstore addr user password");
+				break;
+			}
+			saddr := hd stoks; stoks = tl stoks;
+			suser := hd stoks; stoks = tl stoks;
+			spass := hd stoks;
+			secstoreaddr = saddr;
+			secstoreuser = suser;
+			if(secstore == nil){
+				secstore = load Secstore Secstore->PATH;
+				if(secstore == nil)
+					sys->fprint(sys->fildes(2), "factotum: cannot load secstore: %r\n");
+				else
+					secstore->init();
+			}
+			if(kr == nil)
+				kr = load Keyring Keyring->PATH;
+			if(random == nil)
+				random = load Random Random->PATH;
+			if(secstore == nil){
+				wc <-= (0, "cannot load secstore module");
+				break;
+			}
+			if(secstore != nil){
+				secstorepwhash = secstore->mkseckey(spass);
+				secstorefilekey = secstore->mkfilekey2(spass);
+				secstorelkey = secstore->mkfilekey(spass);
+			}
+			spass = nil;
+			# Start persist thread if not already running
+			if(dirtyc == nil){
+				dirtyc = chan of int;
+				syncc = chan of chan of int;
+				spawn persist();
+			}
+			wc <-= (len data, nil);
+			sys->fprint(sys->fildes(2), "factotum: secstore configured: %s user=%s\n",
+				saddr, suser);
 		"debug" =>
 			wc <-= (len data, nil);
 		* =>
@@ -1515,9 +1559,24 @@ secstoreload(): string
 	# Connect and authenticate
 	(conn, sname, diag) := secstore->connect(secstoreaddr, secstoreuser, secstorepwhash);
 	if(conn == nil){
+		# Connect failed — auto-create account if it doesn't exist
+		reason := "";
 		if(diag != nil)
-			return "secstore connect: " + diag;
-		return sys->sprint("secstore connect: %r");
+			reason = diag;
+		else
+			reason = sys->sprint("%r");
+		sys->fprint(sys->fildes(2), "factotum: secstore connect failed: %s\n", reason);
+		sys->fprint(sys->fildes(2), "factotum: creating secstore account...\n");
+		e := secstoresetup();
+		if(e != nil)
+			return "secstore setup: " + e;
+		# Retry connect after setup
+		(conn, sname, diag) = secstore->connect(secstoreaddr, secstoreuser, secstorepwhash);
+		if(conn == nil){
+			if(diag != nil)
+				return "secstore connect after setup: " + diag;
+			return sys->sprint("secstore connect after setup: %r");
+		}
 	}
 
 	if(debug)
@@ -1570,6 +1629,72 @@ secstoreload(): string
 
 	if(debug)
 		sys->fprint(sys->fildes(2), "factotum: secstore: loaded %d keys\n", nloaded);
+	return nil;
+}
+
+#
+# Auto-create secstore account if none exists.
+# Computes the PAK verifier and writes it to the store directory.
+# Uses the password already collected in secstorepwhash.
+#
+secstoresetup(): string
+{
+	if(secstorepwhash == nil)
+		return "no password";
+
+	storedir := "/usr/inferno/secstore";
+	userdir := storedir + "/" + secstoreuser;
+
+	# Create directories
+	sys->create(storedir, Sys->OREAD, Sys->DMDIR | 8r700);
+	fd := sys->create(userdir, Sys->OREAD, Sys->DMDIR | 8r700);
+	if(fd == nil)
+		return sys->sprint("can't create %s: %r", userdir);
+	fd = nil;
+
+	# Compute PAK verifier: Hi = H^-1 mod p
+	p := kr->IPint.strtoip("C41CFBE4D4846F67A3DF7DE9921A49D3B42DC33728427AB159CEC8CBB"+
+		"DB12B5F0C244F1A734AEB9840804EA3C25036AD1B61AFF3ABBC247CD4B384224567A86"+
+		"3A6F020E7EE9795554BCD08ABAD7321AF27E1E92E3DB1C6E7E94FAAE590AE9C48F96D9"+
+		"3D178E809401ABE8A534A1EC44359733475A36A70C7B425125062B1142D", 16);
+	r := kr->IPint.strtoip("DF310F4E54A5FEC5D86D3E14863921E834113E060F90052AD332B3241"+
+		"CEF2497EFA0303D6344F7C819691A0F9C4A773815AF8EAECFB7EC1D98F039F17A32A7E"+
+		"887D97251A927D093F44A55577F4D70444AEBD06B9B45695EC23962B175F266895C67D"+
+		"21C4656848614D888A4", 16);
+
+	# H = longhash("secstore", user, pwhash)
+	aver := array of byte "secstore";
+	aC := array of byte secstoreuser;
+	Cp := array[len aver + len aC + len secstorepwhash] of byte;
+	Cp[0:] = aver;
+	Cp[len aver:] = aC;
+	Cp[len aver + len aC:] = secstorepwhash;
+
+	buf := array[7 * Keyring->SHA1dlen] of byte;
+	for(i := 0; i < 7; i++){
+		hmackey := array[] of { byte ('A' + i) };
+		kr->hmac_sha1(Cp, len Cp, hmackey, buf[i * Keyring->SHA1dlen:], nil);
+	}
+	# zero Cp
+	for(i = 0; i < len Cp; i++)
+		Cp[i] = byte 0;
+
+	H := kr->IPint.bebytestoip(buf);
+	Hmod := H.div(p).t1;	# H mod p
+	Hexp := Hmod.expmod(r, p);
+	Hi := Hexp.invert(p);
+	hexHi := Hi.iptostr(64);
+
+	# Write PAK verifier
+	pakpath := userdir + "/PAK";
+	fd = sys->create(pakpath, Sys->OWRITE, 8r600);
+	if(fd == nil)
+		return sys->sprint("can't create %s: %r", pakpath);
+	b := array of byte hexHi;
+	sys->write(fd, b, len b);
+	fd = nil;
+
+	sys->fprint(sys->fildes(2), "factotum: secstore account created for %s\n", secstoreuser);
 	return nil;
 }
 

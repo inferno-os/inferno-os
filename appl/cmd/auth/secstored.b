@@ -126,13 +126,16 @@ init(nil: ref Draw->Context, args: list of string)
 
 serve(lconn: ref Dial->Connection)
 {
-	sys->pctl(Sys->NEWPGRP|Sys->FORKFD, nil);
+	sys->pctl(Sys->NEWPGRP, nil);
 
 	dfd := dialler->accept(lconn);
 	if(dfd == nil){
 		log("accept failed");
 		return;
 	}
+
+	if(debug)
+		log("new connection");
 
 	# Wrap with SSL
 	(err, sslconn) := ssl->connect(dfd);
@@ -142,16 +145,7 @@ serve(lconn: ref Dial->Connection)
 	}
 
 	if(debug)
-		log("new connection (ssl ok)");
-
-	# Try reading raw fd first to diagnose cross-host issue
-	if(debug){
-		tbuf := array[16] of byte;
-		tn := sys->read(dfd, tbuf, len tbuf);
-		log(sys->sprint("raw fd read test: n=%d", tn));
-		if(tn > 0)
-			log(sys->sprint("raw data: %q", string tbuf[:tn]));
-	}
+		log("ssl ok");
 
 	# PAK authentication
 	(user, hexHi) := pakserver(sslconn);
@@ -180,7 +174,7 @@ pakserver(conn: ref Dial->Connection): (string, string)
 	n := sys->read(fd, buf, len buf);
 	if(n <= 0){
 		if(debug)
-			log(sys->sprint("PAK initial read failed: n=%d", n));
+			log(sys->sprint("PAK initial read failed: n=%d: %r", n));
 		return (nil, nil);
 	}
 	hello := string buf[0:n];

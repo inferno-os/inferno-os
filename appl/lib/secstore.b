@@ -50,12 +50,26 @@ privacy(): int
 
 connect(addr: string, user: string, pwhash: array of byte): (ref Dial->Connection, string, string)
 {
+	# Pre-compute PAK crypto before dialing to avoid TCP idle timeout.
+	sys->fprint(sys->fildes(2), "secstore: step 1: PAK_Hi...\n");
+	(hexHi, H, nil) := PAK_Hi(user, pwhash);
+	sys->fprint(sys->fildes(2), "secstore: step 2: random...\n");
+	x := mod(IPint.random(240, 240), pak.q);
+	if(x.eq(IPint.inttoip(0)))
+		x = IPint.inttoip(1);
+	sys->fprint(sys->fildes(2), "secstore: step 3: g^x mod p...\n");
+	gx := pak.g.expmod(x, pak.p);
+	sys->fprint(sys->fildes(2), "secstore: step 4: m = gx*H mod p...\n");
+	m := mod(gx.mul(H), pak.p);
+	hexm := m.iptostr(64);
+	sys->fprint(sys->fildes(2), "secstore: PAK pre-computed, dialing...\n");
+
 	conn := dial(addr);
 	if(conn == nil){
 		sys->werrstr(sys->sprint("can't dial %s: %r", addr));
 		return (nil, nil, sys->sprint("%r"));
 	}
-	(sname, diag) := auth(conn, user, pwhash);
+	(sname, diag) := authprecomp(conn, user, hexHi, x, hexm);
 	if(sname == nil){
 		sys->werrstr(sys->sprint("can't authenticate: %s", diag));
 		return (nil, nil, sys->sprint("%r"));
@@ -68,12 +82,34 @@ dial(netaddr: string): ref Dial->Connection
 	if(netaddr == nil)
 		netaddr = "net!$auth!secstore";
 	conn := dialler->dial(netaddr, nil);
-	if(conn == nil)
+	if(conn == nil){
+		sys->fprint(sys->fildes(2), "secstore: dial %s failed: %r\n", netaddr);
 		return nil;
+	}
+	sys->fprint(sys->fildes(2), "secstore: dialed %s, fd=%d\n", netaddr, conn.dfd.fd);
 	(err, sslconn) := ssl->connect(conn.dfd);
-	if(err != nil)
+	if(err != nil){
+		sys->fprint(sys->fildes(2), "secstore: ssl connect failed: %s\n", err);
 		sys->werrstr(err);
+	} else
+		sys->fprint(sys->fildes(2), "secstore: ssl ok, dir=%s\n", sslconn.dir);
 	return sslconn;
+}
+
+authprecomp(conn: ref Dial->Connection, user: string, hexHi: string, x: ref IPint, hexm: string): (string, string)
+{
+	sname := PAKclientprecomp(conn, user, hexHi, x, hexm);
+	if(sname == nil)
+		return (nil, sys->sprint("%r"));
+	s := readstr(conn.dfd);
+	if(s == "STA")
+		return (sname, "need pin");
+	if(s != "OK"){
+		if(s != nil)
+			sys->werrstr(s);
+		return (nil, sys->sprint("%r"));
+	}
+	return (sname, nil);
 }
 
 auth(conn: ref Dial->Connection, user: string, pwhash: array of byte): (string, string)
@@ -465,6 +501,72 @@ erasekey(a: array of byte)
 }
 
 #
+# PAKclient with pre-computed values — sends hello immediately after connect
+# without blocking on expensive crypto while holding an open connection.
+#
+PAKclientprecomp(conn: ref Dial->Connection, C: string, hexHi: string, x: ref IPint, hexm: string): string
+{
+	dfd := conn.dfd;
+
+	# Send hello immediately — crypto was pre-computed
+	sys->fprint(sys->fildes(2), "secstore: PAKclient sending pre-computed hello\n");
+	if(sys->fprint(dfd, "%s\tPAK\nC=%s\nm=%s\n", VERSION, C, hexm) < 0){
+		sys->fprint(sys->fildes(2), "secstore: PAKclient hello write failed: %r\n");
+		return nil;
+	}
+	sys->fprint(sys->fildes(2), "secstore: PAKclient hello sent, waiting for response\n");
+
+	# recv g**y, S, check hash1(g**xy)
+	s := readstr(dfd);
+	if(s == nil){
+		e := sys->sprint("%r");
+		writerr(dfd, "couldn't read g**y");
+		sys->werrstr(e);
+		return nil;
+	}
+	(nf, flds) := sys->tokenize(s, "\n");
+	if(nf != 3){
+		writerr(dfd, "verifier syntax  error");
+		return nil;
+	}
+	hexmu := ex("mu=", hd flds); flds = tl flds;
+	ks := ex("k=", hd flds); flds = tl flds;
+	S := ex("S=", hd flds);
+	if(hexmu == nil || ks == nil || S == nil){
+		writerr(dfd, "verifier syntax error");
+		return nil;
+	}
+	mu := IPint.strtoip(hexmu, 64);
+	sigma := mu.expmod(x, pak.p);
+	hexsigma := sigma.iptostr(64);
+	digest := shorthash("server", C, S, hexm, hexmu, hexsigma, hexHi);
+	kc := base64->enc(digest);
+	if(ks != kc){
+		writerr(dfd, "verifier didn't match");
+		return nil;
+	}
+
+	# send hash2(g**xy)
+	digest = shorthash("client", C, S, hexm, hexmu, hexsigma, hexHi);
+	kc = base64->enc(digest);
+	if(sys->fprint(dfd, "k'=%s\n", kc) < 0)
+		return nil;
+
+	# set session key
+	digest = shorthash("session", C, S, hexm, hexmu, hexsigma, hexHi);
+	for(i := 0; i < len hexsigma; i++)
+		hexsigma[i] = 0;
+
+	err := setsecret(conn, digest, 0);
+	if(err != nil)
+		return nil;
+	erasekey(digest);
+	if(sys->fprint(conn.cfd, "alg sha256 aes_128_cbc") < 0)
+		return nil;
+	return S;
+}
+
+#
 # the following must only be used to talk to a Plan 9 secstore
 #
 
@@ -577,7 +679,9 @@ PAKclient(conn: ref Dial->Connection, C: string, pwhash: array of byte): string
 {
 	dfd := conn.dfd;
 
+	sys->fprint(sys->fildes(2), "secstore: PAK_Hi starting...\n");
 	(hexHi, H, nil) := PAK_Hi(C, pwhash);
+	sys->fprint(sys->fildes(2), "secstore: PAK_Hi done, computing m...\n");
 
 	# random 1<=x<=q-1; send C, m=g**x H
 	x := mod(IPint.random(240, 240), pak.q);
@@ -586,8 +690,12 @@ PAKclient(conn: ref Dial->Connection, C: string, pwhash: array of byte): string
 	m := mod(pak.g.expmod(x, pak.p).mul(H), pak.p);
 	hexm := m.iptostr(64);
 
-	if(sys->fprint(dfd, "%s\tPAK\nC=%s\nm=%s\n", VERSION, C, hexm) < 0)
+	sys->fprint(sys->fildes(2), "secstore: PAKclient crypto done, writing hello to fd=%d\n", dfd.fd);
+	if(sys->fprint(dfd, "%s\tPAK\nC=%s\nm=%s\n", VERSION, C, hexm) < 0){
+		sys->fprint(sys->fildes(2), "secstore: PAKclient hello write failed: %r\n");
 		return nil;
+	}
+	sys->fprint(sys->fildes(2), "secstore: PAKclient hello sent, waiting for response\n");
 
 	# recv g**y, S, check hash1(g**xy)
 	s := readstr(dfd);
