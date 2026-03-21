@@ -600,6 +600,139 @@ Radio.contains(rb: self ref Radio, p: Point): int
 	return rb.r.contains(p);
 }
 
+# ── Dropdown ──────────────────────────────────────────────────
+
+Dropdown.mk(r: Rect, items: array of string, sel: int): ref Dropdown
+{
+	return ref Dropdown(r, items, sel, nil);
+}
+
+Dropdown.draw(dd: self ref Dropdown, dst: ref Image)
+{
+	if(wfont == nil || dst == nil)
+		return;
+
+	# Background
+	dst.draw(dd.r, fieldbg, nil, Point(0,0));
+	dst.border(dd.r, 1, fieldborder, Point(0,0));
+
+	# Selected item text
+	text := "";
+	if(dd.label != nil && dd.label != "")
+		text = dd.label + " ";
+	if(dd.items != nil && dd.selected >= 0 && dd.selected < len dd.items)
+		text += dd.items[dd.selected];
+
+	tx := dd.r.min.x + MARGIN;
+	ty := dd.r.min.y + (dd.r.dy() - wfont.height) / 2;
+	dst.text(Point(tx, ty), fieldtext, Point(0,0), wfont, text);
+
+	# Down arrow indicator (right side)
+	ax := dd.r.max.x - MARGIN - wfont.width("\u25BC");
+	dst.text(Point(ax, ty), fieldtext, Point(0,0), wfont, "\u25BC");
+}
+
+Dropdown.resize(dd: self ref Dropdown, r: Rect)
+{
+	dd.r = r;
+}
+
+Dropdown.click(dd: self ref Dropdown, dst: ref Image,
+	ptrchan: chan of ref Pointer): int
+{
+	if(wfont == nil || dd.items == nil || len dd.items == 0)
+		return dd.selected;
+
+	# Calculate popup dimensions
+	rowh := wfont.height + MARGIN;
+	popw := dd.r.dx();
+	poph := rowh * len dd.items;
+
+	# Position popup below the dropdown (or above if not enough space)
+	px := dd.r.min.x;
+	py := dd.r.max.y + 1;
+
+	# Draw popup over the destination image
+	popr := Rect((px, py), (px + popw, py + poph));
+
+	# Save the area under the popup
+	saved := dst.display.newimage(popr, dst.chans, 0, Draw->Nofill);
+	if(saved != nil)
+		saved.draw(saved.r, dst, nil, popr.min);
+
+	# Draw popup background and items
+	dst.draw(popr, fieldbg, nil, Point(0,0));
+	dst.border(popr, 1, fieldborder, Point(0,0));
+
+	hover := -1;
+	for(i := 0; i < len dd.items; i++) {
+		iy := py + i * rowh;
+		ir := Rect((px, iy), (px + popw, iy + rowh));
+		if(i == dd.selected)
+			dst.draw(ir, listsel, nil, Point(0,0));
+		dst.text(Point(px + MARGIN, iy + MARGIN/2), fieldtext, Point(0,0), wfont, dd.items[i]);
+	}
+	dst.flush(Draw->Flushnow);
+
+	# Track pointer until button release
+	oldsel := dd.selected;
+	for(;;) {
+		p := <-ptrchan;
+		if(p == nil) {
+			# Restore and return
+			if(saved != nil)
+				dst.draw(popr, saved, nil, saved.r.min);
+			dst.flush(Draw->Flushnow);
+			return dd.selected;
+		}
+
+		# Highlight item under pointer
+		if(popr.contains(p.xy)) {
+			newhover := (p.xy.y - py) / rowh;
+			if(newhover != hover && newhover >= 0 && newhover < len dd.items) {
+				# Redraw popup with new highlight
+				dst.draw(popr, fieldbg, nil, Point(0,0));
+				dst.border(popr, 1, fieldborder, Point(0,0));
+				for(i = 0; i < len dd.items; i++) {
+					iy := py + i * rowh;
+					ir := Rect((px, iy), (px + popw, iy + rowh));
+					if(i == newhover)
+						dst.draw(ir, listsel, nil, Point(0,0));
+					dst.text(Point(px + MARGIN, iy + MARGIN/2), fieldtext, Point(0,0), wfont, dd.items[i]);
+				}
+				dst.flush(Draw->Flushnow);
+				hover = newhover;
+			}
+		}
+
+		# Button released
+		if(!(p.buttons & 1)) {
+			if(popr.contains(p.xy)) {
+				sel := (p.xy.y - py) / rowh;
+				if(sel >= 0 && sel < len dd.items)
+					dd.selected = sel;
+			}
+			# Restore saved area
+			if(saved != nil)
+				dst.draw(popr, saved, nil, saved.r.min);
+			dst.flush(Draw->Flushnow);
+			return dd.selected;
+		}
+	}
+}
+
+Dropdown.contains(dd: self ref Dropdown, p: Point): int
+{
+	return dd.r.contains(p);
+}
+
+Dropdown.value(dd: self ref Dropdown): string
+{
+	if(dd.items == nil || dd.selected < 0 || dd.selected >= len dd.items)
+		return "";
+	return dd.items[dd.selected];
+}
+
 # ── Statusbar ─────────────────────────────────────────────────
 
 Statusbar.new(r: Rect): ref Statusbar

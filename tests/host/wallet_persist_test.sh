@@ -27,11 +27,9 @@ fi
 # Clean state
 lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null || true
 sleep 1
-# Detect the Inferno username (same as host user in emu)
-IUSER=$(timeout 5 "$EMU" -r"$ROOT" -c0 cat /dev/user 2>/dev/null || echo "inferno")
-IUSER=$(echo "$IUSER" | tr -d '\n\r ')
-echo "Inferno user: $IUSER"
-rm -rf "$ROOT/usr/inferno/secstore/$IUSER" 2>/dev/null || true
+# Use a dedicated test user so we never touch the real user's secstore
+TESTUSER="testuser-walletpersist"
+rm -rf "$ROOT/usr/inferno/secstore/$TESTUSER" 2>/dev/null || true
 
 FAILURES=0
 TESTS=0
@@ -66,11 +64,11 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/secstore-setup -u $IUSER -k $PASS
+auth/secstore-setup -u $TESTUSER -k $PASS
 sleep 1
 auth/factotum
 sleep 1
-echo secstore tcp!localhost!5356 $IUSER $PASS > /mnt/factotum/ctl
+echo secstore tcp!localhost!5356 $TESTUSER $PASS > /mnt/factotum/ctl
 sleep 1
 /dis/veltro/wallet9p.dis &
 sleep 3
@@ -93,7 +91,7 @@ check "key in factotum" "$OUTPUT" "service=wallet-eth-persist-regtest"
 check "sync completed" "$OUTPUT" "session 1 done"
 
 # Verify secstore has the data
-if [ -f "$ROOT/usr/inferno/secstore/$IUSER/factotum" ]; then
+if [ -f "$ROOT/usr/inferno/secstore/$TESTUSER/factotum" ]; then
     pass "secstore factotum file exists"
 else
     fail "secstore factotum file missing"
@@ -113,7 +111,7 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/factotum -S tcp!localhost!5356 -u $IUSER -P $PASS
+auth/factotum -S tcp!localhost!5356 -u $TESTUSER -P $PASS
 sleep 5
 echo '--- factotum keys after reload ---'
 cat /mnt/factotum/ctl
@@ -143,9 +141,5 @@ if [ $FAILURES -gt 0 ]; then
 fi
 echo "PASS"
 
-# Clean up test data
-# Detect the Inferno username (same as host user in emu)
-IUSER=$(timeout 5 "$EMU" -r"$ROOT" -c0 cat /dev/user 2>/dev/null || echo "inferno")
-IUSER=$(echo "$IUSER" | tr -d '\n\r ')
-echo "Inferno user: $IUSER"
-rm -rf "$ROOT/usr/inferno/secstore/$IUSER" 2>/dev/null || true
+# Clean up test data only (uses TESTUSER, never touches real user account)
+rm -rf "$ROOT/usr/inferno/secstore/$TESTUSER" 2>/dev/null || true

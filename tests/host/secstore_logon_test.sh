@@ -25,7 +25,7 @@ lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null || true
 sleep 1
 
 # Clean secstore state for reproducible test
-rm -rf "$ROOT/usr/inferno/secstore/inferno" 2>/dev/null || true
+rm -rf "$ROOT/usr/inferno/secstore/testuser-seclogon" 2>/dev/null || true
 
 FAILURES=0
 TESTS=0
@@ -87,14 +87,14 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/secstore-setup -u inferno -k $PASS
+auth/secstore-setup -u testuser-seclogon -k $PASS
 echo 'setup done'
 EOF
 OUTPUT=$(run_emu 20 /tmp/test_secstore_setup.sh)
 check "secstore-setup creates account" "$OUTPUT" "setup complete"
 
 # Verify PAK file exists on host
-if [ -f "$ROOT/usr/inferno/secstore/inferno/PAK" ]; then
+if [ -f "$ROOT/usr/inferno/secstore/testuser-seclogon/PAK" ]; then
     pass "PAK verifier file exists"
 else
     fail "PAK verifier file missing"
@@ -112,7 +112,7 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/factotum -S tcp!localhost!5356 -u inferno -P $PASS
+auth/factotum -S tcp!localhost!5356 -u testuser-seclogon -P $PASS
 sleep 1
 echo 'key proto=pass service=test-regression user=testuser !password=secret123' > /mnt/factotum/ctl
 echo sync > /mnt/factotum/ctl
@@ -125,7 +125,7 @@ OUTPUT=$(run_emu 25 /tmp/test_key_persist.sh)
 check "key stored in factotum" "$OUTPUT" "service=test-regression"
 
 # Verify secstore has the encrypted factotum file
-if [ -f "$ROOT/usr/inferno/secstore/inferno/factotum" ]; then
+if [ -f "$ROOT/usr/inferno/secstore/testuser-seclogon/factotum" ]; then
     pass "secstore factotum file exists (keys persisted)"
 else
     fail "secstore factotum file missing (keys not persisted)"
@@ -143,7 +143,7 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/factotum -S tcp!localhost!5356 -u inferno -P $PASS
+auth/factotum -S tcp!localhost!5356 -u testuser-seclogon -P $PASS
 sleep 2
 echo '--- keys after reload ---'
 cat /mnt/factotum/ctl
@@ -164,7 +164,7 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/factotum -S tcp!localhost!5356 -u inferno -P $PASS
+auth/factotum -S tcp!localhost!5356 -u testuser-seclogon -P $PASS
 sleep 5
 /dis/veltro/wallet9p.dis &
 sleep 5
@@ -195,7 +195,7 @@ bind -a '#I' /net
 ndb/cs
 auth/secstored &
 sleep 2
-auth/factotum -S tcp!localhost!5356 -u inferno -P $PASS
+auth/factotum -S tcp!localhost!5356 -u testuser-seclogon -P $PASS
 sleep 5
 /dis/veltro/wallet9p.dis &
 sleep 5
@@ -222,4 +222,4 @@ fi
 echo "PASS"
 
 # Clean up test data
-rm -rf "$ROOT/usr/inferno/secstore/inferno" 2>/dev/null || true
+rm -rf "$ROOT/usr/inferno/secstore/testuser-seclogon" 2>/dev/null || true

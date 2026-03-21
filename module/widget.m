@@ -415,6 +415,33 @@ Widget: module
 		contains: fn(rg: self ref RadioGroup, p: Draw->Point): int;
 	};
 
+	# ── Dropdown ──────────────────────────────────────────────
+	#
+	# Compact single-line selector.  Shows the selected item with
+	# a down-arrow indicator.  When clicked, opens a popup list
+	# over the parent image for selection.
+	#
+	#   dd := Dropdown.mk(r, items, sel);
+	#   dd.draw(dst);
+	#   if(dd.contains(ptr.xy))
+	#       dd.click(dst, ptrchan);  # blocks until selection made
+	#
+	Dropdown: adt {
+		r:        Draw->Rect;
+		items:    array of string;
+		selected: int;
+		label:    string;	# optional prefix label
+
+		mk:       fn(r: Draw->Rect, items: array of string,
+			      sel: int): ref Dropdown;
+		draw:     fn(dd: self ref Dropdown, dst: ref Draw->Image);
+		resize:   fn(dd: self ref Dropdown, r: Draw->Rect);
+		click:    fn(dd: self ref Dropdown, dst: ref Draw->Image,
+			      ptrchan: chan of ref Draw->Pointer): int;
+		contains: fn(dd: self ref Dropdown, p: Draw->Point): int;
+		value:    fn(dd: self ref Dropdown): string;
+	};
+
 	# ── Statusbar ──────────────────────────────────────────────
 	#
 	# Horizontal info bar at the bottom of a window.  Displays

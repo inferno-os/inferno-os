@@ -48,7 +48,7 @@ include "sh.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Textfield, Listbox, Button, Label, Dropdown, Kbdfilter: import widgetmod;
 
 WmWallet: module
 {
@@ -87,6 +87,10 @@ lbl_addrval: ref Label;
 lbl_chainval:ref Label;
 lbl_balval:  ref Label;
 lbl_balval2: ref Label;
+
+# Network selector
+dd_network: ref Dropdown;
+networknames: array of string;
 
 # Balance refresh
 balancech: chan of int;
@@ -283,6 +287,22 @@ layoutall()
 	rw := wr.max.x - FORM_MARGIN;
 	rbottom := wr.max.y - sh - FORM_MARGIN;
 
+	# Network selector at top of right pane
+	if(networknames == nil)
+		networknames = array[] of {
+			"Ethereum Sepolia",
+			"Base Sepolia",
+			"Ethereum Mainnet",
+			"Base",
+		};
+	ddsel := 0;
+	if(dd_network != nil)
+		ddsel = dd_network.selected;
+	dd_network = Dropdown.mk(Rect((rx + FORM_MARGIN, ry), (rw, ry + fh)),
+		networknames, ddsel);
+	dd_network.label = "Network:";
+	ry += fh + FIELD_SPACING + 4;
+
 	case mode {
 	ModeView =>
 		layoutdetail(rx + FORM_MARGIN, ry, rw, rbottom, fh);
@@ -412,6 +432,10 @@ redraw()
 	# Draw divider
 	divr := Rect((wr.min.x + catw, wr.min.y), (wr.min.x + catw + 1, wr.max.y - sh));
 	w.image.draw(divr, divcolor, nil, Point(0, 0));
+
+	# Draw network selector
+	if(dd_network != nil)
+		dd_network.draw(w.image);
 
 	# Draw detail pane
 	case mode {
@@ -556,6 +580,20 @@ handleptr(ptr: ref Pointer)
 			layoutall();
 			dirty = 1;
 		}
+		return;
+	}
+
+	# Network dropdown click
+	if(dd_network != nil && dd_network.contains(ptr.xy)) {
+		oldnet := dd_network.selected;
+		dd_network.click(w.image, w.ctxt.ptr);
+		if(dd_network.selected != oldnet) {
+			# Write network change to wallet9p
+			writewalletctl("ctl", "network " + dd_network.value());
+			layoutall();
+			setstatus("Network: " + dd_network.value());
+		}
+		dirty = 1;
 		return;
 	}
 

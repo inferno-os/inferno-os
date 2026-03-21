@@ -281,8 +281,9 @@ init(nil: ref Draw->Context, args: list of string)
 
 	ethrpc = load Ethrpc Ethrpc->PATH;
 	if(ethrpc == nil) nomod(Ethrpc->PATH);
-	# Default to Base Sepolia testnet; can be changed via ctl
-	err = ethrpc->init("https://sepolia.base.org");
+	initnetworks();
+	# Default to first network (Ethereum Sepolia)
+	err = ethrpc->init(networks[0].rpcurl);
 	if(err != nil) {
 		sys->fprint(stderr, "wallet9p: ethrpc init: %s\n", err);
 		raise "fail:init";
@@ -402,7 +403,11 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read)
 
 	case ft {
 	Qctl =>
-		readstr(srv, m, globalctl);
+		net := getnetwork();
+		ctlinfo := "network " + net.name + "\n";
+		if(defaultacct != "")
+			ctlinfo += "default " + defaultacct + "\n";
+		readstr(srv, m, ctlinfo);
 
 	Qaccounts =>
 		s := "";
@@ -522,7 +527,15 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			globalctl = "default " + defaultacct + "\n";
 		} else if(cmd == "rpc" && ntoks >= 2) {
 			ethrpc->setrpc(hd tl toks);
-			globalctl += "rpc " + hd tl toks + "\n";
+		} else if(cmd == "network" && ntoks >= 2) {
+			# Rejoin remaining tokens as network name (may have spaces)
+			nname := "";
+			for(nt := tl toks; nt != nil; nt = tl nt) {
+				if(nname != "")
+					nname += " ";
+				nname += hd nt;
+			}
+			setnetwork(nname);
 		} else {
 			srv.reply(ref Rmsg.Error(m.tag, "unknown ctl command: " + cmd));
 			return;
@@ -740,8 +753,59 @@ restoreaccounts()
 	}
 }
 
-# Base Sepolia USDC contract address
-USDC_BASE_SEPOLIA: con "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+# --- Network configuration ---
+
+NetworkConfig: adt {
+	name:	string;	# display name
+	rpcurl:	string;	# JSON-RPC endpoint
+	usdc:	string;	# USDC contract address
+	chainid: int;	# EIP-155 chain ID
+};
+
+networks: array of ref NetworkConfig;
+activenetwork := 0;
+
+initnetworks()
+{
+	networks = array[4] of ref NetworkConfig;
+	networks[0] = ref NetworkConfig("Ethereum Sepolia",
+		"https://rpc.sepolia.org",
+		"0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+		11155111);
+	networks[1] = ref NetworkConfig("Base Sepolia",
+		"https://sepolia.base.org",
+		"0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+		84532);
+	networks[2] = ref NetworkConfig("Ethereum Mainnet",
+		"https://eth.llamarpc.com",
+		"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+		1);
+	networks[3] = ref NetworkConfig("Base",
+		"https://mainnet.base.org",
+		"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+		8453);
+}
+
+getnetwork(): ref NetworkConfig
+{
+	if(activenetwork >= 0 && activenetwork < len networks)
+		return networks[activenetwork];
+	return networks[0];
+}
+
+setnetwork(name: string)
+{
+	for(i := 0; i < len networks; i++) {
+		if(networks[i].name == name) {
+			activenetwork = i;
+			ethrpc->setrpc(networks[i].rpcurl);
+			sys->fprint(stderr, "wallet9p: network: %s (%s)\n",
+				networks[i].name, networks[i].rpcurl);
+			return;
+		}
+	}
+	sys->fprint(stderr, "wallet9p: unknown network: %s\n", name);
+}
 
 # --- Balance query ---
 
@@ -754,8 +818,10 @@ querybalance(as: ref AcctState): string
 	if(addr == "" || addr == nil)
 		return "0";
 
-	# Try USDC token balance first (most useful for x402)
-	(tokbal, tokerr) := ethrpc->tokenbalance(USDC_BASE_SEPOLIA, addr);
+	net := getnetwork();
+
+	# Try USDC token balance
+	(tokbal, tokerr) := ethrpc->tokenbalance(net.usdc, addr);
 	usdcstr := "0";
 	if(tokerr == nil && tokbal != nil && tokbal != "0")
 		usdcstr = ethrpc->weitotoken(tokbal, 6);	# USDC has 6 decimals
