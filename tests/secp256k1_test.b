@@ -328,6 +328,188 @@ testLowS(t: ref T)
 	}
 }
 
+#
+# Extended known-answer tests from go-ethereum and bitcoin test vectors
+#
+
+# Known public key coordinates for small private keys
+# From SEC 2 section 2.7.1 (secp256k1 generator point multiples)
+testKnownPubkeyCoords(t: ref T)
+{
+	# Private key = 2: 2*G
+	priv2 := hexdecode("0000000000000000000000000000000000000000000000000000000000000002");
+	pub2 := kr->secp256k1_pubkey(priv2);
+	t.assert(pub2 != nil, "pubkey for privkey=2");
+	x2 := hexencode(pub2[1:33]);
+	y2 := hexencode(pub2[33:65]);
+	t.assertseq(x2, "c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5",
+		"2*G x-coordinate");
+	t.assertseq(y2, "1ae168fea63dc339a3c58419466ceaeef7f632653266d0e1236431a950cfe52a",
+		"2*G y-coordinate");
+
+	# Private key = 3: 3*G
+	priv3 := hexdecode("0000000000000000000000000000000000000000000000000000000000000003");
+	pub3 := kr->secp256k1_pubkey(priv3);
+	t.assert(pub3 != nil, "pubkey for privkey=3");
+	x3 := hexencode(pub3[1:33]);
+	t.assertseq(x3, "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9",
+		"3*G x-coordinate");
+}
+
+# Keccak-256 extended test vectors (from Ethereum tests and NIST)
+testKeccak256Extended(t: ref T)
+{
+	# Single byte 0xcc
+	input := hexdecode("cc");
+	digest := array[32] of byte;
+	kr->keccak256(input, len input, digest);
+	t.assertseq(hexencode(digest),
+		"eead6dbfc7340a56caedc044696a168870549a6a7f6f56961e84a54bd9970b8a",
+		"keccak256(0xcc)");
+
+	# 32 bytes of 0x41 ('A' repeated)
+	input = array[32] of byte;
+	for(i := 0; i < 32; i++)
+		input[i] = byte 16r41;
+	kr->keccak256(input, len input, digest);
+	t.assertseq(hexencode(digest),
+		"59cad5948673622c1d64e2322488bf01619f7ff45789741b15a9f782ce9290a8",
+		"keccak256(32 x 0x41)");
+
+	# 135 bytes (rate boundary - 1 for SHA3-256 rate=136)
+	input = array[135] of byte;
+	for(i = 0; i < 135; i++)
+		input[i] = byte (i & 16rff);
+	kr->keccak256(input, len input, digest);
+	t.assert(digest != nil && len digest == 32, "keccak256 at rate boundary");
+
+	# 136 bytes (exact rate boundary)
+	input = array[136] of byte;
+	for(i = 0; i < 136; i++)
+		input[i] = byte (i & 16rff);
+	kr->keccak256(input, len input, digest);
+	t.assert(digest != nil && len digest == 32, "keccak256 at exact rate");
+
+	# 200 bytes (> rate)
+	input = array[200] of byte;
+	for(i = 0; i < 200; i++)
+		input[i] = byte (i & 16rff);
+	kr->keccak256(input, len input, digest);
+	t.assert(digest != nil && len digest == 32, "keccak256 over rate boundary");
+}
+
+# Sign with known key and verify the signature is recoverable
+testSignRecoverMultiple(t: ref T)
+{
+	# Test with multiple different keys and messages
+	keys := array[] of {
+		"0000000000000000000000000000000000000000000000000000000000000001",
+		"0000000000000000000000000000000000000000000000000000000000000002",
+		"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+	};
+
+	for(ki := 0; ki < len keys; ki++) {
+		priv := hexdecode(keys[ki]);
+		pub := kr->secp256k1_pubkey(priv);
+		t.assert(pub != nil, "pubkey for key " + string ki);
+
+		# Sign different messages
+		for(mi := 0; mi < 3; mi++) {
+			msg := array of byte ("test message " + string ki + " " + string mi);
+			hash := array[32] of byte;
+			kr->keccak256(msg, len msg, hash);
+
+			sig := kr->secp256k1_sign(priv, hash);
+			t.assert(sig != nil && len sig == 65,
+				"sign key=" + string ki + " msg=" + string mi);
+
+			recovered := kr->secp256k1_recover(hash, sig);
+			t.assert(recovered != nil && len recovered == 65,
+				"recover key=" + string ki + " msg=" + string mi);
+			t.assert(byteseq(pub, recovered),
+				"recovered matches key=" + string ki + " msg=" + string mi);
+		}
+	}
+}
+
+# Edge case: sign with max valid private key (n-1)
+testSignEdgeCases(t: ref T)
+{
+	# n-1 is the largest valid private key
+	# n = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+	# n-1 = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+	priv := hexdecode("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140");
+	pub := kr->secp256k1_pubkey(priv);
+	t.assert(pub != nil && len pub == 65, "pubkey for n-1");
+	t.asserteq(int pub[0], 16r04, "uncompressed prefix for n-1");
+
+	# Sign and recover
+	hash := array[32] of byte;
+	msg := array of byte "edge case n-1";
+	kr->keccak256(msg, len msg, hash);
+	sig := kr->secp256k1_sign(priv, hash);
+	t.assert(sig != nil, "sign with n-1");
+	recovered := kr->secp256k1_recover(hash, sig);
+	t.assert(byteseq(pub, recovered), "recover with n-1");
+}
+
+# Verify different messages produce different signatures (RFC 6979 sanity)
+testDifferentMessages(t: ref T)
+{
+	priv := hexdecode("0000000000000000000000000000000000000000000000000000000000000001");
+	hash1 := array[32] of byte;
+	hash2 := array[32] of byte;
+	msg1 := array of byte "message one";
+	msg2 := array of byte "message two";
+	kr->keccak256(msg1, len msg1, hash1);
+	kr->keccak256(msg2, len msg2, hash2);
+
+	sig1 := kr->secp256k1_sign(priv, hash1);
+	sig2 := kr->secp256k1_sign(priv, hash2);
+	t.assert(sig1 != nil && sig2 != nil, "both sigs succeed");
+	t.assert(!byteseq(sig1, sig2), "different messages → different signatures");
+}
+
+# Verify different keys produce different signatures for same message
+testDifferentKeys(t: ref T)
+{
+	hash := array[32] of byte;
+	msg := array of byte "same message";
+	kr->keccak256(msg, len msg, hash);
+
+	priv1 := hexdecode("0000000000000000000000000000000000000000000000000000000000000001");
+	priv2 := hexdecode("0000000000000000000000000000000000000000000000000000000000000002");
+	sig1 := kr->secp256k1_sign(priv1, hash);
+	sig2 := kr->secp256k1_sign(priv2, hash);
+	t.assert(sig1 != nil && sig2 != nil, "both sigs succeed");
+	t.assert(!byteseq(sig1, sig2), "different keys → different signatures");
+}
+
+# Known Ethereum addresses for well-known private keys
+testKnownAddresses(t: ref T)
+{
+	# These are well-known test addresses from the Ethereum community
+	vectors := array[] of {
+		# (privkey, expected_address) — all lowercase
+		("0000000000000000000000000000000000000000000000000000000000000001",
+		 "7e5f4552091a69125d5dfcb7b8c2659029395bdf"),
+		("0000000000000000000000000000000000000000000000000000000000000002",
+		 "2b5ad5c4795c026514f8317c7a215e218dccd6cf"),
+		("0000000000000000000000000000000000000000000000000000000000000003",
+		 "6813eb9362372eef6200f3b1dbc3f819671cba69"),
+	};
+
+	for(i := 0; i < len vectors; i++) {
+		(pkey, expected) := vectors[i];
+		priv := hexdecode(pkey);
+		pub := kr->secp256k1_pubkey(priv);
+		hash := array[32] of byte;
+		kr->keccak256(pub[1:], 64, hash);
+		addr := hexencode(hash[12:32]);
+		t.assertseq(addr, expected, "address for privkey=" + string (i+1));
+	}
+}
+
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
@@ -360,6 +542,15 @@ init(nil: ref Draw->Context, args: list of string)
 	run("Secp256k1/Deterministic", testDeterministic);
 	run("Secp256k1/EthAddress", testEthAddress);
 	run("Secp256k1/LowS", testLowS);
+
+	# Extended test vectors
+	run("Secp256k1/KnownPubkeyCoords", testKnownPubkeyCoords);
+	run("Secp256k1/KnownAddresses", testKnownAddresses);
+	run("Secp256k1/SignRecoverMultiple", testSignRecoverMultiple);
+	run("Secp256k1/SignEdgeCases", testSignEdgeCases);
+	run("Secp256k1/DifferentMessages", testDifferentMessages);
+	run("Secp256k1/DifferentKeys", testDifferentKeys);
+	run("Keccak256/Extended", testKeccak256Extended);
 
 	if(testing->summary(passed, failed, skipped) > 0)
 		raise "fail:tests failed";

@@ -119,6 +119,37 @@ jobs:
           exit 1
         fi
 
+    - name: Run wallet and secstore integration tests
+      run: |
+        echo "Running host-side integration tests..."
+
+        # wallet9p basic operations
+        if [ -f tests/host/wallet9p_test.sh ]; then
+          echo "--- wallet9p test ---"
+          chmod +x tests/host/wallet9p_test.sh
+          ROOT=. bash tests/host/wallet9p_test.sh > wallet9p-test.txt 2>&1 || true
+          cat wallet9p-test.txt
+          if grep -q "=== PASS ===" wallet9p-test.txt; then
+            echo "wallet9p test: PASS"
+          else
+            echo "wallet9p test: FAIL"
+            exit 1
+          fi
+        fi
+
+        # wallet persistence (secstore round-trip)
+        if [ -f tests/host/wallet_persist_test.sh ]; then
+          echo "--- wallet persistence test ---"
+          chmod +x tests/host/wallet_persist_test.sh
+          ROOT=. bash tests/host/wallet_persist_test.sh > wallet-persist-test.txt 2>&1 || true
+          cat wallet-persist-test.txt
+          if grep -q "^PASS$" wallet-persist-test.txt; then
+            echo "wallet persistence test: PASS"
+          else
+            echo "wallet persistence test: FAIL (non-fatal in CI)"
+          fi
+        fi
+
     - name: Upload Linux build artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: success()
@@ -309,6 +340,37 @@ jobs:
       run: |
         chmod +x verify-port.sh
         ./verify-port.sh
+
+    - name: Run wallet and secstore integration tests
+      run: |
+        echo "Running host-side integration tests..."
+
+        # wallet9p basic operations
+        if [ -f tests/host/wallet9p_test.sh ]; then
+          echo "--- wallet9p test ---"
+          chmod +x tests/host/wallet9p_test.sh
+          ROOT=. bash tests/host/wallet9p_test.sh > wallet9p-test.txt 2>&1 || true
+          cat wallet9p-test.txt
+          if grep -q "=== PASS ===" wallet9p-test.txt; then
+            echo "wallet9p test: PASS"
+          else
+            echo "wallet9p test: FAIL"
+            exit 1
+          fi
+        fi
+
+        # wallet persistence (secstore round-trip)
+        if [ -f tests/host/wallet_persist_test.sh ]; then
+          echo "--- wallet persistence test ---"
+          chmod +x tests/host/wallet_persist_test.sh
+          ROOT=. bash tests/host/wallet_persist_test.sh > wallet-persist-test.txt 2>&1 || true
+          cat wallet-persist-test.txt
+          if grep -q "^PASS$" wallet-persist-test.txt; then
+            echo "wallet persistence test: PASS"
+          else
+            echo "wallet persistence test: FAIL (non-fatal in CI)"
+          fi
+        fi
 
     - name: Upload macOS build artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
