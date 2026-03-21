@@ -46,8 +46,8 @@ WmLogon: module
 ZP := Point(0, 0);
 
 IMGPATH:  con "/lib/lucifer/login-screen.png";
-IMGW:     con 600;
-IMGH:     con 411;
+IMGW:     con 300;
+IMGH:     con 205;
 PADDING:  con 16;
 
 display_g: ref Display;
