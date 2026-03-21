@@ -282,6 +282,130 @@ encrypt(file: array of byte, key: array of byte): array of byte
 	return dat;
 }
 
+# ── Modern crypto (AES-256-GCM, HMAC-SHA256 key derivation) ──
+
+SGCM_MAGIC: con "SGCM1\n";
+SGCM_NONCE_LEN: con 12;
+SGCM_TAG_LEN: con 16;
+SGCM_KDF_ROUNDS: con 10000;
+
+#
+# Derive a 32-byte AES-256 key from a password using iterated HMAC-SHA256.
+#
+mkfilekey2(s: string): array of byte
+{
+	pass := array of byte s;
+	salt := array of byte "secstore filekey";
+	key := array[Keyring->SHA256dlen] of byte;
+
+	# First round
+	kr->hmac_sha256(salt, len salt, pass, key, nil);
+
+	# Iterate
+	for(i := 1; i < SGCM_KDF_ROUNDS; i++){
+		prev := array[Keyring->SHA256dlen] of byte;
+		prev[0:] = key;
+		kr->hmac_sha256(prev, len prev, pass, key, nil);
+	}
+
+	erasekey(pass);
+	return key;
+}
+
+#
+# Encrypt with AES-256-GCM.
+# Output format: "SGCM1\n" + 12-byte nonce + ciphertext + 16-byte GCM tag
+# AAD is the magic header for domain separation.
+#
+encrypt2(file: array of byte, key: array of byte): array of byte
+{
+	magic := array of byte SGCM_MAGIC;
+
+	# Generate random nonce using host CSPRNG
+	nonce := random->randombuf(random->ReallyRandom, SGCM_NONCE_LEN);
+	if(nonce == nil || len nonce != SGCM_NONCE_LEN){
+		sys->werrstr("can't generate nonce");
+		return nil;
+	}
+
+	state := kr->aesgcmsetup(key, nonce);
+	if(state == nil){
+		sys->werrstr("can't set AES-GCM state");
+		return nil;
+	}
+	(ciphertext, tag) := kr->aesgcmencrypt(state, file, magic);
+	if(ciphertext == nil || tag == nil){
+		sys->werrstr("AES-GCM encryption failed");
+		return nil;
+	}
+
+	# Build output: magic + nonce + ciphertext + tag
+	outlen := len magic + SGCM_NONCE_LEN + len ciphertext + len tag;
+	out := array[outlen] of byte;
+	off := 0;
+	out[off:] = magic;
+	off += len magic;
+	out[off:] = nonce;
+	off += SGCM_NONCE_LEN;
+	out[off:] = ciphertext;
+	off += len ciphertext;
+	out[off:] = tag;
+	return out;
+}
+
+#
+# Decrypt with auto-format detection.
+# If the file starts with "SGCM1\n", uses AES-256-GCM with key.
+# Otherwise falls back to legacy AES-CBC with legacykey.
+# legacykey may be nil if only GCM files are expected.
+#
+decrypt2(file: array of byte, key: array of byte, legacykey: array of byte): array of byte
+{
+	magic := array of byte SGCM_MAGIC;
+	length := len file;
+
+	# Check for modern format
+	if(length >= len magic){
+		ismodern := 1;
+		for(i := 0; i < len magic; i++)
+			if(file[i] != magic[i]){
+				ismodern = 0;
+				break;
+			}
+		if(ismodern){
+			# Modern AES-GCM format
+			off := len magic;
+			if(length - off < SGCM_NONCE_LEN + SGCM_TAG_LEN){
+				sys->werrstr("file too short for GCM nonce+tag");
+				return nil;
+			}
+			nonce := file[off:off+SGCM_NONCE_LEN];
+			off += SGCM_NONCE_LEN;
+			ciphertext := file[off:length-SGCM_TAG_LEN];
+			tag := file[length-SGCM_TAG_LEN:length];
+
+			state := kr->aesgcmsetup(key, nonce);
+			if(state == nil){
+				sys->werrstr("can't set AES-GCM state");
+				return nil;
+			}
+			plaintext := kr->aesgcmdecrypt(state, ciphertext, magic, tag);
+			if(plaintext == nil){
+				sys->werrstr("GCM decryption failed (wrong key?)");
+				return nil;
+			}
+			return plaintext;
+		}
+	}
+
+	# Fall back to legacy AES-CBC
+	if(legacykey == nil){
+		sys->werrstr("legacy format but no legacy key");
+		return nil;
+	}
+	return decrypt(file, legacykey);
+}
+
 lines(file: array of byte): list of array of byte
 {
 	rl: list of array of byte;

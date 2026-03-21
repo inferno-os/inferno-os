@@ -144,6 +144,19 @@ statusheight(): int
 	return wfont.height + MARGIN * 2;
 }
 
+labelwidth(labels: array of string): int
+{
+	if(wfont == nil)
+		return 0;
+	maxw := 0;
+	for(i := 0; i < len labels; i++){
+		w := wfont.width(labels[i]);
+		if(w > maxw)
+			maxw = w;
+	}
+	return maxw + LABELGAP;
+}
+
 # ── Kbdfilter ─────────────────────────────────────────────────
 
 Kbdfilter.new(): ref Kbdfilter
@@ -700,7 +713,11 @@ tfinputr(tf: ref Textfield): Rect
 {
 	if(wfont == nil || tf.label == nil || len tf.label == 0)
 		return tf.r;
-	lw := wfont.width(tf.label) + LABELGAP;
+	lw: int;
+	if(tf.labelw > 0)
+		lw = tf.labelw;
+	else
+		lw = wfont.width(tf.label) + LABELGAP;
 	return Rect((tf.r.min.x + lw, tf.r.min.y), tf.r.max);
 }
 
@@ -717,7 +734,7 @@ tfdisplay(tf: ref Textfield): string
 
 Textfield.mk(r: Rect, label: string, secret: int): ref Textfield
 {
-	return ref Textfield(r, "", 0, secret, 0, label);
+	return ref Textfield(r, "", 0, secret, 0, label, 0);
 }
 
 Textfield.draw(tf: self ref Textfield, dst: ref Image)
@@ -814,6 +831,27 @@ Textfield.key(tf: self ref Textfield, c: int): int
 		# Ctrl-U — kill whole line
 		tf.text = "";
 		tf.cursor = 0;
+	22 =>
+		# Ctrl-V — paste from /dev/snarf
+		s := readsnarffile();
+		if(s != nil && len s > 0) {
+			# Strip trailing newlines
+			while(len s > 0 && (s[len s-1] == '\n' || s[len s-1] == '\r'))
+				s = s[:len s-1];
+			tf.text = tf.text[0:tf.cursor] + s + tf.text[tf.cursor:];
+			tf.cursor += len s;
+		}
+	3 =>
+		# Ctrl-C — copy to /dev/snarf
+		if(len tf.text > 0 && !tf.secret)
+			writesnarffile(tf.text);
+	24 =>
+		# Ctrl-X — cut to /dev/snarf
+		if(len tf.text > 0 && !tf.secret) {
+			writesnarffile(tf.text);
+			tf.text = "";
+			tf.cursor = 0;
+		}
 	23 =>
 		# Ctrl-W — delete word back
 		if(tf.cursor > 0) {
@@ -1128,4 +1166,27 @@ RadioGroup.contains(rg: self ref RadioGroup, p: Point): int
 		if(rg.buttons[i] != nil && rg.buttons[i].contains(p))
 			return 1;
 	return 0;
+}
+
+# ── Snarf (clipboard) ────────────────────────────────────────
+
+readsnarffile(): string
+{
+	fd := sys->open("/dev/snarf", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[8192] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	return string buf[0:n];
+}
+
+writesnarffile(s: string)
+{
+	fd := sys->open("/dev/snarf", Sys->OWRITE);
+	if(fd == nil)
+		return;
+	b := array of byte s;
+	sys->write(fd, b, len b);
 }

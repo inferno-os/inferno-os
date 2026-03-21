@@ -74,7 +74,7 @@ KeyEntry: adt {
 
 # ── Form modes ────────────────────────────────────────────────
 
-ModeList, ModeEmail, ModeAPI, ModeLogin, ModeAdvanced: con iota;
+ModeList, ModeEmail, ModeAPI, ModeLogin, ModeWallet, ModeAdvanced: con iota;
 
 # ── State ─────────────────────────────────────────────────────
 
@@ -85,6 +85,7 @@ kf: ref Kbdfilter;
 sbar: ref Statusbar;
 keylist: ref Listbox;
 mainmenu: ref Popup;
+editmenu: ref Popup;
 addmenu: ref Popup;
 
 # Form fields
@@ -171,6 +172,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 			"Add Email Account",
 			"Add API Key",
 			"Add Login",
+			"Add Wallet Key",
 			"Add Advanced",
 			"",
 			"Delete Selected",
@@ -266,33 +268,62 @@ layoutwidgets()
 
 	case mode {
 	ModeEmail =>
-		f_dom     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Server:  ", 0);
+		lw := widgetmod->labelwidth(array[] of {"Server:", "User:", "Password:"});
+		f_dom     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Server:", 0);
+		f_dom.labelw = lw;
 		fy += fh + FIELD_SPACING;
-		f_user    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "User:    ", 0);
+		f_user    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "User:", 0);
+		f_user.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Password:", 1);
+		f_pass.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		formfields = array[] of { f_dom, f_user, f_pass };
 	ModeAPI =>
-		f_service = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Service: ", 0);
+		lw := widgetmod->labelwidth(array[] of {"Service:", "API Key:"});
+		f_service = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Service:", 0);
+		f_service.labelw = lw;
 		fy += fh + FIELD_SPACING;
-		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "API Key: ", 1);
+		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "API Key:", 1);
+		f_pass.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		formfields = array[] of { f_service, f_pass };
 	ModeLogin =>
-		f_service = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Service: ", 0);
+		lw := widgetmod->labelwidth(array[] of {"Service:", "Domain:", "User:", "Password:"});
+		f_service = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Service:", 0);
+		f_service.labelw = lw;
 		fy += fh + FIELD_SPACING;
-		f_dom     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Domain:  ", 0);
+		f_dom     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Domain:", 0);
+		f_dom.labelw = lw;
 		fy += fh + FIELD_SPACING;
-		f_user    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "User:    ", 0);
+		f_user    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "User:", 0);
+		f_user.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Password:", 1);
+		f_pass.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		formfields = array[] of { f_service, f_dom, f_user, f_pass };
-	ModeAdvanced =>
-		f_raw     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Attrs:   ", 0);
+	ModeWallet =>
+		lw := widgetmod->labelwidth(array[] of {"Name:", "Chain:", "Key:"});
+		f_user    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Name:", 0);
+		f_user.labelw = lw;
 		fy += fh + FIELD_SPACING;
-		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Secret:  ", 1);
+		f_service = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Chain:", 0);
+		f_service.labelw = lw;
+		fy += fh + FIELD_SPACING;
+		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Key:", 1);
+		f_pass.labelw = lw;
+		fy += fh + FIELD_SPACING;
+		if(f_service != nil)
+			f_service.setval("eth");
+		formfields = array[] of { f_user, f_service, f_pass };
+	ModeAdvanced =>
+		lw := widgetmod->labelwidth(array[] of {"Attrs:", "Secret:"});
+		f_raw     = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Attrs:", 0);
+		f_raw.labelw = lw;
+		fy += fh + FIELD_SPACING;
+		f_pass    = Textfield.mk(Rect((fx, fy), (fw, fy + fh)), "Secret:", 1);
+		f_pass.labelw = lw;
 		fy += fh + FIELD_SPACING;
 		formfields = array[] of { f_raw, f_pass };
 	* =>
@@ -462,7 +493,20 @@ handleptr(ptr: ref Pointer)
 {
 	if(ptr.buttons & 4) {
 		# Button 3: context menu
-		if(mainmenu != nil) {
+		# In form mode with a focused field, show edit menu
+		if(mode != ModeList && formfields != nil && focusidx >= 0) {
+			if(editmenu == nil && menumod != nil) {
+				editmenu = menumod->new(array[] of {
+					"Paste",
+					"Copy",
+					"Cut",
+				});
+			}
+			if(editmenu != nil) {
+				sel := editmenu.show(w.image, ptr.xy, w.ctxt.ptr);
+				handleeditmenu(sel);
+			}
+		} else if(mainmenu != nil) {
 			sel := mainmenu.show(w.image, ptr.xy, w.ctxt.ptr);
 			handlemenu(sel);
 		}
@@ -573,7 +617,6 @@ handlemenu(sel: int)
 	1 =>	# Add API Key
 		mode = ModeAPI;
 		layoutwidgets();
-		# Pre-fill service with "anthropic" as most common
 		if(f_service != nil)
 			f_service.setval("anthropic");
 		dirty = 1;
@@ -581,14 +624,35 @@ handlemenu(sel: int)
 		mode = ModeLogin;
 		layoutwidgets();
 		dirty = 1;
-	3 =>	# Add Advanced
+	3 =>	# Add Wallet Key
+		mode = ModeWallet;
+		layoutwidgets();
+		dirty = 1;
+	4 =>	# Add Advanced
 		mode = ModeAdvanced;
 		layoutwidgets();
 		dirty = 1;
-	5 =>	# Delete Selected
+	6 =>	# Delete Selected
 		deleteselected();
-	7 =>	# Refresh
+	8 =>	# Refresh
 		refreshkeys();
+		dirty = 1;
+	}
+}
+
+handleeditmenu(sel: int)
+{
+	if(formfields == nil || focusidx < 0 || focusidx >= len formfields)
+		return;
+	tf := formfields[focusidx];
+	case sel {
+	0 =>	# Paste
+		tf.key(22);	# Ctrl-V
+		dirty = 1;
+	1 =>	# Copy
+		tf.key(3);	# Ctrl-C
+	2 =>	# Cut
+		tf.key(24);	# Ctrl-X
 		dirty = 1;
 	}
 }
@@ -777,6 +841,7 @@ savekey()
 			return;
 		if(writectl(smtpkey) < 0)
 			return;
+		writectl("sync");	# persist to keyfile/secstore
 		flashstatus("added email keys");
 		mode = ModeList;
 		layoutwidgets();
@@ -811,6 +876,18 @@ savekey()
 		attrs += " user=" + user;
 		attrs += " !password=" + pass;
 
+	ModeWallet =>
+		wname := f_user.value();
+		chain := f_service.value();
+		wkey := f_pass.value();
+		if(wname == "" || chain == "" || wkey == "") {
+			flashstatus("error: fill all fields");
+			return;
+		}
+		# Build wallet key: proto=pass service=wallet-{chain}-{name} user=key !password={hex}
+		svc := "wallet-" + chain + "-" + wname;
+		attrs = sys->sprint("key proto=pass service=%s user=key !password=%s", svc, wkey);
+
 	ModeAdvanced =>
 		raw := f_raw.value();
 		pass := f_pass.value();
@@ -818,6 +895,9 @@ savekey()
 			flashstatus("error: enter attributes");
 			return;
 		}
+		# Auto-add proto=pass if no proto= specified
+		if(!strcontains(raw, "proto="))
+			raw = "proto=pass " + raw;
 		attrs = "key " + raw;
 		if(pass != "")
 			attrs += " !password=" + pass;
@@ -826,6 +906,7 @@ savekey()
 	if(attrs != "") {
 		if(writectl(attrs) < 0)
 			return;
+		writectl("sync");	# persist to keyfile/secstore
 		flashstatus("key added");
 		mode = ModeList;
 		layoutwidgets();
@@ -838,13 +919,17 @@ writectl(cmd: string): int
 {
 	fd := sys->open("/mnt/factotum/ctl", Sys->OWRITE);
 	if(fd == nil) {
-		flashstatus(sys->sprint("error: %r"));
+		msg := sys->sprint("error: %r");
+		flashstatus(msg);
+		sys->fprint(stderr, "keyring: %s\n", msg);
 		return -1;
 	}
 	b := array of byte cmd;
 	n := sys->write(fd, b, len b);
 	if(n < 0) {
-		flashstatus(sys->sprint("error: %r"));
+		msg := sys->sprint("error: %r");
+		flashstatus(msg);
+		sys->fprint(stderr, "keyring: %s\n", msg);
 		return -1;
 	}
 	return 0;
@@ -872,6 +957,7 @@ deleteselected()
 
 	if(writectl(cmd) < 0)
 		return;
+	writectl("sync");	# persist to keyfile/secstore
 
 	flashstatus("key deleted");
 	refreshkeys();
@@ -915,6 +1001,18 @@ reloadcolors()
 	widgetmod->retheme(display_g);
 	if(menumod != nil)
 		menumod->init(display_g, font);
+}
+
+strcontains(s, sub: string): int
+{
+	ls := len s;
+	lsub := len sub;
+	if(lsub > ls)
+		return 0;
+	for(i := 0; i <= ls - lsub; i++)
+		if(s[i:i+lsub] == sub)
+			return 1;
+	return 0;
 }
 
 cleanup()

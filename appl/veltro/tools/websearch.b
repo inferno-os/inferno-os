@@ -5,7 +5,8 @@ implement ToolWebsearch;
 #
 # Searches the web using Brave Search API via native HTTPS.
 # Uses Webclient module for TLS 1.3 with certificate verification.
-# API key must be in /lib/veltro/keys/brave (one line, key only).
+# API key is retrieved from factotum (proto=pass service=brave),
+# falling back to /lib/veltro/keys/brave for migration.
 #
 # Usage:
 #   websearch <query>
@@ -25,6 +26,9 @@ include "string.m";
 
 include "webclient.m";
 	webclient: Webclient;
+
+include "factotum.m";
+	factotum: Factotum;
 
 include "../tool.m";
 
@@ -124,9 +128,20 @@ exec(args: string): string
 	return formatresults(output);
 }
 
-# Read API key from file
+# Read API key from factotum, falling back to file
 readapikey(): string
 {
+	# Try factotum first
+	if(factotum == nil)
+		factotum = load Factotum Factotum->PATH;
+	if(factotum != nil){
+		factotum->init();
+		(nil, password) := factotum->getuserpasswd("proto=pass service=brave");
+		if(password != nil && password != "")
+			return password;
+	}
+
+	# Fall back to file (migration)
 	fd := sys->open(APIKEY_PATH, Sys->OREAD);
 	if(fd == nil)
 		return "";

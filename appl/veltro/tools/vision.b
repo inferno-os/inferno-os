@@ -33,6 +33,9 @@ include "webclient.m";
 include "encoding.m";
 	base64: Encoding;
 
+include "factotum.m";
+	factotum: Factotum;
+
 include "../tool.m";
 
 ToolVision: module {
@@ -445,9 +448,20 @@ extracterror(json: string): string
 
 # ==================== I/O Helpers ====================
 
-# Read API key from file
+# Read API key from factotum, falling back to file
 readapikey(): string
 {
+	# Try factotum first
+	if(factotum == nil)
+		factotum = load Factotum Factotum->PATH;
+	if(factotum != nil){
+		factotum->init();
+		(nil, password) := factotum->getuserpasswd("proto=pass service=anthropic");
+		if(password != nil && password != "")
+			return password;
+	}
+
+	# Fall back to file (migration)
 	fd := sys->open(APIKEY_PATH, Sys->OREAD);
 	if(fd == nil)
 		return "";

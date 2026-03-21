@@ -103,7 +103,6 @@ llm_key_label: ref Label;
 llm_dial_label: ref Label;
 llm_dial_tf: ref Textfield;
 llm_apply_btn: ref Button;
-llm_save_btn: ref Button;
 llm_is_remote: int;
 llm_mode_set: int;		# 1 after first layout or click — suppresses config re-read
 
@@ -294,7 +293,6 @@ layoutcontent()
 	llm_dial_label = nil;
 	llm_dial_tf = nil;
 	llm_apply_btn = nil;
-	llm_save_btn = nil;
 	# Reset mode tracking when leaving LLM category
 	if(category != CatLLM) {
 		llm_is_remote = 0;
@@ -430,7 +428,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		if(haskey)
 			keystatus = "API key: configured";
 		else
-			keystatus = "API key: not set (check factotum or ANTHROPIC_API_KEY)";
+			keystatus = "API key: not set (add via Keyring app)";
 		llm_key_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
 			keystatus, 0, LEFT);
@@ -441,11 +439,6 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 	llm_apply_btn = Button.mk(
 		Rect((cx, cy), (cx + BTN_W, cy + bh)),
 		"Apply");
-	savew := BTN_W + 40;
-	llm_save_btn = Button.mk(
-		Rect((cx + BTN_W + MARGIN, cy),
-		     (cx + BTN_W + MARGIN + savew, cy + bh)),
-		"Save to Profile");
 }
 
 layouttools(cx, cy, cw, cbottom, ch: int)
@@ -764,8 +757,6 @@ drawllm()
 	}
 	if(llm_apply_btn != nil)
 		llm_apply_btn.draw(w.image);
-	if(llm_save_btn != nil)
-		llm_save_btn.draw(w.image);
 }
 
 drawchecks(checks: array of ref Checkbox)
@@ -1019,10 +1010,6 @@ clickllm(ptr: ref Pointer)
 		trackllmapply(ptr);
 		return;
 	}
-	if(llm_save_btn != nil && llm_save_btn.contains(ptr.xy)) {
-		trackllmsave(ptr);
-		return;
-	}
 }
 
 clicktools(ptr: ref Pointer)
@@ -1257,167 +1244,6 @@ trackllmapply(nil: ref Pointer)
 	}
 }
 
-trackllmsave(nil: ref Pointer)
-{
-	llm_save_btn.pressed = 1;
-	dirty = 1;
-	redraw();
-	for(;;) {
-		p := <-w.ctxt.ptr;
-		if(p == nil || !(p.buttons & 1)) {
-			llm_save_btn.pressed = 0;
-			if(p != nil && llm_save_btn.contains(p.xy))
-				savellmtoprofile();
-			dirty = 1;
-			return;
-		}
-	}
-}
-
-savellmtoprofile()
-{
-	# Read current profile
-	profile := readfile("/lib/sh/profile");
-	if(profile == nil) {
-		flashstatus("cannot read /lib/sh/profile");
-		return;
-	}
-
-	# Build the replacement LLM line
-	newline: string;
-	if(llm_is_remote) {
-		addr := "";
-		if(llm_dial_tf != nil)
-			addr = strip(llm_dial_tf.value());
-		if(len addr == 0) {
-			flashstatus("enter a dial address first");
-			return;
-		}
-		newline = "\tmount -A '" + addr + "' /n/llm >[2] /dev/null";
-	} else {
-		backend := "api";
-		if(llm_backend_group != nil) {
-			bi := llm_backend_group.selected();
-			if(bi >= 0 && bi < len llm_backend_names)
-				backend = llm_backend_names[bi];
-		}
-		url := "";
-		if(llm_url_tf != nil)
-			url = strip(llm_url_tf.value());
-		model := "";
-		if(llm_model_tf != nil)
-			model = strip(llm_model_tf.value());
-
-		cmd := "\tllmsrv";
-		if(backend != "api")
-			cmd += " -b " + backend;
-		if(backend == "openai" && len url > 0
-		   && url != "http://localhost:11434/v1")
-			cmd += " -u " + url;
-		else if(backend == "api" && len url > 0
-			&& url != "https://api.anthropic.com")
-			cmd += " -u " + url;
-		if(len model > 0 && model != "claude-sonnet-4-5-20250929")
-			cmd += " -M " + model;
-		cmd += " >[2] /dev/null &";
-		newline = cmd;
-	}
-
-	# Find and replace the LLM line in the profile.
-	# Strategy: look for "# BEGIN LLM" / "# END LLM" markers first
-	# (from a previous save), else find the bare llmsrv line.
-	BEGIN_MARKER: con "# BEGIN LLM";
-	END_MARKER: con "# END LLM";
-
-	out := "";
-	found := 0;
-
-	bi := strindex(profile, BEGIN_MARKER);
-	if(bi >= 0) {
-		ei := strindex(profile[bi:], END_MARKER);
-		if(ei >= 0) {
-			out = profile[0:bi];
-			out += BEGIN_MARKER + "\n" + newline + "\n\t" + END_MARKER;
-			after := bi + ei + len END_MARKER;
-			while(after < len profile && profile[after] != '\n')
-				after++;
-			if(after < len profile)
-				out += profile[after:];
-			found = 1;
-		}
-	}
-
-	if(!found) {
-		# Find the bare "llmsrv" line and wrap it with markers
-		lines: list of string;
-		rest := profile;
-		while(len rest > 0) {
-			eol := len rest;
-			for(j := 0; j < len rest; j++) {
-				if(rest[j] == '\n') {
-					eol = j;
-					break;
-				}
-			}
-			line: string;
-			if(eol < len rest) {
-				line = rest[0:eol];
-				rest = rest[eol + 1:];
-			} else {
-				line = rest;
-				rest = "";
-			}
-
-			trimmed := strip(line);
-			if(hassubstr(trimmed, "llmsrv") && !hassubstr(trimmed, "#")) {
-				lines = ("\t" + BEGIN_MARKER + "\n" + newline + "\n\t" + END_MARKER) :: lines;
-				found = 1;
-			} else
-				lines = line :: lines;
-		}
-
-		if(found) {
-			rlines: list of string;
-			for(l := lines; l != nil; l = tl l)
-				rlines = (hd l) :: rlines;
-			out = "";
-			for(l = rlines; l != nil; l = tl l) {
-				out += hd l;
-				if(tl l != nil)
-					out += "\n";
-			}
-		}
-	}
-
-	if(!found) {
-		flashstatus("could not find llmsrv line in profile");
-		return;
-	}
-
-	# Write back
-	fd := sys->open("/lib/sh/profile", Sys->OWRITE);
-	if(fd == nil) {
-		flashstatus(sys->sprint("cannot write profile: %r"));
-		return;
-	}
-	b := array of byte out;
-	sys->write(fd, b, len b);
-	flashstatus("profile updated — takes effect on restart");
-}
-
-strindex(s, sub: string): int
-{
-	slen := len s;
-	sublen := len sub;
-	if(sublen > slen)
-		return -1;
-	for(i := 0; i <= slen - sublen; i++) {
-		if(s[i:i + sublen] == sub)
-			return i;
-	}
-	return -1;
-}
-
 applyllm()
 {
 	if(llm_is_remote) {
@@ -1483,7 +1309,7 @@ readllmconfig(): (string, string, string, string, string, int)
 	dial := "tcp!hephaestus!5640";
 	haskey := 0;
 
-	lines := readlines("/lib/lucifer/llm");
+	lines := readlines("/lib/ndb/llm");
 	if(lines != nil) {
 		for(i := 0; i < len lines; i++) {
 			line := lines[i];
@@ -1525,14 +1351,7 @@ readllmconfig(): (string, string, string, string, string, int)
 
 writellmconfig(mode, backend, url, model, dial: string)
 {
-	fd := sys->create("/lib/lucifer/llm", Sys->OWRITE, 8r666);
-	if(fd == nil) {
-		# Try creating the directory first
-		dfd := sys->create("/lib/lucifer", Sys->OREAD, Sys->DMDIR | 8r777);
-		if(dfd != nil)
-			dfd = nil;
-		fd = sys->create("/lib/lucifer/llm", Sys->OWRITE, 8r666);
-	}
+	fd := sys->create("/lib/ndb/llm", Sys->OWRITE, 8r666);
 	if(fd == nil) {
 		flashstatus(sys->sprint("cannot write config: %r"));
 		return;

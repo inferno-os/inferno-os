@@ -17,6 +17,8 @@ TARG=\
 	signer.dis\
 	verify.dis\
 	secstore.dis\
+	secstored.dis\
+	secstore-setup.dis\
 
 SYSMODULES=\
 	arg.m\

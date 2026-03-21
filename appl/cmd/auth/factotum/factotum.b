@@ -14,6 +14,15 @@ include "string.m";
 	str: String;
 
 include "keyring.m";
+	kr: Keyring;
+
+include "dial.m";
+
+include "security.m";
+	random: Random;
+
+include "secstore.m";
+	secstore: Secstore;
 
 include "authio.m";
 
@@ -42,6 +51,25 @@ files: Files;
 authio: Authio;
 
 keymanc: chan of (list of ref Attr, int, chan of (list of ref Key, string));
+allkeys: array of ref Key;
+
+# Persistence
+KEYFILE_MAGIC: con "FKEY1\n";
+KEYFILE_KDF_ROUNDS: con 10000;
+AES_GCM_NONCE_LEN: con 12;
+AES_GCM_TAG_LEN: con 16;
+
+keyfilepath: string;
+keyfilepass: array of byte;	# derived key, not raw password
+dirtyc: chan of int;		# signal dirty state to persist thread
+syncc: chan of chan of int;	# request sync, reply when done
+
+# Secstore persistence
+secstoreaddr: string;		# secstore server address (e.g. "net!localhost!secstore")
+secstoreuser: string;		# username for secstore auth
+secstorepwhash: array of byte;	# password hash for secstore auth
+secstorefilekey: array of byte;	# modern file encryption key (AES-256-GCM)
+secstorelkey: array of byte;	# legacy file encryption key (AES-CBC, for reading old files)
 
 init(nil: ref Draw->Context, args: list of string)
 {
@@ -51,13 +79,20 @@ init(nil: ref Draw->Context, args: list of string)
 
 	svcname := "#sfactotum";
 	mntpt := "/mnt/factotum";
+	keyfilepassarg: string;
+	secstorepassarg: string;
 	arg := load Arg Arg->PATH;
 	if(arg != nil){
 		arg->init(args);
-		arg->setusage("auth/factotum [-d] [-m /mnt/factotum] [-s factotum]");
+		arg->setusage("auth/factotum [-d] [-f keyfile] [-p password] [-S addr] [-P secpass] [-u user] [-m /mnt/factotum] [-s factotum]");
 		while((o := arg->opt()) != 0)
 			case o {
 			'd' =>	debug++;
+			'f' =>	keyfilepath = arg->earg();
+			'p' =>	keyfilepassarg = arg->earg();
+			'S' =>	secstoreaddr = arg->earg();
+			'P' =>	secstorepassarg = arg->earg();
+			'u' =>	secstoreuser = arg->earg();
 			'm' =>	mntpt = arg->earg();
 			's' =>		svcname = "#s"+arg->earg();
 			* =>	arg->usage();
@@ -66,6 +101,39 @@ init(nil: ref Draw->Context, args: list of string)
 		if(args != nil)
 			arg->usage();
 		arg = nil;
+	}
+
+	# -S (secstore) takes precedence over -f (local keyfile)
+	if(secstoreaddr != nil){
+		kr = load Keyring Keyring->PATH;
+		if(kr == nil)
+			err("cannot load Keyring");
+		random = load Random Random->PATH;
+		if(random == nil)
+			err("cannot load Random");
+		secstore = load Secstore Secstore->PATH;
+		if(secstore == nil)
+			err("cannot load Secstore");
+		secstore->init();
+		if(secstoreuser == nil)
+			secstoreuser = user();
+		if(secstorepassarg != nil){
+			secstorepwhash = secstore->mkseckey(secstorepassarg);
+			secstorefilekey = secstore->mkfilekey2(secstorepassarg);
+			secstorelkey = secstore->mkfilekey(secstorepassarg);
+			secstorepassarg = nil;
+		}
+	} else if(keyfilepath != nil){
+		kr = load Keyring Keyring->PATH;
+		if(kr == nil)
+			err("cannot load Keyring");
+		random = load Random Random->PATH;
+		if(random == nil)
+			err("cannot load Random");
+		if(keyfilepassarg != nil){
+			keyfilepass = derivekey(keyfilepassarg);
+			keyfilepassarg = nil;
+		}
 	}
 	sys->unmount(nil, mntpt);
 	if(sys->bind(svcname, mntpt, Sys->MREPL) < 0)
@@ -105,9 +173,29 @@ factotumsrv()
 	sys->pctl(Sys->NEWPGRP|Sys->FORKFD|Sys->FORKENV, nil);
 	if(debug == 0)
 		privacy();
-	allkeys := array[0] of ref Key;
+	allkeys = array[0] of ref Key;
 	pidc := chan of int;
 	donec := chan of ref Fid;
+
+	# Load keys from secstore or encrypted keyfile
+	if(secstoreaddr != nil){
+		dirtyc = chan of int;
+		syncc = chan of chan of int;
+		e := secstoreload();
+		if(e != nil){
+			if(debug)
+				sys->fprint(sys->fildes(2), "factotum: secstore: %s\n", e);
+			# Degrade gracefully — continue with empty keys
+		}
+		spawn persist();
+	} else if(keyfilepath != nil){
+		dirtyc = chan of int;
+		syncc = chan of chan of int;
+		e := loadkeyfile(keyfilepath);
+		if(e != nil && debug)
+			sys->fprint(sys->fildes(2), "factotum: keyfile: %s\n", e);
+		spawn persist();
+	}
 #	keyc := chan of (list of ref Attr, chan of (ref Key, string));
 	needfid := -1;
 	needed, needy: list of (int, list of ref Attr, chan of (list of ref Key, string));
@@ -160,6 +248,8 @@ factotumsrv()
 			}
 			allkeys = addkey(allkeys, k);
 			wc <-= (len data, nil);
+			if(dirtyc != nil)
+				alt { dirtyc <-= 1 => ; * => ; }
 		"delkey" =>
 			attrs := parseline(s);
 			for(al := attrs; al != nil; al = tl al){
@@ -171,8 +261,18 @@ factotumsrv()
 			}
 			if(delkey(allkeys, attrs) == 0)
 				wc <-= (0, "no matching keys");
-			else
+			else{
 				wc <-= (len data, nil);
+				if(dirtyc != nil)
+					alt { dirtyc <-= 1 => ; * => ; }
+			}
+		"sync" =>
+			if(syncc != nil){
+				rc := chan of int;
+				syncc <-= rc;
+				<-rc;
+			}
+			wc <-= (len data, nil);
 		"debug" =>
 			wc <-= (len data, nil);
 		* =>
@@ -1063,4 +1163,458 @@ netmkaddr(addr, net, svc: string): string
 	if(svc == nil || n > 2)
 		return addr;
 	return sys->sprint("%s!%s", addr, svc);
+}
+
+# ── Keyfile persistence ──────────────────────────────────────
+
+#
+# Derive a 32-byte AES-256 key from a password using iterated HMAC-SHA256.
+#
+derivekey(password: string): array of byte
+{
+	pass := array of byte password;
+	salt := array of byte "factotum keyfile";
+	key := array[Keyring->SHA256dlen] of byte;
+
+	# First round: HMAC-SHA256(salt, password)
+	kr->hmac_sha256(salt, len salt, pass, key, nil);
+
+	# Iterate
+	for(i := 1; i < KEYFILE_KDF_ROUNDS; i++){
+		prev := array[Keyring->SHA256dlen] of byte;
+		prev[0:] = key;
+		kr->hmac_sha256(prev, len prev, pass, key, nil);
+	}
+
+	# Zero the password bytes
+	for(i = 0; i < len pass; i++)
+		pass[i] = byte 0;
+	return key;
+}
+
+#
+# Generate cryptographically random bytes using the host CSPRNG.
+#
+cryptorand(n: int): array of byte
+{
+	buf := array[n] of byte;
+	fd := sys->open("/dev/random", Sys->OREAD);
+	if(fd == nil)
+		err("can't open /dev/random for nonce generation");
+	if(sys->read(fd, buf, n) != n)
+		err("can't read /dev/random for nonce generation");
+	return buf;
+}
+
+#
+# Load keys from an encrypted keyfile.
+# Prompts for password via stdout/stderr if keyfilepass is nil.
+# Returns nil on success, error string on failure.
+#
+loadkeyfile(path: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return "keyfile does not exist (new installation)";
+
+	# Read the whole file
+	buf := array[65536] of byte;
+	total := 0;
+	for(;;){
+		n := sys->read(fd, buf[total:], len buf - total);
+		if(n <= 0)
+			break;
+		total += n;
+	}
+	if(total == 0)
+		return "empty keyfile";
+
+	data := buf[0:total];
+
+	# Check magic header
+	magic := array of byte KEYFILE_MAGIC;
+	if(total < len magic)
+		return "keyfile too short";
+	for(i := 0; i < len magic; i++)
+		if(data[i] != magic[i])
+			return "bad keyfile header";
+
+	# Prompt for password if we don't have one yet
+	if(keyfilepass == nil){
+		pass := promptpassword("keyfile password: ");
+		if(pass == nil)
+			return "no password provided";
+		keyfilepass = derivekey(pass);
+		# Zero the password string
+		pass = nil;
+	}
+
+	# Extract nonce and ciphertext
+	off := len magic;
+	if(total - off < AES_GCM_NONCE_LEN + AES_GCM_TAG_LEN)
+		return "keyfile too short for nonce+tag";
+
+	nonce := data[off:off+AES_GCM_NONCE_LEN];
+	off += AES_GCM_NONCE_LEN;
+	ciphertext := data[off:total-AES_GCM_TAG_LEN];
+	tag := data[total-AES_GCM_TAG_LEN:total];
+
+	# Decrypt with AES-GCM
+	state := kr->aesgcmsetup(keyfilepass, nonce);
+	if(state == nil)
+		return "AES-GCM setup failed";
+	plaintext := kr->aesgcmdecrypt(state, ciphertext, magic, tag);
+	if(plaintext == nil){
+		keyfilepass = nil;
+		return "decryption failed (wrong password?)";
+	}
+
+	# Parse key lines and add to allkeys
+	s := string plaintext;
+	# Zero plaintext
+	for(i = 0; i < len plaintext; i++)
+		plaintext[i] = byte 0;
+
+	while(len s > 0){
+		eol := len s;
+		for(j := 0; j < len s; j++)
+			if(s[j] == '\n'){
+				eol = j;
+				break;
+			}
+		line := s[0:eol];
+		if(eol < len s)
+			s = s[eol+1:];
+		else
+			s = "";
+		if(len line == 0)
+			continue;
+		# Strip "key " prefix if present
+		if(len line > 4 && line[0:4] == "key ")
+			line = line[4:];
+		k := Key.mk(parseline(line));
+		if(k != nil)
+			allkeys = addkey(allkeys, k);
+	}
+
+	if(debug)
+		sys->fprint(sys->fildes(2), "factotum: loaded %d keys from %s\n",
+			len allkeys, path);
+	return nil;
+}
+
+#
+# Save all keys to an encrypted keyfile.
+# Returns nil on success, error string on failure.
+#
+savekeyfile(path: string): string
+{
+	if(keyfilepass == nil)
+		return "no keyfile password";
+
+	# Serialize all keys
+	s := "";
+	for(i := 0; i < len allkeys; i++)
+		if(allkeys[i] != nil)
+			s += allkeys[i].text() + "\n";
+
+	plaintext := array of byte s;
+
+	# Generate random nonce using host CSPRNG
+	nonce := cryptorand(AES_GCM_NONCE_LEN);
+
+	# Encrypt with AES-GCM
+	magic := array of byte KEYFILE_MAGIC;
+	state := kr->aesgcmsetup(keyfilepass, nonce);
+	if(state == nil){
+		for(j := 0; j < len plaintext; j++)
+			plaintext[j] = byte 0;
+		return "AES-GCM setup failed";
+	}
+	(ciphertext, tag) := kr->aesgcmencrypt(state, plaintext, magic);
+
+	# Zero plaintext
+	for(j := 0; j < len plaintext; j++)
+		plaintext[j] = byte 0;
+
+	if(ciphertext == nil || tag == nil)
+		return "AES-GCM encryption failed";
+
+	# Write atomically: magic + nonce + ciphertext + tag
+	tmppath := path + ".tmp";
+	fd := sys->create(tmppath, Sys->OWRITE, 8r600);
+	if(fd == nil)
+		return sys->sprint("cannot create %s: %r", tmppath);
+
+	# Build output buffer
+	outlen := len magic + AES_GCM_NONCE_LEN + len ciphertext + len tag;
+	out := array[outlen] of byte;
+	off := 0;
+	out[off:] = magic;
+	off += len magic;
+	out[off:] = nonce;
+	off += AES_GCM_NONCE_LEN;
+	out[off:] = ciphertext;
+	off += len ciphertext;
+	out[off:] = tag;
+
+	n := sys->write(fd, out, len out);
+	fd = nil;
+	if(n != len out){
+		sys->remove(tmppath);
+		return sys->sprint("write failed: %r");
+	}
+
+	# Rename tmp to final (atomic on most filesystems)
+	# Inferno doesn't have rename, so remove old + create new
+	sys->remove(path);
+	fd = sys->create(path, Sys->OWRITE, 8r600);
+	if(fd == nil)
+		return sys->sprint("cannot create %s: %r", path);
+	# Re-read tmp and write to final
+	rfd := sys->open(tmppath, Sys->OREAD);
+	if(rfd == nil){
+		fd = nil;
+		return sys->sprint("cannot reopen tmp: %r");
+	}
+	buf := array[len out] of byte;
+	nr := sys->read(rfd, buf, len buf);
+	rfd = nil;
+	if(nr != len out){
+		fd = nil;
+		return "short read from tmp";
+	}
+	n = sys->write(fd, buf, len buf);
+	fd = nil;
+	sys->remove(tmppath);
+	if(n != len buf)
+		return sys->sprint("final write failed: %r");
+
+	if(debug)
+		sys->fprint(sys->fildes(2), "factotum: saved keys to %s\n", path);
+	return nil;
+}
+
+#
+# Background persistence thread.
+# Waits for dirty signals or sync requests.
+# Saves keyfile every 30 seconds if dirty, or immediately on sync.
+#
+persist()
+{
+	dirty := 0;
+	ticker := chan of int;
+	spawn timer(ticker, 30000);
+
+	for(;;) alt {
+	<-dirtyc =>
+		dirty = 1;
+
+	<-ticker =>
+		if(dirty){
+			e := dosave();
+			if(e != nil && debug)
+				sys->fprint(sys->fildes(2), "factotum: persist: %s\n", e);
+			else if(e == nil)
+				dirty = 0;
+		}
+
+	rc := <-syncc =>
+		e := dosave();
+		if(e != nil && debug)
+			sys->fprint(sys->fildes(2), "factotum: sync: %s\n", e);
+		else
+			dirty = 0;
+		rc <-= 0;
+	}
+}
+
+# Save keys via whichever backend is configured
+dosave(): string
+{
+	if(secstoreaddr != nil)
+		return secstoresave();
+	if(keyfilepath != nil && keyfilepass != nil)
+		return savekeyfile(keyfilepath);
+	return "no persistence backend configured";
+}
+
+timer(ch: chan of int, ms: int)
+{
+	for(;;){
+		sys->sleep(ms);
+		alt { ch <-= 1 => ; * => ; }
+	}
+}
+
+#
+# Prompt for a password on stderr, reading from /dev/cons with echo disabled.
+#
+promptpassword(prompt: string): string
+{
+	sys->fprint(sys->fildes(2), "%s", prompt);
+
+	# Try to disable echo
+	consctl := sys->open("/dev/consctl", Sys->OWRITE);
+	if(consctl != nil)
+		sys->fprint(consctl, "rawon");
+
+	fd := sys->open("/dev/cons", Sys->OREAD);
+	if(fd == nil)
+		return nil;
+
+	buf := array[256] of byte;
+	pass := "";
+	for(;;){
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		s := string buf[0:n];
+		for(i := 0; i < len s; i++){
+			if(s[i] == '\n' || s[i] == '\r'){
+				if(consctl != nil)
+					sys->fprint(consctl, "rawoff");
+				sys->fprint(sys->fildes(2), "\n");
+				return pass;
+			}
+			pass[len pass] = s[i];
+		}
+	}
+
+	if(consctl != nil)
+		sys->fprint(consctl, "rawoff");
+	sys->fprint(sys->fildes(2), "\n");
+	if(len pass > 0)
+		return pass;
+	return nil;
+}
+
+# ── Secstore persistence ─────────────────────────────────────
+
+#
+# Load keys from secstore server.
+# Connects, authenticates, fetches the "factotum" file, decrypts, parses keys.
+# Prompts for password if secstorepwhash is nil.
+#
+secstoreload(): string
+{
+	if(secstoreaddr == nil)
+		return "no secstore address";
+
+	# Prompt for password if not provided via -P
+	if(secstorepwhash == nil){
+		pass := promptpassword("secstore password: ");
+		if(pass == nil)
+			return "no password provided";
+		secstorepwhash = secstore->mkseckey(pass);
+		secstorefilekey = secstore->mkfilekey2(pass);
+		secstorelkey = secstore->mkfilekey(pass);
+		pass = nil;
+	}
+
+	# Connect and authenticate
+	(conn, sname, diag) := secstore->connect(secstoreaddr, secstoreuser, secstorepwhash);
+	if(conn == nil){
+		if(diag != nil)
+			return "secstore connect: " + diag;
+		return sys->sprint("secstore connect: %r");
+	}
+
+	if(debug)
+		sys->fprint(sys->fildes(2), "factotum: secstore: connected to %s as %s\n",
+			sname, secstoreuser);
+
+	# Fetch the "factotum" file
+	file := secstore->getfile(conn, "factotum", 0);
+	secstore->bye(conn);
+
+	if(file == nil){
+		if(debug)
+			sys->fprint(sys->fildes(2), "factotum: secstore: no factotum file (new account)\n");
+		return nil;	# Not an error — new account, no keys yet
+	}
+
+	# Decrypt (auto-detects modern GCM vs legacy CBC format)
+	plaintext := secstore->decrypt2(file, secstorefilekey, secstorelkey);
+	if(plaintext == nil)
+		return "secstore: decryption failed (wrong password?)";
+
+	# Parse key lines
+	s := string plaintext;
+	secstore->erasekey(plaintext);
+
+	nloaded := 0;
+	while(len s > 0){
+		eol := len s;
+		for(j := 0; j < len s; j++)
+			if(s[j] == '\n'){
+				eol = j;
+				break;
+			}
+		line := s[0:eol];
+		if(eol < len s)
+			s = s[eol+1:];
+		else
+			s = "";
+		if(len line == 0)
+			continue;
+		# Strip "key " prefix if present
+		if(len line > 4 && line[0:4] == "key ")
+			line = line[4:];
+		k := Key.mk(parseline(line));
+		if(k != nil){
+			allkeys = addkey(allkeys, k);
+			nloaded++;
+		}
+	}
+
+	if(debug)
+		sys->fprint(sys->fildes(2), "factotum: secstore: loaded %d keys\n", nloaded);
+	return nil;
+}
+
+#
+# Save all keys to secstore server.
+# Connects, authenticates, encrypts keys, puts the "factotum" file.
+#
+secstoresave(): string
+{
+	if(secstoreaddr == nil)
+		return "no secstore address";
+	if(secstorepwhash == nil || secstorefilekey == nil)
+		return "no secstore credentials";
+
+	# Serialize all keys
+	s := "";
+	for(i := 0; i < len allkeys; i++)
+		if(allkeys[i] != nil)
+			s += "key " + allkeys[i].text() + "\n";
+
+	plaintext := array of byte s;
+
+	# Encrypt with modern AES-GCM
+	encrypted := secstore->encrypt2(plaintext, secstorefilekey);
+	secstore->erasekey(plaintext);
+
+	if(encrypted == nil)
+		return "secstore: encryption failed";
+
+	# Connect and authenticate
+	(conn, nil, diag) := secstore->connect(secstoreaddr, secstoreuser, secstorepwhash);
+	if(conn == nil){
+		if(diag != nil)
+			return "secstore save connect: " + diag;
+		return sys->sprint("secstore save connect: %r");
+	}
+
+	# Put the file
+	rc := secstore->putfile(conn, "factotum", encrypted);
+	secstore->bye(conn);
+
+	if(rc < 0)
+		return sys->sprint("secstore putfile: %r");
+
+	if(debug)
+		sys->fprint(sys->fildes(2), "factotum: secstore: saved keys\n");
+	return nil;
 }

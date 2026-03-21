@@ -24,5 +24,10 @@ Secstore: module
 	encrypt:	fn(a: array of byte, key: array of byte): array of byte;
 	erasekey:	fn(a: array of byte);
 
+	# Modern crypto (AES-256-GCM, HMAC-SHA256 key derivation)
+	mkfilekey2:	fn(pass: string): array of byte;
+	encrypt2:	fn(a: array of byte, key: array of byte): array of byte;
+	decrypt2:	fn(a: array of byte, key: array of byte, legacykey: array of byte): array of byte;
+
 	lines:	fn(file: array of byte): list of array of byte;
 };

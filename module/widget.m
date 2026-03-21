@@ -38,6 +38,11 @@ Widget: module
 	# Status bar height in pixels (font.height + padding).
 	statusheight: fn(): int;
 
+	# Compute aligned label width for a group of text fields.
+	# Returns the width of the widest label plus gap, suitable
+	# for setting Textfield.labelw on each field in the group.
+	labelwidth: fn(labels: array of string): int;
+
 	# ── Key constants ─────────────────────────────────────────
 	#
 	# Standard Inferno keyboard codes for special keys.
@@ -167,6 +172,7 @@ Widget: module
 		secret:  int;           # 1 = show dots instead of chars
 		focused: int;           # 1 = has keyboard focus
 		label:   string;        # label drawn to the left
+		labelw:  int;           # fixed label width (0 = auto from font)
 
 		# Create a text field for the given rectangle.
 		# label: text drawn before the input area.
