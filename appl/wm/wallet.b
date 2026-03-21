@@ -92,6 +92,10 @@ lbl_balval2: ref Label;
 dd_network: ref Dropdown;
 networknames: array of string;
 
+# Balance cache (avoid blocking GUI on RPC calls)
+cachedbalance: string;
+balancefetchactive: int;
+
 # Balance refresh
 balancech: chan of int;
 
@@ -184,13 +188,8 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	mode = ModeView;
 	focusidx = -1;
-	# Retry account loading — wallet9p may still be restoring from factotum
-	for(retry := 0; retry < 5; retry++) {
-		refreshaccounts();
-		if(len accounts > 0)
-			break;
-		sys->sleep(500);
-	}
+	sys->sleep(500);	# let wallet9p finish restoring
+	refreshaccounts();
 	layoutall();
 	dirty = 1;
 
@@ -353,14 +352,17 @@ layoutdetail(cx, cy, cw, cbottom, fh: int)
 	lbl_balance = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Balance:", 1, LEFT);
 	cy += fh;
 
-	# Parse balance into separate lines
-	bal := stripnl(readwalletfile(acct.name, "balance"));
+	# Show cached balance immediately, fetch in background
+	bal := cachedbalance;
 	if(bal == nil || bal == "")
-		bal = "0 USDC, 0 ETH";
+		bal = "loading...";
 	(usdcbal, ethbal) := splitbalance(bal);
 	lbl_balval = Label.mk(Rect((cx, cy), (cw, cy + fh)), usdcbal, 0, LEFT);
 	cy += fh;
 	lbl_balval2 = Label.mk(Rect((cx, cy), (cw, cy + fh)), ethbal, 0, LEFT);
+
+	# Fetch balance in background
+	spawn fetchbalance(acct.name);
 
 	formfields = nil;
 }
@@ -685,8 +687,12 @@ donewaccount()
 	cmd := "eth " + chain + " " + name;
 	n := writewalletctl("new", cmd);
 	if(n <= 0) {
-		errmsg := sys->sprint("create failed: %r");
+		errmsg := sys->sprint("%r");
+		if(errmsg == "" || errmsg == "no error")
+			errmsg = "create failed";
 		setstatus(errmsg);
+		# Stay in form mode so user sees the error
+		dirty = 1;
 		return;
 	}
 
@@ -893,6 +899,21 @@ copytoclip(s: string)
 		return;
 	b := array of byte s;
 	sys->write(fd, b, len b);
+}
+
+fetchbalance(acctname: string)
+{
+	if(balancefetchactive)
+		return;
+	balancefetchactive = 1;
+	bal := stripnl(readwalletfile(acctname, "balance"));
+	if(bal != nil && bal != "")
+		cachedbalance = bal;
+	balancefetchactive = 0;
+	alt {
+	balancech <-= 1 => ;
+	* => ;
+	}
 }
 
 balancetimer()

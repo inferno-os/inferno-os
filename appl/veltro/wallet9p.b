@@ -719,6 +719,11 @@ zeroarray(a: array of byte)
 
 syncfactotum()
 {
+	spawn dosyncfactotum();
+}
+
+dosyncfactotum()
+{
 	fd := sys->open("/mnt/factotum/ctl", Sys->OWRITE);
 	if(fd == nil) {
 		sys->fprint(stderr, "wallet9p: sync: cannot open factotum ctl: %r\n");
@@ -769,7 +774,7 @@ initnetworks()
 {
 	networks = array[4] of ref NetworkConfig;
 	networks[0] = ref NetworkConfig("Ethereum Sepolia",
-		"https://rpc.sepolia.org",
+		"https://ethereum-sepolia-rpc.publicnode.com",
 		"0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
 		11155111);
 	networks[1] = ref NetworkConfig("Base Sepolia",
