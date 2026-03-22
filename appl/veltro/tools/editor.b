@@ -15,6 +15,8 @@ implement ToolEditor;
 #   open <path>                Open file in editor
 #   goto <line>                Move cursor to line
 #   find <string>              Search for text
+#   replace <find> <repl>      Replace next occurrence
+#   replaceall <find> <repl>   Replace all occurrences
 #   addr                       Get cursor position
 #   insert <line> <col> <text> Insert text at position
 #   delete <sl> <sc> <el> <ec> Delete range
@@ -76,6 +78,8 @@ doc(): string
 		"  open <path>              Open file in editor\n" +
 		"  goto <line>              Move cursor to line\n" +
 		"  find <string>            Search for text\n" +
+		"  replace <find> <repl>    Replace next match\n" +
+		"  replaceall <find> <repl> Replace all matches\n" +
 		"  insert <ln> <col> <text> Insert text at position\n" +
 		"  delete <sl> <sc> <el> <ec>  Delete range\n" +
 		"  close                    Close editor (quit)\n" +
@@ -98,7 +102,7 @@ exec(args: string): string
 
 	args = strip(args);
 	if(args == "")
-		return "error: no command. Use: read, write, append, save, open, goto, find, addr, insert, delete, name, close, status";
+		return "error: no command. Use: read, write, append, save, open, goto, find, replace, replaceall, addr, insert, delete, name, close, status";
 
 	(cmd, rest) := splitfirst(args);
 	cmd = str->tolower(cmd);
@@ -118,6 +122,10 @@ exec(args: string): string
 		return dogoto(rest);
 	"find" =>
 		return dofind(rest);
+	"replace" =>
+		return doreplacecmd(rest);
+	"replaceall" =>
+		return doreplaceallcmd(rest);
 	"addr" =>
 		return doaddr();
 	"insert" =>
@@ -193,6 +201,25 @@ dofind(args: string): string
 	if(args == "")
 		return "error: usage: find <string>";
 	return writefile(sys->sprint("%s/1/ctl", EDIT_ROOT), "find " + args);
+}
+
+doreplacecmd(args: string): string
+{
+	# replace <find> <repl>
+	# Split on first space: find term, rest is replacement
+	(find, repl) := splitfirst(args);
+	if(find == "")
+		return "error: usage: replace <find> <replacement>";
+	# Use tab separator for ctl command
+	return writefile(sys->sprint("%s/1/ctl", EDIT_ROOT), "replace " + find + "\t" + repl);
+}
+
+doreplaceallcmd(args: string): string
+{
+	(find, repl) := splitfirst(args);
+	if(find == "")
+		return "error: usage: replaceall <find> <replacement>";
+	return writefile(sys->sprint("%s/1/ctl", EDIT_ROOT), "replaceall " + find + "\t" + repl);
 }
 
 doaddr(): string

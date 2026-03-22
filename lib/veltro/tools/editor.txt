@@ -21,6 +21,8 @@ Commands (only work after "launch editor"):
   open <path>              Open file in editor
   goto <line>              Move cursor to line number
   find <string>            Search for text in document
+  replace <find> <repl>    Replace next occurrence
+  replaceall <find> <repl> Replace all occurrences
   addr                     Get cursor position (line col)
   insert <ln> <col> <text> Insert text at position
   delete <sl> <sc> <el> <ec>  Delete text range
