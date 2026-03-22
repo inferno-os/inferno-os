@@ -14,7 +14,10 @@ Usage:
 
 The fractal viewer must be running. Use 'launch fractals' to start it.
 
-Coordinates are in the complex plane:
+Commands are processed once per tick (~500ms). Send one command at a
+time and wait for a state change before sending the next.
+
+Coordinates are in the complex plane (clamped to ±4):
   Full Mandelbrot set: x=[-2, 1] y=[-1.5, 1.5]
 
 Notable regions to explore:
@@ -28,7 +31,7 @@ Examples:
   fractal view                            See current view description
   fractal state                           Read raw state
   fractal zoomin -0.8 0.05 -0.7 0.15      Zoom into seahorse valley
-  fractal center -0.75 0.1 0.02           Zoom centered on point
+  fractal center -0.75 0.1 0.02           Zoom centered on point (aspect-corrected)
   fractal julia -0.4 0.6                  Show Julia set for c=-0.4+0.6i
   fractal depth 3                          Triple the iteration depth
   fractal zoomout                          Go back one level

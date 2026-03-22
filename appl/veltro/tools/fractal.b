@@ -62,8 +62,10 @@ doc(): string
 		"  depth <n>                      Set depth multiplier\n" +
 		"  fill on|off                    Toggle fill mode\n" +
 		"  restart                        Restart computation\n\n" +
-		"The fractal viewer must be running. Use 'launch fractals' to start it.\n\n" +
-		"Coordinates are in the complex plane:\n" +
+		"The fractal viewer must be running. Use 'launch fractals' to start it.\n" +
+		"Commands are processed once per tick (~500ms). Send one command\n" +
+		"at a time and wait for a state change before sending the next.\n\n" +
+		"Coordinates are in the complex plane (clamped to ±4):\n" +
 		"  Full Mandelbrot: x=[-2, 1] y=[-1.5, 1.5]\n" +
 		"  Interesting spots:\n" +
 		"    Seahorse valley: center -0.75 0.1 0.05\n" +
@@ -72,7 +74,7 @@ doc(): string
 		"Examples:\n" +
 		"  fractal view                            See current state\n" +
 		"  fractal zoomin -0.8 0.05 -0.7 0.15      Zoom into seahorse valley\n" +
-		"  fractal center -0.75 0.1 0.02           Zoom centered on point\n" +
+		"  fractal center -0.75 0.1 0.02           Zoom centered (aspect-corrected)\n" +
 		"  fractal julia -0.4 0.6                  Show Julia set\n" +
 		"  fractal depth 3                          Increase detail\n" +
 		"  fractal zoomout                          Go back\n";

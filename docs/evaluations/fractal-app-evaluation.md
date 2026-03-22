@@ -76,34 +76,27 @@ The fractal app is **production-ready** for its current scope: a Mandelbrot/Juli
 
 ---
 
-## Issues Found
+## Issues Found and Resolved
 
-### Minor — Non-blocking
+### Fixed
 
-**1. Polling-based IPC has inherent race window**
-The 500ms tick-based polling of `/tmp/veltro/fractal/ctl` means commands can be lost if two are written within the same tick interval. The `readrmfile` function reads once and truncates, so only the last write before a tick is consumed.
-- **Impact:** Low. Veltro agents send one command at a time and wait for state changes.
-- **Recommendation:** Document this single-command-per-tick constraint in the tool docs. No code change needed.
+**1. Polling-based IPC race window — documented**
+The 500ms tick-based polling of `/tmp/veltro/fractal/ctl` means commands can be lost if two are written within the same tick interval. Added documentation in both `fractal.txt` and the tool's `doc()` string noting the single-command-per-tick constraint.
 
-**2. No input validation on coordinate ranges in the viewer**
-`checkctlfile` parses `zoomin` and `julia` coordinates as `real` without bounds checking. Extreme values (e.g., `zoomin 1e308 1e308 1e309 1e309`) could cause degenerate fixed-point arithmetic.
-- **Impact:** Low. The fixed-point conversion would overflow, producing garbage rendering, but no crash. A restart command recovers.
-- **Recommendation:** Add optional clamping to a reasonable range (e.g., ±4.0) in `checkctlfile`.
+**2. Coordinate clamping — implemented**
+`checkctlfile` now clamps all parsed coordinates (zoomin, center, julia) to ±4.0 via `clampcoord()`. The escape radius is 2, so ±4 covers all mathematically interesting space while preventing fixed-point overflow from extreme values. Test case `CoordClamping` added to `fractal_tool_test.b`.
 
-**3. Zoom stack is unbounded**
+**3. `center` aspect correction — documented**
+Added "(aspect-corrected)" note to the `center` command example in both `fractal.txt` and the tool's `doc()` string.
+
+### Accepted — No action needed
+
+**4. Zoom stack is unbounded**
 The `stack: list of (Fracrect, Params)` grows indefinitely as the user zooms deeper. Extremely deep zoom sessions (100+ levels) would accumulate significant memory.
 - **Impact:** Very low. Users rarely zoom more than 20–30 levels, and each entry is small (~80 bytes).
-- **Recommendation:** No action needed. Could add a cap of ~100 levels if desired.
-
-**4. `center` command produces square zoom regions**
-`center <re> <im> <radius>` constructs a square `(cx-r, cy-r) → (cx+r, cy+r)`, but the viewer's `correctratio` adjusts this to match the window aspect ratio. This means the actual visible region may be wider or taller than `radius` in one axis.
-- **Impact:** Low. The behavior is correct (aspect correction is necessary), but the documentation could note that the visible region may not be exactly `radius` in both dimensions.
-- **Recommendation:** Add a brief note to the tool documentation.
 
 **5. Architecture coupling (known issue)**
-The Veltro tool only works if the viewer is running. The architecture review (`docs/architecture-review-veltro-unification.md`) already identifies this as a known pattern and proposes a unified `/tool/{name}/` convention (Phase 2–3).
-- **Impact:** None for current release. The tool returns clear error messages ("is fractals running?").
-- **Recommendation:** No action for this release; tracked in the architecture review.
+The Veltro tool only works if the viewer is running. The architecture review (`docs/architecture-review-veltro-unification.md`) already identifies this as a known pattern and proposes a unified `/tool/{name}/` convention (Phase 2–3). The tool returns clear error messages ("is fractals running?").
 
 ---
 
@@ -112,7 +105,7 @@ The Veltro tool only works if the viewer is running. The architecture review (`d
 | Criterion | Status | Notes |
 |-----------|--------|-------|
 | Code compiles | Yes | Listed in `appl/wm/mkfile`, `.dis` present |
-| Tests pass | Yes | 18 tests in `fractal_tool_test.b`, load test in `wm_apps_test.b` |
+| Tests pass | Yes | 19 tests in `fractal_tool_test.b`, load test in `wm_apps_test.b` |
 | No security issues | Yes | IPC uses local files only; no network exposure |
 | Error handling | Good | Clear error messages with `%r` for system errors |
 | Documentation | Complete | Inline comments, tool docs, tour demo |
