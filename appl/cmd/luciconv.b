@@ -97,7 +97,6 @@ username := "human";
 # Voice input state
 VOICE_IDLE: con 0;
 VOICE_REC: con 1;
-VOICE_PROC: con 2;
 voicestate := VOICE_IDLE;
 voicech: chan of string;
 micrect: Rect;  # Hit area for mic button
@@ -446,9 +445,6 @@ drawconversation(zone: Rect)
 	VOICE_REC =>
 		miclabel = "REC";
 		miccol = accentcol;
-	VOICE_PROC =>
-		miclabel = "...";
-		miccol = dimcol;
 	* =>
 		miclabel = "mic";
 		miccol = dimcol;
@@ -799,6 +795,10 @@ startvoice()
 
 VOICE_TIMEOUT_MS: con 30000;
 
+VoiceFD: adt {
+	fd: ref Sys->FD;
+};
+
 voiceworker(ch: chan of string)
 {
 	fd := sys->open("/n/speech/hear", Sys->ORDWR);
@@ -814,10 +814,17 @@ voiceworker(ch: chan of string)
 		return;
 	}
 
-	# Read transcription result with timeout
+	# Read transcription result with timeout.
+	# Use a shared VoiceFD ref so timeout can nil the fd,
+	# preventing voiceread from looping after timeout.
+	# NOTE: if voiceread is blocked inside sys->read when timeout
+	# fires, it will remain blocked until the underlying kernel FD
+	# is closed or the read returns.  This is a known limitation
+	# of Limbo's FD model -- there is no sys->close().
 	sys->seek(fd, big 0, Sys->SEEKSTART);
+	vfd := ref VoiceFD(fd);
 	resultch := chan of string;
-	spawn voiceread(fd, resultch);
+	spawn voiceread(vfd, resultch);
 
 	timeoutch := chan of int;
 	spawn voicetimeout(timeoutch, VOICE_TIMEOUT_MS);
@@ -826,17 +833,19 @@ voiceworker(ch: chan of string)
 		result := <-resultch =>
 			ch <-= result;
 		<-timeoutch =>
-			# Close fd to unblock the voiceread goroutine's sys->read()
-			fd = nil;
+			vfd.fd = nil;
 			ch <-= "error: voice recognition timed out";
 	}
 }
 
-voiceread(fd: ref Sys->FD, ch: chan of string)
+voiceread(vfd: ref VoiceFD, ch: chan of string)
 {
 	result := "";
 	buf := array[8192] of byte;
 	for(;;) {
+		fd := vfd.fd;
+		if(fd == nil)
+			break;
 		n := sys->read(fd, buf, len buf);
 		if(n <= 0)
 			break;
