@@ -208,8 +208,8 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	mode = ModeView;
 	focusidx = -1;
 	sys->sleep(500);	# let wallet9p finish restoring
-	refreshaccounts();
 	layoutall();
+	refreshaccounts();
 	dirty = 1;
 
 	themech = chan of int;
