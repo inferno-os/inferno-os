@@ -283,9 +283,10 @@ signtx(tx: ref EthTx, privkey: array of byte): array of byte
 	v := big (recid + tx.chainid * 2 + 35);
 
 	# Build signed tx
+	# r and s are integers — strip leading zeros before RLP encoding
 	signed: list of array of byte;
-	signed = rlpencode_bytes(sbytes) :: signed;
-	signed = rlpencode_bytes(rbytes) :: signed;
+	signed = rlpencode_bytes(stripzeros(sbytes)) :: signed;
+	signed = rlpencode_bytes(stripzeros(rbytes)) :: signed;
 	signed = rlpencode_uint(v) :: signed;
 	signed = rlpencode_bytes(databytes) :: signed;
 	signed = rlpencode_uint(tx.value) :: signed;
@@ -352,6 +353,19 @@ hexdecode(s: string): array of byte
 		buf[i] = byte (hi * 16 + lo);
 	}
 	return buf;
+}
+
+# Strip leading zero bytes from a byte array (for integer RLP encoding)
+stripzeros(b: array of byte): array of byte
+{
+	if(b == nil)
+		return array[0] of byte;
+	i := 0;
+	while(i < len b - 1 && b[i] == byte 0)
+		i++;
+	if(i == 0)
+		return b;
+	return b[i:];
 }
 
 hextoval(c: int): int
