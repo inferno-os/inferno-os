@@ -432,12 +432,25 @@ The wallet architecture is designed for future post-quantum signature schemes:
 - TLS connections to RPC endpoints use hybrid X25519+ML-KEM-768 when available
 - No PQ-specific wallet work needed until chains adopt PQ signatures
 
+## Verified Live Transactions
+
+The wallet has been tested with live transactions on Ethereum Sepolia:
+
+| Type | Transaction | Hash |
+|------|------------|------|
+| ETH send (1000 wei) | Burn address | `0xf38d2f48a4391823a1d1356c522bacfc9e11639d5fa12e13652d1be082760b1c` |
+| USDC ERC-20 (1 USDC) | Burn address | `0x536630bba5ae9ca2cf6eec123f2965ef23a1164d212a4a436c2685f1903ac8b5` |
+| Agent wallet tool | Burn address | `0x73c19911a9e0ee44a4445a1eb82f251c4aa6f174ae1925f17563f090af93c669` |
+| x402 payfetch | Test server | EIP-712 signed authorization, 200 OK returned |
+
+All transactions verifiable at [sepolia.etherscan.io](https://sepolia.etherscan.io).
+
 ## Testing
 
 ### Unit Tests (run inside emu)
 
 ```sh
-./emu/MacOSX/o.emu -r. -c0 /dis/tests/secp256k1_test.dis -v    # 11 tests
+./emu/MacOSX/o.emu -r. -c0 /dis/tests/secp256k1_test.dis -v    # 18 tests
 ./emu/MacOSX/o.emu -r. -c0 /dis/tests/ethcrypto_test.dis -v    # 15 tests
 ./emu/MacOSX/o.emu -r. -c0 /dis/tests/x402_test.dis -v          # 9 tests
 ```
@@ -449,11 +462,35 @@ bash tests/host/wallet9p_test.sh              # wallet9p basic operations
 bash tests/host/wallet_e2e_test.sh            # Base Sepolia RPC connectivity
 bash tests/host/secstore_logon_test.sh        # secstore + factotum persistence (10 tests)
 bash tests/host/wallet_persist_test.sh        # wallet key survival across restarts (7 tests)
+bash tests/host/payfetch_test.sh              # x402 payfetch end-to-end (requires x402-test-server)
+```
+
+### x402 Test Server
+
+A dedicated test server is available for payfetch testing:
+
+```sh
+git clone git@github.com:NERVsystems/x402-test-server.git
+cd x402-test-server && npm install && npm start
+```
+
+The server runs on `http://localhost:4020` and returns proper x402 v2 402 responses. Test from the Inferno shell:
+
+```
+echo 'http://localhost:4020/api/data -a veltro-demo-wallet' > /tool.1/payfetch/ctl
+cat /tool.1/payfetch/ctl
 ```
 
 ### Test Safety
 
-All integration tests use dedicated test user accounts (`testuser-walletpersist`, `testuser-seclogon`). They never touch the real user's secstore data.
+All integration tests use dedicated test user accounts (`testuser-walletpersist`, `testuser-seclogon`, `testuser-payfetch`). They never touch the real user's secstore data.
+
+### CI/CD
+
+The CI pipeline (`.github/workflows/ci.yml`) runs on both Linux AMD64 and macOS ARM64:
+- All `*_test.dis` unit tests via the emu test runner
+- `wallet9p_test.sh` — create account, read address, sign hash
+- `wallet_persist_test.sh` — secstore round-trip key survival
 
 ## Building
 
