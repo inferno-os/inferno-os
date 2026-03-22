@@ -39,6 +39,9 @@ Ethrpc: module {
 		gasused:	string;
 	};
 
+	# Get current gas price (returns wei as decimal string)
+	gasprice:	fn(): (string, string);
+
 	# Hex/decimal conversions for wei values
 	hextowei:	fn(hex: string): string;	# 0x... → decimal string
 	weitohex:	fn(wei: string): string;	# decimal string → 0x...

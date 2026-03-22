@@ -65,7 +65,7 @@ AcctInfo: adt {
 
 # ── View modes ───────────────────────────────────────────────
 
-ModeView, ModeNewETH, ModeImport: con iota;
+ModeView, ModeNewETH, ModeImport, ModePay: con iota;
 
 # ── State ────────────────────────────────────────────────────
 
@@ -88,6 +88,11 @@ lbl_chainval:ref Label;
 lbl_balval:  ref Label;
 lbl_balval2: ref Label;
 
+# Transaction history
+lbl_history: ref Label;
+historylist: ref Listbox;
+historyraw:  list of string;	# raw history lines for txhash extraction
+
 # Network selector
 dd_network: ref Dropdown;
 networknames: array of string;
@@ -102,6 +107,19 @@ balancech: chan of int;
 # Form fields (import mode)
 f_name:   ref Textfield;
 f_key:    ref Textfield;
+
+# Pay form fields
+btn_send:     ref Button;	# Send Payment button in detail view
+f_recipient:  ref Textfield;
+f_amount:     ref Textfield;
+dd_token:     ref Dropdown;
+btn_pay:      ref Button;
+btn_paycancel: ref Button;
+
+# Pending payment approval
+pendingcount: int;
+pendingch: chan of int;
+
 f_chain:  ref Textfield;
 btn_ok:   ref Button;
 btn_cancel: ref Button;
@@ -173,9 +191,10 @@ init(ctxt: ref Draw->Context, nil: list of string)
 			"Refresh",
 		});
 		detailmenu = menumod->new(array[] of {
+			"Send Payment",
 			"Copy Address",
 			"Copy Account Name",
-			"",
+			"Copy Tx Hash",
 			"Refresh Balance",
 		});
 	}
@@ -198,6 +217,9 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	balancech = chan of int;
 	spawn balancetimer();
+
+	pendingch = chan of int;
+	spawn pendingwatcher();
 
 	# Main event loop
 	for(;;) {
@@ -235,6 +257,11 @@ init(ctxt: ref Draw->Context, nil: list of string)
 				layoutall();
 				dirty = 1;
 			}
+		n := <-pendingch =>
+			pendingcount = n;
+			if(n > 0)
+				setstatus(sys->sprint("%d pending payment%s — B3 menu to review", n, plural(n)));
+			dirty = 1;
 		}
 	}
 }
@@ -307,6 +334,8 @@ layoutall()
 		layoutdetail(rx + FORM_MARGIN, ry, rw, rbottom, fh);
 	ModeNewETH or ModeImport =>
 		layoutform(rx + FORM_MARGIN, ry, rw, rbottom, fh, bh);
+	ModePay =>
+		layoutpay(rx + FORM_MARGIN, ry, rw, rbottom, fh, bh);
 	}
 }
 
@@ -360,6 +389,61 @@ layoutdetail(cx, cy, cw, cbottom, fh: int)
 	lbl_balval = Label.mk(Rect((cx, cy), (cw, cy + fh)), usdcbal, 0, LEFT);
 	cy += fh;
 	lbl_balval2 = Label.mk(Rect((cx, cy), (cw, cy + fh)), ethbal, 0, LEFT);
+	cy += fh + FIELD_SPACING + 4;
+
+	# Send Payment button
+	bh := fh + 2;
+	btn_send = Button.mk(Rect((cx, cy), (cx + BTN_W + 20, cy + bh)), "Send Payment");
+	cy += bh + FIELD_SPACING + 4;
+
+	# Transaction history section
+	lbl_history = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Recent Transactions:", 1, LEFT);
+	cy += fh + FIELD_SPACING;
+
+	# Fill remaining space with history listbox
+	histbottom := cbottom;
+	if(histbottom - cy < fh * 2)
+		histbottom = cy + fh * 2;	# minimum 2 rows
+	histr := Rect((cx, cy), (cw, histbottom));
+	if(historylist == nil)
+		historylist = Listbox.mk(histr);
+	else
+		historylist.resize(histr);
+
+	# Load history items
+	hraw := readwalletfile(acct.name, "history");
+	items: list of string;
+	historyraw = nil;
+	if(hraw != nil && hraw != "") {
+		(nil, lines) := sys->tokenize(hraw, "\n");
+		for(; lines != nil; lines = tl lines) {
+			line := hd lines;
+			if(line != "") {
+				historyraw = line :: historyraw;
+				items = fmthistory(line) :: items;
+			}
+		}
+	}
+	# Reverse to show newest first (history appends)
+	ritems: list of string;
+	rraw: list of string;
+	for(; items != nil; items = tl items)
+		ritems = hd items :: ritems;
+	for(; historyraw != nil; historyraw = tl historyraw)
+		rraw = hd historyraw :: rraw;
+	historyraw = rraw;
+
+	if(ritems != nil) {
+		n := 0;
+		for(l := ritems; l != nil; l = tl l)
+			n++;
+		arr := array[n] of string;
+		i := 0;
+		for(l := ritems; l != nil; l = tl l)
+			arr[i++] = hd l;
+		historylist.setitems(arr);
+	} else
+		historylist.setitems(array[] of {"(no transactions)"});
 
 	# Fetch balance in background
 	spawn fetchbalance(acct.name);
@@ -416,6 +500,54 @@ layoutform(cx, cy, cw, cbottom, fh, bh: int)
 	focusidx = 0;
 }
 
+layoutpay(cx, cy, cw, cbottom, fh, bh: int)
+{
+	if(cy > cbottom) return;
+
+	sel := -1;
+	if(acctlist != nil)
+		sel = acctlist.selected;
+	if(sel < 0 || sel >= len accounts) {
+		lbl_name = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Select an account first", 1, LEFT);
+		formfields = nil;
+		return;
+	}
+
+	acct := accounts[sel];
+	lbl_name = Label.mk(Rect((cx, cy), (cw, cy + fh)),
+		"Send from: " + acct.name, 0, LEFT);
+	cy += fh + FIELD_SPACING + 4;
+
+	lw := widgetmod->labelwidth(array[] of {"Recipient:", "Amount:", "Token:"});
+
+	f_recipient = Textfield.mk(Rect((cx, cy), (cw, cy + fh)), "Recipient:", 0);
+	f_recipient.labelw = lw;
+	cy += fh + FIELD_SPACING;
+
+	f_amount = Textfield.mk(Rect((cx, cy), (cw, cy + fh)), "Amount:", 0);
+	f_amount.labelw = lw;
+	cy += fh + FIELD_SPACING;
+
+	# Token selector
+	tokennames := array[] of { "ETH (wei)", "USDC (base units)" };
+	toksel := 0;
+	if(dd_token != nil)
+		toksel = dd_token.selected;
+	dd_token = Dropdown.mk(Rect((cx, cy), (cw, cy + fh)), tokennames, toksel);
+	dd_token.label = "Token:";
+	cy += fh + FIELD_SPACING + 4;
+
+	formfields = array[] of { f_recipient, f_amount };
+
+	# Buttons
+	btnx := cx;
+	btn_pay = Button.mk(Rect((btnx, cy), (btnx + BTN_W, cy + bh)), "Send");
+	btnx += BTN_W + 8;
+	btn_paycancel = Button.mk(Rect((btnx, cy), (btnx + BTN_W, cy + bh)), "Cancel");
+
+	focusidx = 0;
+}
+
 # ── Drawing ──────────────────────────────────────────────────
 
 redraw()
@@ -444,6 +576,8 @@ redraw()
 	ModeView =>
 		drawdetail();
 	ModeNewETH or ModeImport =>
+		drawform();
+	ModePay =>
 		drawform();
 	}
 
@@ -474,6 +608,12 @@ drawdetail()
 		lbl_balval.draw(w.image);
 	if(lbl_balval2 != nil)
 		lbl_balval2.draw(w.image);
+	if(btn_send != nil)
+		btn_send.draw(w.image);
+	if(lbl_history != nil)
+		lbl_history.draw(w.image);
+	if(historylist != nil)
+		historylist.draw(w.image);
 }
 
 drawform()
@@ -486,10 +626,19 @@ drawform()
 			formfields[i].draw(w.image);
 		}
 	}
-	if(btn_ok != nil)
-		btn_ok.draw(w.image);
-	if(btn_cancel != nil)
-		btn_cancel.draw(w.image);
+	if(mode == ModePay) {
+		if(dd_token != nil)
+			dd_token.draw(w.image);
+		if(btn_pay != nil)
+			btn_pay.draw(w.image);
+		if(btn_paycancel != nil)
+			btn_paycancel.draw(w.image);
+	} else {
+		if(btn_ok != nil)
+			btn_ok.draw(w.image);
+		if(btn_cancel != nil)
+			btn_cancel.draw(w.image);
+	}
 }
 
 # ── Keyboard handling ────────────────────────────────────────
@@ -520,6 +669,8 @@ handlekey(raw: int)
 			donewaccount();
 		else if(mode == ModeImport)
 			doimport();
+		else if(mode == ModePay)
+			dosendpayment();
 	* =>
 		if(formfields != nil && focusidx >= 0 && focusidx < len formfields) {
 			formfields[focusidx].key(k);
@@ -585,6 +736,18 @@ handleptr(ptr: ref Pointer)
 		return;
 	}
 
+	# History list click/scroll
+	if(historylist != nil && historylist.contains(ptr.xy)) {
+		if(ptr.buttons & 8 || ptr.buttons & 16) {
+			historylist.wheel(ptr.buttons);
+			dirty = 1;
+			return;
+		}
+		historylist.click(ptr.xy);
+		dirty = 1;
+		return;
+	}
+
 	# Network dropdown click
 	if(dd_network != nil && dd_network.contains(ptr.xy)) {
 		oldnet := dd_network.selected;
@@ -592,6 +755,9 @@ handleptr(ptr: ref Pointer)
 		if(dd_network.selected != oldnet) {
 			# Write network change to wallet9p
 			writewalletctl("ctl", "network " + dd_network.value());
+			# Clear cached balance and force re-fetch on new network
+			cachedbalance = "loading...";
+			balancefetchactive = 0;
 			layoutall();
 			setstatus("Network: " + dd_network.value());
 		}
@@ -648,6 +814,66 @@ handleptr(ptr: ref Pointer)
 				return;
 			}
 		}
+	}
+
+	# Send Payment button (detail view)
+	if(btn_send != nil && btn_send.contains(ptr.xy) && mode == ModeView) {
+		btn_send.pressed = 1;
+		dirty = 1;
+		for(;;) {
+			p := <-w.ctxt.ptr;
+			if(p == nil || !(p.buttons & 1)) {
+				btn_send.pressed = 0;
+				if(p != nil && btn_send.contains(p.xy)) {
+					mode = ModePay;
+					layoutall();
+				}
+				dirty = 1;
+				return;
+			}
+		}
+	}
+
+	# Pay form: Send button
+	if(btn_pay != nil && btn_pay.contains(ptr.xy) && mode == ModePay) {
+		btn_pay.pressed = 1;
+		dirty = 1;
+		for(;;) {
+			p := <-w.ctxt.ptr;
+			if(p == nil || !(p.buttons & 1)) {
+				btn_pay.pressed = 0;
+				if(p != nil && btn_pay.contains(p.xy))
+					dosendpayment();
+				dirty = 1;
+				return;
+			}
+		}
+	}
+
+	# Pay form: Cancel button
+	if(btn_paycancel != nil && btn_paycancel.contains(ptr.xy) && mode == ModePay) {
+		btn_paycancel.pressed = 1;
+		dirty = 1;
+		for(;;) {
+			p := <-w.ctxt.ptr;
+			if(p == nil || !(p.buttons & 1)) {
+				btn_paycancel.pressed = 0;
+				if(p != nil && btn_paycancel.contains(p.xy)) {
+					mode = ModeView;
+					focusidx = -1;
+					layoutall();
+				}
+				dirty = 1;
+				return;
+			}
+		}
+	}
+
+	# Pay form: Token dropdown
+	if(dd_token != nil && dd_token.contains(ptr.xy) && mode == ModePay) {
+		dd_token.click(w.image, w.ctxt.ptr);
+		dirty = 1;
+		return;
 	}
 }
 
@@ -746,6 +972,64 @@ doimport()
 			acctlist.selected = i;
 	layoutall();
 	setstatus("Account imported: " + name);
+	dirty = 1;
+}
+
+dosendpayment()
+{
+	if(acctlist == nil || acctlist.selected < 0 || acctlist.selected >= len accounts) {
+		setstatus("No account selected");
+		return;
+	}
+
+	acct := accounts[acctlist.selected];
+	recipient := "";
+	if(f_recipient != nil)
+		recipient = f_recipient.value();
+	if(recipient == "") {
+		setstatus("Recipient address is required");
+		return;
+	}
+
+	amount := "";
+	if(f_amount != nil)
+		amount = f_amount.value();
+	if(amount == "") {
+		setstatus("Amount is required");
+		return;
+	}
+
+	# Build pay command based on token selection
+	cmd := "";
+	if(dd_token != nil && dd_token.selected == 1)
+		cmd = "usdc " + amount + " " + recipient;	# USDC
+	else
+		cmd = amount + " " + recipient;			# ETH
+
+	path := acct.name + "/pay";
+	n := writewalletctl(path, cmd);
+	if(n <= 0) {
+		errmsg := sys->sprint("%r");
+		if(errmsg == "" || errmsg == "no error")
+			errmsg = "payment failed";
+		setstatus(errmsg);
+		dirty = 1;
+		return;
+	}
+
+	# Read back txhash
+	txhash := readwalletfile(acct.name, "pay");
+	if(txhash != nil && txhash != "")
+		setstatus("Sent! tx:" + strip(txhash)[0:20] + "...");
+	else
+		setstatus("Payment submitted");
+
+	# Return to view mode and refresh
+	mode = ModeView;
+	focusidx = -1;
+	cachedbalance = nil;
+	balancefetchactive = 0;
+	layoutall();
 	dirty = 1;
 }
 
@@ -880,13 +1164,26 @@ handledetailmenu(sel: int)
 	acct := accounts[acctlist.selected];
 
 	case sel {
-	0 =>	# Copy Address
+	0 =>	# Send Payment
+		mode = ModePay;
+		layoutall();
+		dirty = 1;
+	1 =>	# Copy Address
 		copytoclip(acct.address);
 		setstatus("Address copied");
-	1 =>	# Copy Account Name
+	2 =>	# Copy Account Name
 		copytoclip(acct.name);
 		setstatus("Account name copied");
-	3 =>	# Refresh Balance
+	3 =>	# Copy Tx Hash
+		txh := getselectedtxhash();
+		if(txh != nil) {
+			copytoclip(txh);
+			setstatus("Tx hash copied");
+		} else
+			setstatus("No transaction selected");
+	4 =>	# Refresh Balance
+		cachedbalance = nil;
+		balancefetchactive = 0;
 		layoutall();
 		setstatus("Balance refreshed");
 	}
@@ -927,6 +1224,28 @@ balancetimer()
 	}
 }
 
+pendingwatcher()
+{
+	for(;;) {
+		sys->sleep(2000);	# check every 2 seconds
+		s := readwalletfile(nil, "pending");
+		n := 0;
+		if(s != nil && s != "" && s != "(none)\n") {
+			(nil, lines) := sys->tokenize(s, "\n");
+			for(; lines != nil; lines = tl lines) {
+				if(hd lines != "" && hd lines != "(none)")
+					n++;
+			}
+		}
+		if(n != pendingcount) {
+			alt {
+			pendingch <-= n => ;
+			* => ;
+			}
+		}
+	}
+}
+
 # strip leading/trailing whitespace
 strip(s: string): string
 {
@@ -941,6 +1260,65 @@ strip(s: string): string
 	if(i >= j)
 		return "";
 	return s[i:j];
+}
+
+# Format a history line "pay <amount> <recipient> <txhash>" for display
+fmthistory(line: string): string
+{
+	(nil, toks) := sys->tokenize(line, " \t");
+	if(toks == nil)
+		return line;
+	# Skip "pay" prefix
+	if(hd toks == "pay")
+		toks = tl toks;
+	if(toks == nil)
+		return line;
+	amount := hd toks;
+	toks = tl toks;
+	recip := "?";
+	if(toks != nil) {
+		recip = hd toks;
+		toks = tl toks;
+	}
+	txhash := "";
+	if(toks != nil)
+		txhash = hd toks;
+
+	# Truncate address and hash for display
+	if(len recip > 12)
+		recip = recip[0:6] + ".." + recip[len recip - 4:];
+	txsuffix := "";
+	if(txhash != "" && len txhash > 10)
+		txsuffix = "  tx:" + txhash[0:10] + "..";
+
+	return amount + " → " + recip + txsuffix;
+}
+
+# Get txhash from selected history item
+getselectedtxhash(): string
+{
+	if(historylist == nil || historylist.selected < 0)
+		return nil;
+	# Walk historyraw to get the nth item
+	idx := historylist.selected;
+	for(h := historyraw; h != nil; h = tl h) {
+		if(idx == 0) {
+			line := hd h;
+			(nil, toks) := sys->tokenize(line, " \t");
+			if(toks == nil)
+				return nil;
+			# "pay amount recipient txhash"
+			if(hd toks == "pay")
+				toks = tl toks;
+			if(toks != nil) toks = tl toks;	# skip amount
+			if(toks != nil) toks = tl toks;	# skip recipient
+			if(toks != nil)
+				return hd toks;
+			return nil;
+		}
+		idx--;
+	}
+	return nil;
 }
 
 ensurewallet9p()

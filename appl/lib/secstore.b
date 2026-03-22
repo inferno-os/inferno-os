@@ -40,6 +40,24 @@ init()
 	initPAKparams();
 }
 
+# PAK_Hi cache — deterministic function of (user, pwhash), expensive to compute
+cached_pakhi_user: string;
+cached_pakhi_pwhash: array of byte;
+cached_pakhi_hexHi: string;
+cached_pakhi_H: ref IPint;
+
+pwhash_eq(a, b: array of byte): int
+{
+	if(a == nil || b == nil)
+		return 0;
+	if(len a != len b)
+		return 0;
+	for(i := 0; i < len a; i++)
+		if(a[i] != b[i])
+			return 0;
+	return 1;
+}
+
 privacy(): int
 {
 	fd := sys->open("#p/"+string sys->pctl(0, nil)+"/ctl", Sys->OWRITE);
@@ -51,8 +69,24 @@ privacy(): int
 connect(addr: string, user: string, pwhash: array of byte): (ref Dial->Connection, string, string)
 {
 	# Pre-compute PAK crypto before dialing to avoid TCP idle timeout.
-	sys->fprint(sys->fildes(2), "secstore: step 1: PAK_Hi...\n");
-	(hexHi, H, nil) := PAK_Hi(user, pwhash);
+	# Use cached PAK_Hi if (user, pwhash) match — avoids expensive modexp.
+	hexHi: string;
+	H: ref IPint;
+	if(cached_pakhi_user == user && pwhash_eq(cached_pakhi_pwhash, pwhash)
+	   && cached_pakhi_hexHi != nil) {
+		sys->fprint(sys->fildes(2), "secstore: step 1: PAK_Hi (cached)\n");
+		hexHi = cached_pakhi_hexHi;
+		H = cached_pakhi_H;
+	} else {
+		sys->fprint(sys->fildes(2), "secstore: step 1: PAK_Hi...\n");
+		(hexHi, H, nil) = PAK_Hi(user, pwhash);
+		# Cache for next time
+		cached_pakhi_user = user;
+		cached_pakhi_pwhash = array[len pwhash] of byte;
+		cached_pakhi_pwhash[0:] = pwhash;
+		cached_pakhi_hexHi = hexHi;
+		cached_pakhi_H = H;
+	}
 	sys->fprint(sys->fildes(2), "secstore: step 2: random...\n");
 	x := mod(IPint.random(240, 240), pak.q);
 	if(x.eq(IPint.inttoip(0)))
