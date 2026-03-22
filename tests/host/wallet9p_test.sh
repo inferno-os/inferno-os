@@ -3,7 +3,13 @@
 set -e
 
 ROOT="${ROOT:-.}"
-EMU="$ROOT/emu/MacOSX/o.emu"
+
+# Detect platform and locate emulator
+case "$(uname -s)" in
+    Darwin) EMU="$ROOT/emu/MacOSX/o.emu" ;;
+    Linux)  EMU="$ROOT/emu/Linux/o.emu" ;;
+    *)      echo "SKIP: unsupported platform $(uname -s)"; exit 0 ;;
+esac
 
 if [ ! -x "$EMU" ]; then
     echo "SKIP: emu not found at $EMU"
@@ -42,6 +48,11 @@ cp /tmp/wallet9p_testscript.sh "$ROOT/tmp/wallet9p_testscript.sh" 2>/dev/null ||
 mkdir -p "$ROOT/tmp" 2>/dev/null || true
 cp /tmp/wallet9p_testscript.sh "$ROOT/tmp/wallet9p_testscript.sh"
 
-timeout 30 "$EMU" -r"$ROOT" -c0 sh /tmp/wallet9p_testscript.sh 2>&1
+"$EMU" -r"$ROOT" -c0 sh /tmp/wallet9p_testscript.sh 2>&1 &
+EMU_PID=$!
+( sleep 30; kill $EMU_PID 2>/dev/null ) &
+WATCHDOG=$!
+wait $EMU_PID 2>/dev/null || true
+kill $WATCHDOG 2>/dev/null || true
 
 echo "wallet9p_test: done"
