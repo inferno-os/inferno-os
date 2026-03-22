@@ -325,6 +325,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 
 	# Allocate colors from theme
 	lucitheme_g = load Lucitheme Lucitheme->PATH;
+	if(lucitheme_g == nil) {
+		sys->fprint(stderr, "lucifer: cannot load lucitheme: %r\n");
+		return;
+	}
 	th := lucitheme_g->gettheme();
 	bgcol    = display.color(th.bg);
 	bordercol= display.color(th.border);
@@ -340,6 +344,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 	mainfont = Font.open(display, "/fonts/combined/unicode.sans.14.font");
 	if(mainfont == nil)
 		mainfont = Font.open(display, "*default*");
+	if(mainfont == nil) {
+		sys->fprint(stderr, "lucifer: cannot load any font\n");
+		return;
+	}
 	monofont = Font.open(display, "/fonts/combined/unicode.14.font");
 	if(monofont == nil)
 		monofont = mainfont;
@@ -1045,10 +1053,16 @@ handleresize()
 	# Recreate all zone sub-images on a fresh mainscr.
 	# Must happen before drawchrome so separators are drawn on top of the fill.
 	mainscr = Screen.allocate(mainwin, bgcol, 0);
+	if(mainscr == nil)
+		return;
 	convimg = mainscr.newwindow(convr, Draw->Refbackup, Draw->Nofill);
 	ctximg  = mainscr.newwindow(ctxr,  Draw->Refbackup, Draw->Nofill);
 	pressubimg = mainscr.newwindow(presr, Draw->Refbackup, Draw->Nofill);
+	if(convimg == nil || ctximg == nil || pressubimg == nil)
+		return;
 	presscr = Screen.allocate(pressubimg, bgcol, 0);
+	if(presscr == nil)
+		return;
 	pressubimg.name("lucifer-pres", 1);
 
 	# Redraw chrome after zone allocation so separators are visible

@@ -130,6 +130,10 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	# Create colors from theme
 	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil) {
+		sys->fprint(sys->fildes(2), "luciconv: cannot load lucitheme: %r\n");
+		return;
+	}
 	th := lucitheme->gettheme();
 	bgcol = dsp.color(th.bg);
 	accentcol = dsp.color(th.accent);
