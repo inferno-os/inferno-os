@@ -139,7 +139,7 @@ themech: chan of int;
 # ── Layout constants ─────────────────────────────────────────
 
 CAT_WIDTH_FRAC: con 30;	# category list takes 30% of width
-MARGIN: con 8;
+FORM_MARGIN: con 12;
 FIELD_H: con 0;		# computed from font
 FIELD_SPACING: con 4;
 CHECK_H: con 0;		# computed from font
@@ -270,10 +270,10 @@ layoutcontent()
 	sh := widgetmod->statusheight();
 	catw := wr.dx() * CAT_WIDTH_FRAC / 100;
 	# Content area starts after category list + divider
-	cx := wr.min.x + catw + 2;
-	cy := wr.min.y + MARGIN;
-	cw := wr.max.x - MARGIN;
-	cbottom := wr.max.y - sh - MARGIN;
+	cx := wr.min.x + catw + 2 + FORM_MARGIN;
+	cy := wr.min.y + FORM_MARGIN;
+	cw := wr.max.x - FORM_MARGIN;
+	cbottom := wr.max.y - sh - FORM_MARGIN;
 
 	fh := font.height + 8;
 	bh := font.height + 10;
@@ -370,7 +370,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		}
 	llm_mode_group = RadioGroup.mk(Point(cx, cy), cw - cx, llm_mode_labels, msel, rowh);
 	cy += len llm_mode_names * rowh;
-	cy += MARGIN;
+	cy += FORM_MARGIN;
 
 	if(llm_is_remote) {
 		# Remote mode: just a dial address
@@ -383,7 +383,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 			"", 0);
 		llm_dial_tf.setval(curdial);
 		llm_dial_tf.focused = 1;
-		cy += fh + MARGIN;
+		cy += fh + FORM_MARGIN;
 	} else {
 		# Section header: Backend
 		llm_backend_hdr = Label.mk(Rect((cx, cy), (cw, cy + fh)), "Backend", 1, LEFT);
@@ -398,7 +398,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 			}
 		llm_backend_group = RadioGroup.mk(Point(cx, cy), cw - cx, llm_backend_labels, bsel, rowh);
 		cy += len llm_backend_names * rowh;
-		cy += MARGIN;
+		cy += FORM_MARGIN;
 
 		# URL
 		llm_url_label = Label.mk(
@@ -409,7 +409,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 			Rect((cx, cy), (cw, cy + fh)),
 			"", 0);
 		llm_url_tf.setval(cururl);
-		cy += fh + MARGIN;
+		cy += fh + FORM_MARGIN;
 
 		# Model
 		llm_model_label = Label.mk(
@@ -421,7 +421,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 			"", 0);
 		llm_model_tf.setval(curmodel);
 		llm_model_tf.focused = 1;
-		cy += fh + MARGIN;
+		cy += fh + FORM_MARGIN;
 
 		# API key status
 		keystatus: string;
@@ -432,7 +432,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		llm_key_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
 			keystatus, 0, LEFT);
-		cy += fh + MARGIN;
+		cy += fh + FORM_MARGIN;
 	}
 
 	# Buttons
@@ -489,7 +489,7 @@ layoutbudget(cx, cy, cw, cbottom, ch: int)
 layoutpaths(cx, cy, cw, cbottom, fh, bh: int)
 {
 	# Path list (takes most of the space)
-	listh := cbottom - cy - fh - bh - MARGIN * 2;
+	listh := cbottom - cy - fh - bh - FORM_MARGIN * 2;
 	if(listh < fh * 3)
 		listh = fh * 3;
 	listr := Rect((cx, cy), (cw, cy + listh));
@@ -497,7 +497,7 @@ layoutpaths(cx, cy, cw, cbottom, fh, bh: int)
 	paths := readlines("/tool/paths");
 	if(paths != nil)
 		path_list.setitems(paths);
-	cy += listh + MARGIN;
+	cy += listh + FORM_MARGIN;
 
 	# Add path textfield + button
 	btnw := 60;
@@ -529,7 +529,7 @@ layoutprompts(cx, cy, cw, fh, bh: int)
 		prompt_btns[i] = Button.mk(
 			Rect((cx, cy), (cx + BTN_W + 20, cy + bh)),
 			"Open in Editor");
-		cy += bh + MARGIN;
+		cy += bh + FORM_MARGIN;
 	}
 }
 
