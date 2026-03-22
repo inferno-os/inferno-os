@@ -165,7 +165,9 @@ TileInfo: adt {
 tiles: array of ref TileInfo;
 ntiles := 0;
 tilescrollx := 0;		# horizontal scroll offset for tile strip
+tiletotalw := 0;		# total pixel width of all tiles (for scroll cap)
 blinkon := 0;			# toggled by tileblinker goroutine
+tilelock: chan of int;		# mutex for tiles/ntiles/blinkon access
 
 # Urgency colors (allocated from theme)
 yellowcol: ref Image;
@@ -460,6 +462,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 	pendingids = array[MAXTOKENPENDING] of string;
 	applock = chan[1] of int;
 	applock <-= 1;			# initially unlocked
+	tilelock = chan[1] of int;
+	tilelock <-= 1;			# initially unlocked
 
 	# Build Draw->Context for lucipres (pres sub-screen + wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, wmchan);
@@ -696,7 +700,15 @@ drawchrome(r: Rect)
 
 				tx += tw + tilegap;
 			}
+			# Cache total tile width for scroll cap
+			totalw := tx - (tilestripx - tilescrollx);
+			visiblew := r.max.x - tilestripx;
+			if(totalw > visiblew)
+				tiletotalw = totalw - visiblew;
+			else
+				tiletotalw = 0;
 		} else {
+			tiletotalw = 0;
 			# No tiles: fall back to simple title text
 			title := "InferNode";
 			if(actlabel != nil && actlabel != "")
@@ -1108,6 +1120,7 @@ loadstatus()
 # Read all activities from /n/ui/ and populate tile state
 loadtiles()
 {
+	<-tilelock;
 	info := readfile(mountpt + "/ctl");
 	if(info == nil)
 		return;
@@ -1168,11 +1181,13 @@ loadtiles()
 		}
 		tiles[ntiles++] = ref TileInfo(id, label, status, urg, 0, 0);
 	}
+	tilelock <-= 1;
 }
 
 # Update a single tile field without full reload
 updatetile(id: int, field, val: string)
 {
+	<-tilelock;
 	for(i := 0; i < ntiles; i++) {
 		if(tiles[i].id == id) {
 			if(field == "status")
@@ -1181,9 +1196,11 @@ updatetile(id: int, field, val: string)
 				tiles[i].label = val;
 			else if(field == "urgency")
 				tiles[i].urgency = strtoint(val);
+			tilelock <-= 1;
 			return;
 		}
 	}
+	tilelock <-= 1;
 }
 
 # Split string into lines on \n
@@ -1340,6 +1357,7 @@ tileblinker()
 	for(;;) {
 		sys->sleep(500);
 		# Check if any tile has urgency > 0
+		<-tilelock;
 		hasurgency := 0;
 		for(i := 0; i < ntiles; i++) {
 			if(tiles[i].urgency > 0) {
@@ -1347,12 +1365,13 @@ tileblinker()
 				break;
 			}
 		}
-		if(hasurgency) {
+		if(hasurgency)
 			blinkon = 1 - blinkon;
-			alt { uievent <-= 1 => ; * => ; }
-		} else {
+		else
 			blinkon = 0;
-		}
+		tilelock <-= 1;
+		if(hasurgency)
+			alt { uievent <-= 1 => ; * => ; }
 	}
 }
 
@@ -1457,29 +1476,39 @@ mouseproc()
 			if(p.xy.y < mainwin.r.min.y + headerh) {
 				if(p.buttons & 1) {
 					# Button-1: click on tile to switch activity
+					clickid := -1;
+					<-tilelock;
 					for(i := 0; i < ntiles; i++) {
 						t := tiles[i];
 						if(p.xy.x >= t.x && p.xy.x < t.x + t.w) {
 							if(t.id != actid)
-								writefile(mountpt + "/activity/current", string t.id);
+								clickid = t.id;
 							break;
 						}
 					}
+					tilelock <-= 1;
+					if(clickid >= 0)
+						writefile(mountpt + "/activity/current", string clickid);
 				} else if(p.buttons & 4) {
 					# Button-3: right-click context menu on tile
+					menutileid := -1;
+					<-tilelock;
 					for(i := 0; i < ntiles; i++) {
 						t := tiles[i];
 						if(p.xy.x >= t.x && p.xy.x < t.x + t.w) {
-							if(t.id != 0 && menumod != nil) {
-								mitems := array[] of {"End Task"};
-								mpop := menumod->new(mitems);
-								mres := mpop.show(mainwin, p.xy, win.ctxt.ptr);
-								if(mres == 0)
-									writefile(mountpt + "/ctl", "activity delete " + string t.id);
-								alt { uievent <-= 1 => ; * => ; }
-							}
+							if(t.id != 0)
+								menutileid = t.id;
 							break;
 						}
+					}
+					tilelock <-= 1;
+					if(menutileid >= 0 && menumod != nil) {
+						mitems := array[] of {"End Task"};
+						mpop := menumod->new(mitems);
+						mres := mpop.show(mainwin, p.xy, win.ctxt.ptr);
+						if(mres == 0)
+							writefile(mountpt + "/ctl", "activity delete " + string menutileid);
+						alt { uievent <-= 1 => ; * => ; }
 					}
 				} else if(p.buttons & 8) {
 					# Scroll up (left)
@@ -1490,6 +1519,8 @@ mouseproc()
 				} else if(p.buttons & 16) {
 					# Scroll down (right)
 					tilescrollx += 40;
+					if(tilescrollx > tiletotalw)
+						tilescrollx = tiletotalw;
 					alt { uievent <-= 1 => ; * => ; }
 				}
 				continue;
@@ -1573,6 +1604,7 @@ kbdproc()
 		if(pres_zone_minx > 0 && lastmousex >= pres_zone_minx &&
 				lastmousex < pres_zone_maxx && activeappid != "") {
 			routed := 0;
+			<-applock;
 			for(ksi := 0; ksi < nappslots; ksi++) {
 				if(appslots[ksi] != nil && appslots[ksi].id == activeappid &&
 						appslots[ksi].client != nil) {
@@ -1581,6 +1613,7 @@ kbdproc()
 					break;
 				}
 			}
+			applock <-= 1;
 			if(!routed)
 				alt { convKbdCh <-= c => ; * => ; }
 		} else {
@@ -1849,10 +1882,14 @@ launchapp(id, dispath, appdata: string, targetact: int)
 	}
 	# Allocate AppSlot (client filled in later by preswmloop join handler)
 	<-applock;
-	if(nappslots < MAXAPPSLOTS) {
-		appslots[nappslots] = ref AppSlot(id, targetact, nil);
-		nappslots++;
+	if(nappslots >= MAXAPPSLOTS) {
+		applock <-= 1;
+		sys->fprint(stderr, "lucifer: max app slots reached, cannot launch %s\n", dispath);
+		writeappstatus(id, "dead", targetact);
+		return;
 	}
+	appslots[nappslots] = ref AppSlot(id, targetact, nil);
+	nappslots++;
 	applock <-= 1;
 	# Load the GUI app module
 	guimod := load GuiApp dispath;
