@@ -277,6 +277,10 @@ Widget: module
 	LEFT:   con 0;
 	CENTER: con 1;
 
+	# Standard margin for form-based apps (settings, wallet, keyring).
+	# Use for outer content padding and inter-element spacing.
+	FORM_MARGIN: con 12;
+
 	Label: adt {
 		r:     Draw->Rect;    # label rectangle
 		text:  string;        # display text

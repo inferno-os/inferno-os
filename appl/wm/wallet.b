@@ -143,7 +143,7 @@ themech: chan of int;
 
 CAT_WIDTH_FRAC: con 35;
 FIELD_SPACING: con 4;
-FORM_MARGIN: con 12;
+FORM_MARGIN: con Widget->FORM_MARGIN;
 BTN_W: con 90;
 LEFT: con 0;
 
