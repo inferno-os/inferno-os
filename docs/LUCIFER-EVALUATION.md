@@ -13,9 +13,9 @@ Lucifer is a well-architected three-zone tiling GUI (~10,000 lines of Limbo) wit
 **Overall assessment: Near production-ready with targeted fixes needed.**
 
 The issues found fall into three tiers:
-- **P0 (Must fix):** 5 crash/data-loss bugs
-- **P1 (Should fix):** 10 reliability and correctness issues
-- **P2 (Nice to have):** Cleanup, consistency, and hardening items
+- **P0 (Must fix):** 7 crash/data-loss bugs
+- **P1 (Should fix):** 13 reliability and correctness issues
+- **P2 (Nice to have):** 9 cleanup, consistency, and hardening categories
 
 ---
 
@@ -63,11 +63,27 @@ If both font open attempts fail, `mainfont` remains nil. While `drawchrome` chec
 
 **Fix:** Add nil checks after each allocation in `handleresize()`. If allocation fails, skip the redraw and retry on next resize event.
 
+### 6. Unbounded data growth in luciuisrv (luciuisrv.b)
+
+**File:** `luciuisrv.b:239-241, 1337`
+
+`notifyq` and `toastq` queues have no size limit -- a misbehaving client can grow them without bound. Additionally, repeated `append` commands to `art.data` bypass `MAX_DATA_SIZE`, allowing unbounded artifact data growth.
+
+**Fix:** Cap queue sizes and enforce `MAX_DATA_SIZE` on cumulative appends.
+
+### 7. UTF-8 truncation of system prompt (lucibridge.b:272-280)
+
+**File:** `lucibridge.b:272-280`
+
+The system prompt is truncated by byte count (`basebytes[0:room]`), which can cut a multi-byte UTF-8 sequence in half, producing an invalid string that the LLM service may reject.
+
+**Fix:** Truncate at a UTF-8 character boundary (find the last valid codepoint start before the limit).
+
 ---
 
 ## P1 - Should Fix for Production Quality
 
-### 6. Race conditions on shared mutable state (lucifer.b, lucictx.b)
+### 8. Race conditions on shared mutable state (lucifer.b, lucictx.b)
 
 **lucifer.b:** `tiles[]`/`ntiles` are written by the main loop and read by `tileblinker()` (line 1330) and `mouseproc()` (lines 1446-1468) without synchronization. If `loadtiles()` reallocates the array while `tileblinker` iterates, freed memory could be read.
 
@@ -75,55 +91,73 @@ If both font open attempts fail, `mainfont` remains nil. While `drawchrome` chec
 
 **Fix:** Use channel-based communication or protect shared state with a lock adt.
 
-### 7. Network FD leak on mount failure (lucictx.b:1645-1652)
+### 9. Network FD leak on mount failure (lucictx.b:1645-1652)
 
 When `sys->dial()` succeeds but `sys->mount()` fails, `conn.dfd` is never closed, leaking a network connection.
 
 **Fix:** Close `conn.dfd` in the mount failure path.
 
-### 8. Drawing function mutates global state (lucictx.b:918)
+### 10. Drawing function mutates global state (lucictx.b:918)
 
 `drawcontext()` sorts `activetoolset` as a side effect of rendering. Drawing should be purely visual -- state mutation belongs in the event/data layer.
 
 **Fix:** Move the sort to the data loading path (`loadcontext` or tool change handler).
 
-### 9. Timer/draw timeout inconsistency (lucictx.b:559 vs 955)
+### 11. Timer/draw timeout inconsistency (lucictx.b:559 vs 955)
 
 The timer uses 4000ms to decide whether to tick, but the draw code uses 3000ms for activity accent color. This creates a 1-second window where the timer fires but produces no visual change.
 
 **Fix:** Unify the two constants to the same value.
 
-### 10. `VOICE_PROC` state is dead UI code (luciconv.b:100, 445-447)
+### 12. `VOICE_PROC` state is dead UI code (luciconv.b:100, 445-447)
 
 The `VOICE_PROC` constant is defined and the drawing code renders a "processing" indicator for it, but no code path ever sets `voicestate = VOICE_PROC`. The state transitions directly from `VOICE_REC` to `VOICE_IDLE`.
 
 **Fix:** Either wire up `VOICE_PROC` in the voice worker flow or remove the dead state and its rendering code.
 
-### 11. Tile scroll unbounded to the right (lucifer.b:1478)
+### 13. Tile scroll unbounded to the right (lucifer.b:1478)
 
 Scroll-left is bounded at 0, but scroll-right has no upper bound. Users can scroll tiles infinitely rightward past all content with no visual feedback.
 
 **Fix:** Cap `tilescrollx` at `max(0, total_tile_width - visible_width)`.
 
-### 12. strtoint overflow at INT_MAX boundary (luciconv.b:1059, lucictx.b:2100)
+### 14. strtoint overflow at INT_MAX boundary (luciconv.b:1059, lucictx.b:2100)
 
 The overflow check `n > 214748364` misses the case where `n == 214748364` and the next digit is > 7, silently overflowing to a negative number.
 
 **Fix:** Add boundary digit check: `if(n == 214748364 && d > 7) return -1;`
 
-### 13. Linux launch script argument parsing broken (run-lucifer-linux.sh)
+### 15. Silent message drop at MAX_MESSAGES (luciuisrv.b:1261)
+
+`addmessage` return value is ignored in `convctl` -- silently drops messages when `MAX_MESSAGES` is reached. The client receives no error indication.
+
+**Fix:** Check return value and return an error to the client.
+
+### 16. Deleted activities never freed (luciuisrv.b:1212)
+
+Deleted activities are removed from the activity list but their data structures (messages, artifacts, resources) are never reclaimed. Long-running sessions accumulate orphaned memory.
+
+**Fix:** Nil out internal references when deleting an activity.
+
+### 17. Global event loss (luciuisrv.b:569-588)
+
+`pushglobalevent` silently drops events if no reader is waiting, unlike per-activity events which buffer. A slow global event consumer misses state changes.
+
+**Fix:** Buffer global events symmetrically with per-activity events.
+
+### 18. Linux launch script argument parsing broken (run-lucifer-linux.sh)
 
 `shift` inside a `for arg in "$@"` loop doesn't work in POSIX shell -- the `for` loop iterates over the original snapshot of `$@`. The `-g` geometry flag may not parse correctly.
 
 **Fix:** Use a `while [ $# -gt 0 ]` loop with explicit `shift`.
 
-### 14. Linux launch script forces theme on every start (run-lucifer-linux.sh:45)
+### 19. Linux launch script forces theme on every start (run-lucifer-linux.sh:45)
 
 `echo brimstone > "$ROOT/lib/lucifer/theme/current"` overwrites user theme preference on every launch. Neither macOS nor Windows scripts do this.
 
 **Fix:** Only write the default if the `current` file doesn't exist.
 
-### 15. Windows launcher missing `-l` flag (run-lucifer.ps1:28)
+### 20. Windows launcher missing `-l` flag (run-lucifer.ps1:28)
 
 The Windows emulator is invoked with `sh` instead of `sh -l`, so the Inferno login profile is never sourced. This skips LLM configuration, factotum setup, and other profile-based initialization that macOS/Linux get.
 
@@ -133,7 +167,7 @@ The Windows emulator is invoked with `sh` instead of `sh -l`, so the Inferno log
 
 ## P2 - Nice to Have / Cleanup
 
-### 16. Dead code across modules
+### 21. Dead code across modules
 
 | File | Dead code | Lines |
 |------|-----------|-------|
@@ -145,8 +179,12 @@ The Windows emulator is invoked with `sh` instead of `sh -l`, so the Inferno log
 | lucictx.b | `ctxentryrects`/`nctxentryrects` allocated but never used | 158-159 |
 | lucictx.b | `ALLOWED_DIS_PREFIXES` constant unused (duplicate list on 1801) | 1793 |
 | lucictx.b | `revstrlist()` never called | 2148-2154 |
+| lucibridge.b | `cleanresponse` + `extractsay` (74 lines dead) | 344-420 |
+| lucibridge.b | `speaktext()` defined but never called | 195 |
+| lucipres.b | `parseattrs`/`getattr`/`Attr` fully implemented, never called | 1904-1970 |
+| lucipres.b | `plumbmod` loaded but never used | 276-280 |
 
-### 17. Duplicated code patterns
+### 22. Duplicated code patterns
 
 - **Header height `40`** appears 4 times in lucifer.b (lines 503, 587, 704, 1437). Should be a `con`.
 - **Zone width calculations** duplicated between `drawchrome()` and `zonerects()`.
@@ -155,11 +193,11 @@ The Windows emulator is invoked with `sh` instead of `sh -l`, so the Inferno log
 - **`readfile()`** reimplemented in 3+ test files instead of importing from a shared module.
 - **List reversal functions** (`revres`, `revgaps`, `revbg`, `revcat`, `revstrlist`) duplicated in lucictx.b.
 
-### 18. Debug logging in production
+### 23. Debug logging in production
 
 `lucictx.b:2082-2083` logs every write to `/edit/ctl` at stderr. Should be gated behind a verbose flag.
 
-### 19. Hardcoded array limits
+### 24. Hardcoded array limits
 
 | File | Limit | Risk |
 |------|-------|------|
@@ -168,11 +206,11 @@ The Windows emulator is invoked with `sh` instead of `sh -l`, so the Inferno log
 | lucifer.b | 16 app slots (MAXAPPSLOTS) | Hard limit, no error on overflow |
 | lucifer.b | 16 token pending slots | Silent drop on overflow |
 
-### 20. `sleep 1` synchronization in launch scripts
+### 25. `sleep 1` synchronization in launch scripts
 
 All three launch scripts (macOS, Linux, Windows) use `sleep 1` between starting services and using them. This is fragile on slow machines. Consider a readiness-check loop or a readiness file/signal.
 
-### 21. Cross-platform tool set inconsistency
+### 26. Cross-platform tool set inconsistency
 
 | Feature | macOS | Linux | Windows |
 |---------|-------|-------|---------|
@@ -184,7 +222,7 @@ All three launch scripts (macOS, Linux, Windows) use `sleep 1` between starting 
 
 Windows has significantly fewer tools. Linux disables JIT even on amd64 where it works.
 
-### 22. Theme system edge cases
+### 27. Theme system edge cases
 
 - `parsehex()` has zero test coverage -- malformed hex in theme files produces silent wrong colors.
 - Theme files > 4096 bytes are silently truncated.
@@ -192,7 +230,7 @@ Windows has significantly fewer tools. Linux disables JIT even on amd64 where it
 - Brimstone defaults use positional struct construction for 49+ fields -- fragile if fields are added.
 - No `selection`, `link`, `scrollbar`, or `tooltip` theme colors.
 
-### 23. Test coverage gaps
+### 28. Test coverage gaps
 
 **Strong areas:**
 - `luciuisrv_test.b`: 26 tests exercising the full 9P server -- excellent.
@@ -210,7 +248,7 @@ Windows has significantly fewer tools. Linux disables JIT even on amd64 where it
 - No test for concurrent readers/writers on luciuisrv.
 - Alpha invariant check covers only 5 of 49 theme fields.
 
-### 24. Lucipres-specific issues
+### 29. Lucipres-specific issues
 
 - **Async render race condition** (`lucipres.b:762`): `renderartasync` is spawned as a goroutine and accesses module-level globals (`rendermod`, `rlay`, `pdfmod`, color images). A theme change via `reloadcolors` could nil out or replace these mid-render.
 - **`drainprogress` goroutine leak** (`lucipres.b:1302`): A new goroutine is spawned on every `renderart` call. If the renderer never closes the progress channel, the goroutine blocks forever.
@@ -243,8 +281,8 @@ The evaluation also revealed several noteworthy strengths:
 
 ## Recommended Priority Order
 
-1. Fix P0 items 1-5 (crash/leak bugs)
-2. Fix P1 items 6, 7, 13-15 (races, leaks, broken scripts)
-3. Fix P1 items 8-12 (correctness/UX)
+1. Fix P0 items 1-7 (crash/leak/data-loss bugs)
+2. Fix P1 items 8-9, 15-20 (races, leaks, broken scripts, silent data loss)
+3. Fix P1 items 10-14 (correctness/UX)
 4. Address P2 items as time permits
 5. Expand test coverage for theme loading and parsehex
