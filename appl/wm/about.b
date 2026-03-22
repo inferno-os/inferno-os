@@ -76,7 +76,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	redraw(w, display);
 
 	# Listen for live theme changes
-	themech := chan of int;
+	themech := chan[1] of int;
 	spawn themelistener(themech);
 
 	for(;;) alt {
@@ -94,6 +94,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	<-themech =>
 		widgetmod->retheme(display);
+		wmclient->retheme(w);
 		redraw(w, display);
 	}
 }

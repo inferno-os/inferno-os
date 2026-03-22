@@ -261,7 +261,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	b1start := Point(0, 0);
 
 	# Listen for live theme changes
-	themech := chan of int;
+	themech := chan[1] of int;
 	spawn themelistener(themech);
 
 	# Tick timer for Veltro IPC polling
@@ -421,6 +421,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		<-themech =>
 			if(widget != nil)
 				widget->retheme(display);
+			wmclient->retheme(w);
 			if(menumod != nil)
 				menumod->init(display, font);
 			updatesbar();

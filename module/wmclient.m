@@ -11,6 +11,7 @@ Wmclient: module
 	Appl:		con Resize | Hide;
 
 	init:		fn();
+	retheme:	fn(w: ref Window);
 	makedrawcontext: fn(): ref Draw->Context;
 	window:		fn(ctxt: ref Draw->Context, title: string, buts: int): ref Window;
 	snarfput:		fn(buf: string);

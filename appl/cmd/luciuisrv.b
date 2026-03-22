@@ -238,8 +238,16 @@ ncat: int;
 # Blocking read queues
 notifyq: list of string;
 toastq: list of string;
-globalpending: list of string;	# buffered global events when no reader waiting
 pending: ref PendingRead;	# linked list of pending reads
+
+# Per-fid event queues — each open of /n/ui/event gets its own buffer
+# so that pushglobalevent reliably delivers to ALL subscribers.
+EventSub: adt {
+	fid:	int;
+	events:	list of string;
+	next:	cyclic ref EventSub;
+};
+eventsubs: ref EventSub;
 
 # --- Module loading ---
 
@@ -570,27 +578,41 @@ pushevent(actid: int, msg: string)
 
 pushglobalevent(msg: string)
 {
+	# Track which fids received the event directly via pending read.
+	delivered: list of int;
 	prev: ref PendingRead;
 	p := pending;
-	delivered := 0;
 	while(p != nil) {
 		next := p.next;
 		if(p.ft == Qevent) {
 			data := array of byte (msg + "\n");
 			srv_reply_read(p, data);
+			delivered = p.fid :: delivered;
 			if(prev == nil)
 				pending = next;
 			else
 				prev.next = next;
-			delivered = 1;
 			p = next;
 			continue;
 		}
 		prev = p;
 		p = next;
 	}
-	if(!delivered)
-		globalpending = appendstr(globalpending, msg);
+	# Buffer the event for any subscriber that wasn't pending.
+	s := eventsubs;
+	while(s != nil) {
+		if(!inlist(s.fid, delivered))
+			s.events = appendstr(s.events, msg);
+		s = s.next;
+	}
+}
+
+inlist(v: int, l: list of int): int
+{
+	for(; l != nil; l = tl l)
+		if(hd l == v)
+			return 1;
+	return 0;
 }
 
 srv_g: ref Styxserver;
@@ -604,6 +626,35 @@ addpending(fid, tag, ft, actid: int, m: ref Tmsg.Read)
 {
 	p := ref PendingRead(fid, tag, m, ft, actid, pending);
 	pending = p;
+}
+
+findeventsub(fid: int): ref EventSub
+{
+	s := eventsubs;
+	while(s != nil) {
+		if(s.fid == fid)
+			return s;
+		s = s.next;
+	}
+	return nil;
+}
+
+removeeventsub(fid: int)
+{
+	prev: ref EventSub;
+	s := eventsubs;
+	while(s != nil) {
+		next := s.next;
+		if(s.fid == fid) {
+			if(prev == nil)
+				eventsubs = next;
+			else
+				prev.next = next;
+			return;
+		}
+		prev = s;
+		s = next;
+	}
 }
 
 # Send EOF (0-byte Rread) to any existing pending readers for the activity
@@ -682,6 +733,9 @@ Serve:
 			qid := Qid(c.path, 0, c.qtype);
 			c.open(mode, qid);
 			srv.reply(ref Rmsg.Open(m.tag, qid, srv.iounit()));
+			# Register per-fid event subscription for reliable broadcast
+			if(FTYPE(c.path) == Qevent)
+				eventsubs = ref EventSub(m.fid, nil, eventsubs);
 
 		Read =>
 			(c, err) := srv.canread(m);
@@ -720,6 +774,8 @@ Serve:
 				prev = p;
 				p = next;
 			}
+			# Remove event subscription for this fid
+			removeeventsub(m.fid);
 			srv.clunk(m);
 
 		Remove =>
@@ -753,11 +809,12 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		srv.reply(styxservers->readbytes(m, array of byte info));
 
 	Qevent =>
-		# Return buffered global event immediately if available; otherwise block.
-		if(globalpending != nil) {
-			globalpending = qrev(globalpending);
-			data := array of byte (hd globalpending + "\n");
-			globalpending = tl globalpending;
+		# Return buffered event for this fid if available; otherwise block.
+		s := findeventsub(m.fid);
+		if(s != nil && s.events != nil) {
+			s.events = qrev(s.events);
+			data := array of byte (hd s.events + "\n");
+			s.events = tl s.events;
 			srv.reply(styxservers->readbytes(m, data));
 		} else {
 			addpending(m.fid, m.tag, Qevent, 0, m);
