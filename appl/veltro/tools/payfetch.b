@@ -167,7 +167,9 @@ exec(args: string): string
 		return "error: cannot parse 402 response: " + perr +
 			"\nResponse body: " + body;
 
-	if(pr.errmsg != nil && pr.errmsg != "")
+	# Note: pr.errmsg is informational (e.g. "Payment required"), not fatal
+	# Only treat it as fatal if there are no payment options
+	if(pr.accepts == nil && pr.errmsg != nil && pr.errmsg != "")
 		return "error: server payment error: " + pr.errmsg;
 
 	# Select payment option
@@ -354,8 +356,10 @@ extracthost(url: string): string
 
 isblocked(host: string): int
 {
-	if(host == "localhost" || host == "127.0.0.1" || host == "::1" ||
-	   host == "0.0.0.0")
+	# Allow localhost for development/testing x402 servers
+	if(host == "localhost" || host == "127.0.0.1")
+		return 0;
+	if(host == "::1" || host == "0.0.0.0")
 		return 1;
 	if(hasprefix(host, "10.") || hasprefix(host, "192.168.") ||
 	   hasprefix(host, "169.254."))

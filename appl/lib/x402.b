@@ -196,15 +196,23 @@ authorize(req: ref PaymentReq, resource: ref ResourceInfo,
 	if(msghash == nil)
 		return (nil, "EIP-712 hash failed");
 
-	# Sign via wallet9p
+	# Sign via wallet9p — use single fd for write then read (same fid)
 	hexhash := ethcrypto->hexencode(msghash);
-	n := writefile("/n/wallet/" + acctname + "/sign", hexhash);
+	signpath := "/n/wallet/" + acctname + "/sign";
+	fd := sys->open(signpath, Sys->ORDWR);
+	if(fd == nil)
+		return (nil, sys->sprint("cannot open %s: %r", signpath));
+	wb := array of byte hexhash;
+	n := sys->write(fd, wb, len wb);
 	if(n <= 0)
-		return (nil, "sign failed");
-
-	sigstr := readfile("/n/wallet/" + acctname + "/sign");
-	if(sigstr == nil || len sigstr == 0)
+		return (nil, sys->sprint("sign write failed: %r"));
+	# Read back signature on same fd
+	rbuf := array[256] of byte;
+	sys->seek(fd, big 0, Sys->SEEKSTART);
+	rn := sys->read(fd, rbuf, len rbuf);
+	if(rn <= 0)
 		return (nil, "no signature returned");
+	sigstr := string rbuf[0:rn];
 	sigstr = strip(sigstr);
 
 	# Build PaymentPayload JSON
