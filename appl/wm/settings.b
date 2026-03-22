@@ -139,7 +139,7 @@ themech: chan of int;
 # ── Layout constants ─────────────────────────────────────────
 
 CAT_WIDTH_FRAC: con 30;	# category list takes 30% of width
-FORM_MARGIN: con 12;
+FORM_MARGIN: con Widget->FORM_MARGIN;
 FIELD_H: con 0;		# computed from font
 FIELD_SPACING: con 4;
 CHECK_H: con 0;		# computed from font

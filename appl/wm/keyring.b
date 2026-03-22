@@ -119,7 +119,7 @@ themech: chan of int;
 DIVIDER_Y_FRAC: con 55;	# list takes 55% of height
 FIELD_H: con 0;		# computed from font
 FIELD_SPACING: con 4;
-FORM_MARGIN: con 8;
+FORM_MARGIN: con Widget->FORM_MARGIN;
 BTN_W: con 80;
 BTN_H: con 0;			# computed from font
 
