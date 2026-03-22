@@ -79,7 +79,9 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Kbdfilter,
+	Khome, Kend, Kup, Kdown, Kleft, Kright, Kpgup, Kpgdown,
+	Kdel, Kins, Kbs, Kesc: import widgetmod;
 
 include "textwidget.m";
 	textwidget: Textwidget;
@@ -102,20 +104,6 @@ DIRTYCOL: con int 16rCC4444FF;		# dirty indicator
 MARGIN: con 4;				# text margin
 LNWIDTH: con 48;			# line number gutter width
 TABSTOP: con 4;			# tab width in spaces
-
-# Key constants (Inferno keyboard codes — canonical defs in Widget)
-Khome:		con 16rFF61;
-Kend:		con 16rFF57;
-Kup:		con 16rFF52;
-Kdown:		con 16rFF54;
-Kleft:		con 16rFF51;
-Kright:		con 16rFF53;
-Kpgup:		con 16rFF55;
-Kpgdown:	con 16rFF56;
-Kdel:		con 16rFF9F;
-Kins:		con 16rFF63;
-Kbs:		con 8;
-Kesc:		con 27;
 
 # Undo types
 UndoInsert, UndoDelete, UndoReplace, UndoJoinLine, UndoSplitLine: con iota;
@@ -2110,7 +2098,7 @@ redraw()
 
 	screen := w.image;
 	r := screen.r;
-	statusheight := font.height + MARGIN * 2;
+	statusheight := widgetmod->statusheight();
 
 	screen.draw(r, bgcolor, nil, Point(0, 0));
 
