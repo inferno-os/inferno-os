@@ -248,22 +248,19 @@ signtx(tx: ref EthTx, privkey: array of byte): array of byte
 		databytes = array[0] of byte;
 
 	# Build unsigned tx fields for signing hash
+	# Prepend in reverse order so the list ends up [nonce, gasprice, ..., chainid, 0, 0]
 	fields: list of array of byte;
-	fields = rlpencode_uint(big tx.chainid) :: fields;
-	fields = rlpencode_uint(big 0) :: fields;		# empty r
 	fields = rlpencode_uint(big 0) :: fields;		# empty s
+	fields = rlpencode_uint(big 0) :: fields;		# empty r
+	fields = rlpencode_uint(big tx.chainid) :: fields;
 	fields = rlpencode_bytes(databytes) :: fields;
 	fields = rlpencode_uint(tx.value) :: fields;
 	fields = rlpencode_bytes(dstbytes) :: fields;
 	fields = rlpencode_uint(tx.gaslimit) :: fields;
 	fields = rlpencode_uint(tx.gasprice) :: fields;
 	fields = rlpencode_uint(tx.nonce) :: fields;
-	# reverse to get correct order
-	ordered: list of array of byte;
-	for(; fields != nil; fields = tl fields)
-		ordered = hd fields :: ordered;
 
-	unsigned := rlpencode_list(ordered);
+	unsigned := rlpencode_list(fields);
 
 	# Keccak-256 hash for signing
 	hash := array[32] of byte;
@@ -282,8 +279,9 @@ signtx(tx: ref EthTx, privkey: array of byte): array of byte
 	# EIP-155: v = recid + chainid*2 + 35
 	v := big (recid + tx.chainid * 2 + 35);
 
-	# Build signed tx
+	# Build signed tx: [nonce, gasprice, gaslimit, to, value, data, v, r, s]
 	# r and s are integers — strip leading zeros before RLP encoding
+	# Prepend in reverse order so list ends up in correct order
 	signed: list of array of byte;
 	signed = rlpencode_bytes(stripzeros(sbytes)) :: signed;
 	signed = rlpencode_bytes(stripzeros(rbytes)) :: signed;
@@ -294,12 +292,8 @@ signtx(tx: ref EthTx, privkey: array of byte): array of byte
 	signed = rlpencode_uint(tx.gaslimit) :: signed;
 	signed = rlpencode_uint(tx.gasprice) :: signed;
 	signed = rlpencode_uint(tx.nonce) :: signed;
-	# reverse
-	signedordered: list of array of byte;
-	for(; signed != nil; signed = tl signed)
-		signedordered = hd signed :: signedordered;
 
-	return rlpencode_list(signedordered);
+	return rlpencode_list(signed);
 }
 
 #
