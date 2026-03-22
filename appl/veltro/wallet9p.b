@@ -59,6 +59,9 @@ include "wallet.m";
 include "ethrpc.m";
 	ethrpc: Ethrpc;
 
+include "stripe.m";
+	stripemod: Stripe;
+
 Wallet9p: module {
 	init: fn(nil: ref Draw->Context, nil: list of string);
 };
@@ -985,6 +988,8 @@ setnetwork(name: string)
 
 querybalance(as: ref AcctState): string
 {
+	if(as.acct.accttype == Wallet->ACCT_STRIPE)
+		return querystripebalance(as);
 	if(as.acct.accttype != Wallet->ACCT_ETH)
 		return "0";
 
@@ -1033,8 +1038,10 @@ querybalance(as: ref AcctState): string
 
 executepayment(as: ref AcctState, amount: string, recipient: string): (string, string)
 {
+	if(as.acct.accttype == Wallet->ACCT_STRIPE)
+		return executestripepayment(as, amount, recipient);
 	if(as.acct.accttype != Wallet->ACCT_ETH)
-		return (nil, "only ETH accounts can send transactions");
+		return (nil, "only ETH and Stripe accounts can send payments");
 
 	addr := as.acct.address;
 	if(addr == "" || addr == nil)
@@ -1228,6 +1235,67 @@ strtobig(s: string): big
 		c := s[i];
 		if(c >= '0' && c <= '9')
 			v = v * big 10 + big (c - '0');
+	}
+	return v;
+}
+
+# --- Stripe fiat backend ---
+
+initstripe(acctname: string): string
+{
+	if(stripemod != nil)
+		return nil;	# already initialized
+
+	svc := "wallet-stripe-" + acctname;
+	(nil, apikey) := factotum->getuserpasswd("proto=pass service=" + svc);
+	if(apikey == nil || apikey == "")
+		return "no Stripe API key in factotum for " + acctname;
+
+	stripemod = load Stripe Stripe->PATH;
+	if(stripemod == nil)
+		return sys->sprint("cannot load Stripe: %r");
+
+	return stripemod->init(apikey);
+}
+
+querystripebalance(as: ref AcctState): string
+{
+	err := initstripe(as.acct.name);
+	if(err != nil)
+		return "Stripe: " + err;
+
+	(bal, berr) := stripemod->balance();
+	if(berr != nil)
+		return "Stripe: " + berr;
+	return bal;
+}
+
+executestripepayment(as: ref AcctState, amount: string, description: string): (string, string)
+{
+	err := initstripe(as.acct.name);
+	if(err != nil)
+		return (nil, "Stripe: " + err);
+
+	cents := strtoint(amount);
+	if(cents <= 0)
+		return (nil, "invalid amount: " + amount);
+
+	(id, perr) := stripemod->createpayment(cents, "usd", description);
+	if(perr != nil)
+		return (nil, "Stripe: " + perr);
+
+	return (id, nil);
+}
+
+strtoint(s: string): int
+{
+	v := 0;
+	if(s == nil)
+		return 0;
+	for(i := 0; i < len s; i++) {
+		c := s[i];
+		if(c >= '0' && c <= '9')
+			v = v * 10 + (c - '0');
 	}
 	return v;
 }

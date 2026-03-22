@@ -74,10 +74,15 @@ doc(): string
 		"  wallet balance myaccount\n" +
 		"  wallet network Base Sepolia\n" +
 		"  wallet pay myaccount 1000 0xRecipientAddress          Send 1000 wei\n" +
-		"  wallet pay myaccount usdc 1000000 0xRecipientAddress  Send 1 USDC\n\n" +
+		"  wallet pay myaccount usdc 1000000 0xRecipientAddress  Send 1 USDC\n" +
+		"  wallet pay stripe-acct 500 'Payment for service'     Stripe: $5.00\n\n" +
+		"Account types:\n" +
+		"  eth/ethereum  — Ethereum/Base crypto wallet (secp256k1)\n" +
+		"  stripe/fiat   — Stripe fiat payments (requires API key in factotum)\n\n" +
 		"Notes:\n" +
 		"  - ETH amounts are always in wei (1 ETH = 10^18 wei, 1 gwei = 10^9 wei)\n" +
 		"  - USDC amounts are in base units (1 USDC = 1000000)\n" +
+		"  - Stripe amounts are in cents (500 = $5.00 USD)\n" +
 		"  - Private keys are never exposed to the agent\n" +
 		"  - Budget limits are enforced server-side\n";
 }
