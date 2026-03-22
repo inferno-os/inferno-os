@@ -64,11 +64,16 @@ doc(): string
 		"  wallet balance <account>                     Show balance (USDC + ETH)\n" +
 		"  wallet chain <account>                       Show blockchain network\n" +
 		"  wallet history <account>                     Show recent transactions\n" +
+		"  wallet network                               Show current network\n" +
+		"  wallet network <name>                        Switch network\n" +
 		"  wallet pay <account> <wei> <address>         Send ETH (amount in wei)\n" +
 		"  wallet pay <account> usdc <amount> <address> Send USDC (amount in base units, 6 decimals)\n\n" +
+		"Networks: Ethereum Sepolia, Base Sepolia, Ethereum Mainnet, Base\n\n" +
 		"Examples:\n" +
+		"  wallet accounts\n" +
+		"  wallet balance myaccount\n" +
+		"  wallet network Base Sepolia\n" +
 		"  wallet pay myaccount 1000 0xRecipientAddress          Send 1000 wei\n" +
-		"  wallet pay myaccount 1000000 0xRecipientAddress       Send 0.001 gwei\n" +
 		"  wallet pay myaccount usdc 1000000 0xRecipientAddress  Send 1 USDC\n\n" +
 		"Notes:\n" +
 		"  - ETH amounts are always in wei (1 ETH = 10^18 wei, 1 gwei = 10^9 wei)\n" +
@@ -79,6 +84,8 @@ doc(): string
 
 exec(args: string): string
 {
+	# Normalize: strip wrapping quotes, collapse whitespace
+	args = stripquotes(args);
 	(nil, toks) := sys->tokenize(args, " \t\n");
 	if(toks == nil)
 		return "usage: wallet <command> [args]\nRun 'wallet' with no args for help.";
@@ -86,36 +93,97 @@ exec(args: string): string
 	cmd := hd toks;
 	rest := tl toks;
 
+	# Handle doubled command name: "wallet wallet accounts" → "wallet accounts"
+	if(cmd == "wallet" && rest != nil) {
+		cmd = hd rest;
+		rest = tl rest;
+	}
+
 	case cmd {
 	"accounts" =>
 		return doaccounts();
 	"address" =>
 		if(rest == nil)
-			return "usage: wallet address <account>";
-		return doread(hd rest, "address");
+			return "error: missing account name\nexample: wallet address myaccount";
+		return doread(stripquotes(hd rest), "address");
 	"balance" =>
 		if(rest == nil)
-			return "usage: wallet balance <account>";
-		return doread(hd rest, "balance");
+			return "error: missing account name\nexample: wallet balance myaccount";
+		return doread(stripquotes(hd rest), "balance");
 	"chain" =>
 		if(rest == nil)
-			return "usage: wallet chain <account>";
-		return doread(hd rest, "chain");
+			return "error: missing account name\nexample: wallet chain myaccount";
+		return doread(stripquotes(hd rest), "chain");
 	"sign" =>
 		if(rest == nil || tl rest == nil)
-			return "usage: wallet sign <account> <hexhash>";
-		return dosign(hd rest, hd tl rest);
+			return "error: need account and hash\nexample: wallet sign myaccount a1b2c3...64hexchars";
+		return dosign(stripquotes(hd rest), stripquotes(hd tl rest));
 	"history" =>
 		if(rest == nil)
-			return "usage: wallet history <account>";
-		return doread(hd rest, "history");
+			return "error: missing account name\nexample: wallet history myaccount";
+		return doread(stripquotes(hd rest), "history");
 	"pay" =>
 		if(rest == nil || tl rest == nil)
-			return "usage: wallet pay <account> <amount> <recipient>\n" +
-				"       wallet pay <account> usdc <amount> <recipient>";
-		return dopay(hd rest, tl rest);
+			return "error: need account, amount, and recipient\n" +
+				"example: wallet pay myaccount 1000 0x742d35Cc6634C0532925a3b844Bc9\n" +
+				"example: wallet pay myaccount usdc 1000000 0x742d35Cc6634C0532925a3b844Bc9";
+		return dopay(stripquotes(hd rest), tl rest);
+	"network" =>
+		if(rest == nil)
+			return donetwork(nil);
+		# Rejoin network name (may have spaces)
+		nname := "";
+		for(r := rest; r != nil; r = tl r) {
+			if(nname != "")
+				nname += " ";
+			nname += hd r;
+		}
+		return donetwork(nname);
+	"help" =>
+		if(rest == nil)
+			return doc();
+		return cmdhelp(hd rest);
 	* =>
-		return "unknown wallet command: " + cmd + "\n" + doc();
+		return "error: unknown command '" + cmd + "'\n" +
+			"valid commands: accounts, address, balance, chain, history, pay, network, sign\n" +
+			"example: wallet accounts";
+	}
+}
+
+# Strip wrapping double or single quotes from a string
+stripquotes(s: string): string
+{
+	if(s == nil || len s < 2)
+		return s;
+	if((s[0] == '"' && s[len s - 1] == '"') ||
+	   (s[0] == '\'' && s[len s - 1] == '\''))
+		return s[1:len s - 1];
+	return s;
+}
+
+# Focused help for a specific command
+cmdhelp(cmd: string): string
+{
+	case cmd {
+	"accounts" =>
+		return "wallet accounts\n\nList all wallet account names, one per line.";
+	"balance" =>
+		return "wallet balance <account>\n\nShow USDC and ETH balance for the named account.\nexample: wallet balance myaccount";
+	"pay" =>
+		return "wallet pay <account> <wei> <address>\n" +
+			"wallet pay <account> usdc <amount> <address>\n\n" +
+			"Send ETH (in wei) or USDC (in base units, 6 decimals).\n" +
+			"examples:\n" +
+			"  wallet pay myaccount 1000 0x742d35Cc...\n" +
+			"  wallet pay myaccount usdc 1000000 0x742d35Cc...";
+	"network" =>
+		return "wallet network\n" +
+			"wallet network <name>\n\n" +
+			"Show or switch the active network.\n" +
+			"Available: Ethereum Sepolia, Base Sepolia, Ethereum Mainnet, Base\n" +
+			"example: wallet network Base Sepolia";
+	* =>
+		return "no specific help for '" + cmd + "'\n" + doc();
 	}
 }
 
@@ -176,6 +244,23 @@ dopay(acct: string, args: list of string): string
 	if(result == nil || result == "")
 		return "transaction submitted (no hash returned)";
 	return "tx: " + str->take(result, "^\n");
+}
+
+donetwork(name: string): string
+{
+	if(name == nil) {
+		# Read current network
+		s := readfile(WALLET_MOUNT + "/ctl");
+		if(s == nil)
+			return "cannot read wallet ctl";
+		return s;
+	}
+	# Set network — reconstruct name with spaces for multi-word names
+	# e.g. "Base" or "Ethereum Sepolia" or "Base Sepolia"
+	n := writefile(WALLET_MOUNT + "/ctl", "network " + name);
+	if(n <= 0)
+		return sys->sprint("network switch failed: %r");
+	return "network set to " + name;
 }
 
 readfile(path: string): string

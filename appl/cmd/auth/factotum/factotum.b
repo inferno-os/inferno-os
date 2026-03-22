@@ -72,6 +72,11 @@ secstorepwhash: array of byte;	# password hash for secstore auth
 secstorefilekey: array of byte;	# modern file encryption key (AES-256-GCM)
 secstorelkey: array of byte;	# legacy file encryption key (AES-CBC, for reading old files)
 
+# Cached secstore connection — avoids full PAK handshake on every save
+secstoreconn: ref Dial->Connection;
+secstoreconntime: int;		# when connection was established (seconds since epoch)
+SECSTORE_CONN_TTL: con 300;	# 5 minute TTL
+
 init(nil: ref Draw->Context, args: list of string)
 {
 	sys = load Sys Sys->PATH;
@@ -1724,7 +1729,23 @@ secstoresave(): string
 	if(encrypted == nil)
 		return "secstore: encryption failed";
 
-	# Connect and authenticate
+	# Try cached connection first (avoids expensive PAK re-handshake)
+	now := int (sys->millisec() / 1000);
+	if(secstoreconn != nil && (now - secstoreconntime) < SECSTORE_CONN_TTL) {
+		rc := secstore->putfile(secstoreconn, "factotum", encrypted);
+		if(rc >= 0) {
+			secstoreconntime = now;	# refresh TTL on success
+			if(debug)
+				sys->fprint(sys->fildes(2), "factotum: secstore: saved keys (cached conn)\n");
+			return nil;
+		}
+		# Cached connection failed — fall through to fresh connect
+		if(debug)
+			sys->fprint(sys->fildes(2), "factotum: secstore: cached conn failed, reconnecting\n");
+		secstoreconn = nil;
+	}
+
+	# Connect and authenticate (full PAK handshake)
 	(conn, nil, diag) := secstore->connect(secstoreaddr, secstoreuser, secstorepwhash);
 	if(conn == nil){
 		if(diag != nil)
@@ -1734,10 +1755,14 @@ secstoresave(): string
 
 	# Put the file
 	rc := secstore->putfile(conn, "factotum", encrypted);
-	secstore->bye(conn);
-
-	if(rc < 0)
+	if(rc < 0) {
+		secstore->bye(conn);
 		return sys->sprint("secstore putfile: %r");
+	}
+
+	# Cache the connection for reuse (don't call bye)
+	secstoreconn = conn;
+	secstoreconntime = now;
 
 	if(debug)
 		sys->fprint(sys->fildes(2), "factotum: secstore: saved keys\n");

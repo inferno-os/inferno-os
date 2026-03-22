@@ -190,6 +190,21 @@ ethcall(calldata: string, contract: string): (string, string)
 }
 
 #
+# eth_gasPrice
+# Returns current gas price in wei as decimal string
+#
+gasprice(): (string, string)
+{
+	(result, err) := rpccall("eth_gasPrice", "[]");
+	if(err != nil)
+		return (nil, err);
+	hex := getresultstr(result);
+	if(hex == nil || hex == "")
+		return (nil, "no gas price in response");
+	return (hextowei(hex), nil);
+}
+
+#
 # Hex/decimal conversions
 #
 

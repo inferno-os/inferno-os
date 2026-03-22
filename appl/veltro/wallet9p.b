@@ -68,6 +68,7 @@ Qroot:     con 0;
 Qctl:      con 1;
 Qaccounts: con 2;
 Qnew:      con 3;
+Qpending:  con 4;
 # Per-account files start at 16
 Qacctdir:  con 16;
 Qaddress:  con 17;
@@ -85,7 +86,22 @@ AcctState: adt {
 	acct:       ref Wallet->Account;
 	signresult: array of byte;	# pending sign result
 	history:    list of string;	# recent transactions
+	requireapproval: int;		# 1 = require GUI approval for payments
 };
+
+# Pending payment (awaiting approval)
+PendingPay: adt {
+	id:        int;
+	acct:      string;
+	amount:    string;
+	recipient: string;
+	token:     string;	# "eth" or "usdc"
+	agent:     string;	# agent name (if from tool)
+	result:    string;	# nil = pending, "approved:txhash" or "denied"
+};
+
+pendingpays: list of ref PendingPay;
+nextpendingid := 1;
 
 stderr: ref Sys->FD;
 user: string;
@@ -313,6 +329,9 @@ init(nil: ref Draw->Context, args: list of string)
 	# Restore accounts from factotum (persistence across restarts)
 	restoreaccounts();
 
+	# Start debounced sync thread
+	initsyncthread();
+
 	fds := array[2] of ref Sys->FD;
 	sys->pipe(fds);
 
@@ -422,6 +441,19 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read)
 			readstr(srv, m, ns.result + "\n");
 		else
 			readstr(srv, m, "");
+
+	Qpending =>
+		s := "";
+		for(pl := pendingpays; pl != nil; pl = tl pl) {
+			pp := hd pl;
+			if(pp.result == nil)
+				s += sys->sprint("%d %s %s %s %s %s\n",
+					pp.id, pp.acct, pp.token, pp.amount,
+					pp.recipient, pp.agent);
+		}
+		if(s == "")
+			s = "(none)\n";
+		readstr(srv, m, s);
 
 	Qaddress =>
 		as := findacctbyid(aid);
@@ -536,6 +568,20 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 				nname += hd nt;
 			}
 			setnetwork(nname);
+		} else if(cmd == "approve" && ntoks >= 2) {
+			pid := int hd tl toks;
+			err := approvepending(pid);
+			if(err != nil) {
+				srv.reply(ref Rmsg.Error(m.tag, err));
+				return;
+			}
+		} else if(cmd == "deny" && ntoks >= 2) {
+			pid := int hd tl toks;
+			err := denypending(pid);
+			if(err != nil) {
+				srv.reply(ref Rmsg.Error(m.tag, err));
+				return;
+			}
 		} else {
 			srv.reply(ref Rmsg.Error(m.tag, "unknown ctl command: " + cmd));
 			return;
@@ -565,7 +611,7 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 				srv.reply(ref Rmsg.Error(m.tag, err));
 				return;
 			}
-			as := ref AcctState(acct, nil, nil);
+			as := ref AcctState(acct, nil, nil, 0);
 			accounts = as :: accounts;
 			setnewstate(m.fid, name);
 			syncfactotum();
@@ -584,7 +630,7 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 				srv.reply(ref Rmsg.Error(m.tag, err));
 				return;
 			}
-			as := ref AcctState(acct, nil, nil);
+			as := ref AcctState(acct, nil, nil, 0);
 			accounts = as :: accounts;
 			setnewstate(m.fid, name);
 			syncfactotum();
@@ -638,10 +684,9 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			srv.reply(ref Rmsg.Error(m.tag, "usage: amount recipient OR usdc amount recipient"));
 			return;
 		}
-		txhash: string;
-		payerr: string;
 		payamt: string;
 		payrecip: string;
+		paytoken := "eth";
 		first := hd paytoks;
 		if(first == "usdc" || first == "USDC") {
 			if(ntoks < 3) {
@@ -650,20 +695,36 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			}
 			payamt = hd tl paytoks;
 			payrecip = hd tl tl paytoks;
-			(txhash, payerr) = executeerc20(as, payamt, payrecip);
+			paytoken = "usdc";
 		} else {
 			payamt = first;
 			payrecip = hd tl paytoks;
-			(txhash, payerr) = executepayment(as, payamt, payrecip);
 		}
-		if(payerr != nil) {
-			srv.reply(ref Rmsg.Error(m.tag, "pay: " + payerr));
-			return;
+
+		# Check if approval is required for this account
+		if(as.requireapproval) {
+			pp := ref PendingPay(nextpendingid++, as.acct.name,
+				payamt, payrecip, paytoken, "agent", nil);
+			pendingpays = pp :: pendingpays;
+			as.signresult = array of byte ("pending:" + string pp.id);
+			srv.reply(ref Rmsg.Write(m.tag, len m.data));
+		} else {
+			# Execute immediately
+			txhash: string;
+			payerr: string;
+			if(paytoken == "usdc")
+				(txhash, payerr) = executeerc20(as, payamt, payrecip);
+			else
+				(txhash, payerr) = executepayment(as, payamt, payrecip);
+			if(payerr != nil) {
+				srv.reply(ref Rmsg.Error(m.tag, "pay: " + payerr));
+				return;
+			}
+			# Store result for read-back and add to history
+			as.signresult = array of byte txhash;
+			as.history = ("pay " + payamt + " " + payrecip + " " + txhash) :: as.history;
+			srv.reply(ref Rmsg.Write(m.tag, len m.data));
 		}
-		# Store result for read-back and add to history
-		as.signresult = array of byte txhash;
-		as.history = ("pay " + payamt + " " + payrecip + " " + txhash) :: as.history;
-		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
 	Qacctctl =>
 		as := findacctbyid(aid);
@@ -682,8 +743,14 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			b := ref Wallet->Budget(maxpertx, maxpersess, big 0, currency);
 			wallet->setbudget(as.acct, b);
 			srv.reply(ref Rmsg.Write(m.tag, len m.data));
+		} else if(ntoks >= 1 && hd toks == "requireapproval") {
+			val := 1;
+			if(ntoks >= 2 && hd tl toks == "off")
+				val = 0;
+			as.requireapproval = val;
+			srv.reply(ref Rmsg.Write(m.tag, len m.data));
 		} else {
-			srv.reply(ref Rmsg.Error(m.tag, "usage: budget maxpertx maxpersess currency"));
+			srv.reply(ref Rmsg.Error(m.tag, "usage: budget maxpertx maxpersess currency | requireapproval [off]"));
 		}
 
 	* =>
@@ -700,6 +767,48 @@ parsetype(s: string): int
 	if(s == "stripe" || s == "fiat")
 		return Wallet->ACCT_STRIPE;
 	return Wallet->ACCT_ETH;
+}
+
+# --- Pending payment approval/denial ---
+
+approvepending(id: int): string
+{
+	for(pl := pendingpays; pl != nil; pl = tl pl) {
+		pp := hd pl;
+		if(pp.id == id && pp.result == nil) {
+			# Find the account and execute
+			as := findacct(pp.acct);
+			if(as == nil)
+				return "account not found: " + pp.acct;
+			txhash: string;
+			payerr: string;
+			if(pp.token == "usdc")
+				(txhash, payerr) = executeerc20(as, pp.amount, pp.recipient);
+			else
+				(txhash, payerr) = executepayment(as, pp.amount, pp.recipient);
+			if(payerr != nil) {
+				pp.result = "error:" + payerr;
+				return "pay: " + payerr;
+			}
+			pp.result = "approved:" + txhash;
+			as.signresult = array of byte txhash;
+			as.history = ("pay " + pp.amount + " " + pp.recipient + " " + txhash) :: as.history;
+			return nil;
+		}
+	}
+	return "pending payment not found: " + string id;
+}
+
+denypending(id: int): string
+{
+	for(pl := pendingpays; pl != nil; pl = tl pl) {
+		pp := hd pl;
+		if(pp.id == id && pp.result == nil) {
+			pp.result = "denied";
+			return nil;
+		}
+	}
+	return "pending payment not found: " + string id;
 }
 
 readstr(srv: ref Styxserver, m: ref Tmsg.Read, s: string)
@@ -730,11 +839,56 @@ zeroarray(a: array of byte)
 		a[i] = byte 0;
 }
 
-# --- Force factotum to save keys to secstore immediately ---
+# --- Debounced factotum sync ---
+# Coalesces rapid sync requests (e.g. batch account imports)
+# to avoid triggering expensive PAK handshake for each operation.
+
+syncdebouncech: chan of int;
+
+initsyncthread()
+{
+	syncdebouncech = chan of int;
+	spawn syncdebouncethread();
+}
 
 syncfactotum()
 {
-	spawn dosyncfactotum();
+	# Signal the debounce thread (non-blocking)
+	if(syncdebouncech != nil)
+		alt {
+		syncdebouncech <-= 1 => ;
+		* => ;
+		}
+}
+
+syncdebouncethread()
+{
+	DEBOUNCE_MS: con 2000;	# wait 2 seconds for more syncs before committing
+	for(;;) {
+		<-syncdebouncech;
+		# Got a sync request — wait for quiet period
+		for(;;) {
+			expired := 0;
+			timer := chan of int;
+			spawn synctimeout(timer, DEBOUNCE_MS);
+			alt {
+			<-syncdebouncech =>
+				;	# another sync arrived, reset timer
+			<-timer =>
+				expired = 1;
+			}
+			if(expired)
+				break;
+		}
+		# Quiet period expired — do the actual sync
+		dosyncfactotum();
+	}
+}
+
+synctimeout(ch: chan of int, ms: int)
+{
+	sys->sleep(ms);
+	alt { ch <-= 1 => ; * => ; }
 }
 
 dosyncfactotum()
@@ -766,7 +920,7 @@ restoreaccounts()
 		(fullacct, err) := wallet->loadaccount(acct.name);
 		if(err != nil || fullacct == nil)
 			continue;
-		as := ref AcctState(fullacct, nil, nil);
+		as := ref AcctState(fullacct, nil, nil, 0);
 		accounts = as :: accounts;
 		sys->fprint(stderr, "wallet9p: restored account: %s (%s)\n",
 			fullacct.name, fullacct.address);
@@ -843,14 +997,24 @@ querybalance(as: ref AcctState): string
 	# Try USDC token balance
 	(tokbal, tokerr) := ethrpc->tokenbalance(net.usdc, addr);
 	usdcstr := "0";
-	if(tokerr == nil && tokbal != nil && tokbal != "0")
+	if(tokerr != nil) {
+		sys->fprint(stderr, "wallet9p: %s USDC balance: %s\n", net.name, tokerr);
+		usdcstr = "?";
+	} else if(tokbal != nil && tokbal != "0")
 		usdcstr = ethrpc->weitotoken(tokbal, 6);	# USDC has 6 decimals
 
 	# Also get native ETH balance
 	(ethbal, etherr) := ethrpc->getbalance(addr);
 	ethstr := "0";
-	if(etherr == nil && ethbal != nil && ethbal != "0")
+	if(etherr != nil) {
+		sys->fprint(stderr, "wallet9p: %s ETH balance: %s\n", net.name, etherr);
+		ethstr = "?";
+	} else if(ethbal != nil && ethbal != "0")
 		ethstr = ethrpc->weitoeth(ethbal);
+
+	# If both queries failed, report the network error
+	if(tokerr != nil && etherr != nil)
+		return net.name + ": RPC error";
 
 	result := "";
 	if(usdcstr != "0")
@@ -886,9 +1050,16 @@ executepayment(as: ref AcctState, amount: string, recipient: string): (string, s
 	weiamt := amount;
 
 	# Build EIP-155 transaction
-	# Gas price: use 1 gwei for testnet
-	billion := big 1000000000;
-	gasprice := billion;	# 1 gwei
+	# Query network gas price, fall back to 1 gwei
+	gasprice := big 1000000000;	# fallback: 1 gwei
+	{
+		(gpstr, gperr) := ethrpc->gasprice();
+		if(gperr == nil && gpstr != nil && gpstr != "0")
+			gasprice = strtobig(gpstr);
+	}
+	# Cap at 100 gwei to prevent fee spikes
+	if(gasprice > big 100000000000)
+		gasprice = big 100000000000;
 	gaslimit := big 21000;	# standard ETH transfer
 
 	dstaddr := ethcrypto->strtoaddr(recipient);
@@ -990,8 +1161,16 @@ executeerc20(as: ref AcctState, amount: string, recipient: string): (string, str
 	calldata[off:] = amtbytes;
 
 	# Gas for ERC-20 transfer is higher than simple ETH
-	billion := big 1000000000;
-	gasprice := billion;		# 1 gwei
+	# Query network gas price, fall back to 1 gwei
+	gasprice := big 1000000000;	# fallback: 1 gwei
+	{
+		(gpstr, gperr) := ethrpc->gasprice();
+		if(gperr == nil && gpstr != nil && gpstr != "0")
+			gasprice = strtobig(gpstr);
+	}
+	# Cap at 100 gwei to prevent fee spikes
+	if(gasprice > big 100000000000)
+		gasprice = big 100000000000;
 	gaslimit := big 100000;	# ERC-20 transfers need ~65000 gas
 
 	# Get chain ID
@@ -1074,6 +1253,8 @@ navigator(navops: chan of ref Navop)
 					n.path = MKPATH(0, Qaccounts);
 				else if(name == "new")
 					n.path = MKPATH(0, Qnew);
+				else if(name == "pending")
+					n.path = MKPATH(0, Qpending);
 				else {
 					# Look for account name
 					id := acctidbyname(name);
@@ -1120,7 +1301,8 @@ navigator(navops: chan of ref Navop)
 			entries: list of big;
 
 			if(ft == Qroot) {
-				# Root: ctl, accounts, new, then account dirs
+				# Root: ctl, accounts, new, pending, then account dirs
+				entries = MKPATH(0, Qpending) :: entries;
 				entries = MKPATH(0, Qnew) :: entries;
 				entries = MKPATH(0, Qaccounts) :: entries;
 				entries = MKPATH(0, Qctl) :: entries;
@@ -1185,6 +1367,9 @@ dirgen(p: big): (ref Sys->Dir, string)
 	Qnew =>
 		name = "new";
 		perm = 8r666;
+	Qpending =>
+		name = "pending";
+		perm = 8r444;
 	Qacctdir =>
 		as := findacctbyid(aid);
 		if(as != nil)
