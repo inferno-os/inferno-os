@@ -96,6 +96,7 @@ BORDER:	con 255;
 LIMIT:	con 4;
 MAXCOUNT: con 253;
 MAXDEPTH: con 20;	# cap depth multiplier to avoid freezing (20 * 253 = 5060 iterations)
+MAXCOORD: con 4.0;	# clamp coordinates to ±4 (escape radius is 2, so ±4 covers all interesting space)
 
 # Initial size
 WIDTH:	con 400;
@@ -1094,6 +1095,11 @@ checkctlfile(specr: Fracrect, p: Params, stack: list of (Fracrect, Params),
 		# Canonicalize
 		if(x1 > x2) (x1, x2) = (x2, x1);
 		if(y1 > y2) (y1, y2) = (y2, y1);
+		# Clamp to valid coordinate range
+		x1 = clampcoord(x1);
+		y1 = clampcoord(y1);
+		x2 = clampcoord(x2);
+		y2 = clampcoord(y2);
 		return ref Usercmd.Zoomin(Fracrect((x1, y1), (x2, y2)));
 	"center" =>
 		if(listlen(toks) < 3)
@@ -1102,6 +1108,8 @@ checkctlfile(specr: Fracrect, p: Params, stack: list of (Fracrect, Params),
 		cy := real hd toks; toks = tl toks;
 		rad := real hd toks;
 		if(rad <= 0.0) rad = 0.1;
+		cx = clampcoord(cx);
+		cy = clampcoord(cy);
 		return ref Usercmd.Zoomin(Fracrect((cx - rad, cy - rad), (cx + rad, cy + rad)));
 	"zoomout" =>
 		return ref Usercmd.Zoomout;
@@ -1110,6 +1118,8 @@ checkctlfile(specr: Fracrect, p: Params, stack: list of (Fracrect, Params),
 			return nil;
 		re := real hd toks; toks = tl toks;
 		im := real hd toks;
+		re = clampcoord(re);
+		im = clampcoord(im);
 		return ref Usercmd.Julia(Fracpoint(re, im));
 	"mandelbrot" =>
 		return ref Usercmd.Mandelbrot;
@@ -1151,6 +1161,13 @@ readrmfile(path: string): string
 	while(len s > 0 && (s[len s - 1] == '\n' || s[len s - 1] == ' ' || s[len s - 1] == '\t'))
 		s = s[0:len s - 1];
 	return s;
+}
+
+clampcoord(v: real): real
+{
+	if(v < -MAXCOORD) return -MAXCOORD;
+	if(v > MAXCOORD) return MAXCOORD;
+	return v;
 }
 
 listlen(l: list of string): int

@@ -450,6 +450,28 @@ testCtlJulia(t: ref T)
 	t.assert(im >= -2.0 && im <= 2.0, "julia im in range");
 }
 
+testCoordClamping(t: ref T)
+{
+	# Coordinates are clamped to [-4, 4] in fractals.b checkctlfile
+	MAXCOORD: con 4.0;
+
+	cases := array[] of {
+		(0.0, 0.0), (1.5, 1.5), (-2.0, -2.0),
+		(100.0, MAXCOORD), (-100.0, -MAXCOORD),
+		(4.0, 4.0), (-4.0, -4.0),
+		(1.0e308, MAXCOORD), (-1.0e308, -MAXCOORD),
+	};
+	for(i := 0; i < len cases; i++) {
+		(input, expected) := cases[i];
+		v := input;
+		if(v < -MAXCOORD) v = -MAXCOORD;
+		if(v > MAXCOORD) v = MAXCOORD;
+		# Compare as strings since asserteq is int-only
+		t.assertseq(sys->sprint("%g", v), sys->sprint("%g", expected),
+			sys->sprint("coord clamping case %d: %g", i, input));
+	}
+}
+
 testCtlDepthClamping(t: ref T)
 {
 	# depth is clamped to [1, 20] in fractals.b
@@ -627,6 +649,7 @@ init(nil: ref Draw->Context, args: list of string)
 	run("CtlZoomin", testCtlZoomin);
 	run("CtlCenter", testCtlCenter);
 	run("CtlJulia", testCtlJulia);
+	run("CoordClamping", testCoordClamping);
 	run("CtlDepthClamping", testCtlDepthClamping);
 	run("CtlFillParsing", testCtlFillParsing);
 	run("CtlZoominCanonical", testCtlZoominCanonical);
