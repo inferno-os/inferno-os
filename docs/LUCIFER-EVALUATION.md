@@ -210,6 +210,17 @@ Windows has significantly fewer tools. Linux disables JIT even on amd64 where it
 - No test for concurrent readers/writers on luciuisrv.
 - Alpha invariant check covers only 5 of 49 theme fields.
 
+### 24. Lucipres-specific issues
+
+- **Async render race condition** (`lucipres.b:762`): `renderartasync` is spawned as a goroutine and accesses module-level globals (`rendermod`, `rlay`, `pdfmod`, color images). A theme change via `reloadcolors` could nil out or replace these mid-render.
+- **`drainprogress` goroutine leak** (`lucipres.b:1302`): A new goroutine is spawned on every `renderart` call. If the renderer never closes the progress channel, the goroutine blocks forever.
+- **PDF document leak on exception** (`lucipres.b:1760`): If `doc.renderpage` raises, `doc.close()` is never called.
+- **O(n^2) `readfilebytes`** (`lucipres.b:2001-2020`): Repeated array allocation and copy for large files.
+- **Empty `"activity "` event handler** (`lucipres.b:501-504`): Comment says "redraw taskboard" but handler returns without action -- taskboard shows stale data until next unrelated redraw.
+- **Silent event drops** (`lucipres.b:486`): Buffered channel (size 8) with `alt` default silently drops events when full during rapid artifact updates.
+- **Dead code**: `parseattrs`/`getattr`/`Attr` (lines 1904-1970) fully implemented but never called; `plumbmod` loaded but never used.
+- **Export hardcodes `.b` extension** for code artifacts (`lucipres.b:1117`) -- assumes Limbo source for all code types.
+
 ---
 
 ## Architecture Strengths
