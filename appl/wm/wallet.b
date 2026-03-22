@@ -439,7 +439,7 @@ layoutdetail(cx, cy, cw, cbottom, fh: int)
 			n++;
 		arr := array[n] of string;
 		i := 0;
-		for(l := ritems; l != nil; l = tl l)
+		for(l = ritems; l != nil; l = tl l)
 			arr[i++] = hd l;
 		historylist.setitems(arr);
 	} else
