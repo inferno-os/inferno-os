@@ -27,6 +27,11 @@ if {! ftest -f /mnt/factotum/proto}{
 	auth/factotum
 }
 
+# Start wallet9p (cryptocurrency wallet service)
+# Access gated by nsconstruct: only agents with "/n/wallet" in caps.paths can see it
+/dis/veltro/wallet9p.dis &
+sleep 1
+
 # Provision API keys into factotum
 # Build the full factotum key line on the host side (bash handles conditionals)
 factotumkey=`{os sh -c 'k=${ANTHROPIC_API_KEY:-$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw ~/Library/LaunchAgents/com.nervsystems.llm9p.plist 2>/dev/null)}; if [ -n "$k" ]; then echo "key proto=pass service=anthropic user=apikey !password=$k"; fi'}

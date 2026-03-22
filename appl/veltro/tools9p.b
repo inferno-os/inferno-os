@@ -939,6 +939,9 @@ emitmanifestnow(mpath: string)
 	if(findtool("say") != nil || findtool("hear") != nil)
 		if(!strlist_contains(allpaths, "/n/speech"))
 			allpaths = "/n/speech" :: allpaths;
+	if(findtool("wallet") != nil || findtool("payfetch") != nil)
+		if(!strlist_contains(allpaths, "/n/wallet"))
+			allpaths = "/n/wallet" :: allpaths;
 	caps := ref NsConstruct->Capabilities(
 		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
@@ -992,6 +995,10 @@ applynsrestriction()
 	if(findtool("say") != nil || findtool("hear") != nil)
 		if(!strlist_contains(allpaths, "/n/speech"))
 			allpaths = "/n/speech" :: allpaths;
+	# Auto-grant /n/wallet when wallet or payfetch tool is registered.
+	if(findtool("wallet") != nil || findtool("payfetch") != nil)
+		if(!strlist_contains(allpaths, "/n/wallet"))
+			allpaths = "/n/wallet" :: allpaths;
 	caps := ref NsConstruct->Capabilities(
 		toolnames, allpaths, nil, nil, nil, nil, 0, hasxenith, -1
 	);
