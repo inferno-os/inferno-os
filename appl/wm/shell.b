@@ -455,10 +455,14 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				} else if(p.buttons & 1 && nbuttons > 0 && buttonhit(p.xy)) {
 					redraw();
 				} else if(p.buttons & 1 && mousedown) {
+					# Selection drag — only redraw if endpoint changed
 					(ml, mc) := pos2cursor(p.xy);
-					selendline = ml;
-					selendcol = mc;
-					selactive = (ml != selstartline || mc != selstartcol);
+					if(ml != selendline || mc != selendcol) {
+						selendline = ml;
+						selendcol = mc;
+						selactive = (ml != selstartline || mc != selstartcol);
+						redraw();
+					}
 				} else {
 					(ml, mc) := pos2cursor(p.xy);
 					selstartline = ml;
@@ -467,8 +471,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					selendcol = mc;
 					selactive = 0;
 					mousedown = 1;
+					redraw();
 				}
-				redraw();
 			} else if(mousedown) {
 				(ml, mc) := pos2cursor(p.xy);
 				if(ml != selstartline || mc != selstartcol) {
@@ -620,16 +624,22 @@ doplumb()
 
 dosend()
 {
-	# Send snarf buffer contents as shell input (paste + execute)
-	buf := wmclient->snarfget();
-	if(buf != "")
-		snarfbuf = buf;
-	if(snarfbuf == "")
+	# Plan 9 / Inferno convention: "send" sends the selected text
+	# as input to the shell (select-and-execute idiom).
+	# If there's no selection, fall back to snarf buffer.
+	s := getseltext();
+	if(s == "") {
+		buf := wmclient->snarfget();
+		if(buf != "")
+			snarfbuf = buf;
+		s = snarfbuf;
+	}
+	if(s == "")
 		return;
-	s := snarfbuf;
-	# Ensure it ends with newline
+	# Ensure it ends with newline so the shell executes it
 	if(len s > 0 && s[len s - 1] != '\n')
 		s += "\n";
+	selactive = 0;
 	insertinput(s);
 }
 
@@ -1231,10 +1241,30 @@ scrolltobottom()
 		topline = 0;
 		return;
 	}
-	total := nlines;	# nlines-1 transcript lines + 1 input line
-	topline = total - vislines;
-	if(topline < 0)
-		topline = 0;
+	textr := textrect();
+	maxpx := textr.dx();
+
+	# Work backwards from the last line, counting visual rows,
+	# to find the topline that shows the bottom of the transcript.
+	vrows := 0;
+	topline = 0;
+	for(i := nlines - 1; i >= 0; i--) {
+		line: string;
+		if(i == nlines - 1)
+			line = promptstr + inputbuf;
+		else
+			line = lines[i];
+		lrows := linevisrows(line, maxpx);
+		if(vrows + lrows > vislines) {
+			topline = i + 1;
+			if(topline >= nlines)
+				topline = nlines - 1;
+			atbottom = 1;
+			return;
+		}
+		vrows += lrows;
+	}
+	topline = 0;
 	atbottom = 1;
 }
 
@@ -1253,34 +1283,51 @@ pos2cursor(p: Point): (int, int)
 		return (0, 0);
 
 	textr := textrect();
+	maxpx := textr.dx();
 	vy := p.y - textr.min.y;
 	if(vy < 0)
 		vy = 0;
-	clickrow := 0;
+	targetvrow := 0;
 	if(font.height > 0)
-		clickrow = vy / font.height;
+		targetvrow = vy / font.height;
 
-	row := clickrow + topline;
+	# Walk logical lines from topline, counting visual rows with wrapping
+	vrow := 0;
 	total := nlines;
-	if(row >= total)
-		row = total - 1;
-	if(row < 0)
-		row = 0;
-
-	line := getlineat(row);
-	x := p.x - textr.min.x;
-	if(x < 0)
-		x = 0;
-	col := 0;
-	w2 := 0;
-	for(i := 0; i < len line; i++) {
-		cw := font.width(line[i:i+1]);
-		if(w2 + cw/2 > x)
-			break;
-		w2 += cw;
-		col++;
+	for(i := topline; i < total; i++) {
+		if(i < 0) continue;
+		line := getlineat(i);
+		if(len line == 0) {
+			if(vrow == targetvrow)
+				return (i, 0);
+			vrow++;
+		} else {
+			start := 0;
+			while(start < len line) {
+				end := wrapend(line, start, maxpx);
+				if(vrow == targetvrow) {
+					x := p.x - textr.min.x;
+					if(x < 0) x = 0;
+					col := start;
+					w2 := 0;
+					for(j := start; j < end; j++) {
+						cw := font.width(line[j:j+1]);
+						if(w2 + cw/2 > x)
+							break;
+						w2 += cw;
+						col++;
+					}
+					return (i, col);
+				}
+				vrow++;
+				start = end;
+			}
+		}
 	}
-	return (row, col);
+	# Past end
+	if(total > 0)
+		return (total - 1, len getlineat(total - 1));
+	return (0, 0);
 }
 
 getsel(): (int, int, int, int)
@@ -1369,32 +1416,67 @@ redraw()
 
 	y := textr.min.y;
 	vrow := 0;
+	maxpx := textr.dx();
 
-	# Draw transcript lines (all but the current partial line at lines[nlines-1])
+	# Draw transcript lines with wrapping
 	for(i := topline; i < nlines - 1 && vrow < maxvrows; i++) {
 		if(i < 0) continue;
-		if(selactive)
-			drawselection(screen, i, textr.min.x, y);
-		screen.text(Point(textr.min.x, y), fgcolor,
-			Point(0, 0), font, lines[i]);
-		y += font.height;
-		vrow++;
+		line := lines[i];
+		if(len line == 0) {
+			if(selactive)
+				drawselwrap(screen, i, 0, 0, textr.min.x, y);
+			y += font.height;
+			vrow++;
+		} else {
+			start := 0;
+			while(start < len line && vrow < maxvrows) {
+				end := wrapend(line, start, maxpx);
+				if(selactive)
+					drawselwrap(screen, i, start, end, textr.min.x, y);
+				screen.text(Point(textr.min.x, y), fgcolor,
+					Point(0, 0), font, line[start:end]);
+				y += font.height;
+				vrow++;
+				start = end;
+			}
+		}
 	}
 
-	# Draw input line (prompt + inputbuf)
+	# Draw input line (prompt + inputbuf) with wrapping
 	if(vrow < maxvrows) {
-		if(selactive)
-			drawselection(screen, nlines - 1, textr.min.x, y);
-		if(promptstr != "")
-			screen.text(Point(textr.min.x, y), promptcolor,
-				Point(0, 0), font, promptstr);
-		if(inputbuf != "") {
-			px := textr.min.x + font.width(promptstr);
-			screen.text(Point(px, y), fgcolor,
-				Point(0, 0), font, inputbuf);
+		inputline := promptstr + inputbuf;
+		if(len inputline == 0) {
+			if(selactive)
+				drawselwrap(screen, nlines - 1, 0, 0, textr.min.x, y);
+			y += font.height;
+			vrow++;
+		} else {
+			plen := len promptstr;
+			start := 0;
+			while(start < len inputline && vrow < maxvrows) {
+				end := wrapend(inputline, start, maxpx);
+				if(selactive)
+					drawselwrap(screen, nlines - 1, start, end, textr.min.x, y);
+				# Color prompt portion differently from user input
+				if(start < plen) {
+					pend := plen;
+					if(pend > end) pend = end;
+					screen.text(Point(textr.min.x, y), promptcolor,
+						Point(0, 0), font, inputline[start:pend]);
+					if(pend < end) {
+						px := textr.min.x + font.width(inputline[start:pend]);
+						screen.text(Point(px, y), fgcolor,
+							Point(0, 0), font, inputline[pend:end]);
+					}
+				} else {
+					screen.text(Point(textr.min.x, y), fgcolor,
+						Point(0, 0), font, inputline[start:end]);
+				}
+				y += font.height;
+				vrow++;
+				start = end;
+			}
 		}
-		y += font.height;
-		vrow++;
 	}
 
 	vislines = maxvrows;
@@ -1479,29 +1561,31 @@ buttonhit(p: Point): int
 	return 0;
 }
 
-drawselection(screen: ref Image, linenum, textx, y: int)
+# Draw selection highlight for one wrapped chunk of a logical line.
+# chunkstart..chunkend is the character range of this visual chunk.
+drawselwrap(screen: ref Image, linenum, chunkstart, chunkend, textx, y: int)
 {
 	(sl, sc, el, ec) := getsel();
 	if(linenum < sl || linenum > el)
 		return;
 
 	line := getlineat(linenum);
-	startx := textx;
-	endx := textx + font.width(line);
 
-	if(linenum == sl) {
-		prefix := "";
-		if(sc <= len line)
-			prefix = line[0:sc];
-		startx = textx + font.width(prefix);
-	}
-	if(linenum == el) {
-		prefix := "";
-		if(ec <= len line)
-			prefix = line[0:ec];
-		endx = textx + font.width(prefix);
-	}
+	# Selection range for this logical line
+	selstart := 0;
+	selend := len line;
+	if(linenum == sl) selstart = sc;
+	if(linenum == el) selend = ec;
 
+	# Clip to this chunk
+	if(selstart < chunkstart) selstart = chunkstart;
+	if(selend > chunkend) selend = chunkend;
+	if(selstart >= selend)
+		return;
+
+	# Pixel positions relative to chunk start
+	startx := textx + font.width(line[chunkstart:selstart]);
+	endx := textx + font.width(line[chunkstart:selend]);
 	selr := Rect((startx, y), (endx, y + font.height));
 	screen.draw(selr, selcolor, nil, Point(0, 0));
 }
@@ -1512,25 +1596,58 @@ drawcursor(vis: int)
 		return;
 
 	textr := textrect();
+	maxpx := textr.dx();
 	maxvrows := 1;
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	# The input line is at visual row (nlines - 1 - topline)
-	inputrow := nlines - 1 - topline;
-	if(inputrow < 0 || inputrow >= maxvrows)
+	# Walk from topline counting visual rows to find cursor position
+	inputline := promptstr + inputbuf;
+	cursorpos := len promptstr + inputcol;
+	vrow := 0;
+
+	# Count visual rows for transcript lines
+	for(i := topline; i < nlines - 1 && vrow < maxvrows; i++) {
+		if(i < 0) continue;
+		line := lines[i];
+		vrow += linevisrows(line, maxpx);
+	}
+
+	if(vrow >= maxvrows)
 		return;
 
-	y := textr.min.y + inputrow * font.height;
-	prefix := inputbuf[0:inputcol];
-	x := textr.min.x + font.width(promptstr) + font.width(prefix);
+	# Find which visual chunk of the input line contains the cursor
+	if(len inputline == 0) {
+		y := textr.min.y + vrow * font.height;
+		x := textr.min.x;
+		c := cursorcolor;
+		if(!vis)
+			c = bgcolor;
+		w.image.line(Point(x, y), Point(x, y + font.height - 1),
+			0, 0, 0, c, Point(0, 0));
+		w.image.flush(Draw->Flushnow);
+		return;
+	}
 
-	col := cursorcolor;
-	if(!vis)
-		col = bgcolor;
-	w.image.line(Point(x, y), Point(x, y + font.height - 1),
-		0, 0, 0, col, Point(0, 0));
-	w.image.flush(Draw->Flushnow);
+	start := 0;
+	while(start < len inputline && vrow < maxvrows) {
+		end := wrapend(inputline, start, maxpx);
+		if(cursorpos >= start && (cursorpos < end || end >= len inputline)) {
+			y := textr.min.y + vrow * font.height;
+			x := textr.min.x;
+			if(cursorpos > start)
+				x += font.width(inputline[start:cursorpos]);
+			c := cursorcolor;
+			if(!vis)
+				c = bgcolor;
+			w.image.line(Point(x, y), Point(x, y + font.height - 1),
+				0, 0, 0, c, Point(0, 0));
+			w.image.flush(Draw->Flushnow);
+			return;
+		}
+		vrow++;
+		start = end;
+	}
 }
 
 # ---------- Real-file IPC ----------
@@ -1583,6 +1700,42 @@ writestatefile(path, data: string)
 	b := array of byte data;
 	sys->write(fd, b, len b);
 	fd = nil;
+}
+
+# ---------- Text wrapping ----------
+
+# Compute end index (exclusive) of next visual chunk of s starting at
+# position start, fitting within maxpx pixels.  Guarantees >= 1 char.
+wrapend(s: string, start, maxpx: int): int
+{
+	if(start >= len s)
+		return len s;
+	w := 0;
+	k := start;
+	while(k < len s) {
+		cw := font.width(s[k:k+1]);
+		if(w + cw > maxpx)
+			break;
+		w += cw;
+		k++;
+	}
+	if(k == start)
+		k++;		# at least one char per chunk
+	return k;
+}
+
+# Count visual rows a logical line occupies at a given pixel width.
+linevisrows(line: string, maxpx: int): int
+{
+	if(maxpx <= 0 || len line == 0)
+		return 1;
+	rows := 0;
+	start := 0;
+	while(start < len line) {
+		start = wrapend(line, start, maxpx);
+		rows++;
+	}
+	return rows;
 }
 
 # ---------- Helpers ----------
