@@ -59,18 +59,22 @@ doc(): string
 {
 	return "Wallet - Cryptocurrency and fiat payment operations\n\n" +
 		"Usage:\n" +
-		"  wallet accounts                    List all wallet accounts\n" +
-		"  wallet address <account>           Show public address\n" +
-		"  wallet balance <account>           Show balance\n" +
-		"  wallet chain <account>             Show blockchain network\n" +
-		"  wallet sign <account> <hexhash>    Sign a 32-byte hash\n" +
-		"  wallet history <account>           Show recent transactions\n" +
-		"  wallet pay <account> <args>        Execute a payment\n\n" +
+		"  wallet accounts                              List all wallet accounts\n" +
+		"  wallet address <account>                     Show public address\n" +
+		"  wallet balance <account>                     Show balance (USDC + ETH)\n" +
+		"  wallet chain <account>                       Show blockchain network\n" +
+		"  wallet history <account>                     Show recent transactions\n" +
+		"  wallet pay <account> <wei> <address>         Send ETH (amount in wei)\n" +
+		"  wallet pay <account> usdc <amount> <address> Send USDC (amount in base units, 6 decimals)\n\n" +
+		"Examples:\n" +
+		"  wallet pay myaccount 1000 0xRecipientAddress          Send 1000 wei\n" +
+		"  wallet pay myaccount 1000000 0xRecipientAddress       Send 0.001 gwei\n" +
+		"  wallet pay myaccount usdc 1000000 0xRecipientAddress  Send 1 USDC\n\n" +
 		"Notes:\n" +
+		"  - ETH amounts are always in wei (1 ETH = 10^18 wei, 1 gwei = 10^9 wei)\n" +
+		"  - USDC amounts are in base units (1 USDC = 1000000)\n" +
 		"  - Private keys are never exposed to the agent\n" +
-		"  - Signing happens inside wallet9p via factotum\n" +
-		"  - Budget limits are enforced server-side\n" +
-		"  - Use 'keyring' tool to add wallet credentials\n";
+		"  - Budget limits are enforced server-side\n";
 }
 
 exec(args: string): string
