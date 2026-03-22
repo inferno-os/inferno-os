@@ -273,9 +273,16 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	ticks := chan of int;
 	spawn timer(ticks, 500);
 
+	# Listen for live theme changes
+	themech := chan[1] of int;
+	spawn themelistener(themech);
+
 	redraw();
 
 	for(;;) alt {
+	<-themech =>
+		reloadcolors();
+		redraw();
 	<-ticks =>
 		if(checkctlfile())
 			redraw();
@@ -812,6 +819,41 @@ contains(s, sub: string): int
 			return 1;
 	}
 	return 0;
+}
+
+# ---------- Theme ----------
+
+themelistener(ch: chan of int)
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { ch <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bgcolor = display.color(th.editbg);
+		fgcolor = display.color(th.edittext);
+		hdcolor = display.color(th.text);
+		lkcolor = display.color(th.accent);
+		dimcolor = display.color(th.dim);
+	}
+	widgetmod->retheme(display);
+	wmclient->retheme(w);
+	if(menumod != nil)
+		menumod->init(display, rfont);
 }
 
 # ---------- Timer ----------

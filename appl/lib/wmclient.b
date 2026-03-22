@@ -37,6 +37,18 @@ init()
 	}
 }
 
+retheme(w: ref Window)
+{
+	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme != nil) {
+		th := lucitheme->gettheme();
+		bdfocused   = th.accent;
+		bdunfocused = th.border;
+		screenbg    = th.bg;
+	}
+	drawborder(w);
+}
+
 makedrawcontext(): ref Draw->Context
 {
 	return wmlib->makedrawcontext();

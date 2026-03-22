@@ -198,7 +198,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	dirty = 1;
 
 	# Listen for live theme changes
-	themech = chan of int;
+	themech = chan[1] of int;
 	spawn themelistener();
 
 	# Main event loop
@@ -999,6 +999,7 @@ reloadcolors()
 		divcolor = display_g.color(th.editlineno);
 	}
 	widgetmod->retheme(display_g);
+	wmclient->retheme(w);
 	if(menumod != nil)
 		menumod->init(display_g, font);
 }

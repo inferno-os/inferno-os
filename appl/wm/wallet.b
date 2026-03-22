@@ -212,7 +212,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	refreshaccounts();
 	dirty = 1;
 
-	themech = chan of int;
+	themech = chan[1] of int;
 	spawn themelistener();
 
 	balancech = chan of int;
@@ -250,6 +250,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 		<-themech =>
 			loadcolors();
 			widgetmod->retheme(display_g);
+			wmclient->retheme(w);
 			layoutall();
 			dirty = 1;
 		<-balancech =>

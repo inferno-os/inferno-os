@@ -373,7 +373,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	mousedown := 0;
 
 	# Listen for live theme changes
-	themech = chan of int;
+	themech = chan[1] of int;
 	spawn themelistener();
 
 	for(;;) alt {
@@ -1771,6 +1771,7 @@ reloadcolors()
 	}
 	updatefgcolor();
 	widgetmod->retheme(display_g);
+	wmclient->retheme(w);
 	if(menumod != nil)
 		menumod->init(display_g, font);
 }
