@@ -276,6 +276,18 @@ initsession(): string
 		room := MAXWRITE - len suffixbytes;
 		if(room < 0)
 			room = 0;
+		# Walk back to a valid UTF-8 character boundary to avoid
+		# cutting a multi-byte sequence in half.
+		while(room > 0) {
+			b := int basebytes[room - 1];
+			if(b < 16r80)
+				break;			# ASCII byte -- safe boundary
+			if((b & 16rC0) != 16r80) {
+				room--;			# lead byte of incomplete char -- skip it
+				break;
+			}
+			room--;				# continuation byte -- keep backing up
+		}
 		sysprompt = string basebytes[0:room];
 	}
 	sysprompt += suffix;

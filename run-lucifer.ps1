@@ -25,4 +25,4 @@ if (-not (Test-Path $EMU)) {
 
 $geometry = "${Width}x${Height}"
 
-& $EMU -c1 -g $geometry -pheap=512m -pmain=512m -pimage=512m -r . sh /dis/lucifer-start.sh
+& $EMU -c1 -g $geometry -pheap=512m -pmain=512m -pimage=512m -r . sh -l /dis/lucifer-start.sh

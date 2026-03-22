@@ -238,6 +238,7 @@ ncat: int;
 # Blocking read queues
 notifyq: list of string;
 toastq: list of string;
+globalpending: list of string;	# buffered global events when no reader waiting
 pending: ref PendingRead;	# linked list of pending reads
 
 # --- Module loading ---
@@ -451,6 +452,7 @@ MAX_GAPS: con 64;
 MAX_BGTASKS: con 64;
 MAX_ACTIVITIES: con 64;
 MAX_DATA_SIZE: con 1048576;	# 1MB max per write to prevent memory exhaustion
+MAX_QUEUE_DEPTH: con 256;	# max pending notifications/toasts
 
 addmessage(a: ref Activity, role, text, using: string): int
 {
@@ -570,6 +572,7 @@ pushglobalevent(msg: string)
 {
 	prev: ref PendingRead;
 	p := pending;
+	delivered := 0;
 	while(p != nil) {
 		next := p.next;
 		if(p.ft == Qevent) {
@@ -579,12 +582,15 @@ pushglobalevent(msg: string)
 				pending = next;
 			else
 				prev.next = next;
+			delivered = 1;
 			p = next;
 			continue;
 		}
 		prev = p;
 		p = next;
 	}
+	if(!delivered)
+		globalpending = appendstr(globalpending, msg);
 }
 
 srv_g: ref Styxserver;
@@ -747,8 +753,15 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		srv.reply(styxservers->readbytes(m, array of byte info));
 
 	Qevent =>
-		# Blocking read: queue pending
-		addpending(m.fid, m.tag, Qevent, 0, m);
+		# Return buffered global event immediately if available; otherwise block.
+		if(globalpending != nil) {
+			globalpending = qrev(globalpending);
+			data := array of byte (hd globalpending + "\n");
+			globalpending = tl globalpending;
+			srv.reply(styxservers->readbytes(m, data));
+		} else {
+			addpending(m.fid, m.tag, Qevent, 0, m);
+		}
 
 	Qnotification =>
 		if(notifyq == nil) {
@@ -975,10 +988,18 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write, c: ref Fid)
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
 	Qnotification =>
+		if(qlen(notifyq) >= MAX_QUEUE_DEPTH) {
+			srv.reply(ref Rmsg.Error(m.tag, "notification queue full"));
+			return;
+		}
 		notifyq = appendstr(notifyq, data);
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
 	Qtoast =>
+		if(qlen(toastq) >= MAX_QUEUE_DEPTH) {
+			srv.reply(ref Rmsg.Error(m.tag, "toast queue full"));
+			return;
+		}
 		toastq = appendstr(toastq, data);
 		srv.reply(ref Rmsg.Write(m.tag, len m.data));
 
@@ -1208,8 +1229,20 @@ globalctl(data: string): string
 		idx := findactidx(id);
 		if(idx < 0)
 			return "unknown activity: " + idstr;
-		# Mark as hidden but preserve data ("data is sacred")
+		# Mark as hidden and free heavy data to prevent memory leak.
 		activities[idx].status = "hidden";
+		activities[idx].messages = nil;
+		activities[idx].nmsg = 0;
+		activities[idx].artifacts = nil;
+		activities[idx].nart = 0;
+		activities[idx].resources = nil;
+		activities[idx].nres = 0;
+		activities[idx].gaps = nil;
+		activities[idx].ngaps = 0;
+		activities[idx].bgtasks = nil;
+		activities[idx].nbg = 0;
+		activities[idx].pendingevent = nil;
+		activities[idx].inputq = nil;
 		vers++;
 		pushglobalevent("activity delete " + idstr);
 		return nil;
@@ -1259,6 +1292,8 @@ convctl(a: ref Activity, data: string): string
 		text = "";
 
 	idx := addmessage(a, role, text, using);
+	if(idx < 0)
+		return "message limit exceeded";
 	pushevent(a.id, "conversation " + string idx);
 	return nil;
 }
@@ -1333,8 +1368,11 @@ presctl(a: ref Activity, data: string): string
 		art := findartifact(a, id);
 		if(art == nil)
 			return "unknown artifact: " + id;
-		if(chunk != nil)
+		if(chunk != nil) {
+			if(len art.data + len chunk > MAX_DATA_SIZE)
+				return "artifact data too large";
 			art.data += chunk;
+		}
 		vers++;
 		pushevent(a.id, "presentation " + id);
 		return nil;
@@ -2429,7 +2467,7 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
-		if(n > 214748364)
+		if(n > 214748364 || (n == 214748364 && (c - '0') > 7))
 			return -1;
 		n = n * 10 + (c - '0');
 	}
@@ -2461,4 +2499,12 @@ appendstr(l: list of string, s: string): list of string
 {
 	# O(1) cons to front; callers use qrev() before draining.
 	return s :: l;
+}
+
+qlen(l: list of string): int
+{
+	n := 0;
+	for(; l != nil; l = tl l)
+		n++;
+	return n;
 }

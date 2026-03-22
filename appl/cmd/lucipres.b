@@ -2047,7 +2047,7 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
-		if(n > 214748364)
+		if(n > 214748364 || (n == 214748364 && (c - '0') > 7))
 			return -1;
 		n = n * 10 + (c - '0');
 	}

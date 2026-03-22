@@ -34,6 +34,10 @@ LuciCtx: module
 # Resource mounting base
 MNT_BASE: con "/tmp/veltro/mnt";
 
+# Resource activity fade timeout (ms) - how long after last use
+# to keep showing active indicator
+RES_ACTIVE_FADE_MS: con 4000;
+
 # --- ADTs ---
 
 PinnedPath: adt {
@@ -204,6 +208,10 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 
 	# Create colors from theme
 	lucitheme := load Lucitheme Lucitheme->PATH;
+	if(lucitheme == nil) {
+		sys->fprint(stderr, "lucictx: cannot load lucitheme: %r\n");
+		return;
+	}
 	th := lucitheme->gettheme();
 	bgcol = dsp.color(th.bg);
 	accentcol = dsp.color(th.accent);
@@ -556,7 +564,7 @@ ctxtimer(evch: chan of string)
 			now := sys->millisec();
 			for(r := resources; r != nil; r = tl r) {
 				res := hd r;
-				if(res.status == "active" || (res.lastused > 0 && now - res.lastused < 4000)) {
+				if(res.status == "active" || (res.lastused > 0 && now - res.lastused < RES_ACTIVE_FADE_MS)) {
 					needtick = 1;
 					break;
 				}
@@ -877,6 +885,7 @@ drawcontext(zone: Rect)
 
 			# Sort active tools by lastused descending (most recently used first).
 			# Tools with no resource match or lastused==0 sink to the bottom.
+			drawtools := activetoolset;
 			{
 				ntools := 0;
 				for(ct := activetoolset; ct != nil; ct = tl ct)
@@ -911,11 +920,11 @@ drawcontext(zone: Rect)
 						tnames[j + 1] = tn;
 						tlast[j + 1] = lval;
 					}
-					# Rebuild list
+					# Rebuild list into local (do not mutate global activetoolset)
 					sorted: list of string;
 					for(i = ntools - 1; i >= 0; i--)
 						sorted = tnames[i] :: sorted;
-					activetoolset = sorted;
+					drawtools = sorted;
 				}
 			}
 
@@ -924,7 +933,7 @@ drawcontext(zone: Rect)
 			for(kp := knowntoolnames; kp != nil; kp = tl kp) {
 				kname := hd kp;
 				isact := 0;
-				for(ap := activetoolset; ap != nil; ap = tl ap)
+				for(ap := drawtools; ap != nil; ap = tl ap)
 					if(hd ap == kname) { isact = 1; break; }
 				if(!isact)
 					availtools = kname :: availtools;
@@ -936,7 +945,7 @@ drawcontext(zone: Rect)
 			availtools = ravail;
 
 			# Render both columns in parallel, row by row
-			tp := activetoolset;
+			tp := drawtools;
 			avp := availtools;
 			while(tp != nil || avp != nil) {
 				visible := y + mainfont.height > vis_top && y < vis_bot;
@@ -952,7 +961,7 @@ drawcontext(zone: Rect)
 						if(res2.rtype == "tool" &&
 								(res2.path == tname || res2.label == tname)) {
 							if(res2.status == "active" ||
-									(res2.lastused > 0 && now - res2.lastused < 3000))
+									(res2.lastused > 0 && now - res2.lastused < RES_ACTIVE_FADE_MS))
 								indcol2 = accentcol;
 							else if(res2.status == "streaming")
 								indcol2 = greencol;
@@ -1648,6 +1657,8 @@ mountresource(ce: ref CatalogEntry)
 			return;
 		}
 		if(sys->mount(conn.dfd, nil, mntdir, Sys->MREPL, "") < 0) {
+			conn.dfd = nil;
+			conn.cfd = nil;
 			sys->fprint(stderr, "lucictx: mount '%s' at %s: %r\n", ce.name, mntdir);
 			return;
 		}
@@ -2097,7 +2108,7 @@ strtoint(s: string): int
 		c := s[i];
 		if(c < '0' || c > '9')
 			return -1;
-		if(n > 214748364)
+		if(n > 214748364 || (n == 214748364 && (c - '0') > 7))
 			return -1;
 		n = n * 10 + (c - '0');
 	}

@@ -23,12 +23,12 @@ fi
 
 # Parse arguments - pass through to emu
 GEOMETRY=""
-for arg in "$@"; do
-    case "$arg" in
-        -g) shift; GEOMETRY="-g $1"; shift ;;
-        -g*) GEOMETRY="$arg"; shift ;;
-        *) ;;
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -g) shift; GEOMETRY="-g $1" ;;
+        -g*) GEOMETRY="$1" ;;
     esac
+    shift
 done
 
 if [ -z "$ANTHROPIC_API_KEY" ]; then
@@ -42,6 +42,8 @@ LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/vel
 
 # --- Launch emulator ---
 cd "$ROOT/emu/Linux"
-echo brimstone > "$ROOT/lib/lucifer/theme/current"
+if [ ! -f "$ROOT/lib/lucifer/theme/current" ]; then
+    echo brimstone > "$ROOT/lib/lucifer/theme/current"
+fi
 
 exec "$EMU" -c0 $GEOMETRY -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"
