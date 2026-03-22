@@ -106,7 +106,10 @@ exec(args: string): string
 			return "usage: wallet history <account>";
 		return doread(hd rest, "history");
 	"pay" =>
-		return "payment execution not yet implemented";
+		if(rest == nil || tl rest == nil)
+			return "usage: wallet pay <account> <amount> <recipient>\n" +
+				"       wallet pay <account> usdc <amount> <recipient>";
+		return dopay(hd rest, tl rest);
 	* =>
 		return "unknown wallet command: " + cmd + "\n" + doc();
 	}
@@ -147,6 +150,28 @@ dosign(acct: string, hexhash: string): string
 		return "no signature returned";
 
 	return str->take(sig, "^\n");
+}
+
+dopay(acct: string, args: list of string): string
+{
+	# Build pay command: join remaining args
+	cmd := "";
+	for(; args != nil; args = tl args) {
+		if(cmd != "")
+			cmd += " ";
+		cmd += hd args;
+	}
+
+	path := WALLET_MOUNT + "/" + acct + "/pay";
+	n := writefile(path, cmd);
+	if(n <= 0)
+		return sys->sprint("pay failed: %r");
+
+	# Read back txhash
+	result := readfile(path);
+	if(result == nil || result == "")
+		return "transaction submitted (no hash returned)";
+	return "tx: " + str->take(result, "^\n");
 }
 
 readfile(path: string): string

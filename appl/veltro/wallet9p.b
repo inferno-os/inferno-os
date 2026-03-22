@@ -631,16 +631,31 @@ dowrite(srv: ref Styxserver, m: ref Tmsg.Write)
 			srv.reply(ref Rmsg.Error(m.tag, Enotfound));
 			return;
 		}
-		# Parse "amount recipient" from write data
+		# Parse: "amount recipient" (ETH) or "usdc amount recipient" (ERC-20)
 		paydata := str->take(data, "^\n\r");
 		(ntoks, paytoks) := sys->tokenize(paydata, " \t");
 		if(ntoks < 2) {
-			srv.reply(ref Rmsg.Error(m.tag, "usage: amount recipient"));
+			srv.reply(ref Rmsg.Error(m.tag, "usage: amount recipient OR usdc amount recipient"));
 			return;
 		}
-		payamt := hd paytoks;
-		payrecip := hd tl paytoks;
-		(txhash, payerr) := executepayment(as, payamt, payrecip);
+		txhash: string;
+		payerr: string;
+		payamt: string;
+		payrecip: string;
+		first := hd paytoks;
+		if(first == "usdc" || first == "USDC") {
+			if(ntoks < 3) {
+				srv.reply(ref Rmsg.Error(m.tag, "usage: usdc amount recipient"));
+				return;
+			}
+			payamt = hd tl paytoks;
+			payrecip = hd tl tl paytoks;
+			(txhash, payerr) = executeerc20(as, payamt, payrecip);
+		} else {
+			payamt = first;
+			payrecip = hd tl paytoks;
+			(txhash, payerr) = executepayment(as, payamt, payrecip);
+		}
 		if(payerr != nil) {
 			srv.reply(ref Rmsg.Error(m.tag, "pay: " + payerr));
 			return;
@@ -917,6 +932,106 @@ executepayment(as: ref AcctState, amount: string, recipient: string): (string, s
 		return (nil, "transaction signing failed");
 
 	# Submit to network
+	hextx := ethcrypto->hexencode(rawtx);
+	(txhash, senderr) := ethrpc->sendrawtx(hextx);
+	if(senderr != nil)
+		return (nil, "send: " + senderr);
+
+	return (txhash, nil);
+}
+
+#
+# ERC-20 transfer: sends tokens by calling transfer(address,uint256) on the token contract
+#
+executeerc20(as: ref AcctState, amount: string, recipient: string): (string, string)
+{
+	if(as.acct.accttype != Wallet->ACCT_ETH)
+		return (nil, "only ETH accounts can send ERC-20");
+
+	addr := as.acct.address;
+	if(addr == "" || addr == nil)
+		return (nil, "account has no address");
+
+	net := getnetwork();
+
+	# Get nonce
+	(nonce, nonceerr) := ethrpc->getnonce(addr);
+	if(nonceerr != nil)
+		return (nil, "nonce: " + nonceerr);
+
+	# Build transfer(address,uint256) calldata
+	# Function selector: 0xa9059cbb
+	# address: padded to 32 bytes
+	# amount: padded to 32 bytes
+	recipaddr := ethcrypto->strtoaddr(recipient);
+	if(recipaddr == nil)
+		return (nil, "invalid recipient: " + recipient);
+
+	# Amount is in token base units (USDC = 6 decimals, so 1 USDC = 1000000)
+	amtbig := strtobig(amount);
+	amtbytes := ethcrypto->bigtobytes(amtbig);
+
+	# Build calldata: selector(4) + address(32) + amount(32) = 68 bytes
+	calldata := array[68] of byte;
+	# Function selector a9059cbb
+	calldata[0] = byte 16ra9;
+	calldata[1] = byte 16r05;
+	calldata[2] = byte 16r9c;
+	calldata[3] = byte 16rbb;
+	# Pad recipient address to 32 bytes (left-padded with zeros)
+	for(i := 0; i < 12; i++)
+		calldata[4+i] = byte 0;
+	calldata[16:] = recipaddr;
+	# Pad amount to 32 bytes (left-padded with zeros)
+	for(i = 0; i < 32; i++)
+		calldata[36+i] = byte 0;
+	off := 68 - len amtbytes;
+	if(off < 36) off = 36;
+	calldata[off:] = amtbytes;
+
+	# Gas for ERC-20 transfer is higher than simple ETH
+	billion := big 1000000000;
+	gasprice := billion;		# 1 gwei
+	gaslimit := big 100000;	# ERC-20 transfers need ~65000 gas
+
+	# Get chain ID
+	(chainid, chiderr) := ethrpc->chainid();
+	if(chiderr != nil)
+		return (nil, "chainid: " + chiderr);
+
+	# Transaction goes TO the token contract, with 0 ETH value
+	tokenaddr := ethcrypto->strtoaddr(net.usdc);
+	if(tokenaddr == nil)
+		return (nil, "invalid token contract address");
+
+	tx := ref Ethcrypto->EthTx(
+		big nonce,
+		gasprice,
+		gaslimit,
+		tokenaddr,	# send to token contract
+		big 0,		# 0 ETH value
+		calldata,	# transfer(recipient, amount)
+		chainid
+	);
+
+	# Sign
+	svc := "wallet-eth-" + as.acct.name;
+	(nil, password) := factotum->getuserpasswd("proto=pass service=" + svc);
+	if(password == nil || password == "")
+		return (nil, "no key in factotum for " + as.acct.name);
+
+	privkey := ethcrypto->hexdecode(password);
+	if(privkey == nil || len privkey != 32)
+		return (nil, "invalid key in factotum");
+
+	rawtx := ethcrypto->signtx(tx, privkey);
+	for(i = 0; i < len privkey; i++)
+		privkey[i] = byte 0;
+
+	if(rawtx == nil)
+		return (nil, "transaction signing failed");
+
+	# Submit
 	hextx := ethcrypto->hexencode(rawtx);
 	(txhash, senderr) := ethrpc->sendrawtx(hextx);
 	if(senderr != nil)
