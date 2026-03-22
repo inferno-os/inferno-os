@@ -18,6 +18,7 @@ TARG=\
 	crypto_test.dis\
 	dial_test.dis\
 	edit_test.dis\
+	editor_test.dis\
 	example_test.dis\
 	factotum_test.dis\
 	font_format_test.dis\

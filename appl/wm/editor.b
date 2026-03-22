@@ -29,8 +29,10 @@ implement Editor;
 #   Ctrl-S       save (prompts for path if unnamed)
 #   Ctrl-Q       quit
 #   Ctrl-Z       undo last edit
+#   Ctrl-Y       redo last undone edit
 #   Ctrl-F       find (prompts in status bar)
 #   Ctrl-G       find next
+#   Ctrl-H       replace (prompts in status bar)
 #   Ctrl-X       cut selection
 #   Ctrl-C       copy selection
 #   Ctrl-V       paste
@@ -41,8 +43,10 @@ implement Editor;
 #
 # Mouse:
 #   Button 1     place cursor / select text
+#   Double-click select word
+#   Triple-click select line
 #   Button 2     paste (snarf buffer)
-#   Button 3     context menu (undo, save, save as, find, goto, ...)
+#   Button 3     context menu (undo, redo, save, find, replace, ...)
 #
 
 include "sys.m";
@@ -60,10 +64,6 @@ include "menu.m";
 	menumod: Menu;
 	Popup: import menumod;
 
-include "bufio.m";
-	bufio: Bufio;
-	Iobuf: import bufio;
-
 include "string.m";
 	str: String;
 
@@ -79,7 +79,9 @@ include "lucitheme.m";
 
 include "widget.m";
 	widgetmod: Widget;
-	Scrollbar, Statusbar, Kbdfilter: import widgetmod;
+	Scrollbar, Statusbar, Kbdfilter,
+	Khome, Kend, Kup, Kdown, Kleft, Kright, Kpgup, Kpgdown,
+	Kdel, Kins, Kbs, Kesc: import widgetmod;
 
 include "textwidget.m";
 	textwidget: Textwidget;
@@ -102,20 +104,6 @@ DIRTYCOL: con int 16rCC4444FF;		# dirty indicator
 MARGIN: con 4;				# text margin
 LNWIDTH: con 48;			# line number gutter width
 TABSTOP: con 4;			# tab width in spaces
-
-# Key constants (Inferno keyboard codes — canonical defs in Widget)
-Khome:		con 16rFF61;
-Kend:		con 16rFF57;
-Kup:		con 16rFF52;
-Kdown:		con 16rFF54;
-Kleft:		con 16rFF51;
-Kright:		con 16rFF53;
-Kpgup:		con 16rFF55;
-Kpgdown:	con 16rFF56;
-Kdel:		con 16rFF9F;
-Kins:		con 16rFF63;
-Kbs:		con 8;
-Kesc:		con 27;
 
 # Undo types
 UndoInsert, UndoDelete, UndoReplace, UndoJoinLine, UndoSplitLine: con iota;
@@ -150,9 +138,11 @@ Doc: adt {
 	selendline:	int;
 	selendcol:	int;
 
-	# Undo
+	# Undo/Redo
 	undostack:	array of ref Undo;
 	undocount:	int;
+	redostack:	array of ref Undo;
+	redocount:	int;
 
 	# Find
 	searchstr:	string;
@@ -162,6 +152,12 @@ Doc: adt {
 	# Goto line
 	gotomode:	int;
 	gotobuf:	string;
+
+	# Replace
+	replacemode:	int;		# 0=off, 1=entering search, 2=entering replacement
+	replacebuf:	string;
+	replacefind:	string;		# search term for replace
+	replacewith:	string;		# replacement text
 
 	# Save as
 	saveasmode:	int;
@@ -190,11 +186,17 @@ newdoc(id: int): ref Doc
 	d.selendcol = 0;
 	d.undostack = array[MAXUNDO] of ref Undo;
 	d.undocount = 0;
+	d.redostack = array[MAXUNDO] of ref Undo;
+	d.redocount = 0;
 	d.searchstr = "";
 	d.findmode = 0;
 	d.findbuf = "";
 	d.gotomode = 0;
 	d.gotobuf = "";
+	d.replacemode = 0;
+	d.replacebuf = "";
+	d.replacefind = "";
+	d.replacewith = "";
 	d.saveasmode = 0;
 	d.saveasbuf = "";
 	d.snarf = "";
@@ -271,7 +273,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	draw = load Draw Draw->PATH;
 	wmclient = load Wmclient Wmclient->PATH;
 	menumod = load Menu Menu->PATH;
-	bufio = load Bufio Bufio->PATH;
 	str = load String String->PATH;
 	stderr = sys->fildes(2);
 
@@ -282,10 +283,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	if(menumod == nil) {
 		sys->fprint(stderr, "edit: cannot load Menu: %r\n");
 		raise "fail:cannot load Menu";
-	}
-	if(bufio == nil) {
-		sys->fprint(stderr, "edit: cannot load Bufio: %r\n");
-		raise "fail:cannot load Bufio";
 	}
 	if(str == nil) {
 		sys->fprint(stderr, "edit: cannot load String: %r\n");
@@ -373,7 +370,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 
 	if(menumod != nil)
 		menumod->init(display, font);
-	menu := menumod->new(array[] of {"undo", "save", "save as", "find", "goto line", "select all", "cut", "copy", "paste", "exit"});
+	menu := menumod->new(array[] of {"undo", "redo", "save", "save as", "find", "replace", "goto line", "select all", "cut", "copy", "paste", "exit"});
 
 	redraw();
 
@@ -392,8 +389,13 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	themech = chan of int;
 	spawn themelistener();
 
-	# Track mouse for selection
+	# Track mouse for selection and multi-click
 	mousedown := 0;
+	lastclicktime := 0;
+	clickcount := 0;
+	lastclickline := -1;
+	lastclickcol := -1;
+	DBLCLICKMS: con 400;	# max ms between clicks for multi-click
 
 	for(;;) alt {
 	ctl := <-w.ctl or
@@ -433,6 +435,28 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					doc.gotomode = 0;
 				else
 					doc.gotobuf = statbar.buf;
+			} else if(doc.replacemode == 1) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.replacefind = val;
+					doc.replacemode = 2;
+					doc.replacebuf = doc.replacewith;
+					statbar.prompt = "Replace with: ";
+					statbar.buf = doc.replacebuf;
+				} else if(done < 0)
+					doc.replacemode = 0;
+				else
+					doc.replacebuf = statbar.buf;
+			} else if(doc.replacemode == 2) {
+				(done, val) := statbar.key(key);
+				if(done == 1) {
+					doc.replacewith = val;
+					doc.replacemode = 0;
+					doreplace(doc.replacefind, doc.replacewith);
+				} else if(done < 0)
+					doc.replacemode = 0;
+				else
+					doc.replacebuf = statbar.buf;
 			} else if(doc.saveasmode) {
 				(done, val) := statbar.key(key);
 				if(done == 1) {
@@ -454,15 +478,17 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				n := menu.show(w.image, p.xy, w.ctxt.ptr);
 				case n {
 				0 => doundo();
-				1 => dosave();
-				2 => startsaveas();
-				3 => startfind();
-				4 => startgoto();
-				5 => selectall();
-				6 => docut();
-				7 => docopy();
-				8 => dopaste();
-				9 =>
+				1 => doredo();
+				2 => dosave();
+				3 => startsaveas();
+				4 => startfind();
+				5 => startreplace();
+				6 => startgoto();
+				7 => selectall();
+				8 => docut();
+				9 => docopy();
+				10 => dopaste();
+				11 =>
 					if(!checkdirty())
 						break;
 					postnote(1, sys->pctl(0, nil), "kill");
@@ -518,13 +544,45 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						doc.selendcol = mc2;
 					}
 				} else {
-					# New click: set anchor
+					# New click: detect single/double/triple
 					(ml, mc2) := pos2cursor(p.xy);
-					doc.curline = ml;
-					doc.curcol = mc2;
-					doc.selactive = 0;
-					doc.selstartline = ml;
-					doc.selstartcol = mc2;
+					now := sys->millisec();
+					if(now - lastclicktime < DBLCLICKMS && ml == lastclickline && mc2 == lastclickcol)
+						clickcount++;
+					else
+						clickcount = 1;
+					lastclicktime = now;
+					lastclickline = ml;
+					lastclickcol = mc2;
+					if(clickcount >= 3) {
+						# Triple-click: select entire line
+						doc.curline = ml;
+						doc.curcol = 0;
+						doc.selactive = 1;
+						doc.selstartline = ml;
+						doc.selstartcol = 0;
+						doc.selendline = ml;
+						doc.selendcol = len doc.lines[ml];
+						doc.curcol = doc.selendcol;
+						clickcount = 0;
+					} else if(clickcount == 2) {
+						# Double-click: select word
+						(ws, we) := wordbound(ml, mc2);
+						doc.curline = ml;
+						doc.selactive = 1;
+						doc.selstartline = ml;
+						doc.selstartcol = ws;
+						doc.selendline = ml;
+						doc.selendcol = we;
+						doc.curcol = we;
+					} else {
+						# Single click: set anchor
+						doc.curline = ml;
+						doc.curcol = mc2;
+						doc.selactive = 0;
+						doc.selstartline = ml;
+						doc.selstartcol = mc2;
+					}
 					mousedown = 1;
 				}
 				redraw();
@@ -636,6 +694,7 @@ setbodytext(text: string)
 	doc.topline = 0;
 	doc.selactive = 0;
 	doc.undocount = 0;
+	doc.redocount = 0;
 }
 
 handledocctl(cmd: string): string
@@ -715,6 +774,24 @@ handledocctl(cmd: string): string
 			postevent("modified");
 		}
 		return "ok";
+	"replace" =>
+		# replace <find> \t <repl>
+		# The find and replacement strings are separated by a tab character
+		(f, rp) := splittab(rest);
+		if(f != "") {
+			doreplace(f, rp);
+			postevent("modified");
+		}
+		return "ok";
+	"replaceall" =>
+		# replaceall <find> \t <repl>
+		(f, rp) := splittab(rest);
+		if(f != "") {
+			n := doreplaceall(f, rp);
+			postevent("modified");
+			return sys->sprint("ok %d", n);
+		}
+		return "ok 0";
 	* =>
 		return "error: unknown ctl command: " + op;
 	}
@@ -746,6 +823,7 @@ handlegctl(cmd: string): string
 		doc.filepath = "";
 		doc.selactive = 0;
 		doc.undocount = 0;
+		doc.redocount = 0;
 		w.settitle(titlestr());
 		postevent("new");
 		return "ok";
@@ -1281,6 +1359,8 @@ handlekey(key: int)
 			startfind();
 		7 =>	# Ctrl-G: find next
 			findnext();
+		8 =>	# Ctrl-H: replace
+			startreplace();
 		17 =>	# Ctrl-Q: quit
 			if(checkdirty()) {
 				postevent("quit");
@@ -1293,6 +1373,8 @@ handlekey(key: int)
 			dopaste();
 		24 =>	# Ctrl-X: cut
 			docut();
+		25 =>	# Ctrl-Y: redo
+			doredo();
 		26 =>	# Ctrl-Z: undo
 			doundo();
 		}
@@ -1513,6 +1595,33 @@ scrolltocursor()
 
 # ---------- Selection ----------
 
+iswordchar(c: int): int
+{
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9') || c == '_';
+}
+
+wordbound(line, col: int): (int, int)
+{
+	s := doc.lines[line];
+	if(len s == 0)
+		return (0, 0);
+	if(col >= len s)
+		col = len s - 1;
+	if(col < 0)
+		col = 0;
+	# If not on a word char, select the single character
+	if(!iswordchar(s[col]))
+		return (col, col + 1);
+	ws := col;
+	while(ws > 0 && iswordchar(s[ws - 1]))
+		ws--;
+	we := col;
+	while(we < len s && iswordchar(s[we]))
+		we++;
+	return (ws, we);
+}
+
 selectall()
 {
 	doc.selactive = 1;
@@ -1613,6 +1722,18 @@ pushundo(kind, line, col: int, text: string)
 	}
 	doc.undostack[doc.undocount] = ref Undo(kind, line, col, text, "");
 	doc.undocount++;
+	doc.redocount = 0;	# new edit clears redo stack
+}
+
+pushredo(kind, line, col: int, text: string)
+{
+	if(doc.redocount >= MAXUNDO) {
+		for(i := 0; i < MAXUNDO - 1; i++)
+			doc.redostack[i] = doc.redostack[i+1];
+		doc.redocount = MAXUNDO - 1;
+	}
+	doc.redostack[doc.redocount] = ref Undo(kind, line, col, text, "");
+	doc.redocount++;
 }
 
 doundo()
@@ -1621,6 +1742,8 @@ doundo()
 		return;
 	doc.undocount--;
 	u := doc.undostack[doc.undocount];
+	# Push inverse onto redo stack
+	pushredo(u.kind, u.line, u.col, u.text);
 	case u.kind {
 	UndoInsert =>
 		doc.lines[u.line] = doc.lines[u.line][0:u.col] + doc.lines[u.line][u.col + len u.text:];
@@ -1649,6 +1772,84 @@ doundo()
 		doc.curline = u.line;
 		doc.curcol = u.col;
 	}
+	doc.dirty = 1;
+}
+
+doredo()
+{
+	if(doc.redocount <= 0)
+		return;
+	doc.redocount--;
+	u := doc.redostack[doc.redocount];
+	# Re-apply the original operation (inverse of undo)
+	case u.kind {
+	UndoInsert =>
+		# Undo removed the insert; redo re-inserts
+		doc.lines[u.line] = doc.lines[u.line][0:u.col] + u.text + doc.lines[u.line][u.col:];
+		doc.curline = u.line;
+		doc.curcol = u.col + len u.text;
+	UndoDelete =>
+		# Undo re-inserted the deleted text; redo deletes again
+		doc.lines[u.line] = doc.lines[u.line][0:u.col] + doc.lines[u.line][u.col + len u.text:];
+		doc.curline = u.line;
+		doc.curcol = u.col;
+	UndoReplace =>
+		# Undo re-inserted the selection; redo deletes it again
+		# The re-inserted text starts at (u.line, u.col) and may span lines
+		# We need to delete the same text that was re-inserted
+		doc.curline = u.line;
+		doc.curcol = u.col;
+		# Calculate end position of the re-inserted text
+		eline := u.line;
+		ecol := u.col;
+		for(ci := 0; ci < len u.text; ci++) {
+			if(u.text[ci] == '\n') {
+				eline++;
+				ecol = 0;
+			} else
+				ecol++;
+		}
+		doc.selactive = 1;
+		doc.selstartline = u.line;
+		doc.selstartcol = u.col;
+		doc.selendline = eline;
+		doc.selendcol = ecol;
+		# Delete without pushing to undo (we manage stacks manually)
+		(sl, sc2, el, ec2) := getsel();
+		if(sl == el)
+			doc.lines[sl] = doc.lines[sl][0:sc2] + doc.lines[sl][ec2:];
+		else {
+			doc.lines[sl] = doc.lines[sl][0:sc2] + doc.lines[el][ec2:];
+			for(di := sl + 1; di <= el; di++)
+				deleteline(sl + 1);
+		}
+		doc.curline = sl;
+		doc.curcol = sc2;
+		doc.selactive = 0;
+	UndoJoinLine =>
+		# Undo split the line; redo joins it back
+		if(u.line + 1 < doc.nlines) {
+			doc.lines[u.line] += doc.lines[u.line + 1];
+			deleteline(u.line + 1);
+		}
+		doc.curline = u.line;
+		doc.curcol = u.col;
+	UndoSplitLine =>
+		# Undo joined the line; redo splits again
+		rest := doc.lines[u.line][u.col:];
+		doc.lines[u.line] = doc.lines[u.line][0:u.col];
+		insertline(u.line + 1, rest);
+		doc.curline = u.line + 1;
+		doc.curcol = 0;
+	}
+	# Push back onto undo without clearing redo
+	if(doc.undocount >= MAXUNDO) {
+		for(i := 0; i < MAXUNDO - 1; i++)
+			doc.undostack[i] = doc.undostack[i+1];
+		doc.undocount = MAXUNDO - 1;
+	}
+	doc.undostack[doc.undocount] = ref Undo(u.kind, u.line, u.col, u.text, "");
+	doc.undocount++;
 	doc.dirty = 1;
 }
 
@@ -1708,6 +1909,76 @@ strindex(s, sub: string, start: int): int
 			return i;
 	}
 	return -1;
+}
+
+# ---------- Replace ----------
+
+startreplace()
+{
+	doc.replacemode = 1;
+	doc.replacebuf = doc.replacefind;
+	statbar.prompt = "Replace: ";
+	statbar.buf = doc.replacebuf;
+}
+
+doreplace(find, repl: string)
+{
+	if(find == "")
+		return;
+	# Find next occurrence from cursor and replace it
+	for(line := doc.curline; line < doc.nlines; line++) {
+		startcol := 0;
+		if(line == doc.curline)
+			startcol = doc.curcol;
+		idx := strindex(doc.lines[line], find, startcol);
+		if(idx >= 0) {
+			pushundo(UndoReplace, line, idx, find);
+			doc.lines[line] = doc.lines[line][0:idx] + repl + doc.lines[line][idx + len find:];
+			doc.curline = line;
+			doc.curcol = idx + len repl;
+			doc.dirty = 1;
+			scrolltocursor();
+			return;
+		}
+	}
+	# Wrap around
+	for(line = 0; line <= doc.curline; line++) {
+		limit := len doc.lines[line];
+		if(line == doc.curline)
+			limit = doc.curcol;
+		idx := strindex(doc.lines[line], find, 0);
+		if(idx >= 0 && idx < limit) {
+			pushundo(UndoReplace, line, idx, find);
+			doc.lines[line] = doc.lines[line][0:idx] + repl + doc.lines[line][idx + len find:];
+			doc.curline = line;
+			doc.curcol = idx + len repl;
+			doc.dirty = 1;
+			scrolltocursor();
+			return;
+		}
+	}
+}
+
+doreplaceall(find, repl: string): int
+{
+	if(find == "")
+		return 0;
+	count := 0;
+	for(line := 0; line < doc.nlines; line++) {
+		col := 0;
+		for(;;) {
+			idx := strindex(doc.lines[line], find, col);
+			if(idx < 0)
+				break;
+			pushundo(UndoReplace, line, idx, find);
+			doc.lines[line] = doc.lines[line][0:idx] + repl + doc.lines[line][idx + len find:];
+			col = idx + len repl;
+			count++;
+		}
+	}
+	if(count > 0)
+		doc.dirty = 1;
+	return count;
 }
 
 # ---------- File I/O ----------
@@ -1827,7 +2098,7 @@ redraw()
 
 	screen := w.image;
 	r := screen.r;
-	statusheight := font.height + MARGIN * 2;
+	statusheight := widgetmod->statusheight();
 
 	screen.draw(r, bgcolor, nil, Point(0, 0));
 
@@ -1888,6 +2159,14 @@ redraw()
 	} else if(doc.gotomode) {
 		statbar.prompt = "Go to line: ";
 		statbar.buf = doc.gotobuf;
+		statbar.leftcolor = nil;
+	} else if(doc.replacemode == 1) {
+		statbar.prompt = "Replace: ";
+		statbar.buf = doc.replacebuf;
+		statbar.leftcolor = nil;
+	} else if(doc.replacemode == 2) {
+		statbar.prompt = "Replace with: ";
+		statbar.buf = doc.replacebuf;
 		statbar.leftcolor = nil;
 	} else if(doc.saveasmode) {
 		statbar.prompt = "Save as: ";
@@ -2022,6 +2301,15 @@ postnote(t: int, pid: int, note: string): int
 	sys->fprint(fd, "%s", note);
 	fd = nil;
 	return 0;
+}
+
+splittab(s: string): (string, string)
+{
+	for(i := 0; i < len s; i++) {
+		if(s[i] == '\t')
+			return (s[0:i], s[i+1:]);
+	}
+	return (s, "");
 }
 
 splitfirst(s: string): (string, string)
