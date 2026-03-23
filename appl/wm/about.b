@@ -52,8 +52,16 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	draw = load Draw Draw->PATH;
 	wmclient = load Wmclient Wmclient->PATH;
+	if(wmclient == nil) {
+		sys->fprint(sys->fildes(2), "about: cannot load wmclient: %r\n");
+		raise "fail:load wmclient";
+	}
 	lucitheme = load Lucitheme Lucitheme->PATH;
 	widgetmod = load Widget Widget->PATH;
+	if(widgetmod == nil) {
+		sys->fprint(sys->fildes(2), "about: cannot load widget: %r\n");
+		raise "fail:load widget";
+	}
 
 	sys->pctl(Sys->NEWPGRP, nil);
 	wmclient->init();
