@@ -9,6 +9,8 @@ include "wmclient.m";
 	widgetmod: Widget;
 	Scrollbar, Statusbar: import widgetmod;
 
+include "lucitheme.m";
+
 sys: Sys;
 
 D: Draw;
@@ -51,6 +53,9 @@ kbdescarg := 0;
 
 # B2 mouse tracking
 lastbuttons := 0;
+
+# Theme change notification
+themech: chan[1] of int;
 
 # Key codes for escape sequence parsing
 KCup:		con 16rFF52;
@@ -120,6 +125,9 @@ init(ctxt: ref Draw->Context, cu: CharonUtils): ref Draw->Context
 	win.onscreen(nil);
 	makewins();
 	mask = display.opaque;
+	themech = chan[1] of int;
+	spawn themelistener();
+
 	progress = chan of Progressmsg;
 	pidc := chan of int;
 	spawn progmon(pidc);
@@ -371,10 +379,38 @@ evhandle(w: ref Window, evchan: chan of ref Event)
 			} else {
 				ev = ref Event.Ekey(k);
 			}
+		<-themech =>
+			reloadcolors();
 		}
 		if (ev != nil)
 			evchan <-= ev;
 	}
+}
+
+themelistener()
+{
+	fd := sys->open("/n/ui/event", Sys->OREAD);
+	if(fd == nil)
+		return;
+	buf := array[256] of byte;
+	for(;;) {
+		n := sys->read(fd, buf, len buf);
+		if(n <= 0)
+			break;
+		ev := string buf[0:n];
+		if(len ev >= 6 && ev[0:6] == "theme ")
+			alt { themech <-= 1 => ; * => ; }
+	}
+}
+
+reloadcolors()
+{
+	if(widgetmod != nil)
+		widgetmod->retheme(display);
+	if(wmclient != nil)
+		wmclient->retheme(window);
+	if(menumod != nil && guifont != nil)
+		menumod->init(display, guifont);
 }
 
 makewins()
