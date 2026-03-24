@@ -72,7 +72,10 @@ Run inside the Inferno emulator. All compiled to `dis/tests/*.dis`.
 
 | Test | What it covers | Requires |
 |------|----------------|----------|
-| `crypto_test` | Cryptographic primitives | nothing |
+| `crypto_test` | Cryptographic primitives (18 test vectors) | nothing |
+| `secp256k1_test` | secp256k1 ECDSA keygen, sign, recover (18 tests) | nothing |
+| `ethcrypto_test` | RLP encoding, EIP-155 signing, EIP-712, address derivation (15 tests) | nothing |
+| `x402_test` | x402 v2 payment protocol parsing and authorization (9 tests) | nothing |
 | `tls_crypto_test` | TLS crypto operations | nothing |
 | `tls_protocol_test` | TLS protocol handshake | nothing |
 | `ssl_transport_test` | SSL transport layer | nothing |
@@ -144,17 +147,36 @@ sleep 2
 
 ## Host Integration Tests (in `tests/host/`)
 
-Bash tests that run on the macOS host. Each starts emu with required services.
+Bash tests that run on the host OS. Each starts emu with required services.
+
+### Agent / Tools
 
 | Test | What it covers |
 |------|----------------|
 | `pathmanage_test.sh` | tools9p path management: bindpath/unbindpath/idempotency |
 | `tools9p_integration_test.sh` | tools9p tool exec via 9P, ctl add/remove, help |
 
+### Wallet / Crypto / Auth
+
+| Test | What it covers |
+|------|----------------|
+| `wallet9p_test.sh` | wallet9p basic operations: create account, read address, sign hash |
+| `wallet_e2e_test.sh` | Base Sepolia RPC connectivity and balance queries |
+| `wallet_persist_test.sh` | Wallet key survival across emu restarts via factotum/secstore (7 tests) |
+| `secstore_logon_test.sh` | Secstore + factotum persistence: PAK auth, key round-trip (10 tests) |
+| `payfetch_test.sh` | x402 payfetch end-to-end payment flow (requires x402-test-server) |
+
+### Test Safety
+
+All wallet/auth integration tests use dedicated test user accounts (`testuser-walletpersist`,
+`testuser-seclogon`, `testuser-payfetch`). They never touch the real user's secstore data.
+
 Run individually:
 ```sh
 ./tests/host/pathmanage_test.sh [-v]
 ./tests/host/tools9p_integration_test.sh [-v]
+./tests/host/wallet9p_test.sh
+./tests/host/secstore_logon_test.sh
 ```
 
 ---
