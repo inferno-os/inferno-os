@@ -2,31 +2,43 @@
 
 ## Overview
 
-Infernode is Inferno OS running natively on macOS ARM64 (and Linux ARM64). The AI agent
-stack runs entirely inside the Inferno emulator (`emu`), using Plan 9's "everything is a
-file" model to integrate the LLM API, tool execution, and GUI through a unified 9P namespace.
+Infernode is Inferno OS running natively on AMD64 and ARM64 (macOS, Linux, Windows). The AI
+agent stack runs entirely inside the Inferno emulator (`emu`), using Plan 9's "everything is
+a file" model to integrate the LLM API, tool execution, wallet, and GUI through a unified 9P namespace.
 
 ---
 
 ## Layer Diagram
 
 ```
-macOS Host
+Host OS (macOS / Linux / Windows)
 │
-├── llmsrv (Limbo)              ← LLM providers as a 9P file server
-│     self-mounts at /n/llm        /n/llm/{id}/ask, /n/llm/{id}/tools
+├── emu (Dis VM + JIT compiler)
+│     │
+│     └── Inferno namespace (rootfs = project root)
+│           │
+│           ├── /n/llm        ← llmsrv (LLM providers as 9P)
+│           ├── /n/ui         ← luciuisrv (GUI state 9P server)
+│           ├── /n/wallet     ← wallet9p (crypto wallet 9P server)
+│           ├── /tool         ← tools9p (39 tool modules as 9P)
+│           ├── /mnt/factotum ← factotum (key agent, secstore-backed)
+│           ├── /n/local/     ← agent-visible host paths (via sys->bind)
+│           ├── /dis/         ← compiled Limbo bytecode (815 modules)
+│           ├── /lib/         ← runtime data (fonts, tool docs, resources)
+│           └── /tmp/         ← scratch (writable at /tmp/veltro/scratch/)
 │
-└── emu/MacOSX/o.emu  (ARM64 JIT)
-      │
-      └── Inferno namespace (rootfs = project root)
-            │
-            ├── /n/llm        ← served by llmsrv (local or remote)
-            ├── /n/ui         ← luciuisrv (GUI state 9P server)
-            ├── /tool         ← tools9p (tool execution 9P server)
-            ├── /n/local/     ← agent-visible host paths (via sys->bind)
-            ├── /dis/         ← compiled Limbo bytecode
-            ├── /lib/         ← runtime data (fonts, tool docs, resources)
-            └── /tmp/         ← scratch (writable at /tmp/veltro/scratch/)
+└── secstored (TCP 5356)      ← encrypted key persistence (AES-256-GCM)
+```
+
+## Boot Sequence
+
+```
+1. secstored starts (TCP port 5356)
+2. factotum starts (empty, no keys)
+3. wm/logon displays login screen (or skipped in headless mode)
+4. User enters secstore password → PAK auth → keys loaded into factotum
+5. llmsrv, tools9p, wallet9p, lucibridge, lucifer start
+6. System fully operational with all keys (wallet, API, email) available
 ```
 
 ---
@@ -228,7 +240,13 @@ accessible locally via `mount -A tcp!<host>!<port> /n/remote`.
 | lucictx | `appl/cmd/lucictx.b` | `dis/lucictx.dis` |
 | lucifer | `appl/cmd/lucifer.b` | `dis/lucifer.dis` |
 | luciuisrv | `appl/cmd/luciuisrv.b` | `dis/luciuisrv.dis` |
+| lucitheme | `appl/cmd/lucitheme.b` | `dis/lucitheme.dis` |
 | veltro | `appl/veltro/veltro.b` | `dis/veltro/veltro.dis` |
 | nsconstruct | `appl/veltro/nsconstruct.b` | `dis/veltro/nsconstruct.dis` |
 | agentlib | `appl/veltro/agentlib.b` | `dis/veltro/agentlib.dis` |
 | llmsrv | `appl/cmd/llmsrv.b` | `dis/llmsrv.dis` |
+| wallet9p | `appl/veltro/wallet9p.b` | `dis/veltro/wallet9p.dis` |
+| factotum | `appl/cmd/auth/factotum/factotum.b` | `dis/auth/factotum.dis` |
+| secstored | `appl/cmd/auth/secstored.b` | `dis/auth/secstored.dis` |
+| logon | `appl/wm/logon.b` | `dis/wm/logon.dis` |
+| editor | `appl/wm/editor.b` | `dis/wm/editor.dis` |

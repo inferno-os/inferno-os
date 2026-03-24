@@ -13,8 +13,10 @@ InferNode is a modern Inferno® OS distribution designed for 64-bit systems. It 
 
 - **Lightweight:** 15-30 MB RAM, 2-second startup, ~10 MB on disk
 - **JIT Compiled:** Native code generation on AMD64 (14x) and ARM64 (9x) — interpreter fallback everywhere
-- **AI Agents:** Namespace-isolated agents with capability-based security (Veltro + Xenith)
-- **Complete:** 780+ utilities, full shell environment, 775 Limbo source files
+- **AI Agents:** Namespace-isolated agents with 39 tool modules, LLM integration via 9P (Veltro)
+- **Payments:** Native cryptocurrency wallet with x402 payment protocol, ERC-20 tokens, and budget-enforced agent spending
+- **Complete:** 800+ Limbo source files, 815 compiled utilities, full shell environment
+- **GUI:** Three-zone tiling GUI (Lucifer), AI-native text editor (Xenith), login screen with secstore authentication
 - **Networked:** TCP/IP stack, 9P filesystem protocol, distributed namespaces
 - **Formally Verified:** Namespace isolation proven via TLA+, SPIN, and CBMC
 - **Headless by Default:** No GUI dependency; optional SDL3 with Metal/Vulkan/D3D
@@ -68,6 +70,16 @@ Xenith is an Acme fork optimized for AI agents and AI-human collaboration:
 
 See [docs/XENITH.md](docs/XENITH.md) for details.
 
+### Lucifer - Three-Zone Tiling GUI
+
+Lucifer is the primary GUI for AI-human collaboration, organizing the workspace into three zones:
+
+- **Conversation** — Chat interface with streaming LLM responses and tool-call activity tiles
+- **Presentation** — Rich content display (artifacts, code, diagrams, images)
+- **Context** — Tool toggles, namespace path management, and activity tracking
+
+Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) for the production readiness evaluation.
+
 ### UI Improvements
 
 Xenith replaces classic Acme's blocking I/O with an async architecture:
@@ -75,6 +87,7 @@ Xenith replaces classic Acme's blocking I/O with an async architecture:
 - **Async File I/O** — Text, images, directories, and saves run in background threads
 - **Non-Blocking UI** — Remains responsive during file operations and on high-latency 9P mounts
 - **Unicode Input** — UTF-8 text entry with Plan 9 latin1 composition (e.g., `a'` → `á`)
+- **HiDPI Fonts** — Antialiased combined fonts replace bitmap fonts for sharp text on Retina/HiDPI displays
 
 ### Building with GUI
 
@@ -140,8 +153,8 @@ repl                                       # Interactive REPL
 
 ### Key Components
 
-- **llmsrv** — Exposes LLM providers (Anthropic API or Ollama/OpenAI-compatible) as a 9P filesystem at `/n/llm`. Agents read and write files to interact with the model — no SDK needed. Can also mount a remote llmsrv via 9P.
-- **tools9p** — Serves 43 tool modules as a 9P filesystem at `/tool`. Each tool (read, list, find, search, write, edit, exec, spawn, shell, etc.) is a loadable Limbo module.
+- **llmsrv** — Exposes LLM providers (Anthropic API or Ollama/OpenAI-compatible) as a 9P filesystem at `/n/llm`. Agents read and write files to interact with the model — no SDK needed. Can also mount a remote llmsrv via 9P. Includes a fallback text tool-call parser for non-Anthropic models.
+- **tools9p** — Serves 39 tool modules as a 9P filesystem at `/tool`. Each tool (read, list, find, search, write, edit, exec, spawn, shell, wallet, payfetch, vision, etc.) is a loadable Limbo module.
 - **Subagents** — Created via the `spawn` tool, run in isolated namespaces (`pctl(NEWNS)`) with only the tools and paths the parent grants.
 - **Security** — Flows caller-to-callee: the agent cannot self-grant capabilities. Namespace isolation formally verified with TLA+ and SPIN.
 
@@ -152,6 +165,7 @@ Caller                    Agent
   |                         |
   |-- tools9p (grants) ---> /tool/read, /tool/exec, ...
   |-- llmsrv ------------> /n/llm/
+  |-- wallet9p ----------> /n/wallet/
   |-- veltro "task" ------> queries LLM, invokes tools, loops
   |                         |
   |                    spawn subagent (NEWNS isolation)
@@ -160,6 +174,22 @@ Caller                    Agent
 ```
 
 See `appl/veltro/SECURITY.md` for the full security model.
+
+## Wallet & Payments
+
+InferNode includes a native cryptocurrency wallet system that enables agents to make autonomous, budget-controlled payments. Everything follows Plan 9 principles: wallet accounts are files, secrets live in factotum, and persistent storage uses secstore.
+
+- **wallet9p** — 9P file server at `/n/wallet/` providing account creation, signing, balance queries, and payment execution
+- **x402 protocol** — HTTP 402 payment flows with EIP-3009/EIP-712 authorization signing
+- **payfetch tool** — HTTP client that automatically handles x402 payments when a server returns 402
+- **Budget enforcement** — Server-side spending limits per transaction and per session; agents cannot bypass
+- **Ethereum support** — secp256k1 ECDSA, Keccak-256, RLP encoding, EIP-155 transaction signing, ERC-20 token transfers
+- **Key persistence** — Wallet keys stored in factotum, encrypted with AES-256-GCM via secstore, surviving restarts
+- **Login screen** — Fullscreen secstore authentication on boot loads all keys (wallet, API, email) into factotum
+
+Supported networks: Ethereum Mainnet, Ethereum Sepolia, Base, Base Sepolia.
+
+See [docs/WALLET-AND-PAYMENTS.md](docs/WALLET-AND-PAYMENTS.md) for the full architecture and API reference.
 
 ## GoDis — Go-to-Dis Compiler (Preliminary)
 
@@ -203,14 +233,18 @@ See [tools/godis/README.md](tools/godis/README.md) for the compiler architecture
 ## What's Inside
 
 - **Shell** — Interactive rc-style command environment
-- **780+ Utilities** — Standard Unix-like tools compiled to Dis bytecode
+- **815 Utilities** — Standard tools compiled to Dis bytecode (the Inferno `/usr/bin`)
 - **Limbo Compiler** — Fast compilation of Limbo programs
 - **Go-to-Dis Compiler** — Compile Go programs to Dis bytecode (preliminary)
 - **JIT Compilers** — AMD64 and ARM64 native code generation
 - **9P Protocol** — Distributed filesystem support
 - **Namespace Management** — Plan 9 style bind/mount with formal verification
 - **TCP/IP Stack** — Full networking capabilities
+- **Wallet & Payments** — Cryptocurrency wallet, x402 protocol, budget-enforced agent spending
+- **Secstore & Factotum** — Encrypted key persistence with PAK authentication
 - **Quantum-Safe Cryptography** — ML-KEM, ML-DSA, SLH-DSA (FIPS 203/204/205)
+- **Text Editor** — Built-in editor with undo/redo, find & replace, 9P IPC for agent control
+- **Web Browser** — Charon browser with CSS layout engine (block, inline-block, flex, grid)
 
 ## Performance
 
@@ -240,8 +274,12 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 
 - [docs/USER-MANUAL.md](docs/USER-MANUAL.md) — **Comprehensive user guide** (namespaces, devices, host integration)
 - [QUICKSTART.md](QUICKSTART.md) — Getting started in 3 commands
+- [RUN_TOUR.md](RUN_TOUR.md) — Interactive Veltro feature tour
 - [docs/XENITH.md](docs/XENITH.md) — Xenith text environment for AI agents
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture and component diagram
+- [docs/WALLET-AND-PAYMENTS.md](docs/WALLET-AND-PAYMENTS.md) — Wallet, x402 payments, secstore, and key management
 - [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) — Veltro agent security model
+- [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) — Lucifer GUI production readiness evaluation
 - [tools/godis/README.md](tools/godis/README.md) — GoDis compiler architecture and translation strategy
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — Cross-language JIT benchmarks (C, Java, Limbo)
 - [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) — Performance specs and binary sizes
@@ -277,27 +315,32 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 
 - **Dis Virtual Machine** — Interpreter and JIT compiler on AMD64 and ARM64. See `docs/arm64-jit/`.
 - **GoDis Compiler** — Preliminary Go-to-Dis compiler; 190+ test programs passing. See `tools/godis/`.
-- **SDL3 GUI Backend** — Cross-platform graphics with Metal/Vulkan/D3D (macOS, Windows)
-- **Xenith** — AI-native text environment with async I/O, dark mode, image support
-- **Lucifer** — Three-zone tiling GUI for AI-human collaboration
-- **Veltro** — AI agent system with namespace-based security, 43 tool modules, REPL, and sub-agent spawning
-- **llmsrv** — LLM providers exposed as 9P filesystem
+- **SDL3 GUI Backend** — Cross-platform graphics with Metal/Vulkan/D3D (macOS, Linux, Windows)
+- **Xenith** — AI-native text environment with async I/O, dark mode, HiDPI fonts, image support
+- **Lucifer** — Three-zone tiling GUI with live theme sync, activity tracking, 80+ unit tests
+- **Veltro** — AI agent system with namespace-based security, 39 tool modules, REPL, and sub-agent spawning
+- **llmsrv** — LLM providers exposed as 9P filesystem (Anthropic + OpenAI-compatible)
+- **Wallet & Payments** — Cryptocurrency wallet (wallet9p), x402 payment protocol, ERC-20 tokens, budget enforcement
+- **Secstore & Factotum** — PAK-authenticated encrypted key persistence with secstore; login screen for boot-time unlock
+- **Text Editor** — Undo/redo, find & replace, double/triple-click selection, 9P IPC for Veltro agent integration
+- **Charon Browser** — CSS layout engine (block, inline-block, flex, grid), live theme support
 - **Quantum-Safe Cryptography** — FIPS 203 (ML-KEM), FIPS 204 (ML-DSA), FIPS 205 (SLH-DSA)
-- **Modern Cryptography** — Ed25519 signatures, updated certificate generation and authentication
+- **Modern Cryptography** — Ed25519, secp256k1 ECDSA, Keccak-256, AES-256-GCM
 - **Formal Verification** — Namespace isolation verified via TLA+ (3.17B states), SPIN, and CBMC
-- **Limbo Test Framework** — Unit testing with clickable error addresses
+- **Limbo Test Framework** — 91 test files with clickable error addresses and CI integration
 - **Windows AMD64 Port** — Headless and SDL3 GUI with Xenith, interpreter only (no JIT yet)
-- **All 780+ utilities** — Shell, networking, filesystems, development tools
-- **GitHub Actions CI** — Build verification, security scanning, supply chain scorecard
+- **All 815 utilities** — Shell, networking, filesystems, development tools
+- **GitHub Actions CI** — Build verification, security scanning (CodeQL + cppcheck), supply chain scorecard
 
 ### Roadmap
 
 - Linux ARM64 SDL3 GUI support (backend 95% complete, build system integration remaining)
 - Windows JIT compiler
+- Lucifer P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md)
 
 ## About
 
-InferNode is a GPL-free Inferno® OS distribution developed by NERV Systems. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
+InferNode is a GPL-free Inferno® OS distribution developed by NERV Systems. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucifer + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
 
 ## License
 
