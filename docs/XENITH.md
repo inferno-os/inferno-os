@@ -122,6 +122,51 @@ for(;;) {
 
 Event types include insertions, deletions, selections, and command executions.
 
+## Built-in Editor (`wm/editor`)
+
+InferNode includes a standalone text editor with a modern feature set, accessible both from the GUI and via 9P for agent control.
+
+### Features
+
+- **Undo / Redo** — Ctrl-Z / Ctrl-Y with separate undo and redo stacks
+- **Find & Replace** — Ctrl-F (find), Ctrl-H (find & replace), with wrap-around and replace-all
+- **Selection** — Double-click selects word, triple-click selects line (400ms detection window)
+- **Keyboard shortcuts** — Unix cursor navigation (Ctrl-A/E/K/U), macOS Cmd shortcuts mapped to control chars
+- **Status bar** — Shows file path, line/column, dirty indicator, search state
+
+### 9P IPC Interface
+
+The editor mounts a 9P filesystem for programmatic control, used by the Veltro `editor` tool:
+
+```
+/edit/
+├── ctl              Global: open <path>, new, quit
+├── index            List of open document IDs
+└── {id}/
+    ├── body         Document text (read/write)
+    ├── ctl          Per-doc: save, saveas, goto, find, insert, delete, replace, replaceall
+    ├── addr         Cursor position (read: "line col", write: set position)
+    └── event        Blocking read for events (modified, opened, quit)
+```
+
+### Agent Integration
+
+The Veltro `editor` tool uses IPC to let agents read, edit, and navigate open documents:
+
+```sh
+# Agent opens a file
+echo 'open /appl/cmd/hello.b' > /edit/ctl
+
+# Agent reads the document
+cat /edit/1/body
+
+# Agent inserts text at line 5, column 1
+echo 'insert 5 1 # new comment' > /edit/1/ctl
+
+# Agent finds and replaces
+echo 'replaceall oldvar	newvar' > /edit/1/ctl    # tab-separated
+```
+
 ## Architecture
 
 ### Comparison with Acme
@@ -132,7 +177,7 @@ Event types include insertions, deletions, selections, and command executions.
 | Images | Text only | PNG/PPM display |
 | Per-window UI | Standard | Custom color schemes |
 | AI focus | Generic editor | Agent-friendly design |
-| Code size | ~16K lines | ~17K lines |
+| Code size | ~16K lines | ~21K lines |
 
 ### Key Modules
 
@@ -141,6 +186,7 @@ Event types include insertions, deletions, selections, and command executions.
 | `xenith.b` | Main entry, theming |
 | `fsys.b` | 9P filesystem interface |
 | `exec.b` | Command execution |
+| `asyncio.b` | Async I/O primitives |
 | `imgload.b` | Image loading (PNG/PPM) |
 | `wind.b` | Window management |
 | `text.b` | Text editing |
@@ -207,11 +253,10 @@ Applied to AI:
 
 Planned enhancements (see `IDEAS.md`):
 
-- **Graphics languages** - `pic`, `grap` for diagrams
-- **Audio support** - Voice I/O via `/dev/audio`
-- **Structured data** - JSON/tree viewers
-- **Token accounting** - LLM cost tracking
-- **ARM64 JIT** - Performance optimization
+- **Graphics languages** — `pic`, `grap` for diagrams
+- **Audio support** — Voice I/O via `/dev/audio`
+- **Structured data** — JSON/tree viewers
+- **Token accounting** — LLM cost tracking
 
 ## See Also
 

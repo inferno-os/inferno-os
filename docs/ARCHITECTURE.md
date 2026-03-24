@@ -2,31 +2,43 @@
 
 ## Overview
 
-Infernode is Inferno OS running natively on macOS ARM64 (and Linux ARM64). The AI agent
-stack runs entirely inside the Inferno emulator (`emu`), using Plan 9's "everything is a
-file" model to integrate the LLM API, tool execution, and GUI through a unified 9P namespace.
+Infernode is Inferno OS running natively on AMD64 and ARM64 (macOS, Linux, Windows). The AI
+agent stack runs entirely inside the Inferno emulator (`emu`), using Plan 9's "everything is
+a file" model to integrate the LLM API, tool execution, wallet, and GUI through a unified 9P namespace.
 
 ---
 
 ## Layer Diagram
 
 ```
-macOS Host
+Host OS (macOS / Linux / Windows)
 │
-├── llmsrv (Limbo)              ← LLM providers as a 9P file server
-│     self-mounts at /n/llm        /n/llm/{id}/ask, /n/llm/{id}/tools
+├── emu (Dis VM + JIT compiler)
+│     │
+│     └── Inferno namespace (rootfs = project root)
+│           │
+│           ├── /n/llm        ← llmsrv (LLM providers as 9P)
+│           ├── /n/ui         ← luciuisrv (GUI state 9P server)
+│           ├── /n/wallet     ← wallet9p (crypto wallet 9P server)
+│           ├── /tool         ← tools9p (39 tool modules as 9P)
+│           ├── /mnt/factotum ← factotum (key agent, secstore-backed)
+│           ├── /n/local/     ← agent-visible host paths (via sys->bind)
+│           ├── /dis/         ← compiled Limbo bytecode (815 modules)
+│           ├── /lib/         ← runtime data (fonts, tool docs, resources)
+│           └── /tmp/         ← scratch (writable at /tmp/veltro/scratch/)
 │
-└── emu/MacOSX/o.emu  (ARM64 JIT)
-      │
-      └── Inferno namespace (rootfs = project root)
-            │
-            ├── /n/llm        ← served by llmsrv (local or remote)
-            ├── /n/ui         ← luciuisrv (GUI state 9P server)
-            ├── /tool         ← tools9p (tool execution 9P server)
-            ├── /n/local/     ← agent-visible host paths (via sys->bind)
-            ├── /dis/         ← compiled Limbo bytecode
-            ├── /lib/         ← runtime data (fonts, tool docs, resources)
-            └── /tmp/         ← scratch (writable at /tmp/veltro/scratch/)
+└── secstored (TCP 5356)      ← encrypted key persistence (AES-256-GCM)
+```
+
+## Boot Sequence
+
+```
+1. secstored starts (TCP port 5356)
+2. factotum starts (empty, no keys)
+3. wm/logon displays login screen (or skipped in headless mode)
+4. User enters secstore password → PAK auth → keys loaded into factotum
+5. llmsrv, tools9p, wallet9p, lucibridge, lucifer start
+6. System fully operational with all keys (wallet, API, email) available
 ```
 
 ---
@@ -135,6 +147,54 @@ Policy applied after `FORKNS`:
 - `/n` → capability-gated: `/n/llm` always; `/n/git`, `/n/speech` only if in `caps.paths`
 - `/tmp` → writable only at `/tmp/veltro/scratch/`
 
+### wallet9p (`appl/veltro/wallet9p.b`)
+
+Cryptocurrency wallet exposed as a 9P file server at `/n/wallet/`.
+
+```
+/n/wallet/
+├── ctl              rw   "network <name>", "default <name>", "rpc <url>"
+├── accounts         r    newline-separated account names
+├── new              rw   write: "eth chain name" or "import eth chain name hexkey"
+└── {name}/
+    ├── address      r    public address (EIP-55 checksummed)
+    ├── balance      r    live balance from blockchain RPC
+    ├── chain        rw   chain name
+    ├── sign         rw   write: hex hash → read: hex signature
+    ├── pay          rw   write: "amount recipient" → read: txhash
+    ├── ctl          rw   "budget maxpertx maxpersess currency"
+    └── history      r    recent transactions
+```
+
+Key design properties:
+- **Factotum-backed** — private keys stored in factotum (`service=wallet-eth-{name}`),
+  never in wallet9p's memory. Signing writes a hash, reads back a signature.
+- **Secstore persistence** — new accounts trigger factotum sync to secstore (async).
+  Keys survive emu restart.
+- **Budget enforcement** — server-side spending limits; agents cannot bypass.
+- **Namespace-gated** — agents need `"/n/wallet"` in `caps.paths` to access. Unlike
+  `/n/llm` (always granted), wallet access is explicitly opt-in.
+- **Multi-network** — supports Ethereum Mainnet, Sepolia, Base, Base Sepolia with
+  per-network RPC endpoints and USDC contract addresses.
+
+### editor (`appl/wm/editor.b`)
+
+Built-in text editor with 9P IPC for agent integration. Mounts at `/edit/`.
+
+```
+/edit/
+├── ctl              rw   open <path>, new, quit
+├── index            r    list of open document IDs
+└── {id}/
+    ├── body         rw   document text
+    ├── ctl          rw   save, saveas, goto, find, insert, delete, replace, replaceall
+    ├── addr         rw   cursor position ("line col")
+    └── event        r    blocking read for events (modified, opened, quit)
+```
+
+The Veltro `editor` tool uses this IPC to let agents read, navigate, and modify open
+documents without needing direct Draw access.
+
 ### Lucifer GUI (`appl/cmd/lucifer.b`)
 
 Three-zone window: Conversation | Presentation | Context.
@@ -144,6 +204,12 @@ Starts the following pipeline:
 2. `tools9p` — mounts at `/tool` (with full default tool set)
 3. `lucibridge` — connects conversation input → LLM → conversation output
 4. `lucictx` — renders the context zone (tool toggles, namespace browser)
+
+Additional features:
+- **Live theme sync** — theme changes propagate to all running apps in real time
+- **HiDPI fonts** — antialiased combined fonts for Retina/HiDPI displays
+- **App slots** — up to 16 GUI apps (wallet, editor, fractals, etc.) in the presentation zone
+- **Activity tracking** — per-activity event streams, status indicators, tool-call tiles
 
 ---
 
@@ -228,7 +294,13 @@ accessible locally via `mount -A tcp!<host>!<port> /n/remote`.
 | lucictx | `appl/cmd/lucictx.b` | `dis/lucictx.dis` |
 | lucifer | `appl/cmd/lucifer.b` | `dis/lucifer.dis` |
 | luciuisrv | `appl/cmd/luciuisrv.b` | `dis/luciuisrv.dis` |
+| lucitheme | `appl/cmd/lucitheme.b` | `dis/lucitheme.dis` |
 | veltro | `appl/veltro/veltro.b` | `dis/veltro/veltro.dis` |
 | nsconstruct | `appl/veltro/nsconstruct.b` | `dis/veltro/nsconstruct.dis` |
 | agentlib | `appl/veltro/agentlib.b` | `dis/veltro/agentlib.dis` |
 | llmsrv | `appl/cmd/llmsrv.b` | `dis/llmsrv.dis` |
+| wallet9p | `appl/veltro/wallet9p.b` | `dis/veltro/wallet9p.dis` |
+| factotum | `appl/cmd/auth/factotum/factotum.b` | `dis/auth/factotum.dis` |
+| secstored | `appl/cmd/auth/secstored.b` | `dis/auth/secstored.dis` |
+| logon | `appl/wm/logon.b` | `dis/wm/logon.dis` |
+| editor | `appl/wm/editor.b` | `dis/wm/editor.dis` |

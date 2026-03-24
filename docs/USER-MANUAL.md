@@ -15,9 +15,12 @@ A practical guide to using InferNode, the AI-agent-friendly operating system.
 7. [The Shell Profile](#the-shell-profile)
 8. [Working with Files](#working-with-files)
 9. [Xenith: The Text Environment](#xenith)
-10. [Security and AI Agent Isolation](#security-and-ai-agent-isolation)
-11. [Common Tasks](#common-tasks)
-12. [Troubleshooting](#troubleshooting)
+10. [The Login Screen](#the-login-screen)
+11. [The Text Editor](#the-text-editor)
+12. [Wallet and Payments](#wallet-and-payments)
+13. [Security and AI Agent Isolation](#security-and-ai-agent-isolation)
+14. [Common Tasks](#common-tasks)
+15. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -562,6 +565,169 @@ Xenith exposes itself as a filesystem at `/mnt/xenith/`:
 ```
 
 This is how AI agents interact with Xenith—by reading and writing files.
+
+---
+
+## The Login Screen
+
+When InferNode boots with a GUI, the login screen (`wm/logon`) runs before the window manager. It handles secstore authentication and loads encrypted keys into factotum.
+
+### First Boot
+
+On first boot, no secstore account exists. The login screen detects this and prompts "First boot — choose a secstore password." Entering a password creates the secstore account and proceeds to boot. All keys added during the session (wallet keys, API keys, email credentials) are automatically saved to secstore.
+
+### Normal Boot
+
+The login screen prompts for your secstore password. On successful authentication (PAK protocol), all stored keys are loaded into factotum. The system then boots with all credentials available.
+
+### Skipping Login
+
+Press **Escape** to skip secstore unlock. The system boots with an empty factotum — wallet accounts won't be available and API keys must be provisioned from environment variables.
+
+### Headless Mode
+
+When no display is available (headless server, Jetson), the login screen exits gracefully. Connect to secstore manually:
+
+```sh
+auth/factotum -S tcp!localhost!5356 -P password
+```
+
+### Key Persistence
+
+Keys are encrypted with AES-256-GCM and stored in secstore. The `secstored` service runs on TCP port 5356 and can serve keys to remote machines:
+
+```sh
+# On the remote machine (e.g., Jetson)
+auth/factotum -S tcp!mac-ip!5356 -u username -P password
+```
+
+---
+
+## The Text Editor
+
+InferNode includes a built-in text editor (`wm/editor`) with modern editing features and a 9P interface for agent integration.
+
+### Starting the Editor
+
+```sh
+# From the Inferno shell
+editor /path/to/file
+
+# From Lucifer (launches in presentation zone)
+# Use the 'launch' or 'editor' Veltro tool
+```
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl-Z | Undo |
+| Ctrl-Y | Redo |
+| Ctrl-F | Find |
+| Ctrl-H | Find & Replace |
+| Ctrl-S | Save |
+| Ctrl-A | Select all / move to beginning of line |
+| Ctrl-E | Move to end of line |
+| Ctrl-K | Delete to end of line |
+
+### Selection
+
+- **Click** — Position cursor
+- **Double-click** — Select word
+- **Triple-click** — Select line
+- **Click and drag** — Select range
+
+### Find & Replace
+
+Press **Ctrl-H** to enter find & replace mode. The status bar shows the search prompt. Type the search term and press Enter. Then type the replacement and press Enter.
+
+- **Replace** — Replaces the next occurrence (wraps around)
+- **Replace All** — Replaces every occurrence in the document
+
+### 9P Interface for Agents
+
+The editor exposes a filesystem at `/edit/` that Veltro agents can use to read and modify open documents:
+
+```sh
+# Open a file programmatically
+echo 'open /appl/cmd/hello.b' > /edit/ctl
+
+# Read document text
+cat /edit/1/body
+
+# Insert text at line 5, column 1
+echo 'insert 5 1 # new comment' > /edit/1/ctl
+
+# Find and replace all (tab-separated)
+echo 'replaceall oldname	newname' > /edit/1/ctl
+
+# Jump to line 42
+echo 'goto 42' > /edit/1/ctl
+```
+
+See [docs/XENITH.md](XENITH.md) for the full IPC reference.
+
+---
+
+## Wallet and Payments
+
+InferNode includes a native cryptocurrency wallet that enables both users and AI agents to manage accounts and make payments. Everything follows Plan 9 principles: wallet accounts are files, secrets live in factotum.
+
+### Starting the Wallet
+
+The wallet GUI app launches from Lucifer or the window manager:
+
+```sh
+# From Lucifer presentation zone (via Veltro)
+# Or directly:
+wm/wallet
+```
+
+wallet9p (the 9P server) starts automatically when needed.
+
+### Managing Accounts
+
+**From the GUI:**
+- Right-click → **New Ethereum Account** to create an account
+- Right-click → **Import Private Key** to import an existing key
+- Select an account to see its address and balance
+- Use the network dropdown to switch between Ethereum Mainnet, Sepolia, Base, etc.
+
+**From the shell:**
+
+```sh
+# Create an account
+echo 'eth ethereum myaccount' > /n/wallet/new
+
+# Check address
+cat /n/wallet/myaccount/address
+
+# Check balance
+cat /n/wallet/myaccount/balance
+
+# Switch network
+echo 'network Base' > /n/wallet/ctl
+```
+
+### Agent Payments
+
+Veltro agents can use the `wallet` and `payfetch` tools:
+
+- **`wallet`** — List accounts, check balances, sign transactions
+- **`payfetch`** — HTTP client that automatically handles x402 payment flows
+
+When a server returns HTTP 402 Payment Required, `payfetch` parses the payment requirements, checks the wallet budget, signs the authorization, and retries — all transparently.
+
+Budget enforcement is server-side in wallet9p. Agents cannot bypass spending limits.
+
+### Key Security
+
+- Private keys live in factotum, never in wallet9p's memory
+- Agents write a hash to `/n/wallet/{name}/sign` and read back a signature — the key never enters the agent's address space
+- Wallet access is namespace-gated: agents need explicit `"/n/wallet"` in their capabilities
+- `/mnt/factotum/ctl` is blocked by nsconstruct — agents never see raw keys
+
+See [docs/WALLET-AND-PAYMENTS.md](WALLET-AND-PAYMENTS.md) for the full architecture, crypto primitives, and API reference.
 
 ---
 
