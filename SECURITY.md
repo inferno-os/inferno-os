@@ -13,7 +13,7 @@ responsibly:
 
 1. **Do not** open a public GitHub issue for security vulnerabilities.
 2. Email security details to the maintainers via GitHub private vulnerability
-   reporting: https://github.com/NERVsystems/infernode/security/advisories/new
+   reporting: https://github.com/infernode-os/infernode/security/advisories/new
 3. Include a description of the vulnerability, steps to reproduce, and any
    relevant proof-of-concept code.
 

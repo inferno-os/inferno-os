@@ -472,7 +472,7 @@ bash tests/host/payfetch_test.sh              # x402 payfetch end-to-end (requir
 A dedicated test server is available for payfetch testing:
 
 ```sh
-git clone git@github.com:NERVsystems/x402-test-server.git
+git clone git@github.com:infernode-os/x402-test-server.git
 cd x402-test-server && npm install && npm start
 ```
 

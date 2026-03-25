@@ -2,7 +2,7 @@
 
 Last updated: 2026-03-12
 
-Project: `NERVsystems_infernode`
+Project: `infernode-os_infernode`
 
 ## Summary
 
@@ -283,7 +283,7 @@ bash build-linux-arm64.sh
 
 ### Query SonarQube for remaining issues
 Use the MCP tool `search_sonar_issues_in_projects` with:
-- `projects: ["NERVsystems_infernode"]`
+- `projects: ["infernode-os_infernode"]`
 - `issueStatuses: ["OPEN"]`
 - `severities: ["HIGH"]` or `["MEDIUM"]`
 - Page through with `p: 1`, `p: 2`, etc.

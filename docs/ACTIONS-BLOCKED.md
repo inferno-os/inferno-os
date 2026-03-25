@@ -40,7 +40,7 @@ I cannot fix this because:
 ## What User Needs to Check
 
 ### 1. Repository Settings
-Navigate to: https://github.com/NERVsystems/infernode/settings/actions
+Navigate to: https://github.com/infernode-os/infernode/settings/actions
 
 Check:
 - [ ] Actions permissions: "Allow all actions and reusable workflows"
@@ -48,7 +48,7 @@ Check:
 - [ ] Actions are enabled (not disabled)
 
 ### 2. Organization Settings
-Navigate to: https://github.com/organizations/NERVsystems/settings/actions
+Navigate to: https://github.com/organizations/infernode-os/settings/actions
 
 Check:
 - [ ] Actions are enabled for private repositories
@@ -56,7 +56,7 @@ Check:
 - [ ] Quota/billing status
 
 ### 3. Billing
-Navigate to: https://github.com/organizations/NERVsystems/settings/billing
+Navigate to: https://github.com/organizations/infernode-os/settings/billing
 
 Check:
 - [ ] GitHub Actions minutes available

@@ -6,9 +6,9 @@
 ## Rebrand Summary
 
 **Old Name:** nervnode
-**New Name:** infernode (NERV InferNode)
+**New Name:** infernode (InferNode)
 
-**Repository:** https://github.com/NERVsystems/infernode
+**Repository:** https://github.com/infernode-os/infernode
 
 ## Verification Checklist
 
@@ -88,7 +88,7 @@
 
 **References:**
 - nervnode → infernode (99 replacements)
-- NERVsystems/nervnode → NERVsystems/infernode
+- NERVsystems/nervnode → infernode-os/infernode
 - "nervnode" → "infernode"
 
 **Preserved:**
@@ -115,9 +115,9 @@
 
 ## Current Status
 
-**NERV InferNode:**
+**InferNode:**
 - Name: infernode
-- Repository: https://github.com/NERVsystems/infernode
+- Repository: https://github.com/infernode-os/infernode
 - Commits: 130
 - Documentation: 32 files
 - CI/CD: All passing
@@ -125,8 +125,8 @@
 
 ## Badges (All Green)
 
-[![Quick Verification](https://github.com/NERVsystems/infernode/actions/workflows/simple-verify.yml/badge.svg)](https://github.com/NERVsystems/infernode/actions/workflows/simple-verify.yml)
-[![Security Scanning](https://github.com/NERVsystems/infernode/actions/workflows/security-scan.yml/badge.svg)](https://github.com/NERVsystems/infernode/actions/workflows/security-scan.yml)
+[![Quick Verification](https://github.com/infernode-os/infernode/actions/workflows/simple-verify.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/simple-verify.yml)
+[![Security Scanning](https://github.com/infernode-os/infernode/actions/workflows/security-scan.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/security-scan.yml)
 
 Both badges show passing tests!
 
@@ -140,8 +140,8 @@ Both badges show passing tests!
 - ✅ Documentation consistent
 - ✅ Everything copacetic
 
-**NERV InferNode is ready for use!**
+**InferNode is ready for use!**
 
 ---
 
-**130 commits** documenting the complete ARM64 64-bit Inferno port, now professionally branded as **NERV InferNode**.
+**130 commits** documenting the complete ARM64 64-bit Inferno port, now professionally branded as **InferNode**.

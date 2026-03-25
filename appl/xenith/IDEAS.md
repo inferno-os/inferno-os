@@ -17,7 +17,7 @@ The filesystem structure IS the API. An AI agent that understands files understa
 
 ## Namespaces as Schema
 
-From the NERV 9P paper: directory structure defines data model.
+From the 9P paper: directory structure defines data model.
 
 ```
 /mnt/xenith/
@@ -367,7 +367,7 @@ Environment variables passed to hooks:
 
 ---
 
-## The NERV 9P Vision
+## The 9P Vision
 
 Xenith as universal AI interface:
 
@@ -488,5 +488,5 @@ decodetask() → progress channel → progressforwarder() → casync → ImagePr
 - pic language: http://man.cat-v.org/plan_9/1/pic
 - grap language: http://man.cat-v.org/plan_9/1/grap
 - Structural Regular Expressions: http://doc.cat-v.org/bell_labs/structural_regexps/
-- NERV 9P Paper: ../nerva-9p-paper/
+- 9P Paper: ../nerva-9p-paper/
 - ARM64 Instruction Set: https://developer.arm.com/documentation/ddi0596/

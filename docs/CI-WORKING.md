@@ -56,7 +56,7 @@
 - Run functional tests
 - Use when preparing releases
 
-Trigger via: `gh workflow run "Build and Test ARM64 Inferno" --repo NERVsystems/infernode`
+Trigger via: `gh workflow run "Build and Test ARM64 Inferno" --repo infernode-os/infernode`
 
 ## Cost Analysis
 

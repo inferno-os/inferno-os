@@ -118,12 +118,12 @@ The system works, security scans pass, verification works.
 
 Check CI status:
 ```bash
-gh run list --repo NERVsystems/infernode --limit 10
+gh run list --repo infernode-os/infernode --limit 10
 ```
 
 View specific run:
 ```bash
-gh run view <run-id> --repo NERVsystems/infernode
+gh run view <run-id> --repo infernode-os/infernode
 ```
 
 ---

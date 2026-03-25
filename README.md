@@ -1,9 +1,9 @@
-# NERV InferNode
+# InferNode
 
-[![CI](https://github.com/NERVsystems/infernode/actions/workflows/ci.yml/badge.svg)](https://github.com/NERVsystems/infernode/actions/workflows/ci.yml)
-[![Security Analysis](https://github.com/NERVsystems/infernode/actions/workflows/security.yml/badge.svg)](https://github.com/NERVsystems/infernode/actions/workflows/security.yml)
-[![OSSF Scorecard](https://github.com/NERVsystems/infernode/actions/workflows/scorecard.yml/badge.svg)](https://github.com/NERVsystems/infernode/actions/workflows/scorecard.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/NERVsystems/infernode/badge)](https://scorecard.dev/viewer/?uri=github.com/NERVsystems/infernode)
+[![CI](https://github.com/infernode-os/infernode/actions/workflows/ci.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/ci.yml)
+[![Security Analysis](https://github.com/infernode-os/infernode/actions/workflows/security.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/security.yml)
+[![OSSF Scorecard](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/infernode-os/infernode/badge)](https://scorecard.dev/viewer/?uri=github.com/infernode-os/infernode)
 
 **64-bit Inferno® OS for embedded systems, servers, and AI agents**
 
@@ -342,7 +342,7 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 
 ## About
 
-InferNode is a GPL-free Inferno® OS distribution developed by NERV Systems. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucifer + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
+InferNode is a GPL-free Inferno® OS distribution. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucifer + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
 
 ## License
 
@@ -350,6 +350,6 @@ MIT License (as per original Inferno® OS).
 
 ---
 
-**NERV InferNode** — Lightweight Inferno® OS for AMD64, ARM64, and Windows
+**InferNode** — Lightweight Inferno® OS for AMD64, ARM64, and Windows
 
 <sub>Inferno® is a distributed operating system, originally developed at Bell Labs, but now maintained by trademark owner Vita Nuova®.</sub>

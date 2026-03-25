@@ -23,7 +23,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright 2026 NERV Systems. MIT License.</string>
+	<string>Copyright 2026 The InferNode Authors. MIT License.</string>
 	<key>CFBundleGetInfoString</key>
 	<string>InferNode 1.0 - Inferno OS for the AI Age</string>
 	<key>NSHighResolutionCapable</key>

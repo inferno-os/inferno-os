@@ -169,7 +169,7 @@
 
 ## Final State
 
-**Repository:** https://github.com/NERVsystems/infernode
+**Repository:** https://github.com/infernode-os/infernode
 
 **What You Have:**
 - Working 64-bit ARM64 Inferno OS

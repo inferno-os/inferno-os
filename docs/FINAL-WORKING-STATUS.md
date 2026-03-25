@@ -147,7 +147,7 @@ hello from inferno
 
 ## Repository
 
-**GitHub:** https://github.com/NERVsystems/infernode
+**GitHub:** https://github.com/infernode-os/infernode
 **Commits:** 69
 **Documentation:** 21 files in docs/
 **License:** As per original Inferno/InferNode

@@ -6,7 +6,7 @@
 
 ```bash
 # Clone infernode on your Jetson
-git clone https://github.com/NERVsystems/infernode.git
+git clone https://github.com/infernode-os/infernode.git
 cd infernode
 
 # Run the build script

@@ -1,4 +1,4 @@
-# NERV InferNode - Performance Specifications
+# InferNode - Performance Specifications
 
 **Platforms:** x86_64 Linux, ARM64 Linux, ARM64 macOS
 **Build:** Headless (no X11/graphics)
@@ -281,7 +281,7 @@ CPU: 0-1% (idle) to 20-40% (active)
 
 ## Summary
 
-**NERV InferNode is:**
+**InferNode is:**
 - **Lightweight:** 15-30 MB typical RAM usage
 - **Fast:** 2-second startup
 - **Efficient:** Low CPU when idle
