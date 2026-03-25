@@ -8,12 +8,9 @@ INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
 
-# Default tool set: non-destructive tools enabled out of the box.
-# Potentially destructive tools (exec, spawn, git, mail) are registered
-# in tools9p but NOT active by default — enable them via the context zone.
-# launch is safe: it only opens whitelisted GUI apps from /dis/wm/.
+# Login screen unlocks secstore/factotum, then wallet9p starts (needs keys).
 # The -b flag sets the budget of tools delegatable to child task agents.
-LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools9p -m /tool -b read,list,find,search,grep,write,edit,diff,json,http,websearch,launch,present,gap -p /dis/wm read list find present say hear task todo memory gap editor charon launch; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
+LUCIFER_CMD='wm/logon; /dis/veltro/wallet9p.dis &; sleep 1; luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
 # --- Launch emulator ---
 # LLM service (local llmsrv or remote 9P mount) is configured in lib/sh/profile
@@ -21,4 +18,4 @@ LUCIFER_CMD='luciuisrv; echo activity create Main > /n/ui/ctl; /dis/veltro/tools
 cd "$INFERNODE_ROOT/emu/MacOSX"
 echo brimstone > "$INFERNODE_ROOT/lib/lucifer/theme/current"
 
-exec "$EMU" -c1 -pheap=512m -pmain=512m -pimage=512m -r../.. sh -l -c "$LUCIFER_CMD"
+exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m -r../.. sh -l -c "$LUCIFER_CMD"

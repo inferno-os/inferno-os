@@ -82,5 +82,4 @@ for f in /tmp/*.????xenith /tmp/*.????acme /tmp/*.????blks {
 }
 
 # Change to home directory
-cd $homege to home directory
 cd $home
