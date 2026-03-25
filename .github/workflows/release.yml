@@ -244,6 +244,10 @@ jobs:
         echo "SDL3DIR=$sdl3dir" >> $env:GITHUB_ENV
         Write-Host "SDL3DIR=$sdl3dir"
 
+    - name: Install win_bison (for Limbo compiler yacc grammar)
+      shell: pwsh
+      run: winget install --id WinFlexBison.win_flex_bison --accept-source-agreements --accept-package-agreements
+
     - name: Build libraries (headless bootstrap)
       shell: pwsh
       run: .\build-windows-amd64.ps1
