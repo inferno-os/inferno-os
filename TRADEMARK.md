@@ -4,12 +4,10 @@ The InferNode software is released under the MIT License, which applies to the s
 
 ## Trademarks
 
-The following are trademarks of NERV Systems Pte Ltd:
+The following are trademarks of Peter Finn:
 
 - **InferNode™** — the name
 - **The InferNode logo** — the Pluto symbol (☿ variant) rendered in red
-- **NERV Systems** — the company name
-- **The NERV Systems logo** — if present in this repository
 
 ## Permitted Uses
 
@@ -23,7 +21,7 @@ You **may** use the InferNode name and logo without prior permission for:
 
 You **may not** without prior written permission:
 
-- Use the InferNode name or logo in a way that suggests endorsement, sponsorship, or affiliation with NERV Systems
+- Use the InferNode name or logo in a way that suggests endorsement, sponsorship, or affiliation with Peter Finn
 - Use the marks in connection with a product or service that competes with InferNode
 - Modify, distort, or alter the logo in any way
 - Use the marks as part of your own product name, service name, domain name, or social media account
@@ -36,7 +34,7 @@ If you distribute a modified version of InferNode:
 
 - You **must** remove or replace the InferNode name and logo
 - You **may** state that your project is "based on InferNode" or "derived from InferNode" in documentation
-- You **may not** imply that your modified version is the official InferNode or is endorsed by NERV Systems
+- You **may not** imply that your modified version is the official InferNode or is endorsed by Peter Finn
 
 ## Logo Usage Guidelines
 
@@ -50,18 +48,18 @@ When using the InferNode logo under permitted uses:
 
 ## Reporting Trademark Misuse
 
-If you become aware of any misuse of InferNode or NERV Systems trademarks, please report it to: [trademark@nerv.systems]
+If you become aware of any misuse of InferNode or Peter Finn trademarks, please report it to: [pdf@infernode.io](mailto:pdf@infernode.io)
 
 ## Contact for Permissions
 
-For trademark usage requests not covered by this policy, contact: [legal@nerv.systems]
+For trademark usage requests not covered by this policy, contact: [pdf@infernode.io](mailto:pdf@infernode.io)
 
 ## Policy Changes
 
-NERV Systems reserves the right to modify this trademark policy at any time. Changes will be reflected in this document in the project repository.
+Peter Finn reserves the right to modify this trademark policy at any time. Changes will be reflected in this document in the project repository.
 
 ---
 
 *This trademark policy is designed to protect both the InferNode project's identity and the community's ability to discuss and build upon the software freely.*
 
-© NERV Systems Pte Ltd. All rights reserved.
+© Peter Finn. All rights reserved.
