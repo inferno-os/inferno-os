@@ -1,5 +1,7 @@
 # Wallet, Payments, and Key Management
 
+> **EXPERIMENTAL — TESTNET ONLY.** The wallet system is under active development and has not been audited. Use only with testnets (Ethereum Sepolia, Base Sepolia). Do not store real funds or mainnet private keys. The mainnet RPC endpoints are included for completeness but are untested with real assets.
+
 This document covers InferNode's cryptocurrency wallet system, the x402 payment protocol integration, the secstore-based key persistence architecture, and the login screen.
 
 ## Overview

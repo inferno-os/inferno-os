@@ -14,7 +14,7 @@ InferNode is a modern Inferno® OS distribution designed for 64-bit systems. It 
 - **Lightweight:** 15-30 MB RAM, 2-second startup, ~10 MB on disk
 - **JIT Compiled:** Native code generation on AMD64 (14x) and ARM64 (9x) — interpreter fallback everywhere
 - **AI Agents:** Namespace-isolated agents with 39 tool modules, LLM integration via 9P (Veltro)
-- **Payments:** Native cryptocurrency wallet with x402 payment protocol, ERC-20 tokens, and budget-enforced agent spending
+- **Payments:** Native cryptocurrency wallet with x402 payment protocol, ERC-20 tokens, and budget-enforced agent spending (**experimental — testnet only**)
 - **Complete:** 800+ Limbo source files, 815 compiled utilities, full shell environment
 - **GUI:** Three-zone tiling GUI (Lucifer), AI-native text editor (Xenith), login screen with secstore authentication
 - **Networked:** TCP/IP stack, 9P filesystem protocol, distributed namespaces
@@ -175,7 +175,9 @@ Caller                    Agent
 
 See `appl/veltro/SECURITY.md` for the full security model.
 
-## Wallet & Payments
+## Wallet & Payments (Experimental — Testnet Only)
+
+> **WARNING:** The wallet system is under active development and has not been audited. Use only with testnets (Ethereum Sepolia, Base Sepolia). Do not store real funds or mainnet private keys.
 
 InferNode includes a native cryptocurrency wallet system that enables agents to make autonomous, budget-controlled payments. Everything follows Plan 9 principles: wallet accounts are files, secrets live in factotum, and persistent storage uses secstore.
 
@@ -240,7 +242,7 @@ See [tools/godis/README.md](tools/godis/README.md) for the compiler architecture
 - **9P Protocol** — Distributed filesystem support
 - **Namespace Management** — Plan 9 style bind/mount with formal verification
 - **TCP/IP Stack** — Full networking capabilities
-- **Wallet & Payments** — Cryptocurrency wallet, x402 protocol, budget-enforced agent spending
+- **Wallet & Payments** — Cryptocurrency wallet, x402 protocol, budget-enforced agent spending (**experimental — testnet only**)
 - **Secstore & Factotum** — Encrypted key persistence with PAK authentication
 - **Quantum-Safe Cryptography** — ML-KEM, ML-DSA, SLH-DSA (FIPS 203/204/205)
 - **Text Editor** — Built-in editor with undo/redo, find & replace, 9P IPC for agent control
@@ -320,7 +322,7 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 - **Lucifer** — Three-zone tiling GUI with live theme sync, activity tracking, 80+ unit tests
 - **Veltro** — AI agent system with namespace-based security, 39 tool modules, REPL, and sub-agent spawning
 - **llmsrv** — LLM providers exposed as 9P filesystem (Anthropic + OpenAI-compatible)
-- **Wallet & Payments** — Cryptocurrency wallet (wallet9p), x402 payment protocol, ERC-20 tokens, budget enforcement
+- **Wallet & Payments** — Cryptocurrency wallet (wallet9p), x402 payment protocol, ERC-20 tokens, budget enforcement (**experimental — testnet only**)
 - **Secstore & Factotum** — PAK-authenticated encrypted key persistence with secstore; login screen for boot-time unlock
 - **Text Editor** — Undo/redo, find & replace, double/triple-click selection, 9P IPC for Veltro agent integration
 - **Charon Browser** — CSS layout engine (block, inline-block, flex, grid), live theme support
