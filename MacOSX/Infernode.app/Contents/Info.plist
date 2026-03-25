@@ -9,7 +9,7 @@
 	<key>CFBundleIconName</key>
 	<string>InferNode</string>
 	<key>CFBundleIdentifier</key>
-	<string>systems.nerv.infernode</string>
+	<string>io.infernode.app</string>
 	<key>CFBundleName</key>
 	<string>InferNode</string>
 	<key>CFBundleDisplayName</key>
@@ -17,15 +17,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>0.1</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>0.1</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright 2026 The InferNode Authors. MIT License.</string>
 	<key>CFBundleGetInfoString</key>
-	<string>InferNode 1.0 - Inferno OS for the AI Age</string>
+	<string>InferNode 0.1 - Inferno OS for the AI Age</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>LSMinimumSystemVersion</key>

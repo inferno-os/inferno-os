@@ -1,0 +1,346 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Linux AMD64: Headless emulator + toolchain
+  # ─────────────────────────────────────────────
+  linux-amd64:
+    name: Linux AMD64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ROOT: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Stamp build version
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i "s|InferNode 0.1|InferNode ${VERSION} build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
+    - name: Install build dependencies
+      run: sudo apt-get update && sudo apt-get install -y build-essential
+
+    - name: Build (headless)
+      run: |
+        chmod +x build-linux-amd64.sh
+        ./build-linux-amd64.sh headless
+
+    - name: Verify build
+      run: |
+        test -x emu/Linux/o.emu || { echo "Emulator not built"; exit 1; }
+        test -x Linux/amd64/bin/limbo || { echo "Limbo compiler not built"; exit 1; }
+        test -x Linux/amd64/bin/mk || { echo "mk not built"; exit 1; }
+
+    - name: Package archive
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        STAGE="infernode-${VERSION}-linux-amd64"
+        mkdir -p "$STAGE/emu/Linux" "$STAGE/Linux/amd64/bin"
+
+        # Platform binaries
+        cp emu/Linux/o.emu "$STAGE/emu/Linux/"
+        cp Linux/amd64/bin/limbo Linux/amd64/bin/mk "$STAGE/Linux/amd64/bin/"
+
+        # Shared runtime tree
+        for d in dis lib fonts module services locale; do
+          [ -d "$d" ] && cp -a "$d" "$STAGE/"
+        done
+
+        # mkconfig and mkfiles (needed for building from source)
+        cp mkconfig "$STAGE/"
+        [ -d mkfiles ] && cp -a mkfiles "$STAGE/"
+
+        # Build script (so users can rebuild with SDL3)
+        cp build-linux-amd64.sh "$STAGE/"
+
+        # Docs and legal
+        for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
+          [ -f "$f" ] && cp "$f" "$STAGE/"
+        done
+
+        tar czf "${STAGE}.tar.gz" "$STAGE"
+        echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: infernode-linux-amd64-archive
+        path: infernode-*-linux-amd64.tar.gz
+        retention-days: 3
+
+  # ─────────────────────────────────────────────
+  # macOS ARM64: SDL3 GUI emulator + .app bundle
+  # ─────────────────────────────────────────────
+  macos-arm64:
+    name: macOS ARM64
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ROOT: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Stamp build version
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i '' "s|InferNode 0.1|InferNode ${VERSION} build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
+    - name: Install SDL3
+      run: brew install sdl3 sdl3_ttf
+
+    - name: Build mk
+      run: |
+        chmod +x makemk.sh
+        ./makemk.sh
+        test -x MacOSX/arm64/bin/mk || { echo "mk build failed"; exit 1; }
+
+    - name: Build system libraries
+      run: |
+        export PATH="$ROOT/MacOSX/arm64/bin:/usr/bin:/bin"
+        for dir in lib9 libbio libmp libsec libmath; do
+          echo "Building $dir..."
+          (cd $dir && "$ROOT/MacOSX/arm64/bin/mk" install) || exit 1
+        done
+
+    - name: Build limbo compiler
+      run: |
+        export PATH="$ROOT/MacOSX/arm64/bin:/usr/bin:/bin"
+        (cd limbo && "$ROOT/MacOSX/arm64/bin/mk" install) || exit 1
+        test -x MacOSX/arm64/bin/limbo || { echo "limbo not found"; exit 1; }
+
+    - name: Build libinterp and remaining libraries
+      run: |
+        export PATH="$ROOT/MacOSX/arm64/bin:/usr/bin:/bin"
+        (cd libinterp && "$ROOT/MacOSX/arm64/bin/mk" install) || exit 1
+        for dir in libfreetype libkeyring libdraw libmemdraw libmemlayer; do
+          echo "Building $dir..."
+          (cd $dir && "$ROOT/MacOSX/arm64/bin/mk" install) || true
+        done
+
+    - name: Build SDL3 GUI emulator
+      run: |
+        export PATH="$ROOT/MacOSX/arm64/bin:/usr/bin:/bin"
+        cd emu/MacOSX
+        mk clean 2>/dev/null || true
+        OBJTYPE=arm64 SYSTARG=MacOSX SHELL=/bin/sh mk GUIBACK=sdl3
+        test -f o.emu || { echo "Emulator build failed"; exit 1; }
+
+    - name: Package archive
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        STAGE="infernode-${VERSION}-macos-arm64"
+        mkdir -p "$STAGE/emu/MacOSX" "$STAGE/MacOSX/arm64/bin"
+
+        # .app bundle (includes launcher script, icon, llm9p)
+        cp -a MacOSX/InferNode.app "$STAGE/MacOSX/"
+
+        # Emulator binary (referenced by .app launcher via relative path)
+        cp emu/MacOSX/o.emu "$STAGE/emu/MacOSX/"
+
+        # Native tools
+        cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"
+
+        # Shared runtime tree
+        for d in dis lib fonts module services locale; do
+          [ -d "$d" ] && cp -a "$d" "$STAGE/"
+        done
+
+        # mkconfig and mkfiles (needed for building from source)
+        cp mkconfig "$STAGE/"
+        [ -d mkfiles ] && cp -a mkfiles "$STAGE/"
+
+        # Build scripts
+        for f in build-macos-sdl3.sh build-macos-headless.sh makemk.sh; do
+          [ -f "$f" ] && cp "$f" "$STAGE/"
+        done
+
+        # Docs and legal
+        for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
+          [ -f "$f" ] && cp "$f" "$STAGE/"
+        done
+
+        tar czf "${STAGE}.tar.gz" "$STAGE"
+        echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: infernode-macos-arm64-archive
+        path: infernode-*-macos-arm64.tar.gz
+        retention-days: 3
+
+  # ─────────────────────────────────────────────
+  # Windows AMD64: SDL3 GUI emulator + launcher
+  # ─────────────────────────────────────────────
+  windows-amd64:
+    name: Windows AMD64
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      ROOT: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Extract version from tag
+      id: version
+      shell: bash
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Stamp build version
+      shell: bash
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i "s|InferNode 0.1|InferNode ${VERSION} build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
+    - name: Set up MSVC
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592f3e # v1.13.0
+      with:
+        arch: amd64
+
+    - name: Download SDL3
+      shell: pwsh
+      run: |
+        $SDL3_VERSION = "3.4.0"
+        $url = "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/SDL3-devel-${SDL3_VERSION}-VC.zip"
+        Write-Host "Downloading SDL3 ${SDL3_VERSION}..."
+        Invoke-WebRequest -Uri $url -OutFile SDL3-devel.zip
+        Expand-Archive -Path SDL3-devel.zip -DestinationPath SDL3-dev
+        $sdl3dir = "${{ github.workspace }}\SDL3-dev\SDL3-${SDL3_VERSION}"
+        echo "SDL3DIR=$sdl3dir" >> $env:GITHUB_ENV
+        Write-Host "SDL3DIR=$sdl3dir"
+
+    - name: Build libraries (headless bootstrap)
+      shell: pwsh
+      run: .\build-windows-amd64.ps1
+
+    - name: Build SDL3 GUI emulator
+      shell: pwsh
+      run: .\build-windows-sdl3.ps1 -SDL3Dir "$env:SDL3DIR"
+
+    - name: Build launcher
+      shell: pwsh
+      run: |
+        Push-Location emu\Nt
+        .\build-launcher.ps1
+        Pop-Location
+
+    - name: Package archive
+      shell: pwsh
+      run: |
+        $VERSION = "${{ steps.version.outputs.version }}"
+        .\package-windows-zip.ps1
+        $src = "InferNode-windows-amd64.zip"
+        $dst = "infernode-${VERSION}-windows-amd64.zip"
+        if (Test-Path $src) {
+          Rename-Item $src $dst
+          Write-Host "Archive: $dst ($(([math]::Round((Get-Item $dst).Length / 1MB, 1))) MB)"
+        } else {
+          Write-Host "ERROR: package-windows-zip.ps1 did not produce $src"
+          exit 1
+        }
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: infernode-windows-amd64-archive
+        path: infernode-*-windows-amd64.zip
+        retention-days: 3
+
+  # ─────────────────────────────────────────────
+  # Create GitHub Release with all archives
+  # ─────────────────────────────────────────────
+  release:
+    name: Create Release
+    needs: [linux-amd64, macos-arm64, windows-amd64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      with:
+        path: artifacts
+        merge-multiple: true
+
+    - name: Generate checksums
+      run: |
+        cd artifacts
+        sha256sum infernode-* > SHA256SUMS.txt
+        cat SHA256SUMS.txt
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: InferNode ${{ steps.version.outputs.version }}
+        draft: true
+        prerelease: false
+        generate_release_notes: true
+        files: |
+          artifacts/infernode-*
+          artifacts/SHA256SUMS.txt
+        body: |
+          ## InferNode ${{ steps.version.outputs.version }}
+
+          64-bit Inferno® OS for embedded systems, servers, and AI agents.
+
+          ### Downloads
+
+          | Platform | Architecture | File |
+          |----------|-------------|------|
+          | Linux | AMD64 (headless) | `infernode-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.tar.gz` |
+          | Windows | AMD64 (SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+
+          ### Quick Start
+
+          **macOS:** Extract, then `open MacOSX/InferNode.app` (requires SDL3: `brew install sdl3 sdl3_ttf`)
+
+          **Linux:** Extract, then `./emu/Linux/o.emu -r. sh -l` (headless; rebuild with `./build-linux-amd64.sh` for SDL3 GUI)
+
+          **Windows:** Extract, then double-click `InferNode.exe` (SDL3.dll included)
+
+          ### Checksums
+
+          See `SHA256SUMS.txt` for SHA-256 checksums of all archives.
