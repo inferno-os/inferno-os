@@ -427,6 +427,8 @@ init(ctxt: ref Draw->Context, args: list of string)
 		loadlabel();
 		loadstatus();
 	}
+	tilelock = chan[1] of int;
+	tilelock <-= 1;			# initially unlocked
 	tiles = array[8] of ref TileInfo;
 	loadtiles();
 
@@ -491,8 +493,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 	npendingtokens = tp0.npendingtokens;
 	applock = tp0.applock;
 	presRszCh = tp0.rszch;
-	tilelock = chan[1] of int;
-	tilelock <-= 1;			# initially unlocked
 
 	# Build Draw->Context for lucipres (shared screen + task's wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, tp0.wmchan);
