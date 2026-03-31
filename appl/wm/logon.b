@@ -307,7 +307,7 @@ redraw()
 			y += bodyfont.height + PADDING;
 			choiceline := errline[nl+1:];
 			cw2 := bodyfont.width(choiceline);
-			screen.text(Point(cx - cw2 / 2, y), dimgrey, ZP, bodyfont, choiceline);
+			screen.text(Point(cx - cw2 / 2, y), white, ZP, bodyfont, choiceline);
 			y += bodyfont.height + PADDING;
 		} else {
 			ew := bodyfont.width(errline);
