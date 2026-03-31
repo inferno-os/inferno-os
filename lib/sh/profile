@@ -20,7 +20,8 @@ ndb/cs
 # Start secstore (persistent encrypted key storage).
 # Kill any stale secstored from a previous emu session first — a stale
 # instance with different PAK data causes login to hang indefinitely.
-os sh -c 'lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null; true' >[2] /dev/null
+# Sleep after kill to let the OS release the port (TCP TIME_WAIT).
+os sh -c 'lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null; sleep 1; true' >[2] /dev/null
 auth/secstored >[2] /dev/null &
 sleep 1
 
