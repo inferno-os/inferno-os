@@ -9,14 +9,15 @@ INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
 
 # Login screen unlocks secstore and loads keys into factotum.
+# After login, restart llmsrv if it failed during profile (no API key yet).
 # API keys persist across restarts via secstore encryption.
 # CLI users can still set $ANTHROPIC_API_KEY as a fallback (provisioned in profile).
 # The -b flag sets the budget of tools delegatable to child task agents.
-LUCIFER_CMD='wm/logon; luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
+LUCIFER_CMD='wm/logon; if {! ftest -d /n/llm} { llmsrv >[2] /dev/null & ; sleep 1 }; luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
 # --- Launch emulator ---
-# LLM service (local llmsrv or remote 9P mount) is configured in lib/sh/profile
-# and managed via the Settings app. The profile runs on "sh -l" before LUCIFER_CMD.
+# LLM service: profile starts llmsrv early (works if keys already in factotum).
+# LUCIFER_CMD restarts it after login if it failed (keys loaded from secstore).
 cd "$INFERNODE_ROOT/emu/MacOSX"
 echo brimstone > "$INFERNODE_ROOT/lib/lucifer/theme/current"
 
