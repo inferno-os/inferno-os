@@ -800,15 +800,26 @@ newtaskpres(id: int): ref TaskPres
 		sys->fprint(stderr, "lucifer: can't load wmsrv for task %d: %r\n", id);
 		return nil;
 	}
-	# Activity 0 uses the well-known "wmctl" so lucipres (via wmlib) can
-	# find it without a bind.  Child tasks use "wmctl.N" — apps launched
-	# via FORKNS bind "wmctl.N" → "wmctl" in their namespace.
-	wmname: string;
-	if(id == 0)
-		wmname = nil;	# default "wmctl"
-	else
-		wmname = "wmctl." + string id;
-	(tp.wmchan, tp.join, tp.req) = tp.wmsrvmod->init(wmname);
+	# All tasks share a single wmsrv file2chan at /chan/wmctl.
+	# Per-task isolation is enforced by appslot routing (each task has its
+	# own AppSlot array) rather than separate wmsrv instances.  Structural
+	# namespace isolation via per-task wmsrv + FORKNS is a future goal but
+	# requires resolving Inferno's file-over-file bind semantics.
+	#
+	# Activity 0 creates the wmsrv; child tasks reuse its channels.
+	if(id == 0) {
+		(tp.wmchan, tp.join, tp.req) = tp.wmsrvmod->init(nil);
+	} else {
+		# Reuse activity 0's wmsrv channels (shared file2chan)
+		tp0 := lookuptaskpres(0);
+		if(tp0 == nil) {
+			sys->fprint(stderr, "lucifer: newtaskpres(%d): no activity 0\n", id);
+			return nil;
+		}
+		tp.wmchan = tp0.wmchan;
+		tp.join = tp0.join;
+		tp.req = tp0.req;
+	}
 	if(tp.wmchan == nil) {
 		sys->fprint(stderr, "lucifer: wmsrv init failed for task %d\n", id);
 		return nil;
@@ -1474,14 +1485,10 @@ globallistener()
 						provision += " paths=" + pcsv;
 				}
 				writefile("/tool/ctl", provision);
-				# Create per-task wmsrv and relay its events to the main preswmloop
+				# Create per-task appslot state (shares wmsrv with activity 0)
 				newtp := newtaskpres(newid);
 				if(newtp == nil)
 					sys->fprint(stderr, "lucifer: failed to create task pres for %d\n", newid);
-				else {
-					spawn joinrelay(newtp.join, mainjoin);
-					spawn reqrelay(newtp.req, mainreq);
-				}
 				# Switch to new activity
 				alt { switchch <-= newid => ; * => ; }
 			}
@@ -2117,17 +2124,12 @@ launchapp(id, dispath, appdata: string, targetact: int)
 # launchappns: spawn a GUI app in a FORKNS namespace where /chan/wmctl
 # is bound to the target task's wmsrv.  The app opens /chan/wmctl as
 # usual — the namespace resolves it to the correct per-task server.
-launchappns(tp: ref TaskPres, guimod: GuiApp,
+launchappns(nil: ref TaskPres, guimod: GuiApp,
 	ctxt: ref Draw->Context, args: list of string)
 {
-	# Activity 0 uses the default /chan/wmctl — no FORKNS needed.
-	# Child tasks use /chan/wmctl.N and need FORKNS + bind so apps
-	# find the task's wmsrv at the well-known /chan/wmctl path.
-	if(tp.actid != 0) {
-		sys->pctl(Sys->FORKNS, nil);
-		wmname := "wmctl." + string tp.actid;
-		sys->bind("/chan/" + wmname, "/chan/wmctl", Sys->MREPL);
-	}
+	# TODO: when per-task wmsrv is enabled, FORKNS + bind here to
+	# redirect /chan/wmctl to the task's wmsrv.  Currently all tasks
+	# share one wmsrv, so no namespace fork is needed.
 	guimod->init(ctxt, args);
 }
 
