@@ -481,6 +481,10 @@ init(ctxt: ref Draw->Context, args: list of string)
 		raise "fail:cannot create task pres for Main";
 	curtaskpres = tp0;
 
+	# Bind wmctl.0 to the well-known /chan/wmctl path so that lucipres
+	# (which uses wmlib->connect() opening /chan/wmctl) can find it.
+	sys->bind("/chan/wmctl.0", "/chan/wmctl", Sys->MREPL);
+
 	# Set legacy aliases from curtaskpres (for un-migrated code paths)
 	wmchan = tp0.wmchan;
 	appslots = tp0.appslots;
