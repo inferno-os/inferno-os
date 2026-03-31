@@ -105,6 +105,13 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	if(smallfont == nil)
 		smallfont = bodyfont;
 
+	# If factotum was already started with secstore backing (e.g. headless
+	# mode with $SECSTORE_PASSWORD), skip the login screen entirely.
+	if(factotumhaskeys()) {
+		createsecstoresentinel();
+		return;
+	}
+
 	passbuf = "";
 	confirmbuf = "";
 	savedpass = "";
@@ -597,6 +604,17 @@ enablesecstoresave(pass: string)
 	b := array of byte cmd;
 	sys->write(fd, b, len b);
 	sys->fprint(stderr, "logon: secstore save-back enabled\n");
+}
+
+# Check if factotum already has keys (e.g. loaded via -S -P in profile)
+factotumhaskeys(): int
+{
+	fd := sys->open("/mnt/factotum/ctl", Sys->OREAD);
+	if(fd == nil)
+		return 0;
+	buf := array[64] of byte;
+	n := sys->read(fd, buf, len buf);
+	return n > 0;
 }
 
 secstoreacctexists(): int

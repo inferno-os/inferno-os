@@ -22,13 +22,21 @@ ndb/cs
 auth/secstored >[2] /dev/null &
 sleep 1
 
-# Start factotum (empty — keys loaded from secstore via login screen or console)
+# Start factotum.
+# Headless/non-interactive: if $SECSTORE_PASSWORD is set on the host,
+# start factotum with secstore backing so all keys are loaded automatically.
+# GUI: factotum starts empty; wm/logon unlocks secstore interactively.
 if {! ftest -f /mnt/factotum/proto}{
-	auth/factotum
+	secpass=`{os sh -c 'echo $SECSTORE_PASSWORD' >[2] /dev/null}
+	if {! ~ $secpass ''} {
+		auth/factotum -S tcp!localhost!5356 -P $secpass
+	}{
+		auth/factotum
+	}
 }
 
 # Provision API key into factotum from host env (fallback for CLI users).
-# The primary path is secstore — wm/logon loads keys at login.
+# This is a convenience for when secstore is not set up yet.
 factotumkey=`{os sh -c 'if [ -n "$ANTHROPIC_API_KEY" ]; then echo "key proto=pass service=anthropic user=apikey !password=$ANTHROPIC_API_KEY"; fi'}
 echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 
