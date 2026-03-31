@@ -119,6 +119,31 @@ getkv(line, key: string): string
 	return "";
 }
 
+# Read a field from a simple key=value config file (one per line)
+readndbfield(path, field: string): string
+{
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return nil;
+	buf := array[4096] of byte;
+	n := sys->read(fd, buf, len buf);
+	if(n <= 0)
+		return nil;
+	content := string buf[0:n];
+	prefix := field + "=";
+	plen := len prefix;
+	for(i := 0; i < len content; ) {
+		# Find end of line
+		eol := i;
+		while(eol < len content && content[eol] != '\n')
+			eol++;
+		if(eol - i >= plen && content[i:i+plen] == prefix)
+			return content[i+plen:eol];
+		i = eol + 1;
+	}
+	return nil;
+}
+
 # Register namespace entries from the manifest written by tools9p.
 # The manifest reflects the agent's actual restricted namespace — it is
 # the single source of truth.  No hardcoded path lists.
@@ -1193,8 +1218,24 @@ init(nil: ref Draw->Context, args: list of string)
 	# Verify prerequisites
 	if(sys->open("/n/ui/ctl", Sys->OREAD) == nil)
 		fatal("/n/ui/ not mounted — start luciuisrv first");
-	if(!agentlib->pathexists("/n/llm"))
+	if(!agentlib->pathexists("/n/llm")) {
+		# Check if this is an API key issue
+		backend := readndbfield("/lib/ndb/llm", "backend");
+		if(backend == nil || backend == "" || backend == "api") {
+			# No LLM service and backend requires API key — guide the user
+			writemsg("assistant",
+				"No LLM service available. The Anthropic API key is not configured.\n\n" +
+				"To get started:\n" +
+				"1. Open the **Keyring** app (right-click desktop \u2192 Keyring)\n" +
+				"2. Add an API Key with service name `anthropic`\n" +
+				"3. Restart InferNode\n\n" +
+				"The key will be stored securely in secstore and persist across restarts.");
+			log("no /n/llm and backend=api — displayed API key guidance");
+			# Wait for the user to read the message, then exit
+			sys->sleep(500);
+		}
 		fatal("/n/llm/ not mounted — start llmsrv or mount remote LLM");
+	}
 
 	# Tools are optional — bridge works as simple chat relay without them
 	if(agentlib->pathexists(toolmount))

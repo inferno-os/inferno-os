@@ -100,6 +100,7 @@ llm_url_tf: ref Textfield;
 llm_model_label: ref Label;
 llm_model_tf: ref Textfield;
 llm_key_label: ref Label;
+llm_persist_label: ref Label;
 llm_dial_label: ref Label;
 llm_dial_tf: ref Textfield;
 llm_apply_btn: ref Button;
@@ -290,6 +291,7 @@ layoutcontent()
 	llm_model_label = nil;
 	llm_model_tf = nil;
 	llm_key_label = nil;
+	llm_persist_label = nil;
 	llm_dial_label = nil;
 	llm_dial_tf = nil;
 	llm_apply_btn = nil;
@@ -432,6 +434,17 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		llm_key_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
 			keystatus, 0, LEFT);
+		cy += fh;
+
+		# Key persistence status
+		persiststatus: string;
+		if(secstoreunlocked())
+			persiststatus = "Key persistence: active";
+		else
+			persiststatus = "Key persistence: inactive (login skipped)";
+		llm_persist_label = Label.mk(
+			Rect((cx, cy), (cw, cy + fh)),
+			persiststatus, 0, LEFT);
 		cy += fh + FORM_MARGIN;
 	}
 
@@ -754,6 +767,8 @@ drawllm()
 			llm_model_tf.draw(w.image);
 		if(llm_key_label != nil)
 			llm_key_label.draw(w.image);
+		if(llm_persist_label != nil)
+			llm_persist_label.draw(w.image);
 	}
 	if(llm_apply_btn != nil)
 		llm_apply_btn.draw(w.image);
@@ -1360,6 +1375,12 @@ writellmconfig(mode, backend, url, model, dial: string)
 		mode, backend, url, model, dial);
 	b := array of byte config;
 	sys->write(fd, b, len b);
+}
+
+secstoreunlocked(): int
+{
+	(ok, nil) := sys->stat("/tmp/.secstore-unlocked");
+	return ok >= 0;
 }
 
 hassubstr(s, sub: string): int

@@ -195,6 +195,12 @@ init(ctxt: ref Draw->Context, nil: list of string)
 
 	# Load keys from factotum
 	refreshkeys();
+
+	# Show secstore persistence status
+	if(secstorelocked())
+		flashstatus("Keys are in-memory only (login was skipped)");
+	else
+		flashstatus("Keys persist to secstore");
 	dirty = 1;
 
 	# Listen for live theme changes
@@ -971,6 +977,13 @@ flashstatus(msg: string)
 		sbar.left = msg;
 		dirty = 1;
 	}
+}
+
+# Check if secstore save-back is NOT active (login was skipped)
+secstorelocked(): int
+{
+	(ok, nil) := sys->stat("/tmp/.secstore-unlocked");
+	return ok < 0;
 }
 
 themelistener()

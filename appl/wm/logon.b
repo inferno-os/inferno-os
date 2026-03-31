@@ -8,8 +8,11 @@ implement WmLogon;
 #
 # Shows brand image, password field, version info.
 # On Enter: unlocks secstore and loads keys into factotum.
-# On Escape: skip (start with empty factotum).
+# On Escape (double-press): skip with warning (keys won't persist).
 # Exits after unlock, allowing boot to continue.
+#
+# First boot: prompts for new password + confirmation, creates secstore account.
+# Subsequent boots: prompts for password, unlocks secstore, loads keys.
 #
 # For headless: profile detects no display and falls back to console prompt.
 #
@@ -50,6 +53,11 @@ IMGW:     con 300;
 IMGH:     con 205;
 PADDING:  con 16;
 
+# Login states
+STATE_LOGIN:		con 0;
+STATE_SETUP_PASS:	con 1;
+STATE_SETUP_CONFIRM:	con 2;
+
 display_g: ref Display;
 screen: ref Image;
 bodyfont: ref Font;
@@ -57,9 +65,12 @@ smallfont: ref Font;
 
 # Password state
 passbuf: string;
+confirmbuf: string;
+savedpass: string;
 cursor: int;
 statusmsg: string;
-setupmode: int;
+state: int;
+escpending: int;
 
 stderr: ref Sys->FD;
 
@@ -94,12 +105,17 @@ init(ctxt: ref Draw->Context, nil: list of string)
 		smallfont = bodyfont;
 
 	passbuf = "";
+	confirmbuf = "";
+	savedpass = "";
 	cursor = 0;
-	setupmode = !secstoreacctexists();
-	if(setupmode)
+	escpending = 0;
+	if(!secstoreacctexists()) {
+		state = STATE_SETUP_PASS;
 		statusmsg = "First boot \u2014 choose a secstore password";
-	else
+	} else {
+		state = STATE_LOGIN;
 		statusmsg = "Enter password to unlock";
+	}
 
 	redraw();
 
@@ -122,26 +138,104 @@ init(ctxt: ref Draw->Context, nil: list of string)
 			k := s[j];
 			case k {
 			'\n' or '\r' =>
-				dounlock();
-				return;
-			27 =>	# Escape — skip
-				statusmsg = "Skipped";
-				redraw();
-				sys->sleep(300);
-				return;
+				escpending = 0;
+				if(handleenter())
+					return;
+			27 =>	# Escape
+				if(handleescape())
+					return;
 			'\b' =>
-				if(len passbuf > 0) {
-					passbuf = passbuf[0:len passbuf - 1];
-					redraw();
-				}
+				escpending = 0;
+				handlebackspace();
 			* =>
 				if(k >= 16r20) {
-					passbuf[len passbuf] = k;
-					redraw();
+					escpending = 0;
+					handlechar(k);
 				}
 			}
 		}
 	}
+}
+
+# Returns 1 if login screen should exit
+handleenter(): int
+{
+	case state {
+	STATE_SETUP_PASS =>
+		if(passbuf == nil || passbuf == "") {
+			statusmsg = "Password required";
+			redraw();
+			return 0;
+		}
+		savedpass = passbuf;
+		passbuf = "";
+		state = STATE_SETUP_CONFIRM;
+		statusmsg = "Confirm your password";
+		redraw();
+		return 0;
+
+	STATE_SETUP_CONFIRM =>
+		if(passbuf != savedpass) {
+			statusmsg = "Passwords don't match \u2014 try again";
+			passbuf = "";
+			savedpass = "";
+			state = STATE_SETUP_PASS;
+			redraw();
+			return 0;
+		}
+		# Passwords match — create account and unlock
+		dosetupandunlock(passbuf);
+		passbuf = "";
+		savedpass = "";
+		return 1;
+
+	STATE_LOGIN =>
+		dounlock();
+		return 1;
+	}
+	return 0;
+}
+
+# Returns 1 if login screen should exit
+handleescape(): int
+{
+	case state {
+	STATE_SETUP_CONFIRM =>
+		# Go back to password entry
+		passbuf = "";
+		savedpass = "";
+		state = STATE_SETUP_PASS;
+		statusmsg = "Choose a secstore password";
+		redraw();
+		return 0;
+
+	* =>
+		# Double-press escape to skip
+		if(escpending) {
+			statusmsg = "Skipped";
+			redraw();
+			sys->sleep(300);
+			return 1;
+		}
+		escpending = 1;
+		statusmsg = "Keys won't persist. Press Escape again to skip.";
+		redraw();
+		return 0;
+	}
+}
+
+handlebackspace()
+{
+	if(len passbuf > 0) {
+		passbuf = passbuf[0:len passbuf - 1];
+		redraw();
+	}
+}
+
+handlechar(k: int)
+{
+	passbuf[len passbuf] = k;
+	redraw();
 }
 
 redraw()
@@ -178,8 +272,12 @@ redraw()
 
 	# Prompt label above field (centered)
 	prompt := "Password:";
-	if(setupmode)
+	case state {
+	STATE_SETUP_PASS =>
 		prompt = "New password:";
+	STATE_SETUP_CONFIRM =>
+		prompt = "Confirm password:";
+	}
 	pw := bodyfont.width(prompt);
 	screen.text(Point(cx - pw / 2, y), dimgrey, ZP, bodyfont, prompt);
 	y += bodyfont.height + 4;
@@ -221,6 +319,43 @@ redraw()
 	screen.flush(Draw->Flushnow);
 }
 
+# First boot: create secstore account, then unlock
+dosetupandunlock(pass: string)
+{
+	statusmsg = "Creating secstore account...";
+	redraw();
+	err := createsecstoreacct(pass);
+	if(err != nil) {
+		statusmsg = "Setup failed: " + err;
+		redraw();
+		sys->sleep(2000);
+		return;
+	}
+
+	statusmsg = "Unlocking (this may take a moment)...";
+	redraw();
+
+	err = connectfactotum(pass);
+	if(err == nil) {
+		enablesecstoresave(pass);
+		createsecstoresentinel();
+	}
+
+	pass = "";
+
+	if(err != nil) {
+		statusmsg = err;
+		redraw();
+		sys->sleep(2000);
+		return;
+	}
+
+	statusmsg = "Unlocked";
+	redraw();
+	sys->sleep(500);
+}
+
+# Normal boot: unlock secstore and load keys
 dounlock()
 {
 	if(passbuf == nil || passbuf == "") {
@@ -229,25 +364,16 @@ dounlock()
 		return;
 	}
 
-	if(setupmode) {
-		statusmsg = "Creating secstore account...";
-		redraw();
-		err := createsecstoreacct(passbuf);
-		if(err != nil) {
-			statusmsg = "Setup failed: " + err;
-			redraw();
-			return;
-		}
-	}
-
-	statusmsg = "Unlocking...";
+	statusmsg = "Unlocking (this may take a moment)...";
 	redraw();
 
 	err := connectfactotum(passbuf);
 
 	# Establish secstore save-back path so future keys persist
-	if(err == nil)
+	if(err == nil) {
 		enablesecstoresave(passbuf);
+		createsecstoresentinel();
+	}
 
 	passbuf = "";	# zero password
 
@@ -261,6 +387,14 @@ dounlock()
 	redraw();
 	sys->sleep(500);
 	# Exit — boot continues
+}
+
+# Create sentinel so other apps can detect secstore is active
+createsecstoresentinel()
+{
+	fd := sys->create("/tmp/.secstore-unlocked", Sys->OWRITE, 8r644);
+	if(fd != nil)
+		sys->fprint(fd, "1");
 }
 
 connectfactotum(pass: string): string
