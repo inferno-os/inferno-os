@@ -186,8 +186,8 @@ InferNode includes a native cryptocurrency wallet system that enables agents to 
 - **payfetch tool** — HTTP client that automatically handles x402 payments when a server returns 402
 - **Budget enforcement** — Server-side spending limits per transaction and per session; agents cannot bypass
 - **Ethereum support** — secp256k1 ECDSA, Keccak-256, RLP encoding, EIP-155 transaction signing, ERC-20 token transfers
-- **Key persistence** — Wallet keys stored in factotum, encrypted with AES-256-GCM via secstore, surviving restarts
-- **Login screen** — Fullscreen secstore authentication on boot loads all keys (wallet, API, email) into factotum
+- **Key persistence** — All keys (wallet, API, credentials) stored in factotum, encrypted with AES-256-GCM via secstore, surviving restarts
+- **Login screen** — Secstore authentication on boot with password confirmation, retry on failure, and headless mode via `$SECSTORE_PASSWORD`
 
 Supported networks: Ethereum Mainnet, Ethereum Sepolia, Base, Base Sepolia.
 

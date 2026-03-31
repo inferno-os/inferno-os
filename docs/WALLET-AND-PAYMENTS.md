@@ -39,18 +39,21 @@ InferNode provides a native cryptocurrency wallet that enables Veltro AI agents 
 
 ```
 1. secstored starts (listens on tcp!*!5356)
-2. factotum starts (empty, no keys)
-3. wm/logon displays login screen
-4. User enters secstore password
+2. factotum starts:
+   - If $SECSTORE_PASSWORD set: factotum -S -P (keys loaded automatically)
+   - Otherwise: factotum starts empty (keys loaded by login screen)
+3. wm/logon displays login screen (skipped if keys already loaded)
+4. User enters secstore password (with confirmation on first boot)
 5. Login screen:
    a. Connects to secstore, authenticates (PAK)
    b. Loads encrypted keys into factotum
    c. Establishes save-back path for new keys
+   d. Creates /tmp/.secstore-unlocked sentinel
 6. llmsrv, tools9p, lucibridge, lucifer start
 7. System fully operational with all keys available
 ```
 
-For headless operation, factotum can be started with `-S tcp!localhost!5356 -P password` directly.
+For headless operation, set `SECSTORE_PASSWORD` in the host environment before launching emu. See [Headless Mode](#headless-mode) below.
 
 ## Login Screen (wm/logon)
 
@@ -58,19 +61,34 @@ The login screen is a fullscreen raw Draw application that runs before the windo
 
 ### First Boot
 
-On first boot, no secstore account exists. The login screen detects this and prompts "First boot — choose a secstore password." Entering a password creates the secstore account (PAK verifier) and proceeds to boot. All keys added during the session are automatically saved to secstore.
+On first boot, no secstore account exists. The login screen prompts "First boot — choose a secstore password." The password must be entered twice (confirmation step prevents typos). After confirmation, the secstore account (PAK verifier) is created and boot proceeds. All keys added during the session are automatically saved to secstore.
 
 ### Subsequent Boots
 
 The login screen prompts for the secstore password. On successful authentication, all stored keys (wallet keys, API keys, email credentials) are loaded into factotum. The system then boots with all credentials available.
 
+If the password is incorrect, the login screen shows the error and offers a choice: **Enter** to try again, or **Escape** to continue without secstore (with a warning that keys/secrets won't be available and AI integration may not work).
+
 ### Skipping
 
-Pressing Escape skips secstore unlock. The system boots with an empty factotum — wallet accounts won't be available and API keys must be provisioned from environment variables.
+Press **Escape** twice to skip secstore unlock — the first press shows a warning ("Keys won't persist"), the second confirms. The system boots with an empty factotum — wallet accounts won't be available and API keys must be provisioned from environment variables. The Keyring and Settings apps will indicate that key persistence is inactive.
 
-### Headless Fallback
+### Headless Mode
 
-When no display is available (headless server, Jetson), the login screen exits gracefully. Use `auth/factotum -S tcp!localhost!5356 -P password` in the shell to connect to secstore manually.
+For non-interactive/headless deployments (servers, Jetson, CI), set `SECSTORE_PASSWORD` on the host:
+
+```sh
+export SECSTORE_PASSWORD=mypassword
+emu -r. sh -l -c "your_command"
+```
+
+The profile detects the variable and starts factotum with secstore backing (`-S -P`). The login screen detects keys are already loaded and skips the password prompt automatically.
+
+### Secstore Status Detection
+
+After successful unlock, `wm/logon` creates a sentinel file at `/tmp/.secstore-unlocked`. Other apps (Keyring, Settings) check this file to display persistence status:
+- **Keyring**: "Keys persist to secstore" or "Keys are in-memory only (login was skipped)"
+- **Settings**: "Key persistence: active" or "Key persistence: inactive (login skipped)"
 
 ## Secstore (Persistent Key Storage)
 
@@ -463,6 +481,7 @@ All transactions verifiable at [sepolia.etherscan.io](https://sepolia.etherscan.
 bash tests/host/wallet9p_test.sh              # wallet9p basic operations
 bash tests/host/wallet_e2e_test.sh            # Base Sepolia RPC connectivity
 bash tests/host/secstore_logon_test.sh        # secstore + factotum persistence (10 tests)
+bash tests/host/secstore_apikey_test.sh       # API key persistence through secstore (10 tests)
 bash tests/host/wallet_persist_test.sh        # wallet key survival across restarts (7 tests)
 bash tests/host/payfetch_test.sh              # x402 payfetch end-to-end (requires x402-test-server)
 ```

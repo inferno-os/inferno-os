@@ -34,11 +34,14 @@ Host OS (macOS / Linux / Windows)
 
 ```
 1. secstored starts (TCP port 5356)
-2. factotum starts (empty, no keys)
-3. wm/logon displays login screen (or skipped in headless mode)
-4. User enters secstore password → PAK auth → keys loaded into factotum
-5. llmsrv, tools9p, wallet9p, lucibridge, lucifer start
-6. System fully operational with all keys (wallet, API, email) available
+2. factotum starts (with secstore backing if $SECSTORE_PASSWORD set, otherwise empty)
+3. wm/logon displays login screen (skipped if keys already loaded or headless)
+   - First boot: password + confirmation → creates secstore account
+   - Normal boot: password → PAK auth → keys loaded into factotum
+   - Wrong password: retry or continue without secstore
+   - Escape (double-press): skip with warning
+4. llmsrv, tools9p, wallet9p, lucibridge, lucifer start
+5. System fully operational with all keys (wallet, API, email) available
 ```
 
 ---

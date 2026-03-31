@@ -574,32 +574,45 @@ When InferNode boots with a GUI, the login screen (`wm/logon`) runs before the w
 
 ### First Boot
 
-On first boot, no secstore account exists. The login screen detects this and prompts "First boot — choose a secstore password." Entering a password creates the secstore account and proceeds to boot. All keys added during the session (wallet keys, API keys, email credentials) are automatically saved to secstore.
+On first boot, no secstore account exists. The login screen prompts "First boot — choose a secstore password." You must enter the password twice to confirm (prevents typos on this critical password). After confirmation, the secstore account is created and boot proceeds. All keys added during the session (wallet keys, API keys, email credentials) are automatically saved to secstore.
 
 ### Normal Boot
 
 The login screen prompts for your secstore password. On successful authentication (PAK protocol), all stored keys are loaded into factotum. The system then boots with all credentials available.
 
+If the password is incorrect, the login screen stays up and shows the error with a choice: press **Enter** to try again, or **Escape** to continue without secstore. The Escape option warns that keys and secrets will not be available and AI integration may not work.
+
 ### Skipping Login
 
-Press **Escape** to skip secstore unlock. The system boots with an empty factotum — wallet accounts won't be available and API keys must be provisioned from environment variables.
+Press **Escape** twice to skip secstore unlock. The first press shows a warning ("Keys won't persist"), the second confirms. The system boots with an empty factotum — wallet accounts won't be available and API keys must be provisioned from environment variables. The Keyring and Settings apps will show that key persistence is inactive.
 
 ### Headless Mode
 
-When no display is available (headless server, Jetson), the login screen exits gracefully. Connect to secstore manually:
+When no display is available (headless server, Jetson), set the `SECSTORE_PASSWORD` environment variable on the host before launching emu. The profile detects it and unlocks secstore automatically:
 
 ```sh
-auth/factotum -S tcp!localhost!5356 -P password
+export SECSTORE_PASSWORD=mypassword
+emu -r. sh -l -c "your_command"
 ```
+
+The login screen detects that keys are already loaded and skips the password prompt. If `SECSTORE_PASSWORD` is not set, factotum starts empty and keys must be provisioned via environment variables (e.g., `ANTHROPIC_API_KEY`).
 
 ### Key Persistence
 
-Keys are encrypted with AES-256-GCM and stored in secstore. The `secstored` service runs on TCP port 5356 and can serve keys to remote machines:
+Keys are encrypted with AES-256-GCM and stored in secstore at `usr/inferno/secstore/<username>/`. Back up this directory — there is no password recovery mechanism. If you forget your secstore password, the encrypted keys are permanently lost (this is by design, following Plan 9's security model).
+
+The `secstored` service runs on TCP port 5356 and can serve keys to remote machines:
 
 ```sh
 # On the remote machine (e.g., Jetson)
 auth/factotum -S tcp!mac-ip!5356 -u username -P password
 ```
+
+### Adding API Keys
+
+After logging in, add API keys via the **Keyring** app (right-click desktop, select Keyring). Select "Add API Key", enter the service name (e.g., `anthropic` or `brave`), and the key value. Keys are stored in factotum and automatically persisted to secstore.
+
+If no API key is configured when Veltro starts, it will display a guidance message directing you to the Keyring app.
 
 ---
 
