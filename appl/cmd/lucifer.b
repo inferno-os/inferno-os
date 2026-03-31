@@ -874,18 +874,41 @@ preswmloop(scr: ref Screen, zoner: Rect,
 			# First join = lucipres
 			lucipresclient = c;
 		} else {
-			# Subsequent join = an app; look up token→id to find the right slot
-			<-applock;
-			appid2 := poppending(c.token);
-			if(appid2 != "") {
-				for(asi := 0; asi < nappslots; asi++) {
-					if(appslots[asi] != nil && appslots[asi].id == appid2) {
-						appslots[asi].client = c;
+			# Subsequent join = an app; search ALL tasks' pending arrays
+			# to find the token→id mapping, then link to the right task's slot.
+			appid2 := "";
+			foundtp: ref TaskPres;
+			for(tpi := 0; tpi < ntaskpres; tpi++) {
+				ftp := taskpres[tpi];
+				if(ftp == nil)
+					continue;
+				<-ftp.applock;
+				for(pi := 0; pi < ftp.npendingtokens; pi++) {
+					if(ftp.pendingtokens[pi] == c.token) {
+						appid2 = ftp.pendingids[pi];
+						for(pj := pi; pj < ftp.npendingtokens - 1; pj++) {
+							ftp.pendingtokens[pj] = ftp.pendingtokens[pj+1];
+							ftp.pendingids[pj] = ftp.pendingids[pj+1];
+						}
+						ftp.npendingtokens--;
+						foundtp = ftp;
 						break;
 					}
 				}
+				ftp.applock <-= 1;
+				if(foundtp != nil)
+					break;
 			}
-			applock <-= 1;
+			if(appid2 != "" && foundtp != nil) {
+				<-foundtp.applock;
+				for(asi := 0; asi < foundtp.nappslots; asi++) {
+					if(foundtp.appslots[asi] != nil && foundtp.appslots[asi].id == appid2) {
+						foundtp.appslots[asi].client = c;
+						break;
+					}
+				}
+				foundtp.applock <-= 1;
+			}
 		}
 		rc <-= nil;
 	(c, data, rc) := <-req =>
@@ -920,16 +943,19 @@ preswmloop(scr: ref Screen, zoner: Rect,
 						# scr.newwindow() places the new lucipres window at the TOP of
 						# presscr by default, pushing any active app window behind it.
 						# Re-raise the active app so it stays in front of lucipres.
-						<-applock;
-						for(rasi := 0; rasi < nappslots; rasi++) {
-							if(appslots[rasi] != nil &&
-							   appslots[rasi].id == activeappid &&
-							   appslots[rasi].client != nil) {
-								appslots[rasi].client.top();
-								break;
+						if(curtaskpres != nil) {
+							ctp := curtaskpres;
+							<-ctp.applock;
+							for(rasi := 0; rasi < ctp.nappslots; rasi++) {
+								if(ctp.appslots[rasi] != nil &&
+								   ctp.appslots[rasi].id == ctp.activeappid &&
+								   ctp.appslots[rasi].client != nil) {
+									ctp.appslots[rasi].client.top();
+									break;
+								}
 							}
+							ctp.applock <-= 1;
 						}
-						applock <-= 1;
 					}
 				} else if(c.image("app") == nil) {
 					# First reshape for this app: allocate content-area window
@@ -951,16 +977,24 @@ preswmloop(scr: ref Screen, zoner: Rect,
 						# If this app belongs to a non-focused activity, hide it
 						# immediately.  Without this, a background task agent's
 						# app window appears over the currently-viewed activity.
-						<-applock;
-						for(oai := 0; oai < nappslots; oai++) {
-							if(appslots[oai] != nil &&
-							   appslots[oai].client == c &&
-							   appslots[oai].owneract != actid) {
-								c.bottom();
-								break;
+						hideit := 0;
+						for(otp := 0; otp < ntaskpres; otp++) {
+							otp2 := taskpres[otp];
+							if(otp2 == nil) continue;
+							<-otp2.applock;
+							for(oai := 0; oai < otp2.nappslots; oai++) {
+								if(otp2.appslots[oai] != nil &&
+								   otp2.appslots[oai].client == c &&
+								   otp2.actid != actid) {
+									hideit = 1;
+									break;
+								}
 							}
+							otp2.applock <-= 1;
+							if(hideit) break;
 						}
-						applock <-= 1;
+						if(hideit)
+							c.bottom();
 					}
 				}
 				# else: app already has a window — ignore re-reshape
@@ -987,25 +1021,28 @@ preswmloop(scr: ref Screen, zoner: Rect,
 				lucipresclient.ctl <-= sys->sprint("!reshape app -1 %s", r2s(curzone));
 			}
 		}
-		# Resize app windows (content area)
+		# Resize ALL tasks' app windows (content area)
 		tabh3 := 0;
 		if(mainfont != nil) tabh3 = mainfont.height + 13;
 		appr2 := Rect((curzone.min.x, curzone.min.y + tabh3), curzone.max);
-		<-applock;
-		for(asi3 := 0; asi3 < nappslots; asi3++) {
-			if(appslots[asi3] != nil && appslots[asi3].client != nil) {
-				# Fill old image with bg before replacing to prevent ghost artifacts
-				oldimg3 := appslots[asi3].client.image("app");
-				if(oldimg3 != nil)
-					oldimg3.draw(oldimg3.r, bgcol, nil, (0, 0));
-				img3 := presscr.newwindow(appr2, Draw->Refbackup, Draw->Nofill);
-				if(img3 != nil) {
-					appslots[asi3].client.setimage("app", img3);
-					appslots[asi3].client.ctl <-= sys->sprint("!reshape app -1 %s", r2s(appr2));
+		for(rtpi := 0; rtpi < ntaskpres; rtpi++) {
+			rtp := taskpres[rtpi];
+			if(rtp == nil) continue;
+			<-rtp.applock;
+			for(asi3 := 0; asi3 < rtp.nappslots; asi3++) {
+				if(rtp.appslots[asi3] != nil && rtp.appslots[asi3].client != nil) {
+					oldimg3 := rtp.appslots[asi3].client.image("app");
+					if(oldimg3 != nil)
+						oldimg3.draw(oldimg3.r, bgcol, nil, (0, 0));
+					img3 := presscr.newwindow(appr2, Draw->Refbackup, Draw->Nofill);
+					if(img3 != nil) {
+						rtp.appslots[asi3].client.setimage("app", img3);
+						rtp.appslots[asi3].client.ctl <-= sys->sprint("!reshape app -1 %s", r2s(appr2));
+					}
 				}
 			}
+			rtp.applock <-= 1;
 		}
-		applock <-= 1;
 	p := <-presMouseCh =>
 		# Tab strip (top N px) always routes to lucipres;
 		# content area routes to active app or lucipres.
@@ -1018,15 +1055,18 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		} else {
 			# Content area: active app or lucipres
 			actclient: ref Client;
-			<-applock;
-			for(masi := 0; masi < nappslots; masi++) {
-				if(appslots[masi] != nil && appslots[masi].id == activeappid &&
-						appslots[masi].client != nil) {
-					actclient = appslots[masi].client;
-					break;
+			if(curtaskpres != nil) {
+				mtp := curtaskpres;
+				<-mtp.applock;
+				for(masi := 0; masi < mtp.nappslots; masi++) {
+					if(mtp.appslots[masi] != nil && mtp.appslots[masi].id == mtp.activeappid &&
+							mtp.appslots[masi].client != nil) {
+						actclient = mtp.appslots[masi].client;
+						break;
+					}
 				}
+				mtp.applock <-= 1;
 			}
-			applock <-= 1;
 			if(actclient == nil)
 				actclient = lucipresclient;
 			if(actclient != nil)
@@ -1082,33 +1122,49 @@ switchactivity(newid: int)
 	writefile(sys->sprint("%s/activity/%d/urgency", mountpt, newid), "0");
 	updatetile(newid, "urgency", "0");
 
-	# Hide apps from OTHER activities; show the new activity's current app
-	# (if any).  All apps live on the shared presscr z-stack, so visibility
-	# is purely z-order: top() = visible, bottom() = hidden.
-	curid := "";
-	s := readfile(sys->sprint("%s/activity/%d/presentation/current", mountpt, newid));
-	if(s != nil) {
-		curid = strip(s);
-		at := readfile(sys->sprint("%s/activity/%d/presentation/%s/type",
-			mountpt, newid, curid));
-		if(at != nil) at = strip(at);
-		if(at != "app")
-			curid = "";	# current artifact isn't an app
+	# Hide ALL apps from the OLD task; show the new task's current app.
+	# Each task has its own appslots so we only need to bottom the old
+	# task's apps and top the new task's current app.
+	oldtp := curtaskpres;
+	newtp := lookuptaskpres(newid);
+
+	# Bottom all apps in old task
+	if(oldtp != nil) {
+		<-oldtp.applock;
+		for(sai := 0; sai < oldtp.nappslots; sai++) {
+			if(oldtp.appslots[sai] != nil && oldtp.appslots[sai].client != nil)
+				oldtp.appslots[sai].client.bottom();
+		}
+		oldtp.applock <-= 1;
 	}
-	<-applock;
-	for(sai := 0; sai < nappslots; sai++) {
-		if(appslots[sai] != nil && appslots[sai].client != nil) {
-			if(appslots[sai].owneract == newid && appslots[sai].id == curid) {
-				appslots[sai].client.top();
-				activeappid = curid;
-			} else {
-				appslots[sai].client.bottom();
+
+	# Update curtaskpres pointer
+	curtaskpres = newtp;
+
+	# Show new task's current app (if any)
+	if(newtp != nil) {
+		curid := "";
+		s := readfile(sys->sprint("%s/activity/%d/presentation/current", mountpt, newid));
+		if(s != nil) {
+			curid = strip(s);
+			at := readfile(sys->sprint("%s/activity/%d/presentation/%s/type",
+				mountpt, newid, curid));
+			if(at != nil) at = strip(at);
+			if(at != "app")
+				curid = "";
+		}
+		<-newtp.applock;
+		for(sai2 := 0; sai2 < newtp.nappslots; sai2++) {
+			if(newtp.appslots[sai2] != nil && newtp.appslots[sai2].client != nil) {
+				if(newtp.appslots[sai2].id == curid && curid != "")
+					newtp.appslots[sai2].client.top();
+				else
+					newtp.appslots[sai2].client.bottom();
 			}
 		}
+		newtp.activeappid = curid;
+		newtp.applock <-= 1;
 	}
-	if(curid == "")
-		activeappid = "";
-	applock <-= 1;
 
 	# Kill and respawn nslistener so it reads events for the new activity.
 	# nslistener blocks on sys->read() of the per-activity event file;
@@ -1379,6 +1435,10 @@ globallistener()
 						provision += " paths=" + pcsv;
 				}
 				writefile("/tool/ctl", provision);
+				# Create per-task wmsrv for the new activity
+				newtp := newtaskpres(newid);
+				if(newtp == nil)
+					sys->fprint(stderr, "lucifer: failed to create task pres for %d\n", newid);
 				# Switch to new activity
 				alt { switchch <-= newid => ; * => ; }
 			}
@@ -1683,19 +1743,20 @@ kbdproc()
 		}
 
 		# Route decoded key to appropriate target
+		ktp := curtaskpres;
 		if(pres_zone_minx > 0 && lastmousex >= pres_zone_minx &&
-				lastmousex < pres_zone_maxx && activeappid != "") {
+				lastmousex < pres_zone_maxx && ktp != nil && ktp.activeappid != "") {
 			routed := 0;
-			<-applock;
-			for(ksi := 0; ksi < nappslots; ksi++) {
-				if(appslots[ksi] != nil && appslots[ksi].id == activeappid &&
-						appslots[ksi].client != nil) {
-					alt { appslots[ksi].client.kbd <-= c => ; * => ; }
+			<-ktp.applock;
+			for(ksi := 0; ksi < ktp.nappslots; ksi++) {
+				if(ktp.appslots[ksi] != nil && ktp.appslots[ksi].id == ktp.activeappid &&
+						ktp.appslots[ksi].client != nil) {
+					alt { ktp.appslots[ksi].client.kbd <-= c => ; * => ; }
 					routed = 1;
 					break;
 				}
 			}
-			applock <-= 1;
+			ktp.applock <-= 1;
 			if(!routed)
 				alt { convKbdCh <-= c => ; * => ; }
 		} else {
@@ -1821,27 +1882,33 @@ strtoint(s: string): int
 # luciuisrv fires "presentation delete <id>" which nslistener delivers to lucipres.
 cleanupappslot(c: ref Client)
 {
-	<-applock;
-	for(ci := 0; ci < nappslots; ci++) {
-		if(appslots[ci] != nil && appslots[ci].client == c) {
-			c.bottom();
-			deadid := appslots[ci].id;
-			appslots[ci] = nil;
-			for(cj := ci; cj + 1 < nappslots; cj++)
-				appslots[cj] = appslots[cj + 1];
-			nappslots--;
-			if(activeappid == deadid)
-				activeappid = "";
-			applock <-= 1;
-			if(actid >= 0 && deadid != "")
-				writetofile(sys->sprint(
-					"%s/activity/%d/presentation/ctl",
-					mountpt, actid),
-					"delete id=" + deadid);
-			return;
+	# Search ALL tasks' app slots for this client
+	for(tpi := 0; tpi < ntaskpres; tpi++) {
+		tp := taskpres[tpi];
+		if(tp == nil)
+			continue;
+		<-tp.applock;
+		for(ci := 0; ci < tp.nappslots; ci++) {
+			if(tp.appslots[ci] != nil && tp.appslots[ci].client == c) {
+				c.bottom();
+				deadid := tp.appslots[ci].id;
+				tp.appslots[ci] = nil;
+				for(cj := ci; cj + 1 < tp.nappslots; cj++)
+					tp.appslots[cj] = tp.appslots[cj + 1];
+				tp.nappslots--;
+				if(tp.activeappid == deadid)
+					tp.activeappid = "";
+				tp.applock <-= 1;
+				if(tp.actid >= 0 && deadid != "")
+					writetofile(sys->sprint(
+						"%s/activity/%d/presentation/ctl",
+						mountpt, tp.actid),
+						"delete id=" + deadid);
+				return;
+			}
 		}
+		tp.applock <-= 1;
 	}
-	applock <-= 1;
 }
 
 # writetofile: write a string to a file path
@@ -1962,17 +2029,24 @@ launchapp(id, dispath, appdata: string, targetact: int)
 		writeappstatus(id, "dead", targetact);
 		return;
 	}
-	# Allocate AppSlot (client filled in later by preswmloop join handler)
-	<-applock;
-	if(nappslots >= MAXAPPSLOTS) {
-		applock <-= 1;
+	# Find the target task's presentation state
+	tp := lookuptaskpres(targetact);
+	if(tp == nil) {
+		sys->fprint(stderr, "lucifer: no task pres for activity %d\n", targetact);
+		writeappstatus(id, "dead", targetact);
+		return;
+	}
+	# Allocate AppSlot in the TASK's array (client filled in later by preswmloop)
+	<-tp.applock;
+	if(tp.nappslots >= MAXAPPSLOTS) {
+		tp.applock <-= 1;
 		sys->fprint(stderr, "lucifer: max app slots reached, cannot launch %s\n", dispath);
 		writeappstatus(id, "dead", targetact);
 		return;
 	}
-	appslots[nappslots] = ref AppSlot(id, targetact, nil);
-	nappslots++;
-	applock <-= 1;
+	tp.appslots[tp.nappslots] = ref AppSlot(id, targetact, nil);
+	tp.nappslots++;
+	tp.applock <-= 1;
 	# Load the GUI app module
 	guimod := load GuiApp dispath;
 	if(guimod == nil) {
@@ -1980,9 +2054,9 @@ launchapp(id, dispath, appdata: string, targetact: int)
 		writeappstatus(id, "dead", targetact);
 		return;
 	}
-	# Create per-app proxy wmchan; the relay registers token→id before forwarding
+	# Create per-app proxy wmchan targeting this TASK's wmsrv
 	appwm := chan of (string, chan of (string, ref Wmcontext));
-	spawn appwmrelay(id, appwm);
+	spawn appwmrelay(tp, id, appwm);
 	newctxt := ref Draw->Context(display, presscr, appwm);
 	appargs: list of string;
 	if(appdata != nil && appdata != "") {
@@ -1992,25 +2066,50 @@ launchapp(id, dispath, appdata: string, targetact: int)
 		appargs = dispath :: datatl;
 	} else
 		appargs = dispath :: nil;
-	spawn guimod->init(newctxt, appargs);
+	# Spawn app in a forked namespace where /chan/wmctl → task's wmsrv
+	spawn launchappns(tp, guimod, newctxt, appargs);
 	writeappstatus(id, "running", targetact);
+}
+
+# launchappns: spawn a GUI app in a FORKNS namespace where /chan/wmctl
+# is bound to the target task's wmsrv.  The app opens /chan/wmctl as
+# usual — the namespace resolves it to the correct per-task server.
+launchappns(tp: ref TaskPres, guimod: GuiApp,
+	ctxt: ref Draw->Context, args: list of string)
+{
+	sys->pctl(Sys->FORKNS, nil);
+	wmname := "wmctl." + string tp.actid;
+	sys->bind("/chan/" + wmname, "/chan/wmctl", Sys->MREPL);
+	guimod->init(ctxt, args);
 }
 
 # appwmrelay: per-app goroutine that intercepts the single wmlib registration
 # (token string, reply channel) from the app's proxy wmchan, records a
-# token→id mapping under applock, then forwards the registration to the
-# shared wmchan so wmsrv processes the join as usual.
-appwmrelay(id: string, appwm: chan of (string, chan of (string, ref Wmcontext)))
+# token→id mapping under the task's applock, then forwards the registration
+# to the task's wmchan so the task's wmsrv processes the join.
+appwmrelay(tp: ref TaskPres, id: string, appwm: chan of (string, chan of (string, ref Wmcontext)))
 {
 	(tokenstr, rc) := <-appwm;
 	tok := int tokenstr;
-	<-applock;
-	addpending(tok, id);
-	applock <-= 1;
-	wmchan <-= (tokenstr, rc);
+	<-tp.applock;
+	addpendingtask(tp, tok, id);
+	tp.applock <-= 1;
+	tp.wmchan <-= (tokenstr, rc);
 }
 
-# addpending: register a token→id mapping (caller must hold applock).
+# addpendingtask: register a token→id mapping in the task's pending arrays
+# (caller must hold tp.applock).
+addpendingtask(tp: ref TaskPres, token: int, id: string)
+{
+	if(tp.npendingtokens < MAXTOKENPENDING) {
+		tp.pendingtokens[tp.npendingtokens] = token;
+		tp.pendingids[tp.npendingtokens] = id;
+		tp.npendingtokens++;
+	}
+}
+
+# Legacy addpending/poppending — operate on module globals (curtaskpres aliases).
+# These will be removed once all callers migrate to task-aware variants.
 addpending(token: int, id: string)
 {
 	if(npendingtokens < MAXTOKENPENDING) {
@@ -2046,17 +2145,18 @@ poppending(token: int): string
 # window allocated at first !reshape; creating more causes ghost windows.
 showapp(id: string)
 {
-	if(id == "") return;
-	<-applock;
-	for(si := 0; si < nappslots; si++) {
-		if(appslots[si] != nil && appslots[si].id == id) {
-			if(appslots[si].client != nil)
-				appslots[si].client.top();
-			applock <-= 1;
+	if(id == "" || curtaskpres == nil) return;
+	tp := curtaskpres;
+	<-tp.applock;
+	for(si := 0; si < tp.nappslots; si++) {
+		if(tp.appslots[si] != nil && tp.appslots[si].id == id) {
+			if(tp.appslots[si].client != nil)
+				tp.appslots[si].client.top();
+			tp.applock <-= 1;
 			return;
 		}
 	}
-	applock <-= 1;
+	tp.applock <-= 1;
 }
 
 # hideapp: send app window to the bottom of the Screen z-stack (behind lucipres).
@@ -2067,17 +2167,18 @@ showapp(id: string)
 # within the backing image; coordinates outside pressubimg.r return nil.
 hideapp(id: string)
 {
-	if(id == "") return;
-	<-applock;
-	for(si := 0; si < nappslots; si++) {
-		if(appslots[si] != nil && appslots[si].id == id) {
-			if(appslots[si].client != nil)
-				appslots[si].client.bottom();
-			applock <-= 1;
+	if(id == "" || curtaskpres == nil) return;
+	tp := curtaskpres;
+	<-tp.applock;
+	for(si := 0; si < tp.nappslots; si++) {
+		if(tp.appslots[si] != nil && tp.appslots[si].id == id) {
+			if(tp.appslots[si].client != nil)
+				tp.appslots[si].client.bottom();
+			tp.applock <-= 1;
 			return;
 		}
 	}
-	applock <-= 1;
+	tp.applock <-= 1;
 }
 
 # killapp: terminate the app process and free its AppSlot.
@@ -2091,27 +2192,28 @@ hideapp(id: string)
 #       dead slots by detecting that client.ctl is closed (rc == nil in req).
 killapp(id: string)
 {
-	if(id == "") return;
-	<-applock;
-	for(si := 0; si < nappslots; si++) {
-		if(appslots[si] != nil && appslots[si].id == id) {
-			if(appslots[si].client != nil) {
+	if(id == "" || curtaskpres == nil) return;
+	tp := curtaskpres;
+	<-tp.applock;
+	for(si := 0; si < tp.nappslots; si++) {
+		if(tp.appslots[si] != nil && tp.appslots[si].id == id) {
+			if(tp.appslots[si].client != nil) {
 				# Send to back before exit so it's invisible immediately
-				appslots[si].client.bottom();
-				alt { appslots[si].client.ctl <-= "exit" => ; * => ; }
+				tp.appslots[si].client.bottom();
+				alt { tp.appslots[si].client.ctl <-= "exit" => ; * => ; }
 			}
-			appslots[si] = nil;
+			tp.appslots[si] = nil;
 			# Compact slot array
-			for(ci := si; ci + 1 < nappslots; ci++)
-				appslots[ci] = appslots[ci + 1];
-			nappslots--;
-			if(activeappid == id)
-				activeappid = "";
-			applock <-= 1;
+			for(ci := si; ci + 1 < tp.nappslots; ci++)
+				tp.appslots[ci] = tp.appslots[ci + 1];
+			tp.nappslots--;
+			if(tp.activeappid == id)
+				tp.activeappid = "";
+			tp.applock <-= 1;
 			return;
 		}
 	}
-	applock <-= 1;
+	tp.applock <-= 1;
 }
 
 # handleprescurrent: called when "presentation current" event fires.
@@ -2133,7 +2235,8 @@ killapp(id: string)
 # app was last-top still floating over the presentation content.
 handleprescurrent()
 {
-	if(actid < 0) return;
+	if(actid < 0 || curtaskpres == nil) return;
+	tp := curtaskpres;
 	s := readfile(sys->sprint("%s/activity/%d/presentation/current", mountpt, actid));
 	if(s == nil) return;
 	newid := strip(s);
@@ -2142,25 +2245,25 @@ handleprescurrent()
 		mountpt, actid, newid));
 	if(atype != nil) atype = strip(atype);
 	# Collect IDs under lock, then call show/hide outside lock to avoid deadlock
-	# (showapp/hideapp take applock internally).
+	# (showapp/hideapp take tp.applock internally).
 	hideids: list of string;
 	showid := "";
-	<-applock;
+	<-tp.applock;
 	if(atype == "app") {
-		if(newid != activeappid) {
-			for(hsi := 0; hsi < nappslots; hsi++)
-				if(appslots[hsi] != nil && appslots[hsi].id != newid)
-					hideids = appslots[hsi].id :: hideids;
+		if(newid != tp.activeappid) {
+			for(hsi := 0; hsi < tp.nappslots; hsi++)
+				if(tp.appslots[hsi] != nil && tp.appslots[hsi].id != newid)
+					hideids = tp.appslots[hsi].id :: hideids;
 			showid = newid;
-			activeappid = newid;
+			tp.activeappid = newid;
 		}
 	} else {
-		for(hsi2 := 0; hsi2 < nappslots; hsi2++)
-			if(appslots[hsi2] != nil && appslots[hsi2].id != "")
-				hideids = appslots[hsi2].id :: hideids;
-		activeappid = "";
+		for(hsi2 := 0; hsi2 < tp.nappslots; hsi2++)
+			if(tp.appslots[hsi2] != nil && tp.appslots[hsi2].id != "")
+				hideids = tp.appslots[hsi2].id :: hideids;
+		tp.activeappid = "";
 	}
-	applock <-= 1;
+	tp.applock <-= 1;
 	for(; hideids != nil; hideids = tl hideids)
 		hideapp(hd hideids);
 	if(showid != "")
