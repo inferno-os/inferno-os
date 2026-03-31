@@ -89,9 +89,6 @@ win: ref Wmclient->Window;
 mainwin: ref Image;		# the main window image (full frame)
 lucitheme_g: Lucitheme;		# kept for live theme reload
 
-# wmsrv channel (module-level so launchapp can use it)
-wmchan: chan of (string, chan of (string, ref Wmcontext));
-
 # App slot tracking
 #
 # Each GUI app launched into the presentation zone gets one AppSlot.
@@ -107,7 +104,7 @@ wmchan: chan of (string, chan of (string, ref Wmcontext));
 #
 # Each app gets a per-app wmchan relay (appwmrelay goroutine) that intercepts
 # the wmlib registration, records a token→id mapping, then forwards to the
-# shared wmsrv.  preswmloop's join handler looks up c.token to find the
+# task's wmsrv.  preswmloop's join handler looks up c.token to find the
 # artifact id, so the mapping is independent of join order.
 AppSlot: adt {
 	id:     string;
@@ -115,21 +112,48 @@ AppSlot: adt {
 	client: ref Client;
 };
 MAXAPPSLOTS: con 16;
+MAXTOKENPENDING: con 16;
+
+# Per-task presentation state.  Each task/activity gets its own wmsrv
+# instance, preswmloop, and app slot array.  GUI apps launched for a
+# task inherit that task's namespace — /chan/wmctl resolves to the
+# task's wmsrv, making cross-task leaks structurally impossible.
+#
+# All tasks share a single presscr (Screen on pressubimg).  Each task's
+# app windows live on that shared Screen; visibility is z-order managed
+# per-task by each task's preswmloop.  switchactivity() tops the active
+# task's windows and bottoms the rest.
+TaskPres: adt {
+	actid:		int;
+	wmsrvmod:	Wmsrv;			# per-task wmsrv module instance (Dis isolation)
+	wmchan:		chan of (string, chan of (string, ref Wmcontext));
+	join:		chan of (ref Client, chan of string);
+	req:		chan of (ref Client, array of byte, Sys->Rwrite);
+	appslots:	array of ref AppSlot;
+	nappslots:	int;
+	activeappid:	string;
+	applock:	chan of int;
+	pendingtokens:	array of int;
+	pendingids:	array of string;
+	npendingtokens:	int;
+	rszch:		chan of Rect;		# resize channel for this task's preswmloop
+	preslooppid:	int;			# pid of this task's preswmloop
+};
+
+MAXTASKPRES: con 32;
+taskpres: array of ref TaskPres;
+ntaskpres := 0;
+curtaskpres: ref TaskPres;		# currently active task's presentation state
+
+# Legacy aliases — these point into curtaskpres for code that hasn't
+# been migrated yet.  Will be removed once all functions use TaskPres.
+wmchan: chan of (string, chan of (string, ref Wmcontext));
 appslots: array of ref AppSlot;
 nappslots := 0;
-activeappid: string;	# artifact id of currently-visible app ("" = lucipres showing)
-
-# Token-to-ID map: populated by appwmrelay before forwarding the wmreq,
-# consumed by preswmloop's join handler via poppending(c.token).
-MAXTOKENPENDING: con 16;
+activeappid: string;
 pendingtokens: array of int;
 pendingids: array of string;
 npendingtokens := 0;
-
-# Mutex for appslots/nappslots/activeappid — serializes access between
-# nslistener (checklaunchapp, killapp, handleprescurrent) and preswmloop
-# (join handler, cleanupappslot, mouse routing).
-# Usage: <-applock before access, applock <-= 1 after.
 applock: chan of int;
 
 # Colors (header only)
@@ -440,36 +464,41 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Draw initial chrome (header, separators, background)
 	drawchrome(r);
 
-	# Set up wmsrv for presentation zone
-	wmsrv = load Wmsrv Wmsrv->PATH;
-	if(wmsrv == nil)
-		nomod(Wmsrv->PATH);
-	(wmc, join, req) := wmsrv->init();
-	wmchan = wmc;
-
-	# Screen for pres zone (backed by pres sub-image)
+	# Presentation zone backing image and Screen (shared across all tasks)
 	pressubimg = mainscr.newwindow(presr, Draw->Refbackup, Draw->Nofill);
 	presscr = Screen.allocate(pressubimg, bgcol, 0);
 
 	# Publish pressubimg by name so namedimage() works cross-connection
 	pressubimg.name("lucifer-pres", 1);
 
-	# Init app slot infrastructure
-	appslots = array[MAXAPPSLOTS] of ref AppSlot;
-	nappslots = 0;
-	activeappid = "";
-	pendingtokens = array[MAXTOKENPENDING] of int;
-	pendingids = array[MAXTOKENPENDING] of string;
-	applock = chan[1] of int;
-	applock <-= 1;			# initially unlocked
+	# Initialize per-task presentation array
+	taskpres = array[MAXTASKPRES] of ref TaskPres;
+	ntaskpres = 0;
+
+	# Create per-task wmsrv for activity 0 (Main)
+	tp0 := newtaskpres(0);
+	if(tp0 == nil)
+		raise "fail:cannot create task pres for Main";
+	curtaskpres = tp0;
+
+	# Set legacy aliases from curtaskpres (for un-migrated code paths)
+	wmchan = tp0.wmchan;
+	appslots = tp0.appslots;
+	nappslots = tp0.nappslots;
+	activeappid = tp0.activeappid;
+	pendingtokens = tp0.pendingtokens;
+	pendingids = tp0.pendingids;
+	npendingtokens = tp0.npendingtokens;
+	applock = tp0.applock;
+	presRszCh = tp0.rszch;
 	tilelock = chan[1] of int;
 	tilelock <-= 1;			# initially unlocked
 
-	# Build Draw->Context for lucipres (pres sub-screen + wmsrv channel)
-	presCtxt := ref Draw->Context(display, presscr, wmchan);
+	# Build Draw->Context for lucipres (shared screen + task's wmsrv channel)
+	presCtxt := ref Draw->Context(display, presscr, tp0.wmchan);
 
-	# Spawn preswmloop
-	spawn preswmloop(presscr, presr, presMouseCh, join, req, presRszCh);
+	# Spawn preswmloop for activity 0
+	spawn preswmloop(presscr, presr, presMouseCh, tp0.join, tp0.req, tp0.rszch);
 
 	# Load and spawn zone modules
 	luciconv := load LuciConv LuciConv->PATH;
@@ -736,6 +765,59 @@ drawchrome(r: Rect)
 	mainwin.draw(Rect((ctxx,  zonety), (ctxx + 1,  r.max.y)), bordercol, nil, (0, 0));
 
 	mainwin.flush(Draw->Flushnow);
+}
+
+# --- Per-task presentation zone management ---
+
+# newtaskpres: create a per-task presentation zone with its own wmsrv,
+# Screen, and preswmloop.  The wmsrv file2chan is named "wmctl.N" so
+# apps launched via FORKNS can bind it to "/chan/wmctl" in their namespace.
+newtaskpres(id: int): ref TaskPres
+{
+	tp := ref TaskPres;
+	tp.actid = id;
+
+	# Load fresh wmsrv instance (Dis module isolation = independent globals)
+	tp.wmsrvmod = load Wmsrv Wmsrv->PATH;
+	if(tp.wmsrvmod == nil) {
+		sys->fprint(stderr, "lucifer: can't load wmsrv for task %d: %r\n", id);
+		return nil;
+	}
+	wmname := "wmctl." + string id;
+	(tp.wmchan, tp.join, tp.req) = tp.wmsrvmod->init(wmname);
+	if(tp.wmchan == nil) {
+		sys->fprint(stderr, "lucifer: wmsrv init failed for task %d\n", id);
+		return nil;
+	}
+
+	# Initialize app slot infrastructure
+	tp.appslots = array[MAXAPPSLOTS] of ref AppSlot;
+	tp.nappslots = 0;
+	tp.activeappid = "";
+	tp.pendingtokens = array[MAXTOKENPENDING] of int;
+	tp.pendingids = array[MAXTOKENPENDING] of string;
+	tp.npendingtokens = 0;
+	tp.applock = chan[1] of int;
+	tp.applock <-= 1;
+	tp.rszch = chan of Rect;
+	tp.preslooppid = -1;
+
+	# Register in global task array
+	if(ntaskpres < MAXTASKPRES) {
+		taskpres[ntaskpres] = tp;
+		ntaskpres++;
+	}
+
+	return tp;
+}
+
+# lookuptaskpres: find the TaskPres for a given activity ID.
+lookuptaskpres(id: int): ref TaskPres
+{
+	for(i := 0; i < ntaskpres; i++)
+		if(taskpres[i] != nil && taskpres[i].actid == id)
+			return taskpres[i];
+	return nil;
 }
 
 # --- preswmloop — mini WM for presentation zone ---

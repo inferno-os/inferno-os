@@ -79,7 +79,7 @@ wmproxy(display: ref Display, dir: string, wc: chan of (ref Draw->Context, strin
 	}
 	sys->pctl(Sys->NEWFD, 1 :: 2 :: nil);
 
-	(wm, join, req) := wmsrv->init();
+	(wm, join, req) := wmsrv->init(nil);
 	if(wm == nil){
 		wc <-= (nil, sys->sprint("%r"));
 		return;

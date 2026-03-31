@@ -38,17 +38,19 @@ Ptrqueue: adt {
 	flush:		fn(q: self ref Ptrqueue);
 };
 
-init(): 	(chan of (string, chan of (string, ref Wmcontext)),
+init(name: string): 	(chan of (string, chan of (string, ref Wmcontext)),
 		chan of (ref Client, chan of string),
 		chan of (ref Client, array of byte, Sys->Rwrite))
 {
 	sys = load Sys Sys->PATH;
 	draw = load Draw Draw->PATH;
 
+	if(name == nil || name == "")
+		name = "wmctl";
 	r := sys->bind("#s", "/chan", Sys->MBEFORE);
-	ctlio := sys->file2chan("/chan", "wmctl");
+	ctlio := sys->file2chan("/chan", name);
 	if(ctlio == nil){
-		sys->werrstr(sys->sprint("can't create /chan/wmctl: %r"));
+		sys->werrstr(sys->sprint("can't create /chan/%s: %r", name));
 		return (nil, nil, nil);
 	}
 
