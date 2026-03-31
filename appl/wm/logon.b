@@ -57,6 +57,7 @@ PADDING:  con 16;
 STATE_LOGIN:		con 0;
 STATE_SETUP_PASS:	con 1;
 STATE_SETUP_CONFIRM:	con 2;
+STATE_LOGIN_FAILED:	con 3;
 
 display_g: ref Display;
 screen: ref Image;
@@ -190,8 +191,21 @@ handleenter(): int
 		return 1;
 
 	STATE_LOGIN =>
-		dounlock();
-		return 1;
+		if(dounlock())
+			return 1;
+		# Unlock failed — let user retry or skip
+		state = STATE_LOGIN_FAILED;
+		statusmsg += "\nEnter: try again  |  Escape: continue without secstore";
+		redraw();
+		return 0;
+
+	STATE_LOGIN_FAILED =>
+		# Enter from failed state — go back to password entry
+		passbuf = "";
+		state = STATE_LOGIN;
+		statusmsg = "Enter password to unlock";
+		redraw();
+		return 0;
 	}
 	return 0;
 }
@@ -208,6 +222,13 @@ handleescape(): int
 		statusmsg = "Choose a secstore password";
 		redraw();
 		return 0;
+
+	STATE_LOGIN_FAILED =>
+		# User chose to continue without secstore after failed unlock
+		statusmsg = "Continuing without secstore";
+		redraw();
+		sys->sleep(500);
+		return 1;
 
 	* =>
 		# Double-press escape to skip
@@ -270,36 +291,70 @@ redraw()
 	fieldbg := display_g.rgb(16r2a, 16r2a, 16r2a);
 	white := display_g.rgb(16rff, 16rff, 16rff);
 
-	# Prompt label above field (centered)
-	prompt := "Password:";
-	case state {
-	STATE_SETUP_PASS =>
-		prompt = "New password:";
-	STATE_SETUP_CONFIRM =>
-		prompt = "Confirm password:";
-	}
-	pw := bodyfont.width(prompt);
-	screen.text(Point(cx - pw / 2, y), dimgrey, ZP, bodyfont, prompt);
-	y += bodyfont.height + 4;
+	if(state == STATE_LOGIN_FAILED) {
+		# Failed state: show error and choices, no password field
+		red := display_g.rgb(16rff, 16r44, 16r44);
 
-	# Field background (centered)
-	fx := cx - fw / 2;
-	fieldr := Rect((fx, y), (fx + fw, y + fh));
-	screen.draw(fieldr, fieldbg, nil, ZP);
-	screen.border(fieldr, 1, orange, ZP);
+		# Error message
+		errline := statusmsg;
+		# Split on \n — first line is the error, second is the choices
+		nl := -1;
+		for(si := 0; si < len errline; si++)
+			if(errline[si] == '\n') { nl = si; break; }
+		if(nl >= 0) {
+			ew := bodyfont.width(errline[0:nl]);
+			screen.text(Point(cx - ew / 2, y), red, ZP, bodyfont, errline[0:nl]);
+			y += bodyfont.height + PADDING;
+			choiceline := errline[nl+1:];
+			cw2 := bodyfont.width(choiceline);
+			screen.text(Point(cx - cw2 / 2, y), dimgrey, ZP, bodyfont, choiceline);
+			y += bodyfont.height + PADDING;
+		} else {
+			ew := bodyfont.width(errline);
+			screen.text(Point(cx - ew / 2, y), red, ZP, bodyfont, errline);
+			y += bodyfont.height + PADDING;
+		}
 
-	# Masked password (dots)
-	dots := "";
-	for(i := 0; i < len passbuf; i++)
-		dots += "\u2022";
-	screen.text(Point(fx + 6, y + 6), white, ZP, bodyfont, dots);
+		# Warning about consequences
+		warn := "Keys and secrets will not be available.";
+		ww := smallfont.width(warn);
+		screen.text(Point(cx - ww / 2, y), dimgrey, ZP, smallfont, warn);
+		y += smallfont.height;
+		warn2 := "AI integration may not work.";
+		ww2 := smallfont.width(warn2);
+		screen.text(Point(cx - ww2 / 2, y), dimgrey, ZP, smallfont, warn2);
+	} else {
+		# Normal states: show prompt + password field
+		prompt := "Password:";
+		case state {
+		STATE_SETUP_PASS =>
+			prompt = "New password:";
+		STATE_SETUP_CONFIRM =>
+			prompt = "Confirm password:";
+		}
+		pw := bodyfont.width(prompt);
+		screen.text(Point(cx - pw / 2, y), dimgrey, ZP, bodyfont, prompt);
+		y += bodyfont.height + 4;
 
-	y += fh + PADDING;
+		# Field background (centered)
+		fx := cx - fw / 2;
+		fieldr := Rect((fx, y), (fx + fw, y + fh));
+		screen.draw(fieldr, fieldbg, nil, ZP);
+		screen.border(fieldr, 1, orange, ZP);
 
-	# Status message (centered)
-	if(statusmsg != nil && statusmsg != "") {
-		sw := bodyfont.width(statusmsg);
-		screen.text(Point(cx - sw / 2, y), dimgrey, ZP, bodyfont, statusmsg);
+		# Masked password (dots)
+		dots := "";
+		for(i := 0; i < len passbuf; i++)
+			dots += "\u2022";
+		screen.text(Point(fx + 6, y + 6), white, ZP, bodyfont, dots);
+
+		y += fh + PADDING;
+
+		# Status message (centered)
+		if(statusmsg != nil && statusmsg != "") {
+			sw := bodyfont.width(statusmsg);
+			screen.text(Point(cx - sw / 2, y), dimgrey, ZP, bodyfont, statusmsg);
+		}
 	}
 
 	# Build info at bottom (dim, small)
@@ -355,13 +410,14 @@ dosetupandunlock(pass: string)
 	sys->sleep(500);
 }
 
-# Normal boot: unlock secstore and load keys
-dounlock()
+# Normal boot: unlock secstore and load keys.
+# Returns 1 on success, 0 on failure.
+dounlock(): int
 {
 	if(passbuf == nil || passbuf == "") {
 		statusmsg = "Password required";
 		redraw();
-		return;
+		return 0;
 	}
 
 	statusmsg = "Unlocking (this may take a moment)...";
@@ -380,13 +436,13 @@ dounlock()
 	if(err != nil) {
 		statusmsg = err;
 		redraw();
-		return;
+		return 0;
 	}
 
 	statusmsg = "Unlocked";
 	redraw();
 	sys->sleep(500);
-	# Exit — boot continues
+	return 1;
 }
 
 # Create sentinel so other apps can detect secstore is active
