@@ -41,6 +41,8 @@ include "keyring.m";
 include "factotum.m";
 	factotum: Factotum;
 
+include "sh.m";
+
 WmLogon: module
 {
 	init: fn(ctxt: ref Draw->Context, argv: list of string);
@@ -414,6 +416,7 @@ dosetupandunlock(pass: string)
 
 	statusmsg = "Unlocked";
 	redraw();
+	ensurellmsrv();
 	sys->sleep(500);
 }
 
@@ -448,6 +451,7 @@ dounlock(): int
 
 	statusmsg = "Unlocked";
 	redraw();
+	ensurellmsrv();
 	sys->sleep(500);
 	return 1;
 }
@@ -458,6 +462,30 @@ createsecstoresentinel()
 	fd := sys->create("/tmp/.secstore-unlocked", Sys->OWRITE, 8r644);
 	if(fd != nil)
 		sys->fprint(fd, "1");
+}
+
+# Start llmsrv if not already running.
+# llmsrv may have failed during profile because the API key
+# was only in secstore (not yet loaded at profile time).
+ensurellmsrv()
+{
+	(ok, nil) := sys->stat("/n/llm");
+	if(ok >= 0)
+		return;	# already running
+
+	sys->fprint(stderr, "logon: /n/llm not mounted, starting llmsrv\n");
+	spawn startllmsrv();
+	sys->sleep(1000);	# give it time to mount
+}
+
+startllmsrv()
+{
+	mod := load Command "/dis/llmsrv.dis";
+	if(mod == nil) {
+		sys->fprint(stderr, "logon: cannot load llmsrv: %r\n");
+		return;
+	}
+	mod->init(nil, "llmsrv" :: nil);
 }
 
 connectfactotum(pass: string): string
