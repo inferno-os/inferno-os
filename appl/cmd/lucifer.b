@@ -478,13 +478,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Publish pressubimg by name so namedimage() works cross-connection
 	pressubimg.name("lucifer-pres", 1);
 
-	# Load wmsrv module (needed for Client type import at module level).
-	# Each task loads its own instance via newtaskpres(); this load is
-	# only for the type definition.
-	wmsrv = load Wmsrv Wmsrv->PATH;
-	if(wmsrv == nil)
-		nomod(Wmsrv->PATH);
-
 	# Initialize per-task presentation array
 	taskpres = array[MAXTASKPRES] of ref TaskPres;
 	ntaskpres = 0;
@@ -494,6 +487,13 @@ init(ctxt: ref Draw->Context, args: list of string)
 	if(tp0 == nil)
 		raise "fail:cannot create task pres for Main";
 	curtaskpres = tp0;
+
+	# Set module-level wmsrv to activity 0's instance.  Client methods
+	# (top, bottom, setimage, etc.) are dispatched through the module
+	# that 'Client: import wmsrv' references.  That module must have
+	# sys/draw loaded (via init), or method calls crash with
+	# "module not loaded".
+	wmsrv = tp0.wmsrvmod;
 
 	# Set legacy aliases from curtaskpres (for un-migrated code paths)
 	wmchan = tp0.wmchan;
