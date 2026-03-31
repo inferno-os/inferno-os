@@ -198,98 +198,14 @@ jobs:
         path: infernode-*-macos-arm64.tar.gz
         retention-days: 3
 
-  # ─────────────────────────────────────────────
-  # Windows AMD64: SDL3 GUI emulator + launcher
-  # ─────────────────────────────────────────────
-  windows-amd64:
-    name: Windows AMD64
-    runs-on: windows-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    env:
-      ROOT: ${{ github.workspace }}
-
-    steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-    - name: Extract version from tag
-      id: version
-      shell: bash
-      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-    - name: Stamp build version
-      shell: bash
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        BUILD_DATE=$(date +%Y%m%d)
-        SHORT_SHA=${GITHUB_SHA::8}
-        sed -i "s|InferNode 0.1|InferNode ${VERSION} build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
-        echo "Version: $(cat include/version.h)"
-
-    - name: Set up MSVC
-      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
-      with:
-        arch: amd64
-
-    - name: Download SDL3
-      shell: pwsh
-      run: |
-        $SDL3_VERSION = "3.4.0"
-        $url = "https://github.com/libsdl-org/SDL/releases/download/release-${SDL3_VERSION}/SDL3-devel-${SDL3_VERSION}-VC.zip"
-        Write-Host "Downloading SDL3 ${SDL3_VERSION}..."
-        Invoke-WebRequest -Uri $url -OutFile SDL3-devel.zip
-        Expand-Archive -Path SDL3-devel.zip -DestinationPath SDL3-dev
-        $sdl3dir = "${{ github.workspace }}\SDL3-dev\SDL3-${SDL3_VERSION}"
-        echo "SDL3DIR=$sdl3dir" >> $env:GITHUB_ENV
-        Write-Host "SDL3DIR=$sdl3dir"
-
-    - name: Install win_bison (for Limbo compiler yacc grammar)
-      shell: pwsh
-      run: winget install --id WinFlexBison.win_flex_bison --accept-source-agreements --accept-package-agreements
-
-    - name: Build libraries (headless bootstrap)
-      shell: pwsh
-      run: .\build-windows-amd64.ps1
-
-    - name: Build SDL3 GUI emulator
-      shell: pwsh
-      run: .\build-windows-sdl3.ps1 -SDL3Dir "$env:SDL3DIR"
-
-    - name: Build launcher
-      shell: pwsh
-      run: |
-        Push-Location emu\Nt
-        .\build-launcher.ps1
-        Pop-Location
-
-    - name: Package archive
-      shell: pwsh
-      run: |
-        $VERSION = "${{ steps.version.outputs.version }}"
-        .\package-windows-zip.ps1
-        $src = "InferNode-windows-amd64.zip"
-        $dst = "infernode-${VERSION}-windows-amd64.zip"
-        if (Test-Path $src) {
-          Rename-Item $src $dst
-          Write-Host "Archive: $dst ($(([math]::Round((Get-Item $dst).Length / 1MB, 1))) MB)"
-        } else {
-          Write-Host "ERROR: package-windows-zip.ps1 did not produce $src"
-          exit 1
-        }
-
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-      with:
-        name: infernode-windows-amd64-archive
-        path: infernode-*-windows-amd64.zip
-        retention-days: 3
+  # Windows AMD64: deferred to v0.2 (linker issues with crypto libs)
 
   # ─────────────────────────────────────────────
   # Create GitHub Release with all archives
   # ─────────────────────────────────────────────
   release:
     name: Create Release
-    needs: [linux-amd64, macos-arm64, windows-amd64]
+    needs: [linux-amd64, macos-arm64]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -335,15 +251,14 @@ jobs:
           |----------|-------------|------|
           | Linux | AMD64 (headless) | `infernode-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
           | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.tar.gz` |
-          | Windows | AMD64 (SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-windows-amd64.zip` |
+
+          Windows support is in progress and will ship in a future release.
 
           ### Quick Start
 
           **macOS:** Extract, then `open MacOSX/InferNode.app` (requires SDL3: `brew install sdl3 sdl3_ttf`)
 
           **Linux:** Extract, then `./emu/Linux/o.emu -r. sh -l` (headless; rebuild with `./build-linux-amd64.sh` for SDL3 GUI)
-
-          **Windows:** Extract, then double-click `InferNode.exe` (SDL3.dll included)
 
           ### Checksums
 
