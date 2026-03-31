@@ -206,6 +206,7 @@ Popup: import menumod;
 pres_zone_minx := 0;
 pres_zone_maxx := 0;
 ctx_zone_minx := 0;
+preszone: Rect;			# current presentation zone rect (for per-task preswmloop spawn)
 
 # Last known mouse X — updated by mouseproc, used by kbdproc for focus-follows-mouse
 lastmousex := 0;
@@ -454,6 +455,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Layout zones and allocate sub-images + wmsrv
 	r := mainwin.r;
 	(convr, presr, ctxr) := zonerects(r);
+	preszone = presr;
 
 	# Main screen — needed to create sub-windows
 	mainscr = Screen.allocate(mainwin, bgcol, 0);
@@ -1213,6 +1215,7 @@ handleresize()
 {
 	r := mainwin.r;
 	(convr, presr, ctxr) := zonerects(r);
+	preszone = presr;
 
 	# Recreate all zone sub-images on a fresh mainscr.
 	# Must happen before drawchrome so separators are drawn on top of the fill.
@@ -1449,10 +1452,12 @@ globallistener()
 						provision += " paths=" + pcsv;
 				}
 				writefile("/tool/ctl", provision);
-				# Create per-task wmsrv for the new activity
+				# Create per-task wmsrv + preswmloop for the new activity
 				newtp := newtaskpres(newid);
 				if(newtp == nil)
 					sys->fprint(stderr, "lucifer: failed to create task pres for %d\n", newid);
+				else
+					spawn preswmloop(presscr, preszone, presMouseCh, newtp.join, newtp.req, newtp.rszch);
 				# Switch to new activity
 				alt { switchch <-= newid => ; * => ; }
 			}
