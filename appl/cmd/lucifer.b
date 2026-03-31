@@ -813,13 +813,6 @@ newtaskpres(id: int): ref TaskPres
 		sys->fprint(stderr, "lucifer: wmsrv init failed for task %d\n", id);
 		return nil;
 	}
-	sys->fprint(stderr, "lucifer: newtaskpres: task %d wmsrv OK (name=%s)\n", id, wmname);
-	# Verify the file2chan was created
-	vpath := "/chan/" + wmname;
-	if(wmname == nil) vpath = "/chan/wmctl";
-	(vok, nil) := sys->stat(vpath);
-	sys->fprint(stderr, "lucifer: newtaskpres: stat(%s)=%d\n", vpath, vok);
-
 	# Initialize app slot infrastructure
 	tp.appslots = array[MAXAPPSLOTS] of ref AppSlot;
 	tp.nappslots = 0;
@@ -920,7 +913,6 @@ preswmloop(scr: ref Screen, zoner: Rect,
 		} else {
 			# Subsequent join = an app; search ALL tasks' pending arrays
 			# to find the token→id mapping, then link to the right task's slot.
-			sys->fprint(stderr, "lucifer: preswmloop: join token=%d\n", c.token);
 			appid2 := "";
 			foundtp: ref TaskPres;
 			for(tpi := 0; tpi < ntaskpres; tpi++) {
@@ -945,7 +937,6 @@ preswmloop(scr: ref Screen, zoner: Rect,
 					break;
 			}
 			if(appid2 != "" && foundtp != nil) {
-				sys->fprint(stderr, "lucifer: preswmloop: token=%d → id=%s act=%d\n", c.token, appid2, foundtp.actid);
 				<-foundtp.applock;
 				for(asi := 0; asi < foundtp.nappslots; asi++) {
 					if(foundtp.appslots[asi] != nil && foundtp.appslots[asi].id == appid2) {
@@ -954,8 +945,6 @@ preswmloop(scr: ref Screen, zoner: Rect,
 					}
 				}
 				foundtp.applock <-= 1;
-			} else {
-				sys->fprint(stderr, "lucifer: preswmloop: token=%d NOT FOUND in any task\n", c.token);
 			}
 		}
 		rc <-= nil;
@@ -2082,10 +2071,18 @@ launchapp(id, dispath, appdata: string, targetact: int)
 		writeappstatus(id, "dead", targetact);
 		return;
 	}
-	# Find the target task's presentation state
+	# Find or create the target task's presentation state
 	tp := lookuptaskpres(targetact);
 	if(tp == nil) {
-		sys->fprint(stderr, "lucifer: no task pres for activity %d\n", targetact);
+		# Activity created by agent spawn or other non-GUI path — create on demand
+		tp = newtaskpres(targetact);
+		if(tp != nil) {
+			spawn joinrelay(tp.join, mainjoin);
+			spawn reqrelay(tp.req, mainreq);
+		}
+	}
+	if(tp == nil) {
+		sys->fprint(stderr, "lucifer: cannot create task pres for activity %d\n", targetact);
 		writeappstatus(id, "dead", targetact);
 		return;
 	}
@@ -2138,14 +2135,7 @@ launchappns(tp: ref TaskPres, guimod: GuiApp,
 		wmname := "wmctl." + string tp.actid;
 		srcpath := "/chan/" + wmname;
 		# Verify source file exists before bind
-		(sok, nil) := sys->stat(srcpath);
-		sys->fprint(stderr, "lucifer: launchappns: act=%d stat(%s)=%d\n", tp.actid, srcpath, sok);
-		br := sys->bind(srcpath, "/chan/wmctl", Sys->MREPL);
-		sys->fprint(stderr, "lucifer: launchappns: act=%d bind(%s, /chan/wmctl)=%d\n", tp.actid, srcpath, br);
-		# Verify /chan/wmctl is accessible after bind
-		testfd := sys->open("/chan/wmctl", Sys->ORDWR);
-		sys->fprint(stderr, "lucifer: launchappns: act=%d open(/chan/wmctl)=%d\n", tp.actid, testfd != nil);
-		testfd = nil;
+		sys->bind(srcpath, "/chan/wmctl", Sys->MREPL);
 	}
 	guimod->init(ctxt, args);
 }
@@ -2156,15 +2146,12 @@ launchappns(tp: ref TaskPres, guimod: GuiApp,
 # to the task's wmchan so the task's wmsrv processes the join.
 appwmrelay(tp: ref TaskPres, id: string, appwm: chan of (string, chan of (string, ref Wmcontext)))
 {
-	sys->fprint(stderr, "lucifer: appwmrelay: act=%d id=%s waiting for registration\n", tp.actid, id);
 	(tokenstr, rc) := <-appwm;
 	tok := int tokenstr;
-	sys->fprint(stderr, "lucifer: appwmrelay: act=%d id=%s token=%d forwarding to wmchan\n", tp.actid, id, tok);
 	<-tp.applock;
 	addpendingtask(tp, tok, id);
 	tp.applock <-= 1;
 	tp.wmchan <-= (tokenstr, rc);
-	sys->fprint(stderr, "lucifer: appwmrelay: act=%d id=%s token=%d forwarded OK\n", tp.actid, id, tok);
 }
 
 # addpendingtask: register a token→id mapping in the task's pending arrays
