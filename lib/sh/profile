@@ -27,9 +27,9 @@ if {! ftest -f /mnt/factotum/proto}{
 	auth/factotum
 }
 
-# Provision API keys into factotum
-# Build the full factotum key line on the host side (bash handles conditionals)
-factotumkey=`{os sh -c 'k=${ANTHROPIC_API_KEY:-$(plutil -extract EnvironmentVariables.ANTHROPIC_API_KEY raw ~/Library/LaunchAgents/com.nervsystems.llm9p.plist 2>/dev/null)}; if [ -n "$k" ]; then echo "key proto=pass service=anthropic user=apikey !password=$k"; fi'}
+# Provision API key into factotum from host env (fallback for CLI users).
+# The primary path is secstore — wm/logon loads keys at login.
+factotumkey=`{os sh -c 'if [ -n "$ANTHROPIC_API_KEY" ]; then echo "key proto=pass service=anthropic user=apikey !password=$ANTHROPIC_API_KEY"; fi'}
 echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 
 # Setup home directory and LLM mount based on platform
