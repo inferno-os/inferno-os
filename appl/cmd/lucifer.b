@@ -481,10 +481,6 @@ init(ctxt: ref Draw->Context, args: list of string)
 		raise "fail:cannot create task pres for Main";
 	curtaskpres = tp0;
 
-	# Bind wmctl.0 to the well-known /chan/wmctl path so that lucipres
-	# (which uses wmlib->connect() opening /chan/wmctl) can find it.
-	sys->bind("/chan/wmctl.0", "/chan/wmctl", Sys->MREPL);
-
 	# Set legacy aliases from curtaskpres (for un-migrated code paths)
 	wmchan = tp0.wmchan;
 	appslots = tp0.appslots;
@@ -787,7 +783,14 @@ newtaskpres(id: int): ref TaskPres
 		sys->fprint(stderr, "lucifer: can't load wmsrv for task %d: %r\n", id);
 		return nil;
 	}
-	wmname := "wmctl." + string id;
+	# Activity 0 uses the well-known "wmctl" so lucipres (via wmlib) can
+	# find it without a bind.  Child tasks use "wmctl.N" — apps launched
+	# via FORKNS bind "wmctl.N" → "wmctl" in their namespace.
+	wmname: string;
+	if(id == 0)
+		wmname = nil;	# default "wmctl"
+	else
+		wmname = "wmctl." + string id;
 	(tp.wmchan, tp.join, tp.req) = tp.wmsrvmod->init(wmname);
 	if(tp.wmchan == nil) {
 		sys->fprint(stderr, "lucifer: wmsrv init failed for task %d\n", id);
