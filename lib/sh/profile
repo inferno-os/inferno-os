@@ -27,8 +27,9 @@ sleep 1
 # start factotum with secstore backing so all keys are loaded automatically.
 # GUI: factotum starts empty; wm/logon unlocks secstore interactively.
 if {! ftest -f /mnt/factotum/proto}{
-	secpass=`{os sh -c 'echo $SECSTORE_PASSWORD' >[2] /dev/null}
-	if {! ~ $secpass ''} {
+	havesecpass=`{os sh -c 'if [ -n "$SECSTORE_PASSWORD" ]; then echo yes; fi' >[2] /dev/null}
+	if {~ $havesecpass yes} {
+		secpass=`{os sh -c 'printf "%s" "$SECSTORE_PASSWORD"'}
 		auth/factotum -S tcp!localhost!5356 -P $secpass
 	}{
 		auth/factotum
