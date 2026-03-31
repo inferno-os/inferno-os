@@ -2091,9 +2091,14 @@ launchapp(id, dispath, appdata: string, targetact: int)
 launchappns(tp: ref TaskPres, guimod: GuiApp,
 	ctxt: ref Draw->Context, args: list of string)
 {
-	sys->pctl(Sys->FORKNS, nil);
-	wmname := "wmctl." + string tp.actid;
-	sys->bind("/chan/" + wmname, "/chan/wmctl", Sys->MREPL);
+	# Activity 0 uses the default /chan/wmctl — no FORKNS needed.
+	# Child tasks use /chan/wmctl.N and need FORKNS + bind so apps
+	# find the task's wmsrv at the well-known /chan/wmctl path.
+	if(tp.actid != 0) {
+		sys->pctl(Sys->FORKNS, nil);
+		wmname := "wmctl." + string tp.actid;
+		sys->bind("/chan/" + wmname, "/chan/wmctl", Sys->MREPL);
+	}
 	guimod->init(ctxt, args);
 }
 
