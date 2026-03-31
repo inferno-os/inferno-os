@@ -1,7 +1,7 @@
 Wmsrv: module{
 	PATH: con "/dis/lib/wmsrv.dis";
 
-	init:	fn(): 	(chan of (string, chan of (string, ref Draw->Wmcontext)),
+	init:	fn(name: string): 	(chan of (string, chan of (string, ref Draw->Wmcontext)),
 		chan of (ref Client, chan of string),
 		chan of (ref Client, array of byte, Sys->Rwrite));
 

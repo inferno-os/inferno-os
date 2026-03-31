@@ -92,7 +92,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	wmctxt := win.ctxt;
 	screen = makescreen(win.image);
 
-	(clientwm, join, req) := wmsrv->init();
+	(clientwm, join, req) := wmsrv->init(nil);
 	clientctxt := ref Draw->Context(ctxt.display, nil, clientwm);
 
 	wmrectIO := sys->file2chan("/chan", "wmrect");
