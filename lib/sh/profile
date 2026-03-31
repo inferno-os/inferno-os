@@ -17,8 +17,10 @@ bind -a '#I' /net >[2] /dev/null
 # Start connection server (DNS resolution)
 ndb/cs
 
-# Start secstore (persistent encrypted key storage)
-# Skip if already running (e.g. from a previous emu session on same port)
+# Start secstore (persistent encrypted key storage).
+# Kill any stale secstored from a previous emu session first — a stale
+# instance with different PAK data causes login to hang indefinitely.
+os sh -c 'lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null; true' >[2] /dev/null
 auth/secstored >[2] /dev/null &
 sleep 1
 
