@@ -206,7 +206,10 @@ Popup: import menumod;
 pres_zone_minx := 0;
 pres_zone_maxx := 0;
 ctx_zone_minx := 0;
-preszone: Rect;			# current presentation zone rect (for per-task preswmloop spawn)
+preszone: Rect;			# current presentation zone rect
+# Main preswmloop channels — all tasks' wmsrv events relay into these
+mainjoin: chan of (ref Client, chan of string);
+mainreq: chan of (ref Client, array of byte, Sys->Rwrite);
 
 # Last known mouse X — updated by mouseproc, used by kbdproc for focus-follows-mouse
 lastmousex := 0;
@@ -506,8 +509,13 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# Build Draw->Context for lucipres (shared screen + task's wmsrv channel)
 	presCtxt := ref Draw->Context(display, presscr, tp0.wmchan);
 
-	# Spawn preswmloop for activity 0
-	spawn preswmloop(presscr, presr, presMouseCh, tp0.join, tp0.req, tp0.rszch);
+	# Activity 0's join/req are the main preswmloop channels.
+	# New tasks relay their events into these via joinrelay/reqrelay.
+	mainjoin = tp0.join;
+	mainreq = tp0.req;
+
+	# Spawn single preswmloop for all tasks
+	spawn preswmloop(presscr, presr, presMouseCh, mainjoin, mainreq, tp0.rszch);
 
 	# Load and spawn zone modules
 	luciconv := load LuciConv LuciConv->PATH;
@@ -825,6 +833,20 @@ newtaskpres(id: int): ref TaskPres
 	}
 
 	return tp;
+}
+
+# joinrelay: forward join events from a task's wmsrv to the main preswmloop.
+joinrelay(src, dst: chan of (ref Client, chan of string))
+{
+	for(;;)
+		dst <-= <-src;
+}
+
+# reqrelay: forward req events from a task's wmsrv to the main preswmloop.
+reqrelay(src, dst: chan of (ref Client, array of byte, Sys->Rwrite))
+{
+	for(;;)
+		dst <-= <-src;
 }
 
 # lookuptaskpres: find the TaskPres for a given activity ID.
@@ -1452,12 +1474,14 @@ globallistener()
 						provision += " paths=" + pcsv;
 				}
 				writefile("/tool/ctl", provision);
-				# Create per-task wmsrv + preswmloop for the new activity
+				# Create per-task wmsrv and relay its events to the main preswmloop
 				newtp := newtaskpres(newid);
 				if(newtp == nil)
 					sys->fprint(stderr, "lucifer: failed to create task pres for %d\n", newid);
-				else
-					spawn preswmloop(presscr, preszone, presMouseCh, newtp.join, newtp.req, newtp.rszch);
+				else {
+					spawn joinrelay(newtp.join, mainjoin);
+					spawn reqrelay(newtp.req, mainreq);
+				}
 				# Switch to new activity
 				alt { switchch <-= newid => ; * => ; }
 			}
