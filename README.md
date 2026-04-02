@@ -78,7 +78,7 @@ Lucia is the primary GUI for AI-human collaboration, organizing the workspace in
 - **Presentation** — Rich content display (artifacts, code, diagrams, images)
 - **Context** — Tool toggles, namespace path management, and activity tracking
 
-Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) for the Lucia GUI production readiness evaluation.
+Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md) for the Lucia GUI production readiness evaluation.
 
 ### UI Improvements
 
@@ -149,7 +149,7 @@ repl                                       # Interactive REPL
 
 - **Single-shot** (`veltro "task"`) — Runs a task to completion and exits. The agent queries the LLM, invokes tools, feeds results back, and repeats until done.
 - **Interactive REPL** (`repl`) — Conversational agent sessions with ongoing context. Works in both Xenith (GUI with tag buttons) and terminal (line-oriented with `veltro>` prompt) modes.
-- **Lucia** (`lucifer`) — Three-zone tiling GUI (Conversation | Presentation | Context) for AI-human collaboration. Includes activity tracking, tool toggles, and namespace path management with per-path read/write permissions.
+- **Lucia** — Three-zone tiling GUI (Conversation | Presentation | Context) for AI-human collaboration. Includes activity tracking, tool toggles, and namespace path management with per-path read/write permissions.
 
 ### Key Components
 
@@ -281,7 +281,7 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture and component diagram
 - [docs/WALLET-AND-PAYMENTS.md](docs/WALLET-AND-PAYMENTS.md) — Wallet, x402 payments, secstore, and key management
 - [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) — Veltro agent security model
-- [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) — Lucia GUI production readiness evaluation
+- [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md) — Lucia GUI production readiness evaluation
 - [tools/godis/README.md](tools/godis/README.md) — GoDis compiler architecture and translation strategy
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — Cross-language JIT benchmarks (C, Java, Limbo)
 - [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) — Performance specs and binary sizes
@@ -338,7 +338,7 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 
 - Linux ARM64 SDL3 GUI support (backend 95% complete, build system integration remaining)
 - Windows JIT compiler
-- Lucia P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md)
+- Lucia P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md)
 
 ## About
 
