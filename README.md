@@ -16,7 +16,7 @@ InferNode is a modern Inferno® OS distribution designed for 64-bit systems. It 
 - **AI Agents:** Namespace-isolated agents with 39 tool modules, LLM integration via 9P (Veltro)
 - **Payments:** Native cryptocurrency wallet with x402 payment protocol, ERC-20 tokens, and budget-enforced agent spending (**experimental — testnet only**)
 - **Complete:** 800+ Limbo source files, 815 compiled utilities, full shell environment
-- **GUI:** Three-zone tiling GUI (Lucifer), AI-native text editor (Xenith), login screen with secstore authentication
+- **GUI:** Three-zone tiling GUI (Lucia), AI-native text editor (Xenith), login screen with secstore authentication
 - **Networked:** TCP/IP stack, 9P filesystem protocol, distributed namespaces
 - **Formally Verified:** Namespace isolation proven via TLA+, SPIN, and CBMC
 - **Headless by Default:** No GUI dependency; optional SDL3 with Metal/Vulkan/D3D
@@ -70,15 +70,15 @@ Xenith is an Acme fork optimized for AI agents and AI-human collaboration:
 
 See [docs/XENITH.md](docs/XENITH.md) for details.
 
-### Lucifer - Three-Zone Tiling GUI
+### Lucia - Three-Zone Tiling GUI
 
-Lucifer is the primary GUI for AI-human collaboration, organizing the workspace into three zones:
+Lucia is the primary GUI for AI-human collaboration, organizing the workspace into three zones:
 
 - **Conversation** — Chat interface with streaming LLM responses and tool-call activity tiles
 - **Presentation** — Rich content display (artifacts, code, diagrams, images)
 - **Context** — Tool toggles, namespace path management, and activity tracking
 
-Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) for the production readiness evaluation.
+Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) for the Lucia GUI production readiness evaluation.
 
 ### UI Improvements
 
@@ -149,7 +149,7 @@ repl                                       # Interactive REPL
 
 - **Single-shot** (`veltro "task"`) — Runs a task to completion and exits. The agent queries the LLM, invokes tools, feeds results back, and repeats until done.
 - **Interactive REPL** (`repl`) — Conversational agent sessions with ongoing context. Works in both Xenith (GUI with tag buttons) and terminal (line-oriented with `veltro>` prompt) modes.
-- **Lucifer** (`lucifer`) — Three-zone tiling GUI (Conversation | Presentation | Context) for AI-human collaboration. Includes activity tracking, tool toggles, and namespace path management with per-path read/write permissions.
+- **Lucia** (`lucifer`) — Three-zone tiling GUI (Conversation | Presentation | Context) for AI-human collaboration. Includes activity tracking, tool toggles, and namespace path management with per-path read/write permissions.
 
 ### Key Components
 
@@ -281,7 +281,7 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture and component diagram
 - [docs/WALLET-AND-PAYMENTS.md](docs/WALLET-AND-PAYMENTS.md) — Wallet, x402 payments, secstore, and key management
 - [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) — Veltro agent security model
-- [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) — Lucifer GUI production readiness evaluation
+- [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md) — Lucia GUI production readiness evaluation
 - [tools/godis/README.md](tools/godis/README.md) — GoDis compiler architecture and translation strategy
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — Cross-language JIT benchmarks (C, Java, Limbo)
 - [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) — Performance specs and binary sizes
@@ -319,7 +319,7 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 - **GoDis Compiler** — Preliminary Go-to-Dis compiler; 190+ test programs passing. See `tools/godis/`.
 - **SDL3 GUI Backend** — Cross-platform graphics with Metal/Vulkan/D3D (macOS, Linux, Windows)
 - **Xenith** — AI-native text environment with async I/O, dark mode, HiDPI fonts, image support
-- **Lucifer** — Three-zone tiling GUI with live theme sync, activity tracking, 80+ unit tests
+- **Lucia** — Three-zone tiling GUI with live theme sync, activity tracking, 80+ unit tests
 - **Veltro** — AI agent system with namespace-based security, 39 tool modules, REPL, and sub-agent spawning
 - **llmsrv** — LLM providers exposed as 9P filesystem (Anthropic + OpenAI-compatible)
 - **Wallet & Payments** — Cryptocurrency wallet (wallet9p), x402 payment protocol, ERC-20 tokens, budget enforcement (**experimental — testnet only**)
@@ -338,11 +338,11 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 
 - Linux ARM64 SDL3 GUI support (backend 95% complete, build system integration remaining)
 - Windows JIT compiler
-- Lucifer P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md)
+- Lucia P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIFER-EVALUATION.md](docs/LUCIFER-EVALUATION.md)
 
 ## About
 
-InferNode is a GPL-free Inferno® OS distribution. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucifer + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
+InferNode is a GPL-free Inferno® OS distribution. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucia + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
 
 ## License
 
