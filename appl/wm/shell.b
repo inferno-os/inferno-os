@@ -1090,23 +1090,31 @@ handlekey(key: int)
 			scrolltobottom();
 		;
 	Kbs =>
-		if(curline != nlines - 1 || curcol <= len promptstr) {
-			cursortoinput();
-		} else {
+		if(curline == nlines - 1 && curcol > len promptstr) {
+			# On input line past prompt — edit inputbuf
 			syncinputcol();
 			if(inputcol > 0) {
 				inputbuf = inputbuf[0:inputcol-1] + inputbuf[inputcol:];
 				inputcol--;
 				curcol = len promptstr + inputcol;
 			}
+		} else if(curline != nlines - 1 && curcol > 0) {
+			# In transcript — edit in place
+			line := lines[curline];
+			lines[curline] = line[0:curcol-1] + line[curcol:];
+			curcol--;
 		}
 	Kdel =>
-		if(curline != nlines - 1 || curcol < len promptstr) {
-			cursortoinput();
-		} else {
+		if(curline == nlines - 1 && curcol >= len promptstr) {
+			# On input line past prompt — edit inputbuf
 			syncinputcol();
 			if(inputcol < len inputbuf)
 				inputbuf = inputbuf[0:inputcol] + inputbuf[inputcol+1:];
+		} else if(curline != nlines - 1) {
+			# In transcript — edit in place
+			line := lines[curline];
+			if(curcol < len line)
+				lines[curline] = line[0:curcol] + line[curcol+1:];
 		}
 	Kleft =>
 		if(curcol > 0)
@@ -1172,12 +1180,13 @@ handlekey(key: int)
 			fixcol();
 		}
 	'\t' =>
-		if(curline != nlines - 1 || curcol < len promptstr)
-			cursortoinput();
-		else
+		if(curline == nlines - 1 && curcol >= len promptstr) {
 			syncinputcol();
-		insertinput("\t");
-		curcol = len promptstr + inputcol;
+			insertinput("\t");
+			curcol = len promptstr + inputcol;
+		} else if(curline != nlines - 1) {
+			insertintranscript("\t");
+		}
 	Kesc =>
 		# Toggle hold mode
 		holding = !holding;
@@ -1189,16 +1198,19 @@ handlekey(key: int)
 		updatetitle();
 	* =>
 		if(key >= 16r20) {
-			# If cursor is not on the input line (or in prompt region),
-			# jump to end of input line first.
-			if(curline != nlines - 1 || curcol < len promptstr)
-				cursortoinput();
-			else
+			if(curline == nlines - 1 && curcol >= len promptstr) {
+				# On input line past prompt — edit inputbuf
 				syncinputcol();
-			s := "";
-			s[0] = key;
-			insertinput(s);
-			curcol = len promptstr + inputcol;
+				s := "";
+				s[0] = key;
+				insertinput(s);
+				curcol = len promptstr + inputcol;
+			} else if(curline != nlines - 1) {
+				# In transcript — edit in place (Plan 9 style)
+				s := "";
+				s[0] = key;
+				insertintranscript(s);
+			}
 		}
 	}
 }
@@ -1226,6 +1238,18 @@ insertinput(s: string)
 			inputcol++;
 		}
 	}
+}
+
+# Insert text at cursor position within a transcript line (Plan 9 style editing).
+insertintranscript(s: string)
+{
+	if(curline < 0 || curline >= nlines - 1)
+		return;
+	line := lines[curline];
+	if(curcol > len line)
+		curcol = len line;
+	lines[curline] = line[0:curcol] + s + line[curcol:];
+	curcol += len s;
 }
 
 # ---------- Hold mode ----------

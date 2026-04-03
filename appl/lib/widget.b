@@ -168,6 +168,22 @@ Kbdfilter.filter(kf: self ref Kbdfilter, c: int): int
 {
 	if(c >= 16rFF00)
 		return c;
+	# Translate native Inferno keyboard.h/keyboard.m constants
+	# (0xE0xx range) to widget.m constants (0xFF5x range).
+	# The emulator delivers arrow/nav keys as 0xE012 (Up) etc.
+	# but Draw apps use Kup (0xFF52) etc.
+	case c {
+	16rE010 => return Khome;
+	16rE011 => return Kend;
+	16rE012 => return Kup;
+	16rE013 => return Kdown;
+	16rE014 => return Kleft;
+	16rE015 => return Kright;
+	16rE016 => return Kpgup;
+	16rE017 => return Kpgdown;
+	16rE063 => return Kins;
+	16rE064 => return Kdel;
+	}
 	case kf.state {
 	0 =>
 		if(c == 27) {
