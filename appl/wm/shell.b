@@ -121,6 +121,7 @@ fgcolor_hold: ref Image;		# text color when holding
 cursorcolor: ref Image;
 selcolor: ref Image;
 promptcolor: ref Image;
+promptaccentcolor: ref Image;
 scrollbar: ref Scrollbar;
 statbar: ref Statusbar;
 
@@ -138,6 +139,10 @@ atbottom: int;		# auto-scroll to bottom
 # Input line (what user is typing, not yet sent)
 inputbuf: string;
 inputcol: int;		# cursor position within inputbuf
+
+# Global cursor (Plan 9 style — cursor can be anywhere in the buffer)
+curline: int;		# cursor line (0..nlines-1)
+curcol: int;		# cursor column in that line
 
 # The last partial line from shell output (prompt hint)
 promptstr: string;
@@ -278,6 +283,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	atbottom = 1;
 	inputbuf = "";
 	inputcol = 0;
+	curline = 0;
+	curcol = 0;
 	promptstr = "";
 	rawon = 0;
 	rawlock = chan[1] of int;
@@ -332,6 +339,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display_g.color(th.editcursor);
 		selcolor = display_g.color(th.accent);
 		promptcolor = display_g.color(th.dim);
+		promptaccentcolor = display_g.color(th.accent);
 	} else {
 		bgcolor = display_g.color(BG);
 		fgcolor_normal = display_g.color(FG);
@@ -340,6 +348,7 @@ init(ctxt: ref Draw->Context, argv: list of string)
 		cursorcolor = display_g.color(CURSORCOL);
 		selcolor = display_g.color(SELCOL);
 		promptcolor = display_g.color(PROMPTCOL);
+		promptaccentcolor = display_g.color(PROMPTCOL);
 	}
 	fgcolor = fgcolor_normal;
 
@@ -386,22 +395,12 @@ init(ctxt: ref Draw->Context, argv: list of string)
 			handlectl(ctl);
 		}
 	rawkey := <-w.ctxt.kbd =>
-		# Intercept bare ESC before the ANSI filter eats it.
-		# In windowed mode arrows arrive as 0xFF5x, so ESC (27)
-		# is always a genuine ESC keypress.
-		if(rawkey == Kesc) {
+		key := kbdfilter.filter(rawkey);
+		if(key >= 0) {
 			cursorvis = 1;
-			handlekey(Kesc);
+			handlekey(key);
 			shellstatedirty = 1;
 			redraw();
-		} else {
-			key := kbdfilter.filter(rawkey);
-			if(key >= 0) {
-				cursorvis = 1;
-				handlekey(key);
-				shellstatedirty = 1;
-				redraw();
-			}
 		}
 	p := <-w.ctxt.ptr =>
 		if(!w.pointer(*p)) {
@@ -455,16 +454,34 @@ init(ctxt: ref Draw->Context, argv: list of string)
 				} else if(p.buttons & 1 && nbuttons > 0 && buttonhit(p.xy)) {
 					redraw();
 				} else if(p.buttons & 1 && mousedown) {
-					# Selection drag — only redraw if endpoint changed
+					# Selection drag — batch pending pointer events
+					done := 0;
+					while(!done) alt {
+					p2 := <-w.ctxt.ptr =>
+						if(p2.buttons & 1)
+							p = p2;
+						else {
+							p = p2;
+							done = 1;
+						}
+					* =>
+						done = 1;
+					}
 					(ml, mc) := pos2cursor(p.xy);
 					if(ml != selendline || mc != selendcol) {
 						selendline = ml;
 						selendcol = mc;
+						curline = ml;
+						curcol = mc;
 						selactive = (ml != selstartline || mc != selstartcol);
 						redraw();
 					}
+					if(!(p.buttons & 1))
+						mousedown = 0;
 				} else {
 					(ml, mc) := pos2cursor(p.xy);
+					curline = ml;
+					curcol = mc;
 					selstartline = ml;
 					selstartcol = mc;
 					selendline = ml;
@@ -479,6 +496,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 					selactive = 1;
 					selendline = ml;
 					selendcol = mc;
+					curline = ml;
+					curcol = mc;
 				}
 				mousedown = 0;
 				redraw();
@@ -487,12 +506,25 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	<-ticks =>
 		cursorvis = !cursorvis;
 		drawcursor(cursorvis);
+		# Bare ESC timeout: if kbdfilter saw ESC but no [ within
+		# one tick, treat it as a genuine ESC (hold mode toggle).
+		if(kbdfilter.state == 1) {
+			kbdfilter.state = 0;
+			handlekey(Kesc);
+			shellstatedirty = 1;
+			redraw();
+		}
 		writeshellstate();
 	output := <-outputch =>
 		if(holding) {
 			holdqueue = output :: holdqueue;
 		} else {
+			wasoninput := (curline == nlines - 1);
 			appendoutput(output);
+			if(wasoninput) {
+				curline = nlines - 1;
+				curcol = len promptstr + inputcol;
+			}
 			if(atbottom && scrolling)
 				scrolltobottom();
 			shellstatedirty = 1;
@@ -967,7 +999,8 @@ handlekey(key: int)
 			inputbuf = "";
 			inputcol = 0;
 			appendoutput("^C\n");
-			;
+			curline = nlines - 1;
+			curcol = len promptstr;
 		4 =>	# Ctrl-D: EOF
 			if(inputbuf == "") {
 				s := "";
@@ -982,7 +1015,36 @@ handlekey(key: int)
 		21 =>	# Ctrl-U: clear input line
 			inputbuf = "";
 			inputcol = 0;
+			cursortoinput();
+		14 =>	# Ctrl-N: next history
+			if(histpos >= 0) {
+				histpos++;
+				if(histpos >= nhist) {
+					histpos = -1;
+					inputbuf = "";
+					inputcol = 0;
+				} else {
+					inputbuf = history[histpos];
+					inputcol = len inputbuf;
+				}
+				cursortoinput();
+			}
+		16 =>	# Ctrl-P: previous history
+			if(nhist > 0) {
+				if(histpos < 0)
+					histpos = nhist;
+				if(histpos > 0) {
+					histpos--;
+					inputbuf = history[histpos];
+					inputcol = len inputbuf;
+					cursortoinput();
+				}
+			}
 		23 =>	# Ctrl-W: delete word before cursor
+			if(curline != nlines - 1)
+				cursortoinput();
+			else
+				syncinputcol();
 			if(inputcol > 0) {
 				j := inputcol;
 				# Skip whitespace backwards
@@ -993,6 +1055,7 @@ handlekey(key: int)
 					j--;
 				inputbuf = inputbuf[0:j] + inputbuf[inputcol:];
 				inputcol = j;
+				curcol = len promptstr + inputcol;
 			}
 		}
 		return;
@@ -1000,63 +1063,101 @@ handlekey(key: int)
 
 	case key {
 	'\n' =>
-		line := inputbuf + "\n";
-		if(inputbuf != "")
-			addhistory(inputbuf);
-		histpos = -1;
-		appendoutput(inputbuf + "\n");
-		inputbuf = "";
-		inputcol = 0;
-		sendinput(line);
+		if(curline == nlines - 1) {
+			# Cursor on input line: send inputbuf
+			line := inputbuf + "\n";
+			if(inputbuf != "")
+				addhistory(inputbuf);
+			histpos = -1;
+			appendoutput(inputbuf + "\n");
+			inputbuf = "";
+			inputcol = 0;
+			sendinput(line);
+		} else {
+			# Cursor on transcript line: send that line (Plan 9 idiom)
+			text := lines[curline];
+			if(text != "")
+				addhistory(text);
+			histpos = -1;
+			sendinput(text + "\n");
+			appendoutput(text + "\n");
+			inputbuf = "";
+			inputcol = 0;
+		}
+		curline = nlines - 1;
+		curcol = len promptstr;
 		if(atbottom)
 			scrolltobottom();
 		;
 	Kbs =>
-		if(inputcol > 0) {
-			inputbuf = inputbuf[0:inputcol-1] + inputbuf[inputcol:];
-			inputcol--;
+		if(curline != nlines - 1 || curcol <= len promptstr) {
+			cursortoinput();
+		} else {
+			syncinputcol();
+			if(inputcol > 0) {
+				inputbuf = inputbuf[0:inputcol-1] + inputbuf[inputcol:];
+				inputcol--;
+				curcol = len promptstr + inputcol;
+			}
 		}
 	Kdel =>
-		if(inputcol < len inputbuf)
-			inputbuf = inputbuf[0:inputcol] + inputbuf[inputcol+1:];
+		if(curline != nlines - 1 || curcol < len promptstr) {
+			cursortoinput();
+		} else {
+			syncinputcol();
+			if(inputcol < len inputbuf)
+				inputbuf = inputbuf[0:inputcol] + inputbuf[inputcol+1:];
+		}
 	Kleft =>
-		if(inputcol > 0)
-			inputcol--;
+		if(curcol > 0)
+			curcol--;
+		else if(curline > 0) {
+			curline--;
+			curcol = len getlineat(curline);
+		}
+		selactive = 0;
+		scrolltocursor();
 	Kright =>
-		if(inputcol < len inputbuf)
-			inputcol++;
+		{
+			line := getlineat(curline);
+			if(curcol < len line)
+				curcol++;
+			else if(curline < nlines - 1) {
+				curline++;
+				curcol = 0;
+			}
+		}
+		selactive = 0;
+		scrolltocursor();
 	Khome =>
-		inputcol = 0;
+		curcol = 0;
+		selactive = 0;
 	Kend =>
-		inputcol = len inputbuf;
+		curcol = len getlineat(curline);
+		selactive = 0;
 	Kup =>
-		if(nhist > 0) {
-			if(histpos < 0)
-				histpos = nhist;
-			if(histpos > 0) {
-				histpos--;
-				inputbuf = history[histpos];
-				inputcol = len inputbuf;
-			}
+		if(curline > 0) {
+			curline--;
+			fixcol();
 		}
+		selactive = 0;
+		scrolltocursor();
 	Kdown =>
-		if(histpos >= 0) {
-			histpos++;
-			if(histpos >= nhist) {
-				histpos = -1;
-				inputbuf = "";
-				inputcol = 0;
-			} else {
-				inputbuf = history[histpos];
-				inputcol = len inputbuf;
-			}
+		if(curline < nlines - 1) {
+			curline++;
+			fixcol();
 		}
+		selactive = 0;
+		scrolltocursor();
 	Kpgup =>
 		if(vislines > 0) {
 			topline -= vislines;
 			if(topline < 0)
 				topline = 0;
 			atbottom = 0;
+			curline -= vislines;
+			if(curline < 0) curline = 0;
+			fixcol();
 		}
 	Kpgdown =>
 		if(vislines > 0) {
@@ -1066,9 +1167,17 @@ handlekey(key: int)
 			if(topline > maxtl) topline = maxtl;
 			if(topline >= nlines - vislines)
 				atbottom = 1;
+			curline += vislines;
+			if(curline >= nlines) curline = nlines - 1;
+			fixcol();
 		}
 	'\t' =>
+		if(curline != nlines - 1 || curcol < len promptstr)
+			cursortoinput();
+		else
+			syncinputcol();
 		insertinput("\t");
+		curcol = len promptstr + inputcol;
 	Kesc =>
 		# Toggle hold mode
 		holding = !holding;
@@ -1080,9 +1189,16 @@ handlekey(key: int)
 		updatetitle();
 	* =>
 		if(key >= 16r20) {
+			# If cursor is not on the input line (or in prompt region),
+			# jump to end of input line first.
+			if(curline != nlines - 1 || curcol < len promptstr)
+				cursortoinput();
+			else
+				syncinputcol();
 			s := "";
 			s[0] = key;
 			insertinput(s);
+			curcol = len promptstr + inputcol;
 		}
 	}
 }
@@ -1099,7 +1215,8 @@ insertinput(s: string)
 			inputbuf = "";
 			inputcol = 0;
 			sendinput(line);
-			;
+			curline = nlines - 1;
+			curcol = len promptstr;
 		} else {
 			if(inputcol >= len inputbuf)
 				inputbuf += s[i:i+1];
@@ -1211,6 +1328,11 @@ trimtranscript()
 		if(selstartline < 0 || selendline < 0)
 			selactive = 0;
 	}
+	curline -= drop;
+	if(curline < 0) {
+		curline = 0;
+		curcol = 0;
+	}
 }
 
 # growlines is a safety net: trimtranscript keeps nlines < len lines,
@@ -1232,7 +1354,8 @@ clearscreen()
 	nlines = 1;
 	topline = 0;
 	atbottom = 1;
-	;
+	curline = 0;
+	curcol = len promptstr;
 }
 
 scrolltobottom()
@@ -1266,6 +1389,45 @@ scrolltobottom()
 	}
 	topline = 0;
 	atbottom = 1;
+}
+
+scrolltocursor()
+{
+	if(vislines <= 0)
+		return;
+	if(curline < topline)
+		topline = curline;
+	else if(curline >= topline + vislines)
+		topline = curline - vislines + 1;
+	if(topline < 0)
+		topline = 0;
+}
+
+fixcol()
+{
+	line := getlineat(curline);
+	if(curcol > len line)
+		curcol = len line;
+}
+
+# Sync inputcol from the global cursor when on the input line.
+syncinputcol()
+{
+	if(curline != nlines - 1)
+		return;
+	inputcol = curcol - len promptstr;
+	if(inputcol < 0)
+		inputcol = 0;
+	if(inputcol > len inputbuf)
+		inputcol = len inputbuf;
+}
+
+# Move cursor to end of input line (for typing when cursor is in transcript).
+cursortoinput()
+{
+	curline = nlines - 1;
+	inputcol = len inputbuf;
+	curcol = len promptstr + inputcol;
 }
 
 # ---------- Selection ----------
@@ -1461,8 +1623,7 @@ redraw()
 				if(start < plen) {
 					pend := plen;
 					if(pend > end) pend = end;
-					screen.text(Point(textr.min.x, y), promptcolor,
-						Point(0, 0), font, inputline[start:pend]);
+					drawpromptchunk(screen, textr.min.x, y, inputline[start:pend]);
 					if(pend < end) {
 						px := textr.min.x + font.width(inputline[start:pend]);
 						screen.text(Point(px, y), fgcolor,
@@ -1590,9 +1751,39 @@ drawselwrap(screen: ref Image, linenum, chunkstart, chunkend, textx, y: int)
 	screen.draw(selr, selcolor, nil, Point(0, 0));
 }
 
+# Draw a prompt chunk with the ';' character in accent color.
+drawpromptchunk(screen: ref Image, x, y: int, chunk: string)
+{
+	# Find last semicolon for accent coloring
+	semi := -1;
+	for(i := len chunk - 1; i >= 0; i--)
+		if(chunk[i] == ';') {
+			semi = i;
+			break;
+		}
+	if(semi < 0) {
+		# No semicolon — all in promptcolor
+		screen.text(Point(x, y), promptcolor, Point(0, 0), font, chunk);
+		return;
+	}
+	# Text before semicolon
+	if(semi > 0) {
+		screen.text(Point(x, y), promptcolor, Point(0, 0), font, chunk[0:semi]);
+		x += font.width(chunk[0:semi]);
+	}
+	# The semicolon in accent
+	screen.text(Point(x, y), promptaccentcolor, Point(0, 0), font, chunk[semi:semi+1]);
+	x += font.width(chunk[semi:semi+1]);
+	# Text after semicolon
+	if(semi + 1 < len chunk)
+		screen.text(Point(x, y), promptcolor, Point(0, 0), font, chunk[semi+1:]);
+}
+
 drawcursor(vis: int)
 {
 	if(w.image == nil)
+		return;
+	if(curline < topline)
 		return;
 
 	textr := textrect();
@@ -1601,23 +1792,21 @@ drawcursor(vis: int)
 	if(font.height > 0)
 		maxvrows = textr.dy() / font.height;
 
-	# Walk from topline counting visual rows to find cursor position
-	inputline := promptstr + inputbuf;
-	cursorpos := len promptstr + inputcol;
+	# Walk from topline counting visual rows to find cursor line
 	vrow := 0;
-
-	# Count visual rows for transcript lines
-	for(i := topline; i < nlines - 1 && vrow < maxvrows; i++) {
+	for(i := topline; i < curline && vrow < maxvrows; i++) {
 		if(i < 0) continue;
-		line := lines[i];
+		line := getlineat(i);
 		vrow += linevisrows(line, maxpx);
 	}
-
 	if(vrow >= maxvrows)
 		return;
 
-	# Find which visual chunk of the input line contains the cursor
-	if(len inputline == 0) {
+	# Find which visual chunk of curline contains curcol
+	line := getlineat(curline);
+	cpos := curcol;
+
+	if(len line == 0) {
 		y := textr.min.y + vrow * font.height;
 		x := textr.min.x;
 		c := cursorcolor;
@@ -1630,13 +1819,13 @@ drawcursor(vis: int)
 	}
 
 	start := 0;
-	while(start < len inputline && vrow < maxvrows) {
-		end := wrapend(inputline, start, maxpx);
-		if(cursorpos >= start && (cursorpos < end || end >= len inputline)) {
+	while(start < len line && vrow < maxvrows) {
+		end := wrapend(line, start, maxpx);
+		if(cpos >= start && (cpos < end || end >= len line)) {
 			y := textr.min.y + vrow * font.height;
 			x := textr.min.x;
-			if(cursorpos > start)
-				x += font.width(inputline[start:cursorpos]);
+			if(cpos > start)
+				x += font.width(line[start:cpos]);
 			c := cursorcolor;
 			if(!vis)
 				c = bgcolor;
@@ -1768,6 +1957,7 @@ reloadcolors()
 		cursorcolor = display_g.color(th.editcursor);
 		selcolor = display_g.color(th.accent);
 		promptcolor = display_g.color(th.dim);
+		promptaccentcolor = display_g.color(th.accent);
 	}
 	updatefgcolor();
 	widgetmod->retheme(display_g);
