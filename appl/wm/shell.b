@@ -468,7 +468,18 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						done = 1;
 					}
 					(ml, mc) := pos2cursor(p.xy);
-					if(ml != selendline || mc != selendcol) {
+					if(!(p.buttons & 1)) {
+						# Button released inside batch — finalize selection
+						if(ml != selstartline || mc != selstartcol) {
+							selactive = 1;
+							selendline = ml;
+							selendcol = mc;
+						}
+						curline = ml;
+						curcol = mc;
+						mousedown = 0;
+						redraw();
+					} else if(ml != selendline || mc != selendcol) {
 						selendline = ml;
 						selendcol = mc;
 						curline = ml;
@@ -476,8 +487,6 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						selactive = (ml != selstartline || mc != selstartcol);
 						redraw();
 					}
-					if(!(p.buttons & 1))
-						mousedown = 0;
 				} else {
 					(ml, mc) := pos2cursor(p.xy);
 					curline = ml;
