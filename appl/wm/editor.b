@@ -534,14 +534,40 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						doc.topline = newo;
 					redraw();
 				} else if(p.buttons & 1 && mousedown) {
-					# Drag: anchor is fixed, update selection end live
+					# Drag: batch pending pointer events
+					done := 0;
+					while(!done) alt {
+					p2 := <-w.ctxt.ptr =>
+						if(p2.buttons & 1)
+							p = p2;
+						else {
+							p = p2;
+							done = 1;
+						}
+					* =>
+						done = 1;
+					}
 					(ml, mc2) := pos2cursor(p.xy);
-					doc.curline = ml;
-					doc.curcol = mc2;
-					doc.selactive = (ml != doc.selstartline || mc2 != doc.selstartcol);
-					if(doc.selactive) {
-						doc.selendline = ml;
-						doc.selendcol = mc2;
+					if(!(p.buttons & 1)) {
+						# Button released inside batch — finalize
+						if(ml != doc.selstartline || mc2 != doc.selstartcol) {
+							doc.selactive = 1;
+							doc.selendline = ml;
+							doc.selendcol = mc2;
+						}
+						doc.curline = ml;
+						doc.curcol = mc2;
+						mousedown = 0;
+						redraw();
+					} else if(ml != doc.selendline || mc2 != doc.selendcol) {
+						doc.curline = ml;
+						doc.curcol = mc2;
+						doc.selactive = (ml != doc.selstartline || mc2 != doc.selstartcol);
+						if(doc.selactive) {
+							doc.selendline = ml;
+							doc.selendcol = mc2;
+						}
+						redraw();
 					}
 				} else {
 					# New click: detect single/double/triple
@@ -584,8 +610,8 @@ init(ctxt: ref Draw->Context, argv: list of string)
 						doc.selstartcol = mc2;
 					}
 					mousedown = 1;
+					redraw();
 				}
-				redraw();
 			} else if(mousedown) {
 				# Button released: finalise selection
 				(ml, mc2) := pos2cursor(p.xy);
