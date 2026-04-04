@@ -65,6 +65,7 @@ display_g: ref Display;
 screen: ref Image;
 bodyfont: ref Font;
 smallfont: ref Font;
+logo_g: ref Image;	# cached brand image
 
 # Password state
 passbuf: string;
@@ -119,6 +120,9 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	savedpass = "";
 	cursor = 0;
 	escpending = 0;
+	# Load brand image once (reloading per-redraw can fail under resource pressure)
+	logo_g = loadpng(IMGPATH);
+
 	if(!secstoreacctexists()) {
 		state = STATE_SETUP_PASS;
 		statusmsg = "First boot \u2014 choose a secstore password";
@@ -280,14 +284,13 @@ redraw()
 	black := display_g.rgb(16r1a, 16r1a, 16r1a);
 	screen.draw(r, black, nil, ZP);
 
-	# Load and draw brand image (centered)
-	logo := loadpng(IMGPATH);
+	# Draw cached brand image (centered)
 	y := r.min.y + PADDING * 3;
-	if(logo != nil) {
-		lw := logo.r.dx();
-		lh := logo.r.dy();
+	if(logo_g != nil) {
+		lw := logo_g.r.dx();
+		lh := logo_g.r.dy();
 		lx := cx - lw / 2;
-		screen.draw(Rect((lx, y), (lx + lw, y + lh)), logo, nil, logo.r.min);
+		screen.draw(Rect((lx, y), (lx + lw, y + lh)), logo_g, nil, logo_g.r.min);
 		y += lh + PADDING * 2;
 	} else
 		y += PADDING * 4;
