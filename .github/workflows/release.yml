@@ -155,6 +155,20 @@ jobs:
         OBJTYPE=arm64 SYSTARG=MacOSX SHELL=/bin/sh mk GUIBACK=sdl3
         test -f o.emu || { echo "Emulator build failed"; exit 1; }
 
+    - name: Bundle SDL3 dylib and fix load paths
+      run: |
+        # Copy SDL3 dylib next to the emulator
+        SDL3_DYLIB=$(otool -L emu/MacOSX/o.emu | grep libSDL3 | awk '{print $1}')
+        cp "$SDL3_DYLIB" emu/MacOSX/libSDL3.0.dylib
+
+        # Rewrite o.emu to load SDL3 from its own directory
+        install_name_tool -change "$SDL3_DYLIB" \
+          @executable_path/libSDL3.0.dylib emu/MacOSX/o.emu
+
+        # Verify
+        echo "Updated load paths:"
+        otool -L emu/MacOSX/o.emu | grep -i sdl
+
     - name: Import signing certificate
       env:
         APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
@@ -173,6 +187,10 @@ jobs:
     - name: Sign binaries
       run: |
         IDENTITY="Developer ID Application: Synectify, Pte Ltd (TJ448C32Q3)"
+
+        # Sign SDL3 dylib first (must be signed before the binary that loads it)
+        codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" emu/MacOSX/libSDL3.0.dylib
 
         codesign --force --options runtime --timestamp \
           --sign "$IDENTITY" emu/MacOSX/o.emu
@@ -198,8 +216,8 @@ jobs:
         # .app bundle (includes launcher script, icon, llm9p)
         cp -a MacOSX/InferNode.app "$STAGE/MacOSX/"
 
-        # Emulator binary (referenced by .app launcher via relative path)
-        cp emu/MacOSX/o.emu "$STAGE/emu/MacOSX/"
+        # Emulator binary and SDL3 dylib (referenced by .app launcher via relative path)
+        cp emu/MacOSX/o.emu emu/MacOSX/libSDL3.0.dylib "$STAGE/emu/MacOSX/"
 
         # Native tools
         cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"
