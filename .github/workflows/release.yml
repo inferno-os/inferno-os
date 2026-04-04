@@ -155,6 +155,40 @@ jobs:
         OBJTYPE=arm64 SYSTARG=MacOSX SHELL=/bin/sh mk GUIBACK=sdl3
         test -f o.emu || { echo "Emulator build failed"; exit 1; }
 
+    - name: Import signing certificate
+      env:
+        APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      run: |
+        echo "$APPLE_CERTIFICATE_P12" | base64 --decode > /tmp/certificate.p12
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security import /tmp/certificate.p12 -k build.keychain \
+          -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+        security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+        security find-identity -v -p codesigning build.keychain
+        rm /tmp/certificate.p12
+
+    - name: Sign binaries
+      run: |
+        IDENTITY="Developer ID Application: Synectify, Pte Ltd (TJ448C32Q3)"
+
+        codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" emu/MacOSX/o.emu
+
+        for tool in MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk; do
+          [ -f "$tool" ] && codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" "$tool"
+        done
+
+        if [ -f MacOSX/InferNode.app/Contents/MacOS/llm9p ]; then
+          codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" MacOSX/InferNode.app/Contents/MacOS/llm9p
+        fi
+
+        codesign -dvv emu/MacOSX/o.emu
+
     - name: Package archive
       run: |
         VERSION="${{ steps.version.outputs.version }}"
@@ -191,6 +225,27 @@ jobs:
 
         tar czf "${STAGE}.tar.gz" "$STAGE"
         echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
+
+    - name: Notarize archive
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        STAGE="infernode-${VERSION}-macos-arm64"
+
+        # Apple requires zip for notarization
+        ditto -c -k --keepParent "$STAGE" /tmp/notarize.zip
+
+        xcrun notarytool submit /tmp/notarize.zip \
+          --apple-id "$APPLE_ID" \
+          --team-id "$APPLE_TEAM_ID" \
+          --password "$APPLE_APP_PASSWORD" \
+          --wait --timeout 15m
+
+        rm /tmp/notarize.zip
+        echo "Notarization complete"
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
