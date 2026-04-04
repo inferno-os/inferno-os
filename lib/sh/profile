@@ -22,6 +22,8 @@ ndb/cs
 # instance with different PAK data causes login to hang indefinitely.
 # Sleep after kill to let the OS release the port (TCP TIME_WAIT).
 os sh -c 'lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null; sleep 1; true' >[2] /dev/null
+# Ensure secstore data directory exists (first boot from distribution)
+mkdir -p /usr/inferno/secstore >[2] /dev/null
 auth/secstored >[2] /dev/null &
 sleep 1
 

@@ -158,19 +158,22 @@ jobs:
         OBJTYPE=arm64 SYSTARG=MacOSX SHELL=/bin/sh mk GUIBACK=sdl3
         test -f o.emu || { echo "Emulator build failed"; exit 1; }
 
-    - name: Bundle SDL3 dylib and fix load paths
+    - name: Prepare macOS binary
       run: |
-        # Copy SDL3 dylib next to the emulator
-        SDL3_DYLIB=$(otool -L emu/MacOSX/o.emu | grep libSDL3 | awk '{print $1}')
+        # Copy o.emu to InferNode so macOS shows correct app name in Dock/menu
+        cp emu/MacOSX/o.emu emu/MacOSX/InferNode
+
+        # Bundle SDL3 dylib next to the binary
+        SDL3_DYLIB=$(otool -L emu/MacOSX/InferNode | grep libSDL3 | awk '{print $1}')
         cp "$SDL3_DYLIB" emu/MacOSX/libSDL3.0.dylib
 
-        # Rewrite o.emu to load SDL3 from its own directory
+        # Rewrite InferNode to load SDL3 from its own directory
         install_name_tool -change "$SDL3_DYLIB" \
-          @executable_path/libSDL3.0.dylib emu/MacOSX/o.emu
+          @executable_path/libSDL3.0.dylib emu/MacOSX/InferNode
 
         # Verify
         echo "Updated load paths:"
-        otool -L emu/MacOSX/o.emu | grep -i sdl
+        otool -L emu/MacOSX/InferNode | grep -i sdl
 
     - name: Import signing certificate
       env:
@@ -212,7 +215,7 @@ jobs:
 
         codesign --force --options runtime --timestamp \
           --entitlements /tmp/emu-entitlements.plist \
-          --sign "$IDENTITY" emu/MacOSX/o.emu
+          --sign "$IDENTITY" emu/MacOSX/InferNode
 
         for tool in MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk; do
           [ -f "$tool" ] && codesign --force --options runtime --timestamp \
@@ -224,7 +227,7 @@ jobs:
             --sign "$IDENTITY" MacOSX/InferNode.app/Contents/MacOS/llm9p
         fi
 
-        codesign -dvv emu/MacOSX/o.emu
+        codesign -dvv emu/MacOSX/InferNode
 
     - name: Package archive
       run: |
@@ -236,7 +239,7 @@ jobs:
         cp -a MacOSX/InferNode.app "$STAGE/MacOSX/"
 
         # Emulator binary and SDL3 dylib (referenced by .app launcher via relative path)
-        cp emu/MacOSX/o.emu emu/MacOSX/libSDL3.0.dylib "$STAGE/emu/MacOSX/"
+        cp emu/MacOSX/InferNode emu/MacOSX/libSDL3.0.dylib "$STAGE/emu/MacOSX/"
 
         # Native tools
         cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"

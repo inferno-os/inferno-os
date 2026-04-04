@@ -6,7 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Navigate to InferNode root (MacOSX/InferNode.app/Contents/MacOS -> root)
 INFERNODE_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
 
-EMU="$INFERNODE_ROOT/emu/MacOSX/o.emu"
+# Use 'InferNode' binary name so macOS shows the correct app name
+# in the Dock and menu bar (macOS uses the binary's filename).
+EMU="$INFERNODE_ROOT/emu/MacOSX/InferNode"
 
 # Login screen unlocks secstore and loads keys into factotum.
 # After login, restart llmsrv if it failed during profile (no API key yet).
