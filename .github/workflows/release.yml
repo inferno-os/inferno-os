@@ -188,11 +188,27 @@ jobs:
       run: |
         IDENTITY="Developer ID Application: Synectify, Pte Ltd (TJ448C32Q3)"
 
+        # Create entitlements for JIT support (the Dis VM JIT compiler
+        # needs to allocate executable memory pages via MAP_JIT)
+        cat > /tmp/emu-entitlements.plist << 'PLIST'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.cs.allow-jit</key>
+            <true/>
+            <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+            <true/>
+        </dict>
+        </plist>
+        PLIST
+
         # Sign SDL3 dylib first (must be signed before the binary that loads it)
         codesign --force --options runtime --timestamp \
           --sign "$IDENTITY" emu/MacOSX/libSDL3.0.dylib
 
         codesign --force --options runtime --timestamp \
+          --entitlements /tmp/emu-entitlements.plist \
           --sign "$IDENTITY" emu/MacOSX/o.emu
 
         for tool in MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk; do
