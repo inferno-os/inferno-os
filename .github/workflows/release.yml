@@ -63,9 +63,12 @@ jobs:
         cp Linux/amd64/bin/limbo Linux/amd64/bin/mk "$STAGE/Linux/amd64/bin/"
 
         # Shared runtime tree
-        for d in dis lib fonts module services locale; do
+        for d in dis lib fonts module services locale usr; do
           [ -d "$d" ] && cp -a "$d" "$STAGE/"
         done
+
+        # Empty mount-point directories required by the Inferno runtime
+        mkdir -p "$STAGE/mnt" "$STAGE/tmp"
 
         # mkconfig and mkfiles (needed for building from source)
         cp mkconfig "$STAGE/"
@@ -239,9 +242,12 @@ jobs:
         cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"
 
         # Shared runtime tree
-        for d in dis lib fonts module services locale; do
+        for d in dis lib fonts module services locale usr; do
           [ -d "$d" ] && cp -a "$d" "$STAGE/"
         done
+
+        # Empty mount-point directories required by the Inferno runtime
+        mkdir -p "$STAGE/mnt" "$STAGE/tmp"
 
         # mkconfig and mkfiles (needed for building from source)
         cp mkconfig "$STAGE/"
