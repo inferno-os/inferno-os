@@ -340,6 +340,12 @@ See [docs/WINDOWS-BUILD.md](docs/WINDOWS-BUILD.md) for detailed Windows instruct
 - Windows JIT compiler
 - Lucia P0 fixes (app slot watchdog, voice FD leak, font nil guards) — see [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md)
 
+## Contributing
+
+We welcome contributions — from security audits and 9P integrations to bug
+fixes and documentation. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get
+started, what the project needs most, and development workflow details.
+
 ## About
 
 InferNode is a GPL-free Inferno® OS distribution. It extends the MIT-licensed Inferno® OS codebase with JIT compilers for AMD64 and ARM64, an AI agent system (Veltro) with formally verified namespace isolation, a cryptocurrency wallet with x402 payment protocol, quantum-safe cryptography, a Go-to-Dis compiler, and an optional SDL3 GUI (Lucia + Xenith). Designed for embedded systems, servers, and AI agent applications where lightweight footprint and capability-based security matter.
