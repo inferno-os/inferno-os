@@ -976,18 +976,21 @@ updatemessage(idx: int)
 	if(role != nil && role != "")
 		msgstore[idx].role = role;
 	msgstore[idx].text = text;
+	# Always sync dialogue fields from server — absence means empty.
+	# Without this, cleared fields (e.g. options="" after button click)
+	# are omitted from server output and the local value persists.
 	dtype := getattr(attrs, "dtype");
+	if(dtype == nil) dtype = "";
+	msgstore[idx].dtype = dtype;
 	title := getattr(attrs, "title");
+	if(title == nil) title = "";
+	msgstore[idx].title = title;
 	progress := getattr(attrs, "progress");
+	if(progress == nil) progress = "";
+	msgstore[idx].progress = progress;
 	options := getattr(attrs, "options");
-	if(dtype != nil)
-		msgstore[idx].dtype = dtype;
-	if(title != nil)
-		msgstore[idx].title = title;
-	if(progress != nil)
-		msgstore[idx].progress = progress;
-	if(options != nil)
-		msgstore[idx].options = options;
+	if(options == nil) options = "";
+	msgstore[idx].options = options;
 	msgstore[idx].rendimg = nil;
 }
 
