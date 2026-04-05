@@ -12,7 +12,7 @@ BUNDLE_RESOURCES="$BUNDLE_DIR/Resources"
 # Test the directory CONTAINING the .app, not inside the signed bundle.
 APP_PARENT="$(cd "$BUNDLE_DIR/.." && pwd)"
 if ! touch "$APP_PARENT/.infernode-writetest" 2>/dev/null; then
-    osascript -e 'display dialog "Please drag InferNode.app to your Applications folder (or Desktop) before opening it." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
+    osascript -e 'display dialog "InferNode cannot run from a disk image. Please copy InferNode.app to your hard drive first (e.g. Applications, Desktop, or any folder)." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
     exit 0
 fi
 rm -f "$APP_PARENT/.infernode-writetest"
