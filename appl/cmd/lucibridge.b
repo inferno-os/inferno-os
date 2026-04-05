@@ -260,6 +260,19 @@ writemsg(role, text: string)
 }
 
 # Set activity status
+# Sync convcount with the server's actual message count.
+# Called before streaming to prevent index drift when dialogue tiles
+# or other messages are injected externally.
+syncconvcount()
+{
+	base := sys->sprint("/n/ui/activity/%d/conversation", actid);
+	for(convcount = 0; ; convcount++) {
+		(cok, nil) := sys->stat(sys->sprint("%s/%d", base, convcount));
+		if(cok < 0)
+			break;
+	}
+}
+
 setstatus(status: string)
 {
 	path := sys->sprint("/n/ui/activity/%d/status", actid);
@@ -925,6 +938,9 @@ cowrevert(arg: string): string
 # fires before nslistener re-issues its pending read.
 agentturn(input: string)
 {
+	# Sync convcount with actual server message count before streaming.
+	syncconvcount();
+
 	# Apply any namespace path changes (via /tool/ctl bindpath/unbindpath).
 	applypathchanges();
 
@@ -1284,16 +1300,8 @@ init(nil: ref Draw->Context, args: list of string)
 	# Show welcome document on first launch
 	showwelcome(actid);
 
-	# Sync convcount with messages already in the conversation (e.g. the
-	# task tool injects a system context message before we start).
-	# Without this, placeholder_idx is off-by-one and streaming updates
-	# overwrite the wrong message slot, mixing up roles.
-	convbase := sys->sprint("/n/ui/activity/%d/conversation", actid);
-	for(convcount = 0; ; convcount++) {
-		(cok, nil) := sys->stat(sys->sprint("%s/%d", convbase, convcount));
-		if(cok < 0)
-			break;
-	}
+	# Sync convcount with messages already in the conversation.
+	syncconvcount();
 
 	# For child TAs (actid > 0): read the task brief and optional instructions
 	# written by the task tool.  Append them to the LLM system prompt inside
