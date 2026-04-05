@@ -8,6 +8,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUNDLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUNDLE_RESOURCES="$BUNDLE_DIR/Resources"
 
+# Detect if running from a DMG or read-only volume — ask user to copy first
+if ! touch "$BUNDLE_DIR/.writetest" 2>/dev/null; then
+    osascript -e 'display dialog "Please drag InferNode.app to your Applications folder (or Desktop) before opening it." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
+    exit 0
+fi
+rm -f "$BUNDLE_DIR/.writetest"
+
 # Persistent writable copy in user's home
 INFERNODE_HOME="$HOME/.infernode"
 
