@@ -1429,8 +1429,7 @@ init(nil: ref Draw->Context, args: list of string)
 				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
 				"I need an LLM connection to get started. Choose an option below:");
 			setupidx := writedialogue("LLM Setup",
-				"**Anthropic API** \u2014 cloud-hosted, requires an API key from anthropic.com\n\n" +
-				"**Local LLM** \u2014 run locally via Ollama (no API key needed)",
+				"Choose how to connect to an AI model:",
 				"", "Set up API Key,Use Local LLM (Ollama)");
 			log("no /n/llm — displayed setup dialogue tile");
 
@@ -1447,31 +1446,23 @@ init(nil: ref Draw->Context, args: list of string)
 				log("setup choice: " + choice);
 
 				if(choice == "Set up API Key") {
-					# Try to launch Keyring in the presentation zone
+					# Launch Keyring in the presentation zone
 					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
 					writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
 					sys->sleep(500);
 					writefile(pctl, "center id=keyring");
 
-					updatedialogue(setupidx, "API Key Setup",
-						"I've opened the **Keyring** app for you.\n\n" +
-						"1. Select *API Key*\n" +
-						"2. Enter `anthropic` as the service name\n" +
-						"3. Paste your API key\n\n" +
-						"Then restart InferNode. Your key will persist via secstore.", "");
+					updatedialogue(setupidx, "", "API Key Setup",
+						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. Then restart InferNode.");
 				} else if(choice == "Use Local LLM (Ollama)") {
-					# Try to launch Settings in the presentation zone
+					# Launch Settings in the presentation zone
 					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
 					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
 					sys->sleep(500);
 					writefile(pctl, "center id=settings");
 
-					updatedialogue(setupidx, "Local LLM Setup",
-						"I've opened **Settings** for you.\n\n" +
-						"1. Go to **LLM Service**\n" +
-						"2. Switch backend to *Ollama*\n" +
-						"3. Set the URL (default: http://localhost:11434)\n\n" +
-						"Then restart InferNode.", "");
+					updatedialogue(setupidx, "", "Local LLM Setup",
+						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. Then restart InferNode.");
 				}
 
 				# Check if user configured LLM while in setup
