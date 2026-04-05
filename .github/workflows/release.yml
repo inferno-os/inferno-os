@@ -214,6 +214,16 @@ jobs:
           [ -d "$d" ] && cp -a "$d" "$RESOURCES/"
         done
         mkdir -p "$RESOURCES/tmp" "$RESOURCES/usr/inferno/secstore"
+
+        # Set distribution defaults for LLM config
+        # (dev config may point to internal servers)
+        cat > "$RESOURCES/lib/ndb/llm" << 'LLMCONF'
+        mode=local
+        backend=api
+        url=https://api.anthropic.com
+        model=claude-sonnet-4-5-20250929
+        dial=
+        LLMCONF
         cp mkconfig "$RESOURCES/"
         [ -d mkfiles ] && cp -a mkfiles "$RESOURCES/"
 

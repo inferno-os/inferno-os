@@ -1428,7 +1428,7 @@ init(nil: ref Draw->Context, args: list of string)
 			writemsg("veltro",
 				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
 				"I need an LLM connection to get started. Choose an option below:");
-			setupidx := writedialogue("LLM Setup",
+			writedialogue("LLM Setup",
 				"Choose how to connect to an AI model:",
 				"", "Set up API Key,Use Local LLM (Ollama)");
 			log("no /n/llm — displayed setup dialogue tile");
@@ -1452,8 +1452,9 @@ init(nil: ref Draw->Context, args: list of string)
 					sys->sleep(500);
 					writefile(pctl, "center id=keyring");
 
-					updatedialogue(setupidx, "", "API Key Setup",
-						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. Then restart InferNode.");
+					writemsg("veltro",
+						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. " +
+						"Then quit InferNode (Cmd+Q) and reopen it.");
 				} else if(choice == "Use Local LLM (Ollama)") {
 					# Launch Settings in the presentation zone
 					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
@@ -1461,18 +1462,14 @@ init(nil: ref Draw->Context, args: list of string)
 					sys->sleep(500);
 					writefile(pctl, "center id=settings");
 
-					updatedialogue(setupidx, "", "Local LLM Setup",
-						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. Then restart InferNode.");
+					writemsg("veltro",
+						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. " +
+						"Then quit InferNode (Cmd+Q) and reopen it.");
 				}
-
-				# Check if user configured LLM while in setup
-				for(i := 0; i < 5; i++) {
-					sys->sleep(2000);
-					if(agentlib->pathexists("/n/llm"))
-						break;
-				}
-				if(agentlib->pathexists("/n/llm"))
-					break;
+				# After button click, stay alive but don't loop — user
+				# follows the instructions and restarts. Block until quit.
+				for(;;)
+					sys->sleep(60000);
 			}
 			if(!agentlib->pathexists("/n/llm"))
 				fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
