@@ -1422,37 +1422,72 @@ init(nil: ref Draw->Context, args: list of string)
 	if(sys->open("/n/ui/ctl", Sys->OREAD) == nil)
 		fatal("/n/ui/ not mounted — start luciuisrv first");
 	if(!agentlib->pathexists("/n/llm")) {
-		# Check if this is an API key issue
 		backend := readndbfield("/lib/ndb/llm", "backend");
 		if(backend == nil || backend == "" || backend == "api") {
-			# No LLM service — guide the user through first-time setup
+			# No LLM service — show interactive setup dialogue
 			writemsg("veltro",
 				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
-				"I need an LLM connection to work. I've opened the **Keyring** for you " +
-				"\u2014 add your Anthropic API key there (select *API Key*, enter `anthropic` " +
-				"as the service name, and paste your key).\n\n" +
-				"If you'd prefer to use a **local LLM** (Ollama), open **Settings** from the " +
-				"context zone and switch the LLM backend.\n\n" +
-				"Once configured, restart InferNode and I'll be ready to help.");
-			log("no /n/llm and backend=api — displayed setup guidance");
+				"I need an LLM connection to get started. Choose an option below:");
+			setupidx := writedialogue("LLM Setup",
+				"**Anthropic API** \u2014 cloud-hosted, requires an API key from anthropic.com\n\n" +
+				"**Local LLM** \u2014 run locally via Ollama (no API key needed)",
+				"", "Set up API Key,Use Local LLM (Ollama)");
+			log("no /n/llm — displayed setup dialogue tile");
 
-			# Launch Keyring in the presentation zone
-			pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-			writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
-			sys->sleep(300);
-			writefile(pctl, "center id=keyring");
-
-			# Don't fatal — stay alive so the user can read the message
-			# and interact with the keyring app.  Poll for /n/llm.
-			log("waiting for /n/llm to appear...");
+			# Enter setup loop: read button clicks from conversation input
+			inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
 			for(;;) {
-				sys->sleep(3000);
+				inputfd := sys->open(inputpath, Sys->OREAD);
+				if(inputfd == nil)
+					break;
+				choice := blockread(inputfd);
+				inputfd = nil;
+				if(choice == nil)
+					break;
+				log("setup choice: " + choice);
+
+				if(choice == "Set up API Key") {
+					# Try to launch Keyring in the presentation zone
+					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+					writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
+					sys->sleep(500);
+					writefile(pctl, "center id=keyring");
+
+					updatedialogue(setupidx, "API Key Setup",
+						"I've opened the **Keyring** app for you.\n\n" +
+						"1. Select *API Key*\n" +
+						"2. Enter `anthropic` as the service name\n" +
+						"3. Paste your API key\n\n" +
+						"Then restart InferNode. Your key will persist via secstore.", "");
+				} else if(choice == "Use Local LLM (Ollama)") {
+					# Try to launch Settings in the presentation zone
+					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+					sys->sleep(500);
+					writefile(pctl, "center id=settings");
+
+					updatedialogue(setupidx, "Local LLM Setup",
+						"I've opened **Settings** for you.\n\n" +
+						"1. Go to **LLM Service**\n" +
+						"2. Switch backend to *Ollama*\n" +
+						"3. Set the URL (default: http://localhost:11434)\n\n" +
+						"Then restart InferNode.", "");
+				}
+
+				# Check if user configured LLM while in setup
+				for(i := 0; i < 5; i++) {
+					sys->sleep(2000);
+					if(agentlib->pathexists("/n/llm"))
+						break;
+				}
 				if(agentlib->pathexists("/n/llm"))
 					break;
 			}
+			if(!agentlib->pathexists("/n/llm"))
+				fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
 			log("/n/llm appeared — continuing startup");
 		} else {
-			fatal("/n/llm/ not mounted — start llmsrv or mount remote LLM");
+			fatal("/n/llm/ not mounted \u2014 start llmsrv or mount remote LLM");
 		}
 	}
 
