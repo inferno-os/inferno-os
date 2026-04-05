@@ -35,9 +35,18 @@ for d in dis module services locale fonts; do
     src="$BUNDLE_RESOURCES/$d"
     [ -d "$src" ] && cp -a "$src" "$INFERNODE_HOME/"
 done
-# Sync lib/ but preserve user-modified files
+# Sync lib/ but preserve user config files (ndb/llm, veltro settings, etc.)
 if [ -d "$BUNDLE_RESOURCES/lib" ]; then
+    # Back up user configs
+    for uf in lib/ndb/llm lib/veltro/meta.txt lib/veltro/agents/task.txt; do
+        [ -f "$INFERNODE_HOME/$uf" ] && cp "$INFERNODE_HOME/$uf" "$INFERNODE_HOME/$uf.user"
+    done
+    # Sync everything from bundle
     cp -a "$BUNDLE_RESOURCES/lib/." "$INFERNODE_HOME/lib/" 2>/dev/null
+    # Restore user configs
+    for uf in lib/ndb/llm lib/veltro/meta.txt lib/veltro/agents/task.txt; do
+        [ -f "$INFERNODE_HOME/$uf.user" ] && mv "$INFERNODE_HOME/$uf.user" "$INFERNODE_HOME/$uf"
+    done
 fi
 
 # Emulator binary is in Contents/MacOS/ alongside this script
