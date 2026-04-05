@@ -209,7 +209,9 @@ jobs:
         </plist>
         PLIST
 
-        # Sign SDL3 dylib first (must be signed before the binary that loads it)
+        # Sign all binaries that will go inside the .app bundle.
+        # Sign innermost first, then the bundle last.
+
         codesign --force --options runtime --timestamp \
           --sign "$IDENTITY" emu/MacOSX/libSDL3.0.dylib
 
@@ -229,48 +231,93 @@ jobs:
 
         codesign -dvv emu/MacOSX/InferNode
 
-    - name: Package archive
+    - name: Package self-contained app bundle
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        STAGE="infernode-${VERSION}-macos-arm64"
-        mkdir -p "$STAGE/emu/MacOSX" "$STAGE/MacOSX/arm64/bin"
+        APP="InferNode.app"
+        CONTENTS="$APP/Contents"
+        MACOS="$CONTENTS/MacOS"
+        RESOURCES="$CONTENTS/Resources"
 
-        # .app bundle (includes launcher script, icon, llm9p)
-        cp -a MacOSX/InferNode.app "$STAGE/MacOSX/"
+        # Start from the checked-out .app bundle (has Info.plist, icon, launcher)
+        cp -a MacOSX/InferNode.app "$APP"
 
-        # Emulator binary and SDL3 dylib (referenced by .app launcher via relative path)
-        cp emu/MacOSX/InferNode emu/MacOSX/libSDL3.0.dylib "$STAGE/emu/MacOSX/"
+        # Emulator binary and SDL3 go in Contents/MacOS/
+        cp emu/MacOSX/InferNode "$MACOS/emu"
+        cp emu/MacOSX/libSDL3.0.dylib "$MACOS/"
 
         # Native tools
-        cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"
+        mkdir -p "$MACOS/tools"
+        cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$MACOS/tools/"
 
-        # Shared runtime tree
+        # Runtime tree goes in Contents/Resources/
         for d in dis lib fonts module services locale usr mnt; do
-          [ -d "$d" ] && cp -a "$d" "$STAGE/"
+          [ -d "$d" ] && cp -a "$d" "$RESOURCES/"
         done
+        mkdir -p "$RESOURCES/tmp" "$RESOURCES/usr/inferno/secstore"
+        cp mkconfig "$RESOURCES/"
+        [ -d mkfiles ] && cp -a mkfiles "$RESOURCES/"
 
-        # tmp directory (needed by profile)
-        mkdir -p "$STAGE/tmp"
-
-        # mkconfig and mkfiles (needed for building from source)
-        cp mkconfig "$STAGE/"
-        [ -d mkfiles ] && cp -a mkfiles "$STAGE/"
-
-        # Build scripts
-        for f in build-macos-sdl3.sh build-macos-headless.sh makemk.sh; do
-          [ -f "$f" ] && cp "$f" "$STAGE/"
-        done
-
-        # Docs and legal
+        # Docs in Resources
         for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
-          [ -f "$f" ] && cp "$f" "$STAGE/"
+          [ -f "$f" ] && cp "$f" "$RESOURCES/"
         done
 
-        # Create DMG (macOS auto-strips quarantine from notarized DMGs)
+        # Build scripts in Resources
+        for f in build-macos-sdl3.sh build-macos-headless.sh makemk.sh; do
+          [ -f "$f" ] && cp "$f" "$RESOURCES/"
+        done
+
+        # Create DMG
         DMG="infernode-${VERSION}-macos-arm64.dmg"
-        hdiutil create -volname "InferNode ${VERSION}" \
-          -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+        hdiutil create -volname "InferNode" \
+          -srcfolder "$APP" -ov -format UDZO "$DMG"
         echo "DMG: $(ls -lh $DMG)"
+
+    - name: Sign app bundle
+      run: |
+        IDENTITY="Developer ID Application: Synectify, Pte Ltd (TJ448C32Q3)"
+
+        cat > /tmp/emu-entitlements.plist << 'PLIST'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.cs.allow-jit</key>
+            <true/>
+            <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+            <true/>
+        </dict>
+        </plist>
+        PLIST
+
+        APP="InferNode.app"
+
+        # Sign SDL3 dylib inside the bundle
+        codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" "$APP/Contents/MacOS/libSDL3.0.dylib"
+
+        # Sign emulator with JIT entitlements
+        codesign --force --options runtime --timestamp \
+          --entitlements /tmp/emu-entitlements.plist \
+          --sign "$IDENTITY" "$APP/Contents/MacOS/emu"
+
+        # Sign tools
+        for tool in "$APP/Contents/MacOS/tools/limbo" "$APP/Contents/MacOS/tools/mk"; do
+          [ -f "$tool" ] && codesign --force --options runtime --timestamp \
+            --sign "$IDENTITY" "$tool"
+        done
+
+        # Sign llm9p if present
+        [ -f "$APP/Contents/MacOS/llm9p" ] && codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" "$APP/Contents/MacOS/llm9p"
+
+        # Sign the entire .app bundle (must be last)
+        codesign --force --options runtime --timestamp \
+          --entitlements /tmp/emu-entitlements.plist \
+          --sign "$IDENTITY" "$APP"
+
+        codesign -dvv "$APP"
 
     - name: Notarize DMG
       env:
