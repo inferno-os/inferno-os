@@ -1222,19 +1222,35 @@ init(nil: ref Draw->Context, args: list of string)
 		# Check if this is an API key issue
 		backend := readndbfield("/lib/ndb/llm", "backend");
 		if(backend == nil || backend == "" || backend == "api") {
-			# No LLM service and backend requires API key — guide the user
-			writemsg("assistant",
-				"No LLM service available. The Anthropic API key is not configured.\n\n" +
-				"To get started:\n" +
-				"1. Open the **Keyring** app (right-click desktop \u2192 Keyring)\n" +
-				"2. Add an API Key with service name `anthropic`\n" +
-				"3. Restart InferNode\n\n" +
-				"The key will be stored securely in secstore and persist across restarts.");
-			log("no /n/llm and backend=api — displayed API key guidance");
-			# Wait for the user to read the message, then exit
-			sys->sleep(500);
+			# No LLM service — guide the user through first-time setup
+			writemsg("veltro",
+				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
+				"I need an LLM connection to work. I've opened the **Keyring** for you " +
+				"\u2014 add your Anthropic API key there (select *API Key*, enter `anthropic` " +
+				"as the service name, and paste your key).\n\n" +
+				"If you'd prefer to use a **local LLM** (Ollama), open **Settings** from the " +
+				"context zone and switch the LLM backend.\n\n" +
+				"Once configured, restart InferNode and I'll be ready to help.");
+			log("no /n/llm and backend=api — displayed setup guidance");
+
+			# Launch Keyring in the presentation zone
+			pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+			writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
+			sys->sleep(300);
+			writefile(pctl, "center id=keyring");
+
+			# Don't fatal — stay alive so the user can read the message
+			# and interact with the keyring app.  Poll for /n/llm.
+			log("waiting for /n/llm to appear...");
+			for(;;) {
+				sys->sleep(3000);
+				if(agentlib->pathexists("/n/llm"))
+					break;
+			}
+			log("/n/llm appeared — continuing startup");
+		} else {
+			fatal("/n/llm/ not mounted — start llmsrv or mount remote LLM");
 		}
-		fatal("/n/llm/ not mounted — start llmsrv or mount remote LLM");
 	}
 
 	# Tools are optional — bridge works as simple chat relay without them

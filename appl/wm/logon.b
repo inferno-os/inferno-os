@@ -120,8 +120,13 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	savedpass = "";
 	cursor = 0;
 	escpending = 0;
+
 	# Load brand image once (reloading per-redraw can fail under resource pressure)
 	logo_g = loadpng(IMGPATH);
+
+	# Brief delay for display to settle (prevents blank-screen glitch
+	# when the display is still initializing on fast startup)
+	sys->sleep(200);
 
 	if(!secstoreacctexists()) {
 		state = STATE_SETUP_PASS;
