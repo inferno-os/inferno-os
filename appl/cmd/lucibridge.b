@@ -721,11 +721,13 @@ showwelcome(aid: int)
 }
 
 # Offer a guided tour on the second launch (keys configured, first-run done).
-# Uses a dialogue tile with a button. If the user clicks it, the meta agent
-# creates a task agent that runs the tour script.
+# Non-blocking: shows a dialogue tile and returns. Button clicks are handled
+# in the main input loop via handletourchoice().
+tour_offered := 0;
+
 offertour()
 {
-	# Only offer once — check marker
+	# Only offer once per install — check marker
 	marker := "/lib/veltro/tour_offered";
 	(ok, nil) := sys->stat(marker);
 	if(ok >= 0)
@@ -737,41 +739,64 @@ offertour()
 		return;
 
 	writemsg("veltro",
-		"Welcome back! Would you like a quick guided tour of InferNode?");
+		"Welcome back! Would you like a quick guided tour of InferNode? " +
+		"Or just start chatting \u2014 the tour will wait.");
 	writedialogue("Guided Tour",
 		"I can walk you through the basics: launching apps, using tools, and navigating the workspace.",
-		"", "Start Tour,Skip");
-	log("offered guided tour");
+		"", "Start Tour,Skip,Don't show again");
+	tour_offered = 1;
+	log("offered guided tour (non-blocking)");
+}
 
-	# Read response (blocking — runs before main input loop)
-	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
-	inputfd := sys->open(inputpath, Sys->OREAD);
-	if(inputfd != nil) {
-		choice := blockread(inputfd);
-		inputfd = nil;
-		if(choice == "Start Tour") {
-			writemsg("veltro",
-				"Starting the tour! Check the Tasks tab for the guided walkthrough.");
-			# Delegate tour to a task agent via the task tool
-			if(agentlib->pathexists(toolmount)) {
-				result := agentlib->calltool("task",
-					"create label=Tour " +
-					"tools=read,list,find,search,present,launch,say,gap " +
-					"brief=Run an interactive guided tour of InferNode for a new user. " +
-					"Read the tour script at /lib/veltro/demos/tour.txt and follow it step by step. " +
-					"Demonstrate each feature live using your tools. " +
-					"Wait for the user to say 'next' or 'continue' before moving to the next section. " +
-					"Keep it friendly and concise.");
-				log("tour task created: " + result);
-			} else {
-				writemsg("veltro", "Tools not available yet. Try saying 'run the tour' once everything is loaded.");
-			}
+# Handle tour dialogue button clicks. Returns 1 if the input was consumed.
+handletourchoice(input: string): int
+{
+	if(!tour_offered)
+		return 0;
+
+	marker := "/lib/veltro/tour_offered";
+
+	if(input == "Start Tour") {
+		tour_offered = 0;
+		fd := sys->create(marker, Sys->OWRITE, 8r644);
+		fd = nil;
+		writemsg("veltro",
+			"Starting the tour! Check the Tasks tab for the guided walkthrough.");
+		if(agentlib->pathexists(toolmount)) {
+			result := agentlib->calltool("task",
+				"create label=Tour " +
+				"tools=read,list,find,search,present,launch,say,gap " +
+				"brief=Run an interactive guided tour of InferNode for a new user. " +
+				"Read the tour script at /lib/veltro/demos/tour.txt and follow it step by step. " +
+				"Demonstrate each feature live using your tools. " +
+				"Wait for the user to say 'next' or 'continue' before moving to the next section. " +
+				"Keep it friendly and concise.");
+			log("tour task created: " + result);
 		}
+		return 1;
+	}
+	if(input == "Skip") {
+		tour_offered = 0;
+		fd := sys->create(marker, Sys->OWRITE, 8r644);
+		fd = nil;
+		log("tour skipped");
+		return 1;
+	}
+	if(input == "Don't show again") {
+		tour_offered = 0;
+		fd := sys->create(marker, Sys->OWRITE, 8r644);
+		fd = nil;
+		writemsg("veltro", "Got it. You can always say 'run the tour' if you change your mind.");
+		log("tour dismissed permanently");
+		return 1;
 	}
 
-	# Mark tour as offered (don't ask again)
+	# Not a tour button — user typed something else. Dismiss the offer
+	# silently and let the main loop handle it as normal chat.
+	tour_offered = 0;
 	fd := sys->create(marker, Sys->OWRITE, 8r644);
 	fd = nil;
+	return 0;
 }
 
 # Find the first Inferno path (starts with /) in tool args.
@@ -1639,6 +1664,10 @@ init(nil: ref Draw->Context, args: list of string)
 		# Slash commands (/bind, /unbind, /tools, /help) are handled locally.
 		# They update tools9p state and reply immediately; agent is not invoked.
 		if(handleslash(human))
+			continue;
+
+		# Tour dialogue button clicks (non-blocking — user can also just chat)
+		if(handletourchoice(human))
 			continue;
 
 		# Record human message in UI
