@@ -469,12 +469,17 @@ initsession(): string
 	sysprompt := agentlib->buildsystemprompt(ns);
 	log(sys->sprint("initsession: system prompt %d bytes", len array of byte sysprompt));
 
-	# Append bridge/meta suffix, truncating base if needed
+	# Append role-specific suffix: meta prompt for activity 0 (main agent),
+	# task agent prompt for child activities (actid > 0)
 	suffix := BRIDGE_SUFFIX;
 	if(actid == 0) {
 		meta := agentlib->readfile(META_PROMPT_PATH);
 		if(meta != nil)
 			suffix = "\n\n" + agentlib->strip(meta);
+	} else {
+		taskprompt := agentlib->readfile("/lib/veltro/agents/task.txt");
+		if(taskprompt != nil)
+			suffix = "\n\n" + agentlib->strip(taskprompt);
 	}
 	MAXWRITE: con 65000;
 	suffixbytes := array of byte suffix;
@@ -711,6 +716,60 @@ showwelcome(aid: int)
 	writefile(datapath, content);
 	writefile(pctl, "center id=welcome");
 
+	fd := sys->create(marker, Sys->OWRITE, 8r644);
+	fd = nil;
+}
+
+# Offer a guided tour on the second launch (keys configured, first-run done).
+# Uses a dialogue tile with a button. If the user clicks it, the meta agent
+# creates a task agent that runs the tour script.
+offertour()
+{
+	# Only offer once — check marker
+	marker := "/lib/veltro/tour_offered";
+	(ok, nil) := sys->stat(marker);
+	if(ok >= 0)
+		return;
+
+	# Only offer if first-run is done (welcome was already shown)
+	(wok, nil) := sys->stat("/lib/veltro/welcome_shown");
+	if(wok < 0)
+		return;
+
+	writemsg("veltro",
+		"Welcome back! Would you like a quick guided tour of InferNode?");
+	writedialogue("Guided Tour",
+		"I can walk you through the basics: launching apps, using tools, and navigating the workspace.",
+		"", "Start Tour,Skip");
+	log("offered guided tour");
+
+	# Read response (blocking — runs before main input loop)
+	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+	inputfd := sys->open(inputpath, Sys->OREAD);
+	if(inputfd != nil) {
+		choice := blockread(inputfd);
+		inputfd = nil;
+		if(choice == "Start Tour") {
+			writemsg("veltro",
+				"Starting the tour! Check the Tasks tab for the guided walkthrough.");
+			# Delegate tour to a task agent via the task tool
+			if(agentlib->pathexists(toolmount)) {
+				result := agentlib->calltool("task",
+					"create label=Tour " +
+					"tools=read,list,find,search,present,launch,say,gap " +
+					"brief=Run an interactive guided tour of InferNode for a new user. " +
+					"Read the tour script at /lib/veltro/demos/tour.txt and follow it step by step. " +
+					"Demonstrate each feature live using your tools. " +
+					"Wait for the user to say 'next' or 'continue' before moving to the next section. " +
+					"Keep it friendly and concise.");
+				log("tour task created: " + result);
+			} else {
+				writemsg("veltro", "Tools not available yet. Try saying 'run the tour' once everything is loaded.");
+			}
+		}
+	}
+
+	# Mark tour as offered (don't ask again)
 	fd := sys->create(marker, Sys->OWRITE, 8r644);
 	fd = nil;
 }
@@ -1509,6 +1568,10 @@ init(nil: ref Draw->Context, args: list of string)
 
 	# Show welcome document on first launch
 	showwelcome(actid);
+
+	# Offer guided tour on second launch (keys configured, not first boot)
+	if(actid == 0)
+		offertour();
 
 	# Sync convcount with messages already in the conversation.
 	syncconvcount();
