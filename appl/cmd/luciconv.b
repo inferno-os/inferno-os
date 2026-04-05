@@ -857,17 +857,20 @@ dlgbuttonclick(label: string, msgidx: int)
 		}
 	}
 	if(actid_g >= 0 && msgidx >= 0 && msgidx < nmsg) {
+		# Update server: clear buttons, update title to show result
+		newtitle := msgstore[msgidx].title + " — " + label;
 		ctlpath := sys->sprint("%s/activity/%d/conversation/ctl", mountpt_g, actid_g);
 		ctlfd := sys->open(ctlpath, Sys->OWRITE);
 		if(ctlfd != nil) {
-			upd := sys->sprint("update idx=%d options= text=%s [%s]",
-				msgidx, msgstore[msgidx].text, label);
+			upd := sys->sprint("update idx=%d options= title=%s",
+				msgidx, newtitle);
 			b := array of byte upd;
 			sys->write(ctlfd, b, len b);
 			ctlfd = nil;
 		}
+		# Update locally for immediate redraw
 		msgstore[msgidx].options = "";
-		msgstore[msgidx].text = msgstore[msgidx].text + " [" + label + "]";
+		msgstore[msgidx].title = newtitle;
 		msgstore[msgidx].rendimg = nil;
 	}
 }
