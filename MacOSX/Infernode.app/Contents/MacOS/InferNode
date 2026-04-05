@@ -60,11 +60,40 @@ echo brimstone > "$INFERNODE_HOME/lib/lucifer/theme/current"
 # Write the boot script to a file inside the Inferno root.
 # macOS Finder/open mangles complex shell arguments passed via exec,
 # so we write the command sequence to a file and have sh source it.
+# Boot script runs WITHOUT -l (no profile) to avoid profile hangs.
+# All initialization is done inline here instead.
 cat > "$INFERNODE_HOME/lib/lucifer/boot.sh" << 'BOOTSCRIPT'
 load std
+
+# Minimal init (replaces profile for app bundle launch)
+path=(/dis .)
+mount -ac {mntgen} /n >[2] /dev/null
+bind -a '#I' /net >[2] /dev/null
+ndb/cs >[2] /dev/null
+
+# Secstore + factotum
+mkdir -p /usr/inferno/secstore >[2] /dev/null
+auth/secstored >[2] /dev/null &
+sleep 1
+if {! ftest -f /mnt/factotum/proto} {
+	auth/factotum
+}
+
+# Host filesystem
+trfs '#U*' /n/local >[2] /dev/null
+home=/n/local/^`{echo 'echo $HOME' | os sh}
+mkdir -p /tmp >[2] /dev/null
+if {! ftest -d $home/tmp} { mkdir -p $home/tmp }
+bind -bc $home/tmp /tmp >[2] /dev/null
+
+# Login screen (unlocks secstore, loads keys into factotum)
 wm/logon
+
+# Start LLM service (needs API key in factotum from secstore)
 llmsrv >[2] /dev/null &
 sleep 1
+
+# GUI services
 luciuisrv
 echo activity create Main > /n/ui/ctl
 sleep 1
@@ -80,7 +109,7 @@ BOOTSCRIPT
 # directly from the .app launcher. Running via a child script avoids this.
 cat > "$INFERNODE_HOME/lib/lucifer/launch.sh" << LAUNCHSCRIPT
 #!/bin/sh
-exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m -r"$INFERNODE_HOME" sh -l /lib/lucifer/boot.sh
+exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m -r"$INFERNODE_HOME" sh /lib/lucifer/boot.sh
 LAUNCHSCRIPT
 chmod +x "$INFERNODE_HOME/lib/lucifer/launch.sh"
 exec "$INFERNODE_HOME/lib/lucifer/launch.sh"
