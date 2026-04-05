@@ -1341,21 +1341,19 @@ convctl(a: ref Activity, data: string): string
 		idx := strtoint(getattr(attrs, "idx"));
 		if(idx < 0 || idx >= a.nmsg)
 			return "bad idx";
-		text := getattr(attrs, "text");
-		if(text != nil)
-			a.messages[idx].text = text;
-		progress := getattr(attrs, "progress");
-		if(progress != nil)
-			a.messages[idx].progress = progress;
-		title := getattr(attrs, "title");
-		if(title != nil)
-			a.messages[idx].title = title;
-		options := getattr(attrs, "options");
-		if(options != nil)
-			a.messages[idx].options = options;
-		dtype := getattr(attrs, "dtype");
-		if(dtype != nil)
-			a.messages[idx].dtype = dtype;
+		# In Limbo, nil == "" for strings, so getattr returning ""
+		# is indistinguishable from "key not found". We need hasattr
+		# to check whether a key was actually present in the update.
+		if(hasattr(attrs, "text"))
+			a.messages[idx].text = getattr(attrs, "text");
+		if(hasattr(attrs, "progress"))
+			a.messages[idx].progress = getattr(attrs, "progress");
+		if(hasattr(attrs, "title"))
+			a.messages[idx].title = getattr(attrs, "title");
+		if(hasattr(attrs, "options"))
+			a.messages[idx].options = getattr(attrs, "options");
+		if(hasattr(attrs, "dtype"))
+			a.messages[idx].dtype = getattr(attrs, "dtype");
 		vers++;
 		pushevent(a.id, "conversation update " + string idx);
 		return nil;
@@ -2508,6 +2506,17 @@ getattr(attrs: list of ref Attr, key: string): string
 		if((hd attrs).key == key)
 			return (hd attrs).val;
 	return nil;
+}
+
+# Check whether a key exists in the attr list.
+# Needed because Limbo's nil == "" for strings, making getattr
+# unable to distinguish "key absent" from "key present with empty value".
+hasattr(attrs: list of ref Attr, key: string): int
+{
+	for(; attrs != nil; attrs = tl attrs)
+		if((hd attrs).key == key)
+			return 1;
+	return 0;
 }
 
 # --- Helpers ---
