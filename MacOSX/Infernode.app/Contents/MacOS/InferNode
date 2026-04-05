@@ -8,14 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUNDLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUNDLE_RESOURCES="$BUNDLE_DIR/Resources"
 
-# Detect if running from a DMG or read-only volume — ask user to copy first.
-# Test the directory CONTAINING the .app, not inside the signed bundle.
-APP_PARENT="$(cd "$BUNDLE_DIR/.." && pwd)"
-if ! touch "$APP_PARENT/.infernode-writetest" 2>/dev/null; then
-    osascript -e 'display dialog "InferNode cannot run from a disk image. Please copy InferNode.app to your hard drive first (e.g. Applications, Desktop, or any folder)." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
-    exit 0
-fi
-rm -f "$APP_PARENT/.infernode-writetest"
+# Detect if running directly from a mounted DMG — ask user to copy first.
+# DMGs always mount under /Volumes/. Everything else is a writable location.
+case "$SCRIPT_DIR" in
+    /Volumes/*)
+        osascript -e 'display dialog "InferNode cannot run from a disk image. Please copy InferNode.app to your hard drive first (e.g. Applications, Desktop, or any folder)." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
+        exit 0
+        ;;
+esac
 
 # Persistent writable copy in user's home
 INFERNODE_HOME="$HOME/.infernode"
