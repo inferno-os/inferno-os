@@ -857,8 +857,17 @@ dlgbuttonclick(label: string, msgidx: int)
 		}
 	}
 	if(actid_g >= 0 && msgidx >= 0 && msgidx < nmsg) {
-		# Update server: clear buttons, update title to show result
-		newtitle := msgstore[msgidx].title + " — " + label;
+		# Clear buttons FIRST to prevent double-click
+		msgstore[msgidx].options = "";
+		msgstore[msgidx].rendimg = nil;
+
+		# Update title to show result (e.g. "Allowed" or "Denied")
+		newtitle := label + "ed";
+		if(label == "Deny")
+			newtitle = "Denied";
+		msgstore[msgidx].title = newtitle;
+
+		# Persist to server
 		ctlpath := sys->sprint("%s/activity/%d/conversation/ctl", mountpt_g, actid_g);
 		ctlfd := sys->open(ctlpath, Sys->OWRITE);
 		if(ctlfd != nil) {
@@ -868,10 +877,6 @@ dlgbuttonclick(label: string, msgidx: int)
 			sys->write(ctlfd, b, len b);
 			ctlfd = nil;
 		}
-		# Update locally for immediate redraw
-		msgstore[msgidx].options = "";
-		msgstore[msgidx].title = newtitle;
-		msgstore[msgidx].rendimg = nil;
 	}
 }
 
