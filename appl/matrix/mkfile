@@ -1,0 +1,18 @@
+<$ROOT/mkconfig
+
+TARG=\
+	position-table.dis\
+	signal-feed.dis\
+	risk-gauge.dis\
+	alert-watcher.dis\
+
+SYSMODULES=\
+	sys.m\
+	draw.m\
+	lucitheme.m\
+	widget.m\
+	matrix.m\
+
+DISBIN=$ROOT/dis/matrix
+
+<$ROOT/mkfiles/mkdis
