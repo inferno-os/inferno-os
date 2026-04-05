@@ -8,6 +8,7 @@ DIRS=\
 	grid\
 	lib\
 	math\
+	matrix\
 	svc\
 	wm\
 

@@ -1,0 +1,11 @@
+# tbl4-overview
+# Matrix POC — TBL4 trading system dashboard
+
+layout hsplit 60 40
+left vsplit 70 30
+
+left/top position-table /n/tbl4/portfolio
+left/bottom signal-feed /n/tbl4/signals
+right risk-gauge /n/tbl4/risk
+
+service alert-watcher /n/tbl4
