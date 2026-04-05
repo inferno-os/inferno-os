@@ -190,12 +190,44 @@ jobs:
         security find-identity -v -p codesigning build.keychain
         rm /tmp/certificate.p12
 
-    - name: Sign binaries
+    - name: Package self-contained app bundle
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        APP="InferNode.app"
+        CONTENTS="$APP/Contents"
+        MACOS="$CONTENTS/MacOS"
+        RESOURCES="$CONTENTS/Resources"
+
+        # Start from the checked-out .app bundle (has Info.plist, icon, launcher)
+        cp -a MacOSX/InferNode.app "$APP"
+
+        # Emulator binary and SDL3 go in Contents/MacOS/
+        cp emu/MacOSX/InferNode "$MACOS/emu"
+        cp emu/MacOSX/libSDL3.0.dylib "$MACOS/"
+
+        # Native tools
+        mkdir -p "$MACOS/tools"
+        cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$MACOS/tools/"
+
+        # Runtime tree goes in Contents/Resources/
+        for d in dis lib fonts module services locale usr mnt; do
+          [ -d "$d" ] && cp -a "$d" "$RESOURCES/"
+        done
+        mkdir -p "$RESOURCES/tmp" "$RESOURCES/usr/inferno/secstore"
+        cp mkconfig "$RESOURCES/"
+        [ -d mkfiles ] && cp -a mkfiles "$RESOURCES/"
+
+        # Docs and build scripts in Resources
+        for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md \
+                 build-macos-sdl3.sh build-macos-headless.sh makemk.sh; do
+          [ -f "$f" ] && cp "$f" "$RESOURCES/"
+        done
+
+    - name: Sign app bundle
       run: |
         IDENTITY="Developer ID Application: Synectify, Pte Ltd (TJ448C32Q3)"
+        APP="InferNode.app"
 
-        # Create entitlements for JIT support (the Dis VM JIT compiler
-        # needs to allocate executable memory pages via MAP_JIT)
         cat > /tmp/emu-entitlements.plist << 'PLIST'
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -209,91 +241,50 @@ jobs:
         </plist>
         PLIST
 
-        # Sign SDL3 dylib first (must be signed before the binary that loads it)
+        # Sign innermost binaries first
         codesign --force --options runtime --timestamp \
-          --sign "$IDENTITY" emu/MacOSX/libSDL3.0.dylib
-
+          --sign "$IDENTITY" "$APP/Contents/MacOS/libSDL3.0.dylib"
         codesign --force --options runtime --timestamp \
           --entitlements /tmp/emu-entitlements.plist \
-          --sign "$IDENTITY" emu/MacOSX/InferNode
-
-        for tool in MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk; do
+          --sign "$IDENTITY" "$APP/Contents/MacOS/emu"
+        for tool in "$APP/Contents/MacOS/tools/limbo" "$APP/Contents/MacOS/tools/mk"; do
           [ -f "$tool" ] && codesign --force --options runtime --timestamp \
             --sign "$IDENTITY" "$tool"
         done
+        [ -f "$APP/Contents/MacOS/llm9p" ] && codesign --force --options runtime --timestamp \
+          --sign "$IDENTITY" "$APP/Contents/MacOS/llm9p"
 
-        if [ -f MacOSX/InferNode.app/Contents/MacOS/llm9p ]; then
-          codesign --force --options runtime --timestamp \
-            --sign "$IDENTITY" MacOSX/InferNode.app/Contents/MacOS/llm9p
-        fi
+        # Sign the entire .app bundle (must be last)
+        codesign --force --options runtime --timestamp \
+          --entitlements /tmp/emu-entitlements.plist \
+          --sign "$IDENTITY" "$APP"
+        codesign -dvv "$APP"
 
-        codesign -dvv emu/MacOSX/InferNode
-
-    - name: Package archive
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        STAGE="infernode-${VERSION}-macos-arm64"
-        mkdir -p "$STAGE/emu/MacOSX" "$STAGE/MacOSX/arm64/bin"
-
-        # .app bundle (includes launcher script, icon, llm9p)
-        cp -a MacOSX/InferNode.app "$STAGE/MacOSX/"
-
-        # Emulator binary and SDL3 dylib (referenced by .app launcher via relative path)
-        cp emu/MacOSX/InferNode emu/MacOSX/libSDL3.0.dylib "$STAGE/emu/MacOSX/"
-
-        # Native tools
-        cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$STAGE/MacOSX/arm64/bin/"
-
-        # Shared runtime tree
-        for d in dis lib fonts module services locale usr mnt; do
-          [ -d "$d" ] && cp -a "$d" "$STAGE/"
-        done
-
-        # tmp directory (needed by profile)
-        mkdir -p "$STAGE/tmp"
-
-        # mkconfig and mkfiles (needed for building from source)
-        cp mkconfig "$STAGE/"
-        [ -d mkfiles ] && cp -a mkfiles "$STAGE/"
-
-        # Build scripts
-        for f in build-macos-sdl3.sh build-macos-headless.sh makemk.sh; do
-          [ -f "$f" ] && cp "$f" "$STAGE/"
-        done
-
-        # Docs and legal
-        for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
-          [ -f "$f" ] && cp "$f" "$STAGE/"
-        done
-
-        tar czf "${STAGE}.tar.gz" "$STAGE"
-        echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
-
-    - name: Notarize archive
+    - name: Create and notarize DMG
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        STAGE="infernode-${VERSION}-macos-arm64"
+        DMG="infernode-${VERSION}-macos-arm64.dmg"
 
-        # Apple requires zip for notarization
-        ditto -c -k --keepParent "$STAGE" /tmp/notarize.zip
+        hdiutil create -volname "InferNode" \
+          -srcfolder InferNode.app -ov -format UDZO "$DMG"
 
-        xcrun notarytool submit /tmp/notarize.zip \
+        xcrun notarytool submit "$DMG" \
           --apple-id "$APPLE_ID" \
           --team-id "$APPLE_TEAM_ID" \
           --password "$APPLE_APP_PASSWORD" \
           --wait --timeout 15m
 
-        rm /tmp/notarize.zip
-        echo "Notarization complete"
+        xcrun stapler staple "$DMG"
+        echo "DMG: $(ls -lh $DMG)"
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: infernode-macos-arm64-archive
-        path: infernode-*-macos-arm64.tar.gz
+        path: infernode-*-macos-arm64.dmg
         retention-days: 3
 
   # Windows AMD64: deferred to v0.2 (linker issues with crypto libs)
@@ -348,13 +339,13 @@ jobs:
           | Platform | Architecture | File |
           |----------|-------------|------|
           | Linux | AMD64 (headless) | `infernode-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
-          | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.dmg` |
 
           Windows support is in progress and will ship in a future release.
 
           ### Quick Start
 
-          **macOS:** Extract, then `open MacOSX/InferNode.app` (requires SDL3: `brew install sdl3 sdl3_ttf`)
+          **macOS:** Open the DMG, drag InferNode.app to Applications, double-click to launch
 
           **Linux:** Extract, then `./emu/Linux/o.emu -r. sh -l` (headless; rebuild with `./build-linux-amd64.sh` for SDL3 GUI)
 
