@@ -1321,7 +1321,7 @@ readllmconfig(): (string, string, string, string, string, int)
 	backend := "api";
 	url := "https://api.anthropic.com";
 	model := "claude-sonnet-4-5-20250929";
-	dial := "tcp!hephaestus!5640";
+	dial := "";
 	haskey := 0;
 
 	lines := readlines("/lib/ndb/llm");
