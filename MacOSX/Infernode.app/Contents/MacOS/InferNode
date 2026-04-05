@@ -75,4 +75,12 @@ echo 'create id=tasks type=taskboard label=Tasks' > /n/ui/activity/0/presentatio
 lucifer
 BOOTSCRIPT
 
+# Write the launch command to a wrapper script and exec it.
+# macOS open/LaunchServices mangles arguments with = signs when exec'd
+# directly from the .app launcher. Running via a child script avoids this.
+cat > "$INFERNODE_HOME/lib/lucifer/launch.sh" << LAUNCHSCRIPT
+#!/bin/sh
 exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m -r"$INFERNODE_HOME" sh -l /lib/lucifer/boot.sh
+LAUNCHSCRIPT
+chmod +x "$INFERNODE_HOME/lib/lucifer/launch.sh"
+exec "$INFERNODE_HOME/lib/lucifer/launch.sh"
