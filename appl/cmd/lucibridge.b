@@ -56,6 +56,11 @@ actid := 0;
 convcount := 0;		# messages written to conversation by this bridge
 userinteracted := 0;	# set after user sends a message (suppresses urgency)
 
+# Failure streak tracking
+MAX_TOOL_FAILURES: con 3;
+lb_failstreak_tool := "";
+lb_failstreak_count := 0;
+
 # Tool tracking: raw string from /tool/tools; updated when tool set changes
 currenttoolsraw := "";
 toolmount := "/tool";	# "/tool" for activity 0, "/tool.N" for child N
@@ -271,6 +276,170 @@ syncconvcount()
 		if(cok < 0)
 			break;
 	}
+}
+
+# Write a dialogue tile to the conversation.
+# Returns the message index for later updates (e.g. progress).
+writedialogue(title, text, progress, options: string): int
+{
+	path := sys->sprint("/n/ui/activity/%d/conversation/ctl", actid);
+	msg := "role=veltro dtype=dialogue";
+	if(title != "")
+		msg += " title=" + title;
+	if(progress != "")
+		msg += " progress=" + progress;
+	if(options != "")
+		msg += " options=" + options;
+	msg += " text=" + text;
+	if(writefile(path, msg) < 0) {
+		sys->fprint(stderr, "lucibridge: writedialogue failed: %r\n");
+		return -1;
+	}
+	idx := convcount;
+	convcount++;
+	return idx;
+}
+
+# Update a dialogue tile in-place (e.g. progress bar update).
+updatedialogue(idx: int, progress, title, text: string)
+{
+	path := sys->sprint("/n/ui/activity/%d/conversation/ctl", actid);
+	msg := "update idx=" + string idx;
+	if(progress != "")
+		msg += " progress=" + progress;
+	if(title != "")
+		msg += " title=" + title;
+	if(text != "")
+		msg += " text=" + text;
+	writefile(path, msg);
+}
+
+# Read a single user input from the conversation input file (blocking).
+readuserinput(): string
+{
+	path := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+	fd := sys->open(path, Sys->OREAD);
+	if(fd == nil)
+		return "";
+	return blockread(fd);
+}
+
+# Determine if a tool call needs user approval.
+needsapproval(toolname, args: string): int
+{
+	if(toolname != "exec" && toolname != "write" && toolname != "edit")
+		return 0;
+	if(toolname == "exec") {
+		if(agentlib->contains(args, "rm") && agentlib->contains(args, "-r")) {
+			if(!agentlib->hasprefix(args, "rm") || !agentlib->contains(args, "/tmp"))
+				return 1;
+		}
+		if(agentlib->contains(args, "bind ") || agentlib->contains(args, "mount ") ||
+		   agentlib->contains(args, "unmount "))
+			return 1;
+	}
+	if(toolname == "write" || toolname == "edit") {
+		if(agentlib->hasprefix(args, "/dis/") || agentlib->hasprefix(args, "/lib/") ||
+		   agentlib->hasprefix(args, "/dev/"))
+			return 1;
+	}
+	return 0;
+}
+
+# Pre-tool approval gate. Returns "allow" or "deny".
+pretoolapproval(toolname, args: string): string
+{
+	if(!needsapproval(toolname, args))
+		return "allow";
+	desc := toolname + " " + agentlib->truncate(args, 120);
+	didx := writedialogue("Permission required",
+		desc, "", "Allow,Deny");
+	log("pretool: awaiting approval for " + toolname);
+	setstatus("blocked");
+	seturgency(2);
+	response := readuserinput();
+	log("pretool: user responded: " + response);
+	setstatus("working");
+	seturgency(0);
+	if(response == "Deny" || response == "deny" || response == "no") {
+		if(didx >= 0)
+			updatedialogue(didx, "", "Denied", "");
+		return "deny";
+	}
+	if(didx >= 0)
+		updatedialogue(didx, "", "Allowed", "");
+	return "allow";
+}
+
+# Check context usage and compact with UI feedback.
+COMPACT_THRESHOLD: con 150000;
+
+checkandcompact_ui()
+{
+	usagepath := "/n/llm/" + sessionid + "/usage";
+	s := agentlib->readfile(usagepath);
+	if(s == "")
+		return;
+	n := 0;
+	for(i := 0; i < len s && s[i] >= '0' && s[i] <= '9'; i++)
+		n = n * 10 + (s[i] - '0');
+	if(n < COMPACT_THRESHOLD)
+		return;
+	log(sys->sprint("context at ~%d tokens, compacting", n));
+	pct := n * 100 / 200000;
+	didx := writedialogue("Compacting context",
+		sys->sprint("Context is %d%% full. Summarizing conversation history...", pct),
+		"50", "");
+	compactpath := "/n/llm/" + sessionid + "/compact";
+	err := writefile(compactpath, "compact");
+	if(err < 0) {
+		if(didx >= 0)
+			updatedialogue(didx, "100", "Compaction failed", "");
+	} else {
+		if(didx >= 0)
+			updatedialogue(didx, "100", "Context compacted", "Session history summarized.");
+	}
+}
+
+# Track consecutive tool failures with UI notification.
+updatefailstreak_ui(tools: list of (string, string, string), results: list of (string, string)): string
+{
+	ntool := 0;
+	for(tl0 := tools; tl0 != nil; tl0 = tl tl0)
+		ntool++;
+	if(ntool != 1) {
+		lb_failstreak_tool = "";
+		lb_failstreak_count = 0;
+		return "";
+	}
+	(nil, name, nil) := hd tools;
+	(nil, content) := hd results;
+	lname := str->tolower(name);
+	iserror := agentlib->hasprefix(content, "error:") ||
+		agentlib->hasprefix(content, "ERROR:") ||
+		agentlib->hasprefix(content, "error —");
+	if(!iserror) {
+		lb_failstreak_tool = "";
+		lb_failstreak_count = 0;
+		return "";
+	}
+	if(lname == lb_failstreak_tool)
+		lb_failstreak_count++;
+	else {
+		lb_failstreak_tool = lname;
+		lb_failstreak_count = 1;
+	}
+	if(lb_failstreak_count >= MAX_TOOL_FAILURES) {
+		msg := sys->sprint("Tool '%s' has failed %d consecutive times.", name, lb_failstreak_count);
+		writedialogue("Agent stuck",
+			msg + " Consider intervening or letting it try a different approach.",
+			"", "");
+		seturgency(1);
+		lb_failstreak_tool = "";
+		lb_failstreak_count = 0;
+		return msg + " Try a different approach or different arguments.";
+	}
+	return "";
 }
 
 setstatus(status: string)
@@ -1106,6 +1275,16 @@ agentturn(input: string)
 					log("context: file " + fpath + " via " + nm);
 				}
 
+				# Pre-tool approval for destructive operations
+				approval := pretoolapproval(nm, eargs);
+				if(approval == "deny") {
+					results = (id, "error: operation denied by operator") :: results;
+					writefile(ctxpath, "resource update path=" + nm + " status=idle");
+					if(fpath != nil)
+						writefile(ctxpath, "resource update path=" + fpath + " status=idle");
+					continue;
+				}
+
 				setstatus(nm);
 				log("tool " + name + ": calling with " + string len eargs + " bytes");
 				result := agentlib->calltool(name, eargs);
@@ -1144,7 +1323,15 @@ agentturn(input: string)
 		for(rl := results; rl != nil; rl = tl rl)
 			rev = (hd rl) :: rev;
 
+		# Track consecutive failures and show dialogue if stuck
+		guidance := updatefailstreak_ui(tools, rev);
+
+		# Check context usage and compact if needed
+		checkandcompact_ui();
+
 		prompt = agentlib->buildtoolresults(rev);
+		if(guidance != "")
+			prompt += "\nSYSTEM NOTE: " + guidance;
 	}
 
 	if(hitlimit) {
