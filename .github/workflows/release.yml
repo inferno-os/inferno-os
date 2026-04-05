@@ -266,34 +266,35 @@ jobs:
           [ -f "$f" ] && cp "$f" "$STAGE/"
         done
 
-        tar czf "${STAGE}.tar.gz" "$STAGE"
-        echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
+        # Create DMG (macOS auto-strips quarantine from notarized DMGs)
+        DMG="infernode-${VERSION}-macos-arm64.dmg"
+        hdiutil create -volname "InferNode ${VERSION}" \
+          -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+        echo "DMG: $(ls -lh $DMG)"
 
-    - name: Notarize archive
+    - name: Notarize DMG
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        STAGE="infernode-${VERSION}-macos-arm64"
+        DMG="infernode-${VERSION}-macos-arm64.dmg"
 
-        # Apple requires zip for notarization
-        ditto -c -k --keepParent "$STAGE" /tmp/notarize.zip
-
-        xcrun notarytool submit /tmp/notarize.zip \
+        xcrun notarytool submit "$DMG" \
           --apple-id "$APPLE_ID" \
           --team-id "$APPLE_TEAM_ID" \
           --password "$APPLE_APP_PASSWORD" \
           --wait --timeout 15m
 
-        rm /tmp/notarize.zip
-        echo "Notarization complete"
+        # Staple the notarization ticket to the DMG
+        xcrun stapler staple "$DMG"
+        echo "Notarization stapled"
 
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: infernode-macos-arm64-archive
-        path: infernode-*-macos-arm64.tar.gz
+        path: infernode-*-macos-arm64.dmg
         retention-days: 3
 
   # Windows AMD64: deferred to v0.2 (linker issues with crypto libs)
@@ -348,13 +349,13 @@ jobs:
           | Platform | Architecture | File |
           |----------|-------------|------|
           | Linux | AMD64 (headless) | `infernode-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
-          | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.tar.gz` |
+          | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.dmg` |
 
           Windows support is in progress and will ship in a future release.
 
           ### Quick Start
 
-          **macOS:** Extract, then `open MacOSX/InferNode.app` (requires SDL3: `brew install sdl3 sdl3_ttf`)
+          **macOS:** Open the DMG, then double-click `InferNode.app` inside `MacOSX/`
 
           **Linux:** Extract, then `./emu/Linux/o.emu -r. sh -l` (headless; rebuild with `./build-linux-amd64.sh` for SDL3 GUI)
 
