@@ -39,6 +39,6 @@ EMU="$SCRIPT_DIR/emu"
 # Set theme
 echo brimstone > "$INFERNODE_HOME/lib/lucifer/theme/current"
 
-LUCIFER_CMD='wm/logon; if {! ftest -d /n/llm} { llmsrv >[2] /dev/null & ; sleep 1 }; luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
+LUCIFER_CMD='wm/logon; llmsrv >[2] /dev/null &; sleep 1; luciuisrv; echo activity create Main > /n/ui/ctl; sleep 1; /dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell; lucibridge -a 0 -v -s &; sleep 1; echo '"'"'create id=tasks type=taskboard label=Tasks'"'"' > /n/ui/activity/0/presentation/ctl; lucifer'
 
 exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m -r"$INFERNODE_HOME" sh -l -c "$LUCIFER_CMD"
