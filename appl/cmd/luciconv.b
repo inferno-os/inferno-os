@@ -22,6 +22,10 @@ include "lucitheme.m";
 
 include "menu.m";
 
+include "widget.m";
+	widgetmod: Widget;
+	Button, Label, LEFT: import widgetmod;
+
 LuciConv: module
 {
 	PATH: con "/dis/luciconv.dis";
@@ -41,11 +45,22 @@ ConvMsg: adt {
 	text:	string;
 	using:	string;
 	rendimg: ref Image;
+	dtype:	string;		# "" | "dialogue" | "form"
+	title:	string;		# dialogue tile title
+	progress: string;	# "0"-"100" or ""
+	options: string;	# comma-separated form options
 };
 
 TileRect: adt {
 	r:   Rect;
 	msg: ref ConvMsg;
+};
+
+# Clickable button in a dialogue tile
+DlgButton: adt {
+	btn:   ref Button;
+	label: string;		# option text to send as input on click
+	msgidx: int;		# index into msgstore of the parent dialogue tile
 };
 
 Attr: adt {
@@ -82,6 +97,9 @@ inputcol: ref Image;
 cursorcol: ref Image;
 redcol: ref Image;
 codebgcol_g: ref Image;
+progbgcol: ref Image;
+progfgcol: ref Image;
+bordercol: ref Image;
 
 # Conversation state
 msgstore: array of ref ConvMsg;
@@ -105,6 +123,10 @@ inputrect: Rect;  # Hit area for input field
 # Tile layout (populated by drawconversation, used for click hit-testing)
 tilelayout: array of ref TileRect;
 ntiles := 0;
+
+# Dialogue button layout (populated during dialogue tile rendering)
+dlgbuttons: array of ref DlgButton;
+ndlgbuttons := 0;
 
 # --- init ---
 
@@ -145,6 +167,9 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 	cursorcol = dsp.color(th.cursor);
 	redcol = dsp.color(th.red);
 	codebgcol_g = dsp.color(th.codebg);
+	progbgcol = dsp.color(th.progbg);
+	progfgcol = dsp.color(th.progfg);
+	bordercol = dsp.color(th.border);
 
 	# Load rlayout for markdown rendering
 	rlay = load Rlayout Rlayout->PATH;
@@ -157,6 +182,13 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 		sys->fprint(stderr, "luciconv: cannot load menu: %r\n");
 	else
 		menumod->init(display_g, mainfont);
+
+	# Load widget toolkit for dialogue tile buttons
+	widgetmod = load Widget Widget->PATH;
+	if(widgetmod != nil)
+		widgetmod->init(display_g, mainfont);
+	else
+		sys->fprint(stderr, "luciconv: cannot load widget: %r\n");
 
 	inputbuf = "";
 	inputpos = 0;
@@ -195,11 +227,24 @@ init(img: ref Draw->Image, dsp: ref Draw->Display,
 				startvoice();
 				redrawconv();
 			} else {
-				# Tile snarf
-				for(tj := 0; tj < ntiles; tj++) {
-					if(tilelayout[tj] != nil && tilelayout[tj].r.contains(p.xy)) {
-						writetosnarf(tilelayout[tj].msg.text);
+				# Check for dialogue button clicks first
+				dlghandled := 0;
+				for(di := 0; di < ndlgbuttons; di++) {
+					db := dlgbuttons[di];
+					if(db != nil && db.btn.contains(p.xy)) {
+						dlgbuttonclick(db.label, db.msgidx);
+						dlghandled = 1;
+						redrawconv();
 						break;
+					}
+				}
+				# Normal tile snarf (non-dialogue)
+				if(!dlghandled) {
+					for(tj := 0; tj < ntiles; tj++) {
+						if(tilelayout[tj] != nil && tilelayout[tj].r.contains(p.xy)) {
+							writetosnarf(tilelayout[tj].msg.text);
+							break;
+						}
 					}
 				}
 			}
@@ -398,6 +443,9 @@ reloadcolors()
 	cursorcol = display_g.color(th.cursor);
 	redcol = display_g.color(th.red);
 	codebgcol_g = display_g.color(th.codebg);
+	progbgcol = display_g.color(th.progbg);
+	progfgcol = display_g.color(th.progfg);
+	bordercol = display_g.color(th.border);
 	# Invalidate rendered message caches so they redraw with new colours
 	for(i := 0; i < nmsg; i++)
 		msgstore[i].rendimg = nil;
@@ -501,6 +549,8 @@ drawconversation(zone: Rect)
 	# Reset tile layout
 	tilelayout = array[nmsg + 1] of ref TileRect;
 	ntiles = 0;
+	dlgbuttons = array[nmsg * 4] of ref DlgButton;  # up to 4 buttons per dialogue
+	ndlgbuttons = 0;
 
 	tilegap := 4;
 	tpadv := 3;
@@ -520,6 +570,31 @@ drawconversation(zone: Rect)
 	harr := array[nmsg] of int;
 	total_h := 0;
 	for(pi := 0; pi < nmsg; pi++) {
+		# Dialogue tiles have their own height calculation
+		if(marr[pi].dtype == "dialogue" || marr[pi].dtype == "form") {
+			DLGPAD := 8;
+			PROGBAR_H := 10;
+			BTNROW_H := 24;
+			h := DLGPAD;
+			if(marr[pi].title != "")
+				h += mainfont.height + 4;
+			t := strip(marr[pi].text);
+			if(t != "") {
+				ls := wraptext(t, tilew - 2 * DLGPAD);
+				n := 0;
+				for(wl := ls; wl != nil; wl = tl wl)
+					n++;
+				h += n * mainfont.height + 4;
+			}
+			if(marr[pi].progress != "")
+				h += PROGBAR_H + 6;
+			if(marr[pi].options != "")
+				h += BTNROW_H + 4;
+			h += DLGPAD;
+			harr[pi] = h;
+			total_h += h + tilegap;
+			continue;
+		}
 		# Skip empty messages (e.g. tool_use responses with no text content)
 		# and stale streaming cursors ("▌", "…") left by dropped events.
 		t := strip(marr[pi].text);
@@ -565,6 +640,7 @@ drawconversation(zone: Rect)
 		streaming := len marr[ri].text > 0 &&
 			marr[ri].text[len marr[ri].text - 1] == 16r258C;
 		if(marr[ri].rendimg == nil && rlay != nil && marr[ri].role != "human" &&
+				marr[ri].dtype != "dialogue" && marr[ri].dtype != "form" &&
 				!streaming) {
 			bgc_r := veltrocol;
 			style_r := ref Rlayout->Style(
@@ -597,11 +673,15 @@ drawconversation(zone: Rect)
 			break;
 
 		msg := marr[i];
-		human := msg.role == "human";
-		errrole := msg.role == "error";
+		isdialogue := msg.dtype == "dialogue" || msg.dtype == "form";
+		human := msg.role == "human" && !isdialogue;
+		errrole := msg.role == "error" && !isdialogue;
 		tilecol: ref Image;
 		rolecol: ref Image;
-		if(human) {
+		if(isdialogue) {
+			tilecol = veltrocol;
+			rolecol = accentcol;
+		} else if(human) {
 			tilecol = humancol;
 			rolecol = text2col;
 		} else if(errrole) {
@@ -623,6 +703,86 @@ drawconversation(zone: Rect)
 		if(ntiles < len tilelayout)
 			tilelayout[ntiles++] = ref TileRect(
 				Rect((tilex, tiletop), (tilex + tilew, tiletop + tileh)), msg);
+
+		if(isdialogue) {
+			DLGPAD := 8;
+			PROGBAR_H := 10;
+			BTNROW_H := 24;
+			dx := tilex + DLGPAD;
+			dw := tilew - 2 * DLGPAD;
+			dy := tiletop + DLGPAD;
+
+			# Title via widget Label
+			if(msg.title != "") {
+				if(dy >= zone.min.y && dy + mainfont.height <= msgy) {
+					if(widgetmod != nil) {
+						lbl := Label.mk(Rect((dx, dy), (dx + dw, dy + mainfont.height)), msg.title, 0, LEFT);
+						lbl.draw(mainwin);
+					} else
+						mainwin.text((dx, dy), accentcol, (0, 0), mainfont, msg.title);
+				}
+				dy += mainfont.height + 4;
+			}
+
+			# Body text
+			bodytext := strip(msg.text);
+			if(bodytext != "") {
+				lines := wraptext(bodytext, dw);
+				for(ll := lines; ll != nil; ll = tl ll) {
+					if(dy >= msgy) break;
+					if(dy + mainfont.height > zone.min.y)
+						mainwin.text((dx, dy), textcol, (0, 0), mainfont, hd ll);
+					dy += mainfont.height;
+				}
+				dy += 4;
+			}
+
+			# Progress bar
+			if(msg.progress != "") {
+				pct := strtoint(msg.progress);
+				if(pct < 0) pct = 0;
+				if(pct > 100) pct = 100;
+				barr := Rect((dx, dy), (dx + dw, dy + PROGBAR_H));
+				if(barr.min.y < msgy && barr.max.y > zone.min.y) {
+					mainwin.draw(barr, progbgcol, nil, (0, 0));
+					if(pct > 0) {
+						fillw := dw * pct / 100;
+						fillr := Rect((dx, dy), (dx + fillw, dy + PROGBAR_H));
+						mainwin.draw(fillr, progfgcol, nil, (0, 0));
+					}
+					pctstr := string pct + "%";
+					ptw := mainfont.width(pctstr);
+					if(PROGBAR_H >= mainfont.height) {
+						pty := dy + (PROGBAR_H - mainfont.height) / 2;
+						mainwin.text((dx + (dw - ptw) / 2, pty), textcol, (0, 0), mainfont, pctstr);
+					}
+				}
+				dy += PROGBAR_H + 6;
+			}
+
+			# Option buttons using widget toolkit
+			if(msg.options != "" && widgetmod != nil) {
+				(nil, opts) := sys->tokenize(msg.options, ",");
+				bx := dx;
+				for(; opts != nil; opts = tl opts) {
+					opt := hd opts;
+					bw := mainfont.width(opt) + 24;
+					if(bx + bw > dx + dw) break;
+					br := Rect((bx, dy), (bx + bw, dy + BTNROW_H));
+					if(br.min.y < msgy && br.max.y > zone.min.y) {
+						btn := Button.mk(br, opt);
+						btn.draw(mainwin);
+						if(ndlgbuttons < len dlgbuttons)
+							dlgbuttons[ndlgbuttons++] = ref DlgButton(btn, opt, i);
+					}
+					bx += bw + 8;
+				}
+				dy += BTNROW_H + 4;
+			}
+
+			y = tiletop;
+			continue;
+		}
 
 		ty := tiletop + tpadv;
 		rolelabel := msg.role;
@@ -682,6 +842,36 @@ drawconversation(zone: Rect)
 	}
 }
 
+# Handle a dialogue button click: write response to input for the
+# blocking reader (pretoolapproval), then update the dialogue tile
+# to show the result. Does NOT create a human message tile.
+dlgbuttonclick(label: string, msgidx: int)
+{
+	if(actid_g >= 0) {
+		path := sys->sprint("%s/activity/%d/conversation/input", mountpt_g, actid_g);
+		fd := sys->open(path, Sys->OWRITE);
+		if(fd != nil) {
+			b := array of byte label;
+			sys->write(fd, b, len b);
+			fd = nil;
+		}
+	}
+	if(actid_g >= 0 && msgidx >= 0 && msgidx < nmsg) {
+		ctlpath := sys->sprint("%s/activity/%d/conversation/ctl", mountpt_g, actid_g);
+		ctlfd := sys->open(ctlpath, Sys->OWRITE);
+		if(ctlfd != nil) {
+			upd := sys->sprint("update idx=%d options= text=%s [%s]",
+				msgidx, msgstore[msgidx].text, label);
+			b := array of byte upd;
+			sys->write(ctlfd, b, len b);
+			ctlfd = nil;
+		}
+		msgstore[msgidx].options = "";
+		msgstore[msgidx].text = msgstore[msgidx].text + " [" + label + "]";
+		msgstore[msgidx].rendimg = nil;
+	}
+}
+
 drawcentertext(r: Rect, text: string)
 {
 	tw := mainfont.width(text);
@@ -706,9 +896,17 @@ loadmessages()
 		role := getattr(attrs, "role");
 		text := getattr(attrs, "text");
 		using := getattr(attrs, "using");
+		dtype := getattr(attrs, "dtype");
+		title := getattr(attrs, "title");
+		progress := getattr(attrs, "progress");
+		options := getattr(attrs, "options");
 		if(role == nil) role = "?";
 		if(text == nil) text = "";
-		appendmsg(ref ConvMsg(role, text, using, nil));
+		if(dtype == nil) dtype = "";
+		if(title == nil) title = "";
+		if(progress == nil) progress = "";
+		if(options == nil) options = "";
+		appendmsg(ref ConvMsg(role, text, using, nil, dtype, title, progress, options));
 	}
 }
 
@@ -723,16 +921,28 @@ loadmessage(idx: int)
 	role := getattr(attrs, "role");
 	text := getattr(attrs, "text");
 	using := getattr(attrs, "using");
+	dtype := getattr(attrs, "dtype");
+	title := getattr(attrs, "title");
+	progress := getattr(attrs, "progress");
+	options := getattr(attrs, "options");
 	if(role == nil) role = "?";
 	if(text == nil) text = "";
+	if(dtype == nil) dtype = "";
+	if(title == nil) title = "";
+	if(progress == nil) progress = "";
+	if(options == nil) options = "";
 	if(idx < nmsg) {
 		msgstore[idx].role = role;
 		msgstore[idx].text = text;
 		msgstore[idx].using = using;
+		msgstore[idx].dtype = dtype;
+		msgstore[idx].title = title;
+		msgstore[idx].progress = progress;
+		msgstore[idx].options = options;
 		msgstore[idx].rendimg = nil;
 		return;
 	}
-	msg := ref ConvMsg(role, text, using, nil);
+	msg := ref ConvMsg(role, text, using, nil, dtype, title, progress, options);
 	if(role == "human" && nmsg > 0) {
 		last := msgstore[nmsg - 1];
 		if(last.role == "human" && last.text == text)
@@ -758,6 +968,18 @@ updatemessage(idx: int)
 	if(role != nil && role != "")
 		msgstore[idx].role = role;
 	msgstore[idx].text = text;
+	dtype := getattr(attrs, "dtype");
+	title := getattr(attrs, "title");
+	progress := getattr(attrs, "progress");
+	options := getattr(attrs, "options");
+	if(dtype != nil)
+		msgstore[idx].dtype = dtype;
+	if(title != nil)
+		msgstore[idx].title = title;
+	if(progress != nil)
+		msgstore[idx].progress = progress;
+	if(options != nil)
+		msgstore[idx].options = options;
 	msgstore[idx].rendimg = nil;
 }
 
@@ -765,7 +987,6 @@ sendinput(text: string)
 {
 	if(actid_g < 0)
 		return;
-	appendmsg(ref ConvMsg("human", text, nil, nil));
 	scrollpx = 0;
 	path := sys->sprint("%s/activity/%d/conversation/input", mountpt_g, actid_g);
 	fd := sys->open(path, Sys->OWRITE);

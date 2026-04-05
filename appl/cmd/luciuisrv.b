@@ -138,6 +138,10 @@ ConvMsg: adt {
 	role:	string;		# human | veltro
 	text:	string;
 	using:	string;		# comma-separated resource paths
+	dtype:	string;		# "" (normal) | "dialogue" | "form"
+	title:	string;		# dialogue tile title
+	progress: string;	# "0"-"100" percentage, "" = no progress bar
+	options: string;	# comma-separated options for form
 };
 
 Artifact: adt {
@@ -462,7 +466,7 @@ MAX_ACTIVITIES: con 64;
 MAX_DATA_SIZE: con 1048576;	# 1MB max per write to prevent memory exhaustion
 MAX_QUEUE_DEPTH: con 256;	# max pending notifications/toasts
 
-addmessage(a: ref Activity, role, text, using: string): int
+addmessage(a: ref Activity, role, text, using, dtype, title, progress, options: string): int
 {
 	if(a.nmsg >= MAX_MESSAGES)
 		return -1;
@@ -472,7 +476,7 @@ addmessage(a: ref Activity, role, text, using: string): int
 		a.messages = nm;
 	}
 	idx := a.nmsg;
-	a.messages[a.nmsg++] = ref ConvMsg(role, text, using);
+	a.messages[a.nmsg++] = ref ConvMsg(role, text, using, dtype, title, progress, options);
 	vers++;
 	return idx;
 }
@@ -908,6 +912,14 @@ doread(srv: ref Styxserver, m: ref Tmsg.Read, c: ref Fid)
 		text := "role=" + msg.role;
 		if(msg.using != nil && msg.using != "")
 			text += " using=" + msg.using;
+		if(msg.dtype != nil && msg.dtype != "")
+			text += " dtype=" + msg.dtype;
+		if(msg.title != nil && msg.title != "")
+			text += " title=" + msg.title;
+		if(msg.progress != nil && msg.progress != "")
+			text += " progress=" + msg.progress;
+		if(msg.options != nil && msg.options != "")
+			text += " options=" + msg.options;
 		text += " text=" + msg.text + "\n";
 		srv.reply(styxservers->readbytes(m, array of byte text));
 
@@ -1321,17 +1333,29 @@ globalctl(data: string): string
 
 convctl(a: ref Activity, data: string): string
 {
-	# In-place update of an existing message (for streaming token updates).
-	# Format: "update idx=N text=..."
+	# In-place update of an existing message (for streaming token updates
+	# and dialogue tile field changes like progress or clearing options).
+	# Format: "update idx=N text=..." or "update idx=N progress=50"
 	if(hasprefix(data, "update ")) {
 		attrs := parseattrs(data[len "update ":]);
 		idx := strtoint(getattr(attrs, "idx"));
-		text := getattr(attrs, "text");
 		if(idx < 0 || idx >= a.nmsg)
 			return "bad idx";
-		if(text == nil)
-			text = "";
-		a.messages[idx].text = text;
+		text := getattr(attrs, "text");
+		if(text != nil)
+			a.messages[idx].text = text;
+		progress := getattr(attrs, "progress");
+		if(progress != nil)
+			a.messages[idx].progress = progress;
+		title := getattr(attrs, "title");
+		if(title != nil)
+			a.messages[idx].title = title;
+		options := getattr(attrs, "options");
+		if(options != nil)
+			a.messages[idx].options = options;
+		dtype := getattr(attrs, "dtype");
+		if(dtype != nil)
+			a.messages[idx].dtype = dtype;
 		vers++;
 		pushevent(a.id, "conversation update " + string idx);
 		return nil;
@@ -1342,13 +1366,17 @@ convctl(a: ref Activity, data: string): string
 	role := getattr(attrs, "role");
 	text := getattr(attrs, "text");
 	using := getattr(attrs, "using");
+	dtype := getattr(attrs, "dtype");
+	title := getattr(attrs, "title");
+	progress := getattr(attrs, "progress");
+	options := getattr(attrs, "options");
 
 	if(role == nil || role == "")
 		return "missing role";
 	if(text == nil)
 		text = "";
 
-	idx := addmessage(a, role, text, using);
+	idx := addmessage(a, role, text, using, dtype, title, progress, options);
 	if(idx < 0)
 		return "message limit exceeded";
 	pushevent(a.id, "conversation " + string idx);
