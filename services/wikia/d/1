@@ -1,0 +1,18 @@
+index
+D0
+Awiki9p
+CKnowledge base index
+#
+#KNOWLEDGE BASE INDEX
+#
+#This page is the entry point for the wiki knowledge base.
+#It is updated automatically as pages are ingested.
+#
+#WIKI REFERENCE
+#
+# *	[wiki syntax] - markup reference
+#
+#To add content, bind source documents to /n/wikia/raw
+#and run ingest via wiki9p or the wiki tool.
+#
+

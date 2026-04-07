@@ -1,0 +1,42 @@
+<html>
+<head>
+<title>Editing: TITLE</title>
+<META http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style>
+body { background: #1a1a2e; color: #e0e0e0; font-family: sans-serif; margin: 0; padding: 20px; }
+a { color: #7eb8da; }
+h1 { color: #c9d1d9; border-bottom: 1px solid #333; padding-bottom: 8px; }
+textarea { background: #0d1117; color: #e0e0e0; border: 1px solid #333; padding: 10px; font-family: monospace; font-size: 14px; }
+input[type="text"] { background: #0d1117; color: #e0e0e0; border: 1px solid #333; padding: 4px 8px; }
+input[type="submit"] { background: #238636; color: #fff; border: none; padding: 6px 16px; cursor: pointer; border-radius: 4px; }
+.meta { color: #8b949e; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<h1>Editing: TITLE</h1>
+<p class="meta">Editing DATE version</p>
+
+<p>Wiki markup: blank line = paragraph, ALL CAPS = heading,
+* = bullet, ! = preformatted, [link] = wiki link, [text | url] = external link.</p>
+
+<form action="/magic/wikipost" method="post">
+<table><tr><td valign=top>
+<input type="submit" name="x" value="Save"></td><td>
+<table>
+<tr><td align=right>Comment:</td><td><input type="text" name="comment" value="" size=50></td></tr>
+<tr><td align=right>Author:</td><td><input type="text" name="author" value="" size=50></td></tr>
+</table>
+<input type="hidden" name="title" value="TITLE">
+<input type="hidden" name="version" value="VERSION">
+<input type="hidden" name="service" value="wikia">
+<input type="hidden" name="base" value="/wiki">
+<p>
+<textarea name="text" wrap="virtual" cols="90" rows="30">
+PAGE
+</textarea>
+</td></table>
+</form>
+
+</body>
+</html>

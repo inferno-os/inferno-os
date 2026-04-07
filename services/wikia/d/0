@@ -1,0 +1,31 @@
+wiki syntax
+D0
+Awiki9p
+CInitial wiki syntax reference
+#
+#WIKI MARKUP SYNTAX
+#
+#Pages use a simple text markup:
+#
+# *	Blank line starts a new paragraph
+# *	A paragraph in ALL CAPS becomes a section heading
+# *	Line starting with * is a bullet item
+# *	Line starting with ! is preformatted (code)
+# *	[page name] links to another wiki page
+# *	[text | url] creates an external link
+#
+#PAGES
+#
+#Pages are created by the wiki agent (wiki9p) during ingest
+#or by humans via the edit form in Charon.  Each page has
+#full version history and conflict detection.
+#
+#Page types used by the knowledge base:
+#
+# *	Source summaries - distilled from ingested documents
+# *	Concept pages - topic overviews synthesizing multiple sources
+# *	Entity pages - specific things (products, organizations, standards)
+# *	Synthesis pages - cross-cutting analysis across topics
+# *	Lint reports - automated health checks
+#
+

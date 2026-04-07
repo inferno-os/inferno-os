@@ -17,6 +17,7 @@ MAIN=\
     speech9p.dis\
     msg9p.dis\
     msgwatch.dis\
+    wiki9p.dis\
 
 SOURCES=\
     sources/email.dis\
@@ -56,6 +57,7 @@ TOOLS=\
     tools/gap.dis\
     tools/plan.dis\
     tools/keyring.dis\
+    tools/wiki.dis\
 
 all:V: $MAIN $TOOLS $SOURCES
 
@@ -92,6 +94,9 @@ msg9p.dis: msg9p.b
 
 msgwatch.dis: msgwatch.b agentlib.m
 	limbo $LIMBOFLAGS -gw msgwatch.b
+
+wiki9p.dis: wiki9p.b
+	limbo $LIMBOFLAGS -gw wiki9p.b
 
 # Sources
 sources/email.dis: sources/email.b
@@ -212,9 +217,13 @@ tools/plan.dis: tools/plan.b tool.m
 tools/keyring.dis: tools/keyring.b tool.m
 	limbo $LIMBOFLAGS -gw -o tools/keyring.dis tools/keyring.b
 
+# Wiki knowledge base tool
+tools/wiki.dis: tools/wiki.b tool.m
+	limbo $LIMBOFLAGS -gw -o tools/wiki.dis tools/wiki.b
+
 install:V: all
 	mkdir -p $DISBIN $DISBIN/tools $DISBIN/sources
-	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis cowfs.dis subagent.dis mc9p.dis speech9p.dis msg9p.dis msgwatch.dis $DISBIN/
+	cp agentlib.dis veltro.dis repl.dis tools9p.dis nsconstruct.dis cowfs.dis subagent.dis mc9p.dis speech9p.dis msg9p.dis msgwatch.dis wiki9p.dis $DISBIN/
 	cp tools/*.dis $DISBIN/tools/
 	cp sources/*.dis $DISBIN/sources/
 
