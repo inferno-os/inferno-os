@@ -1,15 +1,14 @@
 #!/bin/sh
 
 # InferNode.app launcher
-# The app bundle is self-contained: all runtime files live in Contents/Resources/.
-# On first launch, copy to a writable location so secstore/factotum can persist.
+# The bundle root (Contents/Resources/) is read-only. The profile sets up
+# writable overlays from ~/.inferno for secstore, config, and tmp.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUNDLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BUNDLE_RESOURCES="$BUNDLE_DIR/Resources"
+RESOURCES="$BUNDLE_DIR/Resources"
 
-# Detect if running from a DMG or App Translocation (which means it was
-# launched from a DMG before macOS moved it to a temp location).
+# Refuse to run from a DMG or App Translocation sandbox.
 case "$SCRIPT_DIR" in
     /Volumes/*|*/AppTranslocation/*)
         osascript -e 'display dialog "InferNode cannot run from a disk image. Please copy InferNode.app to your hard drive first (e.g. Applications, Desktop, or any folder)." buttons {"OK"} default button "OK" with title "InferNode" with icon caution' 2>/dev/null
@@ -17,92 +16,7 @@ case "$SCRIPT_DIR" in
         ;;
 esac
 
-# Persistent writable copy in user's home
-INFERNODE_HOME="$HOME/.infernode"
-
-# First-run: copy runtime from bundle to writable location
-if [ ! -d "$INFERNODE_HOME/dis" ]; then
-    mkdir -p "$INFERNODE_HOME"
-    # Copy runtime tree (skip if already exists)
-    for d in dis lib fonts module services locale mnt tmp usr mkconfig mkfiles; do
-        src="$BUNDLE_RESOURCES/$d"
-        [ -e "$src" ] && cp -a "$src" "$INFERNODE_HOME/"
-    done
-    mkdir -p "$INFERNODE_HOME/tmp" "$INFERNODE_HOME/usr/inferno/secstore"
-fi
-
-# Always sync dis/ and lib/ from bundle (pick up updates on new versions)
-# but preserve user data in usr/ and lib/ndb/
-for d in dis module services locale fonts; do
-    src="$BUNDLE_RESOURCES/$d"
-    [ -d "$src" ] && cp -a "$src" "$INFERNODE_HOME/"
-done
-# Sync lib/ but preserve user config files (ndb/llm, veltro settings, etc.)
-if [ -d "$BUNDLE_RESOURCES/lib" ]; then
-    # Back up user configs
-    for uf in lib/ndb/llm lib/veltro/meta.txt lib/veltro/agents/task.txt; do
-        [ -f "$INFERNODE_HOME/$uf" ] && cp "$INFERNODE_HOME/$uf" "$INFERNODE_HOME/$uf.user"
-    done
-    # Sync everything from bundle
-    cp -a "$BUNDLE_RESOURCES/lib/." "$INFERNODE_HOME/lib/" 2>/dev/null
-    # Restore user configs
-    for uf in lib/ndb/llm lib/veltro/meta.txt lib/veltro/agents/task.txt; do
-        [ -f "$INFERNODE_HOME/$uf.user" ] && mv "$INFERNODE_HOME/$uf.user" "$INFERNODE_HOME/$uf"
-    done
-fi
-
-# Emulator binary is in Contents/MacOS/ alongside this script
 EMU="$SCRIPT_DIR/emu"
 
-# Set theme
-echo brimstone > "$INFERNODE_HOME/lib/lucifer/theme/current"
-
-# Write the boot script to a file inside the Inferno root.
-# macOS Finder/open mangles complex shell arguments passed via exec,
-# so we write the command sequence to a file and have sh source it.
-# Boot script runs WITHOUT -l (no profile) to avoid profile hangs.
-# All initialization is done inline here instead.
-cat > "$INFERNODE_HOME/lib/lucifer/boot.sh" << 'BOOTSCRIPT'
-load std
-
-# Minimal init (replaces profile for app bundle launch)
-path=(/dis .)
-mount -ac {mntgen} /n >[2] /dev/null
-bind -a '#I' /net >[2] /dev/null
-ndb/cs >[2] /dev/null
-
-# Secstore + factotum
-mkdir -p /usr/inferno/secstore >[2] /dev/null
-auth/secstored >[2] /dev/null &
-sleep 1
-if {! ftest -f /mnt/factotum/proto} {
-	auth/factotum
-}
-
-# Host filesystem
-trfs '#U*' /n/local >[2] /dev/null
-home=/n/local/^`{echo 'echo $HOME' | os sh}
-mkdir -p /tmp >[2] /dev/null
-if {! ftest -d $home/tmp} { mkdir -p $home/tmp }
-bind -bc $home/tmp /tmp >[2] /dev/null
-
-# Login screen (unlocks secstore, loads keys into factotum)
-wm/logon
-
-# Start LLM service (needs API key in factotum from secstore)
-llmsrv >[2] /dev/null &
-sleep 1
-
-# GUI services
-luciuisrv
-echo activity create Main > /n/ui/ctl
-sleep 1
-/dis/veltro/tools9p -v -m /tool -b read,list,find,search,grep,write,edit,exec,launch,spawn,diff,json,webfetch,git,memory,todo,plan,websearch,mail,keyring,present,gap -p /dis/wm read list find present say hear task memory gap keyring editor shell
-lucibridge -a 0 -v -s >[2] /tmp/lucibridge.log &
-sleep 1
-echo 'create id=tasks type=taskboard label=Tasks' > /n/ui/activity/0/presentation/ctl
-lucifer
-BOOTSCRIPT
-
-# Launch the emulator with the boot script.
-exec "$EMU" -c1 "-pheap=1024m" "-pmain=1024m" "-pimage=1024m" "-r$INFERNODE_HOME" sh /lib/lucifer/boot.sh
+# Launch: profile (-l) sets up overlays, then boot.sh starts the GUI.
+exec "$EMU" -c1 "-pheap=1024m" "-pmain=1024m" "-pimage=1024m" "-r$RESOURCES" sh -l /lib/lucifer/boot.sh

@@ -213,7 +213,10 @@ jobs:
         for d in dis lib fonts module services locale usr mnt; do
           [ -d "$d" ] && cp -a "$d" "$RESOURCES/"
         done
-        mkdir -p "$RESOURCES/tmp" "$RESOURCES/usr/inferno/secstore"
+        mkdir -p "$RESOURCES/tmp" "$RESOURCES/usr/inferno/secstore" "$RESOURCES/usr/inferno/tmp"
+
+        # Mark as bundle — profile uses this sentinel to enable writable overlays
+        touch "$RESOURCES/lib/lucifer/.bundle"
 
         # Set distribution defaults for LLM config
         # (dev config may point to internal servers)

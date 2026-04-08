@@ -149,6 +149,19 @@ readndbfield(path, field: string): string
 	return nil;
 }
 
+# Check if the LLM service is actually functional (not just a mntgen stub).
+# mntgen auto-creates /n/llm as an empty mount point on stat, so pathexists
+# always returns true.  Instead, try to open /n/llm/new which only exists
+# when llmsrv (or a remote llm9p) is actually serving.
+llmserviceok(): int
+{
+	fd := sys->open("/n/llm/new", Sys->OREAD);
+	if(fd == nil)
+		return 0;
+	fd = nil;
+	return 1;
+}
+
 # Register namespace entries from the manifest written by tools9p.
 # The manifest reflects the agent's actual restricted namespace — it is
 # the single source of truth.  No hardcoded path lists.
@@ -1505,9 +1518,34 @@ init(nil: ref Draw->Context, args: list of string)
 	# Verify prerequisites
 	if(sys->open("/n/ui/ctl", Sys->OREAD) == nil)
 		fatal("/n/ui/ not mounted — start luciuisrv first");
-	if(!agentlib->pathexists("/n/llm")) {
-		backend := readndbfield("/lib/ndb/llm", "backend");
-		if(backend == nil || backend == "" || backend == "api") {
+	# Check LLM configuration — two distinct failure modes:
+	#   1. Nothing configured: no API key, no Ollama → prompt to configure
+	#   2. Configured but unreachable: key exists but service down → different message
+	backend := readndbfield("/lib/ndb/llm", "backend");
+	if(backend == nil || backend == "")
+		backend = "api";
+	llmconfigured := 0;
+	if(backend == "api") {
+		# Check factotum for an anthropic API key
+		ctldata := agentlib->readfile("/mnt/factotum/ctl");
+		if(ctldata != nil && len ctldata > 0) {
+			(nil, ctllines) := sys->tokenize(ctldata, "\n");
+			for(; ctllines != nil; ctllines = tl ctllines) {
+				(nil, found) := str->splitstrl(hd ctllines, "service=anthropic");
+				if(found != nil)
+					llmconfigured = 1;
+			}
+		}
+	} else if(backend == "openai") {
+		# Ollama/OpenAI: configured if a URL is set
+		ourl := readndbfield("/lib/ndb/llm", "url");
+		if(ourl != nil && ourl != "")
+			llmconfigured = 1;
+	}
+
+	if(!llmconfigured) {
+		# Nothing configured — prompt immediately, no network wait
+		if(backend == "api") {
 			# No LLM service — show interactive setup dialogue
 			writemsg("veltro",
 				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
@@ -1538,7 +1576,7 @@ init(nil: ref Draw->Context, args: list of string)
 
 					writemsg("veltro",
 						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. " +
-						"Then quit InferNode (Cmd+Q) and reopen it.");
+						"Then close InferNode and relaunch it.");
 				} else if(choice == "Use Local LLM (Ollama)") {
 					# Launch Settings in the presentation zone
 					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
@@ -1548,19 +1586,83 @@ init(nil: ref Draw->Context, args: list of string)
 
 					writemsg("veltro",
 						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. " +
-						"Then quit InferNode (Cmd+Q) and reopen it.");
+						"Then close InferNode and relaunch it.");
 				}
 				# After button click, stay alive but don't loop — user
 				# follows the instructions and restarts. Block until quit.
 				for(;;)
 					sys->sleep(60000);
 			}
-			if(!agentlib->pathexists("/n/llm"))
+			if(!llmserviceok())
 				fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
 			log("/n/llm appeared — continuing startup");
 		} else {
-			fatal("/n/llm/ not mounted \u2014 start llmsrv or mount remote LLM");
+			# Ollama not configured — same setup dialogue
+			writemsg("veltro",
+				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
+				"I need an LLM connection to get started. Choose an option below:");
+			writedialogue("LLM Setup",
+				"Choose how to connect to an AI model:",
+				"", "Set up API Key,Use Local LLM (Ollama)");
+			log("no LLM configured (openai backend, no url) — displayed setup dialogue");
+			inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+			for(;;) {
+				inputfd := sys->open(inputpath, Sys->OREAD);
+				if(inputfd == nil) break;
+				choice := blockread(inputfd);
+				inputfd = nil;
+				if(choice == nil) break;
+				if(choice == "Set up API Key") {
+					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+					writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
+					sys->sleep(500);
+					writefile(pctl, "center id=keyring");
+					writemsg("veltro",
+						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. " +
+						"Then close InferNode and relaunch it.");
+				} else if(choice == "Use Local LLM (Ollama)") {
+					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+					sys->sleep(500);
+					writefile(pctl, "center id=settings");
+					writemsg("veltro",
+						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. " +
+						"Then close InferNode and relaunch it.");
+				}
+				for(;;) sys->sleep(60000);
+			}
+			fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
 		}
+	} else if(!llmserviceok()) {
+		# Failure mode 2: Configured but LLM service unreachable
+		if(backend == "api")
+			writemsg("veltro",
+				"Your API key is configured, but the LLM service failed to start. " +
+				"Check your internet connection and restart InferNode.");
+		else
+			writemsg("veltro",
+				"Your Ollama server is configured, but I can't reach it. " +
+				"Make sure Ollama is running and restart InferNode.");
+		writedialogue("LLM Unreachable",
+			"The LLM service is configured but not responding.",
+			"", "Open Settings,Quit");
+		inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+		for(;;) {
+			inputfd := sys->open(inputpath, Sys->OREAD);
+			if(inputfd == nil) break;
+			choice := blockread(inputfd);
+			inputfd = nil;
+			if(choice == nil) break;
+			if(choice == "Open Settings") {
+				pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+				writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+				sys->sleep(500);
+				writefile(pctl, "center id=settings");
+				writemsg("veltro", "Settings is open. Check your LLM configuration, then restart.");
+			}
+			for(;;) sys->sleep(60000);
+		}
+		fatal("/n/llm/ not mounted \u2014 LLM service unreachable");
 	}
 
 	# Tools are optional — bridge works as simple chat relay without them

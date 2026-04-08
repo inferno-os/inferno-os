@@ -8,28 +8,85 @@ path=(/dis .)
 # Get username
 user="{cat /dev/user}
 
-# Mount namespace generator (creates /n as a synthetic mount point)
+# ── Networking ──────────────────────────────────────────────
 mount -ac {mntgen} /n >[2] /dev/null
-
-# Initialize IP networking stack
 bind -a '#I' /net >[2] /dev/null
-
-# Start connection server (DNS resolution)
 ndb/cs
 
-# Start secstore (persistent encrypted key storage).
-# Kill any stale secstored from a previous emu session first — a stale
+# ── Host filesystem + home directory (early — needed for overlays) ──
+if {~ $emuhost MacOSX Linux}{
+	trfs '#U*' /n/local >[2] /dev/null
+	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
+	home=$ghome
+}{
+	# Non-desktop platforms (native hardware, embedded)
+	home=/usr/^$user
+	if {! ftest -d $home} { mkdir -p $home }
+}
+
+# ── Writable overlay from ~/.inferno (bundle mode only) ────
+# The .bundle sentinel is created by the release workflow.
+# Dev checkouts don't have it — the overlay block is skipped entirely.
+bundlemode=no
+if {ftest -f /lib/lucifer/.bundle} {
+	bundlemode=yes
+	infhome=$ghome^/.inferno
+
+	# First-run: create sparse overlay structure on host filesystem.
+	# Use 'os sh' because these dirs live on the host side, and trfs
+	# may not support mkdir through /n/local before the binds exist.
+	if {! ftest -d $infhome} {
+		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/secstore"'
+		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/tmp"'
+		os sh -c 'mkdir -p "$HOME/.inferno/lib/ndb"'
+		os sh -c 'mkdir -p "$HOME/.inferno/lib/lucifer/theme"'
+		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro"'
+		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-agents"'
+		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-keys"'
+		os sh -c 'mkdir -p "$HOME/.inferno/tmp"'
+
+		# Seed writable defaults from the (read-only) bundle.
+		cp /lib/ndb/llm $infhome/lib/ndb/llm >[2] /dev/null
+		cp /lib/lucifer/theme/current $infhome/lib/lucifer/theme/current >[2] /dev/null
+		cp /lib/veltro/meta.txt $infhome/lib/veltro/meta.txt >[2] /dev/null
+		cp /lib/veltro/agents/task.txt $infhome/lib/veltro-agents/task.txt >[2] /dev/null
+	}
+
+	# Writable overlay mounts.
+	# Note: bind -c (MREPL) silently fails with trfs-backed sources.
+	# Use bind -bc (MBEFORE|MCREATE) — overlay files shadow the bundle's
+	# empty dirs, and new files are created in the writable overlay.
+	bind -bc $infhome/usr/inferno/secstore /usr/inferno/secstore
+	bind -bc $infhome/usr/inferno/tmp      /usr/inferno/tmp
+
+	# Union overlays — writable files shadow bundle defaults,
+	# bundle-only files (system.txt, tools/, policies/) show through.
+	bind -bc $infhome/lib/ndb              /lib/ndb
+	bind -bc $infhome/lib/lucifer/theme    /lib/lucifer/theme
+
+	# Veltro top-level: meta.txt, welcome_shown, tour_offered shadow bundle.
+	# No agents/ or keys/ subdirs in overlay, so bundle's show through.
+	bind -bc $infhome/lib/veltro           /lib/veltro
+	# Separate union for agents (task.txt writable, others from bundle)
+	bind -bc $infhome/lib/veltro-agents    /lib/veltro/agents
+	# Separate union for keys (all writable)
+	bind -bc $infhome/lib/veltro-keys      /lib/veltro/keys >[2] /dev/null
+
+	# Writable /tmp
+	bind -bc $infhome/tmp /tmp >[2] /dev/null
+}
+
+# ── Secstored (persistent encrypted key storage) ──────────
+# Kill stale secstored from a previous emu session — a stale
 # instance with different PAK data causes login to hang indefinitely.
-# Sleep after kill to let the OS release the port (TCP TIME_WAIT).
 os sh -c 'lsof -ti :5356 2>/dev/null | xargs kill 2>/dev/null; sleep 1; true' >[2] /dev/null
-# Ensure secstore data directory exists (first boot from distribution)
 mkdir -p /usr/inferno/secstore >[2] /dev/null
 auth/secstored >[2] /dev/null &
 sleep 1
 
-# Start factotum.
-# Headless/non-interactive: if $SECSTORE_PASSWORD is set on the host,
-# start factotum with secstore backing so all keys are loaded automatically.
+# ── Factotum ──────────────────────────────────────────────
+# Headless: if $SECSTORE_PASSWORD is set on the host, start factotum
+# with secstore backing so all keys are loaded automatically.
 # GUI: factotum starts empty; wm/logon unlocks secstore interactively.
 if {! ftest -f /mnt/factotum/proto}{
 	havesecpass=`{os sh -c 'if [ -n "$SECSTORE_PASSWORD" ]; then echo yes; fi' >[2] /dev/null}
@@ -41,14 +98,12 @@ if {! ftest -f /mnt/factotum/proto}{
 	}
 }
 
-# Provision API key into factotum from host env (fallback for CLI users).
-# This is a convenience for when secstore is not set up yet.
+# Provision API key from host env (fallback for CLI users without secstore)
 factotumkey=`{os sh -c 'if [ -n "$ANTHROPIC_API_KEY" ]; then echo "key proto=pass service=anthropic user=apikey !password=$ANTHROPIC_API_KEY"; fi'}
 echo $factotumkey > /mnt/factotum/ctl >[2] /dev/null
 
-# Setup home directory and LLM mount based on platform
+# ── LLM + Speech (desktop platforms) ──────────────────────
 if {~ $emuhost MacOSX Linux}{
-	# LLM service: read config from /lib/ndb/llm
 	llmmode=`{sed -n 's/^mode=//p' /lib/ndb/llm >[2] /dev/null}
 	if {~ $llmmode remote} {
 		llmdial=`{sed -n 's/^dial=//p' /lib/ndb/llm}
@@ -59,41 +114,23 @@ if {~ $emuhost MacOSX Linux}{
 
 	# Start speech file server (TTS/STT via /n/speech)
 	/dis/veltro/speech9p.dis -e cmd &
-
-	# Mount host filesystem (synchronous)
-	trfs '#U*' /n/local >[2] /dev/null
-	# Get actual HOME from host
-	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
-	home=$ghome
 }{
-	# Non-desktop platforms (e.g. native Inferno on embedded hardware):
-	# mount llm9p from the configured llmserver (see lib/ndb/local).
+	# Non-desktop: mount remote llm9p
 	mount -A 'tcp!llmserver!5640' /n/llm >[2] /dev/null
-
-	# Fallback to /usr/username for other systems.
-	home=/usr/^$user
-	if {! ftest -d $home} {
-		mkdir -p $home
-	}
 }
 
-# Create tmp directory if needed
+# ── tmp setup ─────────────────────────────────────────────
 if {! ftest -d $home/tmp} {
 	mkdir -p $home/tmp
 }
-
-# Create /tmp directly (needed on Windows where bind -bc may fail)
 mkdir -p /tmp >[2] /dev/null
-
-# Bind home tmp to /tmp so applications can find it
+# In dev mode, bind home tmp to /tmp. In bundle mode, overlay already
+# provides a writable /tmp, so layer home tmp on top of it.
 bind -bc $home/tmp /tmp >[2] /dev/null
 
-# Clean up stale temp files from previous sessions
-# These accumulate when apps crash (ORCLOSE doesn't trigger on abnormal exit)
-# Pattern: /tmp/[A-Z]{pid}.{user}xenith, acme, blks (4-char user prefix)
+# Clean stale temp files from previous sessions
 for f in /tmp/*.????xenith /tmp/*.????acme /tmp/*.????blks {
 	rm $f >[2] /dev/null
 }
 
-# Change to home directory
 cd $home

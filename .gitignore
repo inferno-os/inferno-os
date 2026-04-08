@@ -213,3 +213,6 @@ usr/inferno/test-pdfs/
 # Secstore credentials (PAK verifiers + encrypted key blobs)
 usr/inferno/secstore/*/
 dis/mermaid_test.dis
+
+# Bundle sentinel (created by release workflow, not present in dev)
+lib/lucifer/.bundle
