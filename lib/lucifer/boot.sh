@@ -6,7 +6,9 @@ wm/logon
 
 # (Re-)start LLM service — profile's llmsrv may have failed pre-logon
 # because the API key wasn't in factotum yet (secstore not yet unlocked).
-if {! ftest -d /n/llm} {
+# Note: ftest -d /n/llm is useless here — mntgen auto-creates the stub.
+# Check if the service is actually responding by opening /n/llm/new.
+if {! ftest -f /n/llm/new} {
 	llmmode=`{sed -n 's/^mode=//p' /lib/ndb/llm >[2] /dev/null}
 	if {~ $llmmode remote} {
 		llmdial=`{sed -n 's/^dial=//p' /lib/ndb/llm}
