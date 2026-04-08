@@ -172,7 +172,7 @@ init(ctxt: ref Draw->Context, args: list of string)
 	# deliverevent() as soon as lucipres_g is set (before init completes).
 	# alt send on a nil channel is a fatal "dereference of nil" in Dis.
 	preseventch = chan[8] of string;
-	renderdonech = chan[4] of ref RenderResult;
+	renderdonech = chan[32] of ref RenderResult;
 
 	wmclient = load Wmclient Wmclient->PATH;
 	if(wmclient == nil) {
