@@ -2213,7 +2213,6 @@ redraw()
 		statbar.right = sys->sprint("Ln %d, Col %d  (%d lines)", doc.curline + 1, doc.curcol + 1, doc.nlines);
 	}
 	statbar.draw(screen);
-	widgetmod->contentborder(screen);
 	screen.flush(Draw->Flushnow);
 }
 

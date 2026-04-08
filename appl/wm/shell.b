@@ -1702,7 +1702,6 @@ redraw()
 	else
 		statbar.leftcolor = nil;
 	statbar.draw(screen);
-	widgetmod->contentborder(screen);
 	screen.flush(Draw->Flushnow);
 }
 

@@ -737,7 +737,6 @@ redraw()
 		}
 		sbar.draw(w.image);
 	}
-	widgetmod->contentborder(w.image);
 
 	w.image.flush(Draw->Flushnow);
 }

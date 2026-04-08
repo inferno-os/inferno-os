@@ -239,7 +239,6 @@ redraw(w: ref Window, display: ref Display)
 		y += LINEH;
 	}
 
-	widgetmod->contentborder(screen);
 	screen.flush(Draw->Flushnow);
 }
 

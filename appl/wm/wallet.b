@@ -587,7 +587,6 @@ redraw()
 	sbar.left = sys->sprint("%d account%s", naccts, plural(naccts));
 	sbar.right = "B3: menu";
 	sbar.draw(w.image);
-	widgetmod->contentborder(w.image);
 
 	w.image.flush(Draw->Flushnow);
 }

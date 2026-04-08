@@ -660,7 +660,6 @@ redraw()
 	sth := widgetmod->statusheight();
 	statbar.resize(Rect((r.min.x, r.max.y - sth), (r.max.x, r.max.y)));
 	statbar.draw(screen);
-	widgetmod->contentborder(screen);
 
 	screen.flush(Draw->Flushnow);
 }
