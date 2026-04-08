@@ -1634,35 +1634,46 @@ init(nil: ref Draw->Context, args: list of string)
 			fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
 		}
 	} else if(!llmserviceok()) {
-		# Failure mode 2: Configured but LLM service unreachable
-		if(backend == "api")
-			writemsg("veltro",
-				"Your API key is configured, but the LLM service failed to start. " +
-				"Check your internet connection and restart InferNode.");
-		else
-			writemsg("veltro",
-				"Your Ollama server is configured, but I can't reach it. " +
-				"Make sure Ollama is running and restart InferNode.");
-		writedialogue("LLM Unreachable",
-			"The LLM service is configured but not responding.",
-			"", "Open Settings,Quit");
-		inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
-		for(;;) {
-			inputfd := sys->open(inputpath, Sys->OREAD);
-			if(inputfd == nil) break;
-			choice := blockread(inputfd);
-			inputfd = nil;
-			if(choice == nil) break;
-			if(choice == "Open Settings") {
-				pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-				writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
-				sys->sleep(500);
-				writefile(pctl, "center id=settings");
-				writemsg("veltro", "Settings is open. Check your LLM configuration, then restart.");
+		# Failure mode 2: Configured but LLM not ready yet.
+		# llmsrv may still be starting — retry a few times before giving up.
+		log("llm configured but not ready, waiting...");
+		for(retry := 0; retry < 5; retry++) {
+			sys->sleep(2000);
+			if(llmserviceok()) {
+				log("llm service came up after retry");
+				break;
 			}
-			for(;;) sys->sleep(60000);
 		}
-		fatal("/n/llm/ not mounted \u2014 LLM service unreachable");
+		if(!llmserviceok()) {
+			if(backend == "api")
+				writemsg("veltro",
+					"Your API key is configured, but the LLM service failed to start. " +
+					"Check your internet connection and close InferNode and relaunch it.");
+			else
+				writemsg("veltro",
+					"Your Ollama server is configured, but I can't reach it. " +
+					"Make sure Ollama is running and close InferNode and relaunch it.");
+			writedialogue("LLM Unreachable",
+				"The LLM service is configured but not responding.",
+				"", "Open Settings");
+			inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+			for(;;) {
+				inputfd := sys->open(inputpath, Sys->OREAD);
+				if(inputfd == nil) break;
+				choice := blockread(inputfd);
+				inputfd = nil;
+				if(choice == nil) break;
+				if(choice == "Open Settings") {
+					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+					sys->sleep(500);
+					writefile(pctl, "center id=settings");
+					writemsg("veltro", "Settings is open. Check your LLM configuration, then restart.");
+				}
+				for(;;) sys->sleep(60000);
+			}
+			fatal("/n/llm/ not mounted \u2014 LLM service unreachable");
+		}
 	}
 
 	# Tools are optional — bridge works as simple chat relay without them

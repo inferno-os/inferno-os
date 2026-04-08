@@ -33,9 +33,8 @@ if {ftest -f /lib/lucifer/.bundle} {
 	infhome=$ghome^/.infernode
 
 	# First-run: create overlay and seed defaults through Inferno's
-	# filesystem (not os sh). This keeps trfs cache consistent so
-	# subsequent binds work. Same pattern as Acme-SAC.
-	if {! ftest -d $infhome} {
+	# filesystem. This keeps trfs cache consistent so binds work.
+	if {! ftest -d $infhome/lib} {
 		mkdir -p $infhome/usr/inferno/secstore
 		mkdir -p $infhome/usr/inferno/tmp
 		mkdir -p $infhome/lib/ndb
@@ -51,8 +50,7 @@ if {ftest -f /lib/lucifer/.bundle} {
 		cp /lib/veltro/agents/task.txt $infhome/lib/veltro-agents/task.txt >[2] /dev/null
 	}
 
-	# Writable overlay mounts (union: overlay files shadow bundle,
-	# bundle-only files show through).
+	# Writable overlay mounts
 	bind -bc $infhome/usr/inferno/secstore /usr/inferno/secstore
 	bind -bc $infhome/usr/inferno/tmp      /usr/inferno/tmp
 	bind -bc $infhome/lib/ndb              /lib/ndb
@@ -111,8 +109,6 @@ if {! ftest -d $home/tmp} {
 	mkdir -p $home/tmp
 }
 mkdir -p /tmp >[2] /dev/null
-# In dev mode, bind home tmp to /tmp. In bundle mode, overlay already
-# provides a writable /tmp, so layer home tmp on top of it.
 bind -bc $home/tmp /tmp >[2] /dev/null
 
 # Clean stale temp files from previous sessions

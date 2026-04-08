@@ -863,7 +863,7 @@ savekey()
 			flashstatus("error: fill all fields");
 			return;
 		}
-		attrs = sys->sprint("key proto=pass service=%s !password=%s", svc, pass);
+		attrs = sys->sprint("key proto=pass service=%s user=apikey !password=%s", svc, pass);
 
 	ModeLogin =>
 		svc := f_service.value();
