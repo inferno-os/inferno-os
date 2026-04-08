@@ -32,9 +32,10 @@ if {ftest -f /lib/lucifer/.bundle} {
 	bundlemode=yes
 	infhome=$ghome^/.inferno
 
-	# First-run: create sparse overlay structure on host filesystem.
-	# Use 'os sh' because these dirs live on the host side, and trfs
-	# may not support mkdir through /n/local before the binds exist.
+	# First-run: create overlay structure and seed defaults.
+	# Everything happens on the host side via 'os sh' — Inferno's cp
+	# through trfs to newly-created dirs fails silently.
+	# $emuroot is the host path to the Inferno root (set by emu).
 	if {! ftest -d $infhome} {
 		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/secstore"'
 		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/tmp"'
@@ -44,12 +45,13 @@ if {ftest -f /lib/lucifer/.bundle} {
 		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-agents"'
 		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-keys"'
 		os sh -c 'mkdir -p "$HOME/.inferno/tmp"'
-
-		# Seed writable defaults from the (read-only) bundle.
-		cp /lib/ndb/llm $infhome/lib/ndb/llm >[2] /dev/null
-		cp /lib/lucifer/theme/current $infhome/lib/lucifer/theme/current >[2] /dev/null
-		cp /lib/veltro/meta.txt $infhome/lib/veltro/meta.txt >[2] /dev/null
-		cp /lib/veltro/agents/task.txt $infhome/lib/veltro-agents/task.txt >[2] /dev/null
+		# Seed writable defaults from the bundle on the host side.
+		# $emuroot is the host path to the emu root (bundle Resources/).
+		eroot=$emuroot
+		os sh -c 'cp "'^$eroot^'/lib/ndb/llm" "$HOME/.inferno/lib/ndb/" 2>/dev/null'
+		os sh -c 'cp "'^$eroot^'/lib/lucifer/theme/current" "$HOME/.inferno/lib/lucifer/theme/" 2>/dev/null'
+		os sh -c 'cp "'^$eroot^'/lib/veltro/meta.txt" "$HOME/.inferno/lib/veltro/" 2>/dev/null'
+		os sh -c 'cp "'^$eroot^'/lib/veltro/agents/task.txt" "$HOME/.inferno/lib/veltro-agents/" 2>/dev/null'
 	}
 
 	# Writable overlay mounts.
