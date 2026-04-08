@@ -32,6 +32,10 @@ Widget: module
 	# Reload colours from current theme (e.g. after theme switch).
 	retheme: fn(display: ref Draw->Display);
 
+	# Draw a 1px accent border around the content area.
+	# Call at the end of redraw(), just before flush.
+	contentborder: fn(dst: ref Draw->Image);
+
 	# Scrollbar width in pixels.
 	scrollwidth: fn(): int;
 

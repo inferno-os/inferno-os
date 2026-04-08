@@ -127,9 +127,6 @@ redraw(w: ref Window, display: ref Display)
 	# Clear background
 	screen.draw(screen.r, bg, nil, ZP);
 
-	# Draw border
-	screen.border(screen.r, 1, accent, ZP);
-
 	# Title font (larger than widget font)
 	titlefont := Font.open(display, "/fonts/combined/unicode.sans.18.font");
 	if(titlefont == nil)
@@ -242,6 +239,7 @@ redraw(w: ref Window, display: ref Display)
 		y += LINEH;
 	}
 
+	widgetmod->contentborder(screen);
 	screen.flush(Draw->Flushnow);
 }
 

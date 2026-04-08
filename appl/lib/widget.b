@@ -50,6 +50,7 @@ btnbg:       ref Image;	# button background
 btnborder:   ref Image;	# button border
 btntext:     ref Image;	# button text
 btnpress:    ref Image;	# button pressed background
+accentbdr:   ref Image;	# content area border (accent colour)
 
 # ── Internal scrollbar drag state ─────────────────────────────
 #
@@ -108,6 +109,7 @@ loadcolors(display: ref Display)
 		btnborder   = display.color(int 16rBBBBBBFF);
 		btntext     = display.color(int 16r333333FF);
 		btnpress    = display.color(int 16rCCCCCCFF);
+		accentbdr   = display.color(int 16r448888FF);
 		return;
 	}
 	th := lucitheme->gettheme();
@@ -130,6 +132,14 @@ loadcolors(display: ref Display)
 	btnborder   = display.color(th.editlineno);
 	btntext     = display.color(th.editstattext);
 	btnpress    = display.color(th.editscroll);
+	accentbdr   = display.color(th.accent);
+}
+
+contentborder(dst: ref Draw->Image)
+{
+	if(dst == nil || accentbdr == nil)
+		return;
+	dst.border(dst.r, 1, accentbdr, Point(0, 0));
 }
 
 scrollwidth(): int
