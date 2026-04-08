@@ -778,12 +778,12 @@ handletourchoice(input: string): int
 		if(agentlib->pathexists(toolmount)) {
 			result := agentlib->calltool("task",
 				"create label=Tour " +
-				"tools=read,list,find,search,present,launch,say,gap " +
-				"brief=Run an interactive guided tour of InferNode for a new user. " +
+				"tools=read,list,find,search,present,launch,say,gap,memory,exec,editor,fractal,grep " +
+				"brief=\"Run an interactive guided tour of InferNode for a new user. " +
 				"Read the tour script at /lib/veltro/demos/tour.txt and follow it step by step. " +
 				"Demonstrate each feature live using your tools. " +
-				"Wait for the user to say 'next' or 'continue' before moving to the next section. " +
-				"Keep it friendly and concise.");
+				"When the script says 'ask', write a message and wait for the user to reply. " +
+				"Keep it friendly and concise.\"");
 			log("tour task created: " + result);
 		}
 		return 1;

@@ -18,18 +18,11 @@ if {~ $emuhost MacOSX Linux}{
 	trfs '#U*' /n/local >[2] /dev/null
 	ghome=/n/local/^`{echo 'echo $HOME' | os sh}
 	home=$ghome
-}{
-	# Non-desktop platforms (native hardware, embedded)
-	home=/usr/^$user
-	if {! ftest -d $home} { mkdir -p $home }
-}
 
-# ── Writable overlay from ~/.infernode (bundle mode only) ────
-# The .bundle sentinel is created by the release workflow.
-# Dev checkouts don't have it — the overlay block is skipped entirely.
-bundlemode=no
-if {ftest -f /lib/lucifer/.bundle} {
-	bundlemode=yes
+	# ── Writable overlay from ~/.infernode ──────────────────
+	# User state (secstore, config, tmp) always goes to ~/.infernode,
+	# regardless of whether this is a bundle, dev checkout, or headless.
+	# The emu root stays clean — no user data mixed with system files.
 	infhome=$ghome^/.infernode
 
 	# First-run: create overlay and seed defaults through Inferno's
@@ -43,7 +36,7 @@ if {ftest -f /lib/lucifer/.bundle} {
 		mkdir -p $infhome/lib/veltro-agents
 		mkdir -p $infhome/lib/veltro-keys
 		mkdir -p $infhome/tmp
-		# Seed writable defaults from the bundle
+		# Seed writable defaults from the emu root
 		cp /lib/ndb/llm $infhome/lib/ndb/llm >[2] /dev/null
 		cp /lib/lucifer/theme/current $infhome/lib/lucifer/theme/current >[2] /dev/null
 		cp /lib/veltro/meta.txt $infhome/lib/veltro/meta.txt >[2] /dev/null
@@ -59,6 +52,10 @@ if {ftest -f /lib/lucifer/.bundle} {
 	bind -bc $infhome/lib/veltro-agents    /lib/veltro/agents
 	bind -bc $infhome/lib/veltro-keys      /lib/veltro/keys >[2] /dev/null
 	bind -bc $infhome/tmp /tmp >[2] /dev/null
+}{
+	# Non-desktop platforms (native hardware, embedded)
+	home=/usr/^$user
+	if {! ftest -d $home} { mkdir -p $home }
 }
 
 # ── Secstored (persistent encrypted key storage) ──────────
