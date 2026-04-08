@@ -24,57 +24,42 @@ if {~ $emuhost MacOSX Linux}{
 	if {! ftest -d $home} { mkdir -p $home }
 }
 
-# ── Writable overlay from ~/.inferno (bundle mode only) ────
+# ── Writable overlay from ~/.infernode (bundle mode only) ────
 # The .bundle sentinel is created by the release workflow.
 # Dev checkouts don't have it — the overlay block is skipped entirely.
 bundlemode=no
 if {ftest -f /lib/lucifer/.bundle} {
 	bundlemode=yes
-	infhome=$ghome^/.inferno
+	infhome=$ghome^/.infernode
 
-	# First-run: create overlay structure and seed defaults.
-	# Everything happens on the host side via 'os sh' — Inferno's cp
-	# through trfs to newly-created dirs fails silently.
-	# $emuroot is the host path to the Inferno root (set by emu).
+	# First-run: create overlay and seed defaults through Inferno's
+	# filesystem (not os sh). This keeps trfs cache consistent so
+	# subsequent binds work. Same pattern as Acme-SAC.
 	if {! ftest -d $infhome} {
-		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/secstore"'
-		os sh -c 'mkdir -p "$HOME/.inferno/usr/inferno/tmp"'
-		os sh -c 'mkdir -p "$HOME/.inferno/lib/ndb"'
-		os sh -c 'mkdir -p "$HOME/.inferno/lib/lucifer/theme"'
-		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro"'
-		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-agents"'
-		os sh -c 'mkdir -p "$HOME/.inferno/lib/veltro-keys"'
-		os sh -c 'mkdir -p "$HOME/.inferno/tmp"'
-		# Seed writable defaults from the bundle on the host side.
-		# $emuroot is the host path to the emu root (bundle Resources/).
-		eroot=$emuroot
-		os sh -c 'cp "'^$eroot^'/lib/ndb/llm" "$HOME/.inferno/lib/ndb/" 2>/dev/null'
-		os sh -c 'cp "'^$eroot^'/lib/lucifer/theme/current" "$HOME/.inferno/lib/lucifer/theme/" 2>/dev/null'
-		os sh -c 'cp "'^$eroot^'/lib/veltro/meta.txt" "$HOME/.inferno/lib/veltro/" 2>/dev/null'
-		os sh -c 'cp "'^$eroot^'/lib/veltro/agents/task.txt" "$HOME/.inferno/lib/veltro-agents/" 2>/dev/null'
+		mkdir -p $infhome/usr/inferno/secstore
+		mkdir -p $infhome/usr/inferno/tmp
+		mkdir -p $infhome/lib/ndb
+		mkdir -p $infhome/lib/lucifer/theme
+		mkdir -p $infhome/lib/veltro
+		mkdir -p $infhome/lib/veltro-agents
+		mkdir -p $infhome/lib/veltro-keys
+		mkdir -p $infhome/tmp
+		# Seed writable defaults from the bundle
+		cp /lib/ndb/llm $infhome/lib/ndb/llm >[2] /dev/null
+		cp /lib/lucifer/theme/current $infhome/lib/lucifer/theme/current >[2] /dev/null
+		cp /lib/veltro/meta.txt $infhome/lib/veltro/meta.txt >[2] /dev/null
+		cp /lib/veltro/agents/task.txt $infhome/lib/veltro-agents/task.txt >[2] /dev/null
 	}
 
-	# Writable overlay mounts.
-	# Note: bind -c (MREPL) silently fails with trfs-backed sources.
-	# Use bind -bc (MBEFORE|MCREATE) — overlay files shadow the bundle's
-	# empty dirs, and new files are created in the writable overlay.
+	# Writable overlay mounts (union: overlay files shadow bundle,
+	# bundle-only files show through).
 	bind -bc $infhome/usr/inferno/secstore /usr/inferno/secstore
 	bind -bc $infhome/usr/inferno/tmp      /usr/inferno/tmp
-
-	# Union overlays — writable files shadow bundle defaults,
-	# bundle-only files (system.txt, tools/, policies/) show through.
 	bind -bc $infhome/lib/ndb              /lib/ndb
 	bind -bc $infhome/lib/lucifer/theme    /lib/lucifer/theme
-
-	# Veltro top-level: meta.txt, welcome_shown, tour_offered shadow bundle.
-	# No agents/ or keys/ subdirs in overlay, so bundle's show through.
 	bind -bc $infhome/lib/veltro           /lib/veltro
-	# Separate union for agents (task.txt writable, others from bundle)
 	bind -bc $infhome/lib/veltro-agents    /lib/veltro/agents
-	# Separate union for keys (all writable)
 	bind -bc $infhome/lib/veltro-keys      /lib/veltro/keys >[2] /dev/null
-
-	# Writable /tmp
 	bind -bc $infhome/tmp /tmp >[2] /dev/null
 }
 
