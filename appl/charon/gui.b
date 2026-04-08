@@ -520,6 +520,8 @@ flush(nil: Rect)
 		return;
 	if(mainwin != nil) {
 		drawstatusbar(mainwin);
+		if(widgetmod != nil)
+			widgetmod->contentborder(mainwin);
 		mainwin.flush(D->Flushnow);
 	}
 }
@@ -617,6 +619,8 @@ startinput(mode: int)
 	}
 	if(mainwin != nil) {
 		drawstatusbar(mainwin);
+		if(widgetmod != nil)
+			widgetmod->contentborder(mainwin);
 		mainwin.flush(D->Flushnow);
 	}
 }

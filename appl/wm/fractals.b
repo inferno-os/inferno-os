@@ -548,6 +548,8 @@ updatesbar()
 		status = "computing...";
 	sbar.right = sys->sprint("depth %d | %s", g_kdivisor, status);
 	sbar.draw(w.image);
+	if(widget != nil)
+		widget->contentborder(w.image);
 }
 
 winreq(ctl: string, imgch: chan of (ref Image, Rect), terminated: chan of int): int
