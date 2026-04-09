@@ -144,6 +144,7 @@ MAXTASKPRES: con 32;
 taskpres: array of ref TaskPres;
 ntaskpres := 0;
 curtaskpres: ref TaskPres;		# currently active task's presentation state
+lucipresclient: ref Client;		# lucipres wmclient (set by preswmloop on first join)
 
 # Legacy aliases — these point into curtaskpres for code that hasn't
 # been migrated yet.  Will be removed once all functions use TaskPres.
@@ -903,7 +904,6 @@ preswmloop(scr: ref Screen, zoner: Rect,
            req:  chan of (ref Client, array of byte, Sys->Rwrite),
            rszch: chan of Rect)
 {
-	lucipresclient: ref Client;
 	curzone := zoner;
 	for(;;) alt {
 	(c, rc) := <-join =>
@@ -2325,4 +2325,6 @@ handleprescurrent()
 		hideapp(hd hideids);
 	if(showid != "")
 		showapp(showid);
+	else if(lucipresclient != nil)
+		lucipresclient.top();	# force lucipres above bottomed apps
 }
