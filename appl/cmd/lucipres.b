@@ -8,6 +8,27 @@ implement LuciPres;
 # Usage: lucipres [mountpt [actid]]
 # args passed by lucifer: "lucipres" mountpt actid_string
 #
+# TODO(architecture): Presentation rendering (markdown, mermaid, images,
+# PDF, code, etc.) is tightly coupled to this wmclient window.  App tabs
+# (editor, shell, fractal) get their own wmclient windows managed via
+# z-order in lucifer's preswmloop, but presentation content is drawn
+# directly into lucipres's image.  This dual rendering path causes
+# z-order races when switching between app and presentation tabs
+# (see tab click handler below).
+#
+# The correct fix is to factor presentation rendering into its own
+# wmclient app — a peer to editor/shell/fractal in the z-stack — so
+# that ALL tab switches use uniform z-order management.  lucipres would
+# become a thin tab-bar + event coordinator.
+#
+# WARNING: This refactor is non-trivial.  The render registry
+# (xenith/render.b), all individual renderers (imgrender, mdrender,
+# htmlrender, pdfrender, mermaidrender), the async render pipeline
+# (renderdonech, renderartasync), scroll/zoom/pan state, PDF page
+# navigation, and the AI agent's use of the presentation space
+# (artifact creation, centering, app launching) are all coupled to
+# the current architecture.  See docs/TODO-LUCIPRES-ARCHITECTURE.md.
+#
 
 include "sys.m";
 	sys: Sys;
@@ -352,15 +373,24 @@ init(ctxt: ref Draw->Context, args: list of string)
 				for(ti := 0; ti < ntabs; ti++) {
 					if(tablayout[ti].r.contains(p.xy)) {
 						if(tablayout[ti].id != centeredart) {
+							oldart := findartifact(centeredart);
 							centeredart = tablayout[ti].id;
 							if(actid_g >= 0)
 								writetofile(
 									sys->sprint("%s/activity/%d/presentation/ctl",
 										mountpt_g, actid_g),
 									"center id=" + centeredart);
-						}
+							# When switching away from an app tab,
+							# skip the immediate redraw.  lucifer
+							# must call hideapp() first to move the
+							# app window below us in the z-stack;
+							# the "presentation current" event will
+							# trigger redraw after that completes.
+							if(oldart == nil || oldart.atype != "app")
+								redrawpres();
+						} else
+							redrawpres();
 						tabclicked = 1;
-						redrawpres();
 						break;
 					}
 				}
