@@ -1034,8 +1034,13 @@ preswmloop(scr: ref Screen, zoner: Rect,
 						if(hideit)
 							c.bottom();
 					}
+				} else {
+					# Subsequent !reshape/!onscreen: re-send the existing
+					# image so wmclient's recvimage() doesn't deadlock.
+					existimg := c.image("app");
+					if(existimg != nil)
+						c.setimage("app", existimg);
 				}
-				# else: app already has a window — ignore re-reshape
 			}
 			# "embedded-exit": app signals clean exit before GC closes its wmclient fd.
 			# Remove the tab immediately rather than waiting for the async fd close.
@@ -1105,6 +1110,8 @@ preswmloop(scr: ref Screen, zoner: Rect,
 				}
 				mtp.applock <-= 1;
 			}
+			if(actclient != nil && actclient != lucipresclient)
+				actclient.top();	# ensure active app z-order on every pointer event
 			if(actclient == nil)
 				actclient = lucipresclient;
 			if(actclient != nil)
