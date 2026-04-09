@@ -7,6 +7,13 @@
 #include "kernel.h"
 #include "raise.h"
 
+/* See xec.c — x86/AMD64 JIT produces non-aligned code addresses */
+#if defined(__x86_64__) || defined(__i386__) || defined(_M_X64) || defined(_M_IX86)
+#define PC_MISALIGNED(pc)	0
+#else
+#define PC_MISALIGNED(pc)	((ulong)(pc) & 3)
+#endif
+
 static int
 ematch(char *pat, char *exp)
 {
@@ -205,7 +212,7 @@ found:
 	}
 	if(m->compiled) {
 		R.PC = (Inst*)((ulong)m->prog+newpc);
-		if((ulong)R.PC & 3)
+		if(PC_MISALIGNED(R.PC))
 			print("BUG: handler: misaligned R.PC=%p prog=%p newpc=%lud module=%s estr=%s\n",
 				R.PC, (void*)m->prog, newpc, m->m ? m->m->name : "?", estr);
 	} else

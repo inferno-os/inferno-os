@@ -1497,7 +1497,7 @@ comp(Inst *i)
 	case ICVTCA:
 	case ISLICEC:
 	case INBALT:
-		punt(i, SRCOP|DSTOP, optab[i->op]);
+		punt(i, SRCOP|DSTOP|TCHECK|WRTPC, optab[i->op]);
 		break;
 	case INEWCM:
 	case INEWCMP:
