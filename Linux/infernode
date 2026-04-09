@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# InferNode GUI launcher for Linux
+# Self-contained: finds the emulator and resources relative to this script.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+EMU="$SCRIPT_DIR/bin/emu"
+RESOURCES="$SCRIPT_DIR/resources"
+
+if [ ! -x "$EMU" ]; then
+    echo "Error: emulator not found at $EMU" >&2
+    echo "This launcher expects the InferNode release layout." >&2
+    exit 1
+fi
+
+# Belt-and-suspenders: emu has RPATH=$ORIGIN for libSDL3, but set
+# LD_LIBRARY_PATH as fallback in case patchelf wasn't applied.
+export LD_LIBRARY_PATH="$SCRIPT_DIR/bin${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+exec "$EMU" -c1 -pheap=1024m -pmain=1024m -pimage=1024m "-r$RESOURCES" sh -l /lib/lucifer/boot.sh

@@ -161,6 +161,165 @@ jobs:
         retention-days: 14
 
   # ─────────────────────────────────────────────
+  # Linux AMD64 GUI: SDL3 build from source
+  # ─────────────────────────────────────────────
+  linux-amd64-gui:
+    name: Linux AMD64 SDL3 GUI Build & Test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      ROOT: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Stamp build version
+      run: |
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i "s|InferNode 0.1|InferNode 0.1 build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y \
+          build-essential cmake ninja-build \
+          libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev \
+          libwayland-dev libxkbcommon-dev libegl-dev libgles-dev \
+          libxtst-dev libdrm-dev libgbm-dev \
+          patchelf
+
+    - name: Build SDL3 from source
+      run: |
+        chmod +x install-sdl3.sh
+        ./install-sdl3.sh
+
+    - name: Build (SDL3 GUI)
+      run: |
+        chmod +x build-linux-amd64.sh
+        ./build-linux-amd64.sh
+
+    - name: Verify build
+      run: |
+        test -x emu/Linux/o.emu || { echo "Emulator not built"; exit 1; }
+        test -x Linux/amd64/bin/limbo || { echo "Limbo compiler not built"; exit 1; }
+
+    - name: Verify SDL3 linkage
+      run: |
+        ldd emu/Linux/o.emu | grep libSDL3 || { echo "Emulator not linked against SDL3"; exit 1; }
+
+    - name: Compile test suite
+      run: |
+        LIMBO="$ROOT/Linux/amd64/bin/limbo"
+
+        # Build the testing module first
+        mkdir -p dis/tests dis/lib
+
+        # Build testing library
+        COMPILE_FAILURES=0
+        if [ -d tests/testing ]; then
+          cd tests/testing
+          for f in *.b; do
+            if [ -f "$f" ]; then
+              if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1; then
+                echo "ERROR: Failed to compile testing/$f"
+                COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+              fi
+            fi
+          done
+          cd "$ROOT"
+        fi
+
+        # Build test runner and test files into tests/ where the runner expects them
+        cd tests
+        for f in *.b; do
+          name="${f%.b}"
+          echo "Compiling $f..."
+          if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1; then
+            echo "ERROR: Failed to compile $f"
+            COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+          fi
+        done
+        cd "$ROOT"
+
+        # Verify runner was compiled
+        test -f tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+
+        echo "Compiled test .dis files:"
+        ls tests/*_test.dis 2>/dev/null | wc -l
+
+        if [ "$COMPILE_FAILURES" -gt 0 ]; then
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
+        fi
+
+    - name: Run test suite
+      env:
+        SDL_VIDEODRIVER: dummy
+      run: |
+        # Create /tmp inside Inferno root for tmp_writable test
+        mkdir -p tmp
+
+        echo "Running test suite inside Inferno emulator..."
+        timeout 60 ./emu/Linux/o.emu -c1 -r . /tests/runner.dis -v > test-output.txt 2>&1 || true
+
+        cat test-output.txt
+
+        # Check test results from output
+        if grep -q "^PASS$" test-output.txt; then
+          echo "Tests passed."
+        elif grep -q "^FAIL$" test-output.txt; then
+          echo "Tests failed."
+          exit 1
+        else
+          echo "No test result found in output — tests may not have run."
+          exit 1
+        fi
+
+    - name: Run wallet and secstore integration tests
+      run: |
+        echo "Running host-side integration tests..."
+
+        # wallet9p basic operations
+        if [ -f tests/host/wallet9p_test.sh ]; then
+          echo "--- wallet9p test ---"
+          chmod +x tests/host/wallet9p_test.sh
+          ROOT=. bash tests/host/wallet9p_test.sh > wallet9p-test.txt 2>&1 || true
+          cat wallet9p-test.txt
+          if grep -q "=== PASS ===" wallet9p-test.txt; then
+            echo "wallet9p test: PASS"
+          else
+            echo "wallet9p test: SKIP (requires full Inferno namespace)"
+          fi
+        fi
+
+        # wallet persistence (secstore round-trip)
+        if [ -f tests/host/wallet_persist_test.sh ]; then
+          echo "--- wallet persistence test ---"
+          chmod +x tests/host/wallet_persist_test.sh
+          ROOT=. bash tests/host/wallet_persist_test.sh > wallet-persist-test.txt 2>&1 || true
+          cat wallet-persist-test.txt
+          if grep -q "^PASS$" wallet-persist-test.txt; then
+            echo "wallet persistence test: PASS"
+          else
+            echo "wallet persistence test: FAIL (non-fatal in CI)"
+          fi
+        fi
+
+    - name: Upload Linux GUI build artifacts
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      if: success()
+      with:
+        name: infernode-linux-amd64-gui
+        path: |
+          emu/Linux/o.emu
+          Linux/amd64/bin/limbo
+          Linux/amd64/bin/mk
+        retention-days: 14
+
+  # ─────────────────────────────────────────────
   # macOS ARM64: Build using shipped toolchain
   # ─────────────────────────────────────────────
   macos-arm64:

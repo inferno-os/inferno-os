@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# InferNode headless launcher for Linux
+# Starts the Inferno shell without GUI.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+EMU="$SCRIPT_DIR/emu/Linux/o.emu"
+
+if [ ! -x "$EMU" ]; then
+    echo "Error: emulator not found at $EMU" >&2
+    echo "This launcher expects the InferNode release layout." >&2
+    exit 1
+fi
+
+exec "$EMU" -c1 "-r$SCRIPT_DIR" sh -l

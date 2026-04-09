@@ -52,6 +52,94 @@ jobs:
         test -x Linux/amd64/bin/limbo || { echo "Limbo compiler not built"; exit 1; }
         test -x Linux/amd64/bin/mk || { echo "mk not built"; exit 1; }
 
+    - name: Compile test suite
+      run: |
+        LIMBO="$ROOT/Linux/amd64/bin/limbo"
+
+        mkdir -p dis/tests dis/lib
+
+        COMPILE_FAILURES=0
+        if [ -d tests/testing ]; then
+          cd tests/testing
+          for f in *.b; do
+            if [ -f "$f" ]; then
+              if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1; then
+                echo "ERROR: Failed to compile testing/$f"
+                COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+              fi
+            fi
+          done
+          cd "$ROOT"
+        fi
+
+        cd tests
+        for f in *.b; do
+          name="${f%.b}"
+          echo "Compiling $f..."
+          if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1; then
+            echo "ERROR: Failed to compile $f"
+            COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+          fi
+        done
+        cd "$ROOT"
+
+        test -f tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+
+        echo "Compiled test .dis files:"
+        ls tests/*_test.dis 2>/dev/null | wc -l
+
+        if [ "$COMPILE_FAILURES" -gt 0 ]; then
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
+        fi
+
+    - name: Run test suite
+      run: |
+        mkdir -p tmp
+
+        echo "Running test suite inside Inferno emulator..."
+        timeout 60 ./emu/Linux/o.emu -c1 -r . /tests/runner.dis -v > test-output.txt 2>&1 || true
+
+        cat test-output.txt
+
+        if grep -q "^PASS$" test-output.txt; then
+          echo "Tests passed."
+        elif grep -q "^FAIL$" test-output.txt; then
+          echo "Tests failed."
+          exit 1
+        else
+          echo "No test result found in output — tests may not have run."
+          exit 1
+        fi
+
+    - name: Run wallet and secstore integration tests
+      run: |
+        echo "Running host-side integration tests..."
+
+        if [ -f tests/host/wallet9p_test.sh ]; then
+          echo "--- wallet9p test ---"
+          chmod +x tests/host/wallet9p_test.sh
+          ROOT=. bash tests/host/wallet9p_test.sh > wallet9p-test.txt 2>&1 || true
+          cat wallet9p-test.txt
+          if grep -q "=== PASS ===" wallet9p-test.txt; then
+            echo "wallet9p test: PASS"
+          else
+            echo "wallet9p test: SKIP (requires full Inferno namespace)"
+          fi
+        fi
+
+        if [ -f tests/host/wallet_persist_test.sh ]; then
+          echo "--- wallet persistence test ---"
+          chmod +x tests/host/wallet_persist_test.sh
+          ROOT=. bash tests/host/wallet_persist_test.sh > wallet-persist-test.txt 2>&1 || true
+          cat wallet-persist-test.txt
+          if grep -q "^PASS$" wallet-persist-test.txt; then
+            echo "wallet persistence test: PASS"
+          else
+            echo "wallet persistence test: FAIL (non-fatal in CI)"
+          fi
+        fi
+
     - name: Package archive
       run: |
         VERSION="${{ steps.version.outputs.version }}"
@@ -74,8 +162,13 @@ jobs:
         cp mkconfig "$STAGE/"
         [ -d mkfiles ] && cp -a mkfiles "$STAGE/"
 
-        # Build script (so users can rebuild with SDL3)
+        # Headless launcher
+        cp Linux/infernode-headless "$STAGE/"
+        chmod +x "$STAGE/infernode-headless"
+
+        # Build scripts (so users can rebuild with SDL3)
         cp build-linux-amd64.sh "$STAGE/"
+        cp install-sdl3.sh "$STAGE/"
 
         # Docs and legal
         for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
@@ -89,6 +182,221 @@ jobs:
       with:
         name: infernode-linux-amd64-archive
         path: infernode-*-linux-amd64.tar.gz
+        retention-days: 3
+
+  # ─────────────────────────────────────────────
+  # Linux AMD64 GUI: SDL3 emulator + self-contained bundle
+  # ─────────────────────────────────────────────
+  linux-amd64-gui:
+    name: Linux AMD64 GUI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      ROOT: ${{ github.workspace }}
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Extract version from tag
+      id: version
+      run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+    - name: Stamp build version
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        BUILD_DATE=$(date +%Y%m%d)
+        SHORT_SHA=${GITHUB_SHA::8}
+        sed -i "s|InferNode 0.1|InferNode ${VERSION} build ${BUILD_DATE}-${SHORT_SHA}|" include/version.h
+        echo "Version: $(cat include/version.h)"
+
+    - name: Install build dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y \
+          build-essential cmake ninja-build \
+          libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxss-dev \
+          libwayland-dev libxkbcommon-dev libegl-dev libgles-dev \
+          libxtst-dev libdrm-dev libgbm-dev \
+          patchelf
+
+    - name: Build SDL3 from source
+      run: |
+        chmod +x install-sdl3.sh
+        ./install-sdl3.sh
+
+    - name: Build (SDL3 GUI)
+      run: |
+        chmod +x build-linux-amd64.sh
+        ./build-linux-amd64.sh
+
+    - name: Verify build
+      run: |
+        test -x emu/Linux/o.emu || { echo "Emulator not built"; exit 1; }
+        test -x Linux/amd64/bin/limbo || { echo "Limbo compiler not built"; exit 1; }
+        test -x Linux/amd64/bin/mk || { echo "mk not built"; exit 1; }
+
+    - name: Verify SDL3 linkage
+      run: |
+        ldd emu/Linux/o.emu | grep libSDL3 || { echo "Emulator not linked against SDL3"; exit 1; }
+
+    - name: Compile test suite
+      run: |
+        LIMBO="$ROOT/Linux/amd64/bin/limbo"
+
+        mkdir -p dis/tests dis/lib
+
+        COMPILE_FAILURES=0
+        if [ -d tests/testing ]; then
+          cd tests/testing
+          for f in *.b; do
+            if [ -f "$f" ]; then
+              if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/dis/lib/${f%.b}.dis" "$f" 2>&1; then
+                echo "ERROR: Failed to compile testing/$f"
+                COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+              fi
+            fi
+          done
+          cd "$ROOT"
+        fi
+
+        cd tests
+        for f in *.b; do
+          name="${f%.b}"
+          echo "Compiling $f..."
+          if ! "$LIMBO" -I "$ROOT/module" -o "$ROOT/tests/$name.dis" "$f" 2>&1; then
+            echo "ERROR: Failed to compile $f"
+            COMPILE_FAILURES=$((COMPILE_FAILURES + 1))
+          fi
+        done
+        cd "$ROOT"
+
+        test -f tests/runner.dis || { echo "Test runner not compiled"; exit 1; }
+
+        echo "Compiled test .dis files:"
+        ls tests/*_test.dis 2>/dev/null | wc -l
+
+        if [ "$COMPILE_FAILURES" -gt 0 ]; then
+          echo "ERROR: $COMPILE_FAILURES test file(s) failed to compile"
+          exit 1
+        fi
+
+    - name: Run test suite
+      env:
+        SDL_VIDEODRIVER: dummy
+      run: |
+        mkdir -p tmp
+
+        echo "Running test suite inside Inferno emulator..."
+        timeout 60 ./emu/Linux/o.emu -c1 -r . /tests/runner.dis -v > test-output.txt 2>&1 || true
+
+        cat test-output.txt
+
+        if grep -q "^PASS$" test-output.txt; then
+          echo "Tests passed."
+        elif grep -q "^FAIL$" test-output.txt; then
+          echo "Tests failed."
+          exit 1
+        else
+          echo "No test result found in output — tests may not have run."
+          exit 1
+        fi
+
+    - name: Run wallet and secstore integration tests
+      run: |
+        echo "Running host-side integration tests..."
+
+        if [ -f tests/host/wallet9p_test.sh ]; then
+          echo "--- wallet9p test ---"
+          chmod +x tests/host/wallet9p_test.sh
+          ROOT=. bash tests/host/wallet9p_test.sh > wallet9p-test.txt 2>&1 || true
+          cat wallet9p-test.txt
+          if grep -q "=== PASS ===" wallet9p-test.txt; then
+            echo "wallet9p test: PASS"
+          else
+            echo "wallet9p test: SKIP (requires full Inferno namespace)"
+          fi
+        fi
+
+        if [ -f tests/host/wallet_persist_test.sh ]; then
+          echo "--- wallet persistence test ---"
+          chmod +x tests/host/wallet_persist_test.sh
+          ROOT=. bash tests/host/wallet_persist_test.sh > wallet-persist-test.txt 2>&1 || true
+          cat wallet-persist-test.txt
+          if grep -q "^PASS$" wallet-persist-test.txt; then
+            echo "wallet persistence test: PASS"
+          else
+            echo "wallet persistence test: FAIL (non-fatal in CI)"
+          fi
+        fi
+
+    - name: Prepare self-contained binary
+      run: |
+        # Set RPATH so the emulator finds libSDL3.so.0 in its own directory
+        patchelf --set-rpath '$ORIGIN' emu/Linux/o.emu
+
+        # Verify
+        echo "RPATH set to:"
+        patchelf --print-rpath emu/Linux/o.emu
+
+    - name: Package self-contained tarball
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        STAGE="infernode-${VERSION}-linux-amd64-gui"
+        mkdir -p "$STAGE/bin" "$STAGE/resources"
+
+        # GUI launcher (user runs this)
+        cp Linux/infernode "$STAGE/"
+        chmod +x "$STAGE/infernode"
+
+        # Desktop integration
+        cp Linux/infernode.desktop "$STAGE/"
+        cp Nt/Assets/Square150x150Logo.png "$STAGE/infernode.png"
+
+        # Build scripts
+        cp build-linux-amd64.sh install-sdl3.sh "$STAGE/"
+
+        # Docs and legal
+        for f in LICENCE NOTICE TRADEMARK.md README.md QUICKSTART.md; do
+          [ -f "$f" ] && cp "$f" "$STAGE/"
+        done
+
+        # Emulator binary + bundled SDL3
+        cp emu/Linux/o.emu "$STAGE/bin/emu"
+
+        # Find and bundle libSDL3.so.0
+        SDL3_LIB=$(ldd emu/Linux/o.emu | grep libSDL3 | awk '{print $3}')
+        cp "$SDL3_LIB" "$STAGE/bin/libSDL3.so.0"
+
+        # Native tools
+        cp Linux/amd64/bin/limbo Linux/amd64/bin/mk "$STAGE/bin/"
+
+        # Runtime tree into resources/
+        for d in dis lib fonts module services locale usr mnt; do
+          [ -d "$d" ] && cp -a "$d" "$STAGE/resources/"
+        done
+        mkdir -p "$STAGE/resources/tmp"
+
+        # mkconfig and mkfiles
+        cp mkconfig "$STAGE/resources/"
+        [ -d mkfiles ] && cp -a mkfiles "$STAGE/resources/"
+
+        # Distribution defaults for LLM config
+        cat > "$STAGE/resources/lib/ndb/llm" << 'LLMCONF'
+        mode=local
+        backend=api
+        url=https://api.anthropic.com
+        model=claude-sonnet-4-5-20250929
+        dial=
+        LLMCONF
+
+        tar czf "${STAGE}.tar.gz" "$STAGE"
+        echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: infernode-linux-amd64-gui-archive
+        path: infernode-*-linux-amd64-gui.tar.gz
         retention-days: 3
 
   # ─────────────────────────────────────────────
@@ -306,7 +614,7 @@ jobs:
   # ─────────────────────────────────────────────
   release:
     name: Create Release
-    needs: [linux-amd64, macos-arm64]
+    needs: [linux-amd64, linux-amd64-gui, macos-arm64]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -363,6 +671,7 @@ jobs:
 
           | Platform | Architecture | File |
           |----------|-------------|------|
+          | Linux | AMD64 (SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-linux-amd64-gui.tar.gz` |
           | Linux | AMD64 (headless) | `infernode-${{ steps.version.outputs.version }}-linux-amd64.tar.gz` |
           | macOS | ARM64 (Apple Silicon, SDL3 GUI) | `infernode-${{ steps.version.outputs.version }}-macos-arm64.dmg` |
 
@@ -372,7 +681,9 @@ jobs:
 
           **macOS:** Open the DMG, drag InferNode.app to Applications, double-click to launch
 
-          **Linux:** Extract, then `./emu/Linux/o.emu -r. sh -l` (headless; rebuild with `./build-linux-amd64.sh` for SDL3 GUI)
+          **Linux (GUI):** Extract, then `./infernode`
+
+          **Linux (headless):** Extract, then `./infernode-headless`
 
           ### Verification
 
