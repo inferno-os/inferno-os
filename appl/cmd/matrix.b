@@ -1228,6 +1228,8 @@ redraw()
 	if(comp != nil && comp.layout != nil)
 		drawlayout(img, comp.layout);
 
+	if(widgetmod != nil)
+		widgetmod->contentborder(img);
 	img.flush(Draw->Flushnow);
 }
 
