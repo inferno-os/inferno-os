@@ -287,7 +287,7 @@ so_gethostbyname(char *host, char**hostv, int n)
 	if(hp == 0)
 		return 0;
 
-	for(i = 0; hp->h_addr_list[i] && i < n; i++) {
+	for(i = 0; i < n && hp->h_addr_list[i]; i++) {
 		p = (uchar*)hp->h_addr_list[i];
 		sprint(buf, "%ud.%ud.%ud.%ud", p[0], p[1], p[2], p[3]);
 		hostv[i] = strdup(buf);

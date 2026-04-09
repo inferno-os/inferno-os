@@ -362,6 +362,7 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 			}
 			pt = m->type[v];
 			v = disw(isp);
+			acheck(pt->size, v);
 			h = nheap(sizeof(Array)+(pt->size*v));
 			h->t = &Tarray;
 			h->t->ref++;

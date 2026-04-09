@@ -389,6 +389,7 @@ extern	int	gccolor;
 extern	int	minvalid;
 
 extern	int		Dconv(Fmt*);
+extern	void		acheck(int, int);
 extern	void		acquire(void);
 extern	void		addrun(Prog*);
 extern	void		altdone(Alt*, Prog*, Channel*, int);
