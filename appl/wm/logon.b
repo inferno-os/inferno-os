@@ -523,8 +523,10 @@ connectfactotum(pass: string): string
 	file := secstore->getfile(conn, "factotum", 0);
 	secstore->bye(conn);
 
-	if(file == nil)
-		return nil;	# new account, no keys yet
+	if(file == nil) {
+		sys->fprint(stderr, "logon: secstore has no factotum file for %s (new account or read failure)\n", user);
+		return nil;
+	}
 
 	plaintext := secstore->decrypt2(file, filekey, legacykey);
 	if(plaintext == nil)

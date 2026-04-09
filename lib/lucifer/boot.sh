@@ -1,10 +1,12 @@
 # InferNode GUI boot sequence
 # Runs AFTER profile (invoked as: sh -l /lib/lucifer/boot.sh)
 
-# Warm trfs cache for the secstore overlay so logon's stat() finds
-# the PAK file on second launch (trfs may not have read-ahead the
-# directory contents yet when the overlay bind was set up in profile).
+# Warm trfs cache for the secstore overlay so logon and secstored can
+# find PAK/factotum files on second launch (trfs may not have read-ahead
+# the directory contents yet when the overlay bind was set up in profile).
+user=`{cat /dev/user}
 ls /usr/inferno/secstore >[2] /dev/null
+ls /usr/inferno/secstore/$user >[2] /dev/null
 
 # Login screen (unlocks secstore, loads keys into factotum)
 wm/logon
