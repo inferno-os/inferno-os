@@ -4,6 +4,7 @@
 [![Security Analysis](https://github.com/infernode-os/infernode/actions/workflows/security.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/security.yml)
 [![OSSF Scorecard](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/infernode-os/infernode/badge)](https://scorecard.dev/viewer/?uri=github.com/infernode-os/infernode)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12422/badge)](https://www.bestpractices.dev/projects/12422)
 
 **64-bit Inferno® OS for embedded systems, servers, and AI agents**
 
