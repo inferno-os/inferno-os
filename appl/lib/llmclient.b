@@ -92,12 +92,16 @@ buildanthropicrequest(req: ref AskRequest): string
 {
 	s := "{";
 	s += "\"model\":" + jquote(req.model) + ",";
-	s += "\"max_tokens\":4096,";
+	s += "\"max_tokens\":8192,";
 	s += sys->sprint("\"temperature\":%.2f", req.temperature);
 
-	# System prompt
+	# System prompt — cache_control marks it for Anthropic prompt caching.
+	# The cache hierarchy is tools → system → messages; caching the system
+	# block (along with tools below) means the entire static prefix is
+	# served from cache on turns 2+ at 0.1× input token cost.
 	if(req.systemprompt != "")
-		s += ",\"system\":[{\"type\":\"text\",\"text\":" + jquote(req.systemprompt) + "}]";
+		s += ",\"system\":[{\"type\":\"text\",\"text\":" + jquote(req.systemprompt) +
+			",\"cache_control\":{\"type\":\"ephemeral\"}}]";
 
 	# Stream flag
 	if(req.streamch != nil)
@@ -141,7 +145,8 @@ buildanthropicrequest(req: ref AskRequest): string
 
 	s += "]";
 
-	# Tool definitions
+	# Tool definitions — mark the last tool with cache_control so the
+	# entire tools array is included in the cached prefix.
 	if(req.tooldefs != nil) {
 		s += ",\"tools\":[";
 		tfirst := 1;
@@ -152,7 +157,10 @@ buildanthropicrequest(req: ref AskRequest): string
 			tfirst = 0;
 			s += "{\"name\":" + jquote(td.name) +
 				",\"description\":" + jquote(td.description) +
-				",\"input_schema\":" + td.inputschema + "}";
+				",\"input_schema\":" + td.inputschema;
+			if(tl tl2 == nil)
+				s += ",\"cache_control\":{\"type\":\"ephemeral\"}";
+			s += "}";
 		}
 		s += "],\"tool_choice\":{\"type\":\"auto\"}";
 	}

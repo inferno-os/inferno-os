@@ -97,18 +97,28 @@ exec(args: string): string
 	"view" =>
 		return readfile(FRACT_ROOT + "/view");
 	"zoomin" =>
+		if(countwords(rest) < 4)
+			return "error: zoomin requires 4 args: zoomin <x1> <y1> <x2> <y2>";
 		return sendctl("zoomin " + rest);
 	"center" =>
+		if(countwords(rest) < 3)
+			return "error: center requires 3 args: center <re> <im> <radius>";
 		return sendctl("center " + rest);
 	"zoomout" =>
 		return sendctl("zoomout");
 	"julia" =>
+		if(countwords(rest) < 2)
+			return "error: julia requires 2 args: julia <re> <im> (e.g. julia -0.4 0.6)";
 		return sendctl("julia " + rest);
 	"mandelbrot" =>
 		return sendctl("mandelbrot");
 	"depth" =>
+		if(rest == "")
+			return "error: depth requires 1 arg: depth <n> (1=default, higher=more detail)";
 		return sendctl("depth " + rest);
 	"fill" =>
+		if(rest == "")
+			return "error: fill requires 1 arg: fill on|off";
 		return sendctl("fill " + rest);
 	"restart" =>
 		return sendctl("restart");
@@ -176,6 +186,24 @@ strip(s: string): string
 	if(i >= j)
 		return "";
 	return s[i:j];
+}
+
+countwords(s: string): int
+{
+	s = strip(s);
+	if(s == "")
+		return 0;
+	n := 0;
+	inword := 0;
+	for(i := 0; i < len s; i++) {
+		if(s[i] == ' ' || s[i] == '\t') {
+			inword = 0;
+		} else if(!inword) {
+			inword = 1;
+			n++;
+		}
+	}
+	return n;
 }
 
 splitfirst(s: string): (string, string)

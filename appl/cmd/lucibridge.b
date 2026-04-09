@@ -39,8 +39,8 @@ LuciBridge: module
 	init: fn(nil: ref Draw->Context, args: list of string);
 };
 
-DEFAULT_MAX_STEPS: con 20;
-MAX_MAX_STEPS: con 100;
+DEFAULT_MAX_STEPS: con 100;
+MAX_MAX_STEPS: con 500;
 
 verbose := 0;
 autospeak := 0;
@@ -1426,9 +1426,31 @@ agentturn(input: string)
 		# Check context usage and compact if needed
 		checkandcompact_ui();
 
+		# Inject guidance into the last tool result's content
+		# so it stays inside the TOOL_RESULTS wire format.
+		# Appending raw text after the format causes the parser
+		# to treat it as a tool_use_id, breaking the API call.
+		if(guidance != "" && rev != nil) {
+			# Walk to last element
+			last := rev;
+			for(tmp := tl rev; tmp != nil; tmp = tl tmp)
+				last = tmp;
+			(lid, lcontent) := hd last;
+			lcontent += "\n\n[SYSTEM NOTE: " + guidance + "]";
+			# Rebuild rev with updated last entry
+			newrev: list of (string, string);
+			for(rr := rev; rr != nil; rr = tl rr) {
+				if(tl rr == nil)
+					newrev = (lid, lcontent) :: newrev;
+				else
+					newrev = (hd rr) :: newrev;
+			}
+			# Reverse back
+			rev = nil;
+			for(; newrev != nil; newrev = tl newrev)
+				rev = (hd newrev) :: rev;
+		}
 		prompt = agentlib->buildtoolresults(rev);
-		if(guidance != "")
-			prompt += "\nSYSTEM NOTE: " + guidance;
 	}
 
 	if(hitlimit) {

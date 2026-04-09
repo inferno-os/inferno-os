@@ -911,6 +911,8 @@ tooldesc(name: string): string
 	"task"   => return "Create and manage child task agents with isolated namespaces. Each task gets its own tools, paths, and LLM session.";
 	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
 	"launch" => return "Launch a GUI app in the presentation zone. Usage: Launch <app>, Launch list, Launch charon <url>. Charon is the web browser.";
+	"fractal" => return "Control the fractal viewer (launch fractals first). Commands: state, view, mandelbrot, julia <re> <im>, zoomin <x1> <y1> <x2> <y2>, center <re> <im> <radius>, zoomout, depth <n>, fill on|off, restart. E.g. fractal julia -0.4 0.6, fractal center -0.75 0.1 0.05, fractal depth 3.";
+	"editor" => return "Control the Editor app (launch editor first). Commands: read [body|addr], write <text>, append <text>, save, open <path>, goto <line>, find <string>, replace <find> <repl>, replaceall <find> <repl>, insert <ln> <col> <text>, delete <sl> <sc> <el> <ec>, close, status.";
 	}
 	return "Run the " + name + " tool with the given arguments";
 }
