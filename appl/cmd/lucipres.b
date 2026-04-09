@@ -778,8 +778,11 @@ drawpresentation(zone: Rect)
 	"table" =>
 		drawtable(centart, contentr, pad, contentw, contenty);
 	"app" =>
-		if(centart.appstatus != "running")
-			drawcentertext(contentr, "Launching " + centart.label + "...");
+		# Always draw the placeholder — the app's own window covers it
+		# once the app connects and is topped in the z-stack.  Without
+		# this, there's a black flash between appstatus="running" and
+		# the app's first frame (the window hasn't been allocated yet).
+		drawcentertext(contentr, "Launching " + centart.label + "...");
 	"taskboard" =>
 		drawtaskboard(contentr, pad);
 	"diff" =>

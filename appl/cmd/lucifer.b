@@ -1004,6 +1004,7 @@ preswmloop(scr: ref Screen, zoner: Rect,
 						err = "window creation failed";
 						n = -1;
 					} else {
+						img.draw(img.r, bgcol, nil, (0, 0));
 						c.setimage("app", img);
 						# Register c in the wmsrv z-list via top().
 						# scr.newwindow() puts the image at z-top on the Screen,

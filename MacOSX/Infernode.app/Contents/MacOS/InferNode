@@ -2,7 +2,7 @@
 
 # InferNode.app launcher
 # The bundle root (Contents/Resources/) is read-only. The profile sets up
-# writable overlays from ~/.inferno for secstore, config, and tmp.
+# writable overlays from ~/.infernode for secstore, config, and tmp.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUNDLE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
