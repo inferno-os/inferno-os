@@ -91,7 +91,18 @@ if {~ $emuhost MacOSX Linux}{
 		llmdial=`{sed -n 's/^dial=//p' /lib/ndb/llm}
 		mount -A $llmdial /n/llm >[2] /dev/null
 	}{
-		llmsrv >[2] /dev/null &
+		llmbackend=`{sed -n 's/^backend=//p' /lib/ndb/llm >[2] /dev/null}
+		llmurl=`{sed -n 's/^url=//p' /lib/ndb/llm >[2] /dev/null}
+		llmmodel=`{sed -n 's/^model=//p' /lib/ndb/llm >[2] /dev/null}
+		if {~ $llmbackend openai} {
+			llmsrv -b openai -u $llmurl -M $llmmodel >[2] /dev/null &
+		}{
+			if {! ~ $llmmodel ''} {
+				llmsrv -M $llmmodel >[2] /dev/null &
+			}{
+				llmsrv >[2] /dev/null &
+			}
+		}
 	}
 
 	# Start speech file server (TTS/STT via /n/speech)
