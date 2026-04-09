@@ -92,8 +92,9 @@ test-output.txt
 # Veltro API keys (secrets)
 lib/veltro/keys/
 
-# Site-local NDB config (contains private IPs/hostnames — use lib/ndb/local.example as template)
+# Site-local NDB config (contains private IPs/hostnames, API URLs, model choices)
 lib/ndb/local
+lib/ndb/llm
 
 # =========================
 # Build Artifacts
