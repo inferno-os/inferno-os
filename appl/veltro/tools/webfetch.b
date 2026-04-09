@@ -607,25 +607,26 @@ splitlines(s: string): list of string
 extracthost(url: string): string
 {
 	s := url;
-	for(i := 0; i < len s; i++) {
+	i := 0;
+	for(i = 0; i < len s; i++) {
 		if(i + 2 < len s && s[i] == '/' && s[i+1] == '/') {
 			s = s[i+2:];
 			break;
 		}
 	}
-	for(i := 0; i < len s; i++) {
+	for(i = 0; i < len s; i++) {
 		if(s[i] == '/') {
 			s = s[0:i];
 			break;
 		}
 	}
-	for(i := 0; i < len s; i++) {
+	for(i = 0; i < len s; i++) {
 		if(s[i] == ':') {
 			s = s[0:i];
 			break;
 		}
 	}
-	for(i := 0; i < len s; i++) {
+	for(i = 0; i < len s; i++) {
 		if(s[i] == '@') {
 			s = s[i+1:];
 			break;
