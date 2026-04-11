@@ -1,0 +1,306 @@
+.TH NSAUDIT 1
+.SH NAME
+nsaudit \- namespace syntactic analysis for agent capability configurations
+.SH SYNOPSIS
+.B nsaudit
+[
+.B -m
+]
+.I dir
+.PP
+.B nsaudit
+[
+.B -m
+]
+.I dir path
+.PP
+.B nsaudit
+[
+.B -m
+]
+.B -d
+.I dirA dirB
+.SH DESCRIPTION
+.I Nsaudit
+is an advisory linter for Veltro agent capability configurations. Given
+a caps directory (the same shape as a live
+.I /tool
+mount exposed by
+.IR tools9p (8)),
+it loads a per-tool authority manifest, computes the authority
+inventory, applies a rule set, and prints a report.
+.PP
+.I Nsaudit
+enforces nothing. Namespace restriction is enforced at runtime by
+.IR nsconstruct ,
+.IR forkns ,
+.IR nodevs ,
+.IR cowfs ,
+and
+.IR wallet9p .
+.I Nsaudit
+is a pre-flight review that answers a single question:
+.IP
+.B
+what does this namespace configuration actually allow the agent to do?
+.LP
+A caps value that passes
+.I nsaudit
+is
+.B not
+"safe". It is free of the authority compositions
+.I nsaudit
+knows to check for. The boundary is deliberate.
+.SS Modes
+With one positional argument,
+.I nsaudit
+prints a full report: authority inventory, reads_fs/writes_fs paths
+with reversibility annotations, and any rule violations.
+.PP
+With two positional arguments, the second is a filesystem path;
+.I nsaudit
+prints whether that path is reachable for reads or writes and via
+which cap it is granted (or, if denied, the closest granted prefix).
+.PP
+With
+.B -d
+and two positional arguments,
+.I nsaudit
+prints the difference in authorities between the two caps directories.
+This is the PR-review mode: *"what did this change add or remove?"*
+.SS Options
+.TP
+.B -d
+Diff mode. Requires two positional arguments (before and after caps dirs).
+.TP
+.B -m
+Machine-readable mode. Emits
+.IR ndb (6)
+records, one per entry, which can be parsed by
+.IR ndb/query (8)
+or by any tool that reads attribute=value files. This is the stable
+machine interface; use it in scripts and when consumed by other agents.
+.SH "CAPS DIRECTORY FORMAT"
+A caps directory is a directory of scalar files matching the shape
+.IR tools9p (8)
+exposes at
+.BR /tool :
+.PP
+.B
+.nf
+	dir/tools               one tool name per line
+	dir/paths               one path grant per line
+	dir/meta/role           "toplevel" or "child"
+	dir/meta/xenith         "1" or "0"
+	dir/meta/actid          integer or "-1"
+	dir/meta/nodevs         "set" or "unset"
+.fi
+.PP
+For live audit, point
+.I nsaudit
+at
+.BR /tool .
+For hypothetical analysis or CI fixtures, construct a mock directory
+of the same shape.
+.SH "AUTHORITY MANIFEST"
+The per-tool authority manifest lives at
+.BR /lib/veltro/nsaudit/authorities/ .
+One
+.IR ndb (6)
+file per tool. Each entry must start with
+.B tool=NAME
+and must list an
+.B authorities
+attribute containing the space-separated set of authority axes the
+tool grants. Optional attributes:
+.B description ,
+.B irreversible ,
+.BR notes .
+.PP
+.B
+.nf
+	tool=exec
+		description='Execute a shell command via sh.dis'
+		authorities='spawns_proc execs_code reads_fs writes_fs dials_net'
+		irreversible='spawns_proc writes_fs dials_net'
+		notes='Force multiplier; scope limited by caps.shellcmds.'
+.fi
+.PP
+Adding a tool to
+.I appl/veltro/tools
+means adding a manifest file. Missing manifest entries are a fatal
+error; use
+.I nsaudit -k
+(not yet implemented) to treat unknown tools as maximally
+authorized. Fail-loud is the default because silent fallback is how
+manifests rot.
+.SH "RULE SET"
+Rules live at
+.BR /lib/veltro/nsaudit/rules/ .
+One
+.IR ndb (6)
+file per rule. Each entry has:
+.TP
+.B rule
+Rule name in SCREAMING_SNAKE_CASE.
+.TP
+.B severity
+.B high ,
+.B medium ,
+or
+.BR info .
+.TP
+.B require
+Space-separated list of conditions, all of which must hold for the
+rule to fire. Condition syntax:
+.IP
+.in +4
+.B role=VALUE
+matches
+.B meta/role
+.br
+.B nodevs=VALUE
+matches
+.B meta/nodevs
+.br
+.B has_tool_NAME
+tool is present in
+.B tools
+.br
+.I authority_name
+authority is present in the inventory
+.in -4
+.TP
+.B andone
+Optional. Space-separated list of conditions; at least one must hold.
+.TP
+.B message
+Human-readable description of what the rule catches.
+.TP
+.B fix
+Suggested remediation.
+.PP
+Example (detects the NODEVS gap for top-level agents):
+.PP
+.B
+.nf
+	rule=DEVICE_GATE_BYPASS
+		severity=high
+		require='role=toplevel nodevs=unset'
+		message='top-level caps grants kernel device attach ...'
+		fix='add sys->pctl(Sys->NODEVS, nil) after FORKNS'
+.fi
+.SH "MACHINE-READABLE OUTPUT"
+With
+.BR -m ,
+.I nsaudit
+emits one
+.IR ndb (6)
+record per line. Records are distinguished by their first attribute:
+.PP
+.B
+.nf
+	nsaudit=caps       the caps header (dir, role, nodevs, actid, xenith)
+	authority=NAME     one authority axis present in the inventory
+	reads_fs=PATH      one granted reads_fs path
+	writes_fs=PATH     one granted writes_fs path with reversibility tag
+	violation=RULE     one rule violation with severity, message, fix
+	reach=PATH         reach query header
+	nsaudit=diff       diff header
+	removed=NAME       authority removed in diff
+	added=NAME         authority added in diff
+.fi
+.PP
+The output is parseable by
+.IR ndb/query (8):
+.PP
+.B
+.nf
+	; nsaudit -m /tool > /tmp/audit
+	; ndb/query -f /tmp/audit -a violation
+.fi
+.SH EXAMPLES
+Full report on a fixture:
+.PP
+.B
+.nf
+	; nsaudit /tests/nsaudit-fixtures/minimal
+.fi
+.PP
+Ask whether the agent can read a specific file:
+.PP
+.B
+.nf
+	; nsaudit /tool /n/local/Users/pdfinn/project/secrets.txt
+.fi
+.PP
+Compare two configurations:
+.PP
+.B
+.nf
+	; nsaudit -d /tool.old /tool.new
+.fi
+.PP
+Pipe machine output to a query:
+.PP
+.B
+.nf
+	; nsaudit -m /tool > /tmp/audit
+	; ndb/query -f /tmp/audit -a authority
+.fi
+.SH EXIT STATUS
+.I Nsaudit
+exits nonzero when any
+.B high
+severity violation is present. This makes
+.I nsaudit
+suitable as a CI gate: any fixture whose expected state includes no
+high violations will fail the build if one is introduced.
+.SH FILES
+.TF /lib/veltro/nsaudit/rules
+.TP
+.B /lib/veltro/nsaudit/authorities
+Per-tool authority manifest, one
+.IR ndb (6)
+file per tool.
+.TP
+.B /lib/veltro/nsaudit/rules
+Rule set, one
+.IR ndb (6)
+file per rule.
+.TP
+.B /lib/veltro/nsaudit/suppressions
+Named, dated suppressions of specific (fixture, rule) pairs with
+expiry dates. Expired suppressions fail CI.
+.TP
+.B /tests/nsaudit-fixtures
+Committed caps fixtures for CI gating. Each has an
+.B expected.ns
+snapshot.
+.SH SOURCE
+.B /appl/cmd/nsaudit.b
+.SH "SEE ALSO"
+.IR attrdb (2),
+.IR ndb (6),
+.IR ndb/query (8),
+.IR tools9p (8),
+.IR sys-pctl (2),
+.I /appl/veltro/SECURITY.md
+.SH BUGS
+.I Nsaudit
+cannot detect prompt injection propagation, cannot reason about
+semantic reversibility, and is only as sound as the per-tool manifest.
+A lying manifest entry is undetectable without the runtime
+ground-truth check (not yet implemented). See
+.I /appl/veltro/SECURITY.md
+for the full statement of what the tool cannot answer.
+.PP
+The tool does not yet consult
+.I suppressions
+when computing exit status. Adding a suppression does not suppress
+exit nonzero on a high-severity finding.
+.PP
+Unknown tool names (no manifest entry) are a fatal error, without
+an override. A
+.B -k
+(permissive) flag is planned.
