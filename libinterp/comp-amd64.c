@@ -2628,6 +2628,7 @@ compile(Module *m, int size, Modlink *ml)
 	Link *l;
 	int i, n = 0;
 	uchar *s, *tmp = nil;
+	ulong tmpsize;		/* function scope: cleanup path needs it */
 
 	if(getenv("INFERNODE_NOJIT") != nil)
 		return 0;
@@ -2642,16 +2643,14 @@ compile(Module *m, int size, Modlink *ml)
 	 * Size proportional to module: each Dis instruction can expand
 	 * to many x86 bytes (especially case statements).
 	 */
-	{
-		ulong tmpsize = size * 64;
-		if(tmpsize < 8192)
-			tmpsize = 8192;
-		if(tmpsize / 64 != (ulong)size && size > 0) {
-			/* overflow */
-			goto bad;
-		}
-		tmp = jitmalloc(tmpsize*sizeof(uchar));
+	tmpsize = (ulong)size * 64;
+	if(tmpsize < 8192)
+		tmpsize = 8192;
+	if(size > 0 && tmpsize / 64 != (ulong)size) {
+		/* overflow */
+		goto bad;
 	}
+	tmp = jitmalloc(tmpsize*sizeof(uchar));
 	if(tinit == nil || patch == nil || tmp == nil) {
 		goto bad;
 	}
@@ -2777,7 +2776,7 @@ compile(Module *m, int size, Modlink *ml)
 	free(patch);
 	free(tinit);
 	if(tmp != nil)
-		jitfree(tmp, 8192*sizeof(uchar));
+		jitfree(tmp, tmpsize*sizeof(uchar));
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
@@ -2793,7 +2792,7 @@ bad:
 	free(patch);
 	free(tinit);
 	if(tmp != nil)
-		jitfree(tmp, 8192*sizeof(uchar));
+		jitfree(tmp, tmpsize*sizeof(uchar));
 	if(base != nil)
 		jitfree(base, n + nlit);
 	return 0;
