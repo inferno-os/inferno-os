@@ -1,0 +1,5 @@
+tool=exec
+	description='Execute a shell command via sh.dis'
+	authorities='spawns_proc execs_code reads_fs writes_fs dials_net'
+	irreversible='spawns_proc writes_fs dials_net'
+	notes='Force multiplier. Grants anything the spawned shell can reach within the agent namespace. Scope limited by caps.shellcmds if set, otherwise unrestricted.'

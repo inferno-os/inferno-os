@@ -1,0 +1,5 @@
+rule=DEVICE_GATE_BYPASS
+	severity=high
+	require='role=toplevel nodevs=unset'
+	message='top-level caps grants kernel device attach without NODEVS. Any sys->bind on an #x device will succeed, reaching #sfactotum, #U (host fs), or other kernel services regardless of path-based restriction.'
+	fix='add sys->pctl(Sys->NODEVS, nil) after the FORKNS site'

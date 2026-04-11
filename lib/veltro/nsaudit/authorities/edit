@@ -1,0 +1,4 @@
+tool=edit
+	description='Modify a file in place'
+	authorities='reads_fs writes_fs'
+	notes='Writes reversible only when caps.actid >= 0 (cowfs active). Otherwise writes become writes_fs_durable on the host.'

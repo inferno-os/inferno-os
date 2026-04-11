@@ -1,0 +1,5 @@
+rule=EXEC_FORCE_MULTIPLIER
+	severity=info
+	require='has_tool_exec'
+	message='exec in caps.tools. All other authority limits are soft because the spawned shell can re-invoke anything in the agent namespace. Pair with caps.shellcmds to narrow.'
+	fix='remove exec if not needed, or constrain via caps.shellcmds'
