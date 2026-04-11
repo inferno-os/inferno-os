@@ -353,3 +353,313 @@ Concurrency tests in `tests/veltro_concurrent_test.b`:
 - Concurrent init
 - Concurrent restrictdir
 - Concurrent restrictns
+
+## Future Investigation: nsaudit
+
+### Not verification — syntactic analysis
+
+The existing `formal-verification/` tree proves properties of the kernel's
+namespace primitives: 3.17 billion TLA+ states, SPIN model checks, CBMC
+harnesses over `pgrpcpy` and friends. Those proofs are about the mechanism.
+
+`nsaudit` is about the *configuration* that feeds the mechanism. It parses a
+capability configuration, looks up each tool in a per-tool authority
+manifest, and applies pattern-match rules over the resulting authority set.
+No symbolic execution, no theorem, no proof. This is syntactic analysis —
+closer to a linter or a type checker than to TLA+. The two efforts are
+complementary: `formal-verification/` proves the kernel does what it's
+told; `nsaudit` checks that what you're telling it is what you meant.
+
+### The question it answers
+
+A single question, asked daily and asked under different urgencies:
+
+> **"What does this namespace configuration actually allow the agent to do?"**
+
+- *Daily debugging (high volume, low stakes)*: "My agent can't see
+  `/n/local/foo/bar` and I don't know why. What did I miss?" — `nsaudit
+  -reach /n/local/foo/bar` answers it.
+- *Shipping defaults (low volume, very high stakes)*: "The config we ship to
+  every InferNode install — does it grant an agent escape valve we didn't
+  intend?" — `nsaudit` run on a committed fixture, diffed against a
+  committed snapshot, gated in CI.
+- *Tool development (per tool)*: "The new tool I'm writing — what authority
+  does it actually add to an agent's caps?" — tool author runs `nsaudit`
+  against a test fixture that includes their tool and reviews the report.
+- *Security review (per release, per incident)*: "The Meta Agent has
+  capabilities we've never formally scoped. What can it reach and cause?" —
+  `nsaudit` run against the meta-agent fixture, violations section reviewed
+  by hand.
+
+Same tool, same engine. Different modes emphasize different parts of the
+same underlying analysis.
+
+**`nsaudit` is advisory, not enforcing.** The namespace is still what
+enforces. `restrictns()`, `FORKNS`, `NODEVS`, cowfs overlays, and
+`wallet9p`'s per-transaction gating are the runtime gate; `nsaudit` is the
+pre-flight review. If you ship a misconfigured caps, `nsaudit`'s warning
+does not help you at runtime — only the correctness of the caps themselves
+does. The value `nsaudit` adds is making misconfiguration visible before
+it ships.
+
+### Data model
+
+All inputs and outputs are files. No serialization format is invented; no
+in-tree JSON; everything is either a directory of scalar files (like
+`tools9p` already uses) or an ndb(6) attribute file (like factotum and cs
+already use). Inferno has `attrdb(2)` in `module/attrdb.m` and the ndb
+parser in `appl/cmd/ndb/`.
+
+**Caps input — a directory of scalar files** (the format `tools9p` already
+exposes at `/tool/`):
+
+    /tool/tools       one tool name per line
+    /tool/paths       one path grant per line
+    /tool/meta/role   "toplevel" or "child"
+    /tool/meta/xenith "1" or "0"
+    /tool/meta/actid  integer or "-1"
+    /tool/meta/nodevs "set" or "unset"
+
+Live audit: `nsaudit /tool`. Hypothetical analysis: construct a mock
+directory of the same shape. Fixtures for CI are directories of the same
+shape.
+
+A small addition to `tools9p` is required: expose `role`, `xenith`, `actid`,
+`nodevs` as scalar files under `/tool/meta/`. Without this, `nsaudit` only
+sees `tools` and `paths`.
+
+**Tool authority manifest — ndb files at `lib/veltro/nsaudit/authorities/<tool>`:**
+
+    ; cat lib/veltro/nsaudit/authorities/exec
+    description  Execute a shell command via sh.dis
+    authorities  spawns_proc execs_code reads_fs writes_fs dials_net
+    irreversible spawns_proc writes_fs dials_net
+    notes        Force multiplier. Grants anything the spawned shell can
+                 reach within the agent's namespace. Scope limited by
+                 caps.shellcmds if set, otherwise unrestricted.
+
+One file per tool. Adding a tool means adding a file. Reviewed at every
+new tool.
+
+**Rules — ndb files at `lib/veltro/nsaudit/rules/<name>`:**
+
+    ; cat lib/veltro/nsaudit/rules/device-gate-bypass
+    name      DEVICE_GATE_BYPASS
+    severity  high
+    condition role=toplevel nodevs=unset
+    message   top-level caps grants kernel device attach without NODEVS.
+              Any sys->bind on an #x device will succeed, reaching
+              #sfactotum, #U (host fs), or other kernel services
+              regardless of path-based restriction.
+    fix       add sys->pctl(Sys->NODEVS, nil) after the FORKNS site
+
+One file per rule. Adding a rule means adding a file (and a test).
+
+**Suppressions — ndb files at `lib/veltro/nsaudit/suppressions/<fixture>.<rule>`
+with expiry:**
+
+    ; cat lib/veltro/nsaudit/suppressions/shipping-default-full.exec-force-multiplier
+    rule     EXEC_FORCE_MULTIPLIER
+    scope    fixture=shipping-default-full
+    reason   Interactive REPL exposes exec so power users can run
+             commands. Scoped by caps.shellcmds and user consent at
+             first launch.
+    reviewed 2026-04-11
+    by       pdfinn
+    expires  2026-10-11
+
+Expired suppressions fail CI. Every rule suppression is a named, dated
+file — no hidden exceptions.
+
+### Authority axes (closed set)
+
+The soundness of syntactic analysis depends on the axis set being closed
+and enumerable. Adding a new axis is a deliberate act, not a derivation:
+
+| Category | Axis | Source |
+|---|---|---|
+| Filesystem | `reads_fs` | tool manifest, `caps.paths` |
+| Filesystem | `writes_fs` | tool manifest, `caps.paths` |
+| Filesystem | `writes_fs_durable` | `writes_fs` ∧ not `/tmp/veltro` ∧ `actid < 0` |
+| Network | `dials_net` | tool manifest, `caps.mcproviders` |
+| Network | `listens_net` | tool manifest |
+| Process | `spawns_proc` | tool manifest (e.g. exec, spawn, launch) |
+| Process | `signals_proc` | tool manifest |
+| Process | `execs_code` | tool manifest |
+| Kernel | `attaches_device` | `role=toplevel` ∧ `nodevs=unset` |
+| Secrets | `reads_secrets_factotum` | `/mnt/factotum` in reads_fs |
+| Secrets | `reads_env` | `NEWENV` unset |
+| Economic | `spends` | tool manifest (wallet, pay) |
+| Comms | `sends_llm` | tool manifest, `caps.llmconfig` |
+| Comms | `sends_ui` | `caps.xenith` ∨ `/n/ui` in writes_fs |
+| Comms | `receives_input` | `/dev/cons` in reads_fs |
+| Windows | `reads_windows` | `caps.xenith` |
+| Windows | `modifies_windows` | `caps.xenith` |
+| Memory | `persists_memory` | `caps.memory` |
+
+### Initial rule set
+
+Each rule is a file at `lib/veltro/nsaudit/rules/`, each with a test
+under `tests/nsaudit-rules/`. New rules land as (file, test) pairs.
+
+| Rule | Condition | Severity |
+|---|---|---|
+| `DEVICE_GATE_BYPASS` | `role=toplevel` ∧ `nodevs=unset` | high |
+| `EXFIL_RISK_EGRESS` | `reads_fs ∩ (dials_net ∨ sends_llm ∨ spawns_proc)` | high |
+| `EXEC_FORCE_MULTIPLIER` | `exec` in tools | info |
+| `UNCONSTRAINED_SHELL` | `exec` in tools ∧ `shellcmds` empty | high |
+| `SPAWN_INHERITANCE` | `spawn` in tools ∧ `writes_fs_durable` | medium |
+| `DURABLE_HOST_MUTATION` | `writes_fs_durable` non-empty | medium |
+| `UNBOUNDED_SPEND` | `spends` without per-call gating metadata | high |
+| `LLM_AS_EGRESS_FOR_SECRETS` | `sends_llm` ∧ reads_fs contains secrets path | high |
+| `NET_EGRESS_IMPLICIT` | `dials_net` without matching `mcproviders` entry | medium |
+| `SUBAGENT_MISSING_NODEVS` | `role=child` ∧ `nodevs=unset` | high |
+
+`SUBAGENT_MISSING_NODEVS` is worth highlighting: it turns the
+`spawn.b:576` `pctl(NODEVS)` call from an implementation detail into a
+checked property. If someone edits `spawn.b` and removes the NODEVS call,
+the subagent fixture snapshot regenerates without `nodevs=set`, the rule
+fires, CI fails.
+
+### CI gate
+
+The gate is not runtime enforcement. It is a build-time check that
+shipping configurations match committed expectations.
+
+**Fixtures at `tests/nsaudit-fixtures/<name>/`:** directories of the same
+shape as a live `/tool`, one per shipping configuration.
+
+- `shipping-default-full` — full GUI (`lib/lucifer/boot.sh` line 48)
+- `shipping-default-headless` — REPL without GUI
+- `shipping-default-subagent` — spawned child config (must have
+  `nodevs=set`)
+- `meta-agent` — the Meta Agent / Chief of Staff config used by
+  `lucibridge` at activity 0 (first high-value target)
+- `lucifer-gui` — lucifer's own context-zone namespace (second
+  high-value target)
+- `shipping-default-minimal` — smallest viable agent
+
+**Snapshots at `tests/nsaudit-fixtures/<name>/expected.ns`:** committed
+ndb file containing the authority inventory, violations list, and
+suppression references. The source of truth for "what this config grants."
+
+**The gate itself:** a `mk nsaudit-check` target in `tests/mkfile` that
+runs `nsaudit` against every fixture and diffs the output against the
+snapshot. Exit nonzero on any difference. Wire into
+`.github/workflows/` alongside the existing security checks.
+
+A companion script, `tests/nsaudit-fixtures/verify-matches-boot.sh`,
+diffs fixture contents against the tool lists in `lib/lucifer/boot.sh`,
+`dis/lucifer-start.sh`, `run-lucia.sh`, and friends — so the fixture
+cannot silently drift from the real shipping commands.
+
+Updating a fixture or snapshot requires a deliberate edit in the PR,
+visible to reviewers. Adding a suppression requires a named, dated file
+with an expiry. Both force conscious decisions about what authorities
+ship by default.
+
+### What nsaudit cannot answer
+
+Stated plainly, because a tool that over-claims is worse than no tool:
+
+- **Prompt injection propagation.** If the agent reads attacker-controlled
+  data and the LLM chooses to act on it, effective authority becomes
+  whatever the model decides. Not statically decidable.
+- **Semantic reversibility.** "Agent overwrote `notes.txt`" is
+  reversible with backups, not without. Context-dependent.
+- **Manifest truthfulness.** A lying manifest entry is undetectable to
+  `nsaudit`. The runtime ground-truth check (below) is the safety net.
+- **Tool-internal composition.** A tool that invokes sub-tools not named
+  in its manifest entry is as good as its manifest, no better.
+
+A caps that passes `nsaudit` is *not* "safe." It is "free of the
+authority compositions `nsaudit` knows to check for." That ceiling is the
+right one to advertise.
+
+### Runtime ground-truth check
+
+The one place runtime code is needed is the cross-check: does `nsaudit`'s
+static model of `reads_fs` agree with what `restrictns()` actually
+produces at runtime?
+
+A test (`tests/nsaudit_groundtruth_test.b`) forks, applies real
+`restrictns(caps)` for each fixture, walks the resulting namespace with a
+bounded BFS, and asserts the walked set equals the `reads_fs` set the
+linter computed for the same caps. Any disagreement means either the
+linter's model or the implementation has drifted — both are real bugs.
+
+This is where `nswalk` lives: not as a user-facing tool, but as a
+subroutine of the ground-truth check. Once it exists as a subroutine,
+exposing it as a user tool is cheap.
+
+### NODEVS short-term fix, independent of nsaudit
+
+`pctl(NODEVS)` is applied only in the spawned-child path
+(`spawn.b:576`). Top-level agents (`veltro.b:168`, `repl.b:169`,
+`tools9p.b:644`) call `pctl(FORKNS)` and `restrictns()` but leave
+`pgrp->nodevs == 0`. The kernel device gate is at
+`emu/port/chan.c:1041-1051`; with `nodevs` unset, `sys->bind("#sfactotum",
+"/tmp/veltro/x", MREPL)` succeeds and reaches factotum regardless of
+path-based restriction.
+
+Today this is latent — top-level agents do not invoke `bind` on `#x`
+paths from model-driven code. It becomes exploitable the moment any tool
+or exec invocation does.
+
+Fix: add `sys->pctl(Sys->NODEVS, nil)` to the three top-level FORKNS
+sites. The kernel gate is strictly stronger than the path gate for
+device-attach, and none of the top-level agents has a documented need for
+`#x` devices outside the `nodevs` allowlist (`|esDa`). Once fixed,
+`SUBAGENT_MISSING_NODEVS` plus an analogous `TOPLEVEL_MISSING_NODEVS`
+rule keep it fixed.
+
+### Sequencing
+
+1. **CLI skeleton** (`appl/cmd/nsaudit.b`): ndb parsing via
+   `Attrdb`, three modes — full report, `-reach PATH`, `-d before after`.
+   ~300 lines. Runs inside emu, no namespace manipulation.
+2. **Per-tool manifest** for existing tools in `appl/veltro/tools/`.
+   One file per tool, ndb format. Each entry is a small act of honest
+   assessment — read the tool's source, decide what authorities it grants.
+3. **Initial rule set** — the ten rules above, one file each,
+   test-per-rule.
+4. **Initial fixtures** — `meta-agent` first (the user's stated priority),
+   then `lucifer-gui`, then the three shipping defaults, then `minimal`.
+5. **CI gate** — `mk nsaudit-check` + snapshot diff + boot-script drift
+   detection.
+6. **Runtime ground-truth check** (`tests/nsaudit_groundtruth_test.b`)
+   using a bounded `nswalk` subroutine. Catches manifest/implementation
+   drift.
+7. **`tools9p` metadata exposure** — scalar files under `/tool/meta/`.
+8. **lucictx integration** — new collapsible Authority section;
+   re-run `nsaudit` on every `/tool/ctl` write; inline `-reach PATH` on
+   hover in the file browser.
+9. **Staging/preview** — right-click "What would change?" in lucictx
+   runs `nsaudit -d` between current `/tool` and a staged mock.
+
+Steps 1–5 are the shipping-gate MVP. That is what protects the defaults.
+Steps 6–9 add the debug UX and the live GUI. Every step is additive; the
+earlier steps keep working as the later ones land.
+
+### Prior art, or lack thereof
+
+No tool exists in the Plan 9 / Inferno / 9front ecosystem for namespace
+safety analysis (verified 2026-04). The closest things are `ns(1)`
+(inspection only) and ANTS's per-process `/srv` (mitigation, not
+analysis). No tool exists in the broader capability-OS literature for
+authority inventory over a running agent's caps either —
+seL4/EROS/KeyKOS verify confinement at the kernel level but do not
+produce human-readable authority reports for application-level capability
+sets. `nsaudit` fills unclaimed ground.
+
+### Current state
+
+- `appl/cmd/nsaudit.b` — CLI skeleton (in progress).
+- `lib/veltro/nsaudit/authorities/` — one entry (in progress).
+- `lib/veltro/nsaudit/rules/` — one entry (in progress).
+- `tests/nsaudit-fixtures/minimal/` — first fixture (in progress).
+- No `tools9p` metadata exposure yet.
+- No runtime ground-truth check yet.
+- No lucictx integration yet.
+- No `meta-agent` or `lucifer-gui` fixture yet — those are the first real
+  targets after the CLI and one fixture work end-to-end.
