@@ -165,6 +165,7 @@ if [[ ! -x "$ROOT/Linux/arm64/bin/mk" ]]; then
     echo "  Linking mk..."
     gcc -fcommon -o mk *.o -L"$ROOT/Linux/arm64/lib" -lregexp -lbio -l9
 
+    strip mk
     cp mk "$ROOT/Linux/arm64/bin/"
     echo "mk installed to $ROOT/Linux/arm64/bin/mk"
     cd "$ROOT"
@@ -206,6 +207,7 @@ if [[ ! -x "$ROOT/Linux/arm64/bin/limbo" ]]; then
     echo "ERROR: limbo compiler not built!" >&2
     exit 1
 fi
+strip "$ROOT/Linux/arm64/bin/limbo"
 
 echo ""
 echo "=== Building Libraries that need Limbo ==="
