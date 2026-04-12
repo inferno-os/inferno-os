@@ -62,6 +62,7 @@ o.emu
 o.*
 services/httpd/httpd.log
 Dockerfile
+!.clusterfuzzlite/Dockerfile
 
 # Compiled Limbo bytecode in source tree (build artifacts)
 # Note: dis/*.dis (runtime files) are TRACKED, matching upstream Inferno OS
