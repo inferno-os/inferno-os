@@ -6,9 +6,13 @@
 
 ```bash
 # Linux x86_64 or ARM64 (GUI) — extract and run
-./infernode
+tar xzf infernode-*-linux-*-gui.tar.gz
+cd infernode-*-linux-*-gui
+./infernode                       # SDL3 is bundled, no dependencies needed
 
 # Linux x86_64 or ARM64 (headless) — extract and run
+tar xzf infernode-*-linux-*.tar.gz
+cd infernode-*-linux-*
 ./infernode-headless
 
 # macOS ARM64 (Apple Silicon) — open DMG, drag to Applications, double-click
@@ -17,24 +21,21 @@
 ### From source
 
 ```bash
-# Linux x86_64 (Intel/AMD) - build first, then run
+# Linux x86_64 (Intel/AMD) — GUI build (requires SDL3)
+./install-sdl3.sh                 # install SDL3 from source (one time)
 ./build-linux-amd64.sh            # builds with SDL3 GUI (default)
-./build-linux-amd64.sh headless   # or build headless
+./Linux/infernode                 # launch Lucifer GUI with JIT enabled
+
+# Linux x86_64 (Intel/AMD) — headless build (no GUI dependencies)
+./build-linux-amd64.sh headless
 ./emu/Linux/o.emu -c1 -r.         # -c1 enables JIT compiler
 
-# Linux ARM64 (Jetson, Raspberry Pi, etc.) - build first, then run
-./build-linux-arm64.sh            # builds with SDL3 GUI (default)
-./build-linux-arm64.sh headless   # or build headless
-./emu/Linux/o.emu -c1 -r.         # -c1 enables JIT compiler
+# Linux ARM64 (Jetson, Raspberry Pi, etc.)
+./build-linux-arm64.sh
+./emu/Linux/o.emu -c1 -r.
 
 # macOS ARM64 (Apple Silicon)
 ./emu/MacOSX/o.emu -c1 -r.
-```
-
-```powershell
-# Windows x86_64 (from x64 Native Tools Command Prompt)
-powershell -ExecutionPolicy Bypass -File build-windows-amd64.ps1
-.\emu\Nt\o.emu.exe -r .
 ```
 
 ### What does `-r.` mean?
@@ -116,7 +117,7 @@ Same process as x86_64, but for ARM64 platforms like Jetson or Raspberry Pi.
 ### macOS ARM64
 
 ```bash
-export PATH="$PWD/X/arm64/bin:$PATH"
+export PATH="$PWD/MacOSX/arm64/bin:$PATH"
 mk install
 ```
 

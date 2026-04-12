@@ -1,0 +1,5 @@
+mode=local
+backend=api
+url=https://api.anthropic.com
+model=claude-sonnet-4-5-20250929
+dial=

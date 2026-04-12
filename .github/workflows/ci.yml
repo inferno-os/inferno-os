@@ -149,6 +149,23 @@ jobs:
           fi
         fi
 
+    - name: Run JIT correctness tests
+      run: |
+        echo "Running JIT correctness tests (-c1)..."
+        timeout 120 ./emu/Linux/o.emu -c1 -r . /dis/jittest.dis > jit-test.txt 2>&1 < /dev/null || true
+        cat jit-test.txt
+        if grep -q "^PASS$" jit-test.txt; then
+          echo "JIT correctness tests: PASS"
+        else
+          echo "JIT correctness tests: FAIL"
+          exit 1
+        fi
+
+    - name: Run JIT boot smoke test
+      run: |
+        chmod +x tests/host/jit_boot_test.sh
+        tests/host/jit_boot_test.sh
+
     - name: Upload Linux build artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       if: success()
@@ -307,6 +324,27 @@ jobs:
             echo "wallet persistence test: FAIL (non-fatal in CI)"
           fi
         fi
+
+    - name: Run JIT correctness tests
+      env:
+        SDL_VIDEODRIVER: dummy
+      run: |
+        echo "Running JIT correctness tests (-c1)..."
+        timeout 120 ./emu/Linux/o.emu -c1 -r . /dis/jittest.dis > jit-test.txt 2>&1 < /dev/null || true
+        cat jit-test.txt
+        if grep -q "^PASS$" jit-test.txt; then
+          echo "JIT correctness tests: PASS"
+        else
+          echo "JIT correctness tests: FAIL"
+          exit 1
+        fi
+
+    - name: Run JIT boot smoke test
+      env:
+        SDL_VIDEODRIVER: dummy
+      run: |
+        chmod +x tests/host/jit_boot_test.sh
+        SDL_VIDEODRIVER=dummy tests/host/jit_boot_test.sh
 
     - name: Upload Linux GUI build artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

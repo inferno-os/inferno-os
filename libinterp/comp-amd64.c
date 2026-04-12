@@ -2534,6 +2534,50 @@ comi(Type *t)
 	genb(Oret);
 }
 
+static uchar *typecom_tmp = nil;
+
+/*
+ * Slab allocator for typecom init/destroy code blocks.
+ * Each type needs a small (tens-to-hundreds of bytes) block of
+ * near-text executable memory. Calling jitmalloc per type consumes
+ * one VMA slot each, exhausting the 1024-hint scan after a few
+ * hundred types. Instead, grab one large slab and bump-allocate.
+ * Type code is never freed individually, so bump is ideal.
+ */
+#define TYPECOM_SLAB_SIZE	(2*1024*1024)	/* 2MB — enough for ~thousands of types */
+static uchar *typecom_slab = nil;
+static ulong typecom_slab_used = 0;
+
+static uchar*
+typecom_alloc(int n)
+{
+	uchar *p;
+	ulong aligned;
+
+	aligned = (n + 15) & ~15;	/* 16-byte align for code */
+	if(typecom_slab == nil) {
+#ifdef __APPLE__
+		typecom_slab = mmap(0, TYPECOM_SLAB_SIZE,
+			PROT_READ|PROT_WRITE|PROT_EXEC,
+			MAP_PRIVATE|MAP_ANON|MAP_JIT, -1, 0);
+		if(typecom_slab == MAP_FAILED) {
+			typecom_slab = nil;
+			return nil;
+		}
+#else
+		typecom_slab = jitmalloc(TYPECOM_SLAB_SIZE);
+		if(typecom_slab == nil)
+			return nil;
+		memset(typecom_slab, 0, TYPECOM_SLAB_SIZE);
+#endif
+	}
+	if(typecom_slab_used + aligned > TYPECOM_SLAB_SIZE)
+		return nil;
+	p = typecom_slab + typecom_slab_used;
+	typecom_slab_used += aligned;
+	return p;
+}
+
 void
 typecom(Type *t)
 {
@@ -2544,14 +2588,19 @@ typecom(Type *t)
 		return;
 
 #ifdef __APPLE__
-	tmp = mallocz(8192*sizeof(uchar), 0);
-	if(tmp == nil)
-		error(exNomem);
+	if(typecom_tmp == nil) {
+		typecom_tmp = mallocz(8192*sizeof(uchar), 0);
+		if(typecom_tmp == nil)
+			error(exNomem);
+	}
 #else
-	tmp = jitmalloc(8192*sizeof(uchar));
-	if(tmp == NULL)
-		error(exNomem);
+	if(typecom_tmp == nil) {
+		typecom_tmp = jitmalloc(8192*sizeof(uchar));
+		if(typecom_tmp == NULL)
+			error(exNomem);
+	}
 #endif
+	tmp = typecom_tmp;
 
 	code = tmp;
 	comi(t);
@@ -2559,27 +2608,13 @@ typecom(Type *t)
 	code = tmp;
 	comd(t);
 	n += code - tmp;
-#ifdef __APPLE__
-	free(tmp);
-#else
-	jitfree(tmp, 8192*sizeof(uchar));
-#endif
+
+	code = typecom_alloc(n);
+	if(code == nil)
+		return;
 
 #ifdef __APPLE__
-	code = mmap(0, n, PROT_READ|PROT_WRITE|PROT_EXEC,
-	            MAP_PRIVATE|MAP_ANON|MAP_JIT, -1, 0);
-	if(code == MAP_FAILED) {
-		code = nil;
-		return;
-	}
 	pthread_jit_write_protect_np(0);
-#else
-	code = jitmalloc(n);
-	if(code == NULL) {
-		code = nil;
-		return;
-	}
-	memset(code, 0, n);
 #endif
 
 	t->initialize = code;
@@ -2620,6 +2655,9 @@ patchex(Module *m, uvlong *p)
 /*
  * Main compilation entry point
  */
+static uchar *compile_tmp = nil;
+static ulong compile_tmp_size = 0;
+
 int
 compile(Module *m, int size, Modlink *ml)
 {
@@ -2628,6 +2666,7 @@ compile(Module *m, int size, Modlink *ml)
 	Link *l;
 	int i, n = 0;
 	uchar *s, *tmp = nil;
+	ulong tmpsize;
 
 	if(getenv("INFERNODE_NOJIT") != nil)
 		return 0;
@@ -2635,24 +2674,24 @@ compile(Module *m, int size, Modlink *ml)
 	base = nil;
 	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = mallocz(m->ntype*sizeof(*tinit), 0);
-	/*
-	 * tmp is used for pass 0 size estimation. On AMD64, it must be
-	 * near the text segment so that bra() rel32 displacements to C
-	 * functions fit in 32 bits during size calculation.
-	 * Size proportional to module: each Dis instruction can expand
-	 * to many x86 bytes (especially case statements).
-	 */
-	{
-		ulong tmpsize = size * 64;
-		if(tmpsize < 8192)
-			tmpsize = 8192;
-		if(tmpsize / 64 != (ulong)size && size > 0) {
-			/* overflow */
+	tmpsize = (ulong)size * 64;
+	if(tmpsize < 8192)
+		tmpsize = 8192;
+	if(size > 0 && tmpsize / 64 != (ulong)size) {
+		goto bad;
+	}
+	if(tmpsize > compile_tmp_size) {
+		if(compile_tmp != nil)
+			jitfree(compile_tmp, compile_tmp_size*sizeof(uchar));
+		compile_tmp = jitmalloc(tmpsize*sizeof(uchar));
+		if(compile_tmp == nil) {
+			compile_tmp_size = 0;
 			goto bad;
 		}
-		tmp = jitmalloc(tmpsize*sizeof(uchar));
+		compile_tmp_size = tmpsize;
 	}
-	if(tinit == nil || patch == nil || tmp == nil) {
+	tmp = compile_tmp;
+	if(tinit == nil || patch == nil) {
 		goto bad;
 	}
 
@@ -2776,8 +2815,6 @@ compile(Module *m, int size, Modlink *ml)
 	m->entry = (Inst*)(v+patch[mod->entry-mod->prog]);
 	free(patch);
 	free(tinit);
-	if(tmp != nil)
-		jitfree(tmp, 8192*sizeof(uchar));
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
@@ -2792,8 +2829,6 @@ compile(Module *m, int size, Modlink *ml)
 bad:
 	free(patch);
 	free(tinit);
-	if(tmp != nil)
-		jitfree(tmp, 8192*sizeof(uchar));
 	if(base != nil)
 		jitfree(base, n + nlit);
 	return 0;

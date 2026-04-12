@@ -564,6 +564,8 @@ OP(icase)
 	v = W(s);
 	t = (WORD*)((WORD)R.d + IBY2WD);
 	n = t[-1];
+	if(n < 0)
+		n = -n - 1;
 	d = t[n*3];
 
 	while(n > 0) {
@@ -599,6 +601,8 @@ OP(casel)
 	v = V(s);
 	t = (WORD*)((WORD)R.d + 2*IBY2WD);
 	n = t[-2];
+	if(n < 0)
+		n = -n - 1;
 	d = t[n*6];
 
 	while(n > 0) {
@@ -630,10 +634,12 @@ OP(casec)
 {
 	WORD *l, *t, *e, n, n2, r;
 	String *sl, *sh, *sv;
-	
+
 	sv = S(s);
 	t = (WORD*)((WORD)R.d + IBY2WD);
 	n = t[-1];
+	if(n < 0)
+		n = -n - 1;
 	e = t + n*3;
 	if(n > 2){
 		while(n > 0){
