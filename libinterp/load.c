@@ -172,7 +172,7 @@ parsemod(char *path, uchar *code, ulong length, Dir *dir)
 	case SMAGIC:
 		siglen = operand(isp);
 		n = length-(*isp-code);
-		if(n < 0 || siglen > n){
+		if(siglen < 0 || n < 0 || siglen > n){
 			kwerrstr("corrupt signature");
 			goto bad;
 		}

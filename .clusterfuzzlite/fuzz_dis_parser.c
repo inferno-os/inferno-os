@@ -126,7 +126,7 @@ parse_dis(uchar *code, size_t length)
 	case SMAGIC:
 		siglen = operand(isp);
 		n = length - (*isp - code);
-		if(n < 0 || siglen > n)
+		if(siglen < 0 || n < 0 || siglen > n)
 			return -1;
 		/* Skip signature */
 		*isp += siglen;
