@@ -1046,10 +1046,7 @@ jobs:
         prerelease: false
         generate_release_notes: true
         files: |
-          artifacts/infernode-*
-          artifacts/SHA256SUMS.txt
-          artifacts/*.sig
-          artifacts/*.pem
+          artifacts/*
         body: |
           ## InferNode ${{ steps.version.outputs.version }}
 
