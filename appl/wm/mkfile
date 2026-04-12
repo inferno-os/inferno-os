@@ -15,6 +15,7 @@ TARG=\
 	settings.dis\
 	editor.dis\
 	fractals.dis\
+	matrix.dis\
 	shell.dis\
 	view.dis\
 	wm.dis\
@@ -35,6 +36,7 @@ SYSMODULES=\
 	keyboard.m\
 	lucitheme.m\
 	math.m\
+	matrix.m\
 	menu.m\
 	menuhit.m\
 	plumbmsg.m\

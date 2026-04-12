@@ -4,7 +4,7 @@
 
 | Platform | CPU | Cores | RAM | OS |
 |----------|-----|-------|-----|-----|
-| **AMD64 Linux** | AMD Ryzen 7 H 255 | 16 | 21 GB | Linux 6.14.0 (x86_64) |
+| **AMD64 Linux** | AMD Ryzen 7 H 255 | 16 | 28 GB | Linux 6.14.0 (x86_64) |
 | **AMD64 Windows** | AMD Ryzen 7 255 | 16 | 28 GB | Windows 11 Pro 10.0.26100 |
 | **ARM64 macOS** | Apple M4 | 10 (4P+6E) | 32 GB | macOS 15.4 (Darwin 24.6.0) |
 | **ARM64 Linux** | ARM Cortex-A78AE | 12 | 64 GB | Linux 5.15.148-tegra (Jetson AGX Orin) |

@@ -104,7 +104,6 @@ TARG=\
 	lucictx.dis\
 	lucipres.dis\
 	luciuisrv.dis\
-	matrix.dis\
 	m4.dis\
 	man2html.dis\
 	man2txt.dis\

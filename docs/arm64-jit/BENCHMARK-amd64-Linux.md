@@ -3,7 +3,7 @@
 ## Platform
 - **Hardware:** Beelink SER9 Pro
 - **CPU:** AMD Ryzen 7 H 255 (16 cores)
-- **RAM:** 21 GB
+- **RAM:** 28 GB
 - **OS:** Linux 6.14.0-37-generic (x86_64)
 
 ---
