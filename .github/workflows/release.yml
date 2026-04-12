@@ -146,9 +146,10 @@ jobs:
         STAGE="infernode-${VERSION}-linux-amd64"
         mkdir -p "$STAGE/emu/Linux" "$STAGE/Linux/amd64/bin"
 
-        # Platform binaries
+        # Platform binaries (stripped for release)
         cp emu/Linux/o.emu "$STAGE/emu/Linux/"
         cp Linux/amd64/bin/limbo Linux/amd64/bin/mk "$STAGE/Linux/amd64/bin/"
+        strip "$STAGE/emu/Linux/o.emu" "$STAGE/Linux/amd64/bin/limbo" "$STAGE/Linux/amd64/bin/mk"
 
         # Shared runtime tree
         for d in dis lib fonts module services locale usr mnt; do
@@ -361,7 +362,7 @@ jobs:
           [ -f "$f" ] && cp "$f" "$STAGE/"
         done
 
-        # Emulator binary + bundled SDL3
+        # Emulator binary + bundled SDL3 (stripped for release)
         cp emu/Linux/o.emu "$STAGE/bin/emu"
 
         # Find and bundle libSDL3.so.0
@@ -370,6 +371,7 @@ jobs:
 
         # Native tools
         cp Linux/amd64/bin/limbo Linux/amd64/bin/mk "$STAGE/bin/"
+        strip "$STAGE/bin/emu" "$STAGE/bin/limbo" "$STAGE/bin/mk"
 
         # Runtime tree into resources/
         for d in dis lib fonts module services locale usr mnt; do
@@ -509,13 +511,16 @@ jobs:
         # Start from the checked-out .app bundle (has Info.plist, icon, launcher)
         cp -a MacOSX/InferNode.app "$APP"
 
-        # Emulator binary and SDL3 go in Contents/MacOS/
+        # Emulator binary and SDL3 go in Contents/MacOS/ (stripped for release)
         cp emu/MacOSX/InferNode "$MACOS/emu"
         cp emu/MacOSX/libSDL3.0.dylib "$MACOS/"
 
         # Native tools
         mkdir -p "$MACOS/tools"
         cp MacOSX/arm64/bin/limbo MacOSX/arm64/bin/mk "$MACOS/tools/"
+
+        # Strip debug symbols before signing
+        strip "$MACOS/emu" "$MACOS/tools/limbo" "$MACOS/tools/mk"
 
         # Runtime tree goes in Contents/Resources/
         for d in dis lib fonts module services locale usr mnt; do
