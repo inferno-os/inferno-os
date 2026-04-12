@@ -129,6 +129,8 @@ runawkproc(args: list of string, stdout: ref Sys->FD, done: chan of int)
 	"*" =>
 		;
 	}
+	# Close the dup'd write end so the parent's read gets EOF
+	sys->dup(sys->open("/dev/null", Sys->OWRITE).fd, 1);
 	done <-= 1;
 }
 
@@ -370,6 +372,19 @@ init(nil: ref Draw->Context, args: list of string)
 	for(a := args; a != nil; a = tl a) {
 		if(hd a == "-v")
 			testing->verbose(1);
+	}
+
+	# Skip all tests if awk.dis is not available
+	{
+		awk := load Cmd "/dis/awk.dis";
+		if(awk == nil) {
+			sys->fprint(sys->fildes(2), "SKIP: awk.dis not found — skipping awk tests\n");
+			return;
+		}
+	} exception {
+	"*" =>
+		sys->fprint(sys->fildes(2), "SKIP: awk.dis not loadable — skipping awk tests\n");
+		return;
 	}
 
 	run("PrintAll", testPrintAll);

@@ -1,0 +1,4 @@
+tool=read
+	description='Read a file from the agent namespace'
+	authorities='reads_fs'
+	notes='Scope limited to caps.paths plus the always-on reads.'

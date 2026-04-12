@@ -1,0 +1,5 @@
+rule=SUBAGENT_MISSING_NODEVS
+	severity=high
+	require='role=child nodevs=unset'
+	message='Subagent caps declare child role but NODEVS is not set. Spawn must call sys->pctl(Sys->NODEVS, nil) after the FORKNS site.'
+	fix='verify spawn.b applies pctl(NODEVS) in the child FORKNS sequence'

@@ -1,0 +1,6 @@
+rule=EXFIL_RISK_EGRESS
+	severity=high
+	require='reads_fs'
+	andone='dials_net sends_llm spawns_proc'
+	message='Any file the agent can read can leave the machine via the egress path listed. Reads plus egress is exfiltration risk.'
+	fix='remove egress, narrow reads_fs to a non-sensitive set, or narrow caps.shellcmds'

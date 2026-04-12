@@ -122,6 +122,7 @@ TARG=\
 	netstat.dis\
 	newer.dis\
 	ns.dis\
+	nsaudit.dis\
 	nsbuild.dis\
 	os.dis\
 	p.dis\
