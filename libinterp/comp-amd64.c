@@ -2536,6 +2536,48 @@ comi(Type *t)
 
 static uchar *typecom_tmp = nil;
 
+/*
+ * Slab allocator for typecom init/destroy code blocks.
+ * Each type needs a small (tens-to-hundreds of bytes) block of
+ * near-text executable memory. Calling jitmalloc per type consumes
+ * one VMA slot each, exhausting the 1024-hint scan after a few
+ * hundred types. Instead, grab one large slab and bump-allocate.
+ * Type code is never freed individually, so bump is ideal.
+ */
+#define TYPECOM_SLAB_SIZE	(2*1024*1024)	/* 2MB — enough for ~thousands of types */
+static uchar *typecom_slab = nil;
+static ulong typecom_slab_used = 0;
+
+static uchar*
+typecom_alloc(int n)
+{
+	uchar *p;
+	ulong aligned;
+
+	aligned = (n + 15) & ~15;	/* 16-byte align for code */
+	if(typecom_slab == nil) {
+#ifdef __APPLE__
+		typecom_slab = mmap(0, TYPECOM_SLAB_SIZE,
+			PROT_READ|PROT_WRITE|PROT_EXEC,
+			MAP_PRIVATE|MAP_ANON|MAP_JIT, -1, 0);
+		if(typecom_slab == MAP_FAILED) {
+			typecom_slab = nil;
+			return nil;
+		}
+#else
+		typecom_slab = jitmalloc(TYPECOM_SLAB_SIZE);
+		if(typecom_slab == nil)
+			return nil;
+		memset(typecom_slab, 0, TYPECOM_SLAB_SIZE);
+#endif
+	}
+	if(typecom_slab_used + aligned > TYPECOM_SLAB_SIZE)
+		return nil;
+	p = typecom_slab + typecom_slab_used;
+	typecom_slab_used += aligned;
+	return p;
+}
+
 void
 typecom(Type *t)
 {
@@ -2567,21 +2609,12 @@ typecom(Type *t)
 	comd(t);
 	n += code - tmp;
 
+	code = typecom_alloc(n);
+	if(code == nil)
+		return;
+
 #ifdef __APPLE__
-	code = mmap(0, n, PROT_READ|PROT_WRITE|PROT_EXEC,
-	            MAP_PRIVATE|MAP_ANON|MAP_JIT, -1, 0);
-	if(code == MAP_FAILED) {
-		code = nil;
-		return;
-	}
 	pthread_jit_write_protect_np(0);
-#else
-	code = jitmalloc(n);
-	if(code == NULL) {
-		code = nil;
-		return;
-	}
-	memset(code, 0, n);
 #endif
 
 	t->initialize = code;
