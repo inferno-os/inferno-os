@@ -2,5 +2,7 @@
 # Update hashes with: pip download --no-deps <pkg>==<ver> && pip hash <file>
 cppcheck-codequality==1.6.0 \
     --hash=sha256:035feee470bf707b079a65677bf7e2aa77fc6e9d7ede687b8193481f4ba124bc
+xmltodict==0.14.2 \
+    --hash=sha256:20cc7d723ed729276e808f26fb6b3599f786cbc37e06c65e192ba77c40f20aac
 flawfinder==2.0.19 \
     --hash=sha256:f18f0021d9a2f3ffc1c1e32aa7bb1bb5ca1bad91b82b32157f44e5d0a1a23ad0
