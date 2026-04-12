@@ -79,7 +79,7 @@ Lucia is the primary GUI for AI-human collaboration, organizing the workspace in
 - **Presentation** — Rich content display (artifacts, code, diagrams, images)
 - **Context** — Tool toggles, namespace path management, and activity tracking
 
-Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server). See [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md) for the Lucia GUI production readiness evaluation.
+Features include live theme sync across all apps, HiDPI antialiased fonts, and a comprehensive test suite (80+ unit tests for the UI server).
 
 ### UI Improvements
 
@@ -282,7 +282,6 @@ Cross-language benchmarks (C, Java, Limbo) in `benchmarks/`. Full data in [docs/
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture and component diagram
 - [docs/WALLET-AND-PAYMENTS.md](docs/WALLET-AND-PAYMENTS.md) — Wallet, x402 payments, secstore, and key management
 - [appl/veltro/SECURITY.md](appl/veltro/SECURITY.md) — Veltro agent security model
-- [docs/LUCIA-EVALUATION.md](docs/LUCIA-EVALUATION.md) — Lucia GUI production readiness evaluation
 - [tools/godis/README.md](tools/godis/README.md) — GoDis compiler architecture and translation strategy
 - [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — Cross-language JIT benchmarks (C, Java, Limbo)
 - [docs/PERFORMANCE-SPECS.md](docs/PERFORMANCE-SPECS.md) — Performance specs and binary sizes
