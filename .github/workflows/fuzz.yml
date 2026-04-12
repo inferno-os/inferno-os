@@ -1,0 +1,73 @@
+name: ClusterFuzzLite
+
+on:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches: [ master ]
+  schedule:
+    # Weekly batch fuzzing: Saturday 3am UTC
+    - cron: '0 3 * * 6'
+
+permissions: {}
+
+jobs:
+  # ─────────────────────────────────────────────
+  # PR fuzzing: short run on code changes
+  # ─────────────────────────────────────────────
+  pr-fuzzing:
+    if: github.event_name == 'pull_request'
+    name: Fuzz (PR)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Build fuzzers
+      id: build
+      uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        language: c
+        sanitizer: address
+
+    - name: Run fuzzers
+      id: run
+      uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        fuzz-seconds: 300
+        mode: code-change
+
+  # ─────────────────────────────────────────────
+  # Batch fuzzing: longer weekly run with corpus management
+  # ─────────────────────────────────────────────
+  batch-fuzzing:
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    name: Fuzz (batch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Build fuzzers
+      id: build
+      uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        language: c
+        sanitizer: address
+
+    - name: Run fuzzers
+      id: run
+      uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        fuzz-seconds: 1800
+        mode: batch

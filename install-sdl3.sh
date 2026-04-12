@@ -17,8 +17,19 @@ BUILDDIR="/tmp/sdl3-build-$$"
 mkdir -p "$BUILDDIR"
 cd "$BUILDDIR"
 
-git clone --depth 1 https://github.com/libsdl-org/SDL.git
+# Pin to a specific release for reproducible builds
+SDL3_TAG="release-3.4.4"
+SDL3_COMMIT="5848e584a1b606de26e3dbd1c7e4ecbc34f807a6"
+
+git clone --depth 1 --branch "$SDL3_TAG" https://github.com/libsdl-org/SDL.git
 cd SDL
+
+# Verify we got the expected commit
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "$ACTUAL_COMMIT" != "$SDL3_COMMIT" ]; then
+  echo "ERROR: SDL3 commit mismatch (expected $SDL3_COMMIT, got $ACTUAL_COMMIT)"
+  exit 1
+fi
 cmake -B build -G Ninja -DCMAKE_INSTALL_PREFIX=/usr/local
 ninja -C build
 

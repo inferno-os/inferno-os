@@ -50,10 +50,11 @@ Using `-r.` lets you run directly from the source tree without installing anywhe
 
 ## After Cloning
 
-Install the post-merge git hook to prevent stale bytecode after pulls:
+Bootstrap the build tools and install the post-merge git hook:
 
 ```bash
-./hooks/install.sh
+./makemk.sh            # bootstrap mk build tool from source (~30s)
+./hooks/install.sh     # auto-rebuild stale .dis files after git pull
 ```
 
 This hook runs automatically after every `git pull` or `git merge`. It detects which `.m` (interface) and `.b` (source) files changed and rebuilds the affected `.dis` files. Without it, pulling interface changes can leave you with stale `.dis` files that fail at load time with `link typecheck` errors.
@@ -117,6 +118,8 @@ Same process as x86_64, but for ARM64 platforms like Jetson or Raspberry Pi.
 ### macOS ARM64
 
 ```bash
+./makemk.sh                              # bootstrap mk (first time only)
+export ROOT=$PWD
 export PATH="$PWD/MacOSX/arm64/bin:$PATH"
 mk install
 ```

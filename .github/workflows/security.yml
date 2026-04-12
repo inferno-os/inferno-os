@@ -137,7 +137,7 @@ jobs:
     - name: Convert cppcheck XML to SARIF
       if: always()
       run: |
-        pip install cppcheck-codequality==1.6.0 2>/dev/null || true
+        pip install --require-hashes -r .github/requirements-security.txt 2>/dev/null || true
 
         # Generate a human-readable summary
         echo "## cppcheck Results" >> $GITHUB_STEP_SUMMARY
@@ -181,7 +181,7 @@ jobs:
     - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     - name: Install flawfinder
-      run: pip install flawfinder==2.0.19
+      run: pip install --require-hashes -r .github/requirements-security.txt
 
     - name: Run flawfinder on security-critical code
       run: |

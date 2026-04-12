@@ -16,6 +16,14 @@ If you see "compiler required" errors when running `.dis` files, you compiled wi
 
 **Always use Inferno®'s native build tools from macOS**, not Plan 9 Port or commands inside Inferno. This ensures the build environment is compatible with the target Inferno® system - the same compiler and mk that ship with Inferno® are used to build code that runs on Inferno®.
 
+### Bootstrap (first time after clone)
+
+The native build tools (`mk`, `limbo`) are not checked into git. Bootstrap them:
+```sh
+./makemk.sh            # builds mk from source using cc (~30s)
+```
+Then build the rest (libraries, limbo compiler, emulator) using the platform build script or `mk install`.
+
 ### Environment Setup
 
 From the project root, set these environment variables:
@@ -24,7 +32,7 @@ export ROOT=$PWD
 export PATH=$PWD/MacOSX/arm64/bin:$PATH
 ```
 
-The native tools are located at:
+The native tools are built to:
 - `MacOSX/arm64/bin/mk` - Plan 9 mk (Inferno's build tool)
 - `MacOSX/arm64/bin/limbo` - Limbo compiler
 
@@ -316,7 +324,7 @@ Shell tests also exist in `tests/inferno/` (run inside Inferno) and `tests/host/
 
 ```
 infernode/
-├── MacOSX/arm64/bin/    # Native macOS build tools (mk, limbo)
+├── MacOSX/arm64/bin/    # Native macOS build tools (built by makemk.sh + mk)
 ├── emu/                 # Emulator source and binaries
 │   ├── MacOSX/          #   macOS emulator (o.emu binary)
 │   ├── Linux/           #   Linux emulator (build with build-linux-*.sh)
