@@ -111,6 +111,10 @@ Nt/*/lib/*
 # Emulator binaries (built locally)
 emu/*/o.emu
 emu/*/o.*
+emu/*/InferNode
+
+# Bootstrap mk build output
+utils/mk/mk
 
 # Generated emulator source
 emu/*/emu.c
