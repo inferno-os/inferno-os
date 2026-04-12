@@ -34,5 +34,10 @@ pkg-config --modversion sdl3 && echo "SDL3 installed successfully" || echo "WARN
 # Cleanup
 rm -rf "$BUILDDIR"
 
+ARCH=$(uname -m)
 echo ""
-echo "Done. Now run: ./build-linux-amd64.sh"
+if [ "$ARCH" = "aarch64" ]; then
+  echo "Done. Now run: ./build-linux-arm64.sh"
+else
+  echo "Done. Now run: ./build-linux-amd64.sh"
+fi

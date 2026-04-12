@@ -9,6 +9,10 @@ implement CowfsTest;
 # Each test creates isolated base and overlay directories under /tmp/veltro/cowtest/
 # and mounts cowfs to verify the overlay semantics.
 #
+# TODO: This test hangs the runner — the cowfs file2chan server does not shut
+#       down after the test completes, blocking the next test from starting.
+#       Needs an explicit unmount/teardown or a timeout wrapper.
+#
 
 include "sys.m";
 	sys: Sys;

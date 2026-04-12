@@ -5,10 +5,10 @@
 ### From a release tarball
 
 ```bash
-# Linux x86_64 (GUI) — extract and run
+# Linux x86_64 or ARM64 (GUI) — extract and run
 ./infernode
 
-# Linux x86_64 (headless) — extract and run
+# Linux x86_64 or ARM64 (headless) — extract and run
 ./infernode-headless
 
 # macOS ARM64 (Apple Silicon) — open DMG, drag to Applications, double-click
@@ -23,8 +23,9 @@
 ./emu/Linux/o.emu -c1 -r.         # -c1 enables JIT compiler
 
 # Linux ARM64 (Jetson, Raspberry Pi, etc.) - build first, then run
-./build-linux-arm64.sh
-./emu/Linux/o.emu -c1 -r.
+./build-linux-arm64.sh            # builds with SDL3 GUI (default)
+./build-linux-arm64.sh headless   # or build headless
+./emu/Linux/o.emu -c1 -r.         # -c1 enables JIT compiler
 
 # macOS ARM64 (Apple Silicon)
 ./emu/MacOSX/o.emu -c1 -r.
@@ -106,7 +107,8 @@ This bootstraps the `mk` build tool, compiles all libraries, builds the `limbo` 
 ### Linux ARM64
 
 ```bash
-./build-linux-arm64.sh
+./build-linux-arm64.sh            # SDL3 GUI (default)
+./build-linux-arm64.sh headless   # headless (no display)
 ```
 
 Same process as x86_64, but for ARM64 platforms like Jetson or Raspberry Pi.
