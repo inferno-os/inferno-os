@@ -61,7 +61,8 @@ iacme.exe
 o.emu
 o.*
 services/httpd/httpd.log
-Dockerfile
+**/Dockerfile
+!/Dockerfile
 !.clusterfuzzlite/Dockerfile
 
 # Compiled Limbo bytecode in source tree (build artifacts)
