@@ -2534,6 +2534,8 @@ comi(Type *t)
 	genb(Oret);
 }
 
+static uchar *typecom_tmp = nil;
+
 void
 typecom(Type *t)
 {
@@ -2544,14 +2546,19 @@ typecom(Type *t)
 		return;
 
 #ifdef __APPLE__
-	tmp = mallocz(8192*sizeof(uchar), 0);
-	if(tmp == nil)
-		error(exNomem);
+	if(typecom_tmp == nil) {
+		typecom_tmp = mallocz(8192*sizeof(uchar), 0);
+		if(typecom_tmp == nil)
+			error(exNomem);
+	}
 #else
-	tmp = jitmalloc(8192*sizeof(uchar));
-	if(tmp == NULL)
-		error(exNomem);
+	if(typecom_tmp == nil) {
+		typecom_tmp = jitmalloc(8192*sizeof(uchar));
+		if(typecom_tmp == NULL)
+			error(exNomem);
+	}
 #endif
+	tmp = typecom_tmp;
 
 	code = tmp;
 	comi(t);
@@ -2559,11 +2566,6 @@ typecom(Type *t)
 	code = tmp;
 	comd(t);
 	n += code - tmp;
-#ifdef __APPLE__
-	free(tmp);
-#else
-	jitfree(tmp, 8192*sizeof(uchar));
-#endif
 
 #ifdef __APPLE__
 	code = mmap(0, n, PROT_READ|PROT_WRITE|PROT_EXEC,
@@ -2620,6 +2622,9 @@ patchex(Module *m, uvlong *p)
 /*
  * Main compilation entry point
  */
+static uchar *compile_tmp = nil;
+static ulong compile_tmp_size = 0;
+
 int
 compile(Module *m, int size, Modlink *ml)
 {
@@ -2628,7 +2633,7 @@ compile(Module *m, int size, Modlink *ml)
 	Link *l;
 	int i, n = 0;
 	uchar *s, *tmp = nil;
-	ulong tmpsize;		/* function scope: cleanup path needs it */
+	ulong tmpsize;
 
 	if(getenv("INFERNODE_NOJIT") != nil)
 		return 0;
@@ -2636,22 +2641,24 @@ compile(Module *m, int size, Modlink *ml)
 	base = nil;
 	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = mallocz(m->ntype*sizeof(*tinit), 0);
-	/*
-	 * tmp is used for pass 0 size estimation. On AMD64, it must be
-	 * near the text segment so that bra() rel32 displacements to C
-	 * functions fit in 32 bits during size calculation.
-	 * Size proportional to module: each Dis instruction can expand
-	 * to many x86 bytes (especially case statements).
-	 */
 	tmpsize = (ulong)size * 64;
 	if(tmpsize < 8192)
 		tmpsize = 8192;
 	if(size > 0 && tmpsize / 64 != (ulong)size) {
-		/* overflow */
 		goto bad;
 	}
-	tmp = jitmalloc(tmpsize*sizeof(uchar));
-	if(tinit == nil || patch == nil || tmp == nil) {
+	if(tmpsize > compile_tmp_size) {
+		if(compile_tmp != nil)
+			jitfree(compile_tmp, compile_tmp_size*sizeof(uchar));
+		compile_tmp = jitmalloc(tmpsize*sizeof(uchar));
+		if(compile_tmp == nil) {
+			compile_tmp_size = 0;
+			goto bad;
+		}
+		compile_tmp_size = tmpsize;
+	}
+	tmp = compile_tmp;
+	if(tinit == nil || patch == nil) {
 		goto bad;
 	}
 
@@ -2775,8 +2782,6 @@ compile(Module *m, int size, Modlink *ml)
 	m->entry = (Inst*)(v+patch[mod->entry-mod->prog]);
 	free(patch);
 	free(tinit);
-	if(tmp != nil)
-		jitfree(tmp, tmpsize*sizeof(uchar));
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
@@ -2791,8 +2796,6 @@ compile(Module *m, int size, Modlink *ml)
 bad:
 	free(patch);
 	free(tinit);
-	if(tmp != nil)
-		jitfree(tmp, tmpsize*sizeof(uchar));
 	if(base != nil)
 		jitfree(base, n + nlit);
 	return 0;

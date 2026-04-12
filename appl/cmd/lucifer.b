@@ -1223,8 +1223,8 @@ switchactivity(newid: int)
 
 	# Signal zone modules to switch to new activity
 	ev := "switchactivity " + string newid;
-	alt { convEvCh <-= ev => ; * => ; }
-	alt { ctxEvCh <-= ev => ; * => ; }
+	convEvCh <-= ev;
+	ctxEvCh <-= ev;
 	if(lucipres_g != nil)
 		lucipres_g->deliverevent(ev);
 
@@ -1534,8 +1534,8 @@ globallistener()
 		if(hasprefix(ev, "theme ")) {
 			# Live theme switch: reload colours, redraw chrome, notify zones
 			reloadtheme();
-			alt { convEvCh <-= ev => ; * => ; }
-			alt { ctxEvCh <-= ev => ; * => ; }
+			convEvCh <-= ev;
+			ctxEvCh <-= ev;
 			if(lucipres_g != nil)
 				lucipres_g->deliverevent(ev);
 			alt { uievent <-= 1 => ; * => ; }
@@ -1604,9 +1604,9 @@ nslistener()
 				updatetile(actid, "urgency", strip(s));
 			alt { uievent <-= 1 => ; * => ; }
 		} else if(hasprefix(ev, "conversation ")) {
-			alt { convEvCh <-= ev => ; * => ; }
+			convEvCh <-= ev;
 		} else if(ev == "catalog" || hasprefix(ev, "context ")) {
-			alt { ctxEvCh <-= ev => ; * => ; }
+			ctxEvCh <-= ev;
 		} else if(hasprefix(ev, "presentation ")) {
 			# Always deliver to lucipres for tab/artifact updates
 			if(lucipres_g != nil)
