@@ -7,7 +7,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /src
 COPY . .
 
-RUN chmod +x build-linux-amd64.sh && ./build-linux-amd64.sh headless
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+      chmod +x build-linux-arm64.sh && ./build-linux-arm64.sh headless; \
+    else \
+      chmod +x build-linux-amd64.sh && ./build-linux-amd64.sh headless; \
+    fi
 
 # --- Runtime image ---
 FROM ubuntu:24.04
@@ -20,9 +25,6 @@ WORKDIR /inferno
 
 # Emulator binary
 COPY --from=builder /src/emu/Linux/o.emu /inferno/emu
-# Native tools
-COPY --from=builder /src/Linux/amd64/bin/limbo /inferno/bin/limbo
-COPY --from=builder /src/Linux/amd64/bin/mk /inferno/bin/mk
 # Runtime tree
 COPY --from=builder /src/dis /inferno/dis
 COPY --from=builder /src/lib /inferno/lib
