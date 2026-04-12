@@ -179,7 +179,7 @@ jobs:
         tar czf "${STAGE}.tar.gz" "$STAGE"
         echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: infernode-linux-amd64-archive
         path: infernode-*-linux-amd64.tar.gz
@@ -395,7 +395,7 @@ jobs:
         tar czf "${STAGE}.tar.gz" "$STAGE"
         echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: infernode-linux-amd64-gui-archive
         path: infernode-*-linux-amd64-gui.tar.gz
@@ -568,7 +568,7 @@ jobs:
         tar czf "${STAGE}.tar.gz" "$STAGE"
         echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: infernode-linux-arm64-archive
         path: infernode-*-linux-arm64.tar.gz
@@ -782,7 +782,7 @@ jobs:
         tar czf "${STAGE}.tar.gz" "$STAGE"
         echo "Archive: $(ls -lh ${STAGE}.tar.gz)"
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: infernode-linux-arm64-gui-archive
         path: infernode-*-linux-arm64-gui.tar.gz
@@ -993,7 +993,7 @@ jobs:
         xcrun stapler staple "$DMG"
         echo "DMG: $(ls -lh $DMG)"
 
-    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: infernode-macos-arm64-archive
         path: infernode-*-macos-arm64.dmg

@@ -167,7 +167,7 @@ jobs:
         tests/host/jit_boot_test.sh
 
     - name: Upload Linux build artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: success()
       with:
         name: infernode-linux-amd64
@@ -347,7 +347,7 @@ jobs:
         SDL_VIDEODRIVER=dummy tests/host/jit_boot_test.sh
 
     - name: Upload Linux GUI build artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: success()
       with:
         name: infernode-linux-amd64-gui
@@ -490,7 +490,7 @@ jobs:
         fi
 
     - name: Upload Linux ARM64 build artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: success()
       with:
         name: infernode-linux-arm64
@@ -649,7 +649,7 @@ jobs:
         fi
 
     - name: Upload Linux ARM64 GUI build artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: success()
       with:
         name: infernode-linux-arm64-gui
@@ -870,7 +870,7 @@ jobs:
         fi
 
     - name: Upload macOS build artifacts
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       if: success()
       with:
         name: infernode-macos-arm64
