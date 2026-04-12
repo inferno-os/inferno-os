@@ -1007,7 +1007,6 @@ jobs:
   release:
     name: Create Release
     needs: [linux-amd64, linux-amd64-gui, linux-arm64, linux-arm64-gui, macos-arm64]
-    needs: [linux-amd64, linux-amd64-gui, macos-arm64]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
