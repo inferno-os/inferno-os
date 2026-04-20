@@ -35,6 +35,9 @@ typedef sem_t	Sem;
 
 extern int dflag;
 
+extern void nofence(void);
+void (*coherence)(void) = nofence;
+
 int	gidnobody = -1;
 int	uidnobody = -1;
 static struct 	termios tinit;
