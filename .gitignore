@@ -60,7 +60,7 @@ y.debug
 
 # preserve the patterns from .hgignore, though perhaps all binaries
 # should be deleted and ignored with:
-# /[A-Z]*/*/bin/
+/[A-z]*/*/bin/
 
 /[A-Z]*/*/bin/?[acl]
 /[A-Z]*/*/bin/5coff
