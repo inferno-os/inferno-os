@@ -1,5 +1,6 @@
 %{
 #include "limbo.h"
+#include <ctype.h>
 %}
 
 %union
