@@ -1,4 +1,5 @@
 #include "lib9.h"
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
 
