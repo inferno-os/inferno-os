@@ -15,6 +15,7 @@
 #endif
 #include <features.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #define sync __os_sync
@@ -231,6 +232,7 @@ extern	int	(*doquote)(int);
 /*
  * random number
  */
+extern int nrand(int);
 extern	ulong	truerand(void);
 extern	ulong	ntruerand(ulong);
 
