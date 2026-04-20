@@ -55,7 +55,7 @@ struct	Sym
 };
 #define	S	((Sym*)0)
 
-struct
+EXTERN struct
 {
 	char*	p;
 	int	c;
@@ -71,7 +71,7 @@ struct	Io
 };
 #define	I	((Io*)0)
 
-struct
+EXTERN struct
 {
 	Sym*	sym;
 	short	type;

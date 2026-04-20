@@ -23,6 +23,7 @@ static thread_key_t	prdakey;
 static siginfo_t siginfo;
 
 extern int dflag;
+void (*coherence)(void) = nofence;
 
 Proc*
 getup(void)

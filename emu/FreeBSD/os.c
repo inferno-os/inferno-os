@@ -27,6 +27,7 @@ static void *stackalloc(Proc *p, void **tos);
 static void stackfreeandexit(void *stack);
 
 extern int dflag;
+void (*coherence)(void) = nofence;
 
 void
 pexit(char *msg, int t)

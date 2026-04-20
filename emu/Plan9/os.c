@@ -19,6 +19,7 @@ int	*ustack;	/* address on unshared stack: see vstack in asm*.s */
 extern	int	dflag;
 char *hosttype = "Plan9";
 char *cputype;
+void (*coherence)(void) = nofence;
 
 void
 osblock(void)

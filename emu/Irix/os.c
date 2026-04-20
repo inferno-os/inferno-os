@@ -31,6 +31,8 @@ Proc**	Xup;
 #define MAXSPROC 30000	/* max procs == MAXPID */
 static int	sproctbl[MAXSPROC];
 
+void (*coherence)(void) = nofence;
+
 enum
 {
 	KSTACK	= 64*1024,

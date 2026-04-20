@@ -56,6 +56,7 @@ struct Sem {
 static pthread_key_t  prdakey;
 
 extern int dflag;
+void (*coherence)(void) = nofence;
 
 Proc*
 getup(void)

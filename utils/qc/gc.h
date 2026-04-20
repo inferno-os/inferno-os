@@ -143,7 +143,7 @@ EXTERN	long	curarg;
 EXTERN	long	cursafe;
 EXTERN	Prog*	firstp;
 EXTERN	Prog*	lastp;
-EXTERN	int	hintabsize;
+extern	int	hintabsize;
 EXTERN	long	maxargsafe;
 EXTERN	Multab	multab[20];
 EXTERN	int	mnstring;

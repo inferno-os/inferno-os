@@ -34,6 +34,7 @@ char *hosttype = "Linux";
 typedef sem_t	Sem;
 
 extern int dflag;
+void (*coherence)(void) = nofence;
 
 int	gidnobody = -1;
 int	uidnobody = -1;

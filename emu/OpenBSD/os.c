@@ -25,6 +25,7 @@ enum
 char *hosttype = "OpenBSD";
 
 extern int dflag;
+void (*coherence)(void) = nofence;
 
 void
 trapBUS(int signo, siginfo_t *info, void *context)
