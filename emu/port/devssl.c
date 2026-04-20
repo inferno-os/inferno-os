@@ -8,6 +8,8 @@
 #include	"mp.h"
 #include	"libsec.h"
 
+extern int nrand(int);
+
 typedef struct OneWay OneWay;
 struct OneWay
 {

@@ -14,11 +14,13 @@ ASFLAGS=
 CC=		cc -c -m32
 CFLAGS=		-g\
 		-O\
+		-fcommon\
 		-fno-strict-aliasing\
 		-fno-aggressive-loop-optimizations\
 		-Wuninitialized -Wunused-variable -Wreturn-type -Wimplicit\
 		-I$ROOT/Linux/386/include\
 		-I$ROOT/include\
+		-D_GNU_SOURCE\
 		-DLINUX_386
 
 ANSICPP=
