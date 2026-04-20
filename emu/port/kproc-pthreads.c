@@ -11,10 +11,9 @@
 #include	<limits.h>
 #include	<errno.h>
 #include	<semaphore.h>
+#include	<sched.h>
 
 #ifdef __NetBSD__
-#include	<sched.h>
-#define pthread_yield() (sched_yield())
 #define PTHREAD_STACK_MIN ((size_t)sysconf(_SC_THREAD_STACK_MIN))
 #endif
 
@@ -89,6 +88,7 @@ tramp(void *arg)
 	os->self = pthread_self();
 	if(pthread_setspecific(prdakey, arg))
 		panic("set specific data failed in tramp\n");
+#ifdef _GNU_SOURCE
 	if(0){
 		pthread_attr_t attr;
 		memset(&attr, 0, sizeof(attr));
@@ -97,6 +97,7 @@ tramp(void *arg)
 		pthread_attr_getstacksize(&attr, &s);
 		print("stack size = %d\n", s);
 	}
+#endif
 	p->func(p->arg);
 	pexit("{Tramp}", 0);
 	return nil;
@@ -216,9 +217,7 @@ kprocinit(Proc *p)
 void
 osyield(void)
 {
-//	pthread_yield_np();
-	/* define pthread_yield to be sched_yield or pthread_yield_np if required */
-	pthread_yield();
+	sched_yield();
 }
 
 void
