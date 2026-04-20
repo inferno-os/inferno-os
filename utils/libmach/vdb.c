@@ -754,7 +754,7 @@ static char *cop0regs[32] = {
 	"TagLo", "TagHi", "ErrorEPC", "31"
 };
 
-static char fsub[16] = {
+static char fsuf[16] = {
 	'F', 'D', 'e', 'q', 'W', '?', '?', '?',
 	'?', '?', '?', '?', '?', '?', '?', '?'
 };
@@ -837,7 +837,7 @@ format(char *mnemonic, Instr *i, char *f)
 			break;
 
 		case 'f':
-			*i->curr++ = fsub[i->rs & 0x0F];
+			*i->curr++ = fsuf[i->rs & 0x0F];
 			break;
 
 		case 'C':
