@@ -32,7 +32,7 @@ enum {
 
 #define	GET4(p)	(((((((p)[0]<<8)|(p)[1])<<8)|(p)[2])<<8)|(p)[3])
 #define	GET4L(p)	(((((((p)[3]<<8)|(p)[2])<<8)|(p)[1])<<8)|(p)[0])
-#define	PUT4(p,v)	(((p)[0]=(v)>>24),((p)[1]=(v)>>16),((p)[2]=(v)>>8),((p)[3]=(v)))
+#define	PUT4(p,v)	(((p)[0]=(uchar)(v)>>24),((p)[1]=(uchar)(v)>>16),((p)[2]=(uchar)(v)>>8),((p)[3]=(uchar)(v)))
 
 static	uchar	prog[Codebufsize];
 static	uchar	outbuf[Codebufsize];

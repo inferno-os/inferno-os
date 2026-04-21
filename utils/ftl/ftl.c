@@ -155,8 +155,8 @@ enum {
 /* little endian */
 #define	GET2(p)	(((p)[1]<<8)|(p)[0])
 #define	GET4(p)	(((((((p)[3]<<8)|(p)[2])<<8)|(p)[1])<<8)|(p)[0])
-#define	PUT2(p,v)	(((p)[1]=(v)>>8),((p)[0]=(v)))
-#define	PUT4(p,v)	(((p)[3]=(v)>>24),((p)[2]=(v)>>16),((p)[1]=(v)>>8),((p)[0]=(v)))
+#define	PUT2(p,v)	(((p)[1]=(uchar)(v)>>8),((p)[0]=(uchar)(v)))
+#define	PUT4(p,v)	(((p)[3]=(uchar)(v)>>24),((p)[2]=(uchar)(v)>>16),((p)[1]=(uchar)(v)>>8),((p)[0]=(uchar)(v)))
 
 static	Ftl	*ftls;
 
@@ -835,7 +835,10 @@ main(int argc, char **argv)
 		}
 		offset += r;
 	}
-	write(fd2, flashm, flashsize);
+	if (write(fd2, flashm, flashsize) != flashsize) {
+		fprint(2, "ftl: write failed: short write\n");
+		exits("1");
+	}
 	close(fd1);
 	close(fd2);
 	ftlstat(offset);
