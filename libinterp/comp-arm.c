@@ -214,7 +214,7 @@ enum
 #define CALL(o)				gen(BRAW(AL, ((ulong)(o)-(ulong)code-8)>>2)|(1<<24))
 #define CCALL(C,o)				gen(BRAW((C), ((ulong)(o)-(ulong)code-8)>>2)|(1<<24))
 #define CALLMAC(C,o)			gen(BRAW((C), (IA(macro, o)-(ulong)code-8)>>2)|(1<<24))
-#define RELPC(pc)			(ulong)(base+(pc))
+#define RELPC(pc)			(IA(patch, (pc)))
 #define RETURN				DPI(AL, Add, RLINK, R15, 0, 0)				
 #define CRETURN(C)				DPI(C, Add, RLINK, R15, 0, 0)				
 #define PATCH(ptr)			*ptr |= (((ulong)code-(ulong)(ptr)-8)>>2) & 0x00ffffff
@@ -704,8 +704,6 @@ nullity(void)
 static void
 punt(Inst *i, int m, void (*fn)(void))
 {
-	ulong pc;
-
 	if(m & SRCOP) {
 		if(UXSRC(i->add) == SRC(AIMM))
 			literal(i->s.imm, O(REG, s));
@@ -720,12 +718,11 @@ punt(Inst *i, int m, void (*fn)(void))
 		mem(Stw, O(REG, d), RREG, RA0);
 	}
 	if(m & WRTPC) {
-		con(RELPC(patch[i-mod->prog+1]), RA0, 0);
+		con(RELPC(i-mod->prog+1), RA0, 0);
 		mem(Stw, O(REG, PC), RREG, RA0);
 	}
 	if(m & DBRAN) {
-		pc = patch[i->d.ins-mod->prog];
-		literal((ulong)(base+pc), O(REG, d));
+		literal(RELPC(i->d.ins-mod->prog), O(REG, d));
 	}
 
 	switch(i->add&ARM) {
@@ -958,10 +955,10 @@ comcase(Inst *i, int w)
 	t[-1] = -l-1;			/* Set real count */
 	e = t + t[-1]*3;
 	while(t < e) {
-		t[2] = RELPC(patch[t[2]]);
+		t[2] = RELPC(t[2]);
 		t += 3;
 	}
-	t[0] = RELPC(patch[t[0]]);
+	t[0] = RELPC(t[0]);
 }
 
 static void
@@ -982,10 +979,10 @@ comcasel(Inst *i)
 	t[-2] = -l-1;			/* Set real count */
 	e = t + t[-2]*6;
 	while(t < e) {
-		t[4] = RELPC(patch[t[4]]);
+		t[4] = RELPC(t[4]);
 		t += 6;
 	}
-	t[0] = RELPC(patch[t[0]]);
+	t[0] = RELPC(t[0]);
 }
 
 static void
@@ -1015,7 +1012,7 @@ commframe(Inst *i)
 
 	/* Type in RA3, destination in RA0 */
 	PATCH(mlnil);
-	con(RELPC(patch[i-mod->prog+1]), RLINK, 0);
+	con(RELPC(i-mod->prog+1), RLINK, 0);
 	BRAMAC(AL, MacMFRA);
 
 	/* Type in RA3 */
@@ -1030,7 +1027,7 @@ commcall(Inst *i)
 	ulong *mlnil;
 
 	opwld(i, Ldw, RA2);
-	con(RELPC(patch[i-mod->prog+1]), RA0, 0);
+	con(RELPC(i-mod->prog+1), RA0, 0);
 	mem(Stw, O(Frame, lr), RA2, RA0);
 	mem(Stw, O(Frame, fp), RA2, RFP);
 	mem(Ldw, O(REG, M), RREG, RA3);
@@ -1146,7 +1143,7 @@ comgoto(Inst *i)
 	e = t + t[-1];
 	t[-1] = 0;
 	while(t < e) {
-		t[0] = RELPC(patch[t[0]]);
+		t[0] = RELPC(t[0]);
 		t++;
 	}
 }
@@ -1312,7 +1309,7 @@ comp(Inst *i)
 		}
 		tinit[i->s.imm] = 1;
 		con((ulong)mod->type[i->s.imm], RA3, 1);
-		CALL(base+macro[MacFRAM]);
+		CALLMAC(AL, MacFRAM);
 		opwst(i, Stw, RA2);
 		break;
 	case INEWCB:
@@ -1394,7 +1391,7 @@ comp(Inst *i)
 		break;
 	case ICALL:
 		opwld(i, Ldw, RA0);
-		con(RELPC(patch[i-mod->prog+1]), RA1, 0);
+		con(RELPC(i-mod->prog+1), RA1, 0);
 		mem(Stw, O(Frame, lr), RA0, RA1);
 		mem(Stw, O(Frame, fp), RA0, RFP);
 		MOV(RA0, RFP);
@@ -1780,21 +1777,23 @@ preamble(void)
 	if(comvec)
 		return;
 
-	comvec = malloc(10 * sizeof(*code));
+	comvec = malloc(12 * sizeof(*code));
 	if(comvec == nil)
 		error(exNomem);
 	code = (ulong*)comvec;
 
+	*code++ = 0xe92d4bf0;	/* push {r4-r9, r11, lr} */
 	con((ulong)&R, RREG, 0);
-	mem(Stw, O(REG, xpc), RREG, RLINK);
 	mem(Ldw, O(REG, FP), RREG, RFP);
 	mem(Ldw, O(REG, MP), RREG, RMP);
+	mem(Stw, O(REG, xpc), RREG, R15); /* return to pop below */
 	mem(Ldw, O(REG, PC), RREG, R15);
+	*code++ = 0xe8bd8bf0;	/* pop {r4-r9, r11, pc} */
 	pass++;
 	flushcon(0);
 	pass--;
 
-	segflush(comvec, 10 * sizeof(*code));
+	segflush(comvec, 12 * sizeof(*code));
 }
 
 static void
@@ -2070,7 +2069,7 @@ comd(Type *t)
 		for(m = 0x80; m != 0; m >>= 1) {
 			if(c & m) {
 				mem(Ldw, j, RFP, RA0);
-				CALL(base+macro[MacFRP]);
+				CALLMAC(AL, MacFRP);
 			}
 			j += sizeof(WORD*);
 		}
@@ -2149,12 +2148,12 @@ patchex(Module *m, ulong *p)
 	if((h = m->htab) == nil)
 		return;
 	for( ; h->etab != nil; h++){
-		h->pc1 = p[h->pc1];
-		h->pc2 = p[h->pc2];
+		h->pc1 = p[h->pc1] * 4;
+		h->pc2 = p[h->pc2] * 4;
 		for(e = h->etab; e->s != nil; e++)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 		if(e->pc != -1)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 	}
 }
 
@@ -2167,7 +2166,7 @@ compile(Module *m, int size, Modlink *ml)
 	ulong *s, *tmp;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), 0);
+	patch = mallocz((size+1)*sizeof(*patch), 0);
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	tmp = malloc(4096*sizeof(ulong));
 	if(tinit == nil || patch == nil || tmp == nil)
@@ -2176,16 +2175,16 @@ compile(Module *m, int size, Modlink *ml)
 	preamble();
 
 	mod = m;
-	n = 0;
 	pass = 0;
 	nlit = 0;
 
+	patch[0] = n = 0;
 	for(i = 0; i < size; i++) {
 		codeoff = n;
 		code = tmp;
 		comp(&m->prog[i]);
-		patch[i] = n;
 		n += code - tmp;
+		patch[i+1] = n;
 	}
 
 	for(i = 0; i < nelem(mactab); i++) {
@@ -2216,12 +2215,12 @@ compile(Module *m, int size, Modlink *ml)
 	for(i = 0; i < size; i++) {
 		s = code;
 		comp(&m->prog[i]);
-		if(patch[i] != n) {
+		n += code - s;
+		if(patch[i+1] != n) {
 			print("%3d %D\n", i, &m->prog[i]);
-			print("%lud != %d\n", patch[i], n);
+			print("%lud != %d\n", patch[i+1], n);
 			urk("phase error");
 		}
-		n += code - s;
 		if(cflag > 4) {
 			print("%3d %D\n", i, &m->prog[i]);
 			das(s, code-s);
@@ -2246,13 +2245,13 @@ compile(Module *m, int size, Modlink *ml)
 	n += code - s;
 
 	for(l = m->ext; l->name; l++) {
-		l->u.pc = (Inst*)RELPC(patch[l->u.pc-m->prog]);
+		l->u.pc = (Inst*)RELPC(l->u.pc-m->prog);
 		typecom(l->frame);
 	}
 	if(ml != nil) {
 		e = &ml->links[0];
 		for(i = 0; i < ml->nlinks; i++) {
-			e->u.pc = (Inst*)RELPC(patch[e->u.pc-m->prog]);
+			e->u.pc = (Inst*)RELPC(e->u.pc-m->prog);
 			typecom(e->frame);
 			e++;
 		}
@@ -2262,7 +2261,7 @@ compile(Module *m, int size, Modlink *ml)
 			typecom(m->type[i]);
 	}
 	patchex(m, patch);
-	m->entry = (Inst*)RELPC(patch[mod->entry-mod->prog]);
+	m->entry = (Inst*)RELPC(mod->entry-mod->prog);
 	free(patch);
 	free(tinit);
 	free(tmp);
