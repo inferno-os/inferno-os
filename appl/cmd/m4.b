@@ -196,7 +196,7 @@ called(c: int)
 	do{
 		tok[len tok] = c;
 		c = getc();
-	}while(isalpha(c) || c >= '0' && c <= '9');
+	}while(isalpha(c) && !isprefix(c) || c >= '0' && c <= '9');
 	def := lookup(tok);
 	if(def == nil){
 		pushc(c);
@@ -309,6 +309,11 @@ isspace(c: int): int
 isalpha(c: int): int
 {
 	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0 && c != lquote && c != rquote;
+}
+
+isprefix(c: int): int
+{
+	return prefix != "" && c == prefix[0];
 }
 
 hash(name: string): int
