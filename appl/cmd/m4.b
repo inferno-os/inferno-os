@@ -53,6 +53,7 @@ rquote := '\'';
 initcom := "#";
 endcom := "\n";
 prefix := "";
+prefix0 := -1;
 bout: ref Iobuf;
 sh: Sh;
 stderr: ref Sys->FD;
@@ -78,6 +79,8 @@ init(nil: ref Draw->Context, args: list of string)
 			;	# for second pass
 		'p' =>
 			prefix = arg->earg();
+			if(len(prefix) == 1 && prefix[0] > 16rA0)
+				prefix0 = prefix[0];
 		't' =>
 			tracing = 1;
 		* =>
@@ -162,7 +165,7 @@ argdefine(s: string, asis: int)
 scan()
 {
 	while((c := getc()) >= 0){
-		if(isalpha(c))
+		if(isalpha(c) || isprefix(c))
 			called(c);	
 		else if(c == lquote)
 			quoted();
@@ -221,7 +224,7 @@ called(c: int)
 			instack = mark;
 			error("EOF in parameters");
 		}
-		if(isalpha(c))
+		if(isalpha(c) || isprefix(c))
 			called(c);
 		else if(c == lquote)
 			quoted();
@@ -308,7 +311,12 @@ isspace(c: int): int
 
 isalpha(c: int): int
 {
-	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0 && c != lquote && c != rquote;
+	return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c == '_' || c > 16rA0 && c != lquote && c != rquote && !isprefix(c);
+}
+
+isprefix(c: int): int
+{
+	return c >= 0 && c == prefix0;
 }
 
 hash(name: string): int
