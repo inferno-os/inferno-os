@@ -143,7 +143,7 @@ Prints its argument
 on the diagnostic output file.
 .TP
 eval
-Evaluates its argument as an arithmetic expression, using 32-bit arithmetic,
+Evaluates its argument as an arithmetic expression, using 64-bit arithmetic,
 and returns the result as a signed decimal integer.
 The only literals are decimal integers.
 Operators are those of Limbo: the binary operators

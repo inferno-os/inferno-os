@@ -793,11 +793,13 @@ readfile(name: string, default: string): string
 #
 
 Oeof, Ogok, Oge, Ole, One, Oeq, Opow, Oand, Oor, Orsh, Olsh, Odigits: con 'a'+iota;
+Value: type big;
+Zero := big 0;
 Syntax, Badeval: exception;
 evalin: string;
 evalp := 0;
 
-eval(s: string): int
+eval(s: string): Value
 {
 	evalin = s;
 	evalp = 0;
@@ -810,48 +812,58 @@ eval(s: string): int
 	}exception{
 	Syntax =>
 		error(sys->sprint("syntax error: %q %q", evalin[0: evalp], evalin[evalp:]));
-		return 0;
+		return Zero;
 	Badeval =>
 		error(sys->sprint("zero divide in %q", evalin));
-		return 0;
+		return Zero;
 	}
 }
 
-eval1(op: int, v1, v2: int): int raises Badeval
+eval1(op: int, v1, v2: Value): Value raises Badeval
 {
 	case op{
 	'+' =>	return v1 + v2;
 	'-' =>	return v1 - v2;
 	'*' =>		return v1 * v2;
 	'%' =>
-		if(v2 == 0)
+		if(v2 == Zero)
 			raise Badeval;	# division by zero
 		return v1 % v2;
 	'/' =>
-		if(v2 == 0)
+		if(v2 == Zero)
 			raise Badeval;	# division by zero
 		return v1 / v2;
 	Opow =>
-		if(v2 < 0)
+		if(v2 < Zero)
 			raise Badeval;
-		return v1 ** v2;
+		return v1 ** intof(v2);
 	'&' =>	return v1 & v2;
 	'|' =>		return v1 | v2;
 	'^' =>	return v1 ^ v2;
-	Olsh =>	return v1 << v2;
-	Orsh =>	return v1 >> v2;
-	Oand =>	return v1 && v2;
-	Oor =>	return v1 || v2;
-	'<' =>	return v1 < v2;
-	'>' =>	return v1 > v2;
-	Ole =>	return v1 <= v2;
-	Oge =>	return v1 >= v2;
-	One =>	return v1 != v2;
-	Oeq =>	return v1 == v2;
+	Olsh =>	return v1 << intof(v2);
+	Orsh =>	return v1 >> intof(v2);
+	Oand =>	return big(nz(v1) && nz(v2));
+	Oor =>	return big(nz(v1) || nz(v2));
+	'<' =>	return big(v1 < v2);
+	'>' =>	return big(v1 > v2);
+	Ole =>	return big(v1 <= v2);
+	Oge =>	return big(v1 >= v2);
+	One =>	return big(v1 != v2);
+	Oeq =>	return big(v1 == v2);
 	* =>
 		sys->print("unknown op: %c\n", op);	# shouldn't happen
 		raise Badeval;
 	}
+}
+
+nz(b: big): int {
+	return b != Zero;
+}
+
+intof(v: big): int raises Badeval {
+	if (v > big(2)**31 - big(1))
+		raise Badeval;
+	return int(v);
 }
 
 priority(c: int): int
@@ -877,7 +889,7 @@ rightassoc(c: int): int
 	return c == Opow;
 }
 
-expr(prec: int): int raises(Syntax, Badeval)
+expr(prec: int): Value raises(Syntax, Badeval)
 {
 	{
 		v := primary();
@@ -893,7 +905,7 @@ expr(prec: int): int raises(Syntax, Badeval)
 	}
 }
 
-primary(): int raises Syntax
+primary(): Value raises Syntax
 {
 	{
 		case lex() {
@@ -907,7 +919,7 @@ primary(): int raises Syntax
 		'-' =>
 			return -primary();
 		'!' =>
-			return !primary();
+			return big(primary() == Zero);
 		'~' =>
 			return ~primary();
 		Odigits =>
@@ -921,7 +933,7 @@ primary(): int raises Syntax
 	}
 }
 
-yylval := 0;
+yylval := big(0);
 looked := -1;
 
 look(): int
@@ -957,9 +969,9 @@ lex(): int
 		return ifnext('&', Oand, '&');
 	'0' to '9' =>
 		evalp--;
-		n := 0;
+		n := Zero;
 		while(evalp < len evalin && (c = evalin[evalp]) >= '0' && c <= '9'){
-			n = n*10 + (c-'0');
+			n = n*big(10) + big(c-'0');
 			evalp++;
 		}
 		yylval = n;
