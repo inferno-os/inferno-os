@@ -2176,12 +2176,12 @@ patchex(Module *m, ulong *p)
 	if((h = m->htab) == nil)
 		return;
 	for( ; h->etab != nil; h++){
-		h->pc1 = p[h->pc1];
-		h->pc2 = p[h->pc2];
+		h->pc1 = p[h->pc1] * 4;
+		h->pc2 = p[h->pc2] * 4;
 		for(e = h->etab; e->s != nil; e++)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 		if(e->pc != -1)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc] * 4;
 	}
 }
 
@@ -2194,7 +2194,7 @@ compile(Module *m, int size, Modlink *ml)
 	ulong *s, *tmp;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), ROMABLE);
+	patch = mallocz((size+1)*sizeof(*patch), ROMABLE);
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	tmp = malloc(4096*sizeof(ulong));
 	if(tinit == nil || patch == nil || tmp == nil)
@@ -2203,10 +2203,10 @@ compile(Module *m, int size, Modlink *ml)
 	preamble();
 
 	mod = m;
-	n = 0;
 	pass = 0;
 	nlit = 0;
 
+	patch[0] = n = 0;
 	for(i = 0; i < size; i++) {
 		code = tmp;
 		comp(&m->prog[i]);
@@ -2214,8 +2214,8 @@ compile(Module *m, int size, Modlink *ml)
 			print("%3d %D\n", i, &m->prog[i]);
 			urk("tmp ovflo");
 		}
-		patch[i] = n;
 		n += code - tmp;
+		patch[i+1] = n;
 	}
 
 	for(i=0; macinit[i].f; i++) {
@@ -2242,11 +2242,12 @@ compile(Module *m, int size, Modlink *ml)
 	for(i = 0; i < size; i++) {
 		s = code;
 		comp(&m->prog[i]);
-		if(patch[i] != n) {
+		n += code - s;
+		if(patch[i+1] != n) {
 			print("%3d %D\n", i, &m->prog[i]);
+			print("%lud != %d\n", patch[i+1], n);
 			urk("phase error");
 		}
-		n += code - s;
 		if(cflag > 3) {
 			print("%3d %D\n", i, &m->prog[i]);
 			while(s < code)
