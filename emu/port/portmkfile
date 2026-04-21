@@ -133,6 +133,7 @@ devroot.$O:	errstr.h
 latin1.$O:	../port/latin1.h
 netif.$O:	../port/netif.h
 devprog.$O:	$RUNT
+devprof.$O:	$RUNT
 devsrv.$O:	$RUNT
 exception.$O:	$RUNT
 inferno.$O:	$RUNT
