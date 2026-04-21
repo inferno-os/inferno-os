@@ -225,3 +225,6 @@ lib/veltro/welcome_shown
 lib/veltro/tour_offered
 
 dis/mermaid_test.dis
+
+# Runtime overlay root — populated by emu at boot, never tracked
+n/local/
