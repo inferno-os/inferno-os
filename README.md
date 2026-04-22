@@ -1,6 +1,7 @@
 # InferNode
 
 [![Latest release](https://img.shields.io/github/v/release/infernode-os/infernode?display_name=tag)](https://github.com/infernode-os/infernode/releases/latest)
+[![Container image](https://img.shields.io/badge/ghcr.io-infernode--os%2Finfernode-blue?logo=docker)](https://github.com/infernode-os/infernode/pkgs/container/infernode)
 [![CI](https://github.com/infernode-os/infernode/actions/workflows/ci.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/ci.yml)
 [![Security Analysis](https://github.com/infernode-os/infernode/actions/workflows/security.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/security.yml)
 [![OSSF Scorecard](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml/badge.svg)](https://github.com/infernode-os/infernode/actions/workflows/scorecard.yml)
@@ -21,6 +22,10 @@ Every tagged release ships signed binaries for macOS and Linux on the [latest re
 - **Linux x86_64 (GUI)** — `infernode-*-linux-amd64-gui.tar.gz`: SDL3 is bundled.
 - **Linux ARM64 (GUI)** — `infernode-*-linux-arm64-gui.tar.gz`: for Jetson, Raspberry Pi, etc.
 - **Linux (headless)** — `infernode-*-linux-amd64.tar.gz` or `infernode-*-linux-arm64.tar.gz`.
+- **Container** — multi-arch (amd64 + arm64) headless image on GHCR:
+  ```bash
+  docker run -it ghcr.io/infernode-os/infernode:latest
+  ```
 
 ```bash
 tar xzf infernode-*-linux-*-gui.tar.gz
@@ -28,7 +33,7 @@ cd infernode-*-linux-*-gui
 ./infernode                   # or ./infernode-headless in the non-GUI tarballs
 ```
 
-Every release asset is published with a cosign bundle (`.pem` + `.sig`) and a signed `SHA256SUMS.txt`. See [Releases](https://github.com/infernode-os/infernode/releases) for the full history.
+Every release asset is published with a cosign bundle (`.pem` + `.sig`) and a signed `SHA256SUMS.txt`; container images carry SLSA build provenance. See [Releases](https://github.com/infernode-os/infernode/releases) for the full history.
 
 ### Build from source
 
