@@ -24,18 +24,22 @@ cd infernode-*-linux-*
 # Linux x86_64 (Intel/AMD) — GUI build (requires SDL3)
 ./install-sdl3.sh                 # install SDL3 from source (one time)
 ./build-linux-amd64.sh            # builds with SDL3 GUI (default)
-./Linux/infernode                 # launch Lucifer GUI with JIT enabled
+./run-lucia-linux.sh              # launch Lucia GUI
 
 # Linux x86_64 (Intel/AMD) — headless build (no GUI dependencies)
 ./build-linux-amd64.sh headless
 ./emu/Linux/o.emu -c1 -r.         # -c1 enables JIT compiler
 
 # Linux ARM64 (Jetson, Raspberry Pi, etc.)
+./install-sdl3.sh                 # GUI only, one time
 ./build-linux-arm64.sh
-./emu/Linux/o.emu -c1 -r.
+./run-lucia-linux.sh              # or ./emu/Linux/o.emu -c1 -r. for headless
 
 # macOS ARM64 (Apple Silicon)
-./emu/MacOSX/o.emu -c1 -r.
+./makemk.sh                       # bootstrap mk (one time)
+brew install sdl3 sdl3_ttf        # GUI only
+./build-macos-sdl3.sh             # or ./build-macos-headless.sh
+./run-lucia.sh                    # or ./emu/MacOSX/o.emu -c1 -r. for headless
 ```
 
 ### What does `-r.` mean?
@@ -101,10 +105,11 @@ After building (see Building section below):
 ### Linux x86_64 (Intel/AMD)
 
 ```bash
-./build-linux-amd64.sh
+./build-linux-amd64.sh            # SDL3 GUI (default)
+./build-linux-amd64.sh headless   # headless (no display)
 ```
 
-This bootstraps the `mk` build tool, compiles all libraries, builds the `limbo` compiler, creates the headless emulator, and compiles the Dis bytecode applications.
+This bootstraps the `mk` build tool, compiles all libraries, builds the `limbo` compiler, builds the emulator (SDL3 GUI by default, or headless), and compiles the Dis bytecode applications.
 
 ### Linux ARM64
 
@@ -118,10 +123,9 @@ Same process as x86_64, but for ARM64 platforms like Jetson or Raspberry Pi.
 ### macOS ARM64
 
 ```bash
-./makemk.sh                              # bootstrap mk (first time only)
-export ROOT=$PWD
-export PATH="$PWD/MacOSX/arm64/bin:$PATH"
-mk install
+./makemk.sh                       # bootstrap mk (first time only)
+./build-macos-sdl3.sh             # SDL3 GUI (requires: brew install sdl3 sdl3_ttf)
+./build-macos-headless.sh         # headless (no display)
 ```
 
 ### Windows x86_64
