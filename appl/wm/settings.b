@@ -42,6 +42,9 @@ include "wmclient.m";
 include "string.m";
 	str: String;
 
+include "dialnorm.m";
+	dialnorm: Dialnorm;
+
 include "lucitheme.m";
 
 include "widget.m";
@@ -153,6 +156,7 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	draw = load Draw Draw->PATH;
 	wmclient = load Wmclient Wmclient->PATH;
 	str = load String String->PATH;
+	dialnorm = load Dialnorm Dialnorm->PATH;
 	stderr = sys->fildes(2);
 
 	if(ctxt == nil) {
@@ -1259,26 +1263,6 @@ trackllmapply(nil: ref Pointer)
 	}
 }
 
-# Coerce common host:port forms into Inferno dial syntax tcp!host!port.
-# Leaves anything containing '!' alone (already in dial form).
-normalizedial(s: string): string
-{
-	if(len s == 0)
-		return s;
-	for(i := 0; i < len s; i++)
-		if(s[i] == '!')
-			return s;
-	(left, right) := str->splitr(s, ":");
-	if(left == "" || right == "")
-		return s;
-	host := left[0:len left - 1];
-	if(len host == 0)
-		return s;
-	if(str->drop(right, "0-9") != "")
-		return s;
-	return "tcp!" + host + "!" + right;
-}
-
 applyllm()
 {
 	if(llm_is_remote) {
@@ -1290,11 +1274,15 @@ applyllm()
 			flashstatus("enter a dial address (e.g. tcp!host!5640)");
 			return;
 		}
-		addr = normalizedial(addr);
+		addr = dialnorm->normalize(addr);
 		if(llm_dial_tf != nil)
 			llm_dial_tf.setval(addr);
+		# Persist only — the actual mount lives in the root
+		# namespace established by /lib/sh/profile at boot time, so
+		# mounting from this user-space process would not be visible
+		# to wm's children (Veltro etc). Tell the user to restart.
 		writellmconfig("remote", "", "", "", addr);
-		mountremotellm(addr);
+		flashstatus("LLM dial saved — close InferNode and relaunch to apply");
 		return;
 	}
 
@@ -1315,26 +1303,6 @@ applyllm()
 
 	writellmconfig("local", backend, url, model, "");
 	flashstatus("LLM config saved — restart llmsrv for backend/URL changes");
-}
-
-mountremotellm(addr: string)
-{
-	# Unmount any existing /n/llm mount first (ignore errors)
-	sys->unmount(nil, "/n/llm");
-
-	(ok, c) := sys->dial(addr, nil);
-	if(ok < 0) {
-		flashstatus(sys->sprint("dial %s failed: %r", addr));
-		return;
-	}
-
-	n := sys->mount(c.dfd, nil, "/n/llm", Sys->MREPL, "");
-	if(n < 0) {
-		flashstatus(sys->sprint("mount /n/llm failed: %r"));
-		return;
-	}
-
-	flashstatus("mounted remote LLM at /n/llm from " + addr);
 }
 
 readllmconfig(): (string, string, string, string, string, int)

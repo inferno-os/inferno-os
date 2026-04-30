@@ -1543,11 +1543,20 @@ init(nil: ref Draw->Context, args: list of string)
 	# Check LLM configuration — two distinct failure modes:
 	#   1. Nothing configured: no API key, no Ollama → prompt to configure
 	#   2. Configured but unreachable: key exists but service down → different message
+	mode := readndbfield("/lib/ndb/llm", "mode");
+	if(mode == nil || mode == "")
+		mode = "local";
 	backend := readndbfield("/lib/ndb/llm", "backend");
 	if(backend == nil || backend == "")
 		backend = "api";
+	dial := readndbfield("/lib/ndb/llm", "dial");
 	llmconfigured := 0;
-	if(backend == "api") {
+	if(mode == "remote") {
+		# Remote 9P mount: configured iff a dial address is set.
+		# The actual reachability check happens via llmserviceok() below.
+		if(dial != nil && dial != "")
+			llmconfigured = 1;
+	} else if(backend == "api") {
 		# Check factotum for an anthropic API key
 		ctldata := agentlib->readfile("/mnt/factotum/ctl");
 		if(ctldata != nil && len ctldata > 0) {
@@ -1667,7 +1676,12 @@ init(nil: ref Draw->Context, args: list of string)
 			}
 		}
 		if(!llmserviceok()) {
-			if(backend == "api")
+			if(mode == "remote")
+				writemsg("veltro",
+					"Remote LLM at " + dial + " is configured, but I can't reach it. " +
+					"Check that the remote InferNode is running and llmsrv is exporting via 9P, " +
+					"then close InferNode and relaunch it.");
+			else if(backend == "api")
 				writemsg("veltro",
 					"Your API key is configured, but the LLM service failed to start. " +
 					"Check your internet connection and close InferNode and relaunch it.");

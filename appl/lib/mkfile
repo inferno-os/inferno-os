@@ -36,6 +36,7 @@ TARG=\
 	deflate.dis\
 	devpointer.dis\
 	dial.dis\
+	dialnorm.dis\
 	dict.dis\
 	dis.dis\
 	diskblocks.dis\
@@ -166,6 +167,7 @@ SYSMODULES=\
 	debug.m\
 	devpointer.m\
 	dial.m\
+	dialnorm.m\
 	dict.m\
 	dis.m\
 	diskblocks.m\

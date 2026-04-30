@@ -17,6 +17,7 @@ TARG=\
 	cut_test.dis\
 	crypto_test.dis\
 	dial_test.dis\
+	dialnorm_test.dis\
 	edit_test.dis\
 	editor_test.dis\
 	example_test.dis\
