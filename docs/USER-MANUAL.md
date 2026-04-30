@@ -18,7 +18,7 @@ A practical guide to using InferNode, the AI-agent-friendly operating system.
 10. [The Login Screen](#the-login-screen)
 11. [The Text Editor](#the-text-editor)
 12. [Wallet and Payments](#wallet-and-payments)
-13. [Security and AI Agent Isolation](#security-and-ai-agent-isolation)
+13. [Security and Agent Namespace Isolation](#security-and-agent-namespace-isolation)
 14. [Common Tasks](#common-tasks)
 15. [Troubleshooting](#troubleshooting)
 
@@ -744,13 +744,13 @@ See [docs/WALLET-AND-PAYMENTS.md](WALLET-AND-PAYMENTS.md) for the full architect
 
 ---
 
-## Security and AI Agent Isolation
+## Security and Agent Namespace Isolation
 
 ### The Namespace is the Security Boundary
 
-InferNode's security model is simple: **a process can only access what's in its namespace**.
+InferNode's security model is simple: **a process can only access what's in its namespace**. The Veltro harness uses this primitive to sandbox each running agent — see the README "Terminology" section for the harness/agent distinction.
 
-An AI agent running in a restricted namespace:
+A running agent in a restricted namespace:
 ```
 /
 ├── mnt/

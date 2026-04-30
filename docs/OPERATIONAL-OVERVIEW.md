@@ -12,15 +12,17 @@ Inferno OS running as a native process on macOS ARM64, with a working JIT compil
 
 **tools9p** is a 9P file server mounted at `/tool`. It registers tool modules and serves them as a filesystem: `/tool/tools` (what's active), `/tool/paths` (namespace paths), `/tool/ctl` (add/remove tools, bind/unbind paths). This is the unified configuration store — both the GUI and the agent bridge write here.
 
-**Veltro** (`appl/veltro/veltro.b`) is the CLI agent. You give it a task and a tool set; it forks a restricted namespace, calls tools in a loop via the LLM, and terminates when done. It runs one-shot or as a REPL.
+**Veltro** (`appl/veltro/veltro.b`) is the CLI harness entry point. You give it a task and a tool set; the running agent forks a restricted namespace, calls tools in a loop via the LLM, and terminates when done. It runs one-shot or as a REPL.
 
-**lucibridge** is the agent bridge for the GUI session. It runs in the background, connects Lucifer's conversation UI to the LLM, re-reads tool and path state at the start of each agent turn, and handles slash commands (`/bind`, `/unbind`, `/tools +/-name`) for interactive namespace management.
+**lucibridge** is the GUI-side harness bridge. It runs in the background, connects Lucifer's conversation UI to the LLM, re-reads tool and path state at the start of each agent turn, and handles slash commands (`/bind`, `/unbind`, `/tools +/-name`) for interactive namespace management.
+
+(See the README "Terminology" section for the harness/agent distinction.)
 
 ---
 
 ## The Tools
 
-The agent has tools registered by default:
+A running agent has tools registered by default:
 
 | Category | Tools |
 |----------|-------|

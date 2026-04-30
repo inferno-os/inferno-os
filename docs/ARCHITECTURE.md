@@ -61,8 +61,9 @@ Host OS (macOS / Linux / Windows)
 
 ### tools9p (`appl/veltro/tools9p.b`)
 
-The shared configuration and execution server for the agent stack. Both the GUI (lucictx)
-and the agent bridge (lucibridge) interact with it as their common intermediary.
+A harness component: the shared configuration and execution server that running agents
+dispatch tool calls through. Both the GUI (lucictx) and the GUI-side harness bridge
+(lucibridge) interact with it as their common intermediary.
 
 Filesystem layout at `/tool`:
 
@@ -86,7 +87,8 @@ Key design properties:
 
 ### lucibridge (`appl/cmd/lucibridge.b`)
 
-The agent bridge: connects the GUI conversation UI to the LLM.
+The GUI-side harness bridge: connects the GUI conversation UI to the LLM and runs the
+agent loop for that session.
 
 - Runs in background, started by Lucifer
 - Reads user input from `/n/ui/activity/{id}/conversation/input`

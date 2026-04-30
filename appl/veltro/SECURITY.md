@@ -4,7 +4,24 @@
 
 Veltro uses Inferno OS namespace isolation to create secure environments for AI agents. The core primitive is `restrictdir(target, allowed, writable)`: create a shadow directory containing only allowed items, then bind-replace the target. Anything not in the allowlist becomes invisible. The `writable` flag adds `MCREATE` to the final bind, needed for `/tmp` so agents can create files there.
 
-Three entry points apply namespace restriction:
+### Terminology
+
+This document distinguishes:
+
+- **Harness** — the namespace-restriction machinery itself: `nsconstruct`,
+  `tools9p`, `lucibridge`, and the `veltro`/`repl`/`spawn` entry points that
+  call `restrictns(caps)`. The harness defines what an agent *can* do.
+- **Agent** — a running process executing the harness loop with a model and a
+  capability set. Each `repl`, `veltro`, `lucibridge`, or `spawn`'d child is a
+  separate agent with its own restricted namespace.
+- **Subagent** — an agent created by another agent via the `spawn` tool.
+  Subagents inherit an already-restricted namespace and can only narrow it
+  further (capability attenuation).
+
+The security model applies to **agents**: the harness restricts what each
+running instance sees. The harness itself is trusted code.
+
+Three harness entry points apply namespace restriction:
 
 | Entry Point | Where | When |
 |-------------|-------|------|
@@ -66,7 +83,7 @@ Both levels use the same `restrictdir()` primitive. Capability attenuation is na
 
 ## Namespace After Restriction
 
-### Parent Agent (tools9p / repl)
+### Parent agent (started via `tools9p` / `repl` harness entry points)
 
 ```
 /
