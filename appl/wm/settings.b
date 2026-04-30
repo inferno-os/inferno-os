@@ -378,7 +378,7 @@ layoutllm(cx, cy, cw, fh, bh, ch: int)
 		# Remote mode: just a dial address
 		llm_dial_label = Label.mk(
 			Rect((cx, cy), (cw, cy + fh)),
-			"Dial address:", 0, LEFT);
+			"Dial address (tcp!host!port):", 0, LEFT);
 		cy += fh;
 		llm_dial_tf = Textfield.mk(
 			Rect((cx, cy), (cw, cy + fh)),
@@ -1259,6 +1259,26 @@ trackllmapply(nil: ref Pointer)
 	}
 }
 
+# Coerce common host:port forms into Inferno dial syntax tcp!host!port.
+# Leaves anything containing '!' alone (already in dial form).
+normalizedial(s: string): string
+{
+	if(len s == 0)
+		return s;
+	for(i := 0; i < len s; i++)
+		if(s[i] == '!')
+			return s;
+	(left, right) := str->splitr(s, ":");
+	if(left == "" || right == "")
+		return s;
+	host := left[0:len left - 1];
+	if(len host == 0)
+		return s;
+	if(str->drop(right, "0-9") != "")
+		return s;
+	return "tcp!" + host + "!" + right;
+}
+
 applyllm()
 {
 	if(llm_is_remote) {
@@ -1270,6 +1290,9 @@ applyllm()
 			flashstatus("enter a dial address (e.g. tcp!host!5640)");
 			return;
 		}
+		addr = normalizedial(addr);
+		if(llm_dial_tf != nil)
+			llm_dial_tf.setval(addr);
 		writellmconfig("remote", "", "", "", addr);
 		mountremotellm(addr);
 		return;
