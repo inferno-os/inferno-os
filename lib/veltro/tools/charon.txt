@@ -1,0 +1,28 @@
+charon - Control the Charon web browser
+
+Charon is the InferNode built-in web browser. It must be launched
+first via the `launch` tool: `launch charon` (optionally with a URL).
+This tool sends commands to a running Charon instance.
+
+Usage:
+  navigate <url>             Load a URL in the browser
+  back                       Go back in history
+  forward                    Go forward in history
+  follow <n>                 Follow link number n on the current page
+  read [body|url|title|links|forms]
+                             Read aspects of the current page
+  search <text>              Find text on the current page
+  status                     Show browser state
+
+Workflow:
+  1. `launch charon https://example.com` — opens browser at URL
+  2. `charon read body`                   — get readable text content
+  3. `charon read links`                  — list links with numbers
+  4. `charon follow 3`                    — follow link 3
+  5. `charon back`                        — return to previous page
+
+Examples:
+  charon navigate https://en.wikipedia.org/wiki/Inferno_(operating_system)
+  charon read title
+  charon read body
+  charon search Plan 9

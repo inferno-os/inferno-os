@@ -1,0 +1,28 @@
+wiki - Ingest and query a knowledge base (wiki9p)
+
+Performs ingest, query, lint, and status operations against the
+wiki9p file server ("wikia" = wiki agent), mounted at /n/wikia.
+This is the Phase 1 wrapper; eventually agents will use the
+/n/wikia filesystem directly.
+
+Usage:
+  wiki ingest                        Ingest all sources at /n/wikia/raw
+  wiki ingest <path>                 Ingest a specific file or directory
+  wiki query <question>              Ask a question, get a synthesized answer
+  wiki lint                          Run a wiki health check
+  wiki status                        Show wiki state and stats
+  wiki log                           Show operation history
+
+Source binding:
+  Veltro or the user binds data into /n/wikia/raw before calling ingest.
+  Sources can be host paths, databases, remote mounts, or other wikis.
+
+Dependencies:
+  /n/wikia    wiki9p must be mounted
+  /mnt/wiki   wikifs must be mounted (wiki9p talks to it)
+
+Examples:
+  wiki status
+  wiki ingest /n/local/Users/me/notes
+  wiki query "What is the InferNode build process?"
+  wiki lint

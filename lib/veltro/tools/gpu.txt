@@ -1,0 +1,21 @@
+gpu - GPU inference (object detection, classification, generic inference)
+
+Wraps the /mnt/gpu filesystem to run inference on images using
+locally-loaded models. Uses a clone-based session pattern; each call
+spawns or reuses a session against the named model.
+
+Usage:
+  gpu info                          GPU info (device, free memory, etc.)
+  gpu models                        List loaded models
+  gpu detect <model> <imagepath>    Object detection — returns bounding boxes
+  gpu classify <model> <imagepath>  Classification — returns label probabilities
+  gpu infer <model> <imagepath>     Generic inference — raw model output
+
+The image path can be on the local filesystem or in a 9P-mounted
+namespace the agent has access to.
+
+Examples:
+  gpu info
+  gpu models
+  gpu detect yolov8n /tmp/photo.jpg
+  gpu classify resnet50 /tmp/cat.png

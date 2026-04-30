@@ -1,0 +1,19 @@
+keyring - Tell the user what credential is needed (does NOT read keys)
+
+Launches the Keyring GUI app so the user can add, view, or delete
+keys in factotum. The agent can tell the user what credentials are
+needed, but CANNOT access /mnt/factotum/ctl itself — namespace
+isolation ensures the agent never sees secret material.
+
+Usage:
+  keyring open                       Launch the Keyring GUI app
+  keyring need <description>         Launch Keyring and tell the user
+                                     what credential is needed
+  keyring check <service>            Check if a service has credentials
+                                     configured. Returns yes/no only —
+                                     never reveals the actual key.
+
+Examples:
+  keyring need "Anthropic API key for Claude access"
+  keyring check anthropic
+  keyring open

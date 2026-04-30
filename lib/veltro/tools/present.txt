@@ -1,0 +1,36 @@
+present - Display artifacts in the Lucifer presentation zone
+
+Manages artifacts (markdown, text, tables, code, images, mermaid
+diagrams, PDFs) in the centre presentation zone of the Lucifer UI.
+Use this to surface output the user should look at, rather than
+just chatting it.
+
+Usage:
+  create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=<text>]
+                              Create a new presentation artifact
+  write <id> <content-or-path>
+                              Write content to an artifact. For
+                              type=pdf or type=image, write the
+                              path; otherwise write the literal
+                              content. Use \n for newlines.
+  center <id>                 Make this artifact the active view
+  delete <id>                 Remove an artifact
+  list                        List artifacts in the current activity
+  status                      Show current activity and centred artifact
+
+Mermaid notes:
+  Write raw Mermaid syntax (NOT fenced ```mermaid``` code blocks).
+  Supported diagram types: flowchart, sequenceDiagram, gantt, pie,
+  xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram,
+  stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph,
+  quadrantChart, journey, requirementDiagram, block-beta.
+
+Examples:
+  present create summary type=markdown label="Session Summary"
+  present write summary "# Summary\n\n- Finding 1\n- Finding 2"
+  present center summary
+  present create data type=table label="Results"
+  present write data "| Name | Value |\n|------|-------|\n| Foo | 42 |"
+  present create flow type=mermaid label="Flow"
+  present write flow "flowchart LR\nA-->B-->C"
+  present list

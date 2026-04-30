@@ -31,6 +31,8 @@ AgentLib: module {
 	loadreminders: fn(toollist: list of string): string;
 	loadtooldocs: fn(toollist: list of string): string;
 	defaultsystemprompt: fn(): string;
+	readtooldoc: fn(name: string): string;
+	tooldocsummary: fn(name: string): string;
 
 	# Response parsing
 	parseaction: fn(response: string): (string, string);

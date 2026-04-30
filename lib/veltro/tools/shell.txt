@@ -1,4 +1,6 @@
-shell - Read-only access to the shell terminal
+shell - Read-only access to the shell terminal transcript.
+Does NOT execute commands and does NOT start a shell — to start a
+shell window, use the `launch` tool: `launch shell`.
 
 Usage:
   read [body]     Read the shell transcript

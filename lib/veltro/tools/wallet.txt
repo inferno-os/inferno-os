@@ -1,0 +1,24 @@
+wallet - Cryptocurrency and fiat payment operations (no key access)
+
+Provides wallet operations via the wallet9p filesystem at /n/wallet/.
+The agent NEVER sees private keys — signing happens inside wallet9p,
+which retrieves keys from factotum on demand.
+
+Usage:
+  wallet accounts                     List all wallet accounts
+  wallet address <account>            Show public address for an account
+  wallet balance <account>            Show current balance
+  wallet chain <account>              Show chain name (e.g. ethereum, bitcoin)
+  wallet sign <account> <hexhash>     Sign a 32-byte hex-encoded hash
+  wallet history <account>            Show recent transactions
+  wallet pay <account> <args>         Execute a payment (not yet implemented)
+
+The wallet must be running and unlocked. Keys live in factotum and
+are never exposed to this tool — use the keyring tool if a key is
+missing.
+
+Examples:
+  wallet accounts
+  wallet balance main
+  wallet address main
+  wallet history main

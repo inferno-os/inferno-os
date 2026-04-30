@@ -8,6 +8,7 @@ TARG=\
 	alpha_test.dis\
 	agentlib_test.dis\
 	agent_test.dis\
+	tooldoc_test.dis\
 	tooluse_test.dis\
 	awk_test.dis\
 	asyncio_test.dis\
@@ -141,6 +142,10 @@ agentlib_test.dis: agentlib_test.b $ROOT/appl/veltro/agentlib.m
 # tooluse_test needs -I for appl/veltro/agentlib.m
 tooluse_test.dis: tooluse_test.b $ROOT/appl/veltro/agentlib.m
 	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw tooluse_test.b
+
+# tooldoc_test needs -I for appl/veltro/agentlib.m
+tooldoc_test.dis: tooldoc_test.b $ROOT/appl/veltro/agentlib.m
+	limbo -I$ROOT/module -I$ROOT/appl/veltro -gw tooldoc_test.b
 
 # pres_launch_test needs -I for appl/veltro/nsconstruct.m
 pres_launch_test.dis: pres_launch_test.b $ROOT/appl/veltro/nsconstruct.m

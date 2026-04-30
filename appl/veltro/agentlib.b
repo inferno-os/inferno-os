@@ -245,127 +245,26 @@ buildsystemprompt(ns: string): string
 	return prompt;
 }
 
-# Load modular tool documentation for tools with non-obvious behavior.
-# Sourced from lib/veltro/tools/*.txt — composed upfront, no on-demand help.
-# Tools covered: exec (Inferno sh ≠ POSIX), spawn (unique syntax),
-#                grep (Plan 9 ERE), todo (MANDATORY workflow).
+# Load full tool documentation for every tool in the list that has a
+# /lib/veltro/tools/<name>.txt file. The tool descriptions in the JSON
+# tool-definition block are short summaries (see tooldesc); this is
+# the long-form companion that lives in the system prompt so the model
+# can read full usage, safety notes, and examples when invoking a tool.
+#
+# Each tool's full doc is preceded by a "## <name>" header so the
+# model can locate sections by tool name. Tools without a .txt file
+# are silently skipped.
 loadtooldocs(toollist: list of string): string
 {
-	has_exec := 0;
-	has_spawn := 0;
-	has_grep := 0;
-	has_todo := 0;
-	has_gap := 0;
-	has_websearch := 0;
-	has_webfetch := 0;
-	has_plan := 0;
-	has_task := 0;
-	has_memory := 0;
-	has_launch := 0;
-
-	for(t := toollist; t != nil; t = tl t) {
-		case hd t {
-		"exec"      => has_exec = 1;
-		"spawn"     => has_spawn = 1;
-		"grep"      => has_grep = 1;
-		"todo"      => has_todo = 1;
-		"gap"       => has_gap = 1;
-		"websearch" => has_websearch = 1;
-		"webfetch"  => has_webfetch = 1;
-		"plan"      => has_plan = 1;
-		"task"      => has_task = 1;
-		"memory"    => has_memory = 1;
-		"launch"    => has_launch = 1;
-		}
-	}
-
 	docs := "";
-	# Priority order: exec (shell basics), grep (ERE warning),
-	# todo (MANDATORY workflow), gap (user-visible blind spots), spawn (parallel subagent syntax)
-	if(has_exec) {
-		doc := readfile("/lib/veltro/tools/exec.txt");
-		if(doc != "")
-			docs += doc;
-	}
-	if(has_grep) {
-		doc := readfile("/lib/veltro/tools/grep.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_todo) {
-		doc := readfile("/lib/veltro/tools/todo.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_gap) {
-		doc := readfile("/lib/veltro/tools/gap.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_spawn) {
-		doc := readfile("/lib/veltro/tools/spawn.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_websearch) {
-		doc := readfile("/lib/veltro/tools/websearch.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_webfetch) {
-		doc := readfile("/lib/veltro/tools/webfetch.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_plan) {
-		doc := readfile("/lib/veltro/tools/plan.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_task) {
-		doc := readfile("/lib/veltro/tools/task.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_memory) {
-		doc := readfile("/lib/veltro/tools/memory.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
-	}
-	if(has_launch) {
-		doc := readfile("/lib/veltro/tools/launch.txt");
-		if(doc != "") {
-			if(docs != "")
-				docs += "\n\n";
-			docs += doc;
-		}
+	for(t := toollist; t != nil; t = tl t) {
+		name := hd t;
+		doc := readtooldoc(name);
+		if(doc == "")
+			continue;
+		if(docs != "")
+			docs += "\n\n";
+		docs += "## " + name + "\n" + doc;
 	}
 	return docs;
 }
@@ -880,41 +779,56 @@ findheredoc(s: string): int
 # by llmsrv). Results are submitted back via TOOL_RESULTS wire format.
 #
 
-# Return a short human-readable description for a known tool name.
+# Read the canonical documentation file for a tool.
+# Returns "" if the file does not exist.
+readtooldoc(name: string): string
+{
+	return readfile("/lib/veltro/tools/" + name + ".txt");
+}
+
+# Extract a short summary from a tool's .txt file, suitable for the
+# "description" field of a JSON tool definition presented to the LLM.
+# Algorithm: skip "== ... ==" header lines and leading blanks, then
+# return the first paragraph (lines run together until the next blank).
+tooldocsummary(name: string): string
+{
+	doc := readtooldoc(name);
+	if(doc == "")
+		return "";
+	result := "";
+	inpara := 0;
+	i := 0;
+	while(i <= len doc) {
+		j := i;
+		while(j < len doc && doc[j] != '\n')
+			j++;
+		line := strip(doc[i:j]);
+		i = j + 1;
+		if(line == "") {
+			if(inpara)
+				break;
+			continue;
+		}
+		if(!inpara && len line >= 4 && line[0:2] == "==" && line[len line - 2:] == "==")
+			continue;
+		if(result != "")
+			result += " ";
+		result += line;
+		inpara = 1;
+	}
+	return result;
+}
+
+# Return a short description for a tool, suitable for the JSON tool
+# definition. Source of truth is /lib/veltro/tools/<name>.txt; fallback
+# is a generic placeholder so an undocumented tool surfaces visibly
+# rather than silently going through with an opaque description.
 tooldesc(name: string): string
 {
-	case name {
-	"read"   => return "Read the contents of a file";
-	"write"  => return "Write content to a file";
-	"exec"   => return "Execute a command in Inferno sh";
-	"grep"   => return "Search files for a regular expression pattern";
-	"find"   => return "Find files by name or pattern";
-	"git"    => return "Run a git command";
-	"say"    => return "Speak text aloud via text-to-speech";
-	"xenith"   => return "Issue a command to the Xenith text editor";
-	"present"  => return "Manage the Lucifer presentation zone: create <id> [type=markdown|text|table|code|pdf|image|mermaid] [label=text], write <id> <content-or-path>, center <id>, delete <id>, list, status. For mermaid: write raw Mermaid syntax (NOT fenced code blocks). Supported mermaid diagram types: flowchart, sequenceDiagram, gantt, pie, xychart-beta (for bar/line charts — NOT 'barChart'), classDiagram, stateDiagram-v2, erDiagram, mindmap, timeline, gitGraph, quadrantChart, journey, requirementDiagram, block-beta. For pdf/image: write the file path.";
-	"spawn"    => return "Spawn a parallel subagent with its own namespace";
-	"todo"   => return "Manage a persistent task list";
-	"plan"   => return "Create and manage structured plans for complex tasks. Workflow: create → goal → approach → step(s) → approve → progress → complete. MANDATORY for non-trivial multi-step work.";
-	"webfetch" => return "Fetch a web page and return clean readable text. HTML is automatically converted — scripts, styles, and navigation are stripped.";
-	"ls"     => return "List directory contents";
-	"mkdir"  => return "Create a directory";
-	"rm"     => return "Remove a file or directory";
-	"cp"     => return "Copy a file";
-	"mv"     => return "Move or rename a file";
-	"cat"    => return "Print file contents";
-	"python" => return "Execute a Python expression or script";
-	"curl"   => return "Transfer data from a URL";
-	"vision" => return "Analyze an image using AI vision (local GPU or cloud)";
-	"websearch" => return "Search the web for information. Returns up to 15 results with titles, URLs, and snippets. Use webfetch to read full page content from result URLs.";
-	"memory" => return "Read and write persistent memory entries that survive across sessions";
-	"task"   => return "Create and manage child task agents with isolated namespaces. Each task gets its own tools, paths, and LLM session.";
-	"charon" => return "Control the Charon web browser: navigate <url>, back, forward, follow <n>, read [body|url|title|links|forms], search <text>, status. Launch with 'launch charon' first.";
-	"launch" => return "Launch a GUI app in the presentation zone. Usage: Launch <app>, Launch list, Launch charon <url>. Charon is the web browser.";
-	"fractal" => return "Control the fractal viewer (launch fractals first). Commands: state, view, mandelbrot, julia <re> <im>, zoomin <x1> <y1> <x2> <y2>, center <re> <im> <radius>, zoomout, depth <n>, fill on|off, restart. E.g. fractal julia -0.4 0.6, fractal center -0.75 0.1 0.05, fractal depth 3.";
-	"editor" => return "Control the Editor app (launch editor first). Commands: read [body|addr], write <text>, append <text>, save, open <path>, goto <line>, find <string>, replace <find> <repl>, replaceall <find> <repl>, insert <ln> <col> <text>, delete <sl> <sc> <el> <ec>, close, status.";
-	}
-	return "Run the " + name + " tool with the given arguments";
+	summary := tooldocsummary(name);
+	if(summary != "")
+		return summary;
+	return "Run the " + name + " tool with the given arguments (no documentation available)";
 }
 
 # Escape a string for inclusion inside a JSON string value.
