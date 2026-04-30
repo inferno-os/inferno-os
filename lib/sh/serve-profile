@@ -1,0 +1,55 @@
+#!/dis/sh.dis
+# Lean Inferno profile for headless service serving.
+#
+# Strips everything not needed to mount /n/llm and export it over 9P:
+# no secstored, no factotum, no Veltro overlays, no theme bindings,
+# no ~/.infernode seed, no /tmp setup, no speech9p.
+#
+# Started by serve-llm.sh on the host:
+#   emu -c1 -r$ROOT sh /lib/sh/serve-profile
+#
+# Round 2 will add gpusrv (TensorRT 9P) once emu is rebuilt with GPU
+# support (mkfile-gpu-1).
+
+load std
+path=(/dis .)
+
+# ── Networking (mntgen + IP stack + connection server) ─────
+mount -ac {mntgen} /n
+bind -a '#I' /net
+ndb/cs
+
+# ── Host filesystem (read-only is fine for the daemon) ─────
+trfs '#U*' /n/local
+
+# ── Bind user config over /lib/ndb so the daemon reads the
+#    same backend/model the desktop is configured with. ────
+ghome=/n/local/^`{echo 'echo $HOME' | os sh}
+infhome=$ghome^/.infernode
+if {ftest -d $infhome/lib/ndb} {
+	bind -bc $infhome/lib/ndb /lib/ndb
+}
+
+# ── LLM service (mounts /n/llm) ─────────────────────────────
+llmbackend=`{sed -n 's/^backend=//p' /lib/ndb/llm}
+llmurl=`{sed -n 's/^url=//p' /lib/ndb/llm}
+llmmodel=`{sed -n 's/^model=//p' /lib/ndb/llm}
+
+if {~ $llmbackend openai} {
+	llmsrv -D -b openai -u $llmurl -M $llmmodel &
+}{
+	if {! ~ $llmmodel ''} {
+		llmsrv -D -M $llmmodel &
+	}{
+		llmsrv -D &
+	}
+}
+
+# Wait for llmsrv to finish its self-mount of /n/llm
+sleep 2
+
+# ── 9P export ───────────────────────────────────────────────
+# -A: no auth (LAN/ZeroTier only — switch to keyring for prod)
+# -s: synchronous, blocks here so emu stays alive while listening.
+# Single quotes around the addr prevent rc from globbing '*'.
+listen -sA 'tcp!*!5640' {export /n/llm}
