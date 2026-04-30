@@ -313,6 +313,61 @@ writedialogue(title, text, progress, options: string): int
 	return idx;
 }
 
+# Show the first-run LLM setup wizard. Offers three peer options
+# (Anthropic API, Local Ollama, Remote 9P), launches the right
+# configurator for each, and parks until the user restarts.
+runsetupwizard()
+{
+	writemsg("veltro",
+		"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
+		"I need an LLM connection to get started. Choose an option below:");
+	writedialogue("LLM Setup",
+		"Choose how to connect to an AI model:",
+		"", "Anthropic API,Local Ollama,Remote 9P");
+	log("displayed LLM setup dialogue");
+
+	pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
+	inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
+	for(;;) {
+		inputfd := sys->open(inputpath, Sys->OREAD);
+		if(inputfd == nil)
+			break;
+		choice := blockread(inputfd);
+		inputfd = nil;
+		if(choice == nil)
+			break;
+		log("setup choice: " + choice);
+
+		if(choice == "Anthropic API") {
+			writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
+			sys->sleep(500);
+			writefile(pctl, "center id=keyring");
+			writemsg("veltro",
+				"Keyring is open. Select API Key, enter `anthropic` as the service, paste your key. " +
+				"Then close InferNode and relaunch it.");
+		} else if(choice == "Local Ollama") {
+			writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+			sys->sleep(500);
+			writefile(pctl, "center id=settings");
+			writemsg("veltro",
+				"Settings is open. Go to LLM Service, keep Mode on Local, choose the Ollama backend, " +
+				"and set the URL (e.g. `http://localhost:11434/v1`). " +
+				"Then close InferNode and relaunch it.");
+		} else if(choice == "Remote 9P") {
+			writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
+			sys->sleep(500);
+			writefile(pctl, "center id=settings");
+			writemsg("veltro",
+				"Settings is open. Go to LLM Service, switch Mode to Remote (9P), and enter the " +
+				"dial address (`tcp!host!port`) of an InferNode exporting `/n/llm`. " +
+				"Then close InferNode and relaunch it.");
+		}
+		# After click, park until the user quits and relaunches.
+		for(;;)
+			sys->sleep(60000);
+	}
+}
+
 # Update a dialogue tile in-place (e.g. progress bar update).
 updatedialogue(idx: int, progress, title, text: string)
 {
@@ -1575,95 +1630,10 @@ init(nil: ref Draw->Context, args: list of string)
 	}
 
 	if(!llmconfigured) {
-		# Nothing configured — prompt immediately, no network wait
-		if(backend == "api") {
-			# No LLM service — show interactive setup dialogue
-			writemsg("veltro",
-				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
-				"I need an LLM connection to get started. Choose an option below:");
-			writedialogue("LLM Setup",
-				"Choose how to connect to an AI model:",
-				"", "Set up API Key,Use Local LLM (Ollama)");
-			log("no /n/llm — displayed setup dialogue tile");
-
-			# Enter setup loop: read button clicks from conversation input
-			inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
-			for(;;) {
-				inputfd := sys->open(inputpath, Sys->OREAD);
-				if(inputfd == nil)
-					break;
-				choice := blockread(inputfd);
-				inputfd = nil;
-				if(choice == nil)
-					break;
-				log("setup choice: " + choice);
-
-				if(choice == "Set up API Key") {
-					# Launch Keyring in the presentation zone
-					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-					writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
-					sys->sleep(500);
-					writefile(pctl, "center id=keyring");
-
-					writemsg("veltro",
-						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. " +
-						"Then close InferNode and relaunch it.");
-				} else if(choice == "Use Local LLM (Ollama)") {
-					# Launch Settings in the presentation zone
-					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
-					sys->sleep(500);
-					writefile(pctl, "center id=settings");
-
-					writemsg("veltro",
-						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. " +
-						"Then close InferNode and relaunch it.");
-				}
-				# After button click, stay alive but don't loop — user
-				# follows the instructions and restarts. Block until quit.
-				for(;;)
-					sys->sleep(60000);
-			}
-			if(!llmserviceok())
-				fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
-			log("/n/llm appeared — continuing startup");
-		} else {
-			# Ollama not configured — same setup dialogue
-			writemsg("veltro",
-				"Welcome to InferNode! I'm **Veltro**, your AI agent.\n\n" +
-				"I need an LLM connection to get started. Choose an option below:");
-			writedialogue("LLM Setup",
-				"Choose how to connect to an AI model:",
-				"", "Set up API Key,Use Local LLM (Ollama)");
-			log("no LLM configured (openai backend, no url) — displayed setup dialogue");
-			inputpath := sys->sprint("/n/ui/activity/%d/conversation/input", actid);
-			for(;;) {
-				inputfd := sys->open(inputpath, Sys->OREAD);
-				if(inputfd == nil) break;
-				choice := blockread(inputfd);
-				inputfd = nil;
-				if(choice == nil) break;
-				if(choice == "Set up API Key") {
-					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-					writefile(pctl, "create id=keyring type=app dis=/dis/wm/keyring.dis label=Keyring");
-					sys->sleep(500);
-					writefile(pctl, "center id=keyring");
-					writemsg("veltro",
-						"Keyring is open. Select API Key, enter anthropic as the service, paste your key. " +
-						"Then close InferNode and relaunch it.");
-				} else if(choice == "Use Local LLM (Ollama)") {
-					pctl := sys->sprint("/n/ui/activity/%d/presentation/ctl", actid);
-					writefile(pctl, "create id=settings type=app dis=/dis/wm/settings.dis label=Settings");
-					sys->sleep(500);
-					writefile(pctl, "center id=settings");
-					writemsg("veltro",
-						"Settings is open. Go to LLM Service, switch to Ollama, set the URL. " +
-						"Then close InferNode and relaunch it.");
-				}
-				for(;;) sys->sleep(60000);
-			}
-			fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
-		}
+		# Nothing configured — show the wizard. It blocks until the
+		# user picks an option and then parks until quit-and-relaunch.
+		runsetupwizard();
+		fatal("/n/llm/ not mounted \u2014 configure an LLM and restart");
 	} else if(!llmserviceok()) {
 		# Failure mode 2: Configured but LLM not ready yet.
 		# llmsrv may still be starting — retry a few times before giving up.
