@@ -896,6 +896,7 @@ xinitscreen(int xsize, int ysize, ulong reqchan, ulong *chan, int *d)
 		reqchan = *chan;
 		*d = chantodepth(reqchan);
 		xvis = xvi.visual;
+		xcmap = XCreateColormap(xdisplay, rootwin, xvis, AllocNone);
 	}else{
 		*chan = reqchan;		/* not every channel description will work */
 		*d = chantodepth(reqchan);
@@ -905,7 +906,7 @@ xinitscreen(int xsize, int ysize, ulong reqchan, ulong *chan, int *d)
 			cleanexit(0);
 		}
 	}
-
+	
 	if(xvis->class != StaticColor) {
 		if(TYPE(*chan) == CGrey)
 			graphicsgmap(map, NBITS(reqchan));
@@ -921,7 +922,7 @@ xinitscreen(int xsize, int ysize, ulong reqchan, ulong *chan, int *d)
 	attrs.background_pixel = 0;
 	attrs.border_pixel = 0;
 	/* attrs.override_redirect = 1;*/ /* WM leave me alone! |CWOverrideRedirect */
-	xdrawable = XCreateWindow(xdisplay, rootwin, 0, 0, xsize, ysize, 0, xscreendepth, 
+	xdrawable = XCreateWindow(xdisplay, rootwin, 0, 0, xsize, ysize, 0, xvi.depth, 
 				  InputOutput, xvis, CWBackPixel|CWBorderPixel|CWColormap, &attrs);
 
 	/*
