@@ -74,6 +74,7 @@ code
 	ulong strtochan(char *s){USED(s); return ~0;}
 	int tkstylus;
 	char* tkfont;
+	char* gkscanid;
 
 init
 	emuinit
