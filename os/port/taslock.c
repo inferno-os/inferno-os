@@ -16,7 +16,7 @@ lockloop(Lock *l, ulong pc)
 void
 lock(Lock *l)
 {
-	int i;
+	int i, s;
 	ulong pc;
 
 	pc = getcallerpc(&l);
@@ -36,8 +36,15 @@ lock(Lock *l)
 	}
 
 	for(i=0; ; i++) {
-		if(_tas(&l->key) == 0)
-			break;
+		s = splhi();
+		if(_tas(&l->key) == 0){
+			l->pri = up->pri;
+			up->pri = PriLock;
+			l->pc = pc;
+			splx(s);
+			return;
+		}
+		splx(s);
 		if (i >= 1000) {
 			lockloop(l, pc);
 			break;
@@ -47,9 +54,6 @@ lock(Lock *l)
 			sched();
 		}
 	}
-	l->pri = up->pri;
-	up->pri = PriLock;
-	l->pc = pc;
 }
 
 void
@@ -83,13 +87,19 @@ ilock(Lock *l)
 int
 canlock(Lock *l)
 {
-	if(_tas(&l->key))
+	int s;
+
+	s = splhi();
+	if(_tas(&l->key)){
+		splx(s);
 		return 0;
+	}
 	if(up){
 		l->pri = up->pri;
 		up->pri = PriLock;
 	}
 	l->pc = getcallerpc(&l);
+	splx(s);
 	return 1;
 }
 
