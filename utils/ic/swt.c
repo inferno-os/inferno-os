@@ -536,11 +536,34 @@ zaddr(char *bp, Adr *a, int s)
 	return bp;
 }
 
+/*
+ * structs and unions align as their most aligned member
+ */
+static int
+salign(Type *t)
+{
+	Type *l;
+	int a, m;
+
+	while(t->etype == TARRAY)
+		t = t->link;
+	if(t->etype == TSTRUCT || t->etype == TUNION){
+		m = SZ_LONG;
+		for(l = t->link; l != T; l = l->down)
+			if((a = salign(l)) > m)
+				m = a;
+		return m;
+	}
+	a = t->width;
+	if(a <= 0 || a >= SZ_VLONG)
+		a = SZ_VLONG;
+	return a;
+}
+
 long
 align(long i, Type *t, int op)
 {
 	long o;
-	Type *v;
 	int w;
 	int linksave;
 
@@ -553,20 +576,13 @@ align(long i, Type *t, int op)
 		break;
 
 	case Asu2:	/* padding at end of a struct */
-		if(o <= SZ_LONG)
-			w = SZ_LONG;
-		else
-			w = SZ_VLONG;
+		w = salign(t);
 		if(packflg)
 			w = packflg;
 		break;
 
 	case Ael1:	/* initial align of struct element */
-		for(v=t; v->etype==TARRAY; v=v->link)
-			;
-		w = v->width;
-		if(w <= 0 || w >= SZ_VLONG)
-			w = SZ_VLONG;
+		w = salign(t);
 		if(packflg)
 			w = packflg;
 		break;
