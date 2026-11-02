@@ -73,28 +73,40 @@ fpiw2i(Internal *i, void *v)
 void
 fpii2s(void *v, Internal *i)
 {
-	int e;
+	int e, n;
+	unsigned long long m, r, half;
 	Single *s = (Single*)v;
 
-	fpiround(i);
-	if(i->h & HiddenBit)
-		i->h &= ~HiddenBit;
-	else
-		i->e--;
 	*s = i->s ? 0x80000000: 0;
-	e = i->e;
-	if(e < ExpBias){
-		if(e <= (ExpBias - SingleExpBias))
-			return;
-		e = SingleExpBias - (ExpBias - e);
-	}
-	else  if(e >= (ExpBias + (SingleExpMax-SingleExpBias))){
-		*s |= SingleExpMax<<23;
+	if(IsWeird(i)){
+		*s |= IsNaN(i) ? 0x7FC00000: 0x7F800000;
 		return;
 	}
-	else
-		e = SingleExpBias + (e - ExpBias);
-	*s |= (e<<23)|(i->h>>(1+NGuardBits));
+	m = ((unsigned long long)i->h<<28) | i->l;
+	if(m == 0)
+		return;
+	e = i->e - ExpBias + SingleExpBias;
+	while((m & (1ULL<<55)) == 0){
+		m <<= 1;
+		e--;
+	}
+	/* round to nearest even, at 24 bits or fewer if denormal */
+	n = 32;
+	if(e < 1){
+		n += 1 - e;
+		e = 1;
+	}
+	if(n > 57)
+		n = 57;
+	r = m & ((1ULL<<n) - 1);
+	half = 1ULL<<(n-1);
+	m >>= n;
+	if(r > half || (r == half && (m & 1)))
+		m++;
+	m += (unsigned long long)(e-1)<<23;
+	if(m >= (SingleExpMax<<23))
+		m = SingleExpMax<<23;
+	*s |= m;
 }
 
 void
