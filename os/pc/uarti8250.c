@@ -395,6 +395,7 @@ i8250baud(Uart* uart, int baud)
 {
 	ulong bgc;
 	Ctlr *ctlr;
+	int s;
 
 	/*
 	 * Set the Baud rate by calculating and setting the Baud rate
@@ -405,11 +406,16 @@ i8250baud(Uart* uart, int baud)
 		return -1;
 	bgc = (uart->freq+8*baud-1)/(16*baud);
 
+	/*
+	 * with Dlab set, Rbr reads as Dll; i8250interrupt must not run here
+	 */
 	ctlr = uart->regs;
+	s = splhi();
 	csr8w(ctlr, Lcr, Dlab);
 	outb(ctlr->io+Dlm, bgc>>8);
 	outb(ctlr->io+Dll, bgc);
 	csr8w(ctlr, Lcr, 0);
+	splx(s);
 
 	uart->baud = baud;
 
