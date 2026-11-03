@@ -192,6 +192,8 @@ snprint(char *s, int n, char *fmt, ...)
 {
 	va_list arg;
 
+	if(n <= 0)
+		return -1;
 	va_start(arg, fmt);
 	n = vseprint(s, s+n, fmt, arg) - s;
 	va_end(arg);
