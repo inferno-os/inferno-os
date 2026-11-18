@@ -144,6 +144,15 @@ asmb(void)
 		seek(cout, textsize+HEADR, 0);
 		break;
 	case 2:
+		/*
+		 * Pad the text in the file to where the data is placed in memory,
+		 * so that a loader that copies the file contiguously (multiboot's
+		 * a.out kludge, as qemu -kernel does) puts the data at INITDAT.
+		 */
+		if(INITDAT-INITTEXT > textsize)
+			textsize = INITDAT-INITTEXT;
+		seek(cout, HEADR+textsize, 0);
+		break;
 	case 5:
 		seek(cout, HEADR+textsize, 0);
 		break;
