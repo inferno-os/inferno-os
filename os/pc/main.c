@@ -32,6 +32,56 @@ char *confname[MAXCONF];
 char *confval[MAXCONF];
 int nconf;
 
+/*
+ * Set by l.s from a multiboot loader's registers (qemu -kernel, GRUB).
+ * Initialised so that they are in the data segment, not the BSS that
+ * l.s clears after saving them.
+ */
+ulong multibootmagic = 1;
+ulong multibootptr = 1;
+
+/*
+ * Booted by multiboot there is no plan9.ini, so take the configuration
+ * from the multiboot command line instead: words of the form name=value,
+ * each starting a line, as plan9.ini has them.  A word without '=' carries
+ * on the value before it (console=0 b115200); words before the first
+ * name=value (the kernel's own name) are skipped.
+ */
+static void
+multibootargs(char *cp)
+{
+	ulong *mbi;
+	char *s, *e, *p;
+
+	cp[0] = 0;
+	mbi = KADDR(multibootptr);
+	if((mbi[0] & (1<<2)) == 0)	/* no command line */
+		return;
+	s = KADDR(mbi[4]);
+	p = cp;
+	e = cp + BOOTARGSLEN - 2;
+	while(*s != 0 && p < e){
+		while(*s == ' ')
+			s++;
+		if(*s == 0)
+			break;
+		if(strchr(s, '=') != nil && (strchr(s, ' ') == nil || strchr(s, '=') < strchr(s, ' '))){
+			if(p > cp)
+				*p++ = '\n';
+		}else if(p > cp)
+			*p++ = ' ';
+		else{
+			while(*s != 0 && *s != ' ')
+				s++;
+			continue;
+		}
+		while(*s != 0 && *s != ' ' && p < e)
+			*p++ = *s++;
+	}
+	*p++ = '\n';
+	*p = 0;
+}
+
 static void
 options(void)
 {
@@ -43,6 +93,8 @@ options(void)
 	 */
 	cp = BOOTARGS;	/* where b.com leaves its config */
 	cp[BOOTARGSLEN-1] = 0;
+	if(multibootmagic == 0x2BADB002)
+		multibootargs(cp);
 
 	/*
 	 * Strip out '\r', change '\t' -> ' '.
@@ -286,9 +338,10 @@ poolsizeinit(void)
 	ulong nb;
 
 	nb = conf.npage*BY2PG;
-	poolsize(mainmem, (nb*main_pool_pcnt)/100, 0);
-	poolsize(heapmem, (nb*heap_pool_pcnt)/100, 0);
-	poolsize(imagmem, (nb*image_pool_pcnt)/100, 1);
+	/* nb/100 first: nb*pcnt overflows 32 bits above 64MB */
+	poolsize(mainmem, (nb/100)*main_pool_pcnt, 0);
+	poolsize(heapmem, (nb/100)*heap_pool_pcnt, 0);
+	poolsize(imagmem, (nb/100)*image_pool_pcnt, 1);
 }
 
 static char *mathmsg[] =

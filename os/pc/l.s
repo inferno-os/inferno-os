@@ -29,6 +29,9 @@
  * mapped, so behave as if the mmu was not setup
  */
 TEXT _start0x80100020(SB), $0
+	/* a multiboot loader leaves its magic in AX and its info pointer in BX */
+	MOVL	AX, multibootmagic-KZERO(SB)
+	MOVL	BX, multibootptr-KZERO(SB)
 	MOVL	$_start0x00100020(SB), AX
 	ANDL	$~KZERO, AX
 	JMP*	AX
