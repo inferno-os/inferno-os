@@ -25,8 +25,9 @@ static struct
  *  If the host has a source of random bytes, its os.c sets this to a
  *  function that fills a buffer from it and returns the number of bytes
  *  (anything less than asked means it failed). What randomread returns
- *  is then the timing bits below combined with the host's bytes, so it
- *  is no worse than either.
+ *  is then the host's bytes combined with whatever timing bits are to
+ *  hand, so it is no worse than either, and a reader need not wait for
+ *  the timing bits, which arrive at a few bytes a second.
  */
 int	(*hostrandom)(uchar*, int);
 
@@ -119,7 +120,7 @@ randomread(void *xp, ulong n)
 	uchar *e, *p, *r;
 	uchar hbuf[64];
 	ulong x, m, j;
-	int i;
+	int i, host;
 
 	p = xp;
 	if(hostrandom != nil){
@@ -132,11 +133,14 @@ randomread(void *xp, ulong n)
 				break;
 			memmove(p+j, hbuf, m);
 		}
-		if(j < n)
+		host = j >= n;
+		if(!host)
 			memset(p, 0, n);
 		memset(hbuf, 0, sizeof(hbuf));
-	}else
+	}else{
+		host = 0;
 		memset(p, 0, n);
+	}
 
 if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 	if(waserror()){
@@ -154,6 +158,8 @@ if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 	for(e = p + n; p < e; ){
 		r = rb.rp;
 		if(r == rb.wp){
+			if(host)
+				break;	/* the host's bytes will do for the rest */
 			rb.wakeme = 1;
 			Wakeup(&rb.clock);
 			Wakeup(&rb.producer);
