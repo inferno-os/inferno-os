@@ -10,6 +10,8 @@ void	clockintr(Ureg*, void*);
 void	(*coherence)(void);
 void	cpuid(char*, int*, int*);
 int	cpuidentify(void);
+ulong	cpuidcx(void);
+int	rdrand32(ulong*);
 void	cpuidprint(void);
 void	(*cycles)(uvlong*);
 void	delay(int);

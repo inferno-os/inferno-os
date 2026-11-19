@@ -440,6 +440,30 @@ _cpuid:
 	RET
 
 /*
+ * CX of CPUID function 1 (feature bits); only if there is a CPUID.
+ */
+TEXT cpuidcx(SB), $0
+	MOVL	$1, AX
+	CPUID
+	MOVL	CX, AX
+	RET
+
+/*
+ * int rdrand32(ulong*): a word from the processor's random number
+ * generator; 0 if it had none ready (carry clear).
+ */
+TEXT rdrand32(SB), $0
+	MOVL	p+0(FP), BP
+	BYTE $0x0F; BYTE $0xC7; BYTE $0xF0	/* RDRAND AX */
+	JCC	_rdrandfail
+	MOVL	AX, 0(BP)
+	MOVL	$1, AX
+	RET
+_rdrandfail:
+	MOVL	$0, AX
+	RET
+
+/*
  * Basic timing loop to determine CPU frequency.
  */
 TEXT aamloop(SB), $0
