@@ -559,7 +559,11 @@ exslave(void *a)
 					break;
 				case Tstat:
 					q->out.stat = q->buf + MSGHDRSZ + BIT16SZ;	/* leaves it just where we want it */
-					q->out.nstat = q->bsize-(MSGHDRSZ+BIT16SZ);
+					/* nstat is 16 bits: with msize near MAXRPCMAX the space left wraps to almost nothing */
+					if(q->bsize-(MSGHDRSZ+BIT16SZ) > 0xFFFF)
+						q->out.nstat = 0xFFFF;
+					else
+						q->out.nstat = q->bsize-(MSGHDRSZ+BIT16SZ);
 					break;
 				}
 				err = (*fcalls[q->in.type])(fs, &q->in, &q->out);
