@@ -43,6 +43,7 @@ registry: ref Registry;
 usr := "";
 passwd := "";
 loginaddr := "";
+vers1 := "";
 signerpkhash := "";
 
 cfg := array[] of {
@@ -104,9 +105,11 @@ init(ctxt: ref Draw->Context, argv: list of string)
 	arg := load Arg Arg->PATH;
 	if(arg != nil){
 		arg->init(argv);
-		arg->setusage("usage: logon [-u user] [-p passwd] [-a loginaddr] command [arg...]]\n");
+		arg->setusage("usage: logon [-1] [-u user] [-p passwd] [-a loginaddr] command [arg...]]\n");
 		while((opt := arg->opt()) != 0){
 			case opt{
+			'1' =>
+				vers1 = "v1 ";	# version 1 of login(6)
 			'a' =>
 				loginaddr = arg->earg();
 			'k' =>
@@ -233,7 +236,7 @@ getauthinfo(top: ref Tk->Toplevel, addr: string, newuser: int, sync: chan of (re
 		if(addr == nil)
 			return 0;
 	}
-	(err, info) := login->login(usr, passwd, addr);
+	(err, info) := login->login(usr, passwd, vers1+addr);
 	if(info == nil){
 		notice(top, "Login failed:\n" + err);
 		return 0;

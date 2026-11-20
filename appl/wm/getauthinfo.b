@@ -38,6 +38,8 @@ Wm: module
 	init:	fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
+vers1 := "";
+
 cfg := array[] of {
 	"frame .all -borderwidth 2 -relief raised",
 
@@ -81,7 +83,7 @@ about : con "Generate keys and\n" +
 	    "mounting remote server";
 
 
-init(ctxt: ref Draw->Context, nil: list of string)
+init(ctxt: ref Draw->Context, argv: list of string)
 {
 	sys = load Sys Sys->PATH;
 	if (ctxt == nil) {
@@ -98,6 +100,8 @@ init(ctxt: ref Draw->Context, nil: list of string)
 	dialog = load Dialog Dialog->PATH;
 	tkclient->init();
 	dialog->init();
+	if(argv != nil && tl argv != nil && hd tl argv == "-1")
+		vers1 = "v1 ";
 
 	(top, wmctl) := tkclient->toplevel(ctxt, "",
 		"Obtain Certificate for Server", Tkclient->Help);
@@ -185,7 +189,8 @@ init(ctxt: ref Draw->Context, nil: list of string)
 				}
 
 				# start encrypt key exchange
-				addr := "net!"+signer+"!inflogin";
+				# wm/getauthinfo -1: version 1 of login(6), for a signer that has nothing newer
+				addr := vers1+"net!"+signer+"!inflogin";
 				tk->cmd(top, "cursor -bitmap cursor.wait");
 				err: string;	
 				(err, info) = login->login(usr, passwd, addr);

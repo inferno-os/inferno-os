@@ -1,7 +1,107 @@
 .TH AUTH 6
 .SH NAME
-auth \- authentication using station-to-station protocol
+auth \- mutual authentication and key exchange
 .SH DESCRIPTION
+Two parties, each holding a certificate from the same certifying authority (CA),
+authenticate each other and agree on keys.
+There are two versions of the protocol.
+Version 2 is the one
+.IR security-auth (2)
+speaks unless told otherwise;
+version 1 is the original and is described after it.
+In both, every message is a four-digit decimal count and a newline,
+followed by that many bytes;
+an error is
+.B !
+and a three-digit count and a newline, followed by its text.
+.SS "Version 2"
+The client is the party that made the connection.
+Each first sends its version, the text
+.BR 2 ;
+the server sends its own only after reading the client's,
+and neither continues with a peer that says anything else.
+.IP
+.EX
+C → S  alg, X25519 key || ML-KEM-768 key, CERTc, PKc
+S → C  alg, X25519 key || ML-KEM-768 ciphertext, CERTs, PKs,
+       sigS("inferno auth 2 server" 0 T), confirmS
+C → S  sigC("inferno auth 2 client" 0 T), confirmC
+S → C  OK
+.EE
+.PP
+.I Alg
+is the protection the client wants for the connection,
+.B chacha20poly1305
+or
+.BR none ;
+the server repeats it or refuses.
+The key exchange is a hybrid:
+the client sends a fresh X25519 public key (32 bytes) and a fresh
+ML-KEM-768 encapsulation key (1184 bytes, FIPS 203),
+and the server answers with its own fresh X25519 key and
+an ML-KEM ciphertext (1088 bytes) for the client's key.
+An attacker must break both to learn the result,
+so a recording of the exchange made today is not opened
+by a later attack on either alone.
+.PP
+.I T
+is the SHA-256 digest of the text
+.B "inferno auth 2"
+and a zero byte, followed by each of the eight messages before the signatures,
+in the order above,
+each preceded by a byte
+.B c
+or
+.B s
+for its sender and its length as four bytes, most significant first.
+Each party checks the other's certificate against the CA's public key
+and its expiry time, and then the other's signature of
+.I T
+under the key that certificate vouches for.
+A signature has the form of a certificate
+.RI ( keytext (6))
+with expiry 0; its digest is
+.B sha256
+for the algorithms that sign bytes
+.RB ( ed25519 ,
+.BR ed25519mldsa65 )
+and
+.B sha1
+for the older ones.
+Because
+.I alg
+and both key shares are inside
+.IR T ,
+changing any of them in transit makes the signatures fail.
+.PP
+The key material is the 32-byte ML-KEM secret followed by the 32-byte X25519
+secret (an all-zero X25519 secret is refused).
+Each key is HKDF-SHA256 with
+.I T
+as the salt, that material as the input, 32 bytes of output, and one of these as the info:
+.IP
+.EX
+inferno auth 2 confirm s
+inferno auth 2 confirm c
+inferno auth 2 c2s
+inferno auth 2 s2c
+.EE
+.PP
+The first two are the confirmation values exchanged above.
+The last two are the keys for data from client to server and from server to client,
+given to
+.IR ssl (3)
+with algorithm
+.B chacha20poly1305
+unless
+.I alg
+is
+.BR none .
+.PP
+A party that is not satisfied sends an error message in place of its next message.
+A client configured for one version never retries with the other,
+so an intruder who rewrites the version obtains a failed connection, not an older protocol.
+.SS "Version 1"
 The following protocol,
 based on the Station-to-Station
 protocol, is used for mutual authentication of two parties,
@@ -68,7 +168,14 @@ Finally, each user signs values known to both that each can then verify:
 At this point 0 and 1 can calculate the shared secret
 .BR "alpha**(r0*r1)" ,
 and can use it to encrypt later communications.
+.PP
+Version 1 has no defence against an attacker who can compute discrete logarithms
+in the system-wide group, including one who records the exchange now and
+computes later, and its choice of algorithm for
+.IR ssl (3)
+is sent after it, unsigned.
 .SH SEE ALSO
 .IR keyring-auth (2),
+.IR security-auth (2),
 .IR keytext (6),
 .IR login (6)

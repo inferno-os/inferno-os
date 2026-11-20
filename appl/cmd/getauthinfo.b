@@ -26,9 +26,11 @@ Getauthinfo: module
 	init:	fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
+oldproto := 0;
+
 usage()
 {
-	sys->fprint(stderr, "usage: getauthinfo {net!hostname | default | /file}\n");
+	sys->fprint(stderr, "usage: getauthinfo [-1] {net!hostname | default | /file}\n");
 	raise "fail:usage";
 }
 
@@ -43,6 +45,10 @@ init(nil: ref Draw->Context, argv: list of string)
 	RAWON_STR = nil;
 
 	argv = tl argv;
+	if(argv != nil && hd argv == "-1"){
+		oldproto = 1;	# the signer has only version 1 of login(6)
+		argv = tl argv;
+	}
 	if(argv == nil)
 		usage();
 	keyname := hd argv;
@@ -87,7 +93,10 @@ init(nil: ref Draw->Context, argv: list of string)
 
 logon(user, passwd, server, path, save: string): ref Keyring->Authinfo
 {
-	(err, info) := login->login(user, passwd, "net!"+server+"!inflogin");
+	dest := "net!"+server+"!inflogin";
+	if(oldproto)
+		dest = "v1 " + dest;
+	(err, info) := login->login(user, passwd, dest);
 	if(err != nil){
 		sys->fprint(stderr, "getauthinfo: failed to authenticate: %s\n", err);
 		return nil;

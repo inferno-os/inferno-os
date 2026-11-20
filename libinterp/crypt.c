@@ -1346,3 +1346,430 @@ Crypt_verify(void *fp)
 		error(exType);
 	}
 }
+
+/*
+ * modern primitives
+ */
+
+static uchar*
+bytes(Array *a, int n)
+{
+	if(a == H || a->len != n)
+		return nil;
+	return a->data;
+}
+
+static void
+retarray(Array **ret, Array *a)
+{
+	void *v;
+
+	v = *ret;
+	*ret = a;
+	destroy(v);
+}
+
+static void
+ret2(Array **t0, Array **t1, Array *a, Array *b)
+{
+	retarray(t0, a);
+	retarray(t1, b);
+}
+
+void
+Crypt_x25519(void *fp)
+{
+	F_Crypt_x25519 *f;
+	uchar *s, *p, out[X25519len];
+
+	f = fp;
+	retarray(f->ret, H);
+	s = bytes(f->secret, X25519len);
+	p = bytes(f->point, X25519len);
+	if(s == nil || p == nil)
+		return;
+	x25519(out, s, p);
+	*f->ret = mem2array(out, sizeof out);
+}
+
+void
+Crypt_x25519base(void *fp)
+{
+	F_Crypt_x25519base *f;
+	uchar *s, out[X25519len];
+
+	f = fp;
+	retarray(f->ret, H);
+	s = bytes(f->secret, X25519len);
+	if(s == nil)
+		return;
+	x25519base(out, s);
+	*f->ret = mem2array(out, sizeof out);
+}
+
+void
+Crypt_x25519map(void *fp)
+{
+	F_Crypt_x25519map *f;
+	uchar *s, out[X25519len];
+
+	f = fp;
+	retarray(f->ret, H);
+	s = bytes(f->fe, X25519len);
+	if(s == nil)
+		return;
+	x25519map(out, s);
+	*f->ret = mem2array(out, sizeof out);
+}
+
+void
+Crypt_ed25519pub(void *fp)
+{
+	F_Crypt_ed25519pub *f;
+	uchar *s, out[Ed25519publen];
+
+	f = fp;
+	retarray(f->ret, H);
+	s = bytes(f->seed, Ed25519seedlen);
+	if(s == nil)
+		return;
+	ed25519pub(out, s);
+	*f->ret = mem2array(out, sizeof out);
+}
+
+void
+Crypt_ed25519sign(void *fp)
+{
+	F_Crypt_ed25519sign *f;
+	uchar *s, out[Ed25519siglen];
+
+	f = fp;
+	retarray(f->ret, H);
+	s = bytes(f->seed, Ed25519seedlen);
+	if(s == nil || f->msg == H)
+		return;
+	ed25519sign(out, s, f->msg->data, f->msg->len);
+	*f->ret = mem2array(out, sizeof out);
+}
+
+void
+Crypt_ed25519verify(void *fp)
+{
+	F_Crypt_ed25519verify *f;
+	uchar *p, *s;
+
+	f = fp;
+	*f->ret = 0;
+	p = bytes(f->pub, Ed25519publen);
+	s = bytes(f->sig, Ed25519siglen);
+	if(p == nil || s == nil || f->msg == H)
+		return;
+	*f->ret = ed25519verify(p, f->msg->data, f->msg->len, s);
+}
+
+void
+Crypt_hkdfsha256(void *fp)
+{
+	F_Crypt_hkdfsha256 *f;
+	uchar *salt, *info, *out;
+	int nsalt, ninfo;
+
+	f = fp;
+	retarray(f->ret, H);
+	if(f->ikm == H || f->n < 0 || f->n > 255*SHA256dlen)
+		return;
+	salt = info = nil;
+	nsalt = ninfo = 0;
+	if(f->salt != H){
+		salt = f->salt->data;
+		nsalt = f->salt->len;
+	}
+	if(f->info != H){
+		info = f->info->data;
+		ninfo = f->info->len;
+	}
+	out = malloc(f->n+1);
+	if(out == nil)
+		error(exNomem);
+	hkdfsha256(out, f->n, salt, nsalt, f->ikm->data, f->ikm->len, info, ninfo);
+	*f->ret = mem2array(out, f->n);
+	free(out);
+}
+
+void
+Crypt_xchachapolyseal(void *fp)
+{
+	F_Crypt_xchachapolyseal *f;
+	uchar *k, *nonce, *ad, *out;
+	int nad;
+
+	f = fp;
+	retarray(f->ret, H);
+	k = bytes(f->key, XChachakeylen);
+	nonce = bytes(f->nonce, XChachanoncelen);
+	if(k == nil || nonce == nil || f->plain == H)
+		return;
+	ad = nil;
+	nad = 0;
+	if(f->ad != H){
+		ad = f->ad->data;
+		nad = f->ad->len;
+	}
+	out = malloc(f->plain->len + Polytaglen);
+	if(out == nil)
+		error(exNomem);
+	xchachapolyseal(out, k, nonce, ad, nad, f->plain->data, f->plain->len);
+	*f->ret = mem2array(out, f->plain->len + Polytaglen);
+	free(out);
+}
+
+void
+Crypt_xchachapolyopen(void *fp)
+{
+	F_Crypt_xchachapolyopen *f;
+	uchar *k, *nonce, *ad, *out;
+	int nad, n;
+
+	f = fp;
+	retarray(f->ret, H);
+	k = bytes(f->key, XChachakeylen);
+	nonce = bytes(f->nonce, XChachanoncelen);
+	if(k == nil || nonce == nil || f->sealed == H || f->sealed->len < Polytaglen)
+		return;
+	ad = nil;
+	nad = 0;
+	if(f->ad != H){
+		ad = f->ad->data;
+		nad = f->ad->len;
+	}
+	n = f->sealed->len - Polytaglen;
+	out = malloc(n+1);
+	if(out == nil)
+		error(exNomem);
+	if(xchachapolyopen(out, k, nonce, ad, nad, f->sealed->data, n) == 0)
+		*f->ret = mem2array(out, n);
+	free(out);
+}
+
+void
+Crypt_mlkem768keygen(void *fp)
+{
+	F_Crypt_mlkem768keygen *f;
+	uchar *ek, *dk;
+
+	f = fp;
+	ret2(&f->ret->t0, &f->ret->t1, H, H);
+	ek = malloc(MLKEM768eklen);
+	dk = malloc(MLKEM768dklen);
+	if(ek == nil || dk == nil){
+		free(ek);
+		free(dk);
+		error(exNomem);
+	}
+	release();
+	mlkem768keygen(ek, dk);
+	acquire();
+	f->ret->t0 = mem2array(ek, MLKEM768eklen);
+	f->ret->t1 = mem2array(dk, MLKEM768dklen);
+	memset(dk, 0, MLKEM768dklen);
+	free(ek);
+	free(dk);
+}
+
+void
+Crypt_mlkem768keygenderand(void *fp)
+{
+	F_Crypt_mlkem768keygenderand *f;
+	uchar *ek, *dk, *coins;
+
+	f = fp;
+	ret2(&f->ret->t0, &f->ret->t1, H, H);
+	coins = bytes(f->coins, 64);
+	if(coins == nil)
+		return;
+	ek = malloc(MLKEM768eklen);
+	dk = malloc(MLKEM768dklen);
+	if(ek == nil || dk == nil){
+		free(ek);
+		free(dk);
+		error(exNomem);
+	}
+	mlkem768keygenderand(ek, dk, coins);
+	f->ret->t0 = mem2array(ek, MLKEM768eklen);
+	f->ret->t1 = mem2array(dk, MLKEM768dklen);
+	free(ek);
+	free(dk);
+}
+
+static void
+encap(Array **t0, Array **t1, Array *aek, Array *acoins, int derand)
+{
+	uchar *ek, *coins, *ct, ss[MLKEM768sslen];
+
+	ret2(t0, t1, H, H);
+	ek = bytes(aek, MLKEM768eklen);
+	coins = nil;
+	if(derand && (coins = bytes(acoins, 32)) == nil)
+		return;
+	if(ek == nil)
+		return;
+	ct = malloc(MLKEM768ctlen);
+	if(ct == nil)
+		error(exNomem);
+	if(derand)
+		mlkem768encapderand(ct, ss, ek, coins);
+	else
+		mlkem768encap(ct, ss, ek);
+	*t0 = mem2array(ct, MLKEM768ctlen);
+	*t1 = mem2array(ss, sizeof ss);
+	memset(ss, 0, sizeof ss);
+	free(ct);
+}
+
+void
+Crypt_mlkem768encap(void *fp)
+{
+	F_Crypt_mlkem768encap *f;
+
+	f = fp;
+	encap(&f->ret->t0, &f->ret->t1, f->ek, H, 0);
+}
+
+void
+Crypt_mlkem768encapderand(void *fp)
+{
+	F_Crypt_mlkem768encapderand *f;
+
+	f = fp;
+	encap(&f->ret->t0, &f->ret->t1, f->ek, f->coins, 1);
+}
+
+void
+Crypt_mlkem768decap(void *fp)
+{
+	F_Crypt_mlkem768decap *f;
+	uchar *dk, *ct, ss[MLKEM768sslen];
+
+	f = fp;
+	retarray(f->ret, H);
+	dk = bytes(f->dk, MLKEM768dklen);
+	ct = bytes(f->ct, MLKEM768ctlen);
+	if(dk == nil || ct == nil)
+		return;
+	mlkem768decap(ss, ct, dk);
+	*f->ret = mem2array(ss, sizeof ss);
+	memset(ss, 0, sizeof ss);
+}
+
+/*
+ * ML-DSA-65. The work is done on copies with the interpreter released,
+ * since signing takes milliseconds.
+ */
+/* nil if there is no memory */
+static uchar*
+copybytes(Array *a, int *n)
+{
+	uchar *p;
+
+	*n = 0;
+	if(a != H)
+		*n = a->len;
+	p = malloc(*n + 1);
+	if(p != nil && *n != 0)
+		memmove(p, a->data, *n);
+	return p;
+}
+
+void
+Crypt_mldsa65pub(void *fp)
+{
+	F_Crypt_mldsa65pub *f;
+	uchar *s, seed[MLDSA65seedlen], *pk;
+	Array **ret;
+
+	f = fp;
+	ret = f->ret;
+	retarray(ret, H);
+	s = bytes(f->seed, MLDSA65seedlen);
+	if(s == nil)
+		return;
+	memmove(seed, s, sizeof seed);
+	pk = malloc(MLDSA65pklen);
+	if(pk == nil)
+		error(exHeap);
+	release();
+	mldsa65pub(pk, seed);
+	acquire();
+	memset(seed, 0, sizeof seed);
+	*ret = mem2array(pk, MLDSA65pklen);
+	free(pk);
+}
+
+void
+Crypt_mldsa65sign(void *fp)
+{
+	F_Crypt_mldsa65sign *f;
+	uchar *s, seed[MLDSA65seedlen], *msg, *ctx, *sig;
+	int nmsg, nctx, r;
+	Array **ret;
+
+	f = fp;
+	ret = f->ret;
+	retarray(ret, H);
+	s = bytes(f->seed, MLDSA65seedlen);
+	if(s == nil || f->ctx != H && f->ctx->len > 255)
+		return;
+	memmove(seed, s, sizeof seed);
+	msg = copybytes(f->msg, &nmsg);
+	ctx = copybytes(f->ctx, &nctx);
+	sig = malloc(MLDSA65siglen);
+	if(msg == nil || ctx == nil || sig == nil){
+		free(msg);
+		free(ctx);
+		free(sig);
+		error(exHeap);
+	}
+	release();
+	r = mldsa65sign(sig, seed, msg, nmsg, ctx, nctx);
+	acquire();
+	memset(seed, 0, sizeof seed);
+	if(r == 0)
+		*ret = mem2array(sig, MLDSA65siglen);
+	free(sig);
+	free(msg);
+	free(ctx);
+}
+
+void
+Crypt_mldsa65verify(void *fp)
+{
+	F_Crypt_mldsa65verify *f;
+	uchar *p, *pk, *sig, *msg, *ctx;
+	int nmsg, nctx, n, r, *ret;
+
+	f = fp;
+	ret = f->ret;
+	*ret = 0;
+	p = bytes(f->pk, MLDSA65pklen);
+	if(p == nil || bytes(f->sig, MLDSA65siglen) == nil || f->ctx != H && f->ctx->len > 255)
+		return;
+	pk = copybytes(f->pk, &n);
+	sig = copybytes(f->sig, &n);
+	msg = copybytes(f->msg, &nmsg);
+	ctx = copybytes(f->ctx, &nctx);
+	if(pk == nil || sig == nil || msg == nil || ctx == nil){
+		free(pk);
+		free(sig);
+		free(msg);
+		free(ctx);
+		error(exHeap);
+	}
+	release();
+	r = mldsa65verify(pk, msg, nmsg, ctx, nctx, sig);
+	acquire();
+	*ret = r;
+	free(pk);
+	free(sig);
+	free(msg);
+	free(ctx);
+}

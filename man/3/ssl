@@ -113,6 +113,17 @@ Encrypt the stream using IDEA and CBC
 .B alg ideaecb
 Encrypt the stream using IDEA and ECB
 .TP
+.B alg chacha20poly1305
+Encrypt and authenticate each message with ChaCha20-Poly1305 (RFC 8439).
+The key for messages written is the first 32 bytes of the secret written to
+.BR secretout ,
+and for messages read the first 32 bytes of the one written to
+.BR secretin ;
+they should differ.
+The message number is the nonce and the record's count is authenticated with it.
+A message that fails the check fails the read.
+It replaces both a digest and an encryption algorithm, and cannot be combined with either.
+.TP
 .BI alg " digest" / crypt
 Combine the use of the given
 .I digest

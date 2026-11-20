@@ -211,13 +211,24 @@ For
 only,
 specify the algorithm, 
 .IR alg ,
-to be used following authentication for digesting or encryption. See 
-.IR ssl (3)
-for the supported algorithms.
+to be used following authentication to protect the connection.
 The default is
-.BR none :
-.IR ssl (3)
-is not used after authentication.
+.BR chacha20poly1305 ,
+which encrypts and authenticates everything sent, with keys from
+the hybrid key exchange of
+.IR auth (6).
+.B none
+leaves the connection in the clear after authentication.
+An
+.I alg
+of
+.B v1
+or one starting
+.B v1/
+(for instance
+.BR v1/sha1/rc4_256 )
+uses the older protocol, for servers that have nothing newer; see
+.IR security-auth (2).
 .TP
 .BI -k " kfile "
 For mount only, specify the keyfile to be used when authenticating.

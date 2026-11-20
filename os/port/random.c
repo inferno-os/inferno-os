@@ -23,6 +23,16 @@ static struct
 	ulong	randn;
 } rb;
 
+/*
+ *  If the machine has a hardware source of random bytes, its code sets
+ *  this to a function that fills a buffer from it and returns the number
+ *  of bytes (anything less than asked means it failed). randomread then
+ *  returns those bytes combined with whatever timing bits are to hand, so
+ *  the result is no worse than either and a reader need not wait for the
+ *  timing bits, which arrive slowly.
+ */
+int	(*hwrandom)(uchar*, int);
+
 static int
 rbnotfull(void*)
 {
@@ -119,6 +129,21 @@ randomread(void *xp, ulong n)
 	if(!rb.kprocstarted){
 		rb.kprocstarted = 1;
 		kproc("genrand", genrandom, nil, 0);
+	}
+
+	if(hwrandom != nil && (*hwrandom)(p, n) == n){
+		/* fold in the timing bits there are, without waiting for more */
+		for(sofar = 0; sofar < n && rb.rp != rb.wp; sofar++){
+			p[sofar] ^= *rb.rp;
+			e = rb.rp + 1;
+			if(e == rb.ep)
+				e = rb.buf;
+			rb.rp = e;
+		}
+		poperror();
+		qunlock(&rb);
+		wakeup(&rb.producer);
+		return n;
 	}
 
 	for(sofar = 0; sofar < n; sofar += i){

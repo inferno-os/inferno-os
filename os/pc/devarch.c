@@ -659,6 +659,30 @@ cpuidprint(void)
  *	- whether or not it supports the page global flag
  *		(if so turn it on)
  */
+/*
+ * random bytes from the processor (RDRAND), which may now and then
+ * have none ready: try each word a few times
+ */
+static int
+pcrdrand(uchar *buf, int n)
+{
+	ulong x;
+	int i, j, try;
+
+	for(i = 0; i < n; ){
+		for(try = 0; try < 16; try++)
+			if(rdrand32(&x))
+				break;
+		if(try == 16)
+			break;
+		for(j = 0; j < 4 && i < n; j++){
+			buf[i++] = x;
+			x >>= 8;
+		}
+	}
+	return i;
+}
+
 int
 cpuidentify(void)
 {
@@ -669,6 +693,8 @@ cpuidentify(void)
 	vlong mca, mct;
 
 	cpuid(m->cpuidid, &m->cpuidax, &m->cpuiddx);
+	if(m->cpuidid[0] != 0 && (cpuidcx() & (1<<30)) != 0)
+		hwrandom = pcrdrand;	/* RDRAND, for ../port/random.c */
 	if(strncmp(m->cpuidid, "AuthenticAMD", 12) == 0)
 		tab = x86amd;
 	else if(strncmp(m->cpuidid, "CentaurHauls", 12) == 0)

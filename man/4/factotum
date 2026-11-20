@@ -649,6 +649,35 @@ request;
 the option is intended for use by services that support calls from many domains,
 each with its own signer.
 .PP
+.B Infauth
+speaks version 2 of
+.IR auth (6)
+(the hybrid X25519 and ML-KEM-768 key exchange), for which the key or the request
+must give
+.BR role = client
+or
+.BR role = server .
+The secret returned by the
+.B authinfo
+request is then an S-expression with elements
+.B secretin
+and
+.B secretout
+(this end's 32-byte keys for
+.IR ssl (3))
+and
+.BR alg ,
+which is
+.B chacha20poly1305
+unless the client's key had
+.BR alg = none
+and the server's
+.B algs
+allowed it.
+A key with the attribute
+.BR version = 1
+speaks the original version instead; neither falls back to the other.
+.PP
 .BR P9sk1
 is the shared-secret protocol used to authenticate to various Plan 9 services.
 It requires a key with

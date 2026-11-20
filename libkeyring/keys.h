@@ -11,7 +11,7 @@ typedef struct XRC4state XRC4state;
 
 enum
 {
-	Maxbuf=	4096,
+	Maxbuf=	10240,	/* the largest key, certificate or message, in text */
 	MaxBigBytes = 1024
 };
 
@@ -92,6 +92,10 @@ struct SigAlgVec {
 	void*	(*genskfrompk)(void*);
 	void*	(*sign)(mpint*, void*);
 	int	(*verify)(mpint*, void*, void*);
+
+	/* if set, used in place of sign and verify: the digest as bytes */
+	void*	(*signb)(uchar*, int, void*);
+	int	(*verifyb)(uchar*, int, void*, void*);
 
 	void	(*skfree)(void*);
 	void	(*pkfree)(void*);

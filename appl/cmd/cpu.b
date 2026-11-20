@@ -99,7 +99,7 @@ init(nil: ref Draw->Context, argv: list of string)
 	ai := kr->readauthinfo(cert);
 
 	if (alg == nil)
-		alg = "none";
+		alg = "chacha20poly1305";
 	err := au->init();
 	if(err != nil) {
 		sys->fprint(stderr, "cpu: cannot initialise auth module: %s\n", err);

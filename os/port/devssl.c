@@ -32,6 +32,7 @@ enum
 	Sencrypting=	2,
 	Sdigesting=	4,
 	Sdigenc=	Sencrypting|Sdigesting,
+	Saead=		8,	/* one AEAD does both */
 
 	/* encryption algorithms */
 	Noencryption=	0,
@@ -39,7 +40,8 @@ enum
 	DESECB=		2,
 	RC4=		3,
 	IDEACBC=	4,
-	IDEAECB=		5
+	IDEAECB=		5,
+	CHACHAPOLY=	6
 };
 
 typedef struct Dstate Dstate;
@@ -115,6 +117,8 @@ static Block*	encryptb(Dstate*, Block*, int);
 static Block*	decryptb(Dstate*, Block*);
 static Block*	digestb(Dstate*, Block*, int);
 static void	checkdigestb(Dstate*, Block*);
+static Block*	aeadsealb(Dstate*, Block*, int);
+static void	aeadopenb(Dstate*, Block*, uchar*, int);
 static Chan*	buftochan(char*);
 static void	sslhangup(Dstate*);
 static void	dsclone(Chan *c);
@@ -541,6 +545,15 @@ sslbread(Chan *c, long n, ulong offset)
 			s.s->processed->rp += s.s->diglen;
 			len -= s.s->diglen;
 			break;
+		case Saead:
+			if(pad != 0 || (count[0] & 0x80) == 0 || len < s.s->diglen)
+				error("bad ssl message");
+			s.s->processed = pullupblock(s.s->processed, len);
+			if(s.s->processed == 0)
+				error("ssl message too short");
+			aeadopenb(s.s, s.s->processed, count, len);
+			s.s->processed->rp += s.s->diglen;
+			break;
 		}
 		s.s->in.mid++;
 		qunlock(&s.s->in.ctlq);
@@ -707,6 +720,9 @@ sslbwrite(Chan *c, Block *b, ulong offset)
 			nb = digestb(s.s, nb, offset);
 			nb = encryptb(s.s, nb, offset);
 			break;
+		case Saead:
+			nb = aeadsealb(s.s, nb, offset);
+			break;
 		}
 
 		s.s->out.mid++;
@@ -789,6 +805,14 @@ initDESkey_40(OneWay *w)
 		setupDESstate(w->state, key, 0);
 	else
 		error("secret too short");
+}
+
+/* chacha20poly1305 uses the first 32 bytes of each direction's secret */
+static void
+initAEADkey(OneWay *w)
+{
+	if(w->slen < 32)
+		error("secret too short for chacha20poly1305");
 }
 
 static void
@@ -896,6 +920,7 @@ Encalg encrypttab[] =
 	{ "rc4_40", 1, RC4, initRC4key_40, },
 	{ "ideacbc", 8, IDEACBC, initIDEAkey, },
 	{ "ideaecb", 8, IDEAECB, initIDEAkey, },
+	{ "chacha20poly1305", 1, CHACHAPOLY, initAEADkey, },
 	{ 0 }
 };
 
@@ -1059,6 +1084,7 @@ sslwrite(Chan *c, void *a, long n, vlong offset)
 
 		s.s->hf = 0;
 		s.s->encryptalg = Noencryption;
+		s.s->state &= ~Saead;
 		s.s->blocklen = 1;
 
 		for(;;){
@@ -1081,6 +1107,14 @@ sslwrite(Chan *c, void *a, long n, vlong offset)
 
 		if(s.s->hf == 0 && s.s->encryptalg == Noencryption)
 			error(Ebadarg);
+
+		if(s.s->encryptalg == CHACHAPOLY){
+			/* an AEAD; it takes no separate digest */
+			if(s.s->hf != 0)
+				error(Ebadarg);
+			s.s->state = Saead;
+			s.s->diglen = 16;
+		}
 
 		if(s.s->blocklen != 1){
 			/* make multiple of blocklen */
@@ -1265,6 +1299,46 @@ decryptb(Dstate *s, Block *inb)
 		}
 	}
 	return inb;
+}
+
+/*
+ *  chacha20poly1305 records: count[2] tag[16] ciphertext.
+ *  The nonce is the message number, the count is authenticated,
+ *  and each direction has its own key.
+ */
+static void
+aeadnonce(uchar *nonce, ulong mid)
+{
+	if(mid >= 0xFFFFFFFFUL)
+		error("ssl: message numbers exhausted");
+	memset(nonce, 0, 12);
+	nonce[8] = mid>>24;
+	nonce[9] = mid>>16;
+	nonce[10] = mid>>8;
+	nonce[11] = mid;
+}
+
+static Block*
+aeadsealb(Dstate *s, Block *b, int offset)
+{
+	uchar nonce[12], *p;
+
+	aeadnonce(nonce, s->out.mid);
+	p = b->rp;
+	chachapolyseal(s->out.secret, nonce, p, offset, p+offset+s->diglen,
+		BLEN(b)-offset-s->diglen, p+offset);
+	return b;
+}
+
+static void
+aeadopenb(Dstate *s, Block *b, uchar *count, int len)
+{
+	uchar nonce[12];
+
+	aeadnonce(nonce, s->in.mid);
+	if(chachapolyopen(s->in.secret, nonce, count, 2, b->rp+s->diglen,
+			len-s->diglen, b->rp) < 0)
+		error("bad ssl message authenticator");
 }
 
 static Block*

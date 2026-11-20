@@ -21,6 +21,16 @@ static struct
 	int	target;
 } rb;
 
+/*
+ *  If the host has a source of random bytes, its os.c sets this to a
+ *  function that fills a buffer from it and returns the number of bytes
+ *  (anything less than asked means it failed). What randomread returns
+ *  is then the host's bytes combined with whatever timing bits are to
+ *  hand, so it is no worse than either, and a reader need not wait for
+ *  the timing bits, which arrive at a few bytes a second.
+ */
+int	(*hostrandom)(uchar*, int);
+
 static int
 rbnotfull(void *v)
 {
@@ -108,10 +118,29 @@ ulong
 randomread(void *xp, ulong n)
 {
 	uchar *e, *p, *r;
-	ulong x;
-	int i;
+	uchar hbuf[64];
+	ulong x, m, j;
+	int i, host;
 
 	p = xp;
+	if(hostrandom != nil){
+		/* the host's bytes go in first; the timing bits are folded in below */
+		for(j = 0; j < n; j += m){
+			m = n - j;
+			if(m > sizeof(hbuf))
+				m = sizeof(hbuf);
+			if((*hostrandom)(hbuf, m) != m)
+				break;
+			memmove(p+j, hbuf, m);
+		}
+		host = j >= n;
+		if(!host)
+			memset(p, 0, n);
+		memset(hbuf, 0, sizeof(hbuf));
+	}else{
+		host = 0;
+		memset(p, 0, n);
+	}
 
 if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 	if(waserror()){
@@ -129,6 +158,8 @@ if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 	for(e = p + n; p < e; ){
 		r = rb.rp;
 		if(r == rb.wp){
+			if(host)
+				break;	/* the host's bytes will do for the rest */
 			rb.wakeme = 1;
 			Wakeup(&rb.clock);
 			Wakeup(&rb.producer);
@@ -143,7 +174,8 @@ if(0)print("A%ld.%d.%lux|", n, rb.target, getcallerpc(&xp));
 		 *  random number generator to obscure any cycles.
 		 */
 		x = rb.randn*1103515245 ^ *r;
-		*p++ = rb.randn = x;
+		rb.randn = x;
+		*p++ ^= x;
 
 		if(++r == rb.ep)
 			r = rb.buf;

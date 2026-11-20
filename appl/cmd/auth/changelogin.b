@@ -11,6 +11,9 @@ include "draw.m";
 include "keyring.m";
 	kr: Keyring;
 
+include "security.m";
+	login: Login;
+
 Changelogin: module
 {
 	init:	fn(ctxt: ref Draw->Context, argv: list of string);
@@ -34,9 +37,26 @@ init(nil: ref Draw->Context, args: list of string)
 	argv0 := hd args;
 	args = tl args;
 
-	if(args == nil){
-		sys->fprint(stderr, "usage: %s userid\n", argv0);
+	# -v: keep a verifier in place of the SHA-1 of the secret (see login(6))
+	# -c: just replace an existing SHA-1 by its verifier
+	vflag := 0;
+	cflag := 0;
+	for(; args != nil && len hd args > 1 && (hd args)[0] == '-'; args = tl args)
+		case hd args {
+		"-v" =>	vflag = 1;
+		"-c" =>	cflag = 1;
+		* =>	args = nil;
+		}
+	if(args == nil || tl args != nil){
+		sys->fprint(stderr, "usage: %s [-v] [-c] userid\n", argv0);
 		raise "fail:usage";
+	}
+	if(vflag || cflag){
+		login = load Login Login->PATH;
+		if(login == nil){
+			sys->fprint(stderr, "%s: can't load %s: %r\n", argv0, Login->PATH);
+			raise "fail:load";
+		}
 	}
 
 	daytime = load Daytime Daytime->PATH;
@@ -53,7 +73,30 @@ init(nil: ref Draw->Context, args: list of string)
 			sys->fprint(stderr, "%s: can't get auth info for %s in %s: %s\n", argv0, id, keydb, err);
 			raise "fail:no key";
 		}
+		if(cflag){
+			sys->fprint(stderr, "%s: no account %s to convert\n", argv0, id);
+			raise "fail:no account";
+		}
 		sys->print("new account\n");
+	}
+	if(isverifier(secret))
+		vflag = 1;	# once a verifier, it stays one
+	if(cflag){
+		if(isverifier(secret)){
+			sys->print("already a verifier\n");
+			return;
+		}
+		if(len secret != Keyring->SHA1dlen){
+			sys->fprint(stderr, "%s: the secret for %s is not a SHA-1\n", argv0, id);
+			raise "fail:bad secret";
+		}
+		v := login->verifier(id, secret);
+		if(v == nil || putsecret(dbdir, v) < 0){
+			sys->fprint(stderr, "%s: can't update secret for %s: %r\n", argv0, id);
+			raise "fail:update";
+		}
+		sys->print("change written\n");
+		return;
 	}
 	for(;;){
 		if(secret != nil)
@@ -83,7 +126,16 @@ init(nil: ref Draw->Context, args: list of string)
 		pwbuf := array of byte word;
 		newsecret = array[Keyring->SHA1dlen] of byte;
 		kr->sha1(pwbuf, len pwbuf, newsecret, nil);
-	}
+		if(vflag){
+			if(login == nil)
+				login = load Login Login->PATH;
+			if(login == nil || (newsecret = login->verifier(id, newsecret)) == nil){
+				sys->fprint(stderr, "%s: can't make a verifier: %r\n", argv0);
+				raise "fail:verifier";
+			}
+		}
+	}else
+		newsecret = secret;	# unchanged
 
 	# get expiration time (midnight of date specified)
 	maxdate := "17012038";			# largest date possible without incurring integer overflow
@@ -214,6 +266,12 @@ getuser(id: string): (string, array of byte, int, string)
 	if(n <= 0)
 		return (nil, nil, 0, sys->sprint("error reading %s/expiry: %r", id));
 	return (dbdir, secret, int string b[0:n], nil);
+}
+
+isverifier(a: array of byte): int
+{
+	t := array of byte Login->Verifiertag;
+	return len a == Login->Verifierlen && eq(a[0:len t], t);
 }
 
 eq(a, b: array of byte): int

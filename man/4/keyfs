@@ -81,6 +81,15 @@ or a number can be written to the file to set a new expiry time.
 The secret (supposedly) known only to the user and the authentication service.
 A secret is any sequence of bytes between 0 and 255 bytes long;
 it is initially empty.
+.IR Changelogin (8)
+stores either the 20-byte SHA-1 digest of a password, or a 40-byte verifier
+(the text
+.B aucpace1
+and 32 bytes) that
+.IR logind (8)
+can check a password against in version 2 of
+.IR login (6)
+but that is not itself enough to log in.
 The length of the file returned by
 .IR sys-stat (2)
 is the length of the secret.

@@ -41,6 +41,17 @@ Login: module
 	PATH:	con "/dis/lib/login.dis";
 
 	login:	fn(id, password, dest: string): (string, ref Keyring->Authinfo);
+	# the same on a connection already made; version is 2, or 1 for the original exchange
+	loginfd:	fn(version: int, id, password: string, fd: ref Sys->FD): (string, ref Keyring->Authinfo);
+	# the same, given the SHA-1 of the password in place of the password
+	loginsecret:	fn(version: int, id: string, secret: array of byte, fd: ref Sys->FD): (string, ref Keyring->Authinfo);
+
+	# What a signer may keep for a user in place of the SHA-1 of the password:
+	# Verifiertag and 32 bytes from which the password's holder can be
+	# recognised (by version 2 only) but with which nobody can log in.
+	Verifiertag:	con "aucpace1";
+	Verifierlen:	con 8+32;
+	verifier:	fn(id: string, secret: array of byte): array of byte;
 };
 
 #

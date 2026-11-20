@@ -2,6 +2,7 @@
 
 TARG=\
 	authquery.dis\
+	infauth.dis\
 	p9any.dis\
 	pass.dis\
 	rsa.dis\

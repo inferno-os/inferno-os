@@ -12,7 +12,7 @@ Rcmd: module
 	init:	fn(ctxt: ref Draw->Context, argv: list of string);
 };
 
-DEFAULTALG := "none";
+DEFAULTALG := "chacha20poly1305";
 sys: Sys;
 auth: Auth;
 dial: Dial;

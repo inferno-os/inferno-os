@@ -5,16 +5,20 @@ DIRS=\
 
 TARG=\
 	aescbc.dis\
+	authtest.dis\
 	ai2key.dis\
 	changelogin.dis\
 	countersigner.dis\
 	convpasswd.dis\
 	createsignerkey.dis\
+	factest.dis\
+	crypttest.dis\
 	dsagen.dis\
 	keyfs.dis\
 	keysrv.dis\
 	getpk.dis\
 	logind.dis\
+	logintest.dis\
 	mkauthinfo.dis\
 	passwd.dis\
 	rsagen.dis\

@@ -2,9 +2,16 @@
 .SH NAME
 getauthinfo \- obtain a certificate for authentication
 .SH SYNOPSIS
-.BI getauthinfo " keyname"
+.B getauthinfo
+[
+.B -1
+]
+.I keyname
 .PP
 .B wm/getauthinfo
+[
+.B -1
+]
 .SH DESCRIPTION
 .I Getauthinfo
 makes contact with
@@ -106,6 +113,14 @@ It displays a window prompting for all the information it needs,
 and offering apparently sensible defaults.
 Apart from the different interface, its function is otherwise
 the same as the command line version.
+.PP
+The
+.B -1
+option (of
+.B getauthinfo
+only) uses the original, weaker version 1 of the protocol of
+.IR login (6),
+for a signer that has nothing newer; without it only version 2 is spoken.
 .SH FILES
 .TF /usr/username/keyring/net!machine
 .TP
