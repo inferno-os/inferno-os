@@ -6,6 +6,7 @@
  */
 
 #include	"dat.h"
+#include	<fcntl.h>
 #include	"fns.h"
 #include	"error.h"
 
@@ -421,6 +422,24 @@ getnobody()
 	}
 }
 
+/* the host's generator, for emu/port/random.c */
+static int
+hostrandombytes(uchar *buf, int n)
+{
+	int fd, m, t;
+
+	fd = open("/dev/urandom", O_RDONLY);
+	if(fd < 0)
+		return -1;
+	for(t = 0; t < n; t += m){
+		m = read(fd, buf+t, n-t);
+		if(m <= 0)
+			break;
+	}
+	close(fd);
+	return t;
+}
+
 void
 libinit(char *imod)
 {
@@ -429,6 +448,7 @@ libinit(char *imod)
 	char	sys[64];
 
 	setsid();
+	hostrandom = hostrandombytes;
 
 	// setup personality
 	gethostname(sys, sizeof(sys));

@@ -389,3 +389,45 @@ int		okThumbprint(uchar *sha1, Thumbprint *ok);
 /* readcert.c */
 uchar	*readcert(char *filename, int *pcertlen);
 PEMChain *readcertchain(char *filename);
+
+/*
+ * modern primitives (libsec/port/modern.c, mlkem768.c, mldsa65.c)
+ */
+enum
+{
+	X25519len=	32,
+	Ed25519seedlen=	32,
+	Ed25519publen=	32,
+	Ed25519siglen=	64,
+	XChachakeylen=	32,
+	XChachanoncelen=	24,
+	Polytaglen=	16,
+	MLKEM768eklen=	1184,
+	MLKEM768dklen=	2400,
+	MLKEM768ctlen=	1088,
+	MLKEM768sslen=	32,
+	MLDSA65seedlen=	32,
+	MLDSA65pklen=	1952,
+	MLDSA65siglen=	3309,
+};
+
+void	x25519(uchar *out, uchar *secret, uchar *point);
+void	x25519base(uchar *out, uchar *secret);
+void	x25519map(uchar *out, uchar *fe);
+void	ed25519pub(uchar *pub, uchar *seed);
+void	ed25519sign(uchar *sig, uchar *seed, uchar *msg, ulong n);
+int	ed25519verify(uchar *pub, uchar *msg, ulong n, uchar *sig);
+void	xchachapolyseal(uchar *out, uchar *key, uchar *nonce, uchar *ad, ulong nad, uchar *plain, ulong n);
+int	xchachapolyopen(uchar *out, uchar *key, uchar *nonce, uchar *ad, ulong nad, uchar *sealed, ulong n);
+void	chachapolyseal(uchar *key, uchar *nonce, uchar *ad, ulong nad, uchar *buf, ulong n, uchar *tag);
+int	chachapolyopen(uchar *key, uchar *nonce, uchar *ad, ulong nad, uchar *buf, ulong n, uchar *tag);
+int	hkdfsha256(uchar *out, ulong n, uchar *salt, ulong nsalt, uchar *ikm, ulong nikm, uchar *info, ulong ninfo);
+void	mlkem768keygen(uchar *ek, uchar *dk);
+void	mlkem768encap(uchar *ct, uchar *ss, uchar *ek);
+void	mlkem768decap(uchar *ss, uchar *ct, uchar *dk);
+void	mlkem768keygenderand(uchar *ek, uchar *dk, uchar *coins);
+void	mlkem768encapderand(uchar *ct, uchar *ss, uchar *ek, uchar *coins);
+/* ML-DSA-65 (FIPS 204): keys are the 32-byte seed; signing is deterministic; ctx is at most 255 bytes */
+void	mldsa65pub(uchar *pk, uchar *seed);
+int	mldsa65sign(uchar *sig, uchar *seed, uchar *msg, ulong n, uchar *ctx, ulong nctx);
+int	mldsa65verify(uchar *pk, uchar *msg, ulong n, uchar *ctx, ulong nctx, uchar *sig);
