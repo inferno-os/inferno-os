@@ -1016,6 +1016,7 @@ uartwrite(Chan *c, void *buf, long n, vlong)
 		uartctl(p, cmd);
 		return n;
 	}
+	return 0;
 }
 
 static int
