@@ -69,9 +69,14 @@ init(nil: ref Draw->Context, args: list of string)
 		if(tag != nil)
 			tag = " "+tag;
 
-		sys->print("key proto=infauth%s %s sigalg=%s-%s user=%q signer=%q pk=%s !sk=%s spk=%s cert=%s dh-alpha=%s dh-p=%s%s\n",
-			tag, locations(filename(keyfile)), ai.cert.sa.name, ha, ai.mypk.owner, ai.spk.owner, pktostr(ai.mypk), sktostr(ai.mysk),
-			pktostr(ai.spk), certtostr(ai.cert), ai.alpha.iptostr(16), ai.p.iptostr(16), expires);
+		# one write for each key, so that factotum's ctl sees it whole:
+		# a key with ML-DSA-65 parts is 16 KB of text, more than print will format
+		line := sys->sprint("key proto=infauth%s %s sigalg=%s-%s user=%q signer=%q", tag, locations(filename(keyfile)), ai.cert.sa.name, ha, ai.mypk.owner, ai.spk.owner);
+		line += " pk=" + pktostr(ai.mypk) + " !sk=" + sktostr(ai.mysk) + " spk=" + pktostr(ai.spk) + " cert=" + certtostr(ai.cert);
+		line += " dh-alpha=" + ai.alpha.iptostr(16) + " dh-p=" + ai.p.iptostr(16) + expires + "\n";
+		b := array of byte line;
+		if(sys->write(sys->fildes(1), b, len b) != len b)
+			error(sys->sprint("write error: %r"));
 	}
 }
 

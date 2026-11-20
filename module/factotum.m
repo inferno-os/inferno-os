@@ -18,7 +18,7 @@ Factotum: module
 	mount:	fn(fd: ref Sys->FD, mnt: string, flags: int, aname: string, keyspec: string): (int, ref Authinfo);
 
 	# factotum interaction
-	AuthRpcMax: con 4096;
+	AuthRpcMax: con 16384;
 
 	init:	fn();
 	open:	fn(): ref Sys->FD;

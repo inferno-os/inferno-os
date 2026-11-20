@@ -15,9 +15,15 @@ server: fn(algs: list of string, ai: ref Keyring->Authinfo,
 .EE
 .SH DESCRIPTION
 .B Auth
-establishes authenticated connections using the station to station protocol described
+establishes authenticated connections using the protocols described
 in
 .IR auth (6).
+By default it speaks version 2:
+a hybrid X25519 and ML-KEM-768 key exchange, with both ends signing
+everything that was said, followed by
+.B chacha20poly1305
+records from
+.IR ssl (3).
 It encapsulates the use of the primitives of
 .IR keyring-auth (2)
 and
@@ -82,26 +88,58 @@ or the client's chosen algorithm is not listed,
 .B server
 returns a nil file descriptor and an error message.
 .PP
-Any string acceptable to
-.IR ssl (3),
-including
-.B
-"clear"\c
-, can be given as an
+In version 2 a connection is protected by
+.B chacha20poly1305
+or not at all.
+.B Client
+asks for no protection when
 .I alg
-to
-.BR client ,
-or listed in
-.I algs
-for
-.BR server .
-Furthermore, the special string
+is
 .B
-"none"
-tells both functions
-that
+"none"\c
+, and for
+.B chacha20poly1305
+otherwise: a nil
+.I alg
+and every older name acceptable to
 .IR ssl (3)
-should not be used at all on a connection.
+mean that.
+.B Server
+always accepts
+.BR chacha20poly1305 ,
+and accepts
+.B none
+if
+.I algs
+is nil or lists it.
+The choice is covered by both signatures.
+.PP
+Version 1 is used only on request.
+.B Client
+speaks it if
+.I alg
+is
+.B
+"v1"
+(meaning no protection) or starts with
+.B
+"v1/"\c
+, the rest being an algorithm for
+.IR ssl (3)
+as before, such as
+.B
+"v1/sha1/rc4_256"\c
+\&.
+.B Server
+accepts version 1 clients only if
+.I algs
+includes
+.B
+"v1"\c
+; the other entries then limit their algorithms as before.
+A server can serve both versions on one address, because it reads the client's
+version before answering.
+Neither end falls back from one version to the other.
 .SH EXAMPLE
 This selection from
 .B /appl/cmd/mount.b
@@ -115,7 +153,7 @@ illustrates client-side use.
 		exit;
 	}
 	fd: ref Sys->FD;
-	(fd, err) = au->client("none", ai, c.dfd);
+	(fd, err) = au->client("chacha20poly1305", ai, c.dfd);
 	if(fd == nil){
 		sys->fprint(stderr, "mount: authentication failed: %s\en", err);
 		exit;

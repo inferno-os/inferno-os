@@ -26,6 +26,7 @@ TARG=\
 	cfgfile.dis\
 	chanfill.dis\
 	complete.dis\
+	cpace.dis\
 	crc.dis\
 	csv.dis\
 	daytime.dis\

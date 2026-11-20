@@ -43,9 +43,14 @@ See
 .IR ssl (3)
 for the supported algorithms.
 The default is
-.BR none :
-.IR ssl (3)
-is not used after authentication.
+.BR chacha20poly1305 ,
+which encrypts and authenticates the connection with keys from the hybrid key exchange of
+.IR auth (6);
+.B none
+leaves it in the clear after authentication, and a name starting
+.B v1
+selects the older protocol (see
+.IR security-auth (2)).
 .SH SOURCE
 .B /appl/cmd/cpu.b
 .SH SEE ALSO

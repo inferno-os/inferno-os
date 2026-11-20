@@ -238,6 +238,7 @@ int		qwindow(Queue*);
 int		qwrite(Queue*, void*, int);
 void		randominit(void);
 ulong	randomread(void*, ulong);
+extern int	(*hwrandom)(uchar*, int);
 void*	realloc(void*, ulong);
 int		readnum(ulong, char*, ulong, ulong, int);
 int		readnum_vlong(ulong, char*, ulong, vlong, int);

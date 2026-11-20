@@ -23,7 +23,7 @@ badmodule(p: string)
 	raise "fail:bad module";
 }
 
-DEFAULTALG := "none";
+DEFAULTALG := "chacha20poly1305";
 
 verbose := 0;
 

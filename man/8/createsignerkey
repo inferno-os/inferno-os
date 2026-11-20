@@ -51,11 +51,23 @@ The
 option specifies the signature algorithm.
 Currently
 .I alg
-can be either
-.B elgamal
+can be
+.BR elgamal ,
+.BR rsa ,
+.B ed25519
 or
-.BR rsa .
-RSA keys are now used by default.
+.BR ed25519mldsa65 .
+RSA keys are used by default.
+.B Ed25519
+is Ed25519 (RFC 8032).
+.B Ed25519mldsa65
+is a hybrid: every signature is an Ed25519 signature and an
+ML-DSA-65 signature (FIPS 204), and it is valid only if both are,
+so that forging one needs a break of both.
+Neither takes a
+.IR bitsize ,
+and certificates made with them use SHA-256.
+Users' keys take their signer's algorithm.
 .SH FILES
 .B /keydb/signerkey
 .SH SOURCE

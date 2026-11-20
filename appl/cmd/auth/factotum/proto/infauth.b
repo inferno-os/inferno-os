@@ -8,6 +8,10 @@ include "keyring.m";
 	IPint: import keyring;
 	SK, PK, Certificate, DigestState: import Keyring;
 include "security.m";
+	random: Random;
+include "ipints.m";
+include "crypt.m";
+	crypt: Crypt;
 include "bufio.m";
 include "sexprs.m";
 	sexprs: Sexprs;
@@ -46,8 +50,11 @@ init(f: Authio): string
 	sexprs->init();
 	keyring = load Keyring Keyring->PATH;
 	daytime = load Daytime Daytime->PATH;
+	# the tree's keyreps.dis no longer matches keyreps.m (and has no
+	# source); without it a principal is given as the key's text
 	keyreps = load Keyreps Keyreps->PATH;
-	keyreps->init();
+	if(keyreps != nil)
+		keyreps->init();
 	return nil;
 }
 
@@ -62,6 +69,9 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 	if(info == nil)
 		return err;
 	anysigner := int authio->lookattrval(key.attrs, "anysigner");
+	# version 2 of auth(6) unless the request or the key says version=1
+	if(attrval(attrs, key, "version") != "1")
+		return interaction2(attrs, io, key, info, anysigner);
 	rattrs: list of ref Sexp;
 	{
 		# send auth protocol version number
@@ -158,6 +168,309 @@ interaction(attrs: list of ref Attr, io: ref IO): string
 	return negotiatecrypto(io, key, ai, rattrs);
 }
 
+#
+# Version 2 of auth(6), as appl/lib/auth.b speaks it: a hybrid X25519 +
+# ML-KEM-768 key exchange, both ends signing a hash of everything said,
+# HKDF-SHA256 to a key for each direction. The key or the request must
+# say role=client or role=server. The result's secret holds secretin and
+# secretout (this end's keys for ssl(3), 32 bytes each) and alg, which is
+# chacha20poly1305 or none.
+#
+Aead: con "chacha20poly1305";
+Xlen: con 32;
+Eklen: con 1184;
+Ctlen: con 1088;
+Label: con "inferno auth 2";
+Fail: con "infauth fail:";	# our complaint, sent to the peer
+Remote: con "infauth remote:";	# the peer's
+
+attrval(attrs: list of ref Attr, key: ref Key, name: string): string
+{
+	v := authio->lookattrval(attrs, name);
+	if(v == nil)
+		v = authio->lookattrval(key.attrs, name);
+	return v;
+}
+
+interaction2(attrs: list of ref Attr, io: ref IO, key: ref Key, info: ref Keyring->Authinfo, anysigner: int): string
+{
+	if(crypt == nil)
+		crypt = load Crypt Crypt->PATH;
+	if(random == nil)
+		random = load Random Random->PATH;
+	if(crypt == nil || random == nil)
+		return sys->sprint("infauth: can't load Crypt or Random: %r");
+	role := attrval(attrs, key, "role");
+	if(role != "client" && role != "server")
+		return "infauth: version 2 needs role=client or role=server (or version=1)";
+	ai: ref Authinfo;
+	{
+		ai = exchange2(attrs, io, key, info, anysigner, role == "server");
+	}exception e{
+	"infauth fail:*" =>
+		senderr(io, e[len Fail:]);
+		return e[len Fail:];
+	"infauth remote:*" =>
+		return remote(e[len Remote:]);
+	}
+	if(role == "server")
+		ai.cap = capability(nil, ai.suid);
+	io.done(ai);
+	return nil;
+}
+
+exchange2(attrs: list of ref Attr, io: ref IO, key: ref Key, info: ref Keyring->Authinfo, anysigner: int, isserver: int): ref Authinfo
+{
+	v, alg: string;
+	me, peer: int;
+	if(isserver){
+		(me, peer) = ('s', 'c');
+		v = string gmsg(io);
+		if(v == "1")
+			raise Fail+"version 1 authentication not accepted";
+		if(v != "2")
+			raise Fail+"incompatible authentication protocol";
+		sendmsg(io, array of byte "2");
+	}else{
+		(me, peer) = ('c', 's');
+		sendmsg(io, array of byte "2");
+		v = string gmsg(io);
+		if(v != "2")
+			raise Fail+"server offers only version "+v+" authentication";
+		alg = attrval(attrs, key, ":alg");
+		if(alg == nil)
+			alg = attrval(attrs, key, "alg");
+		if(alg != "none")
+			alg = Aead;
+	}
+
+	th := keyring->sha256(array of byte Label, len Label + 1, nil, nil);
+	xsk := random->randombuf(Random->ReallyRandom, Xlen);
+	if(xsk == nil || len xsk != Xlen)
+		raise Fail+"can't make keys";
+	xpk := crypt->x25519base(xsk);
+	ikm := array[2*Xlen] of byte;
+	hiscert, hispkb: array of byte;
+	mycert := array of byte keyring->certtostr(info.cert);
+	mypk := array of byte keyring->pktostr(info.mypk);
+
+	if(isserver){
+		calg := gmsg(io);
+		ckex := gmsg(io);
+		hiscert = gmsg(io);
+		hispkb = gmsg(io);
+		th = addmsg(addmsg(addmsg(addmsg(th, peer, calg), peer, ckex), peer, hiscert), peer, hispkb);
+		alg = string calg;
+		if(alg == "none"){
+			(nil, algs) := sys->tokenize(attrval(attrs, key, "algs"), " ");
+			for(l := algs; l != nil; l = tl l)
+				if(hd l == "none")
+					break;
+			if(algs != nil && l == nil)
+				raise Fail+"unsupported client algorithm: none";
+		}else if(alg != Aead)
+			raise Fail+"unsupported client algorithm: "+alg;
+		if(len ckex != Xlen+Eklen)
+			raise Fail+"bad key exchange message";
+		(ct, ss) := crypt->mlkem768encap(ckex[Xlen:]);
+		xs := crypt->x25519(xsk, ckex[0:Xlen]);
+		if(ct == nil || ss == nil || xs == nil || allzero(xs))
+			raise Fail+"bad key exchange value";
+		ikm[0:] = ss;
+		ikm[Xlen:] = xs;
+		kex := array[Xlen+Ctlen] of byte;
+		kex[0:] = xpk;
+		kex[Xlen:] = ct;
+		sendmsg(io, calg);
+		sendmsg(io, kex);
+		sendmsg(io, mycert);
+		sendmsg(io, mypk);
+		th = addmsg(addmsg(addmsg(addmsg(th, me, calg), me, kex), me, mycert), me, mypk);
+	}else{
+		(ek, dk) := crypt->mlkem768keygen();
+		if(ek == nil)
+			raise Fail+"can't make keys";
+		kex := array[Xlen+Eklen] of byte;
+		kex[0:] = xpk;
+		kex[Xlen:] = ek;
+		balg := array of byte alg;
+		sendmsg(io, balg);
+		sendmsg(io, kex);
+		sendmsg(io, mycert);
+		sendmsg(io, mypk);
+		th = addmsg(addmsg(addmsg(addmsg(th, me, balg), me, kex), me, mycert), me, mypk);
+		salg := gmsg(io);
+		skex := gmsg(io);
+		hiscert = gmsg(io);
+		hispkb = gmsg(io);
+		th = addmsg(addmsg(addmsg(addmsg(th, peer, salg), peer, skex), peer, hiscert), peer, hispkb);
+		if(string salg != alg)
+			raise Fail+"server chose algorithm "+string salg;
+		if(len skex != Xlen+Ctlen)
+			raise Fail+"bad key exchange message";
+		ss := crypt->mlkem768decap(dk, skex[Xlen:]);
+		xs := crypt->x25519(xsk, skex[0:Xlen]);
+		if(ss == nil || xs == nil || allzero(xs))
+			raise Fail+"bad key exchange value";
+		ikm[0:] = ss;
+		ikm[Xlen:] = xs;
+	}
+	T := array[Keyring->SHA256dlen] of byte;
+	keyring->sha256(nil, 0, T, th);
+
+	# the peer's key, if its certificate is our signer's and still valid
+	cert := keyring->strtocert(string hiscert);
+	hispk := keyring->strtopk(string hispkb);
+	if(hispk == nil)
+		raise Fail+"bad public key";
+	if(!anysigner){
+		if(cert == nil)
+			raise Fail+"bad certificate";
+		if(verify(info.spk, cert, hispkb) == 0)
+			raise Fail+"pk doesn't match certificate";
+		if(cert.exp != 0 && cert.exp <= now())
+			raise Fail+"certificate expired";
+	}
+
+	if(isserver){
+		sendmsg(io, mksig(info, "server", T));
+		sendmsg(io, kdf(T, ikm, "confirm s"));
+		checksig(hispk, gmsg(io), "client", T);
+		if(!eq(gmsg(io), kdf(T, ikm, "confirm c")))
+			raise Fail+"key confirmation failed";
+		sendmsg(io, array of byte "OK");
+	}else{
+		checksig(hispk, gmsg(io), "server", T);
+		if(!eq(gmsg(io), kdf(T, ikm, "confirm s")))
+			raise Fail+"key confirmation failed";
+		sendmsg(io, mksig(info, "client", T));
+		sendmsg(io, kdf(T, ikm, "confirm c"));
+		if(string gmsg(io) != "OK")
+			raise Fail+"no final acknowledgement";
+	}
+
+	c2s := kdf(T, ikm, "c2s");
+	s2c := kdf(T, ikm, "s2c");
+	(sin, sout) := (s2c, c2s);
+	if(isserver)
+		(sin, sout) = (c2s, s2c);
+	rattrs: list of ref Sexp;
+	rattrs = sl(ss("alg") :: ss(alg) :: nil) :: rattrs;
+	if(!anysigner)
+		rattrs = sl(ss("signer") :: principal(info.spk) :: nil) :: rattrs;
+	rattrs = sl(ss("secretout") :: sb(sout) :: nil) :: rattrs;
+	rattrs = sl(ss("secretin") :: sb(sin) :: nil) :: rattrs;
+	ai := ref Authinfo;
+	ai.suid = hispk.owner;
+	ai.cuid = info.mypk.owner;
+	ai.secret = sl(rattrs).pack();
+	return ai;
+}
+
+addmsg(th: ref DigestState, who: int, m: array of byte): ref DigestState
+{
+	h := array[5] of byte;
+	n := len m;
+	h[0] = byte who;
+	h[1] = byte (n>>24);
+	h[2] = byte (n>>16);
+	h[3] = byte (n>>8);
+	h[4] = byte n;
+	th = keyring->sha256(h, len h, nil, th);
+	return keyring->sha256(m, n, nil, th);
+}
+
+bytesigner(alg: string): int
+{
+	return alg == "ed25519" || alg == "ed25519mldsa65";
+}
+
+sigtext(role: string, T: array of byte): array of byte
+{
+	l := array of byte (Label + " " + role);
+	b := array[len l + 1 + len T] of byte;
+	b[0:] = l;
+	b[len l] = byte 0;
+	b[len l + 1:] = T;
+	return b;
+}
+
+mksig(info: ref Keyring->Authinfo, role: string, T: array of byte): array of byte
+{
+	ha := "sha1";
+	if(bytesigner(info.mysk.sa.name))
+		ha = "sha256";
+	c := sign(info.mysk, ha, 0, sigtext(role, T));
+	if(c == nil)
+		raise Fail+"can't sign";
+	return array of byte keyring->certtostr(c);
+}
+
+checksig(pk: ref PK, sig: array of byte, role: string, T: array of byte)
+{
+	c := keyring->strtocert(string sig);
+	if(c == nil)
+		raise Fail+"bad signature";
+	if(bytesigner(pk.sa.name)){
+		if(c.ha != "sha256")
+			raise Fail+"bad signature";
+	}else if(c.ha != "sha1" && c.ha != "sha")
+		raise Fail+"bad signature";
+	if(verify(pk, c, sigtext(role, T)) == 0)
+		raise Fail+"signature does not match the exchange";
+}
+
+kdf(T, ikm: array of byte, what: string): array of byte
+{
+	return crypt->hkdfsha256(T, ikm, array of byte (Label + " " + what), 32);
+}
+
+allzero(a: array of byte): int
+{
+	x := 0;
+	for(i := 0; i < len a; i++)
+		x |= int a[i];
+	return x == 0;
+}
+
+eq(a, b: array of byte): int
+{
+	if(len a != len b)
+		return 0;
+	x := 0;
+	for(i := 0; i < len a; i++)
+		x |= int a[i] ^ int b[i];
+	return x == 0;
+}
+
+# getmsg with exceptions that survive the trip through a caller
+gmsg(io: ref IO): array of byte
+{
+	while((buf := io.read()) == nil || len buf < 5)
+		io.toosmall(5);
+	if(len buf != 5)
+		raise Fail+"bad message count";
+	h := string buf;
+	iserr := h[0] == '!';
+	m := 0;
+	for(i := iserr; i < 4; i++){
+		if(h[i] < '0' || h[i] > '9')
+			raise Fail+"bad message count";
+		m = m*10 + h[i] - '0';
+	}
+	if(m == 0)
+		buf = array[0] of byte;
+	else{
+		while((buf = io.read()) == nil || len buf < m)
+			io.toosmall(m);
+		if(len buf != m)
+			raise Fail+"bad message length";
+	}
+	if(iserr)
+		raise Remote+string buf;
+	return buf;
+}
+
 remote(s: string): string
 {
 	# account for strange earlier interface
@@ -229,6 +542,8 @@ algcompatible(nil: string, nil: list of string): int
 
 principal(pk: ref Keyring->PK): ref Sexp
 {
+	if(keyreps == nil)
+		return sb(array of byte keyring->pktostr(pk));
 	return spki->(Keyrep.pk(pk).mkkey()).sexp();
 }
 
@@ -276,6 +591,10 @@ hashalg(ha: string): Hashfn
 		return keyring->md4;
 	"md5" =>
 		return keyring->md5;
+	"sha256" =>
+		return keyring->sha256;
+	"sha512" =>
+		return keyring->sha512;
 	}
 	return nil;
 }
