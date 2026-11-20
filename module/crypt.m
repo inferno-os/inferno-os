@@ -188,4 +188,44 @@ Crypt: module
 	sign:		fn(sk: ref SK, m: ref IPints->IPint): ref PKsig;
 	verify:	fn(pk: ref PK, sig: ref PKsig, m: ref IPints->IPint): int;
 	sktopk:	fn(sk: ref SK): ref PK;
+
+	# modern primitives; byte arrays throughout, nil on a bad argument
+	X25519len:	con 32;
+	Ed25519seedlen:	con 32;
+	Ed25519siglen:	con 64;
+	XChachakeylen:	con 32;
+	XChachanoncelen:	con 24;
+	Polytaglen:	con 16;
+	MLKEM768eklen:	con 1184;
+	MLKEM768dklen:	con 2400;
+	MLKEM768ctlen:	con 1088;
+	MLDSA65seedlen:	con 32;
+	MLDSA65pklen:	con 1952;
+	MLDSA65siglen:	con 3309;
+
+	x25519:	fn(secret: array of byte, point: array of byte): array of byte;
+	x25519base:	fn(secret: array of byte): array of byte;
+	# Elligator 2: a point for a 32-byte field element (RFC 9380's map for curve25519), for CPace
+	x25519map:	fn(fe: array of byte): array of byte;
+	ed25519pub:	fn(seed: array of byte): array of byte;
+	ed25519sign:	fn(seed: array of byte, msg: array of byte): array of byte;
+	ed25519verify:	fn(pub: array of byte, msg: array of byte, sig: array of byte): int;
+	hkdfsha256:	fn(salt: array of byte, ikm: array of byte, info: array of byte, n: int): array of byte;
+	# seal returns ciphertext then a 16-byte tag; open returns nil if the tag is wrong
+	xchachapolyseal:	fn(key: array of byte, nonce: array of byte, ad: array of byte, plain: array of byte): array of byte;
+	xchachapolyopen:	fn(key: array of byte, nonce: array of byte, ad: array of byte, sealed: array of byte): array of byte;
+	# ML-KEM-768 (FIPS 203): keygen gives (encapsulation key, decapsulation key),
+	# encap gives (ciphertext, shared secret)
+	mlkem768keygen:	fn(): (array of byte, array of byte);
+	mlkem768encap:	fn(ek: array of byte): (array of byte, array of byte);
+	mlkem768decap:	fn(dk: array of byte, ct: array of byte): array of byte;
+	# deterministic forms, for known-answer tests only
+	mlkem768keygenderand:	fn(coins: array of byte): (array of byte, array of byte);
+	mlkem768encapderand:	fn(ek: array of byte, coins: array of byte): (array of byte, array of byte);
+	# ML-DSA-65 (FIPS 204): the secret key is its 32-byte seed; signing is
+	# deterministic; ctx is the context string (nil or up to 255 bytes).
+	# sign returns nil on bad arguments
+	mldsa65pub:	fn(seed: array of byte): array of byte;
+	mldsa65sign:	fn(seed: array of byte, msg: array of byte, ctx: array of byte): array of byte;
+	mldsa65verify:	fn(pk: array of byte, msg: array of byte, ctx: array of byte, sig: array of byte): int;
 };

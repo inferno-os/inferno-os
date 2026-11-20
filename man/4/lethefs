@@ -1,0 +1,238 @@
+.TH LETHEFS 4
+.SH NAME
+lethefs, lethed \- stateless read-only file service (Lethe)
+.SH SYNOPSIS
+.B lethefs
+[
+.B -ADN
+] [
+.B -C
+.I alg
+] [
+.B -k
+.I keyfile
+] [
+.B -t
+.I ms
+] [
+.B -u
+.I user
+]
+.I addr
+.I mtpt
+.PP
+.B lethed
+[
+.B -vA
+] [
+.B -C
+.I alg
+] [
+.B -a
+.I addr
+] [
+.B -u
+.I owner
+] [
+.B -t
+.I ticketkey
+] [
+.B -e
+.I lifetime
+] [
+.B -w
+.I window
+] [
+.B -k
+.I keyfile
+\&... ] [
+.B -U
+.I userdir
+] [
+.B -s
+.I signers
+] [
+.B -r
+.I revoked
+]
+.I root
+.SH DESCRIPTION
+Lethe is a file protocol for static trees in which the server keeps no state
+between requests: every request names its file by an absolute path, so a
+server can restart, or a client move to another replica, in the middle of a
+read.
+It is the protocol
+.B lethe1
+of the Purgatorio systems, with which these programs interoperate.
+.PP
+.I Lethefs
+dials the server at
+.I addr
+(default port 5640) and mounts its tree at
+.IR mtpt ,
+by serving Styx on a pipe; the fids Styx needs are kept by
+.I lethefs
+itself.
+The tree is read-only.
+.B -D
+prints the Styx messages.
+.PP
+.I Lethed
+serves the tree at
+.IR root ,
+a name in its own name space, on
+.I addr
+(default
+.BR tcp!*!5640 ).
+.SS Authentication
+By default
+.I lethefs
+authenticates and seals.
+It signs a request for a ticket with the Ed25519 key in
+.IR keyfile ,
+as
+.I user
+(default: the contents of
+.BR /dev/user ).
+.I Keyfile
+is a seed file (32 bytes, or 64 hexadecimal digits), in which case the
+server must hold the public key itself, or a Purgatorio authinfo (the lines
+.BR key ,
+.B signer
+and a
+.B pgcert1
+certificate), in which case it must trust one of the certificate's signers.
+A hybrid key is taken in the same two forms: a seed file of 64 bytes
+(an Ed25519 seed, then an ML-DSA-65 seed), or an authinfo whose key
+and signer are marked
+.B mldsa65:
+and whose certificate is a
+.BR pgcert2 .
+Such a key proves itself with an Ed25519 signature and an ML-DSA-65
+signature together, so that forging the proof needs a break of both.
+Purgatorio-Go writes its hybrid authinfo differently (the key with no
+marker, the signer as
+.BR pq: ,
+the certificate in base64url) and has its own layout for the request
+that carries it;
+.I lethefs
+takes that authinfo too and then speaks that layout.
+A hybrid seed file fits either: it is offered in Purgatorio's layout
+first and, to a server that calls that a bad message, in Purgatorio-Go's.
+Both are the hybrid exchange with a hybrid signature, so nothing is
+weakened by the second attempt.
+The ticket's keys come from a hybrid exchange, X25519 with ML-KEM-768, so
+that recorded traffic stays closed to someone who later breaks X25519.
+A server too old to know the hybrid exchange is given the classical one;
+a server that knows it cannot be made to give the classical one by someone
+in between.
+.B "-C x25519mlkem768"
+takes only the hybrid exchange and
+.B "-C x25519"
+asks only for the classical one.
+Every request and reply is then sealed with XChaCha20-Poly1305.
+The server is not authenticated.
+.PP
+.I Lethed
+gives tickets to the keys it trusts:
+.TP
+.BI -k " keyfile"
+A public key file trusted for any user name (32 bytes for an Ed25519 key,
+1984 for a hybrid Ed25519 with ML-DSA-65 one); it can be repeated.
+.TP
+.BI -U " userdir"
+A directory of
+.IB user /key.pub
+files, each trusted for that user only.
+.TP
+.BI -s " signers"
+A list of signer keys, one to a line (64 hexadecimal digits and an optional
+comment), whose unexpired certificates for the user's name are taken.
+A hybrid signer is listed as
+.B mldsa65:
+and the 64 digits of its identifier, or as
+.B pq:
+and the 64 digits of the identifier Purgatorio-Go gives it;
+it vouches only for hybrid keys,
+and an Ed25519 signer only for Ed25519 ones.
+.I Lethed
+answers hybrid requests in Purgatorio's layout and in Purgatorio-Go's,
+which it tells apart by the kind and length of the signature; both
+are covered by the signature itself.
+.TP
+.BI -r " revoked"
+A list of revoked keys in the same form.
+A list that is there but does not parse refuses everyone.
+.PP
+The files are read at each request for a ticket.
+A ticket lasts
+.I lifetime
+seconds (default 3600) and is sealed under the 32-byte key in
+.I ticketkey
+(default: a random key, so tickets do not survive a restart; clients then
+authenticate again by themselves).
+A request whose time is more than
+.I window
+seconds (default 60) from the server's is refused.
+A request is answered with the permissions of the ticket's user: the owner's
+bits when that is the file's owner, else the bits for others, with search
+permission needed on each directory above.
+.B -u
+makes
+.I owner
+the owner of every file.
+.B "-C x25519mlkem768"
+gives and takes only tickets from the hybrid exchange.
+.B "-C mldsa65"
+gives tickets only for hybrid keys and certificates; an Ed25519 proof gets
+``post-quantum signature required''.
+.I Lethed
+keeps the tickets it has seen (at most 4096) so that clients may name a
+ticket by an 8-byte reference instead of sending it with every request;
+losing them costs a client one refused request.
+.SS The clear mode
+With
+.B -A
+.I lethefs
+uses Lethe's clear mode, which has no authentication and no encryption, and
+.I lethed
+also answers clear requests, as the user
+.BR none :
+a file must be readable, and each directory above it searchable, by others.
+.I Lethed
+must be given
+.B -A
+or at least one of
+.BR -k ,
+.B -U
+and
+.BR -s .
+Neither program falls back from one mode to the other.
+.SS Caching
+.I Lethefs
+trusts what it has learnt about a name (from a stat, a walk, a directory
+listing or a read) for
+.I ms
+milliseconds (default 1000; 0 trusts nothing).
+It keeps up to 4 megabytes of file data in 32-kilobyte blocks, by file and
+version, and revalidates a block older than that with a conditional read,
+which carries no data when the file has not changed.
+A file changed on the server is therefore seen up to
+.I ms
+late.
+.B -N
+keeps no file data, for trees of files whose contents change without their
+versions changing (devices and other synthetic files).
+.SH SOURCE
+.B /appl/cmd/lethefs.b
+.br
+.B /appl/cmd/lethed.b
+.SH SEE ALSO
+.IR crypt (2)
+.SH BUGS
+.I Lethefs
+uses one connection, one request at a time.
+.br
+A Purgatorio-Go server is given a classical ticket only if it is run to allow one
+.RB ( "-p hybrid,classical" );
+an Ed25519 key cannot use its hybrid exchange, which wants a hybrid signature.
