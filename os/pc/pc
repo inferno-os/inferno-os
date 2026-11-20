@@ -68,6 +68,8 @@ mod
 	tk
 	keyring
 	math
+	crypt
+	ipints
 
 init
 	wminit
