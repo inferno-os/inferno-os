@@ -111,6 +111,7 @@ enum
 	MacFRAM	= 5,
 	MacMFRA	= 6,
 	MacRELQ = 7,
+	MacBNDS = 8,
 	NMACRO
 };
 
@@ -122,6 +123,7 @@ static	Module*	mod;
 static	uchar*	tinit;
 static	ulong*	litpool;
 static	int	nlit;
+static	void	macbounds(void);
 static	void	macfrp(void);
 static	void	macret(void);
 static	void	maccase(void);
@@ -150,12 +152,34 @@ struct
 	MacFRAM,	macfram,	/* frame instruction */
 	MacMFRA,	macmfra,	/* punt mframe because t->initialize==0 */
 	MacRELQ,		macrelq,	/* reschedule */
+	MacBNDS,	macbounds,	/* array bounds error */
 };
 
 static void
 bounds(void)
 {
 	error(exBounds);
+}
+
+/*
+ * A trap (a nil reference, a division by zero) at pc, with the frame
+ * pointer register holding fp. If that was in the compiled code of the
+ * module now running, record both in R, where handler() will look, and
+ * return 1. Called by the trap handlers before they raise the exception.
+ */
+int
+comptrap(ulong pc, ulong fp)
+{
+	Modlink *ml;
+
+	ml = R.M;
+	if(ml == nil || ml == H || !ml->compiled || ml->m == nil)
+		return 0;
+	if(pc < (ulong)ml->prog || pc >= (ulong)ml->prog + ml->m->ncode)
+		return 0;
+	R.PC = (Inst*)(pc+1);	/* handler() looks behind R.PC */
+	R.FP = (uchar*)fp;
+	return 1;
 }
 
 static void
@@ -169,6 +193,7 @@ rmcall(void)
 {
 	Prog *p;
 	Frame *f;
+	Inst *lr;
 
 	if((void*)R.dt == H)
 		error(exModule);
@@ -178,6 +203,14 @@ rmcall(void)
 		error(exModule);
 
 	f->mr = nil;
+	lr = f->lr;
+	/*
+	 * Compiled code does not keep R.PC, and handler() takes the pc of
+	 * the frame on top of the stack from it. While the built-in runs,
+	 * that frame is f, which has no handlers: leave a pc that is in
+	 * no handler's range, not whatever a punted instruction left.
+	 */
+	R.PC = (Inst*)R.M->prog;
 	((void(*)(Frame*))R.dt)(f);
 	R.SP = (uchar*)f;
 	R.FP = f->fp;
@@ -186,8 +219,14 @@ rmcall(void)
 	else
 		freeptrs(f, f->t);
 	p = currun();
-	if(p->kill != nil)
+	if(p->kill != nil){
+		/*
+		 * the exception belongs to the instruction that made the
+		 * call, now on top of the stack again: give handler() its pc
+		 */
+		R.PC = lr;
 		error(p->kill);
+	}
 }
 
 static void
@@ -378,6 +417,11 @@ literal(ulong imm, int roff)
 	litpool++;	
 }
 
+/*
+ * Every instruction done in C sets R.PC first (WRTPC), as the interpreter
+ * would have: if the C code raises an exception, handler() finds the
+ * handlers of the function on top of the stack by R.PC.
+ */
 static void
 punt(Inst *i, int m, void (*fn)(void))
 {
@@ -908,7 +952,7 @@ comp(Inst *i)
 		punt(i, SRCOP|DSTOP|TCHECK|WRTPC, optab[i->op]);
 		break;
 	case ISPAWN:
-		punt(i, SRCOP|DBRAN, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DBRAN, optab[i->op]);
 		break;
 	case IBNEC:
 	case IBEQC:
@@ -920,11 +964,11 @@ comp(Inst *i)
 		break;
 	case ICASEC:
 		comcase(i, 0);
-		punt(i, SRCOP|DSTOP|NEWPC, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP|NEWPC, optab[i->op]);
 		break;
 	case ICASEL:
 		comcasel(i);
-		punt(i, SRCOP|DSTOP|NEWPC, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP|NEWPC, optab[i->op]);
 		break;
 	case IADDC:
 	case IMULL:
@@ -933,7 +977,7 @@ comp(Inst *i)
 	case IMNEWZ:
 	case ILSRW:
 	case ILSRL:
-		punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case ILOAD:
 	case INEWA:
@@ -968,27 +1012,27 @@ comp(Inst *i)
 	case ICVTCA:
 	case ISLICEC:
 	case INBALT:
-		punt(i, SRCOP|DSTOP, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 		break;
 	case INEWCM:
 	case INEWCMP:
-		punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case IMFRAME:
 		if((i->add&ARM) == AXIMM)
 			commframe(i);
 		else
-			punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case INEWCB:
 	case INEWCW:
 	case INEWCF:
 	case INEWCP:
 	case INEWCL:
-		punt(i, DSTOP|THREOP, optab[i->op]);
+		punt(i, WRTPC|DSTOP|THREOP, optab[i->op]);
 		break;
 	case IEXIT:
-		punt(i, 0, optab[i->op]);
+		punt(i, WRTPC, optab[i->op]);
 		break;
 	case ICVTBW:
 		opwld(i, Oldb, RAX);
@@ -1002,7 +1046,7 @@ comp(Inst *i)
 		break;
 	case ICVTFW:
 		if(1){
-			punt(i, SRCOP|DSTOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 			break;
 		}
 		opwld(i, Omovf, 0);
@@ -1010,7 +1054,7 @@ comp(Inst *i)
 		break;
 	case ICVTWF:
 		if(1){
-			punt(i, SRCOP|DSTOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 			break;
 		}
 		opwld(i, 0xdb, 0);
@@ -1018,7 +1062,7 @@ comp(Inst *i)
 		break;
 	case ICVTLF:
 		if(1){
-			punt(i, SRCOP|DSTOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 			break;
 		}
 		opwld(i, 0xdf, 5);
@@ -1026,7 +1070,7 @@ comp(Inst *i)
 		break;
 	case ICVTFL:
 		if(1){
-			punt(i, SRCOP|DSTOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 			break;
 		}
 		opwld(i, Omovf, 0);
@@ -1053,7 +1097,7 @@ comp(Inst *i)
 		break;
 	case IFRAME:
 		if(UXSRC(i->add) != SRC(AIMM)) {
-			punt(i, SRCOP|DSTOP, optab[i->op]);
+			punt(i, WRTPC|SRCOP|DSTOP, optab[i->op]);
 			break;
 		}
 		tinit[i->s.imm] = 1;
@@ -1347,7 +1391,7 @@ comp(Inst *i)
 			opwst(i, Oldw, RAX);
 			modrm(0x3b, O(Array, len), RTMP, RAX);	/* CMP index, len */
 			gen2(0x72, 5);		/* JB */
-			bra((ulong)bounds, Ocall);
+			rbra(macro[MacBNDS], Ocall);
 			modrm(Oldw, O(Array, t), RTMP, RTA);
 			modrm(0xf7, O(Type, size), RTA, 5);		/* IMULL AX, xx(t) */
 		}
@@ -1383,7 +1427,7 @@ comp(Inst *i)
 		if(bflag){
 			modrm(0x3b, O(Array, len), RAX, RTMP);	/* CMP index, len */
 			gen2(0x72, 5);		/* JB */
-			bra((ulong)bounds, Ocall);
+			rbra(macro[MacBNDS], Ocall);
 		}
 		modrm(Oldw, O(Array, data), RAX, RAX);
 		gen2(Olea, (0<<6)|(0<<3)|4);		/* lea	(AX)(RTMP*r) */
@@ -1402,7 +1446,7 @@ comp(Inst *i)
 			gen2(Ojltb, 16);
 			gen2(0x3b, (3<<6)|(RBX<<3)|RTA);	/* cmp index, len */
 			gen2(0x72, 5);		/* JB */
-			bra((ulong)bounds, Ocall);
+			rbra(macro[MacBNDS], Ocall);
 			genb(0x0f);
 			gen2(Omovzxb, (1<<6)|(0<<3)|4);
 			gen2((0<<6)|(RBX<<3)|RAX, O(String, data));
@@ -1506,10 +1550,10 @@ comp(Inst *i)
 	case IEXPW:
 	case IEXPL:
 	case IEXPF:
-		punt(i, SRCOP|DSTOP|THREOP, optab[i->op]);
+		punt(i, WRTPC|SRCOP|DSTOP|THREOP, optab[i->op]);
 		break;
 	case ISELF:
-		punt(i, DSTOP, optab[i->op]);
+		punt(i, WRTPC|DSTOP, optab[i->op]);
 		break;
 	}
 }
@@ -1585,6 +1629,22 @@ maccase(void)
 	genb(Opopl+RAX);			// ditch default
 	genb(Opopl+RSI);
 	gen2(Ojmprm, (3<<6)|(4<<3)|RAX);
+}
+
+/*
+ * A bounds check failed in line. Compiled code keeps the frame pointer
+ * in a register and no pc at all; handler() needs both in R to find the
+ * handlers of the function that is running. The pc is the return
+ * address of the call that came here.
+ */
+static void
+macbounds(void)
+{
+	con((ulong)&R, RTMP);			// MOVL	$R, RTMP
+	modrm(Ostw, O(REG, FP), RTMP, RFP);	// MOVL	RFP, R.FP
+	genb(Opopl+RAX);			// POPL	AX
+	modrm(Ostw, O(REG, PC), RTMP, RAX);	// MOVL	AX, R.PC
+	bra((ulong)bounds, Ocall);		// CALL	bounds
 }
 
 static void
@@ -1899,7 +1959,7 @@ compile(Module *m, int size, Modlink *ml)
 	uchar *s, *tmp;
 
 	base = nil;
-	patch = mallocz(size*sizeof(*patch), 0);
+	patch = mallocz((size+1)*sizeof(*patch), 0);	/* +1: the pc after the last instruction */
 	tinit = malloc(m->ntype*sizeof(*tinit));
 	tmp = mallocz(4096*sizeof(uchar),0);
 	if(tinit == nil || patch == nil || tmp == nil)
@@ -1979,6 +2039,7 @@ compile(Module *m, int size, Modlink *ml)
 	free(m->prog);
 	m->prog = (Inst*)base;
 	m->compiled = 1;
+	m->ncode = n*sizeof(*code);
 	segflush(base, n*sizeof(base));
 	return 1;
 bad:

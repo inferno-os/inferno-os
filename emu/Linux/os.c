@@ -2,6 +2,7 @@
 #include	<time.h>
 #include	<termios.h>
 #include	<signal.h>
+#include	<ucontext.h>
 #include 	<pwd.h>
 #include	<sched.h>
 #include	<sys/resource.h>
@@ -49,6 +50,27 @@ sysfault(char *what, void *addr)
 	disfault(nil, buf);
 }
 
+/*
+ * On the 386 the compiler for Dis keeps the frame pointer in SI and no
+ * pc; tell it where a trap in compiled code happened, so that the
+ * exception finds the handlers of the function that was running
+ * (../../libinterp/comp-386.c).
+ */
+static void
+trapcontext(void *a)
+{
+#ifdef LINUX_386
+	extern int comptrap(ulong, ulong);
+	ucontext_t *uc;
+
+	uc = a;
+	if(uc != nil && up != nil && up->type == Interp)
+		comptrap(uc->uc_mcontext.gregs[14], uc->uc_mcontext.gregs[5]);	/* EIP, ESI */
+#else
+	USED(a);
+#endif
+}
+
 static void
 trapILL(int signo, siginfo_t *si, void *a)
 {
@@ -66,7 +88,7 @@ isnilref(siginfo_t *si)
 static void
 trapmemref(int signo, siginfo_t *si, void *a)
 {
-	USED(a);	/* ucontext_t*, could fetch pc in machine-dependent way */
+	trapcontext(a);
 	if(isnilref(si))
 		disfault(nil, exNilref);
 	else if(signo == SIGBUS)
@@ -81,7 +103,7 @@ trapFPE(int signo, siginfo_t *si, void *a)
 	char buf[64];
 
 	USED(signo);
-	USED(a);
+	trapcontext(a);
 	snprint(buf, sizeof(buf), "sys: fp: exception status=%.4lux pc=%#p", getfsr(), si->si_addr);
 	disfault(nil, buf);
 }
