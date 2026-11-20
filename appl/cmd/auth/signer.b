@@ -71,12 +71,10 @@ sign(): string
 		return "illegal caller PK";
 
 	# hash, sign, and blind
-	state := kr->sha1(hisPKbuf, len hisPKbuf, nil, nil);
-	cert := kr->sign(info.mysk, 0, state, "sha1");
+	cert := signpk(info.mysk, 0, hisPKbuf);
 
 	# sanity clause
-	state = kr->sha1(hisPKbuf, len hisPKbuf, nil, nil);
-	if(kr->verify(info.mypk, cert, state) == 0)
+	if(cert == nil || verifypk(info.mypk, cert, hisPKbuf) == 0)
 		return "bad signer certificate";
 
 	certbuf := array of byte kr->certtostr(cert);
@@ -85,7 +83,7 @@ sign(): string
 		certbuf[i] = certbuf[i] ^ blind[i];
 
 	# sum PKs and blinded certificate
-	state = kr->md5(mypkbuf, len mypkbuf, nil, nil);
+	state := kr->md5(mypkbuf, len mypkbuf, nil, nil);
 	kr->md5(hisPKbuf, len hisPKbuf, nil, state);
 	digest := array[Keyring->MD5dlen] of byte;
 	kr->md5(certbuf, len certbuf, digest, state);
@@ -129,4 +127,21 @@ signerkey(filename: string): ref Keyring->Authinfo
 	}
 
 	return info;
+}
+
+# the algorithms that sign bytes take sha256; the older ones keep sha1
+signpk(sk: ref Keyring->SK, expiry: int, buf: array of byte): ref Keyring->Certificate
+{
+	case sk.sa.name {
+	"ed25519" or "ed25519mldsa65" =>
+		return kr->sign(sk, expiry, kr->sha256(buf, len buf, nil, nil), "sha256");
+	}
+	return kr->sign(sk, expiry, kr->sha1(buf, len buf, nil, nil), "sha1");
+}
+
+verifypk(pk: ref Keyring->PK, cert: ref Keyring->Certificate, buf: array of byte): int
+{
+	if(cert.ha == "sha256")
+		return kr->verify(pk, cert, kr->sha256(buf, len buf, nil, nil));
+	return kr->verify(pk, cert, kr->sha1(buf, len buf, nil, nil));
 }

@@ -26,7 +26,7 @@ persist := 0;
 showstyx := 0;
 quiet := 0;
 
-alg := "none";
+alg := "chacha20poly1305";	# protect the link unless told otherwise
 keyfile: string;
 spec: string;
 addr: string;

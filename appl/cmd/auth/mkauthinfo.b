@@ -81,12 +81,21 @@ init(nil: ref Draw->Context, args: list of string)
 	info.mypk = kr->sktopk(info.mysk);
 	info.spk = sai.mypk;
 	pkbuf := array of byte kr->pktostr(info.mypk);
-	state := kr->sha1(pkbuf, len pkbuf, nil, nil);
-	info.cert = kr->sign(sai.mysk, expiry, state, "sha1");
+	info.cert = signpk(sai.mysk, expiry, pkbuf);
 	if(kr->writeauthinfo("/fd/1", info) < 0){
 		sys->fprint(stderr, "sign: error writing certificate: %r\n");
 		raise "fail:write error";
 	}
+}
+
+# the algorithms that sign bytes take sha256; the older ones keep sha1
+signpk(sk: ref Keyring->SK, expiry: int, buf: array of byte): ref Keyring->Certificate
+{
+	case sk.sa.name {
+	"ed25519" or "ed25519mldsa65" =>
+		return kr->sign(sk, expiry, kr->sha256(buf, len buf, nil, nil), "sha256");
+	}
+	return kr->sign(sk, expiry, kr->sha1(buf, len buf, nil, nil), "sha1");
 }
 
 parsedate(s: string): int

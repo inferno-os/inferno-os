@@ -40,7 +40,7 @@ static Type*	TRSApk;
 static Type*	TRSAsig;
 
 enum {
-	Maxmsg=	4096
+	Maxmsg=	Maxbuf	/* a four-digit count allows 9999 */
 };
 
 static uchar DigestStatemap[] = Keyring_DigestState_map;
@@ -889,15 +889,51 @@ Keyring_strtocert(void *fp)
 	*f->ret = (Keyring_Certificate*)strtocert(string2c(f->s));
 }
 
+/*
+ *  the older algorithms sign the digest as a big integer;
+ *  the newer ones (signb, verifyb) sign its bytes
+ */
+static void*
+signdigest(SigAlgVec *vec, uchar *digest, int n, void *key)
+{
+	mpint *b;
+	void *sig;
+
+	if(vec->signb != nil)
+		return (*vec->signb)(digest, n, key);
+	b = betomp(digest, n, nil);
+	if(b == nil)
+		return nil;
+	sig = (*vec->sign)(b, key);
+	mpfree(b);
+	return sig;
+}
+
+static int
+verifydigest(SigAlgVec *vec, uchar *digest, int n, void *sig, void *key)
+{
+	mpint *b;
+
+	if(sig == nil)
+		return 0;
+	if(vec->verifyb != nil)
+		return (*vec->verifyb)(digest, n, sig, key);
+	b = betomp(digest, n, nil);
+	if(b == nil)
+		return 0;
+	n = (*vec->verify)(b, sig, key);
+	mpfree(b);
+	return n;
+}
+
 static Certificate*
 sign(SK *sk, char *ha, ulong exp, uchar *a, int len)
 {
 	Certificate *c;
-	mpint *b;
 	int n;
 	SigAlg *sa;
 	DigestState *ds;
-	uchar digest[SHA1dlen];
+	uchar digest[SHA512dlen];
 	char *buf;
 	String *hastr;
 
@@ -921,25 +957,27 @@ sign(SK *sk, char *ha, ulong exp, uchar *a, int len)
 		ds = md4(a, len, 0, 0);
 		md4((uchar*)buf, n, digest, ds);
 		n = Keyring_MD5dlen;
+	} else if(strcmp(ha, "sha256") == 0){
+		ds = sha256(a, len, 0, 0);
+		sha256((uchar*)buf, n, digest, ds);
+		n = SHA256dlen;
+	} else if(strcmp(ha, "sha512") == 0){
+		ds = sha512(a, len, 0, 0);
+		sha512((uchar*)buf, n, digest, ds);
+		n = SHA512dlen;
 	} else {
 		free(buf);
 		return nil;
 	}
 	free(buf);
 
-	/* turn message into a big integer */
-	b = betomp(digest, n, nil);
-	if(b == nil)
-		return nil;
-
 	/* sign */
 	retstr(ha, &hastr);
 	c = newCertificate(sa, hastr, stringdup(sk->x.owner), exp, 1);
 	certimmutable(c);		/* hide from the garbage collector */
 	release();
-	c->signa = (*sa->vec->sign)(b, sk->key);
+	c->signa = signdigest(sa->vec, digest, n, sk->key);
 	acquire();
-	mpfree(b);
 
 	return c;
 }
@@ -949,12 +987,11 @@ Keyring_sign(void *fp)
 {
 	F_Keyring_sign *f;
 	Certificate *c;
-	mpint *b;
 	int n;
 	SigAlg *sa;
 	SK *sk;
 	XDigestState *ds;
-	uchar digest[SHA1dlen];
+	uchar digest[SHA512dlen];
 	char *buf;
 	void *v;
 
@@ -983,24 +1020,24 @@ Keyring_sign(void *fp)
 	} else if(strcmp(string2c(f->ha), "md4") == 0){
 		md4((uchar*)buf, n, digest, &ds->state);
 		n = Keyring_MD5dlen;
+	} else if(strcmp(string2c(f->ha), "sha256") == 0){
+		sha256((uchar*)buf, n, digest, &ds->state);
+		n = SHA256dlen;
+	} else if(strcmp(string2c(f->ha), "sha512") == 0){
+		sha512((uchar*)buf, n, digest, &ds->state);
+		n = SHA512dlen;
 	} else {
 		free(buf);
 		return;
 	}
 	free(buf);
 
-	/* turn message into a big integer */
-	b = betomp(digest, n, nil);
-	if(b == nil)
-		return;
-
 	/* sign */
 	c = newCertificate(sa, stringdup(f->ha), stringdup(sk->x.owner), f->exp, 1);
 	*f->ret = (Keyring_Certificate*)c;
 	release();
-	c->signa = (*sa->vec->sign)(b, sk->key);
+	c->signa = signdigest(sa->vec, digest, n, sk->key);
 	acquire();
-	mpfree(b);
 }
 
 void
@@ -1036,11 +1073,10 @@ Keyring_signm(void *fp)
 static int
 verify(PK *pk, Certificate *c, char *a, int len)
 {
-	mpint *b;
 	int n;
 	SigAlg *sa, *pksa;
 	DigestState *ds;
-	uchar digest[SHA1dlen];
+	uchar digest[SHA512dlen];
 	char *buf;
 
 	sa = checkSigAlg(c->x.sa);
@@ -1065,22 +1101,25 @@ verify(PK *pk, Certificate *c, char *a, int len)
 		ds = md4((uchar*)a, len, 0, 0);
 		md4((uchar*)buf, n, digest, ds);
 		n = Keyring_MD5dlen;
+	} else if(strcmp(string2c(c->x.ha), "sha256") == 0){
+		ds = sha256((uchar*)a, len, 0, 0);
+		sha256((uchar*)buf, n, digest, ds);
+		n = SHA256dlen;
+	} else if(strcmp(string2c(c->x.ha), "sha512") == 0){
+		ds = sha512((uchar*)a, len, 0, 0);
+		sha512((uchar*)buf, n, digest, ds);
+		n = SHA512dlen;
 	} else {
 		free(buf);
 		return 0;
 	}
 	free(buf);
 
-	/* turn message into a big integer */
-	b = betomp(digest, n, nil);
-	if(b == nil)
-		return 0;
 	/* verify */
 	release();
-	n = (*sa->vec->verify)(b, c->signa, pk->key);
+	n = verifydigest(sa->vec, digest, n, c->signa, pk->key);
 	acquire();
 
-	mpfree(b);
 	return n;
 }
 
@@ -1089,12 +1128,11 @@ Keyring_verify(void *fp)
 {
 	F_Keyring_verify *f;
 	Certificate *c;
-	mpint *b;
 	int n;
 	SigAlg *sa, *pksa;
 	PK *pk;
 	XDigestState *ds;
-	uchar digest[SHA1dlen];
+	uchar digest[SHA512dlen];
 	char *buf;
 
 	f = fp;
@@ -1125,23 +1163,22 @@ Keyring_verify(void *fp)
 	} else if(strcmp(string2c(c->x.ha), "md4") == 0){
 		md4((uchar*)buf, n, digest, &ds->state);
 		n = Keyring_MD5dlen;
+	} else if(strcmp(string2c(c->x.ha), "sha256") == 0){
+		sha256((uchar*)buf, n, digest, &ds->state);
+		n = SHA256dlen;
+	} else if(strcmp(string2c(c->x.ha), "sha512") == 0){
+		sha512((uchar*)buf, n, digest, &ds->state);
+		n = SHA512dlen;
 	} else {
 		free(buf);
 		return;
 	}
 	free(buf);
 
-	/* turn message into a big integer */
-	b = betomp(digest, n, nil);
-	if(b == nil)
-		return;
-
 	/* verify */
 	release();
-	*f->ret = (*sa->vec->verify)(b, c->signa, pk->key);
+	*f->ret = verifydigest(sa->vec, digest, n, c->signa, pk->key);
 	acquire();
-
-	mpfree(b);
 }
 
 void
@@ -2089,6 +2126,8 @@ keyringmodinit(void)
 	extern SigAlgVec* elgamalinit(void);
 	extern SigAlgVec* rsainit(void);
 	extern SigAlgVec* dsainit(void);
+	extern SigAlgVec* ed25519init(void);
+	extern SigAlgVec* ed25519mldsa65init(void);
 
 	ipintsmodinit();	/* in case only Keyring is configured */
 	TSigAlg = dtype(freeSigAlg, sizeof(SigAlg), SigAlgmap, sizeof(SigAlgmap));
@@ -2124,6 +2163,10 @@ keyringmodinit(void)
 	if((sav = rsainit()) != nil)
 		algs[nalg++] = sav;
 	if((sav = dsainit()) != nil)
+		algs[nalg++] = sav;
+	if((sav = ed25519init()) != nil)
+		algs[nalg++] = sav;
+	if((sav = ed25519mldsa65init()) != nil)
 		algs[nalg++] = sav;
 
 	fmtinstall('U', big64conv);

@@ -183,7 +183,7 @@ dsainit(void)
 {
 	SigAlgVec *vec;
 
-	vec = malloc(sizeof(SigAlgVec));
+	vec = mallocz(sizeof(SigAlgVec), 1);
 	if(vec == nil)
 		return nil;
 

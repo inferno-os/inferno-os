@@ -14,6 +14,8 @@ include "crypt.m";
 include "oldauth.m";
 	oldauth: Oldauth;
 
+include "keyring.m";
+
 include "arg.m";
 
 # signer key never expires
@@ -25,7 +27,7 @@ PKmodlen:		con 1024;
 # size in bits of modulus for diffie hellman
 DHmodlen:		con 1024;
 
-algs := array[] of {"rsa", "elgamal"};	# first entry is default
+algs := array[] of {"rsa", "elgamal", "ed25519", "ed25519mldsa65"};	# first entry is default
 
 Createsignerkey: module
 {
@@ -83,6 +85,11 @@ init(nil: ref Draw->Context, args: list of string)
 
 	owner := hd args;
 
+	if(alg == "ed25519" || alg == "ed25519mldsa65"){
+		newkey(alg, owner, expire, filename);
+		return;
+	}
+
 	# generate a local key, self-signed
 	info := ref Oldauth->Authinfo;
 	info.mysk = crypt->genSK(alg, bits);
@@ -97,6 +104,28 @@ init(nil: ref Draw->Context, args: list of string)
 	(info.alpha, info.p) = crypt->dhparams(DHmodlen);
 
 	if(oldauth->writeauthinfo(filename, info) < 0)
+		error(sys->sprint("can't write signerkey file %s: %r", filename));
+}
+
+# the algorithms that sign bytes are in Keyring only; their certificates use sha256
+newkey(alg, owner: string, expire: int, filename: string)
+{
+	kr := load Keyring Keyring->PATH;
+	if(kr == nil)
+		error(sys->sprint("can't load %s: %r", Keyring->PATH));
+	info := ref Keyring->Authinfo;
+	info.mysk = kr->genSK(alg, owner, 0);
+	if(info.mysk == nil)
+		error(sys->sprint("algorithm %s not configured in system", alg));
+	info.mypk = kr->sktopk(info.mysk);
+	info.spk = kr->sktopk(info.mysk);
+	buf := array of byte kr->pktostr(info.mypk);
+	info.cert = kr->sign(info.mysk, expire, kr->sha256(buf, len buf, nil, nil), "sha256");
+	if(info.cert == nil)
+		error("can't sign the key");
+	# version 1 of the authentication protocol still wants Diffie-Hellman parameters
+	(info.alpha, info.p) = kr->dhparams(DHmodlen);
+	if(kr->writeauthinfo(filename, info) < 0)
 		error(sys->sprint("can't write signerkey file %s: %r", filename));
 }
 

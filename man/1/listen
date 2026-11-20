@@ -82,6 +82,20 @@ option is given, then
 will allow any algorithm allowed by the local
 .IR ssl (3)
 device.
+Authentication is version 2 of
+.IR auth (6),
+whose connections are protected by
+.BR chacha20poly1305 ,
+or left in the clear if the client asks for
+.B none
+and that is allowed (it is unless
+.B -a
+options are given without it).
+Clients that have only the older version 1 are refused unless
+.B "-a v1"
+is given; the other
+.B -a
+options then say which of the older algorithms they may use.
 If
 .I keyfile
 is specified, then that will be used as the server's certificate;
@@ -161,7 +175,9 @@ option is given, no authentication or encryption will
 take place; otherwise Inferno authentication and encryption
 will be performed as usual, using
 .I alg
-if given, or a default algorithm otherwise.
+if given, or
+.B chacha20poly1305
+otherwise.
 .I Keyfile
 is used for the certificate if given, otherwise
 .BI /usr/ user /keyring/ addr\fR,\fP

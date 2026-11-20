@@ -5,7 +5,8 @@ LIB=libkeyring.a
 OFILES=\
 	dsaalg.$O\
 	egalg.$O\
-	rsaalg.$O
+	rsaalg.$O\
+	edalg.$O
 
 HFILES=\
 	$ROOT/include/mp.h\

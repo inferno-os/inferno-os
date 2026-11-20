@@ -584,7 +584,8 @@ puta(a: array of byte, n: int, v: array of byte): int
 
 packai(ai: ref Authinfo): array of byte
 {
-	a := array[1024] of byte;
+	# room for the four counted fields: a secret that names a hybrid key is several kilobytes
+	a := array[1024 + len array of byte ai.cuid + len array of byte ai.suid + len array of byte ai.cap + len ai.secret] of byte;
 	i := puta(a, 0, array of byte ai.cuid);
 	i = puta(a, i, array of byte ai.suid);
 	i = puta(a, i, array of byte ai.cap);
