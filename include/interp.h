@@ -290,6 +290,7 @@ struct Module
 	Handler*	htab;	/* Exception handler table */
 	ulong*	pctab;	/* dis pc to code pc when compiled */
 	void*	dlm;		/* dynamic C module */
+	ulong	ncode;		/* bytes of code at prog when compiled (if the compiler says) */
 };
 
 struct Modl
