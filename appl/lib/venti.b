@@ -323,7 +323,7 @@ Session.new(fd: ref Sys->FD): ref Session
 
 Session.read(s: self ref Session, score: Score, etype: int, maxn: int): array of byte
 {
-	if (Score.eq(score, Score.zero()) {
+	if (score.eq(Score.zero())) {
 		return array[0] of byte;
 	}
 
