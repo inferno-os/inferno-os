@@ -1773,12 +1773,16 @@ patchex(Module *m, ulong *p)
 	if((h = m->htab) == nil)
 		return;
 	for( ; h->etab != nil; h++){
-		h->pc1 = p[h->pc1];
-		h->pc2 = p[h->pc2];
+		/*
+		 * patch counts instructions (words); handler() takes these
+		 * as byte offsets from the start of the code
+		 */
+		h->pc1 = p[h->pc1]*sizeof(*base);
+		h->pc2 = p[h->pc2]*sizeof(*base);
 		for(e = h->etab; e->s != nil; e++)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc]*sizeof(*base);
 		if(e->pc != -1)
-			e->pc = p[e->pc];
+			e->pc = p[e->pc]*sizeof(*base);
 	}
 }
 
