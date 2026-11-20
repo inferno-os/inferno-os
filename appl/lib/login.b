@@ -102,6 +102,8 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 	if(sys->fprint(c.cfd, "alg clear") < 0)
 		return (sys->sprint("can't push alg clear: %r"), nil);
 	alphar0 := IPint.b64toip(s);
+	if(alphar0 == nil)
+		return ("name or secret incorrect", nil);	# with a wrong secret the signer's messages decrypt to rubbish
 
 	# CA->user	alpha
 	(s, err) = kr->getstring(c.dfd);
@@ -112,6 +114,8 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 	}
 	info := ref Keyring->Authinfo;
 	info.alpha = IPint.b64toip(s);
+	if(info.alpha == nil)
+		return ("name or secret incorrect", nil);	# with a wrong secret the signer's messages decrypt to rubbish
 
 	# CA->user	p
 	(s, err) = kr->getstring(c.dfd);
@@ -121,6 +125,8 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 		return ("remote: " + err, nil);
 	}
 	info.p = IPint.b64toip(s);
+	if(info.p == nil)
+		return ("name or secret incorrect", nil);	# with a wrong secret the signer's messages decrypt to rubbish
 
 	# sanity check
 	bits := info.p.bits();
@@ -153,9 +159,13 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 		return ("can't get signer's public key: " + err, nil);
 
 	info.spk = kr->strtopk(s);
+	if(info.spk == nil)
+		return ("bad public key from signer", nil);
 
 	# generate a key pair
 	info.mysk = kr->genSKfromPK(info.spk, id);
+	if(info.mysk == nil)
+		return ("can't generate a key like the signer's", nil);
 	info.mypk = kr->sktopk(info.mysk);
 
 	# user->CA	user's public key, SHA(user's public key + secret)
@@ -168,6 +178,8 @@ login(id, password, dest: string): (string, ref Keyring->Authinfo)
 		return ("can't get certificate: " + err, nil);
 
 	info.cert = kr->strtocert(s);
+	if(info.cert == nil)
+		return ("bad certificate from signer", nil);
 	return(nil, info);
 }
 
