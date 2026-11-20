@@ -84,6 +84,8 @@ TARG=\
 	itest.dis\
 	itreplay.dis\
 	kill.dis\
+	lethed.dis\
+	lethefs.dis\
 	listen.dis\
 	lockfs.dis\
 	logfile.dis\
