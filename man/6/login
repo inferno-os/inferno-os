@@ -2,7 +2,7 @@
 .SH NAME
 login \- key exchange protocol
 .SH DESCRIPTION
-The following encrypted key exchange protocol is used between a client such as
+A key exchange protocol is used between a client such as
 .B login
 in
 .IR security-login (2),
@@ -11,6 +11,184 @@ and a certificate signing process such as
 to justify the latter's issuing a certificate that can
 later be presented to an Inferno service
 to establish credentials.
+A shared secret must previously be agreed between
+user and certifying authority (CA):
+the CA holds either the 20-byte SHA-1 hash of the user's password
+(see
+.IR keyfs (4)),
+which the user's side computes from the password,
+or a
+.I verifier
+made from that hash, described below, which serves version 2 only.
+.PP
+There are two versions.
+Version 2 is spoken unless version 1 is asked for;
+neither side falls back from one to the other.
+.SS "Version 2"
+A secret made afresh for each run is used in CPace, a password-authenticated key exchange
+(draft-irtf-cfrg-cpace, over X25519 with SHA-512),
+run beside an ML-KEM-768 key exchange (FIPS 203).
+The fresh secret is made in the manner of AuCPace, so that the CA need hold
+nothing with which it, or someone who reads its files, could log in as the user.
+Someone who does not know the secret, whether watching the exchange
+or taking the part of user or CA, can test one guess at it for each run
+and learns nothing else about it;
+and a recording of a run is opened later only by breaking both X25519 and ML-KEM.
+.PP
+Until the last three lines, every message is a four-digit decimal count and a newline,
+followed by that many bytes; an error is
+.B !
+and a three-digit count and a newline, followed by its text.
+.IP
+.EX
+user→CA	2
+CA→user	2
+.sp 1v
+user→CA	name, nonce-u[16], ML-KEM-768 encapsulation key[1184]
+CA→user	nonce-c[16], X[32], Yc[32], ML-KEM-768 ciphertext[1088]
+.sp 1v
+user→CA	Yu[32], confirm-u[32]
+CA→user	confirm-c[32]
+.sp 1v
+CA→user	CA's public key, alpha, p
+user→CA	user's public key
+CA→user	user's public key certificate
+.EE
+.PP
+In CPace's terms the CA is the initiator and the user the responder.
+The session identifier
+.I sid
+is the user's nonce followed by the CA's;
+the channel identifier is
+.B "inferno login 2"
+and the name, each preceded by its length in a byte;
+the secret (PRS) is the one described next;
+the CA's associated data is the text
+.B signer
+and the user's is the name.
+The generator is the Elligator 2 map of the first 32 bytes of the
+SHA-512 hash of the draft's generator string;
+.I Yc
+and
+.I Yu
+are X25519 of each side's random 32 bytes with it;
+and the CPace key
+.I ISK
+(64 bytes) is the draft's, from
+.IR sid ,
+the X25519 result (refused if it is all zeros) and both shares.
+.PP
+The password gives its user an X25519 secret key
+.IR w :
+32 bytes of HKDF-SHA256 with no salt, the SHA-1 hash of the password as the input,
+and as the info the text
+.BR "inferno login 2 verifier" ,
+a zero byte, and the name.
+Its public key
+.I W
+is the user's verifier.
+The CA has
+.I W
+(it stores it, as the 8 bytes
+.B aucpace1
+followed by
+.IR W ;
+or it stores the SHA-1 hash and computes
+.I W
+when asked).
+For each run the CA makes a fresh X25519 key pair and sends the public key
+.IR X .
+PRS is the X25519 value both can then compute:
+the user from
+.I w
+and
+.IR X ,
+the CA from
+.I W
+and the secret key of
+.IR X ;
+an all-zero value is refused.
+To log in one must know
+.IR w ,
+which
+.I W
+does not give; a CA that stores only
+.I W
+can check a password, and someone who steals
+.I W
+can test guesses at the password against it, but neither can
+take the user's part.
+A CA that stores the SHA-1 hash has in it everything the user's side
+makes of the password.
+.PP
+This is the form of version 2 that has
+.IR X ;
+an earlier draft without it was never issued.
+.PP
+.I T
+is the SHA-256 hash of
+.B "inferno login 2"
+and a zero byte, followed by each message from the name to
+.IR Yu ,
+in the order above, each preceded by a byte
+.B c
+(from the user) or
+.B s
+(from the CA) and its length as four bytes, most significant first.
+The key material is the 32-byte ML-KEM secret followed by
+.IR ISK .
+Each key is HKDF-SHA256 with
+.I T
+as the salt, that material as the input, 32 bytes of output, and one of these as the info:
+.IP
+.EX
+inferno login 2 confirm c
+inferno login 2 confirm s
+inferno login 2 c2s
+inferno login 2 s2c
+.EE
+.PP
+.I Confirm-u
+is the first and
+.I confirm-c
+the second.
+The CA checks the user's confirmation before sending anything more;
+if it is wrong it answers with the error
+.RB `` "name or secret incorrect" ''.
+It answers a name it does not know, or one whose entry has expired,
+in the same way and at the same point, having run the exchange with a verifier nobody has the key to.
+The last three lines travel in
+.B chacha20poly1305
+records of
+.IR ssl (3),
+keyed by the last two keys (from user to CA, and from CA to user),
+in the format of
+.B getstring
+in
+.IR keyring-getstring (2).
+.I Alpha
+and
+.I p
+are the parameters version 1 of
+.IR auth (6)
+uses.
+The user checks that the certificate is the CA's signature of the key it sent.
+.SS "Version 1"
+The original protocol is an encrypted key exchange, spoken through
+.IR ssl (3)
+from the first byte.
+A client uses it only when told to
+.RB ( "getauthinfo -1" ,
+or an address that starts
+.B "v1 "
+given to
+.BR login ),
+and
+.I logind
+serves it only when given
+.BR -1 .
+A version 2 client that meets a CA with only version 1 gets no answer and gives up after 20 seconds.
+Version 1 needs the SHA-1 hash at the CA: a user whose entry is a verifier cannot use it.
 .PP
 A shared secret must previously be agreed between
 user and certifying authority (CA).
@@ -102,6 +280,13 @@ The role of
 .I ivec
 is to foil any replay attacks by someone spoofing the CA
 though this is probably overkill.
+.PP
+The key that hides
+.I "alpha**r0 mod p"
+is used by RC4 as a 40-bit key, and what it hides has a known form,
+so one recorded run allows the 40 bits to be found by trial;
+with them an attacker can pose as the user to the CA.
+That is why version 2 exists.
 .SH SEE ALSO
 .IR security-intro (2),
 .IR security-login (2),

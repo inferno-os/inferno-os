@@ -2,7 +2,13 @@
 .SH NAME
 changelogin, convpasswd \- create/update the password file
 .SH SYNOPSIS
-.BI auth/changelogin " name"
+.B auth/changelogin
+[
+.B -v
+] [
+.B -c
+]
+.I name
 .PP
 .B auth/convpasswd
 [
@@ -46,6 +52,16 @@ password
 A string at least 8 characters in length. The SHA-1 digest of the entered string is stored in the password file. See
 .IR keyring-sha1 (2).
 By default, the password for an existing entry is unchanged.
+With the
+.B -v
+option what is stored is not the digest but a verifier made from it and the name (see
+.IR login (6)):
+enough for
+.IR logind (8)
+to check the password in version 2 of the login protocol, but not enough
+for anyone who reads the password file to log in as the user,
+and of no use to version 1.
+An entry that holds a verifier keeps that form when its password is changed.
 .TP
 expiration date
 An expiration time in the format
@@ -97,6 +113,15 @@ The
 option causes
 .I convpasswd
 to print each user name after it successfully installs it.
+.PP
+The
+.B -c
+option asks nothing: it replaces the SHA-1 digest stored for an existing
+.I name
+by its verifier.
+The password is not needed, so the entries of users whose clients all
+speak version 2 can be converted at any time.
+It cannot be undone except by setting the password again.
 .SH FILES
 .TF /keydb/keys
 .TP

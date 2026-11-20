@@ -18,6 +18,7 @@ TARG=\
 	keysrv.dis\
 	getpk.dis\
 	logind.dis\
+	logintest.dis\
 	mkauthinfo.dis\
 	passwd.dis\
 	rsagen.dis\

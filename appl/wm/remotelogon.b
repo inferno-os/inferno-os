@@ -83,9 +83,11 @@ init(ctxt: ref Draw->Context, args: list of string)
 	arg := load Arg Arg->PATH;
 	if(arg != nil){
 		arg->init(args);
-		arg->setusage("usage: logon [-u user] [-p passwd] command [arg...]]\n");
+		arg->setusage("usage: logon [-1] [-u user] [-p passwd] command [arg...]]\n");
 		while((opt := arg->opt()) != 0){
 			case opt{
+			'1' =>
+				vers1 = "v1 ";	# version 1 of login(6)
 			'u' =>
 				usr = arg->earg();
 			'p' =>
@@ -196,9 +198,11 @@ exec(ctxt: ref Draw->Context, argv: list of string, errch: chan of string)
 	}
 }
 
+vers1 := "";
+
 logon(ctxt: ref Draw->Context, uname, passwd, addr: string): int
 {
-	(err, info) := login->login(uname, passwd, addr);
+	(err, info) := login->login(uname, passwd, vers1+addr);
 	if(err != nil){
 		notice(ctxt, "Login failed:\n" + err);
 		return 0;
