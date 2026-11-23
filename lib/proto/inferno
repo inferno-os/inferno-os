@@ -1074,7 +1074,6 @@ appl
 		readpng.b
 		readxbitmap.b
 		regex.b
-		regexutils.b
 		registries.b
 		rfc822.b
 		riff.b
@@ -1681,7 +1680,6 @@ dis
 		readpng.dis
 		readxbitmap.dis
 		regex.dis
-		regexutils.dis
 		registries.dis
 		rfc822.dis
 		riff.dis
@@ -2324,7 +2322,6 @@ module
 	rand.m
 	readdir.m
 	regex.m
-	regexutils.m
 	registries.m
 	rfc822.m
 	riff.m
